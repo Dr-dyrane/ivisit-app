@@ -20,30 +20,62 @@ iVisit is a web application designed to connect individuals with highly trained 
 To set up iVisit locally:
 
 1. Clone the repository:
-    ```bash
-    git clone https://github.com/Dr-dyrane/ivisit.git
-    ```
+
+   ```bash
+   git clone https://github.com/Dr-dyrane/ivisit-app.git
+   ```
 
 2. Navigate to the project directory:
-    ```bash
-    cd ivisit
-    ```
+
+   ```bash
+   cd ivisit
+   ```
 
 3. Install dependencies:
-    ```bash
-    npm install
-    ```
+
+   ```bash
+   npm install
+   ```
 
 4. Start the development server:
+
+   ```bash
+   expo start
+   ```
+
+5. Use these commands to generate a production-ready APK or submit to the Play Store:
+
     ```bash
-    npm run dev
+    eas build --platform android
+    eas build -p android --profile preview2
     ```
 
-5. Open your browser and navigate to `http://localhost:5173`.
+    - The `preview2` profile in `eas.json` is configured to generate APK files. You can modify this profile to suit different build needs.
+
+6. **OTA (Over-the-Air) Updates with EAS**:
+
+   After the APK has been generated and deployed, you can push over-the-air updates (such as JavaScript or asset changes) without requiring users to download a new version from the Play Store.
+
+   To send an update to all users:
+
+   ```bash
+   eas update
+   eas update --branch preview2
+   ```
+
+   This will push your latest changes to users who have installed your app.
+
+   ### Key Notes:
+
+- **`eas update`** allows you to update the app without needing a full rebuild and Play Store re-submission. Ideal for minor fixes or improvements.
+- Ensure that `expo-updates` is installed and properly configured to enable OTA updates in your app.
+
+---
 
 ## Configuration
 
 Create a `.env` file in the root directory with the following variables:
+
 ```env
 IVISIT_API_URL=https://api.yourservice.com
 ```
@@ -68,5 +100,8 @@ For inquiries, please email us at [info@ivisit.com](mailto:info@ivisit.com).
 
 ---
 
-*Visit our website for more information: [iVisit](http://ivisit.vercel.app).*
+_Visit our website for more information: [iVisit](http://ivisit.vercel.app)._
+
+```
+
 ```
