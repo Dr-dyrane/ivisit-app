@@ -1,0 +1,49 @@
+{
+	"expo": {
+		"name": "ivisit",
+		"slug": "ivisit",
+		"scheme": "yourappname",
+		"version": "1.0.0",
+		"orientation": "portrait",
+		"icon": "./assets/icon.png",
+		"userInterfaceStyle": "light",
+		"splash": {
+			"image": "./assets/splash.png",
+			"resizeMode": "contain",
+			"backgroundColor": "#ffffff"
+		},
+		"ios": {
+			"supportsTablet": true,
+			"infoPlist": {
+				"NSCameraUsageDescription": "This app needs access to your camera to allow you to take photos.",
+				"NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select images."
+			}
+		},
+		"android": {
+			"adaptiveIcon": {
+				"foregroundImage": "./assets/adaptive-icon.png",
+				"backgroundColor": "#ffffff"
+			},
+			"package": "com.dyrane.ivisit",
+			"newArchEnabled": true
+		},
+		"web": {
+			"favicon": "./assets/favicon.png"
+		},
+		"plugins": ["expo-router", "expo-font"],
+		"updates": {
+			"fallbackToCacheTimeout": 0,
+			"enabled": true,
+			"checkAutomatically": "ON_LOAD",
+			"url": "https://u.expo.dev/a3777b70-b973-4b3b-ba59-ed32bf5662e0"
+		},
+		"extra": {
+			"eas": {
+				"projectId": "a3777b70-b973-4b3b-ba59-ed32bf5662e0"
+			}
+		},
+		"runtimeVersion": {
+			"policy": "appVersion"
+		}
+	}
+}
