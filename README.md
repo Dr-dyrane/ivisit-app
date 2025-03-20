@@ -45,12 +45,13 @@ To set up iVisit locally:
 
 5. Use these commands to generate a production-ready APK or submit to the Play Store:
 
-    ```bash
-    eas build --platform android
-    eas build -p android --profile preview2
-    ```
+   ```bash
+   eas build --platform android
+   eas build -p android --profile preview2
+   eas build -p ios --profile preview2
+   ```
 
-    - The `preview2` profile in `eas.json` is configured to generate APK files. You can modify this profile to suit different build needs.
+   - The `preview2` profile in `eas.json` is configured to generate APK files. You can modify this profile to suit different build needs.
 
 6. **OTA (Over-the-Air) Updates with EAS**:
 
