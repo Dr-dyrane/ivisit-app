@@ -7,10 +7,7 @@ import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import ToastProvider from "../contexts/ToastContext";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
-import * as SplashScreen from "expo-splash-screen";
 
-// Prevent the splash screen from auto-hiding
-SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
 	const [appIsReady, setAppIsReady] = useState(false);
@@ -18,14 +15,11 @@ export default function RootLayout() {
 	useEffect(() => {
 		async function prepareApp() {
 			try {
-				// Simulate any initial setup (e.g., loading fonts, fetching user session, etc.)
 				await new Promise((resolve) => setTimeout(resolve, 2000));
 			} catch (e) {
 				console.warn(e);
 			} finally {
-				// Hide the splash screen when everything is ready
 				setAppIsReady(true);
-				await SplashScreen.hideAsync();
 			}
 		}
 
@@ -33,7 +27,7 @@ export default function RootLayout() {
 	}, []);
 
 	if (!appIsReady) {
-		return null; // Prevent rendering until app is ready
+		return null;
 	}
 
 	return (
