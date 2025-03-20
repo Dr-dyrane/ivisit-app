@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+	darkMode: "class", // Enables class-based dark mode
 	content: [
 		"./App.{js,jsx,ts,tsx}",
 		"./app/**/*.{js,jsx,ts,tsx}",
@@ -10,7 +11,8 @@ module.exports = {
 	theme: {
 		extend: {
 			colors: {
-				primary: "#008773", //#00dc8c glow, bg #adffe0 and #E5F5F1
+				primary: "#86100E",
+				primaryDark: "#ECA6A4",
 				secondary: "#ffa9a8",
 				accent: "#00dfc0",
 				pink: "#d268cc",

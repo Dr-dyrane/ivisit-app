@@ -39,7 +39,8 @@
     "react-native-screens": "~4.4.0",
     "react-native-svg": "15.8.0",
     "typescript": "~5.3.3",
-    "yup": "^1.4.0"
+    "yup": "^1.4.0",
+    "expo-splash-screen": "~0.29.22"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

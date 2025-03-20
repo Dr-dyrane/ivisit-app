@@ -10,7 +10,7 @@
 		"splash": {
 			"image": "./assets/splash.png",
 			"resizeMode": "contain",
-			"backgroundColor": "#00000000"
+			"backgroundColor": "transparent"
 		},
 		"ios": {
 			"supportsTablet": true,
@@ -22,7 +22,7 @@
 		"android": {
 			"adaptiveIcon": {
 				"foregroundImage": "./assets/adaptive-icon.png",
-				"backgroundColor": "#00000000"
+				"backgroundColor": "transparent"
 			},
 			"package": "com.dyrane.ivisit",
 			"newArchEnabled": true

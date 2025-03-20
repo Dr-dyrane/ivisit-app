@@ -1,35 +1,48 @@
-//app/_layout.js
+"use client";
 
 import React, { useEffect, useState } from "react";
 import { Stack, useRouter } from "expo-router";
-import { AuthProvider, useAuth } from "../contexts/AuthContext"; // Ensure both are imported
-import * as NavigationBar from "expo-navigation-bar";
+import { View } from "react-native";
+import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import ToastProvider from "../contexts/ToastContext";
 import { StatusBar } from "expo-status-bar";
+import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
+import * as SplashScreen from "expo-splash-screen";
+
+// Prevent the splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-	// Move AuthProvider outside the return statement to ensure useAuth can be used
+	const [appIsReady, setAppIsReady] = useState(false);
+
 	useEffect(() => {
-		const setNavBar = async () => {
-			await NavigationBar.setBackgroundColorAsync("white"); // Set the navigation bar background color to white
-			await NavigationBar.setButtonStyleAsync("dark"); // Set button styles to dark
-		};
+		async function prepareApp() {
+			try {
+				// Simulate any initial setup (e.g., loading fonts, fetching user session, etc.)
+				await new Promise((resolve) => setTimeout(resolve, 2000));
+			} catch (e) {
+				console.warn(e);
+			} finally {
+				// Hide the splash screen when everything is ready
+				setAppIsReady(true);
+				await SplashScreen.hideAsync();
+			}
+		}
 
-		setNavBar();
-
-		// Cleanup function to reset the styles when unmounted
-		return () => {
-			NavigationBar.setBackgroundColorAsync("transparent");
-			NavigationBar.setButtonStyleAsync("light");
-		};
+		prepareApp();
 	}, []);
+
+	if (!appIsReady) {
+		return null; // Prevent rendering until app is ready
+	}
 
 	return (
 		<AuthProvider>
-			<ToastProvider>
-				<StatusBar style="dark" backgroundColor="white" />
-				<AuthenticatedStack />
-			</ToastProvider>
+			<ThemeProvider>
+				<ToastProvider>
+					<AuthenticatedStack />
+				</ToastProvider>
+			</ThemeProvider>
 		</AuthProvider>
 	);
 }
@@ -37,28 +50,30 @@ export default function RootLayout() {
 // Separate the Stack logic into its own component so it can use the Auth context
 function AuthenticatedStack() {
 	const { user } = useAuth(); // Destructure user from the AuthContext
-	const [isAuthenticated, setIsAuthenticated] = useState(user.isAuthenticated); // Initialize local state
+	const { isDarkMode } = useTheme(); // Get theme from ThemeContext
 	const router = useRouter(); // Get the router instance
 
-	// Use effect to listen for changes in the user object
+	// Listen for authentication changes and redirect accordingly
 	useEffect(() => {
-		setIsAuthenticated(user.isAuthenticated); // Update local state when user changes
-
-		// Check authentication state and navigate accordingly
 		if (user.isAuthenticated) {
-			router.replace("(user)"); // Replace current route with the user route
+			router.replace("(user)");
 		} else {
-			router.replace("(auth)"); // Replace current route with the auth route
+			router.replace("(auth)");
 		}
-	}, [user]); // Dependency array includes user
+	}, [user, router]);
 
 	return (
-		<Stack>
-			{/* Define the screen without showing the header */}
-			<Stack.Screen
-				name={isAuthenticated ? "(user)" : "(auth)"} // Show user for authenticated users, auth for others
-				options={{ headerShown: false }} // Hide the header
+		<View className={isDarkMode ? "dark" : ""} style={{ flex: 1 }}>
+			<StatusBar
+				style={isDarkMode ? "light" : "dark"}
+				backgroundColor={isDarkMode ? "#2C2C2C" : "#FCF5F5"}
 			/>
-		</Stack>
+			<Stack>
+				<Stack.Screen
+					name={user.isAuthenticated ? "(user)" : "(auth)"}
+					options={{ headerShown: false }}
+				/>
+			</Stack>
+		</View>
 	);
 }
