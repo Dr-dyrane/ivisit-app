@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Dimensions, View, Image, useColorScheme } from "react-native";
+import { Dimensions, View, Image } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
+
 
 // Hide Expo splash immediately on app launch
 SplashScreen.hideAsync().catch(() => {});
@@ -9,7 +10,6 @@ export function useCustomSplashScreen() {
 	const [appIsReady, setAppIsReady] = useState(false);
 	const screenWidth = Dimensions.get("window").width;
 	const screenHeight = Dimensions.get("window").height;
-	const isDarkMode = useColorScheme() === "dark"; // Detect system theme
 
 	useEffect(() => {
 		// Show custom splash for 2.5 seconds, then transition to app
@@ -30,7 +30,7 @@ export function useCustomSplashScreen() {
 					position: "absolute",
 					width: screenWidth,
 					height: screenHeight,
-					backgroundColor: isDarkMode ? "#121212" : "#ffffff", // Dark/Light Mode
+					backgroundColor:  'white',
 					justifyContent: "center",
 					alignItems: "center",
 					zIndex: 999, // Ensure it's on top
