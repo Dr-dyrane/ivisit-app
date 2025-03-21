@@ -48,14 +48,14 @@ const WelcomeScreen = () => {
 			</View>
 			<Image
 				source={require("../assets/hero/hero.png")}
-				className="object-contain w-[400px] h-[267px] mt-6"
+				className="object-contain w-[400px] h-[267px] my-4"
 				resizeMode="contain"
 			/>
 			{/* Features Section */}
 			<ScrollView
 				contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
 			>
-				<View className="mb-6 text-left justify-end">
+				<View className="text-left justify-end">
 					<Text
 						className={`text-6xl font-[900] mb-2 tracking-tighter ${
 							isDarkMode ? "text-white" : "text-primary"
@@ -76,7 +76,7 @@ const WelcomeScreen = () => {
 			</ScrollView>
 			<View>
 				{/* Container for buttons */}
-				<View className="flex-row mt-6 w-full">
+				<View className="flex-row mt-4 w-full">
 					<Pressable
 						className="bg-primary flex-1 flex-row px-6 py-4 rounded-xl items-center justify-between space-x-4"
 						onPress={() => router.push("onboarding")}
