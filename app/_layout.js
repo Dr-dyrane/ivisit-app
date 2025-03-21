@@ -1,13 +1,22 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Stack, useRouter } from "expo-router";
 import { View } from "react-native";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import ToastProvider from "../contexts/ToastContext";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
+import * as SplashScreen from "expo-splash-screen";
 
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
+
+// Set the animation options. This is optional.
+SplashScreen.setOptions({
+	duration: 1000,
+	fade: true,
+});
 
 export default function RootLayout() {
 	const [appIsReady, setAppIsReady] = useState(false);
@@ -26,6 +35,12 @@ export default function RootLayout() {
 		prepareApp();
 	}, []);
 
+	const onLayoutRootView = useCallback(() => {
+		if (appIsReady) {
+			SplashScreen.hide();
+		}
+	}, [appIsReady]);
+
 	if (!appIsReady) {
 		return null;
 	}
@@ -34,7 +49,9 @@ export default function RootLayout() {
 		<AuthProvider>
 			<ThemeProvider>
 				<ToastProvider>
-					<AuthenticatedStack />
+					<View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+						<AuthenticatedStack />
+					</View>
 				</ToastProvider>
 			</ThemeProvider>
 		</AuthProvider>
@@ -57,7 +74,7 @@ function AuthenticatedStack() {
 	}, [user, router]);
 
 	return (
-		<View className={isDarkMode ? "dark" : ""} style={{ flex: 1 }}>
+		<>
 			<StatusBar
 				style={isDarkMode ? "light" : "dark"}
 				backgroundColor={isDarkMode ? "#2C2C2C" : "#FCF5F5"}
@@ -68,6 +85,6 @@ function AuthenticatedStack() {
 					options={{ headerShown: false }}
 				/>
 			</Stack>
-		</View>
+		</>
 	);
 }

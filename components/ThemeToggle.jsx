@@ -24,7 +24,7 @@ export default function ThemeToggle({ showLabel = true, size = "md" }) {
 			{/* Background & Border Adjusted for Dark Mode */}
 			<View
 				className={`flex-row rounded-full border p-1 ${
-					isDarkMode ? "bg-primary border-[#2C2C2C]" : "bg-white border-border"
+					isDarkMode ? "bg-primary border-[#2C2C2C]" : "bg-snowPink border-primary"
 				}`}
 			>
 				<Pressable
@@ -47,7 +47,7 @@ export default function ThemeToggle({ showLabel = true, size = "md" }) {
 									: "white"
 								: isDarkMode
 								? "white"
-								: "#333333"
+								: "#86100E"
 						}
 					/>
 				</Pressable>
@@ -72,7 +72,7 @@ export default function ThemeToggle({ showLabel = true, size = "md" }) {
 									: "white"
 								: isDarkMode
 								? "white"
-								: "#333333"
+								: "#86100E"
 						}
 					/>
 				</Pressable>
@@ -97,7 +97,7 @@ export default function ThemeToggle({ showLabel = true, size = "md" }) {
 									: "white"
 								: isDarkMode
 								? "white"
-								: "#333333"
+								: "#86100E"
 						}
 					/>
 				</Pressable>

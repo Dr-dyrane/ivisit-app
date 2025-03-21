@@ -14,6 +14,7 @@ module.exports = {
 				primary: "#86100E",
 				primaryDark: "#ECA6A4",
 				secondary: "#ffa9a8",
+				snowPink: "FCF5F5",
 				accent: "#00dfc0",
 				pink: "#d268cc",
 				backgroundLight: "#F9F9F9",
