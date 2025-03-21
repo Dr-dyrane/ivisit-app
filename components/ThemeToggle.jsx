@@ -68,7 +68,7 @@ export default function ThemeToggle({ showLabel = true, size = "md" }) {
 						color={
 							themeMode === ThemeMode.DARK
 								? isDarkMode
-									? "black"
+									? "#86100E"
 									: "white"
 								: isDarkMode
 								? "white"

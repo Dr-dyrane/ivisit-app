@@ -17,7 +17,7 @@ const WelcomeScreen = () => {
 			colors={
 				isDarkMode
 					? ["#2C2C2C", "#86100E", "#2C2C2C"]
-					: ["#fff", "#ECA6A4", "#fff"]
+					: ["#fff", "#FCF5F5", "#fff"]
 			}
 			className="flex-1 min-h-screen justify-between items-center p-8 pb-16 pt-14 w-full relative"
 		>
