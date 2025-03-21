@@ -48,11 +48,13 @@ const WelcomeScreen = () => {
 			</View>
 			<Image
 				source={require("../assets/hero/hero.png")}
-				className="contain w-[400px] h-[400px]"
+				className="object-contain w-[400px] h-[267px] mt-6"
 				resizeMode="contain"
 			/>
 			{/* Features Section */}
-			<ScrollView>
+			<ScrollView
+				contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+			>
 				<View className="mb-6 text-left justify-end">
 					<Text
 						className={`text-6xl font-[900] mb-2 tracking-tighter ${
