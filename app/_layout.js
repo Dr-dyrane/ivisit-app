@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import { Stack, useRouter } from "expo-router";
-import { Image, View } from "react-native";
+import { View } from "react-native";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import ToastProvider from "../contexts/ToastContext";
 import { StatusBar } from "expo-status-bar";
@@ -10,16 +10,9 @@ import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
 import { useCustomSplashScreen } from "../utils/splashHelper";
 
 export default function RootLayout() {
-	const { appIsReady, screenWidth, screenHeight } = useCustomSplashScreen();
-
+	const { appIsReady, SplashScreenView } = useCustomSplashScreen();
 	if (!appIsReady) {
-		return (
-			<Image
-				source={require("../assets/splash.png")}
-				style={{ width: screenWidth, height: screenHeight }}
-				resizeMode="contain"
-			/>
-		);
+		return <SplashScreenView />;
 	}
 
 	return (
