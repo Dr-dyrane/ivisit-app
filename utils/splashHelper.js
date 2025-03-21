@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import { Dimensions, View, Image } from "react-native";
-import * as SplashScreen from "expo-splash-screen";
 
-
-// Hide Expo splash immediately on app launch
-SplashScreen.hideAsync().catch(() => {});
 
 export function useCustomSplashScreen() {
 	const [appIsReady, setAppIsReady] = useState(false);
