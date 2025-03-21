@@ -7,6 +7,11 @@
 		"orientation": "portrait",
 		"icon": "./assets/icon.png",
 		"userInterfaceStyle": "automatic",
+		"splash": {
+			"image": "./assets/splash.png",
+			"resizeMode": "contain",
+			"backgroundColor": "#00000000"
+		},
 		"ios": {
 			"supportsTablet": true,
 			"infoPlist": {
@@ -37,7 +42,6 @@
 						"image": "./assets/splash.png",
 						"backgroundColor": "#000000"
 					},
-					"imageWidth": 1284,
 					"enableFullScreenImage_legacy": true,
 					"resizeMode": "contain"
 				}

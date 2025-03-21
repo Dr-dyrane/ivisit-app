@@ -1,55 +1,32 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Stack, useRouter } from "expo-router";
-import { View } from "react-native";
+import { Image, View } from "react-native";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import ToastProvider from "../contexts/ToastContext";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
-import * as SplashScreen from "expo-splash-screen";
-
-// Keep the splash screen visible while we fetch resources
-SplashScreen.preventAutoHideAsync();
-
-// Set the animation options. This is optional.
-SplashScreen.setOptions({
-	duration: 1000,
-	fade: true,
-});
+import { useCustomSplashScreen } from "../utils/splashHelper";
 
 export default function RootLayout() {
-	const [appIsReady, setAppIsReady] = useState(false);
-
-	useEffect(() => {
-		async function prepareApp() {
-			try {
-				await new Promise((resolve) => setTimeout(resolve, 2000));
-			} catch (e) {
-				console.warn(e);
-			} finally {
-				setAppIsReady(true);
-			}
-		}
-
-		prepareApp();
-	}, []);
-
-	const onLayoutRootView = useCallback(() => {
-		if (appIsReady) {
-			SplashScreen.hide();
-		}
-	}, [appIsReady]);
+	const { appIsReady, screenWidth, screenHeight } = useCustomSplashScreen();
 
 	if (!appIsReady) {
-		return null;
+		return (
+			<Image
+				source={require("../assets/splash.png")}
+				style={{ width: screenWidth, height: screenHeight }}
+				resizeMode="contain"
+			/>
+		);
 	}
 
 	return (
 		<AuthProvider>
 			<ThemeProvider>
 				<ToastProvider>
-					<View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+					<View style={{ flex: 1 }}>
 						<AuthenticatedStack />
 					</View>
 				</ToastProvider>
