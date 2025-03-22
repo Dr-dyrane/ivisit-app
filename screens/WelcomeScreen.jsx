@@ -16,8 +16,8 @@ const WelcomeScreen = () => {
 		<LinearGradient
 			colors={
 				isDarkMode
-					? ["#2C2C2C", "#86100E", "#2C2C2C"]
-					: ["#fff", "#FCF5F5", "#fff"]
+					? ["#0D121D", "#86100E", "#121826"]
+					: ["#fff", "#F3E7E7", "#FFFAFA"]
 			}
 			className="flex-1 min-h-screen justify-between items-center p-8 pb-16 pt-14 w-full relative"
 		>
@@ -29,18 +29,23 @@ const WelcomeScreen = () => {
 			<View className="flex flex-col items-center justify-center">
 				<Image
 					source={require("../assets/logo.png")}
-					className="ml-1 w-6 h-6"
+					className="w-12 h-12 p-1"
 					resizeMode="contain"
+					style={{
+						shadowColor: isDarkMode ? "#86100E" : "#FF7070",
+						shadowOffset: { width: 0, height: 2 },
+						shadowOpacity: 0.3,
+						shadowRadius: 6,
+					}}
 				/>
 				<Text
-					className={`text-2xl font-bold ${
+					className={`text-4xl font-bold ${
 						isDarkMode ? "text-red-500" : "text-red-700"
 					}`}
 					style={{
 						textShadowColor: "rgba(0, 0, 0, 0.25)",
 						textShadowOffset: { width: 1, height: 1 },
 						textShadowRadius: 2,
-						WebkitTextStroke: "1px black", // This works only on web
 					}}
 				>
 					iVisit
@@ -48,18 +53,30 @@ const WelcomeScreen = () => {
 			</View>
 			<Image
 				source={require("../assets/hero/speed.png")}
-				className="object-contain w-[400px] h-[216px] mt-20"
+				className="object-contain w-[400px] h-[220px] mt-20 pb-3"
 				resizeMode="contain"
+				style={{
+					shadowColor: "rgba(0, 0, 0, 0.5)",
+					shadowOffset: { width: 0, height: 2 },
+					shadowOpacity: 0.3,
+					shadowRadius: 10,
+				}}
 			/>
 			{/* Features Section */}
 			<ScrollView
+				className="flex-1 w-full"
 				contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
 			>
-				<View className="text-left justify-end">
+				<View className="text-left justify-end w-full">
 					<Text
-						className={`text-6xl font-[900] mb-2 tracking-tighter ${
+						className={`text-5xl md:text-6xl font-extrabold tracking-tight leading-tight ${
 							isDarkMode ? "text-white" : "text-primary"
 						}`}
+						style={{
+							textShadowColor: isDarkMode ? "#86100E" : "rgba(0, 0, 0, 0.15)",
+							textShadowOffset: { width: 1, height: 2 },
+							textShadowRadius: 4,
+						}}
 					>
 						Urgent Care, Instantly.
 					</Text>
@@ -78,6 +95,12 @@ const WelcomeScreen = () => {
 				{/* Container for buttons */}
 				<View className="flex-row mt-4 w-full">
 					<Pressable
+						style={{
+							shadowColor: isDarkMode ? "#86100E" : "#F87171",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: 0.3,
+							shadowRadius: 6,
+						}}
 						className="bg-primary flex-1 flex-row px-6 py-4 rounded-xl items-center justify-between space-x-4"
 						onPress={() => router.push("onboarding")}
 					>

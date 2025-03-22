@@ -33,7 +33,7 @@ export function useCustomSplashScreen() {
 				}}
 			>
 				<Image
-					source={require("../assets/splash.png")}
+					source={require("../assets/custom_splash.png")}
 					style={{ width: screenWidth, height: screenHeight }}
 					resizeMode="contain"
 				/>

@@ -52,7 +52,7 @@ function AuthenticatedStack() {
 		<>
 			<StatusBar
 				style={isDarkMode ? "light" : "dark"}
-				backgroundColor={isDarkMode ? "#2C2C2C" : "#FCF5F5"}
+				backgroundColor={isDarkMode ? "#0D121D" : "#fff"}
 			/>
 			<Stack>
 				<Stack.Screen
