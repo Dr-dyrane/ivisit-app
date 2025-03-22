@@ -22,9 +22,9 @@ const WelcomeScreen = () => {
 			className="flex-1 min-h-screen justify-between items-center p-8 pb-16 pt-14 w-full relative"
 		>
 			{/* Theme Toggle for testing */}
-			<View className="absolute top-12 right-6 z-10">
+			{/* <View className="absolute top-12 right-6 z-10">
 				<ThemeToggle size="sm" showLabel={false} />
-			</View>
+			</View> */}
 
 			<View className="flex flex-col items-center justify-center">
 				<Image
