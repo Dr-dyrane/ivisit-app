@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Dimensions, View, Image } from "react-native";
-
+import { Dimensions, View, Image, useColorScheme } from "react-native";
 
 export function useCustomSplashScreen() {
 	const [appIsReady, setAppIsReady] = useState(false);
 	const screenWidth = Dimensions.get("window").width;
 	const screenHeight = Dimensions.get("window").height;
+	const deviceTheme = useColorScheme();
+	const isDarkMode = deviceTheme === "dark";
 
 	useEffect(() => {
 		// Show custom splash for 2.5 seconds, then transition to app
@@ -26,7 +27,7 @@ export function useCustomSplashScreen() {
 					position: "absolute",
 					width: screenWidth,
 					height: screenHeight,
-					backgroundColor:  'white',
+					backgroundColor: isDarkMode ? "#181818" : "white",
 					justifyContent: "center",
 					alignItems: "center",
 					zIndex: 999, // Ensure it's on top
