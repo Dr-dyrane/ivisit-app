@@ -24,14 +24,14 @@ export default function ThemeToggle({ showLabel = true, size = "md" }) {
 			{/* Background & Border Adjusted for Dark Mode */}
 			<View
 				className={`flex-row rounded-full border p-1 ${
-					isDarkMode ? "bg-primary border-[#2C2C2C]" : "bg-snowPink border-primary"
+					isDarkMode ? "bg-primary border-border-dark" : "bg-background border-primary"
 				}`}
 			>
 				<Pressable
 					className={`p-2 rounded-full ${
 						themeMode === ThemeMode.LIGHT
 							? isDarkMode
-								? "bg-white"
+								? "bg-background"
 								: "bg-primary"
 							: "bg-transparent"
 					}`}
