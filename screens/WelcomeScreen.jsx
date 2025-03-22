@@ -47,8 +47,8 @@ const WelcomeScreen = () => {
 				</Text>
 			</View>
 			<Image
-				source={require("../assets/hero/test.png")}
-				className="object-contain w-[400px] h-[200px] mt-20"
+				source={require("../assets/hero/speed.png")}
+				className="object-contain w-[400px] h-[216px] mt-20"
 				resizeMode="contain"
 			/>
 			{/* Features Section */}
