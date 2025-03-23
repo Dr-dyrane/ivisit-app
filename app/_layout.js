@@ -7,7 +7,6 @@ import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import ToastProvider from "../contexts/ToastContext";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
-import { useCustomSplashScreen } from "../utils/splashHelper";
 import * as SplashScreen from "expo-splash-screen";
 
 
@@ -15,10 +14,6 @@ import * as SplashScreen from "expo-splash-screen";
 SplashScreen.hideAsync().catch(() => {});
 
 export default function RootLayout() {
-	const { appIsReady, SplashScreenView } = useCustomSplashScreen();
-	if (!appIsReady) {
-		return <SplashScreenView />;
-	}
 
 	return (
 		<AuthProvider>
