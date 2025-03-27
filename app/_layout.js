@@ -8,19 +8,22 @@ import ToastProvider from "../contexts/ToastContext";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
 import * as SplashScreen from "expo-splash-screen";
-
+import ThemeToggle from "../components/ThemeToggle";
 
 // Hide Expo splash immediately on app launch
 SplashScreen.hideAsync().catch(() => {});
 
 export default function RootLayout() {
-
 	return (
 		<AuthProvider>
 			<ThemeProvider>
 				<ToastProvider>
 					<View style={{ flex: 1 }}>
 						<AuthenticatedStack />
+						{/* Theme Toggle - Absolute Top Left */}
+						{/* <View className="absolute left-0 top-[320px] p-4">
+							<ThemeToggle showLabel={false} />
+						</View> */}
 					</View>
 				</ToastProvider>
 			</ThemeProvider>

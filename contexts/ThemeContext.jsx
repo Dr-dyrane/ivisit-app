@@ -69,7 +69,7 @@ export function ThemeProvider({ children }) {
 			if (Platform.OS === "android") {
 				try {
 					await NavigationBar.setBackgroundColorAsync(
-						isDarkMode ? "#121826" : "white"
+						isDarkMode ? "#0B0F1A" : "white"
 					);
 					await NavigationBar.setButtonStyleAsync(
 						isDarkMode ? "light" : "dark"

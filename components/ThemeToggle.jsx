@@ -20,10 +20,10 @@ export default function ThemeToggle({ showLabel = true, size = "md" }) {
 	};
 
 	return (
-		<View className="flex-row items-center justify-center p-2">
+		<View className="flex-col items-center justify-center p-2">
 			{/* Background & Border Adjusted for Dark Mode */}
 			<View
-				className={`flex-row rounded-full border p-1 ${
+				className={`flex-col rounded-full border p-2 ${
 					isDarkMode ? "bg-primary border-border-dark" : "bg-background border-primary"
 				}`}
 			>
