@@ -34,7 +34,7 @@ To set up iVisit locally:
 3. Install dependencies:
 
    ```bash
-   npm install
+   npm install --legacy-peer-deps
    ```
 
 4. Start the development server:
