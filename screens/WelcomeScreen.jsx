@@ -21,7 +21,7 @@ const WelcomeScreen = () => {
 			className="flex-1 min-h-screen justify-between items-center px-6 py-12 w-full"
 		>
 			{/* Logo and Title */}
-			<View className="flex items-center w-full space-y-3">
+			<View className="flex items-center w-full space-y-3 mt-4">
 				<Image
 					source={require("../assets/logo.png")}
 					className="w-14 h-14"
@@ -36,7 +36,7 @@ const WelcomeScreen = () => {
 				</Text>
 
 				{/* SOS Button - Absolute Top Right */}
-				<Pressable
+				{/* <Pressable
 					className="bg-destructive w-auto absolute right-0 flex-row px-6 py-4 rounded-full items-center justify-center space-x-3 shadow-lg active:scale-95"
 					onPress={() => router.push("onboarding")}
 					style={{
@@ -47,7 +47,7 @@ const WelcomeScreen = () => {
 				>
 					<MaterialCommunityIcons name="ambulance" size={28} color="white" />
 					<Text className="text-white text-lg font-bold">SOS</Text>
-				</Pressable>
+				</Pressable> */}
 			</View>
 
 			{/* Hero Image */}
