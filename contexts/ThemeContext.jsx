@@ -68,9 +68,9 @@ export function ThemeProvider({ children }) {
 			// Only run on Android platform
 			if (Platform.OS === "android") {
 				try {
-					await NavigationBar.setBackgroundColorAsync(
-						isDarkMode ? "#0B0F1A" : "white"
-					);
+					// await NavigationBar.setBackgroundColorAsync(
+					// 	isDarkMode ? "#0B0F1A" : "white"
+					// );
 					await NavigationBar.setButtonStyleAsync(
 						isDarkMode ? "light" : "dark"
 					);
