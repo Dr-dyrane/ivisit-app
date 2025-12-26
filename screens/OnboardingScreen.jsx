@@ -15,48 +15,35 @@ import bedBooking from "../assets/features/bed.png";
 import checkup from "../assets/features/checkup.png";
 
 const onboardingData = [
-  {
-    title: "Emergency Response",
-    description: "24/7 rapid emergency medical response.",
-    icon: "medkit-outline",
-    image: emergency,
-    colorHex: { 
-      light: "#f43f5e", // vivid red for light mode
-      dark: "#f87171",  // slightly muted/red for dark mode
-    },
-  },
-  {
-    title: "Urgent Care",
-    description: "Immediate care for medical needs.",
-    icon: "heart-outline",
-    image: urgentCare,
-    colorHex: { 
-      light: "#96a6da", 
-      dark: "#6366f1", 
-    },
-  },
-  {
-    title: "Bed Booking",
-    description: "Reserve hospital beds in advance.",
-    icon: "bed-outline",
-    image: bedBooking,
-    colorHex: { 
-      light: "#d268cc", 
-      dark: "#a855f7", 
-    },
-  },
-  {
-    title: "General Check-ups",
-    description: "Comprehensive health assessments.",
-    icon: "medkit-outline",
-    image: checkup,
-    colorHex: { 
-      light: "#4caf50", 
-      dark: "#22c55e", 
-    },
-  },
+	{
+		title: "Emergency Response",
+		description: "24/7 rapid emergency medical response.",
+		icon: "medkit-outline",
+		image: emergency,
+		colorHex: { light: "#f43f5e", dark: "#f87171" },
+	},
+	{
+		title: "Urgent Care",
+		description: "Immediate care for medical needs.",
+		icon: "heart-outline",
+		image: urgentCare,
+		colorHex: { light: "#96a6da", dark: "#6366f1" },
+	},
+	{
+		title: "Bed Booking",
+		description: "Reserve hospital beds in advance.",
+		icon: "bed-outline",
+		image: bedBooking,
+		colorHex: { light: "#d268cc", dark: "#a855f7" },
+	},
+	{
+		title: "General Check-ups",
+		description: "Comprehensive health assessments.",
+		icon: "medkit-outline",
+		image: checkup,
+		colorHex: { light: "#4caf50", dark: "#22c55e" },
+	},
 ];
-
 
 const OnboardingScreen = () => {
 	const router = useRouter();
@@ -64,17 +51,12 @@ const OnboardingScreen = () => {
 	const { isDarkMode } = useTheme();
 
 	const handleSwipeLeft = () => {
-		if (currentIndex < onboardingData.length - 1) {
+		if (currentIndex < onboardingData.length - 1)
 			setCurrentIndex(currentIndex + 1);
-		}
 	};
-
 	const handleSwipeRight = () => {
-		if (currentIndex > 0) {
-			setCurrentIndex(currentIndex - 1);
-		}
+		if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
 	};
-
 	const panResponder = useSwipeGesture(handleSwipeLeft, handleSwipeRight);
 
 	const getColor = (colorObj) =>
@@ -108,8 +90,8 @@ const OnboardingScreen = () => {
 					{/* Icon container */}
 					<View
 						style={{
-							borderColor: featureColor + "50",
-							backgroundColor: featureColor + "20",
+							borderColor: featureColor + (isDarkMode ? "80" : "50"),
+							backgroundColor: featureColor + (isDarkMode ? "30" : "20"),
 						}}
 						className="border-2 rounded-full p-3"
 					>
@@ -156,10 +138,10 @@ const OnboardingScreen = () => {
 								currentIndex === 0
 									? isDarkMode
 										? "#718096"
-										: "#a0aec0" // disabled color
+										: "#a0aec0"
 									: isDarkMode
 									? "#ffffff"
-									: "#000000", // active color
+									: "#000000",
 						}}
 						className="font-bold text-center"
 					>
@@ -171,7 +153,11 @@ const OnboardingScreen = () => {
 				<View className="flex-row items-center flex-1 justify-center">
 					{onboardingData.map((item, index) => {
 						const dotColor =
-							index === currentIndex ? getColor(item.colorHex) : "gray";
+							index === currentIndex
+								? getColor(item.colorHex) + (isDarkMode ? "cc" : "ff")
+								: isDarkMode
+								? "#718096"
+								: "gray";
 						return (
 							<View
 								key={index}
@@ -196,7 +182,10 @@ const OnboardingScreen = () => {
 						backgroundColor: featureColor + "80",
 					}}
 				>
-					<Text style={{ color: "black" }} className="font-bold text-center">
+					<Text
+						style={{ color: isDarkMode ? "#fff" : "#000" }}
+						className="font-bold text-center"
+					>
 						{currentIndex === onboardingData.length - 1 ? "Register" : "Next"}
 					</Text>
 				</Pressable>
