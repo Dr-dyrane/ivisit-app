@@ -21,9 +21,9 @@ export default function RootLayout() {
 					<View style={{ flex: 1 }}>
 						<AuthenticatedStack />
 						{/* Theme Toggle - Absolute Top Left */}
-						{/* <View className="absolute left-0 top-[320px] p-4">
+						<View className="absolute right-0 top-16 py-4">
 							<ThemeToggle showLabel={false} />
-						</View> */}
+						</View>
 					</View>
 				</ToastProvider>
 			</ThemeProvider>
