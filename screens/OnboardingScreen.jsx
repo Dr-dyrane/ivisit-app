@@ -10,9 +10,9 @@ import { useTheme } from "../contexts/ThemeContext";
 
 // Images (keep import names, can swap later)
 import emergency from "../assets/features/emergency.png";
-import urgentCare from "../assets/features/transaction.png";
-import bedBooking from "../assets/features/bill.png";
-import checkup from "../assets/features/secure.png";
+import urgentCare from "../assets/features/urgent.png";
+import bedBooking from "../assets/features/bed.png";
+import checkup from "../assets/features/checkup.png";
 
 const onboardingData = [
   {
