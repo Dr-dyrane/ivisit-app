@@ -9,7 +9,7 @@ import useSwipeGesture from "../utils/useSwipeGesture";
 import { useTheme } from "../contexts/ThemeContext";
 
 // Images (keep import names, can swap later)
-import welcome from "../assets/features/welcome.png";
+import emergency from "../assets/features/emergency.png";
 import urgentCare from "../assets/features/transaction.png";
 import bedBooking from "../assets/features/bill.png";
 import checkup from "../assets/features/secure.png";
@@ -19,7 +19,7 @@ const onboardingData = [
     title: "Emergency Response",
     description: "24/7 rapid emergency medical response.",
     icon: "medkit-outline",
-    image: welcome,
+    image: emergency,
     colorHex: { 
       light: "#f43f5e", // vivid red for light mode
       dark: "#f87171",  // slightly muted/red for dark mode
