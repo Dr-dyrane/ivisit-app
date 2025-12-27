@@ -1,5 +1,5 @@
 // utils/navigationOptions.js
-import HeaderLogo from "../components/layout/HeaderLogo";
+import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import { useTheme } from "../contexts/ThemeContext";
 
 export const commonScreenOptions = ({ title, headerRight }) => {
@@ -9,7 +9,7 @@ export const commonScreenOptions = ({ title, headerRight }) => {
 
 		return {
 			title,
-			headerLeft: () => <HeaderLogo />,
+			headerLeft: () => <HeaderBackButton />,
 			headerTintColor: isDarkMode ? "#fff" : "#000", // Text & icons
 			headerShadowVisible: false,
 			headerTitleStyle: {

@@ -5,9 +5,11 @@ import { Alert, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { commonScreenOptions } from "../../utils/navigationOptions";
+import { useTheme } from "../../contexts/ThemeContext";
 
 export default function AuthLayout() {
 	const router = useRouter();
+	const { isDarkMode } = useTheme();
 
 	const handleBackPress = () => {
 		Alert.alert("Back pressed!", "Navigating to the previous screen.");
@@ -58,7 +60,13 @@ export default function AuthLayout() {
 					title: "Onboarding",
 					headerRight: () => (
 						<Pressable onPress={() => router.push("signup")} className="">
-							<Text className="text-lg text-primary">Skip</Text>
+							<Text
+								className={`text-lg ${
+									isDarkMode ? "text-white" : "text-primary"
+								}`}
+							>
+								Skip
+							</Text>
 						</Pressable>
 					),
 				})}

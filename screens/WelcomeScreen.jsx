@@ -1,3 +1,5 @@
+// screens/WelcomeScreen.js
+
 "use client";
 import React, { useRef, useState } from "react";
 import {
