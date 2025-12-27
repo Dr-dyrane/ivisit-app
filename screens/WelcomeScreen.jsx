@@ -1,63 +1,19 @@
 // screens/WelcomeScreen.js
 
 "use client";
-import React, { useRef, useState } from "react";
-import {
-	View,
-	Text,
-	Image,
-	Pressable,
-	Animated,
-	Easing,
-	StyleSheet,
-	Platform,
-} from "react-native";
+import React from "react";
+import { View, Text, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Fontisto } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { useTheme } from "../contexts/ThemeContext";
+import SlideButton from "../components/ui/SlideButton";
+
+const PRIMARY_RED = "#86100E";
 
 const WelcomeScreen = () => {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
-	
-	// Dynamic width tracking to ensure the 5% hint and text alignment are pixel-perfect
-	const [buttonWidth, setButtonWidth] = useState(0);
-
-	// Animation Value
-	const fillAnim = useRef(new Animated.Value(0)).current;
-
-	const handlePress = () => {
-		if (Platform.OS !== "web") {
-			// Using Medium impact for a more "tactile mechanical" feel than Success
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-		}
-
-		// Modern "AI" Curve: Starts extremely fast (responsive) and settles smoothly
-		Animated.timing(fillAnim, {
-			toValue: 1,
-			duration: 450,
-			easing: Easing.bezier(0.16, 1, 0.3, 1), 
-			useNativeDriver: false,
-		}).start(() => {
-			router.push("onboarding");
-			setTimeout(() => fillAnim.setValue(0), 500);
-		});
-	};
-
-	// The Intentional 5% Hint
-	const fillWidth = fillAnim.interpolate({
-		inputRange: [0, 1],
-		outputRange: ["5%", "100%"],
-	});
-
-	// Brand Colors Logic
-	const PRIMARY_RED = "#86100E";
-	const BUTTON_BG = isDarkMode ? "#161B22" : "#F3E7E7"; // Deeper dark for AI look
-	const BASE_TEXT = isDarkMode ? "#FFFFFF" : PRIMARY_RED;
-	const ACTIVE_TEXT = "#FFFFFF";
-	const SLIDE_BG = PRIMARY_RED;
 
 	return (
 		<LinearGradient
@@ -68,7 +24,7 @@ const WelcomeScreen = () => {
 			}
 			className="flex-1 justify-between items-center px-6 py-12"
 		>
-			{/* Logo and Title */}
+			{/* Logo */}
 			<View className="flex items-center w-full mt-4">
 				<Image
 					source={require("../assets/logo.png")}
@@ -84,7 +40,7 @@ const WelcomeScreen = () => {
 				</Text>
 			</View>
 
-			{/* Hero Image - Slightly larger for modern feel */}
+			{/* Hero */}
 			<View className="w-full items-center">
 				<Image
 					source={require("../assets/hero/speed.png")}
@@ -103,6 +59,7 @@ const WelcomeScreen = () => {
 					Skip the wait.{"\n"}
 					<Text style={{ color: PRIMARY_RED }}>Get care now.</Text>
 				</Text>
+
 				<Text
 					className={`text-lg mt-5 text-center leading-6 ${
 						isDarkMode ? "text-gray-400" : "text-gray-600"
@@ -113,53 +70,20 @@ const WelcomeScreen = () => {
 				</Text>
 			</View>
 
-			{/* ANIMATED CTA BUTTON */}
+			{/* CTA */}
 			<View className="w-full px-4 mb-4">
-				<Pressable 
-					onPress={handlePress} 
-					onLayout={(e) => setButtonWidth(e.nativeEvent.layout.width)}
-					style={[styles.btnContainer, { backgroundColor: BUTTON_BG }]}
+				<SlideButton
+					onPress={() => router.push("onboarding")}
+					icon={(color) => (
+						<Fontisto name="helicopter-ambulance" size={22} color={color} />
+					)}
 				>
-					{/* LAYER 1: Stationary Base */}
-					<View style={styles.contentLayer}>
-						<Text style={[styles.btnText, { color: BASE_TEXT }]}>
-							FIND CARE NOW
-						</Text>
-						<Fontisto
-							name="helicopter-ambulance"
-							size={22}
-							color={BASE_TEXT}
-						/>
-					</View>
-
-					{/* LAYER 2: Sliding Wipe (The Intentional 5%) */}
-					<Animated.View
-						style={[
-							styles.slidingOverlay,
-							{ width: fillWidth, backgroundColor: SLIDE_BG },
-						]}
-					>
-						{/* CRITICAL FIX: We use the dynamic buttonWidth so text never "shifts" */}
-						<View style={[styles.contentLayer, { width: buttonWidth }]}>
-							<Text style={[styles.btnText, { color: ACTIVE_TEXT }]}>
-								FIND CARE NOW
-							</Text>
-							<Fontisto
-								name="helicopter-ambulance"
-								size={22}
-								color={ACTIVE_TEXT}
-							/>
-						</View>
-					</Animated.View>
-				</Pressable>
+					FIND CARE NOW
+				</SlideButton>
 			</View>
 
-			{/* Login Prompt */}
-			<Text
-				className={`text-center ${
-					isDarkMode ? "text-gray-500" : "text-gray-500"
-				}`}
-			>
+			{/* Login */}
+			<Text className="text-center text-gray-500">
 				Already have an account?
 				<Text
 					className="font-bold text-red-600"
@@ -172,44 +96,5 @@ const WelcomeScreen = () => {
 		</LinearGradient>
 	);
 };
-
-const styles = StyleSheet.create({
-	btnContainer: {
-		width: "100%",
-		height: 68,
-		borderRadius: 24, // More rounded for modern AI feel
-		overflow: "hidden",
-		justifyContent: "center",
-		alignItems: "center",
-		...Platform.select({
-			ios: {
-				shadowColor: "#86100E",
-				shadowOffset: { width: 0, height: 6 },
-				shadowOpacity: 0.15,
-				shadowRadius: 12,
-			},
-			android: { elevation: 4 },
-		}),
-	},
-	contentLayer: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "center",
-		height: "100%",
-	},
-	btnText: {
-		fontSize: 17,
-		fontWeight: "900",
-		letterSpacing: 2,
-		marginRight: 12,
-	},
-	slidingOverlay: {
-		position: "absolute",
-		left: 0,
-		top: 0,
-		bottom: 0,
-		overflow: "hidden",
-	},
-});
 
 export default WelcomeScreen;
