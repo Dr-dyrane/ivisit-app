@@ -53,6 +53,12 @@ export default function SlideButton({
 		outputRange: ["5%", "100%"],
 	});
 
+	const overlayTextOpacity = fillAnim.interpolate({
+		inputRange: [0, 0.15, 1],
+		outputRange: [0, 1, 1],
+		extrapolate: "clamp",
+	});
+
 	return (
 		<Pressable
 			onPress={handlePress}
@@ -82,10 +88,12 @@ export default function SlideButton({
 					},
 				]}
 			>
-				<View style={[styles.content, { width }]}>
+				<Animated.View
+					style={[styles.content, { width, opacity: overlayTextOpacity }]}
+				>
 					<Text style={[styles.text, { color: ACTIVE_TEXT }]}>{children}</Text>
 					{icon && icon(ACTIVE_TEXT)}
-				</View>
+				</Animated.View>
 			</Animated.View>
 		</Pressable>
 	);
