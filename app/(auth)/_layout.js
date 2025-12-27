@@ -59,7 +59,10 @@ export default function AuthLayout() {
 				options={commonScreenOptions({
 					title: "Onboarding",
 					headerRight: () => (
-						<Pressable onPress={() => router.push("signup")} className="">
+						<Pressable
+							// onPress={() => router.push("signup")}
+							className=""
+						>
 							<Text
 								className={`text-lg ${
 									isDarkMode ? "text-white" : "text-primary"

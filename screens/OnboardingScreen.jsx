@@ -172,7 +172,7 @@ const OnboardingScreen = () => {
 				<Pressable
 					onPress={() => {
 						if (currentIndex === onboardingData.length - 1) {
-							router.push("signup");
+							// router.push("signup");
 						} else {
 							handleSwipeLeft();
 						}

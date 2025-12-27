@@ -87,7 +87,7 @@ const WelcomeScreen = () => {
 				Already have an account?
 				<Text
 					className="font-bold text-red-600"
-					onPress={() => router.push("login")}
+					// onPress={() => router.push("login")}
 				>
 					{" "}
 					Login
