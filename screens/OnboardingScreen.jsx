@@ -1,197 +1,191 @@
 // screens/OnboardingScreen.js
-
-import React, { useState } from "react";
-import { View, Text, Pressable, Animated, Image } from "react-native";
+"use client";
+import React, { useRef, useState, useEffect } from "react";
+import { View, Text, Animated, Image, Dimensions, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Fontisto } from "@expo/vector-icons";
 import useSwipeGesture from "../utils/useSwipeGesture";
 import { useTheme } from "../contexts/ThemeContext";
+import SlideButton from "../components/ui/SlideButton";
+import * as Haptics from "expo-haptics";
 
-// Images (keep import names, can swap later)
-import emergency from "../assets/features/emergency.png";
-import urgentCare from "../assets/features/urgent.png";
-import bedBooking from "../assets/features/bed.png";
-import checkup from "../assets/features/checkup.png";
+const { width, height } = Dimensions.get("window");
+const PRIMARY_RED = "#86100E";
 
 const onboardingData = [
-	{
-		title: "Emergency Response",
-		description: "24/7 rapid emergency medical response.",
-		icon: "medkit-outline",
-		image: emergency,
-		colorHex: { light: "#f43f5e", dark: "#f87171" },
-	},
-	{
-		title: "Urgent Care",
-		description: "Immediate care for medical needs.",
-		icon: "heart-outline",
-		image: urgentCare,
-		colorHex: { light: "#96a6da", dark: "#6366f1" },
-	},
-	{
-		title: "Bed Booking",
-		description: "Reserve hospital beds in advance.",
-		icon: "bed-outline",
-		image: bedBooking,
-		colorHex: { light: "#d268cc", dark: "#a855f7" },
-	},
-	{
-		title: "General Check-ups",
-		description: "Comprehensive health assessments.",
-		icon: "medkit-outline",
-		image: checkup,
-		colorHex: { light: "#4caf50", dark: "#22c55e" },
-	},
+  {
+    headline: "Urgent Care\nin Seconds.",
+    description: "Immediate medical support available 24/7. We bring the hospital to your doorstep.",
+    image: require("../assets/features/emergency.png"),
+    cta: "DISCOVER CARE",
+    icon: "helicopter-ambulance"
+  },
+  {
+    headline: "Skip the\nWaiting Room.",
+    description: "Book appointments and urgent care visits without the typical hospital delays.",
+    image: require("../assets/features/urgent.png"),
+    cta: "FIND DOCTORS",
+    icon: "doctor"
+  },
+  {
+    headline: "Secure Your\nBed Early.",
+    description: "Real-time bed availability tracking and instant reservation at top facilities.",
+    image: require("../assets/features/bed.png"),
+    cta: "BOOK A BED",
+    icon: "bed-patient"
+  },
+  {
+    headline: "Proactive\nHealth Tracking.",
+    description: "Routine check-ups and digital health records to keep you ahead of the curve.",
+    image: require("../assets/features/checkup.png"),
+    cta: "GET STARTED",
+    icon: "pulse"
+  },
 ];
 
-const OnboardingScreen = () => {
-	const router = useRouter();
-	const [currentIndex, setCurrentIndex] = useState(0);
-	const { isDarkMode } = useTheme();
+export default function OnboardingScreen() {
+  const router = useRouter();
+  const { isDarkMode } = useTheme();
+  const [index, setIndex] = useState(0);
 
-	const handleSwipeLeft = () => {
-		if (currentIndex < onboardingData.length - 1)
-			setCurrentIndex(currentIndex + 1);
-	};
-	const handleSwipeRight = () => {
-		if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
-	};
-	const panResponder = useSwipeGesture(handleSwipeLeft, handleSwipeRight);
+  // Animation refs
+  const contentFade = useRef(new Animated.Value(1)).current;
+  const contentMove = useRef(new Animated.Value(0)).current;
+  const imageScale = useRef(new Animated.Value(1)).current;
+  const progressAnims = useRef(onboardingData.map(() => new Animated.Value(0))).current;
 
-	const getColor = (colorObj) =>
-		colorObj?.[isDarkMode ? "dark" : "light"] ?? "#cccccc";
+  useEffect(() => animateProgress(), [index]);
 
-	const currentFeature = onboardingData[currentIndex];
-	const featureColor = getColor(currentFeature.colorHex);
+  const animateProgress = () => {
+    onboardingData.forEach((_, i) => {
+      Animated.spring(progressAnims[i], {
+        toValue: i === index ? 1 : 0,
+        friction: 8,
+        tension: 50,
+        useNativeDriver: false,
+      }).start();
+    });
+  };
 
-	const gradientColors = isDarkMode
-		? ["#0B0F1A", "#0D121D", "#121826"]
-		: ["#ffffff", featureColor + "20", "#ffffff"];
+  const transitionTo = (nextIndex, isSwipe = false) => {
+    if (nextIndex < 0 || nextIndex >= onboardingData.length) return;
 
-	return (
-		<LinearGradient
-			colors={gradientColors}
-			className="flex-1 justify-between items-center p-6"
-			{...panResponder}
-		>
-			{/* Feature Image */}
-			<Animated.View className="flex-1 justify-center items-center">
-				<Image
-					source={currentFeature.image}
-					resizeMode="contain"
-					className="w-[360px] h-[400px]"
-				/>
-			</Animated.View>
+    if (!isSwipe) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-			{/* Feature Info */}
-			<Animated.View className="flex justify-center items-center mb-20 w-full">
-				<View className="flex flex-row space-x-4 justify-center items-center">
-					{/* Icon container */}
-					<View
-						style={{
-							borderColor: featureColor + (isDarkMode ? "80" : "50"),
-							backgroundColor: featureColor + (isDarkMode ? "30" : "20"),
-						}}
-						className="border-2 rounded-full p-3"
-					>
-						<Ionicons
-							name={currentFeature.icon}
-							size={60}
-							color={featureColor}
-						/>
-					</View>
+    // Exit Phase
+    Animated.parallel([
+      Animated.timing(contentFade, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(contentMove, { toValue: -30, duration: 250, useNativeDriver: true }),
+      Animated.timing(imageScale, { toValue: 0.95, duration: 250, useNativeDriver: true }),
+    ]).start(() => {
+      setIndex(nextIndex);
+      contentMove.setValue(30);
 
-					{/* Text container */}
-					<View className="flex flex-col items-start justify-start flex-shrink">
-						<Text
-							style={{ color: featureColor }}
-							className="text-3xl font-bold mb-2"
-						>
-							{currentFeature.title}
-						</Text>
-						<Text
-							className={`text-lg ${
-								isDarkMode ? "text-gray-400" : "text-gray-800"
-							}`}
-						>
-							{currentFeature.description}
-						</Text>
-					</View>
-				</View>
-			</Animated.View>
+      // Entry Phase (layered)
+      Animated.stagger(50, [
+        Animated.spring(imageScale, { toValue: 1, friction: 8, useNativeDriver: true }),
+        Animated.spring(contentMove, { toValue: 0, friction: 8, useNativeDriver: true }),
+        Animated.timing(contentFade, { toValue: 1, duration: 300, useNativeDriver: true }),
+      ]).start();
+    });
+  };
 
-			{/* Bottom Controls */}
-			<View className="flex-row justify-between mb-5 w-full">
-				{/* Back Button */}
-				<Pressable
-					onPress={handleSwipeRight}
-					disabled={currentIndex === 0}
-					className={`flex-1 py-2.5 mx-2 rounded-lg ${
-						currentIndex === 0 ? "bg-gray-400/10" : "bg-gray-600/10"
-					}`}
-					style={{ opacity: currentIndex === 0 ? 0.5 : 1 }}
-				>
-					<Text
-						style={{
-							color:
-								currentIndex === 0
-									? isDarkMode
-										? "#718096"
-										: "#a0aec0"
-									: isDarkMode
-									? "#ffffff"
-									: "#000000",
-						}}
-						className="font-bold text-center"
-					>
-						Back
-					</Text>
-				</Pressable>
+  const handleNext = () => {
+    if (index === onboardingData.length - 1) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // router.push("signup");
+    } else {
+      transitionTo(index + 1);
+    }
+  };
 
-				{/* Indicator Dots */}
-				<View className="flex-row items-center flex-1 justify-center">
-					{onboardingData.map((item, index) => {
-						const dotColor =
-							index === currentIndex
-								? getColor(item.colorHex) + (isDarkMode ? "cc" : "ff")
-								: isDarkMode
-								? "#718096"
-								: "gray";
-						return (
-							<View
-								key={index}
-								className="w-2.5 h-2.5 rounded-full mx-1"
-								style={{ backgroundColor: dotColor }}
-							/>
-						);
-					})}
-				</View>
+  // Swipe gesture hints (secondary)
+  const panResponder = useSwipeGesture(
+    () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // small preview animation
+      Animated.sequence([
+        Animated.timing(imageScale, { toValue: 0.97, duration: 100, useNativeDriver: true }),
+        Animated.timing(imageScale, { toValue: 1, duration: 100, useNativeDriver: true }),
+      ]).start();
 
-				{/* Next/Register Button */}
-				<Pressable
-					onPress={() => {
-						if (currentIndex === onboardingData.length - 1) {
-							// router.push("signup");
-						} else {
-							handleSwipeLeft();
-						}
-					}}
-					className="flex-1 py-2.5 mx-2 rounded-lg"
-					style={{
-						backgroundColor: featureColor + "80",
-					}}
-				>
-					<Text
-						style={{ color: isDarkMode ? "#fff" : "#000" }}
-						className="font-bold text-center"
-					>
-						{currentIndex === onboardingData.length - 1 ? "Register" : "Next"}
-					</Text>
-				</Pressable>
-			</View>
-		</LinearGradient>
-	);
-};
+      // subtle dot pulse
+      Animated.sequence([
+        Animated.timing(progressAnims[index], { toValue: 0.8, duration: 100, useNativeDriver: false }),
+        Animated.timing(progressAnims[index], { toValue: 1, duration: 100, useNativeDriver: false }),
+      ]).start();
 
-export default OnboardingScreen;
+      if (index < onboardingData.length - 1) transitionTo(index + 1, true);
+    },
+    () => {
+      if (index > 0) transitionTo(index - 1, true);
+    }
+  );
+
+  return (
+    <LinearGradient
+      colors={isDarkMode ? ["#0B0F1A", "#121826"] : ["#FFFFFF", "#F3E7E7"]}
+      className="flex-1"
+      {...panResponder}
+    >
+      {/* HERO IMAGE */}
+      <Animated.View
+        style={{
+          opacity: contentFade,
+          transform: [{ scale: imageScale }],
+        }}
+        className="flex-1 justify-center items-center"
+      >
+        <Image
+          source={onboardingData[index].image}
+          resizeMode="contain"
+          style={{ width: width * 0.85, height: height * 0.35 }}
+        />
+      </Animated.View>
+
+      {/* CONTENT */}
+      <View className="px-8 pb-12">
+        <Animated.View style={{ opacity: contentFade, transform: [{ translateY: contentMove }] }}>
+          <Text className={`text-[44px] font-black leading-[46px] tracking-tighter ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+            {onboardingData[index].headline}
+          </Text>
+          <Text className={`text-lg mt-4 leading-7 opacity-80 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
+            {onboardingData[index].description}
+          </Text>
+        </Animated.View>
+
+        {/* PROGRESS DOTS */}
+        <View className="flex-row items-center mt-10 mb-10">
+          {onboardingData.map((_, i) => {
+            const widthScale = progressAnims[i].interpolate({ inputRange: [0, 1], outputRange: [8, 32] });
+            const opacityScale = progressAnims[i].interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
+            return (
+              <Animated.View
+                key={i}
+                style={{
+                  width: widthScale,
+                  height: 6,
+                  backgroundColor: i === index ? PRIMARY_RED : (isDarkMode ? "#333" : "#D1D1D1"),
+                  borderRadius: 3,
+                  marginRight: 6,
+                  opacity: opacityScale,
+                }}
+              />
+            );
+          })}
+        </View>
+
+        {/* CTA BUTTON */}
+        <View className="h-[70px]">
+          <SlideButton
+            onPress={handleNext}
+            icon={(color) => <Fontisto name={onboardingData[index].icon || "arrow-right"} size={18} color={color} />}
+          >
+            {onboardingData[index].cta}
+          </SlideButton>
+        </View>
+      </View>
+    </LinearGradient>
+  );
+}
