@@ -1,6 +1,6 @@
 # iVisit UI / UX Design System
 
-**Version 1.0 — Living Document**
+**Version 1.1 — Living Document**
 
 ---
 
@@ -26,20 +26,19 @@ Everything exists to make the user feel:
 
 ### 2.1 Calm Over Contrast
 
-We avoid harsh contrasts, loud gradients, and high-energy palettes.
+Avoid harsh contrasts, loud gradients, and high-energy palettes.
 
-* Primary red is **deep, muted, medical**
-* Backgrounds are **off-white**, never pure white
-* Dark mode is **deep blue-black**, not gray
+* Primary red = **deep, muted, medical**
+* Backgrounds = **off-white**, never pure white
+* Dark mode = **deep blue-black**, not gray
 
-**Rule:**
-Contrast must meet accessibility standards without feeling aggressive.
+**Rule:** Contrast must meet accessibility standards without feeling aggressive.
 
 ---
 
 ### 2.2 Depth Without Heaviness
 
-We use:
+Use:
 
 * Subtle shadows
 * Soft borders
@@ -75,7 +74,7 @@ Used only for:
 * Background fills
 * Decorative elements
 
-Primary means *decision*.
+Primary = *decision*.
 
 ---
 
@@ -92,49 +91,34 @@ Backgrounds must fade into irrelevance so content and action can lead.
 
 Text color is determined by **contrast against the dominant background at that moment**.
 
-We define **three text states**:
-
 | State        | Description                   |
 | ------------ | ----------------------------- |
 | Base         | Idle, waiting for interaction |
 | Transitional | During animation or motion    |
 | Active       | Final resolved state          |
 
-This rule applies globally:
-
-* Buttons
-* Tabs
-* Toggles
-* Sliders
-
+Applies globally: buttons, tabs, toggles, sliders.
 **Never** allow primary text on primary background.
 
 ---
 
 ## 4. Typography System
 
-Typography is **hierarchical and intentional**.
-
 ### 4.1 Font
 
-* Inter (Variable)
-* Chosen for clarity, neutrality, medical familiarity
-
----
+* Inter (Variable) — clarity, neutrality, medical familiarity
 
 ### 4.2 Typographic Roles
 
-#### Action Text (Buttons, CTAs)
+**Action Text (Buttons, CTAs)**
 
 * Font weight: **900**
-* Letter spacing: **1.5–2**
+* Letter spacing: 1.5–2
 * Purpose: Confidence & finality
 
 Only actions speak loudly.
 
----
-
-#### Informational Text
+**Informational Text**
 
 * Normal weight
 * No letter spacing
@@ -146,7 +130,7 @@ Content never shouts.
 
 ## 5. Motion & Animation System
 
-Motion in iVisit exists to **explain state change**, not decorate UI.
+Motion exists to **explain state change**, not decorate UI.
 
 ### 5.1 Motion Principles
 
@@ -161,46 +145,60 @@ If motion cannot be explained in one sentence, it should not exist.
 
 ### 5.2 Timing & Easing
 
-* Standard duration: **400–500ms**
+* Standard duration: 400–500ms
 * Easing: `cubic-bezier(0.16, 1, 0.3, 1)`
-* Springs are soft, low tension
+* Springs: soft, low tension
 
 Motion should feel **physical**, not digital.
 
 ---
 
-### 5.3 Layered Motion (Important)
+### 5.3 Layered Motion
 
 State changes occur in **layers**, never by mutating the base UI.
 
-Example (SlideButton):
+* Hero image
+* Content block
+* Progress indicators / micro-interactions
 
-1. Base container (static)
-2. Overlay (animated)
-3. Overlay content (animated opacity)
+Layered motion prevents visual artifacts and preserves mental continuity.
 
-This prevents visual artifacts and preserves mental continuity.
+---
+
+### 5.4 Micro-interaction Dots
+
+* Active dot = width scale + opacity pulse
+* Swipes trigger subtle dot pulse, previewing the next state
+* Motion reinforces feedback loop without clutter
+
+---
+
+### 5.5 Primary vs Secondary Motion
+
+* **Primary**: button presses, decisive animation, medium haptics
+* **Secondary**: swipes, subtle preview animation, light haptics
+* Hierarchy communicates **intent** to the user
 
 ---
 
 ## 6. Glass & Blur (Apple-Style Material)
 
-Glass is used **sparingly** and **only for global utilities**.
+Glass used **sparingly** for global utilities.
 
-### 6.1 When Glass Is Allowed
+### 6.1 Allowed
 
 * Floating controls (Theme Toggle)
 * System-level affordances
 * Non-blocking utilities
 
-### 6.2 Glass Characteristics
+### 6.2 Characteristics
 
 * Low opacity
 * High blur
 * Soft border
 * Gentle shadow
 
-Glass should feel like it *belongs to the OS*, not the screen.
+Glass should feel OS-native, not screen-furniture.
 
 ---
 
@@ -208,24 +206,22 @@ Glass should feel like it *belongs to the OS*, not the screen.
 
 ### 7.1 Touch Targets
 
-* Minimum hitSlop: **16px**
+* Minimum hitSlop: 16px
 * Buttons are forgiving
-* Accidental taps are avoided
+* Accidental taps avoided
 
 ---
 
 ### 7.2 Haptic Rules
 
-Haptics confirm intent, not existence.
+| Interaction       | Haptic               |
+| ----------------- | -------------------- |
+| Button press      | Medium impact        |
+| Toggle success    | Notification success |
+| Navigation        | Selection            |
+| Swipe / secondary | Light impact         |
 
-| Interaction    | Haptic               |
-| -------------- | -------------------- |
-| Button press   | Medium impact        |
-| Toggle success | Notification success |
-| Navigation     | Selection            |
-
-Never stack haptics.
-Never vibrate without meaning.
+Never stack haptics. Never vibrate without meaning.
 
 ---
 
@@ -235,25 +231,19 @@ Never vibrate without meaning.
 
 * No shadows
 * No titles by default
-* No decoration
-
-Content introduces itself inside the screen.
-
----
+* Content introduces itself
 
 ### 8.2 Back Navigation
 
-* Always predictable
+* Predictable
 * Never disabled visually
 * Never shown if it does nothing
 
-Back is trust.
-
----
+Trust is priority.
 
 ### 8.3 Header Right Actions
 
-Must represent:
+Represents:
 
 * Escape
 * Alternative path
@@ -265,33 +255,27 @@ Never icons without meaning.
 
 ## 9. Global Controls (Theme Toggle Case Study)
 
-The Theme Toggle defines our **interaction maturity**.
-
-### Design Intent:
+Defines **interaction maturity**.
 
 * Non-intrusive
 * Self-collapsing
-* Respectful of focus
-
-### Behavior Rules:
-
-* Delayed appearance (lets content breathe)
+* Respects focus
+* Delayed appearance
 * Partial opacity when idle
 * Expands only on intent
 * Auto-collapses on navigation
 
-This is **ambient control**, not UI furniture.
+Ambient control, not UI furniture.
 
 ---
 
 ## 10. Layout Philosophy
 
-* One primary action per screen
+* One primary action per screen (button)
+* Secondary actions (swipe / gesture) allowed with subtle feedback
 * Vertical rhythm
 * Generous spacing
 * No visual clutter
-
-If a screen needs explanation, it needs redesign.
 
 ---
 
@@ -300,9 +284,9 @@ If a screen needs explanation, it needs redesign.
 * Color contrast meets WCAG
 * Touch targets are large
 * Motion never causes disorientation
-* Dark mode is first-class, not an afterthought
+* Dark mode is first-class
 
-Accessibility is **design quality**, not compliance.
+Accessibility = **design quality**, not compliance.
 
 ---
 
@@ -314,7 +298,7 @@ Accessibility is **design quality**, not compliance.
 Every new component must:
 
 1. Obey this document
-2. Extend it only when necessary
+2. Extend only when necessary
 3. Never contradict existing principles
 
 ---
