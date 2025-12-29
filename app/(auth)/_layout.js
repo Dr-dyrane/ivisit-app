@@ -80,7 +80,7 @@ export default function AuthLayout() {
 					title: "Sign Up",
 					headerRight: () => (
 						<Pressable
-							onPress={() => router.push("login")}
+							// onPress={() => router.push("login")}
 							className="flex flex-row items-center justify-center max-w-[40vw] mx-2"
 						>
 							<Text className="text-xs text-gray-500">

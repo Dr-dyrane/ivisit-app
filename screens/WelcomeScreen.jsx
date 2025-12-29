@@ -2,7 +2,7 @@
 
 "use client";
 import React from "react";
-import { View, Text, Image } from "react-native";
+import { View, Text, Image, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Fontisto } from "@expo/vector-icons";
@@ -83,16 +83,15 @@ const WelcomeScreen = () => {
 			</View>
 
 			{/* Login */}
-			<Text className="text-center text-gray-500">
-				Already have an account?
-				<Text
-					className="font-bold text-red-600"
-					// onPress={() => router.push("login")}
-				>
-					{" "}
-					Login
+			<Pressable
+				// onPress={() => router.push("login")}
+				className="items-center"
+			>
+				<Text className="text-center text-gray-500">
+					Already have an account?{" "}
+					<Text className="font-bold text-red-600">Login</Text>
 				</Text>
-			</Text>
+			</Pressable>
 		</LinearGradient>
 	);
 };
