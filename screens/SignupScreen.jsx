@@ -1,190 +1,125 @@
-import React, { useState, useEffect } from "react";
-import {
-	View,
-	Text,
-	Pressable,
-	ActivityIndicator,
-	ScrollView,
-	Image,
-	Keyboard,
-} from "react-native";
-import { Formik } from "formik";
-import * as Yup from "yup";
-import Input from "../components/form/Input"; // Reusable Input Component
+// screens/SignupScreen.js
+"use client";
+import React, { useState, useRef, useEffect } from "react";
+import { View, Text, Animated, SafeAreaView, Pressable, Dimensions, Image } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import useSignUp from "../hooks/mutations/useSignup";
-import { useToast } from "../contexts/ToastContext";
-import { Ionicons } from "@expo/vector-icons";
+import { AntDesign, Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../contexts/ThemeContext";
+import SignUpMethodCard from "../components/SignUpMethodCard";
+import AuthInputModal from "../components/AuthInputModal";
 
-// Validation Schema for the Signup Form
-const SignupSchema = Yup.object().shape({
-	username: Yup.string().required("Username is required"),
-	email: Yup.string().email("Invalid email").required("Email is required"),
-	password: Yup.string()
-		.min(6, "Password too short")
-		.required("Password is required"),
-	confirmPassword: Yup.string()
-		.oneOf([Yup.ref("password"), null], "Passwords must match")
-		.required("Confirm Password is required"),
-});
+const { width } = Dimensions.get("window");
 
-const SignupScreen = () => {
-	const [loading, setLoading] = useState(false);
-	const [keyboardVisible, setKeyboardVisible] = useState(false); // Track keyboard visibility
-	const { showToast } = useToast();
-	const router = useRouter();
-	const { signUp } = useSignUp();
+export default function SignupScreen() {
+	const { isDarkMode } = useTheme();
+	const [modalVisible, setModalVisible] = useState(false);
+	const [authType, setAuthType] = useState(null);
+
+	// Entrance Animations
+	const headerAnim = useRef(new Animated.Value(-20)).current;
+	const methodAnim = useRef(new Animated.Value(30)).current;
+	const socialAnim = useRef(new Animated.Value(30)).current;
+	const opacity = useRef(new Animated.Value(0)).current;
+
+	const colors = {
+		background: isDarkMode ? ["#0B0F1A", "#121826"] : ["#FFFFFF", "#F3E7E7"],
+		card: isDarkMode ? "#121826" : "#F3E7E7",
+		text: isDarkMode ? "#FFFFFF" : "#1F2937",
+		subtitle: isDarkMode ? "#9CA3AF" : "#6B7280",
+		primary: "#86100E",
+	};
 
 	useEffect(() => {
-		// Add event listeners for keyboard open and close
-		const keyboardDidShowListener = Keyboard.addListener(
-			"keyboardDidShow",
-			() => {
-				setKeyboardVisible(true);
-			}
-		);
-		const keyboardDidHideListener = Keyboard.addListener(
-			"keyboardDidHide",
-			() => {
-				setKeyboardVisible(false);
-			}
-		);
-
-		return () => {
-			// Remove event listeners on cleanup
-			keyboardDidShowListener.remove();
-			keyboardDidHideListener.remove();
-		};
+		Animated.stagger(150, [
+			Animated.parallel([
+				Animated.spring(headerAnim, { toValue: 0, friction: 8, useNativeDriver: true }),
+				Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+			]),
+			Animated.spring(methodAnim, { toValue: 0, friction: 8, useNativeDriver: true }),
+			Animated.spring(socialAnim, { toValue: 0, friction: 8, useNativeDriver: true }),
+		]).start();
 	}, []);
 
-	// Simulate Signup API Call
-	const handleSignup = async (values) => {
-		setLoading(true);
-		try {
-			const { email, password, username } = values;
-			const isSignedUp = await signUp({ email, password, username });
-			if (isSignedUp) {
-				router.replace("/(tabs)"); // Navigate on successful login
-				showToast("Sign-up successful!", "success");
-			}
-		} catch (error) {
-			showToast("Sign-up failed: " + error.message, "error");
-		} finally {
-			setLoading(false);
-		}
+	const openAuthModal = (type) => {
+		setAuthType(type);
+		setModalVisible(true);
 	};
 
 	return (
-		<LinearGradient
-			colors={["#fff", "#f0fff4", "#fff"]}
-			className="flex-1 justify-between items-center p-6 bg-backgroundLight"
-		>
-			{!keyboardVisible && (
-				<View className="flex flex-col flex-shrink">
-					{/* Conditionally render the image if the keyboard is not visible */}
-					<View className="justify-center space-y-2">
-						<Text className="text-6xl text-center font-[900] text-primary">
-							Register
-						</Text>
-						<Text className="text-lg text-center text-gray-500">
-							Create your new account
-						</Text>
+		<LinearGradient colors={colors.background} className="flex-1 p-8">
+	
+
+				{/* MAIN METHODS */}
+				<Animated.View
+					style={{ opacity, transform: [{ translateY: methodAnim }] }}
+					className="flex-1 justify-center"
+				>
+					<SignUpMethodCard onSelect={openAuthModal} />
+
+					{/* DIVIDER */}
+					<View className="flex-row items-center my-10">
+						<View className="flex-1 h-[1px] bg-gray-500/10" />
+						<Text className="px-6 text-[10px] font-black tracking-[3px] text-gray-400">SOCIAL CONNECT</Text>
+						<View className="flex-1 h-[1px] bg-gray-500/10" />
 					</View>
 
-					<Image
-						source={require("../assets/sign/signup.png")}
-						className="w-[220px] h-[220px] flex-1"
-						resizeMode="contain"
-					/>
-				</View>
-			)}
-			<View className="w-full">
-				<ScrollView>
-					<Formik
-						initialValues={{
-							username: "",
-							email: "",
-							password: "",
-							confirmPassword: "",
-						}}
-						validationSchema={SignupSchema}
-						onSubmit={handleSignup}
+					{/* SOCIAL BUTTONS */}
+					<Animated.View
+						style={{ opacity, transform: [{ translateY: socialAnim }] }}
+						className="flex-row justify-between"
 					>
-						{({
-							handleChange,
-							handleBlur,
-							handleSubmit,
-							values,
-							errors,
-							touched,
-						}) => (
-							<>
-								<Input
-									label="Username"
-									placeholder="Enter your username"
-									icon="person"
-									onChangeText={handleChange("username")}
-									onBlur={handleBlur("username")}
-									value={values.username}
-									error={touched.username && errors.username}
-								/>
+						<SocialIcon name="apple" color={colors.text} bg={colors.card} />
+						<SocialIcon name="google" color={colors.text} bg={colors.card} />
+						<SocialIcon name="x" color={colors.text} bg={colors.card} />
+					</Animated.View>
+				</Animated.View>
 
-								<Input
-									label="Email"
-									placeholder="Enter your email"
-									icon="mail"
-									onChangeText={handleChange("email")}
-									onBlur={handleBlur("email")}
-									value={values.email}
-									error={touched.email && errors.email}
-								/>
+				{/* LEGAL FOOTER */}
+				<View className="pb-8">
+					<Text className="text-center text-[10px] leading-4 text-gray-500 font-medium">
+						By continuing, you agree to iVisit's{"\n"}
+						<Text className="font-bold underline">Terms</Text> & <Text className="font-bold underline">Privacy</Text>.{"\n"}
+						We require <Text style={{ color: colors.primary }} className="font-black">Location Access</Text> for dispatch.
+					</Text>
+				</View>
 
-								<Input
-									label="Password"
-									placeholder="Enter your password"
-									secureTextEntry
-									icon="lock-closed"
-									onChangeText={handleChange("password")}
-									onBlur={handleBlur("password")}
-									value={values.password}
-									error={touched.password && errors.password}
-								/>
-
-								<Input
-									label="Confirm Password"
-									placeholder="Confirm your password"
-									secureTextEntry
-									icon="lock-closed"
-									onChangeText={handleChange("confirmPassword")}
-									onBlur={handleBlur("confirmPassword")}
-									value={values.confirmPassword}
-									error={touched.confirmPassword && errors.confirmPassword}
-								/>
-
-								<Pressable
-									onPress={handleSubmit}
-									disabled={loading}
-									className="w-full bg-primary rounded-xl py-4 text-lg mt-4 flex flex-row px-6 items-center justify-between space-x-4"
-									android_ripple={{ color: "#333" }}
-								>
-									<Text className="text-white text-lg">
-										{loading ? "Signing up..." : "Sign Up"}
-									</Text>
-									<View className="w-8 h-8 bg-none border border-white rounded-full justify-center items-center">
-										<Ionicons name="arrow-forward" size={18} color="white" />
-									</View>
-								</Pressable>
-							</>
-						)}
-					</Formik>
-				</ScrollView>
-			</View>
-			{loading && (
-				<ActivityIndicator size="large" color="#4CAF50" className="mt-4" />
-			)}
+			<AuthInputModal
+				visible={modalVisible}
+				type={authType}
+				onClose={() => setModalVisible(false)}
+			/>
 		</LinearGradient>
 	);
-};
+}
 
-export default SignupScreen;
+const SocialIcon = ({ name, color, bg }) => {
+	const scale = useRef(new Animated.Value(1)).current;
+	const { isDarkMode } = useTheme();
+
+	const handlePress = () => {
+		Animated.sequence([
+			Animated.timing(scale, { toValue: 0.92, duration: 100, useNativeDriver: true }),
+			Animated.timing(scale, { toValue: 1, duration: 100, useNativeDriver: true }),
+		]).start();
+	};
+
+	return (
+		<Pressable onPressIn={handlePress}>
+			<Animated.View
+				style={{
+					backgroundColor: bg,
+					width: width * 0.23,
+					height: 64,
+					borderRadius: 20,
+					alignItems: "center",
+					justifyContent: "center",
+					// borderWidth: 1,
+					borderColor: isDarkMode ? "#222" : "#EEE",
+					transform: [{ scale }]
+				}}
+			>
+				<AntDesign name={name} size={24} color={color} />
+			</Animated.View>
+		</Pressable>
+	);
+};

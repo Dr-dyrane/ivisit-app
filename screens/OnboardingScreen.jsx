@@ -94,7 +94,7 @@ export default function OnboardingScreen() {
   const handleNext = () => {
     if (index === onboardingData.length - 1) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // router.push("signup");
+      router.push("signup");
     } else {
       transitionTo(index + 1);
     }
