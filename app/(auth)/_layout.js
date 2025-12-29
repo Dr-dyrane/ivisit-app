@@ -60,11 +60,11 @@ export default function AuthLayout() {
 					title: "Onboarding",
 					headerRight: () => (
 						<Pressable
-							// onPress={() => router.push("signup")}
-							className=""
+							onPress={() => router.push("signup")}
+							className="mx-2"
 						>
 							<Text
-								className={`text-lg ${
+								className={`text-xs ${
 									isDarkMode ? "text-white" : "text-primary"
 								}`}
 							>
@@ -81,16 +81,12 @@ export default function AuthLayout() {
 					headerRight: () => (
 						<Pressable
 							onPress={() => router.push("login")}
-							className="flex flex-row items-center justify-center max-w-[40vw] mr-2"
+							className="flex flex-row items-center justify-center max-w-[40vw] mx-2"
 						>
-							<Text
-								numberOfLines={2}
-								ellipsizeMode="tail"
-								className="text-md text-gray-500"
-							>
-								Already have an acount?
+							<Text className="text-xs text-gray-500">
+								Have an account?{" "}
+								<Text className="text-primary font-semibold">Login</Text>
 							</Text>
-							<Text className="text-primary ml-1 text-md">Login</Text>
 						</Pressable>
 					),
 				})}

@@ -28,7 +28,7 @@ export default function SlideButton({
 	const [width, setWidth] = useState(0);
 
 	const PRIMARY = "#86100E";
-	const BASE_BG = isDarkMode ? "#161B22" : "#F3E7E7";
+	const BASE_BG = isDarkMode ? "#111827" : "#F3E7E7";
 	const BASE_TEXT = isDarkMode ? "#FFFFFF" : PRIMARY;
 	const ACTIVE_TEXT = "#FFFFFF";
 
