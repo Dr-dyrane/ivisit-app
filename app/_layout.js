@@ -1,26 +1,38 @@
+// app/_layout.js
+
 "use client";
 
 import React, { useEffect } from "react";
-import { Stack, useRouter } from "expo-router";
 import { View } from "react-native";
-import { AuthProvider, useAuth } from "../contexts/AuthContext";
-import ToastProvider from "../contexts/ToastContext";
+import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
 import * as SplashScreen from "expo-splash-screen";
+
+import { AuthProvider, useAuth } from "../contexts/AuthContext";
+import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
+import ToastProvider from "../contexts/ToastContext";
 import ThemeToggle from "../components/ThemeToggle";
 
-// Hide Expo splash immediately on app launch
-SplashScreen.hideAsync().catch(() => {});
-
+/**
+ * Root layout wraps the entire app with context providers
+ * - AuthProvider: Authentication state
+ * - ThemeProvider: Dark/Light mode
+ * - ToastProvider: Notifications
+ * Also includes global StatusBar and Theme toggle
+ */
 export default function RootLayout() {
+	// Prevent automatic splash screen hide
+	useEffect(() => {
+		SplashScreen.hideAsync().catch(() => {});
+	}, []);
+
 	return (
 		<AuthProvider>
 			<ThemeProvider>
 				<ToastProvider>
 					<View style={{ flex: 1 }}>
 						<AuthenticatedStack />
-						{/* Theme Toggle - Absolute Top Left */}
+						{/* Theme toggle (optional absolute positioning) */}
 						<View className="absolute right-0 top-16 px-2 py-4">
 							<ThemeToggle showLabel={false} />
 						</View>
@@ -31,26 +43,26 @@ export default function RootLayout() {
 	);
 }
 
-// Separate the Stack logic into its own component so it can use the Auth context
+/**
+ * Stack navigator that observes auth state
+ * Redirects automatically to auth/user stacks
+ */
 function AuthenticatedStack() {
-	const { user } = useAuth(); // Destructure user from the AuthContext
-	const { isDarkMode } = useTheme(); // Get theme from ThemeContext
-	const router = useRouter(); // Get the router instance
+	const { user } = useAuth();
+	const { isDarkMode } = useTheme();
+	const router = useRouter();
 
-	// Listen for authentication changes and redirect accordingly
+	// Redirect based on authentication state
 	useEffect(() => {
-		if (user.isAuthenticated) {
-			router.replace("(user)");
-		} else {
-			router.replace("(auth)");
-		}
+		if (user.isAuthenticated) router.replace("(user)");
+		else router.replace("(auth)");
 	}, [user, router]);
 
 	return (
 		<>
 			<StatusBar
 				style={isDarkMode ? "light" : "dark"}
-				backgroundColor={isDarkMode ? "#0D121D" : "#fff"}
+				backgroundColor={isDarkMode ? "#0D121D" : "#FFFFFF"}
 			/>
 			<Stack>
 				<Stack.Screen

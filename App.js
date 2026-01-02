@@ -1,10 +1,17 @@
+// App.js
+
+"use client";
+
 import { ExpoRoot } from "expo-router";
-import * as Updates from "expo-updates";
 import { useEffect } from "react";
 import { Alert } from "react-native";
+import * as Updates from "expo-updates";
 
-// The entry point for the app
+/**
+ * Entry point for the app
+ */
 export default function App() {
+
 	useEffect(() => {
 		const checkForUpdates = async () => {
 			try {
@@ -13,7 +20,7 @@ export default function App() {
 					await Updates.fetchUpdateAsync();
 					Alert.alert(
 						"Update Available",
-						"A new version of the app is available. Restarting the app to apply the update.",
+						"A new version is available. Restarting to apply it.",
 						[{ text: "OK", onPress: () => Updates.reloadAsync() }]
 					);
 				}
@@ -21,7 +28,6 @@ export default function App() {
 				console.error(e);
 			}
 		};
-
 		checkForUpdates();
 	}, []);
 

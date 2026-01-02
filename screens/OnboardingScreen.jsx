@@ -19,7 +19,7 @@ const onboardingData = [
     description: "Immediate medical support available 24/7. We bring the hospital to your doorstep.",
     image: require("../assets/features/emergency.png"),
     cta: "DISCOVER CARE",
-    icon: "helicopter-ambulance"
+    icon: "ambulance"
   },
   {
     headline: "Skip the\nWaiting Room.",
