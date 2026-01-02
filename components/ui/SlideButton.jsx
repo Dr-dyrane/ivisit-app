@@ -15,6 +15,21 @@ import {
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 
+/**
+ * SlideButton
+ *
+ * File Path: components/ui/SlideButton.jsx
+ *
+ * A fully animated, sliding CTA button that visually responds to user presses.
+ * Designed for primary actions like "Find Care Now".
+ *
+ * Props:
+ * @param {React.ReactNode} children - The button label
+ * @param {function} onPress - Callback invoked when the button is pressed
+ * @param {function} icon - Optional function returning a React Node icon, receives current text color
+ * @param {number} height - Button height (default 68)
+ * @param {number} radius - Border radius (default 24)
+ */
 export default function SlideButton({
 	children,
 	onPress,
@@ -27,10 +42,12 @@ export default function SlideButton({
 	const fillAnim = useRef(new Animated.Value(0)).current;
 	const [width, setWidth] = useState(0);
 
-	const PRIMARY = "#86100E";
-	const BASE_BG = isDarkMode ? "#111827" : "#F3E7E7";
-	const BASE_TEXT = isDarkMode ? "#FFFFFF" : PRIMARY;
-	const ACTIVE_TEXT = "#FFFFFF";
+	const COLORS = {
+		primary: "#86100E",
+		baseBG: isDarkMode ? "#111827" : "#F3E7E7",
+		baseText: isDarkMode ? "#FFFFFF" : "#86100E",
+		activeText: "#FFFFFF",
+	};
 
 	const handlePress = () => {
 		if (Platform.OS !== "web") {
@@ -68,31 +85,35 @@ export default function SlideButton({
 				{
 					height,
 					borderRadius: radius,
-					backgroundColor: BASE_BG,
+					backgroundColor: COLORS.baseBG,
 				},
 			]}
 		>
-			{/* BASE CONTENT */}
+			{/* Base content */}
 			<View style={styles.content}>
-				<Text style={[styles.text, { color: BASE_TEXT }]}>{children}</Text>
-				{icon && icon(BASE_TEXT)}
+				<Text style={[styles.text, { color: COLORS.baseText }]}>
+					{children}
+				</Text>
+				{icon && icon(COLORS.baseText)}
 			</View>
 
-			{/* SLIDING OVERLAY */}
+			{/* Sliding overlay */}
 			<Animated.View
 				style={[
 					styles.overlay,
 					{
 						width: fillWidth,
-						backgroundColor: PRIMARY,
+						backgroundColor: COLORS.primary,
 					},
 				]}
 			>
 				<Animated.View
 					style={[styles.content, { width, opacity: overlayTextOpacity }]}
 				>
-					<Text style={[styles.text, { color: ACTIVE_TEXT }]}>{children}</Text>
-					{icon && icon(ACTIVE_TEXT)}
+					<Text style={[styles.text, { color: COLORS.activeText }]}>
+						{children}
+					</Text>
+					{icon && icon(COLORS.activeText)}
 				</Animated.View>
 			</Animated.View>
 		</Pressable>

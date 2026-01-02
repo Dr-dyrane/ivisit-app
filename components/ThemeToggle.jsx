@@ -1,3 +1,5 @@
+// components/ThemeToggle.jsx
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -15,39 +17,59 @@ import * as Haptics from "expo-haptics";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePathname } from "expo-router";
 
-// We wait 2000ms so the user sees the Logo, Hero, and CTA first.
-const RENDER_DELAY_MS = 2000;
-const AUTO_COLLAPSE_MS = 3000;
-const PRIMARY_RED = "#86100E";
+/**
+ * ThemeToggle
+ *
+ * File Path: components/ThemeToggle.jsx
+ *
+ * A floating theme toggle button that:
+ * - Shows subtle initial animation
+ * - Expands on press to reveal Dark/Light options
+ * - Collapses automatically or on navigation
+ * - Provides haptic feedback
+ *
+ * The component uses Animated API, BlurView, and Feather icons.
+ * Works across iOS and Android with platform-specific styling.
+ */
+
+const RENDER_DELAY_MS = 2000; // Delay initial mount for Hero/CTA to be seen
+const AUTO_COLLAPSE_MS = 3000; // Auto-collapse delay
+const PRIMARY_RED = "#86100E"; // Accent for light mode icon
 
 export default function ThemeToggle() {
 	const { isDarkMode, toggleTheme } = useTheme();
 	const pathname = usePathname();
 
+	// Component states
 	const [mounted, setMounted] = useState(false);
 	const [expanded, setExpanded] = useState(false);
 
+	// Animation refs
 	const heightAnim = useRef(new Animated.Value(48)).current;
 	const opacityAnim = useRef(new Animated.Value(0)).current;
-	const slideAnim = useRef(new Animated.Value(20)).current; // For a subtle slide-in
-	const collapseTimer = useRef(null);
-	const labelFadeAnim = useRef(new Animated.Value(1)).current; 
+	const slideAnim = useRef(new Animated.Value(20)).current;
+	const labelFadeAnim = useRef(new Animated.Value(1)).current;
 
+	const collapseTimer = useRef(null);
 	const iconSize = 20;
 
-	// Delay the initial mount
+	// ------------------------
+	// Lifecycle Effects
+	// ------------------------
+
+	// Initial mount delay
 	useEffect(() => {
 		const t = setTimeout(() => setMounted(true), RENDER_DELAY_MS);
 		return () => clearTimeout(t);
 	}, []);
 
-	// Once mounted, fade and slide in softly
+	// Fade & slide in after mount
 	useEffect(() => {
 		if (!mounted) return;
 
 		Animated.parallel([
 			Animated.timing(opacityAnim, {
-				toValue: 0.6, // Start at partial opacity to be even less distracting
+				toValue: 0.6,
 				duration: 1000,
 				useNativeDriver: true,
 			}),
@@ -59,18 +81,18 @@ export default function ThemeToggle() {
 		]).start();
 	}, [mounted]);
 
-	// Auto-collapse when user changes screens
+	// Collapse on navigation
 	useEffect(() => {
 		collapse();
 	}, [pathname]);
 
+	// ------------------------
+	// Animation Helpers
+	// ------------------------
 	const expand = () => {
 		clearTimer();
 		setExpanded(true);
-
-		// Bring to full opacity when interacted with
-		opacityAnim.setValue(1);
-
+		opacityAnim.setValue(1); // full visibility
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
 		Animated.spring(heightAnim, {
@@ -93,7 +115,6 @@ export default function ThemeToggle() {
 			tension: 50,
 			useNativeDriver: false,
 		}).start(() => {
-			// Return to subtle opacity when idle
 			Animated.timing(opacityAnim, {
 				toValue: 0.6,
 				duration: 500,
@@ -115,8 +136,10 @@ export default function ThemeToggle() {
 		collapse();
 	};
 
+	// Skip rendering if not mounted yet
 	if (!mounted) return null;
 
+	// Platform-specific background
 	const getBgColor = () => {
 		if (Platform.OS === "android") {
 			return isDarkMode
@@ -126,6 +149,9 @@ export default function ThemeToggle() {
 		return isDarkMode ? "rgba(134, 16, 14, 0.05)" : "rgba(255, 255, 255, 0.05)";
 	};
 
+	// ------------------------
+	// Render
+	// ------------------------
 	return (
 		<Animated.View
 			style={{
@@ -174,6 +200,7 @@ export default function ThemeToggle() {
 						paddingVertical: 4,
 					}}
 				>
+					{/* Sun Icon */}
 					<Pressable
 						onPress={
 							expanded ? (isDarkMode ? handleThemeChange : null) : expand
@@ -199,6 +226,7 @@ export default function ThemeToggle() {
 						/>
 					</Pressable>
 
+					{/* Moon Icon (Expanded Only) */}
 					{expanded && (
 						<Pressable
 							onPress={isDarkMode ? null : handleThemeChange}
@@ -217,7 +245,7 @@ export default function ThemeToggle() {
 				</View>
 			</Animated.View>
 
-			{/* MORPHING LABEL */}
+			{/* Morphing label */}
 			<Animated.Text
 				style={[
 					styles.label,
@@ -225,7 +253,7 @@ export default function ThemeToggle() {
 						color: isDarkMode ? "white" : "#333",
 						opacity: labelFadeAnim.interpolate({
 							inputRange: [0, 1],
-							outputRange: [0, 0.5], // Max opacity 0.5 for subtle feel
+							outputRange: [0, 0.5],
 						}),
 					},
 				]}
