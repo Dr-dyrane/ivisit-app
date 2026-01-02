@@ -1,14 +1,34 @@
 // screens/OnboardingScreen.js
+
 "use client";
+
 import React, { useRef, useState, useEffect } from "react";
-import { View, Text, Animated, Image, Dimensions, Pressable } from "react-native";
+import { View, Text, Animated, Image, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons, Fontisto } from "@expo/vector-icons";
-import useSwipeGesture from "../utils/useSwipeGesture";
-import { useTheme } from "../contexts/ThemeContext";
-import SlideButton from "../components/ui/SlideButton";
+import { Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import SlideButton from "../components/ui/SlideButton";
+import { useTheme } from "../contexts/ThemeContext";
+import useSwipeGesture from "../utils/useSwipeGesture";
+
+/**
+ * OnboardingScreen
+ *
+ * File Path: screens/OnboardingScreen.js
+ *
+ * Displays a multi-step onboarding flow:
+ * - Hero image with scaling animation
+ * - Headline & description with fade & translate
+ * - Animated progress indicators
+ * - CTA button with icon and haptic feedback
+ * - Swipe gestures for navigation
+ *
+ * Responsibilities are separated:
+ * - Animations handled by Animated API
+ * - Progress dots interpolated
+ * - CTA triggers navigation or next slide
+ */
 
 const { width, height } = Dimensions.get("window");
 const PRIMARY_RED = "#86100E";
@@ -49,12 +69,15 @@ export default function OnboardingScreen() {
   const { isDarkMode } = useTheme();
   const [index, setIndex] = useState(0);
 
-  // Animation refs
+  // ------------------------
+  // Animation Refs
+  // ------------------------
   const contentFade = useRef(new Animated.Value(1)).current;
   const contentMove = useRef(new Animated.Value(0)).current;
   const imageScale = useRef(new Animated.Value(1)).current;
   const progressAnims = useRef(onboardingData.map(() => new Animated.Value(0))).current;
 
+  // Animate the progress dots when index changes
   useEffect(() => animateProgress(), [index]);
 
   const animateProgress = () => {
@@ -68,6 +91,9 @@ export default function OnboardingScreen() {
     });
   };
 
+  // ------------------------
+  // Slide Transitions
+  // ------------------------
   const transitionTo = (nextIndex, isSwipe = false) => {
     if (nextIndex < 0 || nextIndex >= onboardingData.length) return;
 
@@ -100,17 +126,20 @@ export default function OnboardingScreen() {
     }
   };
 
-  // Swipe gesture hints (secondary)
+  // ------------------------
+  // Swipe Gesture Handling
+  // ------------------------
   const panResponder = useSwipeGesture(
     () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      // small preview animation
+
+      // subtle image bounce
       Animated.sequence([
         Animated.timing(imageScale, { toValue: 0.97, duration: 100, useNativeDriver: true }),
         Animated.timing(imageScale, { toValue: 1, duration: 100, useNativeDriver: true }),
       ]).start();
 
-      // subtle dot pulse
+      // dot pulse
       Animated.sequence([
         Animated.timing(progressAnims[index], { toValue: 0.8, duration: 100, useNativeDriver: false }),
         Animated.timing(progressAnims[index], { toValue: 1, duration: 100, useNativeDriver: false }),
@@ -123,6 +152,9 @@ export default function OnboardingScreen() {
     }
   );
 
+  // ------------------------
+  // Render
+  // ------------------------
   return (
     <LinearGradient
       colors={isDarkMode ? ["#0B0F1A", "#121826"] : ["#FFFFFF", "#F3E7E7"]}
