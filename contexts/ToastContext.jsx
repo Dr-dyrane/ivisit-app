@@ -8,12 +8,20 @@ import React, {
 import { Text, View, Animated, Image, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import logo from "../assets/logo.png"; // Replace with your actual logo
+import logo from "../assets/logo.png";
 
 const ToastContext = createContext();
 
-export const useToast = () => {
-	return useContext(ToastContext);
+export const useToast = () => useContext(ToastContext);
+
+const COLORS = {
+	primaryDark: "#0F3D2E",
+	primary: "#1E6F5C",
+	accent: "#C0D95A",
+	success: "#2E7D32",
+	error: "#C62828",
+	warning: "#ED6C02",
+	info: "#1565C0",
 };
 
 const ToastProvider = ({ children }) => {
@@ -23,27 +31,21 @@ const ToastProvider = ({ children }) => {
 		type: "info",
 		icon: null,
 		position: "bottom",
-		duration: 2000,
+		duration: 2500,
 	});
 
 	const opacity = useRef(new Animated.Value(0)).current;
 
 	useEffect(() => {
-		if (toast.visible) {
-			Animated.timing(opacity, {
-				toValue: 1,
-				duration: 500,
-				useNativeDriver: true,
-			}).start();
+		Animated.timing(opacity, {
+			toValue: toast.visible ? 1 : 0,
+			duration: 300,
+			useNativeDriver: true,
+		}).start();
 
-			const timer = setTimeout(() => hideToast(), toast.duration);
+		if (toast.visible) {
+			const timer = setTimeout(hideToast, toast.duration);
 			return () => clearTimeout(timer);
-		} else {
-			Animated.timing(opacity, {
-				toValue: 0,
-				duration: 500,
-				useNativeDriver: true,
-			}).start();
 		}
 	}, [toast.visible]);
 
@@ -52,117 +54,134 @@ const ToastProvider = ({ children }) => {
 		type = "info",
 		icon = null,
 		position = "bottom",
-		duration = 3000
+		duration = 2500
 	) => {
-		setToast({
-			visible: true,
-			message,
-			type,
-			icon,
-			position,
-			duration,
-		});
+		setToast({ visible: true, message, type, icon, position, duration });
 	};
 
-	const hideToast = () => {
-		setToast((prevToast) => ({
-			...prevToast,
-			visible: false,
-		}));
-	};
+	const hideToast = () =>
+		setToast((prev) => ({ ...prev, visible: false }));
 
-	const getBackgroundColor = () => {
+	const getGradient = () => {
 		switch (toast.type) {
 			case "success":
-				return ["#008773", "#4CAF50"];
+				return [COLORS.success, COLORS.primary];
 			case "error":
-				return ["#F44336", "#E57373"];
-			case "info":
-				return ["#2196F3", "#64B5F6"];
+				return [COLORS.error, "#8E0000"];
 			case "warning":
-				return ["#FF9800", "#FFB74D"];
+				return [COLORS.warning, "#F9A825"];
+			case "info":
 			default:
-				return ["#333", "#555"];
+				return [COLORS.primaryDark, COLORS.primary];
 		}
 	};
 
 	const getPositionStyle = () => {
 		switch (toast.position) {
 			case "top":
-				return { top: 40, left: 20, right: 20 };
+				return { top: 48, left: 16, right: 16 };
 			case "center":
 				return {
 					top: "50%",
-					left: 20,
-					right: 20,
-					transform: [{ translateY: -50 }],
+					left: 16,
+					right: 16,
+					transform: [{ translateY: -40 }],
 				};
 			case "bottom":
 			default:
-				return { bottom: 20, left: 20, right: 20 };
+				return { bottom: 32, left: 16, right: 16 };
 		}
 	};
 
 	const renderIcon = () => {
-		let icon;
-
 		if (toast.icon) {
-			icon = toast.icon; // If a custom icon is passed
-		} else {
-			switch (toast.type) {
-				case "success":
-					icon = <Ionicons name="checkmark-circle" size={24} color="white" />;
-					break;
-				case "error":
-					icon = <MaterialIcons name="error" size={24} color="white" />;
-					break;
-				case "info":
-					icon = <Ionicons name="information-circle" size={24} color="white" />;
-					break;
-				case "warning":
-					icon = <MaterialIcons name="warning" size={24} color="white" />;
-					break;
-				default:
-					icon = null;
-			}
+			return <Pressable onPress={hideToast}>{toast.icon}</Pressable>;
 		}
 
-		return <Pressable onPress={hideToast}>{icon}</Pressable>;
+		const iconProps = { size: 22, color: COLORS.accent };
+
+		switch (toast.type) {
+			case "success":
+				return (
+					<Pressable onPress={hideToast}>
+						<Ionicons name="checkmark-circle" {...iconProps} />
+					</Pressable>
+				);
+			case "error":
+				return (
+					<Pressable onPress={hideToast}>
+						<MaterialIcons name="error" {...iconProps} />
+					</Pressable>
+				);
+			case "warning":
+				return (
+					<Pressable onPress={hideToast}>
+						<MaterialIcons name="warning" {...iconProps} />
+					</Pressable>
+				);
+			default:
+				return (
+					<Pressable onPress={hideToast}>
+						<Ionicons name="information-circle" {...iconProps} />
+					</Pressable>
+				);
+		}
 	};
 
 	return (
 		<ToastContext.Provider value={{ showToast, hideToast }}>
 			{children}
+
 			{toast.visible && (
 				<Animated.View
-					style={[{ opacity, elevation: 5 }, getPositionStyle()]}
-					className="absolute z-50 rounded-2xl"
+					style={[
+						{
+							opacity,
+							position: "absolute",
+							zIndex: 50,
+							elevation: 6,
+						},
+						getPositionStyle(),
+					]}
 				>
 					<LinearGradient
-						colors={getBackgroundColor()}
-						className="rounded-2xl p-3 py-2"
+						colors={getGradient()}
+						start={{ x: 0, y: 0 }}
+						end={{ x: 1, y: 1 }}
+						className="rounded-2xl px-4 py-3"
 					>
-						<View className="flex-row items-center justify-between">
+						<View className="flex-row items-center">
 							<View
 								style={{
-									padding: 4,
-									borderWidth: 1,
-									borderColor: "rgba(192, 217, 90, 0.5)",
+									width: 36,
+									height: 36,
 									borderRadius: 9999,
+									alignItems: "center",
+									justifyContent: "center",
+									backgroundColor: "rgba(255,255,255,0.15)",
+									borderWidth: 1,
+									borderColor: COLORS.accent,
 									marginRight: 12,
-									backgroundColor: "rgba(255, 255, 255, 0.5)",
 								}}
 							>
 								<Image
 									source={logo}
-									style={{ width: 24, height: 24 }}
+									style={{ width: 22, height: 22 }}
 									resizeMode="contain"
 								/>
 							</View>
 
-							<Text className="text-white text-base font-semibold ml-2">
+							<Text
+								style={{
+									flex: 1,
+									color: "#FFFFFF",
+									fontSize: 15,
+									fontWeight: "600",
+								}}
+							>
 								{toast.message}
 							</Text>
+
 							{renderIcon()}
 						</View>
 					</LinearGradient>

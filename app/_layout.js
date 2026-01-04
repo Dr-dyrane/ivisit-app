@@ -23,7 +23,8 @@ import ThemeToggle from "../components/ThemeToggle";
 export default function RootLayout() {
 	// Prevent automatic splash screen hide
 	useEffect(() => {
-		SplashScreen.hideAsync().catch(() => {});
+		// Prevent the splash screen from auto-hiding so the router or app can hide it when ready
+		SplashScreen.preventAutoHideAsync?.().catch(() => {});
 	}, []);
 
 	return (
