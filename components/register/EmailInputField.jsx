@@ -26,6 +26,7 @@ export default function EmailInputField({ onValidChange, onSubmit, initialValue 
       setEmail(initialValue)
       if (onValidChange) onValidChange(initialValue)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValue])
 
   // Animation refs

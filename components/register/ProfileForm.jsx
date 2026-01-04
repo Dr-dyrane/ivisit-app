@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { View, Text, TextInput, Pressable, Animated, Image } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import * as ImagePicker from "expo-image-picker"
@@ -20,9 +20,9 @@ export default function ProfileForm({ onComplete }) {
   const { isDarkMode } = useTheme()
   const { registrationData, updateRegistrationData, nextStep } = useRegistration()
 
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [avatar, setAvatar] = useState(null)
+  const [firstName, setFirstName] = useState(registrationData.profile?.firstName || "")
+  const [lastName, setLastName] = useState(registrationData.profile?.lastName || "")
+  const [avatar, setAvatar] = useState(registrationData.profile?.avatar || null)
   const [loading, setLoading] = useState(false)
   const [currentField, setCurrentField] = useState("firstName")
 
@@ -49,6 +49,15 @@ export default function ProfileForm({ onComplete }) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     }
   }
+
+  // Keep local fields in sync if registrationData.profile changes (e.g., navigating back)
+  useEffect(() => {
+    if (registrationData?.profile) {
+      setFirstName(registrationData.profile.firstName || "")
+      setLastName(registrationData.profile.lastName || "")
+      setAvatar(registrationData.profile.avatar || null)
+    }
+  }, [registrationData.profile])
 
   const triggerShake = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)

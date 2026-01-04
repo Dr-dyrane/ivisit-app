@@ -12,40 +12,43 @@ import {
 	Platform,
 	Dimensions,
 	Keyboard,
+	ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "../../contexts/ThemeContext";
+import * as Haptics from "expo-haptics";
+import { REGISTRATION_STEPS } from "../../constants/registrationSteps";
+
 import PhoneInputField from "./PhoneInputField";
 import EmailInputField from "./EmailInputField";
 import OTPInputCard from "./OTPInputCard";
 import ProfileForm from "./ProfileForm";
 import PasswordInputField from "./PasswordInputField";
-import * as Haptics from "expo-haptics";
-import {
-	useRegistration,
-	REGISTRATION_STEPS,
-} from "../../contexts/RegistrationContext";
 import { signUpUserAPI } from "../../api/auth";
 import { useAuth } from "../../contexts/AuthContext";
+import { useRegistration } from "../../contexts/RegistrationContext";
+import { useTheme } from "../../contexts/ThemeContext";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-export default function AuthInputModal({ visible, type, onClose }) {
-	const { isDarkMode } = useTheme();
-	const [loading, setLoading] = useState(false);
-
+export default function AuthInputModal({ visible, onClose, type }) {
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
+	const [loading, setLoading] = useState(false);
+
 	const {
-		currentStep: registrationStep,
+		currentStep,
+		registrationData,
 		updateRegistrationData,
 		nextStep,
 		previousStep,
-		registrationData,
 		goToStep,
 	} = useRegistration();
 
+	const { login } = useAuth();
+	const { isDarkMode } = useTheme();
+
+	/* ------------------ Animations ------------------ */
 	useEffect(() => {
 		if (visible) {
 			Animated.parallel([
@@ -62,18 +65,18 @@ export default function AuthInputModal({ visible, type, onClose }) {
 				}),
 			]).start();
 
-			// Ensure registration context is aligned with this modal's input type
-			if (registrationStep === REGISTRATION_STEPS.METHOD_SELECTION) {
-				// set the method in the context and navigate to the correct input step
+				if (currentStep === REGISTRATION_STEPS.METHOD_SELECTION) {
 				updateRegistrationData({ method: type });
-				if (type === "phone") goToStep(REGISTRATION_STEPS.PHONE_INPUT);
-				else goToStep(REGISTRATION_STEPS.EMAIL_INPUT);
+				goToStep(
+					type === "phone"
+						? REGISTRATION_STEPS.PHONE_INPUT
+						: REGISTRATION_STEPS.EMAIL_INPUT
+				);
 			}
-		} else {
-			setLoading(false);
 		}
 	}, [visible]);
 
+	/* ------------------ Handlers ------------------ */
 	const handleDismiss = () => {
 		Keyboard.dismiss();
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -89,26 +92,20 @@ export default function AuthInputModal({ visible, type, onClose }) {
 				duration: 200,
 				useNativeDriver: true,
 			}),
-		]).start(() => {
-			onClose();
-		});
+		]).start(onClose);
 	};
 
 	const handleGoBack = () => {
-		console.log("[v0] Back pressed - Current step:", registrationStep);
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		previousStep();
 	};
 
 	const handleInputSubmit = async (value) => {
 		if (!value) return;
-
 		setLoading(true);
-		console.log("[v0] Input submitted:", value, "Type:", type);
 
 		try {
-			await new Promise((resolve) => setTimeout(resolve, 1200));
-
+			await new Promise((r) => setTimeout(r, 1200));
 			updateRegistrationData({
 				method: type,
 				phoneNumber: type === "phone" ? value : null,
@@ -116,9 +113,6 @@ export default function AuthInputModal({ visible, type, onClose }) {
 			});
 			nextStep();
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-		} catch (error) {
-			console.error("[v0] OTP send error:", error);
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 		} finally {
 			setLoading(false);
 		}
@@ -127,52 +121,56 @@ export default function AuthInputModal({ visible, type, onClose }) {
 	const handleOTPSubmit = async (otp) => {
 		if (!otp) return;
 		setLoading(true);
-		console.log("[v0] OTP submitted:", otp);
 
 		try {
-			await new Promise((resolve) => setTimeout(resolve, 800));
+			await new Promise((r) => setTimeout(r, 800));
 			updateRegistrationData({ otp });
 			nextStep();
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-		} catch (error) {
-			console.error("[v0] OTP verify error:", error);
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 		} finally {
 			setLoading(false);
 		}
 	};
 
-	const handleProfileSubmit = async (profileData) => {
+	const handlePasswordSubmit = async (password) => {
+		if (!password) return;
 		setLoading(true);
-		console.log("[v0] Profile submitted:", profileData);
 
 		try {
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-			updateRegistrationData({ profile: profileData, profileComplete: true });
+			updateRegistrationData({ password });
+
+			const payload = {
+				username:
+					registrationData.username ||
+					registrationData.email?.split("@")[0] ||
+					`user${Date.now()}`,
+				email: registrationData.email,
+				phone: registrationData.phoneNumber,
+				password,
+				...registrationData.profile,
+			};
+
+			const { data } = await signUpUserAPI(payload);
+			await login(data);
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			handleDismiss();
-		} catch (error) {
-			console.error("[v0] Profile submit error:", error);
+		} catch {
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 		} finally {
 			setLoading(false);
 		}
 	};
 
+	/* ------------------ Step Helpers ------------------ */
 	const isInputStep =
-		registrationStep === REGISTRATION_STEPS.PHONE_INPUT ||
-		registrationStep === REGISTRATION_STEPS.EMAIL_INPUT;
-	const isOTPStep = registrationStep === REGISTRATION_STEPS.OTP_VERIFICATION;
-	const isProfileStep = registrationStep === REGISTRATION_STEPS.PROFILE_FORM;
-	const isPasswordStep = registrationStep === REGISTRATION_STEPS.PASSWORD_SETUP;
+		currentStep === REGISTRATION_STEPS.PHONE_INPUT ||
+		currentStep === REGISTRATION_STEPS.EMAIL_INPUT;
+	const isOTPStep = currentStep === REGISTRATION_STEPS.OTP_VERIFICATION;
+	const isProfileStep = currentStep === REGISTRATION_STEPS.PROFILE_FORM;
+	const isPasswordStep = currentStep === REGISTRATION_STEPS.PASSWORD_SETUP;
 
-	const getStepNumber = () => {
-		if (isInputStep) return 1;
-		if (isOTPStep) return 2;
-		if (isProfileStep) return 3;
-		if (isPasswordStep) return 4;
-		return 1;
-	};
+	const getStepNumber = () =>
+		isInputStep ? 1 : isOTPStep ? 2 : isProfileStep ? 3 : 4;
 
 	const getHeaderTitle = () => {
 		if (isInputStep) return type === "phone" ? "Phone Number" : "Email Address";
@@ -182,66 +180,14 @@ export default function AuthInputModal({ visible, type, onClose }) {
 		return "Sign Up";
 	};
 
-	const getSubtitle = () => {
-		if (isInputStep) {
-			return type === "phone"
-				? "Enter your phone number to continue"
-				: "Enter your email address to continue";
-		}
-		if (isPasswordStep) {
-			return "Create a secure password for your account. You can change it later.";
-		}
-		return null;
-	};
-
 	const colors = {
 		bg: isDarkMode ? "#0D1117" : "#FFFFFF",
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
 	};
 
-	const canGoBack = !isInputStep;
-
-	const { login } = useAuth();
-
-	const handlePasswordSubmit = async (password) => {
-		if (!password) return;
-		setLoading(true);
-		try {
-			updateRegistrationData({ password });
-			// Build payload for sign-up
-			const payload = {
-				username:
-					registrationData.username || registrationData.profile?.username ||
-					(registrationData.email ? registrationData.email.split("@")[0] : `user${Date.now()}`),
-				email: registrationData.email || undefined,
-				phone: registrationData.phoneNumber || undefined,
-				password,
-				firstName: registrationData.profile?.firstName || undefined,
-				lastName: registrationData.profile?.lastName || undefined,
-				avatar: registrationData.profile?.avatar || undefined,
-			};
-
-			const { data } = await signUpUserAPI(payload);
-			// Auto-login using returned user object (contains token)
-			await login(data);
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			// Close the modal after successful signup/login
-			handleDismiss();
-		} catch (err) {
-			console.error("[v0] Final signup error:", err);
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-		} finally {
-			setLoading(false);
-		}
-	};
-
+	/* ------------------ Render ------------------ */
 	return (
-		<Modal
-			visible={visible}
-			transparent
-			animationType="none"
-			onRequestClose={handleDismiss}
-		>
+		<Modal visible={visible} transparent animationType="none">
 			<View className="flex-1 justify-end">
 				<Animated.View
 					style={{ opacity: bgOpacity }}
@@ -258,65 +204,60 @@ export default function AuthInputModal({ visible, type, onClose }) {
 					}}
 					className="rounded-t-[40px] px-8 pt-4 shadow-2xl"
 				>
-					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-8" />
+					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-6" />
 
 					<KeyboardAvoidingView
 						behavior={Platform.OS === "ios" ? "padding" : "height"}
 						className="flex-1"
 					>
-						<View className="flex-row justify-between items-start mb-8">
-							{canGoBack && (
-								<Pressable
-									onPress={handleGoBack}
-									className="p-2 bg-gray-500/10 rounded-full mr-4"
-								>
-									<Ionicons name="arrow-back" size={20} color={colors.text} />
-								</Pressable>
-							)}
-
-							<View className="flex-1">
-								<Text className="text-[10px] font-black tracking-[3px] mb-2 uppercase text-red-800">
-									Step {getStepNumber()} of 4
-								</Text>
-								<Text
-									className="text-3xl font-black tracking-tighter"
-									style={{ color: colors.text }}
-								>
-									{getHeaderTitle()}
-								</Text>
-								{getSubtitle() && (
-									<Text className="text-sm font-medium mt-2 text-gray-500">
-										{getSubtitle()}
-									</Text>
+						<ScrollView
+							contentContainerStyle={{ flexGrow: 1 }}
+							keyboardShouldPersistTaps="handled"
+						>
+							{/* Header */}
+							<View className="flex-row items-start mb-8">
+								{!isInputStep && (
+									<Pressable
+										onPress={handleGoBack}
+										className="p-2 bg-gray-500/10 rounded-full mr-4"
+									>
+										<Ionicons name="arrow-back" size={20} color={colors.text} />
+									</Pressable>
 								)}
+
+								<View className="flex-1">
+									<Text className="text-[10px] tracking-[3px] mb-2 uppercase text-red-800 font-black">
+										Step {getStepNumber()} of 4
+									</Text>
+									<Text
+										className="text-3xl font-black tracking-tighter"
+										style={{ color: colors.text }}
+									>
+										{getHeaderTitle()}
+									</Text>
+								</View>
+
+								<Pressable
+									onPress={handleDismiss}
+									className="p-2 bg-gray-500/10 rounded-full"
+								>
+									<Ionicons name="close" size={20} color={colors.text} />
+								</Pressable>
 							</View>
 
-							<Pressable
-								onPress={handleDismiss}
-								className="p-2 bg-gray-500/10 rounded-full"
-							>
-								<Ionicons name="close" size={20} color={colors.text} />
-							</Pressable>
-						</View>
-
-						<View className="flex-1">
-																					{isInputStep && (
-																							<>
-																								{type === "phone" ? (
-																									<PhoneInputField
-																										initialValue={registrationData.phoneNumber || null}
-																										onValidChange={(val) => updateRegistrationData({ phoneNumber: val })}
-																										onSubmit={handleInputSubmit}
-																									/>
-																								) : (
-																									<EmailInputField
-																										initialValue={registrationData.email || ""}
-																										onValidChange={(val) => updateRegistrationData({ email: val })}
-																										onSubmit={handleInputSubmit}
-																									/>
-																								)}
-																							</>
-																						)}
+							{/* Content */}
+							{isInputStep &&
+								(type === "phone" ? (
+									<PhoneInputField
+										initialValue={registrationData.phoneNumber}
+										onSubmit={handleInputSubmit}
+									/>
+								) : (
+									<EmailInputField
+										initialValue={registrationData.email}
+										onSubmit={handleInputSubmit}
+									/>
+								))}
 
 							{isOTPStep && (
 								<OTPInputCard
@@ -328,20 +269,16 @@ export default function AuthInputModal({ visible, type, onClose }) {
 								/>
 							)}
 
-							{isProfileStep && (
-								<ProfileForm onComplete={() => {}} />
-							)}
+							{isProfileStep && <ProfileForm />}
 
 							{isPasswordStep && (
-								<PasswordInputField
-									initialValue={registrationData.password || ""}
-									onSubmit={handlePasswordSubmit}
-								/>
+								<PasswordInputField onSubmit={handlePasswordSubmit} />
 							)}
-						</View>
+						</ScrollView>
 					</KeyboardAvoidingView>
 				</Animated.View>
 			</View>
 		</Modal>
 	);
 }
+
