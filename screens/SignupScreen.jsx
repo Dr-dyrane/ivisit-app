@@ -14,7 +14,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { AntDesign } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
-import SignUpMethodCard from "../components/SignUpMethodCard";
+import SignUpMethodCard from "../components/register/SignUpMethodCard";
 import AuthInputModal from "../components/register/AuthInputModal";
 
 /**

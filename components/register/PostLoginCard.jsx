@@ -1,8 +1,8 @@
 // components/PostLoginCard.js
 import React, { useState } from "react";
 import { View, Text, TextInput, Pressable } from "react-native";
-import { useTheme } from "../contexts/ThemeContext";
-import SlideButton from "./ui/SlideButton";
+import { useTheme } from "../../contexts/ThemeContext";
+import SlideButton from "../ui/SlideButton";
 
 const PostLoginCard = ({ title, description, placeholder, onNext }) => {
   const { isDarkMode } = useTheme();

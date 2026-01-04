@@ -3,7 +3,7 @@
 import React, { useRef, useEffect } from "react";
 import { View, Text, Pressable, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "../contexts/ThemeContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import * as Haptics from "expo-haptics";
 
 export default function SignUpMethodCard({ onSelect }) {

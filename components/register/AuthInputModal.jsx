@@ -1,204 +1,196 @@
+"use client"
+
 // components/register/AuthInputModal.jsx
-"use client";
-
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react"
 import {
-	View,
-	Text,
-	Modal,
-	Animated,
-	Pressable,
-	KeyboardAvoidingView,
-	Platform,
-	Dimensions,
-	Keyboard,
-	PanResponder,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "../../contexts/ThemeContext";
-import * as Haptics from "expo-haptics";
-import AuthInputContent from "./AuthInputContent";
+  View,
+  Text,
+  Modal,
+  Animated,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  Dimensions,
+  Keyboard,
+} from "react-native"
+import { Ionicons } from "@expo/vector-icons"
+import { useTheme } from "../../contexts/ThemeContext"
+import PhoneInputField from "./PhoneInputField"
+import EmailInputField from "./EmailInputField"
+import OTPInputCard from "./OTPInputCard"
+import ProfileForm from "./ProfileForm"
+import * as Haptics from "expo-haptics"
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
-/**
- * AuthInputModal
- * Full-screen modal for phone/email authentication
- * Animations: slide-in sheet, backdrop fade, pan-to-dismiss, CTA button scaling
- * Props:
- * - visible: boolean -> controls modal visibility
- * - type: 'phone' | 'email' -> input type
- * - onClose: function -> called when modal is closed
- */
 export default function AuthInputModal({ visible, type, onClose }) {
-	const { isDarkMode } = useTheme();
-	const [inputValue, setInputValue] = useState("");
+  const { isDarkMode } = useTheme()
+  const [validatedValue, setValidatedValue] = useState(null)
+  const [step, setStep] = useState("input")
+  const [loading, setLoading] = useState(false)
 
-	/** Animation references */
-	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-	const bgOpacity = useRef(new Animated.Value(0)).current;
-	const panY = useRef(new Animated.Value(0)).current;
-	const buttonScale = useRef(new Animated.Value(0.8)).current;
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
+  const bgOpacity = useRef(new Animated.Value(0)).current
+  const buttonScale = useRef(new Animated.Value(0.8)).current
 
-	/** Theme colors */
-	const colors = {
-		sheet: isDarkMode ? "#0D1117" : "#FFFFFF",
-		border: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-	};
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 50,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    } else {
+      setStep("input")
+      setValidatedValue(null)
+      setLoading(false)
+    }
+  }, [visible])
 
-	/** Animate modal entrance */
-	useEffect(() => {
-		if (visible) {
-			Animated.parallel([
-				Animated.spring(slideAnim, {
-					toValue: 0,
-					tension: 45,
-					friction: 10,
-					useNativeDriver: true,
-				}),
-				Animated.timing(bgOpacity, {
-					toValue: 1,
-					duration: 300,
-					useNativeDriver: true,
-				}),
-			]).start();
-		}
-	}, [visible]);
+  const handleDismiss = () => {
+    Keyboard.dismiss()
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
 
-	/** Animate CTA button scaling when typing */
-	useEffect(() => {
-		Animated.spring(buttonScale, {
-			toValue: inputValue.length > 3 ? 1 : 0.8,
-			useNativeDriver: true,
-		}).start();
-	}, [inputValue]);
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: SCREEN_HEIGHT,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bgOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose()
+    })
+  }
 
-	/** Handle modal dismissal */
-	const handleDismiss = () => {
-		Keyboard.dismiss();
-		Animated.parallel([
-			Animated.timing(slideAnim, {
-				toValue: SCREEN_HEIGHT,
-				duration: 250,
-				useNativeDriver: true,
-			}),
-			Animated.timing(bgOpacity, {
-				toValue: 0,
-				duration: 200,
-				useNativeDriver: true,
-			}),
-		]).start(onClose);
-	};
+  const handleInputSubmit = async (value) => {
+    if (!value) return
 
-	/** Pan-to-dismiss gesture */
-	const panResponder = useRef(
-		PanResponder.create({
-			onStartShouldSetPanResponder: () => true,
-			onPanResponderMove: (_, gestureState) => {
-				if (gestureState.dy > 0) panY.setValue(gestureState.dy);
-			},
-			onPanResponderRelease: (_, gestureState) => {
-				if (gestureState.dy > 120) handleDismiss();
-				else
-					Animated.spring(panY, {
-						toValue: 0,
-						friction: 8,
-						useNativeDriver: true,
-					}).start();
-			},
-		})
-	).current;
+    setLoading(true)
 
-	/** CTA submission handler */
-	const handleSubmit = () => {
-		if (inputValue.length > 3) {
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			console.log("Proceed to OTP with:", inputValue);
-		}
-	};
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1500))
 
-	return (
-		<Modal
-			visible={visible}
-			transparent
-			animationType="none"
-			onRequestClose={handleDismiss}
-		>
-			<View className="flex-1 justify-end">
-				{/* BACKDROP */}
-				<Animated.View
-					style={{ opacity: bgOpacity }}
-					className="absolute inset-0 bg-black/70"
-				>
-					<Pressable className="flex-1" onPress={handleDismiss} />
-				</Animated.View>
+      setValidatedValue(value)
+      setLoading(false)
+      setStep("otp")
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    } catch (error) {
+      console.error("[v0] OTP send error:", error)
+      setLoading(false)
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+    }
+  }
 
-				{/* MODAL SHEET */}
-				<Animated.View
-					{...panResponder.panHandlers}
-					style={{
-						transform: [{ translateY: slideAnim }, { translateY: panY }],
-						backgroundColor: colors.sheet,
-						borderColor: colors.border,
-						borderTopWidth: 1,
-						height: SCREEN_HEIGHT * 0.75,
-					}}
-					className="rounded-t-[32px] shadow-2xl overflow-hidden"
-				>
-					{/* HEADER */}
-					<View className="px-8 pt-4">
-						<View className="w-10 h-1 bg-gray-500/20 rounded-full self-center mb-6" />
+  const handleOTPSubmit = async (otp) => {
+    setLoading(true)
 
-						<View className="flex-row justify-between items-center mb-2">
-							<Text
-								style={{
-									color: colors.sheet === "#FFFFFF" ? "#0F172A" : "#FFFFFF",
-								}}
-								className="text-2xl font-black tracking-tighter"
-							>
-								{type === "phone" ? "Mobile Access" : "Secure Email"}
-							</Text>
-							<Pressable
-								onPress={handleDismiss}
-								className="w-8 h-8 rounded-full bg-gray-500/10 items-center justify-center"
-							>
-								<Ionicons
-									name="close"
-									size={18}
-									color={isDarkMode ? "#AAA" : "#666"}
-								/>
-							</Pressable>
-						</View>
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-						<Text className="text-gray-500 text-sm font-medium mb-8">
-							Code will be sent for emergency verification.
-						</Text>
-					</View>
+      setLoading(false)
+      setStep("profile")
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    } catch (error) {
+      console.error("[v0] OTP verify error:", error)
+      setLoading(false)
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+    }
+  }
 
-					{/* INPUT & CTA SECTION (modular, platform-specific) */}
-					{Platform.OS === "ios" ? (
-						<KeyboardAvoidingView behavior="padding" className="px-8">
-							<AuthInputContent
-								type={type}
-								inputValue={inputValue}
-								setInputValue={setInputValue}
-								buttonScale={buttonScale}
-								onSubmit={handleSubmit}
-							/>
-						</KeyboardAvoidingView>
-					) : (
-						<View className="px-8">
-							<AuthInputContent
-								type={type}
-								inputValue={inputValue}
-								setInputValue={setInputValue}
-								buttonScale={buttonScale}
-								onSubmit={handleSubmit}
-							/>
-						</View>
-					)}
-				</Animated.View>
-			</View>
-		</Modal>
-	);
+  const handleProfileSubmit = async (profileData) => {
+    setLoading(true)
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      setLoading(false)
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      handleDismiss()
+    } catch (error) {
+      console.error("[v0] Profile submit error:", error)
+      setLoading(false)
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+    }
+  }
+
+  const colors = {
+    bg: isDarkMode ? "#0D1117" : "#FFFFFF",
+    text: isDarkMode ? "#FFFFFF" : "#0F172A",
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={handleDismiss}>
+      <View className="flex-1 justify-end">
+        <Animated.View style={{ opacity: bgOpacity }} className="absolute inset-0 bg-black/60">
+          <Pressable className="flex-1" onPress={handleDismiss} />
+        </Animated.View>
+
+        <Animated.View
+          style={{
+            transform: [{ translateY: slideAnim }],
+            backgroundColor: colors.bg,
+            height: SCREEN_HEIGHT * 0.85,
+          }}
+          className="rounded-t-[40px] px-8 pt-4 shadow-2xl"
+        >
+          <View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-8" />
+
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
+            <View className="flex-row justify-between items-start mb-8">
+              <View className="flex-1">
+                <Text className="text-[10px] font-black tracking-[3px] mb-2 uppercase text-red-800">
+                  Step {step === "input" ? "1" : step === "otp" ? "2" : "3"} of 3
+                </Text>
+                <Text className="text-3xl font-black tracking-tighter" style={{ color: colors.text }}>
+                  {step === "input" && (type === "phone" ? "Phone Number" : "Email Address")}
+                  {step === "otp" && "Verification"}
+                  {step === "profile" && "Profile Setup"}
+                </Text>
+                {step === "input" && (
+                  <Text className="text-sm font-medium mt-2 text-gray-500">
+                    {type === "phone" ? "Enter your phone number to continue" : "Enter your email address to continue"}
+                  </Text>
+                )}
+              </View>
+
+              <Pressable onPress={handleDismiss} className="p-2 bg-gray-500/10 rounded-full">
+                <Ionicons name="close" size={20} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <View className="flex-1">
+              {step === "input" && (
+                <>
+                  {type === "phone" ? (
+                    <PhoneInputField onValidChange={setValidatedValue} onSubmit={handleInputSubmit} />
+                  ) : (
+                    <EmailInputField onValidChange={setValidatedValue} onSubmit={handleInputSubmit} />
+                  )}
+                </>
+              )}
+
+              {step === "otp" && (
+                <OTPInputCard contactInfo={validatedValue} onSubmit={handleOTPSubmit} loading={loading} />
+              )}
+
+              {step === "profile" && <ProfileForm onSubmit={handleProfileSubmit} loading={loading} />}
+            </View>
+          </KeyboardAvoidingView>
+        </Animated.View>
+      </View>
+    </Modal>
+  )
 }
