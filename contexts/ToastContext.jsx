@@ -6,23 +6,15 @@ import React, {
 	useRef,
 } from "react";
 import { Text, View, Animated, Image, Pressable } from "react-native";
+
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import logo from "../assets/logo.png";
+import { COLORS } from "../constants/colors";
 
 const ToastContext = createContext();
 
 export const useToast = () => useContext(ToastContext);
-
-const COLORS = {
-	primaryDark: "#0F3D2E",
-	primary: "#1E6F5C",
-	accent: "#C0D95A",
-	success: "#2E7D32",
-	error: "#C62828",
-	warning: "#ED6C02",
-	info: "#1565C0",
-};
 
 const ToastProvider = ({ children }) => {
 	const [toast, setToast] = useState({
@@ -65,14 +57,14 @@ const ToastProvider = ({ children }) => {
 	const getGradient = () => {
 		switch (toast.type) {
 			case "success":
-				return [COLORS.success, COLORS.primary];
+				return [COLORS.success, COLORS.brandPrimary];
 			case "error":
 				return [COLORS.error, "#8E0000"];
 			case "warning":
 				return [COLORS.warning, "#F9A825"];
 			case "info":
 			default:
-				return [COLORS.primaryDark, COLORS.primary];
+				return [COLORS.brandPrimary, COLORS.brandSecondary];
 		}
 	};
 

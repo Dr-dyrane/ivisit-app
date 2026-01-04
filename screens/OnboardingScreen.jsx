@@ -11,6 +11,8 @@ import * as Haptics from "expo-haptics";
 import SlideButton from "../components/ui/SlideButton";
 import { useTheme } from "../contexts/ThemeContext";
 import useSwipeGesture from "../utils/useSwipeGesture";
+import { COLORS } from "../constants/colors";
+
 
 /**
  * OnboardingScreen
@@ -31,7 +33,7 @@ import useSwipeGesture from "../utils/useSwipeGesture";
  */
 
 const { width, height } = Dimensions.get("window");
-const PRIMARY_RED = "#86100E";
+const PRIMARY_RED = COLORS.brandPrimary;
 
 const onboardingData = [
   {
@@ -189,7 +191,7 @@ export default function OnboardingScreen() {
 
         {/* PROGRESS DOTS */}
         <View className="flex-row items-center mt-10 mb-10">
-          {onboardingData.map((_, i) => {
+            {onboardingData.map((_, i) => {
             const widthScale = progressAnims[i].interpolate({ inputRange: [0, 1], outputRange: [8, 32] });
             const opacityScale = progressAnims[i].interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
             return (
@@ -198,7 +200,7 @@ export default function OnboardingScreen() {
                 style={{
                   width: widthScale,
                   height: 6,
-                  backgroundColor: i === index ? PRIMARY_RED : (isDarkMode ? "#333" : "#D1D1D1"),
+                      backgroundColor: i === index ? PRIMARY_RED : (isDarkMode ? "#333" : "#D1D1D1"),
                   borderRadius: 3,
                   marginRight: 6,
                   opacity: opacityScale,

@@ -8,12 +8,14 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Fontisto } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
+import { COLORS } from "../constants/colors";
 import SlideButton from "../components/ui/SlideButton";
 
 /**
  * Primary brand color.
  */
-const PRIMARY_RED = "#86100E";
+// use brand color from constants
+const PRIMARY_RED = COLORS.brandPrimary;
 
 /**
  * WelcomeScreen
