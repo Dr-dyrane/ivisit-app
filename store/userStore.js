@@ -62,22 +62,18 @@ const userStore = {
 		try {
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 
-			if (
-				!credentials.email ||
-				!credentials.password ||
-				!credentials.username
-			) {
-				throw new Error(
-					"Email, password, and username are required for sign-up"
-				);
-			}
+				// Allow sign-up with either email or phone; password optional (can be set later)
+				if (!credentials.username || (!credentials.email && !credentials.phone)) {
+					throw new Error("Username and either email or phone are required for sign-up");
+				}
 
-			const newUser = {
-				email: credentials.email,
-				username: credentials.username,
-				password: credentials.password,
-				token: generateRandomToken(),
-			};
+				const newUser = {
+					email: credentials.email || null,
+					phone: credentials.phone || null,
+					username: credentials.username,
+					password: credentials.password || null,
+					token: generateRandomToken(),
+				};
 
 			const usersData = await AsyncStorage.getItem("users");
 			let users = usersData ? JSON.parse(usersData) : [];
@@ -90,15 +86,21 @@ const userStore = {
 				users.push(userStore.staticUserData);
 			}
 
-			if (
-				users.some(
-					(user) =>
-						user.email.trim().toLowerCase() ===
-						newUser.email.trim().toLowerCase()
-				)
-			) {
-				throw new Error("User already exists");
-			}
+				// Check duplicates by email or phone
+				if (newUser.email) {
+					if (
+						users.some((user) => user.email && user.email.trim().toLowerCase() === newUser.email.trim().toLowerCase())
+					) {
+						throw new Error("User with this email already exists");
+					}
+				}
+				if (newUser.phone) {
+					if (
+						users.some((user) => user.phone && user.phone === newUser.phone)
+					) {
+						throw new Error("User with this phone already exists");
+					}
+				}
 
 			users.push(newUser);
 			await AsyncStorage.setItem("users", JSON.stringify(users));

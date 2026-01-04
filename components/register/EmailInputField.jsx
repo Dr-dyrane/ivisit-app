@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useEffect } from "react"
 import { View, Text, TextInput, Pressable, Animated } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import * as Haptics from "expo-haptics"
@@ -10,19 +10,23 @@ import useEmailValidation from "../../hooks/useEmailValidation"
 const PRIMARY_RED = "#86100E"
 
 /**
- * EmailInputField
+ * EmailInputField - iVisit Registration
  *
- * Modular email input component
- * Uses custom hook for validation
- * Handles its own state and animations
- *
- * Props:
- * - onValidChange: callback when valid email changes
- * - onSubmit: callback when continue button pressed with valid email
+ * Modular email input with clear functionality
+ * Matches phone input UX patterns
  */
-export default function EmailInputField({ onValidChange, onSubmit }) {
+export default function EmailInputField({ onValidChange, onSubmit, initialValue = "" }) {
   const { isDarkMode } = useTheme()
-  const { email, setEmail, isValid } = useEmailValidation()
+  const inputRef = useRef(null)
+  const { email, setEmail, isValid, clear } = useEmailValidation()
+
+  // Prefill email if provided
+  useEffect(() => {
+    if (initialValue) {
+      setEmail(initialValue)
+      if (onValidChange) onValidChange(initialValue)
+    }
+  }, [initialValue])
 
   // Animation refs
   const shakeAnim = useRef(new Animated.Value(0)).current
@@ -31,8 +35,17 @@ export default function EmailInputField({ onValidChange, onSubmit }) {
   const handleEmailChange = (text) => {
     setEmail(text)
     if (onValidChange) {
-      onValidChange(isValid ? text : null)
+      onValidChange(isValid ? text.trim() : null)
     }
+  }
+
+  const handleClearInput = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    clear()
+    if (onValidChange) {
+      onValidChange(null)
+    }
+    inputRef.current?.focus()
   }
 
   const triggerShake = () => {
@@ -79,11 +92,10 @@ export default function EmailInputField({ onValidChange, onSubmit }) {
     <View>
       <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
         <View className="flex-row items-center rounded-2xl px-5 h-[72px]" style={{ backgroundColor: colors.inputBg }}>
-          {/* Email Icon */}
           <Ionicons name="mail-outline" size={24} color="#666" style={{ marginRight: 12 }} />
 
-          {/* Email Input */}
           <TextInput
+            ref={inputRef}
             className="flex-1 text-xl font-bold"
             style={{ color: colors.text }}
             placeholder="your@email.com"
@@ -99,18 +111,18 @@ export default function EmailInputField({ onValidChange, onSubmit }) {
             onSubmitEditing={handleContinue}
           />
 
-          {/* Validation Indicator */}
           {email.length > 0 && (
-            <Ionicons
-              name={isValid ? "checkmark-circle" : "close-circle"}
-              size={24}
-              color={isValid ? "#10B981" : "#EF4444"}
-            />
+            <Pressable onPress={handleClearInput} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons
+                name={isValid ? "checkmark-circle" : "close-circle"}
+                size={24}
+                color={isValid ? "#10B981" : "#EF4444"}
+              />
+            </Pressable>
           )}
         </View>
       </Animated.View>
 
-      {/* Continue Button */}
       <Animated.View style={{ transform: [{ scale: buttonScale }] }} className="mt-6">
         <Pressable
           onPress={handleContinue}
@@ -122,16 +134,21 @@ export default function EmailInputField({ onValidChange, onSubmit }) {
             backgroundColor: isValid ? PRIMARY_RED : isDarkMode ? "#1F2937" : "#E5E7EB",
           }}
         >
-          <Text className="text-white text-base font-black tracking-[2px]">CONTINUE</Text>
+          <Text className="text-base font-black tracking-[2px]" style={{ color: isValid ? "#FFFFFF" : "#9CA3AF" }}>
+            CONTINUE
+          </Text>
         </Pressable>
       </Animated.View>
 
-      {/* Helper Text */}
       {email.length > 0 && !isValid && (
         <Text className="mt-3 text-xs text-center" style={{ color: "#EF4444" }}>
           Please enter a valid email address
         </Text>
       )}
+
+      <Text className="mt-4 text-xs text-center leading-5" style={{ color: "#666" }}>
+        We'll use your email for appointment confirmations and important health notifications.
+      </Text>
     </View>
   )
 }

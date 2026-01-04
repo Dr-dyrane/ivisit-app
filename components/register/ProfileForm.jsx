@@ -6,25 +6,25 @@ import { Ionicons } from "@expo/vector-icons"
 import * as ImagePicker from "expo-image-picker"
 import * as Haptics from "expo-haptics"
 import { useTheme } from "../../contexts/ThemeContext"
+import { useRegistration } from "../../contexts/RegistrationContext"
 
 const PRIMARY_RED = "#86100E"
 
 /**
- * ProfileForm
+ * ProfileForm - iVisit Registration
  *
- * Modular profile setup form
- * Collects username and full name
- *
- * Props:
- * - onSubmit: callback with profile data
- * - loading: shows loading state
+ * Final step: collect user profile information
+ * Props: onComplete
  */
-export default function ProfileForm({ onSubmit, loading }) {
+export default function ProfileForm({ onComplete }) {
   const { isDarkMode } = useTheme()
-  const [fullName, setFullName] = useState("")
-  const [username, setUsername] = useState("")
+  const { registrationData, updateRegistrationData, nextStep } = useRegistration()
+
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [avatar, setAvatar] = useState(null)
-  const [currentField, setCurrentField] = useState("fullName")
+  const [loading, setLoading] = useState(false)
+  const [currentField, setCurrentField] = useState("firstName")
 
   const shakeAnim = useRef(new Animated.Value(0)).current
   const buttonScale = useRef(new Animated.Value(1)).current
@@ -60,14 +60,36 @@ export default function ProfileForm({ onSubmit, loading }) {
     ]).start()
   }
 
-  const handleSubmit = () => {
-    if (!fullName.trim() || !username.trim()) {
+  const handleSubmit = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
       triggerShake()
       return
     }
 
+    setLoading(true)
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    onSubmit?.({ fullName: fullName.trim(), username: username.trim(), avatar })
+
+    try {
+      const signupData = {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: registrationData.email || null,
+        phoneNumber: registrationData.phoneNumber || null,
+        avatar,
+      }
+
+      // Persist profile to registration context and move to next step (password)
+      updateRegistrationData({ profile: signupData, profileComplete: true })
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      nextStep()
+      onComplete?.(signupData)
+    } catch (error) {
+      console.error("[v0] Profile save error:", error)
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+      triggerShake()
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handlePressIn = () => {
@@ -78,11 +100,18 @@ export default function ProfileForm({ onSubmit, loading }) {
     Animated.spring(buttonScale, { toValue: 1, friction: 3, useNativeDriver: true }).start()
   }
 
-  const isValid = fullName.trim() && username.trim()
+  const isValid = firstName.trim() && lastName.trim()
 
   return (
     <View>
-      {/* Avatar Picker */}
+      <Text className="text-3xl font-black tracking-tight mb-3" style={{ color: colors.text }}>
+        Complete Your Profile
+      </Text>
+
+      <Text className="text-base leading-6 mb-8" style={{ color: "#666" }}>
+        Help us personalize your iVisit experience
+      </Text>
+
       <Pressable onPress={handlePickImage} className="self-center mb-8">
         <View
           className="w-24 h-24 rounded-full items-center justify-center"
@@ -99,44 +128,40 @@ export default function ProfileForm({ onSubmit, loading }) {
         </Text>
       </Pressable>
 
-      {/* Full Name Input */}
-      <Animated.View style={{ transform: [{ translateX: currentField === "fullName" ? shakeAnim : 0 }] }}>
+      <Animated.View style={{ transform: [{ translateX: currentField === "firstName" ? shakeAnim : 0 }] }}>
         <View
           className="rounded-2xl px-5 h-[72px] mb-4 flex-row items-center"
           style={{ backgroundColor: colors.inputBg }}
         >
           <Ionicons name="person-outline" size={22} color="#666" style={{ marginRight: 12 }} />
           <TextInput
-            placeholder="Full Name"
+            placeholder="First Name"
             placeholderTextColor="#666"
-            value={fullName}
-            onChangeText={setFullName}
-            onFocus={() => setCurrentField("fullName")}
+            value={firstName}
+            onChangeText={setFirstName}
+            onFocus={() => setCurrentField("firstName")}
             autoCapitalize="words"
             selectionColor={PRIMARY_RED}
             returnKeyType="next"
-            onSubmitEditing={() => setCurrentField("username")}
             className="flex-1 text-xl font-bold"
             style={{ color: colors.text }}
           />
         </View>
       </Animated.View>
 
-      {/* Username Input */}
-      <Animated.View style={{ transform: [{ translateX: currentField === "username" ? shakeAnim : 0 }] }}>
+      <Animated.View style={{ transform: [{ translateX: currentField === "lastName" ? shakeAnim : 0 }] }}>
         <View
           className="rounded-2xl px-5 h-[72px] mb-6 flex-row items-center"
           style={{ backgroundColor: colors.inputBg }}
         >
-          <Ionicons name="at" size={22} color="#666" style={{ marginRight: 12 }} />
+          <Ionicons name="person-outline" size={22} color="#666" style={{ marginRight: 12 }} />
           <TextInput
-            placeholder="Username"
+            placeholder="Last Name"
             placeholderTextColor="#666"
-            value={username}
-            onChangeText={setUsername}
-            onFocus={() => setCurrentField("username")}
-            autoCapitalize="none"
-            autoCorrect={false}
+            value={lastName}
+            onChangeText={setLastName}
+            onFocus={() => setCurrentField("lastName")}
+            autoCapitalize="words"
             selectionColor={PRIMARY_RED}
             returnKeyType="done"
             onSubmitEditing={handleSubmit}
@@ -146,7 +171,6 @@ export default function ProfileForm({ onSubmit, loading }) {
         </View>
       </Animated.View>
 
-      {/* Submit Button */}
       <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
         <Pressable
           onPress={handleSubmit}
@@ -159,8 +183,8 @@ export default function ProfileForm({ onSubmit, loading }) {
             opacity: loading ? 0.7 : 1,
           }}
         >
-          <Text className="text-white text-base font-black tracking-[2px]">
-            {loading ? "CREATING..." : "CREATE ACCOUNT"}
+          <Text className="text-base font-black tracking-[2px]" style={{ color: isValid ? "#FFFFFF" : "#9CA3AF" }}>
+            {loading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
           </Text>
         </Pressable>
       </Animated.View>

@@ -5,7 +5,7 @@ import { useMemo, useState, useRef, useEffect } from "react"
 import { Modal, View, Text, FlatList, Pressable, TextInput, Animated, Dimensions, Keyboard } from "react-native"
 import { useTheme } from "../../contexts/ThemeContext"
 import { Ionicons } from "@expo/vector-icons"
-import countries from "./countries"
+import countries from "../../data/countries"
 import * as Haptics from "expo-haptics"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
@@ -14,7 +14,6 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
   const { isDarkMode } = useTheme()
   const [query, setQuery] = useState("")
 
-  // Animation for the inner sheet
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const bgOpacity = useRef(new Animated.Value(0)).current
 
@@ -34,7 +33,6 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
         }),
       ]).start()
     } else {
-      // Reset query when closing
       setQuery("")
       slideAnim.setValue(SCREEN_HEIGHT)
       bgOpacity.setValue(0)
@@ -81,7 +79,6 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
       <View className="flex-1 justify-end">
-        {/* Backdrop */}
         <Animated.View style={{ opacity: bgOpacity }} className="absolute inset-0 bg-black/60">
           <Pressable className="flex-1" onPress={handleClose} />
         </Animated.View>
@@ -94,10 +91,8 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
           }}
           className="rounded-t-[40px] px-6 pt-4"
         >
-          {/* Grab Handle */}
           <View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-6" />
 
-          {/* Header */}
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-2xl font-black tracking-tighter" style={{ color: colors.text }}>
               Select Region
@@ -107,7 +102,6 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
             </Pressable>
           </View>
 
-          {/* Search Bar */}
           <View
             style={{ backgroundColor: colors.inputBg }}
             className="flex-row items-center px-4 rounded-2xl h-14 mb-4"
@@ -130,14 +124,12 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
             )}
           </View>
 
-          {/* Results Count */}
           {query.length > 0 && (
             <Text className="text-xs font-medium mb-2" style={{ color: "#666" }}>
               {filtered.length} {filtered.length === 1 ? "result" : "results"}
             </Text>
           )}
 
-          {/* Country List */}
           <FlatList
             data={filtered}
             keyExtractor={(item) => item.code}
@@ -155,7 +147,7 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
                 className="py-4 flex-row items-center justify-between active:bg-gray-500/5"
               >
                 <View className="flex-row items-center flex-1">
-                  <Text className="text-2xl mr-4">{item.flagEmoji}</Text>
+                  <Text className="text-2xl mr-4">{item.flag}</Text>
                   <View className="flex-1">
                     <Text className="text-base font-bold" style={{ color: colors.text }} numberOfLines={1}>
                       {item.name}

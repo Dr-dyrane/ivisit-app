@@ -1,19 +1,31 @@
+"use client";
+
 // app/(auth)/_layout.js
 
 import { Stack } from "expo-router";
-import { Alert, Pressable, Text, View } from "react-native";
+import { Pressable, Text } from "react-native";
 import { useRouter } from "expo-router";
-import { AntDesign, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { commonScreenOptions } from "../../utils/navigationOptions";
 import { useTheme } from "../../contexts/ThemeContext";
+import {
+	RegistrationProvider,
+	useRegistration,
+} from "../../contexts/RegistrationContext";
 
-export default function AuthLayout() {
+function AuthStackScreens() {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
+	const { previousStep, canGoBack: canGoBackInFlow } = useRegistration();
 
 	const handleBackPress = () => {
-		Alert.alert("Back pressed!", "Navigating to the previous screen.");
-		router.back();
+		if (canGoBackInFlow) {
+			console.log("[v0] Back pressed - using registration flow");
+			previousStep();
+		} else {
+			console.log("[v0] Back pressed - using router");
+			router.back();
+		}
 	};
 
 	return (
@@ -23,11 +35,11 @@ export default function AuthLayout() {
 				options={{
 					title: "Welcome to iVisit",
 					headerShown: false,
-					headerTitleAlign: "center", // Center the title
+					headerTitleAlign: "center",
 					gestureEnabled: true,
 					gestureDirection: "horizontal",
 					headerStyle: {
-						backgroundColor: "#fff", // Set the header background color
+						backgroundColor: "#fff",
 					},
 				}}
 			/>
@@ -59,10 +71,7 @@ export default function AuthLayout() {
 				options={commonScreenOptions({
 					title: "Onboarding",
 					headerRight: () => (
-						<Pressable
-							onPress={() => router.push("signup")}
-							className="mx-2"
-						>
+						<Pressable onPress={() => router.push("signup")} className="mx-2">
 							<Text
 								className={`text-xs ${
 									isDarkMode ? "text-white" : "text-primary"
@@ -74,15 +83,22 @@ export default function AuthLayout() {
 					),
 				})}
 			/>
+
 			<Stack.Screen
 				name="signup"
 				options={commonScreenOptions({
 					title: "Sign Up",
+					headerLeft: () => (
+						<Pressable onPress={handleBackPress} className="ml-2">
+							<Ionicons
+								name="arrow-back"
+								size={24}
+								color={isDarkMode ? "#FFF" : "#000"}
+							/>
+						</Pressable>
+					),
 					headerRight: () => (
-						<Pressable
-							// onPress={() => router.push("login")}
-							className="flex flex-row items-center justify-center max-w-[40vw] mx-2"
-						>
+						<Pressable className="flex flex-row items-center justify-center max-w-[40vw] mx-2">
 							<Text className="text-xs text-gray-500">
 								Have an account?{" "}
 								<Text className="text-primary font-semibold">Login</Text>
@@ -92,5 +108,13 @@ export default function AuthLayout() {
 				})}
 			/>
 		</Stack>
+	);
+}
+
+export default function AuthLayout() {
+	return (
+		<RegistrationProvider>
+			<AuthStackScreens />
+		</RegistrationProvider>
 	);
 }

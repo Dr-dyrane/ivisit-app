@@ -1,48 +1,34 @@
-// screens/SignupScreen.js
-
+// screens/SignupScreen.jsx
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import {
-	View,
-	Text,
-	Animated,
-	SafeAreaView,
-	Pressable,
-	Dimensions,
-} from "react-native";
+import { useState, useRef, useEffect } from "react";
+import { View, Text, Animated, Pressable, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { AntDesign } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import SignUpMethodCard from "../components/register/SignUpMethodCard";
 import AuthInputModal from "../components/register/AuthInputModal";
+import * as Haptics from "expo-haptics";
 
 /**
- * SignupScreen
+ * SignupScreen - iVisit Registration
  *
- * Displays the signup options including:
- * - Main signup methods via SignUpMethodCard
- * - Social login buttons (Apple, Google, X)
- * - Legal footer
- * - Modal for detailed authentication input
- *
- * Responsibilities:
- * - Handles entrance animations for content and social buttons
- * - Opens AuthInputModal for selected method
- * - Uses theme context to dynamically style components
+ * Design Philosophy:
+ * - Minimal text to reduce stress during emergencies
+ * - Clear, simple choices without overwhelming information
+ * - Intentional medical red (#86100E) for emergency context
+ * - Social login placeholders for future implementation
  */
 
 const { width } = Dimensions.get("window");
+const PRIMARY_RED = "#86100E";
 
 export default function SignupScreen() {
 	const { isDarkMode } = useTheme();
 	const [modalVisible, setModalVisible] = useState(false);
 	const [authType, setAuthType] = useState(null);
 
-	// ------------------------
 	// Animation refs
-	// ------------------------
-	const headerAnim = useRef(new Animated.Value(-20)).current;
 	const methodAnim = useRef(new Animated.Value(30)).current;
 	const socialAnim = useRef(new Animated.Value(30)).current;
 	const opacity = useRef(new Animated.Value(0)).current;
@@ -52,16 +38,12 @@ export default function SignupScreen() {
 		card: isDarkMode ? "#121826" : "#F3E7E7",
 		text: isDarkMode ? "#FFFFFF" : "#1F2937",
 		subtitle: isDarkMode ? "#9CA3AF" : "#6B7280",
-		primary: "#86100E",
 	};
 
-	// ------------------------
-	// Entrance Animation
-	// ------------------------
 	useEffect(() => {
 		Animated.stagger(150, [
 			Animated.parallel([
-				Animated.spring(headerAnim, {
+				Animated.spring(methodAnim, {
 					toValue: 0,
 					friction: 8,
 					useNativeDriver: true,
@@ -72,11 +54,6 @@ export default function SignupScreen() {
 					useNativeDriver: true,
 				}),
 			]),
-			Animated.spring(methodAnim, {
-				toValue: 0,
-				friction: 8,
-				useNativeDriver: true,
-			}),
 			Animated.spring(socialAnim, {
 				toValue: 0,
 				friction: 8,
@@ -85,19 +62,19 @@ export default function SignupScreen() {
 		]).start();
 	}, []);
 
-	// ------------------------
-	// Handlers
-	// ------------------------
 	const openAuthModal = (type) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		setAuthType(type);
 		setModalVisible(true);
 	};
 
-	// ------------------------
-	// Render
-	// ------------------------
+	const handleCloseModal = () => {
+		setModalVisible(false);
+		setAuthType(null);
+	};
+
 	return (
-		<LinearGradient colors={colors.background} className="flex-1 p-8">
+		<LinearGradient colors={colors.background} className="flex-1 px-8">
 			{/* MAIN SIGNUP METHODS */}
 			<Animated.View
 				style={{ opacity, transform: [{ translateY: methodAnim }] }}
@@ -114,14 +91,18 @@ export default function SignupScreen() {
 					<View className="flex-1 h-[1px] bg-gray-500/10" />
 				</View>
 
-				{/* SOCIAL BUTTONS */}
+				{/* SOCIAL BUTTONS - Placeholders for future implementation */}
 				<Animated.View
 					style={{ opacity, transform: [{ translateY: socialAnim }] }}
 					className="flex-row justify-between"
 				>
-					<SocialIcon name="apple" color={colors.text} bg={colors.card} />
-					<SocialIcon name="google" color={colors.text} bg={colors.card} />
-					<SocialIcon name="x" color={colors.text} bg={colors.card} />
+					<SocialIcon name="logo-apple" color={colors.text} bg={colors.card} />
+					<SocialIcon name="logo-google" color={colors.text} bg={colors.card} />
+					<SocialIcon
+						name="logo-x"
+						color={colors.text}
+						bg={colors.card}
+					/>
 				</Animated.View>
 			</Animated.View>
 
@@ -156,7 +137,7 @@ export default function SignupScreen() {
 
 				<Text className="text-center text-[10px] leading-4 text-gray-500 font-medium">
 					We require{" "}
-					<Text style={{ color: colors.primary, fontWeight: "900" }}>
+					<Text style={{ color: PRIMARY_RED, fontWeight: "900" }}>
 						Location Access
 					</Text>{" "}
 					for dispatch.
@@ -167,28 +148,23 @@ export default function SignupScreen() {
 			<AuthInputModal
 				visible={modalVisible}
 				type={authType}
-				onClose={() => setModalVisible(false)}
+				onClose={handleCloseModal}
 			/>
 		</LinearGradient>
 	);
 }
 
 /**
- * SocialIcon
- *
- * Modular component for rendering social login buttons
- * Handles press animation and scales button on press
- *
- * Props:
- * - name: icon name for AntDesign
- * - color: icon color
- * - bg: background color for the button
+ * SocialIcon - Placeholder for social login
+ * Will be implemented in future versions
  */
 const SocialIcon = ({ name, color, bg }) => {
 	const scale = useRef(new Animated.Value(1)).current;
 	const { isDarkMode } = useTheme();
 
 	const handlePress = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
 		Animated.sequence([
 			Animated.timing(scale, {
 				toValue: 0.92,
@@ -201,10 +177,13 @@ const SocialIcon = ({ name, color, bg }) => {
 				useNativeDriver: true,
 			}),
 		]).start();
+
+		// TODO: Implement social login
+		console.log("[v0] Social login pressed:", name);
 	};
 
 	return (
-		<Pressable onPressIn={handlePress}>
+		<Pressable onPress={handlePress}>
 			<Animated.View
 				style={{
 					backgroundColor: bg,
@@ -213,11 +192,12 @@ const SocialIcon = ({ name, color, bg }) => {
 					borderRadius: 20,
 					alignItems: "center",
 					justifyContent: "center",
+					borderWidth: 1,
 					borderColor: isDarkMode ? "#222" : "#EEE",
 					transform: [{ scale }],
 				}}
 			>
-				<AntDesign name={name} size={24} color={color} />
+				<Ionicons name={name} size={24} color={color} />
 			</Animated.View>
 		</Pressable>
 	);

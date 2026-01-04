@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState, useEffect } from "react"
 import { View, Text, TextInput, Pressable, Animated, ActivityIndicator } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import * as Haptics from "expo-haptics"
@@ -8,24 +8,19 @@ import { useTheme } from "../../contexts/ThemeContext"
 import usePhoneValidation from "../../hooks/usePhoneValidation"
 import useCountryDetection from "../../hooks/useCountryDetection"
 import CountryPickerModal from "./CountryPickerModal"
-import { useState } from "react"
 
 const PRIMARY_RED = "#86100E"
 
 /**
- * PhoneInputField
+ * PhoneInputField - iVisit Registration
  *
- * Modular phone input component
- * Uses custom hooks for validation and country detection
- * Handles its own state and animations
- *
- * Props:
- * - onValidChange: callback when valid phone number changes
- * - onSubmit: callback when continue button pressed with valid number
+ * Modular phone input component for emergency medical services
+ * Features full deletion support and clear functionality
  */
-export default function PhoneInputField({ onValidChange, onSubmit }) {
+export default function PhoneInputField({ onValidChange, onSubmit, initialValue = null }) {
   const { isDarkMode } = useTheme()
   const [pickerVisible, setPickerVisible] = useState(false)
+  const inputRef = useRef(null)
 
   const { country, setCountry, loading: countryLoading } = useCountryDetection()
   const { rawInput, setRawInput, formattedNumber, isValid, e164Format, clear } = usePhoneValidation(country)
@@ -36,12 +31,35 @@ export default function PhoneInputField({ onValidChange, onSubmit }) {
 
   const handleInputChange = (text) => {
     const digitsOnly = text.replace(/\D/g, "")
+    console.log("[v0] Raw input digits:", digitsOnly)
     setRawInput(digitsOnly)
 
     // Notify parent of validation state
     if (onValidChange) {
-      onValidChange(isValid ? e164Format : null)
+      const isCurrentlyValid = digitsOnly.length >= (country?.min || 10)
+      onValidChange(isCurrentlyValid ? e164Format : null)
     }
+  }
+
+  // Prefill if initialValue (E.164) is provided
+  useEffect(() => {
+    if (initialValue) {
+      console.log("[v0] Prefilling phone input with:", initialValue)
+      setRawInput(initialValue)
+      if (onValidChange) {
+        onValidChange(initialValue)
+      }
+    }
+  }, [initialValue])
+
+  const handleClearInput = () => {
+    console.log("[v0] Clearing phone input")
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    clear()
+    if (onValidChange) {
+      onValidChange(null)
+    }
+    inputRef.current?.focus()
   }
 
   const triggerShake = () => {
@@ -55,28 +73,20 @@ export default function PhoneInputField({ onValidChange, onSubmit }) {
   }
 
   const handleContinue = () => {
-    if (!isValid) {
+    console.log("[v0] Continue pressed - Valid:", isValid, "E164:", e164Format)
+
+    if (!isValid || !e164Format) {
       triggerShake()
       return
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    onSubmit?.(e164Format)
-  }
 
-  const handlePressIn = () => {
-    Animated.spring(buttonScale, {
-      toValue: 0.96,
-      useNativeDriver: true,
-    }).start()
-  }
-
-  const handlePressOut = () => {
-    Animated.spring(buttonScale, {
-      toValue: 1,
-      friction: 3,
-      useNativeDriver: true,
-    }).start()
+    // Call onSubmit with the E.164 formatted number
+    if (onSubmit) {
+      console.log("[v0] Calling onSubmit with:", e164Format)
+      onSubmit(e164Format)
+    }
   }
 
   const colors = {
@@ -109,7 +119,7 @@ export default function PhoneInputField({ onValidChange, onSubmit }) {
             className="flex-row items-center pr-4 mr-4"
             style={{ borderRightWidth: 1, borderRightColor: colors.border }}
           >
-            <Text className="text-2xl mr-2">{country.flagEmoji}</Text>
+            <Text className="text-2xl mr-2">{country.flag}</Text>
             <Text className="text-lg font-black" style={{ color: colors.text }}>
               {country.dial_code}
             </Text>
@@ -118,6 +128,7 @@ export default function PhoneInputField({ onValidChange, onSubmit }) {
 
           {/* Phone Input */}
           <TextInput
+            ref={inputRef}
             className="flex-1 text-xl font-bold"
             style={{ color: colors.text }}
             placeholder="000 000 0000"
@@ -126,17 +137,18 @@ export default function PhoneInputField({ onValidChange, onSubmit }) {
             autoFocus
             value={formattedNumber}
             onChangeText={handleInputChange}
-            maxLength={20}
+            maxLength={25}
             selectionColor={PRIMARY_RED}
           />
 
-          {/* Validation Indicator */}
           {rawInput.length > 0 && (
-            <Ionicons
-              name={isValid ? "checkmark-circle" : "close-circle"}
-              size={24}
-              color={isValid ? "#10B981" : "#EF4444"}
-            />
+            <Pressable onPress={handleClearInput} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons
+                name={isValid ? "checkmark-circle" : "close-circle"}
+                size={24}
+                color={isValid ? "#10B981" : "#EF4444"}
+              />
+            </Pressable>
           )}
         </View>
       </Animated.View>
@@ -146,6 +158,7 @@ export default function PhoneInputField({ onValidChange, onSubmit }) {
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
         onSelect={(selectedCountry) => {
+          console.log("[v0] Country changed to:", selectedCountry.name)
           setCountry(selectedCountry)
           clear() // Clear input when country changes
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -156,24 +169,41 @@ export default function PhoneInputField({ onValidChange, onSubmit }) {
       <Animated.View style={{ transform: [{ scale: buttonScale }] }} className="mt-6">
         <Pressable
           onPress={handleContinue}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
+          onPressIn={() => {
+            Animated.spring(buttonScale, {
+              toValue: 0.96,
+              useNativeDriver: true,
+            }).start()
+          }}
+          onPressOut={() => {
+            Animated.spring(buttonScale, {
+              toValue: 1,
+              friction: 3,
+              useNativeDriver: true,
+            }).start()
+          }}
           disabled={!isValid}
           className="h-16 rounded-2xl items-center justify-center"
           style={{
             backgroundColor: isValid ? PRIMARY_RED : isDarkMode ? "#1F2937" : "#E5E7EB",
           }}
         >
-          <Text className="text-white text-base font-black tracking-[2px]">CONTINUE</Text>
+          <Text className="text-base font-black tracking-[2px]" style={{ color: isValid ? "#FFFFFF" : "#9CA3AF" }}>
+            CONTINUE
+          </Text>
         </Pressable>
       </Animated.View>
 
       {/* Helper Text */}
       {rawInput.length > 0 && !isValid && (
         <Text className="mt-3 text-xs text-center" style={{ color: "#EF4444" }}>
-          Please enter a valid phone number for {country.name}
+          Please enter a valid {country.name} phone number
         </Text>
       )}
+
+      <Text className="mt-4 text-xs text-center leading-5" style={{ color: "#666" }}>
+        Your phone number helps us provide fast emergency response and connect you with medical professionals 24/7.
+      </Text>
     </View>
   )
 }
