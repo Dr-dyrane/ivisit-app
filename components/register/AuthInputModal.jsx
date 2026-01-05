@@ -28,6 +28,7 @@ import { signUpUserAPI } from "../../api/auth";
 import { useAuth } from "../../contexts/AuthContext";
 import { useRegistration } from "../../contexts/RegistrationContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useToast } from "../../contexts/ToastContext";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -37,6 +38,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
 	const [loading, setLoading] = useState(false);
+	const { showToast } = useToast();
 
 	const {
 		currentStep,
@@ -67,7 +69,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 				}),
 			]).start();
 
-				if (currentStep === REGISTRATION_STEPS.METHOD_SELECTION) {
+			if (currentStep === REGISTRATION_STEPS.METHOD_SELECTION) {
 				updateRegistrationData({ method: type });
 				goToStep(
 					type === "phone"
@@ -114,7 +116,14 @@ export default function AuthInputModal({ visible, onClose, type }) {
 				email: type === "email" ? value : null,
 			});
 			nextStep();
+
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+			// ✅ Toast success
+			showToast(
+				type === "phone" ? "Phone number accepted" : "Email address accepted",
+				"success"
+			);
 		} finally {
 			setLoading(false);
 		}
@@ -128,7 +137,11 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			await new Promise((r) => setTimeout(r, 800));
 			updateRegistrationData({ otp });
 			nextStep();
+
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+			// ✅ Toast success
+			showToast("OTP verified successfully", "success");
 		} finally {
 			setLoading(false);
 		}
@@ -148,16 +161,24 @@ export default function AuthInputModal({ visible, onClose, type }) {
 					`user${Date.now()}`,
 				email: registrationData.email,
 				phone: registrationData.phoneNumber,
-				password,
 				...registrationData.profile,
+				password,
 			};
 
 			const { data } = await signUpUserAPI(payload);
 			await login(data);
+
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+			// ✅ Toast for login success
+			showToast("Registration successful", "success");
+
 			handleDismiss();
-		} catch {
+		} catch (err) {
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+
+			// ✅ Toast for error
+			showToast("Registration failed. Please try again", "error");
 		} finally {
 			setLoading(false);
 		}
@@ -166,7 +187,6 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	const handleSkipPassword = async () => {
 		setLoading(true);
 		try {
-			// Build payload without password
 			const payload = {
 				username:
 					registrationData.username ||
@@ -179,10 +199,18 @@ export default function AuthInputModal({ visible, onClose, type }) {
 
 			const { data } = await signUpUserAPI(payload);
 			await login(data);
+
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+			// ✅ Toast for success
+			showToast("Registered without password", "info");
+
 			handleDismiss();
 		} catch (err) {
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+
+			// ✅ Toast for error
+			showToast("Registration failed", "error");
 		} finally {
 			setLoading(false);
 		}
@@ -233,15 +261,20 @@ export default function AuthInputModal({ visible, onClose, type }) {
 				>
 					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-6" />
 
-									<KeyboardAvoidingView
-										behavior={Platform.OS === "ios" ? "padding" : "height"}
-										keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom + 90 : insets.bottom + 24}
-										className="flex-1"
-									>
-										<ScrollView
-											contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 120 }}
-											keyboardShouldPersistTaps="handled"
-										>
+					<KeyboardAvoidingView
+						behavior={Platform.OS === "ios" ? "padding" : "height"}
+						keyboardVerticalOffset={
+							Platform.OS === "ios" ? insets.bottom + 90 : insets.bottom + 24
+						}
+						className="flex-1"
+					>
+						<ScrollView
+							contentContainerStyle={{
+								flexGrow: 1,
+								paddingBottom: insets.bottom + 120,
+							}}
+							keyboardShouldPersistTaps="handled"
+						>
 							{/* Header */}
 							<View className="flex-row items-start mb-8">
 								{!isInputStep && (
@@ -300,7 +333,10 @@ export default function AuthInputModal({ visible, onClose, type }) {
 							{isProfileStep && <ProfileForm />}
 
 							{isPasswordStep && (
-								<PasswordInputField onSubmit={handlePasswordSubmit} onSkip={handleSkipPassword} />
+								<PasswordInputField
+									onSubmit={handlePasswordSubmit}
+									onSkip={handleSkipPassword}
+								/>
 							)}
 						</ScrollView>
 					</KeyboardAvoidingView>
@@ -309,4 +345,3 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		</Modal>
 	);
 }
-
