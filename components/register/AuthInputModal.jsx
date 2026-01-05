@@ -163,6 +163,31 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		}
 	};
 
+	const handleSkipPassword = async () => {
+		setLoading(true);
+		try {
+			// Build payload without password
+			const payload = {
+				username:
+					registrationData.username ||
+					registrationData.email?.split("@")[0] ||
+					`user${Date.now()}`,
+				email: registrationData.email,
+				phone: registrationData.phoneNumber,
+				...registrationData.profile,
+			};
+
+			const { data } = await signUpUserAPI(payload);
+			await login(data);
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			handleDismiss();
+		} catch (err) {
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	/* ------------------ Step Helpers ------------------ */
 	const isInputStep =
 		currentStep === REGISTRATION_STEPS.PHONE_INPUT ||
@@ -275,7 +300,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 							{isProfileStep && <ProfileForm />}
 
 							{isPasswordStep && (
-								<PasswordInputField onSubmit={handlePasswordSubmit} />
+								<PasswordInputField onSubmit={handlePasswordSubmit} onSkip={handleSkipPassword} />
 							)}
 						</ScrollView>
 					</KeyboardAvoidingView>
