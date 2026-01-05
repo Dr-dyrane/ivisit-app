@@ -6,6 +6,7 @@ import { View, Text, Animated, Pressable, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
+import { useRegistration } from "../contexts/RegistrationContext";
 import SignUpMethodCard from "../components/register/SignUpMethodCard";
 import AuthInputModal from "../components/register/AuthInputModal";
 import * as Haptics from "expo-haptics";
@@ -161,8 +162,9 @@ export default function SignupScreen() {
 const SocialIcon = ({ name, color, bg }) => {
 	const scale = useRef(new Animated.Value(1)).current;
 	const { isDarkMode } = useTheme();
+	const { socialSignUp } = useRegistration();
 
-	const handlePress = () => {
+	const handlePress = async () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
 		Animated.sequence([
@@ -178,8 +180,19 @@ const SocialIcon = ({ name, color, bg }) => {
 			}),
 		]).start();
 
-		// TODO: Implement social login
-		console.log("[v0] Social login pressed:", name);
+		// Call registration social signup
+		const provider = name.includes("apple") ? "apple" : name.includes("google") ? "google" : "x";
+		const profile = {
+			name: `${provider} user`,
+			email: `${provider}_user_${Date.now()}@example.com`,
+		};
+
+		try {
+			const ok = await socialSignUp(provider, profile);
+			console.log("[v0] socialSignUp result:", ok);
+		} catch (err) {
+			console.warn("Social signup error:", err);
+		}
 	};
 
 	return (

@@ -7,6 +7,8 @@
  */
 
 import { createContext, useContext, useState, useCallback } from "react"
+import { useToast } from "./ToastContext";
+import useSignUp from "../hooks/mutations/useSignup";
 import { REGISTRATION_STEPS } from "../constants/registrationSteps"
 
 const RegistrationContext = createContext()
@@ -118,6 +120,10 @@ export function RegistrationProvider({ children }) {
     return ((currentIndex + 1) / steps.length) * 100
   }, [currentStep, registrationData.method])
 
+  const { socialSignUp: hookSocialSignUp } = useSignUp();
+
+  const { showToast } = useToast();
+
   const value = {
     currentStep,
     registrationData,
@@ -129,6 +135,19 @@ export function RegistrationProvider({ children }) {
     canGoBack,
     getProgress,
     STEPS: REGISTRATION_STEPS,
+    // social registration helper - delegated to signup hook
+    socialSignUp: async (provider, profile) => {
+      try {
+        const data = await hookSocialSignUp(provider, profile);
+        if (!data) throw new Error("Signup failed");
+        showToast(`Signed up with ${provider}`, "success");
+        resetRegistration();
+        return true;
+      } catch (err) {
+        showToast(`Social signup failed: ${err?.message || err}`, "error");
+        return false;
+      }
+    },
   }
 
   return <RegistrationContext.Provider value={value}>{children}</RegistrationContext.Provider>

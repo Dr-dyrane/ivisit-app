@@ -12,6 +12,7 @@ import {
 	RegistrationProvider,
 	useRegistration,
 } from "../../contexts/RegistrationContext";
+import { LoginProvider } from "../../contexts/LoginContext";
 
 function AuthStackScreens() {
 	const router = useRouter();
@@ -114,7 +115,9 @@ function AuthStackScreens() {
 export default function AuthLayout() {
 	return (
 		<RegistrationProvider>
-			<AuthStackScreens />
+			<LoginProvider>
+				<AuthStackScreens />
+			</LoginProvider>
 		</RegistrationProvider>
 	);
 }

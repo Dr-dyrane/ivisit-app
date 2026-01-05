@@ -6,7 +6,6 @@ const useSignUp = () => {
 	const { login } = useContext(AuthContext); // Get the login function from context
 
 	const signUpUser = async (credentials) => {
-		console.log("calling api");
 		try {
 			const response = await signUpUserAPI(credentials); // Call the simulated API
 			const { token, email, username, ...userData } = response.data; // Extract token, email, and other user data
@@ -19,7 +18,29 @@ const useSignUp = () => {
 		}
 	};
 
-	return { signUp: signUpUser }; // Return the signUp function
+	// Social signup helper: creates a username from profile and signs up via API
+	const socialSignUp = async (provider, profile) => {
+		try {
+			const username = profile.name
+				? profile.name.replace(/\s+/g, "_").toLowerCase()
+				: `${provider}_user_${Date.now()}`;
+
+			const payload = {
+				username,
+				email: profile.email || null,
+			};
+
+			const response = await signUpUserAPI(payload);
+			if (!response?.data) throw new Error("Social signup failed");
+
+			await login(response.data);
+			return response.data;
+		} catch (err) {
+			throw err;
+		}
+	};
+
+	return { signUp: signUpUser, socialSignUp };
 };
 
 export default useSignUp;

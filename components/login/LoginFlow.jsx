@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useRef } from "react";
 import { View, Text, Pressable, ActivityIndicator, Animated, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -10,9 +10,7 @@ import PasswordInputField from "../register/PasswordInputField";
 import OTPInputCard from "../register/OTPInputCard";
 import SignUpMethodCard from "../register/SignUpMethodCard";
 import { REGISTRATION_STEPS } from "../../constants/registrationSteps";
-import { useToast } from "../../contexts/ToastContext";
-import { useAuth } from "../../contexts/AuthContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLogin } from "../../contexts/LoginContext";
 import { COLORS } from "../../constants/colors";
 import SlideButton from "../ui/SlideButton";
 
@@ -21,179 +19,57 @@ const generateToken = () => {
 };
 
 export default function LoginFlow({ visible, onClose }) {
-  const [step, setStep] = useState(REGISTRATION_STEPS.METHOD_SELECTION);
-  const [method, setMethod] = useState(null);
-  const [contact, setContact] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const { showToast } = useToast();
-  const { login } = useAuth();
+  const {
+    currentStep,
+    method,
+    contact,
+    loading,
+    reset,
+    goBack,
+    selectMethod,
+    socialSignIn,
+    submitPhone,
+    submitEmail,
+    submitPassword,
+    verifyOTP,
+    resendOTP,
+  } = useLogin();
 
-  const reset = () => {
-    setStep(REGISTRATION_STEPS.METHOD_SELECTION);
-    setMethod(null);
-    setContact(null);
-    setLoading(false);
-  };
+  const step = currentStep;
 
   const handleBack = () => {
     if (step === REGISTRATION_STEPS.METHOD_SELECTION) return onClose?.();
-    if (step === REGISTRATION_STEPS.PHONE_INPUT || step === REGISTRATION_STEPS.EMAIL_INPUT) {
-      setStep(REGISTRATION_STEPS.METHOD_SELECTION);
-      setMethod(null);
-      setContact(null);
-      return;
-    }
-    if (step === REGISTRATION_STEPS.OTP_VERIFICATION) {
-      // go back to input
-      setStep(method === "phone" ? REGISTRATION_STEPS.PHONE_INPUT : REGISTRATION_STEPS.EMAIL_INPUT);
-      return;
-    }
-    if (step === REGISTRATION_STEPS.PASSWORD_SETUP) {
-      setStep(REGISTRATION_STEPS.EMAIL_INPUT);
-      return;
-    }
-    setStep(REGISTRATION_STEPS.METHOD_SELECTION);
+    goBack();
   };
 
-  const handleMethodSelect = (m) => {
-    setMethod(m);
-    if (m === "phone") setStep(REGISTRATION_STEPS.PHONE_INPUT);
-    else if (m === "email") setStep(REGISTRATION_STEPS.EMAIL_INPUT);
-    else if (m === "password") setStep(REGISTRATION_STEPS.EMAIL_INPUT);
-    else if (m === "social") {
-      setStep(REGISTRATION_STEPS.SOCIAL_SELECTION);
-      setMethod("social");
-    }
+  const handleMethodSelect = (m) => selectMethod(m);
+
+  const handleGoogleSignIn = async () => {
+    const ok = await socialSignIn("Google", { name: "Google User", email: "google.user@example.com" });
+    if (ok) onClose && onClose();
   };
 
-  const socialSignInCommon = async (provider, profile) => {
-    setLoading(true);
-    try {
-      // simulate provider auth and user lookup/creation
-      await new Promise((r) => setTimeout(r, 900));
-      const usersData = await AsyncStorage.getItem("users");
-      const users = usersData ? JSON.parse(usersData) : [];
-      // try find by email
-      let user = users.find((u) => u.email && profile.email && u.email.toLowerCase() === profile.email.toLowerCase());
-      if (!user) {
-        user = {
-          id: `social_${provider}_${Date.now()}`,
-          fullName: profile.name || `${provider} user`,
-          email: profile.email || `${provider}_user_${Date.now()}@example.com`,
-        };
-        users.push(user);
-      }
-      const token = generateToken();
-      const loggedUser = { ...user, token };
-      const updated = users.map((u) =>
-        u.email && loggedUser.email && u.email.toLowerCase() === loggedUser.email.toLowerCase() ? loggedUser : u
-      );
-      await AsyncStorage.setItem("users", JSON.stringify(updated));
-      await AsyncStorage.setItem("token", token);
-      await login(loggedUser);
-      showToast(`Signed in with ${provider}`, "success");
-      reset();
-      onClose && onClose();
-    } catch (err) {
-      showToast(`Social sign-in failed: ${err.message || err}`, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = () => {
-    socialSignInCommon("Google", { name: "Google User", email: "google.user@example.com" });
-  };
-
-  const handleAppleSignIn = () => {
-    socialSignInCommon("Apple", { name: "Apple User", email: "apple.user@example.com" });
+  const handleAppleSignIn = async () => {
+    const ok = await socialSignIn("Apple", { name: "Apple User", email: "apple.user@example.com" });
+    if (ok) onClose && onClose();
   };
 
   const handlePhoneSubmit = async (e164) => {
-    setLoading(true);
-    try {
-      // simulate sending OTP
-      await new Promise((r) => setTimeout(r, 800));
-      setContact(e164);
-      setStep(REGISTRATION_STEPS.OTP_VERIFICATION);
-      showToast("OTP sent", "success");
-    } catch (err) {
-      showToast("Failed to send OTP", "error");
-    } finally {
-      setLoading(false);
-    }
+    await submitPhone(e164);
   };
 
   const handleEmailSubmit = async (email) => {
-    setLoading(true);
-    try {
-      if (method === "password") {
-        // email-first for password login
-        setContact(email);
-        setStep(REGISTRATION_STEPS.PASSWORD_SETUP);
-      } else {
-        // OTP via email
-        await new Promise((r) => setTimeout(r, 800));
-        setContact(email);
-        setStep(REGISTRATION_STEPS.OTP_VERIFICATION);
-        showToast("OTP sent to email", "success");
-      }
-    } catch (err) {
-      showToast("Failed to continue", "error");
-    } finally {
-      setLoading(false);
-    }
+    await submitEmail(email);
   };
 
   const handlePasswordSubmit = async (password) => {
-    setLoading(true);
-    try {
-      // Attempt login with email + password via stored users
-      const usersData = await AsyncStorage.getItem("users");
-      const users = usersData ? JSON.parse(usersData) : [];
-      const user = users.find((u) => u.email && u.email.toLowerCase() === contact.toLowerCase());
-      if (!user) throw new Error("User not found");
-      if (user.password !== password) throw new Error("Invalid credentials");
-      // generate token and persist
-      const token = generateToken();
-      const loggedUser = { ...user, token };
-      await AsyncStorage.setItem("token", token);
-      // update users list with token
-      const updated = users.map((u) => (u.email === user.email ? loggedUser : u));
-      await AsyncStorage.setItem("users", JSON.stringify(updated));
-      await login(loggedUser);
-      showToast("Logged in", "success");
-      reset();
-      onClose && onClose();
-    } catch (err) {
-      showToast(err.message || "Login failed", "error");
-    } finally {
-      setLoading(false);
-    }
+    const ok = await submitPassword(password);
+    if (ok) onClose && onClose();
   };
 
   const handleOTPVerified = async (otp) => {
-    setLoading(true);
-    try {
-      // For demo: find user by contact (phone or email) and log them in
-      const usersData = await AsyncStorage.getItem("users");
-      const users = usersData ? JSON.parse(usersData) : [];
-      const user = users.find((u) => (method === "phone" ? u.phone === contact : u.email && u.email.toLowerCase() === contact.toLowerCase()));
-      if (!user) throw new Error("User not found");
-      const token = generateToken();
-      const loggedUser = { ...user, token };
-      const updated = users.map((u) => (u.email === user.email ? loggedUser : u));
-      await AsyncStorage.setItem("users", JSON.stringify(updated));
-      await AsyncStorage.setItem("token", token);
-      await login(loggedUser);
-      showToast("Logged in via OTP", "success");
-      reset();
-      onClose && onClose();
-    } catch (err) {
-      showToast(err.message || "OTP login failed", "error");
-    } finally {
-      setLoading(false);
-    }
+    const ok = await verifyOTP(otp);
+    if (ok) onClose && onClose();
   };
 
   const titleForStep = () => {
@@ -306,7 +182,7 @@ export default function LoginFlow({ visible, onClose }) {
           <View className="space-y-3">
             <SlideButton onPress={handleGoogleSignIn}>Continue with Google</SlideButton>
             <SlideButton onPress={handleAppleSignIn}>Continue with Apple</SlideButton>
-            <Pressable onPress={() => setStep(REGISTRATION_STEPS.METHOD_SELECTION)} className="mt-2 items-center">
+            <Pressable onPress={() => reset()} className="mt-2 items-center">
               <Text style={{ color: COLORS.brandPrimary }}>Back to methods</Text>
             </Pressable>
           </View>
@@ -326,10 +202,10 @@ export default function LoginFlow({ visible, onClose }) {
             contact={contact}
             onVerified={handleOTPVerified}
             onResend={() => {
-              showToast("OTP resent", "info");
+              resendOTP();
             }}
             onEdit={() => {
-              setStep(method === "phone" ? REGISTRATION_STEPS.PHONE_INPUT : REGISTRATION_STEPS.EMAIL_INPUT);
+              goBack();
             }}
           />
         )}
