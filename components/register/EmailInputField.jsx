@@ -5,7 +5,7 @@ import { View, Text, TextInput, Pressable, Animated } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import * as Haptics from "expo-haptics"
 import { useTheme } from "../../contexts/ThemeContext"
-import useEmailValidation from "../../hooks/useEmailValidation"
+import useEmailValidation from "../../hooks/validators/useEmailValidation"
 import { COLORS } from "../../constants/colors"
 
 /**

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import * as Location from "expo-location"
-import countries from "../data/countries"
+import countries from "../../data/countries"
 
 /**
  * useCountryDetection Hook

@@ -13,8 +13,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
-import usePhoneValidation from "../../hooks/usePhoneValidation";
-import useCountryDetection from "../../hooks/useCountryDetection";
+import usePhoneValidation from "../../hooks/validators/usePhoneValidation";
+import useCountryDetection from "../../hooks/validators/useCountryDetection";
 import CountryPickerModal from "./CountryPickerModal";
 
 /**
