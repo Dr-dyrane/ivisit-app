@@ -5,11 +5,10 @@ import { View, Text, TextInput, Pressable, Animated, ActivityIndicator } from "r
 import { Ionicons } from "@expo/vector-icons"
 import * as Haptics from "expo-haptics"
 import { useTheme } from "../../contexts/ThemeContext"
+import { COLORS } from "../../constants/colors"
 import usePhoneValidation from "../../hooks/usePhoneValidation"
 import useCountryDetection from "../../hooks/useCountryDetection"
 import CountryPickerModal from "./CountryPickerModal"
-
-const PRIMARY_RED = "#86100E"
 
 /**
  * PhoneInputField - iVisit Registration
@@ -98,7 +97,7 @@ export default function PhoneInputField({ onValidChange, onSubmit, initialValue 
   if (countryLoading || !country) {
     return (
       <View className="items-center justify-center py-8">
-        <ActivityIndicator color={PRIMARY_RED} />
+        <ActivityIndicator color={COLORS.brandPrimary} />
         <Text className="mt-4 text-sm font-medium" style={{ color: colors.text }}>
           Detecting your region...
         </Text>
@@ -138,7 +137,7 @@ export default function PhoneInputField({ onValidChange, onSubmit, initialValue 
             value={formattedNumber}
             onChangeText={handleInputChange}
             maxLength={25}
-            selectionColor={PRIMARY_RED}
+            selectionColor={COLORS.brandPrimary}
           />
 
           {rawInput.length > 0 && (
@@ -146,7 +145,7 @@ export default function PhoneInputField({ onValidChange, onSubmit, initialValue 
               <Ionicons
                 name={isValid ? "checkmark-circle" : "close-circle"}
                 size={24}
-                color={isValid ? "#10B981" : "#EF4444"}
+                color={isValid ? COLORS.success : COLORS.error}
               />
             </Pressable>
           )}
@@ -185,10 +184,10 @@ export default function PhoneInputField({ onValidChange, onSubmit, initialValue 
           disabled={!isValid}
           className="h-16 rounded-2xl items-center justify-center"
           style={{
-            backgroundColor: isValid ? PRIMARY_RED : isDarkMode ? "#1F2937" : "#E5E7EB",
+                backgroundColor: isValid ? COLORS.brandPrimary : (isDarkMode ? COLORS.bgDarkAlt : "#E5E7EB"),
           }}
         >
-          <Text className="text-base font-black tracking-[2px]" style={{ color: isValid ? "#FFFFFF" : "#9CA3AF" }}>
+              <Text className="text-base font-black tracking-[2px]" style={{ color: isValid ? "#FFFFFF" : COLORS.textMuted }}>
             CONTINUE
           </Text>
         </Pressable>
@@ -196,12 +195,12 @@ export default function PhoneInputField({ onValidChange, onSubmit, initialValue 
 
       {/* Helper Text */}
       {rawInput.length > 0 && !isValid && (
-        <Text className="mt-3 text-xs text-center" style={{ color: "#EF4444" }}>
+        <Text className="mt-3 text-xs text-center" style={{ color: COLORS.error }}>
           Please enter a valid {country.name} phone number
         </Text>
       )}
 
-      <Text className="mt-4 text-xs text-center leading-5" style={{ color: "#666" }}>
+      <Text className="mt-4 text-xs text-center leading-5" style={{ color: COLORS.textMuted }}>
         Your phone number helps us provide fast emergency response and connect you with medical professionals 24/7.
       </Text>
     </View>

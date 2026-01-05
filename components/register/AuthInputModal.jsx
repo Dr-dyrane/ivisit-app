@@ -14,6 +14,7 @@ import {
 	Keyboard,
 	ScrollView,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { REGISTRATION_STEPS } from "../../constants/registrationSteps";
@@ -31,6 +32,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function AuthInputModal({ visible, onClose, type }) {
+	const insets = useSafeAreaInsets();
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
@@ -206,14 +208,15 @@ export default function AuthInputModal({ visible, onClose, type }) {
 				>
 					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-6" />
 
-					<KeyboardAvoidingView
-						behavior={Platform.OS === "ios" ? "padding" : "height"}
-						className="flex-1"
-					>
-						<ScrollView
-							contentContainerStyle={{ flexGrow: 1 }}
-							keyboardShouldPersistTaps="handled"
-						>
+									<KeyboardAvoidingView
+										behavior={Platform.OS === "ios" ? "padding" : "height"}
+										keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom + 90 : insets.bottom + 24}
+										className="flex-1"
+									>
+										<ScrollView
+											contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 120 }}
+											keyboardShouldPersistTaps="handled"
+										>
 							{/* Header */}
 							<View className="flex-row items-start mb-8">
 								{!isInputStep && (

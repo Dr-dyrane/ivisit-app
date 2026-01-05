@@ -11,6 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import logo from "../assets/logo.png";
 import { COLORS } from "../constants/colors";
+import { useTheme } from "../contexts/ThemeContext";
 
 const ToastContext = createContext();
 
@@ -54,19 +55,46 @@ const ToastProvider = ({ children }) => {
 	const hideToast = () =>
 		setToast((prev) => ({ ...prev, visible: false }));
 
-	const getGradient = () => {
+	const { isDarkMode } = useTheme();
+
+	const getStyleForType = () => {
 		switch (toast.type) {
 			case "success":
-				return [COLORS.success, COLORS.brandPrimary];
+				return {
+					gradient: [COLORS.success, "#1B5E20"],
+					iconColor: "#FFFFFF",
+					circleBg: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)",
+					circleBorder: COLORS.success,
+					textColor: "#FFFFFF",
+				};
 			case "error":
-				return [COLORS.error, "#8E0000"];
+				return {
+					gradient: [COLORS.error, "#8E0000"],
+					iconColor: "#FFFFFF",
+					circleBg: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)",
+					circleBorder: COLORS.error,
+					textColor: "#FFFFFF",
+				};
 			case "warning":
-				return [COLORS.warning, "#F9A825"];
+				return {
+					gradient: [COLORS.warning, "#D97706"],
+					iconColor: "#111827",
+					circleBg: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)",
+					circleBorder: COLORS.warning,
+					textColor: isDarkMode ? "#FFFFFF" : "#111827",
+				};
 			case "info":
 			default:
-				return [COLORS.brandPrimary, COLORS.brandSecondary];
+				return {
+					gradient: [COLORS.brandPrimary, COLORS.brandSecondary],
+					iconColor: "#FFFFFF",
+					circleBg: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)",
+					circleBorder: COLORS.accent,
+					textColor: "#FFFFFF",
+				};
 		}
 	};
+	const STYLE = getStyleForType();
 
 	const getPositionStyle = () => {
 		switch (toast.position) {
@@ -137,7 +165,7 @@ const ToastProvider = ({ children }) => {
 					]}
 				>
 					<LinearGradient
-						colors={getGradient()}
+						colors={STYLE.gradient}
 						start={{ x: 0, y: 0 }}
 						end={{ x: 1, y: 1 }}
 						className="rounded-2xl px-4 py-3"
@@ -150,9 +178,9 @@ const ToastProvider = ({ children }) => {
 									borderRadius: 9999,
 									alignItems: "center",
 									justifyContent: "center",
-									backgroundColor: "rgba(255,255,255,0.15)",
+									backgroundColor: STYLE.circleBg,
 									borderWidth: 1,
-									borderColor: COLORS.accent,
+									borderColor: STYLE.circleBorder,
 									marginRight: 12,
 								}}
 							>
@@ -166,7 +194,7 @@ const ToastProvider = ({ children }) => {
 							<Text
 								style={{
 									flex: 1,
-									color: "#FFFFFF",
+									color: STYLE.textColor,
 									fontSize: 15,
 									fontWeight: "600",
 								}}
