@@ -6,8 +6,7 @@ import { Ionicons } from "@expo/vector-icons"
 import * as Haptics from "expo-haptics"
 import { useTheme } from "../../contexts/ThemeContext"
 import useEmailValidation from "../../hooks/useEmailValidation"
-
-const PRIMARY_RED = "#86100E"
+import { COLORS } from "../../constants/colors"
 
 /**
  * EmailInputField - iVisit Registration
@@ -85,29 +84,29 @@ export default function EmailInputField({ onValidChange, onSubmit, initialValue 
   }
 
   const colors = {
-    inputBg: isDarkMode ? "#161B22" : "#F3F4F6",
-    text: isDarkMode ? "#FFFFFF" : "#0F172A",
+    inputBg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
+    text: isDarkMode ? COLORS.bgLight : COLORS.textPrimary,
   }
 
   return (
     <View>
       <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
         <View className="flex-row items-center rounded-2xl px-5 h-[72px]" style={{ backgroundColor: colors.inputBg }}>
-          <Ionicons name="mail-outline" size={24} color="#666" style={{ marginRight: 12 }} />
+          <Ionicons name="mail-outline" size={24} color={COLORS.textMuted} style={{ marginRight: 12 }} />
 
           <TextInput
             ref={inputRef}
             className="flex-1 text-xl font-bold"
             style={{ color: colors.text }}
             placeholder="your@email.com"
-            placeholderTextColor="#666"
+            placeholderTextColor={COLORS.textMuted}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
             autoFocus
             value={email}
             onChangeText={handleEmailChange}
-            selectionColor={PRIMARY_RED}
+            selectionColor={COLORS.brandPrimary}
             returnKeyType="done"
             onSubmitEditing={handleContinue}
           />
@@ -117,7 +116,7 @@ export default function EmailInputField({ onValidChange, onSubmit, initialValue 
               <Ionicons
                 name={isValid ? "checkmark-circle" : "close-circle"}
                 size={24}
-                color={isValid ? "#10B981" : "#EF4444"}
+                color={isValid ? COLORS.success : COLORS.error}
               />
             </Pressable>
           )}
@@ -132,22 +131,22 @@ export default function EmailInputField({ onValidChange, onSubmit, initialValue 
           disabled={!isValid}
           className="h-16 rounded-2xl items-center justify-center"
           style={{
-            backgroundColor: isValid ? PRIMARY_RED : isDarkMode ? "#1F2937" : "#E5E7EB",
+            backgroundColor: isValid ? COLORS.brandPrimary : isDarkMode ? COLORS.bgDarkAlt : "#E5E7EB",
           }}
         >
-          <Text className="text-base font-black tracking-[2px]" style={{ color: isValid ? "#FFFFFF" : "#9CA3AF" }}>
+          <Text className="text-base font-black tracking-[2px]" style={{ color: isValid ? COLORS.bgLight : COLORS.textMuted }}>
             CONTINUE
           </Text>
         </Pressable>
       </Animated.View>
 
       {email.length > 0 && !isValid && (
-        <Text className="mt-3 text-xs text-center" style={{ color: "#EF4444" }}>
+        <Text className="mt-3 text-xs text-center" style={{ color: COLORS.error }}>
           Please enter a valid email address
         </Text>
       )}
 
-      <Text className="mt-4 text-xs text-center leading-5" style={{ color: "#666" }}>
+      <Text className="mt-4 text-xs text-center leading-5" style={{ color: COLORS.textMuted }}>
         We'll use your email for appointment confirmations and important health notifications.
       </Text>
     </View>

@@ -4,11 +4,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
+import { COLORS } from "../../constants/colors";
 
 export default function HeaderBackButton() {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
-	const color = isDarkMode ? "#fff" : "#86100e";
+	const color = isDarkMode ? COLORS.bgLight : COLORS.brandPrimary;
 
 	if (!router.canGoBack()) return null;
 

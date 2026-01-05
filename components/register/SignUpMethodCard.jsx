@@ -4,16 +4,17 @@ import React, { useRef, useEffect } from "react";
 import { View, Text, Pressable, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
+import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 
 export default function SignUpMethodCard({ onSelect }) {
   const { isDarkMode } = useTheme();
 
   const colors = {
-    primary: "#86100E",
-    text: isDarkMode ? "#FFFFFF" : "#0F172A",
-    subtitle: isDarkMode ? "#94A3B8" : "#64748B",
-    card: isDarkMode ? "#111827" : "#F3E7E7",
+    primary: COLORS.brandPrimary,
+    text: isDarkMode ? COLORS.bgLight : COLORS.textPrimary,
+    subtitle: isDarkMode ? "#94A3B8" : COLORS.textMuted,
+    card: isDarkMode ? COLORS.bgDark : "#F3E7E7",
     border: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
   };
 

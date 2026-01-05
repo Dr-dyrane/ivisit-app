@@ -52,7 +52,7 @@ const WelcomeScreen = () => {
 	 * Navigate to login screen
 	 */
 	const handleLoginPress = () => {
-		// router.push("login");
+		router.push("login");
 	};
 
 	/**

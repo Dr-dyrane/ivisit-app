@@ -10,8 +10,7 @@ import { useTheme } from "../../contexts/ThemeContext"
 import countries from "./countries"
 import CountryPickerModal from "./CountryPickerModal"
 import * as Haptics from "expo-haptics"
-
-const PRIMARY_RED = "#86100E"
+import { COLORS } from "../../constants/colors"
 
 export default function PhoneInput({ value, onChange, onSubmit, loading }) {
   const { isDarkMode } = useTheme()
@@ -124,15 +123,15 @@ export default function PhoneInput({ value, onChange, onSubmit, loading }) {
   }
 
   const colors = {
-    inputBg: isDarkMode ? "#161B22" : "#F3F4F6",
-    text: isDarkMode ? "#FFFFFF" : "#0F172A",
+    inputBg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
+    text: isDarkMode ? COLORS.bgLight : COLORS.textPrimary,
     border: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
   }
 
   if (locationLoading || !selected) {
     return (
       <View className="items-center justify-center py-8">
-        <ActivityIndicator color={PRIMARY_RED} />
+        <ActivityIndicator color={COLORS.brandPrimary} />
         <Text className="mt-4 text-sm font-medium" style={{ color: colors.text }}>
           Detecting your region...
         </Text>
@@ -165,13 +164,13 @@ export default function PhoneInput({ value, onChange, onSubmit, loading }) {
             className="flex-1 text-xl font-bold"
             style={{ color: colors.text }}
             placeholder="000 000 0000"
-            placeholderTextColor="#666"
+            placeholderTextColor={COLORS.textMuted}
             keyboardType="phone-pad"
             autoFocus
             value={formatted}
             onChangeText={(t) => setDigits(t.replace(/\D/g, ""))}
             maxLength={20}
-            selectionColor={PRIMARY_RED}
+            selectionColor={COLORS.brandPrimary}
           />
 
           {/* Validation Indicator */}
@@ -179,7 +178,7 @@ export default function PhoneInput({ value, onChange, onSubmit, loading }) {
             <Ionicons
               name={isValid ? "checkmark-circle" : "close-circle"}
               size={24}
-              color={isValid ? "#10B981" : "#EF4444"}
+              color={isValid ? COLORS.success : COLORS.error}
             />
           )}
         </View>
@@ -204,12 +203,12 @@ export default function PhoneInput({ value, onChange, onSubmit, loading }) {
           disabled={loading || !isValid}
           className="mt-6 h-16 rounded-2xl items-center justify-center"
           style={{
-            backgroundColor: isValid ? PRIMARY_RED : isDarkMode ? "#1F2937" : "#E5E7EB",
+            backgroundColor: isValid ? COLORS.brandPrimary : isDarkMode ? COLORS.bgDarkAlt : "#E5E7EB",
             opacity: loading ? 0.7 : 1,
           }}
         >
           {loading ? (
-            <ActivityIndicator color="white" />
+            <ActivityIndicator color={COLORS.bgLight} />
           ) : (
             <Text className="text-white text-base font-black tracking-[2px]">CONTINUE</Text>
           )}
@@ -218,7 +217,7 @@ export default function PhoneInput({ value, onChange, onSubmit, loading }) {
 
       {/* Helper Text */}
       {digits.length > 0 && !isValid && (
-        <Text className="mt-3 text-xs text-center" style={{ color: "#EF4444" }}>
+        <Text className="mt-3 text-xs text-center" style={{ color: COLORS.error }}>
           Please enter a valid phone number for {selected.name}
         </Text>
       )}

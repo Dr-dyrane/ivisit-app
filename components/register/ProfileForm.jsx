@@ -7,8 +7,7 @@ import * as ImagePicker from "expo-image-picker"
 import * as Haptics from "expo-haptics"
 import { useTheme } from "../../contexts/ThemeContext"
 import { useRegistration } from "../../contexts/RegistrationContext"
-
-const PRIMARY_RED = "#86100E"
+import { COLORS } from "../../constants/colors"
 
 /**
  * ProfileForm - iVisit Registration
@@ -30,8 +29,8 @@ export default function ProfileForm({ onComplete }) {
   const buttonScale = useRef(new Animated.Value(1)).current
 
   const colors = {
-    inputBg: isDarkMode ? "#161B22" : "#F3F4F6",
-    text: isDarkMode ? "#FFFFFF" : "#0F172A",
+    inputBg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
+    text: isDarkMode ? COLORS.bgLight : COLORS.textPrimary,
   }
 
   const handlePickImage = async () => {
@@ -117,7 +116,7 @@ export default function ProfileForm({ onComplete }) {
         Complete Your Profile
       </Text>
 
-      <Text className="text-base leading-6 mb-8" style={{ color: "#666" }}>
+      <Text className="text-base leading-6 mb-8" style={{ color: COLORS.textMuted }}>
         Help us personalize your iVisit experience
       </Text>
 
@@ -129,10 +128,10 @@ export default function ProfileForm({ onComplete }) {
           {avatar ? (
             <Image source={{ uri: avatar }} className="w-24 h-24 rounded-full" />
           ) : (
-            <Ionicons name="camera" size={32} color="#666" />
+            <Ionicons name="camera" size={32} color={COLORS.textMuted} />
           )}
         </View>
-        <Text className="text-xs font-medium text-center mt-2" style={{ color: PRIMARY_RED }}>
+        <Text className="text-xs font-medium text-center mt-2" style={{ color: COLORS.brandPrimary }}>
           Add Photo
         </Text>
       </Pressable>
@@ -142,15 +141,15 @@ export default function ProfileForm({ onComplete }) {
           className="rounded-2xl px-5 h-[72px] mb-4 flex-row items-center"
           style={{ backgroundColor: colors.inputBg }}
         >
-          <Ionicons name="person-outline" size={22} color="#666" style={{ marginRight: 12 }} />
+          <Ionicons name="person-outline" size={22} color={COLORS.textMuted} style={{ marginRight: 12 }} />
           <TextInput
             placeholder="First Name"
-            placeholderTextColor="#666"
+            placeholderTextColor={COLORS.textMuted}
             value={firstName}
             onChangeText={setFirstName}
             onFocus={() => setCurrentField("firstName")}
             autoCapitalize="words"
-            selectionColor={PRIMARY_RED}
+            selectionColor={COLORS.brandPrimary}
             returnKeyType="next"
             className="flex-1 text-xl font-bold"
             style={{ color: colors.text }}
@@ -163,7 +162,7 @@ export default function ProfileForm({ onComplete }) {
           className="rounded-2xl px-5 h-[72px] mb-6 flex-row items-center"
           style={{ backgroundColor: colors.inputBg }}
         >
-          <Ionicons name="person-outline" size={22} color="#666" style={{ marginRight: 12 }} />
+          <Ionicons name="person-outline" size={22} color={COLORS.textMuted} style={{ marginRight: 12 }} />
           <TextInput
             placeholder="Last Name"
             placeholderTextColor="#666"
@@ -171,7 +170,7 @@ export default function ProfileForm({ onComplete }) {
             onChangeText={setLastName}
             onFocus={() => setCurrentField("lastName")}
             autoCapitalize="words"
-            selectionColor={PRIMARY_RED}
+            selectionColor={COLORS.brandPrimary}
             returnKeyType="done"
             onSubmitEditing={handleSubmit}
             className="flex-1 text-xl font-bold"
@@ -187,12 +186,12 @@ export default function ProfileForm({ onComplete }) {
           onPressOut={handlePressOut}
           disabled={!isValid || loading}
           className="h-16 rounded-2xl items-center justify-center"
-          style={{
-            backgroundColor: isValid ? PRIMARY_RED : isDarkMode ? "#1F2937" : "#E5E7EB",
+            style={{
+            backgroundColor: isValid ? COLORS.brandPrimary : isDarkMode ? COLORS.bgDarkAlt : "#E5E7EB",
             opacity: loading ? 0.7 : 1,
           }}
         >
-          <Text className="text-base font-black tracking-[2px]" style={{ color: isValid ? "#FFFFFF" : "#9CA3AF" }}>
+          <Text className="text-base font-black tracking-[2px]" style={{ color: isValid ? COLORS.bgLight : COLORS.textMuted }}>
             {loading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
           </Text>
         </Pressable>

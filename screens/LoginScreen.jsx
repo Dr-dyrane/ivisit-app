@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import {
 	View,
 	Text,
-	Pressable,
 	ActivityIndicator,
 	Modal,
 	ScrollView,
 	TouchableOpacity,
 	Image,
+	KeyboardAvoidingView,
+	Platform,
 	Keyboard,
 } from "react-native";
 import { Formik } from "formik";
@@ -20,6 +21,11 @@ import useLogin from "../hooks/mutations/useLogin";
 import { Ionicons } from "@expo/vector-icons";
 import useForgotPassword from "../hooks/mutations/useForgotPassword";
 import useResetPassword from "../hooks/mutations/useResetPassword";
+import { useTheme } from "../contexts/ThemeContext";
+import { COLORS } from "../constants/colors";
+import SlideButton from "../components/ui/SlideButton";
+import LoginModal from "../components/login/LoginModal";
+import LoginFlow from "../components/login/LoginFlow";
 
 const LoginSchema = Yup.object().shape({
 	email: Yup.string().email("Invalid email").required("Email is required"),
@@ -37,6 +43,7 @@ const ResetPasswordSchema = Yup.object().shape({
 
 const LoginScreen = () => {
 	const [loading, setLoading] = useState(false);
+	const [loginFlowVisible, setLoginFlowVisible] = useState(false);
 	const [resetEmail, setResetEmail] = useState("");
 	const [forgotPasswordVisible, setForgotPasswordVisible] = useState(false);
 	const [resetPasswordVisible, setResetPasswordVisible] = useState(false);
@@ -46,6 +53,7 @@ const LoginScreen = () => {
 	const { resetPassword, loading: isPending } = useResetPassword();
 	const router = useRouter();
 	const { showToast } = useToast();
+	const { isDarkMode } = useTheme();
 	const [keyboardVisible, setKeyboardVisible] = useState(false);
 
 	const handleLogin = async (values) => {
@@ -113,237 +121,138 @@ const LoginScreen = () => {
 	}, []);
 
 	return (
-		<LinearGradient
-			colors={["#fff", "#f0fff4", "#fff"]}
-			className="flex-1 justify-between items-center p-6 bg-backgroundLight"
-		>
-			<View className="flex flex-col flex-shrink">
-				<View className="justify-center space-y-2">
-					<Text className="text-6xl text-center font-[900] text-primary">
-						Welcome Back
-					</Text>
-					<Text className="text-lg text-center text-gray-500">
-						Login to your account
-					</Text>
+		<>
+			<LinearGradient
+				colors={isDarkMode ? [COLORS.bgDark, COLORS.bgDarkAlt] : [COLORS.bgLight, "#F3E7E7"]}
+				className="flex-1"
+			>
+			<KeyboardAvoidingView
+				behavior={Platform.OS === "ios" ? "padding" : "height"}
+				keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 24}
+				className="flex-1 px-6 py-8"
+			>
+				<View className="flex-1 justify-center items-center">
+					<View className="items-center mb-6">
+						<Image source={require("../assets/logo.png")} style={{ width: 56, height: 56 }} />
+						<Text className="text-4xl font-black mt-3" style={{ color: isDarkMode ? "#FFF" : COLORS.brandPrimary }}>
+							Welcome Back
+						</Text>
+						<Text className="text-base mt-2" style={{ color: isDarkMode ? "#9CA3AF" : COLORS.textMuted }}>
+							Login to your account
+						</Text>
+					</View>
+
+					{!keyboardVisible && (
+						<Image source={require("../assets/sign/login.png")} style={{ width: 300, height: 220 }} resizeMode="contain" />
+					)}
+
+					<View className="w-full mt-6">
+						<ScrollView keyboardShouldPersistTaps="handled">
+							<Formik
+								initialValues={{ email: "", password: "" }}
+								validationSchema={LoginSchema}
+								onSubmit={handleLogin}
+							>
+								{({
+									handleChange,
+									handleBlur,
+									handleSubmit,
+									values,
+									errors,
+									touched,
+								}) => (
+									<>
+										<Input
+											label="Email"
+											placeholder="Enter your email"
+											icon="mail"
+											onChangeText={handleChange("email")}
+											onBlur={handleBlur("email")}
+											value={values.email}
+											error={touched.email && errors.email}
+										/>
+
+										<Input
+											label="Password"
+											placeholder="Enter your password"
+											icon="lock-closed"
+											secureTextEntry
+											onChangeText={handleChange("password")}
+											onBlur={handleBlur("password")}
+											value={values.password}
+											error={touched.password && errors.password}
+										/>
+
+										<TouchableOpacity onPress={() => setForgotPasswordVisible(true)} className="mt-2 items-end">
+											<Text style={{ color: COLORS.brandPrimary }}>Forgot Password?</Text>
+										</TouchableOpacity>
+
+										<View className="mt-6">
+											<SlideButton onPress={handleSubmit}>
+												{loading ? "Logging in..." : "Login"}
+											</SlideButton>
+										</View>
+
+										<TouchableOpacity onPress={() => setLoginFlowVisible(true)} className="mt-3 items-center">
+											<Text style={{ color: COLORS.brandPrimary }}>Quick Login (OTP / Social)</Text>
+										</TouchableOpacity>
+									</>
+								)}
+							</Formik>
+						</ScrollView>
+					</View>
 				</View>
-				{!keyboardVisible && (
-					<Image
-						source={require("../assets/sign/login.png")}
-						className="contain w-[320px] h-[320px] flex-1"
-						resizeMode="contain"
-					/>
+
+				{loading && (
+					<ActivityIndicator size="large" color={COLORS.success} className="mt-4" />
 				)}
-			</View>
-			<View className="w-full">
-				<ScrollView>
-					<Formik
-						initialValues={{ email: "", password: "" }}
-						validationSchema={LoginSchema}
-						onSubmit={handleLogin}
-					>
-						{({
-							handleChange,
-							handleBlur,
-							handleSubmit,
-							values,
-							errors,
-							touched,
-						}) => (
+			</KeyboardAvoidingView>
+
+			<LoginModal visible={forgotPasswordVisible} onClose={() => setForgotPasswordVisible(false)} title="Forgot Password" subtitle="Enter your email to request a reset code" showBack={false}>
+				<View className="w-full">
+					{!keyboardVisible && (
+						<Image source={require("../assets/sign/forgot.png")} style={{ width: 280, height: 180 }} resizeMode="contain" />
+					)}
+					<Formik initialValues={{ email: "" }} onSubmit={(values) => handleForgotPassword(values.email)}>
+						{({ handleBlur, handleSubmit, handleChange, values, errors, touched }) => (
 							<>
-								<Input
-									label="Email"
-									placeholder="Enter your email"
-									icon="mail"
-									onChangeText={handleChange("email")}
-									onBlur={handleBlur("email")}
-									value={values.email}
-									error={touched.email && errors.email}
-								/>
-
-								<Input
-									label="Password"
-									placeholder="Enter your password"
-									icon="lock-closed"
-									secureTextEntry
-									onChangeText={handleChange("password")}
-									onBlur={handleBlur("password")}
-									value={values.password}
-									error={touched.password && errors.password}
-								/>
-
-								<Pressable
-									onPress={() => setForgotPasswordVisible(true)}
-									className="mt-1 items-end mr-2"
-								>
-									<Text className="text-center text-primary">
-										Forgot Password?
-									</Text>
-								</Pressable>
-
-								<Pressable
-									onPress={handleSubmit}
-									disabled={loading}
-									className="w-full bg-primary rounded-xl py-4 text-lg mt-4 flex flex-row px-6 items-center justify-between space-x-4"
-									android_ripple={{ color: "#333" }}
-								>
-									<Text className="text-white text-xl">
-										{loading ? "Logging in..." : "Login"}
-									</Text>
-									<View className="w-8 h-8 bg-none border border-white rounded-full justify-center items-center">
-										<Ionicons name="arrow-forward" size={18} color="white" />
-									</View>
-								</Pressable>
+								<Input label="Email" placeholder="Enter your email" icon="mail" onChangeText={handleChange("email")} onBlur={handleBlur("email")} value={values.email} error={touched.email && errors.email} />
+								<View className="w-full mt-4">
+									<SlideButton onPress={handleSubmit}>{isLoading ? "Requesting" : "Request Reset Code"}</SlideButton>
+								</View>
 							</>
 						)}
 					</Formik>
-				</ScrollView>
-			</View>
+				</View>
+			</LoginModal>
 
-			{loading && (
-				<ActivityIndicator size="large" color="#4CAF50" className="mt-4" />
-			)}
-
-			<Modal visible={forgotPasswordVisible} animationType="slide" transparent>
-				<LinearGradient
-					colors={["#fff", "#f0fff4", "#fff"]}
-					className="flex flex-col w-full h-full p-6 pt-3 bg-backgroundLight justify-center items-center"
-				>
-					<View className="flex flex-row justify-between items-center w-full">
-						<TouchableOpacity onPress={() => setForgotPasswordVisible(false)}>
-							<Ionicons name="arrow-back" size={24} color="black" />
-						</TouchableOpacity>
-						<Text className="text-lg">Forgot Password</Text>
+			<LoginModal visible={resetPasswordVisible} onClose={() => setResetPasswordVisible(false)} title="Reset Password" subtitle="Enter your reset code and new password" showBack={false}>
+				<View className="w-full">
+					<View className="bg-gray-200 mt-2 p-4 rounded-xl items-center justify-center mb-4">
+						<Text>Reset Code, Valid for 1 hour</Text>
+						<Text className="text-2xl font-bold tracking-widest">{resetToken}</Text>
 					</View>
 
-					<View className="w-full flex-1 justify-center items-center">
-						{!keyboardVisible && (
-							<Image
-								source={require("../assets/sign/forgot.png")}
-								className="contain w-[320px] h-[320px] flex-1"
-								resizeMode="contain"
-							/>
+					{!keyboardVisible && (
+						<Image source={require("../assets/sign/reset.png")} style={{ width: 260, height: 160 }} resizeMode="contain" />
+					)}
+
+					<Formik initialValues={{ resetToken: resetToken, newPassword: "" }} validationSchema={ResetPasswordSchema} onSubmit={handleResetPassword}>
+						{({ handleBlur, handleSubmit, handleChange, values, errors, touched }) => (
+							<>
+								<Input label="Reset Code" placeholder="Enter your reset code" icon="key" onChangeText={handleChange("resetToken")} onBlur={handleBlur("resetToken")} value={values.resetToken} error={touched.resetToken && errors.resetToken} />
+								<Input label="New Password" placeholder="Enter new password" icon="lock-closed" secureTextEntry onChangeText={handleChange("newPassword")} onBlur={handleBlur("newPassword")} value={values.newPassword} error={touched.newPassword && errors.newPassword} />
+								<View className="w-full mt-4">
+									<SlideButton onPress={handleSubmit}>{isPending ? "Resetting" : "Reset Password"}</SlideButton>
+								</View>
+							</>
 						)}
-						<Formik
-							initialValues={{ email: "" }}
-							onSubmit={(values) => handleForgotPassword(values.email)}
-						>
-							{({
-								handleBlur,
-								handleSubmit,
-								handleChange,
-								values,
-								errors,
-								touched,
-							}) => (
-								<>
-									<Input
-										label="Email"
-										placeholder="Enter your email"
-										icon="mail"
-										onChangeText={handleChange("email")}
-										onBlur={handleBlur("email")}
-										value={values.email}
-										error={touched.email && errors.email}
-									/>
-									<Pressable
-										onPress={handleSubmit}
-										disabled={loading}
-										className="w-full bg-primary rounded-xl py-4 text-lg mt-4 flex flex-row px-6 items-center justify-between space-x-4"
-										android_ripple={{ color: "#333" }}
-									>
-										<Text className="text-white text-xl">
-											{isLoading ? "Requesting" : "Request Reset Code"}
-										</Text>
-										<View className="w-8 h-8 bg-none border border-white rounded-full justify-center items-center">
-											<Ionicons name="arrow-forward" size={18} color="white" />
-										</View>
-									</Pressable>
-								</>
-							)}
-						</Formik>
-					</View>
-				</LinearGradient>
-			</Modal>
-
-			<Modal visible={resetPasswordVisible} animationType="slide" transparent>
-				<LinearGradient
-					colors={["#fff", "#f0fff4", "#fff"]}
-					className="flex flex-col w-full h-full p-6 pt-3 bg-backgroundLight justify-center items-center"
-				>
-					<View className="flex flex-row justify-between items-center w-full">
-						<TouchableOpacity onPress={() => setResetPasswordVisible(false)}>
-							<Ionicons name="arrow-back" size={24} color="black" />
-						</TouchableOpacity>
-						<Text className="text-lg">Reset Password</Text>
-					</View>
-					<View className="w-full flex-1 justify-center items-center">
-						<View className="bg-gray-200 mt-4 p-6 rounded-xl text-center items-center justify-center space-y-2">
-							<Text>Reset Code, Valid for 1 hour</Text>
-							<Text className="text-2xl font-bold tracking-widest">
-								{resetToken}
-							</Text>
-						</View>
-
-						{!keyboardVisible && (
-							<Image
-								source={require("../assets/sign/reset.png")}
-								className="contain w-[320px] h-[320px] flex-1"
-								resizeMode="contain"
-							/>
-						)}
-						<Formik
-							initialValues={{ resetToken: resetToken, newPassword: "" }}
-							validationSchema={ResetPasswordSchema}
-							onSubmit={handleResetPassword}
-						>
-							{({
-								handleBlur,
-								handleSubmit,
-								handleChange,
-								values,
-								errors,
-								touched,
-							}) => (
-								<>
-									<Input
-										label="Reset Code"
-										placeholder="Enter your reset code"
-										icon="key"
-										onChangeText={handleChange("resetToken")}
-										onBlur={handleBlur("resetToken")}
-										value={values.resetToken}
-										error={touched.resetToken && errors.resetToken}
-									/>
-									<Input
-										label="New Password"
-										placeholder="Enter new password"
-										icon="lock-closed"
-										secureTextEntry
-										onChangeText={handleChange("newPassword")}
-										onBlur={handleBlur("newPassword")}
-										value={values.newPassword}
-										error={touched.newPassword && errors.newPassword}
-									/>
-									<Pressable
-										onPress={handleSubmit}
-										disabled={loading}
-										className="w-full bg-primary rounded-xl py-4 text-lg mt-4 flex flex-row px-6 items-center justify-between space-x-4"
-										android_ripple={{ color: "#333" }}
-									>
-										<Text className="text-white text-xl">
-											{isPending ? "Resetting" : "Reset Password"}
-										</Text>
-										<View className="w-8 h-8 bg-none border border-white rounded-full justify-center items-center">
-											<Ionicons name="arrow-forward" size={18} color="white" />
-										</View>
-									</Pressable>
-								</>
-							)}
-						</Formik>
-					</View>
-				</LinearGradient>
-			</Modal>
-		</LinearGradient>
+					</Formik>
+				</View>
+			</LoginModal>
+			</LinearGradient>
+			<LoginFlow visible={loginFlowVisible} onClose={() => setLoginFlowVisible(false)} />
+		</>
 	);
 };
 

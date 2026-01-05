@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
+import { COLORS } from "../../constants/colors";
 
 /**
  * SlideButton
@@ -40,13 +41,14 @@ export default function SlideButton({
 	const { isDarkMode } = useTheme();
 
 	const fillAnim = useRef(new Animated.Value(0)).current;
+	const scaleAnim = useRef(new Animated.Value(1)).current;
 	const [width, setWidth] = useState(0);
 
-	const COLORS = {
-		primary: "#86100E",
-		baseBG: isDarkMode ? "#111827" : "#F3E7E7",
-		baseText: isDarkMode ? "#FFFFFF" : "#86100E",
-		activeText: "#FFFFFF",
+	const themeColors = {
+		primary: COLORS.brandPrimary,
+		baseBG: isDarkMode ? COLORS.bgDark : "#F3E7E7",
+		baseText: isDarkMode ? COLORS.bgLight : COLORS.brandPrimary,
+		activeText: COLORS.bgLight,
 	};
 
 	const handlePress = () => {
@@ -65,6 +67,15 @@ export default function SlideButton({
 		});
 	};
 
+	const handlePressIn = () => {
+		Animated.spring(scaleAnim, { toValue: 0.98, useNativeDriver: true }).start();
+		if (Platform.OS !== "web") Haptics.selectionAsync();
+	};
+
+	const handlePressOut = () => {
+		Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+	};
+
 	const fillWidth = fillAnim.interpolate({
 		inputRange: [0, 1],
 		outputRange: ["5%", "100%"],
@@ -77,24 +88,27 @@ export default function SlideButton({
 	});
 
 	return (
-		<Pressable
-			onPress={handlePress}
-			onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
-			style={[
-				styles.container,
-				{
-					height,
-					borderRadius: radius,
-					backgroundColor: COLORS.baseBG,
-				},
-			]}
-		>
+		<Animated.View style={{ transform: [{ scale: scaleAnim }], width: "100%" }}>
+			<Pressable
+				onPress={handlePress}
+				onPressIn={handlePressIn}
+				onPressOut={handlePressOut}
+				onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+				style={[
+					styles.container,
+					{
+						height,
+						borderRadius: radius,
+						backgroundColor: themeColors.baseBG,
+					},
+				]}
+			>
 			{/* Base content */}
 			<View style={styles.content}>
-				<Text style={[styles.text, { color: COLORS.baseText }]}>
+				<Text style={[styles.text, { color: themeColors.baseText }]}> 
 					{children}
 				</Text>
-				{icon && icon(COLORS.baseText)}
+				{icon && icon(themeColors.baseText)}
 			</View>
 
 			{/* Sliding overlay */}
@@ -103,20 +117,21 @@ export default function SlideButton({
 					styles.overlay,
 					{
 						width: fillWidth,
-						backgroundColor: COLORS.primary,
+						backgroundColor: themeColors.primary,
 					},
 				]}
 			>
 				<Animated.View
 					style={[styles.content, { width, opacity: overlayTextOpacity }]}
 				>
-					<Text style={[styles.text, { color: COLORS.activeText }]}>
+					<Text style={[styles.text, { color: themeColors.activeText }]}> 
 						{children}
 					</Text>
-					{icon && icon(COLORS.activeText)}
+					{icon && icon(themeColors.activeText)}
 				</Animated.View>
 			</Animated.View>
-		</Pressable>
+			</Pressable>
+		</Animated.View>
 	);
 }
 

@@ -131,7 +131,7 @@ export default function PhoneInputField({ onValidChange, onSubmit, initialValue 
             className="flex-1 text-xl font-bold"
             style={{ color: colors.text }}
             placeholder="000 000 0000"
-            placeholderTextColor="#666"
+            placeholderTextColor={COLORS.textMuted}
             keyboardType="phone-pad"
             autoFocus
             value={formattedNumber}

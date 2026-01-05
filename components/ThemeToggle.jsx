@@ -34,7 +34,7 @@ import { usePathname } from "expo-router";
 
 const RENDER_DELAY_MS = 2000; // Delay initial mount for Hero/CTA to be seen
 const AUTO_COLLAPSE_MS = 3000; // Auto-collapse delay
-const PRIMARY_RED = "#86100E"; // Accent for light mode icon
+import { COLORS } from "../constants/colors";
 
 export default function ThemeToggle() {
 	const { isDarkMode, toggleTheme } = useTheme();
@@ -207,7 +207,7 @@ export default function ThemeToggle() {
 						}
 						style={({ pressed }) => [
 							styles.iconCircle,
-							expanded && !isDarkMode && { backgroundColor: PRIMARY_RED },
+							expanded && !isDarkMode && { backgroundColor: COLORS.brandPrimary },
 							pressed && { opacity: 0.7 },
 						]}
 					>
@@ -217,11 +217,11 @@ export default function ThemeToggle() {
 							color={
 								expanded
 									? !isDarkMode
-										? "white"
+										? COLORS.bgLight
 										: "rgba(255,255,255,0.3)"
 									: isDarkMode
-									? "white"
-									: PRIMARY_RED
+									? COLORS.bgLight
+									: COLORS.brandPrimary
 							}
 						/>
 					</Pressable>
@@ -232,13 +232,13 @@ export default function ThemeToggle() {
 							onPress={isDarkMode ? null : handleThemeChange}
 							style={[
 								styles.iconCircle,
-								isDarkMode && { backgroundColor: "white" },
+								isDarkMode && { backgroundColor: COLORS.bgLight },
 							]}
 						>
 							<Feather
 								name="moon"
 								size={iconSize}
-								color={isDarkMode ? PRIMARY_RED : "rgba(134, 16, 14, 0.3)"}
+								color={isDarkMode ? COLORS.brandPrimary : "rgba(134, 16, 14, 0.3)"}
 							/>
 						</Pressable>
 					)}

@@ -56,11 +56,11 @@ function AuthStackScreens() {
 							<Text
 								numberOfLines={2}
 								ellipsizeMode="tail"
-								className="text-md text-gray-500"
+								className="text-xs text-gray-500"
 							>
 								Dont have an acount?
 							</Text>
-							<Text className="text-primary ml-1 text-md">Sign up</Text>
+							<Text className="text-primary ml-1 text-xs">Sign up</Text>
 						</Pressable>
 					),
 				})}
@@ -98,7 +98,7 @@ function AuthStackScreens() {
 						</Pressable>
 					),
 					headerRight: () => (
-						<Pressable className="flex flex-row items-center justify-center max-w-[40vw] mx-2">
+						<Pressable onPress={() => router.push("login")} className="flex flex-row items-center justify-center max-w-[40vw] mx-2">
 							<Text className="text-xs text-gray-500">
 								Have an account?{" "}
 								<Text className="text-primary font-semibold">Login</Text>
