@@ -4,21 +4,23 @@
 import { useState, useRef, useEffect } from "react";
 import { View, Text, Animated, Pressable, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
-import { useRegistration } from "../contexts/RegistrationContext";
 import SignUpMethodCard from "../components/register/SignUpMethodCard";
 import AuthInputModal from "../components/register/AuthInputModal";
+import SocialAuthRow from "../components/auth/SocialAuthRow";
 import * as Haptics from "expo-haptics";
 
 /**
- * SignupScreen - iVisit Registration
+ * SignupScreen — iVisit Registration Entry
  *
- * Design Philosophy:
- * - Minimal text to reduce stress during emergencies
- * - Clear, simple choices without overwhelming information
- * - Intentional medical red (#86100E) for emergency context
- * - Social login placeholders for future implementation
+ * Responsibilities:
+ * - Present primary signup methods (email / phone)
+ * - Orchestrate social auth display (NOT logic)
+ * - Control animation timing & layout
+ *
+ * Explicitly does NOT:
+ * - Implement authentication logic
+ * - Know provider internals
  */
 
 const { width } = Dimensions.get("window");
@@ -69,14 +71,9 @@ export default function SignupScreen() {
 		setModalVisible(true);
 	};
 
-	const handleCloseModal = () => {
-		setModalVisible(false);
-		setAuthType(null);
-	};
-
 	return (
 		<LinearGradient colors={colors.background} className="flex-1 px-8">
-			{/* MAIN SIGNUP METHODS */}
+			{/* MAIN METHODS */}
 			<Animated.View
 				style={{ opacity, transform: [{ translateY: methodAnim }] }}
 				className="flex-1 justify-center"
@@ -92,51 +89,24 @@ export default function SignupScreen() {
 					<View className="flex-1 h-[1px] bg-gray-500/10" />
 				</View>
 
-				{/* SOCIAL BUTTONS - Placeholders for future implementation */}
+				{/* SOCIAL AUTH */}
 				<Animated.View
 					style={{ opacity, transform: [{ translateY: socialAnim }] }}
-					className="flex-row justify-between"
 				>
-					<SocialIcon name="logo-apple" color={colors.text} bg={colors.card} />
-					<SocialIcon name="logo-google" color={colors.text} bg={colors.card} />
-					<SocialIcon
-						name="logo-x"
-						color={colors.text}
-						bg={colors.card}
-					/>
+					<SocialAuthRow />
 				</Animated.View>
 			</Animated.View>
 
-			{/* LEGAL FOOTER */}
+			{/* LEGAL */}
 			<View className="pb-8">
-				<Text className="text-center text-[10px] leading-4 text-gray-500 font-medium">
+				<Text className="text-center text-[10px] text-gray-500">
 					By continuing, you agree to iVisit's
 				</Text>
-
-				<Text className="text-center text-[10px] leading-4 text-gray-500 font-medium">
-					<Text
-						style={{
-							fontWeight: "bold",
-							borderBottomWidth: 1,
-							borderBottomColor: colors.text,
-						}}
-					>
-						Terms
-					</Text>{" "}
-					&{" "}
-					<Text
-						style={{
-							fontWeight: "bold",
-							borderBottomWidth: 1,
-							borderBottomColor: colors.text,
-						}}
-					>
-						Privacy
-					</Text>
-					.
+				<Text className="text-center text-[10px] text-gray-500 font-medium">
+					<Text className="font-black underline">Terms</Text> &{" "}
+					<Text className="font-black underline">Privacy</Text>
 				</Text>
-
-				<Text className="text-center text-[10px] leading-4 text-gray-500 font-medium">
+				<Text className="text-center text-[10px] text-gray-500">
 					We require{" "}
 					<Text style={{ color: PRIMARY_RED, fontWeight: "900" }}>
 						Location Access
@@ -145,73 +115,11 @@ export default function SignupScreen() {
 				</Text>
 			</View>
 
-			{/* AUTH INPUT MODAL */}
 			<AuthInputModal
 				visible={modalVisible}
 				type={authType}
-				onClose={handleCloseModal}
+				onClose={() => setModalVisible(false)}
 			/>
 		</LinearGradient>
 	);
 }
-
-/**
- * SocialIcon - Placeholder for social login
- * Will be implemented in future versions
- */
-const SocialIcon = ({ name, color, bg }) => {
-	const scale = useRef(new Animated.Value(1)).current;
-	const { isDarkMode } = useTheme();
-	const { socialSignUp } = useRegistration();
-
-	const handlePress = async () => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-		Animated.sequence([
-			Animated.timing(scale, {
-				toValue: 0.92,
-				duration: 100,
-				useNativeDriver: true,
-			}),
-			Animated.timing(scale, {
-				toValue: 1,
-				duration: 100,
-				useNativeDriver: true,
-			}),
-		]).start();
-
-		// Call registration social signup
-		const provider = name.includes("apple") ? "apple" : name.includes("google") ? "google" : "x";
-		const profile = {
-			name: `${provider} user`,
-			email: `${provider}_user_${Date.now()}@example.com`,
-		};
-
-		try {
-			const ok = await socialSignUp(provider, profile);
-			console.log("[v0] socialSignUp result:", ok);
-		} catch (err) {
-			console.warn("Social signup error:", err);
-		}
-	};
-
-	return (
-		<Pressable onPress={handlePress}>
-			<Animated.View
-				style={{
-					backgroundColor: bg,
-					width: width * 0.23,
-					height: 64,
-					borderRadius: 20,
-					alignItems: "center",
-					justifyContent: "center",
-					borderWidth: 1,
-					borderColor: isDarkMode ? "#222" : "#EEE",
-					transform: [{ scale }],
-				}}
-			>
-				<Ionicons name={name} size={24} color={color} />
-			</Animated.View>
-		</Pressable>
-	);
-};
