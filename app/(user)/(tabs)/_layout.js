@@ -1,7 +1,7 @@
 // app/(user)/(tabs)/_layout.js
 
 import { Tabs } from "expo-router";
-import { Fontisto, Ionicons } from "@expo/vector-icons";
+import { Fontisto, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import {
@@ -90,7 +90,7 @@ export default function TabsLayout() {
 			<Tabs.Screen
 				name="index"
 				options={{
-					title: "Emergency",
+					title: "SOS",
 					tabBarIcon: ({ focused, color }) => (
 						<Ionicons
 							name={focused ? "medical" : "medical-outline"}
@@ -191,7 +191,7 @@ export default function TabsLayout() {
 			<Tabs.Screen
 				name="book-bed"
 				options={{
-					title: "Book Bed",
+					title: "BED",
 					tabBarIcon: ({ focused, color }) => (
 						<Fontisto
 							name={focused ? "bed-patient" : "bed-patient"}
@@ -207,7 +207,7 @@ export default function TabsLayout() {
 			<Tabs.Screen
 				name="visits"
 				options={{
-					title: "Visits",
+					title: "VISITS",
 					tabBarIcon: ({ focused, color }) => (
 						<Ionicons
 							name={focused ? "calendar" : "calendar-outline"}
@@ -223,10 +223,10 @@ export default function TabsLayout() {
 			<Tabs.Screen
 				name="more"
 				options={{
-					title: "More",
+					title: "MORE",
 					tabBarIcon: ({ focused, color }) => (
-						<Ionicons
-							name={focused ? "menu" : "menu-outline"}
+						<MaterialCommunityIcons
+							name="skew-more"
 							size={24}
 							color={color}
 						/>
