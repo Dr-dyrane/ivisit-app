@@ -37,23 +37,31 @@ const userStore = {
 				(user) =>
 					(user.email &&
 						user.email.trim().toLowerCase() ===
-							credentials.email.trim().toLowerCase()) ||
+							credentials.email?.trim().toLowerCase()) ||
 					user.phone === credentials.phone
 			);
 
-			if (user && user.password === credentials.password) {
+			if (!user) {
+				throw new Error("User not found. Please sign up first.");
+			}
+
+			if (!user.password) {
+				throw new Error("No password set. Please set a password to continue.");
+			}
+
+			if (user.password === credentials.password) {
 				const token = generateRandomToken();
 				user.token = token;
 
 				const updatedUsers = users.map((u) =>
-					u.email === user.email ? user : u
+					u.email === user.email || u.phone === user.phone ? user : u
 				);
 				await AsyncStorage.setItem("users", JSON.stringify(updatedUsers));
 				await AsyncStorage.setItem("token", token);
 
 				return { data: user };
 			} else {
-				throw new Error("Invalid email or password");
+				throw new Error("Invalid password");
 			}
 		} catch (error) {
 			console.error("Login error:", error.message);
