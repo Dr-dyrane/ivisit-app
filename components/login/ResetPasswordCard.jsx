@@ -26,6 +26,7 @@ export default function ResetPasswordCard({ email, onPasswordReset }) {
 	const [resetToken, setResetToken] = useState("");
 	const [newPassword, setNewPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
+	const [error, setError] = useState(null);
 
 	const shakeAnim = useRef(new Animated.Value(0)).current;
 	const buttonScale = useRef(new Animated.Value(1)).current;
@@ -61,8 +62,11 @@ export default function ResetPasswordCard({ email, onPasswordReset }) {
 	const handleSubmit = async () => {
 		if (!isValid) {
 			triggerShake();
+			setError("Please enter a valid 6-digit code and password");
 			return;
 		}
+
+		setError(null);
 
 		try {
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -70,8 +74,13 @@ export default function ResetPasswordCard({ email, onPasswordReset }) {
 
 			showToast("Password reset successfully", "success");
 			onPasswordReset?.();
-		} catch (error) {
-			showToast(error.message || "Failed to reset password", "error");
+		} catch (err) {
+			const [errorCode, errorMessage] = err.message?.split("|") || [];
+			const displayMessage = errorMessage || "Failed to reset password";
+
+			setError(displayMessage);
+			showToast(displayMessage, "error");
+			triggerShake();
 		}
 	};
 
@@ -91,6 +100,38 @@ export default function ResetPasswordCard({ email, onPasswordReset }) {
 					{email}
 				</Text>
 			</Text>
+
+			{error && (
+				<View
+					style={{
+						backgroundColor: `${COLORS.error}15`,
+						padding: 12,
+						borderRadius: 12,
+						marginBottom: 16,
+						borderLeftWidth: 4,
+						borderLeftColor: COLORS.error,
+					}}
+				>
+					<View style={{ flexDirection: "row", alignItems: "center" }}>
+						<Ionicons
+							name="alert-circle"
+							size={18}
+							color={COLORS.error}
+							style={{ marginRight: 8 }}
+						/>
+						<Text
+							style={{
+								color: COLORS.error,
+								fontSize: 13,
+								fontWeight: "600",
+								flex: 1,
+							}}
+						>
+							{error}
+						</Text>
+					</View>
+				</View>
+			)}
 
 			<Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
 				{/* Reset Token Input */}
@@ -114,7 +155,10 @@ export default function ResetPasswordCard({ email, onPasswordReset }) {
 						keyboardType="number-pad"
 						autoFocus
 						value={resetToken}
-						onChangeText={(text) => setResetToken(text.slice(0, 6))}
+						onChangeText={(text) => {
+							setResetToken(text.slice(0, 6));
+							if (error) setError(null);
+						}}
 						maxLength={6}
 						selectionColor={COLORS.brandPrimary}
 						returnKeyType="next"
@@ -145,7 +189,10 @@ export default function ResetPasswordCard({ email, onPasswordReset }) {
 						autoCapitalize="none"
 						autoCorrect={false}
 						value={newPassword}
-						onChangeText={setNewPassword}
+						onChangeText={(text) => {
+							setNewPassword(text);
+							if (error) setError(null);
+						}}
 						selectionColor={COLORS.brandPrimary}
 						returnKeyType="done"
 						onSubmitEditing={handleSubmit}
@@ -206,19 +253,19 @@ export default function ResetPasswordCard({ email, onPasswordReset }) {
 				</Pressable>
 			</Animated.View>
 
-			{resetToken.length > 0 && resetToken.length < 6 && (
+			{!error && resetToken.length > 0 && resetToken.length < 6 && (
 				<Text
 					className="mt-3 text-xs text-center"
-					style={{ color: COLORS.error }}
+					style={{ color: COLORS.textMuted }}
 				>
 					Code must be 6 digits
 				</Text>
 			)}
 
-			{newPassword.length > 0 && newPassword.length < 6 && (
+			{!error && newPassword.length > 0 && newPassword.length < 6 && (
 				<Text
 					className="mt-3 text-xs text-center"
-					style={{ color: COLORS.error }}
+					style={{ color: COLORS.textMuted }}
 				>
 					Password must be at least 6 characters
 				</Text>

@@ -22,6 +22,8 @@ export default function ForgotPasswordCard({ onResetInitiated }) {
 
 	const inputRef = useRef(null);
 	const [email, setEmail] = useState("");
+	const [error, setError] = useState(null);
+
 	const shakeAnim = useRef(new Animated.Value(0)).current;
 	const buttonScale = useRef(new Animated.Value(1)).current;
 
@@ -55,9 +57,12 @@ export default function ForgotPasswordCard({ onResetInitiated }) {
 
 	const handleSubmit = async () => {
 		if (!isValid) {
+			setError("Please enter a valid email address");
 			triggerShake();
 			return;
 		}
+
+		setError(null);
 
 		try {
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -65,8 +70,13 @@ export default function ForgotPasswordCard({ onResetInitiated }) {
 
 			showToast("Reset code sent to your email", "success");
 			onResetInitiated?.(email.trim(), response.resetToken);
-		} catch (error) {
-			showToast(error.message || "Failed to send reset code", "error");
+		} catch (err) {
+			const [errorCode, errorMessage] = err.message?.split("|") || [];
+			const displayMessage = errorMessage || "Failed to send reset code";
+
+			setError(displayMessage);
+			showToast(displayMessage, "error");
+			triggerShake();
 		}
 	};
 
@@ -84,6 +94,38 @@ export default function ForgotPasswordCard({ onResetInitiated }) {
 				Enter your email and we'll send you a secure code to reset your
 				password.
 			</Text>
+
+			{error && (
+				<View
+					style={{
+						backgroundColor: `${COLORS.error}15`,
+						padding: 12,
+						borderRadius: 12,
+						marginBottom: 16,
+						borderLeftWidth: 4,
+						borderLeftColor: COLORS.error,
+					}}
+				>
+					<View style={{ flexDirection: "row", alignItems: "center" }}>
+						<Ionicons
+							name="alert-circle"
+							size={18}
+							color={COLORS.error}
+							style={{ marginRight: 8 }}
+						/>
+						<Text
+							style={{
+								color: COLORS.error,
+								fontSize: 13,
+								fontWeight: "600",
+								flex: 1,
+							}}
+						>
+							{error}
+						</Text>
+					</View>
+				</View>
+			)}
 
 			<Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
 				<View
@@ -108,7 +150,10 @@ export default function ForgotPasswordCard({ onResetInitiated }) {
 						autoCorrect={false}
 						autoFocus
 						value={email}
-						onChangeText={setEmail}
+						onChangeText={(text) => {
+							setEmail(text);
+							if (error) setError(null);
+						}}
 						selectionColor={COLORS.brandPrimary}
 						returnKeyType="done"
 						onSubmitEditing={handleSubmit}
