@@ -117,6 +117,7 @@ const VisitsScreen = () => {
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
 						marginBottom: 20,
+						marginTop: insets.top,
 					}}
 				>
 					<Text style={[styles.title, { color: colors.text }]}>

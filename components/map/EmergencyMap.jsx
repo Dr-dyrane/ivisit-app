@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Alert, Platform, ActivityIndicator } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, AnimatedRegion, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Fontisto } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS } from '../../constants/colors';
 
@@ -62,7 +62,12 @@ const EmergencyMap = ({
   selectedHospitalId,
   showUserLocation = true,
   mode = 'emergency',
-  style
+  style,
+  // Ambulance tracking props (for active emergency)
+  ambulanceLocation = null, // { latitude, longitude }
+  showRoute = false,
+  routeCoordinates = [], // Array of {latitude, longitude} for polyline
+  eta = null, // "3 mins"
 }) => {
   const { isDarkMode } = useTheme();
   const mapRef = useRef(null);
@@ -265,6 +270,16 @@ const EmergencyMap = ({
         loadingBackgroundColor={isDarkMode ? COLORS.bgDark : COLORS.bgLight}
         mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
       >
+        {/* Route Polyline - Shows path from ambulance to user */}
+        {showRoute && routeCoordinates.length > 1 && (
+          <Polyline
+            coordinates={routeCoordinates}
+            strokeColor={COLORS.brandPrimary}
+            strokeWidth={4}
+            lineDashPattern={[1]}
+          />
+        )}
+
         {/* Hospital Markers - Tiny and tight like Uber */}
         {hospitals.map((hospital) => {
           const isSelected = selectedHospitalId === hospital.id;
@@ -289,6 +304,35 @@ const EmergencyMap = ({
             </Marker>
           );
         })}
+
+        {/* Ambulance Marker - Animated tracking */}
+        {ambulanceLocation && (
+          <Marker
+            coordinate={ambulanceLocation}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={true}
+          >
+            <View style={styles.ambulanceMarker}>
+              <Fontisto name="ambulance" size={16} color="#FFFFFF" />
+            </View>
+          </Marker>
+        )}
+
+        {/* ETA Bubble - Shows next to user location */}
+        {eta && userLocation && (
+          <Marker
+            coordinate={{
+              latitude: userLocation.latitude + 0.001,
+              longitude: userLocation.longitude + 0.002,
+            }}
+            anchor={{ x: 0, y: 1 }}
+            tracksViewChanges={false}
+          >
+            <View style={styles.etaBubble}>
+              <Text style={styles.etaText}>{eta}</Text>
+            </View>
+          </Marker>
+        )}
       </MapView>
     </View>
   );
@@ -354,73 +398,128 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  // Ambulance marker - Uber-style car icon
+  ambulanceMarker: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.brandPrimary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: COLORS.brandPrimary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
+  // ETA bubble - floating above user
+  etaBubble: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  etaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.brandPrimary,
+  },
 });
 
-// Uber-style map - Clean, minimal, outlined roads matching app background
-// Light mode: Matches COLORS.bgLight (#FAFBFC) with outlined streets
+/**
+ * Uber/Instacart-style Map Styles
+ *
+ * Design principles:
+ * - Background matches app container (COLORS.bgLight / COLORS.bgDark)
+ * - Roads shown as outlines only (fill matches bg, stroke visible)
+ * - No POIs, transit, buildings, or labels
+ * - Water subtle and minimal
+ * - Just street grid for navigation context
+ */
+
+// Light mode: Pure white background matching COLORS.bgLight (#FFFFFF)
 const lightMapStyle = [
-  // Base - match app background
-  { "elementType": "geometry", "stylers": [{ "color": "#FAFBFC" }] },
-  { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#9ca3af" }] },
-  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#FAFBFC" }, { "weight": 2 }] },
-  // Hide administrative clutter
-  { "featureType": "administrative", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "administrative.locality", "stylers": [{ "visibility": "on" }] },
-  { "featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{ "color": "#9ca3af" }] },
-  // Hide POIs
-  { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
-  // Roads - outlined style (transparent fill, visible stroke)
-  { "featureType": "road", "elementType": "geometry.fill", "stylers": [{ "color": "#FAFBFC" }] },
-  { "featureType": "road", "elementType": "geometry.stroke", "stylers": [{ "color": "#e0e0e0" }, { "weight": 1 }] },
-  { "featureType": "road.highway", "elementType": "geometry.fill", "stylers": [{ "color": "#FAFBFC" }] },
-  { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#d0d0d0" }, { "weight": 1.5 }] },
-  { "featureType": "road.arterial", "elementType": "geometry.fill", "stylers": [{ "color": "#FAFBFC" }] },
-  { "featureType": "road.arterial", "elementType": "geometry.stroke", "stylers": [{ "color": "#e0e0e0" }, { "weight": 1 }] },
-  { "featureType": "road.local", "elementType": "geometry.fill", "stylers": [{ "color": "#FAFBFC" }] },
-  { "featureType": "road.local", "elementType": "geometry.stroke", "stylers": [{ "color": "#e8e8e8" }, { "weight": 0.5 }] },
-  { "featureType": "road", "elementType": "labels", "stylers": [{ "visibility": "off" }] },
+  // Base geometry - match app light background
+  { elementType: "geometry", stylers: [{ color: COLORS.bgLight }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: COLORS.textMuted }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: COLORS.bgLight }, { weight: 2 }] },
+
+  // Hide all administrative elements except city names
+  { featureType: "administrative", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative.locality", stylers: [{ visibility: "on" }] },
+  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: COLORS.textMuted }] },
+
+  // Hide all POIs
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+
+  // Roads - outlined style (fill = background, stroke = visible outline)
+  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: COLORS.bgLight }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: COLORS.borderLight }, { weight: 1 }] },
+  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: COLORS.bgLight }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#d0d0d0" }, { weight: 1.5 }] },
+  { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: COLORS.bgLight }] },
+  { featureType: "road.arterial", elementType: "geometry.stroke", stylers: [{ color: COLORS.borderLight }, { weight: 1 }] },
+  { featureType: "road.local", elementType: "geometry.fill", stylers: [{ color: COLORS.bgLight }] },
+  { featureType: "road.local", elementType: "geometry.stroke", stylers: [{ color: "#e8e8e8" }, { weight: 0.5 }] },
+  { featureType: "road", elementType: "labels", stylers: [{ visibility: "off" }] },
+
   // Hide transit
-  { "featureType": "transit", "stylers": [{ "visibility": "off" }] },
-  // Water - subtle
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#e3f2fd" }] },
-  { "featureType": "water", "elementType": "labels", "stylers": [{ "visibility": "off" }] },
-  // Landscape
-  { "featureType": "landscape", "elementType": "geometry", "stylers": [{ "color": "#FAFBFC" }] },
-  { "featureType": "landscape.man_made", "stylers": [{ "visibility": "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+
+  // Water - very subtle blue
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#e8f4fd" }] },
+  { featureType: "water", elementType: "labels", stylers: [{ visibility: "off" }] },
+
+  // Landscape - same as background
+  { featureType: "landscape", elementType: "geometry", stylers: [{ color: COLORS.bgLight }] },
+  { featureType: "landscape.man_made", stylers: [{ visibility: "off" }] },
 ];
 
-// Dark mode: Matches COLORS.bgDark (#0D121D) with outlined streets
+// Dark mode: Deep dark background matching COLORS.bgDark (#0B0F1A)
 const darkMapStyle = [
-  // Base - match app dark background
-  { "elementType": "geometry", "stylers": [{ "color": "#0D121D" }] },
-  { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#4a5568" }] },
-  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#0D121D" }, { "weight": 2 }] },
-  // Hide administrative clutter
-  { "featureType": "administrative", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "administrative.locality", "stylers": [{ "visibility": "on" }] },
-  { "featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{ "color": "#4a5568" }] },
-  // Hide POIs
-  { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
-  // Roads - outlined style (dark fill, lighter stroke for outline effect)
-  { "featureType": "road", "elementType": "geometry.fill", "stylers": [{ "color": "#0D121D" }] },
-  { "featureType": "road", "elementType": "geometry.stroke", "stylers": [{ "color": "#1a2332" }, { "weight": 1 }] },
-  { "featureType": "road.highway", "elementType": "geometry.fill", "stylers": [{ "color": "#0D121D" }] },
-  { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#1e2d3d" }, { "weight": 1.5 }] },
-  { "featureType": "road.arterial", "elementType": "geometry.fill", "stylers": [{ "color": "#0D121D" }] },
-  { "featureType": "road.arterial", "elementType": "geometry.stroke", "stylers": [{ "color": "#1a2332" }, { "weight": 1 }] },
-  { "featureType": "road.local", "elementType": "geometry.fill", "stylers": [{ "color": "#0D121D" }] },
-  { "featureType": "road.local", "elementType": "geometry.stroke", "stylers": [{ "color": "#151c28" }, { "weight": 0.5 }] },
-  { "featureType": "road", "elementType": "labels", "stylers": [{ "visibility": "off" }] },
+  // Base geometry - match app dark background
+  { elementType: "geometry", stylers: [{ color: COLORS.bgDark }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: COLORS.textMutedDark }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: COLORS.bgDark }, { weight: 2 }] },
+
+  // Hide all administrative elements except city names
+  { featureType: "administrative", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative.locality", stylers: [{ visibility: "on" }] },
+  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: COLORS.textMutedDark }] },
+
+  // Hide all POIs
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+
+  // Roads - outlined style (fill = dark bg, stroke = subtle lighter line)
+  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: COLORS.bgDark }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: COLORS.border }, { weight: 1 }] },
+  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: COLORS.bgDark }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1e2d3d" }, { weight: 1.5 }] },
+  { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: COLORS.bgDark }] },
+  { featureType: "road.arterial", elementType: "geometry.stroke", stylers: [{ color: COLORS.border }, { weight: 1 }] },
+  { featureType: "road.local", elementType: "geometry.fill", stylers: [{ color: COLORS.bgDark }] },
+  { featureType: "road.local", elementType: "geometry.stroke", stylers: [{ color: COLORS.bgDarkAlt }, { weight: 0.5 }] },
+  { featureType: "road", elementType: "labels", stylers: [{ visibility: "off" }] },
+
   // Hide transit
-  { "featureType": "transit", "stylers": [{ "visibility": "off" }] },
-  // Water - dark subtle
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0a1929" }] },
-  { "featureType": "water", "elementType": "labels", "stylers": [{ "visibility": "off" }] },
-  // Landscape
-  { "featureType": "landscape", "elementType": "geometry", "stylers": [{ "color": "#0D121D" }] },
-  { "featureType": "landscape.man_made", "stylers": [{ "visibility": "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+
+  // Water - very dark subtle blue
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0a1525" }] },
+  { featureType: "water", elementType: "labels", stylers: [{ visibility: "off" }] },
+
+  // Landscape - same as background
+  { featureType: "landscape", elementType: "geometry", stylers: [{ color: COLORS.bgDark }] },
+  { featureType: "landscape.man_made", stylers: [{ visibility: "off" }] },
 ];
 
 export default EmergencyMap;

@@ -43,6 +43,9 @@ export function FABProvider({ children }) {
   // Screen-level override (temporary, resets on unmount)
   const [screenOverride, setScreenOverride] = useState(null);
 
+  // Track if we're in a stack screen (hide FAB on stacks)
+  const [isInStack, setIsInStack] = useState(false);
+
   // Register screen-level FAB intent (called by screens on mount)
   const registerFAB = useCallback((fabConfig) => {
     setScreenOverride(fabConfig);
@@ -58,9 +61,24 @@ export function FABProvider({ children }) {
     setCurrentTab(tabName);
   }, []);
 
-  // Compute final config: screen override > tab default
+  // Enter/exit stack screen (hide FAB on stacks)
+  const enterStack = useCallback(() => {
+    setIsInStack(true);
+  }, []);
+
+  const exitStack = useCallback(() => {
+    setIsInStack(false);
+  }, []);
+
+  // Compute final config: stack hidden > screen override > tab default
   useEffect(() => {
-    if (screenOverride) {
+    if (isInStack) {
+      // Always hide FAB on stack screens
+      setConfig((prev) => ({
+        ...prev,
+        visible: false,
+      }));
+    } else if (screenOverride) {
       setConfig((prev) => ({
         ...prev,
         ...screenOverride,
@@ -76,7 +94,7 @@ export function FABProvider({ children }) {
         onPress: null, // No default action for tab-level
       }));
     }
-  }, [screenOverride, currentTab]);
+  }, [screenOverride, currentTab, isInStack]);
 
   // Direct config update (for simple cases)
   const updateFAB = useCallback((updates) => {
@@ -90,6 +108,9 @@ export function FABProvider({ children }) {
     updateFAB,
     setActiveTab,
     currentTab,
+    enterStack,
+    exitStack,
+    isInStack,
   };
 
   return (

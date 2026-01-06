@@ -11,10 +11,10 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
-import { useToast } from "../../../contexts/ToastContext";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useTabBarVisibility } from "../../../contexts/TabBarVisibilityContext";
+import { useNotifications } from "../../../contexts/NotificationsContext";
 import { COLORS } from "../../../constants/colors";
 import AnimatedTabBar from "../../../components/navigation/AnimatedTabBar";
 
@@ -22,8 +22,8 @@ export default function TabsLayout() {
 	const router = useRouter();
 	const { user } = useAuth();
 	const { isDarkMode } = useTheme();
-	const { showToast } = useToast();
 	const { resetTabBar } = useTabBarVisibility();
+	const { unreadCount } = useNotifications();
 
 	const pingAnim = useRef(new Animated.Value(1)).current;
 
@@ -133,9 +133,7 @@ export default function TabsLayout() {
 					headerRight: () => (
 						<TouchableOpacity
 							style={{ marginRight: 18 }}
-							onPress={() => {
-								showToast("Notifications coming soon!", "info");
-							}}
+							onPress={() => router.push("/(user)/(stacks)/notifications")}
 							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 						>
 							<View style={{ position: "relative" }}>
@@ -144,32 +142,34 @@ export default function TabsLayout() {
 									size={24}
 									color={textColor}
 								/>
-								<View style={{ position: "absolute", top: -2, right: -2 }}>
-									<Animated.View
-										style={{
-											position: "absolute",
-											width: 10,
-											height: 10,
-											borderRadius: 999,
-											backgroundColor: `${COLORS.brandPrimary}50`,
-											transform: [{ scale: pingAnim }],
-											opacity: pingAnim.interpolate({
-												inputRange: [1, 2],
-												outputRange: [1, 0],
-											}),
-										}}
-									/>
-									<View
-										style={{
-											width: 10,
-											height: 10,
-											borderRadius: 999,
-											backgroundColor: COLORS.brandPrimary,
-											borderWidth: 2,
-											borderColor: backgroundColor,
-										}}
-									/>
-								</View>
+								{unreadCount > 0 && (
+									<View style={{ position: "absolute", top: -2, right: -2 }}>
+										<Animated.View
+											style={{
+												position: "absolute",
+												width: 10,
+												height: 10,
+												borderRadius: 999,
+												backgroundColor: `${COLORS.brandPrimary}50`,
+												transform: [{ scale: pingAnim }],
+												opacity: pingAnim.interpolate({
+													inputRange: [1, 2],
+													outputRange: [1, 0],
+												}),
+											}}
+										/>
+										<View
+											style={{
+												width: 10,
+												height: 10,
+												borderRadius: 999,
+												backgroundColor: COLORS.brandPrimary,
+												borderWidth: 2,
+												borderColor: backgroundColor,
+											}}
+										/>
+									</View>
+								)}
 							</View>
 						</TouchableOpacity>
 					),
@@ -183,8 +183,7 @@ export default function TabsLayout() {
 					tabBarIcon: ({ color }) => (
 						<Ionicons name="calendar-outline" size={24} color={color} />
 					),
-					headerShown: true,
-					headerTitle: "My Visits",
+					headerShown: false,
 				}}
 			/>
 
@@ -195,8 +194,8 @@ export default function TabsLayout() {
 					tabBarIcon: ({ color }) => (
 						<Ionicons name="ellipsis-horizontal-outline" size={24} color={color} />
 					),
-					headerShown: true,
-					headerTitle: "More Options",
+					// No header - MoreScreen handles its own header/profile section
+					headerShown: false,
 				}}
 			/>
 		</Tabs>

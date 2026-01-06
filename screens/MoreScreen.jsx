@@ -101,7 +101,7 @@ const MoreScreen = () => {
 		{
 			title: "Notifications",
 			icon: "notifications-outline",
-			action: () => showToast("Notifications coming soon", "info"),
+			action: () => router.push("/(user)/(stacks)/notifications"),
 		},
 		{
 			title: "Help & Support",
@@ -125,6 +125,7 @@ const MoreScreen = () => {
 						paddingHorizontal: 20,
 						paddingTop: 32,
 						paddingBottom: 24,
+						marginTop: insets.top,
 					}}
 				>
 					<TouchableOpacity
