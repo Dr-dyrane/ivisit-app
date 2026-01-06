@@ -521,7 +521,7 @@ const darkMapStyle = [
   // Landscape
   { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#0D1117" }] },
   { featureType: "landscape.man_made", stylers: [{ visibility: "off" }] },
-  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#0D1117" }] },
+  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#121826" }] },
 ];
 
 export default EmergencyMap;
