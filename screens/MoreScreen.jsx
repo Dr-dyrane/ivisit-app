@@ -114,7 +114,7 @@ const MoreScreen = () => {
 					<TouchableOpacity
 						onPress={() => {
 							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-							router.push("/(user)/profile");
+							router.push("/(user)/(stacks)/profile");
 						}}
 						style={{
 							flexDirection: "row",

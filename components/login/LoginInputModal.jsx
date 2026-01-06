@@ -21,6 +21,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import {
 	LOGIN_STEPS,
 	LOGIN_AUTH_METHODS,
@@ -54,8 +55,9 @@ export default function LoginInputModal({ visible, onClose }) {
 	const [resetEmail, setResetEmail] = useState(null);
 	const [userInfo, setUserInfo] = useState(null); // Store user validation info
 
+	const router = useRouter();
 	const { showToast } = useToast();
-	const { login } = useAuth();
+	const { syncUserData } = useAuth();
 	const { loginUser, checkUserExists, setPassword } = useLoginMutation();
 	const {
 		currentStep,
@@ -211,9 +213,13 @@ export default function LoginInputModal({ visible, onClose }) {
 			try {
 				await loginUser(credentials);
 
+				// Sync user data to ensure proper state update
+				await syncUserData();
+
 				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 				showToast("Welcome back to iVisit!", "success");
 
+				// Close modal and let the root layout handle navigation
 				handleDismiss();
 			} catch (err) {
 				const [errorCode] = err.message?.split("|") || [];
@@ -240,7 +246,7 @@ export default function LoginInputModal({ visible, onClose }) {
 				}
 			}
 		} catch (err) {
-			const [errorCode, errorMessage] = err.message?.split("|") || [];
+			const [, errorMessage] = err.message?.split("|") || [];
 			const displayMessage =
 				errorMessage || "Unable to sign in. Please try again.";
 
@@ -267,12 +273,16 @@ export default function LoginInputModal({ visible, onClose }) {
 
 			await loginUser(credentials);
 
+			// Sync user data to ensure proper state update
+			await syncUserData();
+
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			showToast("Welcome back to iVisit!", "success");
 
+			// Close modal and let the root layout handle navigation
 			handleDismiss();
 		} catch (err) {
-			const [errorCode, errorMessage] = err.message?.split("|") || [];
+			const [, errorMessage] = err.message?.split("|") || [];
 			const displayMessage =
 				errorMessage || "Unable to sign in. Please try again.";
 
@@ -297,12 +307,16 @@ export default function LoginInputModal({ visible, onClose }) {
 
 			await setPassword(credentials);
 
+			// Sync user data to ensure proper state update
+			await syncUserData();
+
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			showToast("Password set successfully! Welcome to iVisit!", "success");
 
+			// Close modal and let the root layout handle navigation
 			handleDismiss();
 		} catch (err) {
-			const [errorCode, errorMessage] = err.message?.split("|") || [];
+			const [, errorMessage] = err.message?.split("|") || [];
 			const displayMessage =
 				errorMessage || "Unable to set password. Please try again.";
 
@@ -313,7 +327,7 @@ export default function LoginInputModal({ visible, onClose }) {
 		}
 	};
 
-	const handleForgotPasswordInitiated = (email, token) => {
+	const handleForgotPasswordInitiated = (email) => {
 		setResetEmail(email);
 		goToStep(LOGIN_STEPS.RESET_PASSWORD);
 	};

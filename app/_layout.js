@@ -53,9 +53,17 @@ function AuthenticatedStack() {
 
 	// Redirect based on authentication state
 	useEffect(() => {
-		if (user.isAuthenticated) router.replace("(user)");
-		else router.replace("(auth)");
-	}, [user, router]);
+		// Use a small delay to ensure navigation completes properly
+		const timer = setTimeout(() => {
+			if (user.isAuthenticated) {
+				router.replace("/(user)/(tabs)");
+			} else {
+				router.replace("/(auth)");
+			}
+		}, 100);
+
+		return () => clearTimeout(timer);
+	}, [user.isAuthenticated]);
 
 	return (
 		<>
@@ -63,11 +71,9 @@ function AuthenticatedStack() {
 				style={isDarkMode ? "light" : "dark"}
 				backgroundColor={isDarkMode ? "#0D121D" : "#FFFFFF"}
 			/>
-			<Stack>
-				<Stack.Screen
-					name={user.isAuthenticated ? "(user)" : "(auth)"}
-					options={{ headerShown: false }}
-				/>
+			<Stack screenOptions={{ headerShown: false }}>
+				<Stack.Screen name="(auth)" />
+				<Stack.Screen name="(user)" />
 			</Stack>
 		</>
 	);

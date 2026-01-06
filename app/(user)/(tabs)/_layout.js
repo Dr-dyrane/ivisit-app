@@ -102,7 +102,7 @@ export default function TabsLayout() {
 					headerTitle: () => null,
 					headerLeft: () => (
 						<TouchableOpacity
-							onPress={() => router.push("/(user)/profile")}
+							onPress={() => router.push("/(user)/(stacks)/profile")}
 							style={{
 								marginLeft: 16,
 								flexDirection: "row",
