@@ -1,243 +1,392 @@
-import React, { useState, useEffect } from "react";
-import {
-	View,
-	Text,
-	Image,
-	TextInput,
-	Pressable,
-	ScrollView,
-	TouchableOpacity,
-	ActivityIndicator,
-	Alert,
-} from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { useToast } from "../contexts/ToastContext";
-import * as ImagePicker from "expo-image-picker";
-import { updateUserAPI, getCurrentUserAPI } from "../api/auth"; // Import both API functions
-import { Ionicons, MaterialIcons } from "@expo/vector-icons"; // Icon packages
-import ProfileField from "../components/form/ProfileField";
-import { useAuth } from "../contexts/AuthContext";
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+import { View, Text, Image, Pressable, ScrollView, ActivityIndicator, Animated } from "react-native"
+import { LinearGradient } from "expo-linear-gradient"
+import { useToast } from "../contexts/ToastContext"
+import { useTheme } from "../contexts/ThemeContext"
+import * as ImagePicker from "expo-image-picker"
+import { updateUserAPI, getCurrentUserAPI } from "../api/auth"
+import { Ionicons } from "@expo/vector-icons"
+import * as Haptics from "expo-haptics"
+import ProfileField from "../components/form/ProfileField"
+import { useAuth } from "../contexts/AuthContext"
+import { COLORS } from "../constants/colors"
 
 const ProfileScreen = () => {
-	const { syncUserData } = useAuth(); // Get syncUserData from context
-	const { showToast } = useToast();
-	const [fullName, setFullName] = useState("");
-	const [username, setUsername] = useState("");
-	const [gender, setGender] = useState("");
-	const [email, setEmail] = useState("");
-	const [phone, setPhone] = useState("");
-	const [address, setAddress] = useState("");
-	const [dateOfBirth, setDateOfBirth] = useState("");
-	const [imageUri, setImageUri] = useState(null);
-	const [isLoading, setIsLoading] = useState(false);
-	const [isDataLoading, setIsDataLoading] = useState(true);
+  const { syncUserData } = useAuth()
+  const { showToast } = useToast()
+  const { isDarkMode } = useTheme()
 
-	// Load current user data
-	useEffect(() => {
-		const fetchUserData = async () => {
-			setIsDataLoading(true); // Start loading
-			try {
-				const { data: userData } = await getCurrentUserAPI();
-				//console.log(userData);
-				setFullName(userData.fullName || "Test User");
-				setUsername(userData.username || "testUser");
-				setGender(userData.gender || "Male");
-				setEmail(userData.email || "test@example.com");
-				setPhone(userData.phone || "08036048719");
-				setAddress(userData.address || "Somehwere in Nigeria");
-				setDateOfBirth(userData.dateOfBirth || "26 02 1994");
-				setImageUri(userData.imageUri || null);
-			} catch (error) {
-				// Handle and show detailed error message
-				const errorMessage =
-					error.response?.data?.message || error.message || "An error occurred";
-				showToast(errorMessage, "error");
-			} finally {
-				setIsDataLoading(false); // End loading
-			}
-		};
-		fetchUserData();
-	}, []);
+  const [fullName, setFullName] = useState("")
+  const [username, setUsername] = useState("")
+  const [gender, setGender] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [address, setAddress] = useState("")
+  const [dateOfBirth, setDateOfBirth] = useState("")
+  const [imageUri, setImageUri] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isDataLoading, setIsDataLoading] = useState(true)
 
-	// Function to handle image picking
-	const pickImage = async () => {
-		try {
-			let result = await ImagePicker.launchImageLibraryAsync({
-				mediaTypes: ImagePicker.MediaTypeOptions.Images,
-				allowsEditing: true,
-				aspect: [4, 3],
-				quality: 1,
-			});
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const slideAnim = useRef(new Animated.Value(30)).current
+  const imageScale = useRef(new Animated.Value(0.9)).current
 
-			if (!result.canceled && result.assets && result.assets.length > 0) {
-				// Correctly setting the picked image URI
-				setImageUri(result.assets[0].uri);
-				showToast("Image selected successfully", "success");
-			} else if (result.canceled) {
-				showToast("Image selection canceled", "warning");
-			} else {
-				showToast("No image selected", "warning");
-			}
-		} catch (error) {
-			// Handle possible errors with image picker
-			showToast(`Image picker error: ${error.message}`, "error");
-		}
-	};
+  const backgroundColors = isDarkMode ? ["#0B0F1A", "#0D121D", "#121826"] : ["#FFFFFF", "#F3E7E7", "#FFFAFA"]
+  const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary
+  const textSecondary = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted
 
-	// Function to handle profile update
-	const handleUpdateProfile = async () => {
-		setIsLoading(true);
-		try {
-			const updatedData = {
-				fullName,
-				username,
-				gender,
-				email,
-				phone,
-				address,
-				dateOfBirth,
-				imageUri,
-			};
-			await updateUserAPI(updatedData);
-			await syncUserData();
-			showToast("Profile updated successfully", "success");
-		} catch (error) {
-			// Handle and show detailed error message
-			const errorMessage =
-				error.response?.data?.message ||
-				error.message ||
-				"Failed to update profile";
-			showToast(errorMessage, "error");
-		} finally {
-			setIsLoading(false);
-		}
-	};
+  useEffect(() => {
+    fetchUserData()
+  }, [])
 
-	const handleFieldUpdate = async (field, value) => {
-		if (!validate(value)) {
-			showToast(`Invalid ${field}`, "error"); // Show error for invalid field
-			return; // Exit if validation fails
-		}
-		try {
-			await updateUserAPI({ [field]: value });
-			showToast(`${field} updated successfully`, "success");
-		} catch (error) {
-			showToast(`Failed to update ${field}`, "error");
-		}
-	};
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(imageScale, {
+        toValue: 1,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start()
+  }, [isDataLoading])
 
-	// Render the profile screen
-	return (
-		<LinearGradient colors={["#fff", "#fff", "#fff"]} className="flex-1 p-4 pt-0">
-			{isDataLoading ? (
-				// Show a loading spinner while data is loading
-				<View className="flex-1 justify-center items-center">
-					<ActivityIndicator size="large" color="#0000ff" />
-				</View>
-			) : (
-				<ScrollView>
-					<View className="flex flex-row space-x-4 items-center mb-4 bg-primary shadow-md p-4 rounded-2xl">
-						<Pressable
-							onPress={pickImage}
-							className="relative border-2 rounded-full border-accent/50"
-						>
-							<Image
-								source={
-									imageUri
-										? { uri: imageUri }
-										: require("../assets/profile.jpg")
-								}
-								resizeMode="fit"
-								className="w-24 h-24 rounded-full"
-							/>
-							{/* Icon Overlay */}
-							<View className="absolute bottom-2 -right-2 p-2 bg-accent/50 rounded-full">
-								<Ionicons name="camera" size={20} color="#fff" />
-							</View>
-						</Pressable>
-						<View className="flex flex-col">
-							<Text className="text-xl font-bold text-white">{fullName}</Text>
-							<Text className="text-xl font-bold text-white">{phone}</Text>
-						</View>
-					</View>
+  const fetchUserData = async () => {
+    setIsDataLoading(true)
+    try {
+      const { data: userData } = await getCurrentUserAPI()
+      setFullName(userData.fullName || "")
+      setUsername(userData.username || "")
+      setGender(userData.gender || "")
+      setEmail(userData.email || "")
+      setPhone(userData.phone || "")
+      setAddress(userData.address || "")
+      setDateOfBirth(userData.dateOfBirth || "")
+      setImageUri(userData.imageUri || null)
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || "An error occurred"
+      showToast(errorMessage, "error")
+    } finally {
+      setIsDataLoading(false)
+    }
+  }
 
-					{/* Field Group */}
-					<View className="w-full">
-						<ProfileField
-							label="Full Name"
-							value={fullName}
-							onChange={setFullName}
-							iconName="person"
-							onUpdate={() => handleFieldUpdate("fullName", fullName)} // Pass specific update handler
-							fieldType="fullName" // Specify field type for validation
-						/>
-						<ProfileField
-							label="Username"
-							value={username}
-							onChange={setUsername}
-							iconName="person-outline"
-							onUpdate={() => handleFieldUpdate("username", username)}
-							fieldType="username" // Specify field type for validation
-						/>
-						<ProfileField
-							label="Gender"
-							value={gender}
-							onChange={setGender}
-							iconName={gender.toLowerCase() || "male"}
-							onUpdate={() => handleFieldUpdate("gender", gender)}
-							fieldType="gender" // Specify field type for validation
-						/>
-						<ProfileField
-							label="Email"
-							value={email}
-							onChange={setEmail}
-							iconName="mail"
-							onUpdate={() => handleFieldUpdate("email", email)}
-							fieldType="email" // Specify field type for validation
-						/>
-						<ProfileField
-							label="Phone Number"
-							value={phone}
-							onChange={setPhone}
-							iconName="call"
-							onUpdate={() => handleFieldUpdate("phone", phone)}
-							fieldType="number" // Specify field type for validation
-						/>
-						<ProfileField
-							label="Address"
-							value={address}
-							onChange={setAddress}
-							iconName="home"
-							onUpdate={() => handleFieldUpdate("address", address)}
-							fieldType="address" // Specify field type for validation
-						/>
-						<ProfileField
-							label="Date of Birth"
-							value={dateOfBirth}
-							onChange={setDateOfBirth}
-							iconName="calendar"
-							onUpdate={() => handleFieldUpdate("dateOfBirth", dateOfBirth)}
-							fieldType="dateOfBirth" // Specify field type for validation
-						/>
-					</View>
+  const pickImage = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      })
 
-					{/* Save Button */}
-					<Pressable
-						onPress={handleUpdateProfile}
-						className="flex flex-row mt-4 bg-primary p-4 rounded-xl items-center w-full px-6 justify-between space-x-4 shadow-md"
-						disabled={isLoading}
-					>
-						<Text className="text-white font-bold text-lg">
-							{isLoading ? "Updating..." : "Save Changes"}
-						</Text>
-						<View className="w-8 h-8 bg-none border border-white rounded-full justify-center items-center">
-							<Ionicons name="arrow-down" size={18} color="white" />
-						</View>
-					</Pressable>
-				</ScrollView>
-			)}
-		</LinearGradient>
-	);
-};
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setImageUri(result.assets[0].uri)
+        showToast("Image selected successfully", "success")
+      }
+    } catch (error) {
+      showToast(`Image picker error: ${error.message}`, "error")
+    }
+  }
 
-export default ProfileScreen;
+  const handleUpdateProfile = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    setIsLoading(true)
+    try {
+      const updatedData = {
+        fullName,
+        username,
+        gender,
+        email,
+        phone,
+        address,
+        dateOfBirth,
+        imageUri,
+      }
+      await updateUserAPI(updatedData)
+      await syncUserData()
+      showToast("Profile updated successfully", "success")
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || "Failed to update profile"
+      showToast(errorMessage, "error")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (isDataLoading) {
+    return (
+      <LinearGradient colors={backgroundColors} style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={COLORS.brandPrimary} />
+        <Text style={{ marginTop: 16, color: textSecondary, fontSize: 14 }}>Loading your profile...</Text>
+      </LinearGradient>
+    )
+  }
+
+  return (
+    <LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }, { scale: imageScale }],
+            alignItems: "center",
+            paddingTop: 24,
+            paddingBottom: 32,
+          }}
+        >
+          <Pressable onPress={pickImage} style={{ position: "relative" }}>
+            <Image
+              source={imageUri ? { uri: imageUri } : require("../assets/profile.jpg")}
+              style={{
+                width: 120,
+                height: 120,
+                borderRadius: 60,
+                borderWidth: 4,
+                borderColor: COLORS.brandPrimary,
+              }}
+            />
+            <View
+              style={{
+                position: "absolute",
+                bottom: 0,
+                right: 0,
+                backgroundColor: COLORS.brandPrimary,
+                borderRadius: 20,
+                width: 40,
+                height: 40,
+                justifyContent: "center",
+                alignItems: "center",
+                borderWidth: 3,
+                borderColor: isDarkMode ? COLORS.bgDark : "#FFFFFF",
+              }}
+            >
+              <Ionicons name="camera" size={20} color="#FFFFFF" />
+            </View>
+          </Pressable>
+
+          <Text
+            style={{
+              fontSize: 28,
+              fontWeight: "bold",
+              color: textColor,
+              marginTop: 16,
+              textAlign: "center",
+            }}
+          >
+            {fullName || "Your Name"}
+          </Text>
+          <Text style={{ fontSize: 15, color: textSecondary, marginTop: 4 }}>{email || "email@example.com"}</Text>
+        </Animated.View>
+
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+            paddingHorizontal: 20,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "700",
+              color: textSecondary,
+              marginBottom: 16,
+              letterSpacing: 1,
+            }}
+          >
+            PERSONAL INFORMATION
+          </Text>
+
+          <ProfileField label="Full Name" value={fullName} onChange={setFullName} iconName="person-outline" />
+          <ProfileField label="Username" value={username} onChange={setUsername} iconName="at-outline" />
+          <ProfileField label="Gender" value={gender} onChange={setGender} iconName="transgender-outline" />
+          <ProfileField
+            label="Email Address"
+            value={email}
+            onChange={setEmail}
+            iconName="mail-outline"
+            keyboardType="email-address"
+          />
+          <ProfileField
+            label="Phone Number"
+            value={phone}
+            onChange={setPhone}
+            iconName="call-outline"
+            keyboardType="phone-pad"
+          />
+          <ProfileField label="Address" value={address} onChange={setAddress} iconName="location-outline" />
+          <ProfileField
+            label="Date of Birth"
+            value={dateOfBirth}
+            onChange={setDateOfBirth}
+            iconName="calendar-outline"
+          />
+        </Animated.View>
+
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+            paddingHorizontal: 20,
+            marginTop: 32,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "700",
+              color: textSecondary,
+              marginBottom: 16,
+              letterSpacing: 1,
+            }}
+          >
+            EMERGENCY CONTACTS
+          </Text>
+
+          <Pressable
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 18,
+              backgroundColor: `${COLORS.brandPrimary}15`,
+              borderRadius: 16,
+              borderWidth: 2,
+              borderColor: COLORS.brandPrimary,
+              borderStyle: "dashed",
+            }}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              showToast("Emergency contacts feature coming soon", "info")
+            }}
+          >
+            <Ionicons name="add-circle" size={24} color={COLORS.brandPrimary} />
+            <Text style={{ marginLeft: 10, color: COLORS.brandPrimary, fontWeight: "700", fontSize: 15 }}>
+              Add Emergency Contact
+            </Text>
+          </Pressable>
+        </Animated.View>
+
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+            paddingHorizontal: 20,
+            marginTop: 32,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "700",
+              color: textSecondary,
+              marginBottom: 16,
+              letterSpacing: 1,
+            }}
+          >
+            MEDICAL HISTORY
+          </Text>
+
+          <View
+            style={{
+              backgroundColor: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
+              borderRadius: 16,
+              padding: 20,
+            }}
+          >
+            <Text style={{ fontSize: 14, color: textSecondary, marginBottom: 16, lineHeight: 20 }}>
+              Your medical history is private and secure. Only authorized healthcare providers can access this
+              information.
+            </Text>
+
+            {["Allergies", "Current Medications", "Past Surgeries", "Chronic Conditions"].map((item, index) => (
+              <View key={index} style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: COLORS.brandPrimary,
+                    marginRight: 12,
+                  }}
+                />
+                <Text style={{ color: textColor, fontSize: 15, fontWeight: "500" }}>{item}</Text>
+              </View>
+            ))}
+
+            <Pressable
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 16,
+                backgroundColor: `${COLORS.brandPrimary}15`,
+                borderRadius: 12,
+                marginTop: 12,
+              }}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                showToast("Medical history feature coming soon", "info")
+              }}
+            >
+              <Ionicons name="document-text" size={20} color={COLORS.brandPrimary} />
+              <Text style={{ marginLeft: 8, color: COLORS.brandPrimary, fontWeight: "600" }}>View Full History</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
+
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            paddingHorizontal: 20,
+            marginTop: 32,
+          }}
+        >
+          <Pressable
+            onPress={handleUpdateProfile}
+            disabled={isLoading}
+            style={{
+              backgroundColor: COLORS.brandPrimary,
+              padding: 20,
+              borderRadius: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              shadowColor: COLORS.brandPrimary,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.3,
+              shadowRadius: 12,
+              elevation: 8,
+            }}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
+                <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 16, marginLeft: 10, letterSpacing: 1 }}>
+                  UPDATE PROFILE
+                </Text>
+              </>
+            )}
+          </Pressable>
+        </Animated.View>
+      </ScrollView>
+    </LinearGradient>
+  )
+}
+
+export default ProfileScreen

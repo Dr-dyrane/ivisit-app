@@ -1,95 +1,112 @@
-import React, { useState } from "react";
-import { View, TextInput, Text, Pressable, Alert } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons"; // Icon packages
+"use client";
 
-// Custom component to render editable fields
+import { useState, useRef } from "react";
+import { View, TextInput, Text, Animated } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { COLORS } from "../../constants/colors";
+
 const ProfileField = ({
 	label,
 	value,
 	onChange,
 	iconName,
-	onUpdate,
-	fieldType,
+	editable = true,
+	keyboardType = "default",
 }) => {
-	// Warning state
-	const [warning, setWarning] = useState("");
+	const { isDarkMode } = useTheme();
+	const [isFocused, setIsFocused] = useState(false);
+	const scaleAnim = useRef(new Animated.Value(1)).current;
 
-	// Comprehensive validation function
-	const validate = (value) => {
-		switch (fieldType) {
-			case "fullName":
-			case "username":
-				return value.trim().length > 0; // Must not be empty
-			case "gender":
-				return value.trim().length > 0;
-			case "email":
-				const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-				return emailPattern.test(value); // Valid email format
-			case "number":
-				const phonePattern = /^[0-9]{10,15}$/; // Adjust the regex pattern based on your phone number requirements
-				return phonePattern.test(value); // Valid phone number format
-			case "address":
-				return value.trim().length > 0; // Must not be empty
-			case "dateOfBirth":
-				// Example: Simple validation for non-empty date
-				return value.trim().length > 0; // You might want to implement a more specific date validation
-			default:
-				return true; // Default to valid
-		}
+	const handleFocus = () => {
+		setIsFocused(true);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		Animated.spring(scaleAnim, {
+			toValue: 1.02,
+			friction: 8,
+			useNativeDriver: true,
+		}).start();
 	};
 
-	const handleUpdate = () => {
-		if (!validate(value)) {
-			setWarning("Please enter a valid value."); // Set warning message
-			return;
-		}
-		Alert.alert(
-			"Confirm Update",
-			"Are you sure you want to update this field?",
-			[
-				{ text: "Cancel", style: "cancel" },
-				{
-					text: "OK",
-					onPress: () => {
-						onUpdate(); // Call the onUpdate function if confirmed
-						setWarning(""); // Clear warning if update is confirmed
-					},
-				},
-			]
-		);
+	const handleBlur = () => {
+		setIsFocused(false);
+		Animated.spring(scaleAnim, {
+			toValue: 1,
+			friction: 8,
+			useNativeDriver: true,
+		}).start();
+	};
+
+	const colors = {
+		bg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
+		text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+		label: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
+		border: isFocused ? COLORS.brandPrimary : "transparent",
 	};
 
 	return (
-		<View className="flex flex-row items-center justify-start space-x-2 mb-4 px-2 py-1 rounded-xl bg-slate-50 shadow-lg">
-			<View className="rounded-xl bg-[#E5F5F1] p-3">
-				<Ionicons name={iconName} size={20} color="teal" />
-			</View>
-			<View className="flex flex-col flex-1 p-1 px-2 rounded-xl bg-white/30">
-				<TextInput
-					value={value}
-					onChangeText={(text) => {
-						setWarning(""); // Clear warning when user types
-						onChange(text);
-					}}
-					className="w-48 text-left"
-				/>
-				<Text className="text-xs text-gray-400 font-medium">{label}</Text>
-				{warning ? (
-					<Text className="text-red-500 text-sm">{warning}</Text>
-				) : null}
-			</View>
-			<Pressable
-				onPress={handleUpdate}
-				className="flex items-center rounded-full bg-white/20 p-3"
+		<Animated.View
+			style={{
+				transform: [{ scale: scaleAnim }],
+				marginBottom: 16,
+			}}
+		>
+			<View
+				style={{
+					backgroundColor: colors.bg,
+					borderRadius: 16,
+					borderWidth: 2,
+					borderColor: colors.border,
+					padding: 16,
+					flexDirection: "row",
+					alignItems: "center",
+				}}
 			>
-				<Ionicons
-					name="chevron-forward-outline"
-					size={20}
-					color="teal"
-					className="ml-2"
-				/>
-			</Pressable>
-		</View>
+				<View
+					style={{
+						width: 40,
+						height: 40,
+						borderRadius: 12,
+						backgroundColor: `${COLORS.brandPrimary}15`,
+						justifyContent: "center",
+						alignItems: "center",
+						marginRight: 12,
+					}}
+				>
+					<Ionicons name={iconName} size={20} color={COLORS.brandPrimary} />
+				</View>
+
+				<View style={{ flex: 1 }}>
+					<Text
+						style={{
+							fontSize: 11,
+							color: colors.label,
+							marginBottom: 4,
+							fontWeight: "600",
+						}}
+					>
+						{label}
+					</Text>
+					<TextInput
+						value={value}
+						onChangeText={onChange}
+						onFocus={handleFocus}
+						onBlur={handleBlur}
+						editable={editable}
+						keyboardType={keyboardType}
+						style={{
+							fontSize: 16,
+							color: colors.text,
+							fontWeight: "600",
+							padding: 0,
+						}}
+						placeholderTextColor={COLORS.textMuted}
+						selectionColor={COLORS.brandPrimary}
+					/>
+				</View>
+			</View>
+		</Animated.View>
 	);
 };
 

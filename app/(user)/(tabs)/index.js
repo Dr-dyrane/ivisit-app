@@ -1,8 +1,6 @@
-import React from 'react';
-import EmergencyScreen from '../../../screens/EmergencyScreen';
+import React from "react";
+import EmergencyScreen from "../../../screens/EmergencyScreen";
 
-const Home = () => (
-  <EmergencyScreen/>
-);
+const Emergency = () => <EmergencyScreen />;
 
-export default Home;
+export default Emergency;

@@ -1,21 +1,33 @@
-// app/(tabs)/_layout.js
+// app/(user)/(tabs)/_layout.js
+
 
 import { Tabs } from "expo-router";
-import { AntDesign, Ionicons } from "@expo/vector-icons"; // Import Ionicons for tab icons
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef } from "react";
-import { Animated, Image, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef } from "react";
+import {
+	Animated,
+	Image,
+	Text,
+	TouchableOpacity,
+	View,
+	Platform,
+} from "react-native";
 import { useToast } from "../../../contexts/ToastContext";
 import { useAuth } from "../../../contexts/AuthContext";
+import { useTheme } from "../../../contexts/ThemeContext";
+import { COLORS } from "../../../constants/colors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabsLayout() {
 	const router = useRouter();
-	const { logout, user } = useAuth();
+	const { user } = useAuth();
+	const { isDarkMode } = useTheme();
 	const { showToast } = useToast();
+	const insets = useSafeAreaInsets();
 
 	const pingAnim = useRef(new Animated.Value(1)).current;
 
-	// Ping animation setup
 	useEffect(() => {
 		Animated.loop(
 			Animated.sequence([
@@ -33,95 +45,118 @@ export default function TabsLayout() {
 		).start();
 	}, [pingAnim]);
 
+	const backgroundColor = isDarkMode ? COLORS.bgDark : COLORS.bgLight;
+	const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
+	const tabBarBg = isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt;
+	const borderColor = isDarkMode ? COLORS.border : COLORS.borderLight;
+
 	return (
 		<Tabs
 			screenOptions={{
-				tabBarActiveTintColor: "#008773", // Active tab color
-				tabBarInactiveTintColor: "gray", // Inactive tab color
-				tabBarStyle: { backgroundColor: "#fff" }, // Tab bar background color
-				headerStyle: { backgroundColor: "#fff" }, // Header background color
-				headerTitleAlign: "center", // Center the title on all screens
-				gestureEnabled: true, // Enable gestures for swiping between tabs
-				gestureDirection: "horizontal", // Swipe gesture direction
-				headerTitleStyle: {
-					fontWeight: "bold", // Bold font for the title
-					fontSize: 18, // Adjust the size if needed
+				tabBarActiveTintColor: COLORS.brandPrimary,
+				tabBarInactiveTintColor: isDarkMode
+					? COLORS.textMutedDark
+					: COLORS.textMuted,
+				tabBarStyle: {
+					backgroundColor: tabBarBg,
+					borderTopColor: borderColor,
+					borderTopWidth: 1,
+					height: Platform.OS === "ios" ? 85 : 70,
+					paddingBottom: Platform.OS === "ios" ? insets.bottom : 10,
+					paddingTop: 10,
+					elevation: 0,
+					shadowOpacity: 0,
 				},
-				//tabBarLabel: () => null, // Hide label for More tab
+				tabBarLabelStyle: {
+					fontSize: 12,
+					fontWeight: "600",
+				},
+				headerStyle: {
+					backgroundColor: backgroundColor,
+					borderBottomWidth: 0,
+					elevation: 0,
+					shadowOpacity: 0,
+				},
+				headerTitleAlign: "center",
+				gestureEnabled: true,
+				gestureDirection: "horizontal",
+				headerTitleStyle: {
+					fontWeight: "bold",
+					fontSize: 18,
+					color: textColor,
+				},
 				headerShadowVisible: false,
-				headerLeft: () => (
-					<Ionicons
-						name="arrow-back"
-						size={24}
-						color="black"
-						onPress={() => router.back()} // Go back to the previous screen
-						style={{ marginLeft: 20 }} // Adjust styling as needed
-					/>
-				),
 			}}
 		>
-			{/* Home Tab */}
 			<Tabs.Screen
 				name="index"
 				options={{
-					title: "Home",
-					tabBarIcon: ({ focused }) => (
-						<View style={{ width: 24, height: 24 }}>
-							<Image
-								source={
-									focused
-										? require("../../../assets/icons/home-sharp.png") // Focused icon
-										: require("../../../assets/icons/home.png") // Unfocused icon
-								}
-								style={{ width: 24, height: 24 }} // Set width and height for the icon
-							/>
-						</View>
-					), // Add Ionicons for Home tab
+					title: "Emergency",
+					tabBarIcon: ({ focused, color }) => (
+						<Ionicons
+							name={focused ? "medical" : "medical-outline"}
+							size={24}
+							color={color}
+						/>
+					),
 					headerShown: true,
 					headerTitle: () => null,
 					headerLeft: () => (
-						<View
-							style={{ marginLeft: 16 }}
-							className="flex flex-row items-center justify-between space-x-2"
+						<TouchableOpacity
+							onPress={() => router.push("/(user)/profile")}
+							style={{
+								marginLeft: 16,
+								flexDirection: "row",
+								alignItems: "center",
+							}}
+							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 						>
-							{/* User Profile Picture */}
 							<Image
 								source={
-									user.imageUri
+									user?.imageUri
 										? { uri: user.imageUri }
 										: require("../../../assets/profile.jpg")
 								}
-								resizeMode="fit"
+								resizeMode="cover"
 								style={{
-									width: 32,
-									height: 32,
-									borderRadius: 20, // Rounded profile picture
-									borderWidth: 1,
-									borderColor: "#ccc",
+									width: 36,
+									height: 36,
+									borderRadius: 18,
+									borderWidth: 2,
+									borderColor: COLORS.brandPrimary,
 								}}
 							/>
-							<View>
+							<View style={{ marginLeft: 10 }}>
+								<Text
+									style={{ fontWeight: "600", fontSize: 14, color: textColor }}
+								>
+									{user?.fullName || user?.username || "User"}
+								</Text>
 								<Text
 									style={{
-										fontWeight: "bold",
-										fontSize: 16,
+										fontSize: 11,
+										color: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
 									}}
 								>
-									Hi {user.fullName || user.username}
+									View Profile
 								</Text>
-								{/* <Text className="text-sm text-gray-500">{user.email}</Text> */}
 							</View>
-						</View>
+						</TouchableOpacity>
 					),
 					headerRight: () => (
 						<TouchableOpacity
 							style={{ marginRight: 18 }}
-							onPress={() => router.push("/notifications")}
+							onPress={() => {
+								showToast("Notifications coming soon!", "info");
+							}}
+							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 						>
 							<View style={{ position: "relative" }}>
-								<Ionicons name="notifications" size={18} color="#999" />
-
-								{/* Ping Badge */}
+								<Ionicons
+									name="notifications-outline"
+									size={24}
+									color={textColor}
+								/>
 								<View style={{ position: "absolute", top: -2, right: -2 }}>
 									<Animated.View
 										style={{
@@ -129,7 +164,7 @@ export default function TabsLayout() {
 											width: 10,
 											height: 10,
 											borderRadius: 999,
-											backgroundColor: "rgba(0, 220, 140, 0.5)", // Teal color with transparency
+											backgroundColor: `${COLORS.brandPrimary}50`,
 											transform: [{ scale: pingAnim }],
 											opacity: pingAnim.interpolate({
 												inputRange: [1, 2],
@@ -138,12 +173,13 @@ export default function TabsLayout() {
 										}}
 									/>
 									<View
-										className="border border-white"
 										style={{
 											width: 10,
 											height: 10,
 											borderRadius: 999,
-											backgroundColor: "#008773",
+											backgroundColor: COLORS.brandPrimary,
+											borderWidth: 2,
+											borderColor: backgroundColor,
 										}}
 									/>
 								</View>
@@ -153,67 +189,35 @@ export default function TabsLayout() {
 				}}
 			/>
 
-			{/* Transactions Tab */}
-			{/* <Tabs.Screen
-				name="transactions"
-				options={{
-					title: "Transactions",
-					tabBarIcon: ({ focused }) => (
-						<View style={{ width: 24, height: 24 }}>
-							<Image
-								source={
-									focused
-										? require("../../../assets/icons/transaction-sharp.png") // Focused icon
-										: require("../../../assets/icons/transaction.png") // Unfocused icon
-								}
-								style={{ width: 24, height: 24 }} // Set width and height for the icon
-							/>
-						</View>
-					), // Add Ionicons for Transactions tab
-					headerShown: true,
-				}}
-			/> */}
-
-			{/* Profile Tab */}
 			<Tabs.Screen
-				name="profile"
+				name="visits"
 				options={{
-					title: "Profile",
-					tabBarIcon: ({ focused }) => (
-						<View style={{ width: 24, height: 24 }}>
-							<Image
-								source={
-									focused
-										? require("../../../assets/icons/profile-sharp.png") // Focused icon
-										: require("../../../assets/icons/profile.png") // Unfocused icon
-								}
-								style={{ width: 24, height: 24 }} // Set width and height for the icon
-							/>
-						</View>
-					), // Add Ionicons for Profile tab
+					title: "Visits",
+					tabBarIcon: ({ focused, color }) => (
+						<Ionicons
+							name={focused ? "calendar" : "calendar-outline"}
+							size={24}
+							color={color}
+						/>
+					),
 					headerShown: true,
+					headerTitle: "My Visits",
 				}}
 			/>
 
-			{/* More Tab */}
 			<Tabs.Screen
 				name="more"
 				options={{
 					title: "More",
-					tabBarIcon: ({ focused }) => (
-						<View style={{ width: 24, height: 24 }}>
-							<Image
-								source={
-									focused
-										? require("../../../assets/icons/more-sharp.png") // Focused icon
-										: require("../../../assets/icons/more.png") // Unfocused icon
-								}
-								style={{ width: 24, height: 24 }} // Set width and height for the icon
-							/>
-						</View>
+					tabBarIcon: ({ focused, color }) => (
+						<Ionicons
+							name={focused ? "menu" : "menu-outline"}
+							size={24}
+							color={color}
+						/>
 					),
-					headerTitle: "More Options",
 					headerShown: true,
+					headerTitle: "More Options",
 				}}
 			/>
 		</Tabs>
