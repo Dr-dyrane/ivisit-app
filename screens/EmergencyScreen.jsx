@@ -261,7 +261,7 @@ export default function EmergencyScreen() {
 
 			{/* Main Content Area */}
 			{viewMode === "map" ? (
-				<View style={{ flex: 1, paddingHorizontal: 16, paddingBottom: 16 }}>
+				<View style={{ flex: 1, paddingHorizontal: 16, paddingBottom: 16, marginBottom: tabBarHeight - 12 }}>
 					<EmergencyMap
 						hospitals={hospitals.length > 0 ? filteredHospitals : undefined}
 						onHospitalSelect={handleHospitalSelect}
