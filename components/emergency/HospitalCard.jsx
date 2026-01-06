@@ -1,5 +1,5 @@
 import { View, Text, Pressable, Image } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Fontisto } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
@@ -169,8 +169,8 @@ export default function HospitalCard({
 					</Text>
 				</View>
 				<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-					<Ionicons
-						name={mode === "booking" ? "bed" : "time"}
+					<Fontisto
+						name={mode === "booking" ? "bed-patient" : "clock"}
 						size={16}
 						color={COLORS.brandPrimary}
 					/>
@@ -197,8 +197,8 @@ export default function HospitalCard({
 					}}
 				>
 					<View style={{ flexDirection: "row", alignItems: "center" }}>
-						<Ionicons
-							name={mode === "booking" ? "bed" : "car"}
+						<Fontisto
+							name={mode === "booking" ? "bed-patient" : "ambulance"}
 							size={20}
 							color="#FFFFFF"
 						/>
