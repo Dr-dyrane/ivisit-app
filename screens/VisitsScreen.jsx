@@ -1,6 +1,6 @@
 // screens/VisitsScreen.jsx - Your medical visits
 
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useMemo, useRef, useEffect } from "react";
 import {
 	View,
 	Text,
@@ -9,23 +9,35 @@ import {
 	Platform,
 	RefreshControl,
 	Animated,
+	Image,
+	TouchableOpacity,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
+import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
+import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
 import { useVisits } from "../contexts/VisitsContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useNotifications } from "../contexts/NotificationsContext";
 import { COLORS } from "../constants/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import VisitCard from "../components/visits/VisitCard";
 import VisitFilters from "../components/visits/VisitFilters";
+import * as Haptics from "expo-haptics";
 
 const VisitsScreen = () => {
+	const router = useRouter();
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
-	const { handleScroll } = useTabBarVisibility();
+	const { user } = useAuth();
+	const { unreadCount } = useNotifications();
+	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
+	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
+	const { setHeaderState } = useHeaderState();
 	const { registerFAB } = useFAB();
 
 	// Visits context
@@ -44,6 +56,7 @@ const VisitsScreen = () => {
 	// Animations
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
+	const pingAnim = useRef(new Animated.Value(1)).current;
 
 	// Consistent with Welcome, Onboarding, Signup, Login screens
 	const backgroundColors = isDarkMode
@@ -71,6 +84,116 @@ const VisitsScreen = () => {
 		]).start();
 	}, []);
 
+	useEffect(() => {
+		Animated.loop(
+			Animated.sequence([
+				Animated.timing(pingAnim, {
+					toValue: 2,
+					duration: 800,
+					useNativeDriver: true,
+				}),
+				Animated.timing(pingAnim, {
+					toValue: 1,
+					duration: 800,
+					useNativeDriver: true,
+				}),
+			])
+		).start();
+	}, [pingAnim]);
+
+	// Build left component (profile) - memoized to prevent infinite re-renders
+	const leftComponent = useMemo(
+		() => (
+			<TouchableOpacity
+				onPress={() => {
+					Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+					router.push("/(user)/(stacks)/profile");
+				}}
+				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+			>
+				<Image
+					source={
+						user?.imageUri
+							? { uri: user.imageUri }
+							: require("../assets/profile.jpg")
+					}
+					resizeMode="cover"
+					style={{
+						width: 36,
+						height: 36,
+						borderRadius: 18,
+						borderWidth: 2,
+						borderColor: COLORS.brandPrimary,
+					}}
+				/>
+			</TouchableOpacity>
+		),
+		[user?.imageUri, router]
+	);
+
+	// Build right component (notifications) - memoized to prevent infinite re-renders
+	const rightComponent = useMemo(
+		() => (
+			<TouchableOpacity
+				onPress={() => router.push("/(user)/(stacks)/notifications")}
+				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+			>
+				<View style={{ position: "relative" }}>
+					<Ionicons
+						name="notifications-outline"
+						size={24}
+						color={isDarkMode ? "#FFFFFF" : "#0F172A"}
+					/>
+					{unreadCount > 0 && (
+						<View style={{ position: "absolute", top: -2, right: -2 }}>
+							<Animated.View
+								style={{
+									position: "absolute",
+									width: 10,
+									height: 10,
+									borderRadius: 999,
+									backgroundColor: `${COLORS.brandPrimary}50`,
+									transform: [{ scale: pingAnim }],
+									opacity: pingAnim.interpolate({
+										inputRange: [1, 2],
+										outputRange: [1, 0],
+									}),
+								}}
+							/>
+							<View
+								style={{
+									width: 10,
+									height: 10,
+									borderRadius: 999,
+									backgroundColor: COLORS.brandPrimary,
+									borderWidth: 2,
+									borderColor: isDarkMode ? "#0B0F1A" : "#FFFFFF",
+								}}
+							/>
+						</View>
+					)}
+				</View>
+			</TouchableOpacity>
+		),
+		[isDarkMode, unreadCount, router, pingAnim]
+	);
+
+	// Update header when screen is focused
+	useFocusEffect(
+		useCallback(() => {
+			resetTabBar();
+			resetHeader();
+			setHeaderState({
+				title: "Your Visits",
+				subtitle: "APPOINTMENTS",
+				icon: <Ionicons name="calendar" size={26} color="#FFFFFF" />,
+				backgroundColor: COLORS.brandPrimary,
+				leftComponent,
+				rightComponent,
+			});
+		}, [resetTabBar, resetHeader, setHeaderState, leftComponent, rightComponent])
+	);
+
 	// Register FAB on focus
 	useFocusEffect(
 		useCallback(() => {
@@ -85,6 +208,11 @@ const VisitsScreen = () => {
 		}, [registerFAB])
 	);
 
+	const handleScroll = useCallback((event) => {
+		handleTabBarScroll(event);
+		handleHeaderScroll(event);
+	}, [handleTabBarScroll, handleHeaderScroll]);
+
 	const handleVisitSelect = useCallback((visitId) => {
 		selectVisit(selectedVisitId === visitId ? null : visitId);
 	}, [selectVisit, selectedVisitId]);
@@ -96,6 +224,8 @@ const VisitsScreen = () => {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
+	const headerHeight = 70;
+	const topPadding = headerHeight + insets.top;
 
 	const hasVisits = filteredVisits.length > 0;
 
@@ -103,7 +233,7 @@ const VisitsScreen = () => {
 		<LinearGradient colors={backgroundColors} style={styles.container}>
 			<ScrollView
 				style={styles.scrollView}
-				contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+				contentContainerStyle={[styles.content, { paddingTop: topPadding, paddingBottom: bottomPadding }]}
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
@@ -116,48 +246,6 @@ const VisitsScreen = () => {
 					/>
 				}
 			>
-				{/* Header */}
-				<Animated.View
-					style={{
-						opacity: fadeAnim,
-						transform: [{ translateY: slideAnim }],
-						flexDirection: "row",
-						alignItems: "center",
-						marginBottom: 24,
-					}}
-				>
-					<View style={{
-						backgroundColor: COLORS.brandPrimary,
-						width: 56,
-						height: 56,
-						borderRadius: 16,
-						alignItems: "center",
-						justifyContent: "center",
-						marginRight: 16,
-					}}>
-						<Ionicons name="calendar" size={26} color="#FFFFFF" />
-					</View>
-					<View style={{ flex: 1 }}>
-						<Text style={{
-							fontSize: 10,
-							fontWeight: "900",
-							color: colors.textMuted,
-							letterSpacing: 3,
-							marginBottom: 2,
-						}}>
-							APPOINTMENTS
-						</Text>
-						<Text style={{
-							fontSize: 19,
-							fontWeight: "900",
-							color: colors.text,
-							letterSpacing: -0.5,
-						}}>
-							Your Visits
-						</Text>
-					</View>
-				</Animated.View>
-
 				{/* Filters */}
 				<VisitFilters
 					filters={filters}

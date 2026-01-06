@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useMemo } from "react";
 import {
 	View,
 	Text,
@@ -16,6 +16,9 @@ import { useToast } from "../contexts/ToastContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
+import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
+import { useHeaderState } from "../contexts/HeaderStateContext";
+import { useNotifications } from "../contexts/NotificationsContext";
 import { useFAB } from "../contexts/FABContext";
 import { COLORS } from "../constants/colors";
 import * as Haptics from "expo-haptics";
@@ -27,8 +30,12 @@ const MoreScreen = () => {
 	const { logout, user } = useAuth();
 	const { isDarkMode, toggleTheme } = useTheme();
 	const insets = useSafeAreaInsets();
-	const { handleScroll } = useTabBarVisibility();
+	const { unreadCount } = useNotifications();
+	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
+	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
+	const { setHeaderState } = useHeaderState();
 	const { registerFAB } = useFAB();
+	const pingAnim = useRef(new Animated.Value(1)).current;
 
 	// Hide FAB on More screen (on focus, not just mount)
 	useFocusEffect(
@@ -37,6 +44,22 @@ const MoreScreen = () => {
 				visible: false,
 			});
 		}, [registerFAB])
+	);
+
+	// Update header when screen is focused
+	useFocusEffect(
+		useCallback(() => {
+			resetTabBar();
+			resetHeader();
+			setHeaderState({
+				title: "Settings & Support",
+				subtitle: "MORE",
+				icon: <Ionicons name="ellipsis-horizontal" size={26} color="#FFFFFF" />,
+				backgroundColor: COLORS.brandPrimary,
+				leftComponent,
+				rightComponent,
+			});
+		}, [resetTabBar, resetHeader, setHeaderState, leftComponent, rightComponent])
 	);
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -56,6 +79,8 @@ const MoreScreen = () => {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
+	const headerHeight = 70;
+	const topPadding = headerHeight + insets.top;
 
 	useEffect(() => {
 		Animated.parallel([
@@ -77,6 +102,105 @@ const MoreScreen = () => {
 			}),
 		]).start();
 	}, []);
+
+	useEffect(() => {
+		Animated.loop(
+			Animated.sequence([
+				Animated.timing(pingAnim, {
+					toValue: 2,
+					duration: 800,
+					useNativeDriver: true,
+				}),
+				Animated.timing(pingAnim, {
+					toValue: 1,
+					duration: 800,
+					useNativeDriver: true,
+				}),
+			])
+		).start();
+	}, [pingAnim]);
+
+	// Build left component (profile) - memoized to prevent infinite re-renders
+	const leftComponent = useMemo(
+		() => (
+			<TouchableOpacity
+				onPress={() => {
+					Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+					router.push("/(user)/(stacks)/profile");
+				}}
+				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+			>
+				<Image
+					source={
+						user?.imageUri
+							? { uri: user.imageUri }
+							: require("../assets/profile.jpg")
+					}
+					resizeMode="cover"
+					style={{
+						width: 36,
+						height: 36,
+						borderRadius: 18,
+						borderWidth: 2,
+						borderColor: COLORS.brandPrimary,
+					}}
+				/>
+			</TouchableOpacity>
+		),
+		[user?.imageUri, router]
+	);
+
+	// Build right component (notifications) - memoized to prevent infinite re-renders
+	const rightComponent = useMemo(
+		() => (
+			<TouchableOpacity
+				onPress={() => router.push("/(user)/(stacks)/notifications")}
+				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+			>
+				<View style={{ position: "relative" }}>
+					<Ionicons
+						name="notifications-outline"
+						size={24}
+						color={isDarkMode ? "#FFFFFF" : "#0F172A"}
+					/>
+					{unreadCount > 0 && (
+						<View style={{ position: "absolute", top: -2, right: -2 }}>
+							<Animated.View
+								style={{
+									position: "absolute",
+									width: 10,
+									height: 10,
+									borderRadius: 999,
+									backgroundColor: `${COLORS.brandPrimary}50`,
+									transform: [{ scale: pingAnim }],
+									opacity: pingAnim.interpolate({
+										inputRange: [1, 2],
+										outputRange: [1, 0],
+									}),
+								}}
+							/>
+							<View
+								style={{
+									width: 10,
+									height: 10,
+									borderRadius: 999,
+									backgroundColor: COLORS.brandPrimary,
+									borderWidth: 2,
+									borderColor: isDarkMode ? "#0B0F1A" : "#FFFFFF",
+								}}
+							/>
+						</View>
+					)}
+				</View>
+			</TouchableOpacity>
+		),
+		[isDarkMode, unreadCount, router, pingAnim]
+	);
+
+	const handleScroll = useCallback((event) => {
+		handleTabBarScroll(event);
+		handleHeaderScroll(event);
+	}, [handleTabBarScroll, handleHeaderScroll]);
 
 	const handleLogout = async () => {
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -136,7 +260,7 @@ const MoreScreen = () => {
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			<ScrollView
 				showsVerticalScrollIndicator={false}
-				contentContainerStyle={{ paddingBottom: bottomPadding }}
+				contentContainerStyle={{ paddingTop: topPadding, paddingBottom: bottomPadding }}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
 			>

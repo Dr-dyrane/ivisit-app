@@ -8,6 +8,8 @@ import * as SplashScreen from "expo-splash-screen";
 
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
+import { TabBarVisibilityProvider } from "../contexts/TabBarVisibilityContext";
+import { ScrollAwareHeaderProvider } from "../contexts/ScrollAwareHeaderContext";
 import { EmergencyProvider } from "../contexts/EmergencyContext";
 import ToastProvider from "../contexts/ToastContext";
 import ThemeToggle from "../components/ThemeToggle";
@@ -16,31 +18,35 @@ import ThemeToggle from "../components/ThemeToggle";
  * Root layout wraps the entire app with context providers
  * - AuthProvider: Authentication state
  * - ThemeProvider: Dark/Light mode
+ * - TabBarVisibilityProvider: Bottom navigation scroll-aware behavior
+ * - ScrollAwareHeaderProvider: Header scroll-aware behavior
  * - EmergencyProvider: Emergency/booking state persistence
  * - ToastProvider: Notifications
  * Also includes global StatusBar and Theme toggle
  */
 export default function RootLayout() {
-	// Prevent automatic splash screen hide
 	useEffect(() => {
-		// Prevent the splash screen from auto-hiding so the router or app can hide it when ready
 		SplashScreen.preventAutoHideAsync?.().catch(() => {});
 	}, []);
 
 	return (
 		<AuthProvider>
 			<ThemeProvider>
-				<EmergencyProvider>
-					<ToastProvider>
-						<View style={{ flex: 1 }}>
-							<AuthenticatedStack />
-							{/* Theme toggle (optional absolute positioning) */}
-							<View className="absolute right-0 top-16 px-2 py-4">
-								<ThemeToggle showLabel={false} />
-							</View>
-						</View>
-					</ToastProvider>
-				</EmergencyProvider>
+				<TabBarVisibilityProvider>
+					<ScrollAwareHeaderProvider>
+						<EmergencyProvider>
+							<ToastProvider>
+								<View style={{ flex: 1 }}>
+									<AuthenticatedStack />
+									{/* Theme toggle (optional absolute positioning) */}
+									<View className="absolute right-0 top-16 px-2 py-4">
+										<ThemeToggle showLabel={false} />
+									</View>
+								</View>
+							</ToastProvider>
+						</EmergencyProvider>
+					</ScrollAwareHeaderProvider>
+				</TabBarVisibilityProvider>
 			</ThemeProvider>
 		</AuthProvider>
 	);

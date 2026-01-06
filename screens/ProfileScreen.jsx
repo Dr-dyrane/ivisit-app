@@ -1,4 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+"use client";
+
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
 	View,
 	Text,
@@ -8,9 +10,12 @@ import {
 	ActivityIndicator,
 	Animated,
 } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useToast } from "../contexts/ToastContext";
 import { useTheme } from "../contexts/ThemeContext";
+import { useHeaderState } from "../contexts/HeaderStateContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { updateUserAPI, getCurrentUserAPI } from "../api/auth";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,11 +23,20 @@ import * as Haptics from "expo-haptics";
 import ProfileField from "../components/form/ProfileField";
 import { useAuth } from "../contexts/AuthContext";
 import { COLORS } from "../constants/colors";
+import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
+import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 
 const ProfileScreen = () => {
+	const router = useRouter();
+	const insets = useSafeAreaInsets();
 	const { syncUserData } = useAuth();
 	const { showToast } = useToast();
 	const { isDarkMode } = useTheme();
+	const { handleScroll: handleTabBarScroll, resetTabBar } =
+		useTabBarVisibility();
+	const { handleScroll: handleHeaderScroll, resetHeader } =
+		useScrollAwareHeader();
 
 	const [fullName, setFullName] = useState("");
 	const [username, setUsername] = useState("");
@@ -39,7 +53,6 @@ const ProfileScreen = () => {
 	const slideAnim = useRef(new Animated.Value(30)).current;
 	const imageScale = useRef(new Animated.Value(0.9)).current;
 
-	// Consistent with Welcome, Onboarding, Signup, Login screens
 	const backgroundColors = isDarkMode
 		? ["#0B0F1A", "#121826"]
 		: ["#FFFFFF", "#F3E7E7"];
@@ -49,6 +62,51 @@ const ProfileScreen = () => {
 		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
 		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
 	};
+
+	const { setHeaderState } = useHeaderState();
+
+	const backButton = useCallback(() => <HeaderBackButton />, []);
+
+	useFocusEffect(
+		useCallback(() => {
+			resetTabBar();
+			resetHeader();
+			setHeaderState({
+				title: "Profile",
+				subtitle: "YOUR ACCOUNT",
+				icon: <Ionicons name="person" size={26} color="#FFFFFF" />,
+				backgroundColor: COLORS.brandPrimary,
+				badge: null,
+				leftComponent: backButton(),
+				rightComponent: null,
+			});
+
+			const fetchUserData = async () => {
+				setIsDataLoading(true);
+				try {
+					const { data: userData } = await getCurrentUserAPI();
+					setFullName(userData.fullName || "");
+					setUsername(userData.username || "");
+					setGender(userData.gender || "");
+					setEmail(userData.email || "");
+					setPhone(userData.phone || "");
+					setAddress(userData.address || "");
+					setDateOfBirth(userData.dateOfBirth || "");
+					setImageUri(userData.imageUri || null);
+				} catch (error) {
+					const errorMessage =
+						error.response?.data?.message ||
+						error.message ||
+						"An error occurred";
+					showToast(errorMessage, "error");
+				} finally {
+					setIsDataLoading(false);
+				}
+			};
+
+			fetchUserData();
+		}, [setHeaderState, backButton, resetHeader, resetTabBar, showToast])
+	);
 
 	useEffect(() => {
 		fetchUserData();
@@ -80,12 +138,7 @@ const ProfileScreen = () => {
 		try {
 			const { data: userData } = await getCurrentUserAPI();
 			setFullName(userData.fullName || "");
-			setUsername(userData.username || "");
-			setGender(userData.gender || "");
 			setEmail(userData.email || "");
-			setPhone(userData.phone || "");
-			setAddress(userData.address || "");
-			setDateOfBirth(userData.dateOfBirth || "");
 			setImageUri(userData.imageUri || null);
 		} catch (error) {
 			const errorMessage =
@@ -143,21 +196,31 @@ const ProfileScreen = () => {
 		}
 	};
 
+	const handleScroll = useCallback(
+		(event) => {
+			handleTabBarScroll(event);
+			handleHeaderScroll(event);
+		},
+		[handleTabBarScroll, handleHeaderScroll]
+	);
+
 	if (isDataLoading) {
 		return (
 			<LinearGradient
 				colors={backgroundColors}
 				style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
 			>
-				<View style={{
-					backgroundColor: COLORS.brandPrimary,
-					width: 72,
-					height: 72,
-					borderRadius: 20,
-					alignItems: "center",
-					justifyContent: "center",
-					marginBottom: 20,
-				}}>
+				<View
+					style={{
+						backgroundColor: COLORS.brandPrimary,
+						width: 72,
+						height: 72,
+						borderRadius: 20,
+						alignItems: "center",
+						justifyContent: "center",
+						marginBottom: 20,
+					}}
+				>
 					<ActivityIndicator size="large" color="#FFFFFF" />
 				</View>
 				<Text style={{ color: colors.textMuted, fontSize: 14 }}>
@@ -172,6 +235,8 @@ const ProfileScreen = () => {
 			<ScrollView
 				showsVerticalScrollIndicator={false}
 				contentContainerStyle={{ paddingBottom: 40 }}
+				scrollEventThrottle={16}
+				onScroll={handleScroll}
 			>
 				<Animated.View
 					style={{
@@ -179,6 +244,7 @@ const ProfileScreen = () => {
 						transform: [{ translateY: slideAnim }, { scale: imageScale }],
 						alignItems: "center",
 						paddingBottom: 32,
+						paddingTop: 20,
 					}}
 				>
 					<Pressable onPress={pickImage} style={{ position: "relative" }}>
@@ -332,42 +398,52 @@ const ProfileScreen = () => {
 							showToast("Emergency contacts feature coming soon", "info");
 						}}
 					>
-						<View style={{
-							backgroundColor: COLORS.brandPrimary,
-							width: 56,
-							height: 56,
-							borderRadius: 16,
-							alignItems: "center",
-							justifyContent: "center",
-							marginRight: 16,
-						}}>
+						<View
+							style={{
+								backgroundColor: COLORS.brandPrimary,
+								width: 56,
+								height: 56,
+								borderRadius: 16,
+								alignItems: "center",
+								justifyContent: "center",
+								marginRight: 16,
+							}}
+						>
 							<Ionicons name="people" size={26} color="#FFFFFF" />
 						</View>
 						<View style={{ flex: 1 }}>
-							<Text style={{
-								fontSize: 19,
-								fontWeight: "900",
-								color: colors.text,
-								letterSpacing: -0.5,
-							}}>
+							<Text
+								style={{
+									fontSize: 19,
+									fontWeight: "900",
+									color: colors.text,
+									letterSpacing: -0.5,
+								}}
+							>
 								Add Contact
 							</Text>
-							<Text style={{
-								fontSize: 14,
-								color: colors.textMuted,
-								marginTop: 2,
-							}}>
+							<Text
+								style={{
+									fontSize: 14,
+									color: colors.textMuted,
+									marginTop: 2,
+								}}
+							>
 								Family & emergency responders
 							</Text>
 						</View>
-						<View style={{
-							width: 36,
-							height: 36,
-							borderRadius: 12,
-							backgroundColor: isDarkMode ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
-							alignItems: "center",
-							justifyContent: "center",
-						}}>
+						<View
+							style={{
+								width: 36,
+								height: 36,
+								borderRadius: 12,
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.025)"
+									: "rgba(0,0,0,0.025)",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
 							<Ionicons name="add" size={20} color={colors.textMuted} />
 						</View>
 					</Pressable>
@@ -430,19 +506,29 @@ const ProfileScreen = () => {
 									marginBottom: 14,
 								}}
 							>
-								<View style={{
-									width: 36,
-									height: 36,
-									borderRadius: 10,
-									backgroundColor: `${COLORS.brandPrimary}15`,
-									alignItems: "center",
-									justifyContent: "center",
-									marginRight: 12,
-								}}>
-									<Ionicons name={item.icon} size={18} color={COLORS.brandPrimary} />
+								<View
+									style={{
+										width: 36,
+										height: 36,
+										borderRadius: 10,
+										backgroundColor: `${COLORS.brandPrimary}15`,
+										alignItems: "center",
+										justifyContent: "center",
+										marginRight: 12,
+									}}
+								>
+									<Ionicons
+										name={item.icon}
+										size={18}
+										color={COLORS.brandPrimary}
+									/>
 								</View>
 								<Text
-									style={{ color: colors.text, fontSize: 15, fontWeight: "600" }}
+									style={{
+										color: colors.text,
+										fontSize: 15,
+										fontWeight: "600",
+									}}
 								>
 									{item.label}
 								</Text>
@@ -464,11 +550,7 @@ const ProfileScreen = () => {
 								showToast("Medical history feature coming soon", "info");
 							}}
 						>
-							<Ionicons
-								name="document-text"
-								size={20}
-								color="#FFFFFF"
-							/>
+							<Ionicons name="document-text" size={20} color="#FFFFFF" />
 							<Text
 								style={{
 									marginLeft: 8,
@@ -504,15 +586,17 @@ const ProfileScreen = () => {
 							shadowRadius: 10,
 						}}
 					>
-						<View style={{
-							backgroundColor: COLORS.brandPrimary,
-							width: 56,
-							height: 56,
-							borderRadius: 16,
-							alignItems: "center",
-							justifyContent: "center",
-							marginRight: 16,
-						}}>
+						<View
+							style={{
+								backgroundColor: COLORS.brandPrimary,
+								width: 56,
+								height: 56,
+								borderRadius: 16,
+								alignItems: "center",
+								justifyContent: "center",
+								marginRight: 16,
+							}}
+						>
 							{isLoading ? (
 								<ActivityIndicator color="#FFFFFF" />
 							) : (
@@ -520,31 +604,43 @@ const ProfileScreen = () => {
 							)}
 						</View>
 						<View style={{ flex: 1 }}>
-							<Text style={{
-								fontSize: 19,
-								fontWeight: "900",
-								color: colors.text,
-								letterSpacing: -0.5,
-							}}>
+							<Text
+								style={{
+									fontSize: 19,
+									fontWeight: "900",
+									color: colors.text,
+									letterSpacing: -0.5,
+								}}
+							>
 								Save Changes
 							</Text>
-							<Text style={{
-								fontSize: 14,
-								color: colors.textMuted,
-								marginTop: 2,
-							}}>
+							<Text
+								style={{
+									fontSize: 14,
+									color: colors.textMuted,
+									marginTop: 2,
+								}}
+							>
 								Update your profile
 							</Text>
 						</View>
-						<View style={{
-							width: 36,
-							height: 36,
-							borderRadius: 12,
-							backgroundColor: isDarkMode ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
-							alignItems: "center",
-							justifyContent: "center",
-						}}>
-							<Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+						<View
+							style={{
+								width: 36,
+								height: 36,
+								borderRadius: 12,
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.025)"
+									: "rgba(0,0,0,0.025)",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<Ionicons
+								name="chevron-forward"
+								size={16}
+								color={colors.textMuted}
+							/>
 						</View>
 					</Pressable>
 				</Animated.View>
