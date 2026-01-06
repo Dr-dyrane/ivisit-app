@@ -25,6 +25,7 @@ export const deleteUserAPI = async () => {
 export const getCurrentUserAPI = async () => {
 	return await userStore.getCurrentUser();
 };
+
 // Function to initiate forgot password
 export const forgotPasswordAPI = async (email) => {
 	return await userStore.forgotPassword(email);
@@ -32,6 +33,16 @@ export const forgotPasswordAPI = async (email) => {
 
 // Function to reset password
 export const resetPasswordAPI = async (resetToken, newPassword, email) => {
-    console.log(resetToken, newPassword, email);
+	console.log(resetToken, newPassword, email);
 	return await userStore.resetPassword(resetToken, newPassword, email);
+};
+
+// Function to check if user exists and has password
+export const checkUserExistsAPI = async (credentials) => {
+	return await userStore.checkUserExists(credentials);
+};
+
+// Function to set password for existing users
+export const setPasswordAPI = async (credentials) => {
+	return await userStore.setPassword(credentials);
 };

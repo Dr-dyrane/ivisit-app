@@ -1,4 +1,4 @@
-// hooks/useForgotPassword.js
+// hooks/mutations/useForgotPassword.js
 import { useState } from "react";
 import { forgotPasswordAPI } from "../../api/auth";
 

@@ -4,7 +4,7 @@
 
 /**
  * components/login/LoginInputModal.jsx
- * Simplified LoginInputModal - iVisit UI/UX with proper flow control
+ * Production-ready login modal with comprehensive validation
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -31,9 +31,8 @@ import {
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
 import { COLORS } from "../../constants/colors";
-import { loginUserAPI } from "../../api/auth";
+import useLoginMutation from "../../hooks/mutations/useLoginMutation";
 import { useAuth } from "../../contexts/AuthContext";
-
 import LoginAuthMethodCard from "./LoginAuthMethodCard";
 import LoginContactCard from "./LoginContactCard";
 import PhoneInputField from "../register/PhoneInputField";
@@ -53,9 +52,11 @@ export default function LoginInputModal({ visible, onClose }) {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
 	const [resetEmail, setResetEmail] = useState(null);
+	const [userInfo, setUserInfo] = useState(null); // Store user validation info
 
 	const { showToast } = useToast();
 	const { login } = useAuth();
+	const { loginUser, checkUserExists, setPassword } = useLoginMutation();
 	const {
 		currentStep,
 		loginData,
@@ -105,6 +106,7 @@ export default function LoginInputModal({ visible, onClose }) {
 		]).start(() => {
 			resetLoginFlow();
 			setError(null);
+			setUserInfo(null);
 			onClose();
 		});
 	};
@@ -116,13 +118,11 @@ export default function LoginInputModal({ visible, onClose }) {
 	};
 
 	const handleAuthMethodSelect = (method) => {
-		console.log("[v0] LoginInputModal: Auth method selected:", method);
 		updateLoginData({ authMethod: method });
 		nextStep();
 	};
 
 	const handleContactTypeSelect = (type) => {
-		console.log("[v0] LoginInputModal: Contact type selected:", type);
 		updateLoginData({ contactType: type });
 		nextStep();
 	};
@@ -133,13 +133,46 @@ export default function LoginInputModal({ visible, onClose }) {
 		setError(null);
 
 		try {
-			console.log("[v0] LoginInputModal: Contact submitted:", value);
 			await new Promise((r) => setTimeout(r, 1200));
 
 			updateLoginData({
 				contact: value,
 				[loginData.contactType === "email" ? "email" : "phone"]: value,
 			});
+
+			if (loginData.authMethod === LOGIN_AUTH_METHODS.PASSWORD) {
+				try {
+					const credentials =
+						loginData.contactType === "email"
+							? { email: value }
+							: { phone: value };
+					const userCheck = await checkUserExists(credentials);
+					setUserInfo(userCheck);
+
+					if (!userCheck.hasPassword) {
+						Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+						showToast("No password set for this account", "info");
+						setError(
+							"You haven't set a password yet. Please set one below or use OTP login instead."
+						);
+						goToStep(LOGIN_STEPS.SET_PASSWORD);
+						return;
+					}
+				} catch (err) {
+					const [errorCode, errorMessage] = err.message?.split("|") || [];
+					setError(errorMessage || "Unable to find account");
+					showToast(errorMessage || "Account not found", "error");
+
+					if (errorCode === "USER_NOT_FOUND") {
+						setTimeout(() => {
+							showToast("Please create an account first", "info");
+						}, 2000);
+					}
+					setLoading(false);
+					return;
+				}
+			}
+
 			nextStep();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -165,7 +198,6 @@ export default function LoginInputModal({ visible, onClose }) {
 		setError(null);
 
 		try {
-			console.log("[v0] LoginInputModal: OTP submitted");
 			await new Promise((r) => setTimeout(r, 800));
 
 			updateLoginData({ otp });
@@ -176,8 +208,7 @@ export default function LoginInputModal({ visible, onClose }) {
 				otp,
 			};
 
-			const { data } = await loginUserAPI(credentials);
-			await login(data);
+			await loginUser(credentials);
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			showToast("Welcome back to iVisit!", "success");
@@ -207,7 +238,6 @@ export default function LoginInputModal({ visible, onClose }) {
 		setError(null);
 
 		try {
-			console.log("[v0] LoginInputModal: Password submitted");
 			updateLoginData({ password });
 
 			const credentials = {
@@ -216,8 +246,7 @@ export default function LoginInputModal({ visible, onClose }) {
 				password,
 			};
 
-			const { data } = await loginUserAPI(credentials);
-			await login(data);
+			await loginUser(credentials);
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			showToast("Welcome back to iVisit!", "success");
@@ -230,16 +259,36 @@ export default function LoginInputModal({ visible, onClose }) {
 
 			setError(displayMessage);
 			showToast(displayMessage, "error");
+		} finally {
+			setLoading(false);
+		}
+	};
 
-			if (errorCode === "USER_NOT_FOUND") {
-				setTimeout(() => {
-					showToast("No account found. Please create one first.", "info");
-				}, 2000);
-			} else if (errorCode === "NO_PASSWORD") {
-				setTimeout(() => {
-					showToast("Try signing in with a verification code instead", "info");
-				}, 2000);
-			}
+	const handleSetPassword = async (password) => {
+		if (!password) return;
+		setLoading(true);
+		setError(null);
+
+		try {
+			const credentials = {
+				email: loginData.email,
+				phone: loginData.phone,
+				password,
+			};
+
+			await setPassword(credentials);
+
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			showToast("Password set successfully! Welcome to iVisit!", "success");
+
+			handleDismiss();
+		} catch (err) {
+			const [errorCode, errorMessage] = err.message?.split("|") || [];
+			const displayMessage =
+				errorMessage || "Unable to set password. Please try again.";
+
+			setError(displayMessage);
+			showToast(displayMessage, "error");
 		} finally {
 			setLoading(false);
 		}
@@ -266,6 +315,7 @@ export default function LoginInputModal({ visible, onClose }) {
 		}
 		if (currentStep === LOGIN_STEPS.OTP_VERIFICATION) return "Verify Code";
 		if (currentStep === LOGIN_STEPS.PASSWORD_INPUT) return "Enter Password";
+		if (currentStep === LOGIN_STEPS.SET_PASSWORD) return "Set Password";
 		if (currentStep === LOGIN_STEPS.FORGOT_PASSWORD) return "Reset Password";
 		if (currentStep === LOGIN_STEPS.RESET_PASSWORD)
 			return "Create New Password";
@@ -386,7 +436,7 @@ export default function LoginInputModal({ visible, onClose }) {
 								</View>
 							)}
 
-							{/* Content - Added CONTACT_TYPE step handling */}
+							{/* Content */}
 							{currentStep === LOGIN_STEPS.AUTH_METHOD && (
 								<LoginAuthMethodCard
 									onSelect={handleAuthMethodSelect}
@@ -435,6 +485,13 @@ export default function LoginInputModal({ visible, onClose }) {
 									loading={loading}
 									showForgotPassword
 									onForgotPassword={() => goToStep(LOGIN_STEPS.FORGOT_PASSWORD)}
+								/>
+							)}
+
+							{currentStep === LOGIN_STEPS.SET_PASSWORD && (
+								<SetPasswordCard
+									onPasswordSet={handleSetPassword}
+									loading={loading}
 								/>
 							)}
 

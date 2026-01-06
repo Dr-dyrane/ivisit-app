@@ -1,3 +1,5 @@
+// hooks/mutations/useSignUp.js
+
 import { useContext } from "react";
 import { AuthContext } from "../../contexts/AuthContext"; // Import your AuthContext
 import { signUpUserAPI } from "../../api/auth"; // Import your simulated API call

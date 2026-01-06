@@ -1,11 +1,12 @@
 // constants/loginSteps.js
 
 export const LOGIN_STEPS = {
-	AUTH_METHOD: "auth_method", // Choose OTP or Password
-	CONTACT_TYPE: "contact_type", // Choose Email or Phone
-	CONTACT_INPUT: "contact_input", // Enter email or phone value
-	OTP_VERIFICATION: "otp_verification", // Verify OTP if chosen
-	PASSWORD_INPUT: "password_input", // Enter password if chosen
+	AUTH_METHOD: "auth_method",
+	CONTACT_TYPE: "contact_type",
+	CONTACT_INPUT: "contact_input",
+	OTP_VERIFICATION: "otp_verification",
+	PASSWORD_INPUT: "password_input",
+	SET_PASSWORD: "set_password",
 	FORGOT_PASSWORD: "forgot_password",
 	RESET_PASSWORD: "reset_password",
 };
@@ -54,6 +55,10 @@ export const getPreviousLoginStep = (currentStep) => {
 		currentStep === LOGIN_STEPS.PASSWORD_INPUT
 	) {
 		return LOGIN_STEPS.CONTACT_INPUT;
+	}
+
+	if (currentStep === LOGIN_STEPS.SET_PASSWORD) {
+		return LOGIN_STEPS.PASSWORD_INPUT;
 	}
 
 	if (

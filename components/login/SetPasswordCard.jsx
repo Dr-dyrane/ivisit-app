@@ -1,3 +1,5 @@
+// components/login/SetPasswordCard.jsx
+
 "use client"
 
 import { useRef, useState } from "react"
@@ -12,7 +14,7 @@ import { COLORS } from "../../constants/colors"
  * For users who don't have a password yet (signed up without one)
  * Allows them to set a password during login
  */
-export default function SetPasswordCard({ onPasswordSet }) {
+export default function SetPasswordCard({ onPasswordSet, loading }) {
   const { isDarkMode } = useTheme()
 
   const passwordInputRef = useRef(null)
@@ -140,18 +142,27 @@ export default function SetPasswordCard({ onPasswordSet }) {
           onPressOut={() => {
             Animated.spring(buttonScale, { toValue: 1, friction: 3, useNativeDriver: true }).start()
           }}
-          disabled={!isValid}
+          disabled={!isValid || loading}
           className="h-16 rounded-2xl items-center justify-center"
           style={{
-            backgroundColor: isValid ? COLORS.brandPrimary : isDarkMode ? COLORS.bgDarkAlt : "#E5E7EB",
+            backgroundColor: isValid && !loading ? COLORS.brandPrimary : isDarkMode ? COLORS.bgDarkAlt : "#E5E7EB",
           }}
         >
-          <Text
-            className="text-base font-black tracking-[2px]"
-            style={{ color: isValid ? COLORS.bgLight : COLORS.textMuted }}
-          >
-            SET PASSWORD
-          </Text>
+          {loading ? (
+            <Text
+              className="text-base font-black tracking-[2px]"
+              style={{ color: isValid ? COLORS.bgLight : COLORS.textMuted }}
+            >
+              SETTING PASSWORD...
+            </Text>
+          ) : (
+            <Text
+              className="text-base font-black tracking-[2px]"
+              style={{ color: isValid ? COLORS.bgLight : COLORS.textMuted }}
+            >
+              SET PASSWORD
+            </Text>
+          )}
         </Pressable>
       </Animated.View>
 

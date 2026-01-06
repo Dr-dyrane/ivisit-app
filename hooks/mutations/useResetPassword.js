@@ -1,4 +1,4 @@
-// hooks/useResetPassword.js
+// hooks/mutations/useResetPassword.js
 import { useState } from "react";
 import { resetPasswordAPI } from "../../api/auth";
 

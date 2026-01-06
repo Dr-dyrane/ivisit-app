@@ -1,4 +1,4 @@
-// hooks/useUpdateUser.js
+// hooks/mutations/useUpdateUser.js
 import { useState } from "react";
 import { updateUserAPI } from "../../api/auth";
 import imageStore from "../../store/imageStore";

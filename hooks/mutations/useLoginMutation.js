@@ -1,36 +1,67 @@
-"use client"
+// hooks/mutations/useLoginMutation.js
+
+"use client";
 
 /**
  * useLoginMutation
- * Handles login API calls and AuthContext integration
- * Separated from LoginContext to follow the same pattern as registration
+ * Handles all login-related API calls and AuthContext integration
+ * Components should ONLY use this hook, never call API or store directly
  */
 
-import { useContext } from "react"
-import { AuthContext } from "../../contexts/AuthContext"
-import { loginUserAPI } from "../../api/auth"
+import { useContext } from "react";
+import { AuthContext } from "../../contexts/AuthContext";
+import {
+	loginUserAPI,
+	checkUserExistsAPI,
+	setPasswordAPI,
+} from "../../api/auth";
 
 const useLoginMutation = () => {
-  const { login } = useContext(AuthContext)
+	const { login } = useContext(AuthContext);
 
-  const loginUser = async (credentials) => {
-    try {
-      const response = await loginUserAPI(credentials)
-      const { token, ...userData } = response.data
+	const checkUserExists = async (credentials) => {
+		try {
+			return await checkUserExistsAPI(credentials);
+		} catch (error) {
+			throw error;
+		}
+	};
 
-      const loginSuccess = await login({ ...userData, token })
+	const setPassword = async (credentials) => {
+		try {
+			const response = await setPasswordAPI(credentials);
+			const { token, ...userData } = response.data;
 
-      if (loginSuccess) {
-        return { success: true, data: userData }
-      } else {
-        throw new Error("Login failed")
-      }
-    } catch (error) {
-      throw error
-    }
-  }
+			const loginSuccess = await login({ ...userData, token });
 
-  return { loginUser }
-}
+			if (loginSuccess) {
+				return { success: true, data: userData };
+			} else {
+				throw new Error("FAILED|Failed to set password and login");
+			}
+		} catch (error) {
+			throw error;
+		}
+	};
 
-export default useLoginMutation
+	const loginUser = async (credentials) => {
+		try {
+			const response = await loginUserAPI(credentials);
+			const { token, ...userData } = response.data;
+
+			const loginSuccess = await login({ ...userData, token });
+
+			if (loginSuccess) {
+				return { success: true, data: userData };
+			} else {
+				throw new Error("FAILED|Login failed");
+			}
+		} catch (error) {
+			throw error;
+		}
+	};
+
+	return { loginUser, checkUserExists, setPassword };
+};
+
+export default useLoginMutation;

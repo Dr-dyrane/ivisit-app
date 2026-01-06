@@ -17,6 +17,84 @@ const userStore = {
 		token: "testToken",
 	},
 
+	checkUserExists: async (credentials) => {
+		try {
+			const usersData = await AsyncStorage.getItem("users");
+			let users = usersData ? JSON.parse(usersData) : [];
+
+			if (!Array.isArray(users)) {
+				users = [];
+			}
+
+			if (users.length === 0) {
+				users.push(userStore.staticUserData);
+				await AsyncStorage.setItem("users", JSON.stringify(users));
+			}
+
+			const user = users.find(
+				(user) =>
+					(credentials.email &&
+						user.email &&
+						user.email.trim().toLowerCase() ===
+							credentials.email.trim().toLowerCase()) ||
+					(credentials.phone && user.phone && user.phone === credentials.phone)
+			);
+
+			if (!user) {
+				throw new Error(
+					"USER_NOT_FOUND|No account found with these credentials. Please sign up first."
+				);
+			}
+
+			return {
+				exists: true,
+				hasPassword: !!user.password,
+				email: user.email,
+				phone: user.phone,
+				username: user.username,
+			};
+		} catch (error) {
+			console.error("Check user exists error:", error.message);
+			throw error;
+		}
+	},
+
+	setPassword: async (credentials) => {
+		try {
+			const usersData = await AsyncStorage.getItem("users");
+			const users = usersData ? JSON.parse(usersData) : [];
+
+			if (!Array.isArray(users)) {
+				throw new Error("INVALID_DATA|Invalid user data");
+			}
+
+			const userIndex = users.findIndex(
+				(user) =>
+					(credentials.email &&
+						user.email &&
+						user.email.trim().toLowerCase() ===
+							credentials.email.trim().toLowerCase()) ||
+					(credentials.phone && user.phone && user.phone === credentials.phone)
+			);
+
+			if (userIndex === -1) {
+				throw new Error("USER_NOT_FOUND|User not found");
+			}
+
+			users[userIndex].password = credentials.password;
+			await AsyncStorage.setItem("users", JSON.stringify(users));
+
+			const token = generateRandomToken();
+			users[userIndex].token = token;
+			await AsyncStorage.setItem("token", token);
+
+			return { data: users[userIndex] };
+		} catch (error) {
+			console.error("Set password error:", error.message);
+			throw error;
+		}
+	},
+
 	login: async (credentials) => {
 		try {
 			await new Promise((resolve) => setTimeout(resolve, 1000));
