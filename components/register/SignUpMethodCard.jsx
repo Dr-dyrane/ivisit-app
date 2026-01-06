@@ -19,7 +19,7 @@ export default function SignUpMethodCard({ onSelect }) {
 		primary: COLORS.brandPrimary,
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
 		subtitle: isDarkMode ? "#94A3B8" : "#64748B",
-		card: isDarkMode ? "#1E293B" : "#F3E7E7",
+		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
 	};
 
 	const headerAnim = useRef(new Animated.Value(20)).current;
