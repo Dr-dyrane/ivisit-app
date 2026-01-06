@@ -9,6 +9,7 @@ import {
 	Platform,
 	Linking,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../contexts/ThemeContext";
 import { useEmergency } from "../contexts/EmergencyContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -50,11 +51,15 @@ export default function EmergencyScreen() {
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
 
+	// Consistent with Welcome, Onboarding, Signup, Login screens
+	const backgroundColors = isDarkMode
+		? ["#0B0F1A", "#121826"]
+		: ["#FFFFFF", "#F3E7E7"];
+
 	const colors = {
-		background: isDarkMode ? COLORS.bgDark : COLORS.bgLight,
-		card: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
-		text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-		textMuted: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
+		text: isDarkMode ? "#FFFFFF" : "#0F172A",
+		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
 	};
 
 	useEffect(() => {
@@ -123,7 +128,7 @@ export default function EmergencyScreen() {
 	const bottomPadding = tabBarHeight + 20;
 
 	return (
-		<View style={{ flex: 1, backgroundColor: colors.background }}>
+		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			{/* Header */}
 			<Animated.View
 				style={{
@@ -132,22 +137,24 @@ export default function EmergencyScreen() {
 					paddingHorizontal: 20,
 					paddingTop: insets.top,
 					marginBottom: 16,
-					backgroundColor: colors.background,
 					zIndex: 10,
 				}}
 			>
 				{/* Title Row */}
 				<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
 					<View style={{
-						backgroundColor: `${COLORS.brandPrimary}15`,
-						padding: 12,
+						backgroundColor: COLORS.brandPrimary,
+						width: 56,
+						height: 56,
 						borderRadius: 16,
-						marginRight: 14,
+						alignItems: "center",
+						justifyContent: "center",
+						marginRight: 16,
 					}}>
 						{mode === "emergency" ? (
-							<Ionicons name="medical" size={24} color={COLORS.brandPrimary} />
+							<Ionicons name="medical" size={26} color="#FFFFFF" />
 						) : (
-							<Fontisto name="bed-patient" size={20} color={COLORS.brandPrimary} />
+							<Fontisto name="bed-patient" size={22} color="#FFFFFF" />
 						)}
 					</View>
 					<View style={{ flex: 1 }}>
@@ -162,8 +169,8 @@ export default function EmergencyScreen() {
 							{mode === "emergency" ? "EMERGENCY" : "BOOK BED"}
 						</Text>
 						<Text style={{
-							fontSize: 22,
-							fontWeight: "700",
+							fontSize: 19,
+							fontWeight: "900",
 							color: colors.text,
 							letterSpacing: -0.5,
 						}}>
@@ -172,13 +179,17 @@ export default function EmergencyScreen() {
 					</View>
 				</View>
 
-				{/* View Mode Segmented Control - Full Width Apple Style */}
+				{/* View Mode Segmented Control */}
 				<View style={{
 					flexDirection: "row",
 					backgroundColor: colors.card,
-					borderRadius: 12,
-					padding: 4,
+					borderRadius: 30,
+					padding: 6,
 					marginBottom: 16,
+					shadowColor: "#000",
+					shadowOffset: { width: 0, height: 4 },
+					shadowOpacity: isDarkMode ? 0 : 0.03,
+					shadowRadius: 10,
 				}}>
 					<Pressable
 						onPress={() => {
@@ -187,8 +198,8 @@ export default function EmergencyScreen() {
 						}}
 						style={{
 							flex: 1,
-							paddingVertical: 10,
-							borderRadius: 8,
+							paddingVertical: 14,
+							borderRadius: 24,
 							backgroundColor: viewMode === "map" ? COLORS.brandPrimary : "transparent",
 							alignItems: "center",
 							justifyContent: "center",
@@ -197,18 +208,16 @@ export default function EmergencyScreen() {
 					>
 						<Ionicons
 							name="map-outline"
-							size={16}
+							size={18}
 							color={viewMode === "map" ? "#FFFFFF" : colors.textMuted}
-							style={{ marginRight: 6 }}
+							style={{ marginRight: 8 }}
 						/>
 						<Text style={{
-							fontSize: 10,
+							fontSize: 13,
 							fontWeight: "800",
-							letterSpacing: 2,
 							color: viewMode === "map" ? "#FFFFFF" : colors.textMuted,
-							textTransform: "uppercase",
 						}}>
-							MAP
+							Map View
 						</Text>
 					</Pressable>
 					<Pressable
@@ -218,8 +227,8 @@ export default function EmergencyScreen() {
 						}}
 						style={{
 							flex: 1,
-							paddingVertical: 10,
-							borderRadius: 8,
+							paddingVertical: 14,
+							borderRadius: 24,
 							backgroundColor: viewMode === "list" ? COLORS.brandPrimary : "transparent",
 							alignItems: "center",
 							justifyContent: "center",
@@ -228,18 +237,16 @@ export default function EmergencyScreen() {
 					>
 						<Ionicons
 							name="list-outline"
-							size={16}
+							size={18}
 							color={viewMode === "list" ? "#FFFFFF" : colors.textMuted}
-							style={{ marginRight: 6 }}
+							style={{ marginRight: 8 }}
 						/>
 						<Text style={{
-							fontSize: 10,
+							fontSize: 13,
 							fontWeight: "800",
-							letterSpacing: 2,
 							color: viewMode === "list" ? "#FFFFFF" : colors.textMuted,
-							textTransform: "uppercase",
 						}}>
-							LIST
+							List View
 						</Text>
 					</Pressable>
 				</View>
@@ -284,60 +291,69 @@ export default function EmergencyScreen() {
 						<Pressable
 							onPress={handleCall911}
 							style={{
-								backgroundColor: COLORS.brandPrimary,
-								borderRadius: 16,
-								paddingVertical: 18,
-								paddingHorizontal: 24,
+								backgroundColor: colors.card,
+								borderRadius: 30,
+								padding: 20,
 								flexDirection: "row",
 								alignItems: "center",
-								justifyContent: "center",
 								marginBottom: 20,
-								shadowColor: COLORS.brandPrimary,
+								shadowColor: "#000",
 								shadowOffset: { width: 0, height: 4 },
-								shadowOpacity: 0.3,
-								shadowRadius: 8,
-								elevation: 8,
+								shadowOpacity: isDarkMode ? 0 : 0.03,
+								shadowRadius: 10,
 							}}
 						>
-							<Ionicons name="call" size={22} color="#FFFFFF" style={{ marginRight: 12 }} />
-							<Text style={{
-								color: "#FFFFFF",
-								fontSize: 10,
-								fontWeight: "900",
-								letterSpacing: 3,
-								textTransform: "uppercase",
+							<View style={{
+								backgroundColor: COLORS.brandPrimary,
+								width: 56,
+								height: 56,
+								borderRadius: 16,
+								alignItems: "center",
+								justifyContent: "center",
+								marginRight: 16,
 							}}>
-								CALL 911 EMERGENCY
-							</Text>
+								<Ionicons name="call" size={26} color="#FFFFFF" />
+							</View>
+							<View style={{ flex: 1 }}>
+								<Text style={{
+									color: colors.text,
+									fontSize: 19,
+									fontWeight: "900",
+									letterSpacing: -0.5,
+								}}>
+									Call 911
+								</Text>
+								<Text style={{
+									color: colors.textMuted,
+									fontSize: 14,
+									marginTop: 2,
+								}}>
+									Emergency dispatch
+								</Text>
+							</View>
+							<View style={{
+								width: 36,
+								height: 36,
+								borderRadius: 12,
+								backgroundColor: isDarkMode ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
+								alignItems: "center",
+								justifyContent: "center",
+							}}>
+								<Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+							</View>
 						</Pressable>
 					)}
 
 					{/* Available Services Header */}
-					<View
-						style={{
-							flexDirection: "row",
-							justifyContent: "space-between",
-							alignItems: "center",
-							marginBottom: 16,
-						}}
-					>
-						<Text style={{
-							fontSize: 10,
-							fontWeight: "900",
-							color: colors.textMuted,
-							letterSpacing: 3,
-							textTransform: "uppercase",
-						}}>
-							{mode === "emergency" ? "NEARBY SERVICES" : "AVAILABLE BEDS"}
-						</Text>
-						<Text style={{
-							fontSize: 12,
-							color: colors.textMuted,
-							fontWeight: "600",
-						}}>
-							{filteredHospitals.length} nearby
-						</Text>
-					</View>
+					<Text style={{
+						fontSize: 10,
+						fontWeight: "900",
+						color: colors.textMuted,
+						letterSpacing: 3,
+						marginBottom: 16,
+					}}>
+						{mode === "emergency" ? "NEARBY SERVICES" : "AVAILABLE BEDS"} ({filteredHospitals.length})
+					</Text>
 
 					{/* Hospital Cards */}
 					{filteredHospitals.map((hospital) => (
@@ -352,6 +368,6 @@ export default function EmergencyScreen() {
 					))}
 				</ScrollView>
 			)}
-		</View>
+		</LinearGradient>
 	);
 }

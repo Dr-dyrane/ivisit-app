@@ -10,6 +10,7 @@ import {
 	RefreshControl,
 	Animated,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
@@ -42,13 +43,24 @@ const VisitsScreen = () => {
 
 	// Animations
 	const fadeAnim = useRef(new Animated.Value(0)).current;
-	const slideAnim = useRef(new Animated.Value(20)).current;
+	const slideAnim = useRef(new Animated.Value(30)).current;
+
+	// Consistent with Welcome, Onboarding, Signup, Login screens
+	const backgroundColors = isDarkMode
+		? ["#0B0F1A", "#121826"]
+		: ["#FFFFFF", "#F3E7E7"];
+
+	const colors = {
+		text: isDarkMode ? "#FFFFFF" : "#0F172A",
+		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
+	};
 
 	useEffect(() => {
 		Animated.parallel([
 			Animated.timing(fadeAnim, {
 				toValue: 1,
-				duration: 400,
+				duration: 600,
 				useNativeDriver: true,
 			}),
 			Animated.spring(slideAnim, {
@@ -82,20 +94,13 @@ const VisitsScreen = () => {
 		console.log("[iVisit] View details for visit:", visitId);
 	}, []);
 
-	const colors = {
-		background: isDarkMode ? COLORS.bgDark : COLORS.bgLight,
-		text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-		textMuted: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
-		card: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
-	};
-
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
 
 	const hasVisits = filteredVisits.length > 0;
 
 	return (
-		<View style={[styles.container, { backgroundColor: colors.background }]}>
+		<LinearGradient colors={backgroundColors} style={styles.container}>
 			<ScrollView
 				style={styles.scrollView}
 				contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
@@ -116,16 +121,42 @@ const VisitsScreen = () => {
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
-						marginBottom: 20,
+						flexDirection: "row",
+						alignItems: "center",
+						marginBottom: 24,
 						marginTop: insets.top,
 					}}
 				>
-					<Text style={[styles.title, { color: colors.text }]}>
-						Your Visits
-					</Text>
-					<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-						Manage your medical appointments
-					</Text>
+					<View style={{
+						backgroundColor: COLORS.brandPrimary,
+						width: 56,
+						height: 56,
+						borderRadius: 16,
+						alignItems: "center",
+						justifyContent: "center",
+						marginRight: 16,
+					}}>
+						<Ionicons name="calendar" size={26} color="#FFFFFF" />
+					</View>
+					<View style={{ flex: 1 }}>
+						<Text style={{
+							fontSize: 10,
+							fontWeight: "900",
+							color: colors.textMuted,
+							letterSpacing: 3,
+							marginBottom: 2,
+						}}>
+							APPOINTMENTS
+						</Text>
+						<Text style={{
+							fontSize: 19,
+							fontWeight: "900",
+							color: colors.text,
+							letterSpacing: -0.5,
+						}}>
+							Your Visits
+						</Text>
+					</View>
 				</Animated.View>
 
 				{/* Filters */}
@@ -150,16 +181,43 @@ const VisitsScreen = () => {
 						))}
 					</Animated.View>
 				) : (
-					<View style={[styles.emptyState, { backgroundColor: colors.card }]}>
-						<Ionicons
-							name="calendar-outline"
-							size={64}
-							color={COLORS.brandPrimary}
-						/>
-						<Text style={[styles.emptyTitle, { color: colors.text }]}>
+					<View style={{
+						backgroundColor: colors.card,
+						borderRadius: 30,
+						padding: 40,
+						marginTop: 24,
+						alignItems: "center",
+						shadowColor: "#000",
+						shadowOffset: { width: 0, height: 4 },
+						shadowOpacity: isDarkMode ? 0 : 0.03,
+						shadowRadius: 10,
+					}}>
+						<View style={{
+							backgroundColor: COLORS.brandPrimary,
+							width: 72,
+							height: 72,
+							borderRadius: 20,
+							alignItems: "center",
+							justifyContent: "center",
+							marginBottom: 20,
+						}}>
+							<Ionicons name="calendar-outline" size={36} color="#FFFFFF" />
+						</View>
+						<Text style={{
+							fontSize: 19,
+							fontWeight: "900",
+							color: colors.text,
+							letterSpacing: -0.5,
+							marginBottom: 8,
+						}}>
 							No Visits Yet
 						</Text>
-						<Text style={[styles.emptyText, { color: colors.textMuted }]}>
+						<Text style={{
+							fontSize: 14,
+							color: colors.textMuted,
+							textAlign: "center",
+							lineHeight: 20,
+						}}>
 							{filter === "upcoming"
 								? "No upcoming appointments scheduled"
 								: filter === "completed"
@@ -169,7 +227,7 @@ const VisitsScreen = () => {
 					</View>
 				)}
 			</ScrollView>
-		</View>
+		</LinearGradient>
 	);
 };
 
@@ -183,34 +241,6 @@ const styles = StyleSheet.create({
 	content: {
 		flexGrow: 1,
 		padding: 20,
-	},
-	title: {
-		fontSize: 28,
-		fontWeight: "800",
-		letterSpacing: -0.5,
-		marginBottom: 4,
-	},
-	subtitle: {
-		fontSize: 14,
-	},
-	emptyState: {
-		flex: 1,
-		justifyContent: "center",
-		alignItems: "center",
-		padding: 40,
-		borderRadius: 20,
-		marginTop: 40,
-	},
-	emptyTitle: {
-		fontSize: 20,
-		fontWeight: "bold",
-		marginTop: 16,
-		marginBottom: 8,
-	},
-	emptyText: {
-		fontSize: 14,
-		textAlign: "center",
-		lineHeight: 20,
 	},
 });
 

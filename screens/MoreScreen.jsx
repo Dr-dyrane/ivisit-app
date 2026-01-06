@@ -43,14 +43,16 @@ const MoreScreen = () => {
 	const slideAnim = useRef(new Animated.Value(30)).current;
 	const profileScale = useRef(new Animated.Value(0.9)).current;
 
+	// Consistent with Welcome, Onboarding, Signup, Login screens
 	const backgroundColors = isDarkMode
-		? ["#0B0F1A", "#0D121D", "#121826"]
-		: ["#FFFFFF", "#F3E7E7", "#FFFAFA"];
-	const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
-	const textSecondary = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted;
-	const cardBg = isDarkMode
-		? "rgba(255, 255, 255, 0.05)"
-		: "rgba(0, 0, 0, 0.03)";
+		? ["#0B0F1A", "#121826"]
+		: ["#FFFFFF", "#F3E7E7"];
+
+	const colors = {
+		text: isDarkMode ? "#FFFFFF" : "#0F172A",
+		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
+	};
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
@@ -87,25 +89,45 @@ const MoreScreen = () => {
 		}
 	};
 
-	const navigationItems = [
-		{ title: "Emergency", icon: "medical", route: "/(user)/(tabs)" },
-		{ title: "Visits", icon: "calendar", route: "/(user)/(tabs)/visits" },
+	// iVisit-specific health & emergency items
+	const healthItems = [
+		{
+			title: "Medical Profile",
+			icon: "fitness-outline",
+			description: "Blood type, allergies, conditions",
+			action: () => showToast("Medical Profile coming soon", "info"),
+		},
+		{
+			title: "Emergency Contacts",
+			icon: "people-outline",
+			description: "Family & emergency responders",
+			action: () => showToast("Emergency Contacts coming soon", "info"),
+		},
+		{
+			title: "Insurance",
+			icon: "shield-checkmark-outline",
+			description: "Coverage & claims",
+			action: () => showToast("Insurance coming soon", "info"),
+		},
 	];
 
 	const settingsItems = [
 		{
-			title: "Settings",
-			icon: "settings-outline",
-			action: () => showToast("Settings coming soon", "info"),
-		},
-		{
 			title: "Notifications",
 			icon: "notifications-outline",
+			description: "Alerts & reminders",
 			action: () => router.push("/(user)/(stacks)/notifications"),
+		},
+		{
+			title: "Settings",
+			icon: "settings-outline",
+			description: "App preferences",
+			action: () => showToast("Settings coming soon", "info"),
 		},
 		{
 			title: "Help & Support",
 			icon: "help-circle-outline",
+			description: "FAQs & contact us",
 			action: () => showToast("Help coming soon", "info"),
 		},
 	];
@@ -137,15 +159,12 @@ const MoreScreen = () => {
 							flexDirection: "row",
 							alignItems: "center",
 							padding: 20,
-							backgroundColor: cardBg,
-							borderRadius: 20,
-							borderWidth: 1,
-							borderColor: `${COLORS.brandPrimary}30`,
-							shadowColor: COLORS.brandPrimary,
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							shadowColor: "#000",
 							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: 0.15,
-							shadowRadius: 12,
-							elevation: 5,
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
 						}}
 					>
 						<Image
@@ -165,182 +184,251 @@ const MoreScreen = () => {
 						<View style={{ marginLeft: 16, flex: 1 }}>
 							<Text
 								style={{
-									fontSize: 18,
-									fontWeight: "800",
-									color: textColor,
-									marginBottom: 6,
+									fontSize: 19,
+									fontWeight: "900",
+									color: colors.text,
+									letterSpacing: -0.5,
 								}}
 							>
 								{user?.fullName || user?.username || "User"}
 							</Text>
-							<Text style={{ fontSize: 14, color: textSecondary }}>
+							<Text style={{ fontSize: 14, color: colors.textMuted, marginTop: 2 }}>
 								{user?.email || "email@example.com"}
 							</Text>
 						</View>
 						<View
 							style={{
-								backgroundColor: `${COLORS.brandPrimary}15`,
-								padding: 12,
+								width: 36,
+								height: 36,
 								borderRadius: 12,
+								backgroundColor: isDarkMode ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
+								alignItems: "center",
+								justifyContent: "center",
 							}}
 						>
 							<Ionicons
 								name="chevron-forward"
-								size={20}
-								color={COLORS.brandPrimary}
+								size={16}
+								color={colors.textMuted}
 							/>
 						</View>
 					</TouchableOpacity>
 				</Animated.View>
 
+				{/* HEALTH & EMERGENCY Section */}
 				<Animated.View
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
 						paddingHorizontal: 20,
-						marginBottom: 32,
+						marginBottom: 24,
 					}}
 				>
 					<Text
 						style={{
-							fontSize: 12,
-							fontWeight: "700",
-							color: textSecondary,
+							fontSize: 10,
+							fontWeight: "900",
+							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 1,
+							letterSpacing: 3,
 						}}
 					>
-						NAVIGATION
+						HEALTH & EMERGENCY
 					</Text>
-					{navigationItems.map((item, index) => (
+					{healthItems.map((item, index) => (
 						<TouchableOpacity
 							key={index}
 							onPress={() => {
 								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-								router.push(item.route);
+								item.action();
 							}}
 							style={{
 								flexDirection: "row",
 								alignItems: "center",
-								padding: 18,
+								padding: 20,
 								marginBottom: 12,
-								backgroundColor: cardBg,
-								borderRadius: 16,
-								borderWidth: 1,
-								borderColor: `${COLORS.brandPrimary}15`,
+								backgroundColor: colors.card,
+								borderRadius: 30,
+								shadowColor: "#000",
+								shadowOffset: { width: 0, height: 4 },
+								shadowOpacity: isDarkMode ? 0 : 0.03,
+								shadowRadius: 10,
 							}}
 						>
 							<View
 								style={{
-									padding: 12,
+									width: 56,
+									height: 56,
+									borderRadius: 16,
+									backgroundColor: COLORS.brandPrimary,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons name={item.icon} size={26} color="#FFFFFF" />
+							</View>
+							<View style={{ flex: 1 }}>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -0.5,
+									}}
+								>
+									{item.title}
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									{item.description}
+								</Text>
+							</View>
+							<View
+								style={{
+									width: 36,
+									height: 36,
 									borderRadius: 12,
-									backgroundColor: `${COLORS.brandPrimary}20`,
+									backgroundColor: isDarkMode
+										? "rgba(255,255,255,0.025)"
+										: "rgba(0,0,0,0.025)",
+									alignItems: "center",
+									justifyContent: "center",
 								}}
 							>
 								<Ionicons
-									name={item.icon}
-									size={22}
-									color={COLORS.brandPrimary}
+									name="chevron-forward"
+									size={16}
+									color={colors.textMuted}
 								/>
 							</View>
-							<Text
-								style={{
-									fontSize: 16,
-									marginLeft: 16,
-									color: textColor,
-									fontWeight: "600",
-									flex: 1,
-								}}
-							>
-								{item.title}
-							</Text>
-							<Ionicons
-								name="chevron-forward"
-								size={18}
-								color={textSecondary}
-							/>
 						</TouchableOpacity>
 					))}
 				</Animated.View>
 
+				{/* SETTINGS Section */}
 				<Animated.View
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
 						paddingHorizontal: 20,
-						marginBottom: 32,
+						marginBottom: 24,
 					}}
 				>
 					<Text
 						style={{
-							fontSize: 12,
-							fontWeight: "700",
-							color: textSecondary,
+							fontSize: 10,
+							fontWeight: "900",
+							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 1,
+							letterSpacing: 3,
 						}}
 					>
 						SETTINGS
 					</Text>
-					{settingsItems.map((option, index) => (
+					{settingsItems.map((item, index) => (
 						<TouchableOpacity
 							key={index}
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+								item.action();
+							}}
 							style={{
 								flexDirection: "row",
 								alignItems: "center",
-								padding: 18,
+								padding: 20,
 								marginBottom: 12,
-								backgroundColor: cardBg,
-								borderRadius: 16,
-								borderWidth: 1,
-								borderColor: `${COLORS.brandPrimary}15`,
-							}}
-							onPress={() => {
-								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-								option.action();
+								backgroundColor: colors.card,
+								borderRadius: 30,
+								shadowColor: "#000",
+								shadowOffset: { width: 0, height: 4 },
+								shadowOpacity: isDarkMode ? 0 : 0.03,
+								shadowRadius: 10,
 							}}
 						>
 							<View
 								style={{
-									padding: 12,
+									width: 56,
+									height: 56,
+									borderRadius: 16,
+									backgroundColor: COLORS.brandPrimary,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons name={item.icon} size={26} color="#FFFFFF" />
+							</View>
+							<View style={{ flex: 1 }}>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -0.5,
+									}}
+								>
+									{item.title}
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									{item.description}
+								</Text>
+							</View>
+							<View
+								style={{
+									width: 36,
+									height: 36,
 									borderRadius: 12,
-									backgroundColor: `${COLORS.brandPrimary}20`,
+									backgroundColor: isDarkMode
+										? "rgba(255,255,255,0.025)"
+										: "rgba(0,0,0,0.025)",
+									alignItems: "center",
+									justifyContent: "center",
 								}}
 							>
 								<Ionicons
-									name={option.icon}
-									size={22}
-									color={COLORS.brandPrimary}
+									name="chevron-forward"
+									size={16}
+									color={colors.textMuted}
 								/>
 							</View>
-							<Text
-								style={{
-									fontSize: 16,
-									marginLeft: 16,
-									color: textColor,
-									fontWeight: "600",
-									flex: 1,
-								}}
-							>
-								{option.title}
-							</Text>
-							<Ionicons
-								name="chevron-forward"
-								size={18}
-								color={textSecondary}
-							/>
 						</TouchableOpacity>
 					))}
 				</Animated.View>
 
+				{/* PREFERENCES Section */}
 				<Animated.View
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
 						paddingHorizontal: 20,
-						marginBottom: 32,
+						marginBottom: 24,
 					}}
 				>
+					<Text
+						style={{
+							fontSize: 10,
+							fontWeight: "900",
+							color: colors.textMuted,
+							marginBottom: 16,
+							letterSpacing: 3,
+						}}
+					>
+						PREFERENCES
+					</Text>
+
+					{/* Theme Toggle */}
 					<TouchableOpacity
 						onPress={() => {
 							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -350,47 +438,63 @@ const MoreScreen = () => {
 							flexDirection: "row",
 							alignItems: "center",
 							justifyContent: "space-between",
-							padding: 18,
-							marginBottom: 16,
-							backgroundColor: cardBg,
-							borderRadius: 16,
-							borderWidth: 1,
-							borderColor: `${COLORS.brandPrimary}15`,
+							padding: 20,
+							marginBottom: 12,
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
 						}}
 					>
 						<View style={{ flexDirection: "row", alignItems: "center" }}>
 							<View
 								style={{
-									padding: 12,
-									borderRadius: 12,
-									backgroundColor: `${COLORS.brandPrimary}20`,
+									width: 56,
+									height: 56,
+									borderRadius: 16,
+									backgroundColor: COLORS.brandPrimary,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
 								}}
 							>
 								<Ionicons
 									name={isDarkMode ? "moon" : "sunny"}
-									size={22}
-									color={COLORS.brandPrimary}
+									size={26}
+									color="#FFFFFF"
 								/>
 							</View>
-							<Text
-								style={{
-									fontSize: 16,
-									marginLeft: 16,
-									color: textColor,
-									fontWeight: "600",
-								}}
-							>
-								{isDarkMode ? "Dark Mode" : "Light Mode"}
-							</Text>
+							<View>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -0.5,
+									}}
+								>
+									{isDarkMode ? "Dark Mode" : "Light Mode"}
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									Tap to toggle
+								</Text>
+							</View>
 						</View>
 						<View
 							style={{
 								width: 52,
 								height: 30,
 								borderRadius: 15,
-								backgroundColor: isDarkMode ? COLORS.brandPrimary : "#E0E0E0",
+								backgroundColor: isDarkMode ? COLORS.brandPrimary : "#D1D5DB",
 								justifyContent: "center",
-								paddingHorizontal: 3,
 							}}
 						>
 							<View
@@ -403,7 +507,7 @@ const MoreScreen = () => {
 									left: isDarkMode ? 25 : 3,
 									shadowColor: "#000",
 									shadowOffset: { width: 0, height: 2 },
-									shadowOpacity: 0.2,
+									shadowOpacity: 0.15,
 									shadowRadius: 3,
 									elevation: 3,
 								}}
@@ -411,36 +515,73 @@ const MoreScreen = () => {
 						</View>
 					</TouchableOpacity>
 
+					{/* Logout */}
 					<TouchableOpacity
 						onPress={handleLogout}
 						style={{
 							flexDirection: "row",
 							alignItems: "center",
-							justifyContent: "center",
 							padding: 20,
-							backgroundColor: `${COLORS.error}15`,
-							borderRadius: 16,
-							borderWidth: 2,
-							borderColor: COLORS.error,
-							shadowColor: COLORS.error,
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							shadowColor: "#000",
 							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: 0.2,
-							shadowRadius: 8,
-							elevation: 4,
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
 						}}
 					>
-						<Ionicons name="log-out-outline" size={22} color={COLORS.error} />
-						<Text
+						<View
 							style={{
-								fontSize: 16,
-								marginLeft: 12,
-								color: COLORS.error,
-								fontWeight: "800",
-								letterSpacing: 0.5,
+								width: 56,
+								height: 56,
+								borderRadius: 16,
+								backgroundColor: COLORS.error,
+								alignItems: "center",
+								justifyContent: "center",
+								marginRight: 16,
 							}}
 						>
-							LOGOUT
-						</Text>
+							<Ionicons name="log-out-outline" size={26} color="#FFFFFF" />
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text
+								style={{
+									fontSize: 19,
+									fontWeight: "900",
+									color: colors.text,
+									letterSpacing: -0.5,
+								}}
+							>
+								Sign Out
+							</Text>
+							<Text
+								style={{
+									fontSize: 14,
+									color: colors.textMuted,
+									marginTop: 2,
+								}}
+							>
+								Log out of your account
+							</Text>
+						</View>
+						<View
+							style={{
+								width: 36,
+								height: 36,
+								borderRadius: 12,
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.025)"
+									: "rgba(0,0,0,0.025)",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<Ionicons
+								name="chevron-forward"
+								size={16}
+								color={colors.textMuted}
+							/>
+						</View>
 					</TouchableOpacity>
 				</Animated.View>
 			</ScrollView>

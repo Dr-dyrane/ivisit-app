@@ -39,11 +39,16 @@ const ProfileScreen = () => {
 	const slideAnim = useRef(new Animated.Value(30)).current;
 	const imageScale = useRef(new Animated.Value(0.9)).current;
 
+	// Consistent with Welcome, Onboarding, Signup, Login screens
 	const backgroundColors = isDarkMode
-		? ["#0B0F1A", "#0D121D", "#121826"]
-		: ["#FFFFFF", "#F3E7E7", "#FFFAFA"];
-	const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
-	const textSecondary = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted;
+		? ["#0B0F1A", "#121826"]
+		: ["#FFFFFF", "#F3E7E7"];
+
+	const colors = {
+		text: isDarkMode ? "#FFFFFF" : "#0F172A",
+		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
+	};
 
 	useEffect(() => {
 		fetchUserData();
@@ -144,8 +149,18 @@ const ProfileScreen = () => {
 				colors={backgroundColors}
 				style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
 			>
-				<ActivityIndicator size="large" color={COLORS.brandPrimary} />
-				<Text style={{ marginTop: 16, color: textSecondary, fontSize: 14 }}>
+				<View style={{
+					backgroundColor: COLORS.brandPrimary,
+					width: 72,
+					height: 72,
+					borderRadius: 20,
+					alignItems: "center",
+					justifyContent: "center",
+					marginBottom: 20,
+				}}>
+					<ActivityIndicator size="large" color="#FFFFFF" />
+				</View>
+				<Text style={{ color: colors.textMuted, fontSize: 14 }}>
 					Loading your profile...
 				</Text>
 			</LinearGradient>
@@ -186,31 +201,32 @@ const ProfileScreen = () => {
 								bottom: 0,
 								right: 0,
 								backgroundColor: COLORS.brandPrimary,
-								borderRadius: 20,
-								width: 40,
-								height: 40,
+								borderRadius: 16,
+								width: 44,
+								height: 44,
 								justifyContent: "center",
 								alignItems: "center",
 								borderWidth: 3,
-								borderColor: isDarkMode ? COLORS.bgDark : "#FFFFFF",
+								borderColor: isDarkMode ? "#0B0F1A" : "#FFFFFF",
 							}}
 						>
-							<Ionicons name="camera" size={20} color="#FFFFFF" />
+							<Ionicons name="camera" size={22} color="#FFFFFF" />
 						</View>
 					</Pressable>
 
 					<Text
 						style={{
-							fontSize: 28,
-							fontWeight: "bold",
-							color: textColor,
+							fontSize: 24,
+							fontWeight: "900",
+							color: colors.text,
 							marginTop: 16,
 							textAlign: "center",
+							letterSpacing: -0.5,
 						}}
 					>
 						{fullName || "Your Name"}
 					</Text>
-					<Text style={{ fontSize: 15, color: textSecondary, marginTop: 4 }}>
+					<Text style={{ fontSize: 14, color: colors.textMuted, marginTop: 4 }}>
 						{email || "email@example.com"}
 					</Text>
 				</Animated.View>
@@ -224,11 +240,11 @@ const ProfileScreen = () => {
 				>
 					<Text
 						style={{
-							fontSize: 12,
-							fontWeight: "700",
-							color: textSecondary,
+							fontSize: 10,
+							fontWeight: "900",
+							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 1,
+							letterSpacing: 3,
 						}}
 					>
 						PERSONAL INFORMATION
@@ -290,11 +306,11 @@ const ProfileScreen = () => {
 				>
 					<Text
 						style={{
-							fontSize: 12,
-							fontWeight: "700",
-							color: textSecondary,
+							fontSize: 10,
+							fontWeight: "900",
+							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 1,
+							letterSpacing: 3,
 						}}
 					>
 						EMERGENCY CONTACTS
@@ -302,32 +318,59 @@ const ProfileScreen = () => {
 
 					<Pressable
 						style={{
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							padding: 20,
 							flexDirection: "row",
 							alignItems: "center",
-							justifyContent: "center",
-							padding: 18,
-							backgroundColor: `${COLORS.brandPrimary}15`,
-							borderRadius: 16,
-							borderWidth: 2,
-							borderColor: COLORS.brandPrimary,
-							borderStyle: "dashed",
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
 						}}
 						onPress={() => {
 							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 							showToast("Emergency contacts feature coming soon", "info");
 						}}
 					>
-						<Ionicons name="add-circle" size={24} color={COLORS.brandPrimary} />
-						<Text
-							style={{
-								marginLeft: 10,
-								color: COLORS.brandPrimary,
-								fontWeight: "700",
-								fontSize: 15,
-							}}
-						>
-							Add Emergency Contact
-						</Text>
+						<View style={{
+							backgroundColor: COLORS.brandPrimary,
+							width: 56,
+							height: 56,
+							borderRadius: 16,
+							alignItems: "center",
+							justifyContent: "center",
+							marginRight: 16,
+						}}>
+							<Ionicons name="people" size={26} color="#FFFFFF" />
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text style={{
+								fontSize: 19,
+								fontWeight: "900",
+								color: colors.text,
+								letterSpacing: -0.5,
+							}}>
+								Add Contact
+							</Text>
+							<Text style={{
+								fontSize: 14,
+								color: colors.textMuted,
+								marginTop: 2,
+							}}>
+								Family & emergency responders
+							</Text>
+						</View>
+						<View style={{
+							width: 36,
+							height: 36,
+							borderRadius: 12,
+							backgroundColor: isDarkMode ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
+							alignItems: "center",
+							justifyContent: "center",
+						}}>
+							<Ionicons name="add" size={20} color={colors.textMuted} />
+						</View>
 					</Pressable>
 				</Animated.View>
 
@@ -341,11 +384,11 @@ const ProfileScreen = () => {
 				>
 					<Text
 						style={{
-							fontSize: 12,
-							fontWeight: "700",
-							color: textSecondary,
+							fontSize: 10,
+							fontWeight: "900",
+							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 1,
+							letterSpacing: 3,
 						}}
 					>
 						MEDICAL HISTORY
@@ -353,16 +396,20 @@ const ProfileScreen = () => {
 
 					<View
 						style={{
-							backgroundColor: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
-							borderRadius: 16,
-							padding: 20,
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							padding: 24,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
 						}}
 					>
 						<Text
 							style={{
 								fontSize: 14,
-								color: textSecondary,
-								marginBottom: 16,
+								color: colors.textMuted,
+								marginBottom: 20,
 								lineHeight: 20,
 							}}
 						>
@@ -371,45 +418,47 @@ const ProfileScreen = () => {
 						</Text>
 
 						{[
-							"Allergies",
-							"Current Medications",
-							"Past Surgeries",
-							"Chronic Conditions",
+							{ label: "Allergies", icon: "warning-outline" },
+							{ label: "Current Medications", icon: "medical-outline" },
+							{ label: "Past Surgeries", icon: "bandage-outline" },
+							{ label: "Chronic Conditions", icon: "fitness-outline" },
 						].map((item, index) => (
 							<View
 								key={index}
 								style={{
 									flexDirection: "row",
 									alignItems: "center",
-									marginBottom: 12,
+									marginBottom: 14,
 								}}
 							>
-								<View
-									style={{
-										width: 6,
-										height: 6,
-										borderRadius: 3,
-										backgroundColor: COLORS.brandPrimary,
-										marginRight: 12,
-									}}
-								/>
+								<View style={{
+									width: 36,
+									height: 36,
+									borderRadius: 10,
+									backgroundColor: `${COLORS.brandPrimary}15`,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 12,
+								}}>
+									<Ionicons name={item.icon} size={18} color={COLORS.brandPrimary} />
+								</View>
 								<Text
-									style={{ color: textColor, fontSize: 15, fontWeight: "500" }}
+									style={{ color: colors.text, fontSize: 15, fontWeight: "600" }}
 								>
-									{item}
+									{item.label}
 								</Text>
 							</View>
 						))}
 
 						<Pressable
 							style={{
+								backgroundColor: COLORS.brandPrimary,
+								borderRadius: 16,
+								padding: 16,
 								flexDirection: "row",
 								alignItems: "center",
 								justifyContent: "center",
-								padding: 16,
-								backgroundColor: `${COLORS.brandPrimary}15`,
-								borderRadius: 12,
-								marginTop: 12,
+								marginTop: 8,
 							}}
 							onPress={() => {
 								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -419,13 +468,13 @@ const ProfileScreen = () => {
 							<Ionicons
 								name="document-text"
 								size={20}
-								color={COLORS.brandPrimary}
+								color="#FFFFFF"
 							/>
 							<Text
 								style={{
 									marginLeft: 8,
-									color: COLORS.brandPrimary,
-									fontWeight: "600",
+									color: "#FFFFFF",
+									fontWeight: "800",
 								}}
 							>
 								View Full History
@@ -445,37 +494,59 @@ const ProfileScreen = () => {
 						onPress={handleUpdateProfile}
 						disabled={isLoading}
 						style={{
-							backgroundColor: COLORS.brandPrimary,
+							backgroundColor: colors.card,
+							borderRadius: 30,
 							padding: 20,
-							borderRadius: 16,
 							flexDirection: "row",
 							alignItems: "center",
-							justifyContent: "center",
-							shadowColor: COLORS.brandPrimary,
-							shadowOffset: { width: 0, height: 8 },
-							shadowOpacity: 0.3,
-							shadowRadius: 12,
-							elevation: 8,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
 						}}
 					>
-						{isLoading ? (
-							<ActivityIndicator color="#FFFFFF" />
-						) : (
-							<>
-								<Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
-								<Text
-									style={{
-										color: "#FFFFFF",
-										fontWeight: "800",
-										fontSize: 16,
-										marginLeft: 10,
-										letterSpacing: 1,
-									}}
-								>
-									UPDATE PROFILE
-								</Text>
-							</>
-						)}
+						<View style={{
+							backgroundColor: COLORS.brandPrimary,
+							width: 56,
+							height: 56,
+							borderRadius: 16,
+							alignItems: "center",
+							justifyContent: "center",
+							marginRight: 16,
+						}}>
+							{isLoading ? (
+								<ActivityIndicator color="#FFFFFF" />
+							) : (
+								<Ionicons name="checkmark" size={26} color="#FFFFFF" />
+							)}
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text style={{
+								fontSize: 19,
+								fontWeight: "900",
+								color: colors.text,
+								letterSpacing: -0.5,
+							}}>
+								Save Changes
+							</Text>
+							<Text style={{
+								fontSize: 14,
+								color: colors.textMuted,
+								marginTop: 2,
+							}}>
+								Update your profile
+							</Text>
+						</View>
+						<View style={{
+							width: 36,
+							height: 36,
+							borderRadius: 12,
+							backgroundColor: isDarkMode ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
+							alignItems: "center",
+							justifyContent: "center",
+						}}>
+							<Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+						</View>
 					</Pressable>
 				</Animated.View>
 			</ScrollView>
