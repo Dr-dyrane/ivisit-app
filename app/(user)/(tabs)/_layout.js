@@ -1,7 +1,7 @@
 // app/(user)/(tabs)/_layout.js
 
 import { Tabs } from "expo-router";
-import { Fontisto, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import {
@@ -52,10 +52,13 @@ export default function TabsLayout() {
 	return (
 		<Tabs
 			screenOptions={{
+				tabBarShowLabel: false,
+
 				tabBarActiveTintColor: COLORS.brandPrimary,
 				tabBarInactiveTintColor: isDarkMode
 					? COLORS.textMutedDark
 					: COLORS.textMuted,
+
 				tabBarStyle: {
 					backgroundColor: tabBarBg,
 					borderTopColor: borderColor,
@@ -66,10 +69,7 @@ export default function TabsLayout() {
 					elevation: 0,
 					shadowOpacity: 0,
 				},
-				tabBarLabelStyle: {
-					fontSize: 12,
-					fontWeight: "600",
-				},
+
 				headerStyle: {
 					backgroundColor: backgroundColor,
 					borderBottomWidth: 0,
@@ -189,22 +189,6 @@ export default function TabsLayout() {
 			/>
 
 			<Tabs.Screen
-				name="book-bed"
-				options={{
-					title: "BED",
-					tabBarIcon: ({ focused, color }) => (
-						<Fontisto
-							name={focused ? "bed-patient" : "bed-patient"}
-							size={24}
-							color={color}
-						/>
-					),
-					headerShown: true,
-					headerTitle: "Book Hospital Bed",
-				}}
-			/>
-
-			<Tabs.Screen
 				name="visits"
 				options={{
 					title: "VISITS",
@@ -224,9 +208,9 @@ export default function TabsLayout() {
 				name="more"
 				options={{
 					title: "MORE",
-					tabBarIcon: ({ focused, color }) => (
+					tabBarIcon: ({ color }) => (
 						<MaterialCommunityIcons
-							name="skew-more"
+							name="dots-horizontal"
 							size={24}
 							color={color}
 						/>

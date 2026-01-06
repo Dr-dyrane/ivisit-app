@@ -8,7 +8,7 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Fontisto } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS } from '../../constants/colors';
@@ -16,12 +16,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
-const FloatingEmergencyButton = ({ 
-  onPress, 
+const FloatingEmergencyButton = ({
+  onPress,
   position = 'right',
   bottom = 100,
   size = 'large',
-  style 
+  icon = 'medical',
+  mode = 'emergency',
+  style
 }) => {
   const { isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
@@ -161,13 +163,13 @@ const FloatingEmergencyButton = ({
             },
           ]}
         >
-          <Ionicons 
-            name="medical" 
-            size={iconSize} 
-            color="#FFFFFF" 
-          />
+          {icon === 'bed-patient' ? (
+            <Fontisto name="bed-patient" size={iconSize - 4} color="#FFFFFF" />
+          ) : (
+            <Ionicons name={icon} size={iconSize} color="#FFFFFF" />
+          )}
           <Text style={[styles.buttonText, { fontSize: size === 'large' ? 10 : 8 }]}>
-            SOS
+            {mode === 'emergency' ? 'BED' : 'SOS'}
           </Text>
         </Pressable>
       </Animated.View>

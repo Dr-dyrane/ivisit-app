@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Alert, Platform } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS } from '../../constants/colors';
 import { HOSPITALS } from '../../data/hospitals';
@@ -122,7 +123,11 @@ const EmergencyMap = ({
   }
 
   return (
-    <View style={[styles.container, style]} >
+    <View style={[
+      styles.container,
+      { borderColor: isDarkMode ? '#2a2a2a' : '#e5e7eb' },
+      style
+    ]}>
       <MapView
         ref={mapRef}
         style={styles.map}
@@ -133,11 +138,14 @@ const EmergencyMap = ({
         showsMyLocationButton={false}
         showsCompass={false}
         showsScale={false}
-        showsBuildings={true}
+        showsBuildings={false}
         showsTraffic={false}
+        showsIndoors={false}
+        showsPointsOfInterest={false}
         loadingEnabled={true}
         loadingIndicatorColor={COLORS.brandPrimary}
         loadingBackgroundColor={isDarkMode ? COLORS.bgDark : COLORS.bgLight}
+        mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
       >
         {/* Hospital Markers */}
         {HOSPITALS.map((hospital) => (
@@ -150,11 +158,16 @@ const EmergencyMap = ({
             <View style={[
               styles.hospitalMarker,
               {
-                backgroundColor: selectedHospitalId === hospital.id ? COLORS.brandPrimary : COLORS.brandSecondary,
-                borderColor: isDarkMode ? COLORS.bgDark : COLORS.bgLight,
+                backgroundColor: selectedHospitalId === hospital.id ? COLORS.brandPrimary : '#FFFFFF',
+                borderColor: selectedHospitalId === hospital.id ? '#FFFFFF' : COLORS.brandPrimary,
+                borderWidth: 2,
               }
             ]}>
-              <Text style={styles.hospitalMarkerText}>🏥</Text>
+              <Ionicons
+                name="medical"
+                size={20}
+                color={selectedHospitalId === hospital.id ? '#FFFFFF' : COLORS.brandPrimary}
+              />
             </View>
           </Marker>
         ))}
@@ -166,6 +179,9 @@ const EmergencyMap = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
   },
   map: {
     flex: 1,
@@ -189,43 +205,62 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   hospitalMarker: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  hospitalMarkerText: {
-    fontSize: 18,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });
 
-// Map styles for light and dark themes
-const lightMapStyle = [];
+// Map styles - Clean outline style like Uber/Lyft/Bolt
+// Light mode: Light background with subtle road outlines
+const lightMapStyle = [
+  { "elementType": "geometry", "stylers": [{ "color": "#f8f9fa" }] },
+  { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
+  { "elementType": "labels.text.fill", "stylers": [{ "color": "#9ca3af" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#f8f9fa" }] },
+  { "featureType": "administrative", "elementType": "geometry.stroke", "stylers": [{ "color": "#e5e7eb" }] },
+  { "featureType": "administrative.land_parcel", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "administrative.neighborhood", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "poi.park", "elementType": "geometry", "stylers": [{ "color": "#e8f5e9" }] },
+  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#ffffff" }] },
+  { "featureType": "road", "elementType": "geometry.stroke", "stylers": [{ "color": "#e5e7eb" }] },
+  { "featureType": "road.arterial", "elementType": "geometry", "stylers": [{ "color": "#ffffff" }] },
+  { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#ffffff" }] },
+  { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#d1d5db" }] },
+  { "featureType": "road.local", "elementType": "geometry", "stylers": [{ "color": "#ffffff" }] },
+  { "featureType": "transit", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#dbeafe" }] },
+  { "featureType": "water", "elementType": "labels.text", "stylers": [{ "visibility": "off" }] },
+];
 
+// Dark mode: Dark background with subtle road outlines
 const darkMapStyle = [
-  {
-    "elementType": "geometry",
-    "stylers": [{ "color": "#212121" }]
-  },
-  {
-    "elementType": "labels.icon",
-    "stylers": [{ "visibility": "off" }]
-  },
-  {
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#757575" }]
-  },
-  {
-    "elementType": "labels.text.stroke",
-    "stylers": [{ "color": "#212121" }]
-  }
+  { "elementType": "geometry", "stylers": [{ "color": "#121212" }] },
+  { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
+  { "elementType": "labels.text.fill", "stylers": [{ "color": "#6b7280" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#121212" }] },
+  { "featureType": "administrative", "elementType": "geometry.stroke", "stylers": [{ "color": "#1f1f1f" }] },
+  { "featureType": "administrative.land_parcel", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "administrative.neighborhood", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "poi.park", "elementType": "geometry", "stylers": [{ "color": "#1a2e1a" }] },
+  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#1e1e1e" }] },
+  { "featureType": "road", "elementType": "geometry.stroke", "stylers": [{ "color": "#2a2a2a" }] },
+  { "featureType": "road.arterial", "elementType": "geometry", "stylers": [{ "color": "#1e1e1e" }] },
+  { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#252525" }] },
+  { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#333333" }] },
+  { "featureType": "road.local", "elementType": "geometry", "stylers": [{ "color": "#1a1a1a" }] },
+  { "featureType": "transit", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0a1929" }] },
+  { "featureType": "water", "elementType": "labels.text", "stylers": [{ "visibility": "off" }] },
 ];
 
 export default EmergencyMap;
