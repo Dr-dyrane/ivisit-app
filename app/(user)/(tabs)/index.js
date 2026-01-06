@@ -1,8 +1,8 @@
 import React from 'react';
-import HomeScreen from '../../../screens/HomeScreen';
+import EmergencyScreen from '../../../screens/EmergencyScreen';
 
 const Home = () => (
-  <HomeScreen/>
+  <EmergencyScreen/>
 );
 
 export default Home;
