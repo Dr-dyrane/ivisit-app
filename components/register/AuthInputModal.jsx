@@ -20,17 +20,18 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { REGISTRATION_STEPS } from "../../constants/registrationSteps";
 import { COLORS } from "../../constants/colors";
-
-import PhoneInputField from "./PhoneInputField";
-import EmailInputField from "./EmailInputField";
-import OTPInputCard from "./OTPInputCard";
-import ProfileForm from "./ProfileForm";
-import PasswordInputField from "./PasswordInputField";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { loginUserAPI } from "../../api/auth";
 import { signUpUserAPI } from "../../api/auth";
 import { useAuth } from "../../contexts/AuthContext";
 import { useRegistration } from "../../contexts/RegistrationContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
+import PhoneInputField from "./PhoneInputField"; // Import PhoneInputField
+import EmailInputField from "./EmailInputField"; // Import EmailInputField
+import OTPInputCard from "./OTPInputCard"; // Import OTPInputCard
+import ProfileForm from "./ProfileForm"; // Import ProfileForm
+import PasswordInputField from "./PasswordInputField"; // Import PasswordInputField
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -148,6 +149,36 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		setError(null);
 
 		try {
+			const usersData = await AsyncStorage.getItem("users");
+			const users = usersData ? JSON.parse(usersData) : [];
+
+			const existingUser = users.find(
+				(user) =>
+					(registrationData.email &&
+						user.email?.trim().toLowerCase() ===
+							registrationData.email.trim().toLowerCase()) ||
+					(registrationData.phone && user.phone === registrationData.phone)
+			);
+
+			if (existingUser) {
+				// User already exists - auto-login them
+				const credentials = {
+					email: registrationData.email,
+					phone: registrationData.phone,
+					otp,
+				};
+
+				const { data } = await loginUserAPI(credentials);
+				await login(data);
+
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+				showToast("Welcome back! Logged you in automatically.", "success");
+
+				handleDismiss();
+				return;
+			}
+
+			// User doesn't exist - continue registration flow
 			await new Promise((r) => setTimeout(r, 800));
 			updateRegistrationData({ otp });
 			nextStep();

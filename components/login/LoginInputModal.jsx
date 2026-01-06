@@ -33,12 +33,14 @@ import { useToast } from "../../contexts/ToastContext";
 import { COLORS } from "../../constants/colors";
 import useLoginMutation from "../../hooks/mutations/useLoginMutation";
 import { useAuth } from "../../contexts/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import LoginAuthMethodCard from "./LoginAuthMethodCard";
 import LoginContactCard from "./LoginContactCard";
 import PhoneInputField from "../register/PhoneInputField";
 import EmailInputField from "../register/EmailInputField";
 import OTPInputCard from "../register/OTPInputCard";
 import PasswordInputField from "../register/PasswordInputField";
+import SetPasswordCard from "./SetPasswordCard";
 import ForgotPasswordCard from "./ForgotPasswordCard";
 import ResetPasswordCard from "./ResetPasswordCard";
 
@@ -208,12 +210,37 @@ export default function LoginInputModal({ visible, onClose }) {
 				otp,
 			};
 
-			await loginUser(credentials);
+			try {
+				await loginUser(credentials);
 
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast("Welcome back to iVisit!", "success");
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+				showToast("Welcome back to iVisit!", "success");
 
-			handleDismiss();
+				handleDismiss();
+			} catch (err) {
+				const [errorCode] = err.message?.split("|") || [];
+
+				if (errorCode === "USER_NOT_FOUND") {
+					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+					showToast("No account found. Let's create one for you!", "info");
+
+					await AsyncStorage.setItem(
+						"pendingRegistration",
+						JSON.stringify({
+							email: loginData.email,
+							phone: loginData.phone,
+							contactType: loginData.contactType,
+							verified: true,
+						})
+					);
+
+					setTimeout(() => {
+						handleDismiss();
+					}, 1500);
+				} else {
+					throw err;
+				}
+			}
 		} catch (err) {
 			const [errorCode, errorMessage] = err.message?.split("|") || [];
 			const displayMessage =
@@ -221,12 +248,6 @@ export default function LoginInputModal({ visible, onClose }) {
 
 			setError(displayMessage);
 			showToast(displayMessage, "error");
-
-			if (errorCode === "USER_NOT_FOUND") {
-				setTimeout(() => {
-					showToast("No account found. Please create one first.", "info");
-				}, 2000);
-			}
 		} finally {
 			setLoading(false);
 		}

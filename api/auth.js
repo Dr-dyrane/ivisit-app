@@ -1,5 +1,6 @@
 // api/auth.js
 import userStore from "../store/userStore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Function to login a user
 export const loginUserAPI = async (credentials) => {
@@ -33,7 +34,6 @@ export const forgotPasswordAPI = async (email) => {
 
 // Function to reset password
 export const resetPasswordAPI = async (resetToken, newPassword, email) => {
-	console.log(resetToken, newPassword, email);
 	return await userStore.resetPassword(resetToken, newPassword, email);
 };
 
@@ -45,4 +45,19 @@ export const checkUserExistsAPI = async (credentials) => {
 // Function to set password for existing users
 export const setPasswordAPI = async (credentials) => {
 	return await userStore.setPassword(credentials);
+};
+
+// Helper function to check pending registration
+export const getPendingRegistrationAPI = async () => {
+	try {
+		const pendingData = await AsyncStorage.getItem("pendingRegistration");
+		if (pendingData) {
+			await AsyncStorage.removeItem("pendingRegistration");
+			return JSON.parse(pendingData);
+		}
+		return null;
+	} catch (error) {
+		console.error("Get pending registration error:", error);
+		return null;
+	}
 };

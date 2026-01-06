@@ -8,10 +8,17 @@
  * Allows users to navigate back/forth while preserving data
  */
 
-import { createContext, useContext, useState, useCallback } from "react";
+import {
+	createContext,
+	useContext,
+	useState,
+	useCallback,
+	useEffect,
+} from "react";
 import { useToast } from "./ToastContext";
 import useSignUp from "../hooks/mutations/useSignup";
 import { REGISTRATION_STEPS } from "../constants/registrationSteps";
+import { getPendingRegistrationAPI } from "../api/auth";
 
 const RegistrationContext = createContext();
 
@@ -168,6 +175,28 @@ export function RegistrationProvider({ children }) {
 		},
 		[hookSocialSignUp, resetRegistration, updateRegistrationData, showToast]
 	);
+
+	useEffect(() => {
+		const checkPendingRegistration = async () => {
+			const pending = await getPendingRegistrationAPI();
+			if (pending && pending.verified) {
+				// Auto-populate with verified contact info from login attempt
+				updateRegistrationData({
+					method: pending.contactType === "email" ? "email" : "phone",
+					email: pending.email,
+					phone: pending.phone,
+					otp: "verified", // Mark as already verified
+				});
+
+				// Skip to profile form since OTP is already verified
+				goToStep(REGISTRATION_STEPS.PROFILE_FORM);
+
+				showToast("Let's complete your profile", "info");
+			}
+		};
+
+		checkPendingRegistration();
+	}, []);
 
 	// --- Context value
 	const value = {
