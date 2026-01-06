@@ -261,9 +261,9 @@ const EmergencyMap = ({
         showsMyLocationButton={false}
         showsCompass={false}
         showsScale={false}
-        showsBuildings={false}
+        showsBuildings={true}
         showsTraffic={false}
-        showsIndoors={false}
+        showsIndoors={true}
         showsPointsOfInterest={true}
         loadingEnabled={true}
         loadingIndicatorColor={COLORS.brandPrimary}
@@ -478,7 +478,7 @@ const lightMapStyle = [
   // Landscape
   { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#F5F5F5" }] },
   { featureType: "landscape.man_made", stylers: [{ visibility: "off" }] },
-  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#E8F5E9" }] },
+  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
 ];
 
 // Dark mode: Deep dark with visible roads and hospitals
@@ -521,7 +521,7 @@ const darkMapStyle = [
   // Landscape
   { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#0D1117" }] },
   { featureType: "landscape.man_made", stylers: [{ visibility: "off" }] },
-  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#0F1318" }] },
+  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#0D1117" }] },
 ];
 
 export default EmergencyMap;
