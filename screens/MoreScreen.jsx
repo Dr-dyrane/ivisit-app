@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import {
 	View,
 	Text,
@@ -8,12 +8,15 @@ import {
 	Platform,
 	Animated,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useToast } from "../contexts/ToastContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
+import { useFAB } from "../contexts/FABContext";
 import { COLORS } from "../constants/colors";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,6 +27,17 @@ const MoreScreen = () => {
 	const { logout, user } = useAuth();
 	const { isDarkMode, toggleTheme } = useTheme();
 	const insets = useSafeAreaInsets();
+	const { handleScroll } = useTabBarVisibility();
+	const { registerFAB } = useFAB();
+
+	// Hide FAB on More screen (on focus, not just mount)
+	useFocusEffect(
+		useCallback(() => {
+			registerFAB({
+				visible: false,
+			});
+		}, [registerFAB])
+	);
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
@@ -101,6 +115,8 @@ const MoreScreen = () => {
 			<ScrollView
 				showsVerticalScrollIndicator={false}
 				contentContainerStyle={{ paddingBottom: bottomPadding }}
+				scrollEventThrottle={16}
+				onScroll={handleScroll}
 			>
 				<Animated.View
 					style={{

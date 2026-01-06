@@ -1,7 +1,7 @@
 // app/(user)/(tabs)/_layout.js
 
 import { Tabs } from "expo-router";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import {
@@ -10,20 +10,20 @@ import {
 	Text,
 	TouchableOpacity,
 	View,
-	Platform,
 } from "react-native";
 import { useToast } from "../../../contexts/ToastContext";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { useTabBarVisibility } from "../../../contexts/TabBarVisibilityContext";
 import { COLORS } from "../../../constants/colors";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AnimatedTabBar from "../../../components/navigation/AnimatedTabBar";
 
 export default function TabsLayout() {
 	const router = useRouter();
 	const { user } = useAuth();
 	const { isDarkMode } = useTheme();
 	const { showToast } = useToast();
-	const insets = useSafeAreaInsets();
+	const { resetTabBar } = useTabBarVisibility();
 
 	const pingAnim = useRef(new Animated.Value(1)).current;
 
@@ -46,30 +46,16 @@ export default function TabsLayout() {
 
 	const backgroundColor = isDarkMode ? COLORS.bgDark : COLORS.bgLight;
 	const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
-	const tabBarBg = isDarkMode ? COLORS.bgDark : COLORS.bgLight;
-	const borderColor = isDarkMode ? COLORS.border : COLORS.borderLight;
 
 	return (
 		<Tabs
+			tabBar={(props) => <AnimatedTabBar {...props} />}
 			screenOptions={{
 				tabBarShowLabel: false,
-
 				tabBarActiveTintColor: COLORS.brandPrimary,
 				tabBarInactiveTintColor: isDarkMode
 					? COLORS.textMutedDark
 					: COLORS.textMuted,
-
-				tabBarStyle: {
-					backgroundColor: tabBarBg,
-					borderTopColor: borderColor,
-					borderTopWidth: 0,
-					height: Platform.OS === "ios" ? 85 : 70,
-					paddingBottom: Platform.OS === "ios" ? insets.bottom : 10,
-					paddingTop: 10,
-					elevation: 0,
-					shadowOpacity: 0,
-				},
-
 				headerStyle: {
 					backgroundColor: backgroundColor,
 					borderBottomWidth: 0,
@@ -86,17 +72,19 @@ export default function TabsLayout() {
 				},
 				headerShadowVisible: false,
 			}}
+			screenListeners={{
+				tabPress: () => {
+					// Reset tab bar visibility when switching tabs
+					resetTabBar();
+				},
+			}}
 		>
 			<Tabs.Screen
 				name="index"
 				options={{
 					title: "SOS",
-					tabBarIcon: ({ focused, color }) => (
-						<Ionicons
-							name={focused ? "medical" : "medical-outline"}
-							size={24}
-							color={color}
-						/>
+					tabBarIcon: ({ color }) => (
+						<Ionicons name="medical-outline" size={24} color={color} />
 					),
 					headerShown: true,
 					headerTitle: () => null,
@@ -192,12 +180,8 @@ export default function TabsLayout() {
 				name="visits"
 				options={{
 					title: "VISITS",
-					tabBarIcon: ({ focused, color }) => (
-						<Ionicons
-							name={focused ? "calendar" : "calendar-outline"}
-							size={24}
-							color={color}
-						/>
+					tabBarIcon: ({ color }) => (
+						<Ionicons name="calendar-outline" size={24} color={color} />
 					),
 					headerShown: true,
 					headerTitle: "My Visits",
@@ -209,7 +193,7 @@ export default function TabsLayout() {
 				options={{
 					title: "MORE",
 					tabBarIcon: ({ color }) => (
-						<MaterialCommunityIcons name="view-grid" size={24} color={color} />
+						<Ionicons name="ellipsis-horizontal-outline" size={24} color={color} />
 					),
 					headerShown: true,
 					headerTitle: "More Options",

@@ -1,4 +1,5 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
 	View,
 	Text,
@@ -10,6 +11,8 @@ import {
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
 import { useEmergency } from "../contexts/EmergencyContext";
+import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
+import { useFAB } from "../contexts/FABContext";
 import { COLORS } from "../constants/colors";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -18,12 +21,13 @@ import ServiceTypeSelector from "../components/emergency/ServiceTypeSelector";
 import SpecialtySelector from "../components/emergency/SpecialtySelector";
 import HospitalCard from "../components/emergency/HospitalCard";
 import EmergencyMap from "../components/map/EmergencyMap";
-import FloatingEmergencyButton from "../components/ui/FloatingEmergencyButton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function EmergencyScreen() {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
+	const { handleScroll } = useTabBarVisibility();
+	const { registerFAB } = useFAB();
 
 	// Use context for persisted state
 	const {
@@ -91,10 +95,24 @@ export default function EmergencyScreen() {
 		selectSpecialty(specialty);
 	};
 
-	const handleFloatingButtonPress = () => {
+	const handleFloatingButtonPress = useCallback(() => {
 		toggleMode();
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-	};
+	}, [toggleMode]);
+
+	// Register FAB intent on focus (not just mount)
+	// This fixes the "FAB never comes back" issue when switching tabs
+	useFocusEffect(
+		useCallback(() => {
+			registerFAB({
+				icon: mode === "emergency" ? "bed-patient" : "medical",
+				visible: true,
+				onPress: handleFloatingButtonPress,
+			});
+
+			// No cleanup needed - next screen will override
+		}, [mode, handleFloatingButtonPress, registerFAB])
+	);
 
 	const handleCall911 = () => {
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -112,7 +130,7 @@ export default function EmergencyScreen() {
 					opacity: fadeAnim,
 					transform: [{ translateY: slideAnim }],
 					paddingHorizontal: 20,
-					paddingTop: insets.top + 16,
+					paddingTop: insets.top,
 					marginBottom: 16,
 					backgroundColor: colors.background,
 					zIndex: 10,
@@ -258,6 +276,8 @@ export default function EmergencyScreen() {
 					showsVerticalScrollIndicator={false}
 					contentContainerStyle={{ paddingBottom: bottomPadding, paddingHorizontal: 20 }}
 					bounces={true}
+					scrollEventThrottle={16}
+					onScroll={handleScroll}
 				>
 					{/* Emergency Call Button - Only in emergency mode */}
 					{mode === "emergency" && (
@@ -332,16 +352,6 @@ export default function EmergencyScreen() {
 					))}
 				</ScrollView>
 			)}
-
-			{/* Floating Toggle Button */}
-			<FloatingEmergencyButton
-				onPress={handleFloatingButtonPress}
-				position="right"
-				bottom={tabBarHeight - 100}
-				size="medium"
-				icon={mode === "emergency" ? "bed-patient" : "medical"}
-				mode={mode}
-			/>
 		</View>
 	);
 }

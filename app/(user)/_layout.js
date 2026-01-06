@@ -1,27 +1,45 @@
+import { View, StyleSheet } from "react-native";
 import { Stack } from "expo-router";
-import { useTheme } from "../../contexts/ThemeContext";
-import { COLORS } from "../../constants/colors";
+import { TabBarVisibilityProvider } from "../../contexts/TabBarVisibilityContext";
+import { FABProvider } from "../../contexts/FABContext";
+import { VisitsProvider } from "../../contexts/VisitsContext";
+import GlobalFAB from "../../components/navigation/GlobalFAB";
 
 export default function UserLayout() {
-	const { isDarkMode } = useTheme();
-
 	return (
-		<Stack
-			screenOptions={{
-				headerShown: false,
-				animation: "slide_from_right",
-			}}
-		>
-			{/* Bottom tabs (persistent) */}
-			<Stack.Screen name="(tabs)" />
+		<TabBarVisibilityProvider>
+			<FABProvider>
+				<VisitsProvider>
+					<View style={styles.container}>
+						<Stack
+							screenOptions={{
+								headerShown: false,
+								animation: "slide_from_right",
+							}}
+						>
+							{/* Bottom tabs (persistent) */}
+							<Stack.Screen name="(tabs)" />
 
-			{/* Secondary flows on top of tabs */}
-			<Stack.Screen
-				name="(stacks)"
-				options={{
-					presentation: "card",
-				}}
-			/>
-		</Stack>
+							{/* Secondary flows on top of tabs */}
+							<Stack.Screen
+								name="(stacks)"
+								options={{
+									presentation: "card",
+								}}
+							/>
+						</Stack>
+
+						{/* Global FAB - always above tabs */}
+						<GlobalFAB />
+					</View>
+				</VisitsProvider>
+			</FABProvider>
+		</TabBarVisibilityProvider>
 	);
 }
+
+const styles = StyleSheet.create({
+	container: {
+		flex: 1,
+	},
+});
