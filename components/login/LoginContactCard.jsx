@@ -7,15 +7,20 @@
  * Choose between Email or Phone for contact - iVisit UI/UX
  */
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { View, Text, Pressable, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 
-export default function LoginContactCard({ authMethod, onSelect }) {
+export default function LoginContactCard({
+	authMethod,
+	onSelect,
+	disabled = false,
+}) {
 	const { isDarkMode } = useTheme();
+	const [selectedType, setSelectedType] = useState(null);
 
 	const colors = {
 		primary: COLORS.brandPrimary,
@@ -45,20 +50,35 @@ export default function LoginContactCard({ authMethod, onSelect }) {
 
 	const ContactButton = ({ type, icon, label, description }) => {
 		const scale = useRef(new Animated.Value(1)).current;
+		const isSelected = selectedType === type;
 
 		const handlePress = () => {
+			if (disabled || isSelected) {
+				console.log(
+					"[v0] LoginContactCard: Click ignored - disabled or already selected"
+				);
+				return;
+			}
+
+			console.log("[v0] LoginContactCard: Selected", type);
+			setSelectedType(type);
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
 			Animated.sequence([
 				Animated.spring(scale, { toValue: 0.96, useNativeDriver: true }),
 				Animated.spring(scale, { toValue: 1, useNativeDriver: true }),
 			]).start();
-			onSelect(type);
+
+			setTimeout(() => {
+				onSelect(type);
+			}, 150);
 		};
 
 		return (
 			<Animated.View style={{ transform: [{ scale }] }}>
 				<Pressable
 					onPress={handlePress}
+					disabled={disabled || isSelected}
 					style={{
 						backgroundColor: colors.card,
 						borderRadius: 30,
@@ -70,6 +90,7 @@ export default function LoginContactCard({ authMethod, onSelect }) {
 						shadowOffset: { width: 0, height: 4 },
 						shadowOpacity: isDarkMode ? 0 : 0.03,
 						shadowRadius: 10,
+						opacity: (disabled || isSelected) && !isSelected ? 0.5 : 1,
 					}}
 				>
 					<View

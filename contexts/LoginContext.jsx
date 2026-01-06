@@ -1,12 +1,20 @@
+// contexts/LoginContext
+
 "use client";
 
 /**
- * Simplified Login Context
- * Single flow: Choose auth method (OTP/Password) → Enter contact → Authenticate
+ * contexts/LoginContext.jsx
+ * Simplified Login Context with proper flow control
  */
 
 import { createContext, useContext, useState, useCallback } from "react";
-import { LOGIN_STEPS, LOGIN_AUTH_METHODS } from "../constants/loginSteps";
+import {
+	LOGIN_STEPS,
+	LOGIN_AUTH_METHODS,
+	LOGIN_CONTACT_TYPES,
+	getNextLoginStep,
+	getPreviousLoginStep,
+} from "../constants/loginSteps";
 
 const LoginContext = createContext();
 
@@ -14,6 +22,8 @@ const initialLoginData = {
 	authMethod: null, // "otp" | "password"
 	contactType: null, // "email" | "phone"
 	contact: null, // email or phone value
+	email: null,
+	phone: null,
 	password: null,
 	otp: null,
 };
@@ -21,44 +31,57 @@ const initialLoginData = {
 export function LoginProvider({ children }) {
 	const [currentStep, setCurrentStep] = useState(LOGIN_STEPS.AUTH_METHOD);
 	const [loginData, setLoginData] = useState(initialLoginData);
+	const [isTransitioning, setIsTransitioning] = useState(false);
 
 	const updateLoginData = useCallback((updates) => {
+		console.log("[v0] LoginContext: Updating login data", updates);
 		setLoginData((prev) => ({ ...prev, ...updates }));
 	}, []);
 
-	const goToStep = useCallback((step) => setCurrentStep(step), []);
+	const goToStep = useCallback((step) => {
+		console.log("[v0] LoginContext: Going to step", step);
+		setCurrentStep(step);
+		setIsTransitioning(false);
+	}, []);
 
 	const nextStep = useCallback(() => {
-		if (currentStep === LOGIN_STEPS.AUTH_METHOD) {
-			setCurrentStep(LOGIN_STEPS.CONTACT_INPUT);
-		} else if (currentStep === LOGIN_STEPS.CONTACT_INPUT) {
-			if (loginData.authMethod === LOGIN_AUTH_METHODS.OTP) {
-				setCurrentStep(LOGIN_STEPS.OTP_VERIFICATION);
-			} else {
-				setCurrentStep(LOGIN_STEPS.PASSWORD_INPUT);
-			}
+		if (isTransitioning) {
+			console.log("[v0] LoginContext: Already transitioning, ignoring");
+			return;
 		}
-	}, [currentStep, loginData.authMethod]);
+
+		setIsTransitioning(true);
+		const next = getNextLoginStep(
+			currentStep,
+			loginData.authMethod,
+			loginData.contactType
+		);
+		console.log("[v0] LoginContext: Moving from", currentStep, "to", next);
+
+		setTimeout(() => {
+			setCurrentStep(next);
+			setIsTransitioning(false);
+		}, 100);
+	}, [
+		currentStep,
+		loginData.authMethod,
+		loginData.contactType,
+		isTransitioning,
+	]);
 
 	const previousStep = useCallback(() => {
-		if (currentStep === LOGIN_STEPS.CONTACT_INPUT) {
-			setCurrentStep(LOGIN_STEPS.AUTH_METHOD);
-		} else if (
-			currentStep === LOGIN_STEPS.OTP_VERIFICATION ||
-			currentStep === LOGIN_STEPS.PASSWORD_INPUT
-		) {
-			setCurrentStep(LOGIN_STEPS.CONTACT_INPUT);
-		} else if (
-			currentStep === LOGIN_STEPS.FORGOT_PASSWORD ||
-			currentStep === LOGIN_STEPS.RESET_PASSWORD
-		) {
-			setCurrentStep(LOGIN_STEPS.PASSWORD_INPUT);
-		}
-	}, [currentStep]);
+		if (isTransitioning) return;
+
+		const prev = getPreviousLoginStep(currentStep);
+		console.log("[v0] LoginContext: Going back from", currentStep, "to", prev);
+		setCurrentStep(prev);
+	}, [currentStep, isTransitioning]);
 
 	const resetLoginFlow = useCallback(() => {
+		console.log("[v0] LoginContext: Resetting login flow");
 		setCurrentStep(LOGIN_STEPS.AUTH_METHOD);
 		setLoginData(initialLoginData);
+		setIsTransitioning(false);
 	}, []);
 
 	const value = {
@@ -69,6 +92,7 @@ export function LoginProvider({ children }) {
 		nextStep,
 		previousStep,
 		resetLoginFlow,
+		isTransitioning,
 		STEPS: LOGIN_STEPS,
 	};
 
@@ -83,4 +107,4 @@ export function useLogin() {
 	return context;
 }
 
-export { LOGIN_STEPS, LOGIN_AUTH_METHODS };
+export { LOGIN_STEPS, LOGIN_AUTH_METHODS, LOGIN_CONTACT_TYPES };

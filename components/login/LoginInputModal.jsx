@@ -3,8 +3,8 @@
 "use client";
 
 /**
- * Simplified LoginInputModal - iVisit UI/UX
- * Handles complete login flow with proper error handling
+ * components/login/LoginInputModal.jsx
+ * Simplified LoginInputModal - iVisit UI/UX with proper flow control
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -64,6 +64,7 @@ export default function LoginInputModal({ visible, onClose }) {
 		previousStep,
 		goToStep,
 		resetLoginFlow,
+		isTransitioning,
 	} = useLogin();
 	const { isDarkMode } = useTheme();
 
@@ -115,11 +116,13 @@ export default function LoginInputModal({ visible, onClose }) {
 	};
 
 	const handleAuthMethodSelect = (method) => {
+		console.log("[v0] LoginInputModal: Auth method selected:", method);
 		updateLoginData({ authMethod: method });
 		nextStep();
 	};
 
-	const handleContactSelect = (type) => {
+	const handleContactTypeSelect = (type) => {
+		console.log("[v0] LoginInputModal: Contact type selected:", type);
 		updateLoginData({ contactType: type });
 		nextStep();
 	};
@@ -130,6 +133,7 @@ export default function LoginInputModal({ visible, onClose }) {
 		setError(null);
 
 		try {
+			console.log("[v0] LoginInputModal: Contact submitted:", value);
 			await new Promise((r) => setTimeout(r, 1200));
 
 			updateLoginData({
@@ -161,6 +165,7 @@ export default function LoginInputModal({ visible, onClose }) {
 		setError(null);
 
 		try {
+			console.log("[v0] LoginInputModal: OTP submitted");
 			await new Promise((r) => setTimeout(r, 800));
 
 			updateLoginData({ otp });
@@ -202,6 +207,7 @@ export default function LoginInputModal({ visible, onClose }) {
 		setError(null);
 
 		try {
+			console.log("[v0] LoginInputModal: Password submitted");
 			updateLoginData({ password });
 
 			const credentials = {
@@ -252,8 +258,8 @@ export default function LoginInputModal({ visible, onClose }) {
 
 	const getHeaderTitle = () => {
 		if (currentStep === LOGIN_STEPS.AUTH_METHOD) return "Sign In";
+		if (currentStep === LOGIN_STEPS.CONTACT_TYPE) return "Contact Method";
 		if (currentStep === LOGIN_STEPS.CONTACT_INPUT) {
-			if (!loginData.contactType) return "Contact Method";
 			return loginData.contactType === "email"
 				? "Email Address"
 				: "Phone Number";
@@ -319,6 +325,7 @@ export default function LoginInputModal({ visible, onClose }) {
 
 								<View className="flex-1">
 									{currentStep !== LOGIN_STEPS.AUTH_METHOD &&
+										currentStep !== LOGIN_STEPS.CONTACT_TYPE &&
 										currentStep !== LOGIN_STEPS.CONTACT_INPUT &&
 										currentStep !== LOGIN_STEPS.FORGOT_PASSWORD && (
 											<Text
@@ -346,6 +353,7 @@ export default function LoginInputModal({ visible, onClose }) {
 								</Pressable>
 							</View>
 
+							{/* Error Display */}
 							{error && (
 								<View
 									style={{
@@ -378,18 +386,21 @@ export default function LoginInputModal({ visible, onClose }) {
 								</View>
 							)}
 
-							{/* Content */}
+							{/* Content - Added CONTACT_TYPE step handling */}
 							{currentStep === LOGIN_STEPS.AUTH_METHOD && (
-								<LoginAuthMethodCard onSelect={handleAuthMethodSelect} />
+								<LoginAuthMethodCard
+									onSelect={handleAuthMethodSelect}
+									disabled={isTransitioning}
+								/>
 							)}
 
-							{currentStep === LOGIN_STEPS.CONTACT_INPUT &&
-								!loginData.contactType && (
-									<LoginContactCard
-										authMethod={loginData.authMethod}
-										onSelect={handleContactSelect}
-									/>
-								)}
+							{currentStep === LOGIN_STEPS.CONTACT_TYPE && (
+								<LoginContactCard
+									authMethod={loginData.authMethod}
+									onSelect={handleContactTypeSelect}
+									disabled={isTransitioning}
+								/>
+							)}
 
 							{currentStep === LOGIN_STEPS.CONTACT_INPUT &&
 								loginData.contactType === "phone" && (
