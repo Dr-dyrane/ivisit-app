@@ -8,6 +8,7 @@ import * as SplashScreen from "expo-splash-screen";
 
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
+import { EmergencyProvider } from "../contexts/EmergencyContext";
 import ToastProvider from "../contexts/ToastContext";
 import ThemeToggle from "../components/ThemeToggle";
 
@@ -15,6 +16,7 @@ import ThemeToggle from "../components/ThemeToggle";
  * Root layout wraps the entire app with context providers
  * - AuthProvider: Authentication state
  * - ThemeProvider: Dark/Light mode
+ * - EmergencyProvider: Emergency/booking state persistence
  * - ToastProvider: Notifications
  * Also includes global StatusBar and Theme toggle
  */
@@ -28,15 +30,17 @@ export default function RootLayout() {
 	return (
 		<AuthProvider>
 			<ThemeProvider>
-				<ToastProvider>
-					<View style={{ flex: 1 }}>
-						<AuthenticatedStack />
-						{/* Theme toggle (optional absolute positioning) */}
-						<View className="absolute right-0 top-16 px-2 py-4">
-							<ThemeToggle showLabel={false} />
+				<EmergencyProvider>
+					<ToastProvider>
+						<View style={{ flex: 1 }}>
+							<AuthenticatedStack />
+							{/* Theme toggle (optional absolute positioning) */}
+							<View className="absolute right-0 top-16 px-2 py-4">
+								<ThemeToggle showLabel={false} />
+							</View>
 						</View>
-					</View>
-				</ToastProvider>
+					</ToastProvider>
+				</EmergencyProvider>
 			</ThemeProvider>
 		</AuthProvider>
 	);

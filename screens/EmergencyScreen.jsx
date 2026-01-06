@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import {
 	View,
 	Text,
@@ -9,26 +9,39 @@ import {
 	Linking,
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import { useEmergency } from "../contexts/EmergencyContext";
 import { COLORS } from "../constants/colors";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import ServiceTypeSelector from "../components/emergency/ServiceTypeSelector";
+import SpecialtySelector from "../components/emergency/SpecialtySelector";
 import HospitalCard from "../components/emergency/HospitalCard";
 import EmergencyMap from "../components/map/EmergencyMap";
 import FloatingEmergencyButton from "../components/ui/FloatingEmergencyButton";
-import { HOSPITALS } from "../data/hospitals";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-
 
 export default function EmergencyScreen() {
 	const { isDarkMode } = useTheme();
-	const [selectedHospital, setSelectedHospital] = useState(null);
-	const [serviceType, setServiceType] = useState("premium");
-	const [viewMode, setViewMode] = useState("map"); // "map" or "list"
-	const [mode, setMode] = useState("emergency"); // "emergency" or "booking"
 	const insets = useSafeAreaInsets();
+
+	// Use context for persisted state
+	const {
+		hospitals,
+		selectedHospital,
+		filteredHospitals,
+		mode,
+		serviceType,
+		selectedSpecialty,
+		specialties,
+		viewMode,
+		setViewMode,
+		selectHospital,
+		toggleMode,
+		selectSpecialty,
+		selectServiceType,
+		updateHospitals,
+	} = useEmergency();
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
@@ -56,8 +69,8 @@ export default function EmergencyScreen() {
 	}, []);
 
 	const handleEmergencyCall = (hospitalId) => {
-		const hospital = HOSPITALS.find(h => h.id === hospitalId);
-		setSelectedHospital(hospital);
+		const hospital = hospitals.find(h => h.id === hospitalId);
+		selectHospital(hospitalId);
 		// TODO: Navigate to ambulance request flow or show confirmation
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 		console.log("[iVisit] Emergency call requested for:", hospital?.name);
@@ -65,21 +78,21 @@ export default function EmergencyScreen() {
 
 	const handleServiceTypeSelect = (type) => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		setServiceType(type);
+		selectServiceType(type);
 	};
 
 	const handleHospitalSelect = (hospital) => {
-		setSelectedHospital(hospital.id);
+		selectHospital(hospital.id);
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 	};
 
+	const handleSpecialtySelect = (specialty) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		selectSpecialty(specialty);
+	};
+
 	const handleFloatingButtonPress = () => {
-		// Toggle between emergency and booking modes
-		if (mode === "emergency") {
-			setMode("booking");
-		} else {
-			setMode("emergency");
-		}
+		toggleMode();
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 	};
 
@@ -87,12 +100,6 @@ export default function EmergencyScreen() {
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 		Linking.openURL("tel:911");
 	};
-
-
-
-	const filteredHospitals = HOSPITALS.filter(
-		(hospital) => hospital.type.toLowerCase() === serviceType
-	);
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
@@ -219,18 +226,28 @@ export default function EmergencyScreen() {
 					</Pressable>
 				</View>
 
-				{/* Service Type Selector */}
-				<ServiceTypeSelector
-					selectedType={serviceType}
-					onSelect={handleServiceTypeSelect}
-				/>
+				{/* Service Type Selector (Emergency) or Specialty Selector (Booking) */}
+				{mode === "emergency" ? (
+					<ServiceTypeSelector
+						selectedType={serviceType}
+						onSelect={handleServiceTypeSelect}
+					/>
+				) : (
+					<SpecialtySelector
+						specialties={specialties}
+						selectedSpecialty={selectedSpecialty}
+						onSelect={handleSpecialtySelect}
+					/>
+				)}
 			</Animated.View>
 
 			{/* Main Content Area */}
 			{viewMode === "map" ? (
 				<View style={{ flex: 1, paddingHorizontal: 16, paddingBottom: 16 }}>
 					<EmergencyMap
+						hospitals={hospitals.length > 0 ? filteredHospitals : undefined}
 						onHospitalSelect={handleHospitalSelect}
+						onHospitalsGenerated={updateHospitals}
 						selectedHospitalId={selectedHospital?.id}
 						style={{ flex: 1 }}
 						mode={mode}
@@ -308,7 +325,7 @@ export default function EmergencyScreen() {
 							key={hospital.id}
 							hospital={hospital}
 							isSelected={selectedHospital?.id === hospital.id}
-							onSelect={setSelectedHospital}
+							onSelect={handleHospitalSelect}
 							onCall={handleEmergencyCall}
 							mode={mode}
 						/>

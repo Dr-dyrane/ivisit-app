@@ -46,7 +46,7 @@ export default function TabsLayout() {
 
 	const backgroundColor = isDarkMode ? COLORS.bgDark : COLORS.bgLight;
 	const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
-	const tabBarBg = isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt;
+	const tabBarBg = isDarkMode ? COLORS.bgDark : COLORS.bgLight;
 	const borderColor = isDarkMode ? COLORS.border : COLORS.borderLight;
 
 	return (
@@ -62,7 +62,7 @@ export default function TabsLayout() {
 				tabBarStyle: {
 					backgroundColor: tabBarBg,
 					borderTopColor: borderColor,
-					borderTopWidth: 1,
+					borderTopWidth: 0,
 					height: Platform.OS === "ios" ? 85 : 70,
 					paddingBottom: Platform.OS === "ios" ? insets.bottom : 10,
 					paddingTop: 10,
@@ -209,11 +209,7 @@ export default function TabsLayout() {
 				options={{
 					title: "MORE",
 					tabBarIcon: ({ color }) => (
-						<MaterialCommunityIcons
-							name="dots-horizontal"
-							size={24}
-							color={color}
-						/>
+						<MaterialCommunityIcons name="view-grid" size={24} color={color} />
 					),
 					headerShown: true,
 					headerTitle: "More Options",

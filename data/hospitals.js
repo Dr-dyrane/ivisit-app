@@ -144,4 +144,18 @@ export const SERVICE_TYPES = [
     icon: "medical",
     priceRange: "$100-$130",
   },
-]
+];
+
+// Available specialties for bed booking
+export const SPECIALTIES = [
+  "General Care",
+  "Emergency",
+  "Cardiology",
+  "Neurology",
+  "Oncology",
+  "Pediatrics",
+  "Orthopedics",
+  "ICU",
+  "Trauma",
+  "Urgent Care",
+];
