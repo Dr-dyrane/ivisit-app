@@ -3,12 +3,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
+import StatusIndicator from "../ui/StatusIndicator";
+import IconButton from "../ui/IconButton";
 
 export default function HospitalCard({
 	hospital,
 	isSelected,
 	onSelect,
 	onCall,
+	mode = "emergency", // "emergency" or "booking"
 }) {
 	const { isDarkMode } = useTheme();
 
@@ -67,35 +70,87 @@ export default function HospitalCard({
 				}}
 			>
 				<View style={{ flex: 1 }}>
-					<Text
-						style={{
-							fontSize: 18,
-							fontWeight: "700",
-							color: colors.text,
-							marginBottom: 6,
-							letterSpacing: -0.3,
-						}}
-					>
-						{hospital.name}
-					</Text>
-					<View style={{ flexDirection: "row", alignItems: "center" }}>
+					<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+						<Text
+							style={{
+								fontSize: 18,
+								fontWeight: "700",
+								color: colors.text,
+								letterSpacing: -0.3,
+								flex: 1,
+							}}
+						>
+							{hospital.name}
+						</Text>
+						{hospital.verified && (
+							<Ionicons name="checkmark-circle" size={18} color="#10B981" style={{ marginLeft: 8 }} />
+						)}
+					</View>
+
+					<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
 						<Ionicons name="star" size={16} color="#FFC107" />
 						<Text
-							style={{ fontSize: 14, color: colors.textMuted, marginLeft: 4 }}
+							style={{ fontSize: 14, color: colors.textMuted, marginLeft: 4, marginRight: 12 }}
 						>
 							{hospital.rating}
 						</Text>
+						<StatusIndicator
+							status={hospital.availableBeds > 0 ? "available" : "busy"}
+							text={hospital.availableBeds > 0 ? "Available" : "Full"}
+							size="small"
+							showIcon={false}
+						/>
+					</View>
+
+					{/* Specialties */}
+					<View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+						{hospital.specialties.slice(0, 2).map((specialty, index) => (
+							<View
+								key={index}
+								style={{
+									backgroundColor: `${COLORS.brandPrimary}15`,
+									paddingHorizontal: 8,
+									paddingVertical: 4,
+									borderRadius: 12,
+									marginRight: 6,
+									marginBottom: 4,
+								}}
+							>
+								<Text
+									style={{
+										fontSize: 11,
+										color: COLORS.brandPrimary,
+										fontWeight: "600",
+									}}
+								>
+									{specialty}
+								</Text>
+							</View>
+						))}
 					</View>
 				</View>
-				<Text
-					style={{
-						fontSize: 20,
-						fontWeight: "800",
-						color: COLORS.brandPrimary,
-					}}
-				>
-					{hospital.price}
-				</Text>
+
+				<View style={{ alignItems: "flex-end" }}>
+					<Text
+						style={{
+							fontSize: 20,
+							fontWeight: "800",
+							color: COLORS.brandPrimary,
+							marginBottom: 4,
+						}}
+					>
+						{hospital.price}
+					</Text>
+					<Text
+						style={{
+							fontSize: 12,
+							color: colors.textMuted,
+							textAlign: "right",
+						}}
+					>
+						Wait: {hospital.waitTime}
+					</Text>
+				</View>
 			</View>
 
 			<View
@@ -114,11 +169,15 @@ export default function HospitalCard({
 					</Text>
 				</View>
 				<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-					<Ionicons name="time" size={16} color={COLORS.brandPrimary} />
+					<Ionicons
+						name={mode === "booking" ? "bed" : "time"}
+						size={16}
+						color={COLORS.brandPrimary}
+					/>
 					<Text
 						style={{ fontSize: 13, color: colors.textMuted, marginLeft: 6 }}
 					>
-						ETA: {hospital.eta}
+						{mode === "booking" ? `${hospital.availableBeds} beds` : `ETA: ${hospital.eta}`}
 					</Text>
 				</View>
 			</View>
@@ -138,7 +197,11 @@ export default function HospitalCard({
 					}}
 				>
 					<View style={{ flexDirection: "row", alignItems: "center" }}>
-						<Ionicons name="car" size={20} color="#FFFFFF" />
+						<Ionicons
+							name={mode === "booking" ? "bed" : "car"}
+							size={20}
+							color="#FFFFFF"
+						/>
 						<Text
 							style={{
 								color: "#FFFFFF",
@@ -148,7 +211,7 @@ export default function HospitalCard({
 								letterSpacing: 0.3,
 							}}
 						>
-							Request Now
+							{mode === "booking" ? "Book Bed" : "Request Now"}
 						</Text>
 					</View>
 					<Ionicons name="chevron-forward" size={20} color="#FFFFFF" />

@@ -189,6 +189,22 @@ export default function TabsLayout() {
 			/>
 
 			<Tabs.Screen
+				name="book-bed"
+				options={{
+					title: "Book Bed",
+					tabBarIcon: ({ focused, color }) => (
+						<Ionicons
+							name={focused ? "bed" : "bed-outline"}
+							size={24}
+							color={color}
+						/>
+					),
+					headerShown: true,
+					headerTitle: "Book Hospital Bed",
+				}}
+			/>
+
+			<Tabs.Screen
 				name="visits"
 				options={{
 					title: "Visits",
