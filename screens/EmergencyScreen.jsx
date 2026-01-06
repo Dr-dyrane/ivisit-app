@@ -135,7 +135,7 @@ export default function EmergencyScreen() {
 					opacity: fadeAnim,
 					transform: [{ translateY: slideAnim }],
 					paddingHorizontal: 20,
-					paddingTop: insets.top,
+					paddingTop: insets.top - 40,
 					marginBottom: 16,
 					zIndex: 10,
 				}}

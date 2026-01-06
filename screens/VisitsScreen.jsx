@@ -124,7 +124,6 @@ const VisitsScreen = () => {
 						flexDirection: "row",
 						alignItems: "center",
 						marginBottom: 24,
-						marginTop: insets.top,
 					}}
 				>
 					<View style={{
@@ -240,6 +239,7 @@ const styles = StyleSheet.create({
 	},
 	content: {
 		flexGrow: 1,
+		paddingTop: 0,
 		padding: 20,
 	},
 });

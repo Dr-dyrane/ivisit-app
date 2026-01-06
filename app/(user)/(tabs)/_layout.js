@@ -4,19 +4,14 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
-import {
-	Animated,
-	Image,
-	Text,
-	TouchableOpacity,
-	View,
-} from "react-native";
+import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useTabBarVisibility } from "../../../contexts/TabBarVisibilityContext";
 import { useNotifications } from "../../../contexts/NotificationsContext";
 import { COLORS } from "../../../constants/colors";
 import AnimatedTabBar from "../../../components/navigation/AnimatedTabBar";
+import { BlurView } from "expo-blur";
 
 export default function TabsLayout() {
 	const router = useRouter();
@@ -175,29 +170,77 @@ export default function TabsLayout() {
 					),
 				}}
 			/>
-
 			<Tabs.Screen
 				name="visits"
 				options={{
-					title: "VISITS",
+					title: "", // Remove title text
 					tabBarIcon: ({ color }) => (
 						<Ionicons name="calendar-outline" size={24} color={color} />
 					),
-					headerShown: false,
+					headerShown: true,
+					headerBackground: () => (
+						<BlurView
+							intensity={70}
+							tint={isDarkMode ? "dark" : "light"}
+							style={StyleSheet.absoluteFill}
+						>
+							<View
+								style={{
+									flex: 1,
+									backgroundColor: isDarkMode
+										? COLORS.bgDark
+										: COLORS.bgLight,
+								}}
+							/>
+						</BlurView>
+					),
+					headerStyle: {
+						backgroundColor: "transparent",
+						borderBottomWidth: 0,
+						elevation: 0,
+						shadowOpacity: 0,
+					},
+					headerTintColor: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
 				}}
 			/>
-
 			<Tabs.Screen
 				name="more"
 				options={{
-					title: "MORE",
+					title: "", // Remove title text
 					tabBarIcon: ({ color }) => (
-						<Ionicons name="ellipsis-horizontal-outline" size={24} color={color} />
+						<Ionicons
+							name="ellipsis-horizontal-outline"
+							size={24}
+							color={color}
+						/>
 					),
-					// No header - MoreScreen handles its own header/profile section
-					headerShown: false,
+					headerShown: true,
+					headerBackground: () => (
+						<BlurView
+							intensity={70}
+							tint={isDarkMode ? "dark" : "light"}
+							style={StyleSheet.absoluteFill}
+						>
+							<View
+								style={{
+									flex: 1,
+									backgroundColor: isDarkMode
+										? COLORS.bgDark
+										: COLORS.bgLight,
+								}}
+							/>
+						</BlurView>
+					),
+					headerStyle: {
+						backgroundColor: "transparent",
+						borderBottomWidth: 0,
+						elevation: 0,
+						shadowOpacity: 0,
+					},
+					headerTintColor: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
 				}}
 			/>
+			
 		</Tabs>
 	);
 }

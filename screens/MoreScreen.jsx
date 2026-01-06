@@ -145,9 +145,7 @@ const MoreScreen = () => {
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }, { scale: profileScale }],
 						paddingHorizontal: 20,
-						paddingTop: 32,
 						paddingBottom: 24,
-						marginTop: insets.top,
 					}}
 				>
 					<TouchableOpacity

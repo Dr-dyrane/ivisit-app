@@ -178,7 +178,6 @@ const ProfileScreen = () => {
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }, { scale: imageScale }],
 						alignItems: "center",
-						paddingTop: 24,
 						paddingBottom: 32,
 					}}
 				>
