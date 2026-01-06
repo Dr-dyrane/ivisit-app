@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { REGISTRATION_STEPS } from "../../constants/registrationSteps";
+import { COLORS } from "../../constants/colors";
 
 import PhoneInputField from "./PhoneInputField";
 import EmailInputField from "./EmailInputField";
@@ -39,6 +40,8 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
 	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState(null);
+
 	const { showToast } = useToast();
 
 	const {
@@ -56,6 +59,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	/* ------------------ Animations ------------------ */
 	useEffect(() => {
 		if (visible) {
+			setError(null);
 			Animated.parallel([
 				Animated.spring(slideAnim, {
 					toValue: 0,
@@ -97,17 +101,22 @@ export default function AuthInputModal({ visible, onClose, type }) {
 				duration: 200,
 				useNativeDriver: true,
 			}),
-		]).start(onClose);
+		]).start(() => {
+			setError(null);
+			onClose();
+		});
 	};
 
 	const handleGoBack = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		setError(null);
 		previousStep();
 	};
 
 	const handleInputSubmit = async (value) => {
 		if (!value) return;
 		setLoading(true);
+		setError(null);
 
 		try {
 			await new Promise((r) => setTimeout(r, 1200));
@@ -119,12 +128,15 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			nextStep();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-			// ✅ Toast success
 			showToast(
 				type === "phone" ? "Phone number accepted" : "Email address accepted",
 				"success"
 			);
+		} catch (err) {
+			const errorMessage =
+				err.message?.split("|")[1] || "Failed to process. Please try again.";
+			setError(errorMessage);
+			showToast(errorMessage, "error");
 		} finally {
 			setLoading(false);
 		}
@@ -133,6 +145,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	const handleOTPSubmit = async (otp) => {
 		if (!otp) return;
 		setLoading(true);
+		setError(null);
 
 		try {
 			await new Promise((r) => setTimeout(r, 800));
@@ -140,9 +153,12 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			nextStep();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-			// ✅ Toast success
 			showToast("OTP verified successfully", "success");
+		} catch (err) {
+			const errorMessage =
+				err.message?.split("|")[1] || "OTP verification failed.";
+			setError(errorMessage);
+			showToast(errorMessage, "error");
 		} finally {
 			setLoading(false);
 		}
@@ -151,6 +167,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	const handlePasswordSubmit = async (password) => {
 		if (!password) return;
 		setLoading(true);
+		setError(null);
 
 		try {
 			updateRegistrationData({ password });
@@ -174,16 +191,22 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			await login(data);
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-			// ✅ Toast for login success
-			showToast("Registration successful", "success");
+			showToast("Registration successful!", "success");
 
 			handleDismiss();
 		} catch (err) {
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+			const [errorCode, errorMessage] = err.message?.split("|") || [];
+			const displayMessage =
+				errorMessage || "Registration failed. Please try again.";
 
-			// ✅ Toast for error
-			showToast("Registration failed. Please try again", "error");
+			setError(displayMessage);
+			showToast(displayMessage, "error");
+
+			if (errorCode === "EMAIL_EXISTS" || errorCode === "PHONE_EXISTS") {
+				setTimeout(() => {
+					showToast("Try logging in instead", "info");
+				}, 2000);
+			}
 		} finally {
 			setLoading(false);
 		}
@@ -191,6 +214,8 @@ export default function AuthInputModal({ visible, onClose, type }) {
 
 	const handleSkipPassword = async () => {
 		setLoading(true);
+		setError(null);
+
 		try {
 			const payload = {
 				username:
@@ -210,16 +235,21 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			await login(data);
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-			// ✅ Toast for success
-			showToast("Registered without password", "info");
+			showToast("Registered successfully", "info");
 
 			handleDismiss();
 		} catch (err) {
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+			const [errorCode, errorMessage] = err.message?.split("|") || [];
+			const displayMessage = errorMessage || "Registration failed.";
 
-			// ✅ Toast for error
-			showToast("Registration failed", "error");
+			setError(displayMessage);
+			showToast(displayMessage, "error");
+
+			if (errorCode === "EMAIL_EXISTS" || errorCode === "PHONE_EXISTS") {
+				setTimeout(() => {
+					showToast("Try logging in instead", "info");
+				}, 2000);
+			}
 		} finally {
 			setLoading(false);
 		}
@@ -247,6 +277,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	const colors = {
 		bg: isDarkMode ? "#0D1117" : "#FFFFFF",
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
+		error: COLORS.error,
 	};
 
 	/* ------------------ Render ------------------ */
@@ -296,7 +327,10 @@ export default function AuthInputModal({ visible, onClose, type }) {
 								)}
 
 								<View className="flex-1">
-									<Text className="text-[10px] tracking-[3px] mb-2 uppercase text-red-800 font-black">
+									<Text
+										className="text-[10px] tracking-[3px] mb-2 uppercase font-black"
+										style={{ color: COLORS.brandPrimary }}
+									>
 										Step {getStepNumber()} of 4
 									</Text>
 									<Text
@@ -315,17 +349,51 @@ export default function AuthInputModal({ visible, onClose, type }) {
 								</Pressable>
 							</View>
 
+							{error && (
+								<View
+									style={{
+										backgroundColor: `${COLORS.error}15`,
+										padding: 16,
+										borderRadius: 12,
+										marginBottom: 16,
+										borderLeftWidth: 4,
+										borderLeftColor: COLORS.error,
+									}}
+								>
+									<View style={{ flexDirection: "row", alignItems: "center" }}>
+										<Ionicons
+											name="alert-circle"
+											size={20}
+											color={COLORS.error}
+											style={{ marginRight: 8 }}
+										/>
+										<Text
+											style={{
+												color: COLORS.error,
+												fontSize: 14,
+												fontWeight: "600",
+												flex: 1,
+											}}
+										>
+											{error}
+										</Text>
+									</View>
+								</View>
+							)}
+
 							{/* Content */}
 							{isInputStep &&
 								(type === "phone" ? (
 									<PhoneInputField
 										initialValue={registrationData.phone}
 										onSubmit={handleInputSubmit}
+										loading={loading}
 									/>
 								) : (
 									<EmailInputField
 										initialValue={registrationData.email}
 										onSubmit={handleInputSubmit}
+										loading={loading}
 									/>
 								))}
 
@@ -334,6 +402,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 									method={registrationData.method}
 									contact={registrationData.phone || registrationData.email}
 									onVerified={handleOTPSubmit}
+									loading={loading}
 								/>
 							)}
 
@@ -343,6 +412,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 								<PasswordInputField
 									onSubmit={handlePasswordSubmit}
 									onSkip={handleSkipPassword}
+									loading={loading}
 								/>
 							)}
 						</ScrollView>

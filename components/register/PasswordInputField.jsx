@@ -1,3 +1,5 @@
+// components/register/PasswordInputField.jsx
+
 "use client";
 
 import { useRef, useState } from "react";
@@ -16,6 +18,9 @@ export default function PasswordInputField({
 	onSubmit,
 	onSkip = null,
 	showSkipOption = false,
+	loading = false,
+	showForgotPassword = false,
+	onForgotPassword = null,
 }) {
 	const { isDarkMode } = useTheme();
 	const inputRef = useRef(null);
@@ -154,24 +159,38 @@ export default function PasswordInputField({
 							useNativeDriver: true,
 						}).start();
 					}}
-					disabled={!isValid}
+					disabled={!isValid || loading}
 					className="h-16 rounded-2xl items-center justify-center"
 					style={{
-						backgroundColor: isValid
-							? COLORS.brandPrimary
-							: isDarkMode
-							? COLORS.bgDarkAlt
-							: "#E5E7EB",
+						backgroundColor:
+							isValid && !loading
+								? COLORS.brandPrimary
+								: isDarkMode
+								? COLORS.bgDarkAlt
+								: "#E5E7EB",
 					}}
 				>
 					<Text
 						className="text-base font-black tracking-[2px]"
-						style={{ color: isValid ? COLORS.bgLight : COLORS.textMuted }}
+						style={{
+							color: isValid && !loading ? COLORS.bgLight : COLORS.textMuted,
+						}}
 					>
-						CONTINUE
+						{loading ? "SIGNING IN..." : "CONTINUE"}
 					</Text>
 				</Pressable>
 			</Animated.View>
+
+			{showForgotPassword && onForgotPassword && (
+				<Pressable onPress={onForgotPassword} className="mt-4 py-3">
+					<Text
+						className="text-center text-sm font-bold"
+						style={{ color: COLORS.brandPrimary }}
+					>
+						Forgot Password?
+					</Text>
+				</Pressable>
+			)}
 
 			{/* Skip Button (Optional) */}
 			{showSkipOption && onSkip && (
@@ -195,13 +214,15 @@ export default function PasswordInputField({
 				</Text>
 			)}
 
-			<Text
-				className="mt-4 text-xs text-center leading-5"
-				style={{ color: COLORS.textMuted }}
-			>
-				Create a strong password to protect your account and medical
-				information.
-			</Text>
+			{!showForgotPassword && (
+				<Text
+					className="mt-4 text-xs text-center leading-5"
+					style={{ color: COLORS.textMuted }}
+				>
+					Create a strong password to protect your account and medical
+					information.
+				</Text>
+			)}
 		</View>
 	);
 }

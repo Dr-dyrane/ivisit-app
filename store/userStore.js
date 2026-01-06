@@ -42,11 +42,29 @@ const userStore = {
 			);
 
 			if (!user) {
-				throw new Error("User not found. Please sign up first.");
+				throw new Error(
+					"USER_NOT_FOUND|No account found. Please sign up first."
+				);
+			}
+
+			if (credentials.otp) {
+				// OTP-based login (password not required)
+				const token = generateRandomToken();
+				user.token = token;
+
+				const updatedUsers = users.map((u) =>
+					u.email === user.email || u.phone === user.phone ? user : u
+				);
+				await AsyncStorage.setItem("users", JSON.stringify(updatedUsers));
+				await AsyncStorage.setItem("token", token);
+
+				return { data: user };
 			}
 
 			if (!user.password) {
-				throw new Error("No password set. Please set a password to continue.");
+				throw new Error(
+					"NO_PASSWORD|No password set. Please use OTP login or set a password."
+				);
 			}
 
 			if (user.password === credentials.password) {
@@ -61,7 +79,9 @@ const userStore = {
 
 				return { data: user };
 			} else {
-				throw new Error("Invalid password");
+				throw new Error(
+					"INVALID_PASSWORD|Incorrect password. Please try again."
+				);
 			}
 		} catch (error) {
 			console.error("Login error:", error.message);
@@ -73,10 +93,9 @@ const userStore = {
 		try {
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 
-			// Allow sign-up with either email or phone; password optional (can be set later)
 			if (!credentials.username || (!credentials.email && !credentials.phone)) {
 				throw new Error(
-					"Username and either email or phone are required for sign-up"
+					"INVALID_INPUT|Username and either email or phone are required."
 				);
 			}
 
@@ -104,22 +123,28 @@ const userStore = {
 				users.push(userStore.staticUserData);
 			}
 
-			// Check duplicates by email or phone
 			if (newUser.email) {
-				if (
-					users.some(
-						(user) =>
-							user.email &&
-							user.email.trim().toLowerCase() ===
-								newUser.email.trim().toLowerCase()
-					)
-				) {
-					throw new Error("User with this email already exists");
+				const existingEmail = users.find(
+					(user) =>
+						user.email &&
+						user.email.trim().toLowerCase() ===
+							newUser.email.trim().toLowerCase()
+				);
+				if (existingEmail) {
+					throw new Error(
+						"EMAIL_EXISTS|An account with this email already exists. Please log in instead."
+					);
 				}
 			}
+
 			if (newUser.phone) {
-				if (users.some((user) => user.phone && user.phone === newUser.phone)) {
-					throw new Error("User with this phone already exists");
+				const existingPhone = users.find(
+					(user) => user.phone && user.phone === newUser.phone
+				);
+				if (existingPhone) {
+					throw new Error(
+						"PHONE_EXISTS|An account with this phone number already exists. Please log in instead."
+					);
 				}
 			}
 
