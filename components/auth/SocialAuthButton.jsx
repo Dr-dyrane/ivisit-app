@@ -1,7 +1,5 @@
 //components/auth/SocialAuthButton.jsx
 
-"use client";
-
 import { useRef } from "react";
 import { Pressable, Animated, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";

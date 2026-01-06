@@ -1,7 +1,5 @@
 // components/login/LoginInputModal.jsx
 
-"use client";
-
 /**
  * components/login/LoginInputModal.jsx
  * Production-ready login modal with comprehensive validation

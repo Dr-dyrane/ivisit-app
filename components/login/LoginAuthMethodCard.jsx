@@ -1,7 +1,5 @@
 // components/login/LoginAuthMethodCard.jsx
 
-"use client";
-
 /**
  * LoginAuthMethodCard
  * Choose between OTP or Password login - iVisit UI/UX

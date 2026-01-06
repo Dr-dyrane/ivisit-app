@@ -1,7 +1,5 @@
 // components/ui/SlideButton.jsx
 
-"use client";
-
 import { useRef, useState } from "react";
 import {
 	View,
@@ -68,12 +66,19 @@ export default function SlideButton({
 	};
 
 	const handlePressIn = () => {
-		Animated.spring(scaleAnim, { toValue: 0.98, useNativeDriver: true }).start();
+		Animated.spring(scaleAnim, {
+			toValue: 0.98,
+			useNativeDriver: true,
+		}).start();
 		if (Platform.OS !== "web") Haptics.selectionAsync();
 	};
 
 	const handlePressOut = () => {
-		Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+		Animated.spring(scaleAnim, {
+			toValue: 1,
+			friction: 5,
+			useNativeDriver: true,
+		}).start();
 	};
 
 	const fillWidth = fillAnim.interpolate({
@@ -103,33 +108,33 @@ export default function SlideButton({
 					},
 				]}
 			>
-			{/* Base content */}
-			<View style={styles.content}>
-				<Text style={[styles.text, { color: themeColors.baseText }]}> 
-					{children}
-				</Text>
-				{icon && icon(themeColors.baseText)}
-			</View>
-
-			{/* Sliding overlay */}
-			<Animated.View
-				style={[
-					styles.overlay,
-					{
-						width: fillWidth,
-						backgroundColor: themeColors.primary,
-					},
-				]}
-			>
-				<Animated.View
-					style={[styles.content, { width, opacity: overlayTextOpacity }]}
-				>
-					<Text style={[styles.text, { color: themeColors.activeText }]}> 
+				{/* Base content */}
+				<View style={styles.content}>
+					<Text style={[styles.text, { color: themeColors.baseText }]}>
 						{children}
 					</Text>
-					{icon && icon(themeColors.activeText)}
+					{icon && icon(themeColors.baseText)}
+				</View>
+
+				{/* Sliding overlay */}
+				<Animated.View
+					style={[
+						styles.overlay,
+						{
+							width: fillWidth,
+							backgroundColor: themeColors.primary,
+						},
+					]}
+				>
+					<Animated.View
+						style={[styles.content, { width, opacity: overlayTextOpacity }]}
+					>
+						<Text style={[styles.text, { color: themeColors.activeText }]}>
+							{children}
+						</Text>
+						{icon && icon(themeColors.activeText)}
+					</Animated.View>
 				</Animated.View>
-			</Animated.View>
 			</Pressable>
 		</Animated.View>
 	);

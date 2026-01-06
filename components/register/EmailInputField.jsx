@@ -1,12 +1,10 @@
-"use client"
-
-import { useRef, useEffect } from "react"
-import { View, Text, TextInput, Pressable, Animated } from "react-native"
-import { Ionicons } from "@expo/vector-icons"
-import * as Haptics from "expo-haptics"
-import { useTheme } from "../../contexts/ThemeContext"
-import useEmailValidation from "../../hooks/validators/useEmailValidation"
-import { COLORS } from "../../constants/colors"
+import { useRef, useEffect } from "react";
+import { View, Text, TextInput, Pressable, Animated } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import useEmailValidation from "../../hooks/validators/useEmailValidation";
+import { COLORS } from "../../constants/colors";
 
 /**
  * EmailInputField - iVisit Registration
@@ -14,141 +12,189 @@ import { COLORS } from "../../constants/colors"
  * Modular email input with clear functionality
  * Matches phone input UX patterns
  */
-export default function EmailInputField({ onValidChange, onSubmit, initialValue = "" }) {
-  const { isDarkMode } = useTheme()
-  const inputRef = useRef(null)
-  const { email, setEmail, isValid, clear } = useEmailValidation()
+export default function EmailInputField({
+	onValidChange,
+	onSubmit,
+	initialValue = "",
+}) {
+	const { isDarkMode } = useTheme();
+	const inputRef = useRef(null);
+	const { email, setEmail, isValid, clear } = useEmailValidation();
 
-  // Prefill email if provided
-  useEffect(() => {
-    if (initialValue) {
-      setEmail(initialValue)
-      if (onValidChange) onValidChange(initialValue)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialValue])
+	// Prefill email if provided
+	useEffect(() => {
+		if (initialValue) {
+			setEmail(initialValue);
+			if (onValidChange) onValidChange(initialValue);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [initialValue]);
 
-  // Animation refs
-  const shakeAnim = useRef(new Animated.Value(0)).current
-  const buttonScale = useRef(new Animated.Value(1)).current
+	// Animation refs
+	const shakeAnim = useRef(new Animated.Value(0)).current;
+	const buttonScale = useRef(new Animated.Value(1)).current;
 
-  const handleEmailChange = (text) => {
-    setEmail(text)
-    if (onValidChange) {
-      onValidChange(isValid ? text.trim() : null)
-    }
-  }
+	const handleEmailChange = (text) => {
+		setEmail(text);
+		if (onValidChange) {
+			onValidChange(isValid ? text.trim() : null);
+		}
+	};
 
-  const handleClearInput = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    clear()
-    if (onValidChange) {
-      onValidChange(null)
-    }
-    inputRef.current?.focus()
-  }
+	const handleClearInput = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		clear();
+		if (onValidChange) {
+			onValidChange(null);
+		}
+		inputRef.current?.focus();
+	};
 
-  const triggerShake = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
-    Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
-    ]).start()
-  }
+	const triggerShake = () => {
+		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+		Animated.sequence([
+			Animated.timing(shakeAnim, {
+				toValue: 10,
+				duration: 50,
+				useNativeDriver: true,
+			}),
+			Animated.timing(shakeAnim, {
+				toValue: -10,
+				duration: 50,
+				useNativeDriver: true,
+			}),
+			Animated.timing(shakeAnim, {
+				toValue: 10,
+				duration: 50,
+				useNativeDriver: true,
+			}),
+			Animated.timing(shakeAnim, {
+				toValue: 0,
+				duration: 50,
+				useNativeDriver: true,
+			}),
+		]).start();
+	};
 
-  const handleContinue = () => {
-    if (!isValid) {
-      triggerShake()
-      return
-    }
+	const handleContinue = () => {
+		if (!isValid) {
+			triggerShake();
+			return;
+		}
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    onSubmit?.(email.trim())
-  }
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		onSubmit?.(email.trim());
+	};
 
-  const handlePressIn = () => {
-    Animated.spring(buttonScale, {
-      toValue: 0.96,
-      useNativeDriver: true,
-    }).start()
-  }
+	const handlePressIn = () => {
+		Animated.spring(buttonScale, {
+			toValue: 0.96,
+			useNativeDriver: true,
+		}).start();
+	};
 
-  const handlePressOut = () => {
-    Animated.spring(buttonScale, {
-      toValue: 1,
-      friction: 3,
-      useNativeDriver: true,
-    }).start()
-  }
+	const handlePressOut = () => {
+		Animated.spring(buttonScale, {
+			toValue: 1,
+			friction: 3,
+			useNativeDriver: true,
+		}).start();
+	};
 
-  const colors = {
-    inputBg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
-    text: isDarkMode ? COLORS.bgLight : COLORS.textPrimary,
-  }
+	const colors = {
+		inputBg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
+		text: isDarkMode ? COLORS.bgLight : COLORS.textPrimary,
+	};
 
-  return (
-    <View>
-      <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
-        <View className="flex-row items-center rounded-2xl px-5 h-[72px]" style={{ backgroundColor: colors.inputBg }}>
-          <Ionicons name="mail-outline" size={24} color={COLORS.textMuted} style={{ marginRight: 12 }} />
+	return (
+		<View>
+			<Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+				<View
+					className="flex-row items-center rounded-2xl px-5 h-[72px]"
+					style={{ backgroundColor: colors.inputBg }}
+				>
+					<Ionicons
+						name="mail-outline"
+						size={24}
+						color={COLORS.textMuted}
+						style={{ marginRight: 12 }}
+					/>
 
-          <TextInput
-            ref={inputRef}
-            className="flex-1 text-xl font-bold"
-            style={{ color: colors.text }}
-            placeholder="your@email.com"
-            placeholderTextColor={COLORS.textMuted}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoFocus
-            value={email}
-            onChangeText={handleEmailChange}
-            selectionColor={COLORS.brandPrimary}
-            returnKeyType="done"
-            onSubmitEditing={handleContinue}
-          />
+					<TextInput
+						ref={inputRef}
+						className="flex-1 text-xl font-bold"
+						style={{ color: colors.text }}
+						placeholder="your@email.com"
+						placeholderTextColor={COLORS.textMuted}
+						keyboardType="email-address"
+						autoCapitalize="none"
+						autoCorrect={false}
+						autoFocus
+						value={email}
+						onChangeText={handleEmailChange}
+						selectionColor={COLORS.brandPrimary}
+						returnKeyType="done"
+						onSubmitEditing={handleContinue}
+					/>
 
-          {email.length > 0 && (
-            <Pressable onPress={handleClearInput} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons
-                name={isValid ? "checkmark-circle" : "close-circle"}
-                size={24}
-                color={isValid ? COLORS.success : COLORS.error}
-              />
-            </Pressable>
-          )}
-        </View>
-      </Animated.View>
+					{email.length > 0 && (
+						<Pressable
+							onPress={handleClearInput}
+							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+						>
+							<Ionicons
+								name={isValid ? "checkmark-circle" : "close-circle"}
+								size={24}
+								color={isValid ? COLORS.success : COLORS.error}
+							/>
+						</Pressable>
+					)}
+				</View>
+			</Animated.View>
 
-      <Animated.View style={{ transform: [{ scale: buttonScale }] }} className="mt-6">
-        <Pressable
-          onPress={handleContinue}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          disabled={!isValid}
-          className="h-16 rounded-2xl items-center justify-center"
-          style={{
-            backgroundColor: isValid ? COLORS.brandPrimary : isDarkMode ? COLORS.bgDarkAlt : "#E5E7EB",
-          }}
-        >
-          <Text className="text-base font-black tracking-[2px]" style={{ color: isValid ? COLORS.bgLight : COLORS.textMuted }}>
-            CONTINUE
-          </Text>
-        </Pressable>
-      </Animated.View>
+			<Animated.View
+				style={{ transform: [{ scale: buttonScale }] }}
+				className="mt-6"
+			>
+				<Pressable
+					onPress={handleContinue}
+					onPressIn={handlePressIn}
+					onPressOut={handlePressOut}
+					disabled={!isValid}
+					className="h-16 rounded-2xl items-center justify-center"
+					style={{
+						backgroundColor: isValid
+							? COLORS.brandPrimary
+							: isDarkMode
+							? COLORS.bgDarkAlt
+							: "#E5E7EB",
+					}}
+				>
+					<Text
+						className="text-base font-black tracking-[2px]"
+						style={{ color: isValid ? COLORS.bgLight : COLORS.textMuted }}
+					>
+						CONTINUE
+					</Text>
+				</Pressable>
+			</Animated.View>
 
-      {email.length > 0 && !isValid && (
-        <Text className="mt-3 text-xs text-center" style={{ color: COLORS.error }}>
-          Please enter a valid email address
-        </Text>
-      )}
+			{email.length > 0 && !isValid && (
+				<Text
+					className="mt-3 text-xs text-center"
+					style={{ color: COLORS.error }}
+				>
+					Please enter a valid email address
+				</Text>
+			)}
 
-      <Text className="mt-4 text-xs text-center leading-5" style={{ color: COLORS.textMuted }}>
-        We'll use your email for appointment confirmations and important health notifications.
-      </Text>
-    </View>
-  )
+			<Text
+				className="mt-4 text-xs text-center leading-5"
+				style={{ color: COLORS.textMuted }}
+			>
+				We'll use your email for appointment confirmations and important health
+				notifications.
+			</Text>
+		</View>
+	);
 }

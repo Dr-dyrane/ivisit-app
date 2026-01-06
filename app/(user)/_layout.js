@@ -1,4 +1,4 @@
-"use client";
+;
 
 import { Stack } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";

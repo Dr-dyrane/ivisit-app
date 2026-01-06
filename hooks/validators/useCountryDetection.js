@@ -1,8 +1,6 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import * as Location from "expo-location"
-import countries from "../../data/countries"
+import { useState, useEffect } from "react";
+import * as Location from "expo-location";
+import countries from "../../data/countries";
 
 /**
  * useCountryDetection Hook
@@ -13,43 +11,45 @@ import countries from "../../data/countries"
  * @returns {Object} - Country detection state
  */
 export default function useCountryDetection() {
-  const [country, setCountry] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+	const [country, setCountry] = useState(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
 
-  useEffect(() => {
-    detectCountry()
-  }, [])
+	useEffect(() => {
+		detectCountry();
+	}, []);
 
-  const detectCountry = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync()
+	const detectCountry = async () => {
+		try {
+			const { status } = await Location.requestForegroundPermissionsAsync();
 
-      if (status === "granted") {
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Low,
-        })
-        const geocode = await Location.reverseGeocodeAsync(location.coords)
+			if (status === "granted") {
+				const location = await Location.getCurrentPositionAsync({
+					accuracy: Location.Accuracy.Low,
+				});
+				const geocode = await Location.reverseGeocodeAsync(location.coords);
 
-        if (geocode[0]?.isoCountryCode) {
-          const found = countries.find((c) => c.code === geocode[0].isoCountryCode)
-          if (found) {
-            setCountry(found)
-            setLoading(false)
-            return
-          }
-        }
-      }
-    } catch (err) {
-      console.error("[v0] Country detection error:", err)
-      setError(err)
-    }
+				if (geocode[0]?.isoCountryCode) {
+					const found = countries.find(
+						(c) => c.code === geocode[0].isoCountryCode
+					);
+					if (found) {
+						setCountry(found);
+						setLoading(false);
+						return;
+					}
+				}
+			}
+		} catch (err) {
+			console.error("[v0] Country detection error:", err);
+			setError(err);
+		}
 
-    // Fallback to US
-    const fallback = countries.find((c) => c.code === "US") || countries[0]
-    setCountry(fallback)
-    setLoading(false)
-  }
+		// Fallback to US
+		const fallback = countries.find((c) => c.code === "US") || countries[0];
+		setCountry(fallback);
+		setLoading(false);
+	};
 
-  return { country, setCountry, loading, error }
+	return { country, setCountry, loading, error };
 }

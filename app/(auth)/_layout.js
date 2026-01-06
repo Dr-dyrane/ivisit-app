@@ -1,5 +1,3 @@
-"use client";
-
 // app/(auth)/_layout.js
 
 import { Stack } from "expo-router";
@@ -99,7 +97,10 @@ function AuthStackScreens() {
 						</Pressable>
 					),
 					headerRight: () => (
-						<Pressable onPress={() => router.push("login")} className="flex flex-row items-center justify-center max-w-[40vw] mx-2">
+						<Pressable
+							onPress={() => router.push("login")}
+							className="flex flex-row items-center justify-center max-w-[40vw] mx-2"
+						>
 							<Text className="text-xs text-gray-500">
 								Have an account?{" "}
 								<Text className="text-primary font-semibold">Login</Text>

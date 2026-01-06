@@ -1,7 +1,5 @@
 // components/SignUpMethodCard.js
 
-"use client";
-
 /**
  * SignUpMethodCard - iVisit Registration Method Selection
  * Displays phone and email signup options

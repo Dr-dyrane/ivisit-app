@@ -1,7 +1,5 @@
 // contexts/AuthContext
 
-"use client";
-
 import { createContext, useState, useEffect, useMemo, useContext } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ActivityIndicator, View } from "react-native";

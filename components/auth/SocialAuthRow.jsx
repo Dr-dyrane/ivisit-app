@@ -1,7 +1,5 @@
 //components/auth/SocialAuthRow.jsx
 
-"use client";
-
 import { View } from "react-native";
 import SocialAuthButton from "./SocialAuthButton";
 

@@ -1,7 +1,5 @@
 // components/ThemeToggle.jsx
 
-"use client";
-
 import { useEffect, useRef, useState } from "react";
 import {
 	View,
@@ -207,7 +205,8 @@ export default function ThemeToggle() {
 						}
 						style={({ pressed }) => [
 							styles.iconCircle,
-							expanded && !isDarkMode && { backgroundColor: COLORS.brandPrimary },
+							expanded &&
+								!isDarkMode && { backgroundColor: COLORS.brandPrimary },
 							pressed && { opacity: 0.7 },
 						]}
 					>
@@ -238,7 +237,9 @@ export default function ThemeToggle() {
 							<Feather
 								name="moon"
 								size={iconSize}
-								color={isDarkMode ? COLORS.brandPrimary : "rgba(134, 16, 14, 0.3)"}
+								color={
+									isDarkMode ? COLORS.brandPrimary : "rgba(134, 16, 14, 0.3)"
+								}
 							/>
 						</Pressable>
 					)}

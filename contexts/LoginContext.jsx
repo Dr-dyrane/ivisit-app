@@ -1,7 +1,5 @@
 // contexts/LoginContext
 
-"use client";
-
 /**
  * contexts/LoginContext.jsx
  * Simplified Login Context with proper flow control

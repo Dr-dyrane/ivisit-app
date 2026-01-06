@@ -1,7 +1,5 @@
 // contetxs/RegistrationContext
 
-"use client";
-
 /**
  * Global Registration Flow Context
  * Manages state across all registration steps for iVisit

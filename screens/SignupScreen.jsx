@@ -1,6 +1,4 @@
 // screens/SignupScreen.jsx
-"use client";
-
 /**
  * SignupScreen - iVisit Registration Entry
  * Presents primary signup methods and social auth

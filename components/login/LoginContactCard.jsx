@@ -1,7 +1,5 @@
 // components/login/LoginContactCard.jsx
 
-"use client";
-
 /**
  * LoginContactCard
  * Choose between Email or Phone for contact - iVisit UI/UX

@@ -1,7 +1,5 @@
 // hooks/mutations/useLoginMutation.js
 
-"use client";
-
 /**
  * useLoginMutation
  * Handles all login-related API calls and AuthContext integration

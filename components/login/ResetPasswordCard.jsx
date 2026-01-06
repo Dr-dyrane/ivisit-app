@@ -1,7 +1,5 @@
 // components/login/ResetPasswordCard.jsx
 
-"use client";
-
 import { useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";

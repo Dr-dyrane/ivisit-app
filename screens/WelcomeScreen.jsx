@@ -1,7 +1,5 @@
 // screens/WelcomeScreen.js
 
-"use client";
-
 import React from "react";
 import { View, Text, Image, Pressable } from "react-native";
 import { useRouter } from "expo-router";

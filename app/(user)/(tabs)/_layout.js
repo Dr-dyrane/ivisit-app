@@ -1,6 +1,5 @@
 // app/(user)/(tabs)/_layout.js
 
-
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";

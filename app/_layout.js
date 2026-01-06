@@ -1,7 +1,5 @@
 // app/_layout.js
 
-"use client";
-
 import React, { useEffect } from "react";
 import { View } from "react-native";
 import { Stack, useRouter } from "expo-router";

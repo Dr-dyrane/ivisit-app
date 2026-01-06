@@ -1,7 +1,5 @@
 // screens/LoginScreen.jsx
 
-"use client";
-
 /**
  * LoginScreen - iVisit UI/UX
  * Simplified: Single modal for complete login flow
