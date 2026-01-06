@@ -1,7 +1,7 @@
 // app/(user)/(tabs)/_layout.js
 
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Fontisto, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import {
@@ -193,8 +193,8 @@ export default function TabsLayout() {
 				options={{
 					title: "Book Bed",
 					tabBarIcon: ({ focused, color }) => (
-						<Ionicons
-							name={focused ? "bed" : "bed-outline"}
+						<Fontisto
+							name={focused ? "bed-patient" : "bed-patient"}
 							size={24}
 							color={color}
 						/>
