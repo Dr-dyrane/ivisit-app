@@ -1,10 +1,8 @@
-import React, {
-	createContext,
-	useState,
-	useEffect,
-	useMemo,
-	useContext,
-} from "react";
+// contexts/AuthContext
+
+"use client";
+
+import { createContext, useState, useEffect, useMemo, useContext } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ActivityIndicator, View } from "react-native";
 import { getCurrentUserAPI } from "../api/auth";
@@ -13,46 +11,44 @@ import { getCurrentUserAPI } from "../api/auth";
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-	const [user, setUser] = useState(null); // Initialize user state
-	const [loading, setLoading] = useState(true); // Loading state
-	const [token, setToken] = useState(null); // Initialize token state
+	const [user, setUser] = useState(null);
+	const [loading, setLoading] = useState(true);
+	const [token, setToken] = useState(null);
 
 	// **1. Fetch and Sync User Data from API**
 	const syncUserData = async () => {
 		try {
 			const storedToken = await AsyncStorage.getItem("token");
 			if (storedToken) {
-				// Call your API to get the latest user data
 				const { data: userData } = await getCurrentUserAPI(storedToken);
 
 				if (userData) {
 					setUser(userData);
 					setToken(storedToken);
-					// Optionally store the updated user data in AsyncStorage
 					await AsyncStorage.setItem("user", JSON.stringify(userData));
 				}
 			}
 		} catch (error) {
 			console.error("Error syncing user data from API:", error);
 		} finally {
-			setLoading(false); // Stop loading when done
+			setLoading(false);
 		}
 	};
 
-	// Use effect to sync data when component mounts
 	useEffect(() => {
-		syncUserData(); // Sync user data on mount
+		syncUserData();
 	}, []);
 
-	// Authentication status derived from user state
 	const authStatus = useMemo(
 		() => ({
-			isAuthenticated: !!user && !!token, // `true` if user and token exist
-			isLoggedIn: !!user, // Alias for isAuthenticated
-			email: user?.email || null, // Return email or null if not logged in
-			username: user?.username || null, // Return username or null if not logged in
+			isAuthenticated: !!user && !!token,
+			isLoggedIn: !!user,
+			email: user?.email || null,
+			username: user?.username || null,
 			fullName: user?.fullName || null,
 			imageUri: user?.imageUri || null,
+			firstName: user?.firstName || null,
+			lastName: user?.lastName || null,
 		}),
 		[user, token]
 	);
@@ -68,10 +64,10 @@ export const AuthProvider = ({ children }) => {
 				await AsyncStorage.setItem("token", userData.token);
 			}
 
-			return true; // Return true when login is successful
+			return true;
 		} catch (error) {
 			console.error("Error saving user data:", error);
-			return false; // Return false in case of any error
+			return false;
 		}
 	};
 
@@ -82,14 +78,13 @@ export const AuthProvider = ({ children }) => {
 			setToken(null);
 			await AsyncStorage.removeItem("user");
 			await AsyncStorage.removeItem("token");
-			return { success: true, message: "Successfully logged out" }; // Return success message
+			return { success: true, message: "Successfully logged out" };
 		} catch (error) {
 			console.error("Error clearing user data:", error);
-			return { success: false, message: "Logout failed" }; // Return failure message
+			return { success: false, message: "Logout failed" };
 		}
 	};
 
-	// Memoize the context value to avoid unnecessary re-renders
 	const authContextValue = useMemo(
 		() => ({
 			user: {
@@ -97,16 +92,18 @@ export const AuthProvider = ({ children }) => {
 				username: authStatus.username,
 				fullName: authStatus.fullName,
 				imageUri: authStatus.imageUri,
+				firstName: authStatus.firstName,
+				lastName: authStatus.lastName,
 				phone: user?.phone || null,
 				isAuthenticated: authStatus.isAuthenticated,
 				isLoggedIn: authStatus.isLoggedIn,
 			},
 			login,
 			logout,
-			syncUserData, // **Expose syncUserData here**
+			syncUserData,
 			loading,
 		}),
-		[authStatus, loading] // Only depend on user, authStatus, and loading
+		[authStatus, loading]
 	);
 
 	// **4. Show a spinner while loading data**

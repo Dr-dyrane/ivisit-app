@@ -1,6 +1,7 @@
+// components/register/AuthInputModal.jsx
+
 "use client";
 
-// components/register/AuthInputModal.jsx
 import { useEffect, useRef, useState } from "react";
 import {
 	View,
@@ -112,7 +113,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			await new Promise((r) => setTimeout(r, 1200));
 			updateRegistrationData({
 				method: type,
-				phoneNumber: type === "phone" ? value : null,
+				phone: type === "phone" ? value : null,
 				email: type === "email" ? value : null,
 			});
 			nextStep();
@@ -160,8 +161,12 @@ export default function AuthInputModal({ visible, onClose, type }) {
 					registrationData.email?.split("@")[0] ||
 					`user${Date.now()}`,
 				email: registrationData.email,
-				phone: registrationData.phoneNumber,
-				...registrationData.profile,
+				phone: registrationData.phone,
+				firstName: registrationData.firstName,
+				lastName: registrationData.lastName,
+				fullName: registrationData.fullName,
+				imageUri: registrationData.imageUri,
+				dateOfBirth: registrationData.dateOfBirth,
 				password,
 			};
 
@@ -193,8 +198,12 @@ export default function AuthInputModal({ visible, onClose, type }) {
 					registrationData.email?.split("@")[0] ||
 					`user${Date.now()}`,
 				email: registrationData.email,
-				phone: registrationData.phoneNumber,
-				...registrationData.profile,
+				phone: registrationData.phone,
+				firstName: registrationData.firstName,
+				lastName: registrationData.lastName,
+				fullName: registrationData.fullName,
+				imageUri: registrationData.imageUri,
+				dateOfBirth: registrationData.dateOfBirth,
 			};
 
 			const { data } = await signUpUserAPI(payload);
@@ -310,7 +319,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 							{isInputStep &&
 								(type === "phone" ? (
 									<PhoneInputField
-										initialValue={registrationData.phoneNumber}
+										initialValue={registrationData.phone}
 										onSubmit={handleInputSubmit}
 									/>
 								) : (
@@ -323,9 +332,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 							{isOTPStep && (
 								<OTPInputCard
 									method={registrationData.method}
-									contact={
-										registrationData.phoneNumber || registrationData.email
-									}
+									contact={registrationData.phone || registrationData.email}
 									onVerified={handleOTPSubmit}
 								/>
 							)}

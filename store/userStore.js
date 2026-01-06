@@ -1,3 +1,5 @@
+// store/userStore.js
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const generateRandomToken = () => {
@@ -33,9 +35,10 @@ const userStore = {
 
 			const user = users.find(
 				(user) =>
-					user.email &&
-					user.email.trim().toLowerCase() ===
-						credentials.email.trim().toLowerCase()
+					(user.email &&
+						user.email.trim().toLowerCase() ===
+							credentials.email.trim().toLowerCase()) ||
+					user.phone === credentials.phone
 			);
 
 			if (user && user.password === credentials.password) {
@@ -62,18 +65,25 @@ const userStore = {
 		try {
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 
-				// Allow sign-up with either email or phone; password optional (can be set later)
-				if (!credentials.username || (!credentials.email && !credentials.phone)) {
-					throw new Error("Username and either email or phone are required for sign-up");
-				}
+			// Allow sign-up with either email or phone; password optional (can be set later)
+			if (!credentials.username || (!credentials.email && !credentials.phone)) {
+				throw new Error(
+					"Username and either email or phone are required for sign-up"
+				);
+			}
 
-				const newUser = {
-					email: credentials.email || null,
-					phone: credentials.phone || null,
-					username: credentials.username,
-					password: credentials.password || null,
-					token: generateRandomToken(),
-				};
+			const newUser = {
+				email: credentials.email || null,
+				phone: credentials.phone || null,
+				username: credentials.username,
+				password: credentials.password || null,
+				firstName: credentials.firstName || null,
+				lastName: credentials.lastName || null,
+				fullName: credentials.fullName || null,
+				imageUri: credentials.imageUri || null,
+				dateOfBirth: credentials.dateOfBirth || null,
+				token: generateRandomToken(),
+			};
 
 			const usersData = await AsyncStorage.getItem("users");
 			let users = usersData ? JSON.parse(usersData) : [];
@@ -86,21 +96,24 @@ const userStore = {
 				users.push(userStore.staticUserData);
 			}
 
-				// Check duplicates by email or phone
-				if (newUser.email) {
-					if (
-						users.some((user) => user.email && user.email.trim().toLowerCase() === newUser.email.trim().toLowerCase())
-					) {
-						throw new Error("User with this email already exists");
-					}
+			// Check duplicates by email or phone
+			if (newUser.email) {
+				if (
+					users.some(
+						(user) =>
+							user.email &&
+							user.email.trim().toLowerCase() ===
+								newUser.email.trim().toLowerCase()
+					)
+				) {
+					throw new Error("User with this email already exists");
 				}
-				if (newUser.phone) {
-					if (
-						users.some((user) => user.phone && user.phone === newUser.phone)
-					) {
-						throw new Error("User with this phone already exists");
-					}
+			}
+			if (newUser.phone) {
+				if (users.some((user) => user.phone && user.phone === newUser.phone)) {
+					throw new Error("User with this phone already exists");
 				}
+			}
 
 			users.push(newUser);
 			await AsyncStorage.setItem("users", JSON.stringify(users));
@@ -121,7 +134,7 @@ const userStore = {
 			}
 
 			const usersData = await AsyncStorage.getItem("users");
-			let users = usersData ? JSON.parse(usersData) : [];
+			const users = usersData ? JSON.parse(usersData) : [];
 
 			if (!Array.isArray(users)) {
 				throw new Error("Invalid user data");
@@ -148,7 +161,7 @@ const userStore = {
 			}
 
 			const usersData = await AsyncStorage.getItem("users");
-			let users = usersData ? JSON.parse(usersData) : [];
+			const users = usersData ? JSON.parse(usersData) : [];
 
 			if (!Array.isArray(users)) {
 				throw new Error("Invalid user data");
@@ -170,25 +183,21 @@ const userStore = {
 	},
 
 	forgotPassword: async (email) => {
-		// Utility function to generate a 6-digit numeric OTP
 		const generateNumericOTP = () => {
-			const otp = Math.floor(100000 + Math.random() * 900000); // Generates a random number between 100000 and 999999
-			return otp.toString(); // Convert to string if needed
+			const otp = Math.floor(100000 + Math.random() * 900000);
+			return otp.toString();
 		};
 
 		try {
-			// Load existing users from AsyncStorage
 			const usersData = await AsyncStorage.getItem("users");
-			let users = usersData ? JSON.parse(usersData) : [];
+			const users = usersData ? JSON.parse(usersData) : [];
 
 			if (!Array.isArray(users)) {
 				throw new Error("Invalid user data");
 			}
 
-			// Log users before processing
 			console.log("Users before processing:", users);
 
-			// Find the user
 			const userIndex = users.findIndex(
 				(user) =>
 					user.email &&
@@ -199,18 +208,15 @@ const userStore = {
 				throw new Error("User not found");
 			}
 
-			// Generate a reset token
 			const resetToken = generateNumericOTP();
 			users[userIndex] = {
 				...users[userIndex],
 				resetToken: resetToken,
-				resetTokenExpiry: Date.now() + 3600000, // 1 hour validity
+				resetTokenExpiry: Date.now() + 3600000,
 			};
 
-			// Save updated users data back to AsyncStorage
 			await AsyncStorage.setItem("users", JSON.stringify(users));
 
-			// Retrieve and verify if the reset token was correctly saved
 			const updatedUsersData = await AsyncStorage.getItem("users");
 			const updatedUsers = updatedUsersData ? JSON.parse(updatedUsersData) : [];
 			const verifiedUser = updatedUsers.find(
@@ -219,30 +225,20 @@ const userStore = {
 					u.resetToken === resetToken
 			);
 
-			//console.log("Verified user after reset token:", verifiedUser);
-
 			if (verifiedUser) {
-				//	console.log("Password reset initiated. Token:", resetToken);
 				return { message: "Password reset initiated", resetToken };
 			} else {
 				throw new Error("Failed to update reset token");
 			}
 		} catch (error) {
-			//console.error("Forgot password error:", error.message);
 			throw error;
 		}
 	},
 
 	resetPassword: async (data) => {
-		// console.log(data);
-		const { resetToken, newPassword, email } = data; // Destructure the data object
-
-		// console.log("Reset Token:", resetToken);
-		// console.log("New Password:", newPassword);
-		// console.log("Email:", email);
+		const { resetToken, newPassword, email } = data;
 
 		try {
-			// Validate resetToken and email
 			if (!resetToken || typeof resetToken !== "string") {
 				throw new Error("Invalid reset token");
 			}
@@ -250,7 +246,6 @@ const userStore = {
 				throw new Error("Invalid email");
 			}
 
-			// Load the latest users data from AsyncStorage
 			const usersData = await AsyncStorage.getItem("users");
 			const users = usersData ? JSON.parse(usersData) : [];
 
@@ -258,10 +253,8 @@ const userStore = {
 				throw new Error("Invalid user data");
 			}
 
-			// Log users before password reset
 			console.log("Users before password reset:", users);
 
-			// Find the user by email (trimmed and lowercase for comparison)
 			const user = users.find(
 				(user) =>
 					user.email &&
@@ -272,22 +265,18 @@ const userStore = {
 				throw new Error("User not found");
 			}
 
-			// Check if the reset token matches
 			if (String(user.resetToken) !== String(resetToken)) {
 				throw new Error("Invalid or expired reset token");
 			}
 
-			// Check if the reset token has expired
 			if (Date.now() > user.resetTokenExpiry) {
 				throw new Error("Reset token has expired");
 			}
 
-			// Update the user's password
 			user.password = newPassword;
-			delete user.resetToken; // Clean up
-			delete user.resetTokenExpiry; // Clean up
+			delete user.resetToken;
+			delete user.resetTokenExpiry;
 
-			// Update the user in the users array and save it back to AsyncStorage
 			const updatedUsers = users.map((u) =>
 				u.email === user.email ? user : u
 			);
@@ -295,7 +284,6 @@ const userStore = {
 
 			return { message: "Password reset successful" };
 		} catch (error) {
-			//console.error("Reset password error:", error.message);
 			throw error;
 		}
 	},
