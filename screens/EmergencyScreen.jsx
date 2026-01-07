@@ -137,7 +137,13 @@ export default function EmergencyScreen() {
 					<Ionicons
 						name="notifications-outline"
 						size={24}
-						color={`${unreadCount > 0 ? COLORS.brandPrimary : colors.textMuted}`}
+						color={
+							unreadCount > 0
+								? COLORS.brandPrimary
+								: isDarkMode
+								? "#94A3B8"
+								: "#64748B"
+						}
 					/>
 					{unreadCount > 0 && (
 						<View style={{ position: "absolute", top: -2, right: -2 }}>
