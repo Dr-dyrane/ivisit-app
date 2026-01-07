@@ -161,7 +161,7 @@ const MoreScreen = () => {
 					<Ionicons
 						name="notifications-outline"
 						size={24}
-						color={isDarkMode ? "#FFFFFF" : "#0F172A"}
+						color={`${unreadCount > 0 ? COLORS.brandPrimary : colors.textMuted}`}
 					/>
 					{unreadCount > 0 && (
 						<View style={{ position: "absolute", top: -2, right: -2 }}>

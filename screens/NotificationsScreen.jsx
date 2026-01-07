@@ -69,7 +69,7 @@ const NotificationsScreen = () => {
 					<Ionicons
 						name="checkmark-done"
 						size={24}
-						color={isDarkMode ? "#FFFFFF" : "#0F172A"}
+						color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
 					/>
 				</Pressable>
 			) : null,
