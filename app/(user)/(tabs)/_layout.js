@@ -15,7 +15,7 @@ export default function TabsLayout() {
 		<Tabs
 			tabBar={(props) => <AnimatedTabBar {...props} />}
 			screenOptions={{
-				tabBarShowLabel: false,
+				tabBarShowLabel: true,
 				tabBarActiveTintColor: COLORS.brandPrimary,
 				tabBarInactiveTintColor: isDarkMode
 					? COLORS.textMutedDark
@@ -43,7 +43,7 @@ export default function TabsLayout() {
 			<Tabs.Screen
 				name="visits"
 				options={{
-					title: "", // Remove title text
+					title: "VISITS", // Remove title text
 					tabBarIcon: ({ color }) => (
 						<Ionicons name="calendar-outline" size={24} color={color} />
 					),
@@ -52,7 +52,7 @@ export default function TabsLayout() {
 			<Tabs.Screen
 				name="more"
 				options={{
-					title: "", // Remove title text
+					title: "MORE", // Remove title text
 					tabBarIcon: ({ color }) => (
 						<Ionicons
 							name="ellipsis-horizontal-outline"
