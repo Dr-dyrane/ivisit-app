@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, forwardRef, useRef, useImperativeHandle } from "react";
 import { View, Text, StyleSheet, Keyboard, Image, Pressable } from "react-native";
-import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import BottomSheet, { BottomSheetScrollView, useBottomSheetSpringConfigs } from "@gorhom/bottom-sheet";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -91,6 +91,16 @@ const EmergencyBottomSheet = forwardRef(({
 	// Snap points: collapsed (search only), half, expanded
 	const snapPoints = useMemo(() => ["15%", "50%", "92%"], []);
 
+	// Spring animation config - smooth Apple-like bounce
+	const animationConfigs = useBottomSheetSpringConfigs({
+		damping: 50,              // Lower = more bounce (50-80 feels natural)
+		stiffness: 400,           // Higher = snappier response
+		mass: 0.5,                // Lower = lighter/faster feel
+		overshootClamping: false, // Allow slight overshoot for natural feel
+		restDisplacementThreshold: 0.1,
+		restSpeedThreshold: 0.1,
+	});
+
 	// Gradient background colors
 	const gradientColors = isDarkMode
 		? ["#121826", "#121826", "#121826"]
@@ -119,9 +129,8 @@ const EmergencyBottomSheet = forwardRef(({
 		Keyboard.dismiss();
 	}, [onSearch, clearSearch]);
 
-	// Handle sheet changes - tracked for performance
+	// Handle sheet changes
 	const handleSheetChange = useCallback((index) => {
-		timing.startTiming(`sheet_snap_to_${index}`);
 		updateSnapIndex(index, "sheet");
 
 		if (index >= 0) {
@@ -140,10 +149,7 @@ const EmergencyBottomSheet = forwardRef(({
 		if (index === 2) {
 			hideTabBar();
 		}
-
-		// End timing after animation settles
-		setTimeout(() => timing.endTiming(`sheet_snap_to_${index}`), 350);
-	}, [resetTabBar, resetHeader, hideTabBar, onSnapChange, updateSnapIndex, updateScrollPosition, timing]);
+	}, [resetTabBar, resetHeader, hideTabBar, onSnapChange, updateSnapIndex, updateScrollPosition]);
 
 	// Handle scroll events - optimized with context tracking
 	const handleScroll = useCallback((event) => {
@@ -203,6 +209,7 @@ const EmergencyBottomSheet = forwardRef(({
 			enableOverDrag={true}
 			animateOnMount={true}
 			bottomInset={calculateBottomInset()}
+			animationConfigs={animationConfigs}
 		>
 			{/* Scrollable Content */}
 			<BottomSheetScrollView

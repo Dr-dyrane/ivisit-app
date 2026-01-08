@@ -69,12 +69,10 @@ export default function EmergencyScreen() {
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
 	const rightComponent = useMemo(() => <NotificationIconButton />, []);
 
-	// Handle sheet snap changes - tracked for performance
+	// Handle sheet snap changes
 	const handleSheetSnapChange = useCallback((index) => {
-		timing.startTiming(`screen_snap_${index}`);
 		setSheetSnapIndex(index, "screen");
-		timing.endTiming(`screen_snap_${index}`);
-	}, [setSheetSnapIndex, timing]);
+	}, [setSheetSnapIndex]);
 
 	// Set up header on focus
 	useFocusEffect(

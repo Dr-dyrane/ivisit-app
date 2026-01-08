@@ -17,9 +17,27 @@ import { createContext, useContext, useState, useCallback, useRef, useMemo } fro
 const EmergencyUIContext = createContext();
 
 // Animation timing tracker for debugging
+// Different thresholds for different operation types
+const TIMING_THRESHOLDS = {
+	instant: 16,      // Single frame (60fps) - button presses, search updates
+	animation: 500,   // Animations expected to take 200-400ms
+	network: 3000,    // Network calls
+};
+
 const createTimingTracker = (enabled = __DEV__) => {
 	const timings = useRef({});
-	
+
+	// Determine threshold based on operation name
+	const getThreshold = (name) => {
+		if (name.includes("snap") || name.includes("modal") || name.includes("animation")) {
+			return TIMING_THRESHOLDS.animation;
+		}
+		if (name.includes("fetch") || name.includes("load") || name.includes("network")) {
+			return TIMING_THRESHOLDS.network;
+		}
+		return TIMING_THRESHOLDS.instant;
+	};
+
 	const startTiming = useCallback((name) => {
 		if (!enabled) return;
 		timings.current[name] = {
@@ -28,25 +46,28 @@ const createTimingTracker = (enabled = __DEV__) => {
 			duration: null,
 		};
 	}, [enabled]);
-	
+
 	const endTiming = useCallback((name) => {
 		if (!enabled || !timings.current[name]) return;
 		const end = performance.now();
 		timings.current[name].end = end;
 		timings.current[name].duration = end - timings.current[name].start;
-		
-		// Log slow animations (> 16ms = dropped frame)
-		if (timings.current[name].duration > 16) {
-			console.warn(`[EmergencyUI] Slow: ${name} took ${timings.current[name].duration.toFixed(2)}ms`);
+
+		const threshold = getThreshold(name);
+		const duration = timings.current[name].duration;
+
+		// Only warn if exceeds threshold for this operation type
+		if (duration > threshold) {
+			console.warn(`[EmergencyUI] Slow: ${name} took ${duration.toFixed(2)}ms (threshold: ${threshold}ms)`);
 		}
 	}, [enabled]);
-	
+
 	const getTimings = useCallback(() => ({ ...timings.current }), []);
-	
+
 	const clearTimings = useCallback(() => {
 		timings.current = {};
 	}, []);
-	
+
 	return { startTiming, endTiming, getTimings, clearTimings };
 };
 
@@ -74,16 +95,14 @@ export function EmergencyUIProvider({ children }) {
 	
 	// Bottom sheet actions
 	const handleSnapChange = useCallback((index, source = "user") => {
-		timing.startTiming(`snap_${index}_${source}`);
 		setSnapIndex(index);
 		setIsAnimating(true);
-		
+
 		// Animation typically takes ~300ms
 		setTimeout(() => {
 			setIsAnimating(false);
-			timing.endTiming(`snap_${index}_${source}`);
 		}, 350);
-	}, [timing]);
+	}, []);
 	
 	// Search actions
 	const updateSearch = useCallback((text) => {
