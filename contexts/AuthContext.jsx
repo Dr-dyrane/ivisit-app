@@ -1,9 +1,14 @@
 // contexts/AuthContext
 
+/**
+ * AuthContext - Global authentication state
+ * Uses the database layer for consistent storage access
+ */
+
 import { createContext, useState, useEffect, useMemo, useContext } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ActivityIndicator, View } from "react-native";
-import { getCurrentUserAPI } from "../api/auth";
+import { getCurrentUserAPI, logoutAPI } from "../api/auth";
+import { database, StorageKeys } from "../database";
 
 // Create AuthContext
 export const AuthContext = createContext(null);
@@ -13,17 +18,19 @@ export const AuthProvider = ({ children }) => {
 	const [loading, setLoading] = useState(true);
 	const [token, setToken] = useState(null);
 
-	// **1. Fetch and Sync User Data from API**
+	// **1. Fetch and Sync User Data from API/Service**
 	const syncUserData = async () => {
 		try {
-			const storedToken = await AsyncStorage.getItem("token");
+			// Use database layer with proper keys
+			const storedToken = await database.read(StorageKeys.AUTH_TOKEN, null);
 			if (storedToken) {
-				const { data: userData } = await getCurrentUserAPI(storedToken);
+				const { data: userData } = await getCurrentUserAPI();
 
 				if (userData) {
 					setUser(userData);
 					setToken(storedToken);
-					await AsyncStorage.setItem("user", JSON.stringify(userData));
+					// Store current user data for quick access
+					await database.write(StorageKeys.CURRENT_USER, userData);
 				}
 			}
 		} catch (error) {
@@ -55,11 +62,12 @@ export const AuthProvider = ({ children }) => {
 	const login = async (userData) => {
 		try {
 			setUser(userData);
-			await AsyncStorage.setItem("user", JSON.stringify(userData));
+			// Use database layer with proper keys
+			await database.write(StorageKeys.CURRENT_USER, userData);
 
 			if (userData.token) {
 				setToken(userData.token);
-				await AsyncStorage.setItem("token", userData.token);
+				await database.write(StorageKeys.AUTH_TOKEN, userData.token);
 			}
 
 			return true;
@@ -74,8 +82,9 @@ export const AuthProvider = ({ children }) => {
 		try {
 			setUser(null);
 			setToken(null);
-			await AsyncStorage.removeItem("user");
-			await AsyncStorage.removeItem("token");
+			// Use API logout and database layer
+			await logoutAPI();
+			await database.delete(StorageKeys.CURRENT_USER);
 			return { success: true, message: "Successfully logged out" };
 		} catch (error) {
 			console.error("Error clearing user data:", error);

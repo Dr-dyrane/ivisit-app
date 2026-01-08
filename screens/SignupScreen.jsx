@@ -9,6 +9,7 @@ import { View, Text, Animated, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useTheme } from "../contexts/ThemeContext";
+import { useRegistration } from "../contexts/RegistrationContext";
 import { COLORS } from "../constants/colors";
 import SignUpMethodCard from "../components/register/SignUpMethodCard";
 import AuthInputModal from "../components/register/AuthInputModal";
@@ -18,6 +19,7 @@ import * as Haptics from "expo-haptics";
 export default function SignupScreen() {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
+	const { checkAndApplyPendingRegistration } = useRegistration();
 	const [modalVisible, setModalVisible] = useState(false);
 	const [authType, setAuthType] = useState(null);
 
@@ -32,6 +34,16 @@ export default function SignupScreen() {
 	};
 
 	useEffect(() => {
+		// Check for pending verified registration (from login flow)
+		const checkPending = async () => {
+			const hasPending = await checkAndApplyPendingRegistration();
+			if (hasPending) {
+				// Auto-open modal if user came from login with verified OTP
+				setModalVisible(true);
+			}
+		};
+		checkPending();
+
 		Animated.stagger(150, [
 			Animated.parallel([
 				Animated.spring(methodAnim, {

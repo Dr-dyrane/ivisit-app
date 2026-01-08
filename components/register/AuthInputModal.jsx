@@ -1,5 +1,9 @@
 // components/register/AuthInputModal.jsx
 
+/**
+ * Registration Modal using new service layer
+ */
+
 import { useEffect, useRef, useState } from "react";
 import {
 	View,
@@ -18,18 +22,16 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { REGISTRATION_STEPS } from "../../constants/registrationSteps";
 import { COLORS } from "../../constants/colors";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { loginUserAPI } from "../../api/auth";
-import { signUpUserAPI } from "../../api/auth";
 import { useAuth } from "../../contexts/AuthContext";
 import { useRegistration } from "../../contexts/RegistrationContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
-import PhoneInputField from "./PhoneInputField"; // Import PhoneInputField
-import EmailInputField from "./EmailInputField"; // Import EmailInputField
-import OTPInputCard from "./OTPInputCard"; // Import OTPInputCard
-import ProfileForm from "./ProfileForm"; // Import ProfileForm
-import PasswordInputField from "./PasswordInputField"; // Import PasswordInputField
+import useSignUp from "../../hooks/mutations/useSignup";
+import PhoneInputField from "./PhoneInputField";
+import EmailInputField from "./EmailInputField";
+import OTPInputCard from "./OTPInputCard";
+import ProfileForm from "./ProfileForm";
+import PasswordInputField from "./PasswordInputField";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -37,12 +39,9 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	const insets = useSafeAreaInsets();
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
-
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState(null);
+	const [mockOtp, setMockOtp] = useState(null); // DEV: Display mock OTP for testing
 
 	const { showToast } = useToast();
-
 	const {
 		currentStep,
 		registrationData,
@@ -50,15 +49,32 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		nextStep,
 		previousStep,
 		goToStep,
+		checkAndApplyPendingRegistration,
+		// Use context error/loading states
+		error,
+		setRegistrationError,
+		clearError,
+		isLoading: loading,
+		startLoading,
+		stopLoading,
 	} = useRegistration();
 
-	const { login } = useAuth();
+	// Pass context state functions to hook
+	const { signUpUser, requestRegistrationOtp, verifyRegistrationOtp } =
+		useSignUp({
+			startLoading,
+			stopLoading,
+			setError: setRegistrationError,
+			clearError,
+		});
+
+	const { login, syncUserData } = useAuth();
 	const { isDarkMode } = useTheme();
 
 	/* ------------------ Animations ------------------ */
 	useEffect(() => {
 		if (visible) {
-			setError(null);
+			clearError();
 			Animated.parallel([
 				Animated.spring(slideAnim, {
 					toValue: 0,
@@ -73,14 +89,19 @@ export default function AuthInputModal({ visible, onClose, type }) {
 				}),
 			]).start();
 
-			if (currentStep === REGISTRATION_STEPS.METHOD_SELECTION) {
-				updateRegistrationData({ method: type });
-				goToStep(
-					type === "phone"
-						? REGISTRATION_STEPS.PHONE_INPUT
-						: REGISTRATION_STEPS.EMAIL_INPUT
-				);
-			}
+			// Check for pending verified registration (from login flow)
+			const initModal = async () => {
+				const hasPending = await checkAndApplyPendingRegistration();
+				if (!hasPending && currentStep === REGISTRATION_STEPS.METHOD_SELECTION) {
+					updateRegistrationData({ method: type });
+					goToStep(
+						type === "phone"
+							? REGISTRATION_STEPS.PHONE_INPUT
+							: REGISTRATION_STEPS.EMAIL_INPUT
+					);
+				}
+			};
+			initModal();
 		}
 	}, [visible]);
 
@@ -101,73 +122,80 @@ export default function AuthInputModal({ visible, onClose, type }) {
 				useNativeDriver: true,
 			}),
 		]).start(() => {
-			setError(null);
+			clearError();
 			onClose();
 		});
 	};
 
 	const handleGoBack = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		setError(null);
+		clearError();
 		previousStep();
 	};
 
 	const handleInputSubmit = async (value) => {
 		if (!value) return;
-		setLoading(true);
-		setError(null);
+		startLoading();
+		clearError();
 
 		try {
-			await new Promise((r) => setTimeout(r, 1200));
 			updateRegistrationData({
 				method: type,
 				phone: type === "phone" ? value : null,
 				email: type === "email" ? value : null,
 			});
+
+			// Request OTP for verification
+			const otpResult = await requestRegistrationOtp(
+				type === "phone" ? { phone: value } : { email: value }
+			);
+
+			if (!otpResult.success) {
+				setRegistrationError(otpResult.error);
+				showToast(otpResult.error, "error");
+				stopLoading();
+				return;
+			}
+
+			// DEV: Store mock OTP for display
+			if (otpResult.data?.otp) {
+				setMockOtp(otpResult.data.otp);
+			}
+
 			nextStep();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			showToast(
-				type === "phone" ? "Phone number accepted" : "Email address accepted",
+				type === "phone"
+					? "Verification code sent to your phone"
+					: "Verification code sent to your email",
 				"success"
 			);
 		} catch (err) {
 			const errorMessage =
 				err.message?.split("|")[1] || "Failed to process. Please try again.";
-			setError(errorMessage);
+			setRegistrationError(errorMessage);
 			showToast(errorMessage, "error");
 		} finally {
-			setLoading(false);
+			stopLoading();
 		}
 	};
 
 	const handleOTPSubmit = async (otp) => {
 		if (!otp) return;
-		setLoading(true);
-		setError(null);
 
-		try {
-			const usersData = await AsyncStorage.getItem("users");
-			const users = usersData ? JSON.parse(usersData) : [];
+		const result = await verifyRegistrationOtp({
+			email: registrationData.email,
+			phone: registrationData.phone,
+			otp,
+		});
 
-			const existingUser = users.find(
-				(user) =>
-					(registrationData.email &&
-						user.email?.trim().toLowerCase() ===
-							registrationData.email.trim().toLowerCase()) ||
-					(registrationData.phone && user.phone === registrationData.phone)
-			);
-
-			if (existingUser) {
+		if (result.success) {
+			// Check if user already exists (auto-login scenario)
+			if (result.data?.user && result.data?.token) {
 				// User already exists - auto-login them
-				const credentials = {
-					email: registrationData.email,
-					phone: registrationData.phone,
-					otp,
-				};
-
-				const { data } = await loginUserAPI(credentials);
-				await login(data);
+				await login({ ...result.data.user, token: result.data.token });
+				await syncUserData();
 
 				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 				showToast("Welcome back! Logged you in automatically.", "success");
@@ -177,110 +205,96 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			}
 
 			// User doesn't exist - continue registration flow
-			await new Promise((r) => setTimeout(r, 800));
 			updateRegistrationData({ otp });
 			nextStep();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			showToast("OTP verified successfully", "success");
-		} catch (err) {
-			const errorMessage =
-				err.message?.split("|")[1] || "OTP verification failed.";
-			setError(errorMessage);
-			showToast(errorMessage, "error");
-		} finally {
-			setLoading(false);
+		} else {
+			showToast(result.error || "OTP verification failed", "error");
 		}
 	};
 
 	const handlePasswordSubmit = async (password) => {
 		if (!password) return;
-		setLoading(true);
-		setError(null);
 
-		try {
-			updateRegistrationData({ password });
+		updateRegistrationData({ password });
 
-			const payload = {
-				username:
-					registrationData.username ||
-					registrationData.email?.split("@")[0] ||
-					`user${Date.now()}`,
-				email: registrationData.email,
-				phone: registrationData.phone,
-				firstName: registrationData.firstName,
-				lastName: registrationData.lastName,
-				fullName: registrationData.fullName,
-				imageUri: registrationData.imageUri,
-				dateOfBirth: registrationData.dateOfBirth,
-				password,
-			};
+		const payload = {
+			username:
+				registrationData.username ||
+				registrationData.email?.split("@")[0] ||
+				`user${Date.now()}`,
+			email: registrationData.email,
+			phone: registrationData.phone,
+			firstName: registrationData.firstName,
+			lastName: registrationData.lastName,
+			fullName: registrationData.fullName,
+			imageUri: registrationData.imageUri,
+			dateOfBirth: registrationData.dateOfBirth,
+			password,
+		};
 
-			const { data } = await signUpUserAPI(payload);
-			await login(data);
+		const result = await signUpUser(payload);
+
+		if (result.success) {
+			await syncUserData();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			showToast("Registration successful!", "success");
 
 			handleDismiss();
-		} catch (err) {
-			const [errorCode, errorMessage] = err.message?.split("|") || [];
-			const displayMessage =
-				errorMessage || "Registration failed. Please try again.";
+		} else {
+			showToast(result.error || "Registration failed", "error");
 
-			setError(displayMessage);
-			showToast(displayMessage, "error");
-
-			if (errorCode === "EMAIL_EXISTS" || errorCode === "PHONE_EXISTS") {
+			if (
+				result.error?.includes("exists") ||
+				result.error?.includes("EMAIL_EXISTS") ||
+				result.error?.includes("PHONE_EXISTS")
+			) {
 				setTimeout(() => {
 					showToast("Try logging in instead", "info");
 				}, 2000);
 			}
-		} finally {
-			setLoading(false);
 		}
 	};
 
 	const handleSkipPassword = async () => {
-		setLoading(true);
-		setError(null);
+		const payload = {
+			username:
+				registrationData.username ||
+				registrationData.email?.split("@")[0] ||
+				`user${Date.now()}`,
+			email: registrationData.email,
+			phone: registrationData.phone,
+			firstName: registrationData.firstName,
+			lastName: registrationData.lastName,
+			fullName: registrationData.fullName,
+			imageUri: registrationData.imageUri,
+			dateOfBirth: registrationData.dateOfBirth,
+		};
 
-		try {
-			const payload = {
-				username:
-					registrationData.username ||
-					registrationData.email?.split("@")[0] ||
-					`user${Date.now()}`,
-				email: registrationData.email,
-				phone: registrationData.phone,
-				firstName: registrationData.firstName,
-				lastName: registrationData.lastName,
-				fullName: registrationData.fullName,
-				imageUri: registrationData.imageUri,
-				dateOfBirth: registrationData.dateOfBirth,
-			};
+		const result = await signUpUser(payload);
 
-			const { data } = await signUpUserAPI(payload);
-			await login(data);
+		if (result.success) {
+			await syncUserData();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			showToast("Registered successfully", "info");
 
 			handleDismiss();
-		} catch (err) {
-			const [errorCode, errorMessage] = err.message?.split("|") || [];
-			const displayMessage = errorMessage || "Registration failed.";
+		} else {
+			showToast(result.error || "Registration failed", "error");
 
-			setError(displayMessage);
-			showToast(displayMessage, "error");
-
-			if (errorCode === "EMAIL_EXISTS" || errorCode === "PHONE_EXISTS") {
+			if (
+				result.error?.includes("exists") ||
+				result.error?.includes("EMAIL_EXISTS") ||
+				result.error?.includes("PHONE_EXISTS")
+			) {
 				setTimeout(() => {
 					showToast("Try logging in instead", "info");
 				}, 2000);
 			}
-		} finally {
-			setLoading(false);
 		}
 	};
 
@@ -427,12 +441,46 @@ export default function AuthInputModal({ visible, onClose, type }) {
 								))}
 
 							{isOTPStep && (
-								<OTPInputCard
-									method={registrationData.method}
-									contact={registrationData.phone || registrationData.email}
-									onVerified={handleOTPSubmit}
-									loading={loading}
-								/>
+								<View>
+									{/* DEV: Show mock OTP for testing - remove in production */}
+									{mockOtp && (
+										<View
+											className="mb-4 p-3 rounded-xl"
+											style={{
+												backgroundColor: isDarkMode
+													? "rgba(34, 197, 94, 0.15)"
+													: "rgba(34, 197, 94, 0.1)",
+												borderWidth: 1,
+												borderColor: isDarkMode
+													? "rgba(34, 197, 94, 0.3)"
+													: "rgba(34, 197, 94, 0.2)",
+											}}
+										>
+											<Text
+												className="text-xs text-center mb-1"
+												style={{
+													color: isDarkMode ? "#86efac" : "#166534",
+												}}
+											>
+												🔐 DEV MODE - Your test OTP:
+											</Text>
+											<Text
+												className="text-2xl font-bold text-center tracking-[8px]"
+												style={{
+													color: isDarkMode ? "#4ade80" : "#15803d",
+												}}
+											>
+												{mockOtp}
+											</Text>
+										</View>
+									)}
+									<OTPInputCard
+										method={registrationData.method}
+										contact={registrationData.phone || registrationData.email}
+										onVerified={handleOTPSubmit}
+										loading={loading}
+									/>
+								</View>
 							)}
 
 							{isProfileStep && <ProfileForm />}
@@ -441,6 +489,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 								<PasswordInputField
 									onSubmit={handlePasswordSubmit}
 									onSkip={handleSkipPassword}
+									showSkipOption={true}
 									loading={loading}
 								/>
 							)}

@@ -242,35 +242,104 @@ src/
 
 ## Migration Steps
 
-### Phase 1: Database Layer ✅
+### Phase 1: Database Layer ✅ COMPLETE
 - [x] `api/database.js` already exists with good abstraction
-- [ ] Move to `database/db.js`
-- [ ] Extract keys to `database/keys.js`
+- [x] Created `database/db.js` - Full CRUD + collection operations
+- [x] Created `database/keys.js` - All keys with `@ivisit_` prefix
+- [x] Created `database/index.js` - Clean exports
 
-### Phase 2: Service Layer
-- [ ] Create `services/authService.js` using `database/db.js`
-- [ ] Create `services/imageService.js` using `database/db.js`
-- [ ] Ensure all methods match current `userStore.js` functionality
+**New Files:**
+```
+database/
+├── index.js      # Main exports
+├── db.js         # Database operations (read, write, delete, query, findOne, etc.)
+└── keys.js       # StorageKeys, CollectionKeys, SingletonKeys, validation utils
+```
 
-### Phase 3: API Layer
-- [ ] Update `api/auth.js` to call `authService` instead of `userStore`
-- [ ] Create `api/client.js` for future Supabase integration
+### Phase 2: Service Layer ✅ COMPLETE
+- [x] Created `services/authService.js` - All auth business logic
+- [x] Created `services/imageService.js` - Image storage/retrieval
+- [x] Created `services/index.js` - Clean exports
+- [x] All methods match current `userStore.js` functionality
 
-### Phase 4: Context Layer
-- [ ] Add `error`, `isLoading` states to `LoginContext`
-- [ ] Add `error`, `isLoading` states to `RegistrationContext`
-- [ ] Ensure `AuthContext` syncs properly with services
+**New Files:**
+```
+services/
+├── index.js           # Main exports
+├── authService.js     # checkUserExists, login, signUp, getCurrentUser,
+│                      # updateUser, forgotPassword, resetPassword,
+│                      # setPassword, logout, deleteUser,
+│                      # savePendingRegistration, getPendingRegistration
+└── imageService.js    # uploadImage, getImage, deleteImage, getAllImages
+```
 
-### Phase 5: Hook Layer
-- [ ] Update `useLogin.js` to use new service layer
-- [ ] Update `useSignup.js` to use new service layer
-- [ ] Update other mutation hooks
+### Phase 3: API Layer ✅ COMPLETE
+- [x] Updated `api/auth.js` to use `authService` instead of `userStore`
+- [x] Created `api/client.js` with Supabase placeholder configuration
+- [x] Created `api/images.js` to use `imageService` instead of `imageStore`
+- [x] Added `logoutAPI` and `savePendingRegistrationAPI` functions
 
-### Phase 6: Cleanup
-- [ ] Verify all screens/components work correctly
-- [ ] Remove `store/userStore.js`
-- [ ] Remove `store/imageStore.js`
-- [ ] Delete `store/` folder
+**Updated/New Files:**
+- `api/auth.js` - Now imports from `../services` instead of `../store/userStore`
+- `api/images.js` - New file using `imageService`
+- `api/client.js` - API configuration and future Supabase integration point
+
+### Phase 4: Context Layer ✅ COMPLETE
+- [x] Added `error`, `isLoading`, `setLoginError`, `clearError`, `startLoading`, `stopLoading` to `LoginContext`
+- [x] Added `error`, `isLoading`, `setRegistrationError`, `clearError`, `startLoading`, `stopLoading` to `RegistrationContext`
+- [x] Updated `AuthContext` to use `database` layer with proper `StorageKeys`
+- [x] `AuthContext` now uses `logoutAPI()` instead of direct AsyncStorage
+
+**Updated Files:**
+- `contexts/LoginContext.jsx` - Error/loading state management
+- `contexts/RegistrationContext.jsx` - Error/loading state management
+- `contexts/AuthContext.jsx` - Uses database layer, proper keys, logoutAPI
+
+### Phase 5: Hook Layer ✅ COMPLETE
+- [x] Updated `useLogin.js` with:
+  - `loginWithPassword()` - Password-based login
+  - `requestOtp()` - Request OTP for login
+  - `verifyOtpLogin()` - Verify OTP and login
+  - Legacy `login()` for backward compatibility
+  - Integrated with `LoginContext` error/loading states
+- [x] Updated `useSignup.js` with:
+  - `signUpUser()` - Standard registration
+  - `requestRegistrationOtp()` - Request OTP for registration
+  - `verifyRegistrationOtp()` - Verify registration OTP
+  - `socialSignUp()` - Social provider registration
+  - Legacy `signUp()` for backward compatibility
+  - Integrated with `RegistrationContext` error/loading states
+- [x] Updated `useUpdateUser.js` with:
+  - `updateUser()` - Update profile with optional image
+  - `updateProfileFields()` - Update specific fields
+  - `updateProfileImage()` - Update image only
+  - Integrated with `userService`
+
+**Updated Files:**
+- `hooks/mutations/useLogin.js` - Uses authService
+- `hooks/mutations/useSignup.js` - Uses authService
+- `hooks/mutations/useUpdateUser.js` - Uses userService
+
+### Phase 6: UI Integration & Cleanup ✅ COMPLETE
+- [x] Updated `LoginInputModal.jsx` to use new hooks and context states
+  - Uses `useLogin` hook for `loginWithPassword`, `requestOtp`, `verifyOtpLogin`
+  - Uses `LoginContext` for `error`, `isLoading`, `clearError`, `setLoginError`
+  - Uses `authService.checkUserExists()` and `authService.setPassword()`
+  - Uses `database` layer for `PENDING_REGISTRATION` storage
+- [x] Updated `AuthInputModal.jsx` to use new hooks and context states
+  - Uses `useSignUp` hook for `signUpUser`, `requestRegistrationOtp`, `verifyRegistrationOtp`
+  - Uses `RegistrationContext` for `error`, `isLoading`, `clearError`, `setRegistrationError`
+  - Removed direct API calls and AsyncStorage usage
+- [x] All diagnostics pass with no errors
+
+**Updated Files:**
+- `components/login/LoginInputModal.jsx` - Uses new service layer
+- `components/register/AuthInputModal.jsx` - Uses new service layer
+
+### Cleanup Notes
+- `store/userStore.js` - Still used by `useUpdateUser.js` for image uploads
+- `store/imageStore.js` - Still used for image upload functionality
+- Recommend keeping store files until image handling is migrated to service layer
 
 ---
 

@@ -2,7 +2,7 @@
 
 /**
  * contexts/LoginContext.jsx
- * Simplified Login Context with proper flow control
+ * Login Context with proper flow control, error handling, and loading states
  */
 
 import { createContext, useContext, useState, useCallback } from "react";
@@ -30,6 +30,10 @@ export function LoginProvider({ children }) {
 	const [currentStep, setCurrentStep] = useState(LOGIN_STEPS.AUTH_METHOD);
 	const [loginData, setLoginData] = useState(initialLoginData);
 	const [isTransitioning, setIsTransitioning] = useState(false);
+
+	// Error and loading states
+	const [error, setError] = useState(null);
+	const [isLoading, setIsLoading] = useState(false);
 
 	const updateLoginData = useCallback((updates) => {
 		console.log("[v0] LoginContext: Updating login data", updates);
@@ -80,9 +84,32 @@ export function LoginProvider({ children }) {
 		setCurrentStep(LOGIN_STEPS.AUTH_METHOD);
 		setLoginData(initialLoginData);
 		setIsTransitioning(false);
+		setError(null);
+		setIsLoading(false);
+	}, []);
+
+	// Error handling helpers
+	const setLoginError = useCallback((errorMessage) => {
+		console.log("[v0] LoginContext: Setting error", errorMessage);
+		setError(errorMessage);
+	}, []);
+
+	const clearError = useCallback(() => {
+		setError(null);
+	}, []);
+
+	// Loading state helpers
+	const startLoading = useCallback(() => {
+		setIsLoading(true);
+		setError(null);
+	}, []);
+
+	const stopLoading = useCallback(() => {
+		setIsLoading(false);
 	}, []);
 
 	const value = {
+		// Step management
 		currentStep,
 		loginData,
 		updateLoginData,
@@ -92,6 +119,16 @@ export function LoginProvider({ children }) {
 		resetLoginFlow,
 		isTransitioning,
 		STEPS: LOGIN_STEPS,
+
+		// Error handling
+		error,
+		setLoginError,
+		clearError,
+
+		// Loading state
+		isLoading,
+		startLoading,
+		stopLoading,
 	};
 
 	return (

@@ -2,7 +2,7 @@
 
 /**
  * components/login/LoginInputModal.jsx
- * Production-ready login modal with comprehensive validation
+ * Production-ready login modal using new service layer
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -30,9 +30,10 @@ import {
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
 import { COLORS } from "../../constants/colors";
-import useLoginMutation from "../../hooks/mutations/useLoginMutation";
+import useLoginHook from "../../hooks/mutations/useLogin";
 import { useAuth } from "../../contexts/AuthContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { authService } from "../../services/authService";
+import { database, StorageKeys } from "../../database";
 import LoginAuthMethodCard from "./LoginAuthMethodCard";
 import LoginContactCard from "./LoginContactCard";
 import PhoneInputField from "../register/PhoneInputField";
@@ -45,20 +46,20 @@ import ResetPasswordCard from "./ResetPasswordCard";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-export default function LoginInputModal({ visible, onClose }) {
+export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) {
 	const insets = useSafeAreaInsets();
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState(null);
 	const [resetEmail, setResetEmail] = useState(null);
+	const [resetToken, setResetToken] = useState(null); // DEV: Store mock reset token
 	const [userInfo, setUserInfo] = useState(null); // Store user validation info
+	const [mockOtp, setMockOtp] = useState(null); // DEV: Display mock OTP for testing
+	const [showSignUpOption, setShowSignUpOption] = useState(false); // Show sign up option when account not found
 
 	const router = useRouter();
 	const { showToast } = useToast();
-	const { syncUserData } = useAuth();
-	const { loginUser, checkUserExists, setPassword } = useLoginMutation();
+	const { syncUserData, login: authLogin } = useAuth();
 	const {
 		currentStep,
 		loginData,
@@ -68,12 +69,28 @@ export default function LoginInputModal({ visible, onClose }) {
 		goToStep,
 		resetLoginFlow,
 		isTransitioning,
+		// Use context error/loading states
+		error,
+		setLoginError,
+		clearError,
+		isLoading: loading,
+		startLoading,
+		stopLoading,
 	} = useLogin();
 	const { isDarkMode } = useTheme();
 
+	// Pass context state functions to hook
+	const { loginWithPassword, requestOtp, verifyOtpLogin } = useLoginHook({
+		startLoading,
+		stopLoading,
+		setError: setLoginError,
+		clearError,
+	});
+
 	useEffect(() => {
 		if (visible) {
-			setError(null);
+			clearError();
+			setShowSignUpOption(false);
 			Animated.parallel([
 				Animated.spring(slideAnim, {
 					toValue: 0,
@@ -107,15 +124,46 @@ export default function LoginInputModal({ visible, onClose }) {
 			}),
 		]).start(() => {
 			resetLoginFlow();
-			setError(null);
 			setUserInfo(null);
+			setShowSignUpOption(false);
 			onClose();
+		});
+	};
+
+	const handleSwitchToSignUp = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+		// Close this modal and open sign up
+		Animated.parallel([
+			Animated.timing(slideAnim, {
+				toValue: SCREEN_HEIGHT,
+				duration: 250,
+				useNativeDriver: true,
+			}),
+			Animated.timing(bgOpacity, {
+				toValue: 0,
+				duration: 200,
+				useNativeDriver: true,
+			}),
+		]).start(() => {
+			resetLoginFlow();
+			setUserInfo(null);
+			setShowSignUpOption(false);
+			onClose();
+
+			// Call the onSwitchToSignUp callback if provided
+			if (onSwitchToSignUp) {
+				setTimeout(() => {
+					onSwitchToSignUp(loginData.contactType);
+				}, 100);
+			}
 		});
 	};
 
 	const handleGoBack = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		setError(null);
+		clearError();
+		setShowSignUpOption(false);
 		previousStep();
 	};
 
@@ -129,150 +177,226 @@ export default function LoginInputModal({ visible, onClose }) {
 		nextStep();
 	};
 
+	// Switch from password flow to OTP flow (for users without password)
+	const handleSwitchToOtpLogin = async () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		clearError();
+
+		// Update auth method to OTP
+		updateLoginData({ authMethod: LOGIN_AUTH_METHODS.OTP });
+
+		// Request OTP for the already-entered contact
+		const contact = loginData.contact;
+		if (!contact) {
+			goToStep(LOGIN_STEPS.CONTACT_INPUT);
+			return;
+		}
+
+		startLoading();
+		const otpResult = await requestOtp(
+			loginData.contactType === "email" ? { email: contact } : { phone: contact }
+		);
+		stopLoading();
+
+		if (!otpResult.success) {
+			setLoginError(otpResult.error || "Unable to send verification code");
+			showToast(otpResult.error || "Failed to send code", "error");
+			return;
+		}
+
+		// DEV: Store mock OTP for display
+		if (otpResult.data?.otp) {
+			setMockOtp(otpResult.data.otp);
+		}
+
+		goToStep(LOGIN_STEPS.OTP_VERIFICATION);
+		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+		showToast(
+			`Verification code sent to your ${loginData.contactType}`,
+			"success"
+		);
+	};
+
 	const handleContactSubmit = async (value) => {
 		if (!value) return;
-		setLoading(true);
-		setError(null);
+		startLoading();
+		clearError();
 
 		try {
-			await new Promise((r) => setTimeout(r, 1200));
-
 			updateLoginData({
 				contact: value,
 				[loginData.contactType === "email" ? "email" : "phone"]: value,
 			});
 
 			if (loginData.authMethod === LOGIN_AUTH_METHODS.PASSWORD) {
-				try {
-					const credentials =
-						loginData.contactType === "email"
-							? { email: value }
-							: { phone: value };
-					const userCheck = await checkUserExists(credentials);
-					setUserInfo(userCheck);
+				// Check if user exists using authService
+				const credentials =
+					loginData.contactType === "email"
+						? { email: value }
+						: { phone: value };
 
-					if (!userCheck.hasPassword) {
-						Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-						showToast("No password set for this account", "info");
-						setError(
-							"You haven't set a password yet. Please set one below or use OTP login instead."
-						);
-						goToStep(LOGIN_STEPS.SET_PASSWORD);
-						return;
-					}
-				} catch (err) {
-					const [errorCode, errorMessage] = err.message?.split("|") || [];
-					setError(errorMessage || "Unable to find account");
-					showToast(errorMessage || "Account not found", "error");
+				const checkResult = await authService.checkUserExists(credentials);
 
-					if (errorCode === "USER_NOT_FOUND") {
-						setTimeout(() => {
-							showToast("Please create an account first", "info");
-						}, 2000);
-					}
-					setLoading(false);
+				if (!checkResult.success || !checkResult.data?.exists) {
+					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+					setLoginError(
+						"No account found with this " +
+							loginData.contactType +
+							". Would you like to create one?"
+					);
+					setShowSignUpOption(true); // Show sign up button
+
+					// Store pending data for potential registration redirect
+					await database.write(StorageKeys.PENDING_REGISTRATION, {
+						email: loginData.contactType === "email" ? value : null,
+						phone: loginData.contactType === "phone" ? value : null,
+						contactType: loginData.contactType,
+						fromLogin: true,
+					});
+
+					stopLoading();
 					return;
 				}
+
+				// Clear sign up option if user exists
+				setShowSignUpOption(false);
+
+				setUserInfo(checkResult.data);
+
+				if (!checkResult.data?.hasPassword) {
+					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+					showToast("No password set for this account", "info");
+					setLoginError(
+						"You haven't set a password yet. Please set one below or use OTP login instead."
+					);
+					goToStep(LOGIN_STEPS.SET_PASSWORD);
+					stopLoading();
+					return;
+				}
+
+				nextStep();
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+				showToast("Ready to sign in", "success");
+			} else {
+				// OTP flow - request OTP
+				const otpResult = await requestOtp(
+					loginData.contactType === "email"
+						? { email: value }
+						: { phone: value }
+				);
+
+				if (!otpResult.success) {
+					setLoginError(otpResult.error || "Unable to send verification code");
+					showToast(otpResult.error || "Failed to send code", "error");
+					stopLoading();
+					return;
+				}
+
+				// DEV: Store mock OTP for display
+				if (otpResult.data?.otp) {
+					setMockOtp(otpResult.data.otp);
+				}
+
+				nextStep();
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+				showToast(
+					`Verification code sent to your ${loginData.contactType}`,
+					"success"
+				);
 			}
-
-			nextStep();
-
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast(
-				loginData.authMethod === LOGIN_AUTH_METHODS.OTP
-					? `Verification code sent to your ${loginData.contactType}`
-					: "Ready to sign in",
-				"success"
-			);
 		} catch (err) {
 			const errorMessage =
 				err.message?.split("|")[1] || "Unable to proceed. Please try again.";
-			setError(errorMessage);
+			setLoginError(errorMessage);
 			showToast(errorMessage, "error");
 		} finally {
-			setLoading(false);
+			stopLoading();
 		}
 	};
 
 	const handleOTPSubmit = async (otp) => {
 		if (!otp || otp.length !== 6) return;
-		setLoading(true);
-		setError(null);
 
-		try {
-			await new Promise((r) => setTimeout(r, 800));
+		updateLoginData({ otp });
 
-			updateLoginData({ otp });
+		const result = await verifyOtpLogin({
+			email: loginData.email,
+			phone: loginData.phone,
+			otp,
+		});
 
-			const credentials = {
-				email: loginData.email,
-				phone: loginData.phone,
-				otp,
-			};
+		if (result.success) {
+			// Check if this is a new user (OTP verified but no account)
+			if (result.data?.isExistingUser === false) {
+				// User doesn't exist - show sign up option
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+				setLoginError(
+					"Your " +
+						loginData.contactType +
+						" has been verified! Create an account to continue."
+				);
+				setShowSignUpOption(true);
 
-			try {
-				await loginUser(credentials);
-
-				// Sync user data to ensure proper state update
-				await syncUserData();
-
-				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-				showToast("Welcome back to iVisit!", "success");
-
-				// Close modal and let the root layout handle navigation
-				handleDismiss();
-			} catch (err) {
-				const [errorCode] = err.message?.split("|") || [];
-
-				if (errorCode === "USER_NOT_FOUND") {
-					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-					showToast("No account found. Let's create one for you!", "info");
-
-					await AsyncStorage.setItem(
-						"pendingRegistration",
-						JSON.stringify({
-							email: loginData.email,
-							phone: loginData.phone,
-							contactType: loginData.contactType,
-							verified: true,
-						})
-					);
-
-					setTimeout(() => {
-						handleDismiss();
-					}, 1500);
-				} else {
-					throw err;
-				}
+				// Store pending registration using database layer
+				await database.write(StorageKeys.PENDING_REGISTRATION, {
+					email: loginData.email,
+					phone: loginData.phone,
+					contactType: loginData.contactType,
+					verified: true,
+				});
+				return;
 			}
-		} catch (err) {
-			const [, errorMessage] = err.message?.split("|") || [];
-			const displayMessage =
-				errorMessage || "Unable to sign in. Please try again.";
 
-			setError(displayMessage);
-			showToast(displayMessage, "error");
-		} finally {
-			setLoading(false);
+			// User exists - sync and dismiss
+			await syncUserData();
+
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			showToast("Welcome back to iVisit!", "success");
+
+			// Close modal and let the root layout handle navigation
+			handleDismiss();
+		} else {
+			// Check if user not found - show sign up option
+			const errorLower = result.error?.toLowerCase() || "";
+			if (
+				errorLower.includes("not found") ||
+				errorLower.includes("user_not_found") ||
+				errorLower.includes("not_found")
+			) {
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+				setLoginError(
+					"No account found with this " +
+						loginData.contactType +
+						". Would you like to create one?"
+				);
+				setShowSignUpOption(true);
+
+				// Store pending registration using database layer
+				await database.write(StorageKeys.PENDING_REGISTRATION, {
+					email: loginData.email,
+					phone: loginData.phone,
+					contactType: loginData.contactType,
+					verified: true,
+				});
+			} else {
+				setLoginError(result.error || "Unable to verify code");
+				showToast(result.error || "Unable to sign in", "error");
+			}
 		}
 	};
 
 	const handlePasswordSubmit = async (password) => {
 		if (!password) return;
-		setLoading(true);
-		setError(null);
 
-		try {
-			updateLoginData({ password });
+		updateLoginData({ password });
 
-			const credentials = {
-				email: loginData.email,
-				phone: loginData.phone,
-				password,
-			};
+		const result = await loginWithPassword({
+			email: loginData.email,
+			phone: loginData.phone,
+			password,
+		});
 
-			await loginUser(credentials);
-
+		if (result.success) {
 			// Sync user data to ensure proper state update
 			await syncUserData();
 
@@ -281,60 +405,68 @@ export default function LoginInputModal({ visible, onClose }) {
 
 			// Close modal and let the root layout handle navigation
 			handleDismiss();
-		} catch (err) {
-			const [, errorMessage] = err.message?.split("|") || [];
-			const displayMessage =
-				errorMessage || "Unable to sign in. Please try again.";
-
-			setError(displayMessage);
-			showToast(displayMessage, "error");
-		} finally {
-			setLoading(false);
+		} else {
+			showToast(result.error || "Unable to sign in", "error");
 		}
 	};
 
 	const handleSetPassword = async (password) => {
 		if (!password) return;
-		setLoading(true);
-		setError(null);
+		startLoading();
+		clearError();
 
 		try {
-			const credentials = {
+			const result = await authService.setPassword({
 				email: loginData.email,
 				phone: loginData.phone,
 				password,
-			};
+			});
 
-			await setPassword(credentials);
+			if (result.success) {
+				// Update AuthContext with user data after password is set
+				const loginSuccess = await authLogin({
+					...result.data.user,
+					token: result.data.token,
+				});
 
-			// Sync user data to ensure proper state update
-			await syncUserData();
+				if (!loginSuccess) {
+					setLoginError("Password set but failed to save session");
+					showToast("Password set but login failed. Please try again.", "error");
+					stopLoading();
+					return;
+				}
 
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast("Password set successfully! Welcome to iVisit!", "success");
+				// Sync user data to ensure proper state update
+				await syncUserData();
 
-			// Close modal and let the root layout handle navigation
-			handleDismiss();
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+				showToast("Password set successfully! Welcome to iVisit!", "success");
+
+				// Close modal and let the root layout handle navigation
+				handleDismiss();
+			} else {
+				setLoginError(result.error || "Unable to set password");
+				showToast(result.error || "Unable to set password", "error");
+			}
 		} catch (err) {
-			const [, errorMessage] = err.message?.split("|") || [];
-			const displayMessage =
-				errorMessage || "Unable to set password. Please try again.";
-
-			setError(displayMessage);
-			showToast(displayMessage, "error");
+			const errorMessage = err.message || "Unable to set password. Please try again.";
+			setLoginError(errorMessage);
+			showToast(errorMessage, "error");
 		} finally {
-			setLoading(false);
+			stopLoading();
 		}
 	};
 
-	const handleForgotPasswordInitiated = (email) => {
+	const handleForgotPasswordInitiated = (email, token) => {
 		setResetEmail(email);
+		setResetToken(token); // DEV: Store mock reset token for display
 		goToStep(LOGIN_STEPS.RESET_PASSWORD);
 	};
 
 	const handlePasswordReset = () => {
 		showToast("Password reset successfully", "success");
 		setResetEmail(null);
+		setResetToken(null);
 		goToStep(LOGIN_STEPS.PASSWORD_INPUT);
 	};
 
@@ -440,24 +572,30 @@ export default function LoginInputModal({ visible, onClose }) {
 							{error && (
 								<View
 									style={{
-										backgroundColor: `${COLORS.error}15`,
+										backgroundColor: showSignUpOption
+											? `${COLORS.brandPrimary}15`
+											: `${COLORS.error}15`,
 										padding: 16,
 										borderRadius: 12,
 										marginBottom: 16,
 										borderLeftWidth: 4,
-										borderLeftColor: COLORS.error,
+										borderLeftColor: showSignUpOption
+											? COLORS.brandPrimary
+											: COLORS.error,
 									}}
 								>
 									<View style={{ flexDirection: "row", alignItems: "center" }}>
 										<Ionicons
-											name="alert-circle"
+											name={showSignUpOption ? "person-add" : "alert-circle"}
 											size={20}
-											color={COLORS.error}
+											color={showSignUpOption ? COLORS.brandPrimary : COLORS.error}
 											style={{ marginRight: 8 }}
 										/>
 										<Text
 											style={{
-												color: COLORS.error,
+												color: showSignUpOption
+													? COLORS.brandPrimary
+													: COLORS.error,
 												fontSize: 14,
 												fontWeight: "600",
 												flex: 1,
@@ -466,6 +604,39 @@ export default function LoginInputModal({ visible, onClose }) {
 											{error}
 										</Text>
 									</View>
+
+									{/* Sign Up Button when account not found */}
+									{showSignUpOption && onSwitchToSignUp && (
+										<Pressable
+											onPress={handleSwitchToSignUp}
+											style={{
+												backgroundColor: COLORS.brandPrimary,
+												paddingVertical: 12,
+												paddingHorizontal: 20,
+												borderRadius: 10,
+												marginTop: 12,
+												flexDirection: "row",
+												alignItems: "center",
+												justifyContent: "center",
+											}}
+										>
+											<Ionicons
+												name="person-add"
+												size={18}
+												color="white"
+												style={{ marginRight: 8 }}
+											/>
+											<Text
+												style={{
+													color: "white",
+													fontSize: 14,
+													fontWeight: "700",
+												}}
+											>
+												Create Account
+											</Text>
+										</Pressable>
+									)}
 								</View>
 							)}
 
@@ -504,12 +675,46 @@ export default function LoginInputModal({ visible, onClose }) {
 								)}
 
 							{currentStep === LOGIN_STEPS.OTP_VERIFICATION && (
-								<OTPInputCard
-									method={loginData.contactType}
-									contact={loginData.contact}
-									onVerified={handleOTPSubmit}
-									loading={loading}
-								/>
+								<View>
+									{/* DEV: Show mock OTP for testing - remove in production */}
+									{mockOtp && (
+										<View
+											className="mb-4 p-3 rounded-xl"
+											style={{
+												backgroundColor: isDarkMode
+													? "rgba(34, 197, 94, 0.15)"
+													: "rgba(34, 197, 94, 0.1)",
+												borderWidth: 1,
+												borderColor: isDarkMode
+													? "rgba(34, 197, 94, 0.3)"
+													: "rgba(34, 197, 94, 0.2)",
+											}}
+										>
+											<Text
+												className="text-xs text-center mb-1"
+												style={{
+													color: isDarkMode ? "#86efac" : "#166534",
+												}}
+											>
+												🔐 DEV MODE - Your test OTP:
+											</Text>
+											<Text
+												className="text-2xl font-bold text-center tracking-[8px]"
+												style={{
+													color: isDarkMode ? "#4ade80" : "#15803d",
+												}}
+											>
+												{mockOtp}
+											</Text>
+										</View>
+									)}
+									<OTPInputCard
+										method={loginData.contactType}
+										contact={loginData.contact}
+										onVerified={handleOTPSubmit}
+										loading={loading}
+									/>
+								</View>
 							)}
 
 							{currentStep === LOGIN_STEPS.PASSWORD_INPUT && (
@@ -525,6 +730,7 @@ export default function LoginInputModal({ visible, onClose }) {
 								<SetPasswordCard
 									onPasswordSet={handleSetPassword}
 									loading={loading}
+									onSwitchToOtp={handleSwitchToOtpLogin}
 								/>
 							)}
 
@@ -538,6 +744,7 @@ export default function LoginInputModal({ visible, onClose }) {
 								<ResetPasswordCard
 									email={resetEmail}
 									onPasswordReset={handlePasswordReset}
+									mockResetToken={resetToken}
 								/>
 							)}
 						</ScrollView>

@@ -11,8 +11,13 @@ import { COLORS } from "../../constants/colors";
  * SetPasswordCard
  * For users who don't have a password yet (signed up without one)
  * Allows them to set a password during login
+ * Optionally can switch to OTP login instead
  */
-export default function SetPasswordCard({ onPasswordSet, loading }) {
+export default function SetPasswordCard({
+	onPasswordSet,
+	loading,
+	onSwitchToOtp = null,
+}) {
 	const { isDarkMode } = useTheme();
 
 	const passwordInputRef = useRef(null);
@@ -239,6 +244,24 @@ export default function SetPasswordCard({ onPasswordSet, loading }) {
 				>
 					Passwords match!
 				</Text>
+			)}
+
+			{/* Option to use OTP instead */}
+			{onSwitchToOtp && (
+				<Pressable
+					onPress={() => {
+						Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+						onSwitchToOtp();
+					}}
+					className="mt-6 py-3"
+				>
+					<Text
+						className="text-center text-sm font-bold"
+						style={{ color: COLORS.brandPrimary }}
+					>
+						Use OTP login instead
+					</Text>
+				</Pressable>
 			)}
 		</View>
 	);

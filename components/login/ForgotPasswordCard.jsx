@@ -1,5 +1,10 @@
 // components/login/ForgotPasswordCard.jsx
 
+/**
+ * ForgotPasswordCard
+ * Email input to initiate password reset - uses OTP for reset token
+ */
+
 import { useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,18 +14,17 @@ import { COLORS } from "../../constants/colors";
 import useForgotPassword from "../../hooks/mutations/useForgotPassword";
 import { useToast } from "../../contexts/ToastContext";
 
-/**
- * ForgotPasswordCard
- * Email input to initiate password reset
- */
 export default function ForgotPasswordCard({ onResetInitiated }) {
 	const { isDarkMode } = useTheme();
 	const { showToast } = useToast();
-	const { forgotPassword, loading } = useForgotPassword();
+	const { forgotPassword, loading, resetToken: mockResetToken } =
+		useForgotPassword();
 
 	const inputRef = useRef(null);
 	const [email, setEmail] = useState("");
 	const [error, setError] = useState(null);
+	const [showMockToken, setShowMockToken] = useState(false);
+	const [localResetToken, setLocalResetToken] = useState(null);
 
 	const shakeAnim = useRef(new Animated.Value(0)).current;
 	const buttonScale = useRef(new Animated.Value(1)).current;
@@ -61,19 +65,22 @@ export default function ForgotPasswordCard({ onResetInitiated }) {
 		}
 
 		setError(null);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-		try {
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-			const response = await forgotPassword(email.trim());
+		const result = await forgotPassword(email.trim());
+
+		if (result.success) {
+			// DEV: Store reset token for display
+			if (result.resetToken) {
+				setLocalResetToken(result.resetToken);
+				setShowMockToken(true);
+			}
 
 			showToast("Reset code sent to your email", "success");
-			onResetInitiated?.(email.trim(), response.resetToken);
-		} catch (err) {
-			const [errorCode, errorMessage] = err.message?.split("|") || [];
-			const displayMessage = errorMessage || "Failed to send reset code";
-
-			setError(displayMessage);
-			showToast(displayMessage, "error");
+			onResetInitiated?.(email.trim(), result.resetToken);
+		} else {
+			setError(result.error);
+			showToast(result.error, "error");
 			triggerShake();
 		}
 	};

@@ -1,9 +1,10 @@
-// contetxs/RegistrationContext
+// contexts/RegistrationContext
 
 /**
  * Global Registration Flow Context
  * Manages state across all registration steps for iVisit
  * Allows users to navigate back/forth while preserving data
+ * Includes error handling and loading states
  */
 
 import {
@@ -14,7 +15,8 @@ import {
 	useEffect,
 } from "react";
 import { useToast } from "./ToastContext";
-import useSignUp from "../hooks/mutations/useSignup";
+import { useAuth } from "./AuthContext";
+import { authService } from "../services/authService";
 import { REGISTRATION_STEPS } from "../constants/registrationSteps";
 import { getPendingRegistrationAPI } from "../api/auth";
 
@@ -22,12 +24,16 @@ const RegistrationContext = createContext();
 
 export function RegistrationProvider({ children }) {
 	const { showToast } = useToast();
-	const { socialSignUp: hookSocialSignUp } = useSignUp();
+	const { login: authLogin } = useAuth();
 
 	// --- Current registration step
 	const [currentStep, setCurrentStep] = useState(
 		REGISTRATION_STEPS.METHOD_SELECTION
 	);
+
+	// --- Error and loading states
+	const [error, setError] = useState(null);
+	const [isLoading, setIsLoading] = useState(false);
 
 	// --- Registration data
 	const [registrationData, setRegistrationData] = useState({
@@ -124,6 +130,28 @@ export function RegistrationProvider({ children }) {
 			imageUri: null,
 			profileComplete: false,
 		});
+		setError(null);
+		setIsLoading(false);
+	}, []);
+
+	// --- Error handling helpers
+	const setRegistrationError = useCallback((errorMessage) => {
+		console.log("[v0] RegistrationContext: Setting error", errorMessage);
+		setError(errorMessage);
+	}, []);
+
+	const clearError = useCallback(() => {
+		setError(null);
+	}, []);
+
+	// --- Loading state helpers
+	const startLoading = useCallback(() => {
+		setIsLoading(true);
+		setError(null);
+	}, []);
+
+	const stopLoading = useCallback(() => {
+		setIsLoading(false);
 	}, []);
 
 	// --- Navigation state
@@ -143,12 +171,39 @@ export function RegistrationProvider({ children }) {
 		return ((currentIndex + 1) / steps.length) * 100;
 	}, [currentStep, registrationData.method]);
 
-	// --- Social signup wrapper
+	// --- Social signup wrapper using authService directly
 	const socialSignUp = useCallback(
 		async (provider, profile) => {
+			startLoading();
+			clearError();
+
 			try {
-				const data = await hookSocialSignUp(provider, profile);
-				if (!data) throw new Error("Signup failed");
+				const username = profile.name
+					? profile.name.replace(/\s+/g, "_").toLowerCase()
+					: `${provider}_user_${Date.now()}`;
+
+				const userData = {
+					username,
+					email: profile.email || null,
+					firstName: profile.firstName || null,
+					lastName: profile.lastName || null,
+					imageUri: profile.imageUri || null,
+					provider,
+				};
+
+				const result = await authService.register(userData);
+
+				if (!result.success) {
+					setRegistrationError(result.error);
+					showToast(`Social signup failed: ${result.error}`, "error");
+					return false;
+				}
+
+				// Update AuthContext with user data
+				await authLogin({
+					...result.data.user,
+					token: result.data.token,
+				});
 
 				// Automatically save imageUri if provided
 				if (profile?.imageUri) {
@@ -167,37 +222,56 @@ export function RegistrationProvider({ children }) {
 				resetRegistration();
 				return true;
 			} catch (err) {
-				showToast(`Social signup failed: ${err?.message || err}`, "error");
+				const errorMessage = err?.message || "Social signup failed";
+				setRegistrationError(errorMessage);
+				showToast(`Social signup failed: ${errorMessage}`, "error");
 				return false;
+			} finally {
+				stopLoading();
 			}
 		},
-		[hookSocialSignUp, resetRegistration, updateRegistrationData, showToast]
+		[
+			authLogin,
+			resetRegistration,
+			updateRegistrationData,
+			showToast,
+			startLoading,
+			stopLoading,
+			setRegistrationError,
+			clearError,
+		]
 	);
 
+	// Check for pending registration data (from login flow with verified OTP)
+	const checkAndApplyPendingRegistration = useCallback(async () => {
+		const pending = await getPendingRegistrationAPI();
+		if (pending && pending.verified) {
+			console.log("[v0] Found verified pending registration:", pending);
+			// Auto-populate with verified contact info from login attempt
+			updateRegistrationData({
+				method: pending.contactType === "email" ? "email" : "phone",
+				email: pending.email,
+				phone: pending.phone,
+				otp: "verified", // Mark as already verified
+			});
+
+			// Skip to profile form since OTP is already verified
+			goToStep(REGISTRATION_STEPS.PROFILE_FORM);
+
+			showToast("Let's complete your profile", "info");
+			return true;
+		}
+		return false;
+	}, [updateRegistrationData, goToStep, showToast]);
+
+	// Check on mount
 	useEffect(() => {
-		const checkPendingRegistration = async () => {
-			const pending = await getPendingRegistrationAPI();
-			if (pending && pending.verified) {
-				// Auto-populate with verified contact info from login attempt
-				updateRegistrationData({
-					method: pending.contactType === "email" ? "email" : "phone",
-					email: pending.email,
-					phone: pending.phone,
-					otp: "verified", // Mark as already verified
-				});
-
-				// Skip to profile form since OTP is already verified
-				goToStep(REGISTRATION_STEPS.PROFILE_FORM);
-
-				showToast("Let's complete your profile", "info");
-			}
-		};
-
-		checkPendingRegistration();
+		checkAndApplyPendingRegistration();
 	}, []);
 
 	// --- Context value
 	const value = {
+		// Step management
 		currentStep,
 		registrationData,
 		updateRegistrationData,
@@ -209,6 +283,17 @@ export function RegistrationProvider({ children }) {
 		getProgress,
 		STEPS: REGISTRATION_STEPS,
 		socialSignUp,
+		checkAndApplyPendingRegistration,
+
+		// Error handling
+		error,
+		setRegistrationError,
+		clearError,
+
+		// Loading state
+		isLoading,
+		startLoading,
+		stopLoading,
 	};
 
 	return (

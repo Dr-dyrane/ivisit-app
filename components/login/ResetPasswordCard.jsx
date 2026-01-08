@@ -1,5 +1,10 @@
 // components/login/ResetPasswordCard.jsx
 
+/**
+ * ResetPasswordCard
+ * Enter reset token (OTP) and new password
+ */
+
 import { useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,11 +14,11 @@ import { COLORS } from "../../constants/colors";
 import useResetPassword from "../../hooks/mutations/useResetPassword";
 import { useToast } from "../../contexts/ToastContext";
 
-/**
- * ResetPasswordCard
- * Enter reset token and new password
- */
-export default function ResetPasswordCard({ email, onPasswordReset }) {
+export default function ResetPasswordCard({
+	email,
+	onPasswordReset,
+	mockResetToken, // DEV: Pass the mock token from parent for display
+}) {
 	const { isDarkMode } = useTheme();
 	const { showToast } = useToast();
 	const { resetPassword, loading } = useResetPassword();
@@ -65,19 +70,16 @@ export default function ResetPasswordCard({ email, onPasswordReset }) {
 		}
 
 		setError(null);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-		try {
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-			await resetPassword(resetToken, newPassword, email);
+		const result = await resetPassword(resetToken, newPassword, email);
 
+		if (result.success) {
 			showToast("Password reset successfully", "success");
 			onPasswordReset?.();
-		} catch (err) {
-			const [errorCode, errorMessage] = err.message?.split("|") || [];
-			const displayMessage = errorMessage || "Failed to reset password";
-
-			setError(displayMessage);
-			showToast(displayMessage, "error");
+		} else {
+			setError(result.error);
+			showToast(result.error, "error");
 			triggerShake();
 		}
 	};
@@ -98,6 +100,39 @@ export default function ResetPasswordCard({ email, onPasswordReset }) {
 					{email}
 				</Text>
 			</Text>
+
+			{/* DEV: Show mock reset token for testing - remove in production */}
+			{mockResetToken && (
+				<View
+					className="mb-4 p-3 rounded-xl"
+					style={{
+						backgroundColor: isDarkMode
+							? "rgba(34, 197, 94, 0.15)"
+							: "rgba(34, 197, 94, 0.1)",
+						borderWidth: 1,
+						borderColor: isDarkMode
+							? "rgba(34, 197, 94, 0.3)"
+							: "rgba(34, 197, 94, 0.2)",
+					}}
+				>
+					<Text
+						className="text-xs text-center mb-1"
+						style={{
+							color: isDarkMode ? "#86efac" : "#166534",
+						}}
+					>
+						🔐 DEV MODE - Your reset code:
+					</Text>
+					<Text
+						className="text-2xl font-bold text-center tracking-[8px]"
+						style={{
+							color: isDarkMode ? "#4ade80" : "#15803d",
+						}}
+					>
+						{mockResetToken}
+					</Text>
+				</View>
+			)}
 
 			{error && (
 				<View

@@ -51,6 +51,14 @@ export default function LoginScreen() {
 		setModalVisible(true);
 	};
 
+	const handleSwitchToSignUp = (contactType) => {
+		// Navigate to signup screen with the contact type preference
+		router.push({
+			pathname: "signup",
+			params: contactType ? { preferredMethod: contactType } : {},
+		});
+	};
+
 	return (
 		<LinearGradient colors={colors.background} className="flex-1">
 			<Animated.View
@@ -118,6 +126,7 @@ export default function LoginScreen() {
 			<LoginInputModal
 				visible={modalVisible}
 				onClose={() => setModalVisible(false)}
+				onSwitchToSignUp={handleSwitchToSignUp}
 			/>
 		</LinearGradient>
 	);
