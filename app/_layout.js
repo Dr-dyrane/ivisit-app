@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
@@ -30,25 +31,27 @@ export default function RootLayout() {
 	}, []);
 
 	return (
-		<AuthProvider>
-			<ThemeProvider>
-				<TabBarVisibilityProvider>
-					<ScrollAwareHeaderProvider>
-						<EmergencyProvider>
-							<ToastProvider>
-								<View style={{ flex: 1 }}>
-									<AuthenticatedStack />
-									{/* Theme toggle (optional absolute positioning) */}
-									<View className="absolute right-0 top-16 px-2 py-4">
-										<ThemeToggle showLabel={false} />
+		<GestureHandlerRootView style={{ flex: 1 }}>
+			<AuthProvider>
+				<ThemeProvider>
+					<TabBarVisibilityProvider>
+						<ScrollAwareHeaderProvider>
+							<EmergencyProvider>
+								<ToastProvider>
+									<View style={{ flex: 1 }}>
+										<AuthenticatedStack />
+										{/* Theme toggle (optional absolute positioning) */}
+										<View className="absolute right-0 top-16 px-2 py-4">
+											<ThemeToggle showLabel={false} />
+										</View>
 									</View>
-								</View>
-							</ToastProvider>
-						</EmergencyProvider>
-					</ScrollAwareHeaderProvider>
-				</TabBarVisibilityProvider>
-			</ThemeProvider>
-		</AuthProvider>
+								</ToastProvider>
+							</EmergencyProvider>
+						</ScrollAwareHeaderProvider>
+					</TabBarVisibilityProvider>
+				</ThemeProvider>
+			</AuthProvider>
+		</GestureHandlerRootView>
 	);
 }
 

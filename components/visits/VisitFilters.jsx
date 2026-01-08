@@ -13,12 +13,12 @@ export default function VisitFilters({
 }) {
   const { isDarkMode } = useTheme();
 
+  // Solid colors matching app design system (no borders)
   const colors = {
-    background: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
+    background: isDarkMode ? "#0B0F1A" : "#F3E7E7",
     backgroundSelected: COLORS.brandPrimary,
-    text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-    textMuted: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
-    border: isDarkMode ? COLORS.border : COLORS.borderLight,
+    text: isDarkMode ? "#FFFFFF" : "#0F172A",
+    textMuted: isDarkMode ? "#94A3B8" : "#64748B",
   };
 
   const handleSelect = (filterId) => {
@@ -47,13 +47,9 @@ export default function VisitFilters({
                   : colors.background,
                 paddingHorizontal: 16,
                 paddingVertical: 10,
-                borderRadius: 20,
+                borderRadius: 20, // No border, just background
                 flexDirection: "row",
                 alignItems: "center",
-                borderWidth: 1,
-                borderColor: isSelected
-                  ? colors.backgroundSelected
-                  : colors.border,
                 opacity: pressed ? 0.8 : 1,
                 transform: [{ scale: pressed ? 0.97 : 1 }],
               })}

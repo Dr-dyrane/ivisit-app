@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import { View, Text, Pressable, StyleSheet, ScrollView, Platform } from "react-native";
 import { Fontisto, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
@@ -41,25 +41,28 @@ export default function SpecialtySelector({
 }) {
 	const { isDarkMode } = useTheme();
 
-	const colors = {
-		background: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
-		backgroundSelected: COLORS.brandPrimary + "15",
-		border: isDarkMode ? "#2a2a2a" : "#e5e7eb",
-		borderSelected: COLORS.brandPrimary + "40",
-		text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-		textMuted: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
-		accent: COLORS.brandPrimary,
-	};
-
 	const handleSelect = (specialty) => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		onSelect(specialty);
+		// Toggle off if already selected (acts as "All" filter)
+		if (selectedSpecialty === specialty) {
+			onSelect(null);
+		} else {
+			onSelect(specialty);
+		}
 	};
+
+	// Solid card colors matching app design system (no borders)
+	const getCardBg = (isSelected) => isSelected
+		? isDarkMode ? `${COLORS.brandPrimary}18` : `${COLORS.brandPrimary}10`
+		: isDarkMode ? "#0B0F1A" : "#F3E7E7";
+
+	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
+	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 
 	return (
 		<View style={[styles.container, style]}>
-			<Text style={[styles.title, { color: colors.text }]}>
-				Select Specialty
+			<Text style={[styles.title, { color: mutedColor }]}>
+				SELECT SPECIALTY
 			</Text>
 			<ScrollView
 				horizontal
@@ -68,6 +71,8 @@ export default function SpecialtySelector({
 			>
 				{specialties.map((specialty) => {
 					const isSelected = selectedSpecialty === specialty;
+					const cardBg = getCardBg(isSelected);
+
 					return (
 						<Pressable
 							key={specialty}
@@ -75,30 +80,33 @@ export default function SpecialtySelector({
 							style={({ pressed }) => [
 								styles.specialtyButton,
 								{
-									backgroundColor: isSelected
-										? colors.backgroundSelected
-										: colors.background,
-									borderColor: isSelected
-										? colors.borderSelected
-										: colors.border,
-									opacity: pressed ? 0.8 : 1,
+									backgroundColor: cardBg,
 									transform: [{ scale: pressed ? 0.97 : 1 }],
+									...Platform.select({
+										ios: {
+											shadowColor: isSelected ? COLORS.brandPrimary : "#000",
+											shadowOffset: { width: 0, height: isSelected ? 2 : 1 },
+											shadowOpacity: isSelected ? 0.1 : 0.02,
+											shadowRadius: isSelected ? 4 : 2,
+										},
+										android: { elevation: isSelected ? 2 : 1 },
+									}),
 								},
 							]}
 						>
 							<View style={styles.iconContainer}>
 								<SpecialtyIcon
 									specialty={specialty}
-									size={20}
-									color={isSelected ? colors.accent : colors.textMuted}
+									size={16}
+									color={isSelected ? COLORS.brandPrimary : mutedColor}
 								/>
 							</View>
 							<Text
 								style={[
 									styles.specialtyText,
 									{
-										color: isSelected ? colors.accent : colors.text,
-										fontWeight: isSelected ? "600" : "500",
+										color: isSelected ? COLORS.brandPrimary : textColor,
+										fontWeight: isSelected ? "700" : "500",
 									},
 								]}
 								numberOfLines={1}
@@ -115,38 +123,33 @@ export default function SpecialtySelector({
 
 const styles = StyleSheet.create({
 	container: {
-		marginBottom: 16,
+		// No bottom margin - parent controls spacing
 	},
 	title: {
-		fontSize: 14,
-		fontWeight: "600",
-		marginBottom: 12,
-		paddingHorizontal: 4,
-		textTransform: "uppercase",
-		letterSpacing: 1,
+		fontSize: 11,
+		fontWeight: "700",
+		marginBottom: 10,
+		letterSpacing: 1.5,
 	},
 	scrollContent: {
-		paddingHorizontal: 4,
-		gap: 10,
+		gap: 8,
 	},
 	specialtyButton: {
-		paddingVertical: 12,
-		paddingHorizontal: 16,
-		borderRadius: 16,
-		borderWidth: 1.5,
+		paddingVertical: 10,
+		paddingHorizontal: 14,
+		borderRadius: 20, // More rounded, no border
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 8,
-		minWidth: 120,
+		gap: 6,
 	},
 	iconContainer: {
-		width: 24,
-		height: 24,
+		width: 20,
+		height: 20,
 		justifyContent: "center",
 		alignItems: "center",
 	},
 	specialtyText: {
-		fontSize: 13,
+		fontSize: 12,
 	},
 });
 

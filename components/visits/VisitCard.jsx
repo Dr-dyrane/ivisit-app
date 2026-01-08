@@ -15,11 +15,12 @@ export default function VisitCard({
 }) {
   const { isDarkMode } = useTheme();
 
+  // Solid card colors matching app design system (no borders)
   const colors = {
-    card: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
-    text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-    textMuted: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
-    border: isDarkMode ? COLORS.border : COLORS.borderLight,
+    card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
+    cardSelected: isDarkMode ? `${COLORS.brandPrimary}18` : `${COLORS.brandPrimary}10`,
+    text: isDarkMode ? "#FFFFFF" : "#0F172A",
+    textMuted: isDarkMode ? "#94A3B8" : "#64748B",
   };
 
   const statusColor = getStatusColor(visit.status);
@@ -51,16 +52,14 @@ export default function VisitCard({
     <Pressable
       onPress={handlePress}
       style={{
-        backgroundColor: isSelected ? `${COLORS.brandPrimary}10` : colors.card,
-        borderRadius: 20,
+        backgroundColor: isSelected ? colors.cardSelected : colors.card,
+        borderRadius: 30, // More rounded, no border
         padding: 16,
         marginBottom: 16,
-        borderWidth: isSelected ? 2 : 1,
-        borderColor: isSelected ? COLORS.brandPrimary : colors.border,
         shadowColor: isSelected ? COLORS.brandPrimary : "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: isSelected ? 0.15 : 0.05,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: isSelected ? 6 : 3 },
+        shadowOpacity: isSelected ? 0.15 : 0.04,
+        shadowRadius: isSelected ? 12 : 6,
         elevation: isSelected ? 4 : 2,
       }}
     >
@@ -70,9 +69,9 @@ export default function VisitCard({
         style={{
           width: "100%",
           height: 140,
-          borderRadius: 12,
+          borderRadius: 20, // More rounded
           marginBottom: 12,
-          backgroundColor: colors.border,
+          backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
         }}
         resizeMode="cover"
       />
@@ -92,7 +91,7 @@ export default function VisitCard({
             backgroundColor: `${statusColor}20`,
             paddingHorizontal: 10,
             paddingVertical: 5,
-            borderRadius: 12,
+            borderRadius: 14, // More rounded
             alignSelf: "flex-start",
           }}
         >
@@ -150,10 +149,10 @@ export default function VisitCard({
         <Pressable
           onPress={handleViewDetails}
           style={{
-            backgroundColor: isUpcoming ? COLORS.brandPrimary : colors.border,
+            backgroundColor: isUpcoming ? COLORS.brandPrimary : (isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"),
             paddingVertical: 14,
             paddingHorizontal: 20,
-            borderRadius: 12,
+            borderRadius: 20, // More rounded
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",

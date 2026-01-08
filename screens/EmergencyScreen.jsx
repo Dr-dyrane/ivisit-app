@@ -1,18 +1,8 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useMemo } from "react";
+import { useRef, useCallback, useMemo, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import {
-	View,
-	Text,
-	ScrollView,
-	Pressable,
-	Animated,
-	Platform,
-	Linking,
-} from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { useTheme } from "../contexts/ThemeContext";
+import { View, StyleSheet, Platform } from "react-native";
 import { useEmergency } from "../contexts/EmergencyContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
@@ -22,41 +12,41 @@ import { COLORS } from "../constants/colors";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
-import ServiceTypeSelector from "../components/emergency/ServiceTypeSelector";
-import SpecialtySelector from "../components/emergency/SpecialtySelector";
-import HospitalCard from "../components/emergency/HospitalCard";
-import EmergencyMap from "../components/map/EmergencyMap";
+import FullScreenEmergencyMap from "../components/map/FullScreenEmergencyMap";
+import EmergencyBottomSheet from "../components/emergency/EmergencyBottomSheet";
 import NotificationIconButton from "../components/headers/NotificationIconButton";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+/**
+ * EmergencyScreen - Apple Maps Style Layout
+ *
+ * Features:
+ * - Full-screen map as background
+ * - Smart context-aware search bar
+ * - Draggable bottom sheet with hospital list
+ * - Responsive service/specialty selector (collapses on small snap)
+ * - Live map feedback on hospital selection
+ * - Scroll-aware header/tab bar hiding
+ * - Glass effect header
+ * - Works with tab bar and FAB
+ */
 export default function EmergencyScreen() {
-	const { isDarkMode } = useTheme();
-	const insets = useSafeAreaInsets();
-	const { handleScroll: handleTabBarScroll, resetTabBar } =
-		useTabBarVisibility();
-	const {
-		handleScroll: handleHeaderScroll,
-		resetHeader,
-		headerOpacity,
-	} = useScrollAwareHeader();
+	const { resetTabBar } = useTabBarVisibility();
+	const { resetHeader } = useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB } = useFAB();
 
-	const headerHeight = 70;
-	const headerPaddingAnim = useRef(
-		new Animated.Value(headerHeight + insets.top)
-	).current;
+	// Refs for map and bottom sheet
+	const mapRef = useRef(null);
+	const bottomSheetRef = useRef(null);
 
-	useEffect(() => {
-		const listener = headerOpacity.addListener(({ value }) => {
-			headerPaddingAnim.setValue(headerHeight * value + insets.top);
-		});
-		return () => {
-			headerOpacity.removeListener(listener);
-		};
-	}, [headerOpacity, headerPaddingAnim, insets.top]);
+	// Track sheet snap point - hide recenter when sheet is fully expanded
+	const [sheetSnapIndex, setSheetSnapIndex] = useState(1);
 
+	// Search state - filters hospitals and can zoom map to matches
+	const [searchQuery, setSearchQuery] = useState("");
+
+	// Emergency context state
 	const {
 		hospitals,
 		selectedHospital,
@@ -65,8 +55,6 @@ export default function EmergencyScreen() {
 		serviceType,
 		selectedSpecialty,
 		specialties,
-		viewMode,
-		setViewMode,
 		selectHospital,
 		toggleMode,
 		selectSpecialty,
@@ -74,32 +62,19 @@ export default function EmergencyScreen() {
 		updateHospitals,
 	} = useEmergency();
 
-	// Modular header components with haptic feedback - memoized to prevent infinite re-renders
+	// Header components - memoized
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
 	const rightComponent = useMemo(() => <NotificationIconButton />, []);
 
-	const handleScroll = useCallback(
-		(event) => {
-			const scrollY = event.nativeEvent.contentOffset.y;
-			if (scrollY > 100) {
-				console.log("[EmergencyScreen] Scroll:", scrollY);
-			}
-			handleTabBarScroll(event);
-			handleHeaderScroll(event);
-		},
-		[handleTabBarScroll, handleHeaderScroll]
-	);
+	// Calculate tab bar height for bottom sheet offset
+	const tabBarHeight = Platform.OS === "ios" ? 85 : 70;
 
-	const backgroundColors = isDarkMode
-		? ["#0B0F1A", "#121826"]
-		: ["#FFFFFF", "#F3E7E7"];
+	// Handle sheet snap changes - hide map controls when fully expanded
+	const handleSheetSnapChange = useCallback((index) => {
+		setSheetSnapIndex(index);
+	}, []);
 
-	const colors = {
-		text: isDarkMode ? "#FFFFFF" : "#0F172A",
-		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
-	};
-
+	// Set up header on focus
 	useFocusEffect(
 		useCallback(() => {
 			resetTabBar();
@@ -117,38 +92,10 @@ export default function EmergencyScreen() {
 				leftComponent,
 				rightComponent,
 			});
-		}, [
-			resetTabBar,
-			resetHeader,
-			setHeaderState,
-			mode,
-			leftComponent,
-			rightComponent,
-		])
+		}, [resetTabBar, resetHeader, setHeaderState, mode, leftComponent, rightComponent])
 	);
 
-	const handleEmergencyCall = (hospitalId) => {
-		const hospital = hospitals.find((h) => h.id === hospitalId);
-		selectHospital(hospitalId);
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-		console.log("[iVisit] Emergency call requested for:", hospital?.name);
-	};
-
-	const handleServiceTypeSelect = (type) => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		selectServiceType(type);
-	};
-
-	const handleHospitalSelect = (hospital) => {
-		selectHospital(hospital.id);
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-	};
-
-	const handleSpecialtySelect = (specialty) => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		selectSpecialty(specialty);
-	};
-
+	// FAB toggles between emergency and bed booking modes
 	const handleFloatingButtonPress = useCallback(() => {
 		toggleMode();
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -164,242 +111,104 @@ export default function EmergencyScreen() {
 		}, [mode, handleFloatingButtonPress, registerFAB])
 	);
 
-	const handleCall911 = () => {
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-		Linking.openURL("tel:911");
-	};
+	// Hospital selection - zoom map to location
+	const handleHospitalSelect = useCallback((hospital) => {
+		selectHospital(hospital.id);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
-	const bottomPadding = tabBarHeight + 20;
+		// Animate map to selected hospital
+		if (mapRef.current) {
+			mapRef.current.animateToHospital(hospital);
+		}
+	}, [selectHospital]);
+
+	// Emergency call handler
+	const handleEmergencyCall = useCallback((hospitalId) => {
+		const hospital = hospitals.find((h) => h.id === hospitalId);
+		selectHospital(hospitalId);
+		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+		console.log("[iVisit] Emergency call requested for:", hospital?.name);
+	}, [hospitals, selectHospital]);
+
+	// Service type selection
+	const handleServiceTypeSelect = useCallback((type) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		selectServiceType(type);
+	}, [selectServiceType]);
+
+	// Specialty selection
+	const handleSpecialtySelect = useCallback((specialty) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		selectSpecialty(specialty);
+	}, [selectSpecialty]);
+
+	// Search handler - filters hospitals by name, specialty, address
+	const handleSearch = useCallback((query) => {
+		setSearchQuery(query);
+		// If search matches a single hospital, zoom to it on map
+		if (query.length > 2 && mapRef.current) {
+			const matches = filteredHospitals.filter((h) =>
+				h.name.toLowerCase().includes(query.toLowerCase()) ||
+				h.address?.toLowerCase().includes(query.toLowerCase()) ||
+				h.specialties?.some((s) => s.toLowerCase().includes(query.toLowerCase()))
+			);
+			if (matches.length === 1) {
+				mapRef.current.animateToHospital(matches[0]);
+			}
+		}
+	}, [filteredHospitals]);
+
+	// Filter hospitals based on search query
+	const searchFilteredHospitals = useMemo(() => {
+		if (!searchQuery.trim()) return filteredHospitals;
+		const query = searchQuery.toLowerCase();
+		return filteredHospitals.filter((h) =>
+			h.name.toLowerCase().includes(query) ||
+			h.address?.toLowerCase().includes(query) ||
+			h.specialties?.some((s) => s.toLowerCase().includes(query))
+		);
+	}, [filteredHospitals, searchQuery]);
+
+	// Hide recenter button when sheet is fully expanded (no map visible)
+	const showMapControls = sheetSnapIndex < 2;
 
 	return (
-		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
-			<Animated.View
-				style={{
-					paddingHorizontal: 20,
-					paddingTop: headerPaddingAnim,
-					paddingBottom: 8,
-				}}
-			>
-				<View
-					style={{
-						flexDirection: "row",
-						backgroundColor: colors.card,
-						borderRadius: 30,
-						padding: 6,
-						marginBottom: 12,
-						shadowColor: "#000",
-						shadowOffset: { width: 0, height: 4 },
-						shadowOpacity: isDarkMode ? 0 : 0.03,
-						shadowRadius: 10,
-					}}
-				>
-					<Pressable
-						onPress={() => {
-							setViewMode("map");
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-						}}
-						style={{
-							flex: 1,
-							paddingVertical: 14,
-							borderRadius: 24,
-							backgroundColor:
-								viewMode === "map" ? COLORS.brandPrimary : "transparent",
-							alignItems: "center",
-							justifyContent: "center",
-							flexDirection: "row",
-						}}
-					>
-						<Ionicons
-							name="map-outline"
-							size={18}
-							color={viewMode === "map" ? "#FFFFFF" : colors.textMuted}
-							style={{ marginRight: 8 }}
-						/>
-						<Text
-							style={{
-								fontSize: 13,
-								fontWeight: "800",
-								color: viewMode === "map" ? "#FFFFFF" : colors.textMuted,
-							}}
-						>
-							Map View
-						</Text>
-					</Pressable>
-					<Pressable
-						onPress={() => {
-							setViewMode("list");
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-						}}
-						style={{
-							flex: 1,
-							paddingVertical: 14,
-							borderRadius: 24,
-							backgroundColor:
-								viewMode === "list" ? COLORS.brandPrimary : "transparent",
-							alignItems: "center",
-							justifyContent: "center",
-							flexDirection: "row",
-						}}
-					>
-						<Ionicons
-							name="list-outline"
-							size={18}
-							color={viewMode === "list" ? "#FFFFFF" : colors.textMuted}
-							style={{ marginRight: 8 }}
-						/>
-						<Text
-							style={{
-								fontSize: 13,
-								fontWeight: "800",
-								color: viewMode === "list" ? "#FFFFFF" : colors.textMuted,
-							}}
-						>
-							List View
-						</Text>
-					</Pressable>
-				</View>
+		<View style={styles.container}>
+			{/* Full-screen map as background */}
+			<FullScreenEmergencyMap
+				ref={mapRef}
+				hospitals={hospitals.length > 0 ? searchFilteredHospitals : undefined}
+				onHospitalSelect={handleHospitalSelect}
+				onHospitalsGenerated={updateHospitals}
+				selectedHospitalId={selectedHospital?.id}
+				mode={mode}
+				showControls={showMapControls}
+			/>
 
-				{mode === "emergency" ? (
-					<ServiceTypeSelector
-						selectedType={serviceType}
-						onSelect={handleServiceTypeSelect}
-					/>
-				) : (
-					<SpecialtySelector
-						specialties={specialties}
-						selectedSpecialty={selectedSpecialty}
-						onSelect={handleSpecialtySelect}
-					/>
-				)}
-			</Animated.View>
-
-			{viewMode === "map" ? (
-				<View
-					style={{
-						flex: 1,
-						paddingHorizontal: 16,
-						paddingBottom: 16,
-						marginBottom: tabBarHeight - 12,
-					}}
-				>
-					<EmergencyMap
-						hospitals={hospitals.length > 0 ? filteredHospitals : undefined}
-						onHospitalSelect={handleHospitalSelect}
-						onHospitalsGenerated={updateHospitals}
-						selectedHospitalId={selectedHospital?.id}
-						style={{ flex: 1 }}
-						mode={mode}
-					/>
-				</View>
-			) : (
-				<ScrollView
-					showsVerticalScrollIndicator={false}
-					contentContainerStyle={{
-						paddingBottom: bottomPadding,
-						paddingHorizontal: 20,
-					}}
-					bounces={true}
-					scrollEventThrottle={16}
-					onScroll={handleScroll}
-					nestedScrollEnabled={true}
-				>
-					{mode === "emergency" && (
-						<Pressable
-							onPress={handleCall911}
-							style={{
-								backgroundColor: colors.card,
-								borderRadius: 30,
-								padding: 20,
-								flexDirection: "row",
-								alignItems: "center",
-								marginBottom: 8,
-								shadowColor: "#000",
-								shadowOffset: { width: 0, height: 4 },
-								shadowOpacity: isDarkMode ? 0 : 0.03,
-								shadowRadius: 10,
-							}}
-						>
-							<View
-								style={{
-									backgroundColor: COLORS.brandPrimary,
-									width: 56,
-									height: 56,
-									borderRadius: 16,
-									alignItems: "center",
-									justifyContent: "center",
-									marginRight: 16,
-								}}
-							>
-								<Ionicons name="call" size={26} color="#FFFFFF" />
-							</View>
-							<View style={{ flex: 1 }}>
-								<Text
-									style={{
-										color: colors.text,
-										fontSize: 19,
-										fontWeight: "900",
-										letterSpacing: -0.5,
-									}}
-								>
-									Call 911
-								</Text>
-								<Text
-									style={{
-										color: colors.textMuted,
-										fontSize: 14,
-										marginTop: 2,
-									}}
-								>
-									Emergency dispatch
-								</Text>
-							</View>
-							<View
-								style={{
-									width: 36,
-									height: 36,
-									borderRadius: 12,
-									backgroundColor: isDarkMode
-										? "rgba(255,255,255,0.025)"
-										: "rgba(0,0,0,0.025)",
-									alignItems: "center",
-									justifyContent: "center",
-								}}
-							>
-								<Ionicons
-									name="chevron-forward"
-									size={16}
-									color={colors.textMuted}
-								/>
-							</View>
-						</Pressable>
-					)}
-
-					<Text
-						style={{
-							fontSize: 10,
-							fontWeight: "900",
-							color: colors.textMuted,
-							letterSpacing: 3,
-							marginBottom: 16,
-						}}
-					>
-						{mode === "emergency" ? "NEARBY SERVICES" : "AVAILABLE BEDS"} (
-						{filteredHospitals.length})
-					</Text>
-
-					{filteredHospitals.map((hospital) => (
-						<HospitalCard
-							key={hospital.id}
-							hospital={hospital}
-							isSelected={selectedHospital?.id === hospital.id}
-							onSelect={handleHospitalSelect}
-							onCall={handleEmergencyCall}
-							mode={mode}
-						/>
-					))}
-				</ScrollView>
-			)}
-		</LinearGradient>
+			{/* Draggable bottom sheet overlay */}
+			<EmergencyBottomSheet
+				ref={bottomSheetRef}
+				mode={mode}
+				serviceType={serviceType}
+				selectedSpecialty={selectedSpecialty}
+				specialties={specialties}
+				hospitals={searchFilteredHospitals}
+				selectedHospital={selectedHospital}
+				onServiceTypeSelect={handleServiceTypeSelect}
+				onSpecialtySelect={handleSpecialtySelect}
+				onHospitalSelect={handleHospitalSelect}
+				onHospitalCall={handleEmergencyCall}
+				onSnapChange={handleSheetSnapChange}
+				onSearch={handleSearch}
+				searchQuery={searchQuery}
+				tabBarHeight={tabBarHeight}
+			/>
+		</View>
 	);
 }
+
+const styles = StyleSheet.create({
+	container: {
+		flex: 1,
+	},
+});

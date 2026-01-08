@@ -29,8 +29,10 @@ import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 const VisitsScreen = () => {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
-	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
-	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
+	const { handleScroll: handleTabBarScroll, resetTabBar } =
+		useTabBarVisibility();
+	const { handleScroll: handleHeaderScroll, resetHeader } =
+		useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB } = useFAB();
 
@@ -53,8 +55,8 @@ const VisitsScreen = () => {
 
 	// Consistent with Welcome, Onboarding, Signup, Login screens
 	const backgroundColors = isDarkMode
-		? ["#0B0F1A", "#121826"]
-		: ["#FFFFFF", "#F3E7E7"];
+		? ["#121826", "#0B0F1A", "#121826"]
+		: ["#FFFFFF", "#F3E7E7", "#FFFFFF"];
 
 	const colors = {
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
@@ -94,7 +96,13 @@ const VisitsScreen = () => {
 				leftComponent,
 				rightComponent,
 			});
-		}, [resetTabBar, resetHeader, setHeaderState, leftComponent, rightComponent])
+		}, [
+			resetTabBar,
+			resetHeader,
+			setHeaderState,
+			leftComponent,
+			rightComponent,
+		])
 	);
 
 	// Register FAB on focus
@@ -111,14 +119,20 @@ const VisitsScreen = () => {
 		}, [registerFAB])
 	);
 
-	const handleScroll = useCallback((event) => {
-		handleTabBarScroll(event);
-		handleHeaderScroll(event);
-	}, [handleTabBarScroll, handleHeaderScroll]);
+	const handleScroll = useCallback(
+		(event) => {
+			handleTabBarScroll(event);
+			handleHeaderScroll(event);
+		},
+		[handleTabBarScroll, handleHeaderScroll]
+	);
 
-	const handleVisitSelect = useCallback((visitId) => {
-		selectVisit(selectedVisitId === visitId ? null : visitId);
-	}, [selectVisit, selectedVisitId]);
+	const handleVisitSelect = useCallback(
+		(visitId) => {
+			selectVisit(selectedVisitId === visitId ? null : visitId);
+		},
+		[selectVisit, selectedVisitId]
+	);
 
 	const handleViewDetails = useCallback((visitId) => {
 		// TODO: Navigate to visit details
@@ -136,7 +150,10 @@ const VisitsScreen = () => {
 		<LinearGradient colors={backgroundColors} style={styles.container}>
 			<ScrollView
 				style={styles.scrollView}
-				contentContainerStyle={[styles.content, { paddingTop: topPadding, paddingBottom: bottomPadding }]}
+				contentContainerStyle={[
+					styles.content,
+					{ paddingTop: topPadding, paddingBottom: bottomPadding },
+				]}
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
@@ -171,43 +188,51 @@ const VisitsScreen = () => {
 						))}
 					</Animated.View>
 				) : (
-					<View style={{
-						backgroundColor: colors.card,
-						borderRadius: 30,
-						padding: 40,
-						marginTop: 24,
-						alignItems: "center",
-						shadowColor: "#000",
-						shadowOffset: { width: 0, height: 4 },
-						shadowOpacity: isDarkMode ? 0 : 0.03,
-						shadowRadius: 10,
-					}}>
-						<View style={{
-							backgroundColor: COLORS.brandPrimary,
-							width: 72,
-							height: 72,
-							borderRadius: 20,
+					<View
+						style={{
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							padding: 40,
+							marginTop: 24,
 							alignItems: "center",
-							justifyContent: "center",
-							marginBottom: 20,
-						}}>
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<View
+							style={{
+								backgroundColor: COLORS.brandPrimary,
+								width: 72,
+								height: 72,
+								borderRadius: 20,
+								alignItems: "center",
+								justifyContent: "center",
+								marginBottom: 20,
+							}}
+						>
 							<Ionicons name="calendar-outline" size={36} color="#FFFFFF" />
 						</View>
-						<Text style={{
-							fontSize: 19,
-							fontWeight: "900",
-							color: colors.text,
-							letterSpacing: -0.5,
-							marginBottom: 8,
-						}}>
+						<Text
+							style={{
+								fontSize: 19,
+								fontWeight: "900",
+								color: colors.text,
+								letterSpacing: -0.5,
+								marginBottom: 8,
+							}}
+						>
 							No Visits Yet
 						</Text>
-						<Text style={{
-							fontSize: 14,
-							color: colors.textMuted,
-							textAlign: "center",
-							lineHeight: 20,
-						}}>
+						<Text
+							style={{
+								fontSize: 14,
+								color: colors.textMuted,
+								textAlign: "center",
+								lineHeight: 20,
+							}}
+						>
 							{filter === "upcoming"
 								? "No upcoming appointments scheduled"
 								: filter === "completed"

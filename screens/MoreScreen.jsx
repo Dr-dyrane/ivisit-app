@@ -31,8 +31,10 @@ const MoreScreen = () => {
 	const { logout, user } = useAuth();
 	const { isDarkMode, toggleTheme } = useTheme();
 	const insets = useSafeAreaInsets();
-	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
-	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
+	const { handleScroll: handleTabBarScroll, resetTabBar } =
+		useTabBarVisibility();
+	const { handleScroll: handleHeaderScroll, resetHeader } =
+		useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB } = useFAB();
 
@@ -62,7 +64,13 @@ const MoreScreen = () => {
 				leftComponent,
 				rightComponent,
 			});
-		}, [resetTabBar, resetHeader, setHeaderState, leftComponent, rightComponent])
+		}, [
+			resetTabBar,
+			resetHeader,
+			setHeaderState,
+			leftComponent,
+			rightComponent,
+		])
 	);
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -70,9 +78,9 @@ const MoreScreen = () => {
 	const profileScale = useRef(new Animated.Value(0.9)).current;
 
 	// Consistent with Welcome, Onboarding, Signup, Login screens
-	const backgroundColors = isDarkMode
-		? ["#0B0F1A", "#121826"]
-		: ["#FFFFFF", "#F3E7E7"];
+		const backgroundColors = isDarkMode
+		? ["#121826", "#0B0F1A", "#121826"]
+		: ["#FFFFFF", "#F3E7E7", "#FFFFFF"];
 
 	const colors = {
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
@@ -106,10 +114,13 @@ const MoreScreen = () => {
 		]).start();
 	}, []);
 
-	const handleScroll = useCallback((event) => {
-		handleTabBarScroll(event);
-		handleHeaderScroll(event);
-	}, [handleTabBarScroll, handleHeaderScroll]);
+	const handleScroll = useCallback(
+		(event) => {
+			handleTabBarScroll(event);
+			handleHeaderScroll(event);
+		},
+		[handleTabBarScroll, handleHeaderScroll]
+	);
 
 	const handleLogout = async () => {
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -169,7 +180,10 @@ const MoreScreen = () => {
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			<ScrollView
 				showsVerticalScrollIndicator={false}
-				contentContainerStyle={{ paddingTop: topPadding, paddingBottom: bottomPadding }}
+				contentContainerStyle={{
+					paddingTop: topPadding,
+					paddingBottom: bottomPadding,
+				}}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
 			>
@@ -223,7 +237,9 @@ const MoreScreen = () => {
 							>
 								{user?.fullName || user?.username || "User"}
 							</Text>
-							<Text style={{ fontSize: 14, color: colors.textMuted, marginTop: 2 }}>
+							<Text
+								style={{ fontSize: 14, color: colors.textMuted, marginTop: 2 }}
+							>
 								{user?.email || "email@example.com"}
 							</Text>
 						</View>
@@ -232,7 +248,9 @@ const MoreScreen = () => {
 								width: 36,
 								height: 36,
 								borderRadius: 12,
-								backgroundColor: isDarkMode ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.025)"
+									: "rgba(0,0,0,0.025)",
 								alignItems: "center",
 								justifyContent: "center",
 							}}

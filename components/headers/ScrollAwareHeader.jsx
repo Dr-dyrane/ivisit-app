@@ -9,21 +9,12 @@ const HEADER_HEIGHT = 60;
 
 /**
  * ScrollAwareHeader Component (Sticky)
- * 
+ *
  * Features:
- * - Fades in/out on scroll (opacity animation)
+ * - Pure glass/frosted effect with high blur
+ * - Minimal opacity for transparency
  * - Fixed at top - doesn't scroll with content
- * - Smooth fade animations
- * - Title and header fade together on scroll
  * - Uses useNativeDriver for 60fps performance
- * 
- * Usage:
- * <ScrollAwareHeader 
- *   title="Emergency Services"
- *   subtitle="AMBULANCE CALL"
- *   icon={<IconComponent />}
- *   backgroundColor="#86100E"
- * />
  */
 export default function ScrollAwareHeader({
   title,
@@ -55,13 +46,17 @@ export default function ScrollAwareHeader({
         },
       ]}
     >
-      <BlurView intensity={85} tint={isDarkMode ? 'dark' : 'light'} style={[styles.blur, { minHeight: HEADER_HEIGHT }]}>
+      <BlurView
+        intensity={Platform.OS === 'ios' ? 80 : 100}
+        tint={isDarkMode ? 'dark' : 'light'}
+        style={[styles.blur, { minHeight: HEADER_HEIGHT }]}
+      >
         <View
           style={{
             height: HEADER_HEIGHT,
             backgroundColor: isDarkMode
-              ? 'rgba(11, 15, 26, 0.5)'
-              : 'rgba(255, 255, 255, 0.65)',
+              ? 'rgba(11, 15, 26, 0.015)'
+              : 'rgba(255, 255, 255, 0.02)',
             paddingHorizontal: 16,
             flexDirection: 'row',
             alignItems: 'center',
