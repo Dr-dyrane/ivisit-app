@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, forwardRef, useRef, useImperativeHandle } from "react";
+import React, { useCallback, useMemo, forwardRef, useRef, useImperativeHandle } from "react";
 import { View, Text, StyleSheet, Keyboard, Image, Pressable } from "react-native";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { LinearGradient } from "expo-linear-gradient";
@@ -7,6 +7,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTabBarVisibility } from "../../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
+import { useEmergencyUI } from "../../contexts/EmergencyUIContext";
 import { COLORS } from "../../constants/colors";
 
 import EmergencySearchBar from "./EmergencySearchBar";
@@ -26,6 +27,8 @@ import MiniProfileModal from "./MiniProfileModal";
  * - Scrollable hospital list with scroll-aware header/tab bar hiding
  * - Gradient background (matching Welcome/Onboarding screens)
  * - Works with tab bar and FAB
+ *
+ * Uses EmergencyUIContext for state management and animation tracking
  */
 const EmergencyBottomSheet = forwardRef(({
 	mode = "emergency",
@@ -40,32 +43,42 @@ const EmergencyBottomSheet = forwardRef(({
 	onHospitalCall,
 	onSnapChange,
 	onSearch,
-	searchQuery = "",
-	tabBarHeight = 85,
 }, ref) => {
 	const { isDarkMode } = useTheme();
 	const { user } = useAuth();
-	const { handleScroll: handleTabBarScroll, resetTabBar, hideTabBar } = useTabBarVisibility();
+	const {
+		handleScroll: handleTabBarScroll,
+		resetTabBar,
+		hideTabBar,
+		isTabBarHidden,
+		TAB_BAR_HEIGHT,
+	} = useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
 
-	// Track last scroll position for proper direction detection
-	const lastScrollY = useRef(0);
+	// Use EmergencyUI context for state management
+	const {
+		snapIndex: currentSnapIndex,
+		handleSnapChange: updateSnapIndex,
+		searchQuery: localSearchQuery,
+		updateSearch,
+		clearSearch,
+		showProfileModal,
+		openProfileModal,
+		closeProfileModal,
+		updateScrollPosition,
+		getLastScrollY,
+		timing,
+	} = useEmergencyUI();
+
 	const bottomSheetRef = useRef(null);
 
-	// Track current snap point index
-	const [currentSnapIndex, setCurrentSnapIndex] = useState(1);
-
-	// Local search state (will sync with parent)
-	const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
-
-	// Mini profile modal state
-	const [showProfileModal, setShowProfileModal] = useState(false);
-
-	// Handle avatar press
+	// Handle avatar press - tracked
 	const handleAvatarPress = useCallback(() => {
+		timing.startTiming("avatar_press");
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-		setShowProfileModal(true);
-	}, []);
+		openProfileModal();
+		timing.endTiming("avatar_press");
+	}, [openProfileModal, timing]);
 
 	// Expose snap index and ref methods to parent
 	useImperativeHandle(ref, () => ({
@@ -76,22 +89,21 @@ const EmergencyBottomSheet = forwardRef(({
 	}));
 
 	// Snap points: collapsed (search only), half, expanded
-	// 15% = just enough for search bar + handle
 	const snapPoints = useMemo(() => ["15%", "50%", "92%"], []);
 
-	// Gradient background colors - EXACT match with Welcome/Onboarding screens
+	// Gradient background colors
 	const gradientColors = isDarkMode
-		? ["#121826", "#121826", "#121826"] // Solid dark for seamless look
-		: ["#FFFFFF", "#ffffff", "#ffffff"]; // Match Welcome screen exactly
+		? ["#121826", "#121826", "#121826"]
+		: ["#FFFFFF", "#ffffff", "#ffffff"];
 
 	const handleColor = isDarkMode ? "rgba(255, 255, 255, 0.3)" : "rgba(0, 0, 0, 0.15)";
 	const textMuted = isDarkMode ? "#94A3B8" : "#64748B";
 
-	// Handle search input change
+	// Handle search input change - tracked
 	const handleSearchChange = useCallback((text) => {
-		setLocalSearchQuery(text);
+		updateSearch(text);
 		if (onSearch) onSearch(text);
-	}, [onSearch]);
+	}, [onSearch, updateSearch]);
 
 	// Handle search focus - expand sheet to show results
 	const handleSearchFocus = useCallback(() => {
@@ -102,59 +114,54 @@ const EmergencyBottomSheet = forwardRef(({
 
 	// Handle search clear
 	const handleSearchClear = useCallback(() => {
-		setLocalSearchQuery("");
+		clearSearch();
 		if (onSearch) onSearch("");
 		Keyboard.dismiss();
-	}, [onSearch]);
+	}, [onSearch, clearSearch]);
 
-	// Handle sheet changes for haptic feedback and tracking
+	// Handle sheet changes - tracked for performance
 	const handleSheetChange = useCallback((index) => {
-		setCurrentSnapIndex(index);
+		timing.startTiming(`sheet_snap_to_${index}`);
+		updateSnapIndex(index, "sheet");
+
 		if (index >= 0) {
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		}
-		// Notify parent of snap changes
-		if (onSnapChange) {
-			onSnapChange(index);
-		}
-		// Reset header and tab bar when collapsing (going to smallest snap point)
+
+		if (onSnapChange) onSnapChange(index);
+
 		if (index === 0) {
 			resetTabBar();
 			resetHeader();
-			lastScrollY.current = 0;
-			Keyboard.dismiss(); // Dismiss keyboard when collapsing
+			updateScrollPosition(0);
+			Keyboard.dismiss();
 		}
-		// Hide tab bar when fully expanded to allow sheet to fill space
+
 		if (index === 2) {
 			hideTabBar();
 		}
-	}, [resetTabBar, resetHeader, hideTabBar, onSnapChange]);
 
-	// Handle scroll events - propagate to header and tab bar contexts
-	// Uses multiplier for more sensitive hide/show response in bottom sheet
+		// End timing after animation settles
+		setTimeout(() => timing.endTiming(`sheet_snap_to_${index}`), 350);
+	}, [resetTabBar, resetHeader, hideTabBar, onSnapChange, updateSnapIndex, updateScrollPosition, timing]);
+
+	// Handle scroll events - optimized with context tracking
 	const handleScroll = useCallback((event) => {
 		const currentY = event.nativeEvent?.contentOffset?.y || 0;
-		const diff = currentY - lastScrollY.current;
+		const lastY = getLastScrollY();
+		const diff = currentY - lastY;
 
-		// Only trigger hide/show when sheet is at half or expanded snap point
 		if (currentSnapIndex >= 1) {
-			// Apply 2x multiplier for more sensitive response in bottom sheet
-			// This makes the header/tab bar respond faster to small scrolls
-			const amplifiedY = lastScrollY.current + (diff * 2);
-
+			const amplifiedY = lastY + (diff * 2);
 			const syntheticEvent = {
-				nativeEvent: {
-					contentOffset: {
-						y: Math.max(0, amplifiedY),
-					},
-				},
+				nativeEvent: { contentOffset: { y: Math.max(0, amplifiedY) } },
 			};
 			handleTabBarScroll(syntheticEvent);
 			handleHeaderScroll(syntheticEvent);
 		}
 
-		lastScrollY.current = currentY;
-	}, [handleTabBarScroll, handleHeaderScroll, currentSnapIndex]);
+		updateScrollPosition(currentY);
+	}, [handleTabBarScroll, handleHeaderScroll, currentSnapIndex, getLastScrollY, updateScrollPosition]);
 
 	// Custom handle component - seamless with content
 	const renderHandle = useCallback(() => (
@@ -174,6 +181,15 @@ const EmergencyBottomSheet = forwardRef(({
 		/>
 	), [gradientColors]);
 
+	// Calculate bottom inset based on snap index AND tab bar visibility
+	// When fully expanded (index 2): no inset
+	// When collapsed/half AND tab bar visible: full tabBarHeight inset
+	// When collapsed/half AND tab bar hidden: no inset (sheet extends to bottom)
+	const calculateBottomInset = () => {
+		if (currentSnapIndex === 2) return 0;
+		return isTabBarHidden ? 0 : TAB_BAR_HEIGHT;
+	};
+
 	return (
 		<BottomSheet
 			ref={bottomSheetRef}
@@ -186,7 +202,7 @@ const EmergencyBottomSheet = forwardRef(({
 			enablePanDownToClose={false}
 			enableOverDrag={true}
 			animateOnMount={true}
-			bottomInset={currentSnapIndex === 2 ? 0 : tabBarHeight}
+			bottomInset={calculateBottomInset()}
 		>
 			{/* Scrollable Content */}
 			<BottomSheetScrollView
@@ -244,7 +260,7 @@ const EmergencyBottomSheet = forwardRef(({
 				{/* Mini Profile Modal */}
 				<MiniProfileModal
 					visible={showProfileModal}
-					onClose={() => setShowProfileModal(false)}
+					onClose={closeProfileModal}
 				/>
 
 				{/* Service Type or Specialty Selector - Acts as filters */}

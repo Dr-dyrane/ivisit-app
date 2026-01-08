@@ -5,6 +5,7 @@ import { HeaderStateProvider, useHeaderState } from "../../contexts/HeaderStateC
 import { FABProvider } from "../../contexts/FABContext";
 import { VisitsProvider } from "../../contexts/VisitsContext";
 import { NotificationsProvider } from "../../contexts/NotificationsContext";
+import { EmergencyUIProvider } from "../../contexts/EmergencyUIContext";
 import ScrollAwareHeader from "../../components/headers/ScrollAwareHeader";
 import GlobalFAB from "../../components/navigation/GlobalFAB";
 
@@ -15,31 +16,33 @@ export default function UserLayout() {
 				<FABProvider>
 					<VisitsProvider>
 						<NotificationsProvider>
-							<View style={styles.container}>
-								{/* Fixed header at layout level */}
-								<UserHeaderWrapper />
+							<EmergencyUIProvider>
+								<View style={styles.container}>
+									{/* Fixed header at layout level */}
+									<UserHeaderWrapper />
 
-								<Stack
-									screenOptions={{
-										headerShown: false,
-										animation: "slide_from_right",
-									}}
-								>
-									{/* Bottom tabs (persistent) */}
-									<Stack.Screen name="(tabs)" />
-
-									{/* Secondary flows on top of tabs */}
-									<Stack.Screen
-										name="(stacks)"
-										options={{
-											presentation: "card",
+									<Stack
+										screenOptions={{
+											headerShown: false,
+											animation: "slide_from_right",
 										}}
-									/>
-								</Stack>
+									>
+										{/* Bottom tabs (persistent) */}
+										<Stack.Screen name="(tabs)" />
 
-								{/* Global FAB - always above tabs */}
-								<GlobalFAB />
-							</View>
+										{/* Secondary flows on top of tabs */}
+										<Stack.Screen
+											name="(stacks)"
+											options={{
+												presentation: "card",
+											}}
+										/>
+									</Stack>
+
+									{/* Global FAB - always above tabs */}
+									<GlobalFAB />
+								</View>
+							</EmergencyUIProvider>
 						</NotificationsProvider>
 					</VisitsProvider>
 				</FABProvider>

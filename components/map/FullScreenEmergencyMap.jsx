@@ -163,6 +163,7 @@ const FullScreenEmergencyMap = forwardRef(
 			hospitals: propHospitals,
 			onHospitalSelect,
 			onHospitalsGenerated,
+			onMapReady,
 			selectedHospitalId,
 			mode = "emergency",
 			showControls = true,
@@ -289,6 +290,9 @@ const FullScreenEmergencyMap = forwardRef(
 				}
 			} finally {
 				setIsLoading(false);
+				if (onMapReady) {
+					onMapReady();
+				}
 			}
 		};
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useCallback, useMemo, useState } from "react";
+import { useRef, useCallback, useMemo } from "react";
 import { useFocusEffect } from "expo-router";
-import { View, StyleSheet, Platform } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { useEmergency } from "../contexts/EmergencyContext";
+import { useEmergencyUI } from "../contexts/EmergencyUIContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
@@ -20,15 +21,13 @@ import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 /**
  * EmergencyScreen - Apple Maps Style Layout
  *
- * Features:
- * - Full-screen map as background
- * - Smart context-aware search bar
- * - Draggable bottom sheet with hospital list
- * - Responsive service/specialty selector (collapses on small snap)
- * - Live map feedback on hospital selection
- * - Scroll-aware header/tab bar hiding
- * - Glass effect header
- * - Works with tab bar and FAB
+ * Uses EmergencyUIContext for UI state (animations, snap points, search)
+ * Uses EmergencyContext for data (hospitals, mode, filters)
+ *
+ * This separation enables:
+ * - Animation timing tracking for debugging
+ * - Centralized UI state management
+ * - Easier performance optimization
  */
 export default function EmergencyScreen() {
 	const { resetTabBar } = useTabBarVisibility();
@@ -40,13 +39,17 @@ export default function EmergencyScreen() {
 	const mapRef = useRef(null);
 	const bottomSheetRef = useRef(null);
 
-	// Track sheet snap point - hide recenter when sheet is fully expanded
-	const [sheetSnapIndex, setSheetSnapIndex] = useState(1);
+	// UI state from EmergencyUIContext
+	const {
+		snapIndex: sheetSnapIndex,
+		handleSnapChange: setSheetSnapIndex,
+		searchQuery,
+		updateSearch: setSearchQuery,
+		setMapReady,
+		timing,
+	} = useEmergencyUI();
 
-	// Search state - filters hospitals and can zoom map to matches
-	const [searchQuery, setSearchQuery] = useState("");
-
-	// Emergency context state
+	// Data state from EmergencyContext
 	const {
 		hospitals,
 		selectedHospital,
@@ -66,13 +69,12 @@ export default function EmergencyScreen() {
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
 	const rightComponent = useMemo(() => <NotificationIconButton />, []);
 
-	// Calculate tab bar height for bottom sheet offset
-	const tabBarHeight = Platform.OS === "ios" ? 85 : 70;
-
-	// Handle sheet snap changes - hide map controls when fully expanded
+	// Handle sheet snap changes - tracked for performance
 	const handleSheetSnapChange = useCallback((index) => {
-		setSheetSnapIndex(index);
-	}, []);
+		timing.startTiming(`screen_snap_${index}`);
+		setSheetSnapIndex(index, "screen");
+		timing.endTiming(`screen_snap_${index}`);
+	}, [setSheetSnapIndex, timing]);
 
 	// Set up header on focus
 	useFocusEffect(
@@ -111,8 +113,9 @@ export default function EmergencyScreen() {
 		}, [mode, handleFloatingButtonPress, registerFAB])
 	);
 
-	// Hospital selection - zoom map to location
+	// Hospital selection - zoom map to location (tracked)
 	const handleHospitalSelect = useCallback((hospital) => {
+		timing.startTiming("hospital_select");
 		selectHospital(hospital.id);
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -120,7 +123,8 @@ export default function EmergencyScreen() {
 		if (mapRef.current) {
 			mapRef.current.animateToHospital(hospital);
 		}
-	}, [selectHospital]);
+		timing.endTiming("hospital_select");
+	}, [selectHospital, timing]);
 
 	// Emergency call handler
 	const handleEmergencyCall = useCallback((hospitalId) => {
@@ -142,8 +146,9 @@ export default function EmergencyScreen() {
 		selectSpecialty(specialty);
 	}, [selectSpecialty]);
 
-	// Search handler - filters hospitals by name, specialty, address
+	// Search handler - filters hospitals by name, specialty, address (tracked)
 	const handleSearch = useCallback((query) => {
+		timing.startTiming("search_filter");
 		setSearchQuery(query);
 		// If search matches a single hospital, zoom to it on map
 		if (query.length > 2 && mapRef.current) {
@@ -156,7 +161,8 @@ export default function EmergencyScreen() {
 				mapRef.current.animateToHospital(matches[0]);
 			}
 		}
-	}, [filteredHospitals]);
+		timing.endTiming("search_filter");
+	}, [filteredHospitals, setSearchQuery, timing]);
 
 	// Filter hospitals based on search query
 	const searchFilteredHospitals = useMemo(() => {
@@ -180,6 +186,7 @@ export default function EmergencyScreen() {
 				hospitals={hospitals.length > 0 ? searchFilteredHospitals : undefined}
 				onHospitalSelect={handleHospitalSelect}
 				onHospitalsGenerated={updateHospitals}
+				onMapReady={setMapReady}
 				selectedHospitalId={selectedHospital?.id}
 				mode={mode}
 				showControls={showMapControls}
@@ -200,8 +207,6 @@ export default function EmergencyScreen() {
 				onHospitalCall={handleEmergencyCall}
 				onSnapChange={handleSheetSnapChange}
 				onSearch={handleSearch}
-				searchQuery={searchQuery}
-				tabBarHeight={tabBarHeight}
 			/>
 		</View>
 	);
