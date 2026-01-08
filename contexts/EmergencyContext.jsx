@@ -94,7 +94,7 @@ export function EmergencyProvider({ children }) {
 	}, []);
 
 	const selectServiceType = useCallback((type) => {
-		setServiceType(type);
+		setServiceType(type ? type.toLowerCase() : null);
 		setSelectedHospitalId(null); // Clear selection on type change
 	}, []);
 

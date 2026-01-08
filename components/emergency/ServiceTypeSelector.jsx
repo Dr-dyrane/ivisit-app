@@ -14,8 +14,11 @@ import * as Haptics from "expo-haptics";
  * - Selection indicator
  * - Hospital count per service type
  */
-export default function ServiceTypeSelector({ selectedType = "Standard", onSelect, counts = {} }) {
+export default function ServiceTypeSelector({ selectedType, onSelect, counts }) {
 	const { isDarkMode } = useTheme();
+	
+	const safeCounts = counts || {};
+	const safeSelectedType = selectedType || null;
 
 	const serviceTypes = [
 		{
@@ -39,8 +42,13 @@ export default function ServiceTypeSelector({ selectedType = "Standard", onSelec
 	];
 
 	const handleSelect = (type) => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-		onSelect(type);
+		if (!type || !onSelect) return;
+		try {
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+			onSelect(type);
+		} catch (error) {
+			console.error("[ServiceTypeSelector] Error selecting type:", error);
+		}
 	};
 
 	// Solid card colors matching app design system (no borders)
@@ -51,16 +59,19 @@ export default function ServiceTypeSelector({ selectedType = "Standard", onSelec
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 
+	const normalizedSelectedType = safeSelectedType ? safeSelectedType.toLowerCase() : "";
+
 	return (
 		<View style={styles.container}>
 			{serviceTypes.map((service) => {
-				const isSelected = selectedType === service.type;
+				const normalizedServiceType = service.type ? service.type.toLowerCase() : "";
+				const isSelected = normalizedSelectedType === normalizedServiceType;
 				const cardBg = getCardBg(isSelected);
 
 				return (
 					<Pressable
 						key={service.type}
-						onPress={() => handleSelect(service.type)}
+						onPress={() => handleSelect(normalizedServiceType)}
 						style={({ pressed }) => [
 							styles.card,
 							{
@@ -104,7 +115,7 @@ export default function ServiceTypeSelector({ selectedType = "Standard", onSelec
 								{service.title}
 							</Text>
 							<Text style={[styles.subtitle, { color: mutedColor }]} numberOfLines={1}>
-								{counts[service.type.toLowerCase()] ?? 0} available
+								{safeCounts[service.type.toLowerCase()] ?? 0} available
 							</Text>
 						</View>
 
