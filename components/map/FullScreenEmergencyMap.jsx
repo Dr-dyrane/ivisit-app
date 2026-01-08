@@ -459,7 +459,7 @@ const FullScreenEmergencyMap = forwardRef(
 				<BlurView
 					intensity={isDarkMode ? 60 : 40}
 					tint={isDarkMode ? "dark" : "light"}
-					style={[styles.statusBarBlur, { height: insets.top }]}
+					style={[styles.statusBarBlur, { height: insets.top, opacity: 0.5 }]}
 				/>
 
 				{/* Map Control Buttons - only show when map is visible */}
