@@ -5,54 +5,50 @@ import * as Location from 'expo-location';
 import { Ionicons, Fontisto } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS } from '../../constants/colors';
+import { HOSPITALS } from '../../data/hospitals';
 
-// Hospital names for generating nearby hospitals
-const HOSPITAL_NAMES = [
-  "City General Hospital",
-  "St. Mary's Medical Center",
-  "Metro Emergency Care",
-  "University Hospital",
-  "Community Health Center",
-  "Regional Medical Center",
-  "Sacred Heart Hospital",
-  "Memorial Hospital",
-];
-
-// Generate hospitals near a location
+/**
+ * Generate hospitals near user location using real hospital data
+ * Uses HOSPITALS from data/hospitals.js with randomized coordinates
+ * relative to user's current position
+ */
 const generateNearbyHospitals = (userLat, userLng, count = 6) => {
-  const hospitals = [];
-  const types = ['premium', 'standard'];
-  const specialties = ['General Care', 'Emergency', 'Cardiology', 'Trauma', 'ICU', 'Pediatrics'];
+  // Shuffle and take up to 'count' hospitals from real data
+  const shuffled = [...HOSPITALS].sort(() => Math.random() - 0.5);
+  const selected = shuffled.slice(0, Math.min(count, HOSPITALS.length));
 
-  for (let i = 0; i < count; i++) {
-    // Generate random offset (roughly 0.5-3km away)
+  const generated = selected.map((hospital) => {
+    // Randomize coordinates around user location (within ~1.5km radius)
     const latOffset = (Math.random() - 0.5) * 0.03;
     const lngOffset = (Math.random() - 0.5) * 0.03;
 
-    const distance = Math.sqrt(latOffset * latOffset + lngOffset * lngOffset) * 111; // km approx
-    const eta = Math.ceil(distance * 3); // rough ETA in minutes
+    // Calculate actual distance and ETA from offsets
+    const distanceKm = Math.sqrt(latOffset ** 2 + lngOffset ** 2) * 111;
+    const etaMins = Math.max(2, Math.ceil(distanceKm * 3));
 
-    hospitals.push({
-      id: `nearby-${i}`,
-      name: HOSPITAL_NAMES[i % HOSPITAL_NAMES.length],
+    return {
+      ...hospital, // Spread all real hospital data (name, image, features, beds, specialties, etc.)
+      id: `nearby-${hospital.id}`, // Unique ID for this session
       coordinates: {
         latitude: userLat + latOffset,
         longitude: userLng + lngOffset,
       },
-      distance: `${distance.toFixed(1)} km`,
-      eta: `${eta} mins`,
-      rating: (4.0 + Math.random() * 0.9).toFixed(1),
-      type: types[i % 2],
-      ambulances: Math.floor(Math.random() * 4) + 1,
-      availableBeds: Math.floor(Math.random() * 8) + 1,
-      specialties: specialties.slice(0, Math.floor(Math.random() * 3) + 2),
-      waitTime: `${Math.floor(Math.random() * 15) + 5} mins`,
-      verified: Math.random() > 0.3,
-      status: 'available',
-    });
-  }
+      // Override distance/ETA with calculated values
+      distance: `${distanceKm.toFixed(1)} km`,
+      eta: `${etaMins} mins`,
+      // Keep original availableBeds from hospital data for bed booking
+      // Only randomize if not present in source data
+      availableBeds: hospital.availableBeds ?? Math.floor(Math.random() * 8) + 1,
+      waitTime: hospital.waitTime ?? `${Math.floor(Math.random() * 15) + 5} mins`,
+      ambulances: hospital.ambulances ?? Math.floor(Math.random() * 4) + 1,
+      status: hospital.status ?? (Math.random() > 0.2 ? "available" : "busy"),
+    };
+  });
 
-  return hospitals.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+  // Sort by distance (closest first)
+  return generated.sort(
+    (a, b) => parseFloat(a.distance) - parseFloat(b.distance)
+  );
 };
 
 const EmergencyMap = ({

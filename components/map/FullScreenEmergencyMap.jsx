@@ -23,6 +23,7 @@ import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
+import { HOSPITALS } from "../../data/hospitals";
 
 /**
  * PulsingMarker - Animated marker with pulse effect for selected state
@@ -87,61 +88,51 @@ const PulsingMarker = ({ isSelected, children }) => {
 	);
 };
 
-// Hospital names for generating nearby hospitals
-const HOSPITAL_NAMES = [
-	"City General Hospital",
-	"St. Mary's Medical Center",
-	"Metro Emergency Care",
-	"University Hospital",
-	"Community Health Center",
-	"Regional Medical Center",
-	"Sacred Heart Hospital",
-	"Memorial Hospital",
-];
-
-// Generate hospitals near a location
+/**
+ * Generate hospitals near user location using real hospital data
+ * Uses HOSPITALS from data/hospitals.js with randomized coordinates
+ * relative to user's current position
+ *
+ * Preserves real hospital data including:
+ * - availableBeds (for bed booking mode)
+ * - specialties (for filtering)
+ * - features, images, ratings, etc.
+ */
 const generateNearbyHospitals = (userLat, userLng, count = 6) => {
-	const hospitals = [];
-	const types = ["premium", "standard"];
-	const specialties = [
-		"General Care",
-		"Emergency",
-		"Cardiology",
-		"Trauma",
-		"ICU",
-		"Pediatrics",
-	];
+	// Shuffle and take up to 'count' hospitals from real data
+	const shuffled = [...HOSPITALS].sort(() => Math.random() - 0.5);
+	const selected = shuffled.slice(0, Math.min(count, HOSPITALS.length));
 
-	for (let i = 0; i < count; i++) {
+	const generated = selected.map((hospital) => {
+		// Randomize coordinates around user location (within ~1.5km radius)
 		const latOffset = (Math.random() - 0.5) * 0.03;
 		const lngOffset = (Math.random() - 0.5) * 0.03;
-		const distance =
-			Math.sqrt(latOffset * latOffset + lngOffset * lngOffset) * 111;
-		const eta = Math.ceil(distance * 3);
 
-		hospitals.push({
-			id: `nearby-${i}`,
-			name: HOSPITAL_NAMES[i % HOSPITAL_NAMES.length],
+		// Calculate actual distance and ETA from offsets
+		const distanceKm = Math.sqrt(latOffset ** 2 + lngOffset ** 2) * 111;
+		const etaMins = Math.max(2, Math.ceil(distanceKm * 3));
+
+		return {
+			...hospital, // Spread all real hospital data (name, image, features, beds, etc.)
+			id: `nearby-${hospital.id}`, // Unique ID for this session
 			coordinates: {
 				latitude: userLat + latOffset,
 				longitude: userLng + lngOffset,
 			},
-			distance: `${distance.toFixed(1)} km`,
-			eta: `${eta} mins`,
-			rating: (4.0 + Math.random() * 0.9).toFixed(1),
-			type: types[i % 2],
-			price: types[i % 2] === "premium" ? "$150" : "$100",
-			ambulances: Math.floor(Math.random() * 4) + 1,
-			availableBeds: Math.floor(Math.random() * 8) + 1,
-			specialties: specialties.slice(0, Math.floor(Math.random() * 3) + 2),
-			waitTime: `${Math.floor(Math.random() * 15) + 5} mins`,
-			verified: Math.random() > 0.3,
-			status: "available",
-			image: `https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&q=80&w=300&h=200`,
-		});
-	}
+			// Override distance/ETA with calculated values
+			distance: `${distanceKm.toFixed(1)} km`,
+			eta: `${etaMins} mins`,
+			// Keep original data from HOSPITALS - only use fallback if not present
+			// This ensures bed booking works correctly with real bed counts
+			availableBeds: hospital.availableBeds ?? Math.floor(Math.random() * 8) + 1,
+			waitTime: hospital.waitTime ?? `${Math.floor(Math.random() * 15) + 5} mins`,
+			ambulances: hospital.ambulances ?? Math.floor(Math.random() * 4) + 1,
+			status: hospital.status ?? (Math.random() > 0.2 ? "available" : "busy"),
+		};
+	});
 
-	return hospitals.sort(
+	// Sort by distance (closest first)
+	return generated.sort(
 		(a, b) => parseFloat(a.distance) - parseFloat(b.distance)
 	);
 };

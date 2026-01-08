@@ -19,17 +19,25 @@ const EmergencyUIContext = createContext();
 // Animation timing tracker for debugging
 // Different thresholds for different operation types
 const TIMING_THRESHOLDS = {
-	instant: 16,      // Single frame (60fps) - button presses, search updates
-	animation: 500,   // Animations expected to take 200-400ms
-	network: 3000,    // Network calls
+	instant: 50,       // Quick operations - button presses, search updates
+	animation: 1000,   // Sheet/modal animations can take 300-600ms with spring
+	network: 5000,     // Network calls
+	userAction: 10000, // User-driven actions (modals stay open until user closes)
 };
+
+// Operations that are user-driven (open/close pairs where user controls timing)
+const USER_DRIVEN_OPS = ["profile_modal", "modal_open", "modal_close"];
 
 const createTimingTracker = (enabled = __DEV__) => {
 	const timings = useRef({});
 
 	// Determine threshold based on operation name
 	const getThreshold = (name) => {
-		if (name.includes("snap") || name.includes("modal") || name.includes("animation")) {
+		// User-driven operations shouldn't warn
+		if (USER_DRIVEN_OPS.some(op => name.includes(op))) {
+			return TIMING_THRESHOLDS.userAction;
+		}
+		if (name.includes("snap") || name.includes("animation") || name.includes("sheet")) {
 			return TIMING_THRESHOLDS.animation;
 		}
 		if (name.includes("fetch") || name.includes("load") || name.includes("network")) {
@@ -57,7 +65,8 @@ const createTimingTracker = (enabled = __DEV__) => {
 		const duration = timings.current[name].duration;
 
 		// Only warn if exceeds threshold for this operation type
-		if (duration > threshold) {
+		// Skip warnings for user-driven operations entirely
+		if (duration > threshold && !USER_DRIVEN_OPS.some(op => name.includes(op))) {
 			console.warn(`[EmergencyUI] Slow: ${name} took ${duration.toFixed(2)}ms (threshold: ${threshold}ms)`);
 		}
 	}, [enabled]);

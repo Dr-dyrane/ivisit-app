@@ -1,14 +1,18 @@
 import React, { useCallback, useMemo, forwardRef, useRef, useImperativeHandle } from "react";
-import { View, Text, StyleSheet, Keyboard, Image, Pressable } from "react-native";
+import { View, Text, StyleSheet, Keyboard, Image, Pressable, Dimensions, Platform } from "react-native";
 import BottomSheet, { BottomSheetScrollView, useBottomSheetSpringConfigs } from "@gorhom/bottom-sheet";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTabBarVisibility } from "../../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import { useEmergencyUI } from "../../contexts/EmergencyUIContext";
 import { COLORS } from "../../constants/colors";
+
+// Tab bar height matching AnimatedTabBar.jsx
+const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 70;
 
 import EmergencySearchBar from "./EmergencySearchBar";
 import ServiceTypeSelector from "./ServiceTypeSelector";
@@ -46,12 +50,11 @@ const EmergencyBottomSheet = forwardRef(({
 }, ref) => {
 	const { isDarkMode } = useTheme();
 	const { user } = useAuth();
+	const insets = useSafeAreaInsets();
 	const {
 		handleScroll: handleTabBarScroll,
 		resetTabBar,
 		hideTabBar,
-		isTabBarHidden,
-		TAB_BAR_HEIGHT,
 	} = useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
 
@@ -88,8 +91,19 @@ const EmergencyBottomSheet = forwardRef(({
 		getCurrentSnapIndex: () => currentSnapIndex,
 	}));
 
-	// Snap points: collapsed (search only), half, expanded
-	const snapPoints = useMemo(() => ["15%", "50%", "92%"], []);
+	// Calculate collapsed snap point to stay above tab bar
+	// Tab bar height + bottom inset + search bar area (~120px for handle + search bar + padding)
+	const screenHeight = Dimensions.get('window').height;
+	const searchBarArea = 120; // Handle (20) + search bar (50) + padding (50)
+	const collapsedHeight = TAB_BAR_HEIGHT + insets.bottom + searchBarArea;
+	const collapsedPercent = Math.round((collapsedHeight / screenHeight) * 100);
+
+	// Snap points: collapsed (above tab bar), half, expanded
+	const snapPoints = useMemo(() => [
+		`${Math.max(15, collapsedPercent)}%`, // Minimum 15%, or calculated height
+		"50%",
+		"92%"
+	], [collapsedPercent]);
 
 	// Spring animation config - smooth Apple-like bounce
 	const animationConfigs = useBottomSheetSpringConfigs({
@@ -187,15 +201,6 @@ const EmergencyBottomSheet = forwardRef(({
 		/>
 	), [gradientColors]);
 
-	// Calculate bottom inset based on snap index AND tab bar visibility
-	// When fully expanded (index 2): no inset
-	// When collapsed/half AND tab bar visible: full tabBarHeight inset
-	// When collapsed/half AND tab bar hidden: no inset (sheet extends to bottom)
-	const calculateBottomInset = () => {
-		if (currentSnapIndex === 2) return 0;
-		return isTabBarHidden ? 0 : TAB_BAR_HEIGHT;
-	};
-
 	return (
 		<BottomSheet
 			ref={bottomSheetRef}
@@ -208,7 +213,6 @@ const EmergencyBottomSheet = forwardRef(({
 			enablePanDownToClose={false}
 			enableOverDrag={true}
 			animateOnMount={true}
-			bottomInset={calculateBottomInset()}
 			animationConfigs={animationConfigs}
 		>
 			{/* Scrollable Content */}
