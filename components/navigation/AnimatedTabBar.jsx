@@ -22,7 +22,7 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
   const blurIntensity = isDarkMode ? 70 : 60;
 
   const height = Platform.OS === 'ios' ? 110 : 95;
-  const paddingBottom = Platform.OS === 'ios' ? insets.bottom : 10;
+  const paddingBottom = Platform.OS === 'ios' ? 20 : 10;
 
   // Create animated values for each tab
   const tabBackgrounds = React.useMemo(
@@ -71,7 +71,7 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
           tint={isDarkMode ? 'dark' : 'light'}
           style={[
             styles.pillBackground,
-            { borderRadius: 40 }
+            { borderRadius: 48 }
           ]}
         />
         
@@ -81,7 +81,7 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
             backgroundColor: isDarkMode 
               ? 'rgba(20, 20, 30, 0.25)' 
               : 'rgba(255, 255, 255, 0.2)',
-            borderRadius: 40,
+            borderRadius: 48,
           }
         ]} />
         
@@ -138,7 +138,7 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
                   styles.tab,
                   {
                     backgroundColor: bgColor,
-                    borderRadius: 28,
+                    borderRadius: 32,
                     ...(Platform.OS === 'ios' && !isDarkMode && {
                       shadowColor: '#000',
                       shadowOpacity: shadowOpacity,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 300,
     overflow: 'hidden',
-    borderRadius: 40,
+    borderRadius: 48,
   },
   pillBackground: {
     position: 'absolute',
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    borderRadius: 40,
+    borderRadius: 48,
   },
   tabContainer: {
     flexDirection: 'row',
