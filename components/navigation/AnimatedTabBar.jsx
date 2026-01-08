@@ -115,7 +115,7 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
 
             // Get the icon from options
             const color = isFocused 
-              ? COLORS.brandPrimary 
+              ? (isDarkMode ? COLORS.brandSecondary : COLORS.brandPrimary)
               : (isDarkMode ? COLORS.textLight : COLORS.textSecondary);
 
             const bgColor = tabBackgrounds[index].interpolate({
