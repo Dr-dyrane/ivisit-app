@@ -95,7 +95,8 @@ const EmergencyBottomSheet = forwardRef(({
 	// Tab bar height + bottom inset + search bar area (~120px for handle + search bar + padding)
 	const screenHeight = Dimensions.get('window').height;
 	const searchBarArea = 120; // Handle (20) + search bar (50) + padding (50)
-	const collapsedHeight = TAB_BAR_HEIGHT + insets.bottom + searchBarArea;
+	const marginAboveTabBar = 16; // Extra buffer to keep above tab bar
+	const collapsedHeight = TAB_BAR_HEIGHT + insets.bottom + searchBarArea + marginAboveTabBar;
 	const collapsedPercent = Math.round((collapsedHeight / screenHeight) * 100);
 
 	// Snap points: collapsed (above tab bar), half, expanded
@@ -219,7 +220,7 @@ const EmergencyBottomSheet = forwardRef(({
 			<BottomSheetScrollView
 				contentContainerStyle={[
 					styles.scrollContent,
-					{ paddingBottom: 60 },
+					{ paddingBottom: TAB_BAR_HEIGHT },
 				]}
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
