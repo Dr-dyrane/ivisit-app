@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState, forwardRef, useRef, useImperativeHandle } from "react";
-import { View, Text, StyleSheet, Keyboard } from "react-native";
+import { View, Text, StyleSheet, Keyboard, Image, Pressable } from "react-native";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { useTabBarVisibility } from "../../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import { COLORS } from "../../constants/colors";
@@ -13,6 +14,7 @@ import ServiceTypeSelector from "./ServiceTypeSelector";
 import SpecialtySelector from "./SpecialtySelector";
 import HospitalCard from "./HospitalCard";
 import Call911Card from "./Call911Card";
+import MiniProfileModal from "./MiniProfileModal";
 
 /**
  * EmergencyBottomSheet - Apple Maps style draggable bottom sheet
@@ -42,6 +44,7 @@ const EmergencyBottomSheet = forwardRef(({
 	tabBarHeight = 85,
 }, ref) => {
 	const { isDarkMode } = useTheme();
+	const { user } = useAuth();
 	const { handleScroll: handleTabBarScroll, resetTabBar, hideTabBar } = useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
 
@@ -54,6 +57,15 @@ const EmergencyBottomSheet = forwardRef(({
 
 	// Local search state (will sync with parent)
 	const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
+
+	// Mini profile modal state
+	const [showProfileModal, setShowProfileModal] = useState(false);
+
+	// Handle avatar press
+	const handleAvatarPress = useCallback(() => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		setShowProfileModal(true);
+	}, []);
 
 	// Expose snap index and ref methods to parent
 	useImperativeHandle(ref, () => ({
@@ -187,17 +199,52 @@ const EmergencyBottomSheet = forwardRef(({
 				onScroll={handleScroll}
 				keyboardShouldPersistTaps="handled"
 			>
-				{/* Search Bar - Always visible, even when collapsed */}
-				<EmergencySearchBar
-					value={localSearchQuery}
-					onChangeText={handleSearchChange}
-					onFocus={handleSearchFocus}
-					onClear={handleSearchClear}
-					placeholder={
-						mode === "emergency"
-							? "Search ambulance services..."
-							: "Search hospitals, specialties..."
-					}
+				{/* Search Bar + Avatar (4:1 grid-like ratio) */}
+				<View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+					<EmergencySearchBar
+						value={localSearchQuery}
+						onChangeText={handleSearchChange}
+						onFocus={handleSearchFocus}
+						onClear={handleSearchClear}
+						placeholder={
+							mode === "emergency"
+								? "Search ambulance services..."
+								: "Search hospitals, specialties..."
+						}
+						style={{ flex: 1 }}
+					/>
+					<Pressable
+						onPress={handleAvatarPress}
+						style={({ pressed }) => ({
+							width: 52,
+							height: 52,
+							marginLeft: 10,
+							alignItems: "center",
+							justifyContent: "center",
+							transform: [{ scale: pressed ? 0.95 : 1 }],
+						})}
+					>
+						<Image
+							source={
+								user?.imageUri
+									? { uri: user.imageUri }
+									: require("../../assets/profile.jpg")
+							}
+							style={{
+								width: 48,
+								height: 48,
+								borderRadius: 24,
+								borderWidth: 2,
+								borderColor: COLORS.brandPrimary,
+							}}
+						/>
+					</Pressable>
+				</View>
+
+				{/* Mini Profile Modal */}
+				<MiniProfileModal
+					visible={showProfileModal}
+					onClose={() => setShowProfileModal(false)}
 				/>
 
 				{/* Service Type or Specialty Selector - Acts as filters */}
@@ -283,7 +330,7 @@ const styles = StyleSheet.create({
 		borderRadius: 3,
 	},
 	scrollContent: {
-		paddingHorizontal: 20,
+		paddingHorizontal: 12,
 		paddingTop: 8,
 	},
 	selectorContainer: {

@@ -40,6 +40,7 @@ export default function EmergencySearchBar({
 	onVoicePress,
 	placeholder = "Search hospitals, specialties...",
 	showSuggestions = true,
+	style,
 }) {
 	const { isDarkMode } = useTheme();
 	const inputRef = useRef(null);
@@ -101,7 +102,7 @@ export default function EmergencySearchBar({
 	const showSuggestionsDropdown = isFocused && showSuggestions && value.length === 0;
 
 	return (
-		<View style={styles.wrapper}>
+		<View style={[styles.wrapper, style]}>
 			<Animated.View style={[styles.container, animatedContainerStyle]}>
 				<View
 					style={[
