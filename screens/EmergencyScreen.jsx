@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useCallback, useMemo } from "react";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import {
 	View,
 	Text,
@@ -10,8 +10,6 @@ import {
 	Animated,
 	Platform,
 	Linking,
-	Image,
-	TouchableOpacity,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../contexts/ThemeContext";
@@ -20,8 +18,6 @@ import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
-import { useAuth } from "../contexts/AuthContext";
-import { useNotifications } from "../contexts/NotificationsContext";
 import { COLORS } from "../constants/colors";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -30,14 +26,13 @@ import ServiceTypeSelector from "../components/emergency/ServiceTypeSelector";
 import SpecialtySelector from "../components/emergency/SpecialtySelector";
 import HospitalCard from "../components/emergency/HospitalCard";
 import EmergencyMap from "../components/map/EmergencyMap";
+import NotificationIconButton from "../components/headers/NotificationIconButton";
+import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function EmergencyScreen() {
-	const router = useRouter();
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
-	const { user } = useAuth();
-	const { unreadCount } = useNotifications();
 	const { handleScroll: handleTabBarScroll, resetTabBar } =
 		useTabBarVisibility();
 	const {
@@ -47,7 +42,6 @@ export default function EmergencyScreen() {
 	} = useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB } = useFAB();
-	const pingAnim = useRef(new Animated.Value(1)).current;
 
 	const headerHeight = 70;
 	const headerPaddingAnim = useRef(
@@ -80,104 +74,9 @@ export default function EmergencyScreen() {
 		updateHospitals,
 	} = useEmergency();
 
-	useEffect(() => {
-		Animated.loop(
-			Animated.sequence([
-				Animated.timing(pingAnim, {
-					toValue: 2,
-					duration: 800,
-					useNativeDriver: true,
-				}),
-				Animated.timing(pingAnim, {
-					toValue: 1,
-					duration: 800,
-					useNativeDriver: true,
-				}),
-			])
-		).start();
-	}, [pingAnim]);
-
-	const leftComponent = useMemo(
-		() => (
-			<TouchableOpacity
-				onPress={() => {
-					Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-					router.push("/(user)/(stacks)/profile");
-				}}
-				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-			>
-				<Image
-					source={
-						user?.imageUri
-							? { uri: user.imageUri }
-							: require("../assets/profile.jpg")
-					}
-					resizeMode="cover"
-					style={{
-						width: 36,
-						height: 36,
-						borderRadius: 18,
-						borderWidth: 2,
-						borderColor: COLORS.brandPrimary,
-					}}
-				/>
-			</TouchableOpacity>
-		),
-		[user?.imageUri, router]
-	);
-
-	// Build right component (notifications) - memoized to prevent infinite re-renders
-	const rightComponent = useMemo(
-		() => (
-			<TouchableOpacity
-				onPress={() => router.push("/(user)/(stacks)/notifications")}
-				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-			>
-				<View style={{ position: "relative" }}>
-					<Ionicons
-						name="notifications-outline"
-						size={24}
-						color={
-							unreadCount > 0
-								? COLORS.brandPrimary
-								: isDarkMode
-								? "#94A3B8"
-								: "#64748B"
-						}
-					/>
-					{unreadCount > 0 && (
-						<View style={{ position: "absolute", top: -2, right: -2 }}>
-							<Animated.View
-								style={{
-									position: "absolute",
-									width: 10,
-									height: 10,
-									borderRadius: 999,
-									backgroundColor: `${COLORS.brandPrimary}50`,
-									transform: [{ scale: pingAnim }],
-									opacity: pingAnim.interpolate({
-										inputRange: [1, 2],
-										outputRange: [1, 0],
-									}),
-								}}
-							/>
-							<View
-								style={{
-									width: 10,
-									height: 10,
-									borderRadius: 999,
-									backgroundColor: COLORS.brandPrimary,
-									borderWidth: 2,
-									borderColor: isDarkMode ? "#0B0F1A" : "#FFFFFF",
-								}}
-							/>
-						</View>
-					)}
-				</View>
-			</TouchableOpacity>
-		),
-		[isDarkMode, unreadCount, router, pingAnim]
-	);
+	// Modular header components with haptic feedback - memoized to prevent infinite re-renders
+	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
+	const rightComponent = useMemo(() => <NotificationIconButton />, []);
 
 	const handleScroll = useCallback(
 		(event) => {
@@ -272,7 +171,6 @@ export default function EmergencyScreen() {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
-	const topPadding = headerHeight + insets.top;
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>

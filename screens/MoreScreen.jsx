@@ -18,11 +18,12 @@ import { useAuth } from "../contexts/AuthContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
-import { useNotifications } from "../contexts/NotificationsContext";
 import { useFAB } from "../contexts/FABContext";
 import { COLORS } from "../constants/colors";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import NotificationIconButton from "../components/headers/NotificationIconButton";
+import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 
 const MoreScreen = () => {
 	const router = useRouter();
@@ -30,12 +31,14 @@ const MoreScreen = () => {
 	const { logout, user } = useAuth();
 	const { isDarkMode, toggleTheme } = useTheme();
 	const insets = useSafeAreaInsets();
-	const { unreadCount } = useNotifications();
 	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB } = useFAB();
-	const pingAnim = useRef(new Animated.Value(1)).current;
+
+	// Modular header components with haptic feedback - memoized to prevent infinite re-renders
+	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
+	const rightComponent = useMemo(() => <NotificationIconButton />, []);
 
 	// Hide FAB on More screen (on focus, not just mount)
 	useFocusEffect(
@@ -102,100 +105,6 @@ const MoreScreen = () => {
 			}),
 		]).start();
 	}, []);
-
-	useEffect(() => {
-		Animated.loop(
-			Animated.sequence([
-				Animated.timing(pingAnim, {
-					toValue: 2,
-					duration: 800,
-					useNativeDriver: true,
-				}),
-				Animated.timing(pingAnim, {
-					toValue: 1,
-					duration: 800,
-					useNativeDriver: true,
-				}),
-			])
-		).start();
-	}, [pingAnim]);
-
-	// Build left component (profile) - memoized to prevent infinite re-renders
-	const leftComponent = useMemo(
-		() => (
-			<TouchableOpacity
-				onPress={() => {
-					Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-					router.push("/(user)/(stacks)/profile");
-				}}
-				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-			>
-				<Image
-					source={
-						user?.imageUri
-							? { uri: user.imageUri }
-							: require("../assets/profile.jpg")
-					}
-					resizeMode="cover"
-					style={{
-						width: 36,
-						height: 36,
-						borderRadius: 18,
-						borderWidth: 2,
-						borderColor: COLORS.brandPrimary,
-					}}
-				/>
-			</TouchableOpacity>
-		),
-		[user?.imageUri, router]
-	);
-
-	// Build right component (notifications) - memoized to prevent infinite re-renders
-	const rightComponent = useMemo(
-		() => (
-			<TouchableOpacity
-				onPress={() => router.push("/(user)/(stacks)/notifications")}
-				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-			>
-				<View style={{ position: "relative" }}>
-					<Ionicons
-						name="notifications-outline"
-						size={24}
-						color={`${unreadCount > 0 ? COLORS.brandPrimary : colors.textMuted}`}
-					/>
-					{unreadCount > 0 && (
-						<View style={{ position: "absolute", top: -2, right: -2 }}>
-							<Animated.View
-								style={{
-									position: "absolute",
-									width: 10,
-									height: 10,
-									borderRadius: 999,
-									backgroundColor: `${COLORS.brandPrimary}50`,
-									transform: [{ scale: pingAnim }],
-									opacity: pingAnim.interpolate({
-										inputRange: [1, 2],
-										outputRange: [1, 0],
-									}),
-								}}
-							/>
-							<View
-								style={{
-									width: 10,
-									height: 10,
-									borderRadius: 999,
-									backgroundColor: COLORS.brandPrimary,
-									borderWidth: 2,
-									borderColor: isDarkMode ? "#0B0F1A" : "#FFFFFF",
-								}}
-							/>
-						</View>
-					)}
-				</View>
-			</TouchableOpacity>
-		),
-		[isDarkMode, unreadCount, router, pingAnim]
-	);
 
 	const handleScroll = useCallback((event) => {
 		handleTabBarScroll(event);
