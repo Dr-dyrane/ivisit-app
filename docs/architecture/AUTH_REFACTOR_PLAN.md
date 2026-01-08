@@ -60,6 +60,107 @@ Refactor the authentication layer to follow a clean, layered architecture that:
 | No Service layer | Missing `services/authService.js` | Business logic scattered |
 | Contexts lack error state | `LoginContext` and `RegistrationContext` don't track `error`, `loading` | UI can't show errors |
 | Token management inconsistent | Token in both context AND AsyncStorage with different logic | Race conditions |
+| Direct AsyncStorage in modals | `AuthInputModal.jsx` directly accesses `AsyncStorage.getItem("users")` | Bypasses all layers |
+| Duplicate hooks | Both `useLogin.js` and `useLoginMutation.js` exist | Confusing, redundant |
+
+---
+
+## Current Flow Documentation
+
+### Login Flow (Current Implementation)
+
+```
+LoginScreen
+    └── LoginInputModal (modal)
+            ├── LoginAuthMethodCard     → Step 1: Choose OTP or Password
+            ├── LoginContactCard        → Step 2: Choose Email or Phone
+            ├── PhoneInputField/EmailInputField → Step 3: Enter contact
+            ├── OTPInputCard            → Step 3a (OTP path): Enter 6-digit code
+            ├── PasswordInputField      → Step 3b (Password path): Enter password
+            ├── SetPasswordCard         → Step 4 (if no password): Set new password
+            ├── ForgotPasswordCard      → Forgot password email entry
+            └── ResetPasswordCard       → Reset password with token
+```
+
+**Login Steps Enum:**
+- `AUTH_METHOD` → `CONTACT_TYPE` → `CONTACT_INPUT` → `OTP_VERIFICATION` or `PASSWORD_INPUT`
+- Special: `SET_PASSWORD`, `FORGOT_PASSWORD`, `RESET_PASSWORD`
+
+**Login Context State:**
+- `authMethod`: "otp" | "password"
+- `contactType`: "email" | "phone"
+- `contact`, `email`, `phone`, `password`, `otp`
+
+### Registration Flow (Current Implementation)
+
+```
+SignupScreen
+    └── AuthInputModal (modal)
+            ├── SignUpMethodCard        → Step 1: Choose Phone or Email
+            ├── PhoneInputField/EmailInputField → Step 2: Enter contact
+            ├── OTPInputCard            → Step 3: Verify OTP (auto-login if exists)
+            ├── ProfileForm             → Step 4: First/Last name, profile image
+            └── PasswordInputField      → Step 5: Create password (optional skip)
+```
+
+**Registration Steps Enum:**
+- `METHOD_SELECTION` → `PHONE_INPUT`/`EMAIL_INPUT` → `OTP_VERIFICATION` → `PROFILE_FORM` → `PASSWORD_SETUP`
+
+**Registration Context State:**
+- `method`: "phone" | "email"
+- `countryCode`, `phone`, `email`, `otp`
+- `username`, `firstName`, `lastName`, `fullName`
+- `password`, `dateOfBirth`, `imageUri`, `profileComplete`
+
+### Hooks Currently Used
+
+| Hook | Purpose | Calls |
+|------|---------|-------|
+| `useLogin.js` | Login (legacy) | `loginUserAPI` → AuthContext |
+| `useLoginMutation.js` | Login + checkExists + setPassword | Multiple API functions |
+| `useSignup.js` | Signup + socialSignup | `signUpUserAPI` → AuthContext |
+| `useForgotPassword.js` | Initiate password reset | `forgotPasswordAPI` |
+| `useResetPassword.js` | Complete password reset | `resetPasswordAPI` |
+| `useUpdateUser.js` | Update user profile | `updateUserAPI` + `imageStore` |
+
+### API Functions (api/auth.js)
+
+All functions directly call `userStore.js`:
+- `loginUserAPI(credentials)` → `userStore.login()`
+- `signUpUserAPI(credentials)` → `userStore.signUp()`
+- `updateUserAPI(newData)` → `userStore.updateUser()`
+- `deleteUserAPI()` → `userStore.deleteUser()`
+- `getCurrentUserAPI()` → `userStore.getCurrentUser()`
+- `forgotPasswordAPI(email)` → `userStore.forgotPassword()`
+- `resetPasswordAPI(token, password, email)` → `userStore.resetPassword()`
+- `checkUserExistsAPI(credentials)` → `userStore.checkUserExists()`
+- `setPasswordAPI(credentials)` → `userStore.setPassword()`
+- `getPendingRegistrationAPI()` → Direct AsyncStorage access
+
+### Shared UI Components
+
+Both Login and Registration share these components:
+- `PhoneInputField` - With country picker, validation
+- `EmailInputField` - With email validation
+- `OTPInputCard` - 6-digit input with timer and resend
+- `PasswordInputField` - With visibility toggle, min 6 chars
+
+### UI/UX Patterns
+
+**Colors (from constants/colors.js):**
+- `brandPrimary`: #86100E (iVisit red)
+- `brandSecondary`: #B71C1C (darker red)
+- `bgDark`: #0B0F1A, `bgDarkAlt`: #121826
+- `bgLight`: #FFFFFF, `bgLightAlt`: #F5F5F5
+- `error`: #C62828
+
+**Component Patterns:**
+- Modal height: 85% of screen
+- Input height: 72px with rounded-2xl
+- Button height: 64px (h-16) with tracking-[2px]
+- Shake animation on validation errors
+- Spring animations on button press
+- Haptic feedback on all interactions
 
 ---
 
