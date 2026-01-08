@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useRef, useCallback, useState } from 'react';
 import { Animated, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Tab bar height constants
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 70;
@@ -7,7 +8,13 @@ const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 70;
 const TabBarVisibilityContext = createContext(null);
 
 export function TabBarVisibilityProvider({ children }) {
-  // Animated value for tab bar translation (0 = visible, TAB_BAR_HEIGHT = hidden)
+  const insets = useSafeAreaInsets();
+  // Visual height of the AnimatedTabBar component (matches AnimatedTabBar.jsx)
+  const VISUAL_HEIGHT = Platform.OS === 'ios' ? 110 : 95;
+  // Total distance to hide: full visual height + bottom safe area inset
+  const HIDE_DISTANCE = VISUAL_HEIGHT + insets.bottom;
+
+  // Animated value for tab bar translation (0 = visible, HIDE_DISTANCE = hidden)
   const translateY = useRef(new Animated.Value(0)).current;
 
   // Track last scroll position to determine direction
@@ -45,13 +52,13 @@ export function TabBarVisibilityProvider({ children }) {
     setIsTabBarHidden(true);
 
     Animated.timing(translateY, {
-      toValue: TAB_BAR_HEIGHT,
+      toValue: HIDE_DISTANCE,
       duration: 250,
       useNativeDriver: true,
     }).start(() => {
       isAnimating.current = false;
     });
-  }, [translateY]);
+  }, [translateY, HIDE_DISTANCE]);
 
   // Handle scroll events - call this from scrollable screens
   const handleScroll = useCallback((event) => {
@@ -95,6 +102,7 @@ export function TabBarVisibilityProvider({ children }) {
     resetTabBar,
     isTabBarHidden,
     TAB_BAR_HEIGHT,
+    HIDE_DISTANCE,
   };
 
   return (
