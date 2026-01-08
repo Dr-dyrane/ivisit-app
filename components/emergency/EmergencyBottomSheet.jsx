@@ -110,12 +110,12 @@ const EmergencyBottomSheet = forwardRef(({
 		"92%"
 	], [collapsedPercent]);
 
-	// Spring animation config - smooth Apple-like bounce
+	// Spring animation config - slower, smoother transitions
 	const animationConfigs = useBottomSheetSpringConfigs({
-		damping: 50,              // Lower = more bounce (50-80 feels natural)
-		stiffness: 400,           // Higher = snappier response
-		mass: 0.5,                // Lower = lighter/faster feel
-		overshootClamping: false, // Allow slight overshoot for natural feel
+		damping: 80,              // Higher = less bounce, smoother feel
+		stiffness: 200,           // Lower = slower, more deliberate response
+		mass: 1.2,                // Higher = heavier, slower feel
+		overshootClamping: true,  // No overshoot for smooth, controlled snap
 		restDisplacementThreshold: 0.1,
 		restSpeedThreshold: 0.1,
 	});
@@ -219,6 +219,7 @@ const EmergencyBottomSheet = forwardRef(({
 			enableOverDrag={true}
 			animateOnMount={true}
 			animationConfigs={animationConfigs}
+			safeAreaInsets={{ top: 0, bottom: 0, left: 0, right: 0 }}
 		>
 			{/* Scrollable Content */}
 			<BottomSheetScrollView
