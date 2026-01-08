@@ -38,12 +38,12 @@ const VisitsScreen = () => {
 
 	// Visits context
 	const {
-		filteredVisits,
-		selectedVisitId,
-		filter,
-		filters,
-		visitCounts,
-		isLoading,
+		filteredVisits = [],
+		selectedVisitId = null,
+		filter = "all",
+		filters = [],
+		visitCounts = { all: 0, upcoming: 0, completed: 0 },
+		isLoading = false,
 		selectVisit,
 		setFilterType,
 		refreshVisits,
@@ -139,12 +139,12 @@ const VisitsScreen = () => {
 		console.log("[iVisit] View details for visit:", visitId);
 	}, []);
 
-	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
+	const tabBarHeight = Platform.OS === "ios" ? 85 + (insets?.bottom || 0) : 70;
 	const bottomPadding = tabBarHeight + 20;
 	const headerHeight = 70;
-	const topPadding = headerHeight + insets.top;
+	const topPadding = headerHeight + (insets?.top || 0);
 
-	const hasVisits = filteredVisits.length > 0;
+	const hasVisits = Array.isArray(filteredVisits) && filteredVisits.length > 0;
 
 	return (
 		<LinearGradient colors={backgroundColors} style={styles.container}>
@@ -178,13 +178,15 @@ const VisitsScreen = () => {
 				{hasVisits ? (
 					<Animated.View style={{ opacity: fadeAnim }}>
 						{filteredVisits.map((visit) => (
-							<VisitCard
-								key={visit.id}
-								visit={visit}
-								isSelected={selectedVisitId === visit.id}
-								onSelect={handleVisitSelect}
-								onViewDetails={handleViewDetails}
-							/>
+							visit ? (
+								<VisitCard
+									key={visit?.id}
+									visit={visit}
+									isSelected={selectedVisitId === visit?.id}
+									onSelect={handleVisitSelect}
+									onViewDetails={handleViewDetails}
+								/>
+							) : null
 						))}
 					</Animated.View>
 				) : (

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { View, Text, Pressable, Image, Platform, Animated, StyleSheet } from "react-native";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -165,6 +165,8 @@ export default function HospitalCard({
 	mode = "emergency", // "emergency" or "booking"
 }) {
 	const { isDarkMode } = useTheme();
+
+	if (!hospital) return null;
 
 	// Solid card colors matching app design system (no borders)
 	const cardBackground = isSelected

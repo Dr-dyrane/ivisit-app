@@ -12,8 +12,9 @@ import * as Haptics from "expo-haptics";
  * - Solid card backgrounds matching app design
  * - Brand-consistent icon colors
  * - Selection indicator
+ * - Hospital count per service type
  */
-export default function ServiceTypeSelector({ selectedType = "Standard", onSelect }) {
+export default function ServiceTypeSelector({ selectedType = "Standard", onSelect, counts = {} }) {
 	const { isDarkMode } = useTheme();
 
 	const serviceTypes = [
@@ -103,7 +104,7 @@ export default function ServiceTypeSelector({ selectedType = "Standard", onSelec
 								{service.title}
 							</Text>
 							<Text style={[styles.subtitle, { color: mutedColor }]} numberOfLines={1}>
-								{service.subtitle}
+								{counts[service.type.toLowerCase()] ?? 0} available
 							</Text>
 						</View>
 

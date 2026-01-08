@@ -18,10 +18,10 @@ export function EmergencyProvider({ children }) {
 	const [mode, setMode] = useState(EmergencyMode.EMERGENCY);
 	
 	// Emergency mode state
-	const [serviceType, setServiceType] = useState("premium"); // "premium" or "standard"
+	const [serviceType, setServiceType] = useState(null); // null = show all, "premium" or "standard"
 	
 	// Booking mode state
-	const [selectedSpecialty, setSelectedSpecialty] = useState("General Care");
+	const [selectedSpecialty, setSelectedSpecialty] = useState(null); // null = show all
 	
 	// View state
 	const [viewMode, setViewMode] = useState("map"); // "map" or "list"
@@ -36,16 +36,39 @@ export function EmergencyProvider({ children }) {
 
 	// Filter hospitals based on current mode and criteria
 	const filteredHospitals = useMemo(() => {
+		if (!hospitals || hospitals.length === 0) return [];
+		
 		return hospitals.filter((hospital) => {
+			if (!hospital) return false;
+			
 			if (mode === EmergencyMode.EMERGENCY) {
-				// Emergency: filter by service type (premium/standard)
-				return hospital.type.toLowerCase() === serviceType;
+				// Emergency: show all by default, filter by service type if selected
+				if (!serviceType) return true; // Show all if no filter selected
+				return hospital.serviceTypes?.includes(serviceType) ?? hospital.type?.toLowerCase?.() === serviceType;
 			} else {
-				// Booking: filter by specialty and available beds
-				return hospital.specialties.includes(selectedSpecialty) && hospital.availableBeds > 0;
+				// Booking: show all with available beds by default, filter by specialty if selected
+				if (!hospital.availableBeds || hospital.availableBeds <= 0) return false;
+				if (!selectedSpecialty) return true; // Show all if no specialty selected
+				return hospital.specialties?.includes(selectedSpecialty);
 			}
 		});
 	}, [hospitals, mode, serviceType, selectedSpecialty]);
+
+	// Check if any filters are active
+	const hasActiveFilters = useMemo(() => {
+		if (mode === EmergencyMode.EMERGENCY) {
+			return serviceType !== null;
+		} else {
+			return selectedSpecialty !== null;
+		}
+	}, [mode, serviceType, selectedSpecialty]);
+
+	// Reset all filters
+	const resetFilters = useCallback(() => {
+		setServiceType(null);
+		setSelectedSpecialty(null);
+		setSelectedHospitalId(null);
+	}, []);
 
 	// Actions
 	const selectHospital = useCallback((hospitalId) => {
@@ -79,10 +102,38 @@ export function EmergencyProvider({ children }) {
 		setViewMode(prevMode => prevMode === "map" ? "list" : "map");
 	}, []);
 
+	// Enrich hospitals with dynamic service types
+	const enrichHospitals = useCallback((newHospitals) => {
+		return newHospitals.map((hospital, index) => {
+			// Determine service types - allow some hospitals to offer both
+			let serviceTypes = [];
+			
+			if (hospital.type === "premium") {
+				serviceTypes = ["premium"];
+				// Some premium hospitals also offer standard service (30% of premium)
+				if (index % 3 === 0) {
+					serviceTypes.push("standard");
+				}
+			} else {
+				serviceTypes = ["standard"];
+				// Some standard hospitals also offer premium service (20% of standard)
+				if (index % 5 === 0) {
+					serviceTypes.push("premium");
+				}
+			}
+			
+			return {
+				...hospital,
+				serviceTypes,
+			};
+		});
+	}, []);
+
 	// Update hospitals (for when we integrate with API)
 	const updateHospitals = useCallback((newHospitals) => {
-		setHospitals(newHospitals);
-	}, []);
+		const enriched = enrichHospitals(newHospitals);
+		setHospitals(enriched);
+	}, [enrichHospitals]);
 
 	const value = {
 		// State
@@ -96,6 +147,7 @@ export function EmergencyProvider({ children }) {
 		specialties: SPECIALTIES,
 		viewMode,
 		userLocation,
+		hasActiveFilters,
 		
 		// Actions
 		selectHospital,
@@ -108,6 +160,7 @@ export function EmergencyProvider({ children }) {
 		setViewMode,
 		updateHospitals,
 		setUserLocation,
+		resetFilters,
 	};
 
 	return (

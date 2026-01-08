@@ -38,6 +38,7 @@ export default function SpecialtySelector({
 	selectedSpecialty,
 	onSelect,
 	style,
+	counts = {},
 }) {
 	const { isDarkMode } = useTheme();
 
@@ -101,18 +102,29 @@ export default function SpecialtySelector({
 									color={isSelected ? COLORS.brandPrimary : mutedColor}
 								/>
 							</View>
-							<Text
-								style={[
-									styles.specialtyText,
-									{
-										color: isSelected ? COLORS.brandPrimary : textColor,
-										fontWeight: isSelected ? "700" : "500",
-									},
-								]}
-								numberOfLines={1}
-							>
-								{specialty}
-							</Text>
+							<View style={styles.textContainer}>
+								<Text
+									style={[
+										styles.specialtyText,
+										{
+											color: isSelected ? COLORS.brandPrimary : textColor,
+											fontWeight: isSelected ? "700" : "500",
+										},
+									]}
+									numberOfLines={1}
+								>
+									{specialty}
+								</Text>
+								<Text
+									style={[
+										styles.countText,
+										{ color: mutedColor },
+									]}
+									numberOfLines={1}
+								>
+									{counts[specialty] ?? 0}
+								</Text>
+							</View>
 						</Pressable>
 					);
 				})}
@@ -148,8 +160,19 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		alignItems: "center",
 	},
+	textContainer: {
+		flex: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 4,
+	},
 	specialtyText: {
 		fontSize: 12,
+		flex: 1,
+	},
+	countText: {
+		fontSize: 10,
+		fontWeight: "600",
 	},
 });
 

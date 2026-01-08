@@ -63,6 +63,8 @@ export default function EmergencyScreen() {
 		selectSpecialty,
 		selectServiceType,
 		updateHospitals,
+		hasActiveFilters,
+		resetFilters,
 	} = useEmergency();
 
 	// Header components - memoized
@@ -173,6 +175,25 @@ export default function EmergencyScreen() {
 		);
 	}, [filteredHospitals, searchQuery]);
 
+	// Calculate service type counts
+	const serviceTypeCounts = useMemo(() => {
+		return {
+			premium: hospitals.filter(h => h.serviceTypes?.includes("premium")).length || 0,
+			standard: hospitals.filter(h => h.serviceTypes?.includes("standard")).length || 0,
+		};
+	}, [hospitals]);
+
+	// Calculate specialty counts
+	const specialtyCounts = useMemo(() => {
+		const counts = {};
+		specialties.forEach(specialty => {
+			counts[specialty] = hospitals.filter(h =>
+				h.specialties?.includes(specialty) && h.availableBeds > 0
+			).length || 0;
+		});
+		return counts;
+	}, [hospitals, specialties]);
+
 	// Hide recenter button when sheet is fully expanded (no map visible)
 	const showMapControls = sheetSnapIndex < 2;
 
@@ -181,11 +202,11 @@ export default function EmergencyScreen() {
 			{/* Full-screen map as background */}
 			<FullScreenEmergencyMap
 				ref={mapRef}
-				hospitals={hospitals.length > 0 ? searchFilteredHospitals : undefined}
+				hospitals={hospitals && hospitals.length > 0 ? searchFilteredHospitals : undefined}
 				onHospitalSelect={handleHospitalSelect}
 				onHospitalsGenerated={updateHospitals}
 				onMapReady={setMapReady}
-				selectedHospitalId={selectedHospital?.id}
+				selectedHospitalId={selectedHospital?.id || null}
 				mode={mode}
 				showControls={showMapControls}
 			/>
@@ -199,12 +220,16 @@ export default function EmergencyScreen() {
 				specialties={specialties}
 				hospitals={searchFilteredHospitals}
 				selectedHospital={selectedHospital}
+				serviceTypeCounts={serviceTypeCounts}
+				specialtyCounts={specialtyCounts}
+				hasActiveFilters={hasActiveFilters}
 				onServiceTypeSelect={handleServiceTypeSelect}
 				onSpecialtySelect={handleSpecialtySelect}
 				onHospitalSelect={handleHospitalSelect}
 				onHospitalCall={handleEmergencyCall}
 				onSnapChange={handleSheetSnapChange}
 				onSearch={handleSearch}
+				onResetFilters={resetFilters}
 			/>
 		</View>
 	);

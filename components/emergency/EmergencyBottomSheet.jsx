@@ -41,12 +41,16 @@ const EmergencyBottomSheet = forwardRef(({
 	specialties = [],
 	hospitals = [],
 	selectedHospital,
+	serviceTypeCounts = {},
+	specialtyCounts = {},
+	hasActiveFilters = false,
 	onServiceTypeSelect,
 	onSpecialtySelect,
 	onHospitalSelect,
 	onHospitalCall,
 	onSnapChange,
 	onSearch,
+	onResetFilters,
 }, ref) => {
 	const { isDarkMode } = useTheme();
 	const { user } = useAuth();
@@ -282,25 +286,44 @@ const EmergencyBottomSheet = forwardRef(({
 							<ServiceTypeSelector
 								selectedType={serviceType}
 								onSelect={onServiceTypeSelect}
+								counts={serviceTypeCounts}
 							/>
 						) : (
 							<SpecialtySelector
 								specialties={specialties}
 								selectedSpecialty={selectedSpecialty}
 								onSelect={onSpecialtySelect}
+								counts={specialtyCounts}
 							/>
 						)}
 					</View>
 				)}
 
-				{/* Section Header with Search Results Info */}
+				{/* Section Header with Search Results Info and Reset Button */}
 				{currentSnapIndex > 0 && (
-					<Text style={[styles.sectionHeader, { color: textMuted }]}>
-						{localSearchQuery.trim()
-							? `SEARCH RESULTS (${hospitals.length})`
-							: `${mode === "emergency" ? "NEARBY SERVICES" : "AVAILABLE BEDS"} (${hospitals.length})`
-						}
-					</Text>
+					<View style={styles.headerWithReset}>
+						<Text style={[styles.sectionHeader, { color: textMuted }]}>
+							{localSearchQuery.trim()
+								? `SEARCH RESULTS (${hospitals.length})`
+								: `${mode === "emergency" ? "NEARBY SERVICES" : "AVAILABLE BEDS"} (${hospitals.length})`
+							}
+						</Text>
+						{hasActiveFilters && (
+							<Pressable
+								onPress={() => {
+									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+									if (onResetFilters) onResetFilters();
+								}}
+								style={({ pressed }) => ({
+									opacity: pressed ? 0.6 : 1,
+								})}
+							>
+								<Text style={[styles.resetButton, { color: COLORS.brandPrimary }]}>
+									RESET
+								</Text>
+							</Pressable>
+						)}
+					</View>
 				)}
 
 				{/* Hospital List or 911 Fallback - Only visible when not collapsed */}
@@ -369,6 +392,18 @@ const styles = StyleSheet.create({
 		fontWeight: "900",
 		letterSpacing: 2,
 		marginBottom: 14,
+		textTransform: "uppercase",
+	},
+	headerWithReset: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		marginBottom: 14,
+	},
+	resetButton: {
+		fontSize: 10,
+		fontWeight: "700",
+		letterSpacing: 1,
 		textTransform: "uppercase",
 	},
 });

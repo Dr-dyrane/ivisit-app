@@ -26,39 +26,46 @@ export function VisitsProvider({ children }) {
 
   // Derived state - selected visit object
   const selectedVisit = useMemo(() => {
-    return visits.find(v => v.id === selectedVisitId) || null;
+    if (!visits || visits.length === 0) return null;
+    return visits.find(v => v?.id === selectedVisitId) || null;
   }, [visits, selectedVisitId]);
 
   // Derived state - filtered visits
   const filteredVisits = useMemo(() => {
-    if (filter === "all") return visits;
+    if (!visits || visits.length === 0) return [];
+    if (!filter || filter === "all") return visits;
     if (filter === "upcoming") {
       return visits.filter(v => 
-        v.status === VISIT_STATUS.UPCOMING || 
-        v.status === VISIT_STATUS.IN_PROGRESS
+        v?.status === VISIT_STATUS.UPCOMING || 
+        v?.status === VISIT_STATUS.IN_PROGRESS
       );
     }
     if (filter === "completed") {
       return visits.filter(v => 
-        v.status === VISIT_STATUS.COMPLETED || 
-        v.status === VISIT_STATUS.CANCELLED
+        v?.status === VISIT_STATUS.COMPLETED || 
+        v?.status === VISIT_STATUS.CANCELLED
       );
     }
     return visits;
   }, [visits, filter]);
 
   // Derived state - counts for badges
-  const visitCounts = useMemo(() => ({
-    all: visits.length,
-    upcoming: visits.filter(v => 
-      v.status === VISIT_STATUS.UPCOMING || 
-      v.status === VISIT_STATUS.IN_PROGRESS
-    ).length,
-    completed: visits.filter(v => 
-      v.status === VISIT_STATUS.COMPLETED || 
-      v.status === VISIT_STATUS.CANCELLED
-    ).length,
-  }), [visits]);
+  const visitCounts = useMemo(() => {
+    if (!visits || visits.length === 0) {
+      return { all: 0, upcoming: 0, completed: 0 };
+    }
+    return {
+      all: visits.length,
+      upcoming: visits.filter(v => 
+        v?.status === VISIT_STATUS.UPCOMING || 
+        v?.status === VISIT_STATUS.IN_PROGRESS
+      ).length,
+      completed: visits.filter(v => 
+        v?.status === VISIT_STATUS.COMPLETED || 
+        v?.status === VISIT_STATUS.CANCELLED
+      ).length,
+    };
+  }, [visits]);
 
   // Actions
   const selectVisit = useCallback((visitId) => {
@@ -75,25 +82,29 @@ export function VisitsProvider({ children }) {
 
   // Add a new visit (for booking flow)
   const addVisit = useCallback((newVisit) => {
-    setVisits(prev => [
-      { ...newVisit, id: String(Date.now()) },
-      ...prev,
-    ]);
+    if (!newVisit) return;
+    setVisits(prev => {
+      if (!prev) return [{ ...newVisit, id: String(Date.now()) }];
+      return [{ ...newVisit, id: String(Date.now()) }, ...prev];
+    });
   }, []);
 
   // Cancel a visit
   const cancelVisit = useCallback((visitId) => {
-    setVisits(prev => 
-      prev.map(v => 
-        v.id === visitId 
+    if (!visitId) return;
+    setVisits(prev => {
+      if (!prev || prev.length === 0) return prev;
+      return prev.map(v => 
+        v?.id === visitId 
           ? { ...v, status: VISIT_STATUS.CANCELLED }
           : v
-      )
-    );
+      );
+    });
   }, []);
 
   // Update visits (for API sync)
   const updateVisits = useCallback((newVisits) => {
+    if (!newVisits || !Array.isArray(newVisits)) return;
     setVisits(newVisits);
   }, []);
 

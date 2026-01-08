@@ -15,6 +15,8 @@ export default function VisitCard({
 }) {
   const { isDarkMode } = useTheme();
 
+  if (!visit) return null;
+
   // Solid card colors matching app design system (no borders)
   const colors = {
     card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
@@ -23,21 +25,21 @@ export default function VisitCard({
     textMuted: isDarkMode ? "#94A3B8" : "#64748B",
   };
 
-  const statusColor = getStatusColor(visit.status);
-  const typeIcon = getVisitTypeIcon(visit.type);
+  const statusColor = getStatusColor(visit?.status);
+  const typeIcon = getVisitTypeIcon(visit?.type);
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onSelect(visit.id);
+    onSelect?.(visit?.id);
   };
 
   const handleViewDetails = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onViewDetails?.(visit.id);
+    onViewDetails?.(visit?.id);
   };
 
-  // Format date for display
   const formatDate = (dateStr) => {
+    if (!dateStr) return "No date";
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-US", {
       weekday: "short",
@@ -46,7 +48,7 @@ export default function VisitCard({
     });
   };
 
-  const isUpcoming = visit.status === "upcoming" || visit.status === "in_progress";
+  const isUpcoming = visit?.status === "upcoming" || visit?.status === "in_progress";
 
   return (
     <Pressable
@@ -65,11 +67,11 @@ export default function VisitCard({
     >
       {/* Hospital Image */}
       <Image
-        source={{ uri: visit.image }}
+        source={{ uri: visit?.image }}
         style={{
           width: "100%",
           height: 140,
-          borderRadius: 20, // More rounded
+          borderRadius: 20,
           marginBottom: 12,
           backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
         }}
@@ -80,10 +82,10 @@ export default function VisitCard({
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
         <View style={{ flex: 1, marginRight: 12 }}>
           <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
-            {visit.hospital}
+            {visit?.hospital || "Hospital"}
           </Text>
           <Text style={{ fontSize: 13, color: colors.textMuted }}>
-            {visit.type}
+            {visit?.type || "Appointment"}
           </Text>
         </View>
         <View
@@ -96,7 +98,7 @@ export default function VisitCard({
           }}
         >
           <Text style={{ fontSize: 11, fontWeight: "700", color: statusColor, textTransform: "capitalize" }}>
-            {visit.status.replace("_", " ")}
+            {visit?.status?.replace("_", " ") || "pending"}
           </Text>
         </View>
       </View>
@@ -115,15 +117,15 @@ export default function VisitCard({
           }}
         >
           <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.brandPrimary }}>
-            {visit.doctor.split(" ").map(n => n[0]).join("")}
+            {visit?.doctor?.split(" ")?.map(n => n?.[0])?.join("") || "D"}
           </Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
-            {visit.doctor}
+            {visit?.doctor || "Doctor"}
           </Text>
           <Text style={{ fontSize: 12, color: colors.textMuted }}>
-            {visit.specialty}
+            {visit?.specialty || "Specialty"}
           </Text>
         </View>
       </View>
@@ -133,13 +135,13 @@ export default function VisitCard({
         <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
           <Ionicons name="calendar-outline" size={14} color={COLORS.brandPrimary} />
           <Text style={{ fontSize: 13, color: colors.textMuted, marginLeft: 6 }}>
-            {formatDate(visit.date)}
+            {formatDate(visit?.date)}
           </Text>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
           <Ionicons name="time-outline" size={14} color={COLORS.brandPrimary} />
           <Text style={{ fontSize: 13, color: colors.textMuted, marginLeft: 6 }}>
-            {visit.time}
+            {visit?.time || "No time"}
           </Text>
         </View>
       </View>
