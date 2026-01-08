@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Pressable, StyleSheet, Platform, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useTabBarVisibility } from '../../contexts/TabBarVisibilityContext';
 import { COLORS } from '../../constants/colors';
@@ -58,6 +59,9 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
           const isFocused = state.index === index;
 
           const onPress = () => {
+            // Haptic feedback on tab press
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
