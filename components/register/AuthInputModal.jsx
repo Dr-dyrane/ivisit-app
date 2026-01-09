@@ -60,7 +60,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	} = useRegistration();
 
 	// Pass context state functions to hook
-	const { signUpUser, requestRegistrationOtp, verifyRegistrationOtp } =
+	const { signUpUser, completeRegistration, requestRegistrationOtp, verifyRegistrationOtp } =
 		useSignUp({
 			startLoading,
 			stopLoading,
@@ -135,6 +135,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 
 	const handleInputSubmit = async (value) => {
 		if (!value) return;
+
 		startLoading();
 		clearError();
 
@@ -157,10 +158,12 @@ export default function AuthInputModal({ visible, onClose, type }) {
 				return;
 			}
 
-			// DEV: Store mock OTP for display
+			// DEV: Store mock OTP for display (Only if service returns it, which it doesn't for real auth)
 			if (otpResult.data?.otp) {
 				setMockOtp(otpResult.data.otp);
-			}
+			} else {
+                setMockOtp(null);
+            }
 
 			nextStep();
 
@@ -181,6 +184,27 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		}
 	};
 
+    const handleResendOtp = async () => {
+        startLoading();
+        clearError();
+        try {
+            const contact = registrationData.phone || registrationData.email;
+            const otpResult = await requestRegistrationOtp(
+				type === "phone" ? { phone: contact } : { email: contact }
+			);
+
+            if (!otpResult.success) {
+                showToast(otpResult.error || "Failed to resend code", "error");
+            } else {
+                 showToast("Code resent successfully", "success");
+            }
+        } catch (e) {
+             showToast("Failed to resend code", "error");
+        } finally {
+            stopLoading();
+        }
+    };
+
 	const handleOTPSubmit = async (otp) => {
 		if (!otp) return;
 
@@ -191,10 +215,10 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		});
 
 		if (result.success) {
-			// Check if user already exists (auto-login scenario)
-			if (result.data?.user && result.data?.token) {
-				// User already exists - auto-login them
-				await login({ ...result.data.user, token: result.data.token });
+			// Check if user already has a profile (isExistingUser)
+			if (result.data?.isExistingUser) {
+				// User already exists and has profile - auto-login them
+				await login({ ...result.data }); // result.data contains user + token
 				await syncUserData();
 
 				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -204,7 +228,9 @@ export default function AuthInputModal({ visible, onClose, type }) {
 				return;
 			}
 
-			// User doesn't exist - continue registration flow
+			// User is new (no profile yet) - continue registration flow
+            // Note: User is technically authenticated in Supabase/Storage now, 
+            // but we don't call login() yet to keep them in the modal flow.
 			updateRegistrationData({ otp });
 			nextStep();
 
@@ -216,7 +242,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	};
 
 	const handlePasswordSubmit = async (password) => {
-		if (!password) return;
+		// if (!password) return; // Password can be optional/empty if we treat it that way, but here we expect it if they didn't skip.
 
 		updateRegistrationData({ password });
 
@@ -235,9 +261,10 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			password,
 		};
 
-		const result = await signUpUser(payload);
+		const result = await completeRegistration(payload);
 
 		if (result.success) {
+            // completeRegistration already calls login() internally
 			await syncUserData();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -246,16 +273,6 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			handleDismiss();
 		} else {
 			showToast(result.error || "Registration failed", "error");
-
-			if (
-				result.error?.includes("exists") ||
-				result.error?.includes("EMAIL_EXISTS") ||
-				result.error?.includes("PHONE_EXISTS")
-			) {
-				setTimeout(() => {
-					showToast("Try logging in instead", "info");
-				}, 2000);
-			}
 		}
 	};
 
@@ -274,9 +291,10 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			dateOfBirth: registrationData.dateOfBirth,
 		};
 
-		const result = await signUpUser(payload);
+		const result = await completeRegistration(payload);
 
 		if (result.success) {
+            // completeRegistration already calls login() internally
 			await syncUserData();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -285,16 +303,6 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			handleDismiss();
 		} else {
 			showToast(result.error || "Registration failed", "error");
-
-			if (
-				result.error?.includes("exists") ||
-				result.error?.includes("EMAIL_EXISTS") ||
-				result.error?.includes("PHONE_EXISTS")
-			) {
-				setTimeout(() => {
-					showToast("Try logging in instead", "info");
-				}, 2000);
-			}
 		}
 	};
 
@@ -339,7 +347,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 						transform: [{ translateY: slideAnim }],
 						backgroundColor: colors.bg,
 						height: SCREEN_HEIGHT * 0.85,
-					}}
+						}}
 					className="rounded-t-[40px] px-8 pt-4 shadow-2xl"
 				>
 					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-6" />
@@ -478,6 +486,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 										method={registrationData.method}
 										contact={registrationData.phone || registrationData.email}
 										onVerified={handleOTPSubmit}
+                                        onResend={handleResendOtp}
 										loading={loading}
 									/>
 								</View>

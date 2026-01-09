@@ -9,11 +9,13 @@ import { useRef, useEffect } from "react";
 import { View, Text, Pressable, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useToast } from "../../contexts/ToastContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 
 export default function SignUpMethodCard({ onSelect }) {
 	const { isDarkMode } = useTheme();
+    const { showToast } = useToast();
 
 	const colors = {
 		primary: COLORS.brandPrimary,
@@ -66,6 +68,7 @@ export default function SignUpMethodCard({ onSelect }) {
 				Animated.spring(scale, { toValue: 0.96, useNativeDriver: true }),
 				Animated.spring(scale, { toValue: 1, useNativeDriver: true }),
 			]).start();
+
 			onSelect(type);
 		};
 

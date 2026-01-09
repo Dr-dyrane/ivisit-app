@@ -10,79 +10,75 @@ import {
 import { database, StorageKeys } from "../database";
 import { normalizeNotification, normalizeNotificationsList } from "../utils/domainNormalize";
 import { usePreferences } from "./PreferencesContext";
+import { notificationsService } from "../services";
 
 // Create the notifications context
 const NotificationsContext = createContext();
 
 /**
  * NotificationsProvider - Manages notification state
- * 
- * Features:
- * - Read/unread tracking
- * - Filtering by type
- * - Mark as read (single/all)
- * - Delete/clear notifications
- * - Unread count for badges
- * - Ready for backend integration
  */
 export function NotificationsProvider({ children }) {
   // Core state
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState("all");
   
-  // Loading state for API integration
+  // Loading state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const { preferences } = usePreferences();
   const demoModeEnabled = preferences?.demoModeEnabled !== false;
 
-  useEffect(() => {
-    let isActive = true;
-    (async () => {
-      setIsLoading(true);
-      try {
-        const key = demoModeEnabled ? StorageKeys.DEMO_NOTIFICATIONS : StorageKeys.NOTIFICATIONS;
+  const loadNotifications = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      if (demoModeEnabled) {
+        // DEMO MODE
+        const key = StorageKeys.DEMO_NOTIFICATIONS;
         const stored = await database.read(key, null);
-        if (!isActive) return;
-        if (Array.isArray(stored)) {
-          const normalized = normalizeNotificationsList(stored);
-          setNotifications(normalized);
-          if (normalized.length !== stored.length) {
-            await database.write(key, normalized);
-          }
-          if (demoModeEnabled && normalized.length === 0) {
+        
+        if (Array.isArray(stored) && stored.length > 0) {
+            setNotifications(normalizeNotificationsList(stored));
+        } else {
             const seeded = normalizeNotificationsList(NOTIFICATIONS);
             setNotifications(seeded);
             await database.write(key, seeded);
-          }
-          return;
         }
-        if (demoModeEnabled) {
-          const seeded = normalizeNotificationsList(NOTIFICATIONS);
-          setNotifications(seeded);
-          await database.write(key, seeded);
-        } else {
-          setNotifications([]);
-          await database.write(key, []);
+      } else {
+        // REAL MODE (Supabase)
+        const cached = await database.read(StorageKeys.NOTIFICATIONS, []);
+        if (Array.isArray(cached) && cached.length > 0) {
+             setNotifications(normalizeNotificationsList(cached));
         }
-      } catch (e) {
-        if (!isActive) return;
-        setNotifications(demoModeEnabled ? normalizeNotificationsList(NOTIFICATIONS) : []);
-        setError(e?.message ?? "Failed to load notifications");
-      } finally {
-        if (isActive) setIsLoading(false);
+
+        const remote = await notificationsService.list();
+        const normalized = normalizeNotificationsList(remote);
+        setNotifications(normalized);
+        await database.write(StorageKeys.NOTIFICATIONS, normalized);
       }
-    })();
-    return () => {
-      isActive = false;
-    };
+    } catch (e) {
+      console.error("Failed to load notifications", e);
+      setError(e?.message ?? "Failed to load notifications");
+    } finally {
+      setIsLoading(false);
+    }
   }, [demoModeEnabled]);
 
   useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  // Sync state to local storage (Only for Demo or Cache)
+  useEffect(() => {
     if (!Array.isArray(notifications)) return;
     const normalized = normalizeNotificationsList(notifications);
-    const key = demoModeEnabled ? StorageKeys.DEMO_NOTIFICATIONS : StorageKeys.NOTIFICATIONS;
-    database.write(key, normalized).catch(() => {});
+    
+    if (demoModeEnabled) {
+        database.write(StorageKeys.DEMO_NOTIFICATIONS, normalized).catch(() => {});
+    } else {
+        database.write(StorageKeys.NOTIFICATIONS, normalized).catch(() => {});
+    }
   }, [demoModeEnabled, notifications]);
 
   // Derived: Unread count
@@ -125,62 +121,86 @@ export function NotificationsProvider({ children }) {
     setFilter(filterType);
   }, []);
 
-  const markAsRead = useCallback((notificationId) => {
+  const markAsRead = useCallback(async (notificationId) => {
+    // Optimistic
     setNotifications(prev =>
       prev
         .filter(n => n && typeof n === "object")
         .map(n => n.id === notificationId ? { ...n, read: true } : n)
     );
-  }, []);
 
-  const markAllAsRead = useCallback(() => {
-    setNotifications(prev =>
-      prev.filter(n => n && typeof n === "object").map(n => ({ ...n, read: true }))
-    );
-  }, []);
-
-  const deleteNotification = useCallback((notificationId) => {
-    setNotifications(prev => prev.filter(n => n && typeof n === "object" && n.id !== notificationId));
-  }, []);
-
-  const clearAll = useCallback(() => {
-    setNotifications([]);
-  }, []);
-
-  // Add a new notification (for push/realtime)
-  const addNotification = useCallback((notification) => {
-    const next = normalizeNotification(notification);
-    if (!next) return;
-    setNotifications(prev => {
-      const list = Array.isArray(prev) ? prev.filter(n => n && typeof n === "object") : [];
-      const rest = list.filter(n => String(n?.id ?? "") !== String(next.id));
-      return [next, ...rest];
-    });
-  }, []);
-
-  // Refresh notifications (mock - for pull-to-refresh)
-  const refreshNotifications = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const key = demoModeEnabled ? StorageKeys.DEMO_NOTIFICATIONS : StorageKeys.NOTIFICATIONS;
-      const stored = await database.read(key, []);
-      const normalized = normalizeNotificationsList(stored);
-      if (demoModeEnabled && normalized.length === 0) {
-        const seeded = normalizeNotificationsList(NOTIFICATIONS);
-        setNotifications(seeded);
-        await database.write(key, seeded);
-        return;
-      }
-      setNotifications(normalized);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
+    if (!demoModeEnabled) {
+        try {
+            await notificationsService.markAsRead(notificationId);
+        } catch (error) {
+            console.error("Failed to mark read:", error);
+        }
     }
   }, [demoModeEnabled]);
 
-  // Update notifications from API
+  const markAllAsRead = useCallback(async () => {
+    // Optimistic
+    setNotifications(prev =>
+      prev.filter(n => n && typeof n === "object").map(n => ({ ...n, read: true }))
+    );
+
+    if (!demoModeEnabled) {
+        try {
+            await notificationsService.markAllAsRead();
+        } catch (error) {
+            console.error("Failed to mark all read:", error);
+        }
+    }
+  }, [demoModeEnabled]);
+
+  const deleteNotification = useCallback(async (notificationId) => {
+    // Optimistic
+    setNotifications(prev => prev.filter(n => n && typeof n === "object" && n.id !== notificationId));
+
+    if (!demoModeEnabled) {
+        try {
+            await notificationsService.delete(notificationId);
+        } catch (error) {
+             console.error("Failed to delete notification:", error);
+        }
+    }
+  }, [demoModeEnabled]);
+
+  const clearAll = useCallback(async () => {
+    // Optimistic
+    setNotifications([]);
+
+    if (!demoModeEnabled) {
+        try {
+            await notificationsService.clearAll();
+        } catch (error) {
+             console.error("Failed to clear notifications:", error);
+        }
+    }
+  }, [demoModeEnabled]);
+
+  // Add a new notification
+  const addNotification = useCallback(async (notification) => {
+    const next = normalizeNotification(notification);
+    if (!next) return;
+
+    // Optimistic
+    setNotifications(prev => [next, ...prev]);
+
+    if (!demoModeEnabled) {
+        try {
+            const created = await notificationsService.create(next);
+            setNotifications(prev => prev.map(n => n.id === next.id ? created : n));
+        } catch (error) {
+            console.error("Failed to create notification:", error);
+        }
+    }
+  }, [demoModeEnabled]);
+
+  const refreshNotifications = useCallback(async () => {
+      await loadNotifications();
+  }, [loadNotifications]);
+
   const updateNotifications = useCallback((newNotifications) => {
     setNotifications(newNotifications);
   }, []);

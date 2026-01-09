@@ -19,3 +19,20 @@ export { authService, AuthErrors, createAuthError } from "./authService";
 // Image service
 export { imageService, createImageError } from "./imageService";
 
+// Preferences service
+export { preferencesService } from "./preferencesService";
+
+// Visits service
+export { visitsService } from "./visitsService";
+
+// Notifications service
+export { notificationsService } from "./notificationsService";
+
+// Medical Profile service (Still local)
+export { medicalProfileService } from "./medicalProfileService";
+
+// Emergency Contacts service (Still local)
+export { emergencyContactsService } from "./emergencyContactsService";
+
+// Profile Completion service
+export { profileCompletionService } from "./profileCompletionService";

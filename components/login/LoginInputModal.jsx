@@ -1,5 +1,4 @@
 // components/login/LoginInputModal.jsx
-
 /**
  * components/login/LoginInputModal.jsx
  * Production-ready login modal using new service layer
@@ -192,6 +191,15 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 			return;
 		}
 
+        await handleResendOtpLogin(contact);
+
+		goToStep(LOGIN_STEPS.OTP_VERIFICATION);
+	};
+
+    const handleResendOtpLogin = async (contactValue) => {
+        const contact = contactValue || loginData.contact;
+        if (!contact) return;
+
 		startLoading();
 		const otpResult = await requestOtp(
 			loginData.contactType === "email" ? { email: contact } : { phone: contact }
@@ -204,21 +212,23 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 			return;
 		}
 
-		// DEV: Store mock OTP for display
+		// DEV: Store mock OTP for display (Only if service returns it)
 		if (otpResult.data?.otp) {
 			setMockOtp(otpResult.data.otp);
-		}
+		} else {
+            setMockOtp(null);
+        }
 
-		goToStep(LOGIN_STEPS.OTP_VERIFICATION);
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 		showToast(
 			`Verification code sent to your ${loginData.contactType}`,
 			"success"
 		);
-	};
+    };
 
 	const handleContactSubmit = async (value) => {
 		if (!value) return;
+        
 		startLoading();
 		clearError();
 
@@ -295,7 +305,9 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 				// DEV: Store mock OTP for display
 				if (otpResult.data?.otp) {
 					setMockOtp(otpResult.data.otp);
-				}
+				} else {
+                    setMockOtp(null);
+                }
 
 				nextStep();
 				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -315,7 +327,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 	};
 
 	const handleOTPSubmit = async (otp) => {
-		if (!otp || otp.length !== 6) return;
+		if (!otp || otp.length < 6) return; // Allow 6 or more digits (Supabase default is 6, but configurable)
 
 		updateLoginData({ otp });
 
@@ -712,6 +724,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 										method={loginData.contactType}
 										contact={loginData.contact}
 										onVerified={handleOTPSubmit}
+                                        onResend={() => handleResendOtpLogin(loginData.contact)}
 										loading={loading}
 									/>
 								</View>

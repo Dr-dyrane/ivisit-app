@@ -5,17 +5,13 @@ import { VISITS, VISIT_STATUS, VISIT_FILTERS } from "../data/visits";
 import { database, StorageKeys } from "../database";
 import { normalizeVisit, normalizeVisitsList } from "../utils/domainNormalize";
 import { usePreferences } from "./PreferencesContext";
+import { visitsService } from "../services";
 
 // Create the visits context
 const VisitsContext = createContext();
 
 /**
  * VisitsProvider - Manages visits state
- * 
- * Following EmergencyContext pattern:
- * - Centralized state management
- * - Filter/selection logic
- * - Actions for UI interactions
  */
 export function VisitsProvider({ children }) {
   // Core state
@@ -23,57 +19,70 @@ export function VisitsProvider({ children }) {
   const [selectedVisitId, setSelectedVisitId] = useState(null);
   const [filter, setFilter] = useState("all"); // "all" | "upcoming" | "completed"
   
-  // Loading state for future API integration
+  // Loading state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const { preferences } = usePreferences();
   const demoModeEnabled = preferences?.demoModeEnabled !== false;
 
-  useEffect(() => {
-    let isActive = true;
-    (async () => {
-      setIsLoading(true);
-      try {
-        const key = demoModeEnabled ? StorageKeys.DEMO_VISITS : StorageKeys.VISITS;
+  const loadVisits = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      if (demoModeEnabled) {
+        // DEMO MODE: Load from local storage or seed
+        const key = StorageKeys.DEMO_VISITS;
         const stored = await database.read(key, null);
-        if (!isActive) return;
-        if (Array.isArray(stored)) {
-          const normalized = normalizeVisitsList(stored);
-          setVisits(normalized);
-          if (normalized.length !== stored.length) await database.write(key, normalized);
-          if (demoModeEnabled && normalized.length === 0) {
+        
+        if (Array.isArray(stored) && stored.length > 0) {
+            const normalized = normalizeVisitsList(stored);
+            setVisits(normalized);
+        } else {
+            // Seed demo data
             const seeded = normalizeVisitsList(VISITS);
             setVisits(seeded);
             await database.write(key, seeded);
-          }
-          return;
         }
-        if (demoModeEnabled) {
-          const seeded = normalizeVisitsList(VISITS);
-          setVisits(seeded);
-          await database.write(key, seeded);
-        } else {
-          setVisits([]);
-          await database.write(key, []);
+      } else {
+        // REAL MODE: Load from Supabase
+        // First load from local cache for speed
+        const cached = await database.read(StorageKeys.VISITS, []);
+        if (Array.isArray(cached) && cached.length > 0) {
+             setVisits(normalizeVisitsList(cached));
         }
-      } catch (e) {
-        if (!isActive) return;
-        setVisits(demoModeEnabled ? normalizeVisitsList(VISITS) : []);
-        setError(e?.message ?? "Failed to load visits");
-      } finally {
-        if (isActive) setIsLoading(false);
+
+        // Then fetch from API
+        const remoteVisits = await visitsService.list();
+        const normalized = normalizeVisitsList(remoteVisits);
+        setVisits(normalized);
+        // Update cache
+        await database.write(StorageKeys.VISITS, normalized);
       }
-    })();
-    return () => {
-      isActive = false;
-    };
+    } catch (e) {
+      console.error("Failed to load visits", e);
+      setError(e?.message ?? "Failed to load visits");
+    } finally {
+      setIsLoading(false);
+    }
   }, [demoModeEnabled]);
 
+  // Initial load
+  useEffect(() => {
+    loadVisits();
+  }, [loadVisits]);
+
+  // Sync state to local storage (Only for Demo mode or caching)
+  // For real mode, we update DB in the actions directly.
   useEffect(() => {
     if (!Array.isArray(visits)) return;
     const normalized = normalizeVisitsList(visits);
-    const key = demoModeEnabled ? StorageKeys.DEMO_VISITS : StorageKeys.VISITS;
-    database.write(key, normalized).catch(() => {});
+    
+    if (demoModeEnabled) {
+        database.write(StorageKeys.DEMO_VISITS, normalized).catch(() => {});
+    } else {
+        // We also cache real visits
+        database.write(StorageKeys.VISITS, normalized).catch(() => {});
+    }
   }, [demoModeEnabled, visits]);
 
   // Derived state - selected visit object
@@ -138,45 +147,68 @@ export function VisitsProvider({ children }) {
     setFilter(filterType);
   }, []);
 
-  // Add a new visit (for booking flow)
-  const addVisit = useCallback((newVisit) => {
+  // Add a new visit
+  const addVisit = useCallback(async (newVisit) => {
     if (!newVisit) return;
-    setVisits(prev => {
-      const normalized = normalizeVisit(newVisit) ?? null;
-      if (!normalized) return Array.isArray(prev) ? prev : [];
-      const id = String(normalized.id);
-      const list = Array.isArray(prev) ? prev.filter(v => v && typeof v === "object") : [];
-      const rest = list.filter(v => String(v?.id ?? "") !== id);
-      return [normalized, ...rest];
-    });
-  }, []);
+    const normalized = normalizeVisit(newVisit);
+    if (!normalized) return;
+
+    // Optimistic update
+    setVisits(prev => [normalized, ...prev]);
+
+    if (!demoModeEnabled) {
+        try {
+            const created = await visitsService.create(normalized);
+            // Update with server response (e.g. real ID)
+            setVisits(prev => prev.map(v => v.id === normalized.id ? created : v));
+        } catch (error) {
+            console.error("Failed to create visit:", error);
+            // Revert on error? Or show toast. For now, keep optimistic but warn.
+            setError("Failed to save visit to server");
+        }
+    }
+  }, [demoModeEnabled]);
 
   // Cancel a visit
-  const cancelVisit = useCallback((visitId) => {
+  const cancelVisit = useCallback(async (visitId) => {
     if (!visitId) return;
-    const id = String(visitId);
-    setVisits(prev => {
-      if (!prev || prev.length === 0) return prev;
-      return prev.map(v => 
-        String(v?.id ?? "") === id 
+    
+    // Optimistic update
+    setVisits(prev => prev.map(v => 
+        String(v?.id) === String(visitId) 
           ? { ...v, status: VISIT_STATUS.CANCELLED }
           : v
-      );
-    });
-  }, []);
+      ));
 
-  const completeVisit = useCallback((visitId) => {
+    if (!demoModeEnabled) {
+        try {
+            await visitsService.cancel(visitId);
+        } catch (error) {
+            console.error("Failed to cancel visit:", error);
+            setError("Failed to update visit status");
+        }
+    }
+  }, [demoModeEnabled]);
+
+  const completeVisit = useCallback(async (visitId) => {
     if (!visitId) return;
-    const id = String(visitId);
-    setVisits(prev => {
-      if (!prev || prev.length === 0) return prev;
-      return prev.map(v =>
-        String(v?.id ?? "") === id
+
+    // Optimistic update
+    setVisits(prev => prev.map(v =>
+        String(v?.id) === String(visitId)
           ? { ...v, status: VISIT_STATUS.COMPLETED }
           : v
-      );
-    });
-  }, []);
+      ));
+
+    if (!demoModeEnabled) {
+        try {
+            await visitsService.complete(visitId);
+        } catch (error) {
+            console.error("Failed to complete visit:", error);
+            setError("Failed to update visit status");
+        }
+    }
+  }, [demoModeEnabled]);
 
   // Update visits (for API sync)
   const updateVisits = useCallback((newVisits) => {
@@ -184,27 +216,9 @@ export function VisitsProvider({ children }) {
     setVisits(newVisits);
   }, []);
 
-  // Refresh visits (mock - for pull-to-refresh)
   const refreshVisits = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const key = demoModeEnabled ? StorageKeys.DEMO_VISITS : StorageKeys.VISITS;
-      const stored = await database.read(key, []);
-      const normalized = normalizeVisitsList(stored);
-      if (demoModeEnabled && normalized.length === 0) {
-        const seeded = normalizeVisitsList(VISITS);
-        setVisits(seeded);
-        await database.write(key, seeded);
-        return;
-      }
-      setVisits(normalized);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [demoModeEnabled]);
+      await loadVisits();
+  }, [loadVisits]);
 
   const value = {
     // State

@@ -22,6 +22,11 @@ export default function OTPInputCard({ method, contact, onVerified }) {
 
 	const isComplete = otp.every((digit) => digit !== "");
 
+    // Update OTP length if needed (e.g. from props or config)
+    // Currently hardcoded to 6 as per standard Supabase OTP.
+    // If you receive an 8 digit code, we need to update the state initialization and UI mapping.
+    // For now, let's keep it 6. If the user reports 8, we can change the initial state to 8 empty strings.
+
 	// Timer countdown
 	useEffect(() => {
 		if (timer > 0) {
@@ -106,6 +111,10 @@ export default function OTPInputCard({ method, contact, onVerified }) {
 		setCanResend(false);
 		setOtp(["", "", "", "", "", ""]);
 		inputRefs.current[0]?.focus();
+        // Propagate resend action to parent if needed, or re-trigger request in parent
+        if (props.onResend) {
+             props.onResend();
+        }
 	};
 
 	const colors = {

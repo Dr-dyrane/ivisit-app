@@ -34,7 +34,15 @@ export const AuthProvider = ({ children }) => {
 				}
 			}
 		} catch (error) {
-			console.error("Error syncing user data from API:", error);
+            // Ignore "not logged in" error as it is expected when session expires or token is invalid
+            const isNotLoggedIn = error.message && (
+                error.message.includes("NOT_LOGGED_IN") || 
+                error.code === "NOT_LOGGED_IN"
+            );
+            
+            if (!isNotLoggedIn) {
+			    console.error("Error syncing user data from API:", error);
+            }
 		} finally {
 			setLoading(false);
 		}

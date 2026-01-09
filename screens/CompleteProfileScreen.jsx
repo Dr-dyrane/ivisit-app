@@ -41,6 +41,11 @@ export default function CompleteProfileScreen() {
 		useScrollAwareHeader();
 	const { user, syncUserData, logout } = useAuth();
 
+    // Ensure we have the latest verification status
+    useEffect(() => {
+        syncUserData();
+    }, []);
+
 	const signOutButton = useCallback(
 		() => (
 			<Pressable

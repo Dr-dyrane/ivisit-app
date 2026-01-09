@@ -180,6 +180,62 @@ const useSignUp = (options = {}) => {
 	);
 
 	/**
+	 * Complete registration for an already authenticated user (e.g. after OTP)
+	 * @param {Object} userData - Registration data including optional password
+	 */
+	const completeRegistration = useCallback(
+		async (userData) => {
+			startLoading();
+			clearError();
+
+			try {
+				// 1. Update Profile
+				const profileData = {
+					username: userData.username,
+					firstName: userData.firstName,
+					lastName: userData.lastName,
+					fullName: userData.fullName,
+					phone: userData.phone,
+					imageUri: userData.imageUri,
+				};
+
+				const updateResult = await authService.updateUser(profileData);
+				if (!updateResult.data) { // authService.updateUser returns { data: ... } on success
+                    // If it throws it goes to catch, but if it returns generic error structure?
+                    // authService methods throw on error usually.
+				}
+
+				// 2. Set Password if provided
+				if (userData.password) {
+					await authService.setPassword({ password: userData.password });
+				}
+
+				// 3. Get fresh user data to return
+				const { data: currentUser } = await authService.getCurrentUser();
+
+				// 4. Update AuthContext
+				const loginSuccess = await authLogin({
+					...currentUser,
+				});
+
+				if (!loginSuccess) {
+					setRegistrationError("Failed to save session");
+					return { success: false, error: "Failed to save session" };
+				}
+
+				return { success: true, data: currentUser };
+			} catch (error) {
+				const errorMessage = error?.message || "Failed to complete registration";
+				setRegistrationError(errorMessage);
+				return { success: false, error: errorMessage };
+			} finally {
+				stopLoading();
+			}
+		},
+		[authLogin, startLoading, stopLoading, setRegistrationError, clearError]
+	);
+
+	/**
 	 * Legacy signUp function for backward compatibility
 	 * @param {Object} credentials - Registration data
 	 */
@@ -197,6 +253,7 @@ const useSignUp = (options = {}) => {
 	return {
 		// New API
 		signUpUser,
+        completeRegistration,
 		requestRegistrationOtp,
 		verifyRegistrationOtp,
 		socialSignUp,
