@@ -11,6 +11,7 @@ import { useVisits } from "../../contexts/VisitsContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
+import { navigateToMedicalProfile, navigateToProfile, navigateToVisits } from "../../utils/navigationHelpers";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -74,13 +75,13 @@ export default function MiniProfileModal({ visible, onClose }) {
 	const handleAvatarPress = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 		handleDismiss();
-		setTimeout(() => router.push("/(user)/(stacks)/profile"), 300);
+		setTimeout(() => navigateToProfile({ router }), 300);
 	};
 
 	const handleVisitsPress = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 		handleDismiss();
-		setTimeout(() => router.push("/(user)/(tabs)/visits"), 300);
+		setTimeout(() => navigateToVisits({ router }), 300);
 	};
 
 	const totalVisits = visitCounts?.all || 0;
@@ -88,7 +89,7 @@ export default function MiniProfileModal({ visible, onClose }) {
 	const handleMedicalPress = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 		handleDismiss();
-		setTimeout(() => router.push("/(user)/(stacks)/medical-profile"), 300);
+		setTimeout(() => navigateToMedicalProfile({ router }), 300);
 	};
 
 	return (

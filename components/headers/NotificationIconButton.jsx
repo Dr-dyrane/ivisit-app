@@ -4,11 +4,12 @@
 import { useRef, useEffect } from "react";
 import { View, TouchableOpacity, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useNotifications } from "../../contexts/NotificationsContext";
 import { COLORS } from "../../constants/colors";
+import { ROUTES, navigateToNotifications } from "../../utils/navigationHelpers";
 
 /**
  * NotificationIconButton - A modular notification icon with badge and haptic feedback
@@ -22,6 +23,7 @@ import { COLORS } from "../../constants/colors";
  */
 export default function NotificationIconButton() {
 	const router = useRouter();
+	const pathname = usePathname();
 	const { isDarkMode } = useTheme();
 	const { unreadCount } = useNotifications();
 	const pingAnim = useRef(new Animated.Value(1)).current;
@@ -51,7 +53,8 @@ export default function NotificationIconButton() {
 	const handlePress = () => {
 		// Add haptic feedback (matching profile avatar behavior)
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-		router.push("/(user)/(stacks)/notifications");
+		if (typeof pathname === "string" && pathname.startsWith(ROUTES.STACK_NOTIFICATIONS)) return;
+		navigateToNotifications({ router });
 	};
 
 	// Theme-aware colors
@@ -108,4 +111,3 @@ export default function NotificationIconButton() {
 		</TouchableOpacity>
 	);
 }
-

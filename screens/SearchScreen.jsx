@@ -11,6 +11,7 @@ import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
+import { STACK_TOP_PADDING } from "../constants/layout";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import EmergencySearchBar from "../components/emergency/EmergencySearchBar";
 import { useSearch } from "../contexts/SearchContext";
@@ -21,6 +22,12 @@ import { useEmergencyUI } from "../contexts/EmergencyUIContext";
 import { useEmergency, EmergencyMode } from "../contexts/EmergencyContext";
 import SettingsIconButton from "../components/headers/SettingsIconButton";
 import { NOTIFICATION_TYPES } from "../data/notifications";
+import {
+	navigateToNotifications,
+	navigateToSOS,
+	navigateToVisitDetails,
+	navigateToVisits,
+} from "../utils/navigationHelpers";
 
 export default function SearchScreen() {
 	const router = useRouter();
@@ -71,7 +78,7 @@ export default function SearchScreen() {
 	};
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
-	const topPadding = 16;
+	const topPadding = STACK_TOP_PADDING;
 	const bottomPadding = tabBarHeight + 20;
 
 	const q = useMemo(() => (typeof query === "string" ? query.trim().toLowerCase() : ""), [query]);
@@ -95,22 +102,25 @@ export default function SearchScreen() {
 			const name = typeof hospitalName === "string" ? hospitalName : "";
 			commitQuery(name);
 			setEmergencySearchQuery(name);
-			setMode(isBedQuery ? EmergencyMode.BOOKING : EmergencyMode.EMERGENCY);
-			router.push("/(user)/(tabs)");
+			navigateToSOS({
+				router,
+				setEmergencyMode: setMode,
+				mode: isBedQuery ? EmergencyMode.BOOKING : EmergencyMode.EMERGENCY,
+			});
 		},
 		[commitQuery, isBedQuery, router, setEmergencySearchQuery, setMode]
 	);
 
 	const openNotificationsFiltered = useCallback(
 		(filter) => {
-			router.push({ pathname: "/(user)/(stacks)/notifications", params: { filter } });
+			navigateToNotifications({ router, filter, method: "replace" });
 		},
 		[router]
 	);
 
 	const openVisitsFiltered = useCallback(
 		(filter) => {
-			router.push({ pathname: "/(user)/(tabs)/visits", params: { filter } });
+			navigateToVisits({ router, filter, method: "replace" });
 		},
 		[router]
 	);
@@ -127,8 +137,8 @@ export default function SearchScreen() {
 				subtitle: "Open Visits filtered to upcoming",
 				icon: "calendar-outline",
 				score: 140,
-				onPress: () => openVisitsFiltered("upcoming"),
-			});
+					onPress: () => openVisitsFiltered("upcoming"),
+				});
 		}
 
 		if (q === "completed" || q.includes("completed")) {
@@ -138,8 +148,8 @@ export default function SearchScreen() {
 				subtitle: "Open Visits filtered to completed",
 				icon: "checkmark-circle-outline",
 				score: 140,
-				onPress: () => openVisitsFiltered("completed"),
-			});
+					onPress: () => openVisitsFiltered("completed"),
+				});
 		}
 
 		if (q.includes("notification")) {
@@ -149,8 +159,8 @@ export default function SearchScreen() {
 				subtitle: "Open notifications inbox",
 				icon: "notifications-outline",
 				score: 120,
-				onPress: () => openNotificationsFiltered("all"),
-			});
+					onPress: () => openNotificationsFiltered("all"),
+				});
 		}
 
 		if (Array.isArray(visits)) {
@@ -177,7 +187,7 @@ export default function SearchScreen() {
 					subtitle: [v?.specialty, v?.date, v?.time].filter(Boolean).join(" • "),
 					icon: "calendar-outline",
 					score,
-					onPress: () => router.push(`/(user)/(stacks)/visit/${id}`),
+					onPress: () => navigateToVisitDetails({ router, visitId: id, method: "replace" }),
 				});
 			}
 		}
@@ -234,16 +244,19 @@ export default function SearchScreen() {
 									? actionData.appointmentId
 									: null;
 						if (actionType === "track") {
-							setMode(EmergencyMode.EMERGENCY);
-							router.push("/(user)/(tabs)");
+							navigateToSOS({
+								router,
+								setEmergencyMode: setMode,
+								mode: EmergencyMode.EMERGENCY,
+							});
 							return;
 						}
 						if (actionType === "view_summary" && visitId) {
-							router.push(`/(user)/(stacks)/visit/${visitId}`);
+							navigateToVisitDetails({ router, visitId, method: "replace" });
 							return;
 						}
 						if (actionType === "view_appointment" && visitId) {
-							router.push(`/(user)/(stacks)/visit/${visitId}`);
+							navigateToVisitDetails({ router, visitId, method: "replace" });
 							return;
 						}
 						openNotificationsFiltered(defaultFilter);

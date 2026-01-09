@@ -21,11 +21,19 @@ import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useEmergency, EmergencyMode } from "../contexts/EmergencyContext";
 import { COLORS } from "../constants/colors";
+import { STACK_TOP_PADDING } from "../constants/layout";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NotificationCard from "../components/notifications/NotificationCard";
 import NotificationFilters from "../components/notifications/NotificationFilters";
 import * as Haptics from "expo-haptics";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import {
+	navigateToMore,
+	navigateToNotifications,
+	navigateToSOS,
+	navigateToVisitDetails,
+	navigateToVisits,
+} from "../utils/navigationHelpers";
 
 const NotificationsScreen = () => {
 	const router = useRouter();
@@ -134,35 +142,38 @@ const NotificationsScreen = () => {
 						: null;
 
 			if (actionType === "track") {
-				setMode(EmergencyMode.EMERGENCY);
-				router.push("/(user)/(tabs)");
+				navigateToSOS({
+					router,
+					setEmergencyMode: setMode,
+					mode: EmergencyMode.EMERGENCY,
+				});
 				return;
 			}
 
 			if (actionType === "view_appointment") {
 				if (visitId) {
-					router.push(`/(user)/(stacks)/visit/${visitId}`);
+					navigateToVisitDetails({ router, visitId });
 					return;
 				}
-				router.push({ pathname: "/(user)/(tabs)/visits", params: { filter: "upcoming" } });
+				navigateToVisits({ router, filter: "upcoming" });
 				return;
 			}
 
 			if (actionType === "view_summary") {
 				if (visitId) {
-					router.push(`/(user)/(stacks)/visit/${visitId}`);
+					navigateToVisitDetails({ router, visitId });
 					return;
 				}
-				router.push("/(user)/(tabs)/visits");
+				navigateToVisits({ router });
 				return;
 			}
 
 			if (actionType === "upgrade") {
-				router.push("/(user)/(tabs)/more");
+				navigateToMore({ router });
 				return;
 			}
 
-			router.push("/(user)/(stacks)/notifications");
+			navigateToNotifications({ router });
 		},
 		[router, setMode]
 	);
@@ -186,7 +197,7 @@ const NotificationsScreen = () => {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
-	const topPadding = 16;
+	const topPadding = STACK_TOP_PADDING;
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>

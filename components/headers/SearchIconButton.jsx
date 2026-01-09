@@ -1,12 +1,14 @@
 import { TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
+import { ROUTES } from "../../utils/navigationHelpers";
 
 export default function SearchIconButton() {
 	const router = useRouter();
+	const pathname = usePathname();
 	const { isDarkMode } = useTheme();
 
 	const iconColor = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted;
@@ -15,7 +17,8 @@ export default function SearchIconButton() {
 		<TouchableOpacity
 			onPress={() => {
 				Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-				router.push("/(user)/(stacks)/search");
+				if (pathname === ROUTES.STACK_SEARCH) return;
+				router.push(ROUTES.STACK_SEARCH);
 			}}
 			hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 		>
@@ -23,4 +26,3 @@ export default function SearchIconButton() {
 		</TouchableOpacity>
 	);
 }
-

@@ -19,6 +19,7 @@ import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
+import { STACK_TOP_PADDING } from "../constants/layout";
 import ProfileField from "../components/form/ProfileField";
 import { updateUserAPI } from "../api/auth";
 import { useAuth } from "../contexts/AuthContext";
@@ -107,7 +108,7 @@ export default function CompleteProfileScreen() {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
-	const topPadding = 16;
+	const topPadding = STACK_TOP_PADDING;
 
 	const normalizedUsername = useMemo(() => {
 		const v = typeof username === "string" ? username : "";

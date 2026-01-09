@@ -20,6 +20,7 @@ import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
+import { STACK_TOP_PADDING } from "../constants/layout";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import { useVisits } from "../contexts/VisitsContext";
 
@@ -78,7 +79,7 @@ export default function VisitDetailsScreen() {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
-	const topPadding = 16;
+	const topPadding = STACK_TOP_PADDING;
 
 	const statusColor = useMemo(() => {
 		const s = typeof visit?.status === "string" ? visit.status : "";
