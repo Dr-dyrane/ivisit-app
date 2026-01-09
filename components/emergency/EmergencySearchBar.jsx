@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, Platform } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, Platform, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
 	useAnimatedStyle,
@@ -40,6 +40,7 @@ export default function EmergencySearchBar({
 	onVoicePress,
 	placeholder = "Search hospitals, specialties...",
 	showSuggestions = true,
+	suggestionsRightBleed = 0,
 	style,
 }) {
 	const { isDarkMode } = useTheme();
@@ -99,7 +100,14 @@ export default function EmergencySearchBar({
 		};
 	});
 
-	const showSuggestionsDropdown = isFocused && showSuggestions && value.length === 0;
+	const normalizedValue = typeof value === "string" ? value.trim().toLowerCase() : "";
+	const suggestedItems =
+		normalizedValue.length > 0
+			? SUGGESTED_SEARCHES.filter((s) =>
+					String(s?.text ?? "").toLowerCase().includes(normalizedValue)
+				)
+			: SUGGESTED_SEARCHES;
+	const showSuggestionsDropdown = isFocused && showSuggestions && suggestedItems.length > 0;
 
 	return (
 		<View style={[styles.wrapper, style]}>
@@ -195,6 +203,9 @@ export default function EmergencySearchBar({
 						styles.suggestionsContainer,
 						{
 							backgroundColor,
+							marginRight: Number.isFinite(suggestionsRightBleed)
+								? -suggestionsRightBleed
+								: 0,
 							...Platform.select({
 								ios: {
 									shadowColor: "#000",
@@ -215,10 +226,15 @@ export default function EmergencySearchBar({
 					>
 						Suggested
 					</Text>
-					<View style={styles.suggestionsList}>
-						{SUGGESTED_SEARCHES.map((item, index) => (
+					<ScrollView
+						horizontal
+						showsHorizontalScrollIndicator={false}
+						contentContainerStyle={styles.suggestionsList}
+						keyboardShouldPersistTaps="handled"
+					>
+						{suggestedItems.map((item, index) => (
 							<Pressable
-								key={index}
+								key={`${item.text}_${index}`}
 								onPress={() => handleSuggestionPress(item.text)}
 								style={({ pressed }) => [
 									styles.suggestionChip,
@@ -236,17 +252,12 @@ export default function EmergencySearchBar({
 									color={COLORS.brandPrimary}
 									style={{ marginRight: 6 }}
 								/>
-								<Text
-									style={[
-										styles.suggestionText,
-										{ color: textColor },
-									]}
-								>
+								<Text style={[styles.suggestionText, { color: textColor }]}>
 									{item.text}
 								</Text>
 							</Pressable>
 						))}
-					</View>
+					</ScrollView>
 				</Animated.View>
 			)}
 		</View>
@@ -297,8 +308,8 @@ const styles = StyleSheet.create({
 	},
 	suggestionsList: {
 		flexDirection: "row",
-		flexWrap: "wrap",
 		gap: 8,
+		paddingRight: 8,
 	},
 	suggestionChip: {
 		flexDirection: "row",
@@ -312,4 +323,3 @@ const styles = StyleSheet.create({
 		fontWeight: "600",
 	},
 });
-

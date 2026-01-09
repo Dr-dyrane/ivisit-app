@@ -12,7 +12,7 @@ import {
 	ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -49,6 +49,8 @@ const VisitsScreen = () => {
 		setFilterType,
 		refreshVisits,
 	} = useVisits();
+
+	const { filter: filterParam } = useLocalSearchParams();
 
 	// Animations
 	const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -88,19 +90,30 @@ const VisitsScreen = () => {
 		useCallback(() => {
 			resetTabBar();
 			resetHeader();
+			const nextFilter =
+				typeof filterParam === "string"
+					? filterParam
+					: Array.isArray(filterParam)
+						? filterParam[0]
+						: null;
+			if (nextFilter && ["all", "upcoming", "completed", "cancelled"].includes(nextFilter)) {
+				setFilterType(nextFilter);
+			}
 			setHeaderState({
 				title: "Your Visits",
 				subtitle: "APPOINTMENTS",
 				icon: <Ionicons name="calendar" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent,
-				rightComponent: null,
+			rightComponent: null,
 			});
 		}, [
 			resetTabBar,
 			resetHeader,
 			setHeaderState,
 			leftComponent,
+			filterParam,
+			setFilterType,
 		])
 	);
 

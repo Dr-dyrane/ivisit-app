@@ -18,6 +18,9 @@ import { useVisits } from "../contexts/VisitsContext";
 import { useNotifications } from "../contexts/NotificationsContext";
 import { HOSPITALS } from "../data/hospitals";
 import { useEmergencyUI } from "../contexts/EmergencyUIContext";
+import { useEmergency, EmergencyMode } from "../contexts/EmergencyContext";
+import SettingsIconButton from "../components/headers/SettingsIconButton";
+import { NOTIFICATION_TYPES } from "../data/notifications";
 
 export default function SearchScreen() {
 	const router = useRouter();
@@ -27,6 +30,7 @@ export default function SearchScreen() {
 	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
 	const { updateSearch: setEmergencySearchQuery } = useEmergencyUI();
+	const { setMode } = useEmergency();
 	const { query, setSearchQuery, recentQueries, commitQuery, clearHistory } = useSearch();
 	const { visits } = useVisits();
 	const { notifications } = useNotifications();
@@ -51,7 +55,7 @@ export default function SearchScreen() {
 				icon: <Ionicons name="search" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent: backButton(),
-				rightComponent: false,
+				rightComponent: <SettingsIconButton />,
 			});
 		}, [backButton, resetHeader, resetTabBar, setHeaderState])
 	);
@@ -66,18 +70,94 @@ export default function SearchScreen() {
 		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
 	};
 
-	const headerHeight = 70;
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
-	const topPadding = headerHeight + insets.top;
+	const topPadding = 16;
 	const bottomPadding = tabBarHeight + 20;
 
 	const q = useMemo(() => (typeof query === "string" ? query.trim().toLowerCase() : ""), [query]);
 
-	const visitMatches = useMemo(() => {
+	const isBedQuery = useMemo(() => {
+		return /\b(bed|icu|ward|admission|reserve|reservation)\b/i.test(query ?? "");
+	}, [query]);
+
+	const scoreText = useCallback((needle, haystack) => {
+		const n = typeof needle === "string" ? needle.trim().toLowerCase() : "";
+		const h = typeof haystack === "string" ? haystack.trim().toLowerCase() : "";
+		if (!n || !h) return 0;
+		if (h === n) return 120;
+		if (h.startsWith(n)) return 90;
+		if (h.includes(n)) return 60;
+		return 0;
+	}, []);
+
+	const openHospitalInSOS = useCallback(
+		(hospitalName) => {
+			const name = typeof hospitalName === "string" ? hospitalName : "";
+			commitQuery(name);
+			setEmergencySearchQuery(name);
+			setMode(isBedQuery ? EmergencyMode.BOOKING : EmergencyMode.EMERGENCY);
+			router.push("/(user)/(tabs)");
+		},
+		[commitQuery, isBedQuery, router, setEmergencySearchQuery, setMode]
+	);
+
+	const openNotificationsFiltered = useCallback(
+		(filter) => {
+			router.push({ pathname: "/(user)/(stacks)/notifications", params: { filter } });
+		},
+		[router]
+	);
+
+	const openVisitsFiltered = useCallback(
+		(filter) => {
+			router.push({ pathname: "/(user)/(tabs)/visits", params: { filter } });
+		},
+		[router]
+	);
+
+	const rankedResults = useMemo(() => {
 		if (!q) return [];
-		if (!Array.isArray(visits)) return [];
-		return visits
-			.filter((v) => {
+
+		const results = [];
+
+		if (q === "upcoming" || q.includes("upcoming")) {
+			results.push({
+				key: "visits_upcoming",
+				title: "Upcoming visits",
+				subtitle: "Open Visits filtered to upcoming",
+				icon: "calendar-outline",
+				score: 140,
+				onPress: () => openVisitsFiltered("upcoming"),
+			});
+		}
+
+		if (q === "completed" || q.includes("completed")) {
+			results.push({
+				key: "visits_completed",
+				title: "Completed visits",
+				subtitle: "Open Visits filtered to completed",
+				icon: "checkmark-circle-outline",
+				score: 140,
+				onPress: () => openVisitsFiltered("completed"),
+			});
+		}
+
+		if (q.includes("notification")) {
+			results.push({
+				key: "notifications_all",
+				title: "Notifications",
+				subtitle: "Open notifications inbox",
+				icon: "notifications-outline",
+				score: 120,
+				onPress: () => openNotificationsFiltered("all"),
+			});
+		}
+
+		if (Array.isArray(visits)) {
+			for (const v of visits) {
+				const id = v?.id ? String(v.id) : null;
+				if (!id) continue;
+				const title = String(v?.hospital ?? "Visit");
 				const hay = [
 					v?.hospital,
 					v?.doctor,
@@ -88,45 +168,107 @@ export default function SearchScreen() {
 					v?.time,
 				]
 					.filter(Boolean)
-					.join(" ")
-					.toLowerCase();
-				return hay.includes(q);
-			})
-			.slice(0, 8);
-	}, [q, visits]);
+					.join(" ");
+				const score = scoreText(q, title) + scoreText(q, hay) + 30;
+				if (score <= 0) continue;
+				results.push({
+					key: `visit_${id}`,
+					title,
+					subtitle: [v?.specialty, v?.date, v?.time].filter(Boolean).join(" • "),
+					icon: "calendar-outline",
+					score,
+					onPress: () => router.push(`/(user)/(stacks)/visit/${id}`),
+				});
+			}
+		}
 
-	const hospitalMatches = useMemo(() => {
-		if (!q) return [];
-		const base = Array.isArray(HOSPITALS) ? HOSPITALS : [];
-		return base
-			.filter((h) => {
-				const name = String(h?.name ?? "").toLowerCase();
-				const address = String(h?.address ?? "").toLowerCase();
-				const specialties = Array.isArray(h?.specialties) ? h.specialties.join(" ").toLowerCase() : "";
-				return name.includes(q) || address.includes(q) || specialties.includes(q);
-			})
-			.slice(0, 8);
-	}, [q]);
+		const hospitals = Array.isArray(HOSPITALS) ? HOSPITALS : [];
+		for (const h of hospitals) {
+			const id = h?.id ? String(h.id) : null;
+			if (!id) continue;
+			const name = String(h?.name ?? "");
+			const specialties = Array.isArray(h?.specialties) ? h.specialties.join(" ") : "";
+			const hay = [name, h?.address, specialties].filter(Boolean).join(" ");
+			const score = scoreText(q, name) + scoreText(q, hay) + 40;
+			if (score <= 0) continue;
+			results.push({
+				key: `hospital_${id}`,
+				title: name || "Hospital",
+				subtitle: [h?.distance, h?.eta].filter(Boolean).join(" • "),
+				icon: "business-outline",
+				score,
+				onPress: () => openHospitalInSOS(name),
+			});
+		}
 
-	const notificationMatches = useMemo(() => {
-		if (!q) return [];
-		if (!Array.isArray(notifications)) return [];
-		return notifications
-			.filter((n) => {
-				const hay = [n?.title, n?.message, n?.type].filter(Boolean).join(" ").toLowerCase();
-				return hay.includes(q);
-			})
-			.slice(0, 6);
-	}, [notifications, q]);
+		if (Array.isArray(notifications)) {
+			for (const n of notifications) {
+				const id = n?.id ? String(n.id) : null;
+				if (!id) continue;
+				const title = String(n?.title ?? "Notification");
+				const hay = [n?.title, n?.message, n?.type].filter(Boolean).join(" ");
+				const score = scoreText(q, title) + scoreText(q, hay) + 20;
+				if (score <= 0) continue;
 
-	const openHospitalInSOS = useCallback(
-		(hospitalName) => {
-			const name = typeof hospitalName === "string" ? hospitalName : "";
-			setEmergencySearchQuery(name);
-			router.push("/(user)/(tabs)");
-		},
-		[router, setEmergencySearchQuery]
-	);
+				const type = n?.type ?? null;
+				const defaultFilter =
+					type === NOTIFICATION_TYPES.EMERGENCY
+						? "emergency"
+						: type === NOTIFICATION_TYPES.APPOINTMENT || type === NOTIFICATION_TYPES.VISIT
+							? "appointments"
+							: "all";
+
+				results.push({
+					key: `notification_${id}`,
+					title,
+					subtitle: String(n?.message ?? ""),
+					icon: "notifications-outline",
+					score,
+					onPress: () => {
+						const actionType = n?.actionType ?? null;
+						const actionData = n?.actionData ?? {};
+						const visitId =
+							typeof actionData?.visitId === "string"
+								? actionData.visitId
+								: typeof actionData?.appointmentId === "string"
+									? actionData.appointmentId
+									: null;
+						if (actionType === "track") {
+							setMode(EmergencyMode.EMERGENCY);
+							router.push("/(user)/(tabs)");
+							return;
+						}
+						if (actionType === "view_summary" && visitId) {
+							router.push(`/(user)/(stacks)/visit/${visitId}`);
+							return;
+						}
+						if (actionType === "view_appointment" && visitId) {
+							router.push(`/(user)/(stacks)/visit/${visitId}`);
+							return;
+						}
+						openNotificationsFiltered(defaultFilter);
+					},
+				});
+			}
+		}
+
+		return results
+			.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+			.slice(0, 18);
+	}, [
+		HOSPITALS,
+		commitQuery,
+		isBedQuery,
+		notifications,
+		openHospitalInSOS,
+		openNotificationsFiltered,
+		openVisitsFiltered,
+		q,
+		router,
+		scoreText,
+		setMode,
+		visits,
+	]);
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
@@ -153,49 +295,47 @@ export default function SearchScreen() {
 
 				<View style={[styles.card, { backgroundColor: colors.card }]}>
 					<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-						Quick Actions
+						Top Results
 					</Text>
-					<View style={styles.quickRow}>
-						<Pressable
-							onPress={() => router.push("/(user)/(tabs)")}
-							style={({ pressed }) => [
-								styles.quickButton,
-								{
-									backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)",
-									opacity: pressed ? 0.9 : 1,
-								},
-							]}
-						>
-							<Ionicons name="medical" size={18} color={COLORS.brandPrimary} />
-							<Text style={[styles.quickText, { color: colors.text }]}>SOS</Text>
-						</Pressable>
-						<Pressable
-							onPress={() => router.push("/(user)/(tabs)/visits")}
-							style={({ pressed }) => [
-								styles.quickButton,
-								{
-									backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)",
-									opacity: pressed ? 0.9 : 1,
-								},
-							]}
-						>
-							<Ionicons name="calendar" size={18} color={COLORS.brandPrimary} />
-							<Text style={[styles.quickText, { color: colors.text }]}>Visits</Text>
-						</Pressable>
-						<Pressable
-							onPress={() => router.push("/(user)/(stacks)/notifications")}
-							style={({ pressed }) => [
-								styles.quickButton,
-								{
-									backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)",
-									opacity: pressed ? 0.9 : 1,
-								},
-							]}
-						>
-							<Ionicons name="notifications" size={18} color={COLORS.brandPrimary} />
-							<Text style={[styles.quickText, { color: colors.text }]}>Notifications</Text>
-						</Pressable>
-					</View>
+					{rankedResults.length > 0 ? (
+						<View style={{ gap: 10 }}>
+							{rankedResults.map((item) => (
+								<Pressable
+									key={item.key}
+									onPress={() => {
+										commitQuery(query);
+										item.onPress?.();
+									}}
+									style={({ pressed }) => [
+										styles.row,
+										{
+											backgroundColor: isDarkMode
+												? "rgba(255,255,255,0.06)"
+												: "rgba(15,23,42,0.06)",
+											opacity: pressed ? 0.9 : 1,
+										},
+									]}
+								>
+									<Ionicons name={item.icon} size={16} color={COLORS.brandPrimary} />
+									<View style={{ flex: 1 }}>
+										<Text style={{ color: colors.text, fontWeight: "900" }} numberOfLines={1}>
+											{item.title}
+										</Text>
+										{item.subtitle ? (
+											<Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: 12 }} numberOfLines={1}>
+												{item.subtitle}
+											</Text>
+										) : null}
+									</View>
+									<Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+								</Pressable>
+							))}
+						</View>
+					) : (
+						<Text style={{ color: colors.textMuted, fontWeight: "600" }}>
+							No results yet.
+						</Text>
+					)}
 				</View>
 
 				<View style={[styles.card, { backgroundColor: colors.card }]}>
@@ -242,118 +382,6 @@ export default function SearchScreen() {
 						</Text>
 					)}
 				</View>
-
-				{q ? (
-					<>
-						<View style={[styles.card, { backgroundColor: colors.card }]}>
-							<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Visits</Text>
-							{visitMatches.length > 0 ? (
-								<View style={{ gap: 10 }}>
-									{visitMatches.map((v) => (
-										<Pressable
-											key={String(v?.id)}
-											onPress={() => router.push(`/(user)/(stacks)/visit/${String(v?.id)}`)}
-											style={({ pressed }) => [
-												styles.row,
-												{
-													backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)",
-													opacity: pressed ? 0.9 : 1,
-												},
-											]}
-										>
-											<Ionicons name="calendar-outline" size={16} color={COLORS.brandPrimary} />
-											<View style={{ flex: 1 }}>
-												<Text style={{ color: colors.text, fontWeight: "800" }} numberOfLines={1}>
-													{v?.hospital ?? "Visit"}
-												</Text>
-												<Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: 12 }} numberOfLines={1}>
-													{[v?.specialty, v?.date, v?.time].filter(Boolean).join(" • ")}
-												</Text>
-											</View>
-											<Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-										</Pressable>
-									))}
-								</View>
-							) : (
-								<Text style={{ color: colors.textMuted, fontWeight: "600" }}>
-									No matching visits.
-								</Text>
-							)}
-						</View>
-
-						<View style={[styles.card, { backgroundColor: colors.card }]}>
-							<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Hospitals</Text>
-							{hospitalMatches.length > 0 ? (
-								<View style={{ gap: 10 }}>
-									{hospitalMatches.map((h) => (
-										<Pressable
-											key={String(h?.id)}
-											onPress={() => openHospitalInSOS(h?.name)}
-											style={({ pressed }) => [
-												styles.row,
-												{
-													backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)",
-													opacity: pressed ? 0.9 : 1,
-												},
-											]}
-										>
-											<Ionicons name="business-outline" size={16} color={COLORS.brandPrimary} />
-											<View style={{ flex: 1 }}>
-												<Text style={{ color: colors.text, fontWeight: "800" }} numberOfLines={1}>
-													{h?.name ?? "Hospital"}
-												</Text>
-												<Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: 12 }} numberOfLines={1}>
-													{[h?.distance, h?.eta].filter(Boolean).join(" • ")}
-												</Text>
-											</View>
-											<Ionicons name="arrow-forward" size={16} color={colors.textMuted} />
-										</Pressable>
-									))}
-								</View>
-							) : (
-								<Text style={{ color: colors.textMuted, fontWeight: "600" }}>
-									No matching hospitals.
-								</Text>
-							)}
-						</View>
-
-						<View style={[styles.card, { backgroundColor: colors.card }]}>
-							<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Notifications</Text>
-							{notificationMatches.length > 0 ? (
-								<View style={{ gap: 10 }}>
-									{notificationMatches.map((n) => (
-										<Pressable
-											key={String(n?.id)}
-											onPress={() => router.push("/(user)/(stacks)/notifications")}
-											style={({ pressed }) => [
-												styles.row,
-												{
-													backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)",
-													opacity: pressed ? 0.9 : 1,
-												},
-											]}
-										>
-											<Ionicons name="notifications-outline" size={16} color={COLORS.brandPrimary} />
-											<View style={{ flex: 1 }}>
-												<Text style={{ color: colors.text, fontWeight: "800" }} numberOfLines={1}>
-													{n?.title ?? "Notification"}
-												</Text>
-												<Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: 12 }} numberOfLines={1}>
-													{n?.message ?? ""}
-												</Text>
-											</View>
-											<Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-										</Pressable>
-									))}
-								</View>
-							) : (
-								<Text style={{ color: colors.textMuted, fontWeight: "600" }}>
-									No matching notifications.
-								</Text>
-							)}
-						</View>
-					</>
-				) : null}
 			</ScrollView>
 		</LinearGradient>
 	);
@@ -390,4 +418,3 @@ const styles = StyleSheet.create({
 	},
 	sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
 });
-

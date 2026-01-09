@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useVisits } from "../../contexts/VisitsContext";
-import { useToast } from "../../contexts/ToastContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -26,7 +25,6 @@ export default function MiniProfileModal({ visible, onClose }) {
 	const { isDarkMode } = useTheme();
 	const { user } = useAuth();
 	const { visitCounts } = useVisits();
-	const { showToast } = useToast();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 
@@ -85,7 +83,13 @@ export default function MiniProfileModal({ visible, onClose }) {
 		setTimeout(() => router.push("/(user)/(tabs)/visits"), 300);
 	};
 
-	const totalVisits = (visitCounts?.upcoming || 0) + (visitCounts?.completed || 0);
+	const totalVisits = visitCounts?.all || 0;
+
+	const handleMedicalPress = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		handleDismiss();
+		setTimeout(() => router.push("/(user)/(stacks)/medical-profile"), 300);
+	};
 
 	return (
 		<Modal visible={visible} transparent animationType="none" onRequestClose={handleDismiss}>
@@ -193,7 +197,7 @@ export default function MiniProfileModal({ visible, onClose }) {
 										<Text style={{ fontSize: 22, fontWeight: "900", color: textColor }}>
 											{totalVisits}
 										</Text>
-										<Text style={{ fontSize: 11, color: textMuted }}>Total</Text>
+										<Text style={{ fontSize: 11, color: textMuted }}>All</Text>
 									</View>
 								</View>
 							</View>
@@ -201,12 +205,17 @@ export default function MiniProfileModal({ visible, onClose }) {
 
 						{/* Medical History */}
 						<View style={{ backgroundColor: listItemBg, borderRadius: 20, padding: 16 }}>
-							<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
+							<Pressable
+								onPress={handleMedicalPress}
+								style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}
+							>
 								<Ionicons name="medkit" size={18} color={COLORS.brandPrimary} />
 								<Text style={{ marginLeft: 8, fontSize: 14, fontWeight: "700", color: textColor }}>
 									Medical History
 								</Text>
-							</View>
+								<View style={{ flex: 1 }} />
+								<Ionicons name="chevron-forward" size={16} color={textMuted} />
+							</Pressable>
 
 							{[
 								{ label: "Allergies", icon: "warning-outline" },
@@ -216,10 +225,7 @@ export default function MiniProfileModal({ visible, onClose }) {
 							].map((item, index) => (
 								<Pressable
 									key={item.label}
-									onPress={() => {
-										Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-										showToast(`${item.label} coming soon`, "info");
-									}}
+									onPress={handleMedicalPress}
 									style={{
 										flexDirection: "row",
 										alignItems: "center",
@@ -253,4 +259,3 @@ export default function MiniProfileModal({ visible, onClose }) {
 		</Modal>
 	);
 }
-

@@ -107,8 +107,7 @@ export default function CompleteProfileScreen() {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
-	const headerHeight = 70;
-	const topPadding = headerHeight + insets.top;
+	const topPadding = 16;
 
 	const normalizedUsername = useMemo(() => {
 		const v = typeof username === "string" ? username : "";

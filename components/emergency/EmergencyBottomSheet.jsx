@@ -189,13 +189,7 @@ const EmergencyBottomSheet = forwardRef(
 
 		// Handle search focus - expand sheet to show results
 		const handleSearchFocus = useCallback(() => {
-			if (currentSnapIndex === 0) {
-				bottomSheetRef.current?.snapToIndex(1);
-				return;
-			}
-			if (currentSnapIndex === 1) {
-				bottomSheetRef.current?.snapToIndex(2);
-			}
+			bottomSheetRef.current?.snapToIndex(2);
 		}, [currentSnapIndex]);
 
 		// Handle search clear
@@ -1163,6 +1157,8 @@ const EmergencyBottomSheet = forwardRef(
 				style={styles.sheet}
 				enablePanDownToClose={false}
 				enableOverDrag={true}
+				keyboardBehavior="extend"
+				keyboardBlurBehavior="restore"
 				animateOnMount={true}
 				animationConfigs={animationConfigs}
 				safeAreaInsets={{ top: 0, bottom: 0, left: 0, right: 0 }}

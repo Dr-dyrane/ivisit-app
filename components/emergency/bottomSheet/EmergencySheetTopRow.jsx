@@ -24,6 +24,7 @@ export default function EmergencySheetTopRow({
 					onFocus={onSearchFocus}
 					onClear={onSearchClear}
 					placeholder={placeholder}
+					suggestionsRightBleed={62}
 					style={{ flex: 1 }}
 				/>
 				<Pressable
@@ -54,4 +55,3 @@ export default function EmergencySheetTopRow({
 		</>
 	);
 }
-

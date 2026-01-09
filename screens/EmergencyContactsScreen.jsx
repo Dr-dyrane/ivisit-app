@@ -78,8 +78,7 @@ export default function EmergencyContactsScreen() {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
-	const headerHeight = 70;
-	const topPadding = headerHeight + insets.top;
+	const topPadding = 16;
 
 	const [contacts, setContacts] = useState([]);
 	const [isLoading, setIsLoading] = useState(true);

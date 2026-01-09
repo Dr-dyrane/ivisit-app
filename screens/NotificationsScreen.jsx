@@ -12,13 +12,14 @@ import {
 	Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../contexts/ThemeContext";
 import { useNotifications } from "../contexts/NotificationsContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
+import { useEmergency, EmergencyMode } from "../contexts/EmergencyContext";
 import { COLORS } from "../constants/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NotificationCard from "../components/notifications/NotificationCard";
@@ -28,9 +29,11 @@ import HeaderBackButton from "../components/navigation/HeaderBackButton";
 
 const NotificationsScreen = () => {
 	const router = useRouter();
+	const { filter: filterParam } = useLocalSearchParams();
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 	const fadeAnim = useRef(new Animated.Value(1)).current;
+	const { setMode } = useEmergency();
 
 	const {
 		filteredNotifications,
@@ -81,6 +84,15 @@ const NotificationsScreen = () => {
 		useCallback(() => {
 			resetTabBar();
 			resetHeader();
+			const nextFilter =
+				typeof filterParam === "string"
+					? filterParam
+					: Array.isArray(filterParam)
+						? filterParam[0]
+						: null;
+			if (nextFilter && ["all", "unread", "emergency", "appointments"].includes(nextFilter)) {
+				setFilterType(nextFilter);
+			}
 			setHeaderState({
 				title: "Notifications",
 				subtitle: unreadCount > 0 ? `${unreadCount} UNREAD` : "ALL CAUGHT UP",
@@ -97,6 +109,8 @@ const NotificationsScreen = () => {
 			unreadCount,
 			resetTabBar,
 			resetHeader,
+			filterParam,
+			setFilterType,
 		])
 	);
 
@@ -108,7 +122,50 @@ const NotificationsScreen = () => {
 		[handleTabBarScroll, handleHeaderScroll]
 	);
 
-	const handleNotificationPress = useCallback((notification) => {}, [router]);
+	const handleNotificationPress = useCallback(
+		(notification) => {
+			const actionType = notification?.actionType ?? null;
+			const actionData = notification?.actionData ?? {};
+			const visitId =
+				typeof actionData?.visitId === "string"
+					? actionData.visitId
+					: typeof actionData?.appointmentId === "string"
+						? actionData.appointmentId
+						: null;
+
+			if (actionType === "track") {
+				setMode(EmergencyMode.EMERGENCY);
+				router.push("/(user)/(tabs)");
+				return;
+			}
+
+			if (actionType === "view_appointment") {
+				if (visitId) {
+					router.push(`/(user)/(stacks)/visit/${visitId}`);
+					return;
+				}
+				router.push({ pathname: "/(user)/(tabs)/visits", params: { filter: "upcoming" } });
+				return;
+			}
+
+			if (actionType === "view_summary") {
+				if (visitId) {
+					router.push(`/(user)/(stacks)/visit/${visitId}`);
+					return;
+				}
+				router.push("/(user)/(tabs)/visits");
+				return;
+			}
+
+			if (actionType === "upgrade") {
+				router.push("/(user)/(tabs)/more");
+				return;
+			}
+
+			router.push("/(user)/(stacks)/notifications");
+		},
+		[router, setMode]
+	);
 
 	const handleMarkAllRead = useCallback(() => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -129,8 +186,7 @@ const NotificationsScreen = () => {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
-	const headerHeight = 70;
-	const topPadding = headerHeight + insets.top;
+	const topPadding = 16;
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
