@@ -1,8 +1,10 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
+import { supabase } from "../api/client";
 import { SPECIALTIES } from "../data/hospitals";
 import { ACTIVE_AMBULANCES } from "../data/emergencyServices";
-import { emergencyStateService } from "../services/emergencyStateService";
+import { emergencyRequestsService } from "../services/emergencyRequestsService";
 import { normalizeEmergencyState } from "../utils/domainNormalize";
+import { simulationService } from "../services/simulationService";
 
 // Create the emergency context
 const EmergencyContext = createContext();
@@ -34,30 +36,125 @@ export function EmergencyProvider({ children }) {
 	// User location (for map centering and distance calculations)
 	const [userLocation, setUserLocation] = useState(null);
 
+    // Helper to parse WKT Point
+    const parsePoint = (wkt) => {
+        if (!wkt || typeof wkt !== 'string' || !wkt.startsWith('POINT')) return null;
+        try {
+            const matches = wkt.match(/POINT\(([-\d.]+) ([-\d.]+)\)/);
+            if (matches && matches.length === 3) {
+                return { longitude: parseFloat(matches[1]), latitude: parseFloat(matches[2]) };
+            }
+        } catch (e) { return null; }
+        return null;
+    };
+
+    // Real-time Subscription to Emergency Requests
+    useEffect(() => {
+        let subscription;
+
+        const setupSubscription = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            subscription = supabase
+                .channel('emergency_updates')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'emergency_requests',
+                        filter: `user_id=eq.${user.id}`,
+                    },
+                    (payload) => {
+                        const newRecord = payload.new;
+                        // console.log("Realtime Update:", newRecord.status, newRecord.responder_location);
+
+                        if (newRecord.status === 'completed' || newRecord.status === 'cancelled') {
+                             setActiveAmbulanceTrip(null);
+                             simulationService.stopSimulation();
+                             return;
+                        }
+
+                        if (activeAmbulanceTrip && activeAmbulanceTrip.requestId === newRecord.request_id) {
+                            // Status Change Notification
+                            if (activeAmbulanceTrip.status !== newRecord.status && newRecord.status === 'accepted') {
+                                // Trigger haptic or sound here if possible, or just let UI handle it
+                            }
+
+                            // Update Responder Location
+                            const loc = parsePoint(newRecord.responder_location);
+                            
+                            setActiveAmbulanceTrip(prev => ({
+                                ...prev,
+                                status: newRecord.status,
+                                assignedAmbulance: newRecord.responder_name ? {
+                                    id: newRecord.ambulance_id || 'ems_001',
+                                    type: newRecord.responder_vehicle_type || 'Ambulance',
+                                    plate: newRecord.responder_vehicle_plate,
+                                    name: newRecord.responder_name,
+                                    phone: newRecord.responder_phone,
+                                    location: loc,
+                                    heading: newRecord.responder_heading || 0
+                                } : prev.assignedAmbulance,
+                                // If we have a location from DB, pass it so Map can animate
+                                currentResponderLocation: loc, 
+                                currentResponderHeading: newRecord.responder_heading
+                            }));
+                        }
+                    }
+                )
+                .subscribe();
+        };
+
+        setupSubscription();
+
+        return () => {
+            if (subscription) supabase.removeChannel(subscription);
+            simulationService.stopSimulation();
+        };
+    }, [activeAmbulanceTrip?.requestId]); // Re-sub if ID changes? No, filter is by user_id.
+
 	useEffect(() => {
 		let isActive = true;
 		(async () => {
-			const savedRaw = await emergencyStateService.get();
-			const saved = normalizeEmergencyState(savedRaw);
+            // Load active request from Supabase/Local via Service
+			const activeRequests = await emergencyRequestsService.list();
+            const active = activeRequests.find(r => r.status === 'in_progress' || r.status === 'accepted');
+			
 			if (!isActive) return;
-			if (saved?.mode === EmergencyMode.EMERGENCY || saved?.mode === EmergencyMode.BOOKING) {
-				setMode(saved.mode);
-			}
-			if (saved?.activeAmbulanceTrip && typeof saved.activeAmbulanceTrip === "object") {
-				setActiveAmbulanceTrip(saved.activeAmbulanceTrip);
-			}
-			if (saved?.activeBedBooking && typeof saved.activeBedBooking === "object") {
-				setActiveBedBooking(saved.activeBedBooking);
-			}
+
+            // Restore state if found
+            if (active) {
+                if (active.serviceType === 'ambulance') {
+                    setActiveAmbulanceTrip({
+                        hospitalId: active.hospitalId,
+                        requestId: active.requestId,
+                        // ... map other fields if needed
+                        status: active.status
+                    });
+                    // Resume simulation if needed
+                    if (active.status === 'in_progress' || active.status === 'accepted') {
+                         // We don't have route here easily, but Realtime will pick it up
+                    }
+                } else if (active.serviceType === 'bed') {
+                    setActiveBedBooking({
+                        hospitalId: active.hospitalId,
+                        requestId: active.requestId,
+                        status: active.status
+                    });
+                }
+            }
 		})();
 		return () => {
 			isActive = false;
 		};
 	}, []);
 
-	useEffect(() => {
-		emergencyStateService.set({ mode, activeAmbulanceTrip, activeBedBooking }).catch(() => {});
-	}, [activeAmbulanceTrip, activeBedBooking, mode]);
+    // We don't need to manually save state anymore, Supabase handles it.
+	// useEffect(() => {
+	// 	emergencyStateService.set({ mode, activeAmbulanceTrip, activeBedBooking }).catch(() => {});
+	// }, [activeAmbulanceTrip, activeBedBooking, mode]);
 
 	// Get selected hospital object
 	const selectedHospital = useMemo(() => {
@@ -150,6 +247,11 @@ export function EmergencyProvider({ children }) {
 				assignedAmbulance,
 				startedAt: Number.isFinite(trip?.startedAt) ? trip.startedAt : Date.now(),
 			});
+
+            // Start Simulation on "Server" (which is just a service here)
+            if (trip.requestId && trip.route) {
+                simulationService.startSimulation(trip.requestId, trip.route);
+            }
 		},
 		[parseEtaToSeconds]
 	);

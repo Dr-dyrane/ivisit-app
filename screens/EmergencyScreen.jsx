@@ -68,6 +68,7 @@ export default function EmergencyScreen() {
 	const [showEmergencyRequestModal, setShowEmergencyRequestModal] =
 		useState(false);
 	const [requestHospitalId, setRequestHospitalId] = useState(null);
+    const [currentRoute, setCurrentRoute] = useState(null);
 
 	// Calculate map padding based on sheet position to ensure markers are visible
 	// Sheet Snap Points: 0 (Collapsed ~15%), 1 (Half 50%), 2 (Expanded 92%)
@@ -303,6 +304,7 @@ export default function EmergencyScreen() {
 				ambulanceType: request?.ambulanceType ?? null,
 				estimatedArrival: request?.estimatedArrival ?? null,
 				hospitalName: request?.hospitalName ?? null,
+                route: currentRoute?.coordinates ?? null
 			});
 
 			addVisit({
@@ -488,6 +490,9 @@ export default function EmergencyScreen() {
 				mode={mode}
 				showControls={showMapControls}
 				bottomPadding={mapBottomPadding}
+                onRouteCalculated={setCurrentRoute}
+                responderLocation={activeAmbulanceTrip?.currentResponderLocation}
+                responderHeading={activeAmbulanceTrip?.currentResponderHeading}
 			/>
 
 			{/* Draggable bottom sheet overlay */}

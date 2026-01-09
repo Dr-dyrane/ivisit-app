@@ -52,6 +52,9 @@ const FullScreenEmergencyMap = forwardRef(
 			mode = "emergency",
 			showControls = true,
 			bottomPadding = 0,
+            onRouteCalculated, 
+            responderLocation,
+            responderHeading,
 		},
 		ref
 	) => {
@@ -244,6 +247,15 @@ const FullScreenEmergencyMap = forwardRef(
 					if (routeFetchIdRef.current !== fetchId) return;
 					setRouteCoordinates(route.coordinates);
 					setRouteInfo({ durationSec: route.durationSec, distanceMeters: route.distanceMeters });
+                    
+                    // Expose route to parent
+                    if (onRouteCalculated) {
+                        onRouteCalculated({ 
+                            coordinates: route.coordinates, 
+                            durationSec: route.durationSec, 
+                            distanceMeters: route.distanceMeters 
+                        });
+                    }
 				} catch {
 					if (routeFetchIdRef.current !== fetchId) return;
 					setRouteCoordinates([]);
@@ -260,6 +272,7 @@ const FullScreenEmergencyMap = forwardRef(
 			routeHospital?.coordinates,
 			routeHospitalIdResolved,
 			userLocation,
+            // We can't put options.onRouteCalculated in dep array as it might be a new function every render
 		]);
 
 		useEffect(() => {
@@ -267,6 +280,15 @@ const FullScreenEmergencyMap = forwardRef(
 				clearInterval(ambulanceTimerRef.current);
 				ambulanceTimerRef.current = null;
 			}
+
+            // Real-time Override: If we have live location, use it directly
+            if (responderLocation) {
+                setAmbulanceCoordinate(responderLocation);
+                if (Number.isFinite(responderHeading)) {
+                    setAmbulanceHeading(responderHeading);
+                }
+                return;
+            }
 
 			if (!animateAmbulance || !routeCoordinates || routeCoordinates.length < 2) {
 				setAmbulanceCoordinate(null);

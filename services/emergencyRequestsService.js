@@ -1,4 +1,5 @@
 import { database, StorageKeys } from "../database";
+import { supabase } from "../api/client";
 
 export const EmergencyRequestStatus = {
 	IN_PROGRESS: "in_progress",
@@ -8,6 +9,46 @@ export const EmergencyRequestStatus = {
 
 export const emergencyRequestsService = {
 	async list() {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        // Fetch active request from Supabase
+        if (user) {
+            const { data, error } = await supabase
+                .from('emergency_requests')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('status', 'in_progress')
+                .order('created_at', { ascending: false });
+            
+            if (!error && data && data.length > 0) {
+                // Map DB to App format
+                const requests = data.map(r => ({
+                    id: r.id,
+                    requestId: r.request_id,
+                    serviceType: r.service_type,
+                    hospitalId: r.hospital_id,
+                    hospitalName: r.hospital_name,
+                    specialty: r.specialty,
+                    ambulanceType: r.ambulance_type,
+                    ambulanceId: r.ambulance_id,
+                    bedNumber: r.bed_number,
+                    bedType: r.bed_type,
+                    bedCount: r.bed_count,
+                    estimatedArrival: r.estimated_arrival,
+                    status: r.status,
+                    patient: r.patient_snapshot,
+                    shared: r.shared_data_snapshot,
+                    createdAt: r.created_at,
+                    updatedAt: r.updated_at
+                }));
+                
+                // Sync to local cache
+                await database.write(StorageKeys.EMERGENCY_REQUESTS, requests);
+                return requests;
+            }
+        }
+
+        // Fallback to local
 		const items = await database.read(StorageKeys.EMERGENCY_REQUESTS, []);
 		if (!Array.isArray(items)) return [];
 		return items
@@ -16,9 +57,11 @@ export const emergencyRequestsService = {
 	},
 
 	async create(request) {
+        const { data: { user } } = await supabase.auth.getUser();
 		const now = new Date().toISOString();
 		const id = request?.id ? String(request.id) : request?.requestId ? String(request.requestId) : `er_${Date.now()}`;
-		const item = {
+		
+        const item = {
 			id,
 			requestId: id,
 			serviceType: request?.serviceType ?? null,
@@ -37,16 +80,61 @@ export const emergencyRequestsService = {
 			createdAt: request?.createdAt ?? now,
 			updatedAt: now,
 		};
+
+        // Save to Supabase
+        if (user) {
+            const { error } = await supabase
+                .from('emergency_requests')
+                .insert({
+                    id: item.id,
+                    request_id: item.requestId,
+                    user_id: user.id,
+                    service_type: item.serviceType,
+                    hospital_id: item.hospitalId,
+                    hospital_name: item.hospitalName,
+                    specialty: item.specialty,
+                    ambulance_type: item.ambulanceType,
+                    ambulance_id: item.ambulanceId,
+                    bed_number: item.bedNumber,
+                    bed_type: item.bedType,
+                    bed_count: item.bedCount,
+                    estimated_arrival: item.estimatedArrival,
+                    status: item.status,
+                    patient_snapshot: item.patient,
+                    shared_data_snapshot: item.shared,
+                    created_at: item.createdAt,
+                    updated_at: item.updatedAt
+                });
+            
+            if (error) console.error("Error creating emergency request:", error);
+        }
+
+        // Save Local
 		await database.createOne(StorageKeys.EMERGENCY_REQUESTS, item);
 		return item;
 	},
 
 	async update(id, updates) {
+        const { data: { user } } = await supabase.auth.getUser();
 		const requestId = String(id);
+        const nextUpdatedAt = new Date().toISOString();
+
+        if (user) {
+            const dbUpdates = { updated_at: nextUpdatedAt };
+            if (updates.status) dbUpdates.status = updates.status;
+            // Map other fields as needed
+            
+            await supabase
+                .from('emergency_requests')
+                .update(dbUpdates)
+                .eq('id', requestId)
+                .eq('user_id', user.id);
+        }
+
 		const item = await database.updateOne(
 			StorageKeys.EMERGENCY_REQUESTS,
 			(r) => String(r?.id ?? r?.requestId) === requestId,
-			{ ...updates, updatedAt: new Date().toISOString() }
+			{ ...updates, updatedAt: nextUpdatedAt }
 		);
 		return item;
 	},
