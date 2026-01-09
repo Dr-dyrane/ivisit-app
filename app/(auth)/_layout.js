@@ -6,11 +6,8 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { commonScreenOptions } from "../../utils/navigationOptions";
 import { useTheme } from "../../contexts/ThemeContext";
-import {
-	RegistrationProvider,
-	useRegistration,
-} from "../../contexts/RegistrationContext";
-import { LoginProvider } from "../../contexts/LoginContext";
+import { useRegistration } from "../../contexts/RegistrationContext";
+import { AuthProviders } from "../../providers/AuthProviders";
 
 function AuthStackScreens() {
 	const router = useRouter();
@@ -115,10 +112,8 @@ function AuthStackScreens() {
 
 export default function AuthLayout() {
 	return (
-		<RegistrationProvider>
-			<LoginProvider>
-				<AuthStackScreens />
-			</LoginProvider>
-		</RegistrationProvider>
+		<AuthProviders>
+			<AuthStackScreens />
+		</AuthProviders>
 	);
 }

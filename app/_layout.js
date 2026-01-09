@@ -9,25 +9,19 @@ import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as Linking from "expo-linking";
 
-import { AuthProvider, useAuth } from "../contexts/AuthContext";
-import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
-import { TabBarVisibilityProvider } from "../contexts/TabBarVisibilityContext";
-import { ScrollAwareHeaderProvider } from "../contexts/ScrollAwareHeaderContext";
-import { EmergencyProvider } from "../contexts/EmergencyContext";
-import ToastProvider, { useToast } from "../contexts/ToastContext";
+import { AppProviders } from "../providers/AppProviders";
+import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { useToast } from "../contexts/ToastContext";
 import ThemeToggle from "../components/ThemeToggle";
 import { isProfileComplete } from "../utils/profileCompletion";
 import { authService } from "../services/authService";
 
 /**
  * Root layout wraps the entire app with context providers
- * - AuthProvider: Authentication state
- * - ThemeProvider: Dark/Light mode
- * - TabBarVisibilityProvider: Bottom navigation scroll-aware behavior
- * - ScrollAwareHeaderProvider: Header scroll-aware behavior
- * - EmergencyProvider: Emergency/booking state persistence
- * - ToastProvider: Notifications
- * - Also includes global StatusBar and Theme toggle
+ * - Refactored to use AppProviders for cleaner modularity
+ *
+ * File Path: app/_layout.js
  */
 export default function RootLayout() {
 	useEffect(() => {
@@ -36,25 +30,15 @@ export default function RootLayout() {
 
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
-			<AuthProvider>
-				<ThemeProvider>
-					<TabBarVisibilityProvider>
-						<ScrollAwareHeaderProvider>
-							<EmergencyProvider>
-								<ToastProvider>
-									<View style={{ flex: 1 }}>
-										<AuthenticatedStack />
-										{/* Theme toggle (optional absolute positioning) */}
-										<View className="absolute right-0 top-16 px-2 py-4">
-											<ThemeToggle showLabel={false} />
-										</View>
-									</View>
-								</ToastProvider>
-							</EmergencyProvider>
-						</ScrollAwareHeaderProvider>
-					</TabBarVisibilityProvider>
-				</ThemeProvider>
-			</AuthProvider>
+			<AppProviders>
+				<View style={{ flex: 1 }}>
+					<AuthenticatedStack />
+					{/* Theme toggle (optional absolute positioning) */}
+					<View className="absolute right-0 top-16 px-2 py-4">
+						<ThemeToggle showLabel={false} />
+					</View>
+				</View>
+			</AppProviders>
 		</GestureHandlerRootView>
 	);
 }
@@ -66,48 +50,48 @@ export default function RootLayout() {
 function AuthenticatedStack() {
 	const { user, login, syncUserData } = useAuth();
 	const { isDarkMode } = useTheme();
-    const { showToast } = useToast();
+	const { showToast } = useToast();
 	const router = useRouter();
 	const segments = useSegments();
 
-    // Deep Link Handling for Magic Links / OAuth
-    useEffect(() => {
-        const handleDeepLink = async (event) => {
-            const url = event.url;
-            if (!url) return;
-            
-            console.log("[DeepLink] Handling URL:", url);
+	// Deep Link Handling for Magic Links / OAuth
+	useEffect(() => {
+		const handleDeepLink = async (event) => {
+			const url = event.url;
+			if (!url) return;
 
-            // Check if it's an auth callback (Magic Link or OAuth)
-            if (url.includes("auth/callback")) {
-                try {
-                    // Let authService parse and handle the session exchange
-                    const result = await authService.handleOAuthCallback(url);
-                    
-                    if (result?.data?.user) {
-                        await login(result.data.user);
-                        await syncUserData();
-                        showToast("Successfully logged in via email link!", "success");
-                    }
-                } catch (error) {
-                    console.error("Deep Link Auth Error:", error);
-                    showToast("Failed to verify login link: " + error.message, "error");
-                }
-            }
-        };
+			console.log("[DeepLink] Handling URL:", url);
 
-        // Handle initial URL (if app was closed)
-        Linking.getInitialURL().then((url) => {
-            if (url) handleDeepLink({ url });
-        });
+			// Check if it's an auth callback (Magic Link or OAuth)
+			if (url.includes("auth/callback")) {
+				try {
+					// Let authService parse and handle the session exchange
+					const result = await authService.handleOAuthCallback(url);
 
-        // Listen for new URLs (if app is open/background)
-        const subscription = Linking.addEventListener("url", handleDeepLink);
+					if (result?.data?.user) {
+						await login(result.data.user);
+						await syncUserData();
+						showToast("Successfully logged in via email link!", "success");
+					}
+				} catch (error) {
+					console.error("Deep Link Auth Error:", error);
+					showToast("Failed to verify login link: " + error.message, "error");
+				}
+			}
+		};
 
-        return () => {
-            subscription.remove();
-        };
-    }, []);
+		// Handle initial URL (if app was closed)
+		Linking.getInitialURL().then((url) => {
+			if (url) handleDeepLink({ url });
+		});
+
+		// Listen for new URLs (if app is open/background)
+		const subscription = Linking.addEventListener("url", handleDeepLink);
+
+		return () => {
+			subscription.remove();
+		};
+	}, []);
 
 	// Redirect based on authentication state
 	useEffect(() => {
