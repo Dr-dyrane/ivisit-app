@@ -52,6 +52,7 @@ export const StorageKeys = {
 
 	/** User visits/appointments */
 	VISITS: `${DB_PREFIX}visits`,
+	DEMO_VISITS: `${DB_PREFIX}demo_visits`,
 
 	/** Emergency contacts */
 	EMERGENCY_CONTACTS: `${DB_PREFIX}emergency_contacts`,
@@ -68,6 +69,7 @@ export const StorageKeys = {
 	// ============================================
 	/** User notifications */
 	NOTIFICATIONS: `${DB_PREFIX}notifications`,
+	DEMO_NOTIFICATIONS: `${DB_PREFIX}demo_notifications`,
 
 	SEARCH_HISTORY: `${DB_PREFIX}search_history`,
 
@@ -90,8 +92,10 @@ export const CollectionKeys = [
 	StorageKeys.USERS,
 	StorageKeys.HOSPITALS,
 	StorageKeys.VISITS,
+	StorageKeys.DEMO_VISITS,
 	StorageKeys.EMERGENCY_CONTACTS,
 	StorageKeys.NOTIFICATIONS,
+	StorageKeys.DEMO_NOTIFICATIONS,
 	StorageKeys.SEARCH_HISTORY,
 	StorageKeys.IMAGES,
 	StorageKeys.RESET_TOKENS,

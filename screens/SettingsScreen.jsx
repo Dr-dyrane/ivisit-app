@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import {
 	View,
 	Text,
@@ -22,7 +22,7 @@ import { STACK_TOP_PADDING } from "../constants/layout";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import { useAuth } from "../contexts/AuthContext";
 import { ThemeMode } from "../contexts/ThemeContext";
-import { getPreferencesAPI, updatePreferencesAPI } from "../api/preferences";
+import { usePreferences } from "../contexts/PreferencesContext";
 
 export default function SettingsScreen() {
 	const router = useRouter();
@@ -34,7 +34,7 @@ export default function SettingsScreen() {
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
 	const { user } = useAuth();
-	const [preferences, setPreferences] = useState(null);
+	const { preferences, updatePreferences } = usePreferences();
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
@@ -71,18 +71,6 @@ export default function SettingsScreen() {
 		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
 	};
 
-	useEffect(() => {
-		let isActive = true;
-		(async () => {
-			const next = await getPreferencesAPI();
-			if (!isActive) return;
-			setPreferences(next);
-		})();
-		return () => {
-			isActive = false;
-		};
-	}, []);
-
 	const passwordRoute = useMemo(() => {
 		return user?.hasPassword ? "/(user)/(stacks)/change-password" : "/(user)/(stacks)/create-password";
 	}, [user?.hasPassword]);
@@ -90,9 +78,9 @@ export default function SettingsScreen() {
 	const togglePreference = useCallback(
 		async (key) => {
 			if (!preferences) return;
-			const next = await updatePreferencesAPI({ [key]: !preferences[key] });
-			setPreferences(next);
-	}, [preferences]
+			await updatePreferences({ [key]: !preferences[key] });
+		},
+		[preferences, updatePreferences]
 	);
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
@@ -160,6 +148,44 @@ export default function SettingsScreen() {
 							);
 						})}
 					</View>
+				</View>
+
+				<View style={[styles.card, { backgroundColor: colors.card }]}>
+					<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+						Experience
+					</Text>
+					<Pressable
+						onPress={() => togglePreference("demoModeEnabled")}
+						style={({ pressed }) => [
+							styles.toggleRow,
+							{ opacity: pressed ? 0.92 : 1 },
+						]}
+						disabled={!preferences}
+					>
+						<View style={styles.toggleLeft}>
+							<Ionicons name="sparkles" size={18} color={COLORS.brandPrimary} />
+							<View style={{ flex: 1 }}>
+								<Text style={[styles.toggleTitle, { color: colors.text }]}>
+									Demo experience
+								</Text>
+								<Text
+									style={{
+										marginTop: 3,
+										fontSize: 12,
+										fontWeight: "700",
+										color: colors.textMuted,
+									}}
+								>
+									Show demo visits and notifications when you have no data yet
+								</Text>
+							</View>
+						</View>
+						<Ionicons
+							name={preferences?.demoModeEnabled !== false ? "checkmark-circle" : "ellipse-outline"}
+							size={20}
+							color={preferences?.demoModeEnabled !== false ? COLORS.brandPrimary : colors.textMuted}
+						/>
+					</Pressable>
 				</View>
 
 				<View style={[styles.card, { backgroundColor: colors.card }]}>

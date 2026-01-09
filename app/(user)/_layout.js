@@ -8,6 +8,7 @@ import { VisitsProvider } from "../../contexts/VisitsContext";
 import { NotificationsProvider } from "../../contexts/NotificationsContext";
 import { EmergencyUIProvider } from "../../contexts/EmergencyUIContext";
 import { SearchProvider } from "../../contexts/SearchContext";
+import { PreferencesProvider } from "../../contexts/PreferencesContext";
 import ScrollAwareHeader from "../../components/headers/ScrollAwareHeader";
 import GlobalFAB from "../../components/navigation/GlobalFAB";
 import { appMigrationsService } from "../../services/appMigrationsService";
@@ -21,34 +22,36 @@ export default function UserLayout() {
 		<TabBarVisibilityProvider>
 			<HeaderStateProvider>
 				<FABProvider>
-					<VisitsProvider>
-						<NotificationsProvider>
-							<SearchProvider>
-								<EmergencyUIProvider>
-									<View style={styles.container}>
-										<UserHeaderWrapper />
+					<PreferencesProvider>
+						<VisitsProvider>
+							<NotificationsProvider>
+								<SearchProvider>
+									<EmergencyUIProvider>
+										<View style={styles.container}>
+											<UserHeaderWrapper />
 
-										<Stack
-											screenOptions={{
-												headerShown: false,
-												animation: "slide_from_right",
-											}}
-										>
-											<Stack.Screen name="(tabs)" />
-											<Stack.Screen
-												name="(stacks)"
-												options={{
-													presentation: "card",
+											<Stack
+												screenOptions={{
+													headerShown: false,
+													animation: "slide_from_right",
 												}}
-											/>
-										</Stack>
+											>
+												<Stack.Screen name="(tabs)" />
+												<Stack.Screen
+													name="(stacks)"
+													options={{
+														presentation: "card",
+													}}
+												/>
+											</Stack>
 
-										<GlobalFAB />
-									</View>
-								</EmergencyUIProvider>
-							</SearchProvider>
-						</NotificationsProvider>
-					</VisitsProvider>
+											<GlobalFAB />
+										</View>
+									</EmergencyUIProvider>
+								</SearchProvider>
+							</NotificationsProvider>
+						</VisitsProvider>
+					</PreferencesProvider>
 				</FABProvider>
 			</HeaderStateProvider>
 		</TabBarVisibilityProvider>

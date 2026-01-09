@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect } 
 import { VISITS, VISIT_STATUS, VISIT_FILTERS } from "../data/visits";
 import { database, StorageKeys } from "../database";
 import { normalizeVisit, normalizeVisitsList } from "../utils/domainNormalize";
+import { usePreferences } from "./PreferencesContext";
 
 // Create the visits context
 const VisitsContext = createContext();
@@ -25,28 +26,39 @@ export function VisitsProvider({ children }) {
   // Loading state for future API integration
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { preferences } = usePreferences();
+  const demoModeEnabled = preferences?.demoModeEnabled !== false;
 
   useEffect(() => {
     let isActive = true;
     (async () => {
       setIsLoading(true);
       try {
-        const stored = await database.read(StorageKeys.VISITS, null);
+        const key = demoModeEnabled ? StorageKeys.DEMO_VISITS : StorageKeys.VISITS;
+        const stored = await database.read(key, null);
         if (!isActive) return;
         if (Array.isArray(stored)) {
           const normalized = normalizeVisitsList(stored);
           setVisits(normalized);
-          if (normalized.length !== stored.length) {
-            await database.write(StorageKeys.VISITS, normalized);
+          if (normalized.length !== stored.length) await database.write(key, normalized);
+          if (demoModeEnabled && normalized.length === 0) {
+            const seeded = normalizeVisitsList(VISITS);
+            setVisits(seeded);
+            await database.write(key, seeded);
           }
           return;
         }
-        const seeded = normalizeVisitsList(VISITS);
-        setVisits(seeded);
-        await database.write(StorageKeys.VISITS, seeded);
+        if (demoModeEnabled) {
+          const seeded = normalizeVisitsList(VISITS);
+          setVisits(seeded);
+          await database.write(key, seeded);
+        } else {
+          setVisits([]);
+          await database.write(key, []);
+        }
       } catch (e) {
         if (!isActive) return;
-        setVisits(normalizeVisitsList(VISITS));
+        setVisits(demoModeEnabled ? normalizeVisitsList(VISITS) : []);
         setError(e?.message ?? "Failed to load visits");
       } finally {
         if (isActive) setIsLoading(false);
@@ -55,13 +67,14 @@ export function VisitsProvider({ children }) {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [demoModeEnabled]);
 
   useEffect(() => {
     if (!Array.isArray(visits)) return;
     const normalized = normalizeVisitsList(visits);
-    database.write(StorageKeys.VISITS, normalized).catch(() => {});
-  }, [visits]);
+    const key = demoModeEnabled ? StorageKeys.DEMO_VISITS : StorageKeys.VISITS;
+    database.write(key, normalized).catch(() => {});
+  }, [demoModeEnabled, visits]);
 
   // Derived state - selected visit object
   const selectedVisit = useMemo(() => {
@@ -176,14 +189,22 @@ export function VisitsProvider({ children }) {
     setIsLoading(true);
     setError(null);
     try {
-      const stored = await database.read(StorageKeys.VISITS, []);
-      setVisits(normalizeVisitsList(stored));
+      const key = demoModeEnabled ? StorageKeys.DEMO_VISITS : StorageKeys.VISITS;
+      const stored = await database.read(key, []);
+      const normalized = normalizeVisitsList(stored);
+      if (demoModeEnabled && normalized.length === 0) {
+        const seeded = normalizeVisitsList(VISITS);
+        setVisits(seeded);
+        await database.write(key, seeded);
+        return;
+      }
+      setVisits(normalized);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [demoModeEnabled]);
 
   const value = {
     // State

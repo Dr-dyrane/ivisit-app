@@ -1,6 +1,7 @@
 import { database, StorageKeys } from "../database";
 
 const DEFAULT_PREFERENCES = {
+	demoModeEnabled: true,
 	notificationsEnabled: true,
 	appointmentReminders: true,
 	emergencyUpdates: true,

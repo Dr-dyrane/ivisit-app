@@ -1,3 +1,6 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createClient } from "@supabase/supabase-js";
+
 /**
  * API Client Configuration
  *
@@ -57,7 +60,20 @@ export const API_CONFIG = {
  *   },
  * })
  */
-export const supabase = null;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+export const supabase =
+	supabaseUrl && supabaseAnonKey
+		? createClient(supabaseUrl, supabaseAnonKey, {
+				auth: {
+					storage: AsyncStorage,
+					autoRefreshToken: true,
+					persistSession: true,
+					detectSessionInUrl: false,
+				},
+			})
+		: null;
 
 // ============================================
 // STORAGE MODE HELPERS
@@ -139,4 +155,3 @@ export const apiRequest = async (endpoint, options = {}) => {
 		throw error;
 	}
 };
-

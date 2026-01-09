@@ -9,6 +9,7 @@ import {
 } from "../data/notifications";
 import { database, StorageKeys } from "../database";
 import { normalizeNotification, normalizeNotificationsList } from "../utils/domainNormalize";
+import { usePreferences } from "./PreferencesContext";
 
 // Create the notifications context
 const NotificationsContext = createContext();
@@ -32,28 +33,41 @@ export function NotificationsProvider({ children }) {
   // Loading state for API integration
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { preferences } = usePreferences();
+  const demoModeEnabled = preferences?.demoModeEnabled !== false;
 
   useEffect(() => {
     let isActive = true;
     (async () => {
       setIsLoading(true);
       try {
-        const stored = await database.read(StorageKeys.NOTIFICATIONS, null);
+        const key = demoModeEnabled ? StorageKeys.DEMO_NOTIFICATIONS : StorageKeys.NOTIFICATIONS;
+        const stored = await database.read(key, null);
         if (!isActive) return;
         if (Array.isArray(stored)) {
           const normalized = normalizeNotificationsList(stored);
           setNotifications(normalized);
           if (normalized.length !== stored.length) {
-            await database.write(StorageKeys.NOTIFICATIONS, normalized);
+            await database.write(key, normalized);
+          }
+          if (demoModeEnabled && normalized.length === 0) {
+            const seeded = normalizeNotificationsList(NOTIFICATIONS);
+            setNotifications(seeded);
+            await database.write(key, seeded);
           }
           return;
         }
-        const seeded = normalizeNotificationsList(NOTIFICATIONS);
-        setNotifications(seeded);
-        await database.write(StorageKeys.NOTIFICATIONS, seeded);
+        if (demoModeEnabled) {
+          const seeded = normalizeNotificationsList(NOTIFICATIONS);
+          setNotifications(seeded);
+          await database.write(key, seeded);
+        } else {
+          setNotifications([]);
+          await database.write(key, []);
+        }
       } catch (e) {
         if (!isActive) return;
-        setNotifications(normalizeNotificationsList(NOTIFICATIONS));
+        setNotifications(demoModeEnabled ? normalizeNotificationsList(NOTIFICATIONS) : []);
         setError(e?.message ?? "Failed to load notifications");
       } finally {
         if (isActive) setIsLoading(false);
@@ -62,13 +76,14 @@ export function NotificationsProvider({ children }) {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [demoModeEnabled]);
 
   useEffect(() => {
     if (!Array.isArray(notifications)) return;
     const normalized = normalizeNotificationsList(notifications);
-    database.write(StorageKeys.NOTIFICATIONS, normalized).catch(() => {});
-  }, [notifications]);
+    const key = demoModeEnabled ? StorageKeys.DEMO_NOTIFICATIONS : StorageKeys.NOTIFICATIONS;
+    database.write(key, normalized).catch(() => {});
+  }, [demoModeEnabled, notifications]);
 
   // Derived: Unread count
   const unreadCount = useMemo(() => {
@@ -148,14 +163,22 @@ export function NotificationsProvider({ children }) {
     setIsLoading(true);
     setError(null);
     try {
-      const stored = await database.read(StorageKeys.NOTIFICATIONS, []);
-      setNotifications(normalizeNotificationsList(stored));
+      const key = demoModeEnabled ? StorageKeys.DEMO_NOTIFICATIONS : StorageKeys.NOTIFICATIONS;
+      const stored = await database.read(key, []);
+      const normalized = normalizeNotificationsList(stored);
+      if (demoModeEnabled && normalized.length === 0) {
+        const seeded = normalizeNotificationsList(NOTIFICATIONS);
+        setNotifications(seeded);
+        await database.write(key, seeded);
+        return;
+      }
+      setNotifications(normalized);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [demoModeEnabled]);
 
   // Update notifications from API
   const updateNotifications = useCallback((newNotifications) => {
