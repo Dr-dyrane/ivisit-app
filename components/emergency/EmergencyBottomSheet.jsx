@@ -36,7 +36,7 @@ import EmergencySheetFilters from "./bottomSheet/EmergencySheetFilters";
 import EmergencySheetSectionHeader from "./bottomSheet/EmergencySheetSectionHeader";
 import EmergencySheetHospitalList from "./bottomSheet/EmergencySheetHospitalList";
 
-import { useEmergencySheetController } from "../../hooks/useEmergencySheetController";
+import { useEmergencySheetController } from "../../hooks/emergency/useEmergencySheetController";
 
 /**
  * EmergencyBottomSheet - Apple Maps style draggable bottom sheet

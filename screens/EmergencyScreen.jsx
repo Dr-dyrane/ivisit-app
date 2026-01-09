@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useMemo } from "react";
+import { useRef, useCallback, useMemo, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import { View, StyleSheet, Dimensions } from "react-native";
 import { useEmergency } from "../contexts/EmergencyContext";
@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 
 import FullScreenEmergencyMap from "../components/map/FullScreenEmergencyMap";
 import EmergencyBottomSheet from "../components/emergency/EmergencyBottomSheet";
+import EmergencyRequestModal from "../components/emergency/EmergencyRequestModal";
 import NotificationIconButton from "../components/headers/NotificationIconButton";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 
@@ -52,6 +53,9 @@ export default function EmergencyScreen() {
 	} = useEmergencyUI();
 
 	const lastListStateRef = useRef({ snapIndex: 1, scrollY: 0 });
+	const [showEmergencyRequestModal, setShowEmergencyRequestModal] =
+		useState(false);
+	const [requestHospitalId, setRequestHospitalId] = useState(null);
 
 	// Calculate map padding based on sheet position to ensure markers are visible
 	// Sheet Snap Points: 0 (Collapsed ~15%), 1 (Half 50%), 2 (Expanded 92%)
@@ -175,11 +179,27 @@ export default function EmergencyScreen() {
 
 	// Emergency call handler
 	const handleEmergencyCall = useCallback((hospitalId) => {
-		const hospital = hospitals.find((h) => h.id === hospitalId);
+		if (!hospitalId) return;
+		lastListStateRef.current = {
+			snapIndex: Number.isFinite(sheetSnapIndex) ? sheetSnapIndex : 1,
+			scrollY: Number.isFinite(getLastScrollY()) ? getLastScrollY() : 0,
+		};
 		selectHospital(hospitalId);
+		setRequestHospitalId(hospitalId);
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-		console.log("[iVisit] Emergency call requested for:", hospital?.name);
-	}, [hospitals, selectHospital]);
+		setShowEmergencyRequestModal(true);
+	}, [getLastScrollY, mode, selectHospital, sheetSnapIndex]);
+
+	const requestHospital = useMemo(() => {
+		if (!requestHospitalId) return selectedHospital;
+		return hospitals.find((h) => h?.id === requestHospitalId) || selectedHospital;
+	}, [hospitals, requestHospitalId, selectedHospital]);
+
+	const handleCloseEmergencyRequestModal = useCallback(() => {
+		setShowEmergencyRequestModal(false);
+		setRequestHospitalId(null);
+		handleCloseFocus();
+	}, [handleCloseFocus]);
 
 	// Service type selection
 	const handleServiceTypeSelect = useCallback((type) => {
@@ -294,6 +314,14 @@ export default function EmergencyScreen() {
 				onSearch={handleSearch}
 				onResetFilters={resetFilters}
 				onCloseFocus={handleCloseFocus}
+			/>
+
+			<EmergencyRequestModal
+				visible={showEmergencyRequestModal}
+				onClose={handleCloseEmergencyRequestModal}
+				selectedHospital={requestHospital}
+				mode={mode}
+				selectedSpecialty={selectedSpecialty}
 			/>
 		</View>
 	);

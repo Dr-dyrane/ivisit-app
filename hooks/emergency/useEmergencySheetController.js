@@ -1,18 +1,8 @@
-/**
- * useEmergencySheetController.js
- *
- * Controller hook for the Emergency Bottom Sheet logic.
- * Handles snap points, physics configurations, and sheet state management.
- * Follows SOLID principles by separating logic from the view component.
- *
- * @module hooks/useEmergencySheetController
- */
-
 import { useMemo, useCallback } from "react";
 import { Dimensions, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomSheetSpringConfigs } from "@gorhom/bottom-sheet";
-import { useEmergencyUI } from "../contexts/EmergencyUIContext";
+import { useEmergencyUI } from "../../contexts/EmergencyUIContext";
 
 const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 85 : 70;
 const SEARCH_BAR_AREA = 120;
