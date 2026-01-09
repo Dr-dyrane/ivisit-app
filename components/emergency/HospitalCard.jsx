@@ -163,6 +163,7 @@ export default function HospitalCard({
 	onSelect,
 	onCall,
 	mode = "emergency", // "emergency" or "booking"
+	hideDistanceEta = false,
 }) {
 	const { isDarkMode } = useTheme();
 
@@ -352,29 +353,33 @@ export default function HospitalCard({
 				style={{
 					flexDirection: "row",
 					justifyContent: "space-between",
-					marginBottom: 12,
+					marginBottom: hideDistanceEta ? 0 : 12,
 				}}
 			>
-				<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-					<Ionicons name="location" size={16} color={COLORS.brandPrimary} />
-					<Text
-						style={{ fontSize: 13, color: mutedColor, marginLeft: 6 }}
-					>
-						{hospitalDistance}
-					</Text>
-				</View>
-				<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-					<Fontisto
-						name={mode === "booking" ? "bed-patient" : "clock"}
-						size={16}
-						color={COLORS.brandPrimary}
-					/>
-					<Text
-						style={{ fontSize: 13, color: mutedColor, marginLeft: 6 }}
-					>
-						{mode === "booking" ? `${hospitalBeds} beds` : `ETA: ${hospitalEta}`}
-					</Text>
-				</View>
+				{!hideDistanceEta && (
+					<>
+						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+							<Ionicons name="location" size={16} color={COLORS.brandPrimary} />
+							<Text
+								style={{ fontSize: 13, color: mutedColor, marginLeft: 6 }}
+							>
+								{hospitalDistance}
+							</Text>
+						</View>
+						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+							<Fontisto
+								name={mode === "booking" ? "bed-patient" : "clock"}
+								size={16}
+								color={COLORS.brandPrimary}
+							/>
+							<Text
+								style={{ fontSize: 13, color: mutedColor, marginLeft: 6 }}
+							>
+								{mode === "booking" ? `${hospitalBeds} beds` : `ETA: ${hospitalEta}`}
+							</Text>
+						</View>
+					</>
+				)}
 			</View>
 
 			{isSelected && (

@@ -129,11 +129,41 @@ export function EmergencyProvider({ children }) {
 		});
 	}, []);
 
+	const normalizeHospitals = useCallback((input) => {
+		if (!Array.isArray(input)) return [];
+		const isValidCoordinate = (coordinate) =>
+			Number.isFinite(coordinate?.latitude) && Number.isFinite(coordinate?.longitude);
+
+		return input
+			.filter(Boolean)
+			.map((h) => {
+				if (!h || !h.id) return null;
+				const specialties = Array.isArray(h.specialties)
+					? h.specialties.filter((s) => typeof s === "string")
+					: [];
+				const availableBeds = Number.isFinite(h.availableBeds)
+					? h.availableBeds
+					: typeof h.availableBeds === "string"
+						? Number(h.availableBeds)
+						: 0;
+				const coordinates = isValidCoordinate(h.coordinates) ? h.coordinates : null;
+
+				return {
+					...h,
+					specialties,
+					availableBeds: Number.isFinite(availableBeds) ? availableBeds : 0,
+					coordinates,
+				};
+			})
+			.filter(Boolean);
+	}, []);
+
 	// Update hospitals (for when we integrate with API)
 	const updateHospitals = useCallback((newHospitals) => {
-		const enriched = enrichHospitals(newHospitals);
+		const normalized = normalizeHospitals(newHospitals);
+		const enriched = enrichHospitals(normalized);
 		setHospitals(enriched);
-	}, [enrichHospitals]);
+	}, [enrichHospitals, normalizeHospitals]);
 
 	const value = {
 		// State
@@ -178,4 +208,3 @@ export function useEmergency() {
 	}
 	return context;
 }
-

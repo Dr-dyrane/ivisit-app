@@ -8,21 +8,15 @@ import React, {
 } from "react";
 import {
 	View,
-	Text,
 	StyleSheet,
 	Keyboard,
-	Image,
-	Pressable,
-	Dimensions,
 	Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, {
 	BottomSheetView,
 	BottomSheetScrollView,
-	useBottomSheetSpringConfigs,
 } from "@gorhom/bottom-sheet";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -32,16 +26,15 @@ import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import { useEmergencyUI } from "../../contexts/EmergencyUIContext";
 import { COLORS } from "../../constants/colors";
 
-// Tab bar height matching AnimatedTabBar.jsx
 const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 85 : 70;
 
-import EmergencySearchBar from "./EmergencySearchBar";
-import ServiceTypeSelector from "./ServiceTypeSelector";
-import SpecialtySelector from "./SpecialtySelector";
-import HospitalCard from "./HospitalCard";
-import Call911Card from "./Call911Card";
-import MiniProfileModal from "./MiniProfileModal";
 import HospitalDetailView from "./HospitalDetailView";
+import EmergencySheetHandle from "./bottomSheet/EmergencySheetHandle";
+import EmergencySheetBackground from "./bottomSheet/EmergencySheetBackground";
+import EmergencySheetTopRow from "./bottomSheet/EmergencySheetTopRow";
+import EmergencySheetFilters from "./bottomSheet/EmergencySheetFilters";
+import EmergencySheetSectionHeader from "./bottomSheet/EmergencySheetSectionHeader";
+import EmergencySheetHospitalList from "./bottomSheet/EmergencySheetHospitalList";
 
 import { useEmergencySheetController } from "../../hooks/useEmergencySheetController";
 
@@ -258,31 +251,39 @@ const EmergencyBottomSheet = forwardRef(
 			]
 		);
 
-		// Custom handle component - seamless with content
 		const renderHandle = useCallback(
 			() => (
-				<LinearGradient colors={gradientColors} style={styles.handleContainer}>
-					<View style={[styles.handle, { backgroundColor: handleColor }]} />
-				</LinearGradient>
+				<EmergencySheetHandle
+					gradientColors={gradientColors}
+					handleColor={handleColor}
+					styles={styles}
+				/>
 			),
 			[gradientColors, handleColor]
 		);
 
-		// Custom background with gradient - matches Welcome/Auth screens
 		const renderBackground = useCallback(
 			(props) => (
-				<LinearGradient
-					colors={gradientColors}
-					style={[props.style, styles.sheetBackground]}
+				<EmergencySheetBackground
+					gradientColors={gradientColors}
+					styles={styles}
+					sheetStyle={props.style}
 				/>
 			),
 			[gradientColors]
 		);
 
+		const safeIndex = isDetailMode
+			? 0
+			: Math.min(
+					Math.max(0, Number.isFinite(currentSnapIndex) ? currentSnapIndex : 0),
+					Math.max(0, snapPoints.length - 1)
+				);
+
 		return (
 			<BottomSheet
 				ref={bottomSheetRef}
-				index={isDetailMode ? 0 : currentSnapIndex}
+				index={safeIndex}
 				snapPoints={snapPoints}
 				onChange={handleSheetChange}
 				handleComponent={renderHandle}
@@ -301,7 +302,9 @@ const EmergencyBottomSheet = forwardRef(
 						<HospitalDetailView
 							hospital={selectedHospital}
 							onClose={onCloseFocus}
-							onCall={() => onHospitalCall(selectedHospital.id)}
+							onCall={() => {
+								if (selectedHospital?.id) onHospitalCall(selectedHospital.id);
+							}}
 							mode={mode}
 						/>
 					</BottomSheetView>
@@ -317,132 +320,62 @@ const EmergencyBottomSheet = forwardRef(
 						onScroll={handleScroll}
 						keyboardShouldPersistTaps="handled"
 					>
-						<>
-							{/* Search Bar + Avatar (4:1 grid-like ratio) */}
-							<View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-								<EmergencySearchBar
-									value={localSearchQuery}
-									onChangeText={handleSearchChange}
-									onFocus={handleSearchFocus}
-									onClear={handleSearchClear}
-									placeholder={
-										mode === "emergency"
-											? "Search ambulance services..."
-											: "Search hospitals, specialties..."
-									}
-									style={{ flex: 1 }}
-								/>
-								<Pressable
-									onPress={handleAvatarPress}
-									style={({ pressed }) => ({
-										width: 52,
-										height: 52,
-										marginLeft: 10,
-										alignItems: "center",
-										justifyContent: "center",
-										transform: [{ scale: pressed ? 0.95 : 1 }],
-									})}
-								>
-									<Image
-										source={
-											user?.imageUri
-												? { uri: user.imageUri }
-												: require("../../assets/profile.jpg")
-										}
-										style={{
-											width: 48,
-											height: 48,
-											borderRadius: 24,
-											borderWidth: 2,
-											borderColor: COLORS.brandPrimary,
-										}}
-									/>
-								</Pressable>
-							</View>
+						<EmergencySheetTopRow
+							searchValue={localSearchQuery}
+							onSearchChange={handleSearchChange}
+							onSearchFocus={handleSearchFocus}
+							onSearchClear={handleSearchClear}
+							placeholder={
+								mode === "emergency"
+									? "Search ambulance services..."
+									: "Search hospitals, specialties..."
+							}
+							avatarSource={
+								user?.imageUri
+									? { uri: user.imageUri }
+									: require("../../assets/profile.jpg")
+							}
+							onAvatarPress={handleAvatarPress}
+							showProfileModal={showProfileModal}
+							onCloseProfileModal={closeProfileModal}
+						/>
 
-							{/* Mini Profile Modal */}
-							<MiniProfileModal
-								visible={showProfileModal}
-								onClose={closeProfileModal}
-							/>
+						<EmergencySheetFilters
+							visible={currentSnapIndex > 0}
+							mode={mode}
+							serviceType={serviceType}
+							selectedSpecialty={selectedSpecialty}
+							specialties={specialties}
+							serviceTypeCounts={serviceTypeCounts}
+							specialtyCounts={specialtyCounts}
+							onServiceTypeSelect={onServiceTypeSelect}
+							onSpecialtySelect={onSpecialtySelect}
+							styles={styles}
+						/>
 
-							{/* Service Type or Specialty Selector - Acts as filters */}
-							{currentSnapIndex > 0 && (
-								<View style={styles.selectorContainer}>
-									{mode === "emergency" ? (
-										<ServiceTypeSelector
-											selectedType={serviceType}
-											onSelect={onServiceTypeSelect}
-											counts={serviceTypeCounts}
-										/>
-									) : (
-										<SpecialtySelector
-											specialties={specialties}
-											selectedSpecialty={selectedSpecialty}
-											onSelect={onSpecialtySelect}
-											counts={specialtyCounts}
-										/>
-									)}
-								</View>
-							)}
+						<EmergencySheetSectionHeader
+							visible={currentSnapIndex > 0}
+							mode={mode}
+							searchQuery={localSearchQuery}
+							hospitalsCount={hospitals.length}
+							hasActiveFilters={hasActiveFilters}
+							onReset={() => {
+								clearSearch();
+								if (onSearch) onSearch("");
+								if (onResetFilters) onResetFilters();
+							}}
+							textMuted={textMuted}
+							styles={styles}
+						/>
 
-							{/* Section Header with Search Results Info and Reset Button */}
-							{currentSnapIndex > 0 && (
-								<View style={styles.headerWithReset}>
-									<Text style={[styles.sectionHeader, { color: textMuted }]}>
-										{localSearchQuery.trim()
-											? `SEARCH RESULTS (${hospitals.length})`
-											: `${
-													mode === "emergency"
-														? "NEARBY SERVICES"
-														: "AVAILABLE BEDS"
-											} (${hospitals.length})`}
-									</Text>
-									{hasActiveFilters && (
-										<Pressable
-											onPress={() => {
-												Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-												clearSearch();
-												if (onSearch) onSearch("");
-												if (onResetFilters) onResetFilters();
-											}}
-											style={({ pressed }) => ({
-												opacity: pressed ? 0.6 : 1,
-											})}
-										>
-											<Text
-												style={[styles.resetButton, { color: COLORS.brandPrimary }]}
-											>
-												RESET
-											</Text>
-										</Pressable>
-									)}
-								</View>
-							)}
-
-							{/* Hospital List or 911 Fallback - Only visible when not collapsed */}
-							{currentSnapIndex > 0 &&
-								(hospitals.length > 0 ? (
-									hospitals.filter((h) => h?.id).map((hospital) => (
-										<HospitalCard
-											key={hospital.id}
-											hospital={hospital}
-											isSelected={selectedHospital?.id === hospital.id}
-											onSelect={() => onHospitalSelect(hospital)}
-											onCall={() => onHospitalCall(hospital.id)}
-											mode={mode}
-										/>
-									))
-								) : (
-									<Call911Card
-										message={
-											mode === "emergency"
-												? "No ambulance services found nearby. For immediate assistance, call 911."
-												: "No hospitals with available beds found. For urgent care, call 911."
-										}
-									/>
-								))}
-						</>
+						<EmergencySheetHospitalList
+							visible={currentSnapIndex > 0}
+							hospitals={hospitals}
+							selectedHospitalId={selectedHospital?.id}
+							onHospitalSelect={onHospitalSelect}
+							onHospitalCall={onHospitalCall}
+							mode={mode}
+						/>
 					</BottomSheetScrollView>
 				)}
 			</BottomSheet>

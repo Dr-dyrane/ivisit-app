@@ -1,3 +1,15 @@
+# Deprecated: EmergencyMap (Legacy Component)
+
+This file archives the old `EmergencyMap` component that was previously used before `FullScreenEmergencyMap` became the active implementation.
+
+- Status: Deprecated (not imported anywhere)
+- Original path: `components/map/EmergencyMap.jsx`
+- Replacement: `components/map/FullScreenEmergencyMap.jsx`
+- Reason: Preserve legacy logic for reference while keeping codebase clean
+
+## Original Source (verbatim)
+
+```jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -521,3 +533,5 @@ const darkMapStyle = [
 ];
 
 export default EmergencyMap;
+```
+

@@ -23,6 +23,7 @@ import HospitalCard from "./HospitalCard";
  */
 const HospitalDetailView = ({ hospital, onClose, onCall, mode }) => {
 	const { isDarkMode } = useTheme();
+	if (!hospital) return null;
 
 	// Dynamic colors
 	const textColor = isDarkMode ? "#FFFFFF" : "#1F2937";
@@ -60,7 +61,7 @@ const HospitalDetailView = ({ hospital, onClose, onCall, mode }) => {
 							style={[styles.hospitalName, { color: "#FFFFFF" }]}
 							numberOfLines={1}
 						>
-							{hospital.name}
+							{hospital?.name ?? "Hospital"}
 						</Text>
 						<Text style={[styles.metricsText, { color: "rgba(255,255,255,0.85)" }]}>
 							{formattedDistance} • {travelTime} min
@@ -90,6 +91,7 @@ const HospitalDetailView = ({ hospital, onClose, onCall, mode }) => {
 					eta: hospital?.eta ?? `${travelTime} mins`,
 				}}
 				isSelected={true}
+				hideDistanceEta={true}
 				onSelect={() => {}}
 				onCall={() => onCall?.()}
 				mode={mode}
