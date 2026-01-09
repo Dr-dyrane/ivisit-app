@@ -100,8 +100,14 @@ const EmergencyBottomSheet = forwardRef(
 			resetTabBar,
 			hideTabBar,
 		} = useTabBarVisibility();
-		const { handleScroll: handleHeaderScroll, resetHeader } =
-			useScrollAwareHeader();
+		const {
+			handleScroll: handleHeaderScroll,
+			resetHeader,
+			hideHeader,
+			showHeader,
+			lockHeaderHidden,
+			unlockHeaderHidden,
+		} = useScrollAwareHeader();
 
 		// Use EmergencyUI context for state management
 		const {
@@ -189,8 +195,15 @@ const EmergencyBottomSheet = forwardRef(
 
 		// Handle search focus - expand sheet to show results
 		const handleSearchFocus = useCallback(() => {
+			lockHeaderHidden();
+			hideHeader();
 			bottomSheetRef.current?.snapToIndex(2);
-		}, [currentSnapIndex]);
+		}, [hideHeader, lockHeaderHidden]);
+
+		const handleSearchBlur = useCallback(() => {
+			unlockHeaderHidden();
+			showHeader();
+		}, [showHeader, unlockHeaderHidden]);
 
 		// Handle search clear
 		const handleSearchClear = useCallback(() => {
@@ -1197,6 +1210,7 @@ const EmergencyBottomSheet = forwardRef(
 								searchValue={localSearchQuery}
 								onSearchChange={handleSearchChange}
 								onSearchFocus={handleSearchFocus}
+								onSearchBlur={handleSearchBlur}
 								onSearchClear={handleSearchClear}
 								placeholder={
 									mode === "emergency"

@@ -14,8 +14,10 @@ export function ScrollAwareHeaderProvider({ children }) {
   const lastScrollY = useRef(0);
   const isAnimating = useRef(false);
   const isHidden = useRef(false);
+  const isLockedHidden = useRef(false);
 
   const showHeader = useCallback(() => {
+    if (isLockedHidden.current) return;
     if (!isHidden.current || isAnimating.current) return;
 
     isAnimating.current = true;
@@ -59,7 +61,19 @@ export function ScrollAwareHeaderProvider({ children }) {
     });
   }, [headerOpacity, titleOpacity]);
 
+  const lockHeaderHidden = useCallback(() => {
+    if (isLockedHidden.current) return;
+    isLockedHidden.current = true;
+    hideHeader();
+  }, [hideHeader]);
+
+  const unlockHeaderHidden = useCallback(() => {
+    if (!isLockedHidden.current) return;
+    isLockedHidden.current = false;
+  }, []);
+
   const handleScroll = useCallback((event) => {
+    if (isLockedHidden.current) return;
     const currentScrollY = event.nativeEvent.contentOffset.y;
     const diff = currentScrollY - lastScrollY.current;
 
@@ -83,6 +97,7 @@ export function ScrollAwareHeaderProvider({ children }) {
   const resetHeader = useCallback(() => {
     lastScrollY.current = 0;
     isHidden.current = false;
+    isLockedHidden.current = false;
     headerOpacity.setValue(1);
     titleOpacity.setValue(1);
   }, [headerOpacity, titleOpacity]);
@@ -93,9 +108,11 @@ export function ScrollAwareHeaderProvider({ children }) {
     handleScroll,
     showHeader,
     hideHeader,
+    lockHeaderHidden,
+    unlockHeaderHidden,
     resetHeader,
     HEADER_HEIGHT,
-  }), [headerOpacity, titleOpacity, handleScroll, showHeader, hideHeader, resetHeader]);
+  }), [headerOpacity, titleOpacity, handleScroll, showHeader, hideHeader, lockHeaderHidden, unlockHeaderHidden, resetHeader]);
 
   return (
     <ScrollAwareHeaderContext.Provider value={value}>

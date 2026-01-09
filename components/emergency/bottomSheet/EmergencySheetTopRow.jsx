@@ -8,6 +8,7 @@ export default function EmergencySheetTopRow({
 	searchValue,
 	onSearchChange,
 	onSearchFocus,
+	onSearchBlur,
 	onSearchClear,
 	placeholder,
 	avatarSource,
@@ -22,6 +23,7 @@ export default function EmergencySheetTopRow({
 					value={searchValue}
 					onChangeText={onSearchChange}
 					onFocus={onSearchFocus}
+					onBlur={onSearchBlur}
 					onClear={onSearchClear}
 					placeholder={placeholder}
 					suggestionsRightBleed={62}
