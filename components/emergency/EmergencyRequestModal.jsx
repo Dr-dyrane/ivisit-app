@@ -9,7 +9,8 @@ import EmergencyRequestModalHeader from "./requestModal/EmergencyRequestModalHea
 import AmbulanceTypeCard from "./requestModal/AmbulanceTypeCard";
 import EmergencyRequestModalFooter from "./requestModal/EmergencyRequestModalFooter";
 import EmergencyRequestModalDispatched from "./requestModal/EmergencyRequestModalDispatched";
-import BedBookingSummaryCard from "./requestModal/BedBookingSummaryCard";
+import InfoTile from "./requestModal/InfoTile";
+import BedBookingOptions from "./requestModal/BedBookingOptions";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -26,6 +27,8 @@ export default function EmergencyRequestModal({
 	const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);
 	const [isRequesting, setIsRequesting] = useState(false);
 	const [requestData, setRequestData] = useState(null);
+	const [bedType, setBedType] = useState("standard");
+	const [bedCount, setBedCount] = useState(1);
 
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -54,6 +57,8 @@ export default function EmergencyRequestModal({
 		if (visible) {
 			setStep("select");
 			setSelectedAmbulanceType(null);
+			setBedType("standard");
+			setBedCount(1);
 			setIsRequesting(false);
 			setRequestData(null);
 		}
@@ -111,7 +116,9 @@ export default function EmergencyRequestModal({
 							hospitalName,
 							serviceType: "bed",
 							specialty: selectedSpecialty ?? "Any",
-							bedCount: 1,
+							bedCount,
+							bedType,
+							bedNumber: `B-${Math.floor(Math.random() * 90) + 10}`,
 					  }
 					: {
 							...MOCK_API_RESPONSES.requestAmbulance,
@@ -125,7 +132,17 @@ export default function EmergencyRequestModal({
 			setIsRequesting(false);
 			onRequestComplete?.(response);
 		}, 1800);
-	}, [hospitalName, isRequesting, onRequestComplete, selectedAmbulanceType]);
+	}, [
+		bedCount,
+		bedType,
+		hospitalName,
+		isRequesting,
+		mode,
+		onRequestComplete,
+		selectedAmbulanceType,
+		selectedSpecialty,
+		waitTime,
+	]);
 
 	const renderSelectStep = () => (
 		<View style={{ flex: 1 }}>
@@ -143,15 +160,55 @@ export default function EmergencyRequestModal({
 					</Text>
 
 					{mode === "booking" ? (
-						<BedBookingSummaryCard
-							hospitalName={hospitalName}
-							selectedSpecialty={selectedSpecialty}
-							availableBeds={availableBeds}
-							waitTime={waitTime}
-							textColor={colors.text}
-							mutedColor={colors.textMuted}
-							cardColor={colors.card}
-						/>
+						<>
+							<View style={styles.bookingGrid}>
+								<InfoTile
+									label="Hospital"
+									value={hospitalName}
+									textColor={colors.text}
+									mutedColor={colors.textMuted}
+									cardColor={colors.card}
+								/>
+								<InfoTile
+									label="Specialty"
+									value={selectedSpecialty ?? "Any"}
+									textColor={colors.text}
+									mutedColor={colors.textMuted}
+									cardColor={colors.card}
+								/>
+								<InfoTile
+									label="Available"
+									value={Number.isFinite(availableBeds) ? `${availableBeds} beds` : "--"}
+									textColor={colors.text}
+									mutedColor={colors.textMuted}
+									cardColor={colors.card}
+								/>
+								<InfoTile
+									label="Est. Wait"
+									value={waitTime ?? "--"}
+									textColor={colors.text}
+									mutedColor={colors.textMuted}
+									cardColor={colors.card}
+									valueColor={COLORS.brandPrimary}
+								/>
+							</View>
+
+							<BedBookingOptions
+								bedType={bedType}
+								onBedTypeChange={(next) => {
+									setBedType(next);
+									Haptics.selectionAsync();
+								}}
+								bedCount={bedCount}
+								onBedCountChange={(next) => {
+									setBedCount(next);
+									Haptics.selectionAsync();
+								}}
+								textColor={colors.text}
+								mutedColor={colors.textMuted}
+								cardColor={colors.card}
+							/>
+						</>
 					) : (
 						AMBULANCE_TYPES.map((type) => (
 							<AmbulanceTypeCard
@@ -260,6 +317,13 @@ const styles = StyleSheet.create({
 	section: {
 		paddingHorizontal: 20,
 		paddingBottom: 16,
+	},
+	bookingGrid: {
+		width: "100%",
+		flexDirection: "row",
+		flexWrap: "wrap",
+		justifyContent: "space-between",
+		marginBottom: 12,
 	},
 	sectionTitle: {
 		fontSize: 12,

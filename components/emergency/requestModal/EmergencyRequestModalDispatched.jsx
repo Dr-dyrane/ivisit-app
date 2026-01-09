@@ -1,13 +1,14 @@
 import React from "react";
 import { View, Text, StyleSheet, Image } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
+import InfoTile from "./InfoTile";
 
 export default function EmergencyRequestModalDispatched({ requestData, textColor, mutedColor, cardColor }) {
 	const isBed = requestData?.serviceType === "bed";
 	const heroImage = isBed
 		? require("../../../assets/features/bed.png")
 		: require("../../../assets/features/emergency.png");
+	const bedNumber = requestData?.bedNumber ?? (isBed ? `B-${Math.floor(Math.random() * 90) + 10}` : null);
 	return (
 		<View style={styles.container}>
 			<Image source={heroImage} style={styles.heroImage} resizeMode="contain" />
@@ -18,38 +19,95 @@ export default function EmergencyRequestModalDispatched({ requestData, textColor
 				{isBed ? "You're confirmed" : "Help is on the way"}
 			</Text>
 
-			<View style={[styles.card, { backgroundColor: cardColor }]}>
-				<Row
-					label={isBed ? "Reservation ID" : "Request ID"}
-					value={requestData?.requestId ?? "--"}
-					textColor={textColor}
-					mutedColor={mutedColor}
-				/>
-				<Row
-					label={isBed ? "Est. Wait" : "ETA"}
-					value={requestData?.estimatedArrival ?? "--"}
-					textColor={COLORS.brandPrimary}
-					mutedColor={mutedColor}
-				/>
-				<Row label="Hospital" value={requestData?.hospitalName ?? "--"} textColor={textColor} mutedColor={mutedColor} />
-				{isBed && (
-					<Row
-						label="Specialty"
-						value={requestData?.specialty ?? "Any"}
+			{isBed ? (
+				<View style={styles.grid}>
+					<InfoTile
+						label="Reservation"
+						value={requestData?.requestId ?? "--"}
 						textColor={textColor}
 						mutedColor={mutedColor}
+						cardColor={cardColor}
 					/>
-				)}
-			</View>
-		</View>
-	);
-}
-
-function Row({ label, value, textColor, mutedColor }) {
-	return (
-		<View style={styles.row}>
-			<Text style={[styles.label, { color: mutedColor }]}>{label}:</Text>
-			<Text style={[styles.value, { color: textColor }]}>{value}</Text>
+					<InfoTile
+						label="Bed Number"
+						value={bedNumber ?? "--"}
+						textColor={textColor}
+						mutedColor={mutedColor}
+						cardColor={cardColor}
+					/>
+					<InfoTile
+						label="Beds"
+						value={
+							Number.isFinite(requestData?.bedCount)
+								? String(requestData.bedCount)
+								: requestData?.bedCount ?? "1"
+						}
+						textColor={textColor}
+						mutedColor={mutedColor}
+						cardColor={cardColor}
+					/>
+					<InfoTile
+						label="Est. Wait"
+						value={requestData?.estimatedArrival ?? "--"}
+						textColor={textColor}
+						mutedColor={mutedColor}
+						cardColor={cardColor}
+						valueColor={COLORS.brandPrimary}
+					/>
+					<View style={[styles.wideCard, { backgroundColor: cardColor }]}>
+						<Text style={[styles.wideLabel, { color: mutedColor }]}>Hospital</Text>
+						<Text style={[styles.wideValue, { color: textColor }]} numberOfLines={2}>
+							{requestData?.hospitalName ?? "--"}
+						</Text>
+						<Text style={[styles.wideSubValue, { color: mutedColor }]} numberOfLines={1}>
+							{requestData?.specialty ? `Specialty: ${requestData.specialty}` : "Specialty: Any"}
+						</Text>
+					</View>
+				</View>
+			) : (
+				<View style={styles.grid}>
+					<InfoTile
+						label="Request"
+						value={requestData?.requestId ?? "--"}
+						textColor={textColor}
+						mutedColor={mutedColor}
+						cardColor={cardColor}
+					/>
+					<InfoTile
+						label="ETA"
+						value={requestData?.estimatedArrival ?? "--"}
+						textColor={textColor}
+						mutedColor={mutedColor}
+						cardColor={cardColor}
+						valueColor={COLORS.brandPrimary}
+					/>
+					<InfoTile
+						label="Ambulance"
+						value={requestData?.ambulanceType ?? "--"}
+						textColor={textColor}
+						mutedColor={mutedColor}
+						cardColor={cardColor}
+					/>
+					<InfoTile
+						label="Status"
+						value="En Route"
+						textColor={textColor}
+						mutedColor={mutedColor}
+						cardColor={cardColor}
+					/>
+					<View style={[styles.wideCard, { backgroundColor: cardColor }]}>
+						<Text style={[styles.wideLabel, { color: mutedColor }]}>Hospital</Text>
+						<Text style={[styles.wideValue, { color: textColor }]} numberOfLines={2}>
+							{requestData?.hospitalName ?? "--"}
+						</Text>
+						<Text style={[styles.wideSubValue, { color: mutedColor }]} numberOfLines={1}>
+							{requestData?.ambulanceType
+								? `Type: ${requestData.ambulanceType}`
+								: "Type: --"}
+						</Text>
+					</View>
+				</View>
+			)}
 		</View>
 	);
 }
@@ -77,23 +135,36 @@ const styles = StyleSheet.create({
 		marginTop: 6,
 		marginBottom: 18,
 	},
-	card: {
+	grid: {
 		width: "100%",
-		padding: 16,
-		borderRadius: 18,
-	},
-	row: {
 		flexDirection: "row",
+		flexWrap: "wrap",
 		justifyContent: "space-between",
-		alignItems: "center",
-		marginBottom: 12,
 	},
-	label: {
-		fontSize: 13,
+	wideCard: {
+		width: "100%",
+		borderRadius: 18,
+		paddingHorizontal: 14,
+		paddingVertical: 12,
+		marginTop: 2,
+	},
+	wideLabel: {
+		fontSize: 11,
+		fontWeight: "900",
+		letterSpacing: 1.6,
+		textTransform: "uppercase",
+		opacity: 0.9,
+	},
+	wideValue: {
+		marginTop: 10,
+		fontSize: 14,
+		fontWeight: "900",
+		letterSpacing: -0.2,
+	},
+	wideSubValue: {
+		marginTop: 8,
+		fontSize: 12,
 		fontWeight: "700",
-	},
-	value: {
-		fontSize: 13,
-		fontWeight: "800",
+		opacity: 0.9,
 	},
 });

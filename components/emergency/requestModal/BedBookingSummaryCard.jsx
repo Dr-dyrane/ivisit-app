@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Fontisto } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
 
 export default function BedBookingSummaryCard({
@@ -15,7 +15,7 @@ export default function BedBookingSummaryCard({
 	return (
 		<View style={[styles.card, { backgroundColor: cardColor }]}>
 			<View style={styles.row}>
-				<Ionicons name="bed" size={18} color={COLORS.brandPrimary} />
+				<Fontisto name="bed-patient" size={16} color={COLORS.brandPrimary} />
 				<Text style={[styles.title, { color: textColor }]}>Bed Reservation</Text>
 			</View>
 
@@ -84,4 +84,3 @@ const styles = StyleSheet.create({
 		fontWeight: "800",
 	},
 });
-
