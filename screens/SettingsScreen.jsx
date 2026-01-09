@@ -1,15 +1,16 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import {
 	View,
 	Text,
 	ScrollView,
 	StyleSheet,
 	Platform,
+	Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -17,8 +18,10 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function SettingsScreen() {
+	const router = useRouter();
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 	const { setHeaderState } = useHeaderState();
@@ -26,6 +29,7 @@ export default function SettingsScreen() {
 		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
+	const { user } = useAuth();
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
@@ -59,6 +63,10 @@ export default function SettingsScreen() {
 		card: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
 	};
 
+	const passwordRoute = useMemo(() => {
+		return user?.hasPassword ? "/(user)/(stacks)/change-password" : "/(user)/(stacks)/create-password";
+	}, [user?.hasPassword]);
+
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
 
@@ -79,6 +87,30 @@ export default function SettingsScreen() {
 						will be centralized here.
 					</Text>
 				</View>
+
+				<Pressable
+					onPress={() => router.push(passwordRoute)}
+					style={({ pressed }) => [
+						styles.securityCard,
+						{
+							backgroundColor: colors.card,
+							opacity: pressed ? 0.92 : 1,
+						},
+					]}
+				>
+					<View style={styles.securityIconWrap}>
+						<Ionicons name="lock-closed" size={22} color="#FFFFFF" />
+					</View>
+					<View style={{ flex: 1 }}>
+						<Text style={[styles.securityTitle, { color: colors.text }]}>
+							{user?.hasPassword ? "Change Password" : "Create Password"}
+						</Text>
+						<Text style={[styles.securitySubtitle, { color: colors.textMuted }]}>
+							{user?.hasPassword ? "Update your password anytime" : "Add password login to your account"}
+						</Text>
+					</View>
+					<Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+				</Pressable>
 			</ScrollView>
 		</View>
 	);
@@ -86,7 +118,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
-	content: { flexGrow: 1, padding: 20 },
+	content: { flexGrow: 1, padding: 20, gap: 12 },
 	card: {
 		borderRadius: 20,
 		padding: 18,
@@ -101,5 +133,21 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		lineHeight: 20,
 	},
+	securityCard: {
+		borderRadius: 24,
+		padding: 18,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 14,
+	},
+	securityIconWrap: {
+		width: 46,
+		height: 46,
+		borderRadius: 16,
+		backgroundColor: COLORS.brandPrimary,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	securityTitle: { fontSize: 16, fontWeight: "900", letterSpacing: -0.2 },
+	securitySubtitle: { marginTop: 4, fontSize: 13, fontWeight: "600" },
 });
-

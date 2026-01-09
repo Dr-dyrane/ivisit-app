@@ -30,7 +30,7 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 const ProfileScreen = () => {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const { syncUserData } = useAuth();
+	const { syncUserData, user } = useAuth();
 	const { showToast } = useToast();
 	const { isDarkMode } = useTheme();
 	const { handleScroll: handleTabBarScroll, resetTabBar } =
@@ -554,6 +554,84 @@ const ProfileScreen = () => {
 						marginTop: 32,
 					}}
 				>
+					<Pressable
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+							router.push(
+								user?.hasPassword
+									? "/(user)/(stacks)/change-password"
+									: "/(user)/(stacks)/create-password"
+							);
+						}}
+						style={{
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							padding: 20,
+							flexDirection: "row",
+							alignItems: "center",
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+							marginBottom: 14,
+						}}
+					>
+						<View
+							style={{
+								backgroundColor: COLORS.brandPrimary,
+								width: 56,
+								height: 56,
+								borderRadius: 16,
+								alignItems: "center",
+								justifyContent: "center",
+								marginRight: 16,
+							}}
+						>
+							<Ionicons name="lock-closed" size={26} color="#FFFFFF" />
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text
+								style={{
+									fontSize: 19,
+									fontWeight: "900",
+									color: colors.text,
+									letterSpacing: -0.5,
+								}}
+							>
+								{user?.hasPassword ? "Change Password" : "Create Password"}
+							</Text>
+							<Text
+								style={{
+									fontSize: 14,
+									color: colors.textMuted,
+									marginTop: 2,
+								}}
+							>
+								{user?.hasPassword
+									? "Update your password anytime"
+									: "Add password login to your account"}
+							</Text>
+						</View>
+						<View
+							style={{
+								width: 36,
+								height: 36,
+								borderRadius: 12,
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.025)"
+									: "rgba(0,0,0,0.025)",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<Ionicons
+								name="chevron-forward"
+								size={16}
+								color={colors.textMuted}
+							/>
+						</View>
+					</Pressable>
+
 					<Pressable
 						onPress={handleUpdateProfile}
 						disabled={isLoading}

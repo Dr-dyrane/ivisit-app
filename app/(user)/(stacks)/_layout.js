@@ -152,6 +152,32 @@ export default function StacksLayout() {
 			/>
 
 			<Stack.Screen
+				name="create-password"
+				options={{
+					headerTitle: "Create Password",
+					headerTitleStyle: {
+						fontWeight: "bold",
+						fontSize: 18,
+						color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+					},
+					headerLeft: () => <HeaderBackButton />,
+				}}
+			/>
+
+			<Stack.Screen
+				name="change-password"
+				options={{
+					headerTitle: "Change Password",
+					headerTitleStyle: {
+						fontWeight: "bold",
+						fontSize: 18,
+						color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+					},
+					headerLeft: () => <HeaderBackButton />,
+				}}
+			/>
+
+			<Stack.Screen
 				name="complete-profile"
 				options={{
 					headerTitle: "Complete Profile",

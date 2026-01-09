@@ -26,6 +26,7 @@ import {
 	getProfileCompletionDraftAPI,
 	saveProfileCompletionDraftAPI,
 } from "../api/profileCompletion";
+import HeaderBackButton from "../components/navigation/HeaderBackButton";
 
 export default function CompleteProfileScreen() {
 	const router = useRouter();
@@ -36,7 +37,23 @@ export default function CompleteProfileScreen() {
 		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
-	const { user, syncUserData } = useAuth();
+	const { user, syncUserData, logout } = useAuth();
+
+	const signOutButton = useCallback(
+		() => (
+			<Pressable
+				onPress={async () => {
+					await logout();
+					router.replace("/(auth)");
+				}}
+				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+				style={{ paddingHorizontal: 6, paddingVertical: 6 }}
+			>
+				<Ionicons name="log-out-outline" size={22} color="#FFFFFF" />
+			</Pressable>
+		),
+		[logout, router]
+	);
 
 	const initialFullName =
 		typeof user?.fullName === "string" && user.fullName.trim().length > 0
@@ -57,9 +74,9 @@ export default function CompleteProfileScreen() {
 				icon: <Ionicons name="person" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent: null,
-				rightComponent: null,
+				rightComponent: signOutButton(),
 			});
-		}, [resetHeader, resetTabBar, setHeaderState])
+		}, [resetHeader, resetTabBar, setHeaderState, signOutButton])
 	);
 
 	const handleScroll = useCallback(
