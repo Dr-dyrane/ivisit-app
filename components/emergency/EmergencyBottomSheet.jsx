@@ -191,6 +191,10 @@ const EmergencyBottomSheet = forwardRef(
 		const handleSearchFocus = useCallback(() => {
 			if (currentSnapIndex === 0) {
 				bottomSheetRef.current?.snapToIndex(1);
+				return;
+			}
+			if (currentSnapIndex === 1) {
+				bottomSheetRef.current?.snapToIndex(2);
 			}
 		}, [currentSnapIndex]);
 

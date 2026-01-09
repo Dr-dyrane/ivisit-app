@@ -439,9 +439,9 @@ const FullScreenEmergencyMap = forwardRef(
 			const sheetRatio = screenHeight > 0 ? bottomPadding / screenHeight : 0;
 			const region = getRegionForCoordinates(routeCoordinates, {
 				sheetRatio,
-				minDelta: 0.012,
+				minDelta: 0.009,
 				maxDelta: 0.22,
-				rangeMultiplier: 1.25,
+				rangeMultiplier: 1.05,
 			});
 			if (!region) return;
 

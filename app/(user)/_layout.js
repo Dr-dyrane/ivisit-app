@@ -6,6 +6,7 @@ import { FABProvider } from "../../contexts/FABContext";
 import { VisitsProvider } from "../../contexts/VisitsContext";
 import { NotificationsProvider } from "../../contexts/NotificationsContext";
 import { EmergencyUIProvider } from "../../contexts/EmergencyUIContext";
+import { SearchProvider } from "../../contexts/SearchContext";
 import ScrollAwareHeader from "../../components/headers/ScrollAwareHeader";
 import GlobalFAB from "../../components/navigation/GlobalFAB";
 
@@ -16,33 +17,30 @@ export default function UserLayout() {
 				<FABProvider>
 					<VisitsProvider>
 						<NotificationsProvider>
-							<EmergencyUIProvider>
-								<View style={styles.container}>
-									{/* Fixed header at layout level */}
-									<UserHeaderWrapper />
+							<SearchProvider>
+								<EmergencyUIProvider>
+									<View style={styles.container}>
+										<UserHeaderWrapper />
 
-									<Stack
-										screenOptions={{
-											headerShown: false,
-											animation: "slide_from_right",
-										}}
-									>
-										{/* Bottom tabs (persistent) */}
-										<Stack.Screen name="(tabs)" />
-
-										{/* Secondary flows on top of tabs */}
-										<Stack.Screen
-											name="(stacks)"
-											options={{
-												presentation: "card",
+										<Stack
+											screenOptions={{
+												headerShown: false,
+												animation: "slide_from_right",
 											}}
-										/>
-									</Stack>
+										>
+											<Stack.Screen name="(tabs)" />
+											<Stack.Screen
+												name="(stacks)"
+												options={{
+													presentation: "card",
+												}}
+											/>
+										</Stack>
 
-									{/* Global FAB - always above tabs */}
-									<GlobalFAB />
-								</View>
-							</EmergencyUIProvider>
+										<GlobalFAB />
+									</View>
+								</EmergencyUIProvider>
+							</SearchProvider>
 						</NotificationsProvider>
 					</VisitsProvider>
 				</FABProvider>

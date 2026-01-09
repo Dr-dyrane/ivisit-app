@@ -11,6 +11,7 @@ import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
 import { useVisits } from "../contexts/VisitsContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useNotifications } from "../contexts/NotificationsContext";
 import { COLORS } from "../constants/colors";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -20,11 +21,11 @@ import { listEmergencyContactsAPI } from "../api/emergencyContacts";
 import { getMedicalProfileAPI } from "../api/medicalProfile";
 import { createEmergencyRequestAPI, setEmergencyRequestStatusAPI } from "../api/emergencyRequests";
 import { EmergencyRequestStatus } from "../services/emergencyRequestsService";
+import { NOTIFICATION_PRIORITY, NOTIFICATION_TYPES } from "../data/notifications";
 
 import FullScreenEmergencyMap from "../components/map/FullScreenEmergencyMap";
 import EmergencyBottomSheet from "../components/emergency/EmergencyBottomSheet";
 import EmergencyRequestModal from "../components/emergency/EmergencyRequestModal";
-import NotificationIconButton from "../components/headers/NotificationIconButton";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 
 /**
@@ -46,6 +47,7 @@ export default function EmergencyScreen() {
 	const { registerFAB } = useFAB();
 	const { addVisit, cancelVisit, completeVisit } = useVisits();
 	const { user } = useAuth();
+	const { addNotification } = useNotifications();
 
 	// Refs for map and bottom sheet
 	const mapRef = useRef(null);
@@ -108,7 +110,6 @@ export default function EmergencyScreen() {
 
 	// Header components - memoized
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
-	const rightComponent = useMemo(() => <NotificationIconButton />, []);
 
 	// Handle sheet snap changes
 	const handleSheetSnapChange = useCallback((index) => {
@@ -131,9 +132,9 @@ export default function EmergencyScreen() {
 					),
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent,
-				rightComponent,
+				rightComponent: null,
 			});
-		}, [resetTabBar, resetHeader, setHeaderState, mode, leftComponent, rightComponent])
+		}, [resetTabBar, resetHeader, setHeaderState, mode, leftComponent])
 	);
 
 	useFocusEffect(
@@ -271,6 +272,26 @@ export default function EmergencyScreen() {
 					patient,
 					shared,
 				});
+
+				addNotification({
+					type:
+						request?.serviceType === "ambulance"
+							? NOTIFICATION_TYPES.EMERGENCY
+							: NOTIFICATION_TYPES.APPOINTMENT,
+					title:
+						request?.serviceType === "ambulance"
+							? "Ambulance requested"
+							: "Bed reserved",
+					message: `${request?.hospitalName ?? hospital?.name ?? "Hospital"} • ${date} ${time}`,
+					timestamp: new Date().toISOString(),
+					read: false,
+					priority:
+						request?.serviceType === "ambulance"
+							? NOTIFICATION_PRIORITY.URGENT
+							: NOTIFICATION_PRIORITY.HIGH,
+					actionType: request?.serviceType === "ambulance" ? "track" : "view_appointment",
+					actionData: { visitId },
+				});
 			} catch {}
 		})();
 		if (request?.serviceType === "ambulance") {
@@ -331,7 +352,7 @@ export default function EmergencyScreen() {
 		setTimeout(() => {
 			bottomSheetRef.current?.snapToIndex?.(0);
 		}, 0);
-	}, [addVisit, clearSelectedHospital, hospitals, requestHospitalId, selectedHospital?.id, selectedSpecialty, startAmbulanceTrip, startBedBooking, user?.email, user?.fullName, user?.phone, user?.username]);
+	}, [addNotification, addVisit, clearSelectedHospital, hospitals, mode, requestHospitalId, selectedHospital?.id, selectedSpecialty, startAmbulanceTrip, startBedBooking, user?.email, user?.fullName, user?.phone, user?.username]);
 
 	// Service type selection
 	const handleServiceTypeSelect = useCallback((type) => {
@@ -352,7 +373,13 @@ export default function EmergencyScreen() {
 		// If search matches a single hospital, zoom to it on map
 		if (query.length > 2 && mapRef.current) {
 			const q = query.toLowerCase();
-			const matches = filteredHospitals.filter((h) => {
+			const base =
+				mode === "booking"
+					? selectedSpecialty
+						? hospitals.filter((h) => h?.specialties?.includes?.(selectedSpecialty))
+						: hospitals
+					: filteredHospitals;
+			const matches = base.filter((h) => {
 				const name = typeof h?.name === "string" ? h.name.toLowerCase() : "";
 				const address =
 					typeof h?.address === "string" ? h.address.toLowerCase() : "";
@@ -368,13 +395,19 @@ export default function EmergencyScreen() {
 			}
 		}
 		timing.endTiming("search_filter");
-	}, [filteredHospitals, setSearchQuery, timing]);
+	}, [filteredHospitals, hospitals, mode, selectedSpecialty, setSearchQuery, timing]);
 
 	// Filter hospitals based on search query
 	const searchFilteredHospitals = useMemo(() => {
 		if (!searchQuery.trim()) return filteredHospitals;
 		const query = searchQuery.toLowerCase();
-		return filteredHospitals.filter((h) => {
+		const base =
+			mode === "booking"
+				? selectedSpecialty
+					? hospitals.filter((h) => h?.specialties?.includes?.(selectedSpecialty))
+					: hospitals
+				: filteredHospitals;
+		return base.filter((h) => {
 			const name = typeof h?.name === "string" ? h.name.toLowerCase() : "";
 			const address =
 				typeof h?.address === "string" ? h.address.toLowerCase() : "";
@@ -385,7 +418,7 @@ export default function EmergencyScreen() {
 				);
 			return name.includes(query) || address.includes(query) || specialtiesMatch;
 		});
-	}, [filteredHospitals, searchQuery]);
+	}, [filteredHospitals, hospitals, mode, searchQuery, selectedSpecialty]);
 
 	// Calculate service type counts
 	const serviceTypeCounts = useMemo(() => {
@@ -469,6 +502,16 @@ export default function EmergencyScreen() {
 							EmergencyRequestStatus.CANCELLED
 						).catch(() => {});
 						cancelVisit(activeAmbulanceTrip.requestId);
+						addNotification({
+							type: NOTIFICATION_TYPES.EMERGENCY,
+							title: "Ambulance request cancelled",
+							message: "You cancelled the active ambulance request.",
+							timestamp: new Date().toISOString(),
+							read: false,
+							priority: NOTIFICATION_PRIORITY.NORMAL,
+							actionType: null,
+							actionData: { visitId: activeAmbulanceTrip.requestId },
+						});
 					}
 					stopAmbulanceTrip();
 					setTimeout(() => {
@@ -482,6 +525,16 @@ export default function EmergencyScreen() {
 							EmergencyRequestStatus.COMPLETED
 						).catch(() => {});
 						completeVisit(activeAmbulanceTrip.requestId);
+						addNotification({
+							type: NOTIFICATION_TYPES.EMERGENCY,
+							title: "Ambulance ride completed",
+							message: "Your emergency trip has been marked complete.",
+							timestamp: new Date().toISOString(),
+							read: false,
+							priority: NOTIFICATION_PRIORITY.NORMAL,
+							actionType: "view_summary",
+							actionData: { visitId: activeAmbulanceTrip.requestId },
+						});
 					}
 					stopAmbulanceTrip();
 					setTimeout(() => {
@@ -495,6 +548,16 @@ export default function EmergencyScreen() {
 							EmergencyRequestStatus.CANCELLED
 						).catch(() => {});
 						cancelVisit(activeBedBooking.requestId);
+						addNotification({
+							type: NOTIFICATION_TYPES.APPOINTMENT,
+							title: "Bed reservation cancelled",
+							message: "You cancelled the active bed reservation.",
+							timestamp: new Date().toISOString(),
+							read: false,
+							priority: NOTIFICATION_PRIORITY.NORMAL,
+							actionType: null,
+							actionData: { visitId: activeBedBooking.requestId },
+						});
 					}
 					stopBedBooking();
 					setTimeout(() => {
@@ -508,6 +571,16 @@ export default function EmergencyScreen() {
 							EmergencyRequestStatus.COMPLETED
 						).catch(() => {});
 						completeVisit(activeBedBooking.requestId);
+						addNotification({
+							type: NOTIFICATION_TYPES.APPOINTMENT,
+							title: "Bed booking completed",
+							message: "Your bed booking has been marked complete.",
+							timestamp: new Date().toISOString(),
+							read: false,
+							priority: NOTIFICATION_PRIORITY.NORMAL,
+							actionType: "view_summary",
+							actionData: { visitId: activeBedBooking.requestId },
+						});
 					}
 					stopBedBooking();
 					setTimeout(() => {

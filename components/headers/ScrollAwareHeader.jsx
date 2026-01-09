@@ -4,6 +4,8 @@ import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { BlurView } from "expo-blur";
+import NotificationIconButton from "./NotificationIconButton";
+import SearchIconButton from "./SearchIconButton";
 
 const HEADER_HEIGHT = 60;
 
@@ -33,6 +35,16 @@ export default function ScrollAwareHeader({
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
 		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
 	};
+
+	const resolvedRight =
+		rightComponent === false ? null : rightComponent == null ? (
+			<View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+				<SearchIconButton />
+				<NotificationIconButton />
+			</View>
+		) : (
+			rightComponent
+		);
 
 	return (
 		<Animated.View
@@ -157,18 +169,18 @@ export default function ScrollAwareHeader({
 						)}
 					</View>
 
-					{rightComponent && (
-						<View
-							style={{
-								width: 40,
-								height: 40,
-								justifyContent: "center",
-								alignItems: "center",
-							}}
-						>
-							{rightComponent}
-						</View>
-					)}
+						{resolvedRight && (
+							<View
+								style={{
+									minWidth: 40,
+									height: 40,
+									justifyContent: "center",
+									alignItems: "center",
+								}}
+							>
+								{resolvedRight}
+							</View>
+						)}
 				</View>
 			</BlurView>
 		</Animated.View>

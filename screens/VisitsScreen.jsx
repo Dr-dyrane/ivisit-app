@@ -24,7 +24,6 @@ import { COLORS } from "../constants/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import VisitCard from "../components/visits/VisitCard";
 import VisitFilters from "../components/visits/VisitFilters";
-import NotificationIconButton from "../components/headers/NotificationIconButton";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 
 const VisitsScreen = () => {
@@ -83,7 +82,6 @@ const VisitsScreen = () => {
 
 	// Modular header components with haptic feedback - memoized to prevent infinite re-renders
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
-	const rightComponent = useMemo(() => <NotificationIconButton />, []);
 
 	// Update header when screen is focused
 	useFocusEffect(
@@ -96,14 +94,13 @@ const VisitsScreen = () => {
 				icon: <Ionicons name="calendar" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent,
-				rightComponent,
+				rightComponent: null,
 			});
 		}, [
 			resetTabBar,
 			resetHeader,
 			setHeaderState,
 			leftComponent,
-			rightComponent,
 		])
 	);
 

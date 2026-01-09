@@ -1,11 +1,13 @@
 // contexts/NotificationsContext.jsx - Notifications state management
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { 
   NOTIFICATIONS, 
   NOTIFICATION_FILTERS,
   NOTIFICATION_TYPES,
+  NOTIFICATION_PRIORITY,
 } from "../data/notifications";
+import { database, StorageKeys } from "../database";
 
 // Create the notifications context
 const NotificationsContext = createContext();
@@ -23,12 +25,43 @@ const NotificationsContext = createContext();
  */
 export function NotificationsProvider({ children }) {
   // Core state
-  const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState("all");
   
   // Loading state for API integration
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isActive = true;
+    (async () => {
+      setIsLoading(true);
+      try {
+        const stored = await database.read(StorageKeys.NOTIFICATIONS, null);
+        if (!isActive) return;
+        if (Array.isArray(stored) && stored.length > 0) {
+          setNotifications(stored);
+          return;
+        }
+        setNotifications(NOTIFICATIONS);
+        await database.write(StorageKeys.NOTIFICATIONS, NOTIFICATIONS);
+      } catch (e) {
+        if (!isActive) return;
+        setNotifications(NOTIFICATIONS);
+        setError(e?.message ?? "Failed to load notifications");
+      } finally {
+        if (isActive) setIsLoading(false);
+      }
+    })();
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!Array.isArray(notifications)) return;
+    database.write(StorageKeys.NOTIFICATIONS, notifications).catch(() => {});
+  }, [notifications]);
 
   // Derived: Unread count
   const unreadCount = useMemo(() => {
@@ -88,9 +121,21 @@ export function NotificationsProvider({ children }) {
 
   // Add a new notification (for push/realtime)
   const addNotification = useCallback((notification) => {
+    const now = new Date().toISOString();
+    const base = notification && typeof notification === "object" ? notification : {};
     setNotifications(prev => [
-      { ...notification, id: String(Date.now()), read: false },
-      ...prev,
+      { 
+        id: String(Date.now()),
+        type: base.type ?? NOTIFICATION_TYPES.SYSTEM,
+        title: base.title ?? "Update",
+        message: base.message ?? "",
+        timestamp: base.timestamp ?? now,
+        read: base.read === true ? true : false,
+        priority: base.priority ?? NOTIFICATION_PRIORITY.NORMAL,
+        actionType: base.actionType ?? null,
+        actionData: base.actionData ?? null,
+      },
+      ...(Array.isArray(prev) ? prev : []),
     ]);
   }, []);
 
@@ -99,10 +144,8 @@ export function NotificationsProvider({ children }) {
     setIsLoading(true);
     setError(null);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      // In real app: fetch from API
-      // setNotifications(await api.getNotifications());
+      const stored = await database.read(StorageKeys.NOTIFICATIONS, []);
+      setNotifications(Array.isArray(stored) ? stored : []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -154,4 +197,3 @@ export function useNotifications() {
 }
 
 export default NotificationsContext;
-

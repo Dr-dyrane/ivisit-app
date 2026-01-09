@@ -22,7 +22,6 @@ import { useFAB } from "../contexts/FABContext";
 import { COLORS } from "../constants/colors";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import NotificationIconButton from "../components/headers/NotificationIconButton";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 
 const MoreScreen = () => {
@@ -40,7 +39,6 @@ const MoreScreen = () => {
 
 	// Modular header components with haptic feedback - memoized to prevent infinite re-renders
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
-	const rightComponent = useMemo(() => <NotificationIconButton />, []);
 
 	// Hide FAB on More screen (on focus, not just mount)
 	useFocusEffect(
@@ -62,14 +60,13 @@ const MoreScreen = () => {
 				icon: <Ionicons name="ellipsis-horizontal" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent,
-				rightComponent,
+				rightComponent: null,
 			});
 		}, [
 			resetTabBar,
 			resetHeader,
 			setHeaderState,
 			leftComponent,
-			rightComponent,
 		])
 	);
 

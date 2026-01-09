@@ -69,6 +69,8 @@ export const StorageKeys = {
 	/** User notifications */
 	NOTIFICATIONS: `${DB_PREFIX}notifications`,
 
+	SEARCH_HISTORY: `${DB_PREFIX}search_history`,
+
 	/** App preferences/settings */
 	PREFERENCES: `${DB_PREFIX}preferences`,
 
@@ -88,6 +90,7 @@ export const CollectionKeys = [
 	StorageKeys.VISITS,
 	StorageKeys.EMERGENCY_CONTACTS,
 	StorageKeys.NOTIFICATIONS,
+	StorageKeys.SEARCH_HISTORY,
 	StorageKeys.IMAGES,
 	StorageKeys.RESET_TOKENS,
 	StorageKeys.EMERGENCY_REQUESTS,
