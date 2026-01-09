@@ -18,7 +18,6 @@ import { useToast } from "./ToastContext";
 import { useAuth } from "./AuthContext";
 import { authService } from "../services/authService";
 import { REGISTRATION_STEPS } from "../constants/registrationSteps";
-import { getPendingRegistrationAPI } from "../api/auth";
 
 const RegistrationContext = createContext();
 
@@ -244,7 +243,7 @@ export function RegistrationProvider({ children }) {
 
 	// Check for pending registration data (from login flow with verified OTP)
 	const checkAndApplyPendingRegistration = useCallback(async () => {
-		const pending = await getPendingRegistrationAPI();
+		const pending = await authService.getPendingRegistration();
 		if (pending && pending.verified) {
 			console.log("[v0] Found verified pending registration:", pending);
 			// Auto-populate with verified contact info from login attempt

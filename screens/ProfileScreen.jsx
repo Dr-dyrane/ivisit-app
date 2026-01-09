@@ -17,7 +17,8 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
-import { updateUserAPI, getCurrentUserAPI } from "../api/auth";
+import { useUpdateProfile } from "../hooks/user/useUpdateProfile";
+import { useImageUpload } from "../hooks/user/useImageUpload";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import ProfileField from "../components/form/ProfileField";
@@ -31,6 +32,8 @@ const ProfileScreen = () => {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { syncUserData, user } = useAuth();
+    const { updateProfile, isLoading: isUpdating } = useUpdateProfile();
+    const { uploadImage, isUploading } = useImageUpload();
 	const { showToast } = useToast();
 	const { isDarkMode } = useTheme();
 	const { handleScroll: handleTabBarScroll, resetTabBar } =
@@ -48,6 +51,21 @@ const ProfileScreen = () => {
 	const [imageUri, setImageUri] = useState(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isDataLoading, setIsDataLoading] = useState(true);
+
+    // Sync state with user context when loaded
+    useEffect(() => {
+        if (user) {
+            setFullName(user.fullName || "");
+            setUsername(user.username || "");
+            setGender(user.gender || "");
+            setEmail(user.email || "");
+            setPhone(user.phone || "");
+            setAddress(user.address || "");
+            setDateOfBirth(user.dateOfBirth || "");
+            setImageUri(user.imageUri || null);
+            setIsDataLoading(false);
+        }
+    }, [user]);
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
@@ -67,26 +85,13 @@ const ProfileScreen = () => {
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
-	const fetchUserData = useCallback(async () => {
-		setIsDataLoading(true);
-		try {
-			const { data: userData } = await getCurrentUserAPI();
-			setFullName(userData?.fullName || "");
-			setUsername(userData?.username || "");
-			setGender(userData?.gender || "");
-			setEmail(userData?.email || "");
-			setPhone(userData?.phone || "");
-			setAddress(userData?.address || "");
-			setDateOfBirth(userData?.dateOfBirth || "");
-			setImageUri(userData?.imageUri || null);
-		} catch (error) {
-			const errorMessage =
-				error?.response?.data?.message || error?.message || "An error occurred";
-			showToast(errorMessage, "error");
-		} finally {
-			setIsDataLoading(false);
-		}
-	}, [showToast]);
+    // We rely on useAuth to fetch data, so we don't need manual fetchUserData
+    // But we trigger a sync on mount just in case
+    useFocusEffect(
+        useCallback(() => {
+            syncUserData();
+        }, [syncUserData])
+    );
 
 	useFocusEffect(
 		useCallback(() => {
@@ -101,10 +106,8 @@ const ProfileScreen = () => {
 				leftComponent: backButton(),
 				rightComponent: null,
 			});
-			fetchUserData();
 		}, [
 			backButton,
-			fetchUserData,
 			resetHeader,
 			resetTabBar,
 			setHeaderState,
@@ -155,6 +158,13 @@ const ProfileScreen = () => {
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 		setIsLoading(true);
 		try {
+			let uploadedImageUri = imageUri;
+
+			// Upload image if it's a local file
+			if (imageUri && imageUri.startsWith('file://')) {
+				uploadedImageUri = await imageService.uploadImage(imageUri);
+			}
+
 			const updatedData = {
 				fullName,
 				username,
@@ -163,7 +173,7 @@ const ProfileScreen = () => {
 				phone,
 				address,
 				dateOfBirth,
-				imageUri,
+				imageUri: uploadedImageUri,
 			};
 			await updateUserAPI(updatedData);
 			await syncUserData();

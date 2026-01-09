@@ -23,7 +23,7 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
-import { changePasswordAPI } from "../api/auth";
+import { useChangePassword } from "../hooks/auth/useChangePassword";
 import { useAuth } from "../contexts/AuthContext";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 
@@ -37,6 +37,7 @@ export default function ChangePasswordScreen() {
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
 	const { syncUserData, user } = useAuth();
+	const { changePassword, isLoading: isSaving, error: hookError } = useChangePassword();
 
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
@@ -44,7 +45,6 @@ export default function ChangePasswordScreen() {
 	const [showCurrent, setShowCurrent] = useState(false);
 	const [showNew, setShowNew] = useState(false);
 	const [showConfirm, setShowConfirm] = useState(false);
-	const [isSaving, setIsSaving] = useState(false);
 	const [error, setError] = useState(null);
 
 	const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -137,20 +137,17 @@ export default function ChangePasswordScreen() {
 			return;
 		}
 
-		setIsSaving(true);
 		setError(null);
 		try {
-			await changePasswordAPI({ currentPassword, newPassword });
+			await changePassword({ currentPassword, newPassword });
 			await syncUserData();
 			router.back();
 		} catch (e) {
 			const msg = e?.message?.split("|")?.[1] || e?.message || "Unable to change password";
 			setError(msg);
 			shake();
-		} finally {
-			setIsSaving(false);
 		}
-	}, [currentPassword, isSaving, isValid, newPassword, router, shake, syncUserData]);
+	}, [currentPassword, isSaving, isValid, newPassword, router, shake, syncUserData, changePassword]);
 
 	if (!user?.hasPassword) {
 		return (

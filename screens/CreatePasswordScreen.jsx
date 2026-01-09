@@ -23,7 +23,7 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
-import { createPasswordAPI } from "../api/auth";
+import { useCreatePassword } from "../hooks/auth/useCreatePassword";
 import { useAuth } from "../contexts/AuthContext";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 
@@ -37,12 +37,12 @@ export default function CreatePasswordScreen() {
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
 	const { syncUserData, user } = useAuth();
+	const { createPassword, isLoading: isSaving, error: hookError } = useCreatePassword();
 
 	const [password, setPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const [showConfirm, setShowConfirm] = useState(false);
-	const [isSaving, setIsSaving] = useState(false);
 	const [error, setError] = useState(null);
 
 	const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -132,20 +132,17 @@ export default function CreatePasswordScreen() {
 			return;
 		}
 
-		setIsSaving(true);
 		setError(null);
 		try {
-			await createPasswordAPI(password);
+			await createPassword({ password });
 			await syncUserData();
 			router.back();
 		} catch (e) {
 			const msg = e?.message?.split("|")?.[1] || e?.message || "Unable to create password";
 			setError(msg);
 			shake();
-		} finally {
-			setIsSaving(false);
 		}
-	}, [isSaving, isValid, password, router, shake, syncUserData]);
+	}, [isSaving, isValid, password, router, shake, syncUserData, createPassword]);
 
 	if (user?.hasPassword) {
 		return (

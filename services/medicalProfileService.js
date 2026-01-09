@@ -1,5 +1,5 @@
 import { database, StorageKeys } from "../database";
-import { supabase } from "../api/client";
+import { supabase } from "./supabase";
 
 const DEFAULT_MEDICAL_PROFILE = {
 	bloodType: "",

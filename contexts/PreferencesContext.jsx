@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { getPreferencesAPI, updatePreferencesAPI } from "../api/preferences";
+import { preferencesService } from "../services/preferencesService";
 
 const PreferencesContext = createContext();
 
@@ -12,7 +12,7 @@ export function PreferencesProvider({ children }) {
 		setIsLoading(true);
 		setError(null);
 		try {
-			const next = await getPreferencesAPI();
+			const next = await preferencesService.get();
 			setPreferences(next && typeof next === "object" ? next : null);
 		} catch (e) {
 			setError(e?.message ?? "Failed to load preferences");
@@ -26,7 +26,7 @@ export function PreferencesProvider({ children }) {
 		(async () => {
 			setIsLoading(true);
 			try {
-				const next = await getPreferencesAPI();
+				const next = await preferencesService.get();
 				if (!isActive) return;
 				setPreferences(next && typeof next === "object" ? next : null);
 			} catch (e) {
@@ -42,7 +42,7 @@ export function PreferencesProvider({ children }) {
 	}, []);
 
 	const updatePreferences = useCallback(async (updates) => {
-		const next = await updatePreferencesAPI(updates);
+		const next = await preferencesService.update(updates);
 		setPreferences(next && typeof next === "object" ? next : null);
 		return next;
 	}, []);

@@ -1,3 +1,4 @@
+import { supabase } from "./supabase";
 import { database, StorageKeys } from "../database";
 import {
 	normalizeEmergencyState,

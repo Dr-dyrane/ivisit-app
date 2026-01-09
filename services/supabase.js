@@ -3,12 +3,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * API Client Configuration
+ * Supabase Client Configuration
+ * 
+ * File Path: services/supabase.js
  */
-
-// ============================================
-// CONFIGURATION
-// ============================================
 
 const cleanEnvValue = (value) => {
 	if (typeof value !== "string") return null;

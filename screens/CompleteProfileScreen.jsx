@@ -21,13 +21,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
 import ProfileField from "../components/form/ProfileField";
-import { updateUserAPI } from "../api/auth";
+import { useUpdateProfile } from "../hooks/user/useUpdateProfile";
 import { useAuth } from "../contexts/AuthContext";
-import {
-	clearProfileCompletionDraftAPI,
-	getProfileCompletionDraftAPI,
-	saveProfileCompletionDraftAPI,
-} from "../api/profileCompletion";
+import { useProfileCompletion } from "../hooks/auth/useProfileCompletion";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 
 export default function CompleteProfileScreen() {
@@ -40,6 +36,8 @@ export default function CompleteProfileScreen() {
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
 	const { user, syncUserData, logout } = useAuth();
+	const { updateProfile, isLoading: isSaving } = useUpdateProfile();
+    const { getDraft, saveDraft, clearDraft } = useProfileCompletion();
 
     // Ensure we have the latest verification status
     useEffect(() => {
@@ -69,7 +67,6 @@ export default function CompleteProfileScreen() {
 
 	const [fullName, setFullName] = useState(initialFullName ?? "");
 	const [username, setUsername] = useState(user?.username ?? "");
-	const [isSaving, setIsSaving] = useState(false);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -123,7 +120,7 @@ export default function CompleteProfileScreen() {
 	useEffect(() => {
 		let isActive = true;
 		(async () => {
-			const draft = await getProfileCompletionDraftAPI();
+			const draft = await getDraft();
 			if (!isActive || !draft) return;
 			if (typeof draft.fullName === "string" && fullName.trim().length === 0) {
 				setFullName(draft.fullName);
@@ -139,10 +136,10 @@ export default function CompleteProfileScreen() {
 
 	useEffect(() => {
 		const timer = setTimeout(() => {
-			saveProfileCompletionDraftAPI({ fullName, username });
+			saveDraft({ fullName, username });
 		}, 300);
 		return () => clearTimeout(timer);
-	}, [fullName, username]);
+	}, [fullName, username, saveDraft]);
 
 	const canSave =
 		typeof fullName === "string" &&
@@ -162,22 +159,21 @@ export default function CompleteProfileScreen() {
 
 	const handleSave = useCallback(async () => {
 		if (!canSave || isSaving) return;
-		setIsSaving(true);
 		try {
 			const { firstName, lastName } = splitName(fullName);
-			await updateUserAPI({
+			await updateProfile({
 				fullName: fullName.trim(),
 				username: normalizedUsername,
 				firstName,
 				lastName,
 			});
 			await syncUserData();
-			await clearProfileCompletionDraftAPI();
+			await clearDraft();
 			router.replace("/(user)/(tabs)");
-		} finally {
-			setIsSaving(false);
+		} catch (error) {
+			console.error("Update profile failed", error);
 		}
-	}, [canSave, fullName, isSaving, normalizedUsername, router, splitName, syncUserData]);
+	}, [canSave, fullName, isSaving, normalizedUsername, router, splitName, syncUserData, updateProfile, clearDraft]);
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>

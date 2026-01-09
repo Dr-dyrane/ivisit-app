@@ -5,7 +5,7 @@
  * Automatically manages user sessions and profile syncing.
  */
 
-import { supabase } from "../api/client";
+import { supabase } from "./supabase";
 import { database, StorageKeys } from "../database";
 import * as Linking from 'expo-linking';
 

@@ -7,7 +7,7 @@
 
 import { createContext, useState, useEffect, useMemo, useContext } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { getCurrentUserAPI, logoutAPI } from "../api/auth";
+import { authService } from "../services/authService";
 import { database, StorageKeys } from "../database";
 
 // Create AuthContext
@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
 			// Use database layer with proper keys
 			const storedToken = await database.read(StorageKeys.AUTH_TOKEN, null);
 			if (storedToken) {
-				const { data: userData } = await getCurrentUserAPI();
+				const { data: userData } = await authService.getCurrentUser();
 
 				if (userData) {
 					setUser(userData);
@@ -94,7 +94,7 @@ export const AuthProvider = ({ children }) => {
 			setUser(null);
 			setToken(null);
 			// Use API logout and database layer
-			await logoutAPI();
+			await authService.logout();
 			await database.delete(StorageKeys.CURRENT_USER);
 			return { success: true, message: "Successfully logged out" };
 		} catch (error) {

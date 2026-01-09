@@ -1,10 +1,13 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
-import { supabase } from "../api/client";
+import { supabase } from "../services/supabase";
 import { SPECIALTIES } from "../data/hospitals";
 import { ACTIVE_AMBULANCES } from "../data/emergencyServices";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
 import { normalizeEmergencyState } from "../utils/domainNormalize";
 import { simulationService } from "../services/simulationService";
+
+import { notificationDispatcher } from "../services/notificationDispatcher";
+import { useNotifications } from "./NotificationsContext";
 
 // Create the emergency context
 const EmergencyContext = createContext();
@@ -17,6 +20,7 @@ export const EmergencyMode = {
 
 // Emergency provider component
 export function EmergencyProvider({ children }) {
+    const { addNotification } = useNotifications();
 	// Core state - start empty, map will generate nearby hospitals
 	const [hospitals, setHospitals] = useState([]);
 	const [selectedHospitalId, setSelectedHospitalId] = useState(null);
@@ -113,7 +117,7 @@ export function EmergencyProvider({ children }) {
             if (subscription) supabase.removeChannel(subscription);
             simulationService.stopSimulation();
         };
-    }, [activeAmbulanceTrip?.requestId]); // Re-sub if ID changes? No, filter is by user_id.
+    }, []); // Removed dependency on activeAmbulanceTrip to avoid re-subscribing
 
 	useEffect(() => {
 		let isActive = true;

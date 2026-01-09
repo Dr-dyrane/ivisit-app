@@ -1,4 +1,5 @@
 import { database, StorageKeys } from "../database";
+import { supabase } from "./supabase";
 
 const normalizeString = (v) => (typeof v === "string" ? v.trim() : "");
 

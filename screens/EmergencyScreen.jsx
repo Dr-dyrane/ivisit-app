@@ -11,15 +11,14 @@ import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
 import { useVisits } from "../contexts/VisitsContext";
 import { useAuth } from "../contexts/AuthContext";
-import { useNotifications } from "../contexts/NotificationsContext";
 import { COLORS } from "../constants/colors";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { VISIT_STATUS, VISIT_TYPES } from "../data/visits";
-import { getPreferencesAPI } from "../api/preferences";
-import { listEmergencyContactsAPI } from "../api/emergencyContacts";
-import { getMedicalProfileAPI } from "../api/medicalProfile";
-import { createEmergencyRequestAPI, setEmergencyRequestStatusAPI } from "../api/emergencyRequests";
+import { usePreferences } from "../contexts/PreferencesContext";
+import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
+import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
+import { useEmergencyRequests } from "../hooks/emergency/useEmergencyRequests";
 import { EmergencyRequestStatus } from "../services/emergencyRequestsService";
 import { NOTIFICATION_PRIORITY, NOTIFICATION_TYPES } from "../data/notifications";
 
@@ -47,7 +46,10 @@ export default function EmergencyScreen() {
 	const { registerFAB } = useFAB();
 	const { addVisit, cancelVisit, completeVisit } = useVisits();
 	const { user } = useAuth();
-	const { addNotification } = useNotifications();
+    const { preferences } = usePreferences();
+    const { contacts: emergencyContacts } = useEmergencyContacts();
+    const { profile: medicalProfile } = useMedicalProfile();
+    const { createRequest, setRequestStatus } = useEmergencyRequests();
 
 	// Refs for map and bottom sheet
 	const mapRef = useRef(null);
@@ -238,15 +240,12 @@ export default function EmergencyScreen() {
 		const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 		(async () => {
 			try {
-				const preferences = await getPreferencesAPI();
 				const shareMedicalProfile = preferences?.privacyShareMedicalProfile === true;
 				const shareEmergencyContacts = preferences?.privacyShareEmergencyContacts === true;
 
 				const shared = {
-					medicalProfile: shareMedicalProfile ? await getMedicalProfileAPI() : null,
-					emergencyContacts: shareEmergencyContacts
-						? await listEmergencyContactsAPI()
-						: null,
+					medicalProfile: shareMedicalProfile ? medicalProfile : null,
+					emergencyContacts: shareEmergencyContacts ? emergencyContacts : null,
 				};
 
 				const patient = {
@@ -256,7 +255,7 @@ export default function EmergencyScreen() {
 					username: user?.username ?? null,
 				};
 
-				await createEmergencyRequestAPI({
+				await createRequest({
 					id: visitId,
 					requestId: visitId,
 					serviceType: request.serviceType,
@@ -274,26 +273,6 @@ export default function EmergencyScreen() {
 					shared,
 				});
 
-				addNotification({
-					id: `${request?.serviceType}_request_${visitId}`,
-					type:
-						request?.serviceType === "ambulance"
-							? NOTIFICATION_TYPES.EMERGENCY
-							: NOTIFICATION_TYPES.APPOINTMENT,
-					title:
-						request?.serviceType === "ambulance"
-							? "Ambulance requested"
-							: "Bed reserved",
-					message: `${request?.hospitalName ?? hospital?.name ?? "Hospital"} • ${date} ${time}`,
-					timestamp: new Date().toISOString(),
-					read: false,
-					priority:
-						request?.serviceType === "ambulance"
-							? NOTIFICATION_PRIORITY.URGENT
-							: NOTIFICATION_PRIORITY.HIGH,
-					actionType: request?.serviceType === "ambulance" ? "track" : "view_appointment",
-					actionData: { visitId, hospitalId },
-				});
 			} catch {}
 		})();
 		if (request?.serviceType === "ambulance") {
@@ -361,7 +340,7 @@ export default function EmergencyScreen() {
 		setTimeout(() => {
 			bottomSheetRef.current?.snapToIndex?.(0);
 		}, 0);
-	}, [addNotification, addVisit, clearSelectedHospital, hospitals, mode, requestHospitalId, selectedHospital?.id, selectedSpecialty, startAmbulanceTrip, startBedBooking, user?.email, user?.fullName, user?.phone, user?.username]);
+	}, [addVisit, clearSelectedHospital, hospitals, mode, requestHospitalId, selectedHospital?.id, selectedSpecialty, startAmbulanceTrip, startBedBooking, user?.email, user?.fullName, user?.phone, user?.username, createRequest, preferences, medicalProfile, emergencyContacts]);
 
 	// Service type selection
 	const handleServiceTypeSelect = useCallback((type) => {
@@ -509,22 +488,11 @@ export default function EmergencyScreen() {
 				activeBedBooking={activeBedBooking}
 				onCancelAmbulanceTrip={() => {
 					if (activeAmbulanceTrip?.requestId) {
-						setEmergencyRequestStatusAPI(
+						setRequestStatus(
 							activeAmbulanceTrip.requestId,
 							EmergencyRequestStatus.CANCELLED
-						).catch(() => {});
+						);
 						cancelVisit(activeAmbulanceTrip.requestId);
-						addNotification({
-							id: `ambulance_cancel_${activeAmbulanceTrip.requestId}`,
-							type: NOTIFICATION_TYPES.EMERGENCY,
-							title: "Ambulance request cancelled",
-							message: "You cancelled the active ambulance request.",
-							timestamp: new Date().toISOString(),
-							read: false,
-							priority: NOTIFICATION_PRIORITY.NORMAL,
-							actionType: null,
-							actionData: { visitId: activeAmbulanceTrip.requestId },
-						});
 					}
 					stopAmbulanceTrip();
 					setTimeout(() => {
@@ -533,22 +501,11 @@ export default function EmergencyScreen() {
 				}}
 				onCompleteAmbulanceTrip={() => {
 					if (activeAmbulanceTrip?.requestId) {
-						setEmergencyRequestStatusAPI(
+						setRequestStatus(
 							activeAmbulanceTrip.requestId,
 							EmergencyRequestStatus.COMPLETED
-						).catch(() => {});
+						);
 						completeVisit(activeAmbulanceTrip.requestId);
-						addNotification({
-							id: `ambulance_complete_${activeAmbulanceTrip.requestId}`,
-							type: NOTIFICATION_TYPES.EMERGENCY,
-							title: "Ambulance ride completed",
-							message: "Your emergency trip has been marked complete.",
-							timestamp: new Date().toISOString(),
-							read: false,
-							priority: NOTIFICATION_PRIORITY.NORMAL,
-							actionType: "view_summary",
-							actionData: { visitId: activeAmbulanceTrip.requestId },
-						});
 					}
 					stopAmbulanceTrip();
 					setTimeout(() => {
@@ -557,10 +514,10 @@ export default function EmergencyScreen() {
 				}}
 				onCancelBedBooking={() => {
 					if (activeBedBooking?.requestId) {
-						setEmergencyRequestStatusAPI(
+						setRequestStatus(
 							activeBedBooking.requestId,
 							EmergencyRequestStatus.CANCELLED
-						).catch(() => {});
+						);
 						cancelVisit(activeBedBooking.requestId);
 						addNotification({
 							id: `bed_cancel_${activeBedBooking.requestId}`,
@@ -581,7 +538,7 @@ export default function EmergencyScreen() {
 				}}
 				onCompleteBedBooking={() => {
 					if (activeBedBooking?.requestId) {
-						setEmergencyRequestStatusAPI(
+						setRequestStatus(
 							activeBedBooking.requestId,
 							EmergencyRequestStatus.COMPLETED
 						).catch(() => {});

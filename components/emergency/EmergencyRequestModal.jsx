@@ -11,7 +11,7 @@ import EmergencyRequestModalFooter from "./requestModal/EmergencyRequestModalFoo
 import EmergencyRequestModalDispatched from "./requestModal/EmergencyRequestModalDispatched";
 import InfoTile from "./requestModal/InfoTile";
 import BedBookingOptions from "./requestModal/BedBookingOptions";
-import { getPreferencesAPI } from "../../api/preferences";
+import { useEmergencyRequests } from "../../hooks/emergency/useEmergencyRequests";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -31,6 +31,7 @@ export default function EmergencyRequestModal({
 	const [bedType, setBedType] = useState("standard");
 	const [bedCount, setBedCount] = useState(1);
 	const [preferences, setPreferences] = useState(null);
+	const { createRequest, isLoading: isHookLoading } = useEmergencyRequests();
 
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -63,14 +64,6 @@ export default function EmergencyRequestModal({
 			setBedCount(1);
 			setIsRequesting(false);
 			setRequestData(null);
-			(async () => {
-				try {
-					const next = await getPreferencesAPI();
-					setPreferences(next);
-				} catch {
-					setPreferences(null);
-				}
-			})();
 		}
 	}, [visible]);
 

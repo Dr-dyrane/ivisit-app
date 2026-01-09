@@ -11,7 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
-import useForgotPassword from "../../hooks/mutations/useForgotPassword";
+import { useForgotPassword } from "../../hooks/auth/useForgotPassword";
 import { useToast } from "../../contexts/ToastContext";
 
 export default function ForgotPasswordCard({ onResetInitiated }) {

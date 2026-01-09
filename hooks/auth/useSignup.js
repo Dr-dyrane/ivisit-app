@@ -1,4 +1,4 @@
-// hooks/mutations/useSignUp.js
+// hooks/auth/useSignup.js
 
 /**
  * useSignUp Hook

@@ -1,4 +1,4 @@
-import { supabase } from "../api/client";
+import { supabase } from "./supabase";
 import { normalizeVisit } from "../utils/domainNormalize";
 
 const TABLE = "visits";

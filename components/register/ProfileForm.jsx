@@ -14,6 +14,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useRegistration } from "../../contexts/RegistrationContext";
+import { useImageUpload } from "../../hooks/user/useImageUpload";
 import { COLORS } from "../../constants/colors";
 
 /**
@@ -39,9 +40,9 @@ export default function ProfileForm({ onComplete }) {
 	const [loading, setLoading] = useState(false);
 	const [currentField, setCurrentField] = useState("firstName");
 
-	// Animations
-	const shakeAnim = useRef(new Animated.Value(0)).current;
+	const { uploadImage } = useImageUpload();
 	const buttonScale = useRef(new Animated.Value(1)).current;
+	const shakeAnim = useRef(new Animated.Value(0)).current;
 
 	const colors = {
 		inputBg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
@@ -130,11 +131,18 @@ export default function ProfileForm({ onComplete }) {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
 		try {
+			let uploadedImageUri = imageUri;
+
+			// Upload image if it's a local file
+			if (imageUri && imageUri.startsWith('file://')) {
+				uploadedImageUri = await imageService.uploadImage(imageUri);
+			}
+
 			const profileData = {
 				firstName: firstName.trim(),
 				lastName: lastName.trim(),
 				fullName: `${firstName.trim()} ${lastName.trim()}`,
-				imageUri,
+				imageUri: uploadedImageUri,
 				profileComplete: true,
 			};
 

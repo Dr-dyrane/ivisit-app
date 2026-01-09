@@ -1,4 +1,4 @@
-import { supabase } from "../api/client";
+import { supabase } from "./supabase";
 import { database, StorageKeys } from "../database";
 
 const DEFAULT_PREFERENCES = {

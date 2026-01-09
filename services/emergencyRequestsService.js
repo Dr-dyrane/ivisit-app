@@ -1,5 +1,5 @@
 import { database, StorageKeys } from "../database";
-import { supabase } from "../api/client";
+import { supabase } from "./supabase";
 
 export const EmergencyRequestStatus = {
 	IN_PROGRESS: "in_progress",

@@ -25,12 +25,7 @@ import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import * as Haptics from "expo-haptics";
-import {
-	createEmergencyContactAPI,
-	deleteEmergencyContactAPI,
-	listEmergencyContactsAPI,
-	updateEmergencyContactAPI,
-} from "../api/emergencyContacts";
+import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
 
 export default function EmergencyContactsScreen() {
 	const { isDarkMode } = useTheme();
@@ -81,8 +76,7 @@ export default function EmergencyContactsScreen() {
 	const bottomPadding = tabBarHeight + 20;
 	const topPadding = STACK_TOP_PADDING;
 
-	const [contacts, setContacts] = useState([]);
-	const [isLoading, setIsLoading] = useState(true);
+	const { contacts, isLoading, refreshContacts, addContact, updateContact, removeContact } = useEmergencyContacts();
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingId, setEditingId] = useState(null);
 	const [name, setName] = useState("");
@@ -95,14 +89,8 @@ export default function EmergencyContactsScreen() {
 	const shakeAnim = useRef(new Animated.Value(0)).current;
 
 	const refresh = useCallback(async () => {
-		setIsLoading(true);
-		try {
-			const items = await listEmergencyContactsAPI();
-			setContacts(items);
-		} finally {
-			setIsLoading(false);
-		}
-	}, []);
+		refreshContacts();
+	}, [refreshContacts]);
 
 	useEffect(() => {
 		refresh();
@@ -167,11 +155,10 @@ export default function EmergencyContactsScreen() {
 				email,
 			};
 			if (editingId) {
-				await updateEmergencyContactAPI(editingId, payload);
+				await updateContact(editingId, payload);
 			} else {
-				await createEmergencyContactAPI(payload);
+				await addContact(payload);
 			}
-			await refresh();
 			setIsModalVisible(false);
 		} catch (e) {
 			const msg = e?.message?.split("|")?.[1] || e?.message || "Unable to save contact";
@@ -180,19 +167,16 @@ export default function EmergencyContactsScreen() {
 		} finally {
 			setIsSaving(false);
 		}
-	}, [canSave, editingId, email, isSaving, name, phone, refresh, relationship, shake]);
+	}, [canSave, editingId, email, isSaving, name, phone, relationship, shake, addContact, updateContact]);
 
 	const handleDelete = useCallback(
 		async (id) => {
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 			try {
-				await deleteEmergencyContactAPI(id);
-				await refresh();
-			} catch {
-				await refresh();
-			}
+				await removeContact(id);
+			} catch {}
 		},
-		[refresh]
+		[removeContact]
 	);
 
 	const emptyState = !isLoading && (!contacts || contacts.length === 0);

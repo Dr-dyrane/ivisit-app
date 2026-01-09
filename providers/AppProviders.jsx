@@ -1,9 +1,11 @@
 import React from "react";
 import { AuthProvider } from "../contexts/AuthContext";
 import { ThemeProvider } from "../contexts/ThemeContext";
+import { PreferencesProvider } from "../contexts/PreferencesContext";
 import { TabBarVisibilityProvider } from "../contexts/TabBarVisibilityContext";
 import { ScrollAwareHeaderProvider } from "../contexts/ScrollAwareHeaderContext";
 import { EmergencyProvider } from "../contexts/EmergencyContext";
+import { NotificationsProvider } from "../contexts/NotificationsContext";
 import ToastProvider from "../contexts/ToastContext";
 
 /**
@@ -21,13 +23,17 @@ export const AppProviders = ({ children }) => {
 	return (
 		<AuthProvider>
 			<ThemeProvider>
-				<TabBarVisibilityProvider>
-					<ScrollAwareHeaderProvider>
-						<EmergencyProvider>
-							<ToastProvider>{children}</ToastProvider>
-						</EmergencyProvider>
-					</ScrollAwareHeaderProvider>
-				</TabBarVisibilityProvider>
+				<PreferencesProvider>
+					<TabBarVisibilityProvider>
+						<ScrollAwareHeaderProvider>
+							<NotificationsProvider>
+								<EmergencyProvider>
+									<ToastProvider>{children}</ToastProvider>
+								</EmergencyProvider>
+							</NotificationsProvider>
+						</ScrollAwareHeaderProvider>
+					</TabBarVisibilityProvider>
+				</PreferencesProvider>
 			</ThemeProvider>
 		</AuthProvider>
 	);

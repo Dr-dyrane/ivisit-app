@@ -9,7 +9,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../contexts/AuthContext";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
-import { authService } from "../../services/authService";
+import { useSocialAuth } from "../../hooks/auth/useSocialAuth";
 import ComingSoonModal from "../ui/ComingSoonModal";
 
 /**
@@ -73,23 +73,11 @@ export default function SocialAuthButton({ provider }) {
         }
 
         try {
-            const { data } = await authService.signInWithProvider(provider);
-            if (data?.url) {
-                // Open the auth URL in an in-app browser
-                const result = await WebBrowser.openAuthSessionAsync(
-                    data.url,
-                    "ivisit://auth/callback"
-                );
-                
-                if (result.type === "success" && result.url) {
-                    // Handle callback and session exchange
-                    const { data: authData } = await authService.handleOAuthCallback(result.url);
-                    
-                    if (authData?.user) {
-                        await login(authData.user);
-                        showToast("Successfully logged in", "success");
-                    }
-                }
+            const { success, error } = await signInWithProvider(provider);
+            if (success) {
+                showToast("Successfully logged in", "success");
+            } else if (error && error !== "Cancelled or failed") {
+                showToast(error, "error");
             }
         } catch (error) {
             console.error("Social Auth Error:", error);

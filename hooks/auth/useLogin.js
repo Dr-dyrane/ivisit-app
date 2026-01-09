@@ -1,4 +1,4 @@
-// hooks/mutations/useLogin.js
+// hooks/auth/useLogin.js
 
 /**
  * useLogin Hook
@@ -151,6 +151,46 @@ const useLogin = (options = {}) => {
 	);
 
 	/**
+	 * Set password for a user
+	 * @param {Object} params - { email?, phone?, password }
+	 */
+	const setPassword = useCallback(
+		async (params) => {
+			startLoading();
+			clearError();
+
+			try {
+				const result = await authService.setPassword(params);
+
+				if (!result.success) {
+					setLoginError(result.error);
+					return { success: false, error: result.error };
+				}
+
+				// Update AuthContext with user data after password is set
+				const loginSuccess = await authLogin({
+					...result.data.user,
+					token: result.data.token,
+				});
+
+				if (!loginSuccess) {
+					setLoginError("Failed to save session");
+					return { success: false, error: "Failed to save session" };
+				}
+
+				return { success: true, data: result.data };
+			} catch (error) {
+				const errorMessage = error?.message || "Failed to set password";
+				setLoginError(errorMessage);
+				return { success: false, error: errorMessage };
+			} finally {
+				stopLoading();
+			}
+		},
+		[authLogin, startLoading, stopLoading, setLoginError, clearError]
+	);
+
+	/**
 	 * Legacy login function for backward compatibility
 	 * @param {Object} credentials - { email?, phone?, password }
 	 */
@@ -170,6 +210,7 @@ const useLogin = (options = {}) => {
 		loginWithPassword,
 		requestOtp,
 		verifyOtpLogin,
+		setPassword,
 
 		// Legacy API for backward compatibility
 		login,

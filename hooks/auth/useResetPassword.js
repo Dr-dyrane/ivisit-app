@@ -1,4 +1,4 @@
-// hooks/mutations/useResetPassword.js
+// hooks/auth/useResetPassword.js
 
 /**
  * useResetPassword Hook

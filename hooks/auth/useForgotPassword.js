@@ -1,4 +1,4 @@
-// hooks/mutations/useForgotPassword.js
+// hooks/auth/useForgotPassword.js
 
 /**
  * useForgotPassword Hook

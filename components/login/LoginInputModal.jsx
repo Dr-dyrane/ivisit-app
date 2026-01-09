@@ -29,9 +29,8 @@ import {
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
 import { COLORS } from "../../constants/colors";
-import useLoginHook from "../../hooks/mutations/useLogin";
+import useLoginHook from "../../hooks/auth/useLogin";
 import { useAuth } from "../../contexts/AuthContext";
-import { authService } from "../../services/authService";
 import { database, StorageKeys } from "../../database";
 import LoginAuthMethodCard from "./LoginAuthMethodCard";
 import LoginContactCard from "./LoginContactCard";
@@ -79,7 +78,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 	const { isDarkMode } = useTheme();
 
 	// Pass context state functions to hook
-	const { loginWithPassword, requestOtp, verifyOtpLogin } = useLoginHook({
+	const { loginWithPassword, requestOtp, verifyOtpLogin, setPassword } = useLoginHook({
 		startLoading,
 		stopLoading,
 		setError: setLoginError,
@@ -373,7 +372,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		clearError();
 
 		try {
-			const result = await authService.setPassword({
+			const result = await setPassword({
 				email: loginData.email,
 				phone: loginData.phone,
 				password,

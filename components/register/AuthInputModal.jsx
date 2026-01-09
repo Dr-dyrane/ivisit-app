@@ -26,7 +26,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useRegistration } from "../../contexts/RegistrationContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
-import useSignUp from "../../hooks/mutations/useSignup";
+import useSignUp from "../../hooks/auth/useSignup";
 import PhoneInputField from "./PhoneInputField";
 import EmailInputField from "./EmailInputField";
 import OTPInputCard from "./OTPInputCard";

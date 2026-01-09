@@ -23,7 +23,7 @@ import { STACK_TOP_PADDING } from "../constants/layout";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import ProfileField from "../components/form/ProfileField";
 import * as Haptics from "expo-haptics";
-import { getMedicalProfileAPI, updateMedicalProfileAPI } from "../api/medicalProfile";
+import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
 
 export default function MedicalProfileScreen() {
 	const { isDarkMode } = useTheme();
@@ -73,53 +73,45 @@ export default function MedicalProfileScreen() {
 	const bottomPadding = tabBarHeight + 20;
 	const topPadding = STACK_TOP_PADDING;
 
-	const [isLoading, setIsLoading] = useState(true);
 	const [isSaving, setIsSaving] = useState(false);
-	const [profile, setProfile] = useState(null);
+	const { profile, isLoading, updateProfile } = useMedicalProfile();
+    // We need a local state to handle editing form, syncing from profile when loaded
+    const [localProfile, setLocalProfile] = useState(null);
 
-	useEffect(() => {
-		let isActive = true;
-		(async () => {
-			setIsLoading(true);
-			const data = await getMedicalProfileAPI();
-			if (!isActive) return;
-			setProfile(data);
-			setIsLoading(false);
-		})();
-		return () => {
-			isActive = false;
-		};
-	}, []);
+    useEffect(() => {
+        if (profile) {
+            setLocalProfile(profile);
+        }
+    }, [profile]);
 
 	const updateField = useCallback((key, value) => {
-		setProfile((prev) => {
+		setLocalProfile((prev) => {
 			const base = prev && typeof prev === "object" ? prev : {};
 			return { ...base, [key]: value };
 		});
 	}, []);
 
 	const canSave = useMemo(() => {
-		return !!profile && !isSaving;
-	}, [isSaving, profile]);
+		return !!localProfile && !isSaving;
+	}, [isSaving, localProfile]);
 
 	const handleSave = useCallback(async () => {
-		if (!profile || isSaving) return;
+		if (!localProfile || isSaving) return;
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 		setIsSaving(true);
 		try {
-			const next = await updateMedicalProfileAPI({
-				bloodType: profile.bloodType,
-				allergies: profile.allergies,
-				medications: profile.medications,
-				conditions: profile.conditions,
-				surgeries: profile.surgeries,
-				notes: profile.notes,
+			await updateProfile({
+				bloodType: localProfile.bloodType,
+				allergies: localProfile.allergies,
+				medications: localProfile.medications,
+				conditions: localProfile.conditions,
+				surgeries: localProfile.surgeries,
+				notes: localProfile.notes,
 			});
-			setProfile(next);
 		} finally {
 			setIsSaving(false);
 		}
-	}, [isSaving, profile]);
+	}, [isSaving, localProfile, updateProfile]);
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
@@ -153,41 +145,41 @@ export default function MedicalProfileScreen() {
 					</View>
 				) : null}
 
-				{!isLoading && profile ? (
+				{!isLoading && localProfile ? (
 					<View style={[styles.card, { backgroundColor: colors.card }]}>
 						<ProfileField
 							label="Blood Type"
-							value={profile.bloodType ?? ""}
+							value={localProfile.bloodType ?? ""}
 							onChange={(v) => updateField("bloodType", v)}
 							iconName="water-outline"
 						/>
 						<ProfileField
 							label="Allergies"
-							value={profile.allergies ?? ""}
+							value={localProfile.allergies ?? ""}
 							onChange={(v) => updateField("allergies", v)}
 							iconName="warning-outline"
 						/>
 						<ProfileField
 							label="Current Medications"
-							value={profile.medications ?? ""}
+							value={localProfile.medications ?? ""}
 							onChange={(v) => updateField("medications", v)}
 							iconName="medical-outline"
 						/>
 						<ProfileField
 							label="Chronic Conditions"
-							value={profile.conditions ?? ""}
+							value={localProfile.conditions ?? ""}
 							onChange={(v) => updateField("conditions", v)}
 							iconName="fitness-outline"
 						/>
 						<ProfileField
 							label="Past Surgeries"
-							value={profile.surgeries ?? ""}
+							value={localProfile.surgeries ?? ""}
 							onChange={(v) => updateField("surgeries", v)}
 							iconName="bandage-outline"
 						/>
 						<ProfileField
 							label="Emergency Notes"
-							value={profile.notes ?? ""}
+							value={localProfile.notes ?? ""}
 							onChange={(v) => updateField("notes", v)}
 							iconName="document-text-outline"
 						/>
@@ -218,7 +210,7 @@ export default function MedicalProfileScreen() {
 						</Pressable>
 
 						<Text style={{ marginTop: 10, color: colors.textMuted, fontWeight: "700", fontSize: 12 }}>
-							Last updated: {profile.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "--"}
+							Last updated: {localProfile.updatedAt ? new Date(localProfile.updatedAt).toLocaleString() : "--"}
 						</Text>
 					</View>
 				) : null}
