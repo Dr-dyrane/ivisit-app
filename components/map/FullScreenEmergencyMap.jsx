@@ -15,6 +15,7 @@ import {
 	Pressable,
 	Animated,
 	Platform,
+	Dimensions,
 } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
@@ -158,53 +159,199 @@ const FullScreenEmergencyMap = forwardRef(
 			selectedHospitalId,
 			mode = "emergency",
 			showControls = true,
+			bottomPadding = 0,
 		},
 		ref
 	) => {
 		const { isDarkMode } = useTheme();
 		const insets = useSafeAreaInsets();
 		const mapRef = useRef(null);
+		const hasCenteredOnUser = useRef(false);
+		const lastProgrammaticMoveAtRef = useRef(0);
+		const lastUserPanAtRef = useRef(0);
+		const lastAutoRecoverAtRef = useRef(0);
 
 		const [userLocation, setUserLocation] = useState(null);
 		const [locationPermission, setLocationPermission] = useState(false);
 		const [isLoading, setIsLoading] = useState(true);
 		const [nearbyHospitals, setNearbyHospitals] = useState([]);
+		const [isZoomedOut, setIsZoomedOut] = useState(false);
 
 		const hospitals =
 			propHospitals && propHospitals.length > 0
 				? propHospitals
 				: nearbyHospitals;
 
+		// Dynamic map padding based on sheet position
+		// Ensures markers are centered in the visible area
+		const mapPadding = {
+			top: insets.top + 10,
+			bottom: bottomPadding + 20, // Add buffer
+			left: 0,
+			right: 0,
+		};
+
+		const screenHeight = Dimensions.get("window").height;
+
+		const isValidCoordinate = useCallback(
+			(coordinate) =>
+				Number.isFinite(coordinate?.latitude) && Number.isFinite(coordinate?.longitude),
+			[]
+		);
+
+		const getRegionForCoordinates = useCallback(
+			(coordinates, options = {}) => {
+				if (!coordinates || coordinates.length === 0) return null;
+				const valid = coordinates.filter(isValidCoordinate);
+				if (valid.length === 0) return null;
+
+				const sheetRatio = options.sheetRatio ?? 0;
+				const minDelta = options.minDelta ?? 0.02;
+				const maxDelta = options.maxDelta ?? 0.18;
+
+				if (valid.length === 1) {
+					const only = valid[0];
+					const baseDelta = 0.06;
+					const inflation = 1 + Math.min(0.6, sheetRatio) * 0.6;
+					const delta = Math.min(maxDelta, Math.max(minDelta, baseDelta * inflation));
+					const verticalShiftFactor = sheetRatio >= 0.4 ? 0.22 : 0.12;
+					return {
+						latitude: only.latitude - delta * verticalShiftFactor,
+						longitude: only.longitude,
+						latitudeDelta: delta,
+						longitudeDelta: delta,
+					};
+				}
+
+				let minLat = Infinity;
+				let maxLat = -Infinity;
+				let minLng = Infinity;
+				let maxLng = -Infinity;
+				for (const c of valid) {
+					minLat = Math.min(minLat, c.latitude);
+					maxLat = Math.max(maxLat, c.latitude);
+					minLng = Math.min(minLng, c.longitude);
+					maxLng = Math.max(maxLng, c.longitude);
+				}
+
+				const latRange = maxLat - minLat;
+				const lngRange = maxLng - minLng;
+				if (!Number.isFinite(latRange) || !Number.isFinite(lngRange)) return null;
+
+				const baseLatDelta = Math.max(minDelta, latRange * 1.8);
+				const baseLngDelta = Math.max(minDelta, lngRange * 1.8);
+
+				const inflation = 1 + Math.min(0.6, sheetRatio) * 0.65;
+				const latitudeDelta = Math.min(maxDelta, Math.max(minDelta, baseLatDelta * inflation));
+				const longitudeDelta = Math.min(
+					maxDelta,
+					Math.max(minDelta, Math.max(baseLngDelta * inflation, latitudeDelta))
+				);
+
+				const verticalShiftFactor = sheetRatio >= 0.4 ? 0.22 : 0.12;
+				const centerLat = (minLat + maxLat) / 2 - latitudeDelta * verticalShiftFactor;
+				const centerLng = (minLng + maxLng) / 2;
+
+				return {
+					latitude: centerLat,
+					longitude: centerLng,
+					latitudeDelta,
+					longitudeDelta,
+				};
+			},
+			[]
+		);
+
+		const getFitCoordinates = useCallback(() => {
+			const MAX_ITEMS = 8;
+
+			const validHospitals = hospitals.filter((h) => isValidCoordinate(h?.coordinates));
+
+			const sortedHospitals = userLocation && isValidCoordinate(userLocation)
+				? [...validHospitals].sort((a, b) => {
+						const daLat = a.coordinates.latitude - userLocation.latitude;
+						const daLng = a.coordinates.longitude - userLocation.longitude;
+						const dbLat = b.coordinates.latitude - userLocation.latitude;
+						const dbLng = b.coordinates.longitude - userLocation.longitude;
+						return (daLat * daLat + daLng * daLng) - (dbLat * dbLat + dbLng * dbLng);
+					})
+				: validHospitals;
+
+			const coordinates = sortedHospitals.slice(0, MAX_ITEMS).map((h) => h.coordinates);
+
+			if (userLocation && isValidCoordinate(userLocation)) {
+				coordinates.push({
+					latitude: userLocation.latitude,
+					longitude: userLocation.longitude,
+				});
+			}
+
+			return coordinates;
+		}, [hospitals, isValidCoordinate, userLocation]);
+
+		const fitToLocalHospitals = useCallback(() => {
+			if (!mapRef.current) return;
+			const coordinates = getFitCoordinates();
+			if (!coordinates || coordinates.length === 0) return;
+
+			const sheetRatio = screenHeight > 0 ? bottomPadding / screenHeight : 0;
+			const region = getRegionForCoordinates(coordinates, { sheetRatio });
+			if (!region) return;
+			lastProgrammaticMoveAtRef.current = Date.now();
+			mapRef.current.animateToRegion(region, 550);
+		}, [bottomPadding, getFitCoordinates, getRegionForCoordinates, screenHeight]);
+
+		const animateToHospitalInternal = useCallback(
+			(hospital, options = {}) => {
+				if (!mapRef.current || !isValidCoordinate(hospital?.coordinates)) return;
+
+				const targetBottomPadding = options.bottomPadding ?? bottomPadding;
+				const sheetRatio =
+					screenHeight > 0 ? targetBottomPadding / screenHeight : 0;
+
+				if (options.includeUser && isValidCoordinate(userLocation)) {
+					const fitPoints = [
+						{ latitude: hospital.coordinates.latitude, longitude: hospital.coordinates.longitude },
+						{ latitude: userLocation.latitude, longitude: userLocation.longitude },
+					];
+					const region = getRegionForCoordinates(fitPoints, {
+						sheetRatio,
+						minDelta: 0.02,
+						maxDelta: 0.22,
+					});
+					if (region) {
+						lastProgrammaticMoveAtRef.current = Date.now();
+						mapRef.current.animateToRegion(region, 550);
+						return;
+					}
+				}
+
+				const latitudeDelta =
+					options.latitudeDelta ?? (sheetRatio >= 0.4 ? 0.03 : 0.02);
+				const longitudeDelta = options.longitudeDelta ?? latitudeDelta;
+
+				const verticalShiftFactor = sheetRatio >= 0.4 ? 0.22 : 0.12;
+				const centerLatitude =
+					hospital.coordinates.latitude - latitudeDelta * verticalShiftFactor;
+
+				lastProgrammaticMoveAtRef.current = Date.now();
+				mapRef.current.animateToRegion(
+					{
+						latitude: centerLatitude,
+						longitude: hospital.coordinates.longitude,
+						latitudeDelta,
+						longitudeDelta,
+					},
+					550
+				);
+			},
+			[bottomPadding, getRegionForCoordinates, isValidCoordinate, screenHeight, userLocation]
+		);
+
 		// Expose methods to parent via ref
 		useImperativeHandle(ref, () => ({
-			animateToHospital: (hospital) => {
-				if (mapRef.current && hospital?.coordinates) {
-					mapRef.current.animateToRegion(
-						{
-							latitude: hospital.coordinates.latitude,
-							longitude: hospital.coordinates.longitude,
-							latitudeDelta: 0.008,
-							longitudeDelta: 0.008,
-						},
-						500
-					);
-				}
-			},
-			fitToAllHospitals: () => {
-				if (mapRef.current && hospitals.length > 0) {
-					const coordinates = hospitals.map((h) => h.coordinates);
-					if (userLocation) {
-						coordinates.push({
-							latitude: userLocation.latitude,
-							longitude: userLocation.longitude,
-						});
-					}
-					mapRef.current.fitToCoordinates(coordinates, {
-						edgePadding: { top: 100, right: 60, bottom: 400, left: 60 },
-						animated: true,
-					});
-				}
-			},
+			animateToHospital: animateToHospitalInternal,
+			fitToAllHospitals: fitToLocalHospitals,
 		}));
 
 		// Request location permissions
@@ -291,50 +438,42 @@ const FullScreenEmergencyMap = forwardRef(
 			if (onHospitalSelect) {
 				onHospitalSelect(hospital);
 			}
-			// Animate to hospital location
-			if (mapRef.current) {
-				mapRef.current.animateToRegion(
-					{
-						latitude: hospital.coordinates.latitude,
-						longitude: hospital.coordinates.longitude,
-						latitudeDelta: 0.008,
-						longitudeDelta: 0.008,
-					},
-					500
-				);
-			}
+
+			animateToHospitalInternal(hospital);
 		};
 
-		// Fit map to show all hospitals when they load
+		// Center map on user after initial load (preserve default behavior)
 		useEffect(() => {
 			if (
 				mapRef.current &&
-				hospitals.length > 0 &&
 				!isLoading &&
-				locationPermission
+				locationPermission &&
+				userLocation &&
+				!hasCenteredOnUser.current
 			) {
+				hasCenteredOnUser.current = true;
 				const timer = setTimeout(() => {
-					const coordinates = hospitals.map((h) => h.coordinates);
-					if (userLocation) {
-						coordinates.push({
+					lastProgrammaticMoveAtRef.current = Date.now();
+					mapRef.current.animateToRegion(
+						{
 							latitude: userLocation.latitude,
 							longitude: userLocation.longitude,
-						});
-					}
-					mapRef.current.fitToCoordinates(coordinates, {
-						edgePadding: { top: 100, right: 60, bottom: 400, left: 60 },
-						animated: true,
-					});
+							latitudeDelta: userLocation.latitudeDelta ?? 0.04,
+							longitudeDelta: userLocation.longitudeDelta ?? 0.04,
+						},
+						550
+					);
 				}, 300);
 				return () => clearTimeout(timer);
 			}
-		}, [hospitals, isLoading, locationPermission]);
+		}, [isLoading, locationPermission, userLocation]);
 
 		const mapStyle = isDarkMode ? darkMapStyle : lightMapStyle;
 
 		// Recenter to user location - must be before early returns
 		const handleRecenter = useCallback(() => {
 			if (mapRef.current && userLocation) {
+				lastProgrammaticMoveAtRef.current = Date.now();
 				mapRef.current.animateToRegion(
 					{
 						latitude: userLocation.latitude,
@@ -346,6 +485,31 @@ const FullScreenEmergencyMap = forwardRef(
 				);
 			}
 		}, [userLocation]);
+
+		const handleRegionChangeComplete = useCallback(
+			(region) => {
+				const latDelta = region?.latitudeDelta;
+				const lngDelta = region?.longitudeDelta;
+				if (!Number.isFinite(latDelta) || !Number.isFinite(lngDelta)) return;
+
+				const zoomedOutNow = latDelta > 0.35 || lngDelta > 0.35;
+				setIsZoomedOut(zoomedOutNow);
+
+				if (!zoomedOutNow) return;
+
+				const now = Date.now();
+				const recentlyUserPanned = now - lastUserPanAtRef.current < 900;
+				const recentlyProgrammatic = now - lastProgrammaticMoveAtRef.current < 900;
+				const recentlyAutoRecovered = now - lastAutoRecoverAtRef.current < 4000;
+				if (recentlyUserPanned || recentlyProgrammatic || recentlyAutoRecovered) return;
+
+				if (latDelta > 0.8 || lngDelta > 0.8) {
+					lastAutoRecoverAtRef.current = now;
+					fitToLocalHospitals();
+				}
+			},
+			[fitToLocalHospitals]
+		);
 
 		if (isLoading) {
 			return (
@@ -410,7 +574,14 @@ const FullScreenEmergencyMap = forwardRef(
 					style={styles.map}
 					provider={PROVIDER_GOOGLE}
 					customMapStyle={mapStyle}
-					initialRegion={userLocation}
+					initialRegion={
+						userLocation ?? {
+							latitude: 37.7749,
+							longitude: -122.4194,
+							latitudeDelta: 0.04,
+							longitudeDelta: 0.04,
+						}
+					}
 					showsUserLocation={locationPermission}
 					showsMyLocationButton={false}
 					showsCompass={false}
@@ -422,11 +593,15 @@ const FullScreenEmergencyMap = forwardRef(
 					loadingEnabled={true}
 					loadingIndicatorColor={COLORS.brandPrimary}
 					loadingBackgroundColor={isDarkMode ? "#0B0F1A" : "#F8FAFC"}
-					mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
+					mapPadding={mapPadding}
 					userInterfaceStyle={isDarkMode ? "dark" : "light"}
+					onRegionChangeComplete={handleRegionChangeComplete}
+					onPanDrag={() => {
+						lastUserPanAtRef.current = Date.now();
+					}}
 				>
 					{/* Hospital Markers */}
-					{hospitals.map((hospital) => {
+					{hospitals.filter((h) => isValidCoordinate(h?.coordinates) && h?.id).map((hospital) => {
 						const isSelected = selectedHospitalId === hospital.id;
 						return (
 							<Marker
@@ -435,6 +610,7 @@ const FullScreenEmergencyMap = forwardRef(
 								onPress={() => handleHospitalPress(hospital)}
 								anchor={{ x: 0.5, y: 0.5 }}
 								tracksViewChanges={isSelected}
+								zIndex={isSelected ? 100 : 1}
 							>
 								<PulsingMarker isSelected={isSelected}>
 									<View
@@ -495,27 +671,13 @@ const FullScreenEmergencyMap = forwardRef(
 
 						{/* Fit to All Hospitals */}
 						<Pressable
-							onPress={() => {
-								if (mapRef.current && hospitals.length > 0) {
-									const coordinates = hospitals.map((h) => h.coordinates);
-									if (userLocation) {
-										coordinates.push({
-											latitude: userLocation.latitude,
-											longitude: userLocation.longitude,
-										});
-									}
-									mapRef.current.fitToCoordinates(coordinates, {
-										edgePadding: { top: 100, right: 60, bottom: 400, left: 60 },
-										animated: true,
-									});
-								}
-							}}
+							onPress={fitToLocalHospitals}
 							style={({ pressed }) => [
 								styles.controlButton,
 								{
 									backgroundColor: isDarkMode ? "#0B0F1A" : "#F3E7E7",
 									transform: [{ scale: pressed ? 0.95 : 1 }],
-									opacity: 0.5,
+									opacity: isZoomedOut ? 1 : 0.5,
 									...Platform.select({
 										ios: {
 											shadowColor: "#000",

@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useMemo } from "react";
 import { useFocusEffect } from "expo-router";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Dimensions } from "react-native";
 import { useEmergency } from "../contexts/EmergencyContext";
 import { useEmergencyUI } from "../contexts/EmergencyUIContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -30,7 +30,8 @@ import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
  * - Easier performance optimization
  */
 export default function EmergencyScreen() {
-	const { resetTabBar } = useTabBarVisibility();
+	const { resetTabBar, lockTabBarHidden, unlockTabBarHidden } =
+		useTabBarVisibility();
 	const { resetHeader } = useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB } = useFAB();
@@ -46,8 +47,25 @@ export default function EmergencyScreen() {
 		searchQuery,
 		updateSearch: setSearchQuery,
 		setMapReady,
+		getLastScrollY,
 		timing,
 	} = useEmergencyUI();
+
+	const lastListStateRef = useRef({ snapIndex: 1, scrollY: 0 });
+
+	// Calculate map padding based on sheet position to ensure markers are visible
+	// Sheet Snap Points: 0 (Collapsed ~15%), 1 (Half 50%), 2 (Expanded 92%)
+	const screenHeight = Dimensions.get("window").height;
+	const mapBottomPadding = useMemo(() => {
+		if (selectedHospital) return screenHeight * 0.5;
+		
+		switch (sheetSnapIndex) {
+			case 0: return screenHeight * 0.15; // Collapsed
+			case 1: return screenHeight * 0.50; // Half
+			case 2: return screenHeight * 0.90; // Expanded (almost full)
+			default: return screenHeight * 0.50;
+		}
+	}, [selectedHospital, sheetSnapIndex, screenHeight]);
 
 	// Data state from EmergencyContext
 	const {
@@ -65,6 +83,7 @@ export default function EmergencyScreen() {
 		updateHospitals,
 		hasActiveFilters,
 		resetFilters,
+		clearSelectedHospital,
 	} = useEmergency();
 
 	// Header components - memoized
@@ -97,6 +116,16 @@ export default function EmergencyScreen() {
 		}, [resetTabBar, resetHeader, setHeaderState, mode, leftComponent, rightComponent])
 	);
 
+	useFocusEffect(
+		useCallback(() => {
+			if (selectedHospital) {
+				lockTabBarHidden();
+			} else {
+				unlockTabBarHidden();
+			}
+		}, [lockTabBarHidden, selectedHospital, unlockTabBarHidden])
+	);
+
 	// FAB toggles between emergency and bed booking modes
 	const handleFloatingButtonPress = useCallback(() => {
 		toggleMode();
@@ -105,26 +134,44 @@ export default function EmergencyScreen() {
 
 	useFocusEffect(
 		useCallback(() => {
+			const shouldHideFAB = !!selectedHospital || sheetSnapIndex === 0;
 			registerFAB({
 				icon: mode === "emergency" ? "bed-patient" : "medical",
-				visible: true,
+				visible: !shouldHideFAB,
 				onPress: handleFloatingButtonPress,
 			});
-		}, [mode, handleFloatingButtonPress, registerFAB])
+		}, [handleFloatingButtonPress, mode, registerFAB, selectedHospital, sheetSnapIndex])
 	);
 
 	// Hospital selection - zoom map to location (tracked)
 	const handleHospitalSelect = useCallback((hospital) => {
+		if (!hospital?.id) return;
 		timing.startTiming("hospital_select");
+		lastListStateRef.current = {
+			snapIndex: Number.isFinite(sheetSnapIndex) ? sheetSnapIndex : 1,
+			scrollY: Number.isFinite(getLastScrollY()) ? getLastScrollY() : 0,
+		};
 		selectHospital(hospital.id);
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
 		// Animate map to selected hospital
+		// Force bottom padding to 50% of screen height since we know the sheet will snap there
 		if (mapRef.current) {
-			mapRef.current.animateToHospital(hospital);
+			mapRef.current.animateToHospital(hospital, {
+				bottomPadding: Dimensions.get("window").height * 0.5,
+				includeUser: true,
+			});
 		}
 		timing.endTiming("hospital_select");
-	}, [selectHospital, timing]);
+	}, [getLastScrollY, selectHospital, sheetSnapIndex, timing]);
+
+	const handleCloseFocus = useCallback(() => {
+		const state = lastListStateRef.current ?? { snapIndex: 1, scrollY: 0 };
+		clearSelectedHospital();
+		setTimeout(() => {
+			bottomSheetRef.current?.restoreListState?.(state);
+		}, 0);
+	}, [clearSelectedHospital]);
 
 	// Emergency call handler
 	const handleEmergencyCall = useCallback((hospitalId) => {
@@ -152,11 +199,18 @@ export default function EmergencyScreen() {
 		setSearchQuery(query);
 		// If search matches a single hospital, zoom to it on map
 		if (query.length > 2 && mapRef.current) {
-			const matches = filteredHospitals.filter((h) =>
-				h.name.toLowerCase().includes(query.toLowerCase()) ||
-				h.address?.toLowerCase().includes(query.toLowerCase()) ||
-				h.specialties?.some((s) => s.toLowerCase().includes(query.toLowerCase()))
-			);
+			const q = query.toLowerCase();
+			const matches = filteredHospitals.filter((h) => {
+				const name = typeof h?.name === "string" ? h.name.toLowerCase() : "";
+				const address =
+					typeof h?.address === "string" ? h.address.toLowerCase() : "";
+				const specialtiesMatch =
+					Array.isArray(h?.specialties) &&
+					h.specialties.some(
+						(s) => (typeof s === "string" ? s.toLowerCase() : "").includes(q)
+					);
+				return name.includes(q) || address.includes(q) || specialtiesMatch;
+			});
 			if (matches.length === 1) {
 				mapRef.current.animateToHospital(matches[0]);
 			}
@@ -168,18 +222,26 @@ export default function EmergencyScreen() {
 	const searchFilteredHospitals = useMemo(() => {
 		if (!searchQuery.trim()) return filteredHospitals;
 		const query = searchQuery.toLowerCase();
-		return filteredHospitals.filter((h) =>
-			h.name.toLowerCase().includes(query) ||
-			h.address?.toLowerCase().includes(query) ||
-			h.specialties?.some((s) => s.toLowerCase().includes(query))
-		);
+		return filteredHospitals.filter((h) => {
+			const name = typeof h?.name === "string" ? h.name.toLowerCase() : "";
+			const address =
+				typeof h?.address === "string" ? h.address.toLowerCase() : "";
+			const specialtiesMatch =
+				Array.isArray(h?.specialties) &&
+				h.specialties.some(
+					(s) => (typeof s === "string" ? s.toLowerCase() : "").includes(query)
+				);
+			return name.includes(query) || address.includes(query) || specialtiesMatch;
+		});
 	}, [filteredHospitals, searchQuery]);
 
 	// Calculate service type counts
 	const serviceTypeCounts = useMemo(() => {
 		return {
-			premium: hospitals.filter(h => h.serviceTypes?.includes("premium")).length || 0,
-			standard: hospitals.filter(h => h.serviceTypes?.includes("standard")).length || 0,
+			premium:
+				hospitals.filter((h) => h?.serviceTypes?.includes("premium")).length || 0,
+			standard:
+				hospitals.filter((h) => h?.serviceTypes?.includes("standard")).length || 0,
 		};
 	}, [hospitals]);
 
@@ -187,8 +249,8 @@ export default function EmergencyScreen() {
 	const specialtyCounts = useMemo(() => {
 		const counts = {};
 		specialties.forEach(specialty => {
-			counts[specialty] = hospitals.filter(h =>
-				h.specialties?.includes(specialty) && h.availableBeds > 0
+			counts[specialty] = hospitals.filter((h) =>
+				h?.specialties?.includes(specialty) && (h?.availableBeds ?? 0) > 0
 			).length || 0;
 		});
 		return counts;
@@ -209,6 +271,7 @@ export default function EmergencyScreen() {
 				selectedHospitalId={selectedHospital?.id || null}
 				mode={mode}
 				showControls={showMapControls}
+				bottomPadding={mapBottomPadding}
 			/>
 
 			{/* Draggable bottom sheet overlay */}
@@ -230,6 +293,7 @@ export default function EmergencyScreen() {
 				onSnapChange={handleSheetSnapChange}
 				onSearch={handleSearch}
 				onResetFilters={resetFilters}
+				onCloseFocus={handleCloseFocus}
 			/>
 		</View>
 	);

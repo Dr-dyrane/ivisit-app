@@ -21,6 +21,8 @@ export function TabBarVisibilityProvider({ children }) {
   const lastScrollY = useRef(0);
   const isAnimating = useRef(false);
   const isHiddenRef = useRef(false);
+  const isLockedHiddenRef = useRef(false);
+  const [isTabBarLockedHidden, setIsTabBarLockedHidden] = useState(false);
 
   // Reactive state for components that need to know visibility
   // (e.g., bottom sheet adjusting its inset)
@@ -28,6 +30,7 @@ export function TabBarVisibilityProvider({ children }) {
 
   // Show the tab bar with smooth animation
   const showTabBar = useCallback(() => {
+    if (isLockedHiddenRef.current) return;
     if (!isHiddenRef.current || isAnimating.current) return;
 
     isAnimating.current = true;
@@ -62,6 +65,7 @@ export function TabBarVisibilityProvider({ children }) {
 
   // Handle scroll events - call this from scrollable screens
   const handleScroll = useCallback((event) => {
+    if (isLockedHiddenRef.current) return;
     const currentScrollY = event.nativeEvent.contentOffset.y;
     const diff = currentScrollY - lastScrollY.current;
 
@@ -88,11 +92,25 @@ export function TabBarVisibilityProvider({ children }) {
 
   // Reset tab bar visibility (useful when switching tabs)
   const resetTabBar = useCallback(() => {
+    if (isLockedHiddenRef.current) return;
     lastScrollY.current = 0;
     isHiddenRef.current = false;
     setIsTabBarHidden(false);
     translateY.setValue(0);
   }, [translateY]);
+
+  const lockTabBarHidden = useCallback(() => {
+    if (isLockedHiddenRef.current) return;
+    isLockedHiddenRef.current = true;
+    setIsTabBarLockedHidden(true);
+    hideTabBar();
+  }, [hideTabBar]);
+
+  const unlockTabBarHidden = useCallback(() => {
+    if (!isLockedHiddenRef.current) return;
+    isLockedHiddenRef.current = false;
+    setIsTabBarLockedHidden(false);
+  }, []);
 
   const value = {
     translateY,
@@ -101,6 +119,9 @@ export function TabBarVisibilityProvider({ children }) {
     hideTabBar,
     resetTabBar,
     isTabBarHidden,
+    isTabBarLockedHidden,
+    lockTabBarHidden,
+    unlockTabBarHidden,
     TAB_BAR_HEIGHT,
     HIDE_DISTANCE,
   };
@@ -121,4 +142,3 @@ export function useTabBarVisibility() {
 }
 
 export default TabBarVisibilityContext;
-

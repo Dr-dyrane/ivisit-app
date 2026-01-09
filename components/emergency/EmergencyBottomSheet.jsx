@@ -4,6 +4,7 @@ import React, {
 	forwardRef,
 	useRef,
 	useImperativeHandle,
+	useEffect,
 } from "react";
 import {
 	View,
@@ -15,7 +16,9 @@ import {
 	Dimensions,
 	Platform,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, {
+	BottomSheetView,
 	BottomSheetScrollView,
 	useBottomSheetSpringConfigs,
 } from "@gorhom/bottom-sheet";
@@ -38,6 +41,9 @@ import SpecialtySelector from "./SpecialtySelector";
 import HospitalCard from "./HospitalCard";
 import Call911Card from "./Call911Card";
 import MiniProfileModal from "./MiniProfileModal";
+import HospitalDetailView from "./HospitalDetailView";
+
+import { useEmergencySheetController } from "../../hooks/useEmergencySheetController";
 
 /**
  * EmergencyBottomSheet - Apple Maps style draggable bottom sheet
@@ -71,12 +77,16 @@ const EmergencyBottomSheet = forwardRef(
 			onSnapChange,
 			onSearch,
 			onResetFilters,
+			onCloseFocus,
 		},
 		ref
 	) => {
 		const { isDarkMode } = useTheme();
 		const { user } = useAuth();
 		const insets = useSafeAreaInsets();
+		
+		const isDetailMode = !!selectedHospital;
+
 		const {
 			handleScroll: handleTabBarScroll,
 			resetTabBar,
@@ -87,7 +97,6 @@ const EmergencyBottomSheet = forwardRef(
 
 		// Use EmergencyUI context for state management
 		const {
-			snapIndex: currentSnapIndex,
 			handleSnapChange: updateSnapIndex,
 			searchQuery: localSearchQuery,
 			updateSearch,
@@ -101,6 +110,7 @@ const EmergencyBottomSheet = forwardRef(
 		} = useEmergencyUI();
 
 		const bottomSheetRef = useRef(null);
+		const listScrollRef = useRef(null);
 
 		// Handle avatar press - tracked
 		const handleAvatarPress = useCallback(() => {
@@ -110,41 +120,45 @@ const EmergencyBottomSheet = forwardRef(
 			timing.endTiming("avatar_press");
 		}, [openProfileModal, timing]);
 
+		// Use the dedicated controller for sheet behavior
+		const {
+			snapPoints,
+			animationConfigs,
+			currentSnapIndex,
+		} = useEmergencySheetController({
+			isDetailMode,
+			onSnapChange,
+		});
+
+		useEffect(() => {
+			if (isDetailMode) {
+				hideTabBar();
+			} else {
+				resetTabBar();
+			}
+		}, [hideTabBar, isDetailMode, resetTabBar]);
+
 		// Expose snap index and ref methods to parent
 		useImperativeHandle(ref, () => ({
 			snapToIndex: (index) => bottomSheetRef.current?.snapToIndex(index),
 			expand: () => bottomSheetRef.current?.expand(),
 			collapse: () => bottomSheetRef.current?.collapse(),
 			getCurrentSnapIndex: () => currentSnapIndex,
+			scrollTo: (y, animated = true) =>
+				listScrollRef.current?.scrollTo?.({ y, animated }),
+			restoreListState: (state = {}) => {
+				const snapIndex = state?.snapIndex;
+				const scrollY = state?.scrollY;
+				if (typeof snapIndex === "number") {
+					updateSnapIndex(snapIndex, "restore");
+				}
+				if (typeof scrollY === "number") {
+					setTimeout(() => {
+						listScrollRef.current?.scrollTo?.({ y: scrollY, animated: true });
+					}, 380);
+				}
+			},
 		}));
-
-		// Calculate collapsed snap point to stay above tab bar
-		// Tab bar height + bottom inset + search bar area (~120px for handle + search bar + padding)
-		const screenHeight = Dimensions.get("window").height;
-		const searchBarArea = 120; // Handle (20) + search bar (50) + padding (50)
-		const marginAboveTabBar = 16; // Extra buffer to keep above tab bar
-		const collapsedHeight =
-			TAB_BAR_HEIGHT + insets.bottom + searchBarArea + marginAboveTabBar;
-		const collapsedPercent = Math.round((collapsedHeight / screenHeight) * 100);
-
-		// Snap points: collapsed (above tab bar), half, expanded
-		const snapPoints = useMemo(
-			() => [
-				`${Math.max(15, collapsedPercent)}%`, // Minimum 15%, or calculated height
-				"50%",
-				"92%",
-			],
-			[collapsedPercent]
-		);
-
-		const animationConfigs = useBottomSheetSpringConfigs({
-			damping: 90, // Strong decay — motion dies quietly
-			stiffness: 180, // Not snappy, not sluggish
-			mass: 1.4, // Adds perceived weight
-			overshootClamping: true, // Mandatory
-			restDisplacementThreshold: 0.05,
-			restSpeedThreshold: 0.05,
-		});
 
 		// Gradient background colors
 		const gradientColors = isDarkMode
@@ -190,6 +204,11 @@ const EmergencyBottomSheet = forwardRef(
 
 				if (onSnapChange) onSnapChange(index);
 
+				if (isDetailMode) {
+					hideTabBar();
+					return;
+				}
+
 				if (index === 0) {
 					resetTabBar();
 					resetHeader();
@@ -202,9 +221,10 @@ const EmergencyBottomSheet = forwardRef(
 				}
 			},
 			[
+				hideTabBar,
+				isDetailMode,
 				resetTabBar,
 				resetHeader,
-				hideTabBar,
 				onSnapChange,
 				updateSnapIndex,
 				updateScrollPosition,
@@ -262,7 +282,7 @@ const EmergencyBottomSheet = forwardRef(
 		return (
 			<BottomSheet
 				ref={bottomSheetRef}
-				index={1}
+				index={isDetailMode ? 0 : currentSnapIndex}
 				snapPoints={snapPoints}
 				onChange={handleSheetChange}
 				handleComponent={renderHandle}
@@ -274,140 +294,157 @@ const EmergencyBottomSheet = forwardRef(
 				animationConfigs={animationConfigs}
 				safeAreaInsets={{ top: 0, bottom: 0, left: 0, right: 0 }}
 			>
-				{/* Scrollable Content */}
-				<BottomSheetScrollView
-					contentContainerStyle={[
-						styles.scrollContent,
-						{ paddingBottom: TAB_BAR_HEIGHT },
-					]}
-					showsVerticalScrollIndicator={false}
-					scrollEventThrottle={16}
-					onScroll={handleScroll}
-					keyboardShouldPersistTaps="handled"
-				>
-					{/* Search Bar + Avatar (4:1 grid-like ratio) */}
-					<View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-						<EmergencySearchBar
-							value={localSearchQuery}
-							onChangeText={handleSearchChange}
-							onFocus={handleSearchFocus}
-							onClear={handleSearchClear}
-							placeholder={
-								mode === "emergency"
-									? "Search ambulance services..."
-									: "Search hospitals, specialties..."
-							}
-							style={{ flex: 1 }}
+				{isDetailMode ? (
+					<BottomSheetView
+						style={[styles.scrollContent, { paddingBottom: 0 }]}
+					>
+						<HospitalDetailView
+							hospital={selectedHospital}
+							onClose={onCloseFocus}
+							onCall={() => onHospitalCall(selectedHospital.id)}
+							mode={mode}
 						/>
-						<Pressable
-							onPress={handleAvatarPress}
-							style={({ pressed }) => ({
-								width: 52,
-								height: 52,
-								marginLeft: 10,
-								alignItems: "center",
-								justifyContent: "center",
-								transform: [{ scale: pressed ? 0.95 : 1 }],
-							})}
-						>
-							<Image
-								source={
-									user?.imageUri
-										? { uri: user.imageUri }
-										: require("../../assets/profile.jpg")
-								}
-								style={{
-									width: 48,
-									height: 48,
-									borderRadius: 24,
-									borderWidth: 2,
-									borderColor: COLORS.brandPrimary,
-								}}
-							/>
-						</Pressable>
-					</View>
-
-					{/* Mini Profile Modal */}
-					<MiniProfileModal
-						visible={showProfileModal}
-						onClose={closeProfileModal}
-					/>
-
-					{/* Service Type or Specialty Selector - Acts as filters */}
-					{currentSnapIndex > 0 && (
-						<View style={styles.selectorContainer}>
-							{mode === "emergency" ? (
-								<ServiceTypeSelector
-									selectedType={serviceType}
-									onSelect={onServiceTypeSelect}
-									counts={serviceTypeCounts}
+					</BottomSheetView>
+				) : (
+					<BottomSheetScrollView
+						ref={listScrollRef}
+						contentContainerStyle={[
+							styles.scrollContent,
+							{ paddingBottom: TAB_BAR_HEIGHT },
+						]}
+						showsVerticalScrollIndicator={false}
+						scrollEventThrottle={16}
+						onScroll={handleScroll}
+						keyboardShouldPersistTaps="handled"
+					>
+						<>
+							{/* Search Bar + Avatar (4:1 grid-like ratio) */}
+							<View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+								<EmergencySearchBar
+									value={localSearchQuery}
+									onChangeText={handleSearchChange}
+									onFocus={handleSearchFocus}
+									onClear={handleSearchClear}
+									placeholder={
+										mode === "emergency"
+											? "Search ambulance services..."
+											: "Search hospitals, specialties..."
+									}
+									style={{ flex: 1 }}
 								/>
-							) : (
-								<SpecialtySelector
-									specialties={specialties}
-									selectedSpecialty={selectedSpecialty}
-									onSelect={onSpecialtySelect}
-									counts={specialtyCounts}
-								/>
-							)}
-						</View>
-					)}
-
-					{/* Section Header with Search Results Info and Reset Button */}
-					{currentSnapIndex > 0 && (
-						<View style={styles.headerWithReset}>
-							<Text style={[styles.sectionHeader, { color: textMuted }]}>
-								{localSearchQuery.trim()
-									? `SEARCH RESULTS (${hospitals.length})`
-									: `${
-											mode === "emergency"
-												? "NEARBY SERVICES"
-												: "AVAILABLE BEDS"
-									  } (${hospitals.length})`}
-							</Text>
-							{hasActiveFilters && (
 								<Pressable
-									onPress={() => {
-										Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-										if (onResetFilters) onResetFilters();
-									}}
+									onPress={handleAvatarPress}
 									style={({ pressed }) => ({
-										opacity: pressed ? 0.6 : 1,
+										width: 52,
+										height: 52,
+										marginLeft: 10,
+										alignItems: "center",
+										justifyContent: "center",
+										transform: [{ scale: pressed ? 0.95 : 1 }],
 									})}
 								>
-									<Text
-										style={[styles.resetButton, { color: COLORS.brandPrimary }]}
-									>
-										RESET
-									</Text>
+									<Image
+										source={
+											user?.imageUri
+												? { uri: user.imageUri }
+												: require("../../assets/profile.jpg")
+										}
+										style={{
+											width: 48,
+											height: 48,
+											borderRadius: 24,
+											borderWidth: 2,
+											borderColor: COLORS.brandPrimary,
+										}}
+									/>
 								</Pressable>
-							)}
-						</View>
-					)}
+							</View>
 
-					{/* Hospital List or 911 Fallback - Only visible when not collapsed */}
-					{currentSnapIndex > 0 &&
-						(hospitals.length > 0 ? (
-							hospitals.map((hospital) => (
-								<HospitalCard
-									key={hospital.id}
-									hospital={hospital}
-									isSelected={selectedHospital?.id === hospital.id}
-									onSelect={() => onHospitalSelect(hospital)}
-									onCall={() => onHospitalCall(hospital.id)}
-									mode={mode}
-								/>
-							))
-						) : (
-							<Call911Card
-								message={
-									mode === "emergency"
-										? "No ambulance services found nearby. For immediate assistance, call 911."
-										: "No hospitals with available beds found. For urgent care, call 911."
-								}
+							{/* Mini Profile Modal */}
+							<MiniProfileModal
+								visible={showProfileModal}
+								onClose={closeProfileModal}
 							/>
-						))}
-				</BottomSheetScrollView>
+
+							{/* Service Type or Specialty Selector - Acts as filters */}
+							{currentSnapIndex > 0 && (
+								<View style={styles.selectorContainer}>
+									{mode === "emergency" ? (
+										<ServiceTypeSelector
+											selectedType={serviceType}
+											onSelect={onServiceTypeSelect}
+											counts={serviceTypeCounts}
+										/>
+									) : (
+										<SpecialtySelector
+											specialties={specialties}
+											selectedSpecialty={selectedSpecialty}
+											onSelect={onSpecialtySelect}
+											counts={specialtyCounts}
+										/>
+									)}
+								</View>
+							)}
+
+							{/* Section Header with Search Results Info and Reset Button */}
+							{currentSnapIndex > 0 && (
+								<View style={styles.headerWithReset}>
+									<Text style={[styles.sectionHeader, { color: textMuted }]}>
+										{localSearchQuery.trim()
+											? `SEARCH RESULTS (${hospitals.length})`
+											: `${
+													mode === "emergency"
+														? "NEARBY SERVICES"
+														: "AVAILABLE BEDS"
+											} (${hospitals.length})`}
+									</Text>
+									{hasActiveFilters && (
+										<Pressable
+											onPress={() => {
+												Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+												clearSearch();
+												if (onSearch) onSearch("");
+												if (onResetFilters) onResetFilters();
+											}}
+											style={({ pressed }) => ({
+												opacity: pressed ? 0.6 : 1,
+											})}
+										>
+											<Text
+												style={[styles.resetButton, { color: COLORS.brandPrimary }]}
+											>
+												RESET
+											</Text>
+										</Pressable>
+									)}
+								</View>
+							)}
+
+							{/* Hospital List or 911 Fallback - Only visible when not collapsed */}
+							{currentSnapIndex > 0 &&
+								(hospitals.length > 0 ? (
+									hospitals.filter((h) => h?.id).map((hospital) => (
+										<HospitalCard
+											key={hospital.id}
+											hospital={hospital}
+											isSelected={selectedHospital?.id === hospital.id}
+											onSelect={() => onHospitalSelect(hospital)}
+											onCall={() => onHospitalCall(hospital.id)}
+											mode={mode}
+										/>
+									))
+								) : (
+									<Call911Card
+										message={
+											mode === "emergency"
+												? "No ambulance services found nearby. For immediate assistance, call 911."
+												: "No hospitals with available beds found. For urgent care, call 911."
+										}
+									/>
+								))}
+						</>
+					</BottomSheetScrollView>
+				)}
 			</BottomSheet>
 		);
 	}
@@ -465,6 +502,7 @@ const styles = StyleSheet.create({
 		letterSpacing: 1,
 		textTransform: "uppercase",
 	},
+	// detailContainer & detailHeader removed as they are now in HospitalDetailView
 });
 
 EmergencyBottomSheet.displayName = "EmergencyBottomSheet";

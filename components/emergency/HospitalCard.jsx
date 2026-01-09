@@ -168,6 +168,24 @@ export default function HospitalCard({
 
 	if (!hospital) return null;
 
+	const hospitalId = hospital?.id;
+	const hospitalName = typeof hospital?.name === "string" ? hospital.name : "Hospital";
+	const hospitalImageUri =
+		typeof hospital?.image === "string" && hospital.image.length > 0
+			? hospital.image
+			: null;
+	const hospitalRating = hospital?.rating ?? "--";
+	const hospitalDistance = hospital?.distance ?? "--";
+	const hospitalEta = hospital?.eta ?? "--";
+	const hospitalWaitTime = hospital?.waitTime ?? "--";
+	const hospitalPrice = hospital?.price ?? "";
+	const hospitalBeds = Number.isFinite(hospital?.availableBeds)
+		? hospital.availableBeds
+		: 0;
+	const hospitalSpecialties = Array.isArray(hospital?.specialties)
+		? hospital.specialties.filter((s) => typeof s === "string")
+		: [];
+
 	// Solid card colors matching app design system (no borders)
 	const cardBackground = isSelected
 		? isDarkMode ? `${COLORS.brandPrimary}18` : `${COLORS.brandPrimary}10`
@@ -177,18 +195,22 @@ export default function HospitalCard({
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 
 	const handlePress = () => {
+		if (!hospitalId || typeof onSelect !== "function") return;
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		onSelect(hospital.id);
+		onSelect(hospitalId);
 	};
 
 	const handleCallPress = () => {
+		if (!hospitalId || typeof onCall !== "function") return;
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-		onCall(hospital.id);
+		onCall(hospitalId);
 	};
+
+	const canSelect = !!hospitalId && typeof onSelect === "function";
 
 	return (
 		<Pressable
-			onPress={handlePress}
+			onPress={canSelect ? handlePress : undefined}
 			style={({ pressed }) => ({
 				backgroundColor: cardBackground,
 				borderRadius: 30, // More rounded, no border
@@ -206,17 +228,33 @@ export default function HospitalCard({
 				}),
 			})}
 		>
-			<Image
-				source={{ uri: hospital.image }}
-				style={{
-					width: "100%",
-					height: 130,
-					borderRadius: 20, // More rounded image
-					marginBottom: 12,
-					backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
-				}}
-				resizeMode="cover"
-			/>
+			{hospitalImageUri ? (
+				<Image
+					source={{ uri: hospitalImageUri }}
+					style={{
+						width: "100%",
+						height: 130,
+						borderRadius: 20, // More rounded image
+						marginBottom: 12,
+						backgroundColor: isDarkMode
+							? "rgba(255,255,255,0.1)"
+							: "rgba(0,0,0,0.05)",
+					}}
+					resizeMode="cover"
+				/>
+			) : (
+				<View
+					style={{
+						width: "100%",
+						height: 130,
+						borderRadius: 20,
+						marginBottom: 12,
+						backgroundColor: isDarkMode
+							? "rgba(255,255,255,0.08)"
+							: "rgba(0,0,0,0.05)",
+					}}
+				/>
+			)}
 
 			<View
 				style={{
@@ -237,7 +275,7 @@ export default function HospitalCard({
 								flex: 1,
 							}}
 						>
-							{hospital.name}
+							{hospitalName}
 						</Text>
 						{hospital.verified && (
 							<Ionicons name="checkmark-circle" size={18} color="#10B981" style={{ marginLeft: 8 }} />
@@ -249,11 +287,11 @@ export default function HospitalCard({
 						<Text
 							style={{ fontSize: 14, color: mutedColor, marginLeft: 4, marginRight: 12 }}
 						>
-							{hospital.rating}
+							{hospitalRating}
 						</Text>
 						<StatusIndicator
-							status={hospital.availableBeds > 0 ? "available" : "busy"}
-							text={hospital.availableBeds > 0 ? "Available" : "Full"}
+							status={hospitalBeds > 0 ? "available" : "busy"}
+							text={hospitalBeds > 0 ? "Available" : "Full"}
 							size="small"
 							showIcon={false}
 						/>
@@ -261,7 +299,7 @@ export default function HospitalCard({
 
 					{/* Specialties */}
 					<View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-						{hospital.specialties.slice(0, 2).map((specialty, index) => (
+						{hospitalSpecialties.slice(0, 2).map((specialty, index) => (
 							<View
 								key={index}
 								style={{
@@ -296,7 +334,7 @@ export default function HospitalCard({
 							marginBottom: 4,
 						}}
 					>
-						{hospital.price}
+						{hospitalPrice}
 					</Text>
 					<Text
 						style={{
@@ -305,7 +343,7 @@ export default function HospitalCard({
 							textAlign: "right",
 						}}
 					>
-						Wait: {hospital.waitTime}
+						Wait: {hospitalWaitTime}
 					</Text>
 				</View>
 			</View>
@@ -322,7 +360,7 @@ export default function HospitalCard({
 					<Text
 						style={{ fontSize: 13, color: mutedColor, marginLeft: 6 }}
 					>
-						{hospital.distance}
+						{hospitalDistance}
 					</Text>
 				</View>
 				<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
@@ -334,7 +372,7 @@ export default function HospitalCard({
 					<Text
 						style={{ fontSize: 13, color: mutedColor, marginLeft: 6 }}
 					>
-						{mode === "booking" ? `${hospital.availableBeds} beds` : `ETA: ${hospital.eta}`}
+						{mode === "booking" ? `${hospitalBeds} beds` : `ETA: ${hospitalEta}`}
 					</Text>
 				</View>
 			</View>
