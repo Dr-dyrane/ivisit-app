@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	View,
 	Text,
 	ScrollView,
 	StyleSheet,
 	Platform,
+	Pressable,
+	ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -17,6 +19,9 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import ProfileField from "../components/form/ProfileField";
+import * as Haptics from "expo-haptics";
+import { getMedicalProfileAPI, updateMedicalProfileAPI } from "../api/medicalProfile";
 
 export default function MedicalProfileScreen() {
 	const { isDarkMode } = useTheme();
@@ -62,6 +67,54 @@ export default function MedicalProfileScreen() {
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
 
+	const [isLoading, setIsLoading] = useState(true);
+	const [isSaving, setIsSaving] = useState(false);
+	const [profile, setProfile] = useState(null);
+
+	useEffect(() => {
+		let isActive = true;
+		(async () => {
+			setIsLoading(true);
+			const data = await getMedicalProfileAPI();
+			if (!isActive) return;
+			setProfile(data);
+			setIsLoading(false);
+		})();
+		return () => {
+			isActive = false;
+		};
+	}, []);
+
+	const updateField = useCallback((key, value) => {
+		setProfile((prev) => {
+			const base = prev && typeof prev === "object" ? prev : {};
+			return { ...base, [key]: value };
+		});
+	}, []);
+
+	const canSave = useMemo(() => {
+		return !!profile && !isSaving;
+	}, [isSaving, profile]);
+
+	const handleSave = useCallback(async () => {
+		if (!profile || isSaving) return;
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		setIsSaving(true);
+		try {
+			const next = await updateMedicalProfileAPI({
+				bloodType: profile.bloodType,
+				allergies: profile.allergies,
+				medications: profile.medications,
+				conditions: profile.conditions,
+				surgeries: profile.surgeries,
+				notes: profile.notes,
+			});
+			setProfile(next);
+		} finally {
+			setIsSaving(false);
+		}
+	}, [isSaving, profile]);
+
 	return (
 		<View style={[styles.container, { backgroundColor: colors.background }]}>
 			<ScrollView
@@ -79,6 +132,87 @@ export default function MedicalProfileScreen() {
 						will live here.
 					</Text>
 				</View>
+
+				{isLoading ? (
+					<View style={[styles.card, { backgroundColor: colors.card }]}>
+						<View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+							<ActivityIndicator color={COLORS.brandPrimary} />
+							<Text style={{ color: colors.textMuted, fontWeight: "700" }}>
+								Loading medical profile...
+							</Text>
+						</View>
+					</View>
+				) : null}
+
+				{!isLoading && profile ? (
+					<View style={[styles.card, { backgroundColor: colors.card }]}>
+						<ProfileField
+							label="Blood Type"
+							value={profile.bloodType ?? ""}
+							onChange={(v) => updateField("bloodType", v)}
+							iconName="water-outline"
+						/>
+						<ProfileField
+							label="Allergies"
+							value={profile.allergies ?? ""}
+							onChange={(v) => updateField("allergies", v)}
+							iconName="warning-outline"
+						/>
+						<ProfileField
+							label="Current Medications"
+							value={profile.medications ?? ""}
+							onChange={(v) => updateField("medications", v)}
+							iconName="medical-outline"
+						/>
+						<ProfileField
+							label="Chronic Conditions"
+							value={profile.conditions ?? ""}
+							onChange={(v) => updateField("conditions", v)}
+							iconName="fitness-outline"
+						/>
+						<ProfileField
+							label="Past Surgeries"
+							value={profile.surgeries ?? ""}
+							onChange={(v) => updateField("surgeries", v)}
+							iconName="bandage-outline"
+						/>
+						<ProfileField
+							label="Emergency Notes"
+							value={profile.notes ?? ""}
+							onChange={(v) => updateField("notes", v)}
+							iconName="document-text-outline"
+						/>
+
+						<Pressable
+							onPress={handleSave}
+							disabled={!canSave}
+							style={({ pressed }) => ({
+								marginTop: 6,
+								height: 54,
+								borderRadius: 20,
+								backgroundColor: canSave ? COLORS.brandPrimary : colors.textMuted,
+								alignItems: "center",
+								justifyContent: "center",
+								flexDirection: "row",
+								gap: 10,
+								opacity: pressed ? 0.92 : 1,
+							})}
+						>
+							{isSaving ? (
+								<ActivityIndicator color="#FFFFFF" />
+							) : (
+								<Ionicons name="checkmark" size={18} color="#FFFFFF" />
+							)}
+							<Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 15, letterSpacing: 1 }}>
+								Save Medical Profile
+							</Text>
+						</Pressable>
+
+						<Text style={{ marginTop: 10, color: colors.textMuted, fontWeight: "700", fontSize: 12 }}>
+							Last updated: {profile.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "--"}
+						</Text>
+					</View>
+				) : null}
 			</ScrollView>
 		</View>
 	);
@@ -86,7 +220,7 @@ export default function MedicalProfileScreen() {
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
-	content: { flexGrow: 1, padding: 20 },
+	content: { flexGrow: 1, padding: 20, gap: 12 },
 	card: {
 		borderRadius: 20,
 		padding: 18,
@@ -102,4 +236,3 @@ const styles = StyleSheet.create({
 		lineHeight: 20,
 	},
 });
-

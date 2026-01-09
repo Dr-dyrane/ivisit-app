@@ -1,12 +1,17 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	View,
 	Text,
 	ScrollView,
 	StyleSheet,
 	Platform,
+	Pressable,
+	Modal,
+	Animated,
+	TextInput,
+	ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -17,6 +22,13 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import * as Haptics from "expo-haptics";
+import {
+	createEmergencyContactAPI,
+	deleteEmergencyContactAPI,
+	listEmergencyContactsAPI,
+	updateEmergencyContactAPI,
+} from "../api/emergencyContacts";
 
 export default function EmergencyContactsScreen() {
 	const { isDarkMode } = useTheme();
@@ -57,10 +69,127 @@ export default function EmergencyContactsScreen() {
 		text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
 		textMuted: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
 		card: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
+		inputBg: isDarkMode ? "#0B0F1A" : "#F3F4F6",
 	};
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
+
+	const [contacts, setContacts] = useState([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [isModalVisible, setIsModalVisible] = useState(false);
+	const [editingId, setEditingId] = useState(null);
+	const [name, setName] = useState("");
+	const [relationship, setRelationship] = useState("");
+	const [phone, setPhone] = useState("");
+	const [email, setEmail] = useState("");
+	const [error, setError] = useState(null);
+	const [isSaving, setIsSaving] = useState(false);
+
+	const shakeAnim = useRef(new Animated.Value(0)).current;
+
+	const refresh = useCallback(async () => {
+		setIsLoading(true);
+		try {
+			const items = await listEmergencyContactsAPI();
+			setContacts(items);
+		} finally {
+			setIsLoading(false);
+		}
+	}, []);
+
+	useEffect(() => {
+		refresh();
+	}, [refresh]);
+
+	const openCreate = useCallback(() => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		setEditingId(null);
+		setName("");
+		setRelationship("");
+		setPhone("");
+		setEmail("");
+		setError(null);
+		setIsModalVisible(true);
+	}, []);
+
+	const openEdit = useCallback((contact) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		setEditingId(contact?.id ? String(contact.id) : null);
+		setName(typeof contact?.name === "string" ? contact.name : "");
+		setRelationship(typeof contact?.relationship === "string" ? contact.relationship : "");
+		setPhone(typeof contact?.phone === "string" ? contact.phone : "");
+		setEmail(typeof contact?.email === "string" ? contact.email : "");
+		setError(null);
+		setIsModalVisible(true);
+	}, []);
+
+	const closeModal = useCallback(() => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		setIsModalVisible(false);
+	}, []);
+
+	const shake = useCallback(() => {
+		Animated.sequence([
+			Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
+			Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
+			Animated.timing(shakeAnim, { toValue: 8, duration: 60, useNativeDriver: true }),
+			Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
+			Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+		]).start();
+	}, [shakeAnim]);
+
+	const canSave = useMemo(() => {
+		return name.trim().length >= 2 && (phone.trim().length > 0 || email.trim().length > 0);
+	}, [email, name, phone]);
+
+	const handleSave = useCallback(async () => {
+		if (!canSave || isSaving) {
+			if (!canSave) {
+				setError("Name + phone or email required");
+				shake();
+			}
+			return;
+		}
+		setIsSaving(true);
+		setError(null);
+		try {
+			const payload = {
+				name,
+				relationship,
+				phone,
+				email,
+			};
+			if (editingId) {
+				await updateEmergencyContactAPI(editingId, payload);
+			} else {
+				await createEmergencyContactAPI(payload);
+			}
+			await refresh();
+			setIsModalVisible(false);
+		} catch (e) {
+			const msg = e?.message?.split("|")?.[1] || e?.message || "Unable to save contact";
+			setError(msg);
+			shake();
+		} finally {
+			setIsSaving(false);
+		}
+	}, [canSave, editingId, email, isSaving, name, phone, refresh, relationship, shake]);
+
+	const handleDelete = useCallback(
+		async (id) => {
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+			try {
+				await deleteEmergencyContactAPI(id);
+				await refresh();
+			} catch {
+				await refresh();
+			}
+		},
+		[refresh]
+	);
+
+	const emptyState = !isLoading && (!contacts || contacts.length === 0);
 
 	return (
 		<View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -79,14 +208,185 @@ export default function EmergencyContactsScreen() {
 						share + emergency workflows later.
 					</Text>
 				</View>
+
+				<Pressable
+					onPress={openCreate}
+					style={({ pressed }) => [
+						styles.addCard,
+						{
+							backgroundColor: COLORS.brandPrimary,
+							opacity: pressed ? 0.92 : 1,
+						},
+					]}
+				>
+					<Ionicons name="add" size={18} color="#FFFFFF" />
+					<Text style={styles.addText}>Add Contact</Text>
+				</Pressable>
+
+				{isLoading ? (
+					<View style={[styles.card, { backgroundColor: colors.card }]}>
+						<View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+							<ActivityIndicator color={COLORS.brandPrimary} />
+							<Text style={{ color: colors.textMuted, fontWeight: "700" }}>
+								Loading contacts...
+							</Text>
+						</View>
+					</View>
+				) : null}
+
+				{emptyState ? (
+					<View style={[styles.card, { backgroundColor: colors.card }]}>
+						<Text style={[styles.title, { color: colors.text }]}>No contacts yet</Text>
+						<Text style={[styles.subtitle, { color: colors.textMuted }]}>
+							Add at least one trusted contact for faster emergency coordination.
+						</Text>
+					</View>
+				) : null}
+
+				{contacts.map((c) => (
+					<View key={String(c?.id)} style={[styles.contactCard, { backgroundColor: colors.card }]}>
+						<View style={{ flex: 1 }}>
+							<Text style={[styles.contactName, { color: colors.text }]}>
+								{c?.name ?? "--"}
+							</Text>
+							<Text style={[styles.contactMeta, { color: colors.textMuted }]}>
+								{[c?.relationship, c?.phone, c?.email].filter(Boolean).join(" • ")}
+							</Text>
+						</View>
+						<Pressable
+							onPress={() => openEdit(c)}
+							style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, padding: 10 }]}
+							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+						>
+							<Ionicons name="create-outline" size={20} color={colors.textMuted} />
+						</Pressable>
+						<Pressable
+							onPress={() => handleDelete(c?.id)}
+							style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, padding: 10 }]}
+							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+						>
+							<Ionicons name="trash-outline" size={20} color={COLORS.error} />
+						</Pressable>
+					</View>
+				))}
 			</ScrollView>
+
+			<Modal transparent visible={isModalVisible} animationType="fade" onRequestClose={closeModal}>
+				<View style={styles.modalBackdrop}>
+					<Pressable style={styles.modalBackdropPressable} onPress={closeModal} />
+					<View style={[styles.modalCard, { backgroundColor: colors.card }]}>
+						<View style={styles.modalHeader}>
+							<Text style={[styles.modalTitle, { color: colors.text }]}>
+								{editingId ? "Edit Contact" : "Add Contact"}
+							</Text>
+							<Pressable
+								onPress={closeModal}
+								style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, padding: 6 }]}
+							>
+								<Ionicons name="close" size={22} color={colors.textMuted} />
+							</Pressable>
+						</View>
+
+						{error ? (
+							<View style={styles.errorRow}>
+								<Ionicons name="alert-circle" size={18} color={COLORS.error} />
+								<Text style={[styles.errorText, { color: COLORS.error }]}>{error}</Text>
+							</View>
+						) : null}
+
+						<Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+							<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
+								<Ionicons name="person" size={18} color={COLORS.textMuted} />
+								<TextInput
+									value={name}
+									onChangeText={(t) => {
+										setName(t);
+										if (error) setError(null);
+									}}
+									placeholder="Full name"
+									placeholderTextColor={COLORS.textMuted}
+									style={[styles.input, { color: colors.text }]}
+									selectionColor={COLORS.brandPrimary}
+								/>
+							</View>
+							<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
+								<Ionicons name="heart" size={18} color={COLORS.textMuted} />
+								<TextInput
+									value={relationship}
+									onChangeText={(t) => {
+										setRelationship(t);
+										if (error) setError(null);
+									}}
+									placeholder="Relationship (optional)"
+									placeholderTextColor={COLORS.textMuted}
+									style={[styles.input, { color: colors.text }]}
+									selectionColor={COLORS.brandPrimary}
+								/>
+							</View>
+							<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
+								<Ionicons name="call" size={18} color={COLORS.textMuted} />
+								<TextInput
+									value={phone}
+									onChangeText={(t) => {
+										setPhone(t);
+										if (error) setError(null);
+									}}
+									placeholder="Phone"
+									placeholderTextColor={COLORS.textMuted}
+									style={[styles.input, { color: colors.text }]}
+									selectionColor={COLORS.brandPrimary}
+									keyboardType="phone-pad"
+								/>
+							</View>
+							<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
+								<Ionicons name="mail" size={18} color={COLORS.textMuted} />
+								<TextInput
+									value={email}
+									onChangeText={(t) => {
+										setEmail(t);
+										if (error) setError(null);
+									}}
+									placeholder="Email"
+									placeholderTextColor={COLORS.textMuted}
+									style={[styles.input, { color: colors.text }]}
+									selectionColor={COLORS.brandPrimary}
+									keyboardType="email-address"
+									autoCapitalize="none"
+								/>
+							</View>
+						</Animated.View>
+
+						<Pressable
+							onPress={handleSave}
+							disabled={!canSave || isSaving}
+							style={({ pressed }) => [
+								styles.saveButton,
+								{
+									backgroundColor:
+										canSave && !isSaving ? COLORS.brandPrimary : colors.inputBg,
+									opacity: pressed ? 0.92 : 1,
+								},
+							]}
+						>
+							{isSaving ? (
+								<ActivityIndicator color="#FFFFFF" />
+							) : (
+								<Ionicons name="checkmark" size={18} color="#FFFFFF" />
+							)}
+							<Text style={styles.saveButtonText}>
+								{editingId ? "Save" : "Add"}
+							</Text>
+						</Pressable>
+					</View>
+				</View>
+			</Modal>
 		</View>
 	);
 }
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
-	content: { flexGrow: 1, padding: 20 },
+	content: { flexGrow: 1, padding: 20, gap: 12 },
 	card: {
 		borderRadius: 20,
 		padding: 18,
@@ -101,5 +401,49 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		lineHeight: 20,
 	},
+	addCard: {
+		height: 56,
+		borderRadius: 24,
+		paddingHorizontal: 18,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 10,
+	},
+	addText: { color: "#FFFFFF", fontWeight: "900", fontSize: 14, letterSpacing: 1 },
+	contactCard: {
+		borderRadius: 22,
+		padding: 16,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+	contactName: { fontSize: 16, fontWeight: "900", letterSpacing: -0.2 },
+	contactMeta: { marginTop: 4, fontSize: 13, fontWeight: "700" },
+	modalBackdrop: { flex: 1, justifyContent: "center", padding: 18, backgroundColor: "rgba(0,0,0,0.55)" },
+	modalBackdropPressable: { ...StyleSheet.absoluteFillObject },
+	modalCard: { borderRadius: 24, padding: 16 },
+	modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+	modalTitle: { fontSize: 16, fontWeight: "900", letterSpacing: -0.2 },
+	errorRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
+	errorText: { fontSize: 13, fontWeight: "700", flex: 1 },
+	inputRow: {
+		height: 54,
+		borderRadius: 16,
+		paddingHorizontal: 14,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+		marginBottom: 10,
+	},
+	input: { flex: 1, fontSize: 14, fontWeight: "800" },
+	saveButton: {
+		height: 54,
+		borderRadius: 18,
+		alignItems: "center",
+		justifyContent: "center",
+		flexDirection: "row",
+		gap: 10,
+	},
+	saveButtonText: { color: "#FFFFFF", fontWeight: "900", fontSize: 15, letterSpacing: 1 },
 });
-

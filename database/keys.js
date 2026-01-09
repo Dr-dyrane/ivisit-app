@@ -59,6 +59,8 @@ export const StorageKeys = {
 	/** Emergency request data */
 	EMERGENCY_REQUESTS: `${DB_PREFIX}emergency_requests`,
 
+	MEDICAL_PROFILE: `${DB_PREFIX}medical_profile`,
+
 	// ============================================
 	// NOTIFICATIONS & PREFERENCES
 	// ============================================
@@ -97,6 +99,7 @@ export const SingletonKeys = [
 	StorageKeys.AUTH_TOKEN,
 	StorageKeys.PENDING_REGISTRATION,
 	StorageKeys.PENDING_OTP,
+	StorageKeys.MEDICAL_PROFILE,
 	StorageKeys.PREFERENCES,
 	StorageKeys.THEME,
 	StorageKeys.PROFILE_COMPLETION_DRAFT,
