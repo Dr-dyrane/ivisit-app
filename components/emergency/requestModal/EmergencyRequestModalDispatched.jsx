@@ -1,15 +1,16 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
 
 export default function EmergencyRequestModalDispatched({ requestData, textColor, mutedColor, cardColor }) {
 	const isBed = requestData?.serviceType === "bed";
+	const heroImage = isBed
+		? require("../../../assets/features/bed.png")
+		: require("../../../assets/features/emergency.png");
 	return (
 		<View style={styles.container}>
-			<View style={styles.iconWrap}>
-				<Ionicons name="checkmark-circle" size={56} color="#10B981" />
-			</View>
+			<Image source={heroImage} style={styles.heroImage} resizeMode="contain" />
 			<Text style={[styles.title, { color: textColor }]}>
 				{isBed ? "Bed Reserved" : "Service Dispatched"}
 			</Text>
@@ -60,8 +61,10 @@ const styles = StyleSheet.create({
 		paddingTop: 30,
 		alignItems: "center",
 	},
-	iconWrap: {
-		marginBottom: 14,
+	heroImage: {
+		width: 220,
+		height: 180,
+		marginBottom: 12,
 	},
 	title: {
 		fontSize: 22,
