@@ -299,28 +299,12 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		});
 
 		if (result.success) {
-			// Check if this is a new user (OTP verified but no account)
-			if (result.data?.isExistingUser === false) {
-				// User doesn't exist - show sign up option
-				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-				setLoginError(
-					"Your " +
-						loginData.contactType +
-						" has been verified! Create an account to continue."
-				);
-				setShowSignUpOption(true);
-
-				// Store pending registration using database layer
-				await database.write(StorageKeys.PENDING_REGISTRATION, {
-					email: loginData.email,
-					phone: loginData.phone,
-					contactType: loginData.contactType,
-					verified: true,
-				});
-				return;
-			}
-
-			// User exists - sync and dismiss
+            // Check if user is actually new (no profile)
+			// But for OTP flow, Supabase creates user automatically if not exists
+            // We should treat this as a successful login regardless.
+            // If they need to complete profile, the MainLayout or AuthContext should handle that redirect.
+            
+			// Sync user data to ensure proper state update
 			await syncUserData();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -353,7 +337,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 				});
 			} else {
 				setLoginError(result.error || "Unable to verify code");
-				showToast(result.error || "Unable to sign in", "error");
+				showToast(result.error || "Unable to verify code", "error");
 			}
 		}
 	};
