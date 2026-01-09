@@ -1,5 +1,6 @@
 import { View, StyleSheet } from "react-native";
 import { Stack } from "expo-router";
+import { useEffect } from "react";
 import { TabBarVisibilityProvider } from "../../contexts/TabBarVisibilityContext";
 import { HeaderStateProvider, useHeaderState } from "../../contexts/HeaderStateContext";
 import { FABProvider } from "../../contexts/FABContext";
@@ -9,8 +10,13 @@ import { EmergencyUIProvider } from "../../contexts/EmergencyUIContext";
 import { SearchProvider } from "../../contexts/SearchContext";
 import ScrollAwareHeader from "../../components/headers/ScrollAwareHeader";
 import GlobalFAB from "../../components/navigation/GlobalFAB";
+import { appMigrationsService } from "../../services/appMigrationsService";
 
 export default function UserLayout() {
+	useEffect(() => {
+		appMigrationsService.run().catch(() => {});
+	}, []);
+
 	return (
 		<TabBarVisibilityProvider>
 			<HeaderStateProvider>

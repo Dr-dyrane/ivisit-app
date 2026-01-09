@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { VISITS, VISIT_STATUS, VISIT_FILTERS } from "../data/visits";
 import { database, StorageKeys } from "../database";
-import { normalizeVisitsList } from "../utils/domainNormalize";
+import { normalizeVisit, normalizeVisitsList } from "../utils/domainNormalize";
 
 // Create the visits context
 const VisitsContext = createContext();
@@ -33,7 +33,7 @@ export function VisitsProvider({ children }) {
       try {
         const stored = await database.read(StorageKeys.VISITS, null);
         if (!isActive) return;
-        if (Array.isArray(stored) && stored.length > 0) {
+        if (Array.isArray(stored)) {
           const normalized = normalizeVisitsList(stored);
           setVisits(normalized);
           if (normalized.length !== stored.length) {
@@ -129,19 +129,23 @@ export function VisitsProvider({ children }) {
   const addVisit = useCallback((newVisit) => {
     if (!newVisit) return;
     setVisits(prev => {
-      const id = newVisit?.id ? String(newVisit.id) : String(Date.now());
-      if (!prev || !Array.isArray(prev)) return [{ ...newVisit, id }];
-      return [{ ...newVisit, id }, ...prev];
+      const normalized = normalizeVisit(newVisit) ?? null;
+      if (!normalized) return Array.isArray(prev) ? prev : [];
+      const id = String(normalized.id);
+      const list = Array.isArray(prev) ? prev.filter(v => v && typeof v === "object") : [];
+      const rest = list.filter(v => String(v?.id ?? "") !== id);
+      return [normalized, ...rest];
     });
   }, []);
 
   // Cancel a visit
   const cancelVisit = useCallback((visitId) => {
     if (!visitId) return;
+    const id = String(visitId);
     setVisits(prev => {
       if (!prev || prev.length === 0) return prev;
       return prev.map(v => 
-        v?.id === visitId 
+        String(v?.id ?? "") === id 
           ? { ...v, status: VISIT_STATUS.CANCELLED }
           : v
       );
@@ -150,10 +154,11 @@ export function VisitsProvider({ children }) {
 
   const completeVisit = useCallback((visitId) => {
     if (!visitId) return;
+    const id = String(visitId);
     setVisits(prev => {
       if (!prev || prev.length === 0) return prev;
       return prev.map(v =>
-        v?.id === visitId
+        String(v?.id ?? "") === id
           ? { ...v, status: VISIT_STATUS.COMPLETED }
           : v
       );

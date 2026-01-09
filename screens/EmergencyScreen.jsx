@@ -274,6 +274,7 @@ export default function EmergencyScreen() {
 				});
 
 				addNotification({
+					id: `${request?.serviceType}_request_${visitId}`,
 					type:
 						request?.serviceType === "ambulance"
 							? NOTIFICATION_TYPES.EMERGENCY
@@ -290,7 +291,7 @@ export default function EmergencyScreen() {
 							? NOTIFICATION_PRIORITY.URGENT
 							: NOTIFICATION_PRIORITY.HIGH,
 					actionType: request?.serviceType === "ambulance" ? "track" : "view_appointment",
-					actionData: { visitId },
+					actionData: { visitId, hospitalId },
 				});
 			} catch {}
 		})();
@@ -306,6 +307,9 @@ export default function EmergencyScreen() {
 
 			addVisit({
 				id: visitId,
+				visitId,
+				requestId: visitId,
+				hospitalId: String(hospitalId),
 				hospital: request?.hospitalName ?? hospital?.name ?? "Hospital",
 				doctor: "Ambulance Dispatch",
 				specialty: "Emergency Response",
@@ -333,6 +337,9 @@ export default function EmergencyScreen() {
 
 			addVisit({
 				id: visitId,
+				visitId,
+				requestId: visitId,
+				hospitalId: String(hospitalId),
 				hospital: request?.hospitalName ?? hospital?.name ?? "Hospital",
 				doctor: "Admissions Desk",
 				specialty: request?.specialty ?? selectedSpecialty ?? "General Care",
@@ -503,6 +510,7 @@ export default function EmergencyScreen() {
 						).catch(() => {});
 						cancelVisit(activeAmbulanceTrip.requestId);
 						addNotification({
+							id: `ambulance_cancel_${activeAmbulanceTrip.requestId}`,
 							type: NOTIFICATION_TYPES.EMERGENCY,
 							title: "Ambulance request cancelled",
 							message: "You cancelled the active ambulance request.",
@@ -526,6 +534,7 @@ export default function EmergencyScreen() {
 						).catch(() => {});
 						completeVisit(activeAmbulanceTrip.requestId);
 						addNotification({
+							id: `ambulance_complete_${activeAmbulanceTrip.requestId}`,
 							type: NOTIFICATION_TYPES.EMERGENCY,
 							title: "Ambulance ride completed",
 							message: "Your emergency trip has been marked complete.",
@@ -549,6 +558,7 @@ export default function EmergencyScreen() {
 						).catch(() => {});
 						cancelVisit(activeBedBooking.requestId);
 						addNotification({
+							id: `bed_cancel_${activeBedBooking.requestId}`,
 							type: NOTIFICATION_TYPES.APPOINTMENT,
 							title: "Bed reservation cancelled",
 							message: "You cancelled the active bed reservation.",
@@ -572,6 +582,7 @@ export default function EmergencyScreen() {
 						).catch(() => {});
 						completeVisit(activeBedBooking.requestId);
 						addNotification({
+							id: `bed_complete_${activeBedBooking.requestId}`,
 							type: NOTIFICATION_TYPES.APPOINTMENT,
 							title: "Bed booking completed",
 							message: "Your bed booking has been marked complete.",

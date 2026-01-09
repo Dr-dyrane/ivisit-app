@@ -78,6 +78,8 @@ export const StorageKeys = {
 	THEME: `${DB_PREFIX}theme`,
 
 	PROFILE_COMPLETION_DRAFT: `${DB_PREFIX}profile_completion_draft`,
+
+	MIGRATION_VERSION: `${DB_PREFIX}migration_version`,
 };
 
 /**
@@ -109,6 +111,7 @@ export const SingletonKeys = [
 	StorageKeys.PREFERENCES,
 	StorageKeys.THEME,
 	StorageKeys.PROFILE_COMPLETION_DRAFT,
+	StorageKeys.MIGRATION_VERSION,
 ];
 
 /**

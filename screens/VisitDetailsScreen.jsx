@@ -12,7 +12,7 @@ import {
 	Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
@@ -23,8 +23,10 @@ import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import { useVisits } from "../contexts/VisitsContext";
+import { navigateToVisits } from "../utils/navigationHelpers";
 
 export default function VisitDetailsScreen() {
+	const router = useRouter();
 	const { id } = useLocalSearchParams();
 	const visitId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null;
 
@@ -121,155 +123,205 @@ export default function VisitDetailsScreen() {
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
 			>
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					{visit?.image ? (
-						<Image
-							source={{ uri: visit.image }}
-							style={styles.heroImage}
-							resizeMode="cover"
-						/>
-					) : null}
+				{visit ? (
+					<>
+						<View style={[styles.card, { backgroundColor: colors.card }]}>
+							{visit?.image ? (
+								<Image
+									source={{ uri: visit.image }}
+									style={styles.heroImage}
+									resizeMode="cover"
+								/>
+							) : null}
 
-					<View style={styles.headerRow}>
-						<View style={{ flex: 1 }}>
-							<Text style={[styles.title, { color: colors.text }]}>
-								{visit?.hospital ?? "Hospital visit"}
-							</Text>
-							<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-								{visit?.type ?? "Appointment"}
-								{visit?.specialty ? ` • ${visit.specialty}` : ""}
-							</Text>
+							<View style={styles.headerRow}>
+								<View style={{ flex: 1 }}>
+									<Text style={[styles.title, { color: colors.text }]}>
+										{visit?.hospital ?? "Hospital visit"}
+									</Text>
+									<Text style={[styles.subtitle, { color: colors.textMuted }]}>
+										{visit?.type ?? "Appointment"}
+										{visit?.specialty ? ` • ${visit.specialty}` : ""}
+									</Text>
+								</View>
+
+								<View
+									style={[styles.statusPill, { backgroundColor: `${statusColor}20` }]}
+								>
+									<Text style={[styles.statusText, { color: statusColor }]}>
+										{visit?.status?.replace("_", " ") ?? "visit"}
+									</Text>
+								</View>
+							</View>
+
+							<View style={styles.doctorRow}>
+								<View
+									style={[
+										styles.doctorAvatar,
+										{ backgroundColor: `${COLORS.brandPrimary}15` },
+									]}
+								>
+									<Text style={[styles.doctorInitials, { color: COLORS.brandPrimary }]}>
+										{doctorInitials}
+									</Text>
+								</View>
+								<View style={{ flex: 1 }}>
+									<Text style={[styles.doctorName, { color: colors.text }]}>
+										{visit?.doctor ?? "Doctor"}
+									</Text>
+									<Text style={[styles.doctorMeta, { color: colors.textMuted }]}>
+										{visit?.roomNumber ?? "--"}
+									</Text>
+								</View>
+							</View>
 						</View>
 
-						<View style={[styles.statusPill, { backgroundColor: `${statusColor}20` }]}>
-							<Text style={[styles.statusText, { color: statusColor }]}>
-								{visit?.status?.replace("_", " ") ?? "visit"}
+						<View style={[styles.card, { backgroundColor: colors.card }]}>
+							<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+								Summary
 							</Text>
-						</View>
-					</View>
-
-					<View style={styles.doctorRow}>
-						<View style={[styles.doctorAvatar, { backgroundColor: `${COLORS.brandPrimary}15` }]}>
-							<Text style={[styles.doctorInitials, { color: COLORS.brandPrimary }]}>
-								{doctorInitials}
-							</Text>
-						</View>
-						<View style={{ flex: 1 }}>
-							<Text style={[styles.doctorName, { color: colors.text }]}>
-								{visit?.doctor ?? "Doctor"}
-							</Text>
-							<Text style={[styles.doctorMeta, { color: colors.textMuted }]}>
-								{visit?.roomNumber ?? "--"}
-							</Text>
-						</View>
-					</View>
-				</View>
-
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-						Summary
-					</Text>
-					<View style={styles.kvRow}>
-						<Text style={[styles.kvLabel, { color: colors.textMuted }]}>Date</Text>
-						<Text style={[styles.kvValue, { color: colors.text }]}>{visit?.date ?? "--"}</Text>
-					</View>
-					<View style={styles.kvRow}>
-						<Text style={[styles.kvLabel, { color: colors.textMuted }]}>Time</Text>
-						<Text style={[styles.kvValue, { color: colors.text }]}>{visit?.time ?? "--"}</Text>
-					</View>
-					<View style={styles.kvRow}>
-						<Text style={[styles.kvLabel, { color: colors.textMuted }]}>Location</Text>
-						<Text style={[styles.kvValue, { color: colors.text }]} numberOfLines={2}>
-							{visit?.address ?? "--"}
-						</Text>
-					</View>
-					<View style={styles.kvRow}>
-						<Text style={[styles.kvLabel, { color: colors.textMuted }]}>Duration</Text>
-						<Text style={[styles.kvValue, { color: colors.text }]}>
-							{visit?.estimatedDuration ?? "--"}
-						</Text>
-					</View>
-				</View>
-
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-						Actions
-					</Text>
-					<View style={styles.actionsRow}>
-						<Pressable
-							disabled={!callTarget}
-							onPress={() => {
-								if (!callTarget) return;
-								Linking.openURL(callTarget);
-							}}
-							style={({ pressed }) => [
-								styles.actionButton,
-								{
-									backgroundColor: isDarkMode
-										? "rgba(255,255,255,0.08)"
-										: "rgba(15,23,42,0.06)",
-									opacity: callTarget ? (pressed ? 0.85 : 1) : 0.5,
-								},
-							]}
-						>
-							<Ionicons name="call" size={18} color={COLORS.brandPrimary} />
-							<Text style={[styles.actionText, { color: colors.text }]}>Call</Text>
-						</Pressable>
-
-						<Pressable
-							disabled={!visit?.meetingLink}
-							onPress={() => {
-								if (!visit?.meetingLink) return;
-								Linking.openURL(visit.meetingLink);
-							}}
-							style={({ pressed }) => [
-								styles.actionButton,
-								{
-									backgroundColor: isDarkMode
-										? "rgba(255,255,255,0.08)"
-										: "rgba(15,23,42,0.06)",
-									opacity: visit?.meetingLink ? (pressed ? 0.85 : 1) : 0.5,
-								},
-							]}
-						>
-							<Ionicons name="videocam" size={18} color={COLORS.brandPrimary} />
-							<Text style={[styles.actionText, { color: colors.text }]}>Join</Text>
-						</Pressable>
-					</View>
-				</View>
-
-				{!!visit?.notes && (
-					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-							Notes
-						</Text>
-						<Text style={[styles.paragraph, { color: colors.text }]}>
-							{visit.notes}
-						</Text>
-					</View>
-				)}
-
-				{Array.isArray(visit?.preparation) && visit.preparation.length > 0 && (
-					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-							Preparation
-						</Text>
-						{visit.preparation.map((p) => (
-							<View key={p} style={styles.bulletRow}>
-								<View style={[styles.bulletDot, { backgroundColor: COLORS.brandPrimary }]} />
-								<Text style={[styles.paragraph, { color: colors.text, flex: 1 }]}>
-									{p}
+							<View style={styles.kvRow}>
+								<Text style={[styles.kvLabel, { color: colors.textMuted }]}>Date</Text>
+								<Text style={[styles.kvValue, { color: colors.text }]}>
+									{visit?.date ?? "--"}
 								</Text>
 							</View>
-						))}
-					</View>
-				)}
+							<View style={styles.kvRow}>
+								<Text style={[styles.kvLabel, { color: colors.textMuted }]}>Time</Text>
+								<Text style={[styles.kvValue, { color: colors.text }]}>
+									{visit?.time ?? "--"}
+								</Text>
+							</View>
+							<View style={styles.kvRow}>
+								<Text style={[styles.kvLabel, { color: colors.textMuted }]}>Location</Text>
+								<Text style={[styles.kvValue, { color: colors.text }]} numberOfLines={2}>
+									{visit?.address ?? "--"}
+								</Text>
+							</View>
+							<View style={styles.kvRow}>
+								<Text style={[styles.kvLabel, { color: colors.textMuted }]}>Duration</Text>
+								<Text style={[styles.kvValue, { color: colors.text }]}>
+									{visit?.estimatedDuration ?? "--"}
+								</Text>
+							</View>
+						</View>
 
-				{!visit && (
+						<View style={[styles.card, { backgroundColor: colors.card }]}>
+							<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+								Actions
+							</Text>
+							<View style={styles.actionsRow}>
+								<Pressable
+									disabled={!callTarget}
+									onPress={() => {
+										if (!callTarget) return;
+										Linking.openURL(callTarget);
+									}}
+									style={({ pressed }) => [
+										styles.actionButton,
+										{
+											backgroundColor: isDarkMode
+												? "rgba(255,255,255,0.08)"
+												: "rgba(15,23,42,0.06)",
+											opacity: callTarget ? (pressed ? 0.85 : 1) : 0.5,
+										},
+									]}
+								>
+									<Ionicons name="call" size={18} color={COLORS.brandPrimary} />
+									<Text style={[styles.actionText, { color: colors.text }]}>Call</Text>
+								</Pressable>
+
+								<Pressable
+									disabled={!visit?.meetingLink}
+									onPress={() => {
+										if (!visit?.meetingLink) return;
+										Linking.openURL(visit.meetingLink);
+									}}
+									style={({ pressed }) => [
+										styles.actionButton,
+										{
+											backgroundColor: isDarkMode
+												? "rgba(255,255,255,0.08)"
+												: "rgba(15,23,42,0.06)",
+											opacity: visit?.meetingLink ? (pressed ? 0.85 : 1) : 0.5,
+										},
+									]}
+								>
+									<Ionicons name="videocam" size={18} color={COLORS.brandPrimary} />
+									<Text style={[styles.actionText, { color: colors.text }]}>Join</Text>
+								</Pressable>
+							</View>
+						</View>
+
+						{!!visit?.notes && (
+							<View style={[styles.card, { backgroundColor: colors.card }]}>
+								<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+									Notes
+								</Text>
+								<Text style={[styles.paragraph, { color: colors.text }]}>{visit.notes}</Text>
+							</View>
+						)}
+
+						{Array.isArray(visit?.preparation) && visit.preparation.length > 0 && (
+							<View style={[styles.card, { backgroundColor: colors.card }]}>
+								<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+									Preparation
+								</Text>
+								{visit.preparation.map((p) => (
+									<View key={p} style={styles.bulletRow}>
+										<View
+											style={[
+												styles.bulletDot,
+												{ backgroundColor: COLORS.brandPrimary },
+											]}
+										/>
+										<Text style={[styles.paragraph, { color: colors.text, flex: 1 }]}>
+											{p}
+										</Text>
+									</View>
+								))}
+							</View>
+						)}
+					</>
+				) : (
 					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-							This visit could not be found.
-						</Text>
+						<View style={{ alignItems: "center", paddingVertical: 16 }}>
+							<View
+								style={{
+									width: 72,
+									height: 72,
+									borderRadius: 22,
+									backgroundColor: `${COLORS.brandPrimary}18`,
+									alignItems: "center",
+									justifyContent: "center",
+									marginBottom: 16,
+								}}
+							>
+								<Ionicons
+									name="alert-circle-outline"
+									size={34}
+									color={COLORS.brandPrimary}
+								/>
+							</View>
+							<Text style={[styles.title, { color: colors.text }]}>Visit not found</Text>
+							<Text
+								style={[
+									styles.subtitle,
+									{ color: colors.textMuted, textAlign: "center" },
+								]}
+							>
+								This visit may have been removed or not synced yet.
+							</Text>
+							<Pressable
+								onPress={() => navigateToVisits({ router, method: "replace" })}
+								style={({ pressed }) => [
+									styles.primaryButton,
+									{ opacity: pressed ? 0.9 : 1 },
+								]}
+							>
+								<Text style={styles.primaryButtonText}>Go to Visits</Text>
+							</Pressable>
+						</View>
 					</View>
 				)}
 			</ScrollView>
@@ -401,5 +453,19 @@ const styles = StyleSheet.create({
 		height: 8,
 		borderRadius: 4,
 		marginTop: 6,
+	},
+	primaryButton: {
+		marginTop: 18,
+		backgroundColor: COLORS.brandPrimary,
+		borderRadius: 16,
+		paddingVertical: 12,
+		paddingHorizontal: 18,
+		minWidth: 160,
+		alignItems: "center",
+	},
+	primaryButtonText: {
+		color: "#FFFFFF",
+		fontSize: 13,
+		fontWeight: "900",
 	},
 });

@@ -157,6 +157,7 @@ const VisitsScreen = () => {
 	const topPadding = headerHeight + (insets?.top || 0);
 
 	const hasVisits = Array.isArray(filteredVisits) && filteredVisits.length > 0;
+	const showInitialLoadingState = isLoading && !hasVisits;
 
 	return (
 		<LinearGradient colors={backgroundColors} style={styles.container}>
@@ -178,7 +179,7 @@ const VisitsScreen = () => {
 					/>
 				}
 			>
-				{isLoading && !hasVisits && (
+				{showInitialLoadingState ? (
 					<View
 						style={{
 							backgroundColor: colors.card,
@@ -217,7 +218,7 @@ const VisitsScreen = () => {
 							Syncing your upcoming appointments and history
 						</Text>
 					</View>
-				)}
+				) : null}
 
 				{/* Filters */}
 				<VisitFilters
@@ -228,12 +229,12 @@ const VisitsScreen = () => {
 				/>
 
 				{/* Visit Cards or Empty State */}
-				{hasVisits ? (
+				{showInitialLoadingState ? null : hasVisits ? (
 					<Animated.View style={{ opacity: fadeAnim }}>
 						{filteredVisits.map((visit) => (
 							visit ? (
 								<VisitCard
-									key={visit?.id}
+									key={visit?.id ?? `${visit?.hospital ?? "visit"}_${visit?.date ?? ""}_${visit?.time ?? ""}`}
 									visit={visit}
 									isSelected={selectedVisitId === visit?.id}
 									onSelect={handleVisitSelect}
@@ -292,6 +293,8 @@ const VisitsScreen = () => {
 								? "No upcoming appointments scheduled"
 								: filter === "completed"
 								? "No completed visits yet"
+								: filter === "cancelled"
+								? "No cancelled visits"
 								: "Your medical visits will appear here"}
 						</Text>
 					</View>

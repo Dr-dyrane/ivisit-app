@@ -40,7 +40,7 @@ export function NotificationsProvider({ children }) {
       try {
         const stored = await database.read(StorageKeys.NOTIFICATIONS, null);
         if (!isActive) return;
-        if (Array.isArray(stored) && stored.length > 0) {
+        if (Array.isArray(stored)) {
           const normalized = normalizeNotificationsList(stored);
           setNotifications(normalized);
           if (normalized.length !== stored.length) {
@@ -136,7 +136,11 @@ export function NotificationsProvider({ children }) {
   const addNotification = useCallback((notification) => {
     const next = normalizeNotification(notification);
     if (!next) return;
-    setNotifications(prev => [next, ...(Array.isArray(prev) ? prev : [])]);
+    setNotifications(prev => {
+      const list = Array.isArray(prev) ? prev.filter(n => n && typeof n === "object") : [];
+      const rest = list.filter(n => String(n?.id ?? "") !== String(next.id));
+      return [next, ...rest];
+    });
   }, []);
 
   // Refresh notifications (mock - for pull-to-refresh)
