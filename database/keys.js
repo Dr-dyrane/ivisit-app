@@ -61,6 +61,8 @@ export const StorageKeys = {
 
 	MEDICAL_PROFILE: `${DB_PREFIX}medical_profile`,
 
+	EMERGENCY_STATE: `${DB_PREFIX}emergency_state`,
+
 	// ============================================
 	// NOTIFICATIONS & PREFERENCES
 	// ============================================
@@ -100,6 +102,7 @@ export const SingletonKeys = [
 	StorageKeys.PENDING_REGISTRATION,
 	StorageKeys.PENDING_OTP,
 	StorageKeys.MEDICAL_PROFILE,
+	StorageKeys.EMERGENCY_STATE,
 	StorageKeys.PREFERENCES,
 	StorageKeys.THEME,
 	StorageKeys.PROFILE_COMPLETION_DRAFT,

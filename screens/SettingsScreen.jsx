@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -59,11 +60,14 @@ export default function SettingsScreen() {
 		[handleHeaderScroll, handleTabBarScroll]
 	);
 
+	const backgroundColors = isDarkMode
+		? ["#121826", "#0B0F1A", "#121826"]
+		: ["#FFFFFF", "#F3E7E7", "#FFFFFF"];
+
 	const colors = {
-		background: isDarkMode ? COLORS.bgDark : COLORS.bgLight,
-		text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-		textMuted: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
-		card: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
+		text: isDarkMode ? "#FFFFFF" : "#0F172A",
+		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
 	};
 
 	useEffect(() => {
@@ -87,17 +91,21 @@ export default function SettingsScreen() {
 			if (!preferences) return;
 			const next = await updatePreferencesAPI({ [key]: !preferences[key] });
 			setPreferences(next);
-		},
-		[preferences]
+	}, [preferences]
 	);
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
+	const headerHeight = 70;
+	const topPadding = headerHeight + insets.top;
 
 	return (
-		<View style={[styles.container, { backgroundColor: colors.background }]}>
+		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			<ScrollView
-				contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+				contentContainerStyle={[
+					styles.content,
+					{ paddingTop: topPadding, paddingBottom: bottomPadding },
+				]}
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
@@ -293,7 +301,7 @@ export default function SettingsScreen() {
 					<Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
 				</Pressable>
 			</ScrollView>
-		</View>
+		</LinearGradient>
 	);
 }
 

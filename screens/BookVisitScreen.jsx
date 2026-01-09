@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { View, Text, ScrollView, StyleSheet, Platform, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -51,18 +52,27 @@ export default function BookVisitScreen() {
 		[handleHeaderScroll, handleTabBarScroll]
 	);
 
+	const backgroundColors = useMemo(
+		() =>
+			isDarkMode
+				? ["#121826", "#0B0F1A", "#121826"]
+				: ["#FFFFFF", "#F3E7E7", "#FFFFFF"],
+		[isDarkMode]
+	);
+
 	const colors = useMemo(
 		() => ({
-			background: isDarkMode ? COLORS.bgDark : COLORS.bgLight,
-			text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-			textMuted: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
-			card: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
+			text: isDarkMode ? "#FFFFFF" : "#0F172A",
+			textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+			card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
 		}),
 		[isDarkMode]
 	);
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
+	const headerHeight = 70;
+	const topPadding = headerHeight + insets.top;
 
 	const createMockVisit = useCallback(
 		({ isTelehealth }) => {
@@ -98,9 +108,12 @@ export default function BookVisitScreen() {
 	);
 
 	return (
-		<View style={[styles.container, { backgroundColor: colors.background }]}>
+		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			<ScrollView
-				contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+				contentContainerStyle={[
+					styles.content,
+					{ paddingTop: topPadding, paddingBottom: bottomPadding },
+				]}
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
@@ -111,7 +124,7 @@ export default function BookVisitScreen() {
 					</Text>
 					<Text style={[styles.heroSubtitle, { color: colors.textMuted }]}>
 						This is the entry point for booking routine visits, follow-ups, imaging,
-						and telehealth. We’ll connect this to Supabase once auth + seed data land.
+						and telehealth. Everything persists locally for now.
 					</Text>
 				</View>
 
@@ -169,7 +182,7 @@ export default function BookVisitScreen() {
 					<Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
 				</Pressable>
 			</ScrollView>
-		</View>
+		</LinearGradient>
 	);
 }
 

@@ -11,6 +11,7 @@ import EmergencyRequestModalFooter from "./requestModal/EmergencyRequestModalFoo
 import EmergencyRequestModalDispatched from "./requestModal/EmergencyRequestModalDispatched";
 import InfoTile from "./requestModal/InfoTile";
 import BedBookingOptions from "./requestModal/BedBookingOptions";
+import { getPreferencesAPI } from "../../api/preferences";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -29,6 +30,7 @@ export default function EmergencyRequestModal({
 	const [requestData, setRequestData] = useState(null);
 	const [bedType, setBedType] = useState("standard");
 	const [bedCount, setBedCount] = useState(1);
+	const [preferences, setPreferences] = useState(null);
 
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -61,6 +63,14 @@ export default function EmergencyRequestModal({
 			setBedCount(1);
 			setIsRequesting(false);
 			setRequestData(null);
+			(async () => {
+				try {
+					const next = await getPreferencesAPI();
+					setPreferences(next);
+				} catch {
+					setPreferences(null);
+				}
+			})();
 		}
 	}, [visible]);
 
@@ -225,6 +235,30 @@ export default function EmergencyRequestModal({
 							/>
 						))
 					)}
+				</View>
+
+				<View style={styles.section}>
+					<Text style={[styles.sectionTitle, { color: colors.text }]}>
+						Info Shared
+					</Text>
+					<View style={styles.bookingGrid}>
+						<InfoTile
+							label="Medical profile"
+							value={preferences?.privacyShareMedicalProfile ? "On" : "Off"}
+							textColor={colors.text}
+							mutedColor={colors.textMuted}
+							cardColor={colors.card}
+							valueColor={preferences?.privacyShareMedicalProfile ? COLORS.brandPrimary : colors.textMuted}
+						/>
+						<InfoTile
+							label="Emergency contacts"
+							value={preferences?.privacyShareEmergencyContacts ? "On" : "Off"}
+							textColor={colors.text}
+							mutedColor={colors.textMuted}
+							cardColor={colors.card}
+							valueColor={preferences?.privacyShareEmergencyContacts ? COLORS.brandPrimary : colors.textMuted}
+						/>
+					</View>
 				</View>
 			</ScrollView>
 

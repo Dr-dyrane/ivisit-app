@@ -68,8 +68,10 @@ const EmergencyBottomSheet = forwardRef(
 			selectedHospital,
 			activeAmbulanceTrip = null,
 			onCancelAmbulanceTrip,
+			onCompleteAmbulanceTrip,
 			activeBedBooking = null,
 			onCancelBedBooking,
+			onCompleteBedBooking,
 			serviceTypeCounts = {},
 			specialtyCounts = {},
 			hasActiveFilters = false,
@@ -693,24 +695,53 @@ const EmergencyBottomSheet = forwardRef(
 									</Pressable>
 								</View>
 
-								<Pressable
-									onPress={() => {
-										Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-										onCancelAmbulanceTrip?.();
-									}}
-									style={({ pressed }) => [
-										styles.tripCancelButton,
-										{
-											backgroundColor: isDarkMode
-												? "rgba(239,68,68,0.16)"
-												: "rgba(239,68,68,0.10)",
-											transform: [{ scale: pressed ? 0.98 : 1 }],
-										},
-									]}
-								>
-									<Text style={styles.tripCancelText}>Cancel request</Text>
-								</Pressable>
-							</View>
+								<View style={styles.tripQuickActions}>
+									<Pressable
+										onPress={() => {
+											Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+											onCancelAmbulanceTrip?.();
+										}}
+										style={({ pressed }) => [
+											styles.tripCancelButton,
+											{
+												backgroundColor: isDarkMode
+													? "rgba(239,68,68,0.16)"
+													: "rgba(239,68,68,0.10)",
+												transform: [{ scale: pressed ? 0.98 : 1 }],
+												flex: 1,
+											},
+										]}
+									>
+										<Text style={styles.tripCancelText}>Cancel request</Text>
+									</Pressable>
+
+									<Pressable
+										onPress={() => {
+											Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+											onCompleteAmbulanceTrip?.();
+										}}
+										style={({ pressed }) => [
+											styles.tripCancelButton,
+											{
+												backgroundColor: isDarkMode
+													? "rgba(16,185,129,0.16)"
+													: "rgba(16,185,129,0.12)",
+												transform: [{ scale: pressed ? 0.98 : 1 }],
+												flex: 1,
+											},
+										]}
+									>
+										<Text
+											style={[
+												styles.tripCancelText,
+												{ color: "#10B981" },
+											]}
+										>
+											Mark complete
+										</Text>
+									</Pressable>
+								</View>
+								</View>
 						</View>
 					)}
 				</View>
@@ -728,6 +759,7 @@ const EmergencyBottomSheet = forwardRef(
 			formattedRemaining,
 			isDarkMode,
 			onCancelAmbulanceTrip,
+			onCompleteAmbulanceTrip,
 			smsTarget,
 			statusMeta?.label,
 			tripProgress,
@@ -1037,24 +1069,53 @@ const EmergencyBottomSheet = forwardRef(
 									</Pressable>
 								</View>
 
-								<Pressable
-									onPress={() => {
-										Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-										onCancelBedBooking?.();
-									}}
-									style={({ pressed }) => [
-										styles.tripCancelButton,
-										{
-											backgroundColor: isDarkMode
-												? "rgba(239,68,68,0.16)"
-												: "rgba(239,68,68,0.10)",
-											transform: [{ scale: pressed ? 0.98 : 1 }],
-										},
-									]}
-								>
-									<Text style={styles.tripCancelText}>Cancel reservation</Text>
-								</Pressable>
-							</View>
+								<View style={styles.tripQuickActions}>
+									<Pressable
+										onPress={() => {
+											Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+											onCancelBedBooking?.();
+										}}
+										style={({ pressed }) => [
+											styles.tripCancelButton,
+											{
+												backgroundColor: isDarkMode
+													? "rgba(239,68,68,0.16)"
+													: "rgba(239,68,68,0.10)",
+												transform: [{ scale: pressed ? 0.98 : 1 }],
+												flex: 1,
+											},
+										]}
+									>
+										<Text style={styles.tripCancelText}>Cancel reservation</Text>
+									</Pressable>
+
+									<Pressable
+										onPress={() => {
+											Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+											onCompleteBedBooking?.();
+										}}
+										style={({ pressed }) => [
+											styles.tripCancelButton,
+											{
+												backgroundColor: isDarkMode
+													? "rgba(16,185,129,0.16)"
+													: "rgba(16,185,129,0.12)",
+												transform: [{ scale: pressed ? 0.98 : 1 }],
+												flex: 1,
+											},
+										]}
+									>
+										<Text
+											style={[
+												styles.tripCancelText,
+												{ color: "#10B981" },
+											]}
+										>
+											Mark complete
+										</Text>
+									</Pressable>
+								</View>
+								</View>
 						</View>
 					)}
 				</View>
@@ -1076,6 +1137,7 @@ const EmergencyBottomSheet = forwardRef(
 			formattedBedRemaining,
 			isDarkMode,
 			onCancelBedBooking,
+			onCompleteBedBooking,
 			smsTarget,
 		]);
 

@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { SPECIALTIES } from "../data/hospitals";
 import { ACTIVE_AMBULANCES } from "../data/emergencyServices";
+import { emergencyStateService } from "../services/emergencyStateService";
 
 // Create the emergency context
 const EmergencyContext = createContext();
@@ -31,6 +32,30 @@ export function EmergencyProvider({ children }) {
 	
 	// User location (for map centering and distance calculations)
 	const [userLocation, setUserLocation] = useState(null);
+
+	useEffect(() => {
+		let isActive = true;
+		(async () => {
+			const saved = await emergencyStateService.get();
+			if (!isActive) return;
+			if (saved?.mode === EmergencyMode.EMERGENCY || saved?.mode === EmergencyMode.BOOKING) {
+				setMode(saved.mode);
+			}
+			if (saved?.activeAmbulanceTrip && typeof saved.activeAmbulanceTrip === "object") {
+				setActiveAmbulanceTrip(saved.activeAmbulanceTrip);
+			}
+			if (saved?.activeBedBooking && typeof saved.activeBedBooking === "object") {
+				setActiveBedBooking(saved.activeBedBooking);
+			}
+		})();
+		return () => {
+			isActive = false;
+		};
+	}, []);
+
+	useEffect(() => {
+		emergencyStateService.set({ mode, activeAmbulanceTrip, activeBedBooking }).catch(() => {});
+	}, [activeAmbulanceTrip, activeBedBooking, mode]);
 
 	// Get selected hospital object
 	const selectedHospital = useMemo(() => {
@@ -121,7 +146,7 @@ export function EmergencyProvider({ children }) {
 				estimatedArrival: trip.estimatedArrival ?? null,
 				etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
 				assignedAmbulance,
-				startedAt: Date.now(),
+				startedAt: Number.isFinite(trip?.startedAt) ? trip.startedAt : Date.now(),
 			});
 		},
 		[parseEtaToSeconds]
@@ -142,6 +167,7 @@ export function EmergencyProvider({ children }) {
 			setActiveBedBooking({
 				hospitalId: booking.hospitalId,
 				bookingId: booking.bookingId ?? booking.requestId ?? null,
+				requestId: booking.requestId ?? booking.bookingId ?? null,
 				bedNumber: booking.bedNumber ?? null,
 				bedType: booking.bedType ?? null,
 				bedCount: booking.bedCount ?? null,
@@ -149,7 +175,7 @@ export function EmergencyProvider({ children }) {
 				hospitalName: booking.hospitalName ?? null,
 				estimatedWait: booking.estimatedWait ?? booking.estimatedArrival ?? null,
 				etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
-				startedAt: Date.now(),
+				startedAt: Number.isFinite(booking?.startedAt) ? booking.startedAt : Date.now(),
 			});
 		},
 		[parseEtaToSeconds]

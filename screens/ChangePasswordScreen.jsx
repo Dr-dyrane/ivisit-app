@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
@@ -80,12 +81,19 @@ export default function ChangePasswordScreen() {
 		}, [backButton, closeButton, resetHeader, resetTabBar, setHeaderState])
 	);
 
+	const backgroundColors = useMemo(
+		() =>
+			isDarkMode
+				? ["#121826", "#0B0F1A", "#121826"]
+				: ["#FFFFFF", "#F3E7E7", "#FFFFFF"],
+		[isDarkMode]
+	);
+
 	const colors = useMemo(
 		() => ({
-			background: isDarkMode ? COLORS.bgDark : COLORS.bgLight,
-			text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-			textMuted: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
-			card: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
+			text: isDarkMode ? "#FFFFFF" : "#0F172A",
+			textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+			card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
 			inputBg: isDarkMode ? "#0B0F1A" : "#F3F4F6",
 		}),
 		[isDarkMode]
@@ -93,6 +101,8 @@ export default function ChangePasswordScreen() {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
+	const headerHeight = 70;
+	const topPadding = headerHeight + insets.top;
 
 	const isValid =
 		currentPassword.length > 0 &&
@@ -144,8 +154,8 @@ export default function ChangePasswordScreen() {
 
 	if (!user?.hasPassword) {
 		return (
-			<View style={[styles.container, { backgroundColor: colors.background }]}>
-				<View style={[styles.content, { paddingBottom: bottomPadding }]}>
+			<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
+				<View style={[styles.content, { paddingTop: topPadding, paddingBottom: bottomPadding }]}>
 					<View style={[styles.card, { backgroundColor: colors.card }]}>
 						<Text style={[styles.title, { color: colors.text }]}>
 							No password yet
@@ -171,14 +181,17 @@ export default function ChangePasswordScreen() {
 						</Pressable>
 					</View>
 				</View>
-			</View>
+			</LinearGradient>
 		);
 	}
 
 	return (
-		<View style={[styles.container, { backgroundColor: colors.background }]}>
+		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			<ScrollView
-				contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+				contentContainerStyle={[
+					styles.content,
+					{ paddingTop: topPadding, paddingBottom: bottomPadding },
+				]}
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
@@ -332,7 +345,7 @@ export default function ChangePasswordScreen() {
 					</Animated.View>
 				</View>
 			</ScrollView>
-		</View>
+		</LinearGradient>
 	);
 }
 

@@ -1,7 +1,8 @@
 // contexts/VisitsContext.jsx - Visits state management
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { VISITS, VISIT_STATUS, VISIT_FILTERS } from "../data/visits";
+import { database, StorageKeys } from "../database";
 
 // Create the visits context
 const VisitsContext = createContext();
@@ -16,13 +17,44 @@ const VisitsContext = createContext();
  */
 export function VisitsProvider({ children }) {
   // Core state
-  const [visits, setVisits] = useState(VISITS);
+  const [visits, setVisits] = useState([]);
   const [selectedVisitId, setSelectedVisitId] = useState(null);
   const [filter, setFilter] = useState("all"); // "all" | "upcoming" | "completed"
   
   // Loading state for future API integration
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isActive = true;
+    (async () => {
+      setIsLoading(true);
+      try {
+        const stored = await database.read(StorageKeys.VISITS, null);
+        if (!isActive) return;
+        if (Array.isArray(stored) && stored.length > 0) {
+          setVisits(stored);
+          return;
+        }
+        setVisits(VISITS);
+        await database.write(StorageKeys.VISITS, VISITS);
+      } catch (e) {
+        if (!isActive) return;
+        setVisits(VISITS);
+        setError(e?.message ?? "Failed to load visits");
+      } finally {
+        if (isActive) setIsLoading(false);
+      }
+    })();
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!Array.isArray(visits)) return;
+    database.write(StorageKeys.VISITS, visits).catch(() => {});
+  }, [visits]);
 
   // Derived state - selected visit object
   const selectedVisit = useMemo(() => {
@@ -91,7 +123,7 @@ export function VisitsProvider({ children }) {
     if (!newVisit) return;
     setVisits(prev => {
       const id = newVisit?.id ? String(newVisit.id) : String(Date.now());
-      if (!prev) return [{ ...newVisit, id }];
+      if (!prev || !Array.isArray(prev)) return [{ ...newVisit, id }];
       return [{ ...newVisit, id }, ...prev];
     });
   }, []);
@@ -109,6 +141,18 @@ export function VisitsProvider({ children }) {
     });
   }, []);
 
+  const completeVisit = useCallback((visitId) => {
+    if (!visitId) return;
+    setVisits(prev => {
+      if (!prev || prev.length === 0) return prev;
+      return prev.map(v =>
+        v?.id === visitId
+          ? { ...v, status: VISIT_STATUS.COMPLETED }
+          : v
+      );
+    });
+  }, []);
+
   // Update visits (for API sync)
   const updateVisits = useCallback((newVisits) => {
     if (!newVisits || !Array.isArray(newVisits)) return;
@@ -120,9 +164,8 @@ export function VisitsProvider({ children }) {
     setIsLoading(true);
     setError(null);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setVisits(VISITS);
+      const stored = await database.read(StorageKeys.VISITS, []);
+      setVisits(Array.isArray(stored) ? stored : []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -148,6 +191,7 @@ export function VisitsProvider({ children }) {
     setFilterType,
     addVisit,
     cancelVisit,
+    completeVisit,
     updateVisits,
     refreshVisits,
   };

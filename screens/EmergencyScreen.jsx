@@ -10,10 +10,16 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
 import { useVisits } from "../contexts/VisitsContext";
+import { useAuth } from "../contexts/AuthContext";
 import { COLORS } from "../constants/colors";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { VISIT_STATUS, VISIT_TYPES } from "../data/visits";
+import { getPreferencesAPI } from "../api/preferences";
+import { listEmergencyContactsAPI } from "../api/emergencyContacts";
+import { getMedicalProfileAPI } from "../api/medicalProfile";
+import { createEmergencyRequestAPI, setEmergencyRequestStatusAPI } from "../api/emergencyRequests";
+import { EmergencyRequestStatus } from "../services/emergencyRequestsService";
 
 import FullScreenEmergencyMap from "../components/map/FullScreenEmergencyMap";
 import EmergencyBottomSheet from "../components/emergency/EmergencyBottomSheet";
@@ -38,7 +44,8 @@ export default function EmergencyScreen() {
 	const { resetHeader } = useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB } = useFAB();
-	const { addVisit, cancelVisit } = useVisits();
+	const { addVisit, cancelVisit, completeVisit } = useVisits();
+	const { user } = useAuth();
 
 	// Refs for map and bottom sheet
 	const mapRef = useRef(null);
@@ -227,6 +234,45 @@ export default function EmergencyScreen() {
 		const hospital = hospitals.find((h) => h?.id === hospitalId) ?? null;
 		const date = now.toISOString().slice(0, 10);
 		const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+		(async () => {
+			try {
+				const preferences = await getPreferencesAPI();
+				const shareMedicalProfile = preferences?.privacyShareMedicalProfile === true;
+				const shareEmergencyContacts = preferences?.privacyShareEmergencyContacts === true;
+
+				const shared = {
+					medicalProfile: shareMedicalProfile ? await getMedicalProfileAPI() : null,
+					emergencyContacts: shareEmergencyContacts
+						? await listEmergencyContactsAPI()
+						: null,
+				};
+
+				const patient = {
+					fullName: user?.fullName ?? null,
+					phone: user?.phone ?? null,
+					email: user?.email ?? null,
+					username: user?.username ?? null,
+				};
+
+				await createEmergencyRequestAPI({
+					id: visitId,
+					requestId: visitId,
+					serviceType: request.serviceType,
+					hospitalId,
+					hospitalName: request?.hospitalName ?? hospital?.name ?? null,
+					specialty: request?.specialty ?? selectedSpecialty ?? null,
+					ambulanceType: request?.ambulanceType ?? null,
+					ambulanceId: request?.ambulanceId ?? null,
+					bedNumber: request?.bedNumber ?? null,
+					bedType: request?.bedType ?? null,
+					bedCount: request?.bedCount ?? null,
+					estimatedArrival: request?.estimatedArrival ?? null,
+					status: EmergencyRequestStatus.IN_PROGRESS,
+					patient,
+					shared,
+				});
+			} catch {}
+		})();
 		if (request?.serviceType === "ambulance") {
 			startAmbulanceTrip({
 				hospitalId,
@@ -285,7 +331,7 @@ export default function EmergencyScreen() {
 		setTimeout(() => {
 			bottomSheetRef.current?.snapToIndex?.(0);
 		}, 0);
-	}, [addVisit, clearSelectedHospital, hospitals, requestHospitalId, selectedHospital?.id, selectedSpecialty, startAmbulanceTrip, startBedBooking]);
+	}, [addVisit, clearSelectedHospital, hospitals, requestHospitalId, selectedHospital?.id, selectedSpecialty, startAmbulanceTrip, startBedBooking, user?.email, user?.fullName, user?.phone, user?.username]);
 
 	// Service type selection
 	const handleServiceTypeSelect = useCallback((type) => {
@@ -418,7 +464,24 @@ export default function EmergencyScreen() {
 				activeBedBooking={activeBedBooking}
 				onCancelAmbulanceTrip={() => {
 					if (activeAmbulanceTrip?.requestId) {
+						setEmergencyRequestStatusAPI(
+							activeAmbulanceTrip.requestId,
+							EmergencyRequestStatus.CANCELLED
+						).catch(() => {});
 						cancelVisit(activeAmbulanceTrip.requestId);
+					}
+					stopAmbulanceTrip();
+					setTimeout(() => {
+						bottomSheetRef.current?.snapToIndex?.(1);
+					}, 0);
+				}}
+				onCompleteAmbulanceTrip={() => {
+					if (activeAmbulanceTrip?.requestId) {
+						setEmergencyRequestStatusAPI(
+							activeAmbulanceTrip.requestId,
+							EmergencyRequestStatus.COMPLETED
+						).catch(() => {});
+						completeVisit(activeAmbulanceTrip.requestId);
 					}
 					stopAmbulanceTrip();
 					setTimeout(() => {
@@ -427,7 +490,24 @@ export default function EmergencyScreen() {
 				}}
 				onCancelBedBooking={() => {
 					if (activeBedBooking?.requestId) {
+						setEmergencyRequestStatusAPI(
+							activeBedBooking.requestId,
+							EmergencyRequestStatus.CANCELLED
+						).catch(() => {});
 						cancelVisit(activeBedBooking.requestId);
+					}
+					stopBedBooking();
+					setTimeout(() => {
+						bottomSheetRef.current?.snapToIndex?.(1);
+					}, 0);
+				}}
+				onCompleteBedBooking={() => {
+					if (activeBedBooking?.requestId) {
+						setEmergencyRequestStatusAPI(
+							activeBedBooking.requestId,
+							EmergencyRequestStatus.COMPLETED
+						).catch(() => {});
+						completeVisit(activeBedBooking.requestId);
 					}
 					stopBedBooking();
 					setTimeout(() => {
