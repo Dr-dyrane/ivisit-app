@@ -77,6 +77,8 @@ export default function EmergencyScreen() {
 		selectedHospital,
 		filteredHospitals,
 		mode,
+		activeAmbulanceTrip,
+		activeBedBooking,
 		serviceType,
 		selectedSpecialty,
 		specialties,
@@ -88,6 +90,10 @@ export default function EmergencyScreen() {
 		hasActiveFilters,
 		resetFilters,
 		clearSelectedHospital,
+		startAmbulanceTrip,
+		stopAmbulanceTrip,
+		startBedBooking,
+		stopBedBooking,
 	} = useEmergency();
 
 	// Header components - memoized
@@ -122,12 +128,12 @@ export default function EmergencyScreen() {
 
 	useFocusEffect(
 		useCallback(() => {
-			if (selectedHospital) {
+			if (selectedHospital || activeAmbulanceTrip || activeBedBooking) {
 				lockTabBarHidden();
 			} else {
 				unlockTabBarHidden();
 			}
-		}, [lockTabBarHidden, selectedHospital, unlockTabBarHidden])
+		}, [activeAmbulanceTrip, activeBedBooking, lockTabBarHidden, selectedHospital, unlockTabBarHidden])
 	);
 
 	// FAB toggles between emergency and bed booking modes
@@ -138,13 +144,14 @@ export default function EmergencyScreen() {
 
 	useFocusEffect(
 		useCallback(() => {
-			const shouldHideFAB = !!selectedHospital || sheetSnapIndex === 0;
+			const shouldHideFAB =
+				!!selectedHospital || !!activeAmbulanceTrip || !!activeBedBooking || sheetSnapIndex === 0;
 			registerFAB({
 				icon: mode === "emergency" ? "bed-patient" : "medical",
 				visible: !shouldHideFAB,
 				onPress: handleFloatingButtonPress,
 			});
-		}, [handleFloatingButtonPress, mode, registerFAB, selectedHospital, sheetSnapIndex])
+		}, [activeAmbulanceTrip, activeBedBooking, handleFloatingButtonPress, mode, registerFAB, selectedHospital, sheetSnapIndex])
 	);
 
 	// Hospital selection - zoom map to location (tracked)
@@ -198,8 +205,47 @@ export default function EmergencyScreen() {
 	const handleCloseEmergencyRequestModal = useCallback(() => {
 		setShowEmergencyRequestModal(false);
 		setRequestHospitalId(null);
+		if (activeAmbulanceTrip || activeBedBooking) {
+			clearSelectedHospital();
+			setTimeout(() => {
+				bottomSheetRef.current?.snapToIndex?.(0);
+			}, 0);
+			return;
+		}
 		handleCloseFocus();
-	}, [handleCloseFocus]);
+	}, [activeAmbulanceTrip, activeBedBooking, clearSelectedHospital, handleCloseFocus]);
+
+	const handleRequestComplete = useCallback((request) => {
+		if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") return;
+		const hospitalId = requestHospitalId ?? selectedHospital?.id ?? null;
+		if (!hospitalId) return;
+		if (request?.serviceType === "ambulance") {
+			startAmbulanceTrip({
+				hospitalId,
+				requestId: request?.requestId ?? null,
+				ambulanceId: request?.ambulanceId ?? null,
+				ambulanceType: request?.ambulanceType ?? null,
+				estimatedArrival: request?.estimatedArrival ?? null,
+				hospitalName: request?.hospitalName ?? null,
+			});
+		}
+		if (request?.serviceType === "bed") {
+			startBedBooking({
+				hospitalId,
+				requestId: request?.requestId ?? null,
+				hospitalName: request?.hospitalName ?? null,
+				specialty: request?.specialty ?? null,
+				bedNumber: request?.bedNumber ?? null,
+				bedType: request?.bedType ?? null,
+				bedCount: request?.bedCount ?? null,
+				estimatedWait: request?.estimatedArrival ?? null,
+			});
+		}
+		clearSelectedHospital();
+		setTimeout(() => {
+			bottomSheetRef.current?.snapToIndex?.(0);
+		}, 0);
+	}, [clearSelectedHospital, requestHospitalId, selectedHospital?.id, startAmbulanceTrip, startBedBooking]);
 
 	// Service type selection
 	const handleServiceTypeSelect = useCallback((type) => {
@@ -279,16 +325,40 @@ export default function EmergencyScreen() {
 	// Hide recenter button when sheet is fully expanded (no map visible)
 	const showMapControls = sheetSnapIndex < 2;
 
+	const routeHospitalId =
+		mode === "emergency"
+			? activeAmbulanceTrip?.hospitalId ?? selectedHospital?.id ?? null
+			: activeBedBooking?.hospitalId ?? selectedHospital?.id ?? null;
+	const animateAmbulance = mode === "emergency" && !!activeAmbulanceTrip;
+	const ambulanceTripEtaSeconds = activeAmbulanceTrip?.etaSeconds ?? null;
+
+	const hospitalsForMap = useMemo(() => {
+		if (!hospitals || hospitals.length === 0) return undefined;
+		if (!activeAmbulanceTrip) return searchFilteredHospitals;
+
+		const routeHospital =
+			hospitals.find((h) => h?.id === activeAmbulanceTrip.hospitalId) ?? null;
+		if (!routeHospital) return searchFilteredHospitals;
+
+		const alreadyIncluded = searchFilteredHospitals.some(
+			(h) => h?.id === routeHospital.id
+		);
+		return alreadyIncluded ? searchFilteredHospitals : [...searchFilteredHospitals, routeHospital];
+	}, [activeAmbulanceTrip, hospitals, searchFilteredHospitals]);
+
 	return (
 		<View style={styles.container}>
 			{/* Full-screen map as background */}
 			<FullScreenEmergencyMap
 				ref={mapRef}
-				hospitals={hospitals && hospitals.length > 0 ? searchFilteredHospitals : undefined}
+				hospitals={hospitalsForMap}
 				onHospitalSelect={handleHospitalSelect}
 				onHospitalsGenerated={updateHospitals}
 				onMapReady={setMapReady}
 				selectedHospitalId={selectedHospital?.id || null}
+				routeHospitalId={routeHospitalId}
+				animateAmbulance={animateAmbulance}
+				ambulanceTripEtaSeconds={ambulanceTripEtaSeconds}
 				mode={mode}
 				showControls={showMapControls}
 				bottomPadding={mapBottomPadding}
@@ -302,7 +372,22 @@ export default function EmergencyScreen() {
 				selectedSpecialty={selectedSpecialty}
 				specialties={specialties}
 				hospitals={searchFilteredHospitals}
+				allHospitals={hospitals}
 				selectedHospital={selectedHospital}
+				activeAmbulanceTrip={activeAmbulanceTrip}
+				activeBedBooking={activeBedBooking}
+				onCancelAmbulanceTrip={() => {
+					stopAmbulanceTrip();
+					setTimeout(() => {
+						bottomSheetRef.current?.snapToIndex?.(1);
+					}, 0);
+				}}
+				onCancelBedBooking={() => {
+					stopBedBooking();
+					setTimeout(() => {
+						bottomSheetRef.current?.snapToIndex?.(1);
+					}, 0);
+				}}
 				serviceTypeCounts={serviceTypeCounts}
 				specialtyCounts={specialtyCounts}
 				hasActiveFilters={hasActiveFilters}
@@ -322,6 +407,7 @@ export default function EmergencyScreen() {
 				selectedHospital={requestHospital}
 				mode={mode}
 				selectedSpecialty={selectedSpecialty}
+				onRequestComplete={handleRequestComplete}
 			/>
 		</View>
 	);

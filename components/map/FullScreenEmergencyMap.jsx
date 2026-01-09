@@ -16,9 +16,9 @@ import {
 	Platform,
 	Dimensions,
 } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
-import { Ionicons, Fontisto } from "@expo/vector-icons";
+import { Ionicons, Fontisto, FontAwesome5 } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -46,6 +46,9 @@ const FullScreenEmergencyMap = forwardRef(
 			onHospitalsGenerated,
 			onMapReady,
 			selectedHospitalId,
+			routeHospitalId = null,
+			animateAmbulance = false,
+			ambulanceTripEtaSeconds = null,
 			mode = "emergency",
 			showControls = true,
 			bottomPadding = 0,
@@ -65,11 +68,30 @@ const FullScreenEmergencyMap = forwardRef(
 		const [isLoading, setIsLoading] = useState(true);
 		const [nearbyHospitals, setNearbyHospitals] = useState([]);
 		const [isZoomedOut, setIsZoomedOut] = useState(false);
+		const [routeCoordinates, setRouteCoordinates] = useState([]);
+		const [routeInfo, setRouteInfo] = useState({ durationSec: null, distanceMeters: null });
+		const [ambulanceCoordinate, setAmbulanceCoordinate] = useState(null);
+		const [ambulanceHeading, setAmbulanceHeading] = useState(0);
+
+		const routeFetchIdRef = useRef(0);
+		const ambulanceTimerRef = useRef(null);
+		const lastRouteFitKeyRef = useRef(null);
 
 		const hospitals =
 			propHospitals && propHospitals.length > 0
 				? propHospitals
 				: nearbyHospitals;
+
+		const selectedHospital =
+			selectedHospitalId && hospitals?.length
+				? hospitals.find((h) => h?.id === selectedHospitalId) ?? null
+				: null;
+
+		const routeHospitalIdResolved = routeHospitalId ?? selectedHospitalId ?? null;
+		const routeHospital =
+			routeHospitalIdResolved && hospitals?.length
+				? hospitals.find((h) => h?.id === routeHospitalIdResolved) ?? null
+				: null;
 
 		// Dynamic map padding based on sheet position
 		// Ensures markers are centered in the visible area
@@ -88,6 +110,255 @@ const FullScreenEmergencyMap = forwardRef(
 			[]
 		);
 
+		const decodeGooglePolyline = useCallback((encoded) => {
+			if (!encoded || typeof encoded !== "string") return [];
+			let index = 0;
+			let lat = 0;
+			let lng = 0;
+			const coordinates = [];
+			while (index < encoded.length) {
+				let b;
+				let shift = 0;
+				let result = 0;
+				do {
+					b = encoded.charCodeAt(index++) - 63;
+					result |= (b & 0x1f) << shift;
+					shift += 5;
+				} while (b >= 0x20);
+				const dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+				lat += dlat;
+
+				shift = 0;
+				result = 0;
+				do {
+					b = encoded.charCodeAt(index++) - 63;
+					result |= (b & 0x1f) << shift;
+					shift += 5;
+				} while (b >= 0x20);
+				const dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+				lng += dlng;
+
+				coordinates.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+			}
+			return coordinates;
+		}, []);
+
+		const calculateBearing = useCallback((from, to) => {
+			if (!isValidCoordinate(from) || !isValidCoordinate(to)) return 0;
+			const toRadians = (deg) => (deg * Math.PI) / 180;
+			const toDegrees = (rad) => (rad * 180) / Math.PI;
+			const lat1 = toRadians(from.latitude);
+			const lat2 = toRadians(to.latitude);
+			const dLon = toRadians(to.longitude - from.longitude);
+			const y = Math.sin(dLon) * Math.cos(lat2);
+			const x =
+				Math.cos(lat1) * Math.sin(lat2) -
+				Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+			const brng = toDegrees(Math.atan2(y, x));
+			return (brng + 360) % 360;
+		}, [isValidCoordinate]);
+
+		const getDrivingRoute = useCallback(
+			async ({ origin, destination }) => {
+				const googleApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+				if (googleApiKey) {
+					const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&mode=driving&departure_time=now&traffic_model=best_guess&key=${googleApiKey}`;
+					const res = await fetch(url);
+					const json = await res.json();
+					const route = json?.routes?.[0];
+					const poly = route?.overview_polyline?.points;
+					const coords = decodeGooglePolyline(poly);
+					const leg = route?.legs?.[0];
+					const durationSec =
+						leg?.duration_in_traffic?.value ??
+						leg?.duration?.value ??
+						null;
+					const distanceMeters = leg?.distance?.value ?? null;
+					if (coords.length >= 2) {
+						return { coordinates: coords, durationSec, distanceMeters };
+					}
+				}
+
+				const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=geojson&alternatives=false&steps=false`;
+				const osrmRes = await fetch(osrmUrl);
+				const osrmJson = await osrmRes.json();
+				const osrmRoute = osrmJson?.routes?.[0];
+				const coordsRaw = osrmRoute?.geometry?.coordinates;
+				if (Array.isArray(coordsRaw) && coordsRaw.length >= 2) {
+					return {
+						coordinates: coordsRaw.map(([lon, lat]) => ({
+							latitude: lat,
+							longitude: lon,
+						})),
+						durationSec: Number.isFinite(osrmRoute?.duration) ? osrmRoute.duration : null,
+						distanceMeters: Number.isFinite(osrmRoute?.distance) ? osrmRoute.distance : null,
+					};
+				}
+
+				return { coordinates: [], durationSec: null, distanceMeters: null };
+			},
+			[decodeGooglePolyline]
+		);
+
+		const haversineMeters = useCallback((a, b) => {
+			if (!isValidCoordinate(a) || !isValidCoordinate(b)) return 0;
+			const toRad = (deg) => (deg * Math.PI) / 180;
+			const R = 6371000;
+			const dLat = toRad(b.latitude - a.latitude);
+			const dLon = toRad(b.longitude - a.longitude);
+			const lat1 = toRad(a.latitude);
+			const lat2 = toRad(b.latitude);
+			const sinDLat = Math.sin(dLat / 2);
+			const sinDLon = Math.sin(dLon / 2);
+			const h =
+				sinDLat * sinDLat +
+				Math.cos(lat1) * Math.cos(lat2) * sinDLon * sinDLon;
+			return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+		}, [isValidCoordinate]);
+
+		const routeDistanceCacheRef = useRef(null);
+
+		useEffect(() => {
+			const canRoute =
+				mode === "booking"
+					? (routeHospital?.availableBeds ?? 0) > 0
+					: (routeHospital?.ambulances ?? 0) > 0;
+
+			const shouldShowRoute = !!routeHospitalIdResolved && canRoute;
+			const origin = routeHospital?.coordinates ?? null;
+			const destination = userLocation
+				? { latitude: userLocation.latitude, longitude: userLocation.longitude }
+				: null;
+
+			if (!shouldShowRoute || !isValidCoordinate(origin) || !isValidCoordinate(destination)) {
+				setRouteCoordinates([]);
+				setRouteInfo({ durationSec: null, distanceMeters: null });
+				routeDistanceCacheRef.current = null;
+				return;
+			}
+
+			const fetchId = ++routeFetchIdRef.current;
+			(async () => {
+				try {
+					const route = await getDrivingRoute({ origin, destination });
+					if (routeFetchIdRef.current !== fetchId) return;
+					setRouteCoordinates(route.coordinates);
+					setRouteInfo({ durationSec: route.durationSec, distanceMeters: route.distanceMeters });
+				} catch {
+					if (routeFetchIdRef.current !== fetchId) return;
+					setRouteCoordinates([]);
+					setRouteInfo({ durationSec: null, distanceMeters: null });
+					routeDistanceCacheRef.current = null;
+				}
+			})();
+		}, [
+			getDrivingRoute,
+			isValidCoordinate,
+			mode,
+			routeHospital?.ambulances,
+			routeHospital?.availableBeds,
+			routeHospital?.coordinates,
+			routeHospitalIdResolved,
+			userLocation,
+		]);
+
+		useEffect(() => {
+			if (ambulanceTimerRef.current) {
+				clearInterval(ambulanceTimerRef.current);
+				ambulanceTimerRef.current = null;
+			}
+
+			if (!animateAmbulance || !routeCoordinates || routeCoordinates.length < 2) {
+				setAmbulanceCoordinate(null);
+				setAmbulanceHeading(0);
+				return;
+			}
+
+			let cached = routeDistanceCacheRef.current;
+			if (!cached || cached.key !== routeCoordinates) {
+				const cumulative = [0];
+				let total = 0;
+				for (let i = 1; i < routeCoordinates.length; i++) {
+					total += haversineMeters(routeCoordinates[i - 1], routeCoordinates[i]);
+					cumulative.push(total);
+				}
+				cached = { key: routeCoordinates, cumulative, total };
+				routeDistanceCacheRef.current = cached;
+			}
+
+			const durationSecCandidate =
+				Number.isFinite(ambulanceTripEtaSeconds)
+					? ambulanceTripEtaSeconds
+					: Number.isFinite(routeInfo?.durationSec)
+						? routeInfo.durationSec
+						: null;
+			const durationMs =
+				Number.isFinite(durationSecCandidate) && durationSecCandidate > 0
+					? durationSecCandidate * 1000
+					: 120000;
+
+			const startAt = Date.now();
+			const intervalMs = 450;
+			const totalDistance = cached.total;
+
+			const getPositionAtDistance = (targetMeters) => {
+				if (!Number.isFinite(targetMeters) || targetMeters <= 0) {
+					return { coordinate: routeCoordinates[0], heading: calculateBearing(routeCoordinates[0], routeCoordinates[1]) };
+				}
+				if (targetMeters >= totalDistance) {
+					const last = routeCoordinates[routeCoordinates.length - 1];
+					const prev = routeCoordinates[routeCoordinates.length - 2] ?? last;
+					return { coordinate: last, heading: calculateBearing(prev, last) };
+				}
+
+				const cumulative = cached.cumulative;
+				let i = 1;
+				while (i < cumulative.length && cumulative[i] < targetMeters) i++;
+				const segEnd = routeCoordinates[i];
+				const segStart = routeCoordinates[i - 1];
+				const segStartDist = cumulative[i - 1];
+				const segEndDist = cumulative[i];
+				const segLen = Math.max(1e-6, segEndDist - segStartDist);
+				const t = Math.min(1, Math.max(0, (targetMeters - segStartDist) / segLen));
+				const coordinate = {
+					latitude: segStart.latitude + (segEnd.latitude - segStart.latitude) * t,
+					longitude: segStart.longitude + (segEnd.longitude - segStart.longitude) * t,
+				};
+				return { coordinate, heading: calculateBearing(segStart, segEnd) };
+			};
+
+			const initial = getPositionAtDistance(0);
+			setAmbulanceCoordinate(initial.coordinate);
+			setAmbulanceHeading(initial.heading);
+
+			ambulanceTimerRef.current = setInterval(() => {
+				const elapsed = Date.now() - startAt;
+				const progress = Math.min(1, Math.max(0, elapsed / durationMs));
+				const targetMeters = totalDistance * progress;
+				const pos = getPositionAtDistance(targetMeters);
+				setAmbulanceCoordinate(pos.coordinate);
+				setAmbulanceHeading(pos.heading);
+				if (progress >= 1) {
+					clearInterval(ambulanceTimerRef.current);
+					ambulanceTimerRef.current = null;
+				}
+			}, intervalMs);
+
+			return () => {
+				if (ambulanceTimerRef.current) {
+					clearInterval(ambulanceTimerRef.current);
+					ambulanceTimerRef.current = null;
+				}
+			};
+		}, [
+			ambulanceTripEtaSeconds,
+			animateAmbulance,
+			calculateBearing,
+			haversineMeters,
+			routeCoordinates,
+			routeInfo?.durationSec,
+		]);
+
 		const getRegionForCoordinates = useCallback(
 			(coordinates, options = {}) => {
 				if (!coordinates || coordinates.length === 0) return null;
@@ -97,10 +368,11 @@ const FullScreenEmergencyMap = forwardRef(
 				const sheetRatio = options.sheetRatio ?? 0;
 				const minDelta = options.minDelta ?? 0.02;
 				const maxDelta = options.maxDelta ?? 0.18;
+				const rangeMultiplier = options.rangeMultiplier ?? 1.8;
 
 				if (valid.length === 1) {
 					const only = valid[0];
-					const baseDelta = 0.06;
+					const baseDelta = options.baseDelta ?? 0.06;
 					const inflation = 1 + Math.min(0.6, sheetRatio) * 0.6;
 					const delta = Math.min(maxDelta, Math.max(minDelta, baseDelta * inflation));
 					const verticalShiftFactor = sheetRatio >= 0.4 ? 0.22 : 0.12;
@@ -127,8 +399,8 @@ const FullScreenEmergencyMap = forwardRef(
 				const lngRange = maxLng - minLng;
 				if (!Number.isFinite(latRange) || !Number.isFinite(lngRange)) return null;
 
-				const baseLatDelta = Math.max(minDelta, latRange * 1.8);
-				const baseLngDelta = Math.max(minDelta, lngRange * 1.8);
+				const baseLatDelta = Math.max(minDelta, latRange * rangeMultiplier);
+				const baseLngDelta = Math.max(minDelta, lngRange * rangeMultiplier);
 
 				const inflation = 1 + Math.min(0.6, sheetRatio) * 0.65;
 				const latitudeDelta = Math.min(maxDelta, Math.max(minDelta, baseLatDelta * inflation));
@@ -150,6 +422,38 @@ const FullScreenEmergencyMap = forwardRef(
 			},
 			[]
 		);
+
+		useEffect(() => {
+			if (!mapRef.current) return;
+			if (!routeCoordinates || routeCoordinates.length < 2) {
+				lastRouteFitKeyRef.current = null;
+				return;
+			}
+
+			if (lastRouteFitKeyRef.current === routeCoordinates) return;
+
+			const now = Date.now();
+			const recentlyUserPanned = now - lastUserPanAtRef.current < 800;
+			if (recentlyUserPanned) return;
+
+			const sheetRatio = screenHeight > 0 ? bottomPadding / screenHeight : 0;
+			const region = getRegionForCoordinates(routeCoordinates, {
+				sheetRatio,
+				minDelta: 0.012,
+				maxDelta: 0.22,
+				rangeMultiplier: 1.25,
+			});
+			if (!region) return;
+
+			lastRouteFitKeyRef.current = routeCoordinates;
+			lastProgrammaticMoveAtRef.current = Date.now();
+			mapRef.current.animateToRegion(region, 600);
+		}, [
+			bottomPadding,
+			getRegionForCoordinates,
+			routeCoordinates,
+			screenHeight,
+		]);
 
 		const getFitCoordinates = useCallback(() => {
 			const MAX_ITEMS = 8;
@@ -205,8 +509,8 @@ const FullScreenEmergencyMap = forwardRef(
 					];
 					const region = getRegionForCoordinates(fitPoints, {
 						sheetRatio,
-						minDelta: 0.02,
-						maxDelta: 0.22,
+						minDelta: 0.012,
+						maxDelta: 0.08,
 					});
 					if (region) {
 						lastProgrammaticMoveAtRef.current = Date.now();
@@ -489,6 +793,31 @@ const FullScreenEmergencyMap = forwardRef(
 						lastUserPanAtRef.current = Date.now();
 					}}
 				>
+					{routeCoordinates.length > 1 && (
+						<Polyline
+							coordinates={routeCoordinates}
+							strokeColor={COLORS.brandPrimary}
+							strokeWidth={4}
+							lineCap="round"
+							lineJoin="round"
+						/>
+					)}
+
+					{ambulanceCoordinate && (
+						<Marker
+							coordinate={ambulanceCoordinate}
+							anchor={{ x: 0.5, y: 0.5 }}
+							flat={true}
+							rotation={ambulanceHeading}
+							tracksViewChanges={false}
+							zIndex={200}
+						>
+							<View style={styles.ambulanceMarker}>
+								<FontAwesome5 name="ambulance" size={16} color="#FFFFFF" />
+							</View>
+						</Marker>
+					)}
+
 					{/* Hospital Markers */}
 					{hospitals.filter((h) => isValidCoordinate(h?.coordinates) && h?.id).map((hospital) => {
 						const isSelected = selectedHospitalId === hospital.id;
@@ -673,6 +1002,21 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.06,
 		shadowRadius: 6,
 		elevation: 2,
+	},
+	ambulanceMarker: {
+		width: 34,
+		height: 34,
+		borderRadius: 17,
+		backgroundColor: COLORS.brandPrimary,
+		justifyContent: "center",
+		alignItems: "center",
+		borderWidth: 3,
+		borderColor: "#FFFFFF",
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.22,
+		shadowRadius: 10,
+		elevation: 8,
 	},
 });
 

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useMemo } from "react";
 import { SPECIALTIES } from "../data/hospitals";
+import { ACTIVE_AMBULANCES } from "../data/emergencyServices";
 
 // Create the emergency context
 const EmergencyContext = createContext();
@@ -16,6 +17,8 @@ export function EmergencyProvider({ children }) {
 	const [hospitals, setHospitals] = useState([]);
 	const [selectedHospitalId, setSelectedHospitalId] = useState(null);
 	const [mode, setMode] = useState(EmergencyMode.EMERGENCY);
+	const [activeAmbulanceTrip, setActiveAmbulanceTrip] = useState(null);
+	const [activeBedBooking, setActiveBedBooking] = useState(null);
 	
 	// Emergency mode state
 	const [serviceType, setServiceType] = useState(null); // null = show all, "premium" or "standard"
@@ -77,6 +80,83 @@ export function EmergencyProvider({ children }) {
 
 	const clearSelectedHospital = useCallback(() => {
 		setSelectedHospitalId(null);
+	}, []);
+
+	const parseEtaToSeconds = useCallback((eta) => {
+		if (!eta || typeof eta !== "string") return null;
+		const lower = eta.toLowerCase();
+		const minutesMatch = lower.match(/(\d+)\s*(min|mins|minute|minutes)/);
+		if (minutesMatch) return Number(minutesMatch[1]) * 60;
+		const secondsMatch = lower.match(/(\d+)\s*(sec|secs|second|seconds)/);
+		if (secondsMatch) return Number(secondsMatch[1]);
+		return null;
+	}, []);
+
+	const startAmbulanceTrip = useCallback(
+		(trip) => {
+			if (!trip?.hospitalId) return;
+			const etaSeconds =
+				Number.isFinite(trip?.etaSeconds) ? trip.etaSeconds : parseEtaToSeconds(trip?.estimatedArrival);
+
+			const byId =
+				trip?.ambulanceId
+					? ACTIVE_AMBULANCES.find((a) => a?.id === trip.ambulanceId) ?? null
+					: null;
+			const byHospital =
+				trip?.hospitalName
+					? ACTIVE_AMBULANCES.find((a) => a?.hospital === trip.hospitalName) ?? null
+					: null;
+			const fallback =
+				ACTIVE_AMBULANCES.find((a) => a?.status === "available") ??
+				ACTIVE_AMBULANCES[0] ??
+				null;
+
+			const assignedAmbulance = byId ?? byHospital ?? fallback;
+
+			setActiveAmbulanceTrip({
+				hospitalId: trip.hospitalId,
+				requestId: trip.requestId ?? null,
+				ambulanceId: assignedAmbulance?.id ?? trip.ambulanceId ?? null,
+				ambulanceType: trip.ambulanceType ?? assignedAmbulance?.type ?? null,
+				estimatedArrival: trip.estimatedArrival ?? null,
+				etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
+				assignedAmbulance,
+				startedAt: Date.now(),
+			});
+		},
+		[parseEtaToSeconds]
+	);
+
+	const stopAmbulanceTrip = useCallback(() => {
+		setActiveAmbulanceTrip(null);
+	}, []);
+
+	const startBedBooking = useCallback(
+		(booking) => {
+			if (!booking?.hospitalId) return;
+			const etaSeconds =
+				Number.isFinite(booking?.etaSeconds)
+					? booking.etaSeconds
+					: parseEtaToSeconds(booking?.estimatedWait ?? booking?.estimatedArrival);
+
+			setActiveBedBooking({
+				hospitalId: booking.hospitalId,
+				bookingId: booking.bookingId ?? booking.requestId ?? null,
+				bedNumber: booking.bedNumber ?? null,
+				bedType: booking.bedType ?? null,
+				bedCount: booking.bedCount ?? null,
+				specialty: booking.specialty ?? null,
+				hospitalName: booking.hospitalName ?? null,
+				estimatedWait: booking.estimatedWait ?? booking.estimatedArrival ?? null,
+				etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
+				startedAt: Date.now(),
+			});
+		},
+		[parseEtaToSeconds]
+	);
+
+	const stopBedBooking = useCallback(() => {
+		setActiveBedBooking(null);
 	}, []);
 
 	const toggleMode = useCallback(() => {
@@ -172,6 +252,8 @@ export function EmergencyProvider({ children }) {
 		selectedHospital,
 		filteredHospitals,
 		mode,
+		activeAmbulanceTrip,
+		activeBedBooking,
 		serviceType,
 		selectedSpecialty,
 		specialties: SPECIALTIES,
@@ -184,6 +266,10 @@ export function EmergencyProvider({ children }) {
 		clearSelectedHospital,
 		toggleMode,
 		setMode,
+		startAmbulanceTrip,
+		stopAmbulanceTrip,
+		startBedBooking,
+		stopBedBooking,
 		selectSpecialty,
 		selectServiceType,
 		toggleViewMode,
