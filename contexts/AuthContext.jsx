@@ -54,6 +54,9 @@ export const AuthProvider = ({ children }) => {
 			imageUri: user?.imageUri || null,
 			firstName: user?.firstName || null,
 			lastName: user?.lastName || null,
+			emailVerified: user?.emailVerified === true,
+			phoneVerified: user?.phoneVerified === true,
+			hasPassword: !!user?.password,
 		}),
 		[user, token]
 	);
@@ -102,6 +105,9 @@ export const AuthProvider = ({ children }) => {
 				firstName: authStatus.firstName,
 				lastName: authStatus.lastName,
 				phone: user?.phone || null,
+				emailVerified: authStatus.emailVerified,
+				phoneVerified: authStatus.phoneVerified,
+				hasPassword: authStatus.hasPassword,
 				isAuthenticated: authStatus.isAuthenticated,
 				isLoggedIn: authStatus.isLoggedIn,
 			},

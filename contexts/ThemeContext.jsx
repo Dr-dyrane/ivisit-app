@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { useColorScheme, Platform } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as NavigationBar from "expo-navigation-bar";
+import { database, StorageKeys } from "../database";
 
 // Create the theme context
 const ThemeContext = createContext();
@@ -23,7 +23,7 @@ export function ThemeProvider({ children }) {
 	useEffect(() => {
 		const loadThemePreference = async () => {
 			try {
-				const savedThemeMode = await AsyncStorage.getItem("themeMode");
+				const savedThemeMode = await database.read(StorageKeys.THEME, null);
 
 				if (savedThemeMode !== null) {
 					setThemeMode(savedThemeMode);
@@ -55,7 +55,7 @@ export function ThemeProvider({ children }) {
 
 	// Save theme preference when it changes
 	useEffect(() => {
-		AsyncStorage.setItem("themeMode", themeMode).catch((error) => {
+		database.write(StorageKeys.THEME, themeMode).catch((error) => {
 			console.error("Failed to save theme preference:", error);
 		});
 	}, [themeMode]);

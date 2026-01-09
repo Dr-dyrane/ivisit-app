@@ -67,6 +67,27 @@ const ProfileScreen = () => {
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
+	const fetchUserData = useCallback(async () => {
+		setIsDataLoading(true);
+		try {
+			const { data: userData } = await getCurrentUserAPI();
+			setFullName(userData?.fullName || "");
+			setUsername(userData?.username || "");
+			setGender(userData?.gender || "");
+			setEmail(userData?.email || "");
+			setPhone(userData?.phone || "");
+			setAddress(userData?.address || "");
+			setDateOfBirth(userData?.dateOfBirth || "");
+			setImageUri(userData?.imageUri || null);
+		} catch (error) {
+			const errorMessage =
+				error?.response?.data?.message || error?.message || "An error occurred";
+			showToast(errorMessage, "error");
+		} finally {
+			setIsDataLoading(false);
+		}
+	}, [showToast]);
+
 	useFocusEffect(
 		useCallback(() => {
 			resetTabBar();
@@ -80,37 +101,15 @@ const ProfileScreen = () => {
 				leftComponent: backButton(),
 				rightComponent: null,
 			});
-
-			const fetchUserData = async () => {
-				setIsDataLoading(true);
-				try {
-					const { data: userData } = await getCurrentUserAPI();
-					setFullName(userData.fullName || "");
-					setUsername(userData.username || "");
-					setGender(userData.gender || "");
-					setEmail(userData.email || "");
-					setPhone(userData.phone || "");
-					setAddress(userData.address || "");
-					setDateOfBirth(userData.dateOfBirth || "");
-					setImageUri(userData.imageUri || null);
-				} catch (error) {
-					const errorMessage =
-						error.response?.data?.message ||
-						error.message ||
-						"An error occurred";
-					showToast(errorMessage, "error");
-				} finally {
-					setIsDataLoading(false);
-				}
-			};
-
 			fetchUserData();
-		}, [setHeaderState, backButton, resetHeader, resetTabBar, showToast])
+		}, [
+			backButton,
+			fetchUserData,
+			resetHeader,
+			resetTabBar,
+			setHeaderState,
+		])
 	);
-
-	useEffect(() => {
-		fetchUserData();
-	}, []);
 
 	useEffect(() => {
 		Animated.parallel([
@@ -132,22 +131,6 @@ const ProfileScreen = () => {
 			}),
 		]).start();
 	}, [isDataLoading]);
-
-	const fetchUserData = async () => {
-		setIsDataLoading(true);
-		try {
-			const { data: userData } = await getCurrentUserAPI();
-			setFullName(userData.fullName || "");
-			setEmail(userData.email || "");
-			setImageUri(userData.imageUri || null);
-		} catch (error) {
-			const errorMessage =
-				error.response?.data?.message || error.message || "An error occurred";
-			showToast(errorMessage, "error");
-		} finally {
-			setIsDataLoading(false);
-		}
-	};
 
 	const pickImage = async () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -395,7 +378,7 @@ const ProfileScreen = () => {
 						}}
 						onPress={() => {
 							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							showToast("Emergency contacts feature coming soon", "info");
+							router.push("/(user)/(stacks)/emergency-contacts");
 						}}
 					>
 						<View
@@ -547,7 +530,7 @@ const ProfileScreen = () => {
 							}}
 							onPress={() => {
 								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-								showToast("Medical history feature coming soon", "info");
+								router.push("/(user)/(stacks)/medical-profile");
 							}}
 						>
 							<Ionicons name="document-text" size={20} color="#FFFFFF" />

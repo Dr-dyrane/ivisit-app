@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import { View } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -14,6 +14,7 @@ import { ScrollAwareHeaderProvider } from "../contexts/ScrollAwareHeaderContext"
 import { EmergencyProvider } from "../contexts/EmergencyContext";
 import ToastProvider from "../contexts/ToastContext";
 import ThemeToggle from "../components/ThemeToggle";
+import { isProfileComplete } from "../utils/profileCompletion";
 
 /**
  * Root layout wraps the entire app with context providers
@@ -63,20 +64,43 @@ function AuthenticatedStack() {
 	const { user } = useAuth();
 	const { isDarkMode } = useTheme();
 	const router = useRouter();
+	const segments = useSegments();
 
 	// Redirect based on authentication state
 	useEffect(() => {
 		// Use a small delay to ensure navigation completes properly
 		const timer = setTimeout(() => {
-			if (user.isAuthenticated) {
+			const rootGroup = segments?.[0] ?? null;
+			const onCompleteProfile =
+				segments?.[0] === "(user)" &&
+				segments?.[1] === "(stacks)" &&
+				segments?.[2] === "complete-profile";
+
+			if (!user.isAuthenticated) {
+				if (rootGroup !== "(auth)") {
+					router.replace("/(auth)");
+				}
+				return;
+			}
+
+			const profileComplete = isProfileComplete(user);
+			if (!profileComplete && !onCompleteProfile) {
+				router.replace("/(user)/(stacks)/complete-profile");
+				return;
+			}
+
+			if (rootGroup === "(auth)") {
 				router.replace("/(user)/(tabs)");
-			} else {
-				router.replace("/(auth)");
+				return;
+			}
+
+			if (rootGroup !== "(user)") {
+				router.replace("/(user)/(tabs)");
 			}
 		}, 100);
 
 		return () => clearTimeout(timer);
-	}, [user.isAuthenticated]);
+	}, [segments, user]);
 
 	return (
 		<>

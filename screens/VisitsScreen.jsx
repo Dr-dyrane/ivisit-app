@@ -9,9 +9,10 @@ import {
 	Platform,
 	RefreshControl,
 	Animated,
+	ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -27,6 +28,7 @@ import NotificationIconButton from "../components/headers/NotificationIconButton
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 
 const VisitsScreen = () => {
+	const router = useRouter();
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 	const { handleScroll: handleTabBarScroll, resetTabBar } =
@@ -112,11 +114,10 @@ const VisitsScreen = () => {
 				icon: "add-outline",
 				visible: true,
 				onPress: () => {
-					// TODO: Navigate to booking flow
-					console.log("[iVisit] Book visit pressed");
+					router.push("/(user)/(stacks)/book-visit");
 				},
 			});
-		}, [registerFAB])
+		}, [registerFAB, router])
 	);
 
 	const handleScroll = useCallback(
@@ -129,15 +130,16 @@ const VisitsScreen = () => {
 
 	const handleVisitSelect = useCallback(
 		(visitId) => {
+			if (!visitId) return;
 			selectVisit(selectedVisitId === visitId ? null : visitId);
 		},
 		[selectVisit, selectedVisitId]
 	);
 
 	const handleViewDetails = useCallback((visitId) => {
-		// TODO: Navigate to visit details
-		console.log("[iVisit] View details for visit:", visitId);
-	}, []);
+		if (!visitId) return;
+		router.push(`/(user)/(stacks)/visit/${visitId}`);
+	}, [router]);
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + (insets?.bottom || 0) : 70;
 	const bottomPadding = tabBarHeight + 20;
@@ -166,6 +168,47 @@ const VisitsScreen = () => {
 					/>
 				}
 			>
+				{isLoading && !hasVisits && (
+					<View
+						style={{
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							padding: 28,
+							marginTop: 24,
+							alignItems: "center",
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<ActivityIndicator color={COLORS.brandPrimary} />
+						<Text
+							style={{
+								marginTop: 14,
+								fontSize: 16,
+								fontWeight: "900",
+								color: colors.text,
+								letterSpacing: -0.4,
+							}}
+						>
+							Loading visits
+						</Text>
+						<Text
+							style={{
+								marginTop: 6,
+								fontSize: 13,
+								fontWeight: "600",
+								color: colors.textMuted,
+								textAlign: "center",
+								lineHeight: 18,
+							}}
+						>
+							Syncing your upcoming appointments and history
+						</Text>
+					</View>
+				)}
+
 				{/* Filters */}
 				<VisitFilters
 					filters={filters}

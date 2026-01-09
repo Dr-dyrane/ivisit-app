@@ -9,9 +9,11 @@ import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
+import { useVisits } from "../contexts/VisitsContext";
 import { COLORS } from "../constants/colors";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { VISIT_STATUS, VISIT_TYPES } from "../data/visits";
 
 import FullScreenEmergencyMap from "../components/map/FullScreenEmergencyMap";
 import EmergencyBottomSheet from "../components/emergency/EmergencyBottomSheet";
@@ -36,6 +38,7 @@ export default function EmergencyScreen() {
 	const { resetHeader } = useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB } = useFAB();
+	const { addVisit, cancelVisit } = useVisits();
 
 	// Refs for map and bottom sheet
 	const mapRef = useRef(null);
@@ -219,20 +222,40 @@ export default function EmergencyScreen() {
 		if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") return;
 		const hospitalId = requestHospitalId ?? selectedHospital?.id ?? null;
 		if (!hospitalId) return;
+		const now = new Date();
+		const visitId = request?.requestId ? String(request.requestId) : `local_${Date.now()}`;
+		const hospital = hospitals.find((h) => h?.id === hospitalId) ?? null;
+		const date = now.toISOString().slice(0, 10);
+		const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 		if (request?.serviceType === "ambulance") {
 			startAmbulanceTrip({
 				hospitalId,
-				requestId: request?.requestId ?? null,
+				requestId: visitId,
 				ambulanceId: request?.ambulanceId ?? null,
 				ambulanceType: request?.ambulanceType ?? null,
 				estimatedArrival: request?.estimatedArrival ?? null,
 				hospitalName: request?.hospitalName ?? null,
 			});
+
+			addVisit({
+				id: visitId,
+				hospital: request?.hospitalName ?? hospital?.name ?? "Hospital",
+				doctor: "Ambulance Dispatch",
+				specialty: "Emergency Response",
+				date,
+				time,
+				type: VISIT_TYPES.AMBULANCE_RIDE,
+				status: VISIT_STATUS.IN_PROGRESS,
+				image: hospital?.image ?? null,
+				address: hospital?.address ?? null,
+				phone: hospital?.phone ?? null,
+				notes: "Ambulance requested via iVisit.",
+			});
 		}
 		if (request?.serviceType === "bed") {
 			startBedBooking({
 				hospitalId,
-				requestId: request?.requestId ?? null,
+				requestId: visitId,
 				hospitalName: request?.hospitalName ?? null,
 				specialty: request?.specialty ?? null,
 				bedNumber: request?.bedNumber ?? null,
@@ -240,12 +263,29 @@ export default function EmergencyScreen() {
 				bedCount: request?.bedCount ?? null,
 				estimatedWait: request?.estimatedArrival ?? null,
 			});
+
+			addVisit({
+				id: visitId,
+				hospital: request?.hospitalName ?? hospital?.name ?? "Hospital",
+				doctor: "Admissions Desk",
+				specialty: request?.specialty ?? selectedSpecialty ?? "General Care",
+				date,
+				time,
+				type: VISIT_TYPES.BED_BOOKING,
+				status: VISIT_STATUS.IN_PROGRESS,
+				image: hospital?.image ?? null,
+				address: hospital?.address ?? null,
+				phone: hospital?.phone ?? null,
+				notes: "Bed reserved via iVisit.",
+				roomNumber: request?.bedNumber ?? null,
+				estimatedDuration: request?.estimatedArrival ?? null,
+			});
 		}
 		clearSelectedHospital();
 		setTimeout(() => {
 			bottomSheetRef.current?.snapToIndex?.(0);
 		}, 0);
-	}, [clearSelectedHospital, requestHospitalId, selectedHospital?.id, startAmbulanceTrip, startBedBooking]);
+	}, [addVisit, clearSelectedHospital, hospitals, requestHospitalId, selectedHospital?.id, selectedSpecialty, startAmbulanceTrip, startBedBooking]);
 
 	// Service type selection
 	const handleServiceTypeSelect = useCallback((type) => {
@@ -377,12 +417,18 @@ export default function EmergencyScreen() {
 				activeAmbulanceTrip={activeAmbulanceTrip}
 				activeBedBooking={activeBedBooking}
 				onCancelAmbulanceTrip={() => {
+					if (activeAmbulanceTrip?.requestId) {
+						cancelVisit(activeAmbulanceTrip.requestId);
+					}
 					stopAmbulanceTrip();
 					setTimeout(() => {
 						bottomSheetRef.current?.snapToIndex?.(1);
 					}, 0);
 				}}
 				onCancelBedBooking={() => {
+					if (activeBedBooking?.requestId) {
+						cancelVisit(activeBedBooking.requestId);
+					}
 					stopBedBooking();
 					setTimeout(() => {
 						bottomSheetRef.current?.snapToIndex?.(1);

@@ -139,19 +139,19 @@ const MoreScreen = () => {
 			title: "Medical Profile",
 			icon: "fitness-outline",
 			description: "Blood type, allergies, conditions",
-			action: () => showToast("Medical Profile coming soon", "info"),
+			action: () => router.push("/(user)/(stacks)/medical-profile"),
 		},
 		{
 			title: "Emergency Contacts",
 			icon: "people-outline",
 			description: "Family & emergency responders",
-			action: () => showToast("Emergency Contacts coming soon", "info"),
+			action: () => router.push("/(user)/(stacks)/emergency-contacts"),
 		},
 		{
 			title: "Insurance",
 			icon: "shield-checkmark-outline",
 			description: "Coverage & claims",
-			action: () => showToast("Insurance coming soon", "info"),
+			action: () => router.push("/(user)/(stacks)/insurance"),
 		},
 	];
 
@@ -166,13 +166,13 @@ const MoreScreen = () => {
 			title: "Settings",
 			icon: "settings-outline",
 			description: "App preferences",
-			action: () => showToast("Settings coming soon", "info"),
+			action: () => router.push("/(user)/(stacks)/settings"),
 		},
 		{
 			title: "Help & Support",
 			icon: "help-circle-outline",
 			description: "FAQs & contact us",
-			action: () => showToast("Help coming soon", "info"),
+			action: () => router.push("/(user)/(stacks)/help-support"),
 		},
 	];
 

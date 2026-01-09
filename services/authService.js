@@ -68,6 +68,8 @@ const STATIC_TEST_USER = {
 	username: "testUser",
 	password: "password",
 	token: "testToken",
+	emailVerified: true,
+	phoneVerified: false,
 };
 
 // ============================================
@@ -97,6 +99,7 @@ const AuthErrors = {
 	INVALID_TOKEN: "INVALID_TOKEN",
 	TOKEN_EXPIRED: "TOKEN_EXPIRED",
 	NOT_LOGGED_IN: "NOT_LOGGED_IN",
+	PASSWORD_EXISTS: "PASSWORD_EXISTS",
 };
 
 // ============================================
@@ -259,6 +262,10 @@ const authService = {
 		if (credentials.otp) {
 			const token = generateRandomToken();
 			user.token = token;
+			if (credentials.email && user.email) user.emailVerified = true;
+			if (credentials.phone && user.phone) user.phoneVerified = true;
+			if (user.email && user.emailVerified == null) user.emailVerified = true;
+			if (user.phone && user.phoneVerified == null) user.phoneVerified = true;
 
 			const updatedUsers = users.map((u) =>
 				(u.email && user.email && normalizeEmail(u.email) === normalizeEmail(user.email)) ||
@@ -290,6 +297,8 @@ const authService = {
 
 		const token = generateRandomToken();
 		user.token = token;
+		if (user.email && user.emailVerified == null) user.emailVerified = true;
+		if (user.phone && user.phoneVerified == null) user.phoneVerified = true;
 
 		const updatedUsers = users.map((u) =>
 			(u.email && user.email && normalizeEmail(u.email) === normalizeEmail(user.email)) ||
@@ -380,6 +389,8 @@ const authService = {
 			fullName: credentials.fullName || null,
 			imageUri: credentials.imageUri || null,
 			dateOfBirth: credentials.dateOfBirth || null,
+			emailVerified: !!credentials.email,
+			phoneVerified: !!credentials.phone,
 			token: generateRandomToken(),
 		};
 
@@ -441,6 +452,27 @@ const authService = {
 			throw createAuthError(AuthErrors.USER_NOT_FOUND, "User not found");
 		}
 
+		if (!user) {
+			throw createAuthError(AuthErrors.USER_NOT_FOUND, "User not found");
+		}
+
+		const shouldBackfillEmailVerified = user.email && user.emailVerified == null;
+		const shouldBackfillPhoneVerified = user.phone && user.phoneVerified == null;
+
+		if (shouldBackfillEmailVerified || shouldBackfillPhoneVerified) {
+			const updatedUsers = users.map((u) => {
+				if (u.token !== token) return u;
+				return {
+					...u,
+					emailVerified: shouldBackfillEmailVerified ? true : u.emailVerified,
+					phoneVerified: shouldBackfillPhoneVerified ? true : u.phoneVerified,
+				};
+			});
+			await saveUsers(updatedUsers);
+			const updatedUser = updatedUsers.find((u) => u.token === token) ?? user;
+			return { data: updatedUser };
+		}
+
 		return { data: user };
 	},
 
@@ -465,6 +497,64 @@ const authService = {
 		users[userIndex] = { ...users[userIndex], ...newData };
 		await saveUsers(users);
 
+		return { data: users[userIndex] };
+	},
+
+	async createPassword({ password }) {
+		const token = await getToken();
+		if (!token) {
+			throw createAuthError(AuthErrors.NOT_LOGGED_IN, "No user logged in");
+		}
+		if (!password || typeof password !== "string" || password.length < 6) {
+			throw createAuthError(
+				AuthErrors.INVALID_INPUT,
+				"Password must be at least 6 characters"
+			);
+		}
+
+		const users = await getUsers();
+		const userIndex = users.findIndex((u) => u.token === token);
+		if (userIndex === -1) {
+			throw createAuthError(AuthErrors.USER_NOT_FOUND, "User not found");
+		}
+
+		if (users[userIndex].password) {
+			throw createAuthError(AuthErrors.PASSWORD_EXISTS, "Password already set");
+		}
+
+		users[userIndex] = { ...users[userIndex], password };
+		await saveUsers(users);
+		return { data: users[userIndex] };
+	},
+
+	async changePassword({ currentPassword, newPassword }) {
+		const token = await getToken();
+		if (!token) {
+			throw createAuthError(AuthErrors.NOT_LOGGED_IN, "No user logged in");
+		}
+		if (!newPassword || typeof newPassword !== "string" || newPassword.length < 6) {
+			throw createAuthError(
+				AuthErrors.INVALID_INPUT,
+				"Password must be at least 6 characters"
+			);
+		}
+
+		const users = await getUsers();
+		const userIndex = users.findIndex((u) => u.token === token);
+		if (userIndex === -1) {
+			throw createAuthError(AuthErrors.USER_NOT_FOUND, "User not found");
+		}
+
+		const user = users[userIndex];
+		if (!user.password) {
+			throw createAuthError(AuthErrors.NO_PASSWORD, "No password set");
+		}
+		if (user.password !== currentPassword) {
+			throw createAuthError(AuthErrors.INVALID_PASSWORD, "Incorrect current password");
+		}
+
+		users[userIndex] = { ...user, password: newPassword };
+		await saveUsers(users);
 		return { data: users[userIndex] };
 	},
 
@@ -665,12 +755,31 @@ const authService = {
 		);
 
 		if (existingUser) {
+			const updatedUsers = users.map((u) => {
+				const match =
+					(email && u.email?.toLowerCase() === email.toLowerCase()) ||
+					(phone && u.phone === phone);
+				if (!match) return u;
+				return {
+					...u,
+					emailVerified: email ? true : u.emailVerified,
+					phoneVerified: phone ? true : u.phoneVerified,
+				};
+			});
+			await saveUsers(updatedUsers);
+			const updatedUser =
+				updatedUsers.find(
+					(u) =>
+						(email && u.email?.toLowerCase() === email.toLowerCase()) ||
+						(phone && u.phone === phone)
+				) ?? existingUser;
+
 			// User exists - return user data for auto-login
 			return {
 				success: true,
 				data: {
-					user: existingUser,
-					token: existingUser.token,
+					user: updatedUser,
+					token: updatedUser.token,
 					isExistingUser: true,
 				},
 			};
@@ -688,4 +797,3 @@ const authService = {
 };
 
 export { authService, AuthErrors, createAuthError };
-

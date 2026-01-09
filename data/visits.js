@@ -1,5 +1,9 @@
 // data/visits.js - Mock visits data for iVisit appointments
 
+import { AMBULANCE_TRIPS, AMBULANCE_TRIP_STATUS } from "./ambulanceTrips";
+import { BED_BOOKINGS, BED_BOOKING_STATUS } from "./bedBookings";
+import { HOSPITALS } from "./hospitals";
+
 // Visit status types
 export const VISIT_STATUS = {
   UPCOMING: "upcoming",
@@ -15,6 +19,8 @@ export const VISIT_TYPES = {
   CHECKUP: "Check-up",
   FOLLOWUP: "Follow-up",
   EMERGENCY: "Emergency",
+  AMBULANCE_RIDE: "Ambulance Ride",
+  BED_BOOKING: "Bed Booking",
   CONSULTATION: "Consultation",
   PROCEDURE: "Procedure",
   VACCINATION: "Vaccination",
@@ -43,8 +49,87 @@ const DOCTOR_IMAGES = [
   "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400",
 ];
 
+const toLocalDate = (isoString) => {
+  if (!isoString || typeof isoString !== "string") return null;
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+};
+
+const toLocalTime = (isoString) => {
+  if (!isoString || typeof isoString !== "string") return null;
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+};
+
+const mapAmbulanceTripToVisit = (trip) => {
+  const hospital = HOSPITALS.find((h) => h?.id === trip?.hospitalId) ?? null;
+  const status =
+    trip?.status === AMBULANCE_TRIP_STATUS.COMPLETED
+      ? VISIT_STATUS.COMPLETED
+      : trip?.status === AMBULANCE_TRIP_STATUS.CANCELLED
+        ? VISIT_STATUS.CANCELLED
+        : trip?.status === AMBULANCE_TRIP_STATUS.REQUESTED
+          ? VISIT_STATUS.UPCOMING
+          : VISIT_STATUS.IN_PROGRESS;
+
+  return {
+    id: String(trip?.requestId ?? trip?.id ?? `ride_${Date.now()}`),
+    hospital: hospital?.name ?? "Hospital",
+    doctor: "Ambulance Dispatch",
+    doctorImage: DOCTOR_IMAGES[1],
+    specialty: "Emergency Response",
+    date: toLocalDate(trip?.createdAt) ?? "2026-01-08",
+    time: toLocalTime(trip?.createdAt) ?? "9:00 AM",
+    type: VISIT_TYPES.AMBULANCE_RIDE,
+    status,
+    image: hospital?.image ?? null,
+    address: hospital?.address ?? null,
+    phone: hospital?.phone ?? null,
+    notes: trip?.ambulanceType ? `Ambulance type: ${trip.ambulanceType}` : "Ambulance requested via iVisit.",
+    estimatedDuration: Number.isFinite(trip?.etaSeconds) && trip.etaSeconds > 0 ? `${Math.round(trip.etaSeconds / 60)} mins` : null,
+  };
+};
+
+const mapBedBookingToVisit = (booking) => {
+  const hospital = HOSPITALS.find((h) => h?.id === booking?.hospitalId) ?? null;
+  const status =
+    booking?.status === BED_BOOKING_STATUS.COMPLETED
+      ? VISIT_STATUS.COMPLETED
+      : booking?.status === BED_BOOKING_STATUS.CANCELLED
+        ? VISIT_STATUS.CANCELLED
+        : booking?.status === BED_BOOKING_STATUS.READY
+          ? VISIT_STATUS.IN_PROGRESS
+          : VISIT_STATUS.IN_PROGRESS;
+
+  return {
+    id: String(booking?.requestId ?? booking?.id ?? `bed_${Date.now()}`),
+    hospital: hospital?.name ?? "Hospital",
+    doctor: "Admissions Desk",
+    doctorImage: DOCTOR_IMAGES[0],
+    specialty: booking?.specialty ?? "General Care",
+    date: toLocalDate(booking?.createdAt) ?? "2026-01-08",
+    time: toLocalTime(booking?.createdAt) ?? "10:30 AM",
+    type: VISIT_TYPES.BED_BOOKING,
+    status,
+    image: hospital?.image ?? null,
+    address: hospital?.address ?? null,
+    phone: hospital?.phone ?? null,
+    notes: booking?.estimatedWait ? `Estimated wait: ${booking.estimatedWait}` : "Bed reserved via iVisit.",
+    roomNumber: booking?.bedNumber ?? null,
+    estimatedDuration: booking?.estimatedWait ?? null,
+  };
+};
+
+const EMERGENCY_RELATED_VISITS = [
+  ...AMBULANCE_TRIPS.map(mapAmbulanceTripToVisit),
+  ...BED_BOOKINGS.map(mapBedBookingToVisit),
+];
+
 // Mock visits data - extensive realistic data
 export const VISITS = [
+  ...EMERGENCY_RELATED_VISITS,
   // ===== UPCOMING VISITS =====
   {
     id: "1",
@@ -614,6 +699,10 @@ export const getVisitTypeIcon = (type) => {
       return "refresh-outline";
     case VISIT_TYPES.EMERGENCY:
       return "alert-circle-outline";
+    case VISIT_TYPES.AMBULANCE_RIDE:
+      return "car-outline";
+    case VISIT_TYPES.BED_BOOKING:
+      return "bed-outline";
     case VISIT_TYPES.CONSULTATION:
       return "chatbubble-ellipses-outline";
     case VISIT_TYPES.PROCEDURE:
@@ -644,6 +733,10 @@ export const getVisitTypeColor = (type) => {
       return "#3B82F6";
     case VISIT_TYPES.EMERGENCY:
       return "#EF4444";
+    case VISIT_TYPES.AMBULANCE_RIDE:
+      return "#F97316";
+    case VISIT_TYPES.BED_BOOKING:
+      return "#0EA5E9";
     case VISIT_TYPES.CONSULTATION:
       return "#8B5CF6";
     case VISIT_TYPES.PROCEDURE:
@@ -675,4 +768,3 @@ export const getVisitStats = (visits) => {
     inProgress: visits.filter(v => v.status === VISIT_STATUS.IN_PROGRESS).length,
   };
 };
-

@@ -46,6 +46,12 @@ export function VisitsProvider({ children }) {
         v?.status === VISIT_STATUS.CANCELLED
       );
     }
+    if (filter === "cancelled") {
+      return visits.filter(v =>
+        v?.status === VISIT_STATUS.CANCELLED ||
+        v?.status === VISIT_STATUS.NO_SHOW
+      );
+    }
     return visits;
   }, [visits, filter]);
 
@@ -84,8 +90,9 @@ export function VisitsProvider({ children }) {
   const addVisit = useCallback((newVisit) => {
     if (!newVisit) return;
     setVisits(prev => {
-      if (!prev) return [{ ...newVisit, id: String(Date.now()) }];
-      return [{ ...newVisit, id: String(Date.now()) }, ...prev];
+      const id = newVisit?.id ? String(newVisit.id) : String(Date.now());
+      if (!prev) return [{ ...newVisit, id }];
+      return [{ ...newVisit, id }, ...prev];
     });
   }, []);
 
@@ -162,4 +169,3 @@ export function useVisits() {
 }
 
 export default VisitsContext;
-

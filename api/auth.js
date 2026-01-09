@@ -97,6 +97,14 @@ export const setPasswordAPI = async (credentials) => {
 	return await authService.setPassword(credentials);
 };
 
+export const createPasswordAPI = async (password) => {
+	return await authService.createPassword({ password });
+};
+
+export const changePasswordAPI = async ({ currentPassword, newPassword }) => {
+	return await authService.changePassword({ currentPassword, newPassword });
+};
+
 /**
  * Logout current user
  * @returns {Promise<boolean>}

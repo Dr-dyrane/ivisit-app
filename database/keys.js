@@ -70,6 +70,8 @@ export const StorageKeys = {
 
 	/** Theme preference */
 	THEME: `${DB_PREFIX}theme`,
+
+	PROFILE_COMPLETION_DRAFT: `${DB_PREFIX}profile_completion_draft`,
 };
 
 /**
@@ -97,6 +99,7 @@ export const SingletonKeys = [
 	StorageKeys.PENDING_OTP,
 	StorageKeys.PREFERENCES,
 	StorageKeys.THEME,
+	StorageKeys.PROFILE_COMPLETION_DRAFT,
 ];
 
 /**
@@ -130,4 +133,3 @@ export const isCollectionKey = (key) => {
 export const isSingletonKey = (key) => {
 	return SingletonKeys.includes(key);
 };
-
