@@ -10,6 +10,7 @@ import {
 	RefreshControl,
 	Animated,
 	Pressable,
+	ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -228,7 +229,22 @@ const NotificationsScreen = () => {
 				/>
 
 				{/* Notification Cards or Empty State */}
-				{hasNotifications ? (
+				{isLoading && !hasNotifications ? (
+					<View
+						style={[
+							styles.emptyState,
+							{ backgroundColor: colors.card, marginTop: 24 },
+						]}
+					>
+						<ActivityIndicator color={COLORS.brandPrimary} />
+						<Text style={[styles.emptyTitle, { color: colors.text, marginTop: 16 }]}>
+							Loading notifications
+						</Text>
+						<Text style={[styles.emptyText, { color: colors.textMuted }]}>
+							Getting your latest updates ready.
+						</Text>
+					</View>
+				) : hasNotifications ? (
 					<Animated.View style={{ opacity: fadeAnim }}>
 						{filteredNotifications.map((notification) => (
 							<NotificationCard

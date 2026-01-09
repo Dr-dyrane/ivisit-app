@@ -162,7 +162,35 @@
 
 ---
 
-## Phase 7 — Supabase integration (when ready) (3–7 days)
+## Phase 7 — Provider/clinic discovery + booking realism (local-first) (3–6 days)
+
+**Outcome:** Finding care and booking feels realistic and useful (even on seed/local data).
+
+**Subplan**
+- Model “providers” and “clinics” separately from hospitals:
+  - Provider profiles (name, specialty, credentials, languages, rating)
+  - Clinic locations (address, geo, hours, contact)
+  - Relationships (providerId ↔ clinicId / hospitalId)
+- Improve discovery UX:
+  - Specialty-first discovery and filtering
+  - Nearby clinics/hospitals list with consistent distance/ETA formatting
+  - Clear “what can you book here?” (visit types, availability)
+- Make booking realistic:
+  - Appointment slot selection (seeded schedule)
+  - Confirmation state + cancellation/reschedule flows
+  - Booking writes to Visits with stable IDs and correct status
+- Tighten “details” views:
+  - Clinic detail view (services, hours, location)
+  - Provider detail view (bio, specialties, next slots)
+
+**Acceptance**
+- Search/discovery reliably finds clinics/providers by specialty and name.
+- Booking produces consistent Visits data and survives restart.
+- No duplicate/contradictory “available” states across screens.
+
+---
+
+## Phase 8 — Supabase integration (when ready) (3–7 days)
 
 **Outcome:** Replace local persistence with Supabase using the same service interfaces.
 
@@ -186,7 +214,8 @@
 - **Checkpoint C:** Profile completion gate enforced (Phase 3).
 - **Checkpoint D:** Local-first “all pages functional” milestone (Phase 4).
 - **Checkpoint E:** Patient POV Emergency flow complete (Phase 5).
-- **Checkpoint F:** Supabase integration milestone (Phase 7).
+- **Checkpoint F:** Provider discovery + booking realism milestone (Phase 7).
+- **Checkpoint G:** Supabase integration milestone (Phase 8).
 
 ---
 
@@ -195,4 +224,4 @@
 - Start each phase with a short task list.
 - Land small commits frequently (screen stubs, then wiring, then polish).
 - Run typecheck after meaningful changes.
-- When we reach Phase 7, you provide keys and we add them via Expo env workflow (no keys committed).
+- When we reach Phase 8, you provide keys and we add them via Expo env workflow (no keys committed).

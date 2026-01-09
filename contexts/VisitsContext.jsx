@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { VISITS, VISIT_STATUS, VISIT_FILTERS } from "../data/visits";
 import { database, StorageKeys } from "../database";
+import { normalizeVisitsList } from "../utils/domainNormalize";
 
 // Create the visits context
 const VisitsContext = createContext();
@@ -33,14 +34,19 @@ export function VisitsProvider({ children }) {
         const stored = await database.read(StorageKeys.VISITS, null);
         if (!isActive) return;
         if (Array.isArray(stored) && stored.length > 0) {
-          setVisits(stored);
+          const normalized = normalizeVisitsList(stored);
+          setVisits(normalized);
+          if (normalized.length !== stored.length) {
+            await database.write(StorageKeys.VISITS, normalized);
+          }
           return;
         }
-        setVisits(VISITS);
-        await database.write(StorageKeys.VISITS, VISITS);
+        const seeded = normalizeVisitsList(VISITS);
+        setVisits(seeded);
+        await database.write(StorageKeys.VISITS, seeded);
       } catch (e) {
         if (!isActive) return;
-        setVisits(VISITS);
+        setVisits(normalizeVisitsList(VISITS));
         setError(e?.message ?? "Failed to load visits");
       } finally {
         if (isActive) setIsLoading(false);
@@ -53,7 +59,8 @@ export function VisitsProvider({ children }) {
 
   useEffect(() => {
     if (!Array.isArray(visits)) return;
-    database.write(StorageKeys.VISITS, visits).catch(() => {});
+    const normalized = normalizeVisitsList(visits);
+    database.write(StorageKeys.VISITS, normalized).catch(() => {});
   }, [visits]);
 
   // Derived state - selected visit object
@@ -165,7 +172,7 @@ export function VisitsProvider({ children }) {
     setError(null);
     try {
       const stored = await database.read(StorageKeys.VISITS, []);
-      setVisits(Array.isArray(stored) ? stored : []);
+      setVisits(normalizeVisitsList(stored));
     } catch (err) {
       setError(err.message);
     } finally {

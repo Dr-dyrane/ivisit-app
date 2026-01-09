@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect } 
 import { SPECIALTIES } from "../data/hospitals";
 import { ACTIVE_AMBULANCES } from "../data/emergencyServices";
 import { emergencyStateService } from "../services/emergencyStateService";
+import { normalizeEmergencyState } from "../utils/domainNormalize";
 
 // Create the emergency context
 const EmergencyContext = createContext();
@@ -36,7 +37,8 @@ export function EmergencyProvider({ children }) {
 	useEffect(() => {
 		let isActive = true;
 		(async () => {
-			const saved = await emergencyStateService.get();
+			const savedRaw = await emergencyStateService.get();
+			const saved = normalizeEmergencyState(savedRaw);
 			if (!isActive) return;
 			if (saved?.mode === EmergencyMode.EMERGENCY || saved?.mode === EmergencyMode.BOOKING) {
 				setMode(saved.mode);

@@ -8,6 +8,7 @@ import {
   NOTIFICATION_PRIORITY,
 } from "../data/notifications";
 import { database, StorageKeys } from "../database";
+import { normalizeNotification, normalizeNotificationsList } from "../utils/domainNormalize";
 
 // Create the notifications context
 const NotificationsContext = createContext();
@@ -40,14 +41,19 @@ export function NotificationsProvider({ children }) {
         const stored = await database.read(StorageKeys.NOTIFICATIONS, null);
         if (!isActive) return;
         if (Array.isArray(stored) && stored.length > 0) {
-          setNotifications(stored);
+          const normalized = normalizeNotificationsList(stored);
+          setNotifications(normalized);
+          if (normalized.length !== stored.length) {
+            await database.write(StorageKeys.NOTIFICATIONS, normalized);
+          }
           return;
         }
-        setNotifications(NOTIFICATIONS);
-        await database.write(StorageKeys.NOTIFICATIONS, NOTIFICATIONS);
+        const seeded = normalizeNotificationsList(NOTIFICATIONS);
+        setNotifications(seeded);
+        await database.write(StorageKeys.NOTIFICATIONS, seeded);
       } catch (e) {
         if (!isActive) return;
-        setNotifications(NOTIFICATIONS);
+        setNotifications(normalizeNotificationsList(NOTIFICATIONS));
         setError(e?.message ?? "Failed to load notifications");
       } finally {
         if (isActive) setIsLoading(false);
@@ -60,39 +66,42 @@ export function NotificationsProvider({ children }) {
 
   useEffect(() => {
     if (!Array.isArray(notifications)) return;
-    database.write(StorageKeys.NOTIFICATIONS, notifications).catch(() => {});
+    const normalized = normalizeNotificationsList(notifications);
+    database.write(StorageKeys.NOTIFICATIONS, normalized).catch(() => {});
   }, [notifications]);
 
   // Derived: Unread count
   const unreadCount = useMemo(() => {
-    return notifications.filter(n => !n.read).length;
+    return notifications.filter(n => n && typeof n === "object" && n.read !== true).length;
   }, [notifications]);
 
   // Derived: Filtered notifications
   const filteredNotifications = useMemo(() => {
+    const list = notifications.filter(n => n && typeof n === "object");
     switch (filter) {
       case "unread":
-        return notifications.filter(n => !n.read);
+        return list.filter(n => n.read !== true);
       case "emergency":
-        return notifications.filter(n => n.type === NOTIFICATION_TYPES.EMERGENCY);
+        return list.filter(n => n.type === NOTIFICATION_TYPES.EMERGENCY);
       case "appointments":
-        return notifications.filter(n => 
+        return list.filter(n => 
           n.type === NOTIFICATION_TYPES.APPOINTMENT || 
           n.type === NOTIFICATION_TYPES.VISIT
         );
       default:
-        return notifications;
+        return list;
     }
   }, [notifications, filter]);
 
   // Derived: Counts per filter
   const filterCounts = useMemo(() => ({
-    all: notifications.length,
-    unread: notifications.filter(n => !n.read).length,
-    emergency: notifications.filter(n => n.type === NOTIFICATION_TYPES.EMERGENCY).length,
+    all: notifications.filter(n => n && typeof n === "object").length,
+    unread: notifications.filter(n => n && typeof n === "object" && n.read !== true).length,
+    emergency: notifications.filter(n => n && typeof n === "object" && n.type === NOTIFICATION_TYPES.EMERGENCY).length,
     appointments: notifications.filter(n => 
-      n.type === NOTIFICATION_TYPES.APPOINTMENT || 
-      n.type === NOTIFICATION_TYPES.VISIT
+      n &&
+      typeof n === "object" &&
+      (n.type === NOTIFICATION_TYPES.APPOINTMENT || n.type === NOTIFICATION_TYPES.VISIT)
     ).length,
   }), [notifications]);
 
@@ -103,16 +112,20 @@ export function NotificationsProvider({ children }) {
 
   const markAsRead = useCallback((notificationId) => {
     setNotifications(prev =>
-      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      prev
+        .filter(n => n && typeof n === "object")
+        .map(n => n.id === notificationId ? { ...n, read: true } : n)
     );
   }, []);
 
   const markAllAsRead = useCallback(() => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifications(prev =>
+      prev.filter(n => n && typeof n === "object").map(n => ({ ...n, read: true }))
+    );
   }, []);
 
   const deleteNotification = useCallback((notificationId) => {
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    setNotifications(prev => prev.filter(n => n && typeof n === "object" && n.id !== notificationId));
   }, []);
 
   const clearAll = useCallback(() => {
@@ -121,22 +134,9 @@ export function NotificationsProvider({ children }) {
 
   // Add a new notification (for push/realtime)
   const addNotification = useCallback((notification) => {
-    const now = new Date().toISOString();
-    const base = notification && typeof notification === "object" ? notification : {};
-    setNotifications(prev => [
-      { 
-        id: String(Date.now()),
-        type: base.type ?? NOTIFICATION_TYPES.SYSTEM,
-        title: base.title ?? "Update",
-        message: base.message ?? "",
-        timestamp: base.timestamp ?? now,
-        read: base.read === true ? true : false,
-        priority: base.priority ?? NOTIFICATION_PRIORITY.NORMAL,
-        actionType: base.actionType ?? null,
-        actionData: base.actionData ?? null,
-      },
-      ...(Array.isArray(prev) ? prev : []),
-    ]);
+    const next = normalizeNotification(notification);
+    if (!next) return;
+    setNotifications(prev => [next, ...(Array.isArray(prev) ? prev : [])]);
   }, []);
 
   // Refresh notifications (mock - for pull-to-refresh)
@@ -145,7 +145,7 @@ export function NotificationsProvider({ children }) {
     setError(null);
     try {
       const stored = await database.read(StorageKeys.NOTIFICATIONS, []);
-      setNotifications(Array.isArray(stored) ? stored : []);
+      setNotifications(normalizeNotificationsList(stored));
     } catch (err) {
       setError(err.message);
     } finally {
