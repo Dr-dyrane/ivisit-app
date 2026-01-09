@@ -1,12 +1,12 @@
 # iVisit Product Execution Roadmap (2026)
 
-**Goal:** Ship a cohesive iVisit MVP where Emergency, Visits, Auth, Profile, and More screens share consistent UX patterns and run on a real backend (Supabase) with seeded domain data.
+**Goal:** Ship a cohesive iVisit MVP where Emergency, Visits, Auth, Profile, and More screens share consistent UX patterns and run fully local-first (AsyncStorage) with seeded domain data.
 
 **Principles**
 - Keep UI stable; swap backend underneath via the existing layers (UI → Context → Hook → Service → Database/API).
 - Always make routes navigable first (stubs beat missing screens).
 - Enforce a single “profile completeness” gate so all downstream features have reliable user data.
-- Migrate from local (AsyncStorage) to Supabase by updating the API/service layer, not screen code.
+- Migrate from local (AsyncStorage) to Supabase later by updating the API/service layer, not screen code.
 - Treat seed data as part of the product: hospitals, beds, ambulances, visits.
 
 **Current assets in repo**
@@ -94,85 +94,88 @@
 
 ---
 
-## Phase 4 — Supabase integration (auth first, then data) (2–4 days)
+## Phase 4 — Local-first feature completion (preferences + profile subpages + visits) (3–6 days)
 
-**Outcome:** Real authentication + real persisted data, without rewriting screens.
+**Outcome:** The app is “complete” without a backend: every screen is functional using local data services.
 
-**Subplan A — Environment + client**
-- Add Expo env vars (you will provide keys when we get here):
+**Subplan A — Preferences**
+- Move all preferences behind a `preferencesService` and `api/preferences`.
+- Persist:
+  - Theme mode using `StorageKeys.THEME`
+  - App preferences using `StorageKeys.PREFERENCES`
+- Fill out Settings screen so it is not a stub.
+
+**Subplan B — Profile subpages**
+- Implement:
+  - Emergency Contacts CRUD + persistence via `StorageKeys.EMERGENCY_CONTACTS`
+  - Medical Profile CRUD + persistence (add a new StorageKeys entry + service)
+- Replace “coming soon” toasts with real navigation + functionality.
+
+**Subplan C — Visits end-to-end**
+- Ensure the entire Visits journey is functional locally:
+  - Create/book visit
+  - Persist visits to `StorageKeys.VISITS`
+  - Visit details reads from persisted data
+  - Emergency requests create visits consistently
+
+**Acceptance**
+- Settings reflects persisted user preferences after restart.
+- Emergency contacts and medical profile persist and are editable.
+- Visits works end-to-end with persisted local data.
+
+---
+
+## Phase 5 — Patient POV emergency flow completion (2–4 days)
+
+**Outcome:** From a patient POV, the SOS experience feels complete and trustworthy.
+
+**Subplan**
+- Tighten Emergency flow states:
+  - Select hospital → request ambulance/bed → confirmation → active trip/booking state
+  - Resume active state after restart (local persistence)
+  - Clear/cancel states are consistent and user-controlled
+- Use patient profile data where relevant:
+  - Emergency contacts available from the flow
+  - Medical profile summary available from the flow
+- Ensure Emergency produces Visits consistently (single source of truth)
+
+**Acceptance**
+- A user can complete SOS flow without dead ends.
+- Active trip/booking survives app restart.
+- Post-action record appears in Visits.
+
+---
+
+## Phase 6 — Data model + seed polishing (local-first) (1–2 days)
+
+**Outcome:** Local data feels “real” and coherent across the app.
+
+**Subplan**
+- Normalize mock domain data and persistence shapes:
+  - Hospitals, ambulances, beds, requests/trips, visits
+- Provide consistent IDs and relationships (hospitalId, requestId, visitId)
+- Add lightweight migration/backfill where needed
+
+**Acceptance**
+- Demo data + user generated data work together without weird edge cases.
+- Data survives app restart and upgrades.
+
+---
+
+## Phase 7 — Supabase integration (when ready) (3–7 days)
+
+**Outcome:** Replace local persistence with Supabase using the same service interfaces.
+
+**Subplan**
+- Add Expo env vars (you provide keys when we get here):
   - `EXPO_PUBLIC_SUPABASE_URL`
   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-- Initialize Supabase client inside [client.js](file:///c:/Users/Dyrane/Documents/GitHub/ivisit-app/api/client.js)
-  - Use AsyncStorage for session persistence
-  - Keep `detectSessionInUrl: false` for native
-
-**Subplan B — Auth migration**
-- Keep the same public interface for:
-  - `authService.*`
-  - `api/auth.*`
-  - `AuthContext` consumer APIs
-- Replace local userStore logic with Supabase auth:
-  - signUp / signIn
-  - session restore
-  - logout
-- Preserve existing UI flows (OTP vs password) as much as possible; if OTP is out-of-scope for initial Supabase pass, keep it stubbed until after password auth is stable.
-
-**Subplan C — Profile table**
-- Add a `profiles` table keyed by `auth.users.id`
-- On signup/login, upsert minimal profile record
-- Update `getCurrentUser` to merge auth + profile fields
+- Implement Supabase-backed services behind the same API contracts.
+- Migrate Auth + Profiles first, then domain tables.
 
 **Acceptance**
-- Sign up / login / logout works on-device.
-- Session persists across app restart.
-- Profile completion writes to `profiles` in Supabase.
-
----
-
-## Phase 5 — Seed domain data (hospitals, beds, ambulances, visits) (2–4 days)
-
-**Outcome:** Emergency + Visits run on the same real data model.
-
-**Subplan**
-- Define tables (first pass):
-  - `hospitals`
-  - `hospital_beds` (or `beds`)
-  - `ambulances`
-  - `ambulance_trips` (or `requests`)
-  - `visits`
-- Add seed scripts (or SQL) to populate:
-  - Hospitals and baseline availability
-  - A handful of ambulances
-  - Sample visits per test user
-- Create query hooks:
-  - `useHospitals`, `useBeds`, `useAmbulances`, `useVisits`
-- Replace static `data/*.js` usage gradually:
-  - Start by reading Supabase first, fallback to local mocks in dev if needed
-
-**Acceptance**
-- Emergency and Visits can run using Supabase data.
-- Demo data can be toggled off without breaking screens.
-
----
-
-## Phase 6 — Emergency screen hardening (after backend) (2–3 days)
-
-**Outcome:** Emergency becomes production-ready, not only a demo.
-
-**Subplan**
-- Replace “mock request” with a real trip/request record:
-  - Create ambulance trip in Supabase
-  - Subscribe to updates (optional) or poll
-- Make trip state robust:
-  - Resume active trip after app restart
-  - Cancel request persists server-side
-- Validate availability rules:
-  - Ambulance available count
-  - Bed availability and reservation windows
-
-**Acceptance**
-- A user can request ambulance / reserve bed and see persisted status.
-- App recovers the active state after restart.
+- Auth/session restore works on-device.
+- Profile completion and core domain flows work without rewriting screens.
 
 ---
 
@@ -181,8 +184,9 @@
 - **Checkpoint A:** All routes exist and are reachable (Phase 1).
 - **Checkpoint B:** Visits UX parity and details page (Phase 2).
 - **Checkpoint C:** Profile completion gate enforced (Phase 3).
-- **Checkpoint D:** Supabase auth + profile table working (Phase 4).
-- **Checkpoint E:** Seed data + queries powering Emergency/Visits (Phase 5).
+- **Checkpoint D:** Local-first “all pages functional” milestone (Phase 4).
+- **Checkpoint E:** Patient POV Emergency flow complete (Phase 5).
+- **Checkpoint F:** Supabase integration milestone (Phase 7).
 
 ---
 
@@ -191,5 +195,4 @@
 - Start each phase with a short task list.
 - Land small commits frequently (screen stubs, then wiring, then polish).
 - Run typecheck after meaningful changes.
-- When we reach Phase 4, you provide keys and we add them via Expo env workflow (no keys committed).
-
+- When we reach Phase 7, you provide keys and we add them via Expo env workflow (no keys committed).

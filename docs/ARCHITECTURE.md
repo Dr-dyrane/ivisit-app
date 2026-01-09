@@ -1,9 +1,9 @@
 # iVisit App Architecture - Checkpoint Refactor
 
-**Version**: 1.0  
-**Date**: 2025-01-06  
-**Status**: Design Phase → Implementation Phase  
-**Goal**: Production-ready codebase for backend integration
+**Version**: 1.1  
+**Date**: 2026-01-09  
+**Status**: Implementation Phase (Local-first)  
+**Goal**: Ship a complete iVisit MVP on local storage, with clean service boundaries so Supabase later is a swap (not a rewrite).
 
 ---
 
@@ -44,36 +44,43 @@
 - ✅ **Scalability** - Replace AsyncStorage with HTTP client without touching UI
 - ✅ **Maintainability** - Clear data flow, predictable patterns
 - ✅ **Backend-ready** - Services are already the right abstraction for API endpoints
+- ✅ **Local-first product velocity** - We can ship flows before backend integration
 
 ---
 
 ## **2. Data Layer (AsyncStorage as Database)**
 
-### **Structure**
+### **Current Structure (in this repo)**
 
 ```
+database/
+├── db.js                 ← Low-level AsyncStorage wrapper + CRUD helpers
+├── keys.js               ← StorageKeys whitelist (single source of truth)
+└── index.js              ← Main export: database, StorageKeys, errors
+
+services/
+├── authService.js        ← Auth + user model operations (local-first)
+├── profileCompletionService.js
+└── ... (next: preferences, visits, contacts, medical)
+
 api/
-├── database.js          ← Low-level AsyncStorage wrapper
-└── services/
-    ├── userService.js   ← User collection CRUD + business logic
-    ├── visitService.js  ← Visit collection CRUD + business logic
-    ├── hospitalService.js
-    ├── emergencyContactService.js
-    └── index.js        ← Export all services
+├── auth.js               ← UI-facing wrappers around services
+├── profileCompletion.js  ← Completion draft wrappers
+└── ... (next: preferences, visits, contacts, medical)
 ```
 
 ### **How It Works**
 
-#### **1. Database.js (Generic Layer)**
+#### **1. database (Generic Layer)**
 
 ```javascript
-import { database, StorageKeys } from '@/api/database';
+import { database, StorageKeys } from "../database";
 
 // Low-level operations
 await database.write(StorageKeys.USERS, users);
 await database.read(StorageKeys.USERS, []);
-const user = await database.findOne(StorageKeys.USERS, u => u.id === '123');
-const users = await database.query(StorageKeys.USERS, u => u.status === 'active');
+const user = await database.findOne(StorageKeys.USERS, (u) => u.id === "123");
+const users = await database.query(StorageKeys.USERS, (u) => u.status === "active");
 ```
 
 **Features:**
@@ -84,15 +91,14 @@ const users = await database.query(StorageKeys.USERS, u => u.status === 'active'
 - Timeout protection (5s default)
 - Validation (key whitelist)
 
-#### **2. Services (Collection-Specific Layer)**
+#### **2. services (Domain Layer)**
 
 ```javascript
-import userService from '@/api/services/userService';
+import { authService } from "../services/authService";
 
 // Business logic operations
-const user = await userService.createUser({ email, password, username });
-await userService.updateUser(userId, { firstName, lastName });
-const loggedInUser = await userService.loginUser(email, password);
+const result = await authService.register({ email, username, password });
+const user = result.data.user;
 ```
 
 **Each service:**
@@ -100,6 +106,16 @@ const loggedInUser = await userService.loginUser(email, password);
 - Adds validation & business rules
 - Provides domain-specific methods
 - Returns typed errors
+
+#### **3. api/* (UI Contract Layer)**
+
+Screens/components should call `api/*` functions (or hooks that call them), not the database directly.
+
+```javascript
+import { updateUserAPI } from "../api/auth";
+
+await updateUserAPI({ fullName, username });
+```
 
 ---
 
@@ -250,13 +266,37 @@ export function useUpdateProfile() {
 | `ToastContext` | Notifications | toastMessages |
 | `TabBarVisibilityContext` | Bottom nav scroll | translateY, handleScroll |
 
-### **New Contexts (Add These)**
+### **Contexts We Add Only When Needed**
 
 | Context | Purpose | State |
 |---------|---------|-------|
 | `ScrollAwareHeaderContext` | Header scroll-aware | headerOpacity, titleOpacity, headerTranslateY |
-| `ProfileContext` (future) | User profile state | profile, isLoading |
-| `VisitContext` (future) | Medical visits | visits, selectedVisit, filter |
+| `VisitsContext` | Visits state (already present) | visits, selectedVisit, filters |
+
+---
+
+## **6. Current Milestones**
+
+### **Phase 3 (Complete) — Profile completion gate**
+- Enforces required profile fields before accessing tabs.
+- Persists completion draft so user can resume after restart.
+- Uses service/API wrappers (no direct storage calls from UI).
+
+### **Phase 4 (Next) — Local-first feature completion**
+- Implement full CRUD + persistence for:
+  - Preferences (Theme, notifications, privacy) via `StorageKeys.PREFERENCES` / `StorageKeys.THEME`
+  - Emergency contacts via `StorageKeys.EMERGENCY_CONTACTS`
+  - Medical profile/history (new storage key + service)
+  - Visits end-to-end via `StorageKeys.VISITS`
+- Standardize all screens to the same patterns:
+  - Scroll-aware header + tab bar behavior
+  - Loading/empty/error states
+  - Predictable navigation and no redirect loops
+
+### **After Phase 4 — Emergency patient POV completion**
+- Ensure the SOS journey is complete from patient POV:
+  - Request → confirm → live status → add to visit history
+  - Uses persisted emergency contacts + medical profile where applicable
 
 **Rule**: Context = UI state only. Data fetching goes in hooks.
 
