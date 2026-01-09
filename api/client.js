@@ -60,8 +60,21 @@ export const API_CONFIG = {
  *   },
  * })
  */
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const cleanEnvValue = (value) => {
+	if (typeof value !== "string") return null;
+	const trimmed = value.trim();
+	if (!trimmed) return null;
+	if (trimmed.startsWith("`") && trimmed.endsWith("`") && trimmed.length > 1) {
+		return trimmed.slice(1, -1).trim() || null;
+	}
+	return trimmed;
+};
+
+const supabaseUrl = cleanEnvValue(process.env.EXPO_PUBLIC_SUPABASE_URL);
+const supabaseAnonKey =
+	cleanEnvValue(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) ??
+	cleanEnvValue(process.env.EXPO_PUBLIC_SUPABASE_KEY) ??
+	cleanEnvValue(process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 
 export const supabase =
 	supabaseUrl && supabaseAnonKey
