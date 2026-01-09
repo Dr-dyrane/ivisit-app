@@ -239,54 +239,15 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 			});
 
 			if (loginData.authMethod === LOGIN_AUTH_METHODS.PASSWORD) {
-				// Check if user exists using authService
-				const credentials =
-					loginData.contactType === "email"
-						? { email: value }
-						: { phone: value };
-
-				const checkResult = await authService.checkUserExists(credentials);
-
-				if (!checkResult.success || !checkResult.data?.exists) {
-					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-					setLoginError(
-						"No account found with this " +
-							loginData.contactType +
-							". Would you like to create one?"
-					);
-					setShowSignUpOption(true); // Show sign up button
-
-					// Store pending data for potential registration redirect
-					await database.write(StorageKeys.PENDING_REGISTRATION, {
-						email: loginData.contactType === "email" ? value : null,
-						phone: loginData.contactType === "phone" ? value : null,
-						contactType: loginData.contactType,
-						fromLogin: true,
-					});
-
-					stopLoading();
-					return;
-				}
-
-				// Clear sign up option if user exists
-				setShowSignUpOption(false);
-
-				setUserInfo(checkResult.data);
-
-				if (!checkResult.data?.hasPassword) {
-					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-					showToast("No password set for this account", "info");
-					setLoginError(
-						"You haven't set a password yet. Please set one below or use OTP login instead."
-					);
-					goToStep(LOGIN_STEPS.SET_PASSWORD);
-					stopLoading();
-					return;
-				}
-
+				// SKIP unreliable pre-check (Supabase doesn't allow public user existence checks)
+                // We proceed directly to password entry. The login attempt will validate existence.
+				
+                // Clear any previous user info since we are skipping the check
+				setUserInfo(null);
+                
+                // Proceed to password step
 				nextStep();
 				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-				showToast("Ready to sign in", "success");
 			} else {
 				// OTP flow - request OTP
 				const otpResult = await requestOtp(

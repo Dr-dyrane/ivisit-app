@@ -89,16 +89,15 @@ const handleSupabaseError = (error) => {
 const authService = {
 	/**
 	 * Check if a user exists by email (Public check not supported directly by Supabase for security)
-	 * We'll simulate this or rely on sign-in errors.
+	 * @deprecated Do not use this for login flow logic. Supabase does not allow public existence checks.
+     * Always proceed to attempt login or signup and handle the error.
 	 */
 	async checkUserExists(credentials) {
 		// Supabase doesn't allow checking if a user exists without logging in for security reasons.
-		// We can try a "fake" login or just return success: true to let the UI proceed to login.
-		// For the app flow, we'll assume they exist if they are trying to login.
-		// If this is for signup validation, we let the actual signup fail.
+        // We return false to be safe, but this should not be relied upon to block UI.
 		return {
 			success: true,
-			data: { exists: false }, // Default to false to trigger signup flow if needed, or handle in UI
+			data: { exists: false }, 
 		};
 	},
 
