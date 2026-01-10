@@ -284,19 +284,32 @@ export default function EmergencyScreen() {
 	// Service type selection
 	const handleServiceTypeSelect = useCallback(
 		(type) => {
+			if (!type) return;
+			
+			const normalizedType = type.toLowerCase();
+			const normalizedCurrent = serviceType ? serviceType.toLowerCase() : null;
+			
+			if (normalizedType === normalizedCurrent) {
+				return;
+			}
+			
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 			selectServiceType(type);
 		},
-		[selectServiceType]
+		[selectServiceType, serviceType]
 	);
 
 	// Specialty selection
 	const handleSpecialtySelect = useCallback(
 		(specialty) => {
+			if (specialty === selectedSpecialty) {
+				return;
+			}
+			
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 			selectSpecialty(specialty);
 		},
-		[selectSpecialty]
+		[selectSpecialty, selectedSpecialty]
 	);
 
 	// Hook: Search and filter logic

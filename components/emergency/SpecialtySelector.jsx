@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView, Platform } from "react-native";
 import { Fontisto, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -41,10 +41,22 @@ export default function SpecialtySelector({
 	counts = {},
 }) {
 	const { isDarkMode } = useTheme();
+	const lastCallTime = useRef(0);
+	const DEBOUNCE_MS = 300;
+	
+	const safeCounts = counts || {};
 
 	const handleSelect = (specialty) => {
+		if (!onSelect) return;
+		
+		const now = Date.now();
+		if (now - lastCallTime.current < DEBOUNCE_MS) {
+			return;
+		}
+		lastCallTime.current = now;
+		
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		// Toggle off if already selected (acts as "All" filter)
+		
 		if (selectedSpecialty === specialty) {
 			onSelect(null);
 		} else {
@@ -122,7 +134,7 @@ export default function SpecialtySelector({
 									]}
 									numberOfLines={1}
 								>
-									{counts[specialty] ?? 0}
+									{safeCounts[specialty] ?? 0}
 								</Text>
 							</View>
 						</Pressable>

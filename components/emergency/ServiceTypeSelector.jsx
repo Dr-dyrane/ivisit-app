@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Fontisto, Ionicons } from "@expo/vector-icons";
@@ -16,6 +17,8 @@ import * as Haptics from "expo-haptics";
  */
 export default function ServiceTypeSelector({ selectedType, onSelect, counts }) {
 	const { isDarkMode } = useTheme();
+	const lastCallTime = useRef(0);
+	const DEBOUNCE_MS = 300;
 	
 	const safeCounts = counts || {};
 	const safeSelectedType = selectedType || null;
@@ -43,6 +46,20 @@ export default function ServiceTypeSelector({ selectedType, onSelect, counts }) 
 
 	const handleSelect = (type) => {
 		if (!type || !onSelect) return;
+		
+		const now = Date.now();
+		if (now - lastCallTime.current < DEBOUNCE_MS) {
+			return;
+		}
+		lastCallTime.current = now;
+		
+		const normalizedType = type.toLowerCase();
+		const normalizedSelected = safeSelectedType ? safeSelectedType.toLowerCase() : null;
+		
+		if (normalizedType === normalizedSelected) {
+			return;
+		}
+		
 		try {
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 			onSelect(type);

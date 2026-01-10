@@ -1,5 +1,7 @@
 import { supabase } from "./supabase";
 import { normalizeVisit } from "../utils/domainNormalize";
+import { notificationsService } from "./notificationsService";
+import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY } from "../constants/notifications";
 
 const TABLE = "visits";
 
@@ -88,6 +90,33 @@ export const visitsService = {
         
         const result = normalizeVisit(mapFromDb(data));
         console.log(`[visitsService] Visit created successfully: ${result.id}`);
+        
+        try {
+            const visitTypeName = result.type || "Visit";
+            const hospitalName = result.hospitalName || "hospital";
+            const statusText = result.status === "in_progress" ? "in progress" : result.status || "scheduled";
+            
+            const notification = {
+                id: `notification_${result.id}_${Date.now()}`,
+                type: NOTIFICATION_TYPES.VISIT,
+                priority: NOTIFICATION_PRIORITY.HIGH,
+                title: `${visitTypeName} Scheduled`,
+                message: `Your ${visitTypeName.toLowerCase()} at ${hospitalName} is ${statusText}`,
+                read: false,
+                timestamp: new Date().toISOString(),
+                actionType: "navigate",
+                actionData: {
+                    screen: "visits",
+                    visitId: result.id
+                }
+            };
+            
+            await notificationsService.create(notification);
+            console.log(`[visitsService] Notification created for visit: ${result.id}`);
+        } catch (notifError) {
+            console.error(`[visitsService] Failed to create notification for visit ${result.id}:`, notifError);
+        }
+        
         return result;
     },
 
