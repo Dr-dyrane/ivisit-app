@@ -11,6 +11,7 @@ import { database, StorageKeys } from "../database";
 import { normalizeNotification, normalizeNotificationsList } from "../utils/domainNormalize";
 import { usePreferences } from "./PreferencesContext";
 import { notificationsService } from "../services";
+import { usePushNotifications } from "../hooks/notifications/usePushNotifications";
 
 // Create the notifications context
 const NotificationsContext = createContext();
@@ -19,6 +20,9 @@ const NotificationsContext = createContext();
  * NotificationsProvider - Manages notification state
  */
 export function NotificationsProvider({ children }) {
+  // Initialize Push Notifications
+  const { expoPushToken } = usePushNotifications();
+
   // Core state
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState("all");
@@ -225,6 +229,7 @@ export function NotificationsProvider({ children }) {
     addNotification,
     refreshNotifications,
     updateNotifications,
+    expoPushToken,
   };
 
   return (

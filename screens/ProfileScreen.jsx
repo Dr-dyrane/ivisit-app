@@ -62,7 +62,12 @@ const ProfileScreen = () => {
             setPhone(user.phone || "");
             setAddress(user.address || "");
             setDateOfBirth(user.dateOfBirth || "");
-            setImageUri(user.imageUri || null);
+            
+            // Only overwrite image if it's not a local draft
+            if (!imageUri?.startsWith('file://')) {
+                setImageUri(user.imageUri || null);
+            }
+            
             setIsDataLoading(false);
         }
     }, [user]);
@@ -138,18 +143,21 @@ const ProfileScreen = () => {
 	const pickImage = async () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 		try {
+			console.log("DEBUG: Starting pickImage...");
 			const result = await ImagePicker.launchImageLibraryAsync({
 				mediaTypes: ImagePicker.MediaTypeOptions.Images,
 				allowsEditing: true,
 				aspect: [1, 1],
 				quality: 1,
 			});
+			console.log("DEBUG: ImagePicker result:", result.canceled ? "Canceled" : result.assets[0].uri);
 
 			if (!result.canceled && result.assets && result.assets.length > 0) {
 				setImageUri(result.assets[0].uri);
 				showToast("Image selected successfully", "success");
 			}
 		} catch (error) {
+			console.error("DEBUG: pickImage error:", error);
 			showToast(`Image picker error: ${error.message}`, "error");
 		}
 	};
@@ -157,12 +165,17 @@ const ProfileScreen = () => {
 	const handleUpdateProfile = async () => {
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 		setIsLoading(true);
+		console.log("DEBUG: handleUpdateProfile started. Current imageUri:", imageUri);
 		try {
 			let uploadedImageUri = imageUri;
 
 			// Upload image if it's a local file
 			if (imageUri && imageUri.startsWith('file://')) {
-				uploadedImageUri = await imageService.uploadImage(imageUri);
+				console.log("DEBUG: Uploading local image...");
+				uploadedImageUri = await uploadImage(imageUri);
+				console.log("DEBUG: Upload complete. New URI:", uploadedImageUri);
+			} else {
+				console.log("DEBUG: No local image to upload. Using existing URI.");
 			}
 
 			const updatedData = {
@@ -175,10 +188,23 @@ const ProfileScreen = () => {
 				dateOfBirth,
 				imageUri: uploadedImageUri,
 			};
-			await updateUserAPI(updatedData);
+			
+			console.log("DEBUG: Updating profile with data:", updatedData);
+			await updateProfile(updatedData);
+			
+			console.log("DEBUG: Profile updated. Syncing user data...");
 			await syncUserData();
+
+            // Explicitly force a re-render with the new remote URI
+            // We use a small timeout to ensure the context has propagated or just set it directly
+            if (uploadedImageUri) {
+                 setImageUri(uploadedImageUri);
+                 // Also invalidate the cache/force reload for this URI if needed (optional optimization)
+            }
+			
 			showToast("Profile updated successfully", "success");
 		} catch (error) {
+			console.error("DEBUG: Update error:", error);
 			const errorMessage =
 				error.response?.data?.message ||
 				error.message ||
@@ -242,6 +268,7 @@ const ProfileScreen = () => {
 				>
 					<Pressable onPress={pickImage} style={{ position: "relative" }}>
 						<Image
+							key={imageUri} // Force re-render when URI changes
 							source={
 								imageUri ? { uri: imageUri } : require("../assets/profile.jpg")
 							}

@@ -97,7 +97,7 @@ export const CollectionKeys = [
 	StorageKeys.NOTIFICATIONS,
 	StorageKeys.DEMO_NOTIFICATIONS,
 	StorageKeys.SEARCH_HISTORY,
-	StorageKeys.IMAGES,
+	// StorageKeys.IMAGES, // Managed as a Map/Object, not an Array
 	StorageKeys.RESET_TOKENS,
 	StorageKeys.EMERGENCY_REQUESTS,
 ];

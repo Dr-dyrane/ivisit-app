@@ -1,28 +1,23 @@
 /**
  * Image Service
  *
- * File Path: services/imageService.js
- *
- * Handles image storage and retrieval operations.
- * 
- * Strategy (Hybrid):
- * 1. Upload: Pushes to Supabase Storage bucket 'images'.
- * 2. Caching: Stores the resulting public URL in local storage for offline access to the list.
+ * Handles image upload, retrieval, caching, and deletion
+ * using Supabase Storage + local cache (hybrid strategy).
  */
 
-import { database, StorageKeys, DatabaseError } from "../database";
+import { database, StorageKeys } from "../database";
 import { supabase } from "./supabase";
-import * as FileSystem from 'expo-file-system';
-import { decode } from 'base64-arraybuffer';
+import * as FileSystem from "expo-file-system/legacy";
+import { decode } from "base64-arraybuffer";
 
 // ============================================
-// CONFIGURATION
+// CONFIG
 // ============================================
 
-const BUCKET_NAME = 'images'; // Standard bucket name
+const BUCKET_NAME = "images";
 
 // ============================================
-// ERROR HELPERS
+// ERROR HELPER
 // ============================================
 
 const createImageError = (message) => {
@@ -32,157 +27,145 @@ const createImageError = (message) => {
 };
 
 // ============================================
-// IMAGE SERVICE METHODS
+// IMAGE SERVICE
 // ============================================
 
 const imageService = {
 	/**
-	 * Upload an image to Supabase Storage and cache the metadata
-	 * @param {string} imageUri - Local file URI (e.g., from ImagePicker)
-	 * @returns {Promise<string>} The public URL of the uploaded image
+	 * Upload image to Supabase Storage
+	 * @param {string} imageUri
+	 * @returns {Promise<string>} public URL
 	 */
 	async uploadImage(imageUri) {
 		if (!imageUri) {
 			throw createImageError("Image URI is required");
 		}
 
-        // 1. Prepare File for Upload
 		try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw createImageError("User must be logged in to upload images");
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
 
-			// Generate unique path: user_id/timestamp_random.ext
-            const ext = imageUri.split('.').pop().toLowerCase() || 'jpg';
-			const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
-            const filePath = `${user.id}/${fileName}`;
+			if (!user) {
+				throw createImageError("User must be logged in to upload images");
+			}
 
-            // Read file as Base64 for Supabase Upload (React Native standard)
-            const base64 = await FileSystem.readAsStringAsync(imageUri, {
-                encoding: FileSystem.EncodingType.Base64,
-            });
+			// Extract extension safely
+			const ext =
+				imageUri.split(".").pop()?.toLowerCase() === "png" ? "png" : "jpg";
 
-            // 2. Upload to Supabase
-            const { error: uploadError } = await supabase.storage
-                .from(BUCKET_NAME)
-                .upload(filePath, decode(base64), {
-                    contentType: `image/${ext === 'png' ? 'png' : 'jpeg'}`,
-                    upsert: false
-                });
+			const fileName = `${Date.now()}_${Math.random()
+				.toString(36)
+				.slice(2, 8)}.${ext}`;
 
-            if (uploadError) {
-                console.error("Supabase Storage Upload Error:", uploadError);
-                throw createImageError(`Upload failed: ${uploadError.message}`);
-            }
+			const filePath = `${user.id}/${fileName}`;
 
-            // 3. Get Public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from(BUCKET_NAME)
-                .getPublicUrl(filePath);
+			// Read file as Base64 for Supabase Upload (React Native standard)
+			const base64 = await FileSystem.readAsStringAsync(imageUri, {
+				encoding: FileSystem.EncodingType.Base64,
+			});
 
-            // 4. Update Local Cache (Hybrid)
-			let images = await database.read(StorageKeys.IMAGES, {});
-			if (typeof images !== "object" || Array.isArray(images)) images = {};
+			// Upload binary
+			const { error: uploadError } = await supabase.storage
+				.from(BUCKET_NAME)
+				.upload(filePath, decode(base64), {
+					contentType: ext === "png" ? "image/png" : "image/jpeg",
+					upsert: false,
+				});
 
-            // Store mapping: filePath (key) -> publicUrl (value)
-            // Or just store the publicUrl keyed by itself if we don't need the path later
+			if (uploadError) {
+				throw createImageError(uploadError.message);
+			}
+
+			// Get public URL
+			const {
+				data: { publicUrl },
+			} = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+
+			// Cache locally
+			const images = (await database.read(StorageKeys.IMAGES, {})) || {};
+
 			images[filePath] = {
 				uri: publicUrl,
-                localUri: imageUri, // Keep local URI for immediate display if needed
+				localUri: imageUri,
+				path: filePath,
 				createdAt: Date.now(),
 			};
 
 			await database.write(StorageKeys.IMAGES, images);
 
 			return publicUrl;
-
 		} catch (error) {
 			if (error.name === "ImageServiceError") throw error;
-            console.error("Image Upload Exception:", error);
-			throw createImageError(`Failed to upload image: ${error.message}`);
+			throw createImageError(`Upload failed: ${error.message}`);
 		}
 	},
 
 	/**
-	 * Retrieve an image URL (from cache or pass through)
-	 * @param {string} imageKey - The unique key or URL
-	 * @returns {Promise<string>} The image URI
+	 * Get image URL (cache-first)
 	 */
 	async getImage(imageKey) {
 		if (!imageKey) return null;
-        
-        // If it's already a full URL, return it
-        if (imageKey.startsWith('http')) return imageKey;
+		if (imageKey.startsWith("http")) return imageKey;
 
 		try {
 			const images = await database.read(StorageKeys.IMAGES, {});
-            
-            // Try to find by key
-			if (images && images[imageKey]) {
-				return images[imageKey].uri;
-			}
-
-            return null;
-		} catch (error) {
-            console.warn("Get Image Error:", error);
+			return images?.[imageKey]?.uri ?? null;
+		} catch {
 			return null;
 		}
 	},
 
 	/**
-	 * Delete an image (from Storage and Cache)
-	 * @param {string} imageUrl - The full public URL or path
-	 * @returns {Promise<boolean>}
+	 * Delete image from Supabase + local cache
 	 */
 	async deleteImage(imageUrl) {
 		if (!imageUrl) return false;
 
 		try {
-            // Extract path from URL if possible
-            // URL: https://.../storage/v1/object/public/images/user_id/filename.jpg
-            // Path: user_id/filename.jpg
-            let path = imageUrl;
-            if (imageUrl.includes(`/${BUCKET_NAME}/`)) {
-                path = imageUrl.split(`/${BUCKET_NAME}/`).pop();
-            }
+			let path = imageUrl;
 
-            // 1. Delete from Supabase
-            const { error } = await supabase.storage
-                .from(BUCKET_NAME)
-                .remove([path]);
+			if (imageUrl.includes(`/${BUCKET_NAME}/`)) {
+				path = imageUrl.split(`/${BUCKET_NAME}/`).pop();
+			}
 
-            if (error) {
-                console.warn("Supabase Delete Warning:", error);
-                // Continue to clear local cache even if remote fails (maybe already gone)
-            }
+			await supabase.storage.from(BUCKET_NAME).remove([path]);
 
-            // 2. Clear from Local Cache
 			const images = await database.read(StorageKeys.IMAGES, {});
-            
-            // Find key by URI if we passed in a URI
-            let keyToDelete = path;
-            Object.keys(images).forEach(k => {
-                if (images[k].uri === imageUrl) keyToDelete = k;
-            });
+			if (!images) return true;
 
-			if (images[keyToDelete]) {
-			    delete images[keyToDelete];
-			    await database.write(StorageKeys.IMAGES, images);
-            }
+			Object.keys(images).forEach((key) => {
+				if (images[key].uri === imageUrl || key === path) {
+					delete images[key];
+				}
+			});
 
+			await database.write(StorageKeys.IMAGES, images);
 			return true;
 		} catch (error) {
-            console.error("Delete Image Error:", error);
-			throw createImageError(`Failed to delete image: ${error.message}`);
+			throw createImageError(`Delete failed: ${error.message}`);
 		}
 	},
 
-    /**
-     * Clear local cache (Debugging)
-     */
+	/**
+	 * List cached images
+	 */
+	async listAll() {
+		try {
+			const images = await database.read(StorageKeys.IMAGES, {});
+			return Object.values(images || {});
+		} catch {
+			return [];
+		}
+	},
+
+	/**
+	 * Clear cache (debug)
+	 */
 	async clearLocalCache() {
 		await database.write(StorageKeys.IMAGES, {});
-        return true;
-	}
+		return true;
+	},
 };
 
 export { imageService, createImageError };

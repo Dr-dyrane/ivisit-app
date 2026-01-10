@@ -84,7 +84,10 @@ export const notificationDispatcher = {
         // 2. Haptics
         Haptics.notificationAsync(haptic);
 
-        // 3. Push Notification (Future)
-        // sendPushNotification(userToken, title, message);
+        // 3. System Notification (Mimic Push)
+        pushNotificationService.scheduleLocalNotification(title, message, { 
+            requestId: data.id, 
+            type: event 
+        });
     }
 };
