@@ -118,7 +118,7 @@ const ToastProvider = ({ children }) => {
 			return <Pressable onPress={hideToast}>{toast.icon}</Pressable>;
 		}
 
-		const iconProps = { size: 22, color: COLORS.accent };
+		const iconProps = { size: 22, color: STYLE.iconColor }; // Use dynamic icon color
 
 		switch (toast.type) {
 			case "success":
