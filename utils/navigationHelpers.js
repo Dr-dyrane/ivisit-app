@@ -63,6 +63,26 @@ export function navigateToProfile({ router, method = "push" }) {
 	nav(router, method, ROUTES.STACK_PROFILE);
 }
 
+export function navigateToEmergencyContacts({ router, method = "push" }) {
+	nav(router, method, "/(user)/(stacks)/emergency-contacts");
+}
+
+export function navigateToInsurance({ router, method = "push" }) {
+	nav(router, method, "/(user)/(stacks)/insurance");
+}
+
+export function navigateToHelpSupport({ router, method = "push" }) {
+	nav(router, method, "/(user)/(stacks)/help-support");
+}
+
+export function navigateToChangePassword({ router, method = "push" }) {
+	nav(router, method, "/(user)/(stacks)/change-password");
+}
+
+export function navigateToCreatePassword({ router, method = "push" }) {
+	nav(router, method, "/(user)/(stacks)/create-password");
+}
+
 export function navigateToMore({ router, method = "push" }) {
 	nav(router, method, ROUTES.TAB_MORE);
 }

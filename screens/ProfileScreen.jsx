@@ -33,6 +33,12 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 
 import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
 import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
+import {
+	navigateToEmergencyContacts,
+	navigateToMedicalProfile,
+	navigateToChangePassword,
+	navigateToCreatePassword,
+} from "../utils/navigationHelpers";
 
 const ProfileScreen = () => {
 	const router = useRouter();
@@ -478,7 +484,7 @@ const ProfileScreen = () => {
                             }}
                             onPress={() => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                router.push("/(user)/(stacks)/emergency-contacts");
+                                navigateToEmergencyContacts({ router });
                             }}
                         >
                             <View
@@ -548,7 +554,7 @@ const ProfileScreen = () => {
                             }}
                             onPress={() => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                router.push("/(user)/(stacks)/emergency-contacts");
+                                navigateToEmergencyContacts({ router });
                             }}
                         >
                             <View
@@ -713,7 +719,7 @@ const ProfileScreen = () => {
 							}}
 							onPress={() => {
 								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-								router.push("/(user)/(stacks)/medical-profile");
+								navigateToMedicalProfile({ router });
 							}}
 						>
 							<Ionicons name="document-text" size={20} color="#FFFFFF" />
@@ -740,11 +746,11 @@ const ProfileScreen = () => {
 					<Pressable
 						onPress={() => {
 							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							router.push(
-								user?.hasPassword
-									? "/(user)/(stacks)/change-password"
-									: "/(user)/(stacks)/create-password"
-							);
+							if (user?.hasPassword) {
+								navigateToChangePassword({ router });
+							} else {
+								navigateToCreatePassword({ router });
+							}
 						}}
 						style={{
 							backgroundColor: colors.card,

@@ -23,6 +23,15 @@ import { COLORS } from "../constants/colors";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
+import {
+	navigateToEmergencyContacts,
+	navigateToHelpSupport,
+	navigateToInsurance,
+	navigateToMedicalProfile,
+	navigateToNotifications,
+	navigateToProfile,
+	navigateToSettings,
+} from "../utils/navigationHelpers";
 
 const MoreScreen = () => {
 	const router = useRouter();
@@ -136,19 +145,19 @@ const MoreScreen = () => {
 			title: "Medical Profile",
 			icon: "fitness-outline",
 			description: "Blood type, allergies, conditions",
-			action: () => router.push("/(user)/(stacks)/medical-profile"),
+			action: () => navigateToMedicalProfile({ router }),
 		},
 		{
 			title: "Emergency Contacts",
 			icon: "people-outline",
 			description: "Family & emergency responders",
-			action: () => router.push("/(user)/(stacks)/emergency-contacts"),
+			action: () => navigateToEmergencyContacts({ router }),
 		},
 		{
 			title: "Insurance",
 			icon: "shield-checkmark-outline",
 			description: "Coverage & claims",
-			action: () => router.push("/(user)/(stacks)/insurance"),
+			action: () => navigateToInsurance({ router }),
 		},
 	];
 
@@ -157,19 +166,19 @@ const MoreScreen = () => {
 			title: "Notifications",
 			icon: "notifications-outline",
 			description: "Alerts & reminders",
-			action: () => router.push("/(user)/(stacks)/notifications"),
+			action: () => navigateToNotifications({ router }),
 		},
 		{
 			title: "Settings",
 			icon: "settings-outline",
 			description: "App preferences",
-			action: () => router.push("/(user)/(stacks)/settings"),
+			action: () => navigateToSettings({ router }),
 		},
 		{
 			title: "Help & Support",
 			icon: "help-circle-outline",
 			description: "FAQs & contact us",
-			action: () => router.push("/(user)/(stacks)/help-support"),
+			action: () => navigateToHelpSupport({ router }),
 		},
 	];
 
@@ -195,7 +204,7 @@ const MoreScreen = () => {
 					<TouchableOpacity
 						onPress={() => {
 							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-							router.push("/(user)/(stacks)/profile");
+							navigateToProfile({ router });
 						}}
 						style={{
 							flexDirection: "row",
