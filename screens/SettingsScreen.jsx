@@ -23,8 +23,6 @@ import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import { useAuth } from "../contexts/AuthContext";
 import { ThemeMode } from "../contexts/ThemeContext";
 import { usePreferences } from "../contexts/PreferencesContext";
-import { seederService } from "../services/seederService";
-import { Alert } from "react-native";
 
 export default function SettingsScreen() {
 	const router = useRouter();
@@ -88,27 +86,6 @@ export default function SettingsScreen() {
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
 	const topPadding = STACK_TOP_PADDING;
-
-	const handleSeedData = useCallback(async () => {
-		try {
-			Alert.alert(
-				"Seed Demo Data",
-				"This will populate your account with sample visits and notifications. Continue?",
-				[
-					{ text: "Cancel", style: "cancel" },
-					{
-						text: "Seed",
-						onPress: async () => {
-							await seederService.seedAll();
-							Alert.alert("Success", "Data seeded successfully! Pull down to refresh your visits.");
-						},
-					},
-				]
-			);
-		} catch (error) {
-			Alert.alert("Error", error.message);
-		}
-	}, []);
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
@@ -312,26 +289,7 @@ export default function SettingsScreen() {
 					<Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
 				</Pressable>
 
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-						Developer Tools
-					</Text>
-					<Pressable
-						onPress={handleSeedData}
-						style={({ pressed }) => [
-							styles.toggleRow,
-							{ opacity: pressed ? 0.92 : 1 },
-						]}
-					>
-						<View style={styles.toggleLeft}>
-							<Ionicons name="cloud-upload" size={18} color={COLORS.brandPrimary} />
-							<Text style={[styles.toggleTitle, { color: colors.text }]}>
-								Seed Demo Data
-							</Text>
-						</View>
-						<Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-					</Pressable>
-				</View>
+
 			</ScrollView>
 		</LinearGradient>
 	);
