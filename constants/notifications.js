@@ -66,3 +66,33 @@ export const getRelativeTime = (timestamp) => {
   if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
   return date.toLocaleDateString();
 };
+
+export const HAPTIC_PATTERNS = {
+  [NOTIFICATION_PRIORITY.URGENT]: "heavy_triple",
+  [NOTIFICATION_PRIORITY.HIGH]: "warning",
+  [NOTIFICATION_PRIORITY.NORMAL]: "success",
+  [NOTIFICATION_PRIORITY.LOW]: "none",
+};
+
+export const SOUND_CONFIG = {
+  [NOTIFICATION_PRIORITY.URGENT]: {
+    enabled: true,
+    file: "notification-urgent.mp3",
+    volume: 1.0,
+  },
+  [NOTIFICATION_PRIORITY.HIGH]: {
+    enabled: true,
+    file: "notification-high.mp3",
+    volume: 0.8,
+  },
+  [NOTIFICATION_PRIORITY.NORMAL]: {
+    enabled: false,
+    file: null,
+    volume: 0.0,
+  },
+  [NOTIFICATION_PRIORITY.LOW]: {
+    enabled: false,
+    file: null,
+    volume: 0.0,
+  },
+};
