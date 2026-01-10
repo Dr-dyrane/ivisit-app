@@ -476,4 +476,24 @@ const styles = StyleSheet.create({
 		fontSize: 15,
 		fontWeight: "600",
 	},
+	safetySection: {
+		marginBottom: 24,
+	},
+	safetyRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingVertical: 12,
+	},
+	safetyTextContainer: {
+		flex: 1,
+		marginHorizontal: 16,
+	},
+	safetyLabel: {
+		fontSize: 16,
+		fontWeight: "600",
+	},
+	safetySublabel: {
+		fontSize: 13,
+		marginTop: 2,
+	},
 });
