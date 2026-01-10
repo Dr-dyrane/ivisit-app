@@ -834,8 +834,25 @@ const FullScreenEmergencyMap = forwardRef(
 							tracksViewChanges={false}
 							zIndex={200}
 						>
-							<View style={styles.ambulanceMarker}>
-								<FontAwesome5 name="ambulance" size={16} color="#FFFFFF" />
+							<View style={{
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.3,
+                                shadowRadius: 3,
+                            }}>
+								<Ionicons name="navigate-circle" size={42} color={COLORS.brandPrimary} />
+                                <View style={{
+                                    position: "absolute",
+                                    top: 10,
+                                    left: 10,
+                                    width: 22,
+                                    height: 22,
+                                    borderRadius: 11,
+                                    backgroundColor: "#FFFFFF",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    zIndex: -1
+                                }} />
 							</View>
 						</Marker>
 					)}
@@ -848,7 +865,8 @@ const FullScreenEmergencyMap = forwardRef(
 								key={hospital.id}
 								coordinate={hospital.coordinates}
 								onPress={() => handleHospitalPress(hospital)}
-								anchor={{ x: 0.5, y: 0.5 }}
+								anchor={{ x: 0.5, y: 1 }} // Bottom anchor for pin style
+                                centerOffset={{ x: 0, y: -16 }}
 								tracksViewChanges={isSelected}
 								zIndex={isSelected ? 100 : 1}
 							>
@@ -859,11 +877,35 @@ const FullScreenEmergencyMap = forwardRef(
 											isSelected && styles.hospitalMarkerSelected,
 										]}
 									>
+                                        {/* Pin Shape */}
 										<Ionicons
-											name="add"
-											size={isSelected ? 14 : 10}
-											color={isSelected ? "#FFFFFF" : COLORS.brandPrimary}
+											name="location"
+											size={isSelected ? 42 : 32}
+											color={isSelected ? COLORS.brandPrimary : "#EF4444"} // Red for unselected hospitals, Brand for selected
+                                            style={{
+                                                shadowColor: "#000",
+                                                shadowOffset: { width: 0, height: 2 },
+                                                shadowOpacity: 0.25,
+                                                shadowRadius: 4,
+                                            }}
 										/>
+                                        {/* White Cross Overlay */}
+                                        <View style={{
+                                            position: "absolute",
+                                            top: isSelected ? 8 : 6,
+                                            width: isSelected ? 16 : 12,
+                                            height: isSelected ? 16 : 12,
+                                            borderRadius: isSelected ? 8 : 6,
+                                            backgroundColor: "#FFFFFF",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                        }}>
+                                            <Ionicons 
+                                                name="medical" 
+                                                size={isSelected ? 10 : 8} 
+                                                color={isSelected ? COLORS.brandPrimary : "#EF4444"} 
+                                            />
+                                        </View>
 									</View>
 								</PulsingMarker>
 							</Marker>
@@ -982,30 +1024,11 @@ const styles = StyleSheet.create({
 		right: 0,
 	},
 	hospitalMarker: {
-		width: 24,
-		height: 24,
-		borderRadius: 12,
-		backgroundColor: "#FFFFFF",
-		borderWidth: 2.5,
-		borderColor: COLORS.brandPrimary,
-		justifyContent: "center",
 		alignItems: "center",
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.2,
-		shadowRadius: 4,
-		elevation: 4,
+		justifyContent: "center",
 	},
 	hospitalMarkerSelected: {
-		width: 32,
-		height: 32,
-		borderRadius: 16,
-		backgroundColor: COLORS.brandPrimary,
-		borderColor: "#FFFFFF",
-		borderWidth: 3,
-		shadowOpacity: 0.35,
-		shadowRadius: 6,
-		elevation: 6,
+        transform: [{ scale: 1.1 }],
 	},
 	controlsContainer: {
 		position: "absolute",
