@@ -4,8 +4,10 @@ import { ThemeProvider } from "../contexts/ThemeContext";
 import { PreferencesProvider } from "../contexts/PreferencesContext";
 import { TabBarVisibilityProvider } from "../contexts/TabBarVisibilityContext";
 import { ScrollAwareHeaderProvider } from "../contexts/ScrollAwareHeaderContext";
+import { HeaderStateProvider } from "../contexts/HeaderStateContext";
 import { EmergencyProvider } from "../contexts/EmergencyContext";
 import { NotificationsProvider } from "../contexts/NotificationsContext";
+import { VisitsProvider } from "../contexts/VisitsContext";
 import ToastProvider from "../contexts/ToastContext";
 
 /**
@@ -26,11 +28,15 @@ export const AppProviders = ({ children }) => {
 				<PreferencesProvider>
 					<TabBarVisibilityProvider>
 						<ScrollAwareHeaderProvider>
-							<NotificationsProvider>
-								<EmergencyProvider>
-									<ToastProvider>{children}</ToastProvider>
-								</EmergencyProvider>
-							</NotificationsProvider>
+							<HeaderStateProvider>
+								<NotificationsProvider>
+									<VisitsProvider>
+										<EmergencyProvider>
+											<ToastProvider>{children}</ToastProvider>
+										</EmergencyProvider>
+									</VisitsProvider>
+								</NotificationsProvider>
+							</HeaderStateProvider>
 						</ScrollAwareHeaderProvider>
 					</TabBarVisibilityProvider>
 				</PreferencesProvider>
