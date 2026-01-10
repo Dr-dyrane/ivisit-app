@@ -30,6 +30,10 @@ import { useMapRoute } from "../../hooks/emergency/useMapRoute";
 import { useAmbulanceAnimation } from "../../hooks/emergency/useAmbulanceAnimation";
 import { isValidCoordinate, calculateDistance } from "../../utils/mapUtils";
 
+const DEFAULT_APP_LOAD_DELTAS = { latitudeDelta: 0.04, longitudeDelta: 0.04 };
+const BASELINE_ZOOM_IN_FACTOR = 0.92;
+const ROUTE_ZOOM_FACTOR = 0.84;
+
 const FullScreenEmergencyMap = forwardRef(
 	(
 		{
@@ -55,6 +59,9 @@ const FullScreenEmergencyMap = forwardRef(
 		const insets = useSafeAreaInsets();
 		const mapRef = useRef(null);
 		const hasCenteredOnUser = useRef(false);
+		const appLoadRegionDeltasRef = useRef(DEFAULT_APP_LOAD_DELTAS);
+		const hasComputedBaselineZoomRef = useRef(false);
+		const hasAppliedBaselineZoomRef = useRef(false);
 		const lastProgrammaticMoveAtRef = useRef(0);
 		const lastUserPanAtRef = useRef(0);
 		const lastAutoRecoverAtRef = useRef(0);
@@ -76,6 +83,8 @@ const FullScreenEmergencyMap = forwardRef(
 
 		const hospitals =
 			propHospitals && propHospitals.length > 0 ? propHospitals : nearbyHospitals;
+		const hospitalsForBaseline =
+			propHospitals && propHospitals.length > 0 ? propHospitals : dbHospitals;
 
 		const selectedHospital =
 			selectedHospitalId && hospitals?.length
@@ -109,7 +118,15 @@ const FullScreenEmergencyMap = forwardRef(
 		}, []);
 
 		const scheduleCenterInVisibleArea = useCallback(
-			(points, { topPadding, bottomPadding: bottomPad, delayMs = 520 } = {}) => {
+			(
+				points,
+				{
+					topPadding,
+					bottomPadding: bottomPad,
+					delayMs = 520,
+					zoomFactor = 1,
+				} = {}
+			) => {
 				if (!mapRef.current) return;
 				if (!Array.isArray(points) || points.length === 0) return;
 
@@ -117,8 +134,6 @@ const FullScreenEmergencyMap = forwardRef(
 					clearTimeout(pendingCenterTimeoutRef.current);
 					pendingCenterTimeoutRef.current = null;
 				}
-
-				// Bounding center (approx "circle center") of the content we care about.
 				let minLat = points[0]?.latitude;
 				let maxLat = points[0]?.latitude;
 				let minLng = points[0]?.longitude;
@@ -147,7 +162,6 @@ const FullScreenEmergencyMap = forwardRef(
 						if (!Number.isFinite(latSpan) || latSpan <= 0) return;
 						if (!Number.isFinite(lngSpan) || lngSpan <= 0) return;
 
-						// Desired pixel center: midpoint of the visible area above the sheet.
 						const topY = Math.max(0, Number.isFinite(topPadding) ? topPadding : 0);
 						const bottomY =
 							screenHeight - Math.max(0, Number.isFinite(bottomPad) ? bottomPad : 0);
@@ -155,29 +169,27 @@ const FullScreenEmergencyMap = forwardRef(
 						const screenCenterY = screenHeight / 2;
 						const pixelDeltaY = desiredCenterY - screenCenterY;
 
-						// Approx conversion: visible latitude span corresponds to screenHeight.
 						const latPerPx = latSpan / screenHeight;
 						const latShift = latPerPx * pixelDeltaY;
-
-						// Also center horizontally (handles asymmetric situations).
-						const centerLng = (northEast.longitude + southWest.longitude) / 2;
-
-						// IMPORTANT: increasing latitude moves content downward on the screen.
 						const targetCenterLat = contentCenterLat + latShift;
-						const targetCenterLng = contentCenterLng + (centerLng - contentCenterLng);
+						const targetCenterLng = contentCenterLng;
+
+						const safeZoomFactor =
+							Number.isFinite(zoomFactor) && zoomFactor > 0 ? zoomFactor : 1;
+						const targetLatDelta = latSpan * safeZoomFactor;
+						const targetLngDelta = lngSpan * safeZoomFactor;
 
 						lastProgrammaticMoveAtRef.current = Date.now();
-						mapRef.current.animateCamera(
+						mapRef.current.animateToRegion(
 							{
-								center: {
-									latitude: targetCenterLat,
-									longitude: targetCenterLng,
-								},
+								latitude: targetCenterLat,
+								longitude: targetCenterLng,
+								latitudeDelta: Math.max(0.0005, targetLatDelta),
+								longitudeDelta: Math.max(0.0005, targetLngDelta),
 							},
-							{ duration: 280 }
+							280
 						);
 					} catch (e) {
-						// ignore
 					} finally {
 						pendingCenterTimeoutRef.current = null;
 					}
@@ -185,6 +197,83 @@ const FullScreenEmergencyMap = forwardRef(
 			},
 			[screenHeight]
 		);
+
+		const computeBaselineDeltas = useCallback((location, hospitalList) => {
+			if (!isValidCoordinate(location)) return null;
+			if (!Array.isArray(hospitalList) || hospitalList.length === 0) return null;
+
+			const origin = { latitude: location.latitude, longitude: location.longitude };
+			const valid = hospitalList
+				.filter((h) => isValidCoordinate(h?.coordinates))
+				.map((h) => ({
+					h,
+					d: calculateDistance(origin, h.coordinates),
+				}))
+				.sort((a, b) => a.d - b.d)
+				.slice(0, 6)
+				.map((x) => x.h.coordinates);
+
+			const points = [origin, ...valid];
+			let minLat = points[0].latitude;
+			let maxLat = points[0].latitude;
+			let minLng = points[0].longitude;
+			let maxLng = points[0].longitude;
+			for (let i = 1; i < points.length; i++) {
+				const p = points[i];
+				minLat = Math.min(minLat, p.latitude);
+				maxLat = Math.max(maxLat, p.latitude);
+				minLng = Math.min(minLng, p.longitude);
+				maxLng = Math.max(maxLng, p.longitude);
+			}
+
+			const latRange = Math.abs(maxLat - minLat);
+			const lngRange = Math.abs(maxLng - minLng);
+			const latitudeDelta = Math.max(0.035, latRange * 1.9);
+			const longitudeDelta = Math.max(0.035, lngRange * 1.9);
+
+			const latitudeDeltaOut = Math.max(
+				0.02,
+				Math.min(0.085, latitudeDelta) * BASELINE_ZOOM_IN_FACTOR
+			);
+			const longitudeDeltaOut = Math.max(
+				0.02,
+				Math.min(0.085, longitudeDelta) * BASELINE_ZOOM_IN_FACTOR
+			);
+			return { latitudeDelta: latitudeDeltaOut, longitudeDelta: longitudeDeltaOut };
+		}, []);
+
+		useEffect(() => {
+			if (hasComputedBaselineZoomRef.current) return;
+			if (!isValidCoordinate(userLocation)) return;
+			if (!Array.isArray(hospitalsForBaseline) || hospitalsForBaseline.length === 0) return;
+
+			const deltas = computeBaselineDeltas(userLocation, hospitalsForBaseline);
+			if (!deltas) return;
+			hasComputedBaselineZoomRef.current = true;
+			appLoadRegionDeltasRef.current = deltas;
+		}, [computeBaselineDeltas, hospitalsForBaseline, userLocation]);
+
+		useEffect(() => {
+			if (!hasCenteredOnUser.current) return;
+			if (!hasComputedBaselineZoomRef.current) return;
+			if (hasAppliedBaselineZoomRef.current) return;
+			if (!mapRef.current || !isValidCoordinate(userLocation)) return;
+			if (selectedHospitalId) return;
+			if (routeCoordinates.length > 0) return;
+
+			hasAppliedBaselineZoomRef.current = true;
+			const base = appLoadRegionDeltasRef.current;
+			lastProgrammaticMoveAtRef.current = Date.now();
+			mapRef.current.animateToRegion(
+				{
+					latitude: userLocation.latitude,
+					longitude: userLocation.longitude,
+					latitudeDelta: base?.latitudeDelta ?? DEFAULT_APP_LOAD_DELTAS.latitudeDelta,
+					longitudeDelta: base?.longitudeDelta ?? DEFAULT_APP_LOAD_DELTAS.longitudeDelta,
+				},
+				420
+			);
+		}, [routeCoordinates.length, selectedHospitalId, userLocation]);
 
 		const effectiveAmbulanceEtaSeconds =
 			Number.isFinite(ambulanceTripEtaSeconds) && ambulanceTripEtaSeconds > 0
@@ -297,6 +386,7 @@ const FullScreenEmergencyMap = forwardRef(
 					scheduleCenterInVisibleArea(routeCoordinates, {
 						topPadding: padding.top,
 						bottomPadding: padding.bottom,
+						zoomFactor: ROUTE_ZOOM_FACTOR,
 					});
 				}
 			}
@@ -322,42 +412,37 @@ const FullScreenEmergencyMap = forwardRef(
 				}
 
 				if (points.length < 2) {
+					const base = appLoadRegionDeltasRef.current;
 					lastProgrammaticMoveAtRef.current = Date.now();
 					mapRef.current.animateToRegion(
 						{
 							latitude: hospital.coordinates.latitude,
 							longitude: hospital.coordinates.longitude,
-							latitudeDelta: 0.03,
-							longitudeDelta: 0.03,
+							latitudeDelta: base?.latitudeDelta ?? 0.04,
+							longitudeDelta: base?.longitudeDelta ?? 0.04,
 						},
 						550
 					);
 					return;
 				}
-
-				// Determine if the line between the two points is primarily vertical or horizontal.
-				// Vertical routes need more top/bottom padding. Horizontal routes need more left/right.
-				const latRange = Math.abs(points[0].latitude - points[1].latitude);
-				const lngRange = Math.abs(points[0].longitude - points[1].longitude);
-				const isVertical = latRange >= lngRange;
-
-				const extraTop = isVertical ? 130 : 95;
-				const extraSide = isVertical ? 40 : 70;
-				const extraBottom = isVertical ? 90 : 55;
-
+				const base = appLoadRegionDeltasRef.current;
+				const centerLat = (points[0].latitude + points[1].latitude) / 2;
+				const centerLng = (points[0].longitude + points[1].longitude) / 2;
 				lastProgrammaticMoveAtRef.current = Date.now();
-				mapRef.current.fitToCoordinates(points, {
-					edgePadding: {
-						top: Math.max(0, targetTopPadding) + extraTop,
-						right: extraSide,
-						bottom: Math.max(0, targetBottomPadding) + extraBottom,
-						left: extraSide,
+				mapRef.current.animateToRegion(
+					{
+						latitude: centerLat,
+						longitude: centerLng,
+						latitudeDelta: base?.latitudeDelta ?? 0.04,
+						longitudeDelta: base?.longitudeDelta ?? 0.04,
 					},
-					animated: true,
-				});
+					450
+				);
 				scheduleCenterInVisibleArea(points, {
 					topPadding: targetTopPadding,
 					bottomPadding: targetBottomPadding,
+					delayMs: 560,
+					zoomFactor: 1,
 				});
 			},
 			fitToAllHospitals: () => {
@@ -407,21 +492,22 @@ const FullScreenEmergencyMap = forwardRef(
 				!hasCenteredOnUser.current
 			) {
 				hasCenteredOnUser.current = true;
+				hasAppliedBaselineZoomRef.current = false;
 				const timer = setTimeout(() => {
 					lastProgrammaticMoveAtRef.current = Date.now();
 					mapRef.current.animateToRegion(
 						{
 							latitude: userLocation.latitude,
 							longitude: userLocation.longitude,
-							latitudeDelta: 0.04,
-							longitudeDelta: 0.04,
+							latitudeDelta: DEFAULT_APP_LOAD_DELTAS.latitudeDelta,
+							longitudeDelta: DEFAULT_APP_LOAD_DELTAS.longitudeDelta,
 						},
 						550
 					);
 				}, 300);
 				return () => clearTimeout(timer);
 			}
-		}, [isLoadingLocation, locationPermission, userLocation]);
+		}, [computeBaselineDeltas, hospitalsForBaseline, isLoadingLocation, locationPermission, userLocation]);
 
 		const mapStyle = isDarkMode ? darkMapStyle : lightMapStyle;
 
