@@ -118,10 +118,10 @@ const useLogin = (options = {}) => {
 				}
 
 				// Check if user exists for auto-login
-				if (result.data?.isExistingUser && result.data?.user) {
+				if (result.data?.isExistingUser) {
 					// Update AuthContext with user data
 					const loginSuccess = await authLogin({
-						...result.data.user,
+						...result.data, // Spread result.data (the user) directly
 						token: result.data.token,
 					});
 

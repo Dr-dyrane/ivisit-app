@@ -10,7 +10,7 @@ import { COLORS } from "../../constants/colors";
  * 6-digit OTP input with auto-focus and resend functionality
  * Used in both registration and login flows
  */
-export default function OTPInputCard({ method, contact, onVerified }) {
+export default function OTPInputCard({ method, contact, onVerified, onResend }) {
 	const { isDarkMode } = useTheme();
 	const [otp, setOtp] = useState(["", "", "", "", "", ""]);
 	const [timer, setTimer] = useState(60);
@@ -112,8 +112,8 @@ export default function OTPInputCard({ method, contact, onVerified }) {
 		setOtp(["", "", "", "", "", ""]);
 		inputRefs.current[0]?.focus();
         // Propagate resend action to parent if needed, or re-trigger request in parent
-        if (props.onResend) {
-             props.onResend();
+        if (onResend) {
+             onResend();
         }
 	};
 

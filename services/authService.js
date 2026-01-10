@@ -563,8 +563,19 @@ const authService = {
         // Ensure profile exists or fetch it
         // If it's a new user via OTP, trigger might handle creation, or we might have partial data
         // Check if existing user (by profile)
-        const profile = await this.getUserProfile(data.user.id);
-        const isExistingUser = !!profile.username; // Heuristic: if username exists, they finished signup
+        let profile = await this.getUserProfile(data.user.id);
+
+        // RETRY MECHANISM: If profile is empty (trigger might be slow), wait and retry
+        if (!profile.createdAt) {
+             console.log("Profile missing, waiting for trigger...");
+             await new Promise(r => setTimeout(r, 1000)); // Wait 1s
+             profile = await this.getUserProfile(data.user.id);
+        }
+
+        // HEURISTIC UPDATE:
+        // A user is "Existing" (ready for login) if they have a username.
+        // If they only have an ID/Email/Phone (from trigger), they are "New" (need registration).
+        const isExistingUser = !!profile.username; 
 
         const user = this._formatUser(data.user, data.session?.access_token, profile);
 
