@@ -152,8 +152,12 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			);
 
 			if (!otpResult.success) {
+				const errorMessage = otpResult.error?.includes("|")
+                    ? otpResult.error.split("|")[1]
+                    : otpResult.error;
+                
 				setRegistrationError(otpResult.error);
-				showToast(otpResult.error, "error");
+				showToast(errorMessage || "Failed to send code", "error");
 				stopLoading();
 				return;
 			}
@@ -176,7 +180,8 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			);
 		} catch (err) {
 			const errorMessage =
-				err.message?.split("|")[1] || "Failed to process. Please try again.";
+				(err.message?.includes("|") ? err.message.split("|")[1] : err.message) ||
+                "Failed to process. Please try again.";
 			setRegistrationError(errorMessage);
 			showToast(errorMessage, "error");
 		} finally {

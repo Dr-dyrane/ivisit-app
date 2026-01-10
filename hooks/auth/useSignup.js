@@ -200,9 +200,10 @@ const useSignUp = (options = {}) => {
 				};
 
 				const updateResult = await authService.updateUser(profileData);
-				if (!updateResult.data) { // authService.updateUser returns { data: ... } on success
-                    // If it throws it goes to catch, but if it returns generic error structure?
-                    // authService methods throw on error usually.
+                // authService.updateUser throws on error, so we can assume success if we reach here.
+                // We check result.data just in case the service signature changes.
+				if (!updateResult?.data) { 
+                    console.warn("Profile update returned no data");
 				}
 
 				// 2. Set Password if provided

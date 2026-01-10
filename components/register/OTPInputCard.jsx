@@ -10,7 +10,7 @@ import { COLORS } from "../../constants/colors";
  * 6-digit OTP input with auto-focus and resend functionality
  * Used in both registration and login flows
  */
-export default function OTPInputCard({ method, contact, onVerified, onResend }) {
+export default function OTPInputCard({ method, contact, onVerified, onResend, loading }) {
 	const { isDarkMode } = useTheme();
 	const [otp, setOtp] = useState(["", "", "", "", "", ""]);
 	const [timer, setTimer] = useState(60);
@@ -94,6 +94,8 @@ export default function OTPInputCard({ method, contact, onVerified, onResend }) 
 	};
 
 	const handleVerify = (otpString) => {
+        if (loading) return; // Prevent double submission
+
 		if (otpString.length !== 6) {
 			triggerShake();
 			return;
@@ -104,7 +106,7 @@ export default function OTPInputCard({ method, contact, onVerified, onResend }) 
 	};
 
 	const handleResend = () => {
-		if (!canResend) return;
+		if (!canResend || loading) return;
 
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		setTimer(60);
@@ -209,10 +211,10 @@ export default function OTPInputCard({ method, contact, onVerified, onResend }) 
 							useNativeDriver: true,
 						}).start();
 					}}
-					disabled={!isComplete}
+					disabled={!isComplete || loading}
 					className="h-16 rounded-2xl items-center justify-center"
 					style={{
-						backgroundColor: isComplete
+						backgroundColor: isComplete && !loading
 							? COLORS.brandPrimary
 							: isDarkMode
 							? COLORS.bgDarkAlt
@@ -221,9 +223,9 @@ export default function OTPInputCard({ method, contact, onVerified, onResend }) 
 				>
 					<Text
 						className="text-base font-black tracking-[2px]"
-						style={{ color: isComplete ? COLORS.bgLight : COLORS.textMuted }}
+						style={{ color: isComplete && !loading ? COLORS.bgLight : COLORS.textMuted }}
 					>
-						VERIFY
+						{loading ? "VERIFYING..." : "VERIFY"}
 					</Text>
 				</Pressable>
 			</Animated.View>
