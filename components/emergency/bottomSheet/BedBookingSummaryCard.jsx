@@ -12,8 +12,13 @@ export const BedBookingSummaryCard = ({
 	onCompleteBedBooking,
 	isDarkMode,
 	isCollapsed,
+	isExpanded,
+	sheetPhase,
 	nowMs = Date.now(),
 }) => {
+	const collapsed = sheetPhase ? sheetPhase === "collapsed" : !!isCollapsed;
+	const expanded = sheetPhase ? sheetPhase === "full" : !!isExpanded;
+
 	const bookingHospital =
 		activeBedBooking?.hospitalId && Array.isArray(allHospitals)
 			? allHospitals.find((h) => h?.id === activeBedBooking.hospitalId) ?? null
@@ -97,40 +102,88 @@ export const BedBookingSummaryCard = ({
 				</View>
 			</View>
 
-			{/* Progress Bar */}
-			<View style={[styles.progressTrack, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9" }]}>
-				<View 
-					style={[
-						styles.progressBar, 
-						{ 
-							width: `${Math.max(5, (bedProgress ?? 0) * 100)}%`,
-							backgroundColor: COLORS.brandPrimary 
-						}
-					]} 
-				/>
-			</View>
+			{!collapsed && (
+				<View>
+					{/* Progress Bar */}
+					<View style={[styles.progressTrack, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9" }]}>
+						<View 
+							style={[
+								styles.progressBar, 
+								{ 
+									width: `${Math.max(5, (bedProgress ?? 0) * 100)}%`,
+									backgroundColor: COLORS.brandPrimary 
+								}
+							]} 
+						/>
+					</View>
 
-			{/* Bed Info Row */}
-			<View style={styles.driverRow}>
-				<View style={[styles.driverAvatar, { backgroundColor: isDarkMode ? "#252D3B" : "#E2E8F0" }]}>
-					<Ionicons name="bed" size={24} color={isDarkMode ? "#94A3B8" : "#64748B"} />
+					{/* Bed Info Row */}
+					<View style={styles.driverRow}>
+						<View style={[styles.driverAvatar, { backgroundColor: isDarkMode ? "#252D3B" : "#E2E8F0" }]}>
+							<Ionicons name="bed" size={24} color={isDarkMode ? "#94A3B8" : "#64748B"} />
+						</View>
+						
+						<View style={styles.driverInfo}>
+							<Text style={[styles.driverName, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
+								{bedType}
+							</Text>
+							<View style={styles.ratingRow}>
+								<Text style={[styles.ratingText, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
+									{specialty} • {bedCount} {bedCount === "1" ? "bed" : "beds"}
+								</Text>
+							</View>
+						</View>
+
+						<View style={styles.plateContainer}>
+							<Text style={styles.plateText}>{bedNumber}</Text>
+						</View>
+					</View>
 				</View>
-				
-				<View style={styles.driverInfo}>
-					<Text style={[styles.driverName, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-						{bedType}
-					</Text>
-					<View style={styles.ratingRow}>
-						<Text style={[styles.ratingText, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
-							{specialty} • {bedCount} {bedCount === "1" ? "bed" : "beds"}
+			)}
+
+			{expanded && (
+				<View style={{ marginBottom: 16 }}>
+					<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+						<Ionicons name="business-outline" size={18} color={COLORS.brandPrimary} />
+						<Text
+							style={{
+								marginLeft: 10,
+								fontSize: 14,
+								fontWeight: "600",
+								color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+							}}
+						>
+							{hospitalName}
+						</Text>
+					</View>
+					<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+						<Ionicons name="clipboard-outline" size={18} color={COLORS.brandPrimary} />
+						<Text
+							style={{
+								marginLeft: 10,
+								fontSize: 13,
+								fontWeight: "500",
+								color: isDarkMode ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.75)",
+							}}
+						>
+							Reservation: {bedCount} {bedCount === "1" ? "bed" : "beds"} • {bedType}
+						</Text>
+					</View>
+					<View style={{ flexDirection: "row", alignItems: "center" }}>
+						<Ionicons name="medkit-outline" size={18} color={COLORS.brandPrimary} />
+						<Text
+							style={{
+								marginLeft: 10,
+								fontSize: 13,
+								fontWeight: "500",
+								color: isDarkMode ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.75)",
+							}}
+						>
+							Specialty: {specialty}
 						</Text>
 					</View>
 				</View>
-
-				<View style={styles.plateContainer}>
-					<Text style={styles.plateText}>{bedNumber}</Text>
-				</View>
-			</View>
+			)}
 
 			{/* Actions */}
 			<View style={styles.actionsRow}>

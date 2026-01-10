@@ -3,8 +3,444 @@ import { useCallback, useMemo } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { COLORS } from "../../../constants/colors";
-import { AMBULANCE_STATUSES } from "../../../constants/emergency";
+import { AMBULANCE_STATUSES, AMBULANCE_TYPES } from "../../../constants/emergency";
 import { useTripProgress } from "../../../hooks/emergency/useTripProgress";
+import HospitalCard from "../HospitalCard";
+
+const TripSummaryCollapsed = ({
+	isDarkMode,
+	statusLabel,
+	etaText,
+	tripHospital,
+	callSign,
+}) => {
+	return (
+		<View
+			style={[
+				styles.collapsedContainer,
+				{
+					backgroundColor: isDarkMode ? "#1A2333" : "#FFFFFF",
+					shadowColor: "#000",
+					shadowOffset: { width: 0, height: 4 },
+					shadowOpacity: isDarkMode ? 0.35 : 0.08,
+					shadowRadius: 12,
+					elevation: 5,
+				},
+			]}
+		>
+			<View style={styles.collapsedRow}>
+				<View style={{ flex: 1, paddingRight: 10 }}>
+					<Text
+						style={[
+							styles.statusTitle,
+							{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
+						]}
+						numberOfLines={1}
+					>
+						{statusLabel}
+					</Text>
+					<Text
+						style={[
+							styles.statusSub,
+							{
+								color: isDarkMode
+									? "rgba(255,255,255,0.65)"
+									: "rgba(15,23,42,0.6)",
+							},
+						]}
+						numberOfLines={1}
+					>
+						{tripHospital?.name ?? "Hospital"} • {callSign}
+					</Text>
+				</View>
+				<View style={styles.etaContainer}>
+					<Text style={[styles.etaTime, { color: COLORS.textLight }]}>
+						{etaText}
+					</Text>
+					<Text style={[styles.etaLabel, { color: "rgba(255,255,255,0.8)" }]}>
+						min
+					</Text>
+				</View>
+			</View>
+		</View>
+	);
+};
+
+const TripSummaryHalf = ({
+	isDarkMode,
+	statusLabel,
+	etaText,
+	tripHospital,
+	tripProgress,
+	driverName,
+	rating,
+	vehicle,
+	assigned,
+	callTarget,
+	onCancelAmbulanceTrip,
+}) => {
+	return (
+		<View
+			style={[
+				styles.container,
+				{
+					backgroundColor: isDarkMode ? "#1A2333" : "#FFFFFF",
+					shadowColor: "#000",
+					shadowOffset: { width: 0, height: 4 },
+					shadowOpacity: isDarkMode ? 0.4 : 0.08,
+					shadowRadius: 12,
+					elevation: 5,
+				},
+			]}
+		>
+			{/* Header: Status & Time */}
+			<View style={styles.headerRow}>
+				<View>
+					<Text
+						style={[
+							styles.statusTitle,
+							{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
+						]}
+					>
+						{statusLabel}
+					</Text>
+					<Text
+						style={[
+							styles.statusSub,
+							{
+								color: isDarkMode
+									? "rgba(255,255,255,0.6)"
+									: "rgba(15,23,42,0.6)",
+							},
+						]}
+					>
+						{tripHospital?.name ?? "Hospital"}
+					</Text>
+				</View>
+				<View style={styles.etaContainer}>
+					<Text style={[styles.etaTime, { color: COLORS.textLight }]}>
+						{etaText}
+					</Text>
+					<Text style={[styles.etaLabel, { color: "rgba(255,255,255,0.8)" }]}>
+						min
+					</Text>
+				</View>
+			</View>
+
+			{/* Progress Bar */}
+			<View
+				style={[
+					styles.progressTrack,
+					{ backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9" },
+				]}
+			>
+				<View
+					style={[
+						styles.progressBar,
+						{
+							width: `${Math.max(5, (tripProgress ?? 0) * 100)}%`,
+							backgroundColor: COLORS.brandPrimary,
+						},
+					]}
+				/>
+			</View>
+
+			{/* Driver / Vehicle Info */}
+			<View style={styles.driverRow}>
+				<View
+					style={[
+						styles.driverAvatar,
+						{ backgroundColor: isDarkMode ? "#252D3B" : "#E2E8F0" },
+					]}
+				>
+					<Ionicons
+						name="person"
+						size={20}
+						color={isDarkMode ? "#94A3B8" : "#64748B"}
+					/>
+				</View>
+
+				<View style={styles.driverInfo}>
+					<Text
+						style={[
+							styles.driverName,
+							{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
+						]}
+					>
+						{driverName}
+					</Text>
+					<View style={styles.ratingRow}>
+						<Ionicons name="star" size={12} color="#FBBF24" />
+						<Text
+							style={[
+								styles.ratingText,
+								{
+									color: isDarkMode
+										? "rgba(255,255,255,0.6)"
+										: "rgba(15,23,42,0.6)",
+								},
+							]}
+						>
+							{rating} • {vehicle}
+						</Text>
+					</View>
+				</View>
+
+				<View style={styles.plateContainer}>
+					<Text style={styles.plateText}>
+						{assigned?.vehicleNumber ?? "IVISIT"}
+					</Text>
+				</View>
+			</View>
+
+			{/* Actions */}
+			<View style={styles.actionsRow}>
+				{callTarget && (
+					<Pressable
+						onPress={() => Linking.openURL(callTarget)}
+						style={({ pressed }) => [
+							styles.actionBtn,
+							{
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.1)"
+									: "#F1F5F9",
+								opacity: pressed ? 0.7 : 1,
+							},
+						]}
+					>
+						<Ionicons
+							name="call"
+							size={20}
+							color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+						/>
+					</Pressable>
+				)}
+
+				<Pressable
+					onPress={onCancelAmbulanceTrip}
+					style={({ pressed }) => [
+						styles.cancelBtn,
+						{ opacity: pressed ? 0.7 : 1 },
+					]}
+				>
+					<Text style={styles.cancelText}>Cancel Trip</Text>
+				</Pressable>
+			</View>
+		</View>
+	);
+};
+
+const TripSummaryFull = ({
+	isDarkMode,
+	statusLabel,
+	etaText,
+	tripHospital,
+	tripProgress,
+	driverName,
+	rating,
+	vehicle,
+	assigned,
+	ambulanceType,
+	callTarget,
+	onCancelAmbulanceTrip,
+}) => {
+	return (
+		<View
+			style={[
+				styles.fullContainer,
+				{
+					backgroundColor: isDarkMode ? "#121826" : "#FFFFFF",
+				},
+			]}
+		>
+			<View
+				style={[
+					styles.fullHeader,
+					{ backgroundColor: COLORS.brandPrimary },
+				]}
+			>
+				<View style={{ flex: 1, paddingRight: 12 }}>
+					<Text
+						style={[
+							styles.fullStatusTitle,
+							{ color: "#FFFFFF" },
+						]}
+						numberOfLines={1}
+					>
+						{statusLabel}
+					</Text>
+					<Text
+						style={[
+							styles.fullStatusSub,
+							{ color: "rgba(255,255,255,0.85)" },
+						]}
+						numberOfLines={1}
+					>
+						{tripHospital?.name ?? "Hospital"}
+					</Text>
+				</View>
+				<View style={styles.etaContainer}>
+					<Text style={[styles.etaTime, { color: COLORS.textLight }]}>
+						{etaText}
+					</Text>
+					<Text style={[styles.etaLabel, { color: "rgba(255,255,255,0.8)" }]}>
+						min
+					</Text>
+				</View>
+			</View>
+
+			<View style={styles.fullBody}>
+				<View
+					style={[
+						styles.progressTrack,
+						{ backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9" },
+					]}
+				>
+					<View
+						style={[
+							styles.progressBar,
+							{
+								width: `${Math.max(5, (tripProgress ?? 0) * 100)}%`,
+								backgroundColor: COLORS.brandPrimary,
+							},
+						]}
+					/>
+				</View>
+
+				<View style={styles.driverRow}>
+					<View
+						style={[
+							styles.driverAvatar,
+							{ backgroundColor: isDarkMode ? "#252D3B" : "#E2E8F0" },
+						]}
+					>
+						<Ionicons
+							name="person"
+							size={20}
+							color={isDarkMode ? "#94A3B8" : "#64748B"}
+						/>
+					</View>
+
+					<View style={styles.driverInfo}>
+						<Text
+							style={[
+								styles.driverName,
+								{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
+							]}
+						>
+							{driverName}
+						</Text>
+						<View style={styles.ratingRow}>
+							<Ionicons name="star" size={12} color="#FBBF24" />
+							<Text
+								style={[
+									styles.ratingText,
+									{
+										color: isDarkMode
+											? "rgba(255,255,255,0.6)"
+											: "rgba(15,23,42,0.6)",
+									},
+								]}
+							>
+								{rating} • {vehicle}
+							</Text>
+						</View>
+					</View>
+
+					<View style={styles.plateContainer}>
+						<Text style={styles.plateText}>
+							{assigned?.vehicleNumber ?? "IVISIT"}
+						</Text>
+					</View>
+				</View>
+
+				{tripHospital && (
+					<View style={{ marginBottom: 18 }}>
+						<HospitalCard
+							hospital={tripHospital}
+							isSelected={true}
+							onSelect={undefined}
+							onCall={undefined}
+							mode="emergency"
+						/>
+					</View>
+				)}
+
+				{ambulanceType && (
+					<View style={styles.ambulanceSection}>
+						<View style={styles.ambulanceImageContainer}>
+							<Ionicons
+								name={ambulanceType.icon}
+								size={64}
+								color={COLORS.brandPrimary}
+							/>
+						</View>
+						<View style={styles.ambulanceInfo}>
+							<Text
+								style={[
+									styles.ambulanceTitle,
+									{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
+								]}
+							>
+								{ambulanceType.title}
+							</Text>
+							<Text
+								style={[
+									styles.ambulanceSubtitle,
+									{
+										color: isDarkMode
+											? "rgba(255,255,255,0.7)"
+											: "rgba(15,23,42,0.7)",
+									},
+								]}
+							>
+								{ambulanceType.subtitle}
+							</Text>
+							<Text
+								style={[styles.ambulancePrice, { color: COLORS.brandPrimary }]}
+							>
+								{ambulanceType.price}
+							</Text>
+						</View>
+					</View>
+				)}
+
+				<View style={styles.actionsRow}>
+					{callTarget && (
+						<Pressable
+							onPress={() => Linking.openURL(callTarget)}
+							style={({ pressed }) => [
+								styles.actionBtn,
+								{
+									backgroundColor: isDarkMode
+										? "rgba(255,255,255,0.1)"
+										: "#F1F5F9",
+									opacity: pressed ? 0.7 : 1,
+								},
+							]}
+						>
+							<Ionicons
+								name="call"
+								size={20}
+								color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+							/>
+						</Pressable>
+					)}
+
+					<Pressable
+						onPress={onCancelAmbulanceTrip}
+						style={({ pressed }) => [
+							styles.cancelBtn,
+							{ opacity: pressed ? 0.7 : 1 },
+						]}
+					>
+						<Text style={styles.cancelText}>Cancel Trip</Text>
+					</Pressable>
+				</View>
+			</View>
+		</View>
+	);
+};
 
 export const TripSummaryCard = ({
 	activeAmbulanceTrip,
@@ -13,8 +449,13 @@ export const TripSummaryCard = ({
 	onCompleteAmbulanceTrip,
 	isDarkMode,
 	isCollapsed,
+	isExpanded,
+	sheetPhase,
 	nowMs = Date.now(),
 }) => {
+	const collapsed = sheetPhase ? sheetPhase === "collapsed" : !!isCollapsed;
+	const expanded = sheetPhase ? sheetPhase === "full" : !!isExpanded;
+
 	const assigned = activeAmbulanceTrip?.assignedAmbulance ?? null;
 	const tripHospital =
 		activeAmbulanceTrip?.hospitalId && Array.isArray(allHospitals)
@@ -67,215 +508,66 @@ export const TripSummaryCard = ({
 		return AMBULANCE_TYPES.find(t => t.id === assigned.type) || null;
 	}, [assigned?.type]);
 
+	if (collapsed) {
+		return (
+			<TripSummaryCollapsed
+				isDarkMode={isDarkMode}
+				statusLabel={statusLabel}
+				etaText={etaText}
+				tripHospital={tripHospital}
+				callSign={callSign}
+			/>
+		);
+	}
+
+	if (expanded) {
+		return (
+			<TripSummaryFull
+				isDarkMode={isDarkMode}
+				statusLabel={statusLabel}
+				etaText={etaText}
+				tripHospital={tripHospital}
+				tripProgress={tripProgress}
+				driverName={driverName}
+				rating={rating}
+				vehicle={vehicle}
+				assigned={assigned}
+				ambulanceType={ambulanceType}
+				callTarget={callTarget}
+				onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+				onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
+			/>
+		);
+	}
+
 	return (
-		<View
-			style={[
-				styles.container,
-				{
-					backgroundColor: isDarkMode ? "#1A2333" : "#FFFFFF",
-					shadowColor: "#000",
-					shadowOffset: { width: 0, height: 4 },
-					shadowOpacity: isDarkMode ? 0.4 : 0.08,
-					shadowRadius: 12,
-					elevation: 5,
-				},
-			]}
-		>
-			{/* Header: Status & Time */}
-			<View style={styles.headerRow}>
-				<View>
-					<Text style={[styles.statusTitle, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-						{statusLabel}
-					</Text>
-					<Text style={[styles.statusSub, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
-						{tripHospital?.name ?? "Hospital"}
-					</Text>
-				</View>
-				<View style={styles.etaContainer}>
-					<Text style={[styles.etaTime, { color: COLORS.textLight }]}>
-						{etaText}
-					</Text>
-					<Text style={[styles.etaLabel, { color: "rgba(255,255,255,0.8)" }]}>
-						min
-					</Text>
-				</View>
-			</View>
-
-			{/* Progress Bar */}
-			<View style={[styles.progressTrack, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9" }]}>
-				<View 
-					style={[
-						styles.progressBar, 
-						{ 
-							width: `${Math.max(5, (tripProgress ?? 0) * 100)}%`,
-							backgroundColor: COLORS.brandPrimary 
-						}
-					]} 
-				/>
-			</View>
-
-			{/* Driver / Vehicle Info */}
-			<View style={styles.driverRow}>
-				<View style={[styles.driverAvatar, { backgroundColor: isDarkMode ? "#252D3B" : "#E2E8F0" }]}>
-					<Ionicons name="person" size={20} color={isDarkMode ? "#94A3B8" : "#64748B"} />
-				</View>
-				
-				<View style={styles.driverInfo}>
-					<Text style={[styles.driverName, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-						{driverName}
-					</Text>
-					<View style={styles.ratingRow}>
-						<Ionicons name="star" size={12} color="#FBBF24" />
-						<Text style={[styles.ratingText, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
-							{rating} • {vehicle}
-						</Text>
-					</View>
-				</View>
-
-				<View style={styles.plateContainer}>
-					<Text style={styles.plateText}>{assigned?.vehicleNumber ?? "IVISIT"}</Text>
-				</View>
-			</View>
-
-			{/* Expanded Content */}
-			{!isCollapsed && (
-				<View>
-					{/* Ambulance Type Image & Details */}
-					{ambulanceType && (
-						<View style={styles.ambulanceSection}>
-							<View style={styles.ambulanceImageContainer}>
-								<Ionicons 
-									name={ambulanceType.icon} 
-									size={64} 
-									color={COLORS.brandPrimary} 
-								/>
-							</View>
-							<View style={styles.ambulanceInfo}>
-								<Text style={[styles.ambulanceTitle, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-									{ambulanceType.title}
-								</Text>
-								<Text style={[styles.ambulanceSubtitle, { color: isDarkMode ? "rgba(255,255,255,0.7)" : "rgba(15,23,42,0.7)" }]}>
-									{ambulanceType.subtitle}
-								</Text>
-								<Text style={[styles.ambulancePrice, { color: COLORS.brandPrimary }]}>
-									{ambulanceType.price}
-								</Text>
-							</View>
-						</View>
-					)}
-
-					{/* Full Crew List */}
-					{assigned?.crew && assigned.crew.length > 1 && (
-						<View style={styles.crewSection}>
-							<Text style={[styles.sectionTitle, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-								Medical Team
-							</Text>
-							<View style={styles.crewList}>
-								{assigned.crew.map((member, index) => (
-									<View key={index} style={styles.crewMemberRow}>
-										<Ionicons name="person" size={16} color={isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)"} />
-										<Text style={[styles.crewMember, { color: isDarkMode ? "rgba(255,255,255,0.8)" : "rgba(15,23,42,0.8)" }]}>
-											{member}
-										</Text>
-									</View>
-								))}
-							</View>
-						</View>
-					)}
-
-					{/* Trip Details */}
-					{ambulanceType && (
-						<View style={styles.detailsSection}>
-							<View style={styles.detailRow}>
-								<Ionicons name="cash-outline" size={20} color={COLORS.brandPrimary} />
-								<View style={styles.detailText}>
-									<Text style={[styles.detailLabel, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
-										Estimated Cost
-									</Text>
-									<Text style={[styles.detailValue, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-										{ambulanceType.price}
-									</Text>
-								</View>
-							</View>
-							<View style={styles.detailRow}>
-								<Ionicons name="time-outline" size={20} color={COLORS.brandPrimary} />
-								<View style={styles.detailText}>
-									<Text style={[styles.detailLabel, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
-										Estimated ETA
-									</Text>
-									<Text style={[styles.detailValue, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-										{ambulanceType.eta}
-									</Text>
-								</View>
-							</View>
-						</View>
-					)}
-
-					{/* Safety & Support */}
-					<View style={styles.safetySection}>
-						<Text style={[styles.sectionTitle, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-							Safety & Support
-						</Text>
-						<Pressable style={({ pressed }) => [styles.safetyRow, { opacity: pressed ? 0.7 : 1 }]}>
-							<Ionicons name="shield-checkmark-outline" size={24} color={isDarkMode ? "rgba(255,255,255,0.8)" : "rgba(15,23,42,0.8)"} />
-							<View style={styles.safetyTextContainer}>
-								<Text style={[styles.safetyLabel, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-									Share Trip Status
-								</Text>
-								<Text style={[styles.safetySublabel, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
-									Let family and friends follow your trip.
-								</Text>
-							</View>
-							<Ionicons name="chevron-forward" size={20} color={isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)"} />
-						</Pressable>
-						<Pressable style={({ pressed }) => [styles.safetyRow, { opacity: pressed ? 0.7 : 1 }]}>
-							<Ionicons name="help-buoy-outline" size={24} color={isDarkMode ? "rgba(255,255,255,0.8)" : "rgba(15,23,42,0.8)"} />
-							<View style={styles.safetyTextContainer}>
-								<Text style={[styles.safetyLabel, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-									Emergency Support
-								</Text>
-								<Text style={[styles.safetySublabel, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
-									Get help in case of an emergency.
-								</Text>
-							</View>
-							<Ionicons name="chevron-forward" size={20} color={isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)"} />
-						</Pressable>
-					</View>
-				</View>
-			)}
-
-			{/* Actions */}
-			<View style={styles.actionsRow}>
-				{callTarget && (
-					<Pressable
-						onPress={() => Linking.openURL(callTarget)}
-						style={({ pressed }) => [
-							styles.actionBtn,
-							{ 
-								backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
-								opacity: pressed ? 0.7 : 1
-							}
-						]}
-					>
-						<Ionicons name="call" size={20} color={isDarkMode ? COLORS.textLight : COLORS.textPrimary} />
-					</Pressable>
-				)}
-				
-				<Pressable
-					onPress={onCancelAmbulanceTrip}
-					style={({ pressed }) => [
-						styles.cancelBtn,
-						{ opacity: pressed ? 0.7 : 1 }
-					]}
-				>
-					<Text style={styles.cancelText}>Cancel Trip</Text>
-				</Pressable>
-			</View>
-		</View>
+		<TripSummaryHalf
+			isDarkMode={isDarkMode}
+			statusLabel={statusLabel}
+			etaText={etaText}
+			tripHospital={tripHospital}
+			tripProgress={tripProgress}
+			driverName={driverName}
+			rating={rating}
+			vehicle={vehicle}
+			assigned={assigned}
+			callTarget={callTarget}
+			onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+		/>
 	);
 };
 
 const styles = StyleSheet.create({
+	collapsedContainer: {
+		borderRadius: 18,
+		padding: 14,
+		marginBottom: 12,
+		marginHorizontal: 0,
+	},
+	collapsedRow: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
 	container: {
 		borderRadius: 20,
 		padding: 24,
@@ -379,6 +671,32 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
+	},
+	fullContainer: {
+		borderRadius: 24,
+		overflow: "hidden",
+		marginBottom: 16,
+	},
+	fullHeader: {
+		paddingHorizontal: 18,
+		paddingVertical: 14,
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	fullBody: {
+		paddingHorizontal: 16,
+		paddingTop: 14,
+		paddingBottom: 18,
+	},
+	fullStatusTitle: {
+		fontSize: 22,
+		fontWeight: "800",
+		letterSpacing: -0.5,
+		marginBottom: 4,
+	},
+	fullStatusSub: {
+		fontSize: 14,
+		fontWeight: "600",
 	},
 	ambulanceSection: {
 		flexDirection: "row",

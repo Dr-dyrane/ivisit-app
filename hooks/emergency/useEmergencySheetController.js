@@ -26,12 +26,12 @@ export function useEmergencySheetController({ isDetailMode, onSnapChange }) {
 	}, [collapsedPercent, isDetailMode]);
 
 	const animationConfigs = useBottomSheetSpringConfigs({
-		damping: 80,
-		stiffness: 200,
-		mass: 1,
+		damping: 34,
+		stiffness: 420,
+		mass: 0.9,
 		overshootClamping: false,
-		restDisplacementThreshold: 0.1,
-		restSpeedThreshold: 0.1,
+		restDisplacementThreshold: 0.5,
+		restSpeedThreshold: 0.5,
 	});
 
 	const handleSheetChange = useCallback(

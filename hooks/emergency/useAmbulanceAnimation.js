@@ -15,15 +15,30 @@ export const useAmbulanceAnimation = ({
 	const ambulanceTimerRef = useRef(null);
 	const animationStartTimeRef = useRef(null);
 
+	const stopAmbulanceAnimation = useCallback(() => {
+		if (ambulanceTimerRef.current) {
+			clearTimeout(ambulanceTimerRef.current);
+			ambulanceTimerRef.current = null;
+		}
+		animationStartTimeRef.current = null;
+	}, []);
+
 	const startAmbulanceAnimation = useCallback(() => {
+		stopAmbulanceAnimation();
+
 		if (
 			!routeCoordinates ||
 			routeCoordinates.length < 2 ||
-			!Number.isFinite(ambulanceTripEtaSeconds)
+			!Number.isFinite(ambulanceTripEtaSeconds) ||
+			ambulanceTripEtaSeconds <= 0
 		) {
 			console.warn("[useAmbulanceAnimation] Invalid animation params");
 			return;
 		}
+
+		// Make marker visible immediately at the start of the route.
+		setAmbulanceCoordinate(routeCoordinates[0]);
+		setAmbulanceHeading(calculateBearing(routeCoordinates[0], routeCoordinates[1]));
 
 		animationStartTimeRef.current = Date.now();
 
@@ -83,15 +98,8 @@ export const useAmbulanceAnimation = ({
 		routeCoordinates,
 		ambulanceTripEtaSeconds,
 		onAmbulanceUpdate,
+		stopAmbulanceAnimation,
 	]);
-
-	const stopAmbulanceAnimation = useCallback(() => {
-		if (ambulanceTimerRef.current) {
-			clearTimeout(ambulanceTimerRef.current);
-			ambulanceTimerRef.current = null;
-		}
-		animationStartTimeRef.current = null;
-	}, []);
 
 	useEffect(() => {
 		if (animateAmbulance && routeCoordinates.length >= 2) {

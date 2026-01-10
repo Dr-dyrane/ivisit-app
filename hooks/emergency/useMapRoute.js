@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import Constants from "expo-constants";
 import { decodeGooglePolyline } from "../../utils/mapUtils";
 import { ROUTE_CONFIG } from "../../constants/mapConfig";
 
@@ -12,11 +13,22 @@ export const useMapRoute = () => {
 	const routeFetchIdRef = useRef(0);
 	const lastRouteFitKeyRef = useRef(null);
 
+	const getGoogleApiKey = useCallback(() => {
+		return (
+			process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+			process.env.GOOGLE_MAPS_API_KEY ||
+			Constants?.expoConfig?.extra?.googleMapsApiKey ||
+			null
+		);
+	}, []);
+
 	const getGoogleRoute = useCallback(async ({ origin, destination }) => {
-		const googleApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+		const googleApiKey = getGoogleApiKey();
 
 		if (!googleApiKey) {
-			console.warn("[useMapRoute] Google API key not available");
+			console.warn(
+				"[useMapRoute] Google API key not available (set EXPO_PUBLIC_GOOGLE_MAPS_API_KEY for Expo, or provide expo.extra.googleMapsApiKey)"
+			);
 			return null;
 		}
 
@@ -48,7 +60,7 @@ export const useMapRoute = () => {
 		}
 
 		return null;
-	}, []);
+	}, [getGoogleApiKey]);
 
 	const getOSRMRoute = useCallback(async ({ origin, destination }) => {
 		try {

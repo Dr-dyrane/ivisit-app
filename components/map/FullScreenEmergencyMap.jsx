@@ -73,16 +73,6 @@ const FullScreenEmergencyMap = forwardRef(
 
 		const { routeCoordinates, routeInfo, calculateRoute, clearRoute } = useMapRoute();
 
-		const { ambulanceCoordinate, ambulanceHeading, startAmbulanceAnimation } =
-			useAmbulanceAnimation({
-				routeCoordinates,
-				animateAmbulance,
-				ambulanceTripEtaSeconds,
-				responderLocation,
-				responderHeading,
-				onAmbulanceUpdate: undefined,
-			});
-
 		const hospitals =
 			propHospitals && propHospitals.length > 0 ? propHospitals : nearbyHospitals;
 
@@ -103,6 +93,24 @@ const FullScreenEmergencyMap = forwardRef(
 			left: 0,
 			right: 0,
 		};
+		const mapPaddingRef = useRef(mapPadding);
+		useEffect(() => {
+			mapPaddingRef.current = mapPadding;
+		}, [mapPadding]);
+
+		const effectiveAmbulanceEtaSeconds =
+			Number.isFinite(ambulanceTripEtaSeconds) && ambulanceTripEtaSeconds > 0
+				? ambulanceTripEtaSeconds
+				: routeInfo?.durationSec;
+
+		const { ambulanceCoordinate, ambulanceHeading } = useAmbulanceAnimation({
+			routeCoordinates,
+			animateAmbulance,
+			ambulanceTripEtaSeconds: effectiveAmbulanceEtaSeconds,
+			responderLocation,
+			responderHeading,
+			onAmbulanceUpdate: undefined,
+		});
 
 		useEffect(() => {
 			requestLocationPermission();
@@ -139,12 +147,6 @@ const FullScreenEmergencyMap = forwardRef(
 		]);
 
 		useEffect(() => {
-			if (routeCoordinates.length >= 2 && animateAmbulance) {
-				startAmbulanceAnimation();
-			}
-		}, [animateAmbulance, routeCoordinates, startAmbulanceAnimation]);
-
-		useEffect(() => {
 			if (onRouteCalculated && routeCoordinates.length > 0) {
                 // Avoid calling onRouteCalculated if the data hasn't changed to prevent infinite loops
                 const prevInfo = mapRef.current?.lastRouteInfo;
@@ -170,19 +172,21 @@ const FullScreenEmergencyMap = forwardRef(
                 }
 
 				// Fit map to route with better padding
+				// Use a ref for padding so snap changes don't force repeated route fitting.
 				if (mapRef.current) {
+					const padding = mapPaddingRef.current;
 					mapRef.current.fitToCoordinates(routeCoordinates, {
 						edgePadding: {
-							top: mapPadding.top + 50,
+							top: padding.top + 50,
 							right: 50,
-							bottom: mapPadding.bottom + 50,
+							bottom: padding.bottom + 50,
 							left: 50,
 						},
 						animated: true,
 					});
 				}
 			}
-		}, [routeCoordinates, routeInfo, onRouteCalculated, mapPadding]);
+		}, [routeCoordinates, routeInfo, onRouteCalculated]);
 
 		useImperativeHandle(ref, () => ({
 			animateToHospital: (hospital, options = {}) => {
@@ -366,7 +370,7 @@ const FullScreenEmergencyMap = forwardRef(
 				<MapView
 					ref={mapRef}
 					style={styles.map}
-					provider={PROVIDER_GOOGLE}
+					provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
 					customMapStyle={mapStyle}
 					initialRegion={
 						userLocation ?? {
@@ -410,7 +414,7 @@ const FullScreenEmergencyMap = forwardRef(
 							anchor={{ x: 0.5, y: 0.5 }}
 							flat={true}
 							rotation={ambulanceHeading}
-							tracksViewChanges={false}
+							tracksViewChanges={Platform.OS === "ios" || animateAmbulance}
 							zIndex={200}
 						>
 							<View

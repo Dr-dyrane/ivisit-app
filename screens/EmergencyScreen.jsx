@@ -246,7 +246,7 @@ export default function EmergencyScreen() {
 		if (activeAmbulanceTrip || activeBedBooking) {
 			clearSelectedHospital();
 			setTimeout(() => {
-				bottomSheetRef.current?.snapToIndex?.(0);
+				bottomSheetRef.current?.snapToIndex?.(1);
 			}, 0);
 			return;
 		}
@@ -276,7 +276,7 @@ export default function EmergencyScreen() {
 		currentRoute,
 		onRequestComplete: () => {
 			setTimeout(() => {
-				bottomSheetRef.current?.snapToIndex?.(0);
+				bottomSheetRef.current?.snapToIndex?.(1);
 			}, 0);
 		},
 	});

@@ -22,14 +22,16 @@ import BottomSheet, {
 	BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
+import {
+	runOnJS,
+	useAnimatedReaction,
+	useSharedValue,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useEmergencyUI } from "../../contexts/EmergencyUIContext";
 import { COLORS } from "../../constants/colors";
-
-const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 85 : 70;
-
 import HospitalDetailView from "./HospitalDetailView";
 import EmergencySheetHandle from "./bottomSheet/EmergencySheetHandle";
 import EmergencySheetBackground from "./bottomSheet/EmergencySheetBackground";
@@ -43,6 +45,8 @@ import { BedBookingSummaryCard } from "./bottomSheet/BedBookingSummaryCard";
 import { useBottomSheetSnap } from "../../hooks/emergency/useBottomSheetSnap";
 import { useBottomSheetScroll } from "../../hooks/emergency/useBottomSheetScroll";
 import { useBottomSheetSearch } from "../../hooks/emergency/useBottomSheetSearch";
+
+const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 85 : 70;
 
 const EmergencyBottomSheet = forwardRef(
 	(
@@ -82,6 +86,7 @@ const EmergencyBottomSheet = forwardRef(
 		const isTripMode = mode === "emergency" && !!activeAmbulanceTrip && !isDetailMode;
 		const isBedBookingMode = mode === "booking" && !!activeBedBooking && !isDetailMode;
 		const [nowMs, setNowMs] = useState(Date.now());
+		const [sheetPhase, setSheetPhase] = useState("half");
 
 		const {
 			showProfileModal,
@@ -182,12 +187,36 @@ const EmergencyBottomSheet = forwardRef(
 					Math.max(0, snapPoints.length - 1)
 				);
 
+		const animatedIndex = useSharedValue(safeIndex);
+
+		const getPhaseFromAnimatedIndex = (value) => {
+			"worklet";
+			if (!Number.isFinite(value)) return "half";
+			if (value < 0.15) return "collapsed";
+			if (value < 0.55) return "semiCollapsed";
+			if (value < 1.45) return "half";
+			if (value < 1.85) return "semiFull";
+			return "full";
+		};
+
+		useAnimatedReaction(
+			() => animatedIndex.value,
+			(value, previous) => {
+				const next = getPhaseFromAnimatedIndex(value);
+				const prev = getPhaseFromAnimatedIndex(previous);
+				if (prev === next) return;
+				runOnJS(setSheetPhase)(next);
+			},
+			[]
+		);
+
 		return (
 			<BottomSheet
 				ref={bottomSheetRef}
 				index={safeIndex}
 				snapPoints={snapPoints}
 				onChange={handleSheetChange}
+				animatedIndex={animatedIndex}
 				handleComponent={renderHandle}
 				backgroundComponent={renderBackground}
 				style={styles.sheet}
@@ -229,7 +258,9 @@ const EmergencyBottomSheet = forwardRef(
 								onCancelAmbulanceTrip={onCancelAmbulanceTrip}
 								onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
 								isDarkMode={isDarkMode}
-								isCollapsed={currentSnapIndex === 0}
+								isCollapsed={sheetPhase === "collapsed"}
+								isExpanded={sheetPhase === "full"}
+								sheetPhase={sheetPhase}
 								nowMs={nowMs}
 							/>
 						) : isBedBookingMode ? (
@@ -239,7 +270,9 @@ const EmergencyBottomSheet = forwardRef(
 								onCancelBedBooking={onCancelBedBooking}
 								onCompleteBedBooking={onCompleteBedBooking}
 								isDarkMode={isDarkMode}
-								isCollapsed={currentSnapIndex === 0}
+								isCollapsed={sheetPhase === "collapsed"}
+								isExpanded={sheetPhase === "full"}
+								sheetPhase={sheetPhase}
 								nowMs={nowMs}
 							/>
 						) : (
@@ -267,7 +300,7 @@ const EmergencyBottomSheet = forwardRef(
 
 						{!isTripMode && !isBedBookingMode && (
 							<EmergencySheetFilters
-								visible={currentSnapIndex > 0}
+								visible={sheetPhase !== "collapsed"}
 								mode={mode}
 								serviceType={serviceType}
 								selectedSpecialty={selectedSpecialty}
@@ -282,7 +315,7 @@ const EmergencyBottomSheet = forwardRef(
 
 						{!isTripMode && !isBedBookingMode && (
 							<EmergencySheetSectionHeader
-								visible={currentSnapIndex > 0}
+								visible={sheetPhase !== "collapsed"}
 								mode={mode}
 								searchQuery={localSearchQuery}
 								hospitalsCount={hospitals.length}
@@ -299,7 +332,7 @@ const EmergencyBottomSheet = forwardRef(
 
 						{!isTripMode && !isBedBookingMode && (
 							<EmergencySheetHospitalList
-								visible={currentSnapIndex > 0}
+								visible={sheetPhase !== "collapsed"}
 								hospitals={hospitals}
 								selectedHospitalId={selectedHospital?.id}
 								onHospitalSelect={onHospitalSelect}
