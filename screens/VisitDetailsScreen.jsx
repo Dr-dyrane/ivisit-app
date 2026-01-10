@@ -10,6 +10,7 @@ import {
 	Pressable,
 	Image,
 	Linking,
+	Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
@@ -37,12 +38,40 @@ export default function VisitDetailsScreen() {
 		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
-	const { visits } = useVisits();
+	const { visits, cancelVisit } = useVisits();
 
 	const visit = useMemo(() => {
 		if (!visitId || !Array.isArray(visits)) return null;
 		return visits.find((v) => v?.id === visitId) ?? null;
 	}, [visitId, visits]);
+
+	const handleCancelVisit = useCallback(() => {
+		if (!visit?.id) return;
+		
+		Alert.alert(
+			"Cancel Visit",
+			"Are you sure you want to cancel this visit? This action cannot be undone.",
+			[
+				{
+					text: "No, Keep It",
+					style: "cancel"
+				},
+				{
+					text: "Yes, Cancel",
+					style: "destructive",
+					onPress: async () => {
+						try {
+							await cancelVisit(visit.id);
+							router.back();
+						} catch (error) {
+							console.error("Failed to cancel visit:", error);
+							Alert.alert("Error", "Failed to cancel visit. Please try again.");
+						}
+					}
+				}
+			]
+		);
+	}, [visit?.id, cancelVisit, router]);
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
@@ -282,6 +311,18 @@ export default function VisitDetailsScreen() {
 								))}
 							</View>
 						)}
+
+						{(visit?.status === "upcoming" || visit?.status === "scheduled") && (
+							<Pressable
+								onPress={handleCancelVisit}
+								style={({ pressed }) => [
+									styles.cancelButton,
+									{ opacity: pressed ? 0.9 : 1 },
+								]}
+							>
+								<Text style={styles.cancelButtonText}>Cancel Visit</Text>
+							</Pressable>
+						)}
 					</>
 				) : (
 					<View style={[styles.card, { backgroundColor: colors.card }]}>
@@ -467,5 +508,19 @@ const styles = StyleSheet.create({
 		color: "#FFFFFF",
 		fontSize: 13,
 		fontWeight: "900",
+	},
+	cancelButton: {
+		marginTop: 10,
+		backgroundColor: "rgba(239, 68, 68, 0.1)",
+		borderRadius: 16,
+		paddingVertical: 16,
+		alignItems: "center",
+		borderWidth: 1,
+		borderColor: "rgba(239, 68, 68, 0.2)",
+	},
+	cancelButtonText: {
+		color: "#EF4444",
+		fontSize: 14,
+		fontWeight: "800",
 	},
 });

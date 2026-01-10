@@ -15,6 +15,7 @@ const mapToDb = (item) => {
     if (item.doctorImage !== undefined) db.doctor_image = item.doctorImage;
     if (item.insuranceCovered !== undefined) db.insurance_covered = item.insuranceCovered;
     if (item.nextVisit !== undefined) db.next_visit = item.nextVisit;
+    if (item.meetingLink !== undefined) db.meeting_link = item.meetingLink;
     
     // Remove camelCase keys
     delete db.hospitalId;
@@ -27,6 +28,7 @@ const mapToDb = (item) => {
     delete db.insuranceCovered;
     delete db.nextVisit;
     delete db.visitId;
+    delete db.meetingLink;
     
     return db;
 };
@@ -40,6 +42,7 @@ const mapFromDb = (row) => ({
     doctorImage: row.doctor_image,
     insuranceCovered: row.insurance_covered,
     nextVisit: row.next_visit,
+    meetingLink: row.meeting_link,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
 });
