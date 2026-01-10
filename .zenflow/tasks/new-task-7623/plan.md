@@ -226,52 +226,60 @@ Save to `{@artifacts_path}/plan.md`.
 
 ---
 
-### [ ] Phase 5: Real-Time Optimistic Updates
+### [x] Phase 5: Real-Time Optimistic Updates
+<!-- chat-id: b742eb7b-bbca-472f-ad94-aaf42a969bea -->
 **Goal**: Replace refetch pattern with direct state updates + haptic/sound
 
-#### [ ] Task 5.1: Read existing useNotificationsData.js
+#### [x] Task 5.1: Read existing useNotificationsData.js
 - Read `hooks/notifications/useNotificationsData.js`
 - Identify current Supabase subscription pattern
 - Note how fetchNotifications() is called
 - **Verification**: Document current refetch pattern
+- **Result**: Analyzed existing subscription pattern, found fetchNotifications() called on every change
 
-#### [ ] Task 5.2: Modify useNotificationsData.js subscription for INSERT
+#### [x] Task 5.2: Modify useNotificationsData.js subscription for INSERT
 - In subscription handler, add case for `payload.eventType === 'INSERT'`
 - Extract new notification from `payload.new`
 - Add to state: `setNotifications(prev => [newNotification, ...prev])`
 - Trigger `hapticService.triggerForPriority(newNotification.priority)`
 - Trigger `soundService.playForPriority(newNotification.priority)`
 - **Verification**: Create notification in another tab, verify appears instantly + haptic/sound
+- **Result**: Implemented INSERT handler with optimistic state update and haptic/sound triggers
 
-#### [ ] Task 5.3: Modify useNotificationsData.js subscription for UPDATE
+#### [x] Task 5.3: Modify useNotificationsData.js subscription for UPDATE
 - In subscription handler, add case for `payload.eventType === 'UPDATE'`
 - Extract updated notification from `payload.new`
 - Update in state: `setNotifications(prev => prev.map(n => n.id === updated.id ? updated : n))`
 - **Verification**: Mark notification as read, verify updates instantly
+- **Result**: Implemented UPDATE handler with optimistic state update
 
-#### [ ] Task 5.4: Modify useNotificationsData.js subscription for DELETE
+#### [x] Task 5.4: Modify useNotificationsData.js subscription for DELETE
 - In subscription handler, add case for `payload.eventType === 'DELETE'`
 - Extract deleted notification ID from `payload.old`
 - Remove from state: `setNotifications(prev => prev.filter(n => n.id !== deletedId))`
 - **Verification**: Delete notification in DB, verify removes instantly
+- **Result**: Implemented DELETE handler with optimistic state update
 
-#### [ ] Task 5.5: Keep fetchNotifications() for initial load
+#### [x] Task 5.5: Keep fetchNotifications() for initial load
 - Ensure `fetchNotifications()` is still called on mount for initial data load
 - Remove `fetchNotifications()` call from subscription handler
 - **Verification**: Refresh app, verify notifications load correctly
+- **Result**: Removed fetchNotifications() from subscription handler, kept initial mount call, removed from dependency array
 
-#### [ ] Task 5.6: Read existing useVisitsData.js
+#### [x] Task 5.6: Read existing useVisitsData.js
 - Read `hooks/visits/useVisitsData.js`
 - Identify current Supabase subscription pattern
 - **Verification**: Document current refetch pattern
+- **Result**: Analyzed existing subscription pattern, found fetchVisits() called on every change
 
-#### [ ] Task 5.7: Modify useVisitsData.js subscription for optimistic updates
+#### [x] Task 5.7: Modify useVisitsData.js subscription for optimistic updates
 - In subscription handler, handle INSERT/UPDATE/DELETE events
 - Update state directly instead of refetching
 - INSERT: Add to state
 - UPDATE: Update in state
 - DELETE: Remove from state
 - **Verification**: Create/update/delete visit, verify UI updates instantly
+- **Result**: Implemented all three event handlers with optimistic state updates, removed fetchVisits() from subscription handler and dependency array
 
 ---
 

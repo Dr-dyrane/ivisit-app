@@ -97,7 +97,27 @@ export function useVisitsData() {
                     },
                     (payload) => {
                         console.log('[useVisitsData] Real-time update:', payload.eventType, payload.new?.id);
-                        fetchVisits();
+                        
+                        if (payload.eventType === 'INSERT') {
+                            const newVisit = payload.new;
+                            console.log('[useVisitsData] New visit received:', newVisit.id, newVisit.hospital);
+                            
+                            setVisits(prev => [newVisit, ...prev]);
+                        } 
+                        else if (payload.eventType === 'UPDATE') {
+                            const updatedVisit = payload.new;
+                            console.log('[useVisitsData] Visit updated:', updatedVisit.id, 'status:', updatedVisit.status);
+                            
+                            setVisits(prev => 
+                                prev.map(v => v.id === updatedVisit.id ? updatedVisit : v)
+                            );
+                        } 
+                        else if (payload.eventType === 'DELETE') {
+                            const deletedId = payload.old.id;
+                            console.log('[useVisitsData] Visit deleted:', deletedId);
+                            
+                            setVisits(prev => prev.filter(v => v.id !== deletedId));
+                        }
                     }
                 )
                 .subscribe();
@@ -108,7 +128,7 @@ export function useVisitsData() {
         return () => {
             if (subscription) supabase.removeChannel(subscription);
         };
-    }, [fetchVisits]);
+    }, []);
 
     return {
         visits,

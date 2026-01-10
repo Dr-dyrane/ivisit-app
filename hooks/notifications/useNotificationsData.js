@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { notificationsService } from "../../services/notificationsService";
 import { supabase } from "../../services/supabase";
+import { hapticService } from "../../services/hapticService";
+import { soundService } from "../../services/soundService";
 
 /**
  * Hook to manage notifications data
@@ -110,7 +112,30 @@ export function useNotificationsData() {
                     },
                     (payload) => {
                         console.log('[useNotificationsData] Real-time update:', payload.eventType, payload.new?.id);
-                        fetchNotifications();
+                        
+                        if (payload.eventType === 'INSERT') {
+                            const newNotification = payload.new;
+                            console.log('[useNotificationsData] New notification received:', newNotification.id, newNotification.title);
+                            
+                            setNotifications(prev => [newNotification, ...prev]);
+                            
+                            hapticService.triggerForPriority(newNotification.priority);
+                            soundService.playForPriority(newNotification.priority);
+                        } 
+                        else if (payload.eventType === 'UPDATE') {
+                            const updatedNotification = payload.new;
+                            console.log('[useNotificationsData] Notification updated:', updatedNotification.id);
+                            
+                            setNotifications(prev => 
+                                prev.map(n => n.id === updatedNotification.id ? updatedNotification : n)
+                            );
+                        } 
+                        else if (payload.eventType === 'DELETE') {
+                            const deletedId = payload.old.id;
+                            console.log('[useNotificationsData] Notification deleted:', deletedId);
+                            
+                            setNotifications(prev => prev.filter(n => n.id !== deletedId));
+                        }
                     }
                 )
                 .subscribe();
@@ -121,7 +146,7 @@ export function useNotificationsData() {
         return () => {
             if (subscription) supabase.removeChannel(subscription);
         };
-    }, [fetchNotifications]);
+    }, []);
 
     return {
         notifications,
