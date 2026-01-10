@@ -89,7 +89,7 @@ const ToastProvider = ({ children }) => {
 					gradient: [COLORS.brandPrimary, COLORS.brandSecondary],
 					iconColor: "#FFFFFF",
 					circleBg: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)",
-					circleBorder: COLORS.accent,
+					circleBorder: COLORS.brandSecondary,
 					textColor: "#FFFFFF",
 				};
 		}

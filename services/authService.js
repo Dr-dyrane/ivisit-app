@@ -130,6 +130,29 @@ const authService = {
 		return { data: user };
 	},
 
+    /**
+     * Login with password (wrapper with standard response format)
+     * @param {Object} credentials - { email?, phone?, password }
+     */
+    async loginWithPassword(credentials) {
+        try {
+            const result = await this.login(credentials);
+            return {
+                success: true,
+                data: {
+                    user: result.data,
+                    token: result.data.token,
+                },
+            };
+        } catch (error) {
+            const errorMessage = (error.message?.includes("|") ? error.message.split("|")[1] : error.message) || "Login failed";
+            return {
+                success: false,
+                error: errorMessage,
+            };
+        }
+    },
+
 	/**
 	 * Sign up a new user
 	 * @param {Object} credentials
@@ -182,7 +205,22 @@ const authService = {
 
     // Wrapper for consistency
     async register(userData) {
-        return this.signUp(userData);
+        try {
+            const result = await this.signUp(userData);
+            return {
+                success: true,
+                data: {
+                    user: result.data,
+                    token: result.data.token,
+                },
+            };
+        } catch (error) {
+            const errorMessage = (error.message?.includes("|") ? error.message.split("|")[1] : error.message) || "Registration failed";
+            return {
+                success: false,
+                error: errorMessage,
+            };
+        }
     },
 
     /**
@@ -447,7 +485,28 @@ const authService = {
 
     // Alias for consistency
     async setPassword({ password }) {
-        return this.resetPassword({ newPassword: password });
+        try {
+            // Use updateUser directly to get the result
+            const { data, error } = await supabase.auth.updateUser({ password });
+            if (error) throw handleSupabaseError(error);
+
+            // Fetch full profile/user data to return
+            const currentUser = await this.getCurrentUser();
+            
+            return {
+                success: true,
+                data: {
+                    user: currentUser.data,
+                    token: currentUser.data.token
+                }
+            };
+        } catch (error) {
+            const errorMessage = (error.message?.includes("|") ? error.message.split("|")[1] : error.message) || "Failed to set password";
+            return {
+                success: false,
+                error: errorMessage
+            };
+        }
     },
 
     async changePassword({ currentPassword, newPassword }) {

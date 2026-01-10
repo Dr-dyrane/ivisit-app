@@ -278,7 +278,8 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 			}
 		} catch (err) {
 			const errorMessage =
-				err.message?.split("|")[1] || "Unable to proceed. Please try again.";
+				(err.message?.includes("|") ? err.message.split("|")[1] : err.message) ||
+                "Unable to proceed. Please try again.";
 			setLoginError(errorMessage);
 			showToast(errorMessage, "error");
 		} finally {

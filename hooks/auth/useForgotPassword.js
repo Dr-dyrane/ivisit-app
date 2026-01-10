@@ -43,7 +43,8 @@ const useForgotPassword = () => {
 			};
 		} catch (err) {
 			const errorMessage =
-				err.message?.split("|")[1] || err.message || "Failed to send reset code";
+				(err.message?.includes("|") ? err.message.split("|")[1] : err.message) ||
+                "Failed to send reset code";
 			setLoading(false);
 			setError(errorMessage);
 			return { success: false, error: errorMessage };

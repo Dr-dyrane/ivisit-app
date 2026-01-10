@@ -37,7 +37,8 @@ const useResetPassword = () => {
 			return { success: true, message: response.message };
 		} catch (err) {
 			const errorMessage =
-				err.message?.split("|")[1] || err.message || "Failed to reset password";
+				(err.message?.includes("|") ? err.message.split("|")[1] : err.message) ||
+                "Failed to reset password";
 			setLoading(false);
 			setError(errorMessage);
 			return { success: false, error: errorMessage };

@@ -156,7 +156,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
                     ? otpResult.error.split("|")[1]
                     : otpResult.error;
                 
-				setRegistrationError(otpResult.error);
+				setRegistrationError(errorMessage);
 				showToast(errorMessage || "Failed to send code", "error");
 				stopLoading();
 				return;
