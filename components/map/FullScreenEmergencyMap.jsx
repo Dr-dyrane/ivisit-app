@@ -71,7 +71,7 @@ const FullScreenEmergencyMap = forwardRef(
 			requestLocationPermission,
 		} = useMapLocation();
 
-		const { routeCoordinates, routeInfo, calculateRoute } = useMapRoute();
+		const { routeCoordinates, routeInfo, calculateRoute, clearRoute } = useMapRoute();
 
 		const { ambulanceCoordinate, ambulanceHeading, startAmbulanceAnimation } =
 			useAmbulanceAnimation({
@@ -121,6 +121,9 @@ const FullScreenEmergencyMap = forwardRef(
 				: null;
 
 			if (!shouldShowRoute || !isValidCoordinate(origin) || !isValidCoordinate(destination)) {
+				if (routeCoordinates.length > 0) {
+					clearRoute();
+				}
 				return;
 			}
 
@@ -143,13 +146,43 @@ const FullScreenEmergencyMap = forwardRef(
 
 		useEffect(() => {
 			if (onRouteCalculated && routeCoordinates.length > 0) {
-				onRouteCalculated({
-					coordinates: routeCoordinates,
-					durationSec: routeInfo?.durationSec,
-					distanceMeters: routeInfo?.distanceMeters,
-				});
+                // Avoid calling onRouteCalculated if the data hasn't changed to prevent infinite loops
+                const prevInfo = mapRef.current?.lastRouteInfo;
+                const isSame = prevInfo && 
+                    prevInfo.durationSec === routeInfo?.durationSec && 
+                    prevInfo.distanceMeters === routeInfo?.distanceMeters &&
+                    prevInfo.coordsLength === routeCoordinates.length;
+
+                if (!isSame) {
+                    if (mapRef.current) {
+                        mapRef.current.lastRouteInfo = {
+                            durationSec: routeInfo?.durationSec,
+                            distanceMeters: routeInfo?.distanceMeters,
+                            coordsLength: routeCoordinates.length
+                        };
+                    }
+
+                    onRouteCalculated({
+                        coordinates: routeCoordinates,
+                        durationSec: routeInfo?.durationSec,
+                        distanceMeters: routeInfo?.distanceMeters,
+                    });
+                }
+
+				// Fit map to route with better padding
+				if (mapRef.current) {
+					mapRef.current.fitToCoordinates(routeCoordinates, {
+						edgePadding: {
+							top: mapPadding.top + 50,
+							right: 50,
+							bottom: mapPadding.bottom + 50,
+							left: 50,
+						},
+						animated: true,
+					});
+				}
 			}
-		}, [routeCoordinates, routeInfo, onRouteCalculated]);
+		}, [routeCoordinates, routeInfo, onRouteCalculated, mapPadding]);
 
 		useImperativeHandle(ref, () => ({
 			animateToHospital: (hospital, options = {}) => {
@@ -382,29 +415,37 @@ const FullScreenEmergencyMap = forwardRef(
 						>
 							<View
 								style={{
-									shadowColor: "#000",
-									shadowOffset: { width: 0, height: 2 },
-									shadowOpacity: 0.3,
-									shadowRadius: 3,
+									width: 44,
+									height: 44,
+									alignItems: "center",
+									justifyContent: "center",
 								}}
 							>
-								<Ionicons
-									name="navigate-circle"
-									size={42}
-									color={COLORS.brandPrimary}
-								/>
+								<View
+									style={{
+										shadowColor: "#000",
+										shadowOffset: { width: 0, height: 2 },
+										shadowOpacity: 0.3,
+										shadowRadius: 3,
+										zIndex: 2,
+									}}
+								>
+									<Ionicons
+										name="navigate-circle"
+										size={42}
+										color={COLORS.brandPrimary}
+									/>
+								</View>
 								<View
 									style={{
 										position: "absolute",
-										top: 10,
-										left: 10,
 										width: 22,
 										height: 22,
 										borderRadius: 11,
 										backgroundColor: "#FFFFFF",
 										alignItems: "center",
 										justifyContent: "center",
-										zIndex: -1,
+										zIndex: 1,
 									}}
 								/>
 							</View>

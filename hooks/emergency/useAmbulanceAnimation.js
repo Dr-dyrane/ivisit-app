@@ -118,5 +118,7 @@ export const useAmbulanceAnimation = ({
 		ambulanceCoordinate,
 		ambulanceHeading,
 		isAnimating: animateAmbulance && !!ambulanceTimerRef.current,
+        startAmbulanceAnimation,
+        stopAmbulanceAnimation
 	};
 };
