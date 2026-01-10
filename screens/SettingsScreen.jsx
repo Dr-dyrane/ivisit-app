@@ -309,6 +309,7 @@ export default function SettingsScreen() {
 							alignItems: "center",
 							justifyContent: "space-between",
 							padding: 20,
+							marginBottom: 12,
 							backgroundColor: colors.card,
 							borderRadius: 30,
 							shadowColor: "#000",
@@ -371,6 +372,86 @@ export default function SettingsScreen() {
 									backgroundColor: "#FFFFFF",
 									position: "absolute",
 									left: preferences?.emergencyUpdates ? 25 : 3,
+									shadowColor: "#000",
+									shadowOffset: { width: 0, height: 2 },
+									shadowOpacity: 0.15,
+									shadowRadius: 3,
+									elevation: 3,
+								}}
+							/>
+						</View>
+					</TouchableOpacity>
+
+					<TouchableOpacity
+						onPress={() => togglePreference("notificationSoundsEnabled")}
+						disabled={!preferences || !preferences.notificationsEnabled}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							justifyContent: "space-between",
+							padding: 20,
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+							opacity: !preferences || !preferences.notificationsEnabled ? 0.5 : 1,
+						}}
+					>
+						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+							<View
+								style={{
+									width: 56,
+									height: 56,
+									borderRadius: 16,
+									backgroundColor: COLORS.brandPrimary,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons name="volume-high" size={26} color="#FFFFFF" />
+							</View>
+							<View>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -0.5,
+									}}
+								>
+									Notification Sounds
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									Play sound for alerts
+								</Text>
+							</View>
+						</View>
+						<View
+							style={{
+								width: 52,
+								height: 30,
+								borderRadius: 15,
+								backgroundColor: preferences?.notificationSoundsEnabled ? COLORS.brandPrimary : "#D1D5DB",
+								justifyContent: "center",
+							}}
+						>
+							<View
+								style={{
+									width: 24,
+									height: 24,
+									borderRadius: 12,
+									backgroundColor: "#FFFFFF",
+								position: "absolute",
+									left: preferences?.notificationSoundsEnabled ? 25 : 3,
 									shadowColor: "#000",
 									shadowOffset: { width: 0, height: 2 },
 									shadowOpacity: 0.15,

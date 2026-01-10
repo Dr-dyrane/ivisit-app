@@ -4,6 +4,7 @@ import { database, StorageKeys } from "../database";
 const DEFAULT_PREFERENCES = {
 	demoModeEnabled: true,
 	notificationsEnabled: true,
+	notificationSoundsEnabled: true,
 	appointmentReminders: true,
 	emergencyUpdates: true,
 	privacyShareMedicalProfile: false,
@@ -13,6 +14,7 @@ const DEFAULT_PREFERENCES = {
 const mapFromDb = (row) => ({
     demoModeEnabled: row.demo_mode_enabled,
     notificationsEnabled: row.notifications_enabled,
+    notificationSoundsEnabled: row.notification_sounds_enabled,
     appointmentReminders: row.appointment_reminders,
     emergencyUpdates: row.emergency_updates,
     privacyShareMedicalProfile: row.privacy_share_medical_profile,
@@ -23,6 +25,7 @@ const mapToDb = (prefs) => {
     const db = {};
     if (prefs.demoModeEnabled !== undefined) db.demo_mode_enabled = prefs.demoModeEnabled;
     if (prefs.notificationsEnabled !== undefined) db.notifications_enabled = prefs.notificationsEnabled;
+    if (prefs.notificationSoundsEnabled !== undefined) db.notification_sounds_enabled = prefs.notificationSoundsEnabled;
     if (prefs.appointmentReminders !== undefined) db.appointment_reminders = prefs.appointmentReminders;
     if (prefs.emergencyUpdates !== undefined) db.emergency_updates = prefs.emergencyUpdates;
     if (prefs.privacyShareMedicalProfile !== undefined) db.privacy_share_medical_profile = prefs.privacyShareMedicalProfile;

@@ -284,6 +284,7 @@ Save to `{@artifacts_path}/plan.md`.
 ---
 
 ### [ ] Phase 6: Sound Configuration & Settings
+<!-- chat-id: 1c8baf31-2b11-4930-808a-277a51a622df -->
 **Goal**: Allow users to enable/disable notification sounds
 
 #### [ ] Task 6.1: Check for existing preferences storage
