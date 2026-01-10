@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	View,
 	Text,
@@ -9,6 +9,7 @@ import {
 	Platform,
 	Pressable,
 	ActivityIndicator,
+	Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -82,6 +83,25 @@ export default function CompleteProfileScreen() {
 			});
 		}, [resetHeader, resetTabBar, setHeaderState, signOutButton])
 	);
+
+	const fadeAnim = useRef(new Animated.Value(0)).current;
+	const slideAnim = useRef(new Animated.Value(30)).current;
+
+	useEffect(() => {
+		Animated.parallel([
+			Animated.timing(fadeAnim, {
+				toValue: 1,
+				duration: 600,
+				useNativeDriver: true,
+			}),
+			Animated.spring(slideAnim, {
+				toValue: 0,
+				friction: 8,
+				tension: 50,
+				useNativeDriver: true,
+			}),
+		]).start();
+	}, []);
 
 	const handleScroll = useCallback(
 		(event) => {
@@ -177,7 +197,7 @@ export default function CompleteProfileScreen() {
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
-			<ScrollView
+			<Animated.ScrollView
 				contentContainerStyle={[
 					styles.content,
 					{ paddingTop: topPadding, paddingBottom: bottomPadding },
@@ -185,6 +205,10 @@ export default function CompleteProfileScreen() {
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
+				style={{
+					opacity: fadeAnim,
+					transform: [{ translateY: slideAnim }],
+				}}
 			>
 				<View style={[styles.card, { backgroundColor: colors.card }]}>
 					<Text style={[styles.title, { color: colors.text }]}>
@@ -254,7 +278,7 @@ export default function CompleteProfileScreen() {
 						</Text>
 					</Pressable>
 				</View>
-			</ScrollView>
+			</Animated.ScrollView>
 		</LinearGradient>
 	);
 }
@@ -262,9 +286,16 @@ export default function CompleteProfileScreen() {
 const styles = StyleSheet.create({
 	container: { flex: 1 },
 	content: { flexGrow: 1, padding: 20, gap: 12 },
-	card: { borderRadius: 24, padding: 18 },
+	card: {
+		borderRadius: 30,
+		padding: 20,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.03,
+		shadowRadius: 10,
+	},
 	title: { fontSize: 19, fontWeight: "900", letterSpacing: -0.5 },
-	subtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, fontWeight: "600" },
+	subtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, fontWeight:'400' },
 	sectionTitle: {
 		fontSize: 10,
 		fontWeight: "900",
@@ -272,5 +303,5 @@ const styles = StyleSheet.create({
 		textTransform: "uppercase",
 	},
 	helperRow: { marginTop: 2, flexDirection: "row", alignItems: "center", gap: 8 },
-	helperText: { fontSize: 13, fontWeight: "700" },
+	helperText: { fontSize: 13, fontWeight: "500" },
 });

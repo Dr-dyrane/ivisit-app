@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
 	View,
 	Text,
 	ScrollView,
 	StyleSheet,
 	Platform,
+	Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -46,6 +47,25 @@ export default function InsuranceScreen() {
 		}, [backButton, resetHeader, resetTabBar, setHeaderState])
 	);
 
+	const fadeAnim = useRef(new Animated.Value(0)).current;
+	const slideAnim = useRef(new Animated.Value(30)).current;
+
+	useEffect(() => {
+		Animated.parallel([
+			Animated.timing(fadeAnim, {
+				toValue: 1,
+				duration: 600,
+				useNativeDriver: true,
+			}),
+			Animated.spring(slideAnim, {
+				toValue: 0,
+				friction: 8,
+				tension: 50,
+				useNativeDriver: true,
+			}),
+		]).start();
+	}, []);
+
 	const handleScroll = useCallback(
 		(event) => {
 			handleTabBarScroll(event);
@@ -71,23 +91,55 @@ export default function InsuranceScreen() {
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			<ScrollView
-				contentContainerStyle={[
-					styles.content,
-					{ paddingTop: topPadding, paddingBottom: bottomPadding },
-				]}
+				contentContainerStyle={{
+					paddingTop: topPadding,
+					paddingBottom: bottomPadding,
+					paddingHorizontal: 20,
+				}}
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
 			>
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.title, { color: colors.text }]}>
-						Link your coverage
-					</Text>
-					<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-						Store your insurance details so bookings and visits can surface expected
-						costs and required documents.
-					</Text>
-				</View>
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+					}}
+				>
+					<View
+						style={{
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							padding: 20,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<Text
+							style={{
+								fontSize: 18,
+								fontWeight: "900",
+								color: colors.text,
+								letterSpacing: -0.3,
+							}}
+						>
+							Link your coverage
+						</Text>
+						<Text
+							style={{
+								marginTop: 8,
+								fontSize: 14,
+								lineHeight: 20,
+								color: colors.textMuted,
+							}}
+						>
+							Store your insurance details so bookings and visits can surface expected
+							costs and required documents.
+						</Text>
+					</View>
+				</Animated.View>
 			</ScrollView>
 		</LinearGradient>
 	);
@@ -95,19 +147,4 @@ export default function InsuranceScreen() {
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
-	content: { flexGrow: 1, padding: 20 },
-	card: {
-		borderRadius: 20,
-		padding: 18,
-	},
-	title: {
-		fontSize: 18,
-		fontWeight: "900",
-		letterSpacing: -0.3,
-	},
-	subtitle: {
-		marginTop: 8,
-		fontSize: 14,
-		lineHeight: 20,
-	},
 });

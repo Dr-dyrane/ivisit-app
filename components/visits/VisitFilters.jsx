@@ -80,7 +80,7 @@ export default function VisitFilters({
                   <Text
                     style={{
                       fontSize: 12,
-                      fontWeight: "700",
+                      fontWeight: "500",
                       color: isSelected ? "#FFFFFF" : COLORS.brandPrimary,
                     }}
                   >

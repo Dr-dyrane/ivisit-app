@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
 	},
 	hospitalName: {
 		fontSize: 20,
-		fontWeight: "700",
+		fontWeight: "500",
 		letterSpacing: -0.5,
 		marginBottom: 4,
 	},

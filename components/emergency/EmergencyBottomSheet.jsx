@@ -1325,7 +1325,7 @@ const styles = StyleSheet.create({
 	},
 	resetButton: {
 		fontSize: 10,
-		fontWeight: "700",
+		fontWeight: "500",
 		letterSpacing: 1,
 		textTransform: "uppercase",
 	},
@@ -1343,12 +1343,12 @@ const styles = StyleSheet.create({
 	},
 	tripTitle: {
 		fontSize: 16,
-		fontWeight: "700",
+		fontWeight: "500",
 	},
 	tripSubtitle: {
 		marginTop: 4,
 		fontSize: 12,
-		fontWeight: "600",
+		fontWeight:'400',
 	},
 	tripBadge: {
 		flexDirection: "row",
@@ -1377,7 +1377,7 @@ const styles = StyleSheet.create({
 	},
 	tripMetaLabel: {
 		fontSize: 11,
-		fontWeight: "700",
+		fontWeight: "500",
 	},
 	tripMetaValue: {
 		marginTop: 4,
@@ -1400,7 +1400,7 @@ const styles = StyleSheet.create({
 	},
 	tripCrewItem: {
 		fontSize: 13,
-		fontWeight: "600",
+		fontWeight:'400',
 		marginBottom: 6,
 	},
 	tripActionsRow: {

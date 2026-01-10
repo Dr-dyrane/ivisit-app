@@ -209,7 +209,7 @@ const VisitsScreen = () => {
 							style={{
 								marginTop: 6,
 								fontSize: 13,
-								fontWeight: "600",
+								fontWeight:'400',
 								color: colors.textMuted,
 								textAlign: "center",
 								lineHeight: 18,

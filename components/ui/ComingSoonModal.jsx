@@ -100,7 +100,7 @@ export default function ComingSoonModal({ visible, onClose, featureName }) {
 
 						<Text style={[styles.description, { color: colors.subtext }]}>
 							We're working hard to bring{" "}
-							<Text style={{ fontWeight: "700", color: colors.text }}>
+							<Text style={{ fontWeight: "500", color: colors.text }}>
 								{featureName}
 							</Text>{" "}
 							to iVisit. Stay tuned for updates in the next release!
@@ -192,6 +192,6 @@ const styles = StyleSheet.create({
 	buttonText: {
 		color: "white",
 		fontSize: 17,
-		fontWeight: "700",
+		fontWeight: "500",
 	},
 });

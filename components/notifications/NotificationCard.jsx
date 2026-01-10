@@ -121,7 +121,7 @@ export default function NotificationCard({
                 marginTop: 8,
               }}
             >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: COLORS.brandPrimary }}>
+              <Text style={{ fontSize: 12, fontWeight:'400', color: COLORS.brandPrimary }}>
                 Tap to view details
               </Text>
               <Ionicons name="chevron-forward" size={14} color={COLORS.brandPrimary} />

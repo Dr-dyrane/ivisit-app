@@ -173,7 +173,7 @@ export default function MiniProfileModal({ visible, onClose }) {
 							<View style={{ backgroundColor: listItemBg, borderRadius: 20, padding: 16 }}>
 								<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
 									<Ionicons name="calendar" size={18} color={COLORS.brandPrimary} />
-									<Text style={{ marginLeft: 8, fontSize: 14, fontWeight: "700", color: textColor }}>
+									<Text style={{ marginLeft: 8, fontSize: 14, fontWeight: "500", color: textColor }}>
 										Your Visits
 									</Text>
 									<View style={{ flex: 1 }} />
@@ -211,7 +211,7 @@ export default function MiniProfileModal({ visible, onClose }) {
 								style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}
 							>
 								<Ionicons name="medkit" size={18} color={COLORS.brandPrimary} />
-								<Text style={{ marginLeft: 8, fontSize: 14, fontWeight: "700", color: textColor }}>
+								<Text style={{ marginLeft: 8, fontSize: 14, fontWeight: "500", color: textColor }}>
 									Medical History
 								</Text>
 								<View style={{ flex: 1 }} />
@@ -247,7 +247,7 @@ export default function MiniProfileModal({ visible, onClose }) {
 									>
 										<Ionicons name={item.icon} size={16} color={COLORS.brandPrimary} />
 									</View>
-									<Text style={{ flex: 1, marginLeft: 10, fontSize: 14, fontWeight: "600", color: textColor }}>
+									<Text style={{ flex: 1, marginLeft: 10, fontSize: 14, fontWeight:'400', color: textColor }}>
 										{item.label}
 									</Text>
 									<Ionicons name="chevron-forward" size={16} color={textMuted} />

@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
 	},
 	title: {
 		fontSize: 11,
-		fontWeight: "700",
+		fontWeight: "500",
 		marginBottom: 10,
 		letterSpacing: 1.5,
 	},
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
 	},
 	countText: {
 		fontSize: 10,
-		fontWeight: "600",
+		fontWeight:'400',
 	},
 });
 

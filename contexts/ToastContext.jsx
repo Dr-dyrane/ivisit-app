@@ -196,7 +196,7 @@ const ToastProvider = ({ children }) => {
 									flex: 1,
 									color: STYLE.textColor,
 									fontSize: 15,
-									fontWeight: "600",
+									fontWeight:'400',
 								}}
 							>
 								{toast.message}

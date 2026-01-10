@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
 	},
 	suggestionsLabel: {
 		fontSize: 11,
-		fontWeight: "700",
+		fontWeight: "500",
 		letterSpacing: 1,
 		marginBottom: 10,
 		textTransform: "uppercase",
@@ -328,6 +328,6 @@ const styles = StyleSheet.create({
 	},
 	suggestionText: {
 		fontSize: 13,
-		fontWeight: "600",
+		fontWeight:'400',
 	},
 });

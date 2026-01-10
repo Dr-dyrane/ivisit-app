@@ -554,7 +554,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 													? COLORS.brandPrimary
 													: COLORS.error,
 												fontSize: 14,
-												fontWeight: "600",
+												fontWeight:'400',
 												flex: 1,
 											}}
 										>
@@ -587,7 +587,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 												style={{
 													color: "white",
 													fontSize: 14,
-													fontWeight: "700",
+													fontWeight: "500",
 												}}
 											>
 												Create Account

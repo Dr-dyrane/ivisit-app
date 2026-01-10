@@ -111,7 +111,7 @@ export default function NotificationBadge({
         <Text
           style={{
             fontSize: sizeConfig.fontSize,
-            fontWeight: "700",
+            fontWeight: "500",
             color: "#FFFFFF",
           }}
         >

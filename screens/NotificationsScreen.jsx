@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useRef, useCallback , useEffect } from "react";
 import {
 	View,
 	Text,
@@ -123,6 +123,25 @@ const NotificationsScreen = () => {
 		])
 	);
 
+	const fadeAnimNew = useRef(new Animated.Value(0)).current;
+	const slideAnimNew = useRef(new Animated.Value(30)).current;
+
+	useEffect(() => {
+		Animated.parallel([
+			Animated.timing(fadeAnimNew, {
+				toValue: 1,
+				duration: 600,
+				useNativeDriver: true,
+			}),
+			Animated.spring(slideAnimNew, {
+				toValue: 0,
+				friction: 8,
+				tension: 50,
+				useNativeDriver: true,
+			}),
+		]).start();
+	}, []);
+
 	const handleScroll = useCallback(
 		(event) => {
 			handleTabBarScroll(event);
@@ -202,8 +221,14 @@ const NotificationsScreen = () => {
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
-			<ScrollView
-				style={styles.scrollView}
+			<Animated.ScrollView
+				style={[
+					styles.scrollView,
+					{
+						opacity: fadeAnimNew,
+						transform: [{ translateY: slideAnimNew }],
+					},
+				]}
 				contentContainerStyle={[
 					styles.content,
 					{ paddingTop: topPadding, paddingBottom: bottomPadding },
@@ -273,7 +298,7 @@ const NotificationsScreen = () => {
 						</Text>
 					</View>
 				)}
-			</ScrollView>
+			</Animated.ScrollView>
 		</LinearGradient>
 	);
 };
@@ -281,18 +306,23 @@ const NotificationsScreen = () => {
 const styles = StyleSheet.create({
 	container: { flex: 1 },
 	scrollView: { flex: 1 },
-	content: { flexGrow: 1, padding: 20 },
+	content: { flexGrow: 1, padding: 20, gap: 12 },
 	emptyState: {
 		flex: 1,
 		justifyContent: "center",
 		alignItems: "center",
 		padding: 40,
-		borderRadius: 20,
+		borderRadius: 30,
 		marginTop: 40,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.03,
+		shadowRadius: 10,
 	},
 	emptyTitle: {
-		fontSize: 20,
-		fontWeight: "bold",
+		fontSize: 19,
+		fontWeight: "900",
+		letterSpacing: -0.5,
 		marginTop: 16,
 		marginBottom: 8,
 	},

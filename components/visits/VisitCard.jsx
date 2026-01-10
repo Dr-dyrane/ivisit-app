@@ -81,7 +81,7 @@ export default function VisitCard({
       {/* Header: Hospital & Status Badge */}
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
         <View style={{ flex: 1, marginRight: 12 }}>
-          <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
+          <Text style={{ fontSize: 18, fontWeight: "500", color: colors.text, marginBottom: 4 }}>
             {visit?.hospital || "Hospital"}
           </Text>
           <Text style={{ fontSize: 13, color: colors.textMuted }}>
@@ -97,7 +97,7 @@ export default function VisitCard({
             alignSelf: "flex-start",
           }}
         >
-          <Text style={{ fontSize: 11, fontWeight: "700", color: statusColor, textTransform: "capitalize" }}>
+          <Text style={{ fontSize: 11, fontWeight: "500", color: statusColor, textTransform: "capitalize" }}>
             {visit?.status?.replace("_", " ") || "pending"}
           </Text>
         </View>
@@ -116,12 +116,12 @@ export default function VisitCard({
             marginRight: 10,
           }}
         >
-          <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.brandPrimary }}>
+          <Text style={{ fontSize: 14, fontWeight: "500", color: COLORS.brandPrimary }}>
             {visit?.doctor?.split(" ")?.map(n => n?.[0])?.join("") || "D"}
           </Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
+          <Text style={{ fontSize: 14, fontWeight:'400', color: colors.text }}>
             {visit?.doctor || "Doctor"}
           </Text>
           <Text style={{ fontSize: 12, color: colors.textMuted }}>
@@ -163,7 +163,7 @@ export default function VisitCard({
         >
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Ionicons name={typeIcon} size={18} color={isUpcoming ? "#FFFFFF" : colors.text} />
-            <Text style={{ color: isUpcoming ? "#FFFFFF" : colors.text, fontSize: 14, fontWeight: "600", marginLeft: 10 }}>
+            <Text style={{ color: isUpcoming ? "#FFFFFF" : colors.text, fontSize: 14, fontWeight:'400', marginLeft: 10 }}>
               {isUpcoming ? "View Details" : "View Summary"}
             </Text>
           </View>

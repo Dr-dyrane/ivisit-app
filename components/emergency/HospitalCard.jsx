@@ -270,7 +270,7 @@ export default function HospitalCard({
 						<Text
 							style={{
 								fontSize: 18,
-								fontWeight: "700",
+								fontWeight: "500",
 								color: textColor,
 								letterSpacing: -0.3,
 								flex: 1,
@@ -316,7 +316,7 @@ export default function HospitalCard({
 									style={{
 										fontSize: 11,
 										color: COLORS.brandPrimary,
-										fontWeight: "600",
+										fontWeight:'400',
 									}}
 								>
 									{specialty}
@@ -406,7 +406,7 @@ export default function HospitalCard({
 							style={{
 								color: "#FFFFFF",
 								fontSize: 15,
-								fontWeight: "700",
+								fontWeight: "500",
 								marginLeft: 10,
 								letterSpacing: 0.3,
 							}}

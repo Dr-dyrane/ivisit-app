@@ -1016,7 +1016,7 @@ const styles = StyleSheet.create({
 	},
 	errorText: {
 		fontSize: 16,
-		fontWeight: "600",
+		fontWeight:'400',
 		textAlign: "center",
 		marginTop: 16,
 		marginBottom: 4,

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import { View, Text, ScrollView, StyleSheet, Platform, Pressable } from "react-native";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { View, Text, ScrollView, StyleSheet, Platform, Pressable, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -45,6 +45,25 @@ export default function BookVisitScreen() {
 			});
 		}, [backButton, resetHeader, resetTabBar, setHeaderState])
 	);
+
+	const fadeAnim = useRef(new Animated.Value(0)).current;
+	const slideAnim = useRef(new Animated.Value(30)).current;
+
+	useEffect(() => {
+		Animated.parallel([
+			Animated.timing(fadeAnim, {
+				toValue: 1,
+				duration: 600,
+				useNativeDriver: true,
+			}),
+			Animated.spring(slideAnim, {
+				toValue: 0,
+				friction: 8,
+				tension: 50,
+				useNativeDriver: true,
+			}),
+		]).start();
+	}, []);
 
 	const handleScroll = useCallback(
 		(event) => {
@@ -111,7 +130,7 @@ export default function BookVisitScreen() {
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
-			<ScrollView
+			<Animated.ScrollView
 				contentContainerStyle={[
 					styles.content,
 					{ paddingTop: topPadding, paddingBottom: bottomPadding },
@@ -119,6 +138,10 @@ export default function BookVisitScreen() {
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
+				style={{
+					opacity: fadeAnim,
+					transform: [{ translateY: slideAnim }],
+				}}
 			>
 				<View style={[styles.heroCard, { backgroundColor: colors.card }]}>
 					<Text style={[styles.heroTitle, { color: colors.text }]}>
@@ -180,20 +203,27 @@ export default function BookVisitScreen() {
 						},
 					]}
 				>
-					<Text style={styles.primaryCtaText}>Back to Visits</Text>
+					<Text style={styles.primaryCtaText} className='capitalize'>Back to Visits</Text>
 					<Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
 				</Pressable>
-			</ScrollView>
+			</Animated.ScrollView>
 		</LinearGradient>
 	);
 }
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
-	content: { flexGrow: 1, padding: 20, gap: 14 },
-	heroCard: { borderRadius: 24, padding: 18 },
+	content: { flexGrow: 1, padding: 20, gap: 12 },
+	heroCard: {
+		borderRadius: 30,
+		padding: 20,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.03,
+		shadowRadius: 10,
+	},
 	heroTitle: { fontSize: 19, fontWeight: "900", letterSpacing: -0.5 },
-	heroSubtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, fontWeight: "600" },
+	heroSubtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, fontWeight: "400" },
 	grid: { flexDirection: "row", gap: 12 },
 	tile: { flex: 1, borderRadius: 24, padding: 16 },
 	tileIcon: {
@@ -205,7 +235,7 @@ const styles = StyleSheet.create({
 		marginBottom: 12,
 	},
 	tileTitle: { fontSize: 15, fontWeight: "900", letterSpacing: -0.2 },
-	tileSubtitle: { marginTop: 6, fontSize: 13, lineHeight: 18, fontWeight: "600" },
+	tileSubtitle: { marginTop: 6, fontSize: 13, lineHeight: 18, fontWeight:'400' },
 	primaryCta: {
 		height: 54,
 		borderRadius: 22,

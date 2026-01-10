@@ -81,7 +81,7 @@ const ProfileField = ({
 							fontSize: 11,
 							color: colors.label,
 							marginBottom: 4,
-							fontWeight: "600",
+							fontWeight:'400',
 						}}
 					>
 						{label}
@@ -96,7 +96,7 @@ const ProfileField = ({
 						style={{
 							fontSize: 16,
 							color: colors.text,
-							fontWeight: "600",
+							fontWeight:'400',
 							padding: 0,
 						}}
 						placeholderTextColor={COLORS.textMuted}

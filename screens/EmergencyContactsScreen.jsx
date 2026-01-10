@@ -53,6 +53,25 @@ export default function EmergencyContactsScreen() {
 		}, [backButton, resetHeader, resetTabBar, setHeaderState])
 	);
 
+	const fadeAnim = useRef(new Animated.Value(0)).current;
+	const slideAnim = useRef(new Animated.Value(30)).current;
+
+	useEffect(() => {
+		Animated.parallel([
+			Animated.timing(fadeAnim, {
+				toValue: 1,
+				duration: 600,
+				useNativeDriver: true,
+			}),
+			Animated.spring(slideAnim, {
+				toValue: 0,
+				friction: 8,
+				tension: 50,
+				useNativeDriver: true,
+			}),
+		]).start();
+	}, []);
+
 	const handleScroll = useCallback(
 		(event) => {
 			handleTabBarScroll(event);
@@ -76,7 +95,14 @@ export default function EmergencyContactsScreen() {
 	const bottomPadding = tabBarHeight + 20;
 	const topPadding = STACK_TOP_PADDING;
 
-	const { contacts, isLoading, refreshContacts, addContact, updateContact, removeContact } = useEmergencyContacts();
+	const {
+		contacts,
+		isLoading,
+		refreshContacts,
+		addContact,
+		updateContact,
+		removeContact,
+	} = useEmergencyContacts();
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingId, setEditingId] = useState(null);
 	const [name, setName] = useState("");
@@ -111,7 +137,9 @@ export default function EmergencyContactsScreen() {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		setEditingId(contact?.id ? String(contact.id) : null);
 		setName(typeof contact?.name === "string" ? contact.name : "");
-		setRelationship(typeof contact?.relationship === "string" ? contact.relationship : "");
+		setRelationship(
+			typeof contact?.relationship === "string" ? contact.relationship : ""
+		);
 		setPhone(typeof contact?.phone === "string" ? contact.phone : "");
 		setEmail(typeof contact?.email === "string" ? contact.email : "");
 		setError(null);
@@ -125,16 +153,39 @@ export default function EmergencyContactsScreen() {
 
 	const shake = useCallback(() => {
 		Animated.sequence([
-			Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: 8, duration: 60, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+			Animated.timing(shakeAnim, {
+				toValue: 10,
+				duration: 60,
+				useNativeDriver: true,
+			}),
+			Animated.timing(shakeAnim, {
+				toValue: -10,
+				duration: 60,
+				useNativeDriver: true,
+			}),
+			Animated.timing(shakeAnim, {
+				toValue: 8,
+				duration: 60,
+				useNativeDriver: true,
+			}),
+			Animated.timing(shakeAnim, {
+				toValue: -8,
+				duration: 60,
+				useNativeDriver: true,
+			}),
+			Animated.timing(shakeAnim, {
+				toValue: 0,
+				duration: 60,
+				useNativeDriver: true,
+			}),
 		]).start();
 	}, [shakeAnim]);
 
 	const canSave = useMemo(() => {
-		return name.trim().length >= 2 && (phone.trim().length > 0 || email.trim().length > 0);
+		return (
+			name.trim().length >= 2 &&
+			(phone.trim().length > 0 || email.trim().length > 0)
+		);
 	}, [email, name, phone]);
 
 	const handleSave = useCallback(async () => {
@@ -161,13 +212,25 @@ export default function EmergencyContactsScreen() {
 			}
 			setIsModalVisible(false);
 		} catch (e) {
-			const msg = e?.message?.split("|")?.[1] || e?.message || "Unable to save contact";
+			const msg =
+				e?.message?.split("|")?.[1] || e?.message || "Unable to save contact";
 			setError(msg);
 			shake();
 		} finally {
 			setIsSaving(false);
 		}
-	}, [canSave, editingId, email, isSaving, name, phone, relationship, shake, addContact, updateContact]);
+	}, [
+		canSave,
+		editingId,
+		email,
+		isSaving,
+		name,
+		phone,
+		relationship,
+		shake,
+		addContact,
+		updateContact,
+	]);
 
 	const handleDelete = useCallback(
 		async (id) => {
@@ -183,7 +246,7 @@ export default function EmergencyContactsScreen() {
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
-			<ScrollView
+			<Animated.ScrollView
 				contentContainerStyle={[
 					styles.content,
 					{ paddingTop: topPadding, paddingBottom: bottomPadding },
@@ -191,14 +254,18 @@ export default function EmergencyContactsScreen() {
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
+				style={{
+					opacity: fadeAnim,
+					transform: [{ translateY: slideAnim }],
+				}}
 			>
 				<View style={[styles.card, { backgroundColor: colors.card }]}>
 					<Text style={[styles.title, { color: colors.text }]}>
 						People we can reach fast
 					</Text>
 					<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-						Add family members, caregivers, and key contacts. This will power quick
-						share + emergency workflows later.
+						Add family members, caregivers, and key contacts. This will power
+						quick share + emergency workflows later.
 					</Text>
 				</View>
 
@@ -218,9 +285,11 @@ export default function EmergencyContactsScreen() {
 
 				{isLoading ? (
 					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+						<View
+							style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+						>
 							<ActivityIndicator color={COLORS.brandPrimary} />
-							<Text style={{ color: colors.textMuted, fontWeight: "700" }}>
+							<Text style={{ color: colors.textMuted, fontWeight: "500" }}>
 								Loading contacts...
 							</Text>
 						</View>
@@ -229,44 +298,68 @@ export default function EmergencyContactsScreen() {
 
 				{emptyState ? (
 					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<Text style={[styles.title, { color: colors.text }]}>No contacts yet</Text>
+						<Text style={[styles.title, { color: colors.text }]}>
+							No contacts yet
+						</Text>
 						<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-							Add at least one trusted contact for faster emergency coordination.
+							Add at least one trusted contact for faster emergency
+							coordination.
 						</Text>
 					</View>
 				) : null}
 
 				{contacts.map((c) => (
-					<View key={String(c?.id)} style={[styles.contactCard, { backgroundColor: colors.card }]}>
+					<View
+						key={String(c?.id)}
+						style={[styles.contactCard, { backgroundColor: colors.card }]}
+					>
 						<View style={{ flex: 1 }}>
 							<Text style={[styles.contactName, { color: colors.text }]}>
 								{c?.name ?? "--"}
 							</Text>
 							<Text style={[styles.contactMeta, { color: colors.textMuted }]}>
-								{[c?.relationship, c?.phone, c?.email].filter(Boolean).join(" • ")}
+								{[c?.relationship, c?.phone, c?.email]
+									.filter(Boolean)
+									.join(" • ")}
 							</Text>
 						</View>
 						<Pressable
 							onPress={() => openEdit(c)}
-							style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, padding: 10 }]}
+							style={({ pressed }) => [
+								{ opacity: pressed ? 0.7 : 1, padding: 10 },
+							]}
 							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 						>
-							<Ionicons name="create-outline" size={20} color={colors.textMuted} />
+							<Ionicons
+								name="create-outline"
+								size={20}
+								color={colors.textMuted}
+							/>
 						</Pressable>
 						<Pressable
 							onPress={() => handleDelete(c?.id)}
-							style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, padding: 10 }]}
+							style={({ pressed }) => [
+								{ opacity: pressed ? 0.7 : 1, padding: 10 },
+							]}
 							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 						>
 							<Ionicons name="trash-outline" size={20} color={COLORS.error} />
 						</Pressable>
 					</View>
 				))}
-			</ScrollView>
+			</Animated.ScrollView>
 
-			<Modal transparent visible={isModalVisible} animationType="fade" onRequestClose={closeModal}>
+			<Modal
+				transparent
+				visible={isModalVisible}
+				animationType="fade"
+				onRequestClose={closeModal}
+			>
 				<View style={styles.modalBackdrop}>
-					<Pressable style={styles.modalBackdropPressable} onPress={closeModal} />
+					<Pressable
+						style={styles.modalBackdropPressable}
+						onPress={closeModal}
+					/>
 					<View style={[styles.modalCard, { backgroundColor: colors.card }]}>
 						<View style={styles.modalHeader}>
 							<Text style={[styles.modalTitle, { color: colors.text }]}>
@@ -274,7 +367,9 @@ export default function EmergencyContactsScreen() {
 							</Text>
 							<Pressable
 								onPress={closeModal}
-								style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, padding: 6 }]}
+								style={({ pressed }) => [
+									{ opacity: pressed ? 0.7 : 1, padding: 6 },
+								]}
 							>
 								<Ionicons name="close" size={22} color={colors.textMuted} />
 							</Pressable>
@@ -283,12 +378,16 @@ export default function EmergencyContactsScreen() {
 						{error ? (
 							<View style={styles.errorRow}>
 								<Ionicons name="alert-circle" size={18} color={COLORS.error} />
-								<Text style={[styles.errorText, { color: COLORS.error }]}>{error}</Text>
+								<Text style={[styles.errorText, { color: COLORS.error }]}>
+									{error}
+								</Text>
 							</View>
 						) : null}
 
 						<Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
-							<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
+							<View
+								style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
+							>
 								<Ionicons name="person" size={18} color={COLORS.textMuted} />
 								<TextInput
 									value={name}
@@ -302,7 +401,9 @@ export default function EmergencyContactsScreen() {
 									selectionColor={COLORS.brandPrimary}
 								/>
 							</View>
-							<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
+							<View
+								style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
+							>
 								<Ionicons name="heart" size={18} color={COLORS.textMuted} />
 								<TextInput
 									value={relationship}
@@ -316,7 +417,9 @@ export default function EmergencyContactsScreen() {
 									selectionColor={COLORS.brandPrimary}
 								/>
 							</View>
-							<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
+							<View
+								style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
+							>
 								<Ionicons name="call" size={18} color={COLORS.textMuted} />
 								<TextInput
 									value={phone}
@@ -331,7 +434,9 @@ export default function EmergencyContactsScreen() {
 									keyboardType="phone-pad"
 								/>
 							</View>
-							<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
+							<View
+								style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
+							>
 								<Ionicons name="mail" size={18} color={COLORS.textMuted} />
 								<TextInput
 									value={email}
@@ -381,13 +486,17 @@ const styles = StyleSheet.create({
 	container: { flex: 1 },
 	content: { flexGrow: 1, padding: 20, gap: 12 },
 	card: {
-		borderRadius: 20,
-		padding: 18,
+		borderRadius: 30,
+		padding: 20,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.03,
+		shadowRadius: 10,
 	},
 	title: {
-		fontSize: 18,
+		fontSize: 19,
 		fontWeight: "900",
-		letterSpacing: -0.3,
+		letterSpacing: -0.5,
 	},
 	subtitle: {
 		marginTop: 8,
@@ -403,7 +512,12 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		gap: 10,
 	},
-	addText: { color: "#FFFFFF", fontWeight: "900", fontSize: 14, letterSpacing: 1 },
+	addText: {
+		color: "#FFFFFF",
+		fontWeight: "900",
+		fontSize: 14,
+		letterSpacing: 1,
+	},
 	contactCard: {
 		borderRadius: 22,
 		padding: 16,
@@ -412,14 +526,29 @@ const styles = StyleSheet.create({
 		gap: 8,
 	},
 	contactName: { fontSize: 16, fontWeight: "900", letterSpacing: -0.2 },
-	contactMeta: { marginTop: 4, fontSize: 13, fontWeight: "700" },
-	modalBackdrop: { flex: 1, justifyContent: "center", padding: 18, backgroundColor: "rgba(0,0,0,0.55)" },
+	contactMeta: { marginTop: 4, fontSize: 13, fontWeight: "500" },
+	modalBackdrop: {
+		flex: 1,
+		justifyContent: "center",
+		padding: 18,
+		backgroundColor: "rgba(0,0,0,0.55)",
+	},
 	modalBackdropPressable: { ...StyleSheet.absoluteFillObject },
 	modalCard: { borderRadius: 24, padding: 16 },
-	modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+	modalHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		marginBottom: 12,
+	},
 	modalTitle: { fontSize: 16, fontWeight: "900", letterSpacing: -0.2 },
-	errorRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
-	errorText: { fontSize: 13, fontWeight: "700", flex: 1 },
+	errorRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		marginBottom: 10,
+	},
+	errorText: { fontSize: 13, fontWeight: "500", flex: 1 },
 	inputRow: {
 		height: 54,
 		borderRadius: 16,
@@ -438,5 +567,10 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		gap: 10,
 	},
-	saveButtonText: { color: "#FFFFFF", fontWeight: "900", fontSize: 15, letterSpacing: 1 },
+	saveButtonText: {
+		color: "#FFFFFF",
+		fontWeight: "900",
+		fontSize: 15,
+		letterSpacing: 1,
+	},
 });

@@ -52,6 +52,25 @@ export default function MedicalProfileScreen() {
 		}, [backButton, resetHeader, resetTabBar, setHeaderState])
 	);
 
+	const fadeAnim = useRef(new Animated.Value(0)).current;
+	const slideAnim = useRef(new Animated.Value(30)).current;
+
+	useEffect(() => {
+		Animated.parallel([
+			Animated.timing(fadeAnim, {
+				toValue: 1,
+				duration: 600,
+				useNativeDriver: true,
+			}),
+			Animated.spring(slideAnim, {
+				toValue: 0,
+				friction: 8,
+				tension: 50,
+				useNativeDriver: true,
+			}),
+		]).start();
+	}, []);
+
 	const handleScroll = useCallback(
 		(event) => {
 			handleTabBarScroll(event);
@@ -137,7 +156,7 @@ export default function MedicalProfileScreen() {
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
-			<ScrollView
+			<Animated.ScrollView
 				contentContainerStyle={[
 					styles.content,
 					{ paddingTop: topPadding, paddingBottom: bottomPadding },
@@ -145,6 +164,10 @@ export default function MedicalProfileScreen() {
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
+				style={{
+					opacity: fadeAnim,
+					transform: [{ translateY: slideAnim }],
+				}}
 			>
 				<View style={[styles.card, { backgroundColor: colors.card }]}>
 					<Text style={[styles.title, { color: colors.text }]}>
@@ -162,7 +185,7 @@ export default function MedicalProfileScreen() {
 							style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
 						>
 							<ActivityIndicator color={COLORS.brandPrimary} />
-							<Text style={{ color: colors.textMuted, fontWeight: "700" }}>
+							<Text style={{ color: colors.textMuted, fontWeight: "500" }}>
 								Loading medical profile...
 							</Text>
 						</View>
@@ -212,7 +235,7 @@ export default function MedicalProfileScreen() {
 							style={{
 								marginTop: 10,
 								color: colors.textMuted,
-								fontWeight: "700",
+								fontWeight: "500",
 								fontSize: 12,
 							}}
 						>
@@ -223,7 +246,7 @@ export default function MedicalProfileScreen() {
 						</Text>
 					</View>
 				) : null}
-			</ScrollView>
+			</Animated.ScrollView>
 
 			{/* Floating Action Button for Saving Changes */}
 			<Animated.View
@@ -269,13 +292,17 @@ const styles = StyleSheet.create({
 	container: { flex: 1 },
 	content: { flexGrow: 1, padding: 20, gap: 12 },
 	card: {
-		borderRadius: 20,
-		padding: 18,
+		borderRadius: 30,
+		padding: 20,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.03,
+		shadowRadius: 10,
 	},
 	title: {
-		fontSize: 18,
+		fontSize: 19,
 		fontWeight: "900",
-		letterSpacing: -0.3,
+		letterSpacing: -0.5,
 	},
 	subtitle: {
 		marginTop: 8,

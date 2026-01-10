@@ -688,7 +688,7 @@ const ProfileScreen = () => {
                                         style={{
                                             color: colors.text,
                                             fontSize: 15,
-                                            fontWeight: "600",
+                                            fontWeight:'400',
                                         }}
                                     >
                                         {item.label}

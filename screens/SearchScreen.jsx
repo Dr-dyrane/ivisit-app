@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import { View, Text, ScrollView, StyleSheet, Platform, Pressable } from "react-native";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { View, Text, ScrollView, StyleSheet, Platform, Pressable, Animated } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -67,6 +67,25 @@ export default function SearchScreen() {
 			});
 		}, [backButton, resetHeader, resetTabBar, setHeaderState])
 	);
+
+	const fadeAnim = useRef(new Animated.Value(0)).current;
+	const slideAnim = useRef(new Animated.Value(30)).current;
+
+	useEffect(() => {
+		Animated.parallel([
+			Animated.timing(fadeAnim, {
+				toValue: 1,
+				duration: 600,
+				useNativeDriver: true,
+			}),
+			Animated.spring(slideAnim, {
+				toValue: 0,
+				friction: 8,
+				tension: 50,
+				useNativeDriver: true,
+			}),
+		]).start();
+	}, []);
 
 	const backgroundColors = isDarkMode
 		? ["#121826", "#0B0F1A", "#121826"]
@@ -286,7 +305,7 @@ export default function SearchScreen() {
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
-			<ScrollView
+			<Animated.ScrollView
 				contentContainerStyle={[
 					styles.content,
 					{ paddingTop: topPadding, paddingBottom: bottomPadding },
@@ -295,6 +314,10 @@ export default function SearchScreen() {
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
 				keyboardShouldPersistTaps="handled"
+				style={{
+					opacity: fadeAnim,
+					transform: [{ translateY: slideAnim }],
+				}}
 			>
 				<View style={[styles.card, { backgroundColor: colors.card }]}>
 					<EmergencySearchBar
@@ -336,7 +359,7 @@ export default function SearchScreen() {
 											{item.title}
 										</Text>
 										{item.subtitle ? (
-											<Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: 12 }} numberOfLines={1}>
+											<Text style={{ color: colors.textMuted, fontWeight: "500", fontSize: 12 }} numberOfLines={1}>
 												{item.subtitle}
 											</Text>
 										) : null}
@@ -346,7 +369,7 @@ export default function SearchScreen() {
 							))}
 						</View>
 					) : (
-						<Text style={{ color: colors.textMuted, fontWeight: "600" }}>
+						<Text style={{ color: colors.textMuted, fontWeight:'400' }}>
 							No results yet.
 						</Text>
 					)}
@@ -383,7 +406,7 @@ export default function SearchScreen() {
 									]}
 								>
 									<Ionicons name="time-outline" size={16} color={colors.textMuted} />
-									<Text style={{ color: colors.text, fontWeight: "700", flex: 1 }} numberOfLines={1}>
+									<Text style={{ color: colors.text, fontWeight: "500", flex: 1 }} numberOfLines={1}>
 										{item}
 									</Text>
 									<Ionicons name="arrow-forward" size={16} color={colors.textMuted} />
@@ -391,19 +414,26 @@ export default function SearchScreen() {
 							))}
 						</View>
 					) : (
-						<Text style={{ color: colors.textMuted, fontWeight: "600" }}>
+						<Text style={{ color: colors.textMuted, fontWeight:'400' }}>
 							No recent searches yet.
 						</Text>
 					)}
 				</View>
-			</ScrollView>
+			</Animated.ScrollView>
 		</LinearGradient>
 	);
 }
 
 const styles = StyleSheet.create({
 	content: { flexGrow: 1, padding: 20, gap: 12 },
-	card: { borderRadius: 24, padding: 16 },
+	card: {
+		borderRadius: 30,
+		padding: 20,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.03,
+		shadowRadius: 10,
+	},
 	sectionTitle: {
 		fontSize: 10,
 		fontWeight: "900",

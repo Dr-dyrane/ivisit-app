@@ -427,7 +427,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 											style={{
 												color: COLORS.error,
 												fontSize: 14,
-												fontWeight: "600",
+												fontWeight:'400',
 												flex: 1,
 											}}
 										>

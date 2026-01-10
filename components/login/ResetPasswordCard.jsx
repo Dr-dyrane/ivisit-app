@@ -156,7 +156,7 @@ export default function ResetPasswordCard({
 							style={{
 								color: COLORS.error,
 								fontSize: 13,
-								fontWeight: "600",
+								fontWeight:'400',
 								flex: 1,
 							}}
 						>

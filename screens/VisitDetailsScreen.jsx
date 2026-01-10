@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
 	doctorMeta: {
 		marginTop: 2,
 		fontSize: 12,
-		fontWeight: "700",
+		fontWeight: "500",
 	},
 	title: {
 		fontSize: 18,
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
 	},
 	paragraph: {
 		fontSize: 14,
-		fontWeight: "600",
+		fontWeight:'400',
 		lineHeight: 20,
 	},
 	bulletRow: {

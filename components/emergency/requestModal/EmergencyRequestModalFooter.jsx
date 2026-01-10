@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
 	hint: {
 		marginTop: 10,
 		fontSize: 12,
-		fontWeight: "600",
+		fontWeight:'400',
 		opacity: 0.8,
 	},
 });

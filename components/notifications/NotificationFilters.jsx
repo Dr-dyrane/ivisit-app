@@ -83,7 +83,7 @@ export default function NotificationFilters({
                   <Text
                     style={{
                       fontSize: 11,
-                      fontWeight: "700",
+                      fontWeight: "500",
                       color: isSelected ? "#FFFFFF" : COLORS.brandPrimary,
                     }}
                   >

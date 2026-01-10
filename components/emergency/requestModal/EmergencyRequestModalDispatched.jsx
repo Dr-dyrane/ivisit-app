@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
 	},
 	subtitle: {
 		fontSize: 14,
-		fontWeight: "600",
+		fontWeight:'400',
 		marginTop: 6,
 		marginBottom: 18,
 	},
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
 	wideSubValue: {
 		marginTop: 8,
 		fontSize: 12,
-		fontWeight: "700",
+		fontWeight: "500",
 		opacity: 0.9,
 	},
 });
