@@ -3,6 +3,15 @@ import { notificationsService } from "../../services/notificationsService";
 import { supabase } from "../../services/supabase";
 import { hapticService } from "../../services/hapticService";
 import { soundService } from "../../services/soundService";
+import { normalizeNotification } from "../../utils/domainNormalize";
+
+const mapFromDb = (row) => ({
+    ...row,
+    actionType: row.action_type,
+    actionData: row.action_data,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+});
 
 /**
  * Hook to manage notifications data
@@ -30,7 +39,12 @@ export function useNotificationsData() {
     const addNotification = useCallback(async (notification) => {
         try {
             const newItem = await notificationsService.create(notification);
-            setNotifications(prev => [newItem, ...prev]);
+            // The subscription will handle adding it to the list if it's inserted in DB
+            // But we add it here for immediate optimistic UI update
+            setNotifications(prev => {
+                if (prev.find(n => n.id === newItem.id)) return prev;
+                return [newItem, ...prev];
+            });
             return newItem;
         } catch (err) {
             console.error("[useNotificationsData] add error:", err);
@@ -117,14 +131,19 @@ export function useNotificationsData() {
                         filter: `user_id=eq.${user.id}`,
                     },
                     (payload) => {
+                        console.log("[useNotificationsData] Realtime payload:", payload.eventType);
+                        
                         if (payload.eventType === 'INSERT') {
-                            const newNotification = payload.new;
-                            setNotifications(prev => [newNotification, ...prev]);
+                            const newNotification = normalizeNotification(mapFromDb(payload.new));
+                            setNotifications(prev => {
+                                if (prev.find(n => n.id === newNotification.id)) return prev;
+                                return [newNotification, ...prev];
+                            });
                             hapticService.triggerForPriority(newNotification.priority);
                             soundService.playForPriority(newNotification.priority);
                         } 
                         else if (payload.eventType === 'UPDATE') {
-                            const updatedNotification = payload.new;
+                            const updatedNotification = normalizeNotification(mapFromDb(payload.new));
                             setNotifications(prev => 
                                 prev.map(n => n.id === updatedNotification.id ? updatedNotification : n)
                             );
@@ -135,13 +154,18 @@ export function useNotificationsData() {
                         }
                     }
                 )
-                .subscribe();
+                .subscribe((status) => {
+                    console.log("[useNotificationsData] Subscription status:", status);
+                });
         };
 
         setupSubscription();
 
         return () => {
-            if (subscription) supabase.removeChannel(subscription);
+            if (subscription) {
+                console.log("[useNotificationsData] Removing subscription");
+                supabase.removeChannel(subscription);
+            }
         };
     }, []);
 
