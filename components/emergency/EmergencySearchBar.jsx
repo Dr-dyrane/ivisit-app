@@ -10,6 +10,7 @@ import Animated, {
 	FadeOut,
 } from "react-native-reanimated";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useToast } from "../../contexts/ToastContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 
@@ -44,6 +45,7 @@ export default function EmergencySearchBar({
 	style,
 }) {
 	const { isDarkMode } = useTheme();
+    const { showToast } = useToast();
 	const inputRef = useRef(null);
 	const [isFocused, setIsFocused] = useState(false);
 
@@ -82,8 +84,14 @@ export default function EmergencySearchBar({
 
 	const handleVoice = useCallback(() => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-		if (onVoicePress) onVoicePress();
-	}, [onVoicePress]);
+		if (onVoicePress) {
+            onVoicePress();
+        } else {
+            // Default behavior: Focus input and guide user to keyboard dictation
+            inputRef.current?.focus();
+            showToast("Tap the microphone icon on your keyboard to speak", "info");
+        }
+	}, [onVoicePress, showToast]);
 
 	const handleSuggestionPress = useCallback((suggestion) => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
