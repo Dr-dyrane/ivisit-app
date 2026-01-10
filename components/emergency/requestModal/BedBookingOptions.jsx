@@ -1,7 +1,8 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { Ionicons, Fontisto } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 export default function BedBookingOptions({
 	bedType,
@@ -12,136 +13,183 @@ export default function BedBookingOptions({
 	mutedColor,
 	cardColor,
 }) {
-	return (
-		<View style={{ width: "100%" }}>
-			<Text style={[styles.label, { color: mutedColor }]}>Bed Type</Text>
-			<View style={styles.row}>
-				<TypeButton
-					active={bedType === "standard"}
-					label="Standard"
-					icon="bed-patient"
-					iconFamily="fontisto"
-					onPress={() => onBedTypeChange("standard")}
-					textColor={textColor}
-					cardColor={cardColor}
-				/>
-				<TypeButton
-					active={bedType === "private"}
-					label="Private"
-					icon="shield-checkmark-outline"
-					onPress={() => onBedTypeChange("private")}
-					textColor={textColor}
-					cardColor={cardColor}
-				/>
-			</View>
+	const { isDarkMode } = useTheme();
 
-			<Text style={[styles.label, { color: mutedColor, marginTop: 14 }]}>
-				Beds
-			</Text>
-			<View style={[styles.counter, { backgroundColor: cardColor }]}>
-				<Pressable
-					onPress={() => onBedCountChange(Math.max(1, bedCount - 1))}
-					style={({ pressed }) => [styles.counterBtn, { opacity: pressed ? 0.6 : 1 }]}
-					hitSlop={10}
-				>
-					<Ionicons name="remove" size={18} color={COLORS.brandPrimary} />
-				</Pressable>
-				<Text style={[styles.counterValue, { color: textColor }]}>{bedCount}</Text>
-				<Pressable
-					onPress={() => onBedCountChange(Math.min(3, bedCount + 1))}
-					style={({ pressed }) => [styles.counterBtn, { opacity: pressed ? 0.6 : 1 }]}
-					hitSlop={10}
-				>
-					<Ionicons name="add" size={18} color={COLORS.brandPrimary} />
-				</Pressable>
+	const BED_OPTIONS = [
+		{
+			id: "standard",
+			name: "Standard Bed",
+			description: "General Ward • Shared",
+			icon: "bed",
+			price: "$150",
+		},
+		{
+			id: "private",
+			name: "Private Room",
+			description: "Single Room • En-suite",
+			icon: "home",
+			price: "$350",
+		},
+	];
+
+	return (
+		<View style={styles.container}>
+			<View style={styles.sectionHeader}>
+				<Text style={[styles.sectionTitle, { color: mutedColor }]}>CHOOSE ROOM TYPE</Text>
+			</View>
+			
+			{BED_OPTIONS.map((option) => {
+				const isSelected = bedType === option.id;
+				const backgroundColor = isSelected 
+					? (isDarkMode ? "#1A2333" : "#F0F9FF") 
+					: cardColor;
+
+				return (
+					<Pressable
+						key={option.id}
+						onPress={() => onBedTypeChange(option.id)}
+						style={({ pressed }) => [
+							styles.optionCard,
+							{
+								backgroundColor,
+								borderColor: isSelected ? COLORS.brandPrimary : "transparent",
+								borderWidth: isSelected ? 2 : 0,
+								opacity: pressed ? 0.9 : 1,
+							}
+						]}
+					>
+						{/* Icon */}
+						<View style={[styles.iconContainer, { backgroundColor: isDarkMode ? "#252D3B" : "#F1F5F9" }]}>
+							<Ionicons name={option.icon} size={28} color={COLORS.brandPrimary} />
+						</View>
+
+						{/* Info */}
+						<View style={styles.infoContainer}>
+							<Text style={[styles.optionName, { color: textColor }]}>{option.name}</Text>
+							<Text style={[styles.optionDesc, { color: mutedColor }]}>{option.description}</Text>
+						</View>
+
+						{/* Price/Selection */}
+						<View style={styles.priceContainer}>
+							<Text style={[styles.price, { color: textColor }]}>{option.price}</Text>
+							{isSelected && (
+								<Ionicons name="checkmark-circle" size={20} color={COLORS.brandPrimary} style={{ marginTop: 4 }} />
+							)}
+						</View>
+					</Pressable>
+				);
+			})}
+
+			<View style={[styles.countRow, { backgroundColor: cardColor, marginTop: 16 }]}>
+				<View>
+					<Text style={[styles.countLabel, { color: textColor }]}>Number of Beds</Text>
+					<Text style={[styles.countSub, { color: mutedColor }]}>For multiple patients</Text>
+				</View>
+				
+				<View style={styles.counterControls}>
+					<Pressable
+						onPress={() => onBedCountChange(Math.max(1, bedCount - 1))}
+						style={({ pressed }) => [
+							styles.counterBtn, 
+							{ 
+								backgroundColor: isDarkMode ? "#252D3B" : "#F1F5F9",
+								opacity: pressed ? 0.7 : 1,
+								opacity: bedCount <= 1 ? 0.3 : 1
+							}
+						]}
+						disabled={bedCount <= 1}
+					>
+						<Ionicons name="remove" size={20} color={textColor} />
+					</Pressable>
+					
+					<Text style={[styles.countValue, { color: textColor }]}>{bedCount}</Text>
+					
+					<Pressable
+						onPress={() => onBedCountChange(Math.min(5, bedCount + 1))}
+						style={({ pressed }) => [
+							styles.counterBtn, 
+							{ 
+								backgroundColor: isDarkMode ? "#252D3B" : "#F1F5F9",
+								opacity: pressed ? 0.7 : 1 
+							}
+						]}
+					>
+						<Ionicons name="add" size={20} color={textColor} />
+					</Pressable>
+				</View>
 			</View>
 		</View>
 	);
 }
 
-function TypeButton({
-	active,
-	label,
-	icon,
-	iconFamily,
-	onPress,
-	textColor,
-	cardColor,
-}) {
-	return (
-		<Pressable
-			onPress={onPress}
-			style={({ pressed }) => [
-				styles.typeButton,
-				{
-					backgroundColor: active ? `${COLORS.brandPrimary}15` : cardColor,
-					borderColor: active ? COLORS.brandPrimary : "transparent",
-					opacity: pressed ? 0.85 : 1,
-				},
-			]}
-		>
-			{iconFamily === "fontisto" ? (
-				<Fontisto
-					name={icon}
-					size={16}
-					color={active ? COLORS.brandPrimary : textColor}
-				/>
-			) : (
-				<Ionicons
-					name={icon}
-					size={18}
-					color={active ? COLORS.brandPrimary : textColor}
-				/>
-			)}
-			<Text
-				style={[
-					styles.typeText,
-					{ color: active ? COLORS.brandPrimary : textColor },
-				]}
-			>
-				{label}
-			</Text>
-		</Pressable>
-	);
-}
-
 const styles = StyleSheet.create({
-	label: {
+	container: {
+		width: "100%",
+	},
+	sectionHeader: {
+		marginBottom: 8,
+		marginTop: 4,
+	},
+	sectionTitle: {
 		fontSize: 11,
-		fontWeight: "900",
-		letterSpacing: 1.6,
-		textTransform: "uppercase",
+		fontWeight: "800",
+		letterSpacing: 1,
 	},
-	row: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		marginTop: 10,
-	},
-	typeButton: {
-		flexBasis: "47%",
-		flexGrow: 1,
-		borderRadius: 18,
-		paddingHorizontal: 14,
-		paddingVertical: 12,
-		marginHorizontal: 4,
-		borderWidth: 2,
+	optionCard: {
 		flexDirection: "row",
 		alignItems: "center",
+		padding: 12,
+		borderRadius: 16,
+		marginBottom: 8,
 	},
-	typeText: {
-		marginLeft: 10,
-		fontSize: 13,
-		fontWeight: "900",
-		letterSpacing: 0.4,
+	iconContainer: {
+		width: 50,
+		height: 50,
+		borderRadius: 25,
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 12,
 	},
-	counter: {
-		borderRadius: 18,
-		paddingHorizontal: 14,
-		paddingVertical: 10,
+	infoContainer: {
+		flex: 1,
+		justifyContent: "center",
+	},
+	optionName: {
+		fontSize: 15,
+		fontWeight: "700",
+		marginBottom: 2,
+	},
+	optionDesc: {
+		fontSize: 12,
+		fontWeight: "500",
+	},
+	priceContainer: {
+		alignItems: "flex-end",
+		justifyContent: "center",
+	},
+	price: {
+		fontSize: 14,
+		fontWeight: "700",
+	},
+	countRow: {
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
-		marginTop: 10,
+		padding: 16,
+		borderRadius: 16,
+	},
+	countLabel: {
+		fontSize: 15,
+		fontWeight: "700",
+	},
+	countSub: {
+		fontSize: 12,
+		marginTop: 2,
+	},
+	counterControls: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 16,
 	},
 	counterBtn: {
 		width: 36,
@@ -149,11 +197,11 @@ const styles = StyleSheet.create({
 		borderRadius: 18,
 		alignItems: "center",
 		justifyContent: "center",
-		backgroundColor: "rgba(134,16,14,0.08)",
 	},
-	counterValue: {
+	countValue: {
 		fontSize: 18,
-		fontWeight: "900",
-		letterSpacing: -0.2,
+		fontWeight: "700",
+		minWidth: 20,
+		textAlign: "center",
 	},
 });

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { notificationsService } from "../../services/notificationsService";
 import { supabase } from "../../services/supabase";
-import { hapticService } from "../../services/hapticService";
-import { soundService } from "../../services/soundService";
+import hapticService from "../../services/hapticService";
+import soundService from "../../services/soundService";
 import { normalizeNotification } from "../../utils/domainNormalize";
 
 const mapFromDb = (row) => ({

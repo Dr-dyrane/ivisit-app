@@ -42,481 +42,250 @@ export const BedBookingSummaryCard = ({
 		return normalized ? `tel:${normalized}` : null;
 	}, [normalizePhone, bookingHospital?.phone]);
 
-	const smsTarget = useMemo(() => {
-		const phoneRaw = bookingHospital?.phone ?? null;
-		const normalized = normalizePhone(phoneRaw);
-		return normalized ? `sms:${normalized}` : null;
-	}, [normalizePhone, bookingHospital?.phone]);
-
 	const etaText =
 		formattedBedRemaining ??
 		activeBedBooking?.estimatedWait ??
 		(Number.isFinite(activeBedBooking?.etaSeconds)
-			? `${Math.round(activeBedBooking.etaSeconds / 60)} mins`
+			? `${Math.round(activeBedBooking.etaSeconds / 60)}`
 			: "--");
-	const statusLabel = bedStatus ?? "Waiting";
-	const title = statusLabel === "Ready" ? "Bed ready" : "Bed reserved";
 
+	const statusLabel = bedStatus ?? "Waiting";
+	// e.g. "Reserved", "Ready"
+	
 	const bedNumber = activeBedBooking?.bedNumber ?? "--";
-	const bedType = activeBedBooking?.bedType ?? "--";
+	const bedType = activeBedBooking?.bedType 
+		? activeBedBooking.bedType.charAt(0).toUpperCase() + activeBedBooking.bedType.slice(1) + " Bed"
+		: "Standard Bed";
 	const bedCount = Number.isFinite(activeBedBooking?.bedCount)
 		? String(activeBedBooking.bedCount)
-		: "--";
-	const specialty = activeBedBooking?.specialty ?? "--";
+		: "1";
+	const specialty = activeBedBooking?.specialty ?? "General";
 	const hospitalName =
 		activeBedBooking?.hospitalName ?? bookingHospital?.name ?? "Hospital";
-	const bookingId = activeBedBooking?.bookingId ?? "--";
 
 	return (
 		<View
 			style={[
-				styles.tripCard,
+				styles.container,
 				{
-					backgroundColor: isDarkMode ? "#121826" : "#FFFFFF",
-					borderColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)",
+					backgroundColor: isDarkMode ? "#1A2333" : "#FFFFFF",
+					shadowColor: "#000",
+					shadowOffset: { width: 0, height: 4 },
+					shadowOpacity: isDarkMode ? 0.4 : 0.08,
+					shadowRadius: 12,
+					elevation: 5,
 				},
 			]}
 		>
-			<View style={styles.tripHeaderRow}>
-				<View style={{ flex: 1 }}>
-					<Text
-						style={[
-							styles.tripTitle,
-							{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
-						]}
-					>
-						{title}
+			{/* Header: Status & Time */}
+			<View style={styles.headerRow}>
+				<View>
+					<Text style={[styles.statusTitle, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
+						{statusLabel}
 					</Text>
-					<Text
-						style={[
-							styles.tripSubtitle,
-							{
-								color: isDarkMode ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.60)",
-							},
-						]}
-					>
-						Wait {etaText} • {statusLabel}
-					</Text>
-				</View>
-				<View style={styles.tripBadge}>
-					<Ionicons name="bed" size={14} color={COLORS.brandPrimary} />
-					<Text
-						style={[
-							styles.tripBadgeText,
-							{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
-						]}
-					>
-						{bedNumber}
-					</Text>
-				</View>
-			</View>
-
-			{Number.isFinite(bedProgress) && (
-				<View style={styles.tripStepsRow}>
-					<View style={styles.tripStep}>
-						<View
-							style={[
-								styles.tripStepDot,
-								{
-									backgroundColor:
-										bedProgress >= 0 ? COLORS.brandPrimary : "rgba(148,163,184,0.5)",
-								},
-							]}
-						/>
-						<Text
-							style={[
-								styles.tripStepLabel,
-								{
-									color: isDarkMode ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.60)",
-								},
-							]}
-						>
-							Reserved
-						</Text>
-					</View>
-					<View style={styles.tripStepLine} />
-					<View style={styles.tripStep}>
-						<View
-							style={[
-								styles.tripStepDot,
-								{
-									backgroundColor:
-										bedProgress >= 0.15 ? COLORS.brandPrimary : "rgba(148,163,184,0.5)",
-								},
-							]}
-						/>
-						<Text
-							style={[
-								styles.tripStepLabel,
-								{
-									color: isDarkMode ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.60)",
-								},
-							]}
-						>
-							Waiting
-						</Text>
-					</View>
-					<View style={styles.tripStepLine} />
-					<View style={styles.tripStep}>
-						<View
-							style={[
-								styles.tripStepDot,
-								{
-									backgroundColor:
-										bedProgress >= 1 ? COLORS.brandPrimary : "rgba(148,163,184,0.5)",
-								},
-							]}
-						/>
-						<Text
-							style={[
-								styles.tripStepLabel,
-								{
-									color: isDarkMode ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.60)",
-								},
-							]}
-						>
-							Ready
-						</Text>
-					</View>
-				</View>
-			)}
-
-			<View
-				style={[
-					styles.tripMetaRow,
-					{
-						backgroundColor: isDarkMode
-							? "rgba(255,255,255,0.06)"
-							: "rgba(15,23,42,0.04)",
-					},
-				]}
-			>
-				<View style={styles.tripMetaItem}>
-					<Text
-						style={[
-							styles.tripMetaLabel,
-							{
-								color: isDarkMode ? "rgba(255,255,255,0.55)" : "rgba(15,23,42,0.55)",
-							},
-						]}
-					>
-						Specialty
-					</Text>
-					<Text
-						style={[
-							styles.tripMetaValue,
-							{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
-						]}
-						numberOfLines={1}
-					>
-						{specialty}
-					</Text>
-				</View>
-				<View
-					style={[
-						styles.tripMetaDivider,
-						{
-							backgroundColor: isDarkMode
-								? "rgba(255,255,255,0.10)"
-								: "rgba(15,23,42,0.08)",
-						},
-					]}
-				/>
-				<View style={styles.tripMetaItem}>
-					<Text
-						style={[
-							styles.tripMetaLabel,
-							{
-								color: isDarkMode ? "rgba(255,255,255,0.55)" : "rgba(15,23,42,0.55)",
-							},
-						]}
-					>
-						Bed
-					</Text>
-					<Text
-						style={[
-							styles.tripMetaValue,
-							{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
-						]}
-						numberOfLines={1}
-					>
-						{bedCount} • {bedType}
-					</Text>
-				</View>
-			</View>
-
-			{!isCollapsed && (
-				<View style={styles.tripDetails}>
-					<Text
-						style={[
-							styles.tripSectionTitle,
-							{
-								color: isDarkMode ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.60)",
-							},
-						]}
-					>
-						Reservation
-					</Text>
-					<Text
-						style={[
-							styles.tripCrewItem,
-							{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
-						]}
-						numberOfLines={1}
-					>
+					<Text style={[styles.statusSub, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
 						{hospitalName}
 					</Text>
-					<Text
-						style={[
-							styles.tripCrewItem,
-							{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
-						]}
-						numberOfLines={1}
-					>
-						ID {bookingId}
+				</View>
+				<View style={styles.etaContainer}>
+					<Text style={[styles.etaTime, { color: COLORS.textLight }]}>
+						{etaText}
 					</Text>
+					<Text style={[styles.etaLabel, { color: "rgba(255,255,255,0.8)" }]}>
+						min
+					</Text>
+				</View>
+			</View>
 
-					<View style={styles.tripActionsRow}>
-						<View style={styles.tripQuickActions}>
-							<Pressable
-								disabled={!callTarget}
-								onPress={() => {
-									if (!callTarget) return;
-									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-									Linking.openURL(callTarget);
-								}}
-								style={({ pressed }) => [
-									styles.tripActionButton,
-									{
-										backgroundColor: isDarkMode
-											? "rgba(255,255,255,0.08)"
-											: "rgba(15,23,42,0.06)",
-										opacity: callTarget ? 1 : 0.5,
-										transform: [{ scale: pressed ? 0.98 : 1 }],
-									},
-								]}
-							>
-								<Ionicons name="call" size={18} color={COLORS.brandPrimary} />
-								<Text
-									style={[
-										styles.tripActionText,
-										{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
-									]}
-								>
-									Call
-								</Text>
-							</Pressable>
-							<Pressable
-								disabled={!smsTarget}
-								onPress={() => {
-									if (!smsTarget) return;
-									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-									Linking.openURL(smsTarget);
-								}}
-								style={({ pressed }) => [
-									styles.tripActionButton,
-									{
-										backgroundColor: isDarkMode
-											? "rgba(255,255,255,0.08)"
-											: "rgba(15,23,42,0.06)",
-										opacity: smsTarget ? 1 : 0.5,
-										transform: [{ scale: pressed ? 0.98 : 1 }],
-									},
-								]}
-							>
-								<Ionicons name="chatbubble" size={18} color={COLORS.brandPrimary} />
-								<Text
-									style={[
-										styles.tripActionText,
-										{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
-									]}
-								>
-									Message
-								</Text>
-							</Pressable>
-						</View>
+			{/* Progress Bar */}
+			<View style={[styles.progressTrack, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9" }]}>
+				<View 
+					style={[
+						styles.progressBar, 
+						{ 
+							width: `${Math.max(5, (bedProgress ?? 0) * 100)}%`,
+							backgroundColor: COLORS.brandPrimary 
+						}
+					]} 
+				/>
+			</View>
 
-						<View style={styles.tripQuickActions}>
-							<Pressable
-								onPress={() => {
-									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-									onCancelBedBooking?.();
-								}}
-								style={({ pressed }) => [
-									styles.tripCancelButton,
-									{
-										backgroundColor: isDarkMode
-											? "rgba(239,68,68,0.16)"
-											: "rgba(239,68,68,0.10)",
-										transform: [{ scale: pressed ? 0.98 : 1 }],
-										flex: 1,
-									},
-								]}
-							>
-								<Text style={styles.tripCancelText}>Cancel reservation</Text>
-							</Pressable>
-
-							<Pressable
-								onPress={() => {
-									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-									onCompleteBedBooking?.();
-								}}
-								style={({ pressed }) => [
-									styles.tripCancelButton,
-									{
-										backgroundColor: isDarkMode
-											? "rgba(16,185,129,0.16)"
-											: "rgba(16,185,129,0.12)",
-										transform: [{ scale: pressed ? 0.98 : 1 }],
-										flex: 1,
-									},
-								]}
-							>
-								<Text style={[styles.tripCancelText, { color: "#10B981" }]}>
-									Mark complete
-								</Text>
-							</Pressable>
-						</View>
+			{/* Bed Info Row */}
+			<View style={styles.driverRow}>
+				<View style={[styles.driverAvatar, { backgroundColor: isDarkMode ? "#252D3B" : "#E2E8F0" }]}>
+					<Ionicons name="bed" size={24} color={isDarkMode ? "#94A3B8" : "#64748B"} />
+				</View>
+				
+				<View style={styles.driverInfo}>
+					<Text style={[styles.driverName, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
+						{bedType}
+					</Text>
+					<View style={styles.ratingRow}>
+						<Text style={[styles.ratingText, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
+							{specialty} • {bedCount} {bedCount === "1" ? "bed" : "beds"}
+						</Text>
 					</View>
 				</View>
-			)}
+
+				<View style={styles.plateContainer}>
+					<Text style={styles.plateText}>{bedNumber}</Text>
+				</View>
+			</View>
+
+			{/* Actions */}
+			<View style={styles.actionsRow}>
+				{callTarget && (
+					<Pressable
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+							Linking.openURL(callTarget);
+						}}
+						style={({ pressed }) => [
+							styles.actionBtn,
+							{ 
+								backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
+								opacity: pressed ? 0.7 : 1
+							}
+						]}
+					>
+						<Ionicons name="call" size={20} color={isDarkMode ? COLORS.textLight : COLORS.textPrimary} />
+					</Pressable>
+				)}
+				
+				<Pressable
+					onPress={() => {
+						Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+						onCancelBedBooking?.();
+					}}
+					style={({ pressed }) => [
+						styles.cancelBtn,
+						{ opacity: pressed ? 0.7 : 1 }
+					]}
+				>
+					<Text style={styles.cancelText}>Cancel Reservation</Text>
+				</Pressable>
+			</View>
 		</View>
 	);
 };
 
 const styles = StyleSheet.create({
-	tripCard: {
-		borderRadius: 22,
-		borderWidth: 1,
-		paddingHorizontal: 14,
-		paddingTop: 14,
-		paddingBottom: 12,
-		marginBottom: 10,
+	container: {
+		borderRadius: 20,
+		padding: 20,
+		marginBottom: 20,
+		marginHorizontal: 4,
 	},
-	tripHeaderRow: {
+	headerRow: {
 		flexDirection: "row",
-		alignItems: "center",
-	},
-	tripTitle: {
-		fontSize: 16,
-		fontWeight: "500",
-	},
-	tripSubtitle: {
-		marginTop: 4,
-		fontSize: 12,
-		fontWeight: "400",
-	},
-	tripBadge: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 6,
-		paddingHorizontal: 10,
-		paddingVertical: 6,
-		borderRadius: 14,
-		backgroundColor: "rgba(220,38,38,0.08)",
-	},
-	tripBadgeText: {
-		fontSize: 12,
-		fontWeight: "800",
-	},
-	tripMetaRow: {
-		marginTop: 12,
-		flexDirection: "row",
-		alignItems: "center",
-		borderRadius: 16,
-		overflow: "hidden",
-	},
-	tripMetaItem: {
-		flex: 1,
-		paddingVertical: 10,
-		paddingHorizontal: 12,
-	},
-	tripMetaLabel: {
-		fontSize: 11,
-		fontWeight: "500",
-	},
-	tripMetaValue: {
-		marginTop: 4,
-		fontSize: 13,
-		fontWeight: "800",
-	},
-	tripMetaDivider: {
-		width: 1,
-		alignSelf: "stretch",
-	},
-	tripDetails: {
-		marginTop: 12,
-	},
-	tripSectionTitle: {
-		fontSize: 11,
-		fontWeight: "900",
-		letterSpacing: 1,
-		textTransform: "uppercase",
-		marginBottom: 8,
-	},
-	tripCrewItem: {
-		fontSize: 13,
-		fontWeight: "400",
-		marginBottom: 6,
-	},
-	tripActionsRow: {
-		marginTop: 12,
-	},
-	tripQuickActions: {
-		flexDirection: "row",
-		gap: 10,
-		marginBottom: 10,
-	},
-	tripActionButton: {
-		flex: 1,
-		height: 44,
-		borderRadius: 16,
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "center",
-		gap: 8,
-	},
-	tripActionText: {
-		fontSize: 13,
-		fontWeight: "800",
-	},
-	tripCancelButton: {
-		height: 44,
-		borderRadius: 16,
-		justifyContent: "center",
-		alignItems: "center",
-	},
-	tripCancelText: {
-		fontSize: 13,
-		fontWeight: "800",
-		letterSpacing: 0.2,
-		color: "#EF4444",
-	},
-	tripStepsRow: {
-		marginTop: 12,
-		flexDirection: "row",
-		alignItems: "center",
 		justifyContent: "space-between",
+		alignItems: "flex-start",
+		marginBottom: 16,
 	},
-	tripStep: {
+	statusTitle: {
+		fontSize: 22,
+		fontWeight: "700",
+		letterSpacing: -0.5,
+		marginBottom: 4,
+	},
+	statusSub: {
+		fontSize: 14,
+		fontWeight: "500",
+	},
+	etaContainer: {
+		backgroundColor: COLORS.brandPrimary,
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: 12,
 		alignItems: "center",
+		justifyContent: "center",
+	},
+	etaTime: {
+		fontSize: 18,
+		fontWeight: "800",
+		lineHeight: 22,
+	},
+	etaLabel: {
+		fontSize: 10,
+		fontWeight: "600",
+		textTransform: "uppercase",
+	},
+	progressTrack: {
+		height: 6,
+		borderRadius: 3,
+		overflow: "hidden",
+		marginBottom: 20,
+	},
+	progressBar: {
+		height: "100%",
+		borderRadius: 3,
+	},
+	driverRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 20,
+	},
+	driverAvatar: {
+		width: 48,
+		height: 48,
+		borderRadius: 24,
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 12,
+	},
+	driverInfo: {
 		flex: 1,
 	},
-	tripStepDot: {
-		width: 10,
-		height: 10,
-		borderRadius: 5,
-		marginBottom: 6,
+	driverName: {
+		fontSize: 16,
+		fontWeight: "700",
+		marginBottom: 2,
 	},
-	tripStepLabel: {
-		fontSize: 11,
-		fontWeight: "800",
+	ratingRow: {
+		flexDirection: "row",
+		alignItems: "center",
 	},
-	tripStepLine: {
-		height: 2,
-		width: 22,
-		borderRadius: 1,
-		backgroundColor: "rgba(148,163,184,0.35)",
-		marginBottom: 18,
+	ratingText: {
+		fontSize: 13,
+		fontWeight: "500",
+	},
+	plateContainer: {
+		backgroundColor: "#F1F5F9",
+		paddingHorizontal: 8,
+		paddingVertical: 4,
+		borderRadius: 6,
+		borderWidth: 1,
+		borderColor: "#E2E8F0",
+	},
+	plateText: {
+		fontSize: 12,
+		fontWeight: "700",
+		color: "#475569",
+		letterSpacing: 0.5,
+	},
+	actionsRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
+	},
+	actionBtn: {
+		width: 48,
+		height: 48,
+		borderRadius: 24,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	cancelBtn: {
+		flex: 1,
+		height: 48,
+		borderRadius: 24,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: "rgba(239, 68, 68, 0.1)",
+	},
+	cancelText: {
+		color: "#EF4444",
+		fontSize: 15,
+		fontWeight: "600",
 	},
 });
