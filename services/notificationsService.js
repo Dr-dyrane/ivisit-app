@@ -29,7 +29,6 @@ export const notificationsService = {
     async list() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-            console.log("[notificationsService] No user logged in");
             return [];
         }
 
@@ -44,9 +43,7 @@ export const notificationsService = {
             return [];
         }
 
-        console.log(`[notificationsService] Fetched ${data?.length ?? 0} notifications from database`);
         const result = data.map(mapFromDb).map(n => normalizeNotification(n)).filter(Boolean);
-        console.log(`[notificationsService] After normalization: ${result.length} notifications`);
         return result;
     },
 
@@ -56,8 +53,6 @@ export const notificationsService = {
 
         const normalized = normalizeNotification(notification);
         const dbItem = mapToDb({ ...normalized, user_id: user.id });
-
-        console.log(`[notificationsService] Creating notification: ${normalized.id} - ${normalized.title}`);
 
         const { data, error } = await supabase
             .from(TABLE)
@@ -71,15 +66,12 @@ export const notificationsService = {
         }
         
         const result = normalizeNotification(mapFromDb(data));
-        console.log(`[notificationsService] Notification created successfully: ${result.id}`);
         return result;
     },
 
     async markAsRead(id) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-
-        console.log(`[notificationsService] Marking notification as read: ${id}`);
 
         const { error } = await supabase
             .from(TABLE)
@@ -91,14 +83,11 @@ export const notificationsService = {
             console.error(`[notificationsService] markAsRead error for ${id}:`, error);
             throw error;
         }
-        console.log(`[notificationsService] Notification marked as read: ${id}`);
     },
 
     async markAllAsRead() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-
-        console.log(`[notificationsService] Marking all notifications as read`);
 
         const { error } = await supabase
             .from(TABLE)
@@ -110,14 +99,11 @@ export const notificationsService = {
             console.error("[notificationsService] markAllAsRead error:", error);
             throw error;
         }
-        console.log(`[notificationsService] All notifications marked as read`);
     },
 
     async delete(id) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-
-        console.log(`[notificationsService] Deleting notification: ${id}`);
 
         const { error } = await supabase
             .from(TABLE)
@@ -129,14 +115,11 @@ export const notificationsService = {
             console.error(`[notificationsService] delete error for ${id}:`, error);
             throw error;
         }
-        console.log(`[notificationsService] Notification deleted: ${id}`);
     },
 
     async clearAll() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-
-        console.log(`[notificationsService] Clearing all notifications`);
 
         const { error } = await supabase
             .from(TABLE)
@@ -147,6 +130,38 @@ export const notificationsService = {
             console.error("[notificationsService] clearAll error:", error);
             throw error;
         }
-        console.log(`[notificationsService] All notifications cleared`);
+    },
+
+    async deleteOldest(count) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: oldestNotifications, error: fetchError } = await supabase
+            .from(TABLE)
+            .select('id')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: true })
+            .limit(count);
+
+        if (fetchError) {
+            console.error("[notificationsService] deleteOldest fetch error:", fetchError);
+            throw fetchError;
+        }
+
+        if (!oldestNotifications || oldestNotifications.length === 0) {
+            return;
+        }
+
+        const idsToDelete = oldestNotifications.map(n => n.id);
+
+        const { error: deleteError } = await supabase
+            .from(TABLE)
+            .delete()
+            .in('id', idsToDelete);
+
+        if (deleteError) {
+            console.error("[notificationsService] deleteOldest delete error:", deleteError);
+            throw deleteError;
+        }
     }
 };

@@ -15,7 +15,6 @@ export function useVisitsData() {
         try {
             setIsLoading(true);
             const data = await visitsService.list();
-            console.log('[useVisitsData] Fetched visits:', data.length, 'items');
             setVisits(data);
             setError(null);
         } catch (err) {
@@ -28,9 +27,7 @@ export function useVisitsData() {
 
     const addVisit = useCallback(async (visit) => {
         try {
-            console.log('[useVisitsData] Adding visit:', visit.id, visit.hospital);
             const newItem = await visitsService.create(visit);
-            console.log('[useVisitsData] Visit added successfully:', newItem.id, newItem.status);
             setVisits(prev => [newItem, ...prev]);
             return newItem;
         } catch (err) {
@@ -63,9 +60,7 @@ export function useVisitsData() {
 
     const completeVisit = useCallback(async (id) => {
         try {
-            console.log('[useVisitsData] Completing visit:', id);
             const updated = await visitsService.complete(id);
-            console.log('[useVisitsData] Visit completed:', updated.id, 'status:', updated.status);
             setVisits(prev => prev.map(v => v.id === id ? updated : v));
             return updated;
         } catch (err) {
@@ -96,8 +91,20 @@ export function useVisitsData() {
                         filter: `user_id=eq.${user.id}`,
                     },
                     (payload) => {
-                        console.log('[useVisitsData] Real-time update:', payload.eventType, payload.new?.id);
-                        fetchVisits();
+                        if (payload.eventType === 'INSERT') {
+                            const newVisit = payload.new;
+                            setVisits(prev => [newVisit, ...prev]);
+                        } 
+                        else if (payload.eventType === 'UPDATE') {
+                            const updatedVisit = payload.new;
+                            setVisits(prev => 
+                                prev.map(v => v.id === updatedVisit.id ? updatedVisit : v)
+                            );
+                        } 
+                        else if (payload.eventType === 'DELETE') {
+                            const deletedId = payload.old.id;
+                            setVisits(prev => prev.filter(v => v.id !== deletedId));
+                        }
                     }
                 )
                 .subscribe();
@@ -108,7 +115,7 @@ export function useVisitsData() {
         return () => {
             if (subscription) supabase.removeChannel(subscription);
         };
-    }, [fetchVisits]);
+    }, []);
 
     return {
         visits,

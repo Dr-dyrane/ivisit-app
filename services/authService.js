@@ -8,6 +8,7 @@
 import { supabase } from "./supabase";
 import { database, StorageKeys } from "../database";
 import * as Linking from 'expo-linking';
+import { notificationDispatcher } from "./notificationDispatcher";
 
 // ============================================
 // ERROR HELPERS
@@ -127,6 +128,13 @@ const authService = {
         await database.write(StorageKeys.CURRENT_USER, user);
         await database.write(StorageKeys.AUTH_TOKEN, data.session?.access_token);
 
+		// Create notification for successful login
+		try {
+			await notificationDispatcher.dispatchAuthEvent('login', user);
+		} catch (error) {
+			console.warn("[authService] Failed to create login notification:", error);
+		}
+
 		return { data: user };
 	},
 
@@ -199,6 +207,13 @@ const authService = {
              await database.write(StorageKeys.CURRENT_USER, user);
              await database.write(StorageKeys.AUTH_TOKEN, data.session.access_token);
         }
+
+		// Create notification for successful signup
+		try {
+			await notificationDispatcher.dispatchAuthEvent('signup', user);
+		} catch (error) {
+			console.warn("[authService] Failed to create signup notification:", error);
+		}
 
 		return { data: user };
 	},
@@ -459,6 +474,13 @@ const authService = {
             throw handleSupabaseError(error);
         }
 
+		// Create notification for profile update
+		try {
+			await notificationDispatcher.dispatchAuthEvent('profile_update', newData);
+		} catch (error) {
+			console.warn("[authService] Failed to create profile update notification:", error);
+		}
+
         // Merge updates for return
         return { data: { ...newData } };
 	},
@@ -480,6 +502,14 @@ const authService = {
     async resetPassword({ newPassword }) {
         const { error } = await supabase.auth.updateUser({ password: newPassword });
         if (error) throw handleSupabaseError(error);
+        
+		// Create notification for password change
+		try {
+			await notificationDispatcher.dispatchAuthEvent('password_change', {});
+		} catch (error) {
+			console.warn("[authService] Failed to create password change notification:", error);
+		}
+
         return { message: "Password updated successfully" };
     },
 
@@ -493,6 +523,13 @@ const authService = {
             // Fetch full profile/user data to return
             const currentUser = await this.getCurrentUser();
             
+			// Create notification for password change
+			try {
+				await notificationDispatcher.dispatchAuthEvent('password_change', {});
+			} catch (error) {
+				console.warn("[authService] Failed to create password change notification:", error);
+			}
+
             return {
                 success: true,
                 data: {
@@ -521,6 +558,13 @@ const authService = {
 	 * @returns {Promise<boolean>}
 	 */
 	async logout() {
+		// Create notification before logout (so we still have user context)
+		try {
+			await notificationDispatcher.dispatchAuthEvent('logout', {});
+		} catch (error) {
+			console.warn("[authService] Failed to create logout notification:", error);
+		}
+
 		await supabase.auth.signOut();
 		await database.delete(StorageKeys.AUTH_TOKEN);
         await database.delete(StorageKeys.CURRENT_USER);
@@ -626,7 +670,6 @@ const authService = {
 
         // RETRY MECHANISM: If profile is empty (trigger might be slow), wait and retry
         if (!profile.createdAt) {
-             console.log("Profile missing, waiting for trigger...");
              await new Promise(r => setTimeout(r, 1000)); // Wait 1s
              profile = await this.getUserProfile(data.user.id);
         }

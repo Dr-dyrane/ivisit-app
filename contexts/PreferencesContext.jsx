@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { preferencesService } from "../services/preferencesService";
+import { soundService } from "../services/soundService";
 
 const PreferencesContext = createContext();
 
@@ -26,9 +27,16 @@ export function PreferencesProvider({ children }) {
 		(async () => {
 			setIsLoading(true);
 			try {
+				await soundService.init();
+				await soundService.loadSounds();
+				
 				const next = await preferencesService.get();
 				if (!isActive) return;
 				setPreferences(next && typeof next === "object" ? next : null);
+				
+				if (next?.notificationSoundsEnabled !== undefined) {
+					soundService.setSoundEnabled(next.notificationSoundsEnabled);
+				}
 			} catch (e) {
 				if (!isActive) return;
 				setError(e?.message ?? "Failed to load preferences");
@@ -44,6 +52,11 @@ export function PreferencesProvider({ children }) {
 	const updatePreferences = useCallback(async (updates) => {
 		const next = await preferencesService.update(updates);
 		setPreferences(next && typeof next === "object" ? next : null);
+		
+		if (updates.notificationSoundsEnabled !== undefined) {
+			soundService.setSoundEnabled(updates.notificationSoundsEnabled);
+		}
+		
 		return next;
 	}, []);
 
