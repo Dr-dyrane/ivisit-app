@@ -20,12 +20,21 @@ import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
 import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
 import { useEmergencyRequests } from "../hooks/emergency/useEmergencyRequests";
 import { EmergencyRequestStatus } from "../services/emergencyRequestsService";
-import { NOTIFICATION_PRIORITY, NOTIFICATION_TYPES } from "../constants/notifications";
+import {
+	NOTIFICATION_PRIORITY,
+	NOTIFICATION_TYPES,
+} from "../constants/notifications";
+import { useNotifications } from "../contexts/NotificationsContext";
+import { getMapPaddingForSnapIndex } from "../constants/emergencyAnimations";
 
-import FullScreenEmergencyMap from "../components/map/FullScreenEmergencyMap";
-import EmergencyBottomSheet from "../components/emergency/EmergencyBottomSheet";
+import { EmergencyMapContainer } from "../components/emergency/EmergencyMapContainer";
+import { BottomSheetController } from "../components/emergency/BottomSheetController";
 import EmergencyRequestModal from "../components/emergency/EmergencyRequestModal";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
+import { useEmergencyHandlers } from "../hooks/emergency/useEmergencyHandlers";
+import { useHospitalSelection } from "../hooks/emergency/useHospitalSelection";
+import { useSearchFiltering } from "../hooks/emergency/useSearchFiltering";
+import { useRequestFlow } from "../hooks/emergency/useRequestFlow";
 
 /**
  * EmergencyScreen - Apple Maps Style Layout
@@ -46,14 +55,18 @@ export default function EmergencyScreen() {
 	const { registerFAB } = useFAB();
 	const { addVisit, cancelVisit, completeVisit } = useVisits();
 	const { user } = useAuth();
-    const { preferences } = usePreferences();
-    const { contacts: emergencyContacts } = useEmergencyContacts();
-    const { profile: medicalProfile } = useMedicalProfile();
-    const { createRequest, setRequestStatus } = useEmergencyRequests();
+	const { preferences } = usePreferences();
+	const { contacts: emergencyContacts } = useEmergencyContacts();
+	const { profile: medicalProfile } = useMedicalProfile();
+	const { createRequest, setRequestStatus } = useEmergencyRequests();
+	const { addNotification } = useNotifications();
+
+	const screenHeight = Dimensions.get("window").height;
 
 	// Refs for map and bottom sheet
 	const mapRef = useRef(null);
 	const bottomSheetRef = useRef(null);
+	const lastListStateRef = useRef({ snapIndex: 1, scrollY: 0 });
 
 	// UI state from EmergencyUIContext
 	const {
@@ -66,25 +79,16 @@ export default function EmergencyScreen() {
 		timing,
 	} = useEmergencyUI();
 
-	const lastListStateRef = useRef({ snapIndex: 1, scrollY: 0 });
+	// Local state
 	const [showEmergencyRequestModal, setShowEmergencyRequestModal] =
 		useState(false);
 	const [requestHospitalId, setRequestHospitalId] = useState(null);
-    const [currentRoute, setCurrentRoute] = useState(null);
+	const [currentRoute, setCurrentRoute] = useState(null);
 
-	// Calculate map padding based on sheet position to ensure markers are visible
-	// Sheet Snap Points: 0 (Collapsed ~15%), 1 (Half 50%), 2 (Expanded 92%)
-	const screenHeight = Dimensions.get("window").height;
+	// Map padding - calculated from snap index
 	const mapBottomPadding = useMemo(() => {
-		if (selectedHospital) return screenHeight * 0.5;
-		
-		switch (sheetSnapIndex) {
-			case 0: return screenHeight * 0.15; // Collapsed
-			case 1: return screenHeight * 0.50; // Half
-			case 2: return screenHeight * 0.90; // Expanded (almost full)
-			default: return screenHeight * 0.50;
-		}
-	}, [selectedHospital, sheetSnapIndex, screenHeight]);
+		return getMapPaddingForSnapIndex(sheetSnapIndex, !!selectedHospital);
+	}, [selectedHospital, sheetSnapIndex]);
 
 	// Data state from EmergencyContext
 	const {
@@ -111,22 +115,25 @@ export default function EmergencyScreen() {
 		stopBedBooking,
 	} = useEmergency();
 
-    // Debugging hospitals
-    useMemo(() => {
-        if (hospitals && hospitals.length > 0) {
-            console.log("EmergencyScreen: Hospitals loaded:", hospitals.length);
-        } else {
-            console.log("EmergencyScreen: No hospitals loaded yet");
-        }
-    }, [hospitals]);
+	// Debugging hospitals
+	useMemo(() => {
+		if (hospitals && hospitals.length > 0) {
+			console.log("EmergencyScreen: Hospitals loaded:", hospitals.length);
+		} else {
+			console.log("EmergencyScreen: No hospitals loaded yet");
+		}
+	}, [hospitals]);
 
 	// Header components - memoized
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
 
 	// Handle sheet snap changes
-	const handleSheetSnapChange = useCallback((index) => {
-		setSheetSnapIndex(index, "screen");
-	}, [setSheetSnapIndex]);
+	const handleSheetSnapChange = useCallback(
+		(index) => {
+			setSheetSnapIndex(index, "screen");
+		},
+		[setSheetSnapIndex]
+	);
 
 	// Set up header on focus
 	useFocusEffect(
@@ -156,7 +163,13 @@ export default function EmergencyScreen() {
 			} else {
 				unlockTabBarHidden();
 			}
-		}, [activeAmbulanceTrip, activeBedBooking, lockTabBarHidden, selectedHospital, unlockTabBarHidden])
+		}, [
+			activeAmbulanceTrip,
+			activeBedBooking,
+			lockTabBarHidden,
+			selectedHospital,
+			unlockTabBarHidden,
+		])
 	);
 
 	// FAB toggles between emergency and bed booking modes
@@ -168,61 +181,63 @@ export default function EmergencyScreen() {
 	useFocusEffect(
 		useCallback(() => {
 			const shouldHideFAB =
-				!!selectedHospital || !!activeAmbulanceTrip || !!activeBedBooking || sheetSnapIndex === 0;
+				!!selectedHospital ||
+				!!activeAmbulanceTrip ||
+				!!activeBedBooking ||
+				sheetSnapIndex === 0;
 			registerFAB({
 				icon: mode === "emergency" ? "bed-patient" : "medical",
 				visible: !shouldHideFAB,
 				onPress: handleFloatingButtonPress,
 			});
-		}, [activeAmbulanceTrip, activeBedBooking, handleFloatingButtonPress, mode, registerFAB, selectedHospital, sheetSnapIndex])
+		}, [
+			activeAmbulanceTrip,
+			activeBedBooking,
+			handleFloatingButtonPress,
+			mode,
+			registerFAB,
+			selectedHospital,
+			sheetSnapIndex,
+		])
 	);
 
-	// Hospital selection - zoom map to location (tracked)
-	const handleHospitalSelect = useCallback((hospital) => {
-		if (!hospital?.id) return;
-		timing.startTiming("hospital_select");
-		lastListStateRef.current = {
-			snapIndex: Number.isFinite(sheetSnapIndex) ? sheetSnapIndex : 1,
-			scrollY: Number.isFinite(getLastScrollY()) ? getLastScrollY() : 0,
-		};
-		selectHospital(hospital.id);
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+	// Hook: Hospital selection logic
+	const { handleHospitalSelect, handleCloseFocus } = useHospitalSelection({
+		selectHospital,
+		clearSelectedHospital,
+		mapRef,
+		sheetSnapIndex,
+		getLastScrollY,
+		timing,
+	});
 
-		// Animate map to selected hospital
-		// Force bottom padding to 50% of screen height since we know the sheet will snap there
-		if (mapRef.current) {
-			mapRef.current.animateToHospital(hospital, {
-				bottomPadding: Dimensions.get("window").height * 0.5,
-				includeUser: true,
-			});
-		}
-		timing.endTiming("hospital_select");
-	}, [getLastScrollY, selectHospital, sheetSnapIndex, timing]);
-
-	const handleCloseFocus = useCallback(() => {
-		const state = lastListStateRef.current ?? { snapIndex: 1, scrollY: 0 };
-		clearSelectedHospital();
-		setTimeout(() => {
+	const wrappedHandleCloseFocus = useCallback(() => {
+		const state = handleCloseFocus(() => {
 			bottomSheetRef.current?.restoreListState?.(state);
-		}, 0);
-	}, [clearSelectedHospital]);
+		});
+	}, [handleCloseFocus]);
 
 	// Emergency call handler
-	const handleEmergencyCall = useCallback((hospitalId) => {
-		if (!hospitalId) return;
-		lastListStateRef.current = {
-			snapIndex: Number.isFinite(sheetSnapIndex) ? sheetSnapIndex : 1,
-			scrollY: Number.isFinite(getLastScrollY()) ? getLastScrollY() : 0,
-		};
-		selectHospital(hospitalId);
-		setRequestHospitalId(hospitalId);
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-		setShowEmergencyRequestModal(true);
-	}, [getLastScrollY, mode, selectHospital, sheetSnapIndex]);
+	const handleEmergencyCall = useCallback(
+		(hospitalId) => {
+			if (!hospitalId) return;
+			lastListStateRef.current = {
+				snapIndex: Number.isFinite(sheetSnapIndex) ? sheetSnapIndex : 1,
+				scrollY: Number.isFinite(getLastScrollY()) ? getLastScrollY() : 0,
+			};
+			selectHospital(hospitalId);
+			setRequestHospitalId(hospitalId);
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			setShowEmergencyRequestModal(true);
+		},
+		[getLastScrollY, mode, selectHospital, sheetSnapIndex]
+	);
 
 	const requestHospital = useMemo(() => {
 		if (!requestHospitalId) return selectedHospital;
-		return hospitals.find((h) => h?.id === requestHospitalId) || selectedHospital;
+		return (
+			hospitals.find((h) => h?.id === requestHospitalId) || selectedHospital
+		);
 	}, [hospitals, requestHospitalId, selectedHospital]);
 
 	const handleCloseEmergencyRequestModal = useCallback(() => {
@@ -236,211 +251,97 @@ export default function EmergencyScreen() {
 			return;
 		}
 		handleCloseFocus();
-	}, [activeAmbulanceTrip, activeBedBooking, clearSelectedHospital, handleCloseFocus]);
+	}, [
+		activeAmbulanceTrip,
+		activeBedBooking,
+		clearSelectedHospital,
+		handleCloseFocus,
+	]);
 
-	const handleRequestComplete = useCallback((request) => {
-		if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") return;
-		const hospitalId = requestHospitalId ?? selectedHospital?.id ?? null;
-		if (!hospitalId) return;
-		const now = new Date();
-		const visitId = request?.requestId ? String(request.requestId) : `local_${Date.now()}`;
-		const hospital = hospitals.find((h) => h?.id === hospitalId) ?? null;
-		const date = now.toISOString().slice(0, 10);
-		const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-		(async () => {
-			try {
-				const shareMedicalProfile = preferences?.privacyShareMedicalProfile === true;
-				const shareEmergencyContacts = preferences?.privacyShareEmergencyContacts === true;
-
-				const shared = {
-					medicalProfile: shareMedicalProfile ? medicalProfile : null,
-					emergencyContacts: shareEmergencyContacts ? emergencyContacts : null,
-				};
-
-				const patient = {
-					fullName: user?.fullName ?? null,
-					phone: user?.phone ?? null,
-					email: user?.email ?? null,
-					username: user?.username ?? null,
-				};
-
-				await createRequest({
-					id: visitId,
-					requestId: visitId,
-					serviceType: request.serviceType,
-					hospitalId,
-					hospitalName: request?.hospitalName ?? hospital?.name ?? null,
-					specialty: request?.specialty ?? selectedSpecialty ?? null,
-					ambulanceType: request?.ambulanceType ?? null,
-					ambulanceId: request?.ambulanceId ?? null,
-					bedNumber: request?.bedNumber ?? null,
-					bedType: request?.bedType ?? null,
-					bedCount: request?.bedCount ?? null,
-					estimatedArrival: request?.estimatedArrival ?? null,
-					status: EmergencyRequestStatus.IN_PROGRESS,
-					patient,
-					shared,
-				});
-
-			} catch {}
-		})();
-		if (request?.serviceType === "ambulance") {
-			startAmbulanceTrip({
-				hospitalId,
-				requestId: visitId,
-				ambulanceId: request?.ambulanceId ?? null,
-				ambulanceType: request?.ambulanceType ?? null,
-				estimatedArrival: request?.estimatedArrival ?? null,
-				hospitalName: request?.hospitalName ?? null,
-                route: currentRoute?.coordinates ?? null
-			});
-
-			addVisit({
-				id: visitId,
-				visitId,
-				requestId: visitId,
-				hospitalId: String(hospitalId),
-				hospital: request?.hospitalName ?? hospital?.name ?? "Hospital",
-				doctor: "Ambulance Dispatch",
-				specialty: "Emergency Response",
-				date,
-				time,
-				type: VISIT_TYPES.AMBULANCE_RIDE,
-				status: VISIT_STATUS.IN_PROGRESS,
-				image: hospital?.image ?? null,
-				address: hospital?.address ?? null,
-				phone: hospital?.phone ?? null,
-				notes: "Ambulance requested via iVisit.",
-			});
-		}
-		if (request?.serviceType === "bed") {
-			startBedBooking({
-				hospitalId,
-				requestId: visitId,
-				hospitalName: request?.hospitalName ?? null,
-				specialty: request?.specialty ?? null,
-				bedNumber: request?.bedNumber ?? null,
-				bedType: request?.bedType ?? null,
-				bedCount: request?.bedCount ?? null,
-				estimatedWait: request?.estimatedArrival ?? null,
-			});
-
-			addVisit({
-				id: visitId,
-				visitId,
-				requestId: visitId,
-				hospitalId: String(hospitalId),
-				hospital: request?.hospitalName ?? hospital?.name ?? "Hospital",
-				doctor: "Admissions Desk",
-				specialty: request?.specialty ?? selectedSpecialty ?? "General Care",
-				date,
-				time,
-				type: VISIT_TYPES.BED_BOOKING,
-				status: VISIT_STATUS.IN_PROGRESS,
-				image: hospital?.image ?? null,
-				address: hospital?.address ?? null,
-				phone: hospital?.phone ?? null,
-				notes: "Bed reserved via iVisit.",
-				roomNumber: request?.bedNumber ?? null,
-				estimatedDuration: request?.estimatedArrival ?? null,
-			});
-		}
-		clearSelectedHospital();
-		setTimeout(() => {
-			bottomSheetRef.current?.snapToIndex?.(0);
-		}, 0);
-	}, [addVisit, clearSelectedHospital, hospitals, mode, requestHospitalId, selectedHospital?.id, selectedSpecialty, startAmbulanceTrip, startBedBooking, user?.email, user?.fullName, user?.phone, user?.username, createRequest, preferences, medicalProfile, emergencyContacts]);
+	// Hook: Request flow (create request + visits)
+	const { handleRequestComplete } = useRequestFlow({
+		createRequest,
+		addVisit,
+		startAmbulanceTrip,
+		startBedBooking,
+		clearSelectedHospital,
+		user,
+		preferences,
+		medicalProfile,
+		emergencyContacts,
+		hospitals,
+		selectedSpecialty,
+		requestHospitalId,
+		selectedHospital,
+		currentRoute,
+		onRequestComplete: () => {
+			setTimeout(() => {
+				bottomSheetRef.current?.snapToIndex?.(0);
+			}, 0);
+		},
+	});
 
 	// Service type selection
-	const handleServiceTypeSelect = useCallback((type) => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		selectServiceType(type);
-	}, [selectServiceType]);
+	const handleServiceTypeSelect = useCallback(
+		(type) => {
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+			selectServiceType(type);
+		},
+		[selectServiceType]
+	);
 
 	// Specialty selection
-	const handleSpecialtySelect = useCallback((specialty) => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		selectSpecialty(specialty);
-	}, [selectSpecialty]);
+	const handleSpecialtySelect = useCallback(
+		(specialty) => {
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+			selectSpecialty(specialty);
+		},
+		[selectSpecialty]
+	);
 
-	// Search handler - filters hospitals by name, specialty, address (tracked)
-	const handleSearch = useCallback((query) => {
-		timing.startTiming("search_filter");
-		setSearchQuery(query);
-		// If search matches a single hospital, zoom to it on map
-		if (query.length > 2 && mapRef.current) {
-			const q = query.toLowerCase();
-			const base =
-				mode === "booking"
-					? selectedSpecialty
-						? hospitals.filter((h) => h?.specialties?.includes?.(selectedSpecialty))
-						: hospitals
-					: filteredHospitals;
-			const matches = base.filter((h) => {
-				const name = typeof h?.name === "string" ? h.name.toLowerCase() : "";
-				const address =
-					typeof h?.address === "string" ? h.address.toLowerCase() : "";
-				const specialtiesMatch =
-					Array.isArray(h?.specialties) &&
-					h.specialties.some(
-						(s) => (typeof s === "string" ? s.toLowerCase() : "").includes(q)
-					);
-                const typeMatch = typeof h?.type === "string" && h.type.toLowerCase().includes(q);
-				return name.includes(q) || address.includes(q) || specialtiesMatch || typeMatch;
-			});
-			if (matches.length === 1) {
-				mapRef.current.animateToHospital(matches[0]);
-			}
-		}
-		timing.endTiming("search_filter");
-	}, [filteredHospitals, hospitals, mode, selectedSpecialty, setSearchQuery, timing]);
-
-	// Filter hospitals based on search query
-	const searchFilteredHospitals = useMemo(() => {
-		if (!searchQuery.trim()) return filteredHospitals;
-		const query = searchQuery.toLowerCase();
-		const base =
-			mode === "booking"
-				? selectedSpecialty
-					? hospitals.filter((h) => h?.specialties?.includes?.(selectedSpecialty))
-					: hospitals
-				: filteredHospitals;
-		return base.filter((h) => {
-			const name = typeof h?.name === "string" ? h.name.toLowerCase() : "";
-			const address =
-				typeof h?.address === "string" ? h.address.toLowerCase() : "";
-			const specialtiesMatch =
-				Array.isArray(h?.specialties) &&
-				h.specialties.some(
-					(s) => (typeof s === "string" ? s.toLowerCase() : "").includes(query)
-				);
-			const typeMatch = typeof h?.type === "string" && h.type.toLowerCase().includes(query);
-			return name.includes(query) || address.includes(query) || specialtiesMatch || typeMatch;
-		});
-	}, [filteredHospitals, hospitals, mode, searchQuery, selectedSpecialty]);
+	// Hook: Search and filter logic
+	const { searchFilteredHospitals, handleSearch } = useSearchFiltering({
+		hospitals,
+		filteredHospitals,
+		mode,
+		selectedSpecialty,
+		searchQuery,
+		setSearchQuery,
+		mapRef,
+		timing,
+	});
 
 	// Calculate service type counts
 	const serviceTypeCounts = useMemo(() => {
 		return {
 			premium:
-				hospitals.filter((h) => h?.serviceTypes?.includes("premium")).length || 0,
+				hospitals.filter((h) => h?.serviceTypes?.includes("premium")).length ||
+				0,
 			standard:
-				hospitals.filter((h) => h?.serviceTypes?.includes("standard")).length || 0,
+				hospitals.filter((h) => h?.serviceTypes?.includes("standard")).length ||
+				0,
 		};
 	}, [hospitals]);
 
 	// Calculate specialty counts
 	const specialtyCounts = useMemo(() => {
 		const counts = {};
-        if (!Array.isArray(specialties)) return counts;
-        
-		specialties.forEach(specialty => {
-            if (!specialty) return;
-			counts[specialty] = hospitals.filter((h) =>
-				Array.isArray(h?.specialties) && 
-                h.specialties.some(s => s && typeof s === 'string' && s.toLowerCase() === specialty.toLowerCase()) && 
-                (h?.availableBeds ?? 0) > 0
-			).length || 0;
+		if (!Array.isArray(specialties)) return counts;
+
+		specialties.forEach((specialty) => {
+			if (!specialty) return;
+			counts[specialty] =
+				hospitals.filter(
+					(h) =>
+						Array.isArray(h?.specialties) &&
+						h.specialties.some(
+							(s) =>
+								s &&
+								typeof s === "string" &&
+								s.toLowerCase() === specialty.toLowerCase()
+						) &&
+						(h?.availableBeds ?? 0) > 0
+				).length || 0;
 		});
 		return counts;
 	}, [hospitals, specialties]);
@@ -466,13 +367,34 @@ export default function EmergencyScreen() {
 		const alreadyIncluded = searchFilteredHospitals.some(
 			(h) => h?.id === routeHospital.id
 		);
-		return alreadyIncluded ? searchFilteredHospitals : [...searchFilteredHospitals, routeHospital];
+		return alreadyIncluded
+			? searchFilteredHospitals
+			: [...searchFilteredHospitals, routeHospital];
 	}, [activeAmbulanceTrip, hospitals, searchFilteredHospitals]);
+
+	// Hook: All trip completion and cancellation handlers
+	const {
+		onCancelAmbulanceTrip,
+		onCompleteAmbulanceTrip,
+		onCancelBedBooking,
+		onCompleteBedBooking,
+	} = useEmergencyHandlers({
+		activeAmbulanceTrip,
+		activeBedBooking,
+		setRequestStatus,
+		cancelVisit,
+		completeVisit,
+		stopAmbulanceTrip,
+		stopBedBooking,
+		addNotification,
+		onSheetSnap: (index) => {
+			bottomSheetRef.current?.snapToIndex?.(index);
+		},
+	});
 
 	return (
 		<View style={styles.container}>
-			{/* Full-screen map as background */}
-			<FullScreenEmergencyMap
+			<EmergencyMapContainer
 				ref={mapRef}
 				hospitals={hospitalsForMap}
 				onHospitalSelect={handleHospitalSelect}
@@ -485,13 +407,12 @@ export default function EmergencyScreen() {
 				mode={mode}
 				showControls={showMapControls}
 				bottomPadding={mapBottomPadding}
-                onRouteCalculated={setCurrentRoute}
-                responderLocation={activeAmbulanceTrip?.currentResponderLocation}
-                responderHeading={activeAmbulanceTrip?.currentResponderHeading}
+				onRouteCalculated={setCurrentRoute}
+				responderLocation={activeAmbulanceTrip?.currentResponderLocation}
+				responderHeading={activeAmbulanceTrip?.currentResponderHeading}
 			/>
 
-			{/* Draggable bottom sheet overlay */}
-			<EmergencyBottomSheet
+			<BottomSheetController
 				ref={bottomSheetRef}
 				mode={mode}
 				serviceType={serviceType}
@@ -502,80 +423,10 @@ export default function EmergencyScreen() {
 				selectedHospital={selectedHospital}
 				activeAmbulanceTrip={activeAmbulanceTrip}
 				activeBedBooking={activeBedBooking}
-				onCancelAmbulanceTrip={() => {
-					if (activeAmbulanceTrip?.requestId) {
-						setRequestStatus(
-							activeAmbulanceTrip.requestId,
-							EmergencyRequestStatus.CANCELLED
-						);
-						cancelVisit(activeAmbulanceTrip.requestId);
-					}
-					stopAmbulanceTrip();
-					setTimeout(() => {
-						bottomSheetRef.current?.snapToIndex?.(1);
-					}, 0);
-				}}
-				onCompleteAmbulanceTrip={() => {
-					if (activeAmbulanceTrip?.requestId) {
-						setRequestStatus(
-							activeAmbulanceTrip.requestId,
-							EmergencyRequestStatus.COMPLETED
-						);
-						completeVisit(activeAmbulanceTrip.requestId);
-					}
-					stopAmbulanceTrip();
-					setTimeout(() => {
-						bottomSheetRef.current?.snapToIndex?.(1);
-					}, 0);
-				}}
-				onCancelBedBooking={() => {
-					if (activeBedBooking?.requestId) {
-						setRequestStatus(
-							activeBedBooking.requestId,
-							EmergencyRequestStatus.CANCELLED
-						);
-						cancelVisit(activeBedBooking.requestId);
-						addNotification({
-							id: `bed_cancel_${activeBedBooking.requestId}`,
-							type: NOTIFICATION_TYPES.APPOINTMENT,
-							title: "Bed reservation cancelled",
-							message: "You cancelled the active bed reservation.",
-							timestamp: new Date().toISOString(),
-							read: false,
-							priority: NOTIFICATION_PRIORITY.NORMAL,
-							actionType: null,
-							actionData: { visitId: activeBedBooking.requestId },
-						});
-					}
-					stopBedBooking();
-					setTimeout(() => {
-						bottomSheetRef.current?.snapToIndex?.(1);
-					}, 0);
-				}}
-				onCompleteBedBooking={() => {
-					if (activeBedBooking?.requestId) {
-						setRequestStatus(
-							activeBedBooking.requestId,
-							EmergencyRequestStatus.COMPLETED
-						).catch(() => {});
-						completeVisit(activeBedBooking.requestId);
-						addNotification({
-							id: `bed_complete_${activeBedBooking.requestId}`,
-							type: NOTIFICATION_TYPES.APPOINTMENT,
-							title: "Bed booking completed",
-							message: "Your bed booking has been marked complete.",
-							timestamp: new Date().toISOString(),
-							read: false,
-							priority: NOTIFICATION_PRIORITY.NORMAL,
-							actionType: "view_summary",
-							actionData: { visitId: activeBedBooking.requestId },
-						});
-					}
-					stopBedBooking();
-					setTimeout(() => {
-						bottomSheetRef.current?.snapToIndex?.(1);
-					}, 0);
-				}}
+				onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+				onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
+				onCancelBedBooking={onCancelBedBooking}
+				onCompleteBedBooking={onCompleteBedBooking}
 				serviceTypeCounts={serviceTypeCounts}
 				specialtyCounts={specialtyCounts}
 				hasActiveFilters={hasActiveFilters}
@@ -586,7 +437,7 @@ export default function EmergencyScreen() {
 				onSnapChange={handleSheetSnapChange}
 				onSearch={handleSearch}
 				onResetFilters={resetFilters}
-				onCloseFocus={handleCloseFocus}
+				onCloseFocus={wrappedHandleCloseFocus}
 			/>
 
 			<EmergencyRequestModal

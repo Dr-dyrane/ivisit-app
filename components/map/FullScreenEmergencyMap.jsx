@@ -1,4 +1,4 @@
-import React, {
+import {
 	useState,
 	useEffect,
 	useRef,
@@ -17,28 +17,19 @@ import {
 	Dimensions,
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
-import * as Location from "expo-location";
-import { Ionicons, Fontisto, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import { useHospitals } from "../../hooks/emergency/useHospitals";
 import PulsingMarker from "./PulsingMarker";
-import generateNearbyHospitals from "./generateNearbyHospitals";
 import { darkMapStyle, lightMapStyle } from "./mapStyles";
+import { useMapLocation } from "../../hooks/emergency/useMapLocation";
+import { useMapRoute } from "../../hooks/emergency/useMapRoute";
+import { useAmbulanceAnimation } from "../../hooks/emergency/useAmbulanceAnimation";
+import { isValidCoordinate, calculateDistance } from "../../utils/mapUtils";
 
-/**
- * FullScreenEmergencyMap - Edge-to-edge map with enhanced POIs
- *
- * Features:
- * - Spans entire screen (behind status bar)
- * - Blur overlay on status bar area
- * - Enhanced POI visibility (buildings, landmarks)
- * - Animated zoom to selected hospital
- * - Exposes animateToHospital method via ref
- * - Conditional control visibility (hide when sheet expanded)
- */
 const FullScreenEmergencyMap = forwardRef(
 	(
 		{
@@ -53,9 +44,9 @@ const FullScreenEmergencyMap = forwardRef(
 			mode = "emergency",
 			showControls = true,
 			bottomPadding = 0,
-            onRouteCalculated, 
-            responderLocation,
-            responderHeading,
+			onRouteCalculated,
+			responderLocation,
+			responderHeading,
 		},
 		ref
 	) => {
@@ -68,24 +59,32 @@ const FullScreenEmergencyMap = forwardRef(
 		const lastUserPanAtRef = useRef(0);
 		const lastAutoRecoverAtRef = useRef(0);
 
-		const [userLocation, setUserLocation] = useState(null);
-		const [locationPermission, setLocationPermission] = useState(false);
-		const [isLoading, setIsLoading] = useState(true);
 		const [nearbyHospitals, setNearbyHospitals] = useState([]);
 		const [isZoomedOut, setIsZoomedOut] = useState(false);
-		const [routeCoordinates, setRouteCoordinates] = useState([]);
-		const [routeInfo, setRouteInfo] = useState({ durationSec: null, distanceMeters: null });
-		const [ambulanceCoordinate, setAmbulanceCoordinate] = useState(null);
-		const [ambulanceHeading, setAmbulanceHeading] = useState(0);
 
-		const routeFetchIdRef = useRef(0);
-		const ambulanceTimerRef = useRef(null);
-		const lastRouteFitKeyRef = useRef(null);
+		const screenHeight = Dimensions.get("window").height;
+
+		const {
+			userLocation,
+			locationPermission,
+			isLoadingLocation,
+			requestLocationPermission,
+		} = useMapLocation();
+
+		const { routeCoordinates, routeInfo, calculateRoute } = useMapRoute();
+
+		const { ambulanceCoordinate, ambulanceHeading, startAmbulanceAnimation } =
+			useAmbulanceAnimation({
+				routeCoordinates,
+				animateAmbulance,
+				ambulanceTripEtaSeconds,
+				responderLocation,
+				responderHeading,
+				onAmbulanceUpdate: undefined,
+			});
 
 		const hospitals =
-			propHospitals && propHospitals.length > 0
-				? propHospitals
-				: nearbyHospitals;
+			propHospitals && propHospitals.length > 0 ? propHospitals : nearbyHospitals;
 
 		const selectedHospital =
 			selectedHospitalId && hospitals?.length
@@ -98,130 +97,16 @@ const FullScreenEmergencyMap = forwardRef(
 				? hospitals.find((h) => h?.id === routeHospitalIdResolved) ?? null
 				: null;
 
-		// Dynamic map padding based on sheet position
-		// Ensures markers are centered in the visible area
 		const mapPadding = {
 			top: insets.top + 10,
-			bottom: bottomPadding + 20, // Add buffer
+			bottom: bottomPadding + 20,
 			left: 0,
 			right: 0,
 		};
 
-		const screenHeight = Dimensions.get("window").height;
-
-		const isValidCoordinate = useCallback(
-			(coordinate) =>
-				Number.isFinite(coordinate?.latitude) && Number.isFinite(coordinate?.longitude),
-			[]
-		);
-
-		const decodeGooglePolyline = useCallback((encoded) => {
-			if (!encoded || typeof encoded !== "string") return [];
-			let index = 0;
-			let lat = 0;
-			let lng = 0;
-			const coordinates = [];
-			while (index < encoded.length) {
-				let b;
-				let shift = 0;
-				let result = 0;
-				do {
-					b = encoded.charCodeAt(index++) - 63;
-					result |= (b & 0x1f) << shift;
-					shift += 5;
-				} while (b >= 0x20);
-				const dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
-				lat += dlat;
-
-				shift = 0;
-				result = 0;
-				do {
-					b = encoded.charCodeAt(index++) - 63;
-					result |= (b & 0x1f) << shift;
-					shift += 5;
-				} while (b >= 0x20);
-				const dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
-				lng += dlng;
-
-				coordinates.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
-			}
-			return coordinates;
-		}, []);
-
-		const calculateBearing = useCallback((from, to) => {
-			if (!isValidCoordinate(from) || !isValidCoordinate(to)) return 0;
-			const toRadians = (deg) => (deg * Math.PI) / 180;
-			const toDegrees = (rad) => (rad * 180) / Math.PI;
-			const lat1 = toRadians(from.latitude);
-			const lat2 = toRadians(to.latitude);
-			const dLon = toRadians(to.longitude - from.longitude);
-			const y = Math.sin(dLon) * Math.cos(lat2);
-			const x =
-				Math.cos(lat1) * Math.sin(lat2) -
-				Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-			const brng = toDegrees(Math.atan2(y, x));
-			return (brng + 360) % 360;
-		}, [isValidCoordinate]);
-
-		const getDrivingRoute = useCallback(
-			async ({ origin, destination }) => {
-				const googleApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-				if (googleApiKey) {
-					const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&mode=driving&departure_time=now&traffic_model=best_guess&key=${googleApiKey}`;
-					const res = await fetch(url);
-					const json = await res.json();
-					const route = json?.routes?.[0];
-					const poly = route?.overview_polyline?.points;
-					const coords = decodeGooglePolyline(poly);
-					const leg = route?.legs?.[0];
-					const durationSec =
-						leg?.duration_in_traffic?.value ??
-						leg?.duration?.value ??
-						null;
-					const distanceMeters = leg?.distance?.value ?? null;
-					if (coords.length >= 2) {
-						return { coordinates: coords, durationSec, distanceMeters };
-					}
-				}
-
-				const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=geojson&alternatives=false&steps=false`;
-				const osrmRes = await fetch(osrmUrl);
-				const osrmJson = await osrmRes.json();
-				const osrmRoute = osrmJson?.routes?.[0];
-				const coordsRaw = osrmRoute?.geometry?.coordinates;
-				if (Array.isArray(coordsRaw) && coordsRaw.length >= 2) {
-					return {
-						coordinates: coordsRaw.map(([lon, lat]) => ({
-							latitude: lat,
-							longitude: lon,
-						})),
-						durationSec: Number.isFinite(osrmRoute?.duration) ? osrmRoute.duration : null,
-						distanceMeters: Number.isFinite(osrmRoute?.distance) ? osrmRoute.distance : null,
-					};
-				}
-
-				return { coordinates: [], durationSec: null, distanceMeters: null };
-			},
-			[decodeGooglePolyline]
-		);
-
-		const haversineMeters = useCallback((a, b) => {
-			if (!isValidCoordinate(a) || !isValidCoordinate(b)) return 0;
-			const toRad = (deg) => (deg * Math.PI) / 180;
-			const R = 6371000;
-			const dLat = toRad(b.latitude - a.latitude);
-			const dLon = toRad(b.longitude - a.longitude);
-			const lat1 = toRad(a.latitude);
-			const lat2 = toRad(b.latitude);
-			const sinDLat = Math.sin(dLat / 2);
-			const sinDLon = Math.sin(dLon / 2);
-			const h =
-				sinDLat * sinDLat +
-				Math.cos(lat1) * Math.cos(lat2) * sinDLon * sinDLon;
-			return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
-		}, [isValidCoordinate]);
-
-		const routeDistanceCacheRef = useRef(null);
+		useEffect(() => {
+			requestLocationPermission();
+		}, [requestLocationPermission]);
 
 		useEffect(() => {
 			const canRoute =
@@ -236,312 +121,42 @@ const FullScreenEmergencyMap = forwardRef(
 				: null;
 
 			if (!shouldShowRoute || !isValidCoordinate(origin) || !isValidCoordinate(destination)) {
-				setRouteCoordinates([]);
-				setRouteInfo({ durationSec: null, distanceMeters: null });
-				routeDistanceCacheRef.current = null;
 				return;
 			}
 
-			const fetchId = ++routeFetchIdRef.current;
-			(async () => {
-				try {
-					const route = await getDrivingRoute({ origin, destination });
-					if (routeFetchIdRef.current !== fetchId) return;
-					setRouteCoordinates(route.coordinates);
-					setRouteInfo({ durationSec: route.durationSec, distanceMeters: route.distanceMeters });
-                    
-                    // Expose route to parent
-                    if (onRouteCalculated) {
-                        onRouteCalculated({ 
-                            coordinates: route.coordinates, 
-                            durationSec: route.durationSec, 
-                            distanceMeters: route.distanceMeters 
-                        });
-                    }
-				} catch {
-					if (routeFetchIdRef.current !== fetchId) return;
-					setRouteCoordinates([]);
-					setRouteInfo({ durationSec: null, distanceMeters: null });
-					routeDistanceCacheRef.current = null;
-				}
-			})();
+			calculateRoute({ origin, destination });
 		}, [
-			getDrivingRoute,
-			isValidCoordinate,
+			calculateRoute,
 			mode,
 			routeHospital?.ambulances,
 			routeHospital?.availableBeds,
 			routeHospital?.coordinates,
 			routeHospitalIdResolved,
 			userLocation,
-            // We can't put options.onRouteCalculated in dep array as it might be a new function every render
 		]);
 
 		useEffect(() => {
-			if (ambulanceTimerRef.current) {
-				clearInterval(ambulanceTimerRef.current);
-				ambulanceTimerRef.current = null;
+			if (routeCoordinates.length >= 2 && animateAmbulance) {
+				startAmbulanceAnimation();
 			}
-
-            // Real-time Override: If we have live location, use it directly
-            if (responderLocation) {
-                setAmbulanceCoordinate(responderLocation);
-                if (Number.isFinite(responderHeading)) {
-                    setAmbulanceHeading(responderHeading);
-                }
-                return;
-            }
-
-			if (!animateAmbulance || !routeCoordinates || routeCoordinates.length < 2) {
-				setAmbulanceCoordinate(null);
-				setAmbulanceHeading(0);
-				return;
-			}
-
-			let cached = routeDistanceCacheRef.current;
-			if (!cached || cached.key !== routeCoordinates) {
-				const cumulative = [0];
-				let total = 0;
-				for (let i = 1; i < routeCoordinates.length; i++) {
-					total += haversineMeters(routeCoordinates[i - 1], routeCoordinates[i]);
-					cumulative.push(total);
-				}
-				cached = { key: routeCoordinates, cumulative, total };
-				routeDistanceCacheRef.current = cached;
-			}
-
-			const durationSecCandidate =
-				Number.isFinite(ambulanceTripEtaSeconds)
-					? ambulanceTripEtaSeconds
-					: Number.isFinite(routeInfo?.durationSec)
-						? routeInfo.durationSec
-						: null;
-			const durationMs =
-				Number.isFinite(durationSecCandidate) && durationSecCandidate > 0
-					? durationSecCandidate * 1000
-					: 120000;
-
-			const startAt = Date.now();
-			const intervalMs = 450;
-			const totalDistance = cached.total;
-
-			const getPositionAtDistance = (targetMeters) => {
-				if (!Number.isFinite(targetMeters) || targetMeters <= 0) {
-					return { coordinate: routeCoordinates[0], heading: calculateBearing(routeCoordinates[0], routeCoordinates[1]) };
-				}
-				if (targetMeters >= totalDistance) {
-					const last = routeCoordinates[routeCoordinates.length - 1];
-					const prev = routeCoordinates[routeCoordinates.length - 2] ?? last;
-					return { coordinate: last, heading: calculateBearing(prev, last) };
-				}
-
-				const cumulative = cached.cumulative;
-				let i = 1;
-				while (i < cumulative.length && cumulative[i] < targetMeters) i++;
-				const segEnd = routeCoordinates[i];
-				const segStart = routeCoordinates[i - 1];
-				const segStartDist = cumulative[i - 1];
-				const segEndDist = cumulative[i];
-				const segLen = Math.max(1e-6, segEndDist - segStartDist);
-				const t = Math.min(1, Math.max(0, (targetMeters - segStartDist) / segLen));
-				const coordinate = {
-					latitude: segStart.latitude + (segEnd.latitude - segStart.latitude) * t,
-					longitude: segStart.longitude + (segEnd.longitude - segStart.longitude) * t,
-				};
-				return { coordinate, heading: calculateBearing(segStart, segEnd) };
-			};
-
-			const initial = getPositionAtDistance(0);
-			setAmbulanceCoordinate(initial.coordinate);
-			setAmbulanceHeading(initial.heading);
-
-			ambulanceTimerRef.current = setInterval(() => {
-				const elapsed = Date.now() - startAt;
-				const progress = Math.min(1, Math.max(0, elapsed / durationMs));
-				const targetMeters = totalDistance * progress;
-				const pos = getPositionAtDistance(targetMeters);
-				setAmbulanceCoordinate(pos.coordinate);
-				setAmbulanceHeading(pos.heading);
-				if (progress >= 1) {
-					clearInterval(ambulanceTimerRef.current);
-					ambulanceTimerRef.current = null;
-				}
-			}, intervalMs);
-
-			return () => {
-				if (ambulanceTimerRef.current) {
-					clearInterval(ambulanceTimerRef.current);
-					ambulanceTimerRef.current = null;
-				}
-			};
-		}, [
-			ambulanceTripEtaSeconds,
-			animateAmbulance,
-			calculateBearing,
-			haversineMeters,
-			routeCoordinates,
-			routeInfo?.durationSec,
-		]);
-
-		const getRegionForCoordinates = useCallback(
-			(coordinates, options = {}) => {
-				if (!coordinates || coordinates.length === 0) return null;
-				const valid = coordinates.filter(isValidCoordinate);
-				if (valid.length === 0) return null;
-
-				const sheetRatio = options.sheetRatio ?? 0;
-				const minDelta = options.minDelta ?? 0.02;
-				const maxDelta = options.maxDelta ?? 0.18;
-				const rangeMultiplier = options.rangeMultiplier ?? 1.8;
-
-				if (valid.length === 1) {
-					const only = valid[0];
-					const baseDelta = options.baseDelta ?? 0.06;
-					const inflation = 1 + Math.min(0.6, sheetRatio) * 0.6;
-					const delta = Math.min(maxDelta, Math.max(minDelta, baseDelta * inflation));
-					const verticalShiftFactor = sheetRatio >= 0.4 ? 0.22 : 0.12;
-					return {
-						latitude: only.latitude - delta * verticalShiftFactor,
-						longitude: only.longitude,
-						latitudeDelta: delta,
-						longitudeDelta: delta,
-					};
-				}
-
-				let minLat = Infinity;
-				let maxLat = -Infinity;
-				let minLng = Infinity;
-				let maxLng = -Infinity;
-				for (const c of valid) {
-					minLat = Math.min(minLat, c.latitude);
-					maxLat = Math.max(maxLat, c.latitude);
-					minLng = Math.min(minLng, c.longitude);
-					maxLng = Math.max(maxLng, c.longitude);
-				}
-
-				const latRange = maxLat - minLat;
-				const lngRange = maxLng - minLng;
-				if (!Number.isFinite(latRange) || !Number.isFinite(lngRange)) return null;
-
-				const baseLatDelta = Math.max(minDelta, latRange * rangeMultiplier);
-				const baseLngDelta = Math.max(minDelta, lngRange * rangeMultiplier);
-
-				const inflation = 1 + Math.min(0.6, sheetRatio) * 0.65;
-				const latitudeDelta = Math.min(maxDelta, Math.max(minDelta, baseLatDelta * inflation));
-				const longitudeDelta = Math.min(
-					maxDelta,
-					Math.max(minDelta, Math.max(baseLngDelta * inflation, latitudeDelta))
-				);
-
-				const verticalShiftFactor = sheetRatio >= 0.4 ? 0.22 : 0.12;
-				const centerLat = (minLat + maxLat) / 2 - latitudeDelta * verticalShiftFactor;
-				const centerLng = (minLng + maxLng) / 2;
-
-				return {
-					latitude: centerLat,
-					longitude: centerLng,
-					latitudeDelta,
-					longitudeDelta,
-				};
-			},
-			[]
-		);
+		}, [animateAmbulance, routeCoordinates, startAmbulanceAnimation]);
 
 		useEffect(() => {
-			if (!mapRef.current) return;
-			if (!routeCoordinates || routeCoordinates.length < 2) {
-				lastRouteFitKeyRef.current = null;
-				return;
-			}
-
-			if (lastRouteFitKeyRef.current === routeCoordinates) return;
-
-			const now = Date.now();
-			const recentlyUserPanned = now - lastUserPanAtRef.current < 800;
-			if (recentlyUserPanned) return;
-
-			const sheetRatio = screenHeight > 0 ? bottomPadding / screenHeight : 0;
-			const region = getRegionForCoordinates(routeCoordinates, {
-				sheetRatio,
-				minDelta: 0.009,
-				maxDelta: 0.22,
-				rangeMultiplier: 1.05,
-			});
-			if (!region) return;
-
-			lastRouteFitKeyRef.current = routeCoordinates;
-			lastProgrammaticMoveAtRef.current = Date.now();
-			mapRef.current.animateToRegion(region, 600);
-		}, [
-			bottomPadding,
-			getRegionForCoordinates,
-			routeCoordinates,
-			screenHeight,
-		]);
-
-		const getFitCoordinates = useCallback(() => {
-			const MAX_ITEMS = 8;
-
-			const validHospitals = hospitals.filter((h) => isValidCoordinate(h?.coordinates));
-
-			const sortedHospitals = userLocation && isValidCoordinate(userLocation)
-				? [...validHospitals].sort((a, b) => {
-						const daLat = a.coordinates.latitude - userLocation.latitude;
-						const daLng = a.coordinates.longitude - userLocation.longitude;
-						const dbLat = b.coordinates.latitude - userLocation.latitude;
-						const dbLng = b.coordinates.longitude - userLocation.longitude;
-						return (daLat * daLat + daLng * daLng) - (dbLat * dbLat + dbLng * dbLng);
-					})
-				: validHospitals;
-
-			const coordinates = sortedHospitals.slice(0, MAX_ITEMS).map((h) => h.coordinates);
-
-			if (userLocation && isValidCoordinate(userLocation)) {
-				coordinates.push({
-					latitude: userLocation.latitude,
-					longitude: userLocation.longitude,
+			if (onRouteCalculated && routeCoordinates.length > 0) {
+				onRouteCalculated({
+					coordinates: routeCoordinates,
+					durationSec: routeInfo?.durationSec,
+					distanceMeters: routeInfo?.distanceMeters,
 				});
 			}
+		}, [routeCoordinates, routeInfo, onRouteCalculated]);
 
-			return coordinates;
-		}, [hospitals, isValidCoordinate, userLocation]);
-
-		const fitToLocalHospitals = useCallback(() => {
-			if (!mapRef.current) return;
-			const coordinates = getFitCoordinates();
-			if (!coordinates || coordinates.length === 0) return;
-
-			const sheetRatio = screenHeight > 0 ? bottomPadding / screenHeight : 0;
-			const region = getRegionForCoordinates(coordinates, { sheetRatio });
-			if (!region) return;
-			lastProgrammaticMoveAtRef.current = Date.now();
-			mapRef.current.animateToRegion(region, 550);
-		}, [bottomPadding, getFitCoordinates, getRegionForCoordinates, screenHeight]);
-
-		const animateToHospitalInternal = useCallback(
-			(hospital, options = {}) => {
+		useImperativeHandle(ref, () => ({
+			animateToHospital: (hospital, options = {}) => {
 				if (!mapRef.current || !isValidCoordinate(hospital?.coordinates)) return;
 
 				const targetBottomPadding = options.bottomPadding ?? bottomPadding;
-				const sheetRatio =
-					screenHeight > 0 ? targetBottomPadding / screenHeight : 0;
-
-				if (options.includeUser && isValidCoordinate(userLocation)) {
-					const fitPoints = [
-						{ latitude: hospital.coordinates.latitude, longitude: hospital.coordinates.longitude },
-						{ latitude: userLocation.latitude, longitude: userLocation.longitude },
-					];
-					const region = getRegionForCoordinates(fitPoints, {
-						sheetRatio,
-						minDelta: 0.012,
-						maxDelta: 0.08,
-					});
-					if (region) {
-						lastProgrammaticMoveAtRef.current = Date.now();
-						mapRef.current.animateToRegion(region, 550);
-						return;
-					}
-				}
+				const sheetRatio = screenHeight > 0 ? targetBottomPadding / screenHeight : 0;
 
 				const latitudeDelta =
 					options.latitudeDelta ?? (sheetRatio >= 0.4 ? 0.03 : 0.02);
@@ -562,109 +177,48 @@ const FullScreenEmergencyMap = forwardRef(
 					550
 				);
 			},
-			[bottomPadding, getRegionForCoordinates, isValidCoordinate, screenHeight, userLocation]
-		);
+			fitToAllHospitals: () => {
+				if (!mapRef.current || !hospitals.length) return;
 
-		// Expose methods to parent via ref
-		useImperativeHandle(ref, () => ({
-			animateToHospital: animateToHospitalInternal,
-			fitToAllHospitals: fitToLocalHospitals,
+				const validHospitals = hospitals.filter((h) =>
+					isValidCoordinate(h?.coordinates)
+				);
+				if (validHospitals.length === 0) return;
+
+				let minLat = validHospitals[0].coordinates.latitude;
+				let maxLat = validHospitals[0].coordinates.latitude;
+				let minLng = validHospitals[0].coordinates.longitude;
+				let maxLng = validHospitals[0].coordinates.longitude;
+
+				validHospitals.forEach((h) => {
+					minLat = Math.min(minLat, h.coordinates.latitude);
+					maxLat = Math.max(maxLat, h.coordinates.latitude);
+					minLng = Math.min(minLng, h.coordinates.longitude);
+					maxLng = Math.max(maxLng, h.coordinates.longitude);
+				});
+
+				const latRange = maxLat - minLat;
+				const lngRange = maxLng - minLng;
+				const latitudeDelta = Math.max(0.02, latRange * 1.8);
+				const longitudeDelta = Math.max(0.02, lngRange * 1.8);
+
+				lastProgrammaticMoveAtRef.current = Date.now();
+				mapRef.current.animateToRegion(
+					{
+						latitude: (minLat + maxLat) / 2,
+						longitude: (minLng + maxLng) / 2,
+						latitudeDelta,
+						longitudeDelta,
+					},
+					550
+				);
+			},
 		}));
 
-		// Request location permissions
-		useEffect(() => {
-			requestLocationPermission();
-		}, []);
-
-		const requestLocationPermission = async () => {
-			try {
-                // Parallelize: Request permission AND prepare data, don't wait sequentially
-				const { status } = await Location.requestForegroundPermissionsAsync();
-				if (status !== "granted") {
-					Alert.alert(
-						"Location Permission Required",
-						"iVisit needs location access to show nearby hospitals.",
-						[
-							{ text: "Cancel", style: "cancel" },
-							{
-								text: "Open Settings",
-								onPress: () => Location.requestForegroundPermissionsAsync(),
-							},
-						]
-					);
-					setIsLoading(false);
-					return;
-				}
-				setLocationPermission(true);
-				
-                // Get location faster
-                // 1. Try last known location first (instant)
-                const lastKnown = await Location.getLastKnownPositionAsync({});
-                if (lastKnown) {
-                    processLocation(lastKnown);
-                }
-
-                // 2. Then fetch fresh high-accuracy location
-				const location = await Location.getCurrentPositionAsync({
-					accuracy: Location.Accuracy.Balanced, // Balanced is faster than High
-					timeout: 5000,
-				});
-                processLocation(location);
-
-			} catch (error) {
-				console.error("Location permission error:", error);
-				setIsLoading(false);
-			}
-		};
-
-        const processLocation = (location) => {
-            if (!location) return;
-            
-            const userCoords = {
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-                latitudeDelta: 0.04,
-                longitudeDelta: 0.04,
-            };
-            setUserLocation(userCoords);
-            // We update context location so data can be localized there too if needed
-            // But for now we just rely on the 'hospitals' prop being passed down which might be localized
-            
-            // Just use hospitals from props/context directly
-            // No more generation here
-            setNearbyHospitals(hospitals || []); 
-            
-            setIsLoading(false);
-            if (onMapReady) {
-                onMapReady();
-            }
-        };
-
-		const getCurrentLocation = async () => {
-             // Redundant wrapper kept for compatibility if called externally, but requestLocationPermission handles logic now
-             // We can just call processLocation if we re-fetch
-             try {
-                const location = await Location.getCurrentPositionAsync({
-					accuracy: Location.Accuracy.Balanced,
-					timeout: 5000,
-				});
-                processLocation(location);
-             } catch(e) { console.log(e); setIsLoading(false); }
-		};
-
-		const handleHospitalPress = (hospital) => {
-			if (onHospitalSelect) {
-				onHospitalSelect(hospital);
-			}
-
-			animateToHospitalInternal(hospital);
-		};
-
-		// Center map on user after initial load (preserve default behavior)
 		useEffect(() => {
 			if (
 				mapRef.current &&
-				!isLoading &&
+				!isLoadingLocation &&
 				locationPermission &&
 				userLocation &&
 				!hasCenteredOnUser.current
@@ -676,19 +230,18 @@ const FullScreenEmergencyMap = forwardRef(
 						{
 							latitude: userLocation.latitude,
 							longitude: userLocation.longitude,
-							latitudeDelta: userLocation.latitudeDelta ?? 0.04,
-							longitudeDelta: userLocation.longitudeDelta ?? 0.04,
+							latitudeDelta: 0.04,
+							longitudeDelta: 0.04,
 						},
 						550
 					);
 				}, 300);
 				return () => clearTimeout(timer);
 			}
-		}, [isLoading, locationPermission, userLocation]);
+		}, [isLoadingLocation, locationPermission, userLocation]);
 
 		const mapStyle = isDarkMode ? darkMapStyle : lightMapStyle;
 
-		// Recenter to user location - must be before early returns
 		const handleRecenter = useCallback(() => {
 			if (mapRef.current && userLocation) {
 				lastProgrammaticMoveAtRef.current = Date.now();
@@ -704,37 +257,22 @@ const FullScreenEmergencyMap = forwardRef(
 			}
 		}, [userLocation]);
 
-		const handleRegionChangeComplete = useCallback(
-			(region) => {
-				const latDelta = region?.latitudeDelta;
-				const lngDelta = region?.longitudeDelta;
-				if (!Number.isFinite(latDelta) || !Number.isFinite(lngDelta)) return;
+		const handleRegionChangeComplete = useCallback((region) => {
+			const latDelta = region?.latitudeDelta;
+			const lngDelta = region?.longitudeDelta;
+			if (!Number.isFinite(latDelta) || !Number.isFinite(lngDelta)) return;
 
-				const zoomedOutNow = latDelta > 0.35 || lngDelta > 0.35;
-				setIsZoomedOut(zoomedOutNow);
+			const zoomedOutNow = latDelta > 0.35 || lngDelta > 0.35;
+			setIsZoomedOut(zoomedOutNow);
+		}, []);
 
-				if (!zoomedOutNow) return;
+		const handleHospitalPress = (hospital) => {
+			if (onHospitalSelect) {
+				onHospitalSelect(hospital);
+			}
+		};
 
-				const now = Date.now();
-				const recentlyUserPanned = now - lastUserPanAtRef.current < 900;
-				const recentlyProgrammatic = now - lastProgrammaticMoveAtRef.current < 900;
-				const recentlyAutoRecovered = now - lastAutoRecoverAtRef.current < 4000;
-				if (recentlyUserPanned || recentlyProgrammatic || recentlyAutoRecovered) return;
-
-				if (latDelta > 0.8 || lngDelta > 0.8) {
-					lastAutoRecoverAtRef.current = now;
-					fitToLocalHospitals();
-				}
-			},
-			[fitToLocalHospitals]
-		);
-
-		// Debug map loading
-        useEffect(() => {
-            console.log("FullScreenEmergencyMap: Rendering with hospitals:", hospitals?.length || 0);
-        }, [hospitals]);
-
-		if (isLoading) {
+		if (isLoadingLocation) {
 			return (
 				<View
 					style={[
@@ -842,96 +380,108 @@ const FullScreenEmergencyMap = forwardRef(
 							tracksViewChanges={false}
 							zIndex={200}
 						>
-							<View style={{
-                                shadowColor: "#000",
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: 0.3,
-                                shadowRadius: 3,
-                            }}>
-								<Ionicons name="navigate-circle" size={42} color={COLORS.brandPrimary} />
-                                <View style={{
-                                    position: "absolute",
-                                    top: 10,
-                                    left: 10,
-                                    width: 22,
-                                    height: 22,
-                                    borderRadius: 11,
-                                    backgroundColor: "#FFFFFF",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    zIndex: -1
-                                }} />
+							<View
+								style={{
+									shadowColor: "#000",
+									shadowOffset: { width: 0, height: 2 },
+									shadowOpacity: 0.3,
+									shadowRadius: 3,
+								}}
+							>
+								<Ionicons
+									name="navigate-circle"
+									size={42}
+									color={COLORS.brandPrimary}
+								/>
+								<View
+									style={{
+										position: "absolute",
+										top: 10,
+										left: 10,
+										width: 22,
+										height: 22,
+										borderRadius: 11,
+										backgroundColor: "#FFFFFF",
+										alignItems: "center",
+										justifyContent: "center",
+										zIndex: -1,
+									}}
+								/>
 							</View>
 						</Marker>
 					)}
 
-					{/* Hospital Markers */}
-					{hospitals.filter((h) => isValidCoordinate(h?.coordinates) && h?.id).map((hospital) => {
-						const isSelected = selectedHospitalId === hospital.id;
-						return (
-							<Marker
-								key={hospital.id}
-								coordinate={hospital.coordinates}
-								onPress={() => handleHospitalPress(hospital)}
-								anchor={{ x: 0.5, y: 1 }} // Bottom anchor for pin style
-                                centerOffset={{ x: 0, y: -16 }}
-								tracksViewChanges={isSelected}
-								zIndex={isSelected ? 100 : 1}
-							>
-								<PulsingMarker isSelected={isSelected}>
-									<View
-										style={[
-											styles.hospitalMarker,
-											isSelected && styles.hospitalMarkerSelected,
-										]}
-									>
-                                        {/* Pin Shape */}
-										<Ionicons
-											name="location"
-											size={isSelected ? 42 : 32}
-											color={isSelected ? COLORS.brandPrimary : "#EF4444"} // Red for unselected hospitals, Brand for selected
-                                            style={{
-                                                shadowColor: "#000",
-                                                shadowOffset: { width: 0, height: 2 },
-                                                shadowOpacity: 0.25,
-                                                shadowRadius: 4,
-                                            }}
-										/>
-                                        {/* White Cross Overlay */}
-                                        <View style={{
-                                            position: "absolute",
-                                            top: isSelected ? 8 : 6,
-                                            width: isSelected ? 16 : 12,
-                                            height: isSelected ? 16 : 12,
-                                            borderRadius: isSelected ? 8 : 6,
-                                            backgroundColor: "#FFFFFF",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                        }}>
-                                            <Ionicons 
-                                                name="medical" 
-                                                size={isSelected ? 10 : 8} 
-                                                color={isSelected ? COLORS.brandPrimary : "#EF4444"} 
-                                            />
-                                        </View>
-									</View>
-								</PulsingMarker>
-							</Marker>
-						);
-					})}
+					{hospitals
+						.filter((h) => isValidCoordinate(h?.coordinates) && h?.id)
+						.map((hospital) => {
+							const isSelected = selectedHospitalId === hospital.id;
+							return (
+								<Marker
+									key={hospital.id}
+									coordinate={hospital.coordinates}
+									onPress={() => handleHospitalPress(hospital)}
+									anchor={{ x: 0.5, y: 1 }}
+									centerOffset={{ x: 0, y: -16 }}
+									tracksViewChanges={isSelected}
+									zIndex={isSelected ? 100 : 1}
+								>
+									<PulsingMarker isSelected={isSelected}>
+										<View
+											style={[
+												styles.hospitalMarker,
+												isSelected && styles.hospitalMarkerSelected,
+											]}
+										>
+											<Ionicons
+												name="location"
+												size={isSelected ? 42 : 32}
+												color={
+													isSelected ? COLORS.brandPrimary : "#EF4444"
+												}
+												style={{
+													shadowColor: "#000",
+													shadowOffset: { width: 0, height: 2 },
+													shadowOpacity: 0.25,
+													shadowRadius: 4,
+												}}
+											/>
+											<View
+												style={{
+													position: "absolute",
+													top: isSelected ? 8 : 6,
+													width: isSelected ? 16 : 12,
+													height: isSelected ? 16 : 12,
+													borderRadius: isSelected ? 8 : 6,
+													backgroundColor: "#FFFFFF",
+													alignItems: "center",
+													justifyContent: "center",
+												}}
+											>
+												<Ionicons
+													name="medical"
+													size={isSelected ? 10 : 8}
+													color={
+														isSelected
+															? COLORS.brandPrimary
+															: "#EF4444"
+													}
+												/>
+											</View>
+										</View>
+									</PulsingMarker>
+								</Marker>
+							);
+						})}
 				</MapView>
 
-				{/* Status Bar Blur Overlay */}
 				<BlurView
 					intensity={isDarkMode ? 60 : 40}
 					tint={isDarkMode ? "dark" : "light"}
 					style={[styles.statusBarBlur, { height: insets.top, opacity: 0.5 }]}
 				/>
 
-				{/* Map Control Buttons - only show when map is visible */}
 				{showControls && (
 					<View style={[styles.controlsContainer, { top: insets.top + 200 }]}>
-						{/* Recenter Button */}
 						<Pressable
 							onPress={handleRecenter}
 							style={({ pressed }) => [
@@ -959,9 +509,13 @@ const FullScreenEmergencyMap = forwardRef(
 							/>
 						</Pressable>
 
-						{/* Fit to All Hospitals */}
 						<Pressable
-							onPress={fitToLocalHospitals}
+							onPress={() => {
+								const ref_handle = ref.current;
+								if (ref_handle?.fitToAllHospitals) {
+									ref_handle.fitToAllHospitals();
+								}
+							}}
 							style={({ pressed }) => [
 								styles.controlButton,
 								{
@@ -1016,7 +570,7 @@ const styles = StyleSheet.create({
 	},
 	errorText: {
 		fontSize: 16,
-		fontWeight:'400',
+		fontWeight: "400",
 		textAlign: "center",
 		marginTop: 16,
 		marginBottom: 4,
@@ -1036,7 +590,7 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 	},
 	hospitalMarkerSelected: {
-        transform: [{ scale: 1.1 }],
+		transform: [{ scale: 1.1 }],
 	},
 	controlsContainer: {
 		position: "absolute",
@@ -1047,7 +601,7 @@ const styles = StyleSheet.create({
 	controlButton: {
 		width: 44,
 		height: 44,
-		borderRadius: 16, // More rounded, no border
+		borderRadius: 16,
 		justifyContent: "center",
 		alignItems: "center",
 		shadowColor: "#000",
@@ -1055,21 +609,6 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.06,
 		shadowRadius: 6,
 		elevation: 2,
-	},
-	ambulanceMarker: {
-		width: 34,
-		height: 34,
-		borderRadius: 17,
-		backgroundColor: COLORS.brandPrimary,
-		justifyContent: "center",
-		alignItems: "center",
-		borderWidth: 3,
-		borderColor: "#FFFFFF",
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.22,
-		shadowRadius: 10,
-		elevation: 8,
 	},
 });
 
