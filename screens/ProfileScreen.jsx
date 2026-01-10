@@ -31,6 +31,9 @@ import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 
+import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
+import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
+
 const ProfileScreen = () => {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -39,6 +42,8 @@ const ProfileScreen = () => {
     const { uploadImage, isUploading } = useImageUpload();
 	const { showToast } = useToast();
 	const { isDarkMode } = useTheme();
+    const { profile: medicalProfile } = useMedicalProfile();
+    const { contacts: emergencyContacts } = useEmergencyContacts();
 	const { handleScroll: handleTabBarScroll, resetTabBar } =
 		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
@@ -458,72 +463,144 @@ const ProfileScreen = () => {
 						EMERGENCY CONTACTS
 					</Text>
 
-					<Pressable
-						style={{
-							backgroundColor: colors.card,
-							borderRadius: 30,
-							padding: 20,
-							flexDirection: "row",
-							alignItems: "center",
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-						onPress={() => {
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							router.push("/(user)/(stacks)/emergency-contacts");
-						}}
-					>
-						<View
-							style={{
-								backgroundColor: COLORS.brandPrimary,
-								width: 56,
-								height: 56,
-								borderRadius: 16,
-								alignItems: "center",
-								justifyContent: "center",
-								marginRight: 16,
-							}}
-						>
-							<Ionicons name="people" size={26} color="#FFFFFF" />
-						</View>
-						<View style={{ flex: 1 }}>
-							<Text
-								style={{
-									fontSize: 19,
-									fontWeight: "900",
-									color: colors.text,
-									letterSpacing: -0.5,
-								}}
-							>
-								Add Contact
-							</Text>
-							<Text
-								style={{
-									fontSize: 14,
-									color: colors.textMuted,
-									marginTop: 2,
-								}}
-							>
-								Family & emergency responders
-							</Text>
-						</View>
-						<View
-							style={{
-								width: 36,
-								height: 36,
-								borderRadius: 12,
-								backgroundColor: isDarkMode
-									? "rgba(255,255,255,0.025)"
-									: "rgba(0,0,0,0.025)",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Ionicons name="add" size={20} color={colors.textMuted} />
-						</View>
-					</Pressable>
+                    {emergencyContacts && emergencyContacts.length > 0 ? (
+                        <Pressable
+                            style={{
+                                backgroundColor: colors.card,
+                                borderRadius: 30,
+                                padding: 20,
+                                flexDirection: "row",
+                                alignItems: "center",
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: isDarkMode ? 0 : 0.03,
+                                shadowRadius: 10,
+                            }}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                router.push("/(user)/(stacks)/emergency-contacts");
+                            }}
+                        >
+                            <View
+                                style={{
+                                    backgroundColor: COLORS.brandPrimary,
+                                    width: 56,
+                                    height: 56,
+                                    borderRadius: 16,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    marginRight: 16,
+                                }}
+                            >
+                                <Ionicons name="people" size={26} color="#FFFFFF" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text
+                                    style={{
+                                        fontSize: 19,
+                                        fontWeight: "900",
+                                        color: colors.text,
+                                        letterSpacing: -0.5,
+                                    }}
+                                    numberOfLines={1}
+                                >
+                                    {emergencyContacts[0].name}
+                                </Text>
+                                <Text
+                                    style={{
+                                        fontSize: 14,
+                                        color: colors.textMuted,
+                                        marginTop: 2,
+                                    }}
+                                >
+                                    {emergencyContacts.length > 1 
+                                        ? `and ${emergencyContacts.length - 1} more contact${emergencyContacts.length - 1 > 1 ? 's' : ''}`
+                                        : (emergencyContacts[0].relationship ? `${emergencyContacts[0].relationship} • Tap to add more` : "Tap to manage contacts")}
+                                </Text>
+                            </View>
+                            <View
+                                style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 12,
+                                    backgroundColor: isDarkMode
+                                        ? "rgba(255,255,255,0.025)"
+                                        : "rgba(0,0,0,0.025)",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <Ionicons name="pencil" size={20} color={colors.textMuted} />
+                            </View>
+                        </Pressable>
+                    ) : (
+                        <Pressable
+                            style={{
+                                backgroundColor: colors.card,
+                                borderRadius: 30,
+                                padding: 20,
+                                flexDirection: "row",
+                                alignItems: "center",
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: isDarkMode ? 0 : 0.03,
+                                shadowRadius: 10,
+                            }}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                router.push("/(user)/(stacks)/emergency-contacts");
+                            }}
+                        >
+                            <View
+                                style={{
+                                    backgroundColor: COLORS.brandPrimary,
+                                    width: 56,
+                                    height: 56,
+                                    borderRadius: 16,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    marginRight: 16,
+                                }}
+                            >
+                                <Ionicons name="people" size={26} color="#FFFFFF" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text
+                                    style={{
+                                        fontSize: 19,
+                                        fontWeight: "900",
+                                        color: colors.text,
+                                        letterSpacing: -0.5,
+                                    }}
+                                >
+                                    Add Contact
+                                </Text>
+                                <Text
+                                    style={{
+                                        fontSize: 14,
+                                        color: colors.textMuted,
+                                        marginTop: 2,
+                                    }}
+                                >
+                                    Family & emergency responders
+                                </Text>
+                            </View>
+                            <View
+                                style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 12,
+                                    backgroundColor: isDarkMode
+                                        ? "rgba(255,255,255,0.025)"
+                                        : "rgba(0,0,0,0.025)",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <Ionicons name="add" size={20} color={colors.textMuted} />
+                            </View>
+                        </Pressable>
+                    )}
 				</Animated.View>
 
 				<Animated.View
@@ -570,10 +647,10 @@ const ProfileScreen = () => {
 						</Text>
 
 						{[
-							{ label: "Allergies", icon: "warning-outline" },
-							{ label: "Current Medications", icon: "medical-outline" },
-							{ label: "Past Surgeries", icon: "bandage-outline" },
-							{ label: "Chronic Conditions", icon: "fitness-outline" },
+							{ label: "Allergies", value: medicalProfile?.allergies, icon: "warning-outline" },
+							{ label: "Current Medications", value: medicalProfile?.medications, icon: "medical-outline" },
+							{ label: "Past Surgeries", value: medicalProfile?.surgeries, icon: "bandage-outline" },
+							{ label: "Chronic Conditions", value: medicalProfile?.conditions, icon: "fitness-outline" },
 						].map((item, index) => (
 							<View
 								key={index}
@@ -600,15 +677,27 @@ const ProfileScreen = () => {
 										color={COLORS.brandPrimary}
 									/>
 								</View>
-								<Text
-									style={{
-										color: colors.text,
-										fontSize: 15,
-										fontWeight: "600",
-									}}
-								>
-									{item.label}
-								</Text>
+                                <View style={{ flex: 1 }}>
+                                    <Text
+                                        style={{
+                                            color: colors.text,
+                                            fontSize: 15,
+                                            fontWeight: "600",
+                                        }}
+                                    >
+                                        {item.label}
+                                    </Text>
+                                    <Text
+                                        numberOfLines={1}
+                                        style={{
+                                            color: colors.textMuted,
+                                            fontSize: 13,
+                                            marginTop: 2,
+                                        }}
+                                    >
+                                        {item.value || "None listed"}
+                                    </Text>
+                                </View>
 							</View>
 						))}
 

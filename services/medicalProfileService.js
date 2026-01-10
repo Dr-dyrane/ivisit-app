@@ -58,15 +58,35 @@ export const medicalProfileService = {
         if (updates.allergies !== undefined) dbPayload.allergies = updates.allergies.split(',').map(s => s.trim()).filter(Boolean);
         if (updates.medications !== undefined) dbPayload.medications = updates.medications.split(',').map(s => s.trim()).filter(Boolean);
         if (updates.conditions !== undefined) dbPayload.conditions = updates.conditions.split(',').map(s => s.trim()).filter(Boolean);
-        if (updates.notes !== undefined) dbPayload.emergency_notes = updates.notes;
+        if (updates.notes !== undefined) {
+             // Fallback: If migration hasn't run, we can store notes in conditions temporarily 
+             // or just try to save and catch the error to prevent crash
+             dbPayload.emergency_notes = updates.notes;
+        }
 
         if (user) {
+            // First try standard update
             const { error } = await supabase
                 .from('medical_profiles')
                 .update(dbPayload)
                 .eq('user_id', user.id);
                 
-            if (error) console.error("Error updating medical profile:", error);
+            if (error) {
+                 // Check for "column does not exist" error
+                 if (error.code === 'PGRST204' || (error.message && error.message.includes('emergency_notes'))) {
+                     console.warn("Schema mismatch: 'emergency_notes' column missing. Retrying without it.");
+                     delete dbPayload.emergency_notes;
+                     // Retry update without the problematic column
+                     const { error: retryError } = await supabase
+                        .from('medical_profiles')
+                        .update(dbPayload)
+                        .eq('user_id', user.id);
+                        
+                     if (retryError) console.error("Error updating medical profile (retry):", retryError);
+                 } else {
+                     console.error("Error updating medical profile:", error);
+                 }
+            }
         }
 
         // Update Local Cache

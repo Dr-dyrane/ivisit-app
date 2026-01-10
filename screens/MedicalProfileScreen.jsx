@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
 	View,
 	Text,
@@ -9,6 +9,7 @@ import {
 	Platform,
 	Pressable,
 	ActivityIndicator,
+    Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -75,14 +76,14 @@ export default function MedicalProfileScreen() {
 
 	const [isSaving, setIsSaving] = useState(false);
 	const { profile, isLoading, updateProfile } = useMedicalProfile();
-    // We need a local state to handle editing form, syncing from profile when loaded
-    const [localProfile, setLocalProfile] = useState(null);
+	// We need a local state to handle editing form, syncing from profile when loaded
+	const [localProfile, setLocalProfile] = useState(null);
 
-    useEffect(() => {
-        if (profile) {
-            setLocalProfile(profile);
-        }
-    }, [profile]);
+	useEffect(() => {
+		if (profile) {
+			setLocalProfile(profile);
+		}
+	}, [profile]);
 
 	const updateField = useCallback((key, value) => {
 		setLocalProfile((prev) => {
@@ -91,9 +92,30 @@ export default function MedicalProfileScreen() {
 		});
 	}, []);
 
-	const canSave = useMemo(() => {
-		return !!localProfile && !isSaving;
-	}, [isSaving, localProfile]);
+    // Derived state: Check if form has unsaved changes
+    const hasChanges = useMemo(() => {
+        if (!profile || !localProfile) return false;
+        return (
+            (localProfile.bloodType ?? "") !== (profile.bloodType ?? "") ||
+            (localProfile.allergies ?? "") !== (profile.allergies ?? "") ||
+            (localProfile.medications ?? "") !== (profile.medications ?? "") ||
+            (localProfile.conditions ?? "") !== (profile.conditions ?? "") ||
+            (localProfile.surgeries ?? "") !== (profile.surgeries ?? "") ||
+            (localProfile.notes ?? "") !== (profile.notes ?? "")
+        );
+    }, [profile, localProfile]);
+
+    const fabScale = useRef(new Animated.Value(0)).current;
+
+    // Animate FAB when changes are detected
+    useEffect(() => {
+        Animated.spring(fabScale, {
+            toValue: hasChanges ? 1 : 0,
+            useNativeDriver: true,
+            friction: 6,
+            tension: 40,
+        }).start();
+    }, [hasChanges]);
 
 	const handleSave = useCallback(async () => {
 		if (!localProfile || isSaving) return;
@@ -129,14 +151,16 @@ export default function MedicalProfileScreen() {
 						Your health, summarized
 					</Text>
 					<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-						Blood type, allergies, chronic conditions, medications, and emergency notes
-						will live here.
+						Blood type, allergies, chronic conditions, medications, and emergency
+						notes will live here.
 					</Text>
 				</View>
 
 				{isLoading ? (
 					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+						<View
+							style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+						>
 							<ActivityIndicator color={COLORS.brandPrimary} />
 							<Text style={{ color: colors.textMuted, fontWeight: "700" }}>
 								Loading medical profile...
@@ -184,37 +208,59 @@ export default function MedicalProfileScreen() {
 							iconName="document-text-outline"
 						/>
 
-						<Pressable
-							onPress={handleSave}
-							disabled={!canSave}
-							style={({ pressed }) => ({
-								marginTop: 6,
-								height: 54,
-								borderRadius: 20,
-								backgroundColor: canSave ? COLORS.brandPrimary : colors.textMuted,
-								alignItems: "center",
-								justifyContent: "center",
-								flexDirection: "row",
-								gap: 10,
-								opacity: pressed ? 0.92 : 1,
-							})}
+						<Text
+							style={{
+								marginTop: 10,
+								color: colors.textMuted,
+								fontWeight: "700",
+								fontSize: 12,
+							}}
 						>
-							{isSaving ? (
-								<ActivityIndicator color="#FFFFFF" />
-							) : (
-								<Ionicons name="checkmark" size={18} color="#FFFFFF" />
-							)}
-							<Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 15, letterSpacing: 1 }}>
-								Save Medical Profile
-							</Text>
-						</Pressable>
-
-						<Text style={{ marginTop: 10, color: colors.textMuted, fontWeight: "700", fontSize: 12 }}>
-							Last updated: {localProfile.updatedAt ? new Date(localProfile.updatedAt).toLocaleString() : "--"}
+							Last updated:{" "}
+							{localProfile.updatedAt
+								? new Date(localProfile.updatedAt).toLocaleString()
+								: "--"}
 						</Text>
 					</View>
 				) : null}
 			</ScrollView>
+
+			{/* Floating Action Button for Saving Changes */}
+			<Animated.View
+				style={{
+					position: "absolute",
+					bottom: insets.bottom + 20,
+					right: 20,
+					transform: [{ scale: fabScale }],
+					shadowColor: COLORS.brandPrimary,
+					shadowOffset: { width: 0, height: 4 },
+					shadowOpacity: 0.3,
+					shadowRadius: 8,
+					elevation: 5,
+					zIndex: 100,
+				}}
+			>
+				<Pressable
+					onPress={handleSave}
+					disabled={isSaving}
+					style={({ pressed }) => ({
+						backgroundColor: COLORS.brandPrimary,
+						width: 56,
+						height: 56,
+						borderRadius: 28,
+						justifyContent: "center",
+						alignItems: "center",
+						opacity: pressed ? 0.9 : 1,
+						transform: [{ scale: pressed ? 0.95 : 1 }],
+					})}
+				>
+					{isSaving ? (
+						<ActivityIndicator color="#FFFFFF" size="small" />
+					) : (
+						<Ionicons name="checkmark" size={32} color="#FFFFFF" />
+					)}
+				</Pressable>
+			</Animated.View>
 		</LinearGradient>
 	);
 }
