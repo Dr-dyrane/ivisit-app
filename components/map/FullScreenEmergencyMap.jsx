@@ -124,7 +124,7 @@ const FullScreenEmergencyMap = forwardRef(
 				return;
 			}
 
-			calculateRoute({ origin, destination });
+			calculateRoute(origin, destination);
 		}, [
 			calculateRoute,
 			mode,
