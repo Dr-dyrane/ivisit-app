@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, Linking } from "react-native";
+import { View, Text, StyleSheet, Pressable, Linking, Image } from "react-native";
 import { useCallback, useMemo } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -60,6 +60,12 @@ export const TripSummaryCard = ({
 		Array.isArray(assigned?.crew) && assigned.crew.length > 0
 			? assigned.crew[0]
 			: assigned?.name ?? "--";
+
+	// Get ambulance type for image and pricing
+	const ambulanceType = useMemo(() => {
+		if (!assigned?.type) return null;
+		return AMBULANCE_TYPES.find(t => t.id === assigned.type) || null;
+	}, [assigned?.type]);
 
 	return (
 		<View
@@ -131,6 +137,113 @@ export const TripSummaryCard = ({
 				</View>
 			</View>
 
+			{/* Expanded Content */}
+			{!isCollapsed && (
+				<View>
+					{/* Ambulance Type Image & Details */}
+					{ambulanceType && (
+						<View style={styles.ambulanceSection}>
+							<View style={styles.ambulanceImageContainer}>
+								<Ionicons 
+									name={ambulanceType.icon} 
+									size={64} 
+									color={COLORS.brandPrimary} 
+								/>
+							</View>
+							<View style={styles.ambulanceInfo}>
+								<Text style={[styles.ambulanceTitle, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
+									{ambulanceType.title}
+								</Text>
+								<Text style={[styles.ambulanceSubtitle, { color: isDarkMode ? "rgba(255,255,255,0.7)" : "rgba(15,23,42,0.7)" }]}>
+									{ambulanceType.subtitle}
+								</Text>
+								<Text style={[styles.ambulancePrice, { color: COLORS.brandPrimary }]}>
+									{ambulanceType.price}
+								</Text>
+							</View>
+						</View>
+					)}
+
+					{/* Full Crew List */}
+					{assigned?.crew && assigned.crew.length > 1 && (
+						<View style={styles.crewSection}>
+							<Text style={[styles.sectionTitle, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
+								Medical Team
+							</Text>
+							<View style={styles.crewList}>
+								{assigned.crew.map((member, index) => (
+									<View key={index} style={styles.crewMemberRow}>
+										<Ionicons name="person" size={16} color={isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)"} />
+										<Text style={[styles.crewMember, { color: isDarkMode ? "rgba(255,255,255,0.8)" : "rgba(15,23,42,0.8)" }]}>
+											{member}
+										</Text>
+									</View>
+								))}
+							</View>
+						</View>
+					)}
+
+					{/* Trip Details */}
+					{ambulanceType && (
+						<View style={styles.detailsSection}>
+							<View style={styles.detailRow}>
+								<Ionicons name="cash-outline" size={20} color={COLORS.brandPrimary} />
+								<View style={styles.detailText}>
+									<Text style={[styles.detailLabel, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
+										Estimated Cost
+									</Text>
+									<Text style={[styles.detailValue, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
+										{ambulanceType.price}
+									</Text>
+								</View>
+							</View>
+							<View style={styles.detailRow}>
+								<Ionicons name="time-outline" size={20} color={COLORS.brandPrimary} />
+								<View style={styles.detailText}>
+									<Text style={[styles.detailLabel, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
+										Estimated ETA
+									</Text>
+									<Text style={[styles.detailValue, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
+										{ambulanceType.eta}
+									</Text>
+								</View>
+							</View>
+						</View>
+					)}
+
+					{/* Safety & Support */}
+					<View style={styles.safetySection}>
+						<Text style={[styles.sectionTitle, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
+							Safety & Support
+						</Text>
+						<Pressable style={({ pressed }) => [styles.safetyRow, { opacity: pressed ? 0.7 : 1 }]}>
+							<Ionicons name="shield-checkmark-outline" size={24} color={isDarkMode ? "rgba(255,255,255,0.8)" : "rgba(15,23,42,0.8)"} />
+							<View style={styles.safetyTextContainer}>
+								<Text style={[styles.safetyLabel, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
+									Share Trip Status
+								</Text>
+								<Text style={[styles.safetySublabel, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
+									Let family and friends follow your trip.
+								</Text>
+							</View>
+							<Ionicons name="chevron-forward" size={20} color={isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)"} />
+						</Pressable>
+						<Pressable style={({ pressed }) => [styles.safetyRow, { opacity: pressed ? 0.7 : 1 }]}>
+							<Ionicons name="help-buoy-outline" size={24} color={isDarkMode ? "rgba(255,255,255,0.8)" : "rgba(15,23,42,0.8)"} />
+							<View style={styles.safetyTextContainer}>
+								<Text style={[styles.safetyLabel, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
+									Emergency Support
+								</Text>
+								<Text style={[styles.safetySublabel, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
+									Get help in case of an emergency.
+								</Text>
+							</View>
+							<Ionicons name="chevron-forward" size={20} color={isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)"} />
+						</Pressable>
+					</View>
+				</View>
+			)}
+
 			{/* Actions */}
 			<View style={styles.actionsRow}>
 				{callTarget && (
@@ -165,9 +278,14 @@ export const TripSummaryCard = ({
 const styles = StyleSheet.create({
 	container: {
 		borderRadius: 20,
-		padding: 20,
+		padding: 24,
 		marginBottom: 20,
-		marginHorizontal: 4, // Prevent shadow clipping
+		marginHorizontal: 0, // Uber-like edge-to-edge card
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.08,
+		shadowRadius: 8,
+		elevation: 3,
 	},
 	headerRow: {
 		flexDirection: "row",
@@ -262,12 +380,88 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		gap: 12,
 	},
+	ambulanceSection: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 24,
+		paddingVertical: 12,
+	},
+	ambulanceImageContainer: {
+		width: 80,
+		height: 80,
+		borderRadius: 16,
+		backgroundColor: "#F3F4F6",
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 16,
+	},
+	ambulanceInfo: {
+		flex: 1,
+	},
+	ambulanceTitle: {
+		fontSize: 16,
+		fontWeight: "700",
+		marginBottom: 4,
+	},
+	ambulanceSubtitle: {
+		fontSize: 13,
+		fontWeight: "500",
+		marginBottom: 8,
+	},
+	ambulancePrice: {
+		fontSize: 20,
+		fontWeight: "800",
+	},
+	crewSection: {
+		marginBottom: 24,
+	},
+	sectionTitle: {
+		fontSize: 14,
+		fontWeight: "600",
+		marginBottom: 12,
+		color: "#6B7280",
+		textTransform: "uppercase",
+		letterSpacing: 0.5,
+	},
+	crewList: {
+		gap: 8,
+	},
+	crewMemberRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+	crewMember: {
+		fontSize: 14,
+		fontWeight: "500",
+	},
+	detailsSection: {
+		marginBottom: 24,
+	},
+	detailRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 12,
+	},
+	detailText: {
+		marginLeft: 12,
+	},
+	detailLabel: {
+		fontSize: 13,
+		fontWeight: "500",
+		marginBottom: 2,
+	},
+	detailValue: {
+		fontSize: 15,
+		fontWeight: "600",
+	},
 	actionBtn: {
 		width: 48,
 		height: 48,
 		borderRadius: 24,
 		alignItems: "center",
 		justifyContent: "center",
+		backgroundColor: "#F3F4F6", // Softer Uber-like gray
 	},
 	cancelBtn: {
 		flex: 1,
@@ -275,10 +469,10 @@ const styles = StyleSheet.create({
 		borderRadius: 24,
 		alignItems: "center",
 		justifyContent: "center",
-		backgroundColor: "rgba(239, 68, 68, 0.1)",
+		backgroundColor: "#FEF2F2", // Softer Uber-like red
 	},
 	cancelText: {
-		color: "#EF4444",
+		color: "#DC2626", // Softer Uber-like red
 		fontSize: 15,
 		fontWeight: "600",
 	},
