@@ -75,7 +75,7 @@ export default function CreatePasswordScreen() {
 					router.back();
 				}}
 				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-				style={{ paddingHorizontal: 6, paddingVertical: 6 }}
+				style={{ paddingHorizontal: 12, paddingVertical: 6 }}
 			>
 				<Ionicons name="close" size={22} color="#FFFFFF" />
 			</Pressable>
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
 	inputRow: {
 		height: 64,
 		borderRadius: 18,
-		paddingHorizontal: 14,
+		paddingHorizontal: 12,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 10,

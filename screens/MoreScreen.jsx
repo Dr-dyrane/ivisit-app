@@ -197,7 +197,7 @@ const MoreScreen = () => {
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }, { scale: profileScale }],
-						paddingHorizontal: 20,
+						paddingHorizontal: 12,
 						paddingBottom: 24,
 					}}
 				>
@@ -275,7 +275,7 @@ const MoreScreen = () => {
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 20,
+						paddingHorizontal: 12,
 						marginBottom: 24,
 					}}
 				>
@@ -371,7 +371,7 @@ const MoreScreen = () => {
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 20,
+						paddingHorizontal: 12,
 						marginBottom: 24,
 					}}
 				>
@@ -467,7 +467,7 @@ const MoreScreen = () => {
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 20,
+						paddingHorizontal: 12,
 						marginBottom: 24,
 					}}
 				>

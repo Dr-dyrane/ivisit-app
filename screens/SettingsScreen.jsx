@@ -125,7 +125,7 @@ export default function SettingsScreen() {
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 20,
+						paddingHorizontal: 12,
 						marginBottom: 24,
 					}}
 				>
@@ -387,7 +387,7 @@ export default function SettingsScreen() {
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 20,
+						paddingHorizontal: 12,
 						marginBottom: 24,
 					}}
 				>
@@ -567,7 +567,7 @@ export default function SettingsScreen() {
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 20,
+						paddingHorizontal: 12,
 						marginBottom: 24,
 					}}
 				>

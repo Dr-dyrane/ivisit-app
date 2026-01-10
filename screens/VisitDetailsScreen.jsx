@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
 		gap: 12,
 	},
 	statusPill: {
-		paddingHorizontal: 10,
+		paddingHorizontal: 12,
 		paddingVertical: 6,
 		borderRadius: 14,
 	},
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
 		backgroundColor: COLORS.brandPrimary,
 		borderRadius: 16,
 		paddingVertical: 12,
-		paddingHorizontal: 18,
+		paddingHorizontal: 12,
 		minWidth: 160,
 		alignItems: "center",
 	},

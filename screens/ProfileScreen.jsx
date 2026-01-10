@@ -388,7 +388,7 @@ const ProfileScreen = () => {
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 20,
+						paddingHorizontal: 12,
 					}}
 				>
 					<Text
@@ -453,7 +453,7 @@ const ProfileScreen = () => {
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 20,
+						paddingHorizontal: 12,
 						marginTop: 32,
 					}}
 				>
@@ -613,7 +613,7 @@ const ProfileScreen = () => {
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 20,
+						paddingHorizontal: 12,
 						marginTop: 32,
 					}}
 				>
@@ -739,7 +739,7 @@ const ProfileScreen = () => {
 				<Animated.View
 					style={{
 						opacity: fadeAnim,
-						paddingHorizontal: 20,
+						paddingHorizontal: 12,
 						marginTop: 32,
 					}}
 				>
@@ -826,7 +826,7 @@ const ProfileScreen = () => {
 				<Animated.View
 					style={{
 						opacity: fadeAnim,
-						paddingHorizontal: 20,
+						paddingHorizontal: 12,
 						marginTop: 32,
                         marginBottom: 100, // Extra space for sticky footer
 					}}

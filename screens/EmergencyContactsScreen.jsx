@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
 	addCard: {
 		height: 56,
 		borderRadius: 24,
-		paddingHorizontal: 18,
+		paddingHorizontal: 12,
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "center",
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
 	inputRow: {
 		height: 54,
 		borderRadius: 16,
-		paddingHorizontal: 14,
+		paddingHorizontal: 12,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 10,

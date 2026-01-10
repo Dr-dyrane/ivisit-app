@@ -94,7 +94,7 @@ export default function InsuranceScreen() {
 				contentContainerStyle={{
 					paddingTop: topPadding,
 					paddingBottom: bottomPadding,
-					paddingHorizontal: 20,
+					paddingHorizontal: 12,
 				}}
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}

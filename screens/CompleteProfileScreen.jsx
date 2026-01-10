@@ -53,7 +53,7 @@ export default function CompleteProfileScreen() {
 					router.replace("/(auth)");
 				}}
 				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-				style={{ paddingHorizontal: 6, paddingVertical: 6 }}
+				style={{ paddingHorizontal: 12, paddingVertical: 6 }}
 			>
 				<Ionicons name="log-out-outline" size={22} color="#FFFFFF" />
 			</Pressable>

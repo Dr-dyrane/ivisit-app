@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
 	primaryCta: {
 		height: 54,
 		borderRadius: 22,
-		paddingHorizontal: 18,
+		paddingHorizontal: 12,
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
