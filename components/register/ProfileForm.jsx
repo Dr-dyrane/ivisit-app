@@ -135,7 +135,7 @@ export default function ProfileForm({ onComplete }) {
 
 			// Upload image if it's a local file
 			if (imageUri && imageUri.startsWith('file://')) {
-				uploadedImageUri = await imageService.uploadImage(imageUri);
+				uploadedImageUri = await uploadImage(imageUri);
 			}
 
 			const profileData = {
