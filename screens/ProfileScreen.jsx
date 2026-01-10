@@ -10,6 +10,8 @@ import {
 	ActivityIndicator,
 	Animated,
     Alert,
+    KeyboardAvoidingView,
+    Platform,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -53,26 +55,54 @@ const ProfileScreen = () => {
 	const [isLoading, setIsLoading] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 	const [isDataLoading, setIsDataLoading] = useState(true);
+    
+    // Derived state: Check if form has unsaved changes
+    const hasChanges = user && (
+        fullName !== (user.fullName || "") ||
+        username !== (user.username || "") ||
+        gender !== (user.gender || "") ||
+        email !== (user.email || "") ||
+        phone !== (user.phone || "") ||
+        address !== (user.address || "") ||
+        dateOfBirth !== (user.dateOfBirth || "") ||
+        (imageUri !== null && imageUri !== user.imageUri)
+    );
+
+    const fabScale = useRef(new Animated.Value(0)).current;
+
+    // Animate FAB when changes are detected
+    useEffect(() => {
+        Animated.spring(fabScale, {
+            toValue: hasChanges ? 1 : 0,
+            useNativeDriver: true,
+            friction: 6,
+            tension: 40
+        }).start();
+    }, [hasChanges]);
 
     // Sync state with user context when loaded
     useEffect(() => {
         if (user) {
-            setFullName(user.fullName || "");
-            setUsername(user.username || "");
-            setGender(user.gender || "");
-            setEmail(user.email || "");
-            setPhone(user.phone || "");
-            setAddress(user.address || "");
-            setDateOfBirth(user.dateOfBirth || "");
-            
-            // Only overwrite image if it's not a local draft
-            if (!imageUri?.startsWith('file://')) {
-                setImageUri(user.imageUri || null);
+            // Only overwrite if we are loading data for the first time
+            // OR if the user hasn't made any changes yet (to prevent overwriting while typing)
+            if (isDataLoading || !hasChanges) {
+                setFullName(user.fullName || "");
+                setUsername(user.username || "");
+                setGender(user.gender || "");
+                setEmail(user.email || "");
+                setPhone(user.phone || "");
+                setAddress(user.address || "");
+                setDateOfBirth(user.dateOfBirth || "");
+                
+                // Only overwrite image if it's not a local draft
+                if (!imageUri?.startsWith('file://')) {
+                    setImageUri(user.imageUri || null);
+                }
+                
+                setIsDataLoading(false);
             }
-            
-            setIsDataLoading(false);
         }
-    }, [user]);
+    }, [user, isDataLoading]); // hasChanges is intentionally omitted to avoid loops, but checked inside
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
@@ -190,20 +220,14 @@ const ProfileScreen = () => {
 				dateOfBirth,
 				imageUri: uploadedImageUri,
 			};
-			
-			console.log("DEBUG: Updating profile with data:", updatedData);
+
 			await updateProfile(updatedData);
-			
-			console.log("DEBUG: Profile updated. Syncing user data...");
 			await syncUserData();
 
-            // Explicitly force a re-render with the new remote URI
-            // We use a small timeout to ensure the context has propagated or just set it directly
-            if (uploadedImageUri) {
-                 setImageUri(uploadedImageUri);
-                 // Also invalidate the cache/force reload for this URI if needed (optional optimization)
-            }
-			
+			if (uploadedImageUri) {
+				setImageUri(uploadedImageUri);
+			}
+
 			showToast("Profile updated successfully", "success");
 		} catch (error) {
 			console.error("DEBUG: Update error:", error);
@@ -701,79 +725,6 @@ const ProfileScreen = () => {
 							/>
 						</View>
 					</Pressable>
-
-					<Pressable
-						onPress={handleUpdateProfile}
-						disabled={isLoading}
-						style={{
-							backgroundColor: colors.card,
-							borderRadius: 30,
-							padding: 20,
-							flexDirection: "row",
-							alignItems: "center",
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-					>
-						<View
-							style={{
-								backgroundColor: COLORS.brandPrimary,
-								width: 56,
-								height: 56,
-								borderRadius: 16,
-								alignItems: "center",
-								justifyContent: "center",
-								marginRight: 16,
-							}}
-						>
-							{isLoading ? (
-								<ActivityIndicator color="#FFFFFF" />
-							) : (
-								<Ionicons name="checkmark" size={26} color="#FFFFFF" />
-							)}
-						</View>
-						<View style={{ flex: 1 }}>
-							<Text
-								style={{
-									fontSize: 19,
-									fontWeight: "900",
-									color: colors.text,
-									letterSpacing: -0.5,
-								}}
-							>
-								Save Changes
-							</Text>
-							<Text
-								style={{
-									fontSize: 14,
-									color: colors.textMuted,
-									marginTop: 2,
-								}}
-							>
-								Update your profile
-							</Text>
-						</View>
-						<View
-							style={{
-								width: 36,
-								height: 36,
-								borderRadius: 12,
-								backgroundColor: isDarkMode
-									? "rgba(255,255,255,0.025)"
-									: "rgba(0,0,0,0.025)",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Ionicons
-								name="chevron-forward"
-								size={16}
-								color={colors.textMuted}
-							/>
-						</View>
-					</Pressable>
 				</Animated.View>
 
                 {/* Danger Zone */}
@@ -782,7 +733,7 @@ const ProfileScreen = () => {
 						opacity: fadeAnim,
 						paddingHorizontal: 20,
 						marginTop: 32,
-                        marginBottom: 20,
+                        marginBottom: 100, // Extra space for sticky footer
 					}}
 				>
 					<Text
@@ -851,6 +802,43 @@ const ProfileScreen = () => {
 					</Pressable>
 				</Animated.View>
 			</ScrollView>
+
+            {/* Floating Action Button for Saving Changes */}
+            <Animated.View
+                style={{
+                    position: 'absolute',
+                    bottom: insets.bottom + 20,
+                    right: 20,
+                    transform: [{ scale: fabScale }],
+                    shadowColor: COLORS.brandPrimary,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 5,
+                    zIndex: 100,
+                }}
+            >
+                <Pressable
+                    onPress={handleUpdateProfile}
+                    disabled={isLoading}
+                    style={({ pressed }) => ({
+                        backgroundColor: COLORS.brandPrimary,
+                        width: 56,
+                        height: 56,
+                        borderRadius: 28,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        opacity: pressed ? 0.9 : 1,
+                        transform: [{ scale: pressed ? 0.95 : 1 }],
+                    })}
+                >
+                    {isLoading ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                        <Ionicons name="checkmark" size={32} color="#FFFFFF" />
+                    )}
+                </Pressable>
+            </Animated.View>
 		</LinearGradient>
 	);
 };

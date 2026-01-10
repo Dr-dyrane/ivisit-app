@@ -361,6 +361,9 @@ const authService = {
             fullName: data.full_name,
             phone: data.phone,
             imageUri: data.image_uri,
+            address: data.address,
+            gender: data.gender,
+            dateOfBirth: data.date_of_birth,
             createdAt: data.created_at,
             updatedAt: data.updated_at
         };
@@ -383,6 +386,13 @@ const authService = {
         if (newData.imageUri) updates.image_uri = newData.imageUri;
         if (newData.fullName) updates.full_name = newData.fullName;
         
+        // We only attempt to update these if they are present in the table
+        // To avoid "Column not found" errors, you must run the migration:
+        // supabase/migrations/20260109180000_add_profile_fields.sql
+        if (newData.address) updates.address = newData.address;
+        if (newData.gender) updates.gender = newData.gender;
+        if (newData.dateOfBirth) updates.date_of_birth = newData.dateOfBirth;
+        
         // If empty updates, just return current
         if (Object.keys(updates).length === 0) return { data: newData };
 
@@ -393,7 +403,23 @@ const authService = {
 			.update(updates)
 			.eq('id', user.id);
 
-		if (error) throw handleSupabaseError(error);
+		if (error) {
+            // Graceful fallback: If columns don't exist yet, retry without them
+            if (error.message && error.message.includes('column') && error.message.includes('does not exist')) {
+                console.warn("Schema mismatch: New columns not found in 'profiles'. Retry without extra fields.");
+                // Remove problematic fields
+                delete updates.address;
+                delete updates.gender;
+                delete updates.date_of_birth;
+                
+                if (Object.keys(updates).length > 1) { // >1 because updated_at is always there
+                     const { error: retryError } = await supabase.from('profiles').update(updates).eq('id', user.id);
+                     if (retryError) throw handleSupabaseError(retryError);
+                     return { data: { ...newData, warning: "Some fields could not be saved (Schema outdated)" } };
+                }
+            }
+            throw handleSupabaseError(error);
+        }
 
         // Merge updates for return
         return { data: { ...newData } };
