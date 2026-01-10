@@ -12,10 +12,21 @@ export const ROUTES = {
 	STACK_VISIT_DETAILS: (id) => `/(user)/(stacks)/visit/${String(id)}`,
 };
 
+let isNavigating = false;
+
 function nav(router, method, target) {
+    if (isNavigating) return;
+    
 	const fn = method === "replace" ? router?.replace : router?.push;
 	if (!fn) return;
+    
+    isNavigating = true;
 	fn(target);
+    
+    // Reset flag after a short delay (e.g., 500ms) to allow next navigation
+    setTimeout(() => {
+        isNavigating = false;
+    }, 500);
 }
 
 export function navigateToSOS({
