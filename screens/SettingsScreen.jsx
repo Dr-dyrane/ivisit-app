@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef, useEffect } from "react";
 import {
 	View,
 	Text,
 	ScrollView,
 	StyleSheet,
 	Platform,
-	Pressable,
+	TouchableOpacity,
+	Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -23,6 +24,7 @@ import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import { useAuth } from "../contexts/AuthContext";
 import { ThemeMode } from "../contexts/ThemeContext";
 import { usePreferences } from "../contexts/PreferencesContext";
+import * as Haptics from "expo-haptics";
 
 export default function SettingsScreen() {
 	const router = useRouter();
@@ -61,6 +63,25 @@ export default function SettingsScreen() {
 		[handleHeaderScroll, handleTabBarScroll]
 	);
 
+	const fadeAnim = useRef(new Animated.Value(0)).current;
+	const slideAnim = useRef(new Animated.Value(30)).current;
+
+	useEffect(() => {
+		Animated.parallel([
+			Animated.timing(fadeAnim, {
+				toValue: 1,
+				duration: 600,
+				useNativeDriver: true,
+			}),
+			Animated.spring(slideAnim, {
+				toValue: 0,
+				friction: 8,
+				tension: 50,
+				useNativeDriver: true,
+			}),
+		]).start();
+	}, []);
+
 	const backgroundColors = isDarkMode
 		? ["#121826", "#0B0F1A", "#121826"]
 		: ["#FFFFFF", "#F3E7E7", "#FFFFFF"];
@@ -78,6 +99,7 @@ export default function SettingsScreen() {
 	const togglePreference = useCallback(
 		async (key) => {
 			if (!preferences) return;
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 			await updatePreferences({ [key]: !preferences[key] });
 		},
 		[preferences, updatePreferences]
@@ -90,206 +112,544 @@ export default function SettingsScreen() {
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			<ScrollView
-				contentContainerStyle={[
-					styles.content,
-					{ paddingTop: topPadding, paddingBottom: bottomPadding },
-				]}
+				contentContainerStyle={{
+					paddingTop: topPadding,
+					paddingBottom: bottomPadding,
+				}}
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
 			>
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.title, { color: colors.text }]}>
-						App preferences
-					</Text>
-					<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-						Notification preferences, privacy, accessibility, and account controls
-						will be centralized here.
-					</Text>
-				</View>
-
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-						Theme
-					</Text>
-					<View style={styles.segmentRow}>
-						{[
-							{ key: ThemeMode.SYSTEM, label: "System" },
-							{ key: ThemeMode.LIGHT, label: "Light" },
-							{ key: ThemeMode.DARK, label: "Dark" },
-						].map((item) => {
-							const selected = themeMode === item.key;
-							return (
-								<Pressable
-									key={item.key}
-									onPress={() => setTheme(item.key)}
-									style={({ pressed }) => [
-										styles.segment,
-										{
-											backgroundColor: selected
-												? COLORS.brandPrimary
-												: isDarkMode
-												? "rgba(255,255,255,0.06)"
-												: "rgba(0,0,0,0.06)",
-											opacity: pressed ? 0.92 : 1,
-										},
-									]}
-								>
-									<Text
-										style={{
-											color: selected ? "#FFFFFF" : colors.text,
-											fontWeight: "900",
-											fontSize: 13,
-										}}
-									>
-										{item.label}
-									</Text>
-								</Pressable>
-							);
-						})}
-					</View>
-				</View>
-
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-						Notifications
-					</Text>
-					<Pressable
-						onPress={() => togglePreference("notificationsEnabled")}
-						style={({ pressed }) => [
-							styles.toggleRow,
-							{ opacity: pressed ? 0.92 : 1 },
-						]}
-						disabled={!preferences}
-					>
-						<View style={styles.toggleLeft}>
-							<Ionicons name="notifications" size={18} color={COLORS.brandPrimary} />
-							<Text style={[styles.toggleTitle, { color: colors.text }]}>
-								All notifications
-							</Text>
-						</View>
-						<Ionicons
-							name={preferences?.notificationsEnabled ? "checkmark-circle" : "ellipse-outline"}
-							size={20}
-							color={preferences?.notificationsEnabled ? COLORS.brandPrimary : colors.textMuted}
-						/>
-					</Pressable>
-
-					<Pressable
-						onPress={() => togglePreference("appointmentReminders")}
-						style={({ pressed }) => [
-							styles.toggleRow,
-							{ opacity: pressed ? 0.92 : 1 },
-						]}
-						disabled={!preferences || !preferences.notificationsEnabled}
-					>
-						<View style={styles.toggleLeft}>
-							<Ionicons name="calendar" size={18} color={COLORS.brandPrimary} />
-							<Text style={[styles.toggleTitle, { color: colors.text }]}>
-								Appointment reminders
-							</Text>
-						</View>
-						<Ionicons
-							name={preferences?.appointmentReminders ? "checkmark-circle" : "ellipse-outline"}
-							size={20}
-							color={preferences?.appointmentReminders ? COLORS.brandPrimary : colors.textMuted}
-						/>
-					</Pressable>
-
-					<Pressable
-						onPress={() => togglePreference("emergencyUpdates")}
-						style={({ pressed }) => [
-							styles.toggleRow,
-							{ opacity: pressed ? 0.92 : 1 },
-						]}
-						disabled={!preferences || !preferences.notificationsEnabled}
-					>
-						<View style={styles.toggleLeft}>
-							<Ionicons name="medical" size={18} color={COLORS.brandPrimary} />
-							<Text style={[styles.toggleTitle, { color: colors.text }]}>
-								Emergency updates
-							</Text>
-						</View>
-						<Ionicons
-							name={preferences?.emergencyUpdates ? "checkmark-circle" : "ellipse-outline"}
-							size={20}
-							color={preferences?.emergencyUpdates ? COLORS.brandPrimary : colors.textMuted}
-						/>
-					</Pressable>
-				</View>
-
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-						Privacy
-					</Text>
-					<Pressable
-						onPress={() => togglePreference("privacyShareMedicalProfile")}
-						style={({ pressed }) => [
-							styles.toggleRow,
-							{ opacity: pressed ? 0.92 : 1 },
-						]}
-						disabled={!preferences}
-					>
-						<View style={styles.toggleLeft}>
-							<Ionicons name="document-text" size={18} color={COLORS.brandPrimary} />
-							<Text style={[styles.toggleTitle, { color: colors.text }]}>
-								Share medical profile in SOS
-							</Text>
-						</View>
-						<Ionicons
-							name={preferences?.privacyShareMedicalProfile ? "checkmark-circle" : "ellipse-outline"}
-							size={20}
-							color={preferences?.privacyShareMedicalProfile ? COLORS.brandPrimary : colors.textMuted}
-						/>
-					</Pressable>
-
-					<Pressable
-						onPress={() => togglePreference("privacyShareEmergencyContacts")}
-						style={({ pressed }) => [
-							styles.toggleRow,
-							{ opacity: pressed ? 0.92 : 1 },
-						]}
-						disabled={!preferences}
-					>
-						<View style={styles.toggleLeft}>
-							<Ionicons name="people" size={18} color={COLORS.brandPrimary} />
-							<Text style={[styles.toggleTitle, { color: colors.text }]}>
-								Share emergency contacts in SOS
-							</Text>
-						</View>
-						<Ionicons
-							name={preferences?.privacyShareEmergencyContacts ? "checkmark-circle" : "ellipse-outline"}
-							size={20}
-							color={preferences?.privacyShareEmergencyContacts ? COLORS.brandPrimary : colors.textMuted}
-						/>
-					</Pressable>
-				</View>
-
-				<Pressable
-					onPress={() => router.push(passwordRoute)}
-					style={({ pressed }) => [
-						styles.securityCard,
-						{
-							backgroundColor: colors.card,
-							opacity: pressed ? 0.92 : 1,
-						},
-					]}
+				{/* NOTIFICATIONS Section */}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 20,
+						marginBottom: 24,
+					}}
 				>
-					<View style={styles.securityIconWrap}>
-						<Ionicons name="lock-closed" size={22} color="#FFFFFF" />
-					</View>
-					<View style={{ flex: 1 }}>
-						<Text style={[styles.securityTitle, { color: colors.text }]}>
-							{user?.hasPassword ? "Change Password" : "Create Password"}
-						</Text>
-						<Text style={[styles.securitySubtitle, { color: colors.textMuted }]}>
-							{user?.hasPassword ? "Update your password anytime" : "Add password login to your account"}
-						</Text>
-					</View>
-					<Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-				</Pressable>
+					<Text
+						style={{
+							fontSize: 10,
+							fontWeight: "900",
+							color: colors.textMuted,
+							marginBottom: 16,
+							letterSpacing: 3,
+						}}
+					>
+						NOTIFICATIONS
+					</Text>
+					<TouchableOpacity
+						onPress={() => togglePreference("notificationsEnabled")}
+						disabled={!preferences}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							justifyContent: "space-between",
+							padding: 20,
+							marginBottom: 12,
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+							<View
+								style={{
+									width: 56,
+									height: 56,
+									borderRadius: 16,
+									backgroundColor: COLORS.brandPrimary,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons name="notifications" size={26} color="#FFFFFF" />
+							</View>
+							<View>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -0.5,
+									}}
+								>
+									All Notifications
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									Receive all app alerts
+								</Text>
+							</View>
+						</View>
+						<View
+							style={{
+								width: 52,
+								height: 30,
+								borderRadius: 15,
+								backgroundColor: preferences?.notificationsEnabled ? COLORS.brandPrimary : "#D1D5DB",
+								justifyContent: "center",
+							}}
+						>
+							<View
+								style={{
+									width: 24,
+									height: 24,
+									borderRadius: 12,
+									backgroundColor: "#FFFFFF",
+									position: "absolute",
+									left: preferences?.notificationsEnabled ? 25 : 3,
+									shadowColor: "#000",
+									shadowOffset: { width: 0, height: 2 },
+									shadowOpacity: 0.15,
+									shadowRadius: 3,
+									elevation: 3,
+								}}
+							/>
+						</View>
+					</TouchableOpacity>
 
+					<TouchableOpacity
+						onPress={() => togglePreference("appointmentReminders")}
+						disabled={!preferences || !preferences.notificationsEnabled}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							justifyContent: "space-between",
+							padding: 20,
+							marginBottom: 12,
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+							opacity: !preferences || !preferences.notificationsEnabled ? 0.5 : 1,
+						}}
+					>
+						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+							<View
+								style={{
+									width: 56,
+									height: 56,
+									borderRadius: 16,
+									backgroundColor: COLORS.brandPrimary,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons name="calendar" size={26} color="#FFFFFF" />
+							</View>
+							<View>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -0.5,
+									}}
+								>
+									Appointment Reminders
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									Before scheduled visits
+								</Text>
+							</View>
+						</View>
+						<View
+							style={{
+								width: 52,
+								height: 30,
+								borderRadius: 15,
+								backgroundColor: preferences?.appointmentReminders ? COLORS.brandPrimary : "#D1D5DB",
+								justifyContent: "center",
+							}}
+						>
+							<View
+								style={{
+									width: 24,
+									height: 24,
+									borderRadius: 12,
+									backgroundColor: "#FFFFFF",
+									position: "absolute",
+									left: preferences?.appointmentReminders ? 25 : 3,
+									shadowColor: "#000",
+									shadowOffset: { width: 0, height: 2 },
+									shadowOpacity: 0.15,
+									shadowRadius: 3,
+									elevation: 3,
+								}}
+							/>
+						</View>
+					</TouchableOpacity>
 
+					<TouchableOpacity
+						onPress={() => togglePreference("emergencyUpdates")}
+						disabled={!preferences || !preferences.notificationsEnabled}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							justifyContent: "space-between",
+							padding: 20,
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+							opacity: !preferences || !preferences.notificationsEnabled ? 0.5 : 1,
+						}}
+					>
+						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+							<View
+								style={{
+									width: 56,
+									height: 56,
+									borderRadius: 16,
+									backgroundColor: COLORS.brandPrimary,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons name="medical" size={26} color="#FFFFFF" />
+							</View>
+							<View>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -0.5,
+									}}
+								>
+									Emergency Updates
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									Critical SOS notifications
+								</Text>
+							</View>
+						</View>
+						<View
+							style={{
+								width: 52,
+								height: 30,
+								borderRadius: 15,
+								backgroundColor: preferences?.emergencyUpdates ? COLORS.brandPrimary : "#D1D5DB",
+								justifyContent: "center",
+							}}
+						>
+							<View
+								style={{
+									width: 24,
+									height: 24,
+									borderRadius: 12,
+									backgroundColor: "#FFFFFF",
+									position: "absolute",
+									left: preferences?.emergencyUpdates ? 25 : 3,
+									shadowColor: "#000",
+									shadowOffset: { width: 0, height: 2 },
+									shadowOpacity: 0.15,
+									shadowRadius: 3,
+									elevation: 3,
+								}}
+							/>
+						</View>
+					</TouchableOpacity>
+				</Animated.View>
+
+				{/* PRIVACY Section */}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 20,
+						marginBottom: 24,
+					}}
+				>
+					<Text
+						style={{
+							fontSize: 10,
+							fontWeight: "900",
+							color: colors.textMuted,
+							marginBottom: 16,
+							letterSpacing: 3,
+						}}
+					>
+						PRIVACY
+					</Text>
+					<TouchableOpacity
+						onPress={() => togglePreference("privacyShareMedicalProfile")}
+						disabled={!preferences}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							justifyContent: "space-between",
+							padding: 20,
+							marginBottom: 12,
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+							<View
+								style={{
+									width: 56,
+									height: 56,
+									borderRadius: 16,
+									backgroundColor: COLORS.brandPrimary,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons name="document-text" size={26} color="#FFFFFF" />
+							</View>
+							<View>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -0.5,
+									}}
+								>
+									Share Medical Profile
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									In SOS requests only
+								</Text>
+							</View>
+						</View>
+						<View
+							style={{
+								width: 52,
+								height: 30,
+								borderRadius: 15,
+								backgroundColor: preferences?.privacyShareMedicalProfile ? COLORS.brandPrimary : "#D1D5DB",
+								justifyContent: "center",
+							}}
+						>
+							<View
+								style={{
+									width: 24,
+									height: 24,
+									borderRadius: 12,
+									backgroundColor: "#FFFFFF",
+									position: "absolute",
+									left: preferences?.privacyShareMedicalProfile ? 25 : 3,
+									shadowColor: "#000",
+									shadowOffset: { width: 0, height: 2 },
+									shadowOpacity: 0.15,
+									shadowRadius: 3,
+									elevation: 3,
+								}}
+							/>
+						</View>
+					</TouchableOpacity>
+
+					<TouchableOpacity
+						onPress={() => togglePreference("privacyShareEmergencyContacts")}
+						disabled={!preferences}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							justifyContent: "space-between",
+							padding: 20,
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+							<View
+								style={{
+									width: 56,
+									height: 56,
+									borderRadius: 16,
+									backgroundColor: COLORS.brandPrimary,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons name="people" size={26} color="#FFFFFF" />
+							</View>
+							<View>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -0.5,
+									}}
+								>
+									Share Emergency Contacts
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									In SOS requests only
+								</Text>
+							</View>
+						</View>
+						<View
+							style={{
+								width: 52,
+								height: 30,
+								borderRadius: 15,
+								backgroundColor: preferences?.privacyShareEmergencyContacts ? COLORS.brandPrimary : "#D1D5DB",
+								justifyContent: "center",
+							}}
+						>
+							<View
+								style={{
+									width: 24,
+									height: 24,
+									borderRadius: 12,
+									backgroundColor: "#FFFFFF",
+									position: "absolute",
+									left: preferences?.privacyShareEmergencyContacts ? 25 : 3,
+									shadowColor: "#000",
+									shadowOffset: { width: 0, height: 2 },
+									shadowOpacity: 0.15,
+									shadowRadius: 3,
+									elevation: 3,
+								}}
+							/>
+						</View>
+					</TouchableOpacity>
+				</Animated.View>
+
+				{/* ACCOUNT SECURITY Section */}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 20,
+						marginBottom: 24,
+					}}
+				>
+					<Text
+						style={{
+							fontSize: 10,
+							fontWeight: "900",
+							color: colors.textMuted,
+							marginBottom: 16,
+							letterSpacing: 3,
+						}}
+					>
+						ACCOUNT SECURITY
+					</Text>
+					<TouchableOpacity
+						onPress={() => router.push(passwordRoute)}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							padding: 20,
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<View
+							style={{
+								width: 56,
+								height: 56,
+								borderRadius: 16,
+								backgroundColor: COLORS.brandPrimary,
+								alignItems: "center",
+								justifyContent: "center",
+								marginRight: 16,
+							}}
+						>
+							<Ionicons name="lock-closed" size={26} color="#FFFFFF" />
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text
+								style={{
+									fontSize: 19,
+									fontWeight: "900",
+									color: colors.text,
+									letterSpacing: -0.5,
+								}}
+							>
+								{user?.hasPassword ? "Change Password" : "Create Password"}
+							</Text>
+							<Text
+								style={{
+									fontSize: 14,
+									color: colors.textMuted,
+									marginTop: 2,
+								}}
+							>
+								{user?.hasPassword ? "Update your password" : "Secure your account"}
+							</Text>
+						</View>
+						<View
+							style={{
+								width: 36,
+								height: 36,
+								borderRadius: 12,
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.025)"
+									: "rgba(0,0,0,0.025)",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<Ionicons
+								name="chevron-forward"
+								size={16}
+								color={colors.textMuted}
+							/>
+						</View>
+					</TouchableOpacity>
+				</Animated.View>
 			</ScrollView>
 		</LinearGradient>
 	);
@@ -297,65 +657,4 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
-	content: { flexGrow: 1, padding: 20, gap: 12 },
-	card: {
-		borderRadius: 20,
-		padding: 18,
-	},
-	title: {
-		fontSize: 18,
-		fontWeight: "900",
-		letterSpacing: -0.3,
-	},
-	subtitle: {
-		marginTop: 8,
-		fontSize: 14,
-		lineHeight: 20,
-	},
-	sectionTitle: {
-		fontSize: 10,
-		fontWeight: "900",
-		letterSpacing: 3,
-		textTransform: "uppercase",
-		marginBottom: 12,
-	},
-	segmentRow: {
-		flexDirection: "row",
-		gap: 10,
-	},
-	segment: {
-		height: 42,
-		flex: 1,
-		borderRadius: 16,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	toggleRow: {
-		height: 52,
-		borderRadius: 16,
-		paddingHorizontal: 14,
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		backgroundColor: "rgba(0,0,0,0)",
-	},
-	toggleLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
-	toggleTitle: { fontSize: 14, fontWeight: "800" },
-	securityCard: {
-		borderRadius: 24,
-		padding: 18,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 14,
-	},
-	securityIconWrap: {
-		width: 46,
-		height: 46,
-		borderRadius: 16,
-		backgroundColor: COLORS.brandPrimary,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	securityTitle: { fontSize: 16, fontWeight: "900", letterSpacing: -0.2 },
-	securitySubtitle: { marginTop: 4, fontSize: 13, fontWeight: "600" },
 });
