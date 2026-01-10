@@ -20,11 +20,13 @@ export function useEmergencyRequests() {
 	}, []);
 
 	const setRequestStatus = useCallback(async (requestId, status) => {
-		// Don't set global loading here to avoid UI blocking on background updates
 		try {
-			await emergencyRequestsService.setStatus(requestId, status);
+			const result = await emergencyRequestsService.setStatus(requestId, status);
+			console.log(`[setRequestStatus] Updated ${requestId} to ${status}`, result);
+			return result;
 		} catch (err) {
-			console.error("Failed to set request status", err);
+			console.error(`[setRequestStatus] Failed to set ${requestId} to ${status}:`, err);
+			throw err;
 		}
 	}, []);
 

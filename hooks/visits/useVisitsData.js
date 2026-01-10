@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { visitsService } from "../../services/visitsService";
+import { supabase } from "../../services/supabase";
 
 /**
  * Hook to manage visits data
@@ -14,9 +15,11 @@ export function useVisitsData() {
         try {
             setIsLoading(true);
             const data = await visitsService.list();
+            console.log('[useVisitsData] Fetched visits:', data.length, 'items');
             setVisits(data);
+            setError(null);
         } catch (err) {
-            console.error("useVisitsData fetch error:", err);
+            console.error("[useVisitsData] fetch error:", err);
             setError(err);
         } finally {
             setIsLoading(false);
@@ -25,11 +28,13 @@ export function useVisitsData() {
 
     const addVisit = useCallback(async (visit) => {
         try {
+            console.log('[useVisitsData] Adding visit:', visit.id, visit.hospital);
             const newItem = await visitsService.create(visit);
+            console.log('[useVisitsData] Visit added successfully:', newItem.id, newItem.status);
             setVisits(prev => [newItem, ...prev]);
             return newItem;
         } catch (err) {
-            console.error("useVisitsData add error:", err);
+            console.error("[useVisitsData] add error:", err);
             throw err;
         }
     }, []);
@@ -58,17 +63,51 @@ export function useVisitsData() {
 
     const completeVisit = useCallback(async (id) => {
         try {
+            console.log('[useVisitsData] Completing visit:', id);
             const updated = await visitsService.complete(id);
+            console.log('[useVisitsData] Visit completed:', updated.id, 'status:', updated.status);
             setVisits(prev => prev.map(v => v.id === id ? updated : v));
             return updated;
         } catch (err) {
-            console.error("useVisitsData complete error:", err);
+            console.error("[useVisitsData] complete error for", id, ":", err);
             throw err;
         }
     }, []);
 
     useEffect(() => {
         fetchVisits();
+    }, []);
+
+    useEffect(() => {
+        let subscription;
+
+        const setupSubscription = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            subscription = supabase
+                .channel('visits_updates')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'visits',
+                        filter: `user_id=eq.${user.id}`,
+                    },
+                    (payload) => {
+                        console.log('[useVisitsData] Real-time update:', payload.eventType, payload.new?.id);
+                        fetchVisits();
+                    }
+                )
+                .subscribe();
+        };
+
+        setupSubscription();
+
+        return () => {
+            if (subscription) supabase.removeChannel(subscription);
+        };
     }, [fetchVisits]);
 
     return {

@@ -122,13 +122,23 @@ export const emergencyRequestsService = {
         if (user) {
             const dbUpdates = { updated_at: nextUpdatedAt };
             if (updates.status) dbUpdates.status = updates.status;
-            // Map other fields as needed
             
-            await supabase
+            const { error, data } = await supabase
                 .from('emergency_requests')
                 .update(dbUpdates)
                 .eq('id', requestId)
-                .eq('user_id', user.id);
+                .eq('user_id', user.id)
+                .select();
+            
+            if (error) {
+                console.error(`[emergencyRequestsService] Supabase update failed for ${requestId}:`, error);
+                throw error;
+            }
+            if (!data || data.length === 0) {
+                console.warn(`[emergencyRequestsService] No request found with id ${requestId} in Supabase`);
+            } else {
+                console.log(`[emergencyRequestsService] Updated ${requestId} in Supabase:`, data[0]);
+            }
         }
 
 		const item = await database.updateOne(

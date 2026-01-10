@@ -23,6 +23,7 @@ const mapToDb = (item) => {
     delete db.doctorImage;
     delete db.insuranceCovered;
     delete db.nextVisit;
+    delete db.visitId;
     
     return db;
 };
@@ -43,7 +44,10 @@ const mapFromDb = (row) => ({
 export const visitsService = {
     async list() {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return [];
+        if (!user) {
+            console.log("[visitsService] No user logged in");
+            return [];
+        }
 
         const { data, error } = await supabase
             .from(TABLE)
@@ -52,11 +56,14 @@ export const visitsService = {
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.error("Fetch visits error:", error);
+            console.error("[visitsService] Fetch visits error:", error);
             return [];
         }
 
-        return data.map(mapFromDb).map(v => normalizeVisit(v)).filter(Boolean);
+        console.log(`[visitsService] Fetched ${data?.length ?? 0} visits from database`);
+        const result = data.map(mapFromDb).map(v => normalizeVisit(v)).filter(Boolean);
+        console.log(`[visitsService] After normalization: ${result.length} visits`);
+        return result;
     },
 
     async create(visit) {
@@ -66,8 +73,7 @@ export const visitsService = {
         const normalized = normalizeVisit(visit);
         const dbItem = mapToDb({ ...normalized, user_id: user.id });
         
-        // Ensure id is unique or let DB handle it? SQL says id text primary key.
-        // We generated one in normalizeVisit.
+        console.log(`[visitsService] Creating visit: ${normalized.id} with status ${normalized.status}`);
         
         const { data, error } = await supabase
             .from(TABLE)
@@ -75,8 +81,14 @@ export const visitsService = {
             .select()
             .single();
 
-        if (error) throw error;
-        return normalizeVisit(mapFromDb(data));
+        if (error) {
+            console.error(`[visitsService] Create error for ${normalized.id}:`, error);
+            throw error;
+        }
+        
+        const result = normalizeVisit(mapFromDb(data));
+        console.log(`[visitsService] Visit created successfully: ${result.id}`);
+        return result;
     },
 
     async update(id, updates) {
@@ -86,23 +98,36 @@ export const visitsService = {
         const dbUpdates = mapToDb(updates);
         dbUpdates.updated_at = new Date().toISOString();
 
+        console.log(`[visitsService] Updating visit ${id}:`, updates);
+
         const { data, error } = await supabase
             .from(TABLE)
             .update(dbUpdates)
             .eq('id', id)
             .eq('user_id', user.id)
-            .select()
-            .single();
+            .select();
 
-        if (error) throw error;
-        return normalizeVisit(mapFromDb(data));
+        if (error) {
+            console.error(`[visitsService] Update error for ${id}:`, error);
+            throw error;
+        }
+        if (!data || data.length === 0) {
+            const err = new Error(`Visit with id ${id} not found`);
+            console.error(`[visitsService]`, err.message);
+            throw err;
+        }
+        const result = normalizeVisit(mapFromDb(data[0]));
+        console.log(`[visitsService] Visit updated: ${result.id} status=${result.status}`);
+        return result;
     },
 
     async cancel(id) {
+        console.log(`[visitsService] Cancelling visit ${id}`);
         return this.update(id, { status: 'cancelled' });
     },
     
     async complete(id) {
+        console.log(`[visitsService] Completing visit ${id}`);
         return this.update(id, { status: 'completed' });
     }
 };
