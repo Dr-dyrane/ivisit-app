@@ -3,22 +3,15 @@ import { normalizeVisit } from "../utils/domainNormalize";
 
 const TABLE = "visits";
 
-const mapFromDb = (row) => ({
-    ...row,
-    hospitalId: row.hospital_id,
-    roomNumber: row.room_number,
-    estimatedDuration: row.estimated_duration,
-    requestId: row.request_id,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-});
-
 const mapToDb = (item) => {
     const db = { ...item };
     if (item.hospitalId !== undefined) db.hospital_id = item.hospitalId;
     if (item.roomNumber !== undefined) db.room_number = item.roomNumber;
     if (item.estimatedDuration !== undefined) db.estimated_duration = item.estimatedDuration;
     if (item.requestId !== undefined) db.request_id = item.requestId;
+    if (item.doctorImage !== undefined) db.doctor_image = item.doctorImage;
+    if (item.insuranceCovered !== undefined) db.insurance_covered = item.insuranceCovered;
+    if (item.nextVisit !== undefined) db.next_visit = item.nextVisit;
     
     // Remove camelCase keys
     delete db.hospitalId;
@@ -27,9 +20,25 @@ const mapToDb = (item) => {
     delete db.requestId;
     delete db.createdAt;
     delete db.updatedAt;
+    delete db.doctorImage;
+    delete db.insuranceCovered;
+    delete db.nextVisit;
     
     return db;
 };
+
+const mapFromDb = (row) => ({
+    ...row,
+    hospitalId: row.hospital_id,
+    roomNumber: row.room_number,
+    estimatedDuration: row.estimated_duration,
+    requestId: row.request_id,
+    doctorImage: row.doctor_image,
+    insuranceCovered: row.insurance_covered,
+    nextVisit: row.next_visit,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+});
 
 export const visitsService = {
     async list() {

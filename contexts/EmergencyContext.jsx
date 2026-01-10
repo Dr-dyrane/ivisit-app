@@ -1,13 +1,15 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { supabase } from "../services/supabase";
-import { SPECIALTIES } from "../data/hospitals";
-import { ACTIVE_AMBULANCES } from "../data/emergencyServices";
+import { SPECIALTIES } from "../constants/hospitals";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
 import { normalizeEmergencyState } from "../utils/domainNormalize";
 import { simulationService } from "../services/simulationService";
+import * as Location from "expo-location";
 
 import { notificationDispatcher } from "../services/notificationDispatcher";
 import { useNotifications } from "./NotificationsContext";
+import { useHospitals } from "../hooks/emergency/useHospitals";
+import { useAmbulances } from "../hooks/emergency/useAmbulances";
 
 // Create the emergency context
 const EmergencyContext = createContext();
@@ -21,8 +23,118 @@ export const EmergencyMode = {
 // Emergency provider component
 export function EmergencyProvider({ children }) {
     const { addNotification } = useNotifications();
-	// Core state - start empty, map will generate nearby hospitals
+    // Fetch real hospitals from Supabase
+    const { hospitals: dbHospitals, isLoading: isLoadingHospitals } = useHospitals();
+    // Fetch real ambulances
+    const { ambulances: activeAmbulances } = useAmbulances();
+
+	// Computed state for hospitals (mock location for now + DB data)
 	const [hospitals, setHospitals] = useState([]);
+    
+    // Sync DB hospitals when loaded, but still randomize location for demo purposes
+    // In a real app, you'd use PostGIS to query nearby hospitals
+    useEffect(() => {
+        // If loading or no hospitals, do nothing
+        if (isLoadingHospitals || dbHospitals.length === 0) return;
+
+        // If we don't have user location yet, just use the DB data as is (real coords)
+        if (!userLocation) {
+             const normalized = dbHospitals.map(h => ({
+                ...h,
+                coordinates: h.coordinates || { latitude: h.latitude, longitude: h.longitude },
+                specialties: h.specialties || [],
+                serviceTypes: h.serviceTypes || [],
+                features: h.features || [],
+            }));
+            setHospitals(normalized);
+            return;
+        }
+
+        // If we DO have user location, apply the "random nearby" logic here once
+        // This ensures consistent IDs and locations for the session
+        const localized = dbHospitals.map((h, index) => {
+            // We'll use a pseudo-random based on the hospital ID characters to be deterministic
+            // so it doesn't jump if the user moves slightly
+            const seed = h.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            
+            // Limit "nearby" (visible in km view) to first 5 hospitals for clarity
+            // Place others further away (mile view)
+            const isNearby = index < 5; 
+            
+            let latOffset, lngOffset;
+            
+            if (isNearby) {
+                 // Nearby: 0.5km - 3km radius
+                 const angle = ((seed % 360) / 360) * Math.PI * 2;
+                 const distance = 0.005 + ((seed % 25) / 1000); // 0.005 deg is approx 500m
+                 latOffset = Math.sin(angle) * distance;
+                 lngOffset = Math.cos(angle) * distance;
+            } else {
+                 // Far away: 10km - 50km radius
+                 // Just to show we have more data available if they scroll/zoom out
+                 const angle = ((seed % 360) / 360) * Math.PI * 2;
+                 const distance = 0.1 + ((seed % 50) / 100); // 0.1 deg is approx 11km
+                 latOffset = Math.sin(angle) * distance;
+                 lngOffset = Math.cos(angle) * distance;
+            }
+
+            const latDiff = latOffset;
+            const lngDiff = lngOffset;
+            const distanceKm = Math.sqrt(latDiff ** 2 + lngDiff ** 2) * 111;
+            const etaMins = Math.max(2, Math.ceil(distanceKm * 3));
+
+             return {
+                ...h,
+                coordinates: {
+                    latitude: userLocation.latitude + latOffset,
+                    longitude: userLocation.longitude + lngOffset,
+                },
+                distance: `${distanceKm.toFixed(1)} km`,
+                eta: `${etaMins} mins`,
+                specialties: h.specialties || [],
+                serviceTypes: h.serviceTypes || [],
+                features: h.features || [],
+            };
+        });
+
+        setHospitals(localized);
+        
+    }, [dbHospitals, isLoadingHospitals, userLocation]);
+
+    // Fetch User Location on Mount (for context-aware data)
+    useEffect(() => {
+        (async () => {
+             try {
+                // Try last known first for speed
+                const lastKnown = await Location.getLastKnownPositionAsync({});
+                if (lastKnown) {
+                    setUserLocation({
+                        latitude: lastKnown.coords.latitude,
+                        longitude: lastKnown.coords.longitude,
+                        latitudeDelta: 0.04,
+                        longitudeDelta: 0.04,
+                    });
+                }
+                
+                // Then try to get permission and fresh location if needed
+                // We don't want to block the app or show alerts here, just silently try
+                const { status } = await Location.getForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    setUserLocation({
+                        latitude: location.coords.latitude,
+                        longitude: location.coords.longitude,
+                        latitudeDelta: 0.04,
+                        longitudeDelta: 0.04,
+                    });
+                }
+            } catch (e) {
+                // Ignore errors here, Map component will handle explicit permission requests
+                console.log("Context location fetch failed (silent):", e);
+            }
+        })();
+    }, []);
+
 	const [selectedHospitalId, setSelectedHospitalId] = useState(null);
 	const [mode, setMode] = useState(EmergencyMode.EMERGENCY);
 	const [activeAmbulanceTrip, setActiveAmbulanceTrip] = useState(null);
@@ -175,12 +287,14 @@ export function EmergencyProvider({ children }) {
 			if (mode === EmergencyMode.EMERGENCY) {
 				// Emergency: show all by default, filter by service type if selected
 				if (!serviceType) return true; // Show all if no filter selected
-				return hospital.serviceTypes?.includes(serviceType) ?? hospital.type?.toLowerCase?.() === serviceType;
+				// Ensure case-insensitive comparison
+				const type = serviceType.toLowerCase();
+				return (hospital.serviceTypes || []).some(t => t.toLowerCase() === type) || (hospital.type || "").toLowerCase() === type;
 			} else {
 				// Booking: show all with available beds by default, filter by specialty if selected
 				if (!hospital.availableBeds || hospital.availableBeds <= 0) return false;
 				if (!selectedSpecialty) return true; // Show all if no specialty selected
-				return hospital.specialties?.includes(selectedSpecialty);
+				return (hospital.specialties || []).includes(selectedSpecialty);
 			}
 		});
 	}, [hospitals, mode, serviceType, selectedSpecialty]);
@@ -228,15 +342,15 @@ export function EmergencyProvider({ children }) {
 
 			const byId =
 				trip?.ambulanceId
-					? ACTIVE_AMBULANCES.find((a) => a?.id === trip.ambulanceId) ?? null
+					? activeAmbulances.find((a) => a?.id === trip.ambulanceId) ?? null
 					: null;
 			const byHospital =
 				trip?.hospitalName
-					? ACTIVE_AMBULANCES.find((a) => a?.hospital === trip.hospitalName) ?? null
+					? activeAmbulances.find((a) => a?.hospital === trip.hospitalName) ?? null
 					: null;
 			const fallback =
-				ACTIVE_AMBULANCES.find((a) => a?.status === "available") ??
-				ACTIVE_AMBULANCES[0] ??
+				activeAmbulances.find((a) => a?.status === "available") ??
+				activeAmbulances[0] ??
 				null;
 
 			const assignedAmbulance = byId ?? byHospital ?? fallback;
@@ -319,6 +433,11 @@ export function EmergencyProvider({ children }) {
 	// Enrich hospitals with dynamic service types
 	const enrichHospitals = useCallback((newHospitals) => {
 		return newHospitals.map((hospital, index) => {
+            // If already has serviceTypes from DB, rely on them mostly, but ensure array
+            if (hospital.serviceTypes && Array.isArray(hospital.serviceTypes) && hospital.serviceTypes.length > 0) {
+                return hospital;
+            }
+
 			// Determine service types - allow some hospitals to offer both
 			let serviceTypes = [];
 			

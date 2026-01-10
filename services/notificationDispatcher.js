@@ -1,4 +1,4 @@
-import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY } from "../data/notifications";
+import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY } from "../constants/notifications";
 import * as Haptics from "expo-haptics";
 
 /**

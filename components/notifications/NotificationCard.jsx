@@ -10,7 +10,7 @@ import {
   getPriorityColor, 
   getRelativeTime,
   NOTIFICATION_PRIORITY,
-} from "../../data/notifications";
+} from "../../constants/notifications";
 
 export default function NotificationCard({
   notification,

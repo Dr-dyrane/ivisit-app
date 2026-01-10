@@ -23,6 +23,8 @@ import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import { useAuth } from "../contexts/AuthContext";
 import { ThemeMode } from "../contexts/ThemeContext";
 import { usePreferences } from "../contexts/PreferencesContext";
+import { seederService } from "../services/seederService";
+import { Alert } from "react-native";
 
 export default function SettingsScreen() {
 	const router = useRouter();
@@ -87,6 +89,27 @@ export default function SettingsScreen() {
 	const bottomPadding = tabBarHeight + 20;
 	const topPadding = STACK_TOP_PADDING;
 
+	const handleSeedData = useCallback(async () => {
+		try {
+			Alert.alert(
+				"Seed Demo Data",
+				"This will populate your account with sample visits and notifications. Continue?",
+				[
+					{ text: "Cancel", style: "cancel" },
+					{
+						text: "Seed",
+						onPress: async () => {
+							await seederService.seedAll();
+							Alert.alert("Success", "Data seeded successfully! Pull down to refresh your visits.");
+						},
+					},
+				]
+			);
+		} catch (error) {
+			Alert.alert("Error", error.message);
+		}
+	}, []);
+
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			<ScrollView
@@ -148,44 +171,6 @@ export default function SettingsScreen() {
 							);
 						})}
 					</View>
-				</View>
-
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-						Experience
-					</Text>
-					<Pressable
-						onPress={() => togglePreference("demoModeEnabled")}
-						style={({ pressed }) => [
-							styles.toggleRow,
-							{ opacity: pressed ? 0.92 : 1 },
-						]}
-						disabled={!preferences}
-					>
-						<View style={styles.toggleLeft}>
-							<Ionicons name="sparkles" size={18} color={COLORS.brandPrimary} />
-							<View style={{ flex: 1 }}>
-								<Text style={[styles.toggleTitle, { color: colors.text }]}>
-									Demo experience
-								</Text>
-								<Text
-									style={{
-										marginTop: 3,
-										fontSize: 12,
-										fontWeight: "700",
-										color: colors.textMuted,
-									}}
-								>
-									Show demo visits and notifications when you have no data yet
-								</Text>
-							</View>
-						</View>
-						<Ionicons
-							name={preferences?.demoModeEnabled !== false ? "checkmark-circle" : "ellipse-outline"}
-							size={20}
-							color={preferences?.demoModeEnabled !== false ? COLORS.brandPrimary : colors.textMuted}
-						/>
-					</Pressable>
 				</View>
 
 				<View style={[styles.card, { backgroundColor: colors.card }]}>
@@ -326,6 +311,27 @@ export default function SettingsScreen() {
 					</View>
 					<Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
 				</Pressable>
+
+				<View style={[styles.card, { backgroundColor: colors.card }]}>
+					<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+						Developer Tools
+					</Text>
+					<Pressable
+						onPress={handleSeedData}
+						style={({ pressed }) => [
+							styles.toggleRow,
+							{ opacity: pressed ? 0.92 : 1 },
+						]}
+					>
+						<View style={styles.toggleLeft}>
+							<Ionicons name="cloud-upload" size={18} color={COLORS.brandPrimary} />
+							<Text style={[styles.toggleTitle, { color: colors.text }]}>
+								Seed Demo Data
+							</Text>
+						</View>
+						<Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+					</Pressable>
+				</View>
 			</ScrollView>
 		</LinearGradient>
 	);

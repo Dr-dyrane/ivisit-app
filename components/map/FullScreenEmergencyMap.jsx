@@ -23,6 +23,7 @@ import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
+import { useHospitals } from "../../hooks/emergency/useHospitals";
 import PulsingMarker from "./PulsingMarker";
 import generateNearbyHospitals from "./generateNearbyHospitals";
 import { darkMapStyle, lightMapStyle } from "./mapStyles";
@@ -59,6 +60,7 @@ const FullScreenEmergencyMap = forwardRef(
 		ref
 	) => {
 		const { isDarkMode } = useTheme();
+		const { hospitals: dbHospitals } = useHospitals();
 		const insets = useSafeAreaInsets();
 		const mapRef = useRef(null);
 		const hasCenteredOnUser = useRef(false);
@@ -576,6 +578,7 @@ const FullScreenEmergencyMap = forwardRef(
 
 		const requestLocationPermission = async () => {
 			try {
+                // Parallelize: Request permission AND prepare data, don't wait sequentially
 				const { status } = await Location.requestForegroundPermissionsAsync();
 				if (status !== "granted") {
 					Alert.alert(
@@ -593,60 +596,60 @@ const FullScreenEmergencyMap = forwardRef(
 					return;
 				}
 				setLocationPermission(true);
-				await getCurrentLocation();
+				
+                // Get location faster
+                // 1. Try last known location first (instant)
+                const lastKnown = await Location.getLastKnownPositionAsync({});
+                if (lastKnown) {
+                    processLocation(lastKnown);
+                }
+
+                // 2. Then fetch fresh high-accuracy location
+				const location = await Location.getCurrentPositionAsync({
+					accuracy: Location.Accuracy.Balanced, // Balanced is faster than High
+					timeout: 5000,
+				});
+                processLocation(location);
+
 			} catch (error) {
 				console.error("Location permission error:", error);
 				setIsLoading(false);
 			}
 		};
 
-		const getCurrentLocation = async () => {
-			try {
-				const location = await Location.getCurrentPositionAsync({
-					accuracy: Location.Accuracy.High,
-					timeout: 10000,
-				});
-				const userCoords = {
-					latitude: location.coords.latitude,
-					longitude: location.coords.longitude,
-					latitudeDelta: 0.04,
-					longitudeDelta: 0.04,
-				};
-				setUserLocation(userCoords);
+        const processLocation = (location) => {
+            if (!location) return;
+            
+            const userCoords = {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                latitudeDelta: 0.04,
+                longitudeDelta: 0.04,
+            };
+            setUserLocation(userCoords);
+            // We update context location so data can be localized there too if needed
+            // But for now we just rely on the 'hospitals' prop being passed down which might be localized
+            
+            // Just use hospitals from props/context directly
+            // No more generation here
+            setNearbyHospitals(hospitals || []); 
+            
+            setIsLoading(false);
+            if (onMapReady) {
+                onMapReady();
+            }
+        };
 
-				const generated = generateNearbyHospitals(
-					userCoords.latitude,
-					userCoords.longitude,
-					6
-				);
-				setNearbyHospitals(generated);
-				if (onHospitalsGenerated) {
-					onHospitalsGenerated(generated);
-				}
-			} catch (error) {
-				console.error("Get location error:", error);
-				const fallbackCoords = {
-					latitude: 37.7749,
-					longitude: -122.4194,
-					latitudeDelta: 0.04,
-					longitudeDelta: 0.04,
-				};
-				setUserLocation(fallbackCoords);
-				const generated = generateNearbyHospitals(
-					fallbackCoords.latitude,
-					fallbackCoords.longitude,
-					6
-				);
-				setNearbyHospitals(generated);
-				if (onHospitalsGenerated) {
-					onHospitalsGenerated(generated);
-				}
-			} finally {
-				setIsLoading(false);
-				if (onMapReady) {
-					onMapReady();
-				}
-			}
+		const getCurrentLocation = async () => {
+             // Redundant wrapper kept for compatibility if called externally, but requestLocationPermission handles logic now
+             // We can just call processLocation if we re-fetch
+             try {
+                const location = await Location.getCurrentPositionAsync({
+					accuracy: Location.Accuracy.Balanced,
+					timeout: 5000,
+				});
+                processLocation(location);
+             } catch(e) { console.log(e); setIsLoading(false); }
 		};
 
 		const handleHospitalPress = (hospital) => {
@@ -725,6 +728,11 @@ const FullScreenEmergencyMap = forwardRef(
 			},
 			[fitToLocalHospitals]
 		);
+
+		// Debug map loading
+        useEffect(() => {
+            console.log("FullScreenEmergencyMap: Rendering with hospitals:", hospitals?.length || 0);
+        }, [hospitals]);
 
 		if (isLoading) {
 			return (

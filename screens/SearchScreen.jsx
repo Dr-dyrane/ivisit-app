@@ -17,11 +17,11 @@ import EmergencySearchBar from "../components/emergency/EmergencySearchBar";
 import { useSearch } from "../contexts/SearchContext";
 import { useVisits } from "../contexts/VisitsContext";
 import { useNotifications } from "../contexts/NotificationsContext";
-import { HOSPITALS } from "../data/hospitals";
+import { useHospitals } from "../hooks/emergency/useHospitals";
 import { useEmergencyUI } from "../contexts/EmergencyUIContext";
 import { useEmergency, EmergencyMode } from "../contexts/EmergencyContext";
 import SettingsIconButton from "../components/headers/SettingsIconButton";
-import { NOTIFICATION_TYPES } from "../data/notifications";
+import { NOTIFICATION_TYPES } from "../constants/notifications";
 import {
 	navigateToNotifications,
 	navigateToSOS,
@@ -38,6 +38,7 @@ export default function SearchScreen() {
 	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
 	const { updateSearch: setEmergencySearchQuery } = useEmergencyUI();
 	const { setMode } = useEmergency();
+    const { hospitals: dbHospitals } = useHospitals();
 	const { query, setSearchQuery, recentQueries, commitQuery, clearHistory } = useSearch();
 	const { visits } = useVisits();
 	const { notifications } = useNotifications();
@@ -192,7 +193,7 @@ export default function SearchScreen() {
 			}
 		}
 
-		const hospitals = Array.isArray(HOSPITALS) ? HOSPITALS : [];
+		const hospitals = Array.isArray(dbHospitals) ? dbHospitals : [];
 		for (const h of hospitals) {
 			const id = h?.id ? String(h.id) : null;
 			if (!id) continue;
@@ -269,7 +270,7 @@ export default function SearchScreen() {
 			.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
 			.slice(0, 18);
 	}, [
-		HOSPITALS,
+		dbHospitals,
 		commitQuery,
 		isBedQuery,
 		notifications,

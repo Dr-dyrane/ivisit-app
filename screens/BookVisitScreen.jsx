@@ -14,8 +14,8 @@ import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import { useVisits } from "../contexts/VisitsContext";
-import { VISIT_STATUS, VISIT_TYPES } from "../data/visits";
-import { HOSPITALS } from "../data/hospitals";
+import { useHospitals } from "../hooks/emergency/useHospitals";
+import { VISIT_STATUS, VISIT_TYPES } from "../constants/visits";
 
 export default function BookVisitScreen() {
 	const router = useRouter();
@@ -27,6 +27,7 @@ export default function BookVisitScreen() {
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
 	const { addVisit } = useVisits();
+    const { hospitals } = useHospitals();
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
@@ -76,7 +77,8 @@ export default function BookVisitScreen() {
 
 	const createMockVisit = useCallback(
 		({ isTelehealth }) => {
-			const hospital = HOSPITALS[Math.floor(Math.random() * HOSPITALS.length)] ?? null;
+            // Pick a random hospital from real data, or fallback if loading
+			const hospital = hospitals.length > 0 ? hospitals[Math.floor(Math.random() * hospitals.length)] : null;
 			const now = new Date();
 			const id = `visit_${Date.now()}`;
 			const date = now.toISOString().slice(0, 10);
@@ -85,7 +87,7 @@ export default function BookVisitScreen() {
 
 			addVisit({
 				id,
-				hospital: isTelehealth ? "iVisit Telehealth" : hospital?.name ?? "Hospital",
+				hospital: isTelehealth ? "iVisit Telehealth" : hospital?.name ?? "City General Hospital",
 				doctor: isTelehealth ? "Dr. iVisit" : "Dr. Assigned",
 				doctorImage: null,
 				specialty,
@@ -93,9 +95,9 @@ export default function BookVisitScreen() {
 				time,
 				type: isTelehealth ? VISIT_TYPES.TELEHEALTH : VISIT_TYPES.CONSULTATION,
 				status: VISIT_STATUS.UPCOMING,
-				image: isTelehealth ? (hospital?.image ?? null) : (hospital?.image ?? null),
-				address: isTelehealth ? "Video Visit" : (hospital?.address ?? null),
-				phone: isTelehealth ? null : (hospital?.phone ?? null),
+				image: isTelehealth ? null : (hospital?.image ?? null),
+				address: isTelehealth ? "Video Visit" : (hospital?.address ?? "123 Medical Plaza"),
+				phone: isTelehealth ? null : (hospital?.phone ?? "+1-555-0123"),
 				notes: isTelehealth ? "Virtual consult booked via iVisit." : "Appointment booked via iVisit.",
 				estimatedDuration: isTelehealth ? "20 mins" : "45 mins",
 				meetingLink: isTelehealth ? "https://telehealth.ivisit.com/room/demo" : null,
@@ -104,7 +106,7 @@ export default function BookVisitScreen() {
 
 			router.push(`/(user)/(stacks)/visit/${id}`);
 		},
-		[addVisit, router]
+		[addVisit, router, hospitals]
 	);
 
 	return (
@@ -124,7 +126,7 @@ export default function BookVisitScreen() {
 					</Text>
 					<Text style={[styles.heroSubtitle, { color: colors.textMuted }]}>
 						This is the entry point for booking routine visits, follow-ups, imaging,
-						and telehealth. Everything persists locally for now.
+						and telehealth. Everything is saved to your account.
 					</Text>
 				</View>
 

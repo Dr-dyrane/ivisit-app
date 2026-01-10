@@ -1,6 +1,5 @@
-import { HOSPITALS } from "../data/hospitals";
-import { VISIT_STATUS } from "../data/visits";
-import { NOTIFICATION_PRIORITY, NOTIFICATION_TYPES } from "../data/notifications";
+import { VISIT_STATUS } from "../constants/visits";
+import { NOTIFICATION_PRIORITY, NOTIFICATION_TYPES } from "../constants/notifications";
 
 const toIsoString = (value) => {
 	if (typeof value === "string") {
@@ -41,9 +40,7 @@ export const normalizeVisit = (raw, index = 0) => {
 	const hospitalId =
 		typeof raw.hospitalId === "string" && raw.hospitalId.trim()
 			? raw.hospitalId
-			: hospital
-				? String(HOSPITALS.find((h) => h?.name === hospital)?.id ?? "")
-				: "";
+			: null;
 	const statusValue = typeof raw.status === "string" ? raw.status : "";
 	const status =
 		Object.values(VISIT_STATUS).includes(statusValue) ? statusValue : VISIT_STATUS.UPCOMING;

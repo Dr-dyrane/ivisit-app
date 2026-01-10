@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
-import { getStatusColor, getVisitTypeIcon } from "../../data/visits";
+import { getStatusColor, getVisitTypeIcon } from "../../constants/visits";
 
 export default function VisitCard({
   visit,

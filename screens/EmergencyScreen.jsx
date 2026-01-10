@@ -14,13 +14,13 @@ import { useAuth } from "../contexts/AuthContext";
 import { COLORS } from "../constants/colors";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { VISIT_STATUS, VISIT_TYPES } from "../data/visits";
+import { VISIT_STATUS, VISIT_TYPES } from "../constants/visits";
 import { usePreferences } from "../contexts/PreferencesContext";
 import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
 import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
 import { useEmergencyRequests } from "../hooks/emergency/useEmergencyRequests";
 import { EmergencyRequestStatus } from "../services/emergencyRequestsService";
-import { NOTIFICATION_PRIORITY, NOTIFICATION_TYPES } from "../data/notifications";
+import { NOTIFICATION_PRIORITY, NOTIFICATION_TYPES } from "../constants/notifications";
 
 import FullScreenEmergencyMap from "../components/map/FullScreenEmergencyMap";
 import EmergencyBottomSheet from "../components/emergency/EmergencyBottomSheet";
@@ -110,6 +110,15 @@ export default function EmergencyScreen() {
 		startBedBooking,
 		stopBedBooking,
 	} = useEmergency();
+
+    // Debugging hospitals
+    useMemo(() => {
+        if (hospitals && hospitals.length > 0) {
+            console.log("EmergencyScreen: Hospitals loaded:", hospitals.length);
+        } else {
+            console.log("EmergencyScreen: No hospitals loaded yet");
+        }
+    }, [hospitals]);
 
 	// Header components - memoized
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
@@ -376,7 +385,8 @@ export default function EmergencyScreen() {
 					h.specialties.some(
 						(s) => (typeof s === "string" ? s.toLowerCase() : "").includes(q)
 					);
-				return name.includes(q) || address.includes(q) || specialtiesMatch;
+                const typeMatch = typeof h?.type === "string" && h.type.toLowerCase().includes(q);
+				return name.includes(q) || address.includes(q) || specialtiesMatch || typeMatch;
 			});
 			if (matches.length === 1) {
 				mapRef.current.animateToHospital(matches[0]);
@@ -404,7 +414,8 @@ export default function EmergencyScreen() {
 				h.specialties.some(
 					(s) => (typeof s === "string" ? s.toLowerCase() : "").includes(query)
 				);
-			return name.includes(query) || address.includes(query) || specialtiesMatch;
+			const typeMatch = typeof h?.type === "string" && h.type.toLowerCase().includes(query);
+			return name.includes(query) || address.includes(query) || specialtiesMatch || typeMatch;
 		});
 	}, [filteredHospitals, hospitals, mode, searchQuery, selectedSpecialty]);
 
@@ -421,9 +432,14 @@ export default function EmergencyScreen() {
 	// Calculate specialty counts
 	const specialtyCounts = useMemo(() => {
 		const counts = {};
+        if (!Array.isArray(specialties)) return counts;
+        
 		specialties.forEach(specialty => {
+            if (!specialty) return;
 			counts[specialty] = hospitals.filter((h) =>
-				h?.specialties?.includes(specialty) && (h?.availableBeds ?? 0) > 0
+				Array.isArray(h?.specialties) && 
+                h.specialties.some(s => s && typeof s === 'string' && s.toLowerCase() === specialty.toLowerCase()) && 
+                (h?.availableBeds ?? 0) > 0
 			).length || 0;
 		});
 		return counts;

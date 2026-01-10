@@ -3,7 +3,7 @@ import { View, Text, Modal, Pressable, Animated, ScrollView, StyleSheet, Dimensi
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
-import { AMBULANCE_TYPES, MOCK_API_RESPONSES } from "../../data/emergencyServices";
+import { AMBULANCE_TYPES } from "../../constants/emergency";
 import IconButton from "../ui/IconButton";
 import EmergencyRequestModalHeader from "./requestModal/EmergencyRequestModalHeader";
 import AmbulanceTypeCard from "./requestModal/AmbulanceTypeCard";
@@ -124,10 +124,12 @@ export default function EmergencyRequestModal({
 							bedNumber: `B-${Math.floor(Math.random() * 90) + 10}`,
 					  }
 					: {
-							...MOCK_API_RESPONSES.requestAmbulance,
+							success: true,
+                            requestId: `AMB-${Math.floor(Math.random() * 900000) + 100000}`,
 							hospitalName,
 							ambulanceType: selectedAmbulanceType,
 							serviceType: "ambulance",
+                            estimatedArrival: "8 mins",
 					  };
 
 			setRequestData(response);

@@ -29,7 +29,7 @@ import { useTabBarVisibility } from "../../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import { useEmergencyUI } from "../../contexts/EmergencyUIContext";
 import { COLORS } from "../../constants/colors";
-import { AMBULANCE_STATUSES } from "../../data/emergencyServices";
+import { AMBULANCE_STATUSES } from "../../constants/emergency";
 
 const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 85 : 70;
 
