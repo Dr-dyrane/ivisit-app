@@ -12,7 +12,7 @@ export function useSocialAuth() {
 			if (data?.url) {
 				const result = await WebBrowser.openAuthSessionAsync(
 					data.url,
-					"ivisit://auth/callback"
+					"ivisit://auth/callback" // Deep link scheme
 				);
 
 				if (result.type === "success" && result.url) {

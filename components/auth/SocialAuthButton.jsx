@@ -41,6 +41,7 @@ export default function SocialAuthButton({ provider }) {
 	const { isDarkMode } = useTheme();
 	const { showToast } = useToast();
     const { login } = useAuth();
+    const { signInWithProvider } = useSocialAuth();
     const [showComingSoon, setShowComingSoon] = useState(false);
 
 	const meta = PROVIDER_META[provider];

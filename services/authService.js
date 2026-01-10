@@ -260,6 +260,17 @@ const authService = {
              }
         }
         
+        // 3. Fallback: Check if session was created automatically by Supabase (sometimes happens if the URL is handled by the listener)
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (session) {
+             await database.write(StorageKeys.AUTH_TOKEN, session.access_token);
+             const profile = await this.getUserProfile(session.user.id);
+             const user = this._formatUser(session.user, session.access_token, profile);
+
+             await database.write(StorageKeys.CURRENT_USER, user);
+             return { data: { session: session, user } };
+        }
+
         throw createAuthError(AuthErrors.INVALID_TOKEN, "No valid session data found in callback");
     },
 

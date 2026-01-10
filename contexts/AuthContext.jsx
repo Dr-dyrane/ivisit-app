@@ -96,6 +96,10 @@ export const AuthProvider = ({ children }) => {
 			// Use API logout and database layer
 			await authService.logout();
 			await database.delete(StorageKeys.CURRENT_USER);
+            
+            // Clear any pending registration data to prevent "Complete profile" toasts for next user
+            await authService.clearPendingRegistration();
+
 			return { success: true, message: "Successfully logged out" };
 		} catch (error) {
 			console.error("Error clearing user data:", error);
