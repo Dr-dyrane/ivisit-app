@@ -48,7 +48,6 @@ export const visitsService = {
     async list() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-            console.log("[visitsService] No user logged in");
             return [];
         }
 
@@ -63,9 +62,7 @@ export const visitsService = {
             return [];
         }
 
-        console.log(`[visitsService] Fetched ${data?.length ?? 0} visits from database`);
         const result = data.map(mapFromDb).map(v => normalizeVisit(v)).filter(Boolean);
-        console.log(`[visitsService] After normalization: ${result.length} visits`);
         return result;
     },
 
@@ -75,8 +72,6 @@ export const visitsService = {
 
         const normalized = normalizeVisit(visit);
         const dbItem = mapToDb({ ...normalized, user_id: user.id });
-        
-        console.log(`[visitsService] Creating visit: ${normalized.id} with status ${normalized.status}`);
         
         const { data, error } = await supabase
             .from(TABLE)
@@ -90,7 +85,6 @@ export const visitsService = {
         }
         
         const result = normalizeVisit(mapFromDb(data));
-        console.log(`[visitsService] Visit created successfully: ${result.id}`);
         
         try {
             const visitTypeName = result.type || "Visit";
@@ -113,7 +107,6 @@ export const visitsService = {
             };
             
             await notificationsService.create(notification);
-            console.log(`[visitsService] Notification created for visit: ${result.id}`);
         } catch (notifError) {
             console.error(`[visitsService] Failed to create notification for visit ${result.id}:`, notifError);
         }
@@ -127,8 +120,6 @@ export const visitsService = {
 
         const dbUpdates = mapToDb(updates);
         dbUpdates.updated_at = new Date().toISOString();
-
-        console.log(`[visitsService] Updating visit ${id}:`, updates);
 
         const { data, error } = await supabase
             .from(TABLE)
@@ -147,7 +138,6 @@ export const visitsService = {
             throw err;
         }
         const result = normalizeVisit(mapFromDb(data[0]));
-        console.log(`[visitsService] Visit updated: ${result.id} status=${result.status}`);
         
         try {
             await notificationDispatcher.dispatchVisitUpdate(result, 'updated');
@@ -163,7 +153,6 @@ export const visitsService = {
         if (!user) throw new Error("User not logged in");
 
         const dbUpdates = { status: 'cancelled', updated_at: new Date().toISOString() };
-        console.log(`[visitsService] Cancelling visit ${id}`);
 
         const { data, error } = await supabase
             .from(TABLE)
@@ -182,7 +171,6 @@ export const visitsService = {
             throw err;
         }
         const result = normalizeVisit(mapFromDb(data[0]));
-        console.log(`[visitsService] Visit cancelled: ${result.id}`);
         
         try {
             await notificationDispatcher.dispatchVisitUpdate(result, 'cancelled');
@@ -198,7 +186,6 @@ export const visitsService = {
         if (!user) throw new Error("User not logged in");
 
         const dbUpdates = { status: 'completed', updated_at: new Date().toISOString() };
-        console.log(`[visitsService] Completing visit ${id}`);
 
         const { data, error } = await supabase
             .from(TABLE)
@@ -217,7 +204,6 @@ export const visitsService = {
             throw err;
         }
         const result = normalizeVisit(mapFromDb(data[0]));
-        console.log(`[visitsService] Visit completed: ${result.id}`);
         
         try {
             await notificationDispatcher.dispatchVisitUpdate(result, 'completed');

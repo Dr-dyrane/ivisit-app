@@ -670,7 +670,6 @@ const authService = {
 
         // RETRY MECHANISM: If profile is empty (trigger might be slow), wait and retry
         if (!profile.createdAt) {
-             console.log("Profile missing, waiting for trigger...");
              await new Promise(r => setTimeout(r, 1000)); // Wait 1s
              profile = await this.getUserProfile(data.user.id);
         }

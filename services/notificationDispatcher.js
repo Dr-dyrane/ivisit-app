@@ -43,9 +43,7 @@ export const notificationDispatcher = {
                 actionData,
             };
 
-            console.log(`[notificationDispatcher] Creating notification: ${title}`);
             const result = await notificationsService.create(notification);
-            console.log(`[notificationDispatcher] Notification created successfully: ${result.id}`);
             return result;
         } catch (error) {
             console.error("[notificationDispatcher] Error creating notification:", error);
