@@ -52,14 +52,14 @@ export const TripSummaryCard = ({
 			? `${Math.round(activeAmbulanceTrip.etaSeconds / 60)}`
 			: "--");
 			
-	const callSign = assigned?.callSign ?? "--";
-	const vehicle = assigned?.vehicleNumber ?? "--";
+	const callSign = assigned?.callSign ?? assigned?.type ?? "--";
+	const vehicle = assigned?.vehicleNumber ?? assigned?.plate ?? "--";
 	const rating = Number.isFinite(assigned?.rating) ? assigned.rating.toFixed(1) : "--";
 	const statusLabel = computedStatus ?? statusMeta?.label ?? "En Route";
 	const driverName =
 		Array.isArray(assigned?.crew) && assigned.crew.length > 0
 			? assigned.crew[0]
-			: callSign;
+			: assigned?.name ?? "--";
 
 	return (
 		<View

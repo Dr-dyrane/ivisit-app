@@ -10,6 +10,7 @@ import { notificationDispatcher } from "../services/notificationDispatcher";
 import { useNotifications } from "./NotificationsContext";
 import { useHospitals } from "../hooks/emergency/useHospitals";
 import { useAmbulances } from "../hooks/emergency/useAmbulances";
+import { ambulanceService } from "../services/ambulanceService";
 
 // Create the emergency context
 const EmergencyContext = createContext();
@@ -243,11 +244,43 @@ export function EmergencyProvider({ children }) {
             // Restore state if found
             if (active) {
                 if (active.serviceType === 'ambulance') {
+                    // Helper to parse location from service (could be object or string)
+                    let loc = null;
+                    if (active.responderLocation) {
+                        if (typeof active.responderLocation === 'object' && active.responderLocation.coordinates) {
+                            loc = {
+                                latitude: active.responderLocation.coordinates[1],
+                                longitude: active.responderLocation.coordinates[0]
+                            };
+                        } else if (typeof active.responderLocation === 'string') {
+                            loc = parsePoint(active.responderLocation);
+                        }
+                    }
+
+                    // Fetch full ambulance details for rating/crew/etc
+                    let fullAmbulance = null;
+                    if (active.ambulanceId) {
+                         try {
+                             fullAmbulance = await ambulanceService.getById(active.ambulanceId);
+                         } catch (e) { console.warn("Failed to fetch assigned ambulance details", e); }
+                    }
+
                     setActiveAmbulanceTrip({
                         hospitalId: active.hospitalId,
                         requestId: active.requestId,
-                        // ... map other fields if needed
-                        status: active.status
+                        status: active.status,
+                        assignedAmbulance: active.responderName ? {
+                            ...fullAmbulance,
+                            id: active.ambulanceId || 'ems_001',
+                            type: active.responderVehicleType || fullAmbulance?.type || 'Ambulance',
+                            plate: active.responderVehiclePlate || fullAmbulance?.vehicleNumber,
+                            name: active.responderName,
+                            phone: active.responderPhone,
+                            location: loc || fullAmbulance?.location,
+                            heading: active.responderHeading || 0
+                        } : null,
+                        currentResponderLocation: loc,
+                        currentResponderHeading: active.responderHeading
                     });
                     // Resume simulation if needed
                     if (active.status === 'in_progress' || active.status === 'accepted') {

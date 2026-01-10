@@ -39,7 +39,14 @@ export const emergencyRequestsService = {
                     patient: r.patient_snapshot,
                     shared: r.shared_data_snapshot,
                     createdAt: r.created_at,
-                    updatedAt: r.updated_at
+                    updatedAt: r.updated_at,
+                    // Responder Info
+                    responderName: r.responder_name,
+                    responderPhone: r.responder_phone,
+                    responderVehicleType: r.responder_vehicle_type,
+                    responderVehiclePlate: r.responder_vehicle_plate,
+                    responderLocation: r.responder_location,
+                    responderHeading: r.responder_heading
                 }));
                 
                 // Sync to local cache
