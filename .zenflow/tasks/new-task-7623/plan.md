@@ -137,38 +137,44 @@ Save to `{@artifacts_path}/plan.md`.
 
 ---
 
-### [ ] Phase 3: Visit Service Notifications
+### [x] Phase 3: Visit Service Notifications
+<!-- chat-id: 689041f8-e2ec-45bf-b9b9-a189cc22271d -->
 **Goal**: All visit actions (update, cancel, complete) create notifications
 
-#### [ ] Task 3.1: Read existing visitsService.js
+#### [x] Task 3.1: Read existing visitsService.js
 - Read `services/visitsService.js`
 - Identify update(), cancel(), complete() methods
 - Check if create() already has notification support
 - **Verification**: Document current implementation
+- **Result**: Analyzed visitsService.js, found update/cancel/complete methods, create() already has notification
 
-#### [ ] Task 3.2: Add notification to visitsService.update()
+#### [x] Task 3.2: Add notification to visitsService.update()
 - Modify `update(id, updates)` method
 - After successful update, call `notificationDispatcher.dispatchVisitUpdate(result, 'updated')`
 - Title: "[Visit Type] Updated", Priority: NORMAL
 - **Verification**: Update a visit, verify notification created in DB
+- **Result**: Added notification dispatch to update() method
 
-#### [ ] Task 3.3: Add notification to visitsService.cancel()
+#### [x] Task 3.3: Add notification to visitsService.cancel()
 - Modify `cancel(id)` method
 - After successful cancel, call `notificationDispatcher.dispatchVisitUpdate(result, 'cancelled')`
 - Title: "[Visit Type] Cancelled", Priority: HIGH
 - **Verification**: Cancel a visit, verify notification created in DB
+- **Result**: Refactored cancel() to directly update DB and dispatch 'cancelled' notification
 
-#### [ ] Task 3.4: Add notification to visitsService.complete()
+#### [x] Task 3.4: Add notification to visitsService.complete()
 - Modify `complete(id)` method
 - After successful complete, call `notificationDispatcher.dispatchVisitUpdate(result, 'completed')`
 - Title: "[Visit Type] Completed", Priority: NORMAL
 - **Verification**: Complete a visit, verify notification created in DB
+- **Result**: Refactored complete() to directly update DB and dispatch 'completed' notification
 
-#### [ ] Task 3.5: Ensure visitsService.create() has notification
+#### [x] Task 3.5: Ensure visitsService.create() has notification
 - Check if create() already creates notification
 - If not, add notification dispatch
 - Title: "[Visit Type] Scheduled", Priority: HIGH
 - **Verification**: Create a visit, verify notification created in DB
+- **Result**: create() already had notification support, no changes needed
 
 ---
 

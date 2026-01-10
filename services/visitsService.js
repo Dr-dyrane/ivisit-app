@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { normalizeVisit } from "../utils/domainNormalize";
 import { notificationsService } from "./notificationsService";
 import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY } from "../constants/notifications";
+import { notificationDispatcher } from "./notificationDispatcher";
 
 const TABLE = "visits";
 
@@ -147,16 +148,83 @@ export const visitsService = {
         }
         const result = normalizeVisit(mapFromDb(data[0]));
         console.log(`[visitsService] Visit updated: ${result.id} status=${result.status}`);
+        
+        try {
+            await notificationDispatcher.dispatchVisitUpdate(result, 'updated');
+        } catch (notifError) {
+            console.error(`[visitsService] Failed to create notification for visit update ${id}:`, notifError);
+        }
+        
         return result;
     },
 
     async cancel(id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not logged in");
+
+        const dbUpdates = { status: 'cancelled', updated_at: new Date().toISOString() };
         console.log(`[visitsService] Cancelling visit ${id}`);
-        return this.update(id, { status: 'cancelled' });
+
+        const { data, error } = await supabase
+            .from(TABLE)
+            .update(dbUpdates)
+            .eq('id', id)
+            .eq('user_id', user.id)
+            .select();
+
+        if (error) {
+            console.error(`[visitsService] Cancel error for ${id}:`, error);
+            throw error;
+        }
+        if (!data || data.length === 0) {
+            const err = new Error(`Visit with id ${id} not found`);
+            console.error(`[visitsService]`, err.message);
+            throw err;
+        }
+        const result = normalizeVisit(mapFromDb(data[0]));
+        console.log(`[visitsService] Visit cancelled: ${result.id}`);
+        
+        try {
+            await notificationDispatcher.dispatchVisitUpdate(result, 'cancelled');
+        } catch (notifError) {
+            console.error(`[visitsService] Failed to create notification for visit cancellation ${id}:`, notifError);
+        }
+        
+        return result;
     },
     
     async complete(id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not logged in");
+
+        const dbUpdates = { status: 'completed', updated_at: new Date().toISOString() };
         console.log(`[visitsService] Completing visit ${id}`);
-        return this.update(id, { status: 'completed' });
+
+        const { data, error } = await supabase
+            .from(TABLE)
+            .update(dbUpdates)
+            .eq('id', id)
+            .eq('user_id', user.id)
+            .select();
+
+        if (error) {
+            console.error(`[visitsService] Complete error for ${id}:`, error);
+            throw error;
+        }
+        if (!data || data.length === 0) {
+            const err = new Error(`Visit with id ${id} not found`);
+            console.error(`[visitsService]`, err.message);
+            throw err;
+        }
+        const result = normalizeVisit(mapFromDb(data[0]));
+        console.log(`[visitsService] Visit completed: ${result.id}`);
+        
+        try {
+            await notificationDispatcher.dispatchVisitUpdate(result, 'completed');
+        } catch (notifError) {
+            console.error(`[visitsService] Failed to create notification for visit completion ${id}:`, notifError);
+        }
+        
+        return result;
     }
 };
