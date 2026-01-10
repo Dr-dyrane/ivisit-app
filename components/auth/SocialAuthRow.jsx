@@ -13,10 +13,14 @@ import SocialAuthButton from "./SocialAuthButton";
 
 export default function SocialAuthRow() {
 	return (
-		<View className="flex-row justify-between">
+		<View
+			className="flex-row justify-center"
+			style={{
+				gap: 16,
+			}}
+		>
 			<SocialAuthButton provider="apple" />
 			<SocialAuthButton provider="google" />
-			<SocialAuthButton provider="x" />
 		</View>
 	);
 }
