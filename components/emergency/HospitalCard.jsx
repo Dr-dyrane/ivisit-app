@@ -164,6 +164,7 @@ export default function HospitalCard({
 	onCall,
 	mode = "emergency", // "emergency" or "booking"
 	hideDistanceEta = false,
+	hidePrimaryAction = false,
 }) {
 	const { isDarkMode } = useTheme();
 
@@ -382,7 +383,7 @@ export default function HospitalCard({
 				)}
 			</View>
 
-			{isSelected && (
+			{isSelected && !hidePrimaryAction && (
 				<Pressable
 					onPress={handleCallPress}
 					style={{

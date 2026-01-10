@@ -359,8 +359,8 @@ export default function EmergencyScreen() {
 		return counts;
 	}, [hospitals, specialties]);
 
-	// Hide recenter button when sheet is fully expanded (no map visible)
-	const showMapControls = sheetSnapIndex < 2;
+	// Keep controls available since expanded is capped to semi-full and map remains visible.
+	const showMapControls = true;
 
 	const routeHospitalId =
 		mode === "emergency"

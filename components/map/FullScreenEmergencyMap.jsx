@@ -58,6 +58,7 @@ const FullScreenEmergencyMap = forwardRef(
 		const lastProgrammaticMoveAtRef = useRef(0);
 		const lastUserPanAtRef = useRef(0);
 		const lastAutoRecoverAtRef = useRef(0);
+		const pendingCenterTimeoutRef = useRef(null);
 
 		const [nearbyHospitals, setNearbyHospitals] = useState([]);
 		const [isZoomedOut, setIsZoomedOut] = useState(false);
@@ -88,7 +89,7 @@ const FullScreenEmergencyMap = forwardRef(
 				: null;
 
 		const mapPadding = {
-			top: insets.top + 10,
+			top: insets.top + 40,
 			bottom: bottomPadding + 20,
 			left: 0,
 			right: 0,
@@ -97,6 +98,93 @@ const FullScreenEmergencyMap = forwardRef(
 		useEffect(() => {
 			mapPaddingRef.current = mapPadding;
 		}, [mapPadding]);
+
+		useEffect(() => {
+			return () => {
+				if (pendingCenterTimeoutRef.current) {
+					clearTimeout(pendingCenterTimeoutRef.current);
+					pendingCenterTimeoutRef.current = null;
+				}
+			};
+		}, []);
+
+		const scheduleCenterInVisibleArea = useCallback(
+			(points, { topPadding, bottomPadding: bottomPad, delayMs = 520 } = {}) => {
+				if (!mapRef.current) return;
+				if (!Array.isArray(points) || points.length === 0) return;
+
+				if (pendingCenterTimeoutRef.current) {
+					clearTimeout(pendingCenterTimeoutRef.current);
+					pendingCenterTimeoutRef.current = null;
+				}
+
+				// Bounding center (approx "circle center") of the content we care about.
+				let minLat = points[0]?.latitude;
+				let maxLat = points[0]?.latitude;
+				let minLng = points[0]?.longitude;
+				let maxLng = points[0]?.longitude;
+				for (let i = 1; i < points.length; i++) {
+					const p = points[i];
+					if (!p) continue;
+					minLat = Math.min(minLat, p.latitude);
+					maxLat = Math.max(maxLat, p.latitude);
+					minLng = Math.min(minLng, p.longitude);
+					maxLng = Math.max(maxLng, p.longitude);
+				}
+				const contentCenterLat = (minLat + maxLat) / 2;
+				const contentCenterLng = (minLng + maxLng) / 2;
+
+				pendingCenterTimeoutRef.current = setTimeout(async () => {
+					try {
+						if (!mapRef.current) return;
+
+						const boundaries = await mapRef.current.getMapBoundaries();
+						if (!boundaries?.northEast || !boundaries?.southWest) return;
+						const { northEast, southWest } = boundaries;
+
+						const latSpan = Math.abs(northEast.latitude - southWest.latitude);
+						const lngSpan = Math.abs(northEast.longitude - southWest.longitude);
+						if (!Number.isFinite(latSpan) || latSpan <= 0) return;
+						if (!Number.isFinite(lngSpan) || lngSpan <= 0) return;
+
+						// Desired pixel center: midpoint of the visible area above the sheet.
+						const topY = Math.max(0, Number.isFinite(topPadding) ? topPadding : 0);
+						const bottomY =
+							screenHeight - Math.max(0, Number.isFinite(bottomPad) ? bottomPad : 0);
+						const desiredCenterY = (topY + bottomY) / 2;
+						const screenCenterY = screenHeight / 2;
+						const pixelDeltaY = desiredCenterY - screenCenterY;
+
+						// Approx conversion: visible latitude span corresponds to screenHeight.
+						const latPerPx = latSpan / screenHeight;
+						const latShift = latPerPx * pixelDeltaY;
+
+						// Also center horizontally (handles asymmetric situations).
+						const centerLng = (northEast.longitude + southWest.longitude) / 2;
+
+						// IMPORTANT: increasing latitude moves content downward on the screen.
+						const targetCenterLat = contentCenterLat + latShift;
+						const targetCenterLng = contentCenterLng + (centerLng - contentCenterLng);
+
+						lastProgrammaticMoveAtRef.current = Date.now();
+						mapRef.current.animateCamera(
+							{
+								center: {
+									latitude: targetCenterLat,
+									longitude: targetCenterLng,
+								},
+							},
+							{ duration: 280 }
+						);
+					} catch (e) {
+						// ignore
+					} finally {
+						pendingCenterTimeoutRef.current = null;
+					}
+				}, delayMs);
+			},
+			[screenHeight]
+		);
 
 		const effectiveAmbulanceEtaSeconds =
 			Number.isFinite(ambulanceTripEtaSeconds) && ambulanceTripEtaSeconds > 0
@@ -175,14 +263,40 @@ const FullScreenEmergencyMap = forwardRef(
 				// Use a ref for padding so snap changes don't force repeated route fitting.
 				if (mapRef.current) {
 					const padding = mapPaddingRef.current;
+					let minLat = routeCoordinates[0]?.latitude;
+					let maxLat = routeCoordinates[0]?.latitude;
+					let minLng = routeCoordinates[0]?.longitude;
+					let maxLng = routeCoordinates[0]?.longitude;
+
+					for (let i = 1; i < routeCoordinates.length; i++) {
+						const p = routeCoordinates[i];
+						if (!p) continue;
+						minLat = Math.min(minLat, p.latitude);
+						maxLat = Math.max(maxLat, p.latitude);
+						minLng = Math.min(minLng, p.longitude);
+						maxLng = Math.max(maxLng, p.longitude);
+					}
+
+					const latRange = Math.abs(maxLat - minLat);
+					const lngRange = Math.abs(maxLng - minLng);
+					const isVertical = latRange >= lngRange;
+
+					const extraTop = isVertical ? 105 : 80;
+					const extraBottom = isVertical ? 120 : 70;
+					const extraSide = isVertical ? 55 : 80;
+
 					mapRef.current.fitToCoordinates(routeCoordinates, {
 						edgePadding: {
-							top: padding.top + 50,
-							right: 50,
-							bottom: padding.bottom + 50,
-							left: 50,
+							top: padding.top + extraTop,
+							right: extraSide,
+							bottom: padding.bottom + extraBottom,
+							left: extraSide,
 						},
 						animated: true,
+					});
+					scheduleCenterInVisibleArea(routeCoordinates, {
+						topPadding: padding.top,
+						bottomPadding: padding.bottom,
 					});
 				}
 			}
@@ -192,27 +306,59 @@ const FullScreenEmergencyMap = forwardRef(
 			animateToHospital: (hospital, options = {}) => {
 				if (!mapRef.current || !isValidCoordinate(hospital?.coordinates)) return;
 
+				// Goal: when a hospital is selected, show the hospital + user (and later the
+				// whole route) without over-zooming. Keep the polyline/markers fully visible
+				// above the bottom sheet.
 				const targetBottomPadding = options.bottomPadding ?? bottomPadding;
-				const sheetRatio = screenHeight > 0 ? targetBottomPadding / screenHeight : 0;
+				const targetTopPadding = options.topPadding ?? mapPaddingRef.current.top;
 
-				const latitudeDelta =
-					options.latitudeDelta ?? (sheetRatio >= 0.4 ? 0.03 : 0.02);
-				const longitudeDelta = options.longitudeDelta ?? latitudeDelta;
+				const points = [];
+				points.push(hospital.coordinates);
+				if (options.includeUser && isValidCoordinate(userLocation)) {
+					points.push({
+						latitude: userLocation.latitude,
+						longitude: userLocation.longitude,
+					});
+				}
 
-				const verticalShiftFactor = sheetRatio >= 0.4 ? 0.22 : 0.12;
-				const centerLatitude =
-					hospital.coordinates.latitude - latitudeDelta * verticalShiftFactor;
+				if (points.length < 2) {
+					lastProgrammaticMoveAtRef.current = Date.now();
+					mapRef.current.animateToRegion(
+						{
+							latitude: hospital.coordinates.latitude,
+							longitude: hospital.coordinates.longitude,
+							latitudeDelta: 0.03,
+							longitudeDelta: 0.03,
+						},
+						550
+					);
+					return;
+				}
+
+				// Determine if the line between the two points is primarily vertical or horizontal.
+				// Vertical routes need more top/bottom padding. Horizontal routes need more left/right.
+				const latRange = Math.abs(points[0].latitude - points[1].latitude);
+				const lngRange = Math.abs(points[0].longitude - points[1].longitude);
+				const isVertical = latRange >= lngRange;
+
+				const extraTop = isVertical ? 130 : 95;
+				const extraSide = isVertical ? 40 : 70;
+				const extraBottom = isVertical ? 90 : 55;
 
 				lastProgrammaticMoveAtRef.current = Date.now();
-				mapRef.current.animateToRegion(
-					{
-						latitude: centerLatitude,
-						longitude: hospital.coordinates.longitude,
-						latitudeDelta,
-						longitudeDelta,
+				mapRef.current.fitToCoordinates(points, {
+					edgePadding: {
+						top: Math.max(0, targetTopPadding) + extraTop,
+						right: extraSide,
+						bottom: Math.max(0, targetBottomPadding) + extraBottom,
+						left: extraSide,
 					},
-					550
-				);
+					animated: true,
+				});
+				scheduleCenterInVisibleArea(points, {
+					topPadding: targetTopPadding,
+					bottomPadding: targetBottomPadding,
+				});
 			},
 			fitToAllHospitals: () => {
 				if (!mapRef.current || !hospitals.length) return;

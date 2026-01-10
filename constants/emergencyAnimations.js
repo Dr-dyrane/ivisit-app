@@ -12,7 +12,7 @@ export const EMERGENCY_ANIMATIONS = {
 		snapPoints: [
 			windowHeight * 0.15,
 			windowHeight * 0.5,
-			windowHeight * 0.92,
+			windowHeight * 0.82,
 		],
 		snapIndexes: {
 			COLLAPSED: 0,
@@ -23,7 +23,7 @@ export const EMERGENCY_ANIMATIONS = {
 	MAP_PADDING: {
 		collapsed: windowHeight * 0.15,
 		half: windowHeight * 0.5,
-		expanded: windowHeight * 0.92,
+		expanded: windowHeight * 0.82,
 		selected: windowHeight * 0.5,
 	},
 };

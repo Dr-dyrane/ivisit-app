@@ -362,6 +362,7 @@ const TripSummaryFull = ({
 							onSelect={undefined}
 							onCall={undefined}
 							mode="emergency"
+							hidePrimaryAction={true}
 						/>
 					</View>
 				)}

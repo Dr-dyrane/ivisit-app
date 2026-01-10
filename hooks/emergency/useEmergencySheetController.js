@@ -22,7 +22,7 @@ export function useEmergencySheetController({ isDetailMode, onSnapChange }) {
 		if (isDetailMode) {
 			return ["50%"];
 		}
-		return [`${Math.max(15, collapsedPercent)}%`, "50%", "92%"];
+		return [`${Math.max(15, collapsedPercent)}%`, "50%", "82%"];
 	}, [collapsedPercent, isDetailMode]);
 
 	const animationConfigs = useBottomSheetSpringConfigs({
