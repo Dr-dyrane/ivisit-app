@@ -1,720 +1,816 @@
-# Emergency Screen Refactoring Plan
+# Emergency Screen Modularization & Refactoring Plan
 
-**Last Audit Date**: 2026-01-10  
-**Status**: Comprehensive audit completed | Ready for implementation  
-**Priority**: Medium-High  
+**Last Updated**: 2026-01-10  
+**Status**: Architecture redesign for modularization | Ready for implementation  
+**Priority**: High - Code maintainability, scalability, and bug reduction  
 
 ---
 
 ## Executive Summary
 
-The Emergency Screen has been extensively refactored with real-time data synchronization and proper Supabase integration. However, a **final audit identified 4 critical issues** that need to be addressed to ensure stability and maintainability. This document provides a detailed implementation roadmap.
+The **EmergencyScreen** is currently a **monolithic component** with mixed concerns (UI state, data flow, handlers, navigation, animations). This refactoring extracts concerns into **specialized modules, custom hooks, and presentational components** to achieve:
+
+✅ **Better Readability**: Single responsibility per component/hook  
+✅ **Easier Testing**: Isolated logic in custom hooks  
+✅ **Bug Reduction**: Separated state management prevents race conditions  
+✅ **DRY Principles**: Reusable handlers and utilities  
+✅ **Snappy Animations**: Centralized animation control  
+✅ **Scalability**: Easy to extend without touching main screen  
 
 ---
 
-## Current State Analysis
+## Current Architecture Problems
 
-### ✅ What's Working Well
+### 🔴 **Monolithic Component**
+- EmergencyScreen manages: navigation, refs, handlers, state logic, UI rendering
+- 727 lines of mixed concerns
+- Hard to test individual pieces
+- Race conditions in async handlers
 
-1. **Real-time Data Synchronization**
-   - Visits sync via `useVisitsData` hook with Supabase subscriptions
-   - Notifications sync via `useNotificationsData` hook with Supabase subscriptions
-   - UI automatically updates when database records change
-
-2. **Request → Visit → Notification Lifecycle**
-   - Request status properly tracked in Supabase
-   - Visits created and updated correctly
-   - Notifications generated and persisted
-
-3. **Map Integration**
-   - Hospital selection and zoom working
-   - Route calculation for ambulances
-   - Proper padding calculations for bottom sheet
-
-4. **Separation of Concerns**
-   - EmergencyContext: Data state (hospitals, trips, bookings)
-   - EmergencyUIContext: UI state (animations, snapping, search)
-   - Proper hook-based architecture
-
----
-
-## Identified Issues & Fixes
-
-### Issue 1: Missing `addNotification` Import ⚠️ CRITICAL
-
-**Location**: `EmergencyScreen.jsx` lines 538, 562  
-**Severity**: Critical - Runtime Error
-
-**Problem**:
+### 🔴 **Duplicated Logic**
 ```javascript
-// Line 538: Used but not imported
-addNotification({
-    id: `bed_cancel_${activeBedBooking.requestId}`,
-    type: NOTIFICATION_TYPES.APPOINTMENT,
-    // ...
+// Lines 505-517: onCancelAmbulanceTrip
+setRequestStatus(...);
+cancelVisit(...);
+stopAmbulanceTrip();
+setTimeout(() => bottomSheetRef.current?.snapToIndex?.(1), 0);
+
+// Lines 531-554: onCancelBedBooking (similar pattern)
+setRequestStatus(...);
+cancelVisit(...);
+stopBedBooking();
+// ... plus extra notification logic
+```
+**Same pattern repeated across 4 handlers** ❌
+
+### 🔴 **Tightly Coupled References**
+- Direct ref manipulation: `bottomSheetRef.current?.snapToIndex?.(1)`
+- Direct context access throughout component
+- Hard to control animation timing
+- Bottom sheet doesn't own its own state
+
+### 🔴 **Mixed Responsibilities**
+- Hospital selection + map animation + bottom sheet snapping
+- Request creation + visit creation + notification creation
+- Search filtering + specialty selection + hospital filtering
+
+---
+
+## New Architecture: Module Breakdown
+
+```
+screens/
+  EmergencyScreen.jsx          ← Lightweight orchestrator (100 lines)
+
+hooks/
+  emergency/
+    useEmergencyHandlers.js    ← All handler callbacks (DRY)
+    useHospitalSelection.js    ← Hospital selection + map animation
+    useSearchFiltering.js      ← Search + filter logic
+    useRequestFlow.js          ← Request creation + visit + notification
+    useTripCompletion.js       ← Trip completion logic (reusable)
+    
+components/
+  emergency/
+    EmergencyMapContainer.js   ← Map + controls
+    BottomSheetController.js   ← Sheet with isolated handlers
+    EmergencyContent.js        ← Hospital list + filters
+    
+constants/
+  emergencyAnimations.js       ← Centralized timing + easing
+  emergencyHandlers.js         ← Handler templates
+```
+
+---
+
+## Phase 1: Extract Custom Hooks (DRY Principle)
+
+### Hook 1: `useEmergencyHandlers` - Centralize All Handlers
+
+**File**: `hooks/emergency/useEmergencyHandlers.js`
+
+**Purpose**: One place for all handler logic. Eliminates code duplication across 4 handlers.
+
+```javascript
+export const useEmergencyHandlers = ({
+  activeAmbulanceTrip,
+  activeBedBooking,
+  setRequestStatus,
+  cancelVisit,
+  completeVisit,
+  stopAmbulanceTrip,
+  stopBedBooking,
+  addNotification,
+  onSheetSnap, // Callback from parent
+}) => {
+  const createBaseHandler = useCallback(
+    (type, actions) => {
+      return async () => {
+        try {
+          await Promise.all(actions.requests);
+          actions.onSuccess?.();
+          console.log(`[EmergencyHandlers] ${type} success`);
+        } catch (err) {
+          console.error(`[EmergencyHandlers] ${type} failed:`, err);
+        } finally {
+          actions.cleanup?.();
+          onSheetSnap(1);
+        }
+      };
+    },
+    [onSheetSnap]
+  );
+
+  const onCancelAmbulanceTrip = useCallback(
+    () =>
+      createBaseHandler("CancelAmbulanceTrip", {
+        requests: [
+          setRequestStatus(activeAmbulanceTrip?.requestId, "CANCELLED"),
+          cancelVisit(activeAmbulanceTrip?.requestId),
+        ],
+        cleanup: stopAmbulanceTrip,
+      })(),
+    [activeAmbulanceTrip, createBaseHandler, ...]
+  );
+
+  const onCompleteBedBooking = useCallback(
+    () =>
+      createBaseHandler("CompleteBedBooking", {
+        requests: [
+          setRequestStatus(activeBedBooking?.requestId, "COMPLETED"),
+          completeVisit(activeBedBooking?.requestId),
+          addNotification({ /* ... */ }),
+        ],
+        cleanup: stopBedBooking,
+      })(),
+    [activeBedBooking, createBaseHandler, ...]
+  );
+
+  return {
+    onCancelAmbulanceTrip,
+    onCompleteAmbulanceTrip,
+    onCancelBedBooking,
+    onCompleteBedBooking,
+  };
+};
+```
+
+**Benefits**:
+- ✅ Single pattern for all handlers
+- ✅ Consistent error handling
+- ✅ Promise.all prevents race conditions
+- ✅ Easy to add logging/analytics
+- ✅ Reusable `createBaseHandler` template
+
+---
+
+### Hook 2: `useHospitalSelection` - Isolate Hospital Logic
+
+**File**: `hooks/emergency/useHospitalSelection.js`
+
+**Purpose**: Keep hospital selection and map animation together.
+
+```javascript
+export const useHospitalSelection = ({
+  selectedHospital,
+  hospitals,
+  selectHospital,
+  clearSelectedHospital,
+  mapRef,
+  onListStateChange, // Callback to save list state
+}) => {
+  const lastListStateRef = useRef({ snapIndex: 1, scrollY: 0 });
+
+  const handleHospitalSelect = useCallback(
+    (hospital) => {
+      if (!hospital?.id) return;
+
+      lastListStateRef.current = {
+        snapIndex: getCurrentSnapIndex(),
+        scrollY: getCurrentScrollY(),
+      };
+
+      selectHospital(hospital.id);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      // Animate map to hospital
+      mapRef.current?.animateToHospital(hospital, {
+        bottomPadding: screenHeight * 0.5,
+        includeUser: true,
+      });
+
+      onListStateChange?.(lastListStateRef.current);
+    },
+    [selectHospital, mapRef, onListStateChange]
+  );
+
+  const handleCloseFocus = useCallback(() => {
+    clearSelectedHospital();
+    return lastListStateRef.current;
+  }, [clearSelectedHospital]);
+
+  return {
+    handleHospitalSelect,
+    handleCloseFocus,
+    getLastListState: () => lastListStateRef.current,
+  };
+};
+```
+
+**Benefits**:
+- ✅ Hospital logic isolated in one hook
+- ✅ Easy to test hospital selection
+- ✅ Ref management contained
+- ✅ Reusable in other screens
+
+---
+
+### Hook 3: `useSearchFiltering` - Centralize Search Logic
+
+**File**: `hooks/emergency/useSearchFiltering.js`
+
+**Purpose**: Search and filter logic (currently duplicated in 2 places).
+
+```javascript
+export const useSearchFiltering = ({
+  hospitals,
+  mode,
+  selectedSpecialty,
+  searchQuery,
+  setSearchQuery,
+}) => {
+  // This logic is repeated in handleSearch and searchFilteredHospitals useMemo
+  // Move it here to DRY
+
+  const filterByQuery = useCallback(
+    (query, baseHospitals) => {
+      if (!query.trim()) return baseHospitals;
+
+      const q = query.toLowerCase();
+      return baseHospitals.filter((h) => {
+        const name = typeof h?.name === "string" ? h.name.toLowerCase() : "";
+        const address =
+          typeof h?.address === "string" ? h.address.toLowerCase() : "";
+        const specialtiesMatch =
+          Array.isArray(h?.specialties) &&
+          h.specialties.some((s) =>
+            (typeof s === "string" ? s.toLowerCase() : "").includes(q)
+          );
+        const typeMatch =
+          typeof h?.type === "string" && h.type.toLowerCase().includes(q);
+
+        return (
+          name.includes(q) ||
+          address.includes(q) ||
+          specialtiesMatch ||
+          typeMatch
+        );
+      });
+    },
+    []
+  );
+
+  const getSearchFiltered = useCallback(
+    (query) => {
+      const base =
+        mode === "booking"
+          ? selectedSpecialty
+            ? hospitals.filter((h) =>
+                h?.specialties?.includes?.(selectedSpecialty)
+              )
+            : hospitals
+          : hospitals;
+
+      return filterByQuery(query, base);
+    },
+    [mode, selectedSpecialty, hospitals, filterByQuery]
+  );
+
+  return {
+    searchFilteredHospitals: getSearchFiltered(searchQuery),
+    handleSearch: setSearchQuery,
+    filterByQuery, // Exported for reuse
+  };
+};
+```
+
+**Benefits**:
+- ✅ Filter logic defined once
+- ✅ Reusable in other screens
+- ✅ Easy to optimize filtering performance
+- ✅ Testable in isolation
+
+---
+
+### Hook 4: `useRequestFlow` - Request + Visit + Notification
+
+**File**: `hooks/emergency/useRequestFlow.js`
+
+**Purpose**: Extract the `handleRequestComplete` logic into a clean, reusable hook.
+
+```javascript
+export const useRequestFlow = ({
+  createRequest,
+  addVisit,
+  user,
+  preferences,
+  medicalProfile,
+  emergencyContacts,
+  currentRoute,
+}) => {
+  const handleRequestComplete = useCallback(
+    async (request, hospitalId, hospital, selectedSpecialty) => {
+      if (!request?.serviceType || !hospitalId) {
+        console.warn("[useRequestFlow] Missing required params");
+        return;
+      }
+
+      const visitId = request?.requestId
+        ? String(request.requestId)
+        : `local_${Date.now()}`;
+
+      try {
+        // Create request in DB
+        await createRequest({
+          id: visitId,
+          requestId: visitId,
+          serviceType: request.serviceType,
+          hospitalId,
+          // ... other fields
+        });
+
+        // Create corresponding visit
+        const date = new Date().toISOString().slice(0, 10);
+        const time = new Date().toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+        });
+
+        const visitData = {
+          id: visitId,
+          visitId,
+          requestId: visitId,
+          hospitalId: String(hospitalId),
+          // ... shared fields
+        };
+
+        if (request.serviceType === "ambulance") {
+          await addVisit({
+            ...visitData,
+            type: VISIT_TYPES.AMBULANCE_RIDE,
+            // ...
+          });
+        } else if (request.serviceType === "bed") {
+          await addVisit({
+            ...visitData,
+            type: VISIT_TYPES.BED_BOOKING,
+            // ...
+          });
+        }
+
+        console.log(`[useRequestFlow] Request created: ${visitId}`);
+        return visitId;
+      } catch (err) {
+        console.error("[useRequestFlow] Request creation failed:", err);
+        throw err;
+      }
+    },
+    [createRequest, addVisit, user, preferences, medicalProfile, emergencyContacts]
+  );
+
+  return { handleRequestComplete };
+};
+```
+
+**Benefits**:
+- ✅ Async IIFE removed → clean function
+- ✅ Better error handling with proper logging
+- ✅ Reusable across different screens
+- ✅ Returns visitId for chaining operations
+
+---
+
+## Phase 2: Extract Presentational Components
+
+### Component 1: `EmergencyMapContainer` - Isolated Map
+
+**File**: `components/emergency/EmergencyMapContainer.js`
+
+```javascript
+export const EmergencyMapContainer = forwardRef((props, ref) => {
+  const {
+    hospitals,
+    selectedHospitalId,
+    routeHospitalId,
+    showControls,
+    mode,
+    activeTrip,
+    onHospitalSelect,
+    onMapReady,
+    onRouteCalculated,
+  } = props;
+
+  return (
+    <View style={styles.container}>
+      <FullScreenEmergencyMap
+        ref={ref}
+        hospitals={hospitals}
+        onHospitalSelect={onHospitalSelect}
+        selectedHospitalId={selectedHospitalId}
+        routeHospitalId={routeHospitalId}
+        mode={mode}
+        showControls={showControls}
+        onMapReady={onMapReady}
+        onRouteCalculated={onRouteCalculated}
+        // ... all map-specific props
+      />
+    </View>
+  );
 });
 ```
 
-**Current Impact**: Would throw `ReferenceError: addNotification is not defined` at runtime
-
-**Solution**:
-```javascript
-// Add to imports at top of EmergencyScreen.jsx
-import { useNotifications } from "../contexts/NotificationsContext";
-
-// Add to hook calls in component
-const { addNotification } = useNotifications();
-```
-
-**Why This Works**: `useNotifications` is already exported from NotificationsContext and properly provides `addNotification` function
+**Benefits**:
+- ✅ Map logic isolated
+- ✅ Single place to add map-specific features
+- ✅ Easy to test map interactions
+- ✅ Can be reused in other screens
 
 ---
 
-### Issue 2: Race Conditions in Completion Handlers ⚠️ HIGH PRIORITY
+### Component 2: `BottomSheetController` - Wrapped with Handlers
 
-**Location**: `EmergencyScreen.jsx` lines 518-578  
-**Severity**: High - Data Loss Risk
+**File**: `components/emergency/BottomSheetController.js`
 
-**Problem**: Handlers call async functions without awaiting:
 ```javascript
-// Line 518: onCompleteAmbulanceTrip
-onCompleteAmbulanceTrip={() => {
-    if (activeAmbulanceTrip?.requestId) {
-        setRequestStatus(activeAmbulanceTrip.requestId, EmergencyRequestStatus.COMPLETED);
-        completeVisit(activeAmbulanceTrip.requestId);  // ❌ Not awaited
-    }
-    stopAmbulanceTrip();
-    setTimeout(() => {
-        bottomSheetRef.current?.snapToIndex?.(1);
-    }, 0);  // ❌ Executes before async operations complete
-}}
+export const BottomSheetController = forwardRef((props, ref) => {
+  const {
+    mode,
+    selectedHospital,
+    activeAmbulanceTrip,
+    activeBedBooking,
+    onCancelAmbulanceTrip,
+    onCompleteAmbulanceTrip,
+    onCancelBedBooking,
+    onCompleteBedBooking,
+    // ... other sheet props
+  } = props;
+
+  const handleSheetSnap = useCallback((index) => {
+    ref.current?.snapToIndex?.(index);
+  }, [ref]);
+
+  return (
+    <EmergencyBottomSheet
+      ref={ref}
+      // Inject handlers with snapping capability
+      onCancelAmbulanceTrip={async () => {
+        await onCancelAmbulanceTrip();
+        handleSheetSnap(1);
+      }}
+      onCompleteAmbulanceTrip={async () => {
+        await onCompleteAmbulanceTrip();
+        handleSheetSnap(1);
+      }}
+      onCancelBedBooking={async () => {
+        await onCancelBedBooking();
+        handleSheetSnap(1);
+      }}
+      onCompleteBedBooking={async () => {
+        await onCompleteBedBooking();
+        handleSheetSnap(1);
+      }}
+      // ... pass all other props
+      {...props}
+    />
+  );
+});
 ```
 
-**Why It's a Problem**:
-1. `setRequestStatus()` and `completeVisit()` are async operations
-2. Without awaiting, they may not complete before UI state changes
-3. setTimeout executes immediately instead of after database updates
-4. Creates race condition: UI state clears before data is saved
-
-**Solution - Make Handlers Async**:
-```javascript
-// Before
-onCompleteAmbulanceTrip={() => {
-    // ...
-}}
-
-// After
-onCompleteAmbulanceTrip={async () => {
-    if (activeAmbulanceTrip?.requestId) {
-        try {
-            await Promise.all([
-                setRequestStatus(activeAmbulanceTrip.requestId, EmergencyRequestStatus.COMPLETED),
-                completeVisit(activeAmbulanceTrip.requestId)
-            ]);
-        } catch (err) {
-            console.error('[EmergencyScreen] Complete trip error:', err);
-        }
-    }
-    stopAmbulanceTrip();
-    setTimeout(() => {
-        bottomSheetRef.current?.snapToIndex?.(1);
-    }, 0);
-}}
-```
-
-**Apply Same Pattern To**:
-- `onCompleteAmbulanceTrip` (line 518)
-- `onCompleteBedBooking` (line 555)
-- `onCancelAmbulanceTrip` (line 505)
-- `onCancelBedBooking` (line 531)
+**Benefits**:
+- ✅ Sheet handlers centralized
+- ✅ Animation control in one place
+- ✅ Easy to add shared sheet logic
+- ✅ Clean separation from main screen
 
 ---
 
-### Issue 3: Inconsistent Error Handling ⚠️ MEDIUM PRIORITY
+## Phase 3: Simplify Main Screen
 
-**Location**: `EmergencyScreen.jsx` lines 285, 560  
-**Severity**: Medium - Silent Failures
+### Refactored `EmergencyScreen.jsx` - ~150 lines (from 727)
 
-**Problem 1 - Async IIFE with Empty Catch**:
 ```javascript
-// Line 250-286: handleRequestComplete uses async IIFE
-(async () => {
-    try {
-        const shareMedicalProfile = preferences?.privacyShareMedicalProfile === true;
-        // ... validation logic ...
-        await createRequest({ /* ... */ });
-    } catch {}  // ❌ Silent catch, no logging
-})();
+export default function EmergencyScreen() {
+  // Context hooks
+  const { resetTabBar, lockTabBarHidden } = useTabBarVisibility();
+  const { resetHeader, setHeaderState } = useScrollAwareHeader();
+  const { registerFAB } = useFAB();
+  const { mode, selectedHospital, activeAmbulanceTrip, ...emergencyState } =
+    useEmergency();
+  const { user } = useAuth();
+
+  // Refs
+  const mapRef = useRef(null);
+  const bottomSheetRef = useRef(null);
+
+  // Custom hooks - all DRY logic extracted
+  const { onCancelAmbulanceTrip, onCompleteAmbulanceTrip, ... } =
+    useEmergencyHandlers({
+      activeAmbulanceTrip,
+      activeBedBooking,
+      setRequestStatus,
+      // ... deps
+    });
+
+  const { handleHospitalSelect, handleCloseFocus } = useHospitalSelection({
+    selectedHospital,
+    hospitals,
+    selectHospital,
+    mapRef,
+    // ... deps
+  });
+
+  const { searchFilteredHospitals, handleSearch } = useSearchFiltering({
+    hospitals,
+    mode,
+    searchQuery,
+    // ... deps
+  });
+
+  // Setup header and FAB
+  useFocusEffect(useCallback(() => {
+    resetHeader();
+    setHeaderState({ /* ... */ });
+  }, [mode]));
+
+  useFocusEffect(useCallback(() => {
+    registerFAB({
+      icon: mode === "emergency" ? "bed-patient" : "medical",
+      visible: !shouldHideFAB,
+      onPress: () => toggleMode(),
+    });
+  }, [mode, shouldHideFAB]));
+
+  // Render clean hierarchy
+  return (
+    <View style={styles.container}>
+      <EmergencyMapContainer
+        ref={mapRef}
+        hospitals={searchFilteredHospitals}
+        selectedHospitalId={selectedHospital?.id}
+        onHospitalSelect={handleHospitalSelect}
+        // ... other props
+      />
+
+      <BottomSheetController
+        ref={bottomSheetRef}
+        mode={mode}
+        selectedHospital={selectedHospital}
+        activeAmbulanceTrip={activeAmbulanceTrip}
+        onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+        onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
+        // ... other props
+      />
+
+      <EmergencyRequestModal
+        visible={showEmergencyRequestModal}
+        selectedHospital={requestHospital}
+        onRequestComplete={handleRequestComplete}
+        onClose={handleCloseEmergencyRequestModal}
+      />
+    </View>
+  );
+}
 ```
 
-**Problem 2 - Silent Error on Completion**:
-```javascript
-// Line 560: onCompleteBedBooking catches but doesn't log
-setRequestStatus(activeBedBooking.requestId, EmergencyRequestStatus.COMPLETED).catch(() => {});
-```
-
-**Why It's a Problem**:
-1. Errors are completely hidden from debugging
-2. Can't identify root cause of failures
-3. No user feedback about what went wrong
-
-**Solution - Proper Error Handling**:
-```javascript
-// Instead of:
-(async () => {
-    try {
-        // ...
-    } catch {}  // Bad
-})();
-
-// Use:
-const handleRequestComplete = useCallback(async (request) => {
-    try {
-        // ... validation ...
-        await createRequest({ /* ... */ });
-    } catch (err) {
-        console.error('[EmergencyScreen] Request creation failed:', err);
-        // Could add user feedback here if needed
-    }
-}, [/* deps */]);
-```
-
-**Error Handling Guidelines**:
-- Always log errors with context: `[EmergencyScreen]` prefix
-- Include the function name: `[EmergencyScreen] handleRequestComplete:`
-- Include relevant IDs: `visitId=${visitId}`
-- Don't swallow errors unless absolutely necessary
+**Benefits**:
+- ✅ Down to ~150 lines from 727
+- ✅ Clear separation of concerns
+- ✅ Each hook has single responsibility
+- ✅ Easy to read and understand flow
 
 ---
 
-### Issue 4: Missing Notification Hook Dependencies ⚠️ MEDIUM PRIORITY
+## Phase 4: Animation Control Centralization
 
-**Location**: `EmergencyScreen.jsx` callback dependencies  
-**Severity**: Medium - Performance/Stability
-
-**Problem**: Once `addNotification` is imported, it needs to be included in useCallback dependencies for handlers that use it:
+### File: `constants/emergencyAnimations.js`
 
 ```javascript
-// Current (will be incorrect once addNotification is added):
-const handler = useCallback(() => {
-    addNotification({ /* ... */ });
-}, [/* addNotification missing */]);
+export const EMERGENCY_ANIMATIONS = {
+  SHEET_SNAP_DURATION: 300,
+  HOSPITAL_SELECT: {
+    duration: 300,
+    easing: [0.21, 0.47, 0.32, 0.98], // Apple easing
+  },
+  BOTTOM_SHEET: {
+    snapPoints: [
+      Dimensions.get("window").height * 0.15,  // Collapsed
+      Dimensions.get("window").height * 0.5,   // Half
+      Dimensions.get("window").height * 0.92,  // Expanded
+    ],
+  },
+  MAP_PADDING: {
+    collapsed: Dimensions.get("window").height * 0.15,
+    half: Dimensions.get("window").height * 0.5,
+    expanded: Dimensions.get("window").height * 0.92,
+  },
+};
 
-// Should be:
-const handler = useCallback(() => {
-    addNotification({ /* ... */ });
-}, [addNotification, /* other deps */]);
+export const getMapPaddingForSnapIndex = (snapIndex) => {
+  const { MAP_PADDING } = EMERGENCY_ANIMATIONS;
+  switch (snapIndex) {
+    case 0:
+      return MAP_PADDING.collapsed;
+    case 1:
+      return MAP_PADDING.half;
+    case 2:
+      return MAP_PADDING.expanded;
+    default:
+      return MAP_PADDING.half;
+  }
+};
 ```
 
-**Affected Handlers**:
-- `onCancelBedBooking` (line 531)
-- `onCompleteBedBooking` (line 555)
+**Benefits**:
+- ✅ Single source of truth for timings
+- ✅ Easy to adjust animations globally
+- ✅ Consistent behavior across components
+- ✅ No magic numbers scattered everywhere
 
 ---
 
 ## Implementation Roadmap
 
-### Phase 1: Critical Fixes (1-2 hours)
-- [ ] Add `useNotifications` import
-- [ ] Extract `addNotification` from hook
-- [ ] Fix callback dependency arrays
-- [ ] Test: Verify notifications appear on bed cancellation/completion
+### Phase 1: Extract Hooks (4-5 hours)
+- [ ] Create `useEmergencyHandlers.js` with `createBaseHandler` pattern
+- [ ] Create `useHospitalSelection.js`
+- [ ] Create `useSearchFiltering.js`
+- [ ] Create `useRequestFlow.js`
+- [ ] Export all hooks from `hooks/emergency/index.js`
+- [ ] Test: Verify each hook works in isolation
 
-### Phase 2: Race Condition Resolution (2-3 hours)
-- [ ] Convert handlers to async
-- [ ] Add proper await on async operations
-- [ ] Use `Promise.all()` for parallel operations
-- [ ] Add error handling with logging
-- [ ] Test: Verify request status updates before UI state changes
+### Phase 2: Extract Components (3-4 hours)
+- [ ] Create `EmergencyMapContainer.js`
+- [ ] Create `BottomSheetController.js`
+- [ ] Create `EmergencyContent.js` (if needed)
+- [ ] Test: Verify component props and callbacks work
 
-### Phase 3: Error Handling Improvements (1-2 hours)
-- [ ] Refactor async IIFE to proper async function
-- [ ] Replace silent catches with proper error logging
-- [ ] Add console context prefixes throughout
-- [ ] Test: Manually trigger errors and verify logging
+### Phase 3: Refactor Main Screen (2-3 hours)
+- [ ] Replace inline handlers with hook versions
+- [ ] Replace inline components with extracted components
+- [ ] Remove duplicate logic
+- [ ] Update imports and dependencies
+- [ ] Run lint and typecheck
 
-### Phase 4: Testing & Validation (2-3 hours)
-- [ ] Integration test: Request creation flow
-- [ ] Integration test: Completion handlers
-- [ ] Integration test: Cancellation flows
-- [ ] Integration test: Notification creation
-- [ ] Manual QA: Both ambulance and bed booking flows
+### Phase 4: Animation Control (1-2 hours)
+- [ ] Create `emergencyAnimations.js`
+- [ ] Replace hardcoded values
+- [ ] Update padding calculations
+- [ ] Test: Verify animations are still snappy
 
----
-
-## Detailed Code Changes
-
-### Change 1: Add Import & Hook Usage
-
-**File**: `screens/EmergencyScreen.jsx`
-
-**Add after line 23**:
-```javascript
-import { useNotifications } from "../contexts/NotificationsContext";
-```
-
-**Add after line 52 in component body**:
-```javascript
-const { addNotification } = useNotifications();
-```
+### Phase 5: Testing & QA (3-4 hours)
+- [ ] Unit tests for each hook
+- [ ] Integration tests for handler flow
+- [ ] Manual testing: Ambulance flow end-to-end
+- [ ] Manual testing: Bed booking flow end-to-end
+- [ ] Performance: Verify no animation jank
 
 ---
 
-### Change 2: Fix onCompleteAmbulanceTrip Handler
+## Code Quality Standards
 
-**File**: `screens/EmergencyScreen.jsx`  
-**Replace lines 518-530**:
+### ✅ DRY Principle
+- No duplicated handler patterns → `useEmergencyHandlers` template
+- No duplicated search logic → `useSearchFiltering`
+- No duplicated trip logic → `useTripCompletion`
 
-**Before**:
-```javascript
-onCompleteAmbulanceTrip={() => {
-    if (activeAmbulanceTrip?.requestId) {
-        setRequestStatus(
-            activeAmbulanceTrip.requestId,
-            EmergencyRequestStatus.COMPLETED
-        );
-        completeVisit(activeAmbulanceTrip.requestId);
-    }
-    stopAmbulanceTrip();
-    setTimeout(() => {
-        bottomSheetRef.current?.snapToIndex?.(1);
-    }, 0);
-}}
-```
+### ✅ Separation of Concerns
+- Map logic → `EmergencyMapContainer`
+- Bottom sheet logic → `BottomSheetController`
+- Handlers → `useEmergencyHandlers`
+- Search → `useSearchFiltering`
+- Hospital selection → `useHospitalSelection`
 
-**After**:
-```javascript
-onCompleteAmbulanceTrip={async () => {
-    if (activeAmbulanceTrip?.requestId) {
-        try {
-            await Promise.all([
-                setRequestStatus(activeAmbulanceTrip.requestId, EmergencyRequestStatus.COMPLETED),
-                completeVisit(activeAmbulanceTrip.requestId)
-            ]);
-            console.log('[EmergencyScreen] Ambulance trip completed:', activeAmbulanceTrip.requestId);
-        } catch (err) {
-            console.error('[EmergencyScreen] onCompleteAmbulanceTrip error:', err);
-        }
-    }
-    stopAmbulanceTrip();
-    setTimeout(() => {
-        bottomSheetRef.current?.snapToIndex?.(1);
-    }, 0);
-}}
-```
+### ✅ Error Handling
+- All async operations wrapped in try/catch
+- Consistent logging with `[ModuleName]` prefix
+- Errors propagate up with context
+
+### ✅ Dependencies
+- All useCallback dependencies properly listed
+- No missing deps in useMemo
+- No unnecessary re-renders
 
 ---
 
-### Change 3: Fix onCancelAmbulanceTrip Handler
+## Benefits Summary
 
-**File**: `screens/EmergencyScreen.jsx`  
-**Replace lines 505-517**:
-
-**Before**:
-```javascript
-onCancelAmbulanceTrip={() => {
-    if (activeAmbulanceTrip?.requestId) {
-        setRequestStatus(
-            activeAmbulanceTrip.requestId,
-            EmergencyRequestStatus.CANCELLED
-        );
-        cancelVisit(activeAmbulanceTrip.requestId);
-    }
-    stopAmbulanceTrip();
-    setTimeout(() => {
-        bottomSheetRef.current?.snapToIndex?.(1);
-    }, 0);
-}}
-```
-
-**After**:
-```javascript
-onCancelAmbulanceTrip={async () => {
-    if (activeAmbulanceTrip?.requestId) {
-        try {
-            await Promise.all([
-                setRequestStatus(activeAmbulanceTrip.requestId, EmergencyRequestStatus.CANCELLED),
-                cancelVisit(activeAmbulanceTrip.requestId)
-            ]);
-            console.log('[EmergencyScreen] Ambulance trip cancelled:', activeAmbulanceTrip.requestId);
-        } catch (err) {
-            console.error('[EmergencyScreen] onCancelAmbulanceTrip error:', err);
-        }
-    }
-    stopAmbulanceTrip();
-    setTimeout(() => {
-        bottomSheetRef.current?.snapToIndex?.(1);
-    }, 0);
-}}
-```
-
----
-
-### Change 4: Fix onCancelBedBooking Handler
-
-**File**: `screens/EmergencyScreen.jsx`  
-**Replace lines 531-554**:
-
-**Before**:
-```javascript
-onCancelBedBooking={() => {
-    if (activeBedBooking?.requestId) {
-        setRequestStatus(
-            activeBedBooking.requestId,
-            EmergencyRequestStatus.CANCELLED
-        );
-        cancelVisit(activeBedBooking.requestId);
-        addNotification({
-            id: `bed_cancel_${activeBedBooking.requestId}`,
-            type: NOTIFICATION_TYPES.APPOINTMENT,
-            title: "Bed reservation cancelled",
-            message: "You cancelled the active bed reservation.",
-            timestamp: new Date().toISOString(),
-            read: false,
-            priority: NOTIFICATION_PRIORITY.NORMAL,
-            actionType: null,
-            actionData: { visitId: activeBedBooking.requestId },
-        });
-    }
-    stopBedBooking();
-    setTimeout(() => {
-        bottomSheetRef.current?.snapToIndex?.(1);
-    }, 0);
-}}
-```
-
-**After**:
-```javascript
-onCancelBedBooking={async () => {
-    if (activeBedBooking?.requestId) {
-        try {
-            await Promise.all([
-                setRequestStatus(activeBedBooking.requestId, EmergencyRequestStatus.CANCELLED),
-                cancelVisit(activeBedBooking.requestId),
-                addNotification({
-                    id: `bed_cancel_${activeBedBooking.requestId}`,
-                    type: NOTIFICATION_TYPES.APPOINTMENT,
-                    title: "Bed reservation cancelled",
-                    message: "You cancelled the active bed reservation.",
-                    timestamp: new Date().toISOString(),
-                    read: false,
-                    priority: NOTIFICATION_PRIORITY.NORMAL,
-                    actionType: null,
-                    actionData: { visitId: activeBedBooking.requestId },
-                })
-            ]);
-            console.log('[EmergencyScreen] Bed booking cancelled:', activeBedBooking.requestId);
-        } catch (err) {
-            console.error('[EmergencyScreen] onCancelBedBooking error:', err);
-        }
-    }
-    stopBedBooking();
-    setTimeout(() => {
-        bottomSheetRef.current?.snapToIndex?.(1);
-    }, 0);
-}}
-```
-
----
-
-### Change 5: Fix onCompleteBedBooking Handler
-
-**File**: `screens/EmergencyScreen.jsx`  
-**Replace lines 555-578**:
-
-**Before**:
-```javascript
-onCompleteBedBooking={() => {
-    if (activeBedBooking?.requestId) {
-        setRequestStatus(
-            activeBedBooking.requestId,
-            EmergencyRequestStatus.COMPLETED
-        ).catch(() => {});
-        completeVisit(activeBedBooking.requestId);
-        addNotification({
-            id: `bed_complete_${activeBedBooking.requestId}`,
-            type: NOTIFICATION_TYPES.APPOINTMENT,
-            title: "Bed booking completed",
-            message: "Your bed booking has been marked complete.",
-            timestamp: new Date().toISOString(),
-            read: false,
-            priority: NOTIFICATION_PRIORITY.NORMAL,
-            actionType: "view_summary",
-            actionData: { visitId: activeBedBooking.requestId },
-        });
-    }
-    stopBedBooking();
-    setTimeout(() => {
-        bottomSheetRef.current?.snapToIndex?.(1);
-    }, 0);
-}}
-```
-
-**After**:
-```javascript
-onCompleteBedBooking={async () => {
-    if (activeBedBooking?.requestId) {
-        try {
-            await Promise.all([
-                setRequestStatus(activeBedBooking.requestId, EmergencyRequestStatus.COMPLETED),
-                completeVisit(activeBedBooking.requestId),
-                addNotification({
-                    id: `bed_complete_${activeBedBooking.requestId}`,
-                    type: NOTIFICATION_TYPES.APPOINTMENT,
-                    title: "Bed booking completed",
-                    message: "Your bed booking has been marked complete.",
-                    timestamp: new Date().toISOString(),
-                    read: false,
-                    priority: NOTIFICATION_PRIORITY.NORMAL,
-                    actionType: "view_summary",
-                    actionData: { visitId: activeBedBooking.requestId },
-                })
-            ]);
-            console.log('[EmergencyScreen] Bed booking completed:', activeBedBooking.requestId);
-        } catch (err) {
-            console.error('[EmergencyScreen] onCompleteBedBooking error:', err);
-        }
-    }
-    stopBedBooking();
-    setTimeout(() => {
-        bottomSheetRef.current?.snapToIndex?.(1);
-    }, 0);
-}}
-```
-
----
-
-### Change 6: Refactor handleRequestComplete Function
-
-**File**: `screens/EmergencyScreen.jsx`  
-**Replace lines 241-353** (the entire function):
-
-**Before**:
-```javascript
-const handleRequestComplete = useCallback((request) => {
-    if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") return;
-    const hospitalId = requestHospitalId ?? selectedHospital?.id ?? null;
-    if (!hospitalId) return;
-    const now = new Date();
-    const visitId = request?.requestId ? String(request.requestId) : `local_${Date.now()}`;
-    const hospital = hospitals.find((h) => h?.id === hospitalId) ?? null;
-    const date = now.toISOString().slice(0, 10);
-    const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    (async () => {
-        try {
-            const shareMedicalProfile = preferences?.privacyShareMedicalProfile === true;
-            const shareEmergencyContacts = preferences?.privacyShareEmergencyContacts === true;
-            // ... rest of async logic ...
-        } catch {}
-    })();
-    // ... rest of sync logic ...
-}, [/* deps */]);
-```
-
-**After**:
-```javascript
-const handleRequestComplete = useCallback((request) => {
-    if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") return;
-    const hospitalId = requestHospitalId ?? selectedHospital?.id ?? null;
-    if (!hospitalId) return;
-    const now = new Date();
-    const visitId = request?.requestId ? String(request.requestId) : `local_${Date.now()}`;
-    const hospital = hospitals.find((h) => h?.id === hospitalId) ?? null;
-    const date = now.toISOString().slice(0, 10);
-    const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    
-    const createRequestAsync = async () => {
-        try {
-            const shareMedicalProfile = preferences?.privacyShareMedicalProfile === true;
-            const shareEmergencyContacts = preferences?.privacyShareEmergencyContacts === true;
-
-            const shared = {
-                medicalProfile: shareMedicalProfile ? medicalProfile : null,
-                emergencyContacts: shareEmergencyContacts ? emergencyContacts : null,
-            };
-
-            const patient = {
-                fullName: user?.fullName ?? null,
-                phone: user?.phone ?? null,
-                email: user?.email ?? null,
-                username: user?.username ?? null,
-            };
-
-            await createRequest({
-                id: visitId,
-                requestId: visitId,
-                serviceType: request.serviceType,
-                hospitalId,
-                hospitalName: request?.hospitalName ?? hospital?.name ?? null,
-                specialty: request?.specialty ?? selectedSpecialty ?? null,
-                ambulanceType: request?.ambulanceType ?? null,
-                ambulanceId: request?.ambulanceId ?? null,
-                bedNumber: request?.bedNumber ?? null,
-                bedType: request?.bedType ?? null,
-                bedCount: request?.bedCount ?? null,
-                estimatedArrival: request?.estimatedArrival ?? null,
-                status: EmergencyRequestStatus.IN_PROGRESS,
-                patient,
-                shared,
-            });
-            console.log('[EmergencyScreen] handleRequestComplete: Request created', { visitId, serviceType: request.serviceType });
-        } catch (err) {
-            console.error('[EmergencyScreen] handleRequestComplete: Request creation failed:', err);
-        }
-    };
-    
-    createRequestAsync();
-    
-    if (request?.serviceType === "ambulance") {
-        startAmbulanceTrip({
-            hospitalId,
-            requestId: visitId,
-            ambulanceId: request?.ambulanceId ?? null,
-            ambulanceType: request?.ambulanceType ?? null,
-            estimatedArrival: request?.estimatedArrival ?? null,
-            hospitalName: request?.hospitalName ?? null,
-            route: currentRoute?.coordinates ?? null
-        });
-
-        addVisit({
-            id: visitId,
-            visitId,
-            requestId: visitId,
-            hospitalId: String(hospitalId),
-            hospital: request?.hospitalName ?? hospital?.name ?? "Hospital",
-            doctor: "Ambulance Dispatch",
-            specialty: "Emergency Response",
-            date,
-            time,
-            type: VISIT_TYPES.AMBULANCE_RIDE,
-            status: VISIT_STATUS.IN_PROGRESS,
-            image: hospital?.image ?? null,
-            address: hospital?.address ?? null,
-            phone: hospital?.phone ?? null,
-            notes: "Ambulance requested via iVisit.",
-        });
-    }
-    if (request?.serviceType === "bed") {
-        startBedBooking({
-            hospitalId,
-            requestId: visitId,
-            hospitalName: request?.hospitalName ?? null,
-            specialty: request?.specialty ?? null,
-            bedNumber: request?.bedNumber ?? null,
-            bedType: request?.bedType ?? null,
-            bedCount: request?.bedCount ?? null,
-            estimatedWait: request?.estimatedArrival ?? null,
-        });
-
-        addVisit({
-            id: visitId,
-            visitId,
-            requestId: visitId,
-            hospitalId: String(hospitalId),
-            hospital: request?.hospitalName ?? hospital?.name ?? "Hospital",
-            doctor: "Admissions Desk",
-            specialty: request?.specialty ?? selectedSpecialty ?? "General Care",
-            date,
-            time,
-            type: VISIT_TYPES.BED_BOOKING,
-            status: VISIT_STATUS.IN_PROGRESS,
-            image: hospital?.image ?? null,
-            address: hospital?.address ?? null,
-            phone: hospital?.phone ?? null,
-            notes: "Bed reserved via iVisit.",
-            roomNumber: request?.bedNumber ?? null,
-            estimatedDuration: request?.estimatedArrival ?? null,
-        });
-    }
-    clearSelectedHospital();
-    setTimeout(() => {
-        bottomSheetRef.current?.snapToIndex?.(0);
-    }, 0);
-}, [addVisit, clearSelectedHospital, hospitals, mode, requestHospitalId, selectedHospital?.id, selectedSpecialty, startAmbulanceTrip, startBedBooking, user?.email, user?.fullName, user?.phone, user?.username, createRequest, preferences, medicalProfile, emergencyContacts, currentRoute]);
-```
+| Before | After |
+|--------|-------|
+| 727 lines in one file | ~150 in main screen + modular hooks |
+| 4 duplicate handler patterns | 1 reusable pattern |
+| Race conditions in async | Promise.all pattern centralized |
+| Silent error catches | Consistent error logging |
+| Tight coupling to refs | Loose coupling via callbacks |
+| Hard to test | Easy to test each hook |
+| Animations scattered | Centralized timing constants |
 
 ---
 
 ## Testing Strategy
 
-### Unit Tests (if applicable)
-- Test individual handler functions with mocked dependencies
-- Verify proper error handling in each handler
-- Test dependency arrays for useCallback hooks
+### Unit Tests
+```javascript
+// useEmergencyHandlers.test.js
+describe('useEmergencyHandlers', () => {
+  it('should create handlers that properly await async operations', async () => {
+    // Test createBaseHandler pattern
+  });
+  
+  it('should call onSheetSnap after completion', async () => {
+    // Verify snap is called
+  });
+});
+
+// useHospitalSelection.test.js
+describe('useHospitalSelection', () => {
+  it('should save list state on hospital select', () => {
+    // Verify lastListStateRef is updated
+  });
+});
+```
 
 ### Integration Tests
-1. **Request Creation Flow**
-   - Create ambulance request → verify visit created → verify notification created
-   - Create bed booking → verify visit created → verify notification created
+1. Start ambulance → complete trip → verify all data persisted
+2. Start bed booking → cancel → verify notification created
+3. Search hospitals → select → verify map animates
 
-2. **Completion Handlers**
-   - Complete ambulance trip → verify request status = "completed"
-   - Complete bed booking → verify request status = "completed"
-   - Verify notifications created with correct data
-
-3. **Cancellation Handlers**
-   - Cancel ambulance trip → verify request status = "cancelled"
-   - Cancel bed booking → verify request status = "cancelled"
-   - Verify cancellation notification created
-
-### Manual QA Checklist
-- [ ] Start ambulance request, complete it, verify all data persisted
-- [ ] Start bed booking, complete it, verify all data persisted
-- [ ] Start ambulance, cancel it, verify status in database
-- [ ] Start bed booking, cancel it, verify notification appears
-- [ ] Check browser console for error logs (should be none)
-- [ ] Verify request status visible in VisitsScreen
-- [ ] Verify notifications appear in NotificationsScreen
+### Manual QA
+- [ ] Hospital selection smooth and snappy
+- [ ] Bottom sheet snaps without stuttering
+- [ ] No race conditions in completion
+- [ ] All notifications appear correctly
+- [ ] No console errors during flows
 
 ---
 
-## Success Criteria
+## Risk Assessment
 
-✅ **Issue 1 - Fixed**: `addNotification` properly imported and used  
-✅ **Issue 2 - Fixed**: All handlers are async with proper await/Promise.all  
-✅ **Issue 3 - Fixed**: All errors logged with context  
-✅ **Issue 4 - Fixed**: Dependency arrays updated for all callbacks  
+### Low Risk Changes
+- Extracting hooks (doesn't change behavior)
+- Extracting pure components
+- Centralizing constants
 
-**Verification**:
-- No console errors during normal operation
-- Request statuses persist in database
-- Notifications appear immediately after trip/booking completion
-- Console logs show proper sequencing of async operations
+### Medium Risk Changes
+- Refactoring handlers (need careful testing)
+- Changing ref management
+- Modifying async patterns
 
----
-
-## Performance Considerations
-
-1. **Promise.all() Impact**: Uses concurrent operations instead of sequential, slightly faster
-2. **Callback Dependencies**: Properly set dependencies prevent unnecessary re-renders
-3. **Async Handlers**: Don't block UI, setTimeout provides visual feedback
+### Mitigation
+- Comprehensive integration tests before deploying
+- Feature flag to switch between old/new
+- Manual QA on both flows
+- Monitor error logs for 24 hours post-deploy
 
 ---
 
-## Future Improvements (Out of Scope)
+## Future Enhancements
 
-1. **Custom Hook for Trip Completion**: Extract common logic from handlers into a `useCompleteTrip` hook
-2. **Error Boundary**: Wrap EmergencyScreen in error boundary for better error handling
-3. **Retry Logic**: Implement exponential backoff for failed requests
-4. **Loading States**: Add visual indicators while async operations complete
-5. **Undo Functionality**: Allow cancellation of recent actions
+1. **Reusable Handler Pattern**: Use `useEmergencyHandlers` pattern in other screens
+2. **Custom Hook Library**: Build library of domain-specific hooks
+3. **Error Boundary**: Wrap main screen with error boundary
+4. **Analytics Integration**: Add tracking to handler hook
+5. **Loading States**: Add visual feedback during async operations
+6. **Undo Functionality**: Implement cancellation of recent actions
 
 ---
 
 ## References
 
-- **EmergencyScreen.jsx**: Main component file
-- **NotificationsContext.jsx**: Provides addNotification hook
-- **useVisitsData.js**: Handles visit CRUD operations
-- **useEmergencyRequests.js**: Handles request CRUD operations
-- **emergencyRequestsService.js**: Supabase integration for requests
+- **Current**: `screens/EmergencyScreen.jsx` (727 lines)
+- **Contexts**: EmergencyContext, EmergencyUIContext, NotificationsContext
+- **Components**: FullScreenEmergencyMap, EmergencyBottomSheet, EmergencyRequestModal
+- **Services**: emergencyRequestsService, useVisits, useEmergencyRequests
+
+---
+
+## Success Criteria
+
+✅ Main screen reduced to ~150 lines  
+✅ All handlers follow DRY pattern  
+✅ Each hook has single responsibility  
+✅ No duplicated logic  
+✅ Proper error handling throughout  
+✅ All animations remain snappy  
+✅ All flows work end-to-end  
+✅ Linting and type checking pass  
+✅ Tests pass  
 
 ---
 
 ## Sign-Off
 
-**Audit Completed By**: Zencoder  
+**Created By**: Zencoder  
 **Date**: 2026-01-10  
 **Status**: Ready for Implementation  
-**Estimated Duration**: 6-10 hours (development + testing)
-
+**Estimated Duration**: 13-18 hours (phased implementation)  
+**Priority**: High (maintainability + bug reduction)
