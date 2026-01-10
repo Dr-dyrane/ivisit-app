@@ -9,6 +9,7 @@ import {
 	ScrollView,
 	ActivityIndicator,
 	Animated,
+    Alert,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -31,7 +32,7 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 const ProfileScreen = () => {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const { syncUserData, user } = useAuth();
+	const { syncUserData, user, deleteAccount } = useAuth();
     const { updateProfile, isLoading: isUpdating } = useUpdateProfile();
     const { uploadImage, isUploading } = useImageUpload();
 	const { showToast } = useToast();
@@ -50,6 +51,7 @@ const ProfileScreen = () => {
 	const [dateOfBirth, setDateOfBirth] = useState("");
 	const [imageUri, setImageUri] = useState(null);
 	const [isLoading, setIsLoading] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 	const [isDataLoading, setIsDataLoading] = useState(true);
 
     // Sync state with user context when loaded
@@ -214,6 +216,37 @@ const ProfileScreen = () => {
 			setIsLoading(false);
 		}
 	};
+
+    const handleDeleteAccount = async () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        Alert.alert(
+            "Delete Account",
+            "Are you sure you want to delete your account? This action cannot be undone and all your data will be lost.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        setIsDeleting(true);
+                        try {
+                            const result = await deleteAccount();
+                            if (result.success) {
+                                showToast("Account deleted successfully", "success");
+                                router.replace("/(auth)/login");
+                            } else {
+                                showToast(result.message, "error");
+                            }
+                        } catch (error) {
+                            showToast("Failed to delete account", "error");
+                        } finally {
+                            setIsDeleting(false);
+                        }
+                    },
+                },
+            ]
+        );
+    };
 
 	const handleScroll = useCallback(
 		(event) => {
@@ -739,6 +772,81 @@ const ProfileScreen = () => {
 								size={16}
 								color={colors.textMuted}
 							/>
+						</View>
+					</Pressable>
+				</Animated.View>
+
+                {/* Danger Zone */}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						paddingHorizontal: 20,
+						marginTop: 32,
+                        marginBottom: 20,
+					}}
+				>
+					<Text
+						style={{
+							fontSize: 10,
+							fontWeight: "900",
+							color: COLORS.error,
+							marginBottom: 16,
+							letterSpacing: 3,
+						}}
+					>
+						DANGER ZONE
+					</Text>
+
+					<Pressable
+						onPress={handleDeleteAccount}
+                        disabled={isDeleting}
+						style={{
+							backgroundColor: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "#FEF2F2",
+							borderRadius: 30,
+							padding: 20,
+							flexDirection: "row",
+							alignItems: "center",
+                            borderWidth: 1,
+                            borderColor: isDarkMode ? "rgba(239, 68, 68, 0.2)" : "#FEE2E2",
+						}}
+					>
+						<View
+							style={{
+								backgroundColor: COLORS.error,
+								width: 56,
+								height: 56,
+								borderRadius: 16,
+								alignItems: "center",
+								justifyContent: "center",
+								marginRight: 16,
+							}}
+						>
+                            {isDeleting ? (
+                                <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+							    <Ionicons name="trash-outline" size={26} color="#FFFFFF" />
+                            )}
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text
+								style={{
+									fontSize: 19,
+									fontWeight: "900",
+									color: colors.text,
+									letterSpacing: -0.5,
+								}}
+							>
+								Delete Account
+							</Text>
+							<Text
+								style={{
+									fontSize: 14,
+									color: colors.textMuted,
+									marginTop: 2,
+								}}
+							>
+								Permanently remove your data
+							</Text>
 						</View>
 					</Pressable>
 				</Animated.View>

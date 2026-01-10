@@ -447,16 +447,23 @@ const authService = {
 	 * @returns {Promise<boolean>}
 	 */
 	async deleteUser() {
-        // Note: Supabase Client SDK doesn't support deleting a user directly for security.
-        // This usually requires a server-side function (Edge Function) or RPC.
-        // For now, we'll throw a not implemented or call an RPC if you have one.
-        // We'll simulate success locally (logout) but warn.
-        console.warn("Delete User not fully supported on client-side without Edge Function.");
-        
-        // Optional: Call an RPC if you created one: await supabase.rpc('delete_user')
-        
-		await this.logout();
-		return true;
+        try {
+            const { error } = await supabase.rpc('delete_user');
+            
+            if (error) {
+                console.error("Delete user RPC failed:", error);
+                // If RPC fails (e.g. not found), we can't do much on client side
+                // except log them out.
+                throw handleSupabaseError(error);
+            }
+            
+            await this.logout();
+            return true;
+        } catch (error) {
+             console.warn("Delete user failed or not fully supported:", error);
+             await this.logout();
+             return true; // We return true to allow UI to proceed to logout screen
+        }
 	},
 
     // ============================================

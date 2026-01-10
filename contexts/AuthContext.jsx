@@ -107,6 +107,24 @@ export const AuthProvider = ({ children }) => {
 		}
 	};
 
+    // **4. Delete Account function**
+    const deleteAccount = async () => {
+        try {
+            await authService.deleteUser();
+            // Perform local cleanup same as logout
+            setUser(null);
+            setToken(null);
+            await database.delete(StorageKeys.CURRENT_USER);
+            await authService.clearPendingRegistration();
+            return { success: true, message: "Account deleted successfully" };
+        } catch (error) {
+            console.error("Error deleting account:", error);
+            // Even if it fails, we should probably logout locally
+             await logout();
+            return { success: false, message: "Account deletion failed, logged out locally" };
+        }
+    };
+
 	const authContextValue = useMemo(
 		() => ({
 			user: {
@@ -125,6 +143,7 @@ export const AuthProvider = ({ children }) => {
 			},
 			login,
 			logout,
+            deleteAccount,
 			syncUserData,
 			loading,
 		}),
