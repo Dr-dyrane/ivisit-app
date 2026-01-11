@@ -620,14 +620,57 @@ export const TripSummaryCard = ({
 
 const styles = StyleSheet.create({
 	collapsedContainer: {
-		borderRadius: 18,
-		padding: 14,
+		borderRadius: 22, // Slightly more rounded for Apple feel
+		padding: 12,
 		marginBottom: 0,
 		marginHorizontal: 0,
 	},
 	collapsedRow: {
 		flexDirection: "row",
 		alignItems: "center",
+		gap: 12,
+	},
+	collapsedIconBox: {
+		width: 48,
+		height: 48,
+		borderRadius: 14,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	collapsedContent: {
+		flex: 1,
+		justifyContent: "center",
+	},
+	collapsedTitle: {
+		fontSize: 17,
+		fontWeight: "600", // Semibold
+		letterSpacing: -0.4,
+		marginBottom: 2,
+	},
+	collapsedSub: {
+		fontSize: 13,
+		fontWeight: "400",
+	},
+	collapsedRightAction: {
+		alignItems: "flex-end",
+		justifyContent: "center",
+	},
+	collapsedEtaBadge: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 20, // Capsule shape
+	},
+	collapsedEtaText: {
+		fontSize: 15,
+		fontWeight: "700",
+		marginRight: 2,
+	},
+	collapsedEtaLabel: {
+		fontSize: 11,
+		fontWeight: "600",
+		marginTop: 1,
 	},
 	container: {
 		borderRadius: 20,
