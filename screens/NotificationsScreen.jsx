@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback , useEffect } from "react";
+import { useRef, useCallback , useEffect, useState } from "react";
 import {
 	View,
 	Text,
@@ -11,6 +11,7 @@ import {
 	Animated,
 	Pressable,
 	ActivityIndicator,
+	Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -56,6 +57,14 @@ const NotificationsScreen = () => {
 		markAllAsRead,
 		deleteNotification,
 		refreshNotifications,
+		isSelectMode,
+		selectedNotifications,
+		toggleSelectMode,
+		toggleNotificationSelection,
+		selectAllNotifications,
+		clearSelection,
+		markSelectedAsRead,
+		deleteSelectedNotifications,
 	} = useNotifications();
 
 	const { setHeaderState } = useHeaderState();
@@ -67,26 +76,163 @@ const NotificationsScreen = () => {
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
 	const rightComponent = useCallback(
-		() =>
-			unreadCount > 0 ? (
-				<Pressable
-					onPress={() => {
-						Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-						markAllAsRead();
-					}}
-					style={({ pressed }) => ({
-						opacity: pressed ? 0.7 : 1,
-					})}
-					hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-				>
-					<Ionicons
-						name="checkmark-done"
-						size={24}
-						color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
-					/>
-				</Pressable>
-			) : null,
-		[unreadCount, markAllAsRead, isDarkMode]
+		() => {
+			if (isSelectMode) {
+				return (
+					<View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+						{/* Select All */}
+						<Pressable
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+								if (selectedNotifications.size === filteredNotifications.length) {
+									clearSelection();
+								} else {
+									selectAllNotifications();
+								}
+							}}
+							style={({ pressed }) => ({
+								opacity: pressed ? 0.7 : 1,
+							})}
+							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+						>
+							<Text style={{ 
+								color: isDarkMode ? COLORS.textLight : COLORS.textPrimary, 
+								fontSize: 14, 
+								fontWeight: "500" 
+							}}>
+								{selectedNotifications.size === filteredNotifications.length ? "Deselect All" : "Select All"}
+							</Text>
+						</Pressable>
+						
+						{/* Mark as Read */}
+						{selectedNotifications.size > 0 && (
+							<Pressable
+								onPress={() => {
+									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+									markSelectedAsRead();
+								}}
+								style={({ pressed }) => ({
+									opacity: pressed ? 0.7 : 1,
+								})}
+								hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+							>
+								<Ionicons
+									name="checkmark-done"
+									size={24}
+									color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+								/>
+							</Pressable>
+						)}
+						
+						{/* Delete */}
+						{selectedNotifications.size > 0 && (
+							<Pressable
+								onPress={() => {
+									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+									Alert.alert(
+										"Delete Notifications",
+										`Are you sure you want to delete ${selectedNotifications.size} notification${selectedNotifications.size > 1 ? 's' : ''}? This action cannot be undone.`,
+										[
+											{
+												text: "Cancel",
+												style: "cancel",
+											},
+											{
+												text: "Delete",
+												style: "destructive",
+												onPress: deleteSelectedNotifications,
+											},
+										],
+										{ cancelable: true }
+									);
+								}}
+								style={({ pressed }) => ({
+									opacity: pressed ? 0.7 : 1,
+								})}
+								hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+							>
+								<Ionicons
+									name="trash"
+									size={24}
+									color="#EF4444"
+								/>
+							</Pressable>
+						)}
+						
+						{/* Close Select Mode */}
+						<Pressable
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+								toggleSelectMode();
+							}}
+							style={({ pressed }) => ({
+								opacity: pressed ? 0.7 : 1,
+							})}
+							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+						>
+							<Ionicons
+								name="close"
+								size={24}
+								color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+							/>
+						</Pressable>
+					</View>
+				);
+			}
+			
+			return unreadCount > 0 ? (
+				<View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+					{/* Select Mode Toggle */}
+					<Pressable
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+							toggleSelectMode();
+						}}
+						style={({ pressed }) => ({
+							opacity: pressed ? 0.7 : 1,
+						})}
+						hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+					>
+						<Ionicons
+							name="checkbox-outline"
+							size={24}
+							color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+						/>
+					</Pressable>
+					
+					{/* Mark All as Read */}
+					<Pressable
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+							markAllAsRead();
+						}}
+						style={({ pressed }) => ({
+							opacity: pressed ? 0.7 : 1,
+						})}
+						hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+					>
+						<Ionicons
+							name="checkmark-done"
+							size={24}
+							color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+						/>
+					</Pressable>
+				</View>
+			) : null;
+		},
+		[
+			unreadCount, 
+			markAllAsRead, 
+			isDarkMode,
+			isSelectMode,
+			selectedNotifications,
+			filteredNotifications,
+			clearSelection,
+			selectAllNotifications,
+			markSelectedAsRead,
+			deleteSelectedNotifications,
+			toggleSelectMode,
+		]
 	);
 
 	useFocusEffect(
@@ -104,7 +250,11 @@ const NotificationsScreen = () => {
 			}
 			setHeaderState({
 				title: "Notifications",
-				subtitle: unreadCount > 0 ? `${unreadCount} UNREAD` : "ALL CAUGHT UP",
+				subtitle: isSelectMode 
+					? `${selectedNotifications.size} SELECTED` 
+					: unreadCount > 0 
+						? `${unreadCount} UNREAD` 
+						: "ALL CAUGHT UP",
 				icon: <Ionicons name="notifications" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				badge: null,
@@ -116,6 +266,8 @@ const NotificationsScreen = () => {
 			backButton,
 			rightComponent,
 			unreadCount,
+			isSelectMode,
+			selectedNotifications,
 			resetTabBar,
 			resetHeader,
 			filterParam,
@@ -278,6 +430,9 @@ const NotificationsScreen = () => {
 								onPress={handleNotificationPress}
 								onMarkRead={markAsRead}
 								onDelete={deleteNotification}
+								isSelectMode={isSelectMode}
+								isSelected={selectedNotifications.has(notification.id)}
+								onToggleSelection={toggleNotificationSelection}
 							/>
 						))}
 					</Animated.View>

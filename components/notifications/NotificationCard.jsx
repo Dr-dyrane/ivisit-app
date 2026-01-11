@@ -17,6 +17,9 @@ export default function NotificationCard({
   onPress,
   onMarkRead,
   onDelete,
+  isSelectMode = false,
+  isSelected = false,
+  onToggleSelection,
 }) {
   const { isDarkMode } = useTheme();
 
@@ -35,6 +38,12 @@ export default function NotificationCard({
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    if (isSelectMode) {
+      onToggleSelection?.(notification.id);
+      return;
+    }
+    
     if (!notification.read) {
       onMarkRead?.(notification.id);
     }
@@ -49,21 +58,55 @@ export default function NotificationCard({
   return (
     <Pressable
       onPress={handlePress}
-      onLongPress={handleSwipeDelete}
+      onLongPress={!isSelectMode ? handleSwipeDelete : undefined}
       style={({ pressed }) => ({
-        backgroundColor: notification.read ? colors.card : colors.cardUnread,
+        backgroundColor: isSelected 
+          ? (isDarkMode ? `${COLORS.brandPrimary}20` : `${COLORS.brandPrimary}15`)
+          : notification.read 
+            ? colors.card 
+            : colors.cardUnread,
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: notification.read ? colors.border : `${COLORS.brandPrimary}20`,
-        borderLeftWidth: notification.read ? 1 : 4,
-        borderLeftColor: notification.read ? colors.border : priorityColor,
+        borderColor: isSelected 
+          ? COLORS.brandPrimary 
+          : notification.read 
+            ? colors.border 
+            : `${COLORS.brandPrimary}20`,
+        borderLeftWidth: isSelected || !notification.read ? 4 : 1,
+        borderLeftColor: isSelected 
+          ? COLORS.brandPrimary 
+          : notification.read 
+            ? colors.border 
+            : priorityColor,
         opacity: pressed ? 0.8 : 1,
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
       <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+        {/* Selection Checkbox */}
+        {isSelectMode && (
+          <View
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 12,
+              borderWidth: 2,
+              borderColor: isSelected ? COLORS.brandPrimary : colors.border,
+              backgroundColor: isSelected ? COLORS.brandPrimary : "transparent",
+              justifyContent: "center",
+              alignItems: "center",
+              marginRight: 12,
+              marginTop: 8,
+            }}
+          >
+            {isSelected && (
+              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+            )}
+          </View>
+        )}
+
         {/* Icon */}
         <View
           style={{

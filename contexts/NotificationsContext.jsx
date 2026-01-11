@@ -23,6 +23,8 @@ export function NotificationsProvider({ children }) {
     } = useNotificationsData();
 
     const [filter, setFilter] = useState("all");
+    const [isSelectMode, setIsSelectMode] = useState(false);
+    const [selectedNotifications, setSelectedNotifications] = useState(new Set());
 
     // Derived state
     const unreadCount = useMemo(() => {
@@ -61,6 +63,58 @@ export function NotificationsProvider({ children }) {
         setFilter(filterType);
     }, []);
 
+    // Selection management functions
+    const toggleSelectMode = useCallback(() => {
+        setIsSelectMode(prev => !prev);
+        setSelectedNotifications(new Set());
+    }, []);
+
+    const toggleNotificationSelection = useCallback((notificationId) => {
+        setSelectedNotifications(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(notificationId)) {
+                newSet.delete(notificationId);
+            } else {
+                newSet.add(notificationId);
+            }
+            return newSet;
+        });
+    }, []);
+
+    const selectAllNotifications = useCallback(() => {
+        const allIds = filteredNotifications.map(n => n.id);
+        setSelectedNotifications(new Set(allIds));
+    }, [filteredNotifications]);
+
+    const clearSelection = useCallback(() => {
+        setSelectedNotifications(new Set());
+    }, []);
+
+    const markSelectedAsRead = useCallback(async () => {
+        const selectedIds = Array.from(selectedNotifications);
+        if (selectedIds.length === 0) return;
+        
+        try {
+            await Promise.all(selectedIds.map(id => markAsRead(id)));
+            clearSelection();
+        } catch (error) {
+            console.error('Failed to mark selected notifications as read:', error);
+        }
+    }, [selectedNotifications, markAsRead, clearSelection]);
+
+    const deleteSelectedNotifications = useCallback(async () => {
+        const selectedIds = Array.from(selectedNotifications);
+        if (selectedIds.length === 0) return;
+        
+        try {
+            await Promise.all(selectedIds.map(id => clearNotification(id)));
+            clearSelection();
+            toggleSelectMode();
+        } catch (error) {
+            console.error('Failed to delete selected notifications:', error);
+        }
+    }, [selectedNotifications, clearNotification, clearSelection, toggleSelectMode]);
+
     const deleteNotification = clearNotification;
     const clearAll = clearAllNotifications;
 
@@ -80,6 +134,15 @@ export function NotificationsProvider({ children }) {
         addNotification,
         refreshNotifications,
         expoPushToken,
+        // Selection mode properties
+        isSelectMode,
+        selectedNotifications,
+        toggleSelectMode,
+        toggleNotificationSelection,
+        selectAllNotifications,
+        clearSelection,
+        markSelectedAsRead,
+        deleteSelectedNotifications,
     };
 
     return (
