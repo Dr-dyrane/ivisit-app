@@ -51,6 +51,7 @@ const FullScreenEmergencyMap = forwardRef(
 			onRouteCalculated,
 			responderLocation,
 			responderHeading,
+			sheetSnapIndex = 1,
 		},
 		ref
 	) => {
@@ -73,6 +74,9 @@ const FullScreenEmergencyMap = forwardRef(
 		const [isZoomedOut, setIsZoomedOut] = useState(false);
 
 		const screenHeight = Dimensions.get("window").height;
+
+	// Hide controls when sheet is above 50% (index > 1)
+	const shouldShowControls = showControls && sheetSnapIndex <= 1;
 
 		const {
 			userLocation,
@@ -790,7 +794,7 @@ const FullScreenEmergencyMap = forwardRef(
 					style={[styles.statusBarBlur, { height: insets.top, opacity: 0.5 }]}
 				/>
 
-				{showControls && (
+				{shouldShowControls && (
 					<View style={[styles.controlsContainer, { top: insets.top + 200 }]}>
 						<Pressable
 							onPress={handleRecenter}

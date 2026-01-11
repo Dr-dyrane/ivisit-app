@@ -18,6 +18,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 		onRouteCalculated,
 		responderLocation,
 		responderHeading,
+		sheetSnapIndex,
 	} = props;
 
 	return (
@@ -38,6 +39,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 				onRouteCalculated={onRouteCalculated}
 				responderLocation={responderLocation}
 				responderHeading={responderHeading}
+				sheetSnapIndex={sheetSnapIndex}
 			/>
 		</View>
 	);

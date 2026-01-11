@@ -434,6 +434,7 @@ export default function EmergencyScreen() {
 				onRouteCalculated={setCurrentRoute}
 				responderLocation={activeAmbulanceTrip?.currentResponderLocation}
 				responderHeading={activeAmbulanceTrip?.currentResponderHeading}
+				sheetSnapIndex={sheetSnapIndex}
 			/>
 
 			<BottomSheetController
