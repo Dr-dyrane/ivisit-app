@@ -287,5 +287,63 @@ export const visitsService = {
         }
         
         return result;
+    },
+
+    async delete(id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not logged in");
+
+        // First get the visit details for notification before deleting
+        const { data: visitData, error: fetchError } = await supabase
+            .from(TABLE)
+            .select('*')
+            .eq('id', id)
+            .eq('user_id', user.id)
+            .single();
+
+        if (fetchError) {
+            console.error(`[visitsService] Fetch visit for delete notification error for ${id}:`, fetchError);
+        }
+
+        const { data, error } = await supabase
+            .from(TABLE)
+            .delete()
+            .eq('id', id)
+            .eq('user_id', user.id)
+            .select();
+
+        if (error) {
+            console.error(`[visitsService] Delete error for ${id}:`, error);
+            throw error;
+        }
+        
+        // Dispatch notification for successful deletion
+        if (visitData) {
+            try {
+                const visit = normalizeVisit(mapFromDb(visitData));
+                const visitTypeName = visit.type || "Visit";
+                const hospitalName = visit.hospital || "hospital";
+                
+                const notification = {
+                    id: `notification_${id}_deleted_${Date.now()}`,
+                    type: NOTIFICATION_TYPES.VISIT,
+                    priority: NOTIFICATION_PRIORITY.MEDIUM,
+                    title: `${visitTypeName} Deleted`,
+                    message: `Your ${visitTypeName.toLowerCase()} at ${hospitalName} has been deleted`,
+                    read: false,
+                    timestamp: new Date().toISOString(),
+                    actionType: "navigate",
+                    actionData: {
+                        screen: "visits"
+                    }
+                };
+                
+                await notificationsService.create(notification);
+            } catch (notifError) {
+                console.error(`[visitsService] Failed to create notification for visit deletion ${id}:`, notifError);
+            }
+        }
+        
+        return data?.[0] || null;
     }
 };

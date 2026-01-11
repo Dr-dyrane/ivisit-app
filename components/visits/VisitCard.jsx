@@ -12,6 +12,7 @@ export default function VisitCard({
   isSelected,
   onSelect,
   onViewDetails,
+  onDelete,
 }) {
   const { isDarkMode } = useTheme();
 
@@ -36,6 +37,11 @@ export default function VisitCard({
   const handleViewDetails = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onViewDetails?.(visit?.id);
+  };
+
+  const handleDelete = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    onDelete?.(visit?.id);
   };
 
   const formatDate = (dateStr) => {
@@ -148,27 +154,46 @@ export default function VisitCard({
 
       {/* Expanded Actions (when selected) */}
       {isSelected && (
-        <Pressable
-          onPress={handleViewDetails}
-          style={{
-            backgroundColor: isUpcoming ? COLORS.brandPrimary : (isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"),
-            paddingVertical: 14,
-            paddingHorizontal: 20,
-            borderRadius: 20, // More rounded
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginTop: 4,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Ionicons name={typeIcon} size={18} color={isUpcoming ? "#FFFFFF" : colors.text} />
-            <Text style={{ color: isUpcoming ? "#FFFFFF" : colors.text, fontSize: 14, fontWeight:'400', marginLeft: 10 }}>
-              {isUpcoming ? "View Details" : "View Summary"}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={isUpcoming ? "#FFFFFF" : colors.textMuted} />
-        </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+          {/* Delete Icon */}
+          <Pressable
+            onPress={handleDelete}
+            style={{
+              backgroundColor: isDarkMode ? "rgba(239, 68, 68, 0.15)" : "rgba(239, 68, 68, 0.1)",
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: 12,
+            }}
+          >
+            <Ionicons name="remove" size={20} color="#EF4444" />
+          </Pressable>
+
+          {/* CTA Button */}
+          <Pressable
+            onPress={handleViewDetails}
+            style={{
+              backgroundColor: isUpcoming ? COLORS.brandPrimary : (isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"),
+              paddingVertical: 14,
+              paddingHorizontal: 20,
+              borderRadius: 20, // More rounded
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flex: 1,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Ionicons name={typeIcon} size={18} color={isUpcoming ? "#FFFFFF" : colors.text} />
+              <Text style={{ color: isUpcoming ? "#FFFFFF" : colors.text, fontSize: 14, fontWeight:'400', marginLeft: 10 }}>
+                {isUpcoming ? "View Details" : "View Summary"}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={isUpcoming ? "#FFFFFF" : colors.textMuted} />
+          </Pressable>
+        </View>
       )}
     </Pressable>
   );

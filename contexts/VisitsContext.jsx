@@ -15,6 +15,7 @@ export function VisitsProvider({ children }) {
         updateVisit, 
         cancelVisit, 
         completeVisit,
+        deleteVisit,
         refetch: refreshVisits
     } = useVisitsData();
 
@@ -79,6 +80,7 @@ export function VisitsProvider({ children }) {
 		updateVisit,
 		cancelVisit,
 		completeVisit,
+		deleteVisit,
         refreshVisits,
         // New properties for VisitsScreen
         filteredVisits,

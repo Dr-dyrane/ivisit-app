@@ -69,6 +69,16 @@ export function useVisitsData() {
         }
     }, []);
 
+    const deleteVisit = useCallback(async (id) => {
+        try {
+            await visitsService.delete(id);
+            setVisits(prev => prev.filter(v => v.id !== id));
+        } catch (err) {
+            console.error("[useVisitsData] delete error for", id, ":", err);
+            throw err;
+        }
+    }, []);
+
     useEffect(() => {
         fetchVisits();
     }, []);
@@ -125,6 +135,7 @@ export function useVisitsData() {
         addVisit,
         updateVisit,
         cancelVisit,
-        completeVisit
+        completeVisit,
+        deleteVisit
     };
 }

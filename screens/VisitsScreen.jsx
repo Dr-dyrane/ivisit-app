@@ -1,6 +1,6 @@
 // screens/VisitsScreen.jsx - Your medical visits
 
-import { useCallback, useRef, useEffect, useMemo } from "react";
+import { useCallback, useRef, useEffect, useMemo, useState } from "react";
 import {
 	View,
 	Text,
@@ -10,6 +10,7 @@ import {
 	RefreshControl,
 	Animated,
 	ActivityIndicator,
+	Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
@@ -48,6 +49,7 @@ const VisitsScreen = () => {
 		selectVisit,
 		setFilterType,
 		refreshVisits,
+		deleteVisit,
 	} = useVisits();
 
 	const { filter: filterParam } = useLocalSearchParams();
@@ -151,6 +153,42 @@ const VisitsScreen = () => {
 		router.push(`/(user)/(stacks)/visit/${visitId}`);
 	}, [router]);
 
+	const handleDeleteVisit = useCallback(async (visitId) => {
+		if (!visitId) return;
+		
+		// Find the visit to get its details for the alert message
+		const visitToDelete = filteredVisits.find(v => v.id === visitId);
+		const visitInfo = visitToDelete ? `${visitToDelete.hospital || 'Hospital'} - ${visitToDelete.type || 'Visit'}` : 'this visit';
+		
+		Alert.alert(
+			"Delete Visit",
+			`Are you sure you want to delete your appointment at ${visitInfo}? This action cannot be undone.`,
+			[
+				{
+					text: "Cancel",
+					style: "cancel",
+				},
+				{
+					text: "Delete",
+					style: "destructive",
+					onPress: async () => {
+						try {
+							await deleteVisit(visitId);
+							// Deselect the visit if it was selected
+							if (selectedVisitId === visitId) {
+								selectVisit(null);
+							}
+						} catch (error) {
+							console.error('Failed to delete visit:', error);
+							Alert.alert("Error", "Failed to delete visit. Please try again.");
+						}
+					},
+				},
+			],
+			{ cancelable: true }
+		);
+	}, [deleteVisit, selectedVisitId, selectVisit, filteredVisits]);
+
 	const tabBarHeight = Platform.OS === "ios" ? 85 + (insets?.bottom || 0) : 70;
 	const bottomPadding = tabBarHeight + 20;
 	const headerHeight = 70;
@@ -239,6 +277,7 @@ const VisitsScreen = () => {
 									isSelected={selectedVisitId === visit?.id}
 									onSelect={handleVisitSelect}
 									onViewDetails={handleViewDetails}
+									onDelete={handleDeleteVisit}
 								/>
 							) : null
 						))}
