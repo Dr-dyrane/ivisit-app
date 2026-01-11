@@ -1,9 +1,11 @@
 import { View, Text, StyleSheet, Pressable, Linking } from "react-native";
 import { useCallback, useMemo } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { COLORS } from "../../../constants/colors";
 import { useBedBookingProgress } from "../../../hooks/emergency/useBedBookingProgress";
+import HospitalCard from "../HospitalCard";
 
 const BedBookingSummaryCollapsed = ({
 	isDarkMode,
@@ -60,6 +62,188 @@ const BedBookingSummaryCollapsed = ({
 	);
 };
 
+const BedBookingSummaryHalf = ({
+	isDarkMode,
+	statusLabel,
+	etaText,
+	hospitalName,
+	bedType,
+	bedCount,
+	bedNumber,
+	specialty,
+	callTarget,
+	onCancelBedBooking,
+	showComplete,
+	onCompleteBedBooking,
+}) => {
+	return (
+		<View
+			style={[
+				styles.container,
+				{
+					backgroundColor: isDarkMode ? "#1A2333" : "#FFFFFF",
+					shadowColor: "#000",
+					shadowOffset: { width: 0, height: 4 },
+					shadowOpacity: isDarkMode ? 0.4 : 0.08,
+					shadowRadius: 12,
+					elevation: 5,
+				},
+			]}
+		>
+			{/* Header: Status & Time */}
+			<View style={styles.headerRow}>
+				<View>
+					<Text
+						style={[
+							styles.statusTitle,
+							{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
+						]}
+					>
+						{statusLabel}
+					</Text>
+					<Text
+						style={[
+							styles.statusSub,
+							{
+								color: isDarkMode
+									? "rgba(255,255,255,0.6)"
+									: "rgba(15,23,42,0.6)",
+							},
+						]}
+					>
+						{hospitalName}
+					</Text>
+				</View>
+				<View style={styles.etaContainer}>
+					<Text style={[styles.etaTime, { color: COLORS.textLight }]}>
+						{etaText}
+					</Text>
+					<Text style={[styles.etaLabel, { color: "rgba(255,255,255,0.8)" }]}>
+						min
+					</Text>
+				</View>
+			</View>
+
+			{/* Progress Bar */}
+			<View
+				style={[
+					styles.progressTrack,
+					{ backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9" },
+				]}
+			>
+				<View
+					style={[
+						styles.progressBar,
+						{
+							width: "100%",
+							backgroundColor: COLORS.brandPrimary,
+						},
+					]}
+				/>
+			</View>
+
+			{/* Bed Info Row */}
+			<View style={styles.driverRow}>
+				<View
+					style={[
+						styles.driverAvatar,
+						{ backgroundColor: isDarkMode ? "#252D3B" : "#E2E8F0" },
+					]}
+				>
+					<Fontisto
+						name="bed-patient"
+						size={20}
+						color={isDarkMode ? "#94A3B8" : "#64748B"}
+					/>
+				</View>
+
+				<View style={styles.driverInfo}>
+					<Text
+						style={[
+							styles.driverName,
+							{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
+						]}
+					>
+						{bedType}
+					</Text>
+					<View style={styles.ratingRow}>
+						<Text
+							style={[
+								styles.ratingText,
+								{
+									color: isDarkMode
+										? "rgba(255,255,255,0.6)"
+										: "rgba(15,23,42,0.6)",
+								},
+							]}
+						>
+							{specialty} • {bedCount} {bedCount === "1" ? "bed" : "beds"}
+						</Text>
+					</View>
+				</View>
+
+				<View style={styles.plateContainer}>
+					<Text style={styles.plateText}>
+						{bedNumber}
+					</Text>
+				</View>
+			</View>
+
+			{/* Actions */}
+			<View style={styles.actionsRow}>
+				{callTarget && (
+					<Pressable
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+							Linking.openURL(callTarget);
+						}}
+						style={({ pressed }) => [
+							styles.actionBtn,
+							{
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.1)"
+									: "#F1F5F9",
+								opacity: pressed ? 0.7 : 1,
+							},
+						]}
+					>
+						<Ionicons
+							name="call"
+							size={20}
+							color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+						/>
+					</Pressable>
+				)}
+
+				<Pressable
+					onPress={() => {
+						Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+						onCancelBedBooking?.();
+					}}
+					style={({ pressed }) => [
+						styles.cancelBtn,
+						{ opacity: pressed ? 0.7 : 1 },
+					]}
+				>
+					<Text style={styles.cancelText}>Cancel Reservation</Text>
+				</Pressable>
+
+				{showComplete && (
+					<Pressable
+						onPress={onCompleteBedBooking}
+						style={({ pressed }) => [
+							styles.completeBtn,
+							{ opacity: pressed ? 0.7 : 1 },
+						]}
+					>
+						<Text style={styles.completeText}>Complete</Text>
+					</Pressable>
+				)}
+			</View>
+		</View>
+	);
+};
+
 const BedBookingSummaryFull = ({
 	isDarkMode,
 	statusLabel,
@@ -73,6 +257,7 @@ const BedBookingSummaryFull = ({
 	onCancelBedBooking,
 	showComplete,
 	onCompleteBedBooking,
+	bookingHospital,
 }) => {
 	return (
 		<View style={[styles.fullContainer, { backgroundColor: isDarkMode ? "#121826" : "#FFFFFF" }]}>
@@ -97,47 +282,65 @@ const BedBookingSummaryFull = ({
 					<View style={[styles.progressBar, { width: "100%", backgroundColor: COLORS.brandPrimary }]} />
 				</View>
 
-				<View style={{ marginBottom: 16 }}>
-					<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
-						<Ionicons name="clipboard-outline" size={18} color={COLORS.brandPrimary} />
-						<Text
-							style={{
-								marginLeft: 10,
-								fontSize: 13,
-								fontWeight: "500",
-								color: isDarkMode ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.75)",
-							}}
-						>
-							Reservation: {bedCount} {bedCount === "1" ? "bed" : "beds"} • {bedType}
-						</Text>
+				{/* Bed Details Section */}
+				<View style={styles.bedSection}>
+					<View
+						style={[
+							styles.bedImageContainer,
+							{
+								backgroundColor: isDarkMode
+									? COLORS.brandPrimary
+									: "rgba(37, 99, 235, 0.10)",
+							},
+						]}
+					>
+						<Fontisto
+							name="bed-patient"
+							size={64}
+							color={isDarkMode ? "#FFFFFF" : COLORS.brandPrimary}
+						/>
 					</View>
-					<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
-						<Ionicons name="bed-outline" size={18} color={COLORS.brandPrimary} />
+					<View style={styles.bedInfo}>
 						<Text
-							style={{
-								marginLeft: 10,
-								fontSize: 13,
-								fontWeight: "500",
-								color: isDarkMode ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.75)",
-							}}
+							style={[
+								styles.bedTitle,
+								{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary },
+							]}
 						>
-							Bed: {bedNumber}
+							{bedType}
 						</Text>
-					</View>
-					<View style={{ flexDirection: "row", alignItems: "center" }}>
-						<Ionicons name="medkit-outline" size={18} color={COLORS.brandPrimary} />
 						<Text
-							style={{
-								marginLeft: 10,
-								fontSize: 13,
-								fontWeight: "500",
-								color: isDarkMode ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.75)",
-							}}
+							style={[
+								styles.bedSubtitle,
+								{
+									color: isDarkMode
+										? "rgba(255,255,255,0.7)"
+										: "rgba(15,23,42,0.7)",
+								},
+							]}
 						>
-							Specialty: {specialty}
+							{specialty} • {bedCount} {bedCount === "1" ? "bed" : "beds"}
+						</Text>
+						<Text
+							style={[styles.bedNumber, { color: COLORS.brandPrimary }]}
+						>
+							Bed {bedNumber}
 						</Text>
 					</View>
 				</View>
+
+				{bookingHospital && (
+					<View style={{ marginBottom: 18 }}>
+						<HospitalCard
+							hospital={bookingHospital}
+							isSelected={true}
+							onSelect={undefined}
+							onCall={undefined}
+							mode="booking"
+							hidePrimaryAction={true}
+						/>
+					</View>
+				)}
 
 				<View style={styles.actionsRow}>
 					{callTarget && (
@@ -290,117 +493,26 @@ export const BedBookingSummaryCard = ({
 				onCancelBedBooking={onCancelBedBooking}
 				showComplete={showComplete}
 				onCompleteBedBooking={onCompleteBedBooking}
+				bookingHospital={bookingHospital}
 			/>
 		);
 	}
 
 	return (
-		<View
-			style={[
-				styles.container,
-				{
-					backgroundColor: isDarkMode ? "#1A2333" : "#FFFFFF",
-					shadowColor: "#000",
-					shadowOffset: { width: 0, height: 4 },
-					shadowOpacity: isDarkMode ? 0.4 : 0.08,
-					shadowRadius: 12,
-					elevation: 5,
-				},
-			]}
-		>
-			{/* Header: Status & Time */}
-			<View style={styles.headerRow}>
-				<View>
-					<Text style={[styles.statusTitle, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-						{statusLabel}
-					</Text>
-					<Text style={[styles.statusSub, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
-						{hospitalName}
-					</Text>
-				</View>
-				<View style={styles.etaContainer}>
-					<Text style={[styles.etaTime, { color: COLORS.textLight }]}>
-						{etaText}
-					</Text>
-					<Text style={[styles.etaLabel, { color: "rgba(255,255,255,0.8)" }]}>
-						min
-					</Text>
-				</View>
-			</View>
-
-			{!collapsed && (
-				<View>
-					{/* Progress Bar */}
-					<View style={[styles.progressTrack, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9" }]}>
-						<View 
-							style={[
-								styles.progressBar, 
-								{ 
-									width: `${Math.max(5, (bedProgress ?? 0) * 100)}%`,
-									backgroundColor: COLORS.brandPrimary 
-								}
-							]} 
-						/>
-					</View>
-
-					{/* Bed Info Row */}
-					<View style={styles.driverRow}>
-						<View style={[styles.driverAvatar, { backgroundColor: isDarkMode ? "#252D3B" : "#E2E8F0" }]}>
-							<Ionicons name="bed" size={24} color={isDarkMode ? "#94A3B8" : "#64748B"} />
-						</View>
-						
-						<View style={styles.driverInfo}>
-							<Text style={[styles.driverName, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-								{bedType}
-							</Text>
-							<View style={styles.ratingRow}>
-								<Text style={[styles.ratingText, { color: isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)" }]}>
-									{specialty} • {bedCount} {bedCount === "1" ? "bed" : "beds"}
-								</Text>
-							</View>
-						</View>
-
-						<View style={styles.plateContainer}>
-							<Text style={styles.plateText}>{bedNumber}</Text>
-						</View>
-					</View>
-				</View>
-			)}
-
-			{/* Actions */}
-			<View style={styles.actionsRow}>
-				{callTarget && (
-					<Pressable
-						onPress={() => {
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							Linking.openURL(callTarget);
-						}}
-						style={({ pressed }) => [
-							styles.actionBtn,
-							{ 
-								backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
-								opacity: pressed ? 0.7 : 1
-							}
-						]}
-					>
-						<Ionicons name="call" size={20} color={isDarkMode ? COLORS.textLight : COLORS.textPrimary} />
-					</Pressable>
-				)}
-				
-				<Pressable
-					onPress={() => {
-						Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-						onCancelBedBooking?.();
-					}}
-					style={({ pressed }) => [
-						styles.cancelBtn,
-						{ opacity: pressed ? 0.7 : 1 }
-					]}
-				>
-					<Text style={styles.cancelText}>Cancel Reservation</Text>
-				</Pressable>
-			</View>
-		</View>
+		<BedBookingSummaryHalf
+			isDarkMode={isDarkMode}
+			statusLabel={statusLabel}
+			etaText={etaText}
+			hospitalName={hospitalName}
+			bedType={bedType}
+			bedCount={bedCount}
+			bedNumber={bedNumber}
+			specialty={specialty}
+			callTarget={callTarget}
+			onCancelBedBooking={onCancelBedBooking}
+			showComplete={showComplete}
+			onCompleteBedBooking={onCompleteBedBooking}
+		/>
 	);
 };
 
@@ -417,9 +529,14 @@ const styles = StyleSheet.create({
 	},
 	container: {
 		borderRadius: 20,
-		padding: 20,
+		padding: 24,
 		marginBottom: 0,
-		marginHorizontal: 0,
+		marginHorizontal: 0, // Uber-like edge-to-edge card
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.08,
+		shadowRadius: 8,
+		elevation: 3,
 	},
 	headerRow: {
 		flexDirection: "row",
@@ -492,6 +609,7 @@ const styles = StyleSheet.create({
 	},
 	ratingText: {
 		fontSize: 13,
+		marginLeft: 4,
 		fontWeight: "500",
 	},
 	plateContainer: {
@@ -546,6 +664,7 @@ const styles = StyleSheet.create({
 		borderRadius: 24,
 		alignItems: "center",
 		justifyContent: "center",
+		backgroundColor: "#F3F4F6", // Softer Uber-like gray
 	},
 	cancelBtn: {
 		flex: 1,
@@ -553,12 +672,44 @@ const styles = StyleSheet.create({
 		borderRadius: 24,
 		alignItems: "center",
 		justifyContent: "center",
-		backgroundColor: "rgba(239, 68, 68, 0.1)",
+		backgroundColor: "#FEF2F2", // Softer Uber-like red
 	},
 	cancelText: {
-		color: "#EF4444",
+		color: "#DC2626", // Softer Uber-like red
 		fontSize: 15,
 		fontWeight: "600",
+	},
+	bedSection: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 24,
+		paddingVertical: 12,
+	},
+	bedImageContainer: {
+		width: 80,
+		height: 80,
+		borderRadius: 16,
+		backgroundColor: "rgba(37, 99, 235, 0.10)",
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 16,
+	},
+	bedInfo: {
+		flex: 1,
+	},
+	bedTitle: {
+		fontSize: 16,
+		fontWeight: "700",
+		marginBottom: 4,
+	},
+	bedSubtitle: {
+		fontSize: 13,
+		fontWeight: "500",
+		marginBottom: 8,
+	},
+	bedNumber: {
+		fontSize: 20,
+		fontWeight: "800",
 	},
 	completeBtn: {
 		flex: 1,
