@@ -62,6 +62,8 @@ const FullScreenEmergencyMap = forwardRef(
 		const appLoadRegionDeltasRef = useRef(DEFAULT_APP_LOAD_DELTAS);
 		const hasComputedBaselineZoomRef = useRef(false);
 		const hasAppliedBaselineZoomRef = useRef(false);
+		const isMapReadyRef = useRef(false);
+		const startupPhaseRef = useRef('initial'); // 'initial' | 'location_ready' | 'map_ready' | 'baseline_set' | 'complete'
 		const lastProgrammaticMoveAtRef = useRef(0);
 		const lastUserPanAtRef = useRef(0);
 		const lastAutoRecoverAtRef = useRef(0);
@@ -201,6 +203,7 @@ const FullScreenEmergencyMap = forwardRef(
 		const computeBaselineDeltas = useCallback((location, hospitalList) => {
 			if (!isValidCoordinate(location)) return null;
 			if (!Array.isArray(hospitalList) || hospitalList.length === 0) return null;
+			if (!isMapReadyRef.current) return null;
 
 			const origin = { latitude: location.latitude, longitude: location.longitude };
 			const valid = hospitalList
@@ -240,17 +243,37 @@ const FullScreenEmergencyMap = forwardRef(
 				Math.min(0.085, longitudeDelta) * BASELINE_ZOOM_IN_FACTOR
 			);
 			return { latitudeDelta: latitudeDeltaOut, longitudeDelta: longitudeDeltaOut };
-		}, []);
+		}, [isMapReadyRef.current]);
+
+		// Update startup phase when location is ready
+		useEffect(() => {
+			if (startupPhaseRef.current === 'initial' && userLocation && locationPermission && !isLoadingLocation) {
+				startupPhaseRef.current = 'location_ready';
+				console.log('[FullScreenEmergencyMap] Startup phase: location_ready');
+			}
+		}, [userLocation, locationPermission, isLoadingLocation]);
+
+		// Update startup phase when map is ready
+		useEffect(() => {
+			if (startupPhaseRef.current === 'location_ready' && isMapReadyRef.current) {
+				startupPhaseRef.current = 'map_ready';
+				console.log('[FullScreenEmergencyMap] Startup phase: map_ready');
+			}
+		}, [isMapReadyRef.current]);
 
 		useEffect(() => {
 			if (hasComputedBaselineZoomRef.current) return;
+			if (!isMapReadyRef.current) return;
 			if (!isValidCoordinate(userLocation)) return;
 			if (!Array.isArray(hospitalsForBaseline) || hospitalsForBaseline.length === 0) return;
+			if (startupPhaseRef.current !== 'map_ready') return;
 
 			const deltas = computeBaselineDeltas(userLocation, hospitalsForBaseline);
 			if (!deltas) return;
 			hasComputedBaselineZoomRef.current = true;
 			appLoadRegionDeltasRef.current = deltas;
+			startupPhaseRef.current = 'baseline_set';
+			console.log('[FullScreenEmergencyMap] Startup phase: baseline_set');
 		}, [computeBaselineDeltas, hospitalsForBaseline, userLocation]);
 
 		useEffect(() => {
@@ -258,10 +281,14 @@ const FullScreenEmergencyMap = forwardRef(
 			if (!hasComputedBaselineZoomRef.current) return;
 			if (hasAppliedBaselineZoomRef.current) return;
 			if (!mapRef.current || !isValidCoordinate(userLocation)) return;
+			if (!isMapReadyRef.current) return;
 			if (selectedHospitalId) return;
 			if (routeCoordinates.length > 0) return;
+			if (startupPhaseRef.current !== 'baseline_set') return;
 
 			hasAppliedBaselineZoomRef.current = true;
+			startupPhaseRef.current = 'complete';
+			console.log('[FullScreenEmergencyMap] Startup phase: complete');
 			const base = appLoadRegionDeltasRef.current;
 			lastProgrammaticMoveAtRef.current = Date.now();
 			mapRef.current.animateToRegion(
@@ -273,7 +300,7 @@ const FullScreenEmergencyMap = forwardRef(
 				},
 				420
 			);
-		}, [routeCoordinates.length, selectedHospitalId, userLocation]);
+		}, [routeCoordinates.length, selectedHospitalId, userLocation, isMapReadyRef.current]);
 
 		const effectiveAmbulanceEtaSeconds =
 			Number.isFinite(ambulanceTripEtaSeconds) && ambulanceTripEtaSeconds > 0
@@ -489,7 +516,9 @@ const FullScreenEmergencyMap = forwardRef(
 				!isLoadingLocation &&
 				locationPermission &&
 				userLocation &&
-				!hasCenteredOnUser.current
+				!hasCenteredOnUser.current &&
+				isMapReadyRef.current &&
+				startupPhaseRef.current === 'baseline_set'
 			) {
 				hasCenteredOnUser.current = true;
 				hasAppliedBaselineZoomRef.current = false;
@@ -507,7 +536,7 @@ const FullScreenEmergencyMap = forwardRef(
 				}, 300);
 				return () => clearTimeout(timer);
 			}
-		}, [computeBaselineDeltas, hospitalsForBaseline, isLoadingLocation, locationPermission, userLocation]);
+		}, [computeBaselineDeltas, hospitalsForBaseline, isLoadingLocation, locationPermission, userLocation, isMapReadyRef.current]);
 
 		const mapStyle = isDarkMode ? darkMapStyle : lightMapStyle;
 
@@ -626,6 +655,10 @@ const FullScreenEmergencyMap = forwardRef(
 					mapPadding={mapPadding}
 					userInterfaceStyle={isDarkMode ? "dark" : "light"}
 					onRegionChangeComplete={handleRegionChangeComplete}
+					onMapReady={() => {
+						isMapReadyRef.current = true;
+						onMapReady?.();
+					}}
 					onPanDrag={() => {
 						lastUserPanAtRef.current = Date.now();
 					}}

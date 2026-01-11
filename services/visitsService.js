@@ -69,6 +69,52 @@ export const visitsService = {
         return result;
     },
 
+	async ensureExists({
+		id,
+		requestId,
+		hospitalId,
+		hospital,
+		specialty,
+		type,
+		status,
+		date,
+		time,
+	}) {
+		const { data: { user } } = await supabase.auth.getUser();
+		if (!user) throw new Error("User not logged in");
+		if (!id) throw new Error("Missing visit id");
+
+		const nowIso = new Date().toISOString();
+		const base = {
+			id: String(id),
+			user_id: user.id,
+			request_id: requestId ?? String(id),
+			hospital_id: hospitalId ?? null,
+			hospital: hospital ?? null,
+			specialty: specialty ?? null,
+			type: type ?? null,
+			status: status ?? "upcoming",
+			date: date ?? nowIso.slice(0, 10),
+			time:
+				time ??
+				new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+			updated_at: nowIso,
+		};
+
+		const { data, error } = await supabase
+			.from(TABLE)
+			.upsert(base, { onConflict: "id" })
+			.select()
+			.single();
+
+		if (error) {
+			console.error(`[visitsService] ensureExists error for ${id}:`, error);
+			throw error;
+		}
+
+		return normalizeVisit(mapFromDb(data));
+	},
+
     async create(visit) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not logged in");
@@ -169,9 +215,22 @@ export const visitsService = {
             throw error;
         }
         if (!data || data.length === 0) {
-            const err = new Error(`Visit with id ${id} not found`);
-            console.error(`[visitsService]`, err.message);
-            throw err;
+            const ensured = await this.ensureExists({
+                id,
+                requestId: String(id),
+                status: "cancelled",
+            });
+
+            try {
+                await notificationDispatcher.dispatchVisitUpdate(ensured, 'cancelled');
+            } catch (notifError) {
+                console.error(
+                    `[visitsService] Failed to create notification for visit cancellation ${id}:`,
+                    notifError
+                );
+            }
+
+            return ensured;
         }
         const result = normalizeVisit(mapFromDb(data[0]));
         
@@ -202,9 +261,22 @@ export const visitsService = {
             throw error;
         }
         if (!data || data.length === 0) {
-            const err = new Error(`Visit with id ${id} not found`);
-            console.error(`[visitsService]`, err.message);
-            throw err;
+            const ensured = await this.ensureExists({
+                id,
+                requestId: String(id),
+                status: "completed",
+            });
+
+            try {
+                await notificationDispatcher.dispatchVisitUpdate(ensured, 'completed');
+            } catch (notifError) {
+                console.error(
+                    `[visitsService] Failed to create notification for visit completion ${id}:`,
+                    notifError
+                );
+            }
+
+            return ensured;
         }
         const result = normalizeVisit(mapFromDb(data[0]));
         

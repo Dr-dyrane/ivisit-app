@@ -78,6 +78,8 @@ const TripSummaryHalf = ({
 	assigned,
 	callTarget,
 	onCancelAmbulanceTrip,
+	showComplete,
+	onCompleteAmbulanceTrip,
 }) => {
 	return (
 		<View
@@ -225,6 +227,18 @@ const TripSummaryHalf = ({
 				>
 					<Text style={styles.cancelText}>Cancel Trip</Text>
 				</Pressable>
+
+				{showComplete && (
+					<Pressable
+						onPress={onCompleteAmbulanceTrip}
+						style={({ pressed }) => [
+							styles.completeBtn,
+							{ opacity: pressed ? 0.7 : 1 },
+						]}
+					>
+						<Text style={styles.completeText}>Complete</Text>
+					</Pressable>
+				)}
 			</View>
 		</View>
 	);
@@ -243,6 +257,8 @@ const TripSummaryFull = ({
 	ambulanceType,
 	callTarget,
 	onCancelAmbulanceTrip,
+	showComplete,
+	onCompleteAmbulanceTrip,
 }) => {
 	return (
 		<View
@@ -369,11 +385,20 @@ const TripSummaryFull = ({
 
 				{ambulanceType && (
 					<View style={styles.ambulanceSection}>
-						<View style={styles.ambulanceImageContainer}>
+						<View
+							style={[
+								styles.ambulanceImageContainer,
+								{
+									backgroundColor: isDarkMode
+										? COLORS.brandPrimary
+										: "rgba(37, 99, 235, 0.10)",
+								},
+							]}
+						>
 							<Ionicons
 								name={ambulanceType.icon}
 								size={64}
-								color={COLORS.brandPrimary}
+								color={isDarkMode ? "#FFFFFF" : COLORS.brandPrimary}
 							/>
 						</View>
 						<View style={styles.ambulanceInfo}>
@@ -437,6 +462,18 @@ const TripSummaryFull = ({
 					>
 						<Text style={styles.cancelText}>Cancel Trip</Text>
 					</Pressable>
+
+					{showComplete && (
+						<Pressable
+							onPress={onCompleteAmbulanceTrip}
+							style={({ pressed }) => [
+								styles.completeBtn,
+								{ opacity: pressed ? 0.7 : 1 },
+							]}
+						>
+							<Text style={styles.completeText}>Complete</Text>
+						</Pressable>
+					)}
 				</View>
 			</View>
 		</View>
@@ -463,6 +500,7 @@ export const TripSummaryCard = ({
 			? allHospitals.find((h) => h?.id === activeAmbulanceTrip.hospitalId) ?? null
 			: null;
 	const statusMeta = assigned?.status ? AMBULANCE_STATUSES[assigned.status] : null;
+	const lifecycleStatus = activeAmbulanceTrip?.status ?? null;
 
 	const { tripProgress, computedStatus, formattedRemaining } = useTripProgress({
 		activeAmbulanceTrip,
@@ -497,7 +535,23 @@ export const TripSummaryCard = ({
 	const callSign = assigned?.callSign ?? assigned?.type ?? "--";
 	const vehicle = assigned?.vehicleNumber ?? assigned?.plate ?? "--";
 	const rating = Number.isFinite(assigned?.rating) ? assigned.rating.toFixed(1) : "--";
-	const statusLabel = computedStatus ?? statusMeta?.label ?? "En Route";
+	const lifecycleLabel = useMemo(() => {
+		switch (String(lifecycleStatus || "")) {
+			case "in_progress":
+				return "Request sent";
+			case "accepted":
+				return "Responder assigned";
+			case "arrived":
+				return "Arrived";
+			default:
+				return null;
+		}
+	}, [lifecycleStatus]);
+
+	const statusLabel = lifecycleLabel ?? computedStatus ?? statusMeta?.label ?? "En Route";
+	const showComplete =
+		typeof onCompleteAmbulanceTrip === "function" &&
+		(String(lifecycleStatus || "") === "arrived" || computedStatus === "Arrived");
 	const driverName =
 		Array.isArray(assigned?.crew) && assigned.crew.length > 0
 			? assigned.crew[0]
@@ -506,7 +560,10 @@ export const TripSummaryCard = ({
 	// Get ambulance type for image and pricing
 	const ambulanceType = useMemo(() => {
 		if (!assigned?.type) return null;
-		return AMBULANCE_TYPES.find(t => t.id === assigned.type) || null;
+		const raw = String(assigned.type);
+		const normalized =
+			raw === "basic" ? "standard" : raw === "Ambulance" ? "advanced" : raw;
+		return AMBULANCE_TYPES.find((t) => t.id === normalized) || null;
 	}, [assigned?.type]);
 
 	if (collapsed) {
@@ -536,6 +593,7 @@ export const TripSummaryCard = ({
 				ambulanceType={ambulanceType}
 				callTarget={callTarget}
 				onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+				showComplete={showComplete}
 				onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
 			/>
 		);
@@ -554,6 +612,8 @@ export const TripSummaryCard = ({
 			assigned={assigned}
 			callTarget={callTarget}
 			onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+			showComplete={showComplete}
+			onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
 		/>
 	);
 };
@@ -562,7 +622,7 @@ const styles = StyleSheet.create({
 	collapsedContainer: {
 		borderRadius: 18,
 		padding: 14,
-		marginBottom: 12,
+		marginBottom: 0,
 		marginHorizontal: 0,
 	},
 	collapsedRow: {
@@ -572,7 +632,7 @@ const styles = StyleSheet.create({
 	container: {
 		borderRadius: 20,
 		padding: 24,
-		marginBottom: 20,
+		marginBottom: 0,
 		marginHorizontal: 0, // Uber-like edge-to-edge card
 		shadowColor: "#000",
 		shadowOffset: { width: 0, height: 2 },
@@ -674,6 +734,7 @@ const styles = StyleSheet.create({
 		gap: 12,
 	},
 	fullContainer: {
+		flex: 1,
 		borderRadius: 24,
 		overflow: "hidden",
 		marginBottom: 16,
@@ -709,7 +770,7 @@ const styles = StyleSheet.create({
 		width: 80,
 		height: 80,
 		borderRadius: 16,
-		backgroundColor: "#F3F4F6",
+		backgroundColor: "rgba(37, 99, 235, 0.10)",
 		alignItems: "center",
 		justifyContent: "center",
 		marginRight: 16,
@@ -792,6 +853,19 @@ const styles = StyleSheet.create({
 	},
 	cancelText: {
 		color: "#DC2626", // Softer Uber-like red
+		fontSize: 15,
+		fontWeight: "600",
+	},
+	completeBtn: {
+		flex: 1,
+		height: 48,
+		borderRadius: 24,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: "rgba(16, 185, 129, 0.12)",
+	},
+	completeText: {
+		color: "#10B981",
 		fontSize: 15,
 		fontWeight: "600",
 	},

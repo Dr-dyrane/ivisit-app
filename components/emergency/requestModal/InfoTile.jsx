@@ -23,16 +23,15 @@ const styles = StyleSheet.create({
 		marginBottom: 12,
 	},
 	label: {
-		fontSize: 11,
-		fontWeight: "900",
-		letterSpacing: 1.6,
-		textTransform: "uppercase",
+		fontSize: 12,
+		fontWeight: "600",
+		letterSpacing: 0.2,
 		opacity: 0.9,
 	},
 	value: {
-		marginTop: 10,
-		fontSize: 14,
-		fontWeight: "900",
-		letterSpacing: -0.2,
+		marginTop: 8,
+		fontSize: 15,
+		fontWeight: "700",
+		letterSpacing: -0.1,
 	},
 });

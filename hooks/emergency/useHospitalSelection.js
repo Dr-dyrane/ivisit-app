@@ -16,6 +16,13 @@ export const useHospitalSelection = ({
 		(hospital) => {
 			if (!hospital?.id) return;
 
+			console.log('[useHospitalSelection] Hospital selected:', { 
+				hospitalId: hospital.id, 
+				hospitalName: hospital.name,
+				currentSnapIndex: sheetSnapIndex,
+				timestamp: Date.now()
+			});
+
 			timing?.startTiming?.("hospital_select");
 
 			lastListStateRef.current = {

@@ -12,7 +12,7 @@
  * This prevents prop drilling and makes debugging easier
  */
 
-import { createContext, useContext, useState, useCallback, useRef, useMemo } from "react";
+import { createContext, useContext, useState, useCallback, useRef, useMemo, useEffect } from "react";
 
 const EmergencyUIContext = createContext();
 
@@ -82,8 +82,22 @@ const createTimingTracker = (enabled = __DEV__) => {
 
 export function EmergencyUIProvider({ children }) {
 	// Bottom sheet state
-	const [snapIndex, setSnapIndex] = useState(1); // 0=collapsed, 1=half, 2=expanded
+	const [snapIndex, setSnapIndex] = useState(1); // 0=collapsed, 1=half, 2=expanded - start halfway for better UX
 	const [isAnimating, setIsAnimating] = useState(false);
+	
+	// Log initial state
+	useEffect(() => {
+		console.log('[EmergencyUIContext] Initial state:', { snapIndex, isAnimating });
+	}, []);
+	
+	// Log snap index changes
+	useEffect(() => {
+		console.log('[EmergencyUIContext] snapIndex changed:', { 
+			newSnapIndex: snapIndex, 
+			isAnimating,
+			timestamp: Date.now()
+		});
+	}, [snapIndex, isAnimating]);
 	
 	// Search state
 	const [searchQuery, setSearchQuery] = useState("");
@@ -104,14 +118,32 @@ export function EmergencyUIProvider({ children }) {
 	
 	// Bottom sheet actions
 	const handleSnapChange = useCallback((index, source = "user") => {
-		setSnapIndex(index);
+		console.log('[EmergencyUIContext] handleSnapChange called:', { 
+			newIndex: index, 
+			source, 
+			currentSnapIndex: snapIndex,
+			timestamp: Date.now()
+		});
+		
+		// Only update if the index is actually different to prevent fighting states
+		setSnapIndex(prevIndex => {
+			console.log('[EmergencyUIContext] setSnapIndex:', { 
+				prevIndex, 
+				newIndex: index, 
+				willUpdate: prevIndex !== index,
+				source
+			});
+			if (prevIndex === index) return prevIndex;
+			return index;
+		});
 		setIsAnimating(true);
 
 		// Animation typically takes ~300ms
 		setTimeout(() => {
+			console.log('[EmergencyUIContext] Animation completed, setIsAnimating(false)');
 			setIsAnimating(false);
 		}, 350);
-	}, []);
+	}, [snapIndex]);
 	
 	// Search actions
 	const updateSearch = useCallback((text) => {

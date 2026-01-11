@@ -38,7 +38,7 @@ export const simulationService = {
                     status: 'accepted',
                     responder_name: "John Doe",
                     responder_phone: "+15550109988",
-                    responder_vehicle_type: "Ambulance",
+                    responder_vehicle_type: "advanced",
                     responder_vehicle_plate: "EMS-998",
                     responder_heading: 0,
                     // Start at the beginning of the route (hospital)

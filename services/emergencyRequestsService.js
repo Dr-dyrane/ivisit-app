@@ -3,6 +3,8 @@ import { supabase } from "./supabase";
 
 export const EmergencyRequestStatus = {
 	IN_PROGRESS: "in_progress",
+	ACCEPTED: "accepted",
+	ARRIVED: "arrived",
 	COMPLETED: "completed",
 	CANCELLED: "cancelled",
 };
@@ -17,7 +19,7 @@ export const emergencyRequestsService = {
                 .from('emergency_requests')
                 .select('*')
                 .eq('user_id', user.id)
-                .eq('status', 'in_progress')
+                .in('status', ['in_progress', 'accepted', 'arrived'])
                 .order('created_at', { ascending: false });
             
             if (!error && data && data.length > 0) {
@@ -158,7 +160,10 @@ export const emergencyRequestsService = {
 
 	async setStatus(id, status) {
 		const nextStatus =
-			status === EmergencyRequestStatus.CANCELLED || status === EmergencyRequestStatus.COMPLETED
+			status === EmergencyRequestStatus.CANCELLED ||
+			status === EmergencyRequestStatus.COMPLETED ||
+			status === EmergencyRequestStatus.ACCEPTED ||
+			status === EmergencyRequestStatus.ARRIVED
 				? status
 				: EmergencyRequestStatus.IN_PROGRESS;
 		return await this.update(id, { status: nextStatus });
@@ -167,7 +172,12 @@ export const emergencyRequestsService = {
 	async getActive() {
 		const items = await this.list();
 		return (
-			items.find((r) => r?.status === EmergencyRequestStatus.IN_PROGRESS) ?? null
+			items.find(
+				(r) =>
+					r?.status === EmergencyRequestStatus.IN_PROGRESS ||
+					r?.status === EmergencyRequestStatus.ACCEPTED ||
+					r?.status === EmergencyRequestStatus.ARRIVED
+			) ?? null
 		);
 	},
 };

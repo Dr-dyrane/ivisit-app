@@ -10,6 +10,10 @@ export const BottomSheetController = forwardRef((props, ref) => {
 		hospitals,
 		allHospitals,
 		selectedHospital,
+		isRequestMode,
+		requestHospital,
+		onRequestClose,
+		onRequestComplete,
 		activeAmbulanceTrip,
 		activeBedBooking,
 		onCancelAmbulanceTrip,
@@ -31,30 +35,45 @@ export const BottomSheetController = forwardRef((props, ref) => {
 
 	const handleSheetSnap = useCallback(
 		(index) => {
-			ref.current?.snapToIndex?.(index);
+			// Derive max index dynamically and validate before snapping
+			const maxIndex = Math.max(0, (ref.current?.snapPoints?.length ?? 3) - 1);
+			const safeIndex = Math.min(Math.max(0, index), maxIndex);
+			ref.current?.snapToIndex?.(safeIndex);
 		},
 		[ref]
 	);
 
 	const wrappedOnCancelAmbulanceTrip = useCallback(async () => {
 		await onCancelAmbulanceTrip?.();
-		handleSheetSnap(1);
-	}, [onCancelAmbulanceTrip, handleSheetSnap]);
+		// Use dynamic index instead of hard-coded 1
+		const maxIndex = Math.max(0, (ref.current?.snapPoints?.length ?? 3) - 1);
+		const targetIndex = Math.min(maxIndex, 1);
+		handleSheetSnap(targetIndex);
+	}, [onCancelAmbulanceTrip, handleSheetSnap, ref]);
 
 	const wrappedOnCompleteAmbulanceTrip = useCallback(async () => {
 		await onCompleteAmbulanceTrip?.();
-		handleSheetSnap(1);
-	}, [onCompleteAmbulanceTrip, handleSheetSnap]);
+		// Use dynamic index instead of hard-coded 1
+		const maxIndex = Math.max(0, (ref.current?.snapPoints?.length ?? 3) - 1);
+		const targetIndex = Math.min(maxIndex, 1);
+		handleSheetSnap(targetIndex);
+	}, [onCompleteAmbulanceTrip, handleSheetSnap, ref]);
 
 	const wrappedOnCancelBedBooking = useCallback(async () => {
 		await onCancelBedBooking?.();
-		handleSheetSnap(1);
-	}, [onCancelBedBooking, handleSheetSnap]);
+		// Use dynamic index instead of hard-coded 1
+		const maxIndex = Math.max(0, (ref.current?.snapPoints?.length ?? 3) - 1);
+		const targetIndex = Math.min(maxIndex, 1);
+		handleSheetSnap(targetIndex);
+	}, [onCancelBedBooking, handleSheetSnap, ref]);
 
 	const wrappedOnCompleteBedBooking = useCallback(async () => {
 		await onCompleteBedBooking?.();
-		handleSheetSnap(1);
-	}, [onCompleteBedBooking, handleSheetSnap]);
+		// Use dynamic index instead of hard-coded 1
+		const maxIndex = Math.max(0, (ref.current?.snapPoints?.length ?? 3) - 1);
+		const targetIndex = Math.min(maxIndex, 1);
+		handleSheetSnap(targetIndex);
+	}, [onCompleteBedBooking, handleSheetSnap, ref]);
 
 	return (
 		<EmergencyBottomSheet
@@ -66,6 +85,10 @@ export const BottomSheetController = forwardRef((props, ref) => {
 			hospitals={hospitals}
 			allHospitals={allHospitals}
 			selectedHospital={selectedHospital}
+			isRequestMode={isRequestMode}
+			requestHospital={requestHospital}
+			onRequestClose={onRequestClose}
+			onRequestComplete={onRequestComplete}
 			activeAmbulanceTrip={activeAmbulanceTrip}
 			activeBedBooking={activeBedBooking}
 			onCancelAmbulanceTrip={wrappedOnCancelAmbulanceTrip}

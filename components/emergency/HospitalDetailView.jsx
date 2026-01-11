@@ -29,7 +29,11 @@ const HospitalDetailView = ({ hospital, onClose, onCall, mode }) => {
 	const textColor = isDarkMode ? "#FFFFFF" : "#1F2937";
 	const subTextColor = isDarkMode ? "#9CA3AF" : "#6B7280";
 	// Mock data for travel time (would be real-time in production)
-	const travelTime = useMemo(() => Math.floor(Math.random() * 15) + 5, []); // 5-20 mins
+	const travelTime = useMemo(() => {
+		const etaRaw = hospital?.eta ?? hospital?.waitTime ?? null;
+		if (typeof etaRaw === "string" && etaRaw.length > 0) return etaRaw;
+		return "--";
+	}, [hospital?.eta, hospital?.waitTime]);
 	
 	// Distance formatting
 	const formattedDistance = useMemo(() => {
@@ -64,7 +68,7 @@ const HospitalDetailView = ({ hospital, onClose, onCall, mode }) => {
 							{hospital?.name ?? "Hospital"}
 						</Text>
 						<Text style={[styles.metricsText, { color: "rgba(255,255,255,0.85)" }]}>
-							{formattedDistance} • {travelTime} min
+							{formattedDistance} • {travelTime}
 						</Text>
 					</View>
 				</View>
@@ -88,7 +92,7 @@ const HospitalDetailView = ({ hospital, onClose, onCall, mode }) => {
 				hospital={{
 					...hospital,
 					distance: formattedDistance,
-					eta: hospital?.eta ?? `${travelTime} mins`,
+					eta: hospital?.eta ?? travelTime,
 				}}
 				isSelected={true}
 				hideDistanceEta={true}

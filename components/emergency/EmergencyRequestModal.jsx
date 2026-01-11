@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { View, Text, Modal, Pressable, Animated, ScrollView, StyleSheet, Dimensions } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
+import { usePreferences } from "../../contexts/PreferencesContext";
 import { COLORS } from "../../constants/colors";
 import { AMBULANCE_TYPES } from "../../constants/emergency";
 import IconButton from "../ui/IconButton";
@@ -11,7 +12,6 @@ import EmergencyRequestModalFooter from "./requestModal/EmergencyRequestModalFoo
 import EmergencyRequestModalDispatched from "./requestModal/EmergencyRequestModalDispatched";
 import InfoTile from "./requestModal/InfoTile";
 import BedBookingOptions from "./requestModal/BedBookingOptions";
-import { useEmergencyRequests } from "../../hooks/emergency/useEmergencyRequests";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -24,14 +24,13 @@ export default function EmergencyRequestModal({
 	onRequestComplete,
 }) {
 	const { isDarkMode } = useTheme();
+	const { preferences } = usePreferences();
 	const [step, setStep] = useState("select");
 	const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);
 	const [isRequesting, setIsRequesting] = useState(false);
 	const [requestData, setRequestData] = useState(null);
 	const [bedType, setBedType] = useState("standard");
 	const [bedCount, setBedCount] = useState(1);
-	const [preferences, setPreferences] = useState(null);
-	const { createRequest, isLoading: isHookLoading } = useEmergencyRequests();
 
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -48,6 +47,7 @@ export default function EmergencyRequestModal({
 	);
 
 	const hospitalName = selectedHospital?.name ?? "Hospital";
+	const hospitalEta = selectedHospital?.eta ?? null;
 	const availableBeds =
 		typeof selectedHospital?.availableBeds === "number"
 			? selectedHospital.availableBeds
@@ -110,6 +110,8 @@ export default function EmergencyRequestModal({
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
 		setTimeout(() => {
+			const ambulanceEta =
+				(typeof hospitalEta === "string" && hospitalEta.length > 0 ? hospitalEta : null) ?? "8 mins";
 			const response =
 				mode === "booking"
 					? {
@@ -125,11 +127,11 @@ export default function EmergencyRequestModal({
 					  }
 					: {
 							success: true,
-                            requestId: `AMB-${Math.floor(Math.random() * 900000) + 100000}`,
+							requestId: `AMB-${Math.floor(Math.random() * 900000) + 100000}`,
 							hospitalName,
 							ambulanceType: selectedAmbulanceType,
 							serviceType: "ambulance",
-                            estimatedArrival: "8 mins",
+							estimatedArrival: ambulanceEta,
 					  };
 
 			setRequestData(response);
@@ -140,6 +142,7 @@ export default function EmergencyRequestModal({
 	}, [
 		bedCount,
 		bedType,
+		hospitalEta,
 		hospitalName,
 		isRequesting,
 		mode,
@@ -264,7 +267,8 @@ export default function EmergencyRequestModal({
 				onPress={handleRequestEmergency}
 				backgroundColor={colors.background}
 				textColor={colors.textMuted}
-				label={mode === "booking" ? "RESERVE BED" : "REQUEST SERVICE"}
+				label={mode === "booking" ? "Reserve bed" : "Request ambulance"}
+				iconName={mode === "booking" ? "bed-outline" : "medical"}
 				showHint={mode !== "booking"}
 			/>
 		</View>
@@ -285,7 +289,8 @@ export default function EmergencyRequestModal({
 				onPress={handleClose}
 				backgroundColor={colors.background}
 				textColor={colors.textMuted}
-				label="DONE"
+				label="Done"
+				iconName="checkmark-circle"
 				showHint={false}
 			/>
 		</View>

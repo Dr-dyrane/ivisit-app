@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { supabase } from "../services/supabase";
 import { SPECIALTIES } from "../constants/hospitals";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
@@ -140,6 +140,8 @@ export function EmergencyProvider({ children }) {
 	const [mode, setMode] = useState(EmergencyMode.EMERGENCY);
 	const [activeAmbulanceTrip, setActiveAmbulanceTrip] = useState(null);
 	const [activeBedBooking, setActiveBedBooking] = useState(null);
+	const lastHydratedAmbulanceIdRef = useRef(null);
+	const isHydratingAmbulanceRef = useRef(false);
 	
 	// Emergency mode state
 	const [serviceType, setServiceType] = useState(null); // null = show all, "premium" or "standard"
@@ -187,38 +189,64 @@ export function EmergencyProvider({ children }) {
                         const newRecord = payload.new;
                         // console.log("Realtime Update:", newRecord.status, newRecord.responder_location);
 
-                        if (newRecord.status === 'completed' || newRecord.status === 'cancelled') {
-                             setActiveAmbulanceTrip(null);
-                             simulationService.stopSimulation();
-                             return;
-                        }
+						setActiveBedBooking((prev) => {
+							if (!prev || prev.requestId !== newRecord.request_id) return prev;
+							if (newRecord.status === "completed" || newRecord.status === "cancelled") {
+								return null;
+							}
 
-                        if (activeAmbulanceTrip && activeAmbulanceTrip.requestId === newRecord.request_id) {
-                            // Status Change Notification
-                            if (activeAmbulanceTrip.status !== newRecord.status && newRecord.status === 'accepted') {
-                                // Trigger haptic or sound here if possible, or just let UI handle it
+							return {
+								...prev,
+								status: newRecord.status,
+								hospitalId: newRecord.hospital_id ?? prev.hospitalId,
+								hospitalName: newRecord.hospital_name ?? prev.hospitalName,
+								specialty: newRecord.specialty ?? prev.specialty,
+								bedNumber: newRecord.bed_number ?? prev.bedNumber,
+								bedType: newRecord.bed_type ?? prev.bedType,
+								bedCount: newRecord.bed_count ?? prev.bedCount,
+								estimatedWait: newRecord.estimated_arrival ?? prev.estimatedWait,
+							};
+						});
+
+                        setActiveAmbulanceTrip((prev) => {
+                            if (!prev || prev.requestId !== newRecord.request_id) return prev;
+
+                            if (newRecord.status === "completed" || newRecord.status === "cancelled") {
+                                simulationService.stopSimulation();
+                                return null;
                             }
 
-                            // Update Responder Location
                             const loc = parsePoint(newRecord.responder_location);
-                            
-                            setActiveAmbulanceTrip(prev => ({
+                            const prevAssigned = prev?.assignedAmbulance ?? null;
+                            const hasResponder = !!newRecord.responder_name;
+                            const mergedAssigned = hasResponder
+                                ? {
+                                    ...(prevAssigned && typeof prevAssigned === "object" ? prevAssigned : {}),
+                                    id: newRecord.ambulance_id || prevAssigned?.id || "ems_001",
+                                    type:
+                                        newRecord.responder_vehicle_type || prevAssigned?.type || "Ambulance",
+                                    plate: newRecord.responder_vehicle_plate || prevAssigned?.plate,
+                                    name: newRecord.responder_name || prevAssigned?.name,
+                                    phone: newRecord.responder_phone || prevAssigned?.phone,
+                                    location: loc || prevAssigned?.location,
+                                    heading:
+                                        Number.isFinite(newRecord.responder_heading)
+                                            ? newRecord.responder_heading
+                                            : prevAssigned?.heading || 0,
+                                }
+                                : prevAssigned;
+
+                            return {
                                 ...prev,
                                 status: newRecord.status,
-                                assignedAmbulance: newRecord.responder_name ? {
-                                    id: newRecord.ambulance_id || 'ems_001',
-                                    type: newRecord.responder_vehicle_type || 'Ambulance',
-                                    plate: newRecord.responder_vehicle_plate,
-                                    name: newRecord.responder_name,
-                                    phone: newRecord.responder_phone,
-                                    location: loc,
-                                    heading: newRecord.responder_heading || 0
-                                } : prev.assignedAmbulance,
-                                // If we have a location from DB, pass it so Map can animate
-                                currentResponderLocation: loc, 
-                                currentResponderHeading: newRecord.responder_heading
-                            }));
-                        }
+                                assignedAmbulance: mergedAssigned,
+                                currentResponderLocation: loc || prev.currentResponderLocation,
+                                currentResponderHeading:
+                                    Number.isFinite(newRecord.responder_heading)
+                                        ? newRecord.responder_heading
+                                        : prev.currentResponderHeading,
+                            };
+                        });
                     }
                 )
                 .subscribe();
@@ -235,70 +263,150 @@ export function EmergencyProvider({ children }) {
 	useEffect(() => {
 		let isActive = true;
 		(async () => {
-            // Load active request from Supabase/Local via Service
+			// Load active request from Supabase/Local via Service
 			const activeRequests = await emergencyRequestsService.list();
-            const active = activeRequests.find(r => r.status === 'in_progress' || r.status === 'accepted');
+			const active = activeRequests.find(
+				(r) => r.status === "in_progress" || r.status === "accepted" || r.status === "arrived"
+			);
 			
 			if (!isActive) return;
 
-            // Restore state if found
-            if (active) {
-                if (active.serviceType === 'ambulance') {
-                    // Helper to parse location from service (could be object or string)
-                    let loc = null;
-                    if (active.responderLocation) {
-                        if (typeof active.responderLocation === 'object' && active.responderLocation.coordinates) {
-                            loc = {
-                                latitude: active.responderLocation.coordinates[1],
-                                longitude: active.responderLocation.coordinates[0]
-                            };
-                        } else if (typeof active.responderLocation === 'string') {
-                            loc = parsePoint(active.responderLocation);
-                        }
-                    }
+			// Restore state if found
+			if (active) {
+				const parseEtaToSecondsLocal = (eta) => {
+					if (!eta || typeof eta !== "string") return null;
+					const lower = eta.toLowerCase();
+					const minutesMatch = lower.match(/(\d+)\s*(min|mins|minute|minutes)/);
+					if (minutesMatch) return Number(minutesMatch[1]) * 60;
+					const secondsMatch = lower.match(/(\d+)\s*(sec|secs|second|seconds)/);
+					if (secondsMatch) return Number(secondsMatch[1]);
+					return null;
+				};
 
-                    // Fetch full ambulance details for rating/crew/etc
-                    let fullAmbulance = null;
-                    if (active.ambulanceId) {
-                         try {
-                             fullAmbulance = await ambulanceService.getById(active.ambulanceId);
-                         } catch (e) { console.warn("Failed to fetch assigned ambulance details", e); }
-                    }
+				const startedAt = active.createdAt ? Date.parse(active.createdAt) : Date.now();
+				const etaSeconds = parseEtaToSecondsLocal(active.estimatedArrival);
 
-                    setActiveAmbulanceTrip({
-                        hospitalId: active.hospitalId,
-                        requestId: active.requestId,
-                        status: active.status,
-                        assignedAmbulance: active.responderName ? {
-                            ...fullAmbulance,
-                            id: active.ambulanceId || 'ems_001',
-                            type: active.responderVehicleType || fullAmbulance?.type || 'Ambulance',
-                            plate: active.responderVehiclePlate || fullAmbulance?.vehicleNumber,
-                            name: active.responderName,
-                            phone: active.responderPhone,
-                            location: loc || fullAmbulance?.location,
-                            heading: active.responderHeading || 0
-                        } : null,
-                        currentResponderLocation: loc,
-                        currentResponderHeading: active.responderHeading
-                    });
-                    // Resume simulation if needed
-                    if (active.status === 'in_progress' || active.status === 'accepted') {
-                         // We don't have route here easily, but Realtime will pick it up
-                    }
-                } else if (active.serviceType === 'bed') {
-                    setActiveBedBooking({
-                        hospitalId: active.hospitalId,
-                        requestId: active.requestId,
-                        status: active.status
-                    });
-                }
-            }
+				if (active.serviceType === "ambulance") {
+					// Helper to parse location from service (could be object or string)
+					let loc = null;
+					if (active.responderLocation) {
+						if (
+							typeof active.responderLocation === "object" &&
+							active.responderLocation.coordinates
+						) {
+							loc = {
+								latitude: active.responderLocation.coordinates[1],
+								longitude: active.responderLocation.coordinates[0],
+							};
+						} else if (typeof active.responderLocation === "string") {
+							loc = parsePoint(active.responderLocation);
+						}
+					}
+
+					// Fetch full ambulance details for rating/crew/etc
+					let fullAmbulance = null;
+					if (active.ambulanceId) {
+						try {
+							fullAmbulance = await ambulanceService.getById(active.ambulanceId);
+						} catch (e) {
+							console.warn("Failed to fetch assigned ambulance details", e);
+						}
+					}
+
+					setActiveAmbulanceTrip({
+						hospitalId: active.hospitalId,
+						requestId: active.requestId,
+						status: active.status,
+						estimatedArrival: active.estimatedArrival ?? null,
+						etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
+						startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
+						assignedAmbulance: active.responderName
+							? {
+								...fullAmbulance,
+								id: active.ambulanceId || "ems_001",
+								type:
+									active.responderVehicleType || fullAmbulance?.type || "Ambulance",
+								plate: active.responderVehiclePlate || fullAmbulance?.vehicleNumber,
+								name: active.responderName,
+								phone: active.responderPhone,
+								location: loc || fullAmbulance?.location,
+								heading: active.responderHeading || 0,
+							}
+							: null,
+						currentResponderLocation: loc,
+						currentResponderHeading: active.responderHeading,
+					});
+				} else if (active.serviceType === "bed") {
+					setActiveBedBooking({
+						hospitalId: active.hospitalId,
+						requestId: active.requestId,
+						status: active.status,
+						hospitalName: active.hospitalName ?? null,
+						specialty: active.specialty ?? null,
+						bedNumber: active.bedNumber ?? null,
+						bedType: active.bedType ?? null,
+						bedCount: active.bedCount ?? null,
+						estimatedWait: active.estimatedArrival ?? null,
+						etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
+						startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
+					});
+				}
+			}
 		})();
 		return () => {
 			isActive = false;
 		};
 	}, []);
+
+	useEffect(() => {
+		const assigned = activeAmbulanceTrip?.assignedAmbulance;
+		const ambulanceId = assigned?.id ?? null;
+		if (!ambulanceId) return;
+		if (lastHydratedAmbulanceIdRef.current === ambulanceId) return;
+		if (isHydratingAmbulanceRef.current) return;
+
+		const needsHydrate =
+			!Number.isFinite(assigned?.rating) ||
+			!Array.isArray(assigned?.crew) ||
+			(!assigned?.vehicleNumber && !assigned?.callSign);
+		if (!needsHydrate) {
+			lastHydratedAmbulanceIdRef.current = ambulanceId;
+			return;
+		}
+
+		isHydratingAmbulanceRef.current = true;
+		(async () => {
+			try {
+				const full = await ambulanceService.getById(ambulanceId);
+				if (!full || typeof full !== "object") return;
+				lastHydratedAmbulanceIdRef.current = ambulanceId;
+
+				setActiveAmbulanceTrip((prev) => {
+					if (!prev) return prev;
+					const prevAssigned = prev?.assignedAmbulance;
+					if (!prevAssigned || prevAssigned.id !== ambulanceId) return prev;
+
+					const merged = { ...full };
+					if (prevAssigned && typeof prevAssigned === "object") {
+						Object.keys(prevAssigned).forEach((key) => {
+							const value = prevAssigned[key];
+							if (value !== undefined && value !== null) {
+								merged[key] = value;
+							}
+						});
+					}
+
+					return {
+						...prev,
+						assignedAmbulance: merged,
+					};
+				});
+			} catch (e) {
+			} finally {
+				isHydratingAmbulanceRef.current = false;
+			}
+		})();
+	}, [activeAmbulanceTrip?.assignedAmbulance?.id]);
 
     // We don't need to manually save state anymore, Supabase handles it.
 	// useEffect(() => {

@@ -29,7 +29,6 @@ import { getMapPaddingForSnapIndex } from "../constants/emergencyAnimations";
 
 import { EmergencyMapContainer } from "../components/emergency/EmergencyMapContainer";
 import { BottomSheetController } from "../components/emergency/BottomSheetController";
-import EmergencyRequestModal from "../components/emergency/EmergencyRequestModal";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 import { useEmergencyHandlers } from "../hooks/emergency/useEmergencyHandlers";
 import { useHospitalSelection } from "../hooks/emergency/useHospitalSelection";
@@ -80,15 +79,17 @@ export default function EmergencyScreen() {
 	} = useEmergencyUI();
 
 	// Local state
-	const [showEmergencyRequestModal, setShowEmergencyRequestModal] =
-		useState(false);
+	const [isRequestFlowOpen, setIsRequestFlowOpen] = useState(false);
 	const [requestHospitalId, setRequestHospitalId] = useState(null);
 	const [currentRoute, setCurrentRoute] = useState(null);
 
 	// Map padding - calculated from snap index
 	const mapBottomPadding = useMemo(() => {
-		return getMapPaddingForSnapIndex(sheetSnapIndex, !!selectedHospital);
-	}, [selectedHospital, sheetSnapIndex]);
+		return getMapPaddingForSnapIndex(
+			sheetSnapIndex,
+			!!selectedHospital && !isRequestFlowOpen
+		);
+	}, [isRequestFlowOpen, selectedHospital, sheetSnapIndex]);
 
 	// Data state from EmergencyContext
 	const {
@@ -227,10 +228,13 @@ export default function EmergencyScreen() {
 			};
 			selectHospital(hospitalId);
 			setRequestHospitalId(hospitalId);
+			setIsRequestFlowOpen(true);
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			setShowEmergencyRequestModal(true);
+			setTimeout(() => {
+				bottomSheetRef.current?.expand?.();
+			}, 0);
 		},
-		[getLastScrollY, mode, selectHospital, sheetSnapIndex]
+		[getLastScrollY, selectHospital, sheetSnapIndex]
 	);
 
 	const requestHospital = useMemo(() => {
@@ -240,23 +244,21 @@ export default function EmergencyScreen() {
 		);
 	}, [hospitals, requestHospitalId, selectedHospital]);
 
-	const handleCloseEmergencyRequestModal = useCallback(() => {
-		setShowEmergencyRequestModal(false);
+	const handleCloseRequestFlow = useCallback(() => {
+		setIsRequestFlowOpen(false);
 		setRequestHospitalId(null);
 		if (activeAmbulanceTrip || activeBedBooking) {
 			clearSelectedHospital();
 			setTimeout(() => {
-				bottomSheetRef.current?.snapToIndex?.(1);
+				// Derive max index dynamically instead of hard-coding 1
+				const maxIndex = Math.max(0, (bottomSheetRef.current?.snapPoints?.length ?? 3) - 1);
+				const targetIndex = Math.min(maxIndex, 1);
+				bottomSheetRef.current?.snapToIndex?.(targetIndex);
 			}, 0);
 			return;
 		}
 		handleCloseFocus();
-	}, [
-		activeAmbulanceTrip,
-		activeBedBooking,
-		clearSelectedHospital,
-		handleCloseFocus,
-	]);
+	}, [activeAmbulanceTrip, activeBedBooking, clearSelectedHospital, handleCloseFocus]);
 
 	// Hook: Request flow (create request + visits)
 	const { handleRequestComplete } = useRequestFlow({
@@ -276,7 +278,7 @@ export default function EmergencyScreen() {
 		currentRoute,
 		onRequestComplete: () => {
 			setTimeout(() => {
-				bottomSheetRef.current?.snapToIndex?.(1);
+				bottomSheetRef.current?.expand?.();
 			}, 0);
 		},
 	});
@@ -434,6 +436,10 @@ export default function EmergencyScreen() {
 				hospitals={searchFilteredHospitals}
 				allHospitals={hospitals}
 				selectedHospital={selectedHospital}
+				isRequestMode={isRequestFlowOpen}
+				requestHospital={requestHospital}
+				onRequestClose={handleCloseRequestFlow}
+				onRequestComplete={handleRequestComplete}
 				activeAmbulanceTrip={activeAmbulanceTrip}
 				activeBedBooking={activeBedBooking}
 				onCancelAmbulanceTrip={onCancelAmbulanceTrip}
@@ -453,14 +459,6 @@ export default function EmergencyScreen() {
 				onCloseFocus={wrappedHandleCloseFocus}
 			/>
 
-			<EmergencyRequestModal
-				visible={showEmergencyRequestModal}
-				onClose={handleCloseEmergencyRequestModal}
-				selectedHospital={requestHospital}
-				mode={mode}
-				selectedSpecialty={selectedSpecialty}
-				onRequestComplete={handleRequestComplete}
-			/>
 		</View>
 	);
 }

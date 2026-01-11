@@ -7,17 +7,32 @@ import { useTheme } from "../../../contexts/ThemeContext";
 export default function AmbulanceTypeCard({ type, selected, onPress, textColor, mutedColor, cardColor }) {
 	const { isDarkMode } = useTheme();
 
-	// Uber-style selection: 
-	// - Selected: Brand border/bg highlight is okay but keep it subtle or use a checkmark
-	// - Unselected: Clean background
-	// - Layout: [Image/Icon] [Title + Time] [Price]
+	// Enhanced Uber-style selection with better visual feedback
+	const backgroundColor = selected 
+		? (isDarkMode ? "#1E293B" : "#F8FAFC") 
+		: cardColor;
 	
-	const backgroundColor = selected ? (isDarkMode ? "#1A2333" : "#F0F9FF") : cardColor;
+	const borderColor = selected 
+		? COLORS.brandPrimary 
+		: (isDarkMode ? "#334155" : "#E2E8F0");
 	
 	// Mock vehicle image based on type (using icons for now but styled as graphic)
 	const VehicleIcon = () => (
-		<View style={[styles.iconContainer, { backgroundColor: isDarkMode ? "#252D3B" : "#F1F5F9" }]}>
-			<Ionicons name={type.icon} size={32} color={COLORS.brandPrimary} />
+		<View style={[styles.iconContainer, { 
+			backgroundColor: selected 
+				? (isDarkMode ? "#1E293B" : "#F0F9FF") 
+				: (isDarkMode ? "#252D3B" : "#F8FAFC"),
+		}]}>
+			<Ionicons 
+				name={type.icon} 
+				size={32} 
+				color={selected ? COLORS.brandPrimary : (isDarkMode ? "#94A3B8" : "#64748B")} 
+			/>
+			{selected && (
+				<View style={styles.selectedBadge}>
+					<Ionicons name="checkmark" size={14} color="#FFFFFF" />
+				</View>
+			)}
 		</View>
 	);
 
@@ -28,9 +43,16 @@ export default function AmbulanceTypeCard({ type, selected, onPress, textColor, 
 				styles.container,
 				{ 
 					backgroundColor,
-					borderColor: selected ? COLORS.brandPrimary : "transparent",
-					borderWidth: selected ? 2 : 0, // Uber often uses a thick border for selection
-					opacity: pressed ? 0.9 : 1,
+					opacity: pressed ? 0.95 : 1,
+					shadowColor: selected ? COLORS.brandPrimary : (isDarkMode ? "#000" : "#000"),
+					shadowOffset: {
+						width: 0,
+						height: selected ? 6 : 2,
+					},
+					shadowOpacity: selected ? 0.25 : 0.08,
+					shadowRadius: selected ? 12 : 6,
+					elevation: selected ? 12 : 4,
+					transform: [{ scale: pressed ? 0.98 : 1 }]
 				}
 			]}
 		>
@@ -40,23 +62,30 @@ export default function AmbulanceTypeCard({ type, selected, onPress, textColor, 
 			{/* Middle: Info */}
 			<View style={styles.infoContainer}>
 				<View style={styles.titleRow}>
-					<Text style={[styles.name, { color: textColor }]}>{type.name}</Text>
+					<Text style={[styles.name, { color: textColor, fontWeight: selected ? "800" : "700" }]}>
+						{type.name || type.title}
+					</Text>
+				</View>
+				<View style={styles.detailsRow}>
 					<View style={styles.personRow}>
 						<Ionicons name="person" size={12} color={mutedColor} />
 						<Text style={[styles.capacity, { color: mutedColor }]}> 1-2</Text>
 					</View>
+					<Text style={[styles.eta, { color: selected ? COLORS.brandPrimary : (isDarkMode ? "#94A3B8" : "#64748B") }]}>
+						<Ionicons name="time" size={12} color={selected ? COLORS.brandPrimary : (isDarkMode ? "#94A3B8" : "#64748B")} />
+						{" "}{type.eta}
+					</Text>
 				</View>
-				<Text style={[styles.eta, { color: isDarkMode ? "#94A3B8" : "#64748B" }]}>
-					{type.eta} away
-				</Text>
-				<Text style={[styles.description, { color: mutedColor }]} numberOfLines={1}>
-					{type.description}
+				<Text style={[styles.description, { color: mutedColor }]} numberOfLines={2}>
+					{type.description || type.subtitle}
 				</Text>
 			</View>
 
 			{/* Right: Price */}
 			<View style={styles.priceContainer}>
-				<Text style={[styles.price, { color: textColor }]}>{type.price}</Text>
+				<Text style={[styles.price, { color: selected ? COLORS.brandPrimary : textColor, fontWeight: selected ? "800" : "700" }]}>
+					{type.price}
+				</Text>
 			</View>
 		</Pressable>
 	);
@@ -66,18 +95,35 @@ const styles = StyleSheet.create({
 	container: {
 		flexDirection: "row",
 		alignItems: "center",
-		padding: 12,
-		borderRadius: 12,
-		marginBottom: 8,
-		// Shadow only for separation if needed, or flat
+		padding: 20,
+		borderRadius: 24,
+		marginBottom: 16,
+		backgroundColor: '#FFFFFF',
 	},
 	iconContainer: {
-		width: 60,
-		height: 60,
-		borderRadius: 30,
+		width: 72,
+		height: 72,
+		borderRadius: 36,
 		alignItems: "center",
 		justifyContent: "center",
-		marginRight: 12,
+		marginRight: 20,
+		position: "relative",
+	},
+	selectedBadge: {
+		position: "absolute",
+		top: -2,
+		right: -2,
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		backgroundColor: COLORS.brandPrimary,
+		alignItems: "center",
+		justifyContent: "center",
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.2,
+		shadowRadius: 4,
+		elevation: 4,
 	},
 	infoContainer: {
 		flex: 1,
@@ -86,41 +132,51 @@ const styles = StyleSheet.create({
 	titleRow: {
 		flexDirection: "row",
 		alignItems: "center",
-		marginBottom: 2,
+		justifyContent: "space-between",
+		marginBottom: 4,
 	},
 	name: {
-		fontSize: 16,
+		fontSize: 17,
 		fontWeight: "700",
-		marginRight: 6,
+		flex: 1,
+		letterSpacing: -0.3,
+	},
+	detailsRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		marginBottom: 4,
 	},
 	personRow: {
 		flexDirection: "row",
 		alignItems: "center",
-		backgroundColor: "rgba(0,0,0,0.05)",
-		paddingHorizontal: 4,
-		paddingVertical: 1,
-		borderRadius: 4,
+		backgroundColor: "rgba(0,0,0,0.04)",
+		paddingHorizontal: 8,
+		paddingVertical: 3,
+		borderRadius: 12,
 	},
 	capacity: {
 		fontSize: 10,
 		fontWeight: "600",
 	},
 	eta: {
-		fontSize: 13,
+		fontSize: 12,
 		fontWeight: "500",
-		marginBottom: 2,
 	},
 	description: {
 		fontSize: 12,
+		lineHeight: 16,
 	},
 	priceContainer: {
 		alignItems: "flex-end",
 		justifyContent: "center",
-		marginLeft: 8,
+		marginLeft: 12,
+		minWidth: 60,
 	},
 	price: {
-		fontSize: 16,
-		fontWeight: "700",
+		fontSize: 17,
+		fontWeight: "800",
+		letterSpacing: -0.5,
 	},
 });
 

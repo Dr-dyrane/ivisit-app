@@ -19,7 +19,10 @@ export const useBottomSheetSearch = ({ onSearch, sheetRef } = {}) => {
 	const handleSearchFocus = useCallback(() => {
 		lockHeaderHidden();
 		hideHeader();
-		sheetRef?.current?.snapToIndex?.(2);
+		// Derive max index dynamically instead of hard-coding 2
+		const maxIndex = Math.max(0, (sheetRef?.current?.snapPoints?.length ?? 3) - 1);
+		const targetIndex = Math.min(maxIndex, 2);
+		sheetRef?.current?.snapToIndex?.(targetIndex);
 	}, [hideHeader, lockHeaderHidden, sheetRef]);
 
 	const handleSearchBlur = useCallback(() => {
