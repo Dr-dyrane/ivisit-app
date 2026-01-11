@@ -2,6 +2,9 @@
 
 This document tracks all features, side effects, and UI details for `EmergencyBottomSheet` refactor to ensure no functionality is lost during modularization.
 
+## Current Production Flow Reference
+- User flow (SOS): [ambulance_and_bed_booking.md](../../flows/emergency/ambulance_and_bed_booking.md)
+
 ## 1. Global Side Effects (Managed in `EmergencyScreen.jsx`)
 - **Tab Bar Visibility**: Hidden when `selectedHospital` is set OR during active trip/booking.
 - **Floating Action Button (FAB)**: Hidden when `selectedHospital` is set OR during active trip/booking OR when sheet is collapsed (index 0).

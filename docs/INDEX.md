@@ -40,10 +40,13 @@ docs/
   │       └── IVISIT_COMPREHENSIVE_DOCUMENTATION.md
   │
   ├── flows/
-  │   └── auth/
-  │       ├── login.md
-  │       ├── register.md
-  │       └── REGISTRATION_UI_UX.md
+  │   ├── auth/
+  │   │   ├── login.md
+  │   │   ├── register.md
+  │   │   └── REGISTRATION_UI_UX.md
+  │
+  │   └── emergency/
+  │       └── ambulance_and_bed_booking.md
   │
   ├── onboarding/
   │   └── Technical.md
@@ -88,6 +91,7 @@ docs/
 | [login.md](./flows/auth/login.md) | Login flow & components |
 | [register.md](./flows/auth/register.md) | Registration flow |
 | [REGISTRATION_UI_UX.md](./flows/auth/REGISTRATION_UI_UX.md) | Registration UI/UX details |
+| [ambulance_and_bed_booking.md](./flows/emergency/ambulance_and_bed_booking.md) | SOS user flow: ambulance request + bed reservation |
 
 ### Design & UX
 
@@ -160,4 +164,3 @@ docs/
 1. **Never import from `deprecated/`** - These are documentation only
 2. **Keep AUTH_REFACTOR_PLAN.md updated** as work progresses
 3. **Mark deprecated docs with date** when code is actually deleted
-
