@@ -23,12 +23,15 @@ export default function InfoTile({
 			styles.card, 
 			{ 
 				backgroundColor: cardColor,
-				// Remove border - use shadow/elevation for depth
+				// Enhanced shadow system with multiple layers for depth
 				shadowColor: isDarkMode ? '#000' : '#000',
-				shadowOffset: { width: 0, height: 1 },
-				shadowOpacity: isDarkMode ? 0.3 : 0.1,
-				shadowRadius: 2,
-				elevation: 2,
+				shadowOffset: { width: 0, height: 2 },
+				shadowOpacity: isDarkMode ? 0.15 : 0.08,
+				shadowRadius: 8,
+				elevation: 3,
+				// Add subtle border for definition
+				borderWidth: 0.5,
+				borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
 			}
 		]}>
 			<View style={styles.labelRow}>
@@ -55,11 +58,14 @@ const styles = StyleSheet.create({
 	card: {
 		flexBasis: "47%",
 		flexGrow: 1,
-		borderRadius: 16, // Reduced from 18
-		paddingHorizontal: 12, // Reduced from 14
-		paddingVertical: 10, // Reduced from 12
-		marginHorizontal: 2, // Reduced from 4
-		marginBottom: 8, // Reduced from 12
+		borderRadius: 16, // Modern rounded corners
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		marginHorizontal: 2,
+		marginBottom: 8,
+		// Add subtle inner shadow effect for depth
+		// iOS: inner shadow via border and shadow
+		// Android: handled by elevation
 	},
 	labelRow: {
 		flexDirection: 'row',

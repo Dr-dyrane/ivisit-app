@@ -7,21 +7,23 @@ import { useTheme } from "../../../contexts/ThemeContext";
 export default function AmbulanceTypeCard({ type, selected, onPress, textColor, mutedColor, cardColor }) {
 	const { isDarkMode } = useTheme();
 
-	// Enhanced Uber-style selection with better visual feedback
+	// Enhanced selection with room type background pattern
 	const backgroundColor = selected 
-		? (isDarkMode ? "#1E293B" : "#F8FAFC") 
+		? (isDarkMode 
+			? COLORS.brandPrimary + '25' 
+			: COLORS.brandPrimary + '15') 
 		: cardColor;
-	
-	const borderColor = selected 
-		? COLORS.brandPrimary 
-		: (isDarkMode ? "#334155" : "#E2E8F0");
 	
 	// Mock vehicle image based on type (using icons for now but styled as graphic)
 	const VehicleIcon = () => (
 		<View style={[styles.iconContainer, { 
 			backgroundColor: selected 
-				? (isDarkMode ? "#1E293B" : "#F0F9FF") 
-				: (isDarkMode ? "#252D3B" : "#F8FAFC"),
+				? (isDarkMode 
+					? COLORS.brandPrimary + '20'
+					: COLORS.brandPrimary + '15')
+				: (isDarkMode
+					? 'rgba(255,255,255,0.05)'
+					: 'rgba(0,0,0,0.03)'),
 		}]}>
 			<Ionicons 
 				name={type.icon} 
@@ -30,7 +32,7 @@ export default function AmbulanceTypeCard({ type, selected, onPress, textColor, 
 			/>
 			{selected && (
 				<View style={styles.selectedBadge}>
-					<Ionicons name="checkmark" size={14} color="#FFFFFF" />
+					<Ionicons name="checkmark" size={12} color="#FFFFFF" />
 				</View>
 			)}
 		</View>
@@ -43,15 +45,7 @@ export default function AmbulanceTypeCard({ type, selected, onPress, textColor, 
 				styles.container,
 				{ 
 					backgroundColor,
-					opacity: pressed ? 0.95 : 1,
-					shadowColor: selected ? COLORS.brandPrimary : (isDarkMode ? "#000" : "#000"),
-					shadowOffset: {
-						width: 0,
-						height: selected ? 6 : 2,
-					},
-					shadowOpacity: selected ? 0.25 : 0.08,
-					shadowRadius: selected ? 12 : 6,
-					elevation: selected ? 12 : 4,
+					opacity: pressed ? 0.9 : 1,
 					transform: [{ scale: pressed ? 0.98 : 1 }]
 				}
 			]}
@@ -95,35 +89,30 @@ const styles = StyleSheet.create({
 	container: {
 		flexDirection: "row",
 		alignItems: "center",
-		padding: 20,
-		borderRadius: 24,
-		marginBottom: 16,
+		padding: 16,
+		borderRadius: 20,
+		marginBottom: 12,
 		backgroundColor: '#FFFFFF',
 	},
 	iconContainer: {
-		width: 72,
-		height: 72,
-		borderRadius: 36,
+		width: 56,
+		height: 56,
+		borderRadius: 28,
 		alignItems: "center",
 		justifyContent: "center",
-		marginRight: 20,
+		marginRight: 16,
 		position: "relative",
 	},
 	selectedBadge: {
 		position: "absolute",
 		top: -2,
 		right: -2,
-		width: 24,
-		height: 24,
-		borderRadius: 12,
+		width: 20,
+		height: 20,
+		borderRadius: 10,
 		backgroundColor: COLORS.brandPrimary,
 		alignItems: "center",
 		justifyContent: "center",
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.2,
-		shadowRadius: 4,
-		elevation: 4,
 	},
 	infoContainer: {
 		flex: 1,
