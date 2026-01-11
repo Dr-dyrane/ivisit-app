@@ -88,7 +88,7 @@ export const useEmergencyHandlers = ({
 					),
 					cancelVisit(activeBedBooking.requestId),
 					addNotification({
-						id: `bed_cancel_${activeBedBooking.requestId}`,
+						id: `bed_cancel_${activeBedBooking.requestId}_${Date.now()}`,
 						type: NOTIFICATION_TYPES.APPOINTMENT,
 						title: "Bed reservation cancelled",
 						message: "You cancelled the active bed reservation.",
@@ -119,7 +119,7 @@ export const useEmergencyHandlers = ({
 					),
 					completeVisit(activeBedBooking.requestId),
 					addNotification({
-						id: `bed_complete_${activeBedBooking.requestId}`,
+						id: `bed_complete_${activeBedBooking.requestId}_${Date.now()}`,
 						type: NOTIFICATION_TYPES.APPOINTMENT,
 						title: "Bed booking completed",
 						message: "Your bed booking has been marked complete.",
