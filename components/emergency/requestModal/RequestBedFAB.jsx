@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Animated, ActivityIndicator } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
+import { Fontisto } from '@expo/vector-icons';
 import { COLORS } from '../../../constants/colors';
 
 export default function RequestBedFAB({ 
@@ -10,6 +11,8 @@ export default function RequestBedFAB({
 	isActive = true, // Bed booking is always active once options are selected
 	bedType,
 	bedCount,
+	mode = "request", // "request" or "dispatched"
+	requestData,
 	style 
 }) {
 	const [scaleAnim] = useState(new Animated.Value(1));
@@ -35,20 +38,23 @@ export default function RequestBedFAB({
 	};
 
 	const getButtonText = () => {
-		if (isLoading) return "Reserving...";
+		if (isLoading) return mode === "dispatched" ? "Loading..." : "Reserving...";
+		if (mode === "dispatched") return "View Reservation";
 		if (bedCount > 1) return `Reserve ${bedCount} Beds`;
 		return "Reserve Bed";
 	};
 
 	const getSubText = () => {
 		if (isLoading) return "";
+		if (mode === "dispatched") return "View reservation details";
 		if (bedType === "private") return "Private room selected";
 		return "Standard bed selected";
 	};
 
 	const getIcon = () => {
 		if (isLoading) return "refresh"; // Spinner icon
-		return "bed"; // Bed icon for booking
+		if (mode === "dispatched") return "checkmark"; // Check icon for completed reservation
+		return "bed-patient"; // Bed icon for booking using Fontisto
 	};
 
 	return (
@@ -69,6 +75,12 @@ export default function RequestBedFAB({
 				<Animated.View style={[styles.fabContent, { transform: [{ scale: scaleAnim }] }]}>
 					{isLoading ? (
 						<ActivityIndicator size="small" color="#FFFFFF" />
+					) : getIcon() === "bed-patient" ? (
+						<Fontisto 
+							name={getIcon()} 
+							size={24} 
+							color="#FFFFFF" 
+						/>
 					) : (
 						<Ionicons 
 							name={getIcon()} 

@@ -401,14 +401,26 @@ const EmergencyBottomSheet = forwardRef(
 							/>
 							
 							{/* Reusable FAB for tracking state */}
-							<RequestAmbulanceFAB
-								onPress={handleRequestDone}
-								isLoading={false}
-								isActive={true}
-								selectedAmbulanceType={null}
-								mode="dispatched"
-								requestData={requestData}
-							/>
+							{mode === "booking" ? (
+								<RequestBedFAB
+									onPress={handleRequestDone}
+									isLoading={false}
+									isActive={true}
+									bedType={requestData?.bedType || "standard"}
+									bedCount={requestData?.bedCount || 1}
+									mode="dispatched"
+									requestData={requestData}
+								/>
+							) : (
+								<RequestAmbulanceFAB
+									onPress={handleRequestDone}
+									isLoading={false}
+									isActive={true}
+									selectedAmbulanceType={null}
+									mode="dispatched"
+									requestData={requestData}
+								/>
+							)}
 						</>
 					)}
 				</BottomSheetScrollView>
