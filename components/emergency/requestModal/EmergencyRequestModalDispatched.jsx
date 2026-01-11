@@ -1,11 +1,21 @@
 import React from "react";
-import { View, Text, StyleSheet, Image } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../../contexts/ThemeContext';
 import { COLORS } from "../../../constants/colors";
 import InfoTile from "./InfoTile";
 
-export default function EmergencyRequestModalDispatched({ requestData, textColor, mutedColor, cardColor }) {
+export default function EmergencyRequestModalDispatched({ 
+	requestData, 
+	textColor, 
+	mutedColor, 
+	cardColor,
+	onRequestDone 
+}) {
+	const { isDarkMode } = useTheme();
 	const isBed = requestData?.serviceType === "bed";
 	const bedNumber = requestData?.bedNumber ?? (isBed ? `B-${Math.floor(Math.random() * 90) + 10}` : null);
+
 	return (
 		<View style={styles.container}>
 			<Text style={[styles.title, { color: textColor }]}>
@@ -23,6 +33,7 @@ export default function EmergencyRequestModalDispatched({ requestData, textColor
 						textColor={textColor}
 						mutedColor={mutedColor}
 						cardColor={cardColor}
+						icon="document-text-outline"
 					/>
 					<InfoTile
 						label="Bed Number"
@@ -30,6 +41,7 @@ export default function EmergencyRequestModalDispatched({ requestData, textColor
 						textColor={textColor}
 						mutedColor={mutedColor}
 						cardColor={cardColor}
+						icon="bed-outline"
 					/>
 					<InfoTile
 						label="Beds"
@@ -41,6 +53,7 @@ export default function EmergencyRequestModalDispatched({ requestData, textColor
 						textColor={textColor}
 						mutedColor={mutedColor}
 						cardColor={cardColor}
+						icon="layers-outline"
 					/>
 					<InfoTile
 						label="Est. Wait"
@@ -49,9 +62,31 @@ export default function EmergencyRequestModalDispatched({ requestData, textColor
 						mutedColor={mutedColor}
 						cardColor={cardColor}
 						valueColor={COLORS.brandPrimary}
+						icon="time-outline"
 					/>
-					<View style={[styles.wideCard, { backgroundColor: cardColor }]}>
-						<Text style={[styles.wideLabel, { color: mutedColor }]}>Hospital</Text>
+					<View style={[
+						styles.wideCard, 
+						{ 
+							backgroundColor: cardColor,
+							// Remove border, use shadow for depth
+							shadowColor: isDarkMode ? '#000' : '#000',
+							shadowOffset: { width: 0, height: 1 },
+							shadowOpacity: isDarkMode ? 0.3 : 0.1,
+							shadowRadius: 2,
+							elevation: 2,
+						}
+					]}>
+						<View style={styles.wideLabelRow}>
+							<Ionicons 
+								name="business-outline" 
+								size={12} 
+								color={isDarkMode ? COLORS.textMutedDark : mutedColor} 
+								style={styles.wideLabelIcon}
+							/>
+							<Text style={[styles.wideLabel, { color: isDarkMode ? COLORS.textMutedDark : mutedColor }]}>
+								Hospital
+							</Text>
+						</View>
 						<Text style={[styles.wideValue, { color: textColor }]} numberOfLines={2}>
 							{requestData?.hospitalName ?? "--"}
 						</Text>
@@ -128,22 +163,32 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		fontWeight:'400',
 		marginTop: 6,
-		marginBottom: 18,
+		marginBottom: 24,
+		textAlign: 'center',
 	},
 	grid: {
 		width: "100%",
 		flexDirection: "row",
 		flexWrap: "wrap",
 		justifyContent: "space-between",
-		gap: 16,
-		marginBottom: 24,
+		gap: 12,
+		marginBottom: 20,
 	},
 	wideCard: {
 		width: "100%",
-		borderRadius: 18,
-		paddingHorizontal: 14,
-		paddingVertical: 12,
+		borderRadius: 16,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
 		marginTop: 2,
+		marginBottom: 24,
+	},
+	wideLabelRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		marginBottom: 4,
+	},
+	wideLabelIcon: {
+		marginRight: 4,
 	},
 	wideLabel: {
 		fontSize: 11,
@@ -152,7 +197,7 @@ const styles = StyleSheet.create({
 		opacity: 0.9,
 	},
 	wideValue: {
-		marginTop: 8,
+		marginTop: 6,
 		fontSize: 15,
 		fontWeight: "700",
 		letterSpacing: -0.1,
@@ -160,5 +205,6 @@ const styles = StyleSheet.create({
 	wideSubValue: {
 		fontSize: 12,
 		fontWeight: "500",
+		marginTop: 4,
 	},
 });

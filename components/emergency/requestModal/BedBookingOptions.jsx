@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from 'expo-haptics';
 import { COLORS } from "../../../constants/colors";
 import { useTheme } from "../../../contexts/ThemeContext";
 
@@ -15,19 +16,24 @@ export default function BedBookingOptions({
 }) {
 	const { isDarkMode } = useTheme();
 
+	const handleBedTypeSelect = (typeId) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		onBedTypeChange(typeId);
+	};
+
 	const BED_OPTIONS = [
 		{
 			id: "standard",
 			name: "Standard Bed",
 			description: "General Ward • Shared",
-			icon: "bed",
+			icon: "bed-outline",
 			price: "$150",
 		},
 		{
 			id: "private",
 			name: "Private Room",
 			description: "Single Room • En-suite",
-			icon: "home",
+			icon: "home-outline",
 			price: "$350",
 		},
 	];
@@ -41,26 +47,50 @@ export default function BedBookingOptions({
 			{BED_OPTIONS.map((option) => {
 				const isSelected = bedType === option.id;
 				const backgroundColor = isSelected 
-					? (isDarkMode ? "#1A2333" : "#F0F9FF") 
+					? (isDarkMode 
+						? COLORS.brandPrimary + '25' 
+						: COLORS.brandPrimary + '15') 
 					: cardColor;
 
 				return (
 					<Pressable
 						key={option.id}
-						onPress={() => onBedTypeChange(option.id)}
+						onPress={() => handleBedTypeSelect(option.id)}
 						style={({ pressed }) => [
 							styles.optionCard,
 							{
 								backgroundColor,
-								borderColor: isSelected ? COLORS.brandPrimary : "transparent",
-								borderWidth: isSelected ? 2 : 0,
 								opacity: pressed ? 0.9 : 1,
 							}
 						]}
 					>
 						{/* Icon */}
-						<View style={[styles.iconContainer, { backgroundColor: isDarkMode ? "#252D3B" : "#F1F5F9" }]}>
-							<Ionicons name={option.icon} size={28} color={COLORS.brandPrimary} />
+						<View style={[
+							styles.iconContainer,
+							{
+								backgroundColor: isSelected
+									? (isDarkMode 
+										? COLORS.brandPrimary + '20'
+										: COLORS.brandPrimary + '15')
+									: (isDarkMode
+										? 'rgba(255,255,255,0.05)'
+										: 'rgba(0,0,0,0.03)'),
+							}
+						]}>
+							<Ionicons 
+								name={option.icon} 
+								size={24} 
+								color={isSelected 
+									? COLORS.brandPrimary 
+									: (isDarkMode 
+										? COLORS.textMutedDark 
+										: mutedColor)} 
+							/>
+							{isSelected && (
+								<View style={styles.selectedBadge}>
+									<Ionicons name="checkmark" size={12} color="#FFFFFF" />
+								</View>
+							)}
 						</View>
 
 						{/* Info */}
@@ -69,12 +99,9 @@ export default function BedBookingOptions({
 							<Text style={[styles.optionDesc, { color: mutedColor }]}>{option.description}</Text>
 						</View>
 
-						{/* Price/Selection */}
+						{/* Price */}
 						<View style={styles.priceContainer}>
-							<Text style={[styles.price, { color: textColor }]}>{option.price}</Text>
-							{isSelected && (
-								<Ionicons name="checkmark-circle" size={20} color={COLORS.brandPrimary} style={{ marginTop: 4 }} />
-							)}
+							<Text style={[styles.price, { color: COLORS.brandPrimary }]}>{option.price}</Text>
 						</View>
 					</Pressable>
 				);
@@ -127,8 +154,8 @@ const styles = StyleSheet.create({
 		width: "100%",
 	},
 	sectionHeader: {
-		marginBottom: 8,
-		marginTop: 4,
+		marginBottom: 12,
+		marginTop: 8,
 	},
 	sectionTitle: {
 		fontSize: 11,
@@ -138,26 +165,38 @@ const styles = StyleSheet.create({
 	optionCard: {
 		flexDirection: "row",
 		alignItems: "center",
-		padding: 12,
-		borderRadius: 16,
-		marginBottom: 8,
+		padding: 16,
+		borderRadius: 20,
+		marginBottom: 12,
 	},
 	iconContainer: {
-		width: 50,
-		height: 50,
-		borderRadius: 25,
+		width: 56,
+		height: 56,
+		borderRadius: 28,
 		alignItems: "center",
 		justifyContent: "center",
-		marginRight: 12,
+		marginRight: 16,
+		position: "relative",
+	},
+	selectedBadge: {
+		position: "absolute",
+		top: -2,
+		right: -2,
+		width: 20,
+		height: 20,
+		borderRadius: 10,
+		backgroundColor: COLORS.brandPrimary,
+		alignItems: "center",
+		justifyContent: "center",
 	},
 	infoContainer: {
 		flex: 1,
 		justifyContent: "center",
 	},
 	optionName: {
-		fontSize: 15,
+		fontSize: 16,
 		fontWeight: "700",
-		marginBottom: 2,
+		marginBottom: 4,
 	},
 	optionDesc: {
 		fontSize: 12,
@@ -166,17 +205,19 @@ const styles = StyleSheet.create({
 	priceContainer: {
 		alignItems: "flex-end",
 		justifyContent: "center",
+		marginLeft: 12,
 	},
 	price: {
-		fontSize: 14,
-		fontWeight: "700",
+		fontSize: 16,
+		fontWeight: "800",
 	},
 	countRow: {
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
 		padding: 16,
-		borderRadius: 16,
+		borderRadius: 20,
+		marginTop: 12,
 	},
 	countLabel: {
 		fontSize: 15,

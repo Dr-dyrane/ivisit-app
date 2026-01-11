@@ -159,7 +159,13 @@ export default function EmergencyScreen() {
 
 	useFocusEffect(
 		useCallback(() => {
-			if (selectedHospital || activeAmbulanceTrip || activeBedBooking) {
+			// Only hide tab bar if there's an active trip/booking that matches the current mode
+			const shouldHide =
+				(mode === "emergency" && activeAmbulanceTrip) ||
+				(mode === "booking" && activeBedBooking) ||
+				selectedHospital;
+
+			if (shouldHide) {
 				lockTabBarHidden();
 			} else {
 				unlockTabBarHidden();
@@ -167,8 +173,9 @@ export default function EmergencyScreen() {
 		}, [
 			activeAmbulanceTrip,
 			activeBedBooking,
-			lockTabBarHidden,
 			selectedHospital,
+			mode,
+			lockTabBarHidden,
 			unlockTabBarHidden,
 		])
 	);
@@ -181,11 +188,13 @@ export default function EmergencyScreen() {
 
 	useFocusEffect(
 		useCallback(() => {
+			// Only hide FAB if there's an active trip/booking that matches the current mode
 			const shouldHideFAB =
 				!!selectedHospital ||
-				!!activeAmbulanceTrip ||
-				!!activeBedBooking ||
+				(mode === "emergency" && activeAmbulanceTrip) ||
+				(mode === "booking" && activeBedBooking) ||
 				sheetSnapIndex === 0;
+				
 			registerFAB({
 				icon: mode === "emergency" ? "bed-patient" : "medical",
 				visible: !shouldHideFAB,

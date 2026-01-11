@@ -51,6 +51,7 @@ import EmergencyRequestModalDispatched from "./requestModal/EmergencyRequestModa
 import InfoTile from "./requestModal/InfoTile";
 import BedBookingOptions from "./requestModal/BedBookingOptions";
 import RequestAmbulanceFAB from "./RequestAmbulanceFAB";
+import RequestBedFAB from "./requestModal/RequestBedFAB";
 
 import { useBottomSheetSnap } from "../../hooks/emergency/useBottomSheetSnap";
 import { useBottomSheetScroll } from "../../hooks/emergency/useBottomSheetScroll";
@@ -130,7 +131,7 @@ const EmergencyBottomSheet = forwardRef(
 				isDetailMode,
 				isTripMode,
 				isBedBookingMode,
-				isRequestMode: isRequestFlowActive,
+				isRequestMode: isRequestFlowActive && requestHospital, // Only true when both mode and hospital are set
 				onSnapChange,
 			});
 
@@ -307,6 +308,7 @@ const EmergencyBottomSheet = forwardRef(
 												textColor={requestColors.text}
 												mutedColor={requestColors.textMuted}
 												cardColor={requestColors.card}
+												icon="business-outline"
 											/>
 											<InfoTile
 												label="Specialty"
@@ -314,6 +316,7 @@ const EmergencyBottomSheet = forwardRef(
 												textColor={requestColors.text}
 												mutedColor={requestColors.textMuted}
 												cardColor={requestColors.card}
+												icon="medical-outline"
 											/>
 											<InfoTile
 												label="Available"
@@ -325,6 +328,7 @@ const EmergencyBottomSheet = forwardRef(
 												textColor={requestColors.text}
 												mutedColor={requestColors.textMuted}
 												cardColor={requestColors.card}
+												icon="bed-outline"
 											/>
 											<InfoTile
 												label="Est. wait"
@@ -333,6 +337,7 @@ const EmergencyBottomSheet = forwardRef(
 												mutedColor={requestColors.textMuted}
 												cardColor={requestColors.card}
 												valueColor={COLORS.brandPrimary}
+												icon="time-outline"
 											/>
 										</View>
 
@@ -349,12 +354,18 @@ const EmergencyBottomSheet = forwardRef(
 											mutedColor={requestColors.textMuted}
 											cardColor={requestColors.card}
 										/>
+
+										{/* Bed booking FAB */}
+										<RequestBedFAB
+											onPress={handleSubmitRequest}
+											isLoading={isRequesting}
+											isActive={true}
+											bedType={bedType}
+											bedCount={bedCount}
+										/>
 									</>
 								) : (
 									<View style={styles.ambulanceSelectionContainer}>
-										<Text style={[styles.selectionHelper, { color: requestColors.textMuted }]}>
-											Choose your emergency transport
-										</Text>
 										{AMBULANCE_TYPES.map((type, index) => (
 											<AmbulanceTypeCard
 												key={type.id}
@@ -803,21 +814,21 @@ const styles = StyleSheet.create({
 		backgroundColor: 'transparent',
 	},
 	requestScrollContent: {
-		paddingHorizontal: 24,
-		paddingTop: 20,
+		paddingHorizontal: 8, // Reduced from 24
+		paddingTop: 12, // Reduced from 20
 		paddingBottom: 120, // Reduced space for FAB
 	},
 	infoGrid: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',
 		justifyContent: 'space-between',
-		marginBottom: 16,
-		gap: 12,
+		marginBottom: 12, // Reduced from 16
+		gap: 8, // Reduced from 12
 	},
 	ambulanceSelectionContainer: {
 		width: '100%',
-		gap: 12,
-		marginTop: 8,
+		gap: 12, // Reduced from 12
+		marginTop: 8, // Reduced from 8
 	},
 	selectionHelper: {
 		fontSize: 13,
@@ -827,7 +838,7 @@ const styles = StyleSheet.create({
 		fontStyle: 'italic',
 	},
 	ambulanceCard: {
-		marginBottom: 0,
+		marginBottom: 8, // Reduced from 0 to add some spacing
 	},
 	selectorContainer: {
 		marginBottom: 24,
