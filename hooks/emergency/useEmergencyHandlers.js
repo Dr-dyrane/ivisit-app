@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import * as Haptics from "expo-haptics";
 import { NOTIFICATION_PRIORITY, NOTIFICATION_TYPES } from "../../constants/notifications";
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
+import { EMERGENCY_VISIT_LIFECYCLE } from "../../constants/visits";
 
 export const useEmergencyHandlers = ({
 	activeAmbulanceTrip,
@@ -9,11 +10,26 @@ export const useEmergencyHandlers = ({
 	setRequestStatus,
 	cancelVisit,
 	completeVisit,
+	updateVisit,
+	setAmbulanceTripStatus,
+	setBedBookingStatus,
 	stopAmbulanceTrip,
 	stopBedBooking,
 	addNotification,
 	onSheetSnap,
 }) => {
+	const setVisitLifecycle = useCallback(
+		(id, lifecycleState) => {
+			if (!id) return Promise.resolve();
+			if (typeof updateVisit !== "function") return Promise.resolve();
+			return updateVisit(id, {
+				lifecycleState,
+				lifecycleUpdatedAt: new Date().toISOString(),
+			});
+		},
+		[updateVisit]
+	);
+
 	const createBaseHandler = useCallback(
 		(type, actions) => {
 			return async () => {
@@ -47,6 +63,7 @@ export const useEmergencyHandlers = ({
 						EmergencyRequestStatus.CANCELLED
 					),
 					cancelVisit(activeAmbulanceTrip.requestId),
+					setVisitLifecycle(activeAmbulanceTrip.requestId, EMERGENCY_VISIT_LIFECYCLE.CANCELLED),
 				],
 				cleanup: stopAmbulanceTrip,
 			})();
@@ -67,6 +84,11 @@ export const useEmergencyHandlers = ({
 						EmergencyRequestStatus.COMPLETED
 					),
 					completeVisit(activeAmbulanceTrip.requestId),
+					setVisitLifecycle(activeAmbulanceTrip.requestId, EMERGENCY_VISIT_LIFECYCLE.COMPLETED),
+					setVisitLifecycle(
+						activeAmbulanceTrip.requestId,
+						EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING
+					),
 				],
 				cleanup: stopAmbulanceTrip,
 			})();
@@ -87,6 +109,7 @@ export const useEmergencyHandlers = ({
 						EmergencyRequestStatus.CANCELLED
 					),
 					cancelVisit(activeBedBooking.requestId),
+					setVisitLifecycle(activeBedBooking.requestId, EMERGENCY_VISIT_LIFECYCLE.CANCELLED),
 					addNotification({
 						id: `bed_cancel_${activeBedBooking.requestId}_${Date.now()}`,
 						type: NOTIFICATION_TYPES.APPOINTMENT,
@@ -118,6 +141,11 @@ export const useEmergencyHandlers = ({
 						EmergencyRequestStatus.COMPLETED
 					),
 					completeVisit(activeBedBooking.requestId),
+					setVisitLifecycle(activeBedBooking.requestId, EMERGENCY_VISIT_LIFECYCLE.COMPLETED),
+					setVisitLifecycle(
+						activeBedBooking.requestId,
+						EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING
+					),
 					addNotification({
 						id: `bed_complete_${activeBedBooking.requestId}_${Date.now()}`,
 						type: NOTIFICATION_TYPES.APPOINTMENT,
@@ -138,10 +166,44 @@ export const useEmergencyHandlers = ({
 		[activeBedBooking, createBaseHandler, setRequestStatus, completeVisit, addNotification, stopBedBooking]
 	);
 
+	const onMarkAmbulanceArrived = useCallback(async () => {
+		if (!activeAmbulanceTrip?.requestId) return;
+		await createBaseHandler("MarkAmbulanceArrived", {
+			requests: [
+				setRequestStatus(activeAmbulanceTrip.requestId, EmergencyRequestStatus.ARRIVED),
+				setVisitLifecycle(activeAmbulanceTrip.requestId, EMERGENCY_VISIT_LIFECYCLE.ARRIVED),
+			],
+			onSuccess: () => {
+				if (typeof setAmbulanceTripStatus === "function") {
+					setAmbulanceTripStatus(EmergencyRequestStatus.ARRIVED);
+				}
+			},
+		})();
+		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+	}, [activeAmbulanceTrip, createBaseHandler, setRequestStatus, setVisitLifecycle, setAmbulanceTripStatus]);
+
+	const onMarkBedOccupied = useCallback(async () => {
+		if (!activeBedBooking?.requestId) return;
+		await createBaseHandler("MarkBedOccupied", {
+			requests: [
+				setRequestStatus(activeBedBooking.requestId, EmergencyRequestStatus.ARRIVED),
+				setVisitLifecycle(activeBedBooking.requestId, EMERGENCY_VISIT_LIFECYCLE.OCCUPIED),
+			],
+			onSuccess: () => {
+				if (typeof setBedBookingStatus === "function") {
+					setBedBookingStatus(EmergencyRequestStatus.ARRIVED);
+				}
+			},
+		})();
+		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+	}, [activeBedBooking, createBaseHandler, setRequestStatus, setVisitLifecycle, setBedBookingStatus]);
+
 	return {
 		onCancelAmbulanceTrip,
+		onMarkAmbulanceArrived,
 		onCompleteAmbulanceTrip,
 		onCancelBedBooking,
+		onMarkBedOccupied,
 		onCompleteBedBooking,
 	};
 };

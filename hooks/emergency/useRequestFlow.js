@@ -1,10 +1,17 @@
-import { useCallback } from "react";
-import { VISIT_STATUS, VISIT_TYPES } from "../../constants/visits";
+import { useCallback, useRef } from "react";
+import {
+	EMERGENCY_VISIT_LIFECYCLE,
+	VISIT_STATUS,
+	VISIT_TYPES,
+} from "../../constants/visits";
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 
 export const useRequestFlow = ({
 	createRequest,
+	updateRequest,
 	addVisit,
+	updateVisit,
+	setRequestStatus,
 	startAmbulanceTrip,
 	startBedBooking,
 	clearSelectedHospital,
@@ -16,120 +23,241 @@ export const useRequestFlow = ({
 	selectedSpecialty,
 	requestHospitalId,
 	selectedHospital,
+	activeAmbulanceTrip,
+	activeBedBooking,
 	currentRoute,
 	onRequestComplete,
 }) => {
-	const handleRequestComplete = useCallback(
-		(request) => {
-			if (
-				request?.serviceType !== "ambulance" &&
-				request?.serviceType !== "bed"
-			) {
-				console.warn("[useRequestFlow] Invalid service type:", request?.serviceType);
+	const inflightByTypeRef = useRef({ ambulance: false, bed: false });
+
+	const getSnapshots = useCallback(() => {
+		const shareMedicalProfile = preferences?.privacyShareMedicalProfile === true;
+		const shareEmergencyContacts =
+			preferences?.privacyShareEmergencyContacts === true;
+
+		const shared = {
+			medicalProfile: shareMedicalProfile ? medicalProfile : null,
+			emergencyContacts: shareEmergencyContacts ? emergencyContacts : null,
+		};
+
+		const patient = {
+			fullName: user?.fullName ?? null,
+			phone: user?.phone ?? null,
+			email: user?.email ?? null,
+			username: user?.username ?? null,
+		};
+
+		return { patient, shared };
+	}, [
+		emergencyContacts,
+		medicalProfile,
+		preferences?.privacyShareEmergencyContacts,
+		preferences?.privacyShareMedicalProfile,
+		user?.email,
+		user?.fullName,
+		user?.phone,
+		user?.username,
+	]);
+
+	const canStartRequest = useCallback(
+		(serviceType) => {
+			if (serviceType === "ambulance") return !activeAmbulanceTrip?.requestId;
+			if (serviceType === "bed") return !activeBedBooking?.requestId;
+			return false;
+		},
+		[activeAmbulanceTrip?.requestId, activeBedBooking?.requestId]
+	);
+
+	const handleRequestInitiated = useCallback(
+		async (request) => {
+			if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") {
+				console.warn(
+					"[useRequestFlow] Invalid service type (initiated):",
+					request?.serviceType
+				);
 				return;
 			}
 
-			const hospitalId = requestHospitalId ?? selectedHospital?.id ?? null;
+			if (!canStartRequest(request.serviceType)) {
+				console.warn(
+					"[useRequestFlow] Concurrency block (initiated):",
+					request.serviceType
+				);
+				return;
+			}
+
+			if (inflightByTypeRef.current[request.serviceType] === true) {
+				return;
+			}
+
+			const hospitalId =
+				request?.hospitalId ?? requestHospitalId ?? selectedHospital?.id ?? null;
 			if (!hospitalId) {
-				console.warn("[useRequestFlow] Missing hospitalId");
+				console.warn("[useRequestFlow] Missing hospitalId (initiated)");
 				return;
 			}
 
 			const now = new Date();
-			const visitId = request?.requestId
-				? String(request.requestId)
-				: `local_${Date.now()}`;
+			const nowIso = now.toISOString();
+			const visitId = request?.requestId ? String(request.requestId) : `local_${Date.now()}`;
 			const hospital = hospitals.find((h) => h?.id === hospitalId) ?? null;
-			const date = now.toISOString().slice(0, 10);
-			const time = now.toLocaleTimeString([], {
-				hour: "numeric",
-				minute: "2-digit",
-			});
+			const date = nowIso.slice(0, 10);
+			const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+			const { patient, shared } = getSnapshots();
 
-			const createRequestAsync = async () => {
-				try {
-					const shareMedicalProfile =
-						preferences?.privacyShareMedicalProfile === true;
-					const shareEmergencyContacts =
-						preferences?.privacyShareEmergencyContacts === true;
+			inflightByTypeRef.current[request.serviceType] = true;
+			try {
+				await createRequest({
+					id: visitId,
+					requestId: visitId,
+					serviceType: request.serviceType,
+					hospitalId,
+					hospitalName: request?.hospitalName ?? hospital?.name ?? null,
+					specialty: request?.specialty ?? selectedSpecialty ?? null,
+					ambulanceType: request?.ambulanceType ?? null,
+					ambulanceId: request?.ambulanceId ?? null,
+					bedNumber: request?.bedNumber ?? null,
+					bedType: request?.bedType ?? null,
+					bedCount: request?.bedCount ?? null,
+					estimatedArrival: request?.estimatedArrival ?? null,
+					status: EmergencyRequestStatus.IN_PROGRESS,
+					patient,
+					shared,
+				});
 
-					const shared = {
-						medicalProfile: shareMedicalProfile ? medicalProfile : null,
-						emergencyContacts: shareEmergencyContacts
-							? emergencyContacts
+				await addVisit({
+					id: visitId,
+					visitId,
+					requestId: visitId,
+					hospitalId: String(hospitalId),
+					hospital: request?.hospitalName ?? hospital?.name ?? "Hospital",
+					doctor:
+						request.serviceType === "ambulance"
+							? "Ambulance Dispatch"
+							: "Admissions Desk",
+					specialty:
+						request.serviceType === "ambulance"
+							? "Emergency Response"
+							: request?.specialty ?? selectedSpecialty ?? "General Care",
+					date,
+					time,
+					type:
+						request.serviceType === "ambulance"
+							? VISIT_TYPES.AMBULANCE_RIDE
+							: VISIT_TYPES.BED_BOOKING,
+					status: VISIT_STATUS.IN_PROGRESS,
+					lifecycleState: EMERGENCY_VISIT_LIFECYCLE.INITIATED,
+					lifecycleUpdatedAt: nowIso,
+					image: hospital?.image ?? null,
+					address: hospital?.address ?? null,
+					phone: hospital?.phone ?? null,
+					notes:
+						request.serviceType === "ambulance"
+							? "Ambulance requested via iVisit."
+							: "Bed reserved via iVisit.",
+					roomNumber:
+						request?.serviceType === "bed" ? request?.bedNumber ?? null : null,
+					estimatedDuration:
+						request?.serviceType === "bed"
+							? request?.estimatedArrival ?? null
 							: null,
-					};
+				});
+			} catch (err) {
+				inflightByTypeRef.current[request.serviceType] = false;
+				throw err;
+			}
+		},
+		[
+			addVisit,
+			canStartRequest,
+			createRequest,
+			getSnapshots,
+			hospitals,
+			requestHospitalId,
+			selectedHospital?.id,
+			selectedSpecialty,
+		]
+	);
 
-					const patient = {
-						fullName: user?.fullName ?? null,
-						phone: user?.phone ?? null,
-						email: user?.email ?? null,
-						username: user?.username ?? null,
-					};
+	const handleRequestComplete = useCallback(
+		async (request) => {
+			if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") {
+				console.warn(
+					"[useRequestFlow] Invalid service type (confirmed):",
+					request?.serviceType
+				);
+				return;
+			}
 
-					await createRequest({
-						id: visitId,
-						requestId: visitId,
-						serviceType: request.serviceType,
-						hospitalId,
-						hospitalName: request?.hospitalName ?? hospital?.name ?? null,
-						specialty: request?.specialty ?? selectedSpecialty ?? null,
-						ambulanceType: request?.ambulanceType ?? null,
-						ambulanceId: request?.ambulanceId ?? null,
-						bedNumber: request?.bedNumber ?? null,
-						bedType: request?.bedType ?? null,
-						bedCount: request?.bedCount ?? null,
-						estimatedArrival: request?.estimatedArrival ?? null,
-						status: EmergencyRequestStatus.IN_PROGRESS,
-						patient,
-						shared,
-					});
+			if (!canStartRequest(request.serviceType)) {
+				console.warn(
+					"[useRequestFlow] Concurrency block (confirmed):",
+					request.serviceType
+				);
+				return;
+			}
 
-					console.log("[useRequestFlow] Request created:", {
-						visitId,
-						serviceType: request.serviceType,
-					});
-				} catch (err) {
-					console.error("[useRequestFlow] Request creation failed:", err);
+			const hospitalId =
+				request?.hospitalId ?? requestHospitalId ?? selectedHospital?.id ?? null;
+			if (!hospitalId) {
+				console.warn("[useRequestFlow] Missing hospitalId (confirmed)");
+				return;
+			}
+
+			const nowIso = new Date().toISOString();
+			const visitId = request?.requestId ? String(request.requestId) : `local_${Date.now()}`;
+			const hospital = hospitals.find((h) => h?.id === hospitalId) ?? null;
+
+			try {
+				await updateRequest?.(visitId, {
+					status: EmergencyRequestStatus.ACCEPTED,
+					hospitalId,
+					hospitalName: request?.hospitalName ?? hospital?.name ?? null,
+					specialty: request?.specialty ?? selectedSpecialty ?? null,
+					ambulanceType: request?.ambulanceType ?? null,
+					ambulanceId: request?.ambulanceId ?? null,
+					bedNumber: request?.bedNumber ?? null,
+					bedType: request?.bedType ?? null,
+					bedCount: request?.bedCount ?? null,
+					estimatedArrival: request?.estimatedArrival ?? null,
+				});
+			} catch (err) {
+				try {
+					await setRequestStatus?.(visitId, EmergencyRequestStatus.ACCEPTED);
+				} catch (e) {
 				}
-			};
+			}
 
-			createRequestAsync();
+			try {
+				await updateVisit?.(visitId, {
+					lifecycleState: EMERGENCY_VISIT_LIFECYCLE.CONFIRMED,
+					lifecycleUpdatedAt: nowIso,
+				});
+				await updateVisit?.(visitId, {
+					lifecycleState: EMERGENCY_VISIT_LIFECYCLE.MONITORING,
+					lifecycleUpdatedAt: nowIso,
+				});
+			} catch (e) {
+			}
 
-			if (request?.serviceType === "ambulance") {
+			if (request.serviceType === "ambulance") {
 				startAmbulanceTrip({
 					hospitalId,
 					requestId: visitId,
+					status: EmergencyRequestStatus.ACCEPTED,
 					ambulanceId: request?.ambulanceId ?? null,
 					ambulanceType: request?.ambulanceType ?? null,
 					estimatedArrival: request?.estimatedArrival ?? null,
 					hospitalName: request?.hospitalName ?? null,
 					route: currentRoute?.coordinates ?? null,
 				});
-
-				addVisit({
-					id: visitId,
-					visitId,
-					requestId: visitId,
-					hospitalId: String(hospitalId),
-					hospital: request?.hospitalName ?? hospital?.name ?? "Hospital",
-					doctor: "Ambulance Dispatch",
-					specialty: "Emergency Response",
-					date,
-					time,
-					type: VISIT_TYPES.AMBULANCE_RIDE,
-					status: VISIT_STATUS.IN_PROGRESS,
-					image: hospital?.image ?? null,
-					address: hospital?.address ?? null,
-					phone: hospital?.phone ?? null,
-					notes: "Ambulance requested via iVisit.",
-				});
 			}
 
-			if (request?.serviceType === "bed") {
+			if (request.serviceType === "bed") {
 				startBedBooking({
 					hospitalId,
 					requestId: visitId,
+					status: EmergencyRequestStatus.ACCEPTED,
 					hospitalName: request?.hospitalName ?? null,
 					specialty: request?.specialty ?? null,
 					bedNumber: request?.bedNumber ?? null,
@@ -137,52 +265,28 @@ export const useRequestFlow = ({
 					bedCount: request?.bedCount ?? null,
 					estimatedWait: request?.estimatedArrival ?? null,
 				});
-
-				addVisit({
-					id: visitId,
-					visitId,
-					requestId: visitId,
-					hospitalId: String(hospitalId),
-					hospital: request?.hospitalName ?? hospital?.name ?? "Hospital",
-					doctor: "Admissions Desk",
-					specialty: request?.specialty ?? selectedSpecialty ?? "General Care",
-					date,
-					time,
-					type: VISIT_TYPES.BED_BOOKING,
-					status: VISIT_STATUS.IN_PROGRESS,
-					image: hospital?.image ?? null,
-					address: hospital?.address ?? null,
-					phone: hospital?.phone ?? null,
-					notes: "Bed reserved via iVisit.",
-					roomNumber: request?.bedNumber ?? null,
-					estimatedDuration: request?.estimatedArrival ?? null,
-				});
 			}
 
+			inflightByTypeRef.current[request.serviceType] = false;
 			clearSelectedHospital();
 			onRequestComplete?.();
 		},
 		[
-			addVisit,
+			canStartRequest,
 			clearSelectedHospital,
-			createRequest,
 			currentRoute,
-			emergencyContacts,
 			hospitals,
-			medicalProfile,
 			onRequestComplete,
-			preferences,
 			requestHospitalId,
 			selectedHospital?.id,
 			selectedSpecialty,
+			setRequestStatus,
 			startAmbulanceTrip,
 			startBedBooking,
-			user?.email,
-			user?.fullName,
-			user?.phone,
-			user?.username,
+			updateRequest,
+			updateVisit,
 		]
 	);
 
-	return { handleRequestComplete };
+	return { handleRequestInitiated, handleRequestComplete };
 };

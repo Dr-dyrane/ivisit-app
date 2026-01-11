@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useMemo, useState } from "react";
+import { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import { useFocusEffect } from "expo-router";
 import { View, StyleSheet, Dimensions } from "react-native";
 import { useEmergency } from "../contexts/EmergencyContext";
@@ -14,7 +14,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { COLORS } from "../constants/colors";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { VISIT_STATUS, VISIT_TYPES } from "../constants/visits";
+import { EMERGENCY_VISIT_LIFECYCLE, VISIT_STATUS, VISIT_TYPES } from "../constants/visits";
 import { usePreferences } from "../contexts/PreferencesContext";
 import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
 import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
@@ -29,6 +29,7 @@ import { getMapPaddingForSnapIndex } from "../constants/emergencyAnimations";
 
 import { EmergencyMapContainer } from "../components/emergency/EmergencyMapContainer";
 import { BottomSheetController } from "../components/emergency/BottomSheetController";
+import { VisitRatingModal } from "../components/emergency/VisitRatingModal";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 import { useEmergencyHandlers } from "../hooks/emergency/useEmergencyHandlers";
 import { useHospitalSelection } from "../hooks/emergency/useHospitalSelection";
@@ -52,12 +53,12 @@ export default function EmergencyScreen() {
 	const { resetHeader } = useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB } = useFAB();
-	const { addVisit, cancelVisit, completeVisit } = useVisits();
+	const { addVisit, updateVisit, cancelVisit, completeVisit } = useVisits();
 	const { user } = useAuth();
 	const { preferences } = usePreferences();
 	const { contacts: emergencyContacts } = useEmergencyContacts();
 	const { profile: medicalProfile } = useMedicalProfile();
-	const { createRequest, setRequestStatus } = useEmergencyRequests();
+	const { createRequest, updateRequest, setRequestStatus } = useEmergencyRequests();
 	const { addNotification } = useNotifications();
 
 	const screenHeight = Dimensions.get("window").height;
@@ -82,6 +83,12 @@ export default function EmergencyScreen() {
 	const [isRequestFlowOpen, setIsRequestFlowOpen] = useState(false);
 	const [requestHospitalId, setRequestHospitalId] = useState(null);
 	const [currentRoute, setCurrentRoute] = useState(null);
+	const [ratingState, setRatingState] = useState({
+		visible: false,
+		visitId: null,
+		title: null,
+		subtitle: null,
+	});
 
 	// Map padding - calculated from snap index
 	const mapBottomPadding = useMemo(() => {
@@ -104,6 +111,7 @@ export default function EmergencyScreen() {
 		specialties,
 		selectHospital,
 		toggleMode,
+		setMode,
 		selectSpecialty,
 		selectServiceType,
 		updateHospitals,
@@ -112,8 +120,10 @@ export default function EmergencyScreen() {
 		clearSelectedHospital,
 		startAmbulanceTrip,
 		stopAmbulanceTrip,
+		setAmbulanceTripStatus,
 		startBedBooking,
 		stopBedBooking,
+		setBedBookingStatus,
 	} = useEmergency();
 
 	// Debugging hospitals
@@ -159,11 +169,7 @@ export default function EmergencyScreen() {
 
 	useFocusEffect(
 		useCallback(() => {
-			// Only hide tab bar if there's an active trip/booking that matches the current mode
-			const shouldHide =
-				(mode === "emergency" && activeAmbulanceTrip) ||
-				(mode === "booking" && activeBedBooking) ||
-				selectedHospital;
+			const shouldHide = !!selectedHospital || !!activeAmbulanceTrip || !!activeBedBooking;
 
 			if (shouldHide) {
 				lockTabBarHidden();
@@ -188,12 +194,8 @@ export default function EmergencyScreen() {
 
 	useFocusEffect(
 		useCallback(() => {
-			// Only hide FAB if there's an active trip/booking that matches the current mode
 			const shouldHideFAB =
-				!!selectedHospital ||
-				(mode === "emergency" && activeAmbulanceTrip) ||
-				(mode === "booking" && activeBedBooking) ||
-				sheetSnapIndex === 0;
+				!!selectedHospital || sheetSnapIndex === 0 || isRequestFlowOpen;
 				
 			registerFAB({
 				icon: mode === "emergency" ? "bed-patient" : "medical",
@@ -208,6 +210,7 @@ export default function EmergencyScreen() {
 			registerFAB,
 			selectedHospital,
 			sheetSnapIndex,
+			isRequestFlowOpen,
 		])
 	);
 
@@ -270,9 +273,12 @@ export default function EmergencyScreen() {
 	}, [activeAmbulanceTrip, activeBedBooking, clearSelectedHospital, handleCloseFocus]);
 
 	// Hook: Request flow (create request + visits)
-	const { handleRequestComplete } = useRequestFlow({
+	const { handleRequestInitiated, handleRequestComplete } = useRequestFlow({
 		createRequest,
+		updateRequest,
 		addVisit,
+		updateVisit,
+		setRequestStatus,
 		startAmbulanceTrip,
 		startBedBooking,
 		clearSelectedHospital,
@@ -284,6 +290,8 @@ export default function EmergencyScreen() {
 		selectedSpecialty,
 		requestHospitalId,
 		selectedHospital,
+		activeAmbulanceTrip,
+		activeBedBooking,
 		currentRoute,
 		onRequestComplete: () => {
 			setTimeout(() => {
@@ -374,12 +382,26 @@ export default function EmergencyScreen() {
 	// Hide controls when request flow is active to prevent clutter
 	const showMapControls = !isRequestFlowOpen;
 
+	const handleModeSelect = useCallback(
+		(nextMode) => {
+			if (nextMode !== "emergency" && nextMode !== "booking") return;
+			setMode(nextMode);
+		},
+		[setMode]
+	);
+
 	const routeHospitalId =
 		mode === "emergency"
 			? activeAmbulanceTrip?.hospitalId ?? selectedHospital?.id ?? null
 			: activeBedBooking?.hospitalId ?? selectedHospital?.id ?? null;
 	const animateAmbulance = mode === "emergency" && !!activeAmbulanceTrip;
 	const ambulanceTripEtaSeconds = activeAmbulanceTrip?.etaSeconds ?? null;
+
+	useEffect(() => {
+		if (!routeHospitalId && currentRoute) {
+			setCurrentRoute(null);
+		}
+	}, [currentRoute, routeHospitalId]);
 
 	const hospitalsForMap = useMemo(() => {
 		if (!hospitals || hospitals.length === 0) return undefined;
@@ -400,8 +422,10 @@ export default function EmergencyScreen() {
 	// Hook: All trip completion and cancellation handlers
 	const {
 		onCancelAmbulanceTrip,
+		onMarkAmbulanceArrived,
 		onCompleteAmbulanceTrip,
 		onCancelBedBooking,
+		onMarkBedOccupied,
 		onCompleteBedBooking,
 	} = useEmergencyHandlers({
 		activeAmbulanceTrip,
@@ -409,6 +433,9 @@ export default function EmergencyScreen() {
 		setRequestStatus,
 		cancelVisit,
 		completeVisit,
+		updateVisit,
+		setAmbulanceTripStatus,
+		setBedBookingStatus,
 		stopAmbulanceTrip,
 		stopBedBooking,
 		addNotification,
@@ -417,8 +444,55 @@ export default function EmergencyScreen() {
 		},
 	});
 
+	const handleCompleteAmbulanceTripWithRating = useCallback(async () => {
+		const visitId = activeAmbulanceTrip?.requestId ?? null;
+		const hospitalName = activeAmbulanceTrip?.hospitalName ?? null;
+		await onCompleteAmbulanceTrip?.();
+		if (!visitId) return;
+		setRatingState({
+			visible: true,
+			visitId,
+			title: "Rate your ambulance visit",
+			subtitle: hospitalName ? `Trip to ${hospitalName}` : null,
+		});
+	}, [activeAmbulanceTrip?.hospitalName, activeAmbulanceTrip?.requestId, onCompleteAmbulanceTrip]);
+
+	const handleCompleteBedBookingWithRating = useCallback(async () => {
+		const visitId = activeBedBooking?.requestId ?? null;
+		const hospitalName = activeBedBooking?.hospitalName ?? null;
+		await onCompleteBedBooking?.();
+		if (!visitId) return;
+		setRatingState({
+			visible: true,
+			visitId,
+			title: "Rate your bed visit",
+			subtitle: hospitalName ? `Stay at ${hospitalName}` : null,
+		});
+	}, [activeBedBooking?.hospitalName, activeBedBooking?.requestId, onCompleteBedBooking]);
+
 	return (
 		<View style={styles.container}>
+			<VisitRatingModal
+				visible={ratingState.visible}
+				title={ratingState.title || "Rate your visit"}
+				subtitle={ratingState.subtitle}
+				onClose={() => {
+					setRatingState({ visible: false, visitId: null, title: null, subtitle: null });
+				}}
+				onSubmit={async ({ rating, comment }) => {
+					const visitId = ratingState.visitId;
+					if (!visitId) return;
+					const nowIso = new Date().toISOString();
+					await updateVisit?.(visitId, {
+						rating,
+						ratingComment: comment,
+						ratedAt: nowIso,
+						lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
+						lifecycleUpdatedAt: nowIso,
+					});
+					setRatingState({ visible: false, visitId: null, title: null, subtitle: null });
+				}}
+			/>
 			<EmergencyMapContainer
 				ref={mapRef}
 				hospitals={hospitalsForMap}
@@ -450,13 +524,17 @@ export default function EmergencyScreen() {
 				isRequestMode={isRequestFlowOpen}
 				requestHospital={requestHospital}
 				onRequestClose={handleCloseRequestFlow}
+				onRequestInitiated={handleRequestInitiated}
 				onRequestComplete={handleRequestComplete}
 				activeAmbulanceTrip={activeAmbulanceTrip}
 				activeBedBooking={activeBedBooking}
 				onCancelAmbulanceTrip={onCancelAmbulanceTrip}
-				onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
+				onMarkAmbulanceArrived={onMarkAmbulanceArrived}
+				onCompleteAmbulanceTrip={handleCompleteAmbulanceTripWithRating}
 				onCancelBedBooking={onCancelBedBooking}
-				onCompleteBedBooking={onCompleteBedBooking}
+				onMarkBedOccupied={onMarkBedOccupied}
+				onCompleteBedBooking={handleCompleteBedBookingWithRating}
+				onModeSelect={handleModeSelect}
 				serviceTypeCounts={serviceTypeCounts}
 				specialtyCounts={specialtyCounts}
 				hasActiveFilters={hasActiveFilters}

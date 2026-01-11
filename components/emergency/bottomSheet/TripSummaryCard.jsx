@@ -78,6 +78,8 @@ const TripSummaryHalf = ({
 	assigned,
 	callTarget,
 	onCancelAmbulanceTrip,
+	showMarkArrived,
+	onMarkAmbulanceArrived,
 	showComplete,
 	onCompleteAmbulanceTrip,
 }) => {
@@ -228,6 +230,18 @@ const TripSummaryHalf = ({
 					<Text style={styles.cancelText}>Cancel Trip</Text>
 				</Pressable>
 
+				{showMarkArrived && (
+					<Pressable
+						onPress={onMarkAmbulanceArrived}
+						style={({ pressed }) => [
+							styles.completeBtn,
+							{ opacity: pressed ? 0.7 : 1 },
+						]}
+					>
+						<Text style={styles.completeText}>Mark Arrived</Text>
+					</Pressable>
+				)}
+
 				{showComplete && (
 					<Pressable
 						onPress={onCompleteAmbulanceTrip}
@@ -257,6 +271,8 @@ const TripSummaryFull = ({
 	ambulanceType,
 	callTarget,
 	onCancelAmbulanceTrip,
+	showMarkArrived,
+	onMarkAmbulanceArrived,
 	showComplete,
 	onCompleteAmbulanceTrip,
 }) => {
@@ -463,6 +479,18 @@ const TripSummaryFull = ({
 						<Text style={styles.cancelText}>Cancel Trip</Text>
 					</Pressable>
 
+					{showMarkArrived && (
+						<Pressable
+							onPress={onMarkAmbulanceArrived}
+							style={({ pressed }) => [
+								styles.completeBtn,
+								{ opacity: pressed ? 0.7 : 1 },
+							]}
+						>
+							<Text style={styles.completeText}>Mark Arrived</Text>
+						</Pressable>
+					)}
+
 					{showComplete && (
 						<Pressable
 							onPress={onCompleteAmbulanceTrip}
@@ -484,6 +512,7 @@ export const TripSummaryCard = ({
 	activeAmbulanceTrip,
 	allHospitals = [],
 	onCancelAmbulanceTrip,
+	onMarkAmbulanceArrived,
 	onCompleteAmbulanceTrip,
 	isDarkMode,
 	isCollapsed,
@@ -549,9 +578,13 @@ export const TripSummaryCard = ({
 	}, [lifecycleStatus]);
 
 	const statusLabel = lifecycleLabel ?? computedStatus ?? statusMeta?.label ?? "En Route";
+	const showMarkArrived =
+		typeof onMarkAmbulanceArrived === "function" &&
+		computedStatus === "Arrived" &&
+		String(lifecycleStatus || "") !== "arrived";
 	const showComplete =
 		typeof onCompleteAmbulanceTrip === "function" &&
-		(String(lifecycleStatus || "") === "arrived" || computedStatus === "Arrived");
+		String(lifecycleStatus || "") === "arrived";
 	const driverName =
 		Array.isArray(assigned?.crew) && assigned.crew.length > 0
 			? assigned.crew[0]
@@ -593,6 +626,8 @@ export const TripSummaryCard = ({
 				ambulanceType={ambulanceType}
 				callTarget={callTarget}
 				onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+				showMarkArrived={showMarkArrived}
+				onMarkAmbulanceArrived={onMarkAmbulanceArrived}
 				showComplete={showComplete}
 				onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
 			/>
@@ -612,6 +647,8 @@ export const TripSummaryCard = ({
 			assigned={assigned}
 			callTarget={callTarget}
 			onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+			showMarkArrived={showMarkArrived}
+			onMarkAmbulanceArrived={onMarkAmbulanceArrived}
 			showComplete={showComplete}
 			onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
 		/>

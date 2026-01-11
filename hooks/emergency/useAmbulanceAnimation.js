@@ -116,11 +116,13 @@ export const useAmbulanceAnimation = ({
 	useEffect(() => {
 		if (responderLocation) {
 			setAmbulanceCoordinate(responderLocation);
+		} else if (!animateAmbulance) {
+			setAmbulanceCoordinate(null);
 		}
 		if (Number.isFinite(responderHeading)) {
 			setAmbulanceHeading(responderHeading);
 		}
-	}, [responderLocation, responderHeading]);
+	}, [animateAmbulance, responderLocation, responderHeading]);
 
 	return {
 		ambulanceCoordinate,

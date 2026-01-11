@@ -30,8 +30,19 @@ export function useEmergencyRequests() {
 		}
 	}, []);
 
+    const updateRequest = useCallback(async (requestId, updates) => {
+        try {
+            const result = await emergencyRequestsService.update(requestId, updates);
+            return result;
+        } catch (err) {
+            console.error(`[updateRequest] Failed to update ${requestId}:`, err);
+            throw err;
+        }
+    }, []);
+
 	return {
 		createRequest,
+        updateRequest,
 		setRequestStatus,
 		isLoading,
 		error,

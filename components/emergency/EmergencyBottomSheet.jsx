@@ -28,6 +28,7 @@ import EmergencySheetTopRow from "./bottomSheet/EmergencySheetTopRow";
 import EmergencySheetFilters from "./bottomSheet/EmergencySheetFilters";
 import EmergencySheetSectionHeader from "./bottomSheet/EmergencySheetSectionHeader";
 import EmergencySheetHospitalList from "./bottomSheet/EmergencySheetHospitalList";
+import { ActiveVisitsSwitcher } from "./bottomSheet/ActiveVisitsSwitcher";
 import { TripSummaryCard } from "./bottomSheet/TripSummaryCard";
 import { BedBookingSummaryCard } from "./bottomSheet/BedBookingSummaryCard";
 
@@ -52,13 +53,17 @@ const EmergencyBottomSheet = forwardRef(
 			isRequestMode = false,
 			requestHospital = null,
 			onRequestClose,
+			onRequestInitiated,
 			onRequestComplete,
 			activeAmbulanceTrip = null,
 			onCancelAmbulanceTrip,
+			onMarkAmbulanceArrived,
 			onCompleteAmbulanceTrip,
 			activeBedBooking = null,
 			onCancelBedBooking,
+			onMarkBedOccupied,
 			onCompleteBedBooking,
+			onModeSelect,
 			serviceTypeCounts = {},
 			specialtyCounts = {},
 			hasActiveFilters = false,
@@ -305,6 +310,7 @@ const EmergencyBottomSheet = forwardRef(
 							requestHospital={requestHospital}
 							selectedSpecialty={selectedSpecialty}
 							onRequestClose={onRequestClose}
+							onRequestInitiated={onRequestInitiated}
 							onRequestComplete={onRequestComplete}
 						/>
 					</BottomSheetView>
@@ -339,11 +345,18 @@ const EmergencyBottomSheet = forwardRef(
 						onScroll={handleScroll}
 						keyboardShouldPersistTaps="handled"
 					>
+						<ActiveVisitsSwitcher
+							mode={mode}
+							hasAmbulance={!!activeAmbulanceTrip}
+							hasBed={!!activeBedBooking}
+							onSelectMode={onModeSelect}
+						/>
 						{isTripMode ? (
 							<TripSummaryCard
 								activeAmbulanceTrip={activeAmbulanceTrip}
 								allHospitals={allHospitals}
 								onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+								onMarkAmbulanceArrived={onMarkAmbulanceArrived}
 								onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
 								isDarkMode={isDarkMode}
 								isCollapsed={sheetPhase === "collapsed"}
@@ -356,6 +369,7 @@ const EmergencyBottomSheet = forwardRef(
 								activeBedBooking={activeBedBooking}
 								allHospitals={allHospitals}
 								onCancelBedBooking={onCancelBedBooking}
+								onMarkBedOccupied={onMarkBedOccupied}
 								onCompleteBedBooking={onCompleteBedBooking}
 								isDarkMode={isDarkMode}
 								isCollapsed={sheetPhase === "collapsed"}

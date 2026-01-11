@@ -19,6 +19,20 @@ export const VISIT_TYPES = {
   CONSULTATION: "Consultation",
 };
 
+export const EMERGENCY_VISIT_LIFECYCLE = {
+  INITIATED: "initiated",
+  CONFIRMED: "confirmed",
+  MONITORING: "monitoring",
+  ARRIVED: "arrived",
+  OCCUPIED: "occupied",
+  COMPLETED: "completed",
+  POST_COMPLETION: "post_completion",
+  RATING_PENDING: "rating_pending",
+  RATED: "rated",
+  CLEARED: "cleared",
+  CANCELLED: "cancelled",
+};
+
 export const getStatusColor = (status) => {
   switch (status) {
     case VISIT_STATUS.UPCOMING:

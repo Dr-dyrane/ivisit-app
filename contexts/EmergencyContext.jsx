@@ -263,94 +263,103 @@ export function EmergencyProvider({ children }) {
 	useEffect(() => {
 		let isActive = true;
 		(async () => {
-			// Load active request from Supabase/Local via Service
 			const activeRequests = await emergencyRequestsService.list();
-			const active = activeRequests.find(
-				(r) => r.status === "in_progress" || r.status === "accepted" || r.status === "arrived"
+			const isActiveStatus = (status) =>
+				status === "in_progress" || status === "accepted" || status === "arrived";
+			const activeAmbulance = activeRequests.find(
+				(r) => r?.serviceType === "ambulance" && isActiveStatus(r?.status)
+			);
+			const activeBed = activeRequests.find(
+				(r) => r?.serviceType === "bed" && isActiveStatus(r?.status)
 			);
 			
 			if (!isActive) return;
 
-			// Restore state if found
-			if (active) {
-				const parseEtaToSecondsLocal = (eta) => {
-					if (!eta || typeof eta !== "string") return null;
-					const lower = eta.toLowerCase();
-					const minutesMatch = lower.match(/(\d+)\s*(min|mins|minute|minutes)/);
-					if (minutesMatch) return Number(minutesMatch[1]) * 60;
-					const secondsMatch = lower.match(/(\d+)\s*(sec|secs|second|seconds)/);
-					if (secondsMatch) return Number(secondsMatch[1]);
-					return null;
-				};
+			const parseEtaToSecondsLocal = (eta) => {
+				if (!eta || typeof eta !== "string") return null;
+				const lower = eta.toLowerCase();
+				const minutesMatch = lower.match(/(\d+)\s*(min|mins|minute|minutes)/);
+				if (minutesMatch) return Number(minutesMatch[1]) * 60;
+				const secondsMatch = lower.match(/(\d+)\s*(sec|secs|second|seconds)/);
+				if (secondsMatch) return Number(secondsMatch[1]);
+				return null;
+			};
 
-				const startedAt = active.createdAt ? Date.parse(active.createdAt) : Date.now();
-				const etaSeconds = parseEtaToSecondsLocal(active.estimatedArrival);
-
-				if (active.serviceType === "ambulance") {
-					// Helper to parse location from service (could be object or string)
-					let loc = null;
-					if (active.responderLocation) {
-						if (
-							typeof active.responderLocation === "object" &&
-							active.responderLocation.coordinates
-						) {
-							loc = {
-								latitude: active.responderLocation.coordinates[1],
-								longitude: active.responderLocation.coordinates[0],
-							};
-						} else if (typeof active.responderLocation === "string") {
-							loc = parsePoint(active.responderLocation);
-						}
+			if (activeAmbulance) {
+				let loc = null;
+				if (activeAmbulance.responderLocation) {
+					if (
+						typeof activeAmbulance.responderLocation === "object" &&
+						activeAmbulance.responderLocation.coordinates
+					) {
+						loc = {
+							latitude: activeAmbulance.responderLocation.coordinates[1],
+							longitude: activeAmbulance.responderLocation.coordinates[0],
+						};
+					} else if (typeof activeAmbulance.responderLocation === "string") {
+						loc = parsePoint(activeAmbulance.responderLocation);
 					}
-
-					// Fetch full ambulance details for rating/crew/etc
-					let fullAmbulance = null;
-					if (active.ambulanceId) {
-						try {
-							fullAmbulance = await ambulanceService.getById(active.ambulanceId);
-						} catch (e) {
-							console.warn("Failed to fetch assigned ambulance details", e);
-						}
-					}
-
-					setActiveAmbulanceTrip({
-						hospitalId: active.hospitalId,
-						requestId: active.requestId,
-						status: active.status,
-						estimatedArrival: active.estimatedArrival ?? null,
-						etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
-						startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
-						assignedAmbulance: active.responderName
-							? {
-								...fullAmbulance,
-								id: active.ambulanceId || "ems_001",
-								type:
-									active.responderVehicleType || fullAmbulance?.type || "Ambulance",
-								plate: active.responderVehiclePlate || fullAmbulance?.vehicleNumber,
-								name: active.responderName,
-								phone: active.responderPhone,
-								location: loc || fullAmbulance?.location,
-								heading: active.responderHeading || 0,
-							}
-							: null,
-						currentResponderLocation: loc,
-						currentResponderHeading: active.responderHeading,
-					});
-				} else if (active.serviceType === "bed") {
-					setActiveBedBooking({
-						hospitalId: active.hospitalId,
-						requestId: active.requestId,
-						status: active.status,
-						hospitalName: active.hospitalName ?? null,
-						specialty: active.specialty ?? null,
-						bedNumber: active.bedNumber ?? null,
-						bedType: active.bedType ?? null,
-						bedCount: active.bedCount ?? null,
-						estimatedWait: active.estimatedArrival ?? null,
-						etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
-						startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
-					});
 				}
+
+				let fullAmbulance = null;
+				if (activeAmbulance.ambulanceId) {
+					try {
+						fullAmbulance = await ambulanceService.getById(activeAmbulance.ambulanceId);
+					} catch (e) {
+					}
+				}
+
+				const startedAt = activeAmbulance.createdAt
+					? Date.parse(activeAmbulance.createdAt)
+					: Date.now();
+				const etaSeconds = parseEtaToSecondsLocal(activeAmbulance.estimatedArrival);
+
+				setActiveAmbulanceTrip({
+					hospitalId: activeAmbulance.hospitalId,
+					requestId: activeAmbulance.requestId,
+					status: activeAmbulance.status,
+					estimatedArrival: activeAmbulance.estimatedArrival ?? null,
+					etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
+					startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
+					assignedAmbulance: activeAmbulance.responderName
+						? {
+								...fullAmbulance,
+								id: activeAmbulance.ambulanceId || "ems_001",
+								type:
+									activeAmbulance.responderVehicleType ||
+									fullAmbulance?.type ||
+									"Ambulance",
+								plate:
+									activeAmbulance.responderVehiclePlate ||
+									fullAmbulance?.vehicleNumber,
+								name: activeAmbulance.responderName,
+								phone: activeAmbulance.responderPhone,
+								location: loc || fullAmbulance?.location,
+								heading: activeAmbulance.responderHeading || 0,
+						  }
+						: null,
+					currentResponderLocation: loc,
+					currentResponderHeading: activeAmbulance.responderHeading,
+				});
+			}
+
+			if (activeBed) {
+				const startedAt = activeBed.createdAt ? Date.parse(activeBed.createdAt) : Date.now();
+				const etaSeconds = parseEtaToSecondsLocal(activeBed.estimatedArrival);
+
+				setActiveBedBooking({
+					hospitalId: activeBed.hospitalId,
+					requestId: activeBed.requestId,
+					status: activeBed.status,
+					hospitalName: activeBed.hospitalName ?? null,
+					specialty: activeBed.specialty ?? null,
+					bedNumber: activeBed.bedNumber ?? null,
+					bedType: activeBed.bedType ?? null,
+					bedCount: activeBed.bedCount ?? null,
+					estimatedWait: activeBed.estimatedArrival ?? null,
+					etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
+					startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
+				});
 			}
 		})();
 		return () => {
@@ -499,6 +508,7 @@ export function EmergencyProvider({ children }) {
 			setActiveAmbulanceTrip({
 				hospitalId: trip.hospitalId,
 				requestId: trip.requestId ?? null,
+				status: trip.status ?? null,
 				ambulanceId: assignedAmbulance?.id ?? trip.ambulanceId ?? null,
 				ambulanceType: trip.ambulanceType ?? assignedAmbulance?.type ?? null,
 				estimatedArrival: trip.estimatedArrival ?? null,
@@ -519,6 +529,13 @@ export function EmergencyProvider({ children }) {
 		setActiveAmbulanceTrip(null);
 	}, []);
 
+	const setAmbulanceTripStatus = useCallback((status) => {
+		setActiveAmbulanceTrip((prev) => {
+			if (!prev) return prev;
+			return { ...prev, status };
+		});
+	}, []);
+
 	const startBedBooking = useCallback(
 		(booking) => {
 			if (!booking?.hospitalId) return;
@@ -531,6 +548,7 @@ export function EmergencyProvider({ children }) {
 				hospitalId: booking.hospitalId,
 				bookingId: booking.bookingId ?? booking.requestId ?? null,
 				requestId: booking.requestId ?? booking.bookingId ?? null,
+				status: booking.status ?? null,
 				bedNumber: booking.bedNumber ?? null,
 				bedType: booking.bedType ?? null,
 				bedCount: booking.bedCount ?? null,
@@ -546,6 +564,13 @@ export function EmergencyProvider({ children }) {
 
 	const stopBedBooking = useCallback(() => {
 		setActiveBedBooking(null);
+	}, []);
+
+	const setBedBookingStatus = useCallback((status) => {
+		setActiveBedBooking((prev) => {
+			if (!prev) return prev;
+			return { ...prev, status };
+		});
 	}, []);
 
 	const toggleMode = useCallback(() => {
@@ -662,8 +687,10 @@ export function EmergencyProvider({ children }) {
 		setMode,
 		startAmbulanceTrip,
 		stopAmbulanceTrip,
+		setAmbulanceTripStatus,
 		startBedBooking,
 		stopBedBooking,
+		setBedBookingStatus,
 		selectSpecialty,
 		selectServiceType,
 		toggleViewMode,

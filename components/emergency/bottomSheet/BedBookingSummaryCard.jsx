@@ -73,6 +73,8 @@ const BedBookingSummaryHalf = ({
 	specialty,
 	callTarget,
 	onCancelBedBooking,
+	showMarkOccupied,
+	onMarkBedOccupied,
 	showComplete,
 	onCompleteBedBooking,
 }) => {
@@ -228,6 +230,18 @@ const BedBookingSummaryHalf = ({
 					<Text style={styles.cancelText}>Cancel Reservation</Text>
 				</Pressable>
 
+				{showMarkOccupied && (
+					<Pressable
+						onPress={onMarkBedOccupied}
+						style={({ pressed }) => [
+							styles.completeBtn,
+							{ opacity: pressed ? 0.7 : 1 },
+						]}
+					>
+						<Text style={styles.completeText}>Mark Occupied</Text>
+					</Pressable>
+				)}
+
 				{showComplete && (
 					<Pressable
 						onPress={onCompleteBedBooking}
@@ -255,6 +269,8 @@ const BedBookingSummaryFull = ({
 	specialty,
 	callTarget,
 	onCancelBedBooking,
+	showMarkOccupied,
+	onMarkBedOccupied,
 	showComplete,
 	onCompleteBedBooking,
 	bookingHospital,
@@ -371,6 +387,15 @@ const BedBookingSummaryFull = ({
 						<Text style={styles.cancelText}>Cancel</Text>
 					</Pressable>
 
+					{showMarkOccupied && (
+						<Pressable
+							onPress={onMarkBedOccupied}
+							style={({ pressed }) => [styles.completeBtn, { opacity: pressed ? 0.7 : 1 }]}
+						>
+							<Text style={styles.completeText}>Mark Occupied</Text>
+						</Pressable>
+					)}
+
 					{showComplete && (
 						<Pressable
 							onPress={onCompleteBedBooking}
@@ -389,6 +414,7 @@ export const BedBookingSummaryCard = ({
 	activeBedBooking,
 	allHospitals = [],
 	onCancelBedBooking,
+	onMarkBedOccupied,
 	onCompleteBedBooking,
 	isDarkMode,
 	isCollapsed,
@@ -462,9 +488,13 @@ export const BedBookingSummaryCard = ({
 	const hospitalName =
 		activeBedBooking?.hospitalName ?? bookingHospital?.name ?? "Hospital";
 
+	const showMarkOccupied =
+		typeof onMarkBedOccupied === "function" &&
+		(statusLabel === "Ready" || bedStatus === "Ready") &&
+		String(lifecycleStatus || "") !== "arrived";
 	const showComplete =
 		typeof onCompleteBedBooking === "function" &&
-		(statusLabel === "Ready" || bedStatus === "Ready");
+		String(lifecycleStatus || "") === "arrived";
 
 	if (collapsed) {
 		return (
@@ -491,6 +521,8 @@ export const BedBookingSummaryCard = ({
 				specialty={specialty}
 				callTarget={callTarget}
 				onCancelBedBooking={onCancelBedBooking}
+				showMarkOccupied={showMarkOccupied}
+				onMarkBedOccupied={onMarkBedOccupied}
 				showComplete={showComplete}
 				onCompleteBedBooking={onCompleteBedBooking}
 				bookingHospital={bookingHospital}
@@ -510,6 +542,8 @@ export const BedBookingSummaryCard = ({
 			specialty={specialty}
 			callTarget={callTarget}
 			onCancelBedBooking={onCancelBedBooking}
+			showMarkOccupied={showMarkOccupied}
+			onMarkBedOccupied={onMarkBedOccupied}
 			showComplete={showComplete}
 			onCompleteBedBooking={onCompleteBedBooking}
 		/>

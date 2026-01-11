@@ -19,6 +19,7 @@ const EmergencyRequestModal = ({
 	requestHospital,
 	selectedSpecialty,
 	onRequestClose,
+	onRequestInitiated,
 	onRequestComplete,
 }) => {
 	const { isDarkMode } = useTheme();
@@ -65,8 +66,41 @@ const EmergencyRequestModal = ({
 		setIsRequesting(true);
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
+		const hospitalName = requestHospital?.name ?? "Hospital";
+		const requestId =
+			mode === "booking"
+				? `BED-${Math.floor(Math.random() * 900000) + 100000}`
+				: `AMB-${Math.floor(Math.random() * 900000) + 100000}`;
+		const initiated =
+			mode === "booking"
+				? {
+						requestId,
+						hospitalId: requestHospital?.id ?? null,
+						hospitalName,
+						serviceType: "bed",
+						specialty: selectedSpecialty ?? "Any",
+						bedCount,
+						bedType,
+						bedNumber: `B-${Math.floor(Math.random() * 90) + 10}`,
+				  }
+				: {
+						requestId,
+						hospitalId: requestHospital?.id ?? null,
+						hospitalName,
+						ambulanceType: selectedAmbulanceType,
+						serviceType: "ambulance",
+				  };
+
+		if (typeof onRequestInitiated === "function") {
+			try {
+				const maybePromise = onRequestInitiated(initiated);
+				if (maybePromise && typeof maybePromise.then === "function") {
+					maybePromise.catch(() => {});
+				}
+			} catch (e) {}
+		}
+
 		setTimeout(() => {
-			const hospitalName = requestHospital?.name ?? "Hospital";
 			const waitTime = requestHospital?.waitTime ?? null;
 			const hospitalEta = requestHospital?.eta ?? null;
 			const ambulanceEta =
@@ -78,20 +112,22 @@ const EmergencyRequestModal = ({
 				mode === "booking"
 					? {
 							success: true,
-							requestId: `BED-${Math.floor(Math.random() * 900000) + 100000}`,
+							requestId: initiated.requestId,
 							estimatedArrival: waitTime ?? "15 mins",
-							hospitalName,
+							hospitalId: initiated.hospitalId,
+							hospitalName: initiated.hospitalName,
 							serviceType: "bed",
-							specialty: selectedSpecialty ?? "Any",
-							bedCount,
-							bedType,
-							bedNumber: `B-${Math.floor(Math.random() * 90) + 10}`,
+							specialty: initiated.specialty,
+							bedCount: initiated.bedCount,
+							bedType: initiated.bedType,
+							bedNumber: initiated.bedNumber,
 					  }
 					: {
 							success: true,
-							requestId: `AMB-${Math.floor(Math.random() * 900000) + 100000}`,
-							hospitalName,
-							ambulanceType: selectedAmbulanceType,
+							requestId: initiated.requestId,
+							hospitalId: initiated.hospitalId,
+							hospitalName: initiated.hospitalName,
+							ambulanceType: initiated.ambulanceType,
 							serviceType: "ambulance",
 							estimatedArrival: ambulanceEta,
 					  };
@@ -109,6 +145,7 @@ const EmergencyRequestModal = ({
 		isRequesting,
 		mode,
 		onRequestComplete,
+		onRequestInitiated,
 		requestHospital,
 		selectedAmbulanceType,
 		selectedSpecialty,
