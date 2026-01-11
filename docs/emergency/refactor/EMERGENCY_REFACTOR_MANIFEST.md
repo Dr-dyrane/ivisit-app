@@ -1,13 +1,13 @@
 # Emergency Refactor Manifest: Feature Tracking
 
-This document tracks all features, side effects, and UI details for the `EmergencyBottomSheet` refactor to ensure no functionality is lost during modularization.
+This document tracks all features, side effects, and UI details for `EmergencyBottomSheet` refactor to ensure no functionality is lost during modularization.
 
 ## 1. Global Side Effects (Managed in `EmergencyScreen.jsx`)
 - **Tab Bar Visibility**: Hidden when `selectedHospital` is set OR during active trip/booking.
 - **Floating Action Button (FAB)**: Hidden when `selectedHospital` is set OR during active trip/booking OR when sheet is collapsed (index 0).
 - **Map Bottom Padding**: Dynamically adjusted based on `sheetSnapIndex` and `isRequestFlowOpen` via `getMapPaddingForSnapIndex`.
 - **Header Title/Icon**: Switches between "Ambulance Call" and "Reserve Bed" based on `mode`.
-- **Map Content**: `hospitalsForMap` prioritizes the destination hospital during an active trip.
+- **Map Content**: `hospitalsForMap` prioritizes destination hospital during an active trip.
 
 ## 2. Bottom Sheet Internal Logic & Features
 - **Initial Snap Logic**: 
@@ -15,15 +15,10 @@ This document tracks all features, side effects, and UI details for the `Emergen
   - `isRequestFlowActive` → index 1 (semi-full/60%)
   - Default → index 1 (half)
 - **Sheet Locking (The "Surgical" Point)**: 
-  - Prevents the sheet from being expanded to "Full" when a hospital is selected (locks to halfway).
+  - Prevents sheet from being expanded to "Full" when a hospital is selected (locks to halfway).
   - Locks to index 1 during "Dispatched" (tracking) state.
 - **Request Flow State**:
   - `requestStep`: "select" → "dispatched".
-  - Auto-resets on `requestHospital.id` change.
-  - Delay of 900ms simulated for request submission.
-- **Input Handling**:
-  - `keyboardBehavior="extend"` and `keyboardBlurBehavior="restore"`.
-  - `BottomSheetScrollView` used for scrolling request details.
 
 ## 3. UI/UX Elements to Preserve
 - **Haptics**:
