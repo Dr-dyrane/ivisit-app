@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from 'expo-haptics';
 import { COLORS } from "../../../constants/colors";
 import { useTheme } from "../../../contexts/ThemeContext";
@@ -26,14 +26,14 @@ export default function BedBookingOptions({
 			id: "standard",
 			name: "Standard Bed",
 			description: "General Ward • Shared",
-			icon: "bed-outline",
+			icon: "bed-patient",
 			price: "$150",
 		},
 		{
 			id: "private",
 			name: "Private Room",
 			description: "Single Room • En-suite",
-			icon: "home-outline",
+			icon: "home",
 			price: "$350",
 		},
 	];
@@ -77,7 +77,7 @@ export default function BedBookingOptions({
 										: 'rgba(0,0,0,0.03)'),
 							}
 						]}>
-							<Ionicons 
+							<Fontisto 
 								name={option.icon} 
 								size={24} 
 								color={isSelected 

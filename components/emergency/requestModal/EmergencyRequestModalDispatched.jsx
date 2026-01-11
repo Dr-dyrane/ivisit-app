@@ -1,9 +1,22 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Fontisto } from '@expo/vector-icons';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { COLORS } from "../../../constants/colors";
-import InfoTile from "./InfoTile";
+
+const DetailRow = ({ icon, label, value, isLast, isDarkMode }) => (
+	<View style={[styles.detailRow, !isLast && styles.detailRowBorder, { borderColor: isDarkMode ? "#2C2C2E" : "#E5E5EA" }]}>
+		<View style={styles.detailLeft}>
+			<View style={[styles.iconContainer, { backgroundColor: isDarkMode ? "#2C2C2E" : "#F2F2F7" }]}>
+				{icon}
+			</View>
+			<Text style={[styles.detailLabel, { color: isDarkMode ? "#8E8E93" : "#8E8E93" }]}>{label}</Text>
+		</View>
+		<Text style={[styles.detailValue, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]} numberOfLines={1}>
+			{value}
+		</Text>
+	</View>
+);
 
 export default function EmergencyRequestModalDispatched({ 
 	requestData, 
@@ -18,156 +31,76 @@ export default function EmergencyRequestModalDispatched({
 
 	return (
 		<View style={styles.container}>
-			<Text style={[styles.title, { color: textColor }]}>
-				{isBed ? "Bed Reserved" : "Service Dispatched"}
-			</Text>
-			<Text style={[styles.subtitle, { color: mutedColor }]}>
-				{isBed ? "You're confirmed" : "Help is on the way"}
-			</Text>
-
-			{isBed ? (
-				<View style={styles.grid}>
-					<InfoTile
-						label="Reservation"
-						value={requestData?.requestId ?? "--"}
-						textColor={textColor}
-						mutedColor={mutedColor}
-						cardColor={cardColor}
-						icon="document-text-outline"
-					/>
-					<InfoTile
-						label="Bed Number"
-						value={bedNumber ?? "--"}
-						textColor={textColor}
-						mutedColor={mutedColor}
-						cardColor={cardColor}
-						icon="bed-outline"
-					/>
-					<InfoTile
-						label="Beds"
-						value={
-							Number.isFinite(requestData?.bedCount)
-								? String(requestData.bedCount)
-								: requestData?.bedCount ?? "1"
-						}
-						textColor={textColor}
-						mutedColor={mutedColor}
-						cardColor={cardColor}
-						icon="layers-outline"
-					/>
-					<InfoTile
-						label="Est. Wait"
-						value={requestData?.estimatedArrival ?? "--"}
-						textColor={textColor}
-						mutedColor={mutedColor}
-						cardColor={cardColor}
-						valueColor={COLORS.brandPrimary}
-						icon="time-outline"
-					/>
-					<View style={[
-						styles.wideCard, 
-						{ 
-							backgroundColor: cardColor,
-							// Remove border, use shadow for depth
-							shadowColor: isDarkMode ? '#000' : '#000',
-							shadowOffset: { width: 0, height: 1 },
-							shadowOpacity: isDarkMode ? 0.3 : 0.1,
-							shadowRadius: 2,
-							elevation: 2,
-						}
-					]}>
-						<View style={styles.wideLabelRow}>
-							<Ionicons 
-								name="business-outline" 
-								size={12} 
-								color={isDarkMode ? COLORS.textMutedDark : mutedColor} 
-								style={styles.wideLabelIcon}
-							/>
-							<Text style={[styles.wideLabel, { color: isDarkMode ? COLORS.textMutedDark : mutedColor }]}>
-								Hospital
-							</Text>
-						</View>
-						<Text style={[styles.wideValue, { color: textColor }]} numberOfLines={2}>
-							{requestData?.hospitalName ?? "--"}
-						</Text>
-						<Text style={[styles.wideSubValue, { color: mutedColor }]} numberOfLines={1}>
-							{requestData?.specialty ? `Specialty: ${requestData.specialty}` : "Specialty: Any"}
-						</Text>
-					</View>
+			{/* Hero Status Section */}
+			<View style={styles.heroSection}>
+				<View style={[styles.heroIconCircle, { backgroundColor: isDarkMode ? "#2C2C2E" : "#F2F2F7" }]}>
+					{isBed ? (
+						<Fontisto name="bed-patient" size={32} color={COLORS.brandPrimary} />
+					) : (
+						<Ionicons name="medical" size={32} color={COLORS.brandPrimary} />
+					)}
 				</View>
-			) : (
-				<View style={styles.grid}>
-					<InfoTile
-						label="Request"
-						value={requestData?.requestId ?? "--"}
-						textColor={textColor}
-						mutedColor={mutedColor}
-						cardColor={cardColor}
-						icon="document-text-outline"
-					/>
-					<InfoTile
-						label="ETA"
-						value={requestData?.estimatedArrival ?? "--"}
-						textColor={textColor}
-						mutedColor={mutedColor}
-						cardColor={cardColor}
-						valueColor={COLORS.brandPrimary}
-						icon="time-outline"
-					/>
-					<InfoTile
-						label="Ambulance"
+				<Text style={[styles.title, { color: textColor }]}>
+					{isBed ? "Bed Reserved" : "Service Dispatched"}
+				</Text>
+				<Text style={[styles.subtitle, { color: mutedColor }]}>
+					{isBed ? "You're confirmed" : "Help is on the way"}
+				</Text>
+			</View>
+
+			{/* Details Group */}
+			<View style={[styles.detailsGroup, { backgroundColor: cardColor }]}>
+				<DetailRow 
+					isDarkMode={isDarkMode}
+					icon={<Ionicons name="document-text" size={16} color={COLORS.brandPrimary} />}
+					label="Request ID"
+					value={requestData?.requestId ?? "--"}
+				/>
+				
+				<DetailRow 
+					isDarkMode={isDarkMode}
+					icon={<Ionicons name="time" size={16} color={COLORS.brandPrimary} />}
+					label={isBed ? "Est. Wait" : "ETA"}
+					value={requestData?.estimatedArrival ?? "--"}
+				/>
+
+				<DetailRow 
+					isDarkMode={isDarkMode}
+					icon={<Ionicons name="business" size={16} color={COLORS.brandPrimary} />}
+					label="Hospital"
+					value={requestData?.hospitalName ?? "--"}
+				/>
+
+				{isBed ? (
+					<>
+						<DetailRow 
+							isDarkMode={isDarkMode}
+							icon={<Fontisto name="doctor" size={14} color={COLORS.brandPrimary} />}
+							label="Specialty"
+							value={requestData?.specialty ?? "Any"}
+						/>
+						<DetailRow 
+							isDarkMode={isDarkMode}
+							icon={<Ionicons name="bed" size={16} color={COLORS.brandPrimary} />}
+							label="Details"
+							value={`${bedNumber} • ${requestData?.bedCount ?? 1} Bed(s)`}
+							isLast
+						/>
+					</>
+				) : (
+					<DetailRow 
+						isDarkMode={isDarkMode}
+						icon={<Ionicons name="car" size={16} color={COLORS.brandPrimary} />}
+						label="Vehicle"
 						value={
 							requestData?.ambulanceType?.name || 
 							requestData?.ambulanceType?.title || 
 							"Ambulance"
 						}
-						textColor={textColor}
-						mutedColor={mutedColor}
-						cardColor={cardColor}
-						icon="medical-outline"
+						isLast
 					/>
-					<InfoTile
-						label="Status"
-						value="En Route"
-						textColor={textColor}
-						mutedColor={mutedColor}
-						cardColor={cardColor}
-						icon="navigate-outline"
-					/>
-					<View style={[
-						styles.wideCard, 
-						{ 
-							backgroundColor: cardColor,
-							// Remove border, use shadow for depth
-							shadowColor: isDarkMode ? '#000' : '#000',
-							shadowOffset: { width: 0, height: 1 },
-							shadowOpacity: isDarkMode ? 0.3 : 0.1,
-							shadowRadius: 2,
-							elevation: 2,
-						}
-					]}>
-						<View style={styles.wideLabelRow}>
-							<Ionicons 
-								name="business-outline" 
-								size={12} 
-								color={isDarkMode ? COLORS.textMutedDark : mutedColor} 
-								style={styles.wideLabelIcon}
-							/>
-							<Text style={[styles.wideLabel, { color: isDarkMode ? COLORS.textMutedDark : mutedColor }]}>
-								Hospital
-							</Text>
-						</View>
-						<Text style={[styles.wideValue, { color: textColor }]} numberOfLines={2}>
-							{requestData?.hospitalName ?? "--"}
-						</Text>
-						<Text style={[styles.wideSubValue, { color: mutedColor }]} numberOfLines={1}>
-							{requestData?.ambulanceType
-								? `Type: ${requestData.ambulanceType?.name || requestData.ambulanceType?.title || "Ambulance"}`
-								: "Type: --"}
-						</Text>
-					</View>
-				</View>
-			)}
+				)}
+			</View>
 		</View>
 	);
 }
@@ -175,61 +108,71 @@ export default function EmergencyRequestModalDispatched({
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		paddingHorizontal: 24,
-		paddingTop: 40,
+		paddingHorizontal: 20,
+		paddingTop: 20,
 		alignItems: "center",
 	},
-	title: {
-		fontSize: 22,
-		fontWeight: "900",
-		letterSpacing: -0.4,
+	heroSection: {
+		alignItems: 'center',
+		marginBottom: 32,
 	},
-	subtitle: {
-		fontSize: 14,
-		fontWeight:'400',
-		marginTop: 6,
-		marginBottom: 24,
+	heroIconCircle: {
+		width: 80,
+		height: 80,
+		borderRadius: 40,
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginBottom: 16,
+	},
+	title: {
+		fontSize: 24,
+		fontWeight: "700", // Apple-style Bold
+		letterSpacing: 0.3,
+		marginBottom: 8,
 		textAlign: 'center',
 	},
-	grid: {
-		width: "100%",
-		flexDirection: "row",
-		flexWrap: "wrap",
-		justifyContent: "space-between",
-		gap: 12,
-		marginBottom: 20,
+	subtitle: {
+		fontSize: 16,
+		fontWeight: '400',
+		textAlign: 'center',
+		opacity: 0.8,
 	},
-	wideCard: {
+	detailsGroup: {
 		width: "100%",
 		borderRadius: 16,
-		paddingHorizontal: 12,
-		paddingVertical: 10,
-		marginTop: 2,
-		marginBottom: 24,
+		overflow: 'hidden',
 	},
-	wideLabelRow: {
+	detailRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		marginBottom: 4,
+		justifyContent: 'space-between',
+		paddingVertical: 16,
+		paddingHorizontal: 16,
 	},
-	wideLabelIcon: {
-		marginRight: 4,
+	detailRowBorder: {
+		borderBottomWidth: StyleSheet.hairlineWidth,
 	},
-	wideLabel: {
-		fontSize: 11,
-		fontWeight: "700",
-		letterSpacing: 0.2,
-		opacity: 0.9,
+	detailLeft: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 12,
 	},
-	wideValue: {
-		marginTop: 6,
-		fontSize: 15,
-		fontWeight: "700",
-		letterSpacing: -0.1,
+	iconContainer: {
+		width: 32,
+		height: 32,
+		borderRadius: 8,
+		alignItems: 'center',
+		justifyContent: 'center',
 	},
-	wideSubValue: {
-		fontSize: 12,
+	detailLabel: {
+		fontSize: 16,
 		fontWeight: "500",
-		marginTop: 4,
+	},
+	detailValue: {
+		fontSize: 16,
+		fontWeight: "400",
+		textAlign: 'right',
+		flex: 1,
+		marginLeft: 16,
 	},
 });
