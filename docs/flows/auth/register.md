@@ -60,7 +60,7 @@ iVisit is an international, mobile-first healthcare app. The registration flow:
 
 **Data Flow:**
 
-1. User submits phone/email → call `userStore.forgotPassword(emailOrPhone)` (generates OTP)
+1. User submits phone/email → call `authService.requestOtp({ email | phone })` (sends OTP)
 2. Store OTP in state → verify OTP → advance to Stage 2
 
 **State Example:**
@@ -79,7 +79,7 @@ const [otpSent, setOtpSent] = useState(false);
 * **Component:** `ProfileForm`
 * Single-field-per-screen: name → username → avatar
 * Fade and scale transitions for input focus
-* Avatar upload triggers `imageStore.uploadImage(uri)`
+* Avatar upload triggers `imageService.uploadImage(uri)`
 
 **Data Flow:**
 
@@ -120,8 +120,8 @@ const [profileData, setProfileData] = useState({
 
 **Data Flow:**
 
-* Each card collects info → call `userStore.updateUser(newData)`
-* Password creation → call `userStore.updateUser({ password })`
+* Each card collects info → call `authService.updateUser(newData)`
+* Password creation → call `authService.setPassword({ password })`
 * Optional → user can skip and still login via OTP
 
 **State Example:**
@@ -159,7 +159,7 @@ const [errors, setErrors] = useState({});
 ## **4. Backend Flow**
 
 **Hooks:** `useSignUp`, `useAuth`
-**Stores:** `userStore`, `imageStore`
+**Services:** `authService`, `imageService`
 
 **Sign-Up Hook Example:**
 
@@ -169,7 +169,9 @@ const useSignUp = () => {
 
   const signUpUser = async (credentials) => {
     try {
-      const { data } = await userStore.signUp(credentials);
+      const result = await authService.register(credentials);
+      const { user, token } = result.data;
+      const data = { ...user, token };
       await login(data);
       return true;
     } catch (error) {
@@ -184,9 +186,9 @@ const useSignUp = () => {
 **Data Flow Summary:**
 
 1. Stage 0 → method selection → Stage 1
-2. Stage 1 → OTP → call `userStore.forgotPassword`
+2. Stage 1 → OTP → call `authService.requestOtp` / `authService.verifyOtp`
 3. Stage 2 → profile → store in context → navigate to app
-4. Stage 3 (optional) → password + other details → `userStore.updateUser`
+4. Stage 3 (optional) → password + other details → `authService.updateUser` / `authService.setPassword`
 
 ---
 
@@ -217,9 +219,9 @@ const useSignUp = () => {
   useSignUp.js
 /contexts/
   AuthContext.js
-/store/
-  userStore.js
-  imageStore.js
+/services/
+  authService.js
+  imageService.js
 ```
 
 ---
@@ -249,8 +251,8 @@ Stage 0 – Method → Stage 1 – OTP → Stage 2 – Profile → [Optional Sta
 
 ## **1. Global Notes**
 
-* **Tech Stack:** Expo, React Native, Hooks, Context API, AsyncStorage
-* **Backend:** `userStore` + `imageStore` (AsyncStorage-based mock API)
+* **Tech Stack:** Expo, React Native, Hooks, Context API
+* **Backend:** `authService` + `imageService` (Supabase + local persistence via `database/`)
 * **Authentication:** OTP-first login, password optional
 * **Design:** Mobile-first, Apple touch UI, single input per screen, modular components
 
@@ -338,7 +340,7 @@ const [localOtp, setLocalOtp] = useState("");
 
 **Backend Flow:**
 
-* Call `userStore.forgotPassword(emailOrPhone)` → sends OTP
+* Call `authService.requestOtp({ email | phone })` → sends OTP
 * Verify OTP → advance `setStage(2)`
 
 ---
@@ -370,13 +372,13 @@ const [avatar, setAvatar] = useState(profileData.avatar);
 
 * Stepper card layout (single input per screen)
 * Input focus: scale 1.02
-* Avatar upload: opens image picker → `imageStore.uploadImage(uri)` → sets key
+* Avatar upload: opens image picker → `imageService.uploadImage(uri)` → sets URL
 * Animated progress bar
 * Apple easing transitions
 
 **Backend Flow:**
 
-* `useSignUp()` hook → `userStore.signUp({ emailOrPhone, username, fullName, avatarKey })`
+* `useSignUp()` hook → `authService.register({ email|phone, username, fullName, imageUri })`
 * Update `AuthContext` with token + user
 * Navigate to main app
 
@@ -410,7 +412,7 @@ type Stage3CardProps = {
 
 **Backend Flow:**
 
-* `userStore.updateUser(newData)` per card
+* `authService.updateUser(newData)` per card
 * Optional completion → can skip → navigate to app
 
 ---
@@ -431,13 +433,13 @@ type Stage3CardProps = {
   useSignUp.js
 /contexts/
   AuthContext.js
-/store/
-  userStore.js
-  imageStore.js
+/services/
+  authService.js
+  imageService.js
 ```
 
 * Each component handles UI + internal field state
-* All API calls via hooks → store → AsyncStorage
+* All API calls via hooks/contexts → services → (Supabase + `database/`)
 * Registration state passed via props or context
 
 ---
@@ -462,8 +464,9 @@ type Stage3CardProps = {
 const useSignUp = () => {
   const { login } = useContext(AuthContext);
   const signUpUser = async (credentials) => {
-    const { data } = await userStore.signUp(credentials);
-    await login(data);
+    const result = await authService.register(credentials);
+    const { user, token } = result.data;
+    await login({ ...user, token });
     return true;
   };
   return { signUp: signUpUser };

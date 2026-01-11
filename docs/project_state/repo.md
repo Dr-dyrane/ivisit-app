@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Summary
 
-iVisit is a **mobile-first healthcare application** built with **React Native (Expo)** and `expo-router`. The app provides emergency response and medical consultation services with a client-side authentication flow backed by AsyncStorage. OTA (Over-the-Air) updates are enabled via `expo-updates` and managed through **Expo Application Services (EAS)** for building and deploying APKs and iOS builds.
+iVisit is a **mobile-first healthcare application** built with **React Native (Expo)** and `expo-router`. The app provides emergency response and medical consultation services with authentication backed by **Supabase** and local persistence via the `database/` layer. OTA (Over-the-Air) updates are enabled via `expo-updates` and managed through **Expo Application Services (EAS)** for building and deploying APKs and iOS builds.
 
 ## Structure
 
@@ -30,8 +30,8 @@ components/           ← Reusable UI components
 contexts/             ← Global state (Auth, Theme, Emergency, Toast, Notifications)
 hooks/                ← Custom hooks (mutations, queries, validators)
 screens/              ← Screen components (SignupScreen, LoginScreen, ProfileScreen, etc.)
-store/                ← AsyncStorage stubs (userStore.js for user data, imageStore.js)
-api/                  ← API wrappers (auth.js calls userStore functions)
+services/              ← Domain services (Supabase + local storage via database layer)
+api/                   ← Migration artifact (currently empty / not used by app code)
 constants/            ← Colors, steps, login/registration constants
 data/                 ← Static data (countries, hospitals, services, visits)
 assets/               ← Images, icons, logos, adaptive icons for Android/iOS
@@ -132,11 +132,11 @@ eas update --branch preview2    # Deploy to preview branch
 
 **Authentication Flow**:
 - `AuthContext.jsx` - Global auth state, manages user login/logout, token persistence
-- `userStore.js` - AsyncStorage-backed user database stub with functions: `login`, `signUp`, `getCurrentUser`, `forgotPassword`, `resetPassword`, `updateUser`, `checkUserExists`, `setPassword`
-- `api/auth.js` - API wrappers calling userStore functions, always returns `{ data: ... }`
+- `services/authService.js` - Auth business logic (Supabase + local persistence via `database/`)
+- `hooks/auth/*` - UI-facing auth hooks (login/signup/password reset, etc.)
 
 **Storage**:
-- **AsyncStorage Keys**: `token` (auth token), `user` (user object), `users` (all users array), `pendingRegistration` (temp signup data)
+- Local persistence is handled via the `database/` abstraction and `StorageKeys`.
 
 **Contexts** (Global State):
 - `AuthContext` - Authentication and user data

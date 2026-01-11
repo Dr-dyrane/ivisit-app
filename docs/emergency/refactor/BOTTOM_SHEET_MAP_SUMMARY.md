@@ -296,7 +296,8 @@ Will refactor using new hooks:
 
 ## 🔗 References
 
-- **Original EmergencyScreen refactor**: `REFACTORING_SUMMARY.md`
+- **EmergencyScreen refactor plan**: `EMERGENCY_SCREEN_REFACTOR_PLAN.md`
+- **EmergencyBottomSheet refactor manifest**: `EMERGENCY_REFACTOR_MANIFEST.md`
 - **Full implementation plan**: `BOTTOM_SHEET_MAP_REFACTOR_PLAN.md`
 - **Current files (unchanged, ready for refactoring)**:
   - `components/emergency/EmergencyBottomSheet.jsx` (1472 lines)

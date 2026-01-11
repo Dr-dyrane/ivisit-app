@@ -25,7 +25,7 @@
 ### Goal
 Refactor the authentication layer to follow a clean, layered architecture that:
 - Separates concerns properly (UI → Context → Hook → Service → Database)
-- Makes it easy to swap AsyncStorage for Supabase later
+- Supports Supabase while keeping local persistence behind the `database/` abstraction
 - Handles all edge cases gracefully
 - Provides consistent error handling
 
@@ -33,18 +33,17 @@ Refactor the authentication layer to follow a clean, layered architecture that:
 
 1. **All API calls go through the same layered structure:**
    ```
-   UI → Context → Hook → API → Service → Database
+   UI → Context/Hook → Service → Database
    ```
 
 2. **Layer Responsibilities:**
    - **UI:** Only handles presentation, input, animation, and validation
    - **Context:** Stores state, triggers service calls, manages steps
    - **Hook:** Convenience hooks to simplify service calls
-   - **API Layer:** Fetch wrapper, endpoint paths, headers, auth token
-   - **Service Layer:** Business logic, calls APIs, handles response formatting
-   - **Database:** Abstracted behind services → can swap for Supabase later
+   - **Service Layer:** Business logic; integrates Supabase + local persistence
+   - **Database:** Local persistence abstraction used by services
 
-3. **Login and Register have separate contexts** but share API & service layer
+3. **Login and Register have separate contexts** but share service layer
 
 4. **Error handling:** Each step tracks `error` state with structured errors `{ code, message, metadata }`
 
@@ -54,14 +53,14 @@ Refactor the authentication layer to follow a clean, layered architecture that:
 
 | Issue | Location | Problem |
 |-------|----------|---------|
-| Mixed Storage Keys | `userStore.js` uses `"users"`, `"token"` (no prefix) while `database.js` uses `@ivisit_` prefix | Data fragmentation |
-| Store bypasses Database | `userStore.js` directly calls `AsyncStorage` instead of using `database.js` | Defeats abstraction |
-| API layer too thin | `api/auth.js` just passes through to `userStore` | Should use services |
-| No Service layer | Missing `services/authService.js` | Business logic scattered |
+| Mixed Storage Keys | Older flows used ad-hoc AsyncStorage keys instead of `StorageKeys` | Data fragmentation |
+| Bypassing Database | Direct AsyncStorage access in UI/components bypasses `database/` | Defeats abstraction |
+| Stale API layer assumption | `api/` exists but is currently empty/unused | Docs drift |
+| Service consistency | Ensure all auth flows use `services/authService.js` consistently | Prevent regressions |
 | Contexts lack error state | `LoginContext` and `RegistrationContext` don't track `error`, `loading` | UI can't show errors |
 | Token management inconsistent | Token in both context AND AsyncStorage with different logic | Race conditions |
 | Direct AsyncStorage in modals | `AuthInputModal.jsx` directly accesses `AsyncStorage.getItem("users")` | Bypasses all layers |
-| Duplicate hooks | Both `useLogin.js` and `useLoginMutation.js` exist | Confusing, redundant |
+| Duplicate/legacy hooks | Ensure only `hooks/auth/*` is used (no legacy `hooks/mutations` pattern) | Confusing, redundant |
 
 ---
 
@@ -116,26 +115,16 @@ SignupScreen
 
 | Hook | Purpose | Calls |
 |------|---------|-------|
-| `useLogin.js` | Login (legacy) | `loginUserAPI` → AuthContext |
-| `useLoginMutation.js` | Login + checkExists + setPassword | Multiple API functions |
-| `useSignup.js` | Signup + socialSignup | `signUpUserAPI` → AuthContext |
-| `useForgotPassword.js` | Initiate password reset | `forgotPasswordAPI` |
-| `useResetPassword.js` | Complete password reset | `resetPasswordAPI` |
-| `useUpdateUser.js` | Update user profile | `updateUserAPI` + `imageStore` |
+| `hooks/auth/useLogin.js` | Login (password + OTP) | `authService` + AuthContext |
+| `hooks/auth/useSignup.js` | Signup + social auth | `authService` + AuthContext |
+| `hooks/auth/useForgotPassword.js` | Initiate password reset | `authService` |
+| `hooks/auth/useResetPassword.js` | Complete password reset | `authService` |
+| `hooks/auth/useCreatePassword.js` | Create password | `authService` |
+| `hooks/auth/useChangePassword.js` | Change password | `authService` |
 
-### API Functions (api/auth.js)
+### API Folder Status
 
-All functions directly call `userStore.js`:
-- `loginUserAPI(credentials)` → `userStore.login()`
-- `signUpUserAPI(credentials)` → `userStore.signUp()`
-- `updateUserAPI(newData)` → `userStore.updateUser()`
-- `deleteUserAPI()` → `userStore.deleteUser()`
-- `getCurrentUserAPI()` → `userStore.getCurrentUser()`
-- `forgotPasswordAPI(email)` → `userStore.forgotPassword()`
-- `resetPasswordAPI(token, password, email)` → `userStore.resetPassword()`
-- `checkUserExistsAPI(credentials)` → `userStore.checkUserExists()`
-- `setPasswordAPI(credentials)` → `userStore.setPassword()`
-- `getPendingRegistrationAPI()` → Direct AsyncStorage access
+`api/` exists in the repository but is currently empty/unused (migration artifact). The UI should use `hooks/auth/*` and/or context methods that call `services/authService.js`.
 
 ### Shared UI Components
 
@@ -169,35 +158,15 @@ Both Login and Registration share these components:
 ### File Structure
 
 ```
-src/
-├── api/
-│   └── client.js            # Fetch wrapper (later Supabase client)
-│
-├── database/
-│   ├── db.js                # AsyncStorage abstraction
-│   └── keys.js              # Storage key constants
-│
-├── services/
-│   ├── authService.js       # Auth business logic (login, signup, checkExists)
-│   └── imageService.js      # Image storage logic
-│
-├── contexts/
-│   ├── AuthContext.jsx      # Global auth state (user, token, isAuthenticated)
-│   ├── LoginContext.jsx     # Login flow state (steps, form data, errors)
-│   └── RegistrationContext.jsx # Register flow state
-│
-├── hooks/
-│   └── mutations/
-│       ├── useLogin.js      # Calls authService, updates AuthContext
-│       └── useSignup.js     # Calls authService, updates AuthContext
-│
-├── store/                   # ⚠️ TO BE DELETED after migration
-│   ├── userStore.js         # → migrated to authService.js
-│   └── imageStore.js        # → migrated to imageService.js
-│
-├── components/
-├── screens/
-└── constants/
+database/
+services/
+contexts/
+hooks/
+  └── auth/
+api/                          # empty/unused migration artifact
+components/
+screens/
+constants/
 ```
 
 ---
@@ -243,7 +212,6 @@ src/
 ## Migration Steps
 
 ### Phase 1: Database Layer ✅ COMPLETE
-- [x] `api/database.js` already exists with good abstraction
 - [x] Created `database/db.js` - Full CRUD + collection operations
 - [x] Created `database/keys.js` - All keys with `@ivisit_` prefix
 - [x] Created `database/index.js` - Clean exports
@@ -260,7 +228,7 @@ database/
 - [x] Created `services/authService.js` - All auth business logic
 - [x] Created `services/imageService.js` - Image storage/retrieval
 - [x] Created `services/index.js` - Clean exports
-- [x] All methods match current `userStore.js` functionality
+- [x] All required auth methods are centralized in `authService`
 
 **New Files:**
 ```
@@ -273,27 +241,20 @@ services/
 └── imageService.js    # uploadImage, getImage, deleteImage, getAllImages
 ```
 
-### Phase 3: API Layer ✅ COMPLETE
-- [x] Updated `api/auth.js` to use `authService` instead of `userStore`
-- [x] Created `api/client.js` with Supabase placeholder configuration
-- [x] Created `api/images.js` to use `imageService` instead of `imageStore`
-- [x] Added `logoutAPI` and `savePendingRegistrationAPI` functions
+### Phase 3: API Folder Status
 
-**Updated/New Files:**
-- `api/auth.js` - Now imports from `../services` instead of `../store/userStore`
-- `api/images.js` - New file using `imageService`
-- `api/client.js` - API configuration and future Supabase integration point
+`api/` exists in the repository but is currently empty/unused (migration artifact). The UI should call `hooks/auth/*` and/or context methods that call `services/authService.js`.
 
 ### Phase 4: Context Layer ✅ COMPLETE
 - [x] Added `error`, `isLoading`, `setLoginError`, `clearError`, `startLoading`, `stopLoading` to `LoginContext`
 - [x] Added `error`, `isLoading`, `setRegistrationError`, `clearError`, `startLoading`, `stopLoading` to `RegistrationContext`
 - [x] Updated `AuthContext` to use `database` layer with proper `StorageKeys`
-- [x] `AuthContext` now uses `logoutAPI()` instead of direct AsyncStorage
+- [x] `AuthContext` uses `authService.logout()` and the `database` layer for local cleanup
 
 **Updated Files:**
 - `contexts/LoginContext.jsx` - Error/loading state management
 - `contexts/RegistrationContext.jsx` - Error/loading state management
-- `contexts/AuthContext.jsx` - Uses database layer, proper keys, logoutAPI
+- `contexts/AuthContext.jsx` - Uses database layer and authService
 
 ### Phase 5: Hook Layer ✅ COMPLETE
 - [x] Updated `useLogin.js` with:
@@ -313,12 +274,12 @@ services/
   - `updateUser()` - Update profile with optional image
   - `updateProfileFields()` - Update specific fields
   - `updateProfileImage()` - Update image only
-  - Integrated with `userService`
+  - Integrated with `authService` and/or domain services
 
 **Updated Files:**
-- `hooks/mutations/useLogin.js` - Uses authService
-- `hooks/mutations/useSignup.js` - Uses authService
-- `hooks/mutations/useUpdateUser.js` - Uses userService
+- `hooks/auth/useLogin.js` - Uses authService
+- `hooks/auth/useSignup.js` - Uses authService
+- `hooks/user/useUpdateProfile.js` - Uses service layer
 
 ### Phase 6: UI Integration & Cleanup ✅ COMPLETE
 - [x] Updated `LoginInputModal.jsx` to use new hooks and context states
@@ -337,9 +298,7 @@ services/
 - `components/register/AuthInputModal.jsx` - Uses new service layer
 
 ### Cleanup Notes
-- `store/userStore.js` - Still used by `useUpdateUser.js` for image uploads
-- `store/imageStore.js` - Still used for image upload functionality
-- Recommend keeping store files until image handling is migrated to service layer
+- `store/` no longer exists; legacy store implementations are kept only as documentation snapshots under `docs/deprecated/`.
 
 ---
 

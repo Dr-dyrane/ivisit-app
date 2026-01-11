@@ -5,7 +5,7 @@ This document tracks items that have been removed or deprecated from the codebas
 ## 1. Folders & Files Removed
 | Item | Type | Date | Reason | Replacement |
 |------|------|------|--------|-------------|
-| `api/` | Folder | 2026-01-09 | Redundant wrapper layer. | Direct usage of `services/` layer. |
+| `api/` | Folder | 2026-01-09 | Redundant wrapper layer. (Folder now exists as an empty/unused migration artifact.) | Direct usage of `services/` layer. |
 | `hooks/mutations/` | Folder | 2026-01-09 | Poor organization. | Reorganized into `hooks/auth/`, `hooks/user/`, `hooks/emergency/`. |
 | `hooks/useUpdateUser.js` | File | 2026-01-09 | Redundant/Legacy. | `hooks/user/useUpdateProfile.js` |
 | `hooks/useEmergencyContacts.js` | File Location | 2026-01-09 | Moved for modularity. | `hooks/emergency/useEmergencyContacts.js` |
@@ -21,4 +21,4 @@ This document tracks items that have been removed or deprecated from the codebas
 
 ## 3. Architecture Evolution
 - **Pre-2026**: Mixed architecture with `api/` wrappers and direct service calls.
-- **Jan 2026**: Strict **Service -> Hook -> UI** flow enforced. `api/` layer deleted.
+- **Jan 2026**: Strict **Service -> Hook -> UI** flow enforced. `api/` wrappers deprecated (folder may remain as an empty migration artifact).

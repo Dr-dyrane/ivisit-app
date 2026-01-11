@@ -11,7 +11,7 @@ We have successfully transitioned to a strict **3-Layer Architecture**:
 3.  **Service Layer**: Stateless logic, communicates with **Supabase** and **Local Storage**.
 
 **Status**:
-*   ✅ **`api/` Folder**: COMPLETELY REMOVED.
+*   ⚠️ **`api/` Folder**: Present but currently empty/unused (migration artifact).
 *   ✅ **`hooks/` Folder**: REORGANIZED into domain modules (`auth`, `user`, `emergency`).
 *   ✅ **Direct Service Calls in UI**: ELIMINATED (Refactored all violations in Auth, Profile, and Emergency screens).
 

@@ -2,8 +2,8 @@
 
 **Version**: 1.1  
 **Date**: 2026-01-09  
-**Status**: Implementation Phase (Local-first)  
-**Goal**: Ship a complete iVisit MVP on local storage, with clean service boundaries so Supabase later is a swap (not a rewrite).
+**Status**: Implementation Phase (Hybrid: Supabase + local persistence)  
+**Goal**: Ship a complete iVisit MVP with clean service boundaries and local persistence via the `database/` layer, with Supabase already integrated for auth/storage.
 
 ---
 
@@ -59,14 +59,11 @@ database/
 └── index.js              ← Main export: database, StorageKeys, errors
 
 services/
-├── authService.js        ← Auth + user model operations (local-first)
+├── authService.js        ← Auth business logic (Supabase + local persistence)
 ├── profileCompletionService.js
 └── ... (next: preferences, visits, contacts, medical)
 
-api/
-├── auth.js               ← UI-facing wrappers around services
-├── profileCompletion.js  ← Completion draft wrappers
-└── ... (next: preferences, visits, contacts, medical)
+api/                      ← Migration artifact (present but currently empty/unused)
 ```
 
 ### **How It Works**
@@ -107,14 +104,14 @@ const user = result.data.user;
 - Provides domain-specific methods
 - Returns typed errors
 
-#### **3. api/* (UI Contract Layer)**
+#### **3. UI Contract Layer (Hooks/Contexts)**
 
-Screens/components should call `api/*` functions (or hooks that call them), not the database directly.
+Screens/components should call **hooks** and/or **context methods** that delegate to `services/*`, not the database directly.
 
 ```javascript
-import { updateUserAPI } from "../api/auth";
+import { authService } from "../services/authService";
 
-await updateUserAPI({ fullName, username });
+await authService.updateUser({ fullName, username });
 ```
 
 ---
@@ -200,8 +197,8 @@ export default function EmergencyScreen() {
 ### **Query Hooks (Data Fetching)**
 
 ```javascript
-// hooks/queries/useProfile.js
-export function useProfile(userId) {
+// hooks/user/useMedicalProfile.js (Example)
+export function useMedicalProfile() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -209,8 +206,8 @@ export function useProfile(userId) {
   useEffect(() => {
     const fetch = async () => {
       try {
-        const user = await userService.getUserById(userId);
-        setData(user);
+        const profile = await medicalProfileService.get();
+        setData(profile);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -218,7 +215,7 @@ export function useProfile(userId) {
       }
     };
     fetch();
-  }, [userId]);
+  }, []);
 
   return { data, loading, error };
 }
@@ -227,18 +224,18 @@ export function useProfile(userId) {
 ### **Mutation Hooks (Data Modification)**
 
 ```javascript
-// hooks/mutations/useUpdateProfile.js
-export function useUpdateProfile() {
+// hooks/auth/useLogin.js (Example)
+export function useLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { showToast } = useToast();
 
-  const mutate = async (userId, updates) => {
+  const mutate = async (email, password) => {
     setLoading(true);
     try {
-      const updated = await userService.updateUser(userId, updates);
-      showToast('Profile updated!', 'success');
-      return updated;
+      const result = await authService.loginWithPassword({ email, password });
+      showToast('Logged in!', 'success');
+      return result.data;
     } catch (err) {
       setError(err);
       showToast(err.message, 'error');
@@ -298,7 +295,7 @@ export function useUpdateProfile() {
   - Request → confirm → live status → add to visit history
   - Uses persisted emergency contacts + medical profile where applicable
 
-**Rule**: Context = UI state only. Data fetching goes in hooks.
+**Rule**: Prefer hooks for screen-level data fetching; contexts may call services for shared flows (e.g. auth/session).
 
 ---
 
@@ -308,11 +305,11 @@ export function useUpdateProfile() {
 
 ```
 ✅ Create database.js (generic layer)
-✅ Create services (userService, visitService)
+✅ Create services (authService, medicalProfileService)
 ✅ Create ScrollAwareHeaderContext
 ✅ Create ScrollAwareHeader component
-📋 Create query hooks (useProfile, useVisits)
-📋 Create mutation hooks (useUpdateProfile, useLogin)
+📋 Create query hooks (useMedicalProfile, useVisits)
+📋 Create mutation hooks (useLogin, useUpdateProfile)
 ```
 
 ### **Phase 2: Screen Migration (Days 3-5)**
@@ -328,9 +325,9 @@ export function useUpdateProfile() {
 ### **Phase 3: Auth Refactor (Days 6-7)**
 
 ```
-📋 Replace userStore.js calls with userService
-📋 Update AuthContext to use userService
-📋 Update login/signup flows with userService
+📋 Replace legacy auth/store calls with `authService`
+📋 Update AuthContext + auth hooks to consistently use `authService`
+📋 Verify login/signup flows are fully on `hooks/auth/*`
 ```
 
 ### **Phase 4: Backend Integration (Days 8+)**
@@ -353,16 +350,17 @@ app/
 │   └── (tabs)/
 └── _layout.js
 
-api/
-├── database.js                 ← AsyncStorage abstraction
-├── http-client.js              ← (Future) HTTP client
-├── auth.js                      ← (Keep existing)
-└── services/
-    ├── userService.js
-    ├── visitService.js
-    ├── hospitalService.js
-    ├── emergencyContactService.js
-    └── index.js
+database/
+├── db.js                      ← AsyncStorage abstraction
+├── keys.js                    ← StorageKeys
+└── index.js
+
+services/
+├── authService.js
+├── medicalProfileService.js
+└── ... (preferences, visits, emergency, notifications)
+
+api/                           ← Migration artifact (present but currently empty/unused)
 
 contexts/
 ├── AuthContext.jsx
@@ -375,14 +373,10 @@ contexts/
 └── ... (others)
 
 hooks/
-├── queries/
-│   ├── useProfile.js            ← NEW
-│   ├── useVisits.js
-│   └── useHospitals.js
-├── mutations/
-│   ├── useUpdateProfile.js      ← NEW
-│   ├── useCreateVisit.js
-│   └── ... (existing)
+├── auth/
+├── user/
+├── emergency/
+├── visits/
 └── validators/
 
 components/
@@ -401,23 +395,23 @@ screens/
 └── ... (existing)
 
 docs/
-├── ARCHITECTURE.md              ← This file
-├── CONTEXT_REVIEW.md
-└── QUICK_START.md
+├── architecture/overview/ARCHITECTURE.md
+├── project_state/CONTEXT_REVIEW.md
+└── project_state/QUICK_START.md
 ```
 
 ---
 
 ## **8. Migration Examples**
 
-### **Before (userStore + monolithic)**
+### **Before (monolithic UI logic)**
 
 ```javascript
 // screens/ProfileScreen.jsx
 useEffect(() => {
   const fetch = async () => {
     try {
-      const { data } = await getCurrentUserAPI();
+      const { data } = await authService.getCurrentUser();
       setFullName(data.fullName);
       setEmail(data.email);
       // ... 10 more setStates
@@ -432,28 +426,28 @@ useEffect(() => {
 ### **After (Service + Hook)**
 
 ```javascript
-// hooks/queries/useProfile.js
-export function useProfile(userId) {
-  const [user, setUser] = useState(null);
+// hooks/user/useMedicalProfile.js
+export function useMedicalProfile() {
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    userService.getUserById(userId)
-      .then(setUser)
+    medicalProfileService.getMedicalProfile()
+      .then(setData)
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, []);
 
-  return { user, loading };
+  return { data, loading };
 }
 
 // screens/ProfileScreen.jsx
-const { user, loading } = useProfile(userId);
+const { data, loading } = useMedicalProfile();
 
 if (loading) return <LoadingSpinner />;
 
 return (
-  <Input value={user.fullName} />
+  <Input value={data.fullName} />
   // ...
 );
 ```
@@ -465,10 +459,10 @@ return (
 ### **Typed Errors**
 
 ```javascript
-import { DatabaseError } from '@/api/database';
+import { DatabaseError } from '../database';
 
 try {
-  await userService.createUser({ email, password });
+  await authService.register({ email, password });
 } catch (error) {
   if (error.code === 'USER_EXISTS') {
     showToast('Email already registered');
@@ -488,8 +482,7 @@ When connecting to real API:
 
 - [ ] Create `api/http-client.js` (axios wrapper with auth interceptors)
 - [ ] Create `.env.example` with `API_URL`
-- [ ] Update `userService.js` to call HTTP endpoints
-- [ ] Update `visitService.js` to call HTTP endpoints
+- [ ] Update `services/*` to call HTTP endpoints
 - [ ] Add error mapping (HTTP status codes → DatabaseError codes)
 - [ ] Test auth flow end-to-end
 - [ ] Add request/response logging
@@ -503,25 +496,14 @@ When connecting to real API:
 ### **Unit Tests**
 
 ```javascript
-// __tests__/api/userService.test.js
-describe('userService', () => {
-  it('should create user', async () => {
-    const user = await userService.createUser({
+// __tests__/services/authService.test.js
+describe('authService', () => {
+  it('should register user', async () => {
+    const result = await authService.register({
       email: 'test@example.com',
       password: 'pass123',
-      username: 'testuser',
     });
-    expect(user.id).toBeDefined();
-  });
-
-  it('should throw if email exists', async () => {
-    await expect(
-      userService.createUser({
-        email: 'existing@example.com',
-        password: 'pass123',
-        username: 'newuser',
-      })
-    ).rejects.toThrow('EMAIL_EXISTS');
+    expect(result).toBeDefined();
   });
 });
 ```
@@ -532,9 +514,9 @@ describe('userService', () => {
 // Test full auth flow
 describe('Auth Flow', () => {
   it('should signup, login, and logout', async () => {
-    const newUser = await userService.createUser({...});
-    const loggedIn = await userService.loginUser(newUser.email, 'pass123');
-    expect(loggedIn.token).toBeDefined();
+    const signup = await authService.register({ ... });
+    const login = await authService.loginWithPassword({ ... });
+    expect(login).toBeDefined();
   });
 });
 ```

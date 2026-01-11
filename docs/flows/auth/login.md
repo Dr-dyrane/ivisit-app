@@ -9,7 +9,7 @@ Absolutely. Let's build a **comprehensive documentation / README** for your logi
 The **Login system** is designed to be consistent with the iVisit **Registration flow** while maintaining:
 
 * **Seamless API integration**
-* **Persistent authentication** (via `AsyncStorage`)
+* **Persistent authentication** (via the `database/` layer)
 * **Social login support** (Apple, Google, X)
 * **Animated UI for user engagement**
 * **Toast notifications** for user feedback
@@ -76,7 +76,7 @@ console.log(user.email);
 **Steps:**
 
 1. Store user info in state (`setUser`)
-2. Store token in state and `AsyncStorage` if available
+2. Store token in state and persist via the `database/` layer if available
 3. Optionally show toast for **success**
 
 ```jsx
@@ -85,11 +85,11 @@ import Toast from "react-native-toast-message";
 const login = async (userData) => {
   try {
     setUser(userData);
-    await AsyncStorage.setItem("user", JSON.stringify(userData));
+    await database.write(StorageKeys.CURRENT_USER, userData);
 
     if (userData.token) {
       setToken(userData.token);
-      await AsyncStorage.setItem("token", userData.token);
+      await database.write(StorageKeys.AUTH_TOKEN, userData.token);
     }
 
     Toast.show({
@@ -119,7 +119,7 @@ const login = async (userData) => {
 **Steps:**
 
 1. Clear `user` and `token` from state
-2. Remove `AsyncStorage` entries
+2. Remove persisted session entries via the `database/` layer
 3. Optionally show toast for **logout**
 
 ```jsx
@@ -127,8 +127,8 @@ const logout = async () => {
   try {
     setUser(null);
     setToken(null);
-    await AsyncStorage.removeItem("user");
-    await AsyncStorage.removeItem("token");
+    await database.delete(StorageKeys.CURRENT_USER);
+    await database.delete(StorageKeys.AUTH_TOKEN);
 
     Toast.show({
       type: "info",
@@ -156,14 +156,14 @@ const logout = async () => {
 ```jsx
 const syncUserData = async () => {
   try {
-    const storedToken = await AsyncStorage.getItem("token");
+    const storedToken = await database.read(StorageKeys.AUTH_TOKEN, null);
     if (!storedToken) return;
 
-    const { data: userData } = await getCurrentUserAPI(storedToken);
+    const { data: userData } = await authService.getCurrentUser();
     if (userData) {
       setUser(userData);
       setToken(storedToken);
-      await AsyncStorage.setItem("user", JSON.stringify(userData));
+      await database.write(StorageKeys.CURRENT_USER, userData);
     }
   } catch (err) {
     console.error("Error syncing user data:", err);

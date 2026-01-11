@@ -167,8 +167,8 @@ When ready to refactor data fetching:
 
 ```javascript
 // hooks/queries/useProfile.js
-import { userService } from '@/api/services';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
+import { medicalProfileService } from '../services/medicalProfileService';
 
 export function useProfile() {
   const { user } = useAuth();
@@ -179,7 +179,7 @@ export function useProfile() {
   useEffect(() => {
     const fetch = async () => {
       try {
-        const userData = await userService.getUserById(user.id);
+        const userData = await medicalProfileService.get();
         setProfile(userData);
       } catch (err) {
         setError(err);
@@ -217,7 +217,7 @@ You now have:
 4. ✅ Content visible behind header when scrolling
 5. ✅ Foundation for API services
 
-Next: Start migrating data fetching to `userService` and other services when ready.
+Next: Start migrating data fetching to `services/*` and custom hooks when ready.
 
 ---
 
