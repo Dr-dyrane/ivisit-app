@@ -307,9 +307,13 @@ const FullScreenEmergencyMap = forwardRef(
 		}, [routeCoordinates.length, selectedHospitalId, userLocation, isMapReadyRef.current]);
 
 		const effectiveAmbulanceEtaSeconds =
-			Number.isFinite(ambulanceTripEtaSeconds) && ambulanceTripEtaSeconds > 0
+			(Number.isFinite(ambulanceTripEtaSeconds) && ambulanceTripEtaSeconds > 0)
 				? ambulanceTripEtaSeconds
-				: routeInfo?.durationSec;
+				: (Number.isFinite(routeInfo?.durationSec) && routeInfo.durationSec > 0)
+					? routeInfo.durationSec
+					: (Number.isFinite(routeInfo?.distanceMeters) && routeInfo.distanceMeters > 0)
+						? routeInfo.distanceMeters / 10 // Assume 10m/s (36km/h) average speed
+						: 600; // Default fallback 10 mins
 
 		const { ambulanceCoordinate, ambulanceHeading } = useAmbulanceAnimation({
 			routeCoordinates,
