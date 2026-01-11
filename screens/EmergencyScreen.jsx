@@ -371,7 +371,8 @@ export default function EmergencyScreen() {
 	}, [hospitals, specialties]);
 
 	// Keep controls available since expanded is capped to semi-full and map remains visible.
-	const showMapControls = true;
+	// Hide controls when request flow is active to prevent clutter
+	const showMapControls = !isRequestFlowOpen;
 
 	const routeHospitalId =
 		mode === "emergency"

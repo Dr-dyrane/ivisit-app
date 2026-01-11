@@ -103,6 +103,7 @@ export default function EmergencyRequestModalDispatched({
 						textColor={textColor}
 						mutedColor={mutedColor}
 						cardColor={cardColor}
+						icon="document-text-outline"
 					/>
 					<InfoTile
 						label="ETA"
@@ -111,6 +112,7 @@ export default function EmergencyRequestModalDispatched({
 						mutedColor={mutedColor}
 						cardColor={cardColor}
 						valueColor={COLORS.brandPrimary}
+						icon="time-outline"
 					/>
 					<InfoTile
 						label="Ambulance"
@@ -122,6 +124,7 @@ export default function EmergencyRequestModalDispatched({
 						textColor={textColor}
 						mutedColor={mutedColor}
 						cardColor={cardColor}
+						icon="medical-outline"
 					/>
 					<InfoTile
 						label="Status"
@@ -129,9 +132,31 @@ export default function EmergencyRequestModalDispatched({
 						textColor={textColor}
 						mutedColor={mutedColor}
 						cardColor={cardColor}
+						icon="navigate-outline"
 					/>
-					<View style={[styles.wideCard, { backgroundColor: cardColor }]}>
-						<Text style={[styles.wideLabel, { color: mutedColor }]}>Hospital</Text>
+					<View style={[
+						styles.wideCard, 
+						{ 
+							backgroundColor: cardColor,
+							// Remove border, use shadow for depth
+							shadowColor: isDarkMode ? '#000' : '#000',
+							shadowOffset: { width: 0, height: 1 },
+							shadowOpacity: isDarkMode ? 0.3 : 0.1,
+							shadowRadius: 2,
+							elevation: 2,
+						}
+					]}>
+						<View style={styles.wideLabelRow}>
+							<Ionicons 
+								name="business-outline" 
+								size={12} 
+								color={isDarkMode ? COLORS.textMutedDark : mutedColor} 
+								style={styles.wideLabelIcon}
+							/>
+							<Text style={[styles.wideLabel, { color: isDarkMode ? COLORS.textMutedDark : mutedColor }]}>
+								Hospital
+							</Text>
+						</View>
 						<Text style={[styles.wideValue, { color: textColor }]} numberOfLines={2}>
 							{requestData?.hospitalName ?? "--"}
 						</Text>

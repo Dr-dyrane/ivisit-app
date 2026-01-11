@@ -1,118 +1,80 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, Modal, Pressable, Animated, ScrollView, StyleSheet, Dimensions } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
-import { usePreferences } from "../../contexts/PreferencesContext";
 import { COLORS } from "../../constants/colors";
 import { AMBULANCE_TYPES } from "../../constants/emergency";
-import IconButton from "../ui/IconButton";
-import EmergencyRequestModalHeader from "./requestModal/EmergencyRequestModalHeader";
+
 import AmbulanceTypeCard from "./requestModal/AmbulanceTypeCard";
-import EmergencyRequestModalFooter from "./requestModal/EmergencyRequestModalFooter";
 import EmergencyRequestModalDispatched from "./requestModal/EmergencyRequestModalDispatched";
 import InfoTile from "./requestModal/InfoTile";
 import BedBookingOptions from "./requestModal/BedBookingOptions";
+import RequestAmbulanceFAB from "./RequestAmbulanceFAB";
+import RequestBedFAB from "./requestModal/RequestBedFAB";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
-export default function EmergencyRequestModal({
-	visible,
-	onClose,
-	selectedHospital,
+const EmergencyRequestModal = ({
 	mode = "emergency",
-	selectedSpecialty = null,
+	requestHospital,
+	selectedSpecialty,
+	onRequestClose,
 	onRequestComplete,
-}) {
+}) => {
 	const { isDarkMode } = useTheme();
-	const { preferences } = usePreferences();
-	const [step, setStep] = useState("select");
+
+	const [requestStep, setRequestStep] = useState("select");
 	const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);
-	const [isRequesting, setIsRequesting] = useState(false);
-	const [requestData, setRequestData] = useState(null);
 	const [bedType, setBedType] = useState("standard");
 	const [bedCount, setBedCount] = useState(1);
+	const [isRequesting, setIsRequesting] = useState(false);
+	const [requestData, setRequestData] = useState(null);
 
-	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-	const fadeAnim = useRef(new Animated.Value(0)).current;
-
-	const colors = useMemo(
+	const requestColors = useMemo(
 		() => ({
-			background: isDarkMode ? "#0D121D" : "#FAFAFA",
 			card: isDarkMode ? "#121826" : "#FFFFFF",
 			text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
 			textMuted: isDarkMode ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.55)",
-			handle: isDarkMode ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.15)",
 		}),
 		[isDarkMode]
 	);
 
-	const hospitalName = selectedHospital?.name ?? "Hospital";
-	const hospitalEta = selectedHospital?.eta ?? null;
-	const availableBeds =
-		typeof selectedHospital?.availableBeds === "number"
-			? selectedHospital.availableBeds
-			: Number.isFinite(Number(selectedHospital?.availableBeds))
-				? Number(selectedHospital.availableBeds)
-				: null;
-	const waitTime = selectedHospital?.waitTime ?? null;
-
 	useEffect(() => {
-		if (visible) {
-			setStep("select");
-			setSelectedAmbulanceType(null);
-			setBedType("standard");
-			setBedCount(1);
-			setIsRequesting(false);
-			setRequestData(null);
-		}
-	}, [visible]);
+		setRequestStep("select");
+		
+		// Default to BLS (Basic Life Support) - ID: 'standard'
+		const defaultAmbulance = AMBULANCE_TYPES.find(t => t.id === "standard");
+		setSelectedAmbulanceType(defaultAmbulance || null);
+		
+		setBedType("standard");
+		setBedCount(1);
+		setIsRequesting(false);
+		setRequestData(null);
+	}, [requestHospital?.id, mode]);
 
-	useEffect(() => {
-		if (visible) {
-			Animated.parallel([
-				Animated.timing(slideAnim, {
-					toValue: 0,
-					duration: 320,
-					useNativeDriver: true,
-				}),
-				Animated.timing(fadeAnim, {
-					toValue: 1,
-					duration: 320,
-					useNativeDriver: true,
-				}),
-			]).start();
-		} else {
-			Animated.parallel([
-				Animated.timing(slideAnim, {
-					toValue: SCREEN_HEIGHT,
-					duration: 260,
-					useNativeDriver: true,
-				}),
-				Animated.timing(fadeAnim, {
-					toValue: 0,
-					duration: 260,
-					useNativeDriver: true,
-				}),
-			]).start();
-		}
-	}, [fadeAnim, slideAnim, visible]);
-
-	const handleClose = useCallback(() => {
+	const handleRequestDone = useCallback(() => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		onClose?.();
-	}, [onClose]);
+		onRequestClose?.();
+	}, [onRequestClose]);
 
-	const handleRequestEmergency = useCallback(() => {
+	const handleSubmitRequest = useCallback(() => {
 		if (isRequesting) return;
+		if (!requestHospital) return;
 		if (mode === "emergency" && !selectedAmbulanceType) return;
 
 		setIsRequesting(true);
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
 		setTimeout(() => {
+			const hospitalName = requestHospital?.name ?? "Hospital";
+			const waitTime = requestHospital?.waitTime ?? null;
+			const hospitalEta = requestHospital?.eta ?? null;
 			const ambulanceEta =
-				(typeof hospitalEta === "string" && hospitalEta.length > 0 ? hospitalEta : null) ?? "8 mins";
-			const response =
+				(typeof hospitalEta === "string" && hospitalEta.length > 0
+					? hospitalEta
+					: null) ?? "8 mins";
+
+			const next =
 				mode === "booking"
 					? {
 							success: true,
@@ -134,236 +96,244 @@ export default function EmergencyRequestModal({
 							estimatedArrival: ambulanceEta,
 					  };
 
-			setRequestData(response);
-			setStep("dispatched");
+			setRequestData(next);
+			setRequestStep("dispatched");
 			setIsRequesting(false);
-			onRequestComplete?.(response);
-		}, 1800);
+			if (typeof onRequestComplete === "function") {
+				onRequestComplete(next);
+			}
+		}, 900);
 	}, [
 		bedCount,
 		bedType,
-		hospitalEta,
-		hospitalName,
 		isRequesting,
 		mode,
 		onRequestComplete,
+		requestHospital,
 		selectedAmbulanceType,
 		selectedSpecialty,
-		waitTime,
 	]);
 
-	const renderSelectStep = () => (
-		<View style={{ flex: 1 }}>
-			<ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-				<EmergencyRequestModalHeader
-					title={mode === "booking" ? "Reserve Bed" : "Request Service"}
-					subtitle={hospitalName}
-					textColor={colors.text}
-					subTextColor={colors.textMuted}
-				/>
-
-				<View style={styles.section}>
-					<Text style={[styles.sectionTitle, { color: colors.text }]}>
-						{mode === "booking" ? "Reservation Details" : "Select Ambulance Type"}
-					</Text>
-
-					{mode === "booking" ? (
-						<>
-							<View style={styles.bookingGrid}>
-								<InfoTile
-									label="Hospital"
-									value={hospitalName}
-									textColor={colors.text}
-									mutedColor={colors.textMuted}
-									cardColor={colors.card}
-								/>
-								<InfoTile
-									label="Specialty"
-									value={selectedSpecialty ?? "Any"}
-									textColor={colors.text}
-									mutedColor={colors.textMuted}
-									cardColor={colors.card}
-								/>
-								<InfoTile
-									label="Available"
-									value={Number.isFinite(availableBeds) ? `${availableBeds} beds` : "--"}
-									textColor={colors.text}
-									mutedColor={colors.textMuted}
-									cardColor={colors.card}
-								/>
-								<InfoTile
-									label="Est. Wait"
-									value={waitTime ?? "--"}
-									textColor={colors.text}
-									mutedColor={colors.textMuted}
-									cardColor={colors.card}
-									valueColor={COLORS.brandPrimary}
-								/>
-							</View>
-
-							<BedBookingOptions
-								bedType={bedType}
-								onBedTypeChange={(next) => {
-									setBedType(next);
-									Haptics.selectionAsync();
-								}}
-								bedCount={bedCount}
-								onBedCountChange={(next) => {
-									setBedCount(next);
-									Haptics.selectionAsync();
-								}}
-								textColor={colors.text}
-								mutedColor={colors.textMuted}
-								cardColor={colors.card}
-							/>
-						</>
-					) : (
-						AMBULANCE_TYPES.map((type) => (
-							<AmbulanceTypeCard
-								key={type.id}
-								type={type}
-								selected={selectedAmbulanceType === type.id}
-								onPress={() => {
-									setSelectedAmbulanceType(type.id);
-									Haptics.selectionAsync();
-								}}
-								textColor={colors.text}
-								mutedColor={colors.textMuted}
-								cardColor={colors.card}
-							/>
-						))
-					)}
-				</View>
-
-				<View style={styles.section}>
-					<Text style={[styles.sectionTitle, { color: colors.text }]}>
-						Info Shared
-					</Text>
-					<View style={styles.bookingGrid}>
-						<InfoTile
-							label="Medical profile"
-							value={preferences?.privacyShareMedicalProfile ? "On" : "Off"}
-							textColor={colors.text}
-							mutedColor={colors.textMuted}
-							cardColor={colors.card}
-							valueColor={preferences?.privacyShareMedicalProfile ? COLORS.brandPrimary : colors.textMuted}
-						/>
-						<InfoTile
-							label="Emergency contacts"
-							value={preferences?.privacyShareEmergencyContacts ? "On" : "Off"}
-							textColor={colors.text}
-							mutedColor={colors.textMuted}
-							cardColor={colors.card}
-							valueColor={preferences?.privacyShareEmergencyContacts ? COLORS.brandPrimary : colors.textMuted}
-						/>
-					</View>
-				</View>
-			</ScrollView>
-
-			<EmergencyRequestModalFooter
-				visible={mode === "booking" ? true : !!selectedAmbulanceType}
-				disabled={mode === "booking" ? false : !selectedAmbulanceType}
-				isLoading={isRequesting}
-				onPress={handleRequestEmergency}
-				backgroundColor={colors.background}
-				textColor={colors.textMuted}
-				label={mode === "booking" ? "Reserve bed" : "Request ambulance"}
-				iconName={mode === "booking" ? "bed-outline" : "medical"}
-				showHint={mode !== "booking"}
-			/>
-		</View>
-	);
-
-	const renderDispatchedStep = () => (
-		<View style={{ flex: 1 }}>
-			<EmergencyRequestModalDispatched
-				requestData={requestData}
-				textColor={colors.text}
-				mutedColor={colors.textMuted}
-				cardColor={colors.card}
-			/>
-			<EmergencyRequestModalFooter
-				visible={true}
-				disabled={false}
-				isLoading={false}
-				onPress={handleClose}
-				backgroundColor={colors.background}
-				textColor={colors.textMuted}
-				label="Done"
-				iconName="checkmark-circle"
-				showHint={false}
-			/>
-		</View>
-	);
+	const hospitalName = requestHospital?.name ?? "Hospital";
+	const availableBeds =
+		typeof requestHospital?.availableBeds === "number"
+			? requestHospital.availableBeds
+			: Number.isFinite(Number(requestHospital?.availableBeds))
+			? Number(requestHospital.availableBeds)
+			: null;
+	const waitTime = requestHospital?.waitTime ?? null;
 
 	return (
-		<Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
-			<Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-				<Pressable style={styles.backdrop} onPress={handleClose} />
-				<Animated.View
-					style={[
-						styles.modal,
-						{
-							backgroundColor: colors.background,
-							transform: [{ translateY: slideAnim }],
-						},
-					]}
-				>
-					<View style={[styles.handle, { backgroundColor: colors.handle }]} />
-					<IconButton icon="close" onPress={handleClose} style={styles.closeButton} variant="ghost" />
+		<View style={styles.container}>
+			{/* Close button in top right - Fixed position relative to container */}
+			<Pressable
+				onPress={handleRequestDone}
+				style={[
+					styles.closeButton,
+					{
+						backgroundColor: isDarkMode
+							? "rgba(255,255,255,0.1)"
+							: "rgba(0,0,0,0.05)",
+					},
+				]}
+				hitSlop={16}
+			>
+				<Ionicons
+					name="close"
+					size={24}
+					color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+				/>
+			</Pressable>
 
-					{step === "select" && renderSelectStep()}
-					{step === "dispatched" && renderDispatchedStep()}
-				</Animated.View>
-			</Animated.View>
-		</Modal>
+			<BottomSheetScrollView
+				style={{ flex: 1 }}
+				contentContainerStyle={styles.requestScrollContent}
+				showsVerticalScrollIndicator={false}
+				keyboardShouldPersistTaps="handled"
+			>
+				{requestStep === "select" ? (
+					<>
+						<Text
+							style={{
+								fontSize: 12,
+								fontWeight: "900",
+								letterSpacing: 1.6,
+								color: requestColors.text,
+								marginTop: 18,
+								marginBottom: 14,
+								textTransform: "uppercase",
+							}}
+						>
+							{mode === "booking"
+								? "Reservation details"
+								: "Select ambulance type"}
+						</Text>
+
+						{mode === "booking" ? (
+							<>
+								<View style={styles.infoGrid}>
+									<InfoTile
+										label="Hospital"
+										value={hospitalName}
+										textColor={requestColors.text}
+										mutedColor={requestColors.textMuted}
+										cardColor={requestColors.card}
+										icon="business-outline"
+									/>
+									<InfoTile
+										label="Specialty"
+										value={selectedSpecialty ?? "Any"}
+										textColor={requestColors.text}
+										mutedColor={requestColors.textMuted}
+										cardColor={requestColors.card}
+										icon="medical-outline"
+									/>
+									<InfoTile
+										label="Available"
+										value={
+											Number.isFinite(availableBeds)
+												? `${availableBeds} beds`
+												: "--"
+										}
+										textColor={requestColors.text}
+										mutedColor={requestColors.textMuted}
+										cardColor={requestColors.card}
+										icon="bed-outline"
+									/>
+									<InfoTile
+										label="Est. wait"
+										value={waitTime ?? "--"}
+										textColor={requestColors.text}
+										mutedColor={requestColors.textMuted}
+										cardColor={requestColors.card}
+										valueColor={COLORS.brandPrimary}
+										icon="time-outline"
+									/>
+								</View>
+
+								<BedBookingOptions
+									bedType={bedType}
+									bedCount={bedCount}
+									onBedTypeChange={(next) => {
+										setBedType(next);
+									}}
+									onBedCountChange={(next) => {
+										setBedCount(next);
+									}}
+									textColor={requestColors.text}
+									mutedColor={requestColors.textMuted}
+									cardColor={requestColors.card}
+								/>
+
+								{/* Bed booking FAB */}
+								<RequestBedFAB
+									onPress={handleSubmitRequest}
+									isLoading={isRequesting}
+									isActive={true}
+									bedType={bedType}
+									bedCount={bedCount}
+								/>
+							</>
+						) : (
+							<View style={styles.ambulanceSelectionContainer}>
+								{AMBULANCE_TYPES.map((type, index) => (
+									<AmbulanceTypeCard
+										key={type.id}
+										type={type}
+										selected={selectedAmbulanceType?.id === type.id}
+										onPress={() => setSelectedAmbulanceType(type)}
+										textColor={requestColors.text}
+										mutedColor={requestColors.textMuted}
+										cardColor={requestColors.card}
+										style={styles.ambulanceCard}
+									/>
+								))}
+							</View>
+						)}
+
+						{/* Add FAB for ambulance request - only show when ambulance type is selected - v2 */}
+						{mode === "emergency" && selectedAmbulanceType && (
+							<RequestAmbulanceFAB
+								onPress={handleSubmitRequest}
+								isLoading={isRequesting}
+								isActive={!!selectedAmbulanceType}
+								selectedAmbulanceType={selectedAmbulanceType}
+							/>
+						)}
+					</>
+				) : (
+					<>
+						<EmergencyRequestModalDispatched
+							requestData={requestData}
+							textColor={requestColors.text}
+							mutedColor={requestColors.textMuted}
+							cardColor={requestColors.card}
+						/>
+
+						{/* Reusable FAB for tracking state */}
+						{mode === "booking" ? (
+							<RequestBedFAB
+								onPress={handleRequestDone}
+								isLoading={false}
+								isActive={true}
+								bedType={requestData?.bedType || "standard"}
+								bedCount={requestData?.bedCount || 1}
+								mode="dispatched"
+								requestData={requestData}
+							/>
+						) : (
+							<RequestAmbulanceFAB
+								onPress={handleRequestDone}
+								isLoading={false}
+								isActive={true}
+								selectedAmbulanceType={null}
+								mode="dispatched"
+								requestData={requestData}
+							/>
+						)}
+					</>
+				)}
+			</BottomSheetScrollView>
+		</View>
 	);
-}
+};
 
 const styles = StyleSheet.create({
-	overlay: {
+	container: {
 		flex: 1,
-		backgroundColor: "rgba(0,0,0,0.45)",
-	},
-	backdrop: {
-		flex: 1,
-	},
-	modal: {
-		height: SCREEN_HEIGHT * 0.82,
-		borderTopLeftRadius: 28,
-		borderTopRightRadius: 28,
-		overflow: "hidden",
-	},
-	handle: {
-		width: 40,
-		height: 4,
-		borderRadius: 2,
-		alignSelf: "center",
-		marginTop: 12,
-		marginBottom: 2,
+		position: 'relative',
 	},
 	closeButton: {
 		position: "absolute",
-		top: 10,
-		right: 12,
-		zIndex: 10,
+		top: 10, // Adjusted from 20 to account for parent padding if any
+		right: 12, // Adjusted from 24
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		alignItems: "center",
+		justifyContent: "center",
+		zIndex: 1000,
 	},
-	section: {
-		paddingHorizontal: 20,
-		paddingBottom: 16,
+	requestScrollContent: {
+		paddingHorizontal: 8,
+		paddingTop: 12,
+		paddingBottom: 120,
 	},
-	bookingGrid: {
-		width: "100%",
+	infoGrid: {
 		flexDirection: "row",
 		flexWrap: "wrap",
 		justifyContent: "space-between",
 		marginBottom: 12,
+		gap: 8,
 	},
-	sectionTitle: {
-		fontSize: 12,
-		fontWeight: "900",
-		letterSpacing: 1.8,
-		textTransform: "uppercase",
-		marginBottom: 14,
+	ambulanceSelectionContainer: {
+		width: "100%",
+		gap: 12,
+		marginTop: 8,
+	},
+	ambulanceCard: {
+		marginBottom: 8,
 	},
 });
+
+export default EmergencyRequestModal;

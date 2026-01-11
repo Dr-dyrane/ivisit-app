@@ -8,32 +8,19 @@ import {
 	useEffect,
 } from "react";
 import {
-	View,
-	Text,
 	StyleSheet,
-	Keyboard,
 	Platform,
-	Pressable,
-	Linking,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, {
 	BottomSheetView,
 	BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
-import {
-	runOnJS,
-	useAnimatedReaction,
-	useSharedValue,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { usePreferences } from "../../contexts/PreferencesContext";
 import { useEmergencyUI } from "../../contexts/EmergencyUIContext";
-import { COLORS } from "../../constants/colors";
-import { AMBULANCE_TYPES } from "../../constants/emergency";
 import HospitalDetailView from "./HospitalDetailView";
 import EmergencySheetHandle from "./bottomSheet/EmergencySheetHandle";
 import EmergencySheetBackground from "./bottomSheet/EmergencySheetBackground";
@@ -44,14 +31,7 @@ import EmergencySheetHospitalList from "./bottomSheet/EmergencySheetHospitalList
 import { TripSummaryCard } from "./bottomSheet/TripSummaryCard";
 import { BedBookingSummaryCard } from "./bottomSheet/BedBookingSummaryCard";
 
-import EmergencyRequestModalHeader from "./requestModal/EmergencyRequestModalHeader";
-import AmbulanceTypeCard from "./requestModal/AmbulanceTypeCard";
-import EmergencyRequestModalFooter from "./requestModal/EmergencyRequestModalFooter";
-import EmergencyRequestModalDispatched from "./requestModal/EmergencyRequestModalDispatched";
-import InfoTile from "./requestModal/InfoTile";
-import BedBookingOptions from "./requestModal/BedBookingOptions";
-import RequestAmbulanceFAB from "./RequestAmbulanceFAB";
-import RequestBedFAB from "./requestModal/RequestBedFAB";
+import EmergencyRequestModal from "./EmergencyRequestModal";
 
 import { useBottomSheetSnap } from "../../hooks/emergency/useBottomSheetSnap";
 import { useBottomSheetScroll } from "../../hooks/emergency/useBottomSheetScroll";
@@ -106,12 +86,6 @@ const EmergencyBottomSheet = forwardRef(
 			mode === "booking" && !!activeBedBooking && !isDetailMode && !isRequestFlowActive;
 		const [nowMs, setNowMs] = useState(Date.now());
 		const [sheetPhase, setSheetPhase] = useState("half");
-		const [requestStep, setRequestStep] = useState("select");
-		const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);
-		const [bedType, setBedType] = useState("standard");
-		const [bedCount, setBedCount] = useState(1);
-		const [isRequesting, setIsRequesting] = useState(false);
-		const [requestData, setRequestData] = useState(null);
 
 		const {
 			showProfileModal,
@@ -152,16 +126,6 @@ const EmergencyBottomSheet = forwardRef(
 
 		useEffect(() => {
 			if (!isRequestFlowActive) return;
-			setRequestStep("select");
-			setSelectedAmbulanceType(null);
-			setBedType("standard");
-			setBedCount(1);
-			setIsRequesting(false);
-			setRequestData(null);
-		}, [isRequestFlowActive, requestHospital?.id]);
-
-		useEffect(() => {
-			if (!isRequestFlowActive) return;
 			const id = setTimeout(() => {
 				bottomSheetRef.current?.snapToIndex(1); // Snap to middle position (60%) for semi-full
 			}, 80);
@@ -176,274 +140,6 @@ const EmergencyBottomSheet = forwardRef(
 			},
 			[snapPoints.length]
 		);
-
-		const requestColors = useMemo(
-			() => ({
-				card: isDarkMode ? "#121826" : "#FFFFFF",
-				text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-				textMuted: isDarkMode ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.55)",
-			}),
-			[isDarkMode]
-		);
-
-		const handleRequestDone = useCallback(() => {
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-			onRequestClose?.();
-		}, [onRequestClose]);
-
-		const handleSubmitRequest = useCallback(() => {
-			if (isRequesting) return;
-			if (!requestHospital) return;
-			if (mode === "emergency" && !selectedAmbulanceType) return;
-
-			setIsRequesting(true);
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-
-			setTimeout(() => {
-				const hospitalName = requestHospital?.name ?? "Hospital";
-				const waitTime = requestHospital?.waitTime ?? null;
-				const hospitalEta = requestHospital?.eta ?? null;
-				const ambulanceEta =
-					(typeof hospitalEta === "string" && hospitalEta.length > 0 ? hospitalEta : null) ??
-					"8 mins";
-
-				const next =
-					mode === "booking"
-						? {
-								success: true,
-								requestId: `BED-${Math.floor(Math.random() * 900000) + 100000}`,
-								estimatedArrival: waitTime ?? "15 mins",
-								hospitalName,
-								serviceType: "bed",
-								specialty: selectedSpecialty ?? "Any",
-								bedCount,
-								bedType,
-								bedNumber: `B-${Math.floor(Math.random() * 90) + 10}`,
-						  }
-						: {
-								success: true,
-								requestId: `AMB-${Math.floor(Math.random() * 900000) + 100000}`,
-								hospitalName,
-								ambulanceType: selectedAmbulanceType,
-								serviceType: "ambulance",
-								estimatedArrival: ambulanceEta,
-						  };
-
-				setRequestData(next);
-				setRequestStep("dispatched");
-				setIsRequesting(false);
-				if (typeof onRequestComplete === "function") {
-					onRequestComplete(next);
-				}
-			}, 900);
-		}, [
-			bedCount,
-			bedType,
-			isRequesting,
-			mode,
-			onRequestComplete,
-			requestHospital,
-			selectedAmbulanceType,
-			selectedSpecialty,
-		]);
-
-		const renderRequestFlow = useCallback(() => {
-			const hospitalName = requestHospital?.name ?? "Hospital";
-			const availableBeds =
-				typeof requestHospital?.availableBeds === "number"
-					? requestHospital.availableBeds
-					: Number.isFinite(Number(requestHospital?.availableBeds))
-						? Number(requestHospital.availableBeds)
-						: null;
-			const waitTime = requestHospital?.waitTime ?? null;
-
-			return (
-				<View style={{ flex: 1 }}>
-					{/* Close button in top right */}
-					<Pressable
-						onPress={handleRequestDone}
-						style={[
-							styles.closeButton,
-							{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
-						]}
-						hitSlop={16}
-					>
-						<Ionicons
-							name="close"
-							size={24}
-							color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
-						/>
-					</Pressable>
-
-					<BottomSheetScrollView
-						style={{ flex: 1 }}
-						contentContainerStyle={styles.requestScrollContent}
-						showsVerticalScrollIndicator={false}
-						keyboardShouldPersistTaps="handled"
-					>
-						{requestStep === "select" ? (
-							<>
-								<Text
-									style={{
-										fontSize: 12,
-										fontWeight: "900",
-										letterSpacing: 1.6,
-										color: requestColors.text,
-										marginTop: 18,
-										marginBottom: 14,
-										textTransform: "uppercase",
-									}}
-								>
-									{mode === "booking"
-										? "Reservation details"
-										: "Select ambulance type"}
-								</Text>
-
-								{mode === "booking" ? (
-									<>
-										<View style={styles.infoGrid}>
-											<InfoTile
-												label="Hospital"
-												value={hospitalName}
-												textColor={requestColors.text}
-												mutedColor={requestColors.textMuted}
-												cardColor={requestColors.card}
-												icon="business-outline"
-											/>
-											<InfoTile
-												label="Specialty"
-												value={selectedSpecialty ?? "Any"}
-												textColor={requestColors.text}
-												mutedColor={requestColors.textMuted}
-												cardColor={requestColors.card}
-												icon="medical-outline"
-											/>
-											<InfoTile
-												label="Available"
-												value={
-													Number.isFinite(availableBeds)
-														? `${availableBeds} beds`
-														: "--"
-												}
-												textColor={requestColors.text}
-												mutedColor={requestColors.textMuted}
-												cardColor={requestColors.card}
-												icon="bed-outline"
-											/>
-											<InfoTile
-												label="Est. wait"
-												value={waitTime ?? "--"}
-												textColor={requestColors.text}
-												mutedColor={requestColors.textMuted}
-												cardColor={requestColors.card}
-												valueColor={COLORS.brandPrimary}
-												icon="time-outline"
-											/>
-										</View>
-
-										<BedBookingOptions
-											bedType={bedType}
-											bedCount={bedCount}
-											onBedTypeChange={(next) => {
-												setBedType(next);
-											}}
-											onBedCountChange={(next) => {
-												setBedCount(next);
-											}}
-											textColor={requestColors.text}
-											mutedColor={requestColors.textMuted}
-											cardColor={requestColors.card}
-										/>
-
-										{/* Bed booking FAB */}
-										<RequestBedFAB
-											onPress={handleSubmitRequest}
-											isLoading={isRequesting}
-											isActive={true}
-											bedType={bedType}
-											bedCount={bedCount}
-										/>
-									</>
-								) : (
-									<View style={styles.ambulanceSelectionContainer}>
-										{AMBULANCE_TYPES.map((type, index) => (
-											<AmbulanceTypeCard
-												key={type.id}
-												type={type}
-												selected={selectedAmbulanceType?.id === type.id}
-												onPress={() => setSelectedAmbulanceType(type)}
-												textColor={requestColors.text}
-												mutedColor={requestColors.textMuted}
-												cardColor={requestColors.card}
-												style={styles.ambulanceCard}
-											/>
-										))}
-									</View>
-								)}
-
-							{/* Add FAB for ambulance request - only show when ambulance type is selected - v2 */}
-							{mode === "emergency" && selectedAmbulanceType && (
-								<RequestAmbulanceFAB
-									onPress={handleSubmitRequest}
-									isLoading={isRequesting}
-									isActive={!!selectedAmbulanceType}
-									selectedAmbulanceType={selectedAmbulanceType}
-								/>
-							)}
-						</>
-					) : (
-						<>
-							<EmergencyRequestModalDispatched
-								requestData={requestData}
-								textColor={requestColors.text}
-								mutedColor={requestColors.textMuted}
-								cardColor={requestColors.card}
-							/>
-							
-							{/* Reusable FAB for tracking state */}
-							{mode === "booking" ? (
-								<RequestBedFAB
-									onPress={handleRequestDone}
-									isLoading={false}
-									isActive={true}
-									bedType={requestData?.bedType || "standard"}
-									bedCount={requestData?.bedCount || 1}
-									mode="dispatched"
-									requestData={requestData}
-								/>
-							) : (
-								<RequestAmbulanceFAB
-									onPress={handleRequestDone}
-									isLoading={false}
-									isActive={true}
-									selectedAmbulanceType={null}
-									mode="dispatched"
-									requestData={requestData}
-								/>
-							)}
-						</>
-					)}
-				</BottomSheetScrollView>
-				</View>
-			);
-		}, [
-			bedCount,
-			bedType,
-			handleRequestDone,
-			handleSubmitRequest,
-			isDarkMode,
-			isRequesting,
-			mode,
-			preferences?.privacyShareEmergencyContacts,
-			preferences?.privacyShareMedicalProfile,
-			requestColors.card,
-			requestColors.text,
-			requestColors.textMuted,
-			requestHospital,
-			requestStep,
-			selectedAmbulanceType,
-			selectedSpecialty,
-		]);
 
 		useImperativeHandle(ref, () => ({
 			snapToIndex: (index) => bottomSheetRef.current?.snapToIndex(clampSheetIndex(index)),
@@ -529,32 +225,15 @@ const EmergencyBottomSheet = forwardRef(
 			return index;
 		}, [isDetailMode, isRequestFlowActive, currentSnapIndex, snapPoints.length]);
 
-		const getPhaseFromAnimatedIndex = (value) => {
-			"worklet";
-			if (!Number.isFinite(value)) return "half";
-			
-			// Better phase detection aligned with actual snap points
-			// Index 0 = collapsed, 1 = half, 2 = expanded
-			if (value < 0.5) return "collapsed";
-			if (value < 1.5) return "half";
-			return "full";
-		};
-
 		// Track sheet phase changes using currentSnapIndex
 		useEffect(() => {
 			const phase = currentSnapIndex === 0 ? "collapsed" : currentSnapIndex === 1 ? "half" : "full";
-			console.log('[EmergencyBottomSheet] Sheet phase changed:', {
-				currentSnapIndex,
-				phase,
-				timestamp: Date.now()
-			});
 			setSheetPhase(phase);
 		}, [currentSnapIndex]);
 
 		// Lock sheet to halfway when hospital is selected
 		useEffect(() => {
 			if (selectedHospital && !isRequestFlowActive) {
-				console.log('[EmergencyBottomSheet] Hospital selected, locking to halfway');
 				// Force sheet to halfway position
 				if (bottomSheetRef.current && currentSnapIndex !== 1) {
 					setTimeout(() => {
@@ -567,7 +246,6 @@ const EmergencyBottomSheet = forwardRef(
 		// Lock sheet to limited range in dispatched state (tracking ambulance)
 		useEffect(() => {
 			if (isTripMode && isRequestFlowActive) {
-				console.log('[EmergencyBottomSheet] Ambulance dispatched, limiting sheet movement');
 				// Force sheet to middle position (index 1) in dispatched state
 				if (bottomSheetRef.current && currentSnapIndex !== 1) {
 					setTimeout(() => {
@@ -581,10 +259,6 @@ const EmergencyBottomSheet = forwardRef(
 		const handleSheetChangeWithLock = useCallback((index) => {
 			// If hospital is selected and we're not in request mode, lock to halfway
 			if (selectedHospital && !isRequestFlowActive && index !== 1) {
-				console.log('[EmergencyBottomSheet] Preventing sheet move, locking to halfway:', {
-					attemptedIndex: index,
-					forcedIndex: 1
-				});
 				// Force back to halfway
 				setTimeout(() => {
 					bottomSheetRef.current?.snapToIndex(1);
@@ -594,10 +268,6 @@ const EmergencyBottomSheet = forwardRef(
 
 			// If in dispatched state (tracking ambulance), lock to middle position
 			if (isTripMode && isRequestFlowActive && index !== 1) {
-				console.log('[EmergencyBottomSheet] Preventing sheet move during tracking:', {
-					attemptedIndex: index,
-					forcedIndex: 1
-				});
 				// Force back to middle
 				setTimeout(() => {
 					bottomSheetRef.current?.snapToIndex(1);
@@ -629,8 +299,14 @@ const EmergencyBottomSheet = forwardRef(
 				safeAreaInsets={{ top: 0, bottom: 0, left: 0, right: 0 }}
 			>
 				{isRequestFlowActive ? (
-					<BottomSheetView style={[styles.scrollContent, { paddingBottom: 120, flex: 1 }]}>
-						{renderRequestFlow()}
+					<BottomSheetView style={[styles.scrollContent, { paddingBottom: 0, flex: 1 }]}>
+						<EmergencyRequestModal
+							mode={mode}
+							requestHospital={requestHospital}
+							selectedSpecialty={selectedSpecialty}
+							onRequestClose={onRequestClose}
+							onRequestComplete={onRequestComplete}
+						/>
 					</BottomSheetView>
 				) : isDetailMode ? (
 					<BottomSheetView style={[styles.scrollContent, { paddingBottom: 0 }]}>
@@ -761,7 +437,7 @@ const EmergencyBottomSheet = forwardRef(
 
 const styles = StyleSheet.create({
 	sheet: {
-		zIndex: 1000, // Increased z-index to appear above map features
+		zIndex: 1000,
 		elevation: 1000,
 	},
 	sheetBackground: {
@@ -789,72 +465,6 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 12,
 		paddingTop: 8,
 	},
-	closeButton: {
-		position: 'absolute',
-		top: 20,
-		right: 24,
-		width: 44,
-		height: 44,
-		borderRadius: 22,
-		alignItems: 'center',
-		justifyContent: 'center',
-		zIndex: 1000,
-	},
-	requestStatusHeader: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		alignItems: 'center',
-		paddingHorizontal: 24,
-		paddingTop: 20,
-		paddingBottom: 16,
-	},
-	statusText: {
-		fontSize: 18,
-		fontWeight: '800',
-		color: COLORS.brandPrimary,
-		letterSpacing: -0.3,
-	},
-	requestHeader: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		alignItems: 'center',
-		paddingHorizontal: 24,
-		paddingTop: 16,
-		paddingBottom: 16,
-		borderBottomWidth: 1,
-		borderBottomColor: 'rgba(0,0,0,0.08)',
-		backgroundColor: 'transparent',
-	},
-	requestScrollContent: {
-		paddingHorizontal: 8, // Reduced from 24
-		paddingTop: 12, // Reduced from 20
-		paddingBottom: 120, // Reduced space for FAB
-	},
-	infoGrid: {
-		flexDirection: 'row',
-		flexWrap: 'wrap',
-		justifyContent: 'space-between',
-		marginBottom: 12, // Reduced from 16
-		gap: 8, // Reduced from 12
-	},
-	ambulanceSelectionContainer: {
-		width: '100%',
-		gap: 12, // Reduced from 12
-		marginTop: 8, // Reduced from 8
-	},
-	selectionHelper: {
-		fontSize: 13,
-		fontWeight: '600',
-		marginBottom: 12,
-		textAlign: 'center',
-		fontStyle: 'italic',
-	},
-	ambulanceCard: {
-		marginBottom: 8, // Reduced from 0 to add some spacing
-	},
-	selectorContainer: {
-		marginBottom: 24,
-	},
 	sectionHeader: {
 		fontSize: 10,
 		fontWeight: "900",
@@ -866,7 +476,8 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "center",
-		marginBottom: 14,
+		marginTop: 8,
+		marginBottom: 8,
 	},
 	resetButton: {
 		fontSize: 10,
