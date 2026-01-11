@@ -1,6 +1,6 @@
 # 📚 iVisit Documentation Index
 
-> **Last Updated:** 2026-01-08
+> **Last Updated:** 2026-01-11
 
 ---
 
@@ -8,29 +8,57 @@
 
 ```
 docs/
-├── INDEX.md                    # This file - documentation overview
-│
-├── architecture/               # Architecture & refactoring plans
-│   └── AUTH_REFACTOR_PLAN.md   # ⭐ Current: Auth layer refactoring
-│
-├── deprecated/                 # Backup of replaced code
-│   ├── README.md               # Guide for deprecated code
-│   ├── userStore.js.md         # Original userStore (parts 1-3)
-│   └── imageStore.js.md        # Original imageStore
-│
-├── ARCHITECTURE.md             # Overall app architecture
-├── CONTEXT_REVIEW.md           # Context providers review
-├── Technical.md                # Technical specifications
-│
-├── login.md                    # Login flow documentation
-├── register.md                 # Registration flow documentation
-├── REGISTRATION_UI_UX.md       # Registration UI/UX specs
-│
-├── ui_ux_bible.md              # UI/UX design guidelines
-├── repo.md                     # Repository overview
-├── QUICK_START.md              # Getting started guide
-│
-└── IVISIT_COMPREHENSIVE_DOCUMENTATION.md  # Full app documentation
+  ├── INDEX.md                    # This file - documentation overview
+  │
+  ├── emergency/                  # Emergency refactor + UX docs
+  │   ├── refactor/
+  │   │   ├── EMERGENCY_REFACTOR_MANIFEST.md
+  │   │   ├── EMERGENCY_SCREEN_REFACTOR_PLAN.md
+  │   │   ├── BOTTOM_SHEET_MAP_REFACTOR_PLAN.md
+  │   │   └── BOTTOM_SHEET_MAP_SUMMARY.md
+  │   ├── ux/
+  │   │   ├── EMERGENCY_SCREEN_UX_REDESIGN.md
+  │   │   └── EMERGENCY_UI_IMPROVEMENTS.md
+  │   └── checklists/
+  │       └── POST_BOOKING_UI_CHECKLIST.md
+  │
+  ├── architecture/               # Architecture & refactoring plans
+  │   ├── overview/
+  │   │   └── ARCHITECTURE.md
+  │   ├── auth/
+  │   │   └── AUTH_REFACTOR_PLAN.md
+  │   └── roadmap/
+  │       └── PRODUCT_EXECUTION_ROADMAP.md
+  │
+  ├── deprecated/                 # Backup of replaced code
+  │   ├── README.md               # Guide for deprecated code
+  │   ├── userStore.js.md         # Original userStore (parts 1-3)
+  │   └── imageStore.js.md        # Original imageStore
+  │
+  ├── archive/                    # Archived historical docs
+  │   └── legacy-web/
+  │       └── IVISIT_COMPREHENSIVE_DOCUMENTATION.md
+  │
+  ├── flows/
+  │   └── auth/
+  │       ├── login.md
+  │       ├── register.md
+  │       └── REGISTRATION_UI_UX.md
+  │
+  ├── onboarding/
+  │   └── Technical.md
+  │
+  ├── product_design/
+  │   ├── ui_ux_bible.md
+  │   └── SCREEN_CONSISTENCY_GUIDE.md
+  │
+  └── project_state/
+      ├── CONTEXT_REVIEW.md
+      ├── QUICK_START.md
+      ├── repo.md
+      └── context/
+          ├── CURRENT_STATE.md
+          └── DEPRECATED.md
 ```
 
 ---
@@ -41,37 +69,52 @@ docs/
 
 | Document | Description | Status |
 |----------|-------------|--------|
-| [AUTH_REFACTOR_PLAN.md](./architecture/AUTH_REFACTOR_PLAN.md) | Authentication layer refactoring | 🟡 In Progress |
+| [AUTH_REFACTOR_PLAN.md](./architecture/auth/AUTH_REFACTOR_PLAN.md) | Authentication layer refactoring | 🟡 In Progress |
+| [EMERGENCY_REFACTOR_MANIFEST.md](./emergency/refactor/EMERGENCY_REFACTOR_MANIFEST.md) | EmergencyBottomSheet refactor feature manifest | 🟡 In Progress |
 
 ### Architecture
 
 | Document | Description |
 |----------|-------------|
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Overall app architecture & layers |
-| [CONTEXT_REVIEW.md](./CONTEXT_REVIEW.md) | Review of all context providers |
-| [Technical.md](./Technical.md) | Technical specifications |
+| [ARCHITECTURE.md](./architecture/overview/ARCHITECTURE.md) | Overall app architecture & layers |
+| [PRODUCT_EXECUTION_ROADMAP.md](./architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md) | Product execution roadmap |
+| [CONTEXT_REVIEW.md](./project_state/CONTEXT_REVIEW.md) | Review of all context providers |
+| [Technical.md](./onboarding/Technical.md) | Technical specifications |
 
 ### Authentication & Flows
 
 | Document | Description |
 |----------|-------------|
-| [login.md](./login.md) | Login flow & components |
-| [register.md](./register.md) | Registration flow |
-| [REGISTRATION_UI_UX.md](./REGISTRATION_UI_UX.md) | Registration UI/UX details |
+| [login.md](./flows/auth/login.md) | Login flow & components |
+| [register.md](./flows/auth/register.md) | Registration flow |
+| [REGISTRATION_UI_UX.md](./flows/auth/REGISTRATION_UI_UX.md) | Registration UI/UX details |
 
 ### Design & UX
 
 | Document | Description |
 |----------|-------------|
-| [ui_ux_bible.md](./ui_ux_bible.md) | UI/UX design guidelines |
+| [ui_ux_bible.md](./product_design/ui_ux_bible.md) | UI/UX design guidelines |
+| [SCREEN_CONSISTENCY_GUIDE.md](./product_design/SCREEN_CONSISTENCY_GUIDE.md) | Screen consistency guide |
+
+### Emergency (Refactor & UX)
+
+| Document | Description |
+|----------|-------------|
+| [EMERGENCY_REFACTOR_MANIFEST.md](./emergency/refactor/EMERGENCY_REFACTOR_MANIFEST.md) | Feature tracking manifest for modularization |
+| [EMERGENCY_SCREEN_REFACTOR_PLAN.md](./emergency/refactor/EMERGENCY_SCREEN_REFACTOR_PLAN.md) | EmergencyScreen modularization plan |
+| [BOTTOM_SHEET_MAP_REFACTOR_PLAN.md](./emergency/refactor/BOTTOM_SHEET_MAP_REFACTOR_PLAN.md) | EmergencyBottomSheet + FullScreenEmergencyMap modularization plan |
+| [BOTTOM_SHEET_MAP_SUMMARY.md](./emergency/refactor/BOTTOM_SHEET_MAP_SUMMARY.md) | Implementation summary (phases completed) |
+| [POST_BOOKING_UI_CHECKLIST.md](./emergency/checklists/POST_BOOKING_UI_CHECKLIST.md) | Post-booking UX + stability checklist |
+| [EMERGENCY_SCREEN_UX_REDESIGN.md](./emergency/ux/EMERGENCY_SCREEN_UX_REDESIGN.md) | Apple Maps-style Emergency screen UX plan |
+| [EMERGENCY_UI_IMPROVEMENTS.md](./emergency/ux/EMERGENCY_UI_IMPROVEMENTS.md) | Changes made + rationale for Emergency request UI |
 
 ### Reference
 
 | Document | Description |
 |----------|-------------|
-| [repo.md](./repo.md) | Repository structure & commands |
-| [QUICK_START.md](./QUICK_START.md) | Getting started guide |
-| [IVISIT_COMPREHENSIVE_DOCUMENTATION.md](./IVISIT_COMPREHENSIVE_DOCUMENTATION.md) | Complete documentation |
+| [repo.md](./project_state/repo.md) | Repository structure & commands |
+| [QUICK_START.md](./project_state/QUICK_START.md) | Getting started guide |
+| [IVISIT_COMPREHENSIVE_DOCUMENTATION.md](./archive/legacy-web/IVISIT_COMPREHENSIVE_DOCUMENTATION.md) | Archived (legacy web/PWA) documentation |
 
 ---
 
@@ -81,7 +124,7 @@ docs/
 
 **Goal:** Clean separation of concerns for auth logic
 
-**Tracking Document:** [AUTH_REFACTOR_PLAN.md](./architecture/AUTH_REFACTOR_PLAN.md)
+**Tracking Document:** [AUTH_REFACTOR_PLAN.md](./architecture/auth/AUTH_REFACTOR_PLAN.md)
 
 **Progress:**
 - [x] Documentation created
