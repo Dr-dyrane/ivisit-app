@@ -42,6 +42,9 @@ export function useVisitsData() {
             setVisits(prev => prev.map(v => v.id === id ? updated : v));
             return updated;
         } catch (err) {
+            if (err?.code === "PGRST204") {
+                return null;
+            }
             console.error("useVisitsData update error:", err);
             throw err;
         }
@@ -53,6 +56,9 @@ export function useVisitsData() {
             setVisits(prev => prev.map(v => v.id === id ? updated : v));
             return updated;
         } catch (err) {
+            if (err?.code === "PGRST204") {
+                return null;
+            }
             console.error("useVisitsData cancel error:", err);
             throw err;
         }
@@ -64,6 +70,9 @@ export function useVisitsData() {
             setVisits(prev => prev.map(v => v.id === id ? updated : v));
             return updated;
         } catch (err) {
+            if (err?.code === "PGRST204") {
+                return null;
+            }
             console.error("[useVisitsData] complete error for", id, ":", err);
             throw err;
         }
@@ -102,14 +111,14 @@ export function useVisitsData() {
                     },
                     (payload) => {
                         if (payload.eventType === 'INSERT') {
-                            const newVisit = payload.new;
+                            const newVisit = visitsService.fromDbRow(payload.new);
+                            if (!newVisit) return;
                             setVisits(prev => [newVisit, ...prev]);
                         } 
                         else if (payload.eventType === 'UPDATE') {
-                            const updatedVisit = payload.new;
-                            setVisits(prev => 
-                                prev.map(v => v.id === updatedVisit.id ? updatedVisit : v)
-                            );
+                            const updatedVisit = visitsService.fromDbRow(payload.new);
+                            if (!updatedVisit) return;
+                            setVisits(prev => prev.map(v => v.id === updatedVisit.id ? updatedVisit : v));
                         } 
                         else if (payload.eventType === 'DELETE') {
                             const deletedId = payload.old.id;

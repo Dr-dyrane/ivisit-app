@@ -90,7 +90,6 @@ export const emergencyRequestsService = {
 			updatedAt: now,
 		};
 
-        // Save to Supabase
         if (user) {
             const { error } = await supabase
                 .from('emergency_requests')
@@ -115,11 +114,14 @@ export const emergencyRequestsService = {
                     updated_at: item.updatedAt
                 });
             
-            if (error) console.error("Error creating emergency request:", error);
+            if (error) {
+                console.error("Error creating emergency request:", error);
+                throw error;
+            }
+        } else {
+            await database.createOne(StorageKeys.EMERGENCY_REQUESTS, item);
         }
 
-        // Save Local
-		await database.createOne(StorageKeys.EMERGENCY_REQUESTS, item);
 		return item;
 	},
 
@@ -131,6 +133,15 @@ export const emergencyRequestsService = {
         if (user) {
             const dbUpdates = { updated_at: nextUpdatedAt };
             if (updates.status) dbUpdates.status = updates.status;
+            if (updates.hospitalId !== undefined) dbUpdates.hospital_id = updates.hospitalId;
+            if (updates.hospitalName !== undefined) dbUpdates.hospital_name = updates.hospitalName;
+            if (updates.specialty !== undefined) dbUpdates.specialty = updates.specialty;
+            if (updates.ambulanceType !== undefined) dbUpdates.ambulance_type = updates.ambulanceType;
+            if (updates.ambulanceId !== undefined) dbUpdates.ambulance_id = updates.ambulanceId;
+            if (updates.bedNumber !== undefined) dbUpdates.bed_number = updates.bedNumber;
+            if (updates.bedType !== undefined) dbUpdates.bed_type = updates.bedType;
+            if (updates.bedCount !== undefined) dbUpdates.bed_count = updates.bedCount;
+            if (updates.estimatedArrival !== undefined) dbUpdates.estimated_arrival = updates.estimatedArrival;
             
             const { error, data } = await supabase
                 .from('emergency_requests')
@@ -150,12 +161,16 @@ export const emergencyRequestsService = {
             }
         }
 
-		const item = await database.updateOne(
-			StorageKeys.EMERGENCY_REQUESTS,
-			(r) => String(r?.id ?? r?.requestId) === requestId,
-			{ ...updates, updatedAt: nextUpdatedAt }
-		);
-		return item;
+        if (!user) {
+            const item = await database.updateOne(
+                StorageKeys.EMERGENCY_REQUESTS,
+                (r) => String(r?.id ?? r?.requestId) === requestId,
+                { ...updates, updatedAt: nextUpdatedAt }
+            );
+            return item;
+        }
+
+		return { id: requestId, ...updates, updatedAt: nextUpdatedAt };
 	},
 
 	async setStatus(id, status) {

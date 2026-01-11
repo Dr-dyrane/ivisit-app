@@ -6,6 +6,37 @@ import { notificationDispatcher } from "./notificationDispatcher";
 
 const TABLE = "visits";
 
+let supportsExtendedEmergencyColumns = null;
+
+const isMissingColumnError = (err, column) => {
+	if (!err) return false;
+	if (err.code !== "PGRST204") return false;
+	const message = typeof err.message === "string" ? err.message : "";
+	const details = typeof err.details === "string" ? err.details : "";
+	return message.includes(column) || details.includes(column);
+};
+
+const stripExtendedEmergencyColumns = (dbItem) => {
+	if (!dbItem || typeof dbItem !== "object") return dbItem;
+	const next = { ...dbItem };
+	delete next.lifecycle_state;
+	delete next.lifecycle_updated_at;
+	delete next.rating;
+	delete next.rating_comment;
+	delete next.rated_at;
+	return next;
+};
+
+const shouldDisableExtendedColumns = (err) => {
+	return (
+		isMissingColumnError(err, "lifecycle_state") ||
+		isMissingColumnError(err, "lifecycle_updated_at") ||
+		isMissingColumnError(err, "rating") ||
+		isMissingColumnError(err, "rating_comment") ||
+		isMissingColumnError(err, "rated_at")
+	);
+};
+
 const mapToDb = (item) => {
     const db = { ...item };
     if (item.hospitalId !== undefined) db.hospital_id = item.hospitalId;
@@ -16,6 +47,11 @@ const mapToDb = (item) => {
     if (item.insuranceCovered !== undefined) db.insurance_covered = item.insuranceCovered;
     if (item.nextVisit !== undefined) db.next_visit = item.nextVisit;
     if (item.meetingLink !== undefined) db.meeting_link = item.meetingLink;
+    if (item.lifecycleState !== undefined) db.lifecycle_state = item.lifecycleState;
+    if (item.lifecycleUpdatedAt !== undefined) db.lifecycle_updated_at = item.lifecycleUpdatedAt;
+    if (item.rating !== undefined) db.rating = item.rating;
+    if (item.ratingComment !== undefined) db.rating_comment = item.ratingComment;
+    if (item.ratedAt !== undefined) db.rated_at = item.ratedAt;
     
     // Remove camelCase keys
     delete db.hospitalId;
@@ -29,6 +65,11 @@ const mapToDb = (item) => {
     delete db.nextVisit;
     delete db.visitId;
     delete db.meetingLink;
+    delete db.lifecycleState;
+    delete db.lifecycleUpdatedAt;
+    delete db.rating;
+    delete db.ratingComment;
+    delete db.ratedAt;
     
     return db;
 };
@@ -43,11 +84,19 @@ const mapFromDb = (row) => ({
     insuranceCovered: row.insurance_covered,
     nextVisit: row.next_visit,
     meetingLink: row.meeting_link,
+    lifecycleState: row.lifecycle_state,
+    lifecycleUpdatedAt: row.lifecycle_updated_at,
+    rating: row.rating,
+    ratingComment: row.rating_comment,
+    ratedAt: row.rated_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
 });
 
 export const visitsService = {
+    fromDbRow(row) {
+        return normalizeVisit(mapFromDb(row));
+    },
     async list() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
@@ -65,7 +114,7 @@ export const visitsService = {
             return [];
         }
 
-        const result = data.map(mapFromDb).map(v => normalizeVisit(v)).filter(Boolean);
+        const result = data.map((row) => this.fromDbRow(row)).filter(Boolean);
         return result;
     },
 
@@ -79,6 +128,7 @@ export const visitsService = {
 		status,
 		date,
 		time,
+        lifecycleState,
 	}) {
 		const { data: { user } } = await supabase.auth.getUser();
 		if (!user) throw new Error("User not logged in");
@@ -94,6 +144,8 @@ export const visitsService = {
 			specialty: specialty ?? null,
 			type: type ?? null,
 			status: status ?? "upcoming",
+            lifecycle_state: lifecycleState ?? null,
+            lifecycle_updated_at: nowIso,
 			date: date ?? nowIso.slice(0, 10),
 			time:
 				time ??
@@ -101,13 +153,33 @@ export const visitsService = {
 			updated_at: nowIso,
 		};
 
-		const { data, error } = await supabase
+		let upsertBase = base;
+		if (supportsExtendedEmergencyColumns === false) {
+			upsertBase = stripExtendedEmergencyColumns(upsertBase);
+		}
+
+		let data;
+		let error;
+		({ data, error } = await supabase
 			.from(TABLE)
-			.upsert(base, { onConflict: "id" })
+			.upsert(upsertBase, { onConflict: "id" })
 			.select()
-			.single();
+			.single());
+
+		if (error && supportsExtendedEmergencyColumns !== false && shouldDisableExtendedColumns(error)) {
+			supportsExtendedEmergencyColumns = false;
+			const retryBase = stripExtendedEmergencyColumns(upsertBase);
+			({ data, error } = await supabase
+				.from(TABLE)
+				.upsert(retryBase, { onConflict: "id" })
+				.select()
+				.single());
+		}
 
 		if (error) {
+			if (error?.code === "PGRST204") {
+				throw error;
+			}
 			console.error(`[visitsService] ensureExists error for ${id}:`, error);
 			throw error;
 		}
@@ -120,15 +192,33 @@ export const visitsService = {
         if (!user) throw new Error("User not logged in");
 
         const normalized = normalizeVisit(visit);
-        const dbItem = mapToDb({ ...normalized, user_id: user.id });
+        let dbItem = mapToDb({ ...normalized, user_id: user.id });
+		if (supportsExtendedEmergencyColumns === false) {
+			dbItem = stripExtendedEmergencyColumns(dbItem);
+		}
         
-        const { data, error } = await supabase
-            .from(TABLE)
-            .insert(dbItem)
-            .select()
-            .single();
+        let data;
+		let error;
+		({ data, error } = await supabase
+			.from(TABLE)
+			.upsert(dbItem, { onConflict: "id" })
+			.select()
+			.single());
+
+		if (error && supportsExtendedEmergencyColumns !== false && shouldDisableExtendedColumns(error)) {
+			supportsExtendedEmergencyColumns = false;
+			const retryItem = stripExtendedEmergencyColumns(dbItem);
+			({ data, error } = await supabase
+				.from(TABLE)
+				.upsert(retryItem, { onConflict: "id" })
+				.select()
+				.single());
+		}
 
         if (error) {
+			if (error?.code === "PGRST204") {
+				throw error;
+			}
             console.error(`[visitsService] Create error for ${normalized.id}:`, error);
             throw error;
         }
@@ -167,17 +257,36 @@ export const visitsService = {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not logged in");
 
-        const dbUpdates = mapToDb(updates);
+        let dbUpdates = mapToDb(updates);
         dbUpdates.updated_at = new Date().toISOString();
+		if (supportsExtendedEmergencyColumns === false) {
+			dbUpdates = stripExtendedEmergencyColumns(dbUpdates);
+		}
 
-        const { data, error } = await supabase
-            .from(TABLE)
-            .update(dbUpdates)
-            .eq('id', id)
-            .eq('user_id', user.id)
-            .select();
+        let data;
+		let error;
+		({ data, error } = await supabase
+			.from(TABLE)
+			.update(dbUpdates)
+			.eq("id", id)
+			.eq("user_id", user.id)
+			.select());
+
+        if (error && supportsExtendedEmergencyColumns !== false && shouldDisableExtendedColumns(error)) {
+			supportsExtendedEmergencyColumns = false;
+			const retryUpdates = stripExtendedEmergencyColumns(dbUpdates);
+			({ data, error } = await supabase
+				.from(TABLE)
+				.update(retryUpdates)
+				.eq("id", id)
+				.eq("user_id", user.id)
+				.select());
+		}
 
         if (error) {
+			if (error?.code === "PGRST204") {
+				throw error;
+			}
             console.error(`[visitsService] Update error for ${id}:`, error);
             throw error;
         }
@@ -287,6 +396,13 @@ export const visitsService = {
         }
         
         return result;
+    },
+
+    async setLifecycleState(id, lifecycleState) {
+        return await this.update(id, {
+            lifecycleState,
+            lifecycleUpdatedAt: new Date().toISOString(),
+        });
     },
 
     async delete(id) {

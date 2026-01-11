@@ -157,7 +157,8 @@ export const notificationsService = {
         const { error: deleteError } = await supabase
             .from(TABLE)
             .delete()
-            .in('id', idsToDelete);
+            .in('id', idsToDelete)
+            .eq('user_id', user.id);
 
         if (deleteError) {
             console.error("[notificationsService] deleteOldest delete error:", deleteError);

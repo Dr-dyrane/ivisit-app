@@ -25,6 +25,7 @@ export const simulationService = {
         
         this.activeSimulationId = requestId;
         console.log(`[Simulation] Starting dispatch for ${requestId}`);
+        const { data: { user } } = await supabase.auth.getUser();
 
         // Step 1: Wait 5s, then "Accept" the request
         setTimeout(async () => {
@@ -46,18 +47,19 @@ export const simulationService = {
                         ? `POINT(${routeCoordinates[0].longitude} ${routeCoordinates[0].latitude})`
                         : null
                 })
-                .eq('id', requestId);
+                .eq('id', requestId)
+                .eq('user_id', user?.id ?? '');
 
             if (error) console.error("[Simulation] Accept Error", error);
 
             // Step 2: Start Driving
             if (routeCoordinates && routeCoordinates.length > 1) {
-                this.startDriving(requestId, routeCoordinates);
+                this.startDriving(requestId, routeCoordinates, user?.id ?? null);
             }
         }, 5000);
     },
 
-    startDriving(requestId, route) {
+    startDriving(requestId, route, userId) {
         let step = 0;
         // Drive the route in ~30 seconds (skipping points)
         // If route has 100 points, we want to finish in 30s. 30s / 2s interval = 15 updates.
@@ -82,7 +84,8 @@ export const simulationService = {
                         status: 'arrived',
                         responder_location: `POINT(${route[route.length-1].longitude} ${route[route.length-1].latitude})`
                     })
-                    .eq('id', requestId);
+                    .eq('id', requestId)
+                    .eq('user_id', userId ?? '');
                 this.stopSimulation();
                 return;
             }
@@ -100,7 +103,8 @@ export const simulationService = {
                     responder_location: `POINT(${point.longitude} ${point.latitude})`,
                     responder_heading: heading
                 })
-                .eq('id', requestId);
+                .eq('id', requestId)
+                .eq('user_id', userId ?? '');
 
         }, 2000); // Update every 2 seconds
     },
