@@ -4,6 +4,7 @@ This document tracks all features, side effects, and UI details for `EmergencyBo
 
 ## Current Production Flow Reference
 - User flow (SOS): [ambulance_and_bed_booking.md](../../flows/emergency/ambulance_and_bed_booking.md)
+- Lifecycle & concurrency rules: one active bed + one active ambulance per user
 
 ## 1. Global Side Effects (Managed in `EmergencyScreen.jsx`)
 - **Tab Bar Visibility**: Hidden when `selectedHospital` is set OR during active trip/booking.

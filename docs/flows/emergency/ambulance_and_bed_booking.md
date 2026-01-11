@@ -58,6 +58,29 @@ Emergency request status values used by the app:
 
 Visits are created as `in_progress` and later moved to `cancelled` or `completed`.
 
+### Emergency Visit Lifecycle States (Visits Model)
+Emergency visits also track a finer-grained lifecycle in `public.visits.lifecycle_state` (used for closed-loop state consistency across UI and data):
+
+- `initiated`
+- `confirmed`
+- `monitoring`
+- `arrived` (ambulance)
+- `occupied` (bed)
+- `completed`
+- `post_completion`
+- `rating_pending`
+- `rated`
+- `cleared`
+- `cancelled`
+
+The server keeps `public.visits` aligned with `public.emergency_requests` via a trigger that upserts the matching visit row on emergency request insert/update.
+
+### Concurrency Rules (Production Requirement)
+The system enforces:
+- Max **1 active bed booking** per user (status in `in_progress|accepted|arrived`)
+- Max **1 active ambulance request** per user (status in `in_progress|accepted|arrived`)
+- Bed + ambulance can run in parallel (one of each)
+
 ---
 
 ## Screen-Level User Experience (Shared)
@@ -69,9 +92,11 @@ Core shared behavior:
 - Map + bottom sheet layout
 - Hospital selection/focus state
 - A “request flow” overlay inside the bottom sheet
-- Tab bar and FAB are hidden when:
+- Tab bar is hidden when `selectedHospital` is set OR any emergency visit is active.
+- The mode-toggle FAB is hidden only when:
   - `selectedHospital` is set, OR
-  - there is an active trip/booking for the current mode
+  - the sheet is collapsed (index 0), OR
+  - the request flow is currently open
 
 ---
 
@@ -120,26 +145,25 @@ App state (EmergencyScreen local state):
 - `isRequestFlowOpen = true`
 - Bottom sheet expands to show the request modal
 
-### 4) User chooses ambulance type and submits
+### 4) User chooses ambulance type and submits (Request Initiated)
 UI:
 - `components/emergency/EmergencyRequestModal.jsx`
 
-Current implementation note:
-- Dispatch is currently **mocked** in the UI with a `setTimeout`.
-- The UI generates a request id like `AMB-123456`.
+What happens at initiation:
+- The UI generates a request id like `AMB-123456`
+- App inserts `public.emergency_requests` (`status = in_progress`)
+- App inserts `public.visits` (`status = in_progress`, `lifecycle_state = initiated`)
 
-### 5) App persists request + creates visit + starts “active trip”
+### 5) Reservation/Dispatch Confirmed (Request Confirmed)
 Callback chain:
 - `EmergencyRequestModal` → `onRequestComplete(next)`
 - `EmergencyScreen` → `useRequestFlow().handleRequestComplete(next)`
 
-What gets written:
-1) Insert into `public.emergency_requests` (async, errors logged but do not block UI)
-2) Insert into `public.visits` with:
-   - `type = AMBULANCE_RIDE`
-   - `status = in_progress`
+What changes at confirmation:
+1) `public.emergency_requests` is updated (`status = accepted`, and any request metadata like `estimated_arrival`)
+2) `public.visits.lifecycle_state` advances (`confirmed` → `monitoring`)
 3) Local state becomes active:
-   - `EmergencyContext.startAmbulanceTrip(...)`
+   - `EmergencyContext.startAmbulanceTrip(...)` (initially `status = accepted`)
    - If a map route exists, `route: currentRoute.coordinates` is saved into the trip state
 
 ### 6) Realtime updates modify the active trip
@@ -159,6 +183,14 @@ App actions:
 - Update emergency request status (`cancelled` or `completed`)
 - Update visit status (`cancelled` or `completed`)
 - Clear local active trip (`stopAmbulanceTrip`)
+
+### Arrival Gate (Mark Arrived → Complete)
+To maintain a closed-loop lifecycle:
+- When the ETA reaches “Arrived”, the UI requires **Mark Arrived** first
+- Mark Arrived sets:
+  - `public.emergency_requests.status = arrived`
+  - `public.visits.lifecycle_state = arrived`
+- Only after that does **Complete** become available
 
 ---
 
@@ -180,7 +212,7 @@ Filtering behavior:
 Same interaction pattern as ambulance:
 - Select hospital → open request flow → bottom sheet expands
 
-### 4) User selects bed options and submits
+### 4) User selects bed options and submits (Request Initiated)
 UI:
 - `EmergencyRequestModal` switches to booking UI
 
@@ -188,16 +220,17 @@ Current implementation note:
 - Reservation response is currently **mocked** in the UI with a `setTimeout`.
 - The UI generates a request id like `BED-123456` and a bed number like `B-42`.
 
+What happens at initiation:
+- App inserts `public.emergency_requests` (`status = in_progress`)
+- App inserts `public.visits` (`status = in_progress`, `lifecycle_state = initiated`)
+
 ### 5) App persists request + creates visit + starts “active booking”
 Callback chain is the same as ambulance, but the writes differ slightly:
 
-1) Insert into `public.emergency_requests` with `service_type = "bed"` and bed fields
-2) Insert into `public.visits` with:
-   - `type = BED_BOOKING`
-   - `status = in_progress`
-   - `room_number = bedNumber` (mapped from `roomNumber`)
+1) `public.emergency_requests` is updated (`status = accepted`, bed metadata, ETA/wait)
+2) `public.visits.lifecycle_state` advances (`confirmed` → `monitoring`)
 3) Local state becomes active:
-   - `EmergencyContext.startBedBooking(...)`
+   - `EmergencyContext.startBedBooking(...)` (initially `status = accepted`)
 
 ### 6) Realtime updates modify the active booking
 Same subscription as ambulance:
@@ -212,6 +245,14 @@ App actions:
 - Update visit status
 - Clear local booking (`stopBedBooking`)
 - Also creates an in-app notification for bed cancel/complete
+
+### Occupancy Gate (Mark Occupied → Complete)
+To maintain a closed-loop lifecycle:
+- When the reservation becomes “Ready”, the UI requires **Mark Occupied** first
+- Mark Occupied sets:
+  - `public.emergency_requests.status = arrived` (shared arrival status)
+  - `public.visits.lifecycle_state = occupied` (bed-specific)
+- Only after that does **Complete** become available
 
 ---
 
@@ -288,4 +329,3 @@ sequenceDiagram
 - Domain state + realtime subscription: `contexts/EmergencyContext.jsx`
 - Emergency request service: `services/emergencyRequestsService.js`
 - Visits service: `services/visitsService.js`
-
