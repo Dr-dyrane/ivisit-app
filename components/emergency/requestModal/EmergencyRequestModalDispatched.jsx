@@ -5,13 +5,9 @@ import InfoTile from "./InfoTile";
 
 export default function EmergencyRequestModalDispatched({ requestData, textColor, mutedColor, cardColor }) {
 	const isBed = requestData?.serviceType === "bed";
-	const heroImage = isBed
-		? require("../../../assets/features/bed.png")
-		: require("../../../assets/features/emergency.png");
 	const bedNumber = requestData?.bedNumber ?? (isBed ? `B-${Math.floor(Math.random() * 90) + 10}` : null);
 	return (
 		<View style={styles.container}>
-			<Image source={heroImage} style={styles.heroImage} resizeMode="contain" />
 			<Text style={[styles.title, { color: textColor }]}>
 				{isBed ? "Bed Reserved" : "Service Dispatched"}
 			</Text>
@@ -83,7 +79,11 @@ export default function EmergencyRequestModalDispatched({ requestData, textColor
 					/>
 					<InfoTile
 						label="Ambulance"
-						value={requestData?.ambulanceType ?? "--"}
+						value={
+							requestData?.ambulanceType?.name || 
+							requestData?.ambulanceType?.title || 
+							"Ambulance"
+						}
 						textColor={textColor}
 						mutedColor={mutedColor}
 						cardColor={cardColor}
@@ -102,7 +102,7 @@ export default function EmergencyRequestModalDispatched({ requestData, textColor
 						</Text>
 						<Text style={[styles.wideSubValue, { color: mutedColor }]} numberOfLines={1}>
 							{requestData?.ambulanceType
-								? `Type: ${requestData.ambulanceType}`
+								? `Type: ${requestData.ambulanceType?.name || requestData.ambulanceType?.title || "Ambulance"}`
 								: "Type: --"}
 						</Text>
 					</View>
@@ -115,14 +115,9 @@ export default function EmergencyRequestModalDispatched({ requestData, textColor
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		paddingHorizontal: 20,
-		paddingTop: 30,
+		paddingHorizontal: 24,
+		paddingTop: 40,
 		alignItems: "center",
-	},
-	heroImage: {
-		width: 220,
-		height: 180,
-		marginBottom: 12,
 	},
 	title: {
 		fontSize: 22,
@@ -140,6 +135,8 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		flexWrap: "wrap",
 		justifyContent: "space-between",
+		gap: 16,
+		marginBottom: 24,
 	},
 	wideCard: {
 		width: "100%",
@@ -150,21 +147,18 @@ const styles = StyleSheet.create({
 	},
 	wideLabel: {
 		fontSize: 11,
-		fontWeight: "900",
-		letterSpacing: 1.6,
-		textTransform: "uppercase",
+		fontWeight: "700",
+		letterSpacing: 0.2,
 		opacity: 0.9,
 	},
 	wideValue: {
-		marginTop: 10,
-		fontSize: 14,
-		fontWeight: "900",
-		letterSpacing: -0.2,
+		marginTop: 8,
+		fontSize: 15,
+		fontWeight: "700",
+		letterSpacing: -0.1,
 	},
 	wideSubValue: {
-		marginTop: 8,
 		fontSize: 12,
 		fontWeight: "500",
-		opacity: 0.9,
 	},
 });

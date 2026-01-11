@@ -2,11 +2,14 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 
 export default function InfoTile({ label, value, textColor, mutedColor, cardColor, valueColor }) {
+	// Ensure value is always a string to prevent React rendering errors
+	const safeValue = typeof value === 'object' ? JSON.stringify(value) : String(value || '');
+	
 	return (
 		<View style={[styles.card, { backgroundColor: cardColor }]}>
 			<Text style={[styles.label, { color: mutedColor }]}>{label}</Text>
 			<Text style={[styles.value, { color: valueColor ?? textColor }]} numberOfLines={1}>
-				{value}
+				{safeValue}
 			</Text>
 		</View>
 	);

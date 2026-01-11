@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, ActivityIndicator } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/colors';
@@ -9,6 +9,8 @@ export default function RequestAmbulanceFAB({
 	isLoading, 
 	isActive, 
 	selectedAmbulanceType,
+	mode = "request", // "request" or "dispatched"
+	requestData,
 	style 
 }) {
 	const [scaleAnim] = useState(new Animated.Value(1));
@@ -34,9 +36,25 @@ export default function RequestAmbulanceFAB({
 	};
 
 	const getButtonText = () => {
-		if (isLoading) return "Requesting...";
-		if (selectedAmbulanceType) return `Request ${selectedAmbulanceType.name || selectedAmbulanceType.title}`;
+		if (isLoading) return mode === "dispatched" ? "Tracking..." : "Requesting...";
+		if (mode === "dispatched") return "Track Ambulance";
+		if (selectedAmbulanceType) {
+			const name = selectedAmbulanceType?.name || selectedAmbulanceType?.title || "Ambulance";
+			return `Request ${String(name)}`;
+		}
 		return "Select Ambulance";
+	};
+
+	const getSubText = () => {
+		if (mode === "dispatched") return "View live tracking";
+		if (isLoading) return "";
+		return "Tap to confirm";
+	};
+
+	const getIcon = () => {
+		if (isLoading) return "refresh"; // Spinner icon
+		if (mode === "dispatched") return "location";
+		return "medical";
 	};
 
 	return (
@@ -49,15 +67,19 @@ export default function RequestAmbulanceFAB({
 				style={[
 					styles.fab,
 					isActive && styles.fabActive,
-					isLoading && styles.fabLoading
+					mode === "dispatched" && styles.fabDispatched
 				]}
 				disabled={isLoading || !isActive}
 			>
 				<Animated.View style={[styles.fabContent, { transform: [{ scale: scaleAnim }] }]}>
 					{isLoading ? (
-						<Ionicons name="hourglass-outline" size={24} color="#FFFFFF" />
+						<ActivityIndicator size="small" color="#FFFFFF" />
 					) : (
-						<Ionicons name="medical" size={24} color="#FFFFFF" />
+						<Ionicons 
+							name={getIcon()} 
+							size={24} 
+							color="#FFFFFF" 
+						/>
 					)}
 				</Animated.View>
 			</TouchableOpacity>
@@ -67,9 +89,9 @@ export default function RequestAmbulanceFAB({
 				<Text style={styles.labelText}>
 					{getButtonText()}
 				</Text>
-				{!isLoading && isActive && (
+				{getSubText() && (
 					<Text style={styles.subLabelText}>
-						Tap to confirm
+						{getSubText()}
 					</Text>
 				)}
 			</View>
@@ -80,7 +102,7 @@ export default function RequestAmbulanceFAB({
 const styles = StyleSheet.create({
 	container: {
 		position: 'absolute',
-		bottom: 40,
+		bottom: 60, // Moved 5% higher (from 40 to 60)
 		right: 24,
 		zIndex: 3000, // Even higher z-index
 		alignItems: 'flex-end',
@@ -107,6 +129,10 @@ const styles = StyleSheet.create({
 		shadowColor: COLORS.brandPrimary,
 		shadowOpacity: 0.6,
 		transform: [{ scale: 1.05 }],
+	},
+	fabDispatched: {
+		backgroundColor: COLORS.brandPrimary, // Use brand primary instead of green
+		shadowColor: COLORS.brandPrimary,
 	},
 	fabLoading: {
 		backgroundColor: COLORS.textMuted,

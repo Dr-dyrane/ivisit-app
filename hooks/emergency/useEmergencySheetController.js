@@ -59,9 +59,9 @@ export function useEmergencySheetController({
 			if (isCompactMode) {
 				// For dispatched state (trip mode + request mode), use fixed snap points
 				if (isTripMode && isRequestMode) {
-					points = ["45%", "75%"]; // More limited range for tracking state
+					points = ["50%", "75%"]; // Dispatched state at 75%
 				} else if (isRequestMode) {
-					points = ["40%", "65%", "80%"]; // More semi-half modal for request mode
+					points = ["45%", "75%", "85%"]; // Semi-full modal for request mode
 				} else {
 					points = ["18%", "45%", "92%"];
 				}

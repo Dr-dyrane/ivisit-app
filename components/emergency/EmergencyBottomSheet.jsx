@@ -162,7 +162,7 @@ const EmergencyBottomSheet = forwardRef(
 		useEffect(() => {
 			if (!isRequestFlowActive) return;
 			const id = setTimeout(() => {
-				bottomSheetRef.current?.expand?.();
+				bottomSheetRef.current?.snapToIndex(1); // Snap to middle position (60%) for semi-full
 			}, 80);
 			return () => clearTimeout(id);
 		}, [isRequestFlowActive]);
@@ -258,26 +258,21 @@ const EmergencyBottomSheet = forwardRef(
 
 			return (
 				<View style={{ flex: 1 }}>
-					<View style={[styles.requestHeader, { backgroundColor: isDarkMode ? '#1a1f2e' : '#f8f9fa' }]}>
-						<EmergencyRequestModalHeader
-							title={mode === "booking" ? "Reserve Bed" : "Request Ambulance"}
-							subtitle={hospitalName}
-							textColor={requestColors.text}
-							subTextColor={requestColors.textMuted}
-							hospitalAvatar={requestHospital?.avatarUrl}
+					{/* Close button in top right */}
+					<Pressable
+						onPress={handleRequestDone}
+						style={[
+							styles.closeButton,
+							{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
+						]}
+						hitSlop={16}
+					>
+						<Ionicons
+							name="close"
+							size={24}
+							color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
 						/>
-						<Pressable
-							onPress={handleRequestDone}
-							style={{ paddingTop: 16, paddingRight: 24, paddingLeft: 16, paddingVertical: 8 }}
-							hitSlop={16}
-						>
-							<Ionicons
-								name="close"
-								size={22}
-								color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
-							/>
-						</Pressable>
-					</View>
+					</Pressable>
 
 					<BottomSheetScrollView
 						style={{ flex: 1 }}
@@ -375,47 +370,6 @@ const EmergencyBottomSheet = forwardRef(
 									</View>
 								)}
 
-								{/* Info shared section - moved after selection for better flow */}
-								<Text
-									style={{
-										fontSize: 12,
-										fontWeight: "900",
-										letterSpacing: 1.6,
-										color: requestColors.text,
-										marginTop: 24,
-										marginBottom: 14,
-										textTransform: "uppercase",
-									}}
-								>
-									Info shared
-								</Text>
-								<View style={styles.infoGrid}>
-									<InfoTile
-										label="Medical profile"
-										value={preferences?.privacyShareMedicalProfile ? "On" : "Off"}
-										textColor={requestColors.text}
-										mutedColor={requestColors.textMuted}
-										cardColor={requestColors.card}
-										valueColor={
-											preferences?.privacyShareMedicalProfile
-												? COLORS.brandPrimary
-												: requestColors.textMuted
-										}
-									/>
-									<InfoTile
-										label="Emergency contacts"
-										value={preferences?.privacyShareEmergencyContacts ? "On" : "Off"}
-										textColor={requestColors.text}
-										mutedColor={requestColors.textMuted}
-										cardColor={requestColors.card}
-										valueColor={
-											preferences?.privacyShareEmergencyContacts
-												? COLORS.brandPrimary
-												: requestColors.textMuted
-										}
-									/>
-								</View>
-
 							{/* Add FAB for ambulance request - only show when ambulance type is selected - v2 */}
 							{mode === "emergency" && selectedAmbulanceType && (
 								<RequestAmbulanceFAB
@@ -435,17 +389,14 @@ const EmergencyBottomSheet = forwardRef(
 								cardColor={requestColors.card}
 							/>
 							
-							{/* Add CTA for final state - Track Ambulance */}
-							<EmergencyRequestModalFooter
-								visible={true}
-								disabled={false}
-								isLoading={false}
+							{/* Reusable FAB for tracking state */}
+							<RequestAmbulanceFAB
 								onPress={handleRequestDone}
-								backgroundColor={isDarkMode ? "#121826" : "#FFFFFF"}
-								textColor={requestColors.textMuted}
-								label="Track Ambulance"
-								iconName="location"
-								showHint={false}
+								isLoading={false}
+								isActive={true}
+								selectedAmbulanceType={null}
+								mode="dispatched"
+								requestData={requestData}
 							/>
 						</>
 					)}
@@ -533,7 +484,7 @@ const EmergencyBottomSheet = forwardRef(
 			const index = isDetailMode 
 				? 0 
 				: isRequestFlowActive 
-					? Math.min(1, Math.max(0, snapPoints.length - 1))
+					? 1 // Open to middle position (60%) for semi-full request mode
 					: (Number.isFinite(currentSnapIndex) && currentSnapIndex >= 0 && currentSnapIndex < snapPoints.length 
 						? currentSnapIndex 
 						: 1); // Default to halfway
@@ -815,6 +766,31 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 12,
 		paddingTop: 8,
 	},
+	closeButton: {
+		position: 'absolute',
+		top: 20,
+		right: 24,
+		width: 44,
+		height: 44,
+		borderRadius: 22,
+		alignItems: 'center',
+		justifyContent: 'center',
+		zIndex: 1000,
+	},
+	requestStatusHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		paddingHorizontal: 24,
+		paddingTop: 20,
+		paddingBottom: 16,
+	},
+	statusText: {
+		fontSize: 18,
+		fontWeight: '800',
+		color: COLORS.brandPrimary,
+		letterSpacing: -0.3,
+	},
 	requestHeader: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
@@ -824,6 +800,7 @@ const styles = StyleSheet.create({
 		paddingBottom: 16,
 		borderBottomWidth: 1,
 		borderBottomColor: 'rgba(0,0,0,0.08)',
+		backgroundColor: 'transparent',
 	},
 	requestScrollContent: {
 		paddingHorizontal: 24,
