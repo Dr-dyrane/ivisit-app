@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useFAB } from "../../contexts/FABContext";
 import { COLORS } from "../../constants/colors";
 import { AMBULANCE_TYPES } from "../../constants/emergency";
 
@@ -10,8 +11,6 @@ import AmbulanceTypeCard from "./requestModal/AmbulanceTypeCard";
 import EmergencyRequestModalDispatched from "./requestModal/EmergencyRequestModalDispatched";
 import InfoTile from "./requestModal/InfoTile";
 import BedBookingOptions from "./requestModal/BedBookingOptions";
-import RequestAmbulanceFAB from "./RequestAmbulanceFAB";
-import RequestBedFAB from "./requestModal/RequestBedFAB";
 
 const EmergencyRequestModal = ({
 	mode = "emergency",
@@ -25,6 +24,7 @@ const EmergencyRequestModal = ({
 	scrollContentStyle,
 }) => {
 	const { isDarkMode } = useTheme();
+	const { registerFAB, unregisterFAB } = useFAB();
 
 	const [requestStep, setRequestStep] = useState("select");
 	const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);
@@ -42,6 +42,100 @@ const EmergencyRequestModal = ({
 		}),
 		[isDarkMode]
 	);
+
+	// Global FAB registration for request modal
+	useEffect(() => {
+		if (requestStep === "dispatched") {
+			// Dispatched state FAB
+			if (mode === "booking") {
+				registerFAB('bed-dispatched', {
+					icon: 'bed-patient',
+					label: 'View Reservation',
+					subText: 'View reservation details',
+					visible: true,
+					onPress: handleRequestDone,
+					style: 'success',
+					haptic: 'medium',
+					priority: 10,
+					animation: 'subtle',
+				});
+			} else {
+				registerFAB('ambulance-dispatched', {
+					icon: 'location',
+					label: 'Track Ambulance',
+					subText: 'View live tracking',
+					visible: true,
+					onPress: handleRequestDone,
+					style: 'success',
+					haptic: 'medium',
+					priority: 10,
+					animation: 'subtle',
+				});
+			}
+		} else if (requestStep === "select") {
+			// Selection state FAB
+			if (mode === "booking") {
+				registerFAB('bed-select', {
+					icon: 'bed-patient',
+					label: bedCount > 1 ? `Reserve ${bedCount} Beds` : 'Reserve Bed',
+					subText: bedType === "private" ? "Private room selected" : "Standard bed selected",
+					visible: true,
+					onPress: handleSubmitRequest,
+					loading: isRequesting,
+					style: 'emergency',
+					haptic: 'heavy',
+					priority: 10,
+					animation: 'prominent',
+				});
+			} else if (selectedAmbulanceType) {
+				registerFAB('ambulance-select', {
+					icon: 'medical',
+					label: `Request ${selectedAmbulanceType?.name || 'Ambulance'}`,
+					subText: 'Tap to confirm',
+					visible: true,
+					onPress: handleSubmitRequest,
+					loading: isRequesting,
+					style: 'emergency',
+					haptic: 'heavy',
+					priority: 10,
+					animation: 'prominent',
+				});
+			} else {
+				// No ambulance type selected
+				registerFAB('ambulance-prompt', {
+					icon: 'help',
+					label: 'Select Ambulance',
+					subText: 'Choose ambulance type',
+					visible: true,
+					onPress: () => {}, // No action, just prompt
+					style: 'warning',
+					haptic: 'medium',
+					priority: 9,
+					animation: 'subtle',
+				});
+			}
+		}
+
+		// Cleanup function
+		return () => {
+			unregisterFAB('ambulance-select');
+			unregisterFAB('ambulance-dispatched');
+			unregisterFAB('ambulance-prompt');
+			unregisterFAB('bed-select');
+			unregisterFAB('bed-dispatched');
+		};
+	}, [
+		requestStep,
+		mode,
+		selectedAmbulanceType,
+		bedType,
+		bedCount,
+		isRequesting,
+		handleSubmitRequest,
+		handleRequestDone,
+		registerFAB,
+		unregisterFAB,
+	]);
 
 	useEffect(() => {
 		setRequestStep("select");
@@ -303,15 +397,6 @@ const EmergencyRequestModal = ({
 									mutedColor={requestColors.textMuted}
 									cardColor={requestColors.card}
 								/>
-
-								{/* Bed booking FAB */}
-								<RequestBedFAB
-									onPress={handleSubmitRequest}
-									isLoading={isRequesting}
-									isActive={true}
-									bedType={bedType}
-									bedCount={bedCount}
-								/>
 							</>
 						) : (
 							<View style={styles.ambulanceSelectionContainer}>
@@ -329,16 +414,6 @@ const EmergencyRequestModal = ({
 								))}
 							</View>
 						)}
-
-						{/* Add FAB for ambulance request - only show when ambulance type is selected - v2 */}
-						{mode === "emergency" && selectedAmbulanceType && (
-							<RequestAmbulanceFAB
-								onPress={handleSubmitRequest}
-								isLoading={isRequesting}
-								isActive={!!selectedAmbulanceType}
-								selectedAmbulanceType={selectedAmbulanceType}
-							/>
-						)}
 					</>
 				) : (
 					<>
@@ -348,28 +423,6 @@ const EmergencyRequestModal = ({
 							mutedColor={requestColors.textMuted}
 							cardColor={requestColors.card}
 						/>
-
-						{/* Reusable FAB for tracking state */}
-						{mode === "booking" ? (
-							<RequestBedFAB
-								onPress={handleRequestDone}
-								isLoading={false}
-								isActive={true}
-								bedType={requestData?.bedType || "standard"}
-								bedCount={requestData?.bedCount || 1}
-								mode="dispatched"
-								requestData={requestData}
-							/>
-						) : (
-							<RequestAmbulanceFAB
-								onPress={handleRequestDone}
-								isLoading={false}
-								isActive={true}
-								selectedAmbulanceType={null}
-								mode="dispatched"
-								requestData={requestData}
-							/>
-						)}
 					</>
 				)}
 			</ScrollView>

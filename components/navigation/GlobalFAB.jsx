@@ -1,5 +1,6 @@
-import React, { useRef, useEffect } from 'react';
-import { Pressable, Animated, StyleSheet, Platform, Easing } from 'react-native';
+import React, { useRef, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { Pressable, Animated } from 'react-native';
 import { Ionicons, Fontisto } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useFAB } from '../../contexts/FABContext';
@@ -7,11 +8,18 @@ import { useTabBarVisibility } from '../../contexts/TabBarVisibilityContext';
 import { COLORS } from '../../constants/colors';
 
 /**
- * GlobalFAB - Apple-style context-aware FAB
+ * GlobalFAB - Enhanced Apple-style context-aware FAB
+ *
+ * Enhanced Features:
+ * - Dynamic text labels and sub-text support
+ * - Loading states with ActivityIndicator
+ * - Style variants (primary, success, emergency, warning)
+ * - Priority-based conflict resolution
+ * - Enhanced animations (subtle, prominent, pulse, bounce)
+ * - Complex icon switching (Ionicons + Fontisto)
  *
  * Rules (per Apple HIG):
- * - One circle, one icon, no labels
- * - No pulse, no theatrics
+ * - One circle, one icon, optional labels
  * - Soft elevation only
  * - Opacity + translate for visibility
  * - Never unmount - always mounted
@@ -20,27 +28,104 @@ import { COLORS } from '../../constants/colors';
 const FAB_SIZE = 56;
 const FAB_OFFSET = 16;
 
+// Animation configurations
+const ANIMATION_CONFIGS = {
+  subtle: {
+    duration: 180,
+    easing: require('react-native').Easing.out(require('react-native').Easing.quad),
+  },
+  prominent: {
+    duration: 300,
+    easing: require('react-native').Easing.bezier(0.25, 0.46, 0.45, 0.94),
+  },
+  pulse: {
+    duration: 1000,
+    easing: require('react-native').Easing.inOut(require('react-native').Easing.quad),
+  },
+  bounce: {
+    duration: 600,
+    easing: require('react-native').Easing.bezier(0.68, -0.55, 0.265, 1.55),
+  },
+};
+
 const GlobalFAB = () => {
-  const { config } = useFAB();
+  const { activeFAB, getFABStyle } = useFAB();
   const { translateY, TAB_BAR_HEIGHT } = useTabBarVisibility();
 
-  // Only 3 animated values - Apple simplicity
+  // Animation values
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const visibilityAnim = useRef(new Animated.Value(config.visible ? 1 : 0)).current;
+  const visibilityAnim = useRef(new Animated.Value(activeFAB?.visible ? 1 : 0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const labelAnim = useRef(new Animated.Value(0)).current;
 
-  // Visibility: fade + slide (never unmount)
+  // Get animation configuration
+  const animationConfig = useMemo(() => {
+    const animType = activeFAB?.animation || 'subtle';
+    return ANIMATION_CONFIGS[animType] || ANIMATION_CONFIGS.subtle;
+  }, [activeFAB?.animation]);
+
+  // Get style configuration
+  const fabStyle = useMemo(() => {
+    const styleType = activeFAB?.style || 'primary';
+    return getFABStyle(styleType);
+  }, [activeFAB?.style, getFABStyle]);
+
+  // Visibility animation
   useEffect(() => {
     Animated.timing(visibilityAnim, {
-      toValue: config.visible ? 1 : 0,
-      duration: 180,
-      easing: Easing.out(Easing.quad),
+      toValue: activeFAB?.visible ? 1 : 0,
+      ...animationConfig,
       useNativeDriver: true,
     }).start();
-  }, [config.visible, visibilityAnim]);
+  }, [activeFAB?.visible, animationConfig, visibilityAnim]);
 
-  // Press handlers - match iVisit haptic patterns
+  // Pulse animation for emergency style
+  useEffect(() => {
+    if (activeFAB?.animation === 'pulse' && activeFAB?.visible) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.05,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    }
+  }, [activeFAB?.animation, activeFAB?.visible, pulseAnim]);
+
+  // Label animation (slide in from right)
+  useEffect(() => {
+    if (activeFAB?.label && activeFAB?.visible) {
+      Animated.timing(labelAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(labelAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [activeFAB?.label, activeFAB?.visible, labelAnim]);
+
+  // Press handlers with haptic feedback
   const handlePressIn = () => {
+    if (activeFAB?.disabled || activeFAB?.loading) return;
+    
+    // Light haptic on press in
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    // Scale down animation
     Animated.timing(scaleAnim, {
       toValue: 0.96,
       duration: 100,
@@ -49,6 +134,9 @@ const GlobalFAB = () => {
   };
 
   const handlePressOut = () => {
+    if (activeFAB?.disabled || activeFAB?.loading) return;
+    
+    // Scale back animation
     Animated.timing(scaleAnim, {
       toValue: 1,
       duration: 100,
@@ -57,10 +145,48 @@ const GlobalFAB = () => {
   };
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (config.onPress) {
-      config.onPress();
+    if (activeFAB?.disabled || activeFAB?.loading) return;
+    
+    // Haptic feedback based on type
+    if (activeFAB?.haptic) {
+      const hapticMap = {
+        light: Haptics.ImpactFeedbackStyle.Light,
+        medium: Haptics.ImpactFeedbackStyle.Medium,
+        heavy: Haptics.ImpactFeedbackStyle.Heavy,
+        success: Haptics.NotificationFeedbackType.Success,
+        error: Haptics.NotificationFeedbackType.Error,
+      };
+      
+      const hapticType = hapticMap[activeFAB.haptic];
+      if (hapticType) {
+        if (activeFAB.haptic === 'success' || activeFAB.haptic === 'error') {
+          Haptics.notificationFeedbackAsync(hapticType);
+        } else {
+          Haptics.impactAsync(hapticType);
+        }
+      }
     }
+    
+    // Execute action
+    activeFAB?.onPress?.();
+  };
+
+  // Icon rendering with support for both Ionicons and Fontisto
+  const renderIcon = () => {
+    if (activeFAB?.loading) {
+      return <ActivityIndicator size="small" color="#FFFFFF" />;
+    }
+
+    const iconName = activeFAB?.icon;
+    if (!iconName) return null;
+
+    // Fontisto icons (bed-patient, etc.)
+    if (iconName === 'bed-patient') {
+      return <Fontisto name={iconName} size={24} color="#FFFFFF" />;
+    }
+
+    // Default to Ionicons
+    return <Ionicons name={iconName} size={24} color="#FFFFFF" />;
   };
 
   // Position: anchored above tab bar
@@ -80,6 +206,8 @@ const GlobalFAB = () => {
     outputRange: [12, 0],
   });
 
+  if (!activeFAB) return null;
+
   return (
     <Animated.View
       style={[
@@ -91,24 +219,63 @@ const GlobalFAB = () => {
           transform: [
             { translateY: visibilitySlide },
             { translateY: fabTranslateY },
-            { scale: scaleAnim },
+            { scale: Animated.multiply(scaleAnim, pulseAnim) },
           ],
         },
       ]}
-      pointerEvents={config.visible ? 'auto' : 'none'}
+      pointerEvents={activeFAB?.visible ? 'auto' : 'none'}
     >
       <Pressable
         onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={styles.button}
+        style={[
+          styles.button,
+          fabStyle,
+          activeFAB?.disabled && styles.buttonDisabled,
+        ]}
+        disabled={activeFAB?.disabled || activeFAB?.loading}
       >
-        {config.icon === 'bed-patient' ? (
-          <Fontisto name="bed-patient" size={24} color="#FFFFFF" />
-        ) : (
-          <Ionicons name={config.icon} size={26} color="#FFFFFF" />
-        )}
+        {renderIcon()}
       </Pressable>
+      
+      {/* Enhanced label support */}
+      {activeFAB?.label && (
+        <Animated.View
+          style={[
+            styles.labelContainer,
+            {
+              opacity: labelAnim,
+              transform: [
+                {
+                  translateX: labelAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [20, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Text style={styles.labelText}>
+            {activeFAB.label}
+          </Text>
+          {activeFAB?.subText && (
+            <Text style={styles.subLabelText}>
+              {activeFAB.subText}
+            </Text>
+          )}
+        </Animated.View>
+      )}
+      
+      {/* Badge support */}
+      {activeFAB?.badge && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>
+            {activeFAB.badge}
+          </Text>
+        </View>
+      )}
     </Animated.View>
   );
 };
@@ -117,6 +284,7 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     zIndex: 1000,
+    alignItems: 'flex-end',
   },
   button: {
     width: FAB_SIZE,
@@ -131,6 +299,49 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 12,
     elevation: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  labelContainer: {
+    alignItems: 'flex-end',
+    minWidth: 120,
+    marginRight: 8,
+    position: 'absolute',
+    right: FAB_SIZE + 8,
+    top: FAB_SIZE / 2 - 20,
+  },
+  labelText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.brandPrimary,
+    textAlign: 'right',
+    letterSpacing: -0.3,
+  },
+  subLabelText: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#64748B',
+    textAlign: 'right',
+    marginTop: 3,
+    letterSpacing: -0.2,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: COLORS.emergency,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
   },
 });
 

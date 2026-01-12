@@ -221,19 +221,24 @@ export default function EmergencyScreen() {
 			const shouldHideFAB =
 				!!selectedHospital || sheetSnapIndex === 0;
 				
-			registerFAB({
+			// Register FAB with unique ID and enhanced configuration
+			registerFAB('emergency-mode-toggle', {
 				icon: mode === "emergency" ? "bed-patient" : "medical",
 				visible: !shouldHideFAB,
 				onPress: handleFloatingButtonPress,
+				style: 'primary',
+				haptic: 'medium',
+				priority: 8, // High priority for emergency actions
+				animation: 'subtle',
 			});
 		}, [
-			activeAmbulanceTrip,
-			activeBedBooking,
-			handleFloatingButtonPress,
-			mode,
 			registerFAB,
+			mode,
 			selectedHospital,
 			sheetSnapIndex,
+			handleFloatingButtonPress,
+			activeAmbulanceTrip,
+			activeBedBooking,
 		])
 	);
 
