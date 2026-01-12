@@ -28,6 +28,7 @@ import { useNotifications } from "../contexts/NotificationsContext";
 import { getMapPaddingForSnapIndex } from "../constants/emergencyAnimations";
 import { simulationService } from "../services/simulationService";
 import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigationHelpers";
+import { useToast } from "../contexts/ToastContext";
 
 import { EmergencyMapContainer } from "../components/emergency/EmergencyMapContainer";
 import { BottomSheetController } from "../components/emergency/BottomSheetController";
@@ -123,6 +124,7 @@ export default function EmergencyScreen() {
 		stopBedBooking,
 		setBedBookingStatus,
 	} = useEmergency();
+	const { showToast } = useToast();
 
 	const [pendingSelectedHospitalId, setPendingSelectedHospitalId] = useState(null);
 	useEffect(() => {
@@ -220,16 +222,25 @@ export default function EmergencyScreen() {
 		useCallback(() => {
 			const shouldHideFAB =
 				!!selectedHospital || sheetSnapIndex === 0;
+			const hasBothActive = !!activeAmbulanceTrip && !!activeBedBooking;
+			const nextLabel =
+				hasBothActive
+					? (mode === "emergency" ? "View Bed" : "View Ambulance")
+					: undefined;
+			const nextSubText = hasBothActive ? "Switch summary" : undefined;
 				
 			// Register FAB with unique ID and enhanced configuration
 			registerFAB('emergency-mode-toggle', {
 				icon: mode === "emergency" ? "bed-patient" : "medical",
 				visible: !shouldHideFAB,
+				allowInStack: true, // Allow FAB in stack screens when trip is active
 				onPress: handleFloatingButtonPress,
 				style: 'primary',
 				haptic: 'medium',
 				priority: 8, // High priority for emergency actions
 				animation: 'subtle',
+				label: nextLabel,
+				subText: nextSubText,
 			});
 			
 			// Cleanup
@@ -278,14 +289,33 @@ export default function EmergencyScreen() {
 	const handlePrimaryAction = useCallback(
 		(hospitalId) => {
 			if (!hospitalId) return;
+			
+			const hasActiveByMode =
+				mode === "booking"
+					? !!activeBedBooking?.requestId
+					: !!activeAmbulanceTrip?.requestId;
+
+			if (hasActiveByMode) {
+				try {
+					showToast(
+						mode === "booking"
+							? "You already have an active bed booking"
+							: "You already have an active ambulance trip",
+						"warning"
+					);
+				} catch (e) {}
+				bottomSheetRef.current?.snapToIndex?.(1);
+				return;
+			}
+
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			if (mode === "booking") {
 				navigateToBookBed({ router, hospitalId, method: "push" });
 				return;
 			}
-			navigateToRequestAmbulance({ router, hospitalId, method: "push" });
+				navigateToRequestAmbulance({ router, hospitalId, method: "push" });
 		},
-		[mode, router]
+		[mode, router, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId, showToast]
 	);
 
 	// Service type selection
@@ -376,6 +406,21 @@ export default function EmergencyScreen() {
 		},
 		[setMode]
 	);
+
+	// Auto-set mode and snap when a booking/trip becomes active
+	useEffect(() => {
+		if (activeAmbulanceTrip?.requestId) {
+			if (mode !== "emergency") setMode("emergency");
+			bottomSheetRef.current?.snapToIndex?.(1);
+		}
+	}, [activeAmbulanceTrip?.requestId, mode, setMode]);
+
+	useEffect(() => {
+		if (activeBedBooking?.requestId) {
+			if (mode !== "booking") setMode("booking");
+			bottomSheetRef.current?.snapToIndex?.(1);
+		}
+	}, [activeBedBooking?.requestId, mode, setMode]);
 
 	const routeHospitalId =
 		mode === "emergency"

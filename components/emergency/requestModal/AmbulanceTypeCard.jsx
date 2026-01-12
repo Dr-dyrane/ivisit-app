@@ -27,7 +27,7 @@ export default function AmbulanceTypeCard({ type, selected, onPress, textColor, 
 		}]}>
 			<Ionicons 
 				name={type.icon} 
-				size={32} 
+				size={40} 
 				color={selected ? COLORS.brandPrimary : (isDarkMode ? "#94A3B8" : "#64748B")} 
 			/>
 			{selected && (
@@ -122,11 +122,11 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
-		marginBottom: 4,
+		marginBottom: 6,
 	},
 	name: {
-		fontSize: 17,
-		fontWeight: "700",
+		fontSize: 18,
+		fontWeight: "800",
 		flex: 1,
 		letterSpacing: -0.3,
 	},
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
-		marginBottom: 4,
+		marginBottom: 6,
 	},
 	personRow: {
 		flexDirection: "row",
@@ -149,12 +149,12 @@ const styles = StyleSheet.create({
 		fontWeight: "600",
 	},
 	eta: {
-		fontSize: 12,
-		fontWeight: "500",
+		fontSize: 13,
+		fontWeight: "600",
 	},
 	description: {
-		fontSize: 12,
-		lineHeight: 16,
+		fontSize: 13,
+		lineHeight: 18,
 	},
 	priceContainer: {
 		alignItems: "flex-end",
@@ -163,8 +163,8 @@ const styles = StyleSheet.create({
 		minWidth: 60,
 	},
 	price: {
-		fontSize: 17,
-		fontWeight: "800",
+		fontSize: 18,
+		fontWeight: "900",
 		letterSpacing: -0.5,
 	},
 });

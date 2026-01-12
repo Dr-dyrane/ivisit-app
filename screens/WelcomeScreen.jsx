@@ -74,9 +74,11 @@ const WelcomeScreen = () => {
 				/>
 				<Text
 					className={`text-4xl font-bold tracking-tighter mt-2`}
-					style={{ color: isDarkMode ? "#FFFFFF" : PRIMARY_RED }}
+					// TODO: Make this dynamic based on theme
+					style={{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }}
 				>
 					iVisit
+					<Text style={{ color: COLORS.brandPrimary, fontSize: 42 }}>.</Text>
 				</Text>
 			</View>
 

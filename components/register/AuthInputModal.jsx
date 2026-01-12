@@ -27,6 +27,7 @@ import { useRegistration } from "../../contexts/RegistrationContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
 import useSignUp from "../../hooks/auth/useSignup";
+import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
 import PhoneInputField from "./PhoneInputField";
 import EmailInputField from "./EmailInputField";
 import OTPInputCard from "./OTPInputCard";
@@ -39,6 +40,10 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	const insets = useSafeAreaInsets();
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
+
+	const { modalHeight, getKeyboardAvoidingViewProps, getScrollViewProps } = 
+		useAndroidKeyboardAwareModal({ defaultHeight: SCREEN_HEIGHT * 0.85 });
+
 	const [mockOtp, setMockOtp] = useState(null); // DEV: Display mock OTP for testing
 
 	const { showToast } = useToast();
@@ -351,26 +356,14 @@ export default function AuthInputModal({ visible, onClose, type }) {
 					style={{
 						transform: [{ translateY: slideAnim }],
 						backgroundColor: colors.bg,
-						height: SCREEN_HEIGHT * 0.85,
+						height: modalHeight,
 						}}
 					className="rounded-t-[40px] px-8 pt-4 shadow-2xl"
 				>
 					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-6" />
 
-					<KeyboardAvoidingView
-						behavior={Platform.OS === "ios" ? "padding" : "height"}
-						keyboardVerticalOffset={
-							Platform.OS === "ios" ? insets.bottom + 90 : insets.bottom + 24
-						}
-						className="flex-1"
-					>
-						<ScrollView
-							contentContainerStyle={{
-								flexGrow: 1,
-								paddingBottom: insets.bottom + 120,
-							}}
-							keyboardShouldPersistTaps="handled"
-						>
+					<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
+						<ScrollView {...getScrollViewProps()}>
 							{/* Header */}
 							<View className="flex-row items-start mb-8">
 								{!isInputStep && (

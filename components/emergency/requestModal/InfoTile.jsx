@@ -23,22 +23,18 @@ export default function InfoTile({
 			styles.card, 
 			{ 
 				backgroundColor: cardColor,
-				// Enhanced shadow system with multiple layers for depth
-				shadowColor: isDarkMode ? '#000' : '#000',
-				shadowOffset: { width: 0, height: 2 },
-				shadowOpacity: isDarkMode ? 0.15 : 0.08,
-				shadowRadius: 8,
-				elevation: 3,
-				// Add subtle border for definition
-				borderWidth: 0.5,
-				borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+				shadowColor: '#000',
+				shadowOffset: { width: 0, height: 3 },
+				shadowOpacity: isDarkMode ? 0.2 : 0.08,
+				shadowRadius: 10,
+				elevation: 4,
 			}
 		]}>
 			<View style={styles.labelRow}>
 				{icon && (
 					<Ionicons 
 						name={icon} 
-						size={12} 
+						size={14} 
 						color={isDarkMode ? COLORS.textMutedDark : mutedColor} 
 						style={styles.labelIcon}
 					/>
@@ -56,35 +52,32 @@ export default function InfoTile({
 
 const styles = StyleSheet.create({
 	card: {
-		flexBasis: "47%",
+		flexBasis: "48%",
 		flexGrow: 1,
-		borderRadius: 16, // Modern rounded corners
-		paddingHorizontal: 12,
-		paddingVertical: 10,
+		borderRadius: 18,
+		paddingHorizontal: 14,
+		paddingVertical: 12,
 		marginHorizontal: 2,
 		marginBottom: 8,
-		// Add subtle inner shadow effect for depth
-		// iOS: inner shadow via border and shadow
-		// Android: handled by elevation
 	},
 	labelRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		marginBottom: 4,
+		marginBottom: 6,
 	},
 	labelIcon: {
-		marginRight: 4,
+		marginRight: 6,
 	},
 	label: {
-		fontSize: 11, // Reduced from 12
-		fontWeight: "600",
+		fontSize: 12,
+		fontWeight: "700",
 		letterSpacing: 0.2,
 		opacity: 0.9,
 	},
 	value: {
-		marginTop: 2, // Reduced from 8
-		fontSize: 14, // Reduced from 15
-		fontWeight: "700",
-		letterSpacing: -0.1,
+		marginTop: 2,
+		fontSize: 16,
+		fontWeight: "800",
+		letterSpacing: -0.2,
 	},
 });

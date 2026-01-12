@@ -27,7 +27,6 @@ import EmergencySheetTopRow from "./bottomSheet/EmergencySheetTopRow";
 import EmergencySheetFilters from "./bottomSheet/EmergencySheetFilters";
 import EmergencySheetSectionHeader from "./bottomSheet/EmergencySheetSectionHeader";
 import EmergencySheetHospitalList from "./bottomSheet/EmergencySheetHospitalList";
-import { ActiveVisitsSwitcher } from "./bottomSheet/ActiveVisitsSwitcher";
 import { TripSummaryCard } from "./bottomSheet/TripSummaryCard";
 import { BedBookingSummaryCard } from "./bottomSheet/BedBookingSummaryCard";
 
@@ -275,12 +274,6 @@ const EmergencyBottomSheet = forwardRef(
 						onScroll={handleScroll}
 						keyboardShouldPersistTaps="handled"
 					>
-						<ActiveVisitsSwitcher
-							mode={mode}
-							hasAmbulance={!!activeAmbulanceTrip}
-							hasBed={!!activeBedBooking}
-							onSelectMode={onModeSelect}
-						/>
 						{isTripMode ? (
 							<TripSummaryCard
 								activeAmbulanceTrip={activeAmbulanceTrip}

@@ -15,12 +15,17 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import countries from "../../data/countries";
 import * as Haptics from "expo-haptics";
+import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function CountryPickerModal({ visible, onClose, onSelect }) {
 	const { isDarkMode } = useTheme();
 	const [query, setQuery] = useState("");
+
+	const { modalHeight } = useAndroidKeyboardAwareModal({ 
+		defaultHeight: SCREEN_HEIGHT * 0.75 
+	});
 
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
@@ -103,7 +108,7 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
 
 				<Animated.View
 					style={{
-						height: SCREEN_HEIGHT * 0.75,
+						height: modalHeight,
 						backgroundColor: colors.bg,
 						transform: [{ translateY: slideAnim }],
 					}}

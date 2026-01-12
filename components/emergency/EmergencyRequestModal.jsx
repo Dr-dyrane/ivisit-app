@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useFAB } from "../../contexts/FABContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
 import { AMBULANCE_TYPES } from "../../constants/emergency";
 
@@ -27,6 +28,7 @@ const EmergencyRequestModal = ({
 	const { isDarkMode } = useTheme();
 	const { showToast } = useToast();
 	const { registerFAB, unregisterFAB } = useFAB();
+	const insets = useSafeAreaInsets();
 
 	const [requestStep, setRequestStep] = useState("select");
 	const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);

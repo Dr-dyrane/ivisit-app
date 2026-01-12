@@ -1,10 +1,16 @@
+// components/emergency/ServiceRatingModal.jsx
+
+/**
+ * ServiceRatingModal - Apple-inspired redesign
+ * Clean, minimal design following app's no-border rule and theme system
+ */
+
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
 	Modal,
 	View,
 	Text,
 	Pressable,
-	StyleSheet,
 	Animated,
 	Dimensions,
 	TextInput,
@@ -17,6 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
+import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -32,7 +39,12 @@ export function ServiceRatingModal({
 	const { isDarkMode } = useTheme();
 	const [rating, setRating] = useState(0);
 	const [comment, setComment] = useState("");
-	const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+	const { modalHeight, keyboardHeight, getKeyboardAvoidingViewProps, getScrollViewProps } = 
+		useAndroidKeyboardAwareModal({ 
+			defaultHeight: SCREEN_HEIGHT,
+			maxHeightPercentage: 0.9 
+		});
 
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -56,39 +68,25 @@ export function ServiceRatingModal({
 		]).start();
 	}, [fadeAnim, slideAnim, visible]);
 
-	useEffect(() => {
-		const show = Keyboard.addListener("keyboardDidShow", () =>
-			setIsKeyboardVisible(true)
-		);
-		const hide = Keyboard.addListener("keyboardDidHide", () =>
-			setIsKeyboardVisible(false)
-		);
-		return () => {
-			show.remove();
-			hide.remove();
-		};
-	}, []);
-
 	const colors = useMemo(() => ({
-		bg: isDarkMode ? "#111827" : "#FFFFFF",
-		text: isDarkMode ? "#F9FAFB" : "#0F172A",
-		subtext: isDarkMode ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.62)",
-		card: isDarkMode ? "rgba(255,255,255,0.06)" : "#F8FAFC",
-		border: isDarkMode ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.10)",
-		accent: serviceType === "ambulance" ? "#DC2626" : serviceType === "bed" ? "#059669" : COLORS.brandPrimary,
-	}), [isDarkMode, serviceType]);
+		bg: isDarkMode ? COLORS.bgDark : COLORS.bgLight,
+		text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+		subtext: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
+		card: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
+		accent: COLORS.brandPrimary,
+	}), [isDarkMode]);
 
 	const close = useCallback(() => {
 		Keyboard.dismiss();
 		Animated.parallel([
 			Animated.timing(slideAnim, {
 				toValue: SCREEN_HEIGHT,
-				duration: 220,
+				duration: 300,
 				useNativeDriver: true,
 			}),
 			Animated.timing(fadeAnim, {
 				toValue: 0,
-				duration: 180,
+				duration: 250,
 				useNativeDriver: true,
 			}),
 		]).start(() => onClose?.());
@@ -110,77 +108,124 @@ export function ServiceRatingModal({
 		}
 	};
 
+	const getServiceTypeLabel = () => {
+		switch (serviceType) {
+			case "ambulance": return "emergency response";
+			case "bed": return "hospital stay";
+			default: return "visit";
+		}
+	};
+
+	const getRatingText = () => {
+		switch (rating) {
+			case 5: return "Excellent!";
+			case 4: return "Good";
+			case 3: return "Okay";
+			case 2: return "Poor";
+			case 1: return "Very Poor";
+			default: return "";
+		}
+	};
+
 	return (
 		<Modal visible={visible} transparent animationType="none" onRequestClose={close}>
-			<View style={styles.container}>
-				<Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-					<Pressable
-						style={styles.backdropPress}
+			<View className="flex-1">
+				<Animated.View 
+					style={{ opacity: fadeAnim }} 
+					className="absolute inset-0 bg-black/50"
+				>
+					<Pressable 
+						className="flex-1" 
 						onPress={() => {
-							if (isKeyboardVisible) {
+							if (keyboardHeight > 0) {
 								Keyboard.dismiss();
 								return;
 							}
 							close();
-						}}
+						}} 
 					/>
-					<BlurView intensity={30} tint={isDarkMode ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+					<BlurView 
+						intensity={20} 
+						tint={isDarkMode ? "dark" : "light"} 
+						style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} 
+					/>
 				</Animated.View>
 
-				<KeyboardAvoidingView
-					behavior={Platform.OS === "ios" ? "padding" : "height"}
-					keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
+				<Animated.View
+					style={{
+						transform: [{ translateY: slideAnim }],
+						backgroundColor: colors.bg,
+						height: modalHeight,
+					}}
+					className="rounded-t-[40px] px-6 pt-4"
 				>
-					<Animated.View
-						style={[
-							styles.sheet,
-							{ transform: [{ translateY: slideAnim }], backgroundColor: colors.bg },
-						]}
-					>
-						<View
-							style={[
-								styles.indicator,
-								{ backgroundColor: isDarkMode ? "rgba(255,255,255,0.20)" : "#E5E7EB" },
-							]}
-						/>
+					{/* Handle */}
+					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-8" />
 
-						<ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-							{/* Service Header */}
-							<View style={styles.serviceHeader}>
-								<View style={[styles.iconContainer, { backgroundColor: `${colors.accent}15` }]}>
-									<Ionicons name={getServiceIcon()} size={32} color={colors.accent} />
+					<ScrollView 
+						showsVerticalScrollIndicator={false}
+						contentContainerStyle={{ paddingBottom: 40 }}
+						keyboardShouldPersistTaps="handled"
+					>
+						{/* Header */}
+						<View className="items-center mb-8">
+							<View 
+								className="w-16 h-16 rounded-2xl items-center justify-center mb-4"
+								style={{ backgroundColor: `${colors.accent}15` }}
+							>
+								<Ionicons name={getServiceIcon()} size={32} color={colors.accent} />
 								</View>
-								<View style={styles.headerText}>
-									<Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-									{subtitle && (
-										<Text style={[styles.subtitle, { color: colors.subtext }]}>{subtitle}</Text>
-									)}
-								</View>
+								<Text 
+									className="text-3xl font-black tracking-tighter text-center mb-2"
+									style={{ color: colors.text }}
+								>
+									{title}
+								</Text>
+								{subtitle && (
+									<Text 
+										className="text-base text-center"
+										style={{ color: colors.subtext }}
+									>
+										{subtitle}
+									</Text>
+								)}
 							</View>
 
 							{/* Service Details */}
 							{serviceDetails && (
-								<View style={[styles.detailsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+								<View 
+									className="rounded-2xl p-4 mb-6"
+									style={{ backgroundColor: colors.card }}
+								>
 									{serviceDetails.provider && (
-										<View style={styles.detailRow}>
-											<Ionicons name="person" size={16} color={colors.subtext} />
-											<Text style={[styles.detailText, { color: colors.text }]}>
+										<View className="flex-row items-center mb-3">
+											<Ionicons name="person" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
+											<Text 
+												className="text-base font-medium"
+												style={{ color: colors.text }}
+											>
 												{serviceDetails.provider}
 											</Text>
 										</View>
 									)}
 									{serviceDetails.hospital && (
-										<View style={styles.detailRow}>
-											<Ionicons name="business" size={16} color={colors.subtext} />
-											<Text style={[styles.detailText, { color: colors.text }]}>
+										<View className="flex-row items-center mb-3">
+											<Ionicons name="business" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
+											<Text 
+												className="text-base font-medium"
+												style={{ color: colors.text }}
+											>
 												{serviceDetails.hospital}
 											</Text>
 										</View>
 									)}
 									{serviceDetails.duration && (
-										<View style={styles.detailRow}>
-											<Ionicons name="time" size={16} color={colors.subtext} />
-											<Text style={[styles.detailText, { color: colors.text }]}>
+										<View className="flex-row items-center">
+											<Ionicons name="time" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
+											<Text 
+												className="text-base font-medium"
+												style={{ color: colors.text }}
+											>
 												{serviceDetails.duration}
 											</Text>
 										</View>
@@ -189,41 +234,55 @@ export function ServiceRatingModal({
 							)}
 
 							{/* Rating Section */}
-							<View style={[styles.ratingSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
-								<Text style={[styles.sectionTitle, { color: colors.text }]}>
-									How was your {serviceType === "ambulance" ? "emergency response" : serviceType === "bed" ? "hospital stay" : "visit"}?
+							<View className="mb-6">
+								<Text 
+									className="text-lg font-semibold text-center mb-6"
+									style={{ color: colors.text }}
+								>
+									How was your {getServiceTypeLabel()}?
 								</Text>
-								<View style={styles.starsRow}>
-									{stars.map((s) => {
-										const active = s <= rating;
+								
+								{/* Stars */}
+								<View className="flex-row justify-center mb-4">
+									{stars.map((star) => {
+										const isActive = star <= rating;
 										return (
 											<Pressable
-												key={s}
+												key={star}
 												onPress={() => {
 													Keyboard.dismiss();
-													setRating(s);
+													setRating(star);
 												}}
-												style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }]}
+												className="p-2"
+												style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
 											>
 												<Ionicons
-													name={active ? "star" : "star-outline"}
-													size={36}
-													color={active ? colors.accent : colors.subtext}
+													name={isActive ? "star" : "star-outline"}
+													size={40}
+													color={isActive ? colors.accent : colors.subtext}
 												/>
 											</Pressable>
 										);
 									})}
 								</View>
+
+								{/* Rating Text */}
 								{rating > 0 && (
-									<Text style={[styles.ratingText, { color: colors.accent }]}>
-										{rating === 5 ? "Excellent!" : rating === 4 ? "Good" : rating === 3 ? "Okay" : rating === 2 ? "Poor" : "Very Poor"}
+									<Text 
+										className="text-center text-lg font-medium mb-2"
+										style={{ color: colors.accent }}
+									>
+										{getRatingText()}
 									</Text>
 								)}
 							</View>
 
 							{/* Feedback Section */}
-							<View style={[styles.feedbackSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
-								<Text style={[styles.sectionTitle, { color: colors.text }]}>
+							<View className="mb-8">
+								<Text 
+									className="text-base font-medium mb-3"
+									style={{ color: colors.text }}
+								>
 									Tell us more (optional)
 								</Text>
 								<TextInput
@@ -231,158 +290,58 @@ export function ServiceRatingModal({
 									onChangeText={setComment}
 									placeholder="Share your experience to help us improve..."
 									placeholderTextColor={colors.subtext}
-									style={[
-										styles.input,
-										{
-											color: colors.text,
-											borderColor: colors.border,
-											backgroundColor: isDarkMode ? "rgba(255,255,255,0.04)" : "#FFFFFF",
-										},
-									]}
+									className="rounded-2xl p-4 text-base"
+									style={{
+										color: colors.text,
+										backgroundColor: colors.card,
+										height: 100,
+										textAlignVertical: 'top',
+									}}
 									multiline
-									textAlignVertical="top"
 								/>
 							</View>
-						</ScrollView>
 
-						{/* Actions */}
-						<View style={styles.actions}>
-							<Pressable
-								onPress={() => {
-									if (isKeyboardVisible) {
-										Keyboard.dismiss();
-										return;
-									}
-									close();
-								}}
-								style={({ pressed }) => [
-									styles.secondaryBtn,
-									{ borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
-								]}
-							>
-								<Text style={[styles.secondaryText, { color: colors.text }]}>Skip</Text>
-							</Pressable>
-							<Pressable
-								onPress={handleSubmit}
-								disabled={rating < 1}
-								style={({ pressed }) => [
-									styles.primaryBtn,
-									{
-										backgroundColor: colors.accent,
-										opacity: rating < 1 ? 0.45 : pressed ? 0.85 : 1,
-									},
-								]}
-							>
-								<Text style={styles.primaryText}>Submit</Text>
-							</Pressable>
-						</View>
+							{/* Actions */}
+							<View className="flex-row gap-3">
+								<Pressable
+									onPress={() => {
+										if (keyboardHeight > 0) {
+											Keyboard.dismiss();
+											return;
+										}
+										close();
+									}}
+									className="flex-1 h-14 rounded-2xl items-center justify-center"
+									style={{ backgroundColor: colors.card }}
+								>
+									<Text 
+										className="text-base font-semibold"
+										style={{ color: colors.text }}
+									>
+										Skip
+									</Text>
+								</Pressable>
+								
+								<Pressable
+									onPress={handleSubmit}
+									disabled={rating < 1}
+									className="flex-1 h-14 rounded-2xl items-center justify-center"
+									style={{
+										backgroundColor: rating >= 1 ? colors.accent : colors.card,
+										opacity: rating >= 1 ? 1 : 0.5,
+									}}
+								>
+									<Text 
+										className="text-base font-semibold"
+										style={{ color: rating >= 1 ? COLORS.bgLight : colors.text }}
+									>
+										Submit
+									</Text>
+								</Pressable>
+							</View>
+						</ScrollView>
 					</Animated.View>
-				</KeyboardAvoidingView>
 			</View>
 		</Modal>
 	);
 }
-
-const styles = StyleSheet.create({
-	container: { flex: 1, justifyContent: "flex-end" },
-	backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
-	backdropPress: { flex: 1 },
-	sheet: {
-		borderTopLeftRadius: 28,
-		borderTopRightRadius: 28,
-		paddingTop: 10,
-		paddingHorizontal: 20,
-		paddingBottom: 22,
-		minHeight: 400,
-		maxHeight: SCREEN_HEIGHT * 0.85,
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: -6 },
-		shadowOpacity: 0.12,
-		shadowRadius: 20,
-		elevation: 20,
-	},
-	indicator: {
-		width: 40,
-		height: 5,
-		borderRadius: 999,
-		alignSelf: "center",
-		marginBottom: 16,
-	},
-	scrollContent: { paddingBottom: 20 },
-	serviceHeader: {
-		flexDirection: "row",
-		alignItems: "center",
-		marginBottom: 20,
-	},
-	iconContainer: {
-		width: 64,
-		height: 64,
-		borderRadius: 20,
-		alignItems: "center",
-		justifyContent: "center",
-		marginRight: 16,
-	},
-	headerText: { flex: 1 },
-	title: { fontSize: 20, fontWeight: "700", letterSpacing: -0.3 },
-	subtitle: { marginTop: 4, fontSize: 14, color: "#64748B" },
-	detailsCard: {
-		borderRadius: 16,
-		borderWidth: 1,
-		padding: 16,
-		marginBottom: 16,
-	},
-	detailRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		marginBottom: 8,
-	},
-	detailRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		marginBottom: 8,
-	},
-	detailText: { marginLeft: 12, fontSize: 14, fontWeight: "500" },
-	ratingSection: {
-		borderRadius: 16,
-		borderWidth: 1,
-		padding: 20,
-		marginBottom: 16,
-		alignItems: "center",
-	},
-	sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 16, textAlign: "center" },
-	starsRow: { flexDirection: "row", justifyContent: "center", gap: 12, marginBottom: 12 },
-	ratingText: { fontSize: 16, fontWeight: "600" },
-	feedbackSection: {
-		borderRadius: 16,
-		borderWidth: 1,
-		padding: 20,
-		marginBottom: 16,
-	},
-	input: {
-		minHeight: 100,
-		borderRadius: 12,
-		borderWidth: 1,
-		padding: 14,
-		fontSize: 15,
-	},
-	actions: {
-		flexDirection: "row",
-		gap: 12,
-		marginTop: 8,
-	},
-	secondaryBtn: {
-		flex: 1,
-		borderWidth: 1,
-		borderRadius: 14,
-		paddingVertical: 14,
-		alignItems: "center",
-	},
-	secondaryText: { fontSize: 15, fontWeight: "600" },
-	primaryBtn: {
-		flex: 1,
-		borderRadius: 14,
-		paddingVertical: 14,
-		alignItems: "center",
-	},
-	primaryText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF" },
-});

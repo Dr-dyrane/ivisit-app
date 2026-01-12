@@ -32,6 +32,7 @@ import { COLORS } from "../../constants/colors";
 import useLoginHook from "../../hooks/auth/useLogin";
 import { useAuth } from "../../contexts/AuthContext";
 import { database, StorageKeys } from "../../database";
+import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
 import LoginAuthMethodCard from "./LoginAuthMethodCard";
 import LoginContactCard from "./LoginContactCard";
 import PhoneInputField from "../register/PhoneInputField";
@@ -48,6 +49,9 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 	const insets = useSafeAreaInsets();
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
+
+	const { modalHeight, getKeyboardAvoidingViewProps, getScrollViewProps } = 
+		useAndroidKeyboardAwareModal({ defaultHeight: SCREEN_HEIGHT * 0.85 });
 
 	const [resetEmail, setResetEmail] = useState(null);
 	const [resetToken, setResetToken] = useState(null); // DEV: Store mock reset token
@@ -464,26 +468,14 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 					style={{
 						transform: [{ translateY: slideAnim }],
 						backgroundColor: colors.bg,
-						height: SCREEN_HEIGHT * 0.85,
+						height: modalHeight,
 					}}
 					className="rounded-t-[40px] px-8 pt-4 shadow-2xl"
 				>
 					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-6" />
 
-					<KeyboardAvoidingView
-						behavior={Platform.OS === "ios" ? "padding" : "height"}
-						keyboardVerticalOffset={
-							Platform.OS === "ios" ? insets.bottom + 90 : insets.bottom + 24
-						}
-						className="flex-1"
-					>
-						<ScrollView
-							contentContainerStyle={{
-								flexGrow: 1,
-								paddingBottom: insets.bottom + 120,
-							}}
-							keyboardShouldPersistTaps="handled"
-						>
+					<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
+						<ScrollView {...getScrollViewProps()}>
 							{/* Header */}
 							<View className="flex-row items-start mb-8">
 								{currentStep !== LOGIN_STEPS.AUTH_METHOD && (

@@ -71,69 +71,6 @@ const BedBookingSummaryCollapsed = ({
 					<Text style={[styles.etaLabel, { color: "rgba(255,255,255,0.8)" }]}>min</Text>
 				</View>
 			</View>
-
-			<Text
-				style={{
-					fontSize: 12,
-					fontWeight: "700",
-					color: isDarkMode ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.7)",
-				}}
-				numberOfLines={1}
-			>
-				{bedType} • {specialty} • {bedCount} {bedCount === "1" ? "bed" : "beds"}
-			</Text>
-
-			<View style={[styles.actionsRow, { marginTop: 12 }]}>
-				{callTarget && (
-					<Pressable
-						onPress={() => {
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							Linking.openURL(callTarget);
-						}}
-						style={({ pressed }) => [
-							styles.actionBtn,
-							{
-								backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
-								opacity: pressed ? 0.7 : 1,
-							},
-						]}
-					>
-						<Ionicons
-							name="call"
-							size={20}
-							color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
-						/>
-					</Pressable>
-				)}
-
-				<Pressable
-					onPress={() => {
-						Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-						onCancelBedBooking?.();
-					}}
-					style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.7 : 1 }]}
-				>
-					<Text style={styles.cancelText}>Cancel</Text>
-				</Pressable>
-
-				{showMarkOccupied && (
-					<Pressable
-						onPress={onMarkBedOccupied}
-						style={({ pressed }) => [styles.completeBtn, { opacity: pressed ? 0.7 : 1 }]}
-					>
-						<Text style={styles.completeText}>Occupied</Text>
-					</Pressable>
-				)}
-
-				{showComplete && (
-					<Pressable
-						onPress={onCompleteBedBooking}
-						style={({ pressed }) => [styles.completeBtn, { opacity: pressed ? 0.7 : 1 }]}
-					>
-						<Text style={styles.completeText}>Complete</Text>
-					</Pressable>
-				)}
-			</View>
 		</View>
 	);
 };
