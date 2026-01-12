@@ -164,18 +164,62 @@ export function FABProvider({ children }) {
 
 ### 3.1 Migration Priority Matrix
 
-| Priority | Screen | Current Implementation | Migration Complexity | Business Impact |
-|----------|--------|----------------------|---------------------|-----------------|
-| **1** | ProfileScreen | Inline save FAB | Low | Critical - User data |
-| **2** | MedicalProfileScreen | Inline save FAB | Low | Critical - Medical data |
-| **3** | EmergencyContacts | Inline add FAB | Medium | High - Safety feature |
-| **4** | EmergencyRequestModal | Selection FABs | High | Critical - Emergency flow |
-| **5** | SettingsScreen | Toggle FABs | Medium | Medium - User preferences |
-| **6** | SearchScreen | Filter FABs | Low | Low - Convenience |
+| Priority | Component | Current Implementation | Migration Complexity | Business Impact |
+|----------|-----------|----------------------|---------------------|-----------------|
+| **1** | RequestAmbulanceFAB | Inline with advanced features | **High** | Critical - Emergency flow |
+| **2** | RequestBedFAB | Inline with advanced features | **High** | Critical - Bed booking flow |
+| **3** | ProfileScreen | Inline save FAB | Medium | High - User data |
+| **4** | MedicalProfileScreen | Inline save FAB | Medium | High - Medical data |
+| **5** | EmergencyContacts | Inline add FAB (if exists) | Low | Medium - Safety feature |
+| **6** | SettingsScreen | Inline toggle FABs (if exists) | Medium | Medium - User preferences |
 
-### 3.2 Migration Pattern Implementation
+### 3.2 Enhanced Migration Requirements
 
-#### Pattern 1: Save Actions
+**Critical Discovery:** Request modal FABs require enhanced global system:
+
+#### **Advanced Features Needed:**
+- **Dynamic text labels** (not just icons)
+- **Sub-text descriptions** for context
+- **Loading states** with ActivityIndicator
+- **Mode-aware styling** (request vs dispatched)
+- **Complex icon switching** (Ionicons + Fontisto)
+- **Enhanced animations** (spring animations)
+
+### 3.3 Migration Pattern Implementation
+
+#### Pattern 1: Request Modal FABs (Priority 1-2)
+```javascript
+// Before: RequestAmbulanceFAB
+<RequestAmbulanceFAB
+  onPress={handleSubmitRequest}
+  isLoading={isRequesting}
+  isActive={!!selectedAmbulanceType}
+  selectedAmbulanceType={selectedAmbulanceType}
+  mode="request"
+  requestData={requestData}
+/>
+
+// After: Global FAB registration
+useFocusEffect(
+  useCallback(() => {
+    registerFAB('ambulance-request', {
+      icon: 'medical',
+      label: selectedAmbulanceType ? `Request ${selectedAmbulanceType.name}` : 'Select Ambulance',
+      subText: isRequesting ? '' : 'Tap to confirm',
+      visible: !!selectedAmbulanceType,
+      onPress: handleSubmitRequest,
+      isLoading: isRequesting,
+      mode: 'request',
+      style: 'emergency',
+      haptic: 'heavy',
+      priority: 10,
+      animation: 'prominent',
+    });
+  }, [registerFAB, selectedAmbulanceType, isRequesting, handleSubmitRequest])
+);
+```
+
+#### Pattern 2: Save Actions (Priority 3-4)
 ```javascript
 // Before: Inline FAB
 const ProfileScreen = () => {
