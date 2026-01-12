@@ -1,7 +1,6 @@
 import { useMemo, useCallback } from "react";
 import { Dimensions, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomSheetSpringConfigs } from "@gorhom/bottom-sheet";
 import { useEmergencyUI } from "../../contexts/EmergencyUIContext";
 
 const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 85 : 70;
@@ -57,15 +56,6 @@ export function useEmergencySheetController({
 		return points;
 	}, [collapsedPercent, isDetailMode, isTripMode, isBedBookingMode, screenHeight]);
 
-	const animationConfigs = useBottomSheetSpringConfigs({
-		damping: 34,
-		stiffness: 420,
-		mass: 0.9,
-		overshootClamping: false,
-		restDisplacementThreshold: 0.5,
-		restSpeedThreshold: 0.5,
-	});
-
 	const handleSheetChange = useCallback(
 		(index) => {
 			updateSnapIndex(index, "sheet");
@@ -78,7 +68,7 @@ export function useEmergencySheetController({
 
 	return {
 		snapPoints,
-		animationConfigs,
+		animationConfigs: null,
 		handleSheetChange,
 		currentSnapIndex,
 	};

@@ -15,7 +15,6 @@ import BottomSheet, {
 	BottomSheetView,
 	BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
-import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -76,6 +75,10 @@ const EmergencyBottomSheet = forwardRef(
 		const { preferences } = usePreferences();
 		const insets = useSafeAreaInsets();
 
+		const { snapIndex: newSnapIndex } = useEmergencyUI();
+
+		const isBelowHalf = sheetPhase === "collapsed" || (sheetPhase === "half" && newSnapIndex === 0);
+		const isFloating = newSnapIndex === 0 || newSnapIndex === 1;
 		const isDetailMode = !!selectedHospital;
 		const isTripMode =
 			mode === "emergency" && !!activeAmbulanceTrip && !isDetailMode;
@@ -113,7 +116,6 @@ const EmergencyBottomSheet = forwardRef(
 
 		const handleAvatarPress = useCallback(() => {
 			timing.startTiming("avatar_press");
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 			openProfileModal();
 			timing.endTiming("avatar_press");
 		}, [openProfileModal, timing]);
@@ -141,16 +143,14 @@ const EmergencyBottomSheet = forwardRef(
 					bottomSheetRef.current?.snapToIndex(clampSheetIndex(snapIndex));
 				}
 				if (typeof scrollY === "number") {
-					setTimeout(() => {
-						listScrollRef.current?.scrollTo?.({ y: scrollY, animated: true });
-					}, 380);
+					listScrollRef.current?.scrollTo?.({ y: scrollY, animated: false });
 				}
 			},
 		}));
 
 		const gradientColors = isDarkMode
-			? ["#121826", "#121826", "#121826"]
-			: ["#FFFFFF", "#ffffff", "#ffffff"];
+			? ["rgba(18, 24, 38, 0.95)", "rgba(18, 24, 38, 0.85)", "rgba(18, 24, 38, 0.85)"]
+			: ["rgba(255, 255, 255, 0.95)", "rgba(255, 255, 255, 0.85)", "rgba(255, 255, 255, 0.85)"];
 
 		const handleColor = isDarkMode
 			? "rgba(255, 255, 255, 0.3)"
@@ -160,9 +160,7 @@ const EmergencyBottomSheet = forwardRef(
 			if (!isTripMode && !isBedBookingMode) return;
 			if (snapPoints.length !== 2) return;
 			if (currentSnapIndex < 0) {
-				setTimeout(() => {
-					bottomSheetRef.current?.snapToIndex(0);
-				}, 0);
+				bottomSheetRef.current?.snapToIndex(0);
 			}
 		}, [currentSnapIndex, isBedBookingMode, isTripMode, snapPoints.length]);
 
@@ -233,15 +231,17 @@ const EmergencyBottomSheet = forwardRef(
 				onChange={handleSheetChange}
 				handleComponent={renderHandle}
 				backgroundComponent={renderBackground}
-				style={styles.sheet}
+				style={[
+					styles.sheet,
+					(isFloating || isBelowHalf) && { marginHorizontal: 0 }
+				]}
 				enablePanDownToClose={false}
 				enableOverDrag={true}
 				enableHandlePanningGesture={!selectedHospital}
 				enableContentPanningGesture={!selectedHospital}
 				keyboardBehavior="extend"
 				keyboardBlurBehavior="restore"
-				animateOnMount={true}
-				animationConfigs={animationConfigs}
+				animateOnMount={false}
 				safeAreaInsets={{ top: 0, bottom: 0, left: 0, right: 0 }}
 			>
 				{isDetailMode ? (
@@ -385,8 +385,8 @@ const styles = StyleSheet.create({
 		elevation: 1000,
 	},
 	sheetBackground: {
-		borderTopLeftRadius: 28,
-		borderTopRightRadius: 28,
+		borderTopLeftRadius: 22,
+		borderTopRightRadius: 22,
 		shadowColor: "#000",
 		shadowOffset: { width: 0, height: -6 },
 		shadowOpacity: 0.12,
@@ -394,11 +394,11 @@ const styles = StyleSheet.create({
 		elevation: 20,
 	},
 	handleContainer: {
-		paddingTop: 14,
-		paddingBottom: 8,
+		paddingTop: 8,
+		paddingBottom: 0,
 		alignItems: "center",
-		borderTopLeftRadius: 28,
-		borderTopRightRadius: 28,
+		borderTopLeftRadius: 48,
+		borderTopRightRadius: 48,
 	},
 	handle: {
 		width: 40,

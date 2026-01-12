@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
 import { Keyboard, Platform } from "react-native";
-import * as Haptics from "expo-haptics";
 import { useEmergencyUI } from "../../contexts/EmergencyUIContext";
 import { useTabBarVisibility } from "../../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
@@ -15,7 +14,6 @@ export const useBottomSheetSnap = ({
 	const { hideTabBar, resetTabBar } = useTabBarVisibility();
 	const { resetHeader } = useScrollAwareHeader();
 	const { updateScrollPosition } = useEmergencyUI();
-	const lastHapticIndexRef = useRef(null);
 
 	const { snapPoints, animationConfigs, currentSnapIndex } =
 		useEmergencySheetController({
@@ -35,18 +33,8 @@ export const useBottomSheetSnap = ({
 
 	const handleSheetChange = useCallback(
 		(index) => {
-			// Get max index dynamically for haptic feedback
+			// Get max index dynamically for handling
 			const maxIndex = Math.max(0, snapPoints.length - 1);
-			const isExpanded = index >= maxIndex;
-			
-			if (index >= 0 && lastHapticIndexRef.current !== index) {
-				lastHapticIndexRef.current = index;
-				Haptics.impactAsync(
-					isExpanded
-						? Haptics.ImpactFeedbackStyle.Medium
-						: Haptics.ImpactFeedbackStyle.Light
-				);
-			}
 
 			if (onSnapChange) {
 				onSnapChange(index);
