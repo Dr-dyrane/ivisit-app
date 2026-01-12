@@ -8,8 +8,8 @@
 - Allowed: 1 active ambulance + 1 active bed booking at the same time.
 - Not allowed: two active ambulances, or two active bed bookings.
 - Enforcement:
-  - Client-side guard in [useRequestFlow.js](file:///c:/Users/Dyrane/Documents/GitHub/ivisit-app/hooks/emergency/useRequestFlow.js)
-  - Server-side guard via partial unique indexes in [20260111103000_emergency_lifecycle_and_concurrency.sql](file:///c:/Users/Dyrane/Documents/GitHub/ivisit-app/supabase/migrations/20260111103000_emergency_lifecycle_and_concurrency.sql)
+  - Client-side guard in [useRequestFlow.js](../../../hooks/emergency/useRequestFlow.js)
+  - Server-side guard via partial unique indexes in [20260111103000_emergency_lifecycle_and_concurrency.sql](../../../supabase/migrations/20260111103000_emergency_lifecycle_and_concurrency.sql)
 
 ## Request State Machine (DB: `emergency_requests.status`)
 - `in_progress` → request created

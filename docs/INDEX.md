@@ -12,7 +12,8 @@ docs/
   │
   ├── emergency/                  # Emergency refactor + UX docs
   │   ├── flows/
-  │   │   └── EMERGENCY_VISIT_LIFECYCLE.md
+  │   │   ├── EMERGENCY_VISIT_LIFECYCLE.md
+  │   │   └── REQUEST_FLOW_AUDIT.md
   │   ├── refactor/
   │   │   ├── EMERGENCY_REFACTOR_MANIFEST.md
   │   │   ├── EMERGENCY_SCREEN_REFACTOR_PLAN.md
@@ -107,6 +108,7 @@ docs/
 | Document | Description |
 |----------|-------------|
 | [EMERGENCY_VISIT_LIFECYCLE.md](./emergency/flows/EMERGENCY_VISIT_LIFECYCLE.md) | Request lifecycle states, concurrency rules, stable data fetching |
+| [REQUEST_FLOW_AUDIT.md](./emergency/flows/REQUEST_FLOW_AUDIT.md) | Visit types, concurrency rules, and request state machine |
 | [EMERGENCY_REFACTOR_MANIFEST.md](./emergency/refactor/EMERGENCY_REFACTOR_MANIFEST.md) | Feature tracking manifest for modularization |
 | [EMERGENCY_SCREEN_REFACTOR_PLAN.md](./emergency/refactor/EMERGENCY_SCREEN_REFACTOR_PLAN.md) | EmergencyScreen modularization plan |
 | [BOTTOM_SHEET_MAP_REFACTOR_PLAN.md](./emergency/refactor/BOTTOM_SHEET_MAP_REFACTOR_PLAN.md) | EmergencyBottomSheet + FullScreenEmergencyMap modularization plan |
