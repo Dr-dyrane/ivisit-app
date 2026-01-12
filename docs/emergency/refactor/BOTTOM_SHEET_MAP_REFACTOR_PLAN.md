@@ -609,4 +609,25 @@ export const FullScreenEmergencyMap = forwardRef((props, ref) => {
 
 ---
 
+## Regression & Rollback Strategy
+
+- Preserve public contracts:
+  - `FullScreenEmergencyMap` must keep `animateToHospital()` and `fitToAllHospitals()` ref methods.
+  - `bottomPadding` behavior must match `getMapPaddingForSnapIndex()` with selection override.
+  - Route fit sequence can remain two-step (fit → offset) if single-step introduces jitter.
+- Document current code paths:
+  - Camera offset-centering math and timing referenced from `FullScreenEmergencyMap.jsx`.
+  - Sheet snapping patterns and selection lock referenced from `EmergencyBottomSheet.jsx`.
+- Rollback checklist:
+  - Revert hysteresis if user-pan guard causes perceived lag.
+  - Reinstate two-step camera actions if combined animation stutters.
+  - Restore availability gates exactly as implemented if routing visibility regresses.
+- Testing gates:
+  - Rapid snap cycling, fast hospital selection, and user pan during camera actions must remain glitch-free.
+  - Low-end device checks for frame pacing during route+sheet interactions.
+
+All changes must be annotated in docs with the previous working behavior so regressions can be triaged quickly.
+
+---
+
 **Status**: Ready for Phase 1 implementation

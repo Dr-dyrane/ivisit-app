@@ -36,7 +36,7 @@ const VisitsScreen = () => {
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
-	const { registerFAB } = useFAB();
+	const { registerFAB, unregisterFAB } = useFAB();
 
 	// Visits context
 	const {
@@ -122,14 +122,23 @@ const VisitsScreen = () => {
 	// Register FAB on focus
 	useFocusEffect(
 		useCallback(() => {
-			registerFAB({
+			registerFAB('visits-add', {
 				icon: "add-outline",
 				visible: true,
 				onPress: () => {
 					router.push("/(user)/(stacks)/book-visit");
 				},
+				style: 'primary',
+				haptic: 'medium',
+				priority: 7,
+				animation: 'subtle',
 			});
-		}, [registerFAB, router])
+			
+			// Cleanup
+			return () => {
+				unregisterFAB('visits-add');
+			};
+		}, [registerFAB, unregisterFAB, router])
 	);
 
 	const handleScroll = useCallback(

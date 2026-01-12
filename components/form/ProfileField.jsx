@@ -17,6 +17,11 @@ const ProfileField = ({
 	const [isFocused, setIsFocused] = useState(false);
 	const scaleAnim = useRef(new Animated.Value(1)).current;
 
+	const onChange = (text) => {
+		console.log('[ProfileField] onChange:', { text, label });
+		onChangeText(text);
+	};
+
 	const handleFocus = () => {
 		setIsFocused(true);
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -88,11 +93,14 @@ const ProfileField = ({
 					</Text>
 					<TextInput
 						value={value}
+						onChange={onChange}
 						onChangeText={onChange}
 						onFocus={handleFocus}
 						onBlur={handleBlur}
 						editable={editable}
 						keyboardType={keyboardType}
+						autoCorrect={false}
+						autoCapitalize="none"
 						style={{
 							fontSize: 16,
 							color: colors.text,

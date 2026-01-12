@@ -45,7 +45,7 @@ const MoreScreen = () => {
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
-	const { registerFAB } = useFAB();
+	const { registerFAB, unregisterFAB } = useFAB();
 
 	// Modular header components with haptic feedback - memoized to prevent infinite re-renders
 	const backButton = useCallback(() => <HeaderBackButton />, []);
@@ -53,10 +53,15 @@ const MoreScreen = () => {
 	// Hide FAB on More screen (on focus, not just mount)
 	useFocusEffect(
 		useCallback(() => {
-			registerFAB({
+			registerFAB('more-screen-hide', {
 				visible: false,
 			});
-		}, [registerFAB])
+			
+			// Cleanup
+			return () => {
+				unregisterFAB('more-screen-hide');
+			};
+		}, [registerFAB, unregisterFAB])
 	);
 
 	// Update header when screen is focused

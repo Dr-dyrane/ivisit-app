@@ -1,6 +1,6 @@
 # Ambulance + Bed Booking User Flow (SOS)
 
-> **Last Updated:** 2026-01-11  
+> **Last Updated:** 2026-01-12  
 > **Owner:** Emergency (SOS) feature  
 > **Scope:** Mobile app SOS screen end-to-end flow for requesting an ambulance or reserving a bed.
 
@@ -495,6 +495,76 @@ sequenceDiagram
 
 ---
 
+## Map Camera & Sheet Interaction Audit
+
+- Selection zoom:
+  - `animateToHospital()` centers between hospital and optionally user, then offsets for visible area using top/bottom padding and a center bias.  
+    Source: `components/map/FullScreenEmergencyMap.jsx`
+- Route fit:
+  - When a polyline exists, `fitToCoordinates` applies edgePadding to keep content above the sheet; a follow-up offset-center shifts focus upward for the visible area band.  
+    Source: `components/map/FullScreenEmergencyMap.jsx`
+- Padding contract:
+  - `bottomPadding` derives from sheet snap and selection state; selection forces “half-height” padding to avoid over-zoom behind the sheet.  
+    Source: `screens/EmergencyScreen.jsx`, `constants/emergencyAnimations.js`
+- Baseline zoom:
+  - A phased startup computes baseline deltas from user + nearest hospitals and applies once after map-ready; prevents over-zoom/jumps.  
+    Source: `components/map/FullScreenEmergencyMap.jsx`
+
+### Observed Risks
+- Stale padding during delayed offset-center causing misalignment when the sheet snap changes mid-animation.
+- Back-to-back animations (fit then offset) may stutter on lower-end devices.
+- User pan can conflict with scheduled camera moves; no hysteresis guard in offset-center.
+- Projection assumptions (lat span → pixels) can misalign at extreme spans; needs clamping.
+
+### Mitigations
+- Read padding from a ref at execution time; avoid capturing stale values.
+- Add user-pan hysteresis (skip scheduled camera if pan occurred within ~500ms).
+- Collapse fit + offset into one animation when feasible; otherwise ensure delay aligns with fit completion.
+- Clamp latShift for very large spans; fallback to edgePadding-only fit when route spans are wide.
+
+---
+
+## Race Conditions & Stability
+
+- Camera scheduling:
+  - Pending timeouts are cleared when rescheduling, but there’s no monotonic “camera action id”. Rapid selections can lead to intermediate regions.
+  - Mitigation: introduce `cameraActionId` and ignore outdated actions.
+- Marker view updates:
+  - `tracksViewChanges` for selected pins + animated responder can increase GPU load, especially on iOS.
+  - Mitigation: stop tracking changes after initial render; only track when animating.
+- Route gating:
+  - Availability gates (beds/ambulances count) suppress routing; ensure mode toggles don’t clear a valid route mid-flow.
+
+---
+
+## Post-Trip/Booking UX Targets (Uber-class)
+
+- Snap behaviors:
+  - Collapsed: minimal, high-contrast status + ETA; compact footprint.
+  - Half: actionable summary with call/cancel/arrive/occupied actions.
+  - Full: rich details (hospital, vehicle/bed, specialty), fills vertical space.
+- Latency experience:
+  - Camera and sheet animations must feel instantaneous; coalesce rapid snap changes into single camera actions.
+  - Avoid map re-fit loops on small state changes; only re-fit on material route updates.
+- Visual polish:
+  - Consistent typography, spacing, elevation; eliminate “floating small card” in full state.
+  - Distinct visuals for ambulance vs bed (icons, labels, progress).
+- Action gates:
+  - Arrival/Occupied gates enforced before Complete; server-side constraints should reject invalid transitions.
+
+---
+
+## Action Items
+
+- Add user-pan hysteresis and padding-ref reads to camera offset-center.
+- Gate dispatched/reserved UI on DB success; remove client-only timer illusion for production.
+- Adopt server-generated UUIDs for request/visit IDs; unify identifiers.
+- Hydrate bed reservation metadata (bed type/room) similar to ambulance responder hydration.
+- Document centerBias math and edge cases; add diagrams for visible-area calculations.
+- Expand QA to stress-test camera + sheet interplay under rapid interaction.
+
+---
+
 ## Code References (Primary)
 
 - Screen: `screens/EmergencyScreen.jsx`
@@ -504,3 +574,25 @@ sequenceDiagram
 - Domain state + realtime subscription: `contexts/EmergencyContext.jsx`
 - Emergency request service: `services/emergencyRequestsService.js`
 - Visits service: `services/visitsService.js`
+
+---
+
+## Regression Safety Notes & Current Code Contracts
+
+- Map–Sheet padding contract:
+  - `bottomPadding={mapBottomPadding}` passed from `EmergencyScreen` → `EmergencyMapContainer` → `FullScreenEmergencyMap`  
+    Current: `getMapPaddingForSnapIndex(sheetSnapIndex, isHospitalFlowOpen)` computes padding; selection forces “selected/half” padding.
+- Camera methods:
+  - `animateToHospital()` and `fitToAllHospitals()` are imperative ref methods used by selection/search flows; keep method signatures and behavior stable.
+- Route fit sequence:
+  - Current behavior: `fitToCoordinates` with edgePadding → delayed `scheduleCenterInVisibleArea`.  
+    If single-step animate fails or causes jitter, revert to the current two-step sequence.
+- User pan respect:
+  - Current: `onPanDrag` updates `lastUserPanAtRef`; scheduled camera does not yet gate on this.  
+    If hysteresis introduces perceived “lag”, revert to current immediate scheduling.
+- Availability gates:
+  - Current: routing only shown when hospital capacity is available (beds/ambulances).  
+    Maintain this to avoid user confusion; if gating changes break flows, revert to existing checks.
+- Simulation:
+  - Current: simulation starts only for `in_progress` ambulance without assigned responder; tied to route points.  
+    Preserve singleton behavior and cleanup on request completion/cancellation to avoid duplicate simulations.

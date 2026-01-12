@@ -52,11 +52,16 @@ const GlobalFAB = () => {
   const { activeFAB, getFABStyle } = useFAB();
   const { translateY, TAB_BAR_HEIGHT } = useTabBarVisibility();
 
-  // Animation values
+  // Animation values - initialize safely
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const visibilityAnim = useRef(new Animated.Value(activeFAB?.visible ? 1 : 0)).current;
+  const visibilityAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const labelAnim = useRef(new Animated.Value(0)).current;
+
+  // Initialize visibility after mount to avoid render-time writes
+  useEffect(() => {
+    visibilityAnim.setValue(activeFAB?.visible ? 1 : 0);
+  }, [activeFAB?.visible, visibilityAnim]);
 
   // Get animation configuration
   const animationConfig = useMemo(() => {
@@ -67,7 +72,19 @@ const GlobalFAB = () => {
   // Get style configuration
   const fabStyle = useMemo(() => {
     const styleType = activeFAB?.style || 'primary';
-    return getFABStyle(styleType);
+    const style = getFABStyle(styleType);
+    
+    // Debug logging for colors
+    if (__DEV__) {
+      console.log('[GlobalFAB] FAB Style:', {
+        styleType,
+        backgroundColor: style.backgroundColor,
+        shadowColor: style.shadowColor,
+        icon: activeFAB?.icon,
+      });
+    }
+    
+    return style;
   }, [activeFAB?.style, getFABStyle]);
 
   // Visibility animation
@@ -189,9 +206,9 @@ const GlobalFAB = () => {
     return <Ionicons name={iconName} size={24} color="#FFFFFF" />;
   };
 
-  // Position: anchored above tab bar
+  // Position: anchored above tab bar with more elevation
   const tabBarHeight = Platform.OS === 'ios' ? 85 : 70;
-  const bottomOffset = tabBarHeight + FAB_OFFSET;
+  const bottomOffset = tabBarHeight + FAB_OFFSET + 8; // Added 8px more elevation
 
   // FAB moves with tab bar
   const fabTranslateY = translateY.interpolate({
@@ -231,8 +248,10 @@ const GlobalFAB = () => {
         onPressOut={handlePressOut}
         style={[
           styles.button,
-          fabStyle,
-          activeFAB?.disabled && styles.buttonDisabled,
+          {
+            backgroundColor: fabStyle.backgroundColor,
+            shadowColor: fabStyle.shadowColor,
+          },
         ]}
         disabled={activeFAB?.disabled || activeFAB?.loading}
       >

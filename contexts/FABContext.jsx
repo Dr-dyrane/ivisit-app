@@ -34,6 +34,7 @@ const FAB_CONFIG_SCHEMA = {
   mode: 'string',          // Mode for context-aware behavior
   badge: 'string|number',   // Optional badge
   position: 'default|top-right|bottom-left',    // Position variant
+  allowInStack: 'boolean',  // Override stack hiding behavior
 };
 
 // Default FAB configs per tab (fallback when no screen override)
@@ -55,30 +56,23 @@ const TAB_DEFAULTS = {
   },
 };
 
-// Style variants for different FAB types
+// FAB style variants with proper colors
 const FAB_STYLES = {
   primary: {
     backgroundColor: COLORS.brandPrimary,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    elevation: 8,
+    shadowColor: 'rgba(0, 0, 0, 0.3)',
   },
   success: {
-    backgroundColor: COLORS.success,
-    shadowColor: '#00C851',
-    shadowOpacity: 0.25,
-    elevation: 10,
+    backgroundColor: '#16A34A', // Green
+    shadowColor: 'rgba(22, 163, 74, 0.3)',
   },
   emergency: {
-    backgroundColor: COLORS.emergency,
-    shadowColor: '#FF4444',
-    shadowOpacity: 0.30,
-    elevation: 12,
+    backgroundColor: '#DC2626', // Red
+    shadowColor: 'rgba(220, 38, 38, 0.3)',
   },
   warning: {
-    backgroundColor: COLORS.warning,
-    shadowColor: '#FF8800',
-    shadowOpacity: 0.25,
+    backgroundColor: '#F59E0B', // Orange
+    shadowColor: 'rgba(245, 158, 11, 0.3)',
     elevation: 10,
   },
 };
@@ -127,12 +121,25 @@ export function FABProvider({ children }) {
 
   // Resolve active FAB based on priority and visibility
   const activeFAB = useMemo(() => {
-    // Always hide in stack screens
-    if (isInStack) return null;
-    
     // Get visible FABs from registrations
     const visibleFABs = Array.from(registrations.values())
       .filter(fab => fab.visible && !fab.disabled);
+    
+    // Check if any registered FAB explicitly allows stack display
+    const stackOverrideFABs = visibleFABs.filter(fab => fab.allowInStack);
+    
+    // If we have stack override FABs, use them even in stack
+    if (stackOverrideFABs.length > 0) {
+      stackOverrideFABs.sort((a, b) => {
+        const priorityDiff = (b.priority || 5) - (a.priority || 5);
+        if (priorityDiff !== 0) return priorityDiff;
+        return (b.id || '').localeCompare(a.id || '');
+      });
+      return stackOverrideFABs[0];
+    }
+    
+    // Always hide in stack screens (unless overridden above)
+    if (isInStack) return null;
     
     // If no registered FABs, fall back to tab default
     if (visibleFABs.length === 0) {

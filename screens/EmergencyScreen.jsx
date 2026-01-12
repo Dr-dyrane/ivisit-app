@@ -55,7 +55,7 @@ export default function EmergencyScreen() {
 		useTabBarVisibility();
 	const { resetHeader } = useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
-	const { registerFAB } = useFAB();
+	const { registerFAB, unregisterFAB } = useFAB();
 	const { addVisit, updateVisit, cancelVisit, completeVisit } = useVisits();
 	const { user } = useAuth();
 	const { preferences } = usePreferences();
@@ -231,8 +231,14 @@ export default function EmergencyScreen() {
 				priority: 8, // High priority for emergency actions
 				animation: 'subtle',
 			});
+			
+			// Cleanup
+			return () => {
+				unregisterFAB('emergency-mode-toggle');
+			};
 		}, [
 			registerFAB,
+			unregisterFAB,
 			mode,
 			selectedHospital,
 			sheetSnapIndex,

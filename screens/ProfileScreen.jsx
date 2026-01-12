@@ -18,6 +18,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useToast } from "../contexts/ToastContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
+import { useFAB } from "../contexts/FABContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { useUpdateProfile } from "../hooks/user/useUpdateProfile";
@@ -43,6 +44,8 @@ import {
 const ProfileScreen = () => {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { setHeaderState } = useHeaderState();
+	const { registerFAB, unregisterFAB } = useFAB();
 	const { syncUserData, user, deleteAccount } = useAuth();
     const { updateProfile, isLoading: isUpdating } = useUpdateProfile();
     const { uploadImage, isUploading } = useImageUpload();
@@ -79,17 +82,29 @@ const ProfileScreen = () => {
         (imageUri !== null && imageUri !== user.imageUri)
     );
 
-    const fabScale = useRef(new Animated.Value(0)).current;
-
-    // Animate FAB when changes are detected
-    useEffect(() => {
-        Animated.spring(fabScale, {
-            toValue: hasChanges ? 1 : 0,
-            useNativeDriver: true,
-            friction: 6,
-            tension: 40
-        }).start();
-    }, [hasChanges]);
+    // Sync state with user context when loaded
+    useFocusEffect(
+        useCallback(() => {
+            registerFAB('profile-save', {
+                icon: 'checkmark',
+                label: hasChanges ? 'Save Changes' : 'No Changes',
+                subText: hasChanges ? 'Tap to save profile' : 'Profile up to date',
+                visible: hasChanges,
+                onPress: handleUpdateProfile,
+                loading: isLoading,
+                style: 'primary',
+                haptic: 'medium',
+                priority: 8,
+                animation: 'prominent',
+                allowInStack: true, // Allow in stack screen
+            });
+            
+            // Cleanup
+            return () => {
+                unregisterFAB('profile-save');
+            };
+        }, [registerFAB, unregisterFAB, hasChanges, isLoading, handleUpdateProfile])
+    );
 
     // Sync state with user context when loaded
     useEffect(() => {
@@ -129,8 +144,7 @@ const ProfileScreen = () => {
 		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
 	};
 
-	const { setHeaderState } = useHeaderState();
-
+	// We rely on useAuth to fetch data, so we don't need manual fetchUserData
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
     // We rely on useAuth to fetch data, so we don't need manual fetchUserData
@@ -898,43 +912,7 @@ const ProfileScreen = () => {
 				</Animated.View>
 			</ScrollView>
 
-            {/* Floating Action Button for Saving Changes */}
-            <Animated.View
-                style={{
-                    position: 'absolute',
-                    bottom: insets.bottom + 20,
-                    right: 20,
-                    transform: [{ scale: fabScale }],
-                    shadowColor: COLORS.brandPrimary,
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    elevation: 5,
-                    zIndex: 100,
-                }}
-            >
-                <Pressable
-                    onPress={handleUpdateProfile}
-                    disabled={isLoading}
-                    style={({ pressed }) => ({
-                        backgroundColor: COLORS.brandPrimary,
-                        width: 56,
-                        height: 56,
-                        borderRadius: 28,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        opacity: pressed ? 0.9 : 1,
-                        transform: [{ scale: pressed ? 0.95 : 1 }],
-                    })}
-                >
-                    {isLoading ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
-                    ) : (
-                        <Ionicons name="checkmark" size={32} color="#FFFFFF" />
-                    )}
-                </Pressable>
-            </Animated.View>
-		</LinearGradient>
+            </LinearGradient>
 	);
 };
 

@@ -16,6 +16,7 @@ import { useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
+import { useFAB } from "../contexts/FABContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,6 +31,7 @@ export default function MedicalProfileScreen() {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 	const { setHeaderState } = useHeaderState();
+	const { registerFAB, unregisterFAB } = useFAB();
 	const { handleScroll: handleTabBarScroll, resetTabBar } =
 		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
@@ -114,7 +116,8 @@ export default function MedicalProfileScreen() {
     // Derived state: Check if form has unsaved changes
     const hasChanges = useMemo(() => {
         if (!profile || !localProfile) return false;
-        return (
+        
+        const changes = (
             (localProfile.bloodType ?? "") !== (profile.bloodType ?? "") ||
             (localProfile.allergies ?? "") !== (profile.allergies ?? "") ||
             (localProfile.medications ?? "") !== (profile.medications ?? "") ||
@@ -122,19 +125,43 @@ export default function MedicalProfileScreen() {
             (localProfile.surgeries ?? "") !== (profile.surgeries ?? "") ||
             (localProfile.notes ?? "") !== (profile.notes ?? "")
         );
+        
+        return !!changes;
     }, [profile, localProfile]);
 
-    const fabScale = useRef(new Animated.Value(0)).current;
+    const hasRegisteredFAB = useRef(false);
 
-    // Animate FAB when changes are detected
-    useEffect(() => {
-        Animated.spring(fabScale, {
-            toValue: hasChanges ? 1 : 0,
-            useNativeDriver: true,
-            friction: 6,
-            tension: 40,
-        }).start();
-    }, [hasChanges]);
+    // Register FAB for saving medical profile changes
+    useFocusEffect(
+        useCallback(() => {
+            if (hasRegisteredFAB.current) {
+                console.log('[MedicalProfileScreen] FAB already registered, skipping');
+                return;
+            }
+            
+            registerFAB('medical-profile-save', {
+                icon: 'checkmark',
+                label: hasChanges ? 'Save Medical Info' : 'No Changes',
+                subText: hasChanges ? 'Tap to save medical profile' : 'Medical profile up to date',
+                visible: hasChanges,
+                onPress: handleSave,
+                loading: isSaving,
+                style: 'primary',
+                haptic: 'medium',
+                priority: 8,
+                animation: 'prominent',
+                allowInStack: true, // Allow in stack screen
+            });
+            
+            hasRegisteredFAB.current = true;
+            
+            // Cleanup
+            return () => {
+                unregisterFAB('medical-profile-save');
+                hasRegisteredFAB.current = false;
+            };
+        }, [registerFAB, unregisterFAB, hasChanges, isSaving, handleSave])
+    );
 
 	const handleSave = useCallback(async () => {
 		if (!localProfile || isSaving) return;
@@ -248,43 +275,7 @@ export default function MedicalProfileScreen() {
 				) : null}
 			</Animated.ScrollView>
 
-			{/* Floating Action Button for Saving Changes */}
-			<Animated.View
-				style={{
-					position: "absolute",
-					bottom: insets.bottom + 20,
-					right: 20,
-					transform: [{ scale: fabScale }],
-					shadowColor: COLORS.brandPrimary,
-					shadowOffset: { width: 0, height: 4 },
-					shadowOpacity: 0.3,
-					shadowRadius: 8,
-					elevation: 5,
-					zIndex: 100,
-				}}
-			>
-				<Pressable
-					onPress={handleSave}
-					disabled={isSaving}
-					style={({ pressed }) => ({
-						backgroundColor: COLORS.brandPrimary,
-						width: 56,
-						height: 56,
-						borderRadius: 28,
-						justifyContent: "center",
-						alignItems: "center",
-						opacity: pressed ? 0.9 : 1,
-						transform: [{ scale: pressed ? 0.95 : 1 }],
-					})}
-				>
-					{isSaving ? (
-						<ActivityIndicator color="#FFFFFF" size="small" />
-					) : (
-						<Ionicons name="checkmark" size={32} color="#FFFFFF" />
-					)}
-				</Pressable>
-			</Animated.View>
-		</LinearGradient>
+			</LinearGradient>
 	);
 }
 

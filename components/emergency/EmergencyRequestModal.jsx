@@ -45,6 +45,19 @@ const EmergencyRequestModal = ({
 
 	// Global FAB registration for request modal
 	useEffect(() => {
+		if (__DEV__) {
+			console.log('[EmergencyRequestModal] FAB registration effect:', {
+				requestStep,
+				mode,
+				selectedAmbulanceType,
+				bedType,
+				bedCount,
+				isRequesting,
+			});
+		}
+
+		// Commented out dispatched state for auto-navigation audit
+		/*
 		if (requestStep === "dispatched") {
 			// Dispatched state FAB
 			if (mode === "booking") {
@@ -58,6 +71,7 @@ const EmergencyRequestModal = ({
 					haptic: 'medium',
 					priority: 10,
 					animation: 'subtle',
+					allowInStack: true, // Allow in stack screens
 				});
 			} else {
 				registerFAB('ambulance-dispatched', {
@@ -70,13 +84,17 @@ const EmergencyRequestModal = ({
 					haptic: 'medium',
 					priority: 10,
 					animation: 'subtle',
+					allowInStack: true, // Allow in stack screens
 				});
 			}
-		} else if (requestStep === "select") {
+		} else 
+		*/
+		
+		if (requestStep === "select") {
 			// Selection state FAB
 			if (mode === "booking") {
 				registerFAB('bed-select', {
-					icon: 'bed-patient',
+					icon: 'checkmark', // Checkmark for confirmation
 					label: bedCount > 1 ? `Reserve ${bedCount} Beds` : 'Reserve Bed',
 					subText: bedType === "private" ? "Private room selected" : "Standard bed selected",
 					visible: true,
@@ -86,11 +104,12 @@ const EmergencyRequestModal = ({
 					haptic: 'heavy',
 					priority: 10,
 					animation: 'prominent',
+					allowInStack: true, // Allow in stack screens
 				});
 			} else if (selectedAmbulanceType) {
 				registerFAB('ambulance-select', {
-					icon: 'medical',
-					label: `Request ${selectedAmbulanceType?.name || 'Ambulance'}`,
+					icon: 'checkmark', // Checkmark for unified UI
+					label: 'Request Ambulance',
 					subText: 'Tap to confirm',
 					visible: true,
 					onPress: handleSubmitRequest,
@@ -99,11 +118,12 @@ const EmergencyRequestModal = ({
 					haptic: 'heavy',
 					priority: 10,
 					animation: 'prominent',
+					allowInStack: true, // Allow in stack screens
 				});
 			} else {
 				// No ambulance type selected
 				registerFAB('ambulance-prompt', {
-					icon: 'help',
+					icon: 'checkmark', // Checkmark for unified UI
 					label: 'Select Ambulance',
 					subText: 'Choose ambulance type',
 					visible: true,
@@ -112,17 +132,21 @@ const EmergencyRequestModal = ({
 					haptic: 'medium',
 					priority: 9,
 					animation: 'subtle',
+					allowInStack: true, // Allow in stack screens
 				});
 			}
 		}
 
 		// Cleanup function
 		return () => {
+			if (__DEV__) {
+				console.log('[EmergencyRequestModal] Cleaning up FABs');
+			}
 			unregisterFAB('ambulance-select');
-			unregisterFAB('ambulance-dispatched');
+			// unregisterFAB('ambulance-dispatched'); // Commented out
 			unregisterFAB('ambulance-prompt');
 			unregisterFAB('bed-select');
-			unregisterFAB('bed-dispatched');
+			// unregisterFAB('bed-dispatched'); // Commented out
 		};
 	}, [
 		requestStep,
