@@ -90,17 +90,10 @@ export default function EmergencyScreen() {
 		subtitle: null,
 	});
 
-	// Map padding - calculated from snap index
-	const mapBottomPadding = useMemo(() => {
-		return getMapPaddingForSnapIndex(
-			sheetSnapIndex,
-			!!selectedHospital
-		);
-	}, [selectedHospital, sheetSnapIndex]);
-
 	// Data state from EmergencyContext
 	const {
 		hospitals,
+		selectedHospitalId,
 		selectedHospital,
 		filteredHospitals,
 		mode,
@@ -125,6 +118,20 @@ export default function EmergencyScreen() {
 		stopBedBooking,
 		setBedBookingStatus,
 	} = useEmergency();
+
+	const [pendingSelectedHospitalId, setPendingSelectedHospitalId] = useState(null);
+	useEffect(() => {
+		if (!pendingSelectedHospitalId) return;
+		if (selectedHospitalId === pendingSelectedHospitalId) {
+			setPendingSelectedHospitalId(null);
+		}
+	}, [pendingSelectedHospitalId, selectedHospitalId]);
+
+	// Map padding - calculated from snap index
+	const mapBottomPadding = useMemo(() => {
+		const isHospitalFlowOpen = !!selectedHospitalId || !!pendingSelectedHospitalId;
+		return getMapPaddingForSnapIndex(sheetSnapIndex, isHospitalFlowOpen);
+	}, [pendingSelectedHospitalId, selectedHospitalId, sheetSnapIndex]);
 
 	// Debugging hospitals
 	useMemo(() => {
@@ -170,7 +177,6 @@ export default function EmergencyScreen() {
 	useFocusEffect(
 		useCallback(() => {
 			const shouldHide = !!selectedHospital || !!activeAmbulanceTrip || !!activeBedBooking;
-
 			if (shouldHide) {
 				lockTabBarHidden();
 			} else {
@@ -180,7 +186,6 @@ export default function EmergencyScreen() {
 			activeAmbulanceTrip,
 			activeBedBooking,
 			selectedHospital,
-			mode,
 			lockTabBarHidden,
 			unlockTabBarHidden,
 		])
@@ -223,9 +228,19 @@ export default function EmergencyScreen() {
 		timing,
 	});
 
+	const handleHospitalSelectWithSheet = useCallback(
+		(hospital) => {
+			if (hospital?.id) {
+				setPendingSelectedHospitalId(hospital.id);
+			}
+			handleHospitalSelect(hospital);
+		},
+		[handleHospitalSelect]
+	);
+
 	const wrappedHandleCloseFocus = useCallback(() => {
-		const state = handleCloseFocus(() => {
-			bottomSheetRef.current?.restoreListState?.(state);
+		handleCloseFocus((nextState) => {
+			bottomSheetRef.current?.restoreListState?.(nextState);
 		});
 	}, [handleCloseFocus]);
 
@@ -475,10 +490,10 @@ export default function EmergencyScreen() {
 			<EmergencyMapContainer
 				ref={mapRef}
 				hospitals={hospitalsForMap}
-				onHospitalSelect={handleHospitalSelect}
+				onHospitalSelect={handleHospitalSelectWithSheet}
 				onHospitalsGenerated={updateHospitals}
 				onMapReady={setMapReady}
-				selectedHospitalId={selectedHospital?.id || null}
+				selectedHospitalId={pendingSelectedHospitalId || selectedHospitalId || null}
 				routeHospitalId={routeHospitalId}
 				animateAmbulance={animateAmbulance}
 				ambulanceTripEtaSeconds={ambulanceTripEtaSeconds}
@@ -514,7 +529,7 @@ export default function EmergencyScreen() {
 				hasActiveFilters={hasActiveFilters}
 				onServiceTypeSelect={handleServiceTypeSelect}
 				onSpecialtySelect={handleSpecialtySelect}
-				onHospitalSelect={handleHospitalSelect}
+				onHospitalSelect={handleHospitalSelectWithSheet}
 				onHospitalCall={handlePrimaryAction}
 				onSnapChange={handleSheetSnapChange}
 				onSearch={handleSearch}

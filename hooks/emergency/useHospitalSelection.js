@@ -48,9 +48,13 @@ export const useHospitalSelection = ({
 	const handleCloseFocus = useCallback(
 		(onRestoreListState) => {
 			const state = lastListStateRef.current ?? { snapIndex: 1, scrollY: 0 };
+			const nextState = {
+				...state,
+				snapIndex: Math.max(1, Number.isFinite(state.snapIndex) ? state.snapIndex : 1),
+			};
 			clearSelectedHospital();
-			onRestoreListState?.(state);
-			return state;
+			onRestoreListState?.(nextState);
+			return nextState;
 		},
 		[clearSelectedHospital]
 	);

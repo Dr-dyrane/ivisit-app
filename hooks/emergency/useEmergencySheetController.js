@@ -31,7 +31,7 @@ export function useEmergencySheetController({
 	const snapPoints = useMemo(() => {
 		let points;
 		if (isDetailMode) {
-			points = ["55%"];
+			points = ["50%"];
 		} else {
 			const isCompactMode = !!isTripMode || !!isBedBookingMode;
 			if (isCompactMode) {

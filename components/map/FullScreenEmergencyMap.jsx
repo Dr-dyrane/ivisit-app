@@ -5,6 +5,7 @@ import {
 	useImperativeHandle,
 	forwardRef,
 	useCallback,
+	useMemo,
 } from "react";
 import {
 	View,
@@ -32,11 +33,11 @@ import { isValidCoordinate, calculateDistance } from "../../utils/mapUtils";
 
 const DEFAULT_APP_LOAD_DELTAS = { latitudeDelta: 0.04, longitudeDelta: 0.04 };
 const BASELINE_ZOOM_IN_FACTOR = 0.92;
-const ROUTE_ZOOM_FACTOR = 0.84;
+const ROUTE_ZOOM_FACTOR = 0.125;
 
-const FullScreenEmergencyMap = forwardRef(
-	(
-		{
+	const FullScreenEmergencyMap = forwardRef(
+		(
+			{
 			hospitals: propHospitals,
 			onHospitalSelect,
 			onHospitalsGenerated,
@@ -49,12 +50,13 @@ const FullScreenEmergencyMap = forwardRef(
 			showControls = true,
 			bottomPadding = 0,
 			onRouteCalculated,
-			responderLocation,
-			responderHeading,
-			sheetSnapIndex = 1,
-		},
-		ref
-	) => {
+				responderLocation,
+				responderHeading,
+				sheetSnapIndex = 1,
+			},
+			ref
+		) => {
+		const DEBUG_ROUTE_CAMERA = __DEV__ && true;
 		const { isDarkMode } = useTheme();
 		const { hospitals: dbHospitals } = useHospitals();
 		const insets = useSafeAreaInsets();
@@ -72,11 +74,32 @@ const FullScreenEmergencyMap = forwardRef(
 
 		const [nearbyHospitals, setNearbyHospitals] = useState([]);
 		const [isZoomedOut, setIsZoomedOut] = useState(false);
+		const [isMapReadyState, setIsMapReadyState] = useState(false);
 
 		const screenHeight = Dimensions.get("window").height;
+		const screenWidth = Dimensions.get("window").width;
+		const initialRegion = useMemo(() => {
+			const base = appLoadRegionDeltasRef.current ?? DEFAULT_APP_LOAD_DELTAS;
+			if (isValidCoordinate(userLocation)) {
+				return {
+					latitude: userLocation.latitude,
+					longitude: userLocation.longitude,
+					latitudeDelta: base?.latitudeDelta ?? 0.04,
+					longitudeDelta: base?.longitudeDelta ?? 0.04,
+				};
+			}
+			return {
+				latitude: 37.7749,
+				longitude: -122.4194,
+				latitudeDelta: 0.04,
+				longitudeDelta: 0.04,
+			};
+		}, [userLocation]);
 
 	// Hide controls when sheet is above 50% (index > 1)
 	const shouldShowControls = showControls && sheetSnapIndex <= 1;
+		const shouldShowHospitalLabels =
+			sheetSnapIndex === 0 && !routeHospitalIdResolved && !selectedHospitalId;
 
 		const {
 			userLocation,
@@ -86,6 +109,9 @@ const FullScreenEmergencyMap = forwardRef(
 		} = useMapLocation();
 
 		const { routeCoordinates, routeInfo, calculateRoute, clearRoute } = useMapRoute();
+		const lastRouteCameraKeyRef = useRef(null);
+		const lastZoomLogAtRef = useRef(0);
+		const lastZoomLogKeyRef = useRef(null);
 
 		const hospitals =
 			propHospitals && propHospitals.length > 0 ? propHospitals : nearbyHospitals;
@@ -131,6 +157,7 @@ const FullScreenEmergencyMap = forwardRef(
 					bottomPadding: bottomPad,
 					delayMs = 520,
 					zoomFactor = 1,
+					centerBias = 0.5,
 				} = {}
 			) => {
 				if (!mapRef.current) return;
@@ -171,7 +198,12 @@ const FullScreenEmergencyMap = forwardRef(
 						const topY = Math.max(0, Number.isFinite(topPadding) ? topPadding : 0);
 						const bottomY =
 							screenHeight - Math.max(0, Number.isFinite(bottomPad) ? bottomPad : 0);
-						const desiredCenterY = (topY + bottomY) / 2;
+						const visibleHeightPx = Math.max(0, bottomY - topY);
+						const safeCenterBias =
+							Number.isFinite(centerBias) && centerBias >= 0 && centerBias <= 1
+								? centerBias
+								: 0.5;
+						const desiredCenterY = topY + visibleHeightPx * safeCenterBias;
 						const screenCenterY = screenHeight / 2;
 						const pixelDeltaY = desiredCenterY - screenCenterY;
 
@@ -182,8 +214,31 @@ const FullScreenEmergencyMap = forwardRef(
 
 						const safeZoomFactor =
 							Number.isFinite(zoomFactor) && zoomFactor > 0 ? zoomFactor : 1;
-						const targetLatDelta = latSpan * safeZoomFactor;
-						const targetLngDelta = lngSpan * safeZoomFactor;
+						const circleSpan = Math.max(latSpan, lngSpan);
+						const targetLatDelta = circleSpan * safeZoomFactor;
+						const targetLngDelta = circleSpan * safeZoomFactor;
+
+						if (DEBUG_ROUTE_CAMERA) {
+							console.log("[RouteCamera] offset-center", {
+								topPadding,
+								bottomPadding: bottomPad,
+								centerBias: safeCenterBias,
+								topY,
+								bottomY,
+								visibleHeightPx,
+								desiredCenterY,
+								screenCenterY,
+								latSpan,
+								lngSpan,
+								pixelDeltaY,
+								latShift,
+								targetCenterLat,
+								targetCenterLng,
+								circleSpan,
+								targetLatDelta,
+								targetLngDelta,
+							});
+						}
 
 						lastProgrammaticMoveAtRef.current = Date.now();
 						mapRef.current.animateToRegion(
@@ -196,18 +251,23 @@ const FullScreenEmergencyMap = forwardRef(
 							280
 						);
 					} catch (e) {
+						if (DEBUG_ROUTE_CAMERA) {
+							console.log("[RouteCamera] offset-center failed", {
+								message: typeof e?.message === "string" ? e.message : String(e),
+							});
+						}
 					} finally {
 						pendingCenterTimeoutRef.current = null;
 					}
 				}, delayMs);
 			},
-			[screenHeight]
+			[DEBUG_ROUTE_CAMERA, screenHeight]
 		);
 
 		const computeBaselineDeltas = useCallback((location, hospitalList) => {
 			if (!isValidCoordinate(location)) return null;
 			if (!Array.isArray(hospitalList) || hospitalList.length === 0) return null;
-			if (!isMapReadyRef.current) return null;
+			if (!isMapReadyState) return null;
 
 			const origin = { latitude: location.latitude, longitude: location.longitude };
 			const valid = hospitalList
@@ -247,7 +307,7 @@ const FullScreenEmergencyMap = forwardRef(
 				Math.min(0.085, longitudeDelta) * BASELINE_ZOOM_IN_FACTOR
 			);
 			return { latitudeDelta: latitudeDeltaOut, longitudeDelta: longitudeDeltaOut };
-		}, [isMapReadyRef.current]);
+		}, [isMapReadyState]);
 
 		// Update startup phase when location is ready
 		useEffect(() => {
@@ -259,15 +319,15 @@ const FullScreenEmergencyMap = forwardRef(
 
 		// Update startup phase when map is ready
 		useEffect(() => {
-			if (startupPhaseRef.current === 'location_ready' && isMapReadyRef.current) {
+			if (startupPhaseRef.current === 'location_ready' && isMapReadyState) {
 				startupPhaseRef.current = 'map_ready';
 				console.log('[FullScreenEmergencyMap] Startup phase: map_ready');
 			}
-		}, [isMapReadyRef.current]);
+		}, [isMapReadyState]);
 
 		useEffect(() => {
 			if (hasComputedBaselineZoomRef.current) return;
-			if (!isMapReadyRef.current) return;
+			if (!isMapReadyState) return;
 			if (!isValidCoordinate(userLocation)) return;
 			if (!Array.isArray(hospitalsForBaseline) || hospitalsForBaseline.length === 0) return;
 			if (startupPhaseRef.current !== 'map_ready') return;
@@ -278,14 +338,14 @@ const FullScreenEmergencyMap = forwardRef(
 			appLoadRegionDeltasRef.current = deltas;
 			startupPhaseRef.current = 'baseline_set';
 			console.log('[FullScreenEmergencyMap] Startup phase: baseline_set');
-		}, [computeBaselineDeltas, hospitalsForBaseline, userLocation]);
+		}, [computeBaselineDeltas, hospitalsForBaseline, isMapReadyState, userLocation]);
 
 		useEffect(() => {
 			if (!hasCenteredOnUser.current) return;
 			if (!hasComputedBaselineZoomRef.current) return;
 			if (hasAppliedBaselineZoomRef.current) return;
 			if (!mapRef.current || !isValidCoordinate(userLocation)) return;
-			if (!isMapReadyRef.current) return;
+			if (!isMapReadyState) return;
 			if (selectedHospitalId) return;
 			if (routeCoordinates.length > 0) return;
 			if (startupPhaseRef.current !== 'baseline_set') return;
@@ -304,7 +364,7 @@ const FullScreenEmergencyMap = forwardRef(
 				},
 				420
 			);
-		}, [routeCoordinates.length, selectedHospitalId, userLocation, isMapReadyRef.current]);
+		}, [routeCoordinates.length, selectedHospitalId, userLocation, isMapReadyState]);
 
 		const effectiveAmbulanceEtaSeconds =
 			(Number.isFinite(ambulanceTripEtaSeconds) && ambulanceTripEtaSeconds > 0)
@@ -359,73 +419,123 @@ const FullScreenEmergencyMap = forwardRef(
 		]);
 
 		useEffect(() => {
-			if (onRouteCalculated && routeCoordinates.length > 0) {
-                // Avoid calling onRouteCalculated if the data hasn't changed to prevent infinite loops
-                const prevInfo = mapRef.current?.lastRouteInfo;
-                const isSame = prevInfo && 
-                    prevInfo.durationSec === routeInfo?.durationSec && 
-                    prevInfo.distanceMeters === routeInfo?.distanceMeters &&
-                    prevInfo.coordsLength === routeCoordinates.length;
+			if (!onRouteCalculated) return;
+			if (!isMapReadyState || !mapRef.current) return;
+			const validRoute = routeCoordinates.filter(isValidCoordinate);
+			if (validRoute.length < 2) return;
 
-                if (!isSame) {
-                    if (mapRef.current) {
-                        mapRef.current.lastRouteInfo = {
-                            durationSec: routeInfo?.durationSec,
-                            distanceMeters: routeInfo?.distanceMeters,
-                            coordsLength: routeCoordinates.length
-                        };
-                    }
+			const prevInfo = mapRef.current?.lastRouteInfo;
+			const isSame =
+				prevInfo &&
+				prevInfo.durationSec === routeInfo?.durationSec &&
+				prevInfo.distanceMeters === routeInfo?.distanceMeters &&
+				prevInfo.coordsLength === validRoute.length;
 
-                    onRouteCalculated({
-                        coordinates: routeCoordinates,
-                        durationSec: routeInfo?.durationSec,
-                        distanceMeters: routeInfo?.distanceMeters,
-                    });
-                }
+			if (isSame) return;
+			mapRef.current.lastRouteInfo = {
+				durationSec: routeInfo?.durationSec,
+				distanceMeters: routeInfo?.distanceMeters,
+				coordsLength: validRoute.length,
+			};
 
-				// Fit map to route with better padding
-				// Use a ref for padding so snap changes don't force repeated route fitting.
-				if (mapRef.current) {
-					const padding = mapPaddingRef.current;
-					let minLat = routeCoordinates[0]?.latitude;
-					let maxLat = routeCoordinates[0]?.latitude;
-					let minLng = routeCoordinates[0]?.longitude;
-					let maxLng = routeCoordinates[0]?.longitude;
+			onRouteCalculated({
+				coordinates: validRoute,
+				durationSec: routeInfo?.durationSec,
+				distanceMeters: routeInfo?.distanceMeters,
+			});
+		}, [isMapReadyState, onRouteCalculated, routeCoordinates, routeInfo?.distanceMeters, routeInfo?.durationSec]);
 
-					for (let i = 1; i < routeCoordinates.length; i++) {
-						const p = routeCoordinates[i];
-						if (!p) continue;
-						minLat = Math.min(minLat, p.latitude);
-						maxLat = Math.max(maxLat, p.latitude);
-						minLng = Math.min(minLng, p.longitude);
-						maxLng = Math.max(maxLng, p.longitude);
-					}
+		useEffect(() => {
+			if (!isMapReadyState || !mapRef.current) return;
+			const validRoute = routeCoordinates.filter(isValidCoordinate);
+			if (validRoute.length < 2) return;
+			if (!routeHospitalIdResolved) return;
 
-					const latRange = Math.abs(maxLat - minLat);
-					const lngRange = Math.abs(maxLng - minLng);
-					const isVertical = latRange >= lngRange;
+			const padding = mapPaddingRef.current;
+			const cameraKey = `${String(routeHospitalIdResolved)}|${validRoute.length}|${String(routeInfo?.durationSec ?? "")}|${String(routeInfo?.distanceMeters ?? "")}|${padding.bottom}`;
+			if (lastRouteCameraKeyRef.current === cameraKey) return;
+			lastRouteCameraKeyRef.current = cameraKey;
 
-					const extraTop = isVertical ? 105 : 80;
-					const extraBottom = isVertical ? 120 : 70;
-					const extraSide = isVertical ? 55 : 80;
+			let minLat = validRoute[0]?.latitude;
+			let maxLat = validRoute[0]?.latitude;
+			let minLng = validRoute[0]?.longitude;
+			let maxLng = validRoute[0]?.longitude;
 
-					mapRef.current.fitToCoordinates(routeCoordinates, {
-						edgePadding: {
-							top: padding.top + extraTop,
-							right: extraSide,
-							bottom: padding.bottom + extraBottom,
-							left: extraSide,
-						},
-						animated: true,
-					});
-					scheduleCenterInVisibleArea(routeCoordinates, {
-						topPadding: padding.top,
-						bottomPadding: padding.bottom,
-						zoomFactor: ROUTE_ZOOM_FACTOR,
-					});
-				}
+			for (let i = 1; i < validRoute.length; i++) {
+				const p = validRoute[i];
+				if (!p) continue;
+				minLat = Math.min(minLat, p.latitude);
+				maxLat = Math.max(maxLat, p.latitude);
+				minLng = Math.min(minLng, p.longitude);
+				maxLng = Math.max(maxLng, p.longitude);
 			}
-		}, [routeCoordinates, routeInfo, onRouteCalculated]);
+
+			const latRange = Math.abs(maxLat - minLat);
+			const lngRange = Math.abs(maxLng - minLng);
+			const diameter = Math.max(latRange, lngRange);
+			const marginTopPx = 48;
+			const marginBottomPx = 4;
+			const marginXPx = 4;
+
+			const rawVisibleWidthPx = Math.max(1, screenWidth - marginXPx * 2);
+			const rawVisibleHeightPx = Math.max(
+				1,
+				screenHeight - padding.top - padding.bottom - marginTopPx - marginBottomPx
+			);
+			const visibleWidthPx = Math.max(120, rawVisibleWidthPx);
+			const visibleHeightPx = Math.max(120, rawVisibleHeightPx);
+
+			const widthScale = screenWidth / visibleWidthPx;
+			const heightScale = screenHeight / visibleHeightPx;
+			const scale = Math.max(widthScale, heightScale);
+
+			const zoomInFactor = ROUTE_ZOOM_FACTOR;
+			const circleDelta = Math.max(0.0035, diameter * scale * zoomInFactor);
+
+			if (DEBUG_ROUTE_CAMERA) {
+				console.log("[RouteCamera] circle-fit", {
+					routeHospitalIdResolved,
+					points: validRoute.length,
+					paddingTop: padding.top,
+					paddingBottom: padding.bottom,
+					screenWidth,
+					screenHeight,
+					marginTopPx,
+					marginBottomPx,
+					marginXPx,
+					latRange,
+					lngRange,
+					diameter,
+					rawVisibleWidthPx,
+					rawVisibleHeightPx,
+					visibleWidthPx,
+					visibleHeightPx,
+					widthScale,
+					heightScale,
+					scale,
+					zoomInFactor,
+					circleDelta,
+				});
+			}
+
+			lastProgrammaticMoveAtRef.current = Date.now();
+			mapRef.current.fitToCoordinates?.(validRoute, {
+				edgePadding: {
+					top: padding.top + marginTopPx,
+					right: marginXPx,
+					bottom: padding.bottom + marginBottomPx,
+					left: marginXPx,
+				},
+				animated: true,
+			});
+			scheduleCenterInVisibleArea(validRoute, {
+				topPadding: padding.top + marginTopPx,
+				bottomPadding: padding.bottom + marginBottomPx,
+				delayMs: 620,
+				zoomFactor: zoomInFactor,
+				centerBias: 1,
+			});
+		}, [isMapReadyState, routeCoordinates, routeHospitalIdResolved, routeInfo?.distanceMeters, routeInfo?.durationSec, scheduleCenterInVisibleArea]);
 
 		useImperativeHandle(ref, () => ({
 			animateToHospital: (hospital, options = {}) => {
@@ -525,7 +635,7 @@ const FullScreenEmergencyMap = forwardRef(
 				locationPermission &&
 				userLocation &&
 				!hasCenteredOnUser.current &&
-				isMapReadyRef.current &&
+				isMapReadyState &&
 				startupPhaseRef.current === 'baseline_set'
 			) {
 				hasCenteredOnUser.current = true;
@@ -544,7 +654,7 @@ const FullScreenEmergencyMap = forwardRef(
 				}, 300);
 				return () => clearTimeout(timer);
 			}
-		}, [computeBaselineDeltas, hospitalsForBaseline, isLoadingLocation, locationPermission, userLocation, isMapReadyRef.current]);
+		}, [computeBaselineDeltas, hospitalsForBaseline, isLoadingLocation, isMapReadyState, locationPermission, userLocation]);
 
 		const mapStyle = isDarkMode ? darkMapStyle : lightMapStyle;
 
@@ -570,7 +680,34 @@ const FullScreenEmergencyMap = forwardRef(
 
 			const zoomedOutNow = latDelta > 0.35 || lngDelta > 0.35;
 			setIsZoomedOut(zoomedOutNow);
-		}, []);
+
+			if (!__DEV__) return;
+			if (!routeHospitalIdResolved) return;
+			const now = Date.now();
+			if (now - lastZoomLogAtRef.current < 900) return;
+
+			const isProgrammatic = now - (lastProgrammaticMoveAtRef.current ?? 0) < 900;
+			const key = [
+				Number(region?.latitude)?.toFixed(6),
+				Number(region?.longitude)?.toFixed(6),
+				latDelta.toFixed(6),
+				lngDelta.toFixed(6),
+				isProgrammatic ? "p" : "u",
+			].join("|");
+			if (lastZoomLogKeyRef.current === key) return;
+			lastZoomLogKeyRef.current = key;
+			lastZoomLogAtRef.current = now;
+
+			console.log("[RouteZoom] region", {
+				source: isProgrammatic ? "programmatic" : "user",
+				latitude: region?.latitude,
+				longitude: region?.longitude,
+				latitudeDelta: latDelta,
+				longitudeDelta: lngDelta,
+				sheetSnapIndex,
+				bottomPadding,
+			});
+		}, [bottomPadding, routeHospitalIdResolved, sheetSnapIndex]);
 
 		const handleHospitalPress = (hospital) => {
 			if (onHospitalSelect) {
@@ -641,14 +778,7 @@ const FullScreenEmergencyMap = forwardRef(
 					style={styles.map}
 					provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
 					customMapStyle={mapStyle}
-					initialRegion={
-						userLocation ?? {
-							latitude: 37.7749,
-							longitude: -122.4194,
-							latitudeDelta: 0.04,
-							longitudeDelta: 0.04,
-						}
-					}
+					initialRegion={initialRegion}
 					showsUserLocation={locationPermission}
 					showsMyLocationButton={false}
 					showsCompass={false}
@@ -665,6 +795,7 @@ const FullScreenEmergencyMap = forwardRef(
 					onRegionChangeComplete={handleRegionChangeComplete}
 					onMapReady={() => {
 						isMapReadyRef.current = true;
+						setIsMapReadyState(true);
 						onMapReady?.();
 					}}
 					onPanDrag={() => {
@@ -744,25 +875,53 @@ const FullScreenEmergencyMap = forwardRef(
 									zIndex={isSelected ? 100 : 1}
 								>
 									<PulsingMarker isSelected={isSelected}>
-										<View
-											style={[
-												styles.hospitalMarker,
-												isSelected && styles.hospitalMarkerSelected,
-											]}
-										>
-											<Ionicons
-												name="location"
-												size={isSelected ? 42 : 32}
-												color={
-													isSelected ? COLORS.brandPrimary : "#EF4444"
-												}
-												style={{
-													shadowColor: "#000",
-													shadowOffset: { width: 0, height: 2 },
-													shadowOpacity: 0.25,
-													shadowRadius: 4,
-												}}
-											/>
+											<View
+												style={[
+													styles.hospitalMarker,
+													isSelected && styles.hospitalMarkerSelected,
+												]}
+											>
+												<View style={styles.hospitalMarkerRow}>
+													<Ionicons
+														name="location"
+														size={isSelected ? 42 : 32}
+														color={
+															isSelected ? COLORS.brandPrimary : "#EF4444"
+														}
+														style={{
+															shadowColor: "#000",
+															shadowOffset: { width: 0, height: 2 },
+															shadowOpacity: 0.25,
+															shadowRadius: 4,
+														}}
+													/>
+													{shouldShowHospitalLabels && !isSelected ? (
+														<View
+															style={[
+																styles.hospitalLabelPill,
+																{
+																	backgroundColor: isDarkMode
+																		? "rgba(11, 15, 26, 0.72)"
+																		: "rgba(255, 255, 255, 0.82)",
+																},
+															]}
+														>
+															<Text
+																numberOfLines={1}
+																style={[
+																	styles.hospitalLabelText,
+																	{
+																		color: isDarkMode
+																			? COLORS.textLight
+																			: COLORS.textPrimary,
+																	},
+																]}
+															>
+																{hospital?.name ?? ""}
+															</Text>
+														</View>
+													) : null}
+												</View>
 											<View
 												style={{
 													position: "absolute",
@@ -909,6 +1068,21 @@ const styles = StyleSheet.create({
 	},
 	hospitalMarkerSelected: {
 		transform: [{ scale: 1.1 }],
+	},
+	hospitalMarkerRow: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	hospitalLabelPill: {
+		marginLeft: 6,
+		paddingHorizontal: 6,
+		paddingVertical: 2,
+		borderRadius: 10,
+		maxWidth: 140,
+	},
+	hospitalLabelText: {
+		fontSize: 9,
+		fontWeight: "600",
 	},
 	controlsContainer: {
 		position: "absolute",
