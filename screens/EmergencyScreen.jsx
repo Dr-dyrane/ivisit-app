@@ -407,20 +407,18 @@ export default function EmergencyScreen() {
 		[setMode]
 	);
 
-	// Auto-set mode and snap when a booking/trip becomes active
+	// Snap to summary when active state matches current mode; do not force mode
 	useEffect(() => {
-		if (activeAmbulanceTrip?.requestId) {
-			if (mode !== "emergency") setMode("emergency");
+		if (activeAmbulanceTrip?.requestId && mode === "emergency") {
 			bottomSheetRef.current?.snapToIndex?.(1);
 		}
-	}, [activeAmbulanceTrip?.requestId, mode, setMode]);
+	}, [activeAmbulanceTrip?.requestId, mode]);
 
 	useEffect(() => {
-		if (activeBedBooking?.requestId) {
-			if (mode !== "booking") setMode("booking");
+		if (activeBedBooking?.requestId && mode === "booking") {
 			bottomSheetRef.current?.snapToIndex?.(1);
 		}
-	}, [activeBedBooking?.requestId, mode, setMode]);
+	}, [activeBedBooking?.requestId, mode]);
 
 	const routeHospitalId =
 		mode === "emergency"
