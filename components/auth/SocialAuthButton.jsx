@@ -96,7 +96,7 @@ export default function SocialAuthButton({ provider }) {
 						alignItems: "center",
 						justifyContent: "center",
 						backgroundColor: isDarkMode ? "#121826" : "#F3E7E7",
-						borderWidth: 1,
+						// borderWidth: 1,
 						borderColor: isDarkMode ? "#222" : "#EEE",
 						transform: [{ scale }],
 					}}
