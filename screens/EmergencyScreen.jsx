@@ -81,6 +81,11 @@ export default function EmergencyScreen() {
 		timing,
 	} = useEmergencyUI();
 
+	const sheetSnapIndexRef = useRef(sheetSnapIndex);
+	useEffect(() => {
+		sheetSnapIndexRef.current = sheetSnapIndex;
+	}, [sheetSnapIndex]);
+
 	// Local state
 	const [currentRoute, setCurrentRoute] = useState(null);
 	const [ratingState, setRatingState] = useState({
@@ -177,6 +182,7 @@ export default function EmergencyScreen() {
 	useFocusEffect(
 		useCallback(() => {
 			const shouldHide = !!selectedHospital || !!activeAmbulanceTrip || !!activeBedBooking;
+			
 			if (shouldHide) {
 				lockTabBarHidden();
 			} else {
@@ -188,6 +194,19 @@ export default function EmergencyScreen() {
 			selectedHospital,
 			lockTabBarHidden,
 			unlockTabBarHidden,
+		])
+	);
+
+	useFocusEffect(
+		useCallback(() => {
+			if (selectedHospital || activeAmbulanceTrip || activeBedBooking) return;
+			if (sheetSnapIndexRef.current !== 0) return;
+			setSheetSnapIndex(1, "return_fix");
+		}, [
+			activeAmbulanceTrip,
+			activeBedBooking,
+			selectedHospital,
+			setSheetSnapIndex,
 		])
 	);
 

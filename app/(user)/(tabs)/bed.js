@@ -3,17 +3,15 @@ import { useFocusEffect } from "expo-router";
 import EmergencyScreen from "../../../screens/EmergencyScreen";
 import { EmergencyMode, useEmergency } from "../../../contexts/EmergencyContext";
 
-const Emergency = () => {
+export default function BedTab() {
 	const { setMode, clearSelectedHospital } = useEmergency();
 
 	useFocusEffect(
 		useCallback(() => {
-			setMode(EmergencyMode.EMERGENCY);
+			setMode(EmergencyMode.BOOKING);
 			clearSelectedHospital();
 		}, [clearSelectedHospital, setMode])
 	);
 
 	return <EmergencyScreen />;
-};
-
-export default Emergency;
+}

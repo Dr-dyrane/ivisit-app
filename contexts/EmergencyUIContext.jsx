@@ -84,6 +84,10 @@ export function EmergencyUIProvider({ children }) {
 	// Bottom sheet state
 	const [snapIndex, setSnapIndex] = useState(1); // 0=collapsed, 1=half, 2=expanded - start halfway for better UX
 	const [isAnimating, setIsAnimating] = useState(false);
+	const snapIndexRef = useRef(snapIndex);
+	useEffect(() => {
+		snapIndexRef.current = snapIndex;
+	}, [snapIndex]);
 	
 	// Log initial state
 	useEffect(() => {
@@ -121,7 +125,7 @@ export function EmergencyUIProvider({ children }) {
 		console.log('[EmergencyUIContext] handleSnapChange called:', { 
 			newIndex: index, 
 			source, 
-			currentSnapIndex: snapIndex,
+			currentSnapIndex: snapIndexRef.current,
 			timestamp: Date.now()
 		});
 		
@@ -143,7 +147,7 @@ export function EmergencyUIProvider({ children }) {
 			console.log('[EmergencyUIContext] Animation completed, setIsAnimating(false)');
 			setIsAnimating(false);
 		}, 350);
-	}, [snapIndex]);
+	}, []);
 	
 	// Search actions
 	const updateSearch = useCallback((text) => {
@@ -234,4 +238,3 @@ export function useEmergencyUI() {
 	}
 	return context;
 }
-
