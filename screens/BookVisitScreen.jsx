@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { StyleSheet, Animated, Pressable } from "react-native";
+import { StyleSheet, Animated, Pressable, View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -11,7 +11,6 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
-import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
 
 import { useBookVisit, STEPS } from "../hooks/visits/useBookVisit";
@@ -62,13 +61,16 @@ export default function BookVisitScreen() {
 
 	const colors = {
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
-		background: isDarkMode 
-			? ["#121826", "#0B0F1A", "#121826"] 
+		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+		background: isDarkMode
+			? ["#121826", "#0B0F1A", "#121826"]
 			: ["#FFFFFF", "#F3E7E7", "#FFFFFF"],
 		icon: isDarkMode ? "#FFFFFF" : "#0F172A", // Theme-aware icon color
 	};
+	const brandPrimary = '#86100E';
 
-	const backButton = useCallback(() => <HeaderBackButton />, []);
+
+	const backButton = useCallback(() => <HeaderBackButton onPress={handleBack} />, [handleBack]);
 
 	// Update Header based on step
 	useFocusEffect(
@@ -101,7 +103,7 @@ export default function BookVisitScreen() {
 				title,
 				subtitle,
 				icon: <Ionicons name="calendar" size={26} color="#FFFFFF" />,
-				backgroundColor: COLORS.brandPrimary,
+				backgroundColor: brandPrimary,
 				leftComponent: backButton(),
 				rightComponent: null,
 			});
@@ -114,6 +116,7 @@ export default function BookVisitScreen() {
 			colors.icon,
 		])
 	);
+
 
 	return (
 		<LinearGradient colors={colors.background} style={styles.container}>

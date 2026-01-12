@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useToast } from "../../contexts/ToastContext";
 import { useFAB } from "../../contexts/FABContext";
 import { COLORS } from "../../constants/colors";
 import { AMBULANCE_TYPES } from "../../constants/emergency";
@@ -24,6 +25,7 @@ const EmergencyRequestModal = ({
 	scrollContentStyle,
 }) => {
 	const { isDarkMode } = useTheme();
+	const { showToast } = useToast();
 	const { registerFAB, unregisterFAB } = useFAB();
 
 	const [requestStep, setRequestStep] = useState("select");
@@ -271,8 +273,15 @@ const EmergencyRequestModal = ({
 					  };
 
 			setRequestData(next);
-			setRequestStep("dispatched");
 			setIsRequesting(false);
+			const toastMsg =
+				mode === "booking"
+					? "Bed reserved successfully"
+					: "Ambulance dispatched";
+			try {
+				showToast(toastMsg, "success");
+			} catch (e) {
+			}
 			if (typeof onRequestComplete === "function") {
 				onRequestComplete(next);
 			}

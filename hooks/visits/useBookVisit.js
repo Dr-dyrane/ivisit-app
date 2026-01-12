@@ -80,19 +80,33 @@ export function useBookVisit() {
 		setBookingData(prev => ({ ...prev, [key]: value }));
 	}, []);
 
-	// Back button logic
+	// Back button logic with proper step navigation
 	const handleBack = useCallback(() => {
+		Haptics.selectionAsync();
+		
 		if (step === STEPS.SERVICE) {
+			// First step - go back to previous screen
 			router.back();
-		} else {
+		} else if (step === STEPS.SPECIALTY) {
+			// Go back to service selection
+			animateTransition(() => setStep(STEPS.SERVICE));
+		} else if (step === STEPS.PROVIDER) {
+			// Go back to specialty selection
+			animateTransition(() => setStep(STEPS.SPECIALTY));
+		} else if (step === STEPS.DATETIME) {
+			// Go back to provider selection, but handle telehealth case
 			animateTransition(() => {
-				setStep((prev) => {
-					if (prev === STEPS.DATETIME && bookingData.type === 'telehealth') {
-						return STEPS.SERVICE;
-					}
-					return prev - 1;
-				});
+				if (bookingData.type === 'telehealth') {
+					// For telehealth, skip provider selection and go to service
+					setStep(STEPS.SERVICE);
+				} else {
+					// For clinic visits, go back to provider selection
+					setStep(STEPS.PROVIDER);
+				}
 			});
+		} else if (step === STEPS.SUMMARY) {
+			// Go back to date/time selection
+			animateTransition(() => setStep(STEPS.DATETIME));
 		}
 	}, [step, bookingData.type, router, animateTransition]);
 
