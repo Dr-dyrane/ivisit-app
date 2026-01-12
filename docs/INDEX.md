@@ -102,6 +102,8 @@ docs/
 |----------|-------------|
 | [ui_ux_bible.md](./product_design/ui_ux_bible.md) | UI/UX design guidelines |
 | [SCREEN_CONSISTENCY_GUIDE.md](./product_design/SCREEN_CONSISTENCY_GUIDE.md) | Screen consistency guide |
+| [FAB_ANALYSIS_REVIEW.md](./product_design/FAB_ANALYSIS_REVIEW.md) | Global FAB strategy and implementation plan |
+| [GLOBAL_FAB_IMPLEMENTATION_PLAN.md](./product_design/GLOBAL_FAB_IMPLEMENTATION_PLAN.md) | Technical implementation plan for global FAB migration |
 
 ### Emergency (Refactor & UX)
 
