@@ -74,6 +74,19 @@ export default function StacksLayout() {
 			/>
 
 			<Stack.Screen
+				name="notification-details"
+				options={{
+					headerTitle: "Notification Details",
+					headerTitleStyle: {
+						fontWeight: "bold",
+						fontSize: 18,
+						color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+					},
+					headerLeft: () => <HeaderBackButton />,
+				}}
+			/>
+
+			<Stack.Screen
 				name="medical-profile"
 				options={{
 					headerTitle: "Medical Profile",

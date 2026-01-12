@@ -6,6 +6,7 @@ export const ROUTES = {
 	STACK_MORE: "/(user)/(stacks)/more",
 	STACK_SEARCH: "/(user)/(stacks)/search",
 	STACK_NOTIFICATIONS: "/(user)/(stacks)/notifications",
+	STACK_NOTIFICATION_DETAILS: (id) => `/(user)/(stacks)/notification-details?id=${String(id)}`,
 	STACK_SETTINGS: "/(user)/(stacks)/settings",
 	STACK_MEDICAL_PROFILE: "/(user)/(stacks)/medical-profile",
 	STACK_PROFILE: "/(user)/(stacks)/profile",
@@ -105,6 +106,11 @@ export function navigateToChangePassword({ router, method = "push" }) {
 
 export function navigateToCreatePassword({ router, method = "push" }) {
 	nav(router, method, "/(user)/(stacks)/create-password");
+}
+
+export function navigateToNotificationDetails({ router, notificationId, method = "push" }) {
+	if (!notificationId) return;
+	nav(router, method, ROUTES.STACK_NOTIFICATION_DETAILS(notificationId));
 }
 
 export function navigateToMore({ router, method = "push" }) {

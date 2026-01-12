@@ -35,6 +35,7 @@ import {
 	navigateToSOS,
 	navigateToVisitDetails,
 	navigateToVisits,
+	navigateToNotificationDetails,
 } from "../utils/navigationHelpers";
 
 const NotificationsScreen = () => {
@@ -331,6 +332,15 @@ const NotificationsScreen = () => {
 				return;
 			}
 
+			if (actionType === "view_visit") {
+				if (visitId) {
+					navigateToVisitDetails({ router, visitId });
+					return;
+				}
+				navigateToVisits({ router });
+				return;
+			}
+
 			if (actionType === "view_summary") {
 				if (visitId) {
 					navigateToVisitDetails({ router, visitId });
@@ -345,7 +355,8 @@ const NotificationsScreen = () => {
 				return;
 			}
 
-			navigateToNotifications({ router });
+			// For notifications without specific navigation, show details screen
+			navigateToNotificationDetails({ router, notificationId: notification.id });
 		},
 		[router, setMode]
 	);
