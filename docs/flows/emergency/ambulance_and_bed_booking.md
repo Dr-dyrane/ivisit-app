@@ -197,6 +197,102 @@ Next: define a “MapState + Layers” design that is 100% compatible with the c
 
 ---
 
+## Target Map Architecture: MapState + Layered Rendering
+
+### MapState (single source of truth for what the map is “doing”)
+
+Instead of multiple maps, we keep **one** `MapView` and introduce a derived `mapState`:
+
+```ts
+type MapState =
+  | "idle"              // browsing hospitals, no active trip or booking
+  | "ambulance_active"  // active ambulance trip in progress
+  | "bed_active";       // active bed booking in progress
+```
+
+`mapState` is derived from existing context state:
+- `ambulance_active` if `activeAmbulanceTrip` exists.
+- `bed_active` if `activeBedBooking` exists.
+- otherwise `idle`.
+
+It does **not** care about:
+- `mode` alone (you can be in booking mode but still “idle” if nothing is active).
+- sheet snap index (that’s pure UI).
+
+### Layered Rendering (inside the same MapView)
+
+`FullScreenEmergencyMap` remains the only place that mounts `MapView`. Internally it renders exactly one layer tree at a time:
+
+- `IdleLayers` (when `mapState === "idle"`):
+  - User location + pulse marker.
+  - All available hospitals (filtered upstream).
+  - Optional “focus” ring for `selectedHospital`.
+  - No active trip route/ambulance.
+
+- `AmbulanceLayers` (when `mapState === "ambulance_active"`):
+  - Everything needed to track an ambulance:
+    - Route polyline (subject to ambulance availability gate).
+    - Responder marker:
+      - Either animated along route (`animateAmbulance = true`), or
+      - Realtime `responderLocation` / `responderHeading` from DB.
+    - Hospital pin (destination).
+
+- `BedLayers` (when `mapState === "bed_active"`):
+  - Future-proof for bed-specific visuals:
+    - Route polyline when relevant.
+    - Hospital pin for the reserved facility.
+    - Optional “bed reserved” marker or badge.
+
+The outer component:
+- Owns the `MapView`, camera, route fitting, padding, and imperative ref.
+- Chooses the correct `*Layers` component based on `mapState`.
+
+### Contracts That Stay the Same
+
+We preserve the existing external contracts:
+
+- **Props from EmergencyScreen:**
+  - `bottomPadding` (derived from `sheetSnapIndex` and selection state).
+  - `sheetSnapIndex` (for control visibility).
+  - `selectedHospitalId`, `routeHospitalId`, `mode`.
+  - Trip props: `animateAmbulance`, `ambulanceTripEtaSeconds`, `responderLocation`, `responderHeading`.
+
+- **Imperative ref surface:**
+  - `animateToHospital(hospital, options)`
+  - `fitToAllHospitals(hospitals, options)`
+  - Any existing methods used by:
+    - `useHospitalSelection`
+    - `useSearchFiltering`
+
+- **Callback behavior:**
+  - `onRouteCalculated(routeInfo)` continues to:
+    - Fire only when route info changes.
+    - Respect the current `mapPaddingRef` and route dedupe logic.
+
+### How MapState Connects to the Rest of the Flow
+
+`mapState` is computed in `EmergencyScreen` (or `EmergencyMapContainer`) using:
+
+- `activeAmbulanceTrip` / `activeBedBooking` from `EmergencyContext`.
+- Optional future states (e.g., `simulation_only`) can map to `ambulance_active`.
+
+The map itself stays mostly unaware of the higher-level semantics; it just receives:
+
+- `mapState`
+- `selectedHospitalId`
+- `routeHospitalId`
+- trip-related props
+
+and chooses the correct layer tree.
+
+This keeps the refactor **low risk**:
+
+- One `MapView`.
+- Existing props and refs intact.
+- Logic for route fitting, padding, and simulation unchanged; we only reorganize rendering into explicit `Idle/Ambulance/Bed` layers.
+
+---
+
 ## Ambulance Request (Emergency Mode) — Start to Finish
 
 ### 1) User enters SOS in Emergency mode
