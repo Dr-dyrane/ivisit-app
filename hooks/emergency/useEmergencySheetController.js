@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useRef } from "react";
+import { useMemo, useCallback } from "react";
 import { Dimensions, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomSheetSpringConfigs } from "@gorhom/bottom-sheet";
@@ -15,17 +15,11 @@ export function useEmergencySheetController({
 	isDetailMode,
 	isTripMode,
 	isBedBookingMode,
-	isRequestMode,
 	onSnapChange,
 }) {
 	const insets = useSafeAreaInsets();
 	const { snapIndex: currentSnapIndex, handleSnapChange: updateSnapIndex } =
 		useEmergencyUI();
-
-	// Lock snap points on first computation
-	const snapPointsRef = useRef(null);
-	const hasComputedSnapPointsRef = useRef(false);
-	const startupPhaseRef = useRef('initial');
 
 	const screenHeightRaw = Dimensions.get("window").height;
 	const screenHeight =
@@ -35,36 +29,13 @@ export function useEmergencySheetController({
 	const collapsedPercent = Math.round((collapsedHeight / screenHeight) * 100);
 
 	const snapPoints = useMemo(() => {
-		// Return locked snap points if already computed, but allow updates for request mode
-		if (snapPointsRef.current && hasComputedSnapPointsRef.current && !isRequestMode) {
-			console.log('[useEmergencySheetController] Returning locked snap points:', snapPointsRef.current);
-			return snapPointsRef.current;
-		}
-
-		console.log('[useEmergencySheetController] Computing new snap points:', {
-			isDetailMode,
-			isTripMode,
-			isBedBookingMode,
-			isRequestMode,
-			screenHeight,
-			collapsedPercent,
-			timestamp: Date.now()
-		});
-
 		let points;
 		if (isDetailMode) {
-			points = ["50%"];
+			points = ["55%"];
 		} else {
-			const isCompactMode = !!isTripMode || !!isBedBookingMode || !!isRequestMode;
+			const isCompactMode = !!isTripMode || !!isBedBookingMode;
 			if (isCompactMode) {
-				// For dispatched state (trip mode + request mode), use fixed snap points
-				if (isTripMode && isRequestMode) {
-					points = ["50%", "75%"]; // Dispatched state at 75%
-				} else if (isRequestMode) {
-					points = ["45%", "75%", "85%"]; // Semi-full modal for request mode
-				} else {
-					points = ["18%", "45%", "92%"];
-				}
+				points = ["55%", "75%"];
 			} else {
 				// Calculate collapsed height based on actual screen dimensions
 				const collapsedHeight = TAB_BAR_HEIGHT + insets.bottom + SEARCH_BAR_AREA + MARGIN_ABOVE_TAB_BAR;
@@ -80,31 +51,11 @@ export function useEmergencySheetController({
 				const expanded = Math.min(92, Math.max(halfExpanded + 10, 82));
 				
 				points = [`${safeCollapsed}%`, `${halfExpanded}%`, `${expanded}%`];
-				
-				console.log('[useEmergencySheetController] Calculated snap points:', {
-					screenHeight,
-					collapsedHeight,
-					collapsedPercent,
-					safeCollapsed,
-					points
-				});
 			}
 		}
 
-		// Lock snap points on first computation, but not for request mode
-		if (!hasComputedSnapPointsRef.current && !isRequestMode) {
-			console.log('[useEmergencySheetController] Locking snap points for first time:', {
-				points,
-				timestamp: Date.now()
-			});
-			snapPointsRef.current = points;
-			hasComputedSnapPointsRef.current = true;
-			startupPhaseRef.current = 'snap_points_locked';
-			console.log('[useEmergencySheetController] Startup phase: snap_points_locked');
-		}
-
 		return points;
-	}, [collapsedPercent, isDetailMode, isTripMode, isBedBookingMode, isRequestMode, screenHeight]);
+	}, [collapsedPercent, isDetailMode, isTripMode, isBedBookingMode, screenHeight]);
 
 	const animationConfigs = useBottomSheetSpringConfigs({
 		damping: 34,
@@ -132,4 +83,3 @@ export function useEmergencySheetController({
 		currentSnapIndex,
 	};
 }
-

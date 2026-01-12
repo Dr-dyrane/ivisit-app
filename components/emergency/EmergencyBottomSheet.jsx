@@ -32,8 +32,6 @@ import { ActiveVisitsSwitcher } from "./bottomSheet/ActiveVisitsSwitcher";
 import { TripSummaryCard } from "./bottomSheet/TripSummaryCard";
 import { BedBookingSummaryCard } from "./bottomSheet/BedBookingSummaryCard";
 
-import EmergencyRequestModal from "./EmergencyRequestModal";
-
 import { useBottomSheetSnap } from "../../hooks/emergency/useBottomSheetSnap";
 import { useBottomSheetScroll } from "../../hooks/emergency/useBottomSheetScroll";
 import { useBottomSheetSearch } from "../../hooks/emergency/useBottomSheetSearch";
@@ -50,11 +48,6 @@ const EmergencyBottomSheet = forwardRef(
 			hospitals = [],
 			allHospitals = [],
 			selectedHospital,
-			isRequestMode = false,
-			requestHospital = null,
-			onRequestClose,
-			onRequestInitiated,
-			onRequestComplete,
 			activeAmbulanceTrip = null,
 			onCancelAmbulanceTrip,
 			onMarkAmbulanceArrived,
@@ -83,13 +76,11 @@ const EmergencyBottomSheet = forwardRef(
 		const { preferences } = usePreferences();
 		const insets = useSafeAreaInsets();
 
-		const isRequestFlowActive = !!isRequestMode && !!requestHospital;
-		const isDetailMode = !!selectedHospital && !isRequestFlowActive;
+		const isDetailMode = !!selectedHospital;
 		const isTripMode =
-			mode === "emergency" && !!activeAmbulanceTrip && !isDetailMode && !isRequestFlowActive;
+			mode === "emergency" && !!activeAmbulanceTrip && !isDetailMode;
 		const isBedBookingMode =
-			mode === "booking" && !!activeBedBooking && !isDetailMode && !isRequestFlowActive;
-		const [nowMs, setNowMs] = useState(Date.now());
+			mode === "booking" && !!activeBedBooking && !isDetailMode;
 		const [sheetPhase, setSheetPhase] = useState("half");
 
 		const {
@@ -103,14 +94,12 @@ const EmergencyBottomSheet = forwardRef(
 
 		const bottomSheetRef = useRef(null);
 		const listScrollRef = useRef(null);
-		const isInitializedRef = useRef(false);
 
 		const { snapPoints, animationConfigs, currentSnapIndex, handleSheetChange } =
 			useBottomSheetSnap({
 				isDetailMode,
 				isTripMode,
 				isBedBookingMode,
-				isRequestMode: isRequestFlowActive && requestHospital, // Only true when both mode and hospital are set
 				onSnapChange,
 			});
 
@@ -128,14 +117,6 @@ const EmergencyBottomSheet = forwardRef(
 			openProfileModal();
 			timing.endTiming("avatar_press");
 		}, [openProfileModal, timing]);
-
-		useEffect(() => {
-			if (!isRequestFlowActive) return;
-			const id = setTimeout(() => {
-				bottomSheetRef.current?.snapToIndex(1); // Snap to middle position (60%) for semi-full
-			}, 80);
-			return () => clearTimeout(id);
-		}, [isRequestFlowActive]);
 
 		const clampSheetIndex = useCallback(
 			(index) => {
@@ -177,9 +158,13 @@ const EmergencyBottomSheet = forwardRef(
 
 		useEffect(() => {
 			if (!isTripMode && !isBedBookingMode) return;
-			const id = setInterval(() => setNowMs(Date.now()), 1000);
-			return () => clearInterval(id);
-		}, [isBedBookingMode, isTripMode]);
+			if (snapPoints.length !== 2) return;
+			if (currentSnapIndex < 0) {
+				setTimeout(() => {
+					bottomSheetRef.current?.snapToIndex(0);
+				}, 0);
+			}
+		}, [currentSnapIndex, isBedBookingMode, isTripMode, snapPoints.length]);
 
 		const renderHandle = useCallback(
 			() => (
@@ -205,116 +190,61 @@ const EmergencyBottomSheet = forwardRef(
 
 		// Use current snap index for initial position, with fallbacks
 		const initialIndex = useMemo(() => {
-			const index = isDetailMode 
-				? 0 
-				: isRequestFlowActive 
-					? 1 // Open to middle position (60%) for semi-full request mode
-					: (Number.isFinite(currentSnapIndex) && currentSnapIndex >= 0 && currentSnapIndex < snapPoints.length 
-						? currentSnapIndex 
-						: 1); // Default to halfway
-			
-			// Only log initial calculation once and mark as initialized
-			if (!isInitializedRef.current) {
-				console.log('[EmergencyBottomSheet] Initial calculation:', {
-					isDetailMode,
-					isRequestFlowActive,
-					currentSnapIndex,
-					snapPointsLength: snapPoints.length,
-					snapPoints,
-					calculatedInitialIndex: index,
-					timestamp: Date.now()
-				});
-				isInitializedRef.current = true;
-			}
+			const index = isDetailMode
+				? 0
+				: isTripMode || isBedBookingMode
+				? 0
+				: Number.isFinite(currentSnapIndex) &&
+				  currentSnapIndex >= 0 &&
+				  currentSnapIndex < snapPoints.length
+				? currentSnapIndex
+				: 1; // Default to halfway
 			
 			return index;
-		}, [isDetailMode, isRequestFlowActive, currentSnapIndex, snapPoints.length]);
+		}, [isBedBookingMode, isDetailMode, isTripMode, currentSnapIndex, snapPoints.length]);
 
 		// Track sheet phase changes using currentSnapIndex
 		useEffect(() => {
-			const phase = currentSnapIndex === 0 ? "collapsed" : currentSnapIndex === 1 ? "half" : "full";
+			if (snapPoints.length <= 1) {
+				setSheetPhase("half");
+				return;
+			}
+
+			if (snapPoints.length === 2) {
+				const phase = currentSnapIndex <= 0 ? "half" : "full";
+				setSheetPhase(phase);
+				return;
+			}
+
+			const phase =
+				currentSnapIndex <= 0
+					? "collapsed"
+					: currentSnapIndex === 1
+					? "half"
+					: "full";
 			setSheetPhase(phase);
-		}, [currentSnapIndex]);
-
-		// Lock sheet to halfway when hospital is selected
-		useEffect(() => {
-			if (selectedHospital && !isRequestFlowActive) {
-				// Force sheet to halfway position
-				if (bottomSheetRef.current && currentSnapIndex !== 1) {
-					setTimeout(() => {
-						bottomSheetRef.current?.snapToIndex(1);
-					}, 100);
-				}
-			}
-		}, [selectedHospital, currentSnapIndex, isRequestFlowActive]);
-
-		// Lock sheet to limited range in dispatched state (tracking ambulance)
-		useEffect(() => {
-			if (isTripMode && isRequestFlowActive) {
-				// Force sheet to middle position (index 1) in dispatched state
-				if (bottomSheetRef.current && currentSnapIndex !== 1) {
-					setTimeout(() => {
-						bottomSheetRef.current?.snapToIndex(1);
-					}, 100);
-				}
-			}
-		}, [isTripMode, isRequestFlowActive, currentSnapIndex]);
-
-		// Prevent sheet from leaving allowed positions
-		const handleSheetChangeWithLock = useCallback((index) => {
-			// If hospital is selected and we're not in request mode, lock to halfway
-			if (selectedHospital && !isRequestFlowActive && index !== 1) {
-				// Force back to halfway
-				setTimeout(() => {
-					bottomSheetRef.current?.snapToIndex(1);
-				}, 50);
-				return;
-			}
-
-			// If in dispatched state (tracking ambulance), lock to middle position
-			if (isTripMode && isRequestFlowActive && index !== 1) {
-				// Force back to middle
-				setTimeout(() => {
-					bottomSheetRef.current?.snapToIndex(1);
-				}, 50);
-				return;
-			}
-			
-			// Allow normal behavior
-			handleSheetChange(index);
-		}, [selectedHospital, isRequestFlowActive, isTripMode, handleSheetChange]);
+		}, [currentSnapIndex, snapPoints.length]);
 
 		return (
 			<BottomSheet
 				ref={bottomSheetRef}
 				index={initialIndex}
 				snapPoints={snapPoints}
-				onChange={handleSheetChangeWithLock}
+				onChange={handleSheetChange}
 				handleComponent={renderHandle}
 				backgroundComponent={renderBackground}
 				style={styles.sheet}
 				enablePanDownToClose={false}
 				enableOverDrag={true}
-				enableHandlePanningGesture={!selectedHospital && !isRequestFlowActive}
-				enableContentPanningGesture={!selectedHospital && !isRequestFlowActive}
+				enableHandlePanningGesture={!selectedHospital}
+				enableContentPanningGesture={!selectedHospital}
 				keyboardBehavior="extend"
 				keyboardBlurBehavior="restore"
 				animateOnMount={true}
 				animationConfigs={animationConfigs}
 				safeAreaInsets={{ top: 0, bottom: 0, left: 0, right: 0 }}
 			>
-				{isRequestFlowActive ? (
-					<BottomSheetView style={[styles.scrollContent, { paddingBottom: 0, flex: 1 }]}>
-						<EmergencyRequestModal
-							mode={mode}
-							requestHospital={requestHospital}
-							selectedSpecialty={selectedSpecialty}
-							onRequestClose={onRequestClose}
-							onRequestInitiated={onRequestInitiated}
-							onRequestComplete={onRequestComplete}
-						/>
-					</BottomSheetView>
-				) : isDetailMode ? (
+				{isDetailMode ? (
 					<BottomSheetView style={[styles.scrollContent, { paddingBottom: 0 }]}>
 						<HospitalDetailView
 							hospital={selectedHospital}
@@ -331,9 +261,9 @@ const EmergencyBottomSheet = forwardRef(
 						contentContainerStyle={[
 							styles.scrollContent,
 							{
-								paddingBottom: isRequestFlowActive ? 120 : (isTripMode || isBedBookingMode ? 0 : TAB_BAR_HEIGHT),
-								paddingHorizontal: isRequestFlowActive ? 0 : (isTripMode || isBedBookingMode ? 0 : 12),
-								paddingTop: isRequestFlowActive ? 0 : (isTripMode || isBedBookingMode ? 0 : 8),
+								paddingBottom: isTripMode || isBedBookingMode ? 0 : TAB_BAR_HEIGHT,
+								paddingHorizontal: isTripMode || isBedBookingMode ? 0 : 12,
+								paddingTop: isTripMode || isBedBookingMode ? 0 : 8,
 								flexGrow:
 									(isTripMode || isBedBookingMode) && sheetPhase === "full"
 										? 1
@@ -362,7 +292,6 @@ const EmergencyBottomSheet = forwardRef(
 								isCollapsed={sheetPhase === "collapsed"}
 								isExpanded={sheetPhase === "full"}
 								sheetPhase={sheetPhase}
-								nowMs={nowMs}
 							/>
 						) : isBedBookingMode ? (
 							<BedBookingSummaryCard
@@ -375,9 +304,8 @@ const EmergencyBottomSheet = forwardRef(
 								isCollapsed={sheetPhase === "collapsed"}
 								isExpanded={sheetPhase === "full"}
 								sheetPhase={sheetPhase}
-								nowMs={nowMs}
 							/>
-						) : !isRequestFlowActive && (
+						) : (
 							<EmergencySheetTopRow
 								searchValue={localSearchQuery}
 								onSearchChange={handleSearchChange}
@@ -400,7 +328,7 @@ const EmergencyBottomSheet = forwardRef(
 							/>
 						)}
 
-						{!isTripMode && !isBedBookingMode && !isRequestFlowActive && (
+						{!isTripMode && !isBedBookingMode && (
 							<EmergencySheetFilters
 								visible={sheetPhase !== "collapsed"}
 								mode={mode}
@@ -415,7 +343,7 @@ const EmergencyBottomSheet = forwardRef(
 							/>
 						)}
 
-						{!isTripMode && !isBedBookingMode && !isRequestFlowActive && (
+						{!isTripMode && !isBedBookingMode && (
 							<EmergencySheetSectionHeader
 								visible={sheetPhase !== "collapsed"}
 								mode={mode}
@@ -432,7 +360,7 @@ const EmergencyBottomSheet = forwardRef(
 							/>
 						)}
 
-						{!isTripMode && !isBedBookingMode && !isRequestFlowActive && (
+						{!isTripMode && !isBedBookingMode && (
 							<EmergencySheetHospitalList
 								visible={sheetPhase !== "collapsed"}
 								hospitals={hospitals}

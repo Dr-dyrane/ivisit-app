@@ -291,9 +291,60 @@ export const visitsService = {
             throw error;
         }
         if (!data || data.length === 0) {
-            const err = new Error(`Visit with id ${id} not found`);
-            console.error(`[visitsService]`, err.message);
-            throw err;
+			let upserted;
+			let upsertError;
+			({ data: upserted, error: upsertError } = await supabase
+				.from(TABLE)
+				.upsert(
+					{
+						id: String(id),
+						user_id: user.id,
+						...dbUpdates,
+					},
+					{ onConflict: "id" }
+				)
+				.select()
+				.single());
+
+			if (
+				upsertError &&
+				supportsExtendedEmergencyColumns !== false &&
+				shouldDisableExtendedColumns(upsertError)
+			) {
+				supportsExtendedEmergencyColumns = false;
+				const retryUpsert = stripExtendedEmergencyColumns({
+					id: String(id),
+					user_id: user.id,
+					...dbUpdates,
+				});
+				({ data: upserted, error: upsertError } = await supabase
+					.from(TABLE)
+					.upsert(retryUpsert, { onConflict: "id" })
+					.select()
+					.single());
+			}
+
+			if (upsertError) {
+				console.error(`[visitsService] Upsert fallback failed for ${id}:`, upsertError);
+				throw upsertError;
+			}
+
+			if (__DEV__) {
+				console.log("[visitsService] Update fallback upserted missing visit:", {
+					id: String(id),
+				});
+			}
+
+			const result = normalizeVisit(mapFromDb(upserted));
+			try {
+				await notificationDispatcher.dispatchVisitUpdate(result, "updated");
+			} catch (notifError) {
+				console.error(
+					`[visitsService] Failed to create notification for visit update ${id}:`,
+					notifError
+				);
+			}
+			return result;
         }
         const result = normalizeVisit(mapFromDb(data[0]));
         

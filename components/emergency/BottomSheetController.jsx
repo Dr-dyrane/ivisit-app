@@ -10,11 +10,6 @@ export const BottomSheetController = forwardRef((props, ref) => {
 		hospitals,
 		allHospitals,
 		selectedHospital,
-		isRequestMode,
-		requestHospital,
-		onRequestClose,
-		onRequestInitiated,
-		onRequestComplete,
 		activeAmbulanceTrip,
 		activeBedBooking,
 		onCancelAmbulanceTrip,
@@ -89,11 +84,6 @@ export const BottomSheetController = forwardRef((props, ref) => {
 			hospitals={hospitals}
 			allHospitals={allHospitals}
 			selectedHospital={selectedHospital}
-			isRequestMode={isRequestMode}
-			requestHospital={requestHospital}
-			onRequestClose={onRequestClose}
-			onRequestInitiated={onRequestInitiated}
-			onRequestComplete={onRequestComplete}
 			activeAmbulanceTrip={activeAmbulanceTrip}
 			activeBedBooking={activeBedBooking}
 			onCancelAmbulanceTrip={wrappedOnCancelAmbulanceTrip}

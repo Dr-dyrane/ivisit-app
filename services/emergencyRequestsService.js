@@ -22,9 +22,16 @@ export const emergencyRequestsService = {
                 .in('status', ['in_progress', 'accepted', 'arrived'])
                 .order('created_at', { ascending: false });
             
-            if (!error && data && data.length > 0) {
-                // Map DB to App format
-                const requests = data.map(r => ({
+            if (error) {
+                if (__DEV__) {
+                    console.log("[emergencyRequestsService.list] Supabase error, falling back to local:", {
+                        code: error?.code ?? null,
+                        message: error?.message ?? null,
+                    });
+                }
+            } else {
+                const rows = Array.isArray(data) ? data : [];
+                const requests = rows.map((r) => ({
                     id: r.id,
                     requestId: r.request_id,
                     serviceType: r.service_type,
@@ -42,23 +49,35 @@ export const emergencyRequestsService = {
                     shared: r.shared_data_snapshot,
                     createdAt: r.created_at,
                     updatedAt: r.updated_at,
-                    // Responder Info
                     responderName: r.responder_name,
                     responderPhone: r.responder_phone,
                     responderVehicleType: r.responder_vehicle_type,
                     responderVehiclePlate: r.responder_vehicle_plate,
                     responderLocation: r.responder_location,
-                    responderHeading: r.responder_heading
+                    responderHeading: r.responder_heading,
                 }));
                 
-                // Sync to local cache
                 await database.write(StorageKeys.EMERGENCY_REQUESTS, requests);
+
+                if (__DEV__) {
+                    console.log("[emergencyRequestsService.list] Supabase active requests:", {
+                        count: requests.length,
+                        ids: requests.slice(0, 3).map((r) => r?.id),
+                    });
+                }
+                
                 return requests;
             }
         }
 
         // Fallback to local
 		const items = await database.read(StorageKeys.EMERGENCY_REQUESTS, []);
+        if (__DEV__) {
+            console.log("[emergencyRequestsService.list] Using local cache:", {
+                hasUser: !!user,
+                count: Array.isArray(items) ? items.length : 0,
+            });
+        }
 		if (!Array.isArray(items)) return [];
 		return items
 			.filter((r) => r && typeof r === "object")

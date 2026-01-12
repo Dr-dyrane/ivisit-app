@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
@@ -21,6 +20,9 @@ const EmergencyRequestModal = ({
 	onRequestClose,
 	onRequestInitiated,
 	onRequestComplete,
+	showClose = true,
+	onScroll,
+	scrollContentStyle,
 }) => {
 	const { isDarkMode } = useTheme();
 
@@ -162,31 +164,34 @@ const EmergencyRequestModal = ({
 
 	return (
 		<View style={styles.container}>
-			{/* Close button in top right - Fixed position relative to container */}
-			<Pressable
-				onPress={handleRequestDone}
-				style={[
-					styles.closeButton,
-					{
-						backgroundColor: isDarkMode
-							? "rgba(255,255,255,0.1)"
-							: "rgba(0,0,0,0.05)",
-					},
-				]}
-				hitSlop={16}
-			>
-				<Ionicons
-					name="close"
-					size={24}
-					color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
-				/>
-			</Pressable>
+			{showClose ? (
+				<Pressable
+					onPress={handleRequestDone}
+					style={[
+						styles.closeButton,
+						{
+							backgroundColor: isDarkMode
+								? "rgba(255,255,255,0.1)"
+								: "rgba(0,0,0,0.05)",
+						},
+					]}
+					hitSlop={16}
+				>
+					<Ionicons
+						name="close"
+						size={24}
+						color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+					/>
+				</Pressable>
+			) : null}
 
-			<BottomSheetScrollView
+			<ScrollView
 				style={{ flex: 1 }}
-				contentContainerStyle={styles.requestScrollContent}
+				contentContainerStyle={[styles.requestScrollContent, scrollContentStyle]}
 				showsVerticalScrollIndicator={false}
 				keyboardShouldPersistTaps="handled"
+				onScroll={onScroll}
+				scrollEventThrottle={16}
 			>
 				{requestStep === "select" ? (
 					<>
@@ -330,7 +335,7 @@ const EmergencyRequestModal = ({
 						)}
 					</>
 				)}
-			</BottomSheetScrollView>
+			</ScrollView>
 		</View>
 	);
 };

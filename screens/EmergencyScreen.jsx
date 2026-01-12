@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useCallback, useMemo, useState, useEffect } from "react";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { View, StyleSheet, Dimensions } from "react-native";
 import { useEmergency } from "../contexts/EmergencyContext";
 import { useEmergencyUI } from "../contexts/EmergencyUIContext";
@@ -26,6 +26,8 @@ import {
 } from "../constants/notifications";
 import { useNotifications } from "../contexts/NotificationsContext";
 import { getMapPaddingForSnapIndex } from "../constants/emergencyAnimations";
+import { simulationService } from "../services/simulationService";
+import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigationHelpers";
 
 import { EmergencyMapContainer } from "../components/emergency/EmergencyMapContainer";
 import { BottomSheetController } from "../components/emergency/BottomSheetController";
@@ -34,7 +36,6 @@ import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 import { useEmergencyHandlers } from "../hooks/emergency/useEmergencyHandlers";
 import { useHospitalSelection } from "../hooks/emergency/useHospitalSelection";
 import { useSearchFiltering } from "../hooks/emergency/useSearchFiltering";
-import { useRequestFlow } from "../hooks/emergency/useRequestFlow";
 
 /**
  * EmergencyScreen - Apple Maps Style Layout
@@ -48,6 +49,8 @@ import { useRequestFlow } from "../hooks/emergency/useRequestFlow";
  * - Easier performance optimization
  */
 export default function EmergencyScreen() {
+	const router = useRouter();
+	const simulationDebugRef = useRef(null);
 	const { resetTabBar, lockTabBarHidden, unlockTabBarHidden } =
 		useTabBarVisibility();
 	const { resetHeader } = useScrollAwareHeader();
@@ -58,7 +61,7 @@ export default function EmergencyScreen() {
 	const { preferences } = usePreferences();
 	const { contacts: emergencyContacts } = useEmergencyContacts();
 	const { profile: medicalProfile } = useMedicalProfile();
-	const { createRequest, updateRequest, setRequestStatus } = useEmergencyRequests();
+	const { setRequestStatus } = useEmergencyRequests();
 	const { addNotification } = useNotifications();
 
 	const screenHeight = Dimensions.get("window").height;
@@ -66,7 +69,6 @@ export default function EmergencyScreen() {
 	// Refs for map and bottom sheet
 	const mapRef = useRef(null);
 	const bottomSheetRef = useRef(null);
-	const lastListStateRef = useRef({ snapIndex: 1, scrollY: 0 });
 
 	// UI state from EmergencyUIContext
 	const {
@@ -80,8 +82,6 @@ export default function EmergencyScreen() {
 	} = useEmergencyUI();
 
 	// Local state
-	const [isRequestFlowOpen, setIsRequestFlowOpen] = useState(false);
-	const [requestHospitalId, setRequestHospitalId] = useState(null);
 	const [currentRoute, setCurrentRoute] = useState(null);
 	const [ratingState, setRatingState] = useState({
 		visible: false,
@@ -94,9 +94,9 @@ export default function EmergencyScreen() {
 	const mapBottomPadding = useMemo(() => {
 		return getMapPaddingForSnapIndex(
 			sheetSnapIndex,
-			!!selectedHospital && !isRequestFlowOpen
+			!!selectedHospital
 		);
-	}, [isRequestFlowOpen, selectedHospital, sheetSnapIndex]);
+	}, [selectedHospital, sheetSnapIndex]);
 
 	// Data state from EmergencyContext
 	const {
@@ -195,7 +195,7 @@ export default function EmergencyScreen() {
 	useFocusEffect(
 		useCallback(() => {
 			const shouldHideFAB =
-				!!selectedHospital || sheetSnapIndex === 0 || isRequestFlowOpen;
+				!!selectedHospital || sheetSnapIndex === 0;
 				
 			registerFAB({
 				icon: mode === "emergency" ? "bed-patient" : "medical",
@@ -210,7 +210,6 @@ export default function EmergencyScreen() {
 			registerFAB,
 			selectedHospital,
 			sheetSnapIndex,
-			isRequestFlowOpen,
 		])
 	);
 
@@ -231,74 +230,18 @@ export default function EmergencyScreen() {
 	}, [handleCloseFocus]);
 
 	// Emergency call handler
-	const handleEmergencyCall = useCallback(
+	const handlePrimaryAction = useCallback(
 		(hospitalId) => {
 			if (!hospitalId) return;
-			lastListStateRef.current = {
-				snapIndex: Number.isFinite(sheetSnapIndex) ? sheetSnapIndex : 1,
-				scrollY: Number.isFinite(getLastScrollY()) ? getLastScrollY() : 0,
-			};
-			selectHospital(hospitalId);
-			setRequestHospitalId(hospitalId);
-			setIsRequestFlowOpen(true);
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			setTimeout(() => {
-				bottomSheetRef.current?.expand?.();
-			}, 0);
+			if (mode === "booking") {
+				navigateToBookBed({ router, hospitalId, method: "push" });
+				return;
+			}
+			navigateToRequestAmbulance({ router, hospitalId, method: "push" });
 		},
-		[getLastScrollY, selectHospital, sheetSnapIndex]
+		[mode, router]
 	);
-
-	const requestHospital = useMemo(() => {
-		if (!requestHospitalId) return selectedHospital;
-		return (
-			hospitals.find((h) => h?.id === requestHospitalId) || selectedHospital
-		);
-	}, [hospitals, requestHospitalId, selectedHospital]);
-
-	const handleCloseRequestFlow = useCallback(() => {
-		setIsRequestFlowOpen(false);
-		setRequestHospitalId(null);
-		if (activeAmbulanceTrip || activeBedBooking) {
-			clearSelectedHospital();
-			setTimeout(() => {
-				// Derive max index dynamically instead of hard-coding 1
-				const maxIndex = Math.max(0, (bottomSheetRef.current?.snapPoints?.length ?? 3) - 1);
-				const targetIndex = Math.min(maxIndex, 1);
-				bottomSheetRef.current?.snapToIndex?.(targetIndex);
-			}, 0);
-			return;
-		}
-		handleCloseFocus();
-	}, [activeAmbulanceTrip, activeBedBooking, clearSelectedHospital, handleCloseFocus]);
-
-	// Hook: Request flow (create request + visits)
-	const { handleRequestInitiated, handleRequestComplete } = useRequestFlow({
-		createRequest,
-		updateRequest,
-		addVisit,
-		updateVisit,
-		setRequestStatus,
-		startAmbulanceTrip,
-		startBedBooking,
-		clearSelectedHospital,
-		user,
-		preferences,
-		medicalProfile,
-		emergencyContacts,
-		hospitals,
-		selectedSpecialty,
-		requestHospitalId,
-		selectedHospital,
-		activeAmbulanceTrip,
-		activeBedBooking,
-		currentRoute,
-		onRequestComplete: () => {
-			setTimeout(() => {
-				bottomSheetRef.current?.expand?.();
-			}, 0);
-		},
-	});
 
 	// Service type selection
 	const handleServiceTypeSelect = useCallback(
@@ -379,8 +322,7 @@ export default function EmergencyScreen() {
 	}, [hospitals, specialties]);
 
 	// Keep controls available since expanded is capped to semi-full and map remains visible.
-	// Hide controls when request flow is active to prevent clutter
-	const showMapControls = !isRequestFlowOpen;
+	const showMapControls = true;
 
 	const handleModeSelect = useCallback(
 		(nextMode) => {
@@ -402,6 +344,43 @@ export default function EmergencyScreen() {
 			setCurrentRoute(null);
 		}
 	}, [currentRoute, routeHospitalId]);
+
+	useEffect(() => {
+		const requestId = activeAmbulanceTrip?.requestId ?? null;
+		if (!requestId) return;
+		const coords = currentRoute?.coordinates ?? null;
+		if (!Array.isArray(coords) || coords.length < 2) return;
+
+		const status = activeAmbulanceTrip?.status ?? null;
+		const isInProgress =
+			status === EmergencyRequestStatus.IN_PROGRESS || status === "in_progress" || !status;
+		const hasResponder = !!activeAmbulanceTrip?.assignedAmbulance?.name;
+		const debugKey = `${requestId}|${String(status)}|${hasResponder ? "has" : "no"}|${coords.length}`;
+		if (__DEV__ && simulationDebugRef.current !== debugKey) {
+			simulationDebugRef.current = debugKey;
+			console.log("[EmergencyScreen] Simulation gate:", {
+				requestId,
+				status,
+				isInProgress,
+				hasResponder,
+				routePoints: coords.length,
+			});
+		}
+		if (!isInProgress || hasResponder) return;
+
+		if (__DEV__) {
+			console.log("[EmergencyScreen] Starting simulation:", {
+				requestId,
+				routePoints: coords.length,
+			});
+		}
+		simulationService.startSimulation(requestId, coords);
+	}, [
+		activeAmbulanceTrip?.requestId,
+		activeAmbulanceTrip?.status,
+		activeAmbulanceTrip?.assignedAmbulance?.name,
+		currentRoute?.coordinates,
+	]);
 
 	const hospitalsForMap = useMemo(() => {
 		if (!hospitals || hospitals.length === 0) return undefined;
@@ -521,11 +500,6 @@ export default function EmergencyScreen() {
 				hospitals={searchFilteredHospitals}
 				allHospitals={hospitals}
 				selectedHospital={selectedHospital}
-				isRequestMode={isRequestFlowOpen}
-				requestHospital={requestHospital}
-				onRequestClose={handleCloseRequestFlow}
-				onRequestInitiated={handleRequestInitiated}
-				onRequestComplete={handleRequestComplete}
 				activeAmbulanceTrip={activeAmbulanceTrip}
 				activeBedBooking={activeBedBooking}
 				onCancelAmbulanceTrip={onCancelAmbulanceTrip}
@@ -541,7 +515,7 @@ export default function EmergencyScreen() {
 				onServiceTypeSelect={handleServiceTypeSelect}
 				onSpecialtySelect={handleSpecialtySelect}
 				onHospitalSelect={handleHospitalSelect}
-				onHospitalCall={handleEmergencyCall}
+				onHospitalCall={handlePrimaryAction}
 				onSnapChange={handleSheetSnapChange}
 				onSearch={handleSearch}
 				onResetFilters={resetFilters}

@@ -263,7 +263,21 @@ export function EmergencyProvider({ children }) {
 	useEffect(() => {
 		let isActive = true;
 		(async () => {
-			const activeRequests = await emergencyRequestsService.list();
+			let attempt = 0;
+			let activeRequests = [];
+			while (isActive && attempt < 10) {
+				const { data: { user } } = await supabase.auth.getUser();
+				if (user) break;
+				attempt += 1;
+				if (__DEV__) {
+					console.log("[EmergencyContext] Hydrate requests: waiting for user session", {
+						attempt,
+					});
+				}
+				await new Promise((resolve) => setTimeout(resolve, 400));
+			}
+
+			activeRequests = await emergencyRequestsService.list();
 			const isActiveStatus = (status) =>
 				status === "in_progress" || status === "accepted" || status === "arrived";
 			const activeAmbulance = activeRequests.find(
@@ -274,6 +288,15 @@ export function EmergencyProvider({ children }) {
 			);
 			
 			if (!isActive) return;
+			if (__DEV__) {
+				console.log("[EmergencyContext] Hydrate requests result:", {
+					count: Array.isArray(activeRequests) ? activeRequests.length : 0,
+					activeAmbulanceId: activeAmbulance?.requestId ?? null,
+					activeAmbulanceStatus: activeAmbulance?.status ?? null,
+					activeBedId: activeBed?.requestId ?? null,
+					activeBedStatus: activeBed?.status ?? null,
+				});
+			}
 
 			const parseEtaToSecondsLocal = (eta) => {
 				if (!eta || typeof eta !== "string") return null;
@@ -286,6 +309,14 @@ export function EmergencyProvider({ children }) {
 			};
 
 			if (activeAmbulance) {
+				if (__DEV__) {
+					console.log("[EmergencyContext] Hydrating active ambulance trip:", {
+						requestId: activeAmbulance?.requestId ?? null,
+						status: activeAmbulance?.status ?? null,
+						hospitalId: activeAmbulance?.hospitalId ?? null,
+						hasResponder: !!activeAmbulance?.responderName,
+					});
+				}
 				let loc = null;
 				if (activeAmbulance.responderLocation) {
 					if (
@@ -344,6 +375,13 @@ export function EmergencyProvider({ children }) {
 			}
 
 			if (activeBed) {
+				if (__DEV__) {
+					console.log("[EmergencyContext] Hydrating active bed booking:", {
+						requestId: activeBed?.requestId ?? null,
+						status: activeBed?.status ?? null,
+						hospitalId: activeBed?.hospitalId ?? null,
+					});
+				}
 				const startedAt = activeBed.createdAt ? Date.parse(activeBed.createdAt) : Date.now();
 				const etaSeconds = parseEtaToSecondsLocal(activeBed.estimatedArrival);
 

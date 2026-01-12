@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet, Pressable, Linking, Image } from "react-native";
-import { useCallback, useMemo } from "react";
+import { View, Text, StyleSheet, Pressable, Linking, Image, ActivityIndicator } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { COLORS } from "../../../constants/colors";
@@ -13,11 +13,18 @@ const TripSummaryCollapsed = ({
 	etaText,
 	tripHospital,
 	callSign,
+	driverName,
+	callTarget,
+	onCancelAmbulanceTrip,
+	showMarkArrived,
+	onMarkAmbulanceArrived,
+	showComplete,
+	onCompleteAmbulanceTrip,
 }) => {
 	return (
 		<View
 			style={[
-				styles.collapsedContainer,
+				styles.container,
 				{
 					backgroundColor: isDarkMode ? "#1A2333" : "#FFFFFF",
 					shadowColor: "#000",
@@ -25,11 +32,13 @@ const TripSummaryCollapsed = ({
 					shadowOpacity: isDarkMode ? 0.35 : 0.08,
 					shadowRadius: 12,
 					elevation: 5,
+					paddingTop: 16,
+					paddingBottom: 16,
 				},
 			]}
 		>
-			<View style={styles.collapsedRow}>
-				<View style={{ flex: 1, paddingRight: 10 }}>
+			<View style={[styles.headerRow, { marginBottom: 10 }]}>
+				<View style={{ flex: 1, paddingRight: 12 }}>
 					<Text
 						style={[
 							styles.statusTitle,
@@ -44,7 +53,7 @@ const TripSummaryCollapsed = ({
 							styles.statusSub,
 							{
 								color: isDarkMode
-									? "rgba(255,255,255,0.65)"
+									? "rgba(255,255,255,0.6)"
 									: "rgba(15,23,42,0.6)",
 							},
 						]}
@@ -54,13 +63,66 @@ const TripSummaryCollapsed = ({
 					</Text>
 				</View>
 				<View style={styles.etaContainer}>
-					<Text style={[styles.etaTime, { color: COLORS.textLight }]}>
-						{etaText}
-					</Text>
-					<Text style={[styles.etaLabel, { color: "rgba(255,255,255,0.8)" }]}>
-						min
-					</Text>
+					<Text style={[styles.etaTime, { color: COLORS.textLight }]}>{etaText}</Text>
+					<Text style={[styles.etaLabel, { color: "rgba(255,255,255,0.8)" }]}>min</Text>
 				</View>
+			</View>
+
+			<Text
+				style={{
+					fontSize: 12,
+					fontWeight: "700",
+					color: isDarkMode ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.7)",
+				}}
+				numberOfLines={1}
+			>
+				{driverName}
+			</Text>
+
+			<View style={[styles.actionsRow, { marginTop: 12 }]}>
+				{callTarget && (
+					<Pressable
+						onPress={() => Linking.openURL(callTarget)}
+						style={({ pressed }) => [
+							styles.actionBtn,
+							{
+								backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
+								opacity: pressed ? 0.7 : 1,
+							},
+						]}
+					>
+						<Ionicons
+							name="call"
+							size={20}
+							color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+						/>
+					</Pressable>
+				)}
+
+				<Pressable
+					onPress={onCancelAmbulanceTrip}
+					style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.7 : 1 }]}
+				>
+					<Text style={styles.cancelText}>Cancel</Text>
+				</Pressable>
+
+				{showMarkArrived && (
+					<Pressable
+						onPress={onMarkAmbulanceArrived}
+						style={({ pressed }) => [styles.completeBtn, { opacity: pressed ? 0.7 : 1 }]}
+					>
+						<Text style={styles.completeText}>Arrived</Text>
+					</Pressable>
+				)}
+
+				{showComplete && (
+					<Pressable
+						onPress={onCompleteAmbulanceTrip}
+						style={({ pressed }) => [styles.completeBtn, { opacity: pressed ? 0.7 : 1 }]}
+					>
+						<Text style={styles.completeText}>Complete</Text>
+					</Pressable>
+				)}
 			</View>
 		</View>
 	);
@@ -78,10 +140,16 @@ const TripSummaryHalf = ({
 	assigned,
 	callTarget,
 	onCancelAmbulanceTrip,
+	isBusy,
+	busyAction,
+	onPressCall,
+	onPressCancel,
 	showMarkArrived,
 	onMarkAmbulanceArrived,
+	onPressArrived,
 	showComplete,
 	onCompleteAmbulanceTrip,
+	onPressComplete,
 }) => {
 	return (
 		<View
@@ -197,18 +265,32 @@ const TripSummaryHalf = ({
 				</View>
 			</View>
 
+			{tripHospital && (
+				<View style={{ marginTop: 14 }}>
+					<HospitalCard
+						hospital={tripHospital}
+						isSelected={true}
+						onSelect={undefined}
+						onCall={undefined}
+						mode="emergency"
+						hidePrimaryAction={true}
+					/>
+				</View>
+			)}
+
 			{/* Actions */}
 			<View style={styles.actionsRow}>
 				{callTarget && (
 					<Pressable
-						onPress={() => Linking.openURL(callTarget)}
+						onPress={onPressCall ?? (() => Linking.openURL(callTarget))}
+						disabled={!!isBusy}
 						style={({ pressed }) => [
 							styles.actionBtn,
 							{
 								backgroundColor: isDarkMode
 									? "rgba(255,255,255,0.1)"
 									: "#F1F5F9",
-								opacity: pressed ? 0.7 : 1,
+								opacity: isBusy ? 0.5 : pressed ? 0.7 : 1,
 							},
 						]}
 					>
@@ -221,36 +303,51 @@ const TripSummaryHalf = ({
 				)}
 
 				<Pressable
-					onPress={onCancelAmbulanceTrip}
+					onPress={onPressCancel ?? onCancelAmbulanceTrip}
+					disabled={!!isBusy}
 					style={({ pressed }) => [
 						styles.cancelBtn,
-						{ opacity: pressed ? 0.7 : 1 },
+						{ opacity: isBusy ? 0.6 : pressed ? 0.7 : 1 },
 					]}
 				>
-					<Text style={styles.cancelText}>Cancel Trip</Text>
+					{busyAction === "cancel" ? (
+						<ActivityIndicator size="small" color="#DC2626" />
+					) : (
+						<Text style={styles.cancelText}>Cancel Trip</Text>
+					)}
 				</Pressable>
 
 				{showMarkArrived && (
 					<Pressable
-						onPress={onMarkAmbulanceArrived}
+						onPress={onPressArrived ?? onMarkAmbulanceArrived}
+						disabled={!!isBusy}
 						style={({ pressed }) => [
 							styles.completeBtn,
-							{ opacity: pressed ? 0.7 : 1 },
+							{ opacity: isBusy ? 0.6 : pressed ? 0.7 : 1 },
 						]}
 					>
-						<Text style={styles.completeText}>Mark Arrived</Text>
+						{busyAction === "arrived" ? (
+							<ActivityIndicator size="small" color="#10B981" />
+						) : (
+							<Text style={styles.completeText}>Mark Arrived</Text>
+						)}
 					</Pressable>
 				)}
 
 				{showComplete && (
 					<Pressable
-						onPress={onCompleteAmbulanceTrip}
+						onPress={onPressComplete ?? onCompleteAmbulanceTrip}
+						disabled={!!isBusy}
 						style={({ pressed }) => [
 							styles.completeBtn,
-							{ opacity: pressed ? 0.7 : 1 },
+							{ opacity: isBusy ? 0.6 : pressed ? 0.7 : 1 },
 						]}
 					>
-						<Text style={styles.completeText}>Complete</Text>
+						{busyAction === "complete" ? (
+							<ActivityIndicator size="small" color="#10B981" />
+						) : (
+							<Text style={styles.completeText}>Complete</Text>
+						)}
 					</Pressable>
 				)}
 			</View>
@@ -271,10 +368,16 @@ const TripSummaryFull = ({
 	ambulanceType,
 	callTarget,
 	onCancelAmbulanceTrip,
+	isBusy,
+	busyAction,
+	onPressCall,
+	onPressCancel,
 	showMarkArrived,
 	onMarkAmbulanceArrived,
+	onPressArrived,
 	showComplete,
 	onCompleteAmbulanceTrip,
+	onPressComplete,
 }) => {
 	return (
 		<View
@@ -450,14 +553,15 @@ const TripSummaryFull = ({
 				<View style={styles.actionsRow}>
 					{callTarget && (
 						<Pressable
-							onPress={() => Linking.openURL(callTarget)}
+							onPress={onPressCall ?? (() => Linking.openURL(callTarget))}
+							disabled={!!isBusy}
 							style={({ pressed }) => [
 								styles.actionBtn,
 								{
 									backgroundColor: isDarkMode
 										? "rgba(255,255,255,0.1)"
 										: "#F1F5F9",
-									opacity: pressed ? 0.7 : 1,
+									opacity: isBusy ? 0.5 : pressed ? 0.7 : 1,
 								},
 							]}
 						>
@@ -470,36 +574,51 @@ const TripSummaryFull = ({
 					)}
 
 					<Pressable
-						onPress={onCancelAmbulanceTrip}
+						onPress={onPressCancel ?? onCancelAmbulanceTrip}
+						disabled={!!isBusy}
 						style={({ pressed }) => [
 							styles.cancelBtn,
-							{ opacity: pressed ? 0.7 : 1 },
+							{ opacity: isBusy ? 0.6 : pressed ? 0.7 : 1 },
 						]}
 					>
-						<Text style={styles.cancelText}>Cancel Trip</Text>
+						{busyAction === "cancel" ? (
+							<ActivityIndicator size="small" color="#DC2626" />
+						) : (
+							<Text style={styles.cancelText}>Cancel Trip</Text>
+						)}
 					</Pressable>
 
 					{showMarkArrived && (
 						<Pressable
-							onPress={onMarkAmbulanceArrived}
+							onPress={onPressArrived ?? onMarkAmbulanceArrived}
+							disabled={!!isBusy}
 							style={({ pressed }) => [
 								styles.completeBtn,
-								{ opacity: pressed ? 0.7 : 1 },
+								{ opacity: isBusy ? 0.6 : pressed ? 0.7 : 1 },
 							]}
 						>
-							<Text style={styles.completeText}>Mark Arrived</Text>
+							{busyAction === "arrived" ? (
+								<ActivityIndicator size="small" color="#10B981" />
+							) : (
+								<Text style={styles.completeText}>Mark Arrived</Text>
+							)}
 						</Pressable>
 					)}
 
 					{showComplete && (
 						<Pressable
-							onPress={onCompleteAmbulanceTrip}
+							onPress={onPressComplete ?? onCompleteAmbulanceTrip}
+							disabled={!!isBusy}
 							style={({ pressed }) => [
 								styles.completeBtn,
-								{ opacity: pressed ? 0.7 : 1 },
+								{ opacity: isBusy ? 0.6 : pressed ? 0.7 : 1 },
 							]}
 						>
-							<Text style={styles.completeText}>Complete</Text>
+							{busyAction === "complete" ? (
+								<ActivityIndicator size="small" color="#10B981" />
+							) : (
+								<Text style={styles.completeText}>Complete</Text>
+							)}
 						</Pressable>
 					)}
 				</View>
@@ -518,10 +637,26 @@ export const TripSummaryCard = ({
 	isCollapsed,
 	isExpanded,
 	sheetPhase,
-	nowMs = Date.now(),
 }) => {
 	const collapsed = sheetPhase ? sheetPhase === "collapsed" : !!isCollapsed;
 	const expanded = sheetPhase ? sheetPhase === "full" : !!isExpanded;
+	const [nowMs, setNowMs] = useState(Date.now());
+	const [busyAction, setBusyAction] = useState(null);
+	const mountedRef = useRef(true);
+
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => {
+			mountedRef.current = false;
+		};
+	}, []);
+
+	useEffect(() => {
+		if (!activeAmbulanceTrip?.requestId) return;
+		if (collapsed) return;
+		const id = setInterval(() => setNowMs(Date.now()), 1000);
+		return () => clearInterval(id);
+	}, [activeAmbulanceTrip?.requestId, collapsed]);
 
 	const assigned = activeAmbulanceTrip?.assignedAmbulance ?? null;
 	const tripHospital =
@@ -553,6 +688,26 @@ export const TripSummaryCard = ({
 		const normalized = normalizePhone(phoneRaw);
 		return normalized ? `tel:${normalized}` : null;
 	}, [normalizePhone, tripHospital?.phone]);
+
+	const runAction = useCallback(
+		(actionKey, fn) => {
+			if (busyAction) return;
+			if (typeof fn !== "function") return;
+			setBusyAction(actionKey);
+			Promise.resolve(fn())
+				.catch(() => {})
+				.finally(() => {
+					if (mountedRef.current) setBusyAction(null);
+				});
+		},
+		[busyAction]
+	);
+
+	const handlePressCall = useCallback(() => {
+		if (busyAction) return;
+		if (!callTarget) return;
+		Linking.openURL(callTarget);
+	}, [busyAction, callTarget]);
 
 	const etaText =
 		formattedRemaining ??
@@ -607,6 +762,13 @@ export const TripSummaryCard = ({
 				etaText={etaText}
 				tripHospital={tripHospital}
 				callSign={callSign}
+				driverName={driverName}
+				callTarget={callTarget}
+				onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+				showMarkArrived={showMarkArrived}
+				onMarkAmbulanceArrived={onMarkAmbulanceArrived}
+				showComplete={showComplete}
+				onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
 			/>
 		);
 	}
@@ -625,11 +787,14 @@ export const TripSummaryCard = ({
 				assigned={assigned}
 				ambulanceType={ambulanceType}
 				callTarget={callTarget}
-				onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+				isBusy={!!busyAction}
+				busyAction={busyAction}
+				onPressCall={handlePressCall}
+				onPressCancel={() => runAction("cancel", onCancelAmbulanceTrip)}
 				showMarkArrived={showMarkArrived}
-				onMarkAmbulanceArrived={onMarkAmbulanceArrived}
+				onPressArrived={() => runAction("arrived", onMarkAmbulanceArrived)}
 				showComplete={showComplete}
-				onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
+				onPressComplete={() => runAction("complete", onCompleteAmbulanceTrip)}
 			/>
 		);
 	}
@@ -646,11 +811,14 @@ export const TripSummaryCard = ({
 			vehicle={vehicle}
 			assigned={assigned}
 			callTarget={callTarget}
-			onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+			isBusy={!!busyAction}
+			busyAction={busyAction}
+			onPressCall={handlePressCall}
+			onPressCancel={() => runAction("cancel", onCancelAmbulanceTrip)}
 			showMarkArrived={showMarkArrived}
-			onMarkAmbulanceArrived={onMarkAmbulanceArrived}
+			onPressArrived={() => runAction("arrived", onMarkAmbulanceArrived)}
 			showComplete={showComplete}
-			onCompleteAmbulanceTrip={onCompleteAmbulanceTrip}
+			onPressComplete={() => runAction("complete", onCompleteAmbulanceTrip)}
 		/>
 	);
 };

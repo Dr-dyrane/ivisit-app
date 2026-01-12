@@ -10,7 +10,6 @@ export const useBottomSheetSnap = ({
 	isDetailMode,
 	isTripMode,
 	isBedBookingMode,
-	isRequestMode,
 	onSnapChange,
 }) => {
 	const { hideTabBar, resetTabBar } = useTabBarVisibility();
@@ -23,38 +22,24 @@ export const useBottomSheetSnap = ({
 			isDetailMode,
 			isTripMode,
 			isBedBookingMode,
-			isRequestMode,
 			onSnapChange,
 		});
 
 	useEffect(() => {
-		if (isDetailMode || isTripMode || isBedBookingMode || isRequestMode) {
+		if (isDetailMode || isTripMode || isBedBookingMode) {
 			hideTabBar();
 		} else {
 			resetTabBar();
 		}
-	}, [hideTabBar, isBedBookingMode, isDetailMode, isRequestMode, isTripMode, resetTabBar]);
+	}, [hideTabBar, isBedBookingMode, isDetailMode, isTripMode, resetTabBar]);
 
 	const handleSheetChange = useCallback(
 		(index) => {
-			console.log('[useBottomSheetSnap] handleSheetChange called:', {
-				index,
-				snapPointsLength: snapPoints.length,
-				snapPoints,
-				lastHapticIndex: lastHapticIndexRef.current,
-				isDetailMode,
-				isTripMode,
-				isBedBookingMode,
-				isRequestMode,
-				timestamp: Date.now()
-			});
-			
 			// Get max index dynamically for haptic feedback
 			const maxIndex = Math.max(0, snapPoints.length - 1);
 			const isExpanded = index >= maxIndex;
 			
 			if (index >= 0 && lastHapticIndexRef.current !== index) {
-				console.log('[useBottomSheetSnap] Triggering haptic feedback:', { index, isExpanded });
 				lastHapticIndexRef.current = index;
 				Haptics.impactAsync(
 					isExpanded
@@ -64,7 +49,6 @@ export const useBottomSheetSnap = ({
 			}
 
 			if (onSnapChange) {
-				console.log('[useBottomSheetSnap] Calling onSnapChange:', { index });
 				onSnapChange(index);
 			}
 
@@ -85,12 +69,6 @@ export const useBottomSheetSnap = ({
 				return;
 			}
 
-			if (isRequestMode) {
-				hideTabBar();
-				resetHeader();
-				return;
-			}
-
 			if (index === 0) {
 				resetTabBar();
 				resetHeader();
@@ -98,7 +76,7 @@ export const useBottomSheetSnap = ({
 				Keyboard.dismiss();
 			}
 
-			if (index === 2) {
+			if (index >= maxIndex) {
 				hideTabBar();
 			}
 		},
@@ -107,7 +85,6 @@ export const useBottomSheetSnap = ({
 			isDetailMode,
 			isTripMode,
 			isBedBookingMode,
-			isRequestMode,
 			resetTabBar,
 			resetHeader,
 			onSnapChange,

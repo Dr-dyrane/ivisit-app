@@ -152,6 +152,32 @@ export default function StacksLayout() {
 			/>
 
 			<Stack.Screen
+				name="emergency/request-ambulance"
+				options={{
+					headerTitle: "Request Ambulance",
+					headerTitleStyle: {
+						fontWeight: "bold",
+						fontSize: 18,
+						color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+					},
+					headerLeft: () => <HeaderBackButton />,
+				}}
+			/>
+
+			<Stack.Screen
+				name="emergency/book-bed"
+				options={{
+					headerTitle: "Book Bed",
+					headerTitleStyle: {
+						fontWeight: "bold",
+						fontSize: 18,
+						color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+					},
+					headerLeft: () => <HeaderBackButton />,
+				}}
+			/>
+
+			<Stack.Screen
 				name="create-password"
 				options={{
 					headerTitle: "Create Password",

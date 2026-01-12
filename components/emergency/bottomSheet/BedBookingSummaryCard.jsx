@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet, Pressable, Linking } from "react-native";
-import { useCallback, useMemo } from "react";
+import { View, Text, StyleSheet, Pressable, Linking, ActivityIndicator } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -13,11 +13,20 @@ const BedBookingSummaryCollapsed = ({
 	etaText,
 	hospitalName,
 	bedNumber,
+	bedType,
+	specialty,
+	bedCount,
+	callTarget,
+	onCancelBedBooking,
+	showMarkOccupied,
+	onMarkBedOccupied,
+	showComplete,
+	onCompleteBedBooking,
 }) => {
 	return (
 		<View
 			style={[
-				styles.collapsedContainer,
+				styles.container,
 				{
 					backgroundColor: isDarkMode ? "#1A2333" : "#FFFFFF",
 					shadowColor: "#000",
@@ -25,11 +34,13 @@ const BedBookingSummaryCollapsed = ({
 					shadowOpacity: isDarkMode ? 0.35 : 0.08,
 					shadowRadius: 12,
 					elevation: 5,
+					paddingTop: 16,
+					paddingBottom: 16,
 				},
 			]}
 		>
-			<View style={styles.collapsedRow}>
-				<View style={{ flex: 1, paddingRight: 10 }}>
+			<View style={[styles.headerRow, { marginBottom: 10 }]}>
+				<View style={{ flex: 1, paddingRight: 12 }}>
 					<Text
 						style={[
 							styles.statusTitle,
@@ -44,7 +55,7 @@ const BedBookingSummaryCollapsed = ({
 							styles.statusSub,
 							{
 								color: isDarkMode
-									? "rgba(255,255,255,0.65)"
+									? "rgba(255,255,255,0.6)"
 									: "rgba(15,23,42,0.6)",
 							},
 						]}
@@ -57,6 +68,69 @@ const BedBookingSummaryCollapsed = ({
 					<Text style={[styles.etaTime, { color: COLORS.textLight }]}>{etaText}</Text>
 					<Text style={[styles.etaLabel, { color: "rgba(255,255,255,0.8)" }]}>min</Text>
 				</View>
+			</View>
+
+			<Text
+				style={{
+					fontSize: 12,
+					fontWeight: "700",
+					color: isDarkMode ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.7)",
+				}}
+				numberOfLines={1}
+			>
+				{bedType} • {specialty} • {bedCount} {bedCount === "1" ? "bed" : "beds"}
+			</Text>
+
+			<View style={[styles.actionsRow, { marginTop: 12 }]}>
+				{callTarget && (
+					<Pressable
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+							Linking.openURL(callTarget);
+						}}
+						style={({ pressed }) => [
+							styles.actionBtn,
+							{
+								backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
+								opacity: pressed ? 0.7 : 1,
+							},
+						]}
+					>
+						<Ionicons
+							name="call"
+							size={20}
+							color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+						/>
+					</Pressable>
+				)}
+
+				<Pressable
+					onPress={() => {
+						Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+						onCancelBedBooking?.();
+					}}
+					style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.7 : 1 }]}
+				>
+					<Text style={styles.cancelText}>Cancel</Text>
+				</Pressable>
+
+				{showMarkOccupied && (
+					<Pressable
+						onPress={onMarkBedOccupied}
+						style={({ pressed }) => [styles.completeBtn, { opacity: pressed ? 0.7 : 1 }]}
+					>
+						<Text style={styles.completeText}>Occupied</Text>
+					</Pressable>
+				)}
+
+				{showComplete && (
+					<Pressable
+						onPress={onCompleteBedBooking}
+						style={({ pressed }) => [styles.completeBtn, { opacity: pressed ? 0.7 : 1 }]}
+					>
+						<Text style={styles.completeText}>Complete</Text>
+					</Pressable>
+				)}
 			</View>
 		</View>
 	);
@@ -71,12 +145,20 @@ const BedBookingSummaryHalf = ({
 	bedCount,
 	bedNumber,
 	specialty,
+	bedProgress,
+	bookingHospital,
 	callTarget,
 	onCancelBedBooking,
+	isBusy,
+	busyAction,
+	onPressCall,
+	onPressCancel,
 	showMarkOccupied,
 	onMarkBedOccupied,
+	onPressOccupied,
 	showComplete,
 	onCompleteBedBooking,
+	onPressComplete,
 }) => {
 	return (
 		<View
@@ -137,7 +219,7 @@ const BedBookingSummaryHalf = ({
 					style={[
 						styles.progressBar,
 						{
-							width: "100%",
+							width: `${Math.max(5, (bedProgress ?? 0) * 100)}%`,
 							backgroundColor: COLORS.brandPrimary,
 						},
 					]}
@@ -191,21 +273,38 @@ const BedBookingSummaryHalf = ({
 				</View>
 			</View>
 
+			{bookingHospital && (
+				<View style={{ marginTop: 14 }}>
+					<HospitalCard
+						hospital={bookingHospital}
+						isSelected={true}
+						onSelect={undefined}
+						onCall={undefined}
+						mode="booking"
+						hidePrimaryAction={true}
+					/>
+				</View>
+			)}
+
 			{/* Actions */}
 			<View style={styles.actionsRow}>
 				{callTarget && (
 					<Pressable
-						onPress={() => {
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							Linking.openURL(callTarget);
-						}}
+						onPress={
+							onPressCall ??
+							(() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+								Linking.openURL(callTarget);
+							})
+						}
+						disabled={!!isBusy}
 						style={({ pressed }) => [
 							styles.actionBtn,
 							{
 								backgroundColor: isDarkMode
 									? "rgba(255,255,255,0.1)"
 									: "#F1F5F9",
-								opacity: pressed ? 0.7 : 1,
+								opacity: isBusy ? 0.5 : pressed ? 0.7 : 1,
 							},
 						]}
 					>
@@ -218,39 +317,57 @@ const BedBookingSummaryHalf = ({
 				)}
 
 				<Pressable
-					onPress={() => {
-						Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-						onCancelBedBooking?.();
-					}}
+					onPress={
+						onPressCancel ??
+						(() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+							onCancelBedBooking?.();
+						})
+					}
+					disabled={!!isBusy}
 					style={({ pressed }) => [
 						styles.cancelBtn,
-						{ opacity: pressed ? 0.7 : 1 },
+						{ opacity: isBusy ? 0.6 : pressed ? 0.7 : 1 },
 					]}
 				>
-					<Text style={styles.cancelText}>Cancel Reservation</Text>
+					{busyAction === "cancel" ? (
+						<ActivityIndicator size="small" color="#DC2626" />
+					) : (
+						<Text style={styles.cancelText}>Cancel Reservation</Text>
+					)}
 				</Pressable>
 
 				{showMarkOccupied && (
 					<Pressable
-						onPress={onMarkBedOccupied}
+						onPress={onPressOccupied ?? onMarkBedOccupied}
+						disabled={!!isBusy}
 						style={({ pressed }) => [
 							styles.completeBtn,
-							{ opacity: pressed ? 0.7 : 1 },
+							{ opacity: isBusy ? 0.6 : pressed ? 0.7 : 1 },
 						]}
 					>
-						<Text style={styles.completeText}>Mark Occupied</Text>
+						{busyAction === "occupied" ? (
+							<ActivityIndicator size="small" color="#10B981" />
+						) : (
+							<Text style={styles.completeText}>Mark Occupied</Text>
+						)}
 					</Pressable>
 				)}
 
 				{showComplete && (
 					<Pressable
-						onPress={onCompleteBedBooking}
+						onPress={onPressComplete ?? onCompleteBedBooking}
+						disabled={!!isBusy}
 						style={({ pressed }) => [
 							styles.completeBtn,
-							{ opacity: pressed ? 0.7 : 1 },
+							{ opacity: isBusy ? 0.6 : pressed ? 0.7 : 1 },
 						]}
 					>
-						<Text style={styles.completeText}>Complete</Text>
+						{busyAction === "complete" ? (
+							<ActivityIndicator size="small" color="#10B981" />
+						) : (
+							<Text style={styles.completeText}>Complete</Text>
+						)}
 					</Pressable>
 				)}
 			</View>
@@ -267,12 +384,19 @@ const BedBookingSummaryFull = ({
 	bedCount,
 	bedNumber,
 	specialty,
+	bedProgress,
 	callTarget,
 	onCancelBedBooking,
+	isBusy,
+	busyAction,
+	onPressCall,
+	onPressCancel,
 	showMarkOccupied,
 	onMarkBedOccupied,
+	onPressOccupied,
 	showComplete,
 	onCompleteBedBooking,
+	onPressComplete,
 	bookingHospital,
 }) => {
 	return (
@@ -295,7 +419,15 @@ const BedBookingSummaryFull = ({
 
 			<View style={styles.fullBody}>
 				<View style={[styles.progressTrack, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9" }]}>
-					<View style={[styles.progressBar, { width: "100%", backgroundColor: COLORS.brandPrimary }]} />
+					<View
+						style={[
+							styles.progressBar,
+							{
+								width: `${Math.max(5, (bedProgress ?? 0) * 100)}%`,
+								backgroundColor: COLORS.brandPrimary,
+							},
+						]}
+					/>
 				</View>
 
 				{/* Bed Details Section */}
@@ -312,7 +444,7 @@ const BedBookingSummaryFull = ({
 					>
 						<Fontisto
 							name="bed-patient"
-							size={64}
+							size={44}
 							color={isDarkMode ? "#FFFFFF" : COLORS.brandPrimary}
 						/>
 					</View>
@@ -361,15 +493,19 @@ const BedBookingSummaryFull = ({
 				<View style={styles.actionsRow}>
 					{callTarget && (
 						<Pressable
-							onPress={() => {
-								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-								Linking.openURL(callTarget);
-							}}
+							onPress={
+								onPressCall ??
+								(() => {
+									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+									Linking.openURL(callTarget);
+								})
+							}
+							disabled={!!isBusy}
 							style={({ pressed }) => [
 								styles.actionBtn,
 								{
 									backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
-									opacity: pressed ? 0.7 : 1,
+									opacity: isBusy ? 0.5 : pressed ? 0.7 : 1,
 								},
 							]}
 						>
@@ -378,30 +514,57 @@ const BedBookingSummaryFull = ({
 					)}
 
 					<Pressable
-						onPress={() => {
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-							onCancelBedBooking?.();
-						}}
-						style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.7 : 1 }]}
+						onPress={
+							onPressCancel ??
+							(() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+								onCancelBedBooking?.();
+							})
+						}
+						disabled={!!isBusy}
+						style={({ pressed }) => [
+							styles.cancelBtn,
+							{ opacity: isBusy ? 0.6 : pressed ? 0.7 : 1 },
+						]}
 					>
-						<Text style={styles.cancelText}>Cancel</Text>
+						{busyAction === "cancel" ? (
+							<ActivityIndicator size="small" color="#DC2626" />
+						) : (
+							<Text style={styles.cancelText}>Cancel</Text>
+						)}
 					</Pressable>
 
 					{showMarkOccupied && (
 						<Pressable
-							onPress={onMarkBedOccupied}
-							style={({ pressed }) => [styles.completeBtn, { opacity: pressed ? 0.7 : 1 }]}
+							onPress={onPressOccupied ?? onMarkBedOccupied}
+							disabled={!!isBusy}
+							style={({ pressed }) => [
+								styles.completeBtn,
+								{ opacity: isBusy ? 0.6 : pressed ? 0.7 : 1 },
+							]}
 						>
-							<Text style={styles.completeText}>Mark Occupied</Text>
+							{busyAction === "occupied" ? (
+								<ActivityIndicator size="small" color="#10B981" />
+							) : (
+								<Text style={styles.completeText}>Mark Occupied</Text>
+							)}
 						</Pressable>
 					)}
 
 					{showComplete && (
 						<Pressable
-							onPress={onCompleteBedBooking}
-							style={({ pressed }) => [styles.completeBtn, { opacity: pressed ? 0.7 : 1 }]}
+							onPress={onPressComplete ?? onCompleteBedBooking}
+							disabled={!!isBusy}
+							style={({ pressed }) => [
+								styles.completeBtn,
+								{ opacity: isBusy ? 0.6 : pressed ? 0.7 : 1 },
+							]}
 						>
-							<Text style={styles.completeText}>Complete</Text>
+							{busyAction === "complete" ? (
+								<ActivityIndicator size="small" color="#10B981" />
+							) : (
+								<Text style={styles.completeText}>Complete</Text>
+							)}
 						</Pressable>
 					)}
 				</View>
@@ -420,10 +583,26 @@ export const BedBookingSummaryCard = ({
 	isCollapsed,
 	isExpanded,
 	sheetPhase,
-	nowMs = Date.now(),
 }) => {
 	const collapsed = sheetPhase ? sheetPhase === "collapsed" : !!isCollapsed;
 	const expanded = sheetPhase ? sheetPhase === "full" : !!isExpanded;
+	const [nowMs, setNowMs] = useState(Date.now());
+	const [busyAction, setBusyAction] = useState(null);
+	const mountedRef = useRef(true);
+
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => {
+			mountedRef.current = false;
+		};
+	}, []);
+
+	useEffect(() => {
+		if (!activeBedBooking?.requestId) return;
+		if (collapsed) return;
+		const id = setInterval(() => setNowMs(Date.now()), 1000);
+		return () => clearInterval(id);
+	}, [activeBedBooking?.requestId, collapsed]);
 
 	const bookingHospital =
 		activeBedBooking?.hospitalId && Array.isArray(allHospitals)
@@ -452,6 +631,27 @@ export const BedBookingSummaryCard = ({
 		const normalized = normalizePhone(phoneRaw);
 		return normalized ? `tel:${normalized}` : null;
 	}, [normalizePhone, bookingHospital?.phone]);
+
+	const runAction = useCallback(
+		(actionKey, fn) => {
+			if (busyAction) return;
+			if (typeof fn !== "function") return;
+			setBusyAction(actionKey);
+			Promise.resolve(fn())
+				.catch(() => {})
+				.finally(() => {
+					if (mountedRef.current) setBusyAction(null);
+				});
+		},
+		[busyAction]
+	);
+
+	const handlePressCall = useCallback(() => {
+		if (busyAction) return;
+		if (!callTarget) return;
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		Linking.openURL(callTarget);
+	}, [busyAction, callTarget]);
 
 	const etaText =
 		formattedBedRemaining ??
@@ -504,6 +704,15 @@ export const BedBookingSummaryCard = ({
 				etaText={etaText}
 				hospitalName={hospitalName}
 				bedNumber={bedNumber}
+				bedType={bedType}
+				specialty={specialty}
+				bedCount={bedCount}
+				callTarget={callTarget}
+				onCancelBedBooking={onCancelBedBooking}
+				showMarkOccupied={showMarkOccupied}
+				onMarkBedOccupied={onMarkBedOccupied}
+				showComplete={showComplete}
+				onCompleteBedBooking={onCompleteBedBooking}
 			/>
 		);
 	}
@@ -519,12 +728,19 @@ export const BedBookingSummaryCard = ({
 				bedCount={bedCount}
 				bedNumber={bedNumber}
 				specialty={specialty}
+				bedProgress={bedProgress}
 				callTarget={callTarget}
 				onCancelBedBooking={onCancelBedBooking}
+				isBusy={!!busyAction}
+				busyAction={busyAction}
+				onPressCall={handlePressCall}
+				onPressCancel={() => runAction("cancel", onCancelBedBooking)}
 				showMarkOccupied={showMarkOccupied}
 				onMarkBedOccupied={onMarkBedOccupied}
+				onPressOccupied={() => runAction("occupied", onMarkBedOccupied)}
 				showComplete={showComplete}
 				onCompleteBedBooking={onCompleteBedBooking}
+				onPressComplete={() => runAction("complete", onCompleteBedBooking)}
 				bookingHospital={bookingHospital}
 			/>
 		);
@@ -540,12 +756,20 @@ export const BedBookingSummaryCard = ({
 			bedCount={bedCount}
 			bedNumber={bedNumber}
 			specialty={specialty}
+			bedProgress={bedProgress}
+			bookingHospital={bookingHospital}
 			callTarget={callTarget}
 			onCancelBedBooking={onCancelBedBooking}
+			isBusy={!!busyAction}
+			busyAction={busyAction}
+			onPressCall={handlePressCall}
+			onPressCancel={() => runAction("cancel", onCancelBedBooking)}
 			showMarkOccupied={showMarkOccupied}
 			onMarkBedOccupied={onMarkBedOccupied}
+			onPressOccupied={() => runAction("occupied", onMarkBedOccupied)}
 			showComplete={showComplete}
 			onCompleteBedBooking={onCompleteBedBooking}
+			onPressComplete={() => runAction("complete", onCompleteBedBooking)}
 		/>
 	);
 };
@@ -760,16 +984,16 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		marginBottom: 24,
-		paddingVertical: 12,
+		paddingVertical: 8,
 	},
 	bedImageContainer: {
-		width: 80,
-		height: 80,
+		width: 60,
+		height: 60,
 		borderRadius: 16,
 		backgroundColor: "rgba(37, 99, 235, 0.10)",
 		alignItems: "center",
 		justifyContent: "center",
-		marginRight: 16,
+		marginRight: 12,
 	},
 	bedInfo: {
 		flex: 1,
