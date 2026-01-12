@@ -31,7 +31,7 @@ import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigati
 
 import { EmergencyMapContainer } from "../components/emergency/EmergencyMapContainer";
 import { BottomSheetController } from "../components/emergency/BottomSheetController";
-import { VisitRatingModal } from "../components/emergency/VisitRatingModal";
+import { ServiceRatingModal } from "../components/emergency/ServiceRatingModal";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 import { useEmergencyHandlers } from "../hooks/emergency/useEmergencyHandlers";
 import { useHospitalSelection } from "../hooks/emergency/useHospitalSelection";
@@ -476,34 +476,55 @@ export default function EmergencyScreen() {
 		setRatingState({
 			visible: true,
 			visitId,
-			title: "Rate your ambulance visit",
-			subtitle: hospitalName ? `Trip to ${hospitalName}` : null,
+			serviceType: "ambulance",
+			title: "Rate your ambulance response",
+			subtitle: hospitalName ? `Response to ${hospitalName}` : null,
+			serviceDetails: {
+				hospital: hospitalName,
+				duration: activeAmbulanceTrip?.duration ? `${activeAmbulanceTrip.duration} minutes` : null,
+				provider: activeAmbulanceTrip?.assignedAmbulance?.name || "Emergency Services",
+			},
 		});
-	}, [activeAmbulanceTrip?.hospitalName, activeAmbulanceTrip?.requestId, onCompleteAmbulanceTrip]);
+	}, [activeAmbulanceTrip?.hospitalName, activeAmbulanceTrip?.requestId, activeAmbulanceTrip?.duration, activeAmbulanceTrip?.assignedAmbulance?.name, onCompleteAmbulanceTrip]);
 
-	const handleCompleteBedBookingWithRating = useCallback(async () => {
-		const visitId = activeBedBooking?.requestId ?? null;
-		const hospitalName = activeBedBooking?.hospitalName ?? null;
-		await onCompleteBedBooking?.();
+	const handleCompleteBedBookingWithRating = useCallback(() => {
+		const visitId = activeBedBooking?.requestId;
+		const hospitalName = activeBedBooking?.hospitalName;
 		if (!visitId) return;
+		
 		setRatingState({
 			visible: true,
 			visitId,
-			title: "Rate your bed visit",
+			serviceType: "bed",
+			title: "Rate your hospital stay",
 			subtitle: hospitalName ? `Stay at ${hospitalName}` : null,
+			serviceDetails: {
+				hospital: hospitalName,
+				duration: activeBedBooking?.duration ? `${activeBedBooking.duration} minutes` : null,
+				provider: activeBedBooking?.provider || "Hospital Staff",
+			},
 		});
-	}, [activeBedBooking?.hospitalName, activeBedBooking?.requestId, onCompleteBedBooking]);
+	}, [activeBedBooking?.hospitalName, activeBedBooking?.requestId, activeBedBooking?.duration, activeBedBooking?.provider]);
 
 	return (
 		<View style={styles.container}>
-			<VisitRatingModal
+			<ServiceRatingModal
 				visible={ratingState.visible}
+				serviceType={ratingState.serviceType || "visit"}
 				title={ratingState.title || "Rate your visit"}
 				subtitle={ratingState.subtitle}
+				serviceDetails={ratingState.serviceDetails}
 				onClose={() => {
-					setRatingState({ visible: false, visitId: null, title: null, subtitle: null });
+					setRatingState({ 
+						visible: false, 
+						visitId: null, 
+						title: null, 
+						subtitle: null,
+						serviceType: null,
+						serviceDetails: null
+					});
 				}}
-				onSubmit={async ({ rating, comment }) => {
+				onSubmit={async ({ rating, comment, serviceType }) => {
 					const visitId = ratingState.visitId;
 					if (!visitId) return;
 					const nowIso = new Date().toISOString();
@@ -514,7 +535,7 @@ export default function EmergencyScreen() {
 						lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
 						lifecycleUpdatedAt: nowIso,
 					});
-					setRatingState({ visible: false, visitId: null, title: null, subtitle: null });
+					setRatingState({ visible: false, visitId: null, title: null, subtitle: null, serviceType: null, serviceDetails: null });
 				}}
 			/>
 			<EmergencyMapContainer
