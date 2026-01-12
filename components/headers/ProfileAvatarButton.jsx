@@ -2,7 +2,7 @@
 // Reusable profile avatar button with haptic feedback
 
 import { Image, TouchableOpacity } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useSegments } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "../../contexts/AuthContext";
 import { COLORS } from "../../constants/colors";
@@ -18,11 +18,15 @@ import { COLORS } from "../../constants/colors";
  */
 export default function ProfileAvatarButton() {
 	const router = useRouter();
+	const segments = useSegments();
 	const { user } = useAuth();
 
 	const handlePress = () => {
+		if (segments?.[0] === "(user)" && segments?.[1] === "(stacks)" && segments?.[2] === "more") {
+			return;
+		}
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-		router.push("/(user)/(stacks)/profile");
+		router.push("/(user)/(stacks)/more");
 	};
 
 	return (

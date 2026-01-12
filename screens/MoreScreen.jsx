@@ -32,6 +32,7 @@ import {
 	navigateToProfile,
 	navigateToSettings,
 } from "../utils/navigationHelpers";
+import HeaderBackButton from "../components/navigation/HeaderBackButton";
 
 const MoreScreen = () => {
 	const router = useRouter();
@@ -47,7 +48,7 @@ const MoreScreen = () => {
 	const { registerFAB } = useFAB();
 
 	// Modular header components with haptic feedback - memoized to prevent infinite re-renders
-	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
+	const backButton = useCallback(() => <HeaderBackButton />, []);
 
 	// Hide FAB on More screen (on focus, not just mount)
 	useFocusEffect(
@@ -68,15 +69,10 @@ const MoreScreen = () => {
 				subtitle: "MORE",
 				icon: <Ionicons name="ellipsis-horizontal" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
-				leftComponent,
+				leftComponent: backButton(),
 				rightComponent: null,
 			});
-		}, [
-			resetTabBar,
-			resetHeader,
-			setHeaderState,
-			leftComponent,
-		])
+		}, [backButton, resetTabBar, resetHeader, setHeaderState])
 	);
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -84,7 +80,7 @@ const MoreScreen = () => {
 	const profileScale = useRef(new Animated.Value(0.9)).current;
 
 	// Consistent with Welcome, Onboarding, Signup, Login screens
-		const backgroundColors = isDarkMode
+	const backgroundColors = isDarkMode
 		? ["#121826", "#0B0F1A", "#121826"]
 		: ["#FFFFFF", "#F3E7E7", "#FFFFFF"];
 
@@ -97,7 +93,7 @@ const MoreScreen = () => {
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
 	const headerHeight = 70;
-	const topPadding = headerHeight + insets.top;
+	const topPadding = 20;
 
 	useEffect(() => {
 		Animated.parallel([

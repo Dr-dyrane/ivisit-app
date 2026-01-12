@@ -58,20 +58,6 @@ export default function TabsLayout() {
 					),
 				}}
 			/>
-			<Tabs.Screen
-				name="more"
-				options={{
-					title: "MORE", // Remove title text
-					tabBarIcon: ({ color }) => (
-						<Ionicons
-							name="ellipsis-horizontal-outline"
-							size={24}
-							color={color}
-						/>
-					),
-				}}
-			/>
-			
 		</Tabs>
 	);
 }

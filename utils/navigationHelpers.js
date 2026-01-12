@@ -3,7 +3,7 @@ import { EmergencyMode } from "../contexts/EmergencyContext";
 export const ROUTES = {
 	TABS_ROOT: "/(user)/(tabs)",
 	TAB_VISITS: "/(user)/(tabs)/visits",
-	TAB_MORE: "/(user)/(tabs)/more",
+	STACK_MORE: "/(user)/(stacks)/more",
 	STACK_SEARCH: "/(user)/(stacks)/search",
 	STACK_NOTIFICATIONS: "/(user)/(stacks)/notifications",
 	STACK_SETTINGS: "/(user)/(stacks)/settings",
@@ -108,7 +108,7 @@ export function navigateToCreatePassword({ router, method = "push" }) {
 }
 
 export function navigateToMore({ router, method = "push" }) {
-	nav(router, method, ROUTES.TAB_MORE);
+	nav(router, method, ROUTES.STACK_MORE);
 }
 
 export function navigateToRequestAmbulance({ router, hospitalId, method = "push" }) {

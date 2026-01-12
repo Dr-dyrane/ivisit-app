@@ -1,9 +1,9 @@
-// More.js
 import React from "react";
 import MoreScreen from "../../../screens/MoreScreen";
 
 const More = () => {
-  return <MoreScreen />;
+	return <MoreScreen />;
 };
 
 export default More;
+

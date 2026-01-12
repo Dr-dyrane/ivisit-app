@@ -118,6 +118,85 @@ The map component is still responsible for explicit permission UX; the context d
 
 ---
 
+## Map “As-Is” Architecture (What’s Mounted, Who Owns What)
+
+### Map Mounting
+- Single `MapView` lives in: `components/map/FullScreenEmergencyMap.jsx`
+- It is mounted by: `components/emergency/EmergencyMapContainer.jsx`
+- Which is mounted by: `screens/EmergencyScreen.jsx`
+
+### Two Location Systems Exist (By Design Today)
+- `EmergencyContext` does a silent location read once on mount (only if permission already granted): `contexts/EmergencyContext.jsx`
+- The map requests permission and manages its own location updates: `components/map/FullScreenEmergencyMap.jsx` + `hooks/emergency/useMapLocation`
+
+---
+
+## Critical Nuances (Things That Break If We Refactor Wrong)
+
+### 1) Map is tightly coupled to the bottom sheet (padding + control visibility)
+- `bottomPadding` is computed in `EmergencyScreen` and passed down; then used as `mapPadding.bottom` in the MapView: `screens/EmergencyScreen.jsx`, `components/map/FullScreenEmergencyMap.jsx`
+- Map controls (recenter/expand) are hidden when the sheet snap index is above ~50%:
+  - `shouldShowControls = showControls && sheetSnapIndex <= 1` in `components/map/FullScreenEmergencyMap.jsx`
+
+If we split sheets or create separate map/sheet pairs, we must preserve:
+- accurate `sheetSnapIndex` for the visible sheet
+- correct `bottomPadding` per sheet phase, otherwise route fitting will hide content behind the sheet
+
+### 2) Route calculation is “availability gated”
+The map only shows a route if the selected/active hospital has capacity:
+- booking: `availableBeds > 0`
+- emergency: `ambulances > 0`
+
+So: switching mode / active visit type must not accidentally flip these gates and clear the route.
+
+### 3) Route fitting avoids snap-index feedback loops
+When the route updates, it:
+- calls `onRouteCalculated(...)` only if route info changed (stored in `mapRef.current.lastRouteInfo`)
+- fits coordinates using a padding ref (so snap changes don’t constantly re-fit)
+- calls `scheduleCenterInVisibleArea(...)` to shift the route upward for the sheet
+
+If we re-architect, we must keep:
+- “call parent only when changed” behavior (prevents render loops)
+- “padding ref” approach (prevents repeated camera jumps on sheet drag)
+
+### 4) Ambulance marker can be driven by two sources
+- “Fake animation” along polyline (`animateAmbulance = true`) via `hooks/emergency/useAmbulanceAnimation.js`
+- “Realtime responder tracking” via DB updates (`responderLocation` / `responderHeading`) overrides the marker coordinate
+
+If we accidentally mount two map layers at once, both could try to render/animate responder markers and you’ll see flicker or doubled markers.
+
+### 5) Simulation is a singleton and tied into lifecycle cleanup
+- Simulation writes responder updates + changes `emergency_requests.status` to accepted/arrived: `services/simulationService.js`
+- On realtime update, when request becomes completed/cancelled, the context stops simulation and clears active trip: `contexts/EmergencyContext.jsx`
+- Nuance: `startSimulation()` uses a 5s `setTimeout` that is not cleared; it is safe because it checks `activeSimulationId`, but mount/unmount churn must not spawn multiple simulations with different requestIds.
+
+### 6) Responder location parsing depends on WKT format
+- DB stores `responder_location` as `POINT(lon lat)` and the app parses it with a regex: `contexts/EmergencyContext.jsx`
+
+If we change DB payload shape (e.g., GeoJSON), map tracking breaks unless we update parsing everywhere.
+
+### 7) FullScreenEmergencyMap exposes imperative methods used by selection/search flows
+- `animateToHospital()` and `fitToAllHospitals()` via ref: `components/map/FullScreenEmergencyMap.jsx`
+- These are used by selection/search hooks (camera moves are part of UX): `hooks/emergency/useHospitalSelection.js`, `hooks/emergency/useSearchFiltering.js`
+
+So: if we split into “idle map vs active map” we must keep the same ref surface (or refactor all callers).
+
+---
+
+## Safety Conclusion (To Avoid Breaking Anything)
+
+- Keeping one `MapView` mounted is the safest path.
+- The low-risk refactor is to introduce a single `MapState` switch and mount exactly one layer tree at a time (`IdleLayers` / `AmbulanceLayers` / `BedLayers`), while preserving:
+  - route gating rules
+  - `mapPadding` + `sheetSnapIndex` contract
+  - route-fit dedupe logic
+  - responder-location parsing
+  - imperative ref methods
+
+Next: define a “MapState + Layers” design that is 100% compatible with the current prop/ref contracts (so we can implement without breaking selection, routing, simulation, or sheet behavior).
+
+---
+
 ## Ambulance Request (Emergency Mode) — Start to Finish
 
 ### 1) User enters SOS in Emergency mode
