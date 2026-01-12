@@ -3,9 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { COLORS } from "../../../constants/colors";
 import { useBedBookingProgress } from "../../../hooks/emergency/useBedBookingProgress";
 import HospitalCard from "../HospitalCard";
+import { navigateToRequestAmbulance } from "../../../utils/navigationHelpers";
 
 const BedBookingSummaryCollapsed = ({
 	isDarkMode,
@@ -159,6 +161,9 @@ const BedBookingSummaryHalf = ({
 	showComplete,
 	onCompleteBedBooking,
 	onPressComplete,
+	showSecondaryCta,
+	secondaryCtaLabel,
+	onPressSecondaryCta,
 }) => {
 	return (
 		<View
@@ -371,6 +376,26 @@ const BedBookingSummaryHalf = ({
 					</Pressable>
 				)}
 			</View>
+
+			{showSecondaryCta && typeof onPressSecondaryCta === "function" ? (
+				<Pressable
+					onPress={onPressSecondaryCta}
+					disabled={!!isBusy}
+					style={({ pressed }) => [
+						styles.secondaryCta,
+						{
+							backgroundColor: isDarkMode
+								? "rgba(255,255,255,0.08)"
+								: "rgba(37, 99, 235, 0.08)",
+							opacity: isBusy ? 0.6 : pressed ? 0.75 : 1,
+						},
+					]}
+				>
+					<Text style={[styles.secondaryCtaText, { color: COLORS.brandPrimary }]}>
+						{secondaryCtaLabel ?? "Request Ambulance"}
+					</Text>
+				</Pressable>
+			) : null}
 		</View>
 	);
 };
@@ -398,6 +423,9 @@ const BedBookingSummaryFull = ({
 	onCompleteBedBooking,
 	onPressComplete,
 	bookingHospital,
+	showSecondaryCta,
+	secondaryCtaLabel,
+	onPressSecondaryCta,
 }) => {
 	return (
 		<View style={[styles.fullContainer, { backgroundColor: isDarkMode ? "#121826" : "#FFFFFF" }]}>
@@ -568,6 +596,26 @@ const BedBookingSummaryFull = ({
 						</Pressable>
 					)}
 				</View>
+
+				{showSecondaryCta && typeof onPressSecondaryCta === "function" ? (
+					<Pressable
+						onPress={onPressSecondaryCta}
+						disabled={!!isBusy}
+						style={({ pressed }) => [
+							styles.secondaryCta,
+							{
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.08)"
+									: "rgba(37, 99, 235, 0.08)",
+								opacity: isBusy ? 0.6 : pressed ? 0.75 : 1,
+							},
+						]}
+					>
+						<Text style={[styles.secondaryCtaText, { color: COLORS.brandPrimary }]}>
+							{secondaryCtaLabel ?? "Request Ambulance"}
+						</Text>
+					</Pressable>
+				) : null}
 			</View>
 		</View>
 	);
@@ -575,6 +623,7 @@ const BedBookingSummaryFull = ({
 
 export const BedBookingSummaryCard = ({
 	activeBedBooking,
+	hasOtherActiveVisit,
 	allHospitals = [],
 	onCancelBedBooking,
 	onMarkBedOccupied,
@@ -584,6 +633,7 @@ export const BedBookingSummaryCard = ({
 	isExpanded,
 	sheetPhase,
 }) => {
+	const router = useRouter();
 	const collapsed = sheetPhase ? sheetPhase === "collapsed" : !!isCollapsed;
 	const expanded = sheetPhase ? sheetPhase === "full" : !!isExpanded;
 	const [nowMs, setNowMs] = useState(Date.now());
@@ -652,6 +702,14 @@ export const BedBookingSummaryCard = ({
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		Linking.openURL(callTarget);
 	}, [busyAction, callTarget]);
+
+	const handlePressRequestAmbulance = useCallback(() => {
+		if (busyAction) return;
+		const hospitalId = activeBedBooking?.hospitalId ?? bookingHospital?.id ?? null;
+		if (!hospitalId) return;
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		navigateToRequestAmbulance({ router, hospitalId });
+	}, [activeBedBooking?.hospitalId, bookingHospital?.id, busyAction, router]);
 
 	const etaText =
 		formattedBedRemaining ??
@@ -742,6 +800,9 @@ export const BedBookingSummaryCard = ({
 				onCompleteBedBooking={onCompleteBedBooking}
 				onPressComplete={() => runAction("complete", onCompleteBedBooking)}
 				bookingHospital={bookingHospital}
+				showSecondaryCta={!hasOtherActiveVisit}
+				secondaryCtaLabel="Request Ambulance"
+				onPressSecondaryCta={handlePressRequestAmbulance}
 			/>
 		);
 	}
@@ -770,6 +831,9 @@ export const BedBookingSummaryCard = ({
 			showComplete={showComplete}
 			onCompleteBedBooking={onCompleteBedBooking}
 			onPressComplete={() => runAction("complete", onCompleteBedBooking)}
+			showSecondaryCta={!hasOtherActiveVisit}
+			secondaryCtaLabel="Request Ambulance"
+			onPressSecondaryCta={handlePressRequestAmbulance}
 		/>
 	);
 };
@@ -931,6 +995,17 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
+	},
+	secondaryCta: {
+		marginTop: 12,
+		height: 44,
+		borderRadius: 22,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	secondaryCtaText: {
+		fontSize: 14,
+		fontWeight: "800",
 	},
 	fullContainer: {
 		flex: 1,

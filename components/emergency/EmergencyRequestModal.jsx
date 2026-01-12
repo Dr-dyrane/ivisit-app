@@ -32,6 +32,7 @@ const EmergencyRequestModal = ({
 	const [bedCount, setBedCount] = useState(1);
 	const [isRequesting, setIsRequesting] = useState(false);
 	const [requestData, setRequestData] = useState(null);
+	const [errorMessage, setErrorMessage] = useState(null);
 
 	const requestColors = useMemo(
 		() => ({
@@ -53,6 +54,7 @@ const EmergencyRequestModal = ({
 		setBedCount(1);
 		setIsRequesting(false);
 		setRequestData(null);
+		setErrorMessage(null);
 	}, [requestHospital?.id, mode]);
 
 	const handleRequestDone = useCallback(() => {
@@ -60,11 +62,12 @@ const EmergencyRequestModal = ({
 		onRequestClose?.();
 	}, [onRequestClose]);
 
-	const handleSubmitRequest = useCallback(() => {
+	const handleSubmitRequest = useCallback(async () => {
 		if (isRequesting) return;
 		if (!requestHospital) return;
 		if (mode === "emergency" && !selectedAmbulanceType) return;
 
+		setErrorMessage(null);
 		setIsRequesting(true);
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
@@ -95,11 +98,26 @@ const EmergencyRequestModal = ({
 
 		if (typeof onRequestInitiated === "function") {
 			try {
-				const maybePromise = onRequestInitiated(initiated);
-				if (maybePromise && typeof maybePromise.then === "function") {
-					maybePromise.catch(() => {});
+				const result = await onRequestInitiated(initiated);
+				if (result && result.ok === false) {
+					const service = result.serviceType === "bed" ? "bed booking" : "ambulance request";
+					const msg =
+						result.reason === "ALREADY_ACTIVE"
+							? `You already have an active ${service}.`
+							: result.reason === "CONCURRENCY_DB"
+							? `You already have an active ${service}.`
+							: "Request blocked. Please try again.";
+					setIsRequesting(false);
+					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+					setErrorMessage(msg);
+					return;
 				}
-			} catch (e) {}
+			} catch (e) {
+				setIsRequesting(false);
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+				setErrorMessage("Something went wrong. Please try again.");
+				return;
+			}
 		}
 
 		setTimeout(() => {
@@ -195,6 +213,25 @@ const EmergencyRequestModal = ({
 			>
 				{requestStep === "select" ? (
 					<>
+						{errorMessage ? (
+							<View
+								style={[
+									styles.banner,
+									{
+										backgroundColor: isDarkMode
+											? "rgba(239, 68, 68, 0.16)"
+											: "rgba(239, 68, 68, 0.10)",
+										borderColor: isDarkMode
+											? "rgba(239, 68, 68, 0.35)"
+											: "rgba(239, 68, 68, 0.25)",
+									},
+								]}
+							>
+								<Text style={{ color: requestColors.text, fontWeight: "700" }}>
+									{errorMessage}
+								</Text>
+							</View>
+						) : null}
 						<Text
 							style={{
 								fontSize: 12,
@@ -375,6 +412,15 @@ const styles = StyleSheet.create({
 	},
 	ambulanceCard: {
 		marginBottom: 8,
+	},
+	banner: {
+		width: "100%",
+		paddingHorizontal: 14,
+		paddingVertical: 12,
+		borderRadius: 14,
+		borderWidth: 1,
+		marginTop: 12,
+		marginBottom: 6,
 	},
 });
 

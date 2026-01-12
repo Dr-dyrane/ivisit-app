@@ -284,6 +284,7 @@ const EmergencyBottomSheet = forwardRef(
 						{isTripMode ? (
 							<TripSummaryCard
 								activeAmbulanceTrip={activeAmbulanceTrip}
+								hasOtherActiveVisit={!!activeBedBooking?.requestId}
 								allHospitals={allHospitals}
 								onCancelAmbulanceTrip={onCancelAmbulanceTrip}
 								onMarkAmbulanceArrived={onMarkAmbulanceArrived}
@@ -296,6 +297,7 @@ const EmergencyBottomSheet = forwardRef(
 						) : isBedBookingMode ? (
 							<BedBookingSummaryCard
 								activeBedBooking={activeBedBooking}
+								hasOtherActiveVisit={!!activeAmbulanceTrip?.requestId}
 								allHospitals={allHospitals}
 								onCancelBedBooking={onCancelBedBooking}
 								onMarkBedOccupied={onMarkBedOccupied}

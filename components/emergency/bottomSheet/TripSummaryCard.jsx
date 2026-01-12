@@ -2,10 +2,12 @@ import { View, Text, StyleSheet, Pressable, Linking, Image, ActivityIndicator } 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { COLORS } from "../../../constants/colors";
 import { AMBULANCE_STATUSES, AMBULANCE_TYPES } from "../../../constants/emergency";
 import { useTripProgress } from "../../../hooks/emergency/useTripProgress";
 import HospitalCard from "../HospitalCard";
+import { navigateToBookBed } from "../../../utils/navigationHelpers";
 
 const TripSummaryCollapsed = ({
 	isDarkMode,
@@ -150,6 +152,9 @@ const TripSummaryHalf = ({
 	showComplete,
 	onCompleteAmbulanceTrip,
 	onPressComplete,
+	showSecondaryCta,
+	secondaryCtaLabel,
+	onPressSecondaryCta,
 }) => {
 	return (
 		<View
@@ -351,6 +356,26 @@ const TripSummaryHalf = ({
 					</Pressable>
 				)}
 			</View>
+
+			{showSecondaryCta && typeof onPressSecondaryCta === "function" ? (
+				<Pressable
+					onPress={onPressSecondaryCta}
+					disabled={!!isBusy}
+					style={({ pressed }) => [
+						styles.secondaryCta,
+						{
+							backgroundColor: isDarkMode
+								? "rgba(255,255,255,0.08)"
+								: "rgba(37, 99, 235, 0.08)",
+							opacity: isBusy ? 0.6 : pressed ? 0.75 : 1,
+						},
+					]}
+				>
+					<Text style={[styles.secondaryCtaText, { color: COLORS.brandPrimary }]}>
+						{secondaryCtaLabel ?? "Book Bed"}
+					</Text>
+				</Pressable>
+			) : null}
 		</View>
 	);
 };
@@ -378,6 +403,9 @@ const TripSummaryFull = ({
 	showComplete,
 	onCompleteAmbulanceTrip,
 	onPressComplete,
+	showSecondaryCta,
+	secondaryCtaLabel,
+	onPressSecondaryCta,
 }) => {
 	return (
 		<View
@@ -622,6 +650,26 @@ const TripSummaryFull = ({
 						</Pressable>
 					)}
 				</View>
+
+				{showSecondaryCta && typeof onPressSecondaryCta === "function" ? (
+					<Pressable
+						onPress={onPressSecondaryCta}
+						disabled={!!isBusy}
+						style={({ pressed }) => [
+							styles.secondaryCta,
+							{
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.08)"
+									: "rgba(37, 99, 235, 0.08)",
+								opacity: isBusy ? 0.6 : pressed ? 0.75 : 1,
+							},
+						]}
+					>
+						<Text style={[styles.secondaryCtaText, { color: COLORS.brandPrimary }]}>
+							{secondaryCtaLabel ?? "Book Bed"}
+						</Text>
+					</Pressable>
+				) : null}
 			</View>
 		</View>
 	);
@@ -629,6 +677,7 @@ const TripSummaryFull = ({
 
 export const TripSummaryCard = ({
 	activeAmbulanceTrip,
+	hasOtherActiveVisit,
 	allHospitals = [],
 	onCancelAmbulanceTrip,
 	onMarkAmbulanceArrived,
@@ -638,6 +687,7 @@ export const TripSummaryCard = ({
 	isExpanded,
 	sheetPhase,
 }) => {
+	const router = useRouter();
 	const collapsed = sheetPhase ? sheetPhase === "collapsed" : !!isCollapsed;
 	const expanded = sheetPhase ? sheetPhase === "full" : !!isExpanded;
 	const [nowMs, setNowMs] = useState(Date.now());
@@ -708,6 +758,14 @@ export const TripSummaryCard = ({
 		if (!callTarget) return;
 		Linking.openURL(callTarget);
 	}, [busyAction, callTarget]);
+
+	const handlePressBookBed = useCallback(() => {
+		if (busyAction) return;
+		const hospitalId = activeAmbulanceTrip?.hospitalId ?? tripHospital?.id ?? null;
+		if (!hospitalId) return;
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		navigateToBookBed({ router, hospitalId });
+	}, [activeAmbulanceTrip?.hospitalId, busyAction, router, tripHospital?.id]);
 
 	const etaText =
 		formattedRemaining ??
@@ -795,6 +853,9 @@ export const TripSummaryCard = ({
 				onPressArrived={() => runAction("arrived", onMarkAmbulanceArrived)}
 				showComplete={showComplete}
 				onPressComplete={() => runAction("complete", onCompleteAmbulanceTrip)}
+				showSecondaryCta={!hasOtherActiveVisit}
+				secondaryCtaLabel="Book Bed"
+				onPressSecondaryCta={handlePressBookBed}
 			/>
 		);
 	}
@@ -819,6 +880,9 @@ export const TripSummaryCard = ({
 			onPressArrived={() => runAction("arrived", onMarkAmbulanceArrived)}
 			showComplete={showComplete}
 			onPressComplete={() => runAction("complete", onCompleteAmbulanceTrip)}
+			showSecondaryCta={!hasOtherActiveVisit}
+			secondaryCtaLabel="Book Bed"
+			onPressSecondaryCta={handlePressBookBed}
 		/>
 	);
 };
@@ -980,6 +1044,17 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
+	},
+	secondaryCta: {
+		marginTop: 12,
+		height: 44,
+		borderRadius: 22,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	secondaryCtaText: {
+		fontSize: 14,
+		fontWeight: "800",
 	},
 	fullContainer: {
 		flex: 1,

@@ -30,6 +30,10 @@ export const useRequestFlow = ({
 }) => {
 	const inflightByTypeRef = useRef({ ambulance: false, bed: false });
 
+	const blockResult = useCallback((reason, extra) => {
+		return { ok: false, reason, ...extra };
+	}, []);
+
 	const getSnapshots = useCallback(() => {
 		const shareMedicalProfile = preferences?.privacyShareMedicalProfile === true;
 		const shareEmergencyContacts =
@@ -71,30 +75,21 @@ export const useRequestFlow = ({
 	const handleRequestInitiated = useCallback(
 		async (request) => {
 			if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") {
-				console.warn(
-					"[useRequestFlow] Invalid service type (initiated):",
-					request?.serviceType
-				);
-				return;
+				return blockResult("INVALID_SERVICE_TYPE", { serviceType: request?.serviceType ?? null });
 			}
 
 			if (!canStartRequest(request.serviceType)) {
-				console.warn(
-					"[useRequestFlow] Concurrency block (initiated):",
-					request.serviceType
-				);
-				return;
+				return blockResult("ALREADY_ACTIVE", { serviceType: request.serviceType });
 			}
 
 			if (inflightByTypeRef.current[request.serviceType] === true) {
-				return;
+				return blockResult("IN_FLIGHT", { serviceType: request.serviceType });
 			}
 
 			const hospitalId =
 				request?.hospitalId ?? requestHospitalId ?? selectedHospital?.id ?? null;
 			if (!hospitalId) {
-				console.warn("[useRequestFlow] Missing hospitalId (initiated)");
-				return;
+				return blockResult("MISSING_HOSPITAL", { serviceType: request.serviceType });
 			}
 
 			const now = new Date();
@@ -162,13 +157,23 @@ export const useRequestFlow = ({
 							? request?.estimatedArrival ?? null
 							: null,
 				});
+				return { ok: true, requestId: visitId, serviceType: request.serviceType };
 			} catch (err) {
 				inflightByTypeRef.current[request.serviceType] = false;
+				const code = err?.code ?? null;
+				const message = typeof err?.message === "string" ? err.message : "";
+				const details = typeof err?.details === "string" ? err.details : "";
+				const hint = typeof err?.hint === "string" ? err.hint : "";
+				const raw = `${message} ${details} ${hint}`.toLowerCase();
+				if (code === "23505" || raw.includes("uniq_active_bed_per_user") || raw.includes("uniq_active_ambulance_per_user")) {
+					return blockResult("CONCURRENCY_DB", { serviceType: request.serviceType });
+				}
 				throw err;
 			}
 		},
 		[
 			addVisit,
+			blockResult,
 			canStartRequest,
 			createRequest,
 			getSnapshots,
@@ -182,26 +187,17 @@ export const useRequestFlow = ({
 	const handleRequestComplete = useCallback(
 		async (request) => {
 			if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") {
-				console.warn(
-					"[useRequestFlow] Invalid service type (confirmed):",
-					request?.serviceType
-				);
-				return;
+				return blockResult("INVALID_SERVICE_TYPE", { serviceType: request?.serviceType ?? null });
 			}
 
 			if (!canStartRequest(request.serviceType)) {
-				console.warn(
-					"[useRequestFlow] Concurrency block (confirmed):",
-					request.serviceType
-				);
-				return;
+				return blockResult("ALREADY_ACTIVE", { serviceType: request.serviceType });
 			}
 
 			const hospitalId =
 				request?.hospitalId ?? requestHospitalId ?? selectedHospital?.id ?? null;
 			if (!hospitalId) {
-				console.warn("[useRequestFlow] Missing hospitalId (confirmed)");
-				return;
+				return blockResult("MISSING_HOSPITAL", { serviceType: request.serviceType });
 			}
 
 			const nowIso = new Date().toISOString();
@@ -270,8 +266,10 @@ export const useRequestFlow = ({
 			inflightByTypeRef.current[request.serviceType] = false;
 			clearSelectedHospital();
 			onRequestComplete?.();
+			return { ok: true, requestId: visitId, serviceType: request.serviceType };
 		},
 		[
+			blockResult,
 			canStartRequest,
 			clearSelectedHospital,
 			currentRoute,
