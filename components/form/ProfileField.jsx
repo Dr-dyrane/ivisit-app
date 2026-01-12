@@ -17,9 +17,9 @@ const ProfileField = ({
 	const [isFocused, setIsFocused] = useState(false);
 	const scaleAnim = useRef(new Animated.Value(1)).current;
 
-	const onChange = (text) => {
-		console.log('[ProfileField] onChange:', { text, label });
-		onChangeText(text);
+	const handleChangeText = (text) => {
+		console.log('[ProfileField] onChangeText:', { text, label });
+		onChange(text);
 	};
 
 	const handleFocus = () => {
@@ -93,8 +93,7 @@ const ProfileField = ({
 					</Text>
 					<TextInput
 						value={value}
-						onChange={onChange}
-						onChangeText={onChange}
+						onChangeText={handleChangeText}
 						onFocus={handleFocus}
 						onBlur={handleBlur}
 						editable={editable}

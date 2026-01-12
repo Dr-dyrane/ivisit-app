@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useVisits } from "../../contexts/VisitsContext";
+import { useMedicalProfile } from "../../hooks/user/useMedicalProfile";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -26,6 +27,7 @@ export default function MiniProfileModal({ visible, onClose }) {
 	const { isDarkMode } = useTheme();
 	const { user } = useAuth();
 	const { visitCounts } = useVisits();
+	const { profile: medicalProfile } = useMedicalProfile();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 
@@ -219,10 +221,31 @@ export default function MiniProfileModal({ visible, onClose }) {
 							</Pressable>
 
 							{[
-								{ label: "Allergies", icon: "warning-outline" },
-								{ label: "Medications", icon: "medical-outline" },
-								{ label: "Past Surgeries", icon: "bandage-outline" },
-								{ label: "Conditions", icon: "fitness-outline" },
+								{ 
+									label: "Blood Type", 
+									icon: "water-outline", 
+									value: medicalProfile?.bloodType || "Not set" 
+								},
+								{ 
+									label: "Allergies", 
+									icon: "warning-outline", 
+									value: medicalProfile?.allergies || "None listed" 
+								},
+								{ 
+									label: "Medications", 
+									icon: "medical-outline", 
+									value: medicalProfile?.medications || "None listed" 
+								},
+								{ 
+									label: "Past Surgeries", 
+									icon: "bandage-outline", 
+									value: medicalProfile?.surgeries || "None listed" 
+								},
+								{ 
+									label: "Conditions", 
+									icon: "fitness-outline", 
+									value: medicalProfile?.conditions || "None listed" 
+								},
 							].map((item, index) => (
 								<Pressable
 									key={item.label}
@@ -247,9 +270,14 @@ export default function MiniProfileModal({ visible, onClose }) {
 									>
 										<Ionicons name={item.icon} size={16} color={COLORS.brandPrimary} />
 									</View>
-									<Text style={{ flex: 1, marginLeft: 10, fontSize: 14, fontWeight:'400', color: textColor }}>
-										{item.label}
-									</Text>
+									<View style={{ flex: 1, marginLeft: 10 }}>
+										<Text style={{ fontSize: 14, fontWeight:'400', color: textColor }}>
+											{item.label}
+										</Text>
+										<Text style={{ fontSize: 12, color: textMuted, marginTop: 2 }}>
+											{item.value}
+										</Text>
+									</View>
 									<Ionicons name="chevron-forward" size={16} color={textMuted} />
 								</Pressable>
 							))}

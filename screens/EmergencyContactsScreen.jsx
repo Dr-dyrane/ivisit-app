@@ -12,6 +12,7 @@ import {
 	Animated,
 	TextInput,
 	ActivityIndicator,
+    KeyboardAvoidingView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -26,6 +27,7 @@ import { STACK_TOP_PADDING } from "../constants/layout";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import * as Haptics from "expo-haptics";
 import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
+import { useToast } from "../contexts/ToastContext";
 
 export default function EmergencyContactsScreen() {
 	const { isDarkMode } = useTheme();
@@ -35,6 +37,7 @@ export default function EmergencyContactsScreen() {
 		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
+	const { showToast } = useToast();
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
@@ -182,16 +185,33 @@ export default function EmergencyContactsScreen() {
 	}, [shakeAnim]);
 
 	const canSave = useMemo(() => {
-		return (
-			name.trim().length >= 2 &&
-			(phone.trim().length > 0 || email.trim().length > 0)
-		);
+		const nameValid = name.trim().length >= 2;
+		const phoneValid = phone.trim().length === 0 || /^\+?[\d\s\-\(\)]+$/.test(phone.trim());
+		const emailValid = email.trim().length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+		const hasContact = phone.trim().length > 0 || email.trim().length > 0;
+		
+		return nameValid && phoneValid && emailValid && hasContact;
 	}, [email, name, phone]);
 
 	const handleSave = useCallback(async () => {
 		if (!canSave || isSaving) {
 			if (!canSave) {
-				setError("Name + phone or email required");
+				const nameValid = name.trim().length >= 2;
+				const phoneValid = phone.trim().length === 0 || /^\+?[\d\s\-\(\)]+$/.test(phone.trim());
+				const emailValid = email.trim().length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+				const hasContact = phone.trim().length > 0 || email.trim().length > 0;
+				
+				if (!nameValid) {
+					setError("Name must be at least 2 characters");
+				} else if (!hasContact) {
+					setError("Phone or email required");
+				} else if (!phoneValid) {
+					setError("Invalid phone number format");
+				} else if (!emailValid) {
+					setError("Invalid email format");
+				} else {
+					setError("Please check all fields");
+				}
 				shake();
 			}
 			return;
@@ -207,14 +227,17 @@ export default function EmergencyContactsScreen() {
 			};
 			if (editingId) {
 				await updateContact(editingId, payload);
+				showToast("Contact updated successfully", "success");
 			} else {
 				await addContact(payload);
+				showToast("Contact added successfully", "success");
 			}
 			setIsModalVisible(false);
 		} catch (e) {
 			const msg =
 				e?.message?.split("|")?.[1] || e?.message || "Unable to save contact";
 			setError(msg);
+			showToast(msg, "error");
 			shake();
 		} finally {
 			setIsSaving(false);
@@ -230,6 +253,7 @@ export default function EmergencyContactsScreen() {
 		shake,
 		addContact,
 		updateContact,
+		showToast,
 	]);
 
 	const handleDelete = useCallback(
@@ -237,9 +261,12 @@ export default function EmergencyContactsScreen() {
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 			try {
 				await removeContact(id);
-			} catch {}
+				showToast("Contact deleted successfully", "success");
+			} catch (error) {
+				showToast("Failed to delete contact", "error");
+			}
 		},
-		[removeContact]
+		[removeContact, showToast]
 	);
 
 	const emptyState = !isLoading && (!contacts || contacts.length === 0);
@@ -355,7 +382,10 @@ export default function EmergencyContactsScreen() {
 				animationType="fade"
 				onRequestClose={closeModal}
 			>
-				<View style={styles.modalBackdrop}>
+				<KeyboardAvoidingView 
+					behavior={Platform.OS === "ios" ? "padding" : "height"}
+					style={styles.modalBackdrop}
+				>
 					<Pressable
 						style={styles.modalBackdropPressable}
 						onPress={closeModal}
@@ -476,7 +506,7 @@ export default function EmergencyContactsScreen() {
 							</Text>
 						</Pressable>
 					</View>
-				</View>
+				</KeyboardAvoidingView>
 			</Modal>
 		</LinearGradient>
 	);
@@ -534,7 +564,11 @@ const styles = StyleSheet.create({
 		backgroundColor: "rgba(0,0,0,0.55)",
 	},
 	modalBackdropPressable: { ...StyleSheet.absoluteFillObject },
-	modalCard: { borderRadius: 24, padding: 16 },
+	modalCard: { 
+		borderRadius: 24, 
+		padding: 16,
+		maxHeight: '80%',
+	},
 	modalHeader: {
 		flexDirection: "row",
 		alignItems: "center",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
 	View,
 	Text,
@@ -71,25 +71,43 @@ const ProfileScreen = () => {
 	const [isDataLoading, setIsDataLoading] = useState(true);
     
     // Derived state: Check if form has unsaved changes
-    const hasChanges = user && (
-        fullName !== (user.fullName || "") ||
-        username !== (user.username || "") ||
-        gender !== (user.gender || "") ||
-        email !== (user.email || "") ||
-        phone !== (user.phone || "") ||
-        address !== (user.address || "") ||
-        dateOfBirth !== (user.dateOfBirth || "") ||
-        (imageUri !== null && imageUri !== user.imageUri)
-    );
+    const hasChanges = useMemo(() => {
+        if (!user) return false;
+        return (
+            fullName !== (user.fullName || "") ||
+            username !== (user.username || "") ||
+            gender !== (user.gender || "") ||
+            email !== (user.email || "") ||
+            phone !== (user.phone || "") ||
+            address !== (user.address || "") ||
+            dateOfBirth !== (user.dateOfBirth || "") ||
+            (imageUri !== null && imageUri !== user.imageUri)
+        );
+    }, [user, fullName, username, gender, email, phone, address, dateOfBirth, imageUri]);
+
+    // Debounced version of hasChanges to prevent FAB flickering
+    const debouncedHasChanges = useRef(hasChanges);
+    const [stableHasChanges, setStableHasChanges] = useState(hasChanges);
+    
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (debouncedHasChanges.current !== hasChanges) {
+                debouncedHasChanges.current = hasChanges;
+                setStableHasChanges(hasChanges);
+            }
+        }, 500); // 500ms debounce
+        
+        return () => clearTimeout(timer);
+    }, [hasChanges]);
 
     // Sync state with user context when loaded
     useFocusEffect(
         useCallback(() => {
             registerFAB('profile-save', {
                 icon: 'checkmark',
-                label: hasChanges ? 'Save Changes' : 'No Changes',
-                subText: hasChanges ? 'Tap to save profile' : 'Profile up to date',
-                visible: hasChanges,
+                label: stableHasChanges ? 'Save Changes' : 'No Changes',
+                subText: stableHasChanges ? 'Tap to save profile' : 'Profile up to date',
+                visible: stableHasChanges,
                 onPress: handleUpdateProfile,
                 loading: isLoading,
                 style: 'primary',
@@ -103,7 +121,7 @@ const ProfileScreen = () => {
             return () => {
                 unregisterFAB('profile-save');
             };
-        }, [registerFAB, unregisterFAB, hasChanges, isLoading, handleUpdateProfile])
+        }, [registerFAB, unregisterFAB, stableHasChanges, isLoading, handleUpdateProfile])
     );
 
     // Sync state with user context when loaded
@@ -667,10 +685,12 @@ const ProfileScreen = () => {
 						</Text>
 
 						{[
+							{ label: "Blood Type", value: medicalProfile?.bloodType, icon: "water-outline" },
 							{ label: "Allergies", value: medicalProfile?.allergies, icon: "warning-outline" },
 							{ label: "Current Medications", value: medicalProfile?.medications, icon: "medical-outline" },
 							{ label: "Past Surgeries", value: medicalProfile?.surgeries, icon: "bandage-outline" },
 							{ label: "Chronic Conditions", value: medicalProfile?.conditions, icon: "fitness-outline" },
+							{ label: "Emergency Notes", value: medicalProfile?.notes, icon: "document-text-outline" },
 						].map((item, index) => (
 							<View
 								key={index}
@@ -697,27 +717,27 @@ const ProfileScreen = () => {
 										color={COLORS.brandPrimary}
 									/>
 								</View>
-                                <View style={{ flex: 1 }}>
-                                    <Text
-                                        style={{
-                                            color: colors.text,
-                                            fontSize: 15,
-                                            fontWeight:'400',
-                                        }}
-                                    >
-                                        {item.label}
-                                    </Text>
-                                    <Text
-                                        numberOfLines={1}
-                                        style={{
-                                            color: colors.textMuted,
-                                            fontSize: 13,
-                                            marginTop: 2,
-                                        }}
-                                    >
-                                        {item.value || "None listed"}
-                                    </Text>
-                                </View>
+								<View style={{ flex: 1 }}>
+									<Text
+										style={{
+											color: colors.text,
+											fontSize: 15,
+											fontWeight:'400',
+										}}
+									>
+										{item.label}
+									</Text>
+									<Text
+										numberOfLines={1}
+										style={{
+											color: colors.textMuted,
+											fontSize: 13,
+											marginTop: 2,
+										}}
+									>
+										{item.value || "None listed"}
+									</Text>
+								</View>
 							</View>
 						))}
 
@@ -744,7 +764,7 @@ const ProfileScreen = () => {
 									fontWeight: "800",
 								}}
 							>
-								View Full History
+								Edit Medical History
 							</Text>
 						</Pressable>
 					</View>

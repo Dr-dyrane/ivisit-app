@@ -64,6 +64,7 @@ export const medicalProfileService = {
              dbPayload.emergency_notes = updates.notes;
         }
 
+        let updateError = null;
         if (user) {
             // First try standard update
             const { error } = await supabase
@@ -82,20 +83,30 @@ export const medicalProfileService = {
                         .update(dbPayload)
                         .eq('user_id', user.id);
                         
-                     if (retryError) console.error("Error updating medical profile (retry):", retryError);
+                     if (retryError) {
+                         console.error("Error updating medical profile (retry):", retryError);
+                         updateError = retryError;
+                     }
                  } else {
                      console.error("Error updating medical profile:", error);
+                     updateError = error;
                  }
             }
         }
 
-        // Update Local Cache
+        // Update Local Cache regardless of DB error (for offline support)
 		const current = await this.get();
 		const next =
 			updates && typeof updates === "object"
 				? { ...current, ...updates, updatedAt: new Date().toISOString() }
 				: { ...current, updatedAt: new Date().toISOString() };
 		await database.write(StorageKeys.MEDICAL_PROFILE, next);
+		
+		// Throw error if DB update failed but cache succeeded
+		if (updateError) {
+			throw new Error(`Database update failed: ${updateError.message}`);
+		}
+		
 		return next;
 	},
 

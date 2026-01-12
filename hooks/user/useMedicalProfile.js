@@ -27,8 +27,10 @@ export function useMedicalProfile() {
 			setProfile(updated);
 			return updated;
 		} catch (err) {
-			setError(err.message || "Failed to update medical profile");
-			throw err;
+			console.error('[useMedicalProfile] Update failed:', err);
+			const errorMessage = err?.message || "Failed to update medical profile";
+			setError(errorMessage);
+			throw new Error(errorMessage);
 		} finally {
 			setIsLoading(false);
 		}

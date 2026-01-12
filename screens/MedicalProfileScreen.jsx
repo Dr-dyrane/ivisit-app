@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	View,
 	Text,
@@ -10,6 +10,7 @@ import {
 	Pressable,
 	ActivityIndicator,
     Animated,
+    KeyboardAvoidingView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -26,6 +27,7 @@ import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import ProfileField from "../components/form/ProfileField";
 import * as Haptics from "expo-haptics";
 import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
+import { useToast } from "../contexts/ToastContext";
 
 export default function MedicalProfileScreen() {
 	const { isDarkMode } = useTheme();
@@ -36,6 +38,7 @@ export default function MedicalProfileScreen() {
 		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
+	const { showToast } = useToast();
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
@@ -56,6 +59,29 @@ export default function MedicalProfileScreen() {
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
+
+	useEffect(() => {
+		// Trigger FAB update when hasChanges changes
+		if (hasRegisteredFAB.current) {
+			const timer = setTimeout(() => {
+				registerFAB('medical-profile-save', {
+					icon: 'checkmark',
+					label: stableHasChanges ? 'Save Medical Info' : 'No Changes',
+					subText: stableHasChanges ? 'Tap to save medical profile' : 'Medical profile up to date',
+					visible: stableHasChanges,
+					onPress: handleSave,
+					loading: isSaving,
+					style: 'primary',
+					haptic: 'medium',
+					priority: 8,
+					animation: 'prominent',
+					allowInStack: true,
+				});
+			}, 100);
+			
+			return () => clearTimeout(timer);
+		}
+	}, [stableHasChanges, isSaving, handleSave, registerFAB]);
 
 	useEffect(() => {
 		Animated.parallel([
@@ -129,7 +155,44 @@ export default function MedicalProfileScreen() {
         return !!changes;
     }, [profile, localProfile]);
 
+    // Debounced version of hasChanges to prevent FAB flickering
+    const debouncedHasChanges = useRef(hasChanges);
+    const [stableHasChanges, setStableHasChanges] = useState(hasChanges);
+    
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (debouncedHasChanges.current !== hasChanges) {
+                debouncedHasChanges.current = hasChanges;
+                setStableHasChanges(hasChanges);
+            }
+        }, 500); // 500ms debounce
+        
+        return () => clearTimeout(timer);
+    }, [hasChanges]);
+
     const hasRegisteredFAB = useRef(false);
+
+    const handleSave = useCallback(async () => {
+		if (!localProfile || isSaving) return;
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		setIsSaving(true);
+		try {
+			await updateProfile({
+				bloodType: localProfile.bloodType,
+				allergies: localProfile.allergies,
+				medications: localProfile.medications,
+				conditions: localProfile.conditions,
+				surgeries: localProfile.surgeries,
+				notes: localProfile.notes,
+			});
+			showToast("Medical profile updated successfully", "success");
+		} catch (error) {
+			console.error("Medical profile update failed:", error);
+			showToast("Failed to update medical profile", "error");
+		} finally {
+			setIsSaving(false);
+		}
+	}, [isSaving, localProfile, updateProfile, showToast]);
 
     // Register FAB for saving medical profile changes
     useFocusEffect(
@@ -141,9 +204,9 @@ export default function MedicalProfileScreen() {
             
             registerFAB('medical-profile-save', {
                 icon: 'checkmark',
-                label: hasChanges ? 'Save Medical Info' : 'No Changes',
-                subText: hasChanges ? 'Tap to save medical profile' : 'Medical profile up to date',
-                visible: hasChanges,
+                label: stableHasChanges ? 'Save Medical Info' : 'No Changes',
+                subText: stableHasChanges ? 'Tap to save medical profile' : 'Medical profile up to date',
+                visible: stableHasChanges,
                 onPress: handleSave,
                 loading: isSaving,
                 style: 'primary',
@@ -160,42 +223,29 @@ export default function MedicalProfileScreen() {
                 unregisterFAB('medical-profile-save');
                 hasRegisteredFAB.current = false;
             };
-        }, [registerFAB, unregisterFAB, hasChanges, isSaving, handleSave])
+        }, [registerFAB, unregisterFAB, stableHasChanges, isSaving, handleSave])
     );
-
-	const handleSave = useCallback(async () => {
-		if (!localProfile || isSaving) return;
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-		setIsSaving(true);
-		try {
-			await updateProfile({
-				bloodType: localProfile.bloodType,
-				allergies: localProfile.allergies,
-				medications: localProfile.medications,
-				conditions: localProfile.conditions,
-				surgeries: localProfile.surgeries,
-				notes: localProfile.notes,
-			});
-		} finally {
-			setIsSaving(false);
-		}
-	}, [isSaving, localProfile, updateProfile]);
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
-			<Animated.ScrollView
-				contentContainerStyle={[
-					styles.content,
-					{ paddingTop: topPadding, paddingBottom: bottomPadding },
-				]}
-				showsVerticalScrollIndicator={false}
-				scrollEventThrottle={16}
-				onScroll={handleScroll}
-				style={{
-					opacity: fadeAnim,
-					transform: [{ translateY: slideAnim }],
-				}}
+			<KeyboardAvoidingView 
+				behavior={Platform.OS === "ios" ? "padding" : "height"}
+				style={{ flex: 1 }}
 			>
+				<Animated.ScrollView
+					contentContainerStyle={[
+						styles.content,
+						{ paddingTop: topPadding, paddingBottom: bottomPadding },
+					]}
+					showsVerticalScrollIndicator={false}
+					scrollEventThrottle={16}
+					onScroll={handleScroll}
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+					}}
+					keyboardShouldPersistTaps="handled"
+				>
 				<View style={[styles.card, { backgroundColor: colors.card }]}>
 					<Text style={[styles.title, { color: colors.text }]}>
 						Your health, summarized
@@ -273,9 +323,9 @@ export default function MedicalProfileScreen() {
 						</Text>
 					</View>
 				) : null}
-			</Animated.ScrollView>
-
-			</LinearGradient>
+				</Animated.ScrollView>
+			</KeyboardAvoidingView>
+		</LinearGradient>
 	);
 }
 

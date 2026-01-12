@@ -138,6 +138,9 @@ export const AuthProvider = ({ children }) => {
                 address: user?.address || null,
                 gender: user?.gender || null,
                 dateOfBirth: user?.dateOfBirth || null,
+                id: user?.id || null,
+                createdAt: user?.createdAt || null,
+                updatedAt: user?.updatedAt || null,
 				emailVerified: authStatus.emailVerified,
 				phoneVerified: authStatus.phoneVerified,
 				hasPassword: authStatus.hasPassword,
@@ -150,7 +153,7 @@ export const AuthProvider = ({ children }) => {
 			syncUserData,
 			loading,
 		}),
-		[authStatus, loading]
+		[authStatus, user, loading]
 	);
 
 	// **4. Show a spinner while loading data**
