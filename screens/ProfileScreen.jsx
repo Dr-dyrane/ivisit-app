@@ -87,7 +87,7 @@ const ProfileScreen = () => {
 
     // Debounced version of hasChanges to prevent FAB flickering
     const debouncedHasChanges = useRef(hasChanges);
-    const [stableHasChanges, setStableHasChanges] = useState(hasChanges);
+    const [stableHasChanges, setStableHasChanges] = useState(false);
     
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -95,7 +95,7 @@ const ProfileScreen = () => {
                 debouncedHasChanges.current = hasChanges;
                 setStableHasChanges(hasChanges);
             }
-        }, 500); // 500ms debounce
+        }, 300); // 300ms debounce
         
         return () => clearTimeout(timer);
     }, [hasChanges]);
