@@ -1,9 +1,11 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Dimensions } from "react-native";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
-import * as Haptics from 'expo-haptics';
+import * as Haptics from "expo-haptics";
 import { COLORS } from "../../../constants/colors";
 import { useTheme } from "../../../contexts/ThemeContext";
+
+const { width } = Dimensions.get("window");
 
 export default function BedBookingOptions({
 	bedType,
@@ -12,12 +14,11 @@ export default function BedBookingOptions({
 	onBedCountChange,
 	textColor,
 	mutedColor,
-	cardColor,
 }) {
 	const { isDarkMode } = useTheme();
 
 	const handleBedTypeSelect = (typeId) => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 		onBedTypeChange(typeId);
 	};
 
@@ -25,14 +26,14 @@ export default function BedBookingOptions({
 		{
 			id: "standard",
 			name: "Standard Bed",
-			description: "General Ward • Shared",
+			description: "General Ward • Professional Care • Shared Space",
 			icon: "bed-patient",
 			price: "$150",
 		},
 		{
 			id: "private",
 			name: "Private Room",
-			description: "Single Room • En-suite",
+			description: "Premium Suite • Personal Bathroom • 24/7 Concierge",
 			icon: "home",
 			price: "$350",
 		},
@@ -41,104 +42,151 @@ export default function BedBookingOptions({
 	return (
 		<View style={styles.container}>
 			<View style={styles.sectionHeader}>
-				<Text style={[styles.sectionTitle, { color: mutedColor }]}>CHOOSE ROOM TYPE</Text>
+				<Text style={[styles.sectionTitle, { color: mutedColor }]}>
+					CHOOSE ACCOMMODATION
+				</Text>
 			</View>
-			
-			{BED_OPTIONS.map((option) => {
-				const isSelected = bedType === option.id;
-				const backgroundColor = isSelected 
-					? (isDarkMode 
-						? COLORS.brandPrimary + '25' 
-						: COLORS.brandPrimary + '15') 
-					: cardColor;
 
-				return (
-					<Pressable
-						key={option.id}
-						onPress={() => handleBedTypeSelect(option.id)}
-						style={({ pressed }) => [
-							styles.optionCard,
-							{
-								backgroundColor,
-								opacity: pressed ? 0.9 : 1,
-							}
-						]}
-					>
-						{/* Icon */}
-						<View style={[
-							styles.iconContainer,
-							{
-								backgroundColor: isSelected
-									? (isDarkMode 
-										? COLORS.brandPrimary + '20'
-										: COLORS.brandPrimary + '15')
-									: (isDarkMode
-										? 'rgba(255,255,255,0.05)'
-										: 'rgba(0,0,0,0.03)'),
-							}
-						]}>
-							<Fontisto 
-								name={option.icon} 
-								size={24} 
-								color={isSelected 
-									? COLORS.brandPrimary 
-									: (isDarkMode 
-										? COLORS.textMutedDark 
-										: mutedColor)} 
-							/>
+			<View style={styles.optionsGrid}>
+				{BED_OPTIONS.map((option) => {
+					const isSelected = bedType === option.id;
+
+					// Dynamic Styles based on your logic
+					const activeBG = isSelected
+						? isDarkMode
+							? COLORS.brandPrimary + "20"
+							: COLORS.brandPrimary + "15"
+						: isDarkMode
+						? "rgba(255,255,255,0.05)"
+						: "rgba(0,0,0,0.03)";
+
+					return (
+						<Pressable
+							key={option.id}
+							onPress={() => handleBedTypeSelect(option.id)}
+							style={({ pressed }) => [
+								styles.optionCard,
+								{
+									backgroundColor: activeBG,
+									transform: [{ scale: pressed ? 0.98 : 1 }],
+									shadowOpacity: isDarkMode ? 0.3 : 0.08,
+								},
+							]}
+						>
+							{/* Top Row: Icon & Price */}
+							<View style={styles.cardHeader}>
+								<View
+									style={[
+										styles.iconBox,
+										{
+											backgroundColor: isSelected
+												? COLORS.brandPrimary
+												: isDarkMode
+												? "#2D3748"
+												: "#F1F5F9",
+										},
+									]}
+								>
+									<Fontisto
+										name={option.icon}
+										size={22}
+										color={
+											isSelected
+												? "#FFFFFF"
+												: isDarkMode
+												? "#94A3B8"
+												: "#64748B"
+										}
+									/>
+								</View>
+								<Text
+									style={[
+										styles.price,
+										{ color: isSelected ? COLORS.brandPrimary : textColor },
+									]}
+								>
+									{option.price}
+									<Text style={styles.perNight}>/day</Text>
+								</Text>
+							</View>
+
+							{/* Content */}
+							<View style={styles.cardBody}>
+								<Text style={[styles.optionName, { color: textColor }]}>
+									{option.name}
+								</Text>
+								<Text
+									style={[styles.optionDesc, { color: mutedColor }]}
+									numberOfLines={2}
+								>
+									{option.description}
+								</Text>
+							</View>
+
+							{/* Bottom Right Checkmark */}
 							{isSelected && (
-								<View style={styles.selectedBadge}>
-									<Ionicons name="checkmark" size={12} color="#FFFFFF" />
+								<View style={styles.checkmarkWrapper}>
+									<Ionicons
+										name="checkmark-circle"
+										size={30}
+										color={COLORS.brandPrimary}
+									/>
 								</View>
 							)}
-						</View>
+						</Pressable>
+					);
+				})}
+			</View>
 
-						{/* Info */}
-						<View style={styles.infoContainer}>
-							<Text style={[styles.optionName, { color: textColor }]}>{option.name}</Text>
-							<Text style={[styles.optionDesc, { color: mutedColor }]}>{option.description}</Text>
-						</View>
-
-						{/* Price */}
-						<View style={styles.priceContainer}>
-							<Text style={[styles.price, { color: COLORS.brandPrimary }]}>{option.price}</Text>
-						</View>
-					</Pressable>
-				);
-			})}
-
-			<View style={[styles.countRow, { backgroundColor: cardColor, marginTop: 16 }]}>
+			{/* Counter Section */}
+			<View
+				style={[
+					styles.counterCard,
+					{ backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF" },
+				]}
+			>
 				<View>
-					<Text style={[styles.countLabel, { color: textColor }]}>Number of Beds</Text>
-					<Text style={[styles.countSub, { color: mutedColor }]}>For multiple patients</Text>
+					<Text style={[styles.countLabel, { color: textColor }]}>
+						Number of Beds
+					</Text>
+					<Text style={[styles.countSub, { color: mutedColor }]}>
+						Maximum of 5 patients
+					</Text>
 				</View>
-				
+
 				<View style={styles.counterControls}>
 					<Pressable
-						onPress={() => onBedCountChange(Math.max(1, bedCount - 1))}
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+							onBedCountChange(Math.max(1, bedCount - 1));
+						}}
 						style={({ pressed }) => [
-							styles.counterBtn, 
-							{ 
-								backgroundColor: isDarkMode ? "#252D3B" : "#F1F5F9",
-								opacity: pressed ? 0.7 : 1,
-								opacity: bedCount <= 1 ? 0.3 : 1
-							}
+							styles.counterBtn,
+							{
+								backgroundColor: isDarkMode ? "#2D3748" : "#F1F5F9",
+								opacity: pressed || bedCount <= 1 ? 0.6 : 1,
+							},
 						]}
 						disabled={bedCount <= 1}
 					>
 						<Ionicons name="remove" size={20} color={textColor} />
 					</Pressable>
-					
-					<Text style={[styles.countValue, { color: textColor }]}>{bedCount}</Text>
-					
+
+					<Text style={[styles.countValue, { color: textColor }]}>
+						{bedCount}
+					</Text>
+
 					<Pressable
-						onPress={() => onBedCountChange(Math.min(5, bedCount + 1))}
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+							onBedCountChange(Math.min(5, bedCount + 1));
+						}}
 						style={({ pressed }) => [
-							styles.counterBtn, 
-							{ 
-								backgroundColor: isDarkMode ? "#252D3B" : "#F1F5F9",
-								opacity: pressed ? 0.7 : 1 
-							}
+							styles.counterBtn,
+							{
+								backgroundColor: isDarkMode ? "#0F172A" : "#F1F5F9",
+								opacity: pressed ? 0.7 : 1,
+							},
 						]}
 					>
 						<Ionicons name="add" size={20} color={textColor} />
@@ -152,97 +200,115 @@ export default function BedBookingOptions({
 const styles = StyleSheet.create({
 	container: {
 		width: "100%",
+		paddingVertical: 10,
 	},
 	sectionHeader: {
-		marginBottom: 12,
-		marginTop: 8,
+		marginBottom: 16,
+		paddingHorizontal: 4,
 	},
 	sectionTitle: {
-		fontSize: 11,
-		fontWeight: "800",
-		letterSpacing: 1,
-	},
-	optionCard: {
-		flexDirection: "row",
-		alignItems: "center",
-		padding: 16,
-		borderRadius: 20,
-		marginBottom: 12,
-	},
-	iconContainer: {
-		width: 56,
-		height: 56,
-		borderRadius: 28,
-		alignItems: "center",
-		justifyContent: "center",
-		marginRight: 16,
-		position: "relative",
-	},
-	selectedBadge: {
-		position: "absolute",
-		top: -2,
-		right: -2,
-		width: 20,
-		height: 20,
-		borderRadius: 10,
-		backgroundColor: COLORS.brandPrimary,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	infoContainer: {
-		flex: 1,
-		justifyContent: "center",
-	},
-	optionName: {
-		fontSize: 16,
-		fontWeight: "700",
-		marginBottom: 4,
-	},
-	optionDesc: {
 		fontSize: 12,
-		fontWeight: "500",
-	},
-	priceContainer: {
-		alignItems: "flex-end",
-		justifyContent: "center",
-		marginLeft: 12,
-	},
-	price: {
-		fontSize: 16,
 		fontWeight: "800",
+		letterSpacing: 1.2,
+		textTransform: "uppercase",
 	},
-	countRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		padding: 16,
-		borderRadius: 20,
-		marginTop: 12,
-	},
-	countLabel: {
-		fontSize: 15,
-		fontWeight: "700",
-	},
-	countSub: {
-		fontSize: 12,
-		marginTop: 2,
-	},
-	counterControls: {
-		flexDirection: "row",
-		alignItems: "center",
+	optionsGrid: {
 		gap: 16,
 	},
-	counterBtn: {
-		width: 36,
-		height: 36,
+	optionCard: {
+		padding: 24,
+		borderRadius: 36, // Ultra rounded
+		minHeight: 170, // Vertical space
+		justifyContent: "space-between",
+		position: "relative",
+		// Depth instead of borders
+		elevation: 4,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 8 },
+		shadowRadius: 12,
+	},
+	cardHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		marginBottom: 12,
+	},
+	iconBox: {
+		width: 50,
+		height: 50,
 		borderRadius: 18,
 		alignItems: "center",
 		justifyContent: "center",
 	},
+	price: {
+		fontSize: 22,
+		fontWeight: "900",
+		letterSpacing: -0.5,
+	},
+	perNight: {
+		fontSize: 12,
+		fontWeight: "600",
+		opacity: 0.6,
+	},
+	cardBody: {
+		marginTop: 8,
+	},
+	optionName: {
+		fontSize: 20,
+		fontWeight: "800",
+		marginBottom: 6,
+	},
+	optionDesc: {
+		fontSize: 13,
+		lineHeight: 18,
+		maxWidth: "80%",
+	},
+	checkmarkWrapper: {
+		position: "absolute",
+		right: 12,
+		bottom: 12,
+	},
+	counterCard: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		padding: 24,
+		borderRadius: 32,
+		marginTop: 20,
+		elevation: 2,
+		shadowColor: "#000",
+		shadowOpacity: 0.05,
+		shadowOffset: { width: 0, height: 4 },
+		shadowRadius: 10,
+	},
+	countLabel: {
+		fontSize: 16,
+		fontWeight: "800",
+	},
+	countSub: {
+		fontSize: 12,
+		marginTop: 2,
+		opacity: 0.7,
+	},
+	counterControls: {
+		flexDirection: "row",
+		alignItems: "center",
+		backgroundColor: "rgba(0,0,0,0.03)",
+		padding: 6,
+		borderRadius: 20,
+		gap: 12,
+	},
+	counterBtn: {
+		width: 40,
+		height: 40,
+		borderRadius: 16,
+		alignItems: "center",
+		justifyContent: "center",
+	},
 	countValue: {
-		fontSize: 18,
-		fontWeight: "700",
-		minWidth: 20,
+		fontSize: 20,
+		fontWeight: "800",
+		minWidth: 24,
 		textAlign: "center",
 	},
 });
