@@ -42,6 +42,8 @@ if (Platform.OS === "android") {
 // --- THE IDENTITY ARTIFACT (POLICY CARD) ---
 const PolicyCard = ({ policy, isDarkMode, onEdit, onDelete }) => {
 	const [unmasked, setUnmasked] = useState(false);
+	const [selected, setSelected] = useState(false);
+	const [holdTimer, setHoldTimer] = useState(null);
 	const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
 	const mutedColor = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted;
 
@@ -51,21 +53,56 @@ const PolicyCard = ({ policy, isDarkMode, onEdit, onDelete }) => {
 		setUnmasked(!unmasked);
 	};
 
+	const handlePressIn = () => {
+		const timer = setTimeout(() => {
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+			LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+			setSelected(!selected);
+		}, 500);
+		setHoldTimer(timer);
+	};
+
+	const handlePressOut = () => {
+		if (holdTimer) {
+			clearTimeout(holdTimer);
+			setHoldTimer(null);
+		}
+	};
+
 	return (
 		<TouchableOpacity
 			activeOpacity={0.9}
 			onPress={handlePress}
+			onPressIn={handlePressIn}
+			onPressOut={handlePressOut}
 			style={[
 				styles.policyCard,
 				{
 					backgroundColor: isDarkMode ? "#0B0F1A" : "#FFFFFF",
-					shadowColor: unmasked ? COLORS.brandPrimary : "#000",
-					shadowOpacity: unmasked ? 0.2 : 0.08,
-					borderColor: unmasked ? COLORS.brandPrimary + "40" : "transparent",
-					borderWidth: unmasked ? 1 : 0,
+					shadowColor: unmasked ? COLORS.brandPrimary : selected ? COLORS.brandPrimary : "#000",
+					shadowOpacity: unmasked ? 0.2 : selected ? 0.3 : 0.08,
+					borderColor: unmasked ? COLORS.brandPrimary + "40" : selected ? COLORS.brandPrimary + "60" : "transparent",
+					borderWidth: (unmasked || selected) ? 1 : 0,
+					transform: [{ scale: selected ? 0.98 : 1 }]
 				},
 			]}
 		>
+			{/* Corner Seal - Selection Indicator */}
+			{selected && (
+				<View style={styles.cornerSeal}>
+					<Ionicons 
+						name="checkmark-circle" 
+						size={24} 
+						color={COLORS.brandPrimary}
+						style={{
+							backgroundColor: '#FFFFFF',
+							borderRadius: 12,
+							padding: 2
+						}}
+					/>
+				</View>
+			)}
+
 			<View style={styles.cardHeader}>
 				<View style={styles.providerInfo}>
 					<Text
@@ -123,6 +160,13 @@ const PolicyCard = ({ policy, isDarkMode, onEdit, onDelete }) => {
 					</View>
 				)}
 			</View>
+
+			{/* Hint Text */}
+			{!unmasked && !selected && (
+				<Text style={[styles.hintText, { color: mutedColor }]}>
+					Tap to reveal • Hold to select
+				</Text>
+			)}
 
 			{!unmasked ? (
 				<Text style={[styles.hintText, { color: mutedColor }]}>
@@ -201,19 +245,33 @@ export default function InsuranceScreen() {
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
+	const openCreate = useCallback(() => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		setFormData({ provider_name: "", policy_number: "", group_number: "", policy_holder_name: "" });
+		setStep(0);
+		setShowAddModal(true);
+	}, []);
+
 	// FAB Registration
 	useFocusEffect(
 		useCallback(() => {
-			registerFAB("insurance-add", {
-				icon: "add",
-				onPress: () => setShowAddModal(true),
-				label: "Add Policy",
+			registerFAB('insurance-add', {
+				icon: 'shield-checkmark',
+				label: 'Add Policy',
+				subText: 'Link new insurance coverage',
+				visible: true,
+				onPress: openCreate,
+				style: 'primary',
+				haptic: 'medium',
+				priority: 7,
+				animation: 'prominent',
+				allowInStack: true,
 			});
 
 			return () => {
-				unregisterFAB("insurance-add");
+				unregisterFAB('insurance-add');
 			};
-		}, [registerFAB, unregisterFAB])
+		}, [registerFAB, unregisterFAB, openCreate])
 	);
 
 	const fetchPolicies = useCallback(async () => {
@@ -247,8 +305,38 @@ export default function InsuranceScreen() {
 	);
 	const canSave = () => {
 		if (step === 0) return formData.provider_name.trim().length >= 3;
-		if (step === 1) return formData.policy_number.trim().length >= 5;
+		if (step === 1) {
+			const policyValidation = getInputValidation('policy_number', formData.policy_number);
+			return policyValidation.valid;
+		}
 		return true;
+	};
+
+	const getInputValidation = (field, value) => {
+		switch (field) {
+			case 'provider_name':
+				if (value.trim().length === 0) return { valid: false, message: '' };
+				if (value.trim().length < 3) return { valid: false, message: 'Provider name too short' };
+				return { valid: true, message: 'Got it!' };
+			case 'policy_number':
+				if (value.trim().length === 0) return { valid: false, message: '' };
+				// Accept alphanumeric with dashes, spaces, min 5 chars
+				const policyRegex = /^[A-Z0-9\-\s]+$/i;
+				if (!policyRegex.test(value)) return { valid: false, message: 'Use letters, numbers, and dashes only' };
+				if (value.replace(/[^A-Z0-9]/gi, '').length < 5) return { valid: false, message: 'Policy number too short (min 5 chars)' };
+				return { valid: true, message: 'Perfect!' };
+			case 'group_number':
+				if (value.trim().length === 0) return { valid: false, message: '' };
+				// Accept alphanumeric with dashes and spaces
+				const groupRegex = /^[A-Z0-9\-\s]+$/i;
+				if (!groupRegex.test(value)) return { valid: false, message: 'Use letters, numbers, and dashes only' };
+				return { valid: true, message: 'Optional added' };
+			case 'policy_holder_name':
+				if (value.trim().length === 0) return { valid: false, message: '' };
+				return { valid: true, message: 'Nice!' };
+			default:
+				return { valid: false, message: '' };
+		}
 	};
 
 	const [shakeAnim] = useState(new Animated.Value(0));
@@ -273,13 +361,50 @@ export default function InsuranceScreen() {
 	};
 
 	const swipeHandlers = useSwipeGesture(
-		attemptNextStep, // Swipe Left -> Next (validated)
-		() => transitionStep(step - 1) // Swipe Right -> Back
+		() => {
+			// Swipe Left -> Next (with validation)
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+			
+			// Subtle animation feedback like onboarding
+			Animated.sequence([
+				Animated.timing(shakeAnim, {
+					toValue: 2,
+					duration: 100,
+					useNativeDriver: true,
+				}),
+				Animated.timing(shakeAnim, {
+					toValue: 0,
+					duration: 100,
+					useNativeDriver: true,
+				}),
+			]).start();
+
+			if (canSave()) {
+				transitionStep(step + 1);
+			} else {
+				shake(); // Invalid input - stronger shake
+			}
+		},
+		() => {
+			// Swipe Right -> Back
+			if (step > 0) {
+				Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+				transitionStep(step - 1);
+			}
+		}
 	);
+
+	const transitionStep = (newStep) => {
+		if (newStep < 0 || newStep > 2) return;
+		LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		setStep(newStep);
+	};
 
 	const [editingId, setEditingId] = useState(null);
 
 	const handleEdit = (policy) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		setFormData({
 			provider_name: policy.provider_name,
 			policy_number: policy.policy_number,
@@ -417,18 +542,16 @@ export default function InsuranceScreen() {
 						transform: [{ translateY: slideAnim }],
 					}}
 				>
-					<Text
-						style={{
-							fontSize: 10,
-							fontWeight: "800",
-							color: colors.textMuted,
-							marginBottom: 16,
-							letterSpacing: 1.5,
-							textTransform: "uppercase",
-							paddingHorizontal: 8,
-						}}
-					>
-						YOUR COVERAGE
+					<Text style={{
+						fontSize: 10,
+						fontWeight: "800",
+						color: colors.textMuted,
+						marginBottom: 16,
+						letterSpacing: 1.5,
+						textTransform: "uppercase",
+						paddingHorizontal: 8,
+					}}>
+						iVisit Medical Profile
 					</Text>
 
 					{policies.length === 0 && !loading ? (
@@ -474,7 +597,7 @@ export default function InsuranceScreen() {
 									marginBottom: 8,
 								}}
 							>
-								No Coverage Linked
+								No iVisit Coverage
 							</Text>
 							<Text
 								style={{
@@ -487,8 +610,7 @@ export default function InsuranceScreen() {
 									paddingHorizontal: 12,
 								}}
 							>
-								Add your insurance details to automate billing and document
-								checks for your visits.
+								Link your insurance details to enable seamless billing and automated coverage verification for all your iVisit medical services.
 							</Text>
 
 							<View
@@ -510,7 +632,7 @@ export default function InsuranceScreen() {
 								<Text
 									style={{ color: "#FFF", fontWeight: "900", fontSize: 15 }}
 								>
-									Link Policy
+									Link iVisit Coverage
 								</Text>
 							</View>
 						</TouchableOpacity>
@@ -548,14 +670,14 @@ export default function InsuranceScreen() {
 						: "Finalize"
 				}
 				primaryAction={
-					step === 2 ? handleSubmit : () => transitionStep(step + 1)
+					step === 2 ? handleSubmit : attemptNextStep
 				}
 				primaryActionLabel={
 					step === 2 ? (editingId ? "Save Changes" : "Link Identity") : "Next"
 				}
 				disabled={
-					(step === 0 && formData.provider_name.length < 3) ||
-					(step === 1 && formData.policy_number.length < 5)
+					(step === 0 && formData.provider_name.trim().length < 3) ||
+					(step === 1 && formData.policy_number.trim().length < 5)
 				}
 				secondaryAction={
 					step > 0
@@ -577,7 +699,7 @@ export default function InsuranceScreen() {
 					/>
 				</View>
 
-				<View style={styles.stepContainer} {...swipeHandlers}>
+				<Animated.View style={[styles.stepContainer, { transform: [{ translateX: shakeAnim }] }]} {...swipeHandlers}>
 					{step === 0 && (
 						<View>
 							<Input
@@ -590,35 +712,74 @@ export default function InsuranceScreen() {
 								icon="business"
 								autoFocus
 								returnKeyType="next"
-								onSubmitEditing={() => transitionStep(1)}
+								onSubmitEditing={attemptNextStep}
 							/>
+							{formData.provider_name.trim().length > 0 && (
+								<Text style={{
+									fontSize: 12,
+									fontWeight: '600',
+									color: getInputValidation('provider_name', formData.provider_name).valid ? COLORS.success : COLORS.error,
+									marginTop: 4,
+									marginLeft: 16
+								}}>
+									{getInputValidation('provider_name', formData.provider_name).message}
+								</Text>
+							)}
 						</View>
 					)}
 
 					{step === 1 && (
 						<View style={{ gap: 16 }}>
-							<Input
-								label="What is your Policy Number?"
-								placeholder="000-000-000"
-								value={formData.policy_number}
-								onChangeText={(t) =>
-									setFormData((prev) => ({ ...prev, policy_number: t }))
-								}
-								icon="card"
-								autoFocus
-								onSubmitEditing={() => transitionStep(2)}
-								keyboardType="numeric"
-							/>
-							<Input
-								label="Group Number (Optional)"
-								placeholder="e.g. GRP-999"
-								value={formData.group_number}
-								onChangeText={(text) =>
-									setFormData((prev) => ({ ...prev, group_number: text }))
-								}
-								icon="people"
-								keyboardType="numeric"
-							/>
+							<View>
+								<Input
+									label="What is your Policy Number?"
+									placeholder="e.g. ABC-123456789"
+									value={formData.policy_number}
+									onChangeText={(t) =>
+										setFormData((prev) => ({ ...prev, policy_number: t.toUpperCase() }))
+									}
+									icon="card"
+									autoFocus
+									onSubmitEditing={attemptNextStep}
+									keyboardType="default"
+									autoCapitalize="characters"
+								/>
+								{formData.policy_number.trim().length > 0 && (
+									<Text style={{
+										fontSize: 12,
+										fontWeight: '600',
+										color: getInputValidation('policy_number', formData.policy_number).valid ? COLORS.success : COLORS.error,
+										marginTop: 4,
+										marginLeft: 16
+									}}>
+										{getInputValidation('policy_number', formData.policy_number).message}
+									</Text>
+								)}
+							</View>
+							<View>
+								<Input
+									label="Group Number (Optional)"
+									placeholder="e.g. GRP-12345"
+									value={formData.group_number}
+									onChangeText={(text) =>
+										setFormData((prev) => ({ ...prev, group_number: text.toUpperCase() }))
+									}
+									icon="people"
+									keyboardType="default"
+									autoCapitalize="characters"
+								/>
+								{formData.group_number.trim().length > 0 && (
+									<Text style={{
+										fontSize: 12,
+										fontWeight: '600',
+										color: getInputValidation('group_number', formData.group_number).valid ? COLORS.success : COLORS.error,
+										marginTop: 4,
+										marginLeft: 16
+									}}>
+										{getInputValidation('group_number', formData.group_number).message}
+									</Text>
+								)}
+							</View>
 						</View>
 					)}
 
@@ -687,9 +848,20 @@ export default function InsuranceScreen() {
 								}
 								icon="person"
 							/>
+							{formData.policy_holder_name.trim().length > 0 && (
+								<Text style={{
+									fontSize: 12,
+									fontWeight: '600',
+									color: getInputValidation('policy_holder_name', formData.policy_holder_name).valid ? COLORS.success : COLORS.error,
+									marginTop: 4,
+									marginLeft: 16
+								}}>
+									{getInputValidation('policy_holder_name', formData.policy_holder_name).message}
+								</Text>
+							)}
 						</View>
 					)}
-				</View>
+				</Animated.View>
 			</InputModal>
 		</LinearGradient>
 	);
@@ -780,6 +952,29 @@ const styles = StyleSheet.create({
 		shadowColor: COLORS.brandPrimary,
 		shadowOpacity: 0.5,
 		shadowRadius: 5,
+	},
+	hintText: {
+		fontSize: 11,
+		fontWeight: "600",
+		textAlign: "center",
+		marginTop: 16,
+		opacity: 0.6,
+		letterSpacing: 0.5,
+	},
+	cornerSeal: {
+		position: "absolute",
+		bottom: -4,
+		right: -4,
+		width: 36,
+		height: 36,
+		borderRadius: 14,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: '#FFFFFF',
+		shadowColor: COLORS.brandPrimary,
+		shadowOpacity: 0.3,
+		shadowRadius: 8,
+		elevation: 4,
 	},
 	stepContainer: {
 		minHeight: 180,
