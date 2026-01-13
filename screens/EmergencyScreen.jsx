@@ -530,11 +530,16 @@ export default function EmergencyScreen() {
 		});
 	}, [activeAmbulanceTrip?.hospitalName, activeAmbulanceTrip?.requestId, activeAmbulanceTrip?.duration, activeAmbulanceTrip?.assignedAmbulance?.name, onCompleteAmbulanceTrip]);
 
-	const handleCompleteBedBookingWithRating = useCallback(() => {
+	const handleCompleteBedBookingWithRating = useCallback(async () => {
 		const visitId = activeBedBooking?.requestId;
 		const hospitalName = activeBedBooking?.hospitalName;
+		
+		// Complete the booking first (like ambulance)
+		await onCompleteBedBooking?.();
+		
 		if (!visitId) return;
 		
+		// Then show rating modal
 		setRatingState({
 			visible: true,
 			visitId,
@@ -547,7 +552,7 @@ export default function EmergencyScreen() {
 				provider: activeBedBooking?.provider || "Hospital Staff",
 			},
 		});
-	}, [activeBedBooking?.hospitalName, activeBedBooking?.requestId, activeBedBooking?.duration, activeBedBooking?.provider]);
+	}, [activeBedBooking?.hospitalName, activeBedBooking?.requestId, activeBedBooking?.duration, activeBedBooking?.provider, onCompleteBedBooking]);
 
 	return (
 		<View style={styles.container}>
@@ -571,6 +576,8 @@ export default function EmergencyScreen() {
 					const visitId = ratingState.visitId;
 					if (!visitId) return;
 					const nowIso = new Date().toISOString();
+					
+					// Only update rating data (completion already handled)
 					await updateVisit?.(visitId, {
 						rating,
 						ratingComment: comment,
@@ -578,6 +585,7 @@ export default function EmergencyScreen() {
 						lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
 						lifecycleUpdatedAt: nowIso,
 					});
+					
 					setRatingState({ visible: false, visitId: null, title: null, subtitle: null, serviceType: null, serviceDetails: null });
 				}}
 			/>
