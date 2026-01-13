@@ -47,18 +47,14 @@ export const useBottomSheetSnap = ({
 				return;
 			}
 
-			if (isTripMode) {
+			// During active trips, always hide tab bar regardless of snap index
+			if (isTripMode || isBedBookingMode) {
 				hideTabBar();
 				resetHeader();
 				return;
 			}
 
-			if (isBedBookingMode) {
-				hideTabBar();
-				resetHeader();
-				return;
-			}
-
+			// Standard mode behavior
 			if (index === 0) {
 				resetTabBar();
 				resetHeader();
@@ -75,6 +71,7 @@ export const useBottomSheetSnap = ({
 			isDetailMode,
 			isTripMode,
 			isBedBookingMode,
+			hasAnyVisitActive, // Add hasAnyVisitActive to dependencies
 			resetTabBar,
 			resetHeader,
 			onSnapChange,

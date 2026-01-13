@@ -41,12 +41,11 @@ export function useEmergencySheetController({
 
 		let points;
 		if (isDetailMode) {
-			points = ["50%"];
+			// Hospital selected mode: lock at 55%
+			points = ["55%"];
 		} else {
 			if (isCompactMode) {
-				// Use 2 points for compact mode: collapsed and expanded.
-				// Consistent 2-point structure prevents layout shifts and Invariant Violations
-				// when toggling between trip and bed booking modes.
+				// Active trip/bed reservation: lock at 40% and 50%
 				points = ["40%", "50%"];
 			} else {
 				// Calculate collapsed height based on actual screen dimensions
@@ -68,7 +67,7 @@ export function useEmergencySheetController({
 		}
 
 		return points;
-	}, [collapsedPercent, isDetailMode, isTripMode, isBedBookingMode, screenHeight]);
+	}, [collapsedPercent, isDetailMode, isTripMode, isBedBookingMode, screenHeight, hasAnyVisitActive, insets.bottom]);
 
 	const handleSheetChange = useCallback(
 		(index) => {

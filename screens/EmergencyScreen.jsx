@@ -181,11 +181,14 @@ export default function EmergencyScreen() {
 		}, [resetTabBar, resetHeader, setHeaderState, mode, leftComponent])
 	);
 
+	// Tab bar locking: Prevent tab switching during active trips (Uber-like behavior)
+	// But allow FAB to remain for mode switching between emergency/booking
 	useFocusEffect(
 		useCallback(() => {
-			const shouldHide = !!selectedHospital || !!activeAmbulanceTrip || !!activeBedBooking;
+			const hasAnyVisitActive = !!activeAmbulanceTrip || !!activeBedBooking;
 			
-			if (shouldHide) {
+			// Lock tab bar during any active trip or hospital selection
+			if (hasAnyVisitActive || selectedHospital) {
 				lockTabBarHidden();
 			} else {
 				unlockTabBarHidden();
@@ -205,11 +208,24 @@ export default function EmergencyScreen() {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 	}, [toggleMode]);
 
+	// Enhanced FAB visibility logic that accounts for different modes and snap points
+	const hasAnyVisitActive = !!activeAmbulanceTrip || !!activeBedBooking;
+	const shouldHideFAB = useMemo(() => {
+		// Always hide when hospital is selected (detail mode)
+		if (selectedHospital) return true;
+		
+		// During active trips, always show FAB for mode switching regardless of snap position
+		if (hasAnyVisitActive) return false;
+		
+		// Collapsed sheet should hide FAB at all times
+		if (sheetSnapIndex === 0) return true;
+		
+		// Show FAB in all other cases
+		return false;
+	}, [selectedHospital, hasAnyVisitActive, sheetSnapIndex]);
+
 	useFocusEffect(
 		useCallback(() => {
-			const hasAnyVisitActive = !!activeAmbulanceTrip || !!activeBedBooking;
-			const shouldHideFAB =
-				!!selectedHospital || sheetSnapIndex === 0;
 			const hasBothActive = !!activeAmbulanceTrip && !!activeBedBooking;
 			const nextLabel =
 				hasBothActive
@@ -222,7 +238,7 @@ export default function EmergencyScreen() {
 				icon: mode === "emergency" ? "bed-patient" : "medical",
 				visible: !shouldHideFAB,
 				mode: mode, // Pass mode for context-aware behavior
-				allowInStack: true, // Allow FAB in stack screens when trip is active
+				allowInStack: hasAnyVisitActive, // Allow FAB in stack screens when trip is active
 				onPress: handleFloatingButtonPress,
 				style: 'primary',
 				haptic: 'medium',
@@ -240,8 +256,7 @@ export default function EmergencyScreen() {
 			registerFAB,
 			unregisterFAB,
 			mode,
-			selectedHospital,
-			sheetSnapIndex,
+			shouldHideFAB,
 			handleFloatingButtonPress,
 			activeAmbulanceTrip,
 			activeBedBooking,
