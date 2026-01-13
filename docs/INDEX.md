@@ -1,6 +1,6 @@
 # 📚 iVisit Documentation Index
 
-> **Last Updated:** 2026-01-12
+> **Last Updated:** 2026-01-13
 
 ---
 
@@ -71,12 +71,16 @@ docs/
 
 ## 🎯 Quick Navigation
 
+### 🧬 THE MASTER BLUEPRINT (READ THIS FIRST)
+> **[MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)** - The complete DNA of iVisit. Use this to build the Provider App and Dashboard.
+
 ### Currently Active Work
 
 | Document | Description | Status |
 |----------|-------------|--------|
-| [AUTH_REFACTOR_PLAN.md](./architecture/auth/AUTH_REFACTOR_PLAN.md) | Authentication layer refactoring | 🟡 In Progress |
-| [EMERGENCY_REFACTOR_MANIFEST.md](./emergency/refactor/EMERGENCY_REFACTOR_MANIFEST.md) | EmergencyBottomSheet refactor feature manifest | 🟡 In Progress |
+| [AUTH_REFACTOR_PLAN.md](./architecture/auth/AUTH_REFACTOR_PLAN.md) | Authentication layer refactoring | ✅ Completed |
+| [EMERGENCY_REFACTOR_MANIFEST.md](./emergency/refactor/EMERGENCY_REFACTOR_MANIFEST.md) | EmergencyBottomSheet refactor feature manifest | ✅ Completed |
+| [CURRENT_STATE.md](./project_state/context/CURRENT_STATE.md) | Current Architecture & Backend State | 🟢 Active |
 
 ### Architecture
 

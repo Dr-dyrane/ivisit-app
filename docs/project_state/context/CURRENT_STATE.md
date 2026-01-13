@@ -1,56 +1,40 @@
 # Application Context & Architecture State
 
-## Current Session State (Date: 2026-01-09)
+## Current Session State (Date: 2026-01-13)
 
-### 1. Architecture Refactoring (Completed)
-We have successfully transitioned to a strict **3-Layer Architecture**:
-1.  **UI Components**: Pure presentation, consume **Custom Hooks**. No direct service or API calls.
-2.  **Custom Hooks**: Handle state, side effects, and call **Services**.
-    *   *Query Hooks*: Fetch data (e.g., `useMedicalProfile`, `useEmergencyContacts`).
-    *   *Mutation Hooks*: Modify data (e.g., `useUpdateProfile`, `useEmergencyRequests`, `useLogin`).
-3.  **Service Layer**: Stateless logic, communicates with **Supabase** and **Local Storage**.
+### 1. Architecture & Backend State (Supabase Integrated)
+We have successfully transitioned from a local-first architecture to a **Supabase-backed Hybrid Architecture**:
+*   ✅ **Auth Layer**: Fully integrated with Supabase Auth (Login, Signup, Password Reset, OTP). `checkUserExists` mock has been removed.
+*   ✅ **Profile Layer**: Connected to `public.profiles` and `public.medical_profiles` tables.
+*   ✅ **Emergency Layer**: Real-time `emergency_requests` table with Supabase Subscriptions for live updates.
+*   ✅ **Visits Layer**: Visits are synced with `public.visits` table.
+*   ✅ **Notifications**: Universal notification system with Real-time updates, Haptics, and Sound (Task 7623).
 
-**Status**:
-*   ⚠️ **`api/` Folder**: Present but currently empty/unused (migration artifact).
-*   ✅ **`hooks/` Folder**: REORGANIZED into domain modules (`auth`, `user`, `emergency`).
-*   ✅ **Direct Service Calls in UI**: ELIMINATED (Refactored all violations in Auth, Profile, and Emergency screens).
+### 2. Recent Implementation (Notifications & Real-time)
+A major update has been applied to the Notification system:
+*   **Universal Dispatcher**: `notificationDispatcher.js` now handles Auth, Visits, and Emergency events.
+*   **Real-time**: `useNotificationsData` and `useVisitsData` use Supabase Realtime for optimistic updates (INSERT/UPDATE/DELETE).
+*   **Haptics & Sound**: Integrated `hapticService` and `soundService` for feedback based on priority.
+*   **Settings**: Added "Notification Sounds" toggle in Settings.
 
-### 2. New Hooks Inventory (Modularized)
-Hooks are now organized by domain in `hooks/`:
-
-#### 🔐 `hooks/auth/` (Authentication & Session)
-*   `useLogin` (Password & OTP)
-*   `useSocialAuth` (OAuth wrapper)
-*   `useSignup` (Registration flow)
-*   `useChangePassword` / `useCreatePassword` / `useResetPassword` / `useForgotPassword`
-*   `useProfileCompletion` (Draft saving)
-
-#### 👤 `hooks/user/` (User Data)
-*   `useUpdateProfile` (Profile updates)
-*   `useImageUpload` (Image handling)
-*   `useMedicalProfile` (Fetch/Update medical data)
-
-#### 🚑 `hooks/emergency/` (Emergency Services)
-*   `useEmergencyContacts` (CRUD for contacts)
-*   `useEmergencyRequests` (Create/Cancel requests)
-*   `useEmergencySheetController` (UI logic for bottom sheet)
-
-### 3. Service Layer Status (Hybrid Strategy)
-The app uses a hybrid offline-first strategy:
--   **Auth Service**: Syncs session to `AsyncStorage`.
--   **Image Service**: Uploads to Supabase Storage, returns public URLs.
--   **Emergency Service**: Manages critical request lifecycle.
--   **Registration Context**: Now correctly uses `authService` for pending registration checks.
+### 3. Service Layer Status
+The service layer now prioritizes Supabase but maintains some local caching strategies:
+*   **Auth Service**: Syncs session to `AsyncStorage` for offline persistence.
+*   **Medical Profile**: Fetches from Supabase, falls back to local cache.
+*   **Emergency Service**: Uses Supabase for critical request lifecycle, with local fallback.
+*   **Visits Service**: Syncs with Supabase `visits` table.
 
 ### 4. Current Flow Focus (Verification)
-We are currently verifying the end-to-end user journey:
-1.  **WelcomeScreen**: Entry point.
-2.  **Onboarding**: Feature introduction.
-3.  **SignupScreen**: Method Selection -> OTP -> Profile -> Password.
-4.  **Home (Tabs)**:
-    *   **Emergency Tab**: Map, Bottom Sheet, Request Modal (now using real hooks).
-    *   **Profile Tab**: Medical Profile, Emergency Contacts (now using real hooks).
+We are currently in the **Verification Phase** of the recently completed features:
+1.  **Notification Actions**: Verify Login, Signup, Visit updates, and Emergency alerts trigger correct notifications.
+2.  **Real-time Sync**: Verify updates appear instantly across devices.
+3.  **Haptics & Sound**: Verify physical feedback patterns (requires device).
 
-### 5. Next Steps
--   **Manual Verification**: Confirm the Welcome -> Signup flow and Emergency Request flow run smoothly on the device.
--   **Bug Fixing**: Address any UI glitches or logical errors found during verification.
+### 5. Next Steps (Immediate Launch)
+To prepare for the next release:
+1.  **Manual Verification**: Complete the [Testing Checklist](../.zenflow/tasks/new-task-7623/plan.md#testing-results) for Notifications.
+2.  **Provider Discovery (Next Feature)**:
+    *   Model "Providers" and "Clinics" separately.
+    *   Improve Discovery UX (Specialty-first).
+    *   Make booking realistic (Slots, Confirmation).
+3.  **Polishing**: Ensure "More" screens (Medical Profile, Contacts) are fully polished and consistent.

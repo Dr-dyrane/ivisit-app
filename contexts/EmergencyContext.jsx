@@ -260,6 +260,54 @@ export function EmergencyProvider({ children }) {
         };
     }, []); // Removed dependency on activeAmbulanceTrip to avoid re-subscribing
 
+    // Sync User Location to Server during Active Trip
+    useEffect(() => {
+        if (!activeAmbulanceTrip || !activeAmbulanceTrip.requestId) return;
+        if (activeAmbulanceTrip.status === 'completed' || activeAmbulanceTrip.status === 'cancelled') return;
+
+        let locationSubscription = null;
+
+        (async () => {
+            try {
+                const { status } = await Location.getForegroundPermissionsAsync();
+                if (status !== 'granted') return;
+
+                locationSubscription = await Location.watchPositionAsync(
+                    {
+                        accuracy: Location.Accuracy.High,
+                        distanceInterval: 10, // Update every 10 meters
+                        timeInterval: 10000,   // Or every 10 seconds
+                    },
+                    (location) => {
+                        const { latitude, longitude, heading } = location.coords;
+                        
+                        // Update local state for UI if needed (though map usually handles its own or uses this context)
+                        setUserLocation(prev => ({
+                            ...prev,
+                            latitude,
+                            longitude,
+                        }));
+
+                        // Sync to Supabase
+                        // PostGIS expects: 'POINT(lon lat)'
+                        emergencyRequestsService.updateLocation(
+                            activeAmbulanceTrip.requestId, 
+                            `POINT(${longitude} ${latitude})`,
+                            heading || 0
+                        );
+                    }
+                );
+            } catch (e) {
+                console.warn("Location tracking failed:", e);
+            }
+        })();
+
+        return () => {
+            if (locationSubscription) locationSubscription.remove();
+        };
+    }, [activeAmbulanceTrip?.requestId, activeAmbulanceTrip?.status]);
+
+
 	useEffect(() => {
 		let isActive = true;
 		(async () => {

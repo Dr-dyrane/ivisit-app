@@ -9,6 +9,7 @@ import { supabase } from "./supabase";
 import { database, StorageKeys } from "../database";
 import * as Linking from 'expo-linking';
 import { notificationDispatcher } from "./notificationDispatcher";
+import { insuranceService } from "./insuranceService";
 
 // ============================================
 // ERROR HELPERS
@@ -218,6 +219,13 @@ const authService = {
         if (data.session) {
              await database.write(StorageKeys.CURRENT_USER, user);
              await database.write(StorageKeys.AUTH_TOKEN, data.session.access_token);
+             
+             // Auto-enroll in insurance scheme
+             try {
+                await insuranceService.enrollBasicScheme();
+             } catch (insError) {
+                console.warn("[authService] Failed to auto-enroll in insurance:", insError);
+             }
         }
 
 		// Create notification for successful signup
@@ -429,6 +437,9 @@ const authService = {
             address: data.address,
             gender: data.gender,
             dateOfBirth: data.date_of_birth,
+            role: data.role || 'patient', // Default to patient
+            providerType: data.provider_type,
+            bvnVerified: data.bvn_verified,
             createdAt: data.created_at,
             updatedAt: data.updated_at
         };
@@ -695,6 +706,9 @@ const authService = {
 
         await database.write(StorageKeys.CURRENT_USER, user);
         await database.write(StorageKeys.AUTH_TOKEN, data.session?.access_token);
+        
+        // If it's a new user (no username yet but just verified OTP), we might want to trigger auto-enrollment later 
+        // after they complete profile. But for now, we assume signup flow handles auto-enrollment.
 
 		return { success: true, data: { ...user, isExistingUser } };
 	},

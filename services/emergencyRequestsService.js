@@ -55,16 +55,11 @@ export const emergencyRequestsService = {
                     responderVehiclePlate: r.responder_vehicle_plate,
                     responderLocation: r.responder_location,
                     responderHeading: r.responder_heading,
+                    patientLocation: r.patient_location,
+                    patientHeading: r.patient_heading,
                 }));
                 
                 await database.write(StorageKeys.EMERGENCY_REQUESTS, requests);
-
-                if (__DEV__) {
-                    // console.log("[emergencyRequestsService.list] Supabase active requests:", {
-                    //     count: requests.length,
-                    //     ids: requests.slice(0, 3).map((r) => r?.id),
-                    // });
-                }
                 
                 return requests;
             }
@@ -72,12 +67,6 @@ export const emergencyRequestsService = {
 
         // Fallback to local
 		const items = await database.read(StorageKeys.EMERGENCY_REQUESTS, []);
-        if (__DEV__) {
-            // console.log("[emergencyRequestsService.list] Using local cache:", {
-            //     hasUser: !!user,
-            //     count: Array.isArray(items) ? items.length : 0,
-            // });
-        }
 		if (!Array.isArray(items)) return [];
 		return items
 			.filter((r) => r && typeof r === "object")
@@ -107,6 +96,8 @@ export const emergencyRequestsService = {
 			shared: request?.shared ?? null,
 			createdAt: request?.createdAt ?? now,
 			updatedAt: now,
+            patientLocation: request?.patientLocation ?? null, // Initial location
+            patientHeading: request?.patientHeading ?? null,
 		};
 
         if (user) {
@@ -130,7 +121,9 @@ export const emergencyRequestsService = {
                     patient_snapshot: item.patient,
                     shared_data_snapshot: item.shared,
                     created_at: item.createdAt,
-                    updated_at: item.updatedAt
+                    updated_at: item.updatedAt,
+                    patient_location: item.patientLocation,
+                    patient_heading: item.patientHeading
                 });
             
             if (error) {
@@ -145,13 +138,11 @@ export const emergencyRequestsService = {
 	},
 
 	async update(id, updates) {
-        // console.log(`[emergencyRequestsService] Update requested for ${id}`, updates);
         const { data: { user } } = await supabase.auth.getUser();
 		const requestId = String(id);
         const nextUpdatedAt = new Date().toISOString();
 
         if (user) {
-            // console.log(`[emergencyRequestsService] Updating in Supabase for user ${user.id}`);
             const dbUpdates = { updated_at: nextUpdatedAt };
             if (updates.status) dbUpdates.status = updates.status;
             if (updates.hospitalId !== undefined) dbUpdates.hospital_id = updates.hospitalId;
@@ -163,6 +154,8 @@ export const emergencyRequestsService = {
             if (updates.bedType !== undefined) dbUpdates.bed_type = updates.bedType;
             if (updates.bedCount !== undefined) dbUpdates.bed_count = updates.bedCount;
             if (updates.estimatedArrival !== undefined) dbUpdates.estimated_arrival = updates.estimatedArrival;
+            if (updates.patientLocation !== undefined) dbUpdates.patient_location = updates.patientLocation;
+            if (updates.patientHeading !== undefined) dbUpdates.patient_heading = updates.patientHeading;
             
             const { error, data } = await supabase
                 .from('emergency_requests')
@@ -176,9 +169,7 @@ export const emergencyRequestsService = {
                 throw error;
             }
             if (!data || data.length === 0) {
-                // console.warn(`[emergencyRequestsService] No request found with id ${requestId} in Supabase (queried with id and user_id)`);
-                // Try querying with request_id instead of id if it's different
-                // console.log(`[emergencyRequestsService] Retrying update using request_id column...`);
+                // Retry with request_id
                 const { error: error2, data: data2 } = await supabase
                     .from('emergency_requests')
                     .update(dbUpdates)
@@ -186,17 +177,7 @@ export const emergencyRequestsService = {
                     .eq('user_id', user.id)
                     .select();
                 
-                if (error2) {
-                    console.error(`[emergencyRequestsService] Supabase retry update failed for ${requestId}:`, error2);
-                    throw error2;
-                }
-                if (!data2 || data2.length === 0) {
-                    console.error(`[emergencyRequestsService] Still no request found with request_id ${requestId} in Supabase`);
-                } else {
-                    // console.log(`[emergencyRequestsService] Updated ${requestId} via request_id column in Supabase:`, data2[0]);
-                }
-            } else {
-                // console.log(`[emergencyRequestsService] Updated ${requestId} in Supabase:`, data[0]);
+                if (error2) throw error2;
             }
         }
 
@@ -211,6 +192,31 @@ export const emergencyRequestsService = {
 
 		return { id: requestId, ...updates, updatedAt: nextUpdatedAt };
 	},
+
+    /**
+     * Efficiently update only location (for tracking loops)
+     */
+    async updateLocation(id, location, heading) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return; // Only sync location if logged in
+
+        const { error } = await supabase
+            .from('emergency_requests')
+            .update({
+                patient_location: location, // Expects PostGIS point or compatible format if using raw SQL, but JS client handles basic objects often? 
+                                            // Actually, Supabase JS client usually needs `st_point(lon, lat)` via RPC or a specific format.
+                                            // However, if the column is geography, sending a GeoJSON object often works:
+                                            // { type: 'Point', coordinates: [lon, lat] }
+                patient_heading: heading,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .eq('user_id', user.id);
+
+        if (error) {
+            // console.warn("Failed to update patient location:", error);
+        }
+    },
 
 	async setStatus(id, status) {
 		const nextStatus =
@@ -235,4 +241,3 @@ export const emergencyRequestsService = {
 		);
 	},
 };
-
