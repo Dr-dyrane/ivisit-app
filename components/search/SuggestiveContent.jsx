@@ -164,7 +164,7 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 									styles.horizontalCard,
 									{ 
 										backgroundColor: item.color + (isDarkMode ? "20" : "10"),
-										transform: [{ scale: pressed ? 0.96 : 1 }] 
+										transform: [{ scale: pressed ? 0.98 : 1 }] // Micro-Scale: Every interactive card scales to 0.98 on press
 									}
 								]}
 							>
@@ -179,7 +179,12 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 										{item.subtitle}
 									</Text>
 								</View>
-								<View style={styles.checkmarkWrapper}>
+								<View style={[
+									styles.checkmarkWrapper,
+									{
+										backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF", // Frosted Glass background
+									}
+								]}>
 									<Ionicons name="arrow-forward" size={18} color={item.color} />
 								</View>
 							</Pressable>
@@ -197,7 +202,7 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 									styles.horizontalCard,
 									{ 
 										backgroundColor: colors.cardBg,
-										transform: [{ scale: pressed ? 0.96 : 1 }] 
+										transform: [{ scale: pressed ? 0.98 : 1 }] // Micro-Scale: Every interactive card scales to 0.98 on press 
 									}
 								]}
 							>
@@ -212,7 +217,12 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 										{item.category}
 									</Text>
 								</View>
-								<View style={styles.checkmarkWrapper}>
+								<View style={[
+									styles.checkmarkWrapper,
+									{
+										backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF", // Frosted Glass background
+									}
+								]}>
 									<Ionicons name="trending-up" size={18} color={COLORS.brandPrimary} />
 								</View>
 							</Pressable>
@@ -315,25 +325,23 @@ const styles = StyleSheet.create({
 	},
 	horizontalCard: {
 		minWidth: 180,
-		card: {
-			width: 140,
-			padding: 12,
-			borderRadius: 24, 
-			flexDirection: 'row',
-			alignItems: 'center',
-			gap: 12,
-			position: 'relative',
-			shadowColor: COLORS.brandPrimary, 
-			shadowOffset: { width: 0, height: 4 },
-			shadowOpacity: 0.15,
-			shadowRadius: 8,
-			elevation: 4,
-		},
+		padding: 16, // Consistent with manifesto
+		borderRadius: 24, // Widget / Card-in-Card (24px)
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 12,
+		position: 'relative',
+		// Border-Free Depth: Bioluminescence & Glass
+		shadowColor: COLORS.brandPrimary, // Active Glow
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.15,
+		shadowRadius: 8,
+		elevation: 4,
 	},
 	iconBox: {
-		width: 40, 
-		height: 40,
-		borderRadius: 14, 
+		width: 48, // Widget / Card-in-Card (24px * 2)
+		height: 48,
+		borderRadius: 14, // Identity / Detail (14px)
 		justifyContent: "center",
 		alignItems: "center",
 		// Frosted Glass effect
@@ -397,6 +405,17 @@ const styles = StyleSheet.create({
 		position: "absolute",
 		right: -4,
 		bottom: -4,
+		width: 32, // Proper badge size
+		height: 32,
+		borderRadius: 16, // Perfect circle
+		alignItems: "center",
+		justifyContent: "center",
+		// The Signature Interaction: "The Corner Seal"
+		shadowColor: COLORS.brandPrimary, // Active Glow
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.2,
+		shadowRadius: 4,
+		elevation: 3,
 	},
 });
 

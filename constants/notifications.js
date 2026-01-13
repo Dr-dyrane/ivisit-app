@@ -6,6 +6,7 @@ export const NOTIFICATION_TYPES = {
   VISIT: "visit",
   SYSTEM: "system",
   PROMOTION: "promotion",
+  SUPPORT: "support",
 };
 
 export const NOTIFICATION_PRIORITY = {
@@ -20,6 +21,7 @@ export const NOTIFICATION_FILTERS = [
   { id: "unread", label: "Unread" },
   { id: "emergency", label: "Emergency" },
   { id: "appointments", label: "Appointments" },
+  { id: "support", label: "Support" },
 ];
 
 export const getNotificationIcon = (type) => {
@@ -34,6 +36,8 @@ export const getNotificationIcon = (type) => {
       return "settings";
     case NOTIFICATION_TYPES.PROMOTION:
       return "star";
+    case NOTIFICATION_TYPES.SUPPORT:
+      return "chatbubbles"; // or "help-buoy"
     default:
       return "notifications";
   }

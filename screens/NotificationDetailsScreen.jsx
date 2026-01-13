@@ -20,6 +20,7 @@ import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useNotifications } from "../contexts/NotificationsContext";
+import { useEmergency, EmergencyMode } from "../contexts/EmergencyContext";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,12 +31,20 @@ import {
 } from "../constants/notifications";
 import * as Haptics from "expo-haptics";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import {
+	navigateToMore,
+	navigateToSOS,
+	navigateToVisitDetails,
+	navigateToVisits,
+	navigateToHelpSupport,
+} from "../utils/navigationHelpers";
 
 const NotificationDetailsScreen = () => {
 	const router = useRouter();
 	const { id } = useLocalSearchParams();
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
+	const { setMode } = useEmergency();
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
@@ -46,6 +55,47 @@ const NotificationDetailsScreen = () => {
 	const { setHeaderState } = useHeaderState();
 	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
+
+	const handleActionPress = useCallback(() => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+		const actionType = notification?.actionType ?? null;
+		const actionData = notification?.actionData ?? {};
+		const visitId =
+			typeof actionData?.visitId === "string"
+				? actionData.visitId
+				: typeof actionData?.appointmentId === "string"
+					? actionData.appointmentId
+					: null;
+
+		if (actionType === "track") {
+			navigateToSOS({
+				router,
+				setEmergencyMode: setMode,
+				mode: EmergencyMode.EMERGENCY,
+			});
+			return;
+		}
+
+		if (actionType === "view_appointment" || actionType === "view_visit" || actionType === "view_summary") {
+			if (visitId) {
+				navigateToVisitDetails({ router, visitId });
+				return;
+			}
+			navigateToVisits({ router });
+			return;
+		}
+
+		if (actionType === "upgrade") {
+			navigateToMore({ router });
+			return;
+		}
+
+		if (actionType === "view_ticket") {
+			navigateToHelpSupport({ router, ticketId: actionData?.ticketId });
+			return;
+		}
+	}, [notification, router, setMode]);
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
@@ -147,7 +197,7 @@ const NotificationDetailsScreen = () => {
 				{/* 5. ACTIONS: Premium Pill Section */}
 				{notification.actionType && (
 					<Pressable
-						onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+						onPress={handleActionPress}
 						style={({ pressed }) => [
 							styles.primaryAction,
 							{ backgroundColor: COLORS.brandPrimary, opacity: pressed ? 0.9 : 1 }

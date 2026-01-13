@@ -101,7 +101,11 @@ export function navigateToInsurance({ router, method = "push" }) {
 	nav(router, method, "/(user)/(stacks)/insurance");
 }
 
-export function navigateToHelpSupport({ router, method = "push" }) {
+export function navigateToHelpSupport({ router, ticketId, method = "push" }) {
+	if (ticketId) {
+		nav(router, method, { pathname: "/(user)/(stacks)/help-support", params: { ticketId } });
+		return;
+	}
 	nav(router, method, "/(user)/(stacks)/help-support");
 }
 

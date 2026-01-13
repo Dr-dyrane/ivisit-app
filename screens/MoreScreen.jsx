@@ -8,6 +8,7 @@ import {
 	Platform,
 	Animated,
 	Linking,
+	Alert,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,6 +25,7 @@ import { COLORS } from "../constants/colors";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
+import { seederService } from "../services/seederService";
 import {
 	navigateToEmergencyContacts,
 	navigateToHelpSupport,
@@ -140,6 +142,30 @@ const MoreScreen = () => {
 		} else {
 			showToast(result.message, "error");
 		}
+	};
+
+	const handleSeedData = async () => {
+		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+		Alert.alert(
+			"Seed Database",
+			"This will add mock data (Visits, Notifications, FAQs) to your account. Continue?",
+			[
+				{ text: "Cancel", style: "cancel" },
+				{
+					text: "Seed",
+					onPress: async () => {
+						try {
+							showToast("Seeding data...", "info");
+							await seederService.seedAll();
+							showToast("Data seeded successfully!", "success");
+						} catch (error) {
+							console.error(error);
+							showToast("Failed to seed data", "error");
+						}
+					},
+				},
+			]
+		);
 	};
 
 	// iVisit-specific health & emergency items
@@ -813,7 +839,95 @@ const MoreScreen = () => {
 					</TouchableOpacity>
 				</Animated.View>
 
-
+				{/* DEVELOPER Section */}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+						marginBottom: 24,
+					}}
+				>
+					<Text
+						style={{
+							fontSize: 10,
+							fontWeight: "800",
+							color: colors.textMuted,
+							marginBottom: 16,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
+						}}
+					>
+						DEVELOPER
+					</Text>
+					<TouchableOpacity
+						onPress={handleSeedData}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							padding: 20,
+							backgroundColor: colors.card,
+							borderRadius: 36,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<View
+							style={{
+								width: 56,
+								height: 56,
+								borderRadius: 14,
+								backgroundColor: COLORS.warning,
+								alignItems: "center",
+								justifyContent: "center",
+								marginRight: 16,
+							}}
+						>
+							<Ionicons name="construct" size={24} color="#FFFFFF" />
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text
+								style={{
+									fontSize: 19,
+									fontWeight: "900",
+									color: colors.text,
+									letterSpacing: -1.0,
+								}}
+							>
+								Seed Database
+							</Text>
+							<Text
+								style={{
+									fontSize: 14,
+									color: colors.textMuted,
+									marginTop: 2,
+								}}
+							>
+								Populate with mock data
+							</Text>
+						</View>
+						<View
+							style={{
+								width: 36,
+								height: 36,
+								borderRadius: 14,
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.025)"
+									: "rgba(0,0,0,0.025)",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<Ionicons
+								name="chevron-forward"
+								size={16}
+								color={colors.textMuted}
+							/>
+						</View>
+					</TouchableOpacity>
+				</Animated.View>
 			</ScrollView>
 		</LinearGradient>
 	);

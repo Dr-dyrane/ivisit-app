@@ -223,6 +223,51 @@ export const notificationDispatcher = {
     },
 
     /**
+     * Dispatch support-related notifications
+     * @param {string} event - 'ticket_created' | 'ticket_updated' | 'reply_received'
+     * @param {Object} data - Ticket data
+     * @returns {Promise<Object>} Created notification
+     */
+    async dispatchSupportEvent(event, data) {
+        let title = "";
+        let message = "";
+        let priority = NOTIFICATION_PRIORITY.NORMAL;
+
+        switch (event) {
+            case 'ticket_created':
+                title = "Support Request Received";
+                message = `We've received your request: "${data.subject}". A team member will respond shortly.`;
+                priority = NOTIFICATION_PRIORITY.NORMAL;
+                break;
+
+            case 'ticket_updated':
+                title = "Support Ticket Updated";
+                message = `Your ticket "${data.subject}" has been updated.`;
+                priority = NOTIFICATION_PRIORITY.NORMAL;
+                break;
+            
+            case 'reply_received':
+                title = "New Support Reply";
+                message = `New reply on ticket: "${data.subject}"`;
+                priority = NOTIFICATION_PRIORITY.HIGH;
+                break;
+
+            default:
+                console.warn(`[notificationDispatcher] Unknown support event: ${event}`);
+                return;
+        }
+
+        return this.dispatchNotification({
+            type: NOTIFICATION_TYPES.SUPPORT,
+            priority,
+            title,
+            message,
+            actionType: 'view_ticket',
+            actionData: { ticketId: data.id },
+        });
+    },
+
+    /**
      * Legacy method for backward compatibility with EmergencyContext
      * @deprecated Use dispatchEmergencyEvent instead
      */

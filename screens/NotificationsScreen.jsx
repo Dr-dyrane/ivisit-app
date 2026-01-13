@@ -37,6 +37,7 @@ import {
 	navigateToVisitDetails,
 	navigateToVisits,
 	navigateToNotificationDetails,
+	navigateToHelpSupport,
 } from "../utils/navigationHelpers";
 
 const NotificationsScreen = () => {
@@ -363,6 +364,11 @@ const NotificationsScreen = () => {
 
 			if (actionType === "upgrade") {
 				navigateToMore({ router });
+				return;
+			}
+
+			if (actionType === "view_ticket") {
+				navigateToHelpSupport({ router, ticketId: notification.actionData?.ticketId });
 				return;
 			}
 

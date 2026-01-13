@@ -44,6 +44,8 @@ export function NotificationsProvider({ children }) {
                     n.type === NOTIFICATION_TYPES.APPOINTMENT || 
                     n.type === NOTIFICATION_TYPES.VISIT
                 );
+            case "support":
+                return list.filter(n => n.type === NOTIFICATION_TYPES.SUPPORT);
             default:
                 return list;
         }
@@ -57,6 +59,7 @@ export function NotificationsProvider({ children }) {
         appointments: notifications.filter(n => 
             n.type === NOTIFICATION_TYPES.APPOINTMENT || n.type === NOTIFICATION_TYPES.VISIT
         ).length,
+        support: notifications.filter(n => n.type === NOTIFICATION_TYPES.SUPPORT).length,
     }), [notifications]);
 
     const setFilterType = useCallback((filterType) => {

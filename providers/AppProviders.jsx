@@ -9,6 +9,7 @@ import { EmergencyProvider } from "../contexts/EmergencyContext";
 import { NotificationsProvider } from "../contexts/NotificationsContext";
 import { VisitsProvider } from "../contexts/VisitsContext";
 import ToastProvider from "../contexts/ToastContext";
+import { HelpSupportProvider } from "../contexts/HelpSupportContext";
 
 /**
  * AppProviders
@@ -26,19 +27,21 @@ export const AppProviders = ({ children }) => {
 		<AuthProvider>
 			<ThemeProvider>
 				<PreferencesProvider>
-					<TabBarVisibilityProvider>
-						<ScrollAwareHeaderProvider>
-							<HeaderStateProvider>
-								<NotificationsProvider>
-									<VisitsProvider>
-										<EmergencyProvider>
-											<ToastProvider>{children}</ToastProvider>
-										</EmergencyProvider>
-									</VisitsProvider>
-								</NotificationsProvider>
-							</HeaderStateProvider>
-						</ScrollAwareHeaderProvider>
-					</TabBarVisibilityProvider>
+					<ToastProvider>
+						<TabBarVisibilityProvider>
+							<ScrollAwareHeaderProvider>
+								<HeaderStateProvider>
+									<NotificationsProvider>
+										<VisitsProvider>
+											<EmergencyProvider>
+												<HelpSupportProvider>{children}</HelpSupportProvider>
+											</EmergencyProvider>
+										</VisitsProvider>
+									</NotificationsProvider>
+								</HeaderStateProvider>
+							</ScrollAwareHeaderProvider>
+						</TabBarVisibilityProvider>
+					</ToastProvider>
 				</PreferencesProvider>
 			</ThemeProvider>
 		</AuthProvider>
