@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useMemo } from "react";
+import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import {
 	View,
 	Text,
@@ -9,6 +9,9 @@ import {
 	Animated,
 	Linking,
 	Alert,
+	Pressable,
+	Modal,
+	Dimensions
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -50,6 +53,83 @@ const MoreScreen = () => {
 		useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB, unregisterFAB } = useFAB();
+	
+	const [devModeVisible, setDevModeVisible] = useState(__DEV__);
+	const [tapCount, setTapCount] = useState(0);
+	const lastTapRef = useRef(0);
+
+	const [loveNoteVisible, setLoveNoteVisible] = useState(false);
+	const [heartTapCount, setHeartTapCount] = useState(0);
+	const lastHeartTapRef = useRef(0);
+
+	const loveModalSlide = useRef(new Animated.Value(Dimensions.get('window').height)).current;
+	
+	useEffect(() => {
+		if (loveNoteVisible) {
+			Animated.spring(loveModalSlide, {
+				toValue: 0,
+				useNativeDriver: true,
+				friction: 10, // Manifesto: "Heavy and premium"
+				tension: 45
+			}).start();
+		} else {
+			Animated.timing(loveModalSlide, {
+				toValue: Dimensions.get('window').height,
+				duration: 300,
+				useNativeDriver: true
+			}).start();
+		}
+	}, [loveNoteVisible]);
+
+	const handleVersionTap = () => {
+		const now = Date.now();
+		if (now - lastTapRef.current < 1000) {
+			setTapCount(prev => prev + 1);
+		} else {
+			setTapCount(1);
+		}
+		lastTapRef.current = now;
+
+		if (tapCount + 1 === 3) {
+			setDevModeVisible(prev => {
+				const newState = !prev;
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+				showToast(newState ? "Developer mode enabled" : "Developer mode disabled", "success");
+				return newState;
+			});
+			setTapCount(0);
+		}
+	};
+
+	const handleHeartTap = () => {
+		const now = Date.now();
+		if (now - lastHeartTapRef.current < 1000) {
+			setHeartTapCount(prev => prev + 1);
+		} else {
+			setHeartTapCount(1);
+		}
+		lastHeartTapRef.current = now;
+
+		if (heartTapCount + 1 === 3) {
+			setLoveNoteVisible(true);
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			setHeartTapCount(0);
+		}
+	};
+
+	const openLink = async (url) => {
+		try {
+			const supported = await Linking.canOpenURL(url);
+			if (supported) {
+				await Linking.openURL(url);
+			} else {
+				showToast("Cannot open this URL", "error");
+			}
+		} catch (error) {
+			console.error("Failed to open URL:", error);
+			showToast("Failed to open link", "error");
+		}
+	};
 
 	// Modular header components with haptic feedback - memoized to prevent infinite re-renders
 	const backButton = useCallback(() => <HeaderBackButton />, []);
@@ -518,7 +598,7 @@ const MoreScreen = () => {
 					<TouchableOpacity
 						onPress={() => {
 							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							Linking.openURL("https://ivisit.ng");
+							openLink("https://ivisit.ng");
 						}}
 						style={{
 							flexDirection: "row",
@@ -589,7 +669,7 @@ const MoreScreen = () => {
 					<TouchableOpacity
 						onPress={() => {
 							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							Linking.openURL("https://ivisit.ng/privacy");
+							openLink("https://ivisit.ng/privacy");
 						}}
 						style={{
 							flexDirection: "row",
@@ -839,96 +919,236 @@ const MoreScreen = () => {
 					</TouchableOpacity>
 				</Animated.View>
 
-				{/* DEVELOPER Section */}
-				<Animated.View
-					style={{
-						opacity: fadeAnim,
-						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 12,
-						marginBottom: 24,
-					}}
-				>
-					<Text
+				{/* DEVELOPER Section - Hidden by default in production, revealed by triple tap */}
+				{devModeVisible && (
+					<Animated.View
 						style={{
-							fontSize: 10,
-							fontWeight: "800",
+							opacity: fadeAnim,
+							transform: [{ translateY: slideAnim }],
+							paddingHorizontal: 12,
+							marginBottom: 24,
+						}}
+					>
+						<Text
+							style={{
+								fontSize: 10,
+								fontWeight: "800",
+								color: colors.textMuted,
+								marginBottom: 16,
+								letterSpacing: 1.5,
+								textTransform: "uppercase",
+							}}
+						>
+							DEVELOPER
+						</Text>
+						<TouchableOpacity
+							onPress={handleSeedData}
+							style={{
+								flexDirection: "row",
+								alignItems: "center",
+								padding: 20,
+								backgroundColor: colors.card,
+								borderRadius: 36,
+								shadowColor: "#000",
+								shadowOffset: { width: 0, height: 4 },
+								shadowOpacity: isDarkMode ? 0 : 0.03,
+								shadowRadius: 10,
+							}}
+						>
+							<View
+								style={{
+									width: 56,
+									height: 56,
+									borderRadius: 14,
+									backgroundColor: COLORS.warning,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons name="construct" size={24} color="#FFFFFF" />
+							</View>
+							<View style={{ flex: 1 }}>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -1.0,
+									}}
+								>
+									Seed Database
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									Populate with mock data
+								</Text>
+							</View>
+							<View
+								style={{
+									width: 36,
+									height: 36,
+									borderRadius: 14,
+									backgroundColor: isDarkMode
+										? "rgba(255,255,255,0.025)"
+										: "rgba(0,0,0,0.025)",
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons
+									name="chevron-forward"
+									size={16}
+									color={colors.textMuted}
+								/>
+							</View>
+						</TouchableOpacity>
+					</Animated.View>
+				)}
+
+				{/* Version Footer - Triple tap to toggle Developer Mode */}
+				<View style={{ alignItems: 'center', marginBottom: 20 }}>
+					<Pressable
+						onPress={handleVersionTap}
+						style={{ padding: 10, opacity: 0.5 }}
+					>
+						<Text style={{ 
+							fontSize: 12, 
+							fontWeight: "600", 
 							color: colors.textMuted,
-							marginBottom: 16,
-							letterSpacing: 1.5,
-							textTransform: "uppercase",
-						}}
+							letterSpacing: 1
+						}}>
+							VERSION 1.0.0
+						</Text>
+					</Pressable>
+					
+					<Pressable
+						onPress={handleHeartTap}
+						style={{ padding: 10, opacity: 0.4 }}
 					>
-						DEVELOPER
-					</Text>
-					<TouchableOpacity
-						onPress={handleSeedData}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							padding: 20,
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-					>
-						<View
-							style={{
-								width: 56,
-								height: 56,
-								borderRadius: 14,
-								backgroundColor: COLORS.warning,
-								alignItems: "center",
-								justifyContent: "center",
-								marginRight: 16,
-							}}
-						>
-							<Ionicons name="construct" size={24} color="#FFFFFF" />
-						</View>
-						<View style={{ flex: 1 }}>
-							<Text
-								style={{
-									fontSize: 19,
-									fontWeight: "900",
-									color: colors.text,
-									letterSpacing: -1.0,
-								}}
-							>
-								Seed Database
-							</Text>
-							<Text
-								style={{
-									fontSize: 14,
-									color: colors.textMuted,
-									marginTop: 2,
-								}}
-							>
-								Populate with mock data
-							</Text>
-						</View>
-						<View
-							style={{
-								width: 36,
-								height: 36,
-								borderRadius: 14,
-								backgroundColor: isDarkMode
-									? "rgba(255,255,255,0.025)"
-									: "rgba(0,0,0,0.025)",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Ionicons
-								name="chevron-forward"
-								size={16}
-								color={colors.textMuted}
-							/>
-						</View>
-					</TouchableOpacity>
-				</Animated.View>
+						<Text style={{ 
+							fontSize: 10, 
+							fontWeight: "500", 
+							color: colors.textMuted,
+							letterSpacing: 0.5
+						}}>
+							© 2026 iVisit.ng All rights reserved.
+						</Text>
+					</Pressable>
+				</View>
 			</ScrollView>
+
+			{/* Love Note Modal */}
+			<Modal
+				visible={loveNoteVisible}
+				transparent
+				animationType="none"
+				onRequestClose={() => setLoveNoteVisible(false)}
+			>
+				<Pressable 
+					style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}
+					onPress={() => setLoveNoteVisible(false)}
+				>
+					<Animated.View
+						style={{
+							position: 'absolute',
+							bottom: 0,
+							left: 0,
+							right: 0,
+							transform: [{ translateY: loveModalSlide }],
+							backgroundColor: '#FFF0F5', // Lavender Blush
+							borderTopLeftRadius: 48, // Manifesto: Outer Shell
+							borderTopRightRadius: 48, // Manifesto: Outer Shell
+							padding: 32,
+							paddingBottom: Platform.OS === 'ios' ? 50 : 32,
+							alignItems: 'center',
+							shadowColor: "#D81B60", // Manifesto: Active Glow (adapted for theme)
+							shadowOffset: { width: 0, height: -10 },
+							shadowOpacity: 0.15,
+							shadowRadius: 20,
+							elevation: 24,
+						}}
+					>
+						<Text style={{ fontSize: 64, marginBottom: 16 }}>🌹❤️</Text>
+						
+						<View style={{ 
+							backgroundColor: 'rgba(216, 27, 96, 0.1)', 
+							paddingHorizontal: 12, 
+							paddingVertical: 6, 
+							borderRadius: 12,
+							marginBottom: 12
+						}}>
+							<Text style={{ 
+								fontSize: 10, 
+								fontWeight: "800", 
+								color: "#D81B60", 
+								letterSpacing: 1.5,
+								textTransform: "uppercase" // Manifesto: Identity Label
+							}}>
+								APPRECIATION
+							</Text>
+						</View>
+
+						<Text
+							style={{
+								fontSize: 28,
+								fontWeight: "900", // Manifesto: Primary Headline
+								color: "#880E4F",
+								textAlign: "center",
+								marginBottom: 16,
+								letterSpacing: -1.0, // Manifesto: Primary Headline
+								lineHeight: 32
+							}}
+						>
+							To My Day 1 Supporter
+						</Text>
+						
+						<Text
+							style={{
+								fontSize: 17,
+								color: "#880E4F",
+								textAlign: "center",
+								lineHeight: 26,
+								fontWeight: "500",
+								marginBottom: 32,
+								opacity: 0.8
+							}}
+						>
+							"To my beautiful wife, thank you for believing in me from the very start. You are my rock, my inspiration, and my greatest blessing. I love you endlessly!"
+						</Text>
+						
+						<TouchableOpacity
+							onPress={() => setLoveNoteVisible(false)}
+							style={{
+								backgroundColor: "#D81B60",
+								paddingVertical: 16,
+								paddingHorizontal: 40,
+								borderRadius: 24, // Manifesto: Widget / Card-in-Card
+								shadowColor: "#D81B60",
+								shadowOffset: { width: 0, height: 8 },
+								shadowOpacity: 0.3,
+								shadowRadius: 12,
+								elevation: 8
+							}}
+						>
+							<Text style={{ 
+								color: "white", 
+								fontWeight: "800", // Manifesto: Identity Label weight
+								fontSize: 16,
+								letterSpacing: 0.5
+							}}>
+								Close
+							</Text>
+						</TouchableOpacity>
+					</Animated.View>
+				</Pressable>
+			</Modal>
 		</LinearGradient>
 	);
 };

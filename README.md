@@ -73,6 +73,16 @@ To set up iVisit locally:
 
 ---
 
+## Development Tools
+
+### Data Seeding
+The application includes a data seeding utility to populate the database with mock data (Visits, Notifications, FAQs) for testing purposes. 
+
+**Note:** This feature is only available when running in **Development Mode**.
+1. Navigate to the **More** tab.
+2. Scroll to the bottom to find the **Developer** section.
+3. Tap **Seed Database** to populate your account with test data.
+
 ## Configuration
 
 Create a `.env` file in the root directory with the following variables:

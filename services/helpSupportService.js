@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { database, StorageKeys } from "../database";
+import { MOCK_FAQS } from "../constants/faqs";
 
 export const helpSupportService = {
   async listFAQs() {
@@ -9,39 +10,19 @@ export const helpSupportService = {
         .select("*")
         .order("rank", { ascending: true });
       if (error) throw error;
-      return data || [];
+      
+      // If no FAQs found in DB, use mock data
+      if (!data || data.length === 0) {
+        throw new Error("No FAQs found");
+      }
+      
+      return data;
     } catch (err) {
       // Premium fallback content for offline/error states
-      return [
-        { 
-          id: 1, 
-          question: "How is my medical data secured?", 
-          answer: "We use bank-grade encryption and strict HIPAA-compliant protocols. Your health data is yours; we only share what's necessary with emergency responders during active SOS requests.", 
-          category: "Privacy", 
-          rank: 1 
-        },
-        { 
-          id: 2, 
-          question: "What happens during an SOS request?", 
-          answer: "Once confirmed, we instantly broadcast your location and medical profile to the nearest available ambulance and the receiving hospital. You'll track the ambulance in real-time.", 
-          category: "Emergency", 
-          rank: 2 
-        },
-        { 
-          id: 3, 
-          question: "Can I book a bed in advance?", 
-          answer: "Yes. Switch to 'Bed Booking' mode in the SOS tab. You can view real-time availability and secure a reservation before you arrive.", 
-          category: "Services", 
-          rank: 3 
-        },
-        { 
-          id: 4, 
-          question: "How do payments work?", 
-          answer: "Payments are processed securely via Stripe. You're only charged when a service (ambulance dispatch or bed reservation) is successfully confirmed.", 
-          category: "Billing", 
-          rank: 4 
-        }
-      ];
+      return MOCK_FAQS.map((faq, index) => ({
+        ...faq,
+        id: index + 1
+      }));
     }
   },
 
