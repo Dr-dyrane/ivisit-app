@@ -121,9 +121,12 @@ const EmergencyBottomSheet = forwardRef(
 
 		const clampSheetIndex = useCallback(
 			(index) => {
-				const max = Math.max(0, snapPoints.length - 1);
-				if (!Number.isFinite(index)) return 0;
-				return Math.min(Math.max(index, -1), max);
+				if (!Number.isFinite(index) || snapPoints.length === 0) return 0;
+				
+				const maxIndex = snapPoints.length - 1;
+				const clampedIndex = Math.min(Math.max(index, 0), maxIndex);
+				
+				return clampedIndex;
 			},
 			[snapPoints.length]
 		);
@@ -187,18 +190,24 @@ const EmergencyBottomSheet = forwardRef(
 
 		// Use current snap index for initial position, with fallbacks
 		const initialIndex = useMemo(() => {
-			const index = isDetailMode
-				? 0
-				: isTripMode || isBedBookingMode
-				? 0
-				: Number.isFinite(currentSnapIndex) &&
-				  currentSnapIndex >= 0 &&
-				  currentSnapIndex < snapPoints.length
-				? currentSnapIndex
-				: 1; // Default to halfway
+			// For detail mode, always use index 0 (only one snap point)
+			if (isDetailMode) return 0;
 			
-			return index;
-		}, [isBedBookingMode, isDetailMode, isTripMode, currentSnapIndex, snapPoints.length]);
+			// For trip/bed booking mode with 2 snap points, use index 0
+			if ((isTripMode || isBedBookingMode) && snapPoints.length === 2) return 0;
+			
+			// For normal mode with 3 snap points, validate currentSnapIndex or default to 1 (middle)
+			if (snapPoints.length === 3) {
+				return Number.isFinite(currentSnapIndex) && 
+					   currentSnapIndex >= 0 && 
+					   currentSnapIndex < snapPoints.length 
+					? currentSnapIndex 
+					: 1; // Default to middle position
+			}
+			
+			// Fallback: use 0 (always safe)
+			return 0;
+		}, [isDetailMode, isTripMode, isBedBookingMode, currentSnapIndex, snapPoints.length]);
 
 		// Track sheet phase changes using currentSnapIndex
 		useEffect(() => {

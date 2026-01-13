@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import React, { useRef } from "react";
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Fontisto, Ionicons } from "@expo/vector-icons";
@@ -6,20 +6,11 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 
-/**
- * ServiceTypeSelector - Horizontal grid layout
- *
- * Compact side-by-side cards with:
- * - Solid card backgrounds matching app design
- * - Brand-consistent icon colors
- * - Selection indicator
- * - Hospital count per service type
- */
 export default function ServiceTypeSelector({ selectedType, onSelect, counts }) {
 	const { isDarkMode } = useTheme();
 	const lastCallTime = useRef(0);
 	const DEBOUNCE_MS = 300;
-	
+
 	const safeCounts = counts || {};
 	const safeSelectedType = selectedType || null;
 
@@ -29,7 +20,6 @@ export default function ServiceTypeSelector({ selectedType, onSelect, counts }) 
 			icon: "ambulance",
 			iconType: "fontisto",
 			title: "Premium",
-			subtitle: "Priority",
 			gradientColors: [COLORS.brandPrimary, COLORS.brandSecondary],
 			recommended: true,
 		},
@@ -38,52 +28,37 @@ export default function ServiceTypeSelector({ selectedType, onSelect, counts }) 
 			icon: "medical",
 			iconType: "ionicons",
 			title: "Standard",
-			subtitle: "Basic",
-			gradientColors: [COLORS.brandSecondary, "#991B1B"], // Dark red gradient - matches brand
+			gradientColors: [COLORS.brandSecondary, "#991B1B"],
 			recommended: false,
 		},
 	];
 
 	const handleSelect = (type) => {
 		if (!type || !onSelect) return;
-		
 		const now = Date.now();
-		if (now - lastCallTime.current < DEBOUNCE_MS) {
-			return;
-		}
+		if (now - lastCallTime.current < DEBOUNCE_MS) return;
 		lastCallTime.current = now;
-		
-		const normalizedType = type.toLowerCase();
-		const normalizedSelected = safeSelectedType ? safeSelectedType.toLowerCase() : null;
-		
-		if (normalizedType === normalizedSelected) {
-			return;
-		}
-		
-		try {
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-			onSelect(type);
-		} catch (error) {
-			console.error("[ServiceTypeSelector] Error selecting type:", error);
-		}
-	};
 
-	// Solid card colors matching app design system (no borders)
-	const getCardBg = (isSelected) => isSelected
-		? isDarkMode ? `${COLORS.brandPrimary}18` : `${COLORS.brandPrimary}10`
-		: isDarkMode ? "#0B0F1A" : "#F3E7E7";
+		const normalizedType = type.toLowerCase();
+		if (normalizedType === (safeSelectedType?.toLowerCase())) return;
+
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		onSelect(type);
+	};
 
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 
-	const normalizedSelectedType = safeSelectedType ? safeSelectedType.toLowerCase() : "";
-
 	return (
 		<View style={styles.container}>
 			{serviceTypes.map((service) => {
-				const normalizedServiceType = service.type ? service.type.toLowerCase() : "";
-				const isSelected = normalizedSelectedType === normalizedServiceType;
-				const cardBg = getCardBg(isSelected);
+				const normalizedServiceType = service.type.toLowerCase();
+				const isSelected = safeSelectedType?.toLowerCase() === normalizedServiceType;
+
+				// Finalized Premium Background Logic
+				const activeBG = isSelected
+					? (isDarkMode ? COLORS.brandPrimary + "20" : COLORS.brandPrimary + "15")
+					: (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)");
 
 				return (
 					<Pressable
@@ -92,21 +67,14 @@ export default function ServiceTypeSelector({ selectedType, onSelect, counts }) 
 						style={({ pressed }) => [
 							styles.card,
 							{
-								backgroundColor: cardBg,
-								transform: [{ scale: pressed ? 0.97 : 1 }],
-								...Platform.select({
-									ios: {
-										shadowColor: isSelected ? COLORS.brandPrimary : "#000",
-										shadowOffset: { width: 0, height: isSelected ? 3 : 2 },
-										shadowOpacity: isSelected ? 0.12 : 0.03,
-										shadowRadius: isSelected ? 6 : 4,
-									},
-									android: { elevation: isSelected ? 3 : 1 },
-								}),
+								backgroundColor: activeBG,
+								transform: [{ scale: pressed ? 0.98 : 1 }],
+								shadowColor: isSelected ? COLORS.brandPrimary : "#000",
+								shadowOpacity: isDarkMode ? 0.2 : 0.04,
 							},
 						]}
 					>
-						{/* Icon Container with Gradient */}
+						{/* Compact Icon Box */}
 						<LinearGradient
 							colors={service.gradientColors}
 							style={styles.iconContainer}
@@ -114,39 +82,33 @@ export default function ServiceTypeSelector({ selectedType, onSelect, counts }) 
 							end={{ x: 1, y: 1 }}
 						>
 							{service.iconType === "fontisto" ? (
-								<Fontisto name={service.icon} size={18} color="#FFFFFF" />
+								<Fontisto name={service.icon} size={16} color="#FFFFFF" />
 							) : (
-								<Ionicons name={service.icon} size={20} color="#FFFFFF" />
+								<Ionicons name={service.icon} size={18} color="#FFFFFF" />
 							)}
 						</LinearGradient>
 
-						{/* Content - Stacked vertically for grid layout */}
+						{/* Content Row */}
 						<View style={styles.content}>
-							<Text
-								style={[
-									styles.title,
-									{ color: isSelected ? COLORS.brandPrimary : textColor },
-								]}
-								numberOfLines={1}
-							>
+							<Text style={[styles.title, { color: textColor }]} numberOfLines={1}>
 								{service.title}
 							</Text>
 							<Text style={[styles.subtitle, { color: mutedColor }]} numberOfLines={1}>
-								{safeCounts[service.type.toLowerCase()] ?? 0} available
+								{safeCounts[normalizedServiceType] ?? 0}
 							</Text>
 						</View>
 
-						{/* Selection Indicator - Top right */}
-						{isSelected && (
-							<View style={styles.checkIndicator}>
-								<Ionicons name="checkmark-circle" size={18} color={COLORS.brandPrimary} />
+						{/* Star Overlay on Icon (Compact Recommendation) */}
+						{service.recommended && (
+							<View style={styles.recommendedBadge}>
+								<Ionicons name="star" size={8} color="#FFFFFF" />
 							</View>
 						)}
 
-						{/* Recommended Badge - Only on Premium */}
-						{service.recommended && (
-							<View style={styles.recommendedBadge}>
-								<Ionicons name="star" size={10} color="#FFFFFF" />
+						{/* The "Corner Seal" Checkmark */}
+						{isSelected && (
+							<View style={styles.checkmarkWrapper}>
+								<Ionicons name="checkmark-circle" size={20} color={COLORS.brandPrimary} />
 							</View>
 						)}
 					</Pressable>
@@ -158,51 +120,69 @@ export default function ServiceTypeSelector({ selectedType, onSelect, counts }) 
 
 const styles = StyleSheet.create({
 	container: {
-		flexDirection: "row", // Horizontal grid layout
+		flexDirection: "row",
 		gap: 10,
+		paddingVertical: 4,
 	},
 	card: {
-		flex: 1, // Equal width cards
-		flexDirection: "row",
+		flex: 1,
+		flexDirection: "row", // Maintaining the Row layout for height constraint
 		alignItems: "center",
-		padding: 14,
-		borderRadius: 24, // More rounded, no border
+		paddingVertical: 12,
+		paddingHorizontal: 12,
+		borderRadius: 28, // High rounding but adjusted for compact height
 		position: "relative",
+		// Depth logic
+		...Platform.select({
+			ios: {
+				shadowOffset: { width: 0, height: 4 },
+				shadowRadius: 8,
+			},
+			android: { elevation: 2 },
+		}),
 	},
 	iconContainer: {
-		width: 40,
-		height: 40,
-		borderRadius: 14,
+		width: 42,
+		height: 42,
+		borderRadius: 15,
 		alignItems: "center",
 		justifyContent: "center",
 		marginRight: 10,
 	},
 	content: {
 		flex: 1,
+		justifyContent: 'center',
 	},
 	title: {
-		fontSize: 14,
-		fontWeight: "500",
-		letterSpacing: -0.2,
+		fontSize: 13,
+		fontWeight: "800", // Bold premium weight
+		letterSpacing: -0.4,
 	},
 	subtitle: {
-		fontSize: 11,
-		marginTop: 2,
-	},
-	checkIndicator: {
-		position: "absolute",
-		top: 8,
-		right: 8,
+		fontSize: 10,
+		fontWeight: "600",
+		marginTop: 1,
+		opacity: 0.7,
 	},
 	recommendedBadge: {
 		position: "absolute",
-		top: -4,
-		right: -4,
-		width: 20,
-		height: 20,
-		borderRadius: 10,
+		top: 8,
+		left: 38, // Positioned relative to the icon container
+		width: 14,
+		height: 14,
+		borderRadius: 7,
 		backgroundColor: COLORS.brandPrimary,
 		alignItems: "center",
 		justifyContent: "center",
+		borderWidth: 1.5,
+		borderColor: '#FFF', // Standardizes the badge look
+	},
+	checkmarkWrapper: {
+		position: "absolute",
+		right: -2,
+		bottom: -2,
+		shadowColor: COLORS.brandPrimary,
+		shadowOpacity: 0.2,
+		shadowRadius: 4,
 	},
 });

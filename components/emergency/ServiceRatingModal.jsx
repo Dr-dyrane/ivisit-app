@@ -162,11 +162,13 @@ export function ServiceRatingModal({
 					{/* Handle */}
 					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-8" />
 
-					<ScrollView 
-						showsVerticalScrollIndicator={false}
-						contentContainerStyle={{ paddingBottom: 40 }}
-						keyboardShouldPersistTaps="handled"
-					>
+					<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
+						<ScrollView 
+							{...getScrollViewProps()}
+							showsVerticalScrollIndicator={false}
+							contentContainerStyle={{ paddingBottom: 40 }}
+							keyboardShouldPersistTaps="handled"
+						>
 						{/* Header */}
 						<View className="items-center mb-8">
 							<View 
@@ -340,7 +342,8 @@ export function ServiceRatingModal({
 								</Pressable>
 							</View>
 						</ScrollView>
-					</Animated.View>
+					</KeyboardAvoidingView>
+				</Animated.View>
 			</View>
 		</Modal>
 	);

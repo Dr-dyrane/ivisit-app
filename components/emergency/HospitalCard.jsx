@@ -1,168 +1,16 @@
-import React, { useRef, useEffect } from "react";
-import { View, Text, Pressable, Image, Platform, Animated, StyleSheet } from "react-native";
+import React from "react";
+import { View, Text, Pressable, Image, Platform, StyleSheet } from "react-native";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
-import StatusIndicator from "../ui/StatusIndicator";
 
-/**
- * HospitalCardSkeleton - Shimmer loading placeholder
- */
-export function HospitalCardSkeleton() {
-	const { isDarkMode } = useTheme();
-	const shimmerAnim = useRef(new Animated.Value(0)).current;
-
-	useEffect(() => {
-		const shimmer = Animated.loop(
-			Animated.sequence([
-				Animated.timing(shimmerAnim, {
-					toValue: 1,
-					duration: 1000,
-					useNativeDriver: true,
-				}),
-				Animated.timing(shimmerAnim, {
-					toValue: 0,
-					duration: 1000,
-					useNativeDriver: true,
-				}),
-			])
-		);
-		shimmer.start();
-		return () => shimmer.stop();
-	}, []);
-
-	const cardBackground = isDarkMode ? "#0B0F1A" : "#F3E7E7";
-	const shimmerColor = isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
-	const shimmerHighlight = isDarkMode ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
-
-	const animatedBg = {
-		backgroundColor: shimmerAnim.interpolate({
-			inputRange: [0, 1],
-			outputRange: [shimmerColor, shimmerHighlight],
-		}),
-	};
-
-	return (
-		<View
-			style={[
-				skeletonStyles.container,
-				{
-					backgroundColor: cardBackground,
-					...Platform.select({
-						ios: {
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 2 },
-							shadowOpacity: 0.03,
-							shadowRadius: 6,
-						},
-						android: { elevation: 1 },
-					}),
-				},
-			]}
-		>
-			{/* Image placeholder */}
-			<Animated.View style={[skeletonStyles.image, animatedBg]} />
-
-			{/* Content */}
-			<View style={skeletonStyles.content}>
-				{/* Title */}
-				<Animated.View style={[skeletonStyles.title, animatedBg]} />
-
-				{/* Rating row */}
-				<View style={skeletonStyles.row}>
-					<Animated.View style={[skeletonStyles.ratingPill, animatedBg]} />
-					<Animated.View style={[skeletonStyles.statusPill, animatedBg]} />
-				</View>
-
-				{/* Specialty tags */}
-				<View style={skeletonStyles.row}>
-					<Animated.View style={[skeletonStyles.tag, animatedBg]} />
-					<Animated.View style={[skeletonStyles.tag, { width: 50 }, animatedBg]} />
-				</View>
-			</View>
-
-			{/* Price/ETA */}
-			<View style={skeletonStyles.priceSection}>
-				<Animated.View style={[skeletonStyles.priceLine, animatedBg]} />
-				<Animated.View style={[skeletonStyles.etaLine, animatedBg]} />
-			</View>
-		</View>
-	);
-}
-
-const skeletonStyles = StyleSheet.create({
-	container: {
-		borderRadius: 30,
-		padding: 16,
-		marginBottom: 16,
-	},
-	image: {
-		width: "100%",
-		height: 130,
-		borderRadius: 20,
-		marginBottom: 12,
-	},
-	content: {
-		flex: 1,
-	},
-	title: {
-		height: 20,
-		width: "70%",
-		borderRadius: 10,
-		marginBottom: 10,
-	},
-	row: {
-		flexDirection: "row",
-		marginBottom: 8,
-	},
-	ratingPill: {
-		height: 16,
-		width: 40,
-		borderRadius: 8,
-		marginRight: 12,
-	},
-	statusPill: {
-		height: 16,
-		width: 60,
-		borderRadius: 8,
-	},
-	tag: {
-		height: 22,
-		width: 70,
-		borderRadius: 11,
-		marginRight: 6,
-	},
-	priceSection: {
-		position: "absolute",
-		top: 16,
-		right: 16,
-		alignItems: "flex-end",
-	},
-	priceLine: {
-		height: 22,
-		width: 50,
-		borderRadius: 11,
-		marginBottom: 6,
-	},
-	etaLine: {
-		height: 14,
-		width: 40,
-		borderRadius: 7,
-	},
-});
-
-/**
- * HospitalCard - Apple-style glass card for hospitals
- *
- * Premium frosted glass design with bubble shadows
- */
 export default function HospitalCard({
 	hospital,
 	isSelected,
 	onSelect,
 	onCall,
-	mode = "emergency", // "emergency" or "booking"
+	mode = "emergency",
 	hideDistanceEta = false,
 	hidePrimaryAction = false,
 }) {
@@ -170,28 +18,24 @@ export default function HospitalCard({
 
 	if (!hospital) return null;
 
+	// --- RESTORED ORIGINAL DATA LOGIC ---
 	const hospitalId = hospital?.id;
 	const hospitalName = typeof hospital?.name === "string" ? hospital.name : "Hospital";
-	const hospitalImageUri =
-		typeof hospital?.image === "string" && hospital.image.length > 0
-			? hospital.image
-			: null;
+	const hospitalImageUri = typeof hospital?.image === "string" && hospital.image.length > 0 ? hospital.image : null;
 	const hospitalRating = hospital?.rating ?? "--";
 	const hospitalDistance = hospital?.distance ?? "--";
 	const hospitalEta = hospital?.eta ?? "--";
 	const hospitalWaitTime = hospital?.waitTime ?? "--";
 	const hospitalPrice = hospital?.price ?? "";
-	const hospitalBeds = Number.isFinite(hospital?.availableBeds)
-		? hospital.availableBeds
-		: 0;
+	const hospitalBeds = Number.isFinite(hospital?.availableBeds) ? hospital.availableBeds : 0;
 	const hospitalSpecialties = Array.isArray(hospital?.specialties)
 		? hospital.specialties.filter((s) => typeof s === "string")
 		: [];
 
-	// Solid card colors matching app design system (no borders)
-	const cardBackground = isSelected
-		? isDarkMode ? `${COLORS.brandPrimary}18` : `${COLORS.brandPrimary}10`
-		: isDarkMode ? "#0B0F1A" : "#F3E7E7";
+	// --- PREMIUM UI STYLING ---
+	const activeBG = isSelected
+		? isDarkMode ? COLORS.brandPrimary + "20" : COLORS.brandPrimary + "15"
+		: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
 
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
@@ -208,216 +52,222 @@ export default function HospitalCard({
 		onCall(hospitalId);
 	};
 
-	const canSelect = !!hospitalId && typeof onSelect === "function";
-
 	return (
 		<Pressable
-			onPress={canSelect ? handlePress : undefined}
-			style={({ pressed }) => ({
-				backgroundColor: cardBackground,
-				borderRadius: 30, // More rounded, no border
-				padding: 16,
-				marginBottom: 16,
-				transform: [{ scale: pressed ? 0.98 : 1 }],
-				...Platform.select({
-					ios: {
-						shadowColor: isSelected ? COLORS.brandPrimary : "#000",
-						shadowOffset: { width: 0, height: isSelected ? 6 : 3 },
-						shadowOpacity: isSelected ? 0.15 : 0.04,
-						shadowRadius: isSelected ? 12 : 6,
-					},
-					android: { elevation: isSelected ? 4 : 2 },
-				}),
-			})}
+			onPress={hospitalId && onSelect ? handlePress : undefined}
+			style={({ pressed }) => [
+				styles.card,
+				{
+					backgroundColor: activeBG,
+					transform: [{ scale: pressed ? 0.98 : 1 }],
+					shadowColor: isSelected ? COLORS.brandPrimary : "#000",
+					shadowOpacity: isDarkMode ? 0.2 : 0.08,
+					elevation: isSelected ? 10 : 2,
+				},
+			]}
 		>
-			{hospitalImageUri ? (
-				<Image
-					source={{ uri: hospitalImageUri }}
-					style={{
-						width: "100%",
-						height: 130,
-						borderRadius: 20, // More rounded image
-						marginBottom: 12,
-						backgroundColor: isDarkMode
-							? "rgba(255,255,255,0.1)"
-							: "rgba(0,0,0,0.05)",
-					}}
-					resizeMode="cover"
-				/>
-			) : (
-				<View
-					style={{
-						width: "100%",
-						height: 130,
-						borderRadius: 20,
-						marginBottom: 12,
-						backgroundColor: isDarkMode
-							? "rgba(255,255,255,0.08)"
-							: "rgba(0,0,0,0.05)",
-					}}
-				/>
-			)}
+			{/* Image Section with Overlay Badges */}
+			<View style={styles.imageContainer}>
+				{hospitalImageUri ? (
+					<Image source={{ uri: hospitalImageUri }} style={styles.image} resizeMode="cover" />
+				) : (
+					<View style={[styles.image, { backgroundColor: isDarkMode ? "#252D3B" : "#E2E8F0" }]} />
+				)}
 
-			<View
-				style={{
-					flexDirection: "row",
-					justifyContent: "space-between",
-					alignItems: "flex-start",
-					marginBottom: 12,
-				}}
-			>
-				<View style={{ flex: 1 }}>
-					<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
-						<Text
-							style={{
-								fontSize: 18,
-								fontWeight: "500",
-								color: textColor,
-								letterSpacing: -0.3,
-								flex: 1,
-							}}
-						>
-							{hospitalName}
-						</Text>
-						{hospital.verified && (
-							<Ionicons name="checkmark-circle" size={18} color="#10B981" style={{ marginLeft: 8 }} />
-						)}
-					</View>
-
-					<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-						<Ionicons name="star" size={16} color="#FFC107" />
-						<Text
-							style={{ fontSize: 14, color: mutedColor, marginLeft: 4, marginRight: 12 }}
-						>
-							{hospitalRating}
-						</Text>
-						<StatusIndicator
-							status={hospitalBeds > 0 ? "available" : "busy"}
-							text={hospitalBeds > 0 ? "Available" : "Full"}
-							size="small"
-							showIcon={false}
-						/>
-					</View>
-
-					{/* Specialties */}
-					<View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-						{hospitalSpecialties.slice(0, 2).map((specialty, index) => (
-							<View
-								key={index}
-								style={{
-									backgroundColor: `${COLORS.brandPrimary}15`,
-									paddingHorizontal: 10,
-									paddingVertical: 5,
-									borderRadius: 14, // More rounded
-									marginRight: 6,
-									marginBottom: 4,
-								}}
-							>
-								<Text
-									style={{
-										fontSize: 11,
-										color: COLORS.brandPrimary,
-										fontWeight:'400',
-									}}
-								>
-									{specialty}
-								</Text>
-							</View>
-						))}
-					</View>
+				<View style={styles.priceBadge}>
+					<Text style={styles.priceText}>{hospitalPrice}</Text>
 				</View>
 
-				<View style={{ alignItems: "flex-end" }}>
-					<Text
-						style={{
-							fontSize: 20,
-							fontWeight: "800",
-							color: COLORS.brandPrimary,
-							marginBottom: 4,
-						}}
-					>
-						{hospitalPrice}
-					</Text>
-					<Text
-						style={{
-							fontSize: 12,
-							color: mutedColor,
-							textAlign: "right",
-						}}
-					>
-						Wait: {hospitalWaitTime}
-					</Text>
-				</View>
-			</View>
-
-			<View
-				style={{
-					flexDirection: "row",
-					justifyContent: "space-between",
-					marginBottom: hideDistanceEta ? 0 : 12,
-				}}
-			>
-				{!hideDistanceEta && (
-					<>
-						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-							<Ionicons name="location" size={16} color={COLORS.brandPrimary} />
-							<Text
-								style={{ fontSize: 13, color: mutedColor, marginLeft: 6 }}
-							>
-								{hospitalDistance}
-							</Text>
-						</View>
-						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-							<Fontisto
-								name={mode === "booking" ? "bed-patient" : "clock"}
-								size={16}
-								color={COLORS.brandPrimary}
-							/>
-							<Text
-								style={{ fontSize: 13, color: mutedColor, marginLeft: 6 }}
-							>
-								{mode === "booking" ? `${hospitalBeds} beds` : `ETA: ${hospitalEta}`}
-							</Text>
-						</View>
-					</>
+				{hospital.verified && (
+					<View style={styles.verifiedBadge}>
+						<Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
+						<Text style={styles.verifiedText}>VERIFIED</Text>
+					</View>
 				)}
 			</View>
 
-			{isSelected && !hidePrimaryAction && (
-				<Pressable
-					onPress={handleCallPress}
-					style={{
-						backgroundColor: COLORS.brandPrimary,
-						paddingVertical: 14,
-						paddingHorizontal: 20,
-						borderRadius: 20, // More rounded
-						flexDirection: "row",
-						alignItems: "center",
-						justifyContent: "space-between",
-						marginTop: 8,
-					}}
-				>
-					<View style={{ flexDirection: "row", alignItems: "center" }}>
+			{/* Info Section */}
+			<View style={styles.content}>
+				<View style={styles.titleRow}>
+					<Text style={[styles.name, { color: textColor }]} numberOfLines={1}>
+						{hospitalName}
+					</Text>
+					<View style={styles.ratingBox}>
+						<Ionicons name="star" size={14} color="#FFC107" />
+						<Text style={[styles.ratingText, { color: textColor }]}>{hospitalRating}</Text>
+					</View>
+				</View>
+
+				{/* Restored Specialty Slice Logic */}
+				<Text style={[styles.specialties, { color: mutedColor }]} numberOfLines={1}>
+					{hospitalSpecialties.length > 0 ? hospitalSpecialties.slice(0, 3).join(" • ") : "General Care"}
+				</Text>
+
+				{/* Stats Pills */}
+				{!hideDistanceEta && (
+					<View style={styles.pillRow}>
+						<View style={[styles.statPill, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "#FFFFFF" }]}>
+							<Ionicons name="location" size={12} color={COLORS.brandPrimary} />
+							<Text style={[styles.statText, { color: textColor }]}>{hospitalDistance}</Text>
+						</View>
+						<View style={[styles.statPill, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "#FFFFFF" }]}>
+							<Ionicons name="time" size={12} color={COLORS.brandPrimary} />
+							<Text style={[styles.statText, { color: textColor }]}>
+								{mode === "booking" ? `${hospitalBeds} Beds` : `Wait: ${hospitalWaitTime}`}
+							</Text>
+						</View>
+					</View>
+				)}
+			</View>
+
+			{/* Selection/Action Logic */}
+			{isSelected && !hidePrimaryAction ? (
+				<Pressable onPress={handleCallPress} style={styles.primaryAction}>
+					<View style={styles.actionLeft}>
 						<Fontisto
 							name={mode === "booking" ? "bed-patient" : "ambulance"}
-							size={20}
+							size={18}
 							color="#FFFFFF"
 						/>
-						<Text
-							style={{
-								color: "#FFFFFF",
-								fontSize: 15,
-								fontWeight: "500",
-								marginLeft: 10,
-								letterSpacing: 0.3,
-							}}
-						>
-							{mode === "booking" ? "Book Bed" : "Request Now"}
+						<Text style={styles.actionText}>
+							{mode === "booking" ? "Secure a Bed" : "Request Now"}
 						</Text>
 					</View>
 					<Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
 				</Pressable>
+			) : (
+				isSelected && (
+					<View style={styles.checkmarkWrapper}>
+						<Ionicons name="checkmark-circle" size={32} color={COLORS.brandPrimary} />
+					</View>
+				)
 			)}
 		</Pressable>
 	);
 }
+
+const styles = StyleSheet.create({
+	card: {
+		borderRadius: 36,
+		padding: 16,
+		marginBottom: 20,
+		minHeight: 200,
+		position: "relative",
+		shadowOffset: { width: 0, height: 10 },
+		shadowRadius: 15,
+	},
+	imageContainer: {
+		width: "100%",
+		height: 140,
+		borderRadius: 26,
+		overflow: "hidden",
+		marginBottom: 16,
+	},
+	image: {
+		width: "100%",
+		height: "100%",
+	},
+	priceBadge: {
+		position: "absolute",
+		top: 12,
+		right: 12,
+		backgroundColor: COLORS.brandPrimary,
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: 14,
+	},
+	priceText: {
+		color: "#FFFFFF",
+		fontWeight: "900",
+		fontSize: 15,
+	},
+	verifiedBadge: {
+		position: "absolute",
+		top: 12,
+		left: 12,
+		backgroundColor: "rgba(16, 185, 129, 0.95)",
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 12,
+		gap: 4,
+	},
+	verifiedText: {
+		color: "#FFFFFF",
+		fontSize: 10,
+		fontWeight: "900",
+		letterSpacing: 0.5,
+	},
+	content: {
+		paddingHorizontal: 4,
+	},
+	titleRow: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		marginBottom: 4,
+	},
+	name: {
+		fontSize: 20,
+		fontWeight: "800",
+		flex: 1,
+		letterSpacing: -0.5,
+	},
+	ratingBox: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 4,
+	},
+	ratingText: {
+		fontSize: 14,
+		fontWeight: "700",
+	},
+	specialties: {
+		fontSize: 13,
+		fontWeight: "500",
+		marginBottom: 16,
+	},
+	pillRow: {
+		flexDirection: "row",
+		gap: 8,
+		marginBottom: 4,
+	},
+	statPill: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		borderRadius: 14,
+		gap: 6,
+	},
+	statText: {
+		fontSize: 12,
+		fontWeight: "700",
+	},
+	primaryAction: {
+		backgroundColor: COLORS.brandPrimary,
+		marginTop: 16,
+		height: 54,
+		borderRadius: 20,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		paddingHorizontal: 20,
+	},
+	actionLeft: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
+	},
+	actionText: {
+		color: "#FFFFFF",
+		fontSize: 15,
+		fontWeight: "800",
+	},
+	checkmarkWrapper: {
+		position: "absolute",
+		right: -4,
+		bottom: -4,
+	},
+});

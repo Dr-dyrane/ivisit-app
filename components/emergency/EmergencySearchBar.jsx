@@ -14,24 +14,13 @@ import { useToast } from "../../contexts/ToastContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 
-// Suggested searches for emergency context
 const SUGGESTED_SEARCHES = [
-	{ text: "Emergency", icon: "alert-circle" },
+	{ text: "Emergency", icon: "alert-circle-outline" },
 	{ text: "ICU", icon: "bed-outline" },
-	{ text: "Trauma", icon: "medkit" },
-	{ text: "Cardiology", icon: "heart" },
+	{ text: "Trauma", icon: "medkit-outline" },
+	{ text: "Cardiology", icon: "heart-outline" },
 ];
 
-/**
- * EmergencySearchBar - Smart context-aware search
- *
- * Features:
- * - Voice/mic button for faster emergency input
- * - Searches hospitals by name, specialty, address
- * - Suggested searches when focused
- * - Expands on focus for better UX
- * - Always visible even when sheet is collapsed
- */
 export default function EmergencySearchBar({
 	value = "",
 	onChangeText,
@@ -41,81 +30,52 @@ export default function EmergencySearchBar({
 	onVoicePress,
 	placeholder = "Search hospitals, specialties...",
 	showSuggestions = true,
-	suggestionsRightBleed = 0,
 	style,
 }) {
 	const { isDarkMode } = useTheme();
-    const { showToast } = useToast();
+	const { showToast } = useToast();
 	const inputRef = useRef(null);
 	const [isFocused, setIsFocused] = useState(false);
-
-	// Animation values
 	const focusProgress = useSharedValue(0);
 
 	useEffect(() => {
-		focusProgress.value = withSpring(isFocused ? 1 : 0, {
-			damping: 20,
-			stiffness: 300,
-		});
+		focusProgress.value = withSpring(isFocused ? 1 : 0, { damping: 20, stiffness: 300 });
 	}, [isFocused]);
 
-	// Solid card colors matching app design system (no borders)
-	const backgroundColor = isDarkMode ? "#0B0F1A" : "#F3E7E7";
+	// Finalized Premium Colors
+	const backgroundColor = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
+	const activeBG = isDarkMode ? "#1E293B" : "#FFFFFF";
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
-	const placeholderColor = isDarkMode ? "#64748B" : "#94A3B8";
-	const iconColor = isFocused ? COLORS.brandPrimary : (isDarkMode ? "#64748B" : "#94A3B8");
+	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 
 	const handleFocus = useCallback(() => {
 		setIsFocused(true);
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		if (onFocus) onFocus();
+		onFocus?.();
 	}, [onFocus]);
 
 	const handleBlurEvent = useCallback(() => {
 		setIsFocused(false);
-		if (onBlur) onBlur();
+		onBlur?.();
 	}, [onBlur]);
-
-	const handleClear = useCallback(() => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		if (onClear) onClear();
-		if (onChangeText) onChangeText("");
-	}, [onClear, onChangeText]);
 
 	const handleVoice = useCallback(() => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 		if (onVoicePress) {
-            onVoicePress();
-        } else {
-            // Default behavior: Focus input and guide user to keyboard dictation
-            inputRef.current?.focus();
-            showToast("Tap the microphone icon on your keyboard to speak", "info");
-        }
+			onVoicePress();
+		} else {
+			inputRef.current?.focus();
+			showToast("Tap the microphone on your keyboard", "info");
+		}
 	}, [onVoicePress, showToast]);
 
-	const handleSuggestionPress = useCallback((suggestion) => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		if (onChangeText) onChangeText(suggestion);
-		inputRef.current?.blur();
-	}, [onChangeText]);
+	const animatedContainerStyle = useAnimatedStyle(() => ({
+		transform: [{ scale: interpolate(focusProgress.value, [0, 1], [1, 1.01]) }],
+	}));
 
-	// Animated container style
-	const animatedContainerStyle = useAnimatedStyle(() => {
-		return {
-			transform: [
-				{ scale: interpolate(focusProgress.value, [0, 1], [1, 1.01]) },
-			],
-		};
-	});
-
-	const normalizedValue = typeof value === "string" ? value.trim().toLowerCase() : "";
-	const suggestedItems =
-		normalizedValue.length > 0
-			? SUGGESTED_SEARCHES.filter((s) =>
-					String(s?.text ?? "").toLowerCase().includes(normalizedValue)
-				)
-			: SUGGESTED_SEARCHES;
-	const showSuggestionsDropdown = isFocused && showSuggestions && suggestedItems.length > 0;
+	const suggestedItems = value.trim()
+		? SUGGESTED_SEARCHES.filter(s => s.text.toLowerCase().includes(value.toLowerCase()))
+		: SUGGESTED_SEARCHES;
 
 	return (
 		<View style={[styles.wrapper, style]}>
@@ -124,145 +84,90 @@ export default function EmergencySearchBar({
 					style={[
 						styles.inputContainer,
 						{
-							backgroundColor,
-							...Platform.select({
-								ios: {
-									shadowColor: isFocused ? COLORS.brandPrimary : "#000",
-									shadowOffset: { width: 0, height: isFocused ? 4 : 2 },
-									shadowOpacity: isFocused ? 0.1 : 0.03,
-									shadowRadius: isFocused ? 10 : 6,
-								},
-								android: { elevation: isFocused ? 3 : 1 },
-							}),
+							backgroundColor: isFocused ? activeBG : backgroundColor,
+							// Shadow Glow on Focus
+							shadowColor: isFocused ? COLORS.brandPrimary : "#000",
+							shadowOpacity: isFocused ? 0.15 : 0.03,
+							shadowRadius: isFocused ? 15 : 8,
+							elevation: isFocused ? 6 : 2,
 						},
 					]}
 				>
-					{/* Search Icon */}
 					<Ionicons
 						name="search"
 						size={20}
-						color={iconColor}
+						color={isFocused ? COLORS.brandPrimary : mutedColor}
 						style={styles.searchIcon}
 					/>
 
-					{/* Text Input */}
 					<TextInput
 						ref={inputRef}
 						style={[styles.input, { color: textColor }]}
 						value={value}
 						onChangeText={onChangeText}
 						placeholder={placeholder}
-						placeholderTextColor={placeholderColor}
+						placeholderTextColor={mutedColor}
 						onFocus={handleFocus}
 						onBlur={handleBlurEvent}
 						autoCapitalize="none"
-						autoCorrect={false}
 						returnKeyType="search"
 						selectionColor={COLORS.brandPrimary}
 					/>
 
-					{/* Clear Button */}
-					{value.length > 0 && (
-						<Pressable
-							onPress={handleClear}
-							style={({ pressed }) => [
-								styles.actionButton,
-								{ opacity: pressed ? 0.6 : 1 },
-							]}
-							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-						>
-							<Ionicons name="close-circle" size={18} color={iconColor} />
-						</Pressable>
-					)}
-
-					{/* Voice/Mic Button */}
-					{value.length === 0 && (
-						<Pressable
-							onPress={handleVoice}
-							style={({ pressed }) => [
-								styles.actionButton,
-								styles.micButton,
-								{
-									backgroundColor: isDarkMode
-										? "rgba(255, 255, 255, 0.05)"
-										: "rgba(0, 0, 0, 0.04)",
-									opacity: pressed ? 0.7 : 1,
-									transform: [{ scale: pressed ? 0.95 : 1 }],
-								},
-							]}
-							hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-						>
-							<Ionicons
-								name="mic"
-								size={18}
-								color={COLORS.brandPrimary}
-							/>
-						</Pressable>
-					)}
+					{/* Action Buttons: Nested Squircle Logic */}
+					<View style={styles.rightActions}>
+						{value.length > 0 ? (
+							<Pressable onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChangeText(""); }} style={styles.clearBtn}>
+								<Ionicons name="close-circle" size={20} color={mutedColor} />
+							</Pressable>
+						) : (
+							<Pressable
+								onPress={handleVoice}
+								style={({ pressed }) => [
+									styles.micSquircle,
+									{
+										backgroundColor: isFocused ? (isDarkMode ? "#2D3748" : "#F1F5F9") : "rgba(0,0,0,0.05)",
+										opacity: pressed ? 0.7 : 1
+									}
+								]}
+							>
+								<Ionicons name="mic" size={18} color={COLORS.brandPrimary} />
+							</Pressable>
+						)}
+					</View>
 				</View>
 			</Animated.View>
 
-			{/* Suggestions Dropdown */}
-			{showSuggestionsDropdown && (
+			{/* Suggestions Panel: Floating Micro-Cards */}
+			{isFocused && showSuggestions && suggestedItems.length > 0 && (
 				<Animated.View
 					entering={FadeIn.duration(200)}
 					exiting={FadeOut.duration(150)}
 					style={[
-						styles.suggestionsContainer,
+						styles.dropdown,
 						{
-							backgroundColor,
-							marginRight: Number.isFinite(suggestionsRightBleed)
-								? -suggestionsRightBleed
-								: 0,
-							...Platform.select({
-								ios: {
-									shadowColor: "#000",
-									shadowOffset: { width: 0, height: 4 },
-									shadowOpacity: 0.08,
-									shadowRadius: 12,
-								},
-								android: { elevation: 4 },
-							}),
+							backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
+							shadowOpacity: isDarkMode ? 0.3 : 0.08,
 						},
 					]}
 				>
-					<Text
-						style={[
-							styles.suggestionsLabel,
-							{ color: isDarkMode ? "#64748B" : "#94A3B8" },
-						]}
-					>
-						Suggested
-					</Text>
-					<ScrollView
-						horizontal
-						showsHorizontalScrollIndicator={false}
-						contentContainerStyle={styles.suggestionsList}
-						keyboardShouldPersistTaps="handled"
-					>
+					<Text style={[styles.label, { color: mutedColor }]}>QUICK SEARCH</Text>
+					<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipList} keyboardShouldPersistTaps="handled">
 						{suggestedItems.map((item, index) => (
 							<Pressable
-								key={`${item.text}_${index}`}
-								onPress={() => handleSuggestionPress(item.text)}
+								key={index}
+								onPress={() => {
+									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+									onChangeText(item.text);
+									inputRef.current?.blur();
+								}}
 								style={({ pressed }) => [
-									styles.suggestionChip,
-									{
-										backgroundColor: isDarkMode
-											? "rgba(255, 255, 255, 0.06)"
-											: "rgba(0, 0, 0, 0.04)",
-										opacity: pressed ? 0.7 : 1,
-									},
+									styles.chip,
+									{ backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", opacity: pressed ? 0.7 : 1 }
 								]}
 							>
-								<Ionicons
-									name={item.icon}
-									size={14}
-									color={COLORS.brandPrimary}
-									style={{ marginRight: 6 }}
-								/>
-								<Text style={[styles.suggestionText, { color: textColor }]}>
-									{item.text}
-								</Text>
+								<Ionicons name={item.icon} size={14} color={COLORS.brandPrimary} style={{ marginRight: 6 }} />
+								<Text style={[styles.chipText, { color: textColor }]}>{item.text}</Text>
 							</Pressable>
 						))}
 					</ScrollView>
@@ -275,59 +180,68 @@ export default function EmergencySearchBar({
 const styles = StyleSheet.create({
 	wrapper: {
 		marginBottom: 16,
+		zIndex: 50,
 	},
-	container: {},
 	inputContainer: {
 		flexDirection: "row",
 		alignItems: "center",
-		height: 52,
-		borderRadius: 30, // More rounded, no borders
-		paddingHorizontal: 18,
+		height: 56, // Thicker for premium feel
+		borderRadius: 28, // High rounding
+		paddingHorizontal: 16,
+		shadowOffset: { width: 0, height: 8 },
 	},
 	searchIcon: {
-		marginRight: 12,
+		marginRight: 10,
 	},
 	input: {
 		flex: 1,
 		fontSize: 16,
-		fontWeight: "500",
+		fontWeight: "600",
+		letterSpacing: -0.4,
 	},
-	actionButton: {
-		marginLeft: 8,
+	rightActions: {
+		flexDirection: 'row',
+		alignItems: 'center',
 	},
-	micButton: {
-		width: 32,
-		height: 32,
-		borderRadius: 16,
+	micSquircle: {
+		width: 38,
+		height: 38,
+		borderRadius: 12, // Nested Squircle
 		alignItems: "center",
 		justifyContent: "center",
 	},
-	suggestionsContainer: {
-		marginTop: 8,
-		borderRadius: 20,
-		padding: 14,
+	clearBtn: {
+		padding: 4,
 	},
-	suggestionsLabel: {
-		fontSize: 11,
-		fontWeight: "500",
-		letterSpacing: 1,
-		marginBottom: 10,
-		textTransform: "uppercase",
+	dropdown: {
+		marginTop: 10,
+		borderRadius: 32, // Consistent with cards
+		padding: 16,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 12 },
+		shadowRadius: 16,
+		elevation: 8,
 	},
-	suggestionsList: {
-		flexDirection: "row",
+	label: {
+		fontSize: 10,
+		fontWeight: "800",
+		letterSpacing: 1.2,
+		marginBottom: 12,
+		marginLeft: 4,
+	},
+	chipList: {
 		gap: 8,
-		paddingRight: 8,
+		paddingRight: 10,
 	},
-	suggestionChip: {
+	chip: {
 		flexDirection: "row",
 		alignItems: "center",
-		paddingHorizontal: 12,
-		paddingVertical: 8,
-		borderRadius: 20,
+		paddingHorizontal: 14,
+		paddingVertical: 10,
+		borderRadius: 16,
 	},
-	suggestionText: {
+	chipText: {
 		fontSize: 13,
-		fontWeight:'400',
+		fontWeight: '700',
 	},
 });

@@ -1,11 +1,10 @@
 import React, { useRef } from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView, Platform } from "react-native";
-import { Fontisto, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
+import { Fontisto, MaterialCommunityIcons, Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 
-// Icon mapping for specialties
 const SPECIALTY_ICONS = {
 	"General Care": { icon: "stethoscope", family: "FontAwesome5" },
 	"Emergency": { icon: "ambulance", family: "FontAwesome5" },
@@ -19,124 +18,95 @@ const SPECIALTY_ICONS = {
 	"Urgent Care": { icon: "medical-bag", family: "MaterialCommunityIcons" },
 };
 
-const SpecialtyIcon = ({ specialty, size = 20, color }) => {
+const SpecialtyIcon = ({ specialty, size = 18, color }) => {
 	const iconConfig = SPECIALTY_ICONS[specialty] || { icon: "medical-bag", family: "MaterialCommunityIcons" };
-	
 	switch (iconConfig.family) {
-		case "Fontisto":
-			return <Fontisto name={iconConfig.icon} size={size} color={color} />;
-		case "Ionicons":
-			return <Ionicons name={iconConfig.icon} size={size} color={color} />;
-		case "MaterialCommunityIcons":
-		default:
-			return <MaterialCommunityIcons name={iconConfig.icon} size={size} color={color} />;
+		case "Fontisto": return <Fontisto name={iconConfig.icon} size={size} color={color} />;
+		case "Ionicons": return <Ionicons name={iconConfig.icon} size={size} color={color} />;
+		case "FontAwesome5": return <FontAwesome5 name={iconConfig.icon} size={size} color={color} />;
+		default: return <MaterialCommunityIcons name={iconConfig.icon} size={size} color={color} />;
 	}
 };
 
-export default function SpecialtySelector({
-	specialties,
-	selectedSpecialty,
-	onSelect,
-	style,
-	counts = {},
-}) {
+export default function SpecialtySelector({ specialties, selectedSpecialty, onSelect, style, counts = {} }) {
 	const { isDarkMode } = useTheme();
 	const lastCallTime = useRef(0);
 	const DEBOUNCE_MS = 300;
-	
 	const safeCounts = counts || {};
 
 	const handleSelect = (specialty) => {
-		if (!onSelect) return;
-		
 		const now = Date.now();
-		if (now - lastCallTime.current < DEBOUNCE_MS) {
-			return;
-		}
+		if (now - lastCallTime.current < DEBOUNCE_MS) return;
 		lastCallTime.current = now;
-		
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		
-		if (selectedSpecialty === specialty) {
-			onSelect(null);
-		} else {
-			onSelect(specialty);
-		}
+		onSelect(selectedSpecialty === specialty ? null : specialty);
 	};
-
-	// Solid card colors matching app design system (no borders)
-	const getCardBg = (isSelected) => isSelected
-		? isDarkMode ? `${COLORS.brandPrimary}18` : `${COLORS.brandPrimary}10`
-		: isDarkMode ? "#0B0F1A" : "#F3E7E7";
 
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 
 	return (
 		<View style={[styles.container, style]}>
-			<Text style={[styles.title, { color: mutedColor }]}>
-				SELECT SPECIALTY
-			</Text>
+			<View style={styles.header}>
+				<Text style={[styles.title, { color: mutedColor }]}>SPECIALTIES</Text>
+				<Text style={[styles.countLabel, { color: COLORS.brandPrimary }]}>{specialties.length}</Text>
+			</View>
+
 			<ScrollView
 				horizontal
 				showsHorizontalScrollIndicator={false}
 				contentContainerStyle={styles.scrollContent}
+				decelerationRate="fast"
 			>
 				{specialties.map((specialty) => {
 					const isSelected = selectedSpecialty === specialty;
-					const cardBg = getCardBg(isSelected);
+					
+					// Your Finalized Background Logic
+					const activeBG = isSelected
+						? (isDarkMode ? COLORS.brandPrimary + "20" : COLORS.brandPrimary + "15")
+						: (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)");
 
 					return (
 						<Pressable
 							key={specialty}
 							onPress={() => handleSelect(specialty)}
 							style={({ pressed }) => [
-								styles.specialtyButton,
+								styles.card,
 								{
-									backgroundColor: cardBg,
-									transform: [{ scale: pressed ? 0.97 : 1 }],
-									...Platform.select({
-										ios: {
-											shadowColor: isSelected ? COLORS.brandPrimary : "#000",
-											shadowOffset: { width: 0, height: isSelected ? 2 : 1 },
-											shadowOpacity: isSelected ? 0.1 : 0.02,
-											shadowRadius: isSelected ? 4 : 2,
-										},
-										android: { elevation: isSelected ? 2 : 1 },
-									}),
+									backgroundColor: activeBG,
+									transform: [{ scale: pressed ? 0.96 : 1 }],
+									shadowColor: isSelected ? COLORS.brandPrimary : "#000",
+									shadowOpacity: isDarkMode ? 0.2 : 0.05,
 								},
 							]}
 						>
-							<View style={styles.iconContainer}>
-								<SpecialtyIcon
-									specialty={specialty}
-									size={16}
-									color={isSelected ? COLORS.brandPrimary : mutedColor}
-								/>
+							<View style={styles.innerContent}>
+								{/* Nested Squircle Icon */}
+								<View style={[styles.iconBox, { 
+									backgroundColor: isSelected ? COLORS.brandPrimary : (isDarkMode ? "#1E293B" : "#FFFFFF") 
+								}]}>
+									<SpecialtyIcon
+										specialty={specialty}
+										color={isSelected ? "#FFFFFF" : (isDarkMode ? "#94A3B8" : "#64748B")}
+									/>
+								</View>
+
+								<View style={styles.textStack}>
+									<Text style={[styles.specialtyName, { color: textColor }]}>
+										{specialty}
+									</Text>
+									<Text style={[styles.countText, { color: mutedColor }]}>
+										{safeCounts[specialty] ?? 0} Hospitals
+									</Text>
+								</View>
 							</View>
-							<View style={styles.textContainer}>
-								<Text
-									style={[
-										styles.specialtyText,
-										{
-											color: isSelected ? COLORS.brandPrimary : textColor,
-											fontWeight: isSelected ? "700" : "500",
-										},
-									]}
-									numberOfLines={1}
-								>
-									{specialty}
-								</Text>
-								<Text
-									style={[
-										styles.countText,
-										{ color: mutedColor },
-									]}
-									numberOfLines={1}
-								>
-									{safeCounts[specialty] ?? 0}
-								</Text>
-							</View>
+
+							{/* Signature Corner Seal */}
+							{isSelected && (
+								<View style={styles.checkmarkWrapper}>
+									<Ionicons name="checkmark-circle" size={18} color={COLORS.brandPrimary} />
+								</View>
+							)}
 						</Pressable>
 					);
 				})}
@@ -147,44 +117,84 @@ export default function SpecialtySelector({
 
 const styles = StyleSheet.create({
 	container: {
-		// No bottom margin - parent controls spacing
+		marginVertical: 12,
+	},
+	header: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		marginBottom: 14,
+		paddingHorizontal: 4,
+		gap: 8,
 	},
 	title: {
 		fontSize: 11,
-		fontWeight: "500",
-		marginBottom: 10,
+		fontWeight: "800",
 		letterSpacing: 1.5,
+		textTransform: "uppercase",
+	},
+	countLabel: {
+		fontSize: 10,
+		fontWeight: '900',
+		backgroundColor: 'rgba(37, 99, 235, 0.1)',
+		paddingHorizontal: 6,
+		paddingVertical: 2,
+		borderRadius: 6,
 	},
 	scrollContent: {
-		gap: 8,
+		paddingLeft: 4,
+		paddingRight: 20,
+		paddingBottom: 8, // Room for shadows
+		gap: 12,
 	},
-	specialtyButton: {
-		paddingVertical: 10,
-		paddingHorizontal: 14,
-		borderRadius: 20, // More rounded, no border
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 6,
+	card: {
+		minWidth: 140,
+		padding: 12,
+		borderRadius: 24, // Consistent rounding
+		position: "relative",
+		...Platform.select({
+			ios: {
+				shadowOffset: { width: 0, height: 4 },
+				shadowRadius: 8,
+			},
+			android: { elevation: 3 },
+		}),
 	},
-	iconContainer: {
-		width: 20,
-		height: 20,
+	innerContent: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 12,
+	},
+	iconBox: {
+		width: 40,
+		height: 40,
+		borderRadius: 14, // Nested squircle
 		justifyContent: "center",
 		alignItems: "center",
+		// Subtle shadow for the white icon box in light mode
+		shadowColor: "#000",
+		shadowOpacity: 0.05,
+		shadowOffset: { width: 0, height: 2 },
+		shadowRadius: 4,
 	},
-	textContainer: {
+	textStack: {
 		flex: 1,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 4,
+		justifyContent: 'center',
 	},
-	specialtyText: {
-		fontSize: 12,
-		flex: 1,
+	specialtyName: {
+		fontSize: 13,
+		fontWeight: "800",
+		letterSpacing: -0.3,
 	},
 	countText: {
 		fontSize: 10,
-		fontWeight:'400',
+		fontWeight: '600',
+		marginTop: 1,
+		opacity: 0.6,
+	},
+	checkmarkWrapper: {
+		position: "absolute",
+		right: -4,
+		bottom: -4,
+		backgroundColor: 'transparent',
 	},
 });
-

@@ -302,3 +302,75 @@ Every new component must:
 3. Never contradict existing principles
 
 ---
+
+## 13. Component Design Philosophy
+
+* **Simplicity**: Avoid complexity where possible.
+* **Consistency**: Follow established patterns.
+* **Scalability**: Design for future growth.
+* **Performance**: Optimize for speed and memory.
+* **Accessibility**: Ensure all users can use the component.
+
+To replicate this specific "Premium Minimalist" aesthetic, you need to provide the AI with a set of Design Tokens and Geometric Rules.
+
+If you were to prompt another model (like GPT-4o, Claude 3.5, or a developer), use the following "Design Specification Prompt."
+
+The "Premium Medical-Glass" Prompt
+
+"Design a React Native component following a Premium Medical-Glass aesthetic. Follow these 5 strict pillars:"
+
+1. Extreme Squircle Geometry
+
+The Rule: Avoid standard rounding. Use an aggressive corner radius.
+
+Specifics: Container borderRadius must be 32pt to 36pt. Inner elements (images/buttons) must use 20pt to 28pt. This creates a "nested bubble" look that feels organic and high-end.
+
+2. Border-Free Depth (The Shadow Logic)
+
+The Rule: Never use borderWidth. Depth must be achieved through Background Color Shifting and Multi-Layered Shadows.
+
+iOS Shadow: shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.08, shadowRadius: 16.
+
+Active State: When selected, change the shadow color to the brandPrimary color with 0.2 opacity and increase elevation.
+
+3. Layered Glassmorphism (Alpha-Blending)
+
+The Rule: Use "Ghost Tints" instead of solid colors.
+
+Selected State: Don't use a new color; use the PrimaryColor + "15" (15% alpha) or PrimaryColor + "20".
+
+Unselected State: Use high-neutral slates with very low opacity: rgba(255,255,255,0.05) for Dark Mode and rgba(0,0,0,0.03) for Light Mode. This allows the background to "breath" through the card.
+
+4. The "Floating Hero" Layout
+
+The Rule: Every card is a vertical story, not a list item.
+
+Hierarchy:
+
+Top: Large Image or Icon (The Hero).
+
+Floating: Use position: 'absolute' badges for Price and Status over the Hero image.
+
+Content: Heavy vertical padding (padding: 24).
+
+Meta: Use "Pills" (small capsule shapes) for secondary data like ETA or Distance.
+
+5. The "Corner Seal" Signature
+
+The Rule: Confirm selection using a bottom-right anchor.
+
+Specifics: The selection checkmark must be positioned at bottom: -4, right: -4. This "breaks" the container boundary slightly, making the UI feel 3D and modern rather than flat and trapped inside a box.
+
+Technical Secrets I used to get that "Smoothness":
+
+Letter Spacing: I used letterSpacing: -0.5 on titles. High-end UI (like Apple's) always tightens the kerning on large titles to make them look more "editorial."
+
+Scale Feedback: Every Pressable uses transform: [{ scale: 0.98 }]. This micro-interaction makes the glass card feel like it’s physically being pressed into the screen.
+
+Pill Contrast: The metadata "Pills" use a slightly different background than the card itself (usually a solid white or a slightly darker slate). This creates internal depth—layers within layers.
+
+Shadow Coloring: Notice that for the selected state, I used shadowColor: COLORS.brandPrimary. Most designers use black shadows for everything. Using a colored shadow makes the card look like it is glowing/emitting light, which is a hallmark of premium "Glass" design.
+
+How to prompt for the Hospital Card specifically:
+
+"Create a Hospital Card with a Vertical Hero Layout. The image should be 150px tall with a 28px radius. Place a price badge in the top right and a verified badge in the top left, both floating over the image. Below the image, use a Title with -0.5 letter spacing. Under the title, place two horizontal 'Stat Pills' for distance and wait time. If selected, a checkmark should overlap the bottom-right corner and the entire card should glow with a subtle primary-colored shadow."
