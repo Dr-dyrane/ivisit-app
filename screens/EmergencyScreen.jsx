@@ -27,6 +27,7 @@ import {
 import { useNotifications } from "../contexts/NotificationsContext";
 import { getMapPaddingForSnapIndex } from "../constants/emergencyAnimations";
 import { simulationService } from "../services/simulationService";
+import { discoveryService } from "../services/discoveryService";
 import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigationHelpers";
 import { useToast } from "../contexts/ToastContext";
 
@@ -312,6 +313,13 @@ export default function EmergencyScreen() {
 				return;
 			}
 
+			discoveryService.trackConversion({
+				action: mode === "booking" ? "book_bed_start" : "request_ambulance_start",
+				hospitalId,
+				mode,
+				query: searchQuery,
+			});
+
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			if (mode === "booking") {
 				navigateToBookBed({ router, hospitalId, method: "push" });
@@ -319,7 +327,7 @@ export default function EmergencyScreen() {
 			}
 				navigateToRequestAmbulance({ router, hospitalId, method: "push" });
 		},
-		[mode, router, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId, showToast]
+		[mode, router, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId, showToast, searchQuery]
 	);
 
 	// Service type selection

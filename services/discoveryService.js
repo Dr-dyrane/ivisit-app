@@ -68,5 +68,48 @@ export const discoveryService = {
 				},
 			];
 		}
+	},
+
+	/**
+	 * Track search selection analytics
+	 */
+	trackSearchSelection: async ({ query, source, key, extra }) => {
+		try {
+			const payload = {
+				query: typeof query === "string" ? query : null,
+				source: typeof source === "string" ? source : null,
+				selected_key: typeof key === "string" ? key : null,
+				extra: extra && typeof extra === "object" ? extra : null,
+			};
+			const { error } = await supabase.from('search_events').insert(payload);
+			if (error) throw error;
+			return true;
+		} catch (error) {
+			console.log('Search selection track fallback:', { query, source, key });
+			return false;
+		}
+	},
+
+	/**
+	 * Track conversion from search to request start
+	 */
+	trackConversion: async ({ action, hospitalId, mode, query }) => {
+		try {
+			const payload = {
+				query: typeof query === "string" ? query : null,
+				source: "conversion",
+				selected_key: typeof action === "string" ? action : null,
+				extra: {
+					hospitalId: hospitalId ? String(hospitalId) : null,
+					mode: typeof mode === "string" ? mode : null,
+				},
+			};
+			const { error } = await supabase.from('search_events').insert(payload);
+			if (error) throw error;
+			return true;
+		} catch (error) {
+			console.log('Conversion track fallback:', { action, hospitalId, mode, query });
+			return false;
+		}
 	}
 };

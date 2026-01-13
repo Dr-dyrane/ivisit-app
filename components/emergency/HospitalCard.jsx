@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, Image, Platform, StyleSheet } from "react-native";
+import { View, Text, Pressable, Image, Platform, StyleSheet, Linking } from "react-native";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
@@ -28,6 +28,7 @@ export default function HospitalCard({
 	const hospitalWaitTime = hospital?.waitTime ?? "--";
 	const hospitalPrice = hospital?.price ?? "";
 	const hospitalBeds = Number.isFinite(hospital?.availableBeds) ? hospital.availableBeds : 0;
+	const hospitalPhone = typeof hospital?.phone === "string" && hospital.phone.length > 0 ? hospital.phone : null;
 	const hospitalSpecialties = Array.isArray(hospital?.specialties)
 		? hospital.specialties.filter((s) => typeof s === "string")
 		: [];
@@ -50,6 +51,13 @@ export default function HospitalCard({
 		if (!hospitalId || typeof onCall !== "function") return;
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 		onCall(hospitalId);
+	};
+
+	const handlePhoneCall = () => {
+		if (!hospitalPhone) return;
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		const cleanPhone = hospitalPhone.replace(/[^\d+]/g, "");
+		Linking.openURL(`tel:${cleanPhone}`);
 	};
 
 	return (
@@ -122,19 +130,43 @@ export default function HospitalCard({
 
 			{/* Selection/Action Logic */}
 			{isSelected && !hidePrimaryAction ? (
-				<Pressable onPress={handleCallPress} style={styles.primaryAction}>
-					<View style={styles.actionLeft}>
-						<Fontisto
-							name={mode === "booking" ? "bed-patient" : "ambulance"}
-							size={18}
-							color="#FFFFFF"
-						/>
-						<Text style={styles.actionText}>
-							{mode === "booking" ? "Secure a Bed" : "Request Now"}
-						</Text>
-					</View>
-					<Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-				</Pressable>
+				<View style={styles.actionRow}>
+					{/* Call Button - Theme-sensitive circular button */}
+					{hospitalPhone && (
+						<Pressable
+							onPress={handlePhoneCall}
+							style={({ pressed }) => [
+								styles.callButton,
+								{
+									backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
+									opacity: pressed ? 0.8 : 1,
+									transform: [{ scale: pressed ? 0.95 : 1 }]
+								}
+							]}
+						>
+							<Ionicons 
+								name="call" 
+								size={18} 
+								color={isDarkMode ? "#FFFFFF" : "#64748B"} 
+							/>
+						</Pressable>
+					)}
+
+					{/* Main Request CTA */}
+					<Pressable onPress={handleCallPress} style={[styles.primaryAction, !hospitalPhone && styles.primaryActionFull]}>
+						<View style={styles.actionLeft}>
+							<Fontisto
+								name={mode === "booking" ? "bed-patient" : "ambulance"}
+								size={18}
+								color="#FFFFFF"
+							/>
+							<Text style={styles.actionText}>
+								{mode === "booking" ? "Secure a Bed" : "Request Now"}
+							</Text>
+						</View>
+						<Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+					</Pressable>
+				</View>
 			) : (
 				isSelected && (
 					<View style={styles.checkmarkWrapper}>
@@ -247,13 +279,13 @@ const styles = StyleSheet.create({
 	},
 	primaryAction: {
 		backgroundColor: COLORS.brandPrimary,
-		marginTop: 16,
 		height: 54,
 		borderRadius: 20,
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
 		paddingHorizontal: 20,
+		flex: 1,
 	},
 	actionLeft: {
 		flexDirection: "row",
@@ -264,6 +296,26 @@ const styles = StyleSheet.create({
 		color: "#FFFFFF",
 		fontSize: 15,
 		fontWeight: "800",
+	},
+	actionRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
+	},
+	callButton: {
+		width: 54,
+		height: 54,
+		borderRadius: 27,
+		alignItems: "center",
+		justifyContent: "center",
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.1,
+		shadowRadius: 4,
+		elevation: 2,
+	},
+	primaryActionFull: {
+		flex: 1,
 	},
 	checkmarkWrapper: {
 		position: "absolute",

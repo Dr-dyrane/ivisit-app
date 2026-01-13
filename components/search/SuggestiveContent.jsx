@@ -1,32 +1,28 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { View, Text, Pressable, ScrollView, Animated, StyleSheet, Platform } from "react-native";
-import { Ionicons, FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useVisits } from "../../contexts/VisitsContext";
 import { useNotifications } from "../../contexts/NotificationsContext";
 import { discoveryService } from "../../services/discoveryService";
 import * as Haptics from "expo-haptics";
+import SpecialtySelector from "../emergency/SpecialtySelector";
 
 const SuggestiveContent = ({ onSelectQuery }) => {
 	const { isDarkMode } = useTheme();
 	const { visits } = useVisits();
 	const { notifications } = useNotifications();
-	const [activeTab, setActiveTab] = useState("for-you");
+	const [activeTab, setActiveTab] = useState("quick-actions");
 	const [trendingItems, setTrendingItems] = useState([]);
-	const [newsItems, setNewsItems] = useState([]);
 	const fadeAnim = useRef(new Animated.Value(1)).current;
 
 	useEffect(() => {
-		const loadDiscoveryData = async () => {
-			const [trending, news] = await Promise.all([
-				discoveryService.getTrending(),
-				discoveryService.getNews()
-			]);
+		const loadTrendingData = async () => {
+			const trending = await discoveryService.getTrending();
 			setTrendingItems(trending);
-			setNewsItems(news);
 		};
-		loadDiscoveryData();
+		loadTrendingData();
 	}, []);
 
 	const colors = {
@@ -56,78 +52,124 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 		});
 	};
 
-	const handleItemSelect = (query) => {
+	const handleItemSelect = (query, meta) => {
 		Haptics.selectionAsync();
+		discoveryService.trackSearchSelection({
+			query,
+			source: "suggestive",
+			key: meta?.key || meta?.id || null,
+			extra: meta || null,
+		});
 		onSelectQuery(query);
 	};
 
 	const tabs = [
-		{ id: "for-you", label: "For You", icon: "person" },
+		{ id: "quick-actions", label: "Quick Actions", icon: "flash" },
+		{ id: "specialties", label: "Specialties", icon: "medical" },
 		{ id: "trending", label: "Trending", icon: "trending-up" },
-		{ id: "news", label: "Health News", icon: "newspaper" },
 	];
 
-	// Derive For You from real Context
-	const forYouItems = useMemo(() => {
+	// Quick Actions for life-saving scenarios
+	const quickActionItems = useMemo(() => {
 		const items = [];
 		
-		// Add recent visit if exists
+		// Emergency - Always first
+		items.push({
+			id: "emergency",
+			title: "Emergency SOS",
+			subtitle: "Get immediate help",
+			icon: "alert-circle",
+			color: "#EF4444",
+			query: "emergency",
+			isEmergency: true
+		});
+
+		// Last hospital visit if exists
 		if (visits && visits.length > 0) {
 			const lastVisit = visits[0];
 			items.push({
 				id: `v-${lastVisit.id}`,
-				title: lastVisit.hospital || "Medical Visit",
-				subtitle: "From your history",
-				icon: "time-outline",
+				title: lastVisit.hospital || "Last Visit",
+				subtitle: "Book again",
+				icon: "location",
+				color: COLORS.brandPrimary,
 				query: lastVisit.hospital
 			});
 		}
 
-		// Add recent medical notification if exists
-		const medicalNotif = notifications.find(n => n.type === 'appointment' || n.type === 'visit');
-		if (medicalNotif) {
-			items.push({
-				id: `n-${medicalNotif.id}`,
-				title: medicalNotif.title,
-				subtitle: "Suggested for you",
-				icon: "notifications-outline",
-				query: medicalNotif.title
-			});
-		}
+		// Common urgent needs
+		items.push({
+			id: "pharmacy",
+			title: "24/7 Pharmacy",
+			subtitle: "Find nearby pharmacies",
+			icon: "medical",
+			color: "#10B981",
+			query: "pharmacy"
+		});
 
-		// Fallback/Default
-		if (items.length < 2) {
-			items.push({
-				id: "def-1",
-				title: "General Checkup",
-				subtitle: "Routine health screening",
-				icon: "medical-outline",
-				query: "General checkup"
-			});
-		}
+		items.push({
+			id: "hospital",
+			title: "Hospitals Near Me",
+			subtitle: "Find nearest hospitals",
+			icon: "business",
+			color: "#3B82F6",
+			query: "hospital"
+		});
 
 		return items;
-	}, [visits, notifications]);
+	}, [visits]);
+
+	// Recent searches from context
+	const recentItems = useMemo(() => {
+		// This would come from SearchContext recentQueries
+		// For now, show some common healthcare searches
+		return [
+			{
+				id: "r1",
+				title: "Cardiologists",
+				subtitle: "Heart specialists",
+				icon: "heart",
+				color: COLORS.brandPrimary,
+				query: "cardiologists"
+			},
+			{
+				id: "r2", 
+				title: "Pediatricians",
+				subtitle: "Child healthcare",
+				icon: "child",
+				color: COLORS.brandPrimary,
+				query: "pediatricians"
+			},
+			{
+				id: "r3",
+				title: "Dental Care",
+				subtitle: "Dentists & orthodontics",
+				icon: "medical",
+				color: COLORS.brandPrimary,
+				query: "dental"
+			}
+		];
+	}, []);
 
 	const renderTabContent = () => {
 		switch (activeTab) {
-			case "for-you":
+			case "quick-actions":
 				return (
 					<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-						{forYouItems.map(item => (
+						{quickActionItems.map(item => (
 							<Pressable 
 								key={item.id} 
-								onPress={() => handleItemSelect(item.query)}
+								onPress={() => item.isEmergency ? handleItemSelect("emergency", item) : handleItemSelect(item.query, item)}
 								style={({ pressed }) => [
 									styles.horizontalCard,
 									{ 
-										backgroundColor: colors.cardBg,
+										backgroundColor: item.color + (isDarkMode ? "20" : "10"),
 										transform: [{ scale: pressed ? 0.96 : 1 }] 
 									}
 								]}
 							>
-								<View style={[styles.iconBox, { backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF" }]}>
-									<Ionicons name={item.icon} size={20} color={COLORS.brandPrimary} />
+								<View style={[styles.iconBox, { backgroundColor: item.color }]}>
+									<Ionicons name={item.icon} size={24} color="#FFFFFF" />
 								</View>
 								<View style={styles.textStack}>
 									<Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
@@ -138,7 +180,7 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 									</Text>
 								</View>
 								<View style={styles.checkmarkWrapper}>
-									<Ionicons name="checkmark-circle" size={18} color={COLORS.brandPrimary} />
+									<Ionicons name="arrow-forward" size={18} color={item.color} />
 								</View>
 							</Pressable>
 						))}
@@ -150,7 +192,7 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 						{trendingItems.map((item, index) => (
 							<Pressable 
 								key={item.id} 
-								onPress={() => handleItemSelect(item.query)}
+								onPress={() => handleItemSelect(item.query, item)}
 								style={({ pressed }) => [
 									styles.horizontalCard,
 									{ 
@@ -171,45 +213,19 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 									</Text>
 								</View>
 								<View style={styles.checkmarkWrapper}>
-									<Ionicons name="checkmark-circle" size={18} color={COLORS.brandPrimary} />
+									<Ionicons name="trending-up" size={18} color={COLORS.brandPrimary} />
 								</View>
 							</Pressable>
 						))}
 					</ScrollView>
 				);
-			case "news":
+			case "specialties":
 				return (
-					<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-						{newsItems.map(item => (
-							<Pressable 
-								key={item.id}
-								onPress={() => handleItemSelect(item.title)}
-								style={({ pressed }) => [
-									styles.newsCard,
-									{ 
-										backgroundColor: colors.cardBg,
-										transform: [{ scale: pressed ? 0.96 : 1 }] 
-									}
-								]}
-							>
-								<View style={styles.newsHeaderRow}>
-									<View style={[styles.iconBox, { backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF" }]}>
-										<Ionicons name={item.icon || "newspaper"} size={18} color={COLORS.brandPrimary} />
-									</View>
-									<View style={{ flex: 1 }}>
-										<Text style={styles.newsSource} numberOfLines={1}>{item.source}</Text>
-										<Text style={[styles.newsTime, { color: colors.textMuted }]}>{item.time}</Text>
-									</View>
-								</View>
-								<Text style={[styles.newsTitleText, { color: colors.text }]} numberOfLines={2}>
-									{item.title}
-								</Text>
-								<View style={styles.checkmarkWrapper}>
-									<Ionicons name="checkmark-circle" size={18} color={COLORS.brandPrimary} />
-								</View>
-							</Pressable>
-						))}
-					</ScrollView>
+					<SpecialtySelector 
+						specialties={["General Care", "Emergency", "Cardiology", "Neurology", "Oncology", "Pediatrics", "Orthopedics", "ICU", "Trauma", "Urgent Care"]}
+						selectedSpecialty={null}
+						onSelect={onSelectQuery}
+					/>
 				);
 			default:
 				return null;
@@ -219,7 +235,7 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 	return (
 		<View style={styles.container}>
 			<View style={styles.header}>
-				<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>DISCOVERY</Text>
+				<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>HEALTHCARE DISCOVERY</Text>
 			</View>
 
 			<ScrollView 
@@ -299,40 +315,40 @@ const styles = StyleSheet.create({
 	},
 	horizontalCard: {
 		minWidth: 180,
-		maxWidth: 220,
-		padding: 14,
-		borderRadius: 24,
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 12,
-		position: 'relative',
-		...Platform.select({
-			ios: {
-				shadowOffset: { width: 0, height: 4 },
-				shadowRadius: 8,
-				shadowColor: "#000",
-				shadowOpacity: 0.05,
-			},
-			android: { elevation: 2 },
-		}),
+		card: {
+			width: 140,
+			padding: 12,
+			borderRadius: 24, 
+			flexDirection: 'row',
+			alignItems: 'center',
+			gap: 12,
+			position: 'relative',
+			shadowColor: COLORS.brandPrimary, 
+			shadowOffset: { width: 0, height: 4 },
+			shadowOpacity: 0.15,
+			shadowRadius: 8,
+			elevation: 4,
+		},
 	},
 	iconBox: {
-		width: 42,
-		height: 42,
-		borderRadius: 14,
+		width: 40, 
+		height: 40,
+		borderRadius: 14, 
 		justifyContent: "center",
 		alignItems: "center",
+		// Frosted Glass effect
 		shadowColor: "#000",
-		shadowOpacity: 0.05,
 		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.1,
 		shadowRadius: 4,
+		elevation: 2,
 	},
 	textStack: {
 		flex: 1,
 	},
 	cardTitle: {
 		fontSize: 15,
-		fontWeight: "900",
+		fontWeight: "900", // Primary Headline: FontWeight: 900, LetterSpacing: -1.0pt
 		letterSpacing: -0.5,
 	},
 	cardSubtitle: {
@@ -344,18 +360,15 @@ const styles = StyleSheet.create({
 	newsCard: {
 		width: 240,
 		padding: 16,
-		borderRadius: 24,
+		borderRadius: 24, // Primary Artifact (36px) - smaller for suggestion cards
 		gap: 12,
 		position: 'relative',
-		...Platform.select({
-			ios: {
-				shadowOffset: { width: 0, height: 4 },
-				shadowRadius: 8,
-				shadowColor: "#000",
-				shadowOpacity: 0.05,
-			},
-			android: { elevation: 2 },
-		}),
+		// Border-Free Depth: Bioluminescence & Glass
+		shadowColor: COLORS.brandPrimary, // Active Glow
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.15,
+		shadowRadius: 8,
+		elevation: 4,
 	},
 	newsHeaderRow: {
 		flexDirection: 'row',
@@ -375,10 +388,10 @@ const styles = StyleSheet.create({
 		marginTop: 1,
 	},
 	newsTitleText: {
-		fontWeight: "900",
+		fontWeight: "900", // Primary Headline
 		fontSize: 15,
 		lineHeight: 20,
-		letterSpacing: -0.3,
+		letterSpacing: -0.3, // Editorial Weight
 	},
 	checkmarkWrapper: {
 		position: "absolute",

@@ -22,6 +22,7 @@ import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import EmergencySearchBar from "../components/emergency/EmergencySearchBar";
+import SpecialtySelector from "../components/emergency/SpecialtySelector";
 import { useSearch } from "../contexts/SearchContext";
 import { useVisits } from "../contexts/VisitsContext";
 import { useNotifications } from "../contexts/NotificationsContext";
@@ -40,6 +41,7 @@ import {
 } from "../utils/navigationHelpers";
 
 import * as Haptics from "expo-haptics";
+import { discoveryService } from "../services/discoveryService";
 
 export default function SearchScreen() {
 	const router = useRouter();
@@ -50,9 +52,9 @@ export default function SearchScreen() {
 		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
-	const { updateSearch: setEmergencySearchQuery } = useEmergencyUI();
-	const { setMode } = useEmergency();
 	const { hospitals: dbHospitals } = useHospitals();
+	const { updateSearch } = useEmergencyUI();
+	const { mode, setMode, specialties, selectedSpecialty, selectSpecialty } = useEmergency();
 	const { query, setSearchQuery, recentQueries, commitQuery, clearHistory } =
 		useSearch();
 	const { visits } = useVisits();
@@ -146,14 +148,24 @@ export default function SearchScreen() {
 			Haptics.selectionAsync();
 			const name = typeof hospitalName === "string" ? hospitalName : "";
 			commitQuery(name);
-			setEmergencySearchQuery(name);
+			discoveryService.trackSearchSelection({
+				query: name,
+				source: "search_screen",
+				key: "hospital_result",
+				extra: { isBedQuery },
+			});
 			navigateToSOS({
 				router,
 				setEmergencyMode: setMode,
-				mode: isBedQuery ? EmergencyMode.BOOKING : EmergencyMode.EMERGENCY,
+				setEmergencySearch: updateSearch,
+				searchQuery: name,
+				mode:
+					selectedSpecialty || isBedQuery
+						? EmergencyMode.BOOKING
+						: EmergencyMode.EMERGENCY,
 			});
 		},
-		[commitQuery, isBedQuery, router, setEmergencySearchQuery, setMode]
+		[commitQuery, isBedQuery, router, setMode, updateSearch, selectedSpecialty]
 	);
 
 	const openNotificationsFiltered = useCallback(
@@ -170,6 +182,40 @@ export default function SearchScreen() {
 			navigateToVisits({ router, filter, method: "replace" });
 		},
 		[router]
+	);
+
+	const specialtyCounts = useMemo(() => {
+		const counts = {};
+		const hospitals = Array.isArray(dbHospitals) ? dbHospitals : [];
+		const list = Array.isArray(specialties) ? specialties : [];
+		for (const s of list) {
+			if (!s) continue;
+			const c =
+				hospitals.filter(
+					(h) =>
+						Array.isArray(h?.specialties) &&
+						h.specialties.some(
+							(x) =>
+								x &&
+								typeof x === "string" &&
+								x.toLowerCase() === s.toLowerCase()
+						) &&
+						((h?.availableBeds ?? 0) > 0)
+				).length || 0;
+			counts[s] = c;
+		}
+		return counts;
+	}, [dbHospitals, specialties]);
+
+	const handleSpecialtySelect = useCallback(
+		(s) => {
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+			selectSpecialty(s);
+			if (s) {
+				setMode(EmergencyMode.BOOKING);
+			}
+		},
+		[selectSpecialty, setMode]
 	);
 
 	const rankedResults = useMemo(() => {
@@ -369,6 +415,24 @@ export default function SearchScreen() {
 					/>
 				</Animated.View>
 
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 16,
+						marginBottom: 16,
+					}}
+				>
+					{(mode === "booking" || isBedQuery) && Array.isArray(specialties) && specialties.length > 0 ? (
+						<SpecialtySelector
+							specialties={specialties}
+							selectedSpecialty={selectedSpecialty}
+							onSelect={handleSpecialtySelect}
+							counts={specialtyCounts}
+						/>
+					) : null}
+				</Animated.View>
+
 				{!query ? (
 					<View style={{ paddingHorizontal: 12 }}>
 						<SuggestiveContent
@@ -412,7 +476,7 @@ export default function SearchScreen() {
 									<Pressable
 										key={item.key}
 										onPress={() => {
-											Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+											Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); // Selection: Impact: Light
 											commitQuery(query);
 											item.onPress?.();
 										}}
@@ -420,7 +484,7 @@ export default function SearchScreen() {
 											styles.providerCard,
 											{
 												backgroundColor: colors.cardBg,
-												transform: [{ scale: pressed ? 0.98 : 1 }],
+												transform: [{ scale: pressed ? 0.98 : 1 }], // Micro-Scale: Every interactive card scales to 0.98 on press
 											},
 										]}
 									>
@@ -745,12 +809,18 @@ const styles = StyleSheet.create({
 		textTransform: "uppercase",
 	},
 
-	// Provider Cards
+	// Provider Cards - Following Manifesto Design Standards
 	providerCard: {
-		borderRadius: 36, // Primary Artifact
-		padding: 24,
-		marginBottom: 16,
+		borderRadius: 36, // Primary Artifact (36px)
+		padding: 16, // Consistent with emergency cards
+		marginBottom: 20,
 		position: "relative",
+		// Border-Free Depth: Bioluminescence & Glass
+		shadowColor: COLORS.brandPrimary, // Active Glow for selected items
+		shadowOffset: { width: 0, height: 10 },
+		shadowOpacity: 0.15, // High-contrast selected fill
+		shadowRadius: 15,
+		elevation: 6,
 	},
 
 	providerCardHeader: {
@@ -767,12 +837,18 @@ const styles = StyleSheet.create({
 	},
 
 	providerAvatar: {
-		width: 64,
-		height: 64,
-		borderRadius: 14, // Identity squircle
+		width: 56, // Identity Widget (14px * 4 = 56px)
+		height: 56,
+		borderRadius: 14, // Identity / Detail (14px)
 		alignItems: "center",
 		justifyContent: "center",
-		marginRight: 16,
+		marginRight: 12,
+		// Frosted Glass effect
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.1,
+		shadowRadius: 8,
+		elevation: 4,
 	},
 
 	providerDetails: {
@@ -780,7 +856,7 @@ const styles = StyleSheet.create({
 	},
 
 	providerName: {
-		fontSize: 19,
+		fontSize: 20, // Primary Headline: FontWeight: 900, LetterSpacing: -1.0pt
 		fontWeight: "900",
 		letterSpacing: -1.0,
 		marginBottom: 4,
@@ -800,8 +876,14 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		paddingHorizontal: 10,
 		paddingVertical: 6,
-		borderRadius: 12,
+		borderRadius: 12, // Widget / Card-in-Card (24px / 2 = 12px)
 		gap: 6,
+		// Border-Free Depth
+		shadowColor: COLORS.brandPrimary, // Active Glow
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.05,
+		shadowRadius: 4,
+		elevation: 2,
 	},
 
 	metaText: {

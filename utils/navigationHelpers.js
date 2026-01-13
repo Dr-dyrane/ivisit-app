@@ -46,10 +46,15 @@ export function navigateBack({ router }) {
 export function navigateToSOS({
 	router,
 	setEmergencyMode,
+	setEmergencySearch,
+	searchQuery,
 	mode = EmergencyMode.EMERGENCY,
 	method = "replace",
 }) {
 	setEmergencyMode?.(mode);
+	if (typeof searchQuery === "string" && searchQuery.trim()) {
+		setEmergencySearch?.(searchQuery);
+	}
 	nav(router, method, ROUTES.TABS_ROOT);
 }
 
