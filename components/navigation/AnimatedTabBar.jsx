@@ -122,7 +122,7 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
               inputRange: [0, 1],
               outputRange: [
                 'rgba(0, 0, 0, 0)',
-                isDarkMode ? '#121826' : `${COLORS.brandPrimary}10`,
+                isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
               ],
             });
 

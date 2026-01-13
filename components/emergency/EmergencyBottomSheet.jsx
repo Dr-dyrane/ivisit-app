@@ -193,8 +193,8 @@ const EmergencyBottomSheet = forwardRef(
 			// For detail mode, always use index 0 (only one snap point)
 			if (isDetailMode) return 0;
 			
-			// For trip/bed booking mode with 2 snap points, use index 0
-			if ((isTripMode || isBedBookingMode) && snapPoints.length === 2) return 0;
+			// For trip/bed booking mode with 1 snap point (monophasic 40%), always use index 0
+			if ((isTripMode || isBedBookingMode) && snapPoints.length === 1) return 0;
 			
 			// For normal mode with 3 snap points, validate currentSnapIndex or default to 1 (middle)
 			if (snapPoints.length === 3) {
@@ -212,7 +212,8 @@ const EmergencyBottomSheet = forwardRef(
 		// Track sheet phase changes using currentSnapIndex
 		useEffect(() => {
 			if (snapPoints.length <= 1) {
-				setSheetPhase("half");
+				// Monophasic mode (trip/bed) or single snap point (detail)
+				setSheetPhase(isDetailMode ? "half" : "half");
 				return;
 			}
 
@@ -229,7 +230,7 @@ const EmergencyBottomSheet = forwardRef(
 					? "half"
 					: "full";
 			setSheetPhase(phase);
-		}, [currentSnapIndex, snapPoints.length]);
+		}, [currentSnapIndex, snapPoints.length, isDetailMode]);
 
 		return (
 			<BottomSheet
@@ -387,8 +388,8 @@ const styles = StyleSheet.create({
 		elevation: 1000,
 	},
 	sheetBackground: {
-		borderTopLeftRadius: 22,
-		borderTopRightRadius: 22,
+		borderTopLeftRadius: 36,
+		borderTopRightRadius: 36,
 		shadowColor: "#000",
 		shadowOffset: { width: 0, height: -6 },
 		shadowOpacity: 0.12,

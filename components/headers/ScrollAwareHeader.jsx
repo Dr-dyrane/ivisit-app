@@ -7,7 +7,7 @@ import { BlurView } from "expo-blur";
 import NotificationIconButton from "./NotificationIconButton";
 import SearchIconButton from "./SearchIconButton";
 
-const HEADER_HEIGHT = 60;
+const HEADER_HEIGHT = 56	;
 
 /**
  * ScrollAwareHeader Component (Sticky)
@@ -22,7 +22,7 @@ export default function ScrollAwareHeader({
 	title,
 	subtitle,
 	icon,
-	backgroundColor = "#86100E",
+	backgroundColor = COLORS.brandPrimary,
 	badge,
 	leftComponent,
 	rightComponent,
@@ -31,16 +31,19 @@ export default function ScrollAwareHeader({
 	const { isDarkMode } = useTheme();
 	const { headerOpacity, titleOpacity } = useScrollAwareHeader();
 
-	const colors = {
-		text: isDarkMode ? "#FFFFFF" : "#0F172A",
-		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-	};
+	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
+	const textMuted = isDarkMode ? "#94A3B8" : "#64748B";
 
 	const resolvedRight =
 		rightComponent === false ? null : rightComponent == null ? (
-			<View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-				<SearchIconButton />
-				<NotificationIconButton />
+			<View style={styles.rightActions}>
+				{/* Nested Squircle backgrounds for action buttons */}
+				<View style={[styles.actionWrapper, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }]}>
+					<SearchIconButton />
+				</View>
+				<View style={[styles.actionWrapper, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }]}>
+					<NotificationIconButton />
+				</View>
 			</View>
 		) : (
 			rightComponent
@@ -52,137 +55,63 @@ export default function ScrollAwareHeader({
 				styles.container,
 				{
 					opacity: headerOpacity,
-					zIndex: 10,
 					paddingTop: insets.top,
-					minHeight: HEADER_HEIGHT + insets.top,
-					marginHorizontal: 2,
-					borderRadius: 32,
+					paddingHorizontal: 12,
 				},
 			]}
 		>
-			<BlurView
-				intensity={Platform.OS === "ios" ? 80 : 100}
-				tint={isDarkMode ? "dark" : "light"}
-				style={[styles.blur, { minHeight: HEADER_HEIGHT }]}
-			>
-				<View
-					style={{
-						height: HEADER_HEIGHT,
-						backgroundColor: isDarkMode
-							? "rgba(11, 15, 26, 0.015)"
-							: "rgba(255, 255, 255, 0.02)",
-						paddingHorizontal: 16,
-						flexDirection: "row",
-						alignItems: "center",
-						justifyContent: "space-between",
-						gap: 12,
-					}}
+			<View style={styles.islandWrapper}>
+				<BlurView
+					intensity={isDarkMode ? 80 : 90}
+					tint={isDarkMode ? "dark" : "light"}
+					style={[styles.blur, { minHeight: HEADER_HEIGHT }]}
 				>
-					{leftComponent && (
-						<View
-							style={{
-								width: 40,
-								height: 40,
-								justifyContent: "center",
-								alignItems: "center",
-							}}
-						>
-							{leftComponent}
+					<View style={[styles.innerContent, { 
+                        backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.2)" : "rgba(255, 255, 255, 0.3)" 
+                    }]}>
+						
+                        {/* LEFT: Identity / Navigation */}
+						<View style={styles.leftSection}>
+							{leftComponent ? (
+								leftComponent
+							) : icon ? (
+								<View style={[styles.iconSquircle, { backgroundColor: backgroundColor }]}>
+									{icon}
+								</View>
+							) : null}
 						</View>
-					)}
 
-					<View
-						style={{
-							flex: 1,
-							flexDirection: "row",
-							alignItems: "center",
-							minHeight: HEADER_HEIGHT,
-							justifyContent: "center",
-						}}
-					>
-						{icon && (
-							<View
-								style={{
-									width: 36,
-									height: 36,
-									borderRadius: 12,
-									backgroundColor: backgroundColor,
-									alignItems: "center",
-									justifyContent: "center",
-									marginRight: 14,
-									flexShrink: 0,
-								}}
-							>
-								{icon}
-							</View>
-						)}
-
-						<View style={{ flex: 1, justifyContent: "center" }}>
+						{/* MIDDLE: Editorial Typography */}
+						<View style={styles.centerSection}>
 							{subtitle && (
 								<Text
 									numberOfLines={1}
-									style={{
-										fontSize: 9,
-										fontWeight: "900",
-										color: colors.textMuted,
-										letterSpacing: 2,
-										textTransform: "uppercase",
-										marginBottom: 3,
-									}}
+									style={[styles.subtitleText, { color: textMuted }]}
 								>
 									{subtitle}
 								</Text>
 							)}
 							<Animated.Text
 								numberOfLines={1}
-								style={{
-									fontSize: 19,
-									fontWeight: "900",
-									color: colors.text,
-									letterSpacing: -0.5,
-									opacity: titleOpacity,
-								}}
+								style={[styles.titleText, { color: textColor, opacity: titleOpacity }]}
 							>
 								{title}
 							</Animated.Text>
 						</View>
 
-						{badge && (
-							<View
-								style={{
-									backgroundColor: backgroundColor,
-									minWidth: 32,
-									height: 32,
-									borderRadius: 16,
-									alignItems: "center",
-									justifyContent: "center",
-									marginLeft: 12,
-									flexShrink: 0,
-								}}
-							>
-								<Text
-									style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 12 }}
-								>
-									{badge}
-								</Text>
-							</View>
-						)}
+						{/* RIGHT: Actions / Badge */}
+						<View style={styles.rightSection}>
+							{badge ? (
+								<View style={[styles.badgeBox, { backgroundColor }]}>
+									<Text style={styles.badgeText}>{badge}</Text>
+								</View>
+							) : (
+								resolvedRight
+							)}
+						</View>
 					</View>
-
-						{resolvedRight && (
-							<View
-								style={{
-									minWidth: 40,
-									height: 40,
-									justifyContent: "center",
-									alignItems: "center",
-								}}
-							>
-								{resolvedRight}
-							</View>
-						)}
-				</View>
-			</BlurView>
+				</BlurView>
+			</View>
 		</Animated.View>
 	);
 }
@@ -193,11 +122,84 @@ const styles = StyleSheet.create({
 		top: 0,
 		left: 0,
 		right: 0,
-		zIndex: 10,
+		zIndex: 9999,
+	},
+	islandWrapper: {
+		// Floating "Island" feel
+		borderRadius: 32,
+		overflow: "hidden",
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 12 },
+		shadowOpacity: 0.12,
+		shadowRadius: 16,
+		elevation: 10,
 	},
 	blur: {
-		overflow: "hidden",
-		marginHorizontal: 2,
 		borderRadius: 32,
+	},
+	innerContent: {
+		height: HEADER_HEIGHT,
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 20, // Premium breathing room
+	},
+	leftSection: {
+		marginRight: 16,
+	},
+	iconSquircle: {
+		width: 48,
+		height: 48,
+		borderRadius: 16, // Nested Squircle logic
+		alignItems: "center",
+		justifyContent: "center",
+		shadowColor: "#000",
+		shadowOpacity: 0.1,
+		shadowRadius: 4,
+		shadowOffset: { width: 0, height: 2 },
+	},
+	centerSection: {
+		flex: 1,
+		justifyContent: "center",
+	},
+	subtitleText: {
+		fontSize: 10,
+		fontWeight: "900",
+		letterSpacing: 1.5,
+		textTransform: "uppercase",
+		marginBottom: 2,
+	},
+	titleText: {
+		fontSize: 22, // Editorial size
+		fontWeight: "900",
+		letterSpacing: -0.8,
+	},
+	rightSection: {
+		marginLeft: 12,
+		alignItems: "flex-end",
+	},
+	rightActions: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+	},
+	actionWrapper: {
+		width: 42,
+		height: 42,
+		borderRadius: 14, // Nested Squircle logic
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	badgeBox: {
+		minWidth: 32,
+		height: 32,
+		borderRadius: 10, // Match nested squircle vibe
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 6,
+	},
+	badgeText: {
+		color: "#FFFFFF",
+		fontWeight: "900",
+		fontSize: 12,
 	},
 });

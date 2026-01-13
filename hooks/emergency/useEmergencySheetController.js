@@ -34,11 +34,13 @@ export function useEmergencySheetController({
 		} else {
 			const isCompactMode = !!isTripMode || !!isBedBookingMode;
 			if (isCompactMode) {
-				points = ["55%", "75%"];
+				// Monophasic 50% for trip and bed modes
+				points = ["50%"];
 			} else {
 				// Calculate collapsed height based on actual screen dimensions
 				const collapsedHeight = TAB_BAR_HEIGHT + insets.bottom + SEARCH_BAR_AREA + MARGIN_ABOVE_TAB_BAR;
 				const collapsedPercent = Math.round((collapsedHeight / screenHeight) * 100);
+				
 				
 				// Ensure collapsed position is within safe bounds and accounts for different screen sizes
 				const safeCollapsed = Number.isFinite(collapsedPercent)

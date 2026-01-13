@@ -12,7 +12,7 @@ import {
 	Linking,
 	Alert,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Fontisto } from "@expo/vector-icons";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../contexts/ThemeContext";
@@ -34,44 +34,14 @@ export default function VisitDetailsScreen() {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 	const { setHeaderState } = useHeaderState();
-	const { handleScroll: handleTabBarScroll, resetTabBar } =
-		useTabBarVisibility();
-	const { handleScroll: handleHeaderScroll, resetHeader } =
-		useScrollAwareHeader();
+	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
+	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
 	const { visits, cancelVisit } = useVisits();
 
 	const visit = useMemo(() => {
 		if (!visitId || !Array.isArray(visits)) return null;
 		return visits.find((v) => v?.id === visitId) ?? null;
 	}, [visitId, visits]);
-
-	const handleCancelVisit = useCallback(() => {
-		if (!visit?.id) return;
-		
-		Alert.alert(
-			"Cancel Visit",
-			"Are you sure you want to cancel this visit? This action cannot be undone.",
-			[
-				{
-					text: "No, Keep It",
-					style: "cancel"
-				},
-				{
-					text: "Yes, Cancel",
-					style: "destructive",
-					onPress: async () => {
-						try {
-							await cancelVisit(visit.id);
-							router.back();
-						} catch (error) {
-							console.error("Failed to cancel visit:", error);
-							Alert.alert("Error", "Failed to cancel visit. Please try again.");
-						}
-					}
-				}
-			]
-		);
-	}, [visit?.id, cancelVisit, router]);
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
@@ -80,9 +50,9 @@ export default function VisitDetailsScreen() {
 			resetTabBar();
 			resetHeader();
 			setHeaderState({
-				title: "Visit Details",
+				title: "Identity Card",
 				subtitle: visit?.status ? String(visit.status).toUpperCase() : "VISIT",
-				icon: <Ionicons name="calendar" size={26} color="#FFFFFF" />,
+				icon: <Ionicons name="medical" size={24} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent: backButton(),
 				rightComponent: null,
@@ -90,437 +60,303 @@ export default function VisitDetailsScreen() {
 		}, [backButton, resetHeader, resetTabBar, setHeaderState, visit?.status])
 	);
 
-	const handleScroll = useCallback(
-		(event) => {
-			handleTabBarScroll(event);
-			handleHeaderScroll(event);
-		},
-		[handleHeaderScroll, handleTabBarScroll]
-	);
-
-	const backgroundColors = isDarkMode
-		? ["#121826", "#0B0F1A", "#121826"]
-		: ["#FFFFFF", "#F3E7E7", "#FFFFFF"];
-
-	const colors = {
-		text: isDarkMode ? "#FFFFFF" : "#0F172A",
-		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
-	};
-
-	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
-	const bottomPadding = tabBarHeight + 20;
-	const topPadding = STACK_TOP_PADDING;
+	const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
+	const mutedColor = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted;
+	const widgetBg = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
 
 	const statusColor = useMemo(() => {
-		const s = typeof visit?.status === "string" ? visit.status : "";
+		const s = visit?.status ?? "";
 		if (s === "upcoming" || s === "in_progress") return COLORS.brandPrimary;
 		if (s === "completed") return "#10B981";
-		if (s === "cancelled" || s === "no_show") return "#EF4444";
-		return colors.textMuted;
-	}, [colors.textMuted, visit?.status]);
-
-	const phoneDigits = useMemo(() => {
-		if (!visit?.phone || typeof visit.phone !== "string") return null;
-		const trimmed = visit.phone.trim();
-		if (!trimmed) return null;
-		if (trimmed.startsWith("+")) {
-			const plusDigits = `+${trimmed.slice(1).replace(/[^\d]/g, "")}`;
-			return plusDigits.length > 1 ? plusDigits : null;
-		}
-		const digits = trimmed.replace(/[^\d]/g, "");
-		return digits || null;
-	}, [visit?.phone]);
-
-	const callTarget = useMemo(() => (phoneDigits ? `tel:${phoneDigits}` : null), [phoneDigits]);
-
-	const doctorInitials = useMemo(() => {
-		const name = typeof visit?.doctor === "string" ? visit.doctor : "";
-		const parts = name.split(" ").filter(Boolean);
-		const initials = parts.slice(0, 2).map((p) => p[0]).join("");
-		return initials || "D";
-	}, [visit?.doctor]);
+		return mutedColor;
+	}, [mutedColor, visit?.status]);
 
 	return (
-		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
+		<LinearGradient
+			colors={isDarkMode ? [COLORS.bgDark, COLORS.bgDarkAlt] : [COLORS.bgLight, COLORS.bgLightAlt]}
+			style={{ flex: 1 }}
+		>
 			<ScrollView
-				contentContainerStyle={[
-					styles.content,
-					{ paddingTop: topPadding, paddingBottom: bottomPadding },
-				]}
+				contentContainerStyle={[styles.content, { paddingBottom: 120 }]}
 				showsVerticalScrollIndicator={false}
+				onScroll={useCallback((e) => {
+					handleTabBarScroll(e);
+					handleHeaderScroll(e);
+				}, [])}
 				scrollEventThrottle={16}
-				onScroll={handleScroll}
 			>
 				{visit ? (
 					<>
-						<View style={[styles.card, { backgroundColor: colors.card }]}>
-							{visit?.image ? (
-								<Image
-									source={{ uri: visit.image }}
-									style={styles.heroImage}
-									resizeMode="cover"
-								/>
-							) : null}
-
-							<View style={styles.headerRow}>
-								<View style={{ flex: 1 }}>
-									<Text style={[styles.title, { color: colors.text }]}>
-										{visit?.hospital ?? "Hospital visit"}
-									</Text>
-									<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-										{visit?.type ?? "Appointment"}
-										{visit?.specialty ? ` • ${visit.specialty}` : ""}
-									</Text>
-								</View>
-
-								<View
-									style={[styles.statusPill, { backgroundColor: `${statusColor}20` }]}
-								>
-									<Text style={[styles.statusText, { color: statusColor }]}>
-										{visit?.status?.replace("_", " ") ?? "visit"}
-									</Text>
-								</View>
-							</View>
-
-							<View style={styles.doctorRow}>
-								<View
-									style={[
-										styles.doctorAvatar,
-										{ backgroundColor: `${COLORS.brandPrimary}15` },
-									]}
-								>
-									<Text style={[styles.doctorInitials, { color: COLORS.brandPrimary }]}>
-										{doctorInitials}
-									</Text>
-								</View>
-								<View style={{ flex: 1 }}>
-									<Text style={[styles.doctorName, { color: colors.text }]}>
-										{visit?.doctor ?? "Doctor"}
-									</Text>
-									<Text style={[styles.doctorMeta, { color: colors.textMuted }]}>
-										{visit?.roomNumber ?? "--"}
-									</Text>
-								</View>
+						{/* HERO SECTION: High-Visual Identity */}
+						<View style={styles.heroSection}>
+							<Image
+								source={{ uri: visit?.image }}
+								style={styles.heroImage}
+								resizeMode="cover"
+							/>
+							<View style={[styles.floatingBadge, { backgroundColor: statusColor }]}>
+								<Text style={styles.statusText}>{visit?.status?.toUpperCase()}</Text>
 							</View>
 						</View>
 
-						<View style={[styles.card, { backgroundColor: colors.card }]}>
-							<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-								Summary
+						{/* PRIMARY TITLE SECTION */}
+						<View style={styles.titleSection}>
+							<Text style={[styles.hospitalName, { color: textColor }]}>
+								{visit?.hospital}
 							</Text>
-							<View style={styles.kvRow}>
-								<Text style={[styles.kvLabel, { color: colors.textMuted }]}>Date</Text>
-								<Text style={[styles.kvValue, { color: colors.text }]}>
-									{visit?.date ?? "--"}
-								</Text>
-							</View>
-							<View style={styles.kvRow}>
-								<Text style={[styles.kvLabel, { color: colors.textMuted }]}>Time</Text>
-								<Text style={[styles.kvValue, { color: colors.text }]}>
-									{visit?.time ?? "--"}
-								</Text>
-							</View>
-							<View style={styles.kvRow}>
-								<Text style={[styles.kvLabel, { color: colors.textMuted }]}>Location</Text>
-								<Text style={[styles.kvValue, { color: colors.text }]} numberOfLines={2}>
-									{visit?.address ?? "--"}
-								</Text>
-							</View>
-							<View style={styles.kvRow}>
-								<Text style={[styles.kvLabel, { color: colors.textMuted }]}>Duration</Text>
-								<Text style={[styles.kvValue, { color: colors.text }]}>
-									{visit?.estimatedDuration ?? "--"}
+							<View style={styles.typeTag}>
+								<Text style={[styles.typeText, { color: COLORS.brandPrimary }]}>
+									{visit?.type} • {visit?.specialty}
 								</Text>
 							</View>
 						</View>
 
-						<View style={[styles.card, { backgroundColor: colors.card }]}>
-							<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-								Actions
-							</Text>
-							<View style={styles.actionsRow}>
-								<Pressable
-									disabled={!callTarget}
-									onPress={() => {
-										if (!callTarget) return;
-										Linking.openURL(callTarget);
-									}}
-									style={({ pressed }) => [
-										styles.actionButton,
-										{
-											backgroundColor: isDarkMode
-												? "rgba(255,255,255,0.08)"
-												: "rgba(15,23,42,0.06)",
-											opacity: callTarget ? (pressed ? 0.85 : 1) : 0.5,
-										},
-									]}
-								>
-									<Ionicons name="call" size={18} color={COLORS.brandPrimary} />
-									<Text style={[styles.actionText, { color: colors.text }]}>Call</Text>
-								</Pressable>
-
-								<Pressable
-									disabled={!visit?.meetingLink}
-									onPress={() => {
-										if (!visit?.meetingLink) return;
-										Linking.openURL(visit.meetingLink);
-									}}
-									style={({ pressed }) => [
-										styles.actionButton,
-										{
-											backgroundColor: isDarkMode
-												? "rgba(255,255,255,0.08)"
-												: "rgba(15,23,42,0.06)",
-											opacity: visit?.meetingLink ? (pressed ? 0.85 : 1) : 0.5,
-										},
-									]}
-								>
-									<Ionicons name="videocam" size={18} color={COLORS.brandPrimary} />
-									<Text style={[styles.actionText, { color: colors.text }]}>Join</Text>
-								</Pressable>
+						{/* DOCTOR IDENTITY WIDGET: Nested Squircle */}
+						<View style={[styles.identityWidget, { backgroundColor: widgetBg }]}>
+							<View style={[styles.squircleAvatar, { backgroundColor: COLORS.brandPrimary + '15' }]}>
+								<Text style={[styles.initials, { color: COLORS.brandPrimary }]}>
+									{visit?.doctor?.split(" ").map(n => n[0]).join("")}
+								</Text>
+							</View>
+							<View style={styles.doctorInfo}>
+								<Text style={[styles.label, { color: mutedColor }]}>ATTENDING DOCTOR</Text>
+								<Text style={[styles.value, { color: textColor }]}>{visit?.doctor}</Text>
+							</View>
+							<View style={[styles.roomPill, { backgroundColor: isDarkMode ? COLORS.bgDark : "#FFF" }]}>
+								<Text style={[styles.roomText, { color: textColor }]}>Room {visit?.roomNumber || "TBA"}</Text>
 							</View>
 						</View>
 
-						{!!visit?.notes && (
-							<View style={[styles.card, { backgroundColor: colors.card }]}>
-								<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-									Notes
-								</Text>
-								<Text style={[styles.paragraph, { color: colors.text }]}>{visit.notes}</Text>
+						{/* DATA GRID: Clean Editorial Layout */}
+						<View style={styles.gridContainer}>
+							<View style={[styles.dataSquare, { backgroundColor: widgetBg }]}>
+								<Ionicons name="calendar" size={20} color={COLORS.brandPrimary} />
+								<Text style={[styles.gridLabel, { color: mutedColor }]}>DATE</Text>
+								<Text style={[styles.gridValue, { color: textColor }]}>{visit?.date}</Text>
 							</View>
-						)}
+							<View style={[styles.dataSquare, { backgroundColor: widgetBg }]}>
+								<Ionicons name="time" size={20} color={COLORS.brandPrimary} />
+								<Text style={[styles.gridLabel, { color: mutedColor }]}>TIME</Text>
+								<Text style={[styles.gridValue, { color: textColor }]}>{visit?.time}</Text>
+							</View>
+						</View>
 
-						{Array.isArray(visit?.preparation) && visit.preparation.length > 0 && (
-							<View style={[styles.card, { backgroundColor: colors.card }]}>
-								<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-									Preparation
-								</Text>
-								{visit.preparation.map((p) => (
-									<View key={p} style={styles.bulletRow}>
-										<View
-											style={[
-												styles.bulletDot,
-												{ backgroundColor: COLORS.brandPrimary },
-											]}
-										/>
-										<Text style={[styles.paragraph, { color: colors.text, flex: 1 }]}>
-											{p}
-										</Text>
+						{/* ACTIONS: Premium Ghost Pills */}
+						<View style={styles.actionsContainer}>
+							<Pressable
+								onPress={() => visit?.phone && Linking.openURL(`tel:${visit.phone}`)}
+								style={({ pressed }) => [styles.actionBtn, { backgroundColor: widgetBg, opacity: pressed ? 0.7 : 1 }]}
+							>
+								<Ionicons name="call" size={20} color={COLORS.brandPrimary} />
+								<Text style={[styles.actionBtnText, { color: textColor }]}>Call Clinic</Text>
+							</Pressable>
+
+							{visit?.meetingLink && (
+								<Pressable
+									onPress={() => Linking.openURL(visit.meetingLink)}
+									style={({ pressed }) => [styles.actionBtn, { backgroundColor: COLORS.brandPrimary, opacity: pressed ? 0.9 : 1 }]}
+								>
+									<Ionicons name="videocam" size={20} color="#FFF" />
+									<Text style={[styles.actionBtnText, { color: "#FFF" }]}>Join Video</Text>
+								</Pressable>
+							)}
+						</View>
+
+						{/* PREPARATION SECTION */}
+						{visit?.preparation && (
+							<View style={[styles.prepSection, { backgroundColor: widgetBg }]}>
+								<Text style={[styles.widgetTitle, { color: textColor }]}>PREPARATION</Text>
+								{visit.preparation.map((item, i) => (
+									<View key={i} style={styles.bulletRow}>
+										<View style={[styles.bullet, { backgroundColor: COLORS.brandPrimary }]} />
+										<Text style={[styles.bulletText, { color: textColor }]}>{item}</Text>
 									</View>
 								))}
 							</View>
 						)}
 
-						{(visit?.status === "upcoming" || visit?.status === "scheduled") && (
-							<Pressable
-								onPress={handleCancelVisit}
-								style={({ pressed }) => [
-									styles.cancelButton,
-									{ opacity: pressed ? 0.9 : 1 },
-								]}
-							>
-								<Text style={styles.cancelButtonText}>Cancel Visit</Text>
+						{/* CANCEL ACTION */}
+						{visit?.status === "upcoming" && (
+							<Pressable onPress={() => Alert.alert("Cancel Visit", "Are you sure?")} style={styles.cancelLink}>
+								<Text style={styles.cancelLinkText}>Cancel Appointment</Text>
 							</Pressable>
 						)}
 					</>
-				) : (
-					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<View style={{ alignItems: "center", paddingVertical: 16 }}>
-							<View
-								style={{
-									width: 72,
-									height: 72,
-									borderRadius: 22,
-									backgroundColor: `${COLORS.brandPrimary}18`,
-									alignItems: "center",
-									justifyContent: "center",
-									marginBottom: 16,
-								}}
-							>
-								<Ionicons
-									name="alert-circle-outline"
-									size={34}
-									color={COLORS.brandPrimary}
-								/>
-							</View>
-							<Text style={[styles.title, { color: colors.text }]}>Visit not found</Text>
-							<Text
-								style={[
-									styles.subtitle,
-									{ color: colors.textMuted, textAlign: "center" },
-								]}
-							>
-								This visit may have been removed or not synced yet.
-							</Text>
-							<Pressable
-								onPress={() => navigateToVisits({ router, method: "replace" })}
-								style={({ pressed }) => [
-									styles.primaryButton,
-									{ opacity: pressed ? 0.9 : 1 },
-								]}
-							>
-								<Text style={styles.primaryButtonText}>Go to Visits</Text>
-							</Pressable>
-						</View>
-					</View>
-				)}
+				) : null}
 			</ScrollView>
 		</LinearGradient>
 	);
 }
 
 const styles = StyleSheet.create({
-	container: { flex: 1 },
-	content: { flexGrow: 1, padding: 20, gap: 12 },
-	card: {
-		borderRadius: 22,
-		padding: 18,
+	content: {
+		paddingTop: STACK_TOP_PADDING,
+		paddingHorizontal: 20
+	},
+	heroSection: {
+		height: 240,
+		width: '100%',
+		borderRadius: 36,
+		overflow: 'hidden',
+		marginBottom: 24,
+		position: 'relative',
 	},
 	heroImage: {
-		width: "100%",
-		height: 160,
-		borderRadius: 18,
-		marginBottom: 14,
-		backgroundColor: "rgba(0,0,0,0.04)",
+		width: '100%',
+		height: '100%'
 	},
-	headerRow: {
-		flexDirection: "row",
-		alignItems: "flex-start",
-		justifyContent: "space-between",
-		gap: 12,
-	},
-	statusPill: {
-		paddingHorizontal: 12,
-		paddingVertical: 6,
+	floatingBadge: {
+		position: 'absolute',
+		top: 16,
+		right: 16,
+		paddingHorizontal: 14,
+		paddingVertical: 8,
 		borderRadius: 14,
+		shadowColor: "#000",
+		shadowOpacity: 0.2,
+		shadowRadius: 10,
 	},
 	statusText: {
+		color: '#FFF',
 		fontSize: 11,
-		fontWeight: "900",
-		textTransform: "capitalize",
+		fontWeight: '900',
+		letterSpacing: 1
 	},
-	doctorRow: {
-		marginTop: 14,
-		flexDirection: "row",
-		alignItems: "center",
+	titleSection: {
+		marginBottom: 24,
+		paddingHorizontal: 4,
 	},
-	doctorAvatar: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
-		alignItems: "center",
-		justifyContent: "center",
-		marginRight: 12,
+	hospitalName: {
+		fontSize: 32,
+		fontWeight: '900',
+		letterSpacing: -1,
+		lineHeight: 38,
 	},
-	doctorInitials: {
-		fontSize: 14,
-		fontWeight: "900",
-	},
-	doctorName: {
-		fontSize: 14,
-		fontWeight: "800",
-	},
-	doctorMeta: {
-		marginTop: 2,
-		fontSize: 12,
-		fontWeight: "500",
-	},
-	title: {
-		fontSize: 18,
-		fontWeight: "900",
-		letterSpacing: -0.3,
-	},
-	subtitle: {
+	typeTag: {
 		marginTop: 8,
-		fontSize: 14,
-		lineHeight: 20,
 	},
-	sectionTitle: {
+	typeText: {
+		fontSize: 15,
+		fontWeight: '700',
+		textTransform: 'uppercase',
+		letterSpacing: 0.5,
+	},
+	identityWidget: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		padding: 20,
+		borderRadius: 32,
+		marginBottom: 16,
+	},
+	squircleAvatar: {
+		width: 56,
+		height: 56,
+		borderRadius: 18,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	initials: {
+		fontSize: 18,
+		fontWeight: '900',
+	},
+	doctorInfo: {
+		flex: 1,
+		marginLeft: 16,
+	},
+	label: {
 		fontSize: 10,
-		fontWeight: "900",
-		letterSpacing: 3,
-		textTransform: "uppercase",
-		marginBottom: 10,
+		fontWeight: '800',
+		letterSpacing: 1,
+		marginBottom: 4,
 	},
-	kvRow: {
-		flexDirection: "row",
-		alignItems: "flex-start",
-		justifyContent: "space-between",
-		gap: 10,
-		marginBottom: 10,
+	value: {
+		fontSize: 17,
+		fontWeight: '900',
 	},
-	kvLabel: {
-		width: 84,
+	roomPill: {
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		borderRadius: 12,
+	},
+	roomText: {
 		fontSize: 12,
-		fontWeight: "800",
+		fontWeight: '800',
 	},
-	kvValue: {
+	gridContainer: {
+		flexDirection: 'row',
+		gap: 12,
+		marginBottom: 16,
+	},
+	dataSquare: {
 		flex: 1,
-		fontSize: 13,
-		fontWeight: "800",
-		textAlign: "right",
+		padding: 20,
+		borderRadius: 32,
+		alignItems: 'flex-start',
 	},
-	actionsRow: {
-		flexDirection: "row",
+	gridLabel: {
+		fontSize: 10,
+		fontWeight: '800',
+		letterSpacing: 1,
+		marginTop: 12,
+		marginBottom: 4,
+	},
+	gridValue: {
+		fontSize: 16,
+		fontWeight: '900',
+	},
+	actionsContainer: {
+		flexDirection: 'row',
+		gap: 12,
+		marginBottom: 24,
+	},
+	actionBtn: {
+		flex: 1,
+		height: 60,
+		borderRadius: 20,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
 		gap: 10,
 	},
-	actionButton: {
-		flex: 1,
-		height: 44,
-		borderRadius: 16,
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "center",
-		gap: 8,
+	actionBtnText: {
+		fontSize: 15,
+		fontWeight: '800',
 	},
-	actionText: {
-		fontSize: 13,
-		fontWeight: "900",
+	prepSection: {
+		padding: 24,
+		borderRadius: 32,
 	},
-	paragraph: {
-		fontSize: 14,
-		fontWeight:'400',
-		lineHeight: 20,
+	widgetTitle: {
+		fontSize: 12,
+		fontWeight: '900',
+		letterSpacing: 1.5,
+		marginBottom: 16,
+		textTransform: 'uppercase',
 	},
 	bulletRow: {
-		flexDirection: "row",
-		alignItems: "flex-start",
-		gap: 10,
-		marginBottom: 10,
+		flexDirection: 'row',
+		alignItems: 'center',
+		marginBottom: 12,
+		gap: 12,
 	},
-	bulletDot: {
-		width: 8,
-		height: 8,
-		borderRadius: 4,
-		marginTop: 6,
+	bullet: {
+		width: 6,
+		height: 6,
+		borderRadius: 3,
 	},
-	primaryButton: {
-		marginTop: 18,
-		backgroundColor: COLORS.brandPrimary,
-		borderRadius: 16,
-		paddingVertical: 12,
-		paddingHorizontal: 12,
-		minWidth: 160,
-		alignItems: "center",
+	bulletText: {
+		fontSize: 15,
+		fontWeight: '500',
+		lineHeight: 22,
 	},
-	primaryButtonText: {
-		color: "#FFFFFF",
-		fontSize: 13,
-		fontWeight: "900",
+	cancelLink: {
+		marginTop: 32,
+		alignItems: 'center',
 	},
-	cancelButton: {
-		marginTop: 10,
-		backgroundColor: "rgba(239, 68, 68, 0.1)",
-		borderRadius: 16,
-		paddingVertical: 16,
-		alignItems: "center",
-		borderWidth: 1,
-		borderColor: "rgba(239, 68, 68, 0.2)",
-	},
-	cancelButtonText: {
-		color: "#EF4444",
+	cancelLinkText: {
+		color: '#EF4444',
 		fontSize: 14,
-		fontWeight: "800",
-	},
+		fontWeight: '800',
+		textDecorationLine: 'underline',
+	}
 });

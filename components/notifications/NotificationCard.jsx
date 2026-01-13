@@ -1,192 +1,116 @@
-// components/notifications/NotificationCard.jsx - Individual notification card
-
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
-import { 
-  getNotificationIcon, 
-  getPriorityColor, 
-  getRelativeTime,
-  NOTIFICATION_PRIORITY,
-} from "../../constants/notifications";
+import { getNotificationIcon, getPriorityColor, getRelativeTime, NOTIFICATION_PRIORITY } from "../../constants/notifications";
 
-export default function NotificationCard({
-  notification,
-  onPress,
-  onMarkRead,
-  onDelete,
-  isSelectMode = false,
-  isSelected = false,
-  onToggleSelection,
-}) {
+export default function NotificationCard({ notification, onPress, onMarkRead, onDelete, isSelectMode = false, isSelected = false, onToggleSelection }) {
   const { isDarkMode } = useTheme();
-
-  const colors = {
-    card: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
-    cardUnread: isDarkMode ? `${COLORS.brandPrimary}08` : `${COLORS.brandPrimary}05`,
-    text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-    textMuted: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
-    border: isDarkMode ? COLORS.border : COLORS.borderLight,
-  };
-
+  
   const icon = getNotificationIcon(notification.type);
   const priorityColor = getPriorityColor(notification.priority);
   const timeAgo = getRelativeTime(notification.timestamp);
-  const isUrgent = notification.priority === NOTIFICATION_PRIORITY.URGENT;
+
+  const activeBG = isSelected 
+    ? (COLORS.brandPrimary + "20") 
+    : !notification.read 
+      ? (isDarkMode ? COLORS.bgDarkAlt : "#FFF") 
+      : (isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)");
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    if (isSelectMode) {
-      onToggleSelection?.(notification.id);
-      return;
-    }
-    
-    if (!notification.read) {
-      onMarkRead?.(notification.id);
-    }
+    if (isSelectMode) { onToggleSelection?.(notification.id); return; }
+    if (!notification.read) onMarkRead?.(notification.id);
     onPress?.(notification);
-  };
-
-  const handleSwipeDelete = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    onDelete?.(notification.id);
   };
 
   return (
     <Pressable
       onPress={handlePress}
-      onLongPress={!isSelectMode ? handleSwipeDelete : undefined}
-      style={({ pressed }) => ({
-        backgroundColor: isSelected 
-          ? (isDarkMode ? `${COLORS.brandPrimary}20` : `${COLORS.brandPrimary}15`)
-          : notification.read 
-            ? colors.card 
-            : colors.cardUnread,
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: isSelected 
-          ? COLORS.brandPrimary 
-          : notification.read 
-            ? colors.border 
-            : `${COLORS.brandPrimary}20`,
-        borderLeftWidth: isSelected || !notification.read ? 4 : 1,
-        borderLeftColor: isSelected 
-          ? COLORS.brandPrimary 
-          : notification.read 
-            ? colors.border 
-            : priorityColor,
-        opacity: pressed ? 0.8 : 1,
-        transform: [{ scale: pressed ? 0.98 : 1 }],
-      })}
+      onLongPress={!isSelectMode ? () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); onDelete?.(notification.id); } : undefined}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          backgroundColor: activeBG,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+          shadowColor: !notification.read ? priorityColor : "#000",
+          shadowOpacity: isDarkMode ? 0.3 : 0.08,
+        }
+      ]}
     >
-      <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-        {/* Selection Checkbox */}
-        {isSelectMode && (
-          <View
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: 12,
-              borderWidth: 2,
-              borderColor: isSelected ? COLORS.brandPrimary : colors.border,
-              backgroundColor: isSelected ? COLORS.brandPrimary : "transparent",
-              justifyContent: "center",
-              alignItems: "center",
-              marginRight: 12,
-              marginTop: 8,
-            }}
-          >
-            {isSelected && (
-              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-            )}
-          </View>
-        )}
-
-        {/* Icon */}
-        <View
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: `${priorityColor}15`,
-            justifyContent: "center",
-            alignItems: "center",
-            marginRight: 12,
-          }}
-        >
-          <Ionicons name={icon} size={20} color={priorityColor} />
+      <View style={styles.row}>
+        {/* ICON IDENTITY: 14px Nested Squircle */}
+        <View style={[styles.iconBox, { backgroundColor: priorityColor + '15' }]}>
+          <Ionicons name={icon} size={22} color={priorityColor} />
+          {!notification.read && <View style={[styles.unreadPulse, { backgroundColor: priorityColor }]} />}
         </View>
 
-        {/* Content */}
-        <View style={{ flex: 1 }}>
-          {/* Header row */}
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: notification.read ? "500" : "700",
-                color: colors.text,
-                flex: 1,
-                marginRight: 8,
-              }}
-              numberOfLines={1}
-            >
-              {notification.title}
+        <View style={styles.content}>
+          <View style={styles.headerRow}>
+            <Text style={[styles.subtitle, { color: priorityColor }]}>
+              {notification.priority.toUpperCase()}
             </Text>
-            <Text style={{ fontSize: 12, color: colors.textMuted }}>
-              {timeAgo}
+            <Text style={[styles.timeText, { color: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted }]}>
+              {timeAgo.toUpperCase()}
             </Text>
           </View>
 
-          {/* Message */}
-          <Text
-            style={{
-              fontSize: 13,
-              color: colors.textMuted,
-              lineHeight: 18,
-            }}
-            numberOfLines={2}
-          >
-            {notification.message}
+          <Text style={[styles.title, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]} numberOfLines={1}>
+            {notification.title}
           </Text>
 
-          {/* Action hint for urgent */}
-          {isUrgent && notification.actionType && (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                marginTop: 8,
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight:'400', color: COLORS.brandPrimary }}>
-                Tap to view details
-              </Text>
-              <Ionicons name="chevron-forward" size={14} color={COLORS.brandPrimary} />
-            </View>
-          )}
+          <Text style={[styles.message, { color: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted }]} numberOfLines={2}>
+            {notification.message}
+          </Text>
         </View>
 
-        {/* Unread indicator */}
-        {!notification.read && (
-          <View
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: COLORS.brandPrimary,
-              marginLeft: 8,
-              marginTop: 6,
-            }}
-          />
+        {/* THE CORNER SEAL SIGNATURE */}
+        {isSelected && (
+          <View style={styles.cornerSeal}>
+            <Ionicons name="checkmark-circle" size={24} color={COLORS.brandPrimary} />
+          </View>
         )}
       </View>
     </Pressable>
   );
 }
 
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: 36, // Primary Artifact Layer
+    padding: 20,
+    marginBottom: 14,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 12,
+    elevation: 4,
+    position: 'relative',
+    overflow: 'visible',
+  },
+  row: { flexDirection: "row", alignItems: "center" },
+  iconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 14, // Detail Layer Nesting
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  unreadPulse: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  content: { flex: 1 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  subtitle: { fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+  timeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  title: { fontSize: 17, fontWeight: '900', letterSpacing: -0.5, marginBottom: 2 },
+  message: { fontSize: 13, fontWeight: '500', lineHeight: 18 },
+  cornerSeal: { position: 'absolute', bottom: -6, right: -6 },
+});

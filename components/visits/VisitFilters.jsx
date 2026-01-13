@@ -1,91 +1,63 @@
-// components/visits/VisitFilters.jsx - Filter tabs for visits
-
-import { View, Text, Pressable, ScrollView } from "react-native";
+import React from "react";
+import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 
-export default function VisitFilters({
-  filters,
-  selectedFilter,
-  onSelect,
-  counts = {},
-}) {
+export default function VisitFilters({ filters, selectedFilter, onSelect, counts = {} }) {
   const { isDarkMode } = useTheme();
 
-  // Solid colors matching app design system (no borders)
-  const colors = {
-    background: isDarkMode ? "#0B0F1A" : "#F3E7E7",
-    backgroundSelected: COLORS.brandPrimary,
-    text: isDarkMode ? "#FFFFFF" : "#0F172A",
-    textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-  };
-
-  const handleSelect = (filterId) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onSelect(filterId);
-  };
+  const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
+  const mutedColor = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted;
+  const cardBase = isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt;
 
   return (
-    <View style={{ marginBottom: 20 }}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 10 }}
-      >
+    <View style={styles.container}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {filters.map((filter) => {
           const isSelected = selectedFilter === filter.id;
           const count = counts[filter.id] || 0;
 
+          const activeBG = isSelected
+            ? COLORS.brandPrimary + "15"
+            : cardBase;
+
           return (
             <Pressable
               key={filter.id}
-              onPress={() => handleSelect(filter.id)}
-              style={({ pressed }) => ({
-                backgroundColor: isSelected
-                  ? colors.backgroundSelected
-                  : colors.background,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 20, // No border, just background
-                flexDirection: "row",
-                alignItems: "center",
-                opacity: pressed ? 0.8 : 1,
-                transform: [{ scale: pressed ? 0.97 : 1 }],
-              })}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                onSelect(filter.id);
+              }}
+              style={({ pressed }) => [
+                styles.filterCard,
+                {
+                  backgroundColor: activeBG,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                  shadowColor: isSelected ? COLORS.brandPrimary : "#000",
+                  shadowOpacity: isDarkMode ? 0.2 : 0.05,
+                },
+              ]}
             >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: isSelected ? "700" : "500",
-                  color: isSelected ? "#FFFFFF" : colors.text,
-                }}
-              >
-                {filter.label}
-              </Text>
-              {count > 0 && (
-                <View
-                  style={{
-                    backgroundColor: isSelected
-                      ? "rgba(255,255,255,0.25)"
-                      : `${COLORS.brandPrimary}20`,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                    borderRadius: 10,
-                    marginLeft: 8,
-                    minWidth: 24,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "500",
-                      color: isSelected ? "#FFFFFF" : COLORS.brandPrimary,
-                    }}
-                  >
-                    {count}
-                  </Text>
+              <View style={styles.contentRow}>
+                <Text style={[styles.label, { color: isSelected ? COLORS.brandPrimary : textColor }]}>
+                  {filter.label}
+                </Text>
+
+                {count > 0 && (
+                  <View style={[styles.badge, { backgroundColor: isSelected ? COLORS.brandPrimary : (isDarkMode ? COLORS.bgDark : COLORS.bgLight) }]}>
+                    <Text style={[styles.badgeText, { color: isSelected ? COLORS.textLight : COLORS.brandPrimary }]}>
+                      {count}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* The Signature Checkmark Seal */}
+              {isSelected && (
+                <View style={styles.checkmarkWrapper}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.brandPrimary} />
                 </View>
               )}
             </Pressable>
@@ -96,3 +68,29 @@ export default function VisitFilters({
   );
 }
 
+const styles = StyleSheet.create({
+  container: { marginVertical: 8},
+  scrollContent: { paddingLeft: 4, paddingRight: 20, gap: 12, paddingBottom: 8 },
+  filterCard: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 28,
+    minWidth: 100,
+    position: "relative",
+    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+  },
+  contentRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  label: { fontSize: 14, fontWeight: "800", letterSpacing: -0.4 },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: { fontSize: 11, fontWeight: "900" },
+  checkmarkWrapper: { position: "absolute", right: -4, bottom: -4 },
+});
