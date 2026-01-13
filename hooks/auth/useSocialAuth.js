@@ -21,13 +21,35 @@ export function useSocialAuth() {
 					if (authData?.user) {
 						await login(authData.user);
 						return { success: true };
+					} else {
+						return { success: false, error: "Authentication failed" };
 					}
+				} else if (result.type === "cancel") {
+					return { success: false, error: "cancelled" };
+				} else if (result.type === "dismiss") {
+					return { success: false, error: "dismissed" };
 				}
 			}
 			return { success: false, error: "Cancelled or failed" };
 		} catch (error) {
 			console.error("Social Auth Error:", error);
-			return { success: false, error: error.message || "Failed to initiate login" };
+			
+			// Handle specific OAuth errors
+			let errorMessage = "Failed to initiate login";
+			
+			if (error.message) {
+				if (error.message.includes("network") || error.message.includes("connection")) {
+					errorMessage = "Network connection error. Please check your internet.";
+				} else if (error.message.includes("popup") || error.message.includes("blocked")) {
+					errorMessage = "Popup was blocked. Please allow popups for this app.";
+				} else if (error.message.includes("cancelled") || error.message.includes("dismissed")) {
+					errorMessage = "cancelled";
+				} else {
+					errorMessage = error.message;
+				}
+			}
+			
+			return { success: false, error: errorMessage };
 		}
 	}, [login]);
 

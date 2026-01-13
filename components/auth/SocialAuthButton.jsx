@@ -64,7 +64,7 @@ export default function SocialAuthButton({ provider }) {
 		if (provider === "apple") {
 			// -----------------------------------------------------------
 			// [APPLE LOGIN ACTIVATION]
-			// To enable Apple Sign In when you have the Service ID & Secret:
+			// To enable Apple Sign In when you have Service ID & Secret:
 			// 1. Setup Apple Provider in Supabase Dashboard.
 			// 2. Remove or comment out the following 2 lines:
 			// -----------------------------------------------------------
@@ -76,12 +76,31 @@ export default function SocialAuthButton({ provider }) {
 			const { success, error } = await signInWithProvider(provider);
 			if (success) {
 				showToast("Successfully logged in", "success");
-			} else if (error && error !== "Cancelled or failed") {
-				showToast(error, "error");
+			} else if (error) {
+				// Don't show error for user cancellation
+				if (!error.includes("cancelled") && !error.includes("dismissed")) {
+					showToast(error, "error");
+				}
 			}
 		} catch (error) {
 			console.error("Social Auth Error:", error);
-			showToast(error.message || "Failed to initiate login", "error");
+			// Handle different types of social auth errors
+			let errorMessage = "Failed to initiate login";
+			
+			if (error.message) {
+				if (error.message.includes("network") || error.message.includes("connection")) {
+					errorMessage = "Network connection error. Please check your internet.";
+				} else if (error.message.includes("popup") || error.message.includes("blocked")) {
+					errorMessage = "Popup was blocked. Please allow popups for this site.";
+				} else if (error.message.includes("cancelled") || error.message.includes("dismissed")) {
+					// User cancelled - don't show error
+					return;
+				} else {
+					errorMessage = error.message;
+				}
+			}
+			
+			showToast(errorMessage, "error");
 		}
 	};
 

@@ -67,7 +67,16 @@ const handleSupabaseError = (error) => {
 	if (msg.includes("network")) {
 		return createAuthError(AuthErrors.NETWORK_ERROR, "Network connection error");
 	}
-    if (msg.includes("sms")) {
+	if (msg.includes("invalid email") || msg.includes("email address is invalid")) {
+		return createAuthError(AuthErrors.INVALID_INPUT, "Invalid email address format");
+	}
+	if (msg.includes("phone") && (msg.includes("invalid") || msg.includes("format"))) {
+		return createAuthError(AuthErrors.INVALID_INPUT, "Invalid phone number format");
+	}
+	if (msg.includes("email not confirmed")) {
+		return createAuthError(AuthErrors.INVALID_TOKEN, "Please verify your email first");
+	}
+	if (msg.includes("sms")) {
         return createAuthError(AuthErrors.INVALID_TOKEN, "Failed to send SMS. Please check the number.");
     }
     if (msg.includes("otp") || msg.includes("token")) {
@@ -76,8 +85,11 @@ const handleSupabaseError = (error) => {
         }
         return createAuthError(AuthErrors.INVALID_TOKEN, "Invalid verification code.");
     }
-    if (msg.includes("rate limit")) {
+    if (msg.includes("rate limit") || msg.includes("too many requests")) {
          return createAuthError(AuthErrors.UNKNOWN_ERROR, "Too many attempts. Please wait a moment.");
+    }
+    if (msg.includes("signup disabled")) {
+        return createAuthError(AuthErrors.UNKNOWN_ERROR, "Registration is temporarily disabled");
     }
 
 	return createAuthError(AuthErrors.UNKNOWN_ERROR, error.message);

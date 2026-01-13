@@ -138,8 +138,35 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		previousStep();
 	};
 
+	// Email validation helper
+	const isValidEmail = (email) => {
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		return emailRegex.test(email);
+	};
+
+	// Phone validation helper
+	const isValidPhone = (phone) => {
+		const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
+		return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
+	};
+
 	const handleInputSubmit = async (value) => {
 		if (!value) return;
+
+		// Validate input format before API call
+		if (type === "email" && !isValidEmail(value)) {
+			const errorMessage = "Please enter a valid email address";
+			setRegistrationError(errorMessage);
+			showToast(errorMessage, "error");
+			return;
+		}
+
+		if (type === "phone" && !isValidPhone(value)) {
+			const errorMessage = "Please enter a valid phone number";
+			setRegistrationError(errorMessage);
+			showToast(errorMessage, "error");
+			return;
+		}
 
 		startLoading();
 		clearError();
@@ -184,6 +211,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 				"success"
 			);
 		} catch (err) {
+			console.error("AuthInputModal handleInputSubmit error:", err);
 			const errorMessage =
 				(err.message?.includes("|") ? err.message.split("|")[1] : err.message) ||
                 "Failed to process. Please try again.";

@@ -204,34 +204,69 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
         if (!contact) return;
 
 		startLoading();
-		const otpResult = await requestOtp(
-			loginData.contactType === "email" ? { email: contact } : { phone: contact }
-		);
-		stopLoading();
+		try {
+			const otpResult = await requestOtp(
+				loginData.contactType === "email" ? { email: contact } : { phone: contact }
+			);
 
-		if (!otpResult.success) {
-			setLoginError(otpResult.error || "Unable to send verification code");
-			showToast(otpResult.error || "Failed to send code", "error");
-			return;
+			if (!otpResult.success) {
+				setLoginError(otpResult.error || "Unable to send verification code");
+				showToast(otpResult.error || "Failed to send code", "error");
+				return;
+			}
+
+			// DEV: Store mock OTP for display (Only if service returns it)
+			if (otpResult.data?.otp) {
+				setMockOtp(otpResult.data.otp);
+			} else {
+                setMockOtp(null);
+            }
+
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			showToast(
+				`Verification code sent to your ${loginData.contactType}`,
+				"success"
+			);
+		} catch (err) {
+			console.error("LoginInputModal handleResendOtpLogin error:", err);
+			const errorMessage = err.message || "Failed to send verification code";
+			setLoginError(errorMessage);
+			showToast(errorMessage, "error");
+		} finally {
+			stopLoading();
 		}
-
-		// DEV: Store mock OTP for display (Only if service returns it)
-		if (otpResult.data?.otp) {
-			setMockOtp(otpResult.data.otp);
-		} else {
-            setMockOtp(null);
-        }
-
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-		showToast(
-			`Verification code sent to your ${loginData.contactType}`,
-			"success"
-		);
     };
+
+	// Email validation helper
+	const isValidEmail = (email) => {
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		return emailRegex.test(email);
+	};
+
+	// Phone validation helper
+	const isValidPhone = (phone) => {
+		const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
+		return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
+	};
 
 	const handleContactSubmit = async (value) => {
 		if (!value) return;
         
+		// Validate input format before API call
+		if (loginData.contactType === "email" && !isValidEmail(value)) {
+			const errorMessage = "Please enter a valid email address";
+			setLoginError(errorMessage);
+			showToast(errorMessage, "error");
+			return;
+		}
+
+		if (loginData.contactType === "phone" && !isValidPhone(value)) {
+			const errorMessage = "Please enter a valid phone number";
+			setLoginError(errorMessage);
+			showToast(errorMessage, "error");
+			return;
+		}
+
 		startLoading();
 		clearError();
 
@@ -281,6 +316,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 				);
 			}
 		} catch (err) {
+			console.error("LoginInputModal handleContactSubmit error:", err);
 			const errorMessage =
 				(err.message?.includes("|") ? err.message.split("|")[1] : err.message) ||
                 "Unable to proceed. Please try again.";
@@ -349,30 +385,54 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 	const handlePasswordSubmit = async (password) => {
 		if (!password) return;
 
+		// Basic password validation
+		if (password.length < 6) {
+			const errorMessage = "Password must be at least 6 characters";
+			setLoginError(errorMessage);
+			showToast(errorMessage, "error");
+			return;
+		}
+
 		updateLoginData({ password });
 
-		const result = await loginWithPassword({
-			email: loginData.email,
-			phone: loginData.phone,
-			password,
-		});
+		try {
+			const result = await loginWithPassword({
+				email: loginData.email,
+				phone: loginData.phone,
+				password,
+			});
 
-		if (result.success) {
-			// Sync user data to ensure proper state update
-			await syncUserData();
+			if (result.success) {
+				// Sync user data to ensure proper state update
+				await syncUserData();
 
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast("Welcome back to iVisit!", "success");
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+				showToast("Welcome back to iVisit!", "success");
 
-			// Close modal and let the root layout handle navigation
-			handleDismiss();
-		} else {
-			showToast(result.error || "Unable to sign in", "error");
+				// Close modal and let root layout handle navigation
+				handleDismiss();
+			} else {
+				showToast(result.error || "Unable to sign in", "error");
+			}
+		} catch (err) {
+			console.error("LoginInputModal handlePasswordSubmit error:", err);
+			const errorMessage = err.message || "Unable to sign in. Please try again.";
+			setLoginError(errorMessage);
+			showToast(errorMessage, "error");
 		}
 	};
 
 	const handleSetPassword = async (password) => {
 		if (!password) return;
+		
+		// Basic password validation
+		if (password.length < 6) {
+			const errorMessage = "Password must be at least 6 characters";
+			setLoginError(errorMessage);
+			showToast(errorMessage, "error");
+			return;
+		}
+		
 		startLoading();
 		clearError();
 
@@ -410,6 +470,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 				showToast(result.error || "Unable to set password", "error");
 			}
 		} catch (err) {
+			console.error("LoginInputModal handleSetPassword error:", err);
 			const errorMessage = err.message || "Unable to set password. Please try again.";
 			setLoginError(errorMessage);
 			showToast(errorMessage, "error");

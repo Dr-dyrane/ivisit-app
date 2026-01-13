@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { View, Text, ScrollView, StyleSheet, Platform, Pressable, Animated } from "react-native";
+import {
+	View,
+	Text,
+	ScrollView,
+	StyleSheet,
+	Platform,
+	Pressable,
+	Animated,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -31,17 +39,22 @@ import {
 	navigateToVisits,
 } from "../utils/navigationHelpers";
 
+import * as Haptics from "expo-haptics";
+
 export default function SearchScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { isDarkMode } = useTheme();
 	const { setHeaderState } = useHeaderState();
-	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
-	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
+	const { handleScroll: handleTabBarScroll, resetTabBar } =
+		useTabBarVisibility();
+	const { handleScroll: handleHeaderScroll, resetHeader } =
+		useScrollAwareHeader();
 	const { updateSearch: setEmergencySearchQuery } = useEmergencyUI();
 	const { setMode } = useEmergency();
-    const { hospitals: dbHospitals } = useHospitals();
-	const { query, setSearchQuery, recentQueries, commitQuery, clearHistory } = useSearch();
+	const { hospitals: dbHospitals } = useHospitals();
+	const { query, setSearchQuery, recentQueries, commitQuery, clearHistory } =
+		useSearch();
 	const { visits } = useVisits();
 	const { notifications } = useNotifications();
 
@@ -60,18 +73,18 @@ export default function SearchScreen() {
 			resetTabBar();
 			resetHeader();
 			setHeaderState({
-				title: "Search",
-				subtitle: "GLOBAL",
+				title: "Healthcare Search",
+				subtitle: "DISCOVERY",
 				icon: <Ionicons name="search" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
-				leftComponent: backButton(),
+				leftComponent: <HeaderBackButton />,
 				rightComponent: (
-				<ActionWrapper>
-					<SettingsIconButton />
-				</ActionWrapper>
-			),
+					<ActionWrapper>
+						<SettingsIconButton />
+					</ActionWrapper>
+				),
 			});
-		}, [backButton, resetHeader, resetTabBar, setHeaderState])
+		}, [resetHeader, resetTabBar, setHeaderState])
 	);
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -100,17 +113,22 @@ export default function SearchScreen() {
 	const colors = {
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
 		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
+		cardBg: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+		divider: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
 	};
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const topPadding = STACK_TOP_PADDING;
-	const bottomPadding = tabBarHeight + 20;
 
-	const q = useMemo(() => (typeof query === "string" ? query.trim().toLowerCase() : ""), [query]);
+	const q = useMemo(
+		() => (typeof query === "string" ? query.trim().toLowerCase() : ""),
+		[query]
+	);
 
 	const isBedQuery = useMemo(() => {
-		return /\b(bed|icu|ward|admission|reserve|reservation)\b/i.test(query ?? "");
+		return /\b(bed|icu|ward|admission|reserve|reservation)\b/i.test(
+			query ?? ""
+		);
 	}, [query]);
 
 	const scoreText = useCallback((needle, haystack) => {
@@ -125,6 +143,7 @@ export default function SearchScreen() {
 
 	const openHospitalInSOS = useCallback(
 		(hospitalName) => {
+			Haptics.selectionAsync();
 			const name = typeof hospitalName === "string" ? hospitalName : "";
 			commitQuery(name);
 			setEmergencySearchQuery(name);
@@ -139,6 +158,7 @@ export default function SearchScreen() {
 
 	const openNotificationsFiltered = useCallback(
 		(filter) => {
+			Haptics.selectionAsync();
 			navigateToNotifications({ router, filter, method: "replace" });
 		},
 		[router]
@@ -146,6 +166,7 @@ export default function SearchScreen() {
 
 	const openVisitsFiltered = useCallback(
 		(filter) => {
+			Haptics.selectionAsync();
 			navigateToVisits({ router, filter, method: "replace" });
 		},
 		[router]
@@ -163,8 +184,8 @@ export default function SearchScreen() {
 				subtitle: "Open Visits filtered to upcoming",
 				icon: "calendar-outline",
 				score: 140,
-					onPress: () => openVisitsFiltered("upcoming"),
-				});
+				onPress: () => openVisitsFiltered("upcoming"),
+			});
 		}
 
 		if (q === "completed" || q.includes("completed")) {
@@ -174,8 +195,8 @@ export default function SearchScreen() {
 				subtitle: "Open Visits filtered to completed",
 				icon: "checkmark-circle-outline",
 				score: 140,
-					onPress: () => openVisitsFiltered("completed"),
-				});
+				onPress: () => openVisitsFiltered("completed"),
+			});
 		}
 
 		if (q.includes("notification")) {
@@ -185,8 +206,8 @@ export default function SearchScreen() {
 				subtitle: "Open notifications inbox",
 				icon: "notifications-outline",
 				score: 120,
-					onPress: () => openNotificationsFiltered("all"),
-				});
+				onPress: () => openNotificationsFiltered("all"),
+			});
 		}
 
 		if (Array.isArray(visits)) {
@@ -210,10 +231,13 @@ export default function SearchScreen() {
 				results.push({
 					key: `visit_${id}`,
 					title,
-					subtitle: [v?.specialty, v?.date, v?.time].filter(Boolean).join(" • "),
+					subtitle: [v?.specialty, v?.date, v?.time]
+						.filter(Boolean)
+						.join(" • "),
 					icon: "calendar-outline",
 					score,
-					onPress: () => navigateToVisitDetails({ router, visitId: id, method: "replace" }),
+					onPress: () =>
+						navigateToVisitDetails({ router, visitId: id, method: "replace" }),
 				});
 			}
 		}
@@ -223,7 +247,9 @@ export default function SearchScreen() {
 			const id = h?.id ? String(h.id) : null;
 			if (!id) continue;
 			const name = String(h?.name ?? "");
-			const specialties = Array.isArray(h?.specialties) ? h.specialties.join(" ") : "";
+			const specialties = Array.isArray(h?.specialties)
+				? h.specialties.join(" ")
+				: "";
 			const hay = [name, h?.address, specialties].filter(Boolean).join(" ");
 			const score = scoreText(q, name) + scoreText(q, hay) + 40;
 			if (score <= 0) continue;
@@ -250,9 +276,10 @@ export default function SearchScreen() {
 				const defaultFilter =
 					type === NOTIFICATION_TYPES.EMERGENCY
 						? "emergency"
-						: type === NOTIFICATION_TYPES.APPOINTMENT || type === NOTIFICATION_TYPES.VISIT
-							? "appointments"
-							: "all";
+						: type === NOTIFICATION_TYPES.APPOINTMENT ||
+						  type === NOTIFICATION_TYPES.VISIT
+						? "appointments"
+						: "all";
 
 				results.push({
 					key: `notification_${id}`,
@@ -267,8 +294,8 @@ export default function SearchScreen() {
 							typeof actionData?.visitId === "string"
 								? actionData.visitId
 								: typeof actionData?.appointmentId === "string"
-									? actionData.appointmentId
-									: null;
+								? actionData.appointmentId
+								: null;
 						if (actionType === "track") {
 							navigateToSOS({
 								router,
@@ -291,9 +318,7 @@ export default function SearchScreen() {
 			}
 		}
 
-		return results
-			.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-			.slice(0, 18);
+		return results.sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 18);
 	}, [
 		dbHospitals,
 		commitQuery,
@@ -312,10 +337,10 @@ export default function SearchScreen() {
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			<Animated.ScrollView
-				contentContainerStyle={[
-					styles.content,
-					{ paddingTop: topPadding, paddingBottom: bottomPadding },
-				]}
+				contentContainerStyle={{
+					paddingTop: topPadding + 16,
+					paddingBottom: 40,
+				}}
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
@@ -325,189 +350,612 @@ export default function SearchScreen() {
 					transform: [{ translateY: slideAnim }],
 				}}
 			>
-				<View style={[styles.card, { backgroundColor: colors.card, borderRadius: 28, padding: 12 }]}>
+				{/* Premium Search Bar Section */}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 16,
+						marginBottom: 24,
+					}}
+				>
 					<EmergencySearchBar
 						value={query}
 						onChangeText={setSearchQuery}
 						onBlur={() => commitQuery(query)}
 						onClear={() => setSearchQuery("")}
-						placeholder="Search for hospitals, doctors..."
+						placeholder="Search hospitals, doctors, specialties..."
 						showSuggestions={false}
 					/>
-				</View>
+				</Animated.View>
 
 				{!query ? (
-					<SuggestiveContent onSelectQuery={(q) => setSearchQuery(q)} />
+					<View style={{ paddingHorizontal: 12 }}>
+						<SuggestiveContent
+							onSelectQuery={(q) => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+								setSearchQuery(q);
+							}}
+						/>
+					</View>
 				) : (
-					<View style={[styles.card, { backgroundColor: colors.card, borderRadius: 36, padding: 20, marginTop: 16 }]}>
-						<Text style={[styles.sectionTitle, { 
-							color: colors.textMuted,
-							fontWeight: "800",
-							letterSpacing: 1.5,
-							textTransform: "uppercase",
-							fontSize: 11,
-							marginBottom: 16
-						}]}>
-							Top Results
-						</Text>
+					<Animated.View
+						style={{
+							opacity: fadeAnim,
+							transform: [{ translateY: slideAnim }],
+							paddingHorizontal: 16,
+							marginBottom: 24,
+						}}
+					>
+						{/* Service Provider Results Header */}
+						<View style={styles.resultsHeader}>
+							<Text style={[styles.resultsTitle, { color: colors.text }]}>
+								Available Providers
+							</Text>
+							<View
+								style={[
+									styles.resultsCount,
+									{ backgroundColor: COLORS.brandPrimary + "20" },
+								]}
+							>
+								<Text
+									style={[styles.countText, { color: COLORS.brandPrimary }]}
+								>
+									{rankedResults.length} FOUND
+								</Text>
+							</View>
+						</View>
+
 						{rankedResults.length > 0 ? (
-							<View style={{ gap: 12 }}>
+							<View style={{ gap: 20 }}>
 								{rankedResults.map((item) => (
 									<Pressable
 										key={item.key}
 										onPress={() => {
+											Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 											commitQuery(query);
 											item.onPress?.();
 										}}
 										style={({ pressed }) => [
-											styles.row,
+											styles.providerCard,
 											{
-												backgroundColor: isDarkMode
-													? "rgba(255,255,255,0.04)"
-													: "rgba(0,0,0,0.02)",
-												borderRadius: 24,
-												padding: 16,
-												opacity: pressed ? 0.9 : 1,
-												transform: [{ scale: pressed ? 0.98 : 1 }]
+												backgroundColor: colors.cardBg,
+												transform: [{ scale: pressed ? 0.98 : 1 }],
 											},
 										]}
 									>
-										<View style={{ 
-											width: 32, 
-											height: 32, 
-											borderRadius: 10, 
-											backgroundColor: COLORS.brandPrimary + '15',
-											alignItems: 'center',
-											justifyContent: 'center',
-											marginRight: 12
-										}}>
-											<Ionicons name={item.icon} size={16} color={COLORS.brandPrimary} />
+										{/* Provider Header */}
+										<View style={styles.providerCardHeader}>
+											<View style={styles.providerInfo}>
+												<View
+													style={[
+														styles.providerAvatar,
+														{ backgroundColor: COLORS.brandPrimary + "15" },
+													]}
+												>
+													<Ionicons
+														name={item.icon}
+														size={24}
+														color={COLORS.brandPrimary}
+													/>
+												</View>
+												<View style={styles.providerDetails}>
+													<Text
+														style={[
+															styles.providerName,
+															{ color: colors.text },
+														]}
+													>
+														{item.title}
+													</Text>
+													{item.subtitle ? (
+														<Text
+															style={[
+																styles.providerRole,
+																{ color: colors.textMuted },
+															]}
+														>
+															{item.subtitle}
+														</Text>
+													) : null}
+												</View>
+											</View>
+											<View style={styles.providerMeta}>
+												<View
+													style={[
+														styles.metaPill,
+														{ backgroundColor: COLORS.brandPrimary + "15" },
+													]}
+												>
+													<Ionicons
+														name="location"
+														size={12}
+														color={COLORS.brandPrimary}
+													/>
+													<Text
+														style={[
+															styles.metaText,
+															{ color: COLORS.brandPrimary },
+														]}
+													>
+														NEARBY
+													</Text>
+												</View>
+											</View>
 										</View>
-										<View style={{ flex: 1 }}>
-											<Text style={{ 
-												color: colors.text, 
-												fontWeight: "900",
-												letterSpacing: -0.5,
-												fontSize: 15
-											}} numberOfLines={1}>
-												{item.title}
-											</Text>
-											{item.subtitle ? (
-												<Text style={{ 
-													color: colors.textMuted, 
-													fontWeight: "500", 
-													fontSize: 12,
-													letterSpacing: 0.2
-												}} numberOfLines={1}>
-													{item.subtitle}
+
+										{/* Service Stats */}
+										<View style={styles.serviceStats}>
+											<View style={styles.statItem}>
+												<Text
+													style={[styles.statValue, { color: colors.text }]}
+												>
+													AVAILABLE
 												</Text>
-											) : null}
+												<Text
+													style={[
+														styles.statLabel,
+														{ color: colors.textMuted },
+													]}
+												>
+													STATUS
+												</Text>
+											</View>
+											<View style={styles.statItem}>
+												<Text
+													style={[styles.statValue, { color: colors.text }]}
+												>
+													{item.score > 100 ? "TOP" : "GOOD"}
+												</Text>
+												<Text
+													style={[
+														styles.statLabel,
+														{ color: colors.textMuted },
+													]}
+												>
+													MATCH
+												</Text>
+											</View>
+											<View style={styles.statItem}>
+												<Text
+													style={[styles.statValue, { color: colors.text }]}
+												>
+													NOW
+												</Text>
+												<Text
+													style={[
+														styles.statLabel,
+														{ color: colors.textMuted },
+													]}
+												>
+													RESPONSE
+												</Text>
+											</View>
 										</View>
-										<Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+
+										{/* Action Footer */}
+										<View
+											style={[
+												styles.providerFooter,
+												{ borderTopColor: colors.divider },
+											]}
+										>
+											<Text
+												style={[styles.actionText, { color: colors.textMuted }]}
+											>
+												TAP TO VIEW DETAILS AND BOOK
+											</Text>
+											<Ionicons
+												name="chevron-forward"
+												size={16}
+												color={colors.textMuted}
+											/>
+										</View>
+
+										{/* Corner Seal */}
+										<View style={styles.cornerSeal}>
+											<Ionicons
+												name="checkmark-circle"
+												size={28}
+												color={COLORS.brandPrimary}
+											/>
+										</View>
 									</Pressable>
 								))}
 							</View>
 						) : (
-							<Text style={{ color: colors.textMuted, fontWeight:'500', fontSize: 13 }}>
-								No results yet.
-							</Text>
+							<View
+								style={[styles.emptyState, { backgroundColor: colors.cardBg }]}
+							>
+								<Ionicons name="search" size={48} color={colors.textMuted} />
+								<Text style={[styles.emptyTitle, { color: colors.text }]}>
+									No providers found
+								</Text>
+								<Text
+									style={[styles.emptySubtitle, { color: colors.textMuted }]}
+								>
+									Try adjusting your search terms or location
+								</Text>
+							</View>
 						)}
-					</View>
+					</Animated.View>
 				)}
 
-				<View style={[styles.card, { backgroundColor: colors.card, borderRadius: 36, padding: 20, marginTop: 16 }]}>
-					<View style={styles.sectionHeaderRow}>
-						<Text style={[styles.sectionTitle, { 
-							color: colors.textMuted,
-							fontWeight: "800",
-							letterSpacing: 1.5,
-							textTransform: "uppercase",
-							fontSize: 11,
-							marginBottom: 16
-						}]}>
-							Recent
+				{/* Recent Searches - Service Provider Style */}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 16,
+						marginBottom: 24,
+					}}
+				>
+					<View style={styles.recentHeader}>
+						<Text style={[styles.recentTitle, { color: colors.text }]}>
+							Recent Searches
 						</Text>
-						{Array.isArray(recentQueries) && recentQueries.length > 0 ? (
-							<Pressable
-								onPress={clearHistory}
-								style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-							>
-								<Text style={{ color: COLORS.brandPrimary, fontWeight: "900", fontSize: 12, letterSpacing: -0.5 }}>
-									CLEAR
-								</Text>
-							</Pressable>
-						) : null}
+						<Text style={[styles.recentSubtitle, { color: colors.textMuted }]}>
+							Your healthcare discovery history
+						</Text>
 					</View>
+
 					{Array.isArray(recentQueries) && recentQueries.length > 0 ? (
-						<View style={{ gap: 10 }}>
-							{recentQueries.map((item) => (
+						<View style={{ gap: 12 }}>
+							{recentQueries.map((item, index) => (
 								<Pressable
 									key={item}
-									onPress={() => setSearchQuery(item)}
+									onPress={() => {
+										Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+										setSearchQuery(item);
+									}}
 									style={({ pressed }) => [
-										styles.row,
+										styles.recentCard,
 										{
-											backgroundColor: isDarkMode
-												? "rgba(255,255,255,0.04)"
-												: "rgba(0,0,0,0.02)",
-											borderRadius: 14,
-											padding: 12,
-											opacity: pressed ? 0.9 : 1
+											backgroundColor: colors.cardBg,
+											transform: [{ scale: pressed ? 0.98 : 1 }],
 										},
 									]}
 								>
-									<Ionicons name="time-outline" size={16} color={colors.textMuted} style={{ marginRight: 12 }} />
-									<Text style={{ color: colors.text, fontWeight: "600", flex: 1 }}>{item}</Text>
-									<Ionicons name="arrow-forward" size={14} color={colors.textMuted} />
+									<View style={styles.recentCardHeader}>
+										<View style={styles.recentInfo}>
+											<View
+												style={[
+													styles.recentAvatar,
+													{ backgroundColor: COLORS.brandPrimary + "15" },
+												]}
+											>
+												<Ionicons
+													name="time-outline"
+													size={16}
+													color={COLORS.brandPrimary}
+												/>
+											</View>
+											<View style={styles.recentDetails}>
+												<Text
+													style={[styles.recentName, { color: colors.text }]}
+												>
+													{item}
+												</Text>
+												<Text
+													style={[
+														styles.recentRole,
+														{ color: colors.textMuted },
+													]}
+												>
+													SEARCH #{recentQueries.length - index}
+												</Text>
+											</View>
+										</View>
+										<View style={styles.recentMeta}>
+											<Ionicons
+												name="chevron-forward"
+												size={16}
+												color={colors.textMuted}
+											/>
+										</View>
+									</View>
 								</Pressable>
 							))}
 						</View>
 					) : (
-						<Text style={{ color: colors.textMuted, fontWeight:'500', fontSize: 13 }}>
-							No recent searches.
-						</Text>
+						<View
+							style={[styles.emptyState, { backgroundColor: colors.cardBg }]}
+						>
+							<Ionicons
+								name="time-outline"
+								size={48}
+								color={colors.textMuted}
+							/>
+							<Text style={[styles.emptyTitle, { color: colors.text }]}>
+								No recent searches
+							</Text>
+							<Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+								Start searching for healthcare providers
+							</Text>
+						</View>
 					)}
-				</View>
+
+					{Array.isArray(recentQueries) && recentQueries.length > 0 ? (
+						<Pressable
+							onPress={() => {
+								Haptics.notificationAsync(
+									Haptics.NotificationFeedbackType.Warning
+								);
+								clearHistory();
+							}}
+							style={({ pressed }) => [
+								styles.clearButton,
+								{
+									backgroundColor: colors.cardBg,
+									opacity: pressed ? 0.8 : 1,
+								},
+							]}
+						>
+							<Ionicons
+								name="trash-outline"
+								size={16}
+								color={COLORS.brandPrimary}
+							/>
+							<Text
+								style={[styles.clearButtonText, { color: COLORS.brandPrimary }]}
+							>
+								CLEAR SEARCH HISTORY
+							</Text>
+						</Pressable>
+					) : null}
+				</Animated.View>
 			</Animated.ScrollView>
 		</LinearGradient>
 	);
 }
 
 const styles = StyleSheet.create({
-	content: { flexGrow: 1, padding: 20, gap: 12 },
-	card: {
-		borderRadius: 30,
-		padding: 20,
+	// Premium Search Card
+	searchCard: {
+		borderRadius: 36, // Primary Artifact
+		padding: 24,
 		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.03,
-		shadowRadius: 10,
+		shadowOffset: { width: 0, height: 12 },
+		shadowOpacity: 0.05,
+		shadowRadius: 20,
+		elevation: 8,
 	},
-	sectionTitle: {
-		fontSize: 10,
+
+	// Results Header
+	resultsHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		marginBottom: 20,
+	},
+	resultsTitle: {
+		fontSize: 22,
 		fontWeight: "900",
-		letterSpacing: 3,
+		letterSpacing: -1.0,
+	},
+	resultsCount: {
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: 12,
+	},
+	countText: {
+		fontSize: 10,
+		fontWeight: "800",
+		letterSpacing: 1.5, // Identity label
 		textTransform: "uppercase",
+	},
+
+	// Provider Cards
+	providerCard: {
+		borderRadius: 36, // Primary Artifact
+		padding: 24,
+		marginBottom: 16,
+		position: "relative",
+	},
+
+	providerCardHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "flex-start",
+		marginBottom: 24,
+	},
+
+	providerInfo: {
+		flexDirection: "row",
+		alignItems: "center",
+		flex: 1,
+	},
+
+	providerAvatar: {
+		width: 64,
+		height: 64,
+		borderRadius: 14, // Identity squircle
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 16,
+	},
+
+	providerDetails: {
+		flex: 1,
+	},
+
+	providerName: {
+		fontSize: 19,
+		fontWeight: "900",
+		letterSpacing: -1.0,
+		marginBottom: 4,
+	},
+
+	providerRole: {
+		fontSize: 14,
+		fontWeight: "600",
+	},
+
+	providerMeta: {
+		alignItems: "flex-end",
+	},
+
+	metaPill: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 12,
+		gap: 6,
+	},
+
+	metaText: {
+		fontSize: 10,
+		fontWeight: "800",
+		letterSpacing: 1.5,
+	},
+
+	// Service Stats
+	serviceStats: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		marginBottom: 24,
+		paddingHorizontal: 4,
+	},
+
+	statItem: {
+		alignItems: "flex-start",
+		flex: 1,
+	},
+
+	statValue: {
+		fontSize: 15,
+		fontWeight: "900", // Vital Stat
+		letterSpacing: -0.5,
+		marginBottom: 4,
+	},
+
+	statLabel: {
+		fontSize: 9,
+		fontWeight: "800",
+		letterSpacing: 1.5, // Identity Label
+		textTransform: "uppercase",
+	},
+
+	// Provider Footer
+	providerFooter: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		paddingTop: 20,
+		borderTopWidth: 1,
+	},
+
+	actionText: {
+		fontSize: 10,
+		fontWeight: "800",
+		letterSpacing: 1.5,
+	},
+
+	cornerSeal: {
+		position: "absolute",
+		bottom: -4,
+		right: -4,
+	},
+
+	// Recent Searches
+	recentHeader: {
+		marginBottom: 20,
+		marginTop: 12,
+	},
+	recentTitle: {
+		fontSize: 24,
+		fontWeight: "900",
+		letterSpacing: -1.0,
+		marginBottom: 8,
+	},
+	recentSubtitle: {
+		fontSize: 15,
+		fontWeight: "500",
+		lineHeight: 22,
+	},
+
+	recentCard: {
+		borderRadius: 24, // Widget squircle
+		padding: 20,
 		marginBottom: 12,
 	},
-	quickRow: { flexDirection: "row", gap: 10 },
-	quickButton: {
+
+	recentCardHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+	},
+
+	recentInfo: {
+		flexDirection: "row",
+		alignItems: "center",
 		flex: 1,
-		height: 48,
-		borderRadius: 16,
+	},
+
+	recentAvatar: {
+		width: 44,
+		height: 44,
+		borderRadius: 14, // Identity squircle
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 16,
+	},
+
+	recentDetails: {
+		flex: 1,
+	},
+
+	recentName: {
+		fontSize: 16,
+		fontWeight: "800",
+		letterSpacing: -0.5,
+		marginBottom: 2,
+	},
+
+	recentRole: {
+		fontSize: 10,
+		fontWeight: "800",
+		letterSpacing: 1.5,
+		textTransform: "uppercase",
+	},
+
+	recentMeta: {
+		alignItems: "center",
+	},
+
+	// Clear Button
+	clearButton: {
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "center",
-		gap: 8,
-	},
-	quickText: { fontSize: 13, fontWeight: "900" },
-	row: {
-		height: 46,
-		borderRadius: 16,
-		paddingHorizontal: 12,
-		flexDirection: "row",
-		alignItems: "center",
 		gap: 10,
+		padding: 20,
+		borderRadius: 24,
+		marginTop: 12,
 	},
-	sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+	clearButtonText: {
+		fontSize: 11,
+		fontWeight: "800",
+		letterSpacing: 1.5,
+		textTransform: "uppercase",
+	},
+	emptyState: {
+		borderRadius: 36,
+		padding: 48,
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 16,
+	},
+	emptyTitle: {
+		fontSize: 20,
+		fontWeight: "900",
+		letterSpacing: -1.0,
+	},
+	emptySubtitle: {
+		fontSize: 15,
+		textAlign: "center",
+		lineHeight: 22,
+		fontWeight: "500",
+	},
 });
