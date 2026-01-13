@@ -15,6 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import ProfileField from "../components/form/ProfileField";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
@@ -210,16 +211,31 @@ export default function CreatePasswordScreen() {
 					transform: [{ translateY: slideAnim }],
 				}}
 			>
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.title, { color: colors.text }]}>
-						Add a password to your account
-					</Text>
-					<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-						This lets you sign in without OTP when you want.
-					</Text>
-				</View>
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+					}}
+				>
+					<View style={[styles.card, { backgroundColor: colors.card }]}>
+						<Text style={[styles.title, { color: colors.text }]}>
+							Add a password to your account
+						</Text>
+						<Text style={[styles.subtitle, { color: colors.textMuted }]}>
+							This lets you sign in without OTP when you want.
+						</Text>
+					</View>
+				</Animated.View>
 
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+						paddingTop: 20,
+					}}
+				>
 					{error ? (
 						<View style={styles.errorRow}>
 							<Ionicons name="alert-circle" size={18} color={COLORS.error} />
@@ -227,24 +243,17 @@ export default function CreatePasswordScreen() {
 						</View>
 					) : null}
 
-					<Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
-						<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
-							<Ionicons name="lock-closed-outline" size={22} color={COLORS.textMuted} />
-							<TextInput
-								value={password}
-								onChangeText={(t) => {
-									setPassword(t);
-									if (error) setError(null);
-								}}
-								placeholder="New password"
-								placeholderTextColor={COLORS.textMuted}
-								secureTextEntry={!showPassword}
-								autoCapitalize="none"
-								autoCorrect={false}
-								style={[styles.input, { color: colors.text }]}
-								selectionColor={COLORS.brandPrimary}
-								editable={!isSaving}
-							/>
+					<ProfileField
+						label="New password"
+						value={password}
+						onChange={(t) => {
+							setPassword(t);
+							if (error) setError(null);
+						}}
+						iconName="lock-closed-outline"
+						secureTextEntry={!showPassword}
+						editable={!isSaving}
+						rightElement={
 							<Pressable
 								onPress={() => {
 									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -258,25 +267,20 @@ export default function CreatePasswordScreen() {
 									color={COLORS.textMuted}
 								/>
 							</Pressable>
-						</View>
+						}
+					/>
 
-						<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
-							<Ionicons name="lock-closed-outline" size={22} color={COLORS.textMuted} />
-							<TextInput
-								value={confirmPassword}
-								onChangeText={(t) => {
-									setConfirmPassword(t);
-									if (error) setError(null);
-								}}
-								placeholder="Confirm password"
-								placeholderTextColor={COLORS.textMuted}
-								secureTextEntry={!showConfirm}
-								autoCapitalize="none"
-								autoCorrect={false}
-								style={[styles.input, { color: colors.text }]}
-								selectionColor={COLORS.brandPrimary}
-								editable={!isSaving}
-							/>
+					<ProfileField
+						label="Confirm password"
+						value={confirmPassword}
+						onChange={(t) => {
+							setConfirmPassword(t);
+							if (error) setError(null);
+						}}
+						iconName="lock-closed-outline"
+						secureTextEntry={!showConfirm}
+						editable={!isSaving}
+						rightElement={
 							<Pressable
 								onPress={() => {
 									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -290,10 +294,10 @@ export default function CreatePasswordScreen() {
 									color={COLORS.textMuted}
 								/>
 							</Pressable>
-						</View>
-					</Animated.View>
+						}
+					/>
 
-					<Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+					<Animated.View style={{ transform: [{ scale: buttonScale }], marginTop: 10 }}>
 						<Pressable
 							disabled={!isValid || isSaving}
 							onPress={handleSubmit}
@@ -304,9 +308,8 @@ export default function CreatePasswordScreen() {
 								Animated.spring(buttonScale, { toValue: 1, friction: 3, useNativeDriver: true }).start();
 							}}
 							style={{
-								marginTop: 10,
-								height: 54,
-								borderRadius: 22,
+								height: 64,
+								borderRadius: 24,
 								backgroundColor:
 									isValid && !isSaving
 										? COLORS.brandPrimary
@@ -316,16 +319,24 @@ export default function CreatePasswordScreen() {
 								alignItems: "center",
 								justifyContent: "center",
 								flexDirection: "row",
-								gap: 10,
+								gap: 12,
+								shadowColor: isValid ? COLORS.brandPrimary : "transparent",
+								shadowOffset: { width: 0, height: 4 },
+								shadowOpacity: 0.3,
+								shadowRadius: 8,
 							}}
 						>
-							{isSaving ? <ActivityIndicator color="#FFFFFF" /> : <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
-							<Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 15 }}>
-								Create Password
+							{isSaving ? (
+								<ActivityIndicator color="#FFFFFF" />
+							) : (
+								<Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+							)}
+							<Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 16, letterSpacing: -0.5 }}>
+								{isSaving ? "Creating Password..." : "Create Password"}
 							</Text>
 						</Pressable>
 					</Animated.View>
-				</View>
+				</Animated.View>
 			</Animated.ScrollView>
 		</LinearGradient>
 	);
@@ -333,7 +344,7 @@ export default function CreatePasswordScreen() {
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
-	content: { flexGrow: 1, padding: 20, gap: 12 },
+	content: { flexGrow: 1, paddingBottom: 40 },
 	card: {
 		borderRadius: 30,
 		padding: 20,

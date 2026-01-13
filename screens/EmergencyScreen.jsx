@@ -143,9 +143,9 @@ export default function EmergencyScreen() {
 	// Debugging hospitals
 	useMemo(() => {
 		if (hospitals && hospitals.length > 0) {
-			console.log("EmergencyScreen: Hospitals loaded:", hospitals.length);
+			// console.log("EmergencyScreen: Hospitals loaded:", hospitals.length);
 		} else {
-			console.log("EmergencyScreen: No hospitals loaded yet");
+			// console.log("EmergencyScreen: No hospitals loaded yet");
 		}
 	}, [hospitals]);
 
@@ -450,21 +450,21 @@ export default function EmergencyScreen() {
 		const debugKey = `${requestId}|${String(status)}|${hasResponder ? "has" : "no"}|${coords.length}`;
 		if (__DEV__ && simulationDebugRef.current !== debugKey) {
 			simulationDebugRef.current = debugKey;
-			console.log("[EmergencyScreen] Simulation gate:", {
-				requestId,
-				status,
-				isInProgress,
-				hasResponder,
-				routePoints: coords.length,
-			});
+			// console.log("[EmergencyScreen] Simulation gate:", {
+			// 	requestId,
+			// 	status,
+			// 	isInProgress,
+			// 	hasResponder,
+			// 	routePoints: coords.length,
+			// });
 		}
 		if (!isInProgress || hasResponder) return;
 
 		if (__DEV__) {
-			console.log("[EmergencyScreen] Starting simulation:", {
-				requestId,
-				routePoints: coords.length,
-			});
+			// console.log("[EmergencyScreen] Starting simulation:", {
+			// 	requestId,
+			// 	routePoints: coords.length,
+			// });
 		}
 		simulationService.startSimulation(requestId, coords);
 	}, [
@@ -491,13 +491,13 @@ export default function EmergencyScreen() {
 	}, [activeAmbulanceTrip, hospitals, searchFilteredHospitals]);
 
 	useEffect(() => {
-		console.log("[EmergencyScreen] Active State:", {
-			mode,
-			selectedHospitalId,
-			activeAmbulanceTripId: activeAmbulanceTrip?.requestId,
-			activeBedBookingId: activeBedBooking?.requestId,
-			sheetSnapIndex
-		});
+		// console.log("[EmergencyScreen] Active State:", {
+		// 	mode,
+		// 	selectedHospitalId,
+		// 	activeAmbulanceTripId: activeAmbulanceTrip?.requestId,
+		// 	activeBedBookingId: activeBedBooking?.requestId,
+		// 	sheetSnapIndex
+		// });
 	}, [mode, selectedHospitalId, activeAmbulanceTrip, activeBedBooking, sheetSnapIndex]);
 
 	const {
@@ -520,7 +520,7 @@ export default function EmergencyScreen() {
 		stopBedBooking,
 		addNotification,
 		onSheetSnap: (index) => {
-			console.log("[EmergencyScreen] onSheetSnap called with index:", index);
+			// console.log("[EmergencyScreen] onSheetSnap called with index:", index);
 			bottomSheetRef.current?.snapToIndex?.(index);
 		},
 	});

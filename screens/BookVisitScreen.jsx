@@ -65,7 +65,6 @@ export default function BookVisitScreen() {
 		background: isDarkMode
 			? ["#121826", "#0B0F1A", "#121826"]
 			: ["#FFFFFF", "#F3E7E7", "#FFFFFF"],
-		icon: isDarkMode ? "#FFFFFF" : "#0F172A", // Theme-aware icon color
 	};
 	const brandPrimary = '#86100E';
 

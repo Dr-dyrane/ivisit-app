@@ -5,7 +5,7 @@
  * Uses the database layer for consistent storage access
  */
 
-import { createContext, useState, useEffect, useMemo, useContext } from "react";
+import { createContext, useState, useEffect, useMemo, useContext, useCallback } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { authService } from "../services/authService";
 import { database, StorageKeys } from "../database";
@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
 	const [token, setToken] = useState(null);
 
 	// **1. Fetch and Sync User Data from API/Service**
-	const syncUserData = async () => {
+	const syncUserData = useCallback(async () => {
 		try {
 			// Use database layer with proper keys
 			const storedToken = await database.read(StorageKeys.AUTH_TOKEN, null);
@@ -27,7 +27,11 @@ export const AuthProvider = ({ children }) => {
 				const { data: userData } = await authService.getCurrentUser();
 
 				if (userData) {
-					setUser(userData);
+                    // Only update if data actually changed to prevent re-render loops
+                    setUser(prevUser => {
+                        if (JSON.stringify(prevUser) === JSON.stringify(userData)) return prevUser;
+                        return userData;
+                    });
 					setToken(storedToken);
 					// Store current user data for quick access
 					await database.write(StorageKeys.CURRENT_USER, userData);
@@ -46,11 +50,11 @@ export const AuthProvider = ({ children }) => {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
 
 	useEffect(() => {
 		syncUserData();
-	}, []);
+	}, [syncUserData]);
 
 	const authStatus = useMemo(
 		() => ({
@@ -70,7 +74,7 @@ export const AuthProvider = ({ children }) => {
 	);
 
 	// **2. Login function**: Set user and token from API response
-	const login = async (userData) => {
+	const login = useCallback(async (userData) => {
 		try {
 			setUser(userData);
 			// Use database layer with proper keys
@@ -86,10 +90,10 @@ export const AuthProvider = ({ children }) => {
 			console.error("Error saving user data:", error);
 			return false;
 		}
-	};
+	}, []);
 
 	// **3. Logout function**: Clear user data and token
-	const logout = async () => {
+	const logout = useCallback(async () => {
 		try {
 			setUser(null);
 			setToken(null);
@@ -105,10 +109,10 @@ export const AuthProvider = ({ children }) => {
 			console.error("Error clearing user data:", error);
 			return { success: false, message: "Logout failed" };
 		}
-	};
+	}, []);
 
     // **4. Delete Account function**
-    const deleteAccount = async () => {
+    const deleteAccount = useCallback(async () => {
         try {
             await authService.deleteUser();
             // Perform local cleanup same as logout
@@ -123,7 +127,7 @@ export const AuthProvider = ({ children }) => {
              await logout();
             return { success: false, message: "Account deletion failed, logged out locally" };
         }
-    };
+    }, [logout]);
 
 	const authContextValue = useMemo(
 		() => ({

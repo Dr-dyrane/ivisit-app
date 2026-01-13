@@ -131,6 +131,7 @@ const ProfileScreen = () => {
             // Only overwrite if we are loading data for the first time
             // OR if the user hasn't made any changes yet (to prevent overwriting while typing)
             if (isDataLoading || !hasChanges) {
+                // console.log('[ProfileScreen] Syncing state from user context');
                 setFullName(user.fullName || "");
                 setUsername(user.username || "");
                 setGender(user.gender || "");
@@ -219,21 +220,21 @@ const ProfileScreen = () => {
 	const pickImage = async () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 		try {
-			console.log("DEBUG: Starting pickImage...");
+			// console.log("DEBUG: Starting pickImage...");
 			const result = await ImagePicker.launchImageLibraryAsync({
 				mediaTypes: ImagePicker.MediaTypeOptions.Images,
 				allowsEditing: true,
 				aspect: [1, 1],
 				quality: 1,
 			});
-			console.log("DEBUG: ImagePicker result:", result.canceled ? "Canceled" : result.assets[0].uri);
+			// console.log("DEBUG: ImagePicker result:", result.canceled ? "Canceled" : result.assets[0].uri);
 
 			if (!result.canceled && result.assets && result.assets.length > 0) {
 				setImageUri(result.assets[0].uri);
 				showToast("Image selected successfully", "success");
 			}
 		} catch (error) {
-			console.error("DEBUG: pickImage error:", error);
+			// console.error("DEBUG: pickImage error:", error);
 			showToast(`Image picker error: ${error.message}`, "error");
 		}
 	};
@@ -241,17 +242,17 @@ const ProfileScreen = () => {
 	const handleUpdateProfile = async () => {
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 		setIsLoading(true);
-		console.log("DEBUG: handleUpdateProfile started. Current imageUri:", imageUri);
+		// console.log("DEBUG: handleUpdateProfile started. Current imageUri:", imageUri);
 		try {
 			let uploadedImageUri = imageUri;
 
 			// Upload image if it's a local file
 			if (imageUri && imageUri.startsWith('file://')) {
-				console.log("DEBUG: Uploading local image...");
+				// console.log("DEBUG: Uploading local image...");
 				uploadedImageUri = await uploadImage(imageUri);
-				console.log("DEBUG: Upload complete. New URI:", uploadedImageUri);
+				// console.log("DEBUG: Upload complete. New URI:", uploadedImageUri);
 			} else {
-				console.log("DEBUG: No local image to upload. Using existing URI.");
+				// console.log("DEBUG: No local image to upload. Using existing URI.");
 			}
 
 			const updatedData = {
@@ -274,7 +275,7 @@ const ProfileScreen = () => {
 
 			showToast("Profile updated successfully", "success");
 		} catch (error) {
-			console.error("DEBUG: Update error:", error);
+			// console.error("DEBUG: Update error:", error);
 			const errorMessage =
 				error.response?.data?.message ||
 				error.message ||
@@ -352,12 +353,18 @@ const ProfileScreen = () => {
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
-			<ScrollView
-				showsVerticalScrollIndicator={false}
-				contentContainerStyle={{ paddingBottom: 40 }}
-				scrollEventThrottle={16}
-				onScroll={handleScroll}
-			>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
+            >
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 40 }}
+                    scrollEventThrottle={16}
+                    onScroll={handleScroll}
+                    keyboardShouldPersistTaps="handled"
+                >
 				<Animated.View
 					style={{
 						opacity: fadeAnim,
@@ -938,6 +945,7 @@ const ProfileScreen = () => {
 					</Pressable>
 				</Animated.View>
 			</ScrollView>
+            </KeyboardAvoidingView>
 
             </LinearGradient>
 	);

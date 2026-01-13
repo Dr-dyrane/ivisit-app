@@ -131,7 +131,7 @@ export function useNotificationsData() {
                         filter: `user_id=eq.${user.id}`,
                     },
                     (payload) => {
-                        console.log("[useNotificationsData] Realtime payload:", payload.eventType);
+                        // console.log("[useNotificationsData] Realtime payload:", payload.eventType);
                         
                         if (payload.eventType === 'INSERT') {
                             const newNotification = normalizeNotification(mapFromDb(payload.new));
@@ -155,7 +155,7 @@ export function useNotificationsData() {
                     }
                 )
                 .subscribe((status) => {
-                    console.log("[useNotificationsData] Subscription status:", status);
+                    // console.log("[useNotificationsData] Subscription status:", status);
                 });
         };
 
@@ -163,7 +163,7 @@ export function useNotificationsData() {
 
         return () => {
             if (subscription) {
-                console.log("[useNotificationsData] Removing subscription");
+                // console.log("[useNotificationsData] Removing subscription");
                 supabase.removeChannel(subscription);
             }
         };

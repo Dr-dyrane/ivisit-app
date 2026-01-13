@@ -30,14 +30,14 @@ export function useEmergencySheetController({
 
 	const snapPoints = useMemo(() => {
 		const isCompactMode = !!hasAnyVisitActive && !isDetailMode;
-		console.log("[useEmergencySheetController] Calculating snapPoints:", {
-			isDetailMode,
-			isTripMode,
-			isBedBookingMode,
-			hasAnyVisitActive,
-			isCompactMode,
-			screenHeight
-		});
+		// console.log("[useEmergencySheetController] Calculating snapPoints:", {
+		// 	isDetailMode,
+		// 	isTripMode,
+		// 	isBedBookingMode,
+		// 	hasAnyVisitActive,
+		// 	isCompactMode,
+		// 	screenHeight
+		// });
 
 		let points;
 		if (isDetailMode) {
@@ -66,7 +66,7 @@ export function useEmergencySheetController({
 			}
 		}
 
-		console.log("[useEmergencySheetController] Final snapPoints:", points);
+		// console.log("[useEmergencySheetController] Final snapPoints:", points);
 		return points;
 	}, [collapsedPercent, isDetailMode, isTripMode, isBedBookingMode, screenHeight, hasAnyVisitActive, insets.bottom]);
 

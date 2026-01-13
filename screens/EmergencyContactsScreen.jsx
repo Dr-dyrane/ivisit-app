@@ -19,6 +19,7 @@ import { useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
+import { useFAB } from "../contexts/FABContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -33,6 +34,7 @@ export default function EmergencyContactsScreen() {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 	const { setHeaderState } = useHeaderState();
+	const { registerFAB, unregisterFAB } = useFAB();
 	const { handleScroll: handleTabBarScroll, resetTabBar } =
 		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
@@ -53,7 +55,24 @@ export default function EmergencyContactsScreen() {
 				leftComponent: backButton(),
 				rightComponent: null,
 			});
-		}, [backButton, resetHeader, resetTabBar, setHeaderState])
+
+			registerFAB('emergency-contacts-add', {
+				icon: 'person-add',
+				label: 'Add Contact',
+				subText: 'Add new emergency contact',
+				visible: true,
+				onPress: openCreate,
+				style: 'primary',
+				haptic: 'medium',
+				priority: 7,
+				animation: 'prominent',
+				allowInStack: true,
+			});
+
+			return () => {
+				unregisterFAB('emergency-contacts-add');
+			};
+		}, [backButton, resetHeader, resetTabBar, setHeaderState, registerFAB, unregisterFAB, openCreate])
 	);
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -286,93 +305,134 @@ export default function EmergencyContactsScreen() {
 					transform: [{ translateY: slideAnim }],
 				}}
 			>
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.title, { color: colors.text }]}>
-						People we can reach fast
-					</Text>
-					<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-						Add family members, caregivers, and key contacts. This will power
-						quick share + emergency workflows later.
-					</Text>
-				</View>
-
-				<Pressable
-					onPress={openCreate}
-					style={({ pressed }) => [
-						styles.addCard,
-						{
-							backgroundColor: COLORS.brandPrimary,
-							opacity: pressed ? 0.92 : 1,
-						},
-					]}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+					}}
 				>
-					<Ionicons name="add" size={18} color="#FFFFFF" />
-					<Text style={styles.addText}>Add Contact</Text>
-				</Pressable>
-
-				{isLoading ? (
-					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<View
-							style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
-						>
-							<ActivityIndicator color={COLORS.brandPrimary} />
-							<Text style={{ color: colors.textMuted, fontWeight: "500" }}>
-								Loading contacts...
-							</Text>
-						</View>
-					</View>
-				) : null}
-
-				{emptyState ? (
 					<View style={[styles.card, { backgroundColor: colors.card }]}>
 						<Text style={[styles.title, { color: colors.text }]}>
-							No contacts yet
+							People we can reach fast
 						</Text>
 						<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-							Add at least one trusted contact for faster emergency
-							coordination.
+							Add family members, caregivers, and key contacts. This will power
+							quick share + emergency workflows later.
 						</Text>
 					</View>
-				) : null}
 
-				{contacts.map((c) => (
-					<View
-						key={String(c?.id)}
-						style={[styles.contactCard, { backgroundColor: colors.card }]}
-					>
-						<View style={{ flex: 1 }}>
-							<Text style={[styles.contactName, { color: colors.text }]}>
-								{c?.name ?? "--"}
+					
+					{isLoading ? (
+						<View style={[styles.card, { backgroundColor: colors.card }]}>
+							<View
+								style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+							>
+								<ActivityIndicator color={COLORS.brandPrimary} />
+								<Text style={{ color: colors.textMuted, fontWeight: "500" }}>
+									Loading contacts...
+								</Text>
+							</View>
+						</View>
+					) : null}
+
+					{emptyState ? (
+						<View style={[styles.card, { backgroundColor: colors.card }]}>
+							<Text style={[styles.title, { color: colors.text }]}>
+								No contacts yet
 							</Text>
-							<Text style={[styles.contactMeta, { color: colors.textMuted }]}>
-								{[c?.relationship, c?.phone, c?.email]
-									.filter(Boolean)
-									.join(" • ")}
+							<Text style={[styles.subtitle, { color: colors.textMuted }]}>
+								Add at least one trusted contact for faster emergency
+								coordination.
 							</Text>
 						</View>
+					) : null}
+				</Animated.View>
+
+				{contacts.map((c, index) => (
+					<Animated.View
+						key={String(c?.id)}
+						style={{
+							opacity: fadeAnim,
+							transform: [{ translateY: slideAnim }],
+							paddingHorizontal: 12,
+							marginTop: index === 0 ? 20 : 12,
+						}}
+					>
 						<Pressable
 							onPress={() => openEdit(c)}
 							style={({ pressed }) => [
-								{ opacity: pressed ? 0.7 : 1, padding: 10 },
+								styles.contactCard,
+								{ 
+									backgroundColor: colors.card,
+									transform: [{ scale: pressed ? 0.98 : 1 }]
+								}
 							]}
-							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 						>
-							<Ionicons
-								name="create-outline"
-								size={20}
-								color={colors.textMuted}
-							/>
+							{/* Identity Widget - Following manifesto spec */}
+							<View style={styles.identityWidget}>
+								<View style={styles.iconContainer}>
+									<Ionicons 
+										name="person" 
+										size={20} 
+										color={COLORS.brandPrimary} 
+									/>
+								</View>
+								<View style={styles.identityInfo}>
+									<Text style={[styles.contactName, { color: colors.text }]}>
+										{c?.name ?? "--"}
+									</Text>
+									<Text style={[styles.identityLabel, { color: colors.textMuted }]}>
+										{c?.relationship || "Contact"}
+									</Text>
+								</View>
+							</View>
+
+							{/* Data Grid - Following manifesto spec */}
+							<View style={styles.dataGrid}>
+								{c?.phone ? (
+									<View style={styles.dataItem}>
+										<Ionicons 
+											name="call" 
+											size={14} 
+											color={colors.textMuted} 
+										/>
+										<Text style={[styles.dataValue, { color: colors.text }]}>
+											{c.phone}
+										</Text>
+									</View>
+								) : null}
+								{c?.email ? (
+									<View style={styles.dataItem}>
+										<Ionicons 
+											name="mail" 
+											size={14} 
+											color={colors.textMuted} 
+										/>
+										<Text style={[styles.dataValue, { color: colors.text }]}>
+											{c.email}
+										</Text>
+									</View>
+								) : null}
+							</View>
+
+							{/* Corner Seal - Following manifesto spec */}
+							<View style={[
+								styles.cornerSeal,
+								{
+									backgroundColor: isDarkMode
+										? "rgba(255,255,255,0.025)"
+										: "rgba(0,0,0,0.025)"
+								}
+							]}>
+								<Ionicons 
+									name="chevron-forward" 
+									size={16} 
+									color={colors.textMuted} 
+								/>
+							</View>
 						</Pressable>
-						<Pressable
-							onPress={() => handleDelete(c?.id)}
-							style={({ pressed }) => [
-								{ opacity: pressed ? 0.7 : 1, padding: 10 },
-							]}
-							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-						>
-							<Ionicons name="trash-outline" size={20} color={COLORS.error} />
-						</Pressable>
-					</View>
+					</Animated.View>
 				))}
 			</Animated.ScrollView>
 
@@ -383,8 +443,9 @@ export default function EmergencyContactsScreen() {
 				onRequestClose={closeModal}
 			>
 				<KeyboardAvoidingView 
-					behavior={Platform.OS === "ios" ? "padding" : "height"}
+					behavior={Platform.OS === "ios" ? "padding" : undefined}
 					style={styles.modalBackdrop}
+                    keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
 				>
 					<Pressable
 						style={styles.modalBackdropPressable}
@@ -518,7 +579,7 @@ export default function EmergencyContactsScreen() {
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
-	content: { flexGrow: 1, padding: 20, gap: 12 },
+	content: { flexGrow: 1, paddingBottom: 40 },
 	card: {
 		borderRadius: 36,
 		padding: 24,
@@ -555,13 +616,65 @@ const styles = StyleSheet.create({
 	},
 	contactCard: {
 		borderRadius: 36,
-		padding: 20,
+		padding: 24,
+		position: "relative",
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.03,
+		shadowRadius: 10,
+	},
+	identityWidget: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 16,
+	},
+	iconContainer: {
+		width: 56,
+		height: 56,
+		borderRadius: 14,
+		backgroundColor: `${COLORS.brandPrimary}15`,
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 16,
+	},
+	identityInfo: {
+		flex: 1,
+	},
+	contactName: { 
+		fontSize: 19, 
+		fontWeight: "900", 
+		letterSpacing: -1.0 
+	},
+	identityLabel: { 
+		fontSize: 10, 
+		fontWeight: "800", 
+		letterSpacing: 1.5,
+		textTransform: "uppercase",
+		marginTop: 4,
+	},
+	dataGrid: {
+		gap: 8,
+	},
+	dataItem: {
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 8,
 	},
-	contactName: { fontSize: 19, fontWeight: "900", letterSpacing: -1.0 },
-	contactMeta: { marginTop: 4, fontSize: 13, fontWeight: "500" },
+	dataValue: {
+		fontSize: 15,
+		fontWeight: "800",
+		letterSpacing: -0.5,
+	},
+	cornerSeal: {
+		position: "absolute",
+		bottom: -4,
+		right: -4,
+		width: 36,
+		height: 36,
+		borderRadius: 14,
+		alignItems: "center",
+		justifyContent: "center",
+	},
 	modalBackdrop: {
 		flex: 1,
 		justifyContent: "flex-end",

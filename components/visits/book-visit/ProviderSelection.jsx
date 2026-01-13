@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, Pressable, Image } from "react-native
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { COLORS } from "../../../constants/colors";
+import * as Haptics from "expo-haptics";
 
 export default function ProviderSelection({
 	providers,
@@ -14,53 +15,61 @@ export default function ProviderSelection({
 	const colors = {
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
 		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-		cardBg: isDarkMode ? "#0B0F1A" : "#FFFFFF",
+		cardBg: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
 	};
 
-	const cardStyle = {
-		backgroundColor: colors.cardBg,
-		borderRadius: 20,
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: isDarkMode ? 0 : 0.05,
-		shadowRadius: 8,
-		elevation: 2,
+	const handlePress = (item) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		onSelect(item);
 	};
 
 	return (
 		<View style={styles.container}>
-			<Text style={[styles.title, { color: colors.text }]}>Select a Provider</Text>
-			<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-				Found {providers.length} locations for {specialty}
-			</Text>
+			<View style={styles.header}>
+				<Text style={[styles.title, { color: colors.text }]}>Select a Provider</Text>
+				<Text style={[styles.subtitle, { color: colors.textMuted }]}>
+					Found {providers.length} locations for {specialty}
+				</Text>
+			</View>
 			
 			<FlatList
 				data={providers}
 				keyExtractor={item => item.id}
 				renderItem={({ item }) => (
-					<Pressable onPress={() => onSelect(item)} style={{ marginBottom: 12 }}>
-						<View style={[styles.listItem, cardStyle]}>
-							<View style={styles.providerRow}>
-								{item.image ? (
-									<Image source={{ uri: item.image }} style={styles.providerImage} />
-								) : (
-									<View style={[styles.providerImage, { backgroundColor: COLORS.brandPrimary }]} />
-								)}
-								<View style={{ flex: 1 }}>
-									<Text style={[styles.listTitle, { color: colors.text }]}>{item.name}</Text>
-									<Text style={[styles.listSubtitle, { color: colors.textMuted }]}>{item.address}</Text>
-									<View style={styles.ratingRow}>
-										<Ionicons name="star" size={14} color="#F59E0B" />
-										<Text style={[styles.ratingText, { color: colors.text }]}>
-											{item.rating || 4.8} (120+ reviews)
-										</Text>
-									</View>
+					<Pressable 
+						onPress={() => handlePress(item)} 
+						style={({ pressed }) => [
+							styles.listItem, 
+							{ 
+								backgroundColor: colors.cardBg,
+								transform: [{ scale: pressed ? 0.98 : 1 }]
+							}
+						]}
+					>
+						<View style={styles.providerRow}>
+							{item.image ? (
+								<Image source={{ uri: item.image }} style={styles.providerImage} />
+							) : (
+								<View style={[styles.providerImage, { backgroundColor: COLORS.brandPrimary + '20' }]}>
+									<Ionicons name="business" size={24} color={COLORS.brandPrimary} />
+								</View>
+							)}
+							<View style={{ flex: 1 }}>
+								<Text style={[styles.listTitle, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+								<Text style={[styles.listSubtitle, { color: colors.textMuted }]} numberOfLines={1}>{item.address}</Text>
+								<View style={styles.ratingRow}>
+									<Ionicons name="star" size={14} color="#F59E0B" />
+									<Text style={[styles.ratingText, { color: colors.text }]}>
+										{item.rating || 4.8}
+									</Text>
+									<Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "500" }}>• 120+ reviews</Text>
 								</View>
 							</View>
+							<Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
 						</View>
 					</Pressable>
 				)}
-				contentContainerStyle={{ paddingBottom: 100 }}
+				contentContainerStyle={{ paddingBottom: 100, gap: 12 }}
 				showsVerticalScrollIndicator={false}
 			/>
 		</View>
@@ -70,41 +79,49 @@ export default function ProviderSelection({
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		padding: 20,
+		paddingHorizontal: 20,
+	},
+	header: {
+		paddingVertical: 24,
 	},
 	title: {
-		fontSize: 24,
+		fontSize: 28,
 		fontWeight: "900",
 		marginBottom: 8,
-		letterSpacing: -0.5,
+		letterSpacing: -1,
 	},
 	subtitle: {
 		fontSize: 16,
-		marginBottom: 24,
+		fontWeight: "500",
 		lineHeight: 22,
 	},
 	listItem: {
-		padding: 16,
-		minHeight: 60,
+		padding: 20,
+		borderRadius: 32,
+		minHeight: 100,
 		justifyContent: "center",
 	},
 	providerRow: {
 		flexDirection: "row",
-		gap: 12,
+		gap: 16,
 		alignItems: "center",
 	},
 	providerImage: {
-		width: 50,
-		height: 50,
-		borderRadius: 25,
+		width: 64,
+		height: 64,
+		borderRadius: 20,
+		alignItems: "center",
+		justifyContent: "center",
 	},
 	listTitle: {
-		fontSize: 16,
-		fontWeight: "700",
+		fontSize: 18,
+		fontWeight: "800",
+		letterSpacing: -0.5,
 	},
 	listSubtitle: {
 		fontSize: 13,
-		marginTop: 4,
+		marginTop: 2,
+		fontWeight: "500",
 	},
 	ratingRow: {
 		flexDirection: "row",
@@ -113,7 +130,7 @@ const styles = StyleSheet.create({
 		marginTop: 6,
 	},
 	ratingText: {
-		fontSize: 12,
-		fontWeight: "500",
+		fontSize: 13,
+		fontWeight: "700",
 	},
 });

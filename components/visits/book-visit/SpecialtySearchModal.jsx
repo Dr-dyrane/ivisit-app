@@ -65,7 +65,7 @@ export default function SpecialtySearchModal({
 			<TouchableWithoutFeedback onPress={Keyboard.dismiss}>
 				<View style={styles.modalOverlay}>
 					<KeyboardAvoidingView 
-						behavior={Platform.OS === "ios" ? "padding" : "height"} 
+						behavior={Platform.OS === "ios" ? "padding" : undefined} 
 						style={{ width: "100%" }}
 					>
 						<View style={[styles.searchModalContent, { backgroundColor: colors.modalBg }]}>

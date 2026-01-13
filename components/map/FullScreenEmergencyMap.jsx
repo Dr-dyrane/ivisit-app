@@ -56,7 +56,7 @@ const ROUTE_ZOOM_FACTOR = 0.125;
 			},
 			ref
 		) => {
-		const DEBUG_ROUTE_CAMERA = __DEV__ && true;
+		const DEBUG_ROUTE_CAMERA = __DEV__ && false;
 		const { isDarkMode } = useTheme();
 		const { hospitals: dbHospitals } = useHospitals();
 		const insets = useSafeAreaInsets();
@@ -313,7 +313,7 @@ const ROUTE_ZOOM_FACTOR = 0.125;
 		useEffect(() => {
 			if (startupPhaseRef.current === 'initial' && userLocation && locationPermission && !isLoadingLocation) {
 				startupPhaseRef.current = 'location_ready';
-				console.log('[FullScreenEmergencyMap] Startup phase: location_ready');
+				// console.log('[FullScreenEmergencyMap] Startup phase: location_ready');
 			}
 		}, [userLocation, locationPermission, isLoadingLocation]);
 
@@ -321,7 +321,7 @@ const ROUTE_ZOOM_FACTOR = 0.125;
 		useEffect(() => {
 			if (startupPhaseRef.current === 'location_ready' && isMapReadyState) {
 				startupPhaseRef.current = 'map_ready';
-				console.log('[FullScreenEmergencyMap] Startup phase: map_ready');
+				// console.log('[FullScreenEmergencyMap] Startup phase: map_ready');
 			}
 		}, [isMapReadyState]);
 
@@ -337,7 +337,7 @@ const ROUTE_ZOOM_FACTOR = 0.125;
 			hasComputedBaselineZoomRef.current = true;
 			appLoadRegionDeltasRef.current = deltas;
 			startupPhaseRef.current = 'baseline_set';
-			console.log('[FullScreenEmergencyMap] Startup phase: baseline_set');
+			// console.log('[FullScreenEmergencyMap] Startup phase: baseline_set');
 		}, [computeBaselineDeltas, hospitalsForBaseline, isMapReadyState, userLocation]);
 
 		useEffect(() => {
@@ -352,7 +352,7 @@ const ROUTE_ZOOM_FACTOR = 0.125;
 
 			hasAppliedBaselineZoomRef.current = true;
 			startupPhaseRef.current = 'complete';
-			console.log('[FullScreenEmergencyMap] Startup phase: complete');
+			// console.log('[FullScreenEmergencyMap] Startup phase: complete');
 			const base = appLoadRegionDeltasRef.current;
 			lastProgrammaticMoveAtRef.current = Date.now();
 			mapRef.current.animateToRegion(
@@ -698,15 +698,15 @@ const ROUTE_ZOOM_FACTOR = 0.125;
 			lastZoomLogKeyRef.current = key;
 			lastZoomLogAtRef.current = now;
 
-			console.log("[RouteZoom] region", {
-				source: isProgrammatic ? "programmatic" : "user",
-				latitude: region?.latitude,
-				longitude: region?.longitude,
-				latitudeDelta: latDelta,
-				longitudeDelta: lngDelta,
-				sheetSnapIndex,
-				bottomPadding,
-			});
+			// console.log("[RouteZoom] region", {
+			// 	source: isProgrammatic ? "programmatic" : "user",
+			// 	latitude: region?.latitude,
+			// 	longitude: region?.longitude,
+			// 	latitudeDelta: latDelta,
+			// 	longitudeDelta: lngDelta,
+			// 	sheetSnapIndex,
+			// 	bottomPadding,
+			// });
 		}, [bottomPadding, routeHospitalIdResolved, sheetSnapIndex]);
 
 		const handleHospitalPress = (hospital) => {

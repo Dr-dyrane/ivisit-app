@@ -25,7 +25,8 @@
         "backgroundColor": "#00000000"
       },
       "package": "com.dyrane.ivisit",
-      "newArchEnabled": true
+      "newArchEnabled": true,
+      "softwareKeyboardLayoutMode": "adjustResize"
     },
     "web": {
       "favicon": "./assets/favicon.png"

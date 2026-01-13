@@ -28,7 +28,7 @@ const TIMING_THRESHOLDS = {
 // Operations that are user-driven (open/close pairs where user controls timing)
 const USER_DRIVEN_OPS = ["profile_modal", "modal_open", "modal_close"];
 
-const createTimingTracker = (enabled = __DEV__) => {
+const useTimingTracker = (enabled = __DEV__) => {
 	const timings = useRef({});
 
 	// Determine threshold based on operation name
@@ -77,7 +77,12 @@ const createTimingTracker = (enabled = __DEV__) => {
 		timings.current = {};
 	}, []);
 
-	return { startTiming, endTiming, getTimings, clearTimings };
+	return useMemo(() => ({
+		startTiming,
+		endTiming,
+		getTimings,
+		clearTimings
+	}), [startTiming, endTiming, getTimings, clearTimings]);
 };
 
 export function EmergencyUIProvider({ children }) {
@@ -91,16 +96,16 @@ export function EmergencyUIProvider({ children }) {
 	
 	// Log initial state
 	useEffect(() => {
-		console.log('[EmergencyUIContext] Initial state:', { snapIndex, isAnimating });
+		// console.log('[EmergencyUIContext] Initial state:', { snapIndex, isAnimating });
 	}, []);
 	
 	// Log snap index changes
 	useEffect(() => {
-		console.log('[EmergencyUIContext] snapIndex changed:', { 
-			newSnapIndex: snapIndex, 
-			isAnimating,
-			timestamp: Date.now()
-		});
+		// console.log('[EmergencyUIContext] snapIndex changed:', { 
+		// 	newSnapIndex: snapIndex, 
+		// 	isAnimating,
+		// 	timestamp: Date.now()
+		// });
 	}, [snapIndex, isAnimating]);
 	
 	// Search state
@@ -118,25 +123,25 @@ export function EmergencyUIProvider({ children }) {
 	const lastScrollY = useRef(0);
 	
 	// Animation timing tracker
-	const timing = createTimingTracker(__DEV__);
+	const timing = useTimingTracker(__DEV__);
 	
 	// Bottom sheet actions
 	const handleSnapChange = useCallback((index, source = "user") => {
-		console.log('[EmergencyUIContext] handleSnapChange called:', { 
-			newIndex: index, 
-			source, 
-			currentSnapIndex: snapIndexRef.current,
-			timestamp: Date.now()
-		});
+		// console.log('[EmergencyUIContext] handleSnapChange called:', { 
+		// 	newIndex: index, 
+		// 	source, 
+		// 	currentSnapIndex: snapIndexRef.current,
+		// 	timestamp: Date.now()
+		// });
 		
 		// Only update if the index is actually different to prevent fighting states
 		setSnapIndex(prevIndex => {
-			console.log('[EmergencyUIContext] setSnapIndex:', { 
-				prevIndex, 
-				newIndex: index, 
-				willUpdate: prevIndex !== index,
-				source
-			});
+			// console.log('[EmergencyUIContext] setSnapIndex:', { 
+			// 	prevIndex, 
+			// 	newIndex: index, 
+			// 	willUpdate: prevIndex !== index,
+			// 	source
+			// });
 			if (prevIndex === index) return prevIndex;
 			return index;
 		});
@@ -144,7 +149,7 @@ export function EmergencyUIProvider({ children }) {
 
 		// Animation typically takes ~300ms
 		setTimeout(() => {
-			console.log('[EmergencyUIContext] Animation completed, setIsAnimating(false)');
+			// console.log('[EmergencyUIContext] Animation completed, setIsAnimating(false)');
 			setIsAnimating(false);
 		}, 350);
 	}, []);

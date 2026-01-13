@@ -72,7 +72,7 @@ export function useAndroidKeyboardAwareModal({
 
   // Helper function to get KeyboardAvoidingView props
   const getKeyboardAvoidingViewProps = (additionalProps = {}) => ({
-    behavior: Platform.OS === "ios" ? "padding" : "height",
+    behavior: Platform.OS === "ios" ? "padding" : undefined,
     keyboardVerticalOffset: Platform.OS === "ios" ? insets.bottom + 90 : 0,
     style: { flex: 1 },
     ...additionalProps

@@ -24,10 +24,10 @@ export const emergencyRequestsService = {
             
             if (error) {
                 if (__DEV__) {
-                    console.log("[emergencyRequestsService.list] Supabase error, falling back to local:", {
-                        code: error?.code ?? null,
-                        message: error?.message ?? null,
-                    });
+                    // console.log("[emergencyRequestsService.list] Supabase error, falling back to local:", {
+                    //     code: error?.code ?? null,
+                    //     message: error?.message ?? null,
+                    // });
                 }
             } else {
                 const rows = Array.isArray(data) ? data : [];
@@ -60,10 +60,10 @@ export const emergencyRequestsService = {
                 await database.write(StorageKeys.EMERGENCY_REQUESTS, requests);
 
                 if (__DEV__) {
-                    console.log("[emergencyRequestsService.list] Supabase active requests:", {
-                        count: requests.length,
-                        ids: requests.slice(0, 3).map((r) => r?.id),
-                    });
+                    // console.log("[emergencyRequestsService.list] Supabase active requests:", {
+                    //     count: requests.length,
+                    //     ids: requests.slice(0, 3).map((r) => r?.id),
+                    // });
                 }
                 
                 return requests;
@@ -73,10 +73,10 @@ export const emergencyRequestsService = {
         // Fallback to local
 		const items = await database.read(StorageKeys.EMERGENCY_REQUESTS, []);
         if (__DEV__) {
-            console.log("[emergencyRequestsService.list] Using local cache:", {
-                hasUser: !!user,
-                count: Array.isArray(items) ? items.length : 0,
-            });
+            // console.log("[emergencyRequestsService.list] Using local cache:", {
+            //     hasUser: !!user,
+            //     count: Array.isArray(items) ? items.length : 0,
+            // });
         }
 		if (!Array.isArray(items)) return [];
 		return items
@@ -145,13 +145,13 @@ export const emergencyRequestsService = {
 	},
 
 	async update(id, updates) {
-        console.log(`[emergencyRequestsService] Update requested for ${id}`, updates);
+        // console.log(`[emergencyRequestsService] Update requested for ${id}`, updates);
         const { data: { user } } = await supabase.auth.getUser();
 		const requestId = String(id);
         const nextUpdatedAt = new Date().toISOString();
 
         if (user) {
-            console.log(`[emergencyRequestsService] Updating in Supabase for user ${user.id}`);
+            // console.log(`[emergencyRequestsService] Updating in Supabase for user ${user.id}`);
             const dbUpdates = { updated_at: nextUpdatedAt };
             if (updates.status) dbUpdates.status = updates.status;
             if (updates.hospitalId !== undefined) dbUpdates.hospital_id = updates.hospitalId;
@@ -176,9 +176,9 @@ export const emergencyRequestsService = {
                 throw error;
             }
             if (!data || data.length === 0) {
-                console.warn(`[emergencyRequestsService] No request found with id ${requestId} in Supabase (queried with id and user_id)`);
+                // console.warn(`[emergencyRequestsService] No request found with id ${requestId} in Supabase (queried with id and user_id)`);
                 // Try querying with request_id instead of id if it's different
-                console.log(`[emergencyRequestsService] Retrying update using request_id column...`);
+                // console.log(`[emergencyRequestsService] Retrying update using request_id column...`);
                 const { error: error2, data: data2 } = await supabase
                     .from('emergency_requests')
                     .update(dbUpdates)
@@ -193,10 +193,10 @@ export const emergencyRequestsService = {
                 if (!data2 || data2.length === 0) {
                     console.error(`[emergencyRequestsService] Still no request found with request_id ${requestId} in Supabase`);
                 } else {
-                    console.log(`[emergencyRequestsService] Updated ${requestId} via request_id column in Supabase:`, data2[0]);
+                    // console.log(`[emergencyRequestsService] Updated ${requestId} via request_id column in Supabase:`, data2[0]);
                 }
             } else {
-                console.log(`[emergencyRequestsService] Updated ${requestId} in Supabase:`, data[0]);
+                // console.log(`[emergencyRequestsService] Updated ${requestId} in Supabase:`, data[0]);
             }
         }
 

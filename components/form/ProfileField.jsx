@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { View, TextInput, Text, Animated } from "react-native";
+import { View, TextInput, Text, Animated, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -12,17 +12,22 @@ const ProfileField = ({
 	iconName,
 	editable = true,
 	keyboardType = "default",
+	secureTextEntry = false,
+	placeholder = "",
+	rightElement = null,
+	...props
 }) => {
 	const { isDarkMode } = useTheme();
 	const [isFocused, setIsFocused] = useState(false);
 	const scaleAnim = useRef(new Animated.Value(1)).current;
 
 	const handleChangeText = (text) => {
-		console.log('[ProfileField] onChangeText:', { text, label });
+		console.log('[ProfileField] onChangeText:', { text, label, value });
 		onChange(text);
 	};
 
 	const handleFocus = () => {
+		console.log('[ProfileField] onFocus:', { label, value });
 		setIsFocused(true);
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		Animated.spring(scaleAnim, {
@@ -33,12 +38,25 @@ const ProfileField = ({
 	};
 
 	const handleBlur = () => {
+		console.log('[ProfileField] onBlur:', { label, value });
 		setIsFocused(false);
 		Animated.spring(scaleAnim, {
 			toValue: 1,
 			friction: 8,
 			useNativeDriver: true,
 		}).start();
+	};
+
+	const handlePressIn = () => {
+		console.log('[ProfileField] handlePressIn:', { label });
+	};
+
+	const handlePressOut = () => {
+		console.log('[ProfileField] handlePressOut:', { label });
+	};
+
+	const handleContainerPress = () => {
+		console.log('[ProfileField] handleContainerPress:', { label, editable });
 	};
 
 	const colors = {
@@ -55,20 +73,26 @@ const ProfileField = ({
 				marginBottom: 16,
 			}}
 		>
-			<View
-				style={{
-					backgroundColor: colors.bg,
-					borderRadius: 24,
-					borderWidth: isFocused ? 2 : 0,
-					borderColor: colors.border,
-					padding: 16,
-					flexDirection: "row",
-					alignItems: "center",
-					shadowColor: isFocused ? COLORS.brandPrimary : "transparent",
-					shadowOffset: { width: 0, height: 4 },
-					shadowOpacity: 0.2,
-					shadowRadius: 8,
-				}}
+			<Pressable
+				onPress={handleContainerPress}
+				onPressIn={handlePressIn}
+				onPressOut={handlePressOut}
+				style={({ pressed }) => [
+					{
+						backgroundColor: colors.bg,
+						borderRadius: 24,
+						borderWidth: isFocused ? 2 : 0,
+						borderColor: colors.border,
+						padding: 16,
+						flexDirection: "row",
+						alignItems: "center",
+						shadowColor: isFocused ? COLORS.brandPrimary : "transparent",
+						shadowOffset: { width: 0, height: 4 },
+						shadowOpacity: 0.2,
+						shadowRadius: 8,
+						transform: [{ scale: pressed ? 0.98 : 1 }],
+					}
+				]}
 			>
 				<View
 					style={{
@@ -104,8 +128,11 @@ const ProfileField = ({
 						onBlur={handleBlur}
 						editable={editable}
 						keyboardType={keyboardType}
+						secureTextEntry={secureTextEntry}
+						placeholder={placeholder}
 						autoCorrect={false}
 						autoCapitalize="none"
+						{...props}
 						style={{
 							fontSize: 16,
 							color: colors.text,
@@ -113,11 +140,12 @@ const ProfileField = ({
 							letterSpacing: -0.5,
 							padding: 0,
 						}}
-						placeholderTextColor={COLORS.textMuted}
+						placeholderTextColor={isDarkMode ? COLORS.textMutedDark : COLORS.textMuted}
 						selectionColor={COLORS.brandPrimary}
 					/>
 				</View>
-			</View>
+				{rightElement}
+			</Pressable>
 		</Animated.View>
 	);
 };

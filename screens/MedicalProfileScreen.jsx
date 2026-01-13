@@ -124,18 +124,24 @@ export default function MedicalProfileScreen() {
 	const [isSaving, setIsSaving] = useState(false);
 	const { profile, isLoading, updateProfile } = useMedicalProfile();
 	// We need a local state to handle editing form, syncing from profile when loaded
-	const [localProfile, setLocalProfile] = useState(null);
+	const [localProfile, setLocalProfile] = useState({});
 
 	useEffect(() => {
 		if (profile) {
+            // console.log('[MedicalProfileScreen] Profile loaded/updated:', profile.updatedAt);
 			setLocalProfile(profile);
 		}
 	}, [profile]);
 
 	const updateField = useCallback((key, value) => {
+		console.log('[MedicalProfileScreen] updateField:', { key, value });
 		setLocalProfile((prev) => {
-			const base = prev && typeof prev === "object" ? prev : {};
-			return { ...base, [key]: value };
+			const newProfile = {
+				...(prev || {}),
+				[key]: value,
+			};
+			console.log('[MedicalProfileScreen] localProfile updated:', newProfile);
+			return newProfile;
 		});
 	}, []);
 
@@ -198,7 +204,7 @@ export default function MedicalProfileScreen() {
     useFocusEffect(
         useCallback(() => {
             if (hasRegisteredFAB.current) {
-                console.log('[MedicalProfileScreen] FAB already registered, skipping');
+                // console.log('[MedicalProfileScreen] FAB already registered, skipping');
                 return;
             }
             
@@ -229,8 +235,9 @@ export default function MedicalProfileScreen() {
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			<KeyboardAvoidingView 
-				behavior={Platform.OS === "ios" ? "padding" : "height"}
+				behavior={Platform.OS === "ios" ? "padding" : undefined}
 				style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
 			>
 				<Animated.ScrollView
 					contentContainerStyle={[
@@ -246,15 +253,23 @@ export default function MedicalProfileScreen() {
 					}}
 					keyboardShouldPersistTaps="handled"
 				>
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.title, { color: colors.text }]}>
-						Your health, summarized
-					</Text>
-					<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-						Blood type, allergies, chronic conditions, medications, and emergency
-						notes will live here.
-					</Text>
-				</View>
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+					}}
+				>
+					<View style={[styles.card, { backgroundColor: colors.card }]}>
+						<Text style={[styles.title, { color: colors.text }]}>
+							Your health, summarized
+						</Text>
+						<Text style={[styles.subtitle, { color: colors.textMuted }]}>
+							Blood type, allergies, chronic conditions, medications, and emergency
+							notes will live here.
+						</Text>
+					</View>
+				</Animated.View>
 
 				{isLoading ? (
 					<View style={[styles.card, { backgroundColor: colors.card }]}>
@@ -270,60 +285,105 @@ export default function MedicalProfileScreen() {
 				) : null}
 
 				{!isLoading && localProfile ? (
-					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<ProfileField
-							label="Blood Type"
-							value={localProfile.bloodType ?? ""}
-							onChange={(v) => updateField("bloodType", v)}
-							iconName="water-outline"
-						/>
-						<ProfileField
-							label="Allergies"
-							value={localProfile.allergies ?? ""}
-							onChange={(v) => updateField("allergies", v)}
-							iconName="warning-outline"
-						/>
-						<ProfileField
-							label="Current Medications"
-							value={localProfile.medications ?? ""}
-							onChange={(v) => updateField("medications", v)}
-							iconName="medical-outline"
-						/>
-						<ProfileField
-							label="Chronic Conditions"
-							value={localProfile.conditions ?? ""}
-							onChange={(v) => updateField("conditions", v)}
-							iconName="fitness-outline"
-						/>
-						<ProfileField
-							label="Past Surgeries"
-							value={localProfile.surgeries ?? ""}
-							onChange={(v) => updateField("surgeries", v)}
-							iconName="bandage-outline"
-						/>
-						<ProfileField
-							label="Emergency Notes"
-							value={localProfile.notes ?? ""}
-							onChange={(v) => updateField("notes", v)}
-							iconName="document-text-outline"
-						/>
-
-						<Text
+					<>
+						<Animated.View
 							style={{
-								marginTop: 10,
-								color: colors.textMuted,
-								fontWeight: "800",
-								fontSize: 10,
-								letterSpacing: 1.0,
-								textTransform: "uppercase",
+								opacity: fadeAnim,
+								transform: [{ translateY: slideAnim }],
+								paddingHorizontal: 12,
+								paddingTop: 20,
 							}}
 						>
-							Last updated:{" "}
-							{localProfile.updatedAt
-								? new Date(localProfile.updatedAt).toLocaleString()
-								: "--"}
-						</Text>
-					</View>
+							<Text
+								style={{
+									fontSize: 10,
+									fontWeight: "800",
+									color: colors.textMuted,
+									marginBottom: 16,
+									letterSpacing: 1.5,
+									textTransform: "uppercase",
+								}}
+							>
+								MEDICAL INFORMATION
+							</Text>
+
+							<ProfileField
+								label="Blood Type"
+								value={localProfile.bloodType ?? ""}
+								onChange={(v) => updateField("bloodType", v)}
+								iconName="water-outline"
+							/>
+							<ProfileField
+								label="Allergies"
+								value={localProfile.allergies ?? ""}
+								onChange={(v) => updateField("allergies", v)}
+								iconName="warning-outline"
+							/>
+							<ProfileField
+								label="Current Medications"
+								value={localProfile.medications ?? ""}
+								onChange={(v) => updateField("medications", v)}
+								iconName="medical-outline"
+							/>
+						</Animated.View>
+
+						<Animated.View
+							style={{
+								opacity: fadeAnim,
+								transform: [{ translateY: slideAnim }],
+								paddingHorizontal: 12,
+								marginTop: 32,
+							}}
+						>
+							<Text
+								style={{
+									fontSize: 10,
+									fontWeight: "800",
+									color: colors.textMuted,
+									marginBottom: 16,
+									letterSpacing: 1.5,
+									textTransform: "uppercase",
+								}}
+							>
+								HEALTH HISTORY
+							</Text>
+
+							<ProfileField
+								label="Chronic Conditions"
+								value={localProfile.conditions ?? ""}
+								onChange={(v) => updateField("conditions", v)}
+								iconName="fitness-outline"
+							/>
+							<ProfileField
+								label="Past Surgeries"
+								value={localProfile.surgeries ?? ""}
+								onChange={(v) => updateField("surgeries", v)}
+								iconName="bandage-outline"
+							/>
+							<ProfileField
+								label="Emergency Notes"
+								value={localProfile.notes ?? ""}
+								onChange={(v) => updateField("notes", v)}
+								iconName="document-text-outline"
+							/>
+
+							<Text
+								style={{
+									marginTop: 20,
+									color: colors.textMuted,
+									fontWeight: "800",
+									fontSize: 10,
+									letterSpacing: 1.0,
+									textTransform: "uppercase",
+								}}
+							>
+								Last updated:{" "}
+								{localProfile.updatedAt
+									? new Date(localProfile.updatedAt).toLocaleString()
+									: "--"}
+							</Text>
+						</Animated.View>
+					</>
 				) : null}
 				</Animated.ScrollView>
 			</KeyboardAvoidingView>
@@ -333,7 +393,7 @@ export default function MedicalProfileScreen() {
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
-	content: { flexGrow: 1, padding: 20, gap: 12 },
+	content: { flexGrow: 1, paddingBottom: 40 },
 	card: {
 		borderRadius: 36,
 		padding: 24,

@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { COLORS } from "../../../constants/colors";
+import * as Haptics from "expo-haptics";
 
 export default function BookingSummary({
 	bookingData,
@@ -15,30 +16,27 @@ export default function BookingSummary({
 	const colors = {
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
 		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-		cardBg: isDarkMode ? "#0B0F1A" : "#FFFFFF",
+		cardBg: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
 	};
 
-	const cardStyle = {
-		backgroundColor: colors.cardBg,
-		borderRadius: 24,
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: isDarkMode ? 0 : 0.05,
-		shadowRadius: 12,
-		elevation: 4,
+	const handleConfirmPress = () => {
+		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+		onConfirm();
 	};
 
 	return (
 		<ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-			<Text style={[styles.title, { color: colors.text }]}>Confirm Booking</Text>
-			<Text style={[styles.subtitle, { color: colors.textMuted }]}>Please review your appointment details.</Text>
+			<View style={styles.header}>
+				<Text style={[styles.title, { color: colors.text }]}>Confirm Booking</Text>
+				<Text style={[styles.subtitle, { color: colors.textMuted }]}>Please review your appointment details.</Text>
+			</View>
 
-			<View style={[styles.summaryCard, cardStyle]}>
+			<View style={[styles.summaryCard, { backgroundColor: colors.cardBg }]}>
 				<View style={styles.summaryHeader}>
-					<View style={[styles.summaryIcon, { backgroundColor: COLORS.brandPrimary + '20' }]}>
-						<Ionicons name={bookingData.type === 'telehealth' ? "videocam" : "medical"} size={24} color={COLORS.brandPrimary} />
+					<View style={[styles.summaryIcon, { backgroundColor: COLORS.brandPrimary + '15' }]}>
+						<Ionicons name={bookingData.type === 'telehealth' ? "videocam" : "medical"} size={26} color={COLORS.brandPrimary} />
 					</View>
-					<View>
+					<View style={{ flex: 1 }}>
 						<Text style={[styles.summaryType, { color: colors.text }]}>
 							{bookingData.type === 'telehealth' ? "Telehealth Visit" : "In-Clinic Appointment"}
 						</Text>
@@ -46,48 +44,71 @@ export default function BookingSummary({
 					</View>
 				</View>
 
-				<View style={styles.divider} />
+				<View style={[styles.divider, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)" }]} />
 
-				<View style={styles.summaryRow}>
-					<Ionicons name="person-outline" size={18} color={colors.textMuted} />
-					<Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Provider</Text>
-					<Text style={[styles.summaryValue, { color: colors.text }]}>{bookingData.doctor?.name}</Text>
-				</View>
-				<View style={styles.summaryRow}>
-					<Ionicons name="location-outline" size={18} color={colors.textMuted} />
-					<Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Location</Text>
-					<Text style={[styles.summaryValue, { color: colors.text }]} numberOfLines={1}>{bookingData.hospital?.name}</Text>
-				</View>
-				<View style={styles.summaryRow}>
-					<Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
-					<Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Date</Text>
-					<Text style={[styles.summaryValue, { color: colors.text }]}>
-						{bookingData.date ? format(bookingData.date, 'MMMM do, yyyy') : '-'}
-					</Text>
-				</View>
-				<View style={styles.summaryRow}>
-					<Ionicons name="time-outline" size={18} color={colors.textMuted} />
-					<Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Time</Text>
-					<Text style={[styles.summaryValue, { color: colors.text }]}>{bookingData.time}</Text>
+				<View style={styles.detailsList}>
+					<View style={styles.summaryRow}>
+						<View style={styles.iconBox}>
+							<Ionicons name="person" size={16} color={COLORS.brandPrimary} />
+						</View>
+						<View>
+							<Text style={[styles.summaryLabel, { color: colors.textMuted }]}>PROVIDER</Text>
+							<Text style={[styles.summaryValue, { color: colors.text }]}>{bookingData.doctor?.name}</Text>
+						</View>
+					</View>
+					<View style={styles.summaryRow}>
+						<View style={styles.iconBox}>
+							<Ionicons name="location" size={16} color={COLORS.brandPrimary} />
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text style={[styles.summaryLabel, { color: colors.textMuted }]}>LOCATION</Text>
+							<Text style={[styles.summaryValue, { color: colors.text }]} numberOfLines={1}>{bookingData.hospital?.name}</Text>
+						</View>
+					</View>
+					<View style={styles.summaryRow}>
+						<View style={styles.iconBox}>
+							<Ionicons name="calendar" size={16} color={COLORS.brandPrimary} />
+						</View>
+						<View>
+							<Text style={[styles.summaryLabel, { color: colors.textMuted }]}>DATE</Text>
+							<Text style={[styles.summaryValue, { color: colors.text }]}>
+								{bookingData.date ? format(bookingData.date, 'MMMM do, yyyy') : '-'}
+							</Text>
+						</View>
+					</View>
+					<View style={styles.summaryRow}>
+						<View style={styles.iconBox}>
+							<Ionicons name="time" size={16} color={COLORS.brandPrimary} />
+						</View>
+						<View>
+							<Text style={[styles.summaryLabel, { color: colors.textMuted }]}>TIME SLOT</Text>
+							<Text style={[styles.summaryValue, { color: colors.text }]}>{bookingData.time}</Text>
+						</View>
+					</View>
 				</View>
 			</View>
 
 			<View style={styles.policyContainer}>
-				<Ionicons name="information-circle-outline" size={20} color={colors.textMuted} />
+				<Ionicons name="information-circle" size={18} color={COLORS.brandPrimary} />
 				<Text style={[styles.policyText, { color: colors.textMuted }]}>
 					Cancellation is available up to 2 hours before the appointment.
 				</Text>
 			</View>
 
 			<Pressable 
-				onPress={onConfirm}
+				onPress={handleConfirmPress}
 				style={({ pressed }) => [
 					styles.primaryButton, 
-					{ backgroundColor: COLORS.brandPrimary, marginTop: 24, opacity: isSubmitting ? 0.7 : (pressed ? 0.9 : 1) }
+					{ 
+						backgroundColor: COLORS.brandPrimary, 
+						opacity: isSubmitting ? 0.7 : (pressed ? 0.9 : 1),
+						transform: [{ scale: pressed ? 0.98 : 1 }]
+					}
 				]}
 				disabled={isSubmitting}
 			>
-				<Text style={styles.primaryButtonText}>{isSubmitting ? "Booking..." : "Confirm Booking"}</Text>
+				<Text style={styles.primaryButtonText}>{isSubmitting ? "BOOKING..." : "CONFIRM BOOKING"}</Text>
+				{!isSubmitting && <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />}
 			</Pressable>
 		</ScrollView>
 	);
@@ -96,88 +117,111 @@ export default function BookingSummary({
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		padding: 20,
+		paddingHorizontal: 20,
+	},
+	header: {
+		paddingVertical: 24,
 	},
 	title: {
-		fontSize: 24,
+		fontSize: 28,
 		fontWeight: "900",
+		letterSpacing: -1,
 		marginBottom: 8,
-		letterSpacing: -0.5,
 	},
 	subtitle: {
 		fontSize: 16,
-		marginBottom: 24,
 		lineHeight: 22,
+		fontWeight: "500",
 	},
 	summaryCard: {
-		padding: 20,
+		borderRadius: 36,
+		padding: 24,
 	},
 	summaryHeader: {
 		flexDirection: "row",
 		gap: 16,
 		alignItems: "center",
-		marginBottom: 20,
+		marginBottom: 24,
 	},
 	summaryIcon: {
-		width: 48,
-		height: 48,
-		borderRadius: 16,
+		width: 56,
+		height: 56,
+		borderRadius: 18,
 		alignItems: "center",
 		justifyContent: "center",
 	},
 	summaryType: {
-		fontSize: 18,
+		fontSize: 19,
 		fontWeight: "800",
+		letterSpacing: -0.5,
 	},
 	summarySpecialty: {
 		fontSize: 14,
+		fontWeight: "500",
+		marginTop: 2,
 	},
 	divider: {
 		height: 1,
-		backgroundColor: "rgba(150,150,150,0.2)",
-		marginBottom: 20,
+		marginBottom: 24,
+	},
+	detailsList: {
+		gap: 20,
 	},
 	summaryRow: {
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 12,
-		marginBottom: 16,
+		gap: 16,
+	},
+	iconBox: {
+		width: 36,
+		height: 36,
+		borderRadius: 12,
+		backgroundColor: 'rgba(134, 16, 14, 0.08)',
+		alignItems: "center",
+		justifyContent: "center",
 	},
 	summaryLabel: {
-		width: 80,
-		fontSize: 14,
-		fontWeight: "500",
+		fontSize: 10,
+		fontWeight: "800",
+		letterSpacing: 1,
+		marginBottom: 2,
 	},
 	summaryValue: {
-		flex: 1,
-		fontSize: 14,
+		fontSize: 16,
 		fontWeight: "700",
+		letterSpacing: -0.3,
 	},
 	policyContainer: {
 		flexDirection: "row",
-		gap: 10,
-		marginTop: 24,
-		paddingHorizontal: 10,
+		gap: 12,
+		marginTop: 32,
+		paddingHorizontal: 8,
+		alignItems: "center",
 	},
 	policyText: {
 		flex: 1,
-		fontSize: 12,
+		fontSize: 13,
 		lineHeight: 18,
+		fontWeight: "500",
 	},
 	primaryButton: {
-		height: 56,
-		borderRadius: 20,
+		height: 64,
+		borderRadius: 24,
 		alignItems: "center",
 		justifyContent: "center",
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.2,
-		shadowRadius: 8,
-		elevation: 4,
+		flexDirection: "row",
+		gap: 12,
+		marginTop: 32,
+		shadowColor: COLORS.brandPrimary,
+		shadowOffset: { width: 0, height: 8 },
+		shadowOpacity: 0.25,
+		shadowRadius: 15,
+		elevation: 8,
 	},
 	primaryButtonText: {
 		color: "#FFFFFF",
 		fontSize: 16,
-		fontWeight: "800",
+		fontWeight: "900",
+		letterSpacing: 1,
 	},
 });

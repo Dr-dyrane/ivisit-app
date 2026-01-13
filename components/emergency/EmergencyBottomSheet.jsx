@@ -86,18 +86,6 @@ const EmergencyBottomSheet = forwardRef(
 		const isBelowHalf = sheetPhase === "collapsed" || (sheetPhase === "half" && newSnapIndex === 0);
 		const isFloating = newSnapIndex === 0 || newSnapIndex === 1;
 
-		console.log("[EmergencyBottomSheet] Render state:", {
-			mode,
-			hasActiveAmbulance: !!activeAmbulanceTrip,
-			hasActiveBed: !!activeBedBooking,
-			hasAnyVisitActive,
-			isTripMode,
-			isBedBookingMode,
-			isDetailMode,
-			sheetPhase,
-			newSnapIndex
-		});
-
 		const [sheetPhase, setSheetPhase] = useState("half");
 
 		const {

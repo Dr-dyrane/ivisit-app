@@ -22,6 +22,7 @@ import { useEmergencyUI } from "../contexts/EmergencyUIContext";
 import { useEmergency, EmergencyMode } from "../contexts/EmergencyContext";
 import SettingsIconButton from "../components/headers/SettingsIconButton";
 import ActionWrapper from "../components/headers/ActionWrapper";
+import SuggestiveContent from "../components/search/SuggestiveContent";
 import { NOTIFICATION_TYPES } from "../constants/notifications";
 import {
 	navigateToNotifications,
@@ -330,85 +331,89 @@ export default function SearchScreen() {
 						onChangeText={setSearchQuery}
 						onBlur={() => commitQuery(query)}
 						onClear={() => setSearchQuery("")}
-						placeholder="Search..."
+						placeholder="Search for hospitals, doctors..."
 						showSuggestions={false}
 					/>
 				</View>
 
-				<View style={[styles.card, { backgroundColor: colors.card, borderRadius: 36, padding: 20, marginTop: 16 }]}>
-					<Text style={[styles.sectionTitle, { 
-						color: colors.textMuted,
-						fontWeight: "800",
-						letterSpacing: 1.5,
-						textTransform: "uppercase",
-						fontSize: 11,
-						marginBottom: 16
-					}]}>
-						Top Results
-					</Text>
-					{rankedResults.length > 0 ? (
-						<View style={{ gap: 12 }}>
-							{rankedResults.map((item) => (
-								<Pressable
-									key={item.key}
-									onPress={() => {
-										commitQuery(query);
-										item.onPress?.();
-									}}
-									style={({ pressed }) => [
-										styles.row,
-										{
-											backgroundColor: isDarkMode
-												? "rgba(255,255,255,0.04)"
-												: "rgba(0,0,0,0.02)",
-											borderRadius: 24,
-											padding: 16,
-											opacity: pressed ? 0.9 : 1,
-											transform: [{ scale: pressed ? 0.98 : 1 }]
-										},
-									]}
-								>
-									<View style={{ 
-										width: 32, 
-										height: 32, 
-										borderRadius: 10, 
-										backgroundColor: COLORS.brandPrimary + '15',
-										alignItems: 'center',
-										justifyContent: 'center',
-										marginRight: 12
-									}}>
-										<Ionicons name={item.icon} size={16} color={COLORS.brandPrimary} />
-									</View>
-									<View style={{ flex: 1 }}>
-										<Text style={{ 
-											color: colors.text, 
-											fontWeight: "900",
-											letterSpacing: -0.5,
-											fontSize: 15
-										}} numberOfLines={1}>
-											{item.title}
-										</Text>
-										{item.subtitle ? (
-											<Text style={{ 
-												color: colors.textMuted, 
-												fontWeight: "500", 
-												fontSize: 12,
-												letterSpacing: 0.2
-											}} numberOfLines={1}>
-												{item.subtitle}
-											</Text>
-										) : null}
-									</View>
-									<Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-								</Pressable>
-							))}
-						</View>
-					) : (
-						<Text style={{ color: colors.textMuted, fontWeight:'500', fontSize: 13 }}>
-							No results yet.
+				{!query ? (
+					<SuggestiveContent onSelectQuery={(q) => setSearchQuery(q)} />
+				) : (
+					<View style={[styles.card, { backgroundColor: colors.card, borderRadius: 36, padding: 20, marginTop: 16 }]}>
+						<Text style={[styles.sectionTitle, { 
+							color: colors.textMuted,
+							fontWeight: "800",
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
+							fontSize: 11,
+							marginBottom: 16
+						}]}>
+							Top Results
 						</Text>
-					)}
-				</View>
+						{rankedResults.length > 0 ? (
+							<View style={{ gap: 12 }}>
+								{rankedResults.map((item) => (
+									<Pressable
+										key={item.key}
+										onPress={() => {
+											commitQuery(query);
+											item.onPress?.();
+										}}
+										style={({ pressed }) => [
+											styles.row,
+											{
+												backgroundColor: isDarkMode
+													? "rgba(255,255,255,0.04)"
+													: "rgba(0,0,0,0.02)",
+												borderRadius: 24,
+												padding: 16,
+												opacity: pressed ? 0.9 : 1,
+												transform: [{ scale: pressed ? 0.98 : 1 }]
+											},
+										]}
+									>
+										<View style={{ 
+											width: 32, 
+											height: 32, 
+											borderRadius: 10, 
+											backgroundColor: COLORS.brandPrimary + '15',
+											alignItems: 'center',
+											justifyContent: 'center',
+											marginRight: 12
+										}}>
+											<Ionicons name={item.icon} size={16} color={COLORS.brandPrimary} />
+										</View>
+										<View style={{ flex: 1 }}>
+											<Text style={{ 
+												color: colors.text, 
+												fontWeight: "900",
+												letterSpacing: -0.5,
+												fontSize: 15
+											}} numberOfLines={1}>
+												{item.title}
+											</Text>
+											{item.subtitle ? (
+												<Text style={{ 
+													color: colors.textMuted, 
+													fontWeight: "500", 
+													fontSize: 12,
+													letterSpacing: 0.2
+												}} numberOfLines={1}>
+													{item.subtitle}
+												</Text>
+											) : null}
+										</View>
+										<Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+									</Pressable>
+								))}
+							</View>
+						) : (
+							<Text style={{ color: colors.textMuted, fontWeight:'500', fontSize: 13 }}>
+								No results yet.
+							</Text>
+						)}
+					</View>
+				)}
 
 				<View style={[styles.card, { backgroundColor: colors.card, borderRadius: 36, padding: 20, marginTop: 16 }]}>
 					<View style={styles.sectionHeaderRow}>

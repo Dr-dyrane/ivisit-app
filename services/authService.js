@@ -432,24 +432,24 @@ const authService = {
 		if (!user) throw createAuthError(AuthErrors.NOT_LOGGED_IN, "No user logged in");
 
         const updates = {};
-        if (newData.firstName) updates.first_name = newData.firstName;
-        if (newData.lastName) updates.last_name = newData.lastName;
-        if (newData.username) updates.username = newData.username;
-        if (newData.phone) updates.phone = newData.phone;
-        if (newData.imageUri) updates.image_uri = newData.imageUri;
-        if (newData.fullName) updates.full_name = newData.fullName;
+        if (newData.firstName !== undefined) updates.first_name = newData.firstName;
+        if (newData.lastName !== undefined) updates.last_name = newData.lastName;
+        if (newData.username !== undefined) updates.username = newData.username;
+        if (newData.phone !== undefined) updates.phone = newData.phone;
+        if (newData.imageUri !== undefined) updates.image_uri = newData.imageUri;
+        if (newData.fullName !== undefined) updates.full_name = newData.fullName;
         
         // We only attempt to update these if they are present in the table
         // To avoid "Column not found" errors, you must run the migration:
         // supabase/migrations/20260109180000_add_profile_fields.sql
-        if (newData.address) updates.address = newData.address;
-        if (newData.gender) updates.gender = newData.gender;
-        if (newData.dateOfBirth) updates.date_of_birth = newData.dateOfBirth;
+        if (newData.address !== undefined) updates.address = newData.address;
+        if (newData.gender !== undefined) updates.gender = newData.gender;
+        if (newData.dateOfBirth !== undefined) updates.date_of_birth = newData.dateOfBirth;
         
         // If empty updates, just return current
         if (Object.keys(updates).length === 0) return { data: newData };
 
-        updates.updated_at = new Date();
+        updates.updated_at = new Date().toISOString();
 
 		const { error } = await supabase
 			.from('profiles')
