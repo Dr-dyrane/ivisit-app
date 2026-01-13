@@ -225,8 +225,17 @@ const EmergencyBottomSheet = forwardRef(
 				return newSnapIndex;
 			}
 
-			// Fallback: use middle if available, else 0
-			return snapPoints.length === 3 ? 1 : 0;
+			// Fallback: clamp to valid range or use middle if available
+			if (snapPoints.length === 2) {
+				// For 2-point system (40%, 50%), default to index 1 (50%)
+				return 1;
+			} else if (snapPoints.length === 3) {
+				// For 3-point system, use middle
+				return 1;
+			} else {
+				// Default to 0 for any other case
+				return 0;
+			}
 		}, [isDetailMode, hasAnyVisitActive, newSnapIndex, snapPoints.length]);
 
 		// Track sheet phase changes using currentSnapIndex

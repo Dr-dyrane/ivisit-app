@@ -37,9 +37,12 @@ export const useBottomSheetSnap = ({
 		(index) => {
 			// Get max index dynamically for handling
 			const maxIndex = Math.max(0, snapPoints.length - 1);
+			
+			// Clamp index to valid range to prevent errors
+			const clampedIndex = Math.max(0, Math.min(index, maxIndex));
 
 			if (onSnapChange) {
-				onSnapChange(index);
+				onSnapChange(clampedIndex);
 			}
 
 			if (isDetailMode) {
@@ -55,14 +58,14 @@ export const useBottomSheetSnap = ({
 			}
 
 			// Standard mode behavior
-			if (index === 0) {
+			if (clampedIndex === 0) {
 				resetTabBar();
 				resetHeader();
 				updateScrollPosition(0);
 				Keyboard.dismiss();
 			}
 
-			if (index >= maxIndex) {
+			if (clampedIndex >= maxIndex) {
 				hideTabBar();
 			}
 		},

@@ -66,6 +66,7 @@ export function useEmergencySheetController({
 			}
 		}
 
+		console.log("[useEmergencySheetController] Final snapPoints:", points);
 		return points;
 	}, [collapsedPercent, isDetailMode, isTripMode, isBedBookingMode, screenHeight, hasAnyVisitActive, insets.bottom]);
 
