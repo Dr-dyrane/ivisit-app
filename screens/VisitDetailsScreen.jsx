@@ -154,7 +154,18 @@ export default function VisitDetailsScreen() {
 							{visit?.meetingLink && (
 								<Pressable
 									onPress={() => Linking.openURL(visit.meetingLink)}
-									style={({ pressed }) => [styles.actionBtn, { backgroundColor: COLORS.brandPrimary, opacity: pressed ? 0.9 : 1 }]}
+									style={({ pressed }) => [
+										styles.actionBtn, 
+										{ 
+											backgroundColor: COLORS.brandPrimary, 
+											opacity: pressed ? 0.9 : 1,
+											shadowColor: COLORS.brandPrimary,
+											shadowOffset: { width: 0, height: 8 },
+											shadowOpacity: 0.3,
+											shadowRadius: 12,
+											elevation: 8,
+										}
+									]}
 								>
 									<Ionicons name="videocam" size={20} color="#FFF" />
 									<Text style={[styles.actionBtnText, { color: "#FFF" }]}>Join Video</Text>
@@ -177,8 +188,18 @@ export default function VisitDetailsScreen() {
 
 						{/* CANCEL ACTION */}
 						{visit?.status === "upcoming" && (
-							<Pressable onPress={() => Alert.alert("Cancel Visit", "Are you sure?")} style={styles.cancelLink}>
-								<Text style={styles.cancelLinkText}>Cancel Appointment</Text>
+							<Pressable 
+								onPress={() => Alert.alert("Cancel Visit", "Are you sure?")} 
+								style={({ pressed }) => [
+									styles.cancelButton,
+									{ 
+										backgroundColor: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "#FEF2F2",
+										opacity: pressed ? 0.7 : 1 
+									}
+								]}
+							>
+								<Ionicons name="trash-outline" size={20} color={COLORS.error} />
+								<Text style={styles.cancelButtonText}>Cancel Appointment</Text>
 							</Pressable>
 						)}
 					</>
@@ -312,19 +333,20 @@ const styles = StyleSheet.create({
 	actionBtn: {
 		flex: 1,
 		height: 60,
-		borderRadius: 20,
+		borderRadius: 24, // Manifesto: Card-in-Card
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'center',
 		gap: 10,
 	},
 	actionBtnText: {
-		fontSize: 15,
-		fontWeight: '800',
+		fontSize: 16,
+		fontWeight: '900', // Manifesto: Action Text
+		letterSpacing: 0.5,
 	},
 	prepSection: {
 		padding: 24,
-		borderRadius: 32,
+		borderRadius: 36, // Manifesto: Primary Artifact
 	},
 	widgetTitle: {
 		fontSize: 12,
@@ -349,14 +371,19 @@ const styles = StyleSheet.create({
 		fontWeight: '500',
 		lineHeight: 22,
 	},
-	cancelLink: {
+	cancelButton: {
 		marginTop: 32,
+		height: 60,
+		borderRadius: 24, // Manifesto: Card-in-Card
+		flexDirection: 'row',
 		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 10,
 	},
-	cancelLinkText: {
+	cancelButtonText: {
 		color: '#EF4444',
-		fontSize: 14,
-		fontWeight: '800',
-		textDecorationLine: 'underline',
+		fontSize: 16,
+		fontWeight: '900',
+		letterSpacing: 0.5,
 	}
 });

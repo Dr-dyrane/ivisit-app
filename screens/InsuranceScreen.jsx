@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	View,
 	Text,
@@ -8,10 +8,16 @@ import {
 	StyleSheet,
 	Platform,
 	Animated,
+	TouchableOpacity,
+	RefreshControl,
+	Alert,
+	LayoutAnimation,
+	UIManager,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -20,6 +26,145 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import InputModal from "../components/ui/InputModal";
+import Input from "../components/form/Input";
+import { insuranceService } from "../services/insuranceService";
+import { notificationDispatcher } from "../services/notificationDispatcher";
+import useSwipeGesture from "../utils/useSwipeGesture";
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === "android") {
+	if (UIManager.setLayoutAnimationEnabledExperimental) {
+		UIManager.setLayoutAnimationEnabledExperimental(true);
+	}
+}
+
+// --- THE IDENTITY ARTIFACT (POLICY CARD) ---
+const PolicyCard = ({ policy, isDarkMode, onEdit, onDelete }) => {
+	const [unmasked, setUnmasked] = useState(false);
+	const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
+	const mutedColor = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted;
+
+	const handlePress = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+		setUnmasked(!unmasked);
+	};
+
+	return (
+		<TouchableOpacity
+			activeOpacity={0.9}
+			onPress={handlePress}
+			style={[
+				styles.policyCard,
+				{
+					backgroundColor: isDarkMode ? "#0B0F1A" : "#FFFFFF",
+					shadowColor: unmasked ? COLORS.brandPrimary : "#000",
+					shadowOpacity: unmasked ? 0.2 : 0.08,
+					borderColor: unmasked ? COLORS.brandPrimary + "40" : "transparent",
+					borderWidth: unmasked ? 1 : 0,
+				},
+			]}
+		>
+			<View style={styles.cardHeader}>
+				<View style={styles.providerInfo}>
+					<Text
+						style={[styles.editorialSubtitle, { color: COLORS.brandPrimary }]}
+					>
+						PROVIDER
+					</Text>
+					<Text style={[styles.providerName, { color: textColor }]}>
+						{policy.provider_name}
+					</Text>
+				</View>
+				<View
+					style={[
+						styles.iconBox,
+						{ backgroundColor: COLORS.brandPrimary + "15" },
+					]}
+				>
+					<Ionicons
+						name={unmasked ? "eye-off" : "shield-checkmark"}
+						size={22}
+						color={COLORS.brandPrimary}
+					/>
+				</View>
+			</View>
+
+			<View
+				style={[
+					styles.dataWidget,
+					{
+						backgroundColor: isDarkMode
+							? "rgba(255,255,255,0.03)"
+							: "rgba(0,0,0,0.02)",
+					},
+				]}
+			>
+				<View>
+					<Text style={[styles.editorialSubtitle, { color: mutedColor }]}>
+						POLICY NUMBER
+					</Text>
+					<Text style={[styles.policyNumber, { color: textColor }]}>
+						{unmasked
+							? policy.policy_number
+							: `•••• •••• ${policy.policy_number.slice(-4)}`}
+					</Text>
+				</View>
+
+				{unmasked && policy.group_number && (
+					<View style={{ marginTop: 16 }}>
+						<Text style={[styles.editorialSubtitle, { color: mutedColor }]}>
+							GROUP
+						</Text>
+						<Text style={[styles.groupNumber, { color: textColor }]}>
+							{policy.group_number}
+						</Text>
+					</View>
+				)}
+			</View>
+
+			{!unmasked ? (
+				<Text style={[styles.hintText, { color: mutedColor }]}>
+					Tap to reveal details
+				</Text>
+			) : (
+				<View style={{ flexDirection: "row", gap: 12, marginTop: 24 }}>
+					<TouchableOpacity
+						onPress={() => onEdit(policy)}
+						style={{
+							flex: 1,
+							height: 44,
+							borderRadius: 14,
+							backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
+							alignItems: "center",
+							justifyContent: "center",
+						}}
+					>
+						<Text style={{ fontWeight: "700", color: textColor }}>Edit</Text>
+					</TouchableOpacity>
+					<TouchableOpacity
+						onPress={() => onDelete(policy.id)}
+						style={{
+							flex: 1,
+							height: 44,
+							borderRadius: 14,
+							backgroundColor: "rgba(239, 68, 68, 0.1)",
+							alignItems: "center",
+							justifyContent: "center",
+						}}
+					>
+						<Text style={{ fontWeight: "700", color: COLORS.error }}>
+							Remove
+						</Text>
+					</TouchableOpacity>
+				</View>
+			)}
+		</TouchableOpacity>
+	);
+};
+
+import { useFAB } from "../contexts/FABContext";
 
 export default function InsuranceScreen() {
 	const { isDarkMode } = useTheme();
@@ -29,8 +174,59 @@ export default function InsuranceScreen() {
 		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
+	const { registerFAB, unregisterFAB } = useFAB();
+
+	const colors = {
+		text: isDarkMode ? "#FFFFFF" : "#0F172A",
+		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+		card: isDarkMode ? "#0B0F1A" : "#FFFFFF",
+	};
+
+	const [policies, setPolicies] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [refreshing, setRefreshing] = useState(false);
+	const [showAddModal, setShowAddModal] = useState(false);
+	const [submitting, setSubmitting] = useState(false);
+
+	// Focus Flow State
+	const [step, setStep] = useState(0);
+
+	// Form State
+	const [formData, setFormData] = useState({
+		provider_name: "",
+		policy_number: "",
+		group_number: "",
+		policy_holder_name: "",
+	});
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
+
+	// FAB Registration
+	useFocusEffect(
+		useCallback(() => {
+			registerFAB("insurance-add", {
+				icon: "add",
+				onPress: () => setShowAddModal(true),
+				label: "Add Policy",
+			});
+
+			return () => {
+				unregisterFAB("insurance-add");
+			};
+		}, [registerFAB, unregisterFAB])
+	);
+
+	const fetchPolicies = useCallback(async () => {
+		try {
+			const data = await insuranceService.list();
+			setPolicies(data);
+		} catch (error) {
+			console.error("Failed to fetch policies:", error);
+		} finally {
+			setLoading(false);
+			setRefreshing(false);
+		}
+	}, []);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -39,13 +235,124 @@ export default function InsuranceScreen() {
 			setHeaderState({
 				title: "Insurance",
 				subtitle: "COVERAGE",
-				icon: <Ionicons name="shield-checkmark" size={26} color="#FFFFFF" />,
-				backgroundColor: COLORS.brandPrimary,
+				icon: (
+					<Ionicons name="shield-checkmark" size={26} color={colors.text} />
+				),
+				backgroundColor: colors.card,
 				leftComponent: backButton(),
-				rightComponent: null,
+				rightComponent: null, // Removed right component as per request to rely on FAB
 			});
-		}, [backButton, resetHeader, resetTabBar, setHeaderState])
+			fetchPolicies();
+		}, [backButton, resetHeader, resetTabBar, setHeaderState, fetchPolicies])
 	);
+	const canSave = () => {
+		if (step === 0) return formData.provider_name.trim().length >= 3;
+		if (step === 1) return formData.policy_number.trim().length >= 5;
+		return true;
+	};
+
+	const [shakeAnim] = useState(new Animated.Value(0));
+
+	const shake = () => {
+		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+		Animated.sequence([
+			Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
+			Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
+			Animated.timing(shakeAnim, { toValue: 8, duration: 60, useNativeDriver: true }),
+			Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
+			Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+		]).start();
+	};
+
+	const attemptNextStep = () => {
+		if (canSave()) {
+			transitionStep(step + 1);
+		} else {
+			shake();
+		}
+	};
+
+	const swipeHandlers = useSwipeGesture(
+		attemptNextStep, // Swipe Left -> Next (validated)
+		() => transitionStep(step - 1) // Swipe Right -> Back
+	);
+
+	const [editingId, setEditingId] = useState(null);
+
+	const handleEdit = (policy) => {
+		setFormData({
+			provider_name: policy.provider_name,
+			policy_number: policy.policy_number,
+			group_number: policy.group_number || "",
+			policy_holder_name: policy.policy_holder_name || "",
+		});
+		setEditingId(policy.id);
+		setShowAddModal(true);
+		setStep(0);
+	};
+
+	const handleDelete = async (id) => {
+		Alert.alert(
+			"Remove Policy",
+			"Are you sure you want to remove this insurance policy? This cannot be undone.",
+			[
+				{ text: "Cancel", style: "cancel" },
+				{
+					text: "Remove",
+					style: "destructive",
+					onPress: async () => {
+						try {
+							await insuranceService.delete(id);
+							await notificationDispatcher.dispatchInsuranceEvent("deleted", {
+								id,
+							});
+							Haptics.notificationAsync(
+								Haptics.NotificationFeedbackType.Success
+							);
+							await fetchPolicies();
+						} catch (error) {
+							Alert.alert("Error", "Failed to delete policy.");
+						}
+					},
+				},
+			]
+		);
+	};
+
+	const handleSubmit = async () => {
+		setSubmitting(true);
+		try {
+			if (editingId) {
+				await insuranceService.update(editingId, formData);
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			} else {
+				const newPolicy = await insuranceService.create(formData);
+				await notificationDispatcher.dispatchInsuranceEvent(
+					"created",
+					newPolicy
+				);
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			}
+
+			await fetchPolicies();
+			setShowAddModal(false);
+			setFormData({
+				provider_name: "",
+				policy_number: "",
+				group_number: "",
+				policy_holder_name: "",
+			});
+			setEditingId(null);
+			setStep(0);
+		} catch (error) {
+			Alert.alert(
+				"Error",
+				`Failed to ${editingId ? "update" : "add"} policy. Please try again.`
+			);
+		} finally {
+			setSubmitting(false);
+		}
+	};
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
@@ -78,12 +385,6 @@ export default function InsuranceScreen() {
 		? ["#121826", "#0B0F1A", "#121826"]
 		: ["#FFFFFF", "#F3E7E7", "#FFFFFF"];
 
-	const colors = {
-		text: isDarkMode ? "#FFFFFF" : "#0F172A",
-		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
-	};
-
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
 	const topPadding = STACK_TOP_PADDING;
@@ -99,6 +400,16 @@ export default function InsuranceScreen() {
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
+				refreshControl={
+					<RefreshControl
+						refreshing={refreshing}
+						onRefresh={() => {
+							setRefreshing(true);
+							fetchPolicies();
+						}}
+						tintColor={colors.text}
+					/>
+				}
 			>
 				<Animated.View
 					style={{
@@ -117,49 +428,361 @@ export default function InsuranceScreen() {
 							paddingHorizontal: 8,
 						}}
 					>
-						INSURANCE PROVIDERS
+						YOUR COVERAGE
 					</Text>
 
-					<View
-						style={{
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							padding: 24,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-					>
-						<Text
+					{policies.length === 0 && !loading ? (
+						<TouchableOpacity
+							onPress={() => setShowAddModal(true)}
 							style={{
-								fontSize: 22,
-								fontWeight: "900",
-								color: colors.text,
-								letterSpacing: -1.0,
+								backgroundColor: colors.card,
+								borderRadius: 36,
+								padding: 24,
+								shadowColor: isDarkMode ? "#000" : COLORS.brandPrimary,
+								shadowOffset: { width: 0, height: 8 },
+								shadowOpacity: isDarkMode ? 0.3 : 0.08,
+								shadowRadius: 16,
+								borderWidth: 0,
+								alignItems: "center",
 							}}
 						>
-							Link your coverage
-						</Text>
-						<Text
-							style={{
-								marginTop: 8,
-								fontSize: 14,
-								lineHeight: 20,
-								color: colors.textMuted,
-								fontWeight: "500",
-							}}
-						>
-							Store your insurance details so bookings and visits can surface expected
-							costs and required documents.
-						</Text>
-					</View>
+							<View
+								style={{
+									width: 80,
+									height: 80,
+									borderRadius: 24,
+									backgroundColor: COLORS.brandPrimary + "15",
+									alignItems: "center",
+									justifyContent: "center",
+									marginBottom: 20,
+								}}
+							>
+								<Ionicons
+									name="shield-checkmark"
+									size={40}
+									color={COLORS.brandPrimary}
+								/>
+							</View>
+
+							<Text
+								style={{
+									fontSize: 24,
+									fontWeight: "900",
+									color: colors.text,
+									letterSpacing: -1.0,
+									textAlign: "center",
+									marginBottom: 8,
+								}}
+							>
+								No Coverage Linked
+							</Text>
+							<Text
+								style={{
+									fontSize: 16,
+									lineHeight: 24,
+									color: colors.textMuted,
+									fontWeight: "500",
+									textAlign: "center",
+									marginBottom: 24,
+									paddingHorizontal: 12,
+								}}
+							>
+								Add your insurance details to automate billing and document
+								checks for your visits.
+							</Text>
+
+							<View
+								style={{
+									backgroundColor: COLORS.brandPrimary,
+									paddingHorizontal: 24,
+									paddingVertical: 14,
+									borderRadius: 18,
+									flexDirection: "row",
+									alignItems: "center",
+									gap: 8,
+									shadowColor: COLORS.brandPrimary,
+									shadowOffset: { width: 0, height: 4 },
+									shadowOpacity: 0.3,
+									shadowRadius: 8,
+								}}
+							>
+								<Ionicons name="add" size={20} color="#FFF" />
+								<Text
+									style={{ color: "#FFF", fontWeight: "900", fontSize: 15 }}
+								>
+									Link Policy
+								</Text>
+							</View>
+						</TouchableOpacity>
+					) : (
+						<View style={{ gap: 16 }}>
+							{policies.map((policy) => (
+								<PolicyCard
+									key={policy.id}
+									policy={policy}
+									isDarkMode={isDarkMode}
+									onEdit={handleEdit}
+									onDelete={handleDelete}
+								/>
+							))}
+						</View>
+					)}
 				</Animated.View>
 			</ScrollView>
+
+			{/* --- THE FOCUS FLOW MODAL --- */}
+			<InputModal
+				visible={showAddModal}
+				onClose={() => {
+					setShowAddModal(false);
+					setEditingId(null);
+					setStep(0);
+				}}
+				title={
+					editingId
+						? "Update Policy"
+						: step === 0
+						? "Insurance Provider"
+						: step === 1
+						? "Policy Details"
+						: "Finalize"
+				}
+				primaryAction={
+					step === 2 ? handleSubmit : () => transitionStep(step + 1)
+				}
+				primaryActionLabel={
+					step === 2 ? (editingId ? "Save Changes" : "Link Identity") : "Next"
+				}
+				disabled={
+					(step === 0 && formData.provider_name.length < 3) ||
+					(step === 1 && formData.policy_number.length < 5)
+				}
+				secondaryAction={
+					step > 0
+						? () => transitionStep(step - 1)
+						: () => {
+								setShowAddModal(false);
+								setEditingId(null);
+						  }
+				}
+				secondaryActionLabel={step > 0 ? "Back" : "Cancel"}
+			>
+				{/* Progress Vital Signal */}
+				<View style={styles.vitalTrack}>
+					<View
+						style={[styles.vitalFill, { width: `${((step + 1) / 3) * 100}%` }]}
+					/>
+					<View
+						style={[styles.vitalPlow, { left: `${((step + 1) / 3) * 100}%` }]}
+					/>
+				</View>
+
+				<View style={styles.stepContainer} {...swipeHandlers}>
+					{step === 0 && (
+						<View>
+							<Input
+								label="Who is your provider?"
+								placeholder="e.g. Aetna"
+								value={formData.provider_name}
+								onChangeText={(t) =>
+									setFormData((prev) => ({ ...prev, provider_name: t }))
+								}
+								icon="business"
+								autoFocus
+								returnKeyType="next"
+								onSubmitEditing={() => transitionStep(1)}
+							/>
+						</View>
+					)}
+
+					{step === 1 && (
+						<View style={{ gap: 16 }}>
+							<Input
+								label="What is your Policy Number?"
+								placeholder="000-000-000"
+								value={formData.policy_number}
+								onChangeText={(t) =>
+									setFormData((prev) => ({ ...prev, policy_number: t }))
+								}
+								icon="card"
+								autoFocus
+								onSubmitEditing={() => transitionStep(2)}
+								keyboardType="numeric"
+							/>
+							<Input
+								label="Group Number (Optional)"
+								placeholder="e.g. GRP-999"
+								value={formData.group_number}
+								onChangeText={(text) =>
+									setFormData((prev) => ({ ...prev, group_number: text }))
+								}
+								icon="people"
+								keyboardType="numeric"
+							/>
+						</View>
+					)}
+
+					{step === 2 && (
+						<View style={{ gap: 24 }}>
+							<View
+								style={{
+									backgroundColor: isDarkMode
+										? "rgba(255,255,255,0.05)"
+										: "#F8FAFC",
+									padding: 24,
+									borderRadius: 24,
+									alignItems: "center",
+									gap: 12,
+								}}
+							>
+								<Text
+									style={{
+										fontSize: 12,
+										fontWeight: "800",
+										color: colors.textMuted,
+										letterSpacing: 1,
+										textTransform: "uppercase",
+									}}
+								>
+									CONFIRM DETAILS
+								</Text>
+								<Text
+									style={{
+										fontSize: 28,
+										fontWeight: "900",
+										color: colors.text,
+										textAlign: "center",
+									}}
+								>
+									{formData.provider_name}
+								</Text>
+								<View
+									style={{
+										backgroundColor: COLORS.brandPrimary + "20",
+										paddingHorizontal: 16,
+										paddingVertical: 8,
+										borderRadius: 12,
+									}}
+								>
+									<Text
+										style={{
+											fontSize: 18,
+											fontWeight: "700",
+											color: COLORS.brandPrimary,
+											fontFamily:
+												Platform.OS === "ios" ? "Courier" : "monospace",
+										}}
+									>
+										{formData.policy_number}
+									</Text>
+								</View>
+							</View>
+
+							<Input
+								label="Policy Holder (Optional)"
+								placeholder="Full Name"
+								value={formData.policy_holder_name}
+								onChangeText={(text) =>
+									setFormData((prev) => ({ ...prev, policy_holder_name: text }))
+								}
+								icon="person"
+							/>
+						</View>
+					)}
+				</View>
+			</InputModal>
 		</LinearGradient>
 	);
 }
 
 const styles = StyleSheet.create({
-	container: { flex: 1 },
+	policyCard: {
+		borderRadius: 36, // Manifesto: Primary Artifact
+		padding: 24,
+		shadowOffset: { width: 0, height: 10 },
+		shadowRadius: 20,
+		elevation: 5,
+		marginBottom: 8,
+	},
+	cardHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "flex-start",
+		marginBottom: 20,
+	},
+	providerInfo: {
+		flex: 1,
+		marginRight: 16,
+	},
+	editorialSubtitle: {
+		fontSize: 10,
+		fontWeight: "800",
+		letterSpacing: 1.5,
+		textTransform: "uppercase",
+		marginBottom: 4,
+	},
+	providerName: {
+		fontSize: 22,
+		fontWeight: "900",
+		letterSpacing: -0.5,
+	},
+	iconBox: {
+		width: 48,
+		height: 48,
+		borderRadius: 16,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	dataWidget: {
+		borderRadius: 24,
+		padding: 20,
+	},
+	policyNumber: {
+		fontSize: 18,
+		fontWeight: "700",
+		fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+		marginTop: 4,
+	},
+	groupNumber: {
+		fontSize: 16,
+		fontWeight: "600",
+		marginTop: 4,
+	},
+	hintText: {
+		fontSize: 11,
+		fontWeight: "600",
+		textAlign: "center",
+		marginTop: 16,
+		opacity: 0.6,
+	},
+	// Progress Line inside Modal
+	vitalTrack: {
+		height: 4,
+		backgroundColor: "rgba(0,0,0,0.05)",
+		borderRadius: 2,
+		marginBottom: 24,
+		position: "relative",
+	},
+	vitalFill: {
+		height: "100%",
+		backgroundColor: COLORS.brandPrimary,
+		borderRadius: 2,
+	},
+	vitalPlow: {
+		position: "absolute",
+		top: -4,
+		width: 12,
+		height: 12,
+		borderRadius: 6,
+		backgroundColor: COLORS.brandPrimary,
+		borderWidth: 3,
+		borderColor: "#FFF",
+		shadowColor: COLORS.brandPrimary,
+		shadowOpacity: 0.5,
+		shadowRadius: 5,
+	},
+	stepContainer: {
+		minHeight: 180,
+		justifyContent: "center",
+	},
 });

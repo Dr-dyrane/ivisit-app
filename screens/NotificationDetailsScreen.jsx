@@ -95,6 +95,11 @@ const NotificationDetailsScreen = () => {
 			navigateToHelpSupport({ router, ticketId: actionData?.ticketId });
 			return;
 		}
+
+		if (actionType === "view_insurance") {
+			navigateToMore({ router, screen: 'insurance' });
+			return;
+		}
 	}, [notification, router, setMode]);
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);

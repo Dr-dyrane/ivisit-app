@@ -63,7 +63,8 @@ const ProfileField = ({
 		bg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
 		text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
 		label: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
-		border: isFocused ? COLORS.brandPrimary : "transparent",
+		// Manifesto: No borders. Focus is handled by active glow (shadow) + bg tint
+		activeBg: isDarkMode ? `${COLORS.brandPrimary}15` : "#FFFFFF", 
 	};
 
 	return (
@@ -79,17 +80,18 @@ const ProfileField = ({
 				onPressOut={handlePressOut}
 				style={({ pressed }) => [
 					{
-						backgroundColor: colors.bg,
-						borderRadius: 24,
-						borderWidth: isFocused ? 2 : 0,
-						borderColor: colors.border,
+						backgroundColor: isFocused ? colors.activeBg : colors.bg,
+						borderRadius: 24, // Manifesto: Card-in-Card
+						borderWidth: 0, // Manifesto: Border-Free
 						padding: 16,
 						flexDirection: "row",
 						alignItems: "center",
-						shadowColor: isFocused ? COLORS.brandPrimary : "transparent",
-						shadowOffset: { width: 0, height: 4 },
-						shadowOpacity: 0.2,
-						shadowRadius: 8,
+						// Manifesto: Active Glow
+						shadowColor: isFocused ? COLORS.brandPrimary : "#000",
+						shadowOffset: { width: 0, height: isFocused ? 8 : 4 },
+						shadowOpacity: isFocused ? 0.15 : 0.02,
+						shadowRadius: isFocused ? 12 : 8,
+						elevation: isFocused ? 4 : 0,
 						transform: [{ scale: pressed ? 0.98 : 1 }],
 					}
 				]}

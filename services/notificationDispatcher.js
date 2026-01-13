@@ -268,6 +268,51 @@ export const notificationDispatcher = {
     },
 
     /**
+     * Dispatch insurance-related notifications
+     * @param {string} event - 'created' | 'updated' | 'deleted'
+     * @param {Object} data - Insurance policy data
+     * @returns {Promise<Object>} Created notification
+     */
+    async dispatchInsuranceEvent(event, data) {
+        let title = "";
+        let message = "";
+        let priority = NOTIFICATION_PRIORITY.NORMAL;
+
+        switch (event) {
+            case 'created':
+                title = "Insurance Linked";
+                message = `Your ${data.provider_name} policy has been successfully linked.`;
+                priority = NOTIFICATION_PRIORITY.NORMAL;
+                break;
+
+            case 'updated':
+                title = "Insurance Updated";
+                message = `Your ${data.provider_name} policy details have been updated.`;
+                priority = NOTIFICATION_PRIORITY.NORMAL;
+                break;
+
+            case 'deleted':
+                title = "Insurance Removed";
+                message = `The ${data.provider_name} policy has been removed from your profile.`;
+                priority = NOTIFICATION_PRIORITY.LOW;
+                break;
+
+            default:
+                console.warn(`[notificationDispatcher] Unknown insurance event: ${event}`);
+                return;
+        }
+
+        return this.dispatchNotification({
+            type: NOTIFICATION_TYPES.SYSTEM,
+            priority,
+            title,
+            message,
+            actionType: 'view_insurance',
+            actionData: { policyId: data.id },
+        });
+    },
+
+    /**
      * Legacy method for backward compatibility with EmergencyContext
      * @deprecated Use dispatchEmergencyEvent instead
      */

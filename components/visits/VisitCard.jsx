@@ -190,21 +190,27 @@ const styles = StyleSheet.create({
   statText: { fontSize: 12, fontWeight: "700" },
   actionContainer: { flexDirection: "row", gap: 12, marginTop: 20 },
   deleteSquircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 20,
-    backgroundColor: "rgba(134, 16, 14, 0.1)",
+    width: 60,
+    height: 60,
+    borderRadius: 24, // Manifesto: Card-in-Card
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
   primaryAction: {
     flex: 1,
-    height: 54,
-    borderRadius: 20,
+    height: 60,
+    borderRadius: 24, // Manifesto: Card-in-Card
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+    // Manifesto: Active Glow
+    shadowColor: COLORS.brandPrimary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  actionText: { color: COLORS.textLight, fontSize: 15, fontWeight: "800" },
+  actionText: { color: COLORS.textLight, fontSize: 16, fontWeight: "900", letterSpacing: 0.5 },
 });

@@ -54,7 +54,7 @@ const MoreScreen = () => {
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB, unregisterFAB } = useFAB();
 	
-	const [devModeVisible, setDevModeVisible] = useState(__DEV__);
+	const [devModeVisible, setDevModeVisible] = useState(false);
 	const [tapCount, setTapCount] = useState(0);
 	const lastTapRef = useRef(0);
 

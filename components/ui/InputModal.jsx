@@ -48,11 +48,10 @@ export default function InputModal({
   }, [visible]);
 
   const colors = {
-    bg: isDarkMode ? "#1E293B" : "#FFFFFF",
+    bg: isDarkMode ? "#0B0F1A" : "#FFFFFF",
     text: isDarkMode ? "#FFFFFF" : "#0F172A",
     textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-    overlay: isDarkMode ? "rgba(0,0,0,0.7)" : "rgba(0,0,0,0.4)",
-    border: isDarkMode ? "#334155" : "#E2E8F0",
+    overlay: isDarkMode ? "rgba(0,0,0,0.85)" : "rgba(255,255,255,0.85)", // Manifesto: Glass blur overlay
   };
 
   if (!visible) return null;
@@ -67,6 +66,13 @@ export default function InputModal({
     >
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+          {Platform.OS === 'ios' && (
+            <BlurView 
+              intensity={20} 
+              tint={isDarkMode ? 'dark' : 'light'} 
+              style={StyleSheet.absoluteFill} 
+            />
+          )}
           <TouchableWithoutFeedback>
             <KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
               <View style={styles.centeredContainer}>
@@ -80,7 +86,7 @@ export default function InputModal({
                   ]}
                 >
                   {/* Header */}
-                  <View style={[styles.header, { borderBottomColor: colors.border }]}>
+                  <View style={styles.header}>
                     <Text style={[styles.title, { color: colors.text }]}>
                       {title}
                     </Text>
@@ -89,7 +95,16 @@ export default function InputModal({
                       style={styles.closeButton}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <Ionicons name="close" size={24} color={colors.textMuted} />
+                      <View style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 12,
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <Ionicons name="close" size={18} color={colors.text} />
+                      </View>
                     </TouchableOpacity>
                   </View>
 
@@ -101,7 +116,7 @@ export default function InputModal({
                   </ScrollView>
 
                   {/* Footer */}
-                  <View style={[styles.footer, { borderTopColor: colors.border }]}>
+                  <View style={styles.footer}>
                     {secondaryAction && (
                       <TouchableOpacity
                         style={[styles.button, styles.secondaryButton]}
@@ -121,7 +136,15 @@ export default function InputModal({
                       style={[
                         styles.button,
                         styles.primaryButton,
-                        { opacity: disabled || loading ? 0.7 : 1 }
+                        { 
+                          opacity: disabled || loading ? 0.7 : 1,
+                          backgroundColor: COLORS.brandPrimary,
+                          shadowColor: COLORS.brandPrimary,
+                          shadowOffset: { width: 0, height: 8 },
+                          shadowOpacity: 0.3,
+                          shadowRadius: 12,
+                          elevation: 8,
+                        }
                       ]}
                       onPress={() => {
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -159,42 +182,48 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    borderRadius: 24,
+    borderRadius: 36, // Manifesto: Primary Artifact (Extreme Squircle)
     width: "100%",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 5,
+    shadowRadius: 32,
+    elevation: 24,
     overflow: "hidden",
+    borderWidth: 0, // Manifesto: Border-Free
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 20,
-    borderBottomWidth: 1,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 8,
+    borderBottomWidth: 0, // Manifesto: Border-Free
   },
   title: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 12,
+    fontWeight: "900", // Manifesto: Action Text
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    opacity: 0.7
   },
   closeButton: {
     padding: 4,
   },
   body: {
-    padding: 20,
+    padding: 24,
   },
   footer: {
     flexDirection: "row",
-    padding: 20,
-    borderTopWidth: 1,
-    gap: 12,
+    padding: 24,
+    borderTopWidth: 0, // Manifesto: Border-Free
+    gap: 16,
   },
   button: {
     flex: 1,
-    height: 48,
-    borderRadius: 14,
+    height: 56, // Manifesto: Larger touch target
+    borderRadius: 20, // Manifesto: Card-in-Card
     alignItems: "center",
     justifyContent: "center",
   },
@@ -202,10 +231,11 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   primaryButton: {
-    backgroundColor: COLORS.brandPrimary,
+    // Style handled inline for dynamic props
   },
   buttonText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "800", // Manifesto: Action Text
+    letterSpacing: 0.5,
   },
 });

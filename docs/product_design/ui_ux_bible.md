@@ -1,6 +1,6 @@
 # iVisit UI / UX Design System
 
-**Version 1.1 — Living Document**
+**Version 1.2 — Living Document**
 
 ---
 
@@ -220,6 +220,7 @@ Glass should feel OS-native, not screen-furniture.
 | Toggle success    | Notification success |
 | Navigation        | Selection            |
 | Swipe / secondary | Light impact         |
+| Reveal / Unmask   | Light impact (Tactile)|
 
 Never stack haptics. Never vibrate without meaning.
 
@@ -311,66 +312,87 @@ Every new component must:
 * **Performance**: Optimize for speed and memory.
 * **Accessibility**: Ensure all users can use the component.
 
-To replicate this specific "Premium Minimalist" aesthetic, you need to provide the AI with a set of Design Tokens and Geometric Rules.
+---
+
+## 14. Digital Medical Vault & Progressive Disclosure
+
+To build a "delicate" flow that feels more like a **Digital Medical Vault** than a form, we move away from standard form logic and embrace **Progressive Disclosure** and **Identity Artifacts**.
+
+### 14.1 Identity Artifacts (The "Vault" Aesthetic)
+
+Instead of a list, treat sensitive data (Insurance, ID, Cards) like physical objects in a high-end wallet.
+
+*   **Touch to Reveal:** Sensitive numbers are masked by default (e.g., `•••• 1234`). Only reveal the full number on a deliberate interaction.
+*   **The Glow:** Use a bioluminescent shadow (`shadowColor: COLORS.brandPrimary`) specifically when a card is interacted with or "active".
+*   **Monospace Stability:** When unmasking numbers, use a Monospace font (Courier/Menlo) to prevent layout shifts/jitter.
+
+### 14.2 Focus Flow (The "Wizard" Pattern)
+
+Avoid long, scrolling forms. Use a "One-Input Focus" flow to make data entry feel seamless and conversational.
+
+*   **Auto-Advance:** When a user types a valid entry and hits "Enter/Next" on the keyboard, the UI automatically slides to the next question.
+*   **The Vital Signal:** Use a thin, high-contrast progress line at the top of the modal to show completion (e.g., 33% -> 66% -> 100%).
+*   **Keyboard Transitions:** Use `LayoutAnimation.easeInEaseOut` when switching steps to make the modal "morph" rather than abruptly snap.
+
+### 14.3 Micro-Interactions for Vault Items
+
+*   **Reveal Haptics:** Use `Haptics.ImpactFeedbackStyle.Light` when unmasking to make the glass feel "real" and tactile.
+*   **Success Haptics:** Use `Haptics.NotificationFeedbackType.Success` only when an item is finally linked/saved.
+*   **Visual Unmasking:** The reveal should be instant but smooth, often accompanied by a subtle border color change to indicate "open" state.
+
+---
+
+## 15. The "Premium Minimalist" Prompt Guide
+
+To replicate this specific "Premium Medical-Glass" aesthetic, you need to provide the AI with a set of Design Tokens and Geometric Rules.
 
 If you were to prompt another model (like GPT-4o, Claude 3.5, or a developer), use the following "Design Specification Prompt."
 
-The "Premium Medical-Glass" Prompt
+### The "Premium Medical-Glass" Prompt
 
 "Design a React Native component following a Premium Medical-Glass aesthetic. Follow these 5 strict pillars:"
 
-1. Extreme Squircle Geometry
+**1. Extreme Squircle Geometry**
 
 The Rule: Avoid standard rounding. Use an aggressive corner radius.
 
 Specifics: Container borderRadius must be 32pt to 36pt. Inner elements (images/buttons) must use 20pt to 28pt. This creates a "nested bubble" look that feels organic and high-end.
 
-2. Border-Free Depth (The Shadow Logic)
+**2. Border-Free Depth (The Shadow Logic)**
 
 The Rule: Never use borderWidth. Depth must be achieved through Background Color Shifting and Multi-Layered Shadows.
 
-iOS Shadow: shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.08, shadowRadius: 16.
+iOS Shadow: `shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.08, shadowRadius: 16`.
 
-Active State: When selected, change the shadow color to the brandPrimary color with 0.2 opacity and increase elevation.
+Active State: When selected, change the shadow color to the `brandPrimary` color with 0.2 opacity and increase elevation.
 
-3. Layered Glassmorphism (Alpha-Blending)
+**3. Layered Glassmorphism (Alpha-Blending)**
 
 The Rule: Use "Ghost Tints" instead of solid colors.
 
-Selected State: Don't use a new color; use the PrimaryColor + "15" (15% alpha) or PrimaryColor + "20".
+Selected State: Don't use a new color; use the `PrimaryColor` + "15" (15% alpha) or `PrimaryColor` + "20".
 
-Unselected State: Use high-neutral slates with very low opacity: rgba(255,255,255,0.05) for Dark Mode and rgba(0,0,0,0.03) for Light Mode. This allows the background to "breath" through the card.
+Unselected State: Use high-neutral slates with very low opacity: `rgba(255,255,255,0.05)` for Dark Mode and `rgba(0,0,0,0.03)` for Light Mode. This allows the background to "breath" through the card.
 
-4. The "Floating Hero" Layout
+**4. The "Floating Hero" Layout**
 
 The Rule: Every card is a vertical story, not a list item.
 
 Hierarchy:
+*   Top: Large Image or Icon (The Hero).
+*   Floating: Use `position: 'absolute'` badges for Price and Status over the Hero image.
+*   Content: Heavy vertical padding (`padding: 24`).
+*   Meta: Use "Pills" (small capsule shapes) for secondary data like ETA or Distance.
 
-Top: Large Image or Icon (The Hero).
-
-Floating: Use position: 'absolute' badges for Price and Status over the Hero image.
-
-Content: Heavy vertical padding (padding: 24).
-
-Meta: Use "Pills" (small capsule shapes) for secondary data like ETA or Distance.
-
-5. The "Corner Seal" Signature
+**5. The "Corner Seal" Signature**
 
 The Rule: Confirm selection using a bottom-right anchor.
 
-Specifics: The selection checkmark must be positioned at bottom: -4, right: -4. This "breaks" the container boundary slightly, making the UI feel 3D and modern rather than flat and trapped inside a box.
+Specifics: The selection checkmark must be positioned at `bottom: -4, right: -4`. This "breaks" the container boundary slightly, making the UI feel 3D and modern rather than flat and trapped inside a box.
 
-Technical Secrets I used to get that "Smoothness":
+### Technical Secrets for "Smoothness":
 
-Letter Spacing: I used letterSpacing: -0.5 on titles. High-end UI (like Apple's) always tightens the kerning on large titles to make them look more "editorial."
-
-Scale Feedback: Every Pressable uses transform: [{ scale: 0.98 }]. This micro-interaction makes the glass card feel like it’s physically being pressed into the screen.
-
-Pill Contrast: The metadata "Pills" use a slightly different background than the card itself (usually a solid white or a slightly darker slate). This creates internal depth—layers within layers.
-
-Shadow Coloring: Notice that for the selected state, I used shadowColor: COLORS.brandPrimary. Most designers use black shadows for everything. Using a colored shadow makes the card look like it is glowing/emitting light, which is a hallmark of premium "Glass" design.
-
-How to prompt for the Hospital Card specifically:
-
-"Create a Hospital Card with a Vertical Hero Layout. The image should be 150px tall with a 28px radius. Place a price badge in the top right and a verified badge in the top left, both floating over the image. Below the image, use a Title with -0.5 letter spacing. Under the title, place two horizontal 'Stat Pills' for distance and wait time. If selected, a checkmark should overlap the bottom-right corner and the entire card should glow with a subtle primary-colored shadow."
+*   **Letter Spacing:** `letterSpacing: -0.5` on titles. High-end UI (like Apple's) always tightens the kerning on large titles to make them look more "editorial."
+*   **Scale Feedback:** Every Pressable uses `transform: [{ scale: 0.98 }]`. This micro-interaction makes the glass card feel like it’s physically being pressed into the screen.
+*   **Pill Contrast:** The metadata "Pills" use a slightly different background than the card itself (usually a solid white or a slightly darker slate). This creates internal depth—layers within layers.
+*   **Shadow Coloring:** Notice that for the selected state, I used `shadowColor: COLORS.brandPrimary`. Most designers use black shadows for everything. Using a colored shadow makes the card look like it is glowing/emitting light, which is a hallmark of premium "Glass" design.

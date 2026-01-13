@@ -451,33 +451,69 @@ const NotificationsScreen = () => {
 					</View>
 				) : hasNotifications ? (
 					<Animated.View style={{ opacity: fadeAnim }}>
-						{filteredNotifications.map((notification) => (
-							<NotificationCard
-								key={notification.id}
-								notification={notification}
-								onPress={handleNotificationPress}
-								onMarkRead={markAsRead}
-								onDelete={deleteNotification}
-								isSelectMode={isSelectMode}
-								isSelected={selectedNotifications.has(notification.id)}
-								onToggleSelection={toggleNotificationSelection}
-							/>
-						))}
+						{/* Group notifications by date sections */}
+						{filteredNotifications.map((notification, index) => {
+							const showDateHeader = index === 0 || 
+								new Date(notification.timestamp).toDateString() !== 
+								new Date(filteredNotifications[index - 1].timestamp).toDateString();
+								
+							return (
+								<View key={notification.id}>
+									{showDateHeader && (
+										<Text style={{
+											fontSize: 10,
+											fontWeight: '800',
+											color: colors.textMuted,
+											letterSpacing: 1.5,
+											textTransform: 'uppercase',
+											marginTop: index === 0 ? 0 : 24,
+											marginBottom: 12,
+											marginLeft: 8
+										}}>
+											{new Date(notification.timestamp).toLocaleDateString(undefined, {
+												weekday: 'long',
+												month: 'short',
+												day: 'numeric'
+											})}
+										</Text>
+									)}
+									<NotificationCard
+										notification={notification}
+										onPress={handleNotificationPress}
+										onMarkRead={markAsRead}
+										onDelete={deleteNotification}
+										isSelectMode={isSelectMode}
+										isSelected={selectedNotifications.has(notification.id)}
+										onToggleSelection={toggleNotificationSelection}
+									/>
+								</View>
+							);
+						})}
 					</Animated.View>
 				) : (
 					<View style={[styles.emptyState, { backgroundColor: colors.card }]}>
-						<Ionicons
-							name="notifications-off-outline"
-							size={64}
-							color={COLORS.brandPrimary}
-						/>
+						<View style={{
+							width: 120,
+							height: 120,
+							borderRadius: 40, // Nested Squircle
+							backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+							alignItems: 'center',
+							justifyContent: 'center',
+							marginBottom: 24,
+						}}>
+							<Ionicons
+								name="notifications-off-outline"
+								size={48}
+								color={isDarkMode ? COLORS.textMutedDark : COLORS.textMuted}
+							/>
+						</View>
 						<Text style={[styles.emptyTitle, { color: colors.text }]}>
-							No Notifications
+							All Caught Up
 						</Text>
-						<Text style={[styles.emptyText, { color: colors.textMuted }]}>
+						<Text style={[styles.emptyText, { color: colors.textMuted, maxWidth: 240 }]}>
 							{filter === "unread"
-								? "You're all caught up!"
-								: "No notifications to display"}
+								? "You have no unread alerts. We'll notify you when important updates arrive."
+								: "Your notification center is empty. Records of your visits and alerts will appear here."}
 						</Text>
 					</View>
 				)}

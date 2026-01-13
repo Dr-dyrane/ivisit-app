@@ -122,7 +122,11 @@ export function navigateToNotificationDetails({ router, notificationId, method =
 	nav(router, method, ROUTES.STACK_NOTIFICATION_DETAILS(notificationId));
 }
 
-export function navigateToMore({ router, method = "push" }) {
+export function navigateToMore({ router, method = "push", screen }) {
+	if (screen === "insurance") {
+		nav(router, method, "/(user)/(stacks)/insurance");
+		return;
+	}
 	nav(router, method, ROUTES.STACK_MORE);
 }
 

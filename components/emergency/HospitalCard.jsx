@@ -138,7 +138,7 @@ export default function HospitalCard({
 							style={({ pressed }) => [
 								styles.callButton,
 								{
-									backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
+									backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
 									opacity: pressed ? 0.8 : 1,
 									transform: [{ scale: pressed ? 0.95 : 1 }]
 								}
@@ -146,13 +146,13 @@ export default function HospitalCard({
 						>
 							<Ionicons 
 								name="call" 
-								size={18} 
+								size={20} 
 								color={isDarkMode ? "#FFFFFF" : "#64748B"} 
 							/>
 						</Pressable>
 					)}
 
-					{/* Main Request CTA */}
+					{/* Main Request CTA - Manifesto: Card-in-Card (24px) */}
 					<Pressable onPress={handleCallPress} style={[styles.primaryAction, !hospitalPhone && styles.primaryActionFull]}>
 						<View style={styles.actionLeft}>
 							<Fontisto
@@ -279,13 +279,18 @@ const styles = StyleSheet.create({
 	},
 	primaryAction: {
 		backgroundColor: COLORS.brandPrimary,
-		height: 54,
-		borderRadius: 20,
+		height: 64, // Manifesto: Larger touch target
+		borderRadius: 24, // Manifesto: Card-in-Card
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
-		paddingHorizontal: 20,
+		paddingHorizontal: 24,
 		flex: 1,
+		shadowColor: COLORS.brandPrimary, // Manifesto: Active Glow
+		shadowOffset: { width: 0, height: 8 },
+		shadowOpacity: 0.3,
+		shadowRadius: 12,
+		elevation: 8,
 	},
 	actionLeft: {
 		flexDirection: "row",
@@ -294,25 +299,23 @@ const styles = StyleSheet.create({
 	},
 	actionText: {
 		color: "#FFFFFF",
-		fontSize: 15,
-		fontWeight: "800",
+		fontSize: 16, // Manifesto: Larger text
+		fontWeight: "900", // Manifesto: Action Text
+		letterSpacing: 0.5,
 	},
 	actionRow: {
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 12,
+		gap: 16,
+		marginTop: 8,
 	},
 	callButton: {
-		width: 54,
-		height: 54,
-		borderRadius: 27,
+		width: 64, // Matching height
+		height: 64,
+		borderRadius: 32, // Circular
 		alignItems: "center",
 		justifyContent: "center",
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
-		elevation: 2,
+		// No border, just background
 	},
 	primaryActionFull: {
 		flex: 1,

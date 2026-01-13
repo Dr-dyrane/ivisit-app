@@ -8,11 +8,10 @@ import {
 	StyleSheet,
 	Platform,
 	Pressable,
-	Modal,
 	Animated,
-	TextInput,
 	ActivityIndicator,
-    KeyboardAvoidingView,
+    LayoutAnimation,
+    UIManager
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -29,6 +28,16 @@ import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import * as Haptics from "expo-haptics";
 import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
 import { useToast } from "../contexts/ToastContext";
+import InputModal from "../components/ui/InputModal";
+import Input from "../components/form/Input";
+import useSwipeGesture from "../utils/useSwipeGesture";
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
 
 export default function EmergencyContactsScreen() {
 	const { isDarkMode } = useTheme();
@@ -42,6 +51,82 @@ export default function EmergencyContactsScreen() {
 	const { showToast } = useToast();
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
+
+    // Focus Flow State
+    const [step, setStep] = useState(0);
+
+	const {
+		contacts,
+		isLoading,
+		refreshContacts,
+		addContact,
+		updateContact,
+		removeContact,
+	} = useEmergencyContacts();
+    
+	const [isModalVisible, setIsModalVisible] = useState(false);
+	const [editingId, setEditingId] = useState(null);
+    const [formData, setFormData] = useState({
+        name: "",
+        relationship: "",
+        phone: "",
+        email: ""
+    });
+	const [isSaving, setIsSaving] = useState(false);
+
+    const transitionStep = (newStep) => {
+        if (newStep < 0 || newStep > 2) return;
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setStep(newStep);
+    };
+
+    const swipeHandlers = useSwipeGesture(
+        () => transitionStep(step + 1), // Swipe Left -> Next
+        () => transitionStep(step - 1)  // Swipe Right -> Back
+    );
+
+	const openCreate = useCallback(() => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		setEditingId(null);
+        setFormData({ name: "", relationship: "", phone: "", email: "" });
+        setStep(0);
+		setIsModalVisible(true);
+	}, []);
+
+	const openEdit = useCallback((contact) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		setEditingId(contact?.id ? String(contact.id) : null);
+        setFormData({
+            name: typeof contact?.name === "string" ? contact.name : "",
+            relationship: typeof contact?.relationship === "string" ? contact.relationship : "",
+            phone: typeof contact?.phone === "string" ? contact.phone : "",
+            email: typeof contact?.email === "string" ? contact.email : ""
+        });
+        setStep(0);
+		setIsModalVisible(true);
+	}, []);
+
+    const handleSave = useCallback(async () => {
+		setIsSaving(true);
+		try {
+			if (editingId) {
+				await updateContact(editingId, formData);
+				showToast("Contact updated successfully", "success");
+			} else {
+				await addContact(formData);
+				showToast("Contact added successfully", "success");
+			}
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			setIsModalVisible(false);
+		} catch (e) {
+			const msg = e?.message?.split("|")?.[1] || e?.message || "Unable to save contact";
+			showToast(msg, "error");
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+		} finally {
+			setIsSaving(false);
+		}
+	}, [editingId, formData, addContact, updateContact, showToast]);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -117,25 +202,6 @@ export default function EmergencyContactsScreen() {
 	const bottomPadding = tabBarHeight + 20;
 	const topPadding = STACK_TOP_PADDING;
 
-	const {
-		contacts,
-		isLoading,
-		refreshContacts,
-		addContact,
-		updateContact,
-		removeContact,
-	} = useEmergencyContacts();
-	const [isModalVisible, setIsModalVisible] = useState(false);
-	const [editingId, setEditingId] = useState(null);
-	const [name, setName] = useState("");
-	const [relationship, setRelationship] = useState("");
-	const [phone, setPhone] = useState("");
-	const [email, setEmail] = useState("");
-	const [error, setError] = useState(null);
-	const [isSaving, setIsSaving] = useState(false);
-
-	const shakeAnim = useRef(new Animated.Value(0)).current;
-
 	const refresh = useCallback(async () => {
 		refreshContacts();
 	}, [refreshContacts]);
@@ -143,150 +209,6 @@ export default function EmergencyContactsScreen() {
 	useEffect(() => {
 		refresh();
 	}, [refresh]);
-
-	const openCreate = useCallback(() => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		setEditingId(null);
-		setName("");
-		setRelationship("");
-		setPhone("");
-		setEmail("");
-		setError(null);
-		setIsModalVisible(true);
-	}, []);
-
-	const openEdit = useCallback((contact) => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		setEditingId(contact?.id ? String(contact.id) : null);
-		setName(typeof contact?.name === "string" ? contact.name : "");
-		setRelationship(
-			typeof contact?.relationship === "string" ? contact.relationship : ""
-		);
-		setPhone(typeof contact?.phone === "string" ? contact.phone : "");
-		setEmail(typeof contact?.email === "string" ? contact.email : "");
-		setError(null);
-		setIsModalVisible(true);
-	}, []);
-
-	const closeModal = useCallback(() => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		setIsModalVisible(false);
-	}, []);
-
-	const shake = useCallback(() => {
-		Animated.sequence([
-			Animated.timing(shakeAnim, {
-				toValue: 10,
-				duration: 60,
-				useNativeDriver: true,
-			}),
-			Animated.timing(shakeAnim, {
-				toValue: -10,
-				duration: 60,
-				useNativeDriver: true,
-			}),
-			Animated.timing(shakeAnim, {
-				toValue: 8,
-				duration: 60,
-				useNativeDriver: true,
-			}),
-			Animated.timing(shakeAnim, {
-				toValue: -8,
-				duration: 60,
-				useNativeDriver: true,
-			}),
-			Animated.timing(shakeAnim, {
-				toValue: 0,
-				duration: 60,
-				useNativeDriver: true,
-			}),
-		]).start();
-	}, [shakeAnim]);
-
-	const canSave = useMemo(() => {
-		const nameValid = name.trim().length >= 2;
-		const phoneValid = phone.trim().length === 0 || /^\+?[\d\s\-\(\)]+$/.test(phone.trim());
-		const emailValid = email.trim().length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-		const hasContact = phone.trim().length > 0 || email.trim().length > 0;
-		
-		return nameValid && phoneValid && emailValid && hasContact;
-	}, [email, name, phone]);
-
-	const handleSave = useCallback(async () => {
-		if (!canSave || isSaving) {
-			if (!canSave) {
-				const nameValid = name.trim().length >= 2;
-				const phoneValid = phone.trim().length === 0 || /^\+?[\d\s\-\(\)]+$/.test(phone.trim());
-				const emailValid = email.trim().length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-				const hasContact = phone.trim().length > 0 || email.trim().length > 0;
-				
-				if (!nameValid) {
-					setError("Name must be at least 2 characters");
-				} else if (!hasContact) {
-					setError("Phone or email required");
-				} else if (!phoneValid) {
-					setError("Invalid phone number format");
-				} else if (!emailValid) {
-					setError("Invalid email format");
-				} else {
-					setError("Please check all fields");
-				}
-				shake();
-			}
-			return;
-		}
-		setIsSaving(true);
-		setError(null);
-		try {
-			const payload = {
-				name,
-				relationship,
-				phone,
-				email,
-			};
-			if (editingId) {
-				await updateContact(editingId, payload);
-				showToast("Contact updated successfully", "success");
-			} else {
-				await addContact(payload);
-				showToast("Contact added successfully", "success");
-			}
-			setIsModalVisible(false);
-		} catch (e) {
-			const msg =
-				e?.message?.split("|")?.[1] || e?.message || "Unable to save contact";
-			setError(msg);
-			showToast(msg, "error");
-			shake();
-		} finally {
-			setIsSaving(false);
-		}
-	}, [
-		canSave,
-		editingId,
-		email,
-		isSaving,
-		name,
-		phone,
-		relationship,
-		shake,
-		addContact,
-		updateContact,
-		showToast,
-	]);
-
-	const handleDelete = useCallback(
-		async (id) => {
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-			try {
-				await removeContact(id);
-				showToast("Contact deleted successfully", "success");
-			} catch (error) {
-				showToast("Failed to delete contact", "error");
-			}
-		},
-		[removeContact, showToast]
-	);
 
 	const emptyState = !isLoading && (!contacts || contacts.length === 0);
 
@@ -436,143 +358,131 @@ export default function EmergencyContactsScreen() {
 				))}
 			</Animated.ScrollView>
 
-			<Modal
-				transparent
-				visible={isModalVisible}
-				animationType="fade"
-				onRequestClose={closeModal}
-			>
-				<KeyboardAvoidingView 
-					behavior={Platform.OS === "ios" ? "padding" : undefined}
-					style={styles.modalBackdrop}
-                    keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-				>
-					<Pressable
-						style={styles.modalBackdropPressable}
-						onPress={closeModal}
-					/>
-					<View style={[styles.modalCard, { backgroundColor: colors.card }]}>
-						<View style={styles.modalHeader}>
-							<Text style={[styles.modalTitle, { color: colors.text }]}>
-								{editingId ? "Edit Contact" : "Add Contact"}
-							</Text>
-							<Pressable
-								onPress={closeModal}
-								style={({ pressed }) => [
-									{ opacity: pressed ? 0.7 : 1, padding: 6 },
-								]}
-							>
-								<Ionicons name="close" size={22} color={colors.textMuted} />
-							</Pressable>
-						</View>
+            <InputModal
+                visible={isModalVisible}
+                onClose={() => {
+                    setIsModalVisible(false);
+                    setStep(0);
+                }}
+                title={editingId ? "Update Contact" : (step === 0 ? "Who is this?" : step === 1 ? "Contact Info" : "Verify")}
+                primaryAction={step === 2 ? handleSave : () => transitionStep(step + 1)}
+                primaryActionLabel={step === 2 ? (editingId ? "Save Changes" : "Add Contact") : "Next"}
+                disabled={
+                    (step === 0 && formData.name.length < 2) ||
+                    (step === 1 && (!formData.phone && !formData.email))
+                }
+                secondaryAction={step > 0 ? () => transitionStep(step - 1) : () => {
+                    setIsModalVisible(false);
+                    setStep(0);
+                }}
+                secondaryActionLabel={step > 0 ? "Back" : "Cancel"}
+                loading={isSaving}
+            >
+                {/* Vital Signal Progress */}
+                <View style={styles.vitalTrack}>
+                    <View style={[styles.vitalFill, { width: `${((step + 1) / 3) * 100}%` }]} />
+                    <View style={[styles.vitalPlow, { left: `${((step + 1) / 3) * 100}%` }]} />
+                </View>
 
-						{error ? (
-							<View style={styles.errorRow}>
-								<Ionicons name="alert-circle" size={18} color={COLORS.error} />
-								<Text style={[styles.errorText, { color: COLORS.error }]}>
-									{error}
-								</Text>
-							</View>
-						) : null}
+                <View style={styles.stepContainer} {...swipeHandlers}>
+                    {step === 0 && (
+                        <View style={{ gap: 16 }}>
+                            <View style={{ alignSelf: 'center', marginBottom: 8 }}>
+                                <View style={{
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: 40,
+                                    backgroundColor: COLORS.brandPrimary + '15',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Ionicons name="person" size={40} color={COLORS.brandPrimary} />
+                                </View>
+                            </View>
+                            <Input
+                                label="Full Name"
+                                placeholder="e.g. Jane Doe"
+                                value={formData.name}
+                                onChangeText={(t) => setFormData(prev => ({ ...prev, name: t }))}
+                                icon="person"
+                                autoFocus
+                                returnKeyType="next"
+                                onSubmitEditing={() => transitionStep(1)}
+                            />
+                            <Input
+                                label="Relationship"
+                                placeholder="e.g. Sister, Doctor"
+                                value={formData.relationship}
+                                onChangeText={(t) => setFormData(prev => ({ ...prev, relationship: t }))}
+                                icon="heart"
+                            />
+                        </View>
+                    )}
 
-						<Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
-							<Text style={[styles.inputLabel, { color: colors.textMuted }]}>Name</Text>
-							<View
-								style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
-							>
-								<Ionicons name="person" size={18} color={COLORS.textMuted} />
-								<TextInput
-									value={name}
-									onChangeText={(t) => {
-										setName(t);
-										if (error) setError(null);
-									}}
-									placeholder="Full name"
-									placeholderTextColor={COLORS.textMuted}
-									style={[styles.input, { color: colors.text }]}
-									selectionColor={COLORS.brandPrimary}
-								/>
-							</View>
-							<Text style={[styles.inputLabel, { color: colors.textMuted }]}>Relationship</Text>
-							<View
-								style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
-							>
-								<Ionicons name="heart" size={18} color={COLORS.textMuted} />
-								<TextInput
-									value={relationship}
-									onChangeText={(t) => {
-										setRelationship(t);
-										if (error) setError(null);
-									}}
-									placeholder="Relationship (optional)"
-									placeholderTextColor={COLORS.textMuted}
-									style={[styles.input, { color: colors.text }]}
-									selectionColor={COLORS.brandPrimary}
-								/>
-							</View>
-							<Text style={[styles.inputLabel, { color: colors.textMuted }]}>Phone</Text>
-							<View
-								style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
-							>
-								<Ionicons name="call" size={18} color={COLORS.textMuted} />
-								<TextInput
-									value={phone}
-									onChangeText={(t) => {
-										setPhone(t);
-										if (error) setError(null);
-									}}
-									placeholder="Phone"
-									placeholderTextColor={COLORS.textMuted}
-									style={[styles.input, { color: colors.text }]}
-									selectionColor={COLORS.brandPrimary}
-									keyboardType="phone-pad"
-								/>
-							</View>
-							<Text style={[styles.inputLabel, { color: colors.textMuted }]}>Email</Text>
-							<View
-								style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
-							>
-								<Ionicons name="mail" size={18} color={COLORS.textMuted} />
-								<TextInput
-									value={email}
-									onChangeText={(t) => {
-										setEmail(t);
-										if (error) setError(null);
-									}}
-									placeholder="Email"
-									placeholderTextColor={COLORS.textMuted}
-									style={[styles.input, { color: colors.text }]}
-									selectionColor={COLORS.brandPrimary}
-									keyboardType="email-address"
-									autoCapitalize="none"
-								/>
-							</View>
-						</Animated.View>
+                    {step === 1 && (
+                        <View style={{ gap: 16 }}>
+                            <Input
+                                label="Phone Number"
+                                placeholder="+1 234 567 8900"
+                                value={formData.phone}
+                                onChangeText={(t) => setFormData(prev => ({ ...prev, phone: t }))}
+                                icon="call"
+                                keyboardType="phone-pad"
+                                autoFocus
+                            />
+                            <Input
+                                label="Email Address (Optional)"
+                                placeholder="jane@example.com"
+                                value={formData.email}
+                                onChangeText={(t) => setFormData(prev => ({ ...prev, email: t }))}
+                                icon="mail"
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                            />
+                        </View>
+                    )}
 
-						<Pressable
-							onPress={handleSave}
-							disabled={!canSave || isSaving}
-							style={({ pressed }) => [
-								styles.saveButton,
-								{
-									backgroundColor:
-										canSave && !isSaving ? COLORS.brandPrimary : colors.inputBg,
-									opacity: pressed ? 0.92 : 1,
-								},
-							]}
-						>
-							{isSaving ? (
-								<ActivityIndicator color="#FFFFFF" />
-							) : (
-								<Ionicons name="checkmark" size={18} color="#FFFFFF" />
-							)}
-							<Text style={styles.saveButtonText}>
-								{editingId ? "Save" : "Add"}
-							</Text>
-						</Pressable>
-					</View>
-				</KeyboardAvoidingView>
-			</Modal>
+                    {step === 2 && (
+                        <View style={{ gap: 24, alignItems: 'center' }}>
+                            <View style={{ 
+                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F8FAFC',
+                                padding: 24,
+                                borderRadius: 36,
+                                width: '100%',
+                                alignItems: 'center',
+                                gap: 8
+                            }}>
+                                <Text style={{ fontSize: 12, fontWeight: "800", color: colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>
+                                    CONFIRM DETAILS
+                                </Text>
+                                <Text style={{ fontSize: 28, fontWeight: "900", color: colors.text, textAlign: 'center' }}>
+                                    {formData.name}
+                                </Text>
+                                <Text style={{ fontSize: 16, fontWeight: "600", color: COLORS.brandPrimary, letterSpacing: 0.5 }}>
+                                    {formData.relationship}
+                                </Text>
+                                
+                                <View style={{ width: '100%', height: 1, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', marginVertical: 16 }} />
+                                
+                                <View style={{ width: '100%', gap: 12 }}>
+                                    {formData.phone ? (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                            <Ionicons name="call" size={18} color={colors.textMuted} />
+                                            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>{formData.phone}</Text>
+                                        </View>
+                                    ) : null}
+                                    {formData.email ? (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                            <Ionicons name="mail" size={18} color={colors.textMuted} />
+                                            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>{formData.email}</Text>
+                                        </View>
+                                    ) : null}
+                                </View>
+                            </View>
+                        </View>
+                    )}
+                </View>
+            </InputModal>
 		</LinearGradient>
 	);
 }
@@ -598,21 +508,6 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		lineHeight: 20,
 		fontWeight: "500",
-	},
-	addCard: {
-		height: 56,
-		borderRadius: 24,
-		paddingHorizontal: 12,
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "center",
-		gap: 10,
-	},
-	addText: {
-		color: "#FFFFFF",
-		fontWeight: "900",
-		fontSize: 16,
-		letterSpacing: -0.5,
 	},
 	contactCard: {
 		borderRadius: 36,
@@ -675,55 +570,33 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
-	modalBackdrop: {
-		flex: 1,
-		justifyContent: "flex-end",
-		backgroundColor: "rgba(0,0,0,0.55)",
-	},
-	modalBackdropPressable: { ...StyleSheet.absoluteFillObject },
-	modalCard: { 
-		borderTopLeftRadius: 48,
-		borderTopRightRadius: 48, 
-		padding: 24,
-		maxHeight: '90%',
-	},
-	modalHeader: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		marginBottom: 20,
-	},
-	modalTitle: { fontSize: 24, fontWeight: "900", letterSpacing: -1.0 },
-	errorRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
-		marginBottom: 10,
-	},
-	errorText: { fontSize: 13, fontWeight: "700", flex: 1 },
-	inputRow: {
-		height: 60,
-		borderRadius: 24,
-		paddingHorizontal: 16,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 10,
-		marginBottom: 10,
-	},
-	input: { flex: 1, fontSize: 16, fontWeight: "900", letterSpacing: -0.5 },
-	saveButton: {
-		height: 60,
-		borderRadius: 24,
-		alignItems: "center",
-		justifyContent: "center",
-		flexDirection: "row",
-		gap: 10,
-		marginTop: 10,
-	},
-	saveButtonText: {
-		color: "#FFFFFF",
-		fontWeight: "900",
-		fontSize: 16,
-		letterSpacing: -0.5,
-	},
+    vitalTrack: { 
+        height: 4, 
+        backgroundColor: 'rgba(0,0,0,0.05)', 
+        borderRadius: 2, 
+        marginBottom: 24, 
+        position: 'relative' 
+    },
+    vitalFill: { 
+        height: '100%', 
+        backgroundColor: COLORS.brandPrimary, 
+        borderRadius: 2 
+    },
+    vitalPlow: { 
+        position: 'absolute', 
+        top: -4, 
+        width: 12, 
+        height: 12, 
+        borderRadius: 6, 
+        backgroundColor: COLORS.brandPrimary, 
+        borderWidth: 3, 
+        borderColor: '#FFF', 
+        shadowColor: COLORS.brandPrimary, 
+        shadowOpacity: 0.5, 
+        shadowRadius: 5 
+    },
+    stepContainer: { 
+        minHeight: 180,
+        justifyContent: 'center'
+    }
 });
