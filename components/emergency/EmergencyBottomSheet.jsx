@@ -76,13 +76,28 @@ const EmergencyBottomSheet = forwardRef(
 
 		const { snapIndex: newSnapIndex } = useEmergencyUI();
 
-		const isBelowHalf = sheetPhase === "collapsed" || (sheetPhase === "half" && newSnapIndex === 0);
-		const isFloating = newSnapIndex === 0 || newSnapIndex === 1;
 		const isDetailMode = !!selectedHospital;
+		const hasAnyVisitActive = !!activeAmbulanceTrip || !!activeBedBooking;
 		const isTripMode =
 			mode === "emergency" && !!activeAmbulanceTrip && !isDetailMode;
 		const isBedBookingMode =
 			mode === "booking" && !!activeBedBooking && !isDetailMode;
+
+		const isBelowHalf = sheetPhase === "collapsed" || (sheetPhase === "half" && newSnapIndex === 0);
+		const isFloating = newSnapIndex === 0 || newSnapIndex === 1;
+
+		console.log("[EmergencyBottomSheet] Render state:", {
+			mode,
+			hasActiveAmbulance: !!activeAmbulanceTrip,
+			hasActiveBed: !!activeBedBooking,
+			hasAnyVisitActive,
+			isTripMode,
+			isBedBookingMode,
+			isDetailMode,
+			sheetPhase,
+			newSnapIndex
+		});
+
 		const [sheetPhase, setSheetPhase] = useState("half");
 
 		const {
@@ -102,6 +117,7 @@ const EmergencyBottomSheet = forwardRef(
 				isDetailMode,
 				isTripMode,
 				isBedBookingMode,
+				hasAnyVisitActive,
 				onSnapChange,
 			});
 
@@ -119,6 +135,11 @@ const EmergencyBottomSheet = forwardRef(
 			timing.endTiming("avatar_press");
 		}, [openProfileModal, timing]);
 
+		/**
+		 * Prevents 'Invariant Violation: out of range index' crashes.
+		 * Occurs when snapPoints length decreases (e.g. transitioning from 3 to 2 points)
+		 * while the current index is at the now-invalid higher position.
+		 */
 		const clampSheetIndex = useCallback(
 			(index) => {
 				if (!Number.isFinite(index) || snapPoints.length === 0) return 0;
@@ -141,14 +162,17 @@ const EmergencyBottomSheet = forwardRef(
 			restoreListState: (state = {}) => {
 				const snapIndex = state?.snapIndex;
 				const scrollY = state?.scrollY;
-				if (typeof snapIndex === "number") {
-					bottomSheetRef.current?.snapToIndex(clampSheetIndex(snapIndex));
-				}
-				if (typeof scrollY === "number") {
-					listScrollRef.current?.scrollTo?.({ y: scrollY, animated: false });
-				}
+				// Use a small delay to ensure snapPoints are updated and UI has settled
+				setTimeout(() => {
+					if (typeof snapIndex === "number") {
+						bottomSheetRef.current?.snapToIndex(clampSheetIndex(snapIndex));
+					}
+					if (typeof scrollY === "number") {
+						listScrollRef.current?.scrollTo?.({ y: scrollY, animated: false });
+					}
+				}, 100);
 			},
-		}));
+		}), [clampSheetIndex, currentSnapIndex]);
 
 		const gradientColors = isDarkMode
 			? ["rgba(18, 24, 38, 0.95)", "rgba(18, 24, 38, 0.85)", "rgba(18, 24, 38, 0.85)"]
@@ -194,20 +218,16 @@ const EmergencyBottomSheet = forwardRef(
 			if (isDetailMode) return 0;
 			
 			// For trip/bed booking mode with 1 snap point (monophasic 40%), always use index 0
-			if ((isTripMode || isBedBookingMode) && snapPoints.length === 1) return 0;
+			if (hasAnyVisitActive && snapPoints.length === 1) return 0;
 			
-			// For normal mode with 3 snap points, validate currentSnapIndex or default to 1 (middle)
-			if (snapPoints.length === 3) {
-				return Number.isFinite(currentSnapIndex) && 
-					   currentSnapIndex >= 0 && 
-					   currentSnapIndex < snapPoints.length 
-					? currentSnapIndex 
-					: 1; // Default to middle position
+			// Use the context index if valid for current points
+			if (Number.isFinite(newSnapIndex) && newSnapIndex >= 0 && newSnapIndex < snapPoints.length) {
+				return newSnapIndex;
 			}
-			
-			// Fallback: use 0 (always safe)
-			return 0;
-		}, [isDetailMode, isTripMode, isBedBookingMode, currentSnapIndex, snapPoints.length]);
+
+			// Fallback: use middle if available, else 0
+			return snapPoints.length === 3 ? 1 : 0;
+		}, [isDetailMode, hasAnyVisitActive, newSnapIndex, snapPoints.length]);
 
 		// Track sheet phase changes using currentSnapIndex
 		useEffect(() => {
@@ -218,7 +238,7 @@ const EmergencyBottomSheet = forwardRef(
 			}
 
 			if (snapPoints.length === 2) {
-				const phase = currentSnapIndex <= 0 ? "half" : "full";
+				const phase = currentSnapIndex <= 0 ? "collapsed" : "full";
 				setSheetPhase(phase);
 				return;
 			}

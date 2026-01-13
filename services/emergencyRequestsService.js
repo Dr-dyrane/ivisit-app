@@ -145,11 +145,13 @@ export const emergencyRequestsService = {
 	},
 
 	async update(id, updates) {
+        console.log(`[emergencyRequestsService] Update requested for ${id}`, updates);
         const { data: { user } } = await supabase.auth.getUser();
 		const requestId = String(id);
         const nextUpdatedAt = new Date().toISOString();
 
         if (user) {
+            console.log(`[emergencyRequestsService] Updating in Supabase for user ${user.id}`);
             const dbUpdates = { updated_at: nextUpdatedAt };
             if (updates.status) dbUpdates.status = updates.status;
             if (updates.hospitalId !== undefined) dbUpdates.hospital_id = updates.hospitalId;
@@ -174,7 +176,25 @@ export const emergencyRequestsService = {
                 throw error;
             }
             if (!data || data.length === 0) {
-                console.warn(`[emergencyRequestsService] No request found with id ${requestId} in Supabase`);
+                console.warn(`[emergencyRequestsService] No request found with id ${requestId} in Supabase (queried with id and user_id)`);
+                // Try querying with request_id instead of id if it's different
+                console.log(`[emergencyRequestsService] Retrying update using request_id column...`);
+                const { error: error2, data: data2 } = await supabase
+                    .from('emergency_requests')
+                    .update(dbUpdates)
+                    .eq('request_id', requestId)
+                    .eq('user_id', user.id)
+                    .select();
+                
+                if (error2) {
+                    console.error(`[emergencyRequestsService] Supabase retry update failed for ${requestId}:`, error2);
+                    throw error2;
+                }
+                if (!data2 || data2.length === 0) {
+                    console.error(`[emergencyRequestsService] Still no request found with request_id ${requestId} in Supabase`);
+                } else {
+                    console.log(`[emergencyRequestsService] Updated ${requestId} via request_id column in Supabase:`, data2[0]);
+                }
             } else {
                 console.log(`[emergencyRequestsService] Updated ${requestId} in Supabase:`, data[0]);
             }

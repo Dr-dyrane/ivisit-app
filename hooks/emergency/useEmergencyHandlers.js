@@ -20,8 +20,15 @@ export const useEmergencyHandlers = ({
 }) => {
 	const setVisitLifecycle = useCallback(
 		(id, lifecycleState) => {
-			if (!id) return Promise.resolve();
-			if (typeof updateVisit !== "function") return Promise.resolve();
+			if (!id) {
+				console.warn("[EmergencyHandlers] setVisitLifecycle called without id");
+				return Promise.resolve();
+			}
+			if (typeof updateVisit !== "function") {
+				console.warn("[EmergencyHandlers] setVisitLifecycle called but updateVisit is not a function");
+				return Promise.resolve();
+			}
+			console.log(`[EmergencyHandlers] setVisitLifecycle(${id}, ${lifecycleState})`);
 			return updateVisit(id, {
 				lifecycleState,
 				lifecycleUpdatedAt: new Date().toISOString(),
@@ -33,15 +40,20 @@ export const useEmergencyHandlers = ({
 	const createBaseHandler = useCallback(
 		(type, actions) => {
 			return async () => {
+				console.log(`[EmergencyHandlers] Starting ${type}...`);
 				try {
+					console.log(`[EmergencyHandlers] ${type}: executing requests...`);
 					await Promise.all(actions.requests);
+					console.log(`[EmergencyHandlers] ${type}: requests completed, running onSuccess...`);
 					actions.onSuccess?.();
 					console.log(`[EmergencyHandlers] ${type} completed successfully`);
 				} catch (err) {
 					console.error(`[EmergencyHandlers] ${type} failed:`, err);
 				} finally {
+					console.log(`[EmergencyHandlers] ${type}: running cleanup...`);
 					actions.cleanup?.();
 					if (onSheetSnap) {
+						console.log(`[EmergencyHandlers] ${type}: snapping sheet to index 1`);
 						setTimeout(() => {
 							onSheetSnap(1);
 						}, 0);
@@ -183,6 +195,7 @@ export const useEmergencyHandlers = ({
 	}, [activeAmbulanceTrip, createBaseHandler, setRequestStatus, setVisitLifecycle, setAmbulanceTripStatus]);
 
 	const onMarkBedOccupied = useCallback(async () => {
+		console.log("[EmergencyHandlers] onMarkBedOccupied called", { requestId: activeBedBooking?.requestId });
 		if (!activeBedBooking?.requestId) return;
 		await createBaseHandler("MarkBedOccupied", {
 			requests: [
@@ -190,6 +203,7 @@ export const useEmergencyHandlers = ({
 				setVisitLifecycle(activeBedBooking.requestId, EMERGENCY_VISIT_LIFECYCLE.OCCUPIED),
 			],
 			onSuccess: () => {
+				console.log("[EmergencyHandlers] MarkBedOccupied onSuccess, setting status to ARRIVED");
 				if (typeof setBedBookingStatus === "function") {
 					setBedBookingStatus(EmergencyRequestStatus.ARRIVED);
 				}

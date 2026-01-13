@@ -6,7 +6,6 @@ import { useRouter } from "expo-router";
 import { COLORS } from "../../../constants/colors";
 import { AMBULANCE_STATUSES, AMBULANCE_TYPES } from "../../../constants/emergency";
 import { useTripProgress } from "../../../hooks/emergency/useTripProgress";
-import HospitalCard from "../HospitalCard";
 import { navigateToBookBed } from "../../../utils/navigationHelpers";
 
 const TripSummaryCollapsed = ({ isDarkMode, statusLabel, etaText, tripHospital, callSign }) => (
@@ -77,20 +76,11 @@ const TripSummaryHalf = (props) => {
 				</Pressable>
 				{(showMarkArrived || showComplete) && (
 					<Pressable onPress={showMarkArrived ? (props.onPressArrived ?? props.onMarkAmbulanceArrived) : (props.onPressComplete ?? props.onCompleteAmbulanceTrip)} style={styles.completeAction}>
-						<Text style={styles.completeActionText}>{showMarkArrived ? "MARK ARRIVED" : "COMPLETE"}</Text>
-					</Pressable>
-				)}
-				{computedStatus === "Arrived" && (
-					<Pressable 
-						onPress={() => {
-							// TODO: Navigate to rating screen
-							console.log("Navigate to rating screen");
-						}} 
-						style={[styles.ratingAction, { opacity: busyAction ? 0.5 : 1 }]}
-						disabled={!!busyAction}
-					>
-						<Ionicons name="star" size={20} color={COLORS.brandPrimary} />
-						<Text style={[styles.ratingActionText, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>RATE</Text>
+						{isBusy && (busyAction === 'arrived' || busyAction === 'complete') ? (
+							<ActivityIndicator size="small" color="#FFF" />
+						) : (
+							<Text style={styles.completeActionText}>{showMarkArrived ? "MARK ARRIVED" : "COMPLETE"}</Text>
+						)}
 					</Pressable>
 				)}
 			</View>
@@ -129,18 +119,26 @@ export const TripSummaryCard = ({ activeAmbulanceTrip, hasOtherActiveVisit, allH
 		return phone ? `tel:${phone.replace(/[^\d+]/g, "")}` : null;
 	}, [tripHospital?.phone]);
 
-	const statusLabel = computedStatus ?? "En Route";
+	const displayStatus = activeAmbulanceTrip?.status === "arrived" ? "Arrived" : (computedStatus || "En Route");
 	const driverName = assigned?.crew?.[0] || assigned?.name || "Responder";
 
-	if (collapsed) return <TripSummaryCollapsed isDarkMode={isDarkMode} statusLabel={statusLabel} etaText={formattedRemaining} callSign={assigned?.callSign} />;
+	if (collapsed) return <TripSummaryCollapsed isDarkMode={isDarkMode} statusLabel={displayStatus} etaText={formattedRemaining} callSign={assigned?.callSign} />;
 
 	return <TripSummaryHalf
-		{...{ isDarkMode, statusLabel, etaText: formattedRemaining, tripProgress, driverName, rating: assigned?.rating || "4.8", vehicle: assigned?.plate, assigned, callTarget, isBusy: !!busyAction, busyAction, computedStatus }}
-		showMarkArrived={computedStatus === "Arrived"}
+		{...{ isDarkMode, statusLabel: displayStatus, etaText: formattedRemaining, tripProgress, driverName, rating: assigned?.rating || "4.8", vehicle: assigned?.plate, assigned, callTarget, isBusy: !!busyAction, busyAction, computedStatus }}
+		showMarkArrived={computedStatus === "Arrived" && activeAmbulanceTrip?.status !== "arrived"}
 		showComplete={activeAmbulanceTrip?.status === "arrived"}
 		onCancelAmbulanceTrip={onCancelAmbulanceTrip}
-		onMarkAmbulanceArrived={onMarkArrived => setBusyAction('arrived') || onMarkAmbulanceArrived().finally(() => setBusyAction(null))}
-		onCompleteAmbulanceTrip={onComplete => setBusyAction('complete') || onCompleteAmbulanceTrip().finally(() => setBusyAction(null))}
+		onMarkAmbulanceArrived={() => {
+			console.log("[TripSummaryCard] MARK ARRIVED pressed");
+			setBusyAction('arrived');
+			onMarkAmbulanceArrived().finally(() => setBusyAction(null));
+		}}
+		onCompleteAmbulanceTrip={() => {
+			console.log("[TripSummaryCard] COMPLETE pressed");
+			setBusyAction('complete');
+			onCompleteAmbulanceTrip().finally(() => setBusyAction(null));
+		}}
 		showSecondaryCta={!hasOtherActiveVisit}
 		onPressSecondaryCta={() => navigateToBookBed({ router, hospitalId: activeAmbulanceTrip.hospitalId })}
 	/>;
@@ -181,8 +179,6 @@ const styles = StyleSheet.create({
 	cancelActionText: { fontSize: 13, fontWeight: '900', letterSpacing: 1 },
 	completeAction: { flex: 1.5, height: 56, borderRadius: 20, backgroundColor: COLORS.brandPrimary, alignItems: 'center', justifyContent: 'center' },
 	completeActionText: { color: '#FFF', fontSize: 13, fontWeight: '900', letterSpacing: 1 },
-	ratingAction: { width: 56, height: 56, borderRadius: 20, backgroundColor: COLORS.brandPrimary + '10', alignItems: 'center', justifyContent: 'center' },
-	ratingActionText: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5, color: COLORS.brandPrimary },
     secondaryCta: { marginTop: 12, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.brandPrimary + '08' },
     secondaryCtaText: { fontSize: 13, fontWeight: '900' }
 });

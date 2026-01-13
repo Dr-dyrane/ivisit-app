@@ -9,6 +9,7 @@ export const useBottomSheetSnap = ({
 	isDetailMode,
 	isTripMode,
 	isBedBookingMode,
+	hasAnyVisitActive,
 	onSnapChange,
 }) => {
 	const { hideTabBar, resetTabBar } = useTabBarVisibility();
@@ -20,6 +21,7 @@ export const useBottomSheetSnap = ({
 			isDetailMode,
 			isTripMode,
 			isBedBookingMode,
+			hasAnyVisitActive,
 			onSnapChange,
 		});
 

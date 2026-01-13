@@ -199,19 +199,6 @@ export default function EmergencyScreen() {
 		])
 	);
 
-	useFocusEffect(
-		useCallback(() => {
-			if (selectedHospital || activeAmbulanceTrip || activeBedBooking) return;
-			if (sheetSnapIndexRef.current !== 0) return;
-			setSheetSnapIndex(1, "return_fix");
-		}, [
-			activeAmbulanceTrip,
-			activeBedBooking,
-			selectedHospital,
-			setSheetSnapIndex,
-		])
-	);
-
 	// FAB toggles between emergency and bed booking modes
 	const handleFloatingButtonPress = useCallback(() => {
 		toggleMode();
@@ -220,6 +207,7 @@ export default function EmergencyScreen() {
 
 	useFocusEffect(
 		useCallback(() => {
+			const hasAnyVisitActive = !!activeAmbulanceTrip || !!activeBedBooking;
 			const shouldHideFAB =
 				!!selectedHospital || sheetSnapIndex === 0;
 			const hasBothActive = !!activeAmbulanceTrip && !!activeBedBooking;
@@ -233,6 +221,7 @@ export default function EmergencyScreen() {
 			registerFAB('emergency-mode-toggle', {
 				icon: mode === "emergency" ? "bed-patient" : "medical",
 				visible: !shouldHideFAB,
+				mode: mode, // Pass mode for context-aware behavior
 				allowInStack: true, // Allow FAB in stack screens when trip is active
 				onPress: handleFloatingButtonPress,
 				style: 'primary',
@@ -486,7 +475,16 @@ export default function EmergencyScreen() {
 			: [...searchFilteredHospitals, routeHospital];
 	}, [activeAmbulanceTrip, hospitals, searchFilteredHospitals]);
 
-	// Hook: All trip completion and cancellation handlers
+	useEffect(() => {
+		console.log("[EmergencyScreen] Active State:", {
+			mode,
+			selectedHospitalId,
+			activeAmbulanceTripId: activeAmbulanceTrip?.requestId,
+			activeBedBookingId: activeBedBooking?.requestId,
+			sheetSnapIndex
+		});
+	}, [mode, selectedHospitalId, activeAmbulanceTrip, activeBedBooking, sheetSnapIndex]);
+
 	const {
 		onCancelAmbulanceTrip,
 		onMarkAmbulanceArrived,
@@ -507,6 +505,7 @@ export default function EmergencyScreen() {
 		stopBedBooking,
 		addNotification,
 		onSheetSnap: (index) => {
+			console.log("[EmergencyScreen] onSheetSnap called with index:", index);
 			bottomSheetRef.current?.snapToIndex?.(index);
 		},
 	});

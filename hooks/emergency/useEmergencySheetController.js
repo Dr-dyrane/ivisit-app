@@ -14,6 +14,7 @@ export function useEmergencySheetController({
 	isDetailMode,
 	isTripMode,
 	isBedBookingMode,
+	hasAnyVisitActive,
 	onSnapChange,
 }) {
 	const insets = useSafeAreaInsets();
@@ -28,14 +29,25 @@ export function useEmergencySheetController({
 	const collapsedPercent = Math.round((collapsedHeight / screenHeight) * 100);
 
 	const snapPoints = useMemo(() => {
+		const isCompactMode = !!hasAnyVisitActive && !isDetailMode;
+		console.log("[useEmergencySheetController] Calculating snapPoints:", {
+			isDetailMode,
+			isTripMode,
+			isBedBookingMode,
+			hasAnyVisitActive,
+			isCompactMode,
+			screenHeight
+		});
+
 		let points;
 		if (isDetailMode) {
 			points = ["50%"];
 		} else {
-			const isCompactMode = !!isTripMode || !!isBedBookingMode;
 			if (isCompactMode) {
-				// Monophasic 50% for trip and bed modes
-				points = ["50%"];
+				// Use 2 points for compact mode: collapsed and expanded.
+				// Consistent 2-point structure prevents layout shifts and Invariant Violations
+				// when toggling between trip and bed booking modes.
+				points = ["40%", "50%"];
 			} else {
 				// Calculate collapsed height based on actual screen dimensions
 				const collapsedHeight = TAB_BAR_HEIGHT + insets.bottom + SEARCH_BAR_AREA + MARGIN_ABOVE_TAB_BAR;

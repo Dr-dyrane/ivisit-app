@@ -47,11 +47,15 @@ const BedBookingSummaryHalf = (props) => {
 					<Ionicons name="call" size={22} color={COLORS.brandPrimary} />
 				</Pressable>
 				<Pressable onPress={props.onCancelBedBooking} style={styles.cancelAction}>
-					<Text style={[styles.cancelActionText, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}			>CANCEL</Text>
+					{busyAction === 'cancel' ? <ActivityIndicator size="small" color={COLORS.brandPrimary} /> : <Text style={[styles.cancelActionText, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>CANCEL</Text>}
 				</Pressable>
 				{(showMarkOccupied || showComplete) && (
 					<Pressable onPress={showMarkOccupied ? props.onMarkBedOccupied : props.onCompleteBedBooking} style={styles.completeAction}>
-						<Text style={styles.completeActionText}>{showMarkOccupied ? "CHECK-IN" : "FINISH"}</Text>
+						{isBusy && (busyAction === 'occupied' || busyAction === 'complete') ? (
+							<ActivityIndicator size="small" color="#FFF" />
+						) : (
+							<Text style={styles.completeActionText}>{showMarkOccupied ? "CHECK-IN" : "FINISH"}</Text>
+						)}
 					</Pressable>
 				)}
 			</View>
@@ -63,6 +67,7 @@ export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, a
 	const router = useRouter();
 	const collapsed = sheetPhase === "collapsed";
 	const [nowMs, setNowMs] = useState(Date.now());
+	const [busyAction, setBusyAction] = useState(null);
 	
 	useEffect(() => {
 		if (!activeBedBooking?.requestId || collapsed) return;
@@ -73,12 +78,25 @@ export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, a
 	const { bedProgress, bedStatus, formattedBedRemaining } = useBedBookingProgress({ activeBedBooking, nowMs });
 	const hospitalName = activeBedBooking?.hospitalName || "Hospital";
 
+	const displayStatus = activeBedBooking?.status === "arrived" ? "Occupied" : (bedStatus || "Confirmed");
+	
 	return <BedBookingSummaryHalf 
-        {...{isDarkMode, statusLabel: bedStatus || "Confirmed", hospitalName, bedType: "Private Suite", bedNumber: activeBedBooking?.bedNumber || "TBA", bedProgress}}
-        showMarkOccupied={bedStatus === "Ready"}
+        {...{isDarkMode, statusLabel: displayStatus, hospitalName, bedType: "Private Suite", bedNumber: activeBedBooking?.bedNumber || "TBA", bedProgress, isBusy: !!busyAction, busyAction}}
+        showMarkOccupied={bedStatus === "Ready" && activeBedBooking?.status !== "arrived"}
         showComplete={activeBedBooking?.status === "arrived"}
-        onCancelBedBooking={onCancelBedBooking}
-        onCompleteBedBooking={onCompleteBedBooking}
+        onCancelBedBooking={() => {
+            setBusyAction('cancel');
+            onCancelBedBooking().finally(() => setBusyAction(null));
+        }}
+        onMarkBedOccupied={() => {
+            console.log("[BedBookingSummaryCard] CHECK-IN pressed");
+            setBusyAction('occupied');
+            onMarkBedOccupied().finally(() => setBusyAction(null));
+        }}
+        onCompleteBedBooking={() => {
+            setBusyAction('complete');
+            onCompleteBedBooking().finally(() => setBusyAction(null));
+        }}
         showSecondaryCta={!hasOtherActiveVisit}
         onPressSecondaryCta={() => navigateToRequestAmbulance({ router, hospitalId: activeBedBooking.hospitalId })}
     />;
