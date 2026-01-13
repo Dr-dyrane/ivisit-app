@@ -1,6 +1,6 @@
-# iVisit UI / UX Design System
+# iVisit UI / UX Design System (The Bible)
 
-**Version 1.2 — Living Document**
+**Version 1.3 — The Unity Release**
 
 ---
 
@@ -28,13 +28,11 @@ Everything exists to make the user feel:
 
 Avoid harsh contrasts, loud gradients, and high-energy palettes.
 
-* Primary red = **deep, muted, medical**
+* Primary red = **deep, muted, medical** (`#86100E`)
 * Backgrounds = **off-white**, never pure white
 * Dark mode = **deep blue-black**, not gray
 
 **Rule:** Contrast must meet accessibility standards without feeling aggressive.
-
----
 
 ### 2.2 Depth Without Heaviness
 
@@ -76,16 +74,12 @@ Used only for:
 
 Primary = *decision*.
 
----
-
 ### 3.2 Backgrounds — Emotional Neutrality
 
 * Light: `#fafafa`
 * Dark: `#0D121D`
 
 Backgrounds must fade into irrelevance so content and action can lead.
-
----
 
 ### 3.3 Text States (Critical Rule)
 
@@ -141,8 +135,6 @@ Motion exists to **explain state change**, not decorate UI.
 
 If motion cannot be explained in one sentence, it should not exist.
 
----
-
 ### 5.2 Timing & Easing
 
 * Standard duration: 400–500ms
@@ -150,8 +142,6 @@ If motion cannot be explained in one sentence, it should not exist.
 * Springs: soft, low tension
 
 Motion should feel **physical**, not digital.
-
----
 
 ### 5.3 Layered Motion
 
@@ -163,15 +153,11 @@ State changes occur in **layers**, never by mutating the base UI.
 
 Layered motion prevents visual artifacts and preserves mental continuity.
 
----
-
 ### 5.4 Micro-interaction Dots
 
 * Active dot = width scale + opacity pulse
 * Swipes trigger subtle dot pulse, previewing the next state
 * Motion reinforces feedback loop without clutter
-
----
 
 ### 5.5 Primary vs Secondary Motion
 
@@ -210,8 +196,6 @@ Glass should feel OS-native, not screen-furniture.
 * Buttons are forgiving
 * Accidental taps avoided
 
----
-
 ### 7.2 Haptic Rules
 
 | Interaction       | Haptic               |
@@ -221,6 +205,7 @@ Glass should feel OS-native, not screen-furniture.
 | Navigation        | Selection            |
 | Swipe / secondary | Light impact         |
 | Reveal / Unmask   | Light impact (Tactile)|
+| Error / Danger    | Notification Error   |
 
 Never stack haptics. Never vibrate without meaning.
 
@@ -342,11 +327,9 @@ Avoid long, scrolling forms. Use a "One-Input Focus" flow to make data entry fee
 
 ---
 
-## 15. The "Premium Minimalist" Prompt Guide
+## 15. The "Premium Minimalist" Prompt Guide (The Manifesto)
 
 To replicate this specific "Premium Medical-Glass" aesthetic, you need to provide the AI with a set of Design Tokens and Geometric Rules.
-
-If you were to prompt another model (like GPT-4o, Claude 3.5, or a developer), use the following "Design Specification Prompt."
 
 ### The "Premium Medical-Glass" Prompt
 
@@ -356,11 +339,11 @@ If you were to prompt another model (like GPT-4o, Claude 3.5, or a developer), u
 
 The Rule: Avoid standard rounding. Use an aggressive corner radius.
 
-Specifics: Container borderRadius must be 32pt to 36pt. Inner elements (images/buttons) must use 20pt to 28pt. This creates a "nested bubble" look that feels organic and high-end.
+Specifics: Container `borderRadius` must be 32pt to 36pt. Inner elements (images/buttons) must use 20pt to 28pt. This creates a "nested bubble" look that feels organic and high-end.
 
 **2. Border-Free Depth (The Shadow Logic)**
 
-The Rule: Never use borderWidth. Depth must be achieved through Background Color Shifting and Multi-Layered Shadows.
+The Rule: Never use `borderWidth`. Depth must be achieved through Background Color Shifting and Multi-Layered Shadows.
 
 iOS Shadow: `shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.08, shadowRadius: 16`.
 
@@ -396,3 +379,43 @@ Specifics: The selection checkmark must be positioned at `bottom: -4, right: -4`
 *   **Scale Feedback:** Every Pressable uses `transform: [{ scale: 0.98 }]`. This micro-interaction makes the glass card feel like it’s physically being pressed into the screen.
 *   **Pill Contrast:** The metadata "Pills" use a slightly different background than the card itself (usually a solid white or a slightly darker slate). This creates internal depth—layers within layers.
 *   **Shadow Coloring:** Notice that for the selected state, I used `shadowColor: COLORS.brandPrimary`. Most designers use black shadows for everything. Using a colored shadow makes the card look like it is glowing/emitting light, which is a hallmark of premium "Glass" design.
+
+---
+
+## 16. The "Trip Summary" Card (Emergency Flow Golden Standard)
+
+This specific component (`TripSummaryCard.jsx`) is the benchmark for all "Active State" UIs. It must be mirrored in the Provider App.
+
+### 16.1 The "Vital Signal" Track
+Instead of a standard progress bar, use a "Vital Track" that mimics an EKG or fluid line.
+*   **Track:** `height: 4`, `backgroundColor: 'rgba(0,0,0,0.05)'`, `borderRadius: 2`.
+*   **Fill:** `backgroundColor: COLORS.brandPrimary`.
+*   **The Plow:** A circle at the tip of the fill (`width: 12`, `borderWidth: 3`, `borderColor: '#FFF'`) that creates a physical "leading edge" to the progress.
+
+### 16.2 The "Identity Island"
+Responder/Driver info is not a list item; it is an encapsulated widget.
+*   **Container:** `backgroundColor: isDarkMode ? COLORS.bgDark : "rgba(0,0,0,0.03)"`, `borderRadius: 24`.
+*   **Avatar:** `width: 52`, `height: 52`, `borderRadius: 16` (Squircle).
+*   **Meta Text:** `fontWeight: '600'`, `fontSize: 12`.
+
+### 16.3 Action Grid
+Actions (Call, Cancel) are large, touch-friendly targets that sit side-by-side.
+*   **Icon Action (Call):** Square-ish (`width: 56`, `height: 56`, `borderRadius: 20`).
+*   **Text Action (Cancel/Complete):** Rectangular (`flex: 1`, `height: 56`, `borderRadius: 20`).
+*   **Typography:** `fontWeight: '900'`, `letterSpacing: 1`, Uppercase.
+
+---
+
+## 17. Provider Mirroring Guidelines
+
+When building the Provider App, follow these mirroring rules:
+
+1.  **Invert the Context:**
+    *   Patient App: "Where is my help?" (Focus on ETA/Map).
+    *   Provider App: "Where is my patient?" (Focus on Navigation/Patient Details).
+2.  **Shared DNA:**
+    *   Use the same `TripSummaryCard` structure but swap the "Responder Widget" for a "Patient Widget".
+    *   Use the same "Vital Track" to show trip progress.
+    *   Use the same "Premium Medical-Glass" aesthetic for job cards.
+3.  **The "Accept" Slide:**
+    *   Instead of a tap, critical actions (Accept Job, Start Trip) should use a **Slide-to-Confirm** pattern to prevent accidental touches while driving.

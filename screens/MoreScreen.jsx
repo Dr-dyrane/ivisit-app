@@ -920,7 +920,7 @@ const MoreScreen = () => {
 				</Animated.View>
 
 				{/* DEVELOPER Section - Hidden by default in production, revealed by triple tap */}
-				{devModeVisible && (
+				{/* {devModeVisible && (
 					<Animated.View
 						style={{
 							opacity: fadeAnim,
@@ -1010,7 +1010,7 @@ const MoreScreen = () => {
 							</View>
 						</TouchableOpacity>
 					</Animated.View>
-				)}
+				)} */}
 
 				{/* Version Footer - Triple tap to toggle Developer Mode */}
 				<View style={{ alignItems: 'center', marginBottom: 20 }}>
