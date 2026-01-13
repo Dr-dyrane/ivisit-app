@@ -470,9 +470,9 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 						backgroundColor: colors.bg,
 						height: modalHeight,
 					}}
-					className="rounded-t-[40px] px-8 pt-4 shadow-2xl"
+					className="rounded-t-[48px] px-8 pt-4 shadow-2xl"
 				>
-					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-6" />
+					<View className="w-12 h-1.5 bg-gray-500/10 rounded-full self-center mb-6" />
 
 					<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
 						<ScrollView {...getScrollViewProps()}>
@@ -481,7 +481,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 								{currentStep !== LOGIN_STEPS.AUTH_METHOD && (
 									<Pressable
 										onPress={handleGoBack}
-										className="p-2 bg-gray-500/10 rounded-full mr-4"
+										className="p-3 bg-gray-500/5 rounded-2xl mr-4"
 									>
 										<Ionicons name="arrow-back" size={20} color={colors.text} />
 									</Pressable>
@@ -493,8 +493,12 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 										currentStep !== LOGIN_STEPS.CONTACT_INPUT &&
 										currentStep !== LOGIN_STEPS.FORGOT_PASSWORD && (
 											<Text
-												className="text-[10px] tracking-[3px] mb-2 uppercase font-black"
-												style={{ color: COLORS.brandPrimary }}
+												className="text-[10px] mb-2 uppercase"
+												style={{ 
+													color: COLORS.brandPrimary,
+													fontWeight: "800",
+													letterSpacing: 1.5
+												}}
 											>
 												{loginData.authMethod === LOGIN_AUTH_METHODS.OTP
 													? "CODE VERIFICATION"
@@ -502,8 +506,12 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 											</Text>
 										)}
 									<Text
-										className="text-3xl font-black tracking-tighter"
-										style={{ color: colors.text }}
+										className="text-3xl"
+										style={{ 
+											color: colors.text,
+											fontWeight: "900",
+											letterSpacing: -1.0
+										}}
 									>
 										{getHeaderTitle()}
 									</Text>
@@ -511,7 +519,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 
 								<Pressable
 									onPress={handleDismiss}
-									className="p-2 bg-gray-500/10 rounded-full"
+									className="p-3 bg-gray-500/5 rounded-2xl"
 								>
 									<Ionicons name="close" size={20} color={colors.text} />
 								</Pressable>
@@ -524,29 +532,25 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 										backgroundColor: showSignUpOption
 											? `${COLORS.brandPrimary}15`
 											: `${COLORS.error}15`,
-										padding: 16,
-										borderRadius: 12,
-										marginBottom: 16,
-										borderLeftWidth: 4,
-										borderLeftColor: showSignUpOption
-											? COLORS.brandPrimary
-											: COLORS.error,
+										padding: 20,
+										borderRadius: 24,
+										marginBottom: 20,
 									}}
 								>
 									<View style={{ flexDirection: "row", alignItems: "center" }}>
 										<Ionicons
 											name={showSignUpOption ? "person-add" : "alert-circle"}
-											size={20}
+											size={22}
 											color={showSignUpOption ? COLORS.brandPrimary : COLORS.error}
-											style={{ marginRight: 8 }}
+											style={{ marginRight: 12 }}
 										/>
 										<Text
 											style={{
 												color: showSignUpOption
 													? COLORS.brandPrimary
 													: COLORS.error,
-												fontSize: 14,
-												fontWeight:'400',
+												fontSize: 15,
+												fontWeight:'600',
 												flex: 1,
 											}}
 										>
@@ -560,13 +564,17 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 											onPress={handleSwitchToSignUp}
 											style={{
 												backgroundColor: COLORS.brandPrimary,
-												paddingVertical: 12,
-												paddingHorizontal: 20,
-												borderRadius: 10,
-												marginTop: 12,
+												paddingVertical: 14,
+												paddingHorizontal: 24,
+												borderRadius: 24,
+												marginTop: 16,
 												flexDirection: "row",
 												alignItems: "center",
 												justifyContent: "center",
+												shadowColor: COLORS.brandPrimary,
+												shadowOffset: { width: 0, height: 4 },
+												shadowOpacity: 0.3,
+												shadowRadius: 8,
 											}}
 										>
 											<Ionicons
@@ -578,11 +586,12 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 											<Text
 												style={{
 													color: "white",
-													fontSize: 14,
-													fontWeight: "500",
+													fontSize: 15,
+													fontWeight: "900",
+													letterSpacing: -0.5
 												}}
 											>
-												Create Account
+												CREATE ACCOUNT
 											</Text>
 										</Pressable>
 									)}

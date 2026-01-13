@@ -108,9 +108,9 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  subtitle: { fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+  subtitle: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
   timeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
-  title: { fontSize: 17, fontWeight: '900', letterSpacing: -0.5, marginBottom: 2 },
+  title: { fontSize: 17, fontWeight: '900', letterSpacing: -1.0, marginBottom: 2 },
   message: { fontSize: 13, fontWeight: '500', lineHeight: 18 },
   cornerSeal: { position: 'absolute', bottom: -6, right: -6 },
 });

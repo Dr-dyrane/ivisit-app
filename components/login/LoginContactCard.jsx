@@ -79,8 +79,8 @@ export default function LoginContactCard({
 					disabled={disabled || isSelected}
 					style={{
 						backgroundColor: colors.card,
-						borderRadius: 30,
-						padding: 20,
+						borderRadius: 36,
+						padding: 24,
 						flexDirection: "row",
 						alignItems: "center",
 						marginBottom: 16,
@@ -94,30 +94,30 @@ export default function LoginContactCard({
 					<View
 						style={{
 							backgroundColor: colors.primary,
-							width: 56,
-							height: 56,
-							borderRadius: 16,
+							width: 64,
+							height: 64,
+							borderRadius: 14,
 							alignItems: "center",
 							justifyContent: "center",
-							marginRight: 16,
+							marginRight: 20,
 						}}
 					>
-						<Ionicons name={icon} size={26} color="white" />
+						<Ionicons name={icon} size={28} color="white" />
 					</View>
 
 					<View style={{ flex: 1 }}>
 						<Text
 							style={{
 								color: colors.text,
-								fontSize: 19,
+								fontSize: 20,
 								fontWeight: "900",
-								letterSpacing: -0.5,
+								letterSpacing: -1.0,
 							}}
 						>
 							{label}
 						</Text>
 						<Text
-							style={{ color: colors.subtitle, fontSize: 14, marginTop: 2 }}
+							style={{ color: colors.subtitle, fontSize: 14, marginTop: 4, fontWeight: "500" }}
 						>
 							{description}
 						</Text>
@@ -125,19 +125,19 @@ export default function LoginContactCard({
 
 					<View
 						style={{
-							width: 36,
-							height: 36,
-							borderRadius: 12,
+							width: 40,
+							height: 40,
+							borderRadius: 14,
 							backgroundColor: isDarkMode
-								? "rgba(255,255,255,0.025)"
-								: "rgba(0,0,0,0.025)",
+								? "rgba(255,255,255,0.05)"
+								: "rgba(0,0,0,0.03)",
 							alignItems: "center",
 							justifyContent: "center",
 						}}
 					>
 						<Ionicons
 							name="chevron-forward"
-							size={16}
+							size={18}
 							color={colors.subtitle}
 						/>
 					</View>

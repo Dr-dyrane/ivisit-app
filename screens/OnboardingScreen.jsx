@@ -1,15 +1,18 @@
 // screens/OnboardingScreen.js
 
-import React, { useRef, useState, useEffect } from "react";
-import { View, Text, Animated, Image, Dimensions } from "react-native";
-import { useRouter } from "expo-router";
+import React, { useRef, useState, useEffect, useCallback } from "react";
+import { View, Text, Animated, Image, Dimensions, Pressable } from "react-native";
+import { useRouter, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { Fontisto } from "@expo/vector-icons";
+import { Fontisto, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import SlideButton from "../components/ui/SlideButton";
 import { useTheme } from "../contexts/ThemeContext";
 import useSwipeGesture from "../utils/useSwipeGesture";
 import { COLORS } from "../constants/colors";
+import { useHeaderState } from "../contexts/HeaderStateContext";
+import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
+import HeaderBackButton from "../components/navigation/HeaderBackButton";
 
 /**
  * OnboardingScreen
@@ -70,7 +73,33 @@ const onboardingData = [
 export default function OnboardingScreen() {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
+	const { setHeaderState } = useHeaderState();
+	const { resetHeader } = useScrollAwareHeader();
 	const [index, setIndex] = useState(0);
+
+	useFocusEffect(
+		useCallback(() => {
+			resetHeader();
+			setHeaderState({
+				title: "Onboarding",
+				subtitle: `STEP ${index + 1} OF ${onboardingData.length}`,
+				icon: <Ionicons name="compass" size={26} color="#FFFFFF" />,
+				backgroundColor: COLORS.brandPrimary,
+				leftComponent: <HeaderBackButton />,
+				rightComponent: (
+					<Pressable onPress={() => router.push("signup")} className="px-2">
+						<Text style={{ 
+							color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+							fontWeight: "800",
+							fontSize: 12,
+							letterSpacing: 1.0
+						}}>SKIP</Text>
+					</Pressable>
+				),
+				hidden: false,
+			});
+		}, [resetHeader, setHeaderState, index, isDarkMode, router])
+	);
 
 	// ------------------------
 	// Animation Refs
@@ -211,6 +240,7 @@ export default function OnboardingScreen() {
 				style={{
 					opacity: contentFade,
 					transform: [{ scale: imageScale }],
+					paddingTop: 140,
 				}}
 				className="flex-1 justify-center items-center"
 			>

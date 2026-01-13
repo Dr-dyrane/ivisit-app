@@ -58,35 +58,41 @@ const ProfileField = ({
 			<View
 				style={{
 					backgroundColor: colors.bg,
-					borderRadius: 16,
-					borderWidth: 2,
+					borderRadius: 24,
+					borderWidth: isFocused ? 2 : 0,
 					borderColor: colors.border,
 					padding: 16,
 					flexDirection: "row",
 					alignItems: "center",
+					shadowColor: isFocused ? COLORS.brandPrimary : "transparent",
+					shadowOffset: { width: 0, height: 4 },
+					shadowOpacity: 0.2,
+					shadowRadius: 8,
 				}}
 			>
 				<View
 					style={{
-						width: 40,
-						height: 40,
-						borderRadius: 12,
+						width: 44,
+						height: 44,
+						borderRadius: 14,
 						backgroundColor: `${COLORS.brandPrimary}15`,
 						justifyContent: "center",
 						alignItems: "center",
 						marginRight: 12,
 					}}
 				>
-					<Ionicons name={iconName} size={20} color={COLORS.brandPrimary} />
+					<Ionicons name={iconName} size={22} color={COLORS.brandPrimary} />
 				</View>
 
 				<View style={{ flex: 1 }}>
 					<Text
 						style={{
-							fontSize: 11,
+							fontSize: 10,
 							color: colors.label,
 							marginBottom: 4,
-							fontWeight:'400',
+							fontWeight: "800",
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
 						}}
 					>
 						{label}
@@ -103,7 +109,8 @@ const ProfileField = ({
 						style={{
 							fontSize: 16,
 							color: colors.text,
-							fontWeight:'400',
+							fontWeight: "900",
+							letterSpacing: -0.5,
 							padding: 0,
 						}}
 						placeholderTextColor={COLORS.textMuted}

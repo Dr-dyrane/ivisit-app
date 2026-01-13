@@ -102,6 +102,8 @@ const styles = StyleSheet.create({
 		borderRadius: 30, // More rounded, no border
 		padding: 28,
 		alignItems: "center",
+		marginHorizontal: 16, // Added for full-width sheet compatibility
+		marginBottom: 20,
 	},
 	iconWrapper: {
 		marginBottom: 20,

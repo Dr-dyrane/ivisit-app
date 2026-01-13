@@ -20,6 +20,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { STACK_TOP_PADDING } from "../constants/layout";
 import * as ImagePicker from "expo-image-picker";
 import { useUpdateProfile } from "../hooks/user/useUpdateProfile";
 import { useImageUpload } from "../hooks/user/useImageUpload";
@@ -363,7 +364,7 @@ const ProfileScreen = () => {
 						transform: [{ translateY: slideAnim }, { scale: imageScale }],
 						alignItems: "center",
 						paddingBottom: 32,
-						paddingTop: 20,
+						paddingTop: STACK_TOP_PADDING,
 					}}
 				>
 					<Pressable onPress={pickImage} style={{ position: "relative" }}>
@@ -375,24 +376,26 @@ const ProfileScreen = () => {
 							style={{
 								width: 120,
 								height: 120,
-								borderRadius: 60,
-								borderWidth: 4,
-								borderColor: COLORS.brandPrimary,
+								borderRadius: 36,
+								backgroundColor: COLORS.brandPrimary + "15",
 							}}
 						/>
 						<View
 							style={{
 								position: "absolute",
-								bottom: 0,
-								right: 0,
+								bottom: -4,
+								right: -4,
 								backgroundColor: COLORS.brandPrimary,
-								borderRadius: 16,
+								borderRadius: 14,
 								width: 44,
 								height: 44,
 								justifyContent: "center",
 								alignItems: "center",
-								borderWidth: 3,
-								borderColor: isDarkMode ? "#0B0F1A" : "#FFFFFF",
+								shadowColor: COLORS.brandPrimary,
+								shadowOffset: { width: 0, height: 4 },
+								shadowOpacity: 0.3,
+								shadowRadius: 8,
+								elevation: 6,
 							}}
 						>
 							<Ionicons name="camera" size={22} color="#FFFFFF" />
@@ -401,12 +404,12 @@ const ProfileScreen = () => {
 
 					<Text
 						style={{
-							fontSize: 24,
+							fontSize: 28,
 							fontWeight: "900",
 							color: colors.text,
 							marginTop: 16,
 							textAlign: "center",
-							letterSpacing: -0.5,
+							letterSpacing: -1.0,
 						}}
 					>
 						{fullName || "Your Name"}
@@ -426,10 +429,11 @@ const ProfileScreen = () => {
 					<Text
 						style={{
 							fontSize: 10,
-							fontWeight: "900",
+							fontWeight: "800",
 							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 3,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
 						}}
 					>
 						PERSONAL INFORMATION
@@ -492,10 +496,11 @@ const ProfileScreen = () => {
 					<Text
 						style={{
 							fontSize: 10,
-							fontWeight: "900",
+							fontWeight: "800",
 							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 3,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
 						}}
 					>
 						EMERGENCY CONTACTS
@@ -505,7 +510,7 @@ const ProfileScreen = () => {
                         <Pressable
                             style={{
                                 backgroundColor: colors.card,
-                                borderRadius: 30,
+                                borderRadius: 36,
                                 padding: 20,
                                 flexDirection: "row",
                                 alignItems: "center",
@@ -524,7 +529,7 @@ const ProfileScreen = () => {
                                     backgroundColor: COLORS.brandPrimary,
                                     width: 56,
                                     height: 56,
-                                    borderRadius: 16,
+                                    borderRadius: 14,
                                     alignItems: "center",
                                     justifyContent: "center",
                                     marginRight: 16,
@@ -538,7 +543,7 @@ const ProfileScreen = () => {
                                         fontSize: 19,
                                         fontWeight: "900",
                                         color: colors.text,
-                                        letterSpacing: -0.5,
+                                        letterSpacing: -1.0,
                                     }}
                                     numberOfLines={1}
                                 >
@@ -560,7 +565,7 @@ const ProfileScreen = () => {
                                 style={{
                                     width: 36,
                                     height: 36,
-                                    borderRadius: 12,
+                                    borderRadius: 14,
                                     backgroundColor: isDarkMode
                                         ? "rgba(255,255,255,0.025)"
                                         : "rgba(0,0,0,0.025)",
@@ -575,7 +580,7 @@ const ProfileScreen = () => {
                         <Pressable
                             style={{
                                 backgroundColor: colors.card,
-                                borderRadius: 30,
+                                borderRadius: 36,
                                 padding: 20,
                                 flexDirection: "row",
                                 alignItems: "center",
@@ -594,7 +599,7 @@ const ProfileScreen = () => {
                                     backgroundColor: COLORS.brandPrimary,
                                     width: 56,
                                     height: 56,
-                                    borderRadius: 16,
+                                    borderRadius: 14,
                                     alignItems: "center",
                                     justifyContent: "center",
                                     marginRight: 16,
@@ -608,7 +613,7 @@ const ProfileScreen = () => {
                                         fontSize: 19,
                                         fontWeight: "900",
                                         color: colors.text,
-                                        letterSpacing: -0.5,
+                                        letterSpacing: -1.0,
                                     }}
                                 >
                                     Add Contact
@@ -627,7 +632,7 @@ const ProfileScreen = () => {
                                 style={{
                                     width: 36,
                                     height: 36,
-                                    borderRadius: 12,
+                                    borderRadius: 14,
                                     backgroundColor: isDarkMode
                                         ? "rgba(255,255,255,0.025)"
                                         : "rgba(0,0,0,0.025)",
@@ -652,10 +657,11 @@ const ProfileScreen = () => {
 					<Text
 						style={{
 							fontSize: 10,
-							fontWeight: "900",
+							fontWeight: "800",
 							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 3,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
 						}}
 					>
 						MEDICAL HISTORY
@@ -664,7 +670,7 @@ const ProfileScreen = () => {
 					<View
 						style={{
 							backgroundColor: colors.card,
-							borderRadius: 30,
+							borderRadius: 36,
 							padding: 24,
 							shadowColor: "#000",
 							shadowOffset: { width: 0, height: 4 },
@@ -704,7 +710,7 @@ const ProfileScreen = () => {
 									style={{
 										width: 36,
 										height: 36,
-										borderRadius: 10,
+										borderRadius: 12,
 										backgroundColor: `${COLORS.brandPrimary}15`,
 										alignItems: "center",
 										justifyContent: "center",
@@ -722,7 +728,8 @@ const ProfileScreen = () => {
 										style={{
 											color: colors.text,
 											fontSize: 15,
-											fontWeight:'400',
+											fontWeight: "800",
+											letterSpacing: -0.5,
 										}}
 									>
 										{item.label}
@@ -744,7 +751,7 @@ const ProfileScreen = () => {
 						<Pressable
 							style={{
 								backgroundColor: COLORS.brandPrimary,
-								borderRadius: 16,
+								borderRadius: 24,
 								padding: 16,
 								flexDirection: "row",
 								alignItems: "center",
@@ -761,7 +768,8 @@ const ProfileScreen = () => {
 								style={{
 									marginLeft: 8,
 									color: "#FFFFFF",
-									fontWeight: "800",
+									fontWeight: "900",
+									letterSpacing: -0.5,
 								}}
 							>
 								Edit Medical History
@@ -788,7 +796,7 @@ const ProfileScreen = () => {
 						}}
 						style={{
 							backgroundColor: colors.card,
-							borderRadius: 30,
+							borderRadius: 36,
 							padding: 20,
 							flexDirection: "row",
 							alignItems: "center",
@@ -804,7 +812,7 @@ const ProfileScreen = () => {
 								backgroundColor: COLORS.brandPrimary,
 								width: 56,
 								height: 56,
-								borderRadius: 16,
+								borderRadius: 14,
 								alignItems: "center",
 								justifyContent: "center",
 								marginRight: 16,
@@ -818,7 +826,7 @@ const ProfileScreen = () => {
 									fontSize: 19,
 									fontWeight: "900",
 									color: colors.text,
-									letterSpacing: -0.5,
+									letterSpacing: -1.0,
 								}}
 							>
 								{user?.hasPassword ? "Change Password" : "Create Password"}
@@ -839,7 +847,7 @@ const ProfileScreen = () => {
 							style={{
 								width: 36,
 								height: 36,
-								borderRadius: 12,
+								borderRadius: 14,
 								backgroundColor: isDarkMode
 									? "rgba(255,255,255,0.025)"
 									: "rgba(0,0,0,0.025)",
@@ -862,16 +870,17 @@ const ProfileScreen = () => {
 						opacity: fadeAnim,
 						paddingHorizontal: 12,
 						marginTop: 32,
-                        marginBottom: 100, // Extra space for sticky footer
+						marginBottom: 100, // Extra space for sticky footer
 					}}
 				>
 					<Text
 						style={{
 							fontSize: 10,
-							fontWeight: "900",
+							fontWeight: "800",
 							color: COLORS.error,
 							marginBottom: 16,
-							letterSpacing: 3,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
 						}}
 					>
 						DANGER ZONE
@@ -882,12 +891,10 @@ const ProfileScreen = () => {
                         disabled={isDeleting}
 						style={{
 							backgroundColor: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "#FEF2F2",
-							borderRadius: 30,
+							borderRadius: 36,
 							padding: 20,
 							flexDirection: "row",
 							alignItems: "center",
-                            borderWidth: 1,
-                            borderColor: isDarkMode ? "rgba(239, 68, 68, 0.2)" : "#FEE2E2",
 						}}
 					>
 						<View
@@ -895,7 +902,7 @@ const ProfileScreen = () => {
 								backgroundColor: COLORS.error,
 								width: 56,
 								height: 56,
-								borderRadius: 16,
+								borderRadius: 14,
 								alignItems: "center",
 								justifyContent: "center",
 								marginRight: 16,
@@ -913,7 +920,7 @@ const ProfileScreen = () => {
 									fontSize: 19,
 									fontWeight: "900",
 									color: colors.text,
-									letterSpacing: -0.5,
+									letterSpacing: -1.0,
 								}}
 							>
 								Delete Account

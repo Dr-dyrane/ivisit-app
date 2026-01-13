@@ -120,7 +120,6 @@ export default function SettingsScreen() {
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
 			>
-				{/* NOTIFICATIONS Section */}
 				<Animated.View
 					style={{
 						opacity: fadeAnim,
@@ -132,10 +131,11 @@ export default function SettingsScreen() {
 					<Text
 						style={{
 							fontSize: 10,
-							fontWeight: "900",
+							fontWeight: "800",
 							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 3,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
 						}}
 					>
 						NOTIFICATIONS
@@ -150,7 +150,7 @@ export default function SettingsScreen() {
 							padding: 20,
 							marginBottom: 12,
 							backgroundColor: colors.card,
-							borderRadius: 30,
+							borderRadius: 36,
 							shadowColor: "#000",
 							shadowOffset: { width: 0, height: 4 },
 							shadowOpacity: isDarkMode ? 0 : 0.03,
@@ -162,7 +162,7 @@ export default function SettingsScreen() {
 								style={{
 									width: 56,
 									height: 56,
-									borderRadius: 16,
+									borderRadius: 14,
 									backgroundColor: COLORS.brandPrimary,
 									alignItems: "center",
 									justifyContent: "center",
@@ -177,7 +177,7 @@ export default function SettingsScreen() {
 										fontSize: 19,
 										fontWeight: "900",
 										color: colors.text,
-										letterSpacing: -0.5,
+										letterSpacing: -1.0,
 									}}
 								>
 									All Notifications
@@ -187,6 +187,7 @@ export default function SettingsScreen() {
 										fontSize: 14,
 										color: colors.textMuted,
 										marginTop: 2,
+										fontWeight: "500",
 									}}
 								>
 									Receive all app alerts
@@ -230,7 +231,7 @@ export default function SettingsScreen() {
 							padding: 20,
 							marginBottom: 12,
 							backgroundColor: colors.card,
-							borderRadius: 30,
+							borderRadius: 36,
 							shadowColor: "#000",
 							shadowOffset: { width: 0, height: 4 },
 							shadowOpacity: isDarkMode ? 0 : 0.03,
@@ -243,7 +244,7 @@ export default function SettingsScreen() {
 								style={{
 									width: 56,
 									height: 56,
-									borderRadius: 16,
+									borderRadius: 14,
 									backgroundColor: COLORS.brandPrimary,
 									alignItems: "center",
 									justifyContent: "center",
@@ -258,7 +259,7 @@ export default function SettingsScreen() {
 										fontSize: 19,
 										fontWeight: "900",
 										color: colors.text,
-										letterSpacing: -0.5,
+										letterSpacing: -1.0,
 									}}
 								>
 									Appointment Reminders
@@ -268,6 +269,7 @@ export default function SettingsScreen() {
 										fontSize: 14,
 										color: colors.textMuted,
 										marginTop: 2,
+										fontWeight: "500",
 									}}
 								>
 									Before scheduled visits
@@ -311,7 +313,7 @@ export default function SettingsScreen() {
 							padding: 20,
 							marginBottom: 12,
 							backgroundColor: colors.card,
-							borderRadius: 30,
+							borderRadius: 36,
 							shadowColor: "#000",
 							shadowOffset: { width: 0, height: 4 },
 							shadowOpacity: isDarkMode ? 0 : 0.03,
@@ -324,7 +326,7 @@ export default function SettingsScreen() {
 								style={{
 									width: 56,
 									height: 56,
-									borderRadius: 16,
+									borderRadius: 14,
 									backgroundColor: COLORS.brandPrimary,
 									alignItems: "center",
 									justifyContent: "center",
@@ -339,7 +341,7 @@ export default function SettingsScreen() {
 										fontSize: 19,
 										fontWeight: "900",
 										color: colors.text,
-										letterSpacing: -0.5,
+										letterSpacing: -1.0,
 									}}
 								>
 									Emergency Updates
@@ -349,6 +351,7 @@ export default function SettingsScreen() {
 										fontSize: 14,
 										color: colors.textMuted,
 										marginTop: 2,
+										fontWeight: "500",
 									}}
 								>
 									Critical SOS notifications
@@ -384,14 +387,14 @@ export default function SettingsScreen() {
 
 					<TouchableOpacity
 						onPress={() => togglePreference("notificationSoundsEnabled")}
-						disabled={!preferences || !preferences.notificationsEnabled}
+						disabled={!preferences}
 						style={{
 							flexDirection: "row",
 							alignItems: "center",
 							justifyContent: "space-between",
 							padding: 20,
 							backgroundColor: colors.card,
-							borderRadius: 30,
+							borderRadius: 36,
 							shadowColor: "#000",
 							shadowOffset: { width: 0, height: 4 },
 							shadowOpacity: isDarkMode ? 0 : 0.03,
@@ -404,7 +407,7 @@ export default function SettingsScreen() {
 								style={{
 									width: 56,
 									height: 56,
-									borderRadius: 16,
+									borderRadius: 14,
 									backgroundColor: COLORS.brandPrimary,
 									alignItems: "center",
 									justifyContent: "center",
@@ -419,7 +422,7 @@ export default function SettingsScreen() {
 										fontSize: 19,
 										fontWeight: "900",
 										color: colors.text,
-										letterSpacing: -0.5,
+										letterSpacing: -1.0,
 									}}
 								>
 									Notification Sounds
@@ -429,6 +432,7 @@ export default function SettingsScreen() {
 										fontSize: 14,
 										color: colors.textMuted,
 										marginTop: 2,
+										fontWeight: "500",
 									}}
 								>
 									Play sound for alerts
@@ -475,10 +479,11 @@ export default function SettingsScreen() {
 					<Text
 						style={{
 							fontSize: 10,
-							fontWeight: "900",
+							fontWeight: "800",
 							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 3,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
 						}}
 					>
 						PRIVACY
@@ -493,7 +498,7 @@ export default function SettingsScreen() {
 							padding: 20,
 							marginBottom: 12,
 							backgroundColor: colors.card,
-							borderRadius: 30,
+							borderRadius: 36,
 							shadowColor: "#000",
 							shadowOffset: { width: 0, height: 4 },
 							shadowOpacity: isDarkMode ? 0 : 0.03,
@@ -505,7 +510,7 @@ export default function SettingsScreen() {
 								style={{
 									width: 56,
 									height: 56,
-									borderRadius: 16,
+									borderRadius: 14,
 									backgroundColor: COLORS.brandPrimary,
 									alignItems: "center",
 									justifyContent: "center",
@@ -520,7 +525,7 @@ export default function SettingsScreen() {
 										fontSize: 19,
 										fontWeight: "900",
 										color: colors.text,
-										letterSpacing: -0.5,
+										letterSpacing: -1.0,
 									}}
 								>
 									Share Medical Profile
@@ -530,6 +535,7 @@ export default function SettingsScreen() {
 										fontSize: 14,
 										color: colors.textMuted,
 										marginTop: 2,
+										fontWeight: "500",
 									}}
 								>
 									In SOS requests only
@@ -572,7 +578,7 @@ export default function SettingsScreen() {
 							justifyContent: "space-between",
 							padding: 20,
 							backgroundColor: colors.card,
-							borderRadius: 30,
+							borderRadius: 36,
 							shadowColor: "#000",
 							shadowOffset: { width: 0, height: 4 },
 							shadowOpacity: isDarkMode ? 0 : 0.03,
@@ -584,7 +590,7 @@ export default function SettingsScreen() {
 								style={{
 									width: 56,
 									height: 56,
-									borderRadius: 16,
+									borderRadius: 14,
 									backgroundColor: COLORS.brandPrimary,
 									alignItems: "center",
 									justifyContent: "center",
@@ -599,7 +605,7 @@ export default function SettingsScreen() {
 										fontSize: 19,
 										fontWeight: "900",
 										color: colors.text,
-										letterSpacing: -0.5,
+										letterSpacing: -1.0,
 									}}
 								>
 									Share Emergency Contacts
@@ -609,6 +615,7 @@ export default function SettingsScreen() {
 										fontSize: 14,
 										color: colors.textMuted,
 										marginTop: 2,
+										fontWeight: "500",
 									}}
 								>
 									In SOS requests only
@@ -655,10 +662,11 @@ export default function SettingsScreen() {
 					<Text
 						style={{
 							fontSize: 10,
-							fontWeight: "900",
+							fontWeight: "800",
 							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 3,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
 						}}
 					>
 						ACCOUNT SECURITY
@@ -670,7 +678,7 @@ export default function SettingsScreen() {
 							alignItems: "center",
 							padding: 20,
 							backgroundColor: colors.card,
-							borderRadius: 30,
+							borderRadius: 36,
 							shadowColor: "#000",
 							shadowOffset: { width: 0, height: 4 },
 							shadowOpacity: isDarkMode ? 0 : 0.03,
@@ -681,7 +689,7 @@ export default function SettingsScreen() {
 							style={{
 								width: 56,
 								height: 56,
-								borderRadius: 16,
+								borderRadius: 14,
 								backgroundColor: COLORS.brandPrimary,
 								alignItems: "center",
 								justifyContent: "center",
@@ -696,7 +704,7 @@ export default function SettingsScreen() {
 									fontSize: 19,
 									fontWeight: "900",
 									color: colors.text,
-									letterSpacing: -0.5,
+									letterSpacing: -1.0,
 								}}
 							>
 								{user?.hasPassword ? "Change Password" : "Create Password"}
@@ -706,6 +714,7 @@ export default function SettingsScreen() {
 									fontSize: 14,
 									color: colors.textMuted,
 									marginTop: 2,
+									fontWeight: "500",
 								}}
 							>
 								{user?.hasPassword ? "Update your password" : "Secure your account"}
@@ -713,19 +722,19 @@ export default function SettingsScreen() {
 						</View>
 						<View
 							style={{
-								width: 36,
-								height: 36,
-								borderRadius: 12,
+								width: 40,
+								height: 40,
+								borderRadius: 14,
 								backgroundColor: isDarkMode
-									? "rgba(255,255,255,0.025)"
-									: "rgba(0,0,0,0.025)",
+									? "rgba(255,255,255,0.05)"
+									: "rgba(0,0,0,0.03)",
 								alignItems: "center",
 								justifyContent: "center",
 							}}
 						>
 							<Ionicons
 								name="chevron-forward"
-								size={16}
+								size={18}
 								color={colors.textMuted}
 							/>
 						</View>

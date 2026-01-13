@@ -262,7 +262,7 @@ export default function MedicalProfileScreen() {
 							style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
 						>
 							<ActivityIndicator color={COLORS.brandPrimary} />
-							<Text style={{ color: colors.textMuted, fontWeight: "500" }}>
+							<Text style={{ color: colors.textMuted, fontWeight: "900", letterSpacing: -0.5 }}>
 								Loading medical profile...
 							</Text>
 						</View>
@@ -312,8 +312,10 @@ export default function MedicalProfileScreen() {
 							style={{
 								marginTop: 10,
 								color: colors.textMuted,
-								fontWeight: "500",
-								fontSize: 12,
+								fontWeight: "800",
+								fontSize: 10,
+								letterSpacing: 1.0,
+								textTransform: "uppercase",
 							}}
 						>
 							Last updated:{" "}
@@ -333,21 +335,22 @@ const styles = StyleSheet.create({
 	container: { flex: 1 },
 	content: { flexGrow: 1, padding: 20, gap: 12 },
 	card: {
-		borderRadius: 30,
-		padding: 20,
+		borderRadius: 36,
+		padding: 24,
 		shadowColor: "#000",
 		shadowOffset: { width: 0, height: 4 },
 		shadowOpacity: 0.03,
 		shadowRadius: 10,
 	},
 	title: {
-		fontSize: 19,
+		fontSize: 22,
 		fontWeight: "900",
-		letterSpacing: -0.5,
+		letterSpacing: -1.0,
 	},
 	subtitle: {
 		marginTop: 8,
 		fontSize: 14,
 		lineHeight: 20,
+		fontWeight: "500",
 	},
 });

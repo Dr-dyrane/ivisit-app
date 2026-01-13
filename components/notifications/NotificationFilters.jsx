@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     position: "relative",
   },
-  label: { fontSize: 11, fontWeight: "900", letterSpacing: 1 },
+  label: { fontSize: 11, fontWeight: "800", letterSpacing: 1.5 },
   badge: {
     marginLeft: 8,
     paddingHorizontal: 6,

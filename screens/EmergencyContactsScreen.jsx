@@ -415,6 +415,7 @@ export default function EmergencyContactsScreen() {
 						) : null}
 
 						<Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+							<Text style={[styles.inputLabel, { color: colors.textMuted }]}>Name</Text>
 							<View
 								style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
 							>
@@ -431,6 +432,7 @@ export default function EmergencyContactsScreen() {
 									selectionColor={COLORS.brandPrimary}
 								/>
 							</View>
+							<Text style={[styles.inputLabel, { color: colors.textMuted }]}>Relationship</Text>
 							<View
 								style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
 							>
@@ -447,6 +449,7 @@ export default function EmergencyContactsScreen() {
 									selectionColor={COLORS.brandPrimary}
 								/>
 							</View>
+							<Text style={[styles.inputLabel, { color: colors.textMuted }]}>Phone</Text>
 							<View
 								style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
 							>
@@ -464,6 +467,7 @@ export default function EmergencyContactsScreen() {
 									keyboardType="phone-pad"
 								/>
 							</View>
+							<Text style={[styles.inputLabel, { color: colors.textMuted }]}>Email</Text>
 							<View
 								style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
 							>
@@ -516,22 +520,23 @@ const styles = StyleSheet.create({
 	container: { flex: 1 },
 	content: { flexGrow: 1, padding: 20, gap: 12 },
 	card: {
-		borderRadius: 30,
-		padding: 20,
+		borderRadius: 36,
+		padding: 24,
 		shadowColor: "#000",
 		shadowOffset: { width: 0, height: 4 },
 		shadowOpacity: 0.03,
 		shadowRadius: 10,
 	},
 	title: {
-		fontSize: 19,
+		fontSize: 22,
 		fontWeight: "900",
-		letterSpacing: -0.5,
+		letterSpacing: -1.0,
 	},
 	subtitle: {
 		marginTop: 8,
 		fontSize: 14,
 		lineHeight: 20,
+		fontWeight: "500",
 	},
 	addCard: {
 		height: 56,
@@ -545,66 +550,67 @@ const styles = StyleSheet.create({
 	addText: {
 		color: "#FFFFFF",
 		fontWeight: "900",
-		fontSize: 14,
-		letterSpacing: 1,
+		fontSize: 16,
+		letterSpacing: -0.5,
 	},
 	contactCard: {
-		borderRadius: 22,
-		padding: 16,
+		borderRadius: 36,
+		padding: 20,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 8,
 	},
-	contactName: { fontSize: 16, fontWeight: "900", letterSpacing: -0.2 },
+	contactName: { fontSize: 19, fontWeight: "900", letterSpacing: -1.0 },
 	contactMeta: { marginTop: 4, fontSize: 13, fontWeight: "500" },
 	modalBackdrop: {
 		flex: 1,
-		justifyContent: "center",
-		padding: 18,
+		justifyContent: "flex-end",
 		backgroundColor: "rgba(0,0,0,0.55)",
 	},
 	modalBackdropPressable: { ...StyleSheet.absoluteFillObject },
 	modalCard: { 
-		borderRadius: 24, 
-		padding: 16,
-		maxHeight: '80%',
+		borderTopLeftRadius: 48,
+		borderTopRightRadius: 48, 
+		padding: 24,
+		maxHeight: '90%',
 	},
 	modalHeader: {
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
-		marginBottom: 12,
+		marginBottom: 20,
 	},
-	modalTitle: { fontSize: 16, fontWeight: "900", letterSpacing: -0.2 },
+	modalTitle: { fontSize: 24, fontWeight: "900", letterSpacing: -1.0 },
 	errorRow: {
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 8,
 		marginBottom: 10,
 	},
-	errorText: { fontSize: 13, fontWeight: "500", flex: 1 },
+	errorText: { fontSize: 13, fontWeight: "700", flex: 1 },
 	inputRow: {
-		height: 54,
-		borderRadius: 16,
-		paddingHorizontal: 12,
+		height: 60,
+		borderRadius: 24,
+		paddingHorizontal: 16,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 10,
 		marginBottom: 10,
 	},
-	input: { flex: 1, fontSize: 14, fontWeight: "800" },
+	input: { flex: 1, fontSize: 16, fontWeight: "900", letterSpacing: -0.5 },
 	saveButton: {
-		height: 54,
-		borderRadius: 18,
+		height: 60,
+		borderRadius: 24,
 		alignItems: "center",
 		justifyContent: "center",
 		flexDirection: "row",
 		gap: 10,
+		marginTop: 10,
 	},
 	saveButtonText: {
 		color: "#FFFFFF",
 		fontWeight: "900",
-		fontSize: 15,
-		letterSpacing: 1,
+		fontSize: 16,
+		letterSpacing: -0.5,
 	},
 });

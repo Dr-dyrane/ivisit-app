@@ -19,43 +19,36 @@ export default function GlassCard({
   selected = false,
   selectedColor = "#86100E",
   padding = 16,
-  borderRadius = 20,
+  borderRadius = 36, // Primary Artifact Layer
 }) {
   const { isDarkMode } = useTheme();
 
   // Blur intensity based on prop
   const blurIntensity = {
-    light: Platform.OS === "ios" ? 30 : 50,
-    medium: Platform.OS === "ios" ? 50 : 70,
-    strong: Platform.OS === "ios" ? 80 : 100,
+    light: Platform.OS === "ios" ? 20 : 40,
+    medium: Platform.OS === "ios" ? 40 : 60,
+    strong: Platform.OS === "ios" ? 70 : 90,
   }[intensity];
 
-  // Background colors for the overlay
+  // Background colors for the overlay - Manifesto opacity (95% to 98%)
   const overlayColor = isDarkMode
     ? selected
-      ? `${selectedColor}20`
-      : "rgba(255, 255, 255, 0.05)"
+      ? `${selectedColor}25`
+      : "rgba(18, 24, 38, 0.96)"
     : selected
-      ? `${selectedColor}12`
-      : "rgba(255, 255, 255, 0.6)";
+      ? `${selectedColor}15`
+      : "rgba(255, 255, 255, 0.98)";
 
-  // Border colors
-  const borderColor = selected
-    ? `${selectedColor}60`
-    : isDarkMode
-      ? "rgba(255, 255, 255, 0.1)"
-      : "rgba(0, 0, 0, 0.06)";
-
-  // Shadow for glass bubble effect
+  // Shadow for active glow effect
   const shadowStyle = Platform.select({
     ios: {
       shadowColor: selected ? selectedColor : "#000",
-      shadowOffset: { width: 0, height: selected ? 8 : 4 },
-      shadowOpacity: selected ? 0.2 : isDarkMode ? 0.3 : 0.08,
-      shadowRadius: selected ? 16 : 12,
+      shadowOffset: { width: 0, height: selected ? 12 : 6 },
+      shadowOpacity: selected ? 0.4 : isDarkMode ? 0.4 : 0.08,
+      shadowRadius: selected ? 24 : 16,
     },
     android: {
-      elevation: selected ? 8 : 4,
+      elevation: selected ? 12 : 4,
     },
   });
 
@@ -65,8 +58,6 @@ export default function GlassCard({
         styles.container,
         {
           borderRadius,
-          borderWidth: 1,
-          borderColor,
           ...shadowStyle,
         },
         style,

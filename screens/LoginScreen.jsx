@@ -5,10 +5,10 @@
  * Simplified: Single modal for complete login flow
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { View, Text, Animated, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useTheme } from "../contexts/ThemeContext";
 import { COLORS } from "../constants/colors";
 import LoginInputModal from "../components/login/LoginInputModal";
@@ -16,11 +16,32 @@ import SocialAuthRow from "../components/auth/SocialAuthRow";
 import SlideButton from "../components/ui/SlideButton";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useHeaderState } from "../contexts/HeaderStateContext";
+import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
+import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import SwitchAuthButton from "../components/navigation/SwitchAuthButton";
 
 export default function LoginScreen() {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
+	const { setHeaderState } = useHeaderState();
+	const { resetHeader } = useScrollAwareHeader();
 	const [modalVisible, setModalVisible] = useState(false);
+
+	useFocusEffect(
+		useCallback(() => {
+			resetHeader();
+			setHeaderState({
+				title: "Login",
+				subtitle: "SECURE ACCESS",
+				icon: <Ionicons name="lock-closed" size={26} color="#FFFFFF" />,
+				backgroundColor: COLORS.brandPrimary,
+				leftComponent: <HeaderBackButton />,
+				rightComponent: <SwitchAuthButton target="signup" />,
+				hidden: false,
+			});
+		}, [resetHeader, setHeaderState])
+	);
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
@@ -63,7 +84,7 @@ export default function LoginScreen() {
 		<LinearGradient colors={colors.background} className="flex-1">
 			<Animated.View
 				style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
-				className="flex-1 justify-center px-8"
+				className="flex-1 justify-center px-8 pt-20"
 			>
 				<Text
 					style={{
@@ -98,11 +119,18 @@ export default function LoginScreen() {
 				</SlideButton>
 
 				<View className="flex-row items-center my-10">
-					<View className="flex-1 h-[1px] bg-gray-500/10" />
-					<Text className="px-6 text-[10px] font-black tracking-[3px] text-gray-400">
+					<View className="flex-1 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />
+					<Text 
+						className="px-6 text-[10px] uppercase"
+						style={{ 
+							color: colors.subtitle,
+							fontWeight: "800",
+							letterSpacing: 1.5
+						}}
+					>
 						CONNECT QUICKLY
 					</Text>
-					<View className="flex-1 h-[1px] bg-gray-500/10" />
+					<View className="flex-1 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />
 				</View>
 
 				<SocialAuthRow />

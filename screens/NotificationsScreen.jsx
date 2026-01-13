@@ -25,6 +25,7 @@ import { useEmergency, EmergencyMode } from "../contexts/EmergencyContext";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ActionWrapper from "../components/headers/ActionWrapper";
 import NotificationCard from "../components/notifications/NotificationCard";
 import NotificationFilters from "../components/notifications/NotificationFilters";
 import * as Haptics from "expo-haptics";
@@ -117,11 +118,13 @@ const NotificationsScreen = () => {
 								})}
 								hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 							>
-								<Ionicons
-									name="checkmark-done"
-									size={24}
-									color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
-								/>
+								<ActionWrapper>
+									<Ionicons
+										name="checkmark-done"
+										size={24}
+										color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+									/>
+								</ActionWrapper>
 							</Pressable>
 						)}
 						
@@ -152,11 +155,13 @@ const NotificationsScreen = () => {
 								})}
 								hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 							>
-								<Ionicons
-									name="trash"
-									size={24}
-									color="#EF4444"
-								/>
+								<ActionWrapper>
+									<Ionicons
+										name="trash"
+										size={24}
+										color="#EF4444"
+									/>
+								</ActionWrapper>
 							</Pressable>
 						)}
 						
@@ -171,11 +176,13 @@ const NotificationsScreen = () => {
 							})}
 							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 						>
-							<Ionicons
-								name="close"
-								size={24}
-								color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
-							/>
+							<ActionWrapper>
+								<Ionicons
+									name="close"
+									size={24}
+									color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+								/>
+							</ActionWrapper>
 						</Pressable>
 					</View>
 				);
@@ -194,11 +201,13 @@ const NotificationsScreen = () => {
 						})}
 						hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 					>
-						<Ionicons
-							name="checkbox-outline"
-							size={24}
-							color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
-						/>
+						<ActionWrapper>
+							<Ionicons
+								name="checkbox-outline"
+								size={24}
+								color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+							/>
+						</ActionWrapper>
 					</Pressable>
 					
 					{/* Mark All as Read */}
@@ -212,11 +221,13 @@ const NotificationsScreen = () => {
 						})}
 						hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 					>
-						<Ionicons
-							name="checkmark-done"
-							size={24}
-							color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
-						/>
+						<ActionWrapper>
+							<Ionicons
+								name="checkmark-done"
+								size={24}
+								color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
+							/>
+						</ActionWrapper>
 					</Pressable>
 				</View>
 			) : null;

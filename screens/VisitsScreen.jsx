@@ -22,6 +22,7 @@ import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
 import { useVisits } from "../contexts/VisitsContext";
 import { COLORS } from "../constants/colors";
+import { STACK_TOP_PADDING } from "../constants/layout";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import VisitCard from "../components/visits/VisitCard";
 import VisitFilters from "../components/visits/VisitFilters";
@@ -200,8 +201,7 @@ const VisitsScreen = () => {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + (insets?.bottom || 0) : 70;
 	const bottomPadding = tabBarHeight + 20;
-	const headerHeight = 70;
-	const topPadding = headerHeight + (insets?.top || 0);
+	const topPadding = STACK_TOP_PADDING + (insets?.top || 0) + 20;
 
 	const hasVisits = Array.isArray(filteredVisits) && filteredVisits.length > 0;
 	const showInitialLoadingState = isLoading && !hasVisits;

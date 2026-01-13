@@ -1,13 +1,15 @@
 // screens/WelcomeScreen.js
 
-import React from "react";
+import React, { useCallback } from "react";
 import { View, Text, Image, Pressable } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { Fontisto } from "@expo/vector-icons";
+import { Fontisto, Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import { COLORS } from "../constants/colors";
 import SlideButton from "../components/ui/SlideButton";
+import { useHeaderState } from "../contexts/HeaderStateContext";
+import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 
 /**
  * Primary brand color.
@@ -35,6 +37,17 @@ const PRIMARY_RED = COLORS.brandPrimary;
 const WelcomeScreen = () => {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
+	const { setHeaderState } = useHeaderState();
+	const { resetHeader } = useScrollAwareHeader();
+
+	useFocusEffect(
+		useCallback(() => {
+			resetHeader();
+			setHeaderState({
+				hidden: true,
+			});
+		}, [resetHeader, setHeaderState])
+	);
 
 	// Gradient background based on theme
 	const backgroundColors = isDarkMode
@@ -63,7 +76,7 @@ const WelcomeScreen = () => {
 	return (
 		<LinearGradient
 			colors={backgroundColors}
-			className="flex-1 justify-between items-center px-6 py-12"
+			className="flex-1 justify-between items-center px-6 pt-24 pb-12"
 		>
 			{/* Logo & Brand Name */}
 			<View className="flex items-center w-full mt-4">
@@ -71,11 +84,16 @@ const WelcomeScreen = () => {
 					source={require("../assets/logo.png")}
 					className="w-14 h-14"
 					resizeMode="contain"
+					style={{ borderRadius: 14 }}
 				/>
 				<Text
-					className={`text-4xl font-bold tracking-tighter mt-2`}
+					className={`text-4xl mt-2`}
 					// TODO: Make this dynamic based on theme
-					style={{ color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }}
+					style={{ 
+						color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+						fontWeight: "900",
+						letterSpacing: -1.0
+					}}
 				>
 					iVisit
 					<Text style={{ color: COLORS.brandPrimary, fontSize: 42 }}>.</Text>
@@ -94,8 +112,12 @@ const WelcomeScreen = () => {
 			{/* Value Proposition */}
 			<View className="w-full items-center px-4">
 				<Text
-					className={`text-[38px] font-black text-center leading-[42px] tracking-tight`}
-					style={{ color: headlineColor }}
+					className={`text-[38px] text-center leading-[42px]`}
+					style={{ 
+						color: headlineColor,
+						fontWeight: "900",
+						letterSpacing: -1.0
+					}}
 				>
 					Skip the wait.{"\n"}
 					<Text style={{ color: PRIMARY_RED }}>Get care now.</Text>
@@ -103,10 +125,10 @@ const WelcomeScreen = () => {
 
 				<Text
 					className="text-lg mt-5 text-center leading-6"
-					style={{ color: subTextColor }}
+					style={{ color: subTextColor, fontWeight: "500" }}
 				>
 					Book a bed. Get an ambulance. See a doctor.{"\n"}
-					<Text className="font-semibold">Right when you need it.</Text>
+					<Text style={{ fontWeight: "800", letterSpacing: 0.5 }}>Right when you need it.</Text>
 				</Text>
 			</View>
 

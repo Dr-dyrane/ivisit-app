@@ -11,6 +11,7 @@ export function HeaderStateProvider({ children }) {
     badge: null,
     leftComponent: null,
     rightComponent: null,
+    hidden: false,
   });
 
   const setHeaderState = useCallback((newState) => {
@@ -29,6 +30,7 @@ export function HeaderStateProvider({ children }) {
       badge: null,
       leftComponent: null,
       rightComponent: null,
+      hidden: false,
     });
   }, []);
 

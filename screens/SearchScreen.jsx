@@ -21,6 +21,7 @@ import { useHospitals } from "../hooks/emergency/useHospitals";
 import { useEmergencyUI } from "../contexts/EmergencyUIContext";
 import { useEmergency, EmergencyMode } from "../contexts/EmergencyContext";
 import SettingsIconButton from "../components/headers/SettingsIconButton";
+import ActionWrapper from "../components/headers/ActionWrapper";
 import { NOTIFICATION_TYPES } from "../constants/notifications";
 import {
 	navigateToNotifications,
@@ -63,7 +64,11 @@ export default function SearchScreen() {
 				icon: <Ionicons name="search" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent: backButton(),
-				rightComponent: <SettingsIconButton />,
+				rightComponent: (
+				<ActionWrapper>
+					<SettingsIconButton />
+				</ActionWrapper>
+			),
 			});
 		}, [backButton, resetHeader, resetTabBar, setHeaderState])
 	);
@@ -319,23 +324,30 @@ export default function SearchScreen() {
 					transform: [{ translateY: slideAnim }],
 				}}
 			>
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
+				<View style={[styles.card, { backgroundColor: colors.card, borderRadius: 28, padding: 12 }]}>
 					<EmergencySearchBar
 						value={query}
 						onChangeText={setSearchQuery}
 						onBlur={() => commitQuery(query)}
 						onClear={() => setSearchQuery("")}
-						placeholder="Search visits, hospitals, notifications..."
+						placeholder="Search..."
 						showSuggestions={false}
 					/>
 				</View>
 
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+				<View style={[styles.card, { backgroundColor: colors.card, borderRadius: 36, padding: 20, marginTop: 16 }]}>
+					<Text style={[styles.sectionTitle, { 
+						color: colors.textMuted,
+						fontWeight: "800",
+						letterSpacing: 1.5,
+						textTransform: "uppercase",
+						fontSize: 11,
+						marginBottom: 16
+					}]}>
 						Top Results
 					</Text>
 					{rankedResults.length > 0 ? (
-						<View style={{ gap: 10 }}>
+						<View style={{ gap: 12 }}>
 							{rankedResults.map((item) => (
 								<Pressable
 									key={item.key}
@@ -347,19 +359,42 @@ export default function SearchScreen() {
 										styles.row,
 										{
 											backgroundColor: isDarkMode
-												? "rgba(255,255,255,0.06)"
-												: "rgba(15,23,42,0.06)",
+												? "rgba(255,255,255,0.04)"
+												: "rgba(0,0,0,0.02)",
+											borderRadius: 24,
+											padding: 16,
 											opacity: pressed ? 0.9 : 1,
+											transform: [{ scale: pressed ? 0.98 : 1 }]
 										},
 									]}
 								>
-									<Ionicons name={item.icon} size={16} color={COLORS.brandPrimary} />
+									<View style={{ 
+										width: 32, 
+										height: 32, 
+										borderRadius: 10, 
+										backgroundColor: COLORS.brandPrimary + '15',
+										alignItems: 'center',
+										justifyContent: 'center',
+										marginRight: 12
+									}}>
+										<Ionicons name={item.icon} size={16} color={COLORS.brandPrimary} />
+									</View>
 									<View style={{ flex: 1 }}>
-										<Text style={{ color: colors.text, fontWeight: "900" }} numberOfLines={1}>
+										<Text style={{ 
+											color: colors.text, 
+											fontWeight: "900",
+											letterSpacing: -0.5,
+											fontSize: 15
+										}} numberOfLines={1}>
 											{item.title}
 										</Text>
 										{item.subtitle ? (
-											<Text style={{ color: colors.textMuted, fontWeight: "500", fontSize: 12 }} numberOfLines={1}>
+											<Text style={{ 
+												color: colors.textMuted, 
+												fontWeight: "500", 
+												fontSize: 12,
+												letterSpacing: 0.2
+											}} numberOfLines={1}>
 												{item.subtitle}
 											</Text>
 										) : null}
@@ -369,15 +404,22 @@ export default function SearchScreen() {
 							))}
 						</View>
 					) : (
-						<Text style={{ color: colors.textMuted, fontWeight:'400' }}>
+						<Text style={{ color: colors.textMuted, fontWeight:'500', fontSize: 13 }}>
 							No results yet.
 						</Text>
 					)}
 				</View>
 
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
+				<View style={[styles.card, { backgroundColor: colors.card, borderRadius: 36, padding: 20, marginTop: 16 }]}>
 					<View style={styles.sectionHeaderRow}>
-						<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+						<Text style={[styles.sectionTitle, { 
+							color: colors.textMuted,
+							fontWeight: "800",
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
+							fontSize: 11,
+							marginBottom: 16
+						}]}>
 							Recent
 						</Text>
 						{Array.isArray(recentQueries) && recentQueries.length > 0 ? (
@@ -385,8 +427,8 @@ export default function SearchScreen() {
 								onPress={clearHistory}
 								style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
 							>
-								<Text style={{ color: colors.textMuted, fontWeight: "800", fontSize: 12 }}>
-									Clear
+								<Text style={{ color: COLORS.brandPrimary, fontWeight: "900", fontSize: 12, letterSpacing: -0.5 }}>
+									CLEAR
 								</Text>
 							</Pressable>
 						) : null}
@@ -400,22 +442,24 @@ export default function SearchScreen() {
 									style={({ pressed }) => [
 										styles.row,
 										{
-											backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)",
-											opacity: pressed ? 0.9 : 1,
+											backgroundColor: isDarkMode
+												? "rgba(255,255,255,0.04)"
+												: "rgba(0,0,0,0.02)",
+											borderRadius: 14,
+											padding: 12,
+											opacity: pressed ? 0.9 : 1
 										},
 									]}
 								>
-									<Ionicons name="time-outline" size={16} color={colors.textMuted} />
-									<Text style={{ color: colors.text, fontWeight: "500", flex: 1 }} numberOfLines={1}>
-										{item}
-									</Text>
-									<Ionicons name="arrow-forward" size={16} color={colors.textMuted} />
+									<Ionicons name="time-outline" size={16} color={colors.textMuted} style={{ marginRight: 12 }} />
+									<Text style={{ color: colors.text, fontWeight: "600", flex: 1 }}>{item}</Text>
+									<Ionicons name="arrow-forward" size={14} color={colors.textMuted} />
 								</Pressable>
 							))}
 						</View>
 					) : (
-						<Text style={{ color: colors.textMuted, fontWeight:'400' }}>
-							No recent searches yet.
+						<Text style={{ color: colors.textMuted, fontWeight:'500', fontSize: 13 }}>
+							No recent searches.
 						</Text>
 					)}
 				</View>

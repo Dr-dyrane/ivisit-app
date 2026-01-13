@@ -106,11 +106,25 @@ export default function InsuranceScreen() {
 						transform: [{ translateY: slideAnim }],
 					}}
 				>
+					<Text
+						style={{
+							fontSize: 10,
+							fontWeight: "800",
+							color: colors.textMuted,
+							marginBottom: 16,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
+							paddingHorizontal: 8,
+						}}
+					>
+						INSURANCE PROVIDERS
+					</Text>
+
 					<View
 						style={{
 							backgroundColor: colors.card,
-							borderRadius: 30,
-							padding: 20,
+							borderRadius: 36,
+							padding: 24,
 							shadowColor: "#000",
 							shadowOffset: { width: 0, height: 4 },
 							shadowOpacity: isDarkMode ? 0 : 0.03,
@@ -119,10 +133,10 @@ export default function InsuranceScreen() {
 					>
 						<Text
 							style={{
-								fontSize: 18,
+								fontSize: 22,
 								fontWeight: "900",
 								color: colors.text,
-								letterSpacing: -0.3,
+								letterSpacing: -1.0,
 							}}
 						>
 							Link your coverage
@@ -133,6 +147,7 @@ export default function InsuranceScreen() {
 								fontSize: 14,
 								lineHeight: 20,
 								color: colors.textMuted,
+								fontWeight: "500",
 							}}
 						>
 							Store your insurance details so bookings and visits can surface expected

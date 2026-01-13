@@ -4,6 +4,7 @@ import { Stack } from "expo-router";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useFAB } from "../../../contexts/FABContext";
 import { COLORS } from "../../../constants/colors";
+import { STACK_TOP_PADDING } from "../../../constants/layout";
 import HeaderBackButton from "../../../components/navigation/HeaderBackButton";
 
 export default function StacksLayout() {
@@ -19,7 +20,7 @@ export default function StacksLayout() {
 	return (
 		<Stack
 			screenOptions={{
-				headerShown: true,
+				headerShown: false,
 				headerBackTitleVisible: false,
 				headerShadowVisible: false,
 				headerStyle: {
@@ -29,6 +30,7 @@ export default function StacksLayout() {
 				contentStyle: {
 					backgroundColor: isDarkMode ? COLORS.bgDark : COLORS.bgLight,
 					borderTopWidth: 0,
+					paddingTop: STACK_TOP_PADDING,
 				},
 			}}
 		>

@@ -117,7 +117,8 @@ export default function SpecialtySelector({ specialties, selectedSpecialty, onSe
 
 const styles = StyleSheet.create({
 	container: {
-		marginVertical: 12,
+		marginTop: 8,
+		marginBottom: 0,
 	},
 	header: {
 		flexDirection: 'row',

@@ -33,6 +33,7 @@ import {
 	navigateToSettings,
 } from "../utils/navigationHelpers";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import { STACK_TOP_PADDING } from "../constants/layout";
 
 const MoreScreen = () => {
 	const router = useRouter();
@@ -97,8 +98,8 @@ const MoreScreen = () => {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
-	const headerHeight = 70;
-	const topPadding = 20;
+	const headerHeight = 80;
+	const topPadding = STACK_TOP_PADDING;
 
 	useEffect(() => {
 		Animated.parallel([
@@ -212,7 +213,7 @@ const MoreScreen = () => {
 							alignItems: "center",
 							padding: 20,
 							backgroundColor: colors.card,
-							borderRadius: 30,
+							borderRadius: 36,
 							shadowColor: "#000",
 							shadowOffset: { width: 0, height: 4 },
 							shadowOpacity: isDarkMode ? 0 : 0.03,
@@ -228,9 +229,8 @@ const MoreScreen = () => {
 							style={{
 								width: 64,
 								height: 64,
-								borderRadius: 32,
-								borderWidth: 3,
-								borderColor: COLORS.brandPrimary,
+								borderRadius: 24,
+								backgroundColor: COLORS.brandPrimary + "15",
 							}}
 						/>
 						<View style={{ marginLeft: 16, flex: 1 }}>
@@ -239,7 +239,7 @@ const MoreScreen = () => {
 									fontSize: 19,
 									fontWeight: "900",
 									color: colors.text,
-									letterSpacing: -0.5,
+									letterSpacing: -1.0,
 								}}
 							>
 								{user?.fullName || user?.username || "User"}
@@ -254,7 +254,7 @@ const MoreScreen = () => {
 							style={{
 								width: 36,
 								height: 36,
-								borderRadius: 12,
+								borderRadius: 14,
 								backgroundColor: isDarkMode
 									? "rgba(255,255,255,0.025)"
 									: "rgba(0,0,0,0.025)",
@@ -283,10 +283,11 @@ const MoreScreen = () => {
 					<Text
 						style={{
 							fontSize: 10,
-							fontWeight: "900",
+							fontWeight: "800",
 							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 3,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
 						}}
 					>
 						HEALTH & EMERGENCY
@@ -304,7 +305,7 @@ const MoreScreen = () => {
 								padding: 20,
 								marginBottom: 12,
 								backgroundColor: colors.card,
-								borderRadius: 30,
+								borderRadius: 36,
 								shadowColor: "#000",
 								shadowOffset: { width: 0, height: 4 },
 								shadowOpacity: isDarkMode ? 0 : 0.03,
@@ -315,7 +316,7 @@ const MoreScreen = () => {
 								style={{
 									width: 56,
 									height: 56,
-									borderRadius: 16,
+									borderRadius: 14,
 									backgroundColor: COLORS.brandPrimary,
 									alignItems: "center",
 									justifyContent: "center",
@@ -330,7 +331,7 @@ const MoreScreen = () => {
 										fontSize: 19,
 										fontWeight: "900",
 										color: colors.text,
-										letterSpacing: -0.5,
+										letterSpacing: -1.0,
 									}}
 								>
 									{item.title}
@@ -349,7 +350,7 @@ const MoreScreen = () => {
 								style={{
 									width: 36,
 									height: 36,
-									borderRadius: 12,
+									borderRadius: 14,
 									backgroundColor: isDarkMode
 										? "rgba(255,255,255,0.025)"
 										: "rgba(0,0,0,0.025)",
@@ -379,10 +380,11 @@ const MoreScreen = () => {
 					<Text
 						style={{
 							fontSize: 10,
-							fontWeight: "900",
+							fontWeight: "800",
 							color: colors.textMuted,
 							marginBottom: 16,
-							letterSpacing: 3,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
 						}}
 					>
 						SETTINGS
@@ -400,7 +402,7 @@ const MoreScreen = () => {
 								padding: 20,
 								marginBottom: 12,
 								backgroundColor: colors.card,
-								borderRadius: 30,
+								borderRadius: 36,
 								shadowColor: "#000",
 								shadowOffset: { width: 0, height: 4 },
 								shadowOpacity: isDarkMode ? 0 : 0.03,
@@ -411,14 +413,16 @@ const MoreScreen = () => {
 								style={{
 									width: 56,
 									height: 56,
-									borderRadius: 16,
-									backgroundColor: COLORS.brandPrimary,
+									borderRadius: 14,
+									backgroundColor: isDarkMode
+										? "rgba(255,255,255,0.05)"
+										: "rgba(0,0,0,0.03)",
 									alignItems: "center",
 									justifyContent: "center",
 									marginRight: 16,
 								}}
 							>
-								<Ionicons name={item.icon} size={26} color="#FFFFFF" />
+								<Ionicons name={item.icon} size={26} color={colors.text} />
 							</View>
 							<View style={{ flex: 1 }}>
 								<Text
@@ -426,7 +430,7 @@ const MoreScreen = () => {
 										fontSize: 19,
 										fontWeight: "900",
 										color: colors.text,
-										letterSpacing: -0.5,
+										letterSpacing: -1.0,
 									}}
 								>
 									{item.title}
@@ -445,7 +449,7 @@ const MoreScreen = () => {
 								style={{
 									width: 36,
 									height: 36,
-									borderRadius: 12,
+									borderRadius: 14,
 									backgroundColor: isDarkMode
 										? "rgba(255,255,255,0.025)"
 										: "rgba(0,0,0,0.025)",

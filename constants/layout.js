@@ -1,2 +1,2 @@
-export const STACK_TOP_PADDING = 16;
+export const STACK_TOP_PADDING = 80;
 

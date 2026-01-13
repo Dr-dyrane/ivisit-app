@@ -4,10 +4,11 @@ import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { BlurView } from "expo-blur";
+import { COLORS } from "../../constants/colors";
 import NotificationIconButton from "./NotificationIconButton";
 import SearchIconButton from "./SearchIconButton";
 
-const HEADER_HEIGHT = 56	;
+const HEADER_HEIGHT = 80;
 
 /**
  * ScrollAwareHeader Component (Sticky)
@@ -55,7 +56,7 @@ export default function ScrollAwareHeader({
 				styles.container,
 				{
 					opacity: headerOpacity,
-					paddingTop: insets.top,
+					paddingTop: insets.top + 8,
 					paddingHorizontal: 12,
 				},
 			]}
@@ -126,7 +127,7 @@ const styles = StyleSheet.create({
 	},
 	islandWrapper: {
 		// Floating "Island" feel
-		borderRadius: 32,
+		borderRadius: 48,
 		overflow: "hidden",
 		shadowColor: "#000",
 		shadowOffset: { width: 0, height: 12 },
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
 		elevation: 10,
 	},
 	blur: {
-		borderRadius: 32,
+		borderRadius: 48,
 	},
 	innerContent: {
 		height: HEADER_HEIGHT,
@@ -149,7 +150,7 @@ const styles = StyleSheet.create({
 	iconSquircle: {
 		width: 48,
 		height: 48,
-		borderRadius: 16, // Nested Squircle logic
+		borderRadius: 14, // Nested Squircle logic
 		alignItems: "center",
 		justifyContent: "center",
 		shadowColor: "#000",
@@ -163,15 +164,15 @@ const styles = StyleSheet.create({
 	},
 	subtitleText: {
 		fontSize: 10,
-		fontWeight: "900",
+		fontWeight: "800",
 		letterSpacing: 1.5,
 		textTransform: "uppercase",
 		marginBottom: 2,
 	},
 	titleText: {
-		fontSize: 22, // Editorial size
+		fontSize: 24, // Editorial size
 		fontWeight: "900",
-		letterSpacing: -0.8,
+		letterSpacing: -1.0,
 	},
 	rightSection: {
 		marginLeft: 12,

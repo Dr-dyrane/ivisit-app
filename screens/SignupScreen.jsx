@@ -4,10 +4,10 @@
  * Presents primary signup methods and social auth
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { View, Text, Animated, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useTheme } from "../contexts/ThemeContext";
 import { useRegistration } from "../contexts/RegistrationContext";
 import { COLORS } from "../constants/colors";
@@ -15,11 +15,34 @@ import SignUpMethodCard from "../components/register/SignUpMethodCard";
 import AuthInputModal from "../components/register/AuthInputModal";
 import SocialAuthRow from "../components/auth/SocialAuthRow";
 import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
+import { useHeaderState } from "../contexts/HeaderStateContext";
+import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
+import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import SwitchAuthButton from "../components/navigation/SwitchAuthButton";
 
 export default function SignupScreen() {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
+	const { setHeaderState } = useHeaderState();
+	const { resetHeader } = useScrollAwareHeader();
 	const { checkAndApplyPendingRegistration } = useRegistration();
+
+	useFocusEffect(
+		useCallback(() => {
+			resetHeader();
+			setHeaderState({
+				title: "Sign Up",
+				subtitle: "CREATE IDENTITY",
+				icon: <Ionicons name="person-add" size={26} color="#FFFFFF" />,
+				backgroundColor: COLORS.brandPrimary,
+				leftComponent: <HeaderBackButton />,
+				rightComponent: <SwitchAuthButton target="login" />,
+				hidden: false,
+			});
+		}, [resetHeader, setHeaderState])
+	);
+
 	const [modalVisible, setModalVisible] = useState(false);
 	const [authType, setAuthType] = useState(null);
 
@@ -75,16 +98,23 @@ export default function SignupScreen() {
 		<LinearGradient colors={colors.background} className="flex-1">
 			<Animated.View
 				style={{ opacity, transform: [{ translateY: methodAnim }] }}
-				className="flex-1 justify-center px-8"
+				className="flex-1 justify-center px-8 pt-20"
 			>
 				<SignUpMethodCard onSelect={openAuthModal} />
 
 				<View className="flex-row items-center my-10">
-					<View className="flex-1 h-[1px] bg-gray-500/10" />
-					<Text className="px-6 text-[10px] font-black tracking-[3px] text-gray-400">
+					<View className="flex-1 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />
+					<Text 
+						className="px-6 text-[10px] uppercase"
+						style={{ 
+							color: colors.subtitle,
+							fontWeight: "800",
+							letterSpacing: 1.5
+						}}
+					>
 						CONNECT QUICKLY
 					</Text>
-					<View className="flex-1 h-[1px] bg-gray-500/10" />
+					<View className="flex-1 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />
 				</View>
 
 				<Animated.View
