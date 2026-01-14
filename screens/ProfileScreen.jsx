@@ -838,9 +838,9 @@ const ProfileScreen = () => {
 						onPress={() => {
 							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 							if (user?.hasPassword) {
-								navigateToChangePassword({ router });
+								router.push("/(user)/(stacks)/change-password");
 							} else {
-								navigateToCreatePassword({ router });
+								router.push("/(user)/(stacks)/create-password");
 							}
 						}}
 						style={{

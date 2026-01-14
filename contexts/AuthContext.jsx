@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }) => {
 			lastName: user?.lastName || null,
 			emailVerified: user?.emailVerified === true,
 			phoneVerified: user?.phoneVerified === true,
-			hasPassword: !!user?.password,
+			hasPassword: user?.hasPassword === true, // FIX: Check the boolean flag, not the password string
 			hasInsurance: user?.hasInsurance === true,
 		}),
 		[user, token]

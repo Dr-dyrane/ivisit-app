@@ -93,6 +93,10 @@ export default function SettingsScreen() {
 	};
 
 	const passwordRoute = useMemo(() => {
+		// Only go to create-password if explicitly false (meaning we checked and they don't have one)
+		// If undefined/null, we might still be loading, but defaulting to change-password is safer 
+		// to avoid showing "Create" to someone who has one.
+		// However, based on our new logic, user.hasPassword should be accurate.
 		return user?.hasPassword ? "/(user)/(stacks)/change-password" : "/(user)/(stacks)/create-password";
 	}, [user?.hasPassword]);
 

@@ -63,6 +63,9 @@ const handleSupabaseError = (error) => {
 		return createAuthError(AuthErrors.EMAIL_EXISTS, "User already exists");
 	}
 	if (msg.includes("password")) {
+		if (msg.includes("different from the old")) {
+			return createAuthError(AuthErrors.PASSWORD_EXISTS, "New password must be different from the old one");
+		}
 		return createAuthError(AuthErrors.INVALID_PASSWORD, error.message);
 	}
 	if (msg.includes("network")) {
@@ -144,7 +147,19 @@ const authService = {
             console.warn("Failed to fetch insurance status during login:", e);
         }
 
-		const user = this._formatUser(data.user, data.session?.access_token, profile, hasInsurance);
+        // HEURISTIC: Check if user has a password.
+        // Supabase doesn't expose this directly.
+        // 1. If 'encrypted_password' is in app_metadata (sometimes present)
+        // 2. Check if they have 'email' provider in identities
+        // 3. OR if we have a local flag (we don't persist this yet)
+        
+        // Best proxy: Check identities for 'email' provider
+        // BUT: Magic Link also uses 'email' provider.
+        // So we might need to rely on:
+        // A) Did they just login with password? (Yes, if we are in this function) -> hasPassword = true
+        const hasPassword = true;
+
+		const user = this._formatUser(data.user, data.session?.access_token, profile, hasInsurance, hasPassword);
 
         // Cache locally for offline support
         await database.write(StorageKeys.CURRENT_USER, user);
@@ -223,10 +238,16 @@ const authService = {
 			token: data.session?.access_token,
             emailVerified: !!data.user?.email_confirmed_at,
             phoneVerified: !!data.user?.phone_confirmed_at,
+            hasPassword: true, // We just created it with a password
 		};
 
         if (data.session) {
-             await database.write(StorageKeys.CURRENT_USER, user);
+             // If we have a session, format it properly
+             const fullUser = this._formatUser(data.user, data.session.access_token, {
+                 username, firstName, lastName
+             }, false, true); // hasPassword = true
+
+             await database.write(StorageKeys.CURRENT_USER, fullUser);
              await database.write(StorageKeys.AUTH_TOKEN, data.session.access_token);
              
              // Auto-enroll in insurance scheme
@@ -409,7 +430,31 @@ const authService = {
     /**
      * Helper to format user object consistently
      */
-    _formatUser(sessionUser, sessionToken, profile, hasInsurance = false) {
+	_formatUser(sessionUser, sessionToken, profile, hasInsurance = false, hasPasswordOverride = null) {
+        // Try to determine if user has a password
+        // 1. Use override if provided (e.g. from loginWithPassword)
+        // 2. Check user_metadata.has_password (our custom flag)
+        // 3. Check encrypted_password (often present in user object but not always documented)
+        // 4. Check app_metadata.providers for "email"
+        
+        let hasPassword = hasPasswordOverride;
+        
+        if (hasPassword === null) {
+             // 1. Check custom metadata flag (The most reliable source for OAuth users who added password)
+             if (sessionUser?.user_metadata?.has_password === true) {
+                 hasPassword = true;
+             }
+             // 2. Check encrypted_password
+             else if (sessionUser?.encrypted_password) {
+                 hasPassword = true;
+             } else {
+                 // 3. Fallback to provider check
+                 const providers = sessionUser?.app_metadata?.providers || [];
+                 const hasEmailProvider = providers.includes('email');
+                 hasPassword = hasEmailProvider; 
+             }
+        }
+
         return {
             ...profile,
             id: sessionUser.id,
@@ -419,7 +464,8 @@ const authService = {
             phoneVerified: !!sessionUser.phone_confirmed_at,
             token: sessionToken,
             isAuthenticated: true,
-            hasInsurance, // Added insurance status
+            hasInsurance, 
+            hasPassword, 
         };
     },
 
@@ -558,37 +604,84 @@ const authService = {
 	 */
 	async forgotPassword(email) {
 		const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: 'ivisit://auth/reset-password',
+            redirectTo: Linking.createURL('/auth/reset-password'),
         });
 		if (error) throw handleSupabaseError(error);
 		return { message: "Password reset instructions sent" };
 	},
 
-    // Reset password (update)
-    async resetPassword({ newPassword }) {
-        const { error } = await supabase.auth.updateUser({ password: newPassword });
-        if (error) throw handleSupabaseError(error);
+    // Reset password (update) with token logic handled by Supabase automatically if session is active
+    // OR if we are using the PKCE flow which exchanges the token in the URL for a session.
+    async resetPassword({ newPassword, resetToken, email }) {
+        // CASE 1: Authenticated User (Changing Password or Set Password via Settings)
+        // If we have a session, we just update the user.
+        const { data: { session } } = await supabase.auth.getSession();
         
-		// Create notification for password change
-		try {
-			await notificationDispatcher.dispatchAuthEvent('password_change', {});
-		} catch (error) {
-			console.warn("[authService] Failed to create password change notification:", error);
-		}
+        if (session) {
+             const { error } = await supabase.auth.updateUser({ password: newPassword });
+             if (error) throw handleSupabaseError(error);
+             
+             // Update local cache
+             await this.getCurrentUser();
+             return { message: "Password updated successfully" };
+        }
 
-        return { message: "Password updated successfully" };
+        // CASE 2: Unauthenticated User (Forgot Password Flow)
+        // If we are here, the user clicked a link in email.
+        // Supabase Deep Link: ivisit://auth/reset-password#access_token=...&refresh_token=...&type=recovery
+        // When the app opens via deep link, Supabase client automatically detects the hash
+        // and sets the session. So by the time we call this, 'session' SHOULD be true (Case 1).
+        
+        // HOWEVER, if you are manually handling OTP (6-digit code) instead of deep link:
+        if (resetToken && email) {
+            const { error } = await supabase.auth.verifyOtp({
+                email,
+                token: resetToken,
+                type: 'recovery',
+            });
+            if (error) throw handleSupabaseError(error);
+            
+            // Once verified, we have a session. Now update the password.
+             const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+             if (updateError) throw handleSupabaseError(updateError);
+             
+             // Update local cache
+             await this.getCurrentUser();
+             return { message: "Password reset successfully" };
+        }
+        
+        throw createAuthError(AuthErrors.INVALID_TOKEN, "Invalid reset flow");
     },
 
     // Alias for consistency
     async setPassword({ password }) {
         try {
-            // Use updateUser directly to get the result
-            const { data, error } = await supabase.auth.updateUser({ password });
-            if (error) throw handleSupabaseError(error);
+            // Update password AND set a metadata flag so we know they have one
+            // This is crucial for OAuth users who add a password later
+            const { data, error } = await supabase.auth.updateUser({ 
+                password,
+                data: { has_password: true }
+            });
+            
+            // Handle specific case: User tries to "create" a password that matches their old one
+            if (error) {
+                const msg = error.message?.toLowerCase() || "";
+                if (msg.includes("different from the old")) {
+                     // IMPORTANT: They have the password, but might miss the metadata flag.
+                     // Force update the metadata only.
+                     await supabase.auth.updateUser({ data: { has_password: true } });
+                } else {
+                    throw handleSupabaseError(error);
+                }
+            }
 
             // Fetch full profile/user data to return
             const currentUser = await this.getCurrentUser();
             
+            // Explicitly set hasPassword to true in the returned data and cache
+            const updatedUser = { ...currentUser.data, hasPassword: true };
+            await database.write(StorageKeys.CURRENT_USER, updatedUser);
+
 			// Create notification for password change
 			try {
 				await notificationDispatcher.dispatchAuthEvent('password_change', {});
@@ -599,8 +692,8 @@ const authService = {
             return {
                 success: true,
                 data: {
-                    user: currentUser.data,
-                    token: currentUser.data.token
+                    user: updatedUser,
+                    token: updatedUser.token
                 }
             };
         } catch (error) {

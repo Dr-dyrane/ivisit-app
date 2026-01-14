@@ -36,7 +36,7 @@ export default function CreatePasswordScreen() {
 		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
-	const { syncUserData, user } = useAuth();
+	const { syncUserData, user, login } = useAuth();
 	// Re-using the change password hook, but we will ignore 'currentPassword' for setPassword
 	const { setPassword, isLoading: isSaving, error: hookError } = useChangePassword();
 
@@ -130,14 +130,59 @@ export default function CreatePasswordScreen() {
 		setError(null);
 		try {
             // For creating a password where none exists, we don't need current password
-			await setPassword({ newPassword: password });
-			await syncUserData();
-			router.back();
+			const result = await setPassword({ newPassword: password });
+			
+            if (result.success) {
+                 // Directly update auth context with the new user object (which includes hasPassword: true)
+                 // This avoids the race condition where fetching from Supabase immediately might return old metadata
+                 await login(result.data.user);
+                 router.back();
+            } else {
+                 throw new Error(result.error);
+            }
 		} catch (e) {
 			const msg = e?.message?.split("|")?.[1] || e?.message || "Unable to set password";
 			setError(msg);
 		}
-	}, [isSaving, router, syncUserData, setPassword]);
+	}, [isSaving, router, login, setPassword]);
+
+	if (user?.hasPassword) {
+		return (
+			<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
+				<ScrollView 
+                    contentContainerStyle={[
+                        styles.content, 
+                        { paddingTop: topPadding, paddingBottom: bottomPadding }
+                    ]}
+                >
+					<View style={[styles.card, { backgroundColor: colors.card }]}>
+						<Text style={[styles.title, { color: colors.text }]}>
+							Password Already Set
+						</Text>
+						<Text style={[styles.subtitle, { color: colors.textMuted }]}>
+							You already have a password. You can update it instead.
+						</Text>
+						<Pressable
+							onPress={() => router.replace("/(user)/(stacks)/change-password")}
+							style={({ pressed }) => ({
+								marginTop: 12,
+								height: 54,
+								borderRadius: 22,
+								backgroundColor: COLORS.brandPrimary,
+								opacity: pressed ? 0.92 : 1,
+								alignItems: "center",
+								justifyContent: "center",
+							})}
+						>
+							<Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 15 }}>
+								Go to Change Password
+							</Text>
+						</Pressable>
+					</View>
+				</ScrollView>
+			</LinearGradient>
+		);
+	}
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
