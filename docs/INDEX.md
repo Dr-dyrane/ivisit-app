@@ -30,10 +30,15 @@ docs/
   │   │   └── ARCHITECTURE.md
   │   ├── auth/
   │   │   └── AUTH_REFACTOR_PLAN.md
-  │   └── roadmap/
-  │       └── PRODUCT_EXECUTION_ROADMAP.md
+  │   ├── roadmap/
+  │   │   └── PRODUCT_EXECUTION_ROADMAP.md
+  │   └── WEB_DASHBOARD_SPEC.md   # Console/Web dashboard spec (existing)
   │
-  ├── deprecated/                 # Backup of replaced code
+  ├── console/                   # Console/Web dashboard documentation
+│   ├── console-ui-theme-guide.md    # UI theme & component guide for console
+│   └── dashboard-crud-plan.md        # Full CRUD plan with RBAC for dashboard
+│
+├── deprecated/                 # Backup of replaced code
   │   ├── README.md               # Guide for deprecated code
   │   ├── userStore.js.md         # Original userStore (parts 1-3)
   │   └── imageStore.js.md        # Original imageStore
@@ -82,14 +87,20 @@ docs/
 | [EMERGENCY_REFACTOR_MANIFEST.md](./emergency/refactor/EMERGENCY_REFACTOR_MANIFEST.md) | EmergencyBottomSheet refactor feature manifest | ✅ Completed |
 | [CURRENT_STATE.md](./project_state/context/CURRENT_STATE.md) | Current Architecture & Backend State | 🟢 Active |
 
-### Architecture
+| Architecture | Document | Description |
+|-------------|----------|-------------|
+| [ARCHITECTURE.md](./architecture/overview/ARCHITECTURE.md) | Overall app architecture & layers |
+| [PRODUCT_EXECUTION_ROADMAP.md](./architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md) | Product execution roadmap |
+| [WEB_DASHBOARD_SPEC.md](./architecture/WEB_DASHBOARD_SPEC.md) | Console/Web dashboard specification (existing) |
+| [CONTEXT_REVIEW.md](./project_state/CONTEXT_REVIEW.md) | Review of all context providers |
+| [Technical.md](./onboarding/Technical.md) | Technical specifications |
+
+### Console & Dashboard
 
 | Document | Description |
 |----------|-------------|
-| [ARCHITECTURE.md](./architecture/overview/ARCHITECTURE.md) | Overall app architecture & layers |
-| [PRODUCT_EXECUTION_ROADMAP.md](./architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md) | Product execution roadmap |
-| [CONTEXT_REVIEW.md](./project_state/CONTEXT_REVIEW.md) | Review of all context providers |
-| [Technical.md](./onboarding/Technical.md) | Technical specifications |
+| [console-ui-theme-guide.md](./console/console-ui-theme-guide.md) | UI theme & component guide for console development |
+| [dashboard-crud-plan.md](./console/dashboard-crud-plan.md) | Full CRUD plan with RBAC for dashboard implementation |
 
 ### Authentication & Flows
 
