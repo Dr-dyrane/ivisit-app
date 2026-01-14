@@ -208,7 +208,6 @@
 ---
 
 ## Execution checkpoints (what we commit at each milestone)
-
 - **Checkpoint A:** All routes exist and are reachable (Phase 1).
 - **Checkpoint B:** Visits UX parity and details page (Phase 2).
 - **Checkpoint C:** Profile completion gate enforced (Phase 3).
@@ -216,8 +215,7 @@
 - **Checkpoint E:** Patient POV Emergency flow complete (Phase 5).
 - **Checkpoint F:** Provider discovery + booking realism milestone (Phase 7).
 - **Checkpoint G:** Supabase integration milestone (Phase 8).
-
----
+- **Checkpoint H:** App Store Production Readiness (2026-01-13).
 
 ## Progress tracking (how we’ll work)
 

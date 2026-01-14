@@ -61,16 +61,9 @@ export default function SocialAuthButton({ provider }) {
 			}),
 		]).start();
 
-		if (provider === "apple") {
-			// -----------------------------------------------------------
-			// [APPLE LOGIN ACTIVATION]
-			// To enable Apple Sign In when you have Service ID & Secret:
-			// 1. Setup Apple Provider in Supabase Dashboard.
-			// 2. Remove or comment out the following 2 lines:
-			// -----------------------------------------------------------
-			setShowComingSoon(true);
-			return;
-		}
+		// [PRODUCTION-READY] 
+        // Apple Login is currently hidden via return null below until Service ID is configured.
+        // Once configured, remove the early return in the render method.
 
 		try {
 			const { success, error } = await signInWithProvider(provider);
@@ -103,6 +96,11 @@ export default function SocialAuthButton({ provider }) {
 			showToast(errorMessage, "error");
 		}
 	};
+
+    // [PRODUCTION-READY] Hide Apple Login until keys are configured to prevent App Store rejection
+    if (provider === "apple") {
+        return null;
+    }
 
 	return (
 		<>

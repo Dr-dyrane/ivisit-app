@@ -477,7 +477,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 							{isOTPStep && (
 								<View>
 									{/* DEV: Show mock OTP for testing - remove in production */}
-									{mockOtp && (
+									{/* {mockOtp && (
 										<View
 											className="mb-4 p-3 rounded-xl"
 											style={{
@@ -507,7 +507,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 												{mockOtp}
 											</Text>
 										</View>
-									)}
+									)} */}
 									<OTPInputCard
 										method={registrationData.method}
 										contact={registrationData.phone || registrationData.email}

@@ -696,7 +696,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 							{currentStep === LOGIN_STEPS.OTP_VERIFICATION && (
 								<View>
 									{/* DEV: Show mock OTP for testing - remove in production */}
-									{mockOtp && (
+									{/* {mockOtp && (
 										<View
 											className="mb-4 p-3 rounded-xl"
 											style={{
@@ -726,7 +726,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 												{mockOtp}
 											</Text>
 										</View>
-									)}
+									)} */}
 									<OTPInputCard
 										method={loginData.contactType}
 										contact={loginData.contact}
