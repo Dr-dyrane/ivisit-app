@@ -20,8 +20,24 @@ export const useChangePassword = () => {
 		}
 	};
 
+	const setPassword = async ({ newPassword }) => {
+		setIsLoading(true);
+		setError(null);
+		try {
+			const result = await authService.setPassword({ password: newPassword });
+			return result;
+		} catch (err) {
+			const msg = err?.message || "Failed to set password";
+			setError(msg);
+			throw err;
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
 	return {
 		changePassword,
+        setPassword,
 		isLoading,
 		error,
 	};
