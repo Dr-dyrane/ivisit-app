@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ivisit",
+    "name": "iVisit",
     "slug": "ivisit",
     "scheme": "ivisit",
     "version": "1.0.0",
@@ -14,9 +14,12 @@
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.dyrane.ivisit",
       "infoPlist": {
-        "NSCameraUsageDescription": "This app needs access to your camera to allow you to take photos.",
-        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select images."
+        "NSCameraUsageDescription": "This app needs access to your camera to allow you to take photos for your profile.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select profile images.",
+        "NSLocationWhenInUseUsageDescription": "iVisit needs your location to find nearby hospitals and dispatch emergency services to your exact position.",
+        "NSContactsUsageDescription": "iVisit uses your contacts to help you quickly add emergency contacts from your address book."
       }
     },
     "android": {
@@ -25,7 +28,16 @@
         "backgroundColor": "#00000000"
       },
       "package": "com.dyrane.ivisit",
-      "newArchEnabled": true
+      "newArchEnabled": true,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_CONTACTS",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "INTERNET"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
