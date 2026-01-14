@@ -135,7 +135,16 @@ const authService = {
 		// Fetch detailed profile from public.profiles
 		const profile = await this.getUserProfile(data.user.id);
 		
-		const user = this._formatUser(data.user, data.session?.access_token, profile);
+        // Check insurance status
+        let hasInsurance = false;
+        try {
+            const policies = await insuranceService.list();
+            hasInsurance = policies && policies.length > 0;
+        } catch (e) {
+            console.warn("Failed to fetch insurance status during login:", e);
+        }
+
+		const user = this._formatUser(data.user, data.session?.access_token, profile, hasInsurance);
 
         // Cache locally for offline support
         await database.write(StorageKeys.CURRENT_USER, user);
@@ -310,6 +319,14 @@ const authService = {
                  const user = this._formatUser(data.user, data.session.access_token, profile);
 
                  await database.write(StorageKeys.CURRENT_USER, user);
+                 
+                 // Auto-enroll in insurance scheme (idempotent check inside)
+                 try {
+                    await insuranceService.enrollBasicScheme();
+                 } catch (insError) {
+                    console.warn("[authService] Failed to auto-enroll in insurance (OAuth PKCE):", insError);
+                 }
+
                  return { data: { session: data.session, user } };
              }
         }
@@ -329,6 +346,14 @@ const authService = {
                  const user = this._formatUser(data.user, data.session.access_token, profile);
 
                  await database.write(StorageKeys.CURRENT_USER, user);
+                 
+                 // Auto-enroll in insurance scheme (idempotent check inside)
+                 try {
+                    await insuranceService.enrollBasicScheme();
+                 } catch (insError) {
+                    console.warn("[authService] Failed to auto-enroll in insurance (OAuth Implicit):", insError);
+                 }
+
                  return { data: { session: data.session, user } };
              }
         }
@@ -341,6 +366,14 @@ const authService = {
              const user = this._formatUser(session.user, session.access_token, profile);
 
              await database.write(StorageKeys.CURRENT_USER, user);
+             
+             // Auto-enroll in insurance scheme (idempotent check inside)
+             try {
+                await insuranceService.enrollBasicScheme();
+             } catch (insError) {
+                console.warn("[authService] Failed to auto-enroll in insurance (OAuth Fallback):", insError);
+             }
+
              return { data: { session: session, user } };
         }
 
@@ -376,7 +409,7 @@ const authService = {
     /**
      * Helper to format user object consistently
      */
-    _formatUser(sessionUser, sessionToken, profile) {
+    _formatUser(sessionUser, sessionToken, profile, hasInsurance = false) {
         return {
             ...profile,
             id: sessionUser.id,
@@ -386,6 +419,7 @@ const authService = {
             phoneVerified: !!sessionUser.phone_confirmed_at,
             token: sessionToken,
             isAuthenticated: true,
+            hasInsurance, // Added insurance status
         };
     },
 
@@ -403,8 +437,17 @@ const authService = {
 		}
 
         const profile = await this.getUserProfile(session.user.id);
+        
+        // Check insurance status
+        let hasInsurance = false;
+        try {
+            const policies = await insuranceService.list();
+            hasInsurance = policies && policies.length > 0;
+        } catch (e) {
+            console.warn("Failed to fetch insurance status:", e);
+        }
 
-		const user = this._formatUser(session.user, session.access_token, profile);
+		const user = this._formatUser(session.user, session.access_token, profile, hasInsurance);
 
         await database.write(StorageKeys.CURRENT_USER, user);
 
@@ -702,13 +745,34 @@ const authService = {
         // If they only have an ID/Email/Phone (from trigger), they are "New" (need registration).
         const isExistingUser = !!profile.username; 
 
-        const user = this._formatUser(data.user, data.session?.access_token, profile);
+        // Check insurance status (even if new user, they might have just been auto-enrolled by trigger or we do it below)
+        let hasInsurance = false;
+        try {
+            // We can try to list, but if they are brand new, it might be empty until we enroll them below.
+            // However, list() queries the DB.
+            const policies = await insuranceService.list();
+            hasInsurance = policies && policies.length > 0;
+        } catch (e) {
+             console.warn("Failed to fetch insurance status during OTP verify:", e);
+        }
+
+        // If we are about to enroll them, we can optimistically set true if we succeed, 
+        // but for now let's stick to truth from DB or enroll first.
+        
+        // Auto-enroll FIRST if needed, so we get the correct status
+        if (!hasInsurance) {
+             try {
+                await insuranceService.enrollBasicScheme();
+                hasInsurance = true; // Optimistic update
+            } catch (insError) {
+                console.warn("[authService] Failed to auto-enroll in insurance (OTP):", insError);
+            }
+        }
+
+        const user = this._formatUser(data.user, data.session?.access_token, profile, hasInsurance);
 
         await database.write(StorageKeys.CURRENT_USER, user);
         await database.write(StorageKeys.AUTH_TOKEN, data.session?.access_token);
-        
-        // If it's a new user (no username yet but just verified OTP), we might want to trigger auto-enrollment later 
-        // after they complete profile. But for now, we assume signup flow handles auto-enrollment.
 
 		return { success: true, data: { ...user, isExistingUser } };
 	},

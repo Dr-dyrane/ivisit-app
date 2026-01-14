@@ -5,15 +5,20 @@ export const insuranceService = {
     /**
      * Get all insurance policies for the current user
      */
-    async getPolicies() {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return [];
+    async list() {
+        // Try local cache first to ensure offline-first
+        const local = await database.read(StorageKeys.INSURANCE_POLICIES, []);
+        
+        // Then try fetching fresh data
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return local; // Fallback to local if no session
 
         // Try Supabase first
         const { data, error } = await supabase
             .from('insurance_policies')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', session.user.id)
+            .order('is_default', { ascending: false }) // Default first
             .order('created_at', { ascending: false });
 
         if (!error && data) {
@@ -22,26 +27,39 @@ export const insuranceService = {
             return data;
         }
 
-        // Fallback to local
-        const local = await database.read(StorageKeys.INSURANCE_POLICIES, []);
         return local;
+    },
+
+    async getPolicies() {
+        return this.list();
     },
 
     /**
      * Create a new policy (or auto-enroll)
      */
-    async createPolicy(policy) {
+    async create(policy) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
 
+        // Check if this is the first policy, if so make it default
+        const { count } = await supabase
+            .from('insurance_policies')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
+        const isFirst = count === 0;
+
         const newPolicy = {
             user_id: user.id,
-            provider_name: policy.providerName || 'iVisit Basic',
-            policy_number: policy.policyNumber || `IV-${Date.now().toString().slice(-6)}`,
-            plan_type: policy.planType || 'basic',
+            provider_name: policy.provider_name || 'iVisit Basic',
+            policy_number: policy.policy_number || `IV-${Date.now().toString().slice(-6)}`,
+            group_number: policy.group_number || null,
+            policy_holder_name: policy.policy_holder_name || null,
+            plan_type: policy.plan_type || 'basic',
             status: 'active',
-            coverage_details: policy.coverageDetails || { limit: 50000, type: 'emergency_transport' },
+            coverage_details: policy.coverage_details || { limit: 50000, type: 'emergency_transport' },
             expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year
+            is_default: isFirst, // Auto-default if first
         };
 
         const { data, error } = await supabase
@@ -52,10 +70,104 @@ export const insuranceService = {
 
         if (error) {
             console.error("Failed to create insurance policy:", error);
-            // Save locally if offline?
-            return newPolicy; 
+            throw error;
         }
 
+        return data;
+    },
+    
+    // Alias
+    async createPolicy(policy) {
+        return this.create({
+            provider_name: policy.providerName,
+            policy_number: policy.policyNumber,
+            plan_type: policy.planType,
+            coverage_details: policy.coverageDetails
+        });
+    },
+
+    async update(id, updates) {
+        const { error, data } = await supabase
+            .from('insurance_policies')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+            
+        if (error) throw error;
+        return data;
+    },
+
+    async delete(id) {
+        // 1. Check if default
+        const { data: policy } = await supabase
+            .from('insurance_policies')
+            .select('is_default')
+            .eq('id', id)
+            .single();
+
+        if (policy?.is_default) {
+            // Check if there are other policies
+             const { count } = await supabase
+                .from('insurance_policies')
+                .select('*', { count: 'exact', head: true });
+                
+             if (count > 1) {
+                 throw new Error("Cannot delete default policy. Please set another policy as default first.");
+             } else {
+                 throw new Error("Cannot delete your only insurance policy. You must have at least one active scheme.");
+             }
+        }
+
+        const { error } = await supabase
+            .from('insurance_policies')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        return true;
+    },
+
+    /**
+     * Set a policy as default
+     */
+    async setDefault(id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Transaction-like approach (Supabase doesn't support easy transactions via JS client without RPC)
+        // 1. Unset all defaults for user
+        await supabase
+            .from('insurance_policies')
+            .update({ is_default: false })
+            .eq('user_id', user.id);
+
+        // 2. Set new default
+        const { data, error } = await supabase
+            .from('insurance_policies')
+            .update({ is_default: true })
+            .eq('id', id)
+            .eq('user_id', user.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    /**
+     * Link payment method to policy
+     */
+    async linkPaymentMethod(id, paymentMethod) {
+        // paymentMethod: { type: 'card', last4: '1234', brand: 'Visa' }
+        const { data, error } = await supabase
+            .from('insurance_policies')
+            .update({ linked_payment_method: paymentMethod })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
         return data;
     },
 
@@ -63,10 +175,25 @@ export const insuranceService = {
      * Auto-enroll user in basic scheme
      */
     async enrollBasicScheme() {
-        return this.createPolicy({
-            providerName: 'iVisit Basic',
-            planType: 'basic',
-            coverageDetails: { 
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+
+        // Check if already enrolled
+        const { data: existing } = await supabase
+            .from('insurance_policies')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('provider_name', 'iVisit Basic')
+            .limit(1);
+
+        if (existing && existing.length > 0) {
+            return existing[0];
+        }
+
+        return this.create({
+            provider_name: 'iVisit Basic',
+            plan_type: 'basic',
+            coverage_details: { 
                 limit: 50000, 
                 description: 'Covers 1 emergency ambulance trip per year',
                 copay: 0

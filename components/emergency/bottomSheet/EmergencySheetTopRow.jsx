@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Image, Pressable, StyleSheet } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { View, Image, Pressable, StyleSheet, Animated } from "react-native";
 import EmergencySearchBar from "../EmergencySearchBar";
 import MiniProfileModal from "../MiniProfileModal";
 import { COLORS } from "../../../constants/colors";
@@ -18,6 +18,24 @@ export default function EmergencySheetTopRow({
 	onCloseProfileModal,
 }) {
 	const { isDarkMode } = useTheme();
+	const fadeAnim = useRef(new Animated.Value(1)).current;
+
+	useEffect(() => {
+		Animated.loop(
+			Animated.sequence([
+				Animated.timing(fadeAnim, {
+					toValue: 0.4,
+					duration: 1000,
+					useNativeDriver: true,
+				}),
+				Animated.timing(fadeAnim, {
+					toValue: 1,
+					duration: 1000,
+					useNativeDriver: true,
+				}),
+			])
+		).start();
+	}, []);
 
 	return (
 		<View style={styles.wrapper}>
@@ -53,7 +71,7 @@ export default function EmergencySheetTopRow({
 					/>
 					
 					{/* Premium Active Indicator - Signature Dot */}
-					<View style={styles.activeDot} />
+					<Animated.View style={[styles.activeDot, { opacity: fadeAnim }]} />
 				</Pressable>
 			</View>
 

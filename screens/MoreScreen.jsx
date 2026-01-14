@@ -327,19 +327,40 @@ const MoreScreen = () => {
 							shadowRadius: 10,
 						}}
 					>
-						<Image
-							source={
-								user?.imageUri
-									? { uri: user.imageUri }
-									: require("../assets/profile.jpg")
-							}
-							style={{
-								width: 64,
-								height: 64,
-								borderRadius: 24,
-								backgroundColor: COLORS.brandPrimary + "15",
-							}}
-						/>
+						<View>
+							<Image
+								source={
+									user?.imageUri
+										? { uri: user.imageUri }
+										: require("../assets/profile.jpg")
+								}
+								style={{
+									width: 64,
+									height: 64,
+									borderRadius: 24,
+									backgroundColor: COLORS.brandPrimary + "15",
+								}}
+							/>
+							{user?.hasInsurance && (
+							<View
+								style={{
+									position: "absolute",
+									bottom: -2,
+									right: -2,
+									backgroundColor: COLORS.brandPrimary,
+									borderRadius: 10,
+									width: 20,
+									height: 20,
+									justifyContent: "center",
+									alignItems: "center",
+									borderWidth: 2,
+									borderColor: colors.card,
+								}}
+							>
+								<Ionicons name="shield-checkmark" size={10} color="#FFFFFF" />
+							</View>
+							)}
+						</View>
 						<View style={{ marginLeft: 16, flex: 1 }}>
 							<Text
 								style={{

@@ -23,8 +23,13 @@ const supabaseAnonKey =
 	cleanEnvValue(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) ??
 	cleanEnvValue(process.env.EXPO_PUBLIC_SUPABASE_KEY);
 
+// Force debug logging if values are missing
 if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("Supabase URL or Key is missing. Check your .env file.");
+    console.error("[Supabase Config Error] Missing URL or Key.", {
+        url: !!supabaseUrl,
+        key: !!supabaseAnonKey,
+        env: process.env.NODE_ENV
+    });
 }
 
 export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "", {

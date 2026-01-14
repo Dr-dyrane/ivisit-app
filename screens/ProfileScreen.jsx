@@ -387,6 +387,7 @@ const ProfileScreen = () => {
 								backgroundColor: COLORS.brandPrimary + "15",
 							}}
 						/>
+						{/* Insurance Badge Removed - Manifesto: "Calm Over Contrast" */}
 						<View
 							style={{
 								position: "absolute",
@@ -424,6 +425,47 @@ const ProfileScreen = () => {
 					<Text style={{ fontSize: 14, color: colors.textMuted, marginTop: 4 }}>
 						{email || "email@example.com"}
 					</Text>
+
+                    {/* Manifesto Identity Artifact */}
+                    {user?.hasInsurance && (
+                    <View
+                        style={{
+                            marginTop: 16,
+                            backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(134, 16, 14, 0.05)",
+                            paddingHorizontal: 16,
+                            paddingVertical: 8,
+                            borderRadius: 16,
+                            borderWidth: 1,
+                            borderColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(134, 16, 14, 0.1)",
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 8,
+                        }}
+                    >
+                        <View
+                            style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: COLORS.brandPrimary,
+                                shadowColor: COLORS.brandPrimary,
+                                shadowOpacity: 0.5,
+                                shadowRadius: 4,
+                            }}
+                        />
+                        <Text
+                            style={{
+                                fontSize: 12,
+                                fontWeight: "800",
+                                color: isDarkMode ? "#FFFFFF" : COLORS.brandPrimary,
+                                letterSpacing: 0.5,
+                                textTransform: "uppercase",
+                            }}
+                        >
+                            iVisit Basic Member
+                        </Text>
+                    </View>
+                    )}
 				</Animated.View>
 
 				<Animated.View

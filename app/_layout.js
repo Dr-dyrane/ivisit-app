@@ -17,6 +17,8 @@ import ThemeToggle from "../components/ThemeToggle";
 import { isProfileComplete } from "../utils/profileCompletion";
 import { authService } from "../services/authService";
 
+import { appMigrationsService } from "../services/appMigrationsService";
+
 /**
  * Root layout wraps the entire app with context providers
  * - Refactored to use AppProviders for cleaner modularity
@@ -26,6 +28,8 @@ import { authService } from "../services/authService";
 export default function RootLayout() {
 	useEffect(() => {
 		SplashScreen.preventAutoHideAsync?.().catch(() => {});
+        // Run migrations and schema reload on startup
+        appMigrationsService.run().catch(err => console.log("Migration error:", err));
 	}, []);
 
 	return (

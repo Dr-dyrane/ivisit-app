@@ -63,6 +63,9 @@ export const StorageKeys = {
 	MEDICAL_PROFILE: `${DB_PREFIX}medical_profile`,
 
 	EMERGENCY_STATE: `${DB_PREFIX}emergency_state`,
+    
+    /** Insurance policies */
+    INSURANCE_POLICIES: `${DB_PREFIX}insurance_policies`,
 
 	// ============================================
 	// NOTIFICATIONS & PREFERENCES
@@ -100,6 +103,7 @@ export const CollectionKeys = [
 	// StorageKeys.IMAGES, // Managed as a Map/Object, not an Array
 	StorageKeys.RESET_TOKENS,
 	StorageKeys.EMERGENCY_REQUESTS,
+    StorageKeys.INSURANCE_POLICIES,
 ];
 
 /**

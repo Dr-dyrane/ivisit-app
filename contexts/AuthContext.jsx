@@ -69,6 +69,7 @@ export const AuthProvider = ({ children }) => {
 			emailVerified: user?.emailVerified === true,
 			phoneVerified: user?.phoneVerified === true,
 			hasPassword: !!user?.password,
+			hasInsurance: user?.hasInsurance === true,
 		}),
 		[user, token]
 	);
@@ -148,6 +149,7 @@ export const AuthProvider = ({ children }) => {
 				emailVerified: authStatus.emailVerified,
 				phoneVerified: authStatus.phoneVerified,
 				hasPassword: authStatus.hasPassword,
+				hasInsurance: authStatus.hasInsurance,
 				isAuthenticated: authStatus.isAuthenticated,
 				isLoggedIn: authStatus.isLoggedIn,
 			},

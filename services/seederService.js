@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { insuranceService } from "./insuranceService";
 import { VISIT_STATUS, VISIT_TYPES } from "../constants/visits";
 import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY } from "../constants/notifications";
 import { MOCK_FAQS } from "../constants/faqs";
@@ -177,10 +178,21 @@ export const seederService = {
         }
     },
 
+    async seedInsurance() {
+        try {
+            await insuranceService.enrollBasicScheme();
+            return 1;
+        } catch (error) {
+            console.warn('Failed to seed Insurance:', error.message);
+            return 0;
+        }
+    },
+
     async seedAll() {
         await this.seedVisits();
         await this.seedNotifications();
         await this.seedFAQs();
+        await this.seedInsurance();
         // Trigger schema reload to ensure everything is fresh
         await supabase.rpc('reload_schema'); 
         return true;
