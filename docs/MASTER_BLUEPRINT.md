@@ -170,3 +170,242 @@ We share a single `public.profiles` table, distinguished by `role`.
 ---
 
 *Use this blueprint to build the future.*
+
+
+# 🧬 iVisit Master Blueprint & Snapshot
+
+> **Version:** 1.1.0 (Doctrine Lock)
+> **Date:** 2026-01-15
+> **Status:** Live / Active Development
+
+---
+
+## 🧠 Core Doctrine (Non‑Negotiable)
+
+**Public Truth:** iVisit is an **emergency response and hospital capacity platform**.
+
+**Face of the Product (only two):**
+
+1. **Emergency Ambulance Service**
+2. **Hospital Bed Booking / Reservation**
+
+Everything else exists **inside, after, or because of** these two actions.
+
+> If a feature does not strengthen ambulance dispatch or bed availability, it may exist — but it may never lead.
+
+---
+
+## 🌍 Vision · Mission · Promise
+
+### Vision
+
+To make emergency access and hospital capacity **instant, reliable, and life‑saving** everywhere.
+
+### Mission
+
+To connect patients, verified providers, and operations **in real time**, ensuring every emergency visit is coordinated efficiently and safely.
+
+### The iVisit Promise
+
+**Immediate Access. Coordinated Care. Every Visit Matters.**
+
+---
+
+## 🧩 The Unity Architecture
+
+The system is intentionally mirrored:
+
+* **iVisit (Patient App)** → Demand / SOS Beacon
+* **iVisit Ops (Provider App)** → Field Operations
+* **iVisit Console (Dashboard)** → Oversight & Control
+
+This document is the **single source of truth** for all three.
+
+---
+
+## 👥 User Ecosystem & Roles
+
+All users share a single identity model and are distinguished by **role + context**.
+
+### 1. Patient (Default)
+
+* **Goal:** Get help fast.
+* **Primary Actions:** Request Ambulance · Book Hospital Bed
+* **Concept:** Every action creates a **Visit**.
+
+### 2. Provider (Service Supply)
+
+Providers are **entities**, not just people.
+
+**Provider Types (internal):**
+
+* Hospital
+* Ambulance Service
+* Pharmacy (support)
+* Diagnostics (support)
+* Mobile Medic (fallback)
+
+**Important:** Only **ambulance** and **hospital** providers drive first‑class flows.
+
+### 3. Operator (Field / Ops)
+
+* Acts on behalf of a provider
+* Uses **iVisit Ops**
+* Handles live visits, assets, and updates
+
+### 4. Admin (Console)
+
+* Verification
+* Oversight
+* Analytics
+* No field interaction
+
+---
+
+## 🧱 Core Data Model (Supabase)
+
+### Core Objects
+
+### `profiles`
+
+* `id`, `role`, `provider_id`, `operator_role`, `verified`
+
+### `providers`
+
+* `id`, `type`, `name`, `status`, `verified`
+
+### `assets`
+
+* Ambulances, beds, equipment
+* Availability + status driven
+
+### `visits` (Core Object)
+
+A **Visit** is the unit of value.
+
+**Visit Types:**
+
+* Emergency Ambulance Visit
+* Bed Reservation Visit
+* Follow‑up Visit
+
+**Lifecycle:**
+`created → accepted → active → completed → follow‑up`
+
+### `insurance_policies`
+
+* Auto‑enrolled ($1/month cap)
+* NGO / partner subsidy compatible
+
+---
+
+## 📱 iVisit (Patient App) — Locked Scope
+
+### Home Screen Rule
+
+Only **two primary actions** may exist:
+
+* **Request Ambulance**
+* **Find Hospital Bed**
+
+### Messaging
+
+**Hero:** Skip the wait. Get care now.
+**Support:** Book a bed. Get an ambulance. See a doctor. Right when you need it.
+
+### Search & News
+
+* Discovery surface, not a marketplace
+* Contextual visibility for new hospitals/providers
+* No ads during emergencies
+
+---
+
+## 🚑 iVisit Ops (Provider App) — Primary Focus
+
+### Access Rule
+
+* Only **approved providers/operators** can interact
+* Unverified users see **map preview only**
+
+### Welcome (Pre‑Verification)
+
+* Read‑only map preview
+* Hero: **Start Saving Lives. Get Verified.**
+* CTA: Request Access
+
+### Onboarding
+
+* Select Provider Type
+* Upload credentials
+* Verification pending state
+
+### Authentication
+
+* Role‑aware login
+* Operator vs Provider routing
+
+### Home (Ops)
+
+* **Map‑first always**
+* Live visits
+* Asset status
+* Alerts & dispatch
+
+---
+
+## 💻 iVisit Console (Dashboard)
+
+* Provider verification
+* Asset & capacity management
+* System‑wide map view
+* Analytics (response time, visits)
+
+---
+
+## 💰 Monetization & Sustainability
+
+### Insurance‑First Model
+
+* All users auto‑enrolled ($1/month cap)
+* Covers emergency dispatch
+
+### Revenue Sources
+
+* Visit‑based fees
+* Provider sponsorship / priority
+* Event coverage
+* NGO / government subsidy
+
+All revenue flows **through visits**.
+
+---
+
+## 🗺️ The Map Is the Product
+
+If it doesn’t improve:
+
+* Accuracy
+* Availability
+* Capacity
+* Speed
+
+…it doesn’t ship.
+
+---
+
+## 🍏 Compliance & Safety
+
+* Not a replacement for 911/112
+* Strict data privacy (HIPAA / NDPR)
+* Always‑on location justified by emergency dispatch
+
+---
+
+## 🧠 One‑Line Internal Doctrine
+
+**iVisit is a map‑first emergency platform where every interaction is a visit and every visit can continue into follow‑up care.**
+
+---
+
+*This blueprint is locked. All future features must obey it.*
