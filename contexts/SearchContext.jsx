@@ -11,6 +11,8 @@ export function SearchProvider({ children }) {
 	const [recentQueries, setRecentQueries] = useState([]);
 	const [trendingSearches, setTrendingSearches] = useState([]);
 	const [trendingLoading, setTrendingLoading] = useState(false);
+	const [healthNews, setHealthNews] = useState([]);
+	const [healthNewsLoading, setHealthNewsLoading] = useState(false);
 
 	// Fetch trending searches on app startup
 	useEffect(() => {
@@ -28,6 +30,24 @@ export function SearchProvider({ children }) {
 
 		// Refresh trending searches every 30 minutes
 		const interval = setInterval(loadTrendingSearches, 30 * 60 * 1000);
+		return () => clearInterval(interval);
+	}, []);
+
+	// Fetch health news on app startup
+	useEffect(() => {
+		const loadHealthNews = async () => {
+			setHealthNewsLoading(true);
+			const news = await discoveryService.getHealthNews({
+				limit: 10,
+			});
+			setHealthNews(news);
+			setHealthNewsLoading(false);
+		};
+
+		loadHealthNews();
+
+		// Refresh health news every hour
+		const interval = setInterval(loadHealthNews, 60 * 60 * 1000);
 		return () => clearInterval(interval);
 	}, []);
 
@@ -79,11 +99,13 @@ export function SearchProvider({ children }) {
 			recentQueries,
 			trendingSearches,
 			trendingLoading,
+			healthNews,
+			healthNewsLoading,
 			setSearchQuery,
 			commitQuery,
 			clearHistory,
 		}),
-		[clearHistory, commitQuery, query, recentQueries, trendingSearches, trendingLoading, setSearchQuery]
+		[clearHistory, commitQuery, query, recentQueries, trendingSearches, trendingLoading, healthNews, healthNewsLoading, setSearchQuery]
 	);
 
 	return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>;

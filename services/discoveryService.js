@@ -64,6 +64,45 @@ export const discoveryService = {
 	},
 
 	/**
+	 * Get health news from Supabase
+	 * @param {Object} options
+	 * @param {number} options.limit - Max results (default: 10)
+	 */
+	getHealthNews: async ({ limit = 10 } = {}) => {
+		try {
+			const { data, error } = await supabase
+				.from('health_news')
+				.select('*')
+				.order('created_at', { ascending: false })
+				.limit(limit);
+
+			if (error) throw error;
+			return data || [];
+		} catch (error) {
+			console.error('Error fetching health news:', error);
+			// Fallback mock data
+			return [
+				{
+					id: '1',
+					title: 'New ICU Wing at Reddington',
+					source: 'Hospital Update',
+					time: '2h ago',
+					icon: 'business-outline',
+					url: 'https://example.com/icu-wing'
+				},
+				{
+					id: '2',
+					title: 'Breakthrough in Cardiac Treatment',
+					source: 'Medical Journal',
+					time: '4h ago',
+					icon: 'heart-outline',
+					url: 'https://example.com/cardiac-breakthrough'
+				}
+			];
+		}
+	},
+
+	/**
 	 * Track conversion from search to request start
 	 */
 	trackConversion: async ({ action, hospitalId, mode, query }) => {

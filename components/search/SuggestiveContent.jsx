@@ -12,7 +12,7 @@ import SpecialtySelector from "../emergency/SpecialtySelector";
 const SuggestiveContent = ({ onSelectQuery }) => {
 	const { isDarkMode } = useTheme();
 	const { visits } = useVisits();
-	const { trendingSearches, trendingLoading } = useSearch(); // Use context data
+	const { trendingSearches, trendingLoading, healthNews, healthNewsLoading } = useSearch(); // Use context data
 	const [activeTab, setActiveTab] = useState("quick-actions");
 	const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -61,6 +61,7 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 		{ id: "quick-actions", label: "Quick Actions", icon: "flash" },
 		{ id: "specialties", label: "Specialties", icon: "medical" },
 		{ id: "trending", label: "Trending", icon: "trending-up" },
+		{ id: "health-news", label: "Health News", icon: "newspaper" },
 	];
 
 	// Quick Actions for life-saving scenarios
@@ -215,6 +216,77 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 						onSelect={onSelectQuery}
 					/>
 				);
+			case "health-news":
+				if (healthNewsLoading) {
+					return (
+						<View style={{ padding: 20, alignItems: 'center' }}>
+							<ActivityIndicator color={COLORS.brandPrimary} />
+						</View>
+					);
+				}
+
+				if (!healthNews.length) {
+					return (
+						<View style={{ padding: 20, alignItems: 'center' }}>
+							<Text style={{ color: colors.textMuted }}>No health news available.</Text>
+						</View>
+					);
+				}
+
+				return (
+					<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+						{healthNews.map((item) => (
+							<Pressable 
+								key={item.id} 
+								onPress={() => {
+									// Track news selection
+									discoveryService.trackSearchSelection({
+										query: item.title,
+										source: 'health_news_tab',
+										resultType: 'health_news',
+										resultId: item.id,
+									});
+									// Optional: Open news URL if available
+									if (item.url) {
+										// You might want to use Linking.openURL(item.url) here
+									}
+								}}
+								style={({ pressed }) => [
+									styles.newsCard,
+									{ 
+										backgroundColor: colors.cardBg,
+										transform: [{ scale: pressed ? 0.98 : 1 }]
+									}
+								]}
+							>
+								<View style={styles.newsHeaderRow}>
+									<View style={[styles.iconBox, { backgroundColor: COLORS.brandPrimary }]}>
+										<Ionicons name={item.icon || 'newspaper'} size={16} color="#FFFFFF" />
+									</View>
+									<View style={styles.newsMeta}>
+										<Text style={[styles.newsSource, { color: COLORS.brandPrimary }]}>
+											{item.source}
+										</Text>
+										<Text style={[styles.newsTime, { color: colors.textMuted }]}>
+											{item.time}
+										</Text>
+									</View>
+								</View>
+								<Text style={[styles.newsTitleText, { color: colors.text }]} numberOfLines={3}>
+									{item.title}
+								</Text>
+								<View style={[
+									styles.checkmarkWrapper,
+									{
+										backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
+									}
+								]}>
+									<Ionicons name="arrow-forward" size={18} color={COLORS.brandPrimary} />
+								</View>
+							</Pressable>
+						))}
+					</ScrollView>
+				);
 			default:
 				return null;
 		}
@@ -344,7 +416,7 @@ const styles = StyleSheet.create({
 		opacity: 0.7,
 	},
 	newsCard: {
-		width: 240,
+		width: 280,
 		padding: 16,
 		borderRadius: 24, // Primary Artifact (36px) - smaller for suggestion cards
 		gap: 12,
@@ -360,6 +432,9 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		gap: 12,
+	},
+	newsMeta: {
+		flex: 1,
 	},
 	newsSource: {
 		color: COLORS.brandPrimary,
