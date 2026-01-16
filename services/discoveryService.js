@@ -6,86 +6,59 @@ import { supabase } from './supabase';
  */
 export const discoveryService = {
 	/**
-	 * Get trending search topics
+	 * Get trending searches from console (via Supabase RPC)
+	 * @param {Object} options
+	 * @param {number} options.limit - Max results (default: 8)
+	 * @param {number} options.days - Days back (default: 7)
 	 */
-	getTrending: async () => {
+	getTrendingSearches: async ({ limit = 8, days = 7 } = {}) => {
 		try {
-			const { data, error } = await supabase
-				.from('trending_topics')
-				.select('*')
-				.order('rank', { ascending: true });
+			// Using RPC function as defined in the guide's architecture
+			const { data, error } = await supabase.rpc('get_trending_searches', {
+				days_back: days,
+				limit_count: limit
+			});
 
 			if (error) throw error;
 			return data || [];
 		} catch (error) {
-			console.error('Error fetching trending topics:', error);
-			// Fallback mock data
+			console.error('Error fetching trending searches:', error);
+			// Fallback mock data matching the guide's format
 			return [
-				{ id: "1", query: "Cardiologists near me", category: "Trending in Lagos", rank: 1 },
-				{ id: "2", query: "Yellow Fever Vaccine", category: "Health Alerts", rank: 2 },
-				{ id: "3", query: "24/7 Pharmacies", category: "Most Searched", rank: 3 },
-				{ id: "4", query: "Pediatricians", category: "Popular", rank: 4 },
+				{ query: "Cardiologist", count: 145, rank: 1 },
+				{ query: "Hospital near me", count: 98, rank: 2 },
+				{ query: "Emergency bed", count: 87, rank: 3 },
+				{ query: "Pediatricians", count: 65, rank: 4 },
+				{ query: "24/7 Pharmacy", count: 54, rank: 5 },
+				{ query: "Malaria treatment", count: 43, rank: 6 },
+				{ query: "Dentist", count: 32, rank: 7 },
+				{ query: "Ambulance", count: 21, rank: 8 },
 			];
 		}
 	},
 
 	/**
-	 * Get latest health news
+	 * Track when a user selects/searches for something
+	 * @param {Object} data
+	 * @param {string} data.query - Search query performed
+	 * @param {string} data.source - Where search came from ('trending', 'recent', 'manual')
+	 * @param {string} data.resultType - Type of result selected ('doctor', 'hospital', etc.)
+	 * @param {string} data.resultId - ID of selected result
 	 */
-	getNews: async () => {
+	trackSearchSelection: async ({ query, source = 'search_screen', resultType, resultId }) => {
 		try {
-			const { data, error } = await supabase
-				.from('health_news')
-				.select('*')
-				.order('created_at', { ascending: false });
+			const { error } = await supabase.from('search_selections').insert({
+				query: typeof query === "string" ? query.toLowerCase() : null,
+				source: source,
+				result_type: resultType,
+				result_id: resultId,
+				created_at: new Date().toISOString(),
+			});
 
-			if (error) throw error;
-			return data || [];
-		} catch (error) {
-			console.error('Error fetching health news:', error);
-			// Fallback mock data
-			return [
-				{ 
-					id: "n1", 
-					title: "New ICU Wing at Reddington", 
-					source: "Hospital Update", 
-					time: "2h ago",
-					icon: "business-outline"
-				},
-				{ 
-					id: "n2", 
-					title: "Free Dental Checkups this Saturday", 
-					source: "Public Health", 
-					time: "5h ago",
-					icon: "medical-outline"
-				},
-				{ 
-					id: "n3", 
-					title: "Flu Season Peak: Stay Protected", 
-					source: "Health Alert", 
-					time: "1d ago",
-					icon: "alert-circle-outline"
-				},
-			];
-		}
-	},
-
-	/**
-	 * Track search selection analytics
-	 */
-	trackSearchSelection: async ({ query, source, key, extra }) => {
-		try {
-			const payload = {
-				query: typeof query === "string" ? query : null,
-				source: typeof source === "string" ? source : null,
-				selected_key: typeof key === "string" ? key : null,
-				extra: extra && typeof extra === "object" ? extra : null,
-			};
-			const { error } = await supabase.from('search_events').insert(payload);
 			if (error) throw error;
 			return true;
 		} catch (error) {
-			console.log('Search selection track fallback:', { query, source, key });
+			console.warn('Failed to track search selection:', error);
 			return false;
 		}
 	},

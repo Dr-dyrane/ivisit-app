@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
-import { View, Text, Pressable, ScrollView, Animated, StyleSheet, Platform } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import React, { useState, useRef, useMemo } from "react";
+import { View, Text, Pressable, ScrollView, Animated, StyleSheet, ActivityIndicator } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useVisits } from "../../contexts/VisitsContext";
-import { useNotifications } from "../../contexts/NotificationsContext";
+import { useSearch } from "../../contexts/SearchContext"; // Import useSearch
 import { discoveryService } from "../../services/discoveryService";
 import * as Haptics from "expo-haptics";
 import SpecialtySelector from "../emergency/SpecialtySelector";
@@ -12,18 +12,9 @@ import SpecialtySelector from "../emergency/SpecialtySelector";
 const SuggestiveContent = ({ onSelectQuery }) => {
 	const { isDarkMode } = useTheme();
 	const { visits } = useVisits();
-	const { notifications } = useNotifications();
+	const { trendingSearches, trendingLoading } = useSearch(); // Use context data
 	const [activeTab, setActiveTab] = useState("quick-actions");
-	const [trendingItems, setTrendingItems] = useState([]);
 	const fadeAnim = useRef(new Animated.Value(1)).current;
-
-	useEffect(() => {
-		const loadTrendingData = async () => {
-			const trending = await discoveryService.getTrending();
-			setTrendingItems(trending);
-		};
-		loadTrendingData();
-	}, []);
 
 	const colors = {
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
@@ -54,12 +45,15 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 
 	const handleItemSelect = (query, meta) => {
 		Haptics.selectionAsync();
+		
+		// Updated tracking to match guide
 		discoveryService.trackSearchSelection({
 			query,
-			source: "suggestive",
-			key: meta?.key || meta?.id || null,
-			extra: meta || null,
+			source: activeTab === 'trending' ? 'trending_tab' : 'suggestive',
+			resultType: activeTab === 'trending' ? 'trending_search' : (meta?.isEmergency ? 'emergency' : 'quick_action'),
+			resultId: meta?.id || query,
 		});
+
 		onSelectQuery(query);
 	};
 
@@ -119,38 +113,6 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 		return items;
 	}, [visits]);
 
-	// Recent searches from context
-	const recentItems = useMemo(() => {
-		// This would come from SearchContext recentQueries
-		// For now, show some common healthcare searches
-		return [
-			{
-				id: "r1",
-				title: "Cardiologists",
-				subtitle: "Heart specialists",
-				icon: "heart",
-				color: COLORS.brandPrimary,
-				query: "cardiologists"
-			},
-			{
-				id: "r2", 
-				title: "Pediatricians",
-				subtitle: "Child healthcare",
-				icon: "child",
-				color: COLORS.brandPrimary,
-				query: "pediatricians"
-			},
-			{
-				id: "r3",
-				title: "Dental Care",
-				subtitle: "Dentists & orthodontics",
-				icon: "medical",
-				color: COLORS.brandPrimary,
-				query: "dental"
-			}
-		];
-	}, []);
-
 	const renderTabContent = () => {
 		switch (activeTab) {
 			case "quick-actions":
@@ -192,11 +154,27 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 					</ScrollView>
 				);
 			case "trending":
+				if (trendingLoading) {
+					return (
+						<View style={{ padding: 20, alignItems: 'center' }}>
+							<ActivityIndicator color={COLORS.brandPrimary} />
+						</View>
+					);
+				}
+
+				if (!trendingSearches.length) {
+					return (
+						<View style={{ padding: 20, alignItems: 'center' }}>
+							<Text style={{ color: colors.textMuted }}>No trending searches yet.</Text>
+						</View>
+					);
+				}
+
 				return (
 					<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-						{trendingItems.map((item, index) => (
+						{trendingSearches.map((item, index) => (
 							<Pressable 
-								key={item.id} 
+								key={item.query} 
 								onPress={() => handleItemSelect(item.query, item)}
 								style={({ pressed }) => [
 									styles.horizontalCard,
@@ -207,14 +185,14 @@ const SuggestiveContent = ({ onSelectQuery }) => {
 								]}
 							>
 								<View style={[styles.iconBox, { backgroundColor: COLORS.brandPrimary }]}>
-									<Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 14 }}>{index + 1}</Text>
+									<Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 14 }}>#{item.rank}</Text>
 								</View>
 								<View style={styles.textStack}>
 									<Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
 										{item.query}
 									</Text>
 									<Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>
-										{item.category}
+										{item.count} searches
 									</Text>
 								</View>
 								<View style={[
