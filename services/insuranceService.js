@@ -1,5 +1,7 @@
 import { database, StorageKeys } from "../database";
 import { supabase } from "./supabase";
+import * as FileSystem from "expo-file-system/legacy";
+import { decode } from "base64-arraybuffer";
 
 export const insuranceService = {
     /**
@@ -214,26 +216,28 @@ export const insuranceService = {
             const ext = uri.substring(uri.lastIndexOf('.') + 1);
             const fileName = `insurance/${user.id}/${Date.now()}.${ext}`;
 
-            // React Native fetch to getting blob
-            const response = await fetch(uri);
-            const blob = await response.blob();
-            // In React Native with Supabase, we often pass the file object or blob directly depending on the setup
-            // standard expo-file-system approach usually yields a uri we can fetch as blob
+            // Read file as Base64 for Supabase Upload (React Native standard)
+            const base64 = await FileSystem.readAsStringAsync(uri, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
 
             const { data, error } = await supabase.storage
-                .from('documents') // Assuming 'documents' bucket exists as per console app
-                .upload(fileName, blob, {
+                .from('documents')
+                .upload(fileName, decode(base64), {
                     contentType: `image/${ext}`,
                     upsert: false
                 });
 
             if (error) throw error;
 
-            const { data: publicData } = supabase.storage
+            // Generate signed URL (NOT public for private bucket)
+            const { data: signedData, error: signedError } = await supabase.storage
                 .from('documents')
-                .getPublicUrl(fileName);
+                .createSignedUrl(fileName, 60 * 60); // 1 hour
 
-            return publicData.publicUrl;
+            if (signedError) throw signedError;
+
+            return signedData.signedUrl;
         } catch (error) {
             console.error("Error uploading insurance image:", error);
             throw error;
