@@ -16,7 +16,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.dyrane.ivisit",
       "infoPlist": {
-        "NSCameraUsageDescription": "This app needs access to your camera to allow you to take photos for your profile.",
+        "NSCameraUsageDescription": "This app needs access to your camera to allow you to take photos for your profile and scan business cards/documents for text extraction.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select profile images.",
         "NSLocationWhenInUseUsageDescription": "iVisit needs your location to find nearby hospitals and dispatch emergency services to your exact position.",
         "NSContactsUsageDescription": "iVisit uses your contacts to help you quickly add emergency contacts from your address book."

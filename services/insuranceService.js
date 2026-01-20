@@ -8,7 +8,7 @@ export const insuranceService = {
     async list() {
         // Try local cache first to ensure offline-first
         const local = await database.read(StorageKeys.INSURANCE_POLICIES, []);
-        
+
         // Then try fetching fresh data
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return local; // Fallback to local if no session
@@ -75,7 +75,7 @@ export const insuranceService = {
 
         return data;
     },
-    
+
     // Alias
     async createPolicy(policy) {
         return this.create({
@@ -93,7 +93,7 @@ export const insuranceService = {
             .eq('id', id)
             .select()
             .single();
-            
+
         if (error) throw error;
         return data;
     },
@@ -108,15 +108,15 @@ export const insuranceService = {
 
         if (policy?.is_default) {
             // Check if there are other policies
-             const { count } = await supabase
+            const { count } = await supabase
                 .from('insurance_policies')
                 .select('*', { count: 'exact', head: true });
-                
-             if (count > 1) {
-                 throw new Error("Cannot delete default policy. Please set another policy as default first.");
-             } else {
-                 throw new Error("Cannot delete your only insurance policy. You must have at least one active scheme.");
-             }
+
+            if (count > 1) {
+                throw new Error("Cannot delete default policy. Please set another policy as default first.");
+            } else {
+                throw new Error("Cannot delete your only insurance policy. You must have at least one active scheme.");
+            }
         }
 
         const { error } = await supabase
@@ -193,11 +193,50 @@ export const insuranceService = {
         return this.create({
             provider_name: 'iVisit Basic',
             plan_type: 'basic',
-            coverage_details: { 
-                limit: 50000, 
+            coverage_details: {
+                limit: 50000,
                 description: 'Covers 1 emergency ambulance trip per year',
                 copay: 0
             }
         });
+    },
+
+    /**
+     * Upload insurance card image
+     * @param {string} uri - Local file URI from ImagePicker
+     * @returns {Promise<string>} - Public URL of uploaded image
+     */
+    async uploadImage(uri) {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("User not found");
+
+            const ext = uri.substring(uri.lastIndexOf('.') + 1);
+            const fileName = `insurance/${user.id}/${Date.now()}.${ext}`;
+
+            // React Native fetch to getting blob
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            // In React Native with Supabase, we often pass the file object or blob directly depending on the setup
+            // standard expo-file-system approach usually yields a uri we can fetch as blob
+
+            const { data, error } = await supabase.storage
+                .from('documents') // Assuming 'documents' bucket exists as per console app
+                .upload(fileName, blob, {
+                    contentType: `image/${ext}`,
+                    upsert: false
+                });
+
+            if (error) throw error;
+
+            const { data: publicData } = supabase.storage
+                .from('documents')
+                .getPublicUrl(fileName);
+
+            return publicData.publicUrl;
+        } catch (error) {
+            console.error("Error uploading insurance image:", error);
+            throw error;
+        }
     }
 };

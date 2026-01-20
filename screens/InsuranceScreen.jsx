@@ -12,7 +12,9 @@ import {
 	RefreshControl,
 	Alert,
 	LayoutAnimation,
+	ActivityIndicator,
 	UIManager,
+	Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path } from "react-native-svg";
@@ -20,6 +22,7 @@ import * as Linking from 'expo-linking';
 import { useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -31,6 +34,7 @@ import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import InputModal from "../components/ui/InputModal";
 import Input from "../components/form/Input";
 import { insuranceService } from "../services/insuranceService";
+import { ocrService } from "../services/ocrService";
 import { notificationDispatcher } from "../services/notificationDispatcher";
 import useSwipeGesture from "../utils/useSwipeGesture";
 import { authService } from "../services/authService"; // Import authService for user info
@@ -51,7 +55,7 @@ const PolicyCard = ({ policy, isDarkMode, onEdit, onDelete, onSetDefault, onLink
 	const [holdTimer, setHoldTimer] = useState(null);
 	const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
 	const mutedColor = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted;
-    const isDefault = policy.is_default;
+	const isDefault = policy.is_default;
 
 	const handlePress = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -74,13 +78,13 @@ const PolicyCard = ({ policy, isDarkMode, onEdit, onDelete, onSetDefault, onLink
 			setHoldTimer(null);
 		}
 	};
-    
-    // Auto-select if it is default (visual cue)
-    useEffect(() => {
-        if (isDefault) {
-             // Optional: maybe distinct style for default?
-        }
-    }, [isDefault]);
+
+	// Auto-select if it is default (visual cue)
+	useEffect(() => {
+		if (isDefault) {
+			// Optional: maybe distinct style for default?
+		}
+	}, [isDefault]);
 
 	return (
 		<TouchableOpacity
@@ -103,9 +107,9 @@ const PolicyCard = ({ policy, isDarkMode, onEdit, onDelete, onSetDefault, onLink
 			{/* Corner Seal - Default Indicator */}
 			{isDefault && (
 				<View style={styles.cornerSeal}>
-					<Ionicons 
-						name="checkmark-circle" 
-						size={24} 
+					<Ionicons
+						name="checkmark-circle"
+						size={24}
 						color={COLORS.brandPrimary}
 						style={{
 							backgroundColor: '#FFFFFF',
@@ -118,18 +122,18 @@ const PolicyCard = ({ policy, isDarkMode, onEdit, onDelete, onSetDefault, onLink
 
 			<View style={styles.cardHeader}>
 				<View style={styles.providerInfo}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <Text
-                            style={[styles.editorialSubtitle, { color: COLORS.brandPrimary }]}
-                        >
-                            PROVIDER
-                        </Text>
-                        {isDefault && (
-                             <View style={{ backgroundColor: COLORS.brandPrimary + '20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                                 <Text style={{ fontSize: 9, fontWeight: '800', color: COLORS.brandPrimary }}>DEFAULT</Text>
-                             </View>
-                        )}
-                    </View>
+					<View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+						<Text
+							style={[styles.editorialSubtitle, { color: COLORS.brandPrimary }]}
+						>
+							PROVIDER
+						</Text>
+						{isDefault && (
+							<View style={{ backgroundColor: COLORS.brandPrimary + '20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+								<Text style={{ fontSize: 9, fontWeight: '800', color: COLORS.brandPrimary }}>DEFAULT</Text>
+							</View>
+						)}
+					</View>
 					<Text style={[styles.providerName, { color: textColor }]}>
 						{policy.provider_name}
 					</Text>
@@ -179,19 +183,19 @@ const PolicyCard = ({ policy, isDarkMode, onEdit, onDelete, onSetDefault, onLink
 						</Text>
 					</View>
 				)}
-                
-                {/* Linked Payment Method */}
-                {policy.linked_payment_method && (
-                    <View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Ionicons name="card" size={16} color={mutedColor} />
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: textColor }}>
-                            {policy.linked_payment_method.brand} •••• {policy.linked_payment_method.last4}
-                        </Text>
-                        <Text style={{ fontSize: 11, color: mutedColor }}>
-                            (Exp: {policy.linked_payment_method.expiry})
-                        </Text>
-                    </View>
-                )}
+
+				{/* Linked Payment Method */}
+				{policy.linked_payment_method && (
+					<View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+						<Ionicons name="card" size={16} color={mutedColor} />
+						<Text style={{ fontSize: 13, fontWeight: '600', color: textColor }}>
+							{policy.linked_payment_method.brand} •••• {policy.linked_payment_method.last4}
+						</Text>
+						<Text style={{ fontSize: 11, color: mutedColor }}>
+							(Exp: {policy.linked_payment_method.expiry})
+						</Text>
+					</View>
+				)}
 			</View>
 
 			{/* Hint Text */}
@@ -206,81 +210,81 @@ const PolicyCard = ({ policy, isDarkMode, onEdit, onDelete, onSetDefault, onLink
 					Tap to reveal details
 				</Text>
 			) : (
-                <View style={{ gap: 12, marginTop: 24 }}>
-                    <View style={{ flexDirection: "row", gap: 12 }}>
-                         {/* Make Default Button */}
-                        {!isDefault && (
-                            <TouchableOpacity
-                                onPress={() => onSetDefault(policy.id)}
-                                style={{
-                                    flex: 1,
-                                    height: 44,
-                                    borderRadius: 14,
-                                    backgroundColor: COLORS.brandPrimary + '15',
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    borderWidth: 1,
-                                    borderColor: COLORS.brandPrimary + '30',
-                                }}
-                            >
-                                <Text style={{ fontWeight: "800", color: COLORS.brandPrimary, fontSize: 12 }}>Make Default</Text>
-                            </TouchableOpacity>
-                        )}
-                        
-                        {/* Link Payment Button */}
-                        <TouchableOpacity
-                            onPress={() => onLinkPayment(policy)}
-                            style={{
-                                flex: 1,
-                                height: 44,
-                                borderRadius: 14,
-                                backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
-                                alignItems: "center",
-                                justifyContent: "center",
-                            }}
-                        >
-                             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                                 <Ionicons name="checkmark-circle" size={14} color={textColor} />
-                                 <Text style={{ fontWeight: "700", color: textColor, fontSize: 12 }}>
-                                     {policy.linked_payment_method ? "Update Card" : "Link Payment"}
-                                 </Text>
-                             </View>
-                        </TouchableOpacity>
-                    </View>
+				<View style={{ gap: 12, marginTop: 24 }}>
+					<View style={{ flexDirection: "row", gap: 12 }}>
+						{/* Make Default Button */}
+						{!isDefault && (
+							<TouchableOpacity
+								onPress={() => onSetDefault(policy.id)}
+								style={{
+									flex: 1,
+									height: 44,
+									borderRadius: 14,
+									backgroundColor: COLORS.brandPrimary + '15',
+									alignItems: "center",
+									justifyContent: "center",
+									borderWidth: 1,
+									borderColor: COLORS.brandPrimary + '30',
+								}}
+							>
+								<Text style={{ fontWeight: "800", color: COLORS.brandPrimary, fontSize: 12 }}>Make Default</Text>
+							</TouchableOpacity>
+						)}
 
-                    <View style={{ flexDirection: "row", gap: 12 }}>
-                        <TouchableOpacity
-                            onPress={() => onEdit(policy)}
-                            style={{
-                                flex: 1,
-                                height: 44,
-                                borderRadius: 14,
-                                backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
-                                alignItems: "center",
-                                justifyContent: "center",
-                            }}
-                        >
-                            <Text style={{ fontWeight: "700", color: textColor }}>Edit</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => onDelete(policy.id, isDefault)}
-                            style={{
-                                flex: 1,
-                                height: 44,
-                                borderRadius: 14,
-                                backgroundColor: isDefault ? "rgba(255,255,255,0.05)" : "rgba(239, 68, 68, 0.1)",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                opacity: isDefault ? 0.5 : 1
-                            }}
-                            disabled={isDefault}
-                        >
-                            <Text style={{ fontWeight: "700", color: isDefault ? mutedColor : COLORS.error }}>
-                                {isDefault ? "Active" : "Remove"}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
+						{/* Link Payment Button */}
+						<TouchableOpacity
+							onPress={() => onLinkPayment(policy)}
+							style={{
+								flex: 1,
+								height: 44,
+								borderRadius: 14,
+								backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+								<Ionicons name="checkmark-circle" size={14} color={textColor} />
+								<Text style={{ fontWeight: "700", color: textColor, fontSize: 12 }}>
+									{policy.linked_payment_method ? "Update Card" : "Link Payment"}
+								</Text>
+							</View>
+						</TouchableOpacity>
+					</View>
+
+					<View style={{ flexDirection: "row", gap: 12 }}>
+						<TouchableOpacity
+							onPress={() => onEdit(policy)}
+							style={{
+								flex: 1,
+								height: 44,
+								borderRadius: 14,
+								backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<Text style={{ fontWeight: "700", color: textColor }}>Edit</Text>
+						</TouchableOpacity>
+						<TouchableOpacity
+							onPress={() => onDelete(policy.id, isDefault)}
+							style={{
+								flex: 1,
+								height: 44,
+								borderRadius: 14,
+								backgroundColor: isDefault ? "rgba(255,255,255,0.05)" : "rgba(239, 68, 68, 0.1)",
+								alignItems: "center",
+								justifyContent: "center",
+								opacity: isDefault ? 0.5 : 1
+							}}
+							disabled={isDefault}
+						>
+							<Text style={{ fontWeight: "700", color: isDefault ? mutedColor : COLORS.error }}>
+								{isDefault ? "Active" : "Remove"}
+							</Text>
+						</TouchableOpacity>
+					</View>
+				</View>
 			)}
 		</TouchableOpacity>
 	);
@@ -308,8 +312,9 @@ export default function InsuranceScreen() {
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [showAddModal, setShowAddModal] = useState(false);
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
+	const [showPaymentModal, setShowPaymentModal] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
+	const [isScanning, setIsScanning] = useState(false);
 
 	// Focus Flow State
 	const [step, setStep] = useState(0);
@@ -320,22 +325,31 @@ export default function InsuranceScreen() {
 		policy_number: "",
 		group_number: "",
 		policy_holder_name: "",
+		front_image_url: "",
+		back_image_url: ""
 	});
-    
-    // Payment Form State
-    const [paymentData, setPaymentData] = useState({
-        cardNumber: "",
-        expiry: "",
-        cvv: "",
-        name: ""
-    });
-    const [selectedPolicyForPayment, setSelectedPolicyForPayment] = useState(null);
+
+	// Payment Form State
+	const [paymentData, setPaymentData] = useState({
+		cardNumber: "",
+		expiry: "",
+		cvv: "",
+		name: ""
+	});
+	const [selectedPolicyForPayment, setSelectedPolicyForPayment] = useState(null);
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
 	const openCreate = useCallback(() => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		setFormData({ provider_name: "", policy_number: "", group_number: "", policy_holder_name: "" });
+		setFormData({
+			provider_name: "",
+			policy_number: "",
+			group_number: "",
+			policy_holder_name: "",
+			front_image_url: "",
+			back_image_url: ""
+		});
 		setStep(0);
 		setShowAddModal(true);
 	}, []);
@@ -397,6 +411,7 @@ export default function InsuranceScreen() {
 			const policyValidation = getInputValidation('policy_number', formData.policy_number);
 			return policyValidation.valid;
 		}
+		if (step === 2) return true; // Images are optional but encouraged
 		return true;
 	};
 
@@ -452,7 +467,7 @@ export default function InsuranceScreen() {
 		() => {
 			// Swipe Left -> Next (with validation)
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-			
+
 			// Subtle animation feedback like onboarding
 			Animated.sequence([
 				Animated.timing(shakeAnim, {
@@ -483,7 +498,7 @@ export default function InsuranceScreen() {
 	);
 
 	const transitionStep = (newStep) => {
-		if (newStep < 0 || newStep > 2) return;
+		if (newStep < 0 || newStep > 2) return; // 3 steps: 0=Provider, 1=Policy, 2=Images
 		LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 		setStep(newStep);
@@ -498,41 +513,43 @@ export default function InsuranceScreen() {
 			policy_number: policy.policy_number,
 			group_number: policy.group_number || "",
 			policy_holder_name: policy.policy_holder_name || "",
+			front_image_url: policy.front_image_url || "",
+			back_image_url: policy.back_image_url || ""
 		});
 		setEditingId(policy.id);
 		setShowAddModal(true);
 		setStep(0);
 	};
-    
-    const handleSetDefault = async (id) => {
-        try {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            await insuranceService.setDefault(id);
-            await fetchPolicies();
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch (error) {
-             Alert.alert("Error", "Failed to set default policy.");
-        }
-    };
-    
-    const handleLinkPayment = (policy) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setSelectedPolicyForPayment(policy);
-        setPaymentData({
-            cardNumber: "",
-            expiry: "",
-            cvv: "",
-            name: ""
-        });
-        setShowPaymentModal(true);
-    };
+
+	const handleSetDefault = async (id) => {
+		try {
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+			await insuranceService.setDefault(id);
+			await fetchPolicies();
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+		} catch (error) {
+			Alert.alert("Error", "Failed to set default policy.");
+		}
+	};
+
+	const handleLinkPayment = (policy) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		setSelectedPolicyForPayment(policy);
+		setPaymentData({
+			cardNumber: "",
+			expiry: "",
+			cvv: "",
+			name: ""
+		});
+		setShowPaymentModal(true);
+	};
 
 	const handleDelete = async (id, isDefault) => {
-        if (isDefault) {
-            Alert.alert("Cannot Delete", "This is your default insurance scheme. Please set another scheme as default before removing this one.");
-            return;
-        }
-        
+		if (isDefault) {
+			Alert.alert("Cannot Delete", "This is your default insurance scheme. Please set another scheme as default before removing this one.");
+			return;
+		}
+
 		Alert.alert(
 			"Remove Policy",
 			"Are you sure you want to remove this insurance policy? This cannot be undone.",
@@ -559,52 +576,181 @@ export default function InsuranceScreen() {
 			]
 		);
 	};
-    
-    const handlePaymentSubmit = async () => {
-        // Gumroad Payment Link Logic
-        try {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            const user = (await authService.getCurrentUser()).data;
-            
-            if (!user || !selectedPolicyForPayment) {
-                 Alert.alert("Error", "Could not identify user or policy.");
-                 return;
-            }
 
-            const baseUrl = process.env.EXPO_PUBLIC_GUMROAD_PRODUCT_URL || "https://ivisit.gumroad.com/l/insurance-basic";
-            const params = new URLSearchParams({
-                email: user.email || "",
-                "custom_fields[user_id]": user.id, // Links payment to user in backend
-                "custom_fields[policy_id]": selectedPolicyForPayment.id // Links to specific policy
-            });
+	const handlePaymentSubmit = async () => {
+		// Gumroad Payment Link Logic
+		try {
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+			const user = (await authService.getCurrentUser()).data;
 
-            const url = `${baseUrl}?${params.toString()}`;
-            
-            const canOpen = await Linking.canOpenURL(url);
-            if (canOpen) {
-                await Linking.openURL(url);
-                setShowPaymentModal(false);
-                // We don't fetchPolicies immediately because the webhook takes time.
-                // Ideally, we listen to realtime updates, but for now we just close.
-                Alert.alert("Payment Started", "Please complete the payment in the browser. Your policy will update automatically once confirmed.");
-            } else {
-                Alert.alert("Error", "Could not open payment link.");
-            }
+			if (!user || !selectedPolicyForPayment) {
+				Alert.alert("Error", "Could not identify user or policy.");
+				return;
+			}
 
-        } catch (error) {
-            console.error("Payment Link Error:", error);
-            Alert.alert("Error", "Failed to initiate payment.");
-        }
-    };
+			const baseUrl = process.env.EXPO_PUBLIC_GUMROAD_PRODUCT_URL || "https://ivisit.gumroad.com/l/insurance-basic";
+			const params = new URLSearchParams({
+				email: user.email || "",
+				"custom_fields[user_id]": user.id, // Links payment to user in backend
+				"custom_fields[policy_id]": selectedPolicyForPayment.id // Links to specific policy
+			});
+
+			const url = `${baseUrl}?${params.toString()}`;
+
+			const canOpen = await Linking.canOpenURL(url);
+			if (canOpen) {
+				await Linking.openURL(url);
+				setShowPaymentModal(false);
+				// We don't fetchPolicies immediately because the webhook takes time.
+				// Ideally, we listen to realtime updates, but for now we just close.
+				Alert.alert("Payment Started", "Please complete the payment in the browser. Your policy will update automatically once confirmed.");
+			} else {
+				Alert.alert("Error", "Could not open payment link.");
+			}
+
+		} catch (error) {
+			console.error("Payment Link Error:", error);
+			Alert.alert("Error", "Failed to initiate payment.");
+		}
+	};
+
+	const handleScanInsuranceCard = async () => {
+		setIsScanning(true);
+		try {
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+			
+			// Request camera permissions first
+			const { status } = await ImagePicker.requestCameraPermissionsAsync();
+			
+			if (status !== 'granted') {
+				Alert.alert(
+					"Camera Permission Required",
+					"To scan your insurance card, we need access to your camera. Please enable camera permissions in your device settings.",
+					[
+						{ text: "Cancel", style: "cancel" },
+						{ text: "Open Settings", onPress: () => ImagePicker.openSettingsAsync() }
+					]
+				);
+				return;
+			}
+			
+			// Launch camera to take a picture
+			const result = await ImagePicker.launchCameraAsync({
+				mediaTypes: ImagePicker.MediaTypeOptions.Images,
+				allowsEditing: true,
+				aspect: [16, 10], // Card aspect ratio
+				quality: 0.8,
+			});
+
+			if (!result.canceled) {
+				const uri = result.assets[0].uri;
+				
+				// Scan the card using OCR
+				const scanResult = await ocrService.scanCard(uri);
+
+				if (scanResult.success) {
+					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+					// Auto-fill form with scanned data
+					setFormData(prev => ({
+						...prev,
+						provider_name: prev.provider_name || scanResult.data.provider_name,
+						policy_number: prev.policy_number || scanResult.data.policy_number,
+						group_number: prev.group_number || scanResult.data.group_number,
+						policy_holder_name: prev.policy_holder_name || scanResult.data.policy_holder_name,
+						front_image_url: uri // Store the scanned image
+					}));
+
+					Alert.alert(
+						"Card Scanned Successfully",
+						"We've extracted your insurance details. Please review and confirm the information.",
+						[{ text: "OK" }]
+					);
+				} else {
+					// Still store the image even if OCR failed
+					setFormData(prev => ({
+						...prev,
+						front_image_url: uri
+					}));
+					
+					Alert.alert(
+						"Scan Partially Successful",
+						"We couldn't read all details from your card, but the image was saved. You can enter details manually.",
+						[{ text: "OK" }]
+					);
+				}
+			}
+		} catch (error) {
+			console.error("OCR Scan Error:", error);
+			Alert.alert(
+				"Scan Failed",
+				"Unable to scan the insurance card. Please try again or enter details manually.",
+				[{ text: "OK" }]
+			);
+		} finally {
+			setIsScanning(false);
+		}
+	};
+
+	const pickImage = async (field) => {
+		try {
+			// Request photo library permissions first
+			const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+			
+			if (status !== 'granted') {
+				Alert.alert(
+					"Photo Library Permission Required",
+					"To select images from your library, we need access to your photos. Please enable photo library permissions in your device settings.",
+					[
+						{ text: "Cancel", style: "cancel" },
+						{ text: "Open Settings", onPress: () => ImagePicker.openSettingsAsync() }
+					]
+				);
+				return;
+			}
+
+			const result = await ImagePicker.launchImageLibraryAsync({
+				mediaTypes: ImagePicker.MediaTypeOptions.Images,
+				allowsEditing: true,
+				aspect: [16, 10], // Card aspect ratio
+				quality: 0.8,
+			});
+
+			if (!result.canceled) {
+				const uri = result.assets[0].uri;
+				setFormData(prev => ({ ...prev, [field]: uri }));
+
+				// Don't trigger OCR for front image since we have dedicated scan button
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			}
+		} catch (error) {
+			Alert.alert("Error", "Failed to pick image");
+		}
+	};
 
 	const handleSubmit = async () => {
 		setSubmitting(true);
 		try {
+			// Handle Image Uploads First
+			let finalData = { ...formData };
+
+			// Check if front image is a local URI (needs upload)
+			if (formData.front_image_url && formData.front_image_url.startsWith('file://')) {
+				const publicUrl = await insuranceService.uploadImage(formData.front_image_url);
+				finalData.front_image_url = publicUrl;
+			}
+
+			// Check if back image is a local URI (needs upload)
+			if (formData.back_image_url && formData.back_image_url.startsWith('file://')) {
+				const publicUrl = await insuranceService.uploadImage(formData.back_image_url);
+				finalData.back_image_url = publicUrl;
+			}
+
 			if (editingId) {
-				await insuranceService.update(editingId, formData);
+				await insuranceService.update(editingId, finalData);
 				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			} else {
-				const newPolicy = await insuranceService.create(formData);
+				const newPolicy = await insuranceService.create(finalData);
 				await notificationDispatcher.dispatchInsuranceEvent(
 					"created",
 					newPolicy
@@ -619,10 +765,13 @@ export default function InsuranceScreen() {
 				policy_number: "",
 				group_number: "",
 				policy_holder_name: "",
+				front_image_url: "",
+				back_image_url: ""
 			});
 			setEditingId(null);
 			setStep(0);
 		} catch (error) {
+			console.error(error);
 			Alert.alert(
 				"Error",
 				`Failed to ${editingId ? "update" : "add"} policy. Please try again.`
@@ -708,89 +857,89 @@ export default function InsuranceScreen() {
 					</Text>
 
 					{policies.length === 0 && !loading ? (
-                        <>
-                            <TouchableOpacity
-                                onPress={() => setShowAddModal(true)}
-                                style={{
-                                    backgroundColor: colors.card,
-                                    borderRadius: 36,
-                                    padding: 24,
-                                    shadowColor: isDarkMode ? "#000" : COLORS.brandPrimary,
-                                    shadowOffset: { width: 0, height: 8 },
-                                    shadowOpacity: isDarkMode ? 0.3 : 0.08,
-                                    shadowRadius: 16,
-                                    borderWidth: 0,
-                                    alignItems: "center",
-                                }}
-                            >
-                                <View
-                                    style={{
-                                        width: 80,
-                                        height: 80,
-                                        borderRadius: 24,
-                                        backgroundColor: COLORS.brandPrimary + "15",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        marginBottom: 20,
-                                    }}
-                                >
-                                    <Ionicons
-                                        name="shield-checkmark"
-                                        size={40}
-                                        color={COLORS.brandPrimary}
-                                    />
-                                </View>
+						<>
+							<TouchableOpacity
+								onPress={() => setShowAddModal(true)}
+								style={{
+									backgroundColor: colors.card,
+									borderRadius: 36,
+									padding: 24,
+									shadowColor: isDarkMode ? "#000" : COLORS.brandPrimary,
+									shadowOffset: { width: 0, height: 8 },
+									shadowOpacity: isDarkMode ? 0.3 : 0.08,
+									shadowRadius: 16,
+									borderWidth: 0,
+									alignItems: "center",
+								}}
+							>
+								<View
+									style={{
+										width: 80,
+										height: 80,
+										borderRadius: 24,
+										backgroundColor: COLORS.brandPrimary + "15",
+										alignItems: "center",
+										justifyContent: "center",
+										marginBottom: 20,
+									}}
+								>
+									<Ionicons
+										name="shield-checkmark"
+										size={40}
+										color={COLORS.brandPrimary}
+									/>
+								</View>
 
-                                <Text
-                                    style={{
-                                        fontSize: 24,
-                                        fontWeight: "900",
-                                        color: colors.text,
-                                        letterSpacing: -1.0,
-                                        textAlign: "center",
-                                        marginBottom: 8,
-                                    }}
-                                >
-                                    No iVisit Coverage
-                                </Text>
-                                <Text
-                                    style={{
-                                        fontSize: 16,
-                                        lineHeight: 24,
-                                        color: colors.textMuted,
-                                        fontWeight: "500",
-                                        textAlign: "center",
-                                        marginBottom: 24,
-                                        paddingHorizontal: 12,
-                                    }}
-                                >
-                                    Link your insurance details to enable seamless billing and automated coverage verification for all your iVisit medical services.
-                                </Text>
+								<Text
+									style={{
+										fontSize: 24,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -1.0,
+										textAlign: "center",
+										marginBottom: 8,
+									}}
+								>
+									No iVisit Coverage
+								</Text>
+								<Text
+									style={{
+										fontSize: 16,
+										lineHeight: 24,
+										color: colors.textMuted,
+										fontWeight: "500",
+										textAlign: "center",
+										marginBottom: 24,
+										paddingHorizontal: 12,
+									}}
+								>
+									Link your insurance details to enable seamless billing and automated coverage verification for all your iVisit medical services.
+								</Text>
 
-                                <View
-                                    style={{
-                                        backgroundColor: COLORS.brandPrimary,
-                                        paddingHorizontal: 24,
-                                        paddingVertical: 14,
-                                        borderRadius: 18,
-                                        flexDirection: "row",
-                                        alignItems: "center",
-                                        gap: 8,
-                                        shadowColor: COLORS.brandPrimary,
-                                        shadowOffset: { width: 0, height: 4 },
-                                        shadowOpacity: 0.3,
-                                        shadowRadius: 8,
-                                    }}
-                                >
-                                    <Ionicons name="add" size={20} color="#FFF" />
-                                    <Text
-                                        style={{ color: "#FFF", fontWeight: "900", fontSize: 15 }}
-                                    >
-                                        Link iVisit Coverage
-                                    </Text>
-                                </View>
-                            </TouchableOpacity>
-                        </>
+								<View
+									style={{
+										backgroundColor: COLORS.brandPrimary,
+										paddingHorizontal: 24,
+										paddingVertical: 14,
+										borderRadius: 18,
+										flexDirection: "row",
+										alignItems: "center",
+										gap: 8,
+										shadowColor: COLORS.brandPrimary,
+										shadowOffset: { width: 0, height: 4 },
+										shadowOpacity: 0.3,
+										shadowRadius: 8,
+									}}
+								>
+									<Ionicons name="add" size={20} color="#FFF" />
+									<Text
+										style={{ color: "#FFF", fontWeight: "900", fontSize: 15 }}
+									>
+										Link iVisit Coverage
+									</Text>
+								</View>
+							</TouchableOpacity>
+						</>
 					) : (
 						<View style={{ gap: 16 }}>
 							{policies.map((policy) => (
@@ -800,8 +949,8 @@ export default function InsuranceScreen() {
 									isDarkMode={isDarkMode}
 									onEdit={handleEdit}
 									onDelete={handleDelete}
-                                    onSetDefault={handleSetDefault}
-                                    onLinkPayment={handleLinkPayment}
+									onSetDefault={handleSetDefault}
+									onLinkPayment={handleLinkPayment}
 								/>
 							))}
 						</View>
@@ -821,10 +970,10 @@ export default function InsuranceScreen() {
 					editingId
 						? "Update Policy"
 						: step === 0
-						? "Insurance Provider"
-						: step === 1
-						? "Policy Details"
-						: "Finalize"
+							? "Insurance Provider"
+							: step === 1
+								? "Policy Details"
+								: "Upload Images"
 				}
 				primaryAction={
 					step === 2 ? handleSubmit : attemptNextStep
@@ -840,9 +989,9 @@ export default function InsuranceScreen() {
 					step > 0
 						? () => transitionStep(step - 1)
 						: () => {
-								setShowAddModal(false);
-								setEditingId(null);
-						  }
+							setShowAddModal(false);
+							setEditingId(null);
+						}
 				}
 				secondaryActionLabel={step > 0 ? "Back" : "Cancel"}
 			>
@@ -882,6 +1031,48 @@ export default function InsuranceScreen() {
 									{getInputValidation('provider_name', formData.provider_name).message}
 								</Text>
 							)}
+
+							{/* OCR Scan Option */}
+							<View style={{ marginTop: 24, paddingHorizontal: 16 }}>
+								<TouchableOpacity
+									onPress={handleScanInsuranceCard}
+									disabled={isScanning}
+									style={{
+										backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "#F1F5F9",
+										borderRadius: 16,
+										padding: 16,
+										flexDirection: 'row',
+										alignItems: 'center',
+										gap: 12,
+										borderWidth: 1,
+										borderColor: COLORS.brandPrimary + '30',
+										opacity: isScanning ? 0.6 : 1
+									}}
+								>
+									{isScanning ? (
+										<ActivityIndicator color={COLORS.brandPrimary} size="small" />
+									) : (
+										<Ionicons name="camera-outline" size={24} color={COLORS.brandPrimary} />
+									)}
+									<View style={{ flex: 1 }}>
+										<Text style={{
+											fontSize: 14,
+											fontWeight: '700',
+											color: colors.text,
+											marginBottom: 2
+										}}>
+											{isScanning ? 'Scanning Card...' : 'Scan Insurance Card'}
+										</Text>
+										<Text style={{
+											fontSize: 12,
+											color: colors.textMuted,
+											lineHeight: 16
+										}}>
+											Take a photo to automatically fill your details
+										</Text>
+									</View>
+								</TouchableOpacity>
+							</View>
 						</View>
 					)}
 
@@ -942,60 +1133,76 @@ export default function InsuranceScreen() {
 
 					{step === 2 && (
 						<View style={{ gap: 24 }}>
-							<View
-								style={{
-									backgroundColor: isDarkMode
-										? "rgba(255,255,255,0.05)"
-										: "#F8FAFC",
-									padding: 24,
-									borderRadius: 24,
-									alignItems: "center",
-									gap: 12,
-								}}
-							>
-								<Text
+							<Text style={{
+								fontSize: 13,
+								color: colors.textMuted,
+								textAlign: 'center',
+								paddingHorizontal: 16
+							}}>
+								Upload photos of your insurance card to speed up verification.
+							</Text>
+
+							<View style={{ flexDirection: 'row', gap: 16 }}>
+								{/* Front Card */}
+								<TouchableOpacity
+									onPress={() => pickImage('front_image_url')}
 									style={{
-										fontSize: 12,
-										fontWeight: "800",
-										color: colors.textMuted,
-										letterSpacing: 1,
-										textTransform: "uppercase",
+										flex: 1,
+										aspectRatio: 1, // Square-ish container
+										backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "#F1F5F9",
+										borderRadius: 20,
+										alignItems: "center",
+										justifyContent: "center",
+										overflow: 'hidden',
+										borderWidth: 1,
+										borderColor: formData.front_image_url ? COLORS.brandPrimary : 'transparent',
+										borderStyle: formData.front_image_url ? 'solid' : 'dashed'
 									}}
 								>
-									CONFIRM DETAILS
-								</Text>
-								<Text
+									{formData.front_image_url ? (
+										<Image
+											source={{ uri: formData.front_image_url }}
+											style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+										/>
+									) : (
+										<View style={{ alignItems: 'center', gap: 8 }}>
+											<Ionicons name="camera-outline" size={32} color={colors.textMuted} />
+											<Text style={{ fontSize: 12, fontWeight: '700', color: colors.textMuted }}>FRONT</Text>
+										</View>
+									)}
+								</TouchableOpacity>
+
+								{/* Back Card */}
+								<TouchableOpacity
+									onPress={() => pickImage('back_image_url')}
 									style={{
-										fontSize: 28,
-										fontWeight: "900",
-										color: colors.text,
-										textAlign: "center",
+										flex: 1,
+										aspectRatio: 1,
+										backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "#F1F5F9",
+										borderRadius: 20,
+										alignItems: "center",
+										justifyContent: "center",
+										overflow: 'hidden',
+										borderWidth: 1,
+										borderColor: formData.back_image_url ? COLORS.brandPrimary : 'transparent',
+										borderStyle: formData.back_image_url ? 'solid' : 'dashed'
 									}}
 								>
-									{formData.provider_name}
-								</Text>
-								<View
-									style={{
-										backgroundColor: COLORS.brandPrimary + "20",
-										paddingHorizontal: 16,
-										paddingVertical: 8,
-										borderRadius: 12,
-									}}
-								>
-									<Text
-										style={{
-											fontSize: 18,
-											fontWeight: "700",
-											color: COLORS.brandPrimary,
-											fontFamily:
-												Platform.OS === "ios" ? "Courier" : "monospace",
-										}}
-									>
-										{formData.policy_number}
-									</Text>
-								</View>
+									{formData.back_image_url ? (
+										<Image
+											source={{ uri: formData.back_image_url }}
+											style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+										/>
+									) : (
+										<View style={{ alignItems: 'center', gap: 8 }}>
+											<Ionicons name="images-outline" size={32} color={colors.textMuted} />
+											<Text style={{ fontSize: 12, fontWeight: '700', color: colors.textMuted }}>BACK</Text>
+										</View>
+									)}
+								</TouchableOpacity>
 							</View>
 
+							{/* Policy Holder Name Field */}
 							<Input
 								label="Policy Holder (Optional)"
 								placeholder="Full Name"
@@ -1020,73 +1227,73 @@ export default function InsuranceScreen() {
 					)}
 				</Animated.View>
 			</InputModal>
-            
-            {/* --- PAYMENT METHOD MODAL (Updated for Gumroad) --- */}
-            <InputModal
-                visible={showPaymentModal}
-                onClose={() => setShowPaymentModal(false)}
-                title="Secure Payment"
-                primaryAction={handlePaymentSubmit}
-                primaryActionLabel={
-                    <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
-                }
-                secondaryAction={() => setShowPaymentModal(false)}
-                secondaryActionLabel="Cancel"
-            >
-                <Animated.View style={[styles.stepContainer, { transform: [{ translateX: shakeAnim }] }]}>
-                    <View style={{ gap: 24, alignItems: 'center', padding: 16 }}>
-                         <View style={{
-                            width: 80,
-                            height: 80,
-                            borderRadius: 20,
-                            backgroundColor: '#FFFFFF',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            shadowColor: "#000",
-                            shadowOpacity: 0.1,
-                            shadowRadius: 10,
-                            shadowOffset: { width: 0, height: 4 }
-                        }}>
-                            <Svg width={64} height={64} viewBox="90.295 93.404 330.706 320.703" fill="none">
-                                <Path
-                                    d="m278.037 414.107c78.957 0 142.964-61.788 142.964-138.008s-64.007-138.009-142.964-138.009-142.965 61.789-142.965 138.009 64.008 138.008 142.965 138.008z"
-                                    fill="#000"
-                                />
-                                <Path
-                                    d="m241.141 385.186c83.044 0 150.846-65.055 150.846-145.891 0-80.835-67.802-145.891-150.846-145.891-83.043 0-150.846 65.056-150.846 145.891 0 80.836 67.803 145.891 150.846 145.891z"
-                                    fill="#ff90e8"
-                                    stroke="#000"
-                                    strokeWidth="1.563"
-                                />
-                                <Path
-                                    d="m229.795 312.898c-42.217 0-67.05-34.11-67.05-76.54 0-44.095 27.316-79.869 79.465-79.869 53.806 0 72.016 36.607 72.844 57.405h-38.905c-.827-11.647-10.761-29.118-34.766-29.118-25.66 0-42.216 22.463-42.216 49.918s16.556 49.917 42.216 49.917c23.178 0 33.111-18.303 37.25-36.605h-37.25v-14.976h78.162v76.54h-34.29v-48.254c-2.484 17.472-13.245 51.582-55.46 51.582z"
-                                    fill="#000"
-                                />
-                            </Svg>
-                        </View>
-                         
-                         <View style={{ gap: 8 }}>
-                            <Text style={{ 
-                                textAlign: 'center', 
-                                fontSize: 18, 
-                                fontWeight: '700',
-                                color: colors.text
-                            }}>
-                                Complete Purchase via Gumroad
-                            </Text>
-                            <Text style={{ 
-                                textAlign: 'center', 
-                                fontSize: 14, 
-                                color: colors.textMuted,
-                                lineHeight: 20
-                            }}>
-                                You will be redirected to a secure checkout page to finalize your subscription.
-                            </Text>
-                         </View>
-                    </View>
-                </Animated.View>
-            </InputModal>
-		</LinearGradient>
+
+			{/* --- PAYMENT METHOD MODAL (Updated for Gumroad) --- */}
+			<InputModal
+				visible={showPaymentModal}
+				onClose={() => setShowPaymentModal(false)}
+				title="Secure Payment"
+				primaryAction={handlePaymentSubmit}
+				primaryActionLabel={
+					<Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
+				}
+				secondaryAction={() => setShowPaymentModal(false)}
+				secondaryActionLabel="Cancel"
+			>
+				<Animated.View style={[styles.stepContainer, { transform: [{ translateX: shakeAnim }] }]}>
+					<View style={{ gap: 24, alignItems: 'center', padding: 16 }}>
+						<View style={{
+							width: 80,
+							height: 80,
+							borderRadius: 20,
+							backgroundColor: '#FFFFFF',
+							alignItems: 'center',
+							justifyContent: 'center',
+							shadowColor: "#000",
+							shadowOpacity: 0.1,
+							shadowRadius: 10,
+							shadowOffset: { width: 0, height: 4 }
+						}}>
+							<Svg width={64} height={64} viewBox="90.295 93.404 330.706 320.703" fill="none">
+								<Path
+									d="m278.037 414.107c78.957 0 142.964-61.788 142.964-138.008s-64.007-138.009-142.964-138.009-142.965 61.789-142.965 138.009 64.008 138.008 142.965 138.008z"
+									fill="#000"
+								/>
+								<Path
+									d="m241.141 385.186c83.044 0 150.846-65.055 150.846-145.891 0-80.835-67.802-145.891-150.846-145.891-83.043 0-150.846 65.056-150.846 145.891 0 80.836 67.803 145.891 150.846 145.891z"
+									fill="#ff90e8"
+									stroke="#000"
+									strokeWidth="1.563"
+								/>
+								<Path
+									d="m229.795 312.898c-42.217 0-67.05-34.11-67.05-76.54 0-44.095 27.316-79.869 79.465-79.869 53.806 0 72.016 36.607 72.844 57.405h-38.905c-.827-11.647-10.761-29.118-34.766-29.118-25.66 0-42.216 22.463-42.216 49.918s16.556 49.917 42.216 49.917c23.178 0 33.111-18.303 37.25-36.605h-37.25v-14.976h78.162v76.54h-34.29v-48.254c-2.484 17.472-13.245 51.582-55.46 51.582z"
+									fill="#000"
+								/>
+							</Svg>
+						</View>
+
+						<View style={{ gap: 8 }}>
+							<Text style={{
+								textAlign: 'center',
+								fontSize: 18,
+								fontWeight: '700',
+								color: colors.text
+							}}>
+								Complete Purchase via Gumroad
+							</Text>
+							<Text style={{
+								textAlign: 'center',
+								fontSize: 14,
+								color: colors.textMuted,
+								lineHeight: 20
+							}}>
+								You will be redirected to a secure checkout page to finalize your subscription.
+							</Text>
+						</View>
+					</View>
+				</Animated.View>
+			</InputModal>
+		</LinearGradient >
 	);
 }
 
