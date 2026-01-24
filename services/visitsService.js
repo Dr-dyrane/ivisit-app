@@ -9,32 +9,32 @@ const TABLE = "visits";
 let supportsExtendedEmergencyColumns = null;
 
 const isMissingColumnError = (err, column) => {
-	if (!err) return false;
-	if (err.code !== "PGRST204") return false;
-	const message = typeof err.message === "string" ? err.message : "";
-	const details = typeof err.details === "string" ? err.details : "";
-	return message.includes(column) || details.includes(column);
+    if (!err) return false;
+    if (err.code !== "PGRST204") return false;
+    const message = typeof err.message === "string" ? err.message : "";
+    const details = typeof err.details === "string" ? err.details : "";
+    return message.includes(column) || details.includes(column);
 };
 
 const stripExtendedEmergencyColumns = (dbItem) => {
-	if (!dbItem || typeof dbItem !== "object") return dbItem;
-	const next = { ...dbItem };
-	delete next.lifecycle_state;
-	delete next.lifecycle_updated_at;
-	delete next.rating;
-	delete next.rating_comment;
-	delete next.rated_at;
-	return next;
+    if (!dbItem || typeof dbItem !== "object") return dbItem;
+    const next = { ...dbItem };
+    delete next.lifecycle_state;
+    delete next.lifecycle_updated_at;
+    delete next.rating;
+    delete next.rating_comment;
+    delete next.rated_at;
+    return next;
 };
 
 const shouldDisableExtendedColumns = (err) => {
-	return (
-		isMissingColumnError(err, "lifecycle_state") ||
-		isMissingColumnError(err, "lifecycle_updated_at") ||
-		isMissingColumnError(err, "rating") ||
-		isMissingColumnError(err, "rating_comment") ||
-		isMissingColumnError(err, "rated_at")
-	);
+    return (
+        isMissingColumnError(err, "lifecycle_state") ||
+        isMissingColumnError(err, "lifecycle_updated_at") ||
+        isMissingColumnError(err, "rating") ||
+        isMissingColumnError(err, "rating_comment") ||
+        isMissingColumnError(err, "rated_at")
+    );
 };
 
 const mapToDb = (item) => {
@@ -52,7 +52,7 @@ const mapToDb = (item) => {
     if (item.rating !== undefined) db.rating = item.rating;
     if (item.ratingComment !== undefined) db.rating_comment = item.ratingComment;
     if (item.ratedAt !== undefined) db.rated_at = item.ratedAt;
-    
+
     // Remove camelCase keys
     delete db.hospitalId;
     delete db.roomNumber;
@@ -70,7 +70,7 @@ const mapToDb = (item) => {
     delete db.rating;
     delete db.ratingComment;
     delete db.ratedAt;
-    
+
     return db;
 };
 
@@ -118,74 +118,74 @@ export const visitsService = {
         return result;
     },
 
-	async ensureExists({
-		id,
-		requestId,
-		hospitalId,
-		hospital,
-		specialty,
-		type,
-		status,
-		date,
-		time,
+    async ensureExists({
+        id,
+        requestId,
+        hospitalId,
+        hospital,
+        specialty,
+        type,
+        status,
+        date,
+        time,
         lifecycleState,
-	}) {
-		const { data: { user } } = await supabase.auth.getUser();
-		if (!user) throw new Error("User not logged in");
-		if (!id) throw new Error("Missing visit id");
+    }) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not logged in");
+        if (!id) throw new Error("Missing visit id");
 
-		const nowIso = new Date().toISOString();
-		const base = {
-			id: String(id),
-			user_id: user.id,
-			request_id: requestId ?? String(id),
-			hospital_id: hospitalId ?? null,
-			hospital: hospital ?? null,
-			specialty: specialty ?? null,
-			type: type ?? null,
-			status: status ?? "upcoming",
+        const nowIso = new Date().toISOString();
+        const base = {
+            id: String(id),
+            user_id: user.id,
+            request_id: requestId ?? String(id),
+            hospital_id: hospitalId ?? null,
+            hospital: hospital ?? null,
+            specialty: specialty ?? null,
+            type: type ?? null,
+            status: status ?? "upcoming",
             lifecycle_state: lifecycleState ?? null,
             lifecycle_updated_at: nowIso,
-			date: date ?? nowIso.slice(0, 10),
-			time:
-				time ??
-				new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-			updated_at: nowIso,
-		};
+            date: date ?? nowIso.slice(0, 10),
+            time:
+                time ??
+                new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+            updated_at: nowIso,
+        };
 
-		let upsertBase = base;
-		if (supportsExtendedEmergencyColumns === false) {
-			upsertBase = stripExtendedEmergencyColumns(upsertBase);
-		}
+        let upsertBase = base;
+        if (supportsExtendedEmergencyColumns === false) {
+            upsertBase = stripExtendedEmergencyColumns(upsertBase);
+        }
 
-		let data;
-		let error;
-		({ data, error } = await supabase
-			.from(TABLE)
-			.upsert(upsertBase, { onConflict: "id" })
-			.select()
-			.single());
+        let data;
+        let error;
+        ({ data, error } = await supabase
+            .from(TABLE)
+            .upsert(upsertBase, { onConflict: "id" })
+            .select()
+            .single());
 
-		if (error && supportsExtendedEmergencyColumns !== false && shouldDisableExtendedColumns(error)) {
-			supportsExtendedEmergencyColumns = false;
-			const retryBase = stripExtendedEmergencyColumns(upsertBase);
-			({ data, error } = await supabase
-				.from(TABLE)
-				.upsert(retryBase, { onConflict: "id" })
-				.select()
-				.single());
-		}
+        if (error && supportsExtendedEmergencyColumns !== false && shouldDisableExtendedColumns(error)) {
+            supportsExtendedEmergencyColumns = false;
+            const retryBase = stripExtendedEmergencyColumns(upsertBase);
+            ({ data, error } = await supabase
+                .from(TABLE)
+                .upsert(retryBase, { onConflict: "id" })
+                .select()
+                .single());
+        }
 
-		if (error) {
-			if (error?.code === "PGRST204") {
-				throw error;
-			}
-			console.error(`[visitsService] ensureExists error for ${id}:`, error);
-			throw error;
-		}
+        if (error) {
+            if (error?.code === "PGRST204") {
+                throw error;
+            }
+            console.error(`[visitsService] ensureExists error for ${id}:`, error);
+            throw error;
+        }
 
-		return normalizeVisit(mapFromDb(data));
-	},
+        return normalizeVisit(mapFromDb(data));
+    },
 
     async create(visit) {
         const { data: { user } } = await supabase.auth.getUser();
@@ -193,63 +193,44 @@ export const visitsService = {
 
         const normalized = normalizeVisit(visit);
         let dbItem = mapToDb({ ...normalized, user_id: user.id });
-		if (supportsExtendedEmergencyColumns === false) {
-			dbItem = stripExtendedEmergencyColumns(dbItem);
-		}
-        
-        let data;
-		let error;
-		({ data, error } = await supabase
-			.from(TABLE)
-			.upsert(dbItem, { onConflict: "id" })
-			.select()
-			.single());
+        if (supportsExtendedEmergencyColumns === false) {
+            dbItem = stripExtendedEmergencyColumns(dbItem);
+        }
 
-		if (error && supportsExtendedEmergencyColumns !== false && shouldDisableExtendedColumns(error)) {
-			supportsExtendedEmergencyColumns = false;
-			const retryItem = stripExtendedEmergencyColumns(dbItem);
-			({ data, error } = await supabase
-				.from(TABLE)
-				.upsert(retryItem, { onConflict: "id" })
-				.select()
-				.single());
-		}
+        let data;
+        let error;
+        ({ data, error } = await supabase
+            .from(TABLE)
+            .upsert(dbItem, { onConflict: "id" })
+            .select()
+            .single());
+
+        if (error && supportsExtendedEmergencyColumns !== false && shouldDisableExtendedColumns(error)) {
+            supportsExtendedEmergencyColumns = false;
+            const retryItem = stripExtendedEmergencyColumns(dbItem);
+            ({ data, error } = await supabase
+                .from(TABLE)
+                .upsert(retryItem, { onConflict: "id" })
+                .select()
+                .single());
+        }
 
         if (error) {
-			if (error?.code === "PGRST204") {
-				throw error;
-			}
+            if (error?.code === "PGRST204") {
+                throw error;
+            }
             console.error(`[visitsService] Create error for ${normalized.id}:`, error);
             throw error;
         }
-        
+
         const result = normalizeVisit(mapFromDb(data));
-        
+
         try {
-            const visitTypeName = result.type || "Visit";
-            const hospitalName = result.hospitalName || "hospital";
-            const statusText = result.status === "in_progress" ? "in progress" : result.status || "scheduled";
-            
-            const notification = {
-                id: `notification_${result.id}_${Date.now()}`,
-                type: NOTIFICATION_TYPES.VISIT,
-                priority: NOTIFICATION_PRIORITY.HIGH,
-                title: `${visitTypeName} Scheduled`,
-                message: `Your ${visitTypeName.toLowerCase()} at ${hospitalName} is ${statusText}`,
-                read: false,
-                timestamp: new Date().toISOString(),
-                actionType: "navigate",
-                actionData: {
-                    screen: "visits",
-                    visitId: result.id
-                }
-            };
-            
-            await notificationsService.create(notification);
+            await notificationDispatcher.dispatchVisitUpdate(result, 'created');
         } catch (notifError) {
             console.error(`[visitsService] Failed to create notification for visit ${result.id}:`, notifError);
         }
-        
+
         return result;
     },
 
@@ -259,101 +240,101 @@ export const visitsService = {
 
         let dbUpdates = mapToDb(updates);
         dbUpdates.updated_at = new Date().toISOString();
-		if (supportsExtendedEmergencyColumns === false) {
-			dbUpdates = stripExtendedEmergencyColumns(dbUpdates);
-		}
+        if (supportsExtendedEmergencyColumns === false) {
+            dbUpdates = stripExtendedEmergencyColumns(dbUpdates);
+        }
 
         let data;
-		let error;
-		({ data, error } = await supabase
-			.from(TABLE)
-			.update(dbUpdates)
-			.eq("id", id)
-			.eq("user_id", user.id)
-			.select());
+        let error;
+        ({ data, error } = await supabase
+            .from(TABLE)
+            .update(dbUpdates)
+            .eq("id", id)
+            .eq("user_id", user.id)
+            .select());
 
         if (error && supportsExtendedEmergencyColumns !== false && shouldDisableExtendedColumns(error)) {
-			supportsExtendedEmergencyColumns = false;
-			const retryUpdates = stripExtendedEmergencyColumns(dbUpdates);
-			({ data, error } = await supabase
-				.from(TABLE)
-				.update(retryUpdates)
-				.eq("id", id)
-				.eq("user_id", user.id)
-				.select());
-		}
+            supportsExtendedEmergencyColumns = false;
+            const retryUpdates = stripExtendedEmergencyColumns(dbUpdates);
+            ({ data, error } = await supabase
+                .from(TABLE)
+                .update(retryUpdates)
+                .eq("id", id)
+                .eq("user_id", user.id)
+                .select());
+        }
 
         if (error) {
-			if (error?.code === "PGRST204") {
-				throw error;
-			}
+            if (error?.code === "PGRST204") {
+                throw error;
+            }
             console.error(`[visitsService] Update error for ${id}:`, error);
             throw error;
         }
         if (!data || data.length === 0) {
-			let upserted;
-			let upsertError;
-			({ data: upserted, error: upsertError } = await supabase
-				.from(TABLE)
-				.upsert(
-					{
-						id: String(id),
-						user_id: user.id,
-						...dbUpdates,
-					},
-					{ onConflict: "id" }
-				)
-				.select()
-				.single());
+            let upserted;
+            let upsertError;
+            ({ data: upserted, error: upsertError } = await supabase
+                .from(TABLE)
+                .upsert(
+                    {
+                        id: String(id),
+                        user_id: user.id,
+                        ...dbUpdates,
+                    },
+                    { onConflict: "id" }
+                )
+                .select()
+                .single());
 
-			if (
-				upsertError &&
-				supportsExtendedEmergencyColumns !== false &&
-				shouldDisableExtendedColumns(upsertError)
-			) {
-				supportsExtendedEmergencyColumns = false;
-				const retryUpsert = stripExtendedEmergencyColumns({
-					id: String(id),
-					user_id: user.id,
-					...dbUpdates,
-				});
-				({ data: upserted, error: upsertError } = await supabase
-					.from(TABLE)
-					.upsert(retryUpsert, { onConflict: "id" })
-					.select()
-					.single());
-			}
+            if (
+                upsertError &&
+                supportsExtendedEmergencyColumns !== false &&
+                shouldDisableExtendedColumns(upsertError)
+            ) {
+                supportsExtendedEmergencyColumns = false;
+                const retryUpsert = stripExtendedEmergencyColumns({
+                    id: String(id),
+                    user_id: user.id,
+                    ...dbUpdates,
+                });
+                ({ data: upserted, error: upsertError } = await supabase
+                    .from(TABLE)
+                    .upsert(retryUpsert, { onConflict: "id" })
+                    .select()
+                    .single());
+            }
 
-			if (upsertError) {
-				console.error(`[visitsService] Upsert fallback failed for ${id}:`, upsertError);
-				throw upsertError;
-			}
+            if (upsertError) {
+                console.error(`[visitsService] Upsert fallback failed for ${id}:`, upsertError);
+                throw upsertError;
+            }
 
-			if (__DEV__) {
-				console.log("[visitsService] Update fallback upserted missing visit:", {
-					id: String(id),
-				});
-			}
+            if (__DEV__) {
+                console.log("[visitsService] Update fallback upserted missing visit:", {
+                    id: String(id),
+                });
+            }
 
-			const result = normalizeVisit(mapFromDb(upserted));
-			try {
-				await notificationDispatcher.dispatchVisitUpdate(result, "updated");
-			} catch (notifError) {
-				console.error(
-					`[visitsService] Failed to create notification for visit update ${id}:`,
-					notifError
-				);
-			}
-			return result;
+            const result = normalizeVisit(mapFromDb(upserted));
+            try {
+                await notificationDispatcher.dispatchVisitUpdate(result, "updated", updates);
+            } catch (notifError) {
+                console.error(
+                    `[visitsService] Failed to create notification for visit update ${id}:`,
+                    notifError
+                );
+            }
+            return result;
         }
         const result = normalizeVisit(mapFromDb(data[0]));
-        
+
         try {
-            await notificationDispatcher.dispatchVisitUpdate(result, 'updated');
+            await notificationDispatcher.dispatchVisitUpdate(result, 'updated', updates);
         } catch (notifError) {
             console.error(`[visitsService] Failed to create notification for visit update ${id}:`, notifError);
         }
-        
+
         return result;
     },
 
@@ -393,16 +374,16 @@ export const visitsService = {
             return ensured;
         }
         const result = normalizeVisit(mapFromDb(data[0]));
-        
+
         try {
             await notificationDispatcher.dispatchVisitUpdate(result, 'cancelled');
         } catch (notifError) {
             console.error(`[visitsService] Failed to create notification for visit cancellation ${id}:`, notifError);
         }
-        
+
         return result;
     },
-    
+
     async complete(id) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not logged in");
@@ -439,13 +420,13 @@ export const visitsService = {
             return ensured;
         }
         const result = normalizeVisit(mapFromDb(data[0]));
-        
+
         try {
             await notificationDispatcher.dispatchVisitUpdate(result, 'completed');
         } catch (notifError) {
             console.error(`[visitsService] Failed to create notification for visit completion ${id}:`, notifError);
         }
-        
+
         return result;
     },
 
@@ -483,34 +464,35 @@ export const visitsService = {
             console.error(`[visitsService] Delete error for ${id}:`, error);
             throw error;
         }
-        
+
         // Dispatch notification for successful deletion
         if (visitData) {
             try {
                 const visit = normalizeVisit(mapFromDb(visitData));
                 const visitTypeName = visit.type || "Visit";
                 const hospitalName = visit.hospital || "hospital";
-                
+
                 const notification = {
-                    id: `notification_${id}_deleted_${Date.now()}`,
                     type: NOTIFICATION_TYPES.VISIT,
                     priority: NOTIFICATION_PRIORITY.MEDIUM,
                     title: `${visitTypeName} Deleted`,
                     message: `Your ${visitTypeName.toLowerCase()} at ${hospitalName} has been deleted`,
                     read: false,
                     timestamp: new Date().toISOString(),
+                    icon: "trash-outline",
+                    color: "#FF3B30", // Red
                     actionType: "navigate",
                     actionData: {
                         screen: "visits"
                     }
                 };
-                
+
                 await notificationsService.create(notification);
             } catch (notifError) {
                 console.error(`[visitsService] Failed to create notification for visit deletion ${id}:`, notifError);
             }
         }
-        
+
         return data?.[0] || null;
     }
 };

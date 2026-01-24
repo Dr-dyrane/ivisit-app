@@ -1,18 +1,19 @@
 import { database, StorageKeys } from "../database";
 import { supabase } from "./supabase";
+import { notificationDispatcher } from "./notificationDispatcher";
 
 export const EmergencyRequestStatus = {
-	IN_PROGRESS: "in_progress",
-	ACCEPTED: "accepted",
-	ARRIVED: "arrived",
-	COMPLETED: "completed",
-	CANCELLED: "cancelled",
+    IN_PROGRESS: "in_progress",
+    ACCEPTED: "accepted",
+    ARRIVED: "arrived",
+    COMPLETED: "completed",
+    CANCELLED: "cancelled",
 };
 
 export const emergencyRequestsService = {
-	async list() {
+    async list() {
         const { data: { user } } = await supabase.auth.getUser();
-        
+
         // Fetch active request from Supabase
         if (user) {
             const { data, error } = await supabase
@@ -21,7 +22,7 @@ export const emergencyRequestsService = {
                 .eq('user_id', user.id)
                 .in('status', ['in_progress', 'accepted', 'arrived'])
                 .order('created_at', { ascending: false });
-            
+
             if (error) {
                 if (__DEV__) {
                     // console.log("[emergencyRequestsService.list] Supabase error, falling back to local:", {
@@ -58,47 +59,47 @@ export const emergencyRequestsService = {
                     patientLocation: r.patient_location,
                     patientHeading: r.patient_heading,
                 }));
-                
+
                 await database.write(StorageKeys.EMERGENCY_REQUESTS, requests);
-                
+
                 return requests;
             }
         }
 
         // Fallback to local
-		const items = await database.read(StorageKeys.EMERGENCY_REQUESTS, []);
-		if (!Array.isArray(items)) return [];
-		return items
-			.filter((r) => r && typeof r === "object")
-			.sort((a, b) => String(b?.createdAt ?? "").localeCompare(String(a?.createdAt ?? "")));
-	},
+        const items = await database.read(StorageKeys.EMERGENCY_REQUESTS, []);
+        if (!Array.isArray(items)) return [];
+        return items
+            .filter((r) => r && typeof r === "object")
+            .sort((a, b) => String(b?.createdAt ?? "").localeCompare(String(a?.createdAt ?? "")));
+    },
 
-	async create(request) {
+    async create(request) {
         const { data: { user } } = await supabase.auth.getUser();
-		const now = new Date().toISOString();
-		const id = request?.id ? String(request.id) : request?.requestId ? String(request.requestId) : `er_${Date.now()}`;
-		
+        const now = new Date().toISOString();
+        const id = request?.id ? String(request.id) : request?.requestId ? String(request.requestId) : `er_${Date.now()}`;
+
         const item = {
-			id,
-			requestId: id,
-			serviceType: request?.serviceType ?? null,
-			hospitalId: request?.hospitalId ?? null,
-			hospitalName: request?.hospitalName ?? null,
-			specialty: request?.specialty ?? null,
-			ambulanceType: request?.ambulanceType ?? null,
-			ambulanceId: request?.ambulanceId ?? null,
-			bedNumber: request?.bedNumber ?? null,
-			bedType: request?.bedType ?? null,
-			bedCount: request?.bedCount ?? null,
-			estimatedArrival: request?.estimatedArrival ?? null,
-			status: request?.status ?? EmergencyRequestStatus.IN_PROGRESS,
-			patient: request?.patient ?? null,
-			shared: request?.shared ?? null,
-			createdAt: request?.createdAt ?? now,
-			updatedAt: now,
+            id,
+            requestId: id,
+            serviceType: request?.serviceType ?? null,
+            hospitalId: request?.hospitalId ?? null,
+            hospitalName: request?.hospitalName ?? null,
+            specialty: request?.specialty ?? null,
+            ambulanceType: request?.ambulanceType ?? null,
+            ambulanceId: request?.ambulanceId ?? null,
+            bedNumber: request?.bedNumber ?? null,
+            bedType: request?.bedType ?? null,
+            bedCount: request?.bedCount ?? null,
+            estimatedArrival: request?.estimatedArrival ?? null,
+            status: request?.status ?? EmergencyRequestStatus.IN_PROGRESS,
+            patient: request?.patient ?? null,
+            shared: request?.shared ?? null,
+            createdAt: request?.createdAt ?? now,
+            updatedAt: now,
             patientLocation: request?.patientLocation ?? null, // Initial location
             patientHeading: request?.patientHeading ?? null,
-		};
+        };
 
         if (user) {
             const { error } = await supabase
@@ -125,7 +126,7 @@ export const emergencyRequestsService = {
                     patient_location: item.patientLocation,
                     patient_heading: item.patientHeading
                 });
-            
+
             if (error) {
                 console.error("Error creating emergency request:", error);
                 throw error;
@@ -134,12 +135,12 @@ export const emergencyRequestsService = {
             await database.createOne(StorageKeys.EMERGENCY_REQUESTS, item);
         }
 
-		return item;
-	},
+        return item;
+    },
 
-	async update(id, updates) {
+    async update(id, updates) {
         const { data: { user } } = await supabase.auth.getUser();
-		const requestId = String(id);
+        const requestId = String(id);
         const nextUpdatedAt = new Date().toISOString();
 
         if (user) {
@@ -156,14 +157,14 @@ export const emergencyRequestsService = {
             if (updates.estimatedArrival !== undefined) dbUpdates.estimated_arrival = updates.estimatedArrival;
             if (updates.patientLocation !== undefined) dbUpdates.patient_location = updates.patientLocation;
             if (updates.patientHeading !== undefined) dbUpdates.patient_heading = updates.patientHeading;
-            
+
             const { error, data } = await supabase
                 .from('emergency_requests')
                 .update(dbUpdates)
                 .eq('id', requestId)
                 .eq('user_id', user.id)
                 .select();
-            
+
             if (error) {
                 console.error(`[emergencyRequestsService] Supabase update failed for ${requestId}:`, error);
                 throw error;
@@ -176,7 +177,7 @@ export const emergencyRequestsService = {
                     .eq('request_id', requestId)
                     .eq('user_id', user.id)
                     .select();
-                
+
                 if (error2) throw error2;
             }
         }
@@ -190,8 +191,8 @@ export const emergencyRequestsService = {
             return item;
         }
 
-		return { id: requestId, ...updates, updatedAt: nextUpdatedAt };
-	},
+        return { id: requestId, ...updates, updatedAt: nextUpdatedAt };
+    },
 
     /**
      * Efficiently update only location (for tracking loops)
@@ -204,9 +205,9 @@ export const emergencyRequestsService = {
             .from('emergency_requests')
             .update({
                 patient_location: location, // Expects PostGIS point or compatible format if using raw SQL, but JS client handles basic objects often? 
-                                            // Actually, Supabase JS client usually needs `st_point(lon, lat)` via RPC or a specific format.
-                                            // However, if the column is geography, sending a GeoJSON object often works:
-                                            // { type: 'Point', coordinates: [lon, lat] }
+                // Actually, Supabase JS client usually needs `st_point(lon, lat)` via RPC or a specific format.
+                // However, if the column is geography, sending a GeoJSON object often works:
+                // { type: 'Point', coordinates: [lon, lat] }
                 patient_heading: heading,
                 updated_at: new Date().toISOString()
             })
@@ -218,26 +219,39 @@ export const emergencyRequestsService = {
         }
     },
 
-	async setStatus(id, status) {
-		const nextStatus =
-			status === EmergencyRequestStatus.CANCELLED ||
-			status === EmergencyRequestStatus.COMPLETED ||
-			status === EmergencyRequestStatus.ACCEPTED ||
-			status === EmergencyRequestStatus.ARRIVED
-				? status
-				: EmergencyRequestStatus.IN_PROGRESS;
-		return await this.update(id, { status: nextStatus });
-	},
+    async setStatus(id, status) {
+        const nextStatus =
+            status === EmergencyRequestStatus.CANCELLED ||
+                status === EmergencyRequestStatus.COMPLETED ||
+                status === EmergencyRequestStatus.ACCEPTED ||
+                status === EmergencyRequestStatus.ARRIVED
+                ? status
+                : EmergencyRequestStatus.IN_PROGRESS;
 
-	async getActive() {
-		const items = await this.list();
-		return (
-			items.find(
-				(r) =>
-					r?.status === EmergencyRequestStatus.IN_PROGRESS ||
-					r?.status === EmergencyRequestStatus.ACCEPTED ||
-					r?.status === EmergencyRequestStatus.ARRIVED
-			) ?? null
-		);
-	},
+        const result = await this.update(id, { status: nextStatus });
+
+        // Dispatch notification
+        try {
+            const request = await this.getActive();
+            if (request && (String(request.id) === String(id) || String(request.requestId) === String(id))) {
+                await notificationDispatcher.dispatchEmergencyUpdate(request, nextStatus);
+            }
+        } catch (e) {
+            console.warn("Failed to dispatch emergency update:", e);
+        }
+
+        return result;
+    },
+
+    async getActive() {
+        const items = await this.list();
+        return (
+            items.find(
+                (r) =>
+                    r?.status === EmergencyRequestStatus.IN_PROGRESS ||
+                    r?.status === EmergencyRequestStatus.ACCEPTED ||
+                    r?.status === EmergencyRequestStatus.ARRIVED
+            ) ?? null
+        );
+    },
 };

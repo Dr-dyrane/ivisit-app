@@ -2,6 +2,7 @@ import { database, StorageKeys } from "../database";
 import { supabase } from "./supabase";
 import * as FileSystem from "expo-file-system/legacy";
 import { decode } from "base64-arraybuffer";
+import { notificationDispatcher } from "./notificationDispatcher";
 
 export const insuranceService = {
     /**
@@ -73,6 +74,12 @@ export const insuranceService = {
         if (error) {
             console.error("Failed to create insurance policy:", error);
             throw error;
+        }
+
+        try {
+            await notificationDispatcher.dispatchInsuranceUpdate('created', data);
+        } catch (e) {
+            console.warn("Failed to dispatch insurance notification:", e);
         }
 
         return data;

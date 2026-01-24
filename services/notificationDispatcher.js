@@ -29,7 +29,7 @@ export const notificationDispatcher = {
      * @param {Object} params.actionData - Optional action data
      * @returns {Promise<Object>} Created notification
      */
-    async dispatchNotification({ type, priority, title, message, actionType = null, actionData = null }) {
+    async dispatchNotification({ type, priority, title, message, icon = null, color = null, actionType = null, actionData = null }) {
         try {
             const notification = {
                 id: uuidv4(),
@@ -39,6 +39,8 @@ export const notificationDispatcher = {
                 message,
                 timestamp: new Date().toISOString(),
                 read: false,
+                icon,
+                color,
                 actionType,
                 actionData,
             };
@@ -57,7 +59,7 @@ export const notificationDispatcher = {
      * @param {string} action - 'created' | 'updated' | 'cancelled' | 'completed'
      * @returns {Promise<Object>} Created notification
      */
-    async dispatchVisitUpdate(visit, action) {
+    async dispatchVisitUpdate(visit, action, changes = null) {
         if (!visit) {
             console.warn("[notificationDispatcher] dispatchVisitUpdate: visit is null");
             return;
@@ -66,31 +68,119 @@ export const notificationDispatcher = {
         let title = "";
         let message = "";
         let priority = NOTIFICATION_PRIORITY.NORMAL;
-        const visitType = visit.visit_type || visit.visitType || "Visit";
+        let icon = null;
+        let color = null;
 
+        // Normalize visit type for consistent checking
+        const rawType = visit.visit_type || visit.visitType || "Visit";
+        const visitType = rawType.toLowerCase();
+        const displayType = rawType; // Keep original casing for display
+        const hospitalName = visit.hospital || visit.hospitalName || "hospital";
+
+        // ACTION-BASED LOGIC
         switch (action) {
             case 'created':
-                title = `${visitType} Scheduled`;
-                message = `Your ${visitType.toLowerCase()} has been scheduled.`;
                 priority = NOTIFICATION_PRIORITY.HIGH;
+                color = "#007AFF"; // Blue
+
+                if (visitType.includes('ambulance')) {
+                    title = "Ambulance Requested";
+                    message = `An ambulance request has been initiated for ${hospitalName}.`;
+                    icon = "medical"; // specific icon
+                    color = "#FF3B30"; // Red for emergency
+                    priority = NOTIFICATION_PRIORITY.URGENT;
+                } else if (visitType.includes('bed')) {
+                    title = "Bed Booking Confirmed";
+                    message = `Your bed at ${hospitalName} has been successfully booked.`;
+                    icon = "bed";
+                } else if (visitType.includes('tele')) {
+                    title = "Telehealth Session Scheduled";
+                    message = `Video consultation with ${visit.doctorName || 'doctor'} scheduled.`;
+                    icon = "videocam";
+                } else {
+                    title = `${displayType} Scheduled`;
+                    message = `Your ${displayType.toLowerCase()} at ${hospitalName} is confirmed.`;
+                    icon = "calendar";
+                }
                 break;
 
             case 'updated':
-                title = `${visitType} Updated`;
-                message = `Your ${visitType.toLowerCase()} details have been updated.`;
                 priority = NOTIFICATION_PRIORITY.NORMAL;
+                color = "#FF9500"; // Orange
+                icon = "create-outline";
+
+                if (visitType.includes('ambulance')) {
+                    // Handled by emergencyRequestsService.dispatchEmergencyUpdate, so we suppress generic updates here
+                    // to avoid double notifications.
+                    return;
+                } else if (visitType.includes('bed')) {
+                    if (changes && changes.lifecycleState === 'confirmed') {
+                        title = "Bed Confirmed";
+                        message = `Your bed at ${hospitalName} is confirmed.`;
+                        icon = "checkmark-circle";
+                        color = "#34C759"; // Green
+                    } else if (changes && changes.lifecycleState === 'monitoring') {
+                        title = "Health Monitoring";
+                        message = `Active monitoring session started at ${hospitalName}.`;
+                        icon = "pulse";
+                        color = "#007AFF"; // Blue
+                    } else if (changes && changes.lifecycleState === 'discharged') {
+                        title = "Discharged";
+                        message = "You have been discharged from care.";
+                        icon = "log-out";
+                    } else {
+                        title = "Booking Details Updated";
+                        message = "Your bed booking details have been modified.";
+                        icon = "bed-outline";
+                    }
+                } else {
+                    // Smart detection for regular visits
+                    if (changes && (changes.date || changes.time)) {
+                        title = "Appointment Rescheduled";
+                        message = `Your appointment has been moved to ${visit.date} at ${visit.time}.`;
+                        icon = "time";
+                    } else if (changes && changes.status) {
+                        title = "Status Update";
+                        message = `Your visit status is now: ${visit.status.replace('_', ' ')}.`;
+                        icon = "alert-circle-outline";
+                    } else if (changes && (changes.hospitalId || changes.hospital)) {
+                        title = "Location Changed";
+                        message = `The location for your visit has changed to ${hospitalName}.`;
+                        icon = "location";
+                    } else if (changes && (changes.doctorName || changes.doctor_name)) {
+                        title = "Provider Update";
+                        message = `Your assigned doctor has been updated.`;
+                        icon = "person";
+                    } else {
+                        title = `${displayType} Updated`;
+                        message = `Details for your ${displayType.toLowerCase()} at ${hospitalName} have changed.`;
+                    }
+                }
                 break;
 
             case 'cancelled':
-                title = `${visitType} Cancelled`;
-                message = `Your ${visitType.toLowerCase()} has been cancelled.`;
+                title = `${displayType} Cancelled`;
+                message = `Your ${displayType.toLowerCase()} at ${hospitalName} was cancelled.`;
                 priority = NOTIFICATION_PRIORITY.HIGH;
+                icon = "close-circle-outline";
+                color = "#FF3B30"; // Red
                 break;
 
             case 'completed':
-                title = `${visitType} Completed`;
-                message = `Your ${visitType.toLowerCase()} has been completed.`;
                 priority = NOTIFICATION_PRIORITY.NORMAL;
+                color = "#34C759"; // Green
+                icon = "checkmark-circle-outline";
+
+                if (visitType.includes('ambulance')) {
+                    title = "Trip Completed";
+                    message = "You have arrived at your destination.";
+                } else if (visitType.includes('bed')) {
+                    title = "Discharged";
+                    message = "Your hospital stay has been marked as completed.";
+                } else {
+                    title = `${displayType} Completed`;
+                    message = `Your visit at ${hospitalName} is complete.`;
+                }
                 break;
 
             default:
@@ -103,6 +193,8 @@ export const notificationDispatcher = {
             priority,
             title,
             message,
+            icon,   // Pass explicit icon
+            color,  // Pass explicit color
             actionType: 'view_visit',
             actionData: { visitId: visit.id },
         });
@@ -118,6 +210,8 @@ export const notificationDispatcher = {
         let title = "";
         let message = "";
         let priority = NOTIFICATION_PRIORITY.NORMAL;
+        let icon = null;
+        let color = null;
         const userName = userData.fullName || userData.full_name || "User";
 
         switch (event) {
@@ -125,18 +219,24 @@ export const notificationDispatcher = {
                 title = "Welcome back!";
                 message = `You've successfully signed in.`;
                 priority = NOTIFICATION_PRIORITY.LOW;
+                icon = "log-in-outline";
+                color = "#34C759"; // Green
                 break;
 
             case 'signup':
                 title = "Welcome to iVisit!";
                 message = `Your account has been created successfully.`;
                 priority = NOTIFICATION_PRIORITY.NORMAL;
+                icon = "person-add-outline";
+                color = "#007AFF"; // Blue
                 break;
 
             case 'password_change':
                 title = "Password Changed";
                 message = "Your password has been updated successfully.";
                 priority = NOTIFICATION_PRIORITY.HIGH;
+                icon = "lock-closed-outline";
+                color = "#FF9500"; // Orange
                 break;
 
             case 'profile_update':
@@ -161,55 +261,41 @@ export const notificationDispatcher = {
             priority,
             title,
             message,
+            icon,
+            color,
             actionType: null,
             actionData: null,
         });
     },
 
-    /**
-     * Dispatch emergency-related notifications
-     * @param {string} event - 'accepted' | 'arriving' | 'completed' | 'cancelled'
-     * @param {Object} data - Emergency request data
-     * @returns {Promise<Object>} Created notification
-     */
-    async dispatchEmergencyEvent(event, data) {
-        if (!data) {
-            console.warn("[notificationDispatcher] dispatchEmergencyEvent: data is null");
-            return;
-        }
+    async dispatchEmergencyUpdate(request, status) {
+        let title = "Emergency Update";
+        let message = `Status updated to: ${status}`;
+        let icon = "medical";
+        let color = "#FF3B30"; // Red
+        let priority = NOTIFICATION_PRIORITY.URGENT;
 
-        let title = "";
-        let message = "";
-        let priority = NOTIFICATION_PRIORITY.NORMAL;
-
-        switch (event) {
+        switch (status) {
             case 'accepted':
-                title = "Help is on the way!";
-                message = `${data.responder_name || 'An ambulance'} has accepted your request.`;
-                priority = NOTIFICATION_PRIORITY.URGENT;
+                title = "Ambulance En Route";
+                message = "An ambulance has accepted your request and is on the way.";
+                icon = "navigate";
                 break;
-
-            case 'arriving':
-                title = "Ambulance Arriving";
-                message = "The responder is approaching your location.";
-                priority = NOTIFICATION_PRIORITY.HIGH;
+            case 'arrived':
+                title = "Ambulance Arrived";
+                message = "The ambulance has arrived at your location.";
+                icon = "location";
                 break;
-
             case 'completed':
-                title = "Trip Completed";
-                message = "You have arrived at the hospital.";
-                priority = NOTIFICATION_PRIORITY.NORMAL;
+                title = "Emergency Trip Completed";
+                message = "The emergency trip has been completed.";
+                icon = "checkmark-circle";
+                color = "#34C759"; // Green
                 break;
-
-            case 'cancelled':
-                title = "Request Cancelled";
-                message = "The emergency request was cancelled.";
-                priority = NOTIFICATION_PRIORITY.NORMAL;
+            case 'in_progress':
+                title = "Request Received";
+                message = "Your emergency request is being processed.";
                 break;
-
-            default:
-                console.warn(`[notificationDispatcher] Unknown emergency event: ${event}`);
-                return;
         }
 
         return this.dispatchNotification({
@@ -217,88 +303,38 @@ export const notificationDispatcher = {
             priority,
             title,
             message,
-            actionType: 'view_map',
-            actionData: { requestId: data.id },
+            icon,
+            color,
+            actionType: 'view_request',
+            actionData: { requestId: request.id },
         });
     },
 
     /**
-     * Dispatch support-related notifications
-     * @param {string} event - 'ticket_created' | 'ticket_updated' | 'reply_received'
-     * @param {Object} data - Ticket data
-     * @returns {Promise<Object>} Created notification
+     * Dispatch insurance related notifications
+     * @param {string} action - 'created' | 'updated'
+     * @param {Object} policy - Policy object
      */
-    async dispatchSupportEvent(event, data) {
+    async dispatchInsuranceUpdate(action, policy) {
         let title = "";
         let message = "";
+        let icon = "shield-checkmark";
+        let color = "#007AFF"; // Blue
         let priority = NOTIFICATION_PRIORITY.NORMAL;
 
-        switch (event) {
-            case 'ticket_created':
-                title = "Support Request Received";
-                message = `We've received your request: "${data.subject}". A team member will respond shortly.`;
-                priority = NOTIFICATION_PRIORITY.NORMAL;
-                break;
+        const provider = policy.providerName || policy.provider_name || "Insurance";
 
-            case 'ticket_updated':
-                title = "Support Ticket Updated";
-                message = `Your ticket "${data.subject}" has been updated.`;
-                priority = NOTIFICATION_PRIORITY.NORMAL;
-                break;
-            
-            case 'reply_received':
-                title = "New Support Reply";
-                message = `New reply on ticket: "${data.subject}"`;
-                priority = NOTIFICATION_PRIORITY.HIGH;
-                break;
-
-            default:
-                console.warn(`[notificationDispatcher] Unknown support event: ${event}`);
-                return;
-        }
-
-        return this.dispatchNotification({
-            type: NOTIFICATION_TYPES.SUPPORT,
-            priority,
-            title,
-            message,
-            actionType: 'view_ticket',
-            actionData: { ticketId: data.id },
-        });
-    },
-
-    /**
-     * Dispatch insurance-related notifications
-     * @param {string} event - 'created' | 'updated' | 'deleted'
-     * @param {Object} data - Insurance policy data
-     * @returns {Promise<Object>} Created notification
-     */
-    async dispatchInsuranceEvent(event, data) {
-        let title = "";
-        let message = "";
-        let priority = NOTIFICATION_PRIORITY.NORMAL;
-
-        switch (event) {
+        switch (action) {
             case 'created':
-                title = "Insurance Linked";
-                message = `Your ${data.provider_name} policy has been successfully linked.`;
-                priority = NOTIFICATION_PRIORITY.NORMAL;
+                title = "New Policy Added";
+                message = `Your insurance policy with ${provider} has been successfully added.`;
+                color = "#34C759"; // Green
                 break;
-
             case 'updated':
-                title = "Insurance Updated";
-                message = `Your ${data.provider_name} policy details have been updated.`;
-                priority = NOTIFICATION_PRIORITY.NORMAL;
+                title = "Policy Updated";
+                message = `Updates have been made to your ${provider} policy.`;
                 break;
-
-            case 'deleted':
-                title = "Insurance Removed";
-                message = `The ${data.provider_name} policy has been removed from your profile.`;
-                priority = NOTIFICATION_PRIORITY.LOW;
-                break;
-
             default:
-                console.warn(`[notificationDispatcher] Unknown insurance event: ${event}`);
                 return;
         }
 
@@ -307,17 +343,11 @@ export const notificationDispatcher = {
             priority,
             title,
             message,
+            icon,
+            color,
             actionType: 'view_insurance',
-            actionData: { policyId: data.id },
+            actionData: { policyId: policy.id },
         });
     },
+}
 
-    /**
-     * Legacy method for backward compatibility with EmergencyContext
-     * @deprecated Use dispatchEmergencyEvent instead
-     */
-    async dispatch(event, data, addNotification) {
-        console.warn("[notificationDispatcher] dispatch() is deprecated. Use dispatchEmergencyEvent() instead.");
-        return this.dispatchEmergencyEvent(event, data);
-    },
-};

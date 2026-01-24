@@ -122,17 +122,6 @@ export const useEmergencyHandlers = ({
 					),
 					cancelVisit(activeBedBooking.requestId),
 					setVisitLifecycle(activeBedBooking.requestId, EMERGENCY_VISIT_LIFECYCLE.CANCELLED),
-					addNotification({
-						id: `bed_cancel_${activeBedBooking.requestId}_${Date.now()}`,
-						type: NOTIFICATION_TYPES.APPOINTMENT,
-						title: "Bed reservation cancelled",
-						message: "You cancelled the active bed reservation.",
-						timestamp: new Date().toISOString(),
-						read: false,
-						priority: NOTIFICATION_PRIORITY.NORMAL,
-						actionType: null,
-						actionData: { visitId: activeBedBooking.requestId },
-					}),
 				],
 				cleanup: stopBedBooking,
 			})();
@@ -158,17 +147,6 @@ export const useEmergencyHandlers = ({
 						activeBedBooking.requestId,
 						EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING
 					),
-					addNotification({
-						id: `bed_complete_${activeBedBooking.requestId}_${Date.now()}`,
-						type: NOTIFICATION_TYPES.APPOINTMENT,
-						title: "Bed booking completed",
-						message: "Your bed booking has been marked complete.",
-						timestamp: new Date().toISOString(),
-						read: false,
-						priority: NOTIFICATION_PRIORITY.NORMAL,
-						actionType: "view_summary",
-						actionData: { visitId: activeBedBooking.requestId },
-					}),
 				],
 				cleanup: stopBedBooking,
 			})();

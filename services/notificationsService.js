@@ -15,13 +15,15 @@ const mapToDb = (item) => {
     const db = { ...item };
     if (item.actionType !== undefined) db.action_type = item.actionType;
     if (item.actionData !== undefined) db.action_data = item.actionData;
-    
+    if (item.icon !== undefined) db.icon = item.icon;
+    if (item.color !== undefined) db.color = item.color;
+
     // Remove camelCase keys
     delete db.actionType;
     delete db.actionData;
     delete db.createdAt;
     delete db.updatedAt;
-    
+
     return db;
 };
 
@@ -54,6 +56,18 @@ export const notificationsService = {
         const normalized = normalizeNotification(notification);
         const dbItem = mapToDb({ ...normalized, user_id: user.id });
 
+        // Validate ID format (must be UUID). If it's a fallback string (e.g. "notification_..."),
+        // remove it so Supabase can generate a valid UUID.
+        // UUID Regex: 8-4-4-4-12 hex digits
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+        if (dbItem.id) {
+            if (typeof dbItem.id !== 'string' || !uuidRegex.test(dbItem.id)) {
+                // Invalid UUID (e.g. "notification_AMB..."), strip it
+                delete dbItem.id;
+            }
+        }
+
         const { data, error } = await supabase
             .from(TABLE)
             .insert(dbItem)
@@ -64,7 +78,7 @@ export const notificationsService = {
             console.error(`[notificationsService] Create error for ${normalized.id}:`, error);
             throw error;
         }
-        
+
         const result = normalizeNotification(mapFromDb(data));
         return result;
     },

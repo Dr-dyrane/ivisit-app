@@ -7,15 +7,16 @@ import { getNotificationIcon, getPriorityColor, getRelativeTime, NOTIFICATION_PR
 
 export default function NotificationCard({ notification, onPress, onMarkRead, onDelete, isSelectMode = false, isSelected = false, onToggleSelection }) {
   const { isDarkMode } = useTheme();
-  
-  const icon = getNotificationIcon(notification.type);
-  const priorityColor = getPriorityColor(notification.priority);
+
+  // Check for explicit icon/color first, then fall back to defaults
+  const icon = notification.icon || getNotificationIcon(notification.type);
+  const priorityColor = notification.color || getPriorityColor(notification.priority);
   const timeAgo = getRelativeTime(notification.timestamp);
 
-  const activeBG = isSelected 
-    ? (COLORS.brandPrimary + "20") 
-    : !notification.read 
-      ? (isDarkMode ? COLORS.bgDarkAlt : "#FFF") 
+  const activeBG = isSelected
+    ? (COLORS.brandPrimary + "20")
+    : !notification.read
+      ? (isDarkMode ? COLORS.bgDarkAlt : "#FFF")
       : (isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)");
 
   const handlePress = () => {
