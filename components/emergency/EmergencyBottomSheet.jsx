@@ -130,11 +130,16 @@ const EmergencyBottomSheet = forwardRef(
 		 */
 		const clampSheetIndex = useCallback(
 			(index) => {
-				if (!Number.isFinite(index) || snapPoints.length === 0) return 0;
+				console.log('[EmergencyBottomSheet] clampSheetIndex called with:', index, 'snapPoints length:', snapPoints.length);
+				if (!Number.isFinite(index) || snapPoints.length === 0) {
+					console.log('[EmergencyBottomSheet] Invalid index or no snap points, returning 0');
+					return 0;
+				}
 				
 				const maxIndex = snapPoints.length - 1;
 				const clampedIndex = Math.min(Math.max(index, 0), maxIndex);
 				
+				console.log('[EmergencyBottomSheet] Clamped index:', clampedIndex, 'maxIndex:', maxIndex);
 				return clampedIndex;
 			},
 			[snapPoints.length]

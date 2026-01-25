@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
-import { View, StyleSheet, Dimensions } from "react-native";
+import { View, StyleSheet, Dimensions, Text, TouchableOpacity } from "react-native";
 import { useEmergency } from "../contexts/EmergencyContext";
 import { useEmergencyUI } from "../contexts/EmergencyUIContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -11,6 +11,7 @@ import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
 import { useVisits } from "../contexts/VisitsContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { COLORS } from "../constants/colors";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -19,7 +20,7 @@ import { usePreferences } from "../contexts/PreferencesContext";
 import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
 import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
 import { useEmergencyRequests } from "../hooks/emergency/useEmergencyRequests";
-import { EmergencyRequestStatus } from "../services/emergencyRequestsService";
+import { EmergencyRequestStatus, emergencyRequestsService } from "../services/emergencyRequestsService";
 import {
 	NOTIFICATION_PRIORITY,
 	NOTIFICATION_TYPES,
@@ -38,6 +39,7 @@ import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 import NotificationIconButton from "../components/headers/NotificationIconButton";
 import { useEmergencyHandlers } from "../hooks/emergency/useEmergencyHandlers";
 import { useHospitalSelection } from "../hooks/emergency/useHospitalSelection";
+import { useRequestFlow } from "../hooks/emergency/useRequestFlow";
 import { useSearchFiltering } from "../hooks/emergency/useSearchFiltering";
 
 /**
@@ -62,6 +64,7 @@ export default function EmergencyScreen() {
 	const { addVisit, updateVisit, cancelVisit, completeVisit } = useVisits();
 	const { user } = useAuth();
 	const { preferences } = usePreferences();
+	const { isDarkMode } = useTheme(); // Get theme state
 	const { contacts: emergencyContacts } = useEmergencyContacts();
 	const { profile: medicalProfile } = useMedicalProfile();
 	const { setRequestStatus } = useEmergencyRequests();
@@ -97,6 +100,7 @@ export default function EmergencyScreen() {
 		title: null,
 		subtitle: null,
 	});
+	const [quickButtonPulse, setQuickButtonPulse] = useState(false);
 
 	// Data state from EmergencyContext
 	const {
@@ -128,6 +132,29 @@ export default function EmergencyScreen() {
 	} = useEmergency();
 	const { showToast } = useToast();
 
+	// 🚨 Quick Emergency - Auto-dispatch without hospital selection
+	const { handleQuickEmergency } = useRequestFlow({
+		createRequest: emergencyRequestsService.create,
+		updateRequest: emergencyRequestsService.update,
+		addVisit: emergencyRequestsService.addVisit,
+		updateVisit: emergencyRequestsService.updateVisit,
+		setRequestStatus: emergencyRequestsService.setStatus,
+		startAmbulanceTrip,
+		startBedBooking,
+		clearSelectedHospital,
+		user,
+		preferences,
+		medicalProfile,
+		emergencyContacts,
+		hospitals,
+		selectedSpecialty,
+		requestHospitalId: selectedHospitalId,
+		selectedHospital,
+		activeAmbulanceTrip,
+		activeBedBooking,
+		currentRoute,
+	});
+
 	const [pendingSelectedHospitalId, setPendingSelectedHospitalId] = useState(null);
 	useEffect(() => {
 		if (!pendingSelectedHospitalId) return;
@@ -142,6 +169,27 @@ export default function EmergencyScreen() {
 		return getMapPaddingForSnapIndex(sheetSnapIndex, isHospitalFlowOpen);
 	}, [pendingSelectedHospitalId, selectedHospitalId, sheetSnapIndex]);
 
+	useEffect(() => {
+		// Start Matrix-style pulsing after 2 seconds when button is visible
+		if (mode === "emergency" && !activeAmbulanceTrip?.requestId) {
+			const timer = setTimeout(() => {
+				setQuickButtonPulse(true);
+			}, 2000);
+
+			// Create Matrix-style flicker effect
+			const flickerInterval = setInterval(() => {
+				setQuickButtonPulse(prev => Math.random() > 0.3);
+			}, 3000);
+
+			return () => {
+				clearTimeout(timer);
+				clearInterval(flickerInterval);
+			};
+		} else {
+			setQuickButtonPulse(false);
+		}
+	}, [mode, activeAmbulanceTrip?.requestId]);
+
 	// Debugging hospitals
 	useMemo(() => {
 		if (hospitals && hospitals.length > 0) {
@@ -153,7 +201,63 @@ export default function EmergencyScreen() {
 
 	// Header components - memoized
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
-	const rightComponent = useMemo(() => <NotificationIconButton />, []);
+	const rightComponent = useMemo(() => {
+		console.log('[EmergencyScreen] Rendering header - Mode:', mode, 'Active trip:', !!activeAmbulanceTrip?.requestId);
+
+		// Theme-sensitive colors for dark/light mode
+		const adaptiveColors = {
+			bgColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : `rgba(134, 16, 14, 0.1)`, // brandPrimary for light mode
+			shadowColor: COLORS.brandPrimary, // Keep brand glow for Matrix effect
+			iconColor: quickButtonPulse ? '#FFFFFF' : (isDarkMode ? COLORS.textLight : COLORS.brandPrimary), // Use theme colors
+		};
+
+		return (
+			<View style={{ flexDirection: 'row', alignItems: 'center' }}>
+				{/* Quick Emergency Button - Adaptive Dark/Light Mode */}
+				{mode === "emergency" && !activeAmbulanceTrip?.requestId && (
+					<TouchableOpacity
+						onPress={() => {
+							console.log('[EmergencyScreen] QUICK BUTTON TAPPED!');
+							handleQuickEmergencyAction();
+						}}
+						onPressIn={() => {
+							console.log('[EmergencyScreen] Button press IN');
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+						}}
+						onPressOut={() => {
+							console.log('[EmergencyScreen] Button press OUT');
+							Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+						}}
+						style={{
+							marginRight: 12,
+							backgroundColor: adaptiveColors.bgColor,
+							width: 28,
+							height: 28,
+							borderRadius: 14,
+							alignItems: 'center',
+							justifyContent: 'center',
+							zIndex: 9999,
+							borderWidth: 0, // Remove border for Apple-style
+							// Seamless bleed effect
+							shadowColor: adaptiveColors.shadowColor,
+							shadowOffset: { width: 0, height: 0 },
+							shadowOpacity: quickButtonPulse ? 1 : 0.4,
+							shadowRadius: quickButtonPulse ? 15 : 8,
+							transform: [{ scale: quickButtonPulse ? 1.08 : 1 }],
+						}}
+						activeOpacity={0.8}
+					>
+						<Ionicons
+							name="flash"
+							size={14}
+							color={adaptiveColors.iconColor}
+						/>
+					</TouchableOpacity>
+				)}
+				<NotificationIconButton />
+			</View>
+		);
+	}, [mode, activeAmbulanceTrip?.requestId, handleQuickEmergencyAction, quickButtonPulse, isDarkMode]);
 
 	// Handle sheet snap changes
 	const handleSheetSnapChange = useCallback(
@@ -189,7 +293,7 @@ export default function EmergencyScreen() {
 	useFocusEffect(
 		useCallback(() => {
 			const hasAnyVisitActive = !!activeAmbulanceTrip || !!activeBedBooking;
-			
+
 			// Lock tab bar during any active trip or hospital selection
 			if (hasAnyVisitActive || selectedHospital) {
 				lockTabBarHidden();
@@ -216,13 +320,13 @@ export default function EmergencyScreen() {
 	const shouldHideFAB = useMemo(() => {
 		// Always hide when hospital is selected (detail mode)
 		if (selectedHospital) return true;
-		
+
 		// During active trips, always show FAB for mode switching regardless of snap position
 		if (hasAnyVisitActive) return false;
-		
+
 		// Collapsed sheet should hide FAB at all times
 		if (sheetSnapIndex === 0) return true;
-		
+
 		// Show FAB in all other cases
 		return false;
 	}, [selectedHospital, hasAnyVisitActive, sheetSnapIndex]);
@@ -235,7 +339,7 @@ export default function EmergencyScreen() {
 					? (mode === "emergency" ? "View Bed" : "View Ambulance")
 					: undefined;
 			const nextSubText = hasBothActive ? "Switch summary" : undefined;
-				
+
 			// Register FAB with unique ID and enhanced configuration
 			registerFAB('emergency-mode-toggle', {
 				icon: mode === "emergency" ? "bed-patient" : "medical",
@@ -250,7 +354,7 @@ export default function EmergencyScreen() {
 				label: nextLabel,
 				subText: nextSubText,
 			});
-			
+
 			// Cleanup
 			return () => {
 				unregisterFAB('emergency-mode-toggle');
@@ -296,7 +400,7 @@ export default function EmergencyScreen() {
 	const handlePrimaryAction = useCallback(
 		(hospitalId) => {
 			if (!hospitalId) return;
-			
+
 			const hasActiveByMode =
 				mode === "booking"
 					? !!activeBedBooking?.requestId
@@ -310,7 +414,7 @@ export default function EmergencyScreen() {
 							: "You already have an active ambulance trip",
 						"warning"
 					);
-				} catch (e) {}
+				} catch (e) { }
 				bottomSheetRef.current?.snapToIndex?.(1);
 				return;
 			}
@@ -327,23 +431,69 @@ export default function EmergencyScreen() {
 				navigateToBookBed({ router, hospitalId, method: "push" });
 				return;
 			}
-				navigateToRequestAmbulance({ router, hospitalId, method: "push" });
+			navigateToRequestAmbulance({ router, hospitalId, method: "push" });
 		},
 		[mode, router, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId, showToast, searchQuery]
 	);
+
+	// 🚨 Quick Emergency Handler - Auto-dispatch without hospital selection
+	const handleQuickEmergencyAction = useCallback(async () => {
+		console.log('[EmergencyScreen] Quick emergency button pressed');
+		console.log('[EmergencyScreen] Mode:', mode);
+		console.log('[EmergencyScreen] Active trip:', activeAmbulanceTrip?.requestId);
+		console.log('[EmergencyScreen] handleQuickEmergency available:', !!handleQuickEmergency);
+
+		if (mode !== "emergency") {
+			showToast("Quick Emergency only available in Ambulance mode", "warning");
+			return;
+		}
+
+		const hasActiveTrip = !!activeAmbulanceTrip?.requestId;
+		if (hasActiveTrip) {
+			showToast("You already have an active ambulance trip", "warning");
+			return;
+		}
+
+		try {
+			console.log('[EmergencyScreen] Calling handleQuickEmergency...');
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			const result = await handleQuickEmergency("ambulance");
+
+			if (result.ok) {
+				showToast(`🚨 Auto-dispatched to ${result.hospital}`, "success");
+				console.log('[EmergencyScreen] Quick emergency successful:', result);
+
+				// 🎯 Navigate to selected hospital view after auto-dispatch
+				if (result.requestId) {
+					console.log('[EmergencyScreen] Navigating to ambulance request with ID:', result.requestId);
+					navigateToRequestAmbulance({
+						router,
+						hospitalId: result.hospitalId || 'auto-dispatched',
+						method: "push"
+					});
+				}
+			} else {
+				showToast(`Emergency failed: ${result.reason}`, "error");
+				console.log('[EmergencyScreen] Quick emergency failed:', result);
+			}
+		} catch (error) {
+			console.error('[EmergencyScreen] Quick emergency error:', error);
+			showToast("Emergency request failed", "error");
+		}
+	}, [mode, activeAmbulanceTrip?.requestId, showToast, handleQuickEmergency, router]);
 
 	// Service type selection
 	const handleServiceTypeSelect = useCallback(
 		(type) => {
 			if (!type) return;
-			
+
 			const normalizedType = type.toLowerCase();
 			const normalizedCurrent = serviceType ? serviceType.toLowerCase() : null;
-			
+
 			if (normalizedType === normalizedCurrent) {
 				return;
 			}
-			
+
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 			selectServiceType(type);
 		},
@@ -356,7 +506,7 @@ export default function EmergencyScreen() {
 			if (specialty === selectedSpecialty) {
 				return;
 			}
-			
+
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 			selectSpecialty(specialty);
 		},
@@ -558,12 +708,12 @@ export default function EmergencyScreen() {
 	const handleCompleteBedBookingWithRating = useCallback(async () => {
 		const visitId = activeBedBooking?.requestId;
 		const hospitalName = activeBedBooking?.hospitalName;
-		
+
 		// Complete the booking first (like ambulance)
 		await onCompleteBedBooking?.();
-		
+
 		if (!visitId) return;
-		
+
 		// Then show rating modal
 		setRatingState({
 			visible: true,
@@ -588,10 +738,10 @@ export default function EmergencyScreen() {
 				subtitle={ratingState.subtitle}
 				serviceDetails={ratingState.serviceDetails}
 				onClose={() => {
-					setRatingState({ 
-						visible: false, 
-						visitId: null, 
-						title: null, 
+					setRatingState({
+						visible: false,
+						visitId: null,
+						title: null,
 						subtitle: null,
 						serviceType: null,
 						serviceDetails: null
@@ -601,7 +751,7 @@ export default function EmergencyScreen() {
 					const visitId = ratingState.visitId;
 					if (!visitId) return;
 					const nowIso = new Date().toISOString();
-					
+
 					// Only update rating data (completion already handled)
 					await updateVisit?.(visitId, {
 						rating,
@@ -610,7 +760,7 @@ export default function EmergencyScreen() {
 						lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
 						lifecycleUpdatedAt: nowIso,
 					});
-					
+
 					setRatingState({ visible: false, visitId: null, title: null, subtitle: null, serviceType: null, serviceDetails: null });
 				}}
 			/>

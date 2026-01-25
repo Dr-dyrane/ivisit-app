@@ -5,6 +5,9 @@ import {
 	VISIT_STATUS,
 	VISIT_TYPES,
 } from "../../constants/visits";
+import { emergencyRequestsService } from "../../services/emergencyRequestsService";
+import { useHospitals } from "./useHospitals";
+import { DispatchService } from "../../services/dispatchService";
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 
 export const useRequestFlow = ({
@@ -33,6 +36,10 @@ export const useRequestFlow = ({
 
 	const blockResult = useCallback((reason, extra) => {
 		return { ok: false, reason, ...extra };
+	}, []);
+
+	const successResult = useCallback((reason, extra) => {
+		return { ok: true, reason, ...extra };
 	}, []);
 
 	const getSnapshots = useCallback(() => {
@@ -87,8 +94,31 @@ export const useRequestFlow = ({
 				return blockResult("IN_FLIGHT", { serviceType: request.serviceType });
 			}
 
-			const hospitalId =
+			let hospitalId =
 				request?.hospitalId ?? requestHospitalId ?? selectedHospital?.id ?? null;
+			
+			// 🤖 AUTO-DISPATCH: Select best hospital if none provided
+			if (!hospitalId && hospitals.length > 0) {
+				try {
+					// Get user location for dispatch calculation
+					const currentLocation = await Location.getCurrentPositionAsync({});
+					const userLocation = {
+						latitude: currentLocation.coords.latitude,
+						longitude: currentLocation.coords.longitude
+					};
+					
+					const bestHospital = DispatchService.selectBestHospital(hospitals, userLocation);
+					if (bestHospital) {
+						hospitalId = bestHospital.id;
+						console.log('[useRequestFlow] Auto-dispatch selected hospital:', bestHospital.name);
+					}
+				} catch (locationError) {
+					console.warn('[useRequestFlow] Auto-dispatch failed, using fallback:', locationError);
+					// Fallback to first available hospital
+					hospitalId = hospitals[0]?.id;
+				}
+			}
+			
 			if (!hospitalId) {
 				return blockResult("MISSING_HOSPITAL", { serviceType: request.serviceType });
 			}
@@ -299,5 +329,67 @@ export const useRequestFlow = ({
 		]
 	);
 
-	return { handleRequestInitiated, handleRequestComplete };
+	// 🚨 QUICK EMERGENCY: Auto-dispatch without hospital selection
+	const handleQuickEmergency = useCallback(async (serviceType = "ambulance") => {
+		if (!canStartRequest(serviceType)) {
+			return blockResult("ALREADY_ACTIVE", { serviceType });
+		}
+
+		if (inflightByTypeRef.current[serviceType] === true) {
+			return blockResult("IN_FLIGHT", { serviceType });
+		}
+
+		inflightByTypeRef.current[serviceType] = true;
+		
+		try {
+			// Get user location first
+			let userLocation = null;
+			try {
+				const currentLocation = await Location.getCurrentPositionAsync({});
+				userLocation = {
+					latitude: currentLocation.coords.latitude,
+					longitude: currentLocation.coords.longitude
+				};
+			} catch (locationError) {
+				console.warn('[useRequestFlow] Quick emergency location failed:', locationError);
+				return blockResult("LOCATION_ERROR", { serviceType });
+			}
+
+			// Auto-select best hospital
+			const bestHospital = DispatchService.selectBestHospital(hospitals, userLocation);
+			if (!bestHospital) {
+				return blockResult("NO_HOSPITALS", { serviceType });
+			}
+
+			// Create visitId for the request
+			const now = new Date();
+			const visitId = `quick_${Date.now()}`;
+
+			// Create emergency request with auto-selected hospital
+			const result = await handleRequestInitiated({
+				serviceType,
+				hospitalId: bestHospital.id,
+				requestId: visitId, // ✅ Add requestId
+				// Auto-dispatch flag for tracking
+				autoDispatched: true,
+				dispatchScore: bestHospital.dispatchScore
+			});
+
+			return successResult("REQUEST_CREATED", {
+				requestId: result.requestId || visitId, // ✅ Ensure requestId is returned
+				hospital: bestHospital.name,
+				hospitalId: bestHospital.id,
+				autoDispatched: true,
+				dispatchScore: bestHospital.dispatchScore
+			});
+
+		} catch (error) {
+			console.error('[useRequestFlow] Quick emergency failed:', error);
+			return blockResult("REQUEST_FAILED", { serviceType, error: error.message });
+		} finally {
+			inflightByTypeRef.current[serviceType] = false;
+		}
+	}, [hospitals, canStartRequest, handleRequestInitiated]);
+
+	return { handleRequestInitiated, handleRequestComplete, handleQuickEmergency };
 };
