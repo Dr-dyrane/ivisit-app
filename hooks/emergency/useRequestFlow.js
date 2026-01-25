@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import * as Location from "expo-location";
 import {
 	EMERGENCY_VISIT_LIFECYCLE,
 	VISIT_STATUS,
@@ -102,6 +103,17 @@ export const useRequestFlow = ({
 
 			inflightByTypeRef.current[request.serviceType] = true;
 			try {
+				// Get user location for patient_location
+				let patientLocation = null;
+				try {
+					const currentLocation = await Location.getCurrentPositionAsync({});
+					patientLocation = `POINT(${currentLocation.coords.longitude} ${currentLocation.coords.latitude})`;
+				} catch (locationError) {
+					console.warn('[useRequestFlow] Could not get user location:', locationError);
+					// Fallback to Hemet coordinates
+					patientLocation = 'POINT(-116.9730 33.7475)';
+				}
+
 				await createRequest({
 					id: visitId,
 					requestId: visitId,
@@ -118,6 +130,7 @@ export const useRequestFlow = ({
 					status: EmergencyRequestStatus.IN_PROGRESS,
 					patient,
 					shared,
+					patientLocation, // ✅ ADD: Patient location in PostGIS format
 				});
 
 				await addVisit({

@@ -33,11 +33,11 @@ import { isValidCoordinate, calculateDistance } from "../../utils/mapUtils";
 
 const DEFAULT_APP_LOAD_DELTAS = { latitudeDelta: 0.04, longitudeDelta: 0.04 };
 const BASELINE_ZOOM_IN_FACTOR = 0.92;
-const ROUTE_ZOOM_FACTOR = 0.125;
+const ROUTE_ZOOM_FACTOR = 0.2; // previous was 0.125
 
-	const FullScreenEmergencyMap = forwardRef(
-		(
-			{
+const FullScreenEmergencyMap = forwardRef(
+	(
+		{
 			hospitals: propHospitals,
 			onHospitalSelect,
 			onHospitalsGenerated,
@@ -50,12 +50,12 @@ const ROUTE_ZOOM_FACTOR = 0.125;
 			showControls = true,
 			bottomPadding = 0,
 			onRouteCalculated,
-				responderLocation,
-				responderHeading,
-				sheetSnapIndex = 1,
-			},
-			ref
-		) => {
+			responderLocation,
+			responderHeading,
+			sheetSnapIndex = 1,
+		},
+		ref
+	) => {
 		const DEBUG_ROUTE_CAMERA = __DEV__ && false;
 		const { isDarkMode } = useTheme();
 		const { hospitals: dbHospitals } = useHospitals();
@@ -96,8 +96,8 @@ const ROUTE_ZOOM_FACTOR = 0.125;
 			};
 		}, [userLocation]);
 
-	// Hide controls when sheet is above 50% (index > 1)
-	const shouldShowControls = showControls && sheetSnapIndex <= 1;
+		// Hide controls when sheet is above 50% (index > 1)
+		const shouldShowControls = showControls && sheetSnapIndex <= 1;
 		const shouldShowHospitalLabels =
 			sheetSnapIndex === 0 && !routeHospitalIdResolved && !selectedHospitalId;
 
@@ -375,8 +375,13 @@ const ROUTE_ZOOM_FACTOR = 0.125;
 						? routeInfo.distanceMeters / 10 // Assume 10m/s (36km/h) average speed
 						: 600; // Default fallback 10 mins
 
-		const { ambulanceCoordinate, ambulanceHeading } = useAmbulanceAnimation({
-			routeCoordinates,
+		const {
+			ambulanceCoordinate,
+			ambulanceHeading,
+			stopAmbulanceAnimation,
+			animateAmbulance: animateAmbulanceFunc,
+		} = useAmbulanceAnimation({
+			routeCoordinates: animateAmbulance ? [...routeCoordinates].reverse() : [], // Reverse for ambulance pickup: hospital → user
 			animateAmbulance,
 			ambulanceTripEtaSeconds: effectiveAmbulanceEtaSeconds,
 			responderLocation,
@@ -389,16 +394,12 @@ const ROUTE_ZOOM_FACTOR = 0.125;
 		}, [requestLocationPermission]);
 
 		useEffect(() => {
-			const canRoute =
-				mode === "booking"
-					? (routeHospital?.availableBeds ?? 0) > 0
-					: (routeHospital?.ambulances ?? 0) > 0;
-
-			const shouldShowRoute = !!routeHospitalIdResolved && canRoute;
-			const origin = routeHospital?.coordinates ?? null;
-			const destination = userLocation
+			// More permissive routing for testing - always show route if hospital is selected
+			const shouldShowRoute = !!routeHospitalIdResolved && !!routeHospital;
+			const origin = userLocation
 				? { latitude: userLocation.latitude, longitude: userLocation.longitude }
 				: null;
+			const destination = routeHospital?.coordinates ?? null;
 
 			if (!shouldShowRoute || !isValidCoordinate(origin) || !isValidCoordinate(destination)) {
 				if (routeCoordinates.length > 0) {
@@ -875,53 +876,53 @@ const ROUTE_ZOOM_FACTOR = 0.125;
 									zIndex={isSelected ? 100 : 1}
 								>
 									<PulsingMarker isSelected={isSelected}>
-											<View
-												style={[
-													styles.hospitalMarker,
-													isSelected && styles.hospitalMarkerSelected,
-												]}
-											>
-												<View style={styles.hospitalMarkerRow}>
-													<Ionicons
-														name="location"
-														size={isSelected ? 42 : 32}
-														color={
-															isSelected ? COLORS.brandPrimary : "#EF4444"
-														}
-														style={{
-															shadowColor: "#000",
-															shadowOffset: { width: 0, height: 2 },
-															shadowOpacity: 0.25,
-															shadowRadius: 4,
-														}}
-													/>
-													{shouldShowHospitalLabels && !isSelected ? (
-														<View
+										<View
+											style={[
+												styles.hospitalMarker,
+												isSelected && styles.hospitalMarkerSelected,
+											]}
+										>
+											<View style={styles.hospitalMarkerRow}>
+												<Ionicons
+													name="location"
+													size={isSelected ? 42 : 32}
+													color={
+														isSelected ? COLORS.brandPrimary : "#EF4444"
+													}
+													style={{
+														shadowColor: "#000",
+														shadowOffset: { width: 0, height: 2 },
+														shadowOpacity: 0.25,
+														shadowRadius: 4,
+													}}
+												/>
+												{shouldShowHospitalLabels && !isSelected ? (
+													<View
+														style={[
+															styles.hospitalLabelPill,
+															{
+																backgroundColor: isDarkMode
+																	? "rgba(11, 15, 26, 0.72)"
+																	: "rgba(255, 255, 255, 0.82)",
+															},
+														]}
+													>
+														<Text
+															numberOfLines={1}
 															style={[
-																styles.hospitalLabelPill,
+																styles.hospitalLabelText,
 																{
-																	backgroundColor: isDarkMode
-																		? "rgba(11, 15, 26, 0.72)"
-																		: "rgba(255, 255, 255, 0.82)",
+																	color: isDarkMode
+																		? COLORS.textLight
+																		: COLORS.textPrimary,
 																},
 															]}
 														>
-															<Text
-																numberOfLines={1}
-																style={[
-																	styles.hospitalLabelText,
-																	{
-																		color: isDarkMode
-																			? COLORS.textLight
-																			: COLORS.textPrimary,
-																	},
-																]}
-															>
-																{hospital?.name ?? ""}
-															</Text>
-														</View>
-													) : null}
-												</View>
+															{hospital?.name ?? ""}
+														</Text>
+													</View>
+												) : null}
+											</View>
 											<View
 												style={{
 													position: "absolute",

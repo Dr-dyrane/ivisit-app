@@ -254,4 +254,56 @@ export const emergencyRequestsService = {
             ) ?? null
         );
     },
+
+    // REAL-TIME SUBSCRIPTIONS
+    async subscribeToEmergencyUpdates(requestId, callback) {
+        const channel = supabase
+            .channel(`emergency_${requestId}`)
+            .on('postgres_changes', 
+                { 
+                    event: 'UPDATE', 
+                    schema: 'public', 
+                    table: 'emergency_requests',
+                    filter: `id=eq.${requestId}`
+                }, 
+                callback
+            )
+            .subscribe();
+        
+        return () => supabase.removeChannel(channel);
+    },
+
+    async subscribeToAmbulanceLocation(requestId, callback) {
+        const channel = supabase
+            .channel(`ambulance_location_${requestId}`)
+            .on('postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'ambulances',
+                    filter: `current_call=eq.${requestId}`
+                },
+                callback
+            )
+            .subscribe();
+        
+        return () => supabase.removeChannel(channel);
+    },
+
+    async subscribeToHospitalBeds(hospitalId, callback) {
+        const channel = supabase
+            .channel(`hospital_beds_${hospitalId}`)
+            .on('postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'hospitals',
+                    filter: `id=eq.${hospitalId}`
+                },
+                callback
+            )
+            .subscribe();
+        
+        return () => supabase.removeChannel(channel);
+    },
 };

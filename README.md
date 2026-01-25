@@ -1,108 +1,98 @@
 # iVisit
 
-iVisit is a web application designed to connect individuals with highly trained medical professionals for emergency response, advanced medical care, and compassionate service. Available 24/7, iVisit is dedicated to providing rapid and expert care when you need it most.
+iVisit is a **production-ready** mobile application that connects individuals with highly trained medical professionals for emergency response, advanced medical care, and compassionate service. Available 24/7, iVisit is dedicated to providing rapid and expert care when you need it most.
+
+## 🚀 **Production Status**
+
+✅ **Real GPS Integration** - No simulation data, only live location tracking  
+✅ **Real-time Subscriptions** - Live emergency requests, ambulance tracking, hospital bed updates  
+✅ **Production Database** - PostGIS with nearby hospitals, distance calculations  
+✅ **End-to-End Flow** - Request → Dispatch → Tracking → Arrival → Complete  
 
 ## Features
 
-- **Emergency Response**: Rapid and efficient emergency care on the scene.
-- **Advanced Medical Care**: High-quality care with the latest technology.
-- **Compassionate Service**: Empathetic care to alleviate stress during emergencies.
-- **Insurance Integration**: Automated "iVisit Basic" enrollment and third-party policy management.
-- **Seamless Payments**: Integrated with Gumroad for instant policy subscriptions and renewals.
+- **🚨 Emergency Response**: Rapid and efficient emergency care with real-time GPS tracking
+- **🏥 Hospital Network**: Real-time hospital availability, bed counts, wait times
+- **🚑 Ambulance Tracking**: Live ambulance location and ETA calculations
+- **📱 Real-time Updates**: Supabase-powered real-time subscriptions
+- **🗺️ Interactive Maps**: Route visualization, hospital markers, zoom optimization
+- **💳 Insurance Integration**: Automated "iVisit Basic" enrollment and third-party policy management
+- **💸 Seamless Payments**: Integrated with Gumroad for instant policy subscriptions
 
 ## Tech Stack
 
 - **Frontend**: React Native, Expo, Tailwind CSS (NativeWind)
-- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
-- **Database**: PostgreSQL (via Supabase)
+- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions, Real-time)
+- **Database**: PostgreSQL with PostGIS for geospatial queries
+- **Maps**: Google Maps API with real-time routing
 - **Payments**: Gumroad
 - **Deployment**: EAS (Expo Application Services)
 
-## Installation
+## Development
 
-To set up iVisit locally:
+### Quick Start
 
 1. Clone the repository:
-
    ```bash
    git clone https://github.com/Dr-dyrane/ivisit-app.git
+   cd ivisit-app
    ```
 
-2. Navigate to the project directory:
-
-   ```bash
-   cd ivisit
-   ```
-
-3. Install dependencies:
-
+2. Install dependencies:
    ```bash
    npm install --legacy-peer-deps
    ```
 
-4. **Environment Setup**:
-   Create a `.env` file in the root directory with your Supabase and Gumroad credentials:
-
+3. Environment Setup:
+   Create a `.env` file with your credentials:
    ```env
-   # Supabase Configuration
    EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   
-   # Gumroad Configuration
    EXPO_PUBLIC_GUMROAD_PRODUCT_URL=https://ivisit.gumroad.com/l/insurance-basic
    EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_key
    ```
 
-5. Start the development server:
-
+4. Start development:
    ```bash
    npx expo start
    ```
 
-## Building & Deployment
+### Testing Real-time Features
 
-Use these commands to generate a production-ready APK or submit to the Play Store:
+The app includes comprehensive real-time testing capabilities:
+
+**Test Location**: Hemet, CA (33.7475, -116.9730)  
+**Test User ID**: `bf8709de-706e-444b-bf82-fbaeea62604a`
+
+**Key Features to Test:**
+- 🚨 Emergency request creation with real GPS
+- 🏥 Hospital discovery with distance calculations  
+- 🚑 Ambulance dispatch and real-time tracking
+- 📱 Real-time subscription updates
+- 🗺️ Route visualization and polyline rendering
+
+### Database Migrations
+
+**Important**: All database migrations are production-ready and backward compatible:
+
+- ✅ PostGIS `nearby_hospitals()` function for geospatial queries
+- ✅ Real-time subscriptions enabled for emergency tables
+- ✅ Patient location tracking with PostGIS POINT types
+- ✅ Ambulance and hospital bed real-time updates
+
+**No breaking changes** - existing code continues to work with new migrations.
+
+### Building & Deployment
 
 ```bash
+# Production builds
 eas build --platform android
 eas build -p android --profile preview2
 eas build -p ios --profile preview2
-```
 
-- The `preview2` profile in `eas.json` is configured to generate APK files. You can modify this profile to suit different build needs.
-
-### OTA (Over-the-Air) Updates with EAS
-
-After the APK has been generated and deployed, you can push over-the-air updates (such as JavaScript or asset changes) without requiring users to download a new version from the Play Store.
-
-To send an update to all users:
-
-```bash
-eas update
+# OTA updates (no Play Store resubmission needed)
 eas update --branch preview2
 ```
-
-This will push your latest changes to users who have installed your app.
-
-### Key Notes:
-
-- **`eas update`** allows you to update the app without needing a full rebuild and Play Store re-submission. Ideal for minor fixes or improvements.
-- Ensure that `expo-updates` is installed and properly configured to enable OTA updates in your app.
-
----
-
-## Development Tools
-
-### Data Seeding
-The application includes a data seeding utility to populate the database with mock data (Visits, Notifications, FAQs) for testing purposes. 
-
-**Note:** This feature is only available when running in **Development Mode**.
-1. Navigate to the **More** tab.
-2. Scroll to the bottom to find the **Developer** section.
-3. Tap **Seed Database** to populate your account with test data.
-
-### Auto-Enrollment
-New users are automatically enrolled in the "iVisit Basic" insurance scheme upon signup via database triggers. Existing users are backfilled automatically via migration scripts.
 
 ## Contributing
 

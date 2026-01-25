@@ -26,7 +26,7 @@ import {
 } from "../constants/notifications";
 import { useNotifications } from "../contexts/NotificationsContext";
 import { getMapPaddingForSnapIndex } from "../constants/emergencyAnimations";
-import { simulationService } from "../services/simulationService";
+// import { simulationService } from "../services/simulationService"; // REMOVED: Mock service
 import { discoveryService } from "../services/discoveryService";
 import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigationHelpers";
 import { useToast } from "../contexts/ToastContext";
@@ -35,6 +35,7 @@ import { EmergencyMapContainer } from "../components/emergency/EmergencyMapConta
 import { BottomSheetController } from "../components/emergency/BottomSheetController";
 import { ServiceRatingModal } from "../components/emergency/ServiceRatingModal";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
+import NotificationIconButton from "../components/headers/NotificationIconButton";
 import { useEmergencyHandlers } from "../hooks/emergency/useEmergencyHandlers";
 import { useHospitalSelection } from "../hooks/emergency/useHospitalSelection";
 import { useSearchFiltering } from "../hooks/emergency/useSearchFiltering";
@@ -152,6 +153,7 @@ export default function EmergencyScreen() {
 
 	// Header components - memoized
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
+	const rightComponent = useMemo(() => <NotificationIconButton />, []);
 
 	// Handle sheet snap changes
 	const handleSheetSnapChange = useCallback(
@@ -177,7 +179,7 @@ export default function EmergencyScreen() {
 					),
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent,
-				rightComponent: null,
+				rightComponent,
 			});
 		}, [resetTabBar, resetHeader, setHeaderState, mode, leftComponent])
 	);
@@ -469,12 +471,13 @@ export default function EmergencyScreen() {
 		if (!isInProgress || hasResponder) return;
 
 		if (__DEV__) {
-			// console.log("[EmergencyScreen] Starting simulation:", {
+			// console.log("[EmergencyScreen] Real-time tracking enabled:", {
 			// 	requestId,
 			// 	routePoints: coords.length,
 			// });
 		}
-		simulationService.startSimulation(requestId, coords);
+		// ❌ REMOVED: simulationService.startSimulation(requestId, coords);
+		// ✅ REAL-TIME: EmergencyContext now handles real-time subscriptions
 	}, [
 		activeAmbulanceTrip?.requestId,
 		activeAmbulanceTrip?.status,

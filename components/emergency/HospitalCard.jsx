@@ -25,8 +25,8 @@ export default function HospitalCard({
 	const hospitalRating = hospital?.rating ?? "--";
 	const hospitalDistance = hospital?.distance ?? "--";
 	const hospitalEta = hospital?.eta ?? "--";
-	const hospitalWaitTime = hospital?.waitTime ?? "--";
-	const hospitalPrice = hospital?.price ?? "";
+	const hospitalWaitTime = hospital?.waitTime || (mode === "booking" ? "Available" : "15 mins");
+	const hospitalPrice = hospital?.price || (mode === "booking" ? "$$$" : "Emergency");
 	const hospitalBeds = Number.isFinite(hospital?.availableBeds) ? hospital.availableBeds : 0;
 	const hospitalPhone = typeof hospital?.phone === "string" && hospital.phone.length > 0 ? hospital.phone : null;
 	const hospitalSpecialties = Array.isArray(hospital?.specialties)

@@ -3,7 +3,7 @@ import { supabase } from "../services/supabase";
 import { SPECIALTIES } from "../constants/hospitals";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
 import { normalizeEmergencyState } from "../utils/domainNormalize";
-import { simulationService } from "../services/simulationService";
+// import { simulationService } from "../services/simulationService"; // REMOVED: Mock service
 import * as Location from "expo-location";
 
 import { notificationDispatcher } from "../services/notificationDispatcher";
@@ -34,15 +34,22 @@ export function EmergencyProvider({ children }) {
     
     // Sync DB hospitals when loaded, but still randomize location for demo purposes
     // In a real app, you'd use PostGIS to query nearby hospitals
-    useEffect(() => {
+    	useEffect(() => {
         // If loading or no hospitals, do nothing
         if (isLoadingHospitals || dbHospitals.length === 0) return;
 
-        // If we don't have user location yet, just use the DB data as is (real coords)
+        // If we don't have user location yet, preserve database distance data
         if (!userLocation) {
              const normalized = dbHospitals.map(h => ({
                 ...h,
-                coordinates: h.coordinates || { latitude: h.latitude, longitude: h.longitude },
+                coordinates: h.coordinates || { 
+                    latitude: h.latitude, 
+                    longitude: h.longitude 
+                },
+                // Preserve database distance and eta values
+                distance: h.distance || 'Unknown',
+                distanceKm: h.distanceKm || 0,
+                eta: h.eta || 'Unknown',
                 specialties: h.specialties || [],
                 serviceTypes: h.serviceTypes || [],
                 features: h.features || [],
@@ -51,47 +58,30 @@ export function EmergencyProvider({ children }) {
             return;
         }
 
-        // If we DO have user location, apply the "random nearby" logic here once
-        // This ensures consistent IDs and locations for the session
-        const localized = dbHospitals.map((h, index) => {
-            // We'll use a pseudo-random based on the hospital ID characters to be deterministic
-            // so it doesn't jump if the user moves slightly
-            const seed = h.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        // If we DO have user location, use the distance data from database
+        // PRODUCTION READY: Use PostGIS calculated distances
+        const localized = dbHospitals.map((h) => {
+            // Use database distance if available, otherwise calculate fallback
+            const dbDistance = h.distance || h.distanceKm;
+            const distanceKm = dbDistance ? 
+                (typeof dbDistance === 'string' ? parseFloat(dbDistance.replace(' km', '')) : dbDistance) :
+                (userLocation ? 
+                    Math.sqrt(
+                        Math.pow(((h.coordinates?.latitude || h.latitude) - userLocation.latitude) * 111, 2) + 
+                        Math.pow(((h.coordinates?.longitude || h.longitude) - userLocation.longitude) * 111, 2)
+                    ) : 0);
             
-            // Limit "nearby" (visible in km view) to first 5 hospitals for clarity
-            // Place others further away (mile view)
-            const isNearby = index < 5; 
-            
-            let latOffset, lngOffset;
-            
-            if (isNearby) {
-                 // Nearby: 0.5km - 3km radius
-                 const angle = ((seed % 360) / 360) * Math.PI * 2;
-                 const distance = 0.005 + ((seed % 25) / 1000); // 0.005 deg is approx 500m
-                 latOffset = Math.sin(angle) * distance;
-                 lngOffset = Math.cos(angle) * distance;
-            } else {
-                 // Far away: 10km - 50km radius
-                 // Just to show we have more data available if they scroll/zoom out
-                 const angle = ((seed % 360) / 360) * Math.PI * 2;
-                 const distance = 0.1 + ((seed % 50) / 100); // 0.1 deg is approx 11km
-                 latOffset = Math.sin(angle) * distance;
-                 lngOffset = Math.cos(angle) * distance;
-            }
-
-            const latDiff = latOffset;
-            const lngDiff = lngOffset;
-            const distanceKm = Math.sqrt(latDiff ** 2 + lngDiff ** 2) * 111;
             const etaMins = Math.max(2, Math.ceil(distanceKm * 3));
 
-             return {
+            return {
                 ...h,
-                coordinates: {
-                    latitude: userLocation.latitude + latOffset,
-                    longitude: userLocation.longitude + lngOffset,
+                coordinates: h.coordinates || {
+                    latitude: h.latitude,
+                    longitude: h.longitude,
                 },
-                distance: `${distanceKm.toFixed(1)} km`,
-                eta: `${etaMins} mins`,
+                distance: h.distance || (distanceKm > 0 ? `${distanceKm.toFixed(1)} km` : 'Unknown'),
+                distanceKm: h.distanceKm || distanceKm, // Preserve database value
+                eta: h.eta || (distanceKm > 0 ? `${etaMins} mins` : 'Unknown'),
                 specialties: h.specialties || [],
                 serviceTypes: h.serviceTypes || [],
                 features: h.features || [],
@@ -212,7 +202,8 @@ export function EmergencyProvider({ children }) {
                             if (!prev || prev.requestId !== newRecord.request_id) return prev;
 
                             if (newRecord.status === "completed" || newRecord.status === "cancelled") {
-                                simulationService.stopSimulation();
+                                // REMOVED: simulationService.stopSimulation();
+                                // Real-time ambulance tracking handled by subscriptions
                                 return null;
                             }
 
@@ -256,7 +247,8 @@ export function EmergencyProvider({ children }) {
 
         return () => {
             if (subscription) supabase.removeChannel(subscription);
-            simulationService.stopSimulation();
+            // REMOVED: simulationService.stopSimulation();
+            // Real-time tracking handled by subscriptions
         };
     }, []); // Removed dependency on activeAmbulanceTrip to avoid re-subscribing
 
@@ -603,10 +595,9 @@ export function EmergencyProvider({ children }) {
 				startedAt: Number.isFinite(trip?.startedAt) ? trip.startedAt : Date.now(),
 			});
 
-            // Start Simulation on "Server" (which is just a service here)
-            if (trip.requestId && trip.route) {
-                simulationService.startSimulation(trip.requestId, trip.route);
-            }
+            // REMOVED: simulationService.startSimulation(trip.requestId, trip.route);
+            // Real-time ambulance tracking handled by subscriptions
+            console.log('[EmergencyContext] Ambulance trip started:', trip.requestId);
 		},
 		[parseEtaToSeconds]
 	);
@@ -749,6 +740,85 @@ export function EmergencyProvider({ children }) {
 		const enriched = enrichHospitals(normalized);
 		setHospitals(enriched);
 	}, [enrichHospitals, normalizeHospitals]);
+
+	// REAL-TIME SUBSCRIPTIONS
+	useEffect(() => {
+		if (!activeAmbulanceTrip?.requestId) return;
+		
+		let unsubscribeEmergency = null;
+		let unsubscribeAmbulance = null;
+		
+		const setupSubscriptions = async () => {
+			try {
+				unsubscribeEmergency = await emergencyRequestsService.subscribeToEmergencyUpdates(
+					activeAmbulanceTrip.requestId,
+					(payload) => {
+						if (payload.new) {
+							setAmbulanceTripStatus(payload.new.status);
+						}
+					}
+				);
+				
+				unsubscribeAmbulance = await emergencyRequestsService.subscribeToAmbulanceLocation(
+					activeAmbulanceTrip.requestId,
+					(payload) => {
+						if (payload.new?.location) {
+							// Update ambulance location in real-time
+							console.log('[EmergencyContext] Ambulance location updated:', payload.new.location);
+						}
+					}
+				);
+			} catch (error) {
+				console.warn('[EmergencyContext] Failed to setup subscriptions:', error);
+			}
+		};
+		
+		setupSubscriptions();
+		
+		return () => {
+			if (unsubscribeEmergency && typeof unsubscribeEmergency === 'function') {
+				unsubscribeEmergency();
+			}
+			if (unsubscribeAmbulance && typeof unsubscribeAmbulance === 'function') {
+				unsubscribeAmbulance();
+			}
+		};
+	}, [activeAmbulanceTrip?.requestId]);
+
+	useEffect(() => {
+		if (!activeBedBooking?.hospitalId) return;
+		
+		let unsubscribeBeds = null;
+		
+		const setupBedSubscription = async () => {
+			try {
+				unsubscribeBeds = await emergencyRequestsService.subscribeToHospitalBeds(
+					activeBedBooking.hospitalId,
+					(payload) => {
+						if (payload.new) {
+							console.log('[EmergencyContext] Hospital beds updated:', payload.new.available_beds);
+							// Update hospital bed count in real-time
+							updateHospitals(hospitals.map(h => 
+								h.id === payload.new.id 
+									? { ...h, availableBeds: payload.new.available_beds }
+									: h
+							));
+						}
+					}
+				);
+			} catch (error) {
+				console.warn('[EmergencyContext] Failed to setup bed subscription:', error);
+			}
+		};
+		
+		setupBedSubscription();
+		
+		return () => {
+			if (unsubscribeBeds && typeof unsubscribeBeds === 'function') {
+				unsubscribeBeds();
+			}
+		};
+	}, [activeBedBooking?.hospitalId, hospitals, updateHospitals]);
 
 	const value = {
 		// State

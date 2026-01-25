@@ -23,6 +23,7 @@ import { useVisits } from "../contexts/VisitsContext";
 import { useRequestFlow } from "../hooks/emergency/useRequestFlow";
 import EmergencyRequestModal from "../components/emergency/EmergencyRequestModal";
 import { navigateBack } from "../utils/navigationHelpers";
+import NotificationIconButton from "../components/headers/NotificationIconButton";
 
 export default function BookBedRequestScreen() {
 	const router = useRouter();
@@ -85,6 +86,7 @@ export default function BookBedRequestScreen() {
 	});
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
+	const rightComponent = useCallback(() => <NotificationIconButton />, []);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -97,7 +99,7 @@ export default function BookBedRequestScreen() {
 				icon: <Fontisto name="bed-patient" size={22} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent: backButton(),
-				rightComponent: null,
+				rightComponent: rightComponent(),
 			});
 		}, [backButton, resetHeader, resetTabBar, setHeaderState, setMode])
 	);

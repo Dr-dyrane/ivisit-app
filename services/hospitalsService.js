@@ -47,6 +47,57 @@ export const hospitalsService = {
 		}
 	},
 
+	/**
+	 * Fetch nearby hospitals with distance calculations
+	 * @param {number} userLat - User latitude
+	 * @param {number} userLng - User longitude  
+	 * @param {number} radiusKm - Search radius in kilometers (default: 50)
+	 * @returns {Promise<Array>} List of nearby hospitals with distance info
+	 */
+	async listNearby(userLat, userLng, radiusKm = 50) {
+		try {
+			// Use the PostGIS nearby_hospitals function
+			const { data, error } = await supabase
+				.rpc('nearby_hospitals', {
+					user_lat: userLat,
+					user_lng: userLng,
+					radius_km: radiusKm
+				});
+
+			if (error) throw error;
+
+			// Map database fields to application domain model with distance
+			return (data || []).map((h) => ({
+				id: h.id,
+				name: h.name,
+				address: h.address,
+				phone: h.phone,
+				rating: h.rating,
+				type: h.type,
+				image: h.image,
+				specialties: h.specialties || [],
+				serviceTypes: h.service_types || [],
+				features: h.features || [],
+				emergencyLevel: h.emergency_level,
+				availableBeds: h.available_beds,
+				ambulances: h.ambulances_count,
+				waitTime: h.wait_time,
+				price: h.price_range,
+				distance: `${Math.round(h.distance_km * 10) / 10} km`, // Format distance
+				distanceKm: h.distance_km, // Raw distance for calculations
+				coordinates: {
+					latitude: h.latitude,
+					longitude: h.longitude,
+				},
+				verified: h.verified,
+				status: h.status,
+			}));
+		} catch (err) {
+			console.error("hospitalsService.listNearby error:", err);
+			throw err;
+		}
+	},
+
     /**
      * Get a single hospital by ID
      * @param {string} id 
