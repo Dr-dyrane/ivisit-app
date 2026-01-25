@@ -6,7 +6,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { View, Text, Animated, Pressable } from "react-native";
+import { View, Text, Animated, Pressable, Linking } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useTheme } from "../contexts/ThemeContext";
@@ -80,6 +80,11 @@ export default function LoginScreen() {
 		});
 	};
 
+	const handleLinkPress = (url) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		Linking.openURL(url);
+	};
+
 	return (
 		<LinearGradient colors={colors.background} className="flex-1">
 			<Animated.View
@@ -120,9 +125,9 @@ export default function LoginScreen() {
 
 				<View className="flex-row items-center my-10">
 					<View className="flex-1 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />
-					<Text 
+					<Text
 						className="px-6 text-[10px] uppercase"
-						style={{ 
+						style={{
 							color: colors.subtitle,
 							fontWeight: "800",
 							letterSpacing: 1.5
@@ -145,9 +150,20 @@ export default function LoginScreen() {
 				</Pressable>
 			</Animated.View>
 
-			<View className="pb-8">
-				<Text className="text-center text-[10px] text-gray-500">
-					Secure healthcare access • iVisit
+			<View className="pb-8 mx-8">
+				<Text className="text-center text-[10px] justify-center text-gray-500">
+					By continuing, you agree to our{" "}
+					<Text className="font-black underline" onPress={() => handleLinkPress("https://ivisit.ng/terms")}>Terms</Text>,{" "}
+					<Text className="font-black underline" onPress={() => handleLinkPress("https://ivisit.ng/privacy")}>Privacy</Text>,{" "}
+					<Text className="font-black underline" onPress={() => handleLinkPress("https://ivisit.ng/medical-disclaimer")}>Medical Disclaimer</Text>, &{" "}
+					<Text className="font-black underline" onPress={() => handleLinkPress("https://ivisit.ng/health-data-consent")}>Health Data Consent</Text>
+				</Text>
+				<Text className="text-center text-[10px] text-gray-500 mt-1">
+					We require{" "}
+					<Text style={{ color: COLORS.brandPrimary, fontWeight: "900" }}>
+						Location Access
+					</Text>{" "}
+					for dispatch.
 				</Text>
 			</View>
 
