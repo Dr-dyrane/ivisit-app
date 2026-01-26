@@ -57,7 +57,7 @@ export async function getRoomPrice(roomType, hospitalId = null) {
  * Calculate emergency cost for insurance billing
  * This is what hospitals bill to insurance companies
  */
-export async function calculateEmergencyCost(emergencyRequest) {
+async function calculateEmergencyCost(emergencyRequest) {
   try {
     const { service_type, ambulance_type, bed_type, hospital_id } = emergencyRequest;
     let totalCost = 0;
@@ -116,7 +116,7 @@ export async function calculateEmergencyCost(emergencyRequest) {
  * Check user insurance coverage using existing insurance schema
  * Returns what insurance covers based on existing policy
  */
-export async function checkInsuranceCoverage(userId, emergencyRequest) {
+async function checkInsuranceCoverage(userId, emergencyRequest) {
   try {
     // Get user's active insurance policy from existing schema
     const { data: policy, error } = await supabase

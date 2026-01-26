@@ -525,16 +525,32 @@ export default function EmergencyScreen() {
 		timing,
 	});
 
-	// Calculate service type counts
+	// Calculate service type counts dynamically
 	const serviceTypeCounts = useMemo(() => {
-		return {
-			premium:
-				hospitals.filter((h) => h?.serviceTypes?.includes("premium")).length ||
-				0,
-			standard:
-				hospitals.filter((h) => h?.serviceTypes?.includes("standard")).length ||
-				0,
-		};
+		const counts = {};
+		const allServiceTypes = new Set();
+
+		// Collect all unique service types from hospitals
+		hospitals.forEach(hospital => {
+			// Check serviceTypes array first
+			if (hospital.serviceTypes && Array.isArray(hospital.serviceTypes)) {
+				hospital.serviceTypes.forEach(type => allServiceTypes.add(type.toLowerCase()));
+			}
+			// Fallback to hospital.type
+			if (hospital.type) {
+				allServiceTypes.add(hospital.type.toLowerCase());
+			}
+		});
+
+		// Count hospitals for each service type
+		allServiceTypes.forEach(serviceType => {
+			counts[serviceType] = hospitals.filter(h => 
+				(h.serviceTypes && Array.isArray(h.serviceTypes) && h.serviceTypes.includes(serviceType)) ||
+				(h.type && h.type.toLowerCase() === serviceType)
+			).length;
+		});
+
+		return counts;
 	}, [hospitals]);
 
 	// Calculate specialty counts
