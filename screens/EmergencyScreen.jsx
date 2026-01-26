@@ -525,17 +525,35 @@ export default function EmergencyScreen() {
 		timing,
 	});
 
-	// Calculate service type counts
+	// Calculate service type counts - mode-aware filtering with status check
 	const serviceTypeCounts = useMemo(() => {
+		let availableHospitals;
+		
+		if (mode === 'emergency') {
+			// Emergency mode: only count available hospitals with ambulances
+			availableHospitals = hospitals.filter(h => 
+				h.status === 'available' && h.ambulances > 0
+			);
+		} else {
+			// Booking mode: only count available hospitals with beds
+			availableHospitals = hospitals.filter(h => 
+				h.status === 'available' && h.availableBeds > 0
+			);
+		}
+		
 		return {
 			premium:
-				hospitals.filter((h) => h?.serviceTypes?.includes("premium")).length ||
-				0,
+				availableHospitals.filter((h) => 
+					(h?.serviceTypes?.includes("premium")) ||
+					(h?.type?.toLowerCase() === "premium")
+				).length || 0,
 			standard:
-				hospitals.filter((h) => h?.serviceTypes?.includes("standard")).length ||
-				0,
+				availableHospitals.filter((h) => 
+					(h?.serviceTypes?.includes("standard")) ||
+					(h?.type?.toLowerCase() === "standard")
+				).length || 0,
 		};
-	}, [hospitals]);
+	}, [hospitals, mode]);
 
 	// Calculate specialty counts
 	const specialtyCounts = useMemo(() => {

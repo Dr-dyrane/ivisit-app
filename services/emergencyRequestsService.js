@@ -1,7 +1,7 @@
 import { database, StorageKeys } from "../database";
 import { supabase } from "./supabase";
 import { notificationDispatcher } from "./notificationDispatcher";
-import { calculateEmergencyCost, createGumroadPayment } from "./pricingService";
+import { calculateEmergencyCost, checkInsuranceCoverage } from "./pricingService";
 
 export const EmergencyRequestStatus = {
     IN_PROGRESS: "in_progress",
@@ -308,7 +308,7 @@ export const emergencyRequestsService = {
         return () => supabase.removeChannel(channel);
     },
 
-    // PRICING METHODS
+    // INSURANCE COVERAGE METHODS
     async calculateRequestCost(requestId) {
         try {
             const { data: request, error } = await supabase
@@ -327,14 +327,8 @@ export const emergencyRequestsService = {
         }
     },
 
-    async createPaymentForRequest(requestId) {
+    async checkRequestInsuranceCoverage(requestId) {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            
-            if (!user) {
-                throw new Error('User not authenticated');
-            }
-
             const { data: request, error } = await supabase
                 .from('emergency_requests')
                 .select('*')
@@ -343,43 +337,10 @@ export const emergencyRequestsService = {
 
             if (error) throw error;
 
-            const costBreakdown = await calculateEmergencyCost(request);
-            
-            const payment = await createGumroadPayment({
-                emergencyRequestId: requestId,
-                userId: user.id,
-                hospitalId: request.hospital_id,
-                amount: costBreakdown.totalCost,
-                description: `Emergency ${request.service_type} - ${request.hospital_name}`
-            });
-
-            return {
-                ...payment,
-                costBreakdown
-            };
+            const coverage = await checkInsuranceCoverage(request.user_id, request);
+            return coverage;
         } catch (error) {
-            console.error('Error creating payment for request:', error);
-            throw error;
-        }
-    },
-
-    async getRequestPaymentStatus(requestId) {
-        try {
-            const { data, error } = await supabase
-                .from('payment_transactions')
-                .select('*')
-                .eq('emergency_request_id', requestId)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
-
-            if (error && error.code !== 'PGRST116') {
-                throw error;
-            }
-
-            return data;
-        } catch (error) {
-            console.error('Error getting payment status:', error);
+            console.error('Error checking insurance coverage:', error);
             throw error;
         }
     },

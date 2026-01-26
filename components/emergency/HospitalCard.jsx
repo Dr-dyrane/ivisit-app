@@ -23,6 +23,11 @@ export default function HospitalCard({
 	const hospitalName = typeof hospital?.name === "string" ? hospital.name : "Hospital";
 	const hospitalImageUri = typeof hospital?.image === "string" && hospital.image.length > 0 ? hospital.image : null;
 	const hospitalRating = hospital?.rating ?? "--";
+
+	// Check if this is a Google-imported hospital (not verified)
+	const isGoogleHospital = hospital?.importedFromGoogle && hospital?.importStatus !== 'verified';
+	const isVerifiedHospital = hospital?.verified || (!isGoogleHospital);
+
 	const hospitalDistance = hospital?.distance ?? "--";
 	const hospitalEta = hospital?.eta ?? "--";
 	const hospitalWaitTime = hospital?.waitTime || (mode === "booking" ? "Available" : "15 mins");
@@ -86,7 +91,12 @@ export default function HospitalCard({
 					<Text style={styles.priceText}>{hospitalPrice}</Text>
 				</View>
 
-				{hospital.verified && (
+				{isGoogleHospital ? (
+					<View style={styles.unverifiedBadge}>
+						<Ionicons name="warning" size={12} color="#FFFFFF" />
+						<Text style={styles.unverifiedText}>CALL 911</Text>
+					</View>
+				) : isVerifiedHospital && (
 					<View style={styles.verifiedBadge}>
 						<Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
 						<Text style={styles.verifiedText}>VERIFIED</Text>
@@ -231,6 +241,24 @@ const styles = StyleSheet.create({
 		fontWeight: "900",
 		letterSpacing: 0.5,
 	},
+	unverifiedBadge: {
+		position: "absolute",
+		top: 12,
+		left: 12,
+		backgroundColor: "rgba(239, 68, 68, 0.95)",
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 12,
+		gap: 4,
+	},
+	unverifiedText: {
+		color: "#FFFFFF",
+		fontSize: 10,
+		fontWeight: "900",
+		letterSpacing: 0.5,
+	},
 	content: {
 		paddingHorizontal: 4,
 	},
@@ -240,16 +268,16 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		marginBottom: 4,
 	},
+	ratingBox: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 4,
+	},
 	name: {
 		fontSize: 20,
 		fontWeight: "800",
 		flex: 1,
 		letterSpacing: -0.5,
-	},
-	ratingBox: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 4,
 	},
 	ratingText: {
 		fontSize: 14,

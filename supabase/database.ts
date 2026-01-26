@@ -380,6 +380,23 @@ export type Database = {
           updated_at: string | null
           verified: boolean | null
           wait_time: string | null
+          last_availability_update: string | null
+          bed_availability: Json | null
+          ambulance_availability: Json | null
+          emergency_wait_time_minutes: number | null
+          real_time_sync: boolean | null
+          place_id: string | null
+          google_rating: number | null
+          google_photos: string[] | null
+          google_opening_hours: Json | null
+          google_types: string[] | null
+          google_address: string | null
+          google_phone: string | null
+          google_website: string | null
+          last_google_sync: string | null
+          org_admin_id: string | null
+          imported_from_google: boolean | null
+          import_status: string | null
         }
         Insert: {
           address: string
@@ -403,6 +420,23 @@ export type Database = {
           updated_at?: string | null
           verified?: boolean | null
           wait_time?: string | null
+          last_availability_update?: string | null
+          bed_availability?: Json | null
+          ambulance_availability?: Json | null
+          emergency_wait_time_minutes?: number | null
+          real_time_sync?: boolean | null
+          place_id?: string | null
+          google_rating?: number | null
+          google_photos?: string[] | null
+          google_opening_hours?: Json | null
+          google_types?: string[] | null
+          google_address?: string | null
+          google_phone?: string | null
+          google_website?: string | null
+          last_google_sync?: string | null
+          org_admin_id?: string | null
+          imported_from_google?: boolean | null
+          import_status?: string | null
         }
         Update: {
           address?: string
@@ -426,6 +460,23 @@ export type Database = {
           updated_at?: string | null
           verified?: boolean | null
           wait_time?: string | null
+          last_availability_update?: string | null
+          bed_availability?: Json | null
+          ambulance_availability?: Json | null
+          emergency_wait_time_minutes?: number | null
+          real_time_sync?: boolean | null
+          place_id?: string | null
+          google_rating?: number | null
+          google_photos?: string[] | null
+          google_opening_hours?: Json | null
+          google_types?: string[] | null
+          google_address?: string | null
+          google_phone?: string | null
+          google_website?: string | null
+          last_google_sync?: string | null
+          org_admin_id?: string | null
+          imported_from_google?: boolean | null
+          import_status?: string | null
         }
         Relationships: []
       }

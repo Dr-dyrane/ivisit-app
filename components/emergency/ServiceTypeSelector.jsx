@@ -14,6 +14,7 @@ export default function ServiceTypeSelector({ selectedType, onSelect, counts }) 
 	const safeCounts = counts || {};
 	const safeSelectedType = selectedType || null;
 
+	// Keep it simple - just Premium and Standard
 	const serviceTypes = [
 		{
 			type: "Premium",
