@@ -1,7 +1,7 @@
 import { database, StorageKeys } from "../database";
 import { supabase } from "./supabase";
 import { notificationDispatcher } from "./notificationDispatcher";
-import { calculateEmergencyCost, checkInsuranceCoverage, createInsuranceBilling } from "./pricingService";
+import { calculateEmergencyCost, checkInsuranceCoverage } from "./pricingService";
 
 export const EmergencyRequestStatus = {
     IN_PROGRESS: "in_progress",
@@ -341,43 +341,6 @@ export const emergencyRequestsService = {
             return coverage;
         } catch (error) {
             console.error('Error checking insurance coverage:', error);
-            throw error;
-        }
-    },
-
-    async createInsuranceBillingForRequest(requestId) {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            
-            if (!user) {
-                throw new Error('User not authenticated');
-            }
-
-            const { data: request, error } = await supabase
-                .from('emergency_requests')
-                .select('*')
-                .eq('id', requestId)
-                .single();
-
-            if (error) throw error;
-
-            const cost = await calculateEmergencyCost(request);
-            const coverage = await checkInsuranceCoverage(user.id, request);
-            
-            const billing = await createInsuranceBilling(
-                requestId,
-                request.hospital_id,
-                cost.totalCost,
-                coverage.insuranceCoverage
-            );
-
-            return {
-                billing,
-                cost,
-                coverage
-            };
-        } catch (error) {
-            console.error('Error creating insurance billing for request:', error);
             throw error;
         }
     },

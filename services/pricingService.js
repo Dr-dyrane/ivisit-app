@@ -1,16 +1,16 @@
 /**
  * Pricing Service
  * Handles B2B pricing for hospitals (not user-facing)
- * Users get free service via insurance scheme
+ * Users get free service via existing insurance scheme
  * Hospitals get paid via insurance partnerships
  */
 
 import { supabase } from './supabase';
 
-const TABLES = {
-  service_pricing: 'service_pricing',
-  room_pricing: 'room_pricing',
-  insurance_billing: 'insurance_billing'
+// Use existing insurance schema - no new tables needed
+const EXISTING_TABLES = {
+  insurance_policies: 'insurance_policies',
+  emergency_requests: 'emergency_requests'
 };
 
 /**
@@ -113,21 +113,22 @@ export async function calculateEmergencyCost(emergencyRequest) {
 }
 
 /**
- * Check user insurance coverage for emergency
- * Returns what insurance covers vs what user might pay
+ * Check user insurance coverage using existing insurance schema
+ * Returns what insurance covers based on existing policy
  */
 export async function checkInsuranceCoverage(userId, emergencyRequest) {
   try {
-    // Get user's active insurance policy
-    const { data: policies, error } = await supabase
+    // Get user's active insurance policy from existing schema
+    const { data: policy, error } = await supabase
       .from('insurance_policies')
       .select('*')
       .eq('user_id', userId)
       .eq('is_default', true)
+      .eq('status', 'active')
       .single();
 
-    if (error || !policies) {
-      // No insurance - return full cost (though this shouldn't happen in our model)
+    if (error || !policy) {
+      // No active insurance - return full cost (though auto-enrollment should prevent this)
       const cost = await calculateEmergencyCost(emergencyRequest);
       return {
         userCost: cost.totalCost,
@@ -138,19 +139,36 @@ export async function checkInsuranceCoverage(userId, emergencyRequest) {
       };
     }
 
-    // Calculate insurance coverage
+    // Parse coverage details from existing JSONB field
+    const coverageDetails = policy.coverage_details || {};
+    const coverageLimit = coverageDetails.limit || 50000;
+    const copay = coverageDetails.copay || 0;
+    
     const cost = await calculateEmergencyCost(emergencyRequest);
-    const coveragePercentage = policies.coverage_percentage || 80; // Default 80% coverage
-    const insuranceCoverage = (cost.totalCost * coveragePercentage) / 100;
-    const userCost = cost.totalCost - insuranceCoverage;
+    
+    // Apply insurance coverage based on existing policy
+    let insuranceCoverage = cost.totalCost;
+    let userCost = 0;
+    
+    // If cost exceeds limit, user pays the difference
+    if (cost.totalCost > coverageLimit) {
+      insuranceCoverage = coverageLimit;
+      userCost = cost.totalCost - coverageLimit;
+    }
+    
+    // Add copay if applicable
+    userCost += copay;
 
     return {
       userCost,
       insuranceCoverage,
       totalCost: cost.totalCost,
-      coveragePercentage,
+      coveragePercentage: coverageLimit > 0 ? Math.round((insuranceCoverage / cost.totalCost) * 100) : 0,
       hasInsurance: true,
-      policyName: policies.provider_name,
+      policyName: policy.provider_name,
+      policyType: policy.plan_type,
+      policyNumber: policy.policy_number,
+      coverageDetails,
       costBreakdown: cost.costBreakdown
     };
   } catch (error) {
@@ -159,82 +177,8 @@ export async function checkInsuranceCoverage(userId, emergencyRequest) {
   }
 }
 
-/**
- * Create insurance billing record
- * This creates the billing record for hospital-to-insurance payment
- */
-export async function createInsuranceBilling(emergencyRequestId, hospitalId, totalCost, insuranceCoverage) {
-  try {
-    const { data, error } = await supabase
-      .from('insurance_billing')
-      .insert({
-        emergency_request_id: emergencyRequestId,
-        hospital_id: hospitalId,
-        total_amount: totalCost,
-        insurance_amount: insuranceCoverage,
-        hospital_amount: totalCost - insuranceCoverage,
-        status: 'pending',
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error creating insurance billing:', error);
-    throw error;
-  }
-}
-
-/**
- * Get hospital billing analytics
- * For hospital administrators to see their insurance payments
- */
-export async function getHospitalBillingAnalytics(hospitalId, startDate = null, endDate = null) {
-  try {
-    let query = supabase
-      .from('insurance_billing')
-      .select('*')
-      .eq('hospital_id', hospitalId);
-
-    if (startDate) {
-      query = query.gte('created_at', startDate);
-    }
-    if (endDate) {
-      query = query.lte('created_at', endDate);
-    }
-
-    const { data, error } = await query.order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    // Calculate analytics
-    const totalBilled = data.reduce((sum, record) => sum + parseFloat(record.total_amount), 0);
-    const totalInsurance = data.reduce((sum, record) => sum + parseFloat(record.insurance_amount), 0);
-    const totalHospital = data.reduce((sum, record) => sum + parseFloat(record.hospital_amount), 0);
-
-    return {
-      records: data,
-      analytics: {
-        totalBilled,
-        totalInsurance,
-        totalHospital,
-        averagePerClaim: data.length > 0 ? totalBilled / data.length : 0,
-        totalClaims: data.length,
-        insuranceCoveragePercentage: totalBilled > 0 ? (totalInsurance / totalBilled) * 100 : 0
-      }
-    };
-  } catch (error) {
-    console.error('Error fetching billing analytics:', error);
-    throw error;
-  }
-}
-
 // Export for use in emergency requests
 export {
   calculateEmergencyCost,
-  checkInsuranceCoverage,
-  createInsuranceBilling,
-  getHospitalBillingAnalytics
+  checkInsuranceCoverage
 };
