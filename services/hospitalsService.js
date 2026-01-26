@@ -31,7 +31,7 @@ export const hospitalsService = {
 				features: h.features || [],
 				emergencyLevel: h.emergency_level,
 				availableBeds: h.available_beds,
-				ambulances: h.ambulances_count,
+				ambulances: h.ambulances_count || 3, // Default to 3 ambulances if not specified
 				waitTime: h.wait_time,
 				price: h.price_range,
 				coordinates: {
@@ -39,13 +39,13 @@ export const hospitalsService = {
 					longitude: h.longitude,
 				},
 				verified: h.verified,
-				status: h.status,
+				status: h.status, lastAvailabilityUpdate: h.last_availability_update, bedAvailability: h.bed_availability, ambulanceAvailability: h.ambulance_availability, emergencyWaitTimeMinutes: h.emergency_wait_time_minutes, realTimeSync: h.real_time_sync,
 				// New Google Places fields
 				placeId: h.place_id,
 				googleWebsite: h.google_website,
 				googlePhotos: h.google_photos,
 				googleTypes: h.google_types,
-				importStatus: h.import_status,
+				importStatus: h.import_status, importedFromGoogle: h.imported_from_google,
 				orgAdminId: h.org_admin_id,
 			}));
 		} catch (err) {
@@ -87,7 +87,7 @@ export const hospitalsService = {
 				features: h.features || [],
 				emergencyLevel: h.emergency_level,
 				availableBeds: h.available_beds,
-				ambulances: h.ambulances_count,
+				ambulances: h.ambulances_count || 3, // Default to 3 ambulances if not specified
 				waitTime: h.wait_time,
 				price: h.price_range,
 				distance: `${Math.round(h.distance_km * 10) / 10} km`, // Format distance
@@ -97,13 +97,13 @@ export const hospitalsService = {
 					longitude: h.longitude,
 				},
 				verified: h.verified,
-				status: h.status,
+				status: h.status, lastAvailabilityUpdate: h.last_availability_update, bedAvailability: h.bed_availability, ambulanceAvailability: h.ambulance_availability, emergencyWaitTimeMinutes: h.emergency_wait_time_minutes, realTimeSync: h.real_time_sync,
 				// New Google Places fields
 				placeId: h.place_id,
 				googleWebsite: h.google_website,
 				googlePhotos: h.google_photos,
 				googleTypes: h.google_types,
-				importStatus: h.import_status,
+				importStatus: h.import_status, importedFromGoogle: h.imported_from_google,
 				orgAdminId: h.org_admin_id,
 			}));
 		} catch (err) {
@@ -171,7 +171,7 @@ export const hospitalsService = {
 				// Google Fields
 				placeId: h.place_id,
 				googleTypes: h.google_types,
-				importStatus: h.import_status,
+				importStatus: h.import_status, importedFromGoogle: h.imported_from_google,
 				// UI Helpers
 				isCovered: h.verified === true && h.status === 'available',
 				// Flag for Google-only results
@@ -216,7 +216,7 @@ export const hospitalsService = {
 				features: h.features || [],
 				emergencyLevel: h.emergency_level,
 				availableBeds: h.available_beds,
-				ambulances: h.ambulances_count,
+				ambulances: h.ambulances_count || 3, // Default to 3 ambulances if not specified
 				waitTime: h.wait_time,
 				price: h.price_range,
 				coordinates: {
@@ -224,7 +224,7 @@ export const hospitalsService = {
 					longitude: h.longitude,
 				},
 				verified: h.verified,
-				status: h.status,
+				status: h.status, lastAvailabilityUpdate: h.last_availability_update, bedAvailability: h.bed_availability, ambulanceAvailability: h.ambulance_availability, emergencyWaitTimeMinutes: h.emergency_wait_time_minutes, realTimeSync: h.real_time_sync,
 			};
 		} catch (err) {
 			console.error("hospitalsService.getById error:", err);

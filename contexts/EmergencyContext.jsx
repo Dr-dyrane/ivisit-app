@@ -513,34 +513,21 @@ export function EmergencyProvider({ children }) {
 			if (!hospital) return false;
 			
 			if (mode === EmergencyMode.EMERGENCY) {
-				// Emergency: show all by default, filter by service type if selected
+				// Emergency: show available hospitals with ambulances, filter by service type if selected
+				if (hospital.status !== 'available') return false; // Only show available hospitals
+				if (!hospital.ambulances || hospital.ambulances <= 0) return false; // No ambulances available
 				if (!serviceType) return true; // Show all if no filter selected
 				// Ensure case-insensitive comparison
 				const type = serviceType.toLowerCase();
 				return (hospital.serviceTypes || []).some(t => t.toLowerCase() === type) || (hospital.type || "").toLowerCase() === type;
 			} else {
-				// Booking: show all with available beds by default, filter by specialty if selected
+				// Booking: show available hospitals with beds, filter by specialty if selected
+				if (hospital.status !== 'available') return false; // Only show available hospitals
 				if (!hospital.availableBeds || hospital.availableBeds <= 0) return false;
 				if (!selectedSpecialty) return true; // Show all if no specialty selected
 				
 				// Better specialty matching - case insensitive and more robust
 				const hospitalSpecialties = hospital.specialties || [];
-				
-				// Debug logging to help identify the issue
-				if (hospital.name === 'City General Hospital') {
-					console.log('🏥 DEBUG - City General Hospital:', {
-						name: hospital.name,
-						specialties: hospitalSpecialties,
-						selectedSpecialty,
-						availableBeds: hospital.availableBeds,
-						hasMatch: hospitalSpecialties.some(specialty => 
-							specialty && 
-							typeof specialty === 'string' && 
-							specialty.toLowerCase() === selectedSpecialty.toLowerCase()
-						)
-					});
-				}
-				
 				return hospitalSpecialties.some(specialty => 
 					specialty && 
 					typeof specialty === 'string' && 

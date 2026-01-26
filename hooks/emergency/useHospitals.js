@@ -98,13 +98,42 @@ export function useHospitals() {
 
 			console.log('[useHospitals] Fetching hospitals for location:', location);
 
-			// Use nearby hospitals function with real location
-			// This now triggers the Edge Function to seed Google Places data
-			const data = await hospitalsService.discoverNearby(
-				location.latitude,
-				location.longitude,
-				15000 // 15km radius in meters
-			);
+			// Auto-expand radius if no hospitals found
+			let radius = 15000; // Start with 15km
+			let data = [];
+			let attempts = 0;
+			const maxRadius = 50000; // Max 50km
+			const radiusIncrement = 10000; // Increase by 10km each attempt
+			const targetHospitalCount = 5; // Target 5 hospitals
+
+			while (attempts < 5 && radius <= maxRadius) {
+				console.log(`[useHospitals] Attempt ${attempts + 1}: Searching ${radius/1000}km radius`);
+				
+				data = await hospitalsService.discoverNearby(
+					location.latitude,
+					location.longitude,
+					radius
+				);
+
+				// Check if we found enough hospitals with available resources
+				// This will be checked at the context level for mode-specific filtering
+				const hasEnoughHospitals = data.length >= targetHospitalCount;
+
+				if (data.length > 0 && hasEnoughHospitals) {
+					console.log(`[useHospitals] Found ${data.length} hospitals at ${radius/1000}km radius`);
+					break;
+				}
+
+				console.log(`[useHospitals] Only ${data.length} hospitals found at ${radius/1000}km, expanding radius...`);
+				radius += radiusIncrement;
+				attempts++;
+			}
+
+			if (data.length === 0) {
+				console.warn('[useHospitals] No hospitals found even after expanding radius to max');
+			} else {
+				console.log(`[useHospitals] Final result: ${data.length} hospitals total`);
+			}
 
 			console.log('[useHospitals] Fetched nearby hospitals:', data.length, 'from location:', location);
 			
