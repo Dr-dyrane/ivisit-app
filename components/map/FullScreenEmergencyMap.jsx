@@ -17,7 +17,6 @@ import {
 	Platform,
 	Dimensions,
 } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,6 +27,16 @@ import PulsingMarker from "./PulsingMarker";
 import { darkMapStyle, lightMapStyle } from "./mapStyles";
 import { useMapLocation } from "../../hooks/emergency/useMapLocation";
 import { useMapRoute } from "../../hooks/emergency/useMapRoute";
+
+// Platform-specific map import
+let MapView, Marker, Polyline, PROVIDER_GOOGLE;
+if (Platform.OS !== 'web') {
+	const maps = require("react-native-maps");
+	MapView = maps.default;
+	Marker = maps.Marker;
+	Polyline = maps.Polyline;
+	PROVIDER_GOOGLE = maps.PROVIDER_GOOGLE;
+}
 import { useAmbulanceAnimation } from "../../hooks/emergency/useAmbulanceAnimation";
 import { isValidCoordinate, calculateDistance } from "../../utils/mapUtils";
 
@@ -774,30 +783,54 @@ const FullScreenEmergencyMap = forwardRef(
 
 		return (
 			<View style={styles.container}>
-				<MapView
-					ref={mapRef}
-					style={styles.map}
-					provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-					customMapStyle={mapStyle}
-					initialRegion={initialRegion}
-					showsUserLocation={locationPermission}
-					showsMyLocationButton={false}
-					showsCompass={false}
-					showsScale={false}
-					showsBuildings={true}
-					showsTraffic={false}
-					showsIndoors={true}
-					showsPointsOfInterest={true}
-					loadingEnabled={true}
-					loadingIndicatorColor={COLORS.brandPrimary}
-					loadingBackgroundColor={isDarkMode ? "#0B0F1A" : "#F8FAFC"}
-					mapPadding={mapPadding}
-					userInterfaceStyle={isDarkMode ? "dark" : "light"}
-					onRegionChangeComplete={handleRegionChangeComplete}
-					onMapReady={() => {
-						isMapReadyRef.current = true;
-						setIsMapReadyState(true);
-						onMapReady?.();
+				{Platform.OS === 'web' ? (
+					// Web fallback - simple text-based map view
+					<View style={[styles.map, styles.webMapFallback]}>
+						<View style={styles.webMapContent}>
+							<Ionicons name="map" size={48} color={COLORS.brandPrimary} />
+							<Text style={[styles.webMapText, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
+								Map View
+							</Text>
+							<Text style={[styles.webMapSubtext, { color: isDarkMode ? COLORS.textMuted : COLORS.textSecondary }]}>
+								{hospitals?.length || 0} hospitals nearby
+							</Text>
+							{selectedHospital && (
+								<View style={styles.selectedHospitalInfo}>
+									<Text style={[styles.selectedHospitalName, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
+										{selectedHospital.name}
+									</Text>
+									<Text style={[styles.selectedHospitalDistance, { color: isDarkMode ? COLORS.textMuted : COLORS.textSecondary }]}>
+										{selectedHospital.distanceKm?.toFixed(1)} km away
+									</Text>
+								</View>
+							)}
+						</View>
+					</View>
+				) : (
+					<MapView
+						ref={mapRef}
+						style={styles.map}
+						provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+						customMapStyle={mapStyle}
+						initialRegion={initialRegion}
+						showsUserLocation={locationPermission}
+						showsMyLocationButton={false}
+						showsCompass={false}
+						showsScale={false}
+						showsBuildings={true}
+						showsTraffic={false}
+						showsIndoors={true}
+						showsPointsOfInterest={true}
+						loadingEnabled={true}
+						loadingIndicatorColor={COLORS.brandPrimary}
+						loadingBackgroundColor={isDarkMode ? "#0B0F1A" : "#F8FAFC"}
+						mapPadding={mapPadding}
+						userInterfaceStyle={isDarkMode ? "dark" : "light"}
+						onRegionChangeComplete={handleRegionChangeComplete}
+						onMapReady={() => {
+							isMapReadyRef.current = true;
+							setIsMapReadyState(true);
+							onMapReady?.();
 					}}
 					onPanDrag={() => {
 						lastUserPanAtRef.current = Date.now();
@@ -950,8 +983,8 @@ const FullScreenEmergencyMap = forwardRef(
 								</Marker>
 							);
 						})}
-				</MapView>
-
+					</MapView>
+				)}
 				<BlurView
 					intensity={isDarkMode ? 60 : 40}
 					tint={isDarkMode ? "dark" : "light"}
@@ -1102,6 +1135,38 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.06,
 		shadowRadius: 6,
 		elevation: 2,
+	},
+	// Web fallback styles
+	webMapFallback: {
+		backgroundColor: "#F8FAFC",
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	webMapContent: {
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	webMapText: {
+		fontSize: 24,
+		fontWeight: "bold",
+		marginTop: 12,
+	},
+	webMapSubtext: {
+		fontSize: 16,
+		marginTop: 4,
+	},
+	selectedHospitalInfo: {
+		marginTop: 20,
+		alignItems: "center",
+	},
+	selectedHospitalName: {
+		fontSize: 18,
+		fontWeight: "600",
+		textAlign: "center",
+	},
+	selectedHospitalDistance: {
+		fontSize: 14,
+		marginTop: 4,
 	},
 });
 
