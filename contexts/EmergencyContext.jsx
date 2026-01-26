@@ -522,7 +522,30 @@ export function EmergencyProvider({ children }) {
 				// Booking: show all with available beds by default, filter by specialty if selected
 				if (!hospital.availableBeds || hospital.availableBeds <= 0) return false;
 				if (!selectedSpecialty) return true; // Show all if no specialty selected
-				return (hospital.specialties || []).includes(selectedSpecialty);
+				
+				// Better specialty matching - case insensitive and more robust
+				const hospitalSpecialties = hospital.specialties || [];
+				
+				// Debug logging to help identify the issue
+				if (hospital.name === 'City General Hospital') {
+					console.log('🏥 DEBUG - City General Hospital:', {
+						name: hospital.name,
+						specialties: hospitalSpecialties,
+						selectedSpecialty,
+						availableBeds: hospital.availableBeds,
+						hasMatch: hospitalSpecialties.some(specialty => 
+							specialty && 
+							typeof specialty === 'string' && 
+							specialty.toLowerCase() === selectedSpecialty.toLowerCase()
+						)
+					});
+				}
+				
+				return hospitalSpecialties.some(specialty => 
+					specialty && 
+					typeof specialty === 'string' && 
+					specialty.toLowerCase() === selectedSpecialty.toLowerCase()
+				);
 			}
 		});
 	}, [hospitals, mode, serviceType, selectedSpecialty]);
