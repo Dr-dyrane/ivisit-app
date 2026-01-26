@@ -367,7 +367,6 @@ const EmergencyBottomSheet = forwardRef(
 								onServiceTypeSelect={onServiceTypeSelect}
 								onSpecialtySelect={onSpecialtySelect}
 								styles={styles}
-								hospitals={hospitals}
 							/>
 						)}
 

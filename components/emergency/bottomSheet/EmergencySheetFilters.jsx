@@ -14,7 +14,6 @@ export default function EmergencySheetFilters({
 	onServiceTypeSelect,
 	onSpecialtySelect,
 	styles,
-	hospitals = [],
 }) {
 	if (!visible) return null;
 
@@ -25,7 +24,6 @@ export default function EmergencySheetFilters({
 					selectedType={serviceType}
 					onSelect={onServiceTypeSelect}
 					counts={serviceTypeCounts}
-					hospitals={hospitals}
 				/>
 			) : (
 				<SpecialtySelector

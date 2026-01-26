@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from "react";
+import React, { useRef } from "react";
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Fontisto, Ionicons } from "@expo/vector-icons";
@@ -6,7 +6,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 
-export default function ServiceTypeSelector({ selectedType, onSelect, counts, hospitals = [] }) {
+export default function ServiceTypeSelector({ selectedType, onSelect, counts }) {
 	const { isDarkMode } = useTheme();
 	const lastCallTime = useRef(0);
 	const DEBOUNCE_MS = 300;
@@ -14,58 +14,25 @@ export default function ServiceTypeSelector({ selectedType, onSelect, counts, ho
 	const safeCounts = counts || {};
 	const safeSelectedType = selectedType || null;
 
-	// Dynamically generate service types based on available hospitals
-	const serviceTypes = useMemo(() => {
-		const availableTypes = new Set();
-		
-		// Collect all unique service types from hospitals
-		hospitals.forEach(hospital => {
-			// Check serviceTypes array first
-			if (hospital.serviceTypes && Array.isArray(hospital.serviceTypes)) {
-				hospital.serviceTypes.forEach(type => availableTypes.add(type.toLowerCase()));
-			}
-			// Fallback to hospital.type
-			if (hospital.type) {
-				availableTypes.add(hospital.type.toLowerCase());
-			}
-		});
-
-		// Convert to array and create service type objects
-		const types = Array.from(availableTypes).map(type => ({
-			type: type.charAt(0).toUpperCase() + type.slice(1), // Capitalize
-			icon: type === 'premium' ? 'ambulance' : 'medical',
-			iconType: type === 'premium' ? 'fontisto' : 'ionicons',
-			title: type.charAt(0).toUpperCase() + type.slice(1),
-			gradientColors: type === 'premium' 
-				? [COLORS.brandPrimary, COLORS.brandSecondary]
-				: [COLORS.brandSecondary, '#991B1B'],
-			recommended: type === 'premium',
-		}));
-
-		// If no types found, fallback to default
-		if (types.length === 0) {
-			return [
-				{
-					type: "Premium",
-					icon: "ambulance",
-					iconType: "fontisto",
-					title: "Premium",
-					gradientColors: [COLORS.brandPrimary, COLORS.brandSecondary],
-					recommended: true,
-				},
-				{
-					type: "Standard",
-					icon: "medical",
-					iconType: "ionicons",
-					title: "Standard",
-					gradientColors: [COLORS.brandSecondary, "#991B1B"],
-					recommended: false,
-				},
-			];
-		}
-
-		return types;
-	}, [hospitals]);
+	// Keep it simple - just Premium and Standard
+	const serviceTypes = [
+		{
+			type: "Premium",
+			icon: "ambulance",
+			iconType: "fontisto",
+			title: "Premium",
+			gradientColors: [COLORS.brandPrimary, COLORS.brandSecondary],
+			recommended: true,
+		},
+		{
+			type: "Standard",
+			icon: "medical",
+			iconType: "ionicons",
+			title: "Standard",
+			gradientColors: [COLORS.brandSecondary, "#991B1B"],
+			recommended: false,
+		},
+	];
 
 	const handleSelect = (type) => {
 		if (!type || !onSelect) return;
