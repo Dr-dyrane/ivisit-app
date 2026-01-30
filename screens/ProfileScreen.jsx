@@ -71,6 +71,54 @@ const ProfileScreen = () => {
     const [isDeleting, setIsDeleting] = useState(false);
 	const [isDataLoading, setIsDataLoading] = useState(true);
     
+    // Event handlers
+    const handleUpdateProfile = async () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setIsLoading(true);
+        // console.log("DEBUG: handleUpdateProfile started. Current imageUri:", imageUri);
+        try {
+            let uploadedImageUri = imageUri;
+
+            // Upload image if it's a local file
+            if (imageUri && imageUri.startsWith('file://')) {
+                // console.log("DEBUG: Uploading local image...");
+                uploadedImageUri = await uploadImage(imageUri);
+                // console.log("DEBUG: Upload complete. New URI:", uploadedImageUri);
+            } else {
+                // console.log("DEBUG: No local image to upload. Using existing URI.");
+            }
+
+            const updatedData = {
+                fullName,
+                username,
+                gender,
+                email,
+                phone,
+                address,
+                dateOfBirth,
+                imageUri: uploadedImageUri,
+            };
+
+            await updateProfile(updatedData);
+            await syncUserData();
+
+            if (uploadedImageUri) {
+                setImageUri(uploadedImageUri);
+            }
+
+            showToast("Profile updated successfully", "success");
+        } catch (error) {
+            // console.error("DEBUG: Update error:", error);
+            const errorMessage =
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to update profile";
+            showToast(errorMessage, "error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
     // Derived state: Check if form has unsaved changes
     const hasChanges = useMemo(() => {
         if (!user) return false;
@@ -236,53 +284,6 @@ const ProfileScreen = () => {
 		} catch (error) {
 			// console.error("DEBUG: pickImage error:", error);
 			showToast(`Image picker error: ${error.message}`, "error");
-		}
-	};
-
-	const handleUpdateProfile = async () => {
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-		setIsLoading(true);
-		// console.log("DEBUG: handleUpdateProfile started. Current imageUri:", imageUri);
-		try {
-			let uploadedImageUri = imageUri;
-
-			// Upload image if it's a local file
-			if (imageUri && imageUri.startsWith('file://')) {
-				// console.log("DEBUG: Uploading local image...");
-				uploadedImageUri = await uploadImage(imageUri);
-				// console.log("DEBUG: Upload complete. New URI:", uploadedImageUri);
-			} else {
-				// console.log("DEBUG: No local image to upload. Using existing URI.");
-			}
-
-			const updatedData = {
-				fullName,
-				username,
-				gender,
-				email,
-				phone,
-				address,
-				dateOfBirth,
-				imageUri: uploadedImageUri,
-			};
-
-			await updateProfile(updatedData);
-			await syncUserData();
-
-			if (uploadedImageUri) {
-				setImageUri(uploadedImageUri);
-			}
-
-			showToast("Profile updated successfully", "success");
-		} catch (error) {
-			// console.error("DEBUG: Update error:", error);
-			const errorMessage =
-				error.response?.data?.message ||
-				error.message ||
-				"Failed to update profile";
-			showToast(errorMessage, "error");
-		} finally {
-			setIsLoading(false);
 		}
 	};
 
