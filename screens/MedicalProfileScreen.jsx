@@ -63,7 +63,31 @@ export default function MedicalProfileScreen() {
 	// State for debounced changes to prevent FAB flickering
 	const [stableHasChanges, setStableHasChanges] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
+	const [localProfile, setLocalProfile] = useState({});
 	const debouncedHasChanges = useRef(false);
+
+	// Event handlers
+	const handleSave = useCallback(async () => {
+		if (!localProfile || isSaving) return;
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		setIsSaving(true);
+		try {
+			await updateProfile({
+				bloodType: localProfile.bloodType,
+				allergies: localProfile.allergies,
+				medications: localProfile.medications,
+				conditions: localProfile.conditions,
+				surgeries: localProfile.surgeries,
+				notes: localProfile.notes,
+			});
+			showToast("Medical profile updated successfully", "success");
+		} catch (error) {
+			console.error("Medical profile update failed:", error);
+			showToast("Failed to update medical profile", "error");
+		} finally {
+			setIsSaving(false);
+		}
+	}, [isSaving, localProfile, updateProfile, showToast]);
 
 	useEffect(() => {
 		// Trigger FAB update when hasChanges changes
@@ -128,7 +152,6 @@ export default function MedicalProfileScreen() {
 
 	const { profile, isLoading, updateProfile } = useMedicalProfile();
 	// We need a local state to handle editing form, syncing from profile when loaded
-	const [localProfile, setLocalProfile] = useState({});
 
 	useEffect(() => {
 		if (profile) {
@@ -177,28 +200,6 @@ export default function MedicalProfileScreen() {
     }, [hasChanges]);
 
     const hasRegisteredFAB = useRef(false);
-
-    const handleSave = useCallback(async () => {
-		if (!localProfile || isSaving) return;
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-		setIsSaving(true);
-		try {
-			await updateProfile({
-				bloodType: localProfile.bloodType,
-				allergies: localProfile.allergies,
-				medications: localProfile.medications,
-				conditions: localProfile.conditions,
-				surgeries: localProfile.surgeries,
-				notes: localProfile.notes,
-			});
-			showToast("Medical profile updated successfully", "success");
-		} catch (error) {
-			console.error("Medical profile update failed:", error);
-			showToast("Failed to update medical profile", "error");
-		} finally {
-			setIsSaving(false);
-		}
-	}, [isSaving, localProfile, updateProfile, showToast]);
 
     // Register FAB for saving medical profile changes
     useFocusEffect(
