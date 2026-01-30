@@ -108,11 +108,6 @@ const FullScreenEmergencyMap = forwardRef(
 			};
 		}, [userLocation]);
 
-		// Hide controls when sheet is above 50% (index > 1)
-		const shouldShowControls = showControls && sheetSnapIndex <= 1;
-		const shouldShowHospitalLabels =
-			sheetSnapIndex === 0 && !routeHospitalIdResolved && !selectedHospitalId;
-
 		const hospitals =
 			propHospitals && propHospitals.length > 0 ? propHospitals : nearbyHospitals;
 		const hospitalsForBaseline =
@@ -128,6 +123,11 @@ const FullScreenEmergencyMap = forwardRef(
 			routeHospitalIdResolved && hospitals?.length
 				? hospitals.find((h) => h?.id === routeHospitalIdResolved) ?? null
 				: null;
+
+		// Hide controls when sheet is above 50% (index > 1)
+		const shouldShowControls = showControls && sheetSnapIndex <= 1;
+		const shouldShowHospitalLabels =
+			sheetSnapIndex === 0 && !routeHospitalIdResolved && !selectedHospitalId;
 
 		const mapPadding = {
 			top: insets.top + 40,
@@ -774,60 +774,35 @@ const FullScreenEmergencyMap = forwardRef(
 
 		return (
 			<View style={styles.container}>
-				{Platform.OS === 'web' ? (
-					// Web fallback - simple text-based map view
-					<View style={[styles.map, styles.webMapFallback]}>
-						<View style={styles.webMapContent}>
-							<Ionicons name="map" size={48} color={COLORS.brandPrimary} />
-							<Text style={[styles.webMapText, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-								Map View
-							</Text>
-							<Text style={[styles.webMapSubtext, { color: isDarkMode ? COLORS.textMuted : COLORS.textSecondary }]}>
-								{hospitals?.length || 0} hospitals nearby
-							</Text>
-							{selectedHospital && (
-								<View style={styles.selectedHospitalInfo}>
-									<Text style={[styles.selectedHospitalName, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>
-										{selectedHospital.name}
-									</Text>
-									<Text style={[styles.selectedHospitalDistance, { color: isDarkMode ? COLORS.textMuted : COLORS.textSecondary }]}>
-										{selectedHospital.distanceKm?.toFixed(1)} km away
-									</Text>
-								</View>
-							)}
-						</View>
-					</View>
-				) : (
-					MapView ? (
-						<MapView
-							ref={mapRef}
-							style={styles.map}
-							provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-							customMapStyle={mapStyle}
-							initialRegion={initialRegion}
-							showsUserLocation={locationPermission}
-							showsMyLocationButton={false}
-							showsCompass={false}
-							showsScale={false}
-							showsBuildings={true}
-							showsTraffic={false}
-							showsIndoors={true}
-							showsPointsOfInterest={true}
-							loadingEnabled={true}
-							loadingIndicatorColor={COLORS.brandPrimary}
-							loadingBackgroundColor={isDarkMode ? "#0B0F1A" : "#F8FAFC"}
-							mapPadding={mapPadding}
-							userInterfaceStyle={isDarkMode ? "dark" : "light"}
-							onRegionChangeComplete={handleRegionChangeComplete}
-							onMapReady={() => {
-								isMapReadyRef.current = true;
-								setIsMapReadyState(true);
-								onMapReady?.();
-							}}
-							onPanDrag={() => {
-								lastUserPanAtRef.current = Date.now();
-							}}
-						>
+				<MapView
+					ref={mapRef}
+					style={styles.map}
+					provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+					customMapStyle={mapStyle}
+					initialRegion={initialRegion}
+					showsUserLocation={locationPermission}
+					showsMyLocationButton={false}
+					showsCompass={false}
+					showsScale={false}
+					showsBuildings={true}
+					showsTraffic={false}
+					showsIndoors={true}
+					showsPointsOfInterest={true}
+					loadingEnabled={true}
+					loadingIndicatorColor={COLORS.brandPrimary}
+					loadingBackgroundColor={isDarkMode ? "#0B0F1A" : "#F8FAFC"}
+					mapPadding={mapPadding}
+					userInterfaceStyle={isDarkMode ? "dark" : "light"}
+					onRegionChangeComplete={handleRegionChangeComplete}
+					onMapReady={() => {
+						isMapReadyRef.current = true;
+						setIsMapReadyState(true);
+						onMapReady?.();
+					}}
+					onPanDrag={() => {
+						lastUserPanAtRef.current = Date.now();
+					}}
+				>
 							{routeCoordinates.length > 1 && (
 								<Polyline
 									coordinates={routeCoordinates}
@@ -976,14 +951,6 @@ const FullScreenEmergencyMap = forwardRef(
 							);
 						})}
 					</MapView>
-					) : (
-						<View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: isDarkMode ? '#0B0F1A' : '#F8FAFC' }]}>
-							<Text style={{ color: isDarkMode ? '#FFFFFF' : '#0F172A', fontSize: 16, textAlign: 'center' }}>
-								Map not available on web platform
-							</Text>
-						</View>
-					)
-				)}
 				<BlurView
 					intensity={isDarkMode ? 60 : 40}
 					tint={isDarkMode ? "dark" : "light"}
