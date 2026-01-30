@@ -60,6 +60,11 @@ export default function MedicalProfileScreen() {
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
 
+	// State for debounced changes to prevent FAB flickering
+	const [stableHasChanges, setStableHasChanges] = useState(false);
+	const [isSaving, setIsSaving] = useState(false);
+	const debouncedHasChanges = useRef(false);
+
 	useEffect(() => {
 		// Trigger FAB update when hasChanges changes
 		if (hasRegisteredFAB.current) {
@@ -121,7 +126,6 @@ export default function MedicalProfileScreen() {
 	const bottomPadding = tabBarHeight + 20;
 	const topPadding = STACK_TOP_PADDING;
 
-	const [isSaving, setIsSaving] = useState(false);
 	const { profile, isLoading, updateProfile } = useMedicalProfile();
 	// We need a local state to handle editing form, syncing from profile when loaded
 	const [localProfile, setLocalProfile] = useState({});
@@ -161,10 +165,6 @@ export default function MedicalProfileScreen() {
         return !!changes;
     }, [profile, localProfile]);
 
-    // Debounced version of hasChanges to prevent FAB flickering
-    const debouncedHasChanges = useRef(hasChanges);
-    const [stableHasChanges, setStableHasChanges] = useState(false);
-    
     useEffect(() => {
         const timer = setTimeout(() => {
             if (debouncedHasChanges.current !== hasChanges) {
