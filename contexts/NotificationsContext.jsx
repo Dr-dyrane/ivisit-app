@@ -3,14 +3,12 @@
 import { createContext, useContext, useMemo, useState, useCallback } from "react";
 import { NOTIFICATION_FILTERS, NOTIFICATION_TYPES } from "../constants/notifications";
 import { useNotificationsData } from "../hooks/notifications/useNotificationsData";
-import { usePushNotifications } from "../hooks/notifications/usePushNotifications";
 
 // Create the notifications context
 const NotificationsContext = createContext();
 
 // Notifications provider component
 export function NotificationsProvider({ children }) {
-    const { expoPushToken } = usePushNotifications();
     const { 
         notifications, 
         isLoading, 
@@ -136,7 +134,6 @@ export function NotificationsProvider({ children }) {
         clearAll,
         addNotification,
         refreshNotifications,
-        expoPushToken,
         // Selection mode properties
         isSelectMode,
         selectedNotifications,

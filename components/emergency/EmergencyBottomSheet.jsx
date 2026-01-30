@@ -76,6 +76,8 @@ const EmergencyBottomSheet = forwardRef(
 
 		const { snapIndex: newSnapIndex } = useEmergencyUI();
 
+		const [sheetPhase, setSheetPhase] = useState("half");
+
 		const isDetailMode = !!selectedHospital;
 		const hasAnyVisitActive = !!activeAmbulanceTrip || !!activeBedBooking;
 		const isTripMode =
@@ -85,8 +87,6 @@ const EmergencyBottomSheet = forwardRef(
 
 		const isBelowHalf = sheetPhase === "collapsed" || (sheetPhase === "half" && newSnapIndex === 0);
 		const isFloating = newSnapIndex === 0 || newSnapIndex === 1;
-
-		const [sheetPhase, setSheetPhase] = useState("half");
 
 		const {
 			showProfileModal,

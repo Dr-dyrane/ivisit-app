@@ -1,183 +1,196 @@
-import { useState, useEffect, useCallback } from "react";
-import { notificationsService } from "../../services/notificationsService";
-import { supabase } from "../../services/supabase";
-import hapticService from "../../services/hapticService";
-import soundService from "../../services/soundService";
-import { normalizeNotification } from "../../utils/domainNormalize";
+import { useState, useEffect, useCallback } from 'react';
+import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY } from '../../constants/notifications';
 
-const mapFromDb = (row) => ({
-    ...row,
-    actionType: row.action_type,
-    actionData: row.action_data,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-});
+// Mock data for development - replace with actual API calls
+const mockNotifications = [
+  {
+    id: '1',
+    type: NOTIFICATION_TYPES.EMERGENCY,
+    title: 'Emergency Response',
+    message: 'Ambulance dispatched to your location',
+    timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 minutes ago
+    read: false,
+    priority: NOTIFICATION_PRIORITY.URGENT,
+    data: {
+      ambulanceId: 'amb-001',
+      eta: 8,
+    },
+  },
+  {
+    id: '2',
+    type: NOTIFICATION_TYPES.APPOINTMENT,
+    title: 'Appointment Reminder',
+    message: 'Your appointment is scheduled for tomorrow at 2:00 PM',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+    read: false,
+    priority: NOTIFICATION_PRIORITY.HIGH,
+    data: {
+      appointmentId: 'apt-001',
+      hospitalName: 'General Hospital',
+    },
+  },
+  {
+    id: '3',
+    type: NOTIFICATION_TYPES.VISIT,
+    title: 'Visit Completed',
+    message: 'Your visit to City Medical Center has been completed',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
+    read: true,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    data: {
+      visitId: 'visit-001',
+      hospitalName: 'City Medical Center',
+    },
+  },
+  {
+    id: '4',
+    type: NOTIFICATION_TYPES.SYSTEM,
+    title: 'System Update',
+    message: 'New features have been added to the app',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
+    read: true,
+    priority: NOTIFICATION_PRIORITY.LOW,
+  },
+];
 
-/**
- * Hook to manage notifications data
- * @returns {Object} { notifications, isLoading, error, refetch, addNotification, markAsRead, markAllAsRead, clearNotification, clearAllNotifications }
- */
 export function useNotificationsData() {
-    const [notifications, setNotifications] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-    const fetchNotifications = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            const data = await notificationsService.list();
-            setNotifications(data);
-            setError(null);
-        } catch (err) {
-            console.error("[useNotificationsData] fetch error:", err);
-            setError(err);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
-    const addNotification = useCallback(async (notification) => {
-        try {
-            const newItem = await notificationsService.create(notification);
-            // The subscription will handle adding it to the list if it's inserted in DB
-            // But we add it here for immediate optimistic UI update
-            setNotifications(prev => {
-                if (prev.find(n => n.id === newItem.id)) return prev;
-                return [newItem, ...prev];
-            });
-            return newItem;
-        } catch (err) {
-            console.error("[useNotificationsData] add error:", err);
-            throw err;
-        }
-    }, []);
-
-    const markAsRead = useCallback(async (id) => {
-        try {
-            await notificationsService.markAsRead(id);
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-        } catch (err) {
-            console.error("[useNotificationsData] markAsRead error for", id, ":", err);
-            throw err;
-        }
-    }, []);
-
-    const markAllAsRead = useCallback(async () => {
-        try {
-            await notificationsService.markAllAsRead();
-            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-        } catch (err) {
-            console.error("[useNotificationsData] markAllAsRead error:", err);
-            throw err;
-        }
-    }, []);
-
-    const clearNotification = useCallback(async (id) => {
-        try {
-            await notificationsService.delete(id);
-            setNotifications(prev => prev.filter(n => n.id !== id));
-        } catch (err) {
-            console.error("[useNotificationsData] delete error for", id, ":", err);
-            throw err;
-        }
-    }, []);
-
-    const clearAllNotifications = useCallback(async () => {
-        try {
-            await notificationsService.clearAll();
-            setNotifications([]);
-        } catch (err) {
-            console.error("[useNotificationsData] clearAll error:", err);
-            throw err;
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchNotifications();
-    }, []);
-
-    useEffect(() => {
-        const MAX_NOTIFICATIONS = 50;
+  // Load notifications on mount
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        setIsLoading(true);
+        // In a real app, this would be an API call
+        // const response = await notificationsService.getNotifications();
+        // setNotifications(response.data);
         
-        const cleanupOldNotifications = async () => {
-            if (notifications.length > MAX_NOTIFICATIONS) {
-                const excessCount = notifications.length - MAX_NOTIFICATIONS;
-                try {
-                    await notificationsService.deleteOldest(excessCount);
-                } catch (err) {
-                    console.error("[useNotificationsData] cleanup error:", err);
-                }
-            }
-        };
-
-        cleanupOldNotifications();
-    }, [notifications.length]);
-
-    useEffect(() => {
-        let subscription;
-
-        const setupSubscription = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
-            subscription = supabase
-                .channel('notifications_updates')
-                .on(
-                    'postgres_changes',
-                    {
-                        event: '*',
-                        schema: 'public',
-                        table: 'notifications',
-                        filter: `user_id=eq.${user.id}`,
-                    },
-                    (payload) => {
-                        // console.log("[useNotificationsData] Realtime payload:", payload.eventType);
-                        
-                        if (payload.eventType === 'INSERT') {
-                            const newNotification = normalizeNotification(mapFromDb(payload.new));
-                            setNotifications(prev => {
-                                if (prev.find(n => n.id === newNotification.id)) return prev;
-                                return [newNotification, ...prev];
-                            });
-                            hapticService.triggerForPriority(newNotification.priority);
-                            soundService.playForPriority(newNotification.priority);
-                        } 
-                        else if (payload.eventType === 'UPDATE') {
-                            const updatedNotification = normalizeNotification(mapFromDb(payload.new));
-                            setNotifications(prev => 
-                                prev.map(n => n.id === updatedNotification.id ? updatedNotification : n)
-                            );
-                        } 
-                        else if (payload.eventType === 'DELETE') {
-                            const deletedId = payload.old.id;
-                            setNotifications(prev => prev.filter(n => n.id !== deletedId));
-                        }
-                    }
-                )
-                .subscribe((status) => {
-                    // console.log("[useNotificationsData] Subscription status:", status);
-                });
-        };
-
-        setupSubscription();
-
-        return () => {
-            if (subscription) {
-                // console.log("[useNotificationsData] Removing subscription");
-                supabase.removeChannel(subscription);
-            }
-        };
-    }, []);
-
-    return {
-        notifications,
-        isLoading,
-        error,
-        refetch: fetchNotifications,
-        addNotification,
-        markAsRead,
-        markAllAsRead,
-        clearNotification,
-        clearAllNotifications
+        // For now, use mock data
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+        setNotifications(mockNotifications);
+      } catch (error) {
+        console.error('Failed to load notifications:', error);
+        setNotifications([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
+
+    loadNotifications();
+  }, []);
+
+  // Add a new notification
+  const addNotification = useCallback(async (notificationData) => {
+    try {
+      const newNotification = {
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+        read: false,
+        priority: notificationData.priority || NOTIFICATION_PRIORITY.NORMAL,
+        ...notificationData,
+      };
+
+      // In a real app, this would be an API call
+      // const response = await notificationsService.createNotification(newNotification);
+      
+      setNotifications(prev => [newNotification, ...prev]);
+      return newNotification;
+    } catch (error) {
+      console.error('Failed to add notification:', error);
+      throw error;
+    }
+  }, []);
+
+  // Mark notification as read
+  const markAsRead = useCallback(async (notificationId) => {
+    try {
+      // In a real app, this would be an API call
+      // await notificationsService.markAsRead(notificationId);
+      
+      setNotifications(prev => 
+        prev.map(notification => 
+          notification.id === notificationId 
+            ? { ...notification, read: true }
+            : notification
+        )
+      );
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+      throw error;
+    }
+  }, []);
+
+  // Mark all notifications as read
+  const markAllAsRead = useCallback(async () => {
+    try {
+      // In a real app, this would be an API call
+      // await notificationsService.markAllAsRead();
+      
+      setNotifications(prev => 
+        prev.map(notification => ({ ...notification, read: true }))
+      );
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+      throw error;
+    }
+  }, []);
+
+  // Clear/delete a notification
+  const clearNotification = useCallback(async (notificationId) => {
+    try {
+      // In a real app, this would be an API call
+      // await notificationsService.deleteNotification(notificationId);
+      
+      setNotifications(prev => 
+        prev.filter(notification => notification.id !== notificationId)
+      );
+    } catch (error) {
+      console.error('Failed to clear notification:', error);
+      throw error;
+    }
+  }, []);
+
+  // Clear all notifications
+  const clearAllNotifications = useCallback(async () => {
+    try {
+      // In a real app, this would be an API call
+      // await notificationsService.clearAllNotifications();
+      
+      setNotifications([]);
+    } catch (error) {
+      console.error('Failed to clear all notifications:', error);
+      throw error;
+    }
+  }, []);
+
+  // Refetch notifications
+  const refetch = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      // In a real app, this would be an API call
+      // const response = await notificationsService.getNotifications();
+      // setNotifications(response.data);
+      
+      // For now, just reload mock data
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setNotifications(mockNotifications);
+    } catch (error) {
+      console.error('Failed to refetch notifications:', error);
+      setNotifications([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return {
+    notifications,
+    isLoading,
+    addNotification,
+    markAsRead,
+    markAllAsRead,
+    clearNotification,
+    clearAllNotifications,
+    refetch,
+  };
 }

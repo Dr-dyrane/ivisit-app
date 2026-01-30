@@ -29,6 +29,9 @@ export function EmergencyProvider({ children }) {
     // Fetch real ambulances
     const { ambulances: activeAmbulances } = useAmbulances();
 
+	// User location (for map centering and distance calculations)
+	const [userLocation, setUserLocation] = useState(null);
+
 	// Computed state for hospitals (mock location for now + DB data)
 	const [hospitals, setHospitals] = useState([]);
     
@@ -142,9 +145,6 @@ export function EmergencyProvider({ children }) {
 	// View state
 	const [viewMode, setViewMode] = useState("map"); // "map" or "list"
 	
-	// User location (for map centering and distance calculations)
-	const [userLocation, setUserLocation] = useState(null);
-
     // Helper to parse WKT Point
     const parsePoint = (wkt) => {
         if (!wkt || typeof wkt !== 'string' || !wkt.startsWith('POINT')) return null;

@@ -27,16 +27,7 @@ import PulsingMarker from "./PulsingMarker";
 import { darkMapStyle, lightMapStyle } from "./mapStyles";
 import { useMapLocation } from "../../hooks/emergency/useMapLocation";
 import { useMapRoute } from "../../hooks/emergency/useMapRoute";
-
-// Platform-specific map import
-let MapView, Marker, Polyline, PROVIDER_GOOGLE;
-if (Platform.OS !== 'web') {
-	const maps = require("react-native-maps");
-	MapView = maps.default;
-	Marker = maps.Marker;
-	Polyline = maps.Polyline;
-	PROVIDER_GOOGLE = maps.PROVIDER_GOOGLE;
-}
+import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from "./MapComponents";
 import { useAmbulanceAnimation } from "../../hooks/emergency/useAmbulanceAnimation";
 import { isValidCoordinate, calculateDistance } from "../../utils/mapUtils";
 
@@ -87,6 +78,18 @@ const FullScreenEmergencyMap = forwardRef(
 
 		const screenHeight = Dimensions.get("window").height;
 		const screenWidth = Dimensions.get("window").width;
+		const {
+			userLocation,
+			locationPermission,
+			isLoadingLocation,
+			requestLocationPermission,
+		} = useMapLocation();
+
+		const { routeCoordinates, routeInfo, calculateRoute, clearRoute } = useMapRoute();
+		const lastRouteCameraKeyRef = useRef(null);
+		const lastZoomLogAtRef = useRef(0);
+		const lastZoomLogKeyRef = useRef(null);
+
 		const initialRegion = useMemo(() => {
 			const base = appLoadRegionDeltasRef.current ?? DEFAULT_APP_LOAD_DELTAS;
 			if (isValidCoordinate(userLocation)) {
@@ -109,18 +112,6 @@ const FullScreenEmergencyMap = forwardRef(
 		const shouldShowControls = showControls && sheetSnapIndex <= 1;
 		const shouldShowHospitalLabels =
 			sheetSnapIndex === 0 && !routeHospitalIdResolved && !selectedHospitalId;
-
-		const {
-			userLocation,
-			locationPermission,
-			isLoadingLocation,
-			requestLocationPermission,
-		} = useMapLocation();
-
-		const { routeCoordinates, routeInfo, calculateRoute, clearRoute } = useMapRoute();
-		const lastRouteCameraKeyRef = useRef(null);
-		const lastZoomLogAtRef = useRef(0);
-		const lastZoomLogKeyRef = useRef(null);
 
 		const hospitals =
 			propHospitals && propHospitals.length > 0 ? propHospitals : nearbyHospitals;
@@ -807,92 +798,93 @@ const FullScreenEmergencyMap = forwardRef(
 						</View>
 					</View>
 				) : (
-					<MapView
-						ref={mapRef}
-						style={styles.map}
-						provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-						customMapStyle={mapStyle}
-						initialRegion={initialRegion}
-						showsUserLocation={locationPermission}
-						showsMyLocationButton={false}
-						showsCompass={false}
-						showsScale={false}
-						showsBuildings={true}
-						showsTraffic={false}
-						showsIndoors={true}
-						showsPointsOfInterest={true}
-						loadingEnabled={true}
-						loadingIndicatorColor={COLORS.brandPrimary}
-						loadingBackgroundColor={isDarkMode ? "#0B0F1A" : "#F8FAFC"}
-						mapPadding={mapPadding}
-						userInterfaceStyle={isDarkMode ? "dark" : "light"}
-						onRegionChangeComplete={handleRegionChangeComplete}
-						onMapReady={() => {
-							isMapReadyRef.current = true;
-							setIsMapReadyState(true);
-							onMapReady?.();
-					}}
-					onPanDrag={() => {
-						lastUserPanAtRef.current = Date.now();
-					}}
-				>
-					{routeCoordinates.length > 1 && (
-						<Polyline
-							coordinates={routeCoordinates}
-							strokeColor={COLORS.brandPrimary}
-							strokeWidth={4}
-							lineCap="round"
-							lineJoin="round"
-						/>
-					)}
-
-					{ambulanceCoordinate && (
-						<Marker
-							coordinate={ambulanceCoordinate}
-							anchor={{ x: 0.5, y: 0.5 }}
-							flat={true}
-							rotation={ambulanceHeading}
-							tracksViewChanges={Platform.OS === "ios" || animateAmbulance}
-							zIndex={200}
+					MapView ? (
+						<MapView
+							ref={mapRef}
+							style={styles.map}
+							provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+							customMapStyle={mapStyle}
+							initialRegion={initialRegion}
+							showsUserLocation={locationPermission}
+							showsMyLocationButton={false}
+							showsCompass={false}
+							showsScale={false}
+							showsBuildings={true}
+							showsTraffic={false}
+							showsIndoors={true}
+							showsPointsOfInterest={true}
+							loadingEnabled={true}
+							loadingIndicatorColor={COLORS.brandPrimary}
+							loadingBackgroundColor={isDarkMode ? "#0B0F1A" : "#F8FAFC"}
+							mapPadding={mapPadding}
+							userInterfaceStyle={isDarkMode ? "dark" : "light"}
+							onRegionChangeComplete={handleRegionChangeComplete}
+							onMapReady={() => {
+								isMapReadyRef.current = true;
+								setIsMapReadyState(true);
+								onMapReady?.();
+							}}
+							onPanDrag={() => {
+								lastUserPanAtRef.current = Date.now();
+							}}
 						>
-							<View
-								style={{
-									width: 44,
-									height: 44,
-									alignItems: "center",
-									justifyContent: "center",
-								}}
-							>
-								<View
-									style={{
-										shadowColor: "#000",
-										shadowOffset: { width: 0, height: 2 },
-										shadowOpacity: 0.3,
-										shadowRadius: 3,
-										zIndex: 2,
-									}}
-								>
-									<Ionicons
-										name="navigate-circle"
-										size={42}
-										color={COLORS.brandPrimary}
-									/>
-								</View>
-								<View
-									style={{
-										position: "absolute",
-										width: 22,
-										height: 22,
-										borderRadius: 11,
-										backgroundColor: "#FFFFFF",
-										alignItems: "center",
-										justifyContent: "center",
-										zIndex: 1,
-									}}
+							{routeCoordinates.length > 1 && (
+								<Polyline
+									coordinates={routeCoordinates}
+									strokeColor={COLORS.brandPrimary}
+									strokeWidth={4}
+									lineCap="round"
+									lineJoin="round"
 								/>
-							</View>
-						</Marker>
-					)}
+							)}
+
+							{ambulanceCoordinate && (
+								<Marker
+									coordinate={ambulanceCoordinate}
+									anchor={{ x: 0.5, y: 0.5 }}
+									flat={true}
+									rotation={ambulanceHeading}
+									tracksViewChanges={Platform.OS === "ios" || animateAmbulance}
+									zIndex={200}
+								>
+									<View
+										style={{
+											width: 44,
+											height: 44,
+											alignItems: "center",
+											justifyContent: "center",
+										}}
+									>
+										<View
+											style={{
+												shadowColor: "#000",
+												shadowOffset: { width: 0, height: 2 },
+												shadowOpacity: 0.3,
+												shadowRadius: 3,
+												zIndex: 2,
+											}}
+										>
+											<Ionicons
+												name="navigate-circle"
+												size={42}
+												color={COLORS.brandPrimary}
+											/>
+										</View>
+										<View
+											style={{
+												position: "absolute",
+												width: 22,
+												height: 22,
+												borderRadius: 11,
+												backgroundColor: "#FFFFFF",
+												alignItems: "center",
+												justifyContent: "center",
+												zIndex: 1,
+											}}
+										/>
+									</View>
+								</Marker>
+							)}
 
 					{hospitals
 						.filter((h) => isValidCoordinate(h?.coordinates) && h?.id)
@@ -984,6 +976,13 @@ const FullScreenEmergencyMap = forwardRef(
 							);
 						})}
 					</MapView>
+					) : (
+						<View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: isDarkMode ? '#0B0F1A' : '#F8FAFC' }]}>
+							<Text style={{ color: isDarkMode ? '#FFFFFF' : '#0F172A', fontSize: 16, textAlign: 'center' }}>
+								Map not available on web platform
+							</Text>
+						</View>
+					)
 				)}
 				<BlurView
 					intensity={isDarkMode ? 60 : 40}

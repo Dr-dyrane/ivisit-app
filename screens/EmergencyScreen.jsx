@@ -199,6 +199,52 @@ export default function EmergencyScreen() {
 		}
 	}, [hospitals]);
 
+	// 🚨 Quick Emergency Handler - Auto-dispatch without hospital selection
+	const handleQuickEmergencyAction = useCallback(async () => {
+		console.log('[EmergencyScreen] Quick emergency button pressed');
+		console.log('[EmergencyScreen] Mode:', mode);
+		console.log('[EmergencyScreen] Active trip:', activeAmbulanceTrip?.requestId);
+		console.log('[EmergencyScreen] handleQuickEmergency available:', !!handleQuickEmergency);
+
+		if (mode !== "emergency") {
+			showToast("Quick Emergency only available in Ambulance mode", "warning");
+			return;
+		}
+
+		const hasActiveTrip = !!activeAmbulanceTrip?.requestId;
+		if (hasActiveTrip) {
+			showToast("You already have an active ambulance trip", "warning");
+			return;
+		}
+
+		try {
+			console.log('[EmergencyScreen] Calling handleQuickEmergency...');
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			const result = await handleQuickEmergency("ambulance");
+
+			if (result.ok) {
+				showToast(`🚨 Auto-dispatched to ${result.hospital}`, "success");
+				console.log('[EmergencyScreen] Quick emergency successful:', result);
+
+				// 🎯 Navigate to selected hospital view after auto-dispatch
+				if (result.requestId) {
+					console.log('[EmergencyScreen] Navigating to ambulance request with ID:', result.requestId);
+					navigateToRequestAmbulance({
+						router,
+						hospitalId: result.hospitalId || 'auto-dispatched',
+						method: "push"
+					});
+				}
+			} else {
+				showToast(`Emergency failed: ${result.reason}`, "error");
+				console.log('[EmergencyScreen] Quick emergency failed:', result);
+			}
+		} catch (error) {
+			console.error('[EmergencyScreen] Quick emergency error:', error);
+			showToast("Emergency request failed", "error");
+		}
+	}, [mode, activeAmbulanceTrip?.requestId, showToast, handleQuickEmergency, router]);
+
 	// Header components - memoized
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
 	const rightComponent = useMemo(() => {
@@ -435,52 +481,6 @@ export default function EmergencyScreen() {
 		},
 		[mode, router, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId, showToast, searchQuery]
 	);
-
-	// 🚨 Quick Emergency Handler - Auto-dispatch without hospital selection
-	const handleQuickEmergencyAction = useCallback(async () => {
-		console.log('[EmergencyScreen] Quick emergency button pressed');
-		console.log('[EmergencyScreen] Mode:', mode);
-		console.log('[EmergencyScreen] Active trip:', activeAmbulanceTrip?.requestId);
-		console.log('[EmergencyScreen] handleQuickEmergency available:', !!handleQuickEmergency);
-
-		if (mode !== "emergency") {
-			showToast("Quick Emergency only available in Ambulance mode", "warning");
-			return;
-		}
-
-		const hasActiveTrip = !!activeAmbulanceTrip?.requestId;
-		if (hasActiveTrip) {
-			showToast("You already have an active ambulance trip", "warning");
-			return;
-		}
-
-		try {
-			console.log('[EmergencyScreen] Calling handleQuickEmergency...');
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			const result = await handleQuickEmergency("ambulance");
-
-			if (result.ok) {
-				showToast(`🚨 Auto-dispatched to ${result.hospital}`, "success");
-				console.log('[EmergencyScreen] Quick emergency successful:', result);
-
-				// 🎯 Navigate to selected hospital view after auto-dispatch
-				if (result.requestId) {
-					console.log('[EmergencyScreen] Navigating to ambulance request with ID:', result.requestId);
-					navigateToRequestAmbulance({
-						router,
-						hospitalId: result.hospitalId || 'auto-dispatched',
-						method: "push"
-					});
-				}
-			} else {
-				showToast(`Emergency failed: ${result.reason}`, "error");
-				console.log('[EmergencyScreen] Quick emergency failed:', result);
-			}
-		} catch (error) {
-			console.error('[EmergencyScreen] Quick emergency error:', error);
-			showToast("Emergency request failed", "error");
-		}
-	}, [mode, activeAmbulanceTrip?.requestId, showToast, handleQuickEmergency, router]);
 
 	// Service type selection
 	const handleServiceTypeSelect = useCallback(
