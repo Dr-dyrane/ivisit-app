@@ -103,10 +103,28 @@ function AuthenticatedStack() {
 						await login(result.data.user);
 						await syncUserData();
 						showToast("Successfully logged in via email link!", "success");
+						
+						// Redirect to home after successful auth
+						setTimeout(() => {
+							router.replace("/(user)/(tabs)");
+						}, 500);
 					}
 				} catch (error) {
 					console.error("Deep Link Auth Error:", error);
 					showToast("Failed to verify login link: " + error.message, "error");
+					
+					// Redirect to auth on error
+					setTimeout(() => {
+						router.replace("/(auth)");
+					}, 500);
+				}
+			} else {
+				// Handle unmatched routes - redirect authenticated users to home
+				if (user?.isAuthenticated) {
+					console.log("[DeepLink] Unmatched route, redirecting authenticated user to home");
+					setTimeout(() => {
+						router.replace("/(user)/(tabs)");
+					}, 500);
 				}
 			}
 		};
@@ -122,7 +140,7 @@ function AuthenticatedStack() {
 		return () => {
 			subscription.remove();
 		};
-	}, []);
+	}, [user?.isAuthenticated, login, syncUserData, showToast, router]);
 
 	// Redirect based on authentication state
 	useEffect(() => {
