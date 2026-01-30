@@ -1,5 +1,5 @@
-# Web Maps Setup Guide
 
+# Web Maps Setup Guide
 ## Overview
 The iVisit app now supports Google Maps on the web platform, replacing the previous placeholder view.
 

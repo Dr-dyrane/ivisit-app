@@ -1,7 +1,7 @@
 // app/_layout.js
 import "../polyfills";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -14,6 +14,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import ThemeToggle from "../components/ThemeToggle";
+import GlobalErrorBoundary from "../components/GlobalErrorBoundary";
 import { isProfileComplete } from "../utils/profileCompletion";
 import { authService } from "../services/authService";
 
@@ -26,23 +27,49 @@ import { appMigrationsService } from "../services/appMigrationsService";
  * File Path: app/_layout.js
  */
 export default function RootLayout() {
+	const [appIsReady, setAppIsReady] = useState(false);
+
 	useEffect(() => {
-		SplashScreen.preventAutoHideAsync?.().catch(() => {});
-        // Run migrations and schema reload on startup
-        appMigrationsService.run().catch(err => console.log("Migration error:", err));
+		async function prepare() {
+			try {
+				// Prevent splash screen from auto-hiding
+				await SplashScreen.preventAutoHideAsync();
+				
+				// Run migrations and schema reload on startup
+				await appMigrationsService.run();
+				
+				// Mark app as ready
+				setAppIsReady(true);
+			} catch (err) {
+				console.log("Migration error:", err);
+				// Still mark as ready even if migrations fail
+				setAppIsReady(true);
+			}
+		}
+
+		prepare();
 	}, []);
+
+	useEffect(() => {
+		// Hide splash screen when app is ready
+		if (appIsReady) {
+			SplashScreen.hideAsync().catch(err => console.log("SplashScreen.hide error:", err));
+		}
+	}, [appIsReady]);
 
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
-			<AppProviders>
-				<View style={{ flex: 1 }}>
-					<AuthenticatedStack />
-					{/* Theme toggle (optional absolute positioning) */}
-					<View className="absolute right-0 top-16 px-2 py-4">
-						<ThemeToggle showLabel={false} />
+			<GlobalErrorBoundary>
+				<AppProviders>
+					<View style={{ flex: 1 }}>
+						<AuthenticatedStack />
+						{/* Theme toggle (optional absolute positioning) */}
+						<View className="absolute right-0 top-16 px-2 py-4">
+							<ThemeToggle showLabel={false} />
+						</View>
 					</View>
-				</View>
-			</AppProviders>
+				</AppProviders>
+			</GlobalErrorBoundary>
 		</GestureHandlerRootView>
 	);
 }
