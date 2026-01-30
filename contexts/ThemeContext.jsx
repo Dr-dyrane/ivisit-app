@@ -17,7 +17,10 @@ export const ThemeMode = {
 export function ThemeProvider({ children }) {
 	const deviceTheme = useColorScheme();
 	const [themeMode, setThemeMode] = useState(ThemeMode.SYSTEM);
-	const [isDarkMode, setIsDarkMode] = useState(deviceTheme === "dark");
+	
+	// Force light mode on Android
+	const isAndroid = Platform.OS === "android";
+	const [isDarkMode, setIsDarkMode] = useState(isAndroid ? true : deviceTheme === "dark");
 
 	// Load saved theme preference on mount
 	useEffect(() => {
@@ -29,14 +32,14 @@ export function ThemeProvider({ children }) {
 					setThemeMode(savedThemeMode);
 
 					if (savedThemeMode === ThemeMode.SYSTEM) {
-						setIsDarkMode(deviceTheme === "dark");
+						setIsDarkMode(isAndroid ? true : deviceTheme === "dark");
 					} else {
-						setIsDarkMode(savedThemeMode === ThemeMode.DARK);
+						setIsDarkMode(isAndroid ? true : savedThemeMode === ThemeMode.DARK);
 					}
 				} else {
 					// Default to system theme
 					setThemeMode(ThemeMode.SYSTEM);
-					setIsDarkMode(deviceTheme === "dark");
+					setIsDarkMode(isAndroid ? true : deviceTheme === "dark");
 				}
 			} catch (error) {
 				console.error("Failed to load theme preference:", error);
@@ -48,10 +51,10 @@ export function ThemeProvider({ children }) {
 
 	// Update theme when device theme changes (if using system theme)
 	useEffect(() => {
-		if (themeMode === ThemeMode.SYSTEM) {
+		if (themeMode === ThemeMode.SYSTEM && !isAndroid) {
 			setIsDarkMode(deviceTheme === "dark");
 		}
-	}, [deviceTheme, themeMode]);
+	}, [deviceTheme, themeMode, isAndroid]);
 
 	// Save theme preference when it changes
 	useEffect(() => {
@@ -81,15 +84,24 @@ export function ThemeProvider({ children }) {
 		updateNavigationBar();
 	}, [isDarkMode]);
 
-	// Toggle theme function
+	// Toggle theme function (disabled on Android)
 	const toggleTheme = () => {
+		if (isAndroid) return; // Disable theme toggle on Android
+		
 		const newThemeMode = isDarkMode ? ThemeMode.LIGHT : ThemeMode.DARK;
 		setThemeMode(newThemeMode);
 		setIsDarkMode(!isDarkMode);
 	};
 
-	// Set specific theme
+	// Set specific theme (restricted on Android)
 	const setTheme = (mode) => {
+		if (isAndroid) {
+			// Force dark mode on Android
+			setThemeMode(ThemeMode.DARK);
+			setIsDarkMode(true);
+			return;
+		}
+		
 		setThemeMode(mode);
 
 		if (mode === ThemeMode.SYSTEM) {

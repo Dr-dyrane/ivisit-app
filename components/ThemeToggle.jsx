@@ -134,8 +134,8 @@ export default function ThemeToggle() {
 		collapse();
 	};
 
-	// Skip rendering if not mounted yet
-	if (!mounted) return null;
+	// Skip rendering if not mounted yet or on Android
+	if (!mounted || Platform.OS === "android") return null;
 
 	// Platform-specific background
 	const getBgColor = () => {
@@ -184,11 +184,13 @@ export default function ThemeToggle() {
 					}),
 				}}
 			>
-				<BlurView
-					intensity={Platform.OS === "ios" ? 30 : 10}
-					tint={isDarkMode ? "dark" : "light"}
-					style={StyleSheet.absoluteFill}
-				/>
+				{Platform.OS === "ios" && (
+					<BlurView
+						intensity={30}
+						tint={isDarkMode ? "dark" : "light"}
+						style={StyleSheet.absoluteFill}
+					/>
+				)}
 
 				<View
 					style={{
