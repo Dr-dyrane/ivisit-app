@@ -40,7 +40,7 @@ export default function EmergencySearchBar({
 
 	useEffect(() => {
 		focusProgress.value = withSpring(isFocused ? 1 : 0, { damping: 20, stiffness: 300 });
-	}, [isFocused]);
+	}, [isFocused, focusProgress]);
 
 	// Finalized Premium Colors
 	const backgroundColor = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";

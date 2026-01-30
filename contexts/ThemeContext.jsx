@@ -18,7 +18,7 @@ export function ThemeProvider({ children }) {
 	const deviceTheme = useColorScheme();
 	const [themeMode, setThemeMode] = useState(ThemeMode.SYSTEM);
 	
-	// Force light mode on Android
+	// Force dark mode on Android
 	const isAndroid = Platform.OS === "android";
 	const [isDarkMode, setIsDarkMode] = useState(isAndroid ? true : deviceTheme === "dark");
 

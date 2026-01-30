@@ -513,9 +513,10 @@ export function EmergencyProvider({ children }) {
 			if (!hospital) return false;
 			
 			if (mode === EmergencyMode.EMERGENCY) {
-				// Emergency: show available hospitals with ambulances, filter by service type if selected
+				// Emergency: show available hospitals, filter by service type if selected
 				if (hospital.status !== 'available') return false; // Only show available hospitals
-				if (!hospital.ambulances || hospital.ambulances <= 0) return false; // No ambulances available
+				// Be more lenient about ambulance data - some hospitals might not have this field populated
+				if (hospital.ambulances !== undefined && hospital.ambulances <= 0) return false; // Only filter if explicitly 0
 				if (!serviceType) return true; // Show all if no filter selected
 				// Ensure case-insensitive comparison
 				const type = serviceType.toLowerCase();

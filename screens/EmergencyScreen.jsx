@@ -530,9 +530,10 @@ export default function EmergencyScreen() {
 		let availableHospitals;
 		
 		if (mode === 'emergency') {
-			// Emergency mode: only count available hospitals with ambulances
+			// Emergency mode: count available hospitals (be lenient about ambulance data)
 			availableHospitals = hospitals.filter(h => 
-				h.status === 'available' && h.ambulances > 0
+				h.status === 'available' && 
+				(h.ambulances === undefined || h.ambulances > 0) // Show if ambulance data missing OR > 0
 			);
 		} else {
 			// Booking mode: only count available hospitals with beds
