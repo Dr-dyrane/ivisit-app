@@ -33,10 +33,114 @@ const EmergencyRequestModal = ({
 	const [requestStep, setRequestStep] = useState("select");
 	const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);
 	const [bedType, setBedType] = useState("standard");
-	const [bedCount, setBedCount] = useState(1);
+	const [bedCount, setBedCount] = useState(2);
 	const [isRequesting, setIsRequesting] = useState(false);
 	const [requestData, setRequestData] = useState(null);
 	const [errorMessage, setErrorMessage] = useState(null);
+
+	// Event handlers
+	const handleSubmitRequest = useCallback(async () => {
+		if (isRequesting) return;
+		if (!requestHospital) return;
+		if (mode === "emergency" && !selectedAmbulanceType) return;
+
+		setErrorMessage(null);
+		setIsRequesting(true);
+		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+
+		const hospitalName = requestHospital?.name ?? "Hospital";
+		const requestId =
+			mode === "booking"
+				? `BED-${Math.floor(Math.random() * 900000) + 100000}`
+				: `AMB-${Math.floor(Math.random() * 900000) + 100000}`;
+		const initiated =
+			mode === "booking"
+				? {
+						requestId,
+						hospitalId: requestHospital?.id ?? null,
+						hospitalName,
+						serviceType: "bed",
+						specialty: selectedSpecialty ?? "Any",
+						bedCount,
+						bedType,
+						bedNumber: `B${Math.floor(Math.random() * 900) + 100}`,
+				  }
+				: {
+						requestId,
+						hospitalId: requestHospital?.id ?? null,
+						hospitalName,
+						ambulanceType: selectedAmbulanceType,
+						serviceType: "ambulance",
+						specialty: selectedSpecialty ?? "Any",
+				  };
+
+		try {
+			if (typeof onRequestInitiated === "function") {
+				onRequestInitiated(initiated);
+			}
+		} catch (error) {
+			console.error("Error in onRequestInitiated callback:", error);
+			setErrorMessage("Something went wrong. Please try again.");
+			return;
+		}
+
+		setTimeout(() => {
+			const waitTime = requestHospital?.waitTime ?? null;
+			const hospitalEta = requestHospital?.eta ?? null;
+			const ambulanceEta =
+				(typeof hospitalEta === "string" && hospitalEta.length > 0
+					? hospitalEta
+					: null) ?? "8 mins";
+
+			const next =
+				mode === "booking"
+					? {
+							success: true,
+							requestId: initiated.requestId,
+							estimatedArrival: waitTime ?? "15 mins",
+							hospitalId: initiated.hospitalId,
+							hospitalName: initiated.hospitalName,
+							serviceType: "bed",
+							specialty: initiated.specialty,
+							bedCount: initiated.bedCount,
+							bedType: initiated.bedType,
+							bedNumber: initiated.bedNumber,
+					  }
+					: {
+							success: true,
+							requestId: initiated.requestId,
+							hospitalId: initiated.hospitalId,
+							hospitalName: initiated.hospitalName,
+							ambulanceType: initiated.ambulanceType,
+							serviceType: "ambulance",
+							estimatedArrival: ambulanceEta,
+					  };
+
+			setRequestData(next);
+			setIsRequesting(false);
+			const toastMsg =
+				mode === "booking"
+					? "Bed reserved successfully"
+					: "Ambulance dispatched";
+			try {
+				showToast(toastMsg, "success");
+			} catch (e) {
+			}
+			if (typeof onRequestComplete === "function") {
+				onRequestComplete(next);
+			}
+		}, 900);
+	}, [
+		bedCount,
+		bedType,
+		isRequesting,
+		mode,
+		onRequestComplete,
+		onRequestInitiated,
+		requestHospital,
+		selectedAmbulanceType,
+		selectedSpecialty,
+	]);
 
 	const requestColors = useMemo(
 		() => ({
@@ -183,122 +287,6 @@ const EmergencyRequestModal = ({
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		onRequestClose?.();
 	}, [onRequestClose]);
-
-	const handleSubmitRequest = useCallback(async () => {
-		if (isRequesting) return;
-		if (!requestHospital) return;
-		if (mode === "emergency" && !selectedAmbulanceType) return;
-
-		setErrorMessage(null);
-		setIsRequesting(true);
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-
-		const hospitalName = requestHospital?.name ?? "Hospital";
-		const requestId =
-			mode === "booking"
-				? `BED-${Math.floor(Math.random() * 900000) + 100000}`
-				: `AMB-${Math.floor(Math.random() * 900000) + 100000}`;
-		const initiated =
-			mode === "booking"
-				? {
-						requestId,
-						hospitalId: requestHospital?.id ?? null,
-						hospitalName,
-						serviceType: "bed",
-						specialty: selectedSpecialty ?? "Any",
-						bedCount,
-						bedType,
-						bedNumber: `B-${Math.floor(Math.random() * 90) + 10}`,
-				  }
-				: {
-						requestId,
-						hospitalId: requestHospital?.id ?? null,
-						hospitalName,
-						ambulanceType: selectedAmbulanceType,
-						serviceType: "ambulance",
-				  };
-
-		if (typeof onRequestInitiated === "function") {
-			try {
-				const result = await onRequestInitiated(initiated);
-				if (result && result.ok === false) {
-					const service = result.serviceType === "bed" ? "bed booking" : "ambulance request";
-					const msg =
-						result.reason === "ALREADY_ACTIVE"
-							? `You already have an active ${service}.`
-							: result.reason === "CONCURRENCY_DB"
-							? `You already have an active ${service}.`
-							: "Request blocked. Please try again.";
-					setIsRequesting(false);
-					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-					setErrorMessage(msg);
-					return;
-				}
-			} catch (e) {
-				setIsRequesting(false);
-				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-				setErrorMessage("Something went wrong. Please try again.");
-				return;
-			}
-		}
-
-		setTimeout(() => {
-			const waitTime = requestHospital?.waitTime ?? null;
-			const hospitalEta = requestHospital?.eta ?? null;
-			const ambulanceEta =
-				(typeof hospitalEta === "string" && hospitalEta.length > 0
-					? hospitalEta
-					: null) ?? "8 mins";
-
-			const next =
-				mode === "booking"
-					? {
-							success: true,
-							requestId: initiated.requestId,
-							estimatedArrival: waitTime ?? "15 mins",
-							hospitalId: initiated.hospitalId,
-							hospitalName: initiated.hospitalName,
-							serviceType: "bed",
-							specialty: initiated.specialty,
-							bedCount: initiated.bedCount,
-							bedType: initiated.bedType,
-							bedNumber: initiated.bedNumber,
-					  }
-					: {
-							success: true,
-							requestId: initiated.requestId,
-							hospitalId: initiated.hospitalId,
-							hospitalName: initiated.hospitalName,
-							ambulanceType: initiated.ambulanceType,
-							serviceType: "ambulance",
-							estimatedArrival: ambulanceEta,
-					  };
-
-			setRequestData(next);
-			setIsRequesting(false);
-			const toastMsg =
-				mode === "booking"
-					? "Bed reserved successfully"
-					: "Ambulance dispatched";
-			try {
-				showToast(toastMsg, "success");
-			} catch (e) {
-			}
-			if (typeof onRequestComplete === "function") {
-				onRequestComplete(next);
-			}
-		}, 900);
-	}, [
-		bedCount,
-		bedType,
-		isRequesting,
-		mode,
-		onRequestComplete,
-		onRequestInitiated,
-		requestHospital,
-		selectedAmbulanceType,
-		selectedSpecialty,
-	]);
 
 	const hospitalName = requestHospital?.name ?? "Hospital";
 	const availableBeds =
