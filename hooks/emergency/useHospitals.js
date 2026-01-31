@@ -168,7 +168,10 @@ export function useHospitals() {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [userLocation]);
+	}, []); // 🔴 REVERT POINT: Fixed infinite loop dependency
+	// PREVIOUS: [userLocation] caused infinite loop when setUserLocation was called
+	// NEW: Empty dependency array - fetchHospitals doesn't depend on userLocation
+	// REVERT TO: }, [userLocation]);
 
 	useEffect(() => {
 		fetchHospitals();

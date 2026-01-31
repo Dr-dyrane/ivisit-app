@@ -336,7 +336,10 @@ export const hospitalsService = {
 				factors: {
 					distance: `${factors.distance}km`,
 					availableBeds: factors.availableBeds,
-					hourOfDay: `${hour}:00`,
+					hourOfDay: `${factors.hourOfDay}:00`,  // 🔴 REVERT POINT: Fixed undefined variable scope
+					// PREVIOUS: Used `hour` which was undefined outside scope
+					// NEW: Use `factors.hourOfDay` which is properly defined
+					// REVERT TO: hourOfDay: `${hour}:00`,
 					isRushHour: timeFactor > 1.0,
 					isWeekend: dayFactor > 1.0,
 					isVerified: factors.verified
