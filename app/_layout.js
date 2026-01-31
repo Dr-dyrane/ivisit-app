@@ -120,7 +120,11 @@ function AuthenticatedStack() {
 				}
 			} else {
 				// Handle unmatched routes - redirect authenticated users to home
-				if (user?.isAuthenticated) {
+				// 🔴 REVERT POINT: Fix deep link infinite loop for localhost URLs
+				// PREVIOUS: Redirected all unmatched routes including localhost:8081
+				// NEW: Skip localhost development URLs to prevent infinite loops
+				// REVERT TO: Remove the localhost check
+				if (user?.isAuthenticated && !url.includes("localhost:8081")) {
 					console.log("[DeepLink] Unmatched route, redirecting authenticated user to home");
 					setTimeout(() => {
 						router.replace("/(user)/(tabs)");
