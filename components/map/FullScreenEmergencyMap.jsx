@@ -897,7 +897,10 @@ const FullScreenEmergencyMap = forwardRef(
 									onPress={() => handleHospitalPress(hospital)}
 									anchor={{ x: 0.5, y: 1 }}
 									centerOffset={{ x: 0, y: -16 }}
-									tracksViewChanges={isSelected}
+									tracksViewChanges={false}  // 🔴 REVERT POINT: Fixed Google Maps performance
+									// PREVIOUS: tracksViewChanges={isSelected} caused massive slowdown on Android
+									// NEW: Always false to prevent expensive re-renders on Google Maps
+									// REVERT TO: tracksViewChanges={isSelected}
 									zIndex={isSelected ? 100 : 1}
 								>
 									<PulsingMarker isSelected={isSelected}>
