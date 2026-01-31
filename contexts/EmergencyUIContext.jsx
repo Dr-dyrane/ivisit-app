@@ -87,7 +87,11 @@ const useTimingTracker = (enabled = __DEV__) => {
 
 export function EmergencyUIProvider({ children }) {
 	// Bottom sheet state
-	const [snapIndex, setSnapIndex] = useState(1); // 0=collapsed, 1=half, 2=expanded - start halfway for better UX
+	// 🔴 REVERT POINT: Safe initial snap index
+	// PREVIOUS: Fixed initial index of 1, which can be invalid in detail mode
+	// NEW: Start with 0 (always valid) and let the bottom sheet manage its own index
+	// REVERT TO: const [snapIndex, setSnapIndex] = useState(1);
+	const [snapIndex, setSnapIndex] = useState(0); // Start at 0 (always valid) to prevent initial crashes
 	const [isAnimating, setIsAnimating] = useState(false);
 	const snapIndexRef = useRef(snapIndex);
 	useEffect(() => {
@@ -127,6 +131,16 @@ export function EmergencyUIProvider({ children }) {
 	
 	// Bottom sheet actions
 	const handleSnapChange = useCallback((index, source = "user") => {
+		// 🔴 REVERT POINT: Validate snap index before accepting
+		// PREVIOUS: Accepted any index without validation
+		// NEW: Ensure index is non-negative before accepting
+		// REVERT TO: Remove the index validation
+		
+		if (typeof index !== "number" || index < 0) {
+			console.warn('[EmergencyUIContext] Invalid snap index received:', index, 'source:', source);
+			return; // Don't update with invalid index
+		}
+		
 		// console.log('[EmergencyUIContext] handleSnapChange called:', { 
 		// 	newIndex: index, 
 		// 	source, 

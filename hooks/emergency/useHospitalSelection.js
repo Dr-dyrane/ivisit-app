@@ -22,8 +22,12 @@ export const useHospitalSelection = ({
 
 			// Check if this is a Google-imported hospital (not verified)
 			if (hospital.imported_from_google && hospital.import_status !== 'verified') {
-				showToast('This hospital is not verified. Please call 911 for emergencies.', 'warning');
-				return;
+				// 🔴 REVERT POINT: Allow unverified hospitals to show selected view
+				// PREVIOUS: Returned early with toast, preventing selection
+				// NEW: Allow selection to continue so user sees "Call Hospital" CTA
+				// REVERT TO: Add the early return back
+				console.log('[useHospitalSelection] Allowing unverified hospital selection for 911 fallback');
+				// Don't return early - let selection continue to show the detail view
 			}
 
 			// Check availability based on mode

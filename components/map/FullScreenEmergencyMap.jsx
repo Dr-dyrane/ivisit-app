@@ -281,6 +281,16 @@ const FullScreenEmergencyMap = forwardRef(
 				.map((x) => x.h.coordinates);
 
 			const points = [origin, ...valid];
+			
+			// 🔴 REVERT POINT: Handle case where no valid hospitals found
+			// PREVIOUS: Assumed points array always had elements, could crash on points[0]
+			// NEW: Check if points array is empty before accessing elements
+			// REVERT TO: Remove this entire if block and let it potentially crash
+			if (points.length === 0) {
+				console.warn('[FullScreenEmergencyMap] No valid points for baseline calculation');
+				return null;
+			}
+			
 			let minLat = points[0].latitude;
 			let maxLat = points[0].latitude;
 			let minLng = points[0].longitude;
@@ -597,7 +607,14 @@ const FullScreenEmergencyMap = forwardRef(
 				const validHospitals = hospitals.filter((h) =>
 					isValidCoordinate(h?.coordinates)
 				);
-				if (validHospitals.length === 0) return;
+				if (validHospitals.length === 0) {
+					// 🔴 REVERT POINT: Added warning log for empty valid hospitals
+					// PREVIOUS: Silent return with no logging
+					// NEW: Console warning for debugging
+					// REVERT TO: Remove this console.warn line
+					console.warn('[FullScreenEmergencyMap] No valid hospitals to fit to bounds');
+					return;
+				}
 
 				let minLat = validHospitals[0].coordinates.latitude;
 				let maxLat = validHospitals[0].coordinates.latitude;
@@ -861,10 +878,18 @@ const FullScreenEmergencyMap = forwardRef(
 								</Marker>
 							)}
 
-					{hospitals
+					{hospitals && hospitals.length > 0 && hospitals
 						.filter((h) => isValidCoordinate(h?.coordinates) && h?.id)
 						.map((hospital) => {
 							const isSelected = selectedHospitalId === hospital.id;
+							// 🔴 REVERT POINT: Additional safety check for coordinates
+							// PREVIOUS: No additional coordinate validation beyond isValidCoordinate
+							// NEW: Extra null check to prevent crashes
+							// REVERT TO: Remove this entire if block and return null check
+							if (!hospital.coordinates || !hospital.coordinates.latitude || !hospital.coordinates.longitude) {
+								console.warn('[FullScreenEmergencyMap] Invalid hospital coordinates:', hospital.id);
+								return null;
+							}
 							return (
 								<Marker
 									key={hospital.id}

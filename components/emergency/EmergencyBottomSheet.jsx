@@ -130,23 +130,48 @@ const EmergencyBottomSheet = forwardRef(
 		 */
 		const clampSheetIndex = useCallback(
 			(index) => {
-				console.log('[EmergencyBottomSheet] clampSheetIndex called with:', index, 'snapPoints length:', snapPoints.length);
-				if (!Number.isFinite(index) || snapPoints.length === 0) {
-					console.log('[EmergencyBottomSheet] Invalid index or no snap points, returning 0');
+				console.log('[EmergencyBottomSheet] clampSheetIndex called with:', index, 'snapPoints:', snapPoints, 'length:', snapPoints.length);
+				
+				// 🔴 REVERT POINT: Enhanced snap point validation
+				// PREVIOUS: Basic index clamping
+				// NEW: More robust validation with detailed logging
+				// REVERT TO: Remove the enhanced logging and validation
+				
+				if (!Number.isFinite(index)) {
+					console.log('[EmergencyBottomSheet] Invalid index, returning 0');
+					return 0;
+				}
+				
+				if (!snapPoints || snapPoints.length === 0) {
+					console.log('[EmergencyBottomSheet] No snap points available, returning 0');
 					return 0;
 				}
 				
 				const maxIndex = snapPoints.length - 1;
 				const clampedIndex = Math.min(Math.max(index, 0), maxIndex);
 				
-				console.log('[EmergencyBottomSheet] Clamped index:', clampedIndex, 'maxIndex:', maxIndex);
+				console.log('[EmergencyBottomSheet] Final clamped index:', clampedIndex, 'maxIndex:', maxIndex);
 				return clampedIndex;
 			},
-			[snapPoints.length]
+			[snapPoints]
 		);
 
 		useImperativeHandle(ref, () => ({
-			snapToIndex: (index) => bottomSheetRef.current?.snapToIndex(clampSheetIndex(index)),
+			snapToIndex: (index) => {
+				const clampedIndex = clampSheetIndex(index);
+				console.log('[EmergencyBottomSheet] snapToIndex called with clamped index:', clampedIndex);
+				
+				// 🔴 REVERT POINT: Additional safety check for bottom sheet ref
+				// PREVIOUS: Direct snapToIndex call
+				// NEW: Check if bottom sheet is ready before snapping
+				// REVERT TO: Remove the ref check
+				if (bottomSheetRef.current && snapPoints.length > 0) {
+					return bottomSheetRef.current.snapToIndex(clampedIndex);
+				} else {
+					console.warn('[EmergencyBottomSheet] Cannot snapToIndex - bottom sheet not ready or no snap points');
+					return null;
+				}
+			},
 			expand: () => bottomSheetRef.current?.expand(),
 			collapse: () => bottomSheetRef.current?.collapse(),
 			getCurrentSnapIndex: () => currentSnapIndex,
@@ -157,8 +182,21 @@ const EmergencyBottomSheet = forwardRef(
 				const scrollY = state?.scrollY;
 				// Use a small delay to ensure snapPoints are updated and UI has settled
 				setTimeout(() => {
+					// 🔴 REVERT POINT: Safe index restoration during mode transitions
+					// PREVIOUS: Direct snapIndex restoration without mode awareness
+					// NEW: Ensure restored index is valid for current snap points
+					// REVERT TO: Remove the mode-aware index calculation
+					
 					if (typeof snapIndex === "number") {
-						bottomSheetRef.current?.snapToIndex(clampSheetIndex(snapIndex));
+						// When transitioning from detail mode (1 point) to normal mode (3 points),
+						// the restored index might be out of bounds. Clamp it safely.
+						const safeIndex = clampSheetIndex(snapIndex);
+						console.log('[EmergencyBottomSheet] Restoring to safe index:', safeIndex, 'from original:', snapIndex);
+						
+						// Additional safety: if we're transitioning from detail mode, start at index 0 (collapsed)
+						const finalIndex = isDetailMode ? 0 : safeIndex;
+						
+						bottomSheetRef.current?.snapToIndex(finalIndex);
 					}
 					if (typeof scrollY === "number") {
 						listScrollRef.current?.scrollTo?.({ y: scrollY, animated: false });
@@ -182,6 +220,27 @@ const EmergencyBottomSheet = forwardRef(
 				bottomSheetRef.current?.snapToIndex(0);
 			}
 		}, [currentSnapIndex, isBedBookingMode, isTripMode, snapPoints.length]);
+
+		// 🔴 REVERT POINT: Handle mode transitions to prevent index out of bounds
+		// PREVIOUS: No explicit mode transition handling
+		// NEW: Reset to safe index when transitioning between modes with different snap point counts
+		// REVERT TO: Remove this useEffect
+		useEffect(() => {
+			console.log('[EmergencyBottomSheet] Mode transition detected:', {
+				isDetailMode,
+				isTripMode, 
+				isBedBookingMode,
+				snapPointsLength: snapPoints.length,
+				currentSnapIndex
+			});
+
+			// When transitioning OUT of detail mode, ensure we have a valid index
+			if (!isDetailMode && snapPoints.length > 1 && currentSnapIndex >= snapPoints.length) {
+				const safeIndex = Math.min(currentSnapIndex, snapPoints.length - 1);
+				console.log('[EmergencyBottomSheet] Correcting out-of-bounds index:', currentSnapIndex, '->', safeIndex);
+				bottomSheetRef.current?.snapToIndex(safeIndex);
+			}
+		}, [isDetailMode, snapPoints.length, currentSnapIndex]);
 
 		const renderHandle = useCallback(
 			() => (

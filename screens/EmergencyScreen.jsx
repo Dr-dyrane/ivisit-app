@@ -247,6 +247,23 @@ export default function EmergencyScreen() {
 
 	// Header components - memoized
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
+
+	// Memoize the quick action handlers to prevent infinite re-renders
+	const handleQuickEmergencyPress = useCallback(() => {
+		console.log('[EmergencyScreen] QUICK BUTTON TAPPED!');
+		handleQuickEmergencyAction();
+	}, [handleQuickEmergencyAction]);
+
+	const handleQuickEmergencyPressIn = useCallback(() => {
+		console.log('[EmergencyScreen] Button press IN');
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+	}, []);
+
+	const handleQuickEmergencyPressOut = useCallback(() => {
+		console.log('[EmergencyScreen] Button press OUT');
+		setQuickButtonPulse(false);
+	}, []);
+
 	const rightComponent = useMemo(() => {
 		console.log('[EmergencyScreen] Rendering header - Mode:', mode, 'Active trip:', !!activeAmbulanceTrip?.requestId);
 
@@ -262,18 +279,9 @@ export default function EmergencyScreen() {
 				{/* Quick Emergency Button - Adaptive Dark/Light Mode */}
 				{mode === "emergency" && !activeAmbulanceTrip?.requestId && (
 					<TouchableOpacity
-						onPress={() => {
-							console.log('[EmergencyScreen] QUICK BUTTON TAPPED!');
-							handleQuickEmergencyAction();
-						}}
-						onPressIn={() => {
-							console.log('[EmergencyScreen] Button press IN');
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-						}}
-						onPressOut={() => {
-							console.log('[EmergencyScreen] Button press OUT');
-							Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-						}}
+						onPress={handleQuickEmergencyPress}
+						onPressIn={handleQuickEmergencyPressIn}
+						onPressOut={handleQuickEmergencyPressOut}
 						style={{
 							marginRight: 12,
 							backgroundColor: adaptiveColors.bgColor,

@@ -166,12 +166,23 @@ export default function HospitalCard({
 					<Pressable onPress={handleCallPress} style={[styles.primaryAction, !hospitalPhone && styles.primaryActionFull]}>
 						<View style={styles.actionLeft}>
 							<Fontisto
-								name={mode === "booking" ? "bed-patient" : "ambulance"}
+								name={
+									mode === "booking" 
+										? "bed-patient" 
+										: isGoogleHospital 
+											? "phone" 
+											: "ambulance"
+								}
 								size={18}
 								color="#FFFFFF"
 							/>
 							<Text style={styles.actionText}>
-								{mode === "booking" ? "Secure a Bed" : "Request Now"}
+								{mode === "booking" 
+									? "Secure a Bed" 
+									: isGoogleHospital 
+										? "Call Hospital" 
+										: "Request Now"
+								}
 							</Text>
 						</View>
 						<Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
