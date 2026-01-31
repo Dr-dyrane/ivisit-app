@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { hospitalsService } from "../../services/hospitalsService";
 import * as Location from "expo-location";
 
@@ -173,9 +173,28 @@ export function useHospitals() {
 	// NEW: Empty dependency array - fetchHospitals doesn't depend on userLocation
 	// REVERT TO: }, [userLocation]);
 
+	// 🔴 REVERT POINT: Add location comparison to prevent duplicate fetches
+	// PREVIOUS: useEffect with just fetchHospitals dependency
+	// NEW: Compare location coordinates before fetching to avoid duplicate calls
+	// REVERT TO: useEffect(() => { fetchHospitals(); }, [fetchHospitals]);
+	
+	const lastLocationRef = useRef(null);
+	
 	useEffect(() => {
+		// Only fetch if location actually changed significantly (more than 10 meters)
+		if (lastLocationRef.current) {
+			const latDiff = Math.abs(lastLocationRef.current.latitude - userLocation.latitude);
+			const lngDiff = Math.abs(lastLocationRef.current.longitude - userLocation.longitude);
+			
+			if (latDiff < 0.0001 && lngDiff < 0.0001) {
+				console.log('[useHospitals] Location change too small, skipping fetch');
+				return;
+			}
+		}
+		
+		lastLocationRef.current = userLocation;
 		fetchHospitals();
-	}, [fetchHospitals]);
+	}, [fetchHospitals, userLocation]);
 
 	return {
 		hospitals, // Smart-sorted, auto-expanded hospitals
