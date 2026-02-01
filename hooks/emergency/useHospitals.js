@@ -86,6 +86,7 @@ export function useHospitals() {
 
 	const lastLocationRef = useRef(null);
 	const isInitialLoadRef = useRef(true);
+	const hasFetchedRef = useRef(globalHospitalCache.hospitals.length > 0);
 
 	// Core fetching logic - pure functional approach
 	const performFetch = useCallback(async (location) => {
@@ -96,7 +97,8 @@ export function useHospitals() {
 			// PREVIOUS: Always set isLoading(true), clearing UI state
 			// NEW: Only show loading spinner on initial fetch; keep data visible during updates
 			// REVERT TO: setIsLoading(true); setError(null);
-			if (hospitals.length === 0) {
+			// Use ref instead of state to avoid stale closure
+			if (!hasFetchedRef.current) {
 				setIsLoading(true);
 			}
 
@@ -127,6 +129,9 @@ export function useHospitals() {
 			setAllHospitals(data);
 			setHospitals(hospitalsWithWaitTimes);
 			setCategories(categorized);
+
+			// Mark as fetched to prevent loading spinner on subsequent fetches
+			hasFetchedRef.current = true;
 
 			// Update the global cache for the next remount
 			globalHospitalCache = {

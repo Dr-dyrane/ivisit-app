@@ -282,8 +282,6 @@ export default function EmergencyScreen() {
 	}, []);
 
 	const rightComponent = useMemo(() => {
-		console.log('[EmergencyScreen] Rendering header - Mode:', mode, 'Active trip:', !!activeAmbulanceTrip?.requestId);
-
 		// Theme-sensitive colors for dark/light mode
 		const adaptiveColors = {
 			bgColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : `rgba(134, 16, 14, 0.1)`, // brandPrimary for light mode

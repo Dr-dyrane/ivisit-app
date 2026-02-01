@@ -2,6 +2,16 @@ import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
 import 'fast-text-encoding';
 
+// Configure Reanimated logger to suppress "Writing to value during render" warnings
+// This is a known issue with @gorhom/bottom-sheet when index prop changes during render
+// See: https://docs.swmansion.com/react-native-reanimated/docs/debugging/logger-configuration
+import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
+
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false, // Disable strict mode warnings for bottom sheet compatibility
+});
+
 // Force fallback TextDecoder/TextEncoder if they are missing or broken
 // This fixes "Cannot read property 'decode' of undefined" and "TextDecoder is not defined"
 
