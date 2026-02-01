@@ -22,10 +22,10 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 
 	const isComplete = otp.every((digit) => digit !== "");
 
-    // Update OTP length if needed (e.g. from props or config)
-    // Currently hardcoded to 6 as per standard Supabase OTP.
-    // If you receive an 8 digit code, we need to update the state initialization and UI mapping.
-    // For now, let's keep it 6. If the user reports 8, we can change the initial state to 8 empty strings.
+	// Update OTP length if needed (e.g. from props or config)
+	// Currently hardcoded to 6 as per standard Supabase OTP.
+	// If you receive an 8 digit code, we need to update the state initialization and UI mapping.
+	// For now, let's keep it 6. If the user reports 8, we can change the initial state to 8 empty strings.
 
 	// Timer countdown
 	useEffect(() => {
@@ -94,7 +94,7 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 	};
 
 	const handleVerify = (otpString) => {
-        if (loading) return; // Prevent double submission
+		if (loading) return; // Prevent double submission
 
 		if (otpString.length !== 6) {
 			triggerShake();
@@ -113,15 +113,17 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 		setCanResend(false);
 		setOtp(["", "", "", "", "", ""]);
 		inputRefs.current[0]?.focus();
-        // Propagate resend action to parent if needed, or re-trigger request in parent
-        if (onResend) {
-             onResend();
-        }
+		// Propagate resend action to parent if needed, or re-trigger request in parent
+		if (onResend) {
+			onResend();
+		}
 	};
 
 	const colors = {
-		inputBg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
+		// [AUTH_POLISH] Glassmorphism-inspired backgrounds
+		inputBg: isDarkMode ? "rgba(22, 27, 34, 0.8)" : "rgba(243, 244, 246, 0.8)",
 		text: isDarkMode ? COLORS.bgLight : COLORS.textPrimary,
+		border: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
 	};
 
 	return (
@@ -144,12 +146,12 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 						<TextInput
 							key={index}
 							ref={(ref) => (inputRefs.current[index] = ref)}
-							className="w-12 h-16 text-center text-2xl font-black rounded-xl"
+							className="w-12 h-16 text-center text-2xl font-black rounded-2xl"
 							style={{
 								backgroundColor: colors.inputBg,
 								color: colors.text,
-								borderWidth: digit ? 2 : 0,
-								borderColor: digit ? COLORS.brandPrimary : "transparent",
+								borderWidth: 2,
+								borderColor: digit ? COLORS.brandPrimary : colors.border,
 							}}
 							value={digit}
 							onChangeText={(value) => handleOTPChange(value, index)}
@@ -217,8 +219,8 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 						backgroundColor: isComplete && !loading
 							? COLORS.brandPrimary
 							: isDarkMode
-							? COLORS.bgDarkAlt
-							: "#E5E7EB",
+								? COLORS.bgDarkAlt
+								: "#E5E7EB",
 					}}
 				>
 					<Text

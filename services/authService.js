@@ -47,6 +47,8 @@ const AuthErrors = {
 
 /**
  * Map Supabase error to AuthError
+ * [AUTH_REFACTOR] Enhanced error mapping to catch specific Supabase/Twilio feedback
+ * ensuring user-friendly alerts instead of generic developer logs.
  */
 const handleSupabaseError = (error) => {
     console.error("Supabase Auth Error:", error);
@@ -72,32 +74,52 @@ const handleSupabaseError = (error) => {
     if (msg.includes("network")) {
         return createAuthError(AuthErrors.NETWORK_ERROR, "Network connection error");
     }
-    if (msg.includes("invalid email") || msg.includes("email address is invalid")) {
-        return createAuthError(AuthErrors.INVALID_INPUT, "Invalid email address format");
+
+    // Improved Email Validation Error Catching
+    if (msg.includes("invalid email") ||
+        msg.includes("email address is invalid") ||
+        (msg.includes("email") && msg.includes("is invalid"))) {
+        return createAuthError(AuthErrors.INVALID_INPUT, "Please enter a valid email address");
     }
-    if (msg.includes("phone") && (msg.includes("invalid") || msg.includes("format"))) {
+
+    // Improved Phone Validation Error Catching
+    if (msg.includes("phone") && (msg.includes("invalid") || msg.includes("format") || msg.includes("is invalid"))) {
         return createAuthError(AuthErrors.INVALID_INPUT, "Invalid phone number format");
     }
+
     if (msg.includes("email not confirmed")) {
         return createAuthError(AuthErrors.INVALID_TOKEN, "Please verify your email first");
     }
+
+    // Handle Provider-side Failures (e.g. Twilio Authentication error 20003)
+    if (msg.includes("error sending confirmation otp") || msg.includes("twilio") || msg.includes("provider: authenticate")) {
+        return createAuthError(AuthErrors.UNKNOWN_ERROR, "Verification service is currently unavailable. Please try again later.");
+    }
+
     if (msg.includes("sms")) {
         return createAuthError(AuthErrors.INVALID_TOKEN, "Failed to send SMS. Please check the number.");
     }
+
     if (msg.includes("otp") || msg.includes("token")) {
         if (msg.includes("expired")) {
             return createAuthError(AuthErrors.TOKEN_EXPIRED, "The code has expired. Please request a new one.");
         }
-        return createAuthError(AuthErrors.INVALID_TOKEN, "Invalid verification code.");
+        if (msg.includes("invalid")) {
+            return createAuthError(AuthErrors.INVALID_TOKEN, "Invalid verification code.");
+        }
+        return createAuthError(AuthErrors.INVALID_TOKEN, "Verification code error.");
     }
+
     if (msg.includes("rate limit") || msg.includes("too many requests")) {
-        return createAuthError(AuthErrors.UNKNOWN_ERROR, "Too many attempts. Please wait a moment.");
+        return createAuthError(AuthErrors.UNKNOWN_ERROR, "Too many attempts. Please wait a few minutes and try again.");
     }
     if (msg.includes("signup disabled")) {
         return createAuthError(AuthErrors.UNKNOWN_ERROR, "Registration is temporarily disabled");
     }
 
-    return createAuthError(AuthErrors.UNKNOWN_ERROR, error.message);
+    // Default to a cleaner unknown error presentation
+    const cleanMsg = error.message || "An unexpected error occurred during authentication";
+    return createAuthError(AuthErrors.UNKNOWN_ERROR, cleanMsg);
 };
 
 // ============================================

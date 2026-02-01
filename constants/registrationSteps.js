@@ -1,4 +1,5 @@
 export const REGISTRATION_STEPS = {
+  SMART_CONTACT: "smart_contact",
   METHOD_SELECTION: "method_selection",
   SOCIAL_SELECTION: "social_selection",
   PHONE_INPUT: "phone_input",

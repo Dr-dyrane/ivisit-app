@@ -23,7 +23,7 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
-import { useChangePassword } from "../hooks/auth/useChangePassword";
+import { useChangePassword } from "../hooks/auth";
 import { useAuth } from "../contexts/AuthContext";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 
@@ -348,8 +348,8 @@ export default function ChangePasswordScreen() {
 									isValid && !isSaving
 										? COLORS.brandPrimary
 										: isDarkMode
-										? COLORS.bgDarkAlt
-										: "#E5E7EB",
+											? COLORS.bgDarkAlt
+											: "#E5E7EB",
 								alignItems: "center",
 								justifyContent: "center",
 								flexDirection: "row",
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
 		shadowRadius: 10,
 	},
 	title: { fontSize: 19, fontWeight: "900", letterSpacing: -0.5 },
-	subtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, fontWeight:'400' },
+	subtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, fontWeight: '400' },
 	errorRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
 	errorText: { fontSize: 13, fontWeight: "500", flex: 1 },
 	inputRow: {

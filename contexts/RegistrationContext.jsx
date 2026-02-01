@@ -27,7 +27,7 @@ export function RegistrationProvider({ children }) {
 
 	// --- Current registration step
 	const [currentStep, setCurrentStep] = useState(
-		REGISTRATION_STEPS.METHOD_SELECTION
+		REGISTRATION_STEPS.SMART_CONTACT
 	);
 
 	// --- Error and loading states
@@ -58,9 +58,8 @@ export function RegistrationProvider({ children }) {
 
 			// Automatically compute fullName
 			if (updates.firstName || updates.lastName) {
-				newData.fullName = `${newData.firstName || ""} ${
-					newData.lastName || ""
-				}`.trim();
+				newData.fullName = `${newData.firstName || ""} ${newData.lastName || ""
+					}`.trim();
 			}
 
 			if (!newData.username && (newData.email || newData.phone)) {
@@ -80,10 +79,7 @@ export function RegistrationProvider({ children }) {
 
 	const nextStep = useCallback(() => {
 		const stepOrder = [
-			REGISTRATION_STEPS.METHOD_SELECTION,
-			registrationData.method === "phone"
-				? REGISTRATION_STEPS.PHONE_INPUT
-				: REGISTRATION_STEPS.EMAIL_INPUT,
+			REGISTRATION_STEPS.SMART_CONTACT,
 			REGISTRATION_STEPS.OTP_VERIFICATION,
 			REGISTRATION_STEPS.PROFILE_FORM,
 			REGISTRATION_STEPS.PASSWORD_SETUP,
@@ -93,14 +89,11 @@ export function RegistrationProvider({ children }) {
 		if (currentIndex < stepOrder.length - 1) {
 			setCurrentStep(stepOrder[currentIndex + 1]);
 		}
-	}, [currentStep, registrationData.method]);
+	}, [currentStep]);
 
 	const previousStep = useCallback(() => {
 		const stepOrder = [
-			REGISTRATION_STEPS.METHOD_SELECTION,
-			registrationData.method === "phone"
-				? REGISTRATION_STEPS.PHONE_INPUT
-				: REGISTRATION_STEPS.EMAIL_INPUT,
+			REGISTRATION_STEPS.SMART_CONTACT,
 			REGISTRATION_STEPS.OTP_VERIFICATION,
 			REGISTRATION_STEPS.PROFILE_FORM,
 			REGISTRATION_STEPS.PASSWORD_SETUP,
@@ -110,10 +103,10 @@ export function RegistrationProvider({ children }) {
 		if (currentIndex > 0) {
 			setCurrentStep(stepOrder[currentIndex - 1]);
 		}
-	}, [currentStep, registrationData.method]);
+	}, [currentStep]);
 
 	const resetRegistration = useCallback(() => {
-		setCurrentStep(REGISTRATION_STEPS.METHOD_SELECTION);
+		setCurrentStep(REGISTRATION_STEPS.SMART_CONTACT);
 		setRegistrationData({
 			method: null,
 			countryCode: null,
@@ -133,10 +126,13 @@ export function RegistrationProvider({ children }) {
 		setIsLoading(false);
 	}, []);
 
-	// --- Error handling helpers
+	// [AUTH_REFACTOR] Centralized error parsing: Strips 'status|' codes for clean UI presentation
 	const setRegistrationError = useCallback((errorMessage) => {
 		console.log("[v0] RegistrationContext: Setting error", errorMessage);
-		setError(errorMessage);
+		const cleanMessage = errorMessage?.includes("|")
+			? errorMessage.split("|")[1]
+			: errorMessage;
+		setError(cleanMessage);
 	}, []);
 
 	const clearError = useCallback(() => {
@@ -154,14 +150,11 @@ export function RegistrationProvider({ children }) {
 	}, []);
 
 	// --- Navigation state
-	const canGoBack = currentStep !== REGISTRATION_STEPS.METHOD_SELECTION;
+	const canGoBack = currentStep !== REGISTRATION_STEPS.SMART_CONTACT;
 
 	const getProgress = useCallback(() => {
 		const steps = [
-			REGISTRATION_STEPS.METHOD_SELECTION,
-			registrationData.method === "phone"
-				? REGISTRATION_STEPS.PHONE_INPUT
-				: REGISTRATION_STEPS.EMAIL_INPUT,
+			REGISTRATION_STEPS.SMART_CONTACT,
 			REGISTRATION_STEPS.OTP_VERIFICATION,
 			REGISTRATION_STEPS.PROFILE_FORM,
 			REGISTRATION_STEPS.PASSWORD_SETUP,

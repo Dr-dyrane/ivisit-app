@@ -26,13 +26,14 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useRegistration } from "../../contexts/RegistrationContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
-import useSignUp from "../../hooks/auth/useSignup";
+import { useSignUp } from "../../hooks/auth";
 import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
 import PhoneInputField from "./PhoneInputField";
 import EmailInputField from "./EmailInputField";
 import OTPInputCard from "./OTPInputCard";
 import ProfileForm from "./ProfileForm";
 import PasswordInputField from "./PasswordInputField";
+import SmartContactInput from "../auth/SmartContactInput";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -41,7 +42,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
-	const { modalHeight, getKeyboardAvoidingViewProps, getScrollViewProps } = 
+	const { modalHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
 		useAndroidKeyboardAwareModal({ defaultHeight: SCREEN_HEIGHT * 0.85 });
 
 	const [mockOtp, setMockOtp] = useState(null); // DEV: Display mock OTP for testing
@@ -55,6 +56,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		previousStep,
 		goToStep,
 		checkAndApplyPendingRegistration,
+		resetRegistration,
 		// Use context error/loading states
 		error,
 		setRegistrationError,
@@ -97,13 +99,8 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			// Check for pending verified registration (from login flow)
 			const initModal = async () => {
 				const hasPending = await checkAndApplyPendingRegistration();
-				if (!hasPending && currentStep === REGISTRATION_STEPS.METHOD_SELECTION) {
+				if (!hasPending && currentStep === REGISTRATION_STEPS.SMART_CONTACT && type) {
 					updateRegistrationData({ method: type });
-					goToStep(
-						type === "phone"
-							? REGISTRATION_STEPS.PHONE_INPUT
-							: REGISTRATION_STEPS.EMAIL_INPUT
-					);
 				}
 			};
 			initModal();
@@ -127,6 +124,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 				useNativeDriver: true,
 			}),
 		]).start(() => {
+			resetRegistration();
 			clearError();
 			onClose();
 		});
@@ -150,98 +148,62 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
 	};
 
-	const handleInputSubmit = async (value) => {
+	const handleSmartInputSubmit = async (value, detectedType) => {
 		if (!value) return;
-
-		// Validate input format before API call
-		if (type === "email" && !isValidEmail(value)) {
-			const errorMessage = "Please enter a valid email address";
-			setRegistrationError(errorMessage);
-			showToast(errorMessage, "error");
-			return;
-		}
-
-		if (type === "phone" && !isValidPhone(value)) {
-			const errorMessage = "Please enter a valid phone number";
-			setRegistrationError(errorMessage);
-			showToast(errorMessage, "error");
-			return;
-		}
 
 		startLoading();
 		clearError();
 
 		try {
 			updateRegistrationData({
-				method: type,
-				phone: type === "phone" ? value : null,
-				email: type === "email" ? value : null,
+				method: detectedType,
+				phone: detectedType === "phone" ? value : null,
+				email: detectedType === "email" ? value : null,
 			});
 
 			// Request OTP for verification
 			const otpResult = await requestRegistrationOtp(
-				type === "phone" ? { phone: value } : { email: value }
+				detectedType === "phone" ? { phone: value } : { email: value }
 			);
 
 			if (!otpResult.success) {
-				const errorMessage = otpResult.error?.includes("|")
-                    ? otpResult.error.split("|")[1]
-                    : otpResult.error;
-                
-				setRegistrationError(errorMessage);
-				showToast(errorMessage || "Failed to send code", "error");
+				setRegistrationError(otpResult.error || "Failed to send code");
+				showToast(otpResult.error || "Failed to send code", "error");
 				stopLoading();
 				return;
 			}
 
-			// DEV: Store mock OTP for display (Only if service returns it, which it doesn't for real auth)
-			if (otpResult.data?.otp) {
-				setMockOtp(otpResult.data.otp);
-			} else {
-                setMockOtp(null);
-            }
-
 			nextStep();
-
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast(
-				type === "phone"
-					? "Verification code sent to your phone"
-					: "Verification code sent to your email",
-				"success"
-			);
+			showToast("Verification code sent", "success");
 		} catch (err) {
-			console.error("AuthInputModal handleInputSubmit error:", err);
-			const errorMessage =
-				(err.message?.includes("|") ? err.message.split("|")[1] : err.message) ||
-                "Failed to process. Please try again.";
-			setRegistrationError(errorMessage);
-			showToast(errorMessage, "error");
+			console.error("AuthInputModal handleSmartInputSubmit error:", err);
+			setRegistrationError("Failed to process. Please try again.");
 		} finally {
 			stopLoading();
 		}
 	};
 
-    const handleResendOtp = async () => {
-        startLoading();
-        clearError();
-        try {
-            const contact = registrationData.phone || registrationData.email;
-            const otpResult = await requestRegistrationOtp(
-				type === "phone" ? { phone: contact } : { email: contact }
+	const handleResendOtp = async () => {
+		startLoading();
+		clearError();
+		try {
+			const contact = registrationData.phone || registrationData.email;
+			const otpResult = await requestRegistrationOtp(
+				registrationData.method === "phone" ? { phone: contact } : { email: contact }
 			);
 
-            if (!otpResult.success) {
-                showToast(otpResult.error || "Failed to resend code", "error");
-            } else {
-                 showToast("Code resent successfully", "success");
-            }
-        } catch (e) {
-             showToast("Failed to resend code", "error");
-        } finally {
-            stopLoading();
-        }
-    };
+			if (!otpResult.success) {
+				showToast(otpResult.error || "Failed to resend code", "error");
+			} else {
+				showToast("Code resent successfully", "success");
+			}
+		} catch (e) {
+			showToast("Failed to resend code", "error");
+		} finally {
+			stopLoading();
+		}
+	};
 
 	const handleOTPSubmit = async (otp) => {
 		if (!otp) return;
@@ -267,8 +229,8 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			}
 
 			// User is new (no profile yet) - continue registration flow
-            // Note: User is technically authenticated in Supabase/Storage now, 
-            // but we don't call login() yet to keep them in the modal flow.
+			// Note: User is technically authenticated in Supabase/Storage now, 
+			// but we don't call login() yet to keep them in the modal flow.
 			updateRegistrationData({ otp });
 			nextStep();
 
@@ -302,7 +264,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		const result = await completeRegistration(payload);
 
 		if (result.success) {
-            // completeRegistration already calls login() internally
+			// completeRegistration already calls login() internally
 			await syncUserData();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -332,7 +294,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		const result = await completeRegistration(payload);
 
 		if (result.success) {
-            // completeRegistration already calls login() internally
+			// completeRegistration already calls login() internally
 			await syncUserData();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -345,9 +307,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	};
 
 	/* ------------------ Step Helpers ------------------ */
-	const isInputStep =
-		currentStep === REGISTRATION_STEPS.PHONE_INPUT ||
-		currentStep === REGISTRATION_STEPS.EMAIL_INPUT;
+	const isInputStep = currentStep === REGISTRATION_STEPS.SMART_CONTACT;
 	const isOTPStep = currentStep === REGISTRATION_STEPS.OTP_VERIFICATION;
 	const isProfileStep = currentStep === REGISTRATION_STEPS.PROFILE_FORM;
 	const isPasswordStep = currentStep === REGISTRATION_STEPS.PASSWORD_SETUP;
@@ -356,7 +316,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		isInputStep ? 1 : isOTPStep ? 2 : isProfileStep ? 3 : 4;
 
 	const getHeaderTitle = () => {
-		if (isInputStep) return type === "phone" ? "Phone Number" : "Email Address";
+		if (isInputStep) return "Identity";
 		if (isOTPStep) return "Verification";
 		if (isProfileStep) return "Profile Setup";
 		if (isPasswordStep) return "Create Password";
@@ -371,7 +331,12 @@ export default function AuthInputModal({ visible, onClose, type }) {
 
 	/* ------------------ Render ------------------ */
 	return (
-		<Modal visible={visible} transparent animationType="none">
+		<Modal
+			visible={visible}
+			transparent
+			animationType="none"
+			onRequestClose={handleDismiss}
+		>
 			<View className="flex-1 justify-end">
 				<Animated.View
 					style={{ opacity: bgOpacity }}
@@ -385,7 +350,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 						transform: [{ translateY: slideAnim }],
 						backgroundColor: colors.bg,
 						height: modalHeight,
-						}}
+					}}
 					className="rounded-t-[40px] px-8 pt-4 shadow-2xl"
 				>
 					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-6" />
@@ -408,7 +373,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 										className="text-[10px] tracking-[3px] mb-2 uppercase font-black"
 										style={{ color: COLORS.brandPrimary }}
 									>
-										Step {getStepNumber()} of 4
+										Step {getStepNumber()} of 3
 									</Text>
 									<Text
 										className="text-3xl font-black tracking-tighter"
@@ -448,7 +413,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 											style={{
 												color: COLORS.error,
 												fontSize: 14,
-												fontWeight:'400',
+												fontWeight: '400',
 												flex: 1,
 											}}
 										>
@@ -459,20 +424,13 @@ export default function AuthInputModal({ visible, onClose, type }) {
 							)}
 
 							{/* Content */}
-							{isInputStep &&
-								(type === "phone" ? (
-									<PhoneInputField
-										initialValue={registrationData.phone}
-										onSubmit={handleInputSubmit}
-										loading={loading}
-									/>
-								) : (
-									<EmailInputField
-										initialValue={registrationData.email}
-										onSubmit={handleInputSubmit}
-										loading={loading}
-									/>
-								))}
+							{isInputStep && (
+								<SmartContactInput
+									onSubmit={handleSmartInputSubmit}
+									loading={loading}
+									initialValue={registrationData.phone || registrationData.email || ""}
+								/>
+							)}
 
 							{isOTPStep && (
 								<View>
@@ -512,7 +470,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 										method={registrationData.method}
 										contact={registrationData.phone || registrationData.email}
 										onVerified={handleOTPSubmit}
-                                        onResend={handleResendOtp}
+										onResend={handleResendOtp}
 										loading={loading}
 									/>
 								</View>

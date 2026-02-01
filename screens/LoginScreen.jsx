@@ -10,6 +10,7 @@ import { View, Text, Animated, Pressable, Linking } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useTheme } from "../contexts/ThemeContext";
+import { useLogin } from "../contexts/LoginContext";
 import { COLORS } from "../constants/colors";
 import LoginInputModal from "../components/login/LoginInputModal";
 import SocialAuthRow from "../components/auth/SocialAuthRow";
@@ -26,10 +27,12 @@ export default function LoginScreen() {
 	const { isDarkMode } = useTheme();
 	const { setHeaderState } = useHeaderState();
 	const { resetHeader } = useScrollAwareHeader();
+	const { resetLoginFlow } = useLogin();
 	const [modalVisible, setModalVisible] = useState(false);
 
 	useFocusEffect(
 		useCallback(() => {
+			resetLoginFlow();
 			resetHeader();
 			setHeaderState({
 				title: "Login",
@@ -76,7 +79,7 @@ export default function LoginScreen() {
 		// Navigate to signup screen with the contact type preference
 		router.push({
 			pathname: "signup",
-			params: contactType ? { preferredMethod: contactType } : {},
+			params: contactType ? { initialMethod: contactType } : {},
 		});
 	};
 

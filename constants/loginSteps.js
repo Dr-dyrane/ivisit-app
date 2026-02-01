@@ -1,6 +1,7 @@
 // constants/loginSteps.js
 
 export const LOGIN_STEPS = {
+	SMART_CONTACT: "smart_contact",
 	AUTH_METHOD: "auth_method",
 	CONTACT_TYPE: "contact_type",
 	CONTACT_INPUT: "contact_input",
@@ -23,6 +24,12 @@ export const LOGIN_AUTH_METHODS = {
 
 // Flow helper to determine next step based on current state
 export const getNextLoginStep = (currentStep, authMethod, contactType) => {
+	if (currentStep === LOGIN_STEPS.SMART_CONTACT) {
+		return authMethod === LOGIN_AUTH_METHODS.OTP
+			? LOGIN_STEPS.OTP_VERIFICATION
+			: LOGIN_STEPS.PASSWORD_INPUT;
+	}
+
 	if (currentStep === LOGIN_STEPS.AUTH_METHOD) {
 		return LOGIN_STEPS.CONTACT_TYPE;
 	}
@@ -43,7 +50,7 @@ export const getNextLoginStep = (currentStep, authMethod, contactType) => {
 // Flow helper to determine previous step
 export const getPreviousLoginStep = (currentStep) => {
 	if (currentStep === LOGIN_STEPS.CONTACT_TYPE) {
-		return LOGIN_STEPS.AUTH_METHOD;
+		return LOGIN_STEPS.SMART_CONTACT;
 	}
 
 	if (currentStep === LOGIN_STEPS.CONTACT_INPUT) {
@@ -54,7 +61,7 @@ export const getPreviousLoginStep = (currentStep) => {
 		currentStep === LOGIN_STEPS.OTP_VERIFICATION ||
 		currentStep === LOGIN_STEPS.PASSWORD_INPUT
 	) {
-		return LOGIN_STEPS.CONTACT_INPUT;
+		return LOGIN_STEPS.SMART_CONTACT;
 	}
 
 	if (currentStep === LOGIN_STEPS.SET_PASSWORD) {
@@ -68,5 +75,5 @@ export const getPreviousLoginStep = (currentStep) => {
 		return LOGIN_STEPS.PASSWORD_INPUT;
 	}
 
-	return LOGIN_STEPS.AUTH_METHOD;
+	return LOGIN_STEPS.SMART_CONTACT;
 };

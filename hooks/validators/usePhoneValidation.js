@@ -27,25 +27,29 @@ export default function usePhoneValidation(country) {
 		try {
 			// Attempt to parse as full number first (handles E.164 or national)
 			const parsed = parsePhoneNumberFromString(rawInput, country.code);
+			let formatted;
 
 			if (parsed) {
-				const nationalDigits = parsed.nationalNumber;
 				const formatter = new AsYouType(country.code);
-
-				const formatted = formatter.input(nationalDigits);
-				setFormattedNumber(formatted);
+				formatted = formatter.input(parsed.nationalNumber);
 
 				if (parsed.isValid()) {
 					setIsValid(true);
 					setE164Format(parsed.format("E.164"));
+					setFormattedNumber(parsed.formatInternational());
 					return;
 				}
+			} else {
+				const formatter = new AsYouType(country.code);
+				formatted = formatter.input(rawInput);
 			}
 
-			// Fallback: format as national digits only
-			const formatter = new AsYouType(country.code);
-			setFormattedNumber(formatter.input(rawInput));
+			// Prepend plus if user typed it and it's not already there
+			if (rawInput.startsWith("+") && !formatted.startsWith("+")) {
+				formatted = "+" + formatted;
+			}
 
+			setFormattedNumber(formatted);
 			setIsValid(false);
 			setE164Format(null);
 		} catch {

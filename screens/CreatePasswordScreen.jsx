@@ -22,7 +22,7 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
-import { useChangePassword } from "../hooks/auth/useChangePassword";
+import { useChangePassword } from "../hooks/auth";
 import { useAuth } from "../contexts/AuthContext";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import SetPasswordCard from "../components/login/SetPasswordCard";
@@ -129,17 +129,17 @@ export default function CreatePasswordScreen() {
 
 		setError(null);
 		try {
-            // For creating a password where none exists, we don't need current password
+			// For creating a password where none exists, we don't need current password
 			const result = await setPassword({ newPassword: password });
-			
-            if (result.success) {
-                 // Directly update auth context with the new user object (which includes hasPassword: true)
-                 // This avoids the race condition where fetching from Supabase immediately might return old metadata
-                 await login(result.data.user);
-                 router.back();
-            } else {
-                 throw new Error(result.error);
-            }
+
+			if (result.success) {
+				// Directly update auth context with the new user object (which includes hasPassword: true)
+				// This avoids the race condition where fetching from Supabase immediately might return old metadata
+				await login(result.data.user);
+				router.back();
+			} else {
+				throw new Error(result.error);
+			}
 		} catch (e) {
 			const msg = e?.message?.split("|")?.[1] || e?.message || "Unable to set password";
 			setError(msg);
@@ -149,12 +149,12 @@ export default function CreatePasswordScreen() {
 	if (user?.hasPassword) {
 		return (
 			<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
-				<ScrollView 
-                    contentContainerStyle={[
-                        styles.content, 
-                        { paddingTop: topPadding, paddingBottom: bottomPadding }
-                    ]}
-                >
+				<ScrollView
+					contentContainerStyle={[
+						styles.content,
+						{ paddingTop: topPadding, paddingBottom: bottomPadding }
+					]}
+				>
 					<View style={[styles.card, { backgroundColor: colors.card }]}>
 						<Text style={[styles.title, { color: colors.text }]}>
 							Password Already Set
@@ -216,11 +216,11 @@ export default function CreatePasswordScreen() {
 						</View>
 					) : null}
 
-                    <SetPasswordCard 
-                        onPasswordSet={handleSubmit}
-                        loading={isSaving}
-                        // No "switch to OTP" option needed here as they are already logged in
-                    />
+					<SetPasswordCard
+						onPasswordSet={handleSubmit}
+						loading={isSaving}
+					// No "switch to OTP" option needed here as they are already logged in
+					/>
 				</View>
 			</Animated.ScrollView>
 		</LinearGradient>
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
 		shadowRadius: 10,
 	},
 	title: { fontSize: 19, fontWeight: "900", letterSpacing: -0.5 },
-	subtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, fontWeight:'400' },
+	subtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, fontWeight: '400' },
 	errorRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
 	errorText: { fontSize: 13, fontWeight: "500", flex: 1 },
 });

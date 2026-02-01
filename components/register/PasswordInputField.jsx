@@ -16,9 +16,11 @@ export default function PasswordInputField({
 	onSubmit,
 	onSkip = null,
 	showSkipOption = false,
-	loading = false,
 	showForgotPassword = false,
 	onForgotPassword = null,
+	showOtpOption = false,
+	onOtpPress = null,
+	loading = false, // [FIX] Added to resolve ReferenceError: 'loading' doesn't exist
 }) {
 	const { isDarkMode } = useTheme();
 	const inputRef = useRef(null);
@@ -82,20 +84,26 @@ export default function PasswordInputField({
 	};
 
 	const colors = {
-		inputBg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
+		// [AUTH_POLISH] Glassmorphism-inspired backgrounds
+		inputBg: isDarkMode ? "rgba(22, 27, 34, 0.8)" : "rgba(243, 244, 246, 0.8)",
 		text: isDarkMode ? COLORS.bgLight : COLORS.textPrimary,
-		border: isFocused ? COLORS.brandPrimary : "transparent",
+		border: isFocused ? COLORS.brandPrimary : isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
 	};
 
 	return (
 		<View>
 			<Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
 				<View
-					className="flex-row items-center rounded-2xl px-5 h-[72px]"
+					className="flex-row items-center rounded-3xl px-6 h-[80px]"
 					style={{
 						backgroundColor: colors.inputBg,
-						borderWidth: 2,
+						borderWidth: 1.5,
 						borderColor: colors.border,
+						// Subtle depth
+						shadowColor: "#000",
+						shadowOffset: { width: 0, height: 4 },
+						shadowOpacity: isDarkMode ? 0.2 : 0.05,
+						shadowRadius: 12,
 					}}
 				>
 					<Ionicons
@@ -164,8 +172,8 @@ export default function PasswordInputField({
 							isValid && !loading
 								? COLORS.brandPrimary
 								: isDarkMode
-								? COLORS.bgDarkAlt
-								: "#E5E7EB",
+									? COLORS.bgDarkAlt
+									: "#E5E7EB",
 					}}
 				>
 					<Text
@@ -186,6 +194,17 @@ export default function PasswordInputField({
 						style={{ color: COLORS.brandPrimary }}
 					>
 						Forgot Password?
+					</Text>
+				</Pressable>
+			)}
+
+			{showOtpOption && onOtpPress && (
+				<Pressable onPress={onOtpPress} className="mt-2 py-3">
+					<Text
+						className="text-center text-sm font-bold"
+						style={{ color: COLORS.brandPrimary }}
+					>
+						Sign in with a login code instead
 					</Text>
 				</Pressable>
 			)}

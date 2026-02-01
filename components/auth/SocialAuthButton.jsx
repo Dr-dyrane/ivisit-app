@@ -9,7 +9,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../contexts/AuthContext";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
-import { useSocialAuth } from "../../hooks/auth/useSocialAuth";
+import { useSocialAuth } from "../../hooks/auth";
 import ComingSoonModal from "../ui/ComingSoonModal";
 
 /**
@@ -62,8 +62,8 @@ export default function SocialAuthButton({ provider }) {
 		]).start();
 
 		// [PRODUCTION-READY] 
-        // Apple Login is currently hidden via return null below until Service ID is configured.
-        // Once configured, remove the early return in the render method.
+		// Apple Login is currently hidden via return null below until Service ID is configured.
+		// Once configured, remove the early return in the render method.
 
 		try {
 			const { success, error } = await signInWithProvider(provider);
@@ -79,7 +79,7 @@ export default function SocialAuthButton({ provider }) {
 			console.error("Social Auth Error:", error);
 			// Handle different types of social auth errors
 			let errorMessage = "Failed to initiate login";
-			
+
 			if (error.message) {
 				if (error.message.includes("network") || error.message.includes("connection")) {
 					errorMessage = "Network connection error. Please check your internet.";
@@ -92,15 +92,15 @@ export default function SocialAuthButton({ provider }) {
 					errorMessage = error.message;
 				}
 			}
-			
+
 			showToast(errorMessage, "error");
 		}
 	};
 
-    // [PRODUCTION-READY] Hide Apple Login until keys are configured to prevent App Store rejection
-    if (provider === "apple") {
-        return null;
-    }
+	// [PRODUCTION-READY] Hide Apple Login until keys are configured to prevent App Store rejection
+	if (provider === "apple") {
+		return null;
+	}
 
 	return (
 		<>

@@ -24,7 +24,7 @@ import { STACK_TOP_PADDING } from "../constants/layout";
 import ProfileField from "../components/form/ProfileField";
 import { useUpdateProfile } from "../hooks/user/useUpdateProfile";
 import { useAuth } from "../contexts/AuthContext";
-import { useProfileCompletion } from "../hooks/auth/useProfileCompletion";
+import { useProfileCompletion } from "../hooks/auth";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 
 export default function CompleteProfileScreen() {
@@ -38,12 +38,12 @@ export default function CompleteProfileScreen() {
 		useScrollAwareHeader();
 	const { user, syncUserData, logout } = useAuth();
 	const { updateProfile, isLoading: isSaving } = useUpdateProfile();
-    const { getDraft, saveDraft, clearDraft } = useProfileCompletion();
+	const { getDraft, saveDraft, clearDraft } = useProfileCompletion();
 
-    // Ensure we have the latest verification status
-    useEffect(() => {
-        syncUserData();
-    }, []);
+	// Ensure we have the latest verification status
+	useEffect(() => {
+		syncUserData();
+	}, []);
 
 	const signOutButton = useCallback(
 		() => (
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
 		shadowRadius: 10,
 	},
 	title: { fontSize: 19, fontWeight: "900", letterSpacing: -0.5 },
-	subtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, fontWeight:'400' },
+	subtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, fontWeight: '400' },
 	sectionTitle: {
 		fontSize: 10,
 		fontWeight: "900",

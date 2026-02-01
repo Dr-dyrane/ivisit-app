@@ -29,7 +29,7 @@ import {
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
 import { COLORS } from "../../constants/colors";
-import useLoginHook from "../../hooks/auth/useLogin";
+import { useLogin as useLoginHook } from "../../hooks/auth";
 import { useAuth } from "../../contexts/AuthContext";
 import { database, StorageKeys } from "../../database";
 import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
@@ -42,6 +42,7 @@ import PasswordInputField from "../register/PasswordInputField";
 import SetPasswordCard from "./SetPasswordCard";
 import ForgotPasswordCard from "./ForgotPasswordCard";
 import ResetPasswordCard from "./ResetPasswordCard";
+import SmartContactInput from "../auth/SmartContactInput";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -135,6 +136,8 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 	const handleSwitchToSignUp = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+		const savedContactType = loginData.contactType;
+
 		// Close this modal and open sign up
 		Animated.parallel([
 			Animated.timing(slideAnim, {
@@ -155,7 +158,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 
 			// Call the onSwitchToSignUp callback if provided
 			if (onSwitchToSignUp) {
-				onSwitchToSignUp(loginData.contactType);
+				onSwitchToSignUp(savedContactType);
 			}
 		});
 	};
@@ -188,7 +191,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		// Request OTP for the already-entered contact
 		const contact = loginData.contact;
 		if (!contact) {
-			goToStep(LOGIN_STEPS.CONTACT_INPUT);
+			goToStep(LOGIN_STEPS.SMART_CONTACT);
 			return;
 		}
 
@@ -247,23 +250,8 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
 	};
 
-	const handleContactSubmit = async (value) => {
+	const handleSmartContactSubmit = async (value, type) => {
 		if (!value) return;
-
-		// Validate input format before API call
-		if (loginData.contactType === "email" && !isValidEmail(value)) {
-			const errorMessage = "Please enter a valid email address";
-			setLoginError(errorMessage);
-			showToast(errorMessage, "error");
-			return;
-		}
-
-		if (loginData.contactType === "phone" && !isValidPhone(value)) {
-			const errorMessage = "Please enter a valid phone number";
-			setLoginError(errorMessage);
-			showToast(errorMessage, "error");
-			return;
-		}
 
 		startLoading();
 		clearError();
@@ -271,55 +259,21 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		try {
 			updateLoginData({
 				contact: value,
-				[loginData.contactType === "email" ? "email" : "phone"]: value,
+				contactType: type,
+				[type === "email" ? "email" : "phone"]: value,
+				authMethod: LOGIN_AUTH_METHODS.PASSWORD, // Default for smart flow
 			});
 
-			if (loginData.authMethod === LOGIN_AUTH_METHODS.PASSWORD) {
-				// SKIP unreliable pre-check (Supabase doesn't allow public user existence checks)
-				// We proceed directly to password entry. The login attempt will validate existence.
-
-				// Clear any previous user info since we are skipping the check
-				setUserInfo(null);
-
-				// Proceed to password step
-				nextStep();
-				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			} else {
-				// OTP flow - request OTP
-				const otpResult = await requestOtp(
-					loginData.contactType === "email"
-						? { email: value }
-						: { phone: value }
-				);
-
-				if (!otpResult.success) {
-					setLoginError(otpResult.error || "Unable to send verification code");
-					showToast(otpResult.error || "Failed to send code", "error");
-					stopLoading();
-					return;
-				}
-
-				// DEV: Store mock OTP for display
-				if (otpResult.data?.otp) {
-					setMockOtp(otpResult.data.otp);
-				} else {
-					setMockOtp(null);
-				}
-
-				nextStep();
-				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-				showToast(
-					`Verification code sent to your ${loginData.contactType}`,
-					"success"
-				);
-			}
+			// For login, we proceed to password directly. 
+			// Passing overrides ensures nextStep uses the latest values immediately.
+			nextStep({
+				authMethod: LOGIN_AUTH_METHODS.PASSWORD,
+				contactType: type
+			});
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 		} catch (err) {
-			console.error("LoginInputModal handleContactSubmit error:", err);
-			const errorMessage =
-				(err.message?.includes("|") ? err.message.split("|")[1] : err.message) ||
-				"Unable to proceed. Please try again.";
-			setLoginError(errorMessage);
-			showToast(errorMessage, "error");
+			console.error("LoginInputModal handleSmartContactSubmit error:", err);
+			setLoginError("Unable to proceed. Please try again.");
 		} finally {
 			stopLoading();
 		}
@@ -490,20 +444,21 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		goToStep(LOGIN_STEPS.PASSWORD_INPUT);
 	};
 
+	const getStepNumber = () => {
+		if (currentStep === LOGIN_STEPS.SMART_CONTACT) return 1;
+		return 2;
+	};
+
 	const getHeaderTitle = () => {
-		if (currentStep === LOGIN_STEPS.AUTH_METHOD) return "Sign In";
-		if (currentStep === LOGIN_STEPS.CONTACT_TYPE) return "Contact Method";
-		if (currentStep === LOGIN_STEPS.CONTACT_INPUT) {
-			return loginData.contactType === "email"
-				? "Email Address"
-				: "Phone Number";
-		}
-		if (currentStep === LOGIN_STEPS.OTP_VERIFICATION) return "Verify Code";
-		if (currentStep === LOGIN_STEPS.PASSWORD_INPUT) return "Enter Password";
-		if (currentStep === LOGIN_STEPS.SET_PASSWORD) return "Set Password";
-		if (currentStep === LOGIN_STEPS.FORGOT_PASSWORD) return "Reset Password";
-		if (currentStep === LOGIN_STEPS.RESET_PASSWORD)
-			return "Create New Password";
+		if (currentStep === LOGIN_STEPS.SMART_CONTACT) return "Identity";
+		if (currentStep === LOGIN_STEPS.AUTH_METHOD) return "Identity";
+		if (currentStep === LOGIN_STEPS.CONTACT_TYPE) return "Identity";
+		if (currentStep === LOGIN_STEPS.CONTACT_INPUT) return "Identity";
+		if (currentStep === LOGIN_STEPS.OTP_VERIFICATION) return "Verification";
+		if (currentStep === LOGIN_STEPS.PASSWORD_INPUT) return "Authorization";
+		if (currentStep === LOGIN_STEPS.SET_PASSWORD) return "Secure Account";
+		if (currentStep === LOGIN_STEPS.FORGOT_PASSWORD) return "Recovery";
+		if (currentStep === LOGIN_STEPS.RESET_PASSWORD) return "Reset Password";
 		return "Sign In";
 	};
 
@@ -514,7 +469,12 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 	};
 
 	return (
-		<Modal visible={visible} transparent animationType="none">
+		<Modal
+			visible={visible}
+			transparent
+			animationType="none"
+			onRequestClose={handleDismiss}
+		>
 			<View className="flex-1 justify-end">
 				<Animated.View
 					style={{ opacity: bgOpacity }}
@@ -537,7 +497,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 						<ScrollView {...getScrollViewProps()}>
 							{/* Header */}
 							<View className="flex-row items-start mb-8">
-								{currentStep !== LOGIN_STEPS.AUTH_METHOD && (
+								{currentStep !== LOGIN_STEPS.AUTH_METHOD && currentStep !== LOGIN_STEPS.SMART_CONTACT && (
 									<Pressable
 										onPress={handleGoBack}
 										className="p-3 bg-gray-500/5 rounded-2xl mr-4"
@@ -547,30 +507,15 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 								)}
 
 								<View className="flex-1">
-									{currentStep !== LOGIN_STEPS.AUTH_METHOD &&
-										currentStep !== LOGIN_STEPS.CONTACT_TYPE &&
-										currentStep !== LOGIN_STEPS.CONTACT_INPUT &&
-										currentStep !== LOGIN_STEPS.FORGOT_PASSWORD && (
-											<Text
-												className="text-[10px] mb-2 uppercase"
-												style={{
-													color: COLORS.brandPrimary,
-													fontWeight: "800",
-													letterSpacing: 1.5
-												}}
-											>
-												{loginData.authMethod === LOGIN_AUTH_METHODS.OTP
-													? "CODE VERIFICATION"
-													: "PASSWORD ACCESS"}
-											</Text>
-										)}
 									<Text
-										className="text-3xl"
-										style={{
-											color: colors.text,
-											fontWeight: "900",
-											letterSpacing: -1.0
-										}}
+										className="text-[10px] tracking-[3px] mb-2 uppercase font-black"
+										style={{ color: COLORS.brandPrimary }}
+									>
+										Step {getStepNumber()} of 2
+									</Text>
+									<Text
+										className="text-3xl font-black tracking-tighter"
+										style={{ color: colors.text }}
 									>
 										{getHeaderTitle()}
 									</Text>
@@ -658,6 +603,14 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 							)}
 
 							{/* Content */}
+							{currentStep === LOGIN_STEPS.SMART_CONTACT && (
+								<SmartContactInput
+									onSubmit={handleSmartContactSubmit}
+									loading={loading}
+									initialValue={loginData.contact || ""}
+								/>
+							)}
+
 							{currentStep === LOGIN_STEPS.AUTH_METHOD && (
 								<LoginAuthMethodCard
 									onSelect={handleAuthMethodSelect}
@@ -741,6 +694,8 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 									loading={loading}
 									showForgotPassword
 									onForgotPassword={() => goToStep(LOGIN_STEPS.FORGOT_PASSWORD)}
+									showOtpOption={true}
+									onOtpPress={handleSwitchToOtpLogin}
 								/>
 							)}
 

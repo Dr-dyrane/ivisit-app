@@ -45,8 +45,10 @@ export default function ProfileForm({ onComplete }) {
 	const shakeAnim = useRef(new Animated.Value(0)).current;
 
 	const colors = {
-		inputBg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
+		// [AUTH_POLISH] Glassmorphism-inspired backgrounds
+		inputBg: isDarkMode ? "rgba(22, 27, 34, 0.8)" : "rgba(243, 244, 246, 0.8)",
 		text: isDarkMode ? COLORS.bgLight : COLORS.textPrimary,
+		border: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
 	};
 
 	/**
@@ -226,8 +228,17 @@ export default function ProfileForm({ onComplete }) {
 				}}
 			>
 				<View
-					className="rounded-2xl px-5 h-[72px] mb-4 flex-row items-center"
-					style={{ backgroundColor: colors.inputBg }}
+					className="rounded-3xl px-6 h-[80px] mb-4 flex-row items-center"
+					style={{
+						backgroundColor: colors.inputBg,
+						borderWidth: 1.5,
+						borderColor: currentField === "firstName" ? COLORS.brandPrimary : colors.border,
+						// Subtle depth
+						shadowColor: "#000",
+						shadowOffset: { width: 0, height: 4 },
+						shadowOpacity: isDarkMode ? 0.2 : 0.05,
+						shadowRadius: 12,
+					}}
 				>
 					<Ionicons
 						name="person-outline"
@@ -246,6 +257,7 @@ export default function ProfileForm({ onComplete }) {
 						returnKeyType="next"
 						className="flex-1 text-xl font-bold"
 						style={{ color: colors.text }}
+						autoFocus
 					/>
 				</View>
 			</Animated.View>
@@ -259,8 +271,17 @@ export default function ProfileForm({ onComplete }) {
 				}}
 			>
 				<View
-					className="rounded-2xl px-5 h-[72px] mb-6 flex-row items-center"
-					style={{ backgroundColor: colors.inputBg }}
+					className="rounded-3xl px-6 h-[80px] mb-6 flex-row items-center"
+					style={{
+						backgroundColor: colors.inputBg,
+						borderWidth: 1.5,
+						borderColor: currentField === "lastName" ? COLORS.brandPrimary : colors.border,
+						// Subtle depth
+						shadowColor: "#000",
+						shadowOffset: { width: 0, height: 4 },
+						shadowOpacity: isDarkMode ? 0.2 : 0.05,
+						shadowRadius: 12,
+					}}
 				>
 					<Ionicons
 						name="person-outline"
@@ -270,7 +291,7 @@ export default function ProfileForm({ onComplete }) {
 					/>
 					<TextInput
 						placeholder="Last Name"
-						placeholderTextColor="#666"
+						placeholderTextColor={COLORS.textMuted}
 						value={lastName}
 						onChangeText={setLastName}
 						onFocus={() => setCurrentField("lastName")}
@@ -296,8 +317,8 @@ export default function ProfileForm({ onComplete }) {
 						backgroundColor: isValid
 							? COLORS.brandPrimary
 							: isDarkMode
-							? COLORS.bgDarkAlt
-							: "#E5E7EB",
+								? COLORS.bgDarkAlt
+								: "#E5E7EB",
 						opacity: loading ? 0.7 : 1,
 					}}
 				>

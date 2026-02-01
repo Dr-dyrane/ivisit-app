@@ -20,7 +20,7 @@ import { authService } from "../../services/authService";
  * @param {Function} options.setError - Called on error
  * @param {Function} options.clearError - Called to clear errors
  */
-const useSignUp = (options = {}) => {
+export const useSignUp = (options = {}) => {
 	const { login: authLogin } = useContext(AuthContext);
 
 	// Internal loading state as fallback
@@ -29,8 +29,8 @@ const useSignUp = (options = {}) => {
 	// Use provided functions or no-ops
 	const startLoading = options.startLoading || (() => setInternalLoading(true));
 	const stopLoading = options.stopLoading || (() => setInternalLoading(false));
-	const setRegistrationError = options.setError || (() => {});
-	const clearError = options.clearError || (() => {});
+	const setRegistrationError = options.setError || (() => { });
+	const clearError = options.clearError || (() => { });
 
 	/**
 	 * Register a new user
@@ -200,10 +200,10 @@ const useSignUp = (options = {}) => {
 				};
 
 				const updateResult = await authService.updateUser(profileData);
-                // authService.updateUser throws on error, so we can assume success if we reach here.
-                // We check result.data just in case the service signature changes.
-				if (!updateResult?.data) { 
-                    console.warn("Profile update returned no data");
+				// authService.updateUser throws on error, so we can assume success if we reach here.
+				// We check result.data just in case the service signature changes.
+				if (!updateResult?.data) {
+					console.warn("Profile update returned no data");
 				}
 
 				// 2. Set Password if provided
@@ -254,7 +254,7 @@ const useSignUp = (options = {}) => {
 	return {
 		// New API
 		signUpUser,
-        completeRegistration,
+		completeRegistration,
 		requestRegistrationOtp,
 		verifyRegistrationOtp,
 		socialSignUp,
@@ -267,4 +267,4 @@ const useSignUp = (options = {}) => {
 	};
 };
 
-export default useSignUp;
+

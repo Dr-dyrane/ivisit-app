@@ -8,7 +8,7 @@
 import { useState, useCallback } from "react";
 import { authService } from "../../services/authService";
 
-const useResetPassword = () => {
+export const useResetPassword = () => {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(false);
@@ -38,7 +38,7 @@ const useResetPassword = () => {
 		} catch (err) {
 			const errorMessage =
 				(err.message?.includes("|") ? err.message.split("|")[1] : err.message) ||
-                "Failed to reset password";
+				"Failed to reset password";
 			setLoading(false);
 			setError(errorMessage);
 			return { success: false, error: errorMessage };
@@ -57,4 +57,4 @@ const useResetPassword = () => {
 	return { resetPassword, loading, error, success, reset };
 };
 
-export default useResetPassword;
+

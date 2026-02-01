@@ -7,13 +7,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { View, Text, Animated, Pressable, Linking } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTheme } from "../contexts/ThemeContext";
 import { useRegistration } from "../contexts/RegistrationContext";
 import { COLORS } from "../constants/colors";
-import SignUpMethodCard from "../components/register/SignUpMethodCard";
 import AuthInputModal from "../components/register/AuthInputModal";
 import SocialAuthRow from "../components/auth/SocialAuthRow";
+import SlideButton from "../components/ui/SlideButton";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useHeaderState } from "../contexts/HeaderStateContext";
@@ -23,13 +23,34 @@ import SwitchAuthButton from "../components/navigation/SwitchAuthButton";
 
 export default function SignupScreen() {
 	const router = useRouter();
+	const params = useLocalSearchParams();
 	const { isDarkMode } = useTheme();
 	const { setHeaderState } = useHeaderState();
 	const { resetHeader } = useScrollAwareHeader();
-	const { checkAndApplyPendingRegistration } = useRegistration();
+	const { checkAndApplyPendingRegistration, resetRegistration, updateRegistrationData } = useRegistration();
+
+	const [modalVisible, setModalVisible] = useState(false);
+	const [authType, setAuthType] = useState(null);
 
 	useFocusEffect(
 		useCallback(() => {
+			const init = async () => {
+				const hasPending = await checkAndApplyPendingRegistration();
+				if (!hasPending) {
+					resetRegistration();
+
+					// Handle initial method hint from login screen (both old and new param names)
+					const methodHint = params.initialMethod || params.preferredMethod;
+					if (methodHint) {
+						updateRegistrationData({ method: methodHint });
+						setModalVisible(true);
+					}
+				} else {
+					// Pending found, auto-open
+					setModalVisible(true);
+				}
+			};
+			init();
 			resetHeader();
 			setHeaderState({
 				title: "Sign Up",
@@ -40,11 +61,8 @@ export default function SignupScreen() {
 				rightComponent: <SwitchAuthButton target="login" />,
 				hidden: false,
 			});
-		}, [resetHeader, setHeaderState])
+		}, [resetHeader, setHeaderState, params.initialMethod])
 	);
-
-	const [modalVisible, setModalVisible] = useState(false);
-	const [authType, setAuthType] = useState(null);
 
 	const methodAnim = useRef(new Animated.Value(30)).current;
 	const socialAnim = useRef(new Animated.Value(30)).current;
@@ -57,16 +75,6 @@ export default function SignupScreen() {
 	};
 
 	useEffect(() => {
-		// Check for pending verified registration (from login flow)
-		const checkPending = async () => {
-			const hasPending = await checkAndApplyPendingRegistration();
-			if (hasPending) {
-				// Auto-open modal if user came from login with verified OTP
-				setModalVisible(true);
-			}
-		};
-		checkPending();
-
 		Animated.stagger(150, [
 			Animated.parallel([
 				Animated.spring(methodAnim, {
@@ -88,9 +96,9 @@ export default function SignupScreen() {
 		]).start();
 	}, []);
 
-	const openAuthModal = (type) => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		setAuthType(type);
+	const openAuthModal = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		setAuthType(null); // Let the smart input handle it
 		setModalVisible(true);
 	};
 
@@ -105,7 +113,37 @@ export default function SignupScreen() {
 				style={{ opacity, transform: [{ translateY: methodAnim }] }}
 				className="flex-1 justify-center px-8 pt-20"
 			>
-				<SignUpMethodCard onSelect={openAuthModal} />
+				<Text
+					style={{
+						fontSize: 44,
+						fontWeight: "900",
+						lineHeight: 48,
+						marginBottom: 12,
+						color: colors.text,
+						letterSpacing: -1.5,
+					}}
+				>
+					Ready for{"\n"}
+					<Text style={{ color: COLORS.brandPrimary }}>Better Care?</Text>
+				</Text>
+
+				<Text
+					style={{
+						fontSize: 16,
+						marginBottom: 48,
+						color: colors.subtitle,
+						lineHeight: 24,
+					}}
+				>
+					Create your account in seconds and unlock 24/7 medical access.
+				</Text>
+
+				<SlideButton
+					onPress={openAuthModal}
+					icon={(color) => <Ionicons name="person-add" size={24} color={color} />}
+				>
+					START REGISTRATION
+				</SlideButton>
 
 				<View className="flex-row items-center my-10">
 					<View className="flex-1 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />

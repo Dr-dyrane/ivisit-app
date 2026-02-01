@@ -32,7 +32,7 @@ const isValidPassword = (password) => {
  * @param {Function} options.setError - Called on error
  * @param {Function} options.clearError - Called to clear errors
  */
-const useLogin = (options = {}) => {
+export const useLogin = (options = {}) => {
 	const { login: authLogin } = useContext(AuthContext);
 
 	// Internal loading state as fallback
@@ -41,8 +41,8 @@ const useLogin = (options = {}) => {
 	// Use provided functions or no-ops
 	const startLoading = options.startLoading || (() => setInternalLoading(true));
 	const stopLoading = options.stopLoading || (() => setInternalLoading(false));
-	const setLoginError = options.setError || (() => {});
-	const clearError = options.clearError || (() => {});
+	const setLoginError = options.setError || (() => { });
+	const clearError = options.clearError || (() => { });
 
 	/**
 	 * Login with password
@@ -295,4 +295,4 @@ const useLogin = (options = {}) => {
 	};
 };
 
-export default useLogin;
+

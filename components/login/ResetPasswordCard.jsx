@@ -11,7 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
-import { useResetPassword } from "../../hooks/auth/useResetPassword";
+import { useResetPassword } from "../../hooks/auth";
 import { useToast } from "../../contexts/ToastContext";
 
 export default function ResetPasswordCard({
@@ -156,7 +156,7 @@ export default function ResetPasswordCard({
 							style={{
 								color: COLORS.error,
 								fontSize: 13,
-								fontWeight:'400',
+								fontWeight: '400',
 								flex: 1,
 							}}
 						>
@@ -271,8 +271,8 @@ export default function ResetPasswordCard({
 							isValid && !loading
 								? COLORS.brandPrimary
 								: isDarkMode
-								? COLORS.bgDarkAlt
-								: "#E5E7EB",
+									? COLORS.bgDarkAlt
+									: "#E5E7EB",
 					}}
 				>
 					<Text

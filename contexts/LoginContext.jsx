@@ -17,7 +17,7 @@ import {
 const LoginContext = createContext();
 
 const initialLoginData = {
-	authMethod: null, // "otp" | "password"
+	authMethod: LOGIN_AUTH_METHODS.PASSWORD, // Default to password
 	contactType: null, // "email" | "phone"
 	contact: null, // email or phone value
 	email: null,
@@ -27,7 +27,7 @@ const initialLoginData = {
 };
 
 export function LoginProvider({ children }) {
-	const [currentStep, setCurrentStep] = useState(LOGIN_STEPS.AUTH_METHOD);
+	const [currentStep, setCurrentStep] = useState(LOGIN_STEPS.SMART_CONTACT);
 	const [loginData, setLoginData] = useState(initialLoginData);
 	const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -46,7 +46,7 @@ export function LoginProvider({ children }) {
 		setIsTransitioning(false);
 	}, []);
 
-	const nextStep = useCallback(() => {
+	const nextStep = useCallback((overrides = {}) => {
 		if (isTransitioning) {
 			console.log("[v0] LoginContext: Already transitioning, ignoring");
 			return;
@@ -55,8 +55,8 @@ export function LoginProvider({ children }) {
 		setIsTransitioning(true);
 		const next = getNextLoginStep(
 			currentStep,
-			loginData.authMethod,
-			loginData.contactType
+			overrides.authMethod || loginData.authMethod,
+			overrides.contactType || loginData.contactType
 		);
 		console.log("[v0] LoginContext: Moving from", currentStep, "to", next);
 
@@ -81,17 +81,20 @@ export function LoginProvider({ children }) {
 
 	const resetLoginFlow = useCallback(() => {
 		console.log("[v0] LoginContext: Resetting login flow");
-		setCurrentStep(LOGIN_STEPS.AUTH_METHOD);
+		setCurrentStep(LOGIN_STEPS.SMART_CONTACT);
 		setLoginData(initialLoginData);
 		setIsTransitioning(false);
 		setError(null);
 		setIsLoading(false);
 	}, []);
 
-	// Error handling helpers
+	// [AUTH_REFACTOR] Centralized error parsing: Strips 'status|' codes for clean UI presentation
 	const setLoginError = useCallback((errorMessage) => {
 		console.log("[v0] LoginContext: Setting error", errorMessage);
-		setError(errorMessage);
+		const cleanMessage = errorMessage?.includes("|")
+			? errorMessage.split("|")[1]
+			: errorMessage;
+		setError(cleanMessage);
 	}, []);
 
 	const clearError = useCallback(() => {
