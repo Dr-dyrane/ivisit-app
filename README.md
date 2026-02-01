@@ -256,10 +256,29 @@ git push origin --delete fix/login-too-many-steps
 
 ### **Versioning Policy**
 
-We use **Semantic Versioning (SemVer)**: `MAJOR.MINOR.PATCH.BUILD`
-- Increment **MINOR** for features.
-- Increment **PATCH** for bug fixes.
-- **BUILD** is managed automatically by EAS for tracking individual iterations.
+We use **Semantic Versioning (SemVer)**: `MAJOR.MINOR.PATCH`
+
+#### **Version Code Formula:**
+```
+Version Code = MAJOR * 10000 + MINOR * 100 + PATCH
+```
+
+**Examples:**
+- `1.0.4` → `1*10000 + 0*100 + 4` → `10004`
+- `1.0.5` → `1*10000 + 0*100 + 5` → `10005`
+- `1.1.0` → `1*10000 + 1*100 + 0` → `10100`
+- `2.0.0` → `2*10000 + 0*100 + 0` → `20000`
+
+#### **When to Update:**
+- **PATCH version** (bug fixes): Increment version code by 1
+- **MINOR version** (features): Increment version code by 100
+- **MAJOR version** (breaking): Increment version code by 10000
+
+#### **Auto-Increment Profiles:**
+- `staging`, `preview`, `development` profiles auto-increment version codes
+- `production` profile uses manual version control
+
+**Current**: Version `1.0.4` → Version Code `10004`
 
 ## License
 

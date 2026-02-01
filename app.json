@@ -34,7 +34,7 @@
       "package": "com.dyrane.ivisit",
       "newArchEnabled": true,
       "userInterfaceStyle": "dark",
-      "versionCode": 7,
+      "versionCode": 10004,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
