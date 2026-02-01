@@ -277,8 +277,9 @@ Version Code = MAJOR * 10000 + MINOR * 100 + PATCH
 #### **Auto-Increment Profiles:**
 - `staging`, `preview`, `development` profiles auto-increment version codes
 - `production` profile uses manual version control
+- **Note**: EAS manages version codes remotely when `appVersionSource: "remote"`
 
-**Current**: Version `1.0.4` → Version Code `10004`
+**Current**: Version `1.0.4` → EAS-managed version code
 
 ## License
 
