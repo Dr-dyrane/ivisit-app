@@ -25,19 +25,27 @@
         "buildType": "app-bundle"
       }
     },
-    "preview2": {
-      "autoIncrement": true,
-      "distribution": "store",
-      "channel": "preview2",
+    "production": {
+      "channel": "production",
       "android": {
         "buildType": "app-bundle"
       }
     }
   },
   "submit": {
+    "development": {
+      "android": {
+        "track": "internal"
+      }
+    },
     "staging": {
       "android": {
         "track": "closed"
+      }
+    },
+    "production": {
+      "android": {
+        "track": "production"
       }
     }
   }

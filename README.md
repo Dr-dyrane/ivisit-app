@@ -101,9 +101,10 @@ We use EAS Channels to map branches to specific build environments:
 
 | Environment | EAS Profile | EAS Channel | Branch | Update Policy | Target Track |
 |-------------|-------------|-------------|--------|---------------|--------------|
-| **Closed Testing** | `staging` | `staging` | `develop` | Auto-increment | Closed Testing |
-| **Quick Testing** | `preview`/`preview2` | `preview`/`preview2` | Any | Auto-increment | Closed Testing |
-| **Development** | `development` | `dev` | Any `feat/*` | Ad-hoc builds for testing | Internal |
+| **Development** | `staging` | `staging` | `develop` | Auto-increment | Closed Testing |
+| **Production** | `production` | `production` | `main` | Manual version control | Production |
+| **Feature Dev** | `development` | `dev` | `feat/*` | Ad-hoc builds for testing | Internal |
+| **Quick Testing** | `preview` | `preview` | Any | Auto-increment | Closed Testing |
 
 ### **Release Workflows**
 
@@ -114,11 +115,21 @@ eas build --platform android --profile staging
 eas submit --platform android --profile staging
 ```
 
-#### **Quick Testing (Any Branch)**
+#### **Production Release (Manual Version)**
 ```bash
-# For rapid testing - auto-increments version code
-eas build --platform android --profile preview
-eas submit --platform android --profile preview
+# On main branch - manual version control
+# Step 1: Update version in app.json (1.0.4 → 1.0.5)
+# Step 2: Build production AAB
+eas build --platform android --profile production
+# Step 3: Submit to production track
+eas submit --platform android --profile production
+```
+
+#### **Feature Development (Internal Testing)**
+```bash
+# On feature branches - internal testing for your Google account only
+eas build --platform android --profile development
+eas submit --platform android --profile development
 ```
 
 #### **Quick OTA Updates (No New Build)**
