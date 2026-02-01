@@ -27,6 +27,7 @@ export default function SmartContactInput({
     const [rawText, setRawText] = useState(initialValue);
     const [contactType, setContactType] = useState(null); // 'email' | 'phone'
     const [pickerVisible, setPickerVisible] = useState(false);
+    const [isFocused, setIsFocused] = useState(false); // [ANDROID_FIX] Track focus state
 
     const {
         country,
@@ -137,7 +138,8 @@ export default function SmartContactInput({
         // [AUTH_POLISH] Glassmorphism-inspired backgrounds
         inputBg: isDarkMode ? "rgba(22, 27, 34, 0.8)" : "rgba(243, 244, 246, 0.8)",
         text: isDarkMode ? "#FFFFFF" : "#0F172A",
-        border: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
+        // [ANDROID_FIX] Dynamic border based on focus state
+        border: isFocused ? COLORS.brandPrimary : isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
         label: isDarkMode ? "#94A3B8" : "#64748B",
     };
 
@@ -156,7 +158,7 @@ export default function SmartContactInput({
                     className="flex-row items-center rounded-3xl px-6 h-[80px]"
                     style={{
                         backgroundColor: colors.inputBg,
-                        borderWidth: 1,
+                        borderWidth: 1.5,
                         borderColor: colors.border,
                         // Subtle depth
                         shadowColor: "#000",
@@ -213,6 +215,11 @@ export default function SmartContactInput({
                         autoCorrect={false}
                         selectionColor={COLORS.brandPrimary}
                         onSubmitEditing={handleContinue}
+                        // [ANDROID_FIX] Proper keyboard handling for Android
+                        returnKeyType="done"
+                        blurOnSubmit={false}
+                        onFocus={() => setIsFocused(true)}
+                        onBlur={() => setIsFocused(false)}
                     />
 
                     {rawText.length > 0 && (
