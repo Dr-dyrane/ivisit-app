@@ -99,12 +99,12 @@ To ensure stability while maintaining velocity, iVisit follows a **Gitflow-lite*
 
 We use EAS Channels to map branches to specific build environments:
 
-| Environment | EAS Profile | EAS Channel | Branch | Update Policy | Target Track |
-|-------------|-------------|-------------|--------|---------------|--------------|
-| **Development** | `staging` | `staging` | `develop` | Auto-increment | Closed Testing |
-| **Production** | `production` | `production` | `main` | Manual version control | Production |
-| **Feature Dev** | `development` | `dev` | `feat/*` | Ad-hoc builds for testing | Internal |
-| **Quick Testing** | `preview` | `preview` | Any | Auto-increment | Closed Testing |
+| Environment | EAS Profile | EAS Channel | Branch | Update Policy | Build Type | Target |
+|-------------|-------------|-------------|--------|---------------|------------|--------|
+| **Development** | `staging` | `staging` | `develop` | Auto-increment | App Bundle | Closed Testing |
+| **Production** | `production` | `production` | `main` | Manual version control | App Bundle | Production |
+| **Feature Dev** | `development` | `dev` | `feat/*` | Ad-hoc builds for testing | Development Client | Internal |
+| **Quick Testing** | `preview` | `preview` | Any | Auto-increment | **APK** | Direct Install |
 
 ### **Release Workflows**
 
@@ -174,14 +174,17 @@ git add -A
 git commit -m "Fix: Simplify login flow - remove redundant steps"
 ```
 
-#### Step 3: Build APK for Device Testing (Optional)
+#### Step 3: Build APK for Device Testing (Recommended)
 
 ```bash
-# Build APK using preview profile (uses staging channel)
+# Build APK using preview profile (generates direct install file)
 npx eas build --profile preview --platform android
 ```
 
-Download the APK from Expo dashboard and install on your device.
+Download the APK from Expo dashboard and install directly on your device:
+- **No Google Play Store required**
+- **Perfect for Android map testing**
+- **Direct USB installation or file transfer**
 
 #### Step 4: Push & Create PR
 
@@ -249,10 +252,10 @@ git push origin --delete fix/login-too-many-steps
 |-------|-------------|-------------|---------|
 | Start fix | `git checkout -b fix/xxx` from `develop` | - | Create feature branch |
 | Local dev | - | `npx expo start` | Development server |
-| Quick test | - | `eas build --profile preview -p android && eas submit --profile preview -p android` | Auto-increment testing |
-| Official release | - | `eas build --profile closed-testing -p android && eas submit --profile closed-testing -p android` | Manual version release |
+| **Quick APK test** | - | `eas build --profile preview -p android` | **Direct APK install** |
+| Official release | - | `eas build --profile production -p android && eas submit --profile production -p android` | Manual version release |
 | Merge to develop | `git merge fix/xxx` to `develop` | `eas update --branch staging` | Integration testing |
-| Production prep | Update app.json version | `eas build --profile closed-testing -p android` | Production build |
+| Production prep | Update app.json version | `eas build --profile production -p android` | Production build |
 
 ### **Versioning Policy**
 
