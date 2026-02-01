@@ -32,12 +32,6 @@
       "android": {
         "buildType": "app-bundle"
       }
-    },
-    "closed-testing": {
-      "channel": "closed-testing",
-      "android": {
-        "buildType": "app-bundle"
-      }
     }
   },
   "submit": {

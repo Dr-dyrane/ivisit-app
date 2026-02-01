@@ -102,7 +102,7 @@ We use EAS Channels to map branches to specific build environments:
 | Environment | EAS Profile | EAS Channel | Branch | Update Policy | Target Track |
 |-------------|-------------|-------------|--------|---------------|--------------|
 | **Closed Testing** | `staging` | `staging` | `develop` | Auto-increment | Closed Testing |
-| **Manual Release** | `closed-testing` | `closed-testing` | Any | Manual version control | Closed Testing |
+| **Quick Testing** | `preview`/`preview2` | `preview`/`preview2` | Any | Auto-increment | Closed Testing |
 | **Development** | `development` | `dev` | Any `feat/*` | Ad-hoc builds for testing | Internal |
 
 ### **Release Workflows**
@@ -114,13 +114,11 @@ eas build --platform android --profile staging
 eas submit --platform android --profile staging
 ```
 
-#### **Official Release (Manual Version)**
+#### **Quick Testing (Any Branch)**
 ```bash
-# Step 1: Update version in app.json (1.0.4 → 1.0.5)
-# Step 2: Build AAB for closed testing
-eas build --platform android --profile closed-testing
-# Step 3: Submit to closed testing track
-eas submit --platform android --profile closed-testing
+# For rapid testing - auto-increments version code
+eas build --platform android --profile preview
+eas submit --platform android --profile preview
 ```
 
 #### **Quick OTA Updates (No New Build)**
