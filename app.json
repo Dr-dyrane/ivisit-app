@@ -34,6 +34,7 @@
       "package": "com.dyrane.ivisit",
       "newArchEnabled": true,
       "userInterfaceStyle": "dark",
+      "versionCode": 7,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
@@ -45,7 +46,6 @@
         "RECORD_AUDIO",
         "MODIFY_AUDIO_SETTINGS"
       ],
-      "versionCode": 2,
       "intentFilters": [
         {
           "action": "VIEW",

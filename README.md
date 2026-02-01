@@ -99,11 +99,35 @@ To ensure stability while maintaining velocity, iVisit follows a **Gitflow-lite*
 
 We use EAS Channels to map branches to specific build environments:
 
-| Environment | EAS Channel | Branch | Update Policy | Command |
-|-------------|-------------|--------|---------------|---------|
-| **Production** | `production` | `main` | Manual approval via Store. | `eas build -p all` |
-| **Preview/QA** | `staging` | `develop` | Automatic internal distribution. | `eas build --profile preview` |
-| **Development** | `dev` | Any `feat/*` | Ad-hoc builds for testing. | `eas update --branch <name>` |
+| Environment | EAS Profile | EAS Channel | Branch | Update Policy | Target Track |
+|-------------|-------------|-------------|--------|---------------|--------------|
+| **Closed Testing** | `staging` | `staging` | `develop` | Auto-increment | Closed Testing |
+| **Manual Release** | `closed-testing` | `closed-testing` | Any | Manual version control | Closed Testing |
+| **Development** | `development` | `dev` | Any `feat/*` | Ad-hoc builds for testing | Internal |
+
+### **Release Workflows**
+
+#### **Development Testing (Auto-Increment)**
+```bash
+# On develop branch - auto-increments version code
+eas build --platform android --profile staging
+eas submit --platform android --profile staging
+```
+
+#### **Official Release (Manual Version)**
+```bash
+# Step 1: Update version in app.json (1.0.4 → 1.0.5)
+# Step 2: Build AAB for closed testing
+eas build --platform android --profile closed-testing
+# Step 3: Submit to closed testing track
+eas submit --platform android --profile closed-testing
+```
+
+#### **Quick OTA Updates (No New Build)**
+```bash
+# Push updates to existing installs on develop branch
+eas update --branch staging --message "Bug fixes and improvements"
+```
 
 ### **Workflow Steps**
 
@@ -212,16 +236,14 @@ git push origin --delete fix/login-too-many-steps
 
 ### **Quick Reference Commands**
 
-| Stage | Git Command | EAS Command |
-|-------|-------------|-------------|
-| Start fix | `git checkout -b fix/xxx` from `develop` | - |
-| Local dev | - | `npx expo start` |
-| Test APK | - | `eas build --profile preview -p android` |
-| Merge to develop | `git merge fix/xxx` to `develop` | `eas update --branch staging` |
-| Merge to main | `git merge develop` to `main` | - |
-| Final APK test | - | `eas build --profile preview -p android` |
-| Production AAB | - | `eas build --profile production -p android` |
-| Play Store submit | - | `eas submit --profile production -p android` |
+| Stage | Git Command | EAS Command | Purpose |
+|-------|-------------|-------------|---------|
+| Start fix | `git checkout -b fix/xxx` from `develop` | - | Create feature branch |
+| Local dev | - | `npx expo start` | Development server |
+| Quick test | - | `eas build --profile preview -p android && eas submit --profile preview -p android` | Auto-increment testing |
+| Official release | - | `eas build --profile closed-testing -p android && eas submit --profile closed-testing -p android` | Manual version release |
+| Merge to develop | `git merge fix/xxx` to `develop` | `eas update --branch staging` | Integration testing |
+| Production prep | Update app.json version | `eas build --profile closed-testing -p android` | Production build |
 
 ### **Versioning Policy**
 
