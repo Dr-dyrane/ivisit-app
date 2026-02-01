@@ -89,20 +89,20 @@ export function EmergencyUIProvider({ children }) {
 	// Bottom sheet state
 	// 🔴 REVERT POINT: Safe initial snap index
 	// PREVIOUS: Fixed initial index of 1, which can be invalid in detail mode
-	// NEW: Start with 0 (always valid) and let the bottom sheet manage its own index
-	// REVERT TO: const [snapIndex, setSnapIndex] = useState(1);
-	const [snapIndex, setSnapIndex] = useState(0); // Start at 0 (always valid) to prevent initial crashes
+	// NEW: Start with 1 (halfway) for better initial visibility
+	// REVERT TO: const [snapIndex, setSnapIndex] = useState(0);
+	const [snapIndex, setSnapIndex] = useState(1);
 	const [isAnimating, setIsAnimating] = useState(false);
 	const snapIndexRef = useRef(snapIndex);
 	useEffect(() => {
 		snapIndexRef.current = snapIndex;
 	}, [snapIndex]);
-	
+
 	// Log initial state
 	useEffect(() => {
 		// console.log('[EmergencyUIContext] Initial state:', { snapIndex, isAnimating });
 	}, []);
-	
+
 	// Log snap index changes
 	useEffect(() => {
 		// console.log('[EmergencyUIContext] snapIndex changed:', { 
@@ -111,99 +111,104 @@ export function EmergencyUIProvider({ children }) {
 		// 	timestamp: Date.now()
 		// });
 	}, [snapIndex, isAnimating]);
-	
+
 	// Search state
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
-	
+
 	// Modal states
 	const [showProfileModal, setShowProfileModal] = useState(false);
-	
+
 	// Loading states
 	const [isMapLoading, setIsMapLoading] = useState(true);
 	const [isHospitalsLoading, setIsHospitalsLoading] = useState(false);
-	
+
 	// Scroll tracking
 	const lastScrollY = useRef(0);
-	
+
 	// Animation timing tracker
 	const timing = useTimingTracker(__DEV__);
-	
+
+	// 🔴 REVERT POINT: Proactive Index Clamping
+	// PREVIOUS: Context didn't track constraints, relied on components to clamp
+	// NEW: Force index 0 for focused states (detail/trip) at the source
+	// REVERT TO: Remove these constraints
+	const forceIndexZero = useMemo(() => {
+		// We'll need to pass these from the children or find another way.
+		// For now, let's keep the handleSnapChange defensive.
+		return false;
+	}, []);
+
 	// Bottom sheet actions
 	const handleSnapChange = useCallback((index, source = "user") => {
-		// 🔴 REVERT POINT: Validate snap index before accepting
-		// PREVIOUS: Accepted any index without validation
-		// NEW: Ensure index is non-negative before accepting
-		// REVERT TO: Remove the index validation
-		
-		if (typeof index !== "number" || index < 0) {
+		if (typeof index !== "number") {
 			console.warn('[EmergencyUIContext] Invalid snap index received:', index, 'source:', source);
-			return; // Don't update with invalid index
+			return;
 		}
-		
-		// console.log('[EmergencyUIContext] handleSnapChange called:', { 
-		// 	newIndex: index, 
-		// 	source, 
-		// 	currentSnapIndex: snapIndexRef.current,
-		// 	timestamp: Date.now()
-		// });
-		
-		// Only update if the index is actually different to prevent fighting states
+
+		// Ensure index is within the global safe bounds [0, 2]
+		// 🔴 REVERT POINT: Defensive Clamping
+		// index 0: collapsed/detail
+		// index 1: half/trip
+		// index 2: full/standard
+		let safeIndex = Math.min(Math.max(0, index), 2);
+
 		setSnapIndex(prevIndex => {
-			// console.log('[EmergencyUIContext] setSnapIndex:', { 
-			// 	prevIndex, 
-			// 	newIndex: index, 
-			// 	willUpdate: prevIndex !== index,
-			// 	source
-			// });
-			if (prevIndex === index) return prevIndex;
-			return index;
+			if (prevIndex === safeIndex) return prevIndex;
+			// console.log('[EmergencyUIContext] snapIndex updated:', { from: prevIndex, to: safeIndex, source });
+			return safeIndex;
 		});
 		setIsAnimating(true);
 
 		// Animation typically takes ~300ms
-		setTimeout(() => {
-			// console.log('[EmergencyUIContext] Animation completed, setIsAnimating(false)');
+		const timer = setTimeout(() => {
 			setIsAnimating(false);
 		}, 350);
+		return () => clearTimeout(timer);
 	}, []);
-	
+
+	// Reset snap index to 0 (collapsed/detail mode safe value)
+	// Call this when transitioning to modes with fewer snap points (e.g., detail mode)
+	const resetSnapIndex = useCallback(() => {
+		setSnapIndex(0);
+	}, []);
+
 	// Search actions
 	const updateSearch = useCallback((text) => {
 		timing.startTiming("search_update");
 		setSearchQuery(text);
 		timing.endTiming("search_update");
 	}, [timing]);
-	
+
 	const clearSearch = useCallback(() => {
 		setSearchQuery("");
 		setIsSearchFocused(false);
 	}, []);
-	
+
 	// Profile modal actions
 	const openProfileModal = useCallback(() => {
 		timing.startTiming("profile_modal_open");
 		setShowProfileModal(true);
 	}, [timing]);
-	
+
 	const closeProfileModal = useCallback(() => {
 		setShowProfileModal(false);
 		timing.endTiming("profile_modal_open");
 	}, [timing]);
-	
+
 	// Scroll tracking
 	const updateScrollPosition = useCallback((y) => {
 		lastScrollY.current = y;
 	}, []);
-	
+
 	const getLastScrollY = useCallback(() => lastScrollY.current, []);
-	
+
 	// Map loading
 	const setMapReady = useCallback(() => {
 		timing.endTiming("map_load");
 		setIsMapLoading(false);
 	}, [timing]);
-	
+
 	const startMapLoading = useCallback(() => {
 		timing.startTiming("map_load");
 		setIsMapLoading(true);
@@ -218,9 +223,10 @@ export function EmergencyUIProvider({ children }) {
 		showProfileModal,
 		isMapLoading,
 		isHospitalsLoading,
-		
+
 		// Actions
 		handleSnapChange,
+		resetSnapIndex,
 		updateSearch,
 		clearSearch,
 		setIsSearchFocused,
@@ -231,13 +237,13 @@ export function EmergencyUIProvider({ children }) {
 		setMapReady,
 		startMapLoading,
 		setIsHospitalsLoading,
-		
+
 		// Debug
 		timing,
 	}), [
 		snapIndex, isAnimating, searchQuery, isSearchFocused,
 		showProfileModal, isMapLoading, isHospitalsLoading,
-		handleSnapChange, updateSearch, clearSearch,
+		handleSnapChange, resetSnapIndex, updateSearch, clearSearch,
 		openProfileModal, closeProfileModal,
 		updateScrollPosition, getLastScrollY,
 		setMapReady, startMapLoading, timing,

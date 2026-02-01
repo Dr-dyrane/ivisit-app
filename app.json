@@ -3,7 +3,7 @@
     "name": "iVisit",
     "slug": "ivisit",
     "scheme": "ivisit",
-    "version": "1.0.0",
+    "version": "1.0.2.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -20,7 +20,8 @@
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select profile images.",
         "NSLocationWhenInUseUsageDescription": "iVisit needs your location to find nearby hospitals and dispatch emergency services to your exact position.",
         "NSContactsUsageDescription": "iVisit uses your contacts to help you quickly add emergency contacts from your address book.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": ["ivisit"]
       }
     },
     "android": {
@@ -42,7 +43,16 @@
         "RECORD_AUDIO",
         "MODIFY_AUDIO_SETTINGS"
       ],
-      "versionCode": 1
+      "versionCode": 1,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": {
+            "scheme": "ivisit"
+          },
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

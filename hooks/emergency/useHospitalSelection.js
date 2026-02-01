@@ -36,20 +36,34 @@ export const useHospitalSelection = ({
 					showToast('This hospital is currently not available', 'error');
 					return;
 				}
-				if (!hospital.ambulances || hospital.ambulances <= 0) {
-					showToast('No ambulances available at this hospital', 'error');
-					return;
-				}
 			} else {
 				// Booking mode
 				if (hospital.status !== 'available') {
 					showToast('This hospital is currently not available', 'error');
 					return;
 				}
-				if (!hospital.availableBeds || hospital.availableBeds <= 0) {
-					showToast('No beds available at this hospital', 'error');
-					return;
-				}
+			}
+
+			// 🔴 REVERT POINT: Relaxed resource validation
+			// PREVIOUS: Blocked selection if count <= 0
+			// NEW: Allow selection, let the UI handle the "Call Hospital" fallback
+			// REVERT TO: The block below
+			/*
+			if (mode === "emergency" && hospital.ambulances !== undefined && hospital.ambulances <= 0) {
+				showToast("No ambulances available at this hospital", "error");
+				return;
+			}
+			if (mode === "booking" && hospital.availableBeds !== undefined && hospital.availableBeds <= 0) {
+				showToast("No beds available at this hospital", "error");
+				return;
+			}
+			*/
+
+			if (mode === "emergency" && hospital.ambulances <= 0) {
+				console.log("[useHospitalSelection] Selecting hospital with no ambulances, will fallback to Call/911");
+			}
+			if (mode === "booking" && hospital.availableBeds <= 0) {
+				console.log("[useHospitalSelection] Selecting hospital with no beds, will fallback to Call");
 			}
 
 			timing?.startTiming?.("hospital_select");

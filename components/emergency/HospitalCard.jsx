@@ -154,10 +154,10 @@ export default function HospitalCard({
 								}
 							]}
 						>
-							<Ionicons 
-								name="call" 
-								size={20} 
-								color={isDarkMode ? "#FFFFFF" : "#64748B"} 
+							<Ionicons
+								name="call"
+								size={20}
+								color={isDarkMode ? "#FFFFFF" : "#64748B"}
 							/>
 						</Pressable>
 					)}
@@ -167,20 +167,20 @@ export default function HospitalCard({
 						<View style={styles.actionLeft}>
 							<Fontisto
 								name={
-									mode === "booking" 
-										? "bed-patient" 
-										: isGoogleHospital 
-											? "phone" 
+									mode === "booking"
+										? (hospital.availableBeds > 0 ? "bed-patient" : "phone")
+										: (isGoogleHospital || (hospital.ambulances !== undefined && hospital.ambulances <= 0))
+											? "phone"
 											: "ambulance"
 								}
 								size={18}
 								color="#FFFFFF"
 							/>
 							<Text style={styles.actionText}>
-								{mode === "booking" 
-									? "Secure a Bed" 
-									: isGoogleHospital 
-										? "Call Hospital" 
+								{mode === "booking"
+									? (hospital.availableBeds > 0 ? "Secure a Bed" : (hospitalPhone ? "Call Hospital" : "Call 911"))
+									: (isGoogleHospital || (hospital.ambulances !== undefined && hospital.ambulances <= 0))
+										? (hospitalPhone ? "Call Hospital" : "Call 911")
 										: "Request Now"
 								}
 							</Text>

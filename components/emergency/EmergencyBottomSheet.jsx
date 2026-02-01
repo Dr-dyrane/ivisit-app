@@ -74,7 +74,7 @@ const EmergencyBottomSheet = forwardRef(
 		const { preferences } = usePreferences();
 		const insets = useSafeAreaInsets();
 
-		const { snapIndex: newSnapIndex } = useEmergencyUI();
+		const { snapIndex: newSnapIndex, resetSnapIndex } = useEmergencyUI();
 
 		const [sheetPhase, setSheetPhase] = useState("half");
 
@@ -84,6 +84,14 @@ const EmergencyBottomSheet = forwardRef(
 			mode === "emergency" && !!activeAmbulanceTrip && !isDetailMode;
 		const isBedBookingMode =
 			mode === "booking" && !!activeBedBooking && !isDetailMode;
+
+		// Reset snap index when entering detail mode to prevent out-of-range errors
+		// This runs BEFORE the derivedIndex calculation and snapPoints change
+		useEffect(() => {
+			if (isDetailMode && newSnapIndex > 0) {
+				resetSnapIndex();
+			}
+		}, [isDetailMode, newSnapIndex, resetSnapIndex]);
 
 		const isBelowHalf = sheetPhase === "collapsed" || (sheetPhase === "half" && newSnapIndex === 0);
 		const isFloating = newSnapIndex === 0 || newSnapIndex === 1;
@@ -131,25 +139,25 @@ const EmergencyBottomSheet = forwardRef(
 		const clampSheetIndex = useCallback(
 			(index) => {
 				console.log('[EmergencyBottomSheet] clampSheetIndex called with:', index, 'snapPoints:', snapPoints, 'length:', snapPoints.length);
-				
+
 				// 🔴 REVERT POINT: Enhanced snap point validation
 				// PREVIOUS: Basic index clamping
 				// NEW: More robust validation with detailed logging
 				// REVERT TO: Remove the enhanced logging and validation
-				
+
 				if (!Number.isFinite(index)) {
 					console.log('[EmergencyBottomSheet] Invalid index, returning 0');
 					return 0;
 				}
-				
+
 				if (!snapPoints || snapPoints.length === 0) {
 					console.log('[EmergencyBottomSheet] No snap points available, returning 0');
 					return 0;
 				}
-				
+
 				const maxIndex = snapPoints.length - 1;
 				const clampedIndex = Math.min(Math.max(index, 0), maxIndex);
-				
+
 				console.log('[EmergencyBottomSheet] Final clamped index:', clampedIndex, 'maxIndex:', maxIndex);
 				return clampedIndex;
 			},
@@ -160,7 +168,7 @@ const EmergencyBottomSheet = forwardRef(
 			snapToIndex: (index) => {
 				const clampedIndex = clampSheetIndex(index);
 				console.log('[EmergencyBottomSheet] snapToIndex called with clamped index:', clampedIndex);
-				
+
 				// 🔴 REVERT POINT: Additional safety check for bottom sheet ref
 				// PREVIOUS: Direct snapToIndex call
 				// NEW: Check if bottom sheet is ready before snapping
@@ -186,16 +194,16 @@ const EmergencyBottomSheet = forwardRef(
 					// PREVIOUS: Direct snapIndex restoration without mode awareness
 					// NEW: Ensure restored index is valid for current snap points
 					// REVERT TO: Remove the mode-aware index calculation
-					
+
 					if (typeof snapIndex === "number") {
 						// When transitioning from detail mode (1 point) to normal mode (3 points),
 						// the restored index might be out of bounds. Clamp it safely.
 						const safeIndex = clampSheetIndex(snapIndex);
 						console.log('[EmergencyBottomSheet] Restoring to safe index:', safeIndex, 'from original:', snapIndex);
-						
+
 						// Additional safety: if we're transitioning from detail mode, start at index 0 (collapsed)
 						const finalIndex = isDetailMode ? 0 : safeIndex;
-						
+
 						bottomSheetRef.current?.snapToIndex(finalIndex);
 					}
 					if (typeof scrollY === "number") {
@@ -213,34 +221,42 @@ const EmergencyBottomSheet = forwardRef(
 			? "rgba(255, 255, 255, 0.3)"
 			: "rgba(0, 0, 0, 0.15)";
 
+		// 🔴 REVERT POINT: Consoldated Stability Synchronizer
+		// PREVIOUS: Multiple scattered useEffects fighting over snapIndex
+		// NEW: Single effect that respects mode-specific constraints and defers to native side
+		// REVERT TO: The multiple useEffects from previous version (lines 216-243 and 290-302)
 		useEffect(() => {
-			if (!isTripMode && !isBedBookingMode) return;
-			if (snapPoints.length !== 2) return;
-			if (currentSnapIndex < 0) {
-				bottomSheetRef.current?.snapToIndex(0);
-			}
-		}, [currentSnapIndex, isBedBookingMode, isTripMode, snapPoints.length]);
+			if (!bottomSheetRef.current || snapPoints.length === 0) return;
 
-		// 🔴 REVERT POINT: Handle mode transitions to prevent index out of bounds
-		// PREVIOUS: No explicit mode transition handling
-		// NEW: Reset to safe index when transitioning between modes with different snap point counts
-		// REVERT TO: Remove this useEffect
-		useEffect(() => {
-			console.log('[EmergencyBottomSheet] Mode transition detected:', {
-				isDetailMode,
-				isTripMode, 
-				isBedBookingMode,
-				snapPointsLength: snapPoints.length,
-				currentSnapIndex
-			});
+			const maxIdx = snapPoints.length - 1;
 
-			// When transitioning OUT of detail mode, ensure we have a valid index
-			if (!isDetailMode && snapPoints.length > 1 && currentSnapIndex >= snapPoints.length) {
-				const safeIndex = Math.min(currentSnapIndex, snapPoints.length - 1);
-				console.log('[EmergencyBottomSheet] Correcting out-of-bounds index:', currentSnapIndex, '->', safeIndex);
-				bottomSheetRef.current?.snapToIndex(safeIndex);
+			// Determing target index based on constraints
+			let targetIdx = newSnapIndex;
+			if (isDetailMode) {
+				targetIdx = 0;
+			} else if (hasAnyVisitActive && snapPoints.length === 1) {
+				targetIdx = 0;
+			} else {
+				// Global clamp based on current component's snap points
+				targetIdx = Math.min(Math.max(0, newSnapIndex), maxIdx);
 			}
-		}, [isDetailMode, snapPoints.length, currentSnapIndex]);
+
+			// Don't snap if we are already there to avoid recursion/fighting
+			if (currentSnapIndex === targetIdx) return;
+
+			// Use a small delay to ensure snapPoints prop has reached native side
+			const timer = setTimeout(() => {
+				try {
+					if (bottomSheetRef.current) {
+						// console.log('[EmergencyBottomSheet] Stability Sync:', { targetIdx, maxIdx, points: snapPoints.length });
+						bottomSheetRef.current.snapToIndex(targetIdx);
+					}
+				} catch (error) {
+					console.warn('[EmergencyBottomSheet] Safe snap failed:', error?.message);
+				}
+			}, 1);
+			return () => clearTimeout(timer);
+		}, [newSnapIndex, snapPoints.length, isDetailMode, hasAnyVisitActive, currentSnapIndex]);
 
 		const renderHandle = useCallback(
 			() => (
@@ -264,59 +280,60 @@ const EmergencyBottomSheet = forwardRef(
 			[gradientColors]
 		);
 
-		// Use current snap index for initial position, with fallbacks
-		const initialIndex = useMemo(() => {
-			// For detail mode, always use index 0 (only one snap point)
-			if (isDetailMode) return 0;
-			
-			// For trip/bed booking mode with 1 snap point (monophasic 40%), always use index 0
-			if (hasAnyVisitActive && snapPoints.length === 1) return 0;
-			
-			// Use the context index if valid for current points
-			if (Number.isFinite(newSnapIndex) && newSnapIndex >= 0 && newSnapIndex < snapPoints.length) {
-				return newSnapIndex;
-			}
+		// 🔴 REVERT POINT: Derived Index Sync
+		// PREVIOUS: initialIndex was only calculated on mount/memo
+		// NEW: derivedIndex is calculated every render and passed to the 'index' prop
+		// to ensure it never deviates from what the native component can handle.
+		//
+		// CRITICAL: This MUST return a valid index for the CURRENT snapPoints array.
+		// The snapPoints.length check is the primary safety mechanism - all other
+		// conditions are secondary. This prevents the "index out of range" error
+		// that occurs during mode transitions (e.g., from 3 snap points to 1).
+		const derivedIndex = useMemo(() => {
+			// Primary safety: always clamp to valid range based on current snapPoints
+			const maxIdx = Math.max(0, snapPoints.length - 1);
 
-			// Fallback: clamp to valid range or use middle if available
-			if (snapPoints.length === 2) {
-				// For 2-point system (40%, 50%), default to index 1 (50%)
-				return 1;
-			} else if (snapPoints.length === 3) {
-				// For 3-point system, use middle
-				return 1;
-			} else {
-				// Default to 0 for any other case
+			// For detail mode or single snap point scenarios, always use index 0
+			if (isDetailMode || snapPoints.length <= 1) {
 				return 0;
 			}
-		}, [isDetailMode, hasAnyVisitActive, newSnapIndex, snapPoints.length]);
+
+			// For trip/bed booking mode with 2 snap points, clamp appropriately
+			if (hasAnyVisitActive && snapPoints.length === 2) {
+				return Math.min(newSnapIndex, 1);
+			}
+
+			// Standard mode: clamp the global context index to the current snap points range
+			return Math.min(Math.max(0, newSnapIndex), maxIdx);
+		}, [isDetailMode, hasAnyVisitActive, newSnapIndex, snapPoints.length, snapPoints]);
+
 
 		// Track sheet phase changes using currentSnapIndex
 		useEffect(() => {
 			if (snapPoints.length <= 1) {
-				// Monophasic mode (trip/bed) or single snap point (detail)
-				setSheetPhase(isDetailMode ? "half" : "half");
+				setSheetPhase("half");
 				return;
 			}
 
 			if (snapPoints.length === 2) {
-				const phase = currentSnapIndex <= 0 ? "collapsed" : "full";
+				const phase = (currentSnapIndex || 0) <= 0 ? "collapsed" : "full";
 				setSheetPhase(phase);
 				return;
 			}
 
 			const phase =
-				currentSnapIndex <= 0
+				(currentSnapIndex || 0) <= 0
 					? "collapsed"
-					: currentSnapIndex === 1
-					? "half"
-					: "full";
+					: (currentSnapIndex || 0) === 1
+						? "half"
+						: "full";
 			setSheetPhase(phase);
 		}, [currentSnapIndex, snapPoints.length, isDetailMode]);
 
 		return (
 			<BottomSheet
 				ref={bottomSheetRef}
-				index={initialIndex}
+				index={derivedIndex}
 				snapPoints={snapPoints}
 				onChange={handleSheetChange}
 				handleComponent={renderHandle}

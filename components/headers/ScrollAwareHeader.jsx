@@ -67,49 +67,16 @@ export default function ScrollAwareHeader({
 					tint={isDarkMode ? "dark" : "light"}
 					style={[styles.blur, { minHeight: HEADER_HEIGHT }]}
 				>
-					<View style={[styles.innerContent, { 
-                        backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.2)" : "rgba(255, 255, 255, 0.3)" 
-                    }]}>
-						
-                        {/* LEFT: Identity / Navigation */}
-						<View style={styles.leftSection}>
-							{leftComponent ? (
-								leftComponent
-							) : icon ? (
-								<View style={[styles.iconSquircle, { backgroundColor: backgroundColor }]}>
-									{icon}
-								</View>
-							) : null}
-						</View>
-
-						{/* MIDDLE: Editorial Typography */}
-						<View style={styles.centerSection}>
-							{subtitle && (
-								<Text
-									numberOfLines={1}
-									style={[styles.subtitleText, { color: textMuted }]}
-								>
-									{subtitle}
-								</Text>
-							)}
-							<Animated.Text
-								numberOfLines={1}
-								style={[styles.titleText, { color: textColor, opacity: titleOpacity }]}
-							>
-								{title}
-							</Animated.Text>
-						</View>
+					<View style={[styles.innerContent, {
+						backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.2)" : "rgba(255, 255, 255, 0.3)"
+					}]}>{/* LEFT: Identity / Navigation */}
+						<View style={styles.leftSection}>{leftComponent ? leftComponent : icon ? (<View style={[styles.iconSquircle, { backgroundColor: backgroundColor }]}>{icon}</View>) : null}</View>{/* MIDDLE: Editorial Typography */}
+						<View style={styles.centerSection}>{subtitle && (<Text numberOfLines={1} style={[styles.subtitleText, { color: textMuted }]}>{subtitle}</Text>)}<Animated.Text numberOfLines={1} style={[styles.titleText, { color: textColor, opacity: titleOpacity }]}>{title}</Animated.Text></View>
 
 						{/* RIGHT: Actions / Badge */}
-						<View style={styles.rightSection}>
-							{badge ? (
-								<View style={[styles.badgeBox, { backgroundColor }]}>
-									<Text style={styles.badgeText}>{badge}</Text>
-								</View>
-							) : (
-								resolvedRight
-							)}
-						</View>
+						<View style={styles.rightSection}>{badge ? (<View style={[styles.badgeBox, { backgroundColor }]}>
+							<Text style={styles.badgeText}>{badge}</Text>
+						</View>) : resolvedRight}</View>
 					</View>
 				</BlurView>
 			</View>
@@ -134,6 +101,11 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.12,
 		shadowRadius: 16,
 		elevation: 10,
+		...Platform.select({
+			web: {
+				boxShadow: "0px 12px 16px rgba(0,0,0,0.12)",
+			},
+		}),
 	},
 	blur: {
 		borderRadius: 48,
@@ -157,6 +129,11 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.1,
 		shadowRadius: 4,
 		shadowOffset: { width: 0, height: 2 },
+		...Platform.select({
+			web: {
+				boxShadow: "0px 2px 4px rgba(0,0,0,0.1)",
+			},
+		}),
 	},
 	centerSection: {
 		flex: 1,

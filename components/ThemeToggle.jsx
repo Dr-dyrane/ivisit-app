@@ -69,12 +69,12 @@ export default function ThemeToggle() {
 			Animated.timing(opacityAnim, {
 				toValue: 0.6,
 				duration: 1000,
-				useNativeDriver: true,
+				useNativeDriver: Platform.OS !== 'web',
 			}),
 			Animated.timing(slideAnim, {
 				toValue: 0,
 				duration: 1000,
-				useNativeDriver: true,
+				useNativeDriver: Platform.OS !== 'web',
 			}),
 		]).start();
 	}, [mounted]);
@@ -116,7 +116,7 @@ export default function ThemeToggle() {
 			Animated.timing(opacityAnim, {
 				toValue: 0.6,
 				duration: 500,
-				useNativeDriver: true,
+				useNativeDriver: Platform.OS !== 'web',
 			}).start();
 		});
 	};
@@ -208,7 +208,7 @@ export default function ThemeToggle() {
 						style={({ pressed }) => [
 							styles.iconCircle,
 							expanded &&
-								!isDarkMode && { backgroundColor: COLORS.brandPrimary },
+							!isDarkMode && { backgroundColor: COLORS.brandPrimary },
 							pressed && { opacity: 0.7 },
 						]}
 					>
@@ -221,8 +221,8 @@ export default function ThemeToggle() {
 										? COLORS.bgLight
 										: "rgba(255,255,255,0.3)"
 									: isDarkMode
-									? COLORS.bgLight
-									: COLORS.brandPrimary
+										? COLORS.bgLight
+										: COLORS.brandPrimary
 							}
 						/>
 					</Pressable>

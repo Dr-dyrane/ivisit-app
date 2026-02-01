@@ -82,27 +82,43 @@ The app includes comprehensive real-time testing capabilities:
 
 **No breaking changes** - existing code continues to work with new migrations.
 
-### Building & Deployment
+## ⚒️ **Version Control & Workflow**
 
-```bash
-# Production builds
-eas build --platform android
-eas build -p android --profile preview2
-eas build -p ios --profile preview2
+To ensure stability while maintaining velocity, iVisit follows a **Gitflow-lite** strategy combined with **Expo Application Services (EAS)** for deployments.
 
-# OTA updates (no Play Store resubmission needed)
-eas update --branch preview2
-```
+### **Branching Model**
 
-## Contributing
+| Branch Type | Name Pattern | Target | Purpose |
+|-------------|--------------|--------|---------|
+| **Production** | `main` | - | Stable code. Always buildable and deployable to App Store. |
+| **Development** | `develop` | `main` | Integration branch for features. Reflects current state for QA. |
+| **Feature** | `feat/*` | `develop` | Individual tasks or features. |
+| **Hotfix** | `fix/*` | `main` | Immediate production fixes. |
 
-To contribute to iVisit:
+### **EAS Deployment Pipeline**
 
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature/YourFeature`).
-3. Commit your changes (`git commit -am 'Add new feature'`).
-4. Push the branch (`git push origin feature/YourFeature`).
-5. Open a Pull Request.
+We use EAS Channels to map branches to specific build environments:
+
+| Environment | EAS Channel | Branch | Update Policy | Command |
+|-------------|-------------|--------|---------------|---------|
+| **Production** | `production` | `main` | Manual approval via Store. | `eas build -p all` |
+| **Preview/QA** | `staging` | `develop` | Automatic internal distribution. | `eas build --profile preview` |
+| **Development** | `dev` | Any `feat/*` | Ad-hoc builds for testing. | `eas update --branch <name>` |
+
+### **Workflow Steps**
+
+1. **Feature Start**: Create a branch `feat/your-feature` from `develop`.
+2. **Implementation**: Build and test locally using `npx expo start`.
+3. **Pull Request**: Open PR to `develop`. Automated build checks must pass.
+4. **Integration**: Merge to `develop`. EAS Staging build/update is triggered.
+5. **Release**: Merge `develop` to `main` for Production submission.
+
+### **Versioning Policy**
+
+We use **Semantic Versioning (SemVer)**: `MAJOR.MINOR.PATCH.BUILD`
+- Increment **MINOR** for features.
+- Increment **PATCH** for bug fixes.
+- **BUILD** is managed automatically by EAS for tracking individual iterations.
 
 ## License
 
@@ -110,8 +126,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contact
 
-For inquiries, please email us at [info@ivisit.com](mailto:info@ivisit.com).
+For inquiries, please email us at [support@ivisit.ng](mailto:support@ivisit.ng).
 
 ---
 
-_Visit our website for more information: [iVisit](http://ivisit.vercel.app)._
+_Visit our website for more information: [iVisit](http://ivisit.ng)._

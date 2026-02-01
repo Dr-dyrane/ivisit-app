@@ -21,113 +21,149 @@ export const EmergencyMode = {
 	BOOKING: "booking",
 };
 
+/**
+ * Helper to enrich hospitals with service types.
+ * Used by both the initial sync effect and the updateHospitals callback.
+ * @param {Array} hospitalList - Array of hospital objects
+ * @returns {Array} - Hospitals with serviceTypes array populated
+ */
+const enrichHospitalsWithServiceTypes = (hospitalList) => {
+	if (!Array.isArray(hospitalList)) return [];
+	return hospitalList.map((hospital, index) => {
+		// If already has serviceTypes from DB, rely on them
+		if (hospital.serviceTypes && Array.isArray(hospital.serviceTypes) && hospital.serviceTypes.length > 0) {
+			return hospital;
+		}
+
+		// Determine service types - allow some hospitals to offer both
+		let serviceTypes = [];
+		if (hospital.type === "premium") {
+			serviceTypes = ["premium"];
+			// Some premium hospitals also offer standard service (30% of premium)
+			if (index % 3 === 0) {
+				serviceTypes.push("standard");
+			}
+		} else {
+			serviceTypes = ["standard"];
+			// Some standard hospitals also offer premium service (20% of standard)
+			if (index % 5 === 0) {
+				serviceTypes.push("premium");
+			}
+		}
+
+		return { ...hospital, serviceTypes };
+	});
+};
+
 // Emergency provider component
 export function EmergencyProvider({ children }) {
-    const { addNotification } = useNotifications();
-    // Fetch real hospitals from Supabase
-    const { hospitals: dbHospitals, isLoading: isLoadingHospitals } = useHospitals();
-    // Fetch real ambulances
-    const { ambulances: activeAmbulances } = useAmbulances();
+	const { addNotification } = useNotifications();
+	// Fetch real hospitals from Supabase
+	const { hospitals: dbHospitals, isLoading: isLoadingHospitals } = useHospitals();
+	// Fetch real ambulances
+	const { ambulances: activeAmbulances } = useAmbulances();
 
 	// User location (for map centering and distance calculations)
 	const [userLocation, setUserLocation] = useState(null);
 
 	// Computed state for hospitals (mock location for now + DB data)
 	const [hospitals, setHospitals] = useState([]);
-    
-    // Sync DB hospitals when loaded, but still randomize location for demo purposes
-    // In a real app, you'd use PostGIS to query nearby hospitals
-    	useEffect(() => {
-        // If loading or no hospitals, do nothing
-        if (isLoadingHospitals || dbHospitals.length === 0) return;
 
-        // If we don't have user location yet, preserve database distance data
-        if (!userLocation) {
-             const normalized = dbHospitals.map(h => ({
-                ...h,
-                coordinates: h.coordinates || { 
-                    latitude: h.latitude, 
-                    longitude: h.longitude 
-                },
-                // Preserve database distance and eta values
-                distance: h.distance || 'Unknown',
-                distanceKm: h.distanceKm || 0,
-                eta: h.eta || 'Unknown',
-                specialties: h.specialties || [],
-                serviceTypes: h.serviceTypes || [],
-                features: h.features || [],
-            }));
-            setHospitals(normalized);
-            return;
-        }
+	// Sync DB hospitals when loaded, but still randomize location for demo purposes
+	// In a real app, you'd use PostGIS to query nearby hospitals
+	useEffect(() => {
+		// If loading or no hospitals, do nothing
+		if (isLoadingHospitals || dbHospitals.length === 0) return;
 
-        // If we DO have user location, use the distance data from database
-        // PRODUCTION READY: Use PostGIS calculated distances
-        const localized = dbHospitals.map((h) => {
-            // Use database distance if available, otherwise calculate fallback
-            const dbDistance = h.distance || h.distanceKm;
-            const distanceKm = dbDistance ? 
-                (typeof dbDistance === 'string' ? parseFloat(dbDistance.replace(' km', '')) : dbDistance) :
-                (userLocation ? 
-                    Math.sqrt(
-                        Math.pow(((h.coordinates?.latitude || h.latitude) - userLocation.latitude) * 111, 2) + 
-                        Math.pow(((h.coordinates?.longitude || h.longitude) - userLocation.longitude) * 111, 2)
-                    ) : 0);
-            
-            const etaMins = Math.max(2, Math.ceil(distanceKm * 3));
+		// If we don't have user location yet, preserve database distance data
+		if (!userLocation) {
+			const normalized = dbHospitals.map(h => ({
+				...h,
+				coordinates: h.coordinates || {
+					latitude: h.latitude,
+					longitude: h.longitude
+				},
+				// Preserve database distance and eta values
+				distance: h.distance || 'Unknown',
+				distanceKm: h.distanceKm || 0,
+				eta: h.eta || 'Unknown',
+				specialties: h.specialties || [],
+				serviceTypes: h.serviceTypes || [],
+				features: h.features || [],
+			}));
+			// Enrich with service types before setting
+			setHospitals(enrichHospitalsWithServiceTypes(normalized));
+			return;
+		}
 
-            return {
-                ...h,
-                coordinates: h.coordinates || {
-                    latitude: h.latitude,
-                    longitude: h.longitude,
-                },
-                distance: h.distance || (distanceKm > 0 ? `${distanceKm.toFixed(1)} km` : 'Unknown'),
-                distanceKm: h.distanceKm || distanceKm, // Preserve database value
-                eta: h.eta || (distanceKm > 0 ? `${etaMins} mins` : 'Unknown'),
-                specialties: h.specialties || [],
-                serviceTypes: h.serviceTypes || [],
-                features: h.features || [],
-            };
-        });
+		// If we DO have user location, use the distance data from database
+		// PRODUCTION READY: Use PostGIS calculated distances
+		const localized = dbHospitals.map((h) => {
+			// Use database distance if available, otherwise calculate fallback
+			const dbDistance = h.distance || h.distanceKm;
+			const distanceKm = dbDistance ?
+				(typeof dbDistance === 'string' ? parseFloat(dbDistance.replace(' km', '')) : dbDistance) :
+				(userLocation ?
+					Math.sqrt(
+						Math.pow(((h.coordinates?.latitude || h.latitude) - userLocation.latitude) * 111, 2) +
+						Math.pow(((h.coordinates?.longitude || h.longitude) - userLocation.longitude) * 111, 2)
+					) : 0);
 
-        setHospitals(localized);
-        
-    }, [dbHospitals, isLoadingHospitals, userLocation]);
+			const etaMins = Math.max(2, Math.ceil(distanceKm * 3));
 
-    // Fetch User Location on Mount (for context-aware data)
-    useEffect(() => {
-        (async () => {
-             try {
-                // Try last known first for speed
-                const lastKnown = await Location.getLastKnownPositionAsync({});
-                if (lastKnown) {
-                    setUserLocation({
-                        latitude: lastKnown.coords.latitude,
-                        longitude: lastKnown.coords.longitude,
-                        latitudeDelta: 0.04,
-                        longitudeDelta: 0.04,
-                    });
-                }
-                
-                // Then try to get permission and fresh location if needed
-                // We don't want to block the app or show alerts here, just silently try
-                const { status } = await Location.getForegroundPermissionsAsync();
-                if (status === 'granted') {
-                    const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-                    setUserLocation({
-                        latitude: location.coords.latitude,
-                        longitude: location.coords.longitude,
-                        latitudeDelta: 0.04,
-                        longitudeDelta: 0.04,
-                    });
-                }
-            } catch (e) {
-                // Ignore errors here, Map component will handle explicit permission requests
-                console.log("Context location fetch failed (silent):", e);
-            }
-        })();
-    }, []);
+			return {
+				...h,
+				coordinates: h.coordinates || {
+					latitude: h.latitude,
+					longitude: h.longitude,
+				},
+				distance: h.distance || (distanceKm > 0 ? `${distanceKm.toFixed(1)} km` : 'Unknown'),
+				distanceKm: h.distanceKm || distanceKm, // Preserve database value
+				eta: h.eta || (distanceKm > 0 ? `${etaMins} mins` : 'Unknown'),
+				specialties: h.specialties || [],
+				serviceTypes: h.serviceTypes || [],
+				features: h.features || [],
+			};
+		});
+
+		// Enrich with service types before setting
+		setHospitals(enrichHospitalsWithServiceTypes(localized));
+
+	}, [dbHospitals, isLoadingHospitals, userLocation]);
+
+	// Fetch User Location on Mount (for context-aware data)
+	useEffect(() => {
+		(async () => {
+			try {
+				// Try last known first for speed
+				const lastKnown = await Location.getLastKnownPositionAsync({});
+				if (lastKnown) {
+					setUserLocation({
+						latitude: lastKnown.coords.latitude,
+						longitude: lastKnown.coords.longitude,
+						latitudeDelta: 0.04,
+						longitudeDelta: 0.04,
+					});
+				}
+
+				// Then try to get permission and fresh location if needed
+				// We don't want to block the app or show alerts here, just silently try
+				const { status } = await Location.getForegroundPermissionsAsync();
+				if (status === 'granted') {
+					const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+					setUserLocation({
+						latitude: location.coords.latitude,
+						longitude: location.coords.longitude,
+						latitudeDelta: 0.04,
+						longitudeDelta: 0.04,
+					});
+				}
+			} catch (e) {
+				// Ignore errors here, Map component will handle explicit permission requests
+				console.log("Context location fetch failed (silent):", e);
+			}
+		})();
+	}, []);
 
 	const [selectedHospitalId, setSelectedHospitalId] = useState(null);
 	const [mode, setMode] = useState(EmergencyMode.EMERGENCY);
@@ -135,49 +171,49 @@ export function EmergencyProvider({ children }) {
 	const [activeBedBooking, setActiveBedBooking] = useState(null);
 	const lastHydratedAmbulanceIdRef = useRef(null);
 	const isHydratingAmbulanceRef = useRef(false);
-	
+
 	// Emergency mode state
 	const [serviceType, setServiceType] = useState(null); // null = show all, "premium" or "standard"
-	
+
 	// Booking mode state
 	const [selectedSpecialty, setSelectedSpecialty] = useState(null); // null = show all
-	
+
 	// View state
 	const [viewMode, setViewMode] = useState("map"); // "map" or "list"
-	
-    // Helper to parse WKT Point
-    const parsePoint = (wkt) => {
-        if (!wkt || typeof wkt !== 'string' || !wkt.startsWith('POINT')) return null;
-        try {
-            const matches = wkt.match(/POINT\(([-\d.]+) ([-\d.]+)\)/);
-            if (matches && matches.length === 3) {
-                return { longitude: parseFloat(matches[1]), latitude: parseFloat(matches[2]) };
-            }
-        } catch (e) { return null; }
-        return null;
-    };
 
-    // Real-time Subscription to Emergency Requests
-    useEffect(() => {
-        let subscription;
+	// Helper to parse WKT Point
+	const parsePoint = (wkt) => {
+		if (!wkt || typeof wkt !== 'string' || !wkt.startsWith('POINT')) return null;
+		try {
+			const matches = wkt.match(/POINT\(([-\d.]+) ([-\d.]+)\)/);
+			if (matches && matches.length === 3) {
+				return { longitude: parseFloat(matches[1]), latitude: parseFloat(matches[2]) };
+			}
+		} catch (e) { return null; }
+		return null;
+	};
 
-        const setupSubscription = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+	// Real-time Subscription to Emergency Requests
+	useEffect(() => {
+		let subscription;
 
-            subscription = supabase
-                .channel('emergency_updates')
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'UPDATE',
-                        schema: 'public',
-                        table: 'emergency_requests',
-                        filter: `user_id=eq.${user.id}`,
-                    },
-                    (payload) => {
-                        const newRecord = payload.new;
-                        // console.log("Realtime Update:", newRecord.status, newRecord.responder_location);
+		const setupSubscription = async () => {
+			const { data: { user } } = await supabase.auth.getUser();
+			if (!user) return;
+
+			subscription = supabase
+				.channel('emergency_updates')
+				.on(
+					'postgres_changes',
+					{
+						event: 'UPDATE',
+						schema: 'public',
+						table: 'emergency_requests',
+						filter: `user_id=eq.${user.id}`,
+					},
+					(payload) => {
+						const newRecord = payload.new;
+						// console.log("Realtime Update:", newRecord.status, newRecord.responder_location);
 
 						setActiveBedBooking((prev) => {
 							if (!prev || prev.requestId !== newRecord.request_id) return prev;
@@ -198,106 +234,106 @@ export function EmergencyProvider({ children }) {
 							};
 						});
 
-                        setActiveAmbulanceTrip((prev) => {
-                            if (!prev || prev.requestId !== newRecord.request_id) return prev;
+						setActiveAmbulanceTrip((prev) => {
+							if (!prev || prev.requestId !== newRecord.request_id) return prev;
 
-                            if (newRecord.status === "completed" || newRecord.status === "cancelled") {
-                                // REMOVED: simulationService.stopSimulation();
-                                // Real-time ambulance tracking handled by subscriptions
-                                return null;
-                            }
+							if (newRecord.status === "completed" || newRecord.status === "cancelled") {
+								// REMOVED: simulationService.stopSimulation();
+								// Real-time ambulance tracking handled by subscriptions
+								return null;
+							}
 
-                            const loc = parsePoint(newRecord.responder_location);
-                            const prevAssigned = prev?.assignedAmbulance ?? null;
-                            const hasResponder = !!newRecord.responder_name;
-                            const mergedAssigned = hasResponder
-                                ? {
-                                    ...(prevAssigned && typeof prevAssigned === "object" ? prevAssigned : {}),
-                                    id: newRecord.ambulance_id || prevAssigned?.id || "ems_001",
-                                    type:
-                                        newRecord.responder_vehicle_type || prevAssigned?.type || "Ambulance",
-                                    plate: newRecord.responder_vehicle_plate || prevAssigned?.plate,
-                                    name: newRecord.responder_name || prevAssigned?.name,
-                                    phone: newRecord.responder_phone || prevAssigned?.phone,
-                                    location: loc || prevAssigned?.location,
-                                    heading:
-                                        Number.isFinite(newRecord.responder_heading)
-                                            ? newRecord.responder_heading
-                                            : prevAssigned?.heading || 0,
-                                }
-                                : prevAssigned;
+							const loc = parsePoint(newRecord.responder_location);
+							const prevAssigned = prev?.assignedAmbulance ?? null;
+							const hasResponder = !!newRecord.responder_name;
+							const mergedAssigned = hasResponder
+								? {
+									...(prevAssigned && typeof prevAssigned === "object" ? prevAssigned : {}),
+									id: newRecord.ambulance_id || prevAssigned?.id || "ems_001",
+									type:
+										newRecord.responder_vehicle_type || prevAssigned?.type || "Ambulance",
+									plate: newRecord.responder_vehicle_plate || prevAssigned?.plate,
+									name: newRecord.responder_name || prevAssigned?.name,
+									phone: newRecord.responder_phone || prevAssigned?.phone,
+									location: loc || prevAssigned?.location,
+									heading:
+										Number.isFinite(newRecord.responder_heading)
+											? newRecord.responder_heading
+											: prevAssigned?.heading || 0,
+								}
+								: prevAssigned;
 
-                            return {
-                                ...prev,
-                                status: newRecord.status,
-                                assignedAmbulance: mergedAssigned,
-                                currentResponderLocation: loc || prev.currentResponderLocation,
-                                currentResponderHeading:
-                                    Number.isFinite(newRecord.responder_heading)
-                                        ? newRecord.responder_heading
-                                        : prev.currentResponderHeading,
-                            };
-                        });
-                    }
-                )
-                .subscribe();
-        };
+							return {
+								...prev,
+								status: newRecord.status,
+								assignedAmbulance: mergedAssigned,
+								currentResponderLocation: loc || prev.currentResponderLocation,
+								currentResponderHeading:
+									Number.isFinite(newRecord.responder_heading)
+										? newRecord.responder_heading
+										: prev.currentResponderHeading,
+							};
+						});
+					}
+				)
+				.subscribe();
+		};
 
-        setupSubscription();
+		setupSubscription();
 
-        return () => {
-            if (subscription) supabase.removeChannel(subscription);
-            // REMOVED: simulationService.stopSimulation();
-            // Real-time tracking handled by subscriptions
-        };
-    }, []); // Removed dependency on activeAmbulanceTrip to avoid re-subscribing
+		return () => {
+			if (subscription) supabase.removeChannel(subscription);
+			// REMOVED: simulationService.stopSimulation();
+			// Real-time tracking handled by subscriptions
+		};
+	}, []); // Removed dependency on activeAmbulanceTrip to avoid re-subscribing
 
-    // Sync User Location to Server during Active Trip
-    useEffect(() => {
-        if (!activeAmbulanceTrip || !activeAmbulanceTrip.requestId) return;
-        if (activeAmbulanceTrip.status === 'completed' || activeAmbulanceTrip.status === 'cancelled') return;
+	// Sync User Location to Server during Active Trip
+	useEffect(() => {
+		if (!activeAmbulanceTrip || !activeAmbulanceTrip.requestId) return;
+		if (activeAmbulanceTrip.status === 'completed' || activeAmbulanceTrip.status === 'cancelled') return;
 
-        let locationSubscription = null;
+		let locationSubscription = null;
 
-        (async () => {
-            try {
-                const { status } = await Location.getForegroundPermissionsAsync();
-                if (status !== 'granted') return;
+		(async () => {
+			try {
+				const { status } = await Location.getForegroundPermissionsAsync();
+				if (status !== 'granted') return;
 
-                locationSubscription = await Location.watchPositionAsync(
-                    {
-                        accuracy: Location.Accuracy.High,
-                        distanceInterval: 10, // Update every 10 meters
-                        timeInterval: 10000,   // Or every 10 seconds
-                    },
-                    (location) => {
-                        const { latitude, longitude, heading } = location.coords;
-                        
-                        // Update local state for UI if needed (though map usually handles its own or uses this context)
-                        setUserLocation(prev => ({
-                            ...prev,
-                            latitude,
-                            longitude,
-                        }));
+				locationSubscription = await Location.watchPositionAsync(
+					{
+						accuracy: Location.Accuracy.High,
+						distanceInterval: 10, // Update every 10 meters
+						timeInterval: 10000,   // Or every 10 seconds
+					},
+					(location) => {
+						const { latitude, longitude, heading } = location.coords;
 
-                        // Sync to Supabase
-                        // PostGIS expects: 'POINT(lon lat)'
-                        emergencyRequestsService.updateLocation(
-                            activeAmbulanceTrip.requestId, 
-                            `POINT(${longitude} ${latitude})`,
-                            heading || 0
-                        );
-                    }
-                );
-            } catch (e) {
-                console.warn("Location tracking failed:", e);
-            }
-        })();
+						// Update local state for UI if needed (though map usually handles its own or uses this context)
+						setUserLocation(prev => ({
+							...prev,
+							latitude,
+							longitude,
+						}));
 
-        return () => {
-            if (locationSubscription) locationSubscription.remove();
-        };
-    }, [activeAmbulanceTrip?.requestId, activeAmbulanceTrip?.status]);
+						// Sync to Supabase
+						// PostGIS expects: 'POINT(lon lat)'
+						emergencyRequestsService.updateLocation(
+							activeAmbulanceTrip.requestId,
+							`POINT(${longitude} ${latitude})`,
+							heading || 0
+						);
+					}
+				);
+			} catch (e) {
+				console.warn("Location tracking failed:", e);
+			}
+		})();
+
+		return () => {
+			if (locationSubscription) locationSubscription.remove();
+		};
+	}, [activeAmbulanceTrip?.requestId, activeAmbulanceTrip?.status]);
 
 
 	useEffect(() => {
@@ -326,7 +362,7 @@ export function EmergencyProvider({ children }) {
 			const activeBed = activeRequests.find(
 				(r) => r?.serviceType === "bed" && isActiveStatus(r?.status)
 			);
-			
+
 			if (!isActive) return;
 			// if (__DEV__) {
 			// 	console.log("[EmergencyContext] Hydrate requests result:", {
@@ -394,20 +430,20 @@ export function EmergencyProvider({ children }) {
 					startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
 					assignedAmbulance: activeAmbulance.responderName
 						? {
-								...fullAmbulance,
-								id: activeAmbulance.ambulanceId || "ems_001",
-								type:
-									activeAmbulance.responderVehicleType ||
-									fullAmbulance?.type ||
-									"Ambulance",
-								plate:
-									activeAmbulance.responderVehiclePlate ||
-									fullAmbulance?.vehicleNumber,
-								name: activeAmbulance.responderName,
-								phone: activeAmbulance.responderPhone,
-								location: loc || fullAmbulance?.location,
-								heading: activeAmbulance.responderHeading || 0,
-						  }
+							...fullAmbulance,
+							id: activeAmbulance.ambulanceId || "ems_001",
+							type:
+								activeAmbulance.responderVehicleType ||
+								fullAmbulance?.type ||
+								"Ambulance",
+							plate:
+								activeAmbulance.responderVehiclePlate ||
+								fullAmbulance?.vehicleNumber,
+							name: activeAmbulance.responderName,
+							phone: activeAmbulance.responderPhone,
+							location: loc || fullAmbulance?.location,
+							heading: activeAmbulance.responderHeading || 0,
+						}
 						: null,
 					currentResponderLocation: loc,
 					currentResponderHeading: activeAmbulance.responderHeading,
@@ -495,7 +531,7 @@ export function EmergencyProvider({ children }) {
 		})();
 	}, [activeAmbulanceTrip?.assignedAmbulance?.id]);
 
-    // We don't need to manually save state anymore, Supabase handles it.
+	// We don't need to manually save state anymore, Supabase handles it.
 	// useEffect(() => {
 	// 	emergencyStateService.set({ mode, activeAmbulanceTrip, activeBedBooking }).catch(() => {});
 	// }, [activeAmbulanceTrip, activeBedBooking, mode]);
@@ -508,34 +544,35 @@ export function EmergencyProvider({ children }) {
 	// Filter hospitals based on current mode and criteria
 	const filteredHospitals = useMemo(() => {
 		if (!hospitals || hospitals.length === 0) return [];
-		
+
 		return hospitals.filter((hospital) => {
 			if (!hospital) return false;
-			
+
 			if (mode === EmergencyMode.EMERGENCY) {
-				// Emergency: show available hospitals, filter by service type if selected
-				if (hospital.status !== 'available') return false; // Only show available hospitals
-				
-				// 🔴 REVERT POINT: Ambulance availability check removed
-				// PREVIOUS: if (hospital.ambulances !== undefined && hospital.ambulances <= 0) return false;
-				// NEW: Always show hospitals, they'll call 911 if no ambulance data available
-				// REVERT TO: if (hospital.ambulances !== undefined && hospital.ambulances <= 0) return false;
-				
+				// Emergency: show hospitals that match service type if selected
+				// 🔴 REVERT POINT: Always show hospitals even if no real-time availability
+				// PREVIOUS: if (hospital.status !== 'available') return false;
+				// NEW: Show all hospitals, UI handles fallback to 911/Call
+				// REVERT TO: if (hospital.status !== 'available') return false;
+
 				if (!serviceType) return true; // Show all if no filter selected
 				// Ensure case-insensitive comparison
 				const type = serviceType.toLowerCase();
 				return (hospital.serviceTypes || []).some(t => t.toLowerCase() === type) || (hospital.type || "").toLowerCase() === type;
 			} else {
-				// Booking: show available hospitals with beds, filter by specialty if selected
-				if (hospital.status !== 'available') return false; // Only show available hospitals
-				if (!hospital.availableBeds || hospital.availableBeds <= 0) return false;
+				// Booking: show hospitals that match specialty if selected
+				// 🔴 REVERT POINT: Relaxed bed availability check
+				// PREVIOUS: if (hospital.status !== 'available') return false; if (!hospital.availableBeds || hospital.availableBeds <= 0) return false;
+				// NEW: Show all hospitals with specialty, UI handles fallback
+				// REVERT TO: The block above
+
 				if (!selectedSpecialty) return true; // Show all if no specialty selected
-				
+
 				// Better specialty matching - case insensitive and more robust
 				const hospitalSpecialties = hospital.specialties || [];
-				return hospitalSpecialties.some(specialty => 
-					specialty && 
-					typeof specialty === 'string' && 
+				return hospitalSpecialties.some(specialty =>
+					specialty &&
+					typeof specialty === 'string' &&
 					specialty.toLowerCase() === selectedSpecialty.toLowerCase()
 				);
 			}
@@ -610,9 +647,9 @@ export function EmergencyProvider({ children }) {
 				startedAt: Number.isFinite(trip?.startedAt) ? trip.startedAt : Date.now(),
 			});
 
-            // REMOVED: simulationService.startSimulation(trip.requestId, trip.route);
-            // Real-time ambulance tracking handled by subscriptions
-            console.log('[EmergencyContext] Ambulance trip started:', trip.requestId);
+			// REMOVED: simulationService.startSimulation(trip.requestId, trip.route);
+			// Real-time ambulance tracking handled by subscriptions
+			console.log('[EmergencyContext] Ambulance trip started:', trip.requestId);
 		},
 		[parseEtaToSeconds]
 	);
@@ -666,9 +703,9 @@ export function EmergencyProvider({ children }) {
 	}, []);
 
 	const toggleMode = useCallback(() => {
-		setMode(prevMode => 
-			prevMode === EmergencyMode.EMERGENCY 
-				? EmergencyMode.BOOKING 
+		setMode(prevMode =>
+			prevMode === EmergencyMode.EMERGENCY
+				? EmergencyMode.BOOKING
 				: EmergencyMode.EMERGENCY
 		);
 		setSelectedHospitalId(null); // Clear selection on mode change
@@ -686,38 +723,6 @@ export function EmergencyProvider({ children }) {
 
 	const toggleViewMode = useCallback(() => {
 		setViewMode(prevMode => prevMode === "map" ? "list" : "map");
-	}, []);
-
-	// Enrich hospitals with dynamic service types
-	const enrichHospitals = useCallback((newHospitals) => {
-		return newHospitals.map((hospital, index) => {
-            // If already has serviceTypes from DB, rely on them mostly, but ensure array
-            if (hospital.serviceTypes && Array.isArray(hospital.serviceTypes) && hospital.serviceTypes.length > 0) {
-                return hospital;
-            }
-
-			// Determine service types - allow some hospitals to offer both
-			let serviceTypes = [];
-			
-			if (hospital.type === "premium") {
-				serviceTypes = ["premium"];
-				// Some premium hospitals also offer standard service (30% of premium)
-				if (index % 3 === 0) {
-					serviceTypes.push("standard");
-				}
-			} else {
-				serviceTypes = ["standard"];
-				// Some standard hospitals also offer premium service (20% of standard)
-				if (index % 5 === 0) {
-					serviceTypes.push("premium");
-				}
-			}
-			
-			return {
-				...hospital,
-				serviceTypes,
-			};
-		});
 	}, []);
 
 	const normalizeHospitals = useCallback((input) => {
@@ -752,17 +757,17 @@ export function EmergencyProvider({ children }) {
 	// Update hospitals (for when we integrate with API)
 	const updateHospitals = useCallback((newHospitals) => {
 		const normalized = normalizeHospitals(newHospitals);
-		const enriched = enrichHospitals(normalized);
+		const enriched = enrichHospitalsWithServiceTypes(normalized);
 		setHospitals(enriched);
-	}, [enrichHospitals, normalizeHospitals]);
+	}, [normalizeHospitals]);
 
 	// REAL-TIME SUBSCRIPTIONS
 	useEffect(() => {
 		if (!activeAmbulanceTrip?.requestId) return;
-		
+
 		let unsubscribeEmergency = null;
 		let unsubscribeAmbulance = null;
-		
+
 		const setupSubscriptions = async () => {
 			try {
 				unsubscribeEmergency = await emergencyRequestsService.subscribeToEmergencyUpdates(
@@ -773,7 +778,7 @@ export function EmergencyProvider({ children }) {
 						}
 					}
 				);
-				
+
 				unsubscribeAmbulance = await emergencyRequestsService.subscribeToAmbulanceLocation(
 					activeAmbulanceTrip.requestId,
 					(payload) => {
@@ -787,9 +792,9 @@ export function EmergencyProvider({ children }) {
 				console.warn('[EmergencyContext] Failed to setup subscriptions:', error);
 			}
 		};
-		
+
 		setupSubscriptions();
-		
+
 		return () => {
 			if (unsubscribeEmergency && typeof unsubscribeEmergency === 'function') {
 				unsubscribeEmergency();
@@ -802,9 +807,9 @@ export function EmergencyProvider({ children }) {
 
 	useEffect(() => {
 		if (!activeBedBooking?.hospitalId) return;
-		
+
 		let unsubscribeBeds = null;
-		
+
 		const setupBedSubscription = async () => {
 			try {
 				unsubscribeBeds = await emergencyRequestsService.subscribeToHospitalBeds(
@@ -813,8 +818,8 @@ export function EmergencyProvider({ children }) {
 						if (payload.new) {
 							console.log('[EmergencyContext] Hospital beds updated:', payload.new.available_beds);
 							// Update hospital bed count in real-time
-							updateHospitals(hospitals.map(h => 
-								h.id === payload.new.id 
+							updateHospitals(hospitals.map(h =>
+								h.id === payload.new.id
 									? { ...h, availableBeds: payload.new.available_beds }
 									: h
 							));
@@ -825,9 +830,9 @@ export function EmergencyProvider({ children }) {
 				console.warn('[EmergencyContext] Failed to setup bed subscription:', error);
 			}
 		};
-		
+
 		setupBedSubscription();
-		
+
 		return () => {
 			if (unsubscribeBeds && typeof unsubscribeBeds === 'function') {
 				unsubscribeBeds();
@@ -850,7 +855,7 @@ export function EmergencyProvider({ children }) {
 		viewMode,
 		userLocation,
 		hasActiveFilters,
-		
+
 		// Actions
 		selectHospital,
 		clearSelectedHospital,

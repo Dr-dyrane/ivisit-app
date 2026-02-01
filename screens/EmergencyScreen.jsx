@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
-import { View, StyleSheet, Dimensions, Text, TouchableOpacity } from "react-native";
+import { View, StyleSheet, Dimensions, Text, TouchableOpacity, Linking } from "react-native";
 import { useEmergency } from "../contexts/EmergencyContext";
 import { useEmergencyUI } from "../contexts/EmergencyUIContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -31,6 +31,7 @@ import { getMapPaddingForSnapIndex } from "../constants/emergencyAnimations";
 import { discoveryService } from "../services/discoveryService";
 import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigationHelpers";
 import { useToast } from "../contexts/ToastContext";
+import Constants from "expo-constants";
 
 import { EmergencyMapContainer } from "../components/emergency/EmergencyMapContainer";
 import { BottomSheetController } from "../components/emergency/BottomSheetController";
@@ -163,6 +164,19 @@ export default function EmergencyScreen() {
 		}
 	}, [pendingSelectedHospitalId, selectedHospitalId]);
 
+	// 🔴 REVERT POINT: Clear route when selection is reset
+	// PREVIOUS: Route persisted until a new one was calculated
+	// NEW: Clear route immediately when no hospital is selected AND no active trip
+	// REVERT TO: Remove this useEffect
+	useEffect(() => {
+		const hasActiveTrip = !!activeAmbulanceTrip?.requestId || !!activeBedBooking?.requestId;
+
+		if (!selectedHospitalId && !pendingSelectedHospitalId && currentRoute && !hasActiveTrip) {
+			console.log("[EmergencyScreen] Clearing currentRoute because selection reset and no active trip");
+			setCurrentRoute(null);
+		}
+	}, [selectedHospitalId, pendingSelectedHospitalId, currentRoute, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId]);
+
 	// Map padding - calculated from snap index
 	const mapBottomPadding = useMemo(() => {
 		const isHospitalFlowOpen = !!selectedHospitalId || !!pendingSelectedHospitalId;
@@ -176,10 +190,13 @@ export default function EmergencyScreen() {
 				setQuickButtonPulse(true);
 			}, 2000);
 
-			// Create Matrix-style flicker effect
+			// 🔴 REVERT POINT: Stabilized flicker interval
+			// PREVIOUS: 3000ms
+			// NEW: 8000ms to reduce render-loop noise
+			// REVERT TO: 3000ms
 			const flickerInterval = setInterval(() => {
 				setQuickButtonPulse(prev => Math.random() > 0.3);
-			}, 3000);
+			}, 8000);
 
 			return () => {
 				clearTimeout(timer);
@@ -455,6 +472,12 @@ export default function EmergencyScreen() {
 		(hospitalId) => {
 			if (!hospitalId) return;
 
+			// Find hospital and check availability fallbacks
+			const hospital = hospitals.find(h => h.id === hospitalId);
+			const isGoogleHospital = hospital?.importedFromGoogle && hospital?.importStatus !== 'verified';
+			const noAmbulances = mode === 'emergency' && hospital?.ambulances !== undefined && hospital.ambulances <= 0;
+			const noBeds = mode === 'booking' && hospital?.availableBeds !== undefined && hospital.availableBeds <= 0;
+
 			const hasActiveByMode =
 				mode === "booking"
 					? !!activeBedBooking?.requestId
@@ -469,8 +492,37 @@ export default function EmergencyScreen() {
 						"warning"
 					);
 				} catch (e) { }
-				bottomSheetRef.current?.snapToIndex?.(1);
+				// 🔴 REVERT POINT: Safe Snapping
+				// PREVIOUS: bottomSheetRef.current?.snapToIndex?.(1) - triggered crash in detail mode
+				// NEW: Use the safe context handler which is aware of current mode constraints
+				// REVERT TO: The old hardcoded snapToIndex call
+				handleSheetSnapChange(1);
 				return;
+			}
+
+			// 🔴 REVERT POINT: Smart Fallback Logic
+			// PREVIOUS: Navigated to request screens regardless of service availability
+			// NEW: Triggers direct phone call if hospital is unverified or has no resources
+			// REVERT TO: Remove the block below
+			if (isGoogleHospital || noAmbulances || noBeds) {
+				console.log('[EmergencyScreen] Fallback active:', { isGoogleHospital, noAmbulances, noBeds });
+
+				const phone = hospital?.phone;
+				if (phone) {
+					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+					const cleanPhone = phone.replace(/[^\d+]/g, "");
+					Linking.openURL(`tel:${cleanPhone}`);
+					return;
+				} else {
+					showToast("Hospital phone number not available. Contacting emergency services...", "error");
+					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+
+					// 🔴 REVERT POINT: Emergency Fallback
+					// PREVIOUS: Only 911 in emergency mode
+					// NEW: Unified 911 fallback for any critical failure where phone is missing
+					Linking.openURL("tel:911");
+					return;
+				}
 			}
 
 			discoveryService.trackConversion({
@@ -487,7 +539,7 @@ export default function EmergencyScreen() {
 			}
 			navigateToRequestAmbulance({ router, hospitalId, method: "push" });
 		},
-		[mode, router, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId, showToast, searchQuery]
+		[mode, router, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId, showToast, searchQuery, hospitals]
 	);
 
 	// Service type selection
@@ -536,28 +588,28 @@ export default function EmergencyScreen() {
 	// Calculate service type counts - mode-aware filtering with status check
 	const serviceTypeCounts = useMemo(() => {
 		let availableHospitals;
-		
+
 		if (mode === 'emergency') {
 			// Emergency mode: count available hospitals (be lenient about ambulance data)
-			availableHospitals = hospitals.filter(h => 
-				h.status === 'available' && 
+			availableHospitals = hospitals.filter(h =>
+				h.status === 'available' &&
 				(h.ambulances === undefined || h.ambulances > 0) // Show if ambulance data missing OR > 0
 			);
 		} else {
 			// Booking mode: only count available hospitals with beds
-			availableHospitals = hospitals.filter(h => 
+			availableHospitals = hospitals.filter(h =>
 				h.status === 'available' && h.availableBeds > 0
 			);
 		}
-		
+
 		return {
 			premium:
-				availableHospitals.filter((h) => 
+				availableHospitals.filter((h) =>
 					(h?.serviceTypes?.includes("premium")) ||
 					(h?.type?.toLowerCase() === "premium")
 				).length || 0,
 			standard:
-				availableHospitals.filter((h) => 
+				availableHospitals.filter((h) =>
 					(h?.serviceTypes?.includes("standard")) ||
 					(h?.type?.toLowerCase() === "standard")
 				).length || 0,
@@ -841,6 +893,12 @@ export default function EmergencyScreen() {
 				onCloseFocus={wrappedHandleCloseFocus}
 			/>
 
+			{/* Subtle Version Display */}
+			<View style={styles.versionContainer} pointerEvents="none">
+				<Text style={[styles.versionText, { color: isDarkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)" }]}>
+					v{Constants.expoConfig?.version || '1.0.2.1'} • {Constants.expoConfig?.extra?.eas?.buildId?.substring(0, 8) || 'dev'}
+				</Text>
+			</View>
 		</View>
 	);
 }
@@ -848,5 +906,16 @@ export default function EmergencyScreen() {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
+	},
+	versionContainer: {
+		position: 'absolute',
+		bottom: 54, // Avoid map attribution
+		left: 12,
+		zIndex: 0,
+	},
+	versionText: {
+		fontSize: 10,
+		fontWeight: '500',
+		letterSpacing: 0.5,
 	},
 });

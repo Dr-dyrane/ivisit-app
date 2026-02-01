@@ -95,7 +95,7 @@ export default function ServiceTypeSelector({ selectedType, onSelect, counts }) 
 								{service.title}
 							</Text>
 							<Text style={[styles.subtitle, { color: mutedColor }]} numberOfLines={1}>
-								{safeCounts[normalizedServiceType] ?? 0}
+								{safeCounts[normalizedServiceType] ?? 0} Hospitals
 							</Text>
 						</View>
 

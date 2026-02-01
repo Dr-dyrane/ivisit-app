@@ -121,13 +121,15 @@ export function FABProvider({ children }) {
 
   // Resolve active FAB based on priority and visibility
   const activeFAB = useMemo(() => {
+    // Get all registered FABs (including hidden ones)
+    const allRegistrations = Array.from(registrations.values());
+
     // Get visible FABs from registrations
-    const visibleFABs = Array.from(registrations.values())
-      .filter(fab => fab.visible && !fab.disabled);
-    
+    const visibleFABs = allRegistrations.filter(fab => fab.visible && !fab.disabled);
+
     // Check if any registered FAB explicitly allows stack display
     const stackOverrideFABs = visibleFABs.filter(fab => fab.allowInStack);
-    
+
     // If we have stack override FABs, use them even in stack
     if (stackOverrideFABs.length > 0) {
       stackOverrideFABs.sort((a, b) => {
@@ -137,24 +139,33 @@ export function FABProvider({ children }) {
       });
       return stackOverrideFABs[0];
     }
-    
+
     // Always hide in stack screens (unless overridden above)
     if (isInStack) return null;
-    
-    // If no registered FABs, fall back to tab default
-    if (visibleFABs.length === 0) {
-      const tabDefault = TAB_DEFAULTS[currentTab] || TAB_DEFAULTS.index;
-      return tabDefault.visible ? tabDefault : null;
+
+    // IMPORTANT: If ANY screen has registered a FAB (even with visible: false),
+    // that screen is actively managing the FAB state. Do NOT fall back to defaults.
+    // Only fall back to tab defaults when NO registrations exist at all.
+    if (allRegistrations.length > 0) {
+      // A screen has registered - respect its visibility setting
+      if (visibleFABs.length === 0) {
+        // Screen registered but set visible: false - hide the FAB
+        return null;
+      }
+
+      // Sort by priority (highest first), then by registration order
+      visibleFABs.sort((a, b) => {
+        const priorityDiff = (b.priority || 5) - (a.priority || 5);
+        if (priorityDiff !== 0) return priorityDiff;
+        return (b.id || '').localeCompare(a.id || '');
+      });
+
+      return visibleFABs[0];
     }
-    
-    // Sort by priority (highest first), then by registration order
-    visibleFABs.sort((a, b) => {
-      const priorityDiff = (b.priority || 5) - (a.priority || 5);
-      if (priorityDiff !== 0) return priorityDiff;
-      return (b.id || '').localeCompare(a.id || '');
-    });
-    
-    return visibleFABs[0];
+
+    // No registrations at all - fall back to tab default
+    const tabDefault = TAB_DEFAULTS[currentTab] || TAB_DEFAULTS.index;
+    return tabDefault.visible ? tabDefault : null;
   }, [registrations, currentTab, isInStack]);
 
   // Get style configuration for active FAB

@@ -38,9 +38,15 @@ export default function EmergencySearchBar({
 	const [isFocused, setIsFocused] = useState(false);
 	const focusProgress = useSharedValue(0);
 
+	// 🔴 REVERT POINT: Move shared value updates out of render path
+	// PREVIOUS: focusProgress.value updated in useEffect
+	// NEW: focusProgress.value updated in event handlers to avoid render-phase race conditions
+	// REVERT TO: The useEffect block below
+	/*
 	useEffect(() => {
 		focusProgress.value = withSpring(isFocused ? 1 : 0, { damping: 20, stiffness: 300 });
-	}, [isFocused, focusProgress]);
+	}, [isFocused]);
+	*/
 
 	// Finalized Premium Colors
 	const backgroundColor = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
@@ -50,14 +56,16 @@ export default function EmergencySearchBar({
 
 	const handleFocus = useCallback(() => {
 		setIsFocused(true);
+		focusProgress.value = withSpring(1, { damping: 20, stiffness: 300 });
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		onFocus?.();
-	}, [onFocus]);
+	}, [onFocus, focusProgress]);
 
 	const handleBlurEvent = useCallback(() => {
 		setIsFocused(false);
+		focusProgress.value = withSpring(0, { damping: 20, stiffness: 300 });
 		onBlur?.();
-	}, [onBlur]);
+	}, [onBlur, focusProgress]);
 
 	const handleVoice = useCallback(() => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

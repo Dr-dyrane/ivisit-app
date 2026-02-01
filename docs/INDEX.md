@@ -51,7 +51,8 @@ docs/
   │   ├── auth/
   │   │   ├── login.md
   │   │   ├── register.md
-  │   │   └── REGISTRATION_UI_UX.md
+  │   │   ├── REGISTRATION_UI_UX.md
+  │   │   └── OAUTH_TROUBLESHOOTING.md
   │
   │   └── emergency/
   │       └── ambulance_and_bed_booking.md
@@ -109,6 +110,7 @@ docs/
 | [login.md](./flows/auth/login.md) | Login flow & components |
 | [register.md](./flows/auth/register.md) | Registration flow |
 | [REGISTRATION_UI_UX.md](./flows/auth/REGISTRATION_UI_UX.md) | Registration UI/UX details |
+| [OAUTH_TROUBLESHOOTING.md](./flows/auth/OAUTH_TROUBLESHOOTING.md) | OAuth redirect troubleshooting for iOS/Android/Expo Go |
 | [ambulance_and_bed_booking.md](./flows/emergency/ambulance_and_bed_booking.md) | SOS user flow: ambulance request + bed reservation |
 
 ### Design & UX
@@ -130,7 +132,7 @@ docs/
 | [EMERGENCY_SCREEN_REFACTOR_PLAN.md](./emergency/refactor/EMERGENCY_SCREEN_REFACTOR_PLAN.md) | EmergencyScreen modularization plan |
 | [BOTTOM_SHEET_MAP_REFACTOR_PLAN.md](./emergency/refactor/BOTTOM_SHEET_MAP_REFACTOR_PLAN.md) | EmergencyBottomSheet + FullScreenEmergencyMap modularization plan |
 | [BOTTOM_SHEET_MAP_SUMMARY.md](./emergency/refactor/BOTTOM_SHEET_MAP_SUMMARY.md) | Implementation summary (phases completed) |
-| [POST_BOOKING_UI_CHECKLIST.md](./emergency/checklists/POST_BOOKING_UI_CHECKLIST.md) | Post-booking UX + stability checklist |
+| [POST_BOOKING_UI_CHECKLIST.md](./emergency/checklists/POST_BOOKING_UI_CHECKLIST.md) | Post-booking UX + stability checklist (includes ✅ SOLVED snap index fix) |
 | [EMERGENCY_SCREEN_UX_REDESIGN.md](./emergency/ux/EMERGENCY_SCREEN_UX_REDESIGN.md) | Apple Maps-style Emergency screen UX plan |
 | [EMERGENCY_UI_IMPROVEMENTS.md](./emergency/ux/EMERGENCY_UI_IMPROVEMENTS.md) | Changes made + rationale for Emergency request UI |
 

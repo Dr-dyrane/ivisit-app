@@ -50,7 +50,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
-	const { modalHeight, getKeyboardAvoidingViewProps, getScrollViewProps } = 
+	const { modalHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
 		useAndroidKeyboardAwareModal({ defaultHeight: SCREEN_HEIGHT * 0.85 });
 
 	const [resetEmail, setResetEmail] = useState(null);
@@ -155,9 +155,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 
 			// Call the onSwitchToSignUp callback if provided
 			if (onSwitchToSignUp) {
-				setTimeout(() => {
-					onSwitchToSignUp(loginData.contactType);
-				}, 100);
+				onSwitchToSignUp(loginData.contactType);
 			}
 		});
 	};
@@ -194,14 +192,14 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 			return;
 		}
 
-        await handleResendOtpLogin(contact);
+		await handleResendOtpLogin(contact);
 
 		goToStep(LOGIN_STEPS.OTP_VERIFICATION);
 	};
 
-    const handleResendOtpLogin = async (contactValue) => {
-        const contact = contactValue || loginData.contact;
-        if (!contact) return;
+	const handleResendOtpLogin = async (contactValue) => {
+		const contact = contactValue || loginData.contact;
+		if (!contact) return;
 
 		startLoading();
 		try {
@@ -219,8 +217,8 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 			if (otpResult.data?.otp) {
 				setMockOtp(otpResult.data.otp);
 			} else {
-                setMockOtp(null);
-            }
+				setMockOtp(null);
+			}
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			showToast(
@@ -235,7 +233,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		} finally {
 			stopLoading();
 		}
-    };
+	};
 
 	// Email validation helper
 	const isValidEmail = (email) => {
@@ -251,7 +249,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 
 	const handleContactSubmit = async (value) => {
 		if (!value) return;
-        
+
 		// Validate input format before API call
 		if (loginData.contactType === "email" && !isValidEmail(value)) {
 			const errorMessage = "Please enter a valid email address";
@@ -278,12 +276,12 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 
 			if (loginData.authMethod === LOGIN_AUTH_METHODS.PASSWORD) {
 				// SKIP unreliable pre-check (Supabase doesn't allow public user existence checks)
-                // We proceed directly to password entry. The login attempt will validate existence.
-				
-                // Clear any previous user info since we are skipping the check
+				// We proceed directly to password entry. The login attempt will validate existence.
+
+				// Clear any previous user info since we are skipping the check
 				setUserInfo(null);
-                
-                // Proceed to password step
+
+				// Proceed to password step
 				nextStep();
 				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			} else {
@@ -305,8 +303,8 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 				if (otpResult.data?.otp) {
 					setMockOtp(otpResult.data.otp);
 				} else {
-                    setMockOtp(null);
-                }
+					setMockOtp(null);
+				}
 
 				nextStep();
 				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -319,7 +317,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 			console.error("LoginInputModal handleContactSubmit error:", err);
 			const errorMessage =
 				(err.message?.includes("|") ? err.message.split("|")[1] : err.message) ||
-                "Unable to proceed. Please try again.";
+				"Unable to proceed. Please try again.";
 			setLoginError(errorMessage);
 			showToast(errorMessage, "error");
 		} finally {
@@ -339,11 +337,11 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		});
 
 		if (result.success) {
-            // Check if user is actually new (no profile)
+			// Check if user is actually new (no profile)
 			// But for OTP flow, Supabase creates user automatically if not exists
-            // We should treat this as a successful login regardless.
-            // If they need to complete profile, the MainLayout or AuthContext should handle that redirect.
-            
+			// We should treat this as a successful login regardless.
+			// If they need to complete profile, the MainLayout or AuthContext should handle that redirect.
+
 			// Sync user data to ensure proper state update
 			await syncUserData();
 
@@ -363,8 +361,8 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 				setLoginError(
 					"No account found with this " +
-						loginData.contactType +
-						". Would you like to create one?"
+					loginData.contactType +
+					". Would you like to create one?"
 				);
 				setShowSignUpOption(true);
 
@@ -424,7 +422,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 
 	const handleSetPassword = async (password) => {
 		if (!password) return;
-		
+
 		// Basic password validation
 		if (password.length < 6) {
 			const errorMessage = "Password must be at least 6 characters";
@@ -432,7 +430,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 			showToast(errorMessage, "error");
 			return;
 		}
-		
+
 		startLoading();
 		clearError();
 
@@ -555,7 +553,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 										currentStep !== LOGIN_STEPS.FORGOT_PASSWORD && (
 											<Text
 												className="text-[10px] mb-2 uppercase"
-												style={{ 
+												style={{
 													color: COLORS.brandPrimary,
 													fontWeight: "800",
 													letterSpacing: 1.5
@@ -568,7 +566,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 										)}
 									<Text
 										className="text-3xl"
-										style={{ 
+										style={{
 											color: colors.text,
 											fontWeight: "900",
 											letterSpacing: -1.0
@@ -611,7 +609,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 													? COLORS.brandPrimary
 													: COLORS.error,
 												fontSize: 15,
-												fontWeight:'600',
+												fontWeight: '600',
 												flex: 1,
 											}}
 										>
@@ -731,7 +729,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 										method={loginData.contactType}
 										contact={loginData.contact}
 										onVerified={handleOTPSubmit}
-                                        onResend={() => handleResendOtpLogin(loginData.contact)}
+										onResend={() => handleResendOtpLogin(loginData.contact)}
 										loading={loading}
 									/>
 								</View>

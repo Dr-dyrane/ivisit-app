@@ -66,6 +66,118 @@ Primary goals:
 - Bottom sheet + map interaction can feel buggy/janky.
 - Snapping should not cause repeated heavy map operations.
 
+---
+
+## ✅ SOLVED: Snap Index Out of Range Error
+
+**Date Solved:** 2026-02-01
+**Status:** FIXED ✅
+
+### The Problem
+
+When transitioning between bottom sheet modes (e.g., selecting a hospital, entering detail mode, or after Call 911), the app would crash with:
+
+```
+Invariant Violation: 'index' was provided but out of the provided snap points range! expected value to be between -1, 1
+```
+
+**Error Logs observed:**
+```
+[EmergencyBottomSheet] clampSheetIndex called with: 2 snapPoints: ["55%"] length: 1
+[EmergencyBottomSheet] Final clamped index: 0 maxIndex: 0
+[EmergencyBottomSheet] Restoring to safe index: 0 from original: 2
+ERROR Global Error Boundary caught an error: [Invariant Violation: 'index'...
+```
+
+### Root Cause
+
+The bottom sheet uses different snap point arrays depending on the mode:
+
+| Mode | Snap Points | Valid Indices |
+|------|-------------|---------------|
+| Standard | `["22%", "50%", "82%"]` | 0, 1, 2 |
+| Detail (hospital selected) | `["55%"]` | 0 only |
+| Active trip/bed booking | `["40%", "50%"]` | 0, 1 |
+
+The global `EmergencyUIContext` stored `snapIndex` which could be `2` in standard mode. When transitioning to detail mode (1 snap point), the stored index `2` was passed to `@gorhom/bottom-sheet`, which crashed because index `2` doesn't exist in `["55%"]`.
+
+**React batching issue:** Even with `useMemo` for `derivedIndex`, React could batch state updates, causing the native bottom sheet component to receive the stale global index before React had a chance to recalculate the derived value.
+
+### The Solution
+
+Implemented a multi-layered defensive approach:
+
+#### 1. Added `resetSnapIndex()` to `EmergencyUIContext.jsx`
+
+```javascript
+// contexts/EmergencyUIContext.jsx
+const resetSnapIndex = useCallback(() => {
+    setSnapIndex(0);
+}, []);
+
+// Exported in context value
+const value = useMemo(() => ({
+    snapIndex,
+    handleSnapChange,
+    resetSnapIndex, // NEW
+    // ...
+}), [...]);
+```
+
+#### 2. Proactive reset on mode transition in `EmergencyBottomSheet.jsx`
+
+```javascript
+// components/emergency/EmergencyBottomSheet.jsx
+useEffect(() => {
+    if (isDetailMode && newSnapIndex > 0) {
+        resetSnapIndex();
+    }
+}, [isDetailMode, newSnapIndex, resetSnapIndex]);
+```
+
+#### 3. Improved `derivedIndex` calculation with defensive clamping
+
+```javascript
+const derivedIndex = useMemo(() => {
+    const maxIdx = Math.max(0, snapPoints.length - 1);
+
+    // For detail mode or single snap point scenarios, ALWAYS return 0
+    if (isDetailMode || snapPoints.length <= 1) {
+        return 0;
+    }
+
+    // For trip/bed booking mode with 2 snap points
+    if (hasAnyVisitActive && snapPoints.length === 2) {
+        return Math.min(newSnapIndex, 1);
+    }
+
+    // Standard mode: clamp to valid range
+    return Math.min(Math.max(0, newSnapIndex), maxIdx);
+}, [isDetailMode, hasAnyVisitActive, newSnapIndex, snapPoints.length, snapPoints]);
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `contexts/EmergencyUIContext.jsx` | Added `resetSnapIndex()` function |
+| `components/emergency/EmergencyBottomSheet.jsx` | Added proactive reset effect + improved `derivedIndex` |
+
+### Why This Works
+
+1. **Proactive Reset:** When entering detail mode, the effect immediately resets the global index to 0, preventing invalid values from persisting.
+
+2. **Defensive Clamping:** Even if a stale index reaches the `derivedIndex` calculation, it's always clamped to the valid range for the current snap points array.
+
+3. **Mode-Aware Logic:** Each mode has specific handling to ensure the derived index is always valid for that mode's snap points.
+
+### Testing Verification
+
+- ✅ Selecting a hospital (standard → detail mode) no longer crashes
+- ✅ Pressing Call 911 and transitioning modes works correctly
+- ✅ Completing/canceling trips returns to appropriate snap state
+- ✅ Rapid mode switching does not cause index errors
+
 ## Desired high-level flow
 
 ### Ambulance (post request)

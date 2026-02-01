@@ -8,6 +8,12 @@ import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
+
+WebBrowser.maybeCompleteAuthSession();
+
+// Use a global to ensure this is truly only called once across re-mounts
+let isSplashPrevented = false;
 
 import { AppProviders } from "../providers/AppProviders";
 import { useAuth } from "../contexts/AuthContext";
@@ -17,43 +23,53 @@ import ThemeToggle from "../components/ThemeToggle";
 import GlobalErrorBoundary from "../components/GlobalErrorBoundary";
 import { isProfileComplete } from "../utils/profileCompletion";
 import { authService } from "../services/authService";
-
 import { appMigrationsService } from "../services/appMigrationsService";
 
 /**
  * Root layout wraps the entire app with context providers
- * - Refactored to use AppProviders for cleaner modularity
- *
- * File Path: app/_layout.js
  */
 export default function RootLayout() {
 	const [appIsReady, setAppIsReady] = useState(false);
 
 	useEffect(() => {
+		let isMounted = true;
+
 		async function prepare() {
 			try {
-				// Prevent splash screen from auto-hiding
-				await SplashScreen.preventAutoHideAsync();
-				
+				if (!isSplashPrevented) {
+					console.log("[RootLayout] Calling SplashScreen.preventAutoHideAsync()");
+					await SplashScreen.preventAutoHideAsync().catch(e => {
+						console.warn("[RootLayout] SplashScreen.preventAutoHideAsync error:", e.message);
+					});
+					isSplashPrevented = true;
+				}
+
+				// Log deep link info for diagnostics
+				console.log("[RootLayout] Linking.createURL('/'):", Linking.createURL("/"));
+
 				// Run migrations and schema reload on startup
 				await appMigrationsService.run();
-				
-				// Mark app as ready
-				setAppIsReady(true);
+
+				if (isMounted) setAppIsReady(true);
 			} catch (err) {
-				console.log("Migration error:", err);
-				// Still mark as ready even if migrations fail
-				setAppIsReady(true);
+				console.warn("[RootLayout] Prepare exception:", err);
+				if (isMounted) setAppIsReady(true);
 			}
 		}
 
 		prepare();
+		return () => { isMounted = false; };
 	}, []);
 
 	useEffect(() => {
-		// Hide splash screen when app is ready
 		if (appIsReady) {
-			SplashScreen.hideAsync().catch(err => console.log("SplashScreen.hide error:", err));
+			const timer = setTimeout(() => {
+				console.log("[RootLayout] Attempting to hide SplashScreen");
+				SplashScreen.hideAsync().catch(err => {
+					console.log("[RootLayout] SplashScreen.hideAsync error:", err.message);
+				});
+			}, 200);
+			return () => clearTimeout(timer);
 		}
 	}, [appIsReady]);
 
@@ -63,7 +79,6 @@ export default function RootLayout() {
 				<AppProviders>
 					<View style={{ flex: 1 }}>
 						<AuthenticatedStack />
-						{/* Theme toggle (optional absolute positioning) */}
 						<View className="absolute right-0 top-16 px-2 py-4">
 							<ThemeToggle showLabel={false} />
 						</View>
@@ -76,7 +91,6 @@ export default function RootLayout() {
 
 /**
  * Stack navigator that observes auth state
- * Redirects automatically to auth/user stacks
  */
 function AuthenticatedStack() {
 	const { user, login, syncUserData } = useAuth();
@@ -85,26 +99,34 @@ function AuthenticatedStack() {
 	const router = useRouter();
 	const segments = useSegments();
 
-	// Deep Link Handling for Magic Links / OAuth
 	useEffect(() => {
 		const handleDeepLink = async (event) => {
 			const url = event.url;
 			if (!url) return;
 
-			console.log("[DeepLink] Handling URL:", url);
+			// Log URL scheme without exposing tokens
+			const urlScheme = url.split('://')[0] || 'unknown';
+			console.log("[DeepLink] Received URL with scheme:", urlScheme);
 
-			// Check if it's an auth callback (Magic Link or OAuth)
-			if (url.includes("auth/callback")) {
+			const isAuthCallback = url.includes("auth/callback") || url.includes("code=") || url.includes("access_token=");
+			console.log("[DeepLink] URL check:", { scheme: urlScheme, isAuthCallback });
+
+			if (isAuthCallback) {
+				console.log("[DeepLink] Identified as Auth Callback, processing...");
 				try {
-					// Let authService parse and handle the session exchange
 					const result = await authService.handleOAuthCallback(url);
+					console.log("[DeepLink] handleOAuthCallback completed:", { skipped: result?.skipped, hasUser: !!result?.data?.user });
+
+					if (result?.skipped) {
+						console.log("[_layout] Auth already handled by WebBrowser result, skipping");
+						return;
+					}
 
 					if (result?.data?.user) {
 						await login(result.data.user);
 						await syncUserData();
-						showToast("Successfully logged in via email link!", "success");
-						
-						// Redirect to home after successful auth
+						showToast("Successfully logged in!", "success");
+
 						setTimeout(() => {
 							router.replace("/(user)/(tabs)");
 						}, 500);
@@ -112,74 +134,55 @@ function AuthenticatedStack() {
 				} catch (error) {
 					console.error("Deep Link Auth Error:", error);
 					showToast("Failed to verify login link: " + error.message, "error");
-					
-					// Redirect to auth on error
-					setTimeout(() => {
-						router.replace("/(auth)");
-					}, 500);
+					router.replace("/(auth)");
 				}
 			} else {
-				// Handle unmatched routes - redirect authenticated users to home
-				// 🔴 REVERT POINT: Fix deep link infinite loop for localhost URLs
-				// PREVIOUS: Redirected all unmatched routes including localhost:8081
-				// NEW: Skip localhost development URLs to prevent infinite loops
-				// REVERT TO: Remove the localhost check
-				if (user?.isAuthenticated && !url.includes("localhost:8081")) {
-					console.log("[DeepLink] Unmatched route, redirecting authenticated user to home");
-					setTimeout(() => {
-						router.replace("/(user)/(tabs)");
-					}, 500);
+				// Prevent loop on base app URLs
+				const isRootDevUrl = url.includes(":8081") && !url.includes("?") && !url.includes("#");
+				const isBaseUrl =
+					url === Linking.createURL("/") ||
+					url === Linking.createURL("") ||
+					url === "ivisit://" ||
+					url.endsWith("/--") ||
+					isRootDevUrl;
+
+				if (user?.isAuthenticated && !isBaseUrl && !isAuthCallback) {
+					console.log("[DeepLink] Non-auth route received, user is already logged in");
+					router.replace("/(user)/(tabs)");
 				}
 			}
 		};
 
-		// Handle initial URL (if app was closed)
 		Linking.getInitialURL().then((url) => {
 			if (url) handleDeepLink({ url });
 		});
 
-		// Listen for new URLs (if app is open/background)
 		const subscription = Linking.addEventListener("url", handleDeepLink);
-
-		return () => {
-			subscription.remove();
-		};
+		return () => subscription.remove();
 	}, [user?.isAuthenticated, login, syncUserData, showToast, router]);
 
-	// Redirect based on authentication state
 	useEffect(() => {
-		// Use a small delay to ensure navigation completes properly
-		const timer = setTimeout(() => {
-			const rootGroup = segments?.[0] ?? null;
-			const onCompleteProfile =
-				segments?.[0] === "(user)" &&
-				segments?.[1] === "(stacks)" &&
-				segments?.[2] === "complete-profile";
+		const rootGroup = segments?.[0] ?? null;
+		const onCompleteProfile =
+			segments?.[0] === "(user)" &&
+			segments?.[1] === "(stacks)" &&
+			segments?.[2] === "complete-profile";
 
-			if (!user.isAuthenticated) {
-				if (rootGroup !== "(auth)") {
-					router.replace("/(auth)");
-				}
-				return;
+		if (!user.isAuthenticated) {
+			if (rootGroup !== "(auth)") {
+				router.replace("/(auth)");
 			}
+			return;
+		}
 
-			const profileComplete = isProfileComplete(user);
-			if (!profileComplete && !onCompleteProfile) {
-				router.replace("/(user)/(stacks)/complete-profile");
-				return;
-			}
+		if (!isProfileComplete(user) && !onCompleteProfile) {
+			router.replace("/(user)/(stacks)/complete-profile");
+			return;
+		}
 
-			if (rootGroup === "(auth)") {
-				router.replace("/(user)/(tabs)");
-				return;
-			}
-
-			if (rootGroup !== "(user)") {
-				router.replace("/(user)/(tabs)");
-			}
-		}, 100);
-
-		return () => clearTimeout(timer);
+		if (rootGroup === "(auth)" || rootGroup !== "(user)") {
+			router.replace("/(user)/(tabs)");
+		}
 	}, [segments, user]);
 
 	return (
