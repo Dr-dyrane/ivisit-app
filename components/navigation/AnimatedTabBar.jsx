@@ -189,13 +189,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     overflow: 'visible',
-    alignItems: 'center',
+    alignItems: 'flex-start', // Left-align the pill container
     justifyContent: 'flex-end',
   },
   pillContainer: {
-    alignItems: 'center',
+    alignItems: 'flex-start', // Left-aligned like Apple
     justifyContent: 'center',
-    width: 300,
+    width: 200, // Smaller for 2 tabs
+    marginLeft: 20, // Add margin from left edge
     overflow: 'hidden',
     borderRadius: 48,
   },

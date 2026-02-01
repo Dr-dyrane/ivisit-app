@@ -1,4 +1,41 @@
+/**
+ * 🎯 FAB SYSTEM DOCUMENTATION
+ * 
+ * ARCHITECTURE:
+ * - Home Tab: Mode switching FAB (priority 10, persistent via useEffect)
+ * - EmergencyScreen: Contextual FAB (priority 15, useFocusEffect)
+ * - FABContext: Priority-based competition resolution
+ * - GlobalFAB: Renders the winning FAB
+ * 
+ * DATA FLOW:
+ * 1. Components register FABs with visibility rules
+ * 2. FABContext filters visible FABs and sorts by priority
+ * 3. Highest priority visible FAB wins
+ * 4. GlobalFAB renders the winner
+ * 
+ * DEBUGGING CHECKLIST:
+ * ✅ Check registration logs in each component
+ * ✅ Verify priority values (higher wins)
+ * ✅ Check visibility conditions (selectedHospital, etc.)
+ * ✅ Look at GlobalFAB rendering logs
+ * ✅ Ensure proper cleanup in return functions
+ * 
+ * COMMON ISSUES:
+ * - Wrong lifecycle hook (useEffect vs useFocusEffect)
+ * - Missing selectedHospital dependency in Home Tab
+ * - Both FABs hidden → no winner
+ * - Priority conflicts → unexpected winner
+ * 
+ * ADDING NEW FABS:
+ * 1. Use unique ID
+ * 2. Set appropriate priority (10-100)
+ * 3. Define visibility conditions
+ * 4. Handle cleanup in return function
+ * 5. Add debug logs
+ */
+
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { Platform } from 'react-native';
 import { COLORS } from '../constants/colors';
 
 /**
@@ -14,6 +51,23 @@ import { COLORS } from '../constants/colors';
  */
 
 const FABContext = createContext(null);
+
+// Platform-specific FAB dimensions
+const FAB_DIMENSIONS = {
+  ios: {
+    height: 56,
+    offset: 16,
+  },
+  android: {
+    height: 64,
+    offset: 2,
+  },
+};
+
+// Get current platform dimensions
+const getFABDimensions = () => {
+  return Platform.OS === 'ios' ? FAB_DIMENSIONS.ios : FAB_DIMENSIONS.android;
+};
 
 // Enhanced FAB configuration schema
 const FAB_CONFIG_SCHEMA = {
@@ -160,7 +214,25 @@ export function FABProvider({ children }) {
         return (b.id || '').localeCompare(a.id || '');
       });
 
-      return visibleFABs[0];
+      // Log the competition and winner
+      if (visibleFABs.length > 1) {
+        console.log('[FABContext] FAB Competition:', visibleFABs.map(fab => ({
+          id: fab.id,
+          priority: fab.priority,
+          visible: fab.visible
+        })));
+      }
+      
+      const winner = visibleFABs[0];
+      if (winner) {
+        console.log('[FABContext] FAB Winner:', {
+          id: winner.id,
+          priority: winner.priority,
+          visible: winner.visible
+        });
+      }
+
+      return winner;
     }
 
     // No registrations at all - fall back to tab default
@@ -188,6 +260,9 @@ export function FABProvider({ children }) {
     // Active FAB state
     activeFAB,
     getFABStyle,
+    
+    // Platform-specific dimensions
+    dimensions: getFABDimensions(),
     
     // Legacy support (for backward compatibility)
     updateFAB: useCallback((updates) => {

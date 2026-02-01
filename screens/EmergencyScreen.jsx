@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useCallback, useMemo, useState, useEffect } from "react";
+import React from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { View, StyleSheet, Dimensions, Text, TouchableOpacity, Linking } from "react-native";
 import { useEmergency } from "../contexts/EmergencyContext";
@@ -54,8 +55,55 @@ import { useSearchFiltering } from "../hooks/emergency/useSearchFiltering";
  * - Centralized UI state management
  * - Easier performance optimization
  */
-export default function EmergencyScreen() {
+const EmergencyScreen = () => {
+	const screenId = useRef(Math.random().toString(36).substr(2, 9));
+	console.log(`[EmergencyScreen-${screenId.current}] Component mounting...`);
+	
 	const router = useRouter();
+	
+	// Track focus state manually using useFocusEffect
+	const [isFocused, setIsFocused] = useState(false);
+	
+	// Add cleanup tracking
+	useEffect(() => {
+		return () => {
+			console.log(`[EmergencyScreen-${screenId.current}] Component unmounting...`);
+		};
+	}, []);
+	
+	// Track focus state manually using useFocusEffect
+	useFocusEffect(
+		useCallback(() => {
+			console.log(`[EmergencyScreen-${screenId.current}] Tab focused`);
+			setIsFocused(true);
+			return () => {
+				console.log(`[EmergencyScreen-${screenId.current}] Tab unfocused`);
+				setIsFocused(false);
+			};
+		}, [])
+	);
+
+	// FAB visibility logic - hide when hospital is selected
+	useEffect(() => {
+		const fabId = `emergency-screen-fab-${screenId.current}`;
+		
+		// Hide FAB when hospital is selected or there's an active trip
+		const shouldHideFAB = !!selectedHospitalId || !!pendingSelectedHospitalId || 
+			!!activeAmbulanceTrip?.requestId || !!activeBedBooking?.requestId;
+		
+		if (!shouldHideFAB) {
+			// Register a hidden FAB to override tab defaults
+			registerFAB(fabId, {
+				visible: false,
+				priority: 20, // Higher priority to override tab defaults
+			});
+		}
+		
+		return () => {
+			unregisterFAB(fabId);
+		};
+	}, [selectedHospitalId, pendingSelectedHospitalId, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId, registerFAB, unregisterFAB]);
+	
 	const simulationDebugRef = useRef(null);
 	const { resetTabBar, lockTabBarHidden, unlockTabBarHidden } =
 		useTabBarVisibility();
@@ -109,7 +157,6 @@ export default function EmergencyScreen() {
 		selectedHospitalId,
 		selectedHospital,
 		filteredHospitals,
-		mode,
 		activeAmbulanceTrip,
 		activeBedBooking,
 		serviceType,
@@ -130,6 +177,7 @@ export default function EmergencyScreen() {
 		startBedBooking,
 		stopBedBooking,
 		setBedBookingStatus,
+		mode, // Add missing mode
 	} = useEmergency();
 	const { showToast } = useToast();
 
@@ -388,27 +436,39 @@ export default function EmergencyScreen() {
 	const hasAnyVisitActive = !!activeAmbulanceTrip || !!activeBedBooking;
 	const shouldHideFAB = useMemo(() => {
 		// Always hide when hospital is selected (detail mode)
-		if (selectedHospital) return true;
+		if (selectedHospital) {
+			console.log('[EmergencyScreen] FAB HIDING: Hospital selected (detail mode)', selectedHospital.name);
+			return true;
+		}
 
 		// During active trips, always show FAB for mode switching regardless of snap position
-		if (hasAnyVisitActive) return false;
+		if (hasAnyVisitActive) {
+			console.log('[EmergencyScreen] FAB SHOWING: Active trip in progress');
+			return false;
+		}
 
 		// Collapsed sheet should hide FAB at all times
-		if (sheetSnapIndex === 0) return true;
+		if (sheetSnapIndex === 0) {
+			console.log('[EmergencyScreen] FAB HIDING: Sheet collapsed (index 0)');
+			return true;
+		}
 
 		// Show FAB in all other cases
+		console.log('[EmergencyScreen] FAB SHOWING: Default case');
 		return false;
 	}, [selectedHospital, hasAnyVisitActive, sheetSnapIndex]);
 
 	useFocusEffect(
 		useCallback(() => {
-			const hasBothActive = !!activeAmbulanceTrip && !!activeBedBooking;
-			const nextLabel =
-				hasBothActive
-					? (mode === "emergency" ? "View Bed" : "View Ambulance")
-					: undefined;
-			const nextSubText = hasBothActive ? "Switch summary" : undefined;
-
+			console.log('[EmergencyScreen] Registering FAB:', {
+				id: 'emergency-mode-toggle',
+				visible: !shouldHideFAB,
+				priority: 15,
+				mode: mode,
+				selectedHospital: selectedHospital?.name,
+				hasAnyVisitActive
+			});
+			
 			// Register FAB with unique ID and enhanced configuration
 			registerFAB('emergency-mode-toggle', {
 				icon: mode === "emergency" ? "bed-patient" : "medical",
@@ -418,14 +478,13 @@ export default function EmergencyScreen() {
 				onPress: handleFloatingButtonPress,
 				style: 'primary',
 				haptic: 'medium',
-				priority: 8, // High priority for emergency actions
+				priority: 15, // Higher priority to override Home tab FAB (priority 10)
 				animation: 'subtle',
-				label: nextLabel,
-				subText: nextSubText,
 			});
 
 			// Cleanup
 			return () => {
+				console.log('[EmergencyScreen] Unregistering FAB: emergency-mode-toggle');
 				unregisterFAB('emergency-mode-toggle');
 			};
 		}, [
@@ -841,6 +900,7 @@ export default function EmergencyScreen() {
 					setRatingState({ visible: false, visitId: null, title: null, subtitle: null, serviceType: null, serviceDetails: null });
 				}}
 			/>
+			{/* Emergency Map Container - Always render since only one instance exists */}
 			<EmergencyMapContainer
 				ref={mapRef}
 				hospitals={hospitalsForMap}
@@ -899,7 +959,9 @@ export default function EmergencyScreen() {
 			</View>
 		</View>
 	);
-}
+};
+
+export default EmergencyScreen;
 
 const styles = StyleSheet.create({
 	container: {

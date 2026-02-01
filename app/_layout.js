@@ -16,6 +16,7 @@ WebBrowser.maybeCompleteAuthSession();
 let isSplashPrevented = false;
 
 import { AppProviders } from "../providers/AppProviders";
+import { GlobalLocationProvider } from "../contexts/GlobalLocationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
@@ -76,14 +77,16 @@ export default function RootLayout() {
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<GlobalErrorBoundary>
-				<AppProviders>
-					<View style={{ flex: 1 }}>
-						<AuthenticatedStack />
-						<View className="absolute right-0 top-16 px-2 py-4">
-							<ThemeToggle showLabel={false} />
+				<GlobalLocationProvider>
+					<AppProviders>
+						<View style={{ flex: 1 }}>
+							<AuthenticatedStack />
+							<View className="absolute right-0 top-16 px-2 py-4">
+								<ThemeToggle showLabel={false} />
+							</View>
 						</View>
-					</View>
-				</AppProviders>
+					</AppProviders>
+				</GlobalLocationProvider>
 			</GlobalErrorBoundary>
 		</GestureHandlerRootView>
 	);

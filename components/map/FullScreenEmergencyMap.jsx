@@ -66,6 +66,9 @@ const FullScreenEmergencyMap = forwardRef(
 		},
 		ref
 	) => {
+		const componentId = useRef(Math.random().toString(36).substr(2, 9));
+		console.log(`[FullScreenEmergencyMap-${componentId.current}] Component mounting...`);
+		
 		const { isDarkMode } = useTheme();
 		const insets = useSafeAreaInsets();
 		const mapRef = useRef(null);
@@ -92,8 +95,16 @@ const FullScreenEmergencyMap = forwardRef(
 			userLocation,
 			locationPermission,
 			isLoadingLocation,
+			locationError,
 			requestLocationPermission,
 		} = useMapLocation();
+
+		console.log("[FullScreenEmergencyMap] Location state:", {
+			isLoadingLocation,
+			locationPermission,
+			locationError,
+			hasUserLocation: !!userLocation
+		});
 
 		const { routeCoordinates, routeInfo, calculateRoute, clearRoute } = useMapRoute();
 
@@ -264,7 +275,11 @@ const FullScreenEmergencyMap = forwardRef(
 			responderHeading,
 		});
 
-		useEffect(() => { requestLocationPermission(); }, [requestLocationPermission]);
+		// Request location permission immediately on mount
+		useEffect(() => { 
+			console.log("[FullScreenEmergencyMap] Requesting location permission on mount...");
+			requestLocationPermission(); 
+		}, [requestLocationPermission]);
 
 		// Route Calculation
 		useEffect(() => {
@@ -405,6 +420,7 @@ const FullScreenEmergencyMap = forwardRef(
 		}, [routeHospitalIdResolved]);
 
 		if (isLoadingLocation) {
+			console.log("[FullScreenEmergencyMap] Showing loading state");
 			return (
 				<View style={[styles.container, styles.loadingContainer, { backgroundColor: isDarkMode ? "#0B0F1A" : "#F8FAFC" }]}>
 					<ActivityIndicator size="large" color={COLORS.brandPrimary} />
@@ -413,16 +429,41 @@ const FullScreenEmergencyMap = forwardRef(
 			);
 		}
 
+		if (locationError) {
+			console.log("[FullScreenEmergencyMap] Showing error state:", locationError);
+			return (
+				<View style={[styles.container, styles.errorContainer, { backgroundColor: isDarkMode ? "#0B0F1A" : "#F8FAFC" }]}>
+					<Ionicons name="warning-outline" size={48} color={COLORS.errorRed} />
+					<Text style={[styles.errorText, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>Location Error</Text>
+					<Text style={[styles.errorSubtext, { color: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted }]}>{locationError}</Text>
+					<Pressable 
+						style={[styles.retryButton, { backgroundColor: COLORS.brandPrimary }]}
+						onPress={() => requestLocationPermission()}
+					>
+						<Text style={styles.retryButtonText}>Retry</Text>
+					</Pressable>
+				</View>
+			);
+		}
+
 		if (!locationPermission) {
+			console.log("[FullScreenEmergencyMap] Showing permission denied state");
 			return (
 				<View style={[styles.container, styles.errorContainer, { backgroundColor: isDarkMode ? "#0B0F1A" : "#F8FAFC" }]}>
 					<Ionicons name="location-outline" size={48} color={isDarkMode ? COLORS.textMutedDark : COLORS.textMuted} />
 					<Text style={[styles.errorText, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>Location permission required</Text>
 					<Text style={[styles.errorSubtext, { color: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted }]}>Enable location to see nearby hospitals</Text>
+					<Pressable 
+						style={[styles.retryButton, { backgroundColor: COLORS.brandPrimary }]}
+						onPress={() => requestLocationPermission()}
+					>
+						<Text style={styles.retryButtonText}>Enable Location</Text>
+					</Pressable>
 				</View>
 			);
 		}
 
+		console.log("[FullScreenEmergencyMap] Rendering MapView with userLocation:", !!userLocation);
 		return (
 			<View style={styles.container}>
 				<MapErrorBoundary onReset={() => {
@@ -520,6 +561,18 @@ const styles = StyleSheet.create({
 	errorSubtext: {
 		fontSize: 13,
 		textAlign: "center",
+		marginBottom: 20,
+	},
+	retryButton: {
+		paddingHorizontal: 24,
+		paddingVertical: 12,
+		borderRadius: 25,
+		marginTop: 8,
+	},
+	retryButtonText: {
+		color: "#FFFFFF",
+		fontSize: 14,
+		fontWeight: "600",
 	},
 	statusBarBlur: {
 		position: "absolute",

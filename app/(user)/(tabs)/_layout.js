@@ -1,7 +1,7 @@
 // app/(user)/(tabs)/_layout.js
 
 import { Tabs } from "expo-router";
-import { Ionicons, Fontisto } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useTabBarVisibility } from "../../../contexts/TabBarVisibilityContext";
 import { COLORS } from "../../../constants/colors";
@@ -34,25 +34,16 @@ export default function TabsLayout() {
 			<Tabs.Screen
 				name="index"
 				options={{
-					title: "SOS",
+					title: "Home",
 					tabBarIcon: ({ color }) => (
-						<Ionicons name="medical-outline" size={24} color={color} />
-					),
-				}}
-			/>
-			<Tabs.Screen
-				name="bed"
-				options={{
-					title: "BED",
-					tabBarIcon: ({ color }) => (
-						<Fontisto name="bed-patient" size={22} color={color} />
+						<Ionicons name="home-outline" size={24} color={color} />
 					),
 				}}
 			/>
 			<Tabs.Screen
 				name="visits"
 				options={{
-					title: "VISITS", // Remove title text
+					title: "Visits",
 					tabBarIcon: ({ color }) => (
 						<Ionicons name="calendar-outline" size={24} color={color} />
 					),

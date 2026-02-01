@@ -3,6 +3,9 @@ import { View, StyleSheet } from "react-native";
 import FullScreenEmergencyMap from "../map/FullScreenEmergencyMap";
 
 export const EmergencyMapContainer = forwardRef((props, ref) => {
+	const containerId = useRef(Math.random().toString(36).substr(2, 9));
+	console.log(`[EmergencyMapContainer-${containerId.current}] Component mounting...`);
+	
 	const {
 		hospitals,
 		onHospitalSelect,
@@ -27,11 +30,13 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 	const showRouteMap = !!routeHospitalId;
 	const activeRef = showRouteMap ? routeMapRef : baseMapRef;
 	const routeInstanceKey = useMemo(() => {
-		const keyBase = typeof mapStateKey === "string" ? mapStateKey : mode ?? "unknown";
-		return showRouteMap
+		const keyBase = typeof mapStateKey === "string" ? mapStateKey : "emergency";
+		const key = showRouteMap
 			? `route:${keyBase}:${String(routeHospitalId)}`
 			: `base:${keyBase}`;
-	}, [mapStateKey, mode, routeHospitalId, showRouteMap]);
+		console.log(`[EmergencyMapContainer-${containerId.current}] routeInstanceKey:`, key);
+		return key;
+	}, [mapStateKey, routeHospitalId, showRouteMap]); // Removed 'mode' to prevent new instances on mode toggle
 
 	useImperativeHandle(ref, () => ({
 		animateToHospital: (hospital, options) => {

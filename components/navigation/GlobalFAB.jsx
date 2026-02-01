@@ -1,3 +1,7 @@
+// FAB VISIBILITY FIX: Added debug logging to track which FAB is being rendered
+// This helps identify when the wrong FAB is showing (e.g., Home Tab vs EmergencyScreen)
+// Also fixed platform-specific dimensions to use dynamic values from context instead of hardcoded
+
 import React, { useRef, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Platform, ActivityIndicator, Pressable, Animated, Easing } from 'react-native';
 import { Ionicons, Fontisto } from '@expo/vector-icons';
@@ -7,20 +11,20 @@ import { useTabBarVisibility } from '../../contexts/TabBarVisibilityContext';
 import { COLORS } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const FAB_HEIGHT = 56;
-const FAB_OFFSET = 16;
-
 const GlobalFAB = () => {
-  const { activeFAB, getFABStyle } = useFAB();
+  const { activeFAB, getFABStyle, dimensions } = useFAB();
   const { translateY, TAB_BAR_HEIGHT } = useTabBarVisibility();
 
   const { isDarkMode } = useTheme();
+
+  // Use platform-specific dimensions from context
+  const FAB_HEIGHT = dimensions.height;
+  const FAB_OFFSET = dimensions.offset;
 
   // Animations
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const visibilityAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const widthAnim = useRef(new Animated.Value(0)).current; // For morphing to pill
 
   const hasLabel = !!activeFAB?.label;
 
@@ -34,46 +38,30 @@ const GlobalFAB = () => {
     }).start();
   }, [activeFAB?.visible]);
 
-  // Sync Pill Morphing (Expand if label exists)
+  // Pulse logic for Emergency - DISABLED for cleaner design
   useEffect(() => {
-    Animated.timing(widthAnim, {
-      toValue: hasLabel ? 1 : 0,
-      duration: 300,
-      easing: Easing.bezier(0.4, 0, 0.2, 1),
-      useNativeDriver: false, // Width can't use native driver
-    }).start();
-  }, [hasLabel]);
-
-  // Pulse logic for Emergency
-  useEffect(() => {
-    if (activeFAB?.style === 'emergency' && activeFAB?.visible) {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.08, duration: 800, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-        ])
-      );
-      pulse.start();
-      return () => pulse.stop();
-    }
+    // No pulsing for SOS - cleaner Apple-style design
+    return;
   }, [activeFAB?.style, activeFAB?.visible]);
 
   if (!activeFAB) return null;
 
   const fabStyle = getFABStyle(activeFAB.style || 'primary');
 
+  // Log FAB rendering details
+  console.log('[GlobalFAB] Rendering FAB:', {
+    id: activeFAB.id,
+    visible: activeFAB.visible,
+    style: activeFAB.style,
+    icon: activeFAB.icon,
+    priority: activeFAB.priority
+  });
+
   // Animation Interpolations
   const opacity = visibilityAnim;
   const slideUp = visibilityAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [20, 0],
-  });
-
-  // Dynamic Position based on TabBar
-  const fabTranslateY = translateY.interpolate({
-    inputRange: [0, TAB_BAR_HEIGHT],
-    outputRange: [0, TAB_BAR_HEIGHT],
-    extrapolate: 'clamp',
   });
 
   const handlePress = () => {
@@ -87,11 +75,10 @@ const GlobalFAB = () => {
       style={[
         styles.wrapper,
         {
-          bottom: TAB_BAR_HEIGHT + FAB_OFFSET + 10,
+          bottom: FAB_OFFSET + 10,
           opacity,
           transform: [
             { translateY: slideUp },
-            { translateY: fabTranslateY },
             { scale: Animated.multiply(scaleAnim, pulseAnim) },
           ],
         },
@@ -102,55 +89,65 @@ const GlobalFAB = () => {
         onPress={handlePress}
         onPressIn={() => Animated.spring(scaleAnim, { toValue: 0.92, useNativeDriver: true }).start()}
         onPressOut={() => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start()}
-        style={({ pressed }) => [
-          styles.container,
-          {
-            backgroundColor: fabStyle.backgroundColor,
-            // Glow Effect: Colored shadow for premium depth
-            shadowColor: activeFAB.style === 'emergency' ? COLORS.emergency : (activeFAB.style === 'primary' ? COLORS.brandPrimary : "#000"),
-            shadowOpacity: isDarkMode ? 0.4 : 0.2,
-          }
-        ]}
       >
-        <Animated.View style={[
-            styles.contentLayout,
+        <Animated.View
+          style={[
+            styles.container,
             {
-                paddingLeft: 16,
-                paddingRight: hasLabel ? 20 : 16,
+              height: FAB_HEIGHT, // Dynamic height from context
+              borderRadius: FAB_HEIGHT / 2, // Dynamic border radius for perfect pill
+              backgroundColor: fabStyle.backgroundColor,
+              // Platform-aware width based on label presence
+              width: hasLabel ? (Platform.OS === 'ios' ? 110 : 120) : (Platform.OS === 'ios' ? 56 : 64),
+              // Glow Effect: Colored shadow for premium depth
+              shadowColor: activeFAB.style === 'emergency' ? COLORS.emergency : (activeFAB.style === 'primary' ? COLORS.brandPrimary : "#000"),
+              shadowOpacity: isDarkMode ? 0.4 : 0.2,
+              transform: [
+                { scale: scaleAnim },
+              ],
             }
-        ]}>
-          {/* Icon Area */}
-          <View style={styles.iconWrapper}>
-            {activeFAB.loading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              activeFAB.icon === 'bed-patient' 
-                ? <Fontisto name="bed-patient" size={22} color="#FFFFFF" />
-                : <Ionicons name={activeFAB.icon || 'add'} size={26} color="#FFFFFF" />
-            )}
-          </View>
-
-          {/* Label Area (Morphs out) */}
-          {hasLabel && (
-            <View style={styles.labelWrapper}>
-              <Text style={styles.labelText} numberOfLines={1}>
-                {activeFAB.label}
-              </Text>
-              {activeFAB.subText && (
-                <Text style={styles.subLabelText} numberOfLines={1}>
-                  {activeFAB.subText}
-                </Text>
+          ]}
+        >
+          <Animated.View style={[
+              styles.contentLayout,
+              {
+                  paddingLeft: 16,
+                  paddingRight: hasLabel ? 20 : 16,
+              }
+          ]}>
+            {/* Icon Area */}
+            <View style={styles.iconWrapper}>
+              {activeFAB.loading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                activeFAB.icon === 'bed-patient' 
+                  ? <Fontisto name="bed-patient" size={22} color="#FFFFFF" />
+                  : <Ionicons name={activeFAB.icon || 'add'} size={26} color="#FFFFFF" />
               )}
+            </View>
+
+            {/* Label Area (Morphs out) */}
+            {hasLabel && (
+              <View style={styles.labelWrapper}>
+                <Text style={styles.labelText} numberOfLines={1}>
+                  {activeFAB.label}
+                </Text>
+                {activeFAB.subText && (
+                  <Text style={styles.subLabelText} numberOfLines={1}>
+                    {activeFAB.subText}
+                  </Text>
+                )}
+              </View>
+            )}
+          </Animated.View>
+
+          {/* Badge Seal - signature bottom-right placement */}
+          {activeFAB.badge && (
+            <View style={styles.badgeSeal}>
+              <Text style={styles.badgeText}>{activeFAB.badge}</Text>
             </View>
           )}
         </Animated.View>
-
-        {/* Badge Seal - signature bottom-right placement */}
-        {activeFAB.badge && (
-          <View style={styles.badgeSeal}>
-            <Text style={styles.badgeText}>{activeFAB.badge}</Text>
-          </View>
-        )}
       </Pressable>
     </Animated.View>
   );
@@ -163,8 +160,8 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   container: {
-    height: FAB_HEIGHT,
-    borderRadius: FAB_HEIGHT / 2, // Perfect Pill
+    height: 64, // Use fixed height since FAB_HEIGHT is not available at module level
+    borderRadius: 32, // Perfect Pill
     justifyContent: 'center',
     alignItems: 'center',
     // Premium Shadow Specs
