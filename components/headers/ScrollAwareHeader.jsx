@@ -62,23 +62,47 @@ export default function ScrollAwareHeader({
 			]}
 		>
 			<View style={styles.islandWrapper}>
-				<BlurView
-					intensity={isDarkMode ? 80 : 90}
-					tint={isDarkMode ? "dark" : "light"}
-					style={[styles.blur, { minHeight: HEADER_HEIGHT }]}
-				>
-					<View style={[styles.innerContent, {
-						backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.2)" : "rgba(255, 255, 255, 0.3)"
-					}]}>{/* LEFT: Identity / Navigation */}
-						<View style={styles.leftSection}>{leftComponent ? leftComponent : icon ? (<View style={[styles.iconSquircle, { backgroundColor: backgroundColor }]}>{icon}</View>) : null}</View>{/* MIDDLE: Editorial Typography */}
-						<View style={styles.centerSection}>{subtitle && (<Text numberOfLines={1} style={[styles.subtitleText, { color: textMuted }]}>{subtitle}</Text>)}<Animated.Text numberOfLines={1} style={[styles.titleText, { color: textColor, opacity: titleOpacity }]}>{title}</Animated.Text></View>
+				{Platform.OS === "ios" ? (
+					<BlurView
+						intensity={isDarkMode ? 80 : 90}
+						tint={isDarkMode ? "dark" : "light"}
+						style={[styles.blur, { minHeight: HEADER_HEIGHT }]}
+					>
+						<View style={[styles.innerContent, {
+							backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.2)" : "rgba(255, 255, 255, 0.3)"
+						}]}>
+							{/* LEFT: Identity / Navigation */}
+							<View style={styles.leftSection}>{leftComponent ? leftComponent : icon ? (<View style={[styles.iconSquircle, { backgroundColor: backgroundColor }]}>{icon}</View>) : null}</View>
+							{/* MIDDLE: Editorial Typography */}
+							<View style={styles.centerSection}>{subtitle && (<Text numberOfLines={1} style={[styles.subtitleText, { color: textMuted }]}>{subtitle}</Text>)}<Animated.Text numberOfLines={1} style={[styles.titleText, { color: textColor, opacity: titleOpacity }]}>{title}</Animated.Text></View>
 
-						{/* RIGHT: Actions / Badge */}
-						<View style={styles.rightSection}>{badge ? (<View style={[styles.badgeBox, { backgroundColor }]}>
-							<Text style={styles.badgeText}>{badge}</Text>
-						</View>) : resolvedRight}</View>
+							{/* RIGHT: Actions / Badge */}
+							<View style={styles.rightSection}>{badge ? (<View style={[styles.badgeBox, { backgroundColor }]}>
+								<Text style={styles.badgeText}>{badge}</Text>
+							</View>) : resolvedRight}</View>
+						</View>
+					</BlurView>
+				) : (
+					// Android fallback: semi-transparent background
+					<View style={[styles.blur, { 
+						minHeight: HEADER_HEIGHT,
+						backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.95)"
+					}]}>
+						<View style={[styles.innerContent, {
+							backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.2)" : "rgba(255, 255, 255, 0.3)"
+						}]}>
+							{/* LEFT: Identity / Navigation */}
+							<View style={styles.leftSection}>{leftComponent ? leftComponent : icon ? (<View style={[styles.iconSquircle, { backgroundColor: backgroundColor }]}>{icon}</View>) : null}</View>
+							{/* MIDDLE: Editorial Typography */}
+							<View style={styles.centerSection}>{subtitle && (<Text numberOfLines={1} style={[styles.subtitleText, { color: textMuted }]}>{subtitle}</Text>)}<Animated.Text numberOfLines={1} style={[styles.titleText, { color: textColor, opacity: titleOpacity }]}>{title}</Animated.Text></View>
+
+							{/* RIGHT: Actions / Badge */}
+							<View style={styles.rightSection}>{badge ? (<View style={[styles.badgeBox, { backgroundColor }]}>
+								<Text style={styles.badgeText}>{badge}</Text>
+							</View>) : resolvedRight}</View>
+						</View>
 					</View>
-				</BlurView>
+				)}
 			</View>
 		</Animated.View>
 	);

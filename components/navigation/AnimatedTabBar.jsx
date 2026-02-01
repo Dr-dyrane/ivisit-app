@@ -66,14 +66,29 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
       {/* Pill-shaped tab container */}
       <View style={styles.pillContainer} pointerEvents="box-none">
         {/* Blur for pill background */}
-        <BlurView
-          intensity={blurIntensity}
-          tint={isDarkMode ? 'dark' : 'light'}
-          style={[
-            styles.pillBackground,
-            { borderRadius: 48 }
-          ]}
-        />
+        {Platform.OS === "ios" ? (
+          <BlurView
+            intensity={blurIntensity}
+            tint={isDarkMode ? 'dark' : 'light'}
+            style={[
+              styles.pillBackground,
+              { borderRadius: 48 }
+            ]}
+          />
+        ) : (
+          // Android fallback: semi-transparent background
+          <View
+            style={[
+              styles.pillBackground,
+              { 
+                borderRadius: 48,
+                backgroundColor: isDarkMode 
+                  ? 'rgba(20, 20, 30, 0.95)'  // Dark semi-transparent
+                  : 'rgba(255, 255, 255, 0.95)',  // Light semi-transparent
+              }
+            ]}
+          />
+        )}
         
         <View style={[
           styles.pillBackground,

@@ -63,24 +63,56 @@ export default function GlassCard({
         style,
       ]}
     >
-      <BlurView
-        intensity={blurIntensity}
-        tint={isDarkMode ? "dark" : "light"}
-        style={[styles.blur, { borderRadius }]}
-      >
+      {Platform.OS === "ios" ? (
+        <BlurView
+          intensity={blurIntensity}
+          tint={isDarkMode ? "dark" : "light"}
+          style={[styles.blur, { borderRadius }]}
+        >
+          <View
+            style={[
+              styles.overlay,
+              {
+                backgroundColor: overlayColor,
+                padding,
+                borderRadius,
+              },
+            ]}
+          >
+            {children}
+          </View>
+        </BlurView>
+      ) : (
+        // Android fallback: semi-transparent background with elevated opacity
         <View
           style={[
-            styles.overlay,
+            styles.blur,
             {
-              backgroundColor: overlayColor,
-              padding,
               borderRadius,
-            },
+              backgroundColor: isDarkMode 
+                ? selected
+                  ? `${selectedColor}35`  // Dark selected with more opacity
+                  : "rgba(18, 24, 38, 0.98)"  // Dark background
+                : selected
+                  ? `${selectedColor}25`  // Light selected with more opacity
+                  : "rgba(255, 255, 255, 0.98)",  // Light background
+            }
           ]}
         >
-          {children}
+          <View
+            style={[
+              styles.overlay,
+              {
+                backgroundColor: overlayColor,
+                padding,
+                borderRadius,
+              },
+            ]}
+          >
+            {children}
+          </View>
         </View>
-      </BlurView>
+      )}
     </View>
   );
 }

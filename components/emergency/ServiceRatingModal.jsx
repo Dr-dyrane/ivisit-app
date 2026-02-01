@@ -144,11 +144,27 @@ export function ServiceRatingModal({
 							close();
 						}} 
 					/>
-					<BlurView 
-						intensity={20} 
-						tint={isDarkMode ? "dark" : "light"} 
-						style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} 
-					/>
+					{Platform.OS === "ios" ? (
+						<BlurView 
+							intensity={20} 
+							tint={isDarkMode ? "dark" : "light"} 
+							style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} 
+						/>
+					) : (
+						// Android fallback: semi-transparent background
+						<View 
+							style={{ 
+								position: 'absolute', 
+								top: 0, 
+								left: 0, 
+								right: 0, 
+								bottom: 0,
+								backgroundColor: isDarkMode 
+									? 'rgba(0,0,0,0.2)'  // Dark semi-transparent
+									: 'rgba(255,255,255,0.2)'  // Light semi-transparent
+							}} 
+						/>
+					)}
 				</Animated.View>
 
 				<Animated.View

@@ -510,11 +510,27 @@ const FullScreenEmergencyMap = forwardRef(
 					</MapView>
 				</MapErrorBoundary>
 
-				<BlurView
-					intensity={isDarkMode ? 60 : 40}
-					tint={isDarkMode ? "dark" : "light"}
-					style={[styles.statusBarBlur, { height: insets.top, opacity: 0.5 }]}
-				/>
+				{Platform.OS === "ios" ? (
+					<BlurView
+						intensity={isDarkMode ? 60 : 40}
+						tint={isDarkMode ? "dark" : "light"}
+						style={[styles.statusBarBlur, { height: insets.top, opacity: 0.5 }]}
+					/>
+				) : (
+					// Android fallback: semi-transparent status bar
+					<View
+						style={[
+							styles.statusBarBlur, 
+							{ 
+								height: insets.top, 
+								opacity: 0.5,
+								backgroundColor: isDarkMode 
+									? 'rgba(0,0,0,0.6)'  // Dark semi-transparent
+									: 'rgba(255,255,255,0.6)'  // Light semi-transparent
+							}
+						]}
+					/>
+				)}
 
 				{shouldShowControls && (
 					<MapControls

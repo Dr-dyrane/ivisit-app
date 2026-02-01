@@ -184,11 +184,23 @@ export default function ThemeToggle() {
 					}),
 				}}
 			>
-				{Platform.OS === "ios" && (
+				{Platform.OS === "ios" ? (
 					<BlurView
 						intensity={30}
 						tint={isDarkMode ? "dark" : "light"}
 						style={StyleSheet.absoluteFill}
+					/>
+				) : (
+					// Android fallback: semi-transparent background
+					<View
+						style={[
+							StyleSheet.absoluteFill,
+							{
+								backgroundColor: isDarkMode 
+									? 'rgba(0,0,0,0.3)'  // Dark semi-transparent
+									: 'rgba(255,255,255,0.8)'  // Light semi-transparent
+							}
+						]}
 					/>
 				)}
 

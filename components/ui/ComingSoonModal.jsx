@@ -12,7 +12,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
-import { BlurView } from "expo-blur";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 

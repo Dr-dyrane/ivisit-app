@@ -20,11 +20,25 @@ const MapControls = ({
                     { transform: [{ scale: pressed ? 0.95 : 1 }] }
                 ]}
             >
-                <BlurView
-                    intensity={isDarkMode ? 40 : 60}
-                    tint={isDarkMode ? "dark" : "light"}
-                    style={StyleSheet.absoluteFill}
-                />
+                {Platform.OS === "ios" ? (
+                    <BlurView
+                        intensity={isDarkMode ? 40 : 60}
+                        tint={isDarkMode ? "dark" : "light"}
+                        style={StyleSheet.absoluteFill}
+                    />
+                ) : (
+                    // Android fallback: semi-transparent background
+                    <View
+                        style={[
+                            StyleSheet.absoluteFill,
+                            {
+                                backgroundColor: isDarkMode 
+                                    ? 'rgba(0,0,0,0.4)'  // Dark semi-transparent
+                                    : 'rgba(255,255,255,0.8)'  // Light semi-transparent
+                            }
+                        ]}
+                    />
+                )}
                 <Ionicons
                     name="locate"
                     size={20}
@@ -42,11 +56,25 @@ const MapControls = ({
                     }
                 ]}
             >
-                <BlurView
-                    intensity={isDarkMode ? 40 : 60}
-                    tint={isDarkMode ? "dark" : "light"}
-                    style={StyleSheet.absoluteFill}
-                />
+                {Platform.OS === "ios" ? (
+                    <BlurView
+                        intensity={isDarkMode ? 40 : 60}
+                        tint={isDarkMode ? "dark" : "light"}
+                        style={StyleSheet.absoluteFill}
+                    />
+                ) : (
+                    // Android fallback: semi-transparent background
+                    <View
+                        style={[
+                            StyleSheet.absoluteFill,
+                            {
+                                backgroundColor: isDarkMode 
+                                    ? 'rgba(0,0,0,0.4)'  // Dark semi-transparent
+                                    : 'rgba(255,255,255,0.8)'  // Light semi-transparent
+                            }
+                        ]}
+                    />
+                )}
                 <Ionicons
                     name="expand"
                     size={18}
