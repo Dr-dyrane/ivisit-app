@@ -113,6 +113,116 @@ We use EAS Channels to map branches to specific build environments:
 4. **Integration**: Merge to `develop`. EAS Staging build/update is triggered.
 5. **Release**: Merge `develop` to `main` for Production submission.
 
+### **Complete Feature/Fix Workflow Example**
+
+This is a step-by-step guide for implementing a feature or fix from start to Play Store release.
+
+**Example**: Fix login flow - too many steps
+
+#### Step 1: Start Feature Branch
+
+```bash
+# Ensure main and develop are up to date
+git checkout main && git pull origin main
+git checkout develop && git pull origin develop
+
+# Create feature/fix branch from develop
+git checkout -b fix/login-too-many-steps
+```
+
+#### Step 2: Develop & Test Locally
+
+```bash
+# Start dev server
+npx expo start
+
+# Make changes, commit as you go
+git add -A
+git commit -m "Fix: Simplify login flow - remove redundant steps"
+```
+
+#### Step 3: Build APK for Device Testing (Optional)
+
+```bash
+# Build APK using preview profile (uses staging channel)
+npx eas build --profile preview --platform android
+```
+
+Download the APK from Expo dashboard and install on your device.
+
+#### Step 4: Push & Create PR
+
+```bash
+# Push feature branch
+git push origin fix/login-too-many-steps
+
+# Create PR on GitHub: fix/login-too-many-steps → develop
+```
+
+#### Step 5: Merge to Develop & QA Testing
+
+```bash
+# After PR approved, merge to develop
+git checkout develop
+git pull origin develop
+git merge fix/login-too-many-steps
+git push origin develop
+
+# Push OTA update to staging channel for QA
+npx eas update --branch staging --message "Fix: Simplify login flow"
+```
+
+#### Step 6: Ready for Production - Merge to Main
+
+```bash
+# Bump version in app.json (PATCH for bug fix: 1.0.3 → 1.0.4)
+# Then merge to main
+git checkout main
+git pull origin main
+git merge develop -m "Release v1.0.4: Simplify login flow"
+git push origin main
+```
+
+#### Step 7: Final APK Test Before Play Store
+
+```bash
+# Build APK for final verification
+npx eas build --profile preview --platform android
+```
+
+Download, install, and thoroughly test on device.
+
+#### Step 8: Build AAB & Submit to Play Store
+
+```bash
+# Build production AAB (Android App Bundle)
+npx eas build --profile production --platform android
+
+# Submit to Play Store
+npx eas submit --profile production --platform android
+```
+
+#### Step 9: Cleanup
+
+```bash
+# Delete feature branch (local and remote)
+git branch -d fix/login-too-many-steps
+git push origin --delete fix/login-too-many-steps
+```
+
+### **Quick Reference Commands**
+
+| Stage | Git Command | EAS Command |
+|-------|-------------|-------------|
+| Start fix | `git checkout -b fix/xxx` from `develop` | - |
+| Local dev | - | `npx expo start` |
+| Test APK | - | `eas build --profile preview -p android` |
+| Merge to develop | `git merge fix/xxx` to `develop` | `eas update --branch staging` |
+| Merge to main | `git merge develop` to `main` | - |
+| Final APK test | - | `eas build --profile preview -p android` |
+| Production AAB | - | `eas build --profile production -p android` |
+| Play Store submit | - | `eas submit --profile production -p android` |
+
 ### **Versioning Policy**
 
 We use **Semantic Versioning (SemVer)**: `MAJOR.MINOR.PATCH.BUILD`
