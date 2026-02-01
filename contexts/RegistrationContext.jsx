@@ -256,9 +256,23 @@ export function RegistrationProvider({ children }) {
 		return false;
 	}, [updateRegistrationData, goToStep, showToast]);
 
-	// Check on mount
+	// Check on mount with cleanup
 	useEffect(() => {
-		checkAndApplyPendingRegistration();
+		let isMounted = true;
+		
+		checkAndApplyPendingRegistration().then(() => {
+			if (isMounted) {
+				// Operation completed successfully
+			}
+		}).catch((error) => {
+			if (isMounted) {
+				console.warn('Pending registration check failed:', error);
+			}
+		});
+		
+		return () => {
+			isMounted = false;
+		};
 	}, []);
 
 	// --- Context value

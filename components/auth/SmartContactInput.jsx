@@ -1,6 +1,6 @@
 // components/auth/SmartContactInput.jsx
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import {
     View,
     Text,
@@ -27,6 +27,7 @@ export default function SmartContactInput({
     const [rawText, setRawText] = useState(initialValue);
     const [contactType, setContactType] = useState(null); // 'email' | 'phone'
     const [pickerVisible, setPickerVisible] = useState(false);
+    const [countryError, setCountryError] = useState(false);
     const [isFocused, setIsFocused] = useState(false); // [ANDROID_FIX] Track focus state
 
     const {
@@ -61,7 +62,7 @@ export default function SmartContactInput({
 
     // [AUTH_REFACTOR] Intent-based detection: Reacts immediately to first character
     // Priority: Email (@) > Letter (Email intent) > Digit/+ (Phone intent)
-    useEffect(() => {
+    const handleContactTypeDetection = useCallback(() => {
         const trimmed = rawText.trim();
         if (!trimmed) {
             setContactType(null);
@@ -88,14 +89,22 @@ export default function SmartContactInput({
         } else {
             setContactType(null);
         }
-    }, [rawText]);
+    }, [rawText, clearPhone]);
 
-    // [AUTH_POLISH] Smooth icon transition
     useEffect(() => {
-        Animated.sequence([
+        handleContactTypeDetection();
+    }, [handleContactTypeDetection]);
+
+    // [AUTH_POLISH] Smooth icon transition with cleanup
+    useEffect(() => {
+        const animation = Animated.sequence([
             Animated.timing(iconOpacity, { toValue: 0, duration: 100, useNativeDriver: true }),
             Animated.timing(iconOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
-        ]).start();
+        ]);
+        
+        animation.start();
+        
+        return () => animation.stop();
     }, [contactType]);
 
     const handleTextChange = (text) => {
@@ -142,6 +151,17 @@ export default function SmartContactInput({
         border: isFocused ? COLORS.brandPrimary : isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
         label: isDarkMode ? "#94A3B8" : "#64748B",
     };
+
+    if (countryError) {
+        return (
+            <View className="items-center justify-center h-[80px]">
+                <Text className="text-red-500 text-center">Country detection failed. Please check your connection.</Text>
+                <Pressable onPress={() => setCountryError(false)} className="mt-2">
+                    <Text className="text-blue-500">Retry</Text>
+                </Pressable>
+            </View>
+        );
+    }
 
     if (countryLoading || !country) {
         return (
