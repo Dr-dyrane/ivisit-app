@@ -954,7 +954,7 @@ const EmergencyScreen = () => {
 			{/* Subtle Version Display */}
 			<View style={styles.versionContainer} pointerEvents="none">
 				<Text style={[styles.versionText, { color: isDarkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)" }]}>
-					v{Constants.expoConfig?.version || '1.0.5'} • {Constants.expoConfig?.extra?.eas?.buildId?.substring(0, 8) || 'dev'}
+					v{Constants.expoConfig?.version || '1.0.4'} • {Constants.expoConfig?.extra?.eas?.buildId?.substring(0, 8) || 'dev'}
 				</Text>
 			</View>
 		</View>

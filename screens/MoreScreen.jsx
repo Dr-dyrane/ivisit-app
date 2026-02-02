@@ -1047,7 +1047,7 @@ const MoreScreen = () => {
 							color: colors.textMuted,
 							letterSpacing: 1
 						}}>
-							VERSION 1.0.5
+							VERSION 1.0.4
 						</Text>
 					</Pressable>
 					
