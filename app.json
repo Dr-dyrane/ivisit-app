@@ -83,10 +83,7 @@
         }
       ],
       "expo-web-browser",
-      "react-native-vision-camera",
-      [
-        "react-native-maps"
-      ]
+      "react-native-vision-camera"
     ],
     "updates": {
       "fallbackToCacheTimeout": 0,
