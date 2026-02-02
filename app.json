@@ -32,10 +32,11 @@
         "backgroundColor": "#000000"
       },
       "package": "com.dyrane.ivisit",
+      "newArchEnabled": true,
       "userInterfaceStyle": "dark",
       "config": {
         "googleMaps": {
-          "apiKey": "${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
+          "apiKey": "${GOOGLE_MAPS_ANDROID_API_KEY}"
         }
       },
       "permissions": [
