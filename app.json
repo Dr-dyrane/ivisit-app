@@ -36,7 +36,7 @@
       "userInterfaceStyle": "dark",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyCdXlyL3bUR-lFN_G5L5zdaIiNbRiCEp9A"
+          "apiKey": "${GOOGLE_MAPS_ANDROID_API_KEY}"
         }
       },
       "permissions": [
