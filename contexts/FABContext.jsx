@@ -214,24 +214,8 @@ export function FABProvider({ children }) {
         return (b.id || '').localeCompare(a.id || '');
       });
 
-      // Log the competition and winner
-      if (visibleFABs.length > 1) {
-        console.log('[FABContext] FAB Competition:', visibleFABs.map(fab => ({
-          id: fab.id,
-          priority: fab.priority,
-          visible: fab.visible
-        })));
-      }
-      
+      // FAB competition and winner - no debug logs
       const winner = visibleFABs[0];
-      if (winner) {
-        console.log('[FABContext] FAB Winner:', {
-          id: winner.id,
-          priority: winner.priority,
-          visible: winner.visible
-        });
-      }
-
       return winner;
     }
 

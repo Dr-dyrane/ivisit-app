@@ -67,7 +67,7 @@ const FullScreenEmergencyMap = forwardRef(
 		ref
 	) => {
 		const componentId = useRef(Math.random().toString(36).substr(2, 9));
-		console.log(`[FullScreenEmergencyMap-${componentId.current}] Component mounting...`);
+		// Component mounting - no debug logs
 		
 		const { isDarkMode } = useTheme();
 		const insets = useSafeAreaInsets();
@@ -99,12 +99,7 @@ const FullScreenEmergencyMap = forwardRef(
 			requestLocationPermission,
 		} = useMapLocation();
 
-		console.log("[FullScreenEmergencyMap] Location state:", {
-			isLoadingLocation,
-			locationPermission,
-			locationError,
-			hasUserLocation: !!userLocation
-		});
+		// Debug logs removed for production
 
 		const { routeCoordinates, routeInfo, calculateRoute, clearRoute } = useMapRoute();
 
@@ -420,7 +415,7 @@ const FullScreenEmergencyMap = forwardRef(
 		}, [routeHospitalIdResolved]);
 
 		if (isLoadingLocation) {
-			console.log("[FullScreenEmergencyMap] Showing loading state");
+		// Loading state - no debug logs
 			return (
 				<View style={[styles.container, styles.loadingContainer, { backgroundColor: isDarkMode ? "#0B0F1A" : "#F8FAFC" }]}>
 					<ActivityIndicator size="large" color={COLORS.brandPrimary} />
@@ -430,7 +425,7 @@ const FullScreenEmergencyMap = forwardRef(
 		}
 
 		if (locationError) {
-			console.log("[FullScreenEmergencyMap] Showing error state:", locationError);
+		// Error state - no debug logs
 			return (
 				<View style={[styles.container, styles.errorContainer, { backgroundColor: isDarkMode ? "#0B0F1A" : "#F8FAFC" }]}>
 					<Ionicons name="warning-outline" size={48} color={COLORS.errorRed} />
@@ -447,7 +442,7 @@ const FullScreenEmergencyMap = forwardRef(
 		}
 
 		if (!locationPermission) {
-			console.log("[FullScreenEmergencyMap] Showing permission denied state");
+		// Permission denied state - no debug logs
 			return (
 				<View style={[styles.container, styles.errorContainer, { backgroundColor: isDarkMode ? "#0B0F1A" : "#F8FAFC" }]}>
 					<Ionicons name="location-outline" size={48} color={isDarkMode ? COLORS.textMutedDark : COLORS.textMuted} />
@@ -463,7 +458,7 @@ const FullScreenEmergencyMap = forwardRef(
 			);
 		}
 
-		console.log("[FullScreenEmergencyMap] Rendering MapView with userLocation:", !!userLocation);
+		// Rendering MapView - no debug logs
 		return (
 			<View style={styles.container}>
 				<MapErrorBoundary onReset={() => {

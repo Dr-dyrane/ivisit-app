@@ -4,7 +4,7 @@ import { LOCATION_CONFIG } from "../../constants/mapConfig";
 import { useOptionalLocation } from "../../contexts/GlobalLocationContext";
 
 export const useMapLocation = () => {
-	console.log("[useMapLocation] Hook initializing...");
+	// Hook initializing - no debug logs
 	
 	// Use cached location from GlobalLocationContext
 	const { location, hasPermission, isLoading: globalLoading, locationError: globalError } = useOptionalLocation();
@@ -24,16 +24,16 @@ export const useMapLocation = () => {
 			setLocationPermission(hasPermission);
 			setIsLoadingLocation(globalLoading);
 			setLocationError(globalError);
-			console.log("[useMapLocation] Synced with GlobalLocationContext:", { location, hasPermission });
+			// Synced with GlobalLocationContext
 		}
 	}, [location, hasPermission, globalLoading, globalError]);
 
 	const requestLocationPermission = useCallback(async () => {
-		console.log("[useMapLocation] requestLocationPermission called");
+		// Requesting location permission
 		
 		// If we already have location from global context, use it immediately
 		if (location && hasPermission) {
-			console.log("[useMapLocation] Using cached location from GlobalLocationContext");
+			// Using cached location from GlobalLocationContext
 			setUserLocation(location);
 			setLocationPermission(true);
 			setIsLoadingLocation(false);
@@ -43,7 +43,7 @@ export const useMapLocation = () => {
 		
 		// Prevent multiple simultaneous permission requests
 		if (isRequestingPermission.current) {
-			console.log("[useMapLocation] Permission request already in progress");
+			// Permission request already in progress
 			return;
 		}
 		
@@ -76,9 +76,9 @@ export const useMapLocation = () => {
 					};
 					
 					setUserLocation(locationObj);
-					console.log("[useMapLocation] Fresh location obtained:", locationObj);
+					// Fresh location obtained
 				} catch (locationErr) {
-					console.error("[useMapLocation] Failed to get location:", locationErr);
+					// Failed to get location
 					setLocationError(locationErr.message);
 				}
 			} else {
@@ -106,15 +106,15 @@ export const useMapLocation = () => {
 						};
 						
 						setUserLocation(locationObj);
-						console.log("[useMapLocation] Fresh location obtained after permission:", locationObj);
+						// Fresh location obtained after permission
 					} catch (locationErr) {
-						console.error("[useMapLocation] Failed to get location after permission:", locationErr);
+						// Failed to get location after permission
 						setLocationError(locationErr.message);
 					}
 				}
 			}
 		} catch (err) {
-			console.error("[useMapLocation] Permission request failed:", err);
+			// Permission request failed
 			setLocationError(err.message);
 		} finally {
 			setIsLoadingLocation(false);
@@ -124,7 +124,7 @@ export const useMapLocation = () => {
 
 	const startLocationTracking = useCallback(() => {
 		if (!locationPermission) {
-			console.warn("[useMapLocation] Location permission not granted");
+			// Location permission not granted
 			return;
 		}
 
@@ -143,7 +143,7 @@ export const useMapLocation = () => {
 				}
 			).then((subscription) => subscription);
 		} catch (err) {
-			console.error("[useMapLocation] Location tracking failed:", err);
+			// Location tracking failed
 		}
 	}, [locationPermission]);
 
@@ -157,9 +157,9 @@ export const useMapLocation = () => {
 	}, []);
 
 	useEffect(() => {
-		console.log("[useMapLocation] Hook mounted, returning cleanup");
+		// Hook mounted, returning cleanup
 		return () => {
-			console.log("[useMapLocation] Hook unmounting");
+			// Hook unmounting
 			stopLocationTracking();
 		};
 	}, [stopLocationTracking]);

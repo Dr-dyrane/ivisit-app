@@ -29,13 +29,7 @@ const Home = () => {
 		
 		if (currentMode === EmergencyMode.EMERGENCY) {
 			// When in ambulance mode, show "Book Bed" to switch to bed booking
-			console.log('[Home Tab] Registering Book Bed FAB:', {
-				id: fabId,
-				visible: !shouldHideFAB,
-				priority: 10,
-				mode: 'EMERGENCY',
-				selectedHospital: selectedHospital?.name
-			});
+			// Registering Book Bed FAB
 			
 			registerFAB(fabId, {
 				visible: !shouldHideFAB,
@@ -50,13 +44,7 @@ const Home = () => {
 			});
 		} else {
 			// When in bed booking mode, show "SOS" to switch to ambulance
-			console.log('[Home Tab] Registering SOS FAB:', {
-				id: fabId,
-				visible: !shouldHideFAB,
-				priority: 10,
-				mode: 'BOOKING',
-				selectedHospital: selectedHospital?.name
-			});
+			// Registering SOS FAB
 			
 			registerFAB(fabId, {
 				visible: !shouldHideFAB,
@@ -73,7 +61,7 @@ const Home = () => {
 
 		// Cleanup on unmount or mode change
 		return () => {
-			console.log('[Home Tab] Unregistering FAB:', fabId);
+			// Unregistering FAB
 			unregisterFAB(fabId);
 		};
 	}, [currentMode, selectedHospital, registerFAB, unregisterFAB, setMode]);

@@ -48,15 +48,6 @@ const GlobalFAB = () => {
 
   const fabStyle = getFABStyle(activeFAB.style || 'primary');
 
-  // Log FAB rendering details
-  console.log('[GlobalFAB] Rendering FAB:', {
-    id: activeFAB.id,
-    visible: activeFAB.visible,
-    style: activeFAB.style,
-    icon: activeFAB.icon,
-    priority: activeFAB.priority
-  });
-
   // Animation Interpolations
   const opacity = visibilityAnim;
   const slideUp = visibilityAnim.interpolate({

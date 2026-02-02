@@ -4,7 +4,7 @@ import FullScreenEmergencyMap from "../map/FullScreenEmergencyMap";
 
 export const EmergencyMapContainer = forwardRef((props, ref) => {
 	const containerId = useRef(Math.random().toString(36).substr(2, 9));
-	console.log(`[EmergencyMapContainer-${containerId.current}] Component mounting...`);
+	// Component mounting - no debug logs
 	
 	const {
 		hospitals,
