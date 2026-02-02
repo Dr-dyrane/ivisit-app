@@ -34,6 +34,11 @@
       "package": "com.dyrane.ivisit",
       "newArchEnabled": false,
       "userInterfaceStyle": "dark",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCdXlyL3bUR-lFN_G5L5zdaIiNbRiCEp9A"
+        }
+      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
