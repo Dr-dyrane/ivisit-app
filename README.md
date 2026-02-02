@@ -118,7 +118,7 @@ eas submit --platform android --profile staging
 #### **Production Release (Manual Version)**
 ```bash
 # On main branch - manual version control
-# Step 1: Update version in app.json (1.0.4 → 1.0.5)
+# Step 1: Update version in app.json (1.0.5 → 1.0.6)
 # Step 2: Build production AAB
 eas build --platform android --profile production
 # Step 3: Submit to production track
@@ -211,11 +211,11 @@ npx eas update --branch staging --message "Fix: Simplify login flow"
 #### Step 6: Ready for Production - Merge to Main
 
 ```bash
-# Bump version in app.json (PATCH for bug fix: 1.0.3 → 1.0.4)
+# Bump version in app.json (PATCH for bug fix: 1.0.4 → 1.0.5)
 # Then merge to main
 git checkout main
 git pull origin main
-git merge develop -m "Release v1.0.4: Simplify login flow"
+git merge develop -m "Release v1.0.5: Apple-quality animations and log cleanup"
 git push origin main
 ```
 
@@ -282,7 +282,7 @@ Version Code = MAJOR * 10000 + MINOR * 100 + PATCH
 - `production` profile uses manual version control
 - **Note**: EAS manages version codes remotely when `appVersionSource: "remote"`
 
-**Current**: Version `1.0.4` → EAS-managed version code
+**Current**: Version `1.0.5` → EAS-managed version code
 
 ## License
 
