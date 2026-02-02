@@ -131,6 +131,9 @@ export function UnifiedScrollProvider({ children }) {
   const handleScroll = useCallback((event) => {
     if (isLockedHidden.current) return;
 
+    // Extract scroll position immediately before event is recycled
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+
     // Clear existing debounce timer
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
@@ -138,7 +141,6 @@ export function UnifiedScrollProvider({ children }) {
 
     // Debounce the scroll handling
     debounceTimer.current = setTimeout(() => {
-      const currentScrollY = event.nativeEvent.contentOffset.y;
       const diff = currentScrollY - lastScrollY.current;
 
       // Higher threshold to reduce jitter
