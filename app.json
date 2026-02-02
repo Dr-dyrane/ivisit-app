@@ -78,7 +78,13 @@
         }
       ],
       "expo-web-browser",
-      "react-native-vision-camera"
+      "react-native-vision-camera",
+      [
+        "react-native-maps",
+        {
+          "apiKey": "AIzaSyCdXlyL3bUR-lFN_G5L5zdaIiNbRiCEp9A"
+        }
+      ]
     ],
     "updates": {
       "fallbackToCacheTimeout": 0,

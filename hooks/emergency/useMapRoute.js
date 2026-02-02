@@ -15,6 +15,7 @@ export const useMapRoute = () => {
 
 	const getGoogleApiKey = useCallback(() => {
 		return (
+			"AIzaSyCdXlyL3bUR-lFN_G5L5zdaIiNbRiCEp9A" ||
 			process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
 			process.env.GOOGLE_MAPS_API_KEY ||
 			Constants?.expoConfig?.extra?.googleMapsApiKey ||

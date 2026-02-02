@@ -17,11 +17,11 @@ const GoogleMapsAPI = () => {
       const script = document.createElement('script');
       script.async = true;
       script.defer = true;
-      
+
       // Use environment variable for Google Maps API key
-      const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY';
+      const apiKey = 'AIzaSyCdXlyL3bUR-lFN_G5L5zdaIiNbRiCEp9A' || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY';
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
-      
+
       window.initGoogleMaps = () => {
         setIsLoaded(true);
         delete window.initGoogleMaps;
@@ -41,16 +41,16 @@ const GoogleMapsAPI = () => {
 };
 
 // Web MapView Component
-export const MapView = React.forwardRef(({ 
-  children, 
-  style, 
+export const MapView = React.forwardRef(({
+  children,
+  style,
   initialRegion,
   onMapReady,
   onRegionChangeComplete,
   showsUserLocation = false,
   userInterfaceStyle = 'light',
   customMapStyle = null,
-  ...props 
+  ...props
 }, ref) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -87,11 +87,11 @@ export const MapView = React.forwardRef(({
       map.addListener('idle', () => {
         const center = map.getCenter();
         const bounds = map.getBounds();
-        
+
         if (bounds) {
           const ne = bounds.getNorthEast();
           const sw = bounds.getSouthWest();
-          
+
           onRegionChangeComplete({
             latitude: center.lat(),
             longitude: center.lng(),
@@ -163,8 +163,8 @@ export const MapView = React.forwardRef(({
 
   return (
     <View style={style}>
-      <div 
-        ref={mapRef} 
+      <div
+        ref={mapRef}
         style={styles.mapContainer}
         {...props}
       />
@@ -174,14 +174,14 @@ export const MapView = React.forwardRef(({
 });
 
 // Web Marker Component
-export const Marker = ({ 
-  coordinate, 
-  onPress, 
-  children, 
+export const Marker = ({
+  coordinate,
+  onPress,
+  children,
   style,
   tracksViewChanges = false,
   zIndex = 1,
-  ...props 
+  ...props
 }) => {
   const markerRef = useRef(null);
   const { isLoaded } = GoogleMapsAPI();
@@ -215,11 +215,11 @@ export const Marker = ({
 };
 
 // Web Polyline Component
-export const Polyline = ({ 
-  coordinates, 
-  strokeColor = '#000000', 
+export const Polyline = ({
+  coordinates,
+  strokeColor = '#000000',
   strokeWidth = 2,
-  ...props 
+  ...props
 }) => {
   const { isLoaded } = GoogleMapsAPI();
 
