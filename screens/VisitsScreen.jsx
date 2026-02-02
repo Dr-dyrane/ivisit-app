@@ -108,7 +108,7 @@ const VisitsScreen = () => {
 				icon: <Ionicons name="calendar" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent,
-			rightComponent: null,
+				rightComponent: null,
 			});
 		}, [
 			resetTabBar,
@@ -131,10 +131,10 @@ const VisitsScreen = () => {
 				},
 				style: 'primary',
 				haptic: 'medium',
-				priority: 7,
+				priority: 11, // Higher than Home Tab FAB (10) to ensure Add button shows on Visits
 				animation: 'subtle',
 			});
-			
+
 			// Cleanup
 			return () => {
 				unregisterFAB('visits-add');
@@ -165,11 +165,11 @@ const VisitsScreen = () => {
 
 	const handleDeleteVisit = useCallback(async (visitId) => {
 		if (!visitId) return;
-		
+
 		// Find the visit to get its details for the alert message
 		const visitToDelete = filteredVisits.find(v => v.id === visitId);
 		const visitInfo = visitToDelete ? `${visitToDelete.hospital || 'Hospital'} - ${visitToDelete.type || 'Visit'}` : 'this visit';
-		
+
 		Alert.alert(
 			"Delete Visit",
 			`Are you sure you want to delete your appointment at ${visitInfo}? This action cannot be undone.`,
@@ -256,7 +256,7 @@ const VisitsScreen = () => {
 							style={{
 								marginTop: 6,
 								fontSize: 13,
-								fontWeight:'400',
+								fontWeight: '400',
 								color: colors.textMuted,
 								textAlign: "center",
 								lineHeight: 18,
@@ -340,10 +340,10 @@ const VisitsScreen = () => {
 							{filter === "upcoming"
 								? "No upcoming appointments scheduled"
 								: filter === "completed"
-								? "No completed visits yet"
-								: filter === "cancelled"
-								? "No cancelled visits"
-								: "Your medical visits will appear here"}
+									? "No completed visits yet"
+									: filter === "cancelled"
+										? "No cancelled visits"
+										: "Your medical visits will appear here"}
 						</Text>
 					</View>
 				)}
