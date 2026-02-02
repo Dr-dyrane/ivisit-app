@@ -32,7 +32,6 @@
         "backgroundColor": "#000000"
       },
       "package": "com.dyrane.ivisit",
-      "newArchEnabled": false,
       "userInterfaceStyle": "dark",
       "config": {
         "googleMaps": {
