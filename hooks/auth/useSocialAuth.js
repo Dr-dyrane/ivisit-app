@@ -33,7 +33,7 @@ import { AuthContext } from "../../contexts/AuthContext";
  * See: docs/flows/auth/OAUTH_TROUBLESHOOTING.md for more details
  */
 export function useSocialAuth() {
-	const { login } = useContext(AuthContext);
+	const { login, syncUserData } = useContext(AuthContext);
 
 	const signInWithProvider = useCallback(async (provider) => {
 		try {
@@ -108,6 +108,15 @@ export function useSocialAuth() {
 					if (authData?.user) {
 						console.log("[useSocialAuth] Authentication successful");
 						await login(authData.user);
+						
+						// Force immediate sync to ensure AuthContext is up-to-date
+						// This prevents the login flash by ensuring state is consistent
+						try {
+							await syncUserData();
+						} catch (syncError) {
+							console.warn("[useSocialAuth] Sync after login failed:", syncError);
+						}
+						
 						return { success: true };
 					} else {
 						return { success: false, error: "Authentication failed" };
@@ -153,7 +162,7 @@ export function useSocialAuth() {
 		} finally {
 			await WebBrowser.coolDownAsync();
 		}
-	}, [login]);
+	}, [login, syncUserData]);
 
 	return {
 		signInWithProvider,
