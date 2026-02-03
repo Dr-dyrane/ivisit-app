@@ -38,15 +38,29 @@ export const AuthProvider = ({ children }) => {
 				}
 			}
 		} catch (error) {
-			// Ignore "not logged in" error as it is expected when session expires or token is invalid
+			// Ignore expected auth errors that happen during normal session expiry
 			const isNotLoggedIn = error.message && (
 				error.message.includes("NOT_LOGGED_IN") ||
 				error.code === "NOT_LOGGED_IN"
 			);
+			
+			// Handle refresh token errors gracefully - these are expected when session expires
+			const isRefreshTokenError = error.message && (
+				error.message.includes("Invalid Refresh Token") ||
+				error.message.includes("Refresh Token Not Found") ||
+				error.message.includes("refresh_token_not_found")
+			);
 
-			if (!isNotLoggedIn) {
-				console.error("Error syncing user data from API:", error);
+			if (isRefreshTokenError || isNotLoggedIn) {
+				// Clean up local state on token expiry
+				setUser(null);
+				setToken(null);
+				await database.delete(StorageKeys.CURRENT_USER);
+				await database.delete(StorageKeys.AUTH_TOKEN);
+				return; // Silent handling - no error needed
 			}
+
+			console.error("Error syncing user data from API:", error);
 		} finally {
 			setLoading(false);
 		}

@@ -1,19 +1,24 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Animated, ActivityIndicator, Platform } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
 
-export default function RequestAmbulanceFAB({ 
-	onPress, 
-	isLoading, 
-	isActive, 
+export default function RequestAmbulanceFAB({
+	onPress,
+	isLoading,
+	isActive,
 	selectedAmbulanceType,
 	mode = "request", // "request" or "dispatched"
 	requestData,
-	style 
+	style
 }) {
 	const [scaleAnim] = useState(new Animated.Value(1));
+	const insets = useSafeAreaInsets();
+
+	// Calculate bottom position with Android nav bar support
+	const bottomPosition = Platform.OS === 'android' ? 60 + insets.bottom : 60;
 
 	const handlePressIn = () => {
 		Animated.spring(scaleAnim, {
@@ -58,7 +63,7 @@ export default function RequestAmbulanceFAB({
 	};
 
 	return (
-		<View style={[styles.container, style]}>
+		<View style={[styles.container, { bottom: bottomPosition }, style]}>
 			<TouchableOpacity
 				onPressIn={handlePressIn}
 				onPressOut={handlePressOut}
@@ -75,15 +80,15 @@ export default function RequestAmbulanceFAB({
 					{isLoading ? (
 						<ActivityIndicator size="small" color="#FFFFFF" />
 					) : (
-						<Ionicons 
-							name={getIcon()} 
-							size={24} 
-							color="#FFFFFF" 
+						<Ionicons
+							name={getIcon()}
+							size={24}
+							color="#FFFFFF"
 						/>
 					)}
 				</Animated.View>
 			</TouchableOpacity>
-			
+
 			{/* Enhanced label */}
 			<View style={styles.labelContainer}>
 				<Text style={styles.labelText}>

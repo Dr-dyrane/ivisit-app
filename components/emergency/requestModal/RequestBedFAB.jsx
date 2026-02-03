@@ -1,21 +1,26 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Animated, ActivityIndicator, Platform } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { Fontisto } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../../constants/colors';
 
-export default function RequestBedFAB({ 
-	onPress, 
-	isLoading, 
+export default function RequestBedFAB({
+	onPress,
+	isLoading,
 	isActive = true, // Bed booking is always active once options are selected
 	bedType,
 	bedCount,
 	mode = "request", // "request" or "dispatched"
 	requestData,
-	style 
+	style
 }) {
 	const [scaleAnim] = useState(new Animated.Value(1));
+	const insets = useSafeAreaInsets();
+
+	// Calculate bottom position with Android nav bar support
+	const bottomPosition = Platform.OS === 'android' ? 40 + insets.bottom : 40;
 
 	const handlePressIn = () => {
 		Animated.spring(scaleAnim, {
@@ -58,7 +63,7 @@ export default function RequestBedFAB({
 	};
 
 	return (
-		<View style={[styles.container, style]}>
+		<View style={[styles.container, { bottom: bottomPosition }, style]}>
 			<TouchableOpacity
 				onPressIn={handlePressIn}
 				onPressOut={handlePressOut}
@@ -76,21 +81,21 @@ export default function RequestBedFAB({
 					{isLoading ? (
 						<ActivityIndicator size="small" color="#FFFFFF" />
 					) : getIcon() === "bed-patient" ? (
-						<Fontisto 
-							name={getIcon()} 
-							size={24} 
-							color="#FFFFFF" 
+						<Fontisto
+							name={getIcon()}
+							size={24}
+							color="#FFFFFF"
 						/>
 					) : (
-						<Ionicons 
-							name={getIcon()} 
-							size={24} 
-							color="#FFFFFF" 
+						<Ionicons
+							name={getIcon()}
+							size={24}
+							color="#FFFFFF"
 						/>
 					)}
 				</Animated.View>
 			</TouchableOpacity>
-			
+
 			{/* Enhanced label */}
 			<View style={styles.labelContainer}>
 				<Text style={styles.labelText}>

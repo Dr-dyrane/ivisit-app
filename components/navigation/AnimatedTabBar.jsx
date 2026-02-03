@@ -21,8 +21,22 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
   // Theme-aware blur settings per spec
   const blurIntensity = isDarkMode ? 70 : 60;
 
-  const height = Platform.OS === 'ios' ? 110 : 95;
-  const paddingBottom = Platform.OS === 'ios' ? 20 : 10;
+  const height = Platform.OS === 'ios' ? 120 : 100; // iOS: More presence, Android: Compact
+  // iOS: Fixed home indicator space, Android: Add system nav bar inset
+  const paddingBottom = Platform.OS === 'ios' ? 25 : 15 + insets.bottom;
+
+  // DEBUG: Log dimensions and positioning (only on mount)
+  React.useEffect(() => {
+    console.log('[AnimatedTabBar] Dimensions:', {
+      height,
+      paddingBottom,
+      pillWidth: 160,
+      pillMarginLeft: 20,
+      tabBarHeight: TAB_BAR_HEIGHT,
+      safeAreaBottom: insets.bottom,
+      platform: Platform.OS
+    });
+  }, []);
 
   // Create animated values for each tab
   const tabBackgrounds = React.useMemo(
@@ -80,26 +94,26 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
           <View
             style={[
               styles.pillBackground,
-              { 
+              {
                 borderRadius: 48,
-                backgroundColor: isDarkMode 
+                backgroundColor: isDarkMode
                   ? 'rgba(20, 20, 30, 0.95)'  // Dark semi-transparent
                   : 'rgba(255, 255, 255, 0.95)',  // Light semi-transparent
               }
             ]}
           />
         )}
-        
+
         <View style={[
           styles.pillBackground,
-          { 
-            backgroundColor: isDarkMode 
-              ? 'rgba(20, 20, 30, 0.25)' 
+          {
+            backgroundColor: isDarkMode
+              ? 'rgba(20, 20, 30, 0.25)'
               : 'rgba(255, 255, 255, 0.2)',
             borderRadius: 48,
           }
         ]} />
-        
+
         {/* Tab buttons */}
         <View style={styles.tabContainer}>
           {state.routes.map((route, index) => {
@@ -129,7 +143,7 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
             };
 
             // Get the icon from options
-            const color = isFocused 
+            const color = isFocused
               ? (isDarkMode ? COLORS.brandSecondary : COLORS.brandPrimary)
               : (isDarkMode ? COLORS.textLight : COLORS.textSecondary);
 
@@ -177,7 +191,7 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
                 >
                   {options.tabBarIcon?.({ focused: isFocused, color, size: 24 })}
                   <View style={styles.labelWrapper}>
-                    <Animated.Text 
+                    {/* <Animated.Text 
                       style={[
                         styles.label,
                         { color }
@@ -185,7 +199,7 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
                       numberOfLines={1}
                     >
                       {options.title}
-                    </Animated.Text>
+                    </Animated.Text> */}
                   </View>
                 </Pressable>
               </Animated.View>
@@ -208,12 +222,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   pillContainer: {
-    alignItems: 'flex-start', // Left-aligned like Apple
+    alignItems: 'flex-start', // Left-aligned like Apple iOS Safari tabs
     justifyContent: 'center',
-    width: 200, // Smaller for 2 tabs
-    marginLeft: 20, // Add margin from left edge
+    width: 160, // Optimized for 2 tabs (80px each + padding)
+    marginLeft: 20, // Consistent 20px edge margin (matches FAB right margin)
     overflow: 'hidden',
-    borderRadius: 48,
+    borderRadius: 48, // Apple-style pill radius (less circular, more pill)
   },
   pillBackground: {
     position: 'absolute',

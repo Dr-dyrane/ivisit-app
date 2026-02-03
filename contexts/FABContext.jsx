@@ -36,6 +36,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
 
 /**
@@ -52,21 +53,23 @@ import { COLORS } from '../constants/colors';
 
 const FABContext = createContext(null);
 
-// Platform-specific FAB dimensions
-const FAB_DIMENSIONS = {
+// Platform-specific FAB base dimensions
+// iOS: More generous bottom spacing due to safe area and home indicator
+// Android: Tighter base spacing - insets.bottom added dynamically in FABProvider
+const FAB_BASE_DIMENSIONS = {
   ios: {
-    height: 56,
-    offset: 16,
+    height: 56, // Standard iOS touch target (44px min + padding)
+    baseOffset: 16, // Generous bottom spacing for home indicator
   },
   android: {
-    height: 64,
-    offset: 2,
+    height: 56, // Match iOS height
+    baseOffset: 6, // Base spacing - insets.bottom added dynamically
   },
 };
 
-// Get current platform dimensions
-const getFABDimensions = () => {
-  return Platform.OS === 'ios' ? FAB_DIMENSIONS.ios : FAB_DIMENSIONS.android;
+// Get platform base dimensions (insets added in provider)
+const getBaseDimensions = () => {
+  return Platform.OS === 'ios' ? FAB_BASE_DIMENSIONS.ios : FAB_BASE_DIMENSIONS.android;
 };
 
 // Enhanced FAB configuration schema
@@ -75,7 +78,7 @@ const FAB_CONFIG_SCHEMA = {
   icon: 'string',           // Ionicons/Fontisto name
   visible: 'boolean',       // Visibility state
   onPress: 'function',      // Action handler
-  
+
   // Enhanced properties (new)
   label: 'string',          // Dynamic text label
   subText: 'string',        // Sub-text description
@@ -132,14 +135,27 @@ const FAB_STYLES = {
 };
 
 export function FABProvider({ children }) {
+  // Get safe area insets for Android navigation bar
+  const insets = useSafeAreaInsets();
+
   // Track current tab for default fallback
   const [currentTab, setCurrentTab] = useState('index');
-  
+
   // Track FAB registrations with unique IDs
   const [registrations, setRegistrations] = useState(new Map());
-  
+
   // Track if we're in a stack screen (hide FAB on stacks)
   const [isInStack, setIsInStack] = useState(false);
+
+  // Calculate dimensions with insets for Android
+  const dimensions = useMemo(() => {
+    const base = getBaseDimensions();
+    return {
+      height: base.height,
+      // Android: add insets.bottom for devices with nav bars (gesture/3-button)
+      offset: Platform.OS === 'android' ? base.baseOffset + insets.bottom : base.baseOffset,
+    };
+  }, [insets.bottom]);
 
   // Register FAB with unique ID and priority system
   const registerFAB = useCallback((id, config) => {
@@ -233,21 +249,21 @@ export function FABProvider({ children }) {
     // Registration system
     registerFAB,
     unregisterFAB,
-    
+
     // Tab and stack management
     setActiveTab,
     currentTab,
     enterStack,
     exitStack,
     isInStack,
-    
+
     // Active FAB state
     activeFAB,
     getFABStyle,
-    
-    // Platform-specific dimensions
-    dimensions: getFABDimensions(),
-    
+
+    // Platform-specific dimensions (with insets for Android)
+    dimensions,
+
     // Legacy support (for backward compatibility)
     updateFAB: useCallback((updates) => {
       console.warn('updateFAB is deprecated, use registerFAB with unique ID');
