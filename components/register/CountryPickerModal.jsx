@@ -24,8 +24,8 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
 	const { isDarkMode } = useTheme();
 	const [query, setQuery] = useState("");
 
-	const { modalHeight, getKeyboardAvoidingViewProps } = useAndroidKeyboardAwareModal({ 
-		defaultHeight: SCREEN_HEIGHT * 0.75 
+	const { modalHeight, getKeyboardAvoidingViewProps } = useAndroidKeyboardAwareModal({
+		defaultHeight: SCREEN_HEIGHT * 0.75
 	});
 
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
@@ -98,6 +98,7 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
 			transparent
 			animationType="none"
 			onRequestClose={handleClose}
+			statusBarTranslucent={true}
 		>
 			<View className="flex-1 justify-end">
 				<Animated.View

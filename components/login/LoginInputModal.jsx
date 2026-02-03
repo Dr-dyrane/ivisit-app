@@ -494,6 +494,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 			transparent
 			animationType="none"
 			onRequestClose={handleDismiss}
+			statusBarTranslucent={true}
 		>
 			<View className="flex-1 justify-end">
 				<Animated.View

@@ -102,9 +102,9 @@ const GlobalFAB = () => {
               height: FAB_HEIGHT, // Dynamic height from context (56px both platforms)
               borderRadius: FAB_HEIGHT / 2, // Dynamic border radius for perfect pill (28px)
               backgroundColor: fabStyle.backgroundColor,
-              // Platform-aware width based on label presence
-              // Icon-only: Perfect circle (56x56) | With label: Expanded pill (110-120px)
-              width: hasLabel ? (Platform.OS === 'ios' ? 110 : 120) : 56, // Perfect circle for both platforms
+              // Platform-aware width: Grow with content if label present, otherwise perfect circle
+              width: hasLabel ? undefined : 56,
+              minWidth: 56,
               // Glow Effect: Colored shadow for premium depth
               shadowColor: activeFAB.style === 'emergency' ? COLORS.emergency : (activeFAB.style === 'primary' ? COLORS.brandPrimary : "#000"),
               shadowOpacity: isDarkMode ? 0.4 : 0.2,
@@ -115,18 +115,18 @@ const GlobalFAB = () => {
           ]}
         >
           <Animated.View style={[
-              styles.contentLayout,
-              {
-                  paddingLeft: 16,
-                  paddingRight: hasLabel ? 20 : 16,
-              }
+            styles.contentLayout,
+            {
+              paddingLeft: 16,
+              paddingRight: hasLabel ? 20 : 16,
+            }
           ]}>
             {/* Icon Area */}
             <View style={styles.iconWrapper}>
               {activeFAB.loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                activeFAB.icon === 'bed-patient' 
+                activeFAB.icon === 'bed-patient'
                   ? <Fontisto name="bed-patient" size={22} color="#FFFFFF" />
                   : <Ionicons name={activeFAB.icon || 'add'} size={26} color="#FFFFFF" />
               )}

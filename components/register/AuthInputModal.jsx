@@ -336,6 +336,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			transparent
 			animationType="none"
 			onRequestClose={handleDismiss}
+			statusBarTranslucent={true}
 		>
 			<View className="flex-1 justify-end">
 				<Animated.View

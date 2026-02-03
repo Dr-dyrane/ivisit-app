@@ -72,7 +72,9 @@ export function useAndroidKeyboardAwareModal({
 
   // Helper function to get KeyboardAvoidingView props
   const getKeyboardAvoidingViewProps = (additionalProps = {}) => ({
-    behavior: Platform.OS === "ios" ? "padding" : "height",
+    // On Android, we manage modal height manually in this hook, 
+    // so KeyboardAvoidingView height/padding behavior can cause conflicts.
+    behavior: Platform.OS === "ios" ? "padding" : undefined,
     keyboardVerticalOffset: Platform.OS === "ios" ? insets.bottom + 90 : 0,
     style: { flex: 1 },
     ...additionalProps
@@ -82,8 +84,10 @@ export function useAndroidKeyboardAwareModal({
   const getScrollViewProps = (additionalProps = {}) => ({
     contentContainerStyle: {
       flexGrow: 1,
+      // On Android, when keyboard is open, add generous padding to ensure 
+      // the focused input can be scrolled into view above the keyboard.
       paddingBottom: Platform.OS === "android"
-        ? keyboardHeight > 0 ? 20 : insets.bottom + 120
+        ? keyboardHeight > 0 ? keyboardHeight + 40 : insets.bottom + 120
         : insets.bottom + 120,
       ...additionalProps.contentContainerStyle
     },
