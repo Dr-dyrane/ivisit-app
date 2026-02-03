@@ -111,48 +111,28 @@ function AuthenticatedStack() {
 			const urlScheme = url.split('://')[0] || 'unknown';
 			console.log("[DeepLink] Received URL with scheme:", urlScheme);
 
+			// Let the dedicated auth callback page handle auth callbacks
 			const isAuthCallback = url.includes("auth/callback") || url.includes("code=") || url.includes("access_token=");
 			console.log("[DeepLink] URL check:", { scheme: urlScheme, isAuthCallback });
 
 			if (isAuthCallback) {
-				console.log("[DeepLink] Identified as Auth Callback, processing...");
-				try {
-					const result = await authService.handleOAuthCallback(url);
-					console.log("[DeepLink] handleOAuthCallback completed:", { skipped: result?.skipped, hasUser: !!result?.data?.user });
+				console.log("[DeepLink] Redirecting to auth callback page");
+				router.replace("/auth/callback");
+				return;
+			}
 
-					if (result?.skipped) {
-						console.log("[_layout] Auth already handled by WebBrowser result, skipping");
-						return;
-					}
+			// Prevent loop on base app URLs
+			const isRootDevUrl = url.includes(":8081") && !url.includes("?") && !url.includes("#");
+			const isBaseUrl =
+				url === Linking.createURL("/") ||
+				url === Linking.createURL("") ||
+				url === "ivisit://" ||
+				url.endsWith("/--") ||
+				isRootDevUrl;
 
-					if (result?.data?.user) {
-						await login(result.data.user);
-						await syncUserData();
-						showToast("Successfully logged in!", "success");
-
-						setTimeout(() => {
-							router.replace("/(user)/(tabs)");
-						}, 500);
-					}
-				} catch (error) {
-					console.error("Deep Link Auth Error:", error);
-					showToast("Failed to verify login link: " + error.message, "error");
-					router.replace("/(auth)");
-				}
-			} else {
-				// Prevent loop on base app URLs
-				const isRootDevUrl = url.includes(":8081") && !url.includes("?") && !url.includes("#");
-				const isBaseUrl =
-					url === Linking.createURL("/") ||
-					url === Linking.createURL("") ||
-					url === "ivisit://" ||
-					url.endsWith("/--") ||
-					isRootDevUrl;
-
-				if (user?.isAuthenticated && !isBaseUrl && !isAuthCallback) {
-					console.log("[DeepLink] Non-auth route received, user is already logged in");
-					router.replace("/(user)/(tabs)");
-				}
+			if (user?.isAuthenticated && !isBaseUrl && !isAuthCallback) {
+				console.log("[DeepLink] Non-auth route received, user is already logged in");
+				router.replace("/(user)/(tabs)");
 			}
 		};
 
@@ -162,7 +142,7 @@ function AuthenticatedStack() {
 
 		const subscription = Linking.addEventListener("url", handleDeepLink);
 		return () => subscription.remove();
-	}, [user?.isAuthenticated, login, syncUserData, showToast, router]);
+	}, [user?.isAuthenticated, router]);
 
 	useEffect(() => {
 		const rootGroup = segments?.[0] ?? null;
@@ -195,6 +175,7 @@ function AuthenticatedStack() {
 				backgroundColor={isDarkMode ? "#0D121D" : "#FFFFFF"}
 			/>
 			<Stack screenOptions={{ headerShown: false }}>
+				<Stack.Screen name="auth/callback" options={{ headerShown: false }} />
 				<Stack.Screen name="(auth)" />
 				<Stack.Screen name="(user)" />
 			</Stack>
