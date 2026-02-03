@@ -77,13 +77,18 @@ export const AuthProvider = ({ children }) => {
 	// **2. Login function**: Set user and token from API response
 	const login = useCallback(async (userData) => {
 		try {
+			// Set both user and token atomically to prevent auth flash
+			// This ensures isAuthenticated is never in a partial state during OAuth
+			const tokenToSet = userData.token || null;
+			
 			setUser(userData);
-			// Use database layer with proper keys
+			setToken(tokenToSet);
+			
+			// Persist authentication data to secure storage
 			await database.write(StorageKeys.CURRENT_USER, userData);
 
-			if (userData.token) {
-				setToken(userData.token);
-				await database.write(StorageKeys.AUTH_TOKEN, userData.token);
+			if (tokenToSet) {
+				await database.write(StorageKeys.AUTH_TOKEN, tokenToSet);
 			}
 
 			return true;

@@ -78,6 +78,7 @@ export default function AuthCallback() {
               const result = await authService.handleOAuthCallback(currentUrl);
               
               if (result?.data?.user) {
+                // Store authentication data and redirect to main app
                 await database.write(StorageKeys.AUTH_TOKEN, result.data.token);
                 await database.write(StorageKeys.CURRENT_USER, result.data.user);
                 router.replace('/(user)/(tabs)');
