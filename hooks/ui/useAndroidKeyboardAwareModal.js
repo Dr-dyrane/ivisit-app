@@ -27,9 +27,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export function useAndroidKeyboardAwareModal({ 
+export function useAndroidKeyboardAwareModal({
   defaultHeight = SCREEN_HEIGHT * 0.85,
-  maxHeightPercentage = 0.85 
+  maxHeightPercentage = 0.85
 } = {}) {
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -41,12 +41,12 @@ export function useAndroidKeyboardAwareModal({
       (e) => {
         const keyboardHeightValue = e.endCoordinates.height;
         setKeyboardHeight(keyboardHeightValue);
-        
+
         // Only adjust modal height on Android to prevent inputs from disappearing
         if (Platform.OS === 'android') {
           const availableHeight = SCREEN_HEIGHT - keyboardHeightValue - insets.top;
           const newModalHeight = Math.min(
-            availableHeight * 0.9, 
+            availableHeight * 0.9,
             SCREEN_HEIGHT * maxHeightPercentage
           );
           setModalHeight(newModalHeight);
@@ -72,7 +72,7 @@ export function useAndroidKeyboardAwareModal({
 
   // Helper function to get KeyboardAvoidingView props
   const getKeyboardAvoidingViewProps = (additionalProps = {}) => ({
-    behavior: Platform.OS === "ios" ? "padding" : undefined,
+    behavior: Platform.OS === "ios" ? "padding" : "height",
     keyboardVerticalOffset: Platform.OS === "ios" ? insets.bottom + 90 : 0,
     style: { flex: 1 },
     ...additionalProps
@@ -82,7 +82,7 @@ export function useAndroidKeyboardAwareModal({
   const getScrollViewProps = (additionalProps = {}) => ({
     contentContainerStyle: {
       flexGrow: 1,
-      paddingBottom: Platform.OS === "android" 
+      paddingBottom: Platform.OS === "android"
         ? keyboardHeight > 0 ? 20 : insets.bottom + 120
         : insets.bottom + 120,
       ...additionalProps.contentContainerStyle

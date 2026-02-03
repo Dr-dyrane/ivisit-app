@@ -784,13 +784,8 @@ const authService = {
      * @returns {Promise<boolean>}
      */
     async logout() {
-        // Create notification before logout (so we still have user context)
-        try {
-            await notificationDispatcher.dispatchAuthEvent('logout', {});
-        } catch (error) {
-            console.warn("[authService] Failed to create logout notification:", error);
-        }
-
+        // Note: Logout notification removed - non-essential and causes race condition
+        // errors with Supabase session state during signOut
         await supabase.auth.signOut();
         await database.delete(StorageKeys.AUTH_TOKEN);
         await database.delete(StorageKeys.CURRENT_USER);
