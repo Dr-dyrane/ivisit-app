@@ -51,7 +51,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
-	const { modalHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
+	const { modalHeight, keyboardHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
 		useAndroidKeyboardAwareModal({ defaultHeight: SCREEN_HEIGHT * 0.85 });
 
 	const [resetEmail, setResetEmail] = useState(null);
@@ -496,7 +496,10 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 			onRequestClose={handleDismiss}
 			statusBarTranslucent={true}
 		>
-			<View className="flex-1 justify-end">
+			<View
+				className="flex-1 justify-end"
+				style={{ paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }}
+			>
 				<Animated.View
 					style={{ opacity: bgOpacity }}
 					className="absolute inset-0 bg-black/60"

@@ -21,7 +21,7 @@ export default function SocialAuthRow() {
 		>
 			<SocialAuthButton provider="apple" />
 			<SocialAuthButton provider="google" />
-			<SocialAuthButton provider="twitter" /> {/* [SOCIAL-AUTH-UPDATE] Added X (Twitter) */}
+			<SocialAuthButton provider="twitter" />
 		</View>
 	);
 }

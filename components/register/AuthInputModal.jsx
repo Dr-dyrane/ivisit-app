@@ -42,7 +42,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
-	const { modalHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
+	const { modalHeight, keyboardHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
 		useAndroidKeyboardAwareModal({ defaultHeight: SCREEN_HEIGHT * 0.85 });
 
 	const [mockOtp, setMockOtp] = useState(null); // DEV: Display mock OTP for testing
@@ -338,7 +338,10 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			onRequestClose={handleDismiss}
 			statusBarTranslucent={true}
 		>
-			<View className="flex-1 justify-end">
+			<View
+				className="flex-1 justify-end"
+				style={{ paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }}
+			>
 				<Animated.View
 					style={{ opacity: bgOpacity }}
 					className="absolute inset-0 bg-black/60"

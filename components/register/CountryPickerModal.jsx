@@ -10,7 +10,8 @@ import {
 	Animated,
 	Dimensions,
 	Keyboard,
-	KeyboardAvoidingView
+	KeyboardAvoidingView,
+	Platform
 } from "react-native";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,7 +25,7 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
 	const { isDarkMode } = useTheme();
 	const [query, setQuery] = useState("");
 
-	const { modalHeight, getKeyboardAvoidingViewProps } = useAndroidKeyboardAwareModal({
+	const { modalHeight, keyboardHeight, getKeyboardAvoidingViewProps } = useAndroidKeyboardAwareModal({
 		defaultHeight: SCREEN_HEIGHT * 0.75
 	});
 
@@ -100,7 +101,10 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
 			onRequestClose={handleClose}
 			statusBarTranslucent={true}
 		>
-			<View className="flex-1 justify-end">
+			<View
+				className="flex-1 justify-end"
+				style={{ paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }}
+			>
 				<Animated.View
 					style={{ opacity: bgOpacity }}
 					className="absolute inset-0 bg-black/60"

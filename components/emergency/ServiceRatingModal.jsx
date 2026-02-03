@@ -40,10 +40,10 @@ export function ServiceRatingModal({
 	const [rating, setRating] = useState(0);
 	const [comment, setComment] = useState("");
 
-	const { modalHeight, keyboardHeight, getKeyboardAvoidingViewProps, getScrollViewProps } = 
-		useAndroidKeyboardAwareModal({ 
+	const { modalHeight, keyboardHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
+		useAndroidKeyboardAwareModal({
 			defaultHeight: SCREEN_HEIGHT,
-			maxHeightPercentage: 0.9 
+			maxHeightPercentage: 0.9
 		});
 
 	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
@@ -129,40 +129,43 @@ export function ServiceRatingModal({
 
 	return (
 		<Modal visible={visible} transparent animationType="none" onRequestClose={close}>
-			<View className="flex-1">
-				<Animated.View 
-					style={{ opacity: fadeAnim }} 
+			<View
+				className="flex-1 justify-end"
+				style={{ paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }}
+			>
+				<Animated.View
+					style={{ opacity: fadeAnim }}
 					className="absolute inset-0 bg-black/50"
 				>
-					<Pressable 
-						className="flex-1" 
+					<Pressable
+						className="flex-1"
 						onPress={() => {
 							if (keyboardHeight > 0) {
 								Keyboard.dismiss();
 								return;
 							}
 							close();
-						}} 
+						}}
 					/>
 					{Platform.OS === "ios" ? (
-						<BlurView 
-							intensity={20} 
-							tint={isDarkMode ? "dark" : "light"} 
-							style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} 
+						<BlurView
+							intensity={20}
+							tint={isDarkMode ? "dark" : "light"}
+							style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
 						/>
 					) : (
 						// Android fallback: semi-transparent background
-						<View 
-							style={{ 
-								position: 'absolute', 
-								top: 0, 
-								left: 0, 
-								right: 0, 
+						<View
+							style={{
+								position: 'absolute',
+								top: 0,
+								left: 0,
+								right: 0,
 								bottom: 0,
-								backgroundColor: isDarkMode 
+								backgroundColor: isDarkMode
 									? 'rgba(0,0,0,0.2)'  // Dark semi-transparent
 									: 'rgba(255,255,255,0.2)'  // Light semi-transparent
-							}} 
+							}}
 						/>
 					)}
 				</Animated.View>
@@ -179,28 +182,28 @@ export function ServiceRatingModal({
 					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-8" />
 
 					<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
-						<ScrollView 
+						<ScrollView
 							{...getScrollViewProps()}
 							showsVerticalScrollIndicator={false}
 							contentContainerStyle={{ paddingBottom: 40 }}
 							keyboardShouldPersistTaps="handled"
 						>
-						{/* Header */}
-						<View className="items-center mb-8">
-							<View 
-								className="w-16 h-16 rounded-2xl items-center justify-center mb-4"
-								style={{ backgroundColor: `${colors.accent}15` }}
-							>
-								<Ionicons name={getServiceIcon()} size={32} color={colors.accent} />
+							{/* Header */}
+							<View className="items-center mb-8">
+								<View
+									className="w-16 h-16 rounded-2xl items-center justify-center mb-4"
+									style={{ backgroundColor: `${colors.accent}15` }}
+								>
+									<Ionicons name={getServiceIcon()} size={32} color={colors.accent} />
 								</View>
-								<Text 
+								<Text
 									className="text-3xl font-black tracking-tighter text-center mb-2"
 									style={{ color: colors.text }}
 								>
 									{title}
 								</Text>
 								{subtitle && (
-									<Text 
+									<Text
 										className="text-base text-center"
 										style={{ color: colors.subtext }}
 									>
@@ -211,14 +214,14 @@ export function ServiceRatingModal({
 
 							{/* Service Details */}
 							{serviceDetails && (
-								<View 
+								<View
 									className="rounded-2xl p-4 mb-6"
 									style={{ backgroundColor: colors.card }}
 								>
 									{serviceDetails.provider && (
 										<View className="flex-row items-center mb-3">
 											<Ionicons name="person" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
-											<Text 
+											<Text
 												className="text-base font-medium"
 												style={{ color: colors.text }}
 											>
@@ -229,7 +232,7 @@ export function ServiceRatingModal({
 									{serviceDetails.hospital && (
 										<View className="flex-row items-center mb-3">
 											<Ionicons name="business" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
-											<Text 
+											<Text
 												className="text-base font-medium"
 												style={{ color: colors.text }}
 											>
@@ -240,7 +243,7 @@ export function ServiceRatingModal({
 									{serviceDetails.duration && (
 										<View className="flex-row items-center">
 											<Ionicons name="time" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
-											<Text 
+											<Text
 												className="text-base font-medium"
 												style={{ color: colors.text }}
 											>
@@ -253,13 +256,13 @@ export function ServiceRatingModal({
 
 							{/* Rating Section */}
 							<View className="mb-6">
-								<Text 
+								<Text
 									className="text-lg font-semibold text-center mb-6"
 									style={{ color: colors.text }}
 								>
 									How was your {getServiceTypeLabel()}?
 								</Text>
-								
+
 								{/* Stars */}
 								<View className="flex-row justify-center mb-4">
 									{stars.map((star) => {
@@ -286,7 +289,7 @@ export function ServiceRatingModal({
 
 								{/* Rating Text */}
 								{rating > 0 && (
-									<Text 
+									<Text
 										className="text-center text-lg font-medium mb-2"
 										style={{ color: colors.accent }}
 									>
@@ -297,7 +300,7 @@ export function ServiceRatingModal({
 
 							{/* Feedback Section */}
 							<View className="mb-8">
-								<Text 
+								<Text
 									className="text-base font-medium mb-3"
 									style={{ color: colors.text }}
 								>
@@ -332,14 +335,14 @@ export function ServiceRatingModal({
 									className="flex-1 h-14 rounded-2xl items-center justify-center"
 									style={{ backgroundColor: colors.card }}
 								>
-									<Text 
+									<Text
 										className="text-base font-semibold"
 										style={{ color: colors.text }}
 									>
 										Skip
 									</Text>
 								</Pressable>
-								
+
 								<Pressable
 									onPress={handleSubmit}
 									disabled={rating < 1}
@@ -349,7 +352,7 @@ export function ServiceRatingModal({
 										opacity: rating >= 1 ? 1 : 0.5,
 									}}
 								>
-									<Text 
+									<Text
 										className="text-base font-semibold"
 										style={{ color: rating >= 1 ? COLORS.bgLight : colors.text }}
 									>

@@ -33,9 +33,10 @@ export default function InputModal({
   disabled = false,
 }) {
   const { isDarkMode } = useTheme();
-  
+
   const {
     modalHeight,
+    keyboardHeight,
     getKeyboardAvoidingViewProps,
     getScrollViewProps
   } = useAndroidKeyboardAwareModal();
@@ -65,12 +66,17 @@ export default function InputModal({
       onRequestClose={onClose}
     >
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+        <View
+          style={[styles.overlay, {
+            backgroundColor: colors.overlay,
+            paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0
+          }]}
+        >
           {Platform.OS === 'ios' && (
-            <BlurView 
-              intensity={20} 
-              tint={isDarkMode ? 'dark' : 'light'} 
-              style={StyleSheet.absoluteFill} 
+            <BlurView
+              intensity={20}
+              tint={isDarkMode ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}
             />
           )}
           <TouchableWithoutFeedback>
@@ -131,12 +137,12 @@ export default function InputModal({
                         </Text>
                       </TouchableOpacity>
                     )}
-                    
+
                     <TouchableOpacity
                       style={[
                         styles.button,
                         styles.primaryButton,
-                        { 
+                        {
                           opacity: disabled || loading ? 0.7 : 1,
                           backgroundColor: COLORS.brandPrimary,
                           shadowColor: COLORS.brandPrimary,

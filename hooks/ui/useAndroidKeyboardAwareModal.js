@@ -19,6 +19,8 @@
  * USAGE:
  * const { keyboardHeight, modalHeight, getScrollViewProps, getKeyboardAvoidingViewProps } 
  *   = useAndroidKeyboardAwareModal({ defaultHeight: SCREEN_HEIGHT * 0.85 });
+ * 
+ * [MODAL-KEYBOARD-FIX]
  */
 
 import { useEffect, useState } from 'react';
@@ -36,26 +38,34 @@ export function useAndroidKeyboardAwareModal({
   const [modalHeight, setModalHeight] = useState(defaultHeight);
 
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
-      (e) => {
-        const keyboardHeightValue = e.endCoordinates.height;
-        setKeyboardHeight(keyboardHeightValue);
+    const showEvent = Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow';
+    const hideEvent = Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide';
 
-        // Only adjust modal height on Android to prevent inputs from disappearing
+    const keyboardDidShowListener = Keyboard.addListener(
+      showEvent,
+      (e) => {
+        const height = e.endCoordinates.height;
+        setKeyboardHeight(height);
+
         if (Platform.OS === 'android') {
-          const availableHeight = SCREEN_HEIGHT - keyboardHeightValue - insets.top;
-          const newModalHeight = Math.min(
-            availableHeight * 0.9,
-            SCREEN_HEIGHT * maxHeightPercentage
+          // Calculate available space above keyboard
+          // We subtract insets.top to respect the status bar
+          const availableHeight = SCREEN_HEIGHT - height - insets.top;
+
+          // Shrink modal if it would exceed available height
+          // We add a small buffer (20px)
+          const adjustedHeight = Math.min(
+            availableHeight - 20,
+            defaultHeight
           );
-          setModalHeight(newModalHeight);
+
+          setModalHeight(adjustedHeight);
         }
       }
     );
 
     const keyboardDidHideListener = Keyboard.addListener(
-      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+      hideEvent,
       () => {
         setKeyboardHeight(0);
         if (Platform.OS === 'android') {
@@ -72,10 +82,10 @@ export function useAndroidKeyboardAwareModal({
 
   // Helper function to get KeyboardAvoidingView props
   const getKeyboardAvoidingViewProps = (additionalProps = {}) => ({
-    // On Android, we manage modal height manually in this hook, 
-    // so KeyboardAvoidingView height/padding behavior can cause conflicts.
-    behavior: Platform.OS === "ios" ? "padding" : undefined,
-    keyboardVerticalOffset: Platform.OS === "ios" ? insets.bottom + 90 : 0,
+    // On Android, we manage height manually or via padding, 
+    // "padding" behavior is often more reliable than "height" for Modals
+    behavior: Platform.OS === "ios" ? "padding" : "padding",
+    keyboardVerticalOffset: Platform.OS === "ios" ? insets.bottom + 60 : 0,
     style: { flex: 1 },
     ...additionalProps
   });
@@ -84,11 +94,11 @@ export function useAndroidKeyboardAwareModal({
   const getScrollViewProps = (additionalProps = {}) => ({
     contentContainerStyle: {
       flexGrow: 1,
-      // On Android, when keyboard is open, add generous padding to ensure 
-      // the focused input can be scrolled into view above the keyboard.
-      paddingBottom: Platform.OS === "android"
-        ? keyboardHeight > 0 ? keyboardHeight + 40 : insets.bottom + 120
-        : insets.bottom + 120,
+      // On Android, when keyboard is open, we add padding to bottom 
+      // to allow the user to scroll fields above the keyboard.
+      paddingBottom: keyboardHeight > 0
+        ? 40 // Add some breathing room when keyboard is up
+        : insets.bottom + 60,
       ...additionalProps.contentContainerStyle
     },
     keyboardShouldPersistTaps: "handled",
