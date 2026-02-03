@@ -14,6 +14,7 @@ import {
     Dimensions,
     StyleSheet,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
@@ -22,6 +23,7 @@ import * as Haptics from "expo-haptics";
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function UpdateAvailableModal({ visible, onRestart, onLater }) {
+    const insets = useSafeAreaInsets();
     const { isDarkMode } = useTheme();
     const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -101,6 +103,7 @@ export default function UpdateAvailableModal({ visible, onRestart, onLater }) {
                         {
                             transform: [{ translateY: slideAnim }],
                             backgroundColor: colors.bg,
+                            paddingBottom: insets.bottom + 24, // Bottom-bar aware
                         },
                     ]}
                 >
