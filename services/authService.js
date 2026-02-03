@@ -87,10 +87,6 @@ const handleSupabaseError = (error) => {
         return createAuthError(AuthErrors.INVALID_INPUT, "Invalid phone number format");
     }
 
-    if (msg.includes("invalid refresh token") || msg.includes("refresh token not found")) {
-        return createAuthError(AuthErrors.TOKEN_EXPIRED, "Session expired. Please log in again.");
-    }
-
     if (msg.includes("email not confirmed")) {
         return createAuthError(AuthErrors.INVALID_TOKEN, "Please verify your email first");
     }
@@ -594,7 +590,6 @@ const authService = {
             fullName: data.full_name,
             phone: data.phone,
             imageUri: data.image_uri,
-            displayId: data.display_id, // NEW: Include display_id
             address: data.address,
             gender: data.gender,
             dateOfBirth: data.date_of_birth,

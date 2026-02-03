@@ -27,19 +27,6 @@ import { authService } from "../services/authService";
 import { appMigrationsService } from "../services/appMigrationsService";
 
 /**
- * Error Boundary Wrapper with Toast Context Access
- */
-function ErrorBoundaryWithToast({ children }) {
-	const { showToast } = useToast();
-	
-	return (
-		<GlobalErrorBoundary showToast={showToast}>
-			{children}
-		</GlobalErrorBoundary>
-	);
-}
-
-/**
  * Root layout wraps the entire app with context providers
  */
 export default function RootLayout() {
@@ -89,18 +76,18 @@ export default function RootLayout() {
 
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
-			<GlobalLocationProvider>
-				<AppProviders>
-					<View style={{ flex: 1 }}>
-						<ErrorBoundaryWithToast>
+			<GlobalErrorBoundary>
+				<GlobalLocationProvider>
+					<AppProviders>
+						<View style={{ flex: 1 }}>
 							<AuthenticatedStack />
-						</ErrorBoundaryWithToast>
-						<View className="absolute right-0 top-16 px-2 py-4">
-							<ThemeToggle showLabel={false} />
+							<View className="absolute right-0 top-16 px-2 py-4">
+								<ThemeToggle showLabel={false} />
+							</View>
 						</View>
-					</View>
-				</AppProviders>
-			</GlobalLocationProvider>
+					</AppProviders>
+				</GlobalLocationProvider>
+			</GlobalErrorBoundary>
 		</GestureHandlerRootView>
 	);
 }
