@@ -12,11 +12,13 @@ export const COLORS = {
 
 	// Text
 	textPrimary: "#1A1A1A", // Almost black for main text (light mode)
+	textSecondary: "#9E9E9E", // Gray for inactive tab icons (light mode)
 	textMuted: "#7E7E7E", // Gray for secondary / helper text
 	textLight: "#FFFFFF", // White for dark mode main text
 	textMutedDark: "#B0B0B0", // Gray for dark mode secondary text
 
-	// Status / feedback
+	// Emergency
+	emergency: "#C62828", // Emergency red for FAB alerts
 	success: "#B71C1C", // Use red for success too? Or just leave red family
 	error: "#C62828", // Red error
 	warning: "#B71C1C", // Reuse dark red

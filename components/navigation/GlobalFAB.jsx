@@ -1,46 +1,45 @@
-// FAB VISIBILITY FIX: Added debug logging to track which FAB is being rendered
-// This helps identify when the wrong FAB is showing (e.g., Home Tab vs EmergencyScreen)
-// Also fixed platform-specific dimensions to use dynamic values from context instead of hardcoded
-
-import React, { useRef, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Platform, ActivityIndicator, Pressable, Animated, Easing } from 'react-native';
+// FAB aligned with tab bar - 56x56 circle on tabs, expandable with label on stacks
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Platform, ActivityIndicator, Pressable, Animated } from 'react-native';
 import { Ionicons, Fontisto } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useFAB } from '../../contexts/FABContext';
 import { useTabBarVisibility } from '../../contexts/TabBarVisibilityContext';
 import { COLORS } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// Match AnimatedTabBar constants exactly
+const TAB_SIZE = 56;
+const PILL_PADDING = 8;
 
 const GlobalFAB = () => {
-  const { activeFAB, getFABStyle, dimensions } = useFAB();
-  const { translateY, TAB_BAR_HEIGHT } = useTabBarVisibility();
-
+  const { activeFAB, getFABStyle, isInStack } = useFAB();
+  const { translateY } = useTabBarVisibility();
   const { isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
 
-  // Use platform-specific dimensions from context
-  const FAB_HEIGHT = dimensions.height;
-  const FAB_OFFSET = dimensions.offset;
-
-  // DEBUG: Log FAB positioning and dimensions (only on mount)
-  useEffect(() => {
-    console.log('[GlobalFAB] Position & Dimensions:', {
-      FAB_HEIGHT,
-      FAB_OFFSET,
-      right: 20,
-      bottom: FAB_OFFSET + 10,
-      tabBarHeight: TAB_BAR_HEIGHT,
-      hasLabel: !!activeFAB?.label,
-      platform: Platform.OS,
-      activeFAB: activeFAB?.label || 'No FAB'
-    });
-  }, [FAB_HEIGHT, FAB_OFFSET]);
+  // Calculate bottom position to align FAB with tab pills
+  const paddingBottom = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 12);
+  const fabBottom = paddingBottom + PILL_PADDING;
 
   // Animations
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const visibilityAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
 
+  // Has label = expandable on stack pages
   const hasLabel = !!activeFAB?.label;
+
+  // DEBUG: Log positioning
+  useEffect(() => {
+    console.log('[GlobalFAB] Position:', {
+      TAB_SIZE,
+      fabBottom,
+      hasLabel,
+      isInStack,
+      platform: Platform.OS
+    });
+  }, [fabBottom, hasLabel, isInStack]);
 
   // Sync Visibility
   useEffect(() => {
@@ -51,12 +50,6 @@ const GlobalFAB = () => {
       useNativeDriver: true,
     }).start();
   }, [activeFAB?.visible]);
-
-  // Pulse logic for Emergency - DISABLED for cleaner design
-  useEffect(() => {
-    // No pulsing for SOS - cleaner Apple-style design
-    return;
-  }, [activeFAB?.style, activeFAB?.visible]);
 
   if (!activeFAB) return null;
 
@@ -80,11 +73,11 @@ const GlobalFAB = () => {
       style={[
         styles.wrapper,
         {
-          bottom: FAB_OFFSET + 10,
+          bottom: fabBottom,
           opacity,
           transform: [
-            { translateY: slideUp },
-            { scale: Animated.multiply(scaleAnim, pulseAnim) },
+            { translateY: Animated.add(translateY, slideUp) },
+            { scale: scaleAnim },
           ],
         },
       ]}
@@ -95,65 +88,55 @@ const GlobalFAB = () => {
         onPressIn={() => Animated.spring(scaleAnim, { toValue: 0.92, useNativeDriver: true }).start()}
         onPressOut={() => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start()}
       >
-        <Animated.View
+        <View
           style={[
             styles.container,
             {
-              height: FAB_HEIGHT, // Dynamic height from context (56px both platforms)
-              borderRadius: FAB_HEIGHT / 2, // Dynamic border radius for perfect pill (28px)
               backgroundColor: fabStyle.backgroundColor,
-              // Platform-aware width: Grow with content if label present, otherwise perfect circle
-              width: hasLabel ? undefined : 56,
-              minWidth: 56,
-              // Glow Effect: Colored shadow for premium depth
+              // Dynamic sizing: circle on tabs, pill when label present
+              width: hasLabel ? undefined : TAB_SIZE,
+              minWidth: TAB_SIZE,
+              height: TAB_SIZE,
+              borderRadius: TAB_SIZE / 2,
+              paddingHorizontal: hasLabel ? 20 : 0,
+              // Glow Effect
               shadowColor: activeFAB.style === 'emergency' ? COLORS.emergency : (activeFAB.style === 'primary' ? COLORS.brandPrimary : "#000"),
-              shadowOpacity: isDarkMode ? 0.4 : 0.2,
-              transform: [
-                { scale: scaleAnim },
-              ],
+              shadowOpacity: isDarkMode ? 0.4 : 0.25,
             }
           ]}
         >
-          <Animated.View style={[
-            styles.contentLayout,
-            {
-              paddingLeft: 16,
-              paddingRight: hasLabel ? 20 : 16,
-            }
-          ]}>
-            {/* Icon Area */}
-            <View style={styles.iconWrapper}>
-              {activeFAB.loading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                activeFAB.icon === 'bed-patient'
-                  ? <Fontisto name="bed-patient" size={22} color="#FFFFFF" />
-                  : <Ionicons name={activeFAB.icon || 'add'} size={26} color="#FFFFFF" />
+          {/* Icon */}
+          <View style={styles.iconWrapper}>
+            {activeFAB.loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              activeFAB.icon === 'bed-patient'
+                ? <Fontisto name="bed-patient" size={22} color="#FFFFFF" />
+                : <Ionicons name={activeFAB.icon || 'add'} size={26} color="#FFFFFF" />
+            )}
+          </View>
+
+          {/* Label (shows on stack pages) */}
+          {hasLabel && (
+            <View style={styles.labelWrapper}>
+              <Text style={styles.labelText} numberOfLines={1}>
+                {activeFAB.label}
+              </Text>
+              {activeFAB.subText && (
+                <Text style={styles.subLabelText} numberOfLines={1}>
+                  {activeFAB.subText}
+                </Text>
               )}
             </View>
+          )}
 
-            {/* Label Area (Morphs out) */}
-            {hasLabel && (
-              <View style={styles.labelWrapper}>
-                <Text style={styles.labelText} numberOfLines={1}>
-                  {activeFAB.label}
-                </Text>
-                {activeFAB.subText && (
-                  <Text style={styles.subLabelText} numberOfLines={1}>
-                    {activeFAB.subText}
-                  </Text>
-                )}
-              </View>
-            )}
-          </Animated.View>
-
-          {/* Badge Seal - signature bottom-right placement */}
+          {/* Badge Seal */}
           {activeFAB.badge && (
             <View style={styles.badgeSeal}>
               <Text style={styles.badgeText}>{activeFAB.badge}</Text>
             </View>
           )}
-        </Animated.View>
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -166,21 +149,13 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   container: {
-    height: 64, // Use fixed height since FAB_HEIGHT is not available at module level
-    borderRadius: 32, // Perfect Pill
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    // Premium Shadow Specs
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 16,
-    elevation: 12,
-    flexDirection: 'row',
-    overflow: 'visible',
-  },
-  contentLayout: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: '100%',
+    // Premium Shadow
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    elevation: 10,
   },
   iconWrapper: {
     width: 32,
@@ -189,13 +164,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   labelWrapper: {
-    marginLeft: 10,
+    marginLeft: 8,
     justifyContent: 'center',
   },
   labelText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '800', // Bold premium feel
+    fontWeight: '800',
     letterSpacing: -0.4,
   },
   subLabelText: {
@@ -209,17 +184,14 @@ const styles = StyleSheet.create({
     bottom: -2,
     right: -2,
     backgroundColor: '#FFFFFF',
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: COLORS.brandPrimary, // Anchors the badge visually
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderColor: COLORS.brandPrimary,
   },
   badgeText: {
     color: COLORS.brandPrimary,
