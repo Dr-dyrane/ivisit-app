@@ -9,6 +9,7 @@ import { createContext, useState, useEffect, useMemo, useContext, useCallback } 
 import { ActivityIndicator, View } from "react-native";
 import { authService } from "../services/authService";
 import { database, StorageKeys } from "../database";
+import { useToast } from "./ToastContext";
 
 // Create AuthContext
 export const AuthContext = createContext(null);
@@ -17,6 +18,26 @@ export const AuthProvider = ({ children }) => {
 	const [user, setUser] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [token, setToken] = useState(null);
+	const { showToast } = useToast();
+
+	// **3. Logout function**: Clear user data and token
+	const logout = useCallback(async () => {
+		try {
+			setUser(null);
+			setToken(null);
+			// Use API logout and database layer
+			await authService.logout();
+			await database.delete(StorageKeys.CURRENT_USER);
+            
+            // Clear any pending registration data to prevent "Complete profile" toasts for next user
+            await authService.clearPendingRegistration();
+
+			return { success: true, message: "Successfully logged out" };
+		} catch (error) {
+			console.error("Error clearing user data:", error);
+			return { success: false, message: "Logout failed" };
+		}
+	}, []);
 
 	// **1. Fetch and Sync User Data from API/Service**
 	const syncUserData = useCallback(async () => {
@@ -38,19 +59,29 @@ export const AuthProvider = ({ children }) => {
 				}
 			}
 		} catch (error) {
-            // Ignore "not logged in" error as it is expected when session expires or token is invalid
-            const isNotLoggedIn = error.message && (
-                error.message.includes("NOT_LOGGED_IN") || 
-                error.code === "NOT_LOGGED_IN"
-            );
-            
-            if (!isNotLoggedIn) {
+            // Handle specific auth errors with toast notifications
+            const isTokenExpired = error.code === "TOKEN_EXPIRED" || 
+                error.message?.includes("Session expired") ||
+                error.message?.includes("invalid refresh token") ||
+                error.message?.includes("refresh token not found");
+
+            const isNotLoggedIn = error.code === "NOT_LOGGED_IN" || 
+                error.message?.includes("NOT_LOGGED_IN");
+
+            if (isTokenExpired) {
+                // Show user-friendly toast for session expiry
+                showToast("Session expired. Please log in again.", "info");
+                // Clear local auth state gracefully
+                await logout();
+            } else if (!isNotLoggedIn) {
+                // Show toast for other unexpected auth errors
+                showToast("Authentication error. Please try logging in again.", "warning");
 			    console.error("Error syncing user data from API:", error);
             }
 		} finally {
 			setLoading(false);
 		}
-	}, []);
+	}, [showToast, logout]);
 
 	useEffect(() => {
 		syncUserData();
@@ -90,25 +121,6 @@ export const AuthProvider = ({ children }) => {
 		} catch (error) {
 			console.error("Error saving user data:", error);
 			return false;
-		}
-	}, []);
-
-	// **3. Logout function**: Clear user data and token
-	const logout = useCallback(async () => {
-		try {
-			setUser(null);
-			setToken(null);
-			// Use API logout and database layer
-			await authService.logout();
-			await database.delete(StorageKeys.CURRENT_USER);
-            
-            // Clear any pending registration data to prevent "Complete profile" toasts for next user
-            await authService.clearPendingRegistration();
-
-			return { success: true, message: "Successfully logged out" };
-		} catch (error) {
-			console.error("Error clearing user data:", error);
-			return { success: false, message: "Logout failed" };
 		}
 	}, []);
 
