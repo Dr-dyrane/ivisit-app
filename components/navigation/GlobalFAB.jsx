@@ -21,6 +21,20 @@ const GlobalFAB = () => {
   const FAB_HEIGHT = dimensions.height;
   const FAB_OFFSET = dimensions.offset;
 
+  // DEBUG: Log FAB positioning and dimensions (only on mount)
+  useEffect(() => {
+    console.log('[GlobalFAB] Position & Dimensions:', {
+      FAB_HEIGHT,
+      FAB_OFFSET,
+      right: 20,
+      bottom: FAB_OFFSET + 10,
+      tabBarHeight: TAB_BAR_HEIGHT,
+      hasLabel: !!activeFAB?.label,
+      platform: Platform.OS,
+      activeFAB: activeFAB?.label || 'No FAB'
+    });
+  }, [FAB_HEIGHT, FAB_OFFSET]);
+
   // Animations
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const visibilityAnim = useRef(new Animated.Value(0)).current;
@@ -85,11 +99,12 @@ const GlobalFAB = () => {
           style={[
             styles.container,
             {
-              height: FAB_HEIGHT, // Dynamic height from context
-              borderRadius: FAB_HEIGHT / 2, // Dynamic border radius for perfect pill
+              height: FAB_HEIGHT, // Dynamic height from context (56px both platforms)
+              borderRadius: FAB_HEIGHT / 2, // Dynamic border radius for perfect pill (28px)
               backgroundColor: fabStyle.backgroundColor,
               // Platform-aware width based on label presence
-              width: hasLabel ? (Platform.OS === 'ios' ? 110 : 120) : (Platform.OS === 'ios' ? 56 : 64),
+              // Icon-only: Perfect circle (56x56) | With label: Expanded pill (110-120px)
+              width: hasLabel ? (Platform.OS === 'ios' ? 110 : 120) : 56, // Perfect circle for both platforms
               // Glow Effect: Colored shadow for premium depth
               shadowColor: activeFAB.style === 'emergency' ? COLORS.emergency : (activeFAB.style === 'primary' ? COLORS.brandPrimary : "#000"),
               shadowOpacity: isDarkMode ? 0.4 : 0.2,

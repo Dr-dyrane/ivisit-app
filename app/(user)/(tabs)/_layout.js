@@ -34,18 +34,18 @@ export default function TabsLayout() {
 			<Tabs.Screen
 				name="index"
 				options={{
-					title: "Home",
+					// title: "Home",
 					tabBarIcon: ({ color }) => (
-						<Ionicons name="home-outline" size={24} color={color} />
+						<Ionicons name="map-outline" size={24} color={color} />
 					),
 				}}
 			/>
 			<Tabs.Screen
 				name="visits"
 				options={{
-					title: "Visits",
+					// title: "Visits",
 					tabBarIcon: ({ color }) => (
-						<Ionicons name="calendar-outline" size={24} color={color} />
+						<Ionicons name="time-outline" size={24} color={color} />
 					),
 				}}
 			/>
