@@ -2,7 +2,7 @@
 import "../polyfills";
 
 import React, { useEffect, useState } from "react";
-import { View } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
@@ -96,7 +96,7 @@ export default function RootLayout() {
  * Stack navigator that observes auth state
  */
 function AuthenticatedStack() {
-	const { user, login, syncUserData } = useAuth();
+	const { user, login, syncUserData, loading } = useAuth();
 	const { isDarkMode } = useTheme();
 	const { showToast } = useToast();
 	const router = useRouter();
@@ -151,6 +151,12 @@ function AuthenticatedStack() {
 			segments?.[1] === "(stacks)" &&
 			segments?.[2] === "complete-profile";
 
+		// Don't do anything while auth is still loading
+		if (loading) {
+			return;
+		}
+
+		// Only navigate to login if we're sure user is not authenticated
 		if (!user.isAuthenticated) {
 			if (rootGroup !== "(auth)") {
 				router.replace("/(auth)");
@@ -166,7 +172,7 @@ function AuthenticatedStack() {
 		if (rootGroup === "(auth)" || rootGroup !== "(user)") {
 			router.replace("/(user)/(tabs)");
 		}
-	}, [segments, user]);
+	}, [segments, user, loading]);
 
 	return (
 		<>
@@ -174,11 +180,30 @@ function AuthenticatedStack() {
 				style={isDarkMode ? "light" : "dark"}
 				backgroundColor={isDarkMode ? "#0D121D" : "#FFFFFF"}
 			/>
-			<Stack screenOptions={{ headerShown: false }}>
-				<Stack.Screen name="auth/callback" options={{ headerShown: false }} />
-				<Stack.Screen name="(auth)" />
-				<Stack.Screen name="(user)" />
-			</Stack>
+			{loading ? (
+				<View style={{ 
+					flex: 1, 
+					justifyContent: 'center', 
+					alignItems: 'center',
+					backgroundColor: isDarkMode ? '#0D121D' : '#FFFFFF'
+				}}>
+					<ActivityIndicator size="large" color={isDarkMode ? '#FFFFFF' : '#007AFF'} />
+					<Text style={{ 
+						marginTop: 20, 
+						fontSize: 16, 
+						color: isDarkMode ? '#FFFFFF' : '#666',
+						textAlign: 'center'
+					}}>
+						Checking authentication...
+					</Text>
+				</View>
+			) : (
+				<Stack screenOptions={{ headerShown: false }}>
+					<Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+					<Stack.Screen name="(auth)" />
+					<Stack.Screen name="(user)" />
+				</Stack>
+			)}
 		</>
 	);
 }
