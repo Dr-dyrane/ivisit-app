@@ -25,6 +25,7 @@ import GlobalErrorBoundary from "../components/GlobalErrorBoundary";
 import { isProfileComplete } from "../utils/profileCompletion";
 import { authService } from "../services/authService";
 import { appMigrationsService } from "../services/appMigrationsService";
+import { useOTAUpdates } from "../hooks/useOTAUpdates";
 
 /**
  * Root layout wraps the entire app with context providers
@@ -101,6 +102,9 @@ function AuthenticatedStack() {
 	const { showToast } = useToast();
 	const router = useRouter();
 	const segments = useSegments();
+
+	// Check for OTA updates on app launch
+	useOTAUpdates();
 
 	useEffect(() => {
 		const handleDeepLink = async (event) => {
@@ -181,16 +185,16 @@ function AuthenticatedStack() {
 				backgroundColor={isDarkMode ? "#0D121D" : "#FFFFFF"}
 			/>
 			{loading ? (
-				<View style={{ 
-					flex: 1, 
-					justifyContent: 'center', 
+				<View style={{
+					flex: 1,
+					justifyContent: 'center',
 					alignItems: 'center',
 					backgroundColor: isDarkMode ? '#0D121D' : '#FFFFFF'
 				}}>
 					<ActivityIndicator size="large" color={isDarkMode ? '#FFFFFF' : '#007AFF'} />
-					<Text style={{ 
-						marginTop: 20, 
-						fontSize: 16, 
+					<Text style={{
+						marginTop: 20,
+						fontSize: 16,
 						color: isDarkMode ? '#FFFFFF' : '#666',
 						textAlign: 'center'
 					}}>
