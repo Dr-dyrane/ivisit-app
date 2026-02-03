@@ -5,8 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const UnifiedScrollContext = createContext(null);
 
 // Constants
-const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 70;
-const VISUAL_TAB_HEIGHT = Platform.OS === 'ios' ? 110 : 95;
+const VISUAL_TAB_HEIGHT = Platform.OS === 'ios' ? 70 : 65;
 const HEADER_HEIGHT = 140;
 const ANIMATION_DURATION = 400; // Longer for smoother feel
 const SCROLL_THRESHOLD = 50;
@@ -15,23 +14,25 @@ const MIN_SCROLL_DIFF = 8; // Higher threshold to reduce jitter
 
 // Apple-style bezier easing curves
 const EASING_BEZIER = {
-	// Smooth ease-out for showing elements (like iOS navigation bar)
-	SHOW: Platform.OS === 'ios' 
-		? [0.25, 0.46, 0.45, 0.94]  // iOS-style ease-out
-		: [0.25, 0.46, 0.45, 0.94], // Same for Android
-	
-	// Smooth ease-in for hiding elements (like iOS control center)
-	HIDE: Platform.OS === 'ios'
-		? [0.55, 0.085, 0.68, 0.53] // iOS-style ease-in
-		: [0.55, 0.085, 0.68, 0.53], // Same for Android
-	
-	// Gentle spring-like ease for natural movement
-	SPRING: [0.175, 0.885, 0.32, 1.275],
+  // Smooth ease-out for showing elements (like iOS navigation bar)
+  SHOW: Platform.OS === 'ios'
+    ? [0.25, 0.46, 0.45, 0.94]  // iOS-style ease-out
+    : [0.25, 0.46, 0.45, 0.94], // Same for Android
+
+  // Smooth ease-in for hiding elements (like iOS control center)
+  HIDE: Platform.OS === 'ios'
+    ? [0.55, 0.085, 0.68, 0.53] // iOS-style ease-in
+    : [0.55, 0.085, 0.68, 0.53], // Same for Android
+
+  // Gentle spring-like ease for natural movement
+  SPRING: [0.175, 0.885, 0.32, 1.275],
 };
 
 export function UnifiedScrollProvider({ children }) {
   const insets = useSafeAreaInsets();
-  const HIDE_DISTANCE = VISUAL_TAB_HEIGHT + insets.bottom;
+  const effectivePadding = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 12);
+  const HIDE_DISTANCE = VISUAL_TAB_HEIGHT + effectivePadding;
+  const TAB_BAR_HEIGHT = HIDE_DISTANCE;
 
   // Animation values
   const tabTranslateY = useRef(new Animated.Value(0)).current;
@@ -169,7 +170,7 @@ export function UnifiedScrollProvider({ children }) {
   // Reset both animations with spring easing for natural feel
   const resetBoth = useCallback(() => {
     if (isLockedHidden.current) return;
-    
+
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
@@ -178,7 +179,7 @@ export function UnifiedScrollProvider({ children }) {
     isTabHidden.current = false;
     isHeaderHidden.current = false;
     setIsTabBarHidden(false);
-    
+
     // Spring-based reset for natural movement
     Animated.parallel([
       Animated.spring(tabTranslateY, {
@@ -248,7 +249,7 @@ export function UnifiedScrollProvider({ children }) {
     unlockTabBarHidden: unlockBothHidden,
     TAB_BAR_HEIGHT,
     HIDE_DISTANCE,
-    
+
     // Header controls
     headerOpacity,
     titleOpacity,
@@ -257,7 +258,7 @@ export function UnifiedScrollProvider({ children }) {
     lockHeaderHidden: lockBothHidden,
     unlockHeaderHidden: unlockBothHidden,
     HEADER_HEIGHT,
-    
+
     // Unified controls
     handleScroll,
     resetBoth,

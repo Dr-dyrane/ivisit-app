@@ -21,9 +21,10 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
   // Theme-aware blur settings per spec
   const blurIntensity = isDarkMode ? 70 : 60;
 
-  const height = Platform.OS === 'ios' ? 120 : 100; // iOS: More presence, Android: Compact
-  // iOS: Fixed home indicator space, Android: Add system nav bar inset
-  const paddingBottom = Platform.OS === 'ios' ? 25 : 15 + insets.bottom;
+  // Determine height dynamically to prevent squeezing on Android/iOS
+  const PILL_HEIGHT = Platform.OS === 'ios' ? 70 : 65;
+  const paddingBottom = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 12);
+  const height = PILL_HEIGHT + paddingBottom;
 
   // DEBUG: Log dimensions and positioning (only on mount)
   React.useEffect(() => {
