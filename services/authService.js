@@ -594,6 +594,7 @@ const authService = {
             fullName: data.full_name,
             phone: data.phone,
             imageUri: data.image_uri,
+            displayId: data.display_id, // NEW: Include display_id
             address: data.address,
             gender: data.gender,
             dateOfBirth: data.date_of_birth,

@@ -28,9 +28,9 @@ export const AuthProvider = ({ children }) => {
 			// Use API logout and database layer
 			await authService.logout();
 			await database.delete(StorageKeys.CURRENT_USER);
-            
-            // Clear any pending registration data to prevent "Complete profile" toasts for next user
-            await authService.clearPendingRegistration();
+
+			// Clear any pending registration data to prevent "Complete profile" toasts for next user
+			await authService.clearPendingRegistration();
 
 			return { success: true, message: "Successfully logged out" };
 		} catch (error) {
@@ -48,36 +48,36 @@ export const AuthProvider = ({ children }) => {
 				const { data: userData } = await authService.getCurrentUser();
 
 				if (userData) {
-                    // Only update if data actually changed to prevent re-render loops
-                    setUser(prevUser => {
-                        if (JSON.stringify(prevUser) === JSON.stringify(userData)) return prevUser;
-                        return userData;
-                    });
+					// Only update if data actually changed to prevent re-render loops
+					setUser(prevUser => {
+						if (JSON.stringify(prevUser) === JSON.stringify(userData)) return prevUser;
+						return userData;
+					});
 					setToken(storedToken);
 					// Store current user data for quick access
 					await database.write(StorageKeys.CURRENT_USER, userData);
 				}
 			}
 		} catch (error) {
-            // Handle specific auth errors with toast notifications
-            const isTokenExpired = error.code === "TOKEN_EXPIRED" || 
-                error.message?.includes("Session expired") ||
-                error.message?.includes("invalid refresh token") ||
-                error.message?.includes("refresh token not found");
+			// Handle specific auth errors with toast notifications
+			const isTokenExpired = error.code === "TOKEN_EXPIRED" ||
+				error.message?.includes("Session expired") ||
+				error.message?.includes("invalid refresh token") ||
+				error.message?.includes("refresh token not found");
 
-            const isNotLoggedIn = error.code === "NOT_LOGGED_IN" || 
-                error.message?.includes("NOT_LOGGED_IN");
+			const isNotLoggedIn = error.code === "NOT_LOGGED_IN" ||
+				error.message?.includes("NOT_LOGGED_IN");
 
-            if (isTokenExpired) {
-                // Show user-friendly toast for session expiry
-                showToast("Session expired. Please log in again.", "info");
-                // Clear local auth state gracefully
-                await logout();
-            } else if (!isNotLoggedIn) {
-                // Show toast for other unexpected auth errors
-                showToast("Authentication error. Please try logging in again.", "warning");
-			    console.error("Error syncing user data from API:", error);
-            }
+			if (isTokenExpired) {
+				// Show user-friendly toast for session expiry
+				showToast("Session expired. Please log in again.", "info");
+				// Clear local auth state gracefully
+				await logout();
+			} else if (!isNotLoggedIn) {
+				// Show toast for other unexpected auth errors
+				showToast("Authentication error. Please try logging in again.", "warning");
+				console.error("Error syncing user data from API:", error);
+			}
 		} finally {
 			setLoading(false);
 		}
@@ -95,6 +95,7 @@ export const AuthProvider = ({ children }) => {
 			username: user?.username || null,
 			fullName: user?.fullName || null,
 			imageUri: user?.imageUri || null,
+			displayId: user?.displayId || null,
 			firstName: user?.firstName || null,
 			lastName: user?.lastName || null,
 			emailVerified: user?.emailVerified === true,
@@ -124,23 +125,23 @@ export const AuthProvider = ({ children }) => {
 		}
 	}, []);
 
-    // **4. Delete Account function**
-    const deleteAccount = useCallback(async () => {
-        try {
-            await authService.deleteUser();
-            // Perform local cleanup same as logout
-            setUser(null);
-            setToken(null);
-            await database.delete(StorageKeys.CURRENT_USER);
-            await authService.clearPendingRegistration();
-            return { success: true, message: "Account deleted successfully" };
-        } catch (error) {
-            console.error("Error deleting account:", error);
-            // Even if it fails, we should probably logout locally
-             await logout();
-            return { success: false, message: "Account deletion failed, logged out locally" };
-        }
-    }, [logout]);
+	// **4. Delete Account function**
+	const deleteAccount = useCallback(async () => {
+		try {
+			await authService.deleteUser();
+			// Perform local cleanup same as logout
+			setUser(null);
+			setToken(null);
+			await database.delete(StorageKeys.CURRENT_USER);
+			await authService.clearPendingRegistration();
+			return { success: true, message: "Account deleted successfully" };
+		} catch (error) {
+			console.error("Error deleting account:", error);
+			// Even if it fails, we should probably logout locally
+			await logout();
+			return { success: false, message: "Account deletion failed, logged out locally" };
+		}
+	}, [logout]);
 
 	const authContextValue = useMemo(
 		() => ({
@@ -149,15 +150,16 @@ export const AuthProvider = ({ children }) => {
 				username: authStatus.username,
 				fullName: authStatus.fullName,
 				imageUri: authStatus.imageUri,
+				displayId: authStatus.displayId,
 				firstName: authStatus.firstName,
 				lastName: authStatus.lastName,
 				phone: user?.phone || null,
-                address: user?.address || null,
-                gender: user?.gender || null,
-                dateOfBirth: user?.dateOfBirth || null,
-                id: user?.id || null,
-                createdAt: user?.createdAt || null,
-                updatedAt: user?.updatedAt || null,
+				address: user?.address || null,
+				gender: user?.gender || null,
+				dateOfBirth: user?.dateOfBirth || null,
+				id: user?.id || null,
+				createdAt: user?.createdAt || null,
+				updatedAt: user?.updatedAt || null,
 				emailVerified: authStatus.emailVerified,
 				phoneVerified: authStatus.phoneVerified,
 				hasPassword: authStatus.hasPassword,
@@ -167,7 +169,7 @@ export const AuthProvider = ({ children }) => {
 			},
 			login,
 			logout,
-            deleteAccount,
+			deleteAccount,
 			syncUserData,
 			loading,
 		}),

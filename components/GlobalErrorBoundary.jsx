@@ -17,6 +17,16 @@ class GlobalErrorBoundary extends Component {
     console.error('Global Error Boundary caught an error:', error, errorInfo);
     this.setState({ error, errorInfo });
     
+    // Try to show toast if available, but don't crash if it's not
+    try {
+      if (this.props.showToast && typeof this.props.showToast === 'function') {
+        this.props.showToast('Something went wrong. Please restart the app.', 'error');
+      }
+    } catch (toastError) {
+      // Silently ignore toast errors to prevent infinite loops
+      console.warn('Could not show error toast:', toastError);
+    }
+    
     // Also log to a service if available
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
@@ -30,6 +40,7 @@ class GlobalErrorBoundary extends Component {
         <View style={styles.container}>
           <Text style={styles.title}>App Error</Text>
           <Text style={styles.subtitle}>Something went wrong</Text>
+          <Text style={styles.subtitle}>Please restart the app</Text>
           {__DEV__ && (
             <>
               <Text style={styles.errorText}>
