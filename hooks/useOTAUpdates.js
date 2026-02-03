@@ -1,17 +1,17 @@
 /**
  * useOTAUpdates Hook
  * 
- * Checks for OTA updates on app launch and prompts user to reload
- * when a new update is available. This enables instant updates
- * during testing without multiple app restarts.
+ * Checks for OTA updates on app launch and exposes state
+ * for the UpdateAvailableModal to display.
+ * [OTA-UPDATE-REDESIGN] Custom premium modal instead of system Alert
  */
 import { useEffect, useCallback, useState } from 'react';
-import { Alert, Platform } from 'react-native';
 import * as Updates from 'expo-updates';
 
 export function useOTAUpdates() {
     const [isChecking, setIsChecking] = useState(false);
     const [updateAvailable, setUpdateAvailable] = useState(false);
+    const [showModal, setShowModal] = useState(false); // [OTA-UPDATE-REDESIGN] Controlled via custom modal state
 
     const checkForUpdates = useCallback(async () => {
         // Skip in development mode - Updates API not available
@@ -32,30 +32,8 @@ export function useOTAUpdates() {
 
                 await Updates.fetchUpdateAsync();
 
-                console.log('[OTA Updates] Update downloaded, prompting user');
-
-                Alert.alert(
-                    'Update Available',
-                    'A new version has been downloaded. Restart now to apply it?',
-                    [
-                        {
-                            text: 'Later',
-                            style: 'cancel',
-                            onPress: () => {
-                                console.log('[OTA Updates] User deferred update');
-                            }
-                        },
-                        {
-                            text: 'Restart Now',
-                            style: 'default',
-                            onPress: async () => {
-                                console.log('[OTA Updates] User accepted, reloading app');
-                                await Updates.reloadAsync();
-                            }
-                        }
-                    ],
-                    { cancelable: false }
-                );
+                console.log('[OTA Updates] Update downloaded, showing modal');
+                setShowModal(true);
             } else {
                 console.log('[OTA Updates] No update available, app is up to date');
             }
@@ -64,6 +42,17 @@ export function useOTAUpdates() {
         } finally {
             setIsChecking(false);
         }
+    }, []);
+
+    const handleRestart = useCallback(async () => {
+        console.log('[OTA Updates] User accepted, reloading app');
+        setShowModal(false);
+        await Updates.reloadAsync();
+    }, []);
+
+    const handleLater = useCallback(() => {
+        console.log('[OTA Updates] User deferred update');
+        setShowModal(false);
     }, []);
 
     // Check for updates on mount
@@ -79,6 +68,9 @@ export function useOTAUpdates() {
     return {
         isChecking,
         updateAvailable,
+        showModal,
+        handleRestart,
+        handleLater,
         checkForUpdates, // Manual trigger if needed
     };
 }

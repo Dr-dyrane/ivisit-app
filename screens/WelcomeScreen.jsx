@@ -1,12 +1,13 @@
 // screens/WelcomeScreen.js
 
 import React, { useCallback } from "react";
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Image, Pressable, ScrollView, Platform } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Fontisto, Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import { COLORS } from "../constants/colors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SlideButton from "../components/ui/SlideButton";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
@@ -39,6 +40,12 @@ const WelcomeScreen = () => {
 	const { isDarkMode } = useTheme();
 	const { setHeaderState } = useHeaderState();
 	const { resetHeader } = useScrollAwareHeader();
+	const insets = useSafeAreaInsets();
+
+	// Dynamic padding for safe area
+	// [ACCESSIBILITY-FIX] Dynamic padding for large font visibility
+	const topPadding = (insets?.top || 0) + 24;
+	const bottomPadding = (insets?.bottom || 0) + 12;
 
 	useFocusEffect(
 		useCallback(() => {
@@ -76,80 +83,92 @@ const WelcomeScreen = () => {
 	return (
 		<LinearGradient
 			colors={backgroundColors}
-			className="flex-1 justify-between items-center px-6 pt-24 pb-12"
+			className="flex-1"
 		>
-			{/* Logo & Brand Name */}
-			<View className="flex items-center w-full mt-4">
-				<Image
-					source={require("../assets/logo.png")}
-					className="w-14 h-14"
-					resizeMode="contain"
-					style={{ borderRadius: 14 }}
-				/>
-				<Text
-					className={`text-4xl mt-2`}
-					// TODO: Make this dynamic based on theme
-					style={{ 
-						color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-						fontWeight: "900",
-						letterSpacing: -1.0
-					}}
-				>
-					iVisit
-					<Text style={{ color: COLORS.brandPrimary, fontSize: 42 }}>.</Text>
-				</Text>
-			</View>
+			<ScrollView
+				// [ACCESSIBILITY-FIX] Wrapped in ScrollView for large font accessibility
+				contentContainerStyle={{
+					flexGrow: 1,
+					justifyContent: 'space-between',
+					alignItems: 'center',
+					paddingHorizontal: 24,
+					paddingTop: topPadding,
+					paddingBottom: bottomPadding
+				}}
+				showsVerticalScrollIndicator={false}
+			>
+				{/* Logo & Brand Name */}
+				<View className="flex items-center w-full mt-4">
+					<Image
+						source={require("../assets/logo.png")}
+						className="w-14 h-14"
+						resizeMode="contain"
+						style={{ borderRadius: 14 }}
+					/>
+					<Text
+						className={`text-4xl mt-2`}
+						// TODO: Make this dynamic based on theme
+						style={{
+							color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+							fontWeight: "900",
+							letterSpacing: -1.0
+						}}
+					>
+						iVisit
+						<Text style={{ color: COLORS.brandPrimary, fontSize: 42 }}>.</Text>
+					</Text>
+				</View>
 
-			{/* Hero Illustration */}
-			<View className="w-full items-center">
-				<Image
-					source={require("../assets/hero/speed.png")}
-					style={{ width: 340, height: 240 }}
-					resizeMode="contain"
-				/>
-			</View>
+				{/* Hero Illustration */}
+				<View className="w-full items-center">
+					<Image
+						source={require("../assets/hero/speed.png")}
+						style={{ width: 340, height: 240 }}
+						resizeMode="contain"
+					/>
+				</View>
 
-			{/* Value Proposition */}
-			<View className="w-full items-center px-4">
-				<Text
-					className={`text-[38px] text-center leading-[42px]`}
-					style={{ 
-						color: headlineColor,
-						fontWeight: "900",
-						letterSpacing: -1.0
-					}}
-				>
-					Skip the wait.{"\n"}
-					<Text style={{ color: PRIMARY_RED }}>Get care now.</Text>
-				</Text>
+				{/* Value Proposition */}
+				<View className="w-full items-center px-4">
+					<Text
+						className={`text-[38px] text-center leading-[42px]`}
+						style={{
+							color: headlineColor,
+							fontWeight: "900",
+							letterSpacing: -1.0
+						}}
+					>
+						Skip the wait.{"\n"}
+						<Text style={{ color: PRIMARY_RED }}>Get care now.</Text>
+					</Text>
 
-				<Text
-					className="text-lg mt-5 text-center leading-6"
-					style={{ color: subTextColor, fontWeight: "500" }}
-				>
-					Book a bed. Get an ambulance. See a doctor.{"\n"}
-					<Text style={{ fontWeight: "800", letterSpacing: 0.5 }}>Right when you need it.</Text>
-				</Text>
-			</View>
+					<Text
+						className="text-lg mt-5 text-center leading-6"
+						style={{ color: subTextColor, fontWeight: "500" }}
+					>
+						Book a bed. Get an ambulance. See a doctor.{"\n"}
+						<Text style={{ fontWeight: "800", letterSpacing: 0.5 }}>Right when you need it.</Text>
+					</Text>
+				</View>
 
-			{/* Call-to-Action */}
-			<View className="w-full px-4 mb-4">
-				<SlideButton
-					onPress={handleCTA}
-					icon={(color) => (
-						<Fontisto name="helicopter-ambulance" size={32} color={color} />
-					)}
-				>
-					FIND CARE NOW
-				</SlideButton>
-			</View>
+				{/* Call-to-Action */}
+				<View className="w-full px-4 mb-4">
+					<SlideButton
+						onPress={handleCTA}
+						icon={(color) => (
+							<Fontisto name="helicopter-ambulance" size={32} color={color} />
+						)}
+					>
+						FIND CARE NOW
+					</SlideButton>
+				</View>
 
-			{/* Login Prompt */}
-			<Pressable onPress={handleLoginPress} className="items-center mb-2">
-				<Text className="text-center" style={{ color: loginTextColor }}>
-					Have an account? <Text className="font-bold text-red-600">Login</Text>
-				</Text>
-			</Pressable>
+				<Pressable onPress={handleLoginPress} className="items-center mb-2">
+					<Text className="text-center" style={{ color: loginTextColor }}>
+						Have an account? <Text className="font-bold text-red-600">Login</Text>
+					</Text>
+				</Pressable>
+			</ScrollView>
 		</LinearGradient>
 	);
 };

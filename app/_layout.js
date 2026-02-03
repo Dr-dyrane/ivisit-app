@@ -26,6 +26,7 @@ import { isProfileComplete } from "../utils/profileCompletion";
 import { authService } from "../services/authService";
 import { appMigrationsService } from "../services/appMigrationsService";
 import { useOTAUpdates } from "../hooks/useOTAUpdates";
+import UpdateAvailableModal from "../components/ui/UpdateAvailableModal";
 
 /**
  * Root layout wraps the entire app with context providers
@@ -104,7 +105,7 @@ function AuthenticatedStack() {
 	const segments = useSegments();
 
 	// Check for OTA updates on app launch
-	useOTAUpdates();
+	const { showModal, handleRestart, handleLater } = useOTAUpdates();
 
 	useEffect(() => {
 		const handleDeepLink = async (event) => {
@@ -208,6 +209,13 @@ function AuthenticatedStack() {
 					<Stack.Screen name="(user)" />
 				</Stack>
 			)}
+
+			{/* [OTA-UPDATE-REDESIGN] Custom premium bottom sheet for app updates */}
+			<UpdateAvailableModal
+				visible={showModal}
+				onRestart={handleRestart}
+				onLater={handleLater}
+			/>
 		</>
 	);
 }

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Pressable, Animated, Dimensions } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome6 } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useRegistration } from "../../contexts/RegistrationContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -28,8 +28,9 @@ import ComingSoonModal from "../ui/ComingSoonModal";
 const { width } = Dimensions.get("window");
 
 const PROVIDER_META = {
-	apple: { icon: "logo-apple", name: "Apple Sign In" },
-	google: { icon: "logo-google", name: "Google Sign In" },
+	apple: { icon: "logo-apple", name: "Apple Sign In", set: "Ionicons" }, // [SOCIAL-AUTH-UPDATE] Enabled Apple Sign In
+	google: { icon: "logo-google", name: "Google Sign In", set: "Ionicons" },
+	twitter: { icon: "x-twitter", name: "X Sign In", set: "FontAwesome6" }, // [SOCIAL-AUTH-UPDATE] Added X (Twitter)
 };
 
 // Ensure WebBrowser cleanup on iOS
@@ -77,7 +78,7 @@ export default function SocialAuthButton({ provider }) {
 			}
 		} catch (error) {
 			console.error("Social Auth Error:", error);
-			// Handle different types of social auth errors
+			// Handle different types of social auth errors gracefully
 			let errorMessage = "Failed to initiate login";
 
 			if (error.message) {
@@ -88,6 +89,9 @@ export default function SocialAuthButton({ provider }) {
 				} else if (error.message.includes("cancelled") || error.message.includes("dismissed")) {
 					// User cancelled - don't show error
 					return;
+				} else if (error.message.includes("provider") || error.message.includes("not enabled") || error.message.includes("configuration")) {
+					// [SOCIAL-AUTH-UPDATE] Graceful handling for missing Supabase provider config
+					errorMessage = `${meta.name} is not available right now. Please try another method.`;
 				} else {
 					errorMessage = error.message;
 				}
@@ -97,10 +101,7 @@ export default function SocialAuthButton({ provider }) {
 		}
 	};
 
-	// [PRODUCTION-READY] Hide Apple Login until keys are configured to prevent App Store rejection
-	if (provider === "apple") {
-		return null;
-	}
+	// [SOCIAL-AUTH-UPDATE] Apple Sign In enabled - will show graceful error if Supabase isn't configured
 
 	return (
 		<>
@@ -118,11 +119,19 @@ export default function SocialAuthButton({ provider }) {
 						transform: [{ scale }],
 					}}
 				>
-					<Ionicons
-						name={meta.icon}
-						size={24}
-						color={isDarkMode ? "#FFF" : "#1F2937"}
-					/>
+					{meta.set === "FontAwesome6" ? (
+						<FontAwesome6
+							name={meta.icon}
+							size={24}
+							color={isDarkMode ? "#FFF" : "#1F2937"}
+						/>
+					) : (
+						<Ionicons
+							name={meta.icon}
+							size={24}
+							color={isDarkMode ? "#FFF" : "#1F2937"}
+						/>
+					)}
 				</Animated.View>
 			</Pressable>
 

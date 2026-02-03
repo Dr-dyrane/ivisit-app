@@ -110,7 +110,13 @@ export default function SlideButton({
 			>
 				{/* Base content */}
 				<View style={styles.content}>
-					<Text style={[styles.text, { color: themeColors.baseText }]}>
+					<Text
+						style={[styles.text, { color: themeColors.baseText }]}
+						// [ACCESSIBILITY-FIX] Prevent text overflow on large font devices
+						numberOfLines={1}
+						adjustsFontSizeToFit
+						minimumFontScale={0.7}
+					>
 						{children}
 					</Text>
 					{icon && icon(themeColors.baseText)}
@@ -129,14 +135,20 @@ export default function SlideButton({
 					<Animated.View
 						style={[styles.content, { width, opacity: overlayTextOpacity }]}
 					>
-						<Text style={[styles.text, { color: themeColors.activeText }]}>
+						<Text
+							style={[styles.text, { color: themeColors.activeText }]}
+							// [ACCESSIBILITY-FIX] Prevent text overflow on large font devices
+							numberOfLines={1}
+							adjustsFontSizeToFit
+							minimumFontScale={0.7}
+						>
 							{children}
 						</Text>
 						{icon && icon(themeColors.activeText)}
 					</Animated.View>
 				</Animated.View>
 			</Pressable>
-		</Animated.View>
+		</Animated.View >
 	);
 }
 
@@ -152,12 +164,14 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 		height: "100%",
+		paddingHorizontal: 16, // Ensure content has padding
 	},
 	text: {
 		fontSize: 17,
 		fontWeight: "900",
 		letterSpacing: 2,
 		marginRight: 12,
+		flexShrink: 1, // Allow text to shrink if needed
 	},
 	overlay: {
 		position: "absolute",

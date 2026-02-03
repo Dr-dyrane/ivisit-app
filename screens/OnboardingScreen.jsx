@@ -1,7 +1,7 @@
 // screens/OnboardingScreen.js
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { View, Text, Animated, Image, Dimensions, Pressable } from "react-native";
+import { View, Text, Animated, Image, Dimensions, Pressable, ScrollView, Platform } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Fontisto, Ionicons } from "@expo/vector-icons";
@@ -10,6 +10,8 @@ import SlideButton from "../components/ui/SlideButton";
 import { useTheme } from "../contexts/ThemeContext";
 import useSwipeGesture from "../utils/useSwipeGesture";
 import { COLORS } from "../constants/colors";
+import { STACK_TOP_PADDING } from "../constants/layout"; // [LAYOUT-REFACTOR] Centralized spacing tokens
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
@@ -76,6 +78,11 @@ export default function OnboardingScreen() {
 	const { setHeaderState } = useHeaderState();
 	const { resetHeader } = useScrollAwareHeader();
 	const [index, setIndex] = useState(0);
+	const insets = useSafeAreaInsets();
+
+	// Dynamic padding matching stack pages
+	// [ACCESSIBILITY-FIX] Dynamic top padding for scroll-aware headers and safe areas
+	const topPadding = STACK_TOP_PADDING + (insets?.top || 0) + 20;
 
 	useFocusEffect(
 		useCallback(() => {
@@ -88,7 +95,7 @@ export default function OnboardingScreen() {
 				leftComponent: <HeaderBackButton />,
 				rightComponent: (
 					<Pressable onPress={() => router.push("signup")} className="px-2">
-						<Text style={{ 
+						<Text style={{
 							color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
 							fontWeight: "800",
 							fontSize: 12,
@@ -236,89 +243,92 @@ export default function OnboardingScreen() {
 			{...panResponder}
 		>
 			{/* HERO IMAGE */}
-			<Animated.View
-				style={{
-					opacity: contentFade,
-					transform: [{ scale: imageScale }],
-					paddingTop: 140,
-				}}
-				className="flex-1 justify-center items-center"
+			<ScrollView
+				// [ACCESSIBILITY-FIX] Wrapped in ScrollView for large font accessibility
+				contentContainerStyle={{ flexGrow: 1, paddingTop: topPadding, paddingBottom: 20 }}
+				showsVerticalScrollIndicator={false}
 			>
-				<Image
-					source={onboardingData[index].image}
-					resizeMode="contain"
-					style={{ width: width * 0.85, height: height * 0.35 }}
-				/>
-			</Animated.View>
-
-			{/* CONTENT */}
-			<View className="px-8 pb-12">
 				<Animated.View
 					style={{
 						opacity: contentFade,
-						transform: [{ translateY: contentMove }],
+						transform: [{ scale: imageScale }],
 					}}
+					className="flex-1 justify-center items-center"
 				>
-					<Text
-						className={`text-[44px] font-black leading-[46px] tracking-tighter ${
-							isDarkMode ? "text-white" : "text-slate-900"
-						}`}
-					>
-						{onboardingData[index].headline}
-					</Text>
-					<Text
-						className={`text-lg mt-4 leading-7 opacity-80 ${
-							isDarkMode ? "text-gray-400" : "text-gray-600"
-						}`}
-					>
-						{onboardingData[index].description}
-					</Text>
+					<Image
+						source={onboardingData[index].image}
+						resizeMode="contain"
+						style={{ width: width * 0.85, height: height * 0.35 }}
+					/>
 				</Animated.View>
 
-				{/* PROGRESS DOTS */}
-				<View className="flex-row items-center mt-10 mb-10">
-					{onboardingData.map((_, i) => {
-						const widthScale = progressAnims[i].interpolate({
-							inputRange: [0, 1],
-							outputRange: [8, 32],
-						});
-						const opacityScale = progressAnims[i].interpolate({
-							inputRange: [0, 1],
-							outputRange: [0.3, 1],
-						});
-						return (
-							<Animated.View
-								key={i}
-								style={{
-									width: widthScale,
-									height: 6,
-									backgroundColor:
-										i === index ? PRIMARY_RED : isDarkMode ? "#333" : "#D1D1D1",
-									borderRadius: 3,
-									marginRight: 6,
-									opacity: opacityScale,
-								}}
-							/>
-						);
-					})}
-				</View>
-
-				{/* CTA BUTTON */}
-				<View className="h-[70px]">
-					<SlideButton
-						onPress={handleNext}
-						icon={(color) => (
-							<Fontisto
-								name={onboardingData[index].icon || "arrow-right"}
-								size={18}
-								color={color}
-							/>
-						)}
+				{/* CONTENT */}
+				<View className="px-8 pb-12">
+					<Animated.View
+						style={{
+							opacity: contentFade,
+							transform: [{ translateY: contentMove }],
+						}}
 					>
-						{onboardingData[index].cta}
-					</SlideButton>
+						<Text
+							className={`text-[44px] font-black leading-[46px] tracking-tighter ${isDarkMode ? "text-white" : "text-slate-900"
+								}`}
+						>
+							{onboardingData[index].headline}
+						</Text>
+						<Text
+							className={`text-lg mt-4 leading-7 opacity-80 ${isDarkMode ? "text-gray-400" : "text-gray-600"
+								}`}
+						>
+							{onboardingData[index].description}
+						</Text>
+					</Animated.View>
+
+					{/* PROGRESS DOTS */}
+					<View className="flex-row items-center mt-10 mb-10">
+						{onboardingData.map((_, i) => {
+							const widthScale = progressAnims[i].interpolate({
+								inputRange: [0, 1],
+								outputRange: [8, 32],
+							});
+							const opacityScale = progressAnims[i].interpolate({
+								inputRange: [0, 1],
+								outputRange: [0.3, 1],
+							});
+							return (
+								<Animated.View
+									key={i}
+									style={{
+										width: widthScale,
+										height: 6,
+										backgroundColor:
+											i === index ? PRIMARY_RED : isDarkMode ? "#333" : "#D1D1D1",
+										borderRadius: 3,
+										marginRight: 6,
+										opacity: opacityScale,
+									}}
+								/>
+							);
+						})}
+					</View>
+
+					{/* CTA BUTTON */}
+					<View className="h-[70px]">
+						<SlideButton
+							onPress={handleNext}
+							icon={(color) => (
+								<Fontisto
+									name={onboardingData[index].icon || "arrow-right"}
+									size={18}
+									color={color}
+								/>
+							)}
+						>
+							{onboardingData[index].cta}
+						</SlideButton>
+					</View>
 				</View>
-			</View>
+			</ScrollView>
 		</LinearGradient>
 	);
 }
