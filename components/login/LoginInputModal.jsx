@@ -257,19 +257,39 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		clearError();
 
 		try {
+			// Phone uses OTP, email uses password
+			const authMethod = type === "phone" ? LOGIN_AUTH_METHODS.OTP : LOGIN_AUTH_METHODS.PASSWORD;
+
 			updateLoginData({
 				contact: value,
 				contactType: type,
 				[type === "email" ? "email" : "phone"]: value,
-				authMethod: LOGIN_AUTH_METHODS.PASSWORD, // Default for smart flow
+				authMethod,
 			});
 
-			// For login, we proceed to password directly. 
-			// Passing overrides ensures nextStep uses the latest values immediately.
-			nextStep({
-				authMethod: LOGIN_AUTH_METHODS.PASSWORD,
-				contactType: type
-			});
+			if (type === "phone") {
+				// For phone, request OTP first then go to OTP verification
+				const otpResult = await requestOtp({ phone: value });
+				if (!otpResult.success) {
+					setLoginError(otpResult.error || "Unable to send verification code");
+					showToast(otpResult.error || "Failed to send code", "error");
+					return;
+				}
+
+				// Store mock OTP for dev testing if returned
+				if (otpResult.data?.otp) {
+					setMockOtp(otpResult.data.otp);
+				}
+
+				showToast("Verification code sent to your phone", "success");
+				goToStep(LOGIN_STEPS.OTP_VERIFICATION);
+			} else {
+				// For email, go to password screen
+				nextStep({
+					authMethod: LOGIN_AUTH_METHODS.PASSWORD,
+					contactType: type
+				});
+			}
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 		} catch (err) {
 			console.error("LoginInputModal handleSmartContactSubmit error:", err);
