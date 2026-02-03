@@ -32,6 +32,7 @@ import { COLORS } from "../constants/colors";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
+import { getDisplayId } from "../services/displayIdService";
 
 import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
 import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
@@ -70,9 +71,10 @@ const ProfileScreen = () => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [isDataLoading, setIsDataLoading] = useState(true);
+	const [displayId, setDisplayId] = useState(null);
 
 	// Event handlers
-	const handleUpdateProfile = async () => {
+	const handleUpdateProfile = useCallback(async () => {
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 		setIsLoading(true);
 		// console.log("DEBUG: handleUpdateProfile started. Current imageUri:", imageUri);
@@ -117,7 +119,20 @@ const ProfileScreen = () => {
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, [
+		imageUri,
+		uploadImage,
+		fullName,
+		username,
+		gender,
+		email,
+		phone,
+		address,
+		dateOfBirth,
+		updateProfile,
+		syncUserData,
+		showToast
+	]);
 
 	// Derived state: Check if form has unsaved changes
 	const hasChanges = useMemo(() => {
@@ -137,7 +152,6 @@ const ProfileScreen = () => {
 	// Debounced version of hasChanges to prevent FAB flickering
 	const debouncedHasChanges = useRef(hasChanges);
 	const [stableHasChanges, setStableHasChanges] = useState(false);
-
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			if (debouncedHasChanges.current !== hasChanges) {
@@ -149,15 +163,22 @@ const ProfileScreen = () => {
 		return () => clearTimeout(timer);
 	}, [hasChanges]);
 
+	// Stabilize handleUpdateProfile for FAB registration using a Ref
+	const updateHandlerRef = useRef(handleUpdateProfile);
+	useEffect(() => {
+		updateHandlerRef.current = handleUpdateProfile;
+	}, [handleUpdateProfile]);
+
 	// Sync state with user context when loaded
 	useFocusEffect(
 		useCallback(() => {
+			// console.log('[ProfileScreen] Registering FAB. stableHasChanges:', stableHasChanges);
 			registerFAB('profile-save', {
 				icon: 'checkmark',
 				label: stableHasChanges ? 'Save Changes' : 'No Changes',
 				subText: stableHasChanges ? 'Tap to save profile' : 'Profile up to date',
 				visible: stableHasChanges,
-				onPress: handleUpdateProfile,
+				onPress: () => updateHandlerRef.current(),
 				loading: isLoading,
 				style: 'primary',
 				haptic: 'medium',
@@ -166,11 +187,11 @@ const ProfileScreen = () => {
 				allowInStack: true, // Allow in stack screen
 			});
 
-			// Cleanup
 			return () => {
+				// console.log('[ProfileScreen] Unregistering FAB');
 				unregisterFAB('profile-save');
 			};
-		}, [registerFAB, unregisterFAB, stableHasChanges, isLoading, handleUpdateProfile])
+		}, [registerFAB, unregisterFAB, stableHasChanges, isLoading]) // handleUpdateProfile removed from dependencies
 	);
 
 	// Sync state with user context when loaded
@@ -197,6 +218,17 @@ const ProfileScreen = () => {
 			}
 		}
 	}, [user, isDataLoading]); // hasChanges is intentionally omitted to avoid loops, but checked inside
+
+	// Fetch display ID for beautification
+	useEffect(() => {
+		const fetchId = async () => {
+			if (user?.id) {
+				const id = await getDisplayId(user.id);
+				setDisplayId(id);
+			}
+		};
+		fetchId();
+	}, [user?.id]);
 
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
@@ -442,7 +474,7 @@ const ProfileScreen = () => {
 								color: COLORS.brandPrimary,
 								letterSpacing: 1
 							}}>
-								{user?.displayId || 'IVP-PENDING'}
+								{displayId || 'IVP-PENDING'}
 							</Text>
 						</View>
 
