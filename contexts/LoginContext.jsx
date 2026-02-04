@@ -3,9 +3,10 @@
 /**
  * contexts/LoginContext.jsx
  * Login Context with proper flow control, error handling, and loading states
+ * [MEMORY-LEAK-FIX] Added timer cleanup for step transitions
  */
 
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
 import {
 	LOGIN_STEPS,
 	LOGIN_AUTH_METHODS,
@@ -30,10 +31,20 @@ export function LoginProvider({ children }) {
 	const [currentStep, setCurrentStep] = useState(LOGIN_STEPS.SMART_CONTACT);
 	const [loginData, setLoginData] = useState(initialLoginData);
 	const [isTransitioning, setIsTransitioning] = useState(false);
+	const transitionTimerRef = useRef(null);
 
 	// Error and loading states
 	const [error, setError] = useState(null);
 	const [isLoading, setIsLoading] = useState(false);
+
+	// [MEMORY-LEAK-FIX] Cleanup transition timer on unmount
+	useEffect(() => {
+		return () => {
+			if (transitionTimerRef.current) {
+				clearTimeout(transitionTimerRef.current);
+			}
+		};
+	}, []);
 
 	const updateLoginData = useCallback((updates) => {
 		console.log("[v0] LoginContext: Updating login data", updates);
@@ -60,9 +71,11 @@ export function LoginProvider({ children }) {
 		);
 		console.log("[v0] LoginContext: Moving from", currentStep, "to", next);
 
-		setTimeout(() => {
+		// [MEMORY-LEAK-FIX] Store timer ref for cleanup
+		transitionTimerRef.current = setTimeout(() => {
 			setCurrentStep(next);
 			setIsTransitioning(false);
+			transitionTimerRef.current = null;
 		}, 100);
 	}, [
 		currentStep,

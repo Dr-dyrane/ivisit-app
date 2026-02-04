@@ -21,7 +21,7 @@ export default function EmergencySheetTopRow({
 	const fadeAnim = useRef(new Animated.Value(1)).current;
 
 	useEffect(() => {
-		Animated.loop(
+		const fadeAnimation = Animated.loop(
 			Animated.sequence([
 				Animated.timing(fadeAnim, {
 					toValue: 0.4,
@@ -34,7 +34,12 @@ export default function EmergencySheetTopRow({
 					useNativeDriver: true,
 				}),
 			])
-		).start();
+		);
+		fadeAnimation.start();
+		return () => {
+			fadeAnimation.stop();
+			fadeAnim.setValue(1);
+		};
 	}, []);
 
 	return (
@@ -49,7 +54,7 @@ export default function EmergencySheetTopRow({
 					onClear={onSearchClear}
 					placeholder={placeholder}
 					// Adjusted bleed to account for the new squircle avatar width
-					suggestionsRightBleed={72} 
+					suggestionsRightBleed={72}
 					style={styles.searchBarOverride}
 				/>
 
@@ -69,7 +74,7 @@ export default function EmergencySheetTopRow({
 						source={avatarSource}
 						style={styles.avatarImage}
 					/>
-					
+
 					{/* Premium Active Indicator - Signature Dot */}
 					<Animated.View style={[styles.activeDot, { opacity: fadeAnim }]} />
 				</Pressable>

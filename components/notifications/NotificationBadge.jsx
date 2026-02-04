@@ -2,7 +2,7 @@ import { View, Text, Animated, StyleSheet } from "react-native";
 import { useEffect, useRef } from "react";
 import { COLORS } from "../../constants/colors";
 
-export default function NotificationBadge({ 
+export default function NotificationBadge({
   count = 0,
   showPing = true,
   size = "small",
@@ -28,14 +28,22 @@ export default function NotificationBadge({
   }, [count]);
 
   useEffect(() => {
+    let pingAnimation = null;
     if (count > 0 && showPing) {
-      Animated.loop(
+      pingAnimation = Animated.loop(
         Animated.sequence([
           Animated.timing(pingAnim, { toValue: 1.6, duration: 1000, useNativeDriver: true }),
           Animated.timing(pingAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
         ])
-      ).start();
+      );
+      pingAnimation.start();
     }
+    return () => {
+      if (pingAnimation) {
+        pingAnimation.stop();
+      }
+      pingAnim.setValue(1);
+    };
   }, [count, showPing]);
 
   if (count === 0) return null;

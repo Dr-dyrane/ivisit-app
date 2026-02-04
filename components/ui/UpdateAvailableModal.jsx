@@ -2,6 +2,9 @@
  * UpdateAvailableModal
  * 
  * Non-intrusive bottom sheet for OTA update notifications.
+ * Supports two variants:
+ * - 'available': Shows restart/later options for pending updates
+ * - 'completed': Shows success confirmation after update applied
  * Follows UX Canon: calm feedback, one dominant action, dismissible.
  */
 import { useEffect, useRef } from "react";
@@ -19,10 +22,26 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
+import VERSION from "../../version";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-export default function UpdateAvailableModal({ visible, onRestart, onLater }) {
+/**
+ * @param {Object} props
+ * @param {boolean} props.visible - Whether the modal is visible
+ * @param {'available' | 'completed'} props.variant - Modal variant type
+ * @param {() => void} props.onRestart - Called when user taps Restart (available variant)
+ * @param {() => void} props.onLater - Called when user taps Later/dismiss
+ * @param {() => void} props.onDismiss - Called when user dismisses (completed variant)
+ */
+export default function UpdateAvailableModal({
+    visible,
+    variant = 'available',
+    onRestart,
+    onLater,
+    onDismiss,
+}) {
+    const isCompleted = variant === 'completed';
     const insets = useSafeAreaInsets();
     const { isDarkMode } = useTheme();
     const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
@@ -30,6 +49,8 @@ export default function UpdateAvailableModal({ visible, onRestart, onLater }) {
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
+        let pulseAnimation = null;
+
         if (visible) {
             // Soft notification haptic - not alarming
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -48,8 +69,8 @@ export default function UpdateAvailableModal({ visible, onRestart, onLater }) {
                 }),
             ]).start();
 
-            // Subtle pulse on icon
-            Animated.loop(
+            // Subtle pulse on icon - store reference for cleanup
+            pulseAnimation = Animated.loop(
                 Animated.sequence([
                     Animated.timing(pulseAnim, {
                         toValue: 1.05,
@@ -62,8 +83,18 @@ export default function UpdateAvailableModal({ visible, onRestart, onLater }) {
                         useNativeDriver: true,
                     }),
                 ])
-            ).start();
+            );
+            pulseAnimation.start();
         }
+
+        // Cleanup: stop animation loop when modal closes or unmounts
+        return () => {
+            if (pulseAnimation) {
+                pulseAnimation.stop();
+            }
+            // Reset pulse to default value
+            pulseAnim.setValue(1);
+        };
     }, [visible]);
 
     const handleDismiss = (action) => {
@@ -103,7 +134,7 @@ export default function UpdateAvailableModal({ visible, onRestart, onLater }) {
                         {
                             transform: [{ translateY: slideAnim }],
                             backgroundColor: colors.bg,
-                            paddingBottom: insets.bottom + 24, // Bottom-bar aware
+                            paddingBottom: insets.bottom + 12, // Large bottom padding for premium feel
                         },
                     ]}
                 >
@@ -115,55 +146,95 @@ export default function UpdateAvailableModal({ visible, onRestart, onLater }) {
                             style={[
                                 styles.iconContainer,
                                 {
-                                    backgroundColor: isDarkMode ? "#374151" : "#E5E7EB",
+                                    backgroundColor: isCompleted
+                                        ? (isDarkMode ? "#064E3B" : "#D1FAE5")
+                                        : (isDarkMode ? "#374151" : "#E5E7EB"),
                                     transform: [{ scale: pulseAnim }],
                                 },
                             ]}
                         >
                             <Ionicons
-                                name="sparkles"
+                                name={isCompleted ? "checkmark-circle" : "sparkles"}
                                 size={32}
-                                color={COLORS.brandPrimary}
+                                color={isCompleted ? "#10B981" : COLORS.brandPrimary}
                             />
                         </Animated.View>
 
                         <Text style={[styles.title, { color: colors.text }]}>
-                            Fresh Update Ready
+                            {isCompleted ? "Update Complete" : "Update Ready"}
                         </Text>
 
                         <Text style={[styles.description, { color: colors.subtext }]}>
-                            We've made some improvements. Restart when you're ready to enjoy them.
+                            {isCompleted
+                                ? `You're now running the latest version (${VERSION}).`
+                                : "Restart now to apply the latest improvements."
+                            }
                         </Text>
 
-                        {/* Primary action */}
-                        <Pressable
-                            style={({ pressed }) => [
-                                styles.button,
-                                {
-                                    backgroundColor: COLORS.brandPrimary,
-                                    opacity: pressed ? 0.9 : 1,
-                                    transform: [{ scale: pressed ? 0.98 : 1 }],
-                                },
-                            ]}
-                            onPress={() => handleDismiss(onRestart)}
-                        >
-                            <Ionicons name="refresh" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                            <Text style={styles.buttonText}>Restart Now</Text>
-                        </Pressable>
+                        {isCompleted ? (
+                            /* Completed variant: single dismiss button */
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.button,
+                                    styles.fullWidthButton,
+                                    {
+                                        backgroundColor: "#10B981",
+                                        opacity: pressed ? 0.9 : 1,
+                                        transform: [{ scale: pressed ? 0.98 : 1 }],
+                                    },
+                                ]}
+                                onPress={() => handleDismiss(onDismiss || onLater)}
+                            >
+                                <Text style={styles.buttonText}>Got it</Text>
+                            </Pressable>
+                        ) : (
+                            /* Available variant: restart/later buttons */
+                            <View className="flex-row items-center w-full" style={{ gap: 12 }}>
+                                {/* Secondary dismiss */}
+                                <Pressable
+                                    style={({ pressed }) => [
+                                        styles.laterButton,
+                                        {
+                                            backgroundColor: colors.laterBtn,
+                                            opacity: pressed ? 0.8 : 1,
+                                        },
+                                    ]}
+                                    onPress={() => handleDismiss(onLater)}
+                                >
+                                    <Text style={[styles.laterText, { color: colors.subtext }]}>Later</Text>
+                                </Pressable>
 
-                        {/* Secondary dismiss */}
-                        <Pressable
-                            style={({ pressed }) => [
-                                styles.laterButton,
-                                {
-                                    backgroundColor: colors.laterBtn,
-                                    opacity: pressed ? 0.8 : 1,
-                                },
-                            ]}
-                            onPress={() => handleDismiss(onLater)}
-                        >
-                            <Text style={[styles.laterText, { color: colors.subtext }]}>Maybe Later</Text>
-                        </Pressable>
+                                {/* Primary action */}
+                                <Pressable
+                                    style={({ pressed }) => [
+                                        styles.button,
+                                        {
+                                            backgroundColor: COLORS.brandPrimary,
+                                            opacity: pressed ? 0.9 : 1,
+                                            transform: [{ scale: pressed ? 0.98 : 1 }],
+                                        },
+                                    ]}
+                                    onPress={() => handleDismiss(onRestart)}
+                                >
+                                    <Ionicons name="refresh" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                                    <Text style={styles.buttonText}>Restart</Text>
+                                </Pressable>
+                            </View>
+                        )}
+                    </View>
+
+                    <View
+                        style={{
+                            marginBottom: 24,
+                        }}
+                    >
+                        <Text
+                            style={{
+                                color: colors.subtext,
+                                textAlign: "center",
+                                fontSize: 12,
+                            }}
+                        >Version {VERSION}</Text>
                     </View>
                 </Animated.View>
             </View>
@@ -205,6 +276,7 @@ const styles = StyleSheet.create({
     },
     content: {
         alignItems: "center",
+        marginBottom: 24,
     },
     iconContainer: {
         width: 72,
@@ -229,7 +301,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     button: {
-        width: "100%",
+        flex: 1,
         paddingVertical: 16,
         borderRadius: 16,
         alignItems: "center",
@@ -247,14 +319,17 @@ const styles = StyleSheet.create({
         fontWeight: "700",
     },
     laterButton: {
-        width: "100%",
+        flex: 1,
         paddingVertical: 14,
         borderRadius: 14,
         alignItems: "center",
-        marginTop: 12,
+        justifyContent: "center",
     },
     laterText: {
         fontSize: 15,
         fontWeight: "600",
+    },
+    fullWidthButton: {
+        width: '100%',
     },
 });

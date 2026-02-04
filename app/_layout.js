@@ -105,7 +105,7 @@ function AuthenticatedStack() {
 	const segments = useSegments();
 
 	// Check for OTA updates on app launch
-	const { showModal, handleRestart, handleLater } = useOTAUpdates();
+	const { showModal, showSuccessModal, handleRestart, handleLater, handleDismissSuccess } = useOTAUpdates();
 
 	useEffect(() => {
 		const handleDeepLink = async (event) => {
@@ -213,8 +213,16 @@ function AuthenticatedStack() {
 			{/* [OTA-UPDATE-REDESIGN] Custom premium bottom sheet for app updates */}
 			<UpdateAvailableModal
 				visible={showModal}
+				variant="available"
 				onRestart={handleRestart}
 				onLater={handleLater}
+			/>
+
+			{/* [OTA-UPDATE-SUCCESS] Success modal after update is applied */}
+			<UpdateAvailableModal
+				visible={showSuccessModal}
+				variant="completed"
+				onDismiss={handleDismissSuccess}
 			/>
 		</>
 	);

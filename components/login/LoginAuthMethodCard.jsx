@@ -44,7 +44,8 @@ export default function LoginAuthMethodCard({ onSelect, disabled = false }) {
 			}),
 		]).start();
 
-		setTimeout(() => {
+		// [MEMORY-LEAK-FIX] Store timer for cleanup
+		const listTimer = setTimeout(() => {
 			Animated.parallel([
 				Animated.spring(listAnim, {
 					toValue: 0,
@@ -59,6 +60,8 @@ export default function LoginAuthMethodCard({ onSelect, disabled = false }) {
 				}),
 			]).start();
 		}, 150);
+
+		return () => clearTimeout(listTimer);
 	}, []);
 
 	const AuthMethodButton = ({ type, icon, label, description }) => {
