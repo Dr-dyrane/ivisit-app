@@ -23,17 +23,17 @@ const Home = () => {
 	// Priority: 10 (lower than EmergencyScreen's 15, so EmergencyScreen wins when visible)
 	useEffect(() => {
 		const fabId = 'home-tab-fab';
-		
+
 		// Hide FAB when hospital is selected (detailed mode)
 		const shouldHideFAB = !!selectedHospital;
-		
+
 		if (currentMode === EmergencyMode.EMERGENCY) {
 			// When in ambulance mode, show "Book Bed" to switch to bed booking
 			// Registering Book Bed FAB
-			
+
 			registerFAB(fabId, {
 				visible: !shouldHideFAB,
-				icon: "bed-patient",
+				icon: "bed-outline",
 				style: "primary",
 				priority: 10,
 				onPress: () => {
@@ -45,10 +45,10 @@ const Home = () => {
 		} else {
 			// When in bed booking mode, show "SOS" to switch to ambulance
 			// Registering SOS FAB
-			
+
 			registerFAB(fabId, {
 				visible: !shouldHideFAB,
-				icon: "medical-outline",
+				icon: "alarm-light-outline",
 				style: "emergency",
 				priority: 10,
 				onPress: () => {

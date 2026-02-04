@@ -1,7 +1,7 @@
 // FAB aligned with tab bar - 56x56 circle on tabs, expandable with label on stacks
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform, ActivityIndicator, Pressable, Animated } from 'react-native';
-import { Ionicons, Fontisto } from '@expo/vector-icons';
+import { Ionicons, Fontisto, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useFAB } from '../../contexts/FABContext';
 import { useTabBarVisibility } from '../../contexts/TabBarVisibilityContext';
@@ -30,7 +30,7 @@ const GlobalFAB = () => {
   // Has label = expandable on stack pages
   const hasLabel = !!activeFAB?.label;
 
-  // DEBUG: Log positioning
+  // DEBUG: Log positioning and icon
   useEffect(() => {
     console.log('[GlobalFAB] Position:', {
       TAB_SIZE,
@@ -40,6 +40,18 @@ const GlobalFAB = () => {
       platform: Platform.OS
     });
   }, [fabBottom, hasLabel, isInStack]);
+
+  // DEBUG: Log active FAB icon
+  useEffect(() => {
+    console.log('[GlobalFAB] Active FAB:', {
+      icon: activeFAB?.icon,
+      visible: activeFAB?.visible,
+      style: activeFAB?.style,
+      id: activeFAB?.id,
+      isFontisto: ['bed-patient'].includes(activeFAB?.icon),
+      isMaterialCommunity: ['alarm-light-outline', 'bed-outline'].includes(activeFAB?.icon)
+    });
+  }, [activeFAB]);
 
   // Sync Visibility
   useEffect(() => {
@@ -110,8 +122,8 @@ const GlobalFAB = () => {
             {activeFAB.loading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              activeFAB.icon === 'bed-patient'
-                ? <Fontisto name="bed-patient" size={22} color="#FFFFFF" />
+              ['alarm-light-outline', 'bed-outline'].includes(activeFAB.icon)
+                ? <MaterialCommunityIcons name={activeFAB.icon} size={24} color="#FFFFFF" />
                 : <Ionicons name={activeFAB.icon || 'add'} size={26} color="#FFFFFF" />
             )}
           </View>

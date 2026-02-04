@@ -58,19 +58,19 @@ import { useSearchFiltering } from "../hooks/emergency/useSearchFiltering";
 const EmergencyScreen = () => {
 	const screenId = useRef(Math.random().toString(36).substr(2, 9));
 	// Component mounting - no debug logs
-	
+
 	const router = useRouter();
-	
+
 	// Track focus state manually using useFocusEffect
 	const [isFocused, setIsFocused] = useState(false);
-	
+
 	// Add cleanup tracking
 	useEffect(() => {
 		return () => {
 			// Component unmounting...
 		};
 	}, []);
-	
+
 	// Track focus state manually using useFocusEffect
 	useFocusEffect(
 		useCallback(() => {
@@ -86,11 +86,11 @@ const EmergencyScreen = () => {
 	// FAB visibility logic - hide when hospital is selected
 	useEffect(() => {
 		const fabId = `emergency-screen-fab-${screenId.current}`;
-		
+
 		// Hide FAB when hospital is selected or there's an active trip
-		const shouldHideFAB = !!selectedHospitalId || !!pendingSelectedHospitalId || 
+		const shouldHideFAB = !!selectedHospitalId || !!pendingSelectedHospitalId ||
 			!!activeAmbulanceTrip?.requestId || !!activeBedBooking?.requestId;
-		
+
 		if (!shouldHideFAB) {
 			// Register a hidden FAB to override tab defaults
 			registerFAB(fabId, {
@@ -98,12 +98,12 @@ const EmergencyScreen = () => {
 				priority: 20, // Higher priority to override tab defaults
 			});
 		}
-		
+
 		return () => {
 			unregisterFAB(fabId);
 		};
 	}, [selectedHospitalId, pendingSelectedHospitalId, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId, registerFAB, unregisterFAB]);
-	
+
 	const simulationDebugRef = useRef(null);
 	const { resetTabBar, lockTabBarHidden, unlockTabBarHidden } =
 		useTabBarVisibility();
@@ -460,18 +460,18 @@ const EmergencyScreen = () => {
 	useFocusEffect(
 		useCallback(() => {
 			// Registering FAB
-		const fabDetails = {
-			id: 'emergency-mode-toggle',
-			visible: !shouldHideFAB,
-			priority: 15,
-			mode: mode,
-			selectedHospital: selectedHospital?.name,
-			hasAnyVisitActive
-		};
-		
-		// Register FAB with unique ID and enhanced configuration
+			const fabDetails = {
+				id: 'emergency-mode-toggle',
+				visible: !shouldHideFAB,
+				priority: 15,
+				mode: mode,
+				selectedHospital: selectedHospital?.name,
+				hasAnyVisitActive
+			};
+
+			// Register FAB with unique ID and enhanced configuration
 			registerFAB('emergency-mode-toggle', {
-				icon: mode === "emergency" ? "bed-patient" : "medical",
+				icon: mode === "emergency" ? "bed-outline" : "alarm-light-outline",
 				visible: !shouldHideFAB,
 				mode: mode, // Pass mode for context-aware behavior
 				allowInStack: hasAnyVisitActive, // Allow FAB in stack screens when trip is active

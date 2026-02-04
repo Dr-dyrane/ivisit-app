@@ -98,7 +98,7 @@ const FAB_CONFIG_SCHEMA = {
 // Apple style: icon only, no labels (for tab defaults)
 const TAB_DEFAULTS = {
   index: {
-    icon: 'medical',
+    icon: 'alarm-light-outline',
     visible: true,
     mode: 'emergency',
   },
