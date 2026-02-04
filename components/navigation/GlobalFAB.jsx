@@ -30,28 +30,7 @@ const GlobalFAB = () => {
   // Has label = expandable on stack pages
   const hasLabel = !!activeFAB?.label;
 
-  // DEBUG: Log positioning and icon
-  useEffect(() => {
-    console.log('[GlobalFAB] Position:', {
-      TAB_SIZE,
-      fabBottom,
-      hasLabel,
-      isInStack,
-      platform: Platform.OS
-    });
-  }, [fabBottom, hasLabel, isInStack]);
 
-  // DEBUG: Log active FAB icon
-  useEffect(() => {
-    console.log('[GlobalFAB] Active FAB:', {
-      icon: activeFAB?.icon,
-      visible: activeFAB?.visible,
-      style: activeFAB?.style,
-      id: activeFAB?.id,
-      isFontisto: ['bed-patient'].includes(activeFAB?.icon),
-      isMaterialCommunity: ['alarm-light-outline', 'bed-outline'].includes(activeFAB?.icon)
-    });
-  }, [activeFAB]);
 
   // Sync Visibility
   useEffect(() => {
