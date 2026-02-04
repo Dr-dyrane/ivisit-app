@@ -98,6 +98,9 @@ export default function UpdateAvailableModal({
     }, [visible]);
 
     const handleDismiss = (action) => {
+        const dismissAction = action || (isCompleted ? onDismiss : onLater);
+        if (!dismissAction) return;
+
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         Animated.parallel([
             Animated.timing(slideAnim, {
@@ -110,7 +113,7 @@ export default function UpdateAvailableModal({
                 duration: 200,
                 useNativeDriver: true,
             }),
-        ]).start(() => action());
+        ]).start(() => dismissAction());
     };
 
     const colors = {

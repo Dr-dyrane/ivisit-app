@@ -8,6 +8,7 @@ import { useTabBarVisibility } from '../../contexts/TabBarVisibilityContext';
 import { COLORS } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useOTAUpdates } from '../../hooks/useOTAUpdates';
 import ServicePickerModal from '../modals/ServicePickerModal';
 
 // Match AnimatedTabBar constants exactly
@@ -20,6 +21,7 @@ const GlobalFAB = () => {
   const { translateY } = useTabBarVisibility();
   const { isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
+  const { testSuccessModal } = useOTAUpdates();
 
   // Service picker modal state
   const [showServicePicker, setShowServicePicker] = useState(false);
@@ -75,6 +77,7 @@ const GlobalFAB = () => {
 
   const handleServiceSelect = (serviceId) => {
     // Map service ID to mode and trigger the appropriate action
+
     if (activeFAB?.onLongPress) {
       activeFAB.onLongPress(serviceId);
     } else if (activeFAB?.onPress) {

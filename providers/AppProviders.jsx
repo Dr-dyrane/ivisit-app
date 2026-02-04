@@ -1,10 +1,6 @@
 import React from "react";
 import { AuthProvider } from "../contexts/AuthContext";
-// FAB VISIBILITY FIX: Added FABProvider and EmergencyUIProvider to resolve context errors
-// These providers were missing, causing "useFAB must be used within a FABProvider" and "useEmergencyUI must be used within EmergencyUIProvider" errors
-// FABProvider manages global FAB state and competition resolution
-// EmergencyUIProvider manages emergency-specific UI state
-
+import { OTAUpdatesProvider } from "../contexts/OTAUpdatesContext";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { PreferencesProvider } from "../contexts/PreferencesContext";
 import { UnifiedScrollProvider } from "../contexts/UnifiedScrollContext";
@@ -27,38 +23,41 @@ import { FABProvider } from "../contexts/FABContext";
  * Wraps the application with all necessary context providers.
  * Order matters:
  * 1. AuthProvider (Top level state)
- * 2. ThemeProvider (UI Theming)
- * 3. UnifiedScrollProvider (Synchronized scroll animations - NEW)
- * 4. Feature Providers (TabBar, Headers, Emergency, EmergencyUI, FAB, Toast)
+ * 2. OTAUpdatesProvider (Shared update state - NEW)
+ * 3. ThemeProvider (UI Theming)
+ * 4. UnifiedScrollProvider (Synchronized scroll animations)
+ * 5. Feature Providers (TabBar, Headers, Emergency, EmergencyUI, FAB, Toast)
  */
 export const AppProviders = ({ children }) => {
 	return (
 		<AuthProvider>
-			<ThemeProvider>
-				<PreferencesProvider>
-					<ToastProvider>
-						<UnifiedScrollProvider>
-							<TabBarVisibilityProvider>
-								<ScrollAwareHeaderProvider>
-									<HeaderStateProvider>
-										<NotificationsProvider>
-											<VisitsProvider>
-												<EmergencyProvider>
-													<EmergencyUIProvider>
-														<FABProvider>
-															<HelpSupportProvider>{children}</HelpSupportProvider>
-														</FABProvider>
-													</EmergencyUIProvider>
-												</EmergencyProvider>
-											</VisitsProvider>
-										</NotificationsProvider>
-									</HeaderStateProvider>
-								</ScrollAwareHeaderProvider>
-							</TabBarVisibilityProvider>
-						</UnifiedScrollProvider>
-					</ToastProvider>
-				</PreferencesProvider>
-			</ThemeProvider>
+			<OTAUpdatesProvider>
+				<ThemeProvider>
+					<PreferencesProvider>
+						<ToastProvider>
+							<UnifiedScrollProvider>
+								<TabBarVisibilityProvider>
+									<ScrollAwareHeaderProvider>
+										<HeaderStateProvider>
+											<NotificationsProvider>
+												<VisitsProvider>
+													<EmergencyProvider>
+														<EmergencyUIProvider>
+															<FABProvider>
+																<HelpSupportProvider>{children}</HelpSupportProvider>
+															</FABProvider>
+														</EmergencyUIProvider>
+													</EmergencyProvider>
+												</VisitsProvider>
+											</NotificationsProvider>
+										</HeaderStateProvider>
+									</ScrollAwareHeaderProvider>
+								</TabBarVisibilityProvider>
+							</UnifiedScrollProvider>
+						</ToastProvider>
+					</PreferencesProvider>
+				</ThemeProvider>
+			</OTAUpdatesProvider>
 		</AuthProvider>
 	);
 };
