@@ -3,124 +3,21 @@
  *
  * Business logic for authentication operations using Supabase Auth.
  * Automatically manages user sessions and profile syncing.
+ * 
+ * Refactored: 2026-02-10 (Split into authErrorUtils, userMapper, oauthService)
  */
 
 import { supabase } from "./supabase";
 import { database, StorageKeys } from "../database";
 import * as Linking from 'expo-linking';
-import Constants from 'expo-constants';
 import { notificationDispatcher } from "./notificationDispatcher";
 import { insuranceService } from "./insuranceService";
+import { AuthErrors, createAuthError, handleSupabaseError } from "../utils/authErrorUtils";
+import { formatUser } from "./mappers/userMapper";
+import * as oauthService from "./auth/oauthService";
 
-// ============================================
-// ERROR HELPERS
-// ============================================
-
-/**
- * Create a formatted error with code and message
- * @param {string} code
- * @param {string} message
- * @returns {Error}
- */
-const createAuthError = (code, message) => {
-    const error = new Error(`${code}|${message}`);
-    error.code = code;
-    return error;
-};
-
-// Error codes mapping
-const AuthErrors = {
-    USER_NOT_FOUND: "USER_NOT_FOUND",
-    INVALID_PASSWORD: "INVALID_PASSWORD",
-    NO_PASSWORD: "NO_PASSWORD",
-    EMAIL_EXISTS: "EMAIL_EXISTS",
-    PHONE_EXISTS: "PHONE_EXISTS",
-    INVALID_INPUT: "INVALID_INPUT",
-    INVALID_TOKEN: "INVALID_TOKEN",
-    TOKEN_EXPIRED: "TOKEN_EXPIRED",
-    NOT_LOGGED_IN: "NOT_LOGGED_IN",
-    PASSWORD_EXISTS: "PASSWORD_EXISTS",
-    NETWORK_ERROR: "NETWORK_ERROR",
-    UNKNOWN_ERROR: "UNKNOWN_ERROR",
-    NOT_IMPLEMENTED: "NOT_IMPLEMENTED",
-};
-
-/**
- * Map Supabase error to AuthError
- * [AUTH_REFACTOR] Enhanced error mapping to catch specific Supabase/Twilio feedback
- * ensuring user-friendly alerts instead of generic developer logs.
- */
-const handleSupabaseError = (error) => {
-    console.error("Supabase Auth Error:", error);
-    if (!error) return createAuthError(AuthErrors.UNKNOWN_ERROR, "An unknown error occurred");
-
-    const msg = error.message?.toLowerCase() || "";
-
-    if (msg.includes("invalid login credentials")) {
-        return createAuthError(AuthErrors.INVALID_PASSWORD, "Invalid email or password");
-    }
-    if (msg.includes("user not found")) {
-        return createAuthError(AuthErrors.USER_NOT_FOUND, "Account not found");
-    }
-    if (msg.includes("already registered")) {
-        return createAuthError(AuthErrors.EMAIL_EXISTS, "User already exists");
-    }
-    if (msg.includes("password")) {
-        if (msg.includes("different from the old")) {
-            return createAuthError(AuthErrors.PASSWORD_EXISTS, "New password must be different from the old one");
-        }
-        return createAuthError(AuthErrors.INVALID_PASSWORD, error.message);
-    }
-    if (msg.includes("network")) {
-        return createAuthError(AuthErrors.NETWORK_ERROR, "Network connection error");
-    }
-
-    // Improved Email Validation Error Catching
-    if (msg.includes("invalid email") ||
-        msg.includes("email address is invalid") ||
-        (msg.includes("email") && msg.includes("is invalid"))) {
-        return createAuthError(AuthErrors.INVALID_INPUT, "Please enter a valid email address");
-    }
-
-    // Improved Phone Validation Error Catching
-    if (msg.includes("phone") && (msg.includes("invalid") || msg.includes("format") || msg.includes("is invalid"))) {
-        return createAuthError(AuthErrors.INVALID_INPUT, "Invalid phone number format");
-    }
-
-    if (msg.includes("email not confirmed")) {
-        return createAuthError(AuthErrors.INVALID_TOKEN, "Please verify your email first");
-    }
-
-    // Handle Provider-side Failures (e.g. Twilio Authentication error 20003)
-    if (msg.includes("error sending confirmation otp") || msg.includes("twilio") || msg.includes("provider: authenticate")) {
-        return createAuthError(AuthErrors.UNKNOWN_ERROR, "Verification service is currently unavailable. Please try again later.");
-    }
-
-    if (msg.includes("sms")) {
-        return createAuthError(AuthErrors.INVALID_TOKEN, "Failed to send SMS. Please check the number.");
-    }
-
-    if (msg.includes("otp") || msg.includes("token")) {
-        if (msg.includes("expired")) {
-            return createAuthError(AuthErrors.TOKEN_EXPIRED, "The code has expired. Please request a new one.");
-        }
-        if (msg.includes("invalid")) {
-            return createAuthError(AuthErrors.INVALID_TOKEN, "Invalid verification code.");
-        }
-        return createAuthError(AuthErrors.INVALID_TOKEN, "Verification code error.");
-    }
-
-    if (msg.includes("rate limit") || msg.includes("too many requests")) {
-        return createAuthError(AuthErrors.UNKNOWN_ERROR, "Too many attempts. Please wait a few minutes and try again.");
-    }
-    if (msg.includes("signup disabled")) {
-        return createAuthError(AuthErrors.UNKNOWN_ERROR, "Registration is temporarily disabled");
-    }
-
-    // Default to a cleaner unknown error presentation
-    const cleanMsg = error.message || "An unexpected error occurred during authentication";
-    return createAuthError(AuthErrors.UNKNOWN_ERROR, cleanMsg);
-};
+// Re-export constants for consumers
+export { AuthErrors, createAuthError };
 
 // ============================================
 // AUTH SERVICE METHODS
@@ -129,12 +26,9 @@ const handleSupabaseError = (error) => {
 const authService = {
     /**
      * Check if a user exists by email (Public check not supported directly by Supabase for security)
-     * @deprecated Do not use this for login flow logic. Supabase does not allow public existence checks.
-     * Always proceed to attempt login or signup and handle the error.
+     * @deprecated Do not use this for login flow logic.
      */
     async checkUserExists(credentials) {
-        // Supabase doesn't allow checking if a user exists without logging in for security reasons.
-        // We return false to be safe, but this should not be relied upon to block UI.
         return {
             success: true,
             data: { exists: false },
@@ -171,18 +65,9 @@ const authService = {
         }
 
         // HEURISTIC: Check if user has a password.
-        // Supabase doesn't expose this directly.
-        // 1. If 'encrypted_password' is in app_metadata (sometimes present)
-        // 2. Check if they have 'email' provider in identities
-        // 3. OR if we have a local flag (we don't persist this yet)
-
-        // Best proxy: Check identities for 'email' provider
-        // BUT: Magic Link also uses 'email' provider.
-        // So we might need to rely on:
-        // A) Did they just login with password? (Yes, if we are in this function) -> hasPassword = true
         const hasPassword = true;
 
-        const user = this._formatUser(data.user, data.session?.access_token, profile, hasInsurance, hasPassword);
+        const user = formatUser(data.user, data.session?.access_token, profile, hasInsurance, hasPassword);
 
         // Cache locally for offline support
         await database.write(StorageKeys.CURRENT_USER, user);
@@ -249,9 +134,6 @@ const authService = {
 
         if (error) throw handleSupabaseError(error);
 
-        // The trigger on public.profiles should handle profile creation.
-        // We return the basic user data.
-        // Note: For signUp, we might not have a session yet if email confirmation is required.
         const user = {
             id: data.user?.id,
             email: data.user?.email,
@@ -261,12 +143,12 @@ const authService = {
             token: data.session?.access_token,
             emailVerified: !!data.user?.email_confirmed_at,
             phoneVerified: !!data.user?.phone_confirmed_at,
-            hasPassword: true, // We just created it with a password
+            hasPassword: true,
         };
 
         if (data.session) {
             // If we have a session, format it properly
-            const fullUser = this._formatUser(data.user, data.session.access_token, {
+            const fullUser = formatUser(data.user, data.session.access_token, {
                 username, firstName, lastName
             }, false, true); // hasPassword = true
 
@@ -311,136 +193,30 @@ const authService = {
         }
     },
 
-    /**
-     * Get the redirect URL for OAuth and Magic Links
-     * Works for both Expo Go and production builds
-     *
-     * Platform behavior:
-     * - Expo Go: exp://192.168.x.x:8081/--/auth/callback
-     * - Dev Client: ivisit://auth/callback (uses app scheme)
-     * - Production APK/AAB: ivisit://auth/callback
-     */
-    getRedirectUrl(path = "/auth/callback") {
-        // Normalize path - remove leading slash if present for Linking.createURL
-        const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-        const redirectUrl = Linking.createURL(normalizedPath);
-        const isExpoGo = Constants.executionEnvironment === 'storeClient';
-        console.log("[authService] Generated redirectUrl:", redirectUrl, "| Environment:", isExpoGo ? "Expo Go" : "Dev Client/Build");
-        return redirectUrl;
-    },
-
-    /**
-     * Sign in with OAuth Provider (Google, Twitter/X, Apple)
-     * @param {string} provider - 'google', 'twitter', 'apple'
-     * @returns {Promise<{ data: { url: string } }>}
-     *
-     * OAuth Flow:
-     * 1. Supabase creates OAuth URL with our redirect URL
-     * 2. WebBrowser opens the OAuth page
-     * 3. After auth, Supabase redirects to our app
-     * 4. Deep link handler (_layout.js) catches the redirect
-     * 5. Auth session is established
-     */
-    async signInWithProvider(provider) {
-        // Use Linking.createURL to get platform-appropriate redirect
-        // This is registered in Supabase's allowed redirect URLs
-        const redirectUrl = this.getRedirectUrl('auth/callback');
-        console.log("[authService] signInWithProvider - redirect URL:", redirectUrl);
-
-        const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: provider,
-            options: {
-                redirectTo: redirectUrl,
-                skipBrowserRedirect: true, // We handle opening the URL via WebBrowser
-            }
-        });
-
-        if (error) throw handleSupabaseError(error);
-        console.log("[authService] signInWithProvider - OAuth URL generated");
-        return { data };
-    },
+    // Delegate to oauthService
+    getRedirectUrl: oauthService.getRedirectUrl,
+    signInWithProvider: oauthService.signInWithProvider,
 
     /**
      * Handle OAuth callback URL from WebBrowser
      * @param {string} url 
      */
     async handleOAuthCallback(url) {
-        if (!url) throw createAuthError(AuthErrors.INVALID_TOKEN, "No URL returned");
-        // Log without exposing tokens (just the scheme and path)
-        const urlScheme = url.split('://')[0] || 'unknown';
-        const hasAccessToken = url.includes('access_token=');
-        const hasCode = url.includes('code=');
-        console.log("[authService] handleOAuthCallback processing:", { scheme: urlScheme, hasAccessToken, hasCode });
-
-        // Check if we already have an active session to avoid redundant exchanges
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-
-        // Check for error in URL
-        // e.g. error=access_denied&error_description=...
-        if (url.includes('error=')) {
-            const params = this._parseUrlParams(url);
-            throw createAuthError(AuthErrors.UNKNOWN_ERROR, params.error_description || params.error || "Login failed");
+        const { session, skipped } = await oauthService.handleOAuthCallback(url);
+        
+        if (skipped && session) {
+            // Even if skipped (already used code), we return the user if we have a session
+            const user = await this._getUserFromSession(session);
+            return { skipped: true, data: { session, user } };
         }
 
-        // 1. Try PKCE (code) - usually in query params
-        const params = this._parseUrlParams(url);
-        if (params.code) {
-            console.log("[authService] PKCE code found, exchanging for session...");
-            try {
-                const { data, error } = await supabase.auth.exchangeCodeForSession(params.code);
-                if (error) {
-                    // If code is already used (e.g. by layout.js listener), check if we have a session now
-                    if (error.message?.includes("already been used") && existingSession) {
-                        console.log("[authService] Code already used but session exists, skipping");
-                        const user = await this._getUserFromSession(existingSession);
-                        return { skipped: true, data: { session: existingSession, user } };
-                    }
-                    throw handleSupabaseError(error);
-                }
-
-                if (data.session) {
-                    const user = await this._processSuccessfulSession(data.session);
-                    return { data: { session: data.session, user } };
-                }
-            } catch (err) {
-                if (err.message?.includes("already been used") && existingSession) {
-                    return { skipped: true };
-                }
-                throw err;
-            }
-        }
-
-        // 2. Try Implicit (access_token) - usually in hash
-        const hashParams = this._parseUrlParams(url, true);
-        if (hashParams.access_token && hashParams.refresh_token) {
-            console.log("[authService] Implicit token found, setting session...");
-            const { data, error } = await supabase.auth.setSession({
-                access_token: hashParams.access_token,
-                refresh_token: hashParams.refresh_token,
-            });
-            if (error) throw handleSupabaseError(error);
-
-            if (data.session) {
-                const user = await this._processSuccessfulSession(data.session);
-                return { data: { session: data.session, user } };
-            }
-        }
-
-        // 3. Fallback: Check if session was created automatically by Supabase 
-        // Or if we already have one from a parallel call
-        if (existingSession) {
-            console.log("[authService] Using existing session as fallback");
-            const user = await this._getUserFromSession(existingSession);
-            return { data: { session: existingSession, user }, skipped: true };
-        }
-
-        const { data: { session }, error } = await supabase.auth.getSession();
         if (session) {
             const user = await this._processSuccessfulSession(session);
-            return { data: { session: session, user } };
+            return { data: { session, user } };
         }
-
-        throw createAuthError(AuthErrors.INVALID_TOKEN, "No valid session data found in callback");
+        
+        // Should be handled by oauthService throwing, but just in case
+        throw createAuthError(AuthErrors.INVALID_TOKEN, "Session creation failed");
     },
 
     /**
@@ -449,7 +225,7 @@ const authService = {
     async _processSuccessfulSession(session) {
         await database.write(StorageKeys.AUTH_TOKEN, session.access_token);
         const profile = await this.getUserProfile(session.user.id);
-        const user = this._formatUser(session.user, session.access_token, profile);
+        const user = formatUser(session.user, session.access_token, profile);
         await database.write(StorageKeys.CURRENT_USER, user);
 
         try {
@@ -465,75 +241,7 @@ const authService = {
      */
     async _getUserFromSession(session) {
         const profile = await this.getUserProfile(session.user.id);
-        return this._formatUser(session.user, session.access_token, profile);
-    },
-
-    /**
-     * Helper to parse URL parameters
-     * @param {string} url 
-     * @param {boolean} useHash 
-     */
-    _parseUrlParams(url, useHash = false) {
-        try {
-            const splitChar = useHash ? '#' : '?';
-            const parts = url.split(splitChar);
-            if (parts.length < 2) return {};
-
-            const queryString = parts[1];
-            return queryString.split('&').reduce((acc, current) => {
-                const [key, value] = current.split('=');
-                if (key && value) {
-                    // Handle + as space if needed, but decodeURIComponent usually enough
-                    acc[key] = decodeURIComponent(value.replace(/\+/g, ' '));
-                }
-                return acc;
-            }, {});
-        } catch (e) {
-            console.error("Error parsing URL:", e);
-            return {};
-        }
-    },
-
-    /**
-     * Helper to format user object consistently
-     */
-    _formatUser(sessionUser, sessionToken, profile, hasInsurance = false, hasPasswordOverride = null) {
-        // Try to determine if user has a password
-        // 1. Use override if provided (e.g. from loginWithPassword)
-        // 2. Check user_metadata.has_password (our custom flag)
-        // 3. Check encrypted_password (often present in user object but not always documented)
-        // 4. Check app_metadata.providers for "email"
-
-        let hasPassword = hasPasswordOverride;
-
-        if (hasPassword === null) {
-            // 1. Check custom metadata flag (The most reliable source for OAuth users who added password)
-            if (sessionUser?.user_metadata?.has_password === true) {
-                hasPassword = true;
-            }
-            // 2. Check encrypted_password
-            else if (sessionUser?.encrypted_password) {
-                hasPassword = true;
-            } else {
-                // 3. Fallback to provider check
-                const providers = sessionUser?.app_metadata?.providers || [];
-                const hasEmailProvider = providers.includes('email');
-                hasPassword = hasEmailProvider;
-            }
-        }
-
-        return {
-            ...profile,
-            id: sessionUser.id,
-            email: sessionUser.email,
-            phone: sessionUser.phone,
-            emailVerified: !!sessionUser.email_confirmed_at,
-            phoneVerified: !!sessionUser.phone_confirmed_at,
-            token: sessionToken,
-            isAuthenticated: true,
-            hasInsurance,
-            hasPassword,
-        };
+        return formatUser(session.user, session.access_token, profile);
     },
 
     /**
@@ -560,7 +268,7 @@ const authService = {
             console.warn("Failed to fetch insurance status:", e);
         }
 
-        const user = this._formatUser(session.user, session.access_token, profile, hasInsurance);
+        const user = formatUser(session.user, session.access_token, profile, hasInsurance);
 
         await database.write(StorageKeys.CURRENT_USER, user);
 
@@ -619,8 +327,6 @@ const authService = {
         if (newData.fullName !== undefined) updates.full_name = newData.fullName;
 
         // We only attempt to update these if they are present in the table
-        // To avoid "Column not found" errors, you must run the migration:
-        // supabase/migrations/20260109180000_add_profile_fields.sql
         if (newData.address !== undefined) updates.address = newData.address;
         if (newData.gender !== undefined) updates.gender = newData.gender;
         if (newData.dateOfBirth !== undefined) updates.date_of_birth = newData.dateOfBirth;
@@ -670,18 +376,17 @@ const authService = {
      * @returns {Promise<{ message: string }>}
      */
     async forgotPassword(email) {
+        // Use oauthService to get consistent redirect URL
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: Linking.createURL('/auth/reset-password'),
+            redirectTo: oauthService.getRedirectUrl('/auth/reset-password'),
         });
         if (error) throw handleSupabaseError(error);
         return { message: "Password reset instructions sent" };
     },
 
     // Reset password (update) with token logic handled by Supabase automatically if session is active
-    // OR if we are using the PKCE flow which exchanges the token in the URL for a session.
     async resetPassword({ newPassword, resetToken, email }) {
         // CASE 1: Authenticated User (Changing Password or Set Password via Settings)
-        // If we have a session, we just update the user.
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session) {
@@ -694,12 +399,6 @@ const authService = {
         }
 
         // CASE 2: Unauthenticated User (Forgot Password Flow)
-        // If we are here, the user clicked a link in email.
-        // Supabase Deep Link: ivisit://auth/reset-password#access_token=...&refresh_token=...&type=recovery
-        // When the app opens via deep link, Supabase client automatically detects the hash
-        // and sets the session. So by the time we call this, 'session' SHOULD be true (Case 1).
-
-        // HOWEVER, if you are manually handling OTP (6-digit code) instead of deep link:
         if (resetToken && email) {
             const { error } = await supabase.auth.verifyOtp({
                 email,
@@ -724,18 +423,14 @@ const authService = {
     async setPassword({ password }) {
         try {
             // Update password AND set a metadata flag so we know they have one
-            // This is crucial for OAuth users who add a password later
             const { data, error } = await supabase.auth.updateUser({
                 password,
                 data: { has_password: true }
             });
 
-            // Handle specific case: User tries to "create" a password that matches their old one
             if (error) {
                 const msg = error.message?.toLowerCase() || "";
                 if (msg.includes("different from the old")) {
-                    // IMPORTANT: They have the password, but might miss the metadata flag.
-                    // Force update the metadata only.
                     await supabase.auth.updateUser({ data: { has_password: true } });
                 } else {
                     throw handleSupabaseError(error);
@@ -749,7 +444,6 @@ const authService = {
             const updatedUser = { ...currentUser.data, hasPassword: true };
             await database.write(StorageKeys.CURRENT_USER, updatedUser);
 
-            // Create notification for password change
             try {
                 await notificationDispatcher.dispatchAuthEvent('password_change', {});
             } catch (error) {
@@ -773,9 +467,6 @@ const authService = {
     },
 
     async changePassword({ currentPassword, newPassword }) {
-        // Supabase doesn't require current password for update if logged in, 
-        // but for security flows the UI might ask for it. 
-        // We'll just update to the new one.
         return this.resetPassword({ newPassword });
     },
 
@@ -784,8 +475,6 @@ const authService = {
      * @returns {Promise<boolean>}
      */
     async logout() {
-        // Note: Logout notification removed - non-essential and causes race condition
-        // errors with Supabase session state during signOut
         await supabase.auth.signOut();
         await database.delete(StorageKeys.AUTH_TOKEN);
         await database.delete(StorageKeys.CURRENT_USER);
@@ -802,8 +491,6 @@ const authService = {
 
             if (error) {
                 console.error("Delete user RPC failed:", error);
-                // If RPC fails (e.g. not found), we can't do much on client side
-                // except log them out.
                 throw handleSupabaseError(error);
             }
 
@@ -838,7 +525,6 @@ const authService = {
      */
     async requestOtp({ email, phone }) {
         if (phone) {
-            // Supabase Phone OTP
             const { error } = await supabase.auth.signInWithOtp({
                 phone,
             });
@@ -849,9 +535,6 @@ const authService = {
         }
 
         if (email) {
-            // Supabase Email OTP (Magic Link or OTP)
-            // By default signInWithOtp sends a Magic Link. 
-            // To force OTP (if configured in Supabase), we assume default behavior.
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
@@ -872,58 +555,40 @@ const authService = {
      * @param {Object} { email, phone, otp }
      */
     async verifyOtp({ email, phone, otp }) {
-        // Supabase Verify OTP
         const { data, error } = await supabase.auth.verifyOtp({
             email,
             phone,
             token: otp,
-            type: phone ? 'sms' : 'email', // 'email' for magic link/otp, 'sms' for phone
+            type: phone ? 'sms' : 'email',
         });
 
         if (error) return { success: false, error: handleSupabaseError(error).message };
 
-        // Verification successful, session created automatically by Supabase client
-
-        // Ensure profile exists or fetch it
-        // If it's a new user via OTP, trigger might handle creation, or we might have partial data
-        // Check if existing user (by profile)
         let profile = await this.getUserProfile(data.user.id);
-
-        // If profile is empty, return empty profile - let UI handle the "New User" flow
         if (!profile.createdAt) {
             console.log("[authService] Profile not yet available, continuing with defaults");
         }
 
-        // HEURISTIC UPDATE:
-        // A user is "Existing" (ready for login) if they have a username.
-        // If they only have an ID/Email/Phone (from trigger), they are "New" (need registration).
         const isExistingUser = !!profile.username;
 
-        // Check insurance status (even if new user, they might have just been auto-enrolled by trigger or we do it below)
         let hasInsurance = false;
         try {
-            // We can try to list, but if they are brand new, it might be empty until we enroll them below.
-            // However, list() queries the DB.
             const policies = await insuranceService.list();
             hasInsurance = policies && policies.length > 0;
         } catch (e) {
             console.warn("Failed to fetch insurance status during OTP verify:", e);
         }
 
-        // If we are about to enroll them, we can optimistically set true if we succeed, 
-        // but for now let's stick to truth from DB or enroll first.
-
-        // Auto-enroll FIRST if needed, so we get the correct status
         if (!hasInsurance) {
             try {
                 await insuranceService.enrollBasicScheme();
-                hasInsurance = true; // Optimistic update
+                hasInsurance = true;
             } catch (insError) {
                 console.warn("[authService] Failed to auto-enroll in insurance (OTP):", insError);
             }
         }
 
-        const user = this._formatUser(data.user, data.session?.access_token, profile, hasInsurance);
+        const user = formatUser(data.user, data.session?.access_token, profile, hasInsurance);
 
         await database.write(StorageKeys.CURRENT_USER, user);
         await database.write(StorageKeys.AUTH_TOKEN, data.session?.access_token);
@@ -932,4 +597,4 @@ const authService = {
     },
 };
 
-export { authService, AuthErrors, createAuthError };
+export { authService };

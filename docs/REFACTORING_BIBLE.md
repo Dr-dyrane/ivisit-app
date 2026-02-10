@@ -53,10 +53,20 @@ We will enforce a strict unidirectional data flow.
 *   **Role**: Connects UI to Logic/State.
 *   **Location**: `hooks/`
 *   **Rules**:
-    *   Encapsulates `useState`, `useEffect`, `useContext`.
+    *   Encapsulates `useState`, `useEffect`, and **`useContext`**.
+    *   **Context usage should be hidden here**. Components should rarely consume Context directly if a hook can provide a cleaner interface.
     *   Returns only what the View needs (data + handlers).
     *   Handles "dirty" state, loading states, and error toggles.
 *   **Example**: `useProfileForm`, `useSearchRanking`, `useEmergencyContactList`.
+
+### 🟣 4. Context (Global State)
+*   **Role**: Stores truly global data (Theme, Auth User, Socket Connection).
+*   **Location**: `contexts/`
+*   **Rules**:
+    *   **Providers Only**: Defines the Provider and the raw `useContext` hook.
+    *   **No Heavy Logic**: Contexts should mostly just store state and expose setters. Heavy processing of that state (filtering, sorting) belongs in a Hook or Service.
+    *   **Access**: Should generally be accessed via specific hooks (e.g., `useAuth`) rather than raw `useContext(AuthContext)`.
+
 
 ### 🔴 3. Service (Pure Logic)
 *   **Role**: The "Brain". Independent of React.

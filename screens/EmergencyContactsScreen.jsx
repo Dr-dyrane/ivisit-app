@@ -1,18 +1,15 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
 	View,
 	Text,
-	ScrollView,
 	StyleSheet,
 	Platform,
 	TouchableOpacity,
 	Animated,
 	ActivityIndicator,
-    LayoutAnimation,
-    UIManager,
-    Alert
+    UIManager
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -26,13 +23,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
-import * as Haptics from "expo-haptics";
-import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
-import { useToast } from "../contexts/ToastContext";
+import ContactCard from "../components/emergency/ContactCard";
+import { useEmergencyContactsForm } from "../hooks/emergency/useEmergencyContactsForm";
 import InputModal from "../components/ui/InputModal";
 import Input from "../components/form/Input";
 import PhoneInputField from "../components/register/PhoneInputField";
-import useSwipeGesture from "../utils/useSwipeGesture";
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android') {
@@ -41,418 +36,47 @@ if (Platform.OS === 'android') {
   }
 }
 
-const ContactCard = ({ contact, isDarkMode, onEdit, onDelete, isSelected, onToggleSelect }) => {
-	const [unmasked, setUnmasked] = useState(false);
-	const [selected, setSelected] = useState(false);
-	const [holdTimer, setHoldTimer] = useState(null);
-	const { colors } = useTheme();
-
-	// Sync with external selection state
-	React.useEffect(() => {
-		setSelected(isSelected);
-	}, [isSelected]);
-
-	const handlePress = () => {
-		if (selected) {
-			// If selected, treat as normal tap to reveal
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-			LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-			setUnmasked(!unmasked);
-		} else {
-			// If not selected, treat as normal tap to reveal
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-			LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-			setUnmasked(!unmasked);
-		}
-	};
-
-	const handlePressIn = () => {
-		const timer = setTimeout(() => {
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-			LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-			setSelected(!selected);
-			onToggleSelect(contact.id);
-		}, 500);
-		setHoldTimer(timer);
-	};
-
-	const handlePressOut = () => {
-		if (holdTimer) {
-			clearTimeout(holdTimer);
-			setHoldTimer(null);
-		}
-	};
-
-	return (
-		<TouchableOpacity
-			onPress={handlePress}
-			onPressIn={handlePressIn}
-			onPressOut={handlePressOut}
-			activeOpacity={0.9}
-			style={[
-				styles.contactCard,
-				{
-					backgroundColor: isDarkMode ? "#0B0F1A" : "#FFFFFF",
-					shadowColor: unmasked ? COLORS.brandPrimary : selected ? COLORS.brandPrimary : "#000",
-					shadowOpacity: unmasked ? 0.2 : selected ? 0.3 : 0.03,
-					borderColor: unmasked ? COLORS.brandPrimary + '40' : selected ? COLORS.brandPrimary + '60' : 'transparent',
-					borderWidth: (unmasked || selected) ? 1 : 0,
-					transform: [{ scale: selected ? 0.98 : 1 }]
-				},
-			]}
-		>
-			{/* Corner Seal - Selection Indicator */}
-			{selected && (
-				<View style={styles.cornerSeal}>
-					<Ionicons 
-						name="checkmark-circle" 
-						size={24} 
-						color={COLORS.brandPrimary}
-						style={{
-							backgroundColor: '#FFFFFF',
-							borderRadius: 12,
-							padding: 2
-						}}
-					/>
-				</View>
-			)}
-
-			{/* Identity Widget - Following manifesto spec */}
-			<View style={styles.identityWidget}>
-				<View style={[styles.iconContainer, { backgroundColor: COLORS.brandPrimary + '15' }]}>
-					<Ionicons
-						name="person"
-						size={20}
-						color={COLORS.brandPrimary}
-					/>
-				</View>
-				<View style={styles.identityInfo}>
-					<Text style={[styles.contactName, { color: isDarkMode ? "#FFFFFF" : "#0F172A" }]}>
-						{contact?.name ?? "--"}
-					</Text>
-					<Text style={[styles.identityLabel, { color: isDarkMode ? "#94A3B8" : "#64748B" }]}>
-						{contact?.relationship || "Contact"}
-					</Text>
-				</View>
-			</View>
-
-			{/* Data Grid - Following manifesto spec */}
-			<View style={styles.dataGrid}>
-				{contact?.phone ? (
-					<View style={styles.dataItem}>
-						<Ionicons
-							name="call"
-							size={14}
-							color={isDarkMode ? "#94A3B8" : "#64748B"}
-						/>
-						<Text style={[styles.dataValue, { color: isDarkMode ? "#FFFFFF" : "#0F172A" }]}>
-							{unmasked 
-								? contact.phone 
-								: `•••• •••• ${contact.phone.slice(-4)}`}
-						</Text>
-					</View>
-				) : null}
-				{contact?.email ? (
-					<View style={styles.dataItem}>
-						<Ionicons
-							name="mail"
-							size={14}
-							color={isDarkMode ? "#94A3B8" : "#64748B"}
-						/>
-						<Text style={[styles.dataValue, { color: isDarkMode ? "#FFFFFF" : "#0F172A" }]}>
-							{unmasked 
-								? contact.email 
-								: `•••••@••••.com`}
-						</Text>
-					</View>
-				) : null}
-			</View>
-
-			{/* Hint Text */}
-			{!unmasked && !selected && (
-				<Text style={[styles.hintText, { color: isDarkMode ? "#94A3B8" : "#64748B" }]}>
-					Tap to reveal • Hold to select
-				</Text>
-			)}
-
-			{/* Actions Row (Only visible when expanded) */}
-			{unmasked && (
-				<View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, paddingTop: 24, borderTopWidth: 1, borderTopColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
-					<TouchableOpacity
-						onPress={() => onEdit(contact)}
-						style={{
-							flexDirection: 'row',
-							alignItems: 'center',
-							gap: 8,
-							paddingVertical: 8,
-							paddingHorizontal: 16,
-							borderRadius: 20,
-							backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
-						}}
-					>
-						<Ionicons name="pencil" size={16} color={isDarkMode ? "#FFFFFF" : "#0F172A"} />
-						<Text style={{ fontWeight: "700", color: isDarkMode ? "#FFFFFF" : "#0F172A", fontSize: 14 }}>Edit</Text>
-					</TouchableOpacity>
-
-					<TouchableOpacity
-						onPress={() => {
-							Alert.alert(
-								"Delete Contact",
-								"Are you sure you want to delete this contact?",
-								[
-									{ text: "Cancel", style: "cancel" },
-									{
-										text: "Delete",
-										style: "destructive",
-										onPress: () => onDelete(contact.id)
-									}
-								]
-							);
-						}}
-						style={{
-							width: 44,
-							height: 44,
-							borderRadius: 22,
-							backgroundColor: 'rgba(239, 68, 68, 0.1)',
-							alignItems: 'center',
-							justifyContent: 'center'
-						}}
-					>
-						<Ionicons name="remove" size={24} color={COLORS.error} />
-					</TouchableOpacity>
-				</View>
-			)}
-		</TouchableOpacity>
-	);
-};
-
 export default function EmergencyContactsScreen() {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB, unregisterFAB } = useFAB();
-	const { handleScroll: handleTabBarScroll, resetTabBar } =
-		useTabBarVisibility();
-	const { handleScroll: handleHeaderScroll, resetHeader } =
-		useScrollAwareHeader();
-	const { showToast } = useToast();
+	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
+	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
-    // Focus Flow State
-    const [step, setStep] = useState(0);
-
-	const {
-		contacts,
-		isLoading,
-		refreshContacts,
-		addContact,
-		updateContact,
-		removeContact,
-	} = useEmergencyContacts();
-    
-	const [isModalVisible, setIsModalVisible] = useState(false);
-	const [editingId, setEditingId] = useState(null);
-    const [selectedContacts, setSelectedContacts] = useState(new Set());
-    const [formData, setFormData] = useState({
-        name: "",
-        relationship: "",
-        phone: "",
-        email: ""
-    });
-    const [phoneValid, setPhoneValid] = useState(false);
-	const [isSaving, setIsSaving] = useState(false);
-
-	const [shakeAnim] = useState(new Animated.Value(0));
-
-	const shake = () => {
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-		Animated.sequence([
-			Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: 8, duration: 60, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
-		]).start();
-	};
-
-	const canSave = () => {
-        if (step === 0) return formData.name.trim().length >= 2;
-        if (step === 1) return phoneValid || formData.email.trim().length > 0;
-        return true;
-    };
-
-    const getInputValidation = (field, value) => {
-        switch (field) {
-            case 'name':
-                if (value.trim().length === 0) return { valid: false, message: '' };
-                if (value.trim().length < 2) return { valid: false, message: 'Name too short' };
-                return { valid: true, message: 'Looks good!' };
-            case 'phone':
-                if (!phoneValid && value.trim().length > 0) return { valid: false, message: 'Invalid phone' };
-                if (phoneValid) return { valid: true, message: 'Valid phone' };
-                return { valid: false, message: '' };
-            case 'email':
-                if (value.trim().length === 0) return { valid: false, message: '' };
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(value)) return { valid: false, message: 'Invalid email' };
-                return { valid: true, message: 'Valid email' };
-            case 'relationship':
-                if (value.trim().length === 0) return { valid: false, message: '' };
-                return { valid: true, message: 'Nice!' };
-            default:
-                return { valid: false, message: '' };
-        }
-    };
-
-    const attemptNextStep = () => {
-        if (canSave()) {
-            transitionStep(step + 1);
-        } else {
-            shake();
-        }
-    };
-
-    const swipeHandlers = useSwipeGesture(
-        () => {
-            // Swipe Left -> Next (with validation)
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            
-            // Subtle animation feedback like onboarding
-            Animated.sequence([
-                Animated.timing(shakeAnim, {
-                    toValue: 2,
-                    duration: 100,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(shakeAnim, {
-                    toValue: 0,
-                    duration: 100,
-                    useNativeDriver: true,
-                }),
-            ]).start();
-
-            if (canSave()) {
-                transitionStep(step + 1);
-            } else {
-                shake(); // Invalid input - stronger shake
-            }
-        },
-        () => {
-            // Swipe Right -> Back
-            if (step > 0) {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                transitionStep(step - 1);
-            }
-        }
-    );
-
-	const transitionStep = (newStep) => {
-		if (newStep < 0 || newStep > 2) return;
-		LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-		setStep(newStep);
-	};
-
-	const openCreate = useCallback(() => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		setEditingId(null);
-        setFormData({ name: "", relationship: "", phone: "", email: "" });
-        setStep(0);
-		setIsModalVisible(true);
-	}, []);
-
-	const openEdit = useCallback((contact) => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		setEditingId(contact?.id ? String(contact.id) : null);
-        setFormData({
-            name: typeof contact?.name === "string" ? contact.name : "",
-            relationship: typeof contact?.relationship === "string" ? contact.relationship : "",
-            phone: typeof contact?.phone === "string" ? contact.phone : "",
-            email: typeof contact?.email === "string" ? contact.email : ""
-        });
-        setStep(0);
-		setIsModalVisible(true);
-	}, []);
-
-    const handleDelete = useCallback(
-		async (id) => {
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-			try {
-				await removeContact(id);
-				showToast("Contact deleted successfully", "success");
-			} catch (error) {
-				showToast("Failed to delete contact", "error");
-			}
-		},
-		[removeContact, showToast]
-	);
-
-	const handleToggleSelect = useCallback((contactId) => {
-		setSelectedContacts(prev => {
-			const newSet = new Set(prev);
-			if (newSet.has(contactId)) {
-				newSet.delete(contactId);
-			} else {
-				newSet.add(contactId);
-			}
-			return newSet;
-		});
-	}, []);
-
-	const handleBulkDelete = useCallback(() => {
-		if (selectedContacts.size === 0) return;
-		
-		Alert.alert(
-			`Delete ${selectedContacts.size} Contact${selectedContacts.size > 1 ? 's' : ''}`,
-			`Are you sure you want to delete ${selectedContacts.size} selected contact${selectedContacts.size > 1 ? 's' : ''}? This cannot be undone.`,
-			[
-				{ text: "Cancel", style: "cancel" },
-				{
-					text: "Delete",
-					style: "destructive",
-					onPress: async () => {
-						Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-						try {
-							// Delete all selected contacts
-							const deletePromises = Array.from(selectedContacts).map(id => removeContact(id));
-							await Promise.all(deletePromises);
-							showToast(`${selectedContacts.size} contact${selectedContacts.size > 1 ? 's' : ''} deleted successfully`, "success");
-							setSelectedContacts(new Set()); // Clear selection
-						} catch (error) {
-							showToast("Failed to delete some contacts", "error");
-						}
-					}
-				}
-			]
-		);
-	}, [selectedContacts, removeContact, showToast]);
-
-	const clearSelection = useCallback(() => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		setSelectedContacts(new Set());
-	}, []);
-
-	const handleSave = useCallback(async () => {
-		setIsSaving(true);
-		try {
-			if (editingId) {
-				await updateContact(editingId, formData);
-				showToast("Contact updated successfully", "success");
-			} else {
-				await addContact(formData);
-				showToast("Contact added successfully", "success");
-			}
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			setIsModalVisible(false);
-		} catch (e) {
-			const msg = e?.message?.split("|")?.[1] || e?.message || "Unable to save contact";
-			showToast(msg, "error");
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-		} finally {
-			setIsSaving(false);
-		}
-	}, [editingId, formData, addContact, updateContact, showToast]);
+    // --- Custom Hook ---
+    const {
+        contacts,
+        isContactsLoading,
+        refreshContacts,
+        
+        isModalVisible,
+        step,
+        editingId,
+        selectedContacts,
+        isSaving,
+        shakeAnim,
+        swipeHandlers,
+        
+        formData,
+        setFormData,
+        setPhoneValid,
+        
+        openCreate,
+        openEdit,
+        closeModal,
+        handleSave,
+        handleDelete,
+        handleToggleSelect,
+        clearSelection,
+        handleBulkDelete,
+        attemptNextStep,
+        transitionStep,
+        canSave,
+        getInputValidation
+    } = useEmergencyContactsForm();
 
 	useFocusEffect(
 		useCallback(() => {
@@ -521,22 +145,17 @@ export default function EmergencyContactsScreen() {
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
 		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
 		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
-		inputBg: isDarkMode ? "#0B0F1A" : "#F3F4F6",
 	};
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
 	const topPadding = STACK_TOP_PADDING;
 
-	const refresh = useCallback(async () => {
+	useEffect(() => {
 		refreshContacts();
 	}, [refreshContacts]);
 
-	useEffect(() => {
-		refresh();
-	}, [refresh]);
-
-	const emptyState = !isLoading && (!contacts || contacts.length === 0);
+	const emptyState = !isContactsLoading && (!contacts || contacts.length === 0);
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
@@ -631,7 +250,7 @@ export default function EmergencyContactsScreen() {
 					</View>
 
 					
-					{isLoading ? (
+					{isContactsLoading ? (
 						<View style={[styles.card, { backgroundColor: colors.card }]}>
 							<View
 								style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
@@ -681,10 +300,7 @@ export default function EmergencyContactsScreen() {
 
             <InputModal
                 visible={isModalVisible}
-                onClose={() => {
-                    setIsModalVisible(false);
-                    setStep(0);
-                }}
+                onClose={closeModal}
                 title={editingId ? "Update Contact" : (step === 0 ? "Who is this?" : step === 1 ? "Contact Info" : "Verify")}
                 primaryAction={step === 2 ? handleSave : attemptNextStep}
                  primaryActionLabel={step === 2 ? (editingId ? "Save Changes" : "Add Contact") : "Next"}
@@ -692,10 +308,7 @@ export default function EmergencyContactsScreen() {
                      (step === 0 && formData.name.trim().length < 2) ||
                      (step === 1 && (!phoneValid && !formData.email.trim()))
                  }
-                secondaryAction={step > 0 ? () => transitionStep(step - 1) : () => {
-                    setIsModalVisible(false);
-                    setStep(0);
-                }}
+                secondaryAction={step > 0 ? () => transitionStep(step - 1) : closeModal}
                 secondaryActionLabel={step > 0 ? "Back" : "Cancel"}
                 loading={isSaving}
             >
@@ -850,7 +463,6 @@ export default function EmergencyContactsScreen() {
 }
 
 const styles = StyleSheet.create({
-	container: { flex: 1 },
 	content: { flexGrow: 1, paddingBottom: 40 },
 	card: {
 		borderRadius: 36,
@@ -870,80 +482,6 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		lineHeight: 20,
 		fontWeight: "500",
-	},
-	contactCard: {
-		borderRadius: 36,
-		padding: 24,
-		position: "relative",
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.03,
-		shadowRadius: 10,
-	},
-	identityWidget: {
-		flexDirection: "row",
-		alignItems: "center",
-		marginBottom: 16,
-	},
-	iconContainer: {
-		width: 56,
-		height: 56,
-		borderRadius: 14,
-		backgroundColor: `${COLORS.brandPrimary}15`,
-		alignItems: "center",
-		justifyContent: "center",
-		marginRight: 16,
-	},
-	identityInfo: {
-		flex: 1,
-	},
-	contactName: { 
-		fontSize: 19, 
-		fontWeight: "900", 
-		letterSpacing: -1.0 
-	},
-	identityLabel: { 
-		fontSize: 10, 
-		fontWeight: "800", 
-		letterSpacing: 1.5,
-		textTransform: "uppercase",
-		marginTop: 4,
-	},
-	dataGrid: {
-		gap: 8,
-	},
-	dataItem: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
-	},
-	dataValue: {
-		fontSize: 15,
-		fontWeight: "800",
-		letterSpacing: -0.5,
-	},
-	cornerSeal: {
-		position: "absolute",
-		bottom: -4,
-		right: -4,
-		width: 36,
-		height: 36,
-		borderRadius: 14,
-		alignItems: "center",
-		justifyContent: "center",
-		backgroundColor: '#FFFFFF',
-		shadowColor: COLORS.brandPrimary,
-		shadowOpacity: 0.3,
-		shadowRadius: 8,
-		elevation: 4,
-	},
-	hintText: {
-		fontSize: 11,
-		fontWeight: "600",
-		textAlign: "center",
-		marginTop: 16,
-		opacity: 0.6,
-		letterSpacing: 0.5,
 	},
 	vitalTrack: { 
         height: 4, 

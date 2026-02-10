@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
 	View,
 	Text,
@@ -15,15 +15,11 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { useToast } from "../contexts/ToastContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { STACK_TOP_PADDING } from "../constants/layout";
-import * as ImagePicker from "expo-image-picker";
-import { useUpdateProfile } from "../hooks/user/useUpdateProfile";
-import { useImageUpload } from "../hooks/user/useImageUpload";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import ProfileField from "../components/form/ProfileField";
@@ -32,15 +28,16 @@ import { COLORS } from "../constants/colors";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
-import { getDisplayId } from "../services/displayIdService";
 
+// Hooks
+import { useProfileForm } from "../hooks/profile/useProfileForm";
 import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
 import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
+
+// Utils
 import {
 	navigateToEmergencyContacts,
 	navigateToMedicalProfile,
-	navigateToChangePassword,
-	navigateToCreatePassword,
 } from "../utils/navigationHelpers";
 
 const ProfileScreen = () => {
@@ -48,207 +45,137 @@ const ProfileScreen = () => {
 	const insets = useSafeAreaInsets();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB, unregisterFAB } = useFAB();
-	const { syncUserData, user, deleteAccount } = useAuth();
-	const { updateProfile, isLoading: isUpdating } = useUpdateProfile();
-	const { uploadImage, isUploading } = useImageUpload();
-	const { showToast } = useToast();
+	const { user, syncUserData } = useAuth();
 	const { isDarkMode } = useTheme();
 	const { profile: medicalProfile } = useMedicalProfile();
 	const { contacts: emergencyContacts } = useEmergencyContacts();
-	const { handleScroll: handleTabBarScroll, resetTabBar } =
-		useTabBarVisibility();
-	const { handleScroll: handleHeaderScroll, resetHeader } =
-		useScrollAwareHeader();
+	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
+	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
 
-	const [fullName, setFullName] = useState("");
-	const [username, setUsername] = useState("");
-	const [gender, setGender] = useState("");
-	const [email, setEmail] = useState("");
-	const [phone, setPhone] = useState("");
-	const [address, setAddress] = useState("");
-	const [dateOfBirth, setDateOfBirth] = useState("");
-	const [imageUri, setImageUri] = useState(null);
-	const [isLoading, setIsLoading] = useState(false);
-	const [isDeleting, setIsDeleting] = useState(false);
-	const [isDataLoading, setIsDataLoading] = useState(true);
-	const [displayId, setDisplayId] = useState(null);
+	// --- Custom Hook ---
+	const {
+		formState,
+		displayId,
+		isDataLoading,
+		isLoading,
+		isDeleting,
+		hasChanges,
+		pickImage,
+		saveProfile,
+		deleteAccount
+	} = useProfileForm();
 
-	// Event handlers
-	const handleUpdateProfile = useCallback(async () => {
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-		setIsLoading(true);
-		// console.log("DEBUG: handleUpdateProfile started. Current imageUri:", imageUri);
-		try {
-			let uploadedImageUri = imageUri;
+	// Destructure form state for easier access in render
+	const {
+		fullName, setFullName,
+		username, setUsername,
+		gender, setGender,
+		email, setEmail,
+		phone, setPhone,
+		address, setAddress,
+		dateOfBirth, setDateOfBirth,
+		imageUri
+	} = formState;
 
-			// Upload image if it's a local file
-			if (imageUri && imageUri.startsWith('file://')) {
-				// console.log("DEBUG: Uploading local image...");
-				uploadedImageUri = await uploadImage(imageUri);
-				// console.log("DEBUG: Upload complete. New URI:", uploadedImageUri);
-			} else {
-				// console.log("DEBUG: No local image to upload. Using existing URI.");
-			}
-
-			const updatedData = {
-				fullName,
-				username,
-				gender,
-				email,
-				phone,
-				address,
-				dateOfBirth,
-				imageUri: uploadedImageUri,
-			};
-
-			await updateProfile(updatedData);
-			await syncUserData();
-
-			if (uploadedImageUri) {
-				setImageUri(uploadedImageUri);
-			}
-
-			showToast("Profile updated successfully", "success");
-		} catch (error) {
-			// console.error("DEBUG: Update error:", error);
-			const errorMessage =
-				error.response?.data?.message ||
-				error.message ||
-				"Failed to update profile";
-			showToast(errorMessage, "error");
-		} finally {
-			setIsLoading(false);
-		}
-	}, [
-		imageUri,
-		uploadImage,
-		fullName,
-		username,
-		gender,
-		email,
-		phone,
-		address,
-		dateOfBirth,
-		updateProfile,
-		syncUserData,
-		showToast
-	]);
-
-	// Derived state: Check if form has unsaved changes
-	const hasChanges = useMemo(() => {
-		if (!user) return false;
-		return (
-			fullName !== (user.fullName || "") ||
-			username !== (user.username || "") ||
-			gender !== (user.gender || "") ||
-			email !== (user.email || "") ||
-			phone !== (user.phone || "") ||
-			address !== (user.address || "") ||
-			dateOfBirth !== (user.dateOfBirth || "") ||
-			(imageUri !== null && imageUri !== user.imageUri)
-		);
-	}, [user, fullName, username, gender, email, phone, address, dateOfBirth, imageUri]);
-
+	// --- FAB Management ---
 	// Debounced version of hasChanges to prevent FAB flickering
 	const debouncedHasChanges = useRef(hasChanges);
 	const [stableHasChanges, setStableHasChanges] = useState(false);
+	
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			if (debouncedHasChanges.current !== hasChanges) {
 				debouncedHasChanges.current = hasChanges;
 				setStableHasChanges(hasChanges);
 			}
-		}, 300); // 300ms debounce
-
+		}, 300);
 		return () => clearTimeout(timer);
 	}, [hasChanges]);
 
-	// Stabilize handleUpdateProfile for FAB registration using a Ref
-	const updateHandlerRef = useRef(handleUpdateProfile);
+	// Stabilize save handler for FAB
+	const saveHandlerRef = useRef(saveProfile);
 	useEffect(() => {
-		updateHandlerRef.current = handleUpdateProfile;
-	}, [handleUpdateProfile]);
+		saveHandlerRef.current = saveProfile;
+	}, [saveProfile]);
 
-	// Sync state with user context when loaded
 	useFocusEffect(
 		useCallback(() => {
-			// console.log('[ProfileScreen] Registering FAB. stableHasChanges:', stableHasChanges);
 			registerFAB('profile-save', {
 				icon: 'checkmark',
 				label: stableHasChanges ? 'Save Changes' : 'No Changes',
 				subText: stableHasChanges ? 'Tap to save profile' : 'Profile up to date',
 				visible: stableHasChanges,
-				onPress: () => updateHandlerRef.current(),
+				onPress: () => saveHandlerRef.current(),
 				loading: isLoading,
 				style: 'primary',
 				haptic: 'medium',
 				priority: 8,
 				animation: 'prominent',
-				allowInStack: true, // Allow in stack screen
+				allowInStack: true,
 			});
 
 			return () => {
-				// console.log('[ProfileScreen] Unregistering FAB');
 				unregisterFAB('profile-save');
 			};
-		}, [registerFAB, unregisterFAB, stableHasChanges, isLoading]) // handleUpdateProfile removed from dependencies
+		}, [registerFAB, unregisterFAB, stableHasChanges, isLoading])
 	);
 
-	// Sync state with user context when loaded
-	useEffect(() => {
-		if (user) {
-			// Only overwrite if we are loading data for the first time
-			// OR if the user hasn't made any changes yet (to prevent overwriting while typing)
-			if (isDataLoading || !hasChanges) {
-				// console.log('[ProfileScreen] Syncing state from user context');
-				setFullName(user.fullName || "");
-				setUsername(user.username || "");
-				setGender(user.gender || "");
-				setEmail(user.email || "");
-				setPhone(user.phone || "");
-				setAddress(user.address || "");
-				setDateOfBirth(user.dateOfBirth || "");
-
-				// Only overwrite image if it's not a local draft
-				if (!imageUri?.startsWith('file://')) {
-					setImageUri(user.imageUri || null);
-				}
-
-				setIsDataLoading(false);
-			}
-		}
-	}, [user, isDataLoading]); // hasChanges is intentionally omitted to avoid loops, but checked inside
-
-	// Fetch display ID for beautification
-	useEffect(() => {
-		const fetchId = async () => {
-			if (user?.id) {
-				const id = await getDisplayId(user.id);
-				setDisplayId(id);
-			}
-		};
-		fetchId();
-	}, [user?.id]);
-
+	// --- Animations ---
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
 	const imageScale = useRef(new Animated.Value(0.9)).current;
 
-	const backgroundColors = isDarkMode
-		? ["#0B0F1A", "#121826"]
-		: ["#FFFFFF", "#F3E7E7"];
+	useEffect(() => {
+		if (!isDataLoading) {
+			Animated.parallel([
+				Animated.timing(fadeAnim, {
+					toValue: 1,
+					duration: 600,
+					useNativeDriver: true,
+				}),
+				Animated.spring(slideAnim, {
+					toValue: 0,
+					friction: 8,
+					tension: 50,
+					useNativeDriver: true,
+				}),
+				Animated.spring(imageScale, {
+					toValue: 1,
+					friction: 8,
+					useNativeDriver: true,
+				}),
+			]).start();
+		}
+	}, [isDataLoading, fadeAnim, slideAnim, imageScale]);
 
-	const colors = {
-		text: isDarkMode ? "#FFFFFF" : "#0F172A",
-		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
-	};
+	// --- Handlers ---
+	const handleDeleteAccountPress = useCallback(() => {
+		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+		Alert.alert(
+			"Delete Account",
+			"Are you sure you want to delete your account? This action cannot be undone and all your data will be lost.",
+			[
+				{ text: "Cancel", style: "cancel" },
+				{
+					text: "Delete",
+					style: "destructive",
+					onPress: () => deleteAccount(router),
+				},
+			]
+		);
+	}, [deleteAccount, router]);
 
-	// We rely on useAuth to fetch data, so we don't need manual fetchUserData
+	const handleScroll = useCallback(
+		(event) => {
+			handleTabBarScroll(event);
+			handleHeaderScroll(event);
+		},
+		[handleTabBarScroll, handleHeaderScroll]
+	);
+
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
-	// We rely on useAuth to fetch data, so we don't need manual fetchUserData
-	// But we trigger a sync on mount just in case
+	// Sync on mount just in case
 	useFocusEffect(
 		useCallback(() => {
 			syncUserData();
@@ -268,95 +195,19 @@ const ProfileScreen = () => {
 				leftComponent: backButton(),
 				rightComponent: null,
 			});
-		}, [
-			backButton,
-			resetHeader,
-			resetTabBar,
-			setHeaderState,
-		])
+		}, [backButton, resetHeader, resetTabBar, setHeaderState])
 	);
 
-	useEffect(() => {
-		Animated.parallel([
-			Animated.timing(fadeAnim, {
-				toValue: 1,
-				duration: 600,
-				useNativeDriver: true,
-			}),
-			Animated.spring(slideAnim, {
-				toValue: 0,
-				friction: 8,
-				tension: 50,
-				useNativeDriver: true,
-			}),
-			Animated.spring(imageScale, {
-				toValue: 1,
-				friction: 8,
-				useNativeDriver: true,
-			}),
-		]).start();
-	}, [isDataLoading]);
+	// --- Render ---
+	const backgroundColors = isDarkMode
+		? ["#0B0F1A", "#121826"]
+		: ["#FFFFFF", "#F3E7E7"];
 
-	const pickImage = async () => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-		try {
-			// console.log("DEBUG: Starting pickImage...");
-			const result = await ImagePicker.launchImageLibraryAsync({
-				mediaTypes: ImagePicker.MediaTypeOptions.Images,
-				allowsEditing: true,
-				aspect: [1, 1],
-				quality: 1,
-			});
-			// console.log("DEBUG: ImagePicker result:", result.canceled ? "Canceled" : result.assets[0].uri);
-
-			if (!result.canceled && result.assets && result.assets.length > 0) {
-				setImageUri(result.assets[0].uri);
-				showToast("Image selected successfully", "success");
-			}
-		} catch (error) {
-			// console.error("DEBUG: pickImage error:", error);
-			showToast(`Image picker error: ${error.message}`, "error");
-		}
+	const colors = {
+		text: isDarkMode ? "#FFFFFF" : "#0F172A",
+		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
 	};
-
-	const handleDeleteAccount = async () => {
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-		Alert.alert(
-			"Delete Account",
-			"Are you sure you want to delete your account? This action cannot be undone and all your data will be lost.",
-			[
-				{ text: "Cancel", style: "cancel" },
-				{
-					text: "Delete",
-					style: "destructive",
-					onPress: async () => {
-						setIsDeleting(true);
-						try {
-							const result = await deleteAccount();
-							if (result.success) {
-								showToast("Account deleted successfully", "success");
-								router.replace("/(auth)/login");
-							} else {
-								showToast(result.message, "error");
-							}
-						} catch (error) {
-							showToast("Failed to delete account", "error");
-						} finally {
-							setIsDeleting(false);
-						}
-					},
-				},
-			]
-		);
-	};
-
-	const handleScroll = useCallback(
-		(event) => {
-			handleTabBarScroll(event);
-			handleHeaderScroll(event);
-		},
-		[handleTabBarScroll, handleHeaderScroll]
-	);
 
 	if (isDataLoading) {
 		return (
@@ -398,6 +249,7 @@ const ProfileScreen = () => {
 					onScroll={handleScroll}
 					keyboardShouldPersistTaps="handled"
 				>
+					{/* Profile Header & Image */}
 					<Animated.View
 						style={{
 							opacity: fadeAnim,
@@ -409,7 +261,7 @@ const ProfileScreen = () => {
 					>
 						<Pressable onPress={pickImage} style={{ position: "relative" }}>
 							<Image
-								key={imageUri} // Force re-render when URI changes
+								key={imageUri}
 								source={
 									imageUri ? { uri: imageUri } : require("../assets/profile.jpg")
 								}
@@ -420,7 +272,6 @@ const ProfileScreen = () => {
 									backgroundColor: COLORS.brandPrimary + "15",
 								}}
 							/>
-							{/* Insurance Badge Removed - Manifesto: "Calm Over Contrast" */}
 							<View
 								style={{
 									position: "absolute",
@@ -520,6 +371,7 @@ const ProfileScreen = () => {
 						)}
 					</Animated.View>
 
+					{/* Personal Information Form */}
 					<Animated.View
 						style={{
 							opacity: fadeAnim,
@@ -586,6 +438,7 @@ const ProfileScreen = () => {
 						/>
 					</Animated.View>
 
+					{/* Emergency Contacts Section */}
 					<Animated.View
 						style={{
 							opacity: fadeAnim,
@@ -747,6 +600,7 @@ const ProfileScreen = () => {
 						)}
 					</Animated.View>
 
+					{/* Medical History Section */}
 					<Animated.View
 						style={{
 							opacity: fadeAnim,
@@ -879,6 +733,7 @@ const ProfileScreen = () => {
 						</View>
 					</Animated.View>
 
+					{/* Password/Security Section */}
 					<Animated.View
 						style={{
 							opacity: fadeAnim,
@@ -952,17 +807,17 @@ const ProfileScreen = () => {
 									backgroundColor: isDarkMode
 										? "rgba(255,255,255,0.025)"
 										: "rgba(0,0,0,0.025)",
-									alignItems: "center",
-									justifyContent: "center",
-								}}
-							>
-								<Ionicons
-									name="chevron-forward"
-									size={16}
-									color={colors.textMuted}
-								/>
-							</View>
-						</Pressable>
+										alignItems: "center",
+										justifyContent: "center",
+									}}
+								>
+									<Ionicons
+										name="chevron-forward"
+										size={16}
+										color={colors.textMuted}
+									/>
+								</View>
+							</Pressable>
 					</Animated.View>
 
 					{/* Danger Zone */}
@@ -971,7 +826,7 @@ const ProfileScreen = () => {
 							opacity: fadeAnim,
 							paddingHorizontal: 12,
 							marginTop: 32,
-							marginBottom: 100, // Extra space for sticky footer
+							marginBottom: 100,
 						}}
 					>
 						<Text
@@ -988,7 +843,7 @@ const ProfileScreen = () => {
 						</Text>
 
 						<Pressable
-							onPress={handleDeleteAccount}
+							onPress={handleDeleteAccountPress}
 							disabled={isDeleting}
 							style={{
 								backgroundColor: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "#FEF2F2",
@@ -1040,7 +895,6 @@ const ProfileScreen = () => {
 					</Animated.View>
 				</ScrollView>
 			</KeyboardAvoidingView>
-
 		</LinearGradient>
 	);
 };
