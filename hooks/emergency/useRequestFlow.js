@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useMemo, useEffect } from "react";
 import * as Location from "expo-location";
 import {
 	EMERGENCY_VISIT_LIFECYCLE,
@@ -10,28 +10,35 @@ import { useHospitals } from "./useHospitals";
 import { DispatchService } from "../../services/dispatchService";
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 
-export const useRequestFlow = ({
-	createRequest,
-	updateRequest,
-	addVisit,
-	updateVisit,
-	setRequestStatus,
-	startAmbulanceTrip,
-	startBedBooking,
-	clearSelectedHospital,
-	user,
-	preferences,
-	medicalProfile,
-	emergencyContacts,
-	hospitals,
-	selectedSpecialty,
-	requestHospitalId,
-	selectedHospital,
-	activeAmbulanceTrip,
-	activeBedBooking,
-	currentRoute,
-	onRequestComplete,
-}) => {
+/**
+ * 💡 STABILITY NOTE:
+ * This hook uses a "Latest Props Ref" pattern (ref-guarded props) to ensure that the returned 
+ * action handlers (handleRequestInitiated, handleRequestComplete) are perfectly stable (referentially).
+ * 
+ * WHY: This prevents infinite re-render loops in components like EmergencyRequestModal that 
+ * register effects based on these handlers. Even if the parent passes anonymous functions 
+ * as props, this hook won't re-create its internal stability-critical callbacks.
+ */
+export const useRequestFlow = (props) => {
+	const propsRef = useRef(props);
+	useEffect(() => {
+		propsRef.current = props;
+	}, [props]);
+
+	// Extract stable refs for use in callbacks
+	const {
+		createRequest,
+		updateRequest,
+		addVisit,
+		updateVisit,
+		setRequestStatus,
+		startAmbulanceTrip,
+		startBedBooking,
+		clearSelectedHospital,
+		hospitals,
+		onRequestComplete,
+	} = props;
+
 	const inflightByTypeRef = useRef({ ambulance: false, bed: false });
 
 	const blockResult = useCallback((reason, extra) => {
@@ -43,6 +50,7 @@ export const useRequestFlow = ({
 	}, []);
 
 	const getSnapshots = useCallback(() => {
+		const { preferences, medicalProfile, emergencyContacts, user } = propsRef.current;
 		const shareMedicalProfile = preferences?.privacyShareMedicalProfile === true;
 		const shareEmergencyContacts =
 			preferences?.privacyShareEmergencyContacts === true;
@@ -60,28 +68,29 @@ export const useRequestFlow = ({
 		};
 
 		return { patient, shared };
-	}, [
-		emergencyContacts,
-		medicalProfile,
-		preferences?.privacyShareEmergencyContacts,
-		preferences?.privacyShareMedicalProfile,
-		user?.email,
-		user?.fullName,
-		user?.phone,
-		user?.username,
-	]);
+	}, []);
 
 	const canStartRequest = useCallback(
 		(serviceType) => {
+			const { activeAmbulanceTrip, activeBedBooking } = propsRef.current;
 			if (serviceType === "ambulance") return !activeAmbulanceTrip?.requestId;
 			if (serviceType === "bed") return !activeBedBooking?.requestId;
 			return false;
 		},
-		[activeAmbulanceTrip?.requestId, activeBedBooking?.requestId]
+		[]
 	);
 
 	const handleRequestInitiated = useCallback(
 		async (request) => {
+			const {
+				hospitals,
+				requestHospitalId,
+				selectedHospital,
+				createRequest,
+				addVisit,
+				selectedSpecialty
+			} = propsRef.current;
+
 			if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") {
 				return blockResult("INVALID_SERVICE_TYPE", { serviceType: request?.serviceType ?? null });
 			}
@@ -96,9 +105,9 @@ export const useRequestFlow = ({
 
 			let hospitalId =
 				request?.hospitalId ?? requestHospitalId ?? selectedHospital?.id ?? null;
-			
+
 			// 🤖 AUTO-DISPATCH: Select best hospital if none provided
-			if (!hospitalId && hospitals.length > 0) {
+			if (!hospitalId && hospitals && hospitals.length > 0) {
 				try {
 					// Get user location for dispatch calculation
 					const currentLocation = await Location.getCurrentPositionAsync({});
@@ -106,7 +115,7 @@ export const useRequestFlow = ({
 						latitude: currentLocation.coords.latitude,
 						longitude: currentLocation.coords.longitude
 					};
-					
+
 					const bestHospital = DispatchService.selectBestHospital(hospitals, userLocation);
 					if (bestHospital) {
 						hospitalId = bestHospital.id;
@@ -118,7 +127,7 @@ export const useRequestFlow = ({
 					hospitalId = hospitals[0]?.id;
 				}
 			}
-			
+
 			if (!hospitalId) {
 				return blockResult("MISSING_HOSPITAL", { serviceType: request.serviceType });
 			}
@@ -126,7 +135,7 @@ export const useRequestFlow = ({
 			const now = new Date();
 			const nowIso = now.toISOString();
 			const visitId = request?.requestId ? String(request.requestId) : `local_${Date.now()}`;
-			const hospital = hospitals.find((h) => h?.id === hospitalId) ?? null;
+			const hospital = hospitals?.find((h) => h?.id === hospitalId) ?? null;
 			const date = nowIso.slice(0, 10);
 			const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 			const { patient, shared } = getSnapshots();
@@ -160,7 +169,7 @@ export const useRequestFlow = ({
 					status: EmergencyRequestStatus.IN_PROGRESS,
 					patient,
 					shared,
-					patientLocation, // ✅ ADD: Patient location in PostGIS format
+					patientLocation,
 				});
 
 				await addVisit({
@@ -214,21 +223,26 @@ export const useRequestFlow = ({
 				throw err;
 			}
 		},
-		[
-			addVisit,
-			blockResult,
-			canStartRequest,
-			createRequest,
-			getSnapshots,
-			hospitals,
-			requestHospitalId,
-			selectedHospital?.id,
-			selectedSpecialty,
-		]
+		[blockResult, canStartRequest, getSnapshots]
 	);
 
 	const handleRequestComplete = useCallback(
 		async (request) => {
+			const {
+				hospitals,
+				requestHospitalId,
+				selectedHospital,
+				updateRequest,
+				setRequestStatus,
+				updateVisit,
+				startAmbulanceTrip,
+				startBedBooking,
+				clearSelectedHospital,
+				onRequestComplete,
+				selectedSpecialty,
+				currentRoute
+			} = propsRef.current;
+
 			if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") {
 				return blockResult("INVALID_SERVICE_TYPE", { serviceType: request?.serviceType ?? null });
 			}
@@ -245,7 +259,7 @@ export const useRequestFlow = ({
 
 			const nowIso = new Date().toISOString();
 			const visitId = request?.requestId ? String(request.requestId) : `local_${Date.now()}`;
-			const hospital = hospitals.find((h) => h?.id === hospitalId) ?? null;
+			const hospital = hospitals?.find((h) => h?.id === hospitalId) ?? null;
 
 			try {
 				await updateRequest?.(visitId, {
@@ -311,26 +325,13 @@ export const useRequestFlow = ({
 			onRequestComplete?.();
 			return { ok: true, requestId: visitId, serviceType: request.serviceType };
 		},
-		[
-			blockResult,
-			canStartRequest,
-			clearSelectedHospital,
-			currentRoute,
-			hospitals,
-			onRequestComplete,
-			requestHospitalId,
-			selectedHospital?.id,
-			selectedSpecialty,
-			setRequestStatus,
-			startAmbulanceTrip,
-			startBedBooking,
-			updateRequest,
-			updateVisit,
-		]
+		[blockResult, canStartRequest]
 	);
 
 	// 🚨 QUICK EMERGENCY: Auto-dispatch without hospital selection
 	const handleQuickEmergency = useCallback(async (serviceType = "ambulance") => {
+		const { hospitals } = propsRef.current;
+
 		if (!canStartRequest(serviceType)) {
 			return blockResult("ALREADY_ACTIVE", { serviceType });
 		}
@@ -340,7 +341,7 @@ export const useRequestFlow = ({
 		}
 
 		inflightByTypeRef.current[serviceType] = true;
-		
+
 		try {
 			// Get user location first
 			let userLocation = null;
@@ -356,27 +357,25 @@ export const useRequestFlow = ({
 			}
 
 			// Auto-select best hospital
-			const bestHospital = DispatchService.selectBestHospital(hospitals, userLocation);
+			const bestHospital = DispatchService.selectBestHospital(hospitals || [], userLocation);
 			if (!bestHospital) {
 				return blockResult("NO_HOSPITALS", { serviceType });
 			}
 
 			// Create visitId for the request
-			const now = new Date();
 			const visitId = `quick_${Date.now()}`;
 
 			// Create emergency request with auto-selected hospital
 			const result = await handleRequestInitiated({
 				serviceType,
 				hospitalId: bestHospital.id,
-				requestId: visitId, // ✅ Add requestId
-				// Auto-dispatch flag for tracking
+				requestId: visitId,
 				autoDispatched: true,
 				dispatchScore: bestHospital.dispatchScore
 			});
 
 			return successResult("REQUEST_CREATED", {
-				requestId: result.requestId || visitId, // ✅ Ensure requestId is returned
+				requestId: result.requestId || visitId,
 				hospital: bestHospital.name,
 				hospitalId: bestHospital.id,
 				autoDispatched: true,
@@ -389,7 +388,11 @@ export const useRequestFlow = ({
 		} finally {
 			inflightByTypeRef.current[serviceType] = false;
 		}
-	}, [hospitals, canStartRequest, handleRequestInitiated]);
+	}, [blockResult, canStartRequest, handleRequestInitiated, successResult]);
 
-	return { handleRequestInitiated, handleRequestComplete, handleQuickEmergency };
+	return useMemo(() => ({
+		handleRequestInitiated,
+		handleRequestComplete,
+		handleQuickEmergency
+	}), [handleRequestInitiated, handleRequestComplete, handleQuickEmergency]);
 };

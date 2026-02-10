@@ -115,9 +115,12 @@ const EmergencyBottomSheet = forwardRef(
 				isBedBookingMode,
 				hasAnyVisitActive,
 				onSnapChange,
+				mode,
+				activeAmbulanceTrip,
+				activeBedBooking,
 			});
 
-		const { handleScroll } = useBottomSheetScroll({ currentSnapIndex });
+		const { handleScroll } = useBottomSheetScroll({ currentSnapIndex, snapPoints });
 
 		const { handleSearchChange, handleSearchFocus, handleSearchBlur, handleSearchClear } =
 			useBottomSheetSearch({
@@ -256,7 +259,7 @@ const EmergencyBottomSheet = forwardRef(
 				}
 			}, 1);
 			return () => clearTimeout(timer);
-		}, [newSnapIndex, snapPoints.length, isDetailMode, hasAnyVisitActive, currentSnapIndex]);
+		}, [newSnapIndex, snapPoints.length, isDetailMode, hasAnyVisitActive, currentSnapIndex, mode]);
 
 		const renderHandle = useCallback(
 			() => (

@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
-import { useFAB } from "../../contexts/FABContext";
+import { useFABActions } from "../../contexts/FABContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
 import { AMBULANCE_TYPES } from "../../constants/emergency";
@@ -14,7 +14,14 @@ import EmergencyRequestModalDispatched from "./requestModal/EmergencyRequestModa
 import InfoTile from "./requestModal/InfoTile";
 import BedBookingOptions from "./requestModal/BedBookingOptions";
 
-const EmergencyRequestModal = ({
+/**
+ * 💡 STABILITY NOTE:
+ * This component is wrapped in React.memo and uses `useFABActions()` instead of `useFAB()`.
+ * 
+ * WHY: This component is at the epicenter of the FAB registration cycle. Using useFABActions 
+ * ensures it doesn't re-render when the FAB state changes, breaking the infinite update cycle.
+ */
+const EmergencyRequestModal = React.memo(({
 	mode = "emergency",
 	requestHospital,
 	selectedSpecialty,
@@ -27,7 +34,7 @@ const EmergencyRequestModal = ({
 }) => {
 	const { isDarkMode } = useTheme();
 	const { showToast } = useToast();
-	const { registerFAB, unregisterFAB } = useFAB();
+	const { registerFAB, unregisterFAB } = useFABActions();
 	const insets = useSafeAreaInsets();
 
 	const [requestStep, setRequestStep] = useState("select");
@@ -56,23 +63,23 @@ const EmergencyRequestModal = ({
 		const initiated =
 			mode === "booking"
 				? {
-						requestId,
-						hospitalId: requestHospital?.id ?? null,
-						hospitalName,
-						serviceType: "bed",
-						specialty: selectedSpecialty ?? "Any",
-						bedCount,
-						bedType,
-						bedNumber: `B${Math.floor(Math.random() * 900) + 100}`,
-				  }
+					requestId,
+					hospitalId: requestHospital?.id ?? null,
+					hospitalName,
+					serviceType: "bed",
+					specialty: selectedSpecialty ?? "Any",
+					bedCount,
+					bedType,
+					bedNumber: `B${Math.floor(Math.random() * 900) + 100}`,
+				}
 				: {
-						requestId,
-						hospitalId: requestHospital?.id ?? null,
-						hospitalName,
-						ambulanceType: selectedAmbulanceType,
-						serviceType: "ambulance",
-						specialty: selectedSpecialty ?? "Any",
-				  };
+					requestId,
+					hospitalId: requestHospital?.id ?? null,
+					hospitalName,
+					ambulanceType: selectedAmbulanceType,
+					serviceType: "ambulance",
+					specialty: selectedSpecialty ?? "Any",
+				};
 
 		try {
 			if (typeof onRequestInitiated === "function") {
@@ -95,26 +102,26 @@ const EmergencyRequestModal = ({
 			const next =
 				mode === "booking"
 					? {
-							success: true,
-							requestId: initiated.requestId,
-							estimatedArrival: waitTime ?? "15 mins",
-							hospitalId: initiated.hospitalId,
-							hospitalName: initiated.hospitalName,
-							serviceType: "bed",
-							specialty: initiated.specialty,
-							bedCount: initiated.bedCount,
-							bedType: initiated.bedType,
-							bedNumber: initiated.bedNumber,
-					  }
+						success: true,
+						requestId: initiated.requestId,
+						estimatedArrival: waitTime ?? "15 mins",
+						hospitalId: initiated.hospitalId,
+						hospitalName: initiated.hospitalName,
+						serviceType: "bed",
+						specialty: initiated.specialty,
+						bedCount: initiated.bedCount,
+						bedType: initiated.bedType,
+						bedNumber: initiated.bedNumber,
+					}
 					: {
-							success: true,
-							requestId: initiated.requestId,
-							hospitalId: initiated.hospitalId,
-							hospitalName: initiated.hospitalName,
-							ambulanceType: initiated.ambulanceType,
-							serviceType: "ambulance",
-							estimatedArrival: ambulanceEta,
-					  };
+						success: true,
+						requestId: initiated.requestId,
+						hospitalId: initiated.hospitalId,
+						hospitalName: initiated.hospitalName,
+						ambulanceType: initiated.ambulanceType,
+						serviceType: "ambulance",
+						estimatedArrival: ambulanceEta,
+					};
 
 			setRequestData(next);
 			setIsRequesting(false);
@@ -197,7 +204,7 @@ const EmergencyRequestModal = ({
 			}
 		} else 
 		*/
-		
+
 		if (requestStep === "select") {
 			// Selection state FAB
 			if (mode === "booking") {
@@ -235,7 +242,7 @@ const EmergencyRequestModal = ({
 					label: 'Select Ambulance',
 					subText: 'Choose ambulance type',
 					visible: true,
-					onPress: () => {}, // No action, just prompt
+					onPress: () => { }, // No action, just prompt
 					style: 'warning',
 					haptic: 'medium',
 					priority: 9,
@@ -271,11 +278,11 @@ const EmergencyRequestModal = ({
 
 	useEffect(() => {
 		setRequestStep("select");
-		
+
 		// Default to BLS (Basic Life Support) - ID: 'standard'
 		const defaultAmbulance = AMBULANCE_TYPES.find(t => t.id === "standard");
 		setSelectedAmbulanceType(defaultAmbulance || null);
-		
+
 		setBedType("standard");
 		setBedCount(1);
 		setIsRequesting(false);
@@ -293,8 +300,8 @@ const EmergencyRequestModal = ({
 		typeof requestHospital?.availableBeds === "number"
 			? requestHospital.availableBeds
 			: Number.isFinite(Number(requestHospital?.availableBeds))
-			? Number(requestHospital.availableBeds)
-			: null;
+				? Number(requestHospital.availableBeds)
+				: null;
 	const waitTime = requestHospital?.waitTime ?? null;
 
 	return (
@@ -451,7 +458,7 @@ const EmergencyRequestModal = ({
 			</ScrollView>
 		</View>
 	);
-};
+});
 
 const styles = StyleSheet.create({
 	container: {

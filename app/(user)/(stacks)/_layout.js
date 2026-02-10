@@ -2,14 +2,15 @@
 import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { useTheme } from "../../../contexts/ThemeContext";
-import { useFAB } from "../../../contexts/FABContext";
+import { useFABActions } from "../../../contexts/FABContext";
 import { COLORS } from "../../../constants/colors";
 import { STACK_TOP_PADDING } from "../../../constants/layout";
 import HeaderBackButton from "../../../components/navigation/HeaderBackButton";
 
 export default function StacksLayout() {
 	const { isDarkMode } = useTheme();
-	const { enterStack, exitStack } = useFAB();
+	// Use stable actions hook to prevent re-render loops on FAB registration
+	const { enterStack, exitStack } = useFABActions();
 
 	// Hide FAB when entering stack screens
 	useEffect(() => {

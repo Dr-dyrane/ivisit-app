@@ -9,6 +9,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
+import { useFABActions } from "../contexts/FABContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
@@ -35,7 +36,7 @@ export default function BookBedRequestScreen() {
 	const hospitalId = typeof params?.hospitalId === "string" ? params.hospitalId : null;
 
 	const { setHeaderState } = useHeaderState();
-	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
+	const { handleScroll: handleTabBarScroll, resetTabBar, unlockTabBarHidden } = useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
 
 	const { user } = useAuth();
@@ -45,6 +46,7 @@ export default function BookBedRequestScreen() {
 	const { createRequest, updateRequest, setRequestStatus } = useEmergencyRequests();
 	const { addVisit, updateVisit } = useVisits();
 
+	const { registerFAB, unregisterFAB } = useFABActions();
 	const {
 		hospitals,
 		selectedHospital,
@@ -55,6 +57,7 @@ export default function BookBedRequestScreen() {
 		startBedBooking,
 		clearSelectedHospital,
 		setMode,
+		toggleMode,
 	} = useEmergency();
 
 	const requestHospital = useMemo(() => {
@@ -82,7 +85,7 @@ export default function BookBedRequestScreen() {
 		activeAmbulanceTrip,
 		activeBedBooking,
 		currentRoute: null,
-		onRequestComplete: () => {},
+		onRequestComplete: () => { },
 	});
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
@@ -90,6 +93,8 @@ export default function BookBedRequestScreen() {
 
 	useFocusEffect(
 		useCallback(() => {
+			// Force unlock and show UI elements when entering the request flow
+			unlockTabBarHidden();
 			resetTabBar();
 			resetHeader();
 			setMode("booking");
@@ -101,7 +106,15 @@ export default function BookBedRequestScreen() {
 				leftComponent: backButton(),
 				rightComponent: rightComponent(),
 			});
-		}, [backButton, resetHeader, resetTabBar, setHeaderState, setMode])
+		}, [
+			backButton,
+			resetHeader,
+			resetTabBar,
+			setHeaderState,
+			setMode,
+			unlockTabBarHidden,
+			rightComponent,
+		])
 	);
 
 	useEffect(() => {

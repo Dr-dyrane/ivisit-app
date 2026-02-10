@@ -1,5 +1,5 @@
 // FAB aligned with tab bar - 56x56 circle on tabs, expandable with label on stacks
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Platform, ActivityIndicator, Pressable, Animated } from 'react-native';
 import { Ionicons, Fontisto, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -18,7 +18,7 @@ const LONG_PRESS_DELAY = 500; // ms
 
 const GlobalFAB = () => {
   const { activeFAB, getFABStyle, isInStack } = useFAB();
-  const { translateY } = useTabBarVisibility();
+  const { translateY, isTabBarLockedHidden } = useTabBarVisibility();
   const { isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { testSuccessModal } = useOTAUpdates();
@@ -47,16 +47,27 @@ const GlobalFAB = () => {
     }).start();
   }, [activeFAB?.visible]);
 
-  if (!activeFAB) return null;
-
-  const fabStyle = getFABStyle(activeFAB.style || 'primary');
-
   // Animation Interpolations
   const opacity = visibilityAnim;
   const slideUp = visibilityAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [20, 0],
   });
+
+  // Calculate effective translation: ignore tab bar scroll if we are locked hidden
+  // OR if there is an active trip (HUD mode)
+  const effectiveTranslateY = useMemo(() => {
+    const isHudMode = activeFAB?.hasAnyVisitActive || isTabBarLockedHidden;
+
+    if (isHudMode && activeFAB?.visible) {
+      return slideUp;
+    }
+    return Animated.add(translateY, slideUp);
+  }, [translateY, slideUp, isTabBarLockedHidden, activeFAB?.visible, activeFAB?.hasAnyVisitActive]);
+
+  if (!activeFAB) return null;
+
+  const fabStyle = getFABStyle(activeFAB.style || 'primary');
 
   const handlePress = () => {
     if (activeFAB?.loading) return;
@@ -76,12 +87,9 @@ const GlobalFAB = () => {
   };
 
   const handleServiceSelect = (serviceId) => {
-    // Map service ID to mode and trigger the appropriate action
-
     if (activeFAB?.onLongPress) {
       activeFAB.onLongPress(serviceId);
     } else if (activeFAB?.onPress) {
-      // Fallback: if current mode differs, trigger press to toggle
       const currentMode = activeFAB.mode;
       if (currentMode !== serviceId) {
         activeFAB.onPress();
@@ -89,7 +97,6 @@ const GlobalFAB = () => {
     }
   };
 
-  // Get current mode from FAB context
   const currentMode = activeFAB?.mode === 'emergency' ? 'emergency' : 'booking';
 
   return (
@@ -101,7 +108,7 @@ const GlobalFAB = () => {
             bottom: fabBottom,
             opacity,
             transform: [
-              { translateY: Animated.add(translateY, slideUp) },
+              { translateY: effectiveTranslateY },
               { scale: scaleAnim },
             ],
           },
@@ -120,19 +127,16 @@ const GlobalFAB = () => {
               styles.container,
               {
                 backgroundColor: fabStyle.backgroundColor,
-                // Dynamic sizing: circle on tabs, pill when label present
                 width: hasLabel ? undefined : TAB_SIZE,
                 minWidth: TAB_SIZE,
                 height: TAB_SIZE,
                 borderRadius: TAB_SIZE / 2,
                 paddingHorizontal: hasLabel ? 20 : 0,
-                // Glow Effect
                 shadowColor: activeFAB.style === 'emergency' ? COLORS.emergency : (activeFAB.style === 'primary' ? COLORS.brandPrimary : "#000"),
                 shadowOpacity: isDarkMode ? 0.4 : 0.25,
               }
             ]}
           >
-            {/* Icon */}
             <View style={styles.iconWrapper}>
               {activeFAB.loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
@@ -143,7 +147,6 @@ const GlobalFAB = () => {
               )}
             </View>
 
-            {/* Label (shows on stack pages) */}
             {hasLabel && (
               <View style={styles.labelWrapper}>
                 <Text style={styles.labelText} numberOfLines={1}>
@@ -157,7 +160,6 @@ const GlobalFAB = () => {
               </View>
             )}
 
-            {/* Badge Seal */}
             {activeFAB.badge && (
               <View style={styles.badgeSeal}>
                 <Text style={styles.badgeText}>{activeFAB.badge}</Text>
@@ -167,7 +169,6 @@ const GlobalFAB = () => {
         </Pressable>
       </Animated.View>
 
-      {/* Hidden Service Picker Modal */}
       <ServicePickerModal
         visible={showServicePicker}
         onClose={() => setShowServicePicker(false)}
@@ -188,7 +189,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    // Premium Shadow
     shadowOffset: { width: 0, height: 6 },
     shadowRadius: 12,
     elevation: 10,

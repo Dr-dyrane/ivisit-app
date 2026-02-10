@@ -40,236 +40,251 @@ export function UnifiedScrollProvider({ children }) {
   const titleOpacity = useRef(new Animated.Value(1)).current;
 
   // State tracking
+  // State tracking
   const lastScrollY = useRef(0);
   const isAnimating = useRef(false);
   const isTabHidden = useRef(false);
   const isHeaderHidden = useRef(false);
-  const isLockedHidden = useRef(false);
+  const isTabBarLockedHidden = useRef(false);
+  const isHeaderLockedHidden = useRef(false);
   const debounceTimer = useRef(null);
 
   // Reactive state
-  const [isTabBarHidden, setIsTabBarHidden] = useState(false);
-  const [isTabBarLockedHidden, setIsTabBarLockedHidden] = useState(false);
+  const [isTabBarHiddenState, setIsTabBarHiddenState] = useState(false);
+  const [isTabBarLockedHiddenState, setIsTabBarLockedHiddenState] = useState(false);
+  const [isHeaderLockedHiddenState, setIsHeaderLockedHiddenState] = useState(false);
 
-  // Synchronized show animations with smooth bezier easing
+  // Synchronized show animations
   const showBoth = useCallback(() => {
-    if (isLockedHidden.current) return;
-    if (!isTabHidden.current && !isHeaderHidden.current) return;
     if (isAnimating.current) return;
 
-    isAnimating.current = true;
-    isTabHidden.current = false;
-    isHeaderHidden.current = false;
-    setIsTabBarHidden(false);
+    const canShowTab = !isTabBarLockedHidden.current;
+    const canShowHeader = !isHeaderLockedHidden.current;
 
-    // Smooth parallel animations with Apple-style easing
-    Animated.parallel([
-      // Tab bar slides up with smooth ease-out
-      Animated.timing(tabTranslateY, {
+    if (!canShowTab && !canShowHeader) return;
+    if (isTabHidden.current === !canShowTab && isHeaderHidden.current === !canShowHeader) return;
+
+    isAnimating.current = true;
+
+    const animations = [];
+    if (canShowTab && isTabHidden.current) {
+      animations.push(Animated.timing(tabTranslateY, {
         toValue: 0,
         duration: ANIMATION_DURATION,
         easing: Easing.bezier(...EASING_BEZIER.SHOW),
         useNativeDriver: true,
-      }),
-      // Header fades in with smooth ease-out
-      Animated.timing(headerOpacity, {
+      }));
+      isTabHidden.current = false;
+      setIsTabBarHiddenState(false);
+    }
+
+    if (canShowHeader && isHeaderHidden.current) {
+      animations.push(Animated.timing(headerOpacity, {
         toValue: 1,
         duration: ANIMATION_DURATION,
         easing: Easing.bezier(...EASING_BEZIER.SHOW),
         useNativeDriver: true,
-      }),
-      // Title fades in with slight delay for natural feel
-      Animated.timing(titleOpacity, {
+      }));
+      animations.push(Animated.timing(titleOpacity, {
         toValue: 1,
-        duration: ANIMATION_DURATION + 50, // Slightly longer for title
+        duration: ANIMATION_DURATION + 50,
         easing: Easing.bezier(...EASING_BEZIER.SHOW),
         useNativeDriver: true,
-      }),
-    ]).start(() => {
+      }));
+      isHeaderHidden.current = false;
+    }
+
+    if (animations.length > 0) {
+      Animated.parallel(animations).start(() => {
+        isAnimating.current = false;
+      });
+    } else {
       isAnimating.current = false;
-    });
+    }
   }, [tabTranslateY, headerOpacity, titleOpacity]);
 
-  // Synchronized hide animations with smooth bezier easing
+  // Synchronized hide animations
   const hideBoth = useCallback(() => {
-    if (isTabHidden.current && isHeaderHidden.current) return;
     if (isAnimating.current) return;
+    if (isTabHidden.current && isHeaderHidden.current) return;
 
     isAnimating.current = true;
-    isTabHidden.current = true;
-    isHeaderHidden.current = true;
-    setIsTabBarHidden(true);
 
-    // Smooth parallel animations with Apple-style ease-in
     Animated.parallel([
-      // Tab bar slides down with smooth ease-in
       Animated.timing(tabTranslateY, {
         toValue: HIDE_DISTANCE,
         duration: ANIMATION_DURATION,
         easing: Easing.bezier(...EASING_BEZIER.HIDE),
         useNativeDriver: true,
       }),
-      // Header fades out with smooth ease-in
       Animated.timing(headerOpacity, {
         toValue: 0,
         duration: ANIMATION_DURATION,
         easing: Easing.bezier(...EASING_BEZIER.HIDE),
         useNativeDriver: true,
       }),
-      // Title fades out with smooth ease-in
       Animated.timing(titleOpacity, {
         toValue: 0,
-        duration: ANIMATION_DURATION - 50, // Slightly faster for title
+        duration: ANIMATION_DURATION - 50,
         easing: Easing.bezier(...EASING_BEZIER.HIDE),
         useNativeDriver: true,
       }),
     ]).start(() => {
+      isTabHidden.current = true;
+      isHeaderHidden.current = true;
+      setIsTabBarHiddenState(true);
       isAnimating.current = false;
     });
   }, [tabTranslateY, headerOpacity, titleOpacity, HIDE_DISTANCE]);
 
-  // Debounced scroll handler with improved sensitivity
   const handleScroll = useCallback((event) => {
-    if (isLockedHidden.current) return;
+    // Lock check - if both locked, don't handle scroll
+    if (isTabBarLockedHidden.current && isHeaderLockedHidden.current) return;
 
-    // Extract scroll position immediately before event is recycled
     const currentScrollY = event.nativeEvent.contentOffset.y;
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
-    // Clear existing debounce timer
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
-
-    // Debounce the scroll handling
     debounceTimer.current = setTimeout(() => {
       const diff = currentScrollY - lastScrollY.current;
-
-      // Higher threshold to reduce jitter
       if (Math.abs(diff) < MIN_SCROLL_DIFF) return;
 
-      // Don't hide if near top
       if (currentScrollY < SCROLL_THRESHOLD) {
         showBoth();
         lastScrollY.current = currentScrollY;
         return;
       }
 
-      // Determine scroll direction and animate accordingly
       if (diff > 0) {
-        // Scrolling down - hide both with smooth ease-in
         hideBoth();
       } else {
-        // Scrolling up - show both with smooth ease-out
         showBoth();
       }
-
       lastScrollY.current = currentScrollY;
     }, DEBOUNCE_DELAY);
   }, [hideBoth, showBoth]);
 
-  // Reset both animations with spring easing for natural feel
   const resetBoth = useCallback(() => {
-    if (isLockedHidden.current) return;
-
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
     lastScrollY.current = 0;
-    isTabHidden.current = false;
-    isHeaderHidden.current = false;
-    setIsTabBarHidden(false);
 
-    // Spring-based reset for natural movement
-    Animated.parallel([
-      Animated.spring(tabTranslateY, {
+    const animations = [];
+    if (!isTabBarLockedHidden.current) {
+      animations.push(Animated.spring(tabTranslateY, {
         toValue: 0,
-        tension: 100,  // Gentle spring tension
-        friction: 8,   // Smooth damping
+        tension: 100,
+        friction: 8,
         useNativeDriver: true,
-      }),
-      Animated.spring(headerOpacity, {
+      }));
+      isTabHidden.current = false;
+      setIsTabBarHiddenState(false);
+    }
+
+    if (!isHeaderLockedHidden.current) {
+      animations.push(Animated.spring(headerOpacity, {
         toValue: 1,
         tension: 100,
         friction: 8,
         useNativeDriver: true,
-      }),
-      Animated.spring(titleOpacity, {
+      }));
+      animations.push(Animated.spring(titleOpacity, {
         toValue: 1,
         tension: 100,
         friction: 8,
         useNativeDriver: true,
-      }),
-    ]).start();
+      }));
+      isHeaderHidden.current = false;
+    }
+
+    if (animations.length > 0) {
+      Animated.parallel(animations).start();
+    }
   }, [tabTranslateY, headerOpacity, titleOpacity]);
 
-  // Lock functionality
-  const lockBothHidden = useCallback(() => {
-    if (isLockedHidden.current) return;
-    isLockedHidden.current = true;
-    setIsTabBarLockedHidden(true);
-    hideBoth();
-  }, [hideBoth]);
+  const lockTabBarHidden = useCallback(() => {
+    if (isTabBarLockedHidden.current) return;
+    isTabBarLockedHidden.current = true;
+    setIsTabBarLockedHiddenState(true);
 
-  const unlockBothHidden = useCallback(() => {
-    if (!isLockedHidden.current) return;
-    isLockedHidden.current = false;
-    setIsTabBarLockedHidden(false);
-  }, []);
+    // Animate tab specifically
+    Animated.timing(tabTranslateY, {
+      toValue: HIDE_DISTANCE,
+      duration: ANIMATION_DURATION,
+      easing: Easing.bezier(...EASING_BEZIER.HIDE),
+      useNativeDriver: true,
+    }).start(() => {
+      isTabHidden.current = true;
+      setIsTabBarHiddenState(true);
+    });
+  }, [tabTranslateY, HIDE_DISTANCE]);
 
-  // Individual controls for fine-grained control
-  const showTabBar = useCallback(() => {
-    if (isLockedHidden.current || !isTabHidden.current) return;
+  const unlockTabBarHidden = useCallback(() => {
+    if (!isTabBarLockedHidden.current) return;
+    isTabBarLockedHidden.current = false;
+    setIsTabBarLockedHiddenState(false);
+    // Explicitly show to ensure navigation reappears
     showBoth();
   }, [showBoth]);
 
-  const hideTabBar = useCallback(() => {
-    if (isLockedHidden.current || isTabHidden.current) return;
-    hideBoth();
-  }, [hideBoth]);
+  const lockHeaderHidden = useCallback(() => {
+    if (isHeaderLockedHidden.current) return;
+    isHeaderLockedHidden.current = true;
+    setIsHeaderLockedHiddenState(true);
 
-  const showHeader = useCallback(() => {
-    if (isLockedHidden.current || !isHeaderHidden.current) return;
+    Animated.parallel([
+      Animated.timing(headerOpacity, {
+        toValue: 0,
+        duration: ANIMATION_DURATION,
+        easing: Easing.bezier(...EASING_BEZIER.HIDE),
+        useNativeDriver: true,
+      }),
+      Animated.timing(titleOpacity, {
+        toValue: 0,
+        duration: ANIMATION_DURATION - 50,
+        easing: Easing.bezier(...EASING_BEZIER.HIDE),
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      isHeaderHidden.current = true;
+    });
+  }, [headerOpacity, titleOpacity]);
+
+  const unlockHeaderHidden = useCallback(() => {
+    if (!isHeaderLockedHidden.current) return;
+    isHeaderLockedHidden.current = false;
+    setIsHeaderLockedHiddenState(false);
     showBoth();
   }, [showBoth]);
-
-  const hideHeader = useCallback(() => {
-    if (isLockedHidden.current || isHeaderHidden.current) return;
-    hideBoth();
-  }, [hideBoth]);
 
   const value = useMemo(() => ({
-    // Tab bar controls
     tabTranslateY,
-    showTabBar,
-    hideTabBar,
-    isTabBarHidden,
-    isTabBarLockedHidden,
-    lockTabBarHidden: lockBothHidden,
-    unlockTabBarHidden: unlockBothHidden,
+    showTabBar: showBoth,
+    hideTabBar: hideBoth,
+    isTabBarHidden: isTabBarHiddenState,
+    isTabBarLockedHidden: isTabBarLockedHiddenState,
+    lockTabBarHidden,
+    unlockTabBarHidden,
     TAB_BAR_HEIGHT,
     HIDE_DISTANCE,
 
-    // Header controls
     headerOpacity,
     titleOpacity,
-    showHeader,
-    hideHeader,
-    lockHeaderHidden: lockBothHidden,
-    unlockHeaderHidden: unlockBothHidden,
+    showHeader: showBoth,
+    hideHeader: hideBoth,
+    isHeaderLockedHidden: isHeaderLockedHiddenState,
+    lockHeaderHidden,
+    unlockHeaderHidden,
     HEADER_HEIGHT,
 
-    // Unified controls
     handleScroll,
     resetBoth,
     showBoth,
     hideBoth,
   }), [
     tabTranslateY, headerOpacity, titleOpacity,
-    showTabBar, hideTabBar, showHeader, hideHeader,
+    isTabBarHiddenState, isTabBarLockedHiddenState, isHeaderLockedHiddenState,
+    lockTabBarHidden, unlockTabBarHidden, lockHeaderHidden, unlockHeaderHidden,
     handleScroll, resetBoth, showBoth, hideBoth,
-    isTabBarHidden, isTabBarLockedHidden,
-    lockBothHidden, unlockBothHidden,
     TAB_BAR_HEIGHT, HIDE_DISTANCE, HEADER_HEIGHT,
   ]);
 

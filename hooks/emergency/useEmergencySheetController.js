@@ -16,6 +16,9 @@ export function useEmergencySheetController({
 	isBedBookingMode,
 	hasAnyVisitActive,
 	onSnapChange,
+	mode,
+	activeAmbulanceTrip,
+	activeBedBooking,
 }) {
 	const insets = useSafeAreaInsets();
 	const { snapIndex: currentSnapIndex, handleSnapChange: updateSnapIndex } =
@@ -29,46 +32,40 @@ export function useEmergencySheetController({
 	const collapsedPercent = Math.round((collapsedHeight / screenHeight) * 100);
 
 	const snapPoints = useMemo(() => {
-		const isCompactMode = !!hasAnyVisitActive && !isDetailMode;
-		// console.log("[useEmergencySheetController] Calculating snapPoints:", {
-		// 	isDetailMode,
-		// 	isTripMode,
-		// 	isBedBookingMode,
-		// 	hasAnyVisitActive,
-		// 	isCompactMode,
-		// 	screenHeight
-		// });
+		// Only use compact mode (restricted height) if we have an active trip IN THE CURRENT MODE.
+		// If we have an active bed but are looking at ambulance call (mode='emergency'), 
+		// we want the full list to find ambulances, so compact should be false.
+		const isCompactMode = !isDetailMode && (
+			(mode === 'emergency' && !!activeAmbulanceTrip?.requestId) ||
+			(mode === 'booking' && !!activeBedBooking?.requestId)
+		);
 
 		let points;
 		if (isDetailMode) {
 			// Hospital selected mode: lock at 55%
 			points = ["55%"];
+		} else if (isCompactMode) {
+			// Active trip/bed reservation: lock at 40% and 50%
+			points = ["40%", "50%"];
 		} else {
-			if (isCompactMode) {
-				// Active trip/bed reservation: lock at 40% and 50%
-				points = ["40%", "50%"];
-			} else {
-				// Calculate collapsed height based on actual screen dimensions
-				const collapsedHeight = TAB_BAR_HEIGHT + insets.bottom + SEARCH_BAR_AREA + MARGIN_ABOVE_TAB_BAR;
-				const collapsedPercent = Math.round((collapsedHeight / screenHeight) * 100);
-				
-				
-				// Ensure collapsed position is within safe bounds and accounts for different screen sizes
-				const safeCollapsed = Number.isFinite(collapsedPercent)
-					? Math.min(MAX_COLLAPSED_PERCENT, Math.max(MIN_COLLAPSED_PERCENT, collapsedPercent))
-					: DEFAULT_COLLAPSED_PERCENT;
-				
-				// Ensure proper spacing between snap points
-				const halfExpanded = Math.max(safeCollapsed + 10, 50);
-				const expanded = Math.min(92, Math.max(halfExpanded + 10, 82));
-				
-				points = [`${safeCollapsed}%`, `${halfExpanded}%`, `${expanded}%`];
-			}
+			// Standard mode: 3 points (collapsed, half, expanded)
+			// Calculate collapsed height based on actual screen dimensions
+			const collapsedHeight = TAB_BAR_HEIGHT + insets.bottom + SEARCH_BAR_AREA + MARGIN_ABOVE_TAB_BAR;
+			const collapsedPercent = Math.round((collapsedHeight / screenHeight) * 100);
+
+			// Ensure collapsed position is within safe bounds
+			const safeCollapsed = Number.isFinite(collapsedPercent)
+				? Math.min(MAX_COLLAPSED_PERCENT, Math.max(MIN_COLLAPSED_PERCENT, collapsedPercent))
+				: DEFAULT_COLLAPSED_PERCENT;
+
+			const halfExpanded = Math.max(safeCollapsed + 10, 50);
+			const expanded = Math.min(92, Math.max(halfExpanded + 10, 82));
+
+			points = [`${safeCollapsed}%`, `${halfExpanded}%`, `${expanded}%`];
 		}
 
-		// console.log("[useEmergencySheetController] Final snapPoints:", points);
 		return points;
-	}, [collapsedPercent, isDetailMode, isTripMode, isBedBookingMode, screenHeight, hasAnyVisitActive, insets.bottom]);
+	}, [isDetailMode, mode, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId, insets.bottom, screenHeight]);
 
 	const handleSheetChange = useCallback(
 		(index) => {

@@ -34,11 +34,11 @@ export function HeaderStateProvider({ children }) {
     });
   }, []);
 
-  const value = {
+  const value = React.useMemo(() => ({
     headerState,
     setHeaderState,
     resetHeaderState,
-  };
+  }), [headerState, setHeaderState, resetHeaderState]);
 
   return (
     <HeaderStateContext.Provider value={value}>

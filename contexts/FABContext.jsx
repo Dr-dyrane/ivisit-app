@@ -34,7 +34,7 @@
  * 5. Add debug logs
  */
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
@@ -51,7 +51,23 @@ import { COLORS } from '../constants/colors';
  * - Support for advanced features (labels, sub-text, loading states)
  */
 
-const FABContext = createContext(null);
+/**
+ * 💡 STABILITY NOTE / ROLLBACK GUIDE:
+ * This context was split into State and Actions on 2026-02-09 to resolve "Maximum Update Depth" errors.
+ * 
+ * WHY: High-frequency UI components (like EmergencyRequestModal) register FABs. If they subscribe 
+ * to the global FAB state (activeFAB), every registration triggers a re-render of the registrant, 
+ * causing a lifecycle loop.
+ * 
+ * ARCHITECTURE Change:
+ * - FABActionsContext: Holds stable dispatchers (register/unregister). Subscribers DO NOT re-render on FAB changes.
+ * - FABStateContext: Holds the active FAB state. Only GlobalFAB and components needing state subscribe here.
+ * 
+ * ROLLBACK: If you need to revert, merge these back into one FABContext, but be wary of infinite loops 
+ * in useFocusEffect/useEffect registrations.
+ */
+const FABStateContext = createContext(null);
+const FABActionsContext = createContext(null);
 
 // Platform-specific FAB base dimensions
 // iOS: More generous bottom spacing due to safe area and home indicator
@@ -135,171 +151,142 @@ const FAB_STYLES = {
 };
 
 export function FABProvider({ children }) {
-  // Get safe area insets for Android navigation bar
   const insets = useSafeAreaInsets();
-
-  // Track current tab for default fallback
   const [currentTab, setCurrentTab] = useState('index');
-
-  // Track FAB registrations with unique IDs
-  const [registrations, setRegistrations] = useState(new Map());
-
-  // Track if we're in a stack screen (hide FAB on stacks)
+  const registrationsRef = useRef(new Map());
+  const [activeFAB, setActiveFAB] = useState(null);
   const [isInStack, setIsInStack] = useState(false);
 
-  // Calculate dimensions with insets for Android
   const dimensions = useMemo(() => {
     const base = getBaseDimensions();
     return {
       height: base.height,
-      // Android: add insets.bottom for devices with nav bars (gesture/3-button)
       offset: Platform.OS === 'android' ? base.baseOffset + insets.bottom : base.baseOffset,
     };
   }, [insets.bottom]);
 
-  // Register FAB with unique ID and priority system
-  const registerFAB = useCallback((id, config) => {
-    setRegistrations(prev => {
-      const newMap = new Map(prev);
-      newMap.set(id, { ...config, id });
-      return newMap;
-    });
-  }, []);
+  const resolveActiveFAB = useCallback(() => {
+    const registrations = registrationsRef.current;
+    if (!registrations) return null;
 
-  // Unregister FAB by ID
-  const unregisterFAB = useCallback((id) => {
-    setRegistrations(prev => {
-      const newMap = new Map(prev);
-      newMap.delete(id);
-      return newMap;
-    });
-  }, []);
+    const all = Array.from(registrations.values());
+    const visible = all.filter(f => f.visible && !f.disabled);
 
-  // Update current tab (called by tab navigator)
-  const setActiveTab = useCallback((tabName) => {
-    setCurrentTab(tabName);
-  }, []);
-
-  // Enter/exit stack screen (hide FAB on stacks)
-  const enterStack = useCallback(() => {
-    setIsInStack(true);
-  }, []);
-
-  const exitStack = useCallback(() => {
-    setIsInStack(false);
-  }, []);
-
-  // Resolve active FAB based on priority and visibility
-  const activeFAB = useMemo(() => {
-    // Get all registered FABs (including hidden ones)
-    const allRegistrations = Array.from(registrations.values());
-
-    // Get visible FABs from registrations
-    const visibleFABs = allRegistrations.filter(fab => fab.visible && !fab.disabled);
-
-    // Check if any registered FAB explicitly allows stack display
-    const stackOverrideFABs = visibleFABs.filter(fab => fab.allowInStack);
-
-    // If we have stack override FABs, use them even in stack
-    if (stackOverrideFABs.length > 0) {
-      stackOverrideFABs.sort((a, b) => {
-        const priorityDiff = (b.priority || 5) - (a.priority || 5);
-        if (priorityDiff !== 0) return priorityDiff;
-        return (b.id || '').localeCompare(a.id || '');
-      });
-      return stackOverrideFABs[0];
+    // 1. Stack Overrides (highest priority)
+    const stackOverrides = visible.filter(f => f.allowInStack);
+    if (stackOverrides.length > 0) {
+      stackOverrides.sort((a, b) => (b.priority || 5) - (a.priority || 5) || (b.id || '').localeCompare(a.id || ''));
+      return stackOverrides[0];
     }
 
-    // Always hide in stack screens (unless overridden above)
+    // 2. Hide on stacks unless overridden
     if (isInStack) return null;
 
-    // IMPORTANT: If ANY screen has registered a FAB (even with visible: false),
-    // that screen is actively managing the FAB state. Do NOT fall back to defaults.
-    // Only fall back to tab defaults when NO registrations exist at all.
-    if (allRegistrations.length > 0) {
-      // A screen has registered - respect its visibility setting
-      if (visibleFABs.length === 0) {
-        // Screen registered but set visible: false - hide the FAB
-        return null;
-      }
-
-      // Sort by priority (highest first), then by registration order
-      visibleFABs.sort((a, b) => {
-        const priorityDiff = (b.priority || 5) - (a.priority || 5);
-        if (priorityDiff !== 0) return priorityDiff;
-        return (b.id || '').localeCompare(a.id || '');
-      });
-
-      // FAB competition and winner - no debug logs
-      const winner = visibleFABs[0];
-      return winner;
+    // 3. Contextual FABs
+    if (all.length > 0) {
+      if (visible.length === 0) return null;
+      visible.sort((a, b) => (b.priority || 5) - (a.priority || 5) || (b.id || '').localeCompare(a.id || ''));
+      return visible[0];
     }
 
-    // No registrations at all - fall back to tab default
+    // 4. Tab Defaults
     const tabDefault = TAB_DEFAULTS[currentTab] || TAB_DEFAULTS.index;
     return tabDefault.visible ? tabDefault : null;
-  }, [registrations, currentTab, isInStack]);
+  }, [currentTab, isInStack]);
 
-  // Get style configuration for active FAB
-  const getFABStyle = useCallback((style) => {
-    return FAB_STYLES[style] || FAB_STYLES.primary;
+  const updateWinner = useCallback(() => {
+    const winner = resolveActiveFAB();
+    setActiveFAB(prev => {
+      if (!prev && !winner) return null;
+      if (prev && winner &&
+        prev.id === winner.id &&
+        prev.visible === winner.visible &&
+        prev.icon === winner.icon &&
+        prev.label === winner.label &&
+        prev.loading === winner.loading &&
+        prev.style === winner.style) {
+        return prev;
+      }
+      return winner;
+    });
+  }, [resolveActiveFAB]);
+
+  // Sync winner when resolveActiveFAB changes (tab/stack change)
+  const updateWinnerRef = useRef(updateWinner);
+  useEffect(() => {
+    updateWinnerRef.current = updateWinner;
+    updateWinner();
+  }, [updateWinner]);
+
+  const registerFAB = useCallback((id, config) => {
+    registrationsRef.current.set(id, { ...config, id });
+    updateWinnerRef.current();
   }, []);
 
-  const value = {
-    // Registration system
+  const unregisterFAB = useCallback((id) => {
+    registrationsRef.current.delete(id);
+    updateWinnerRef.current();
+  }, []);
+
+  const setActiveTab = useCallback((tabName) => setCurrentTab(tabName), []);
+  const enterStack = useCallback(() => setIsInStack(true), []);
+  const exitStack = useCallback(() => setIsInStack(false), []);
+  const getFABStyle = useCallback((style) => FAB_STYLES[style] || FAB_STYLES.primary, []);
+
+  const stateValue = useMemo(() => ({
+    currentTab,
+    isInStack,
+    activeFAB,
+    dimensions
+  }), [currentTab, isInStack, activeFAB, dimensions]);
+
+  const actionsValue = useMemo(() => ({
     registerFAB,
     unregisterFAB,
-
-    // Tab and stack management
     setActiveTab,
-    currentTab,
     enterStack,
     exitStack,
-    isInStack,
-
-    // Active FAB state
-    activeFAB,
     getFABStyle,
-
-    // Platform-specific dimensions (with insets for Android)
-    dimensions,
-
-    // Legacy support (for backward compatibility)
-    updateFAB: useCallback((updates) => {
-      console.warn('updateFAB is deprecated, use registerFAB with unique ID');
-    }, []),
-  };
+    updateFAB: () => console.warn('updateFAB is deprecated'),
+  }), [registerFAB, unregisterFAB, setActiveTab, enterStack, exitStack, getFABStyle]);
 
   return (
-    <FABContext.Provider value={value}>
-      {children}
-    </FABContext.Provider>
+    <FABStateContext.Provider value={stateValue}>
+      <FABActionsContext.Provider value={actionsValue}>
+        {children}
+      </FABActionsContext.Provider>
+    </FABStateContext.Provider>
   );
 }
 
-// Hook for screens to register their FAB intent
+// Global hooks
 export function useFAB() {
-  const context = useContext(FABContext);
-  if (!context) {
-    throw new Error('useFAB must be used within a FABProvider');
-  }
-  return context;
+  const state = useContext(FABStateContext);
+  const actions = useContext(FABActionsContext);
+  if (!state || !actions) throw new Error('useFAB must be used within a FABProvider');
+  return useMemo(() => ({ ...state, ...actions }), [state, actions]);
 }
 
-// Convenience hook for screens to declare FAB on mount (legacy support)
+export function useFABActions() {
+  const actions = useContext(FABActionsContext);
+  if (!actions) throw new Error('useFABActions must be used within FABProvider');
+  return actions;
+}
+
+export function useFABState() {
+  const state = useContext(FABStateContext);
+  if (!state) throw new Error('useFABState must be used within FABProvider');
+  return state;
+}
+
 export function useFABIntent(fabConfig) {
-  const { registerFAB, unregisterFAB } = useFAB();
+  const { registerFAB, unregisterFAB } = useFABActions();
   const fabId = useMemo(() => `fab-${Date.now()}-${Math.random()}`, []);
 
   useEffect(() => {
-    if (fabConfig) {
-      registerFAB(fabId, fabConfig);
-    }
-    return () => {
-      unregisterFAB(fabId);
-    };
+    if (fabConfig) registerFAB(fabId, fabConfig);
+    return () => unregisterFAB(fabId);
   }, [fabConfig, registerFAB, unregisterFAB, fabId]);
 }
 
-export default FABContext;
-
+export default FABProvider;

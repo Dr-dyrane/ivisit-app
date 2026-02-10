@@ -840,7 +840,7 @@ export function EmergencyProvider({ children }) {
 		};
 	}, [activeBedBooking?.hospitalId, hospitals, updateHospitals]);
 
-	const value = {
+	const value = useMemo(() => ({
 		// State
 		hospitals,
 		selectedHospitalId,
@@ -874,7 +874,37 @@ export function EmergencyProvider({ children }) {
 		updateHospitals,
 		setUserLocation,
 		resetFilters,
-	};
+	}), [
+		hospitals,
+		selectedHospitalId,
+		selectedHospital,
+		filteredHospitals,
+		mode,
+		activeAmbulanceTrip,
+		activeBedBooking,
+		serviceType,
+		selectedSpecialty,
+		viewMode,
+		userLocation,
+		hasActiveFilters,
+		selectHospital,
+		clearSelectedHospital,
+		toggleMode,
+		setMode,
+		startAmbulanceTrip,
+		stopAmbulanceTrip,
+		setAmbulanceTripStatus,
+		startBedBooking,
+		stopBedBooking,
+		setBedBookingStatus,
+		selectSpecialty,
+		selectServiceType,
+		toggleViewMode,
+		setViewMode,
+		updateHospitals,
+		setUserLocation,
+		resetFilters,
+	]);
 
 	return (
 		<EmergencyContext.Provider value={value}>

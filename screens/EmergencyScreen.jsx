@@ -9,7 +9,7 @@ import { useEmergencyUI } from "../contexts/EmergencyUIContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
-import { useFAB } from "../contexts/FABContext";
+import { useFABActions } from "../contexts/FABContext";
 import { useVisits } from "../contexts/VisitsContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -83,33 +83,12 @@ const EmergencyScreen = () => {
 		}, [])
 	);
 
-	// FAB visibility logic - hide when hospital is selected
-	useEffect(() => {
-		const fabId = `emergency-screen-fab-${screenId.current}`;
-
-		// Hide FAB when hospital is selected or there's an active trip
-		const shouldHideFAB = !!selectedHospitalId || !!pendingSelectedHospitalId ||
-			!!activeAmbulanceTrip?.requestId || !!activeBedBooking?.requestId;
-
-		if (!shouldHideFAB) {
-			// Register a hidden FAB to override tab defaults
-			registerFAB(fabId, {
-				visible: false,
-				priority: 20, // Higher priority to override tab defaults
-			});
-		}
-
-		return () => {
-			unregisterFAB(fabId);
-		};
-	}, [selectedHospitalId, pendingSelectedHospitalId, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId, registerFAB, unregisterFAB]);
-
 	const simulationDebugRef = useRef(null);
 	const { resetTabBar, lockTabBarHidden, unlockTabBarHidden } =
 		useTabBarVisibility();
 	const { resetHeader } = useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
-	const { registerFAB, unregisterFAB } = useFAB();
+	const { registerFAB, unregisterFAB } = useFABActions();
 	const { addVisit, updateVisit, cancelVisit, completeVisit } = useVisits();
 	const { user } = useAuth();
 	const { preferences } = usePreferences();
@@ -402,28 +381,21 @@ const EmergencyScreen = () => {
 				leftComponent,
 				rightComponent,
 			});
-		}, [resetTabBar, resetHeader, setHeaderState, mode, leftComponent])
+		}, [resetTabBar, resetHeader, setHeaderState, mode, leftComponent, rightComponent])
 	);
 
-	// Tab bar locking: Prevent tab switching during active trips (Uber-like behavior)
-	// But allow FAB to remain for mode switching between emergency/booking
+	// Tab bar locking: removed aggressive locking to prevent "locked out" feeling.
+	// We now rely on useBottomSheetSnap and GlobalFAB's decoupled translation.
 	useFocusEffect(
 		useCallback(() => {
-			const hasAnyVisitActive = !!activeAmbulanceTrip || !!activeBedBooking;
+			// Always start unlocked when focusing this screen
+			unlockTabBarHidden();
 
-			// Lock tab bar during any active trip or hospital selection
-			if (hasAnyVisitActive || selectedHospital) {
-				lockTabBarHidden();
-			} else {
+			return () => {
+				// Ensure unlocked when leaving
 				unlockTabBarHidden();
-			}
-		}, [
-			activeAmbulanceTrip,
-			activeBedBooking,
-			selectedHospital,
-			lockTabBarHidden,
-			unlockTabBarHidden,
-		])
+			};
+		}, [unlockTabBarHidden])
 	);
 
 	// FAB toggles between emergency and bed booking modes
@@ -433,27 +405,23 @@ const EmergencyScreen = () => {
 	}, [toggleMode]);
 
 	// Enhanced FAB visibility logic that accounts for different modes and snap points
-	const hasAnyVisitActive = !!activeAmbulanceTrip || !!activeBedBooking;
+	const hasAnyVisitActive = !!activeAmbulanceTrip?.requestId || !!activeBedBooking?.requestId;
 	const shouldHideFAB = useMemo(() => {
-		// Always hide when hospital is selected (detail mode)
-		if (selectedHospital) {
-			// FAB HIDING: Hospital selected (detail mode)
-			return true;
-		}
-
-		// During active trips, always show FAB for mode switching regardless of snap position
+		// During active trips, ALWAYS show FAB for mode switching
 		if (hasAnyVisitActive) {
-			// FAB SHOWING: Active trip in progress
 			return false;
 		}
 
-		// Collapsed sheet should hide FAB at all times
-		if (sheetSnapIndex === 0) {
-			// FAB HIDING: Sheet collapsed (index 0)
+		// Hide when hospital is selected (detail mode)
+		if (selectedHospital) {
 			return true;
 		}
 
-		// Show FAB in all other cases
+		// Hide when sheet is collapsed
+		if (sheetSnapIndex === 0) {
+			return true;
+		}
+
 		return false;
 	}, [selectedHospital, hasAnyVisitActive, sheetSnapIndex]);
 
@@ -474,6 +442,7 @@ const EmergencyScreen = () => {
 				icon: mode === "emergency" ? "bed-outline" : "alarm-light-outline",
 				visible: !shouldHideFAB,
 				mode: mode, // Pass mode for context-aware behavior
+				hasAnyVisitActive: hasAnyVisitActive, // Pass trip status for positioning
 				allowInStack: hasAnyVisitActive, // Allow FAB in stack screens when trip is active
 				onPress: handleFloatingButtonPress,
 				style: 'primary',

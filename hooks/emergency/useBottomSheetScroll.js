@@ -3,7 +3,7 @@ import { useTabBarVisibility } from "../../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import { useEmergencyUI } from "../../contexts/EmergencyUIContext";
 
-export const useBottomSheetScroll = ({ currentSnapIndex = 0 } = {}) => {
+export const useBottomSheetScroll = ({ currentSnapIndex = 0, snapPoints = [] } = {}) => {
 	const { handleScroll: handleTabBarScroll } = useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll } = useScrollAwareHeader();
 	const { getLastScrollY, updateScrollPosition } = useEmergencyUI();
@@ -14,7 +14,13 @@ export const useBottomSheetScroll = ({ currentSnapIndex = 0 } = {}) => {
 			const lastY = getLastScrollY();
 			const diff = currentY - lastY;
 
-			if (currentSnapIndex >= 1) {
+			// Check if we are at a full-screen snap point
+			const currentPoint = snapPoints[currentSnapIndex];
+			const isExpandedFullScreen = typeof currentPoint === 'string' && parseInt(currentPoint) > 70;
+
+			// ONLY forward scroll to navigation if we are covering the screen
+			// This prevents the list scroll from hiding tabs while at 50% height
+			if (currentSnapIndex >= 1 && isExpandedFullScreen) {
 				const amplifiedY = lastY + diff * 2;
 				const syntheticEvent = {
 					nativeEvent: { contentOffset: { y: Math.max(0, amplifiedY) } },
@@ -31,6 +37,7 @@ export const useBottomSheetScroll = ({ currentSnapIndex = 0 } = {}) => {
 			currentSnapIndex,
 			getLastScrollY,
 			updateScrollPosition,
+			snapPoints,
 		]
 	);
 

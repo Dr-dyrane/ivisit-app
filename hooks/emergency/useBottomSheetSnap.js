@@ -11,6 +11,9 @@ export const useBottomSheetSnap = ({
 	isBedBookingMode,
 	hasAnyVisitActive,
 	onSnapChange,
+	mode,
+	activeAmbulanceTrip,
+	activeBedBooking,
 }) => {
 	const { hideTabBar, resetTabBar } = useTabBarVisibility();
 	const { resetHeader } = useScrollAwareHeader();
@@ -23,21 +26,16 @@ export const useBottomSheetSnap = ({
 			isBedBookingMode,
 			hasAnyVisitActive,
 			onSnapChange,
+			mode,
+			activeAmbulanceTrip,
+			activeBedBooking,
 		});
-
-	useEffect(() => {
-		if (isDetailMode || isTripMode || isBedBookingMode) {
-			hideTabBar();
-		} else {
-			resetTabBar();
-		}
-	}, [hideTabBar, isBedBookingMode, isDetailMode, isTripMode, resetTabBar]);
 
 	const handleSheetChange = useCallback(
 		(index) => {
 			// Get max index dynamically for handling
 			const maxIndex = Math.max(0, snapPoints.length - 1);
-			
+
 			// Clamp index to valid range to prevent errors
 			const clampedIndex = Math.max(0, Math.min(index, maxIndex));
 
@@ -45,36 +43,27 @@ export const useBottomSheetSnap = ({
 				onSnapChange(clampedIndex);
 			}
 
-			if (isDetailMode) {
-				hideTabBar();
-				return;
-			}
+			// Derive if the current point is actually 'full screen' (e.g. > 70%)
+			const currentPoint = snapPoints[clampedIndex];
+			const isExpandedFullScreen = typeof currentPoint === 'string' && parseInt(currentPoint) > 70;
 
-			// During active trips, always hide tab bar regardless of snap index
-			if (isTripMode || isBedBookingMode) {
+			// ONLY hide tab bar if we are truly covering the screen (> 70%)
+			// This prevents 'locked out' feeling during waiting phases or detail views
+			if (isExpandedFullScreen) {
 				hideTabBar();
-				resetHeader();
-				return;
-			}
-
-			// Standard mode behavior
-			if (clampedIndex === 0) {
+			} else {
 				resetTabBar();
-				resetHeader();
-				updateScrollPosition(0);
-				Keyboard.dismiss();
-			}
-
-			if (clampedIndex >= maxIndex) {
-				hideTabBar();
+				// Also reset header if we are collapsing
+				if (clampedIndex === 0) {
+					resetHeader();
+					updateScrollPosition(0);
+					Keyboard.dismiss();
+				}
 			}
 		},
 		[
 			hideTabBar,
 			isDetailMode,
-			isTripMode,
-			isBedBookingMode,
-			hasAnyVisitActive, // Add hasAnyVisitActive to dependencies
 			resetTabBar,
 			resetHeader,
 			onSnapChange,
