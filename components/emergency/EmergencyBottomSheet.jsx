@@ -69,6 +69,11 @@ const EmergencyBottomSheet = forwardRef(
 		},
 		ref
 	) => {
+		console.log("[EmergencyBottomSheet] Render:", {
+			hasSelectedHospital: !!selectedHospital,
+			selectedHospitalId: selectedHospital?.id,
+			mode
+		});
 		const { isDarkMode } = useTheme();
 		const { user } = useAuth();
 		const { preferences } = usePreferences();
@@ -469,6 +474,7 @@ const EmergencyBottomSheet = forwardRef(
 						)}
 
 						{!isTripMode && !isBedBookingMode && (
+							console.log("[EmergencyBottomSheet] Rendering Hospital List:", { count: hospitals.length }),
 							<EmergencySheetHospitalList
 								visible={sheetPhase !== "collapsed"}
 								hospitals={hospitals}

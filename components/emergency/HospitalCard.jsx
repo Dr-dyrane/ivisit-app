@@ -169,7 +169,7 @@ export default function HospitalCard({
 								name={
 									mode === "booking"
 										? (hospital.availableBeds > 0 ? "bed-patient" : "phone")
-										: (isGoogleHospital || (hospital.ambulances !== undefined && hospital.ambulances <= 0))
+										: (isGoogleHospital) // REMOVED: || (hospital.ambulances !== undefined && hospital.ambulances <= 0))
 											? "phone"
 											: "ambulance"
 								}
@@ -179,7 +179,7 @@ export default function HospitalCard({
 							<Text style={styles.actionText}>
 								{mode === "booking"
 									? (hospital.availableBeds > 0 ? "Secure a Bed" : (hospitalPhone ? "Call Hospital" : "Call 911"))
-									: (isGoogleHospital || (hospital.ambulances !== undefined && hospital.ambulances <= 0))
+									: (isGoogleHospital) // REMOVED: || (hospital.ambulances !== undefined && hospital.ambulances <= 0))
 										? (hospitalPhone ? "Call Hospital" : "Call 911")
 										: "Request Now"
 								}

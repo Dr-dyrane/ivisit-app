@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -44,6 +44,22 @@ const EmergencyRequestModal = React.memo(({
 	const [isRequesting, setIsRequesting] = useState(false);
 	const [requestData, setRequestData] = useState(null);
 	const [errorMessage, setErrorMessage] = useState(null);
+
+	// Zero-ambulance fallback logic
+	const hasAmbulances = useMemo(() => {
+		if (mode !== 'emergency') return true;
+		// Default to true if undefined to avoid blocking valid flows, check explicit 0
+		return (requestHospital?.ambulances ?? 1) > 0;
+	}, [requestHospital, mode]);
+
+	const handleCallHospital = useCallback(() => {
+		const phone = requestHospital?.phone || requestHospital?.google_phone;
+		if (phone) {
+			Linking.openURL(`tel:${phone.replace(/\s/g, '')}`);
+		} else {
+			showToast("No phone number available", "error");
+		}
+	}, [requestHospital?.phone, requestHospital?.google_phone, showToast]);
 
 	// Event handlers
 	const handleSubmitRequest = useCallback(async () => {
@@ -223,6 +239,20 @@ const EmergencyRequestModal = React.memo(({
 					animation: 'prominent',
 					allowInStack: true, // Allow in stack screens
 				});
+			} else if (!hasAmbulances) {
+				// Zero Ambulance Fallback FAB
+				registerFAB('call-hospital', {
+					icon: 'call', // Phone icon
+					label: 'Call Hospital',
+					subText: 'No ambulances available',
+					visible: true,
+					onPress: handleCallHospital,
+					style: 'warning', // Warning style for attention
+					haptic: 'medium',
+					priority: 10,
+					animation: 'prominent',
+					allowInStack: true, // Allow in stack screens
+				});
 			} else if (selectedAmbulanceType) {
 				registerFAB('ambulance-select', {
 					icon: 'checkmark', // Checkmark for unified UI
@@ -263,6 +293,7 @@ const EmergencyRequestModal = React.memo(({
 			// unregisterFAB('ambulance-dispatched'); // Commented out
 			unregisterFAB('ambulance-prompt');
 			unregisterFAB('bed-select');
+			unregisterFAB('call-hospital');
 			// unregisterFAB('bed-dispatched'); // Commented out
 		};
 	}, [
@@ -430,6 +461,53 @@ const EmergencyRequestModal = React.memo(({
 									cardColor={requestColors.card}
 								/>
 							</>
+						) : !hasAmbulances ? (
+							<View style={styles.fallbackContainer}>
+								<View style={[styles.banner, {
+									borderColor: COLORS.warning,
+									backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.05)',
+									alignItems: 'center',
+									paddingVertical: 16
+								}]}>
+									<Ionicons name="alert-circle" size={32} color={COLORS.warning} style={{ marginBottom: 8 }} />
+									<Text style={{
+										fontSize: 16,
+										fontWeight: "700",
+										color: requestColors.text,
+										textAlign: 'center',
+										marginBottom: 4
+									}}>
+										No Ambulances Available
+									</Text>
+									<Text style={{
+										fontSize: 14,
+										color: requestColors.textMuted,
+										textAlign: 'center',
+										lineHeight: 20
+									}}>
+										This hospital has no ambulances stationed.{'\n'}Please call directly for assistance.
+									</Text>
+								</View>
+
+								<Pressable
+									style={({ pressed }) => ({
+										backgroundColor: COLORS.success,
+										flexDirection: 'row',
+										alignItems: 'center',
+										justifyContent: 'center',
+										paddingVertical: 16,
+										borderRadius: 12,
+										marginTop: 16,
+										gap: 8,
+										opacity: pressed ? 0.9 : 1,
+										transform: [{ scale: pressed ? 0.98 : 1 }]
+									})}
+									onPress={handleCallHospital}
+								>
+									<Ionicons name="call" size={20} color="#FFF" />
+									<Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>Call Hospital</Text>
+								</Pressable>
+							</View>
 						) : (
 							<View style={styles.ambulanceSelectionContainer}>
 								{AMBULANCE_TYPES.map((type, index) => (
@@ -506,6 +584,11 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		marginTop: 12,
 		marginBottom: 6,
+	},
+	fallbackContainer: {
+		width: '100%',
+		paddingVertical: 20,
+		paddingHorizontal: 4,
 	},
 });
 

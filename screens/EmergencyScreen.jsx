@@ -133,6 +133,7 @@ const EmergencyScreen = () => {
 	// Data state from EmergencyContext
 	const {
 		hospitals,
+		allHospitals,
 		selectedHospitalId,
 		selectedHospital,
 		filteredHospitals,
@@ -500,8 +501,10 @@ const EmergencyScreen = () => {
 
 			// Find hospital and check availability fallbacks
 			const hospital = hospitals.find(h => h.id === hospitalId);
+			console.log("[EmergencyScreen] handleHospitalSelect:", { hospitalId, mode, found: !!hospital });
+
 			const isGoogleHospital = hospital?.importedFromGoogle && hospital?.importStatus !== 'verified';
-			const noAmbulances = mode === 'emergency' && hospital?.ambulances !== undefined && hospital.ambulances <= 0;
+			const noAmbulances = false; // mode === 'emergency' && hospital?.ambulances !== undefined && hospital.ambulances <= 0;
 			const noBeds = mode === 'booking' && hospital?.availableBeds !== undefined && hospital.availableBeds <= 0;
 
 			const hasActiveByMode =
@@ -601,8 +604,8 @@ const EmergencyScreen = () => {
 
 	// Hook: Search and filter logic
 	const { searchFilteredHospitals, handleSearch } = useSearchFiltering({
-		hospitals,
-		filteredHospitals,
+		hospitals: allHospitals || hospitals,
+		filteredHospitals: filteredHospitals || hospitals,
 		mode,
 		selectedSpecialty,
 		searchQuery,
@@ -745,7 +748,7 @@ const EmergencyScreen = () => {
 		if (!activeAmbulanceTrip) return searchFilteredHospitals;
 
 		const routeHospital =
-			hospitals.find((h) => h?.id === activeAmbulanceTrip.hospitalId) ?? null;
+			(allHospitals || hospitals).find((h) => h?.id === activeAmbulanceTrip.hospitalId) ?? null;
 		if (!routeHospital) return searchFilteredHospitals;
 
 		const alreadyIncluded = searchFilteredHospitals.some(
@@ -754,7 +757,7 @@ const EmergencyScreen = () => {
 		return alreadyIncluded
 			? searchFilteredHospitals
 			: [...searchFilteredHospitals, routeHospital];
-	}, [activeAmbulanceTrip, hospitals, searchFilteredHospitals]);
+	}, [activeAmbulanceTrip, hospitals, allHospitals, searchFilteredHospitals]);
 
 	useEffect(() => {
 		// console.log("[EmergencyScreen] Active State:", {
@@ -896,7 +899,7 @@ const EmergencyScreen = () => {
 				selectedSpecialty={selectedSpecialty}
 				specialties={specialties}
 				hospitals={searchFilteredHospitals}
-				allHospitals={hospitals}
+				allHospitals={allHospitals || hospitals}
 				selectedHospital={selectedHospital}
 				activeAmbulanceTrip={activeAmbulanceTrip}
 				activeBedBooking={activeBedBooking}

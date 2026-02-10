@@ -549,37 +549,46 @@ export function EmergencyProvider({ children }) {
 
 	// Get selected hospital object
 	const selectedHospital = useMemo(() => {
-		return hospitals.find(h => h.id === selectedHospitalId) || null;
+		const hospital = hospitals.find(h => h.id === selectedHospitalId) || null;
+		if (selectedHospitalId) {
+			console.log("[EmergencyContext] selectedHospital computation:", {
+				selectedHospitalId,
+				found: !!hospital,
+				totalHospitals: hospitals.length,
+				firstHospitalId: hospitals[0]?.id
+			});
+		}
+		return hospital;
 	}, [hospitals, selectedHospitalId]);
 
 	// Filter hospitals based on current mode and criteria
 	const filteredHospitals = useMemo(() => {
-		if (!hospitals || hospitals.length === 0) return [];
+		if (!hospitals || hospitals.length === 0) {
+			console.log("[EmergencyContext] filteredHospitals: No hospitals loaded");
+			return [];
+		}
+
+		console.log("[EmergencyContext] Filtering hospitals...", { mode, serviceType, total: hospitals.length });
 
 		return hospitals.filter((hospital) => {
 			if (!hospital) return false;
 
+			// Emergency Mode Logic
 			if (mode === EmergencyMode.EMERGENCY) {
-				// Emergency: show hospitals that match service type if selected
-				// 🔴 REVERT POINT: Always show hospitals even if no real-time availability
-				// PREVIOUS: if (hospital.status !== 'available') return false;
-				// NEW: Show all hospitals, UI handles fallback to 911/Call
-				// REVERT TO: if (hospital.status !== 'available') return false;
+				// 🔴 FAILSAFE: If no service type is selected, we MUST return true.
+				if (!serviceType || serviceType === "null" || serviceType === null) {
+					return true;
+				}
 
-				if (!serviceType) return true; // Show all if no filter selected
-				// Ensure case-insensitive comparison
-				const type = serviceType.toLowerCase();
-				return (hospital.serviceTypes || []).some(t => t.toLowerCase() === type) || (hospital.type || "").toLowerCase() === type;
+				const type = typeof serviceType === 'string' ? serviceType.toLowerCase() : "";
+				const hasServiceType = (hospital.serviceTypes || []).some(t => t.toLowerCase() === type);
+				const matchesTypeProp = (hospital.type || "").toLowerCase() === type;
+
+				return hasServiceType || matchesTypeProp;
 			} else {
-				// Booking: show hospitals that match specialty if selected
-				// 🔴 REVERT POINT: Relaxed bed availability check
-				// PREVIOUS: if (hospital.status !== 'available') return false; if (!hospital.availableBeds || hospital.availableBeds <= 0) return false;
-				// NEW: Show all hospitals with specialty, UI handles fallback
-				// REVERT TO: The block above
-
+				// Booking Mode: Filter by Specialty
 				if (!selectedSpecialty) return true; // Show all if no specialty selected
 
-				// Better specialty matching - case insensitive and more robust
 				const hospitalSpecialties = hospital.specialties || [];
 				return hospitalSpecialties.some(specialty =>
 					specialty &&
@@ -874,6 +883,7 @@ export function EmergencyProvider({ children }) {
 			// State
 			hospitals: filteredHospitals,
 			allHospitals: hospitals,
+			filteredHospitals,
 			selectedHospitalId,
 			selectedHospital,
 			mode,
