@@ -99,4 +99,25 @@ We prioritize:
 - [x] Emergency Contacts decomposed.
 - [ ] ProfileScreen UI decomposition.
 
----
+## 6. Circular Dependency Watchlist
+
+We must be vigilant about "Hook vs Context" naming collisions and circular dependencies.
+
+*   **Rule**: A Context (`AuthProvider`) must never import a Hook (`useSignUp`) that depends on that same Context.
+*   **Current Risk**: `contexts/LoginContext.jsx` exports `useLogin` (context accessor), and `hooks/auth/useLogin.js` exports `useLogin` (logic controller).
+    *   *Mitigation*: Always alias the logic hook when importing: `import { useLogin as useLoginHook } from "../../hooks/auth";`
+
+## 7. The Hit List (Files > 300 Lines)
+
+*Updated: 2026-02-10*
+
+| File | Lines | Priority | Plan |
+|------|-------|----------|------|
+| `screens/EmergencyScreen.jsx` | 959 | 🚨 Critical | Complex UI + Map logic. Split into `EmergencyMap`, `EmergencyStatus`, `EmergencyActions`. |
+| `contexts/EmergencyContext.jsx` | 844 | 🚨 Critical | Too much logic in Context. Extract to `services/emergencyService.js` and `hooks/useEmergencyLogic.js`. |
+| `screens/ProfileScreen.jsx` | 902 | 🚨 Critical | Split into `ProfileHeader`, `ProfileStats`, `ProfileSettings`. |
+| `screens/SettingsScreen.jsx` | 754 | 🟠 High | Extract sub-sections (Notifications, Privacy, Account) to components. |
+| `components/login/LoginInputModal.jsx` | 671 | 🟠 High | Further decompose. Extract `PasswordLogic` and `OTPLogic` into sub-hooks or components. |
+| `screens/SearchScreen.jsx` | 698 | 🟡 Medium | Already improved. Further split UI into `SearchFilters` and `SearchResults`. |
+| `screens/FullScreenEmergencyMap.jsx` | 652 | 🟡 Medium | Map logic is heavy. Consider custom hook for MapView state. |
+| `services/authService.js` | 600 | 🟢 Stable | Acceptable size for a core service facade. |

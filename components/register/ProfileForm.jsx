@@ -16,6 +16,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useRegistration } from "../../contexts/RegistrationContext";
 import { useImageUpload } from "../../hooks/user/useImageUpload";
 import { COLORS } from "../../constants/colors";
+import { isValidName } from "../../utils/validation";
 
 /**
  * ProfileForm - iVisit Registration
