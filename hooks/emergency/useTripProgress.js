@@ -30,7 +30,7 @@ export const useTripProgress = ({
 	}, [tripProgress]);
 
 	const formattedRemaining = useMemo(() => {
-		if (!Number.isFinite(remainingSeconds)) return null;
+		if (!Number.isFinite(remainingSeconds)) return "--";
 		const mins = Math.floor(remainingSeconds / 60);
 		const secs = remainingSeconds % 60;
 		if (mins <= 0) return `${secs}s`;

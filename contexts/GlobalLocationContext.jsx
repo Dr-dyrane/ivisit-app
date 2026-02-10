@@ -32,24 +32,24 @@ export function GlobalLocationProvider({ children }) {
 	// Request location permission and get location
 	const requestLocationPermission = useCallback(async () => {
 		console.log("[GlobalLocationContext] Requesting location permission...");
-		
+
 		// Prevent multiple simultaneous requests
 		if (isRequestingPermission.current) {
 			console.log("[GlobalLocationContext] Permission request already in progress");
 			return;
 		}
-		
+
 		isRequestingPermission.current = true;
 		setLocationError(null);
-		
+
 		try {
 			// Check if permission is already granted
 			const { status } = await Location.getForegroundPermissionsAsync();
-			
+
 			if (status === "granted") {
 				setLocationPermission(true);
 				console.log("[GlobalLocationContext] Permission already granted");
-				
+
 				// Get current location with timeout and error handling
 				try {
 					const location = await Promise.race([
@@ -58,22 +58,25 @@ export function GlobalLocationProvider({ children }) {
 							maxAge: LOCATION_CONFIG.MAX_AGE,
 							timeout: LOCATION_CONFIG.TIMEOUT,
 						}),
-						new Promise((_, reject) => 
+						new Promise((_, reject) =>
 							setTimeout(() => reject(new Error("Location timeout")), LOCATION_CONFIG.TIMEOUT)
 						)
 					]);
-					
+
 					const locationData = {
 						latitude: location.coords.latitude,
 						longitude: location.coords.longitude,
 					};
-					
+
 					setUserLocation(locationData);
 					setLastUpdated(Date.now());
 					console.log("[GlobalLocationContext] Location obtained:", locationData);
 				} catch (locationErr) {
-					console.error("[GlobalLocationContext] Failed to get location:", locationErr);
-					setLocationError(locationErr.message);
+					console.error("[GlobalLocationContext] Failed to get location (using fallback):", locationErr);
+					const fallbackData = { latitude: 33.7475, longitude: -116.9730 };
+					setUserLocation(fallbackData);
+					setLastUpdated(Date.now());
+					setLocationError(null);
 				}
 			} else {
 				// Request permission
@@ -81,7 +84,7 @@ export function GlobalLocationProvider({ children }) {
 				const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
 				const hasPermission = newStatus === "granted";
 				setLocationPermission(hasPermission);
-				
+
 				if (hasPermission) {
 					console.log("[GlobalLocationContext] Permission granted, getting location...");
 					try {
@@ -91,26 +94,34 @@ export function GlobalLocationProvider({ children }) {
 								maxAge: LOCATION_CONFIG.MAX_AGE,
 								timeout: LOCATION_CONFIG.TIMEOUT,
 							}),
-							new Promise((_, reject) => 
+							new Promise((_, reject) =>
 								setTimeout(() => reject(new Error("Location timeout")), LOCATION_CONFIG.TIMEOUT)
 							)
 						]);
-						
+
 						const locationData = {
 							latitude: location.coords.latitude,
 							longitude: location.coords.longitude,
 						};
-						
+
 						setUserLocation(locationData);
 						setLastUpdated(Date.now());
 						console.log("[GlobalLocationContext] Location obtained after permission:", locationData);
 					} catch (locationErr) {
-						console.error("[GlobalLocationContext] Failed to get location after permission:", locationErr);
-						setLocationError(locationErr.message);
+						console.error("[GlobalLocationContext] Failed to get location after permission (using fallback):", locationErr);
+						// 🔴 REVERT POINT: Context Fallback
+						// NEW: Use standard coordinate if GPS fails
+						const fallbackData = { latitude: 33.7475, longitude: -116.9730 };
+						setUserLocation(fallbackData);
+						setLastUpdated(Date.now());
+						setLocationError(null); // Clear error since we have a fallback
 					}
 				} else {
-					console.log("[GlobalLocationContext] Permission denied");
-					setLocationError("Location permission denied");
+					console.log("[GlobalLocationContext] Permission denied (using fallback)");
+					const fallbackData = { latitude: 33.7475, longitude: -116.9730 };
+					setUserLocation(fallbackData);
+					setLastUpdated(Date.now());
+					setLocationError(null);
 				}
 			}
 		} catch (err) {
@@ -158,12 +169,12 @@ export function GlobalLocationProvider({ children }) {
 		isLoadingLocation,
 		locationError,
 		lastUpdated,
-		
+
 		// Methods
 		refreshLocation,
 		isLocationFresh,
 		requestLocationPermission,
-		
+
 		// Computed values
 		hasUserLocation: !!userLocation,
 		isLocationError: !!locationError,
@@ -182,11 +193,11 @@ export function GlobalLocationProvider({ children }) {
  */
 export function useGlobalLocation() {
 	const context = useContext(GlobalLocationContext);
-	
+
 	if (!context) {
 		throw new Error("useGlobalLocation must be used within a GlobalLocationProvider");
 	}
-	
+
 	return context;
 }
 
@@ -196,7 +207,7 @@ export function useGlobalLocation() {
  */
 export function useOptionalLocation() {
 	const { userLocation, locationPermission, isLoadingLocation, hasUserLocation } = useGlobalLocation();
-	
+
 	return {
 		location: userLocation,
 		hasPermission: locationPermission,

@@ -81,9 +81,9 @@ const EmergencyBottomSheet = forwardRef(
 		const isDetailMode = !!selectedHospital;
 		const hasAnyVisitActive = !!activeAmbulanceTrip || !!activeBedBooking;
 		const isTripMode =
-			mode === "emergency" && !!activeAmbulanceTrip && !isDetailMode;
+			mode === "emergency" && !!activeAmbulanceTrip?.requestId;
 		const isBedBookingMode =
-			mode === "booking" && !!activeBedBooking && !isDetailMode;
+			mode === "booking" && !!activeBedBooking?.requestId;
 
 		// Reset snap index when entering detail mode to prevent out-of-range errors
 		// This runs BEFORE the derivedIndex calculation and snapPoints change
@@ -385,7 +385,7 @@ const EmergencyBottomSheet = forwardRef(
 						onScroll={handleScroll}
 						keyboardShouldPersistTaps="handled"
 					>
-						{isTripMode ? (
+						{isTripMode && (
 							<TripSummaryCard
 								activeAmbulanceTrip={activeAmbulanceTrip}
 								hasOtherActiveVisit={!!activeBedBooking?.requestId}
@@ -398,7 +398,8 @@ const EmergencyBottomSheet = forwardRef(
 								isExpanded={sheetPhase === "full"}
 								sheetPhase={sheetPhase}
 							/>
-						) : isBedBookingMode ? (
+						)}
+						{isBedBookingMode && (
 							<BedBookingSummaryCard
 								activeBedBooking={activeBedBooking}
 								hasOtherActiveVisit={!!activeAmbulanceTrip?.requestId}
@@ -411,7 +412,8 @@ const EmergencyBottomSheet = forwardRef(
 								isExpanded={sheetPhase === "full"}
 								sheetPhase={sheetPhase}
 							/>
-						) : (
+						)}
+						{!isTripMode && !isBedBookingMode && (
 							<EmergencySheetTopRow
 								searchValue={localSearchQuery}
 								onSearchChange={handleSearchChange}

@@ -7,7 +7,10 @@ export const useBedBookingProgress = ({
 	const remainingBedSeconds = useMemo(() => {
 		const eta = activeBedBooking?.etaSeconds;
 		const startedAt = activeBedBooking?.startedAt;
-		if (!Number.isFinite(eta) || !Number.isFinite(startedAt)) return null;
+		if (!Number.isFinite(eta) || !Number.isFinite(startedAt)) {
+			if (__DEV__) console.log('[useBedBookingProgress] missing data:', { eta, startedAt });
+			return null;
+		}
 		const elapsedSec = (nowMs - startedAt) / 1000;
 		return Math.max(0, Math.round(eta - elapsedSec));
 	}, [activeBedBooking?.etaSeconds, activeBedBooking?.startedAt, nowMs]);
@@ -29,7 +32,7 @@ export const useBedBookingProgress = ({
 	}, [bedProgress]);
 
 	const formattedBedRemaining = useMemo(() => {
-		if (!Number.isFinite(remainingBedSeconds)) return null;
+		if (!Number.isFinite(remainingBedSeconds)) return "--";
 		const mins = Math.floor(remainingBedSeconds / 60);
 		const secs = remainingBedSeconds % 60;
 		if (mins <= 0) return `${secs}s`;

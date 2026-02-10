@@ -160,9 +160,38 @@ export function EmergencyProvider({ children }) {
 				}
 			} catch (e) {
 				// Ignore errors here, Map component will handle explicit permission requests
-				console.log("Context location fetch failed (silent):", e);
+				console.log("Context location fetch failed (using fallback):", e);
+				// Standard fallback location
+				setUserLocation({
+					latitude: 33.7475,
+					longitude: -116.9730,
+					latitudeDelta: 0.04,
+					longitudeDelta: 0.04,
+				});
 			}
 		})();
+	}, []);
+
+	const parseEtaToSeconds = useCallback((eta) => {
+		if (eta === null || eta === undefined) return null;
+
+		// If it's already a number, just return it
+		if (typeof eta === "number") return eta;
+
+		if (typeof eta !== "string") return null;
+
+		const lower = eta.toLowerCase();
+		if (lower === "unknown") return 600; // Fallback to 10 mins if unknown
+
+		const minutesMatch = lower.match(/(\d+)\s*(min|mins|minute|minutes)/);
+		if (minutesMatch) return Number(minutesMatch[1]) * 60;
+		const secondsMatch = lower.match(/(\d+)\s*(sec|secs|second|seconds)/);
+		if (secondsMatch) return Number(secondsMatch[1]);
+
+		// If it's a numeric string like "407", parse it as seconds
+		if (/^\d+$/.test(eta)) return Number(eta);
+
+		return 600; // Final fallback for other non-parseable strings
 	}, []);
 
 	const [selectedHospitalId, setSelectedHospitalId] = useState(null);
@@ -374,25 +403,7 @@ export function EmergencyProvider({ children }) {
 			// 	});
 			// }
 
-			const parseEtaToSecondsLocal = (eta) => {
-				if (!eta || typeof eta !== "string") return null;
-				const lower = eta.toLowerCase();
-				const minutesMatch = lower.match(/(\d+)\s*(min|mins|minute|minutes)/);
-				if (minutesMatch) return Number(minutesMatch[1]) * 60;
-				const secondsMatch = lower.match(/(\d+)\s*(sec|secs|second|seconds)/);
-				if (secondsMatch) return Number(secondsMatch[1]);
-				return null;
-			};
-
 			if (activeAmbulance) {
-				// if (__DEV__) {
-				// 	console.log("[EmergencyContext] Hydrating active ambulance trip:", {
-				// 		requestId: activeAmbulance?.requestId ?? null,
-				// 		status: activeAmbulance?.status ?? null,
-				// 		hospitalId: activeAmbulance?.hospitalId ?? null,
-				// 		hasResponder: !!activeAmbulance?.responderName,
-				// 	});
-				// }
 				let loc = null;
 				if (activeAmbulance.responderLocation) {
 					if (
@@ -419,7 +430,7 @@ export function EmergencyProvider({ children }) {
 				const startedAt = activeAmbulance.createdAt
 					? Date.parse(activeAmbulance.createdAt)
 					: Date.now();
-				const etaSeconds = parseEtaToSecondsLocal(activeAmbulance.estimatedArrival);
+				const etaSeconds = parseEtaToSeconds(activeAmbulance.estimatedArrival);
 
 				setActiveAmbulanceTrip({
 					hospitalId: activeAmbulance.hospitalId,
@@ -459,7 +470,7 @@ export function EmergencyProvider({ children }) {
 				// 	});
 				// }
 				const startedAt = activeBed.createdAt ? Date.parse(activeBed.createdAt) : Date.now();
-				const etaSeconds = parseEtaToSecondsLocal(activeBed.estimatedArrival);
+				const etaSeconds = parseEtaToSeconds(activeBed.estimatedArrival);
 
 				setActiveBedBooking({
 					hospitalId: activeBed.hospitalId,
@@ -604,16 +615,6 @@ export function EmergencyProvider({ children }) {
 		setSelectedHospitalId(null);
 	}, []);
 
-	const parseEtaToSeconds = useCallback((eta) => {
-		if (!eta || typeof eta !== "string") return null;
-		const lower = eta.toLowerCase();
-		const minutesMatch = lower.match(/(\d+)\s*(min|mins|minute|minutes)/);
-		if (minutesMatch) return Number(minutesMatch[1]) * 60;
-		const secondsMatch = lower.match(/(\d+)\s*(sec|secs|second|seconds)/);
-		if (secondsMatch) return Number(secondsMatch[1]);
-		return null;
-	}, []);
-
 	const startAmbulanceTrip = useCallback(
 		(trip) => {
 			if (!trip?.hospitalId) return;
@@ -668,10 +669,20 @@ export function EmergencyProvider({ children }) {
 	const startBedBooking = useCallback(
 		(booking) => {
 			if (!booking?.hospitalId) return;
+
+			const rawEta = booking?.estimatedWait ?? booking?.estimatedArrival;
+			console.log('[EmergencyContext] starting bed booking:', {
+				id: booking.hospitalId,
+				requestedEta: rawEta,
+				requestedEtaSeconds: booking?.etaSeconds
+			});
+
 			const etaSeconds =
 				Number.isFinite(booking?.etaSeconds)
 					? booking.etaSeconds
 					: parseEtaToSeconds(booking?.estimatedWait ?? booking?.estimatedArrival);
+
+			console.log('[EmergencyContext] parsed etaSeconds:', etaSeconds);
 
 			setActiveBedBooking({
 				hospitalId: booking.hospitalId,
@@ -783,8 +794,26 @@ export function EmergencyProvider({ children }) {
 					activeAmbulanceTrip.requestId,
 					(payload) => {
 						if (payload.new?.location) {
-							// Update ambulance location in real-time
-							console.log('[EmergencyContext] Ambulance location updated:', payload.new.location);
+							const loc = payload.new.location; // POINT(-116.9730 33.7475)
+							const match = loc.match(/POINT\(([-\d.]+) ([\d.]+)\)/);
+							if (match) {
+								const coords = {
+									longitude: parseFloat(match[1]),
+									latitude: parseFloat(match[2])
+								};
+
+								setActiveAmbulanceTrip(prev => {
+									if (!prev) return prev;
+									return {
+										...prev,
+										currentResponderLocation: coords,
+										assignedAmbulance: {
+											...(prev.assignedAmbulance || {}),
+											location: coords
+										}
+									};
+								});
+							}
 						}
 					}
 				);
@@ -840,71 +869,68 @@ export function EmergencyProvider({ children }) {
 		};
 	}, [activeBedBooking?.hospitalId, hospitals, updateHospitals]);
 
-	const value = useMemo(() => ({
-		// State
-		hospitals,
-		selectedHospitalId,
-		selectedHospital,
-		filteredHospitals,
-		mode,
-		activeAmbulanceTrip,
-		activeBedBooking,
-		serviceType,
-		selectedSpecialty,
-		specialties: SPECIALTIES,
-		viewMode,
-		userLocation,
-		hasActiveFilters,
+	const value = useMemo(
+		() => ({
+			// State
+			hospitals: filteredHospitals,
+			allHospitals: hospitals,
+			selectedHospitalId,
+			selectedHospital,
+			mode,
+			userLocation,
+			activeAmbulanceTrip,
+			activeBedBooking,
+			serviceType,
+			selectedSpecialty,
+			viewMode,
 
-		// Actions
-		selectHospital,
-		clearSelectedHospital,
-		toggleMode,
-		setMode,
-		startAmbulanceTrip,
-		stopAmbulanceTrip,
-		setAmbulanceTripStatus,
-		startBedBooking,
-		stopBedBooking,
-		setBedBookingStatus,
-		selectSpecialty,
-		selectServiceType,
-		toggleViewMode,
-		setViewMode,
-		updateHospitals,
-		setUserLocation,
-		resetFilters,
-	}), [
-		hospitals,
-		selectedHospitalId,
-		selectedHospital,
-		filteredHospitals,
-		mode,
-		activeAmbulanceTrip,
-		activeBedBooking,
-		serviceType,
-		selectedSpecialty,
-		viewMode,
-		userLocation,
-		hasActiveFilters,
-		selectHospital,
-		clearSelectedHospital,
-		toggleMode,
-		setMode,
-		startAmbulanceTrip,
-		stopAmbulanceTrip,
-		setAmbulanceTripStatus,
-		startBedBooking,
-		stopBedBooking,
-		setBedBookingStatus,
-		selectSpecialty,
-		selectServiceType,
-		toggleViewMode,
-		setViewMode,
-		updateHospitals,
-		setUserLocation,
-		resetFilters,
-	]);
+			// Actions
+			selectHospital,
+			clearSelectedHospital,
+			toggleMode,
+			setMode,
+			toggleViewMode,
+			selectSpecialty,
+			selectServiceType,
+			resetFilters,
+			startAmbulanceTrip,
+			stopAmbulanceTrip,
+			setAmbulanceTripStatus,
+			startBedBooking,
+			stopBedBooking,
+			setBedBookingStatus,
+			updateHospitals,
+			setUserLocation,
+		}),
+		[
+			filteredHospitals,
+			hospitals,
+			selectedHospitalId,
+			selectedHospital,
+			mode,
+			userLocation,
+			activeAmbulanceTrip,
+			activeBedBooking,
+			serviceType,
+			selectedSpecialty,
+			viewMode,
+			selectHospital,
+			clearSelectedHospital,
+			toggleMode,
+			toggleViewMode,
+			selectSpecialty,
+			selectServiceType,
+			resetFilters,
+			startAmbulanceTrip,
+			stopAmbulanceTrip,
+			setAmbulanceTripStatus,
+			startBedBooking,
+			stopBedBooking,
+			setBedBookingStatus,
+			updateHospitals,
+			setUserLocation,
+		]
+	);
 
 	return (
 		<EmergencyContext.Provider value={value}>

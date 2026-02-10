@@ -112,6 +112,7 @@ const EmergencyRequestModal = React.memo(({
 						bedCount: initiated.bedCount,
 						bedType: initiated.bedType,
 						bedNumber: initiated.bedNumber,
+						etaSeconds: null, // Let context derive from estimatedArrival or map route
 					}
 					: {
 						success: true,
@@ -121,6 +122,7 @@ const EmergencyRequestModal = React.memo(({
 						ambulanceType: initiated.ambulanceType,
 						serviceType: "ambulance",
 						estimatedArrival: ambulanceEta,
+						etaSeconds: null, // Let context derive from estimatedArrival or map route
 					};
 
 			setRequestData(next);

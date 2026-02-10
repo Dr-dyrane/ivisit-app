@@ -317,6 +317,7 @@ export const useRequestFlow = (props) => {
 					bedType: request?.bedType ?? null,
 					bedCount: request?.bedCount ?? null,
 					estimatedWait: request?.estimatedArrival ?? null,
+					etaSeconds: request?.etaSeconds ?? (currentRoute?.duration || null),
 				});
 			}
 

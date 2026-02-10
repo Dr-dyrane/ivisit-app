@@ -177,8 +177,16 @@ export function useHospitals() {
 					performFetch(location);
 				}
 			} catch (err) {
-				console.error("[useHospitals] Location error:", err);
-				if (isMounted) setError(err);
+				console.error("[useHospitals] Location error (falling back):", err);
+				// 🔴 REVERT POINT: Graceful Fallback
+				// PREVIOUS: if (isMounted) setError(err);
+				// NEW: Fallback to default location so app isn't broken
+				const fallbackLocation = { latitude: 33.7475, longitude: -116.9730 };
+				if (isMounted) {
+					setUserLocation(fallbackLocation);
+					lastLocationRef.current = fallbackLocation;
+					performFetch(fallbackLocation);
+				}
 			}
 		};
 

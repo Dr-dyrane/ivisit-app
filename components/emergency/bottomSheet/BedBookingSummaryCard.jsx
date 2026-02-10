@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, Linking, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Pressable, Linking, ActivityIndicator, Animated } from "react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -20,14 +20,24 @@ const BedBookingSummaryHalf = (props) => {
 					<Text style={[styles.editorialTitle, { color: textColor }]}>{statusLabel.toUpperCase()}</Text>
 				</View>
 				<View style={styles.etaBadge}>
-					<Text style={styles.etaValue}>{bedNumber}</Text>
-					<Text style={styles.etaUnit}>BED</Text>
+					<Text style={[styles.etaValue, { fontSize: etaText?.length > 5 ? 14 : 22 }]}>{etaText}</Text>
+					<Text style={styles.etaUnit}>REMAINING</Text>
 				</View>
 			</View>
 
 			<View style={styles.vitalTrack}>
 				<View style={[styles.vitalFill, { width: `${(bedProgress ?? 0) * 100}%` }]} />
-				<View style={[styles.vitalPlow, { left: `${(bedProgress ?? 0) * 100}%` }]} />
+				<Animated.View
+					style={[
+						styles.vitalPlow,
+						{
+							left: `${(bedProgress ?? 0) * 100}%`,
+							transform: [{ scale: props.pulseAnim || 1 }]
+						}
+					]}
+				>
+					<Fontisto name="bed-patient" size={10} color="#FFF" />
+				</Animated.View>
 			</View>
 
 			{/* BED IDENTITY WIDGET */}
@@ -68,38 +78,73 @@ export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, a
 	const collapsed = sheetPhase === "collapsed";
 	const [nowMs, setNowMs] = useState(Date.now());
 	const [busyAction, setBusyAction] = useState(null);
-	
+	const pulseAnim = useRef(new Animated.Value(1)).current;
+
 	useEffect(() => {
-		if (!activeBedBooking?.requestId || collapsed) return;
+		if (collapsed) return;
+
+		// 1. Progress Timer
 		const id = setInterval(() => setNowMs(Date.now()), 1000);
+
+		// 2. Pulse Animation
+		Animated.loop(
+			Animated.sequence([
+				Animated.timing(pulseAnim, { toValue: 1.15, duration: 800, useNativeDriver: true }),
+				Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+			])
+		).start();
+
 		return () => clearInterval(id);
-	}, [activeBedBooking?.requestId, collapsed]);
+	}, [collapsed, activeBedBooking?.requestId]);
 
 	const { bedProgress, bedStatus, formattedBedRemaining } = useBedBookingProgress({ activeBedBooking, nowMs });
+
+	if (__DEV__) {
+		console.log('[BedBookingSummaryCard] status:', {
+			requestId: activeBedBooking?.requestId,
+			bedStatus,
+			formattedBedRemaining,
+			etaSeconds: activeBedBooking?.etaSeconds
+		});
+	}
+
 	const hospitalName = activeBedBooking?.hospitalName || "Hospital";
 
 	const displayStatus = activeBedBooking?.status === "arrived" ? "Occupied" : (bedStatus || "Confirmed");
-	
-	return <BedBookingSummaryHalf 
-        {...{isDarkMode, statusLabel: displayStatus, hospitalName, bedType: "Private Suite", bedNumber: activeBedBooking?.bedNumber || "TBA", bedProgress, isBusy: !!busyAction, busyAction}}
-        showMarkOccupied={bedStatus === "Ready" && activeBedBooking?.status !== "arrived"}
-        showComplete={activeBedBooking?.status === "arrived"}
-        onCancelBedBooking={() => {
-            setBusyAction('cancel');
-            onCancelBedBooking().finally(() => setBusyAction(null));
-        }}
-        onMarkBedOccupied={() => {
-            console.log("[BedBookingSummaryCard] CHECK-IN pressed");
-            setBusyAction('occupied');
-            onMarkBedOccupied().finally(() => setBusyAction(null));
-        }}
-        onCompleteBedBooking={() => {
-            setBusyAction('complete');
-            onCompleteBedBooking().finally(() => setBusyAction(null));
-        }}
-        showSecondaryCta={!hasOtherActiveVisit}
-        onPressSecondaryCta={() => navigateToRequestAmbulance({ router, hospitalId: activeBedBooking.hospitalId })}
-    />;
+	const isReady = bedStatus === "Ready";
+
+	return <BedBookingSummaryHalf
+		{...{
+			isDarkMode,
+			statusLabel: displayStatus,
+			hospitalName,
+			bedType: activeBedBooking?.bedType === "private" ? "Private Suite" : "Standard Bed",
+			bedNumber: activeBedBooking?.bedNumber || "TBA",
+			specialty: activeBedBooking?.specialty || "General",
+			bedProgress,
+			isBusy: !!busyAction,
+			busyAction,
+			etaText: isReady ? "READY" : (formattedBedRemaining || "--"),
+			pulseAnim
+		}}
+		showMarkOccupied={bedStatus === "Ready" && activeBedBooking?.status !== "arrived"}
+		showComplete={activeBedBooking?.status === "arrived"}
+		onCancelBedBooking={() => {
+			setBusyAction('cancel');
+			onCancelBedBooking().finally(() => setBusyAction(null));
+		}}
+		onMarkBedOccupied={() => {
+			console.log("[BedBookingSummaryCard] CHECK-IN pressed");
+			setBusyAction('occupied');
+			onMarkBedOccupied().finally(() => setBusyAction(null));
+		}}
+		onCompleteBedBooking={() => {
+			setBusyAction('complete');
+			onCompleteBedBooking().finally(() => setBusyAction(null));
+		}}
+		showSecondaryCta={!hasOtherActiveVisit}
+		onPressSecondaryCta={() => navigateToRequestAmbulance({ router, hospitalId: activeBedBooking.hospitalId })}
+	/>;
 };
 
 // CONSOLIDATED SHARED STYLES
@@ -115,7 +160,7 @@ const styles = StyleSheet.create({
 		shadowRadius: 20,
 		elevation: 10,
 	},
-    collapsedPadding: { paddingVertical: 16 },
+	collapsedPadding: { paddingVertical: 16 },
 	headerIsland: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
 	editorialSubtitle: { fontSize: 10, fontWeight: '900', letterSpacing: 2, marginBottom: 4 },
 	editorialTitle: { fontSize: 28, fontWeight: '900', letterSpacing: -1.2 },
@@ -124,7 +169,22 @@ const styles = StyleSheet.create({
 	etaUnit: { color: 'rgba(255,255,255,0.7)', fontSize: 8, fontWeight: '900', marginTop: -2 },
 	vitalTrack: { height: 4, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 2, marginBottom: 24, position: 'relative' },
 	vitalFill: { height: '100%', backgroundColor: COLORS.brandPrimary, borderRadius: 2 },
-	vitalPlow: { position: 'absolute', top: -4, width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.brandPrimary, borderWidth: 3, borderColor: '#FFF', shadowColor: COLORS.brandPrimary, shadowOpacity: 0.5, shadowRadius: 5 },
+	vitalPlow: {
+		position: 'absolute',
+		top: -10,
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		backgroundColor: COLORS.brandPrimary,
+		borderWidth: 2,
+		borderColor: '#FFF',
+		shadowColor: COLORS.brandPrimary,
+		shadowOpacity: 0.5,
+		shadowRadius: 5,
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginLeft: -12, // Center the circle on the progress line
+	},
 	identityWidget: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 24, marginBottom: 20 },
 	squircleAvatar: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
 	identityText: { flex: 1, marginLeft: 14 },
@@ -138,6 +198,6 @@ const styles = StyleSheet.create({
 	cancelActionText: { fontSize: 13, fontWeight: '900', letterSpacing: 1 },
 	completeAction: { flex: 1.5, height: 56, borderRadius: 20, backgroundColor: COLORS.brandPrimary, alignItems: 'center', justifyContent: 'center' },
 	completeActionText: { color: '#FFF', fontSize: 13, fontWeight: '900', letterSpacing: 1 },
-    secondaryCta: { marginTop: 12, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.brandPrimary + '08' },
-    secondaryCtaText: { fontSize: 13, fontWeight: '900' }
+	secondaryCta: { marginTop: 12, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.brandPrimary + '08' },
+	secondaryCtaText: { fontSize: 13, fontWeight: '900' }
 });
