@@ -178,7 +178,7 @@ export default function ProfileForm({ onComplete }) {
 		}).start();
 	};
 
-	const isValid = firstName.trim() && lastName.trim();
+	const isValid = firstName.trim().length > 0 && lastName.trim().length > 0;
 
 	return (
 		<View>

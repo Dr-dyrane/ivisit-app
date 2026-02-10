@@ -358,7 +358,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		if (!password) return;
 
 		// Basic password validation
-		if (password.length < 6) {
+		if (!isValidPassword(password)) {
 			const errorMessage = "Password must be at least 6 characters";
 			setLoginError(errorMessage);
 			showToast(errorMessage, "error");
@@ -398,7 +398,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		if (!password) return;
 
 		// Basic password validation
-		if (password.length < 6) {
+		if (!isValidPassword(password)) {
 			const errorMessage = "Password must be at least 6 characters";
 			setLoginError(errorMessage);
 			showToast(errorMessage, "error");

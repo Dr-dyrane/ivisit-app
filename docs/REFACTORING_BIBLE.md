@@ -1,121 +1,102 @@
-# Refactoring Bible: The "View-Hook-Service" Architecture
+# Refactoring Bible: The "Apple Way" Architecture
 
-**Status**: Draft
-**Date**: 2026-02-09
-**Goal**: Reduce technical debt, improve debuggability, and enforce Separation of Concerns.
+**Status**: Active / In Progress
+**Date**: 2026-02-10
+**Goal**: Create a codebase that is readable, scalable, modular, and principled. We aim for "The Apple Way": clean user experience, efficient memory usage, and structured complexity that feels simple to the user.
 
 ---
 
 ## 1. Executive Summary
-The codebase suffers from the **Monolithic Component Anti-Pattern**. UI components (Screens) are currently responsible for:
-1.  Rendering complex UI.
-2.  Managing local and global state.
-3.  Handling API side-effects.
-4.  Executing business logic (search ranking, form validation).
-
-This makes files large (>1000 lines), hard to read, and impossible to debug in isolation. We are moving to a **View-Hook-Service** architecture to decouple these concerns.
+The codebase is transitioning from a **Monolithic Component Anti-Pattern** to a **View-Hook-Service** architecture.
+We prioritize:
+1.  **Separation of Concerns**: View (UI) -> Hook (State/Logic) -> Service (Data/Business Rules).
+2.  **DRY (Don't Repeat Yourself)**: Centralized validation, error handling, and data mapping.
+3.  **Performance**: Aggressive use of `useMemo`, `useCallback`, and `debounce` to prevent re-renders and memory leaks.
+4.  **Debuggability**: Clear data flow so errors are easy to trace.
 
 ---
 
-## 2. The Audit: Top Offenders
+## 2. The Audit: Status Report
 
-The following files have been identified as critical targets for refactoring.
-
-### 🚨 Critical Severity
-| File | Lines | Primary Issues |
-|------|-------|----------------|
-| `screens/ProfileScreen.jsx` | ~1048 | **Form Controller + UI**. Manages 10+ state variables, image uploading logic, and complex animations inline. |
-| `screens/SearchScreen.jsx` | ~1043 | **Logic in View**. Contains a 150+ line `useMemo` block that implements a search ranking algorithm inside the component. |
-| `screens/EmergencyContactsScreen.jsx` | ~977 | **Inline Components**. Defines `ContactCard` (~180 lines) inside the file. Mixes list management with form validation. |
-| `services/authService.js` | ~935 | **God Object**. Handles API calls, error mapping, session persistence, and OAuth redirect logic in one file. |
+### 🚨 Critical Severity (Legacy)
+| File | Lines | Status | Notes |
+|------|-------|--------|-------|
+| `screens/ProfileScreen.jsx` | ~1048 | 🟡 In Progress | Form logic partially extracted. Still needs UI decomposition. |
+| `screens/SearchScreen.jsx` | ~1043 | 🟢 Resolved | Ranking logic moved to `hooks/useSearchRanking.js` & `utils/searchScoring.js`. |
+| `screens/EmergencyContactsScreen.jsx` | ~977 | 🟢 Resolved | Decomposed into `ContactCard` and `useEmergencyContactsForm`. |
+| `services/authService.js` | ~935 | 🟢 Resolved | Split into `authErrorUtils`, `userMapper`, `oauthService`. Main file now ~500 lines. |
 
 ---
 
 ## 3. The Architecture: View-Hook-Service
 
-We will enforce a strict unidirectional data flow.
-
 ### 🟢 1. View (The "Dummy" UI)
-*   **Role**: purely renders data.
+*   **Role**: Purely renders data. "The dumb terminal."
 *   **Location**: `screens/`, `components/`
 *   **Rules**:
     *   **No** `useEffect` for data fetching (call a hook instead).
     *   **No** complex calculation (move to `utils/` or hooks).
-    *   **No** inline sub-component definitions (move to `components/`).
-*   **Example**:
-    ```jsx
-    // Good
-    const { results, isLoading } = useSearchRanking(query);
-    return <FlatList data={results} ... />
-    ```
+    *   **No** inline sub-component definitions.
+    *   **Inline Documentation**: Generous comments explaining *why* UI decisions were made (e.g., "Using `absolute` positioning here to avoid layout shift during animation").
 
 ### 🟡 2. Controller (Custom Hooks)
 *   **Role**: Connects UI to Logic/State.
 *   **Location**: `hooks/`
 *   **Rules**:
-    *   Encapsulates `useState`, `useEffect`, and **`useContext`**.
-    *   **Context usage should be hidden here**. Components should rarely consume Context directly if a hook can provide a cleaner interface.
-    *   Returns only what the View needs (data + handlers).
-    *   Handles "dirty" state, loading states, and error toggles.
-*   **Example**: `useProfileForm`, `useSearchRanking`, `useEmergencyContactList`.
+    *   **Encapsulates Complexity**: `useState`, `useEffect`, `useContext`, `useMemo`, `useCallback`.
+    *   **Performance First**:
+        *   Use `useMemo` for expensive calculations (filtering lists, scoring).
+        *   Use `debounce` for search inputs and rapid API calls.
+    *   **Return Values**: Only what the View needs.
 
-### 🟣 4. Context (Global State)
-*   **Role**: Stores truly global data (Theme, Auth User, Socket Connection).
+### 🟣 3. Context (Global State)
+*   **Role**: Stores truly global data (Theme, Auth User).
 *   **Location**: `contexts/`
 *   **Rules**:
-    *   **Providers Only**: Defines the Provider and the raw `useContext` hook.
-    *   **No Heavy Logic**: Contexts should mostly just store state and expose setters. Heavy processing of that state (filtering, sorting) belongs in a Hook or Service.
-    *   **Access**: Should generally be accessed via specific hooks (e.g., `useAuth`) rather than raw `useContext(AuthContext)`.
+    *   **Circular Dependency Warning**: NEVER import a Hook that consumes a Context *into* that same Context.
+    *   **Lightweight**: Contexts should store state. Heavy logic belongs in Services/Hooks.
 
-
-### 🔴 3. Service (Pure Logic)
+### 🔴 4. Service (Pure Logic)
 *   **Role**: The "Brain". Independent of React.
 *   **Location**: `services/`, `utils/`
 *   **Rules**:
-    *   **No** React code (hooks, JSX).
-    *   Pure functions (Input -> Output) whenever possible.
-    *   Handles API calls, storage, and complex algorithms (scoring, sorting).
+    *   **Validation**: Centralized in `utils/validation.js`.
+    *   **Pure Functions**: Input -> Output. Easy to unit test.
 
 ---
 
-## 4. The Commandments (Guidelines)
+## 4. The Commandments (The Apple Way)
 
-1.  **Thou Shalt Not Exceed 300 Lines**: If a component exceeds 300 lines, it MUST be split.
-    *   *Solution*: Extract sub-components or move logic to hooks.
-2.  **Thou Shalt Not Define Components Inside Components**:
-    *   *Bad*: `const Screen = () => { const Item = () => <View/>; ... }`
-    *   *Good*: Move `Item` to `components/ScreenName/Item.jsx`.
+1.  **Thou Shalt Not Exceed 300 Lines**: If a file exceeds 300 lines, it is a candidate for splitting.
+    *   *Exception*: If the extra lines are purely **Documentation**. We value clarity over brevity.
+2.  **Memory is Sacred**:
+    *   Avoid anonymous functions in props (causes re-renders).
+    *   Clean up listeners and timers in `useEffect` return functions.
 3.  **Business Logic is Forbidden in JSX**:
-    *   *Bad*: `{data.filter(x => x.active && x.score > 10).map(...)}`
-    *   *Good*: `{activeItems.map(...)}` (filtering happens in the Hook).
-4.  **Hooks Must Be Single-Purpose**:
-    *   Don't create `useScreenLogic()`. Create `useFormState()`, `useDataFetcher()`, `useAnimation()`.
+    *   *Bad*: `{data.filter(x => x.active).map(...)}`
+    *   *Good*: `{activeItems.map(...)}` (filtering happens in the Hook with `useMemo`).
+4.  **Inline Docs are Mandatory**:
+    *   Explain *why*, not just *what*.
+    *   "// Debouncing this input to prevent API spam on every keystroke"
+5.  **Centralized Validation**:
+    *   Never write a regex in a component. Import it from `utils/validation.js`.
 
 ---
 
 ## 5. Refactoring Roadmap
 
-### Phase 1: Search Logic Extraction (High Impact)
-**Target**: `SearchScreen.jsx`
-1.  Extract scoring algorithm to `utils/searchScoring.js`.
-2.  Move ranking logic to `hooks/search/useSearchRanking.js`.
-3.  Create `components/search/SearchResultItem.jsx`.
+### Phase 1: Search Logic Extraction (Completed)
+- [x] Extract scoring algorithm to `utils/searchScoring.js`.
+- [x] Move ranking logic to `hooks/search/useSearchRanking.js`.
 
-### Phase 2: Profile Form Modularization
-**Target**: `ProfileScreen.jsx`
-1.  Extract form state to `hooks/user/useProfileForm.js`.
-2.  Move `Animated` logic to `hooks/ui/useProfileAnimations.js`.
-3.  Extract render code to `components/profile/ProfileForm.jsx`.
+### Phase 2: Auth Flow Modernization (In Progress)
+- [x] Centralize validation in `utils/validation.js`.
+- [x] Refactor `LoginInputModal` to use `useLogin` hook.
+- [ ] **Next**: Audit and refactor `SignupInputModal` / Registration flow to match.
+- [ ] **Next**: Ensure `useSignup` hook uses centralized validation.
 
-### Phase 3: Emergency Contacts Cleanup
-**Target**: `EmergencyContactsScreen.jsx`
-1.  Extract `ContactCard` to `components/emergency/ContactCard.jsx`.
-2.  Extract form validation logic to `utils/validation.js`.
-
-### Phase 4: Service Decomposition
-**Target**: `authService.js`
-1.  Split into `services/auth/authApi.js` (Supabase calls) and `services/auth/errorMapper.js`.
+### Phase 3: Profile & Emergency (Ongoing)
+- [x] Emergency Contacts decomposed.
+- [ ] ProfileScreen UI decomposition.
 
 ---
-
-**Approved By**: Engineering Team

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { isValidEmail } from "../../utils/validation";
 
 /**
  * useEmailValidation Hook
@@ -12,9 +13,6 @@ export default function useEmailValidation() {
 	const [email, setEmail] = useState("");
 	const [isValid, setIsValid] = useState(false);
 
-	// Simple, safe regex pattern
-	const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 	useEffect(() => {
 		if (!email) {
 			setIsValid(false);
@@ -22,7 +20,7 @@ export default function useEmailValidation() {
 		}
 
 		// Validate email format
-		setIsValid(EMAIL_REGEX.test(email.trim()));
+		setIsValid(isValidEmail(email));
 	}, [email]);
 
 	const clear = () => {

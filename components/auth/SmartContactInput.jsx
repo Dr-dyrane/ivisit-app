@@ -13,10 +13,23 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
+import { isValidEmail } from "../../utils/validation";
 import usePhoneValidation from "../../hooks/validators/usePhoneValidation";
 import useCountryDetection from "../../hooks/validators/useCountryDetection";
 import CountryPickerModal from "../register/CountryPickerModal";
 
+/**
+ * SmartContactInput
+ * 
+ * A unified input component that detects if the user is typing
+ * an email or a phone number and adapts the UI/Validation accordingly.
+ * 
+ * Features:
+ * - Auto-detection of Email vs Phone
+ * - Integrated Phone Input with Flag
+ * - Unified "Continue" button
+ * - Shake animation on error
+ */
 export default function SmartContactInput({
     onSubmit,
     initialValue = "",

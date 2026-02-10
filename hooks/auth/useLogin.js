@@ -9,21 +9,7 @@
 import { useContext, useCallback, useState } from "react";
 import { AuthContext } from "../../contexts/AuthContext";
 import { authService } from "../../services/authService";
-
-// Input validation helpers
-const isValidEmail = (email) => {
-	const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-	return emailRegex.test(email);
-};
-
-const isValidPhone = (phone) => {
-	const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
-	return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
-};
-
-const isValidPassword = (password) => {
-	return password && password.length >= 6;
-};
+import { isValidEmail, isValidPassword, isValidPhone } from "../../utils/validation";
 
 /**
  * @param {Object} options - Optional state management functions

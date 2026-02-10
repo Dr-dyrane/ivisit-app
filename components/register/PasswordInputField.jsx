@@ -31,7 +31,7 @@ export default function PasswordInputField({
 	const shakeAnim = useRef(new Animated.Value(0)).current;
 	const buttonScale = useRef(new Animated.Value(1)).current;
 
-	const isValid = password.length >= 6;
+	const isValid = isValidPassword(password);
 
 	const handlePasswordChange = (text) => {
 		setPassword(text);
