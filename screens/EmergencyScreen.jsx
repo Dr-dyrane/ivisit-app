@@ -504,7 +504,13 @@ const EmergencyScreen = () => {
 			console.log("[EmergencyScreen] handleHospitalSelect:", { hospitalId, mode, found: !!hospital });
 
 			const isGoogleHospital = hospital?.importedFromGoogle && hospital?.importStatus !== 'verified';
-			const noAmbulances = false; // mode === 'emergency' && hospital?.ambulances !== undefined && hospital.ambulances <= 0;
+			
+			// Check for zero ambulances in emergency mode
+			const noAmbulances = mode === 'emergency' && 
+				hospital?.ambulances !== undefined && 
+				hospital?.ambulances !== null && 
+				Number(hospital.ambulances) <= 0;
+
 			const noBeds = mode === 'booking' && hospital?.availableBeds !== undefined && hospital.availableBeds <= 0;
 
 			const hasActiveByMode =
