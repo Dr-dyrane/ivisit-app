@@ -1,10 +1,3 @@
-// components/register/AuthInputModal.jsx
-
-/**
- * Registration Modal using new service layer
- */
-
-import { useEffect, useRef, useState } from "react";
 import {
 	View,
 	Text,
@@ -13,21 +6,14 @@ import {
 	Pressable,
 	KeyboardAvoidingView,
 	Platform,
-	Dimensions,
-	Keyboard,
 	ScrollView,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-import { REGISTRATION_STEPS } from "../../constants/registrationSteps";
+
+import { useAuthInputModalLogic } from "../../hooks/auth/useAuthInputModalLogic";
 import { COLORS } from "../../constants/colors";
-import { useAuth } from "../../contexts/AuthContext";
-import { useRegistration } from "../../contexts/RegistrationContext";
-import { useTheme } from "../../contexts/ThemeContext";
-import { useToast } from "../../contexts/ToastContext";
-import { useSignUp } from "../../hooks/auth";
-import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
+import { styles } from "./AuthInputModal.styles";
+
 import PhoneInputField from "./PhoneInputField";
 import EmailInputField from "./EmailInputField";
 import OTPInputCard from "./OTPInputCard";
@@ -35,392 +21,91 @@ import ProfileForm from "./ProfileForm";
 import PasswordInputField from "./PasswordInputField";
 import SmartContactInput from "../auth/SmartContactInput";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 export default function AuthInputModal({ visible, onClose, type }) {
-	const insets = useSafeAreaInsets();
-	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-	const bgOpacity = useRef(new Animated.Value(0)).current;
+    const { state, animations, actions } = useAuthInputModalLogic({ visible, onClose, type });
+    const {
+        currentStep,
+        registrationData,
+        error,
+        loading,
+        isInputStep,
+        isOTPStep,
+        isProfileStep,
+        isPasswordStep,
+        colors,
+        modalHeight,
+        keyboardHeight,
+    } = state;
 
-	const { modalHeight, keyboardHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
-		useAndroidKeyboardAwareModal({ defaultHeight: SCREEN_HEIGHT * 0.85 });
-
-	const [mockOtp, setMockOtp] = useState(null); // DEV: Display mock OTP for testing
-
-	const { showToast } = useToast();
-	const {
-		currentStep,
-		registrationData,
-		updateRegistrationData,
-		nextStep,
-		previousStep,
-		goToStep,
-		checkAndApplyPendingRegistration,
-		resetRegistration,
-		// Use context error/loading states
-		error,
-		setRegistrationError,
-		clearError,
-		isLoading: loading,
-		startLoading,
-		stopLoading,
-	} = useRegistration();
-
-	// Pass context state functions to hook
-	const { signUpUser, completeRegistration, requestRegistrationOtp, verifyRegistrationOtp } =
-		useSignUp({
-			startLoading,
-			stopLoading,
-			setError: setRegistrationError,
-			clearError,
-		});
-
-	const { login, syncUserData } = useAuth();
-	const { isDarkMode } = useTheme();
-
-	/* ------------------ Animations ------------------ */
-	useEffect(() => {
-		if (visible) {
-			clearError();
-			Animated.parallel([
-				Animated.spring(slideAnim, {
-					toValue: 0,
-					tension: 50,
-					friction: 9,
-					useNativeDriver: true,
-				}),
-				Animated.timing(bgOpacity, {
-					toValue: 1,
-					duration: 300,
-					useNativeDriver: true,
-				}),
-			]).start();
-
-			// Check for pending verified registration (from login flow)
-			const initModal = async () => {
-				const hasPending = await checkAndApplyPendingRegistration();
-				if (!hasPending && currentStep === REGISTRATION_STEPS.SMART_CONTACT && type) {
-					updateRegistrationData({ method: type });
-				}
-			};
-			initModal();
-		}
-	}, [visible]);
-
-	/* ------------------ Handlers ------------------ */
-	const handleDismiss = () => {
-		Keyboard.dismiss();
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-		Animated.parallel([
-			Animated.timing(slideAnim, {
-				toValue: SCREEN_HEIGHT,
-				duration: 250,
-				useNativeDriver: true,
-			}),
-			Animated.timing(bgOpacity, {
-				toValue: 0,
-				duration: 200,
-				useNativeDriver: true,
-			}),
-		]).start(() => {
-			resetRegistration();
-			clearError();
-			onClose();
-		});
-	};
-
-	const handleGoBack = () => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		clearError();
-		previousStep();
-	};
-
-	// Email validation helper
-	const isValidEmail = (email) => {
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		return emailRegex.test(email);
-	};
-
-	// Phone validation helper
-	const isValidPhone = (phone) => {
-		const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
-		return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
-	};
-
-	const handleSmartInputSubmit = async (value, detectedType) => {
-		if (!value) return;
-
-		startLoading();
-		clearError();
-
-		try {
-			updateRegistrationData({
-				method: detectedType,
-				phone: detectedType === "phone" ? value : null,
-				email: detectedType === "email" ? value : null,
-			});
-
-			// Request OTP for verification
-			const otpResult = await requestRegistrationOtp(
-				detectedType === "phone" ? { phone: value } : { email: value }
-			);
-
-			if (!otpResult.success) {
-				setRegistrationError(otpResult.error || "Failed to send code");
-				showToast(otpResult.error || "Failed to send code", "error");
-				stopLoading();
-				return;
-			}
-
-			nextStep();
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast("Verification code sent", "success");
-		} catch (err) {
-			console.error("AuthInputModal handleSmartInputSubmit error:", err);
-			setRegistrationError("Failed to process. Please try again.");
-		} finally {
-			stopLoading();
-		}
-	};
-
-	const handleResendOtp = async () => {
-		startLoading();
-		clearError();
-		try {
-			const contact = registrationData.phone || registrationData.email;
-			const otpResult = await requestRegistrationOtp(
-				registrationData.method === "phone" ? { phone: contact } : { email: contact }
-			);
-
-			if (!otpResult.success) {
-				showToast(otpResult.error || "Failed to resend code", "error");
-			} else {
-				showToast("Code resent successfully", "success");
-			}
-		} catch (e) {
-			showToast("Failed to resend code", "error");
-		} finally {
-			stopLoading();
-		}
-	};
-
-	const handleOTPSubmit = async (otp) => {
-		if (!otp) return;
-
-		const result = await verifyRegistrationOtp({
-			email: registrationData.email,
-			phone: registrationData.phone,
-			otp,
-		});
-
-		if (result.success) {
-			// Check if user already has a profile (isExistingUser)
-			if (result.data?.isExistingUser) {
-				// User already exists and has profile - auto-login them
-				await login({ ...result.data }); // result.data contains user + token
-				await syncUserData();
-
-				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-				showToast("Welcome back! Logged you in automatically.", "success");
-
-				handleDismiss();
-				return;
-			}
-
-			// User is new (no profile yet) - continue registration flow
-			// Note: User is technically authenticated in Supabase/Storage now, 
-			// but we don't call login() yet to keep them in the modal flow.
-			updateRegistrationData({ otp });
-			nextStep();
-
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast("OTP verified successfully", "success");
-		} else {
-			showToast(result.error || "OTP verification failed", "error");
-		}
-	};
-
-	const handlePasswordSubmit = async (password) => {
-		// if (!password) return; // Password can be optional/empty if we treat it that way, but here we expect it if they didn't skip.
-
-		updateRegistrationData({ password });
-
-		const payload = {
-			username:
-				registrationData.username ||
-				registrationData.email?.split("@")[0] ||
-				`user${Date.now()}`,
-			email: registrationData.email,
-			phone: registrationData.phone,
-			firstName: registrationData.firstName,
-			lastName: registrationData.lastName,
-			fullName: registrationData.fullName,
-			imageUri: registrationData.imageUri,
-			dateOfBirth: registrationData.dateOfBirth,
-			password,
-		};
-
-		const result = await completeRegistration(payload);
-
-		if (result.success) {
-			// completeRegistration already calls login() internally
-			await syncUserData();
-
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast("Registration successful!", "success");
-
-			handleDismiss();
-		} else {
-			showToast(result.error || "Registration failed", "error");
-		}
-	};
-
-	const handleSkipPassword = async () => {
-		const payload = {
-			username:
-				registrationData.username ||
-				registrationData.email?.split("@")[0] ||
-				`user${Date.now()}`,
-			email: registrationData.email,
-			phone: registrationData.phone,
-			firstName: registrationData.firstName,
-			lastName: registrationData.lastName,
-			fullName: registrationData.fullName,
-			imageUri: registrationData.imageUri,
-			dateOfBirth: registrationData.dateOfBirth,
-		};
-
-		const result = await completeRegistration(payload);
-
-		if (result.success) {
-			// completeRegistration already calls login() internally
-			await syncUserData();
-
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast("Registered successfully", "info");
-
-			handleDismiss();
-		} else {
-			showToast(result.error || "Registration failed", "error");
-		}
-	};
-
-	/* ------------------ Step Helpers ------------------ */
-	const isInputStep = currentStep === REGISTRATION_STEPS.SMART_CONTACT;
-	const isOTPStep = currentStep === REGISTRATION_STEPS.OTP_VERIFICATION;
-	const isProfileStep = currentStep === REGISTRATION_STEPS.PROFILE_FORM;
-	const isPasswordStep = currentStep === REGISTRATION_STEPS.PASSWORD_SETUP;
-
-	const getStepNumber = () =>
-		isInputStep ? 1 : isOTPStep ? 2 : isProfileStep ? 3 : 4;
-
-	const getHeaderTitle = () => {
-		if (isInputStep) return "Identity";
-		if (isOTPStep) return "Verification";
-		if (isProfileStep) return "Profile Setup";
-		if (isPasswordStep) return "Create Password";
-		return "Sign Up";
-	};
-
-	const colors = {
-		bg: isDarkMode ? "#0D1117" : "#FFFFFF",
-		text: isDarkMode ? "#FFFFFF" : "#0F172A",
-		error: COLORS.error,
-	};
-
-	/* ------------------ Render ------------------ */
 	return (
 		<Modal
 			visible={visible}
 			transparent
 			animationType="none"
-			onRequestClose={handleDismiss}
+			onRequestClose={actions.handleDismiss}
 			statusBarTranslucent={true}
 		>
 			<View
-				className="flex-1 justify-end"
-				style={{ paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }}
+				style={[styles.container, { paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }]}
 			>
 				<Animated.View
-					style={{ opacity: bgOpacity }}
-					className="absolute inset-0 bg-black/60"
+					style={[styles.overlay, { opacity: animations.bgOpacity }]}
 				>
-					<Pressable className="flex-1" onPress={handleDismiss} />
+					<Pressable style={styles.pressableOverlay} onPress={actions.handleDismiss} />
 				</Animated.View>
 
 				<Animated.View
-					style={{
-						transform: [{ translateY: slideAnim }],
-						backgroundColor: colors.bg,
-						height: modalHeight,
-					}}
-					className="rounded-t-[40px] px-8 pt-4 shadow-2xl"
+					style={[
+                        styles.modalContainer,
+						{
+							transform: [{ translateY: animations.slideAnim }],
+							backgroundColor: colors.bg,
+							height: modalHeight,
+						}
+                    ]}
 				>
-					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-6" />
+					<View style={styles.handleBar} />
 
-					<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
-						<ScrollView {...getScrollViewProps()}>
+					<KeyboardAvoidingView {...actions.getKeyboardAvoidingViewProps()}>
+						<ScrollView {...actions.getScrollViewProps()}>
 							{/* Header */}
-							<View className="flex-row items-start mb-8">
+							<View style={styles.headerRow}>
 								{!isInputStep && (
 									<Pressable
-										onPress={handleGoBack}
-										className="p-2 bg-gray-500/10 rounded-full mr-4"
+										onPress={actions.handleGoBack}
+										style={styles.backButton}
 									>
 										<Ionicons name="arrow-back" size={20} color={colors.text} />
 									</Pressable>
 								)}
 
-								<View className="flex-1">
-									<Text
-										className="text-[10px] tracking-[3px] mb-2 uppercase font-black"
-										style={{ color: COLORS.brandPrimary }}
-									>
-										Step {getStepNumber()} of 3
+								<View style={styles.headerContent}>
+									<Text style={styles.stepText}>
+										Step {actions.getStepNumber()} of 3
 									</Text>
-									<Text
-										className="text-3xl font-black tracking-tighter"
-										style={{ color: colors.text }}
-									>
-										{getHeaderTitle()}
+									<Text style={[styles.headerTitle, { color: colors.text }]}>
+										{actions.getHeaderTitle()}
 									</Text>
 								</View>
 
 								<Pressable
-									onPress={handleDismiss}
-									className="p-2 bg-gray-500/10 rounded-full"
+									onPress={actions.handleDismiss}
+									style={styles.closeButton}
 								>
 									<Ionicons name="close" size={20} color={colors.text} />
 								</Pressable>
 							</View>
 
 							{error && (
-								<View
-									style={{
-										backgroundColor: `${COLORS.error}15`,
-										padding: 16,
-										borderRadius: 12,
-										marginBottom: 16,
-										borderLeftWidth: 4,
-										borderLeftColor: COLORS.error,
-									}}
-								>
-									<View style={{ flexDirection: "row", alignItems: "center" }}>
+								<View style={styles.errorContainer}>
+									<View style={styles.errorRow}>
 										<Ionicons
 											name="alert-circle"
 											size={20}
 											color={COLORS.error}
-											style={{ marginRight: 8 }}
+											style={styles.errorIcon}
 										/>
-										<Text
-											style={{
-												color: COLORS.error,
-												fontSize: 14,
-												fontWeight: '400',
-												flex: 1,
-											}}
-										>
+										<Text style={styles.errorText}>
 											{error}
 										</Text>
 									</View>
@@ -430,7 +115,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 							{/* Content */}
 							{isInputStep && (
 								<SmartContactInput
-									onSubmit={handleSmartInputSubmit}
+									onSubmit={actions.handleSmartInputSubmit}
 									loading={loading}
 									initialValue={registrationData.phone || registrationData.email || ""}
 								/>
@@ -438,54 +123,28 @@ export default function AuthInputModal({ visible, onClose, type }) {
 
 							{isOTPStep && (
 								<View>
-									{/* DEV: Show mock OTP for testing - remove in production */}
-									{/* {mockOtp && (
-										<View
-											className="mb-4 p-3 rounded-xl"
-											style={{
-												backgroundColor: isDarkMode
-													? "rgba(34, 197, 94, 0.15)"
-													: "rgba(34, 197, 94, 0.1)",
-												borderWidth: 1,
-												borderColor: isDarkMode
-													? "rgba(34, 197, 94, 0.3)"
-													: "rgba(34, 197, 94, 0.2)",
-											}}
-										>
-											<Text
-												className="text-xs text-center mb-1"
-												style={{
-													color: isDarkMode ? "#86efac" : "#166534",
-												}}
-											>
-												🔐 DEV MODE - Your test OTP:
-											</Text>
-											<Text
-												className="text-2xl font-bold text-center tracking-[8px]"
-												style={{
-													color: isDarkMode ? "#4ade80" : "#15803d",
-												}}
-											>
-												{mockOtp}
-											</Text>
-										</View>
-									)} */}
 									<OTPInputCard
 										method={registrationData.method}
 										contact={registrationData.phone || registrationData.email}
-										onVerified={handleOTPSubmit}
-										onResend={handleResendOtp}
+										onVerified={actions.handleOTPSubmit}
+										onResend={actions.handleResendOtp}
 										loading={loading}
 									/>
 								</View>
 							)}
 
-							{isProfileStep && <ProfileForm />}
+							{isProfileStep && (
+								<ProfileForm 
+									onSubmit={actions.handleProfileSubmit} 
+									loading={loading} 
+									initialValues={registrationData}
+								/>
+							)}
 
 							{isPasswordStep && (
 								<PasswordInputField
-									onSubmit={handlePasswordSubmit}
-									onSkip={handleSkipPassword}
+									onSubmit={actions.handlePasswordSubmit}
+									onSkip={actions.handleSkipPassword}
 									showSkipOption={true}
 									loading={loading}
 								/>

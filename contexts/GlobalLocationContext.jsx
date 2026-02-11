@@ -162,7 +162,7 @@ export function GlobalLocationProvider({ children }) {
 	}, [lastUpdated, userLocation]);
 
 	// Context value
-	const value = {
+	const value = React.useMemo(() => ({
 		// Location data
 		userLocation,
 		locationPermission,
@@ -178,7 +178,16 @@ export function GlobalLocationProvider({ children }) {
 		// Computed values
 		hasUserLocation: !!userLocation,
 		isLocationError: !!locationError,
-	};
+	}), [
+		userLocation,
+		locationPermission,
+		isLoadingLocation,
+		locationError,
+		lastUpdated,
+		refreshLocation,
+		isLocationFresh,
+		requestLocationPermission
+	]);
 
 	return (
 		<GlobalLocationContext.Provider value={value}>

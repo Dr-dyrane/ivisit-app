@@ -178,7 +178,7 @@ export const AuthProvider = ({ children }) => {
 			syncUserData,
 			loading,
 		}),
-		[authStatus, user, loading]
+		[authStatus, user, loading, login, logout, deleteAccount, syncUserData]
 	);
 
 	// **4. Show a spinner while loading data**

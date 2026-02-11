@@ -5,89 +5,28 @@
  * Enter reset token (OTP) and new password
  */
 
-import { useRef, useState } from "react";
+import React from "react";
 import { View, Text, TextInput, Pressable, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
-import { useResetPassword } from "../../hooks/auth";
-import { useToast } from "../../contexts/ToastContext";
+import { useResetPasswordCardLogic } from "../../hooks/auth/useResetPasswordCardLogic";
+import { styles } from "./ResetPasswordCard.styles";
 
 export default function ResetPasswordCard({
 	email,
 	onPasswordReset,
-	mockResetToken, // DEV: Pass the mock token from parent for display
+	mockResetToken,
 }) {
-	const { isDarkMode } = useTheme();
-	const { showToast } = useToast();
-	const { resetPassword, loading } = useResetPassword();
-
-	const tokenInputRef = useRef(null);
-	const passwordInputRef = useRef(null);
-
-	const [resetToken, setResetToken] = useState("");
-	const [newPassword, setNewPassword] = useState("");
-	const [showPassword, setShowPassword] = useState(false);
-	const [error, setError] = useState(null);
-
-	const shakeAnim = useRef(new Animated.Value(0)).current;
-	const buttonScale = useRef(new Animated.Value(1)).current;
-
-	const isValid = resetToken.length === 6 && newPassword.length >= 6;
-
-	const triggerShake = () => {
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-		Animated.sequence([
-			Animated.timing(shakeAnim, {
-				toValue: 10,
-				duration: 50,
-				useNativeDriver: true,
-			}),
-			Animated.timing(shakeAnim, {
-				toValue: -10,
-				duration: 50,
-				useNativeDriver: true,
-			}),
-			Animated.timing(shakeAnim, {
-				toValue: 10,
-				duration: 50,
-				useNativeDriver: true,
-			}),
-			Animated.timing(shakeAnim, {
-				toValue: 0,
-				duration: 50,
-				useNativeDriver: true,
-			}),
-		]).start();
-	};
-
-	const handleSubmit = async () => {
-		if (!isValid) {
-			triggerShake();
-			setError("Please enter a valid 6-digit code and password");
-			return;
-		}
-
-		setError(null);
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-		const result = await resetPassword(resetToken, newPassword, email);
-
-		if (result.success) {
-			showToast("Password reset successfully", "success");
-			onPasswordReset?.();
-		} else {
-			setError(result.error);
-			showToast(result.error, "error");
-			triggerShake();
-		}
-	};
-
-	const colors = {
-		inputBg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",
-		text: isDarkMode ? COLORS.bgLight : COLORS.textPrimary,
-	};
+	const { state, refs, actions } = useResetPasswordCardLogic({ email, onPasswordReset });
+	const {
+		resetToken,
+		newPassword,
+		showPassword,
+		error,
+		isValid,
+		loading,
+		colors,
+	} = state;
 
 	return (
 		<View>
@@ -101,142 +40,98 @@ export default function ResetPasswordCard({
 				</Text>
 			</Text>
 
-			{/* DEV: Show mock reset token for testing - remove in production */}
+			{/* DEV: Show mock reset token for testing */}
 			{mockResetToken && (
 				<View
-					className="mb-4 p-3 rounded-xl"
-					style={{
-						backgroundColor: isDarkMode
-							? "rgba(34, 197, 94, 0.15)"
-							: "rgba(34, 197, 94, 0.1)",
-						borderWidth: 1,
-						borderColor: isDarkMode
-							? "rgba(34, 197, 94, 0.3)"
-							: "rgba(34, 197, 94, 0.2)",
-					}}
+					style={[
+						styles.mockTokenContainer,
+						{
+							backgroundColor: colors.mockBg,
+							borderColor: colors.mockBorder,
+						},
+					]}
 				>
-					<Text
-						className="text-xs text-center mb-1"
-						style={{
-							color: isDarkMode ? "#86efac" : "#166534",
-						}}
-					>
+					<Text style={[styles.mockTokenLabel, { color: colors.mockLabel }]}>
 						🔐 DEV MODE - Your reset code:
 					</Text>
-					<Text
-						className="text-2xl font-bold text-center tracking-[8px]"
-						style={{
-							color: isDarkMode ? "#4ade80" : "#15803d",
-						}}
-					>
+					<Text style={[styles.mockTokenValue, { color: colors.mockValue }]}>
 						{mockResetToken}
 					</Text>
 				</View>
 			)}
 
 			{error && (
-				<View
-					style={{
-						backgroundColor: `${COLORS.error}15`,
-						padding: 12,
-						borderRadius: 12,
-						marginBottom: 16,
-						borderLeftWidth: 4,
-						borderLeftColor: COLORS.error,
-					}}
-				>
-					<View style={{ flexDirection: "row", alignItems: "center" }}>
+				<View style={styles.errorContainer}>
+					<View style={styles.errorRow}>
 						<Ionicons
 							name="alert-circle"
 							size={18}
 							color={COLORS.error}
-							style={{ marginRight: 8 }}
+							style={styles.errorIcon}
 						/>
-						<Text
-							style={{
-								color: COLORS.error,
-								fontSize: 13,
-								fontWeight: '400',
-								flex: 1,
-							}}
-						>
-							{error}
-						</Text>
+						<Text style={styles.errorText}>{error}</Text>
 					</View>
 				</View>
 			)}
 
-			<Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+			<Animated.View style={{ transform: [{ translateX: refs.shakeAnim }] }}>
 				{/* Reset Token Input */}
 				<View
-					className="flex-row items-center rounded-2xl px-5 h-[72px] mb-4"
-					style={{ backgroundColor: colors.inputBg }}
+					style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
 				>
 					<Ionicons
 						name="key-outline"
 						size={24}
 						color={COLORS.textMuted}
-						style={{ marginRight: 12 }}
+						style={styles.inputIcon}
 					/>
 
 					<TextInput
-						ref={tokenInputRef}
-						className="flex-1 text-xl font-bold tracking-widest"
-						style={{ color: colors.text }}
+						ref={refs.tokenInputRef}
+						style={[styles.textInput, styles.tokenInput, { color: colors.text }]}
 						placeholder="000000"
 						placeholderTextColor={COLORS.textMuted}
 						keyboardType="number-pad"
 						autoFocus
 						value={resetToken}
-						onChangeText={(text) => {
-							setResetToken(text.slice(0, 6));
-							if (error) setError(null);
-						}}
+						onChangeText={actions.handleTokenChange}
 						maxLength={6}
 						selectionColor={COLORS.brandPrimary}
 						returnKeyType="next"
-						onSubmitEditing={() => passwordInputRef.current?.focus()}
+						onSubmitEditing={() => refs.passwordInputRef.current?.focus()}
 						editable={!loading}
 					/>
 				</View>
 
 				{/* New Password Input */}
 				<View
-					className="flex-row items-center rounded-2xl px-5 h-[72px] mb-6"
-					style={{ backgroundColor: colors.inputBg }}
+					style={[styles.inputRow, { backgroundColor: colors.inputBg }]}
 				>
 					<Ionicons
 						name="lock-closed-outline"
 						size={24}
 						color={COLORS.textMuted}
-						style={{ marginRight: 12 }}
+						style={styles.inputIcon}
 					/>
 
 					<TextInput
-						ref={passwordInputRef}
-						className="flex-1 text-xl font-bold"
-						style={{ color: colors.text }}
+						ref={refs.passwordInputRef}
+						style={[styles.textInput, { color: colors.text }]}
 						placeholder="New password"
 						placeholderTextColor={COLORS.textMuted}
 						secureTextEntry={!showPassword}
 						autoCapitalize="none"
 						autoCorrect={false}
 						value={newPassword}
-						onChangeText={(text) => {
-							setNewPassword(text);
-							if (error) setError(null);
-						}}
+						onChangeText={actions.handlePasswordChange}
 						selectionColor={COLORS.brandPrimary}
 						returnKeyType="done"
-						onSubmitEditing={handleSubmit}
+						onSubmitEditing={actions.handleSubmit}
 						editable={!loading}
 					/>
 
 					<Pressable
-						onPress={() => {
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							setShowPassword(!showPassword);
-						}}
+						onPress={actions.toggleShowPassword}
 						hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 					>
 						<Ionicons
@@ -248,38 +143,22 @@ export default function ResetPasswordCard({
 				</View>
 			</Animated.View>
 
-			<Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+			<Animated.View style={{ transform: [{ scale: refs.buttonScale }] }}>
 				<Pressable
-					onPress={handleSubmit}
-					onPressIn={() => {
-						Animated.spring(buttonScale, {
-							toValue: 0.96,
-							useNativeDriver: true,
-						}).start();
-					}}
-					onPressOut={() => {
-						Animated.spring(buttonScale, {
-							toValue: 1,
-							friction: 3,
-							useNativeDriver: true,
-						}).start();
-					}}
+					onPress={actions.handleSubmit}
+					onPressIn={actions.handlePressIn}
+					onPressOut={actions.handlePressOut}
 					disabled={!isValid || loading}
-					className="h-16 rounded-2xl items-center justify-center"
-					style={{
-						backgroundColor:
-							isValid && !loading
-								? COLORS.brandPrimary
-								: isDarkMode
-									? COLORS.bgDarkAlt
-									: "#E5E7EB",
-					}}
+					style={[
+						styles.submitButton,
+						{ backgroundColor: colors.buttonBg }
+					]}
 				>
 					<Text
-						className="text-base font-black tracking-[2px]"
-						style={{
-							color: isValid && !loading ? COLORS.bgLight : COLORS.textMuted,
-						}}
+						style={[
+							styles.submitButtonText,
+							{ color: colors.buttonText }
+						]}
 					>
 						{loading ? "RESETTING..." : "RESET PASSWORD"}
 					</Text>
@@ -287,19 +166,13 @@ export default function ResetPasswordCard({
 			</Animated.View>
 
 			{!error && resetToken.length > 0 && resetToken.length < 6 && (
-				<Text
-					className="mt-3 text-xs text-center"
-					style={{ color: COLORS.textMuted }}
-				>
+				<Text style={styles.validationText}>
 					Code must be 6 digits
 				</Text>
 			)}
 
 			{!error && newPassword.length > 0 && newPassword.length < 6 && (
-				<Text
-					className="mt-3 text-xs text-center"
-					style={{ color: COLORS.textMuted }}
-				>
+				<Text style={styles.validationText}>
 					Password must be at least 6 characters
 				</Text>
 			)}

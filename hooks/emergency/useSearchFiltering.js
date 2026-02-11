@@ -12,7 +12,7 @@ export const useSearchFiltering = ({
 }) => {
 	const filterByQuery = useCallback(
 		(query, baseHospitals) => {
-			if (!query.trim()) return baseHospitals;
+			if (!query || typeof query !== "string" || !query.trim()) return baseHospitals;
 
 			const q = query.toLowerCase();
 			return baseHospitals.filter((h) => {

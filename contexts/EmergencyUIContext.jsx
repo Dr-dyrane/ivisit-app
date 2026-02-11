@@ -246,7 +246,7 @@ export function EmergencyUIProvider({ children }) {
 		handleSnapChange, resetSnapIndex, updateSearch, clearSearch,
 		openProfileModal, closeProfileModal,
 		updateScrollPosition, getLastScrollY,
-		setMapReady, startMapLoading, timing,
+		setMapReady, startMapLoading, timing, setIsHospitalsLoading, setIsSearchFocused
 	]);
 
 	return (

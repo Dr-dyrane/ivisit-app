@@ -1,5 +1,5 @@
 export * from './useLogin';
-export * from './useSignup';
+export * from './useSignupFlow';
 export * from './useForgotPassword';
 export * from './useResetPassword';
 export * from './useSocialAuth';

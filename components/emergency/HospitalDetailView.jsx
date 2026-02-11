@@ -52,7 +52,11 @@ const HospitalDetailView = ({ hospital, onClose, onCall, mode }) => {
 				<Pressable 
 					onPress={() => {
 						Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-						onClose();
+						if (typeof onClose === 'function') {
+							onClose();
+						} else {
+							console.warn('[HospitalDetailView] onClose is undefined');
+						}
 					}}
 					style={({ pressed }) => [
 						styles.closePill,

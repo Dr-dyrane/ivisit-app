@@ -35,3 +35,8 @@ export const AMBULANCE_TYPES = [
     icon: "warning-outline",
   },
 ];
+
+export const EmergencyMode = {
+	EMERGENCY: "emergency",
+	BOOKING: "booking",
+};

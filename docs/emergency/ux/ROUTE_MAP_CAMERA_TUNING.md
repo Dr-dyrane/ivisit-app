@@ -4,12 +4,12 @@ This document captures the final, working parameters for the Emergency route map
 
 ## Final Parameters
 
-- **Zoom factor**: `ROUTE_ZOOM_FACTOR = 0.125`
+- **Zoom factor**: `ROUTE_ZOOM_FACTOR = 0.2`
 - **Edge padding used for route fit**
   - X margin: `marginXPx = 4`
   - Top extra margin: `marginTopPx = 48`
   - Bottom extra margin: `marginBottomPx = 4`
-- **Post-fit vertical placement**: `centerBias = 1`
+- **Post-fit vertical placement**: `centerBias = 0.5`
   - `0.5` is centered in visible area
   - `> 0.5` pushes the content lower (more “scroll down”)
 

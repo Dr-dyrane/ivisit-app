@@ -130,7 +130,7 @@ export function useSocialAuth() {
 					if (session?.user) {
 						console.log("[useSocialAuth] Session found! Deep link handler processed auth.");
 						const profile = await authService.getUserProfile(session.user.id);
-						const user = authService._formatUser(session.user, session.access_token, profile);
+						const user = authService.formatUser(session.user, session.access_token, profile);
 						await login(user);
 						return { success: true };
 					}

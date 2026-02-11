@@ -1,74 +1,61 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback } from "react";
 import {
 	View,
 	Text,
-	ScrollView,
-	StyleSheet,
-	Platform,
-	Pressable,
-	TextInput,
 	Animated,
-	ActivityIndicator,
+	Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import { useTheme } from "../contexts/ThemeContext";
-import { useHeaderState } from "../contexts/HeaderStateContext";
-import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
-import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
-import { STACK_TOP_PADDING } from "../constants/layout";
-import { useChangePassword } from "../hooks/auth";
-import { useAuth } from "../contexts/AuthContext";
-import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import { useChangePasswordScreenLogic } from "../hooks/auth/useChangePasswordScreenLogic";
+import { styles } from "./ChangePasswordScreen.styles";
+import ChangePasswordForm from "../components/auth/ChangePasswordForm";
 
 export default function ChangePasswordScreen() {
-	const router = useRouter();
-	const { isDarkMode } = useTheme();
-	const insets = useSafeAreaInsets();
-	const { setHeaderState } = useHeaderState();
-	const { handleScroll: handleTabBarScroll, resetTabBar } =
-		useTabBarVisibility();
-	const { handleScroll: handleHeaderScroll, resetHeader } =
-		useScrollAwareHeader();
-	const { syncUserData, user } = useAuth();
-	const { changePassword, isLoading: isSaving, error: hookError } = useChangePassword();
+	const { state, actions } = useChangePasswordScreenLogic();
+	const {
+		user,
+		currentPassword,
+		newPassword,
+		confirmPassword,
+		showCurrent,
+		showNew,
+		showConfirm,
+		error,
+		isValid,
+		isSaving,
+		shakeAnim,
+		buttonScale,
+		fadeAnim,
+		slideAnim,
+		backgroundColors,
+		colors,
+		topPadding,
+		bottomPadding,
+	} = state;
 
-	const [currentPassword, setCurrentPassword] = useState("");
-	const [newPassword, setNewPassword] = useState("");
-	const [confirmPassword, setConfirmPassword] = useState("");
-	const [showCurrent, setShowCurrent] = useState(false);
-	const [showNew, setShowNew] = useState(false);
-	const [showConfirm, setShowConfirm] = useState(false);
-	const [error, setError] = useState(null);
+	const {
+		setCurrentPassword,
+		setNewPassword,
+		setConfirmPassword,
+		setShowCurrent,
+		setShowNew,
+		setShowConfirm,
+		setError,
+		handleSubmit,
+		handleScroll,
+		backButton,
+		resetHeader,
+		resetTabBar,
+		setHeaderState,
+		router,
+	} = actions;
 
-	const shakeAnim = useRef(new Animated.Value(0)).current;
-	const buttonScale = useRef(new Animated.Value(1)).current;
-	const fadeAnim = useRef(new Animated.Value(0)).current;
-	const slideAnim = useRef(new Animated.Value(30)).current;
-
-	useEffect(() => {
-		Animated.parallel([
-			Animated.timing(fadeAnim, {
-				toValue: 1,
-				duration: 600,
-				useNativeDriver: true,
-			}),
-			Animated.spring(slideAnim, {
-				toValue: 0,
-				friction: 8,
-				tension: 50,
-				useNativeDriver: true,
-			}),
-		]).start();
-	}, []);
-
-	const backButton = useCallback(() => <HeaderBackButton />, []);
 	const closeButton = useCallback(
 		() => (
 			<Pressable
@@ -77,7 +64,7 @@ export default function ChangePasswordScreen() {
 					router.back();
 				}}
 				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-				style={{ paddingHorizontal: 12, paddingVertical: 6 }}
+				style={styles.closeButton}
 			>
 				<Ionicons name="close" size={22} color="#FFFFFF" />
 			</Pressable>
@@ -100,76 +87,9 @@ export default function ChangePasswordScreen() {
 		}, [backButton, closeButton, resetHeader, resetTabBar, setHeaderState])
 	);
 
-	const backgroundColors = useMemo(
-		() =>
-			isDarkMode
-				? ["#121826", "#0B0F1A", "#121826"]
-				: ["#FFFFFF", "#F3E7E7", "#FFFFFF"],
-		[isDarkMode]
-	);
-
-	const colors = useMemo(
-		() => ({
-			text: isDarkMode ? "#FFFFFF" : "#0F172A",
-			textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-			card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
-			inputBg: isDarkMode ? "#0B0F1A" : "#F3F4F6",
-		}),
-		[isDarkMode]
-	);
-
-	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
-	const bottomPadding = tabBarHeight + 20;
-	const topPadding = STACK_TOP_PADDING;
-
-	const isValid =
-		currentPassword.length > 0 &&
-		newPassword.length >= 6 &&
-		newPassword === confirmPassword;
-
-	const handleScroll = useCallback(
-		(event) => {
-			handleTabBarScroll(event);
-			handleHeaderScroll(event);
-		},
-		[handleHeaderScroll, handleTabBarScroll]
-	);
-
-	const shake = useCallback(() => {
-		Animated.sequence([
-			Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: 8, duration: 60, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
-		]).start();
-	}, [shakeAnim]);
-
-	const handleSubmit = useCallback(async () => {
-		if (isSaving) return;
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-		if (!isValid) {
-			setError("Check your inputs. New password must match and be 6+ chars.");
-			shake();
-			return;
-		}
-
-		setError(null);
-		try {
-			await changePassword({ currentPassword, newPassword });
-			await syncUserData();
-			router.back();
-		} catch (e) {
-			const msg = e?.message?.split("|")?.[1] || e?.message || "Unable to change password";
-			setError(msg);
-			shake();
-		}
-	}, [currentPassword, isSaving, isValid, newPassword, router, shake, syncUserData, changePassword]);
-
 	if (!user?.hasPassword) {
 		return (
-			<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
+			<LinearGradient colors={backgroundColors} style={styles.container}>
 				<View style={[styles.content, { paddingTop: topPadding, paddingBottom: bottomPadding }]}>
 					<View style={[styles.card, { backgroundColor: colors.card }]}>
 						<Text style={[styles.title, { color: colors.text }]}>
@@ -180,17 +100,12 @@ export default function ChangePasswordScreen() {
 						</Text>
 						<Pressable
 							onPress={() => router.replace("/(user)/(stacks)/create-password")}
-							style={({ pressed }) => ({
-								marginTop: 12,
-								height: 54,
-								borderRadius: 22,
-								backgroundColor: COLORS.brandPrimary,
-								opacity: pressed ? 0.92 : 1,
-								alignItems: "center",
-								justifyContent: "center",
-							})}
+							style={({ pressed }) => [
+                                styles.noPasswordButton,
+                                { opacity: pressed ? 0.92 : 1 }
+                            ]}
 						>
-							<Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 15 }}>
+							<Text style={styles.noPasswordButtonText}>
 								Go to Create Password
 							</Text>
 						</Pressable>
@@ -201,7 +116,7 @@ export default function ChangePasswordScreen() {
 	}
 
 	return (
-		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
+		<LinearGradient colors={backgroundColors} style={styles.container}>
 			<Animated.ScrollView
 				contentContainerStyle={[
 					styles.content,
@@ -224,173 +139,29 @@ export default function ChangePasswordScreen() {
 					</Text>
 				</View>
 
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					{error ? (
-						<View style={styles.errorRow}>
-							<Ionicons name="alert-circle" size={18} color={COLORS.error} />
-							<Text style={[styles.errorText, { color: COLORS.error }]}>{error}</Text>
-						</View>
-					) : null}
-
-					<Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
-						<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
-							<Ionicons name="lock-closed-outline" size={22} color={COLORS.textMuted} />
-							<TextInput
-								value={currentPassword}
-								onChangeText={(t) => {
-									setCurrentPassword(t);
-									if (error) setError(null);
-								}}
-								placeholder="Current password"
-								placeholderTextColor={COLORS.textMuted}
-								secureTextEntry={!showCurrent}
-								autoCapitalize="none"
-								autoCorrect={false}
-								style={[styles.input, { color: colors.text }]}
-								selectionColor={COLORS.brandPrimary}
-								editable={!isSaving}
-							/>
-							<Pressable
-								onPress={() => {
-									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-									setShowCurrent((v) => !v);
-								}}
-								hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-							>
-								<Ionicons
-									name={showCurrent ? "eye-off-outline" : "eye-outline"}
-									size={22}
-									color={COLORS.textMuted}
-								/>
-							</Pressable>
-						</View>
-
-						<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
-							<Ionicons name="lock-closed-outline" size={22} color={COLORS.textMuted} />
-							<TextInput
-								value={newPassword}
-								onChangeText={(t) => {
-									setNewPassword(t);
-									if (error) setError(null);
-								}}
-								placeholder="New password"
-								placeholderTextColor={COLORS.textMuted}
-								secureTextEntry={!showNew}
-								autoCapitalize="none"
-								autoCorrect={false}
-								style={[styles.input, { color: colors.text }]}
-								selectionColor={COLORS.brandPrimary}
-								editable={!isSaving}
-							/>
-							<Pressable
-								onPress={() => {
-									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-									setShowNew((v) => !v);
-								}}
-								hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-							>
-								<Ionicons
-									name={showNew ? "eye-off-outline" : "eye-outline"}
-									size={22}
-									color={COLORS.textMuted}
-								/>
-							</Pressable>
-						</View>
-
-						<View style={[styles.inputRow, { backgroundColor: colors.inputBg }]}>
-							<Ionicons name="lock-closed-outline" size={22} color={COLORS.textMuted} />
-							<TextInput
-								value={confirmPassword}
-								onChangeText={(t) => {
-									setConfirmPassword(t);
-									if (error) setError(null);
-								}}
-								placeholder="Confirm new password"
-								placeholderTextColor={COLORS.textMuted}
-								secureTextEntry={!showConfirm}
-								autoCapitalize="none"
-								autoCorrect={false}
-								style={[styles.input, { color: colors.text }]}
-								selectionColor={COLORS.brandPrimary}
-								editable={!isSaving}
-							/>
-							<Pressable
-								onPress={() => {
-									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-									setShowConfirm((v) => !v);
-								}}
-								hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-							>
-								<Ionicons
-									name={showConfirm ? "eye-off-outline" : "eye-outline"}
-									size={22}
-									color={COLORS.textMuted}
-								/>
-							</Pressable>
-						</View>
-					</Animated.View>
-
-					<Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-						<Pressable
-							disabled={!isValid || isSaving}
-							onPress={handleSubmit}
-							onPressIn={() => {
-								Animated.spring(buttonScale, { toValue: 0.96, useNativeDriver: true }).start();
-							}}
-							onPressOut={() => {
-								Animated.spring(buttonScale, { toValue: 1, friction: 3, useNativeDriver: true }).start();
-							}}
-							style={{
-								marginTop: 10,
-								height: 54,
-								borderRadius: 22,
-								backgroundColor:
-									isValid && !isSaving
-										? COLORS.brandPrimary
-										: isDarkMode
-											? COLORS.bgDarkAlt
-											: "#E5E7EB",
-								alignItems: "center",
-								justifyContent: "center",
-								flexDirection: "row",
-								gap: 10,
-							}}
-						>
-							{isSaving ? <ActivityIndicator color="#FFFFFF" /> : <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
-							<Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 15 }}>
-								Change Password
-							</Text>
-						</Pressable>
-					</Animated.View>
-				</View>
+                <ChangePasswordForm
+                    currentPassword={currentPassword}
+                    setCurrentPassword={setCurrentPassword}
+                    newPassword={newPassword}
+                    setNewPassword={setNewPassword}
+                    confirmPassword={confirmPassword}
+                    setConfirmPassword={setConfirmPassword}
+                    showCurrent={showCurrent}
+                    setShowCurrent={setShowCurrent}
+                    showNew={showNew}
+                    setShowNew={setShowNew}
+                    showConfirm={showConfirm}
+                    setShowConfirm={setShowConfirm}
+                    error={error}
+                    setError={setError}
+                    isValid={isValid}
+                    isSaving={isSaving}
+                    shakeAnim={shakeAnim}
+                    buttonScale={buttonScale}
+                    handleSubmit={handleSubmit}
+                    colors={colors}
+                />
 			</Animated.ScrollView>
 		</LinearGradient>
 	);
 }
-
-const styles = StyleSheet.create({
-	container: { flex: 1 },
-	content: { flexGrow: 1, padding: 20, gap: 12 },
-	card: {
-		borderRadius: 30,
-		padding: 20,
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.03,
-		shadowRadius: 10,
-	},
-	title: { fontSize: 19, fontWeight: "900", letterSpacing: -0.5 },
-	subtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, fontWeight: '400' },
-	errorRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
-	errorText: { fontSize: 13, fontWeight: "500", flex: 1 },
-	inputRow: {
-		height: 64,
-		borderRadius: 18,
-		paddingHorizontal: 12,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 10,
-		marginBottom: 10,
-	},
-	input: { flex: 1, fontSize: 15, fontWeight: "500" },
-});

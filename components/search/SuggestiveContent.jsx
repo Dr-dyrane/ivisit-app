@@ -1,475 +1,91 @@
-import React, { useState, useRef, useMemo } from "react";
-import { View, Text, Pressable, ScrollView, Animated, StyleSheet, ActivityIndicator } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { COLORS } from "../../constants/colors";
-import { useTheme } from "../../contexts/ThemeContext";
-import { useVisits } from "../../contexts/VisitsContext";
-import { useSearch } from "../../contexts/SearchContext"; // Import useSearch
-import { discoveryService } from "../../services/discoveryService";
-import * as Haptics from "expo-haptics";
+import React from "react";
+import { View, Text, Animated } from "react-native";
+import { useSuggestiveContentLogic } from "../../hooks/search/useSuggestiveContentLogic";
+import { styles } from "./SuggestiveContent.styles";
+import SuggestiveTabs from "./SuggestiveTabs";
+import QuickActionsTab from "./tabs/QuickActionsTab";
+import TrendingTab from "./tabs/TrendingTab";
+import HealthNewsTab from "./tabs/HealthNewsTab";
 import SpecialtySelector from "../emergency/SpecialtySelector";
 
 const SuggestiveContent = ({ onSelectQuery }) => {
-	const { isDarkMode } = useTheme();
-	const { visits } = useVisits();
-	const { trendingSearches, trendingLoading, healthNews, healthNewsLoading } = useSearch(); // Use context data
-	const [activeTab, setActiveTab] = useState("quick-actions");
-	const fadeAnim = useRef(new Animated.Value(1)).current;
+    const { state, actions } = useSuggestiveContentLogic(onSelectQuery);
+    const {
+        activeTab,
+        fadeAnim,
+        colors,
+        quickActionItems,
+        trendingSearches,
+        trendingLoading,
+        healthNews,
+        healthNewsLoading,
+        tabs,
+        isDarkMode,
+    } = state;
 
-	const colors = {
-		text: isDarkMode ? "#FFFFFF" : "#0F172A",
-		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-		cardBg: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
-		tabActive: COLORS.brandPrimary,
-		tabInactive: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
-		activeGlow: COLORS.brandPrimary + (isDarkMode ? "25" : "15"),
-	};
+    const { handleTabChange, handleItemSelect } = actions;
 
-	const handleTabChange = (tabId) => {
-		if (activeTab === tabId) return;
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		
-		Animated.timing(fadeAnim, {
-			toValue: 0,
-			duration: 150,
-			useNativeDriver: true,
-		}).start(() => {
-			setActiveTab(tabId);
-			Animated.timing(fadeAnim, {
-				toValue: 1,
-				duration: 200,
-				useNativeDriver: true,
-			}).start();
-		});
-	};
+    const renderTabContent = () => {
+        switch (activeTab) {
+            case "quick-actions":
+                return (
+                    <QuickActionsTab
+                        items={quickActionItems}
+                        colors={colors}
+                        isDarkMode={isDarkMode}
+                        onItemSelect={handleItemSelect}
+                    />
+                );
+            case "trending":
+                return (
+                    <TrendingTab
+                        items={trendingSearches}
+                        loading={trendingLoading}
+                        colors={colors}
+                        isDarkMode={isDarkMode}
+                        onItemSelect={handleItemSelect}
+                    />
+                );
+            case "specialties":
+                return (
+                    <SpecialtySelector 
+                        specialties={["General Care", "Emergency", "Cardiology", "Neurology", "Oncology", "Pediatrics", "Orthopedics", "ICU", "Trauma", "Urgent Care"]}
+                        selectedSpecialty={null}
+                        onSelect={onSelectQuery}
+                    />
+                );
+            case "health-news":
+                return (
+                    <HealthNewsTab
+                        items={healthNews}
+                        loading={healthNewsLoading}
+                        colors={colors}
+                        isDarkMode={isDarkMode}
+                    />
+                );
+            default:
+                return null;
+        }
+    };
 
-	const handleItemSelect = (query, meta) => {
-		Haptics.selectionAsync();
-		
-		// Updated tracking to match guide
-		discoveryService.trackSearchSelection({
-			query,
-			source: activeTab === 'trending' ? 'trending_tab' : 'suggestive',
-			resultType: activeTab === 'trending' ? 'trending_search' : (meta?.isEmergency ? 'emergency' : 'quick_action'),
-			resultId: meta?.id || query,
-		});
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>HEALTHCARE DISCOVERY</Text>
+            </View>
 
-		onSelectQuery(query);
-	};
+            <SuggestiveTabs
+                tabs={tabs}
+                activeTab={activeTab}
+                colors={colors}
+                onTabChange={handleTabChange}
+            />
 
-	const tabs = [
-		{ id: "quick-actions", label: "Quick Actions", icon: "flash" },
-		{ id: "specialties", label: "Specialties", icon: "medical" },
-		{ id: "trending", label: "Trending", icon: "trending-up" },
-		{ id: "health-news", label: "Health News", icon: "newspaper" },
-	];
-
-	// Quick Actions for life-saving scenarios
-	const quickActionItems = useMemo(() => {
-		const items = [];
-		
-		// Emergency - Always first
-		items.push({
-			id: "emergency",
-			title: "Emergency SOS",
-			subtitle: "Get immediate help",
-			icon: "alert-circle",
-			color: "#EF4444",
-			query: "emergency",
-			isEmergency: true
-		});
-
-		// Last hospital visit if exists
-		if (visits && visits.length > 0) {
-			const lastVisit = visits[0];
-			items.push({
-				id: `v-${lastVisit.id}`,
-				title: lastVisit.hospital || "Last Visit",
-				subtitle: "Book again",
-				icon: "location",
-				color: COLORS.brandPrimary,
-				query: lastVisit.hospital
-			});
-		}
-
-		// Common urgent needs
-		items.push({
-			id: "pharmacy",
-			title: "24/7 Pharmacy",
-			subtitle: "Find nearby pharmacies",
-			icon: "medical",
-			color: "#10B981",
-			query: "pharmacy"
-		});
-
-		items.push({
-			id: "hospital",
-			title: "Hospitals Near Me",
-			subtitle: "Find nearest hospitals",
-			icon: "business",
-			color: "#3B82F6",
-			query: "hospital"
-		});
-
-		return items;
-	}, [visits]);
-
-	const renderTabContent = () => {
-		switch (activeTab) {
-			case "quick-actions":
-				return (
-					<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-						{quickActionItems.map(item => (
-							<Pressable 
-								key={item.id} 
-								onPress={() => item.isEmergency ? handleItemSelect("emergency", item) : handleItemSelect(item.query, item)}
-								style={({ pressed }) => [
-									styles.horizontalCard,
-									{ 
-										backgroundColor: item.color + (isDarkMode ? "20" : "10"),
-										transform: [{ scale: pressed ? 0.98 : 1 }] // Micro-Scale: Every interactive card scales to 0.98 on press
-									}
-								]}
-							>
-								<View style={[styles.iconBox, { backgroundColor: item.color }]}>
-									<Ionicons name={item.icon} size={24} color="#FFFFFF" />
-								</View>
-								<View style={styles.textStack}>
-									<Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
-										{item.title}
-									</Text>
-									<Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>
-										{item.subtitle}
-									</Text>
-								</View>
-								<View style={[
-									styles.checkmarkWrapper,
-									{
-										backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF", // Frosted Glass background
-									}
-								]}>
-									<Ionicons name="arrow-forward" size={18} color={item.color} />
-								</View>
-							</Pressable>
-						))}
-					</ScrollView>
-				);
-			case "trending":
-				if (trendingLoading) {
-					return (
-						<View style={{ padding: 20, alignItems: 'center' }}>
-							<ActivityIndicator color={COLORS.brandPrimary} />
-						</View>
-					);
-				}
-
-				if (!trendingSearches.length) {
-					return (
-						<View style={{ padding: 20, alignItems: 'center' }}>
-							<Text style={{ color: colors.textMuted }}>No trending searches yet.</Text>
-						</View>
-					);
-				}
-
-				return (
-					<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-						{trendingSearches.map((item, index) => (
-							<Pressable 
-								key={item.query} 
-								onPress={() => handleItemSelect(item.query, item)}
-								style={({ pressed }) => [
-									styles.horizontalCard,
-									{ 
-										backgroundColor: colors.cardBg,
-										transform: [{ scale: pressed ? 0.98 : 1 }] // Micro-Scale: Every interactive card scales to 0.98 on press 
-									}
-								]}
-							>
-								<View style={[styles.iconBox, { backgroundColor: COLORS.brandPrimary }]}>
-									<Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 14 }}>#{item.rank}</Text>
-								</View>
-								<View style={styles.textStack}>
-									<Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
-										{item.query}
-									</Text>
-									<Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>
-										{item.count} searches
-									</Text>
-								</View>
-								<View style={[
-									styles.checkmarkWrapper,
-									{
-										backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF", // Frosted Glass background
-									}
-								]}>
-									<Ionicons name="trending-up" size={18} color={COLORS.brandPrimary} />
-								</View>
-							</Pressable>
-						))}
-					</ScrollView>
-				);
-			case "specialties":
-				return (
-					<SpecialtySelector 
-						specialties={["General Care", "Emergency", "Cardiology", "Neurology", "Oncology", "Pediatrics", "Orthopedics", "ICU", "Trauma", "Urgent Care"]}
-						selectedSpecialty={null}
-						onSelect={onSelectQuery}
-					/>
-				);
-			case "health-news":
-				if (healthNewsLoading) {
-					return (
-						<View style={{ padding: 20, alignItems: 'center' }}>
-							<ActivityIndicator color={COLORS.brandPrimary} />
-						</View>
-					);
-				}
-
-				if (!healthNews.length) {
-					return (
-						<View style={{ padding: 20, alignItems: 'center' }}>
-							<Text style={{ color: colors.textMuted }}>No health news available.</Text>
-						</View>
-					);
-				}
-
-				return (
-					<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-						{healthNews.map((item) => (
-							<Pressable 
-								key={item.id} 
-								onPress={() => {
-									// Track news selection
-									discoveryService.trackSearchSelection({
-										query: item.title,
-										source: 'health_news_tab',
-										resultType: 'health_news',
-										resultId: item.id,
-									});
-									// Optional: Open news URL if available
-									if (item.url) {
-										// You might want to use Linking.openURL(item.url) here
-									}
-								}}
-								style={({ pressed }) => [
-									styles.newsCard,
-									{ 
-										backgroundColor: colors.cardBg,
-										transform: [{ scale: pressed ? 0.98 : 1 }]
-									}
-								]}
-							>
-								<View style={styles.newsHeaderRow}>
-									<View style={[styles.iconBox, { backgroundColor: COLORS.brandPrimary }]}>
-										<Ionicons name={item.icon || 'newspaper'} size={16} color="#FFFFFF" />
-									</View>
-									<View style={styles.newsMeta}>
-										<Text style={[styles.newsSource, { color: COLORS.brandPrimary }]}>
-											{item.source}
-										</Text>
-										<Text style={[styles.newsTime, { color: colors.textMuted }]}>
-											{item.time}
-										</Text>
-									</View>
-								</View>
-								<Text style={[styles.newsTitleText, { color: colors.text }]} numberOfLines={3}>
-									{item.title}
-								</Text>
-								<View style={[
-									styles.checkmarkWrapper,
-									{
-										backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
-									}
-								]}>
-									<Ionicons name="arrow-forward" size={18} color={COLORS.brandPrimary} />
-								</View>
-							</Pressable>
-						))}
-					</ScrollView>
-				);
-			default:
-				return null;
-		}
-	};
-
-	return (
-		<View style={styles.container}>
-			<View style={styles.header}>
-				<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>HEALTHCARE DISCOVERY</Text>
-			</View>
-
-			<ScrollView 
-				horizontal 
-				showsHorizontalScrollIndicator={false} 
-				style={styles.tabScroll}
-				contentContainerStyle={styles.tabContainer}
-			>
-				{tabs.map(tab => (
-					<Pressable
-						key={tab.id}
-						onPress={() => handleTabChange(tab.id)}
-						style={({ pressed }) => [
-							styles.tabButton,
-							{ 
-								backgroundColor: activeTab === tab.id ? colors.tabActive : colors.tabInactive,
-								transform: [{ scale: pressed ? 0.95 : 1 }]
-							}
-						]}
-					>
-						<Ionicons name={tab.icon} size={16} color={activeTab === tab.id ? "#FFFFFF" : colors.textMuted} style={{ marginRight: 8 }} />
-						<Text style={[
-							styles.tabText,
-							{ color: activeTab === tab.id ? "#FFFFFF" : colors.textMuted }
-						]}>
-							{tab.label}
-						</Text>
-					</Pressable>
-				))}
-			</ScrollView>
-
-			<Animated.View style={{ opacity: fadeAnim }}>
-				{renderTabContent()}
-			</Animated.View>
-		</View>
-	);
+            <Animated.View style={{ opacity: fadeAnim }}>
+                {renderTabContent()}
+            </Animated.View>
+        </View>
+    );
 };
-
-const styles = StyleSheet.create({
-	container: {
-		marginTop: 8,
-	},
-	header: {
-		paddingHorizontal: 4,
-		marginBottom: 16,
-	},
-	sectionTitle: {
-		fontSize: 11,
-		fontWeight: "800",
-		letterSpacing: 1.5,
-		textTransform: "uppercase",
-	},
-	tabScroll: {
-		marginBottom: 20,
-	},
-	tabContainer: {
-		paddingHorizontal: 4,
-		gap: 10,
-	},
-	tabButton: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingHorizontal: 18,
-		paddingVertical: 10,
-		borderRadius: 20,
-	},
-	tabText: {
-		fontWeight: "900",
-		fontSize: 13,
-		letterSpacing: -0.3,
-	},
-	horizontalScroll: {
-		paddingLeft: 4,
-		paddingRight: 20,
-		paddingBottom: 8,
-		gap: 12,
-	},
-	horizontalCard: {
-		minWidth: 180,
-		padding: 16, // Consistent with manifesto
-		borderRadius: 24, // Widget / Card-in-Card (24px)
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 12,
-		position: 'relative',
-		// Border-Free Depth: Bioluminescence & Glass
-		shadowColor: COLORS.brandPrimary, // Active Glow
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.15,
-		shadowRadius: 8,
-		elevation: 4,
-	},
-	iconBox: {
-		width: 48, // Widget / Card-in-Card (24px * 2)
-		height: 48,
-		borderRadius: 14, // Identity / Detail (14px)
-		justifyContent: "center",
-		alignItems: "center",
-		// Frosted Glass effect
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
-		elevation: 2,
-	},
-	textStack: {
-		flex: 1,
-	},
-	cardTitle: {
-		fontSize: 15,
-		fontWeight: "900", // Primary Headline: FontWeight: 900, LetterSpacing: -1.0pt
-		letterSpacing: -0.5,
-	},
-	cardSubtitle: {
-		fontSize: 11,
-		fontWeight: '600',
-		marginTop: 1,
-		opacity: 0.7,
-	},
-	newsCard: {
-		width: 280,
-		padding: 16,
-		borderRadius: 24, // Primary Artifact (36px) - smaller for suggestion cards
-		gap: 12,
-		position: 'relative',
-		// Border-Free Depth: Bioluminescence & Glass
-		shadowColor: COLORS.brandPrimary, // Active Glow
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.15,
-		shadowRadius: 8,
-		elevation: 4,
-	},
-	newsHeaderRow: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 12,
-	},
-	newsMeta: {
-		flex: 1,
-	},
-	newsSource: {
-		color: COLORS.brandPrimary,
-		fontWeight: "800",
-		fontSize: 11,
-		textTransform: "uppercase",
-		letterSpacing: 1,
-	},
-	newsTime: {
-		fontSize: 10,
-		fontWeight: "600",
-		marginTop: 1,
-	},
-	newsTitleText: {
-		fontWeight: "900", // Primary Headline
-		fontSize: 15,
-		lineHeight: 20,
-		letterSpacing: -0.3, // Editorial Weight
-	},
-	checkmarkWrapper: {
-		position: "absolute",
-		right: -4,
-		bottom: -4,
-		width: 32, // Proper badge size
-		height: 32,
-		borderRadius: 16, // Perfect circle
-		alignItems: "center",
-		justifyContent: "center",
-		// The Signature Interaction: "The Corner Seal"
-		shadowColor: COLORS.brandPrimary, // Active Glow
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.2,
-		shadowRadius: 4,
-		elevation: 3,
-	},
-});
 
 export default SuggestiveContent;

@@ -46,7 +46,13 @@ const HospitalMarkers = ({
                 <Marker
                     key={hospital.id}
                     coordinate={hospital.coordinates}
-                    onPress={() => onHospitalPress(hospital)}
+                    onPress={() => {
+                        if (typeof onHospitalPress === 'function') {
+                            onHospitalPress(hospital);
+                        } else {
+                            console.warn('[HospitalMarkers] onHospitalPress is undefined', { hospitalId: hospital.id });
+                        }
+                    }}
                     anchor={{ x: 0.5, y: 1 }}
                     centerOffset={{ x: 0, y: -16 }}
                     // 🔴 REVERT POINT: Persistent Pulse on Android
