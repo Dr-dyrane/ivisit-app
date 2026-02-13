@@ -58,17 +58,73 @@ const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
   const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
   const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 
+  // Validation Helpers
+  const isValidLuhn = (number) => {
+    let sum = 0;
+    let isEven = false;
+    // Loop through values starting at the rightmost side
+    for (let i = number.length - 1; i >= 0; i--) {
+      let digit = parseInt(number.charAt(i), 10);
+      if (isEven) {
+        digit *= 2;
+        if (digit > 9) digit -= 9;
+      }
+      sum += digit;
+      isEven = !isEven;
+    }
+    return (sum % 10) === 0;
+  };
+
+  const getCardBrand = (number) => {
+    const patterns = {
+      visa: /^4/,
+      mastercard: /^5[1-5]/,
+      amex: /^3[47]/,
+      discover: /^6(?:011|5)/,
+    };
+    if (patterns.visa.test(number)) return 'Visa';
+    if (patterns.mastercard.test(number)) return 'Mastercard';
+    if (patterns.amex.test(number)) return 'Amex';
+    if (patterns.discover.test(number)) return 'Discover';
+    return 'Card';
+  };
+
   const handleNext = () => {
     if (step === 1) {
-      if (formData.cardNumber.length < 13) {
+      // Validate Card Number
+      const cleanNumber = formData.cardNumber.replace(/\s/g, '');
+      if (cleanNumber.length < 13 || !isValidLuhn(cleanNumber)) {
         triggerError();
+        Alert.alert("Invalid Card", "Please check your card number.");
         return;
       }
     } else if (step === 2) {
-      if (formData.expiryMonth.length < 2 || formData.expiryYear.length < 2 || formData.cvv.length < 3) {
+      // Validate Expiry
+      const month = parseInt(formData.expiryMonth);
+      const year = parseInt(formData.expiryYear);
+      const now = new Date();
+      const currentYear = parseInt(now.getFullYear().toString().slice(-2));
+      const currentMonth = now.getMonth() + 1; // 1-indexed
+
+      if (
+        isNaN(month) || month < 1 || month > 12 ||
+        isNaN(year) || year < currentYear ||
+        (year === currentYear && month < currentMonth)
+      ) {
         triggerError();
+        Alert.alert("Invalid Expiry", "Please check the expiry date.");
         return;
       }
+
+      // Validate CVV
+      const brand = getCardBrand(formData.cardNumber.replace(/\s/g, ''));
+      const requiredLength = brand === 'Amex' ? 4 : 3;
+      if (formData.cvv.length !== requiredLength) {
+        triggerError();
+        Alert.alert("Invalid CVV", `CVV for ${brand} must be ${requiredLength} digits.`);
+        return;
+      }
+
     } else if (step === 3) {
       if (formData.holderName.length < 3) {
         triggerError();
@@ -86,28 +142,26 @@ const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
 
   const triggerError = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    // Add vibration or shake if needed
+    Animated.sequence([
+      Animated.timing(slideAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 50, useNativeDriver: true })
+    ]).start();
   };
 
   const submitMethod = () => {
     Keyboard.dismiss();
+    const cleanNumber = formData.cardNumber.replace(/\s/g, '');
     const paymentMethod = {
       type: PAYMENT_METHODS.CARD,
-      provider: getCardBrand(formData.cardNumber),
-      last4: formData.cardNumber.slice(-4),
-      brand: getCardBrand(formData.cardNumber),
+      provider: getCardBrand(cleanNumber),
+      last4: cleanNumber.slice(-4),
+      brand: getCardBrand(cleanNumber),
       expiry_month: parseInt(formData.expiryMonth),
       expiry_year: parseInt(formData.expiryYear),
       metadata: { holderName: formData.holderName }
     };
     onAdd(paymentMethod);
-  };
-
-  const getCardBrand = (number) => {
-    if (number.startsWith('4')) return 'Visa';
-    if (number.startsWith('5')) return 'Mastercard';
-    if (number.startsWith('3')) return 'Amex';
-    return 'Card';
   };
 
   const handleInputChange = (field, value) => {
@@ -116,37 +170,61 @@ const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
     setFormData(prev => ({ ...prev, [field]: value }));
 
     // Auto-focus logic
-    if (field === 'cardNumber' && cleanValue.length === 16) {
-      // Don't auto-move to step 2 automatically to avoid jarring UX, 
-      // but if the user presses enter we handle it in onSubmitEditing
+    if (field === 'cardNumber') {
+      const brand = getCardBrand(cleanValue);
+      const maxLen = brand === 'Amex' ? 15 : 16;
+
+      if (cleanValue.length >= maxLen) {
+        // Optional: Auto-validate here or wait for user
+      }
     } else if (field === 'expiryMonth' && cleanValue.length === 2) {
       yearRef.current?.focus();
     } else if (field === 'expiryYear' && cleanValue.length === 2) {
       cvvRef.current?.focus();
-    } else if (field === 'cvv' && cleanValue.length >= 3) {
-      // CVV can be 3 or 4 digits
-      if (cleanValue.length === 4 || (getCardBrand(formData.cardNumber) !== 'Amex' && cleanValue.length === 3)) {
-        // Filled
-      }
+    } else if (field === 'cvv') {
+      // CVV logic handled in validation step
     }
   };
 
   const renderStep = () => {
     switch (step) {
       case 1:
+        const brand = getCardBrand(formData.cardNumber.replace(/\s/g, ''));
+        const isAmex = brand === 'Amex';
+
         return (
           <View style={styles.wizardStep}>
-            <Text style={[styles.wizardLabel, { color: mutedColor }]}>CARD NUMBER</Text>
+            <View style={styles.row}>
+              <Text style={[styles.wizardLabel, { color: mutedColor }]}>{brand === 'Card' ? 'CARD NUMBER' : brand.toUpperCase()}</Text>
+              {brand !== 'Card' && (
+                <View style={{ marginLeft: 8, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: COLORS.brandPrimary + '20', borderRadius: 4 }}>
+                  <Ionicons name={brand === 'Visa' ? 'card' : 'card-outline'} size={12} color={COLORS.brandPrimary} />
+                </View>
+              )}
+            </View>
             <TextInput
               ref={cardRef}
               autoFocus
               style={[styles.wizardInput, { color: textColor }]}
-              placeholder="0000 0000 0000 0000"
+              placeholder={isAmex ? "0000 000000 00000" : "0000 0000 0000 0000"}
               placeholderTextColor={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
-              value={formData.cardNumber.replace(/(\d{4})/g, '$1 ').trim()}
-              onChangeText={(t) => handleInputChange('cardNumber', t.replace(/\s/g, ''))}
+              value={formData.cardNumber} // Spacing handled in onChange
+              onChangeText={(t) => {
+                // Custom formatting for Amex vs others
+                const raw = t.replace(/\D/g, '');
+                let formatted = raw;
+                if (getCardBrand(raw) === 'Amex') {
+                  // 4-6-5
+                  if (raw.length > 4) formatted = raw.slice(0, 4) + ' ' + raw.slice(4);
+                  if (raw.length > 10) formatted = formatted.slice(0, 11) + ' ' + raw.slice(10);
+                } else {
+                  // 4-4-4-4
+                  formatted = raw.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+                }
+                handleInputChange('cardNumber', formatted);
+              }}
               keyboardType="numeric"
-              maxLength={19} // includes spaces
+              maxLength={isAmex ? 17 : 19}
               returnKeyType="next"
               onSubmitEditing={handleNext}
             />

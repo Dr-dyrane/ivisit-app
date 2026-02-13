@@ -288,6 +288,36 @@ export const paymentService = {
   },
 
   /**
+   * Process payment using iVisit Wallet Balance
+   */
+  async processWalletPayment(emergencyRequestId, organizationId, cost) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase.rpc('process_wallet_payment', {
+        p_user_id: user.id,
+        p_organization_id: organizationId,
+        p_emergency_request_id: emergencyRequestId,
+        p_amount: cost.totalCost,
+        p_currency: cost.currency || 'USD'
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Wallet payment failed');
+
+      return {
+        success: true,
+        paymentId: data.payment_id,
+        newBalance: data.new_balance
+      };
+    } catch (error) {
+      console.error('Error processing wallet payment:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Request payout for an organization
    */
   async requestPayout(organizationId, amount, currency = 'USD') {

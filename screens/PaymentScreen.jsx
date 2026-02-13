@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   Animated,
   Platform,
-  Dimensions
+  Dimensions,
+  Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -52,6 +53,7 @@ const PaymentScreen = () => {
   const [walletBalance, setWalletBalance] = useState({ balance: 0, currency: 'USD' });
   const [ledgerHistory, setLedgerHistory] = useState([]);
   const [isLoadingWallet, setIsLoadingWallet] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
 
   // Animations
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -137,13 +139,23 @@ const PaymentScreen = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      // Simulate direct Stripe integration flow
-      // Actually calling the service which uses Supabase Edge Functions
-      const result = await paymentService.processPayment(
-        emergencyRequestId,
-        params.organizationId || 'default', // Organization ID
-        cost
-      );
+      let result;
+
+      if (selectedMethod.is_wallet) {
+        // Handle Wallet Payment
+        result = await paymentService.processWalletPayment(
+          emergencyRequestId,
+          params.organizationId || 'default',
+          cost
+        );
+      } else {
+        // Handle Stripe Card Payment
+        result = await paymentService.processPayment(
+          emergencyRequestId,
+          params.organizationId || 'default',
+          cost
+        );
+      }
 
       if (result.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -270,10 +282,15 @@ const PaymentScreen = () => {
               {ledgerHistory.length > 0 ? (
                 <View style={[styles.ledgerList, { backgroundColor: colors.card }]}>
                   {ledgerHistory.map((item, index) => (
-                    <View key={item.id} style={[
-                      styles.ledgerItem,
-                      index !== ledgerHistory.length - 1 && styles.ledgerDivider
-                    ]}>
+                    <Pressable
+                      key={item.id}
+                      onPress={() => setSelectedTransaction(item)}
+                      style={({ pressed }) => [
+                        styles.ledgerItem,
+                        index !== ledgerHistory.length - 1 && styles.ledgerDivider,
+                        { opacity: pressed ? 0.7 : 1 }
+                      ]}
+                    >
                       <View style={[
                         styles.typeIcon,
                         { backgroundColor: item.transaction_type === 'credit' ? '#22C55E20' : '#EF444420' }
@@ -292,11 +309,11 @@ const PaymentScreen = () => {
                       </View>
                       <Text style={[
                         styles.ledgerAmount,
-                        { color: item.transaction_type === 'credit' ? '#22C55E' : colors.text }
+                        { color: (item.transaction_type === 'credit' || item.transaction_type === 'top-up') ? '#22C55E' : colors.text }
                       ]}>
                         {item.transaction_type === 'credit' ? '+' : '-'}${Math.abs(item.amount).toFixed(2)}
                       </Text>
-                    </View>
+                    </Pressable>
                   ))}
                 </View>
               ) : (
@@ -369,6 +386,8 @@ const PaymentScreen = () => {
               setSelectedMethod(m);
             }}
             isDarkMode={isDarkMode}
+            isManagementMode={isManagementMode}
+            cost={cost}
           />
         </View>
 
@@ -405,6 +424,71 @@ const PaymentScreen = () => {
           </View>
         )}
       </Animated.ScrollView>
+
+      {/* Transaction Details Modal */}
+      <Modal
+        visible={!!selectedTransaction}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedTransaction(null)}
+      >
+        <BlurView intensity={isDarkMode ? 60 : 80} style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setSelectedTransaction(null)} />
+          <View style={[styles.receiptCard, { backgroundColor: colors.card }]}>
+            <View style={styles.modalGrabber} />
+
+            <View style={styles.receiptHeader}>
+              <View style={[
+                styles.receiptIcon,
+                { backgroundColor: selectedTransaction?.transaction_type === 'credit' ? '#22C55E20' : '#86100E20' }
+              ]}>
+                <Ionicons
+                  name={selectedTransaction?.transaction_type === 'credit' ? "arrow-down" : "receipt"}
+                  size={32}
+                  color={selectedTransaction?.transaction_type === 'credit' ? '#22C55E' : COLORS.brandPrimary}
+                />
+              </View>
+              <Text style={[styles.receiptAmount, { color: colors.text }]}>
+                {selectedTransaction?.transaction_type === 'credit' ? '+' : '-'}${Math.abs(selectedTransaction?.amount || 0).toFixed(2)}
+              </Text>
+              <Text style={[styles.receiptStatus, { color: '#22C55E' }]}>COMPLETED</Text>
+            </View>
+
+            <View style={styles.receiptBody}>
+              <View style={styles.receiptRow}>
+                <Text style={styles.receiptLabel}>DESCRIPTION</Text>
+                <Text style={[styles.receiptValue, { color: colors.text }]}>{selectedTransaction?.description}</Text>
+              </View>
+              <View style={styles.receiptRow}>
+                <Text style={styles.receiptLabel}>DATE & TIME</Text>
+                <Text style={[styles.receiptValue, { color: colors.text }]}>
+                  {selectedTransaction && new Date(selectedTransaction.created_at).toLocaleString()}
+                </Text>
+              </View>
+              <View style={styles.receiptRow}>
+                <Text style={styles.receiptLabel}>TRANSACTION ID</Text>
+                <Text style={[styles.receiptValue, { color: colors.text, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }]}>
+                  {selectedTransaction?.id}
+                </Text>
+              </View>
+              <View style={styles.receiptRow}>
+                <Text style={styles.receiptLabel}>PAYMENT METHOD</Text>
+                <Text style={[styles.receiptValue, { color: colors.text }]}>iVisit Wallet</Text>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => setSelectedTransaction(null)}
+              style={({ pressed }) => [
+                styles.doneButton,
+                { opacity: pressed ? 0.8 : 1 }
+              ]}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </Pressable>
+          </View>
+        </BlurView>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -414,13 +498,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 24,
+    padding: 20,
     gap: 20,
     paddingBottom: 100,
   },
   glowCard: {
     borderRadius: 32,
-    padding: 32,
+    padding: 24,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

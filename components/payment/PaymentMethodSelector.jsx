@@ -27,6 +27,7 @@ const PaymentMethodSelector = ({
   onMethodSelect,
   cost,
   showAddButton = true,
+  isManagementMode = false,
   style
 }) => {
   const { isDarkMode } = useTheme();
@@ -49,11 +50,30 @@ const PaymentMethodSelector = ({
   const loadPaymentMethods = async () => {
     try {
       setLoading(true);
-      const methods = await paymentService.getPaymentMethods();
-      setPaymentMethods(methods);
+      const [methods, wallet] = await Promise.all([
+        paymentService.getPaymentMethods(),
+        paymentService.getWalletBalance()
+      ]);
 
-      if (!selectedMethod && methods.length > 0) {
-        const defaultMethod = methods.find(m => m.is_default) || methods[0];
+      // Add iVisit Wallet as a selectable method if it has balance or is active
+      const walletMethod = {
+        id: 'wallet_internal',
+        type: 'wallet',
+        brand: 'iVisit Balance',
+        last4: wallet.balance.toFixed(2),
+        is_wallet: true,
+        balance: wallet.balance,
+        currency: wallet.currency,
+        is_default: false
+      };
+
+      const finalMethods = [walletMethod, ...methods];
+      setPaymentMethods(finalMethods);
+
+      if (!selectedMethod && finalMethods.length > 0) {
+        // Prefer wallet if it has enough balance, otherwise default card
+        const enoughBalance = wallet.balance >= (cost?.totalCost || 0);
+        const defaultMethod = (enoughBalance ? walletMethod : finalMethods.find(m => m.is_default)) || finalMethods[0];
         onMethodSelect(defaultMethod);
       }
     } catch (error) {
@@ -78,47 +98,108 @@ const PaymentMethodSelector = ({
     }
   };
 
+  const handleSetDefault = async (method) => {
+    if (method.is_wallet) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await paymentService.setDefaultPaymentMethod(method.id);
+      loadPaymentMethods();
+      Alert.alert("Success", "Default payment method updated");
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const handleDeleteMethod = async (method) => {
+    Alert.alert(
+      "Remove Card",
+      `Are you sure you want to remove ${method.brand} ending in ${method.last4}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              await paymentService.removePaymentMethod(method.id);
+              loadPaymentMethods();
+              if (selectedMethod?.id === method.id) {
+                onMethodSelect(null);
+              }
+            } catch (error) {
+              Alert.alert('Error', error.message);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const renderPaymentMethod = (method) => {
     const isSelected = selectedMethod?.id === method.id;
+    const isDefault = method.is_default;
 
     return (
-      <TouchableOpacity
-        key={method.id}
-        activeOpacity={0.8}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          onMethodSelect(method);
-        }}
-        style={[
-          styles.methodCard,
-          {
-            backgroundColor: colors.cardBg,
-            borderColor: isSelected ? colors.activeRing : 'rgba(255,255,255,0.05)',
-            borderWidth: 1,
-          }
-        ]}
-      >
-        <View style={styles.methodMain}>
-          <View style={[styles.iconBox, { backgroundColor: isSelected ? colors.activeRing : 'rgba(255,255,255,0.05)' }]}>
-            <Ionicons
-              name={method.brand?.toLowerCase() === 'visa' ? "card" : "card-outline"}
-              size={20}
-              color={isSelected ? "#FFF" : colors.text}
-            />
+      <View key={method.id} style={styles.methodWrapper}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onMethodSelect(method);
+            if (isManagementMode && !method.is_wallet) {
+              handleSetDefault(method);
+            }
+          }}
+          style={[
+            styles.methodCard,
+            {
+              backgroundColor: colors.cardBg,
+              borderColor: isSelected ? colors.activeRing : 'rgba(255,255,255,0.05)',
+              borderWidth: 1,
+              opacity: method.is_wallet && !isManagementMode && method.balance < (cost?.totalCost || 0) ? 0.6 : 1
+            }
+          ]}
+        >
+          <View style={styles.methodMain}>
+            <View style={[styles.iconBox, { backgroundColor: isSelected ? colors.activeRing : 'rgba(255,255,255,0.05)' }]}>
+              <Ionicons
+                name={method.is_wallet ? "wallet" : (method.brand?.toLowerCase() === 'visa' ? "card" : "card-outline")}
+                size={20}
+                color={isSelected ? "#FFF" : colors.text}
+              />
+            </View>
+            <View style={styles.methodMeta}>
+              <View style={styles.labelRow}>
+                <Text style={[styles.methodLabel, { color: colors.text }]}>
+                  {method.brand} {method.is_wallet ? '' : '•••• ' + method.last4}
+                </Text>
+                {isDefault && !method.is_wallet && (
+                  <View style={styles.defaultBadge}>
+                    <Text style={styles.defaultText}>DEFAULT</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.methodSub, { color: method.is_wallet && !isManagementMode && method.balance < (cost?.totalCost || 0) ? COLORS.error : colors.muted }]}>
+                {method.is_wallet ? (method.balance < (cost?.totalCost || 0) && !isManagementMode ? 'INSUFFICIENT BALANCE' : `AVAILABLE: ${method.currency} ${method.last4}`) : `EXPIRES ${method.expiry_month}/${method.expiry_year}`}
+              </Text>
+            </View>
           </View>
-          <View style={styles.methodMeta}>
-            <Text style={[styles.methodLabel, { color: colors.text }]}>
-              {method.brand} •••• {method.last4}
-            </Text>
-            <Text style={[styles.methodSub, { color: colors.muted }]}>
-              EXPIRES {method.expiry_month}/{method.expiry_year}
-            </Text>
-          </View>
-        </View>
-        {isSelected && (
-          <Ionicons name="checkmark-circle" size={22} color={COLORS.brandPrimary} />
-        )}
-      </TouchableOpacity>
+
+          {isManagementMode && !method.is_wallet ? (
+            <TouchableOpacity
+              onPress={() => handleDeleteMethod(method)}
+              style={styles.deleteBtn}
+            >
+              <Ionicons name="trash-outline" size={20} color={isDarkMode ? "#FF4B4B" : "#FF0000"} />
+            </TouchableOpacity>
+          ) : (
+            isSelected && (
+              <Ionicons name="checkmark-circle" size={22} color={COLORS.brandPrimary} />
+            )
+          )}
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -207,6 +288,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
+  },
+  methodWrapper: {
+    width: '100%',
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  defaultBadge: {
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  defaultText: {
+    color: '#22C55E',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  deleteBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
   },
   addCard: {
     padding: 24,
