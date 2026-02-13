@@ -27,10 +27,13 @@ export default function ScrollAwareHeader({
 	badge,
 	leftComponent,
 	rightComponent,
+	scrollAware = true,
 }) {
 	const insets = useSafeAreaInsets();
 	const { isDarkMode } = useTheme();
-	const { headerOpacity, titleOpacity } = useScrollAwareHeader();
+	const { headerOpacity: scrollHeaderOpacity, titleOpacity: scrollTitleOpacity } = useScrollAwareHeader();
+	const headerOpacity = scrollAware ? scrollHeaderOpacity : 1;
+	const titleOpacity = scrollAware ? scrollTitleOpacity : 1;
 
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
 	const textMuted = isDarkMode ? "#94A3B8" : "#64748B";
@@ -84,7 +87,7 @@ export default function ScrollAwareHeader({
 					</BlurView>
 				) : (
 					// Android fallback: semi-transparent background
-					<View style={[styles.blur, { 
+					<View style={[styles.blur, {
 						minHeight: HEADER_HEIGHT,
 						backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.95)"
 					}]}>

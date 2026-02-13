@@ -24,6 +24,10 @@ import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import { useAuth } from "../contexts/AuthContext";
 import { ThemeMode } from "../contexts/ThemeContext";
 import { usePreferences } from "../contexts/PreferencesContext";
+import {
+	navigateToNotifications,
+	navigateToPayment,
+} from "../utils/navigationHelpers";
 import * as Haptics from "expo-haptics";
 
 export default function SettingsScreen() {
@@ -51,6 +55,7 @@ export default function SettingsScreen() {
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent: backButton(),
 				rightComponent: null,
+				scrollAware: false,
 			});
 		}, [backButton, resetHeader, resetTabBar, setHeaderState])
 	);
@@ -458,7 +463,7 @@ export default function SettingsScreen() {
 									height: 24,
 									borderRadius: 12,
 									backgroundColor: "#FFFFFF",
-								position: "absolute",
+									position: "absolute",
 									left: preferences?.notificationSoundsEnabled ? 25 : 3,
 									shadowColor: "#000",
 									shadowOffset: { width: 0, height: 2 },
@@ -744,8 +749,99 @@ export default function SettingsScreen() {
 						</View>
 					</TouchableOpacity>
 				</Animated.View>
+
+				{/* PAYMENTS & BILLING Section */}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+						marginBottom: 24,
+					}}
+				>
+					<Text
+						style={{
+							fontSize: 10,
+							fontWeight: "800",
+							color: colors.textMuted,
+							marginBottom: 16,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
+						}}
+					>
+						PAYMENTS & BILLING
+					</Text>
+					<TouchableOpacity
+						onPress={() => navigateToPayment({ router })}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							padding: 20,
+							backgroundColor: colors.card,
+							borderRadius: 36,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<View
+							style={{
+								width: 56,
+								height: 56,
+								borderRadius: 14,
+								backgroundColor: COLORS.brandPrimary,
+								alignItems: "center",
+								justifyContent: "center",
+								marginRight: 16,
+							}}
+						>
+							<Ionicons name="card" size={26} color="#FFFFFF" />
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text
+								style={{
+									fontSize: 19,
+									fontWeight: "900",
+									color: colors.text,
+									letterSpacing: -1.0,
+								}}
+							>
+								Manage Payments
+							</Text>
+							<Text
+								style={{
+									fontSize: 14,
+									color: colors.textMuted,
+									marginTop: 2,
+									fontWeight: "500",
+								}}
+							>
+								Cards, Billing & Wallet
+							</Text>
+						</View>
+						<View
+							style={{
+								width: 40,
+								height: 40,
+								borderRadius: 14,
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.05)"
+									: "rgba(0,0,0,0.03)",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<Ionicons
+								name="chevron-forward"
+								size={18}
+								color={colors.textMuted}
+							/>
+						</View>
+					</TouchableOpacity>
+				</Animated.View>
 			</ScrollView>
-		</LinearGradient>
+		</LinearGradient >
 	);
 }
 

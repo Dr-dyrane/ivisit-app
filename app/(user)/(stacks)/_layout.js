@@ -129,6 +129,19 @@ export default function StacksLayout() {
 			/>
 
 			<Stack.Screen
+				name="payment"
+				options={{
+					headerTitle: "Payment",
+					headerTitleStyle: {
+						fontWeight: "bold",
+						fontSize: 18,
+						color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+					},
+					headerLeft: () => <HeaderBackButton />,
+				}}
+			/>
+
+			<Stack.Screen
 				name="settings"
 				options={{
 					headerTitle: "Settings",

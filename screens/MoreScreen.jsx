@@ -35,6 +35,7 @@ import {
 	navigateToInsurance,
 	navigateToMedicalProfile,
 	navigateToNotifications,
+	navigateToPayment,
 	navigateToProfile,
 	navigateToSettings,
 } from "../utils/navigationHelpers";
@@ -53,7 +54,7 @@ const MoreScreen = () => {
 		useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
 	const { registerFAB, unregisterFAB } = useFAB();
-	
+
 	const [devModeVisible, setDevModeVisible] = useState(false);
 	const [tapCount, setTapCount] = useState(0);
 	const lastTapRef = useRef(0);
@@ -63,7 +64,7 @@ const MoreScreen = () => {
 	const lastHeartTapRef = useRef(0);
 
 	const loveModalSlide = useRef(new Animated.Value(Dimensions.get('window').height)).current;
-	
+
 	useEffect(() => {
 		if (loveNoteVisible) {
 			Animated.spring(loveModalSlide, {
@@ -291,6 +292,15 @@ const MoreScreen = () => {
 		},
 	];
 
+	const billingItems = [
+		{
+			title: "Payments & Billing",
+			icon: "card-outline",
+			description: "Manage payment methods",
+			action: () => navigateToPayment({ router }),
+		},
+	];
+
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			<ScrollView
@@ -342,23 +352,23 @@ const MoreScreen = () => {
 								}}
 							/>
 							{user?.hasInsurance && (
-							<View
-								style={{
-									position: "absolute",
-									bottom: -2,
-									right: -2,
-									backgroundColor: COLORS.brandPrimary,
-									borderRadius: 10,
-									width: 20,
-									height: 20,
-									justifyContent: "center",
-									alignItems: "center",
-									borderWidth: 2,
-									borderColor: colors.card,
-								}}
-							>
-								<Ionicons name="shield-checkmark" size={10} color="#FFFFFF" />
-							</View>
+								<View
+									style={{
+										position: "absolute",
+										bottom: -2,
+										right: -2,
+										backgroundColor: COLORS.brandPrimary,
+										borderRadius: 10,
+										width: 20,
+										height: 20,
+										justifyContent: "center",
+										alignItems: "center",
+										borderWidth: 2,
+										borderColor: colors.card,
+									}}
+								>
+									<Ionicons name="shield-checkmark" size={10} color="#FFFFFF" />
+								</View>
 							)}
 						</View>
 						<View style={{ marginLeft: 16, flex: 1 }}>
@@ -593,6 +603,106 @@ const MoreScreen = () => {
 							</View>
 						</TouchableOpacity>
 					))}
+				</Animated.View>
+
+				{/* PAYMENTS & BILLING Section */}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+						marginBottom: 24,
+					}}
+				>
+					<Text
+						style={{
+							fontSize: 10,
+							fontWeight: "800",
+							color: colors.textMuted,
+							marginBottom: 16,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
+						}}
+					>
+						PAYMENTS & BILLING
+					</Text>
+					{billingItems.map((item, index) => (
+						<TouchableOpacity
+							key={index}
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+								item.action();
+							}}
+							style={{
+								flexDirection: "row",
+								alignItems: "center",
+								padding: 20,
+								marginBottom: 12,
+								backgroundColor: colors.card,
+								borderRadius: 36,
+								shadowColor: "#000",
+								shadowOffset: { width: 0, height: 4 },
+								shadowOpacity: isDarkMode ? 0 : 0.03,
+								shadowRadius: 10,
+							}}
+						>
+							<View
+								style={{
+									width: 56,
+									height: 56,
+									borderRadius: 14,
+									backgroundColor: isDarkMode
+										? "rgba(255,255,255,0.05)"
+										: "rgba(0,0,0,0.03)",
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons name={item.icon} size={26} color={COLORS.brandPrimary} />
+							</View>
+							<View style={{ flex: 1 }}>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -1.0,
+									}}
+								>
+									{item.title}
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									{item.description}
+								</Text>
+							</View>
+							<View
+								style={{
+									width: 36,
+									height: 36,
+									borderRadius: 14,
+									backgroundColor: isDarkMode
+										? "rgba(255,255,255,0.025)"
+										: "rgba(0,0,0,0.025)",
+									alignItems: "center",
+									justifyContent: "center",
+								}}
+							>
+								<Ionicons
+									name="chevron-forward"
+									size={16}
+									color={colors.textMuted}
+								/>
+							</View>
+						</TouchableOpacity>
+					))}
+
 				</Animated.View>
 
 				{/* ABOUT Section */}
@@ -1041,23 +1151,23 @@ const MoreScreen = () => {
 						onPress={handleVersionTap}
 						style={{ padding: 10, opacity: 0.5 }}
 					>
-						<Text style={{ 
-							fontSize: 12, 
-							fontWeight: "600", 
+						<Text style={{
+							fontSize: 12,
+							fontWeight: "600",
 							color: colors.textMuted,
 							letterSpacing: 1
 						}}>
 							VERSION 1.0.4
 						</Text>
 					</Pressable>
-					
+
 					<Pressable
 						onPress={handleHeartTap}
 						style={{ padding: 10, opacity: 0.4 }}
 					>
-						<Text style={{ 
-							fontSize: 10, 
-							fontWeight: "500", 
+						<Text style={{
+							fontSize: 10,
+							fontWeight: "500",
 							color: colors.textMuted,
 							letterSpacing: 0.5
 						}}>
@@ -1074,7 +1184,7 @@ const MoreScreen = () => {
 				animationType="none"
 				onRequestClose={() => setLoveNoteVisible(false)}
 			>
-				<Pressable 
+				<Pressable
 					style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}
 					onPress={() => setLoveNoteVisible(false)}
 				>
@@ -1099,18 +1209,18 @@ const MoreScreen = () => {
 						}}
 					>
 						<Text style={{ fontSize: 64, marginBottom: 16 }}>🌹❤️</Text>
-						
-						<View style={{ 
-							backgroundColor: 'rgba(216, 27, 96, 0.1)', 
-							paddingHorizontal: 12, 
-							paddingVertical: 6, 
+
+						<View style={{
+							backgroundColor: 'rgba(216, 27, 96, 0.1)',
+							paddingHorizontal: 12,
+							paddingVertical: 6,
 							borderRadius: 12,
 							marginBottom: 12
 						}}>
-							<Text style={{ 
-								fontSize: 10, 
-								fontWeight: "800", 
-								color: "#D81B60", 
+							<Text style={{
+								fontSize: 10,
+								fontWeight: "800",
+								color: "#D81B60",
 								letterSpacing: 1.5,
 								textTransform: "uppercase" // Manifesto: Identity Label
 							}}>
@@ -1131,7 +1241,7 @@ const MoreScreen = () => {
 						>
 							To My Day 1 Supporter
 						</Text>
-						
+
 						<Text
 							style={{
 								fontSize: 17,
@@ -1145,7 +1255,7 @@ const MoreScreen = () => {
 						>
 							"To my beautiful wife, thank you for believing in me from the very start. You are my rock, my inspiration, and my greatest blessing. I love you endlessly!"
 						</Text>
-						
+
 						<TouchableOpacity
 							onPress={() => setLoveNoteVisible(false)}
 							style={{
@@ -1160,8 +1270,8 @@ const MoreScreen = () => {
 								elevation: 8
 							}}
 						>
-							<Text style={{ 
-								color: "white", 
+							<Text style={{
+								color: "white",
 								fontWeight: "800", // Manifesto: Identity Label weight
 								fontSize: 16,
 								letterSpacing: 0.5

@@ -1,0 +1,353 @@
+/**
+ * Payment Method Setup Wizard
+ * Focused, multi-step data collection for secure checkout and billing.
+ */
+
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Keyboard
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import { useTheme } from '../../contexts/ThemeContext';
+import { COLORS } from '../../constants/colors';
+import { PAYMENT_METHODS } from '../../services/paymentService';
+
+const { width } = Dimensions.get('window');
+
+const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
+  const { isDarkMode } = useTheme();
+  const [step, setStep] = useState(1); // 1: Number, 2: Expiry/CVV, 3: Name
+  const [formData, setFormData] = useState({
+    cardNumber: '',
+    expiryMonth: '',
+    expiryYear: '',
+    cvv: '',
+    holderName: '',
+  });
+
+  // Refs for auto-navigation
+  const cardRef = useRef(null);
+  const monthRef = useRef(null);
+  const yearRef = useRef(null);
+  const cvvRef = useRef(null);
+  const nameRef = useRef(null);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, friction: 8, useNativeDriver: true }),
+    ]).start();
+  }, [step]);
+
+  const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
+  const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
+
+  const handleNext = () => {
+    if (step === 1) {
+      if (formData.cardNumber.length < 13) {
+        triggerError();
+        return;
+      }
+    } else if (step === 2) {
+      if (formData.expiryMonth.length < 2 || formData.expiryYear.length < 2 || formData.cvv.length < 3) {
+        triggerError();
+        return;
+      }
+    } else if (step === 3) {
+      if (formData.holderName.length < 3) {
+        triggerError();
+        return;
+      }
+    }
+
+    if (step < 3) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setStep(step + 1);
+    } else {
+      submitMethod();
+    }
+  };
+
+  const triggerError = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    // Add vibration or shake if needed
+  };
+
+  const submitMethod = () => {
+    Keyboard.dismiss();
+    const paymentMethod = {
+      type: PAYMENT_METHODS.CARD,
+      provider: getCardBrand(formData.cardNumber),
+      last4: formData.cardNumber.slice(-4),
+      brand: getCardBrand(formData.cardNumber),
+      expiry_month: parseInt(formData.expiryMonth),
+      expiry_year: parseInt(formData.expiryYear),
+      metadata: { holderName: formData.holderName }
+    };
+    onAdd(paymentMethod);
+  };
+
+  const getCardBrand = (number) => {
+    if (number.startsWith('4')) return 'Visa';
+    if (number.startsWith('5')) return 'Mastercard';
+    if (number.startsWith('3')) return 'Amex';
+    return 'Card';
+  };
+
+  const handleInputChange = (field, value) => {
+    const cleanValue = value.replace(/\D/g, '');
+
+    setFormData(prev => ({ ...prev, [field]: value }));
+
+    // Auto-focus logic
+    if (field === 'cardNumber' && cleanValue.length === 16) {
+      // Don't auto-move to step 2 automatically to avoid jarring UX, 
+      // but if the user presses enter we handle it in onSubmitEditing
+    } else if (field === 'expiryMonth' && cleanValue.length === 2) {
+      yearRef.current?.focus();
+    } else if (field === 'expiryYear' && cleanValue.length === 2) {
+      cvvRef.current?.focus();
+    } else if (field === 'cvv' && cleanValue.length >= 3) {
+      // CVV can be 3 or 4 digits
+      if (cleanValue.length === 4 || (getCardBrand(formData.cardNumber) !== 'Amex' && cleanValue.length === 3)) {
+        // Filled
+      }
+    }
+  };
+
+  const renderStep = () => {
+    switch (step) {
+      case 1:
+        return (
+          <View style={styles.wizardStep}>
+            <Text style={[styles.wizardLabel, { color: mutedColor }]}>CARD NUMBER</Text>
+            <TextInput
+              ref={cardRef}
+              autoFocus
+              style={[styles.wizardInput, { color: textColor }]}
+              placeholder="0000 0000 0000 0000"
+              placeholderTextColor={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
+              value={formData.cardNumber.replace(/(\d{4})/g, '$1 ').trim()}
+              onChangeText={(t) => handleInputChange('cardNumber', t.replace(/\s/g, ''))}
+              keyboardType="numeric"
+              maxLength={19} // includes spaces
+              returnKeyType="next"
+              onSubmitEditing={handleNext}
+            />
+          </View>
+        );
+      case 2:
+        return (
+          <View style={styles.wizardStep}>
+            <Text style={[styles.wizardLabel, { color: mutedColor }]}>EXPIRY & SECURITY</Text>
+            <View style={styles.row}>
+              <TextInput
+                ref={monthRef}
+                autoFocus
+                style={[styles.wizardInput, { color: textColor, width: 80 }]}
+                placeholder="MM"
+                placeholderTextColor={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
+                value={formData.expiryMonth}
+                onChangeText={(t) => handleInputChange('expiryMonth', t)}
+                keyboardType="numeric"
+                maxLength={2}
+              />
+              <Text style={[styles.wizardInput, { color: mutedColor, marginHorizontal: 8 }]}>/</Text>
+              <TextInput
+                ref={yearRef}
+                style={[styles.wizardInput, { color: textColor, width: 80 }]}
+                placeholder="YY"
+                placeholderTextColor={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
+                value={formData.expiryYear}
+                onChangeText={(t) => handleInputChange('expiryYear', t)}
+                keyboardType="numeric"
+                maxLength={2}
+              />
+              <View style={{ width: 40 }} />
+              <TextInput
+                ref={cvvRef}
+                style={[styles.wizardInput, { color: textColor, width: 100 }]}
+                placeholder="CVV"
+                placeholderTextColor={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
+                value={formData.cvv}
+                onChangeText={(t) => handleInputChange('cvv', t)}
+                keyboardType="numeric"
+                maxLength={4}
+                secureTextEntry
+                returnKeyType="next"
+                onSubmitEditing={handleNext}
+              />
+            </View>
+          </View>
+        );
+      case 3:
+        return (
+          <View style={styles.wizardStep}>
+            <Text style={[styles.wizardLabel, { color: mutedColor }]}>CARDHOLDER NAME</Text>
+            <TextInput
+              ref={nameRef}
+              autoFocus
+              style={[styles.wizardInput, { color: textColor }]}
+              placeholder="e.g. JOHN DOE"
+              placeholderTextColor={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
+              value={formData.holderName}
+              onChangeText={(t) => setFormData(p => ({ ...p, holderName: t.toUpperCase() }))}
+              autoCapitalize="characters"
+              returnKeyType="done"
+              onSubmitEditing={handleNext}
+            />
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <BlurView intensity={isDarkMode ? 40 : 80} style={styles.overlay}>
+      <Pressable onPress={Keyboard.dismiss} style={StyleSheet.absoluteFill} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.modalContentWrapper}
+      >
+        <View style={[styles.modalContent, { backgroundColor: isDarkMode ? "rgba(10,15,26,0.9)" : "rgba(255,255,255,0.9)" }]}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={onClose} style={styles.iconBtn}>
+              <Ionicons name="close" size={24} color={textColor} />
+            </TouchableOpacity>
+            <View style={styles.stepIndicator}>
+              {[1, 2, 3].map(s => (
+                <View key={s} style={[styles.dot, { backgroundColor: s === step ? COLORS.brandPrimary : (isDarkMode ? "#2D3748" : "#E2E8F0") }]} />
+              ))}
+            </View>
+            <View style={{ width: 44 }} />
+          </View>
+
+          <Animated.View style={[styles.formContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            {renderStep()}
+          </Animated.View>
+
+          <TouchableOpacity
+            style={[styles.nextButton, { backgroundColor: COLORS.brandPrimary }]}
+            onPress={handleNext}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Text style={styles.nextText}>{step === 3 ? "ADD CARD" : "CONTINUE"}</Text>
+                <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </BlurView>
+  );
+};
+
+const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContentWrapper: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalContent: {
+    width: width * 0.9,
+    borderRadius: 32,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.4,
+    shadowRadius: 30,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  formContainer: {
+    minHeight: 180,
+    justifyContent: 'center',
+  },
+  wizardStep: {
+    gap: 12,
+  },
+  wizardLabel: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  wizardInput: {
+    fontSize: 32,
+    fontWeight: '900',
+    letterSpacing: -1,
+    padding: 0,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nextButton: {
+    height: 64,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 40,
+  },
+  nextText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 1,
+  }
+});
+
+export default AddPaymentMethodModal;

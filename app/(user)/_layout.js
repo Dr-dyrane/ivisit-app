@@ -11,7 +11,7 @@ import { appMigrationsService } from "../../services/appMigrationsService";
 
 export default function UserLayout() {
 	useEffect(() => {
-		appMigrationsService.run().catch(() => {});
+		appMigrationsService.run().catch(() => { });
 	}, []);
 
 	return (
@@ -52,6 +52,7 @@ function UserHeaderWrapper() {
 			badge={headerState.badge}
 			leftComponent={headerState.leftComponent}
 			rightComponent={headerState.rightComponent}
+			scrollAware={headerState.scrollAware}
 		/>
 	);
 }

@@ -12,6 +12,7 @@ export function HeaderStateProvider({ children }) {
     leftComponent: null,
     rightComponent: null,
     hidden: false,
+    scrollAware: true,
   });
 
   const setHeaderState = useCallback((newState) => {
@@ -31,6 +32,7 @@ export function HeaderStateProvider({ children }) {
       leftComponent: null,
       rightComponent: null,
       hidden: false,
+      scrollAware: true,
     });
   }, []);
 

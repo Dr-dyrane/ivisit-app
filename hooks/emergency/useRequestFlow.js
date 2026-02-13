@@ -9,6 +9,8 @@ import { emergencyRequestsService } from "../../services/emergencyRequestsServic
 import { useHospitals } from "./useHospitals";
 import { DispatchService } from "../../services/dispatchService";
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
+import { usePaymentFlow } from "./usePaymentFlow";
+import { serviceCostService } from "../../services/serviceCostService";
 
 /**
  * 💡 STABILITY NOTE:
@@ -24,6 +26,9 @@ export const useRequestFlow = (props) => {
 	useEffect(() => {
 		propsRef.current = props;
 	}, [props]);
+
+	// Initialize payment flow
+	const paymentFlow = usePaymentFlow();
 
 	// Extract stable refs for use in callbacks
 	const {
@@ -142,6 +147,42 @@ export const useRequestFlow = (props) => {
 
 			inflightByTypeRef.current[request.serviceType] = true;
 			try {
+				// Calculate cost for the emergency request
+				let costData = null;
+				try {
+					// Calculate distance for cost calculation
+					let distance = 0;
+					try {
+						const currentLocation = await Location.getCurrentPositionAsync({});
+						const userLocation = {
+							latitude: currentLocation.coords.latitude,
+							longitude: currentLocation.coords.longitude
+						};
+						
+						// Calculate distance to hospital (simplified)
+						if (hospital) {
+							distance = DispatchService.calculateDistance(
+								userLocation,
+								{ latitude: hospital.latitude, longitude: hospital.longitude }
+							);
+						}
+					} catch (locationError) {
+						console.warn('[useRequestFlow] Could not calculate distance for cost:', locationError);
+					}
+
+					// Calculate cost
+					costData = await serviceCostService.calculateEmergencyCost(
+						request.serviceType,
+						{
+							distance,
+							isUrgent: request?.isUrgent || false
+						}
+					);
+				} catch (costError) {
+					console.warn('[useRequestFlow] Cost calculation failed:', costError);
+					// Continue without cost - payment will be handled separately
+				}
+
 				// Get user location for patient_location
 				let patientLocation = null;
 				try {
@@ -170,6 +211,15 @@ export const useRequestFlow = (props) => {
 					patient,
 					shared,
 					patientLocation,
+					// Cost information
+					...(costData && {
+						base_cost: costData.base_cost,
+						distance_surcharge: costData.distance_surcharge,
+						urgency_surcharge: costData.urgency_surcharge,
+						total_cost: costData.total_cost,
+						cost_breakdown: costData.breakdown,
+						payment_status: 'pending'
+					})
 				});
 
 				await addVisit({

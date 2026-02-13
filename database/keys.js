@@ -67,6 +67,21 @@ export const StorageKeys = {
     /** Insurance policies */
     INSURANCE_POLICIES: `${DB_PREFIX}insurance_policies`,
 
+    // ============================================
+    // PAYMENT SYSTEM
+    // ============================================
+    /** Payment methods */
+    PAYMENT_METHODS: `${DB_PREFIX}payment_methods`,
+
+    /** Payment history */
+    PAYMENT_HISTORY: `${DB_PREFIX}payment_history`,
+
+    /** Current payment transaction */
+    CURRENT_PAYMENT: `${DB_PREFIX}current_payment`,
+
+    /** Payment preferences */
+    PAYMENT_PREFERENCES: `${DB_PREFIX}payment_preferences`,
+
 	// ============================================
 	// NOTIFICATIONS & PREFERENCES
 	// ============================================
@@ -104,6 +119,8 @@ export const CollectionKeys = [
 	StorageKeys.RESET_TOKENS,
 	StorageKeys.EMERGENCY_REQUESTS,
     StorageKeys.INSURANCE_POLICIES,
+    StorageKeys.PAYMENT_METHODS,
+    StorageKeys.PAYMENT_HISTORY,
 ];
 
 /**
@@ -116,6 +133,8 @@ export const SingletonKeys = [
 	StorageKeys.PENDING_OTP,
 	StorageKeys.MEDICAL_PROFILE,
 	StorageKeys.EMERGENCY_STATE,
+	StorageKeys.CURRENT_PAYMENT,
+	StorageKeys.PAYMENT_PREFERENCES,
 	StorageKeys.PREFERENCES,
 	StorageKeys.THEME,
 	StorageKeys.PROFILE_COMPLETION_DRAFT,

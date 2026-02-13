@@ -10,6 +10,7 @@ export const ROUTES = {
 	STACK_SETTINGS: "/(user)/(stacks)/settings",
 	STACK_MEDICAL_PROFILE: "/(user)/(stacks)/medical-profile",
 	STACK_PROFILE: "/(user)/(stacks)/profile",
+	STACK_PAYMENT: "/(user)/(stacks)/payment",
 	STACK_VISIT_DETAILS: (id) => `/(user)/(stacks)/visit/${String(id)}`,
 	STACK_EMERGENCY_REQUEST_AMBULANCE: "/(user)/(stacks)/emergency/request-ambulance",
 	STACK_EMERGENCY_BOOK_BED: "/(user)/(stacks)/emergency/book-bed",
@@ -18,18 +19,18 @@ export const ROUTES = {
 let isNavigating = false;
 
 function nav(router, method, target) {
-    if (isNavigating) return;
-    
+	if (isNavigating) return;
+
 	const fn = method === "replace" ? router?.replace : router?.push;
 	if (!fn) return;
-    
-    isNavigating = true;
+
+	isNavigating = true;
 	fn(target);
-    
-    // Reset flag after a short delay (e.g., 500ms) to allow next navigation
-    setTimeout(() => {
-        isNavigating = false;
-    }, 500);
+
+	// Reset flag after a short delay (e.g., 500ms) to allow next navigation
+	setTimeout(() => {
+		isNavigating = false;
+	}, 500);
 }
 
 export function navigateBack({ router }) {
@@ -91,6 +92,10 @@ export function navigateToMedicalProfile({ router, method = "push" }) {
 
 export function navigateToProfile({ router, method = "push" }) {
 	nav(router, method, ROUTES.STACK_PROFILE);
+}
+
+export function navigateToPayment({ router, method = "push" }) {
+	nav(router, method, ROUTES.STACK_PAYMENT);
 }
 
 export function navigateToEmergencyContacts({ router, method = "push" }) {

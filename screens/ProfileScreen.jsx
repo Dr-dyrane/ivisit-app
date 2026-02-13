@@ -38,6 +38,7 @@ import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
 import {
 	navigateToEmergencyContacts,
 	navigateToMedicalProfile,
+	navigateToPayment,
 } from "../utils/navigationHelpers";
 
 const ProfileScreen = () => {
@@ -81,7 +82,7 @@ const ProfileScreen = () => {
 	// Debounced version of hasChanges to prevent FAB flickering
 	const debouncedHasChanges = useRef(hasChanges);
 	const [stableHasChanges, setStableHasChanges] = useState(false);
-	
+
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			if (debouncedHasChanges.current !== hasChanges) {
@@ -733,6 +734,98 @@ const ProfileScreen = () => {
 						</View>
 					</Animated.View>
 
+					{/* Payments & Billing Section */}
+					<Animated.View
+						style={{
+							opacity: fadeAnim,
+							paddingHorizontal: 12,
+							marginTop: 32,
+						}}
+					>
+						<Text
+							style={{
+								fontSize: 10,
+								fontWeight: "800",
+								color: colors.textMuted,
+								marginBottom: 16,
+								letterSpacing: 1.5,
+								textTransform: "uppercase",
+							}}
+						>
+							PAYMENTS & BILLING
+						</Text>
+						<Pressable
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+								navigateToPayment({ router });
+							}}
+							style={{
+								backgroundColor: colors.card,
+								borderRadius: 36,
+								padding: 20,
+								flexDirection: "row",
+								alignItems: "center",
+								shadowColor: "#000",
+								shadowOffset: { width: 0, height: 4 },
+								shadowOpacity: isDarkMode ? 0 : 0.03,
+								shadowRadius: 10,
+							}}
+						>
+							<View
+								style={{
+									backgroundColor: COLORS.brandPrimary,
+									width: 56,
+									height: 56,
+									borderRadius: 14,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons name="card" size={26} color="#FFFFFF" />
+							</View>
+							<View style={{ flex: 1 }}>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -1.0,
+									}}
+								>
+									Payments & Billing
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									Manage cards & history
+								</Text>
+							</View>
+							<View
+								style={{
+									width: 36,
+									height: 36,
+									borderRadius: 14,
+									backgroundColor: isDarkMode
+										? "rgba(255,255,255,0.025)"
+										: "rgba(0,0,0,0.025)",
+									alignItems: "center",
+									justifyContent: "center",
+								}}
+							>
+								<Ionicons
+									name="chevron-forward"
+									size={16}
+									color={colors.textMuted}
+								/>
+							</View>
+						</Pressable>
+					</Animated.View>
+
 					{/* Password/Security Section */}
 					<Animated.View
 						style={{
@@ -807,17 +900,17 @@ const ProfileScreen = () => {
 									backgroundColor: isDarkMode
 										? "rgba(255,255,255,0.025)"
 										: "rgba(0,0,0,0.025)",
-										alignItems: "center",
-										justifyContent: "center",
-									}}
-								>
-									<Ionicons
-										name="chevron-forward"
-										size={16}
-										color={colors.textMuted}
-									/>
-								</View>
-							</Pressable>
+									alignItems: "center",
+									justifyContent: "center",
+								}}
+							>
+								<Ionicons
+									name="chevron-forward"
+									size={16}
+									color={colors.textMuted}
+								/>
+							</View>
+						</Pressable>
 					</Animated.View>
 
 					{/* Danger Zone */}
