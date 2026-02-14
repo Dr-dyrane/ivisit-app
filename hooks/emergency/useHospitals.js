@@ -102,8 +102,6 @@ export function useHospitals() {
 				setIsLoading(true);
 			}
 
-			console.log('[useHospitals] Fetching hospitals for location:', location);
-
 			// We use a generous 50km radius by default to avoid multiple roundtrips
 			// The backend/RPC handles the heavy lifting
 			const data = await hospitalsService.discoverNearby(

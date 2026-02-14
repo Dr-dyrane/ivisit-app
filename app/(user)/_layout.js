@@ -1,11 +1,12 @@
 // app/(user)/_layout.js
 
 import { View, StyleSheet } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { UserProviders } from "../../providers/UserProviders";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
 import ScrollAwareHeader from "../../components/headers/ScrollAwareHeader";
+import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import GlobalFAB from "../../components/navigation/GlobalFAB";
 import { appMigrationsService } from "../../services/appMigrationsService";
 
@@ -42,6 +43,19 @@ export default function UserLayout() {
 
 function UserHeaderWrapper() {
 	const { headerState } = useHeaderState();
+	const segments = useSegments();
+	const { resetHeader } = useScrollAwareHeader();
+
+	// Disable scroll sensitivity for stack screens (detail views)
+	const isStackScreen = segments.some(s => s === '(stacks)');
+	const scrollAware = !isStackScreen && headerState.scrollAware;
+
+	// Reset header state when returning to tabs to ensure sensitivity is restored
+	useEffect(() => {
+		if (!isStackScreen) {
+			resetHeader();
+		}
+	}, [isStackScreen]);
 
 	return (
 		<ScrollAwareHeader
@@ -52,7 +66,7 @@ function UserHeaderWrapper() {
 			badge={headerState.badge}
 			leftComponent={headerState.leftComponent}
 			rightComponent={headerState.rightComponent}
-			scrollAware={headerState.scrollAware}
+			scrollAware={scrollAware}
 		/>
 	);
 }

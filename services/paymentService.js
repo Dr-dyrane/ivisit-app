@@ -149,6 +149,16 @@ export const paymentService = {
         .update({ is_default: false })
         .eq('user_id', user.id);
 
+      // Check if methodId is a valid UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      if (!uuidRegex.test(methodId)) {
+        // If not a UUID (e.g. 'cash_payment', 'insurance'), we just unset the default card.
+        // The frontend interprets "no default card" as using the selected non-card method,
+        // or we rely on local state. We return a mock response.
+        return { id: methodId, is_default: true, type: 'virtual' };
+      }
+
       // Set new default
       const { data, error } = await supabase
         .from('payment_methods')

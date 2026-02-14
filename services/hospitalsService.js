@@ -111,8 +111,6 @@ export const hospitalsService = {
 	 */
 	async discoverNearby(lat, lng, radius = 50000) {
 		try {
-			console.log('[hospitalsService] Discovering hospitals...', { lat, lng, radius });
-
 			const { data, error } = await supabase.functions.invoke('discover-hospitals', {
 				body: {
 					latitude: lat,
@@ -126,7 +124,6 @@ export const hospitalsService = {
 			});
 
 			if (error) {
-				console.log('[hospitalsService] Edge Function error, falling back to RPC:', error.message);
 				return this.listNearby(lat, lng, radius / 1000);
 			}
 

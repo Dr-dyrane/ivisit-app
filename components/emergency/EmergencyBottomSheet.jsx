@@ -69,11 +69,6 @@ const EmergencyBottomSheet = forwardRef(
 		},
 		ref
 	) => {
-		console.log("[EmergencyBottomSheet] Render:", {
-			hasSelectedHospital: !!selectedHospital,
-			selectedHospitalId: selectedHospital?.id,
-			mode
-		});
 		const { isDarkMode } = useTheme();
 		const { user } = useAuth();
 		const { preferences } = usePreferences();
@@ -146,27 +141,17 @@ const EmergencyBottomSheet = forwardRef(
 		 */
 		const clampSheetIndex = useCallback(
 			(index) => {
-				console.log('[EmergencyBottomSheet] clampSheetIndex called with:', index, 'snapPoints:', snapPoints, 'length:', snapPoints.length);
-
-				// 🔴 REVERT POINT: Enhanced snap point validation
-				// PREVIOUS: Basic index clamping
-				// NEW: More robust validation with detailed logging
-				// REVERT TO: Remove the enhanced logging and validation
-
 				if (!Number.isFinite(index)) {
-					console.log('[EmergencyBottomSheet] Invalid index, returning 0');
 					return 0;
 				}
 
 				if (!snapPoints || snapPoints.length === 0) {
-					console.log('[EmergencyBottomSheet] No snap points available, returning 0');
 					return 0;
 				}
 
 				const maxIndex = snapPoints.length - 1;
 				const clampedIndex = Math.min(Math.max(index, 0), maxIndex);
 
-				console.log('[EmergencyBottomSheet] Final clamped index:', clampedIndex, 'maxIndex:', maxIndex);
 				return clampedIndex;
 			},
 			[snapPoints]
@@ -175,7 +160,6 @@ const EmergencyBottomSheet = forwardRef(
 		useImperativeHandle(ref, () => ({
 			snapToIndex: (index) => {
 				const clampedIndex = clampSheetIndex(index);
-				console.log('[EmergencyBottomSheet] snapToIndex called with clamped index:', clampedIndex);
 
 				// 🔴 REVERT POINT: Additional safety check for bottom sheet ref
 				// PREVIOUS: Direct snapToIndex call
@@ -207,7 +191,6 @@ const EmergencyBottomSheet = forwardRef(
 						// When transitioning from detail mode (1 point) to normal mode (3 points),
 						// the restored index might be out of bounds. Clamp it safely.
 						const safeIndex = clampSheetIndex(snapIndex);
-						console.log('[EmergencyBottomSheet] Restoring to safe index:', safeIndex, 'from original:', snapIndex);
 
 						// Additional safety: if we're transitioning from detail mode, start at index 0 (collapsed)
 						const finalIndex = isDetailMode ? 0 : safeIndex;
@@ -474,7 +457,6 @@ const EmergencyBottomSheet = forwardRef(
 						)}
 
 						{!isTripMode && !isBedBookingMode && (
-							console.log("[EmergencyBottomSheet] Rendering Hospital List:", { count: hospitals.length }),
 							<EmergencySheetHospitalList
 								visible={sheetPhase !== "collapsed"}
 								hospitals={hospitals}

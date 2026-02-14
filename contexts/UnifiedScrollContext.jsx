@@ -196,8 +196,11 @@ export function UnifiedScrollProvider({ children }) {
       isHeaderHidden.current = false;
     }
 
+    isAnimating.current = false;
     if (animations.length > 0) {
-      Animated.parallel(animations).start();
+      Animated.parallel(animations).start(() => {
+        isAnimating.current = false;
+      });
     }
   }, [tabTranslateY, headerOpacity, titleOpacity]);
 

@@ -165,8 +165,8 @@ const EmergencyScreen = () => {
 	const { handleQuickEmergency } = useRequestFlow({
 		createRequest: emergencyRequestsService.create,
 		updateRequest: emergencyRequestsService.update,
-		addVisit: emergencyRequestsService.addVisit,
-		updateVisit: emergencyRequestsService.updateVisit,
+		addVisit,
+		updateVisit,
 		setRequestStatus: emergencyRequestsService.setStatus,
 		startAmbulanceTrip,
 		startBedBooking,
@@ -200,7 +200,6 @@ const EmergencyScreen = () => {
 		const hasActiveTrip = !!activeAmbulanceTrip?.requestId || !!activeBedBooking?.requestId;
 
 		if (!selectedHospitalId && !pendingSelectedHospitalId && currentRoute && !hasActiveTrip) {
-			console.log("[EmergencyScreen] Clearing currentRoute because selection reset and no active trip");
 			setCurrentRoute(null);
 		}
 	}, [selectedHospitalId, pendingSelectedHospitalId, currentRoute, activeAmbulanceTrip?.requestId, activeBedBooking?.requestId]);
@@ -246,11 +245,6 @@ const EmergencyScreen = () => {
 
 	// 🚨 Quick Emergency Handler - Auto-dispatch without hospital selection
 	const handleQuickEmergencyAction = useCallback(async () => {
-		console.log('[EmergencyScreen] Quick emergency button pressed');
-		console.log('[EmergencyScreen] Mode:', mode);
-		console.log('[EmergencyScreen] Active trip:', activeAmbulanceTrip?.requestId);
-		console.log('[EmergencyScreen] handleQuickEmergency available:', !!handleQuickEmergency);
-
 		if (mode !== "emergency") {
 			showToast("Quick Emergency only available in Ambulance mode", "warning");
 			return;
@@ -263,17 +257,14 @@ const EmergencyScreen = () => {
 		}
 
 		try {
-			console.log('[EmergencyScreen] Calling handleQuickEmergency...');
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			const result = await handleQuickEmergency("ambulance");
 
 			if (result.ok) {
 				showToast(`🚨 Auto-dispatched to ${result.hospital}`, "success");
-				console.log('[EmergencyScreen] Quick emergency successful:', result);
 
 				// 🎯 Navigate to selected hospital view after auto-dispatch
 				if (result.requestId) {
-					console.log('[EmergencyScreen] Navigating to ambulance request with ID:', result.requestId);
 					navigateToRequestAmbulance({
 						router,
 						hospitalId: result.hospitalId || 'auto-dispatched',
@@ -282,10 +273,8 @@ const EmergencyScreen = () => {
 				}
 			} else {
 				showToast(`Emergency failed: ${result.reason}`, "error");
-				console.log('[EmergencyScreen] Quick emergency failed:', result);
 			}
 		} catch (error) {
-			console.error('[EmergencyScreen] Quick emergency error:', error);
 			showToast("Emergency request failed", "error");
 		}
 	}, [mode, activeAmbulanceTrip?.requestId, showToast, handleQuickEmergency, router]);
@@ -295,17 +284,14 @@ const EmergencyScreen = () => {
 
 	// Memoize the quick action handlers to prevent infinite re-renders
 	const handleQuickEmergencyPress = useCallback(() => {
-		console.log('[EmergencyScreen] QUICK BUTTON TAPPED!');
 		handleQuickEmergencyAction();
 	}, [handleQuickEmergencyAction]);
 
 	const handleQuickEmergencyPressIn = useCallback(() => {
-		console.log('[EmergencyScreen] Button press IN');
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 	}, []);
 
 	const handleQuickEmergencyPressOut = useCallback(() => {
-		console.log('[EmergencyScreen] Button press OUT');
 		setQuickButtonPulse(false);
 	}, []);
 
@@ -501,14 +487,13 @@ const EmergencyScreen = () => {
 
 			// Find hospital and check availability fallbacks
 			const hospital = hospitals.find(h => h.id === hospitalId);
-			console.log("[EmergencyScreen] handleHospitalSelect:", { hospitalId, mode, found: !!hospital });
 
 			const isGoogleHospital = hospital?.importedFromGoogle && hospital?.importStatus !== 'verified';
-			
+
 			// Check for zero ambulances in emergency mode
-			const noAmbulances = mode === 'emergency' && 
-				hospital?.ambulances !== undefined && 
-				hospital?.ambulances !== null && 
+			const noAmbulances = mode === 'emergency' &&
+				hospital?.ambulances !== undefined &&
+				hospital?.ambulances !== null &&
 				Number(hospital.ambulances) <= 0;
 
 			const noBeds = mode === 'booking' && hospital?.availableBeds !== undefined && hospital.availableBeds <= 0;
@@ -540,8 +525,6 @@ const EmergencyScreen = () => {
 			// NEW: Triggers direct phone call if hospital is unverified or has no resources
 			// REVERT TO: Remove the block below
 			if (isGoogleHospital || noAmbulances || noBeds) {
-				console.log('[EmergencyScreen] Fallback active:', { isGoogleHospital, noAmbulances, noBeds });
-
 				const phone = hospital?.phone;
 				if (phone) {
 					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

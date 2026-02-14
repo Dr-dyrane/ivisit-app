@@ -550,25 +550,14 @@ export function EmergencyProvider({ children }) {
 	// Get selected hospital object
 	const selectedHospital = useMemo(() => {
 		const hospital = hospitals.find(h => h.id === selectedHospitalId) || null;
-		if (selectedHospitalId) {
-			console.log("[EmergencyContext] selectedHospital computation:", {
-				selectedHospitalId,
-				found: !!hospital,
-				totalHospitals: hospitals.length,
-				firstHospitalId: hospitals[0]?.id
-			});
-		}
 		return hospital;
 	}, [hospitals, selectedHospitalId]);
 
 	// Filter hospitals based on current mode and criteria
 	const filteredHospitals = useMemo(() => {
 		if (!hospitals || hospitals.length === 0) {
-			console.log("[EmergencyContext] filteredHospitals: No hospitals loaded");
 			return [];
 		}
-
-		console.log("[EmergencyContext] Filtering hospitals...", { mode, serviceType, total: hospitals.length });
 
 		return hospitals.filter((hospital) => {
 			if (!hospital) return false;
@@ -659,7 +648,6 @@ export function EmergencyProvider({ children }) {
 
 			// REMOVED: simulationService.startSimulation(trip.requestId, trip.route);
 			// Real-time ambulance tracking handled by subscriptions
-			console.log('[EmergencyContext] Ambulance trip started:', trip.requestId);
 		},
 		[parseEtaToSeconds]
 	);
@@ -680,18 +668,11 @@ export function EmergencyProvider({ children }) {
 			if (!booking?.hospitalId) return;
 
 			const rawEta = booking?.estimatedWait ?? booking?.estimatedArrival;
-			console.log('[EmergencyContext] starting bed booking:', {
-				id: booking.hospitalId,
-				requestedEta: rawEta,
-				requestedEtaSeconds: booking?.etaSeconds
-			});
 
 			const etaSeconds =
 				Number.isFinite(booking?.etaSeconds)
 					? booking.etaSeconds
 					: parseEtaToSeconds(booking?.estimatedWait ?? booking?.estimatedArrival);
-
-			console.log('[EmergencyContext] parsed etaSeconds:', etaSeconds);
 
 			setActiveBedBooking({
 				hospitalId: booking.hospitalId,

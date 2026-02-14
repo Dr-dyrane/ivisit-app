@@ -108,7 +108,6 @@ const PaymentMethodSelector = ({
   };
 
   const handleSetDefault = async (method) => {
-    if (method.is_wallet) return;
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await paymentService.setDefaultPaymentMethod(method.id);
@@ -156,7 +155,7 @@ const PaymentMethodSelector = ({
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             onMethodSelect(method);
-            if (isManagementMode && !method.is_wallet) {
+            if (isManagementMode) {
               handleSetDefault(method);
             }
           }}
@@ -181,7 +180,7 @@ const PaymentMethodSelector = ({
             <View style={styles.methodMeta}>
               <View style={styles.labelRow}>
                 <Text style={[styles.methodLabel, { color: colors.text }]}>
-                  {method.brand} {method.is_wallet ? '' : '•••• ' + method.last4}
+                  {method.brand} {method.is_wallet || method.is_cash ? '' : '•••• ' + method.last4}
                 </Text>
                 {isDefault && !method.is_wallet && (
                   <View style={styles.defaultBadge}>
@@ -190,12 +189,12 @@ const PaymentMethodSelector = ({
                 )}
               </View>
               <Text style={[styles.methodSub, { color: method.is_wallet && !isManagementMode && method.balance < (cost?.totalCost || 0) ? COLORS.error : colors.muted }]}>
-                {method.is_wallet ? (method.balance < (cost?.totalCost || 0) && !isManagementMode ? 'INSUFFICIENT BALANCE' : `AVAILABLE: ${method.currency} ${method.last4}`) : `EXPIRES ${method.expiry_month}/${method.expiry_year}`}
+                {method.is_wallet ? (method.balance < (cost?.totalCost || 0) && !isManagementMode ? 'INSUFFICIENT BALANCE' : `AVAILABLE: ${method.currency} ${method.last4}`) : method.is_cash ? 'PAY ON ARRIVAL' : `EXPIRES ${method.expiry_month}/${method.expiry_year}`}
               </Text>
             </View>
           </View>
 
-          {isManagementMode && !method.is_wallet ? (
+          {isManagementMode && !method.is_wallet && !method.is_cash ? (
             <TouchableOpacity
               onPress={() => handleDeleteMethod(method)}
               style={styles.deleteBtn}

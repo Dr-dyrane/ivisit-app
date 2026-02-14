@@ -157,9 +157,18 @@ const EmergencyRequestModal = React.memo(({
 					paymentMethod: selectedPaymentMethod,
 				};
 
+
 		try {
 			if (typeof onRequestInitiated === "function") {
-				onRequestInitiated(initiated);
+				const result = await onRequestInitiated(initiated);
+
+				// Handle explicit failure from the hook
+				if (result && result.ok === false) {
+					console.error("Request initiation failed:", result);
+					setErrorMessage(result.reason || "Failed to create request");
+					setIsRequesting(false);
+					return;
+				}
 			}
 		} catch (error) {
 			console.error("Error in onRequestInitiated callback:", error);
@@ -168,6 +177,7 @@ const EmergencyRequestModal = React.memo(({
 			return;
 		}
 
+		// Success flow - slightly delayed for animation/UX
 		setTimeout(() => {
 			const waitTime = requestHospital?.waitTime ?? null;
 			const hospitalEta = requestHospital?.eta ?? null;
@@ -215,7 +225,7 @@ const EmergencyRequestModal = React.memo(({
 			if (typeof onRequestComplete === "function") {
 				onRequestComplete(next);
 			}
-		}, 900);
+		}, 100); // Reduced delay since we already awaited the network call
 	}, [
 		bedCount,
 		bedType,
@@ -247,16 +257,6 @@ const EmergencyRequestModal = React.memo(({
 
 	// Global FAB registration for request modal
 	useEffect(() => {
-		if (__DEV__) {
-			console.log('[EmergencyRequestModal] FAB registration effect:', {
-				requestStep,
-				mode,
-				selectedAmbulanceType,
-				bedType,
-				bedCount,
-				isRequesting,
-			});
-		}
 
 		// Commented out dispatched state for auto-navigation audit
 		/*
@@ -355,9 +355,6 @@ const EmergencyRequestModal = React.memo(({
 
 		// Cleanup function
 		return () => {
-			if (__DEV__) {
-				console.log('[EmergencyRequestModal] Cleaning up FABs');
-			}
 			unregisterFAB('ambulance-select');
 			// unregisterFAB('ambulance-dispatched'); // Commented out
 			unregisterFAB('ambulance-prompt');
