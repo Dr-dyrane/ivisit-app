@@ -41,8 +41,8 @@ ON public.search_selections(query);
 
 -- 3. Create or Replace Trending Searches Function
 CREATE OR REPLACE FUNCTION get_trending_searches(
-  days_back integer DEFAULT 7,
-  limit_count integer DEFAULT 8
+  days_back integer,
+  limit_count integer
 )
 RETURNS TABLE(query text, count bigint)
 LANGUAGE sql

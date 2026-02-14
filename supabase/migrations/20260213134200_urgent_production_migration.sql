@@ -2,8 +2,6 @@
 -- Run this in Supabase SQL Editor immediately
 -- This fixes the "experience column not found" error
 
-BEGIN;
-
 -- 1. Fix roles for existing doctor profiles
 UPDATE public.profiles
 SET role = 'provider'
@@ -45,10 +43,3 @@ ALTER TABLE public.doctors ADD CONSTRAINT doctors_status_check CHECK (status IN 
 -- 6. Make 'is_available' nullable (soft deprecation)
 ALTER TABLE public.doctors ALTER COLUMN is_available DROP NOT NULL;
 
-COMMIT;
-
--- IMPORTANT: After running this, refresh the Supabase schema cache:
--- Go to Settings → Database → Connection Pooling → Click "Refresh schema cache"
--- OR just restart the connection pooler
-
-SELECT 'Migration applied successfully! Column renamed: years_experience → experience' AS result;

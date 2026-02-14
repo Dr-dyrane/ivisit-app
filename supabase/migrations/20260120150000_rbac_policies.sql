@@ -68,9 +68,9 @@ ON public.hospitals FOR ALL
 USING ( public.get_current_user_role() = 'admin' );
 
 -- Policy: Org Admins can update their OWN hospital
-CREATE POLICY "Org Admins can update own hospital" 
-ON public.hospitals FOR UPDATE
-USING ( id = public.get_current_user_org_id() );
+-- CREATE POLICY "Org Admins can update own hospital" 
+-- ON public.hospitals FOR UPDATE
+-- USING ( id = public.get_current_user_org_id() );
 
 
 -- DOCTORS
@@ -80,9 +80,9 @@ ON public.doctors FOR SELECT
 USING ( auth.role() = 'authenticated' );
 
 -- Policy: Org Admins can manage THEIR doctors
-CREATE POLICY "Org Admins can manage own doctors" 
-ON public.doctors FOR ALL
-USING ( hospital_id = public.get_current_user_org_id() );
+-- CREATE POLICY "Org Admins can manage own doctors" 
+-- ON public.doctors FOR ALL
+-- USING ( hospital_id = public.get_current_user_org_id() );
 
 -- Policy: Platform Admins can manage all
 CREATE POLICY "Platform Admins can manage all doctors" 
@@ -97,9 +97,9 @@ ON public.emergency_requests FOR ALL
 USING ( public.get_current_user_role() = 'admin' );
 
 -- Policy: Org Admin View/Manage Own Hospital Requests
-CREATE POLICY "Org Admins manage hospital emergencies" 
-ON public.emergency_requests FOR ALL 
-USING ( hospital_id = public.get_current_user_org_id()::text );
+-- CREATE POLICY "Org Admins manage hospital emergencies" 
+-- ON public.emergency_requests FOR ALL 
+-- USING ( hospital_id = public.get_current_user_org_id()::text );
 
 -- Policy: Responders (Providers) View Assigned OR Pending (to accept)
 CREATE POLICY "Responders view assigned or pending" 

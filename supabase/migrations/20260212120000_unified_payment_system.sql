@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS public.payments (
     status TEXT DEFAULT 'pending',
     payment_method_id TEXT,
     stripe_payment_intent_id TEXT UNIQUE,
-    emergency_request_id UUID,
+    emergency_request_id TEXT,
     metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

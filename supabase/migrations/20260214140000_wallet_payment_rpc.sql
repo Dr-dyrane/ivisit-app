@@ -1,12 +1,15 @@
 -- Migration to handle secure wallet-to-organization payments
 -- This enables end-to-end balance flow from Patient App to Console
 
+DROP FUNCTION IF EXISTS public.process_wallet_payment(UUID, UUID, UUID, DECIMAL, TEXT);
+DROP FUNCTION IF EXISTS public.process_wallet_payment(UUID, UUID, UUID, DECIMAL); -- Drop potential old signature
+
 CREATE OR REPLACE FUNCTION public.process_wallet_payment(
     p_user_id UUID,
     p_organization_id UUID,
     p_emergency_request_id UUID,
     p_amount DECIMAL,
-    p_currency TEXT DEFAULT 'USD'
+    p_currency TEXT
 )
 RETURNS JSONB AS $$
 DECLARE

@@ -59,10 +59,10 @@ CREATE INDEX IF NOT EXISTS idx_user_activity_entity ON public.user_activity(enti
 ALTER TABLE public.user_activity ENABLE ROW LEVEL SECURITY;
 
 -- 4. Create RLS policies
-CREATE POLICY IF NOT EXISTS "Users can view own activity" ON public.user_activity
+CREATE POLICY "Users can view own activity" ON public.user_activity
     FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Admins can view all activity" ON public.user_activity
+CREATE POLICY "Admins can view all activity" ON public.user_activity
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM public.profiles 
@@ -70,28 +70,34 @@ CREATE POLICY IF NOT EXISTS "Admins can view all activity" ON public.user_activi
         )
     );
 
-CREATE POLICY IF NOT EXISTS "System can insert activity" ON public.user_activity
+CREATE POLICY "System can insert activity" ON public.user_activity
     FOR INSERT WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "Users can update own activity" ON public.user_activity
+CREATE POLICY "Users can update own activity" ON public.user_activity
     FOR UPDATE USING (auth.uid() = user_id);
+
+
 
 -- 5. Create helper function to log activity
 CREATE OR REPLACE FUNCTION log_user_activity(
     p_action text,
+    p_description text,
     p_entity_type text DEFAULT NULL,
     p_entity_id uuid DEFAULT NULL,
-    p_description text,
     p_metadata jsonb DEFAULT '{}'::jsonb,
-    p_user_id uuid DEFAULT auth.uid()
+    p_user_id uuid DEFAULT NULL
 )
+
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
     activity_id uuid;
+    v_user_id uuid;
 BEGIN
+    v_user_id := COALESCE(p_user_id, auth.uid());
+
     -- Validate action
     IF p_action NOT IN (
         'emergency_created', 'emergency_updated', 'emergency_completed',
@@ -116,7 +122,7 @@ BEGIN
         ip_address,
         user_agent
     ) VALUES (
-        p_user_id,
+        v_user_id,
         p_action,
         p_entity_type,
         p_entity_id,
@@ -129,6 +135,7 @@ BEGIN
     RETURN activity_id;
 END;
 $$;
+
 
 -- 6. Grant permissions
 GRANT EXECUTE ON FUNCTION log_user_activity TO authenticated;

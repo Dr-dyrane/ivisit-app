@@ -2,9 +2,6 @@
 -- Description: Updates hospital_id by matching hospital text field to hospitals table
 -- Run this in Supabase SQL Editor
 
-BEGIN;
-
--- ═══════════════════════════════════════════════════════════════════════════
 -- PART 1: Migrate Data
 -- ═══════════════════════════════════════════════════════════════════════════
 
@@ -38,26 +35,11 @@ BEGIN
   SELECT COUNT(*) INTO with_hospital_text FROM public.ambulances WHERE hospital IS NOT NULL AND hospital != '';
   SELECT COUNT(*) INTO unmatched FROM public.ambulances WHERE hospital_id IS NULL AND hospital IS NOT NULL AND hospital != '';
   
-  RAISE NOTICE '
-═══════════════════════════════════════════════════════════════
-  AMBULANCE HOSPITAL MIGRATION REPORT
-═══════════════════════════════════════════════════════════════
-
-Total Ambulances:              %
-With hospital_id (FK):         % (%.1f%%)
-With hospital (TEXT):          %
-Unmatched:                     %
-
-Migration Success:             %s
-
-═══════════════════════════════════════════════════════════════
-  ',
-    total_ambulances,
-    with_hospital_id,
-    (with_hospital_id::FLOAT / NULLIF(total_ambulances, 0) * 100),
-    with_hospital_text,
-    unmatched,
-    CASE WHEN unmatched = 0 THEN '✅ ALL MATCHED' ELSE '⚠️  SOME UNMATCHED' END;
+  RAISE NOTICE 'Total Ambulances: %', total_ambulances;
+  RAISE NOTICE 'With hospital_id (FK): %', with_hospital_id;
+  RAISE NOTICE 'With hospital (TEXT): %', with_hospital_text;
+  RAISE NOTICE 'Unmatched: %', unmatched;
+  RAISE NOTICE 'Migration Success: %', CASE WHEN unmatched = 0 THEN 'YES' ELSE 'NO' END;
 END $$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -67,17 +49,14 @@ END $$;
 DO $$
 DECLARE
   unmatched_count INTEGER;
+  rec RECORD;
 BEGIN
   SELECT COUNT(*) INTO unmatched_count
   FROM public.ambulances
   WHERE hospital_id IS NULL AND hospital IS NOT NULL AND hospital != '';
   
   IF unmatched_count > 0 THEN
-    RAISE NOTICE '
-⚠️  UNMATCHED HOSPITALS:
--------------------------------------------------------------------
-The following ambulances have hospital names that don''t match any hospital in the hospitals table:
-';
+    RAISE NOTICE 'UNMATCHED HOSPITALS:';
     
     -- Show unmatched ambulances
     FOR rec IN (
@@ -86,17 +65,11 @@ The following ambulances have hospital names that don''t match any hospital in t
       WHERE hospital_id IS NULL AND hospital IS NOT NULL AND hospital != ''
       ORDER BY call_sign
     ) LOOP
-      RAISE NOTICE '  - % : "%"', rec.call_sign, rec.hospital;
+      RAISE NOTICE '  - % : %', rec.call_sign, rec.hospital;
     END LOOP;
-    
-    RAISE NOTICE '
-Action: Manually verify these hospital names or add them to hospitals table.
--------------------------------------------------------------------
-';
   END IF;
 END $$;
 
-COMMIT;
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- VERIFICATION QUERY (run after migration)

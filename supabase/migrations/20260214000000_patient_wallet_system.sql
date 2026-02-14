@@ -46,10 +46,14 @@ CREATE TRIGGER on_profile_created_create_wallet
 
 -- 7. Function to perform Top-Up (Secure)
 -- This would be called after a successful Stripe payment for a top-up
+DROP FUNCTION IF EXISTS public.top_up_patient_wallet(UUID, DECIMAL, UUID); -- Drop old signature if exists
+DROP FUNCTION IF EXISTS public.top_up_patient_wallet(UUID, DECIMAL, TEXT); -- Drop current signature
+
+/*
 CREATE OR REPLACE FUNCTION public.top_up_patient_wallet(
     p_user_id UUID,
     p_amount DECIMAL,
-    p_payment_id UUID DEFAULT NULL
+    p_payment_method TEXT
 )
 RETURNS DECIMAL AS $$
 DECLARE
@@ -74,12 +78,13 @@ BEGIN
         transaction_type, description, reference_id, reference_type
     ) VALUES (
         'patient', v_wallet_id, p_user_id, p_amount,
-        'credit', 'Wallet Top-up', p_payment_id, 'payment'
+        'top-up', 'Wallet Top-up via ' || p_payment_method, NULL, 'external_payment'
     );
 
     RETURN v_new_balance;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+*/
 
 -- Refresh schema
 NOTIFY pgrst, 'reload schema';

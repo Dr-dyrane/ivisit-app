@@ -469,10 +469,16 @@ export const paymentService = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Call secure RPC to perform top-up
+      // 1. Simulate Stripe Payment Intent Creation (Real-world: Call Edge Function)
+      // await new Promise(r => setTimeout(r, 1500)); // Network delay
+
+      // 2. In a real app, we would direct user to Stripe Sheet here.
+      // For this prototype, we will simulate a successful specialized Top-Up RPC
+
       const { data, error } = await supabase.rpc('top_up_patient_wallet', {
         p_user_id: user.id,
-        p_amount: amount
+        p_amount: amount,
+        p_payment_method: 'card_simulated' // Track source
       });
 
       if (error) throw error;

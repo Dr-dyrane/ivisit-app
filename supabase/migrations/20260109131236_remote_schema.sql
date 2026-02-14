@@ -9,6 +9,7 @@ create table if not exists public.profiles (
   last_name text,
   full_name text,
   image_uri text,
+  avatar_url text, -- Standard Supabase field
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -61,12 +62,17 @@ create table if not exists public.notifications (
   priority text,
   action_type text,
   action_data jsonb,
+  target_id text,
+  icon text,
+  color text,
+  metadata jsonb default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create index if not exists notifications_user_id_idx on public.notifications(user_id);
 create index if not exists notifications_read_idx on public.notifications(read);
+create index if not exists notifications_target_id_idx on public.notifications(target_id);
 
 alter table public.profiles enable row level security;
 alter table public.preferences enable row level security;
@@ -154,9 +160,24 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, phone, created_at, updated_at)
-  values (new.id, new.email, new.phone, now(), now())
-  on conflict (id) do update set email = excluded.email, phone = excluded.phone, updated_at = now();
+  insert into public.profiles (id, email, phone, full_name, avatar_url, image_uri, created_at, updated_at)
+  values (
+    new.id, 
+    new.email, 
+    new.phone,
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'avatar_url',
+    new.raw_user_meta_data->>'avatar_url', -- Sync image_uri too for backward compatibility
+    now(), 
+    now()
+  )
+  on conflict (id) do update set 
+    email = excluded.email, 
+    phone = excluded.phone,
+    full_name = coalesce(excluded.full_name, profiles.full_name),
+    avatar_url = excluded.avatar_url,
+    image_uri = coalesce(excluded.image_uri, profiles.image_uri),
+    updated_at = now();
 
   insert into public.preferences (user_id)
   values (new.id)

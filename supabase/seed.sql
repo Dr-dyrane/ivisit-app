@@ -6,5 +6,5 @@
 --
 -- It should be safe to re-run. Use idempotent inserts where possible.
 
--- Load richer public demo data.
-\ir ./migrations/20260110000000_seed_rich_public_data.sql
+-- Note: Demo data is currently loaded via migration 20260110000000_seed_rich_public_data.sql
+-- The \ir command is not supported by the Supabase CLI reset command when sent as a batch.

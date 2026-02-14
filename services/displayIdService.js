@@ -24,14 +24,29 @@ export const ID_PREFIXES = {
  */
 export async function getDisplayId(userId) {
     try {
+        // [SYNC-PARITY] Primary lookup via RPC which queries id_mappings
         const { data, error } = await supabase
             .rpc('get_display_id', { p_entity_id: userId });
 
         if (error) throw error;
-        return data;
+
+        // [BUG-FIX] Robustly handle different return formats (scalar vs array of objects)
+        if (data) {
+            if (Array.isArray(data) && data.length > 0) {
+                return data[0].display_id || data[0];
+            }
+            if (typeof data === 'object' && data.display_id) {
+                return data.display_id;
+            }
+            return data;
+        }
+
+        // [FALLBACK] Check profiles table direct column if RPC returns nothing
+        return await getDisplayIdFromProfile(userId);
     } catch (error) {
         console.error('Error fetching patient display ID:', error);
-        return null;
+        // Last resort fallback
+        return await getDisplayIdFromProfile(userId);
     }
 }
 
