@@ -125,7 +125,10 @@ export const emergencyRequestsService = {
                     created_at: item.createdAt,
                     updated_at: item.updatedAt,
                     patient_location: item.patientLocation,
-                    patient_heading: item.patientHeading
+                    patient_heading: item.patientHeading,
+                    total_cost: request?.total_cost ?? null,
+                    payment_status: request?.payment_status ?? null,
+                    payment_method_id: request?.payment_method_id ?? null
                 });
 
             if (error) {
@@ -158,6 +161,9 @@ export const emergencyRequestsService = {
             if (updates.estimatedArrival !== undefined) dbUpdates.estimated_arrival = updates.estimatedArrival;
             if (updates.patientLocation !== undefined) dbUpdates.patient_location = updates.patientLocation;
             if (updates.patientHeading !== undefined) dbUpdates.patient_heading = updates.patientHeading;
+            if (updates.paymentStatus !== undefined) dbUpdates.payment_status = updates.paymentStatus;
+            if (updates.paymentMethodId !== undefined) dbUpdates.payment_method_id = updates.paymentMethodId;
+            if (updates.totalCost !== undefined) dbUpdates.total_cost = updates.totalCost;
 
             const { error, data } = await supabase
                 .from('emergency_requests')
@@ -260,17 +266,17 @@ export const emergencyRequestsService = {
     async subscribeToEmergencyUpdates(requestId, callback) {
         const channel = supabase
             .channel(`emergency_${requestId}`)
-            .on('postgres_changes', 
-                { 
-                    event: 'UPDATE', 
-                    schema: 'public', 
+            .on('postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
                     table: 'emergency_requests',
                     filter: `id=eq.${requestId}`
-                }, 
+                },
                 callback
             )
             .subscribe();
-        
+
         return () => supabase.removeChannel(channel);
     },
 
@@ -287,7 +293,7 @@ export const emergencyRequestsService = {
                 callback
             )
             .subscribe();
-        
+
         return () => supabase.removeChannel(channel);
     },
 
@@ -304,7 +310,7 @@ export const emergencyRequestsService = {
                 callback
             )
             .subscribe();
-        
+
         return () => supabase.removeChannel(channel);
     },
 

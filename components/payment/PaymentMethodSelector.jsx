@@ -67,7 +67,16 @@ const PaymentMethodSelector = ({
         is_default: false
       };
 
-      const finalMethods = [walletMethod, ...methods];
+      const cashMethod = {
+        id: 'cash_payment',
+        type: 'cash',
+        brand: 'Cash',
+        last4: 'Payment',
+        is_cash: true,
+        is_default: false
+      };
+
+      const finalMethods = [walletMethod, cashMethod, ...methods];
       setPaymentMethods(finalMethods);
 
       if (!selectedMethod && finalMethods.length > 0) {
@@ -164,7 +173,7 @@ const PaymentMethodSelector = ({
           <View style={styles.methodMain}>
             <View style={[styles.iconBox, { backgroundColor: isSelected ? colors.activeRing : 'rgba(255,255,255,0.05)' }]}>
               <Ionicons
-                name={method.is_wallet ? "wallet" : (method.brand?.toLowerCase() === 'visa' ? "card" : "card-outline")}
+                name={method.is_wallet ? "wallet" : (method.is_cash ? "cash-outline" : (method.brand?.toLowerCase() === 'visa' ? "card" : "card-outline"))}
                 size={20}
                 color={isSelected ? "#FFF" : colors.text}
               />

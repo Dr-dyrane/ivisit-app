@@ -158,7 +158,7 @@ export const useRequestFlow = (props) => {
 							latitude: currentLocation.coords.latitude,
 							longitude: currentLocation.coords.longitude
 						};
-						
+
 						// Calculate distance to hospital (simplified)
 						if (hospital) {
 							distance = DispatchService.calculateDistance(
@@ -211,14 +211,15 @@ export const useRequestFlow = (props) => {
 					patient,
 					shared,
 					patientLocation,
-					// Cost information
+					// Cost and Payment information
 					...(costData && {
 						base_cost: costData.base_cost,
 						distance_surcharge: costData.distance_surcharge,
 						urgency_surcharge: costData.urgency_surcharge,
 						total_cost: costData.total_cost,
 						cost_breakdown: costData.breakdown,
-						payment_status: 'pending'
+						payment_status: 'pending',
+						payment_method_id: request?.paymentMethod?.id || null
 					})
 				});
 

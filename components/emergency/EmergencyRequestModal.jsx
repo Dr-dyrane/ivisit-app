@@ -13,6 +13,9 @@ import AmbulanceTypeCard from "./requestModal/AmbulanceTypeCard";
 import EmergencyRequestModalDispatched from "./requestModal/EmergencyRequestModalDispatched";
 import InfoTile from "./requestModal/InfoTile";
 import BedBookingOptions from "./requestModal/BedBookingOptions";
+import PaymentMethodSelector from "../payment/PaymentMethodSelector";
+import { paymentService } from "../../services/paymentService";
+import { serviceCostService } from "../../services/serviceCostService";
 
 /**
  * 💡 STABILITY NOTE:
@@ -44,6 +47,9 @@ const EmergencyRequestModal = React.memo(({
 	const [isRequesting, setIsRequesting] = useState(false);
 	const [requestData, setRequestData] = useState(null);
 	const [errorMessage, setErrorMessage] = useState(null);
+	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+	const [estimatedCost, setEstimatedCost] = useState(null);
+	const [isCalculatingCost, setIsCalculatingCost] = useState(false);
 
 	// Zero-ambulance fallback logic
 	const hasAmbulances = useMemo(() => {
@@ -61,11 +67,62 @@ const EmergencyRequestModal = React.memo(({
 		}
 	}, [requestHospital?.phone, requestHospital?.google_phone, showToast]);
 
+	// Calculate cost whenever selection changes
+	useEffect(() => {
+		const calculateCost = async () => {
+			if (!requestHospital) return;
+
+			setIsCalculatingCost(true);
+			try {
+				const serviceType = mode === "booking" ? "bed" : "ambulance";
+				const cost = await serviceCostService.calculateEmergencyCost(serviceType, {
+					isUrgent: true,
+				});
+				setEstimatedCost(cost);
+			} catch (error) {
+				console.error("Error calculating estimated cost:", error);
+			} finally {
+				setIsCalculatingCost(false);
+			}
+		};
+
+		calculateCost();
+	}, [requestHospital?.id, mode]);
+
 	// Event handlers
 	const handleSubmitRequest = useCallback(async () => {
 		if (isRequesting) return;
 		if (!requestHospital) return;
 		if (mode === "emergency" && !selectedAmbulanceType) return;
+
+		// Payment Validation
+		if (!selectedPaymentMethod) {
+			setErrorMessage("Please select a payment method");
+			showToast("Payment method required", "error");
+			return;
+		}
+
+		// Cash Eligibility Check
+		if (selectedPaymentMethod.is_cash) {
+			try {
+				setIsRequesting(true);
+				const isEligible = await paymentService.checkCashEligibility(
+					requestHospital.id,
+					estimatedCost?.total_cost || 0
+				);
+
+				if (!isEligible) {
+					setErrorMessage("Cash payment not available for this hospital (insufficient wallet balance)");
+					showToast("Wallet top-up required for hospital", "error");
+					setIsRequesting(false);
+					return;
+				}
+			} catch (error) {
+				console.error("Cash eligibility check failed:", error);
+			} finally {
+				setIsRequesting(false);
+			}
+		}
 
 		setErrorMessage(null);
 		setIsRequesting(true);
@@ -76,6 +133,7 @@ const EmergencyRequestModal = React.memo(({
 			mode === "booking"
 				? `BED-${Math.floor(Math.random() * 900000) + 100000}`
 				: `AMB-${Math.floor(Math.random() * 900000) + 100000}`;
+
 		const initiated =
 			mode === "booking"
 				? {
@@ -87,6 +145,7 @@ const EmergencyRequestModal = React.memo(({
 					bedCount,
 					bedType,
 					bedNumber: `B${Math.floor(Math.random() * 900) + 100}`,
+					paymentMethod: selectedPaymentMethod,
 				}
 				: {
 					requestId,
@@ -95,6 +154,7 @@ const EmergencyRequestModal = React.memo(({
 					ambulanceType: selectedAmbulanceType,
 					serviceType: "ambulance",
 					specialty: selectedSpecialty ?? "Any",
+					paymentMethod: selectedPaymentMethod,
 				};
 
 		try {
@@ -104,6 +164,7 @@ const EmergencyRequestModal = React.memo(({
 		} catch (error) {
 			console.error("Error in onRequestInitiated callback:", error);
 			setErrorMessage("Something went wrong. Please try again.");
+			setIsRequesting(false);
 			return;
 		}
 
@@ -128,7 +189,7 @@ const EmergencyRequestModal = React.memo(({
 						bedCount: initiated.bedCount,
 						bedType: initiated.bedType,
 						bedNumber: initiated.bedNumber,
-						etaSeconds: null, // Let context derive from estimatedArrival or map route
+						etaSeconds: null,
 					}
 					: {
 						success: true,
@@ -138,7 +199,7 @@ const EmergencyRequestModal = React.memo(({
 						ambulanceType: initiated.ambulanceType,
 						serviceType: "ambulance",
 						estimatedArrival: ambulanceEta,
-						etaSeconds: null, // Let context derive from estimatedArrival or map route
+						etaSeconds: null,
 					};
 
 			setRequestData(next);
@@ -149,8 +210,8 @@ const EmergencyRequestModal = React.memo(({
 					: "Ambulance dispatched";
 			try {
 				showToast(toastMsg, "success");
-			} catch (e) {
-			}
+			} catch (e) { }
+
 			if (typeof onRequestComplete === "function") {
 				onRequestComplete(next);
 			}
@@ -158,13 +219,16 @@ const EmergencyRequestModal = React.memo(({
 	}, [
 		bedCount,
 		bedType,
+		estimatedCost,
 		isRequesting,
 		mode,
 		onRequestComplete,
 		onRequestInitiated,
 		requestHospital,
 		selectedAmbulanceType,
+		selectedPaymentMethod,
 		selectedSpecialty,
+		showToast,
 	]);
 
 	const requestColors = useMemo(
@@ -175,6 +239,11 @@ const EmergencyRequestModal = React.memo(({
 		}),
 		[isDarkMode]
 	);
+
+	const handleRequestDone = useCallback(() => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		onRequestClose?.();
+	}, [onRequestClose]);
 
 	// Global FAB registration for request modal
 	useEffect(() => {
@@ -307,6 +376,8 @@ const EmergencyRequestModal = React.memo(({
 		handleRequestDone,
 		registerFAB,
 		unregisterFAB,
+		hasAmbulances,
+		handleCallHospital,
 	]);
 
 	useEffect(() => {
@@ -322,11 +393,6 @@ const EmergencyRequestModal = React.memo(({
 		setRequestData(null);
 		setErrorMessage(null);
 	}, [requestHospital?.id, mode]);
-
-	const handleRequestDone = useCallback(() => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		onRequestClose?.();
-	}, [onRequestClose]);
 
 	const hospitalName = requestHospital?.name ?? "Hospital";
 	const availableBeds =
@@ -524,6 +590,47 @@ const EmergencyRequestModal = React.memo(({
 								))}
 							</View>
 						)}
+
+						{/* Payment Method Selection */}
+						<View style={styles.paymentContainer}>
+							<Text
+								style={{
+									fontSize: 12,
+									fontWeight: "900",
+									letterSpacing: 1.6,
+									color: requestColors.text,
+									marginTop: 24,
+									marginBottom: 14,
+									textTransform: "uppercase",
+								}}
+							>
+								Payment Method
+							</Text>
+
+							{estimatedCost && (
+								<View style={[styles.costBanner, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
+									<View style={styles.costRow}>
+										<Text style={[styles.costLabel, { color: requestColors.textMuted }]}>Estimated Total</Text>
+										<Text style={[styles.costValue, { color: COLORS.brandPrimary }]}>
+											${estimatedCost.total_cost.toFixed(2)}
+										</Text>
+									</View>
+									{estimatedCost.breakdown && (
+										<Text style={[styles.costSubtext, { color: requestColors.textMuted }]}>
+											Includes base service + estimated fees
+										</Text>
+									)}
+								</View>
+							)}
+
+							<PaymentMethodSelector
+								selectedMethod={selectedPaymentMethod}
+								onMethodSelect={setSelectedPaymentMethod}
+								cost={estimatedCost ? { totalCost: estimatedCost.total_cost } : null}
+								showAddButton={true}
+								style={styles.paymentSelector}
+							/>
+						</View>
 					</>
 				) : (
 					<>
@@ -535,8 +642,8 @@ const EmergencyRequestModal = React.memo(({
 						/>
 					</>
 				)}
-			</ScrollView>
-		</View>
+			</ScrollView >
+		</View >
 	);
 });
 
@@ -589,6 +696,36 @@ const styles = StyleSheet.create({
 		width: '100%',
 		paddingVertical: 20,
 		paddingHorizontal: 4,
+	},
+	paymentContainer: {
+		width: '100%',
+		marginTop: 10,
+	},
+	paymentSelector: {
+		minHeight: 200,
+	},
+	costBanner: {
+		padding: 16,
+		borderRadius: 16,
+		marginBottom: 16,
+	},
+	costRow: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+	},
+	costLabel: {
+		fontSize: 14,
+		fontWeight: '600',
+	},
+	costValue: {
+		fontSize: 20,
+		fontWeight: '800',
+	},
+	costSubtext: {
+		fontSize: 10,
+		marginTop: 4,
+		fontWeight: '500',
 	},
 });
 

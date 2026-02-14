@@ -65,11 +65,14 @@
 ```
 Request Service → Automatic Payment → Complete Service
 ```
-1. **User requests** ambulance/bed reservation
-2. **Service price**: Fixed amount (e.g., $150) - no breakdown shown
-3. **Automatic payment**: Uses saved card or new card
-4. **No payment step**: Seamless like Uber ride completion
-5. **Service delivered**: Payment processed automatically
+1. **User requests** ambulance/bed reservation.
+2. **Cost estimation**: `serviceCostService` calculates total based on base, distance, and urgency.
+3. **Payment Selection**: Patient confirms payment method (Card, Wallet, or Cash) **before** dispatch.
+4. **Eligibility Check**: If "Cash" is chosen, the system verifies the Hospital's wallet balance (Wallet Cap).
+5. **Dispatch**: Request is created and resources are assigned.
+6. **Settlement**: 
+   - **Digital**: Processed automatically upon completion.
+   - **Cash**: Provider manually confirms receipt in Console.
 
 ### **🏥 Provider Flow (Hospital/Org Admin)**
 ```
@@ -99,9 +102,9 @@ User Card Charged: $150.00
 ### **🏦 iVisit Main Wallet**
 ```
 Collects 2.5% from ALL transactions:
-├── User payments: 2.5% of service fees
-├── Payout processing: $0 (free for providers)
-└── Cash confirmations: 2.5% of manual payments
+├── **Digital Payments**: Automatically split during Stripe payout or Wallet transfer.
+├── **Cash Payments**: Manually triggered by Provider; 2.5% is **deducted** from Org Wallet balance as debt settlement.
+└── **Payout processing**: $0 (free for providers).
 ```
 
 ### 📖 **Scenario Walkthrough: $150 Bed Booking**
@@ -219,11 +222,18 @@ MAXIMUM_FEE_AMOUNT=100.00
 
 ## 🔄 **Edge Cases**
 
-### **No Saved Card**
-- **Prompt**: "Add card or pay cash"
-- **Cash Option**: User pays hospital directly
-- **Manual Confirmation**: Hospital confirms cash payment
-- **Fee Still Applies**: 2.5% deducted from hospital wallet
+### **Cash Payments & Wallet Cap**
+- **Trigger**: User selects "Cash" in iVisit App.
+- **Eligibility**: Hospital must have enough balance in their `organization_wallets` to cover the **2.5% iVisit Service Fee**.
+- **Blocker**: If Org balance is too low, Cash is disabled in the App UI (Principle: Platform commission must be secured).
+- **Confirmation**: Required in the **iVisit Console**.
+- **Fee Settlement**: Confirmed receipt triggers a **debit** from the Org Wallet to the iVisit Main Wallet.
+
+### **Manual Confirmation Workflow**
+1. **Completion**: Provider clicks "Complete" in Console.
+2. **Agreement**: If it's a cash job, a "Confirm Cash Received" prompt appears.
+3. **Processing**: Provider enters the final amount and clicks confirm.
+4. **Ledger Sync**: RPC `process_cash_payment` settles the debt and marks the request as `Paid`.
 
 ### **Refunds**
 - **Full Refund**: Amount returned to user
