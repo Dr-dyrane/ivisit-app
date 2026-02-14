@@ -55,7 +55,7 @@ export const insuranceService = {
         const newPolicy = {
             user_id: user.id,
             provider_name: policy.provider_name || 'iVisit Basic',
-            policy_number: policy.policy_number || `IV-${Date.now().toString().slice(-6)}`,
+            policy_number: policy.policy_number,
             group_number: policy.group_number || null,
             policy_holder_name: policy.policy_holder_name || null,
             plan_type: policy.plan_type || 'basic',
@@ -183,31 +183,12 @@ export const insuranceService = {
     /**
      * Auto-enroll user in basic scheme
      */
+    /**
+     * Auto-enroll user in basic scheme
+     * DEPRECATED: Users must now explicitly link their insurance.
+     */
     async enrollBasicScheme() {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return null;
-
-        // Check if already enrolled
-        const { data: existing } = await supabase
-            .from('insurance_policies')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('provider_name', 'iVisit Basic')
-            .limit(1);
-
-        if (existing && existing.length > 0) {
-            return existing[0];
-        }
-
-        return this.create({
-            provider_name: 'iVisit Basic',
-            plan_type: 'basic',
-            coverage_details: {
-                limit: 50000,
-                description: 'Covers 1 emergency ambulance trip per year',
-                copay: 0
-            }
-        });
+        return null;
     },
 
     /**

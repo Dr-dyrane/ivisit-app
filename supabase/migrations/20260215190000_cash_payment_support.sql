@@ -1,0 +1,215 @@
+-- Migration: Cash Payment Support and Wallet Cap
+-- Adds RPC for cash payment processing and updates financial triggers
+
+-- 1. Create RPC for secure cash payment recording
+CREATE OR REPLACE FUNCTION public.process_cash_payment(
+    p_emergency_request_id TEXT,
+    p_organization_id UUID,
+    p_amount DECIMAL,
+    p_currency TEXT DEFAULT 'USD'
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_payment_id UUID;
+    v_user_id UUID;
+BEGIN
+    -- Get user_id from emergency request
+    SELECT user_id INTO v_user_id 
+    FROM public.emergency_requests 
+    WHERE id = p_emergency_request_id;
+
+    -- 1. Create the record in 'payments' table
+    -- Status 'completed' and method 'cash'
+    INSERT INTO public.payments (
+        user_id,
+        amount, 
+        currency, 
+        status, 
+        payment_method_id, 
+        emergency_request_id, 
+        organization_id,
+        metadata
+    ) VALUES (
+        v_user_id,
+        p_amount,
+        p_currency,
+        'completed',
+        'cash',
+        p_emergency_request_id,
+        p_organization_id,
+        jsonb_build_object('source', 'cash_payment', 'confirmed_at', NOW(), 'ledger_credited', false)
+    )
+    RETURNING id INTO v_payment_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'payment_id', v_payment_id
+    );
+
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object(
+        'success', false,
+        'error', SQLERRM
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 2. Update process_payment_with_ledger to handle 'cash' method correctly
+CREATE OR REPLACE FUNCTION process_payment_with_ledger()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_organization_id UUID;
+    v_fee_amount DECIMAL;
+    v_organization_amount DECIMAL;
+    v_fee_rate DECIMAL;
+    v_main_wallet_id UUID;
+    v_org_wallet_id UUID;
+    v_already_credited BOOLEAN;
+    v_is_top_up BOOLEAN;
+BEGIN
+    -- 1. Identify context
+    v_already_credited := (NEW.metadata->>'ledger_credited')::boolean;
+    v_is_top_up := (NEW.metadata->>'is_top_up')::boolean;
+    
+    -- Link from Emergency Request -> Hospital -> Organization if missing
+    IF NEW.organization_id IS NULL AND NEW.emergency_request_id IS NOT NULL THEN
+        SELECT h.organization_id INTO v_organization_id
+        FROM public.emergency_requests er
+        JOIN public.hospitals h ON er.hospital_id = h.id::text
+        WHERE er.id = NEW.emergency_request_id;
+        NEW.organization_id := v_organization_id;
+    END IF;
+
+    -- 2. Financial logic ONLY on status 'completed' and not already credited
+    IF NEW.status = 'completed' AND COALESCE(v_already_credited, false) = false THEN
+        
+        -- Start Process
+        NEW.metadata := jsonb_set(COALESCE(NEW.metadata, '{}'::jsonb), '{ledger_credited}', 'true');
+        SELECT id INTO v_main_wallet_id FROM public.ivisit_main_wallet LIMIT 1;
+
+        -- CASE A: Platform Top-Up
+        IF NEW.organization_id IS NULL AND v_is_top_up THEN
+            UPDATE public.ivisit_main_wallet 
+            SET balance = balance + NEW.amount, last_updated = NOW() 
+            WHERE id = v_main_wallet_id;
+
+            INSERT INTO public.wallet_ledger (
+                wallet_type, wallet_id, organization_id, amount, 
+                transaction_type, description, reference_id, reference_type
+            ) VALUES (
+                'main', v_main_wallet_id, NULL, NEW.amount,
+                'credit', 'Platform top-up via ' || NEW.transaction_id, NEW.id, 'adjustment'
+            );
+
+        -- CASE B: Organization Top-Up
+        ELSIF NEW.organization_id IS NOT NULL AND v_is_top_up THEN
+            INSERT INTO public.organization_wallets (organization_id, balance)
+            VALUES (NEW.organization_id, NEW.amount)
+            ON CONFLICT (organization_id) 
+            DO UPDATE SET balance = organization_wallets.balance + NEW.amount, updated_at = NOW()
+            RETURNING id INTO v_org_wallet_id;
+
+            INSERT INTO public.wallet_ledger (
+                wallet_type, wallet_id, organization_id, amount, 
+                transaction_type, description, reference_id, reference_type
+            ) VALUES (
+                'organization', v_org_wallet_id, NEW.organization_id, NEW.amount,
+                'credit', 'Organization top-up via ' || NEW.transaction_id, NEW.id, 'adjustment'
+            );
+
+        -- CASE C: Standard Service Payment (Applies 2.5% platform fee)
+        ELSIF NEW.organization_id IS NOT NULL THEN
+            -- Calculate Fees
+            SELECT ivisit_fee_percentage INTO v_fee_rate FROM public.organizations WHERE id = NEW.organization_id;
+            v_fee_rate := COALESCE(v_fee_rate, 2.5);
+            v_fee_amount := (NEW.amount * v_fee_rate) / 100;
+            v_organization_amount := NEW.amount - v_fee_amount;
+            
+            NEW.organization_fee_rate := v_fee_rate;
+            NEW.ivisit_deduction_amount := v_fee_amount;
+            
+            -- Handle Cash Payment vs Digital Payment
+            IF NEW.payment_method_id = 'cash' THEN
+                -- CASH FLOW: Deduct fee from Org Wallet (Manual Confirmation)
+                -- Org already has 100% in hand, we take 2.5% as debt or from balance
+                
+                INSERT INTO public.organization_wallets (organization_id, balance)
+                VALUES (NEW.organization_id, -v_fee_amount)
+                ON CONFLICT (organization_id) 
+                DO UPDATE SET balance = organization_wallets.balance - v_fee_amount, updated_at = NOW()
+                RETURNING id INTO v_org_wallet_id;
+
+                INSERT INTO public.wallet_ledger (
+                    wallet_type, wallet_id, organization_id, amount, 
+                    transaction_type, description, reference_id, reference_type
+                ) VALUES (
+                    'organization', v_org_wallet_id, NEW.organization_id, -v_fee_amount,
+                    'debit', 'Cash service fee for ' || NEW.emergency_request_id, NEW.id, 'payment'
+                );
+            ELSE
+                -- DIGITAL FLOW: Credit Org Wallet with 97.5%
+                INSERT INTO public.organization_wallets (organization_id, balance)
+                VALUES (NEW.organization_id, v_organization_amount)
+                ON CONFLICT (organization_id) 
+                DO UPDATE SET balance = organization_wallets.balance + v_organization_amount, updated_at = NOW()
+                RETURNING id INTO v_org_wallet_id;
+                
+                INSERT INTO public.wallet_ledger (
+                    wallet_type, wallet_id, organization_id, amount, 
+                    transaction_type, description, reference_id, reference_type
+                ) VALUES (
+                    'organization', v_org_wallet_id, NEW.organization_id, v_organization_amount,
+                    'credit', 'Service payment ' || NEW.id, NEW.id, 'payment'
+                );
+            END IF;
+            
+            -- BOTH FLOWS: Credit Platform Wallet (Fee)
+            UPDATE public.ivisit_main_wallet 
+            SET balance = balance + v_fee_amount, last_updated = NOW() 
+            WHERE id = v_main_wallet_id;
+            
+            INSERT INTO public.wallet_ledger (
+                wallet_type, wallet_id, organization_id, amount, 
+                transaction_type, description, reference_id, reference_type
+            ) VALUES (
+                'main', v_main_wallet_id, NULL, v_fee_amount,
+                'credit', 'Fee from transaction ' || NEW.id, NEW.id, 'payment'
+            );
+        END IF;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Function to check if Org has enough balance for Cash Payment Fee (Wallet Cap)
+CREATE OR REPLACE FUNCTION public.check_cash_eligibility(
+    p_organization_id UUID,
+    p_estimated_amount DECIMAL
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_balance DECIMAL;
+    v_fee_rate DECIMAL;
+    v_required_fee DECIMAL;
+BEGIN
+    -- Get balance
+    SELECT balance INTO v_balance FROM public.organization_wallets WHERE organization_id = p_organization_id;
+    
+    -- Get fee rate
+    SELECT ivisit_fee_percentage INTO v_fee_rate FROM public.organizations WHERE id = p_organization_id;
+    v_fee_rate := COALESCE(v_fee_rate, 2.5);
+    
+    -- Calculate required fee
+    v_required_fee := (p_estimated_amount * v_fee_rate) / 100;
+    
+    -- Check if balance covers the fee
+    RETURN COALESCE(v_balance, 0) >= v_required_fee;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant permissions
+GRANT EXECUTE ON FUNCTION public.process_cash_payment(TEXT, UUID, DECIMAL, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.check_cash_eligibility(UUID, DECIMAL) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';

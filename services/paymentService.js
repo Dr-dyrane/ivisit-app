@@ -529,5 +529,24 @@ export const paymentService = {
       console.error('Error fetching wallet ledger:', error);
       return [];
     }
+  },
+
+  /**
+   * Check if an organization is eligible to accept cash payments.
+   * Based on their wallet balance covering the estimated platform fee.
+   */
+  async checkCashEligibility(organizationId, estimatedAmount) {
+    try {
+      const { data, error } = await supabase.rpc('check_cash_eligibility', {
+        p_organization_id: organizationId,
+        p_estimated_amount: estimatedAmount
+      });
+
+      if (error) throw error;
+      return !!data;
+    } catch (error) {
+      console.error('Error checking cash eligibility:', error);
+      return false; // Fail safe to disabled cash
+    }
   }
 };

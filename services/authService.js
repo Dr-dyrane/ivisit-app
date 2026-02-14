@@ -155,12 +155,7 @@ const authService = {
             await database.write(StorageKeys.CURRENT_USER, fullUser);
             await database.write(StorageKeys.AUTH_TOKEN, data.session.access_token);
 
-            // Auto-enroll in insurance scheme
-            try {
-                await insuranceService.enrollBasicScheme();
-            } catch (insError) {
-                console.warn("[authService] Failed to auto-enroll in insurance:", insError);
-            }
+            // Auto-enroll deps removed
         }
 
         // Create notification for successful signup
@@ -203,7 +198,7 @@ const authService = {
      */
     async handleOAuthCallback(url) {
         const { session, skipped } = await oauthService.handleOAuthCallback(url);
-        
+
         if (skipped && session) {
             // Even if skipped (already used code), we return the user if we have a session
             const user = await this._getUserFromSession(session);
@@ -214,7 +209,7 @@ const authService = {
             const user = await this._processSuccessfulSession(session);
             return { data: { session, user } };
         }
-        
+
         // Should be handled by oauthService throwing, but just in case
         throw createAuthError(AuthErrors.INVALID_TOKEN, "Session creation failed");
     },
@@ -228,11 +223,7 @@ const authService = {
         const user = formatUser(session.user, session.access_token, profile);
         await database.write(StorageKeys.CURRENT_USER, user);
 
-        try {
-            await insuranceService.enrollBasicScheme();
-        } catch (insError) {
-            console.warn("[authService] Auto-enrollment error during session process:", insError);
-        }
+        // Auto-enroll deps removed
         return user;
     },
 
