@@ -1,13 +1,7 @@
-/**
- * Payment Method Setup Wizard
- * Focused, multi-step data collection for secure checkout and billing.
- */
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -16,34 +10,26 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  Keyboard
+  Keyboard,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
+import { CardField, useConfirmSetupIntent } from '@stripe/stripe-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS } from '../../constants/colors';
-import { PAYMENT_METHODS } from '../../services/paymentService';
+import { paymentService } from '../../services/paymentService';
 
 const { width } = Dimensions.get('window');
 
 const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
   const { isDarkMode } = useTheme();
-  const [step, setStep] = useState(1); // 1: Number, 2: Expiry/CVV, 3: Name
-  const [formData, setFormData] = useState({
-    cardNumber: '',
-    expiryMonth: '',
-    expiryYear: '',
-    cvv: '',
-    holderName: '',
-  });
+  const [cardDetails, setCardDetails] = useState(null);
+  const [step, setStep] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Refs for auto-navigation
-  const cardRef = useRef(null);
-  const monthRef = useRef(null);
-  const yearRef = useRef(null);
-  const cvvRef = useRef(null);
-  const nameRef = useRef(null);
+  const { confirmSetupIntent } = useConfirmSetupIntent();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -53,247 +39,56 @@ const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
       Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, friction: 8, useNativeDriver: true }),
     ]).start();
-  }, [step]);
+  }, []);
 
   const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
   const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 
-  // Validation Helpers
-  const isValidLuhn = (number) => {
-    let sum = 0;
-    let isEven = false;
-    // Loop through values starting at the rightmost side
-    for (let i = number.length - 1; i >= 0; i--) {
-      let digit = parseInt(number.charAt(i), 10);
-      if (isEven) {
-        digit *= 2;
-        if (digit > 9) digit -= 9;
-      }
-      sum += digit;
-      isEven = !isEven;
-    }
-    return (sum % 10) === 0;
-  };
-
-  const getCardBrand = (number) => {
-    const patterns = {
-      visa: /^4/,
-      mastercard: /^5[1-5]/,
-      amex: /^3[47]/,
-      discover: /^6(?:011|5)/,
-    };
-    if (patterns.visa.test(number)) return 'Visa';
-    if (patterns.mastercard.test(number)) return 'Mastercard';
-    if (patterns.amex.test(number)) return 'Amex';
-    if (patterns.discover.test(number)) return 'Discover';
-    return 'Card';
-  };
-
-  const handleNext = () => {
-    if (step === 1) {
-      // Validate Card Number
-      const cleanNumber = formData.cardNumber.replace(/\s/g, '');
-      if (cleanNumber.length < 13 || !isValidLuhn(cleanNumber)) {
-        triggerError();
-        Alert.alert("Invalid Card", "Please check your card number.");
-        return;
-      }
-    } else if (step === 2) {
-      // Validate Expiry
-      const month = parseInt(formData.expiryMonth);
-      const year = parseInt(formData.expiryYear);
-      const now = new Date();
-      const currentYear = parseInt(now.getFullYear().toString().slice(-2));
-      const currentMonth = now.getMonth() + 1; // 1-indexed
-
-      if (
-        isNaN(month) || month < 1 || month > 12 ||
-        isNaN(year) || year < currentYear ||
-        (year === currentYear && month < currentMonth)
-      ) {
-        triggerError();
-        Alert.alert("Invalid Expiry", "Please check the expiry date.");
-        return;
-      }
-
-      // Validate CVV
-      const brand = getCardBrand(formData.cardNumber.replace(/\s/g, ''));
-      const requiredLength = brand === 'Amex' ? 4 : 3;
-      if (formData.cvv.length !== requiredLength) {
-        triggerError();
-        Alert.alert("Invalid CVV", `CVV for ${brand} must be ${requiredLength} digits.`);
-        return;
-      }
-
-    } else if (step === 3) {
-      if (formData.holderName.length < 3) {
-        triggerError();
-        return;
-      }
+  const handleSecureAdd = async () => {
+    if (!cardDetails?.complete) {
+      Alert.alert("Incomplete Details", "Please fill in all card information.");
+      return;
     }
 
-    if (step < 3) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      setStep(step + 1);
-    } else {
-      submitMethod();
-    }
-  };
+    setIsProcessing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-  const triggerError = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    Animated.sequence([
-      Animated.timing(slideAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 50, useNativeDriver: true })
-    ]).start();
-  };
+    try {
+      // 1. Create SetupIntent via Edge Function
+      const { clientSecret } = await paymentService.createSetupIntent();
 
-  const submitMethod = () => {
-    Keyboard.dismiss();
-    const cleanNumber = formData.cardNumber.replace(/\s/g, '');
-    const paymentMethod = {
-      type: PAYMENT_METHODS.CARD,
-      provider: getCardBrand(cleanNumber),
-      last4: cleanNumber.slice(-4),
-      brand: getCardBrand(cleanNumber),
-      expiry_month: parseInt(formData.expiryMonth),
-      expiry_year: parseInt(formData.expiryYear),
-      metadata: { holderName: formData.holderName }
-    };
-    onAdd(paymentMethod);
-  };
+      // 2. Confirm SetupIntent on Client (Securely via Stripe SDK)
+      const { setupIntent, error } = await confirmSetupIntent(clientSecret, {
+        paymentMethodType: 'Card',
+      });
 
-  const handleInputChange = (field, value) => {
-    const cleanValue = value.replace(/\D/g, '');
-
-    setFormData(prev => ({ ...prev, [field]: value }));
-
-    // Auto-focus logic
-    if (field === 'cardNumber') {
-      const brand = getCardBrand(cleanValue);
-      const maxLen = brand === 'Amex' ? 15 : 16;
-
-      if (cleanValue.length >= maxLen) {
-        // Optional: Auto-validate here or wait for user
+      if (error) {
+        throw new Error(error.message);
       }
-    } else if (field === 'expiryMonth' && cleanValue.length === 2) {
-      yearRef.current?.focus();
-    } else if (field === 'expiryYear' && cleanValue.length === 2) {
-      cvvRef.current?.focus();
-    } else if (field === 'cvv') {
-      // CVV logic handled in validation step
-    }
-  };
 
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        const brand = getCardBrand(formData.cardNumber.replace(/\s/g, ''));
-        const isAmex = brand === 'Amex';
+      if (setupIntent.status === 'Succeeded') {
+        // 3. Add to our DB (Only safe metadata)
+        const stripeMethodId = setupIntent.paymentMethodId;
 
-        return (
-          <View style={styles.wizardStep}>
-            <View style={styles.row}>
-              <Text style={[styles.wizardLabel, { color: mutedColor }]}>{brand === 'Card' ? 'CARD NUMBER' : brand.toUpperCase()}</Text>
-              {brand !== 'Card' && (
-                <View style={{ marginLeft: 8, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: COLORS.brandPrimary + '20', borderRadius: 4 }}>
-                  <Ionicons name={brand === 'Visa' ? 'card' : 'card-outline'} size={12} color={COLORS.brandPrimary} />
-                </View>
-              )}
-            </View>
-            <TextInput
-              ref={cardRef}
-              autoFocus
-              style={[styles.wizardInput, { color: textColor }]}
-              placeholder={isAmex ? "0000 000000 00000" : "0000 0000 0000 0000"}
-              placeholderTextColor={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
-              value={formData.cardNumber} // Spacing handled in onChange
-              onChangeText={(t) => {
-                // Custom formatting for Amex vs others
-                const raw = t.replace(/\D/g, '');
-                let formatted = raw;
-                if (getCardBrand(raw) === 'Amex') {
-                  // 4-6-5
-                  if (raw.length > 4) formatted = raw.slice(0, 4) + ' ' + raw.slice(4);
-                  if (raw.length > 10) formatted = formatted.slice(0, 11) + ' ' + raw.slice(10);
-                } else {
-                  // 4-4-4-4
-                  formatted = raw.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
-                }
-                handleInputChange('cardNumber', formatted);
-              }}
-              keyboardType="numeric"
-              maxLength={isAmex ? 17 : 19}
-              returnKeyType="next"
-              onSubmitEditing={handleNext}
-            />
-          </View>
-        );
-      case 2:
-        return (
-          <View style={styles.wizardStep}>
-            <Text style={[styles.wizardLabel, { color: mutedColor }]}>EXPIRY & SECURITY</Text>
-            <View style={styles.row}>
-              <TextInput
-                ref={monthRef}
-                autoFocus
-                style={[styles.wizardInput, { color: textColor, width: 80 }]}
-                placeholder="MM"
-                placeholderTextColor={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
-                value={formData.expiryMonth}
-                onChangeText={(t) => handleInputChange('expiryMonth', t)}
-                keyboardType="numeric"
-                maxLength={2}
-              />
-              <Text style={[styles.wizardInput, { color: mutedColor, marginHorizontal: 8 }]}>/</Text>
-              <TextInput
-                ref={yearRef}
-                style={[styles.wizardInput, { color: textColor, width: 80 }]}
-                placeholder="YY"
-                placeholderTextColor={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
-                value={formData.expiryYear}
-                onChangeText={(t) => handleInputChange('expiryYear', t)}
-                keyboardType="numeric"
-                maxLength={2}
-              />
-              <View style={{ width: 40 }} />
-              <TextInput
-                ref={cvvRef}
-                style={[styles.wizardInput, { color: textColor, width: 100 }]}
-                placeholder="CVV"
-                placeholderTextColor={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
-                value={formData.cvv}
-                onChangeText={(t) => handleInputChange('cvv', t)}
-                keyboardType="numeric"
-                maxLength={4}
-                secureTextEntry
-                returnKeyType="next"
-                onSubmitEditing={handleNext}
-              />
-            </View>
-          </View>
-        );
-      case 3:
-        return (
-          <View style={styles.wizardStep}>
-            <Text style={[styles.wizardLabel, { color: mutedColor }]}>CARDHOLDER NAME</Text>
-            <TextInput
-              ref={nameRef}
-              autoFocus
-              style={[styles.wizardInput, { color: textColor }]}
-              placeholder="e.g. JOHN DOE"
-              placeholderTextColor={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
-              value={formData.holderName}
-              onChangeText={(t) => setFormData(p => ({ ...p, holderName: t.toUpperCase() }))}
-              autoCapitalize="characters"
-              returnKeyType="done"
-              onSubmitEditing={handleNext}
-            />
-          </View>
-        );
-      default:
-        return null;
+        // We need to fetch the PM details from Stripe to get brand/last4
+        // Or we can just use what's in cardDetails (which Stripe SDK provides as metadata)
+
+        const paymentMethod = {
+          id: stripeMethodId,
+          last4: cardDetails.last4,
+          brand: cardDetails.brand,
+          expiry_month: cardDetails.expiryMonth,
+          expiry_year: cardDetails.expiryYear,
+          metadata: { secure: true }
+        };
+
+        await onAdd(paymentMethod);
+      }
+    } catch (err) {
+      console.error('Secure Card Add Error:', err);
+      Alert.alert("Security Error", err.message);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -304,34 +99,63 @@ const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalContentWrapper}
       >
-        <View style={[styles.modalContent, { backgroundColor: isDarkMode ? "rgba(10,15,26,0.9)" : "rgba(255,255,255,0.9)" }]}>
+        <View style={[styles.modalContent, { backgroundColor: isDarkMode ? "rgba(10,15,26,0.95)" : "rgba(255,255,255,0.95)" }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={onClose} style={styles.iconBtn}>
               <Ionicons name="close" size={24} color={textColor} />
             </TouchableOpacity>
-            <View style={styles.stepIndicator}>
-              {[1, 2, 3].map(s => (
-                <View key={s} style={[styles.dot, { backgroundColor: s === step ? COLORS.brandPrimary : (isDarkMode ? "#2D3748" : "#E2E8F0") }]} />
-              ))}
+            <View style={styles.securityTitle}>
+              <Ionicons name="shield-checkmark" size={14} color={COLORS.brandPrimary} />
+              <Text style={[styles.securityLabel, { color: mutedColor }]}>ENCRYPTED CHANNEL</Text>
             </View>
             <View style={{ width: 44 }} />
           </View>
 
           <Animated.View style={[styles.formContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            {renderStep()}
+            <View style={styles.wizardStep}>
+              <Text style={[styles.wizardLabel, { color: mutedColor }]}>SECURE CARD ENTRY</Text>
+              <View style={[
+                styles.cardContainer,
+                {
+                  backgroundColor: isDarkMode ? '#1E293B' : '#F8FAFC', // Explicit bg for contrast
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                }
+              ]}>
+                <CardField
+                  postalCodeEnabled={false}
+                  cardStyle={{
+                    backgroundColor: isDarkMode ? '#1E293B' : '#F8FAFC',
+                    textColor: isDarkMode ? '#FFFFFF' : '#0F172A',
+                    borderColor: isDarkMode ? '#1E293B' : '#F8FAFC', // Hide internal border
+                    borderWidth: 0,
+                    borderRadius: 8,
+                    fontSize: 16,
+                    placeholderColor: isDarkMode ? '#94A3B8' : '#64748B',
+                  }}
+                  style={{
+                    width: '100%',
+                    height: 50,
+                  }}
+                  onCardChange={(details) => setCardDetails(details)}
+                />
+              </View>
+              <Text style={styles.pciNote}>
+                Your card data is sent directly to Stripe and never touches our servers.
+              </Text>
+            </View>
           </Animated.View>
 
           <TouchableOpacity
-            style={[styles.nextButton, { backgroundColor: COLORS.brandPrimary }]}
-            onPress={handleNext}
-            disabled={loading}
+            style={[styles.nextButton, { backgroundColor: cardDetails?.complete ? COLORS.brandPrimary : (isDarkMode ? '#1E293B' : '#E2E8F0') }]}
+            onPress={handleSecureAdd}
+            disabled={loading || isProcessing || !cardDetails?.complete}
           >
-            {loading ? (
+            {loading || isProcessing ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <>
-                <Text style={styles.nextText}>{step === 3 ? "ADD CARD" : "CONTINUE"}</Text>
-                <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+                <Text style={[styles.nextText, { color: cardDetails?.complete ? '#FFF' : mutedColor }]}>VERIFY & ATTACH</Text>
+                <Ionicons name="lock-closed" size={18} color={cardDetails?.complete ? '#FFF' : mutedColor} />
               </>
             )}
           </TouchableOpacity>
@@ -379,37 +203,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepIndicator: {
+  securityTitle: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  securityLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
   },
   formContainer: {
     minHeight: 180,
     justifyContent: 'center',
   },
   wizardStep: {
-    gap: 12,
+    gap: 16,
   },
   wizardLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '900',
     letterSpacing: 2,
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  wizardInput: {
-    fontSize: 32,
-    fontWeight: '900',
-    letterSpacing: -1,
-    padding: 0,
+  cardContainer: {
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  cardField: {
+    width: '100%',
+    height: 50,
+  },
+  pciNote: {
+    fontSize: 10,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 8,
+    fontWeight: '600',
+    lineHeight: 14,
   },
   nextButton: {
     height: 64,
@@ -421,8 +254,7 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   nextText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '900',
     letterSpacing: 1,
   }

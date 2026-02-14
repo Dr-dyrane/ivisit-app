@@ -47,30 +47,37 @@ serve(async (req) => {
         }
 
         const { amount, currency = 'usd', organization_id } = await req.json()
-        
+
         // Ensure org admin can only payout for their own organization
-        if (profile.role === 'org_admin' && profile.organization_id !== organization_id) {
-            throw new Error('Unauthorized: You can only request payouts for your own organization')
+        if (profile.role === 'org_admin') {
+            if (!organization_id || profile.organization_id !== organization_id) {
+                throw new Error('Unauthorized: You can only request payouts for your own organization')
+            }
         }
 
-        if (!amount || !organization_id) {
-            throw new Error('Missing required fields: amount, organization_id')
+        if (!amount) {
+            throw new Error('Missing required field: amount')
         }
 
-        // 1. Get Organization Stripe ID
         const supabaseAdmin = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        const { data: organization, error: orgError } = await supabaseAdmin
-            .from('organizations')
-            .select('stripe_account_id')
-            .eq('id', organization_id)
-            .single()
+        let stripeAccountId = null
 
-        if (orgError || !organization || !organization.stripe_account_id) {
-            throw new Error('Organization Stripe account not found')
+        if (organization_id) {
+            // 1. Get Organization Stripe ID
+            const { data: organization, error: orgError } = await supabaseAdmin
+                .from('organizations')
+                .select('stripe_account_id')
+                .eq('id', organization_id)
+                .single()
+
+            if (orgError || !organization || !organization.stripe_account_id) {
+                throw new Error('Organization Stripe account not found')
+            }
+            stripeAccountId = organization.stripe_account_id
         }
 
         // 2. Initialize Stripe
@@ -81,18 +88,24 @@ serve(async (req) => {
 
         const amountInCents = Math.round(amount * 100)
 
-        // 3. Create Payout on the connected account
-        // Note: This requires the connected account to have sufficient balance
-        const payout = await stripe.payouts.create({
+        // 3. Create Payout
+        // If stripeAccountId exists, payout from the connected account
+        // If not, payout from the platform account (default)
+        let payoutOptions: any = {
             amount: amountInCents,
             currency: currency,
-        }, {
-            stripeAccount: organization.stripe_account_id,
-        })
+        }
 
-        console.log(`✅ Payout created for ${organization.stripe_account_id}: ${amount} ${currency}`)
+        let stripeHeaderOptions: any = {}
+        if (stripeAccountId) {
+            stripeHeaderOptions.stripeAccount = stripeAccountId
+        }
 
-        return new Response(JSON.stringify({ 
+        const payout = await stripe.payouts.create(payoutOptions, stripeHeaderOptions)
+
+        console.log(`✅ Payout created for ${stripeAccountId || 'Platform'}: ${amount} ${currency}`)
+
+        return new Response(JSON.stringify({
             success: true,
             payoutId: payout.id,
             status: payout.status
@@ -103,7 +116,7 @@ serve(async (req) => {
 
     } catch (error) {
         console.error('❌ Edge Function Error:', error.message)
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
             error: error.message
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

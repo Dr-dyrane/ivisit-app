@@ -104,6 +104,29 @@ Collects 2.5% from ALL transactions:
 └── Cash confirmations: 2.5% of manual payments
 ```
 
+### 📖 **Scenario Walkthrough: $150 Bed Booking**
+*Context: All balances are initially $0.00.*
+
+1. **The Request**: A Patient books a bed for **$150**.
+2. **The Calculation**:
+   - Service Base: **$150.00**
+   - Platform Fee (2.5% surcharge formula): `$150 / (1 - 0.025) = $153.85`
+   - **Total Charge to Patient: $153.85**
+3. **The Stripe Action (Destination Charge)**:
+   - Stripe debits **$153.85** from the Patient's card.
+   - Stripe subtracts its own processing fee (~2.9% + 30c) from the platform's share.
+   - **$150.00** is sent directly to the **Hospital's Connected Stripe Account**.
+   - **$3.85** is sent to the **iVisit Platform Stripe Account**.
+4. **The Database Reflection (Webhook Sync)**:
+   - The `stripe-webhook` receives `payment_intent.succeeded`.
+   - **Hospital Wallet**: Increments by **+$150.00** (Reflecting their earned funds).
+   - **iVisit Main Wallet**: Increments by **+$3.85** (Reflecting platform revenue).
+   - **Patient Wallet**: Remains **$0.00** (They paid externally via card).
+5. **The Result**:
+   - **Hospital Dashboard**: Shows **$150.00** available for payout.
+   - **iVisit Console**: Shows **$3.85** revenue collected.
+   - **Patient App**: Shows a completed booking; status: **Paid**.
+
 ## 🗂️ **Database Schema**
 
 ### **Core Tables**
@@ -259,3 +282,64 @@ MAXIMUM_FEE_AMOUNT=100.00
 ---
 
 **This architecture provides a complete payment system with per-organization fee configuration, seamless user experience, and comprehensive admin management.**
+
+---
+
+# 🛠️ **Stripe Dashboard Setup Guide**
+
+Follow these steps to synchronize your Stripe Dashboard with the iVisit "Reflection" architecture.
+
+### **1. 🏗️ Connect Setup**
+iVisit uses **Stripe Connect** to distribute funds to Hospitals (Organizations).
+- Go to **Connect** in your Stripe Dashboard.
+- Click **Complete Setup** or **Get Started**.
+- Choose **Platform** as your integration type.
+- Under **Settings > Connect > Onboarding Options**, ensure **Embedded Onboarding** or **Express Onboarding** is enabled for the "Zero Redirect" experience.
+
+### **2. 🪝 Webhook Configuration**
+The Webhook is the heartbeat of the "Sync" flow. Without it, your DB wallets will never update.
+- Go to **Developers > Webhooks**.
+- Click **Add endpoint**.
+- **Endpoint URL**: `https://<YOUR_PROJECT_ID>.supabase.co/functions/v1/stripe-webhook`
+- **Select events to listen to** (CRITICAL):
+    - `payment_intent.succeeded` (Credits wallets on successful payment)
+    - `payment_intent.payment_failed` (Logs failures)
+    - `account.updated` (Syncs Org Admin payout status)
+    - `payout.paid` (Deducts balance on bank transfer)
+    - `payout.failed` (Notifies of bank issues)
+- **Select account events**: Check the box "Listen to events on Connected accounts" (since payouts happen on destination accounts).
+
+### **3. 🔑 Environment Variables**
+Configure these in your **Supabase Dashboard** under **Edge Functions > Secrets**:
+- `STRIPE_SECRET_KEY`: Your live/test Secret Key (`sk_...`).
+- `STRIPE_WEBHOOK_SECRET`: The signing secret provided after creating the Webhook (`whsec_...`).
+- `SUPABASE_URL`: Your project URL.
+- `SUPABASE_SERVICE_ROLE_KEY`: Your admin key (required for wallet mutations).
+
+### **4. 🎨 UI Synchronization (Liquid Glass)**
+To match the **Dyrane UI** Canon:
+- Go to **Settings > Branding**.
+- Set the **Accent Color** to match your platform primary (e.g., `#000000` or `#121212`).
+- Set the **Border Radius** to **Standard** (matching our squircle-3xl preference).
+
+### **5. 💳 Payment Methods**
+- Go to **Settings > Payment Methods**.
+- Ensure **Cards**, **Apple Pay**, and **Google Pay** are enabled to maintain the "Seamless like Uber" completion rule.
+
+iVisit Insurance-Payment Integration
+iVisit integrates insurance logic directly into the payment flow to automate healthcare billing:
+
+Identity & Coverage Layer:
+
+The user's Insurance Policy (stored in Supabase/insurance_policies) acts as the primary payer.
+Before requesting payment, the backend (paymentService.applyInsuranceCoverage) checks the active policy to determine coverage.
+It calculates the adjustedCost based on the plan's limits, deductibles, and co-pays.
+The "Gap" Payment:
+
+If insurance covers 100%, the transaction is fully subsidized by the provider/insurer.
+If there is a co-pay or the limit is exceeded, the Payment System charges the user for the difference.
+Smart Linking Mechanism:
+
+Users can link a specific Payment Method (stored in Stripe) to an Insurance Policy.
+This authorization allows iVisit to automatically charge that specific card for any co-pays or uncovered expenses related to that policy.
+This creates a "Smart Billing Pair", ensuring medical expenses are charged correctly without manual input for each transaction.

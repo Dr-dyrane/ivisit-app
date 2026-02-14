@@ -35,31 +35,46 @@ serve(async (req) => {
             throw new Error('Invalid user')
         }
 
-        const { amount, currency = 'usd', organization_id, emergency_request_id } = await req.json()
+        const { amount, currency = 'usd', organization_id, emergency_request_id, is_top_up } = await req.json()
 
-        if (!amount || !organization_id) {
-            throw new Error('Missing required fields: amount, organization_id')
+        if (!amount) {
+            throw new Error('Missing required field: amount')
         }
 
-        // 1. Get Organization details (stripe_account_id and fee percentage)
-        // We use service role to get sensitive info
         const supabaseAdmin = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        const { data: organization, error: orgError } = await supabaseAdmin
-            .from('organizations')
-            .select('stripe_account_id, ivisit_fee_percentage')
-            .eq('id', organization_id)
-            .single()
+        let stripeAccountId = null
+        let feePercentage = 2.5
+        let isPlatformAction = false
 
-        if (orgError || !organization) {
-            throw new Error('Organization not found')
-        }
+        if (!organization_id) {
+            // Platform actions (require Admin role)
+            const { data: profile } = await supabaseAdmin
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single()
 
-        if (!organization.stripe_account_id) {
-            throw new Error('Organization has no Stripe account linked')
+            if (profile?.role !== 'admin') {
+                throw new Error('Unauthorized: Platform actions require Admin role')
+            }
+            isPlatformAction = true
+        } else {
+            // Organization Flow
+            const { data: organization, error: orgError } = await supabaseAdmin
+                .from('organizations')
+                .select('stripe_account_id, ivisit_fee_percentage')
+                .eq('id', organization_id)
+                .single()
+
+            if (orgError || !organization) {
+                throw new Error('Organization not found')
+            }
+            stripeAccountId = organization.stripe_account_id
+            feePercentage = organization.ivisit_fee_percentage ?? 2.5
         }
 
         // 2. Initialize Stripe
@@ -68,37 +83,41 @@ serve(async (req) => {
             httpClient: Stripe.createFetchHttpClient(),
         })
 
-        // 3. Calculate Fee (2.5% default or organization specific)
-        const feePercentage = organization.ivisit_fee_percentage ?? 2.5
+        // 3. Calculate Fee & Prep Intent
         const amountInCents = Math.round(amount * 100)
-        const applicationFeeInCents = Math.round((amountInCents * feePercentage) / 100)
-
-        console.log(`Creating PaymentIntent: ${amountInCents} ${currency}, Fee: ${applicationFeeInCents}, Destination: ${organization.stripe_account_id}`)
-
-        // 4. Create PaymentIntent with Destination Charge
-        const paymentIntent = await stripe.paymentIntents.create({
+        let applicationFeeInCents = 0
+        let intentOptions: any = {
             amount: amountInCents,
             currency: currency,
-            automatic_payment_methods: {
-                enabled: true,
-            },
-            application_fee_amount: applicationFeeInCents,
-            transfer_data: {
-                destination: organization.stripe_account_id,
-            },
+            automatic_payment_methods: { enabled: true },
             metadata: {
                 user_id: user.id,
-                organization_id: organization_id,
+                organization_id: organization_id || 'platform',
                 emergency_request_id: emergency_request_id ?? '',
+                is_top_up: is_top_up ? 'true' : 'false'
             },
-        })
+        }
 
-        // 5. Create a record in our payments table (pending)
+        if (isPlatformAction) {
+            console.log(`Creating Platform PaymentIntent: ${amountInCents} ${currency}`)
+        } else {
+            applicationFeeInCents = Math.round((amountInCents * feePercentage) / 100)
+            console.log(`Creating Org PaymentIntent: ${amountInCents} ${currency}, Fee: ${applicationFeeInCents}, Destination: ${stripeAccountId}`)
+
+            intentOptions.application_fee_amount = applicationFeeInCents
+            intentOptions.transfer_data = {
+                destination: stripeAccountId,
+            }
+        }
+
+        const paymentIntent = await stripe.paymentIntents.create(intentOptions)
+
+        // 4. Create a record in our payments table (pending)
         const { error: paymentRecordError } = await supabaseAdmin
             .from('payments')
             .insert({
                 user_id: user.id,
-                organization_id: organization_id,
+                organization_id: organization_id, // null for platform
                 emergency_request_id: emergency_request_id,
                 amount: amount,
                 currency: currency,
@@ -108,10 +127,9 @@ serve(async (req) => {
 
         if (paymentRecordError) {
             console.error('Error creating payment record:', paymentRecordError)
-            // We don't throw here as the PaymentIntent is already created
         }
 
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
             clientSecret: paymentIntent.client_secret,
             paymentIntentId: paymentIntent.id
         }), {
@@ -121,7 +139,7 @@ serve(async (req) => {
 
     } catch (error) {
         console.error('❌ Edge Function Error:', error.message)
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
             error: error.message
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

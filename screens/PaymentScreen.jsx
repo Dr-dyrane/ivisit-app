@@ -21,11 +21,17 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useHeaderState } from '../contexts/HeaderStateContext';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useScrollAwareHeader } from '../contexts/ScrollAwareHeaderContext';
+import { useTabBarVisibility } from '../contexts/TabBarVisibilityContext';
+import { useFAB } from '../contexts/FABContext';
 import { COLORS } from '../constants/colors';
 import { STACK_TOP_PADDING } from '../constants/layout';
 import { paymentService } from '../services/paymentService';
 import PaymentMethodSelector from '../components/payment/PaymentMethodSelector';
 import HeaderBackButton from '../components/navigation/HeaderBackButton';
+import AddPaymentMethodModal from '../components/payment/AddPaymentMethodModal';
+import { insuranceService } from '../services/insuranceService';
 
 const { width } = Dimensions.get('window');
 
@@ -33,11 +39,14 @@ const PaymentScreen = () => {
   const { isDarkMode } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   const { setHeaderState } = useHeaderState();
+  const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
+  const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
+  const { registerFAB, unregisterFAB } = useFAB();
 
-  // Mode Detection: If no amount or requestId is passed, we are in 'Management' mode
+  // Mode Detection
   const isManagementMode = !params.amount && !params.requestId && !params.serviceType;
-
   const emergencyRequestId = params.requestId;
   const serviceType = params.serviceType || 'ambulance';
   const initialAmount = parseFloat(params.amount) || 0;
@@ -45,6 +54,7 @@ const PaymentScreen = () => {
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [insuranceApplied, setInsuranceApplied] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [cost, setCost] = useState({
     totalCost: initialAmount,
     breakdown: initialAmount > 0 ? [{ name: 'Base Service', cost: initialAmount, type: 'base' }] : []
@@ -54,11 +64,13 @@ const PaymentScreen = () => {
   const [ledgerHistory, setLedgerHistory] = useState([]);
   const [isLoadingWallet, setIsLoadingWallet] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Animations
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const slideAnim = React.useRef(new Animated.Value(30)).current;
 
+  // Load Initial Data
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
@@ -69,9 +81,13 @@ const PaymentScreen = () => {
       loadCostAndInsurance();
     } else {
       loadWalletData();
+      if (params.isLinking === 'true') {
+        setShowAddModal(true);
+      }
     }
-  }, [isManagementMode]);
+  }, [isManagementMode, params.isLinking]);
 
+  // Data Loading Functions
   const loadWalletData = async () => {
     setIsLoadingWallet(true);
     try {
@@ -85,6 +101,7 @@ const PaymentScreen = () => {
       console.error('Error loading wallet data:', error);
     } finally {
       setIsLoadingWallet(false);
+      setRefreshing(false);
     }
   };
 
@@ -112,21 +129,100 @@ const PaymentScreen = () => {
     }
   };
 
+  // Header & Tab Bar Setup
   const backButton = useCallback(() => <HeaderBackButton />, []);
 
   useFocusEffect(
     useCallback(() => {
+      resetTabBar();
+      resetHeader();
       setHeaderState({
         title: isManagementMode ? "Wallet" : "Payment",
-        subtitle: isManagementMode ? "PAYMENTS & BILLING" : "SECURE CHECKOUT",
-        icon: <Ionicons name={isManagementMode ? "wallet" : "card"} size={26} color="#FFFFFF" />,
-        backgroundColor: COLORS.brandPrimary,
+        subtitle: isManagementMode ? "FINANCIAL HUB" : "SECURE CHECKOUT",
+        icon: isManagementMode ? (
+          <Ionicons name="wallet" size={26} color={isDarkMode ? '#FFFFFF' : '#0F172A'} />
+        ) : (
+          <Ionicons name="card" size={26} color={isDarkMode ? '#FFFFFF' : '#0F172A'} />
+        ),
+        backgroundColor: colors.card,
         leftComponent: backButton(),
         rightComponent: null,
-        scrollAware: false,
+        scrollAware: false, // Stack pages should not be scroll sensitive
       });
-    }, [setHeaderState, backButton, isManagementMode])
+
+      // Context-Aware FAB for Linking Card
+      if (isManagementMode) {
+        registerFAB('wallet-add-card', {
+          icon: 'add-circle',
+          label: 'Add Card',
+          subText: 'Link new payment method',
+          visible: true,
+          onPress: () => setShowAddModal(true),
+          style: 'primary',
+          haptic: 'medium',
+          priority: 8,
+          animation: 'prominent',
+          allowInStack: true,
+        });
+      }
+
+      return () => {
+        if (isManagementMode) {
+          unregisterFAB('wallet-add-card');
+        }
+      };
+    }, [setHeaderState, backButton, isManagementMode, isDarkMode, registerFAB, unregisterFAB, resetHeader, resetTabBar])
   );
+
+  const handleScroll = useCallback(
+    (event) => {
+      handleTabBarScroll(event);
+      handleHeaderScroll(event);
+    },
+    [handleHeaderScroll, handleTabBarScroll]
+  );
+
+  // Actions
+  const handleMethodSelect = async (method) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // If in Linking Mode (from Insurance), selecting a card links it
+    if (params.isLinking === 'true' && params.policyId) {
+      Alert.alert(
+        "Link Payment Method",
+        `Do you want to link ${method.brand} •••• ${method.last4} to your ${params.providerName || 'insurance'} policy?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Link Card",
+            onPress: async () => {
+              try {
+                setIsSaving(true);
+                await insuranceService.linkPaymentMethod(params.policyId, {
+                  id: method.id,
+                  brand: method.brand,
+                  last4: method.last4,
+                  expiry_month: method.expiry_month,
+                  expiry_year: method.expiry_year
+                });
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert("Success", "Payment method linked to policy.", [
+                  { text: "OK", onPress: () => router.back() }
+                ]);
+              } catch (error) {
+                Alert.alert("Error", "Failed to link card to policy.");
+              } finally {
+                setIsSaving(false);
+              }
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    setSelectedMethod(method);
+  };
 
   const handlePayment = async () => {
     if (!selectedMethod) {
@@ -142,14 +238,12 @@ const PaymentScreen = () => {
       let result;
 
       if (selectedMethod.is_wallet) {
-        // Handle Wallet Payment
         result = await paymentService.processWalletPayment(
           emergencyRequestId,
           params.organizationId || 'default',
           cost
         );
       } else {
-        // Handle Stripe Card Payment
         result = await paymentService.processPayment(
           emergencyRequestId,
           params.organizationId || 'default',
@@ -159,8 +253,7 @@ const PaymentScreen = () => {
 
       if (result.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-        // Show completion beat as per Alexander UI canon
+        // Completion Beat
         Alert.alert(
           'Payment Successful',
           'Your request has been processed securely. Track your service real-time.',
@@ -184,7 +277,6 @@ const PaymentScreen = () => {
   };
 
   const handleTopUp = async () => {
-    // Show quick top-up options
     Alert.alert(
       "Wallet Top-up",
       "Select an amount to add to your iVisit Balance.",
@@ -204,7 +296,7 @@ const PaymentScreen = () => {
       const result = await paymentService.topUpWallet(amount);
       if (result.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        await loadWalletData(); // Refresh UI
+        await loadWalletData();
         Alert.alert("Success", `Added $${amount} to your wallet. Your new balance is $${result.newBalance.toFixed(2)}`);
       }
     } catch (error) {
@@ -215,85 +307,173 @@ const PaymentScreen = () => {
     }
   };
 
+  const handleAddPaymentMethod = async (paymentMethod) => {
+    try {
+      setIsSaving(true);
+      await paymentService.addPaymentMethod(paymentMethod);
+      setShowAddModal(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // If linking, automatically link the new card
+      if (params.isLinking === 'true' && params.policyId) {
+        await insuranceService.linkPaymentMethod(params.policyId, {
+          id: paymentMethod.id,
+          brand: paymentMethod.brand,
+          last4: paymentMethod.last4,
+          expiry_month: paymentMethod.expiry_month,
+          expiry_year: paymentMethod.expiry_year
+        });
+        Alert.alert("Success", "New card added and linked to policy.", [
+          { text: "OK", onPress: () => router.back() }
+        ]);
+      } else {
+        Alert.alert("Success", "Payment method linked successfully.");
+        if (isManagementMode) {
+          loadWalletData(); // Refresh if in management
+        }
+      }
+    } catch (error) {
+      Alert.alert('System Error', error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const colors = useMemo(() => ({
     text: isDarkMode ? "#FFFFFF" : "#0F172A",
     textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-    card: isDarkMode ? "#121826" : "#FFFFFF",
+    card: isDarkMode ? "rgba(30, 41, 59, 0.7)" : "rgba(255, 255, 255, 0.8)",
     inputBg: isDarkMode ? "#0B0F1A" : "#F3F4F6",
-    background: isDarkMode ? ["#0B0F1A", "#121826", "#0B0F1A"] : ["#FFFFFF", "#F3E7E7", "#FFFFFF"]
+    background: isDarkMode ? ["#0B0F1A", "#1E1B4B", "#0B0F1A"] : ["#FFFFFF", "#F3F4F6", "#FFFFFF"],
+    border: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)"
   }), [isDarkMode]);
+
+  // Layout Constants
+  const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
+  const bottomPadding = tabBarHeight + 20;
 
   return (
     <LinearGradient colors={colors.background} style={styles.container}>
       <Animated.ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: STACK_TOP_PADDING }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: STACK_TOP_PADDING,
+            paddingBottom: bottomPadding,
+            paddingHorizontal: 12 // Matches InsuranceScreen padding-x fix
+          }
+        ]}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={handleScroll}
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
       >
         {/* Wallet Dashboard Section - Visible ONLY in Management Mode */}
         {isManagementMode && (
           <View style={styles.walletDashboard}>
-            <LinearGradient
-              colors={[COLORS.brandPrimary, '#64100E']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.balanceCard}
+            {/* Premium Balance Card */}
+            <View style={[styles.balanceCardWrapper, { borderColor: colors.border }]}>
+              <BlurView intensity={isDarkMode ? 40 : 80} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+              <LinearGradient
+                colors={[COLORS.brandPrimary, '#4f46e5']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.balanceCard, { opacity: 0.9 }]}
+              >
+                <View style={styles.balanceHeader}>
+                  <View>
+                    <Text style={styles.walletLabel}>AVAILABLE BALANCE</Text>
+                    <Text style={styles.balanceValue}>
+                      ${walletBalance.balance.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.currencyBadge}>
+                    <Text style={styles.currencyText}>{walletBalance.currency}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.walletActions}>
+                  <Pressable
+                    onPress={handleTopUp}
+                    disabled={isSaving}
+                    style={({ pressed }) => [
+                      styles.topUpButton,
+                      { opacity: (pressed || isSaving) ? 0.8 : 1 }
+                    ]}
+                  >
+                    <Ionicons name="add-circle" size={20} color={COLORS.brandPrimary} />
+                    <Text style={styles.topUpText}>Add Funds</Text>
+                  </Pressable>
+                </View>
+              </LinearGradient>
+            </View>
+
+            {/* Link Payment Card Button */}
+            <Pressable
+              onPress={() => setShowAddModal(true)}
+              style={({ pressed }) => [
+                styles.linkCardButton,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#fff',
+                  opacity: pressed ? 0.7 : 1
+                }
+              ]}
             >
-              <View style={styles.balanceHeader}>
+              <View style={styles.linkCardContent}>
+                <View style={styles.linkCardIcon}>
+                  <Ionicons name="card" size={24} color={COLORS.brandPrimary} />
+                </View>
                 <View>
-                  <Text style={styles.walletLabel}>IVISIT BALANCE</Text>
-                  <Text style={styles.balanceValue}>
-                    ${walletBalance.balance.toFixed(2)}
+                  <Text style={[styles.linkCardTitle, { color: colors.text }]}>Link Payment Card</Text>
+                  <Text style={[styles.linkCardSub, { color: colors.textMuted }]}>
+                    For automatic billing & top-ups
                   </Text>
                 </View>
-                <View style={styles.currencyBadge}>
-                  <Text style={styles.currencyText}>{walletBalance.currency}</Text>
-                </View>
               </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </Pressable>
 
-              <View style={styles.walletActions}>
-                <Pressable
-                  onPress={handleTopUp}
-                  disabled={isSaving}
-                  style={({ pressed }) => [
-                    styles.topUpButton,
-                    { opacity: (pressed || isSaving) ? 0.8 : 1 }
-                  ]}
-                >
-                  <Ionicons name="add-circle" size={20} color={COLORS.brandPrimary} />
-                  <Text style={styles.topUpText}>Quick Top-Up</Text>
-                </Pressable>
-                <View style={styles.securityBadge}>
-                  <Ionicons name="shield-checkmark" size={14} color="rgba(255,255,255,0.7)" />
-                  <Text style={styles.secureText}>PCI Secure</Text>
-                </View>
-              </View>
-            </LinearGradient>
+            {/* Payment Methods List */}
+            <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Saved Methods</Text>
+              <PaymentMethodSelector
+                selectedMethod={selectedMethod}
+                onMethodSelect={handleMethodSelect}
+                isDarkMode={isDarkMode}
+                isManagementMode={isManagementMode}
+                cost={cost}
+                showAddButton={false}
+              />
+            </View>
 
             {/* Recent Activity */}
             <View style={styles.activityContainer}>
               <View style={styles.activityHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
-                <Pressable onPress={loadWalletData}>
-                  <Text style={styles.viewAllText}>Refresh</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Transaction Ledger</Text>
+                <Pressable onPress={() => {
+                  setRefreshing(true);
+                  loadWalletData();
+                }}>
+                  {refreshing ? <ActivityIndicator size="small" color={COLORS.brandPrimary} /> : <Text style={styles.viewAllText}>Refresh</Text>}
                 </Pressable>
               </View>
 
               {ledgerHistory.length > 0 ? (
-                <View style={[styles.ledgerList, { backgroundColor: colors.card }]}>
+                <View style={[styles.ledgerList, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   {ledgerHistory.map((item, index) => (
                     <Pressable
                       key={item.id}
                       onPress={() => setSelectedTransaction(item)}
                       style={({ pressed }) => [
                         styles.ledgerItem,
-                        index !== ledgerHistory.length - 1 && styles.ledgerDivider,
+                        index !== ledgerHistory.length - 1 && [styles.ledgerDivider, { borderBottomColor: colors.border }],
                         { opacity: pressed ? 0.7 : 1 }
                       ]}
                     >
                       <View style={[
                         styles.typeIcon,
-                        { backgroundColor: item.transaction_type === 'credit' ? '#22C55E20' : '#EF444420' }
+                        { backgroundColor: item.transaction_type === 'credit' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)' }
                       ]}>
                         <Ionicons
                           name={item.transaction_type === 'credit' ? "arrow-down" : "arrow-up"}
@@ -317,7 +497,7 @@ const PaymentScreen = () => {
                   ))}
                 </View>
               ) : (
-                <View style={[styles.emptyLedger, { backgroundColor: colors.card }]}>
+                <View style={[styles.emptyLedger, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <Ionicons name="receipt-outline" size={32} color={colors.textMuted} />
                   <Text style={[styles.emptyText, { color: colors.textMuted }]}>No recent transactions</Text>
                 </View>
@@ -325,9 +505,10 @@ const PaymentScreen = () => {
             </View>
           </View>
         )}
+
         {/* Payment Identity Section - Hidden in Management Mode */}
         {!isManagementMode && (
-          <View style={[styles.glowCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.glowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.amountDisplay}>
               <Text style={[styles.amountLabel, { color: colors.textMuted }]}>TOTAL AMOUNT</Text>
               <Text style={[styles.amountValue, { color: colors.text }]}>${cost.totalCost.toFixed(2)}</Text>
@@ -351,7 +532,7 @@ const PaymentScreen = () => {
 
         {/* Payment Summary Section - Hidden in Management Mode */}
         {!isManagementMode && (
-          <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Payment Summary</Text>
             {cost.breakdown.map((item, idx) => (
               <View key={idx} style={styles.row}>
@@ -366,7 +547,7 @@ const PaymentScreen = () => {
                 </Text>
               </View>
             ))}
-            <View style={[styles.divider, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <View style={styles.totalRow}>
               <Text style={[styles.totalLabel, { color: colors.text }]}>Total to Pay</Text>
               <Text style={[styles.totalValue, { color: COLORS.brandPrimary }]}>${cost.totalCost.toFixed(2)}</Text>
@@ -374,24 +555,23 @@ const PaymentScreen = () => {
           </View>
         )}
 
-        {/* Payment Method Selector */}
-        <View style={styles.paymentSelectorContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginLeft: 8, marginBottom: 12 }]}>
-            {isManagementMode ? "Default Funding Account" : "Payment Method"}
-          </Text>
-          <PaymentMethodSelector
-            selectedMethod={selectedMethod}
-            onMethodSelect={(m) => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setSelectedMethod(m);
-            }}
-            isDarkMode={isDarkMode}
-            isManagementMode={isManagementMode}
-            cost={cost}
-          />
-        </View>
+        {/* Payment Method Selector for Checkout */}
+        {!isManagementMode && (
+          <View style={styles.paymentSelectorContainer}>
+            <Text style={[styles.sectionTitle, { color: colors.text, marginLeft: 8, marginBottom: 12 }]}>
+              Payment Method
+            </Text>
+            <PaymentMethodSelector
+              selectedMethod={selectedMethod}
+              onMethodSelect={handleMethodSelect}
+              isDarkMode={isDarkMode}
+              isManagementMode={isManagementMode}
+              cost={cost}
+            />
+          </View>
+        )}
 
-        {/* Action Button - Hidden in Management Mode or modified */}
+        {/* Action Button - Hidden in Management Mode */}
         {!isManagementMode && (
           <View style={styles.footer}>
             <View style={styles.securityRow}>
@@ -425,6 +605,20 @@ const PaymentScreen = () => {
         )}
       </Animated.ScrollView>
 
+      {/* Manual Add Payment Modal */}
+      <Modal
+        visible={showAddModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <AddPaymentMethodModal
+          onClose={() => setShowAddModal(false)}
+          onAdd={handleAddPaymentMethod}
+          loading={isSaving}
+        />
+      </Modal>
+
       {/* Transaction Details Modal */}
       <Modal
         visible={!!selectedTransaction}
@@ -432,15 +626,15 @@ const PaymentScreen = () => {
         animationType="slide"
         onRequestClose={() => setSelectedTransaction(null)}
       >
-        <BlurView intensity={isDarkMode ? 60 : 80} style={styles.modalOverlay}>
+        <BlurView intensity={isDarkMode ? 60 : 80} tint={isDarkMode ? 'dark' : 'light'} style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setSelectedTransaction(null)} />
-          <View style={[styles.receiptCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.receiptCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.modalGrabber} />
 
             <View style={styles.receiptHeader}>
               <View style={[
                 styles.receiptIcon,
-                { backgroundColor: selectedTransaction?.transaction_type === 'credit' ? '#22C55E20' : '#86100E20' }
+                { backgroundColor: selectedTransaction?.transaction_type === 'credit' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(134, 16, 14, 0.1)' }
               ]}>
                 <Ionicons
                   name={selectedTransaction?.transaction_type === 'credit' ? "arrow-down" : "receipt"}
@@ -498,9 +692,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
     gap: 20,
-    paddingBottom: 100,
+    // Padding logic handled in style prop via insets
   },
   glowCard: {
     borderRadius: 32,
@@ -508,7 +701,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
     shadowColor: COLORS.brandPrimary,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.1,
@@ -518,16 +710,21 @@ const styles = StyleSheet.create({
   walletDashboard: {
     gap: 24,
   },
-  balanceCard: {
+  balanceCardWrapper: {
     borderRadius: 32,
-    padding: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
     height: 180,
-    justifyContent: 'space-between',
-    shadowColor: COLORS.brandPrimary,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 8,
+  },
+  balanceCard: {
+    padding: 24,
+    height: '100%',
+    justifyContent: 'space-between',
   },
   balanceHeader: {
     flexDirection: 'row',
@@ -578,16 +775,40 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: -0.5,
   },
-  securityBadge: {
+  linkCardButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'space-between',
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  secureText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+  linkCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  linkCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)', // Success/Greenish tint or Primary
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkCardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  linkCardSub: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   activityContainer: {
     gap: 16,
@@ -607,7 +828,6 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
   },
   ledgerItem: {
     flexDirection: 'row',
@@ -617,7 +837,6 @@ const styles = StyleSheet.create({
   },
   ledgerDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
   },
   typeIcon: {
     width: 36,
@@ -651,7 +870,6 @@ const styles = StyleSheet.create({
     gap: 12,
     borderStyle: 'dashed',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
   },
   emptyText: {
     fontSize: 13,
@@ -693,7 +911,6 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
   sectionTitle: {
     fontSize: 17,
@@ -790,6 +1007,88 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    flex: 1,
+    width: '100%',
+  },
+  receiptCard: {
+    width: '100%',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    gap: 24,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    paddingBottom: 40,
+  },
+  modalGrabber: {
+    width: 40,
+    height: 4,
+    backgroundColor: 'rgba(120,120,120,0.3)',
+    borderRadius: 2,
+    alignSelf: 'center',
+  },
+  receiptHeader: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  receiptIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  receiptAmount: {
+    fontSize: 32,
+    fontWeight: '900',
+    letterSpacing: -1,
+  },
+  receiptStatus: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  receiptBody: {
+    gap: 16,
+    backgroundColor: 'rgba(120,120,120,0.05)',
+    padding: 20,
+    borderRadius: 20,
+  },
+  receiptRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  receiptLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 1,
+  },
+  receiptValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  doneButton: {
+    backgroundColor: '#000', // Or brand color
+    height: 56,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  doneButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
   }
 });
 

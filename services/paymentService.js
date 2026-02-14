@@ -74,31 +74,51 @@ export const paymentService = {
   },
 
   /**
-   * Add new payment method
+   * Get patient's Stripe status and methods
+   */
+  async getPatientStripeStatus() {
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-payment-methods', {
+        body: { action: 'list-payment-methods' }
+      });
+      if (error) throw error;
+      return data.data || [];
+    } catch (error) {
+      console.error('Error fetching Stripe methods:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Create a SetupIntent for card collection
+   */
+  async createSetupIntent() {
+    const { data, error } = await supabase.functions.invoke('manage-payment-methods', {
+      body: { action: 'create-setup-intent' }
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * Finalize adding payment method after Stripe confirmation
+   * This updates our local reflection of the card.
    */
   async addPaymentMethod(paymentMethod) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Check if this is the first payment method
-      const { count } = await supabase
-        .from('payment_methods')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
-
-      const isFirst = count === 0;
-
       const newMethod = {
         user_id: user.id,
-        type: paymentMethod.type,
-        provider: paymentMethod.provider,
+        type: 'card',
+        provider: 'stripe',
         last4: paymentMethod.last4,
         brand: paymentMethod.brand,
         expiry_month: paymentMethod.expiry_month,
         expiry_year: paymentMethod.expiry_year,
-        is_default: isFirst,
-        metadata: paymentMethod.metadata || {}
+        is_default: true,
+        metadata: { ...paymentMethod.metadata, stripe_payment_method_id: paymentMethod.id }
       };
 
       const { data, error } = await supabase
@@ -108,11 +128,6 @@ export const paymentService = {
         .single();
 
       if (error) throw error;
-
-      // Update cache
-      const methods = await this.getPaymentMethods();
-      await database.write(StorageKeys.PAYMENT_METHODS, methods);
-
       return data;
     } catch (error) {
       console.error('Error adding payment method:', error);
@@ -463,26 +478,30 @@ export const paymentService = {
 
   /**
    * Top up patient wallet
+   * Uses real Stripe PaymentIntents for the most secure funding flow.
    */
   async topUpWallet(amount) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // 1. Simulate Stripe Payment Intent Creation (Real-world: Call Edge Function)
-      // await new Promise(r => setTimeout(r, 1500)); // Network delay
-
-      // 2. In a real app, we would direct user to Stripe Sheet here.
-      // For this prototype, we will simulate a successful specialized Top-Up RPC
-
-      const { data, error } = await supabase.rpc('top_up_patient_wallet', {
-        p_user_id: user.id,
-        p_amount: amount,
-        p_payment_method: 'card_simulated' // Track source
+      // 1. Create a PaymentIntent for the top-up
+      // Note: We use a special system org ID or flag for platform top-ups
+      const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+        body: {
+          amount: amount,
+          currency: 'USD',
+          is_top_up: true // Signal to Edge Function to credit patient wallet on success
+        }
       });
 
       if (error) throw error;
-      return { success: true, newBalance: data };
+
+      return {
+        success: true,
+        clientSecret: data.clientSecret,
+        paymentIntentId: data.paymentIntentId
+      };
     } catch (error) {
       console.error('Error topping up wallet:', error);
       throw error;

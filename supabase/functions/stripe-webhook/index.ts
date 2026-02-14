@@ -26,7 +26,7 @@ serve(async (req) => {
 
         const body = await req.text()
         const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? ''
-        
+
         let event
         try {
             event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret)
@@ -46,11 +46,11 @@ serve(async (req) => {
             case 'payment_intent.succeeded': {
                 const paymentIntent = event.data.object as Stripe.PaymentIntent
                 console.log(`💰 PaymentIntent succeeded: ${paymentIntent.id}`)
-                
+
                 // Update payment status in DB
                 const { error: updateError } = await supabaseAdmin
                     .from('payments')
-                    .update({ 
+                    .update({
                         status: 'completed',
                         processed_at: new Date().toISOString(),
                         provider_response: paymentIntent
@@ -68,7 +68,7 @@ serve(async (req) => {
                         .from('emergency_requests')
                         .update({ payment_status: 'paid' })
                         .eq('id', emergencyRequestId)
-                    
+
                     if (tripError) {
                         console.error('Error updating emergency request status:', tripError)
                     }
@@ -79,10 +79,10 @@ serve(async (req) => {
             case 'payment_intent.payment_failed': {
                 const paymentIntent = event.data.object as Stripe.PaymentIntent
                 console.log(`❌ PaymentIntent failed: ${paymentIntent.id}`)
-                
+
                 await supabaseAdmin
                     .from('payments')
-                    .update({ 
+                    .update({
                         status: 'failed',
                         failure_reason: paymentIntent.last_payment_error?.message || 'Unknown error',
                         provider_response: paymentIntent
@@ -94,11 +94,11 @@ serve(async (req) => {
             case 'account.updated': {
                 const account = event.data.object as Stripe.Account
                 console.log(`🏥 Account updated: ${account.id}`)
-                
+
                 // Sync organization status
                 const { error: orgError } = await supabaseAdmin
                     .from('organizations')
-                    .update({ 
+                    .update({
                         is_active: account.details_submitted && account.payouts_enabled,
                         // Store additional info if needed
                     })
@@ -107,6 +107,91 @@ serve(async (req) => {
                 if (orgError) {
                     console.error('Error syncing organization status:', orgError)
                 }
+                break
+            }
+
+            case 'payout.paid': {
+                const payout = event.data.object as Stripe.Payout
+                console.log(`💸 Payout completed: ${payout.id}`)
+
+                const stripeAccountId = event.account
+
+                if (stripeAccountId) {
+                    // Organization Payout
+                    const { data: org } = await supabaseAdmin
+                        .from('organizations')
+                        .select('id')
+                        .eq('stripe_account_id', stripeAccountId)
+                        .single()
+
+                    if (org) {
+                        const amount = payout.amount / 100
+                        const { data: wallet } = await supabaseAdmin
+                            .from('organization_wallets')
+                            .select('id, balance')
+                            .eq('organization_id', org.id)
+                            .single()
+
+                        if (wallet) {
+                            await supabaseAdmin
+                                .from('organization_wallets')
+                                .update({
+                                    balance: wallet.balance - amount,
+                                    updated_at: new Date().toISOString()
+                                })
+                                .eq('id', wallet.id)
+
+                            await supabaseAdmin.from('wallet_ledger').insert({
+                                wallet_type: 'organization',
+                                wallet_id: wallet.id,
+                                organization_id: org.id,
+                                amount: -amount,
+                                transaction_type: 'payout',
+                                description: `Payout ${payout.id} to bank`,
+                                reference_id: payout.id,
+                                reference_type: 'payout',
+                                metadata: { stripe_payout: payout }
+                            })
+                        }
+                    }
+                } else {
+                    // Platform Payout (iVisit Main Account)
+                    const { data: mainWallet } = await supabaseAdmin
+                        .from('ivisit_main_wallet')
+                        .select('id, balance')
+                        .limit(1)
+                        .single()
+
+                    if (mainWallet) {
+                        const amount = payout.amount / 100
+                        await supabaseAdmin
+                            .from('ivisit_main_wallet')
+                            .update({
+                                balance: mainWallet.balance - amount,
+                                last_updated: new Date().toISOString()
+                            })
+                            .eq('id', mainWallet.id)
+
+                        await supabaseAdmin.from('wallet_ledger').insert({
+                            wallet_type: 'main',
+                            wallet_id: mainWallet.id,
+                            organization_id: null,
+                            amount: -amount,
+                            transaction_type: 'payout',
+                            description: `Platform Payout ${payout.id} to bank`,
+                            reference_id: payout.id,
+                            reference_type: 'payout',
+                            metadata: { stripe_payout: payout }
+                        })
+                    }
+                }
+                break
+            }
+
+            case 'payout.failed': {
+                const payout = event.data.object as Stripe.Payout
+                console.error(`❌ Payout failed: ${payout.id}`)
+                // Optionally notify the admin/org admin
                 break
             }
 

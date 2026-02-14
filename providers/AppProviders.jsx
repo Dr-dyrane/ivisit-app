@@ -14,6 +14,7 @@ import { VisitsProvider } from "../contexts/VisitsContext";
 import ToastProvider from "../contexts/ToastContext";
 import { HelpSupportProvider } from "../contexts/HelpSupportContext";
 import { FABProvider } from "../contexts/FABContext";
+import { StripeProvider } from "@stripe/stripe-react-native";
 
 /**
  * AppProviders
@@ -30,34 +31,39 @@ import { FABProvider } from "../contexts/FABContext";
  */
 export const AppProviders = ({ children }) => {
 	return (
-		<AuthProvider>
-			<OTAUpdatesProvider>
-				<ThemeProvider>
-					<PreferencesProvider>
-						<ToastProvider>
-							<UnifiedScrollProvider>
-								<TabBarVisibilityProvider>
-									<ScrollAwareHeaderProvider>
-										<HeaderStateProvider>
-											<NotificationsProvider>
-												<VisitsProvider>
-													<EmergencyProvider>
-														<EmergencyUIProvider>
-															<FABProvider>
-																<HelpSupportProvider>{children}</HelpSupportProvider>
-															</FABProvider>
-														</EmergencyUIProvider>
-													</EmergencyProvider>
-												</VisitsProvider>
-											</NotificationsProvider>
-										</HeaderStateProvider>
-									</ScrollAwareHeaderProvider>
-								</TabBarVisibilityProvider>
-							</UnifiedScrollProvider>
-						</ToastProvider>
-					</PreferencesProvider>
-				</ThemeProvider>
-			</OTAUpdatesProvider>
-		</AuthProvider>
+		<StripeProvider
+			publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+			merchantIdentifier="merchant.com.ivisit" // Required for Apple Pay
+		>
+			<AuthProvider>
+				<OTAUpdatesProvider>
+					<ThemeProvider>
+						<PreferencesProvider>
+							<ToastProvider>
+								<UnifiedScrollProvider>
+									<TabBarVisibilityProvider>
+										<ScrollAwareHeaderProvider>
+											<HeaderStateProvider>
+												<NotificationsProvider>
+													<VisitsProvider>
+														<EmergencyProvider>
+															<EmergencyUIProvider>
+																<FABProvider>
+																	<HelpSupportProvider>{children}</HelpSupportProvider>
+																</FABProvider>
+															</EmergencyUIProvider>
+														</EmergencyProvider>
+													</VisitsProvider>
+												</NotificationsProvider>
+											</HeaderStateProvider>
+										</ScrollAwareHeaderProvider>
+									</TabBarVisibilityProvider>
+								</UnifiedScrollProvider>
+							</ToastProvider>
+						</PreferencesProvider>
+					</ThemeProvider>
+				</OTAUpdatesProvider>
+			</AuthProvider>
+		</StripeProvider>
 	);
 };
