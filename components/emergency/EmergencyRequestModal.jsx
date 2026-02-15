@@ -15,7 +15,7 @@ import InfoTile from "./requestModal/InfoTile";
 import BedBookingOptions from "./requestModal/BedBookingOptions";
 import PaymentMethodSelector from "../payment/PaymentMethodSelector";
 import { paymentService } from "../../services/paymentService";
-import { serviceCostService } from "../../services/serviceCostService";
+import { calculateEmergencyCost } from "../../services/pricingService";
 
 /**
  * 💡 STABILITY NOTE:
@@ -75,8 +75,10 @@ const EmergencyRequestModal = React.memo(({
 			setIsCalculatingCost(true);
 			try {
 				const serviceType = mode === "booking" ? "bed" : "ambulance";
-				const cost = await serviceCostService.calculateEmergencyCost(serviceType, {
-					isUrgent: true,
+				const cost = await calculateEmergencyCost({
+					hospital_id: requestHospital.id,
+					ambulance_id: selectedAmbulanceType?.id,
+					service_type: serviceType
 				});
 				setEstimatedCost(cost);
 			} catch (error) {
@@ -87,13 +89,23 @@ const EmergencyRequestModal = React.memo(({
 		};
 
 		calculateCost();
-	}, [requestHospital?.id, mode]);
+	}, [requestHospital?.id, mode, selectedAmbulanceType?.id]);
 
 	// Event handlers
 	const handleSubmitRequest = useCallback(async () => {
 		if (isRequesting) return;
 		if (!requestHospital) return;
-		if (mode === "emergency" && !selectedAmbulanceType) return;
+
+		// BIPHASIC FLOW: Step 1 -> Step 2
+		if (requestStep === "select") {
+			if (mode === "emergency" && !selectedAmbulanceType) {
+				showToast("Please select an ambulance type", "error");
+				return;
+			}
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+			setRequestStep("payment");
+			return;
+		}
 
 		// Payment Validation
 		if (!selectedPaymentMethod) {
@@ -108,12 +120,12 @@ const EmergencyRequestModal = React.memo(({
 				setIsRequesting(true);
 				const isEligible = await paymentService.checkCashEligibility(
 					requestHospital.id,
-					estimatedCost?.total_cost || 0
+					estimatedCost?.totalCost || 0
 				);
 
 				if (!isEligible) {
 					setErrorMessage("Cash payment not available for this hospital (insufficient wallet balance)");
-					showToast("Wallet top-up required for hospital", "error");
+					showToast("Hospital low on collateral", "error");
 					setIsRequesting(false);
 					return;
 				}
@@ -296,61 +308,71 @@ const EmergencyRequestModal = React.memo(({
 			// Selection state FAB
 			if (mode === "booking") {
 				registerFAB('bed-select', {
-					icon: 'checkmark', // Checkmark for confirmation
-					label: bedCount > 1 ? `Reserve ${bedCount} Beds` : 'Reserve Bed',
+					icon: 'chevron-forward',
+					label: 'Continue to Payment',
 					subText: bedType === "private" ? "Private room selected" : "Standard bed selected",
 					visible: true,
 					onPress: handleSubmitRequest,
-					loading: isRequesting,
 					style: 'emergency',
 					haptic: 'heavy',
 					priority: 10,
 					animation: 'prominent',
-					allowInStack: true, // Allow in stack screens
+					allowInStack: true,
 				});
 			} else if (!hasAmbulances) {
-				// Zero Ambulance Fallback FAB
 				registerFAB('call-hospital', {
-					icon: 'call', // Phone icon
+					icon: 'call',
 					label: 'Call Hospital',
 					subText: 'No ambulances available',
 					visible: true,
 					onPress: handleCallHospital,
-					style: 'warning', // Warning style for attention
+					style: 'warning',
 					haptic: 'medium',
 					priority: 10,
 					animation: 'prominent',
-					allowInStack: true, // Allow in stack screens
+					allowInStack: true,
 				});
 			} else if (selectedAmbulanceType) {
 				registerFAB('ambulance-select', {
-					icon: 'checkmark', // Checkmark for unified UI
-					label: 'Request Ambulance',
-					subText: 'Tap to confirm',
+					icon: 'chevron-forward',
+					label: 'Continue to Payment',
+					subText: 'Review cost & confirm',
 					visible: true,
 					onPress: handleSubmitRequest,
-					loading: isRequesting,
 					style: 'emergency',
 					haptic: 'heavy',
 					priority: 10,
 					animation: 'prominent',
-					allowInStack: true, // Allow in stack screens
+					allowInStack: true,
 				});
 			} else {
-				// No ambulance type selected
 				registerFAB('ambulance-prompt', {
-					icon: 'checkmark', // Checkmark for unified UI
+					icon: 'medical',
 					label: 'Select Ambulance',
 					subText: 'Choose ambulance type',
 					visible: true,
-					onPress: () => { }, // No action, just prompt
+					onPress: () => { },
 					style: 'warning',
 					haptic: 'medium',
 					priority: 9,
 					animation: 'subtle',
-					allowInStack: true, // Allow in stack screens
+					allowInStack: true,
 				});
 			}
+		} else if (requestStep === "payment") {
+			registerFAB('payment-confirm', {
+				icon: 'checkmark-circle',
+				label: mode === "booking" ? 'Confirm Reservation' : 'Request Ambulance',
+				subText: `Total: $${estimatedCost?.totalCost?.toFixed(2) || '0.00'}`,
+				visible: true,
+				onPress: handleSubmitRequest,
+				loading: isRequesting,
+				style: 'success',
+				haptic: 'heavy',
+				priority: 10,
+				animation: 'prominent',
+				allowInStack: true,
+			});
 		}
 
 		// Cleanup function
@@ -468,6 +490,7 @@ const EmergencyRequestModal = React.memo(({
 								: "Select ambulance type"}
 						</Text>
 
+						{/* Step-specific content */}
 						{mode === "booking" ? (
 							<>
 								<View style={styles.infoGrid}>
@@ -587,43 +610,60 @@ const EmergencyRequestModal = React.memo(({
 								))}
 							</View>
 						)}
-
-						{/* Payment Method Selection */}
+					</>
+				) : requestStep === "payment" ? (
+					<>
 						<View style={styles.paymentContainer}>
+							<Pressable
+								onPress={() => setRequestStep("select")}
+								style={styles.backButton}
+							>
+								<Ionicons name="arrow-back" size={20} color={requestColors.text} />
+								<Text style={{ color: requestColors.text, fontWeight: "600" }}>Back to selection</Text>
+							</Pressable>
+
 							<Text
 								style={{
 									fontSize: 12,
 									fontWeight: "900",
 									letterSpacing: 1.6,
 									color: requestColors.text,
-									marginTop: 24,
+									marginTop: 14,
 									marginBottom: 14,
 									textTransform: "uppercase",
 								}}
 							>
-								Payment Method
+								Confirm Payment
 							</Text>
 
 							{estimatedCost && (
-								<View style={[styles.costBanner, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
+								<View style={[styles.costBanner, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderWidth: 1, borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
 									<View style={styles.costRow}>
-										<Text style={[styles.costLabel, { color: requestColors.textMuted }]}>Estimated Total</Text>
-										<Text style={[styles.costValue, { color: COLORS.brandPrimary }]}>
-											${estimatedCost.total_cost.toFixed(2)}
+										<Text style={[styles.costLabel, { color: requestColors.textMuted }]}>
+											{estimatedCost.breakdown?.[0]?.name || 'Total Service Fee'}
+										</Text>
+										<Text style={[styles.costValue, { color: requestColors.text }]}>
+											${estimatedCost.totalCost.toFixed(2)}
 										</Text>
 									</View>
-									{estimatedCost.breakdown && (
-										<Text style={[styles.costSubtext, { color: requestColors.textMuted }]}>
-											Includes base service + estimated fees
+									<View style={[styles.divider, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]} />
+									<View style={styles.costRow}>
+										<Text style={{ fontWeight: "800", color: requestColors.text }}>Grand Total</Text>
+										<Text style={{ fontSize: 24, fontWeight: "900", color: COLORS.brandPrimary }}>
+											${estimatedCost.totalCost.toFixed(2)}
 										</Text>
-									)}
+									</View>
+									<Text style={[styles.costSubtext, { color: COLORS.success, fontWeight: "700" }]}>
+										✓ Price locked via {estimatedCost.breakdown?.[0]?.source === 'entity_override' ? 'Hospital Rate' : 'Market Average'}
+									</Text>
 								</View>
 							)}
 
 							<PaymentMethodSelector
 								selectedMethod={selectedPaymentMethod}
 								onMethodSelect={setSelectedPaymentMethod}
-								cost={estimatedCost ? { totalCost: estimatedCost.total_cost } : null}
+								cost={estimatedCost ? { totalCost: estimatedCost.totalCost } : null}
+								hospitalId={requestHospital?.id}
 								showAddButton={true}
 								style={styles.paymentSelector}
 							/>
@@ -721,9 +761,20 @@ const styles = StyleSheet.create({
 	},
 	costSubtext: {
 		fontSize: 10,
-		marginTop: 4,
+		marginTop: 8,
 		fontWeight: '500',
 	},
+	backButton: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 6,
+		marginBottom: 16,
+	},
+	divider: {
+		height: 1,
+		width: '100%',
+		marginVertical: 12,
+	}
 });
 
 export default EmergencyRequestModal;

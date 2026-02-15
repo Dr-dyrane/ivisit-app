@@ -546,10 +546,24 @@ export const paymentService = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
 
-      const { data, error } = await supabase
-        .from('wallet_ledger')
-        .select('*')
-        .eq('user_id', user.id)
+      // Fetch profile to see if they are an Org Admin/Member
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id, role')
+        .eq('id', user.id)
+        .single();
+
+      let query = supabase.from('wallet_ledger').select('*');
+
+      if (profile?.organization_id) {
+        // If Org User, show both personal and organizational ledger entries
+        query = query.or(`user_id.eq.${user.id},organization_id.eq.${profile.organization_id}`);
+      } else {
+        // Standard Patient
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -569,7 +583,7 @@ export const paymentService = {
     try {
       const { data, error } = await supabase.rpc('check_cash_eligibility', {
         p_organization_id: organizationId,
-        p_estimated_amount: estimatedAmount
+        p_amount: estimatedAmount
       });
 
       if (error) throw error;

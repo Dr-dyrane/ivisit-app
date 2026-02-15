@@ -27,6 +27,7 @@ const PaymentMethodSelector = ({
   selectedMethod,
   onMethodSelect,
   cost,
+  hospitalId = null,
   showAddButton = true,
   isManagementMode = false,
   refreshTrigger,
@@ -37,6 +38,8 @@ const PaymentMethodSelector = ({
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addingMethod, setAddingMethod] = useState(false);
+  const [isCashEligible, setIsCashEligible] = useState(true);
+  const [checkingCash, setCheckingCash] = useState(false);
 
   const colors = React.useMemo(() => ({
     text: isDarkMode ? "#FFFFFF" : "#0F172A",
@@ -47,7 +50,7 @@ const PaymentMethodSelector = ({
 
   useEffect(() => {
     loadPaymentMethods();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, hospitalId, cost?.totalCost]);
 
   const loadPaymentMethods = async () => {
     try {
@@ -78,6 +81,19 @@ const PaymentMethodSelector = ({
         is_cash: true,
         is_default: false
       };
+
+      // Check Cash Eligibility if we have a hospital context
+      if (hospitalId && cost?.totalCost > 0) {
+        setCheckingCash(true);
+        try {
+          const eligible = await paymentService.checkCashEligibility(hospitalId, cost.totalCost);
+          setIsCashEligible(eligible);
+        } catch (e) {
+          setIsCashEligible(false);
+        } finally {
+          setCheckingCash(false);
+        }
+      }
 
       const finalMethods = [walletMethod, cashMethod, ...methods];
       setPaymentMethods(finalMethods);
@@ -184,9 +200,10 @@ const PaymentMethodSelector = ({
               backgroundColor: colors.cardBg,
               borderColor: isSelected ? colors.activeRing : 'rgba(255,255,255,0.05)',
               borderWidth: 1,
-              opacity: method.is_wallet && !isManagementMode && method.balance < (cost?.totalCost || 0) ? 0.6 : 1
+              opacity: (method.is_wallet && !isManagementMode && method.balance < (cost?.totalCost || 0)) || (method.is_cash && !isCashEligible && !isManagementMode) ? 0.6 : 1
             }
           ]}
+          disabled={method.is_cash && !isCashEligible && !isManagementMode}
         >
           <View style={styles.methodMain}>
             <View style={[styles.iconBox, { backgroundColor: isSelected ? colors.activeRing : 'rgba(255,255,255,0.05)' }]}>
@@ -207,8 +224,12 @@ const PaymentMethodSelector = ({
                   </View>
                 )}
               </View>
-              <Text style={[styles.methodSub, { color: method.is_wallet && !isManagementMode && method.balance < (cost?.totalCost || 0) ? COLORS.error : colors.muted }]}>
-                {method.is_wallet ? (method.balance < (cost?.totalCost || 0) && !isManagementMode ? 'INSUFFICIENT BALANCE' : `AVAILABLE: ${method.currency} ${method.last4}`) : method.is_cash ? 'PAY ON ARRIVAL' : `EXPIRES ${method.expiry_month}/${method.expiry_year}`}
+              <Text style={[styles.methodSub, { color: (method.is_wallet && !isManagementMode && method.balance < (cost?.totalCost || 0)) || (method.is_cash && !isCashEligible && !isManagementMode) ? COLORS.error : colors.muted }]}>
+                {method.is_wallet
+                  ? (method.balance < (cost?.totalCost || 0) && !isManagementMode ? 'INSUFFICIENT BALANCE' : `AVAILABLE: ${method.currency} ${method.last4}`)
+                  : method.is_cash
+                    ? (isCashEligible ? 'PAY ON ARRIVAL' : (checkingCash ? 'VERIFYING...' : 'UNAVAILABLE (LOW COLLATERAL)'))
+                    : `EXPIRES ${method.expiry_month}/${method.expiry_year}`}
               </Text>
             </View>
           </View>

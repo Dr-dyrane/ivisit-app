@@ -293,6 +293,8 @@ const authService = {
             gender: data.gender,
             dateOfBirth: data.date_of_birth,
             role: data.role || 'patient', // Default to patient
+            organizationId: data.organization_id,
+            assignedAmbulanceId: data.assigned_ambulance_id,
             providerType: data.provider_type,
             bvnVerified: data.bvn_verified,
             createdAt: data.created_at,
@@ -321,6 +323,7 @@ const authService = {
         if (newData.address !== undefined) updates.address = newData.address;
         if (newData.gender !== undefined) updates.gender = newData.gender;
         if (newData.dateOfBirth !== undefined) updates.date_of_birth = newData.dateOfBirth;
+        if (newData.assignedAmbulanceId !== undefined) updates.assigned_ambulance_id = newData.assignedAmbulanceId;
 
         // If empty updates, just return current
         if (Object.keys(updates).length === 0) return { data: newData };

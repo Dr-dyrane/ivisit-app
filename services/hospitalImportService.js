@@ -1,6 +1,6 @@
-// Hospital Import Service - Integrates Google Places with Supabase
 import { supabase } from '../lib/supabase';
 import googlePlacesService from './googlePlacesService';
+import mapboxService from './mapboxService';
 
 class HospitalImportService {
   // Import hospitals from Google Places to Supabase
@@ -29,15 +29,23 @@ class HospitalImportService {
       const errors = [];
 
       try {
-        // Get hospitals from Google Places
-        const hospitals = await googlePlacesService.batchImportHospitals(
-          lat, 
-          lng, 
-          radius,
-          (progress) => {
-            console.log(`Import progress: ${progress.progress.toFixed(1)}% - ${progress.hospital}`);
-          }
-        );
+        let hospitals = [];
+        const useMapbox = !googlePlacesService.apiKey || !!mapboxService.accessToken;
+
+        if (useMapbox) {
+          console.log('Using Mapbox for hospital discovery...');
+          hospitals = await mapboxService.searchNearbyHospitals(lat, lng, radius / 1000);
+        } else {
+          console.log('Using Google Places for hospital discovery...');
+          hospitals = await googlePlacesService.batchImportHospitals(
+            lat,
+            lng,
+            radius,
+            (progress) => {
+              console.log(`Import progress: ${progress.progress.toFixed(1)}% - ${progress.hospital}`);
+            }
+          );
+        }
 
         totalFound = hospitals.length;
 
@@ -53,11 +61,11 @@ class HospitalImportService {
 
             if (existing) {
               // Update existing hospital
-              await this.updateHospitalFromGoogle(existing.id, hospital);
+              await this.updateHospitalFromProvider(existing.id, hospital);
               skippedCount++;
             } else {
               // Insert new hospital
-              await this.insertHospitalFromGoogle(hospital);
+              await this.insertHospitalFromProvider(hospital);
               importedCount++;
             }
           } catch (error) {
@@ -114,8 +122,8 @@ class HospitalImportService {
     }
   }
 
-  // Insert new hospital from Google Places data
-  async insertHospitalFromGoogle(hospital) {
+  // Insert new hospital from provider data (Google/Mapbox)
+  async insertHospitalFromProvider(hospital) {
     try {
       const hospitalData = {
         place_id: hospital.place_id,
@@ -125,18 +133,18 @@ class HospitalImportService {
         google_phone: hospital.phone,
         google_website: hospital.website,
         google_rating: hospital.rating,
-        google_photos: hospital.photos,
+        google_photos: hospital.photos || [],
         google_opening_hours: hospital.opening_hours,
-        google_types: hospital.types,
+        google_types: hospital.types || [],
         latitude: hospital.latitude,
         longitude: hospital.longitude,
-        imported_from_google: true,
+        imported_from_google: hospital.source !== 'mapbox',
         import_status: 'pending',
         verified: false,
         status: 'available',
-        available_beds: 0, // Will be set by hospital admin
-        ambulances_count: 0, // Will be set by hospital admin
-        wait_time: 'Unknown', // Will be set by hospital admin
+        available_beds: 0,
+        ambulances_count: 0,
+        wait_time: 'Unknown',
         last_google_sync: new Date().toISOString()
       };
 
@@ -155,17 +163,17 @@ class HospitalImportService {
     }
   }
 
-  // Update existing hospital with fresh Google data
-  async updateHospitalFromGoogle(hospitalId, hospital) {
+  // Update existing hospital with fresh provider data
+  async updateHospitalFromProvider(hospitalId, hospital) {
     try {
       const updateData = {
         google_address: hospital.address,
         google_phone: hospital.phone,
         google_website: hospital.website,
         google_rating: hospital.rating,
-        google_photos: hospital.photos,
+        google_photos: hospital.photos || [],
         google_opening_hours: hospital.opening_hours,
-        google_types: hospital.types,
+        google_types: hospital.types || [],
         last_google_sync: new Date().toISOString()
       };
 
