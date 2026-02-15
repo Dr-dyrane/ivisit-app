@@ -20,6 +20,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS } from '../../constants/colors';
 import { paymentService, PAYMENT_METHODS } from '../../services/paymentService';
+import { database, StorageKeys } from '../../database';
 import AddPaymentMethodModal from './AddPaymentMethodModal';
 
 const PaymentMethodSelector = ({
@@ -28,6 +29,7 @@ const PaymentMethodSelector = ({
   cost,
   showAddButton = true,
   isManagementMode = false,
+  refreshTrigger,
   style
 }) => {
   const { isDarkMode } = useTheme();
@@ -45,14 +47,15 @@ const PaymentMethodSelector = ({
 
   useEffect(() => {
     loadPaymentMethods();
-  }, []);
+  }, [refreshTrigger]);
 
   const loadPaymentMethods = async () => {
     try {
       setLoading(true);
-      const [methods, wallet] = await Promise.all([
+      const [methods, wallet, cachedDefault] = await Promise.all([
         paymentService.getPaymentMethods(),
-        paymentService.getWalletBalance()
+        paymentService.getWalletBalance(),
+        database.read(StorageKeys.DEFAULT_PAYMENT_METHOD)
       ]);
 
       // Add iVisit Wallet as a selectable method if it has balance or is active
@@ -79,11 +82,27 @@ const PaymentMethodSelector = ({
       const finalMethods = [walletMethod, cashMethod, ...methods];
       setPaymentMethods(finalMethods);
 
-      if (!selectedMethod && finalMethods.length > 0) {
-        // Prefer wallet if it has enough balance, otherwise default card
+      if (finalMethods.length > 0) {
+        // Priority for selection:
+        // 1. Currently selected (if any)
+        // 2. Cached default (persisted choice)
+        // 3. Wallet (if enough balance)
+        // 4. Default card in DB
+        // 5. First available
+
+        const cachedMatch = cachedDefault ? finalMethods.find(m => m.id === cachedDefault.id) : null;
         const enoughBalance = wallet.balance >= (cost?.totalCost || 0);
-        const defaultMethod = (enoughBalance ? walletMethod : finalMethods.find(m => m.is_default)) || finalMethods[0];
-        onMethodSelect(defaultMethod);
+        const dbDefault = finalMethods.find(m => m.is_default);
+
+        const defaultMethod =
+          selectedMethod ? finalMethods.find(m => m.id === selectedMethod.id) : // Keep current if valid
+            cachedMatch || // Respect user's explicit choice
+            (enoughBalance ? walletMethod : dbDefault) || // Automation
+            finalMethods[0];
+
+        if (defaultMethod && (!selectedMethod || selectedMethod.id !== defaultMethod.id)) {
+          onMethodSelect(defaultMethod);
+        }
       }
     } catch (error) {
       console.error('Error loading methods:', error);

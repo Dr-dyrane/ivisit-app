@@ -77,6 +77,48 @@ export function isDisplayId(value) {
 }
 
 /**
+ * Get entity UUID from display ID
+ * @param {string} displayId - Human-readable ID (e.g., IVP-000001)
+ * @returns {Promise<string|null>} Entity UUID or null if not found
+ */
+export async function getEntityId(displayId) {
+    if (!displayId) return null;
+
+    try {
+        const { data, error } = await supabase.rpc('get_entity_id', {
+            p_display_id: displayId.toUpperCase()
+        });
+
+        if (error) {
+            console.error('[DisplayID] Error getting entity ID:', error);
+            return null;
+        }
+        return data;
+    } catch (error) {
+        console.error('[DisplayID] Exception getting entity ID:', error);
+        return null;
+    }
+}
+
+/**
+ * Get entity ID from either a display ID or pass through a UUID
+ * Useful when input could be either format
+ * @param {string} idOrDisplayId - UUID or display ID
+ * @returns {Promise<string|null>} Entity UUID
+ */
+export async function resolveEntityId(idOrDisplayId) {
+    if (!idOrDisplayId) return null;
+
+    // Check if it's a display ID format
+    if (isDisplayId(idOrDisplayId)) {
+        return await getEntityId(idOrDisplayId);
+    }
+
+    // Assume it's already a UUID
+    return idOrDisplayId;
+}
+
+/**
  * Backwards compatibility helper to get ID from profiles table direct column
  */
 export async function getDisplayIdFromProfile(userId) {

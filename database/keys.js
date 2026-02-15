@@ -63,24 +63,27 @@ export const StorageKeys = {
 	MEDICAL_PROFILE: `${DB_PREFIX}medical_profile`,
 
 	EMERGENCY_STATE: `${DB_PREFIX}emergency_state`,
-    
-    /** Insurance policies */
-    INSURANCE_POLICIES: `${DB_PREFIX}insurance_policies`,
 
-    // ============================================
-    // PAYMENT SYSTEM
-    // ============================================
-    /** Payment methods */
-    PAYMENT_METHODS: `${DB_PREFIX}payment_methods`,
+	/** Insurance policies */
+	INSURANCE_POLICIES: `${DB_PREFIX}insurance_policies`,
 
-    /** Payment history */
-    PAYMENT_HISTORY: `${DB_PREFIX}payment_history`,
+	// ============================================
+	// PAYMENT SYSTEM
+	// ============================================
+	/** Payment methods */
+	PAYMENT_METHODS: `${DB_PREFIX}payment_methods`,
 
-    /** Current payment transaction */
-    CURRENT_PAYMENT: `${DB_PREFIX}current_payment`,
+	/** Payment history */
+	PAYMENT_HISTORY: `${DB_PREFIX}payment_history`,
 
-    /** Payment preferences */
-    PAYMENT_PREFERENCES: `${DB_PREFIX}payment_preferences`,
+	/** Current payment transaction */
+	CURRENT_PAYMENT: `${DB_PREFIX}current_payment`,
+
+	/** Payment preferences */
+	PAYMENT_PREFERENCES: `${DB_PREFIX}payment_preferences`,
+
+	/** Default payment method choice */
+	DEFAULT_PAYMENT_METHOD: `${DB_PREFIX}default_payment_method`,
 
 	// ============================================
 	// NOTIFICATIONS & PREFERENCES
@@ -118,9 +121,9 @@ export const CollectionKeys = [
 	// StorageKeys.IMAGES, // Managed as a Map/Object, not an Array
 	StorageKeys.RESET_TOKENS,
 	StorageKeys.EMERGENCY_REQUESTS,
-    StorageKeys.INSURANCE_POLICIES,
-    StorageKeys.PAYMENT_METHODS,
-    StorageKeys.PAYMENT_HISTORY,
+	StorageKeys.INSURANCE_POLICIES,
+	StorageKeys.PAYMENT_METHODS,
+	StorageKeys.PAYMENT_HISTORY,
 ];
 
 /**
@@ -135,6 +138,7 @@ export const SingletonKeys = [
 	StorageKeys.EMERGENCY_STATE,
 	StorageKeys.CURRENT_PAYMENT,
 	StorageKeys.PAYMENT_PREFERENCES,
+	StorageKeys.DEFAULT_PAYMENT_METHOD,
 	StorageKeys.PREFERENCES,
 	StorageKeys.THEME,
 	StorageKeys.PROFILE_COMPLETION_DRAFT,

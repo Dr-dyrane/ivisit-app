@@ -49,6 +49,7 @@ serve(async (req) => {
         let stripeAccountId = null
         let feePercentage = 2.5
         let isPlatformAction = false
+        let resolvedOrgId = organization_id
 
         if (!organization_id) {
             // Platform actions (require Admin role)
@@ -63,15 +64,27 @@ serve(async (req) => {
             }
             isPlatformAction = true
         } else {
+            // ID Resolution: Check if beautified ID (e.g. ORG-000001)
+            if (/^(IVP|PRV|ORG|AMB|ADM|DSP)-\d{3,6}$/i.test(organization_id)) {
+                console.log(`Resolving beautified ID: ${organization_id}`)
+                const { data: uuid, error: resolveError } = await supabaseAdmin.rpc('get_entity_id', {
+                    p_display_id: organization_id.toUpperCase()
+                })
+                if (resolveError || !uuid) {
+                    throw new Error(`Could not resolve organization ID: ${organization_id}`)
+                }
+                resolvedOrgId = uuid
+            }
+
             // Organization Flow
             const { data: organization, error: orgError } = await supabaseAdmin
                 .from('organizations')
                 .select('stripe_account_id, ivisit_fee_percentage')
-                .eq('id', organization_id)
+                .eq('id', resolvedOrgId)
                 .single()
 
             if (orgError || !organization) {
-                throw new Error('Organization not found')
+                throw new Error(`Organization not found (${resolvedOrgId})`)
             }
             stripeAccountId = organization.stripe_account_id
             feePercentage = organization.ivisit_fee_percentage ?? 2.5
@@ -92,7 +105,7 @@ serve(async (req) => {
             automatic_payment_methods: { enabled: true },
             metadata: {
                 user_id: user.id,
-                organization_id: organization_id || 'platform',
+                organization_id: resolvedOrgId || 'platform',
                 emergency_request_id: emergency_request_id ?? '',
                 is_top_up: is_top_up ? 'true' : 'false'
             },
@@ -117,7 +130,7 @@ serve(async (req) => {
             .from('payments')
             .insert({
                 user_id: user.id,
-                organization_id: organization_id, // null for platform
+                organization_id: resolvedOrgId, // null for platform
                 emergency_request_id: emergency_request_id,
                 amount: amount,
                 currency: currency,

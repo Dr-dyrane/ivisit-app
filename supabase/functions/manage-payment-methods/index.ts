@@ -39,13 +39,23 @@ serve(async (req) => {
 
     let customerId: string | null = null;
     let contextName = '';
+    let resolvedOrgId = organization_id;
 
     if (organization_id) {
+      // ID Resolution: Check if beautified ID
+      if (/^(IVP|PRV|ORG|AMB|ADM|DSP)-\d{3,6}$/i.test(organization_id)) {
+        const { data: uuid, error: resolveError } = await supabaseAdmin.rpc('get_entity_id', {
+          p_display_id: organization_id.toUpperCase()
+        });
+        if (resolveError || !uuid) throw new Error(`Could not resolve organization ID: ${organization_id}`);
+        resolvedOrgId = uuid;
+      }
+
       // Organization Flow
       const { data: organization, error: orgError } = await supabaseAdmin
         .from('organizations')
         .select('*')
-        .eq('id', organization_id)
+        .eq('id', resolvedOrgId)
         .single()
 
       if (orgError || !organization) throw new Error('Organization not found')
@@ -61,7 +71,7 @@ serve(async (req) => {
         await supabaseAdmin
           .from('organizations')
           .update({ stripe_customer_id: customerId })
-          .eq('id', organization.id)
+          .eq('id', resolvedOrgId)
       }
     } else {
       // Patient Flow
@@ -94,8 +104,8 @@ serve(async (req) => {
         customer: customerId!,
         payment_method_types: ['card'],
         metadata: {
-          organization_id: organization_id || null,
-          user_id: organization_id ? null : user.id
+          organization_id: resolvedOrgId || null,
+          user_id: resolvedOrgId ? null : user.id
         }
       })
       return new Response(JSON.stringify({ clientSecret: setupIntent.client_secret }), {
@@ -134,7 +144,7 @@ serve(async (req) => {
           payout_method_last4: pm.card?.last4,
           payout_method_brand: pm.card?.brand
         })
-        .eq('id', organization_id)
+        .eq('id', resolvedOrgId)
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -6,6 +6,7 @@
 
 import { supabase } from './supabase';
 import { database, StorageKeys } from '../database';
+import { resolveEntityId } from './displayIdService';
 
 // Payment method types
 export const PAYMENT_METHODS = {
@@ -45,6 +46,13 @@ const SERVICE_PRICING = {
 
 export const paymentService = {
   supabase,
+  /**
+   * Resolve an ID (beautified or UUID) to a UUID
+   */
+  async resolveId(id) {
+    if (!id || id === 'default' || id === 'platform') return null;
+    return await resolveEntityId(id);
+  },
   /**
    * Get user's payment methods
    */
@@ -92,9 +100,13 @@ export const paymentService = {
   /**
    * Create a SetupIntent for card collection
    */
-  async createSetupIntent() {
+  async createSetupIntent(organizationId = null) {
+    const resolvedOrgId = await this.resolveId(organizationId);
     const { data, error } = await supabase.functions.invoke('manage-payment-methods', {
-      body: { action: 'create-setup-intent' }
+      body: {
+        action: 'create-setup-intent',
+        organization_id: resolvedOrgId
+      }
     });
     if (error) throw error;
     return data;
@@ -109,8 +121,11 @@ export const paymentService = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      const resolvedOrgId = await this.resolveId(paymentMethod.organizationId);
+
       const newMethod = {
         user_id: user.id,
+        organization_id: resolvedOrgId,
         type: 'card',
         provider: 'stripe',
         last4: paymentMethod.last4,
@@ -154,12 +169,12 @@ export const paymentService = {
 
       if (!uuidRegex.test(methodId)) {
         // If not a UUID (e.g. 'cash_payment', 'insurance'), we just unset the default card.
-        // The frontend interprets "no default card" as using the selected non-card method,
-        // or we rely on local state. We return a mock response.
+        // We also cache this choice so it persists across reloads.
+        await database.write(StorageKeys.DEFAULT_PAYMENT_METHOD, { id: methodId });
         return { id: methodId, is_default: true, type: 'virtual' };
       }
 
-      // Set new default
+      // Set new default in DB
       const { data, error } = await supabase
         .from('payment_methods')
         .update({ is_default: true })
@@ -169,6 +184,10 @@ export const paymentService = {
         .single();
 
       if (error) throw error;
+
+      // Cache the card choice too
+      await database.write(StorageKeys.DEFAULT_PAYMENT_METHOD, data);
+
       return data;
     } catch (error) {
       console.error('Error setting default payment method:', error);
@@ -290,11 +309,12 @@ export const paymentService = {
    */
   async processPayment(emergencyRequestId, organizationId, cost) {
     try {
+      const resolvedOrgId = await this.resolveId(organizationId);
       const { data, error } = await supabase.functions.invoke('create-payment-intent', {
         body: {
           amount: cost.totalCost,
           currency: cost.currency,
-          organization_id: organizationId,
+          organization_id: resolvedOrgId,
           emergency_request_id: emergencyRequestId
         }
       });

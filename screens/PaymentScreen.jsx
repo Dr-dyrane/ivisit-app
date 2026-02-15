@@ -65,6 +65,7 @@ const PaymentScreen = () => {
   const [isLoadingWallet, setIsLoadingWallet] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [paymentRefreshCount, setPaymentRefreshCount] = useState(0);
 
   // Animations
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -310,7 +311,11 @@ const PaymentScreen = () => {
   const handleAddPaymentMethod = async (paymentMethod) => {
     try {
       setIsSaving(true);
-      await paymentService.addPaymentMethod(paymentMethod);
+      await paymentService.addPaymentMethod({
+        ...paymentMethod,
+        organizationId: params.organizationId
+      });
+      setPaymentRefreshCount(prev => prev + 1);
       setShowAddModal(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -444,6 +449,7 @@ const PaymentScreen = () => {
                 isManagementMode={isManagementMode}
                 cost={cost}
                 showAddButton={false}
+                refreshTrigger={paymentRefreshCount}
               />
             </View>
 
@@ -567,6 +573,7 @@ const PaymentScreen = () => {
               isDarkMode={isDarkMode}
               isManagementMode={isManagementMode}
               cost={cost}
+              refreshTrigger={paymentRefreshCount}
             />
           </View>
         )}
