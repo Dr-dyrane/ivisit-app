@@ -284,6 +284,39 @@ Version Code = MAJOR * 10000 + MINOR * 100 + PATCH
 
 **Current**: Version `1.0.5` → EAS-managed version code
 
+---
+
+## 🏛️ **Ecosystem Audit & Architecture**
+
+iVisit follows a robust, multi-layered database architecture designed for high-availability and strict security.
+
+### **1. Primary Entity Layer (Core)**
+| Table | Description | RLS Policy Model |
+| :--- | :--- | :--- |
+| `profiles` | Multi-role user identity (Admin, Patient, Provider, etc.) | Owner-update; Admin-all. |
+| `hospitals` | Hospital metadata & geo-coordinates | Authenticated-read; Admin-all. |
+| `doctors` | Specialized medical professionals linked to hospitals | Authenticated-read; Admin-all. |
+| `visits` | Appointment & medical encounter records | Owner-access; Admin-view. |
+| `ambulances` | Fleet assets | Auth-read; Admin-manage. |
+| `organizations` | Business entity roots | Strict Org-Admin isolation. |
+| `id_mappings` | UUID <-> Display ID translation | Internal service usage. |
+
+### **2. Financial & Transactional Layer**
+| Table | Description | RLS Policy Model |
+| :--- | :--- | :--- |
+| `ivisit_main_wallet` | Platform-level fee treasury | Admin-only (Strict). |
+| `organization_wallets`| Business-level balances | Org-Admin only. |
+| `wallet_ledger` | Triple-entry immutable transaction log | Auditable; Admin view-all. |
+| `payments` | Records of all Stripe and Cash transactions | Owner + Org-Admin view. |
+| `patient_wallets` | Individual credit/debit balances for patients | Owner-only. |
+
+### **3. Automation Layer (Triggers)**
+- **Auto-Provisioning**: Profiles, preferences, medical profiles, and wallets are automatically created on user signup.
+- **ID Beautification**: Custom triggers generate human-readable IDs (e.g., `IVP-123456`) and synchronize them across the ecosystem.
+- **Ledger Integration**: Financial triggers ensure that every payment is automatically recorded in the immutable ledger.
+
+---
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -295,3 +328,4 @@ For inquiries, please email us at [support@ivisit.ng](mailto:support@ivisit.ng).
 ---
 
 _Visit our website for more information: [iVisit](http://ivisit.ng)._
+
