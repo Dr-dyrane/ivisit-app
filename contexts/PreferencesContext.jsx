@@ -29,11 +29,18 @@ export function PreferencesProvider({ children }) {
 			try {
 				await soundService.init();
 				await soundService.loadSounds();
-				
+
+				// Only fetch from DB if user is authenticated
+				const { data: { user } } = await (await import('../services/supabase')).supabase.auth.getUser();
+				if (!user || !isActive) {
+					setPreferences({ ...preferences } || null);
+					return;
+				}
+
 				const next = await preferencesService.get();
 				if (!isActive) return;
 				setPreferences(next && typeof next === "object" ? next : null);
-				
+
 				if (next?.notificationSoundsEnabled !== undefined) {
 					soundService.setSoundEnabled(next.notificationSoundsEnabled);
 				}
@@ -52,11 +59,11 @@ export function PreferencesProvider({ children }) {
 	const updatePreferences = useCallback(async (updates) => {
 		const next = await preferencesService.update(updates);
 		setPreferences(next && typeof next === "object" ? next : null);
-		
+
 		if (updates.notificationSoundsEnabled !== undefined) {
 			soundService.setSoundEnabled(updates.notificationSoundsEnabled);
 		}
-		
+
 		return next;
 	}, []);
 

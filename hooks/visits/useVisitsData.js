@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { visitsService } from "../../services/visitsService";
 import { supabase } from "../../services/supabase";
 
@@ -88,9 +88,16 @@ export function useVisitsData() {
         }
     }, []);
 
+    // Only fetch when user is authenticated
     useEffect(() => {
-        fetchVisits();
-    }, []);
+        let cancelled = false;
+        (async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user || cancelled) return;
+            fetchVisits();
+        })();
+        return () => { cancelled = true; };
+    }, [fetchVisits]);
 
     useEffect(() => {
         let subscription;
@@ -114,12 +121,12 @@ export function useVisitsData() {
                             const newVisit = visitsService.fromDbRow(payload.new);
                             if (!newVisit) return;
                             setVisits(prev => [newVisit, ...prev]);
-                        } 
+                        }
                         else if (payload.eventType === 'UPDATE') {
                             const updatedVisit = visitsService.fromDbRow(payload.new);
                             if (!updatedVisit) return;
                             setVisits(prev => prev.map(v => v.id === updatedVisit.id ? updatedVisit : v));
-                        } 
+                        }
                         else if (payload.eventType === 'DELETE') {
                             const deletedId = payload.old.id;
                             setVisits(prev => prev.filter(v => v.id !== deletedId));
