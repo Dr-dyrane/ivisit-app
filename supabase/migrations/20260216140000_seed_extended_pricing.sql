@@ -2,8 +2,15 @@
 -- Description: Adds pricing for global defaults, Orgs, and Hospitals.
 
 -- 1. Clear existing pricing data to ensure a clean seed for testing
-TRUNCATE TABLE public.service_pricing CASCADE;
-TRUNCATE TABLE public.room_pricing CASCADE;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'service_pricing') THEN
+        EXECUTE 'TRUNCATE TABLE public.service_pricing CASCADE';
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'room_pricing') THEN
+        EXECUTE 'TRUNCATE TABLE public.room_pricing CASCADE';
+    END IF;
+END $$;
 
 -- 2. Global Admin Defaults
 INSERT INTO public.service_pricing (service_type, service_name, base_price, is_active, hospital_id, organization_id)

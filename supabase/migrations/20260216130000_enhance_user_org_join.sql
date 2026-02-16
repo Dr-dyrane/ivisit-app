@@ -1,8 +1,4 @@
--- 1. Ensure schema supports organization overrides
-ALTER TABLE public.service_pricing ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES public.organizations(id);
-ALTER TABLE public.room_pricing ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES public.organizations(id);
-
--- 2. Seed Organizations for existing IDs found in the logs
+-- 1. Seed Organizations for existing IDs found in the logs
 INSERT INTO public.organizations (id, name, is_active)
 VALUES 
     ('af9b6856-59e3-442d-94af-e39a8a261818', 'Hemet Health Network', true),
