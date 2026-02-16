@@ -37,7 +37,9 @@ export const serviceCostService = {
           p_service_type: serviceType,
           p_distance: distance,
           p_is_urgent: isUrgent,
-          p_hospital_id: hospitalId
+          p_hospital_id: hospitalId,
+          p_ambulance_id: options.ambulanceId || null,
+          p_room_id: options.roomId || null
         });
 
       if (error) throw error;

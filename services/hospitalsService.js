@@ -206,6 +206,33 @@ export const hospitalsService = {
 	},
 
 	/**
+	 * Get room pricing for a hospital or organization
+	 * @param {string} hospitalId 
+	 * @param {string} organizationId 
+	 */
+	async getRoomPricing(hospitalId = null, organizationId = null) {
+		try {
+			let query = supabase.from("room_pricing").select("*").eq("is_active", true);
+
+			if (hospitalId) {
+				query = query.or(`hospital_id.eq.${hospitalId},hospital_id.is.null`);
+			}
+
+			if (organizationId) {
+				query = query.or(`organization_id.eq.${organizationId},organization_id.is.null`);
+			}
+
+			const { data, error } = await query;
+			if (error) throw error;
+
+			return data || [];
+		} catch (err) {
+			console.error("hospitalsService.getRoomPricing error:", err);
+			return [];
+		}
+	},
+
+	/**
 	 * Calculate dynamic wait time for hospital
 	 */
 	calculateDynamicWaitTime(hospital, userLocation, currentTime = new Date()) {

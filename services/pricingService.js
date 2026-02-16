@@ -42,21 +42,39 @@ export async function getEffectivePrice(type, { hospitalId = null, ambulanceId =
       };
     }
 
-    // 2. Fallback to Admin Defaults (service_pricing table)
-    const { data: adminPrice } = await supabase
-      .from('service_pricing')
-      .select('base_price, currency, service_name')
-      .eq('service_type', type)
-      .limit(1)
-      .single();
+    // 2. Fallback to Admin Defaults (service_pricing OR room_pricing)
+    if (type === 'bed' || type === 'bed_booking') {
+      const { data: roomPrice } = await supabase
+        .from('room_pricing')
+        .select('price_per_night, currency, room_name')
+        .eq('room_type', 'general') // Default to general ward if no specific type
+        .limit(1)
+        .single();
 
-    if (adminPrice) {
-      return {
-        base_price: parseFloat(adminPrice.base_price),
-        currency: adminPrice.currency || 'USD',
-        source: 'admin_default',
-        service_name: adminPrice.service_name
-      };
+      if (roomPrice) {
+        return {
+          base_price: parseFloat(roomPrice.price_per_night),
+          currency: roomPrice.currency || 'USD',
+          source: 'admin_default_room',
+          service_name: roomPrice.room_name
+        };
+      }
+    } else {
+      const { data: adminPrice } = await supabase
+        .from('service_pricing')
+        .select('base_price, currency, service_name')
+        .eq('service_type', type)
+        .limit(1)
+        .single();
+
+      if (adminPrice) {
+        return {
+          base_price: parseFloat(adminPrice.base_price),
+          currency: adminPrice.currency || 'USD',
+          source: 'admin_default',
+          service_name: adminPrice.service_name
+        };
+      }
     }
 
     // 3. Final Hardcoded Fallbacks (Safety Net)

@@ -79,10 +79,14 @@ const EmergencyRequestModal = React.memo(({
 			setIsCalculatingCost(true);
 			try {
 				const serviceType = mode === "booking" ? "bed" : "ambulance";
+
+				// Validate UUIDs to prevent "invalid input syntax" RPC errors
+				const isValidUUID = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 				const cost = await calculateEmergencyCost({
 					hospital_id: requestHospital.id,
-					ambulance_id: selectedAmbulanceType?.id,
-					room_id: selectedRoomId,
+					ambulance_id: isValidUUID(selectedAmbulanceType?.id) ? selectedAmbulanceType.id : null,
+					room_id: isValidUUID(selectedRoomId) ? selectedRoomId : null,
 					service_type: serviceType
 				});
 				setEstimatedCost(cost);
@@ -103,13 +107,32 @@ const EmergencyRequestModal = React.memo(({
 
 			try {
 				if (mode === "booking") {
-					const [rooms, services] = await Promise.all([
+					const [rooms, roomPricing] = await Promise.all([
 						hospitalsService.getRooms(requestHospital.id),
-						hospitalsService.getServicePricing(requestHospital.id, requestHospital.organization_id)
+						hospitalsService.getRoomPricing(requestHospital.id, requestHospital.organization_id)
 					]);
-					setDynamicRooms(rooms);
-					setDynamicServices(services.filter(s => s.service_type === 'bed_booking'));
-					if (rooms.length > 0) setSelectedRoomId(rooms[0].id);
+
+					// If specific rooms exist, use them. Otherwise, use Service/Room Types from DB.
+					if (rooms.length > 0) {
+						setDynamicRooms(rooms);
+					} else if (roomPricing.length > 0) {
+						// Transform room types into "virtual" rooms for display
+						const virtualRooms = roomPricing.map(rp => ({
+							id: rp.room_type, // Use type as ID for generic selection
+							room_number: 'Any',
+							room_type: rp.room_name || rp.room_type,
+							base_price: rp.price_per_night,
+							features: [rp.description || 'Standard accommodation'],
+							check_in: null,
+							check_out: null
+						}));
+						setDynamicRooms(virtualRooms);
+						if (virtualRooms.length > 0) setSelectedRoomId(virtualRooms[0].id);
+					}
+
+					// Deprecated: dynamicServices for beds was incorrect.
+					// We keep the state empty or could use it for debugging.
+					setDynamicServices([]);
 				} else {
 					const services = await hospitalsService.getServicePricing(requestHospital.id, requestHospital.organization_id);
 					setDynamicServices(services.filter(s => s.service_type === 'ambulance'));
