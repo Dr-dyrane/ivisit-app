@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, Linking } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Linking, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -24,6 +24,12 @@ import { hospitalsService } from "../../services/hospitalsService";
  * 
  * WHY: This component is at the epicenter of the FAB registration cycle. Using useFABActions 
  * ensures it doesn't re-render when the FAB state changes, breaking the infinite update cycle.
+ * 
+ * DEVELOPMENT HISTORY (2026-02-16):
+ * - Refactored into a step-based modular flow (select -> payment -> dispatched).
+ * - Added StepIndicator for better user guidance during stress.
+ * - Centralized FAB logic to ensure accurate priority resolution and mobile stack visibility.
+ * - Enhanced data rendering with fixed organization_id mapping for cash eligibility.
  */
 const EmergencyRequestModal = React.memo(({
 	mode = "emergency",
@@ -41,7 +47,17 @@ const EmergencyRequestModal = React.memo(({
 	const { registerFAB, unregisterFAB } = useFABActions();
 	const insets = useSafeAreaInsets();
 
+	// MODULAR STEPS: 0: select, 1: payment, 2: dispatched
 	const [requestStep, setRequestStep] = useState("select");
+	const steps = mode === "booking"
+		? ["Configuration", "Verification", "Confirmation"]
+		: ["Resource", "Payment", "Dispatched"];
+
+	const currentStepIndex = useMemo(() => {
+		if (requestStep === "select") return 0;
+		if (requestStep === "payment") return 1;
+		return 2;
+	}, [requestStep]);
 	const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);
 	const [bedType, setBedType] = useState("standard");
 	const [bedCount, setBedCount] = useState(2);
@@ -73,10 +89,13 @@ const EmergencyRequestModal = React.memo(({
 
 	// Calculate cost whenever selection changes
 	useEffect(() => {
+		let isMounted = true;
 		const calculateCost = async () => {
 			if (!requestHospital) return;
 
 			setIsCalculatingCost(true);
+			setErrorMessage(null);
+
 			try {
 				const serviceType = mode === "booking" ? "bed" : "ambulance";
 
@@ -89,15 +108,20 @@ const EmergencyRequestModal = React.memo(({
 					room_id: isValidUUID(selectedRoomId) ? selectedRoomId : null,
 					service_type: serviceType
 				});
-				setEstimatedCost(cost);
+				if (isMounted) setEstimatedCost(cost);
 			} catch (error) {
 				console.error("Error calculating estimated cost:", error);
+				if (isMounted) {
+					setEstimatedCost(null);
+					setErrorMessage("Dynamic pricing unavailable. Standard rates will apply.");
+				}
 			} finally {
-				setIsCalculatingCost(false);
+				if (isMounted) setIsCalculatingCost(false);
 			}
 		};
 
 		calculateCost();
+		return () => { isMounted = false; };
 	}, [requestHospital?.id, mode, selectedAmbulanceType?.id, selectedRoomId]);
 
 	// Fetch dynamic data
@@ -134,7 +158,7 @@ const EmergencyRequestModal = React.memo(({
 					// We keep the state empty or could use it for debugging.
 					setDynamicServices([]);
 				} else {
-					const services = await hospitalsService.getServicePricing(requestHospital.id, requestHospital.organization_id);
+					const services = await hospitalsService.getServicePricing(requestHospital.id, requestHospital.organization_id || requestHospital.organizationId);
 					setDynamicServices(services.filter(s => s.service_type === 'ambulance'));
 					// Prioritize DB services over hardcoded constants
 					if (services.length > 0) {
@@ -143,9 +167,11 @@ const EmergencyRequestModal = React.memo(({
 							setSelectedAmbulanceType({
 								id: firstAmb.id,
 								title: firstAmb.service_name,
-								subtitle: firstAmb.description,
+								subtitle: firstAmb.description || "Emergency medical transport",
 								price: `$${firstAmb.base_price}`,
-								icon: 'medical-outline'
+								icon: 'medical-outline',
+								eta: requestHospital.eta || '8-12 min',
+								crew: '2 Paramedics'
 							});
 						}
 					}
@@ -186,20 +212,24 @@ const EmergencyRequestModal = React.memo(({
 			try {
 				setIsRequesting(true);
 				const isEligible = await paymentService.checkCashEligibility(
-					requestHospital.id,
+					requestHospital.organization_id || requestHospital.organizationId,
 					estimatedCost?.totalCost || 0
 				);
 
 				if (!isEligible) {
-					setErrorMessage("Cash payment not available for this hospital (insufficient wallet balance)");
+					setErrorMessage("Cash payment not available for this medical center (insufficient organizational wallet balance)");
 					showToast("Hospital low on collateral", "error");
 					setIsRequesting(false);
 					return;
 				}
 			} catch (error) {
 				console.error("Cash eligibility check failed:", error);
-			} finally {
+				setErrorMessage("Failed to verify cash payment eligibility. Please try again or use another payment method.");
+				showToast("Verification failed", "error");
 				setIsRequesting(false);
+				return;
+			} finally {
+				// Don't set false here if successful, we continue the flow
 			}
 		}
 
@@ -337,48 +367,32 @@ const EmergencyRequestModal = React.memo(({
 
 	// Global FAB registration for request modal
 	useEffect(() => {
+		// Clean start
+		const fabIds = ['ambulance-select', 'ambulance-prompt', 'bed-select', 'call-hospital', 'payment-confirm', 'emergency-done'];
+		fabIds.forEach(id => unregisterFAB(id));
 
-		// Commented out dispatched state for auto-navigation audit
-		/*
-		if (requestStep === "dispatched") {
-			// Dispatched state FAB
-			if (mode === "booking") {
-				registerFAB('bed-dispatched', {
-					icon: 'bed-patient',
-					label: 'View Reservation',
-					subText: 'View reservation details',
-					visible: true,
-					onPress: handleRequestDone,
-					style: 'success',
-					haptic: 'medium',
-					priority: 10,
-					animation: 'subtle',
-					allowInStack: true, // Allow in stack screens
-				});
-			} else {
-				registerFAB('ambulance-dispatched', {
-					icon: 'location',
-					label: 'Track Ambulance',
-					subText: 'View live tracking',
-					visible: true,
-					onPress: handleRequestDone,
-					style: 'success',
-					haptic: 'medium',
-					priority: 10,
-					animation: 'subtle',
-					allowInStack: true, // Allow in stack screens
-				});
-			}
-		} else 
-		*/
+		if (requestData?.success) {
+			registerFAB('emergency-done', {
+				icon: 'checkmark-done',
+				label: 'Finish',
+				subText: 'Return to dashboard',
+				visible: true,
+				onPress: handleRequestDone,
+				style: 'success',
+				haptic: 'medium',
+				priority: 10,
+				animation: 'subtle',
+				allowInStack: true,
+			});
+			return () => unregisterFAB('emergency-done');
+		}
 
 		if (requestStep === "select") {
-			// Selection state FAB
 			if (mode === "booking") {
 				registerFAB('bed-select', {
 					icon: 'chevron-forward',
-					label: 'Continue to Payment',
-					subText: bedType === "private" ? "Private room selected" : "Standard bed selected",
+					label: 'Select Payment',
+					subText: 'Standard bed selected',
 					visible: true,
 					onPress: handleSubmitRequest,
 					style: 'emergency',
@@ -390,8 +404,8 @@ const EmergencyRequestModal = React.memo(({
 			} else if (!hasAmbulances) {
 				registerFAB('call-hospital', {
 					icon: 'call',
-					label: 'Call Hospital',
-					subText: 'No ambulances available',
+					label: 'Direct Line',
+					subText: 'Ambulance depot is empty',
 					visible: true,
 					onPress: handleCallHospital,
 					style: 'warning',
@@ -403,8 +417,8 @@ const EmergencyRequestModal = React.memo(({
 			} else if (selectedAmbulanceType) {
 				registerFAB('ambulance-select', {
 					icon: 'chevron-forward',
-					label: 'Continue to Payment',
-					subText: 'Review cost & confirm',
+					label: 'Next Step',
+					subText: `Total: $${estimatedCost?.totalCost?.toFixed(0) || '--'}`,
 					visible: true,
 					onPress: handleSubmitRequest,
 					style: 'emergency',
@@ -413,25 +427,12 @@ const EmergencyRequestModal = React.memo(({
 					animation: 'prominent',
 					allowInStack: true,
 				});
-			} else {
-				registerFAB('ambulance-prompt', {
-					icon: 'medical',
-					label: 'Select Ambulance',
-					subText: 'Choose ambulance type',
-					visible: true,
-					onPress: () => { },
-					style: 'warning',
-					haptic: 'medium',
-					priority: 9,
-					animation: 'subtle',
-					allowInStack: true,
-				});
 			}
 		} else if (requestStep === "payment") {
 			registerFAB('payment-confirm', {
-				icon: 'checkmark-circle',
-				label: mode === "booking" ? 'Confirm Reservation' : 'Request Ambulance',
-				subText: `Total: $${estimatedCost?.totalCost?.toFixed(2) || '0.00'}`,
+				icon: 'shield-checkmark',
+				label: mode === "booking" ? 'Confirm Slot' : 'Confirm Dispatch',
+				subText: `Final: $${estimatedCost?.totalCost?.toFixed(2) || '0.00'}`,
 				visible: true,
 				onPress: handleSubmitRequest,
 				loading: isRequesting,
@@ -443,28 +444,22 @@ const EmergencyRequestModal = React.memo(({
 			});
 		}
 
-		// Cleanup function
 		return () => {
-			unregisterFAB('ambulance-select');
-			// unregisterFAB('ambulance-dispatched'); // Commented out
-			unregisterFAB('ambulance-prompt');
-			unregisterFAB('bed-select');
-			unregisterFAB('call-hospital');
-			// unregisterFAB('bed-dispatched'); // Commented out
+			fabIds.forEach(id => unregisterFAB(id));
 		};
 	}, [
 		requestStep,
 		mode,
 		selectedAmbulanceType,
-		bedType,
-		bedCount,
 		isRequesting,
 		handleSubmitRequest,
 		handleRequestDone,
-		registerFAB,
-		unregisterFAB,
 		hasAmbulances,
 		handleCallHospital,
+		estimatedCost,
+		requestData,
+		registerFAB,
+		unregisterFAB
 	]);
 
 	useEffect(() => {
@@ -521,6 +516,31 @@ const EmergencyRequestModal = React.memo(({
 				onScroll={onScroll}
 				scrollEventThrottle={16}
 			>
+				{/* Step Indicator */}
+				{!requestData?.success && (
+					<View style={styles.stepIndicatorContainer}>
+						{steps.map((step, idx) => (
+							<React.Fragment key={idx}>
+								<View style={styles.stepWrapper}>
+									<View style={[
+										styles.stepDot,
+										{ backgroundColor: idx === currentStepIndex ? COLORS.brandPrimary : idx < currentStepIndex ? COLORS.success : 'rgba(255,255,255,0.1)' }
+									]}>
+										{idx < currentStepIndex ? (
+											<Ionicons name="checkmark" size={12} color="#FFF" />
+										) : (
+											<Text style={[styles.stepText, { color: idx === currentStepIndex ? '#FFF' : requestColors.textMuted }]}>{idx + 1}</Text>
+										)}
+									</View>
+									<Text style={[styles.stepLabel, { color: idx === currentStepIndex ? requestColors.text : requestColors.textMuted }]}>{step}</Text>
+								</View>
+								{idx < steps.length - 1 && (
+									<View style={[styles.stepLine, { backgroundColor: idx < currentStepIndex ? COLORS.success : 'rgba(255,255,255,0.05)' }]} />
+								)}
+							</React.Fragment>
+						))}
+					</View>
+				)}
 				{requestStep === "select" ? (
 					<>
 						{errorMessage ? (
@@ -547,15 +567,15 @@ const EmergencyRequestModal = React.memo(({
 								fontSize: 12,
 								fontWeight: "900",
 								letterSpacing: 1.6,
-								color: requestColors.text,
-								marginTop: 18,
+								color: COLORS.brandPrimary,
+								marginTop: 32,
 								marginBottom: 14,
 								textTransform: "uppercase",
 							}}
 						>
 							{mode === "booking"
-								? "Reservation details"
-								: "Select ambulance type"}
+								? "Configure Stay"
+								: "Medical Transport"}
 						</Text>
 
 						{/* Step-specific content */}
@@ -672,8 +692,14 @@ const EmergencyRequestModal = React.memo(({
 										title: type.service_name,
 										subtitle: type.description || type.service_type,
 										price: `$${type.base_price}`,
-										icon: type.service_type === 'ambulance' ? 'medical-outline' : 'pulse-outline'
-									} : type;
+										icon: type.service_type === 'ambulance' ? 'medical-outline' : 'pulse-outline',
+										eta: requestHospital.eta || '8-12 min',
+										crew: type.service_type === 'ambulance' ? '2 Paramedics' : '1 Specialist'
+									} : {
+										...type,
+										eta: type.eta || requestHospital.eta || '10 min',
+										crew: type.crew || '2 Crew'
+									};
 
 									return (
 										<AmbulanceTypeCard
@@ -716,11 +742,16 @@ const EmergencyRequestModal = React.memo(({
 								Confirm Payment
 							</Text>
 
-							{estimatedCost && (
+							{isCalculatingCost ? (
+								<View style={[styles.costBanner, { backgroundColor: 'transparent', borderWidth: 1, borderStyle: 'dashed', borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}>
+									<ActivityIndicator size="small" color={COLORS.brandPrimary} />
+									<Text style={{ textAlign: 'center', fontSize: 10, marginTop: 8, color: requestColors.textMuted }}>Locking in rates...</Text>
+								</View>
+							) : estimatedCost ? (
 								<View style={[styles.costBanner, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderWidth: 1, borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
 									<View style={styles.costRow}>
 										<Text style={[styles.costLabel, { color: requestColors.textMuted }]}>
-											{estimatedCost.breakdown?.[0]?.name || 'Total Service Fee'}
+											{estimatedCost.breakdown?.[0]?.name || 'Base Fare'}
 										</Text>
 										<Text style={[styles.costValue, { color: requestColors.text }]}>
 											${estimatedCost.totalCost.toFixed(2)}
@@ -728,16 +759,16 @@ const EmergencyRequestModal = React.memo(({
 									</View>
 									<View style={[styles.divider, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]} />
 									<View style={styles.costRow}>
-										<Text style={{ fontWeight: "800", color: requestColors.text }}>Grand Total</Text>
+										<Text style={{ fontWeight: "800", color: requestColors.text }}>Network Total</Text>
 										<Text style={{ fontSize: 24, fontWeight: "900", color: COLORS.brandPrimary }}>
 											${estimatedCost.totalCost.toFixed(2)}
 										</Text>
 									</View>
 									<Text style={[styles.costSubtext, { color: COLORS.success, fontWeight: "700" }]}>
-										✓ Price locked via {estimatedCost.breakdown?.[0]?.source === 'entity_override' ? 'Hospital Rate' : 'Market Average'}
+										✓ Secure checkout active via iVisit Hub
 									</Text>
 								</View>
-							)}
+							) : null}
 
 							<PaymentMethodSelector
 								selectedMethod={selectedPaymentMethod}
@@ -854,7 +885,43 @@ const styles = StyleSheet.create({
 		height: 1,
 		width: '100%',
 		marginVertical: 12,
-	}
+	},
+	stepIndicatorContainer: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		paddingVertical: 10,
+		paddingHorizontal: 16,
+		marginBottom: 0,
+	},
+	stepWrapper: {
+		alignItems: 'center',
+		gap: 4,
+	},
+	stepDot: {
+		width: 20,
+		height: 20,
+		borderRadius: 10,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	stepText: {
+		fontSize: 10,
+		fontWeight: '800',
+	},
+	stepLabel: {
+		fontSize: 8,
+		fontWeight: '700',
+		textTransform: 'uppercase',
+		letterSpacing: 0.5,
+	},
+	stepLine: {
+		height: 2,
+		flex: 1,
+		marginHorizontal: 8,
+		borderRadius: 1,
+		marginBottom: 12,
+	},
 });
 
 export default EmergencyRequestModal;

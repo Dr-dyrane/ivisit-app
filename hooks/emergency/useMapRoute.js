@@ -128,16 +128,17 @@ export const useMapRoute = () => {
 
 				if (currentFetchId === routeFetchIdRef.current && result) {
 					setRouteCoordinates(result.coordinates);
-					setRouteInfo({
-						durationSec: result.durationSec,
-						distanceMeters: result.distanceMeters,
-					});
-
-					lastRouteFitKeyRef.current = `${origin.latitude}-${origin.longitude}-${destination.latitude}-${destination.longitude}`;
-
 					console.log("[useMapRoute] Route calculated:", {
 						distance: result.distanceMeters,
 						duration: result.durationSec,
+					});
+
+					// Enforce minimum 1 minute (60s) and handle 0 as "fallback to 15 mins" (900s)
+					const finalDuration = result.durationSec === 0 ? 900 : Math.max(result.durationSec, 60);
+
+					setRouteInfo({
+						durationSec: finalDuration,
+						distanceMeters: result.distanceMeters,
 					});
 				}
 			} catch (err) {
