@@ -31,7 +31,7 @@ export const hospitalsService = {
 			// Simplified UX: default to 0 ambulances unless explicitly set to something else in DB
 			// The user specified "no hospitals have ambulances" to keep things simple for now.
 			ambulances: h.ambulances_count || 0,
-			waitTime: h.emergency_wait_time_minutes ? `${h.emergency_wait_time_minutes} min` : (h.wait_time || 'Unknown'),
+			waitTime: h.emergency_wait_time_minutes ? `${h.emergency_wait_time_minutes} min` : (h.wait_time || this.calculateDynamicWaitTime(h, null).displayText),
 			price: h.price_range || 'Unknown',
 			distance: h.distance_km ? `${Math.round(h.distance_km * 10) / 10} km` : '0 km',
 			distanceKm: h.distance_km || 0,
@@ -158,6 +158,54 @@ export const hospitalsService = {
 	},
 
 	/**
+	 * Get available rooms for a hospital
+	 * @param {string} hospitalId 
+	 */
+	async getRooms(hospitalId) {
+		try {
+			const { data, error } = await supabase
+				.from("hospital_rooms")
+				.select("*")
+				.eq("hospital_id", hospitalId)
+				.eq("status", "available")
+				.order("room_number");
+
+			if (error) throw error;
+			return data || [];
+		} catch (err) {
+			console.error("hospitalsService.getRooms error:", err);
+			return [];
+		}
+	},
+
+	/**
+	 * Get service pricing for a hospital or organization
+	 * @param {string} hospitalId 
+	 * @param {string} organizationId 
+	 */
+	async getServicePricing(hospitalId = null, organizationId = null) {
+		try {
+			let query = supabase.from("service_pricing").select("*").eq("is_active", true);
+
+			if (hospitalId) {
+				query = query.or(`hospital_id.eq.${hospitalId},hospital_id.is.null`);
+			}
+
+			if (organizationId) {
+				query = query.or(`organization_id.eq.${organizationId},organization_id.is.null`);
+			}
+
+			const { data, error } = await query;
+			if (error) throw error;
+
+			return data || [];
+		} catch (err) {
+			console.error("hospitalsService.getServicePricing error:", err);
+			return [];
+		}
+	},
+
+	/**
 	 * Calculate dynamic wait time for hospital
 	 */
 	calculateDynamicWaitTime(hospital, userLocation, currentTime = new Date()) {
@@ -173,7 +221,7 @@ export const hospitalsService = {
 				emergencyLevel: hospital.emergencyLevel || 'Standard'
 			};
 
-			const travelTime = Math.max(5, factors.distance * 5 + 5);
+			const travelTime = factors.distance === 0 ? 0 : Math.max(5, factors.distance * 5 + 5);
 			let loadFactor = factors.availableBeds === 0 ? 3.0 : (factors.availableBeds < 5 ? 2.0 : (factors.availableBeds > 20 ? 0.8 : 1.0));
 
 			const hour = factors.hourOfDay;

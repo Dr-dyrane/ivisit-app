@@ -14,6 +14,7 @@ export default function BedBookingOptions({
 	onBedCountChange,
 	textColor,
 	mutedColor,
+	rooms = [],
 }) {
 	const { isDarkMode } = useTheme();
 
@@ -22,22 +23,30 @@ export default function BedBookingOptions({
 		onBedTypeChange(typeId);
 	};
 
-	const BED_OPTIONS = [
-		{
-			id: "standard",
-			name: "Standard Bed",
-			description: "General Ward • Professional Care • Shared Space",
-			icon: "bed-patient",
-			price: "$150",
-		},
-		{
-			id: "private",
-			name: "Private Room",
-			description: "Premium Suite • Personal Bathroom • 24/7 Concierge",
-			icon: "home",
-			price: "$350",
-		},
-	];
+	const BED_OPTIONS = rooms.length > 0
+		? rooms.map(room => ({
+			id: room.id,
+			name: `${room.room_type.replace('_', ' ').toUpperCase()} #${room.room_number}`,
+			description: room.features ? room.features.join(' • ') : "Professional Care • Clinical Environment",
+			icon: room.room_type.includes('vip') || room.room_type.includes('private') ? "home" : "bed-patient",
+			price: `$${room.base_price}`,
+		}))
+		: [
+			{
+				id: "standard",
+				name: "Standard Bed",
+				description: "General Ward • Professional Care • Shared Space",
+				icon: "bed-patient",
+				price: "$150",
+			},
+			{
+				id: "private",
+				name: "Private Room",
+				description: "Premium Suite • Personal Bathroom • 24/7 Concierge",
+				icon: "home",
+				price: "$350",
+			},
+		];
 
 	return (
 		<View style={styles.container}>
@@ -57,8 +66,8 @@ export default function BedBookingOptions({
 							? COLORS.brandPrimary + "20"
 							: COLORS.brandPrimary + "15"
 						: isDarkMode
-						? "rgba(255,255,255,0.05)"
-						: "rgba(0,0,0,0.03)";
+							? "rgba(255,255,255,0.05)"
+							: "rgba(0,0,0,0.03)";
 
 					return (
 						<Pressable
@@ -82,8 +91,8 @@ export default function BedBookingOptions({
 											backgroundColor: isSelected
 												? COLORS.brandPrimary
 												: isDarkMode
-												? "#2D3748"
-												: "#F1F5F9",
+													? "#2D3748"
+													: "#F1F5F9",
 										},
 									]}
 								>
@@ -94,8 +103,8 @@ export default function BedBookingOptions({
 											isSelected
 												? "#FFFFFF"
 												: isDarkMode
-												? "#94A3B8"
-												: "#64748B"
+													? "#94A3B8"
+													: "#64748B"
 										}
 									/>
 								</View>

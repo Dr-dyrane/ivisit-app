@@ -31,7 +31,7 @@ BEGIN
     FROM public.profiles WHERE id = auth.uid();
 
     SELECT organization_id INTO hospital_org_id
-    FROM public.hospitals WHERE id = target_hospital_id;
+    FROM public.hospitals WHERE id = target_hospital_id::UUID;
 
     IF caller_org_id IS NULL OR hospital_org_id IS NULL OR caller_org_id != hospital_org_id THEN
       RAISE EXCEPTION 'Org admin cannot update hospitals outside their organization';
@@ -72,12 +72,12 @@ BEGIN
                           ELSE organization_id
                         END,
     updated_at        = now()
-  WHERE id = target_hospital_id;
+  WHERE id = target_hospital_id::UUID;
 
   -- Return the updated row
   SELECT to_jsonb(h.*) INTO result
   FROM public.hospitals h
-  WHERE h.id = target_hospital_id;
+  WHERE h.id = target_hospital_id::UUID;
 
   RETURN result;
 END;

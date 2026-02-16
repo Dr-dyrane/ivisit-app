@@ -16,6 +16,7 @@ import BedBookingOptions from "./requestModal/BedBookingOptions";
 import PaymentMethodSelector from "../payment/PaymentMethodSelector";
 import { paymentService } from "../../services/paymentService";
 import { calculateEmergencyCost } from "../../services/pricingService";
+import { hospitalsService } from "../../services/hospitalsService";
 
 /**
  * 💡 STABILITY NOTE:
@@ -50,6 +51,9 @@ const EmergencyRequestModal = React.memo(({
 	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
 	const [estimatedCost, setEstimatedCost] = useState(null);
 	const [isCalculatingCost, setIsCalculatingCost] = useState(false);
+	const [dynamicServices, setDynamicServices] = useState([]);
+	const [dynamicRooms, setDynamicRooms] = useState([]);
+	const [selectedRoomId, setSelectedRoomId] = useState(null);
 
 	// Zero-ambulance fallback logic
 	const hasAmbulances = useMemo(() => {
@@ -78,6 +82,7 @@ const EmergencyRequestModal = React.memo(({
 				const cost = await calculateEmergencyCost({
 					hospital_id: requestHospital.id,
 					ambulance_id: selectedAmbulanceType?.id,
+					room_id: selectedRoomId,
 					service_type: serviceType
 				});
 				setEstimatedCost(cost);
@@ -89,7 +94,46 @@ const EmergencyRequestModal = React.memo(({
 		};
 
 		calculateCost();
-	}, [requestHospital?.id, mode, selectedAmbulanceType?.id]);
+	}, [requestHospital?.id, mode, selectedAmbulanceType?.id, selectedRoomId]);
+
+	// Fetch dynamic data
+	useEffect(() => {
+		const fetchDynamicData = async () => {
+			if (!requestHospital?.id) return;
+
+			try {
+				if (mode === "booking") {
+					const [rooms, services] = await Promise.all([
+						hospitalsService.getRooms(requestHospital.id),
+						hospitalsService.getServicePricing(requestHospital.id, requestHospital.organization_id)
+					]);
+					setDynamicRooms(rooms);
+					setDynamicServices(services.filter(s => s.service_type === 'bed_booking'));
+					if (rooms.length > 0) setSelectedRoomId(rooms[0].id);
+				} else {
+					const services = await hospitalsService.getServicePricing(requestHospital.id, requestHospital.organization_id);
+					setDynamicServices(services.filter(s => s.service_type === 'ambulance'));
+					// Prioritize DB services over hardcoded constants
+					if (services.length > 0) {
+						const firstAmb = services.find(s => s.service_type === 'ambulance');
+						if (firstAmb) {
+							setSelectedAmbulanceType({
+								id: firstAmb.id,
+								title: firstAmb.service_name,
+								subtitle: firstAmb.description,
+								price: `$${firstAmb.base_price}`,
+								icon: 'medical-outline'
+							});
+						}
+					}
+				}
+			} catch (error) {
+				console.error("Error fetching dynamic modal data:", error);
+			}
+		};
+
+		fetchDynamicData();
+	}, [requestHospital?.id, mode]);
 
 	// Event handlers
 	const handleSubmitRequest = useCallback(async () => {
@@ -156,7 +200,8 @@ const EmergencyRequestModal = React.memo(({
 					specialty: selectedSpecialty ?? "Any",
 					bedCount,
 					bedType,
-					bedNumber: `B${Math.floor(Math.random() * 900) + 100}`,
+					bedNumber: dynamicRooms.find(r => r.id === selectedRoomId)?.room_number || `B${Math.floor(Math.random() * 900) + 100}`,
+					roomId: selectedRoomId,
 					paymentMethod: selectedPaymentMethod,
 				}
 				: {
@@ -534,10 +579,10 @@ const EmergencyRequestModal = React.memo(({
 								</View>
 
 								<BedBookingOptions
-									bedType={bedType}
+									bedType={selectedRoomId || bedType}
 									bedCount={bedCount}
 									onBedTypeChange={(next) => {
-										setBedType(next);
+										setSelectedRoomId(next);
 									}}
 									onBedCountChange={(next) => {
 										setBedCount(next);
@@ -545,6 +590,7 @@ const EmergencyRequestModal = React.memo(({
 									textColor={requestColors.text}
 									mutedColor={requestColors.textMuted}
 									cardColor={requestColors.card}
+									rooms={dynamicRooms}
 								/>
 							</>
 						) : !hasAmbulances ? (
@@ -596,18 +642,29 @@ const EmergencyRequestModal = React.memo(({
 							</View>
 						) : (
 							<View style={styles.ambulanceSelectionContainer}>
-								{AMBULANCE_TYPES.map((type, index) => (
-									<AmbulanceTypeCard
-										key={type.id}
-										type={type}
-										selected={selectedAmbulanceType?.id === type.id}
-										onPress={() => setSelectedAmbulanceType(type)}
-										textColor={requestColors.text}
-										mutedColor={requestColors.textMuted}
-										cardColor={requestColors.card}
-										style={styles.ambulanceCard}
-									/>
-								))}
+								{(dynamicServices.length > 0 ? dynamicServices : AMBULANCE_TYPES).map((type, index) => {
+									const isDbService = !!type.service_name;
+									const cardType = isDbService ? {
+										id: type.id,
+										title: type.service_name,
+										subtitle: type.description || type.service_type,
+										price: `$${type.base_price}`,
+										icon: type.service_type === 'ambulance' ? 'medical-outline' : 'pulse-outline'
+									} : type;
+
+									return (
+										<AmbulanceTypeCard
+											key={type.id}
+											type={cardType}
+											selected={selectedAmbulanceType?.id === type.id}
+											onPress={() => setSelectedAmbulanceType(cardType)}
+											textColor={requestColors.text}
+											mutedColor={requestColors.textMuted}
+											cardColor={requestColors.card}
+											style={styles.ambulanceCard}
+										/>
+									);
+								})}
 							</View>
 						)}
 					</>

@@ -78,31 +78,54 @@ export async function getEffectivePrice(type, { hospitalId = null, ambulanceId =
 
 /**
  * Calculate total emergency cost for a request
- * @param {Object} requestData - { hospital_id, ambulance_id, service_type }
+ * @param {Object} requestData - { hospital_id, ambulance_id, service_type, room_id }
  */
 export async function calculateEmergencyCost(requestData) {
-  const { hospital_id, ambulance_id, service_type } = requestData;
+  const { hospital_id, ambulance_id, service_type, room_id = null } = requestData;
   let totalCost = 0;
   const breakdown = [];
 
-  // Determine primary service price
-  const priceObj = await getEffectivePrice(service_type, {
-    hospitalId: hospital_id,
-    ambulanceId: ambulance_id
-  });
+  // Use the RPC for more robust calculation
+  try {
+    const { data, error } = await supabase.rpc('calculate_emergency_cost', {
+      p_service_type: service_type,
+      p_hospital_id: hospital_id,
+      p_ambulance_id: ambulance_id,
+      p_room_id: room_id
+    });
 
-  totalCost = priceObj.base_price;
-  breakdown.push({
-    name: service_type === 'ambulance' ? 'Emergency Ride' : 'Bed Reservation',
-    price: priceObj.base_price,
-    source: priceObj.source
-  });
+    if (error) throw error;
+    const cost = data[0];
 
-  return {
-    totalCost,
-    breakdown,
-    currency: priceObj.currency
-  };
+    return {
+      totalCost: parseFloat(cost.total_cost),
+      breakdown: cost.breakdown,
+      currency: 'USD',
+      base_cost: parseFloat(cost.base_cost),
+      distance_surcharge: parseFloat(cost.distance_surcharge),
+      urgency_surcharge: parseFloat(cost.urgency_surcharge)
+    };
+  } catch (err) {
+    console.error('[pricingService] Error calculating cost via RPC:', err);
+    // Fallback to simpler logic or mocks
+    const priceObj = await getEffectivePrice(service_type, {
+      hospitalId: hospital_id,
+      ambulanceId: ambulance_id
+    });
+
+    totalCost = priceObj.base_price;
+    breakdown.push({
+      name: service_type === 'ambulance' ? 'Emergency Ride' : 'Bed Reservation',
+      price: priceObj.base_price,
+      source: priceObj.source
+    });
+
+    return {
+      totalCost,
+      breakdown,
+      currency: priceObj.currency
+    };
+  }
 }
 
 /**
