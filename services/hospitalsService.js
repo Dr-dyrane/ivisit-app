@@ -54,6 +54,7 @@ export const hospitalsService = {
 			importStatus: h.import_status,
 			importedFromGoogle: h.imported_from_google || false,
 			orgAdminId: h.org_admin_id,
+			organizationId: h.organization_id,
 			// Computed UI helpers
 			isCovered: h.verified === true && h.status === 'available',
 			isGoogleOnly: h.google_only || h.import_status === 'google_only' || false

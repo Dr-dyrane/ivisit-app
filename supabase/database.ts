@@ -2129,7 +2129,7 @@ export type Database = {
       confirm_cash_payment: { Args: { p_payment_id: string }; Returns: Json }
       current_user_is_admin: { Args: never; Returns: boolean }
       delete_user: { Args: never; Returns: undefined }
-      delete_user_by_admin: { Args: { user_id: string }; Returns: undefined }
+      delete_user_by_admin: { Args: { target_user_id: string }; Returns: undefined }
       disablelongtransactions: { Args: never; Returns: string }
       discharge_patient: { Args: { request_uuid: string }; Returns: boolean }
       dropgeometrycolumn:

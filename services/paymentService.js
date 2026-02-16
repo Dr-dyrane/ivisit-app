@@ -583,7 +583,7 @@ export const paymentService = {
     try {
       const { data, error } = await supabase.rpc('check_cash_eligibility', {
         p_organization_id: organizationId,
-        p_amount: estimatedAmount
+        p_estimated_amount: estimatedAmount
       });
 
       if (error) throw error;

@@ -22,6 +22,7 @@ import ProviderDetailsModal from "../components/visits/book-visit/ProviderDetail
 import DateTimeSelection from "../components/visits/book-visit/DateTimeSelection";
 import BookingSummary from "../components/visits/book-visit/BookingSummary";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import { useLocalSearchParams } from "expo-router";
 
 export default function BookVisitScreen() {
 	const { isDarkMode } = useTheme();
@@ -29,6 +30,7 @@ export default function BookVisitScreen() {
 	const { setHeaderState } = useHeaderState();
 	const { resetTabBar } = useTabBarVisibility();
 	const { resetHeader } = useScrollAwareHeader();
+	const params = useLocalSearchParams();
 
 	const {
 		step,
@@ -57,7 +59,7 @@ export default function BookVisitScreen() {
 		handleSelectTime,
 		handleConfirmDateTime,
 		handleBookVisit,
-	} = useBookVisit();
+	} = useBookVisit({ initialData: params });
 
 	const colors = {
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",

@@ -5,7 +5,8 @@
 CREATE OR REPLACE FUNCTION public.calculate_emergency_cost(
     p_service_type TEXT,
     p_distance DECIMAL DEFAULT 0,
-    p_is_urgent BOOLEAN DEFAULT false
+    p_is_urgent BOOLEAN DEFAULT false,
+    p_hospital_id UUID DEFAULT NULL
 )
 RETURNS TABLE (
     base_cost DECIMAL,
@@ -25,12 +26,13 @@ DECLARE
     v_breakdown JSONB := '[]'::jsonb;
     v_service_name TEXT;
 BEGIN
-    -- 1. Determine Base Cost
-    -- Try to look up from database first
+    -- 1. Determine Base Cost (Hierarchy: Hospital Override > Global > Fallback)
     SELECT base_price, service_name INTO v_base_cost, v_service_name
     FROM service_pricing
-    WHERE service_type = p_service_type AND is_active = true
-    ORDER BY base_price DESC -- Pick the highest/standard one if multiple match (e.g. ALS vs Basic)
+    WHERE service_type = p_service_type 
+      AND is_active = true
+      AND (hospital_id = p_hospital_id OR hospital_id IS NULL)
+    ORDER BY (hospital_id IS NOT NULL AND hospital_id = p_hospital_id) DESC, hospital_id DESC NULLS LAST
     LIMIT 1;
 
     -- Fallback/Overrides to match Mock Logic if DB is empty or value too low for testing

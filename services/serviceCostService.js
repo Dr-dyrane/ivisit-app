@@ -12,7 +12,7 @@ export const serviceCostService = {
   async getServiceCosts() {
     try {
       const { data, error } = await supabase
-        .from('service_costs')
+        .from('service_pricing')
         .select('*')
         .eq('is_active', true);
 
@@ -29,18 +29,19 @@ export const serviceCostService = {
    */
   async calculateEmergencyCost(serviceType, options = {}) {
     try {
-      const { distance = 0, isUrgent = false } = options;
-      
+      const { distance = 0, isUrgent = false, hospitalId = null } = options;
+
       // Call the database function
       const { data, error } = await supabase
         .rpc('calculate_emergency_cost', {
           p_service_type: serviceType,
           p_distance: distance,
-          p_is_urgent: isUrgent
+          p_is_urgent: isUrgent,
+          p_hospital_id: hospitalId
         });
 
       if (error) throw error;
-      
+
       return data[0];
     } catch (error) {
       console.error('Error calculating emergency cost:', error);
@@ -125,7 +126,8 @@ export const serviceCostService = {
         requestData.service_type,
         {
           distance: requestData.distance || 0,
-          isUrgent: requestData.is_urgent || false
+          isUrgent: requestData.is_urgent || false,
+          hospitalId: requestData.hospital_id || null
         }
       );
 

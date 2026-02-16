@@ -6,6 +6,9 @@ import { format, startOfToday, addDays } from "date-fns";
 import { useVisits } from "../../contexts/VisitsContext";
 import { VISIT_STATUS, VISIT_TYPES } from "../../constants/visits";
 import { useHospitals } from "../../hooks/emergency/useHospitals";
+import { serviceCostService } from "../../services/serviceCostService";
+import { paymentService } from "../../services/paymentService";
+import { useAuth } from "../../contexts/AuthContext";
 
 export const STEPS = {
 	SERVICE: 0,
@@ -17,7 +20,7 @@ export const STEPS = {
 
 // Mock doctors database (could be moved to a service or constant file)
 export const DOCTOR_NAMES = [
-	"Dr. Sarah Wilson", "Dr. James Chen", "Dr. Emily Rodriguez", 
+	"Dr. Sarah Wilson", "Dr. James Chen", "Dr. Emily Rodriguez",
 	"Dr. Michael Chang", "Dr. Lisa Thompson", "Dr. David Kim",
 	"Dr. Rachel Foster", "Dr. Robert Patel"
 ];
@@ -29,22 +32,31 @@ export const TIME_SLOTS = [
 	"04:00 PM", "04:30 PM"
 ];
 
-export function useBookVisit() {
+export function useBookVisit(props = {}) {
+	const { initialData = {} } = props;
+	const { user } = useAuth();
 	const router = useRouter();
 	const { addVisit } = useVisits();
 	const { hospitals } = useHospitals();
 
+	const safeParse = (val) => {
+		if (!val) return null;
+		if (typeof val === 'object') return val;
+		try { return JSON.parse(val); } catch (e) { return val; }
+	};
+
 	// Wizard State
-	const [step, setStep] = useState(STEPS.SERVICE);
+	const [step, setStep] = useState(initialData.step ? parseInt(initialData.step) : STEPS.SERVICE);
 	const [bookingData, setBookingData] = useState({
-		type: null, // 'clinic' | 'telehealth'
-		specialty: null,
-		hospital: null,
-		doctor: null,
-		date: null,
-		time: null,
-		notes: "",
+		type: initialData.type || null, // 'clinic' | 'telehealth'
+		specialty: initialData.specialty || null,
+		hospital: safeParse(initialData.hospital),
+		doctor: safeParse(initialData.doctor),
+		date: initialData.date ? new Date(initialData.date) : null,
+		time: initialData.time || null,
+		notes: initialData.notes || "",
 	});
+	const [cost, setCost] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	// Modal States
@@ -83,7 +95,7 @@ export function useBookVisit() {
 	// Back button logic with proper step navigation
 	const handleBack = useCallback(() => {
 		Haptics.selectionAsync();
-		
+
 		if (step === STEPS.SERVICE) {
 			// First step - go back to previous screen
 			router.back();
@@ -186,21 +198,48 @@ export function useBookVisit() {
 
 	const handleSelectDate = useCallback((date) => updateData('date', date), [updateData]);
 	const handleSelectTime = useCallback((time) => updateData('time', time), [updateData]);
-	
-	const handleConfirmDateTime = useCallback(() => {
+
+	const handleConfirmDateTime = useCallback(async () => {
 		if (bookingData.date && bookingData.time) {
 			goToStep(STEPS.SUMMARY);
+
+			// Fetch real cost for summary
+			try {
+				const costData = await serviceCostService.calculateEmergencyCost(
+					'consultation',
+					{
+						hospitalId: bookingData.hospital?.id,
+						isUrgent: false
+					}
+				);
+				setCost(costData);
+			} catch (err) {
+				console.error("Failed to fetch cost", err);
+			}
 		} else {
 			Alert.alert("Required", "Please select both a date and time.");
 		}
-	}, [bookingData.date, bookingData.time, goToStep]);
+	}, [bookingData.date, bookingData.time, bookingData.hospital?.id, goToStep]);
 
 	// --- Step 5: Final Submission ---
 	const handleBookVisit = useCallback(async () => {
 		try {
 			setIsSubmitting(true);
+
+			// Financial Guardrail: Check Cash Eligibility if needed
+			if (bookingData.hospital?.organizationId && cost?.total_cost) {
+				const isEligible = await paymentService.checkCashEligibility(
+					bookingData.hospital.organizationId,
+					cost.total_cost
+				);
+
+				if (!isEligible) {
+					throw new Error("Financial guardrail: Organization not eligible for cash payment collateral.");
+				}
+			}
+
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			
+
 			const id = `visit_${Date.now()}`;
 			const visit = {
 				id,
@@ -218,13 +257,14 @@ export function useBookVisit() {
 				notes: bookingData.notes || (bookingData.type === 'telehealth' ? "Virtual consult." : "In-person appointment."),
 				estimatedDuration: bookingData.type === 'telehealth' ? "20 mins" : "45 mins",
 				meetingLink: bookingData.type === 'telehealth' ? "https://telehealth.ivisit.com/room/demo" : null,
+				cost: cost?.total_cost ? `$${cost.total_cost.toFixed(2)}` : null
 			};
 
 			await addVisit(visit);
-			
+
 			// Replace with visit details
 			router.replace(`/(user)/(stacks)/visit/${id}`);
-			
+
 		} catch (error) {
 			console.error("Booking failed", error);
 			Alert.alert("Error", "Failed to book visit. Please try again.");
@@ -249,7 +289,7 @@ export function useBookVisit() {
 		providerModalVisible,
 		setProviderModalVisible,
 		selectedProvider,
-		
+
 		handleBack,
 		handleSelectService,
 		handleSelectSpecialty,

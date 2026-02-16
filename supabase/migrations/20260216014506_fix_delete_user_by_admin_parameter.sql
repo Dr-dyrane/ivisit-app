@@ -1,5 +1,8 @@
--- Migration: Add delete_user_by_admin RPC
--- Description: Allows admin users to delete ANY user from auth.users (which cascades to public.profiles)
+-- Fix delete_user_by_admin RPC function parameter name
+-- Change from 'user_id' to 'target_user_id' to match API calls
+
+-- Drop and recreate the function with correct parameter name
+DROP FUNCTION IF EXISTS public.delete_user_by_admin(uuid);
 
 CREATE OR REPLACE FUNCTION public.delete_user_by_admin(target_user_id uuid)
 RETURNS void

@@ -151,13 +151,49 @@ export default function VisitDetailsScreen() {
 								<Text style={[styles.actionBtnText, { color: textColor }]}>Call Clinic</Text>
 							</Pressable>
 
+							{/* BOOK FOLLOW UP */}
+							<Pressable
+								onPress={() => {
+									router.push({
+										pathname: "/(user)/(stacks)/book-visit",
+										params: {
+											type: 'clinic',
+											specialty: visit.specialty,
+											hospital: JSON.stringify({
+												id: visit.hospitalId, // Assuming visit has hospitalId, if not we rely on name lookup or update logic 
+												// Actually visit object structure in app might not have ID if normalized.
+												// Let's assume we pass what we have. 
+												name: visit.hospital,
+												address: visit.address,
+												image: visit.image,
+												phone: visit.phone
+											}),
+											// doctor: JSON.stringify({ name: visit.doctor, image: visit.doctorImage }), // Optional to pre-select doctor
+											step: 1 // Skip Service Type
+										}
+									});
+								}}
+								style={({ pressed }) => [
+									styles.actionBtn,
+									{
+										backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "#F8FAFC",
+										opacity: pressed ? 0.7 : 1,
+										borderColor: COLORS.brandPrimary,
+										borderWidth: 1
+									}
+								]}
+							>
+								<Ionicons name="calendar" size={20} color={COLORS.brandPrimary} />
+								<Text style={[styles.actionBtnText, { color: textColor }]}>Book Again</Text>
+							</Pressable>
+
 							{visit?.meetingLink && (
 								<Pressable
 									onPress={() => Linking.openURL(visit.meetingLink)}
 									style={({ pressed }) => [
-										styles.actionBtn, 
-										{ 
-											backgroundColor: COLORS.brandPrimary, 
+										styles.actionBtn,
+										{
+											backgroundColor: COLORS.brandPrimary,
 											opacity: pressed ? 0.9 : 1,
 											shadowColor: COLORS.brandPrimary,
 											shadowOffset: { width: 0, height: 8 },
@@ -188,13 +224,13 @@ export default function VisitDetailsScreen() {
 
 						{/* CANCEL ACTION */}
 						{visit?.status === "upcoming" && (
-							<Pressable 
-								onPress={() => Alert.alert("Cancel Visit", "Are you sure?")} 
+							<Pressable
+								onPress={() => Alert.alert("Cancel Visit", "Are you sure?")}
 								style={({ pressed }) => [
 									styles.cancelButton,
-									{ 
+									{
 										backgroundColor: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "#FEF2F2",
-										opacity: pressed ? 0.7 : 1 
+										opacity: pressed ? 0.7 : 1
 									}
 								]}
 							>
