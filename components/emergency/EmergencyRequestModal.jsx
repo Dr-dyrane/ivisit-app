@@ -87,6 +87,16 @@ const EmergencyRequestModal = React.memo(({
 		}
 	}, [requestHospital?.phone, requestHospital?.google_phone, showToast]);
 
+	const handleStepPress = useCallback((idx) => {
+		if (idx >= currentStepIndex || isRequesting) return;
+
+		// Haptic feedback
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+		if (idx === 0) setRequestStep("select");
+		if (idx === 1) setRequestStep("payment");
+	}, [currentStepIndex, isRequesting]);
+
 	// Calculate cost whenever selection changes
 	useEffect(() => {
 		let isMounted = true;
@@ -519,26 +529,68 @@ const EmergencyRequestModal = React.memo(({
 				{/* Step Indicator */}
 				{!requestData?.success && (
 					<View style={styles.stepIndicatorContainer}>
-						{steps.map((step, idx) => (
-							<React.Fragment key={idx}>
-								<View style={styles.stepWrapper}>
-									<View style={[
-										styles.stepDot,
-										{ backgroundColor: idx === currentStepIndex ? COLORS.brandPrimary : idx < currentStepIndex ? COLORS.success : 'rgba(255,255,255,0.1)' }
-									]}>
-										{idx < currentStepIndex ? (
-											<Ionicons name="checkmark" size={12} color="#FFF" />
-										) : (
-											<Text style={[styles.stepText, { color: idx === currentStepIndex ? '#FFF' : requestColors.textMuted }]}>{idx + 1}</Text>
+						{steps.map((step, idx) => {
+							const isPast = idx < currentStepIndex;
+							const isActive = idx === currentStepIndex;
+							const isInteractive = isPast && !isRequesting;
+
+							return (
+								<React.Fragment key={idx}>
+									<Pressable
+										onPress={() => handleStepPress(idx)}
+										disabled={!isInteractive}
+										style={({ pressed }) => [
+											styles.stepWrapper,
+											pressed && isInteractive && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+										]}
+									>
+										<View style={[
+											styles.stepDot,
+											{
+												backgroundColor: isActive
+													? COLORS.brandPrimary
+													: isPast
+														? COLORS.success
+														: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
+											},
+											isInteractive && {
+												// Subtle glass effect for interactive steps
+												backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)',
+												borderWidth: 1,
+												borderColor: COLORS.success,
+											}
+										]}>
+											{isPast ? (
+												<Ionicons name="checkmark" size={12} color={isInteractive ? COLORS.success : "#FFF"} />
+											) : (
+												<Text style={[styles.stepText, { color: isActive ? '#FFF' : requestColors.textMuted }]}>
+													{idx + 1}
+												</Text>
+											)}
+										</View>
+										<Text style={[
+											styles.stepLabel,
+											{
+												color: isActive ? requestColors.text : isPast ? COLORS.success : requestColors.textMuted,
+												fontWeight: isActive ? "800" : "600",
+												opacity: isActive || isPast ? 1 : 0.5
+											}
+										]}>
+											{step}
+										</Text>
+										{isInteractive && (
+											<View style={styles.interactiveIndicator} />
 										)}
-									</View>
-									<Text style={[styles.stepLabel, { color: idx === currentStepIndex ? requestColors.text : requestColors.textMuted }]}>{step}</Text>
-								</View>
-								{idx < steps.length - 1 && (
-									<View style={[styles.stepLine, { backgroundColor: idx < currentStepIndex ? COLORS.success : 'rgba(255,255,255,0.05)' }]} />
-								)}
-							</React.Fragment>
-						))}
+									</Pressable>
+									{idx < steps.length - 1 && (
+										<View style={[
+											styles.stepLine,
+											{ backgroundColor: idx < currentStepIndex ? COLORS.success : 'rgba(255,255,255,0.05)' }
+										]} />
+									)}
+								</React.Fragment>
+							);
+						})}
 					</View>
 				)}
 				{requestStep === "select" ? (
@@ -720,14 +772,6 @@ const EmergencyRequestModal = React.memo(({
 				) : requestStep === "payment" ? (
 					<>
 						<View style={styles.paymentContainer}>
-							<Pressable
-								onPress={() => setRequestStep("select")}
-								style={styles.backButton}
-							>
-								<Ionicons name="arrow-back" size={20} color={requestColors.text} />
-								<Text style={{ color: requestColors.text, fontWeight: "600" }}>Back to selection</Text>
-							</Pressable>
-
 							<Text
 								style={{
 									fontSize: 12,
@@ -910,18 +954,26 @@ const styles = StyleSheet.create({
 		fontWeight: '800',
 	},
 	stepLabel: {
-		fontSize: 8,
+		fontSize: 10,
 		fontWeight: '700',
 		textTransform: 'uppercase',
 		letterSpacing: 0.5,
 	},
 	stepLine: {
 		height: 2,
-		flex: 1,
+		width: 30,
 		marginHorizontal: 8,
 		borderRadius: 1,
-		marginBottom: 12,
+		marginTop: -16, // Adjusted for the interactive indicator
 	},
+	interactiveIndicator: {
+		position: 'absolute',
+		bottom: -6,
+		width: 4,
+		height: 4,
+		borderRadius: 2,
+		backgroundColor: COLORS.success,
+	}
 });
 
 export default EmergencyRequestModal;
