@@ -96,10 +96,10 @@ export async function getEffectivePrice(type, { hospitalId = null, ambulanceId =
 
 /**
  * Calculate total emergency cost for a request
- * @param {Object} requestData - { hospital_id, ambulance_id, service_type, room_id }
+ * @param {Object} requestData - { hospital_id, ambulance_id, service_type, room_id, distance, is_urgent }
  */
 export async function calculateEmergencyCost(requestData) {
-  const { hospital_id, ambulance_id, service_type, room_id = null } = requestData;
+  const { hospital_id, ambulance_id, service_type, room_id = null, distance = 0, is_urgent = false } = requestData;
   let totalCost = 0;
   const breakdown = [];
 
@@ -109,7 +109,9 @@ export async function calculateEmergencyCost(requestData) {
       p_service_type: service_type,
       p_hospital_id: hospital_id,
       p_ambulance_id: ambulance_id,
-      p_room_id: room_id
+      p_room_id: room_id,
+      p_distance: distance || 0,
+      p_is_urgent: is_urgent || false
     });
 
     if (error) throw error;
