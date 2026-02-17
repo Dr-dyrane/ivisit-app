@@ -107,7 +107,71 @@ export const emergencyRequestsService = {
         };
 
         if (user) {
-            // Insert into Supabase with Client-Side UUID
+            // NEW FLOW: Atomic Creation with Payment
+            // If we have payment method and cost, we use the robust RPC
+            if (request.paymentMethodId || request.payment_method_id) {
+                const method = request.paymentMethodId || request.payment_method_id;
+                // Map 'cash' keyword or UUIDs
+                const isCash = method === 'cash' || (typeof method === 'string' && method.toLowerCase().includes('cash'));
+
+                // Determine amounts
+                // If total_cost is passed, we use it. If base_cost is missing, we re-derive or default.
+                const total = parseFloat(request.total_cost || request.totalCost || 0);
+                const base = parseFloat(request.base_cost || request.baseCost || (total / 1.025)); // Estimate if missing
+
+                console.log('[emergencyRequestsService] Creating paid request via RPC:', {
+                    method, isCash, total, base, displayId,
+                    hospitalId: request.hospitalId
+                });
+
+                const { data, error } = await supabase.rpc('create_emergency_with_payment', {
+                    p_user_id: user.id,
+                    p_request_data: {
+                        hospital_id: request.hospitalId,
+                        service_type: request.serviceType,
+                        specialty: request.specialty,
+                        patient_location: request.patientLocation,
+                        patient_snapshot: request.patient,
+                        request_id: displayId,
+                    },
+                    p_payment_data: {
+                        method: isCash ? 'cash' : 'card',
+                        total_amount: total,  // V2 RPC expects total_amount
+                        base_amount: base,
+                        currency: 'USD',
+                    }
+                });
+
+                if (error) {
+                    console.error('[emergencyRequestsService] RPC Creation Failed:', error);
+                    throw error;
+                }
+
+                if (!data.success) {
+                    console.error('[emergencyRequestsService] RPC returned error:', data.error);
+                    throw new Error(data.error || 'Failed to create emergency request');
+                }
+
+                console.log('[emergencyRequestsService] ✅ RPC Success:', {
+                    requestId: data.request_id,
+                    paymentId: data.payment_id,
+                    displayId: data.display_id,
+                    feeDeducted: data.fee_deducted,
+                });
+
+                return {
+                    ...request,
+                    id: data.request_id, // The real UUID from DB
+                    requestId: data.display_id || displayId,
+                    paymentId: data.payment_id,
+                    createdAt: now,
+                    updatedAt: now,
+                    status: EmergencyRequestStatus.IN_PROGRESS,
+                    paymentStatus: 'completed'
+                };
+            }
+
+            // Fallback: Standard Insert (Legacy or No-Payment Flow)
             const uuid = uuidv4();
             const { data, error } = await supabase
                 .from('emergency_requests')
@@ -148,6 +212,9 @@ export const emergencyRequestsService = {
         const requestId = String(id);
         const nextUpdatedAt = new Date().toISOString();
 
+        // Detect if this is a real UUID or a display ID (e.g., AMB-449811)
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId);
+
         if (user) {
             const dbUpdates = { updated_at: nextUpdatedAt };
             if (updates.status) dbUpdates.status = updates.status;
@@ -166,27 +233,39 @@ export const emergencyRequestsService = {
             if (updates.paymentMethodId !== undefined) dbUpdates.payment_method_id = updates.paymentMethodId;
             if (updates.totalCost !== undefined) dbUpdates.total_cost = updates.totalCost;
 
-            const { error, data } = await supabase
-                .from('emergency_requests')
-                .update(dbUpdates)
-                .eq('id', requestId)
-                .eq('user_id', user.id)
-                .select();
-
-            if (error) {
-                console.error(`[emergencyRequestsService] Supabase update failed for ${requestId}:`, error);
-                throw error;
-            }
-            if (!data || data.length === 0) {
-                // Retry with request_id
-                const { error: error2, data: data2 } = await supabase
+            if (isUUID) {
+                // Try by UUID primary key first
+                const { error, data } = await supabase
                     .from('emergency_requests')
                     .update(dbUpdates)
-                    .eq('request_id', requestId)
+                    .eq('id', requestId)
                     .eq('user_id', user.id)
                     .select();
 
-                if (error2) throw error2;
+                if (error) {
+                    console.error(`[emergencyRequestsService] Update failed for UUID ${requestId}:`, error);
+                    throw error;
+                }
+                if (data && data.length > 0) return { id: requestId, ...updates, updatedAt: nextUpdatedAt };
+            }
+
+            // Fallback: try by request_id (display ID column, TEXT type)
+            console.log(`[emergencyRequestsService] Trying update by request_id: ${requestId}`);
+            const { error: error2, data: data2 } = await supabase
+                .from('emergency_requests')
+                .update(dbUpdates)
+                .eq('request_id', requestId)
+                .eq('user_id', user.id)
+                .select();
+
+            if (error2) {
+                console.error(`[emergencyRequestsService] Update by request_id also failed for ${requestId}:`, error2);
+                throw error2;
+            }
+            if (data2 && data2.length > 0) {
+                console.log(`[emergencyRequestsService] ✅ Updated via request_id: ${requestId}`);
+            } else {
+                console.warn(`[emergencyRequestsService] No rows matched for ${requestId} (neither id nor request_id)`);
             }
         }
 

@@ -11,7 +11,6 @@ import { DispatchService } from "../../services/dispatchService";
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 import { usePaymentFlow } from "./usePaymentFlow";
 import { serviceCostService } from "../../services/serviceCostService";
-import { paymentService } from "../../services/paymentService";
 
 /**
  * 💡 STABILITY NOTE:
@@ -195,9 +194,22 @@ export const useRequestFlow = (props) => {
 					patientLocation = 'POINT(-116.9730 33.7475)';
 				}
 
+				// Determine payment method for atomic RPC
+				const paymentMethodId = request?.paymentMethod?.id ||
+					(request?.paymentMethod?.is_cash ? 'cash' : null);
+
+				console.log('[useRequestFlow] 📋 Creating Emergency Request:', {
+					displayId: visitId,
+					hospitalId,
+					serviceType: request.serviceType,
+					paymentMethod: paymentMethodId,
+					totalCost: costData?.total_cost || costData?.totalCost,
+					baseCost: costData?.base_cost,
+					hasCostData: !!costData,
+				});
+
 				const createdRequest = await createRequest({
-					id: visitId,
-					requestId: visitId,
+					requestId: visitId, // Display ID (AMB-xxx)
 					serviceType: request.serviceType,
 					hospitalId,
 					hospitalName: request?.hospitalName ?? hospital?.name ?? null,
@@ -212,77 +224,36 @@ export const useRequestFlow = (props) => {
 					patient,
 					shared,
 					patientLocation,
-					// Cost and Payment information
+					// Cost and Payment information (used by atomic RPC)
 					...(costData && {
 						base_cost: costData.base_cost,
 						distance_surcharge: costData.distance_surcharge,
 						urgency_surcharge: costData.urgency_surcharge,
-						total_cost: costData.total_cost,
+						total_cost: costData.total_cost ?? costData.totalCost,
+						totalCost: costData.totalCost ?? costData.total_cost,
 						cost_breakdown: costData.breakdown,
 						payment_status: 'pending',
-						payment_method_id: request?.paymentMethod?.id || null
-					})
+					}),
+					// Payment method — triggers atomic RPC path in emergencyRequestsService
+					payment_method_id: paymentMethodId,
+					paymentMethodId: paymentMethodId,
 				});
 
-				// 💰 EXECUTE PAYMENT (Cash/Wallet) - V2 Logic (Fee Deduction)
-				if (request?.paymentMethod?.is_cash && createdRequest?.id && hospital) {
-					const orgId = hospital.organization_id || hospital.organizationId;
-					if (orgId) {
-						try {
-							console.log('[useRequestFlow] 💸 Processing Cash Payment V2 for Request:', createdRequest.id);
-							await paymentService.processCashPayment(
-								createdRequest.id, // Real UUID from DB
-								orgId,
-								costData?.total_cost || 0
-							);
-							console.log('[useRequestFlow] ✅ Cash Payment Fee Deducted & Recorded');
-						} catch (payErr) {
-							console.error('[useRequestFlow] ⚠️ Cash Payment Recording Failed:', payErr);
-							// Non-blocking: Request is created, but fee deduction failed. Admin audit required.
-						}
-					} else {
-						console.warn('[useRequestFlow] ⚠️ Cannot process cash payment: Missing Organization ID');
-					}
-				}
+				// 🔑 CRITICAL: Use the REAL UUID from the DB, not the display ID
+				const realId = createdRequest?.id || visitId;
+				const displayId = createdRequest?.requestId || visitId;
 
-				await addVisit({
-					id: visitId,
-					visitId,
-					requestId: visitId,
-					hospitalId: String(hospitalId),
-					hospital: request?.hospitalName ?? hospital?.name ?? "Hospital",
-					doctor:
-						request.serviceType === "ambulance"
-							? "Ambulance Dispatch"
-							: "Admissions Desk",
-					specialty:
-						request.serviceType === "ambulance"
-							? "Emergency Response"
-							: request?.specialty ?? selectedSpecialty ?? "General Care",
-					date,
-					time,
-					type:
-						request.serviceType === "ambulance"
-							? VISIT_TYPES.AMBULANCE_RIDE
-							: VISIT_TYPES.BED_BOOKING,
-					status: VISIT_STATUS.IN_PROGRESS,
-					lifecycleState: EMERGENCY_VISIT_LIFECYCLE.INITIATED,
-					lifecycleUpdatedAt: nowIso,
-					image: hospital?.image ?? null,
-					address: hospital?.address ?? null,
-					phone: hospital?.phone ?? null,
-					notes:
-						request.serviceType === "ambulance"
-							? "Ambulance requested via iVisit."
-							: "Bed reserved via iVisit.",
-					roomNumber:
-						request?.serviceType === "bed" ? request?.bedNumber ?? null : null,
-					estimatedDuration:
-						request?.serviceType === "bed"
-							? request?.estimatedArrival ?? null
-							: null,
+				console.log('[useRequestFlow] ✅ Request Created:', {
+					realId,
+					displayId,
+					paymentStatus: createdRequest?.paymentStatus,
+					isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(realId),
 				});
-				return { ok: true, requestId: visitId, serviceType: request.serviceType };
+
+				// 🏥 Visit is NOW created by backend trigger (sync_emergency_to_history)
+				// No frontend addVisit() needed — eliminates RLS and UUID errors.
+
+				return { ok: true, requestId: realId, displayId, serviceType: request.serviceType };
 			} catch (err) {
 				inflightByTypeRef.current[request.serviceType] = false;
 				const code = err?.code ?? null;

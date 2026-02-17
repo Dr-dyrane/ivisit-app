@@ -152,12 +152,54 @@ const EmergencyRequestModal = React.memo(({
 				// Validate UUIDs to prevent "invalid input syntax" RPC errors
 				const isValidUUID = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-				const cost = await calculateEmergencyCost({
-					hospital_id: requestHospital.id,
-					ambulance_id: isValidUUID(selectedAmbulanceType?.id) ? selectedAmbulanceType.id : null,
-					room_id: isValidUUID(selectedRoomId) ? selectedRoomId : null,
-					service_type: serviceType
-				});
+				// Fetch cost from RPC and org fee in parallel
+				const [cost, orgFee] = await Promise.all([
+					calculateEmergencyCost({
+						hospital_id: requestHospital.id,
+						ambulance_id: isValidUUID(selectedAmbulanceType?.id) ? selectedAmbulanceType.id : null,
+						room_id: isValidUUID(selectedRoomId) ? selectedRoomId : null,
+						service_type: serviceType
+					}),
+					paymentService.getOrganizationFee(requestHospital.id)
+				]);
+
+				// Ensure service fee is in the breakdown
+				// The RPC should include it, but if not (stale schema), inject it client-side
+				let breakdown = cost.breakdown || [];
+				const hasFeeInBreakdown = Array.isArray(breakdown) && breakdown.some(
+					item => item.type === 'fee' || item.name?.toLowerCase().includes('service fee')
+				);
+
+				if (!hasFeeInBreakdown && orgFee) {
+					const feeRate = orgFee.feePercentage / 100;
+					const baseCost = cost.base_cost || cost.totalCost || 0;
+					const feeAmount = parseFloat((baseCost * feeRate).toFixed(2));
+
+					console.log('[EmergencyRequestModal] Injecting service fee into breakdown:', {
+						feeRate: `${orgFee.feePercentage}%`,
+						baseCost,
+						feeAmount,
+						orgName: orgFee.orgName,
+					});
+
+					breakdown = [
+						...breakdown,
+						{
+							name: `Service Fee (${orgFee.feePercentage}%)`,
+							cost: feeAmount,
+							type: 'fee'
+						}
+					];
+
+					// Update total to include the fee
+					cost.totalCost = (cost.totalCost || 0) + feeAmount;
+					cost.service_fee = feeAmount;
+				}
+
+				// Attach org fee metadata for use in payment flow
+				cost.breakdown = breakdown;
+				cost.orgFee = orgFee;
+
 				if (isMounted) setEstimatedCost(cost);
 			} catch (error) {
 				console.error("Error calculating estimated cost:", error);
@@ -360,6 +402,14 @@ const EmergencyRequestModal = React.memo(({
 					setIsRequesting(false);
 					return;
 				}
+
+				// 🔑 CRITICAL: Capture the real UUID from the hook result
+				// This replaces the display ID (AMB-xxx) with the actual DB UUID
+				if (result?.requestId) {
+					console.log('[EmergencyRequestModal] ✅ Real ID received:', result.requestId, '(display:', initiated.requestId, ')');
+					initiated._realId = result.requestId;
+					initiated._displayId = result.displayId || initiated.requestId;
+				}
 			}
 		} catch (error) {
 			console.error("Error in onRequestInitiated callback:", error);
@@ -377,11 +427,15 @@ const EmergencyRequestModal = React.memo(({
 					? hospitalEta
 					: null) ?? "8 mins";
 
+			// Use real UUID for all downstream operations, display ID for UI
+			const realRequestId = initiated._realId || initiated.requestId;
+
 			const next =
 				mode === "booking"
 					? {
 						success: true,
-						requestId: initiated.requestId,
+						requestId: realRequestId,
+						displayId: initiated._displayId || initiated.requestId,
 						estimatedArrival: waitTime ?? "15 mins",
 						hospitalId: initiated.hospitalId,
 						hospitalName: initiated.hospitalName,
@@ -394,7 +448,8 @@ const EmergencyRequestModal = React.memo(({
 					}
 					: {
 						success: true,
-						requestId: initiated.requestId,
+						requestId: realRequestId,
+						displayId: initiated._displayId || initiated.requestId,
 						hospitalId: initiated.hospitalId,
 						hospitalName: initiated.hospitalName,
 						ambulanceType: initiated.ambulanceType,
@@ -820,6 +875,7 @@ const EmergencyRequestModal = React.memo(({
 									onMethodSelect={setSelectedPaymentMethod}
 									cost={estimatedCost}
 									hospitalId={requestHospital?.id}
+									organizationId={estimatedCost?.orgFee?.organizationId}
 								/>
 							</View>
 						</View>

@@ -156,6 +156,26 @@ The emergency payment flow is now **production-ready** with:
 - Visit creation: ✅ Automatic synchronization working
 - Error handling: ✅ Comprehensive validation and fallbacks
 
+## 🔄 Addendum: Atomic Payment Flow Refactor (Task 8)
+
+### Refactoring to "Pay-Then-Create" Model
+
+Based on production requirements for guaranteed payment before dispatch:
+
+1.  **Atomic RPC Implementation**: Created `create_emergency_with_payment` RPC.
+    -   Validates payment method (Cash Balance / Card Token).
+    -   Process financial transaction (Deduct Fee / Record Charge).
+    -   **Only then** creates the `emergency_requests` record.
+    -   Ensures 0% chance of "unpaid" active emergency requests.
+
+2.  **Transparent Pricing**:
+    -   Updated `calculate_emergency_cost` to explicitly include 2.5% Service Fee in breakdown.
+    -   Frontend now displays: `Base Price + Distance/Urgency + Service Fee = Total`.
+
+3.  **Frontend Integration**:
+    -   Updated `emergencyRequestsService.js` to use the atomic RPC when payment details are present.
+    -   Updated `pricingService.js` to expose the service fee field.
+
 ## 🏆 Final Status
 
 **EMERGENCY PAYMENT FLOW: PRODUCTION READY** ✅
@@ -164,4 +184,64 @@ All original issues have been systematically resolved through task-based impleme
 
 ---
 
-*This audit and implementation represents a complete transformation from a broken demo system to a production-ready emergency medical service platform.*
+## 🔧 Addendum: Sustainable Architecture V2 (Feb 17, 2026)
+
+### Root Cause Analysis
+
+Three critical bugs were identified in the V1 implementation:
+
+| Bug | Cause | Impact |
+|-----|-------|--------|
+| `"AMB-449811" is not a UUID` | `useRequestFlow` used display ID for all DB operations | Crashes on visit creation, cancel, complete |
+| `visits RLS policy violation` | Frontend `addVisit()` inserted directly, bypassing RLS context | Visit creation fails for authenticated users |
+| `Fee not shown in modal` | Two overloaded RPCs confused PostgREST | Cost calculation silently failed |
+
+### Architectural Fix: "Payment Stub → Emergency → Link Back"
+
+```
+Step 1: Create PAYMENT record        → user_id, org_id, amount (emergency_request_id = NULL)
+Step 2: Process fee (if cash)         → Deduct from org wallet, credit platform
+Step 3: Create EMERGENCY REQUEST      → Gets real UUID
+Step 4: Link payment to emergency     → UPDATE payments SET emergency_request_id = UUID
+Step 5: Visit created by DB trigger   → sync_emergency_to_history fires on INSERT
+```
+
+### Changes Made
+
+1. **`create_emergency_with_payment` V2 RPC** (`20260217083000`)
+   - Creates payment stub first (no FK violation)
+   - Processes fee atomically
+   - Creates emergency request
+   - Links payment back to emergency
+
+2. **`calculate_emergency_cost` Fixed** (`20260217082000`)
+   - Dropped old 5-param overload
+   - Single canonical 6-param version with service fee in breakdown
+   - Breakdown includes: Base Service, Distance Surcharge, Urgency Surcharge, Service Fee (2.5%)
+
+3. **Backend-Automated Visit Creation** (`20260217084000`)
+   - `sync_emergency_to_history` trigger fires on both INSERT and UPDATE
+   - Frontend `addVisit()` removed entirely from `useRequestFlow`
+   - Eliminates RLS violations and UUID type mismatches
+
+4. **UUID Propagation Fix**
+   - `useRequestFlow.handleRequestInitiated` now uses `createdRequest.id` (real UUID)
+   - `EmergencyRequestModal` captures real UUID from hook result
+   - All downstream operations (cancel, complete, update) use real UUID
+
+5. **Removed Redundant Client-Side Payment**
+   - `paymentService.processCashPayment()` no longer called from frontend
+   - Fee processing handled atomically inside the RPC
+
+### Data Integrity Guarantees
+
+- **No orphan payments**: Payment exists before emergency request; linked after creation
+- **No orphan visits**: Trigger creates visit on emergency request INSERT
+- **No UUID/TEXT mismatch**: Real UUIDs flow through entire client chain
+- **FK constraint respected**: `payments.emergency_request_id` stays NULL until emergency exists
+- **Atomic fee processing**: Wallet deductions happen inside same transaction as record creation
+
+---
+
+*This document tracks the complete evolution from broken demo → V1 atomic flow → V2 sustainable architecture.*
+

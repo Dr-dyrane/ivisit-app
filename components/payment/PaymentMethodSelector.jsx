@@ -28,6 +28,7 @@ const PaymentMethodSelector = ({
   onMethodSelect,
   cost,
   hospitalId = null,
+  organizationId = null,
   showAddButton = true,
   isManagementMode = false,
   refreshTrigger,
@@ -86,7 +87,8 @@ const PaymentMethodSelector = ({
       if (hospitalId && cost?.totalCost > 0) {
         setCheckingCash(true);
         try {
-          const eligible = await paymentService.checkCashEligibility(hospitalId, cost.totalCost);
+          const checkId = organizationId || hospitalId;
+          const eligible = await paymentService.checkCashEligibility(checkId, cost.totalCost);
           setIsCashEligible(eligible);
         } catch (e) {
           setIsCashEligible(false);

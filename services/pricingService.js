@@ -123,7 +123,8 @@ export async function calculateEmergencyCost(requestData) {
       currency: 'USD',
       base_cost: parseFloat(cost.base_cost),
       distance_surcharge: parseFloat(cost.distance_surcharge),
-      urgency_surcharge: parseFloat(cost.urgency_surcharge)
+      urgency_surcharge: parseFloat(cost.urgency_surcharge),
+      service_fee: parseFloat(cost.service_fee || 0)
     };
   } catch (err) {
     console.error('[pricingService] Error calculating cost via RPC:', err);

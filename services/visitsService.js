@@ -6,6 +6,20 @@ import { notificationDispatcher } from "./notificationDispatcher";
 
 const TABLE = "visits";
 
+// UUID detection: prevents PostgreSQL cast errors when display IDs (AMB-xxx) are passed
+const isValidUUID = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
+
+// Helper: build the correct .eq() filter based on ID type
+const eqById = (query, id) => {
+    const strId = String(id);
+    if (isValidUUID(strId)) {
+        return query.eq('id', strId);
+    }
+    // Display ID: use request_id column (TEXT type)
+    console.log(`[visitsService] Using request_id column for non-UUID: ${strId}`);
+    return query.eq('request_id', strId);
+};
+
 let supportsExtendedEmergencyColumns = null;
 
 const isMissingColumnError = (err, column) => {
@@ -246,20 +260,22 @@ export const visitsService = {
 
         let data;
         let error;
-        ({ data, error } = await supabase
+        let updateQuery = supabase
             .from(TABLE)
-            .update(dbUpdates)
-            .eq("id", id)
+            .update(dbUpdates);
+        updateQuery = eqById(updateQuery, id);
+        ({ data, error } = await updateQuery
             .eq("user_id", user.id)
             .select());
 
         if (error && supportsExtendedEmergencyColumns !== false && shouldDisableExtendedColumns(error)) {
             supportsExtendedEmergencyColumns = false;
             const retryUpdates = stripExtendedEmergencyColumns(dbUpdates);
-            ({ data, error } = await supabase
+            let retryQuery = supabase
                 .from(TABLE)
-                .update(retryUpdates)
-                .eq("id", id)
+                .update(retryUpdates);
+            retryQuery = eqById(retryQuery, id);
+            ({ data, error } = await retryQuery
                 .eq("user_id", user.id)
                 .select());
         }
@@ -272,6 +288,11 @@ export const visitsService = {
             throw error;
         }
         if (!data || data.length === 0) {
+            // Only attempt upsert if ID is a valid UUID (can't upsert with display IDs)
+            if (!isValidUUID(id)) {
+                console.warn(`[visitsService] No visit found for display ID ${id}, skipping upsert (backend trigger handles creation)`);
+                return normalizeVisit({ id: String(id), ...dbUpdates });
+            }
             let upserted;
             let upsertError;
             ({ data: upserted, error: upsertError } = await supabase
@@ -344,10 +365,11 @@ export const visitsService = {
 
         const dbUpdates = { status: 'cancelled', updated_at: new Date().toISOString() };
 
-        const { data, error } = await supabase
+        let cancelQuery = supabase
             .from(TABLE)
-            .update(dbUpdates)
-            .eq('id', id)
+            .update(dbUpdates);
+        cancelQuery = eqById(cancelQuery, id);
+        const { data, error } = await cancelQuery
             .eq('user_id', user.id)
             .select();
 
@@ -356,6 +378,11 @@ export const visitsService = {
             throw error;
         }
         if (!data || data.length === 0) {
+            // Don't try to ensureExists with display IDs — backend trigger handles creation
+            if (!isValidUUID(id)) {
+                console.warn(`[visitsService] No visit for display ID ${id}, cancel skipped (not in DB)`);
+                return normalizeVisit({ id: String(id), status: 'cancelled' });
+            }
             const ensured = await this.ensureExists({
                 id,
                 requestId: String(id),
@@ -390,10 +417,11 @@ export const visitsService = {
 
         const dbUpdates = { status: 'completed', updated_at: new Date().toISOString() };
 
-        const { data, error } = await supabase
+        let completeQuery = supabase
             .from(TABLE)
-            .update(dbUpdates)
-            .eq('id', id)
+            .update(dbUpdates);
+        completeQuery = eqById(completeQuery, id);
+        const { data, error } = await completeQuery
             .eq('user_id', user.id)
             .select();
 
@@ -402,6 +430,10 @@ export const visitsService = {
             throw error;
         }
         if (!data || data.length === 0) {
+            if (!isValidUUID(id)) {
+                console.warn(`[visitsService] No visit for display ID ${id}, complete skipped`);
+                return normalizeVisit({ id: String(id), status: 'completed' });
+            }
             const ensured = await this.ensureExists({
                 id,
                 requestId: String(id),
