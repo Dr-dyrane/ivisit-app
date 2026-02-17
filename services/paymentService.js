@@ -576,7 +576,53 @@ export const paymentService = {
   },
 
   /**
-   * Check if an organization is eligible to accept cash payments.
+   * Process cash payment with fee deduction
+   * Deducts platform fee from organization wallet and records payment
+   */
+  async processCashPayment(emergencyRequestId, organizationId, amount, currency = 'USD') {
+    try {
+      if (!emergencyRequestId || !organizationId || !amount) {
+        throw new Error('Missing required parameters for cash payment processing');
+      }
+
+      console.log('[paymentService] Processing Cash Payment V2:', { 
+        requestId: emergencyRequestId, 
+        orgId: organizationId, 
+        amount: parseFloat(amount) 
+      });
+
+      const { data, error } = await supabase.rpc('process_cash_payment_v2', {
+        p_emergency_request_id: emergencyRequestId.toString(),
+        p_organization_id: organizationId.toString(),
+        p_amount: parseFloat(amount),
+        p_currency: currency
+      });
+
+      if (error) throw error;
+      
+      if (!data?.success) {
+        throw new Error(data?.error || 'Cash payment processing failed');
+      }
+
+      console.log('[paymentService] Cash Payment Processed:', { 
+        paymentId: data.payment_id, 
+        feeDeducted: data.fee_deducted 
+      });
+
+      return {
+        success: true,
+        paymentId: data.payment_id,
+        feeDeducted: data.fee_deducted,
+        message: data.message
+      };
+    } catch (error) {
+      console.error('[paymentService] Error processing cash payment:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Check if organization is eligible for cash payment
    * Based on their wallet balance covering the estimated platform fee.
    */
   async checkCashEligibility(organizationId, estimatedAmount) {
