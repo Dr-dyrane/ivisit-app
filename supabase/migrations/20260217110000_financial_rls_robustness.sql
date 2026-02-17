@@ -4,6 +4,14 @@
 -- 2. Ensure Org Admins see their own wallet and ledger
 -- 3. Standardize organization_id tracking in ledger
 
+-- 0. Helper Function for RLS (Must be defined first)
+CREATE OR REPLACE FUNCTION public.p_is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- 1. Standardize RLS for Wallets
 ALTER TABLE public.ivisit_main_wallet ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.organization_wallets ENABLE ROW LEVEL SECURITY;
@@ -143,14 +151,6 @@ BEGIN
         END IF;
     END IF;
     RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- 3. Utility: Helper for RLS
-CREATE OR REPLACE FUNCTION public.p_is_admin()
-RETURNS BOOLEAN AS $$
-BEGIN
-    RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
