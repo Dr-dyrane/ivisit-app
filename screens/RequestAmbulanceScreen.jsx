@@ -96,19 +96,9 @@ export default function RequestAmbulanceScreen() {
 			resetTabBar();
 			resetHeader();
 			setMode("emergency");
-			setHeaderState({
-				title: "Request Ambulance",
-				subtitle: "EMERGENCY",
-				icon: <Ionicons name="medical" size={26} color="#FFFFFF" />,
-				backgroundColor: COLORS.brandPrimary,
-				leftComponent: backButton(),
-				rightComponent: null,
-			});
 		}, [
-			backButton,
 			resetHeader,
 			resetTabBar,
-			setHeaderState,
 			setMode,
 			unlockTabBarHidden,
 		])

@@ -57,13 +57,13 @@ const GlobalFAB = () => {
   // Calculate effective translation: ignore tab bar scroll if we are locked hidden
   // OR if there is an active trip (HUD mode)
   const effectiveTranslateY = useMemo(() => {
-    const isHudMode = activeFAB?.hasAnyVisitActive || isTabBarLockedHidden;
+    const isHudMode = activeFAB?.hasAnyVisitActive || isTabBarLockedHidden || activeFAB?.isFixed;
 
     if (isHudMode && activeFAB?.visible) {
       return slideUp;
     }
     return Animated.add(translateY, slideUp);
-  }, [translateY, slideUp, isTabBarLockedHidden, activeFAB?.visible, activeFAB?.hasAnyVisitActive]);
+  }, [translateY, slideUp, isTabBarLockedHidden, activeFAB?.visible, activeFAB?.hasAnyVisitActive, activeFAB?.isFixed]);
 
   if (!activeFAB) return null;
 

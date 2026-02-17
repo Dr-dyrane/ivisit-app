@@ -11,6 +11,7 @@ import { DispatchService } from "../../services/dispatchService";
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 import { usePaymentFlow } from "./usePaymentFlow";
 import { serviceCostService } from "../../services/serviceCostService";
+import { paymentService } from "../../services/paymentService";
 
 /**
  * 💡 STABILITY NOTE:
@@ -194,7 +195,7 @@ export const useRequestFlow = (props) => {
 					patientLocation = 'POINT(-116.9730 33.7475)';
 				}
 
-				await createRequest({
+				const createdRequest = await createRequest({
 					id: visitId,
 					requestId: visitId,
 					serviceType: request.serviceType,
@@ -222,6 +223,27 @@ export const useRequestFlow = (props) => {
 						payment_method_id: request?.paymentMethod?.id || null
 					})
 				});
+
+				// 💰 EXECUTE PAYMENT (Cash/Wallet) - V2 Logic (Fee Deduction)
+				if (request?.paymentMethod?.is_cash && createdRequest?.id && hospital) {
+					const orgId = hospital.organization_id || hospital.organizationId;
+					if (orgId) {
+						try {
+							console.log('[useRequestFlow] 💸 Processing Cash Payment V2 for Request:', createdRequest.id);
+							await paymentService.processCashPayment(
+								createdRequest.id, // Real UUID from DB
+								orgId,
+								costData?.total_cost || 0
+							);
+							console.log('[useRequestFlow] ✅ Cash Payment Fee Deducted & Recorded');
+						} catch (payErr) {
+							console.error('[useRequestFlow] ⚠️ Cash Payment Recording Failed:', payErr);
+							// Non-blocking: Request is created, but fee deduction failed. Admin audit required.
+						}
+					} else {
+						console.warn('[useRequestFlow] ⚠️ Cannot process cash payment: Missing Organization ID');
+					}
+				}
 
 				await addVisit({
 					id: visitId,

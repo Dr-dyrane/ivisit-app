@@ -2,6 +2,7 @@ import { database, StorageKeys } from "../database";
 import { supabase } from "./supabase";
 import { notificationDispatcher } from "./notificationDispatcher";
 import { calculateEmergencyCost, checkInsuranceCoverage } from "./pricingService";
+import { v4 as uuidv4 } from "uuid";
 
 export const EmergencyRequestStatus = {
     IN_PROGRESS: "in_progress",
@@ -78,68 +79,68 @@ export const emergencyRequestsService = {
     async create(request) {
         const { data: { user } } = await supabase.auth.getUser();
         const now = new Date().toISOString();
-        const id = request?.id ? String(request.id) : request?.requestId ? String(request.requestId) : `er_${Date.now()}`;
+        const displayId = request?.requestId || `REQ-${Date.now()}`;
 
-        const item = {
-            id,
-            requestId: id,
-            serviceType: request?.serviceType ?? null,
-            hospitalId: request?.hospitalId ?? null,
-            hospitalName: request?.hospitalName ?? null,
+        // Prepare common fields
+        const commonFields = {
+            request_id: displayId,
+            service_type: request?.serviceType ?? null,
+            hospital_id: request?.hospitalId ?? null,
+            hospital_name: request?.hospitalName ?? null,
             specialty: request?.specialty ?? null,
-            ambulanceType: request?.ambulanceType ?? null,
-            ambulanceId: request?.ambulanceId ?? null,
-            bedNumber: request?.bedNumber ?? null,
-            bedType: request?.bedType ?? null,
-            bedCount: request?.bedCount ?? null,
-            estimatedArrival: request?.estimatedArrival ?? null,
+            ambulance_type: request?.ambulanceType ?? null,
+            ambulance_id: request?.ambulanceId ?? null,
+            bed_number: request?.bedNumber ?? null,
+            bed_type: request?.bedType ?? null,
+            bed_count: request?.bedCount ?? null,
+            estimated_arrival: request?.estimatedArrival ?? null,
             status: request?.status ?? EmergencyRequestStatus.IN_PROGRESS,
-            patient: request?.patient ?? null,
-            shared: request?.shared ?? null,
-            createdAt: request?.createdAt ?? now,
-            updatedAt: now,
-            patientLocation: request?.patientLocation ?? null, // Initial location
-            patientHeading: request?.patientHeading ?? null,
+            patient_snapshot: request?.patient ?? null,
+            shared_data_snapshot: request?.shared ?? null,
+            created_at: request?.createdAt ?? now,
+            updated_at: now,
+            patient_location: request?.patientLocation ?? null,
+            patient_heading: request?.patientHeading ?? null,
+            total_cost: request?.total_cost ?? null,
+            payment_status: request?.payment_status ?? null,
+            payment_method_id: request?.payment_method_id ?? null
         };
 
         if (user) {
-            const { error } = await supabase
+            // Insert into Supabase with Client-Side UUID
+            const uuid = uuidv4();
+            const { data, error } = await supabase
                 .from('emergency_requests')
-                .insert({
-                    id: item.id,
-                    request_id: item.requestId,
-                    user_id: user.id,
-                    service_type: item.serviceType,
-                    hospital_id: item.hospitalId,
-                    hospital_name: item.hospitalName,
-                    specialty: item.specialty,
-                    ambulance_type: item.ambulanceType,
-                    ambulance_id: item.ambulanceId,
-                    bed_number: item.bedNumber,
-                    bed_type: item.bedType,
-                    bed_count: item.bedCount,
-                    estimated_arrival: item.estimatedArrival,
-                    status: item.status,
-                    patient_snapshot: item.patient,
-                    shared_data_snapshot: item.shared,
-                    created_at: item.createdAt,
-                    updated_at: item.updatedAt,
-                    patient_location: item.patientLocation,
-                    patient_heading: item.patientHeading,
-                    total_cost: request?.total_cost ?? null,
-                    payment_status: request?.payment_status ?? null,
-                    payment_method_id: request?.payment_method_id ?? null
-                });
+                .insert({ ...commonFields, id: uuid, user_id: user.id })
+                .select()
+                .single();
 
             if (error) {
-                console.error("Error creating emergency request:", error);
+                console.error("Supabase Create Error:", error);
                 throw error;
             }
-        } else {
-            await database.createOne(StorageKeys.EMERGENCY_REQUESTS, item);
-        }
 
-        return item;
+            // Return standardized object
+            return {
+                ...request,
+                id: data.id, // The real UUID
+                requestId: data.request_id,
+                createdAt: data.created_at,
+                updatedAt: data.updated_at
+            };
+        } else {
+            // Local fallback
+            const localItem = {
+                ...request,
+                ...commonFields,
+                id: displayId, // Use display ID as PK for local storage
+                requestId: displayId,
+                createdAt: now,
+                updatedAt: now
+            };
+            await database.createOne(StorageKeys.EMERGENCY_REQUESTS, localItem);
+            return localItem;
+        }
     },
 
     async update(id, updates) {

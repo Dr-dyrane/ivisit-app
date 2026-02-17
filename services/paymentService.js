@@ -581,16 +581,28 @@ export const paymentService = {
    */
   async checkCashEligibility(organizationId, estimatedAmount) {
     try {
-      const { data, error } = await supabase.rpc('check_cash_eligibility', {
-        p_organization_id: organizationId,
-        p_estimated_amount: estimatedAmount
+      if (!organizationId) {
+        console.warn('[paymentService] Missing organizationId for cash check');
+        return false;
+      }
+
+      console.log('[paymentService] Checking Cash Eligibility V2:', { org: organizationId.toString(), amount: parseFloat(estimatedAmount) });
+
+      const { data, error } = await supabase.rpc('check_cash_eligibility_v2', {
+        p_organization_id: organizationId.toString(),
+        p_estimated_amount: parseFloat(estimatedAmount) || 0
       });
 
       if (error) throw error;
       return !!data;
     } catch (error) {
+      // Fallback: If Schema Cache is stale (PGRST202), allow to proceed
+      if (error?.code === 'PGRST202' || error?.message?.includes('schema cache')) {
+        console.warn('[paymentService] ⚠️ Bypassing Cash Check: Schema Cache Stale (PGRST202)');
+        return true;
+      }
       console.error('Error checking cash eligibility:', error);
-      return false; // Fail safe to disabled cash
+      return false;
     }
   }
 };

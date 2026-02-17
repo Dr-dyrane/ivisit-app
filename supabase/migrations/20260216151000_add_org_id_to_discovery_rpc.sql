@@ -1,6 +1,9 @@
 -- Migration: Add organization_id to discovery RPCs
 -- Description: Ensures organization_id is returned by nearby_hospitals and related discovery functions for UI linkage.
 
+-- Drop previous versions to allow return type changes
+DROP FUNCTION IF EXISTS public.nearby_hospitals(double precision, double precision, integer);
+
 CREATE OR REPLACE FUNCTION public.nearby_hospitals(
     user_lat double precision,
     user_lng double precision,

@@ -69,7 +69,7 @@ export class DispatchService {
    */
   static selectBestHospital(hospitals, userLocation) {
     const rankedHospitals = this.rankHospitals(hospitals, userLocation);
-    
+
     if (rankedHospitals.length === 0) {
       console.warn('[DispatchService] No suitable hospitals found');
       return null;
@@ -115,24 +115,27 @@ export class DispatchService {
    */
   static getSelectionReasons(hospital) {
     const reasons = [];
-    
+
     if (hospital.distanceKm < 5) {
       reasons.push(`Very close (${hospital.distance})`);
     }
-    
+
     if (hospital.availableBeds > 20) {
       reasons.push(`High bed availability (${hospital.availableBeds} beds)`);
     }
-    
+
     if (hospital.waitTime && parseInt(hospital.waitTime) < 15) {
       reasons.push(`Low wait time (${hospital.waitTime})`);
     }
-    
+
     if (hospital.ambulances > 0) {
       reasons.push(`On-site ambulances (${hospital.ambulances})`);
     }
 
     return reasons.length > 0 ? reasons : ['Best overall match'];
+  }
+  static calculateDistance(start, end) {
+    return calculateDistance(start, end);
   }
 }
 

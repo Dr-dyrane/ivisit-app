@@ -108,6 +108,7 @@ const FAB_CONFIG_SCHEMA = {
   badge: 'string|number',   // Optional badge
   position: 'default|top-right|bottom-left',    // Position variant
   allowInStack: 'boolean',  // Override stack hiding behavior
+  isFixed: 'boolean',      // Disable scroll responsiveness (NEW)
 };
 
 // Default FAB configs per tab (fallback when no screen override)

@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, Linking, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ScrollView, Linking, ActivityIndicator, Dimensions, Platform, KeyboardAvoidingView, StyleSheet } from "react-native";
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -17,6 +19,8 @@ import PaymentMethodSelector from "../payment/PaymentMethodSelector";
 import { paymentService } from "../../services/paymentService";
 import { calculateEmergencyCost } from "../../services/pricingService";
 import { hospitalsService } from "../../services/hospitalsService";
+import { useHeaderState } from "../../contexts/HeaderStateContext";
+import HeaderBackButton from "../navigation/HeaderBackButton";
 
 /**
  * 💡 STABILITY NOTE:
@@ -46,18 +50,54 @@ const EmergencyRequestModal = React.memo(({
 	const { showToast } = useToast();
 	const { registerFAB, unregisterFAB } = useFABActions();
 	const insets = useSafeAreaInsets();
+	const { setHeaderState } = useHeaderState();
 
 	// MODULAR STEPS: 0: select, 1: payment, 2: dispatched
 	const [requestStep, setRequestStep] = useState("select");
-	const steps = mode === "booking"
-		? ["Configuration", "Verification", "Confirmation"]
-		: ["Resource", "Payment", "Dispatched"];
+	const steps = useMemo(() => mode === "booking"
+		? ["Options", "Verification", "Confirmation"]
+		: ["Resource", "Payment", "Dispatched"], [mode]);
 
 	const currentStepIndex = useMemo(() => {
 		if (requestStep === "select") return 0;
 		if (requestStep === "payment") return 1;
 		return 2;
 	}, [requestStep]);
+
+	const requestColors = useMemo(() => ({
+		bg: isDarkMode ? COLORS.bgDark : COLORS.bgLight,
+		card: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+		text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+		border: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)"
+	}), [isDarkMode]);
+
+	// --- Header Synchronization ---
+	useEffect(() => {
+		const stepName = steps[currentStepIndex];
+		const hospitalName = requestHospital?.name || "Medical Center";
+		const isFirstStep = currentStepIndex === 0;
+
+		setHeaderState({
+			title: currentStepIndex === 2 ? "Request Complete" : hospitalName,
+			subtitle: currentStepIndex === 1 ? "SECURE CHECKOUT" : `STEP ${currentStepIndex + 1}: ${stepName.toUpperCase()}`,
+			icon: <Ionicons
+				name={mode === "emergency" ? "medical" : "bed"}
+				size={26}
+				color="#FFFFFF"
+			/>,
+			backgroundColor: mode === "emergency" ? COLORS.emergency : COLORS.brandPrimary,
+			leftComponent: <HeaderBackButton onPress={() => {
+				Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+				if (currentStepIndex === 0 || currentStepIndex === 2) {
+					onRequestClose();
+				} else {
+					setRequestStep("select");
+				}
+			}} />,
+			rightComponent: false,
+		});
+	}, [currentStepIndex, requestHospital, mode, onRequestClose, steps, setHeaderState]);
 	const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);
 	const [bedType, setBedType] = useState("standard");
 	const [bedCount, setBedCount] = useState(2);
@@ -221,10 +261,43 @@ const EmergencyRequestModal = React.memo(({
 		if (selectedPaymentMethod.is_cash) {
 			try {
 				setIsRequesting(true);
+				let targetOrgId = requestHospital.organization_id || requestHospital.organizationId;
+
+				// SANITY CHECK: If Org ID matches Hospital ID, it's likely a mapping error or partial data.
+				if (targetOrgId && targetOrgId === requestHospital.id) {
+					console.warn('[EmergencyRequestModal] ⚠️ Detected Org ID matches Hospital ID. Assuming malformed data. Clearing to force fetch.');
+					targetOrgId = null;
+				}
+
+				console.log('[EmergencyRequestModal] 🔍 Starting Cash Eligibility Trace:', {
+					hospitalName: requestHospital.name,
+					hospitalId: requestHospital.id,
+					providedOrgId: targetOrgId,
+					estimatedCost: estimatedCost?.totalCost
+				});
+
+				// SAFETY FALLBACK: If hospital object missing Org ID (or cleared above), re-fetch hospital record
+				if (!targetOrgId) {
+					console.log('[EmergencyRequestModal] ⚠️ Missing/Invalid Org ID. Re-fetching fresh record from Service...');
+					const freshHospital = await hospitalsService.getById(requestHospital.id);
+					targetOrgId = freshHospital?.organizationId;
+					console.log('[EmergencyRequestModal] 🏥 Re-fetched Org ID:', targetOrgId);
+				}
+
+				if (!targetOrgId) {
+					console.warn('[EmergencyRequestModal] ❌ Fatal: Could not resolve Organization linking for this hospital.');
+					setErrorMessage("This provider is not currently part of an active organization. Cash payment unavailable.");
+					showToast("Provider connection missing", "error");
+					setIsRequesting(false);
+					return;
+				}
+
 				const isEligible = await paymentService.checkCashEligibility(
-					requestHospital.organization_id || requestHospital.organizationId,
+					targetOrgId,
 					estimatedCost?.totalCost || 0
 				);
+
+				console.log('[EmergencyRequestModal] ✅ Cash Eligibility Result:', { targetOrgId, isEligible });
 
 				if (!isEligible) {
 					setErrorMessage("Cash payment not available for this medical center (insufficient organizational wallet balance)");
@@ -233,13 +306,11 @@ const EmergencyRequestModal = React.memo(({
 					return;
 				}
 			} catch (error) {
-				console.error("Cash eligibility check failed:", error);
-				setErrorMessage("Failed to verify cash payment eligibility. Please try again or use another payment method.");
+				console.error("[EmergencyRequestModal] 🚨 Cash eligibility check failed:", error);
+				setErrorMessage("Failed to verify cash payment eligibility. Error code: " + (error.code || 'UNKNOWN'));
 				showToast("Verification failed", "error");
 				setIsRequesting(false);
 				return;
-			} finally {
-				// Don't set false here if successful, we continue the flow
 			}
 		}
 
@@ -361,14 +432,6 @@ const EmergencyRequestModal = React.memo(({
 		showToast,
 	]);
 
-	const requestColors = useMemo(
-		() => ({
-			card: isDarkMode ? "#121826" : "#FFFFFF",
-			text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-			textMuted: isDarkMode ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.55)",
-		}),
-		[isDarkMode]
-	);
 
 	const handleRequestDone = useCallback(() => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -393,6 +456,7 @@ const EmergencyRequestModal = React.memo(({
 				priority: 10,
 				animation: 'subtle',
 				allowInStack: true,
+				isFixed: true,
 			});
 			return () => unregisterFAB('emergency-done');
 		}
@@ -410,6 +474,7 @@ const EmergencyRequestModal = React.memo(({
 					priority: 10,
 					animation: 'prominent',
 					allowInStack: true,
+					isFixed: true,
 				});
 			} else if (!hasAmbulances) {
 				registerFAB('call-hospital', {
@@ -423,6 +488,7 @@ const EmergencyRequestModal = React.memo(({
 					priority: 10,
 					animation: 'prominent',
 					allowInStack: true,
+					isFixed: true,
 				});
 			} else if (selectedAmbulanceType) {
 				registerFAB('ambulance-select', {
@@ -436,6 +502,7 @@ const EmergencyRequestModal = React.memo(({
 					priority: 10,
 					animation: 'prominent',
 					allowInStack: true,
+					isFixed: true,
 				});
 			}
 		} else if (requestStep === "payment") {
@@ -451,6 +518,7 @@ const EmergencyRequestModal = React.memo(({
 				priority: 10,
 				animation: 'prominent',
 				allowInStack: true,
+				isFixed: true,
 			});
 		}
 
@@ -497,27 +565,6 @@ const EmergencyRequestModal = React.memo(({
 
 	return (
 		<View style={styles.container}>
-			{showClose ? (
-				<Pressable
-					onPress={handleRequestDone}
-					style={[
-						styles.closeButton,
-						{
-							backgroundColor: isDarkMode
-								? "rgba(255,255,255,0.1)"
-								: "rgba(0,0,0,0.05)",
-						},
-					]}
-					hitSlop={16}
-				>
-					<Ionicons
-						name="close"
-						size={24}
-						color={isDarkMode ? COLORS.textLight : COLORS.textPrimary}
-					/>
-				</Pressable>
-			) : null}
-
 			<ScrollView
 				style={{ flex: 1 }}
 				contentContainerStyle={[styles.requestScrollContent, scrollContentStyle]}
@@ -526,73 +573,6 @@ const EmergencyRequestModal = React.memo(({
 				onScroll={onScroll}
 				scrollEventThrottle={16}
 			>
-				{/* Step Indicator */}
-				{!requestData?.success && (
-					<View style={styles.stepIndicatorContainer}>
-						{steps.map((step, idx) => {
-							const isPast = idx < currentStepIndex;
-							const isActive = idx === currentStepIndex;
-							const isInteractive = isPast && !isRequesting;
-
-							return (
-								<React.Fragment key={idx}>
-									<Pressable
-										onPress={() => handleStepPress(idx)}
-										disabled={!isInteractive}
-										style={({ pressed }) => [
-											styles.stepWrapper,
-											pressed && isInteractive && { opacity: 0.7, transform: [{ scale: 0.98 }] }
-										]}
-									>
-										<View style={[
-											styles.stepDot,
-											{
-												backgroundColor: isActive
-													? COLORS.brandPrimary
-													: isPast
-														? COLORS.success
-														: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
-											},
-											isInteractive && {
-												// Subtle glass effect for interactive steps
-												backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)',
-												borderWidth: 1,
-												borderColor: COLORS.success,
-											}
-										]}>
-											{isPast ? (
-												<Ionicons name="checkmark" size={12} color={isInteractive ? COLORS.success : "#FFF"} />
-											) : (
-												<Text style={[styles.stepText, { color: isActive ? '#FFF' : requestColors.textMuted }]}>
-													{idx + 1}
-												</Text>
-											)}
-										</View>
-										<Text style={[
-											styles.stepLabel,
-											{
-												color: isActive ? requestColors.text : isPast ? COLORS.success : requestColors.textMuted,
-												fontWeight: isActive ? "800" : "600",
-												opacity: isActive || isPast ? 1 : 0.5
-											}
-										]}>
-											{step}
-										</Text>
-										{isInteractive && (
-											<View style={styles.interactiveIndicator} />
-										)}
-									</Pressable>
-									{idx < steps.length - 1 && (
-										<View style={[
-											styles.stepLine,
-											{ backgroundColor: idx < currentStepIndex ? COLORS.success : 'rgba(255,255,255,0.05)' }
-										]} />
-									)}
-								</React.Fragment>
-							);
-						})}
-					</View>
-				)}
 				{requestStep === "select" ? (
 					<>
 						{errorMessage ? (
@@ -772,56 +752,76 @@ const EmergencyRequestModal = React.memo(({
 				) : requestStep === "payment" ? (
 					<>
 						<View style={styles.paymentContainer}>
-							<Text
-								style={{
-									fontSize: 12,
-									fontWeight: "900",
-									letterSpacing: 1.6,
-									color: requestColors.text,
-									marginTop: 14,
-									marginBottom: 14,
-									textTransform: "uppercase",
-								}}
-							>
-								Confirm Payment
-							</Text>
+							{/* NG Theme: Gradient Payment Card */}
+							<View style={[styles.balanceCardWrapper, { borderColor: requestColors.border }]}>
+								<BlurView intensity={isDarkMode ? 40 : 80} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+								<LinearGradient
+									colors={[COLORS.brandPrimary, '#4f46e5']}
+									start={{ x: 0, y: 0 }}
+									end={{ x: 1, y: 1 }}
+									style={[styles.balanceCard, { opacity: 0.95 }]}
+								>
+									<View style={styles.balanceHeader}>
+										<View>
+											<Text style={styles.walletLabel}>TOTAL TO PAY</Text>
+											<Text style={styles.balanceValue}>
+												${estimatedCost?.totalCost?.toFixed(2) || "0.00"}
+											</Text>
+										</View>
+										<View style={styles.currencyBadge}>
+											<Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
+											<Text style={styles.currencyText}>SECURE</Text>
+										</View>
+									</View>
+
+									<View style={styles.serviceAssurance}>
+										<Text style={[styles.serviceText, { color: 'rgba(255,255,255,0.8)' }]}>
+											PCI-DSS Encrypted Transaction
+										</Text>
+									</View>
+								</LinearGradient>
+							</View>
 
 							{isCalculatingCost ? (
 								<View style={[styles.costBanner, { backgroundColor: 'transparent', borderWidth: 1, borderStyle: 'dashed', borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}>
 									<ActivityIndicator size="small" color={COLORS.brandPrimary} />
-									<Text style={{ textAlign: 'center', fontSize: 10, marginTop: 8, color: requestColors.textMuted }}>Locking in rates...</Text>
+									<Text style={{ textAlign: 'center', fontSize: 10, marginTop: 8, color: requestColors.textMuted, fontWeight: '700' }}>LOCKING IN RATES...</Text>
 								</View>
 							) : estimatedCost ? (
-								<View style={[styles.costBanner, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderWidth: 1, borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
-									<View style={styles.costRow}>
-										<Text style={[styles.costLabel, { color: requestColors.textMuted }]}>
-											{estimatedCost.breakdown?.[0]?.name || 'Base Fare'}
-										</Text>
-										<Text style={[styles.costValue, { color: requestColors.text }]}>
-											${estimatedCost.totalCost.toFixed(2)}
-										</Text>
+								<View style={[styles.section, { backgroundColor: requestColors.card, borderColor: requestColors.border }]}>
+									<Text style={[styles.sectionTitle, { color: requestColors.text }]}>Payment Summary</Text>
+									{estimatedCost.breakdown?.map((item, idx) => (
+										<View key={idx} style={styles.row}>
+											<View style={styles.itemInfo}>
+												<Text style={[styles.rowLabel, { color: requestColors.text }]}>{item.name}</Text>
+												{item.type === 'fee' && (
+													<Text style={styles.subLabel}>Processing & Platform Fee</Text>
+												)}
+											</View>
+											<Text style={[styles.rowValue, { color: requestColors.text }]}>
+												${item.cost.toFixed(2)}
+											</Text>
+										</View>
+									))}
+									<View style={[styles.divider, { backgroundColor: requestColors.border }]} />
+									<View style={styles.totalRow}>
+										<Text style={[styles.totalLabel, { color: requestColors.text }]}>Total to Pay</Text>
+										<Text style={[styles.totalValue, { color: COLORS.brandPrimary }]}>${estimatedCost.totalCost.toFixed(2)}</Text>
 									</View>
-									<View style={[styles.divider, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]} />
-									<View style={styles.costRow}>
-										<Text style={{ fontWeight: "800", color: requestColors.text }}>Network Total</Text>
-										<Text style={{ fontSize: 24, fontWeight: "900", color: COLORS.brandPrimary }}>
-											${estimatedCost.totalCost.toFixed(2)}
-										</Text>
-									</View>
-									<Text style={[styles.costSubtext, { color: COLORS.success, fontWeight: "700" }]}>
-										✓ Secure checkout active via iVisit Hub
-									</Text>
 								</View>
 							) : null}
 
-							<PaymentMethodSelector
-								selectedMethod={selectedPaymentMethod}
-								onMethodSelect={setSelectedPaymentMethod}
-								cost={estimatedCost ? { totalCost: estimatedCost.totalCost } : null}
-								hospitalId={requestHospital?.id}
-								showAddButton={true}
-								style={styles.paymentSelector}
-							/>
+							<View style={styles.paymentSelectorContainer}>
+								<Text style={[styles.sectionTitle, { color: requestColors.text, marginLeft: 8, marginBottom: 12 }]}>
+									Payment Method
+								</Text>
+								<PaymentMethodSelector
+									selectedMethod={selectedPaymentMethod}
+									onMethodSelect={setSelectedPaymentMethod}
+									cost={estimatedCost}
+									hospitalId={requestHospital?.id}
+								/>
+							</View>
 						</View>
 					</>
 				) : (
@@ -890,16 +890,130 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 4,
 	},
 	paymentContainer: {
-		width: '100%',
-		marginTop: 10,
+		paddingTop: 16,
 	},
-	paymentSelector: {
-		minHeight: 200,
+	balanceCardWrapper: {
+		borderRadius: 32,
+		overflow: 'hidden',
+		borderWidth: 0, // Borderless preference
+		height: 160,
+		shadowColor: COLORS.brandPrimary,
+		shadowOffset: { width: 0, height: 12 },
+		shadowOpacity: 0.3,
+		shadowRadius: 20,
+		elevation: 8,
+		marginBottom: 24,
+	},
+	balanceCard: {
+		padding: 24,
+		height: '100%',
+		justifyContent: 'space-between',
+	},
+	balanceHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'flex-start',
+	},
+	walletLabel: {
+		color: 'rgba(255,255,255,0.7)',
+		fontSize: 10,
+		fontWeight: '800',
+		letterSpacing: 2,
+	},
+	balanceValue: {
+		color: '#FFFFFF',
+		fontSize: 42,
+		fontWeight: '900',
+		letterSpacing: -1,
+		marginTop: 4,
+	},
+	currencyBadge: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 6,
+		backgroundColor: 'rgba(255,255,255,0.15)',
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: 12,
+	},
+	currencyText: {
+		color: '#FFFFFF',
+		fontSize: 10,
+		fontWeight: '900',
+		letterSpacing: 1,
+	},
+	serviceAssurance: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		opacity: 0.9,
+	},
+	serviceText: {
+		fontSize: 11,
+		fontWeight: '700',
+		letterSpacing: 0.5,
+		textTransform: 'uppercase',
+	},
+	section: {
+		borderRadius: 28,
+		padding: 24,
+		gap: 12,
+		borderWidth: 1,
+		marginBottom: 20,
+	},
+	sectionTitle: {
+		fontSize: 17,
+		fontWeight: '800',
+		letterSpacing: -0.5,
+	},
+	row: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+	},
+	rowLabel: {
+		fontSize: 15,
+		fontWeight: '500',
+	},
+	rowValue: {
+		fontSize: 15,
+		fontWeight: '700',
+	},
+	itemInfo: {
+		flex: 1,
+	},
+	subLabel: {
+		fontSize: 10,
+		color: COLORS.brandPrimary,
+		fontWeight: '700',
+		textTransform: 'uppercase',
+		marginTop: 2,
+		letterSpacing: 0.5,
+	},
+	divider: {
+		height: 1,
+		width: '100%',
+		marginVertical: 4,
+	},
+	totalRow: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+	},
+	totalLabel: {
+		fontSize: 18,
+		fontWeight: '900',
+	},
+	totalValue: {
+		fontSize: 22,
+		fontWeight: '900',
+	},
+	paymentSelectorContainer: {
+		marginTop: 8,
 	},
 	costBanner: {
-		padding: 16,
-		borderRadius: 16,
-		marginBottom: 16,
+		borderRadius: 24,
+		padding: 20,
+		marginBottom: 24,
 	},
 	costRow: {
 		flexDirection: 'row',

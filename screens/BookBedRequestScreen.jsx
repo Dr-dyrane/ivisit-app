@@ -98,22 +98,11 @@ export default function BookBedRequestScreen() {
 			resetTabBar();
 			resetHeader();
 			setMode("booking");
-			setHeaderState({
-				title: "Book Bed",
-				subtitle: "BOOK BED",
-				icon: <Fontisto name="bed-patient" size={22} color="#FFFFFF" />,
-				backgroundColor: COLORS.brandPrimary,
-				leftComponent: backButton(),
-				rightComponent: rightComponent(),
-			});
 		}, [
-			backButton,
 			resetHeader,
 			resetTabBar,
-			setHeaderState,
 			setMode,
 			unlockTabBarHidden,
-			rightComponent,
 		])
 	);
 
