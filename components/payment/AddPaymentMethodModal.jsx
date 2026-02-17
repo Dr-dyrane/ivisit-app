@@ -178,10 +178,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalContent: {
-    width: width * 0.9,
-    borderRadius: 32,
+    width: width * 0.95,
+    borderRadius: 48,
     padding: 24,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: 'rgba(255, 255, 255, 0.1)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 20 },
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   cardContainer: {
     borderRadius: 20,
     padding: 16,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: 'rgba(255,255,255,0.05)',
   },
   cardField: {

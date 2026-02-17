@@ -719,7 +719,7 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 0,
     shadowColor: COLORS.brandPrimary,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.1,
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
   balanceCardWrapper: {
     borderRadius: 32,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: 0,
     height: 180,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
     borderRadius: 24,
-    borderWidth: 1,
+    borderWidth: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -846,7 +846,7 @@ const styles = StyleSheet.create({
   ledgerList: {
     borderRadius: 28,
     padding: 12,
-    borderWidth: 1,
+    borderWidth: 0,
   },
   ledgerItem: {
     flexDirection: 'row',
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   ledgerDivider: {
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
   },
   typeIcon: {
     width: 36,
@@ -888,7 +888,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
     borderStyle: 'dashed',
-    borderWidth: 1,
+    borderWidth: 0,
   },
   emptyText: {
     fontSize: 13,
@@ -917,7 +917,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginTop: 16,
     gap: 6,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: COLORS.brandPrimary + '30',
   },
   insuranceBadgeText: {
@@ -929,7 +929,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: 24,
     gap: 16,
-    borderWidth: 1,
+    borderWidth: 0,
   },
   sectionTitle: {
     fontSize: 17,
@@ -950,7 +950,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   divider: {
-    height: 1,
+    height: 0,
     width: '100%',
     marginVertical: 4,
   },
@@ -1042,7 +1042,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     padding: 24,
     gap: 24,
-    borderWidth: 1,
+    borderWidth: 0,
     borderBottomWidth: 0,
     paddingBottom: 40,
   },

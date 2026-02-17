@@ -1229,7 +1229,7 @@ const styles = StyleSheet.create({
 		borderRadius: 28,
 		padding: 24,
 		gap: 12,
-		borderWidth: 1,
+		borderWidth: 0,
 		marginBottom: 20,
 	},
 	sectionTitle: {
@@ -1262,7 +1262,7 @@ const styles = StyleSheet.create({
 		letterSpacing: 0.5,
 	},
 	divider: {
-		height: 1,
+		height: 0,
 		width: '100%',
 		marginVertical: 4,
 	},
@@ -1312,7 +1312,7 @@ const styles = StyleSheet.create({
 		marginBottom: 16,
 	},
 	divider: {
-		height: 1,
+		height: 0,
 		width: '100%',
 		marginVertical: 12,
 	},
