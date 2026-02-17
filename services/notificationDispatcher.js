@@ -1,5 +1,6 @@
 import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY } from "../constants/notifications";
 import { notificationsService } from "./notificationsService";
+import { supabase } from "./supabase";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -50,6 +51,176 @@ export const notificationDispatcher = {
         } catch (error) {
             console.error("[notificationDispatcher] Error creating notification:", error);
             throw error;
+        }
+    },
+
+    /**
+     * Dispatch a notification to a SPECIFIC user (not the current user)
+     * Used for org_admin notifications and cross-user alerts.
+     * @param {string} targetUserId - The user to send the notification to
+     * @param {Object} params - Notification fields
+     */
+    async dispatchToUser(targetUserId, { type, priority, title, message, icon = null, color = null, actionType = null, actionData = null }) {
+        try {
+            const now = new Date().toISOString();
+            const { data, error } = await supabase
+                .from('notifications')
+                .insert({
+                    id: uuidv4(),
+                    user_id: targetUserId,
+                    type,
+                    priority,
+                    title,
+                    message,
+                    icon,
+                    color,
+                    action_type: actionType,
+                    action_data: actionData,
+                    read: false,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.warn(`[notificationDispatcher] Failed to notify user ${targetUserId}:`, error.message);
+                return null;
+            }
+            return data;
+        } catch (error) {
+            console.error("[notificationDispatcher] dispatchToUser error:", error);
+            return null;
+        }
+    },
+
+    /**
+     * Notify org_admin users about a pending cash payment that needs approval
+     * Finds all users with role 'org_admin' in the same organization and notifies each.
+     * 
+     * @param {Object} params
+     * @param {string} params.organizationId - The org whose admins should be notified
+     * @param {string} params.paymentId - Payment UUID
+     * @param {string} params.requestId - Emergency request UUID  
+     * @param {number} params.totalAmount - Payment total
+     * @param {number} params.feeAmount - Platform fee amount
+     * @param {string} params.hospitalName - Hospital name for context
+     * @param {string} params.serviceType - 'ambulance' or 'bed'
+     * @param {string} params.displayId - Display ID like "AMB-123456"
+     */
+    async dispatchCashApprovalToOrgAdmins({
+        organizationId,
+        paymentId,
+        requestId,
+        totalAmount,
+        feeAmount,
+        hospitalName,
+        serviceType,
+        displayId,
+    }) {
+        if (!organizationId) {
+            console.warn('[notificationDispatcher] No organizationId for cash approval notification');
+            return [];
+        }
+
+        try {
+            // Find all hospitals in this organization to catch admins linked at hospital level
+            const { data: hospitalIds } = await supabase
+                .from('hospitals')
+                .select('id')
+                .eq('organization_id', organizationId);
+
+            const idsToCheck = (hospitalIds || []).map(h => h.id);
+            idsToCheck.push(organizationId); // Also check direct org link
+
+            // Find org_admin users in this organization OR its hospitals
+            const { data: orgAdmins, error } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .in('organization_id', idsToCheck)
+                .in('role', ['org_admin', 'admin']);
+
+            if (error) {
+                console.error('[notificationDispatcher] Failed to find org admins:', error);
+                return [];
+            }
+
+            if (!orgAdmins || orgAdmins.length === 0) {
+                console.warn('[notificationDispatcher] No org_admin users found for org:', organizationId);
+                return [];
+            }
+
+            const serviceLabel = serviceType === 'ambulance' ? 'Ambulance Ride' : 'Bed Booking';
+            const results = [];
+
+            for (const admin of orgAdmins) {
+                const result = await this.dispatchToUser(admin.id, {
+                    type: NOTIFICATION_TYPES.EMERGENCY,
+                    priority: NOTIFICATION_PRIORITY.URGENT,
+                    title: 'Cash Payment Approval Required',
+                    message: `A patient has requested a ${serviceLabel} (${displayId}) at ${hospitalName} with cash payment of $${totalAmount.toFixed(2)}. Platform fee: $${feeAmount.toFixed(2)}. Tap to approve or decline.`,
+                    icon: 'cash-outline',
+                    color: '#FF9500', // Orange — requires attention
+                    actionType: 'approve_cash_payment',
+                    actionData: {
+                        paymentId,
+                        requestId,
+                        totalAmount,
+                        feeAmount,
+                        hospitalName,
+                        serviceType,
+                        displayId,
+                        organizationId,
+                    },
+                });
+                if (result) results.push(result);
+            }
+
+            console.log(`[notificationDispatcher] Notified ${results.length} org admins for cash approval`);
+            return results;
+        } catch (error) {
+            console.error('[notificationDispatcher] dispatchCashApprovalToOrgAdmins error:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Notify the patient when their cash payment is approved or declined
+     * @param {string} patientUserId - Patient's user ID
+     * @param {'approved'|'declined'} status - Approval outcome
+     * @param {Object} params - Payment context
+     */
+    async dispatchPaymentStatusToPatient(patientUserId, status, {
+        paymentId,
+        requestId,
+        hospitalName,
+        serviceType,
+        displayId,
+    }) {
+        const serviceLabel = serviceType === 'ambulance' ? 'Ambulance Ride' : 'Bed Booking';
+
+        if (status === 'approved') {
+            return this.dispatchToUser(patientUserId, {
+                type: NOTIFICATION_TYPES.EMERGENCY,
+                priority: NOTIFICATION_PRIORITY.URGENT,
+                title: 'Payment Approved — Dispatching',
+                message: `${hospitalName} has approved your cash payment for ${serviceLabel} (${displayId}). Your request is now being dispatched.`,
+                icon: 'checkmark-circle',
+                color: '#34C759', // Green
+                actionType: 'view_request',
+                actionData: { requestId, paymentId },
+            });
+        } else {
+            return this.dispatchToUser(patientUserId, {
+                type: NOTIFICATION_TYPES.EMERGENCY,
+                priority: NOTIFICATION_PRIORITY.HIGH,
+                title: 'Cash Payment Declined',
+                message: `${hospitalName} has declined your cash payment for ${serviceLabel} (${displayId}). Please choose a different payment method.`,
+                icon: 'close-circle',
+                color: '#FF3B30', // Red
+                actionType: 'retry_payment',
+                actionData: { requestId, paymentId, displayId },
+            });
         }
     },
 
@@ -276,6 +447,12 @@ export const notificationDispatcher = {
         let priority = NOTIFICATION_PRIORITY.URGENT;
 
         switch (status) {
+            case 'pending_approval':
+                title = "Awaiting Hospital Approval";
+                message = "Your cash payment is being reviewed by the hospital. You'll be notified once approved.";
+                icon = "time-outline";
+                color = "#FF9500"; // Orange
+                break;
             case 'accepted':
                 title = "Ambulance En Route";
                 message = "An ambulance has accepted your request and is on the way.";
@@ -295,6 +472,12 @@ export const notificationDispatcher = {
             case 'in_progress':
                 title = "Request Received";
                 message = "Your emergency request is being processed.";
+                break;
+            case 'payment_declined':
+                title = "Payment Declined";
+                message = "The hospital declined your cash payment. Please choose another payment method.";
+                icon = "close-circle";
+                color = "#FF3B30";
                 break;
         }
 
@@ -350,4 +533,3 @@ export const notificationDispatcher = {
         });
     },
 }
-

@@ -61,7 +61,7 @@ const PaymentScreen = () => {
   });
 
   const [walletBalance, setWalletBalance] = useState({ balance: 0, currency: 'USD' });
-  const [ledgerHistory, setLedgerHistory] = useState([]);
+  const [paymentHistory, setPaymentHistory] = useState([]);
   const [isLoadingWallet, setIsLoadingWallet] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -92,12 +92,12 @@ const PaymentScreen = () => {
   const loadWalletData = async () => {
     setIsLoadingWallet(true);
     try {
-      const [balance, ledger] = await Promise.all([
+      const [balance, payments] = await Promise.all([
         paymentService.getWalletBalance(),
-        paymentService.getWalletLedger()
+        paymentService.getPaymentHistory()
       ]);
       setWalletBalance(balance);
-      setLedgerHistory(ledger);
+      setPaymentHistory(payments);
     } catch (error) {
       console.error('Error loading wallet data:', error);
     } finally {
@@ -456,7 +456,7 @@ const PaymentScreen = () => {
             {/* Recent Activity */}
             <View style={styles.activityContainer}>
               <View style={styles.activityHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Transaction Ledger</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Payment History</Text>
                 <Pressable onPress={() => {
                   setRefreshing(true);
                   loadWalletData();
@@ -465,39 +465,43 @@ const PaymentScreen = () => {
                 </Pressable>
               </View>
 
-              {ledgerHistory.length > 0 ? (
+              {paymentHistory.length > 0 ? (
                 <View style={[styles.ledgerList, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  {ledgerHistory.map((item, index) => (
+                  {paymentHistory.map((item, index) => (
                     <Pressable
                       key={item.id}
                       onPress={() => setSelectedTransaction(item)}
                       style={({ pressed }) => [
                         styles.ledgerItem,
-                        index !== ledgerHistory.length - 1 && [styles.ledgerDivider, { borderBottomColor: colors.border }],
+                        index !== paymentHistory.length - 1 && [styles.ledgerDivider, { borderBottomColor: colors.border }],
                         { opacity: pressed ? 0.7 : 1 }
                       ]}
                     >
                       <View style={[
                         styles.typeIcon,
-                        { backgroundColor: item.transaction_type === 'credit' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)' }
+                        { backgroundColor: item.status === 'completed' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)' }
                       ]}>
                         <Ionicons
-                          name={item.transaction_type === 'credit' ? "arrow-down" : "arrow-up"}
+                          name={item.status === 'completed' ? "checkmark-circle" : (item.status === 'pending' ? "time" : "close-circle")}
                           size={16}
-                          color={item.transaction_type === 'credit' ? '#22C55E' : '#EF4444'}
+                          color={item.status === 'completed' ? '#22C55E' : (item.status === 'pending' ? '#F59E0B' : '#EF4444')}
                         />
                       </View>
                       <View style={styles.ledgerMeta}>
-                        <Text style={[styles.ledgerDesc, { color: colors.text }]}>{item.description}</Text>
+                        <Text style={[styles.ledgerDesc, { color: colors.text }]}>
+                          {item.emergency_requests?.service_type === 'ambulance' ? 'Ambulance Service' :
+                            item.emergency_requests?.service_type === 'bed' ? 'Hospital Bed Booking' :
+                              item.metadata?.source === 'top_up' ? 'Wallet Top-up' : 'Service Payment'}
+                        </Text>
                         <Text style={[styles.ledgerDate, { color: colors.textMuted }]}>
                           {new Date(item.created_at).toLocaleDateString()}
                         </Text>
                       </View>
                       <Text style={[
                         styles.ledgerAmount,
-                        { color: (item.transaction_type === 'credit' || item.transaction_type === 'top-up') ? '#22C55E' : colors.text }
+                        { color: item.status === 'completed' ? colors.text : colors.textMuted }
                       ]}>
-                        {item.transaction_type === 'credit' ? '+' : '-'}${Math.abs(item.amount).toFixed(2)}
+                        ${parseFloat(item.amount).toFixed(2)}
                       </Text>
                     </Pressable>
                   ))}
@@ -652,7 +656,15 @@ const PaymentScreen = () => {
               <Text style={[styles.receiptAmount, { color: colors.text }]}>
                 {selectedTransaction?.transaction_type === 'credit' ? '+' : '-'}${Math.abs(selectedTransaction?.amount || 0).toFixed(2)}
               </Text>
-              <Text style={[styles.receiptStatus, { color: '#22C55E' }]}>COMPLETED</Text>
+              <Text style={[
+                styles.receiptStatus,
+                {
+                  color: selectedTransaction?.status === 'completed' ? '#22C55E' :
+                    (selectedTransaction?.status === 'pending' ? '#F59E0B' : '#EF4444')
+                }
+              ]}>
+                {selectedTransaction?.status?.toUpperCase() || 'UNKNOWN'}
+              </Text>
             </View>
 
             <View style={styles.receiptBody}>

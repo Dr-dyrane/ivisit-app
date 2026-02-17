@@ -5,11 +5,13 @@ import { calculateEmergencyCost, checkInsuranceCoverage } from "./pricingService
 import { v4 as uuidv4 } from "uuid";
 
 export const EmergencyRequestStatus = {
+    PENDING_APPROVAL: "pending_approval",
     IN_PROGRESS: "in_progress",
     ACCEPTED: "accepted",
     ARRIVED: "arrived",
     COMPLETED: "completed",
     CANCELLED: "cancelled",
+    PAYMENT_DECLINED: "payment_declined",
 };
 
 export const emergencyRequestsService = {
@@ -22,7 +24,7 @@ export const emergencyRequestsService = {
                 .from('emergency_requests')
                 .select('*')
                 .eq('user_id', user.id)
-                .in('status', ['in_progress', 'accepted', 'arrived'])
+                .in('status', ['pending_approval', 'in_progress', 'accepted', 'arrived'])
                 .order('created_at', { ascending: false });
 
             if (error) {
@@ -124,8 +126,13 @@ export const emergencyRequestsService = {
                     hospitalId: request.hospitalId
                 });
 
-                const { data, error } = await supabase.rpc('create_emergency_with_payment', {
-                    p_user_id: user.id,
+                const { data, error } = await supabase.rpc('create_emergency_v3', {
+                    p_payment_data: {
+                        method: isCash ? 'cash' : 'card',
+                        total_amount: total,
+                        base_amount: base,
+                        currency: 'USD',
+                    },
                     p_request_data: {
                         hospital_id: request.hospitalId,
                         service_type: request.serviceType,
@@ -134,12 +141,7 @@ export const emergencyRequestsService = {
                         patient_snapshot: request.patient,
                         request_id: displayId,
                     },
-                    p_payment_data: {
-                        method: isCash ? 'cash' : 'card',
-                        total_amount: total,  // V2 RPC expects total_amount
-                        base_amount: base,
-                        currency: 'USD',
-                    }
+                    p_user_id: user.id
                 });
 
                 if (error) {
@@ -156,7 +158,10 @@ export const emergencyRequestsService = {
                     requestId: data.request_id,
                     paymentId: data.payment_id,
                     displayId: data.display_id,
-                    feeDeducted: data.fee_deducted,
+                    feeAmount: data.fee_amount,
+                    requiresApproval: data.requires_approval,
+                    paymentStatus: data.payment_status,
+                    emergencyStatus: data.emergency_status,
                 });
 
                 return {
@@ -166,8 +171,10 @@ export const emergencyRequestsService = {
                     paymentId: data.payment_id,
                     createdAt: now,
                     updatedAt: now,
-                    status: EmergencyRequestStatus.IN_PROGRESS,
-                    paymentStatus: 'completed'
+                    status: data.emergency_status || EmergencyRequestStatus.IN_PROGRESS,
+                    paymentStatus: data.payment_status || 'completed',
+                    requiresApproval: data.requires_approval || false,
+                    feeAmount: data.fee_amount || 0,
                 };
             }
 
@@ -335,6 +342,7 @@ export const emergencyRequestsService = {
         return (
             items.find(
                 (r) =>
+                    r?.status === EmergencyRequestStatus.PENDING_APPROVAL ||
                     r?.status === EmergencyRequestStatus.IN_PROGRESS ||
                     r?.status === EmergencyRequestStatus.ACCEPTED ||
                     r?.status === EmergencyRequestStatus.ARRIVED

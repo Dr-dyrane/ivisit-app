@@ -11,6 +11,7 @@ import { DispatchService } from "../../services/dispatchService";
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 import { usePaymentFlow } from "./usePaymentFlow";
 import { serviceCostService } from "../../services/serviceCostService";
+import { notificationDispatcher } from "../../services/notificationDispatcher";
 
 /**
  * 💡 STABILITY NOTE:
@@ -242,18 +243,57 @@ export const useRequestFlow = (props) => {
 				// 🔑 CRITICAL: Use the REAL UUID from the DB, not the display ID
 				const realId = createdRequest?.id || visitId;
 				const displayId = createdRequest?.requestId || visitId;
+				const requiresApproval = createdRequest?.requiresApproval || false;
 
 				console.log('[useRequestFlow] ✅ Request Created:', {
 					realId,
 					displayId,
 					paymentStatus: createdRequest?.paymentStatus,
+					requiresApproval,
 					isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(realId),
 				});
 
 				// 🏥 Visit is NOW created by backend trigger (sync_emergency_to_history)
 				// No frontend addVisit() needed — eliminates RLS and UUID errors.
 
-				return { ok: true, requestId: realId, displayId, serviceType: request.serviceType };
+				// 💰 CASH APPROVAL: Notify org_admin if payment needs approval
+				if (requiresApproval) {
+					try {
+						// Resolve org ID for notification targeting
+						const orgId = hospital?.organization_id || hospital?.organizationId;
+						await notificationDispatcher.dispatchCashApprovalToOrgAdmins({
+							organizationId: orgId,
+							paymentId: createdRequest.paymentId,
+							requestId: realId,
+							totalAmount: costData?.total_cost || costData?.totalCost || 0,
+							feeAmount: createdRequest.feeAmount || 0,
+							hospitalName: request?.hospitalName || hospital?.name || 'Hospital',
+							serviceType: request.serviceType,
+							displayId,
+						});
+
+						// Notify the patient that they're waiting
+						await notificationDispatcher.dispatchEmergencyUpdate(
+							{ id: realId },
+							'pending_approval'
+						);
+
+						console.log('[useRequestFlow] 📨 Cash approval notifications sent');
+					} catch (notifError) {
+						// Non-blocking: request was still created successfully
+						console.warn('[useRequestFlow] Cash approval notification failed (non-blocking):', notifError);
+					}
+				}
+
+				return {
+					ok: true,
+					requestId: realId,
+					displayId,
+					serviceType: request.serviceType,
+					requiresApproval,
+					paymentId: createdRequest?.paymentId || null,
+					paymentStatus: createdRequest?.paymentStatus || 'completed',
+				};
 			} catch (err) {
 				inflightByTypeRef.current[request.serviceType] = false;
 				const code = err?.code ?? null;

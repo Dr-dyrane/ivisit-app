@@ -105,7 +105,7 @@ export async function calculateEmergencyCost(requestData) {
 
   // Use the RPC for more robust calculation
   try {
-    const { data, error } = await supabase.rpc('calculate_emergency_cost', {
+    const { data, error } = await supabase.rpc('calculate_emergency_cost_v2', {
       p_service_type: service_type,
       p_hospital_id: hospital_id,
       p_ambulance_id: ambulance_id,

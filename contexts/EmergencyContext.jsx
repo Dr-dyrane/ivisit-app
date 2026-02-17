@@ -198,6 +198,7 @@ export function EmergencyProvider({ children }) {
 	const [mode, setMode] = useState(EmergencyMode.EMERGENCY);
 	const [activeAmbulanceTrip, setActiveAmbulanceTrip] = useState(null);
 	const [activeBedBooking, setActiveBedBooking] = useState(null);
+	const [pendingApproval, setPendingApproval] = useState(null);
 	const lastHydratedAmbulanceIdRef = useRef(null);
 	const isHydratingAmbulanceRef = useRef(false);
 
@@ -242,11 +243,11 @@ export function EmergencyProvider({ children }) {
 					},
 					(payload) => {
 						const newRecord = payload.new;
-						// console.log("Realtime Update:", newRecord.status, newRecord.responder_location);
+						// console.log("Realtime Update:", newRecord.status, newRecord.id);
 
 						setActiveBedBooking((prev) => {
 							if (!prev || prev.requestId !== newRecord.request_id) return prev;
-							if (newRecord.status === "completed" || newRecord.status === "cancelled") {
+							if (newRecord.status === "completed" || newRecord.status === "cancelled" || newRecord.status === "payment_declined") {
 								return null;
 							}
 
@@ -266,7 +267,7 @@ export function EmergencyProvider({ children }) {
 						setActiveAmbulanceTrip((prev) => {
 							if (!prev || prev.requestId !== newRecord.request_id) return prev;
 
-							if (newRecord.status === "completed" || newRecord.status === "cancelled") {
+							if (newRecord.status === "completed" || newRecord.status === "cancelled" || newRecord.status === "payment_declined") {
 								// REMOVED: simulationService.stopSimulation();
 								// Real-time ambulance tracking handled by subscriptions
 								return null;
@@ -384,7 +385,7 @@ export function EmergencyProvider({ children }) {
 
 			activeRequests = await emergencyRequestsService.list();
 			const isActiveStatus = (status) =>
-				status === "in_progress" || status === "accepted" || status === "arrived";
+				status === "pending_approval" || status === "in_progress" || status === "accepted" || status === "arrived";
 			const activeAmbulance = activeRequests.find(
 				(r) => r?.serviceType === "ambulance" && isActiveStatus(r?.status)
 			);
@@ -462,13 +463,6 @@ export function EmergencyProvider({ children }) {
 			}
 
 			if (activeBed) {
-				// if (__DEV__) {
-				// 	console.log("[EmergencyContext] Hydrating active bed booking:", {
-				// 		requestId: activeBed?.requestId ?? null,
-				// 		status: activeBed?.status ?? null,
-				// 		hospitalId: activeBed?.hospitalId ?? null,
-				// 	});
-				// }
 				const startedAt = activeBed.createdAt ? Date.parse(activeBed.createdAt) : Date.now();
 				const etaSeconds = parseEtaToSeconds(activeBed.estimatedArrival);
 
@@ -484,6 +478,22 @@ export function EmergencyProvider({ children }) {
 					estimatedWait: activeBed.estimatedArrival ?? null,
 					etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
 					startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
+				});
+			}
+
+			// HYDRATE PENDING APPROVALS
+			// If a request exists in 'pending_approval' status, it's a cash job waiting for hospital review
+			const pendingMatch = activeRequests.find(r => r?.status === 'pending_approval');
+			if (pendingMatch) {
+				setPendingApproval({
+					requestId: pendingMatch.requestId,
+					displayId: pendingMatch.displayId,
+					hospitalId: pendingMatch.hospitalId,
+					hospitalName: pendingMatch.hospitalName,
+					serviceType: pendingMatch.serviceType,
+					ambulanceType: pendingMatch.responderVehicleType, // Capture if ambulance
+					bedType: pendingMatch.bedType,
+					totalAmount: pendingMatch.totalCost,
 				});
 			}
 		})();
@@ -874,6 +884,7 @@ export function EmergencyProvider({ children }) {
 			serviceType,
 			selectedSpecialty,
 			viewMode,
+			pendingApproval,
 
 			// Actions
 			selectHospital,
@@ -892,6 +903,7 @@ export function EmergencyProvider({ children }) {
 			setBedBookingStatus,
 			updateHospitals,
 			setUserLocation,
+			setPendingApproval,
 		}),
 		[
 			filteredHospitals,
@@ -905,6 +917,7 @@ export function EmergencyProvider({ children }) {
 			serviceType,
 			selectedSpecialty,
 			viewMode,
+			pendingApproval,
 			selectHospital,
 			clearSelectedHospital,
 			toggleMode,
@@ -920,6 +933,7 @@ export function EmergencyProvider({ children }) {
 			setBedBookingStatus,
 			updateHospitals,
 			setUserLocation,
+			setPendingApproval,
 		]
 	);
 

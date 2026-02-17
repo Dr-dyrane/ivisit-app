@@ -25,20 +25,23 @@ const BedBookingSummaryHalf = (props) => {
 				</View>
 			</View>
 
-			<View style={styles.vitalTrack}>
-				<View style={[styles.vitalFill, { width: `${(bedProgress ?? 0) * 100}%` }]} />
-				<Animated.View
-					style={[
-						styles.vitalPlow,
-						{
-							left: `${(bedProgress ?? 0) * 100}%`,
-							transform: [{ scale: props.pulseAnim || 1 }]
-						}
-					]}
-				>
-					<Fontisto name="bed-patient" size={10} color="#FFF" />
-				</Animated.View>
-			</View>
+			{/* Vital progress - hide if pending */}
+			{!props.isPending && (
+				<View style={styles.vitalTrack}>
+					<View style={[styles.vitalFill, { width: `${(bedProgress ?? 0) * 100}%` }]} />
+					<Animated.View
+						style={[
+							styles.vitalPlow,
+							{
+								left: `${(bedProgress ?? 0) * 100}%`,
+								transform: [{ scale: props.pulseAnim || 1 }]
+							}
+						]}
+					>
+						<Fontisto name="bed-patient" size={10} color="#FFF" />
+					</Animated.View>
+				</View>
+			)}
 
 			{/* BED IDENTITY WIDGET */}
 			<View style={[styles.identityWidget, { backgroundColor: isDarkMode ? COLORS.bgDark : "rgba(0,0,0,0.03)" }]}>
@@ -110,8 +113,9 @@ export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, a
 
 	const hospitalName = activeBedBooking?.hospitalName || "Hospital";
 
-	const displayStatus = activeBedBooking?.status === "arrived" ? "Occupied" : (bedStatus || "Confirmed");
-	const isReady = bedStatus === "Ready";
+	const isPending = activeBedBooking?.status === "pending_approval";
+	const displayStatus = isPending ? "Awaiting Approval" : (activeBedBooking?.status === "arrived" ? "Occupied" : (bedStatus || "Confirmed"));
+	const isReady = bedStatus === "Ready" && !isPending;
 
 	return <BedBookingSummaryHalf
 		{...{
@@ -119,16 +123,17 @@ export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, a
 			statusLabel: displayStatus,
 			hospitalName,
 			bedType: activeBedBooking?.bedType === "private" ? "Private Suite" : "Standard Bed",
-			bedNumber: activeBedBooking?.bedNumber || "TBA",
+			bedNumber: activeBedBooking?.bedNumber || (isPending ? "Pending Verification" : "TBA"),
 			specialty: activeBedBooking?.specialty || "General",
 			bedProgress,
 			isBusy: !!busyAction,
 			busyAction,
-			etaText: isReady ? "READY" : (formattedBedRemaining || "--"),
-			pulseAnim
+			etaText: isPending ? "WAIT" : (isReady ? "READY" : (formattedBedRemaining || "--")),
+			pulseAnim,
+			isPending
 		}}
-		showMarkOccupied={bedStatus === "Ready" && activeBedBooking?.status !== "arrived"}
-		showComplete={activeBedBooking?.status === "arrived"}
+		showMarkOccupied={bedStatus === "Ready" && activeBedBooking?.status !== "arrived" && !isPending}
+		showComplete={activeBedBooking?.status === "arrived" && !isPending}
 		onCancelBedBooking={() => {
 			setBusyAction('cancel');
 			onCancelBedBooking().finally(() => setBusyAction(null));

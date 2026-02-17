@@ -31,9 +31,9 @@ export const serviceCostService = {
     try {
       const { distance = 0, isUrgent = false, hospitalId = null } = options;
 
-      // Call the database function
+      // Call the database function v2 (to avoid overload ambiguity)
       const { data, error } = await supabase
-        .rpc('calculate_emergency_cost', {
+        .rpc('calculate_emergency_cost_v2', {
           p_service_type: serviceType,
           p_distance: distance,
           p_is_urgent: isUrgent,

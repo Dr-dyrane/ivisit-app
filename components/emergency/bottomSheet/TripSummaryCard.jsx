@@ -48,39 +48,45 @@ const TripSummaryHalf = (props) => {
 				</View>
 			</View>
 
-			{/* VITAL SIGNAL TRACK */}
-			<View style={styles.vitalTrack}>
-				<View style={[styles.vitalFill, { width: `${(tripProgress ?? 0) * 100}%` }]} />
-				<Animated.View
-					style={[
-						styles.vitalPlow,
-						{
-							left: `${(tripProgress ?? 0) * 100}%`,
-							transform: [{ scale: props.pulseAnim || 1 }]
-						}
-					]}
-				>
-					<MaterialCommunityIcons name="ambulance" size={16} color="#FFF" />
-				</Animated.View>
-			</View>
+			{/* VITAL SIGNAL TRACK - Hide if pending since no trip has started */}
+			{!props.isPending && (
+				<View style={styles.vitalTrack}>
+					<View style={[styles.vitalFill, { width: `${(tripProgress ?? 0) * 100}%` }]} />
+					<Animated.View
+						style={[
+							styles.vitalPlow,
+							{
+								left: `${(tripProgress ?? 0) * 100}%`,
+								transform: [{ scale: props.pulseAnim || 1 }]
+							}
+						]}
+					>
+						<MaterialCommunityIcons name="ambulance" size={16} color="#FFF" />
+					</Animated.View>
+				</View>
+			)}
 
 			{/* RESPONDER WIDGET */}
 			<View style={[styles.identityWidget, { backgroundColor: isDarkMode ? COLORS.bgDark : "rgba(0,0,0,0.03)" }]}>
 				<View style={[styles.squircleAvatar, { backgroundColor: COLORS.brandPrimary + '15' }]}>
-					<Ionicons name="person" size={24} color={COLORS.brandPrimary} />
+					<Ionicons name={props.isPending ? "time-outline" : "person"} size={24} color={COLORS.brandPrimary} />
 				</View>
 				<View style={styles.identityText}>
 					<Text style={[styles.nameText, { color: textColor }]}>{driverName}</Text>
-					<Text style={[styles.metaText, { color: mutedColor }]}>{rating} ★ • {vehicle}</Text>
+					<Text style={[styles.metaText, { color: mutedColor }]}>
+						{props.isPending ? "Cash payment verification" : `${rating} ★ • ${vehicle}`}
+					</Text>
 				</View>
-				<View style={styles.plateBadge}>
-					<Text style={styles.plateText}>{assigned?.vehicleNumber || "IVISIT"}</Text>
-				</View>
+				{!props.isPending && (
+					<View style={styles.plateBadge}>
+						<Text style={styles.plateText}>{assigned?.vehicleNumber || "IVISIT"}</Text>
+					</View>
+				)}
 			</View>
 
 			{/* ACTION GRID */}
 			<View style={styles.actionGrid}>
-				{callTarget && (
+				{callTarget && !props.isPending && (
 					<Pressable onPress={props.onPressCall ?? (() => Linking.openURL(callTarget))} style={styles.iconAction}>
 						<Ionicons name="call" size={22} color={COLORS.brandPrimary} />
 					</Pressable>
@@ -88,7 +94,7 @@ const TripSummaryHalf = (props) => {
 				<Pressable onPress={props.onPressCancel ?? props.onCancelAmbulanceTrip} style={styles.cancelAction}>
 					{busyAction === "cancel" ? <ActivityIndicator size="small" color={COLORS.brandPrimary} /> : <Text style={[styles.cancelActionText, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>CANCEL</Text>}
 				</Pressable>
-				{(showMarkArrived || showComplete) && (
+				{(showMarkArrived || showComplete) && !props.isPending && (
 					<Pressable onPress={showMarkArrived ? (props.onPressArrived ?? props.onMarkAmbulanceArrived) : (props.onPressComplete ?? props.onCompleteAmbulanceTrip)} style={styles.completeAction}>
 						{isBusy && (busyAction === 'arrived' || busyAction === 'complete') ? (
 							<ActivityIndicator size="small" color="#FFF" />
@@ -146,15 +152,16 @@ export const TripSummaryCard = ({ activeAmbulanceTrip, hasOtherActiveVisit, allH
 		return phone ? `tel:${phone.replace(/[^\d+]/g, "")}` : null;
 	}, [tripHospital?.phone]);
 
-	const displayStatus = activeAmbulanceTrip?.status === "arrived" ? "Arrived" : (computedStatus || "En Route");
-	const driverName = assigned?.crew?.[0] || assigned?.name || "Responder";
+	const isPending = activeAmbulanceTrip?.status === "pending_approval";
+	const displayStatus = isPending ? "Awaiting Approval" : (activeAmbulanceTrip?.status === "arrived" ? "Arrived" : (computedStatus || "En Route"));
+	const driverName = assigned?.crew?.[0] || assigned?.name || (isPending ? "Waiting for Hospital" : "Responder");
 
 	if (collapsed) return <TripSummaryCollapsed isDarkMode={isDarkMode} statusLabel={displayStatus} etaText={formattedRemaining} callSign={assigned?.callSign} />;
 
 	return <TripSummaryHalf
-		{...{ isDarkMode, statusLabel: displayStatus, etaText: formattedRemaining, tripProgress, driverName, rating: assigned?.rating || "4.8", vehicle: assigned?.plate, assigned, callTarget, isBusy: !!busyAction, busyAction, computedStatus, pulseAnim }}
-		showMarkArrived={computedStatus === "Arrived" && activeAmbulanceTrip?.status !== "arrived"}
-		showComplete={activeAmbulanceTrip?.status === "arrived"}
+		{...{ isDarkMode, statusLabel: displayStatus, etaText: formattedRemaining, tripProgress, driverName, rating: assigned?.rating || "4.8", vehicle: assigned?.plate, assigned, callTarget, isBusy: !!busyAction, busyAction, computedStatus, pulseAnim, isPending }}
+		showMarkArrived={computedStatus === "Arrived" && activeAmbulanceTrip?.status !== "arrived" && !isPending}
+		showComplete={activeAmbulanceTrip?.status === "arrived" && !isPending}
 		onCancelAmbulanceTrip={onCancelAmbulanceTrip}
 		onMarkAmbulanceArrived={() => {
 			console.log("[TripSummaryCard] MARK ARRIVED pressed");

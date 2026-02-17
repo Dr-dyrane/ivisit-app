@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable, ScrollView, Linking, ActivityIndicator, Dimensions, Platform, KeyboardAvoidingView, StyleSheet } from "react-native";
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,9 +18,11 @@ import BedBookingOptions from "./requestModal/BedBookingOptions";
 import PaymentMethodSelector from "../payment/PaymentMethodSelector";
 import { paymentService } from "../../services/paymentService";
 import { calculateEmergencyCost } from "../../services/pricingService";
+import { supabase } from "../../services/supabase";
 import { hospitalsService } from "../../services/hospitalsService";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
 import HeaderBackButton from "../navigation/HeaderBackButton";
+import { useEmergency } from "../../contexts/EmergencyContext";
 
 /**
  * 💡 STABILITY NOTE:
@@ -61,6 +63,7 @@ const EmergencyRequestModal = React.memo(({
 	const currentStepIndex = useMemo(() => {
 		if (requestStep === "select") return 0;
 		if (requestStep === "payment") return 1;
+		if (requestStep === "waiting_approval") return 2;
 		return 2;
 	}, [requestStep]);
 
@@ -78,16 +81,18 @@ const EmergencyRequestModal = React.memo(({
 		const hospitalName = requestHospital?.name || "Medical Center";
 		const isFirstStep = currentStepIndex === 0;
 
+		const isWaiting = requestStep === "waiting_approval";
+
 		setHeaderState({
-			title: currentStepIndex === 2 ? "Request Complete" : hospitalName,
-			subtitle: currentStepIndex === 1 ? "SECURE CHECKOUT" : `STEP ${currentStepIndex + 1}: ${stepName.toUpperCase()}`,
+			title: isWaiting ? "Awaiting Approval" : (currentStepIndex === 2 ? "Request Complete" : hospitalName),
+			subtitle: isWaiting ? "HOSPITAL REVIEW" : (currentStepIndex === 1 ? "SECURE CHECKOUT" : `STEP ${currentStepIndex + 1}: ${stepName.toUpperCase()}`),
 			icon: <Ionicons
-				name={mode === "emergency" ? "medical" : "bed"}
+				name={isWaiting ? "time-outline" : (mode === "emergency" ? "medical" : "bed")}
 				size={26}
 				color="#FFFFFF"
 			/>,
-			backgroundColor: mode === "emergency" ? COLORS.emergency : COLORS.brandPrimary,
-			leftComponent: <HeaderBackButton onPress={() => {
+			backgroundColor: isWaiting ? "#FF9500" : (mode === "emergency" ? COLORS.emergency : COLORS.brandPrimary),
+			leftComponent: isWaiting ? null : <HeaderBackButton onPress={() => {
 				Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 				if (currentStepIndex === 0 || currentStepIndex === 2) {
 					onRequestClose();
@@ -97,7 +102,7 @@ const EmergencyRequestModal = React.memo(({
 			}} />,
 			rightComponent: false,
 		});
-	}, [currentStepIndex, requestHospital, mode, onRequestClose, steps, setHeaderState]);
+	}, [currentStepIndex, requestStep, requestHospital, mode, onRequestClose, steps, setHeaderState]);
 	const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);
 	const [bedType, setBedType] = useState("standard");
 	const [bedCount, setBedCount] = useState(2);
@@ -110,6 +115,109 @@ const EmergencyRequestModal = React.memo(({
 	const [dynamicServices, setDynamicServices] = useState([]);
 	const [dynamicRooms, setDynamicRooms] = useState([]);
 	const [selectedRoomId, setSelectedRoomId] = useState(null);
+
+	// Cash approval gate state (Managed by context for persistence)
+	const { pendingApproval, setPendingApproval, activeAmbulanceTrip } = useEmergency();
+
+	// If mounting and we have a pending approval, ensure we are on the right step
+	useEffect(() => {
+		if (pendingApproval && requestStep !== "waiting_approval") {
+			setRequestStep("waiting_approval");
+		}
+	}, []);
+	const approvalSubRef = useRef(null);
+
+	// 🔄 REAL-TIME: Listen for approval/decline on pending cash payment
+	useEffect(() => {
+		if (!pendingApproval?.requestId) return;
+
+		console.log('[EmergencyRequestModal] 📡 Subscribing to approval for:', pendingApproval.requestId);
+
+		const channel = supabase
+			.channel(`approval_${pendingApproval.requestId}`)
+			.on(
+				'postgres_changes',
+				{
+					event: 'UPDATE',
+					schema: 'public',
+					table: 'emergency_requests',
+					filter: `id=eq.${pendingApproval.requestId}`,
+				},
+				(payload) => {
+					const newStatus = payload.new?.status;
+					console.log('[EmergencyRequestModal] 📡 Status update received:', newStatus);
+
+					if (newStatus === 'in_progress') {
+						// ✅ APPROVED: Transition to dispatched view
+						Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+						showToast("Payment approved! Dispatching...", "success");
+
+						const waitTime = requestHospital?.waitTime ?? null;
+						const hospitalEta = requestHospital?.eta ?? null;
+						const ambulanceEta =
+							(typeof hospitalEta === "string" && hospitalEta.length > 0
+								? hospitalEta
+								: null) ?? "8 mins";
+
+						const next =
+							mode === "booking"
+								? {
+									success: true,
+									requestId: pendingApproval.requestId,
+									displayId: pendingApproval.displayId,
+									estimatedArrival: waitTime ?? "15 mins",
+									hospitalId: pendingApproval.hospitalId,
+									hospitalName: pendingApproval.hospitalName,
+									serviceType: "bed",
+									specialty: pendingApproval.specialty,
+									bedCount: pendingApproval.bedCount,
+									bedType: pendingApproval.bedType,
+									bedNumber: pendingApproval.bedNumber,
+									etaSeconds: null,
+								}
+								: {
+									success: true,
+									requestId: pendingApproval.requestId,
+									displayId: pendingApproval.displayId,
+									hospitalId: pendingApproval.hospitalId,
+									hospitalName: pendingApproval.hospitalName,
+									ambulanceType: pendingApproval.ambulanceType,
+									serviceType: "ambulance",
+									estimatedArrival: ambulanceEta,
+									etaSeconds: null,
+								};
+
+						setRequestData(next);
+						setRequestStep("dispatched");
+						setPendingApproval(null);
+
+						if (typeof onRequestComplete === "function") {
+							onRequestComplete(next);
+						}
+					} else if (newStatus === 'payment_declined') {
+						// ❌ DECLINED: Return to payment step, preserve selections
+						Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+						setErrorMessage(
+							"The hospital declined your cash payment. Please choose a different payment method."
+						);
+						// Keep selections intact — user doesn't have to re-pick hospital/ambulance
+						setSelectedPaymentMethod(null);
+						setRequestStep("payment");
+						setPendingApproval(null);
+						showToast("Payment declined by hospital", "error");
+					}
+				}
+			)
+			.subscribe();
+
+		approvalSubRef.current = channel;
+
+		return () => {
+			console.log('[EmergencyRequestModal] 📡 Unsubscribing approval listener');
+			supabase.removeChannel(channel);
+			approvalSubRef.current = null;
+		};
+	}, [pendingApproval?.requestId, mode, requestHospital, onRequestComplete, showToast]);
 
 	// Zero-ambulance fallback logic
 	const hasAmbulances = useMemo(() => {
@@ -281,6 +389,20 @@ const EmergencyRequestModal = React.memo(({
 		if (isRequesting) return;
 		if (!requestHospital) return;
 
+		// 🚨 BLOCKING LOGIC: Prevent duplicate ambulance requests
+		if (mode === "emergency") {
+			const hasActiveAmbulance = activeAmbulanceTrip && !['completed', 'cancelled'].includes(activeAmbulanceTrip.status);
+			const hasPendingAmbulance = pendingApproval && pendingApproval.serviceType === "ambulance";
+
+			if (hasActiveAmbulance || hasPendingAmbulance) {
+				const statusMsg = hasPendingAmbulance ? "pending approval" : "already in progress";
+				setErrorMessage(`You have an ambulance request ${statusMsg}. Please complete or cancel it before starting a new one.`);
+				showToast("Active request detected", "error");
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+				return;
+			}
+		}
+
 		// BIPHASIC FLOW: Step 1 -> Step 2
 		if (requestStep === "select") {
 			if (mode === "emergency" && !selectedAmbulanceType) {
@@ -391,9 +513,10 @@ const EmergencyRequestModal = React.memo(({
 				};
 
 
+		let result = null;
 		try {
 			if (typeof onRequestInitiated === "function") {
-				const result = await onRequestInitiated(initiated);
+				result = await onRequestInitiated(initiated);
 
 				// Handle explicit failure from the hook
 				if (result && result.ok === false) {
@@ -404,7 +527,6 @@ const EmergencyRequestModal = React.memo(({
 				}
 
 				// 🔑 CRITICAL: Capture the real UUID from the hook result
-				// This replaces the display ID (AMB-xxx) with the actual DB UUID
 				if (result?.requestId) {
 					console.log('[EmergencyRequestModal] ✅ Real ID received:', result.requestId, '(display:', initiated.requestId, ')');
 					initiated._realId = result.requestId;
@@ -418,7 +540,32 @@ const EmergencyRequestModal = React.memo(({
 			return;
 		}
 
-		// Success flow - slightly delayed for animation/UX
+		// 💰 CASH APPROVAL GATE: If requires approval, enter waiting state
+		if (result?.requiresApproval) {
+			console.log('[EmergencyRequestModal] ⏳ Cash payment requires org approval. Entering waiting state.');
+			const realRequestId = initiated._realId || initiated.requestId;
+			setPendingApproval({
+				requestId: realRequestId,
+				displayId: initiated._displayId || initiated.requestId,
+				paymentId: result.paymentId,
+				hospitalId: initiated.hospitalId,
+				hospitalName: initiated.hospitalName,
+				serviceType: initiated.serviceType || (mode === "booking" ? "bed" : "ambulance"),
+				ambulanceType: initiated.ambulanceType,
+				specialty: initiated.specialty,
+				bedCount: initiated.bedCount,
+				bedType: initiated.bedType,
+				bedNumber: initiated.bedNumber,
+				initiatedData: initiated,
+			});
+			setRequestStep("waiting_approval");
+			setIsRequesting(false);
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			showToast("Waiting for hospital approval", "info");
+			return;
+		}
+
+		// Success flow (Card or no-approval) - slightly delayed for animation/UX
 		setTimeout(() => {
 			const waitTime = requestHospital?.waitTime ?? null;
 			const hospitalEta = requestHospital?.eta ?? null;
@@ -880,6 +1027,75 @@ const EmergencyRequestModal = React.memo(({
 							</View>
 						</View>
 					</>
+				) : requestStep === "waiting_approval" ? (
+					<View style={styles.waitingContainer}>
+						{/* Premium Glassmorphic Header */}
+						<View style={styles.waitingHeader}>
+							<View style={styles.pulseContainer}>
+								<View style={[styles.pulseCircle, { backgroundColor: isDarkMode ? 'rgba(255, 149, 0, 0.2)' : 'rgba(255, 149, 0, 0.1)' }]} />
+								<BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={styles.pulseBlur}>
+									<ActivityIndicator size="small" color="#FF9500" />
+								</BlurView>
+							</View>
+
+							<Text style={[styles.waitingTitle, { color: requestColors.text }]}>
+								Verification in Progress
+							</Text>
+							<Text style={[styles.waitingSubtitle, { color: requestColors.textMuted }]}>
+								{pendingApproval?.hospitalName || 'Medical Center'} is authenticating your cash transaction.
+							</Text>
+						</View>
+
+						{/* Identity & Transaction Card (Alexander UI: Depth over Color) */}
+						<View style={[styles.transactionCard, {
+							backgroundColor: requestColors.card,
+							borderColor: requestColors.border,
+						}]}>
+							<BlurView intensity={isDarkMode ? 10 : 30} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+
+							<View style={styles.transactionSection}>
+								<Text style={styles.transactionLabel}>REFERENCE ID</Text>
+								<Text style={[styles.transactionValue, { color: requestColors.text }]}>
+									{pendingApproval?.displayId || '—'}
+								</Text>
+							</View>
+
+							<View style={styles.transactionDivider} />
+
+							<View style={styles.transactionGrid}>
+								<View style={styles.transactionBrief}>
+									<Text style={styles.transactionLabel}>FACILITY</Text>
+									<Text style={[styles.transactionBriefValue, { color: requestColors.text }]}>
+										{pendingApproval?.hospitalName || '—'}
+									</Text>
+								</View>
+								<View style={styles.transactionBrief}>
+									<Text style={styles.transactionLabel}>SERVICE</Text>
+									<Text style={[styles.transactionBriefValue, { color: requestColors.text }]}>
+										{pendingApproval?.serviceType === 'ambulance' ? 'Ambulance' : 'Clinical Bed'}
+									</Text>
+								</View>
+							</View>
+
+							<View style={styles.transactionDivider} />
+
+							<View style={styles.statusPillLarge}>
+								<View style={styles.statusIndicator}>
+									<View style={styles.statusDot} />
+									<Text style={styles.statusText}>PENDING CONFIRMATION</Text>
+								</View>
+								<Text style={styles.statusMethod}>PHYSICAL CASH</Text>
+							</View>
+						</View>
+
+						{/* Calm Secondary Info */}
+						<View style={styles.waitingFooter}>
+							<Ionicons name="finger-print-outline" size={16} color={requestColors.textMuted} />
+							<Text style={[styles.footerText, { color: requestColors.textMuted }]}>
+								Your session is secured. The system will update automatically upon hospital verification.
+							</Text>
+						</View>
+					</View>
 				) : (
 					<>
 						<EmergencyRequestModalDispatched
@@ -1143,7 +1359,159 @@ const styles = StyleSheet.create({
 		height: 4,
 		borderRadius: 2,
 		backgroundColor: COLORS.success,
-	}
+	},
+	paymentSummaryCard: {
+		borderRadius: 20,
+		padding: 20,
+		borderWidth: 1,
+		gap: 12,
+	},
+	summaryRow: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+	},
+	summaryLabel: {
+		fontSize: 13,
+		fontWeight: '600',
+	},
+	summaryValue: {
+		fontSize: 14,
+		fontWeight: '700',
+	},
+	// Waiting Step Styles (Alexander UI)
+	waitingContainer: {
+		padding: 24,
+		gap: 32,
+		alignItems: 'center',
+	},
+	waitingHeader: {
+		alignItems: 'center',
+		gap: 12,
+	},
+	pulseContainer: {
+		width: 64,
+		height: 64,
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginBottom: 16,
+	},
+	pulseCircle: {
+		position: 'absolute',
+		width: '100%',
+		height: '100%',
+		borderRadius: 32,
+	},
+	pulseBlur: {
+		width: 48,
+		height: 48,
+		borderRadius: 24,
+		alignItems: 'center',
+		justifyContent: 'center',
+		overflow: 'hidden',
+		borderWidth: 1,
+		borderColor: 'rgba(255, 149, 0, 0.3)',
+	},
+	waitingTitle: {
+		fontSize: 24,
+		fontWeight: '900',
+		letterSpacing: -1,
+		textAlign: 'center',
+	},
+	waitingSubtitle: {
+		fontSize: 14,
+		lineHeight: 22,
+		textAlign: 'center',
+		paddingHorizontal: 20,
+		fontWeight: '500',
+	},
+	transactionCard: {
+		width: '100%',
+		borderRadius: 32,
+		padding: 32,
+		borderWidth: 1,
+		overflow: 'hidden',
+		gap: 24,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 20 },
+		shadowOpacity: 0.1,
+		shadowRadius: 30,
+		elevation: 10,
+	},
+	transactionSection: {
+		gap: 4,
+	},
+	transactionLabel: {
+		fontSize: 10,
+		fontWeight: '800',
+		letterSpacing: 1.5,
+		color: 'rgba(255, 149, 0, 0.8)',
+		textTransform: 'uppercase',
+	},
+	transactionValue: {
+		fontSize: 20,
+		fontWeight: '900',
+		letterSpacing: 1,
+	},
+	transactionDivider: {
+		height: 1,
+		backgroundColor: 'rgba(255, 255, 255, 0.1)',
+		width: '100%',
+	},
+	transactionGrid: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+	},
+	transactionBrief: {
+		gap: 2,
+	},
+	transactionBriefValue: {
+		fontSize: 15,
+		fontWeight: '700',
+	},
+	statusPillLarge: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		backgroundColor: 'rgba(255, 149, 0, 0.1)',
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		borderRadius: 16,
+	},
+	statusIndicator: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+	},
+	statusDot: {
+		width: 6,
+		height: 6,
+		borderRadius: 3,
+		backgroundColor: '#FF9500',
+	},
+	statusText: {
+		fontSize: 10,
+		fontWeight: '800',
+		color: '#FF9500',
+		letterSpacing: 0.5,
+	},
+	statusMethod: {
+		fontSize: 10,
+		fontWeight: '600',
+		color: 'rgba(255, 149, 0, 0.6)',
+	},
+	waitingFooter: {
+		flexDirection: 'row',
+		gap: 12,
+		paddingHorizontal: 24,
+		alignItems: 'flex-start',
+		opacity: 0.8,
+	},
+	footerText: {
+		fontSize: 12,
+		lineHeight: 18,
+		fontWeight: '500',
+	},
 });
 
 export default EmergencyRequestModal;

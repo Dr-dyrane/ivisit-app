@@ -1,247 +1,174 @@
-# Emergency Payment Flow Audit - COMPLETE
+# Emergency Payment Flow — Complete Audit
 
-**Date**: February 17, 2026  
-**Status**: PRODUCTION READY ✅
-
-## Executive Summary
-
-The emergency request flow with payment integration has been successfully audited, fixed, and validated. All critical issues identified in the original problem statement have been resolved through systematic task-based implementation with comprehensive safety measures and rollback capabilities.
-
-## 🎯 Issues Resolved
-
-### 1. Missing RPC Functions → ✅ RESOLVED
-**Problem**: Frontend calling non-existent `check_cash_eligibility_v2` and `processCashPayment` functions
-**Solution**: Created both functions in Task 2 with comprehensive error handling
-**Impact**: Emergency payment flow can now proceed past initial function call barriers
-
-### 2. Parameter Mismatches → ✅ RESOLVED  
-**Problem**: Frontend calling `calculate_emergency_cost` with 4 parameters, backend expecting 6
-**Solution**: Updated pricingService.js to pass all 6 parameters including distance and urgency
-**Impact**: Cost calculations now include distance surcharges and urgency fees correctly
-
-### 3. Organization Fee Calculation → ✅ RESOLVED
-**Problem**: Cannot fetch org_fee and add to total amount for user to pay during request modal
-**Solution**: Enhanced `calculate_emergency_cost` RPC with better organization fee handling and debugging support
-**Impact**: Organization-specific fees calculated and displayed in cost breakdown
-
-### 4. Payment Record Creation → ✅ RESOLVED
-**Problem**: Payment record creation fails after simulated payment
-**Solution**: Verified `process_cash_payment_v2` RPC creates complete payment records with audit trail
-**Impact**: All payments properly recorded with wallet ledger entries and status updates
-
-### 5. Emergency & Visit Record Creation → ✅ RESOLVED
-**Problem**: Emergency and visit records creation inconsistent after payment due to UUID vs text ID mismatches
-**Solution**: Fixed UUID/TEXT type mismatch between emergency_requests and visits tables with enhanced sync trigger
-**Impact**: Completed emergency requests automatically create corresponding visit records
-
-## 🚀 Production Readiness Achieved
-
-### Technical Excellence
-- **Database Schema**: All tables use consistent UUID types with proper relationships
-- **RPC Functions**: Complete set of functions with comprehensive error handling
-- **Frontend Integration**: All services properly call backend functions with correct parameters
-- **Data Integrity**: Comprehensive audit trails and transaction logging
-- **Error Handling**: Robust validation and fallback mechanisms throughout the flow
-
-### User Experience Excellence
-- **Seamless Flow**: Emergency requests proceed smoothly from creation to payment completion
-- **Clear Pricing**: Cost breakdowns display all components including organization fees
-- **Reliable Processing**: Multiple payment methods with proper status tracking
-- **Complete Audit Trail**: Full payment history and visit records maintained
-
-### Business Excellence
-- **Payment Processing**: Complete payment flow with organization fee management
-- **Provider Management**: Hospital and organization capabilities properly integrated
-- **Regulatory Compliance**: All transactions properly logged and auditable
-- **Scalability**: Architecture supports multiple payment methods and high transaction volumes
-
-## 📋 Implementation Summary
-
-### Tasks Completed (7/7)
-
-1. ✅ **Task 1**: Safety Preparation - Database backup, git commit, baseline documentation
-2. ✅ **Task 2**: Missing RPC Functions - Created `check_cash_eligibility_v2` and `processCashPayment`
-3. ✅ **Task 3**: Parameter Mismatches - Fixed `calculate_emergency_cost` parameter alignment
-4. ✅ **Task 4**: Organization Fee Calculation - Enhanced fee calculation infrastructure
-5. ✅ **Task 5**: Payment Record Creation - Verified payment processing works correctly
-6. ✅ **Task 6**: Emergency & Visit Record Creation - Fixed UUID synchronization issues
-7. ✅ **Task 7**: Final Integration Testing - Comprehensive end-to-end validation
-
-### Migrations Applied (7 critical migrations)
-
-1. `20260217070000_create_missing_rpc_functions.sql` - Missing RPC functions
-2. `20260217072000_fix_org_fee_calculation.sql` - Organization fee enhancement
-3. `20260217073000_fix_visits_id_type.sql` - Emergency-visit synchronization
-4. `20260217071000_reload_schema_cache.sql` - Schema cache reload
-5. `20260217013000_definitive_id_stability.sql` - Parameter fixes (from previous)
-6. `20260217050000_perfect_cash_flow.sql` - Cash payment processing (from previous)
-7. `20260217060000_fix_emergency_requests_id_default.sql` - ID defaults (from previous)
-
-### Files Modified
-
-#### Database Schema
-- Enhanced RPC functions with comprehensive error handling
-- Updated trigger functions for proper UUID synchronization
-- Fixed type mismatches across all related tables
-- Added debugging support for troubleshooting
-
-#### Frontend Services
-- Updated `paymentService.js` with missing functions
-- Fixed `pricingService.js` parameter alignment
-- Enhanced error handling and validation throughout
-
-#### Documentation
-- Complete audit trail with task-based verification
-- Comprehensive rollback strategy with git checkpoints
-- Production readiness validation
-
-## 🔄 Rollback Strategy
-
-### Git Checkpoints for Easy Rollback
-
-Each task has its own git checkpoint for instant rollback:
-
-```bash
-# Rollback to any checkpoint
-git reset --hard [checkpoint-name]
-
-# Available checkpoints
-git tag --list
-
-# Rollback to initial state
-git reset --hard backup-before-emergency-fix
-```
-
-### Checkpoints Created
-1. `backup-before-emergency-fix` - Initial working state before any changes
-2. `task2-missing-functions-complete` - After RPC function creation
-3. `task3-parameter-fixes-complete` - After parameter alignment fixes
-4. `task4-org-fee-fix-complete` - After organization fee enhancement
-5. `task5-payment-creation-complete` - After payment processing verification
-6. `task6-record-creation-complete` - After emergency-visit synchronization fix
-7. `task7-integration-testing-complete` - Final production-ready state
-
-### Database Rollback
-If database rollback is needed:
-```bash
-# Restore from backup file
-supabase db reset --file backup_YYYYMMDD_HHMMSS.sql
-```
-
-## 🎯 Production Deployment
-
-The emergency payment flow is now **production-ready** with:
-
-- **Apple-level quality standards** met
-- **Comprehensive error handling** implemented
-- **Complete audit trails** maintained
-- **Multiple rollback options** available
-- **Scalable architecture** for high-volume usage
-- **Regulatory compliance** ensured
-
-## 📊 Metrics
-
-### Before Fix
-- Emergency request creation: ❌ Failing with UUID errors
-- Payment processing: ❌ Function not found errors
-- Cost calculation: ❌ Parameter mismatch errors
-- Organization fees: ❌ Not fetching or displaying
-- Visit creation: ❌ Synchronization failures
-
-### After Fix
-- Emergency request creation: ✅ Working with proper UUID handling
-- Payment processing: ✅ Complete with multiple payment methods
-- Cost calculation: ✅ Accurate with organization fees
-- Organization fees: ✅ Properly calculated and displayed
-- Visit creation: ✅ Automatic synchronization working
-- Error handling: ✅ Comprehensive validation and fallbacks
-
-## 🔄 Addendum: Atomic Payment Flow Refactor (Task 8)
-
-### Refactoring to "Pay-Then-Create" Model
-
-Based on production requirements for guaranteed payment before dispatch:
-
-1.  **Atomic RPC Implementation**: Created `create_emergency_with_payment` RPC.
-    -   Validates payment method (Cash Balance / Card Token).
-    -   Process financial transaction (Deduct Fee / Record Charge).
-    -   **Only then** creates the `emergency_requests` record.
-    -   Ensures 0% chance of "unpaid" active emergency requests.
-
-2.  **Transparent Pricing**:
-    -   Updated `calculate_emergency_cost` to explicitly include 2.5% Service Fee in breakdown.
-    -   Frontend now displays: `Base Price + Distance/Urgency + Service Fee = Total`.
-
-3.  **Frontend Integration**:
-    -   Updated `emergencyRequestsService.js` to use the atomic RPC when payment details are present.
-    -   Updated `pricingService.js` to expose the service fee field.
-
-## 🏆 Final Status
-
-**EMERGENCY PAYMENT FLOW: PRODUCTION READY** ✅
-
-All original issues have been systematically resolved through task-based implementation with comprehensive safety measures. The system now provides a seamless, reliable emergency medical service with proper payment integration and complete audit capabilities.
+## Date: 2026-02-17
+## Status: ✅ IMPLEMENTED
 
 ---
 
-## 🔧 Addendum: Sustainable Architecture V2 (Feb 17, 2026)
-
-### Root Cause Analysis
-
-Three critical bugs were identified in the V1 implementation:
-
-| Bug | Cause | Impact |
-|-----|-------|--------|
-| `"AMB-449811" is not a UUID` | `useRequestFlow` used display ID for all DB operations | Crashes on visit creation, cancel, complete |
-| `visits RLS policy violation` | Frontend `addVisit()` inserted directly, bypassing RLS context | Visit creation fails for authenticated users |
-| `Fee not shown in modal` | Two overloaded RPCs confused PostgREST | Cost calculation silently failed |
-
-### Architectural Fix: "Payment Stub → Emergency → Link Back"
+## Architecture Overview
 
 ```
-Step 1: Create PAYMENT record        → user_id, org_id, amount (emergency_request_id = NULL)
-Step 2: Process fee (if cash)         → Deduct from org wallet, credit platform
-Step 3: Create EMERGENCY REQUEST      → Gets real UUID
-Step 4: Link payment to emergency     → UPDATE payments SET emergency_request_id = UUID
-Step 5: Visit created by DB trigger   → sync_emergency_to_history fires on INSERT
+┌──────────────────────────────────────────────────┐
+│ CARD PAYMENT (No Approval Gate)                  │
+├──────────────────────────────────────────────────┤
+│ User → Confirm → RPC → Payment(completed)        │
+│ → Emergency(in_progress) → Visit(upcoming)        │
+│ → Fee deducted immediately → Ambulance dispatched │
+└──────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────┐
+│ CASH PAYMENT (3-Phase Approval Gate)             │
+├──────────────────────────────────────────────────┤
+│ Phase 1: Creation                                │
+│   User → Confirm → RPC → Payment(pending)        │
+│   → Emergency(pending_approval) → Visit(pending)  │
+│   → Org admin notified                           │
+│   → User sees "Waiting for Approval" screen      │
+│                                                  │
+│ Phase 2a: APPROVED                               │
+│   Org admin taps Approve → approve_cash_payment  │
+│   → Fee deducted from org wallet                 │
+│   → Payment(completed) → Emergency(in_progress)  │
+│   → Visit(upcoming) → Patient notified           │
+│   → Modal auto-transitions → Ambulance dispatched│
+│                                                  │
+│ Phase 2b: DECLINED                               │
+│   Org admin taps Decline → decline_cash_payment  │
+│   → Payment(declined) → Emergency(payment_declined)│
+│   → Patient notified → Modal returns to checkout │
+│   → User picks different payment method          │
+│   → Selections preserved (hospital, ambulance)   │
+└──────────────────────────────────────────────────┘
 ```
-
-### Changes Made
-
-1. **`create_emergency_with_payment` V2 RPC** (`20260217083000`)
-   - Creates payment stub first (no FK violation)
-   - Processes fee atomically
-   - Creates emergency request
-   - Links payment back to emergency
-
-2. **`calculate_emergency_cost` Fixed** (`20260217082000`)
-   - Dropped old 5-param overload
-   - Single canonical 6-param version with service fee in breakdown
-   - Breakdown includes: Base Service, Distance Surcharge, Urgency Surcharge, Service Fee (2.5%)
-
-3. **Backend-Automated Visit Creation** (`20260217084000`)
-   - `sync_emergency_to_history` trigger fires on both INSERT and UPDATE
-   - Frontend `addVisit()` removed entirely from `useRequestFlow`
-   - Eliminates RLS violations and UUID type mismatches
-
-4. **UUID Propagation Fix**
-   - `useRequestFlow.handleRequestInitiated` now uses `createdRequest.id` (real UUID)
-   - `EmergencyRequestModal` captures real UUID from hook result
-   - All downstream operations (cancel, complete, update) use real UUID
-
-5. **Removed Redundant Client-Side Payment**
-   - `paymentService.processCashPayment()` no longer called from frontend
-   - Fee processing handled atomically inside the RPC
-
-### Data Integrity Guarantees
-
-- **No orphan payments**: Payment exists before emergency request; linked after creation
-- **No orphan visits**: Trigger creates visit on emergency request INSERT
-- **No UUID/TEXT mismatch**: Real UUIDs flow through entire client chain
-- **FK constraint respected**: `payments.emergency_request_id` stays NULL until emergency exists
-- **Atomic fee processing**: Wallet deductions happen inside same transaction as record creation
 
 ---
 
-*This document tracks the complete evolution from broken demo → V1 atomic flow → V2 sustainable architecture.*
+## Files Changed
 
+### Database (Migrations)
+
+| File | Purpose |
+|------|---------|
+| `20260217090000_cash_approval_gate.sql` | Modified `create_emergency_with_payment` RPC for cash approval gate. Added `approve_cash_payment` and `decline_cash_payment` RPCs. Updated `sync_emergency_to_history` trigger. |
+| `20260217090100_cross_user_notifications.sql` | Added RLS policy allowing any authenticated user to INSERT notifications for any user (required for cross-user notification dispatch). |
+
+### Services
+
+| File | Changes |
+|------|---------|
+| `emergencyRequestsService.js` | Added `PENDING_APPROVAL` and `PAYMENT_DECLINED` statuses. Updated `list()` to include `pending_approval` in active statuses. Updated `create()` return to include `requiresApproval`, `paymentStatus`, `feeAmount`. |
+| `notificationDispatcher.js` | Added `dispatchToUser()` for cross-user notifications. Added `dispatchCashApprovalToOrgAdmins()` for org admin notification. Added `dispatchPaymentStatusToPatient()` for approval/decline feedback. Added `pending_approval` and `payment_declined` cases to `dispatchEmergencyUpdate()`. |
+| `paymentService.js` | Added `approveCashPayment()` and `declineCashPayment()` methods that call the RPCs and send patient notifications. |
+
+### Hooks
+
+| File | Changes |
+|------|---------|
+| `useRequestFlow.js` | After `createRequest` succeeds with `requiresApproval: true`, dispatches cash approval notification to org admins and waiting notification to patient. Returns `requiresApproval`, `paymentId`, `paymentStatus` in result. |
+| `EmergencyContext.jsx` | Updated `isActiveStatus` to include `pending_approval`. This ensures requests waiting for approval are hydrated on app launch and correctly tracked as active. |
+
+### Components
+
+| File | Changes |
+|------|---------|
+| `EmergencyRequestModal.jsx` | Added `pendingApproval` state and `approvalSubRef`. Added real-time Supabase subscription for `emergency_requests` status changes. Added `waiting_approval` step with approval waiting UI. On approval → auto-transition to dispatched. On decline → return to checkout with preserved selections. Updated header for waiting state (orange, no back button). |
+| `TripSummaryCard.jsx` | Updated to display "Awaiting Approval" status. Hides responder widget and progress bar when status is `pending_approval`. |
+| `BedBookingSummaryCard.jsx` | Updated to display "Awaiting Approval" status. Hides progress tracking when status is `pending_approval`. |
+
+---
+
+## Status Mapping
+
+| Emergency Status | Visit Status | Payment Status | Meaning |
+|---|---|---|---|
+| `pending_approval` | `pending` | `pending` | Cash payment awaiting org admin approval |
+| `in_progress` | `upcoming` | `completed` | Approved / Card payment — ambulance dispatched |
+| `accepted` | `upcoming` | `completed` | Ambulance accepted the request |
+| `arrived` | `in-progress` | `completed` | Ambulance arrived |
+| `completed` | `completed` | `completed` | Trip finished |
+| `cancelled` | `cancelled` | varies | Cancelled by user or system |
+| `payment_declined` | `cancelled` | `declined` | Org admin declined cash payment |
+
+---
+
+## Notification Flow
+
+### On Cash Payment Created:
+1. **To org_admin users** → "Cash Payment Approval Required" (URGENT, orange, action: `approve_cash_payment`)
+2. **To patient** → "Awaiting Hospital Approval" (via `dispatchEmergencyUpdate`)
+
+### On Approval:
+1. **To patient** → "Payment Approved — Dispatching" (GREEN, action: `view_request`)
+
+### On Decline:
+1. **To patient** → "Cash Payment Declined" (RED, action: `retry_payment`)
+
+---
+
+## State Preservation
+
+When a cash payment is declined, the following user selections are **preserved**:
+- Selected hospital
+- Selected ambulance type  
+- Selected specialty
+- Bed type/count (for bookings)
+- Cost calculation
+
+Only `selectedPaymentMethod` is cleared, sending the user back to the payment step to pick an alternative method.
+
+---
+
+## Real-Time Subscription
+
+The modal subscribes to `postgres_changes` on `emergency_requests` filtered by the specific request UUID. This means:
+- Only relevant updates are received
+- Channel auto-cleans up on component unmount
+- No polling — instant response when org admin acts
+
+---
+
+## RPC Security
+
+All three RPCs use `SECURITY DEFINER`:
+- `create_emergency_with_payment` — Creates payment + emergency atomically
+- `approve_cash_payment` — Deducts fee, completes payment, dispatches
+- `decline_cash_payment` — Marks declined, no fee deducted
+
+`approve_cash_payment` records `approved_by: auth.uid()` in metadata for audit trail.
+`decline_cash_payment` records `declined_by: auth.uid()` in metadata for audit trail.
+
+---
+
+## Wallet Ledger Audit Trail
+
+On approval:
+- Organization wallet: DEBIT `−$fee` with description "Platform Fee (Cash Job Approved)"
+- Platform wallet: CREDIT `+$fee` with description "Fee from Approved Cash Job"
+- Both reference `payment_id` for traceability
+
+On decline:
+- No wallet movements (fee was never deducted)
+
+---
+
+## 2026-02-17 Update: V2 Stabilization & Notification Engine
+
+The system has been further hardened to ensure zero-latency feedback and unified financial reporting.
+
+### 1. Automated Notification Engine (Trigger-Based)
+Implemented a centralized `notify_emergency_events` database trigger. This replaces ad-hoc service-side notifications with guaranteed system-level alerts:
+- **Org Admins**: Instantly notified of NEW incoming requests.
+- **Patients**: Notified the millisecond an Admin clicks "Approve" (Cash collected).
+- **Status Updates**: Automated "Help is on the way" and "Service Completed" notifications.
+
+### 2. Financial Ledger Robustness
+- **Org-Attributed Reporting**: Platform fee credits in `ivisit_main_wallet` now carry the `organization_id`. This allows iVisit admins to generate revenue reports per organization.
+- **RLS Standardized**: Fixed a gap where Admins were being restricted from viewing certain ledger entries. Admins now have guaranteed visibility across all wallets and payments.
+
+### 3. Console UX Enhancements
+- **Multi-Source Financial View**: Added a "Service Payments" tab to the Wallet Management page. Users can now cross-reference `wallet_ledger` entries with raw `payments` records.
+- **Crash Prevention**: Added null-guards for `reference_id` link rendering in the transaction list.
+- **Live Refresh**: Added a manual refresh button to the ledger to accommodate for webhook/RPC propagation delays.
+
+---
+**Audit Complete.** Flow is now fully automated and observable from both Patient App and Provider Console.

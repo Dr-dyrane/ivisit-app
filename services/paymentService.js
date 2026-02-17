@@ -403,12 +403,6 @@ export const paymentService = {
               name,
               address
             )
-          ),
-          payment_methods (
-            type,
-            last4,
-            brand,
-            provider
           )
         `)
         .eq('user_id', user.id)
@@ -751,6 +745,129 @@ export const paymentService = {
       console.error('[paymentService] Cash eligibility check error:', error);
       return false;
     }
-  }
+  },
+
+  /**
+   * Approve a pending cash payment (called by org_admin).
+   * Deducts fee from org wallet, credits platform, updates payment + emergency status.
+   * @param {string} paymentId - Payment UUID
+   * @param {string} requestId - Emergency request UUID
+   * @returns {Object} { success, fee_deducted, new_balance } or { success: false, error }
+   */
+  async approveCashPayment(paymentId, requestId) {
+    try {
+      console.log('[paymentService] Approving cash payment:', { paymentId, requestId });
+
+      const { data, error } = await supabase.rpc('approve_cash_payment', {
+        p_payment_id: paymentId,
+        p_request_id: requestId,
+      });
+
+      if (error) {
+        console.error('[paymentService] approve_cash_payment RPC error:', error);
+        throw error;
+      }
+
+      if (!data?.success) {
+        console.error('[paymentService] approve_cash_payment returned failure:', data?.error);
+        throw new Error(data?.error || 'Approval failed');
+      }
+
+      console.log('[paymentService] ✅ Cash payment approved:', data);
+
+      // Notify the patient (non-blocking)
+      try {
+        const { notificationDispatcher } = await import('./notificationDispatcher');
+        // Look up patient user_id from the emergency request
+        const { data: reqData } = await supabase
+          .from('emergency_requests')
+          .select('user_id, hospital_name, service_type, request_id')
+          .eq('id', requestId)
+          .single();
+
+        if (reqData) {
+          await notificationDispatcher.dispatchPaymentStatusToPatient(
+            reqData.user_id,
+            'approved',
+            {
+              paymentId,
+              requestId,
+              hospitalName: reqData.hospital_name,
+              serviceType: reqData.service_type,
+              displayId: reqData.request_id,
+            }
+          );
+        }
+      } catch (notifErr) {
+        console.warn('[paymentService] Patient notification failed (non-blocking):', notifErr);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('[paymentService] approveCashPayment error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Decline a pending cash payment (called by org_admin).
+   * Marks payment as declined, updates emergency status to payment_declined.
+   * @param {string} paymentId - Payment UUID
+   * @param {string} requestId - Emergency request UUID
+   * @returns {Object} { success, status: 'declined' }
+   */
+  async declineCashPayment(paymentId, requestId) {
+    try {
+      console.log('[paymentService] Declining cash payment:', { paymentId, requestId });
+
+      const { data, error } = await supabase.rpc('decline_cash_payment', {
+        p_payment_id: paymentId,
+        p_request_id: requestId,
+      });
+
+      if (error) {
+        console.error('[paymentService] decline_cash_payment RPC error:', error);
+        throw error;
+      }
+
+      if (!data?.success) {
+        console.error('[paymentService] decline_cash_payment returned failure:', data?.error);
+        throw new Error(data?.error || 'Decline failed');
+      }
+
+      console.log('[paymentService] ✅ Cash payment declined:', data);
+
+      // Notify the patient (non-blocking)
+      try {
+        const { notificationDispatcher } = await import('./notificationDispatcher');
+        const { data: reqData } = await supabase
+          .from('emergency_requests')
+          .select('user_id, hospital_name, service_type, request_id')
+          .eq('id', requestId)
+          .single();
+
+        if (reqData) {
+          await notificationDispatcher.dispatchPaymentStatusToPatient(
+            reqData.user_id,
+            'declined',
+            {
+              paymentId,
+              requestId,
+              hospitalName: reqData.hospital_name,
+              serviceType: reqData.service_type,
+              displayId: reqData.request_id,
+            }
+          );
+        }
+      } catch (notifErr) {
+        console.warn('[paymentService] Patient notification failed (non-blocking):', notifErr);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('[paymentService] declineCashPayment error:', error);
+      throw error;
+    }
+  },
 };
 
