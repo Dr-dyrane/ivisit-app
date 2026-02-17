@@ -1,6 +1,6 @@
 # 📚 iVisit Documentation Index
 
-> **Last Updated:** 2026-01-13
+> **Last Updated:** 2026-02-17
 
 ---
 
@@ -8,183 +8,180 @@
 
 ```
 docs/
-  ├── INDEX.md                    # This file - documentation overview
+  ├── INDEX.md                          # This file
+  ├── MASTER_BLUEPRINT.md               # Complete DNA of iVisit
+  ├── README.md                         # Quick intro
   │
-  ├── emergency/                  # Emergency refactor + UX docs
+  ├── emergency/                        # Emergency system docs
+  │   ├── POST_PAYMENT_DISPATCH_FLOW.md # ⭐ Source of truth for post-payment
+  │   ├── EMERGENCY_PAYMENT_FLOW_AUDIT_COMPLETE.md
   │   ├── flows/
   │   │   ├── EMERGENCY_VISIT_LIFECYCLE.md
   │   │   └── REQUEST_FLOW_AUDIT.md
   │   ├── refactor/
-  │   │   ├── EMERGENCY_REFACTOR_MANIFEST.md
-  │   │   ├── EMERGENCY_SCREEN_REFACTOR_PLAN.md
-  │   │   ├── BOTTOM_SHEET_MAP_REFACTOR_PLAN.md
-  │   │   └── BOTTOM_SHEET_MAP_SUMMARY.md
+  │   │   └── EMERGENCY_REFACTOR_MANIFEST.md
   │   ├── ux/
-  │   │   ├── EMERGENCY_SCREEN_UX_REDESIGN.md
-  │   │   └── EMERGENCY_UI_IMPROVEMENTS.md
+  │   │   └── EMERGENCY_SCREEN_UX_REDESIGN.md
   │   └── checklists/
   │       └── POST_BOOKING_UI_CHECKLIST.md
   │
-  ├── architecture/               # Architecture & refactoring plans
-  │   ├── overview/
-  │   │   └── ARCHITECTURE.md
-  │   ├── auth/
-  │   │   └── AUTH_REFACTOR_PLAN.md
-  │   ├── roadmap/
-  │   │   └── PRODUCT_EXECUTION_ROADMAP.md
-  │   └── WEB_DASHBOARD_SPEC.md   # Console/Web dashboard spec (existing)
-  │
-  ├── console/                   # Console/Web dashboard documentation
-│   ├── console-ui-theme-guide.md    # UI theme & component guide for console
-│   └── dashboard-crud-plan.md        # Full CRUD plan with RBAC for dashboard
-│
-├── deprecated/                 # Backup of replaced code
-  │   ├── README.md               # Guide for deprecated code
-  │   ├── userStore.js.md         # Original userStore (parts 1-3)
-  │   └── imageStore.js.md        # Original imageStore
-  │
-  ├── archive/                    # Archived historical docs
-  │   └── legacy-web/
-  │       └── IVISIT_COMPREHENSIVE_DOCUMENTATION.md
-  │
-  ├── flows/
+  ├── flows/                            # User flow documentation
   │   ├── auth/
   │   │   ├── login.md
   │   │   ├── register.md
   │   │   ├── REGISTRATION_UI_UX.md
   │   │   └── OAUTH_TROUBLESHOOTING.md
+  │   ├── emergency/
+  │   │   └── ambulance_and_bed_booking.md
+  │   └── payment/
+  │       └── payment.md                # Payment architecture & Stripe setup
   │
-  │   └── emergency/
-  │       └── ambulance_and_bed_booking.md
+  ├── architecture/                     # Technical architecture
+  │   ├── data-flow-audit.md            # Schema-to-state mapping
+  │   ├── REFACTORING_BIBLE.md
+  │   ├── TEMPORAL_DEAD_ZONE_FIXES.md
+  │   ├── WEB_DASHBOARD_SPEC.md
+  │   ├── WEB_MAPS_SETUP.md
+  │   ├── overview/
+  │   │   └── ARCHITECTURE.md
+  │   └── roadmap/
+  │       ├── PRODUCT_EXECUTION_ROADMAP.md
+  │       └── IMPLEMENTATION_ROADMAP.md
+  │
+  ├── console/                          # Console/web dashboard
+  │   ├── console-ui-theme-guide.md
+  │   ├── dashboard-crud-plan.md
+  │   ├── implementation-guide.md
+  │   ├── quick-reference.md
+  │   └── starter-template.md
+  │
+  ├── product_design/                   # Design & UX
+  │   ├── ui_ux_bible.md
+  │   ├── SCREEN_CONSISTENCY_GUIDE.md
+  │   ├── FAB_ANALYSIS_REVIEW.md
+  │   ├── GLOBAL_FAB_IMPLEMENTATION_PLAN.md
+  │   └── manifesto.md
+  │
+  ├── project_state/                    # Project context & state
+  │   ├── CONTEXT_REVIEW.md
+  │   ├── QUICK_START.md
+  │   ├── repo.md
+  │   ├── baseline-documentation.md
+  │   └── context/
+  │       ├── CURRENT_STATE.md
+  │       └── DEPRECATED.md
   │
   ├── onboarding/
   │   └── Technical.md
   │
-  ├── product_design/
-  │   ├── ui_ux_bible.md
-  │   └── SCREEN_CONSISTENCY_GUIDE.md
-  │
-  └── project_state/
-      ├── CONTEXT_REVIEW.md
-      ├── QUICK_START.md
-      ├── repo.md
-      └── context/
-          ├── CURRENT_STATE.md
-          └── DEPRECATED.md
+  └── archive/                          # Historical / superseded docs
+      ├── POST_PAYMENT_EMERGENCY_FLOW_PLAN.md  # Superseded by emergency/POST_PAYMENT_DISPATCH_FLOW.md
+      ├── POST_PAYMENT_FLOW_ANALYSIS.md        # Superseded
+      ├── legacy-web/
+      │   └── IVISIT_COMPREHENSIVE_DOCUMENTATION.md
+      ├── test-scripts/                 # One-off test scripts
+      │   ├── test-debug-org-fees.js
+      │   ├── test-payment-service.js
+      │   ├── test-task2-functions.js
+      │   ├── test-task3-parameters.js
+      │   ├── test-task4-org-fees.js
+      │   └── test-task5-payment-creation.js
+      └── task-verifications/           # Task completion records
+          ├── task2-verification.md
+          ├── task3-verification.md
+          ├── task4-verification.md
+          ├── task5-verification.md
+          ├── task6-verification.md
+          └── task7-verification.md
 ```
 
 ---
 
 ## 🎯 Quick Navigation
 
-### 🧬 THE MASTER BLUEPRINT (READ THIS FIRST)
-> **[MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)** - The complete DNA of iVisit. Use this to build the Provider App and Dashboard.
+### 🧬 Start Here
 
-### Currently Active Work
+| Document | Description |
+|:---|:---|
+| **[MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)** | The complete DNA of iVisit |
+| **[POST_PAYMENT_DISPATCH_FLOW.md](./emergency/POST_PAYMENT_DISPATCH_FLOW.md)** | ⭐ Source of truth for post-payment dispatch, RLS, triggers |
+| **[EMERGENCY_PAYMENT_FLOW_AUDIT_COMPLETE.md](./emergency/EMERGENCY_PAYMENT_FLOW_AUDIT_COMPLETE.md)** | Payment flow from user through to ledger |
 
-| Document | Description | Status |
-|----------|-------------|--------|
-| [AUTH_REFACTOR_PLAN.md](./architecture/auth/AUTH_REFACTOR_PLAN.md) | Authentication layer refactoring | ✅ Completed |
-| [EMERGENCY_REFACTOR_MANIFEST.md](./emergency/refactor/EMERGENCY_REFACTOR_MANIFEST.md) | EmergencyBottomSheet refactor feature manifest | ✅ Completed |
-| [CURRENT_STATE.md](./project_state/context/CURRENT_STATE.md) | Current Architecture & Backend State | 🟢 Active |
+### Emergency System
 
-| Architecture | Document | Description |
-|-------------|----------|-------------|
+| Document | Description |
+|:---|:---|
+| [POST_PAYMENT_DISPATCH_FLOW.md](./emergency/POST_PAYMENT_DISPATCH_FLOW.md) | **Dispatch, assignment, status lifecycle, known issues** |
+| [EMERGENCY_PAYMENT_FLOW_AUDIT_COMPLETE.md](./emergency/EMERGENCY_PAYMENT_FLOW_AUDIT_COMPLETE.md) | Card vs Cash flows, notification triggers, wallet ledger |
+| [EMERGENCY_VISIT_LIFECYCLE.md](./emergency/flows/EMERGENCY_VISIT_LIFECYCLE.md) | Status state machine, concurrency rules |
+| [REQUEST_FLOW_AUDIT.md](./emergency/flows/REQUEST_FLOW_AUDIT.md) | Visit types, request state machine |
+| [ambulance_and_bed_booking.md](./flows/emergency/ambulance_and_bed_booking.md) | SOS user flow: ambulance + bed reservation |
+
+### Payment & Financial
+
+| Document | Description |
+|:---|:---|
+| [payment.md](./flows/payment/payment.md) | Payment architecture, Stripe integration, fee distribution |
+| [data-flow-audit.md](./architecture/data-flow-audit.md) | Schema-to-state mapping for all tables |
+
+### Architecture
+
+| Document | Description |
+|:---|:---|
 | [ARCHITECTURE.md](./architecture/overview/ARCHITECTURE.md) | Overall app architecture & layers |
-| [PRODUCT_EXECUTION_ROADMAP.md](./architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md) | Product execution roadmap |
-| [WEB_DASHBOARD_SPEC.md](./architecture/WEB_DASHBOARD_SPEC.md) | Console/Web dashboard specification (existing) |
-| [CONTEXT_REVIEW.md](./project_state/CONTEXT_REVIEW.md) | Review of all context providers |
-| [Technical.md](./onboarding/Technical.md) | Technical specifications |
+| [data-flow-audit.md](./architecture/data-flow-audit.md) | Complete schema-to-frontend mapping |
+| [PRODUCT_EXECUTION_ROADMAP.md](./architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md) | Product roadmap |
+| [WEB_DASHBOARD_SPEC.md](./architecture/WEB_DASHBOARD_SPEC.md) | Console specification |
 
 ### Console & Dashboard
 
 | Document | Description |
-|----------|-------------|
-| [console-ui-theme-guide.md](./console/console-ui-theme-guide.md) | UI theme & component guide for console development |
-| [dashboard-crud-plan.md](./console/dashboard-crud-plan.md) | Full CRUD plan with RBAC for dashboard implementation |
+|:---|:---|
+| [console-ui-theme-guide.md](./console/console-ui-theme-guide.md) | UI theme & component guide |
+| [dashboard-crud-plan.md](./console/dashboard-crud-plan.md) | Full CRUD plan with RBAC |
 
-### Authentication & Flows
+### Authentication
 
 | Document | Description |
-|----------|-------------|
-| [login.md](./flows/auth/login.md) | Login flow & components |
+|:---|:---|
+| [login.md](./flows/auth/login.md) | Login flow |
 | [register.md](./flows/auth/register.md) | Registration flow |
-| [REGISTRATION_UI_UX.md](./flows/auth/REGISTRATION_UI_UX.md) | Registration UI/UX details |
-| [OAUTH_TROUBLESHOOTING.md](./flows/auth/OAUTH_TROUBLESHOOTING.md) | OAuth redirect troubleshooting for iOS/Android/Expo Go |
-| [ambulance_and_bed_booking.md](./flows/emergency/ambulance_and_bed_booking.md) | SOS user flow: ambulance request + bed reservation |
+| [OAUTH_TROUBLESHOOTING.md](./flows/auth/OAUTH_TROUBLESHOOTING.md) | OAuth redirect fixes |
 
 ### Design & UX
 
 | Document | Description |
-|----------|-------------|
+|:---|:---|
 | [ui_ux_bible.md](./product_design/ui_ux_bible.md) | UI/UX design guidelines |
-| [SCREEN_CONSISTENCY_GUIDE.md](./product_design/SCREEN_CONSISTENCY_GUIDE.md) | Screen consistency guide |
-| [FAB_ANALYSIS_REVIEW.md](./product_design/FAB_ANALYSIS_REVIEW.md) | Global FAB strategy and implementation plan |
-| [GLOBAL_FAB_IMPLEMENTATION_PLAN.md](./product_design/GLOBAL_FAB_IMPLEMENTATION_PLAN.md) | Technical implementation plan for global FAB migration |
-
-### Emergency (Refactor & UX)
-
-| Document | Description |
-|----------|-------------|
-| [EMERGENCY_VISIT_LIFECYCLE.md](./emergency/flows/EMERGENCY_VISIT_LIFECYCLE.md) | Request lifecycle states, concurrency rules, stable data fetching |
-| [REQUEST_FLOW_AUDIT.md](./emergency/flows/REQUEST_FLOW_AUDIT.md) | Visit types, concurrency rules, and request state machine |
-| [EMERGENCY_REFACTOR_MANIFEST.md](./emergency/refactor/EMERGENCY_REFACTOR_MANIFEST.md) | Feature tracking manifest for modularization |
-| [EMERGENCY_SCREEN_REFACTOR_PLAN.md](./emergency/refactor/EMERGENCY_SCREEN_REFACTOR_PLAN.md) | EmergencyScreen modularization plan |
-| [BOTTOM_SHEET_MAP_REFACTOR_PLAN.md](./emergency/refactor/BOTTOM_SHEET_MAP_REFACTOR_PLAN.md) | EmergencyBottomSheet + FullScreenEmergencyMap modularization plan |
-| [BOTTOM_SHEET_MAP_SUMMARY.md](./emergency/refactor/BOTTOM_SHEET_MAP_SUMMARY.md) | Implementation summary (phases completed) |
-| [POST_BOOKING_UI_CHECKLIST.md](./emergency/checklists/POST_BOOKING_UI_CHECKLIST.md) | Post-booking UX + stability checklist (includes ✅ SOLVED snap index fix) |
-| [EMERGENCY_SCREEN_UX_REDESIGN.md](./emergency/ux/EMERGENCY_SCREEN_UX_REDESIGN.md) | Apple Maps-style Emergency screen UX plan |
-| [EMERGENCY_UI_IMPROVEMENTS.md](./emergency/ux/EMERGENCY_UI_IMPROVEMENTS.md) | Changes made + rationale for Emergency request UI |
+| [SCREEN_CONSISTENCY_GUIDE.md](./product_design/SCREEN_CONSISTENCY_GUIDE.md) | Screen consistency |
 
 ### Reference
 
 | Document | Description |
-|----------|-------------|
-| [repo.md](./project_state/repo.md) | Repository structure & commands |
-| [QUICK_START.md](./project_state/QUICK_START.md) | Getting started guide |
-| [IVISIT_COMPREHENSIVE_DOCUMENTATION.md](./archive/legacy-web/IVISIT_COMPREHENSIVE_DOCUMENTATION.md) | Archived (legacy web/PWA) documentation |
-
----
-
-## 🔄 Migration & Refactoring
-
-### Current Refactoring: Authentication Layer
-
-**Goal:** Clean separation of concerns for auth logic
-
-**Tracking Document:** [AUTH_REFACTOR_PLAN.md](./architecture/auth/AUTH_REFACTOR_PLAN.md)
-
-**Progress:**
-- [x] Documentation created
-- [x] Old code backed up to `deprecated/`
-- [ ] Database layer migration
-- [ ] Service layer creation
-- [ ] API layer updates
-- [ ] Context layer updates
-- [ ] Cleanup & deletion
+|:---|:---|
+| [repo.md](./project_state/repo.md) | Repository structure |
+| [QUICK_START.md](./project_state/QUICK_START.md) | Getting started |
+| [CONTEXT_REVIEW.md](./project_state/CONTEXT_REVIEW.md) | Context providers review |
 
 ---
 
 ## 📝 Documentation Guidelines
 
-### When to Update
-
-1. **New feature:** Add to relevant existing doc or create new one
-2. **Refactoring:** Create plan in `architecture/`, backup old code in `deprecated/`
-3. **Bug fix:** Update relevant flow documentation
-4. **API change:** Update Technical.md and affected flow docs
-
 ### File Naming
-
 - Architecture plans: `FEATURE_PLAN.md` (all caps with underscores)
 - Flow docs: `feature.md` (lowercase)
 - Guides: `QUICK_START.md` or `GUIDE_NAME.md`
-- Deprecated: `originalFile.extension.md`
+
+### When to Update
+1. **New feature:** Add to relevant existing doc or create new
+2. **Refactoring:** Create plan in `architecture/`, old code in `archive/`
+3. **Bug fix:** Update relevant flow documentation
+4. **Superseded docs:** Move to `archive/` with a note
 
 ---
 
 ## 🚨 Important Notes
 
-1. **Never import from `deprecated/`** - These are documentation only
-2. **Keep AUTH_REFACTOR_PLAN.md updated** as work progresses
-3. **Mark deprecated docs with date** when code is actually deleted
+1. **Never import from `archive/`** — documentation only
+2. **Post-payment flow**: The source of truth is `emergency/POST_PAYMENT_DISPATCH_FLOW.md`
+3. The two old `POST_PAYMENT_*.md` files in `archive/` contained speculative SQL that was never implemented
