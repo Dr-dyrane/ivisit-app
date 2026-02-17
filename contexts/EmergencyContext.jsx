@@ -211,13 +211,48 @@ export function EmergencyProvider({ children }) {
 	// View state
 	const [viewMode, setViewMode] = useState("map"); // "map" or "list"
 
-	// Helper to parse WKT Point
-	const parsePoint = (wkt) => {
-		if (!wkt || typeof wkt !== 'string' || !wkt.startsWith('POINT')) return null;
+	// Helper to parse PostGIS Point — handles both WKT and WKB hex formats
+	const parsePoint = (input) => {
+		if (!input || typeof input !== 'string') return null;
 		try {
-			const matches = wkt.match(/POINT\(([-\d.]+) ([-\d.]+)\)/);
-			if (matches && matches.length === 3) {
-				return { longitude: parseFloat(matches[1]), latitude: parseFloat(matches[2]) };
+			// Format 1: WKT — POINT(longitude latitude)
+			if (input.startsWith('POINT')) {
+				const matches = input.match(/POINT\(([-\d.]+) ([-\d.]+)\)/);
+				if (matches && matches.length === 3) {
+					return { longitude: parseFloat(matches[1]), latitude: parseFloat(matches[2]) };
+				}
+			}
+
+			// Format 2: GeoJSON object — { type: 'Point', coordinates: [lon, lat] }
+			if (typeof input === 'object' && input.coordinates) {
+				return { longitude: input.coordinates[0], latitude: input.coordinates[1] };
+			}
+
+			// Format 3: WKB Hex — e.g. "0101000020E610000079BB4DC0B23F5DC08A0A14EB67E04040"
+			// Structure: byte_order(2) + type(8) + SRID(8) + X_double(16) + Y_double(16) = 50 chars min
+			if (/^[0-9a-fA-F]{40,}$/.test(input)) {
+				// Parse as little-endian WKB with SRID (byte order = 01)
+				const hexToDouble = (hex) => {
+					const bytes = new Uint8Array(8);
+					for (let i = 0; i < 8; i++) {
+						bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+					}
+					return new Float64Array(bytes.buffer)[0];
+				};
+
+				// Skip: byte_order(2) + type(8) + SRID(8) = 18 hex chars
+				// Then: X(16 hex) + Y(16 hex)
+				const offset = input.length >= 50 ? 18 : 2 + 8; // With or without SRID
+				const xHex = input.substring(offset, offset + 16);
+				const yHex = input.substring(offset + 16, offset + 32);
+
+				const longitude = hexToDouble(xHex);
+				const latitude = hexToDouble(yHex);
+
+				if (Number.isFinite(longitude) && Number.isFinite(latitude) &&
+					Math.abs(longitude) <= 180 && Math.abs(latitude) <= 90) {
+					return { longitude, latitude };
+				}
 			}
 		} catch (e) { return null; }
 		return null;
