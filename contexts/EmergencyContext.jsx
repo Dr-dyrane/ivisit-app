@@ -84,9 +84,9 @@ export function EmergencyProvider({ children }) {
 					longitude: h.longitude
 				},
 				// Preserve database distance and eta values
-				distance: h.distance || 'Unknown',
+				distance: h.distance || '--',
 				distanceKm: h.distanceKm || 0,
-				eta: h.eta || 'Unknown',
+				eta: h.eta || '8-12 mins',
 				specialties: h.specialties || [],
 				serviceTypes: h.serviceTypes || [],
 				features: h.features || [],
@@ -117,9 +117,9 @@ export function EmergencyProvider({ children }) {
 					latitude: h.latitude,
 					longitude: h.longitude,
 				},
-				distance: h.distance || (distanceKm > 0 ? `${distanceKm.toFixed(1)} km` : 'Unknown'),
+				distance: h.distance || (distanceKm > 0 ? `${distanceKm.toFixed(1)} km` : '--'),
 				distanceKm: h.distanceKm || distanceKm, // Preserve database value
-				eta: h.eta || (distanceKm > 0 ? `${etaMins} mins` : 'Unknown'),
+				eta: h.eta || (distanceKm > 0 ? `${etaMins} mins` : '8-12 mins'),
 				specialties: h.specialties || [],
 				serviceTypes: h.serviceTypes || [],
 				features: h.features || [],
@@ -181,7 +181,7 @@ export function EmergencyProvider({ children }) {
 		if (typeof eta !== "string") return null;
 
 		const lower = eta.toLowerCase();
-		if (lower === "unknown") return 600; // Fallback to 10 mins if unknown
+		if (lower === "unknown" || lower === "8-12 mins") return 600; // Fallback to 10 mins
 
 		const minutesMatch = lower.match(/(\d+)\s*(min|mins|minute|minutes)/);
 		if (minutesMatch) return Number(minutesMatch[1]) * 60;

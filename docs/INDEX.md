@@ -37,6 +37,7 @@ docs/
   │       └── payment.md                # Payment architecture & Stripe setup
   │
   ├── architecture/                     # Technical architecture
+  │   ├── ORG_ADMIN_SCOPING_AND_RBAC.md # ⭐ Multi-hospital RBAC & Scoping
   │   ├── data-flow-audit.md            # Schema-to-state mapping
   │   ├── REFACTORING_BIBLE.md
   │   ├── TEMPORAL_DEAD_ZONE_FIXES.md
@@ -128,6 +129,7 @@ docs/
 
 | Document | Description |
 |:---|:---|
+| [ORG_ADMIN_SCOPING_AND_RBAC.md](./architecture/ORG_ADMIN_SCOPING_AND_RBAC.md) | **Multi-hospital RBAC & Scoping architecture** |
 | [ARCHITECTURE.md](./architecture/overview/ARCHITECTURE.md) | Overall app architecture & layers |
 | [data-flow-audit.md](./architecture/data-flow-audit.md) | Complete schema-to-frontend mapping |
 | [PRODUCT_EXECUTION_ROADMAP.md](./architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md) | Product roadmap |

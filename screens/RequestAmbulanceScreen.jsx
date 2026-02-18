@@ -35,8 +35,8 @@ export default function RequestAmbulanceScreen() {
 	const hospitalId = typeof params?.hospitalId === "string" ? params.hospitalId : null;
 
 	const { setHeaderState } = useHeaderState();
-	const { handleScroll: handleTabBarScroll, resetTabBar, unlockTabBarHidden } = useTabBarVisibility();
-	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
+	const { handleScroll: handleTabBarScroll, showTabBar, unlockTabBarHidden } = useTabBarVisibility();
+	const { handleScroll: handleHeaderScroll, showHeader, unlockHeaderHidden: unlockHeader } = useScrollAwareHeader();
 
 	const { user } = useAuth();
 	const { preferences } = usePreferences();
@@ -56,7 +56,6 @@ export default function RequestAmbulanceScreen() {
 		startBedBooking,
 		clearSelectedHospital,
 		setMode,
-		toggleMode,
 	} = useEmergency();
 
 	const requestHospital = useMemo(() => {
@@ -91,16 +90,20 @@ export default function RequestAmbulanceScreen() {
 
 	useFocusEffect(
 		useCallback(() => {
-			// Force unlock and show UI elements when entering the request flow
+			// 🔓 UNIFIED UI UNLOCK: Force header and tab bar into view on navigation
+			// This prevents the "missing header" glitch when navigating from scrolled views
 			unlockTabBarHidden();
-			resetTabBar();
-			resetHeader();
+			unlockHeader();
+			showTabBar();
+			showHeader();
+
 			setMode("emergency");
 		}, [
-			resetHeader,
-			resetTabBar,
-			setMode,
+			unlockHeader,
 			unlockTabBarHidden,
+			showTabBar,
+			showHeader,
+			setMode,
 		])
 	);
 

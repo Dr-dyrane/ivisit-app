@@ -31,10 +31,22 @@ export const hospitalsService = {
 			// Simplified UX: default to 0 ambulances unless explicitly set to something else in DB
 			// The user specified "no hospitals have ambulances" to keep things simple for now.
 			ambulances: h.ambulances_count || 0,
-			waitTime: h.emergency_wait_time_minutes ? `${h.emergency_wait_time_minutes} min` : (h.wait_time || this.calculateDynamicWaitTime(h, null).displayText),
-			price: h.price_range || 'Unknown',
-			distance: h.distance_km ? `${Math.round(h.distance_km * 10) / 10} km` : '0 km',
-			distanceKm: h.distance_km || 0,
+
+			// Computed Time Fields
+			waitTime: h.emergency_wait_time_minutes
+				? `${h.emergency_wait_time_minutes} min`
+				: (h.wait_time || this.calculateDynamicWaitTime(h, null).displayText),
+
+			// Calculate ETA based on distance if not present
+			eta: h.eta || (h.distance_km > 0
+				? `${Math.max(2, Math.ceil(h.distance_km * 3))} mins`
+				: '8-12 mins'), // Premium fallback instead of 'Unknown'
+
+			price: h.price_range || ((h.ambulances_count || 0) > 0 ? 'Emergency' : '$$$'),
+			distance: (h.distance_km && Number.isFinite(h.distance_km) && h.distance_km > 0)
+				? `${Math.round(h.distance_km * 10) / 10} km`
+				: '--',
+			distanceKm: (Number.isFinite(h.distance_km) ? h.distance_km : 0),
 			coordinates: {
 				latitude: h.latitude,
 				longitude: h.longitude,
@@ -258,8 +270,9 @@ export const hospitalsService = {
 			let emergencyFactor = (factors.emergencyLevel === 'Level 1 Trauma Center') ? 1.2 : 1.0;
 
 			const baseWaitTime = 15;
-			const calculatedWaitTime = Math.round(baseWaitTime * loadFactor * timeFactor * dayFactor * qualityFactor * emergencyFactor);
-			const totalTime = Math.round(travelTime + calculatedWaitTime);
+			const rawWait = baseWaitTime * loadFactor * timeFactor * dayFactor * qualityFactor * emergencyFactor;
+			const calculatedWaitTime = Number.isFinite(rawWait) ? Math.max(5, Math.round(rawWait)) : 15;
+			const totalTime = Number.isFinite(travelTime) ? Math.round(travelTime + calculatedWaitTime) : calculatedWaitTime;
 
 			let confidence = (factors.verified && factors.rating > 0) ? 'High' : (hospital.placeId ? 'Medium' : 'Low');
 			let waitDescription = calculatedWaitTime <= 15 ? 'Short wait' : (calculatedWaitTime <= 30 ? 'Moderate wait' : (calculatedWaitTime <= 60 ? 'Long wait' : 'Very long wait'));
