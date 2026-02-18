@@ -141,6 +141,13 @@ export const hospitalsService = {
 			}
 
 			const rawHospitals = data?.data || [];
+
+			// If Edge Function returned no results, fall back to direct RPC
+			// (Edge Function may succeed but return empty when Google Places is unavailable)
+			if (rawHospitals.length === 0) {
+				return this.listNearby(lat, lng, radius / 1000);
+			}
+
 			return rawHospitals.map(h => this._mapHospital(h));
 
 		} catch (error) {
