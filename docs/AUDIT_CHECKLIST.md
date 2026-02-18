@@ -10,6 +10,7 @@ This document tracks the certification of all database tables, RPCs, and RLS pol
 - [x] Module 5: Support & Communications (Notifications, Tickets)
 - [x] Module 6: Analytics & Insights (Search Logs, Events, Admin Logs)
 - [x] Module 7: Insurance & Verification (Policies, Claims)
+- [x] Module 8: Health & Public Information (Trending, News)
 
 ---
 

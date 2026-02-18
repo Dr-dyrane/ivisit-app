@@ -1483,28 +1483,30 @@ on "public"."trending_topics"
 for select
 using (true);
 
--- Create health_news table for search feature
-create table if not exists "public"."health_news" (
-    "id" uuid not null default gen_random_uuid(),
-    "title" text not null,
-    "source" text not null,
-    "time" text not null,
-    "icon" text not null,
-    "url" text,
-    "created_at" timestamp with time zone default now(),
-    "updated_at" timestamp with time zone default now(),
-    primary key ("id")
+-- 🩺 HEALTH NEWS (Module 8 Certified)
+CREATE TABLE IF NOT EXISTS public.health_news (
+  id uuid NOT NULL DEFAULT gen_random_uuid (),
+  title text NOT NULL,
+  source text NOT NULL,
+  time text NOT NULL,
+  icon text NOT NULL,
+  url text NULL,
+  created_at timestamp with time zone NULL DEFAULT now(),
+  updated_at timestamp with time zone NULL DEFAULT now(),
+  published boolean NULL DEFAULT true,
+  category text NULL DEFAULT 'general'::text,
+  CONSTRAINT health_news_pkey PRIMARY KEY (id)
 );
 
--- Enable RLS
-alter table "public"."health_news" enable row level security;
+-- RLS Policies (De-recursive)
+ALTER TABLE public.health_news ENABLE ROW LEVEL SECURITY;
 
--- Policies
-drop policy if exists "Public read access for health_news" on "public"."health_news";
-create policy "Public read access for health_news"
-on "public"."health_news"
-for select
-using (true);
+DROP POLICY IF EXISTS "Anyone can read health news" ON public.health_news;
+DROP POLICY IF EXISTS "Public read access for health_news" ON public.health_news;
+DROP POLICY IF EXISTS "Admins manage health news" ON public.health_news;
+
+CREATE POLICY "Anyone can read health news" ON public.health_news FOR SELECT TO authenticated, anon USING (published = true);
+CREATE POLICY "Admins manage health news" ON public.health_news FOR ALL TO authenticated USING ( public.get_current_user_role() = 'admin' );
 
 -- Seed trending topics
 insert into "public"."trending_topics" 
@@ -1522,21 +1524,20 @@ values
 ('Emergency Rooms', 'Popular', 10)
 on conflict do nothing;
 
--- Seed health news
-insert into "public"."health_news" 
-("title", "source", "time", "icon", "url")
-values
-('New ICU Wing at Reddington', 'Hospital Update', '2h ago', 'business-outline', 'https://example.com/icu-wing'),
-('Free Dental Checkups this Saturday', 'Public Health', '5h ago', 'medical-outline', 'https://example.com/dental-checkup'),
-('Flu Season Peak: Stay Protected', 'Health Alert', '1d ago', 'alert-circle-outline', 'https://example.com/flu-season'),
-('Breakthrough in Cancer Treatment', 'Medical Research', '2d ago', 'flask-outline', 'https://example.com/cancer-research'),
-('New Mental Health Hotline Launched', 'Community News', '3d ago', 'call-outline', 'https://example.com/mental-health'),
-('Pediatric Vaccination Drive', 'Public Health', '4d ago', 'shield-checkmark-outline', 'https://example.com/vaccination'),
-('Heart Health Awareness Month', 'Health Campaign', '5d ago', 'heart-outline', 'https://example.com/heart-health'),
-('Telemedicine Services Expanded', 'Healthcare News', '1w ago', 'videocam-outline', 'https://example.com/telemedicine'),
-('New Hospital Opening in Ikeja', 'Hospital Update', '1w ago', 'business-outline', 'https://example.com/new-hospital'),
-('Blood Donation Drive This Weekend', 'Community News', '2w ago', 'water-outline', 'https://example.com/blood-donation')
-on conflict do nothing;
+-- Seed health news (Dyrane Intelligence Collective Final Set)
+INSERT INTO public.health_news (id, title, source, time, icon, url, created_at, updated_at, published, category)
+VALUES 
+('31102787-bf07-493f-90bd-a513c5a88d32','Pediatric Vaccination Drive','Public Health','4d ago','shield-checkmark-outline','https://example.com/vaccination','2026-02-14 00:06:44.896387+00','2026-02-14 00:06:44.896387+00',true,'general'),
+('45a05579-48d6-4057-9520-eb0b521e0765','Flu Season Peak: Stay Protected','Health Alert','1d ago','alert-circle-outline','https://example.com/flu-season','2026-02-14 00:06:44.896387+00','2026-02-14 00:06:44.896387+00',true,'general'),
+('63d740d0-37dc-4282-bbd3-24ee4eb112bd','Telemedicine Services Expanded','Healthcare News','1w ago','videocam-outline','https://example.com/telemedicine','2026-02-14 00:06:44.896387+00','2026-02-14 00:06:44.896387+00',true,'general'),
+('85bc8b3f-41a4-460e-8a1b-815ce52a5c81','Blood Donation Drive This Weekend','Community News','2w ago','water-outline','https://example.com/blood-donation','2026-02-14 00:06:44.896387+00','2026-02-14 00:06:44.896387+00',true,'general'),
+('8bc2cba4-944d-4e52-ba3e-c6e68b573cb0','Breakthrough in Cancer Treatment','Medical Research','2d ago','flask-outline','https://example.com/cancer-research','2026-02-14 00:06:44.896387+00','2026-02-14 00:06:44.896387+00',true,'general'),
+('9b095815-dd1e-4291-b420-3efa43c2206f','New ICU Wing at Reddington','Hospital Update','2h ago','business-outline','https://example.com/icu-wing','2026-02-14 00:06:44.896387+00','2026-02-14 00:06:44.896387+00',true,'general'),
+('ad433e45-7f2e-4ccd-b8f2-74b60ee056e0','New Mental Health Hotline Launched','Community News','3d ago','call-outline','https://example.com/mental-health','2026-02-14 00:06:44.896387+00','2026-02-14 00:06:44.896387+00',true,'general'),
+('ce27ee31-e787-43d0-986a-f3c2784495fc','Heart Health Awareness Month','Health Campaign','5d ago','heart-outline','https://example.com/heart-health','2026-02-14 00:06:44.896387+00','2026-02-14 00:06:44.896387+00',true,'general'),
+('db279733-2da7-4bb7-90e1-10f683881f28','Free Dental Checkups this Saturday','Public Health','5h ago','medical-outline','https://example.com/dental-checkup','2026-02-14 00:06:44.896387+00','2026-02-14 00:06:44.896387+00',true,'general'),
+('e33932ee-6769-4c94-b24b-84ebc70f931b','New Hospital Opening in Ikeja','Hospital Update','1w ago','business-outline','https://example.com/new-hospital','2026-02-14 00:06:44.896387+00','2026-02-14 00:06:44.896387+00',true,'general')
+ON CONFLICT (id) DO NOTHING;
 
 -- Create indexes for better performance
 create index if not exists "trending_topics_rank_idx" on "public"."trending_topics" ("rank");
@@ -9493,20 +9494,7 @@ CREATE POLICY "Anyone can read trending topics"
   ON public.trending_topics FOR SELECT
   USING (true);
 
--- ============================================================
--- 22. HEALTH NEWS (public read)
--- ============================================================
-ALTER TABLE public.health_news ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Anyone can read health news" ON public.health_news;
-CREATE POLICY "Anyone can read health news"
-  ON public.health_news FOR SELECT
-  USING (true);
-
-DROP POLICY IF EXISTS "Admins manage health news" ON public.health_news;
-CREATE POLICY "Admins manage health news"
-  ON public.health_news FOR ALL
-  USING (public.get_current_user_role() = 'admin');
+-- Redundant definition removed. Primary definition exists in Module 8 Certified section.
 
 -- ============================================================
 -- 23. USER ACTIVITY
@@ -10107,9 +10095,7 @@ END;
 $$;
 
 
--- 3. Add missing columns to health_news to fix 400 filters
-ALTER TABLE public.health_news ADD COLUMN IF NOT EXISTS published BOOLEAN DEFAULT true;
-ALTER TABLE public.health_news ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general';
+-- Redundant column sync removed. Primary definition exists in Module 8 Certified section.
 
 -- 4. Reload Schema
 NOTIFY pgrst, 'reload schema';
@@ -24299,20 +24285,7 @@ CREATE POLICY "Anyone can read trending topics"
   ON public.trending_topics FOR SELECT
   USING (true);
 
--- ============================================================
--- 22. HEALTH NEWS (public read)
--- ============================================================
-ALTER TABLE public.health_news ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Anyone can read health news" ON public.health_news;
-CREATE POLICY "Anyone can read health news"
-  ON public.health_news FOR SELECT
-  USING (true);
-
-DROP POLICY IF EXISTS "Admins manage health news" ON public.health_news;
-CREATE POLICY "Admins manage health news"
-  ON public.health_news FOR ALL
-  USING (public.get_current_user_role() = 'admin');
+-- Redundant definition removed. Primary definition exists in Module 8 Certified section.
 
 -- ============================================================
 -- 23. USER ACTIVITY
