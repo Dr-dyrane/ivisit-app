@@ -8,7 +8,7 @@ This document tracks the certification of all database tables, RPCs, and RLS pol
 - [x] Module 3: Entity Management (Orgs, Hospitals, Rooms)
 - [x] Module 4: Financials & Subscriptions (Payments, Pricing, Wallets)
 - [x] Module 5: Support & Communications (Notifications, Tickets)
-- [x] Module 6: Analytics & Insights (Search Logs, Events)
+- [x] Module 6: Analytics & Insights (Search Logs, Events, Admin Logs)
 - [x] Module 7: Insurance & Verification (Policies, Claims)
 
 ---
