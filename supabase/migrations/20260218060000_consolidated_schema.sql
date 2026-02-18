@@ -26390,6 +26390,113 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.get_all_auth_users(uuid) TO authenticated;
 
+-------------------------------------------------------------------------------
+-- 🏁 FINAL SYSTEM CERTIFICATION (STAGED EVOLUTION V2)
+-- Folded: Feb 18, 2026. Certified: Modules 1-7.
+-------------------------------------------------------------------------------
+
+-- 1. Essential Helper Functions (SECURITY DEFINER to break RLS recursion)
+CREATE OR REPLACE FUNCTION public.get_current_user_role()
+RETURNS text AS $$
+DECLARE v_role text;
+BEGIN
+  SELECT role INTO v_role FROM public.profiles WHERE id = auth.uid();
+  RETURN v_role;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.get_current_user_org_id()
+RETURNS uuid AS $$
+DECLARE v_org_id uuid;
+BEGIN
+  SELECT organization_id INTO v_org_id FROM public.profiles WHERE id = auth.uid();
+  RETURN v_org_id;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
+
+-- 2. Unified Core RPCs
+DROP FUNCTION IF EXISTS public.get_recent_activity(integer, integer);
+DROP FUNCTION IF EXISTS public.get_recent_activity(integer);
+CREATE OR REPLACE FUNCTION public.get_recent_activity(p_limit int DEFAULT 10)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_result JSONB;
+BEGIN
+  SELECT jsonb_agg(t) INTO v_result FROM (
+    SELECT 
+        id, 
+        'Emergency Request' as type, 
+        status, 
+        created_at,
+        service_type,
+        hospital_name
+    FROM public.emergency_requests 
+    ORDER BY created_at DESC LIMIT p_limit
+  ) t;
+  RETURN COALESCE(v_result, '[]'::jsonb);
+END;
+$$;
+
+-- 3. Solidified Profile Policies (Pure de-recursion)
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Staff can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Staff view relevant profiles" ON public.profiles;
+
+CREATE POLICY "Users view own profile" ON public.profiles FOR SELECT USING (id = auth.uid());
+CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE USING (id = auth.uid());
+CREATE POLICY "Staff view relevant profiles" ON public.profiles FOR SELECT 
+USING ( public.get_current_user_role() IN ('admin', 'org_admin', 'provider', 'dispatcher') );
+
+-- 4. Financials (UUID Casting Enforcement)
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users view own payments" ON public.payments;
+DROP POLICY IF EXISTS "Users create own payments" ON public.payments;
+DROP POLICY IF EXISTS "Staff view relevant payments" ON public.payments;
+
+CREATE POLICY "Users view own payments" ON public.payments FOR SELECT TO authenticated USING ( user_id::uuid = auth.uid() );
+CREATE POLICY "Users create own payments" ON public.payments FOR INSERT TO authenticated WITH CHECK ( user_id::uuid = auth.uid() );
+CREATE POLICY "Staff view relevant payments" ON public.payments FOR SELECT TO authenticated USING ( 
+    public.get_current_user_role() = 'admin' OR 
+    (public.get_current_user_role() = 'org_admin' AND organization_id::uuid = public.get_current_user_org_id()) 
+);
+
+-- 5. Entities & Facilities (Tenant Scoping)
+ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admins manage all organizations" ON public.organizations;
+DROP POLICY IF EXISTS "Org admins view own org" ON public.organizations;
+CREATE POLICY "Admins manage all organizations" ON public.organizations FOR ALL TO authenticated USING ( public.get_current_user_role() = 'admin' );
+CREATE POLICY "Org admins view own org" ON public.organizations FOR SELECT TO authenticated USING ( id = public.get_current_user_org_id() );
+
+ALTER TABLE public.hospitals ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Hospitals are readable by all" ON public.hospitals;
+DROP POLICY IF EXISTS "Admins manage all hospitals" ON public.hospitals;
+DROP POLICY IF EXISTS "Org admins manage own hospitals" ON public.hospitals;
+CREATE POLICY "Hospitals are readable by all" ON public.hospitals FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins manage all hospitals" ON public.hospitals FOR ALL TO authenticated USING ( public.get_current_user_role() = 'admin' );
+CREATE POLICY "Org admins manage own hospitals" ON public.hospitals FOR ALL TO authenticated USING ( 
+    public.get_current_user_role() = 'org_admin' AND organization_id = public.get_current_user_org_id() 
+);
+
+-- 6. Insurance & Communications
+ALTER TABLE public.insurance_policies ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users view own policies" ON public.insurance_policies;
+DROP POLICY IF EXISTS "Users insert own policies" ON public.insurance_policies;
+DROP POLICY IF EXISTS "Staff view relevant policies" ON public.insurance_policies;
+
+CREATE POLICY "Users view own policies" ON public.insurance_policies FOR SELECT TO authenticated USING ( user_id::uuid = auth.uid() );
+CREATE POLICY "Users insert own policies" ON public.insurance_policies FOR INSERT TO authenticated WITH CHECK ( user_id::uuid = auth.uid() );
+CREATE POLICY "Staff view relevant policies" ON public.insurance_policies FOR SELECT TO authenticated USING ( 
+    public.get_current_user_role() = 'admin' OR 
+    (public.get_current_user_role() = 'org_admin' AND EXISTS (SELECT 1 FROM public.profiles WHERE id = public.insurance_policies.user_id AND organization_id = public.get_current_user_org_id())) OR 
+    public.get_current_user_role() = 'provider' 
+);
+
+GRANT EXECUTE ON FUNCTION public.get_all_auth_users(uuid) TO authenticated;
+
 COMMIT;
 
 NOTIFY pgrst, 'reload schema';
