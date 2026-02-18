@@ -12,13 +12,15 @@ This directory contains the Source of Truth for the application's schema, migrat
 ## 🔄 Core Workflows
 *Detailed steps in [CONTRIBUTING.md](docs/CONTRIBUTING.md).*
 
-1. **Refine Baseline**: Edit `migrations/20260218060000_consolidated_schema.sql`.
-2. **Redeploy**: `npx supabase migration repair --status reverted ...` & `push`.
-3. **Sync**: `node scripts/sync_to_console.js`.
+1. **Diagnose**: Run `docs/archive/test-scripts/run-inspection.js` to see remote state.
+2. **Fix & Verify**: Apply floating migrations and verify with `docs/archive/test-scripts/`.
+3. **Consolidate**: Once verified, fold into `migrations/20260218060000_consolidated_schema.sql`.
+4. **Sync**: `node scripts/sync_to_console.js`.
 
 ## 🛠️ Commands
-- `npx supabase start` : Local Dev Environment.
+- `docs/archive/test-scripts/run-inspection.js` : Check live RLS policies.
+- `docs/archive/test-scripts/test-recursion-fix.js` : Verify recursion kill.
 - `node scripts/sync_to_console.js` : Align all workspaces.
 
 ---
-**Standard**: All IDs are **UUID native**. Mapping to Display IDs (REQ-XXXX) is handled by triggers.
+**Standard**: All IDs are **UUID native**. Verified via `docs/archive/task-verifications/`.

@@ -2803,7 +2803,7 @@ BEGIN
     INSERT INTO public.trending_topics (query, category, rank)
     SELECT 
         CASE 
-            WHEN sa.search_count > 100 THEN sa.query || ' 🔥'
+            WHEN sa.search_count > 100 THEN sa.query || ' ðŸ”¥'
             ELSE sa.query
         END as query,
         CASE 
@@ -3549,9 +3549,9 @@ create index if not exists "notifications_read_idx" on "public"."notifications" 
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- PART 1: Backfill Missing Data
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Backfill profile.full_name from doctor.name for existing doctor profiles
 UPDATE public.profiles p
@@ -3565,9 +3565,9 @@ WHERE p.id = d.profile_id
   AND (p.full_name IS NULL OR p.full_name = '')
   AND d.name IS NOT NULL;
 
--- ═══════════════════════════════════════════════════════════════════════════
--- PART 2: Profile Name → Doctor Name Sync (Primary Direction)
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- PART 2: Profile Name â†’ Doctor Name Sync (Primary Direction)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Function: When profile name changes, update linked doctor
 CREATE OR REPLACE FUNCTION public.sync_doctor_name()
@@ -3581,7 +3581,7 @@ BEGIN
       updated_at = NOW()
     WHERE profile_id = NEW.id;
     
-    RAISE NOTICE 'Synced profile name to doctor: % → doctor.name', NEW.full_name;
+    RAISE NOTICE 'Synced profile name to doctor: % â†’ doctor.name', NEW.full_name;
   END IF;
   
   RETURN NEW;
@@ -3600,9 +3600,9 @@ CREATE TRIGGER on_profile_name_update
   )
   EXECUTE FUNCTION sync_doctor_name();
 
--- ═══════════════════════════════════════════════════════════════════════════
--- PART 3: Doctor Name → Profile Name Backfill (Secondary, One-Time)
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- PART 3: Doctor Name â†’ Profile Name Backfill (Secondary, One-Time)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Function: Backfill profile name if it's empty but doctor has one
 -- (Useful for imports or seeded data)
@@ -3641,9 +3641,9 @@ CREATE TRIGGER on_doctor_name_backfill
   WHEN (NEW.profile_id IS NOT NULL)
   EXECUTE FUNCTION backfill_profile_name();
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- PART 4: Verification
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Show sync status for all doctors
 DO $$
@@ -3652,16 +3652,16 @@ DECLARE
 BEGIN
   SELECT INTO sync_report
     '
-═══════════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   DOCTOR-PROFILE NAME SYNC REPORT
-═══════════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 Total Doctors: ' || COUNT(*) || '
 Profiles with Names: ' || COUNT(*) FILTER (WHERE p.full_name IS NOT NULL) || '
 Synced Successfully: ' || COUNT(*) FILTER (WHERE d.name = p.full_name) || '
 Pending Sync: ' || COUNT(*) FILTER (WHERE d.name != p.full_name OR p.full_name IS NULL) || '
 
-═══════════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 '
   FROM public.doctors d
   LEFT JOIN public.profiles p ON p.id = d.profile_id;
@@ -3671,15 +3671,15 @@ END $$;
 
 COMMIT;
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- Migration Complete
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 
 -- What Changed:
--- 1. ✅ Backfilled profile.full_name for all 8 doctors
--- 2. ✅ Added profile → doctor name sync trigger
--- 3. ✅ Added doctor → profile name backfill trigger
--- 4. ✅ Verified sync status
+-- 1. âœ… Backfilled profile.full_name for all 8 doctors
+-- 2. âœ… Added profile â†’ doctor name sync trigger
+-- 3. âœ… Added doctor â†’ profile name backfill trigger
+-- 4. âœ… Verified sync status
 --
 -- Test:
 -- -- Update profile name
@@ -3688,7 +3688,7 @@ COMMIT;
 -- SELECT name FROM doctors WHERE profile_id = '<profile_id>';
 -- 
 -- Expected: doctor.name = 'Dr. Test Name'
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 
 -- ----------------------------------------------------------------------------
@@ -3697,14 +3697,14 @@ COMMIT;
 
 -- Migration: Auto-Generate Username from Email
 -- Description: Backfills missing usernames and auto-generates for new profiles
--- ⚠️  SAFETY: ONLY fills NULL/empty usernames - NEVER overwrites existing ones
+-- âš ï¸  SAFETY: ONLY fills NULL/empty usernames - NEVER overwrites existing ones
 -- Pattern: username = email_prefix (before @) with conflict resolution
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- SAFETY CHECK: Preview which profiles will be affected
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 DO $$
 DECLARE
@@ -3723,24 +3723,24 @@ BEGIN
   WHERE username IS NOT NULL AND username != '';
   
   preview_report := '
-═══════════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   PRE-MIGRATION SAFETY CHECK
-═══════════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 Profiles that WILL BE UPDATED (NULL username):    ' || will_update || '
 Profiles that WILL NOT BE TOUCHED (has username): ' || wont_touch || '
 
-✅ SAFE TO PROCEED - Existing usernames are protected!
+âœ… SAFE TO PROCEED - Existing usernames are protected!
 
-═══════════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   ';
   
   RAISE NOTICE '%', preview_report;
 END $$;
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- PART 1: Username Generation Function
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Function to extract username from email with uniqueness guarantee
 CREATE OR REPLACE FUNCTION public.generate_username_from_email(email_input TEXT)
@@ -3774,9 +3774,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- PART 2: Backfill Existing NULL Usernames (SAFE - ONLY NULL VALUES)
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 DO $$
 DECLARE
@@ -3786,13 +3786,13 @@ DECLARE
   updated_count INTEGER := 0;
   skipped_count INTEGER := 0;
 BEGIN
-  RAISE NOTICE '🔍 Starting backfill - ONLY updating profiles with NULL username...';
+  RAISE NOTICE 'ðŸ” Starting backfill - ONLY updating profiles with NULL username...';
   
-  -- ⚠️  SAFETY: Only loops through profiles with NULL or empty username
+  -- âš ï¸  SAFETY: Only loops through profiles with NULL or empty username
   FOR profile_record IN 
     SELECT p.id, p.username
     FROM public.profiles p
-    WHERE p.username IS NULL OR p.username = ''  -- 🛡️ SAFETY CHECK
+    WHERE p.username IS NULL OR p.username = ''  -- ðŸ›¡ï¸ SAFETY CHECK
   LOOP
     -- Get email from auth.users
     SELECT email INTO user_email
@@ -3803,38 +3803,38 @@ BEGIN
     IF user_email IS NOT NULL THEN
       new_username := public.generate_username_from_email(user_email);
       
-      -- ⚠️  DOUBLE SAFETY CHECK: Only update if STILL NULL
+      -- âš ï¸  DOUBLE SAFETY CHECK: Only update if STILL NULL
       UPDATE public.profiles
       SET 
         username = new_username,
         updated_at = NOW()
       WHERE id = profile_record.id
-        AND (username IS NULL OR username = '');  -- 🛡️ SAFETY CHECK IN UPDATE
+        AND (username IS NULL OR username = '');  -- ðŸ›¡ï¸ SAFETY CHECK IN UPDATE
       
       updated_count := updated_count + 1;
       
-      RAISE NOTICE '  ✅ Backfilled % → %', user_email, new_username;
+      RAISE NOTICE '  âœ… Backfilled % â†’ %', user_email, new_username;
     ELSE
       skipped_count := skipped_count + 1;
-      RAISE NOTICE '  ⏭️  Skipped profile % (no email)', profile_record.id;
+      RAISE NOTICE '  â­ï¸  Skipped profile % (no email)', profile_record.id;
     END IF;
   END LOOP;
   
   RAISE NOTICE '';
-  RAISE NOTICE '✅ Backfilled % usernames from email', updated_count;
-  RAISE NOTICE '⏭️  Skipped % profiles (no email)', skipped_count;
+  RAISE NOTICE 'âœ… Backfilled % usernames from email', updated_count;
+  RAISE NOTICE 'â­ï¸  Skipped % profiles (no email)', skipped_count;
 END $$;
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- PART 3: Auto-Generate Username on Profile Creation (SAFE - ONLY IF NULL)
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 CREATE OR REPLACE FUNCTION public.set_username_from_email()
 RETURNS TRIGGER AS $$
 DECLARE
   user_email TEXT;
 BEGIN
-  -- ⚠️  SAFETY: Only generate if username is NULL or empty
+  -- âš ï¸  SAFETY: Only generate if username is NULL or empty
   -- If user provides a username, we KEEP IT!
   IF NEW.username IS NULL OR NEW.username = '' THEN
     -- Get email from auth.users
@@ -3845,15 +3845,15 @@ BEGIN
     -- Generate username from email
     IF user_email IS NOT NULL THEN
       NEW.username := public.generate_username_from_email(user_email);
-      RAISE NOTICE '✨ Auto-generated username: % from email: %', NEW.username, user_email;
+      RAISE NOTICE 'âœ¨ Auto-generated username: % from email: %', NEW.username, user_email;
     ELSE
       -- Fallback if no email: use 'user' + id prefix
       NEW.username := 'user' || SUBSTRING(NEW.id::TEXT FROM 1 FOR 8);
-      RAISE NOTICE '✨ Fallback username generated: %', NEW.username;
+      RAISE NOTICE 'âœ¨ Fallback username generated: %', NEW.username;
     END IF;
   ELSE
     -- User provided their own username - keep it!
-    RAISE NOTICE '✅ Keeping user-provided username: %', NEW.username;
+    RAISE NOTICE 'âœ… Keeping user-provided username: %', NEW.username;
   END IF;
   
   RETURN NEW;
@@ -3867,9 +3867,9 @@ CREATE TRIGGER on_profile_set_username
   FOR EACH ROW
   EXECUTE FUNCTION public.set_username_from_email();
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- PART 4: Verification & Report
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Show before/after stats
 DO $$
@@ -3890,9 +3890,9 @@ BEGIN
   WHERE username IN ('halodyrane', 'audeogaranya', 'katybrown', 'alex', 'dyrane', 'Dr_dyrane', 'tested');
   
   report := '
-═══════════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   USERNAME GENERATION REPORT
-═══════════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 Total Profiles:            ' || total_profiles || '
 Profiles with Username:    ' || with_username || ' (' || 
@@ -3906,29 +3906,29 @@ PROTECTED USERNAMES (not touched):
     ELSE '  (None found - all new accounts)'
   END || '
 
-═══════════════════════════════════════════════════════════════
-  MIGRATION COMPLETE ✅
-═══════════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  MIGRATION COMPLETE âœ…
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-✅ Backfilled existing NULL usernames from email
-✅ Trigger added for auto-generation on profile creation
-✅ Existing usernames PRESERVED (never overwritten)
-✅ Future profiles will automatically get username from email
+âœ… Backfilled existing NULL usernames from email
+âœ… Trigger added for auto-generation on profile creation
+âœ… Existing usernames PRESERVED (never overwritten)
+âœ… Future profiles will automatically get username from email
 
 SAFETY GUARANTEES:
 ------------------
-🛡️  Existing usernames are NEVER replaced
-🛡️  Only NULL/empty usernames are filled
-🛡️  Double-check in UPDATE query
-🛡️  Trigger only fires if username is NULL
+ðŸ›¡ï¸  Existing usernames are NEVER replaced
+ðŸ›¡ï¸  Only NULL/empty usernames are filled
+ðŸ›¡ï¸  Double-check in UPDATE query
+ðŸ›¡ï¸  Trigger only fires if username is NULL
 
 Test Cases:
 -----------
-1. Create new user with email "test@example.com" → username: "test"
-2. Create user with email + username → keeps provided username ✅
-3. Update existing user → username unchanged ✅
+1. Create new user with email "test@example.com" â†’ username: "test"
+2. Create user with email + username â†’ keeps provided username âœ…
+3. Update existing user â†’ username unchanged âœ…
 
-═══════════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   ';
   
   RAISE NOTICE '%', report;
@@ -3936,9 +3936,9 @@ END $$;
 
 COMMIT;
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- SAFETY VERIFICATION QUERY (Run this after migration)
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 
 -- Check that existing usernames were preserved:
 -- 
@@ -3948,15 +3948,15 @@ COMMIT;
 --   created_at,
 --   CASE 
 --     WHEN username IN ('halodyrane', 'audeogaranya', 'katybrown') 
---     THEN '✅ PRESERVED (existed before)'
---     ELSE '✨ AUTO-GENERATED (was NULL)'
+--     THEN 'âœ… PRESERVED (existed before)'
+--     ELSE 'âœ¨ AUTO-GENERATED (was NULL)'
 --   END as status
 -- FROM profiles
 -- WHERE username IS NOT NULL
 -- ORDER BY created_at;
 -- 
--- Expected: All old usernames show ✅ PRESERVED
--- ═══════════════════════════════════════════════════════════════════════════
+-- Expected: All old usernames show âœ… PRESERVED
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 
 -- ----------------------------------------------------------------------------
@@ -4998,7 +4998,7 @@ AS $$
     WHERE entity_id = ANY(p_entity_ids);
 $$;
 
-COMMENT ON FUNCTION public.get_entity_id IS 'Lookup entity UUID from display ID (e.g., IVP-000001 → uuid)';
+COMMENT ON FUNCTION public.get_entity_id IS 'Lookup entity UUID from display ID (e.g., IVP-000001 â†’ uuid)';
 COMMENT ON FUNCTION public.get_display_id IS 'Lookup display ID from entity UUID';
 COMMENT ON FUNCTION public.get_display_ids IS 'Batch lookup display IDs for multiple entities';
 
@@ -5189,11 +5189,11 @@ COMMIT;
 -- 1. User visits /onboarding
 -- 2. Selects organization type (Step 1)
 -- 3. Creates account via Supabase Auth (Step 2)
---    → Sets onboarding_status = 'pending'
+--    â†’ Sets onboarding_status = 'pending'
 -- 4. Fills organization details (Step 3)
 -- 5. Optional setup and verification (Steps 4-5)
--- 6. Submits → Creates hospital, links to profile
---    → Sets role = 'org_admin', onboarding_status = 'complete'
+-- 6. Submits â†’ Creates hospital, links to profile
+--    â†’ Sets role = 'org_admin', onboarding_status = 'complete'
 -- 7. Platform admin verifies the organization
 --
 -- SECURITY:
@@ -5265,9 +5265,9 @@ $$;
 -- 3. RLS POLICY: ONBOARDING USERS CAN CREATE ONE HOSPITAL
 -- ============================================================================
 -- Conditions for hospital creation:
---   ✓ User is authenticated
---   ✓ User has onboarding_status = 'pending'
---   ✓ User does NOT already have an organization_id (prevents duplicates)
+--   âœ“ User is authenticated
+--   âœ“ User has onboarding_status = 'pending'
+--   âœ“ User does NOT already have an organization_id (prevents duplicates)
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Onboarding users can create hospital" ON public.hospitals;
@@ -5787,7 +5787,7 @@ ORDER BY column_name;
 -- Run this in Supabase SQL Editor
 
 -- PART 1: Migrate Data
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Update hospital_id by matching hospital text to hospitals.name
 UPDATE public.ambulances a
@@ -5803,9 +5803,9 @@ WHERE a.hospital_id IS NULL
   AND a.hospital IS NOT NULL
   AND a.hospital != '';
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- PART 2: Report Results
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 DO $$
 DECLARE
@@ -5826,9 +5826,9 @@ BEGIN
   RAISE NOTICE 'Migration Success: %', CASE WHEN unmatched = 0 THEN 'YES' ELSE 'NO' END;
 END $$;
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- PART 3: Show Unmatched Hospitals (if any)
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 DO $$
 DECLARE
@@ -5855,9 +5855,9 @@ BEGIN
 END $$;
 
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- VERIFICATION QUERY (run after migration)
--- ═══════════════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 SELECT 
   a.call_sign,
@@ -5865,9 +5865,9 @@ SELECT
   a.hospital_id as fk_field,
   h.name as resolved_hospital_name,
   CASE 
-    WHEN a.hospital_id IS NOT NULL THEN '✅ Matched'
+    WHEN a.hospital_id IS NOT NULL THEN 'âœ… Matched'
     WHEN a.hospital IS NULL THEN '- No hospital'
-    ELSE '❌ No match'
+    ELSE 'âŒ No match'
   END as status
 FROM public.ambulances a
 LEFT JOIN public.hospitals h ON h.id = a.hospital_id
@@ -6373,7 +6373,7 @@ COMMENT ON TABLE public.notifications IS 'Unified notifications table supporting
 -- ----------------------------------------------------------------------------
 
 -- ============================================================
--- iVisit Secure Data Room — Schema & RLS
+-- iVisit Secure Data Room â€” Schema & RLS
 -- Integrated from ivisit-docs migration 001 and 002
 -- ============================================================
 
@@ -6636,7 +6636,7 @@ END $$;
 
 -- 11. SEED DATA
 INSERT INTO public.documents (slug, title, description, tier, file_path, icon, visibility) VALUES
-  ('business-proposal', 'iVisit Definitive Business Proposal 2026', 'Neural Emergency Infrastructure — the complete investor-ready business proposal covering Unity Architecture, market analysis, execution roadmap, and financial projections.', 'confidential', 'iVisit_Definitive_Business_Proposal_2026.md', 'briefcase', '{"admin","sponsor","lawyer","cto"}'),
+  ('business-proposal', 'iVisit Definitive Business Proposal 2026', 'Neural Emergency Infrastructure â€” the complete investor-ready business proposal covering Unity Architecture, market analysis, execution roadmap, and financial projections.', 'confidential', 'iVisit_Definitive_Business_Proposal_2026.md', 'briefcase', '{"admin","sponsor","lawyer","cto"}'),
   ('master-plan', 'iVisit Master Plan v2.0', 'The strategic master plan outlining the three-phase deployment from Lagos tactical strike to national lifeline infrastructure.', 'restricted', 'iVisit_Master_Plan_v2.md', 'map', '{"admin","cto","developer"}'),
   ('mutual-nda', 'Mutual Non-Disclosure Agreement', 'Standardized mutual NDA governing all confidential disclosures between iVisit and external parties under Nigerian law.', 'public', 'iVisit_Mutual_NDA_External_2026.md', 'shield', '{"admin","sponsor","lawyer","cto","developer","viewer"}'),
   ('print-engine', 'Print Engine Blueprint', 'Technical specification for the high-fidelity document printing system powering the iVisit Data Room.', 'confidential', 'iVisit_Print_Engine_Blueprint.md', 'printer', '{"admin","cto","developer"}')
@@ -9469,7 +9469,7 @@ CREATE POLICY "Anonymous can insert search selections"
   WITH CHECK (user_id IS NULL);
 
 -- ============================================================
--- 20. SEARCH EVENTS (no user_id — anonymous tracking)
+-- 20. SEARCH EVENTS (no user_id â€” anonymous tracking)
 -- ============================================================
 ALTER TABLE public.search_events ENABLE ROW LEVEL SECURITY;
 
@@ -9530,7 +9530,7 @@ CREATE POLICY "Service Role full access user_activity"
   USING (true) WITH CHECK (true);
 
 -- ============================================================
--- 24. DOCUMENTS (Data Room — no created_by; visibility is text[])
+-- 24. DOCUMENTS (Data Room â€” no created_by; visibility is text[])
 -- ============================================================
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
 
@@ -10493,15 +10493,15 @@ END $$;
 -- Migration: RESTORE AUTO-CREATION TRIGGERS
 -- ============================================================
 -- Restores functions & triggers dropped during flexible_ids:
---   1. handle_new_user()           → auto-create profile + preferences on signup
---   2. handle_new_user_medical_profile() → auto-create medical_profile on profile insert
---   3. ensure_patient_wallet()     → auto-create patient_wallet on profile insert
+--   1. handle_new_user()           â†’ auto-create profile + preferences on signup
+--   2. handle_new_user_medical_profile() â†’ auto-create medical_profile on profile insert
+--   3. ensure_patient_wallet()     â†’ auto-create patient_wallet on profile insert
 -- ============================================================
 
 BEGIN;
 
 -- ============================================================
--- 1. PROFILE AUTO-CREATION (auth.users → profiles + preferences)
+-- 1. PROFILE AUTO-CREATION (auth.users â†’ profiles + preferences)
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
@@ -10543,7 +10543,7 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================================
--- 2. MEDICAL PROFILE AUTO-CREATION (profiles → medical_profiles)
+-- 2. MEDICAL PROFILE AUTO-CREATION (profiles â†’ medical_profiles)
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user_medical_profile()
 RETURNS trigger
@@ -10565,7 +10565,7 @@ CREATE TRIGGER on_profile_created_medical
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_medical_profile();
 
 -- ============================================================
--- 3. PATIENT WALLET AUTO-CREATION (profiles → patient_wallets)
+-- 3. PATIENT WALLET AUTO-CREATION (profiles â†’ patient_wallets)
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.ensure_patient_wallet()
 RETURNS trigger
@@ -10601,7 +10601,7 @@ COMMIT;
 -- ============================================================
 -- Migration: FIX INSURANCE ENROLLMENT + BACKFILL PROFILES
 -- ============================================================
--- 1. Fix enroll_basic_insurance() — remove "status" column ref
+-- 1. Fix enroll_basic_insurance() â€” remove "status" column ref
 -- 2. Backfill profiles from auth.users
 -- 3. Cascade to preferences, medical_profiles, patient_wallets  
 --    (triggers handle insurance auto-enrollment)
@@ -10610,7 +10610,7 @@ COMMIT;
 BEGIN;
 
 -- ============================================================
--- 1. FIX: enroll_basic_insurance — drop "status" from INSERT
+-- 1. FIX: enroll_basic_insurance â€” drop "status" from INSERT
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.enroll_basic_insurance(p_user_id UUID)
 RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
@@ -10654,11 +10654,11 @@ WHERE NOT EXISTS (
   SELECT 1 FROM public.profiles p WHERE p.id::text = u.id::text
 );
 -- NOTE: profile INSERT triggers auto-create:
---   → preferences (handle_new_user triggers on auth.users, but we also backfill below)
---   → medical_profiles (on_profile_created_medical trigger)
---   → patient_wallets (on_profile_created_create_wallet trigger)
---   → insurance_policies (on_profile_created_enroll_insurance trigger)
---   → username auto-generation (on_profile_set_username trigger)
+--   â†’ preferences (handle_new_user triggers on auth.users, but we also backfill below)
+--   â†’ medical_profiles (on_profile_created_medical trigger)
+--   â†’ patient_wallets (on_profile_created_create_wallet trigger)
+--   â†’ insurance_policies (on_profile_created_enroll_insurance trigger)
+--   â†’ username auto-generation (on_profile_set_username trigger)
 
 -- ============================================================
 -- 3. BACKFILL: preferences (in case trigger didn't fire)
@@ -11670,7 +11670,7 @@ BEGIN
     WHERE email = 'halodyrane@gmail.com';
     
     IF admin_profile IS NOT NULL THEN
-        RAISE NOTICE '✅ Admin Profile Updated:';
+        RAISE NOTICE 'âœ… Admin Profile Updated:';
         RAISE NOTICE '   ID: %', admin_profile.id;
         RAISE NOTICE '   Email: %', admin_profile.email;
         RAISE NOTICE '   Display ID: %', admin_profile.display_id;
@@ -11679,7 +11679,7 @@ BEGIN
         RAISE NOTICE '   Avatar URL: %', admin_profile.avatar_url;
         RAISE NOTICE '   Updated At: %', admin_profile.updated_at;
     ELSE
-        RAISE NOTICE '❌ Admin profile not found for halodyrane@gmail.com';
+        RAISE NOTICE 'âŒ Admin profile not found for halodyrane@gmail.com';
     END IF;
 END $$;
 
@@ -11693,12 +11693,12 @@ BEGIN
     WHERE name = 'iVisit';
     
     IF org_record IS NOT NULL THEN
-        RAISE NOTICE '✅ iVisit Organization Created:';
+        RAISE NOTICE 'âœ… iVisit Organization Created:';
         RAISE NOTICE '   ID: %', org_record.id;
         RAISE NOTICE '   Name: %', org_record.name;
         RAISE NOTICE '   Display ID: %', (SELECT display_id FROM public.id_mappings WHERE entity_id = org_record.id AND entity_type = 'hospital');
     ELSE
-        RAISE NOTICE '❌ iVisit organization not found';
+        RAISE NOTICE 'âŒ iVisit organization not found';
     END IF;
 END $$;
 
@@ -11713,13 +11713,13 @@ BEGIN
     WHERE p.email = 'halodyrane@gmail.com';
     
     IF mapping_record IS NOT NULL THEN
-        RAISE NOTICE '✅ Display ID Mapping:';
+        RAISE NOTICE 'âœ… Display ID Mapping:';
         RAISE NOTICE '   Entity Type: %', mapping_record.entity_type;
         RAISE NOTICE '   Entity ID: %', mapping_record.entity_id;
         RAISE NOTICE '   Display ID: %', mapping_record.display_id;
         RAISE NOTICE '   Email: %', mapping_record.email;
     ELSE
-        RAISE NOTICE '❌ Display ID mapping not found';
+        RAISE NOTICE 'âŒ Display ID mapping not found';
     END IF;
 END $$;
 
@@ -11728,12 +11728,12 @@ COMMIT;
 -- ============================================================
 -- SUMMARY
 -- ============================================================
--- ✅ Created iVisit organization (ORG-000001)
--- ✅ Backfilled admin profile for halodyrane@gmail.com
--- ✅ Fixed image URL sync from auth.users
--- ✅ Set admin display ID to ADM-000001
--- ✅ Assigned admin to iVisit organization
--- ✅ Created related records (medical profile, preferences, wallet, insurance)
+-- âœ… Created iVisit organization (ORG-000001)
+-- âœ… Backfilled admin profile for halodyrane@gmail.com
+-- âœ… Fixed image URL sync from auth.users
+-- âœ… Set admin display ID to ADM-000001
+-- âœ… Assigned admin to iVisit organization
+-- âœ… Created related records (medical profile, preferences, wallet, insurance)
 -- ============================================================
 
 -- ----------------------------------------------------------------------------
@@ -13332,7 +13332,7 @@ NOTIFY pgrst, 'reload config';
 -- ROOT CAUSE: The function used `auth.users JOIN profiles` (INNER JOIN),
 -- which only returned users that exist in BOTH tables. Profiles created
 -- without corresponding auth.users entries (e.g., manual inserts, OAuth 
--- users with stale auth, seed data) were invisible — 5 users instead of 17.
+-- users with stale auth, seed data) were invisible â€” 5 users instead of 17.
 --
 -- FIX: Reverse to `profiles LEFT JOIN auth.users` so ALL profiles show up,
 -- enriched with auth metadata where available.
@@ -14935,7 +14935,7 @@ NOTIFY pgrst, 'reload schema';
 -- Migration: Remove ambulance auto-creation from sync_provider_records
 --
 -- Problem: Setting provider_type='ambulance' on a profile auto-creates
--- an ambulance record. Ambulances are vehicles, not people — they should
+-- an ambulance record. Ambulances are vehicles, not people â€” they should
 -- only be created explicitly via the Ambulances page.
 --
 -- Fix: Rebuild the trigger to only handle doctor sync.
@@ -14996,7 +14996,7 @@ BEGIN
         END IF;
 
         -- NOTE: Ambulance records are NOT auto-created here.
-        -- Ambulances are vehicles — create them via the Ambulances page,
+        -- Ambulances are vehicles â€” create them via the Ambulances page,
         -- then assign a driver via the modal's Driver Assignment section.
         
     END IF;
@@ -15037,7 +15037,7 @@ BEGIN
         FROM public.hospitals h
         WHERE h.id = NEW.hospital_id;
     ELSE
-        -- No hospital → no org
+        -- No hospital â†’ no org
         NEW.organization_id := NULL;
     END IF;
 
@@ -15092,7 +15092,7 @@ CREATE POLICY "Org Admins can manage their hospitals"
   );
 
 -- ============================================================
--- Fix 2: Storage — allow uploads to shared folders (hospitals/, ambulances/)
+-- Fix 2: Storage â€” allow uploads to shared folders (hospitals/, ambulances/)
 -- ============================================================
 -- Current policy requires (storage.foldername(name))[1] = auth.uid()::text
 -- but hospital/ambulance images upload to 'hospitals/...' or 'ambulances/...'
@@ -15207,7 +15207,7 @@ END;
 $$;
 
 -- ============================================================
--- 2. Fix storage policies — drop restrictive per-user folder
+-- 2. Fix storage policies â€” drop restrictive per-user folder
 --    and allow authenticated uploads to images bucket
 -- ============================================================
 DROP POLICY IF EXISTS "Authenticated Upload" ON storage.objects;
@@ -16880,9 +16880,9 @@ BEGIN
     WHERE p.id IS NULL;
 
     IF v_missing_profiles > 0 THEN
-        RAISE WARNING '⚠️ Found % Auth Users without Profiles! (Orphaned Users)', v_missing_profiles;
+        RAISE WARNING 'âš ï¸ Found % Auth Users without Profiles! (Orphaned Users)', v_missing_profiles;
     ELSE
-        RAISE NOTICE '✅ All Auth Users have Profiles.';
+        RAISE NOTICE 'âœ… All Auth Users have Profiles.';
     END IF;
 
     ----------------------------------------------------------------------------
@@ -16899,7 +16899,7 @@ BEGIN
     );
 
     IF v_tables_with_rls_no_policy > 0 THEN
-        RAISE WARNING '⚠️ Found % tables with RLS enabled but NO policies! (Data is effectively hidden)', v_tables_with_rls_no_policy;
+        RAISE WARNING 'âš ï¸ Found % tables with RLS enabled but NO policies! (Data is effectively hidden)', v_tables_with_rls_no_policy;
         -- Optional: List them
         FOR v_table_name IN 
             SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relrowsecurity = true AND n.nspname = 'public' AND NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid)
@@ -16907,7 +16907,7 @@ BEGIN
             RAISE WARNING '   - Table: %', v_table_name;
         END LOOP;
     ELSE
-        RAISE NOTICE '✅ All RLS-enabled tables have at least one policy.';
+        RAISE NOTICE 'âœ… All RLS-enabled tables have at least one policy.';
     END IF;
 
     ----------------------------------------------------------------------------
@@ -16915,7 +16915,7 @@ BEGIN
     ----------------------------------------------------------------------------
     -- If room_pricing is empty but service_pricing has data, it might indicate a regression
     IF (SELECT COUNT(*) FROM public.room_pricing) = 0 THEN
-        RAISE WARNING '⚠️ room_pricing table is empty! Check if seed data was applied.';
+        RAISE WARNING 'âš ï¸ room_pricing table is empty! Check if seed data was applied.';
     END IF;
 
     RAISE NOTICE '----------------------------------------------------------------';
@@ -16955,9 +16955,9 @@ BEGIN
     WHERE p.id IS NULL;
 
     IF v_missing_profiles > 0 THEN
-        RAISE WARNING '⚠️ Found % Auth Users without Profiles! (Orphaned Users)', v_missing_profiles;
+        RAISE WARNING 'âš ï¸ Found % Auth Users without Profiles! (Orphaned Users)', v_missing_profiles;
     ELSE
-        RAISE NOTICE '✅ All Auth Users have Profiles.';
+        RAISE NOTICE 'âœ… All Auth Users have Profiles.';
     END IF;
 
     SELECT COUNT(*) INTO v_tables_with_rls_no_policy
@@ -16970,18 +16970,18 @@ BEGIN
     );
 
     IF v_tables_with_rls_no_policy > 0 THEN
-        RAISE WARNING '⚠️ Found % tables with RLS enabled but NO policies!', v_tables_with_rls_no_policy;
+        RAISE WARNING 'âš ï¸ Found % tables with RLS enabled but NO policies!', v_tables_with_rls_no_policy;
         FOR v_table_name IN 
             SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relrowsecurity = true AND n.nspname = 'public' AND NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid)
         LOOP
             RAISE WARNING '   - Table: %', v_table_name;
         END LOOP;
     ELSE
-        RAISE NOTICE '✅ All RLS-enabled tables have at least one policy.';
+        RAISE NOTICE 'âœ… All RLS-enabled tables have at least one policy.';
     END IF;
 
     IF (SELECT COUNT(*) FROM public.room_pricing) = 0 THEN
-        RAISE WARNING '⚠️ room_pricing table is empty! Check if seed data was applied.';
+        RAISE WARNING 'âš ï¸ room_pricing table is empty! Check if seed data was applied.';
     END IF;
 
     RAISE NOTICE '----------------------------------------------------------------';
@@ -17858,7 +17858,7 @@ NOTIFY pgrst, 'reload schema';
 -- Rule of Thumb: Parameters from JS are TEXT, comparisons use ::text = ::text.
 
 -- ============================================================================
--- 💰 1. CASH ELIGIBILITY (The most frequent failure point)
+-- ðŸ’° 1. CASH ELIGIBILITY (The most frequent failure point)
 -- ============================================================================
 
 DROP FUNCTION IF EXISTS public.check_cash_eligibility(UUID, NUMERIC) CASCADE;
@@ -17894,7 +17894,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
--- 🚑 2. COST CALCULATION (Emergency & Booking flow)
+-- ðŸš‘ 2. COST CALCULATION (Emergency & Booking flow)
 -- ============================================================================
 
 DROP FUNCTION IF EXISTS public.calculate_emergency_cost(TEXT, UUID, UUID, UUID, DECIMAL, BOOLEAN) CASCADE;
@@ -17981,7 +17981,7 @@ END;
 $$;
 
 -- ============================================================================
--- 👥 3. USER MANAGEMENT (Console Admin flow)
+-- ðŸ‘¥ 3. USER MANAGEMENT (Console Admin flow)
 -- ============================================================================
 
 DROP FUNCTION IF EXISTS public.get_all_auth_users(UUID) CASCADE;
@@ -18013,7 +18013,7 @@ END;
 $$;
 
 -- ============================================================================
--- 🏥 4. HOSPITAL MANAGEMENT (Resource flow)
+-- ðŸ¥ 4. HOSPITAL MANAGEMENT (Resource flow)
 -- ============================================================================
 
 DROP FUNCTION IF EXISTS public.update_hospital_availability(TEXT, INTEGER, INTEGER, TEXT, INTEGER) CASCADE;
@@ -18041,7 +18041,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
--- 💸 5. RECORD CASH (Manual Payment flow)
+-- ðŸ’¸ 5. RECORD CASH (Manual Payment flow)
 -- ============================================================================
 
 DROP FUNCTION IF EXISTS public.process_cash_payment(TEXT, UUID, DECIMAL, TEXT) CASCADE;
@@ -18080,7 +18080,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
--- 🧹 6. ADMINISTRATIVE ACTIONS (Deletion flow)
+-- ðŸ§¹ 6. ADMINISTRATIVE ACTIONS (Deletion flow)
 -- ============================================================================
 
 DROP FUNCTION IF EXISTS public.delete_user_by_admin(UUID) CASCADE;
@@ -18384,7 +18384,7 @@ NOTIFY pgrst, 'reload schema';
 -- Description: Creates missing RPC functions that frontend is calling but don't exist
 
 -- ============================================================================
--- 💰 1. CREATE check_cash_eligibility_v2 (Called by paymentService.js)
+-- ðŸ’° 1. CREATE check_cash_eligibility_v2 (Called by paymentService.js)
 -- ============================================================================
 
 -- Drop any existing version to avoid conflicts
@@ -18435,7 +18435,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
--- 💸 2. CREATE process_cash_payment_v2 (Enhanced version with fee deduction)
+-- ðŸ’¸ 2. CREATE process_cash_payment_v2 (Enhanced version with fee deduction)
 -- ============================================================================
 
 -- Drop any existing version
@@ -18555,7 +18555,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
--- 🔐 3. GRANT EXECUTION PERMISSIONS
+-- ðŸ” 3. GRANT EXECUTION PERMISSIONS
 -- ============================================================================
 
 -- Grant execution to authenticated users
@@ -18567,13 +18567,13 @@ GRANT EXECUTE ON FUNCTION public.check_cash_eligibility_v2(TEXT, NUMERIC) TO ser
 GRANT EXECUTE ON FUNCTION public.process_cash_payment_v2(TEXT, TEXT, NUMERIC, TEXT) TO service_role;
 
 -- ============================================================================
--- 📢 4. NOTIFY POSTGREST TO RELOAD SCHEMA
+-- ðŸ“¢ 4. NOTIFY POSTGREST TO RELOAD SCHEMA
 -- ============================================================================
 
 NOTIFY pgrst, 'reload schema';
 
 -- ============================================================================
--- 📝 5. COMMENTS FOR DOCUMENTATION
+-- ðŸ“ 5. COMMENTS FOR DOCUMENTATION
 -- ============================================================================
 
 COMMENT ON FUNCTION public.check_cash_eligibility_v2(TEXT, NUMERIC) IS 'V2: Checks if organization has sufficient wallet balance to cover platform fee for cash payments. Safe UUID casting with error handling.';
@@ -18612,7 +18612,7 @@ NOTIFY pgrst, 'reload schema';
 -- Description: Ensures organization fee calculation works correctly and adds debugging
 
 -- ============================================================================  
--- 🔧 1. ENHANCE calculate_emergency_cost WITH BETTER ORG FEE HANDLING
+-- ðŸ”§ 1. ENHANCE calculate_emergency_cost WITH BETTER ORG FEE HANDLING
 -- ============================================================================
 
 DROP FUNCTION IF EXISTS public.calculate_emergency_cost(TEXT, TEXT, TEXT, TEXT, NUMERIC, BOOLEAN) CASCADE;
@@ -18726,7 +18726,7 @@ END;
 $$;
 
 -- ============================================================================
--- 🔧 2. ENSURE ORGANIZATION FEES ARE SET FOR ALL ORGANIZATIONS
+-- ðŸ”§ 2. ENSURE ORGANIZATION FEES ARE SET FOR ALL ORGANIZATIONS
 -- ============================================================================
 
 -- Update any organizations that don't have a fee percentage set
@@ -18735,7 +18735,7 @@ SET ivisit_fee_percentage = 2.5
 WHERE ivisit_fee_percentage IS NULL OR ivisit_fee_percentage = 0;
 
 -- ============================================================================
--- 🔧 3. CREATE DEBUGGING FUNCTION FOR ORG FEE LOOKUP
+-- ðŸ”§ 3. CREATE DEBUGGING FUNCTION FOR ORG FEE LOOKUP
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION public.debug_organization_fee(p_hospital_id TEXT)
@@ -18782,7 +18782,7 @@ COMMENT ON FUNCTION public.debug_organization_fee(TEXT) IS 'Debug function to ch
 -- Description: Updates visits table to use UUID for id to match emergency_requests
 
 -- ============================================================================
--- 🔧 1. UPDATE VISITS TABLE ID TYPE TO MATCH EMERGENCY_REQUESTS
+-- ðŸ”§ 1. UPDATE VISITS TABLE ID TYPE TO MATCH EMERGENCY_REQUESTS
 -- ============================================================================
 
 -- Drop foreign key constraints temporarily
@@ -18812,7 +18812,7 @@ ADD CONSTRAINT visits_hospital_id_fkey
     FOREIGN KEY (hospital_id) REFERENCES public.hospitals(id) ON DELETE SET NULL;
 
 -- ============================================================================
--- 🔧 2. UPDATE SYNC TRIGGER TO HANDLE UUID CONVERSIONS
+-- ðŸ”§ 2. UPDATE SYNC TRIGGER TO HANDLE UUID CONVERSIONS
 -- ============================================================================
 
 -- Drop existing trigger
@@ -18867,7 +18867,7 @@ AFTER UPDATE ON public.emergency_requests
 FOR EACH ROW EXECUTE PROCEDURE public.sync_emergency_to_history();
 
 -- ============================================================================
--- 🔧 3. UPDATE VISIT RLS POLICIES FOR UUID HANDLING
+-- ðŸ”§ 3. UPDATE VISIT RLS POLICIES FOR UUID HANDLING
 -- ============================================================================
 
 -- Drop existing policies
@@ -18886,7 +18886,7 @@ FOR SELECT USING (EXISTS (
 ));
 
 -- ============================================================================
--- 🔧 4. CLEAN UP ANY ORPHANED VISIT RECORDS
+-- ðŸ”§ 4. CLEAN UP ANY ORPHANED VISIT RECORDS
 -- ============================================================================
 
 -- Update any visit records that might have invalid IDs
@@ -19445,8 +19445,8 @@ NOTIFY pgrst, 'reload schema';
 -- ----------------------------------------------------------------------------
 
 -- Migration: Atomic Emergency Request with Payment (Corrected Order)
--- Order: Payment Stub (no emergency_request_id) → Emergency Request → Link Payment
--- This respects the FK constraint: payments.emergency_request_id → emergency_requests.id
+-- Order: Payment Stub (no emergency_request_id) â†’ Emergency Request â†’ Link Payment
+-- This respects the FK constraint: payments.emergency_request_id â†’ emergency_requests.id
 
 DROP FUNCTION IF EXISTS public.create_emergency_with_payment(UUID, JSONB, JSONB);
 
@@ -19476,9 +19476,9 @@ DECLARE
     v_display_id TEXT;
     v_hospital_name TEXT;
 BEGIN
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     -- 1. EXTRACT & VALIDATE
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     v_hospital_id := (p_request_data->>'hospital_id')::UUID;
     v_base_amount := COALESCE((p_payment_data->>'base_amount')::NUMERIC, 0);
     v_total_amount := COALESCE((p_payment_data->>'total_amount')::NUMERIC, 0);
@@ -19512,9 +19512,9 @@ BEGIN
         v_total_amount := v_base_amount + v_calculated_fee;
     END IF;
 
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     -- 2. PAYMENT VALIDATION (Pre-flight check)
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     IF v_payment_method = 'cash' THEN
         -- Org must have enough to cover the fee (they keep the cash)
         SELECT ow.id, ow.balance INTO v_wallet_id, v_wallet_balance
@@ -19536,9 +19536,9 @@ BEGIN
         END IF;
     END IF;
 
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     -- 3. CREATE PAYMENT STUB (no emergency_request_id yet)
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     INSERT INTO public.payments (
         user_id,
         amount,
@@ -19554,7 +19554,7 @@ BEGIN
         v_currency,
         'pending', -- Start as pending, trigger fires on status change
         v_payment_method,
-        NULL, -- ← No FK violation
+        NULL, -- â† No FK violation
         v_organization_id,
         jsonb_build_object(
             'base_amount', v_base_amount,
@@ -19566,9 +19566,9 @@ BEGIN
     )
     RETURNING id INTO v_payment_id;
 
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     -- 4. PROCESS FEE (Cash: deduct from org, credit platform)
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     IF v_payment_method = 'cash' THEN
         -- Deduct fee from org wallet
         UPDATE public.organization_wallets
@@ -19608,9 +19608,9 @@ BEGIN
         WHERE id = v_payment_id;
     END IF;
 
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     -- 5. CREATE EMERGENCY REQUEST
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     v_request_id := gen_random_uuid();
 
     INSERT INTO public.emergency_requests (
@@ -19656,17 +19656,17 @@ BEGIN
         NOW()
     );
 
-    -- ═══════════════════════════════════════════════════════════
-    -- 6. LINK PAYMENT → EMERGENCY REQUEST
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    -- 6. LINK PAYMENT â†’ EMERGENCY REQUEST
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     UPDATE public.payments 
     SET emergency_request_id = v_request_id,
         updated_at = NOW()
     WHERE id = v_payment_id;
 
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     -- 7. RETURN SUCCESS
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     RETURN jsonb_build_object(
         'success', true, 
         'request_id', v_request_id, 
@@ -19805,21 +19805,21 @@ NOTIFY pgrst, 'reload schema';
 --   Same as before (auto-complete, immediate dispatch)
 --
 -- New RPCs:
---   approve_cash_payment(p_payment_id, p_request_id) → deduct fee, dispatch
---   decline_cash_payment(p_payment_id, p_request_id) → cancel, notify user
+--   approve_cash_payment(p_payment_id, p_request_id) â†’ deduct fee, dispatch
+--   decline_cash_payment(p_payment_id, p_request_id) â†’ cancel, notify user
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 1. ADD 'pending_approval' to valid emergency statuses
 --    (if using check constraints, update them)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
--- No enum changes needed — status is TEXT, any value works.
+-- No enum changes needed â€” status is TEXT, any value works.
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 2. MODIFY ATOMIC RPC: Cash stays pending
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 DROP FUNCTION IF EXISTS public.create_emergency_with_payment(UUID, JSONB, JSONB);
 
@@ -19852,9 +19852,9 @@ DECLARE
     v_payment_status TEXT;
     v_emergency_status TEXT;
 BEGIN
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     -- 1. EXTRACT & VALIDATE
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     v_hospital_id := (p_request_data->>'hospital_id')::UUID;
     v_base_amount := COALESCE((p_payment_data->>'base_amount')::NUMERIC, 0);
     v_total_amount := COALESCE((p_payment_data->>'total_amount')::NUMERIC, 0);
@@ -19889,9 +19889,9 @@ BEGIN
         v_total_amount := v_base_amount + v_calculated_fee;
     END IF;
 
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     -- 2. DETERMINE PAYMENT FLOW
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     IF v_is_cash THEN
         -- CASH: Org must pre-approve. Payment stays pending.
         -- Validate org wallet exists and COULD cover fee (soft check)
@@ -19922,9 +19922,9 @@ BEGIN
         v_emergency_status := 'in_progress';
     END IF;
 
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     -- 3. CREATE PAYMENT STUB
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     INSERT INTO public.payments (
         user_id, amount, currency, status, payment_method_id,
         emergency_request_id, organization_id, metadata
@@ -19948,9 +19948,9 @@ BEGIN
     )
     RETURNING id INTO v_payment_id;
 
-    -- ═══════════════════════════════════════════════════════════
-    -- 4. PROCESS FEE (CARD ONLY — cash waits for approval)
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    -- 4. PROCESS FEE (CARD ONLY â€” cash waits for approval)
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     IF NOT v_is_cash THEN
         -- Card payments: process fee immediately
         SELECT ow.id, ow.balance INTO v_wallet_id, v_wallet_balance
@@ -19987,9 +19987,9 @@ BEGIN
         END IF;
     END IF;
 
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     -- 5. CREATE EMERGENCY REQUEST
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     v_request_id := gen_random_uuid();
 
     INSERT INTO public.emergency_requests (
@@ -20013,16 +20013,16 @@ BEGIN
         NOW(), NOW()
     );
 
-    -- ═══════════════════════════════════════════════════════════
-    -- 6. LINK PAYMENT → EMERGENCY REQUEST
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    -- 6. LINK PAYMENT â†’ EMERGENCY REQUEST
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     UPDATE public.payments 
     SET emergency_request_id = v_request_id, updated_at = NOW()
     WHERE id = v_payment_id;
 
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     -- 7. RETURN SUCCESS
-    -- ═══════════════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     RETURN jsonb_build_object(
         'success', true, 
         'request_id', v_request_id, 
@@ -20044,10 +20044,10 @@ GRANT EXECUTE ON FUNCTION public.create_emergency_with_payment(UUID, JSONB, JSON
 GRANT EXECUTE ON FUNCTION public.create_emergency_with_payment(UUID, JSONB, JSONB) TO service_role;
 
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 3. APPROVE CASH PAYMENT RPC
 --    Called by org_admin when they accept the cash job
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 DROP FUNCTION IF EXISTS public.approve_cash_payment(UUID, UUID);
 
@@ -20170,10 +20170,10 @@ GRANT EXECUTE ON FUNCTION public.approve_cash_payment(UUID, UUID) TO authenticat
 GRANT EXECUTE ON FUNCTION public.approve_cash_payment(UUID, UUID) TO service_role;
 
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 4. DECLINE CASH PAYMENT RPC
 --    Called by org_admin when they reject the cash job
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 DROP FUNCTION IF EXISTS public.decline_cash_payment(UUID, UUID);
 
@@ -20209,8 +20209,8 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_payment_id;
 
-    -- 3. Update emergency request — back to pending state
-    --    (Not cancelled — user can retry with different payment)
+    -- 3. Update emergency request â€” back to pending state
+    --    (Not cancelled â€” user can retry with different payment)
     UPDATE public.emergency_requests 
     SET status = 'payment_declined',
         payment_status = 'declined',
@@ -20233,9 +20233,9 @@ GRANT EXECUTE ON FUNCTION public.decline_cash_payment(UUID, UUID) TO authenticat
 GRANT EXECUTE ON FUNCTION public.decline_cash_payment(UUID, UUID) TO service_role;
 
 
--- ═══════════════════════════════════════════════════════════
--- 5. UPDATE VISIT TRIGGER — handle 'pending_approval' status
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- 5. UPDATE VISIT TRIGGER â€” handle 'pending_approval' status
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 CREATE OR REPLACE FUNCTION public.sync_emergency_to_history()
 RETURNS TRIGGER
@@ -20350,9 +20350,9 @@ NOTIFY pgrst, 'reload schema';
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 1. DROP ALL POTENTIAL OVERLOADS
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- create_emergency_with_payment
 DROP FUNCTION IF EXISTS public.create_emergency_with_payment(UUID, JSONB, JSONB);
@@ -20369,9 +20369,9 @@ DROP FUNCTION IF EXISTS public.decline_cash_payment(UUID, UUID);
 DROP FUNCTION IF EXISTS public.decline_cash_payment(TEXT, TEXT);
 
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 2. CREATE ALPHABETIZED RPCs
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- create_emergency_with_payment (Alphabetical: p_payment_data, p_request_data, p_user_id)
 CREATE OR REPLACE FUNCTION public.create_emergency_with_payment(
@@ -20636,9 +20636,9 @@ END;
 $$;
 
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 3. PERMISSIONS
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 GRANT EXECUTE ON FUNCTION public.create_emergency_with_payment(JSONB, JSONB, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.approve_cash_payment(TEXT, TEXT) TO authenticated;
@@ -21211,7 +21211,7 @@ BEGIN
 
     UPDATE public.payments SET emergency_request_id = v_request_id WHERE id = v_payment_id;
 
-    -- 💡 PATIENT LEDGER: Log a pending transaction so it shows up in their UI
+    -- ðŸ’¡ PATIENT LEDGER: Log a pending transaction so it shows up in their UI
     SELECT id INTO v_patient_wallet_id FROM public.patient_wallets WHERE user_id = p_user_id;
     IF v_patient_wallet_id IS NOT NULL THEN
         INSERT INTO public.wallet_ledger (
@@ -21389,7 +21389,7 @@ BEGIN
     -- 3. Link back from payment to request
     UPDATE public.payments SET emergency_request_id = v_request_id WHERE id = v_payment_id;
 
-    -- 💡 PATIENT LEDGER: Log a pending transaction
+    -- ðŸ’¡ PATIENT LEDGER: Log a pending transaction
     SELECT id INTO v_patient_wallet_id FROM public.patient_wallets WHERE user_id = p_user_id;
     IF v_patient_wallet_id IS NOT NULL THEN
         INSERT INTO public.wallet_ledger (
@@ -21432,9 +21432,9 @@ COMMIT;
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 1. UPDATE EMERGENCY REQUESTS RLS
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Ensure Org Admins can see emergencies for any hospital in their organization
 -- We use profiles.organization_id which can be either an Org ID or a Hospital ID
@@ -21479,9 +21479,9 @@ CREATE POLICY "Org admins update their emergencies" ON public.emergency_requests
         )
     );
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 2. UPDATE PAYMENTS RLS
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Allow Org Admins to see payments for their organization
 DROP POLICY IF EXISTS "Org admins see their payments" ON public.payments;
@@ -21794,7 +21794,7 @@ BEGIN
     -- B. NEW REQUEST CREATED (INSERT)
     IF (TG_OP = 'INSERT') THEN
         v_notification_type := 'emergency';
-        v_title := '🚨 New ' || initcap(NEW.service_type) || ' Request';
+        v_title := 'ðŸš¨ New ' || initcap(NEW.service_type) || ' Request';
         v_message := 'A new emergency request has been initiated at ' || COALESCE(NEW.patient_location, 'Unknown Location') || '.';
         v_priority := 'high';
 
@@ -21825,7 +21825,7 @@ BEGIN
             INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.user_id, 'payment', '✅ Payment Approved', 
+                NEW.user_id, 'payment', 'âœ… Payment Approved', 
                 'Your cash payment for ' || COALESCE(v_hospital_name, 'the hospital') || ' has been confirmed. Help is prioritized.', 
                 'high', NEW.id, jsonb_build_object('request_id', NEW.id)
             );
@@ -21836,7 +21836,7 @@ BEGIN
             INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.user_id, 'emergency', '🚑 Help is On The Way', 
+                NEW.user_id, 'emergency', 'ðŸš‘ Help is On The Way', 
                 COALESCE(v_hospital_name, 'The hospital') || ' has accepted your request. View details for live tracking.', 
                 'high', NEW.id, jsonb_build_object('request_id', NEW.id, 'status', NEW.status)
             );
@@ -21847,7 +21847,7 @@ BEGIN
              INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.user_id, 'emergency', '🏁 Service Completed', 
+                NEW.user_id, 'emergency', 'ðŸ Service Completed', 
                 'Your emergency request has been successfully closed. Thank you for choosing iVisit.', 
                 'normal', NEW.id, jsonb_build_object('request_id', NEW.id)
             );
@@ -22152,7 +22152,7 @@ NOTIFY pgrst, 'reload schema';
 -- ----------------------------------------------------------------------------
 
 -- ============================================================================
--- Migration: Dispatch Fix — Auto-Assignment, Visit Enrichment, Notifications
+-- Migration: Dispatch Fix â€” Auto-Assignment, Visit Enrichment, Notifications
 -- Date: 2026-02-17
 -- Backup: supabase/backups/pre_dispatch_fix_20260217/
 -- ============================================================================
@@ -22171,10 +22171,10 @@ BEGIN;
 -- 1. FIX AUTO-ASSIGN DRIVER
 -- ============================================================================
 -- Problems fixed:
--- A. JOIN used profile_id but data uses driver_id → COALESCE both
--- B. provider_type = 'ambulance' filter too strict → removed
--- C. Fires on INSERT only → now INSERT + UPDATE
--- D. No status guard → only assigns when status IN ('in_progress','accepted')
+-- A. JOIN used profile_id but data uses driver_id â†’ COALESCE both
+-- B. provider_type = 'ambulance' filter too strict â†’ removed
+-- C. Fires on INSERT only â†’ now INSERT + UPDATE
+-- D. No status guard â†’ only assigns when status IN ('in_progress','accepted')
 
 CREATE OR REPLACE FUNCTION public.auto_assign_driver()
 RETURNS TRIGGER AS $$
@@ -22356,7 +22356,7 @@ BEGIN
     -- B. NEW REQUEST CREATED (INSERT)
     IF (TG_OP = 'INSERT') THEN
         v_notification_type := 'emergency';
-        v_title := '🚨 New ' || initcap(NEW.service_type) || ' Request';
+        v_title := 'ðŸš¨ New ' || initcap(NEW.service_type) || ' Request';
         -- FIX: Use hospital_name instead of patient_location (which is GEOGRAPHY)
         v_message := 'A new emergency request has been initiated at ' 
                      || COALESCE(v_hospital_name, 'an iVisit partner hospital') || '.';
@@ -22389,7 +22389,7 @@ BEGIN
             INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.user_id, 'payment', '✅ Payment Approved', 
+                NEW.user_id, 'payment', 'âœ… Payment Approved', 
                 'Your cash payment for ' || COALESCE(v_hospital_name, 'the hospital') || ' has been confirmed. Help is prioritized.', 
                 'high', NEW.id, jsonb_build_object('request_id', NEW.id)
             );
@@ -22400,18 +22400,18 @@ BEGIN
             INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.user_id, 'payment', '❌ Payment Declined', 
+                NEW.user_id, 'payment', 'âŒ Payment Declined', 
                 'Your cash payment for ' || COALESCE(v_hospital_name, 'the hospital') || ' was declined. Please try a different payment method.', 
                 'high', NEW.id, jsonb_build_object('request_id', NEW.id)
             );
         END IF;
 
-        -- 3. EMERGENCY ACCEPTED — Responder assigned (User Notification)
+        -- 3. EMERGENCY ACCEPTED â€” Responder assigned (User Notification)
         IF (OLD.status IS DISTINCT FROM NEW.status AND NEW.status IN ('accepted', 'assigned')) THEN
             INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.user_id, 'emergency', '🚑 Help is On The Way', 
+                NEW.user_id, 'emergency', 'ðŸš‘ Help is On The Way', 
                 COALESCE(v_hospital_name, 'The hospital') || ' has accepted your request. View details for live tracking.', 
                 'high', NEW.id, jsonb_build_object('request_id', NEW.id, 'status', NEW.status)
             );
@@ -22422,18 +22422,18 @@ BEGIN
              INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.user_id, 'emergency', '🏁 Service Completed', 
+                NEW.user_id, 'emergency', 'ðŸ Service Completed', 
                 'Your emergency request has been successfully closed. Thank you for choosing iVisit.', 
                 'normal', NEW.id, jsonb_build_object('request_id', NEW.id)
             );
         END IF;
 
-        -- 5. RESPONDER ASSIGNED — Notify driver/provider
+        -- 5. RESPONDER ASSIGNED â€” Notify driver/provider
         IF (OLD.responder_id IS DISTINCT FROM NEW.responder_id AND NEW.responder_id IS NOT NULL) THEN
             INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.responder_id, 'emergency', '🚨 New Mission Assigned', 
+                NEW.responder_id, 'emergency', 'ðŸš¨ New Mission Assigned', 
                 'You have been dispatched to ' || COALESCE(v_hospital_name, 'a location') || '. Check details now.', 
                 'high', NEW.id, jsonb_build_object('request_id', NEW.id, 'service_type', NEW.service_type)
             );
@@ -22497,7 +22497,7 @@ COMMIT;
 BEGIN;
 
 -- Step 1: Approve cash payment if still pending
---         This moves status from 'pending_approval' → 'in_progress'
+--         This moves status from 'pending_approval' â†’ 'in_progress'
 --         which is one of the statuses that auto_assign_driver responds to.
 DO $$
 DECLARE
@@ -22522,7 +22522,7 @@ BEGIN
         RETURN;
     END IF;
 
-    -- Case 1: pending_approval → approve and move to in_progress
+    -- Case 1: pending_approval â†’ approve and move to in_progress
     IF v_current_status = 'pending_approval' THEN
         RAISE NOTICE 'Approving cash payment and moving to in_progress...';
         UPDATE public.emergency_requests
@@ -22757,7 +22757,7 @@ BEGIN
         estimated_arrival = v_eta_text
     WHERE id = NEW.id;
 
-    -- Mark ambulance as on_trip — cast to jsonb for current_call
+    -- Mark ambulance as on_trip â€” cast to jsonb for current_call
     UPDATE public.ambulances
     SET status = 'on_trip', current_call = to_jsonb(NEW.id::text)
     WHERE id = v_ambulance_id;
@@ -22774,7 +22774,7 @@ COMMIT;
 -- ----------------------------------------------------------------------------
 
 -- ==========================================================================
--- POST-COMPLETION FLOW FIX — 2026-02-17
+-- POST-COMPLETION FLOW FIX â€” 2026-02-17
 -- ==========================================================================
 -- Fixes:
 --   1. Auto-release ambulance back to 'available' on completion/cancellation
@@ -22807,7 +22807,7 @@ BEGIN
         WHERE id = NEW.ambulance_id
           AND status = 'on_trip';
         
-        RAISE NOTICE '[release_ambulance] Ambulance % released back to available (emergency % → %)',
+        RAISE NOTICE '[release_ambulance] Ambulance % released back to available (emergency % â†’ %)',
             NEW.ambulance_id, NEW.id, NEW.status;
     END IF;
     
@@ -22822,7 +22822,7 @@ CREATE TRIGGER on_emergency_release_ambulance
     EXECUTE FUNCTION public.release_ambulance_on_completion();
 
 -- ============================================================================
--- 2. ENHANCED VISIT SYNC — Handle display-ID visits too
+-- 2. ENHANCED VISIT SYNC â€” Handle display-ID visits too
 -- ============================================================================
 -- The frontend sometimes creates visits with UUID as `request_id`, and
 -- the original trigger only updates visits WHERE id = NEW.id (the UUID).
@@ -22856,7 +22856,7 @@ BEGIN
     FROM public.hospitals h
     WHERE h.id::text = NEW.hospital_id::text;
 
-    -- Map emergency status → visit status
+    -- Map emergency status â†’ visit status
     v_visit_status := CASE NEW.status
         WHEN 'pending_approval' THEN 'pending'
         WHEN 'payment_declined' THEN 'cancelled'
@@ -22924,7 +22924,7 @@ CREATE TRIGGER on_emergency_sync_visit
     EXECUTE FUNCTION public.sync_emergency_to_visit();
 
 -- ============================================================================
--- 3. ENHANCED NOTIFICATIONS — Add Arrived + Cash Approval Required
+-- 3. ENHANCED NOTIFICATIONS â€” Add Arrived + Cash Approval Required
 -- ============================================================================
 -- Notifications were mostly working but missing:
 --   - "Ambulance Arrived" notification to admins
@@ -22949,7 +22949,7 @@ BEGIN
     -- B. NEW REQUEST CREATED (INSERT)
     IF (TG_OP = 'INSERT') THEN
         v_notification_type := 'emergency';
-        v_title := '🚨 New ' || initcap(COALESCE(NEW.service_type, 'Emergency')) || ' Request';
+        v_title := 'ðŸš¨ New ' || initcap(COALESCE(NEW.service_type, 'Emergency')) || ' Request';
         v_message := 'A patient has requested a '
                      || initcap(COALESCE(NEW.service_type, 'service'))
                      || ' (' || COALESCE(NEW.request_id, 'N/A') || ') at '
@@ -22997,34 +22997,34 @@ BEGIN
     -- C. STATUS OR PAYMENT UPDATES (UPDATE)
     ELSIF (TG_OP = 'UPDATE') THEN
         
-        -- 1. PAYMENT APPROVAL → User, update status
+        -- 1. PAYMENT APPROVAL â†’ User, update status
         IF (OLD.payment_status IS DISTINCT FROM NEW.payment_status AND NEW.payment_status = 'completed') THEN
             INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.user_id, 'payment', '✅ Payment Approved', 
+                NEW.user_id, 'payment', 'âœ… Payment Approved', 
                 'Your cash payment for ' || COALESCE(v_hospital_name, 'the hospital') || ' has been confirmed. Help is prioritized.', 
                 'high', NEW.id, jsonb_build_object('request_id', NEW.id)
             );
         END IF;
 
-        -- 2. PAYMENT DECLINED → User
+        -- 2. PAYMENT DECLINED â†’ User
         IF (OLD.payment_status IS DISTINCT FROM NEW.payment_status AND NEW.payment_status = 'declined') THEN
             INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.user_id, 'payment', '❌ Payment Declined', 
+                NEW.user_id, 'payment', 'âŒ Payment Declined', 
                 'Your cash payment for ' || COALESCE(v_hospital_name, 'the hospital') || ' was declined. Please try a different payment method.', 
                 'high', NEW.id, jsonb_build_object('request_id', NEW.id)
             );
         END IF;
 
-        -- 3. EMERGENCY IN PROGRESS / ACCEPTED → User
+        -- 3. EMERGENCY IN PROGRESS / ACCEPTED â†’ User
         IF (OLD.status IS DISTINCT FROM NEW.status AND NEW.status IN ('in_progress', 'accepted', 'assigned')) THEN
             INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.user_id, 'emergency', '🚑 Help is On The Way', 
+                NEW.user_id, 'emergency', 'ðŸš‘ Help is On The Way', 
                 COALESCE(v_hospital_name, 'The hospital') || ' has accepted your request. '
                 || CASE WHEN NEW.responder_name IS NOT NULL 
                         THEN NEW.responder_name || ' is en route.' 
@@ -23033,7 +23033,7 @@ BEGIN
             );
         END IF;
 
-        -- 4. AMBULANCE ARRIVED → User + Admin
+        -- 4. AMBULANCE ARRIVED â†’ User + Admin
         IF (OLD.status IS DISTINCT FROM NEW.status AND NEW.status = 'arrived') THEN
             INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
@@ -23052,7 +23052,7 @@ BEGIN
                 INSERT INTO public.notifications (
                     user_id, type, title, message, priority, target_id, metadata
                 ) VALUES (
-                    v_admin_id, 'emergency', '📍 Responder Arrived',
+                    v_admin_id, 'emergency', 'ðŸ“ Responder Arrived',
                     COALESCE(NEW.responder_name, 'Responder') || ' has arrived for request '
                     || COALESCE(NEW.request_id, NEW.id::text) || '.',
                     'normal', NEW.id, jsonb_build_object('request_id', NEW.id, 'status', NEW.status)
@@ -23060,23 +23060,23 @@ BEGIN
             END LOOP;
         END IF;
 
-        -- 5. EMERGENCY COMPLETED → User
+        -- 5. EMERGENCY COMPLETED â†’ User
         IF (OLD.status IS DISTINCT FROM NEW.status AND NEW.status = 'completed') THEN
              INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.user_id, 'emergency', '🏁 Service Completed', 
+                NEW.user_id, 'emergency', 'ðŸ Service Completed', 
                 'Your emergency request has been successfully closed. Thank you for choosing iVisit.', 
                 'normal', NEW.id, jsonb_build_object('request_id', NEW.id)
             );
         END IF;
 
-        -- 6. RESPONDER ASSIGNED → Driver/Provider
+        -- 6. RESPONDER ASSIGNED â†’ Driver/Provider
         IF (OLD.responder_id IS DISTINCT FROM NEW.responder_id AND NEW.responder_id IS NOT NULL) THEN
             INSERT INTO public.notifications (
                 user_id, type, title, message, priority, target_id, metadata
             ) VALUES (
-                NEW.responder_id, 'emergency', '🚨 New Mission Assigned', 
+                NEW.responder_id, 'emergency', 'ðŸš¨ New Mission Assigned', 
                 'You have been dispatched to ' || COALESCE(v_hospital_name, 'a location') || '. Check details now.', 
                 'high', NEW.id, jsonb_build_object('request_id', NEW.id, 'service_type', NEW.service_type)
             );
@@ -23096,7 +23096,7 @@ CREATE TRIGGER on_emergency_request_activity
     EXECUTE FUNCTION public.notify_emergency_events();
 
 -- ============================================================================
--- 4. VISITS RLS — Add org_admin and admin visibility
+-- 4. VISITS RLS â€” Add org_admin and admin visibility
 -- ============================================================================
 -- org_admin should see visits for users in their organization's hospitals
 -- admin should see all visits
@@ -23163,7 +23163,7 @@ COMMIT;
 -- ----------------------------------------------------------------------------
 
 -- ==========================================================================
--- ORG ADMIN MULTI-HOSPITAL VISITS RLS — 2026-02-17
+-- ORG ADMIN MULTI-HOSPITAL VISITS RLS â€” 2026-02-17
 -- ==========================================================================
 -- Fix: An org_admin's profiles.organization_id points to a single hospital,
 -- but they may manage multiple hospitals under one parent organization.
@@ -23199,7 +23199,7 @@ COMMIT;
 -- ----------------------------------------------------------------------------
 
 -- ==========================================================================
--- FIX ORG ADMIN VISITS RLS — profiles.organization_id = organizations.id
+-- FIX ORG ADMIN VISITS RLS â€” profiles.organization_id = organizations.id
 -- ==========================================================================
 -- Corrects the wrong assumption that profiles.organization_id pointed to
 -- hospitals.id. It actually stores the PARENT organization UUID (as TEXT).
@@ -23234,7 +23234,7 @@ COMMIT;
 -- ----------------------------------------------------------------------------
 
 -- ==========================================================================
--- UNIVERSAL ORG ADMIN RBAC — 2026-02-17
+-- UNIVERSAL ORG ADMIN RBAC â€” 2026-02-17
 -- ==========================================================================
 -- Corrects Org Admin visibility across all core tables.
 -- logic: profiles.organization_id = parent organization UUID (TEXT).
@@ -23243,9 +23243,9 @@ COMMIT;
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 1. DOCTORS
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Org admins can manage doctors in their hospitals
 DROP POLICY IF EXISTS "Org admins manage their doctors" ON public.doctors;
@@ -23276,9 +23276,9 @@ WITH CHECK (
 );
 
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 2. AMBULANCES
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Org admins can manage ambulances in their hospitals
 DROP POLICY IF EXISTS "Org admins manage their ambulances" ON public.ambulances;
@@ -23309,9 +23309,9 @@ WITH CHECK (
 );
 
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 3. EMERGENCY REQUESTS
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Modernize the emergency requests policy to use the same cast-safe join
 DROP POLICY IF EXISTS "Org admins see their emergencies" ON public.emergency_requests;
@@ -23356,7 +23356,7 @@ NOTIFY pgrst, 'reload schema';
 -- ----------------------------------------------------------------------------
 
 -- ==========================================================================
--- STABILIZE ORG-PROVIDER LINKAGE — 2026-02-17
+-- STABILIZE ORG-PROVIDER LINKAGE â€” 2026-02-17
 -- ==========================================================================
 
 BEGIN;
@@ -23469,7 +23469,7 @@ SELECT 1;
 -- ----------------------------------------------------------------------------
 
 -- ==========================================================================
--- SYSTEM HEALING & RLS RESTORATION — 2026-02-17
+-- SYSTEM HEALING & RLS RESTORATION â€” 2026-02-17
 -- ==========================================================================
 
 BEGIN;
@@ -23606,9 +23606,9 @@ NOTIFY pgrst, 'reload schema';
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 1. CLEANUP: Drop all policies to allow type change
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 DO $$
 DECLARE
     pol RECORD;
@@ -23622,9 +23622,9 @@ BEGIN
     END LOOP;
 END $$;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 2. REVERT COLUMN TYPES TO UUID
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- First drop constraints
 DO $$
 DECLARE
@@ -23658,9 +23658,9 @@ ALTER TABLE public.organization_wallets ADD CONSTRAINT organization_wallets_orga
 ALTER TABLE public.payments ADD CONSTRAINT payments_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id);
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id);
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 3. RESTORE HELPER FUNCTIONS (UUID-safe)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 DROP FUNCTION IF EXISTS public.get_current_user_role CASCADE;
 CREATE OR REPLACE FUNCTION public.get_current_user_role()
@@ -23674,9 +23674,9 @@ RETURNS uuid LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
   SELECT organization_id FROM profiles WHERE id = auth.uid();
 $$;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 4. RESTORE DISPATCH LOGIC (from 20260217160000)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 CREATE OR REPLACE FUNCTION public.auto_assign_driver()
 RETURNS TRIGGER AS $$
@@ -23722,9 +23722,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP TRIGGER IF EXISTS on_emergency_request_auto_assign_driver ON public.emergency_requests;
 CREATE TRIGGER on_emergency_request_auto_assign_driver AFTER INSERT OR UPDATE ON public.emergency_requests FOR EACH ROW EXECUTE FUNCTION public.auto_assign_driver();
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 5. RESTORE VISIT SYNC & AMBULANCE RELEASE (from 20260217180000)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 CREATE OR REPLACE FUNCTION public.release_ambulance_on_completion()
 RETURNS TRIGGER AS $$
@@ -23771,9 +23771,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP TRIGGER IF EXISTS on_emergency_sync_visit ON public.emergency_requests;
 CREATE TRIGGER on_emergency_sync_visit AFTER INSERT OR UPDATE ON public.emergency_requests FOR EACH ROW EXECUTE FUNCTION public.sync_emergency_to_visit();
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 6. RESTORE NOTIFICATIONS (Full Version)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 CREATE OR REPLACE FUNCTION public.notify_emergency_events()
 RETURNS TRIGGER AS $$
@@ -23783,7 +23783,7 @@ BEGIN
     SELECT h.organization_id, h.name INTO v_org_id, v_hospital_name FROM public.hospitals h WHERE h.id::text = NEW.hospital_id::text;
 
     IF (TG_OP = 'INSERT') THEN
-        v_title := '🚨 New ' || initcap(COALESCE(NEW.service_type, 'Emergency')) || ' Request';
+        v_title := 'ðŸš¨ New ' || initcap(COALESCE(NEW.service_type, 'Emergency')) || ' Request';
         v_message := 'New request initiated at ' || COALESCE(v_hospital_name, 'hospital') || '.';
         v_priority := CASE WHEN NEW.status = 'pending_approval' THEN 'urgent' ELSE 'high' END;
 
@@ -23795,9 +23795,9 @@ BEGIN
     ELSIF (TG_OP = 'UPDATE' AND OLD.status IS DISTINCT FROM NEW.status) THEN
         -- Simplified for space, but covering key statuses
         v_title := CASE NEW.status 
-            WHEN 'accepted' THEN '🚑 Help is On The Way'
-            WHEN 'arrived' THEN '📍 Responder Arrived'
-            WHEN 'completed' THEN '🏁 Service Completed'
+            WHEN 'accepted' THEN 'ðŸš‘ Help is On The Way'
+            WHEN 'arrived' THEN 'ðŸ“ Responder Arrived'
+            WHEN 'completed' THEN 'ðŸ Service Completed'
             ELSE NULL END;
         IF v_title IS NOT NULL THEN
             INSERT INTO public.notifications (user_id, type, title, message, target_id)
@@ -23811,9 +23811,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP TRIGGER IF EXISTS on_emergency_request_activity ON public.emergency_requests;
 CREATE TRIGGER on_emergency_request_activity AFTER INSERT OR UPDATE ON public.emergency_requests FOR EACH ROW EXECUTE FUNCTION public.notify_emergency_events();
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 7. RE-APPLY MASTER RLS (Truncated for space, focusing on Orgs/Profiles)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- (In a real scenario, I would include the full 800 lines or just reference the file)
 -- I will re-enable RLS on core tables.
 
@@ -24334,7 +24334,7 @@ CREATE POLICY "Anonymous can insert search selections"
   WITH CHECK (user_id IS NULL);
 
 -- ============================================================
--- 20. SEARCH EVENTS (no user_id — anonymous tracking)
+-- 20. SEARCH EVENTS (no user_id â€” anonymous tracking)
 -- ============================================================
 ALTER TABLE public.search_events ENABLE ROW LEVEL SECURITY;
 
@@ -24395,7 +24395,7 @@ CREATE POLICY "Service Role full access user_activity"
   USING (true) WITH CHECK (true);
 
 -- ============================================================
--- 24. DOCUMENTS (Data Room — no created_by; visibility is text[])
+-- 24. DOCUMENTS (Data Room â€” no created_by; visibility is text[])
 -- ============================================================
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
 
@@ -24766,9 +24766,9 @@ NOTIFY pgrst, 'reload schema';
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 1. RE-APPLY MASTER RLS (CASTED FOR TEXT)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- [Profiles]
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -24807,9 +24807,9 @@ CREATE POLICY "Org admins view their own wallet" ON public.organization_wallets 
     organization_id::text = (SELECT organization_id FROM public.profiles WHERE id = auth.uid()) OR public.get_current_user_role() = 'admin'
 );
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 2. RESTORE ONBOARDING ENGINE
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Handle New User (Auth -> Profile)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -24838,9 +24838,9 @@ $$;
 DROP TRIGGER IF EXISTS tr_on_profile_created_features ON public.profiles;
 CREATE TRIGGER tr_on_profile_created_features AFTER INSERT ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.handle_new_profile_features();
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 3. RESTORE FINANCIAL ENGINE (Ledger)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 CREATE OR REPLACE FUNCTION public.process_payment_with_ledger()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -24892,9 +24892,9 @@ DROP TRIGGER IF EXISTS tr_process_payment_with_ledger ON public.payments;
 CREATE TRIGGER tr_process_payment_with_ledger BEFORE UPDATE ON public.payments
 FOR EACH ROW WHEN (OLD.status IS DISTINCT FROM NEW.status) EXECUTE FUNCTION public.process_payment_with_ledger();
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 4. RESTORE ID BEAUTIFICATION
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 CREATE OR REPLACE FUNCTION public.generate_display_id(prefix TEXT)
 RETURNS TEXT AS $$
 DECLARE
@@ -24949,9 +24949,9 @@ NOTIFY pgrst, 'reload schema';
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 1. UTILITY FUNCTIONS
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Check if current user is admin
 CREATE OR REPLACE FUNCTION public.is_admin()
@@ -24965,9 +24965,9 @@ RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
   SELECT public.is_admin();
 $$;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 2. USER MANAGEMENT RPCs
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Get all auth users with profile data (Admin only)
 -- Scoped by organization_id (TEXT-compatible)
@@ -25031,9 +25031,9 @@ RETURNS TABLE (
   );
 $$;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 3. STATISTICS & ANALYTICS
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Get user statistics (Admin only)
 DROP FUNCTION IF EXISTS public.get_user_statistics(uuid);
@@ -25088,9 +25088,9 @@ BEGIN
 END;
 $$;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 4. ADMINISTRATIVE CONTROLS
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 -- Delete user (Admin only)
 CREATE OR REPLACE FUNCTION public.delete_user_by_admin(target_user_id text)
@@ -25129,9 +25129,9 @@ BEGIN
 END;
 $$;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 5. GRANTS & CLEANUP
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 GRANT EXECUTE ON FUNCTION public.get_all_auth_users(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.search_auth_users(text) TO authenticated;
@@ -25158,9 +25158,9 @@ NOTIFY pgrst, 'reload schema';
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 1. FIX: process_cash_payment_v2
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 CREATE OR REPLACE FUNCTION public.process_cash_payment_v2(
     p_emergency_request_id TEXT,
     p_organization_id TEXT,
@@ -25233,9 +25233,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 2. FIX: process_wallet_payment
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 CREATE OR REPLACE FUNCTION public.process_wallet_payment(
     p_user_id TEXT,
     p_organization_id TEXT,
@@ -25307,9 +25307,9 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 3. FIX: calculate_emergency_cost (ensure v_org_id is TEXT)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 CREATE OR REPLACE FUNCTION public.calculate_emergency_cost(
     p_service_type TEXT,
     p_hospital_id TEXT DEFAULT NULL,
@@ -25390,9 +25390,9 @@ BEGIN
 END;
 $$;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 4. GRANTS
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 GRANT EXECUTE ON FUNCTION public.process_cash_payment_v2(text, text, numeric, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.process_wallet_payment(text, text, text, decimal, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.calculate_emergency_cost(text, text, text, text, numeric, boolean) TO authenticated;
@@ -25407,7 +25407,7 @@ NOTIFY pgrst, 'reload schema';
 -- ----------------------------------------------------------------------------
 
 -- ============================================================================
--- RESTORE CASH APPROVAL & VISIT SYNC — 2026-02-18
+-- RESTORE CASH APPROVAL & VISIT SYNC â€” 2026-02-18
 -- ============================================================================
 -- 1. Restores `approve_cash_payment` and `decline_cash_payment` (Lost in 20260217220000)
 -- 2. Upgrades `sync_emergency_to_visit` to correctly INSERT new visits (Lost logic)
@@ -25415,9 +25415,9 @@ NOTIFY pgrst, 'reload schema';
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 1. RESTORE CASH APPROVAL RPCs
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 CREATE OR REPLACE FUNCTION public.approve_cash_payment(
     p_payment_id UUID,
@@ -25569,7 +25569,7 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_payment_id;
 
-    -- 3. Update emergency request — back to pending or declined state
+    -- 3. Update emergency request â€” back to pending or declined state
     UPDATE public.emergency_requests 
     SET status = 'payment_declined',
         payment_status = 'declined',
@@ -25594,9 +25594,9 @@ GRANT EXECUTE ON FUNCTION public.approve_cash_payment(UUID, UUID) TO service_rol
 GRANT EXECUTE ON FUNCTION public.decline_cash_payment(UUID, UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.decline_cash_payment(UUID, UUID) TO service_role;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 2. UPGRADE VISIT SYNC TRIGGER (Ensure Visits are Created)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 CREATE OR REPLACE FUNCTION public.sync_emergency_to_visit()
 RETURNS TRIGGER AS $$
@@ -25662,14 +25662,14 @@ NOTIFY pgrst, 'reload schema';
 -- ----------------------------------------------------------------------------
 
 -- ============================================================================
--- SAFE TYPE FIX (PART 1: USERS & WALLET) — 2026-02-18
+-- SAFE TYPE FIX (PART 1: USERS & WALLET) â€” 2026-02-18
 -- ============================================================================
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 1. FIX: update_profile_by_admin (TEXT Version)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 DROP FUNCTION IF EXISTS public.update_profile_by_admin(uuid, jsonb);
 DROP FUNCTION IF EXISTS public.update_profile_by_admin(text, jsonb);
 
@@ -25703,17 +25703,17 @@ BEGIN
 END;
 $$;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 2. FIX: ivisit_main_wallet (Seed if missing)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- Ensure ID is UUID but cast if needed, or rely on auto-generation
 INSERT INTO public.ivisit_main_wallet (id, balance, currency, last_updated)
 SELECT gen_random_uuid(), 0.00, 'USD', NOW()
 WHERE NOT EXISTS (SELECT 1 FROM public.ivisit_main_wallet);
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 3. FIX: get_all_auth_users (Correct Users List)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 DROP FUNCTION IF EXISTS public.get_all_auth_users(uuid);
 DROP FUNCTION IF EXISTS public.get_all_auth_users(text);
 
@@ -25763,7 +25763,7 @@ NOTIFY pgrst, 'reload schema';
 -- ----------------------------------------------------------------------------
 
 -- ============================================================================
--- SAFE TYPE FIX (PART 2: HOSPITALS) — 2026-02-18
+-- SAFE TYPE FIX (PART 2: HOSPITALS) â€” 2026-02-18
 -- ============================================================================
 
 BEGIN;
@@ -25827,7 +25827,7 @@ NOTIFY pgrst, 'reload schema';
 -- ----------------------------------------------------------------------------
 
 -- ============================================================================
--- FIX WALLET VISIBILITY (RLS) — 2026-02-18
+-- FIX WALLET VISIBILITY (RLS) â€” 2026-02-18
 -- ============================================================================
 -- The Main Wallet table has RLS enabled but NO policies, making it invisible.
 -- This migration adds a SELECT policy so the frontend can fetch it.
@@ -25863,7 +25863,7 @@ NOTIFY pgrst, 'reload schema';
 -- ----------------------------------------------------------------------------
 
 -- ============================================================================
--- RESTORE ACCESS: PRICING & PAYMENTS (RLS) — 2026-02-18
+-- RESTORE ACCESS: PRICING & PAYMENTS (RLS) â€” 2026-02-18
 -- ============================================================================
 -- Adds missing RLS policies for Pricing and Payments tables.
 -- These tables were inaccessible (0 rows) due to missing SELECT policies.
@@ -25871,9 +25871,9 @@ NOTIFY pgrst, 'reload schema';
 
 BEGIN;
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 1. SERVICE PRICING
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 ALTER TABLE public.service_pricing ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated users view pricing" ON public.service_pricing;
@@ -25885,9 +25885,9 @@ CREATE POLICY "Admins manage pricing"
 ON public.service_pricing FOR ALL TO authenticated 
 USING (public.get_current_user_role() IN ('admin', 'org_admin'));
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 2. ROOM PRICING
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 ALTER TABLE public.room_pricing ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated users view room pricing" ON public.room_pricing;
@@ -25900,9 +25900,9 @@ ON public.room_pricing FOR ALL TO authenticated
 USING (public.get_current_user_role() IN ('admin', 'org_admin'));
 
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 3. PAYMENTS
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users view own payments" ON public.payments;
@@ -25924,9 +25924,9 @@ CREATE POLICY "Admins manage payments"
 ON public.payments FOR ALL TO authenticated 
 USING (public.get_current_user_role() = 'admin');
 
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- 4. EMERGENCY REQUESTS (Refining just in case)
--- ═══════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- Double check emergency requests visibility for Org Admins
 DROP POLICY IF EXISTS "Org Admins view requests" ON public.emergency_requests;
 CREATE POLICY "Org Admins view requests" 
@@ -25948,10 +25948,11 @@ NOTIFY pgrst, 'reload schema';
 
 
 -- ============================================================================
--- NAGASAKI: FINAL UUID RESTORATION & GROUND ZERO STANDARDS
+-- NAGASAKI: FINAL OVERRIDE & GROUND ZERO STANDARDS
 -- ============================================================================
 
 BEGIN;
+
 -- 1. CONVERT CORE IDENTITY COLUMNS TO UUID
 ALTER TABLE public.organizations ALTER COLUMN id TYPE UUID USING id::uuid;
 ALTER TABLE public.hospitals ALTER COLUMN organization_id TYPE UUID USING organization_id::uuid;
@@ -25973,7 +25974,7 @@ CREATE TABLE IF NOT EXISTS public.id_mappings (
 
 -- 3. MASTER TRIGGER FOR DISPLAY_ID GENERATION
 CREATE OR REPLACE FUNCTION public.stamp_entity_display_id()
-RETURNS TRIGGER AS c:\Users\Dyrane\Documents\GitHub\ivisit-app
+RETURNS TRIGGER AS $$
 DECLARE v_prefix TEXT;
 BEGIN
     IF TG_TABLE_NAME = 'hospitals' THEN v_prefix := 'HSP';
@@ -25995,11 +25996,11 @@ BEGIN
 
     RETURN NEW;
 END;
-c:\Users\Dyrane\Documents\GitHub\ivisit-app LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4. RESTORE AUTH & UI COMPATIBILITY
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS c:\Users\Dyrane\Documents\GitHub\ivisit-app
+RETURNS TRIGGER AS $$
 BEGIN
   -- Profile with image_uri legacy sync
   INSERT INTO public.profiles (id, email, full_name, avatar_url, image_uri, role)
@@ -26010,20 +26011,225 @@ BEGIN
     NEW.raw_user_meta_data->>'avatar_url',
     NEW.raw_user_meta_data->>'avatar_url',
     'user'
-  );
+  ) ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    full_name = EXCLUDED.full_name,
+    avatar_url = EXCLUDED.avatar_url,
+    image_uri = EXCLUDED.avatar_url;
+    
   -- Initialize Preferences
-  INSERT INTO public.preferences (user_id) VALUES (NEW.id);
+  INSERT INTO public.preferences (user_id) 
+  VALUES (NEW.id)
+  ON CONFLICT (user_id) DO NOTHING;
+  
   RETURN NEW;
 END;
-c:\Users\Dyrane\Documents\GitHub\ivisit-app LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.handle_new_user_medical_profile()
-RETURNS TRIGGER AS c:\Users\Dyrane\Documents\GitHub\ivisit-app
+RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.medical_profiles (user_id) VALUES (NEW.id);
+  INSERT INTO public.medical_profiles (user_id) 
+  VALUES (NEW.id)
+  ON CONFLICT (user_id) DO NOTHING;
   RETURN NEW;
 END;
-c:\Users\Dyrane\Documents\GitHub\ivisit-app LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5. REBIND TRIGGERS
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+TO authenticated 
+USING (true);
+
+-- 4. Re-run seed just in case it truly was empty (idempotent)
+INSERT INTO public.ivisit_main_wallet (id, balance, currency, last_updated)
+SELECT gen_random_uuid(), 0.00, 'USD', NOW()
+WHERE NOT EXISTS (SELECT 1 FROM public.ivisit_main_wallet);
+
+COMMIT;
+
+NOTIFY pgrst, 'reload schema';
+
+
+-- ----------------------------------------------------------------------------
+-- Source: 20260218030000_restore_pricing_payments_rls.sql
+-- ----------------------------------------------------------------------------
+
+-- ============================================================================
+-- RESTORE ACCESS: PRICING & PAYMENTS (RLS) — 2026-02-18
+-- ============================================================================
+-- Adds missing RLS policies for Pricing and Payments tables.
+-- These tables were inaccessible (0 rows) due to missing SELECT policies.
+-- ============================================================================
+
+BEGIN;
+
+-------------------------------------------------------------------------------
+-- 1. SERVICE PRICING
+-------------------------------------------------------------------------------
+ALTER TABLE public.service_pricing ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated users view pricing" ON public.service_pricing;
+CREATE POLICY "Authenticated users view pricing" 
+ON public.service_pricing FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Admins manage pricing" ON public.service_pricing;
+CREATE POLICY "Admins manage pricing" 
+ON public.service_pricing FOR ALL TO authenticated 
+USING (public.get_current_user_role() IN ('admin', 'org_admin'));
+
+-------------------------------------------------------------------------------
+-- 2. ROOM PRICING
+-------------------------------------------------------------------------------
+ALTER TABLE public.room_pricing ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated users view room pricing" ON public.room_pricing;
+CREATE POLICY "Authenticated users view room pricing" 
+ON public.room_pricing FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Admins manage room pricing" ON public.room_pricing;
+CREATE POLICY "Admins manage room pricing" 
+ON public.room_pricing FOR ALL TO authenticated 
+USING (public.get_current_user_role() IN ('admin', 'org_admin'));
+
+
+-------------------------------------------------------------------------------
+-- 3. PAYMENTS
+-------------------------------------------------------------------------------
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users view own payments" ON public.payments;
+CREATE POLICY "Users view own payments" 
+ON public.payments FOR SELECT TO authenticated 
+USING (
+    user_id = auth.uid() OR 
+    public.get_current_user_role() = 'admin' OR
+    (public.get_current_user_role() = 'org_admin' AND organization_id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid()))
+);
+
+DROP POLICY IF EXISTS "Users can create payments" ON public.payments;
+CREATE POLICY "Users can create payments" 
+ON public.payments FOR INSERT TO authenticated 
+WITH CHECK (user_id = auth.uid()); -- Or just true if server handles creation? Generally safer to check user_id.
+
+DROP POLICY IF EXISTS "Admins manage payments" ON public.payments;
+CREATE POLICY "Admins manage payments" 
+ON public.payments FOR ALL TO authenticated 
+USING (public.get_current_user_role() = 'admin');
+
+-------------------------------------------------------------------------------
+-- 4. EMERGENCY REQUESTS (Refining just in case)
+-------------------------------------------------------------------------------
+-- Double check emergency requests visibility for Org Admins
+DROP POLICY IF EXISTS "Org Admins view requests" ON public.emergency_requests;
+CREATE POLICY "Org Admins view requests" 
+ON public.emergency_requests FOR SELECT TO authenticated 
+USING (
+    public.get_current_user_role() = 'admin' OR
+    (public.get_current_user_role() = 'org_admin' AND (
+        -- Check if request is assigned to their org via hospital/ambulance linkage?
+        -- For now, allow seeing all if no better filter available, OR check organization_id if column exists.
+        -- Assuming profiles.organization_id matches request metadata or joins? 
+        -- Simplest: Allow Admin/OrgAdmin to see all for debug, restrict later.
+        true 
+    ))
+);
+
+COMMIT;
+
+NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================================
+-- NAGASAKI: FINAL OVERRIDE & GROUND ZERO STANDARDS
+-- ============================================================================
+
+BEGIN;
+
+-- 1. CONVERT CORE IDENTITY COLUMNS TO UUID
+ALTER TABLE public.organizations ALTER COLUMN id TYPE UUID USING id::uuid;
+ALTER TABLE public.hospitals ALTER COLUMN organization_id TYPE UUID USING organization_id::uuid;
+ALTER TABLE public.profiles ALTER COLUMN organization_id TYPE UUID USING organization_id::uuid;
+ALTER TABLE public.ambulances ALTER COLUMN hospital_id TYPE UUID USING hospital_id::uuid;
+ALTER TABLE public.emergency_requests ALTER COLUMN hospital_id TYPE UUID USING hospital_id::uuid;
+ALTER TABLE public.emergency_requests ALTER COLUMN ambulance_id TYPE UUID USING ambulance_id::uuid;
+ALTER TABLE public.emergency_requests ALTER COLUMN responder_id TYPE UUID USING responder_id::uuid;
+ALTER TABLE public.visits ALTER COLUMN hospital_id TYPE UUID USING hospital_id::uuid;
+
+-- 2. RESTORE GROUND ZERO MAPPING REGISTRY
+CREATE TABLE IF NOT EXISTS public.id_mappings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    entity_id UUID NOT NULL UNIQUE,
+    display_id TEXT NOT NULL UNIQUE,
+    entity_type TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. MASTER TRIGGER FOR DISPLAY_ID GENERATION
+CREATE OR REPLACE FUNCTION public.stamp_entity_display_id()
+RETURNS TRIGGER AS $$
+DECLARE v_prefix TEXT;
+BEGIN
+    IF TG_TABLE_NAME = 'hospitals' THEN v_prefix := 'HSP';
+    ELSIF TG_TABLE_NAME = 'profiles' THEN v_prefix := 'USR';
+    ELSIF TG_TABLE_NAME = 'emergency_requests' THEN v_prefix := 'REQ';
+    ELSIF TG_TABLE_NAME = 'ambulances' THEN v_prefix := 'AMB';
+    ELSIF TG_TABLE_NAME = 'visits' THEN v_prefix := 'VIST';
+    ELSIF TG_TABLE_NAME = 'organizations' THEN v_prefix := 'ORG';
+    ELSE v_prefix := 'GEN';
+    END IF;
+
+    IF NEW.display_id IS NULL THEN
+        NEW.display_id := public.generate_display_id(v_prefix);
+    END IF;
+
+    INSERT INTO public.id_mappings (entity_id, display_id, entity_type)
+    VALUES (NEW.id, NEW.display_id, TG_TABLE_NAME)
+    ON CONFLICT (entity_id) DO UPDATE SET display_id = EXCLUDED.display_id;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 4. RESTORE AUTH & UI COMPATIBILITY
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Profile with image_uri legacy sync
+  INSERT INTO public.profiles (id, email, full_name, avatar_url, image_uri, role)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'avatar_url',
+    NEW.raw_user_meta_data->>'avatar_url',
+    'user'
+  ) ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    full_name = EXCLUDED.full_name,
+    avatar_url = EXCLUDED.avatar_url,
+    image_uri = EXCLUDED.avatar_url;
+    
+  -- Initialize Preferences
+  INSERT INTO public.preferences (user_id) 
+  VALUES (NEW.id)
+  ON CONFLICT (user_id) DO NOTHING;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.handle_new_user_medical_profile()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.medical_profiles (user_id) 
+  VALUES (NEW.id)
+  ON CONFLICT (user_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 5. REBIND TRIGGERS
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -26032,4 +26238,158 @@ CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXEC
 DROP TRIGGER IF EXISTS on_profile_created_medical ON public.profiles;
 CREATE TRIGGER on_profile_created_medical AFTER INSERT ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_medical_profile();
 
+-- 6. SYSTEM RECOVERY: KILL RECURSION & ALIGN TYPES
+CREATE OR REPLACE FUNCTION public.get_current_user_role()
+RETURNS text AS $$
+DECLARE
+  v_role text;
+BEGIN
+  -- This runs as postgres (Security Definer) to avoid recursion
+  SELECT role INTO v_role FROM public.profiles WHERE id = auth.uid();
+  RETURN v_role;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
+
+-- Get User Org ID (Security Definer to bypass RLS)
+CREATE OR REPLACE FUNCTION public.get_current_user_org_id()
+RETURNS uuid AS $$
+DECLARE
+  v_org_id uuid;
+BEGIN
+  SELECT organization_id INTO v_org_id FROM public.profiles WHERE id = auth.uid();
+  RETURN v_org_id;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
+
+-- Standardize RLS
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Drop problematic policies
+DROP POLICY IF EXISTS "Public profiles are readable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Admins view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Staff can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Staff can view all profiles for directory" ON public.profiles;
+DROP POLICY IF EXISTS "Org Admins can view profiles in their organization" ON public.profiles;
+DROP POLICY IF EXISTS "Org Admins view org profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Org Admins view own org profiles" ON public.profiles;
+
+-- Clean, Non-Recursive Policies
+CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (id = auth.uid());
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (id = auth.uid());
+CREATE POLICY "Staff can view all profiles" ON public.profiles FOR SELECT 
+USING ( public.get_current_user_role() IN ('admin', 'org_admin', 'provider', 'dispatcher') );
+
+-- Fix Recursion in Other Tables
+DROP POLICY IF EXISTS "Org admins can view org visits" ON public.visits;
+CREATE POLICY "Org admins can view org visits" ON public.visits FOR SELECT 
+USING ( 
+    public.get_current_user_role() = 'admin' OR 
+    (public.get_current_user_role() = 'org_admin' AND EXISTS (
+        SELECT 1 FROM public.hospitals 
+        WHERE id::text = hospital_id::text 
+        AND organization_id = public.get_current_user_org_id()
+    ))
+);
+
+DROP POLICY IF EXISTS "Admins manage all organizations" ON public.organizations;
+CREATE POLICY "Admins manage all organizations" ON public.organizations FOR ALL 
+USING ( public.get_current_user_role() = 'admin' );
+
+DROP POLICY IF EXISTS "Org Admins view own organization" ON public.organizations;
+CREATE POLICY "Org Admins view own organization" ON public.organizations FOR SELECT 
+USING ( id = public.get_current_user_org_id() );
+
+DROP POLICY IF EXISTS "Admins see all emergencies" ON public.emergency_requests;
+CREATE POLICY "Admins see all emergencies" ON public.emergency_requests FOR SELECT 
+USING ( public.get_current_user_role() = 'admin' );
+
+DROP POLICY IF EXISTS "Org Admins view requests" ON public.emergency_requests;
+CREATE POLICY "Org Admins view requests" ON public.emergency_requests FOR SELECT 
+USING ( 
+    public.get_current_user_role() = 'admin' OR 
+    (public.get_current_user_role() = 'org_admin' AND EXISTS (
+        SELECT 1 FROM public.hospitals 
+        WHERE id::text = hospital_id::text 
+        AND organization_id = public.get_current_user_org_id()
+    ))
+);
+
+-- Align Statistcs
+DROP FUNCTION IF EXISTS public.get_user_statistics(text);
+DROP FUNCTION IF EXISTS public.get_user_statistics(uuid);
+
+CREATE OR REPLACE FUNCTION public.get_user_statistics(p_organization_id UUID DEFAULT NULL)
+RETURNS TABLE (
+  total_users bigint,
+  total_profiles bigint,
+  recent_signups bigint,
+  email_verified_users bigint,
+  phone_verified_users bigint,
+  admin_count bigint,
+  provider_count bigint,
+  sponsor_count bigint,
+  viewer_count bigint,
+  patient_count bigint,
+  org_admin_count bigint,
+  dispatcher_count bigint
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        COUNT(*)::bigint,
+        COUNT(*)::bigint,
+        COUNT(*) FILTER (WHERE created_at > now() - interval '30 days')::bigint,
+        COUNT(*) FILTER (WHERE email IS NOT NULL)::bigint,
+        COUNT(*) FILTER (WHERE phone IS NOT NULL)::bigint,
+        COUNT(*) FILTER (WHERE role = 'admin')::bigint,
+        COUNT(*) FILTER (WHERE role = 'provider')::bigint,
+        COUNT(*) FILTER (WHERE role = 'sponsor')::bigint,
+        COUNT(*) FILTER (WHERE role = 'viewer')::bigint,
+        COUNT(*) FILTER (WHERE role = 'user')::bigint,
+        COUNT(*) FILTER (WHERE role = 'org_admin')::bigint,
+        COUNT(*) FILTER (WHERE role = 'dispatcher')::bigint
+    FROM public.profiles
+    WHERE (p_organization_id IS NULL OR organization_id = p_organization_id);
+END;
+$$;
+
+-- Restore Dashboard Helper
+CREATE OR REPLACE FUNCTION public.get_recent_activity(p_limit int DEFAULT 10)
+RETURNS JSONB LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT jsonb_agg(t) FROM (
+    SELECT id, 'Emergency Request' as type, status, created_at 
+    FROM public.emergency_requests 
+    ORDER BY created_at DESC LIMIT p_limit
+  ) t;
+$$;
+
+-- Align User Fetching
+DROP FUNCTION IF EXISTS public.get_all_auth_users(uuid);
+DROP FUNCTION IF EXISTS public.get_all_auth_users(text);
+
+CREATE OR REPLACE FUNCTION public.get_all_auth_users(p_organization_id UUID DEFAULT NULL)
+RETURNS TABLE (
+    id uuid, email text, phone text, username text, role text, full_name text,
+    avatar_url text, is_verified boolean, display_id text, organization_id uuid,
+    created_at timestamptz, last_sign_in_at timestamptz
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.id, p.email, p.phone, p.full_name as username, p.role, p.full_name,
+        p.avatar_url, true as is_verified, p.display_id, p.organization_id,
+        p.created_at, p.updated_at as last_sign_in_at
+    FROM public.profiles p
+    WHERE (p_organization_id IS NULL OR p.organization_id = p_organization_id);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_all_auth_users(uuid) TO authenticated;
+
 COMMIT;
+
+NOTIFY pgrst, 'reload schema';

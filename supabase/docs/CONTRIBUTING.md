@@ -17,17 +17,31 @@ The "UUID = TEXT" era is over.
 - Human-readable IDs (e.g., `AMB-123456`) must live in separate `display_id` or `request_id` columns of type `TEXT`.
 - **Never** perform implicit casts in your SQL functions. Use explicit types.
 
-## 3. The "Staged Evolution" Workflow (Draft ➔ Fold ➔ Heal)
-To maintain speed while preserving the **Golden Master** schema, follow this 3-step lifecycle:
+## 3. The "Staged Evolution" Workflow (Floating Fixes)
+To maintain the **Golden Master** schema while solving complex production bugs (like RLS recursion), follow the "Floating Fix" pattern:
 
-- **Phase 1: The Draft (Speed)**: Create a temporary file: `migrations/YYYYMMDD_temp.sql`. Run `npx supabase db push`. Iterate quickly.
-- **Phase 2: The Fold (Purity)**: Copy finalised SQL. Integrate it into the **Golden Master** (`20260218060000`). Delete the temp file.
-- **Phase 3: The Healing (Standardization)**: Run `scripts\redeploy_baseline.bat` & `node scripts/sync_to_console.js`.
+- **Phase 1: Diagnosis**: Use inspection tools (e.g., `inspect_profile_policies()`) to see the actual live state on remote. 
+- **Phase 2: Floating Fixes**: Create standalone migration files (e.g., `20260218110000_kill_recursion.sql`). **DO NOT** fold into the baseline immediately.
+- **Phase 3: Verification**: Create a test script in `docs/archive/test-scripts/` and run it against remote.
+- **Phase 4: Documentation**: Record results in `docs/archive/task-verifications/`.
+- **Phase 5: Consolidation**: Once 3-4 floating fixes are confirmed stable over time, fold them into the **Golden Master** (`20260218060000`) and heal the migration history.
 
-## 4. Documentation is Code
-If you add a table or modify a core trigger:
-- Update the `REFERENCE.md` inventory.
-- Update the `ARCHITECTURE.md` if the fundamental data flow changes.
+## 4. The "Nuclear De-Recursion" Standard
+When fixing RLS Infinite Recursion:
+- **Rule**: Never use `SELECT FROM table_name` directly in a policy.
+- **Pattern**: Use a `SECURITY DEFINER` helper function:
+  ```sql
+  CREATE OR REPLACE FUNCTION public.get_current_user_role() 
+  RETURNS text SECURITY DEFINER AS $$ ... $$;
+  ```
+- **Execution**: Apply the fix in a floating file, verify with `test-recursion-fix.js`, and document the "Ghost Policies" killed.
+
+## 5. Documentation & Verification Repo
+Every major fix must leave a trail:
+- **Test Script**: `docs/archive/test-scripts/test-[task-name].js`
+- **Verification Report**: `docs/archive/task-verifications/[task-name]-verification.md`
+- **Reference Updated**: `docs/REFERENCE.md` if schema changed.
 
 ---
-**Failure to follow these rules will result in a rejected PR. Quality is intentional.**
+**Standard**: All IDs are **UUID native**. Mapping to Display IDs (REQ-XXXX) is handled by triggers.
+**Quality is intentional. Every fix is verified before it is baseline.**
