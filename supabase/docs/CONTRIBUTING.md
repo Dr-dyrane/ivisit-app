@@ -17,15 +17,12 @@ The "UUID = TEXT" era is over.
 - Human-readable IDs (e.g., `AMB-123456`) must live in separate `display_id` or `request_id` columns of type `TEXT`.
 - **Never** perform implicit casts in your SQL functions. Use explicit types.
 
-## 3. Workflow for Schema Changes
-1. **Local Dev**: Modify the SQL inside the Baseline file.
-2. **Local Test**: `npx supabase db reset` to ensure the baseline builds from scratch without errors.
-3. **Remote Redeploy**: 
-   ```bash
-   npx supabase migration repair --status reverted 20260218060000
-   npx supabase db push
-   ```
-4. **Sync**: Run `node scripts/sync_to_console.js` to align the console team instantly.
+## 3. The "Staged Evolution" Workflow (Draft ➔ Fold ➔ Heal)
+To maintain speed while preserving the **Golden Master** schema, follow this 3-step lifecycle:
+
+- **Phase 1: The Draft (Speed)**: Create a temporary file: `migrations/YYYYMMDD_temp.sql`. Run `npx supabase db push`. Iterate quickly.
+- **Phase 2: The Fold (Purity)**: Copy finalised SQL. Integrate it into the **Golden Master** (`20260218060000`). Delete the temp file.
+- **Phase 3: The Healing (Standardization)**: Run `scripts\redeploy_baseline.bat` & `node scripts/sync_to_console.js`.
 
 ## 4. Documentation is Code
 If you add a table or modify a core trigger:
