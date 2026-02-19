@@ -92,12 +92,13 @@ const MoreScreen = () => {
 		lastTapRef.current = now;
 
 		if (tapCount + 1 === 3) {
-			setDevModeVisible(prev => {
-				const newState = !prev;
-				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-				showToast(newState ? "Developer mode enabled" : "Developer mode disabled", "success");
-				return newState;
-			});
+			const newState = !devModeVisible;
+			setDevModeVisible(newState);
+
+			// Side effects belong in the handler, not the updater function
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			showToast(newState ? "Developer mode enabled" : "Developer mode disabled", "success");
+
 			setTapCount(0);
 		}
 	};
