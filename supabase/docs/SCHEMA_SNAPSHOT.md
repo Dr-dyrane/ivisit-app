@@ -415,6 +415,7 @@ CREATE TABLE IF NOT EXISTS public.payment_methods (
     last4 TEXT,
     brand TEXT,
     is_default BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
