@@ -10,7 +10,18 @@
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
+const TestHelper = require('./test_helper');
+const dotenv = require('dotenv');
+// Load default .env
+dotenv.config();
+// Load .env.local if available (overriding)
+const envLocalPath = path.join(process.cwd(), '.env.local');
+if (fs.existsSync(envLocalPath)) {
+  const envConfig = dotenv.parse(fs.readFileSync(envLocalPath));
+  for (const k in envConfig) {
+    process.env[k] = envConfig[k];
+  }
+}
 
 class TestRunner {
   constructor() {
@@ -18,7 +29,7 @@ class TestRunner {
       process.env.EXPO_PUBLIC_SUPABASE_URL,
       process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
     );
-    
+
     this.testResults = {
       taskId: null,
       timestamp: new Date().toISOString(),
@@ -33,9 +44,10 @@ class TestRunner {
       recommendations: [],
       nextSteps: []
     };
-    
+
     this.errorLogger = new ErrorLogger();
     this.fixGenerator = new FixGenerator();
+    this.testHelper = new TestHelper();
   }
 
   /**
@@ -44,28 +56,33 @@ class TestRunner {
   async runTask(taskName) {
     console.log(`🧪 Running Task: ${taskName}`);
     this.testResults.taskId = taskName;
-    
+
     try {
       // Load task definition
       const taskPath = path.join(__dirname, '../tasks', `${taskName}.md`);
       if (!fs.existsSync(taskPath)) {
         throw new Error(`Task file not found: ${taskPath}`);
       }
-      
+
       const taskDefinition = fs.readFileSync(taskPath, 'utf8');
       console.log(`📋 Task loaded: ${taskName}`);
-      
+
       // Execute task based on type
       await this.executeTask(taskName, taskDefinition);
-      
+
       // Generate validation report
       await this.generateValidationReport();
-      
+
       // Handle errors if any
       if (this.testResults.errors.length > 0) {
         await this.handleErrors();
       }
-      
+
+      // Clean up test data if needed
+      if (taskDefinition.includes('Cleanup')) {
+        await this.cleanupTestData();
+      }
+
     } catch (error) {
       await this.errorLogger.logError({
         type: 'critical',
@@ -85,7 +102,7 @@ class TestRunner {
   async executeTask(taskName, taskDefinition) {
     // Parse task definition to determine test type
     const testType = this.determineTestType(taskDefinition);
-    
+
     switch (testType) {
       case 'schema_validation':
         await this.runSchemaValidation(taskName);
@@ -106,6 +123,19 @@ class TestRunner {
         await this.runComprehensiveTesting(taskName);
         break;
     }
+
+    // Generate validation report
+    await this.generateValidationReport();
+
+    // Handle errors if any
+    if (this.testResults.errors.length > 0) {
+      await this.handleErrors();
+    }
+
+    // Clean up test data if needed
+    if (taskDefinition.includes('Cleanup')) {
+      await this.cleanupTestData();
+    }
   }
 
   /**
@@ -125,7 +155,7 @@ class TestRunner {
    */
   async runComprehensiveTesting(taskName) {
     console.log('🔍 Running Comprehensive System Test...');
-    
+
     const tests = [
       this.testCoreRPCFunctions,
       this.testEmergencyLogic,
@@ -134,7 +164,7 @@ class TestRunner {
       this.testSecurityFunctions,
       this.testWalletSystem
     ];
-    
+
     for (const test of tests) {
       await this.executeTest(test.name, test);
     }
@@ -145,7 +175,7 @@ class TestRunner {
    */
   async executeTest(testName, testFunction) {
     this.testResults.summary.totalTests++;
-    
+
     try {
       const result = await testFunction.call(this);
       if (result.success) {
@@ -183,12 +213,12 @@ class TestRunner {
     try {
       // Test nearby hospitals
       const { data: hospitals, error: hospitalError } = await this.supabase
-        .rpc('nearby_hospitals', { 
-          lat: 40.7128, 
-          lng: -74.0060, 
-          radius_km: 10 
+        .rpc('nearby_hospitals', {
+          user_lat: 40.7128,
+          user_lng: -74.0060,
+          radius_km: 10
         });
-      
+
       if (hospitalError) {
         return {
           success: false,
@@ -198,15 +228,15 @@ class TestRunner {
           technicalDetails: { error: hospitalError }
         };
       }
-      
+
       // Test nearby ambulances
       const { data: ambulances, error: ambulanceError } = await this.supabase
-        .rpc('nearby_ambulances', { 
-          lat: 40.7128, 
-          lng: -74.0060, 
-          radius_km: 10 
+        .rpc('nearby_ambulances', {
+          user_lat: 40.7128,
+          user_lng: -74.0060,
+          radius_km: 10
         });
-      
+
       if (ambulanceError) {
         return {
           success: false,
@@ -216,7 +246,7 @@ class TestRunner {
           technicalDetails: { error: ambulanceError }
         };
       }
-      
+
       return {
         success: true,
         message: `Nearby hospitals: ${hospitals?.length || 0} found, Nearby ambulances: ${ambulances?.length || 0} found`
@@ -256,7 +286,7 @@ class TestRunner {
             currency: 'USD'
           }
         });
-      
+
       // Expected to fail with invalid UUID, but function should be accessible
       if (error && !error.message.includes('does not exist')) {
         return {
@@ -264,7 +294,7 @@ class TestRunner {
           message: 'Emergency logic function exists and is callable'
         };
       }
-      
+
       return {
         success: false,
         message: 'Emergency logic function not accessible',
@@ -292,17 +322,17 @@ class TestRunner {
       'emergency_requests', 'visits', 'patient_wallets', 'organization_wallets',
       'payments', 'notifications', 'id_mappings'
     ];
-    
+
     let accessibleTables = 0;
     let errors = [];
-    
+
     for (const table of tables) {
       try {
         const { data, error } = await this.supabase
           .from(table)
           .select('count')
           .limit(1);
-        
+
         if (error) {
           errors.push({
             table,
@@ -318,7 +348,7 @@ class TestRunner {
         });
       }
     }
-    
+
     if (errors.length > 0) {
       return {
         success: false,
@@ -328,7 +358,7 @@ class TestRunner {
         technicalDetails: { errors }
       };
     }
-    
+
     return {
       success: true,
       message: `All ${accessibleTables} tables accessible`
@@ -345,7 +375,7 @@ class TestRunner {
         .from('id_mappings')
         .select('count')
         .limit(1);
-      
+
       if (mappingError) {
         return {
           success: false,
@@ -355,14 +385,13 @@ class TestRunner {
           technicalDetails: { error: mappingError }
         };
       }
-      
+
       // Test get_entity_id function
       const { data: entityId, error: functionError } = await this.supabase
         .rpc('get_entity_id', {
-          p_display_id: 'TEST-123456',
-          p_entity_type: 'patient'
+          p_display_id: 'PAT-123456'
         });
-      
+
       if (functionError && !functionError.message.includes('does not exist')) {
         return {
           success: false,
@@ -372,7 +401,7 @@ class TestRunner {
           technicalDetails: { error: functionError }
         };
       }
-      
+
       return {
         success: true,
         message: `ID mappings: ${mappings?.length || 0} records, get_entity_id function accessible`
@@ -395,7 +424,7 @@ class TestRunner {
     try {
       const { data, error } = await this.supabase
         .rpc('is_admin');
-      
+
       if (error && !error.message.includes('does not exist')) {
         return {
           success: false,
@@ -405,7 +434,7 @@ class TestRunner {
           technicalDetails: { error }
         };
       }
-      
+
       return {
         success: true,
         message: 'Security function is_admin accessible'
@@ -430,7 +459,7 @@ class TestRunner {
         .from('patient_wallets')
         .select('count')
         .limit(1);
-      
+
       if (error) {
         return {
           success: false,
@@ -440,7 +469,7 @@ class TestRunner {
           technicalDetails: { error }
         };
       }
-      
+
       return {
         success: true,
         message: `Patient wallets: ${data?.length || 0} records`
@@ -461,12 +490,12 @@ class TestRunner {
    */
   async generateValidationReport() {
     const reportPath = path.join(__dirname, '../validation/validation_report.json');
-    
+
     // Calculate success rate
-    const successRate = this.testResults.summary.totalTests > 0 
+    const successRate = this.testResults.summary.totalTests > 0
       ? (this.testResults.summary.passed / this.testResults.summary.totalTests * 100).toFixed(1)
       : 0;
-    
+
     const report = {
       ...this.testResults,
       summary: {
@@ -474,17 +503,17 @@ class TestRunner {
         successRate: `${successRate}%`
       }
     };
-    
+
     // Write report
     fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
-    
+
     console.log('\n🎯 Test Summary:');
     console.log(`✅ Passed: ${this.testResults.summary.passed}`);
     console.log(`❌ Failed: ${this.testResults.summary.failed}`);
     console.log(`⚠️  Warnings: ${this.testResults.summary.warnings}`);
     console.log(`ℹ️  Info: ${this.testResults.summary.info}`);
     console.log(`📊 Success Rate: ${successRate}%`);
-    
+
     return report;
   }
 
@@ -493,13 +522,13 @@ class TestRunner {
    */
   async handleErrors() {
     console.log('\n🔧 Handling Errors...');
-    
+
     const criticalErrors = this.testResults.errors.filter(e => e.type === 'critical');
     const warningErrors = this.testResults.errors.filter(e => e.type === 'warning');
-    
+
     if (criticalErrors.length > 0) {
       console.log(`🚨 Found ${criticalErrors.length} critical errors`);
-      
+
       // Generate fixes for critical errors
       for (const error of criticalErrors) {
         const fix = await this.fixGenerator.generateFix(error);
@@ -508,14 +537,14 @@ class TestRunner {
         }
       }
     }
-    
+
     if (warningErrors.length > 0) {
       console.log(`⚠️  Found ${warningErrors.length} warning errors`);
       this.testResults.recommendations.push(
         'Review and fix warning errors in next deployment'
       );
     }
-    
+
     this.testResults.nextSteps.push(
       'Re-run validation after applying fixes',
       'Update core migrations with successful fixes',
@@ -528,15 +557,15 @@ class TestRunner {
    */
   async applyFix(fix) {
     console.log(`🔧 Applying fix: ${fix.description}`);
-    
+
     try {
       const { error } = await this.supabase.rpc('exec_sql', { sql: fix.sql });
-      
+
       if (error) {
         console.log(`❌ Fix application failed: ${error.message}`);
         return false;
       }
-      
+
       console.log(`✅ Fix applied successfully`);
       return true;
     } catch (error) {
@@ -561,17 +590,17 @@ class ErrorLogger {
       ...error,
       status: 'detected'
     };
-    
+
     this.errors.push(logEntry);
-    
+
     // Append to error log file
-    const existingLog = fs.existsSync(this.errorLogPath) 
+    const existingLog = fs.existsSync(this.errorLogPath)
       ? JSON.parse(fs.readFileSync(this.errorLogPath, 'utf8'))
       : [];
-    
+
     existingLog.push(logEntry);
     fs.writeFileSync(this.errorLogPath, JSON.stringify(existingLog, null, 2));
-    
+
     console.log(`📝 Error logged: ${error.message}`);
   }
 }
@@ -587,14 +616,14 @@ class FixGenerator {
       'missing_column': this.generateColumnFix,
       'permission_error': this.generatePermissionFix
     };
-    
+
     const fixType = this.determineFixType(error);
     const fixGenerator = fixMap[fixType];
-    
+
     if (fixGenerator) {
       return await fixGenerator.call(this, error);
     }
-    
+
     return null;
   }
 
@@ -611,14 +640,14 @@ class FixGenerator {
     if (error.message.includes('permission denied')) {
       return 'permission_error';
     }
-    
+
     return 'unknown';
   }
 
   async generateTableFix(error) {
     // Generate SQL to create missing table
     const tableName = this.extractTableName(error.message);
-    
+
     return {
       description: `Create missing table: ${tableName}`,
       sql: `-- Fix for missing table: ${tableName}
@@ -641,7 +670,7 @@ CREATE TABLE IF NOT EXISTS public.${tableName} (
   async generateFunctionFix(error) {
     // Generate SQL to create missing function
     const functionName = this.extractFunctionName(error.message);
-    
+
     return {
       description: `Create missing function: ${functionName}`,
       sql: `-- Fix for missing function: ${functionName}
@@ -665,7 +694,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`,
   async generateColumnFix(error) {
     // Generate SQL to add missing column
     const { table, column } = this.extractTableColumn(error.message);
-    
+
     return {
       description: `Add missing column: ${table}.${column}`,
       sql: `-- Fix for missing column: ${table}.${column}
@@ -704,7 +733,7 @@ ALTER TABLE public.${table} ADD COLUMN IF NOT EXISTS ${column} TEXT UNIQUE;`,
 async function main() {
   const args = process.argv.slice(2);
   const taskName = args[0] || 'comprehensive_system';
-  
+
   const runner = new TestRunner();
   await runner.runTask(taskName);
 }

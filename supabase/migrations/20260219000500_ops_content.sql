@@ -104,6 +104,8 @@ CREATE TRIGGER on_emergency_notification
 AFTER INSERT OR UPDATE ON public.emergency_requests
 FOR EACH ROW EXECUTE PROCEDURE public.notify_emergency_events();
 
+CREATE TRIGGER stamp_ntf_display_id BEFORE INSERT ON public.notifications FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
+
 -- Standard Updates
 CREATE TRIGGER handle_note_updated_at BEFORE UPDATE ON public.notifications FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_ticket_updated_at BEFORE UPDATE ON public.support_tickets FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();

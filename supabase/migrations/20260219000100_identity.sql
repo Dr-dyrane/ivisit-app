@@ -109,24 +109,48 @@ CREATE TABLE IF NOT EXISTS public.user_sessions (
 -- triggers moved to 20260219000900_automations.sql to resolve dependency on Finance module
 
 
--- 🛠️ STAMP DISPLAY ID TRIGGER (Fluid Edition)
+-- 🛠️ STAMP DISPLAY ID TRIGGER (Fluid Edition: Role-Aware)
 CREATE OR REPLACE FUNCTION public.stamp_entity_display_id()
 RETURNS TRIGGER AS $$
 DECLARE
     v_prefix TEXT;
-    v_display_id TEXT;
+    v_role TEXT;
+    v_type TEXT;
 BEGIN
-    -- Determine Prefix
+    -- Determine Prefix Based on Table and Role
     CASE TG_TABLE_NAME
-        WHEN 'profiles' THEN v_prefix := 'USR';
+        WHEN 'profiles' THEN 
+            -- Granular User Beautification
+            v_role := NEW.role;
+            v_type := NEW.provider_type;
+            
+            IF v_role = 'admin' THEN v_prefix := 'ADM';
+            ELSIF v_role = 'patient' THEN v_prefix := 'PAT';
+            ELSIF v_role = 'dispatcher' THEN v_prefix := 'DPC';
+            ELSIF v_role = 'org_admin' THEN v_prefix := 'OAD';
+            ELSIF v_role = 'provider' THEN
+                CASE v_type
+                    WHEN 'doctor' THEN v_prefix := 'DOC';
+                    WHEN 'driver' THEN v_prefix := 'DRV';
+                    WHEN 'paramedic' THEN v_prefix := 'PMD';
+                    WHEN 'ambulance_service' THEN v_prefix := 'AMS';
+                    WHEN 'pharmacy' THEN v_prefix := 'PHR';
+                    WHEN 'clinic' THEN v_prefix := 'CLN';
+                    ELSE v_prefix := 'PRO';
+                END CASE;
+            ELSE v_prefix := 'USR';
+            END IF;
+            
+        WHEN 'organizations' THEN v_prefix := 'ORG';
         WHEN 'hospitals' THEN v_prefix := 'HSP';
+        WHEN 'doctors' THEN v_prefix := 'DOC';
         WHEN 'ambulances' THEN v_prefix := 'AMB';
         WHEN 'emergency_requests' THEN v_prefix := 'REQ';
         WHEN 'visits' THEN v_prefix := 'VIST';
-        WHEN 'organizations' THEN v_prefix := 'ORG';
-        WHEN 'doctors' THEN v_prefix := 'DOC';
         WHEN 'payments' THEN v_prefix := 'PAY';
         WHEN 'notifications' THEN v_prefix := 'NTF';
+        WHEN 'patient_wallets' THEN v_prefix := 'WLT';
+        WHEN 'organization_wallets' THEN v_prefix := 'OWL';
         ELSE v_prefix := 'ID';
     END CASE;
 
@@ -135,11 +159,18 @@ BEGIN
         NEW.display_id := public.generate_display_id(v_prefix);
     END IF;
 
+    -- Sync to Central Registry (redundancy for cross-table lookup speed)
+    IF TG_OP = 'INSERT' THEN
+        INSERT INTO public.id_mappings (entity_id, display_id, entity_type)
+        VALUES (NEW.id, NEW.display_id, TG_TABLE_NAME)
+        ON CONFLICT (display_id) DO NOTHING;
+    END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 🛠️ FLUID ID RESOLVER (Virtual Mapping Replacement)
+-- 🛠️ FLUID ID RESOLVER (Universal Resolution)
 CREATE OR REPLACE FUNCTION public.get_entity_id(p_display_id TEXT)
 RETURNS UUID AS $$
 DECLARE
@@ -149,14 +180,20 @@ BEGIN
     v_prefix := SPLIT_PART(p_display_id, '-', 1);
     
     CASE v_prefix
-        WHEN 'USR' THEN SELECT id INTO v_id FROM public.profiles WHERE display_id = p_display_id;
+        WHEN 'PAT', 'ADM', 'DPC', 'OAD', 'PRO', 'DOC', 'DRV', 'PMD', 'AMS', 'PHR', 'CLN', 'USR' THEN 
+            SELECT id INTO v_id FROM public.profiles WHERE display_id = p_display_id;
         WHEN 'HSP' THEN SELECT id INTO v_id FROM public.hospitals WHERE display_id = p_display_id;
         WHEN 'ORG' THEN SELECT id INTO v_id FROM public.organizations WHERE display_id = p_display_id;
         WHEN 'AMB' THEN SELECT id INTO v_id FROM public.ambulances WHERE display_id = p_display_id;
         WHEN 'REQ' THEN SELECT id INTO v_id FROM public.emergency_requests WHERE display_id = p_display_id;
         WHEN 'VIST' THEN SELECT id INTO v_id FROM public.visits WHERE display_id = p_display_id;
-        WHEN 'DOC' THEN SELECT id INTO v_id FROM public.doctors WHERE display_id = p_display_id;
-        ELSE v_id := NULL;
+        WHEN 'PAY' THEN SELECT id INTO v_id FROM public.payments WHERE display_id = p_display_id;
+        WHEN 'NTF' THEN SELECT id INTO v_id FROM public.notifications WHERE display_id = p_display_id;
+        WHEN 'WLT' THEN SELECT id INTO v_id FROM public.patient_wallets WHERE display_id = p_display_id;
+        WHEN 'OWL' THEN SELECT id INTO v_id FROM public.organization_wallets WHERE display_id = p_display_id;
+        ELSE 
+            -- Final Fallback: Check central registry
+            SELECT entity_id INTO v_id FROM public.id_mappings WHERE display_id = p_display_id;
     END CASE;
 
     RETURN v_id;

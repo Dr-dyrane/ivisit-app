@@ -16,12 +16,12 @@ class TestHelper {
   constructor() {
     // Load environment variables
     this.supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-    this.serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
+    this.serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+
     if (!this.supabaseUrl || !this.serviceRoleKey) {
       throw new Error('Missing required environment variables:\n- EXPO_PUBLIC_SUPABASE_URL\n- SUPABASE_SERVICE_ROLE_KEY');
     }
-    
+
     // Create Supabase client with service role for full access
     this.supabase = createClient(
       this.supabaseUrl,
@@ -33,7 +33,7 @@ class TestHelper {
         }
       }
     );
-    
+
     console.log('🔑 Test Helper initialized with full database access');
   }
 
@@ -42,16 +42,16 @@ class TestHelper {
    */
   async executeSQL(sql, params = []) {
     try {
-      const { data, error } = await this.supabase.rpc('exec_sql', { 
+      const { data, error } = await this.supabase.rpc('exec_sql', {
         sql: sql,
-        params: params 
+        params: params
       });
-      
+
       if (error) {
         console.error('❌ SQL execution failed:', error);
         throw error;
       }
-      
+
       console.log('✅ SQL executed successfully');
       return data;
     } catch (error) {
@@ -69,12 +69,12 @@ class TestHelper {
         .from(tableName)
         .insert(data)
         .select();
-      
+
       if (error) {
         console.error(`❌ Failed to create test data in ${tableName}:`, error);
         throw error;
       }
-      
+
       console.log(`✅ Created test data in ${tableName}`);
       return result;
     } catch (error) {
@@ -89,7 +89,7 @@ class TestHelper {
   async cleanupTestData(tableName, condition = {}) {
     try {
       let query = this.supabase.from(tableName);
-      
+
       // Apply conditions if provided
       if (condition.id) {
         query = query.eq('id', condition.id);
@@ -100,14 +100,14 @@ class TestHelper {
       if (condition.email) {
         query = query.eq('email', condition.email);
       }
-      
+
       const { error } = await query.delete();
-      
+
       if (error) {
         console.error(`❌ Failed to cleanup ${tableName}:`, error);
         throw error;
       }
-      
+
       console.log(`✅ Cleaned up test data from ${tableName}`);
     } catch (error) {
       console.error(`❌ Cleanup error in ${tableName}:`, error.message);
@@ -124,12 +124,12 @@ class TestHelper {
         .from(tableName)
         .select(columns)
         .limit(limit);
-      
+
       if (error) {
         console.error(`❌ Failed to get data from ${tableName}:`, error);
         throw error;
       }
-      
+
       console.log(`✅ Retrieved ${data.length} records from ${tableName}`);
       return data;
     } catch (error) {
@@ -144,12 +144,12 @@ class TestHelper {
   async callRPC(functionName, params = {}) {
     try {
       const { data, error } = await this.supabase.rpc(functionName, params);
-      
+
       if (error) {
         console.error(`❌ RPC call failed for ${functionName}:`, error);
         throw error;
       }
-      
+
       console.log(`✅ RPC call successful for ${functionName}`);
       return data;
     } catch (error) {
@@ -173,14 +173,14 @@ class TestHelper {
     try {
       // Create user in profiles table
       const result = await this.createTestData('profiles', defaultUserData);
-      
+
       // Create associated wallet
       await this.createTestData('patient_wallets', {
         user_id: result[0].id,
         balance: 1000.00,
         currency: 'USD'
       });
-      
+
       console.log(`✅ Created test user: ${defaultUserData.email}`);
       return result[0];
     } catch (error) {
@@ -223,12 +223,12 @@ class TestHelper {
     try {
       const { data, error } = await this.supabase
         .rpc('get_table_structure', { table_name: tableName });
-      
+
       if (error) {
         console.error(`❌ Failed to validate structure for ${tableName}:`, error);
         throw error;
       }
-      
+
       console.log(`✅ Validated structure for ${tableName}`);
       return data;
     } catch (error) {
@@ -244,12 +244,12 @@ class TestHelper {
     try {
       const { data, error } = await this.supabase
         .rpc('function_exists', { function_name: functionName });
-      
+
       if (error) {
         console.error(`❌ Failed to check function existence for ${functionName}:`, error);
         return false;
       }
-      
+
       const exists = data && data.length > 0;
       console.log(`${exists ? '✅' : '❌'} Function ${functionName} ${exists ? 'exists' : 'does not exist'}`);
       return exists;
@@ -271,13 +271,13 @@ class TestHelper {
     ];
 
     const stats = {};
-    
+
     for (const table of tables) {
       try {
         const { count, error } = await this.supabase
           .from(table)
           .select('*', { count: 'exact', head: true });
-        
+
         if (error) {
           stats[table] = { error: error.message };
         } else {
@@ -287,7 +287,7 @@ class TestHelper {
         stats[table] = { error: error.message };
       }
     }
-    
+
     return stats;
   }
 
@@ -296,7 +296,7 @@ class TestHelper {
    */
   async validateDatabase() {
     console.log('🔍 Running comprehensive database validation...');
-    
+
     const results = {
       tables: {},
       functions: {},
@@ -347,7 +347,7 @@ class TestHelper {
    */
   async cleanupAllTestData() {
     console.log('🧹 Cleaning up all test data...');
-    
+
     const testPatterns = {
       email: 'test-',
       display_id: 'PAT-',
@@ -369,14 +369,14 @@ class TestHelper {
 
       // Clean up related data
       const relatedTables = ['emergency_requests', 'patient_wallets', 'payments', 'notifications'];
-      
+
       for (const table of relatedTables) {
         try {
           const { error } = await this.supabase
             .from(table)
             .like('display_id', 'PAT-%')
             .delete();
-          
+
           if (error) {
             console.error(`❌ Failed to cleanup ${table}:`, error);
           } else {

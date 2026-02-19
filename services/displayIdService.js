@@ -6,15 +6,31 @@ import { supabase } from './supabase';
  */
 
 export const ID_PREFIXES = {
-    USER: 'USR',
+    // User Roles
+    ADMIN: 'ADM',
+    PATIENT: 'PAT',
+    DISPATCHER: 'DPC',
+    ORG_ADMIN: 'OAD',
+    PROVIDER: 'PRO',
+
+    // Provider Types (Granular)
+    DOCTOR: 'DOC',
+    DRIVER: 'DRV',
+    PARAMEDIC: 'PMD',
+    AMBULANCE_SERVICE: 'AMS',
+    PHARMACY: 'PHR',
+    CLINIC: 'CLN',
+
+    // Entities
     ORGANIZATION: 'ORG',
     HOSPITAL: 'HSP',
-    DOCTOR: 'DOC',
     AMBULANCE: 'AMB',
     REQUEST: 'REQ',
     VISIT: 'VIST',
     PAYMENT: 'PAY',
-    NOTIFICATION: 'NTF'
+    NOTIFICATION: 'NTF',
+    WALLET_P: 'WLT',
+    WALLET_O: 'OWL'
 };
 
 /**
@@ -22,7 +38,8 @@ export const ID_PREFIXES = {
  */
 export function isDisplayId(value) {
     if (!value || typeof value !== 'string') return false;
-    const pattern = /^(USR|ORG|HSP|DOC|AMB|REQ|VIST|PAY|NTF)-[A-F0-9]{6}$/i;
+    const prefixes = Object.values(ID_PREFIXES).join('|');
+    const pattern = new RegExp(`^(${prefixes})-[A-F0-9]{6}$`, 'i');
     return pattern.test(value);
 }
 
