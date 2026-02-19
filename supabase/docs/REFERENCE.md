@@ -69,8 +69,8 @@ The system is organized into functional modules to prevent migration bloating an
 
 ## 📋 5. Documentation Hub
 - **[CONTRIBUTING.md](CONTRIBUTING.md)**: Staged Evolution Workflow.
-- **[GROUND_ZERO_SPEC.md](GROUND_ZERO_SPEC.md)**: Data Integrity Standards.
-- **[SCHEMA_AUDIT.md](SCHEMA_AUDIT.md)**: Deployment readiness report.
+- **[ENGINEERING_PATTERNS.md](ENGINEERING_PATTERNS.md)**: Retry, Bulk, Streaming & Audit Patterns.
+- **[TESTING.md](TESTING.md)**: Comprehensive Testing Guide.
 
 ---
 **Strict Standard**: No tiny migration files. All fixes must be committed back to the relevant Pillar file.
