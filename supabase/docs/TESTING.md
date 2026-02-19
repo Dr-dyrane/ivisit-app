@@ -2,22 +2,71 @@
 
 ## 🎯 Overview
 
-This guide outlines testing procedures and standards for ensuring Supabase schema integrity and functionality.
+This guide outlines the task-based testing framework for ensuring Supabase schema integrity and functionality.
 
-## 🧪 Test Suite Structure
+## 🧪 Testing Structure
 
-### **Comprehensive System Test**
-- **Location**: `supabase/tests/test_comprehensive_system.js`
-- **Purpose**: Validates entire modular schema deployment
-- **Coverage**: All modules, functions, tables, and security
+### **Directory Organization**
+```
+supabase/tests/
+├── tasks/                        # Task definitions and validation
+│   ├── task_validation.md         # Task validation framework
+│   └── error_constraints.md       # Error definitions and constraints
+├── scripts/                      # Test execution scripts (JavaScript)
+│   ├── test_runner.js            # Main test runner with error handling
+│   ├── test_comprehensive_system.js # Comprehensive system tests
+│   └── [other test scripts].js   # Additional test scripts
+├── fixes/                        # Mini SQL fixes for errors
+│   └── error_fixes.sql          # Targeted SQL fixes for common errors
+├── validation/                   # Validation results and reports
+│   ├── test_results.json         # Test results storage
+│   ├── error_log.json           # Error log storage
+│   └── validation_report.md     # Validation reports
+└── archives/                     # Archived test results
+    └── historical_tests/        # Past test runs
+```
 
-### **Test Categories**
-1. **Core RPC Functions** - Location services, geospatial queries
-2. **Emergency Logic** - Atomic operations, payment integration
-3. **Table Access** - All 13 core tables accessible
-4. **Display ID Resolution** - ID mapping system functionality
-5. **Security Functions** - RLS policies, access control
-6. **Wallet System** - Financial operations
+## 🔄 Testing Workflow
+
+### **Step 1: Task Definition**
+- Create task validation file with clear objectives
+- Define error constraints and success criteria
+- Set prerequisites and dependencies
+
+### **Step 2: Test Execution**
+```bash
+# Run comprehensive system test
+node supabase/tests/scripts/test_runner.js comprehensive_system
+
+# Run specific task
+node supabase/tests/scripts/test_runner.js [task_name]
+```
+
+### **Step 3: Error Detection & Logging**
+- JavaScript test runner detects errors automatically
+- Errors categorized as Critical/Warning/Info
+- Detailed error logs written to `validation/error_log.json`
+
+### **Step 4: Fix Generation**
+- Mini SQL fixes generated automatically for common errors
+- Targeted fixes stored in `fixes/error_fixes.sql`
+- Fixes designed to be idempotent and safe
+
+### **Step 5: Fix Application**
+```bash
+# Apply fixes from error_fixes.sql
+# (Manual execution or automated via test runner)
+```
+
+### **Step 6: Migration Integration**
+- Update core migration pillars with successful fixes
+- Remove redundant fix migrations
+- Sync changes to console
+
+### **Step 7: Final Validation**
+- Run comprehensive test suite again
+- Confirm 100% success rate
+- Generate final validation report
 
 ## 📋 Testing Standards
 

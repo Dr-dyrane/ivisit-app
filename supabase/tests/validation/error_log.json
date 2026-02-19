@@ -1,0 +1,43 @@
+[
+  {
+    "timestamp": "2026-02-19T11:59:57.129Z",
+    "type": "critical",
+    "category": "system",
+    "message": "Task execution failed: Task file not found: C:\\Users\\Dyrane\\Documents\\GitHub\\ivisit-app\\supabase\\tests\\tasks\\comprehensive_system.md",
+    "technicalDetails": {
+      "stack": "Error: Task file not found: C:\\Users\\Dyrane\\Documents\\GitHub\\ivisit-app\\supabase\\tests\\tasks\\comprehensive_system.md\n    at TestRunner.runTask (C:\\Users\\Dyrane\\Documents\\GitHub\\ivisit-app\\supabase\\tests\\scripts\\test_runner.js:52:15)\n    at main (C:\\Users\\Dyrane\\Documents\\GitHub\\ivisit-app\\supabase\\tests\\scripts\\test_runner.js:709:16)\n    at Object.<anonymous> (C:\\Users\\Dyrane\\Documents\\GitHub\\ivisit-app\\supabase\\tests\\scripts\\test_runner.js:713:3)\n    at Module._compile (node:internal/modules/cjs/loader:1706:14)\n    at Object..js (node:internal/modules/cjs/loader:1839:10)\n    at Module.load (node:internal/modules/cjs/loader:1441:32)\n    at Function._load (node:internal/modules/cjs/loader:1263:12)\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)",
+      "taskId": "comprehensive_system"
+    },
+    "status": "detected"
+  },
+  {
+    "timestamp": "2026-02-19T12:00:18.559Z",
+    "type": "critical",
+    "category": "function",
+    "message": "Nearby hospitals error: Could not find the function public.nearby_hospitals(lat, lng, radius_km) in the schema cache",
+    "technicalDetails": {
+      "error": {
+        "code": "PGRST202",
+        "details": "Searched for the function public.nearby_hospitals with parameters lat, lng, radius_km or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.",
+        "hint": null,
+        "message": "Could not find the function public.nearby_hospitals(lat, lng, radius_km) in the schema cache"
+      }
+    },
+    "status": "detected"
+  },
+  {
+    "timestamp": "2026-02-19T12:00:22.695Z",
+    "type": "critical",
+    "category": "function",
+    "message": "get_entity_id function error: Could not find the function public.get_entity_id(p_display_id, p_entity_type) in the schema cache",
+    "technicalDetails": {
+      "error": {
+        "code": "PGRST202",
+        "details": "Searched for the function public.get_entity_id with parameters p_display_id, p_entity_type or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.",
+        "hint": "Perhaps you meant to call the function public.get_entity_id(p_display_id)",
+        "message": "Could not find the function public.get_entity_id(p_display_id, p_entity_type) in the schema cache"
+      }
+    },
+    "status": "detected"
+  }
+]

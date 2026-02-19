@@ -198,4 +198,61 @@ const result = await batchProcess(hospitals, async (batch) => {
 - [ ] Financial ops log to `wallet_ledger` synchronously
 
 ---
+
+## 10. Testing & Fix Strategy
+
+### **Testing Framework**
+- **Task-based validation** with clear objectives
+- **JavaScript test runner** with error handling
+- **Automated fix generation** for common issues
+- **Comprehensive reporting** with JSON output
+
+### **Fix Strategy Workflow**
+1. **Create Test/Fix SQL** - When we need to validate or fix something
+2. **Run the Test** - Execute the specific test/fix
+3. **Verify Success** - Confirm the fix works
+4. **Update Core Migration** - Integrate successful fix into core pillar
+5. **Delete Test SQL** - Remove the temporary test/fix file
+6. **Run Final Validation** - Confirm everything works with core migration
+
+### **🔄 Test/Fix Lifecycle**
+```
+Test SQL → Test → Verify → Update Core Migration → Delete Test SQL → Final Validation
+     ↑           ↑          ↑                ↑              ↑                ↑
+   Temporary   Temporary   Temporary        Permanent      Temporary        Permanent
+```
+
+### **Error Classification**
+| Type | Impact | Action |
+|---|---|---|
+| **Critical** | Blocks deployment | Immediate fix required |
+| **Warning** | Fix required | Schedule for next deployment |
+| **Info** | Monitor only | Document and track patterns |
+
+### **Fix Categories**
+- **Schema Fixes** - Missing tables, columns, functions
+- **Function Fixes** - RPC function corrections
+- **Security Fixes** - RLS policy updates
+- **Performance Fixes** - Index additions, query optimization
+
+### **Testing Commands**
+```bash
+# Run comprehensive system test
+node supabase/tests/scripts/test_runner.js comprehensive_system
+
+# Run specific task test
+node supabase/tests/scripts/test_runner.js [task_name]
+
+# Apply fixes from error_fixes.sql
+# (Manual execution or automated via test runner)
+```
+
+### **Success Criteria**
+- **100% test pass rate** required for production
+- **No critical errors** allowed
+- **All modules deployed** and functional
+- **Console sync** completed successfully
+
+---
+
 *Standardized — February 19, 2026*
