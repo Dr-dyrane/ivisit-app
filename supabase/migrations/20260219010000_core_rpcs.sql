@@ -303,7 +303,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ─── 7. Search & Analytics RPCs ─────────────────────────
 
 -- get_trending_searches: Used by both app discoveryService and console searchService
-CREATE OR REPLACE FUNCTION public.get_trending_searches(p_limit INTEGER DEFAULT 10)
+CREATE OR REPLACE FUNCTION public.get_trending_searches(days_back INTEGER DEFAULT 7, limit_count INTEGER DEFAULT 10)
 RETURNS TABLE (
     id UUID,
     query TEXT,
@@ -315,44 +315,79 @@ BEGIN
     SELECT t.id, t.query, t.category, t.rank
     FROM public.trending_topics t
     ORDER BY t.rank ASC
-    LIMIT p_limit;
+    LIMIT limit_count;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
 -- get_search_analytics: Used by console searchAnalyticsService
-CREATE OR REPLACE FUNCTION public.get_search_analytics(p_days INTEGER DEFAULT 30)
+CREATE OR REPLACE FUNCTION public.get_search_analytics(days_back INTEGER DEFAULT 7, limit_count INTEGER DEFAULT 10)
 RETURNS TABLE (
-    total_searches BIGINT,
-    unique_queries BIGINT,
-    avg_results NUMERIC
+    query TEXT,
+    search_count BIGINT,
+    unique_users BIGINT,
+    last_searched TIMESTAMPTZ,
+    rank INTEGER
 ) AS $$
 BEGIN
     IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
     RETURN QUERY
-    SELECT
-        count(*)::BIGINT as total_searches,
-        count(DISTINCT sh.query)::BIGINT as unique_queries,
-        COALESCE(avg(sh.result_count), 0)::NUMERIC as avg_results
-    FROM public.search_history sh
-    WHERE sh.created_at >= NOW() - (p_days || ' days')::INTERVAL;
+    WITH query_stats AS (
+        SELECT 
+            sh.query,
+            count(*)::BIGINT as s_count,
+            count(DISTINCT sh.user_id)::BIGINT as u_count,
+            max(sh.created_at) as last_s
+        FROM public.search_history sh
+        WHERE sh.created_at >= NOW() - (days_back || ' days')::INTERVAL
+        GROUP BY sh.query
+    )
+    SELECT 
+        qs.query,
+        qs.s_count,
+        qs.u_count,
+        qs.last_s,
+        (row_number() OVER (ORDER BY qs.s_count DESC))::INTEGER as rank
+    FROM query_stats qs
+    ORDER BY qs.s_count DESC
+    LIMIT limit_count;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- get_search_analytics_summary: Used by console searchAnalyticsService
-CREATE OR REPLACE FUNCTION public.get_search_analytics_summary(p_days INTEGER DEFAULT 7)
-RETURNS JSONB AS $$
-DECLARE
-    v_result JSONB;
+CREATE OR REPLACE FUNCTION public.get_search_analytics_summary(days_back INTEGER DEFAULT 7)
+RETURNS TABLE (
+    total_searches BIGINT,
+    unique_searchers BIGINT,
+    unique_queries BIGINT,
+    avg_searches_per_user NUMERIC,
+    top_query TEXT
+) AS $$
 BEGIN
     IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
-    SELECT jsonb_build_object(
-        'total_searches', count(*),
-        'unique_queries', count(DISTINCT sh.query),
-        'period_days', p_days
-    ) INTO v_result
-    FROM public.search_history sh
-    WHERE sh.created_at >= NOW() - (p_days || ' days')::INTERVAL;
-    RETURN v_result;
+    RETURN QUERY
+    WITH stats AS (
+        SELECT 
+            count(*)::BIGINT as t_searches,
+            count(DISTINCT sh.user_id)::BIGINT as u_searchers,
+            count(DISTINCT sh.query)::BIGINT as u_queries
+        FROM public.search_history sh
+        WHERE sh.created_at >= NOW() - (days_back || ' days')::INTERVAL
+    ),
+    top AS (
+        SELECT sh.query as t_query
+        FROM public.search_history sh
+        WHERE sh.created_at >= NOW() - (days_back || ' days')::INTERVAL
+        GROUP BY sh.query
+        ORDER BY count(*) DESC
+        LIMIT 1
+    )
+    SELECT 
+        s.t_searches,
+        s.u_searchers,
+        s.u_queries,
+        CASE WHEN s.u_searchers > 0 THEN (s.t_searches::NUMERIC / s.u_searchers) ELSE 0 END,
+        t.t_query
+    FROM stats s, (SELECT t_query FROM top UNION ALL SELECT NULL LIMIT 1) t;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
