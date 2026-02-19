@@ -1,2 +1,0 @@
--- Superseded by 20260216051000_seed_auth_users.sql and JS seeding script.
--- This file is intentionally left empty to prevent the failed migration from running again.
