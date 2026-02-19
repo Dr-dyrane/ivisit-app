@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     type TEXT, -- 'emergency', 'system', 'visit'
     title TEXT,
     message TEXT,
+    icon TEXT,
+    color TEXT,
     read BOOLEAN NOT NULL DEFAULT false,
     priority TEXT DEFAULT 'normal',
     action_type TEXT,
