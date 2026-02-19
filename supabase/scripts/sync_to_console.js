@@ -13,7 +13,7 @@ const appMigrationsDir = path.join(appSupabaseDir, 'migrations');
 const consoleMigrationsDir = path.join(consoleSupabaseDir, 'migrations');
 
 // Types path
-const appTypesFile = path.join(appDir, 'types', 'database.ts');
+const appTypesFile = path.join(appDir, 'supabase', 'database.ts');
 const consoleTypesFile = path.join(consoleDir, 'frontend', 'src', 'types', 'database.ts');
 
 console.log('--- Syncing Console (Frontend) Schema & Documentation (PRUNED) ---');
@@ -41,8 +41,6 @@ const consoleDocsDir = path.join(consoleSupabaseDir, 'docs');
 if (fs.existsSync(appDocsDir)) {
     console.log('  Pruning Console Docs Root (Syncing Archive Hierarchy)...');
 
-    // Safety: Prune only files in the root of console/supabase/docs 
-    // to reconcile files that moved to archive/
     if (fs.existsSync(consoleDocsDir)) {
         const consoleDocFiles = fs.readdirSync(consoleDocsDir)
             .filter(f => f.endsWith('.md') && !fs.statSync(path.join(consoleDocsDir, f)).isDirectory());
@@ -62,7 +60,6 @@ if (!fs.existsSync(consoleMigrationsDir)) {
     fs.mkdirSync(consoleMigrationsDir, { recursive: true });
 }
 
-// DELETE existing migration files in console to ensure 1:1 sync
 const consoleFiles = fs.readdirSync(consoleMigrationsDir)
     .filter(f => f.endsWith('.sql') && !fs.statSync(path.join(consoleMigrationsDir, f)).isDirectory());
 
@@ -70,17 +67,13 @@ consoleFiles.forEach(file => {
     fs.unlinkSync(path.join(consoleMigrationsDir, file));
 });
 
-// Get Active App Migrations
 const activeAppFiles = fs.readdirSync(appMigrationsDir)
     .filter(f => f.endsWith('.sql') && !fs.statSync(path.join(appMigrationsDir, f)).isDirectory());
 
-// Copy Active App Files
 activeAppFiles.forEach(file => {
     console.log(`  Copying ${file}...`);
     fs.copyFileSync(path.join(appMigrationsDir, file), path.join(consoleMigrationsDir, file));
 });
-
-// NOTE: supabase/functions/ are NOT synced to preserve independence.
 
 // 3. Sync Types
 console.log('Syncing Types...');
@@ -92,7 +85,7 @@ if (fs.existsSync(appTypesFile)) {
     fs.copyFileSync(appTypesFile, consoleTypesFile);
     console.log('  Types updated.');
 } else {
-    console.error(`  ERROR: Source types file not found: ${appTypesFile}`);
+    console.warn(`  WARNING: Source types file not found at ${appTypesFile}. Run 'npx supabase gen types typescript --linked > supabase/database.ts' first.`);
 }
 
 console.log('--- Sync Complete (Clean Slate) ---');

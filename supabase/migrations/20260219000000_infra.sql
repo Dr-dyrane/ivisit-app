@@ -21,3 +21,21 @@ BEGIN
     RETURN prefix || '-' || UPPER(SUBSTRING(MD5(GEN_RANDOM_UUID()::TEXT), 1, 6));
 END;
 $$ LANGUAGE plpgsql;
+
+-- 🛠️ ADMIN UTILITIES
+CREATE OR REPLACE FUNCTION public.exec_sql(sql TEXT)
+RETURNS JSONB AS $$
+DECLARE
+    result JSONB;
+BEGIN
+    -- Only allow service_role
+    IF current_setting('request.jwt.claims', true)::jsonb->>'role' != 'service_role' THEN
+        RAISE EXCEPTION 'Permission denied';
+    END IF;
+    
+    EXECUTE sql;
+    RETURN jsonb_build_object('success', true);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

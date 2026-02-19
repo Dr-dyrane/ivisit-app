@@ -10,7 +10,7 @@ Migration workflow, service patterns, and scalability rules for both codebases.
 - **Always update the core pillar file** — never create fix migrations.
 - **Delete redundant migrations** after integrating fixes.
 - **Run tests** before and after schema changes.
-- **Sync to console** after any migration change via `node scripts/sync_to_console.js`.
+- **Sync to console** after any migration change via `node supabase/scripts/sync_to_console.js`.
 
 ### The 11 Modules
 1. `0000_infra` — Extensions, utilities
