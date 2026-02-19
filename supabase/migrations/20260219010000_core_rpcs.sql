@@ -75,28 +75,54 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
 -- 3. Get All Auth Users (Console Support)
 -- This requires a SECURITY DEFINER function because it reads from auth.users
-CREATE OR REPLACE FUNCTION public.get_all_auth_users()
+CREATE OR REPLACE FUNCTION public.get_all_auth_users(p_organization_id UUID DEFAULT NULL)
 RETURNS TABLE (
     id UUID,
     email TEXT,
     phone TEXT,
     last_sign_in_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
-    raw_user_meta_data JSONB
+    raw_user_meta_data JSONB,
+    profile_role TEXT,
+    profile_username TEXT,
+    profile_first_name TEXT,
+    profile_last_name TEXT,
+    profile_full_name TEXT,
+    profile_provider_type TEXT,
+    profile_bvn_verified BOOLEAN,
+    profile_organization_id UUID,
+    profile_display_id TEXT
 ) AS $$
 BEGIN
-    -- Security: Only allow admins to call this
+    -- Security: Only allow admins/org_admins/dispatchers to call this
     IF NOT EXISTS (
         SELECT 1 FROM public.profiles 
         WHERE profiles.id = auth.uid() 
-        AND role = 'admin'
+        AND role IN ('admin', 'org_admin', 'dispatcher')
     ) THEN
-        RAISE EXCEPTION 'Unauthorized: Only admins can list auth users';
+        RAISE EXCEPTION 'Unauthorized: Access denied';
     END IF;
 
     RETURN QUERY
-    SELECT au.id, au.email, au.phone, au.last_sign_in_at, au.created_at, au.raw_user_meta_data
-    FROM auth.users au;
+    SELECT 
+        au.id, 
+        au.email::TEXT, 
+        au.phone::TEXT, 
+        au.last_sign_in_at, 
+        au.created_at, 
+        au.raw_user_meta_data,
+        p.role::TEXT as profile_role,
+        p.username::TEXT as profile_username,
+        p.first_name::TEXT as profile_first_name,
+        p.last_name::TEXT as profile_last_name,
+        p.full_name::TEXT as profile_full_name,
+        p.provider_type::TEXT as profile_provider_type,
+        p.bvn_verified as profile_bvn_verified,
+        p.organization_id as profile_organization_id,
+        p.display_id::TEXT as profile_display_id
+    FROM auth.users au
+    LEFT JOIN public.profiles p ON au.id = p.id
+    WHERE (p_organization_id IS NULL OR p.organization_id = p_organization_id);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -161,16 +187,32 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION public.get_user_statistics()
 RETURNS TABLE (
     total_users BIGINT,
-    verified_users BIGINT,
-    total_hospitals BIGINT,
-    active_emergencies BIGINT
+    total_profiles BIGINT,
+    recent_signups BIGINT,
+    email_verified_users BIGINT,
+    phone_verified_users BIGINT,
+    admin_count BIGINT,
+    provider_count BIGINT,
+    sponsor_count BIGINT,
+    viewer_count BIGINT,
+    patient_count BIGINT,
+    org_admin_count BIGINT,
+    dispatcher_count BIGINT
 ) AS $$
 BEGIN
     RETURN QUERY SELECT
-        (SELECT count(*) FROM auth.users) as total_users,
-        (SELECT count(*) FROM public.profiles) as verified_users, -- Approximation
-        (SELECT count(*) FROM public.hospitals) as total_hospitals,
-        (SELECT count(*) FROM public.emergency_requests WHERE status = 'in_progress') as active_emergencies;
+        (SELECT count(*)::BIGINT FROM auth.users),
+        (SELECT count(*)::BIGINT FROM public.profiles),
+        (SELECT count(*)::BIGINT FROM auth.users WHERE created_at > NOW() - INTERVAL '30 days'),
+        (SELECT count(*)::BIGINT FROM auth.users WHERE email_confirmed_at IS NOT NULL),
+        (SELECT count(*)::BIGINT FROM auth.users WHERE phone_confirmed_at IS NOT NULL),
+        (SELECT count(*)::BIGINT FROM public.profiles WHERE role = 'admin'),
+        (SELECT count(*)::BIGINT FROM public.profiles WHERE role = 'provider'),
+        (SELECT count(*)::BIGINT FROM public.profiles WHERE role = 'sponsor'),
+        (SELECT count(*)::BIGINT FROM public.profiles WHERE role = 'viewer'),
+        (SELECT count(*)::BIGINT FROM public.profiles WHERE role = 'patient'),
+        (SELECT count(*)::BIGINT FROM public.profiles WHERE role = 'org_admin'),
+        (SELECT count(*)::BIGINT FROM public.profiles WHERE role = 'dispatcher');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
