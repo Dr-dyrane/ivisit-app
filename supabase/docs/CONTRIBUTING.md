@@ -255,4 +255,95 @@ node supabase/tests/scripts/test_runner.js [task_name]
 
 ---
 
+## 11. Cross-Pillar Dependencies & RPC Index
+
+### **🔗 Cross-Pillar Dependencies**
+
+#### **Payment Processing Flow**
+- **Finance Pillar**: `process_wallet_payment()` 
+- **Emergency Logic Pillar**: `process_cash_payment_v2()`, `approve_cash_payment()`, `decline_cash_payment()`
+- **Security Pillar**: `p_is_admin()`, `p_get_current_org_id()`
+- **Core RPCs Pillar**: Location services, admin functions, analytics
+
+#### **User Management Flow**
+- **Security Pillar**: `delete_user_by_admin()`, `update_profile_by_admin()`, `search_auth_users()`
+- **Core RPCs Pillar**: `delete_user()`, `update_profile_by_admin()`, `search_auth_users()`
+
+#### **Location Services**
+- **Core RPCs Pillar**: `nearby_hospitals()`, `nearby_ambulances()`
+
+### **📋 RPC Function Index**
+
+| Function | Location | Purpose | Used By |
+|---|---|---|---|
+| `process_wallet_payment()` | Finance | Process wallet payments | paymentService.js |
+| `process_cash_payment_v2()` | Emergency Logic | Process manual cash payments | paymentService.js |
+| `approve_cash_payment()` | Emergency Logic | Approve cash payments | paymentService.js |
+| `decline_cash_payment()` | Emergency Logic | Decline cash payments | paymentService.js |
+| `nearby_hospitals()` | Core RPCs | Find nearby hospitals | discoveryService.js |
+| `nearby_ambulances()` | Core RPCs | Find nearby ambulances | discoveryService.js |
+| `p_is_admin()` | Security | Check admin permissions | profilesService.js |
+| `delete_user_by_admin()` | Core RPCs | Admin delete user | console profilesService.js |
+| `update_profile_by_admin()` | Core RPCs | Admin update profile | console profilesService.js |
+| `search_auth_users()` | Core RPCs | Search auth users | console profilesService.js |
+
+### **🏗️ Pillar Responsibilities**
+
+#### **0000_infra** - Infrastructure & Utilities
+- Database extensions and utility functions
+- Schema management helpers
+
+#### **0001_identity** - Identity & Profiles  
+- User profile management
+- Authentication and authorization
+- Medical profile data
+
+#### **0002_org_structure** - Organizations & Hospitals
+- Hospital and organization management
+- Doctor and staff management
+- Facility data and services
+
+#### **0003_logistics** - Logistics & Emergency
+- Emergency request management
+- Ambulance tracking and dispatch
+- Visit and routing logic
+
+#### **0004_finance** - Financial Services
+- Wallet management (patient, organization)
+- Payment processing (wallet, cash, insurance)
+- Transaction history and billing
+
+#### **0005_ops_content** - Operations & Content
+- Notifications and messaging
+- Support ticket management
+- Content management system
+
+#### **0006_analytics** - Analytics & Reporting
+- User activity tracking
+- Search analytics and trends
+- Performance metrics and reporting
+
+#### **0007_security** - Security & Access Control
+- Row Level Security (RLS) policies
+- User permissions and roles
+- Authentication security helpers
+
+#### **0008_emergency_logic** - Emergency Business Logic
+- Emergency cost calculation
+- Resource allocation and assignment
+- Emergency workflow automation
+
+#### **0009_automations** - Data Synchronization
+- Cross-table triggers and hooks
+- Data consistency enforcement
+- Automated workflows and business rules
+
+#### **0100_core_rpcs** - External API Gateway
+- Location-based discovery services
+- Administrative management functions
+- Analytics and reporting APIs
+- External system integrations
+
+---
+
 *Standardized — February 19, 2026*

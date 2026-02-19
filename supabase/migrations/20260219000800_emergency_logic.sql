@@ -128,52 +128,60 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 🛠️ ATOMIC: Approve Cash Payment
 -- Matches paymentService.js:761 expectation
-CREATE OR REPLACE FUNCTION public.approve_cash_payment(
-    p_payment_id UUID,
-    p_request_id UUID
-) RETURNS JSONB AS $$
+CREATE OR REPLACE FUNCTION public.approve_cash_payment(p_payment_id UUID, p_request_id UUID)
+RETURNS JSONB AS $$
 DECLARE
-    v_fee NUMERIC;
-    v_org_id UUID;
-    v_amount NUMERIC;
+    v_payment RECORD;
+    v_org_wallet_id UUID;
+    v_org_balance NUMERIC;
+    v_platform_wallet_id UUID;
+    v_patient_wallet_id UUID;
 BEGIN
-    -- 1. Get Payment & Org Info
-    SELECT amount, (metadata->>'fee_amount')::NUMERIC, r.hospital_id
-    INTO v_amount, v_fee, v_org_id 
-    FROM public.payments p
-    JOIN public.emergency_requests r ON p.emergency_request_id = r.id
-    WHERE p.id = p_payment_id;
+    -- 1. Verify Payment & Resolve Org
+    SELECT * INTO v_payment FROM public.payments WHERE id = p_payment_id AND status = 'pending';
+    IF v_payment.id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Pending payment not found');
+    END IF;
 
-    -- Resolve Real Org ID
-    SELECT organization_id INTO v_org_id FROM public.hospitals WHERE id = v_org_id;
+    -- 2. Get Wallets
+    SELECT id, balance INTO v_org_wallet_id, v_org_balance 
+    FROM public.organization_wallets 
+    WHERE organization_id = v_payment.organization_id;
+    
+    SELECT id INTO v_platform_wallet_id FROM public.ivisit_main_wallet LIMIT 1;
+    SELECT id INTO v_patient_wallet_id FROM public.patient_wallets WHERE user_id = v_payment.user_id;
 
-    -- 2. Deduct Fee from Org Wallet
-    UPDATE public.organization_wallets
-    SET balance = balance - v_fee,
-        updated_at = NOW()
-    WHERE organization_id = v_org_id;
+    -- 3. Check Org Balance for Fee
+    IF v_org_balance < v_payment.ivisit_fee_amount THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Organization balance insufficient for platform fee');
+    END IF;
 
-    -- 3. Record Ledger
-    INSERT INTO public.wallet_ledger (
-        organization_id,
-        amount,
-        type,
-        description,
-        metadata
-    ) VALUES (
-        v_org_id,
-        -v_fee,
-        'fee_deduction',
-        'Platform fee for cash payment ' || p_request_id,
-        jsonb_build_object('payment_id', p_payment_id, 'request_id', p_request_id)
-    );
+    -- 4. Deduct Fee from Org (Debt Collection for Cash Trip)
+    UPDATE public.organization_wallets SET balance = balance - v_payment.ivisit_fee_amount WHERE id = v_org_wallet_id;
+    INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
+    VALUES (v_org_wallet_id, -v_payment.ivisit_fee_amount, 'debit', 'iVisit Platform Fee (Cash Payment Fee)', p_payment_id);
 
-    -- 4. Update Statuses
-    UPDATE public.payments SET status = 'completed', updated_at = NOW() WHERE id = p_payment_id;
+    -- 5. Credit Platform
+    UPDATE public.ivisit_main_wallet SET balance = balance + v_payment.ivisit_fee_amount WHERE id = v_platform_wallet_id;
+    INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
+    VALUES (v_platform_wallet_id, v_payment.ivisit_fee_amount, 'credit', 'Platform Fee (Cash Payment)', p_payment_id);
+
+    -- 6. Informational Patient Ledger entry
+    IF v_patient_wallet_id IS NOT NULL THEN
+        INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
+        VALUES (v_patient_wallet_id, 0, 'info', 'Paid via Cash (In-Person)', p_payment_id);
+    END IF;
+
+    -- 7. Finalize Statuses (Payment, Emergency Request, and Visit)
+    UPDATE public.payments SET status = 'completed', processed_at = NOW() WHERE id = p_payment_id;
     UPDATE public.emergency_requests SET status = 'in_progress', updated_at = NOW() WHERE id = p_request_id;
     UPDATE public.visits SET status = 'active', updated_at = NOW() WHERE request_id = p_request_id;
 
-    RETURN jsonb_build_object('success', TRUE, 'fee_deducted', v_fee);
+    RETURN jsonb_build_object(
+        'success', true, 
+        'fee_deducted', v_payment.ivisit_fee_amount, 
+        'new_balance', (v_org_balance - v_payment.ivisit_fee_amount)
+    );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -200,52 +208,47 @@ CREATE OR REPLACE FUNCTION public.process_cash_payment_v2(
     p_currency TEXT DEFAULT 'USD'
 ) RETURNS JSONB AS $$
 DECLARE
+    v_user_id UUID;
+    v_fee_amount NUMERIC;
+    v_fee_percentage NUMERIC;
     v_payment_id UUID;
-    v_fee NUMERIC;
 BEGIN
-    v_fee := p_amount * 0.025;
+    -- 1. Get User ID and Fee Config
+    SELECT user_id INTO v_user_id FROM public.emergency_requests WHERE id = p_emergency_request_id;
+    SELECT ivisit_fee_percentage INTO v_fee_percentage FROM public.organizations WHERE id = p_organization_id;
+    
+    v_fee_amount := p_amount * (COALESCE(v_fee_percentage, 2.5) / 100);
 
-    -- 1. Create Payment
+    -- 2. Create Completed Payment
     INSERT INTO public.payments (
-        emergency_request_id,
-        amount,
-        currency,
-        payment_method,
-        status,
-        metadata,
-        created_at
-    ) VALUES (
-        p_emergency_request_id,
-        p_amount,
-        p_currency,
-        'cash',
-        'completed',
-        jsonb_build_object('fee_amount', v_fee, 'manual_entry', true),
+        user_id, 
+        emergency_request_id, 
+        organization_id, 
+        amount, 
+        currency, 
+        payment_method, 
+        status, 
+        ivisit_fee_amount,
+        processed_at
+    )
+    VALUES (
+        v_user_id, 
+        p_emergency_request_id, 
+        p_organization_id, 
+        p_amount, 
+        p_currency, 
+        'cash', 
+        'completed', 
+        v_fee_amount,
         NOW()
-    ) RETURNING id INTO v_payment_id;
+    )
+    RETURNING id INTO v_payment_id;
 
-    -- 2. Deduct Fee
-    UPDATE public.organization_wallets
-    SET balance = balance - v_fee,
-        updated_at = NOW()
-    WHERE organization_id = p_organization_id;
-
-    -- 3. Record Ledger
-    INSERT INTO public.wallet_ledger (
-        organization_id,
-        amount,
-        type,
-        description,
-        metadata
-    ) VALUES (
-        p_organization_id,
-        -v_fee,
-        'fee_deduction',
-        'Manual cash payment fee for ' || p_emergency_request_id,
-        jsonb_build_object('payment_id', v_payment_id)
+    RETURN jsonb_build_object(
+        'success', true, 
+        'payment_id', v_payment_id, 
+        'fee_calculated', v_fee_amount
     );
-
-    RETURN jsonb_build_object('success', TRUE, 'payment_id', v_payment_id, 'fee_deducted', v_fee);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

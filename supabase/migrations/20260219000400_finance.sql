@@ -121,7 +121,7 @@ DECLARE
     v_net_amount NUMERIC;
 BEGIN
     -- Only distribute for COMPLETED payments that are NOT cash
-    -- (Cash payments are handled manually via approve_cash_payment)
+    -- (Cash payments are handled manually via Emergency Logic: approve_cash_payment)
     IF (NEW.status = 'completed') AND (OLD.status != 'completed') AND (NEW.payment_method != 'cash') THEN
         -- Get Organization Wallet
         SELECT id INTO v_org_wallet_id FROM public.organization_wallets WHERE organization_id = NEW.organization_id;
@@ -209,117 +209,6 @@ BEGIN
         'success', true, 
         'payment_id', v_payment_id, 
         'new_balance', (v_balance - p_amount)
-    );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- C. Cash Payment Processing (V2)
-CREATE OR REPLACE FUNCTION public.process_cash_payment_v2(
-    p_emergency_request_id UUID,
-    p_organization_id UUID,
-    p_amount NUMERIC,
-    p_currency TEXT DEFAULT 'USD'
-)
-RETURNS JSONB AS $$
-DECLARE
-    v_user_id UUID;
-    v_fee_amount NUMERIC;
-    v_fee_percentage NUMERIC;
-    v_payment_id UUID;
-BEGIN
-    -- 1. Get User ID and Fee Config
-    SELECT user_id INTO v_user_id FROM public.emergency_requests WHERE id = p_emergency_request_id;
-    SELECT ivisit_fee_percentage INTO v_fee_percentage FROM public.organizations WHERE id = p_organization_id;
-    
-    v_fee_amount := p_amount * (COALESCE(v_fee_percentage, 2.5) / 100);
-
-    -- 2. Create Pending Payment
-    INSERT INTO public.payments (
-        user_id, 
-        emergency_request_id, 
-        organization_id, 
-        amount, 
-        currency, 
-        payment_method, 
-        status, 
-        ivisit_fee_amount
-    )
-    VALUES (
-        v_user_id, 
-        p_emergency_request_id, 
-        p_organization_id, 
-        p_amount, 
-        p_currency, 
-        'cash', 
-        'pending', 
-        v_fee_amount
-    )
-    RETURNING id INTO v_payment_id;
-
-    RETURN jsonb_build_object(
-        'success', true, 
-        'payment_id', v_payment_id, 
-        'fee_calculated', v_fee_amount
-    );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- D. Approve Cash Payment
-CREATE OR REPLACE FUNCTION public.approve_cash_payment(p_payment_id UUID, p_request_id UUID)
-RETURNS JSONB AS $$
-DECLARE
-    v_payment RECORD;
-    v_org_wallet_id UUID;
-    v_org_balance NUMERIC;
-    v_platform_wallet_id UUID;
-    v_patient_wallet_id UUID;
-BEGIN
-    -- 1. Verify Payment Status
-    SELECT * INTO v_payment FROM public.payments WHERE id = p_payment_id AND status = 'pending';
-    IF v_payment.id IS NULL THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Pending payment not found');
-    END IF;
-
-    -- 2. Get Wallets
-    SELECT id, balance INTO v_org_wallet_id, v_org_balance 
-    FROM public.organization_wallets 
-    WHERE organization_id = v_payment.organization_id;
-    
-    SELECT id INTO v_platform_wallet_id FROM public.ivisit_main_wallet LIMIT 1;
-    
-    -- Get Patient Wallet (for informational ledger entry)
-    SELECT id INTO v_patient_wallet_id FROM public.patient_wallets WHERE user_id = v_payment.user_id;
-
-    -- 3. Check Org Balance for Fee
-    -- Note: Organization must have enough digital balance to cover the service fee for cash trips.
-    IF v_org_balance < v_payment.ivisit_fee_amount THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Organization balance insufficient for platform fee');
-    END IF;
-
-    -- 4. Deduct Fee from Org (Debt Collection for Cash Trip)
-    UPDATE public.organization_wallets SET balance = balance - v_payment.ivisit_fee_amount WHERE id = v_org_wallet_id;
-    INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
-    VALUES (v_org_wallet_id, -v_payment.ivisit_fee_amount, 'debit', 'iVisit Platform Fee (Cash Payment Fee)', p_payment_id);
-
-    -- 5. Credit Platform
-    UPDATE public.ivisit_main_wallet SET balance = balance + v_payment.ivisit_fee_amount WHERE id = v_platform_wallet_id;
-    INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
-    VALUES (v_platform_wallet_id, v_payment.ivisit_fee_amount, 'credit', 'Platform Fee (Cash Payment)', p_payment_id);
-
-    -- 6. Informational Patient Ledger entry (reflects the cash payout in History)
-    IF v_patient_wallet_id IS NOT NULL THEN
-        INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
-        VALUES (v_patient_wallet_id, 0, 'info', 'Paid via Cash (In-Person)', p_payment_id);
-    END IF;
-
-    -- 7. Finalize Status
-    UPDATE public.payments SET status = 'completed', processed_at = NOW() WHERE id = p_payment_id;
-    UPDATE public.emergency_requests SET status = 'completed' WHERE id = p_request_id;
-
-    RETURN jsonb_build_object(
-        'success', true, 
-        'fee_deducted', v_payment.ivisit_fee_amount, 
-        'new_balance', (v_org_balance - v_payment.ivisit_fee_amount)
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
