@@ -16,11 +16,18 @@ DECLARE
     v_total_amount NUMERIC;
     v_requires_approval BOOLEAN := FALSE;
     v_hospital_id UUID;
+    v_patient_location GEOMETRY;
 BEGIN
     -- 1. Extract and Validate IDs
     v_hospital_id := (p_request_data->>'hospital_id')::UUID;
     
-    -- 2. Create the Emergency Request
+    -- 2. Parse patient location from JSONB to GEOMETRY
+    v_patient_location := ST_SetSRID(ST_MakePoint(
+        (p_request_data->'patient_location'->>'lng')::DOUBLE PRECISION,
+        (p_request_data->'patient_location'->>'lat')::DOUBLE PRECISION
+    ), 4326);
+    
+    -- 3. Create the Emergency Request
     INSERT INTO public.emergency_requests (
         user_id,
         hospital_id,
@@ -40,7 +47,7 @@ BEGIN
         p_request_data->>'hospital_name',
         p_request_data->>'specialty',
         p_request_data->>'ambulance_type',
-        p_request_data->'patient_location',
+        v_patient_location,
         p_request_data->'patient_snapshot',
         CASE 
             WHEN p_payment_data->>'method' = 'cash' THEN 'pending_approval'

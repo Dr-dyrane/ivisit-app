@@ -2,8 +2,14 @@
 -- Profiles, Preferences, and ID Mapping
 
 -- 1. Identity Registry (Core Profiles)
--- Removed id_mappings table for direct fluid flow.
--- Each table now holds its own display_id with unique indexes.
+-- Central ID mapping table for display ID resolution
+CREATE TABLE IF NOT EXISTS public.id_mappings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    entity_id UUID NOT NULL,
+    display_id TEXT NOT NULL UNIQUE,
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('patient', 'provider', 'hospital', 'admin', 'dispatcher', 'doctor', 'ambulance', 'driver', 'emergency_request', 'visit', 'organization', 'payment', 'notification', 'wallet')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 -- 2. Profiles
 CREATE TABLE IF NOT EXISTS public.profiles (

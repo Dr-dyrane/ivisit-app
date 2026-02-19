@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.organization_wallets (
     organization_id UUID UNIQUE REFERENCES public.organizations(id) ON DELETE CASCADE,
     balance NUMERIC DEFAULT 0.00,
     currency TEXT DEFAULT 'USD',
+    display_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS public.patient_wallets (
     user_id UUID UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE,
     balance NUMERIC DEFAULT 0.00,
     currency TEXT DEFAULT 'USD',
+    display_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -65,6 +67,7 @@ CREATE TABLE IF NOT EXISTS public.payments (
     ivisit_fee_amount NUMERIC DEFAULT 0.00,
     provider_response JSONB DEFAULT '{}',
     processed_at TIMESTAMPTZ,
+    display_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

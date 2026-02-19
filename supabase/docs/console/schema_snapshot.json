@@ -1,0 +1,96 @@
+{
+  "timestamp": "2026-02-19T06:33:40.416Z",
+  "migrations": [
+    {
+      "file": "20260219000000_infra.sql",
+      "timestamp": "20260219000000_",
+      "size": 712,
+      "hasFunctions": true,
+      "hasTables": false,
+      "hasTriggers": false
+    },
+    {
+      "file": "20260219000100_identity.sql",
+      "timestamp": "20260219000100_",
+      "size": 6907,
+      "hasFunctions": true,
+      "hasTables": true,
+      "hasTriggers": true
+    },
+    {
+      "file": "20260219000200_org_structure.sql",
+      "timestamp": "20260219000200_",
+      "size": 5619,
+      "hasFunctions": false,
+      "hasTables": true,
+      "hasTriggers": true
+    },
+    {
+      "file": "20260219000300_logistics.sql",
+      "timestamp": "20260219000300_",
+      "size": 5222,
+      "hasFunctions": false,
+      "hasTables": true,
+      "hasTriggers": true
+    },
+    {
+      "file": "20260219000400_finance.sql",
+      "timestamp": "20260219000400_",
+      "size": 7485,
+      "hasFunctions": true,
+      "hasTables": true,
+      "hasTriggers": true
+    },
+    {
+      "file": "20260219000500_ops_content.sql",
+      "timestamp": "20260219000500_",
+      "size": 4137,
+      "hasFunctions": true,
+      "hasTables": true,
+      "hasTriggers": true
+    },
+    {
+      "file": "20260219000600_analytics.sql",
+      "timestamp": "20260219000600_",
+      "size": 2373,
+      "hasFunctions": true,
+      "hasTables": true,
+      "hasTriggers": true
+    },
+    {
+      "file": "20260219000700_security.sql",
+      "timestamp": "20260219000700_",
+      "size": 10622,
+      "hasFunctions": true,
+      "hasTables": false,
+      "hasTriggers": false
+    },
+    {
+      "file": "20260219000800_emergency_logic.sql",
+      "timestamp": "20260219000800_",
+      "size": 14895,
+      "hasFunctions": true,
+      "hasTables": true,
+      "hasTriggers": true
+    },
+    {
+      "file": "20260219000900_automations.sql",
+      "timestamp": "20260219000900_",
+      "size": 10144,
+      "hasFunctions": true,
+      "hasTables": false,
+      "hasTriggers": true
+    },
+    {
+      "file": "20260219010000_core_rpcs.sql",
+      "timestamp": "20260219010000_",
+      "size": 22848,
+      "hasFunctions": true,
+      "hasTables": false,
+      "hasTriggers": false
+    }
+  ],
+  "functions": [],
+  "tables": [],
+  "lastSync": "2026-02-19T06:33:40.417Z"
+}

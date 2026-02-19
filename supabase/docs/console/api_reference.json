@@ -1,0 +1,306 @@
+{
+  "timestamp": "2026-02-19T06:33:40.422Z",
+  "functions": [
+    {
+      "name": "handle_updated_at",
+      "file": "20260219000000_infra.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.handle_updated_at()"
+    },
+    {
+      "name": "generate_display_id",
+      "file": "20260219000000_infra.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.generate_display_id(prefix TEXT)"
+    },
+    {
+      "name": "stamp_entity_display_id",
+      "file": "20260219000100_identity.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.stamp_entity_display_id()"
+    },
+    {
+      "name": "get_entity_id",
+      "file": "20260219000100_identity.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_entity_id(p_display_id TEXT)"
+    },
+    {
+      "name": "process_payment_distribution",
+      "file": "20260219000400_finance.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.process_payment_distribution()"
+    },
+    {
+      "name": "notify_emergency_events",
+      "file": "20260219000500_ops_content.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.notify_emergency_events()"
+    },
+    {
+      "name": "log_profile_updates",
+      "file": "20260219000600_analytics.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.log_profile_updates()"
+    },
+    {
+      "name": "p_is_admin",
+      "file": "20260219000700_security.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.p_is_admin()"
+    },
+    {
+      "name": "p_get_current_org_id",
+      "file": "20260219000700_security.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.p_get_current_org_id()"
+    },
+    {
+      "name": "create_emergency_v4",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.create_emergency_v4(\r\n    p_user_id UUID,\r\n    p_request_data JSONB,\r\n    p_payment_data JSONB DEFAULT NULL\r\n)"
+    },
+    {
+      "name": "approve_cash_payment",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.approve_cash_payment(\r\n    p_payment_id UUID,\r\n    p_request_id UUID\r\n)"
+    },
+    {
+      "name": "decline_cash_payment",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.decline_cash_payment(\r\n    p_payment_id UUID,\r\n    p_request_id UUID\r\n)"
+    },
+    {
+      "name": "process_cash_payment_v2",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.process_cash_payment_v2(\r\n    p_emergency_request_id UUID,\r\n    p_organization_id UUID,\r\n    p_amount NUMERIC,\r\n    p_currency TEXT DEFAULT 'USD'\r\n)"
+    },
+    {
+      "name": "discharge_patient",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.discharge_patient(request_uuid TEXT)"
+    },
+    {
+      "name": "cancel_bed_reservation",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.cancel_bed_reservation(request_uuid TEXT)"
+    },
+    {
+      "name": "complete_trip",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.complete_trip(request_uuid TEXT)"
+    },
+    {
+      "name": "cancel_trip",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.cancel_trip(request_uuid TEXT)"
+    },
+    {
+      "name": "update_hospital_availability",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_hospital_availability(\r\n    hospital_id UUID,\r\n    beds_available INTEGER,\r\n    er_wait_time INTEGER,\r\n    status TEXT,\r\n    ambulance_count INTEGER\r\n)"
+    },
+    {
+      "name": "upsert_service_pricing",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.upsert_service_pricing(payload JSONB)"
+    },
+    {
+      "name": "upsert_room_pricing",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.upsert_room_pricing(payload JSONB)"
+    },
+    {
+      "name": "delete_service_pricing",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.delete_service_pricing(target_id UUID)"
+    },
+    {
+      "name": "delete_room_pricing",
+      "file": "20260219000800_emergency_logic.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.delete_room_pricing(target_id UUID)"
+    },
+    {
+      "name": "handle_new_user",
+      "file": "20260219000900_automations.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.handle_new_user()"
+    },
+    {
+      "name": "sync_emergency_to_visit",
+      "file": "20260219000900_automations.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.sync_emergency_to_visit()"
+    },
+    {
+      "name": "auto_assign_driver",
+      "file": "20260219000900_automations.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.auto_assign_driver()"
+    },
+    {
+      "name": "update_resource_availability",
+      "file": "20260219000900_automations.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_resource_availability()"
+    },
+    {
+      "name": "auto_assign_doctor",
+      "file": "20260219000900_automations.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.auto_assign_doctor()"
+    },
+    {
+      "name": "release_doctor_assignment",
+      "file": "20260219000900_automations.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.release_doctor_assignment()"
+    },
+    {
+      "name": "create_insurance_billing_on_completion",
+      "file": "20260219000900_automations.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.create_insurance_billing_on_completion()"
+    },
+    {
+      "name": "nearby_hospitals",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.nearby_hospitals(user_lat DOUBLE PRECISION, user_lng DOUBLE PRECISION, radius_km INTEGER DEFAULT 15)"
+    },
+    {
+      "name": "nearby_ambulances",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.nearby_ambulances(user_lat DOUBLE PRECISION, user_lng DOUBLE PRECISION, radius_km INTEGER DEFAULT 50)"
+    },
+    {
+      "name": "get_all_auth_users",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_all_auth_users()"
+    },
+    {
+      "name": "update_hospital_by_admin",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_hospital_by_admin(target_hospital_id UUID, payload JSONB)"
+    },
+    {
+      "name": "get_user_statistics",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_user_statistics()"
+    },
+    {
+      "name": "admin_update_trending_topics",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.admin_update_trending_topics(payload JSONB)"
+    },
+    {
+      "name": "update_trending_topics_from_search",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_trending_topics_from_search()"
+    },
+    {
+      "name": "delete_user_by_admin",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.delete_user_by_admin(target_user_id UUID)"
+    },
+    {
+      "name": "current_user_is_admin",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.current_user_is_admin()"
+    },
+    {
+      "name": "is_admin",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.is_admin()"
+    },
+    {
+      "name": "current_user_permission_level",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.current_user_permission_level()"
+    },
+    {
+      "name": "search_auth_users",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.search_auth_users(search_term TEXT)"
+    },
+    {
+      "name": "update_profile_by_admin",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_profile_by_admin(target_user_id UUID, payload JSONB)"
+    },
+    {
+      "name": "delete_user",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.delete_user()"
+    },
+    {
+      "name": "get_trending_searches",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_trending_searches(p_limit INTEGER DEFAULT 10)"
+    },
+    {
+      "name": "get_search_analytics",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_search_analytics(p_days INTEGER DEFAULT 30)"
+    },
+    {
+      "name": "get_search_analytics_summary",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_search_analytics_summary(p_days INTEGER DEFAULT 7)"
+    },
+    {
+      "name": "log_user_activity",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.log_user_activity(\r\n    p_action TEXT,\r\n    p_entity_type TEXT DEFAULT NULL,\r\n    p_entity_id UUID DEFAULT NULL,\r\n    p_description TEXT DEFAULT NULL,\r\n    p_metadata JSONB DEFAULT '{}'\r\n)"
+    },
+    {
+      "name": "get_recent_activity",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_recent_activity(p_limit INTEGER DEFAULT 20)"
+    },
+    {
+      "name": "get_activity_stats",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_activity_stats(p_days INTEGER DEFAULT 7)"
+    },
+    {
+      "name": "get_org_stripe_status",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_org_stripe_status(p_organization_id UUID)"
+    },
+    {
+      "name": "process_cash_payment",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.process_cash_payment(\r\n    p_emergency_request_id UUID,\r\n    p_organization_id UUID,\r\n    p_amount NUMERIC\r\n)"
+    },
+    {
+      "name": "check_cash_eligibility",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.check_cash_eligibility(p_organization_id UUID)"
+    },
+    {
+      "name": "process_wallet_payment",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.process_wallet_payment(\r\n    p_user_id UUID,\r\n    p_amount NUMERIC,\r\n    p_emergency_request_id UUID DEFAULT NULL\r\n)"
+    },
+    {
+      "name": "calculate_emergency_cost_v2",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.calculate_emergency_cost_v2(\r\n    p_service_type TEXT,\r\n    p_hospital_id UUID DEFAULT NULL,\r\n    p_ambulance_type TEXT DEFAULT NULL,\r\n    p_distance_km NUMERIC DEFAULT 0\r\n)"
+    },
+    {
+      "name": "reload_schema",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.reload_schema()"
+    },
+    {
+      "name": "get_available_doctors",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_available_doctors(\r\n    p_hospital_id UUID,\r\n    p_specialty TEXT DEFAULT NULL\r\n)"
+    },
+    {
+      "name": "assign_doctor_to_emergency",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.assign_doctor_to_emergency(\r\n    p_emergency_request_id UUID,\r\n    p_doctor_id UUID,\r\n    p_notes TEXT DEFAULT NULL\r\n)"
+    },
+    {
+      "name": "get_service_price",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_service_price(\r\n    p_service_type TEXT,\r\n    p_hospital_id UUID DEFAULT NULL\r\n)"
+    },
+    {
+      "name": "get_room_price",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_room_price(\r\n    p_room_type TEXT,\r\n    p_hospital_id UUID DEFAULT NULL\r\n)"
+    },
+    {
+      "name": "rate_visit",
+      "file": "20260219010000_core_rpcs.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.rate_visit(\r\n    p_visit_id UUID,\r\n    p_rating SMALLINT,\r\n    p_comment TEXT DEFAULT NULL\r\n)"
+    }
+  ],
+  "totalFunctions": 60
+}

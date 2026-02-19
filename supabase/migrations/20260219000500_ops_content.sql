@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     action_type TEXT,
     action_data JSONB,
     metadata JSONB DEFAULT '{}',
+    display_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
