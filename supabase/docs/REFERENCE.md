@@ -70,6 +70,7 @@ The system is organized into functional modules to prevent migration bloating an
 ## 📋 5. Documentation Hub
 - **[CONTRIBUTING.md](CONTRIBUTING.md)**: Staged Evolution Workflow.
 - **[ENGINEERING_PATTERNS.md](ENGINEERING_PATTERNS.md)**: Retry, Bulk, Streaming & Audit Patterns.
+- **[SERVICE_STANDARDS.md](SERVICE_STANDARDS.md)**: Cross-Codebase Service Contract.
 - **[TESTING.md](TESTING.md)**: Comprehensive Testing Guide.
 
 ---

@@ -6,6 +6,23 @@
 
 import { supabase } from './supabase';
 
+// ─── 0. TIMEOUT ─────────────────────────────────────────────────────────────
+
+/**
+ * Race a promise against a timeout. Use for RPC calls on unreliable networks.
+ *
+ * @param {Promise}  promise      - The operation to race
+ * @param {number}   timeoutMs    - Max wait time (default: 8000)
+ * @param {string}   errorMessage - Message on timeout
+ * @returns {Promise<any>}
+ */
+export function withTimeout(promise, timeoutMs = 8000, errorMessage = 'Operation timed out') {
+    const timeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+    });
+    return Promise.race([promise, timeout]);
+}
+
 // ─── 1. RETRY LOGIC ─────────────────────────────────────────────────────────
 
 /**
