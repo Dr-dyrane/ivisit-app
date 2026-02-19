@@ -109,102 +109,56 @@ export const emergencyRequestsService = {
         };
 
         if (user) {
-            // NEW FLOW: Atomic Creation with Payment
-            // If we have payment method and cost, we use the robust RPC
-            if (request.paymentMethodId || request.payment_method_id) {
-                const method = request.paymentMethodId || request.payment_method_id;
-                // Map 'cash' keyword or UUIDs
-                const isCash = method === 'cash' || (typeof method === 'string' && method.toLowerCase().includes('cash'));
+            // Determine payment info
+            const method = request.paymentMethodId || request.payment_method_id || 'cash';
+            const isCash = method === 'cash' || (typeof method === 'string' && method.toLowerCase().includes('cash'));
+            const total = parseFloat(request.total_cost || request.totalCost || 0);
 
-                // Determine amounts
-                // If total_cost is passed, we use it. If base_cost is missing, we re-derive or default.
-                const total = parseFloat(request.total_cost || request.totalCost || 0);
-                const base = parseFloat(request.base_cost || request.baseCost || (total / 1.025)); // Estimate if missing
+            console.log('[emergencyRequestsService] Creating fluid request via v4 RPC:', {
+                method, isCash, total, hospitalId: request.hospitalId
+            });
 
-                console.log('[emergencyRequestsService] Creating paid request via RPC:', {
-                    method, isCash, total, base, displayId,
-                    hospitalId: request.hospitalId
-                });
-
-                const { data, error } = await supabase.rpc('create_emergency_v3', {
-                    p_payment_data: {
-                        method: isCash ? 'cash' : 'card',
-                        total_amount: total,
-                        base_amount: base,
-                        currency: 'USD',
-                    },
-                    p_request_data: {
-                        hospital_id: request.hospitalId,
-                        service_type: request.serviceType,
-                        specialty: request.specialty,
-                        patient_location: request.patientLocation,
-                        patient_snapshot: request.patient,
-                        request_id: displayId,
-                    },
-                    p_user_id: user.id
-                });
-
-                if (error) {
-                    console.error('[emergencyRequestsService] RPC Creation Failed:', error);
-                    throw error;
+            const { data, error } = await supabase.rpc('create_emergency_v4', {
+                p_user_id: user.id,
+                p_request_data: {
+                    hospital_id: request.hospitalId,
+                    hospital_name: request.hospitalName,
+                    service_type: request.serviceType,
+                    specialty: request.specialty,
+                    patient_location: request.patientLocation,
+                    patient_snapshot: request.patient,
+                    ambulance_type: request.ambulanceType
+                },
+                p_payment_data: {
+                    method: isCash ? 'cash' : 'card',
+                    total_amount: total,
+                    fee_amount: request.feeAmount || (total * 0.025),
+                    currency: request.currency || 'USD',
+                    method_id: method
                 }
-
-                if (!data.success) {
-                    console.error('[emergencyRequestsService] RPC returned error:', data.error);
-                    throw new Error(data.error || 'Failed to create emergency request');
-                }
-
-                console.log('[emergencyRequestsService] ✅ RPC Success:', {
-                    requestId: data.request_id,
-                    paymentId: data.payment_id,
-                    displayId: data.display_id,
-                    feeAmount: data.fee_amount,
-                    requiresApproval: data.requires_approval,
-                    paymentStatus: data.payment_status,
-                    emergencyStatus: data.emergency_status,
-                });
-
-                return {
-                    ...request,
-                    id: data.request_id, // The real UUID from DB
-                    requestId: data.display_id || displayId,
-                    paymentId: data.payment_id,
-                    createdAt: now,
-                    updatedAt: now,
-                    status: data.emergency_status || EmergencyRequestStatus.IN_PROGRESS,
-                    paymentStatus: data.payment_status || 'completed',
-                    requiresApproval: data.requires_approval || false,
-                    feeAmount: data.fee_amount || 0,
-                };
-            }
-
-            // Fallback: Standard Insert (Legacy or No-Payment Flow)
-            const uuid = uuidv4();
-            const { data, error } = await supabase
-                .from('emergency_requests')
-                .insert({ ...commonFields, id: uuid, user_id: user.id })
-                .select()
-                .single();
+            });
 
             if (error) {
-                console.error("Supabase Create Error:", error);
+                console.error('[emergencyRequestsService] Fluid Creation Failed:', error);
                 throw error;
             }
 
-            // Return standardized object
             return {
                 ...request,
-                id: data.id, // The real UUID
-                requestId: data.request_id,
-                createdAt: data.created_at,
-                updatedAt: data.updated_at
+                id: data.request_id,
+                requestId: data.display_id,
+                paymentId: data.payment_id,
+                createdAt: now,
+                updatedAt: now,
+                status: data.emergency_status,
+                requiresApproval: data.requires_approval
             };
         } else {
             // Local fallback
             const localItem = {
                 ...request,
                 ...commonFields,
-                id: displayId, // Use display ID as PK for local storage
+                id: displayId,
                 requestId: displayId,
                 createdAt: now,
                 updatedAt: now

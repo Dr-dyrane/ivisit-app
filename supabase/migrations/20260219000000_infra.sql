@@ -15,14 +15,9 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION public.generate_display_id(prefix TEXT)
 RETURNS TEXT AS $$
-DECLARE
-    new_id TEXT;
-    done BOOLEAN := FALSE;
 BEGIN
-    WHILE NOT done LOOP
-        new_id := prefix || '-' || UPPER(SUBSTRING(MD5(GEN_RANDOM_UUID()::TEXT), 1, 6));
-        done := NOT EXISTS (SELECT 1 FROM public.id_mappings WHERE display_id = new_id);
-    END LOOP;
-    RETURN new_id;
+    -- Generates a prefix + 6 random hex characters (e.g. USR-A1B2C3)
+    -- Statistically unique enough for our scale, and enforced by UNIQUE table constraints.
+    RETURN prefix || '-' || UPPER(SUBSTRING(MD5(GEN_RANDOM_UUID()::TEXT), 1, 6));
 END;
 $$ LANGUAGE plpgsql;

@@ -1,14 +1,9 @@
 -- 🏯 Module 02: Identity & Registry
 -- Profiles, Preferences, and ID Mapping
 
--- 1. Identity Registry
-CREATE TABLE IF NOT EXISTS public.id_mappings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    entity_id UUID NOT NULL,
-    display_id TEXT NOT NULL UNIQUE,
-    entity_type TEXT NOT NULL CHECK (entity_type IN ('patient', 'provider', 'hospital', 'admin', 'dispatcher', 'doctor', 'ambulance', 'driver', 'emergency_request', 'visit', 'organization')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+-- 1. Identity Registry (Core Profiles)
+-- Removed id_mappings table for direct fluid flow.
+-- Each table now holds its own display_id with unique indexes.
 
 -- 2. Profiles
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -102,92 +97,62 @@ CREATE TABLE IF NOT EXISTS public.user_sessions (
 );
 
 -- 🛠️ AUTOMATION: IDENTITY HOOKS
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO public.profiles (id, email, phone, full_name, avatar_url, role)
-    VALUES (
-        NEW.id,
-        NEW.email,
-        NEW.phone,
-        COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name'),
-        NEW.raw_user_meta_data->>'avatar_url',
-        COALESCE(NEW.raw_user_meta_data->>'role', 'patient')
-    );
-    
-    INSERT INTO public.preferences (user_id) VALUES (NEW.id);
-    INSERT INTO public.medical_profiles (user_id) VALUES (NEW.id);
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- triggers moved to 20260219000900_automations.sql to resolve dependency on Finance module
 
-CREATE TRIGGER on_auth_user_created
-AFTER INSERT ON auth.users
-FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
--- 🛠️ STAMP DISPLAY ID TRIGGER (Universal Helper)
+-- 🛠️ STAMP DISPLAY ID TRIGGER (Fluid Edition)
 CREATE OR REPLACE FUNCTION public.stamp_entity_display_id()
 RETURNS TRIGGER AS $$
 DECLARE
     v_prefix TEXT;
     v_display_id TEXT;
-    v_entity_type TEXT;
 BEGIN
-    -- Determine Prefix & Canonical Entity Type
+    -- Determine Prefix
     CASE TG_TABLE_NAME
-        WHEN 'profiles' THEN 
-            v_prefix := 'USR';
-            v_entity_type := CASE 
-                WHEN NEW.role = 'patient' THEN 'patient'
-                WHEN NEW.role IN ('provider', 'ambulance') THEN 'provider'
-                WHEN NEW.role = 'admin' THEN 'admin'
-                WHEN NEW.role = 'dispatcher' THEN 'dispatcher'
-                ELSE 'patient'
-            END;
-        WHEN 'hospitals' THEN 
-            v_prefix := 'HSP';
-            v_entity_type := 'hospital';
-        WHEN 'ambulances' THEN 
-            v_prefix := 'AMB';
-            v_entity_type := 'ambulance';
-        WHEN 'emergency_requests' THEN 
-            v_prefix := 'REQ';
-            v_entity_type := 'emergency_request';
-        WHEN 'visits' THEN 
-            v_prefix := 'VIST';
-            v_entity_type := 'visit';
-        WHEN 'organizations' THEN 
-            v_prefix := 'ORG';
-            v_entity_type := 'organization';
-        WHEN 'doctors' THEN 
-            v_prefix := 'DOC';
-            v_entity_type := 'doctor';
-        ELSE 
-            v_prefix := 'ID';
-            v_entity_type := TG_TABLE_NAME;
+        WHEN 'profiles' THEN v_prefix := 'USR';
+        WHEN 'hospitals' THEN v_prefix := 'HSP';
+        WHEN 'ambulances' THEN v_prefix := 'AMB';
+        WHEN 'emergency_requests' THEN v_prefix := 'REQ';
+        WHEN 'visits' THEN v_prefix := 'VIST';
+        WHEN 'organizations' THEN v_prefix := 'ORG';
+        WHEN 'doctors' THEN v_prefix := 'DOC';
+        WHEN 'payments' THEN v_prefix := 'PAY';
+        WHEN 'notifications' THEN v_prefix := 'NTF';
+        ELSE v_prefix := 'ID';
     END CASE;
 
-    -- Generate Display ID
+    -- Generate and set Display ID on current record
     IF NEW.display_id IS NULL THEN
-        v_display_id := public.generate_display_id(v_prefix);
-        NEW.display_id := v_display_id;
+        NEW.display_id := public.generate_display_id(v_prefix);
     END IF;
-
-    -- Register Mapping
-    INSERT INTO public.id_mappings (entity_id, display_id, entity_type)
-    VALUES (NEW.id, NEW.display_id, v_entity_type)
-    ON CONFLICT (display_id) DO NOTHING;
 
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 🛠️ ID RESOLUTION RPC (Used by Edge Functions)
+-- 🛠️ FLUID ID RESOLVER (Virtual Mapping Replacement)
 CREATE OR REPLACE FUNCTION public.get_entity_id(p_display_id TEXT)
 RETURNS UUID AS $$
-    SELECT entity_id FROM public.id_mappings WHERE display_id = p_display_id LIMIT 1;
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
+DECLARE
+    v_prefix TEXT;
+    v_id UUID;
+BEGIN
+    v_prefix := SPLIT_PART(p_display_id, '-', 1);
+    
+    CASE v_prefix
+        WHEN 'USR' THEN SELECT id INTO v_id FROM public.profiles WHERE display_id = p_display_id;
+        WHEN 'HSP' THEN SELECT id INTO v_id FROM public.hospitals WHERE display_id = p_display_id;
+        WHEN 'ORG' THEN SELECT id INTO v_id FROM public.organizations WHERE display_id = p_display_id;
+        WHEN 'AMB' THEN SELECT id INTO v_id FROM public.ambulances WHERE display_id = p_display_id;
+        WHEN 'REQ' THEN SELECT id INTO v_id FROM public.emergency_requests WHERE display_id = p_display_id;
+        WHEN 'VIST' THEN SELECT id INTO v_id FROM public.visits WHERE display_id = p_display_id;
+        WHEN 'DOC' THEN SELECT id INTO v_id FROM public.doctors WHERE display_id = p_display_id;
+        ELSE v_id := NULL;
+    END CASE;
+
+    RETURN v_id;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
 CREATE TRIGGER stamp_profile_display_id
 BEFORE INSERT ON public.profiles

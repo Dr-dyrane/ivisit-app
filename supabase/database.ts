@@ -2085,6 +2085,14 @@ export type Database = {
           unique_users: number
         }[]
       }
+      create_emergency_v4: {
+        Args: { p_payment_data?: Json; p_request_data: Json; p_user_id: string }
+        Returns: Json
+      }
+      create_emergency_with_payment: {
+        Args: { p_payment_data?: Json; p_request_data: Json; p_user_id: string }
+        Returns: Json
+      }
       assign_driver_to_ambulance: {
         Args: { p_ambulance_id: string; p_driver_id: string }
         Returns: Json
@@ -3070,6 +3078,14 @@ export type Database = {
         Returns: unknown
       }
       st_touches: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      approve_cash_payment: {
+        Args: { p_payment_id: string; p_request_id: string }
+        Returns: Json
+      }
+      decline_cash_payment: {
+        Args: { p_payment_id: string; p_request_id: string }
+        Returns: Json
+      }
       st_transform:
       | {
         Args: { from_proj: string; geom: unknown; to_proj: string }

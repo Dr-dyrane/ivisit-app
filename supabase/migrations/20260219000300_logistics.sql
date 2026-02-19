@@ -77,57 +77,8 @@ CREATE TABLE IF NOT EXISTS public.visits (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 🛠️ AUTOMATION: LOGISTICS HOOKS
--- A. Sync Emergency -> Visit on Completion
-CREATE OR REPLACE FUNCTION public.sync_emergency_to_visit()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF (NEW.status = 'completed') AND (OLD.status != 'completed') THEN
-        INSERT INTO public.visits (user_id, hospital_id, request_id, hospital_name, specialty, type, status, cost)
-        VALUES (NEW.user_id, NEW.hospital_id, NEW.id, NEW.hospital_name, NEW.specialty, NEW.service_type, 'completed', NEW.total_cost::TEXT);
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- triggers moved to 20260219000900_automations.sql
 
-CREATE TRIGGER on_emergency_completed
-AFTER UPDATE ON public.emergency_requests
-FOR EACH ROW EXECUTE PROCEDURE public.sync_emergency_to_visit();
-
--- B. Auto-Assign Driver (MVP)
-CREATE OR REPLACE FUNCTION public.auto_assign_driver()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_amb_id UUID;
-    v_driver_id UUID;
-    v_driver_name TEXT;
-BEGIN
-    IF (NEW.status = 'in_progress' AND NEW.service_type = 'ambulance' AND NEW.responder_id IS NULL) THEN
-        SELECT id, profile_id INTO v_amb_id, v_driver_id
-        FROM public.ambulances
-        WHERE hospital_id = NEW.hospital_id AND status = 'available'
-        LIMIT 1;
-
-        IF v_amb_id IS NOT NULL THEN
-            SELECT full_name INTO v_driver_name FROM public.profiles WHERE id = v_driver_id;
-            
-            UPDATE public.emergency_requests
-            SET responder_id = v_driver_id,
-                responder_name = v_driver_name,
-                ambulance_id = v_amb_id,
-                status = 'accepted'
-            WHERE id = NEW.id;
-
-            UPDATE public.ambulances SET status = 'on_trip' WHERE id = v_amb_id;
-        END IF;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER on_emergency_start_dispatch
-AFTER INSERT OR UPDATE ON public.emergency_requests
-FOR EACH ROW EXECUTE PROCEDURE public.auto_assign_driver();
 
 -- C. Standard Timestamps & Display IDs
 CREATE TRIGGER handle_amb_updated_at BEFORE UPDATE ON public.ambulances FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
@@ -138,32 +89,5 @@ CREATE TRIGGER stamp_amb_display_id BEFORE INSERT ON public.ambulances FOR EACH 
 CREATE TRIGGER stamp_req_display_id BEFORE INSERT ON public.emergency_requests FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
 CREATE TRIGGER stamp_visit_display_id BEFORE INSERT ON public.visits FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
 
--- D. Update Resource Availability
-CREATE OR REPLACE FUNCTION public.update_resource_availability()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Handle Ambulance Status
-    IF (NEW.ambulance_id IS NOT NULL) THEN
-        IF (NEW.status IN ('accepted', 'arrived', 'in_progress')) THEN
-            UPDATE public.ambulances SET status = 'on_trip' WHERE id = NEW.ambulance_id;
-        ELSIF (NEW.status IN ('completed', 'cancelled', 'payment_declined')) THEN
-            UPDATE public.ambulances SET status = 'available' WHERE id = NEW.ambulance_id;
-        END IF;
-    END IF;
+-- triggers moved to 20260219000900_automations.sql
 
-    -- Handle Bed Availability
-    IF (NEW.service_type = 'bed') THEN
-        IF (NEW.status = 'in_progress' AND OLD.status != 'in_progress') THEN
-            UPDATE public.hospitals SET available_beds = GREATEST(0, available_beds - 1) WHERE id = NEW.hospital_id;
-        ELSIF (NEW.status IN ('completed', 'cancelled') AND OLD.status NOT IN ('completed', 'cancelled')) THEN
-            UPDATE public.hospitals SET available_beds = available_beds + 1 WHERE id = NEW.hospital_id;
-        END IF;
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER on_emergency_status_resource_sync
-AFTER UPDATE ON public.emergency_requests
-FOR EACH ROW EXECUTE PROCEDURE public.update_resource_availability();
