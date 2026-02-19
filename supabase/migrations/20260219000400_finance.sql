@@ -78,7 +78,30 @@ CREATE TABLE IF NOT EXISTS public.insurance_policies (
     status TEXT DEFAULT 'active',
     is_default BOOLEAN DEFAULT false,
     verified BOOLEAN DEFAULT false,
+    coverage_percentage INTEGER DEFAULT 80,
+    coverage_details JSONB DEFAULT '{}',
+    linked_payment_method TEXT,
+    starts_at TIMESTAMPTZ DEFAULT NOW(),
     expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 5. Insurance Billing (B2B: Hospital → Insurance)
+CREATE TABLE IF NOT EXISTS public.insurance_billing (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    emergency_request_id UUID REFERENCES public.emergency_requests(id) ON DELETE SET NULL,
+    hospital_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    insurance_policy_id UUID REFERENCES public.insurance_policies(id) ON DELETE SET NULL,
+    total_amount NUMERIC(10,2) NOT NULL,
+    insurance_amount NUMERIC(10,2) NOT NULL,
+    user_amount NUMERIC(10,2) NOT NULL,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'paid', 'rejected')),
+    billing_date DATE,
+    paid_date DATE,
+    coverage_percentage INTEGER,
+    claim_number TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -120,3 +143,14 @@ FOR EACH ROW EXECUTE PROCEDURE public.process_payment_distribution();
 -- Standard Updates
 CREATE TRIGGER handle_pay_updated_at BEFORE UPDATE ON public.payments FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_org_wallet_updated_at BEFORE UPDATE ON public.organization_wallets FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER handle_patient_wallet_updated_at BEFORE UPDATE ON public.patient_wallets FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER handle_payment_method_updated_at BEFORE UPDATE ON public.payment_methods FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER handle_insurance_updated_at BEFORE UPDATE ON public.insurance_policies FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER handle_insurance_billing_updated_at BEFORE UPDATE ON public.insurance_billing FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_insurance_user_id ON public.insurance_policies(user_id);
+CREATE INDEX IF NOT EXISTS idx_insurance_billing_request ON public.insurance_billing(emergency_request_id);
+CREATE INDEX IF NOT EXISTS idx_insurance_billing_hospital ON public.insurance_billing(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_insurance_billing_user ON public.insurance_billing(user_id);
+CREATE INDEX IF NOT EXISTS idx_insurance_billing_status ON public.insurance_billing(status);

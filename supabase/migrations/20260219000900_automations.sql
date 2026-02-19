@@ -139,3 +139,126 @@ DROP TRIGGER IF EXISTS on_emergency_status_resource_sync ON public.emergency_req
 CREATE TRIGGER on_emergency_status_resource_sync
 AFTER UPDATE ON public.emergency_requests
 FOR EACH ROW EXECUTE PROCEDURE public.update_resource_availability();
+
+-- 4. Auto-Assign Doctor on Emergency Acceptance (Recovered from Legacy)
+CREATE OR REPLACE FUNCTION public.auto_assign_doctor()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_doctor_id UUID;
+    v_specialty TEXT;
+BEGIN
+    IF NEW.status IN ('accepted', 'in_progress') AND OLD.status NOT IN ('accepted', 'in_progress') THEN
+        v_specialty := CASE NEW.service_type
+            WHEN 'ambulance' THEN 'Emergency Medicine'
+            WHEN 'bed' THEN 'Internal Medicine'
+            ELSE 'Emergency Medicine'
+        END;
+
+        SELECT d.id INTO v_doctor_id
+        FROM public.doctors d
+        LEFT JOIN public.emergency_doctor_assignments eda
+            ON d.id = eda.doctor_id AND eda.status NOT IN ('completed', 'cancelled')
+        WHERE d.hospital_id = NEW.hospital_id
+          AND d.specialization = v_specialty
+          AND d.is_available = true
+          AND d.current_patients < d.max_patients
+          AND eda.id IS NULL
+        ORDER BY d.current_patients ASC, d.created_at ASC
+        LIMIT 1;
+
+        IF v_doctor_id IS NOT NULL THEN
+            INSERT INTO public.emergency_doctor_assignments (emergency_request_id, doctor_id, status)
+            VALUES (NEW.id, v_doctor_id, 'assigned');
+
+            UPDATE public.doctors
+            SET current_patients = current_patients + 1, updated_at = NOW()
+            WHERE id = v_doctor_id;
+
+            UPDATE public.emergency_requests
+            SET assigned_doctor_id = v_doctor_id, doctor_assigned_at = NOW()
+            WHERE id = NEW.id;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_emergency_auto_assign_doctor ON public.emergency_requests;
+CREATE TRIGGER on_emergency_auto_assign_doctor
+AFTER UPDATE ON public.emergency_requests
+FOR EACH ROW EXECUTE PROCEDURE public.auto_assign_doctor();
+
+-- 5. Release Doctor on Emergency Completion/Cancellation (Recovered from Legacy)
+CREATE OR REPLACE FUNCTION public.release_doctor_assignment()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.status NOT IN ('completed', 'cancelled') AND NEW.status IN ('completed', 'cancelled') THEN
+        UPDATE public.emergency_doctor_assignments
+        SET status = CASE WHEN NEW.status = 'completed' THEN 'completed' ELSE 'cancelled' END,
+            updated_at = NOW()
+        WHERE emergency_request_id = NEW.id AND status = 'assigned';
+
+        UPDATE public.doctors
+        SET current_patients = GREATEST(0, current_patients - 1), updated_at = NOW()
+        WHERE id = (
+            SELECT doctor_id FROM public.emergency_doctor_assignments
+            WHERE emergency_request_id = NEW.id
+            ORDER BY assigned_at DESC LIMIT 1
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_emergency_release_doctor ON public.emergency_requests;
+CREATE TRIGGER on_emergency_release_doctor
+AFTER UPDATE ON public.emergency_requests
+FOR EACH ROW EXECUTE PROCEDURE public.release_doctor_assignment();
+
+-- 6. Auto-Create Insurance Billing on Completion (Recovered from Legacy)
+CREATE OR REPLACE FUNCTION public.create_insurance_billing_on_completion()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_policy RECORD;
+    v_total NUMERIC;
+    v_insurance_amount NUMERIC;
+    v_user_amount NUMERIC;
+BEGIN
+    IF OLD.status NOT IN ('completed') AND NEW.status = 'completed' THEN
+        SELECT * INTO v_policy
+        FROM public.insurance_policies
+        WHERE user_id = NEW.user_id AND is_default = true AND status = 'active'
+        LIMIT 1;
+
+        v_total := COALESCE(NEW.total_cost, CASE
+            WHEN NEW.service_type = 'ambulance' THEN 150.00
+            WHEN NEW.service_type = 'bed' THEN 200.00
+            ELSE 100.00
+        END);
+
+        IF v_policy.id IS NOT NULL THEN
+            v_insurance_amount := (v_total * COALESCE(v_policy.coverage_percentage, 80)) / 100;
+            v_user_amount := v_total - v_insurance_amount;
+        ELSE
+            v_insurance_amount := 0;
+            v_user_amount := v_total;
+        END IF;
+
+        INSERT INTO public.insurance_billing (
+            emergency_request_id, hospital_id, user_id, insurance_policy_id,
+            total_amount, insurance_amount, user_amount,
+            coverage_percentage, billing_date, status
+        ) VALUES (
+            NEW.id, NEW.hospital_id, NEW.user_id, v_policy.id,
+            v_total, v_insurance_amount, v_user_amount,
+            COALESCE(v_policy.coverage_percentage, 0), CURRENT_DATE, 'pending'
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_emergency_create_billing ON public.emergency_requests;
+CREATE TRIGGER on_emergency_create_billing
+AFTER UPDATE ON public.emergency_requests
+FOR EACH ROW EXECUTE PROCEDURE public.create_insurance_billing_on_completion();

@@ -157,3 +157,8 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 CREATE TRIGGER stamp_profile_display_id
 BEFORE INSERT ON public.profiles
 FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
+
+-- Missing updated_at triggers for identity tables
+CREATE TRIGGER handle_prefs_updated_at BEFORE UPDATE ON public.preferences FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER handle_med_profile_updated_at BEFORE UPDATE ON public.medical_profiles FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER handle_subscriber_updated_at BEFORE UPDATE ON public.subscribers FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();

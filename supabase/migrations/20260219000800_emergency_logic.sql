@@ -242,3 +242,207 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- 🏯 Module 10: Legacy Logistics Logic
+-- Reintroducing critical driver & bed management RPCs
+
+-- 1. Bed Management
+CREATE OR REPLACE FUNCTION public.discharge_patient(request_uuid TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+    UPDATE public.emergency_requests
+    SET status = 'discharged', updated_at = NOW()
+    WHERE id = request_uuid::UUID AND service_type = 'bed';
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.cancel_bed_reservation(request_uuid TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+    UPDATE public.emergency_requests
+    SET status = 'cancelled', updated_at = NOW()
+    WHERE id = request_uuid::UUID AND service_type = 'bed';
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 2. Driver Management
+CREATE OR REPLACE FUNCTION public.complete_trip(request_uuid TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+    UPDATE public.emergency_requests
+    SET status = 'completed', updated_at = NOW()
+    WHERE id = request_uuid::UUID;
+    -- Note: Amb status trigger separates concerns
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.cancel_trip(request_uuid TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+    UPDATE public.emergency_requests
+    SET status = 'cancelled', updated_at = NOW()
+    WHERE id = request_uuid::UUID;
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Availability Management
+CREATE OR REPLACE FUNCTION public.update_hospital_availability(
+    hospital_id UUID,
+    beds_available INTEGER,
+    er_wait_time INTEGER,
+    status TEXT,
+    ambulance_count INTEGER
+) RETURNS BOOLEAN AS $$
+BEGIN
+    UPDATE public.hospitals
+    SET 
+        available_beds = beds_available,
+        emergency_wait_time_minutes = er_wait_time,
+        wait_time = er_wait_time || ' mins',
+        status = status, -- 'available', 'busy', 'full'
+        ambulances_count = ambulance_count,
+        updated_at = NOW()
+    WHERE id = hospital_id;
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- 🏯 Module 11: Pricing System
+-- Standardized pricing for services and rooms
+
+-- 1. Service Pricing Table
+CREATE TABLE IF NOT EXISTS public.service_pricing (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    hospital_id UUID REFERENCES public.hospitals(id) ON DELETE CASCADE,
+    service_type TEXT NOT NULL,
+    service_name TEXT NOT NULL,
+    base_price NUMERIC NOT NULL DEFAULT 0,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(hospital_id, service_type)
+);
+
+-- 2. Room Pricing Table
+CREATE TABLE IF NOT EXISTS public.room_pricing (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    hospital_id UUID REFERENCES public.hospitals(id) ON DELETE CASCADE,
+    room_type TEXT NOT NULL,
+    room_name TEXT NOT NULL,
+    price_per_night NUMERIC NOT NULL DEFAULT 0,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(hospital_id, room_type)
+);
+
+-- 3. RLS
+ALTER TABLE public.service_pricing ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.room_pricing ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public view active service pricing" ON public.service_pricing FOR SELECT USING (true);
+CREATE POLICY "Public view active room pricing" ON public.room_pricing FOR SELECT USING (true);
+
+-- Allow Org Admins to manage own hospital pricing
+CREATE POLICY "Org Admins manage pricing" ON public.service_pricing FOR ALL
+USING (
+    hospital_id IN (SELECT id FROM public.hospitals WHERE organization_id = public.p_get_current_org_id())
+    OR public.p_is_admin()
+);
+
+CREATE POLICY "Org Admins manage room pricing" ON public.room_pricing FOR ALL
+USING (
+    hospital_id IN (SELECT id FROM public.hospitals WHERE organization_id = public.p_get_current_org_id())
+    OR public.p_is_admin()
+);
+
+-- 4. RPCs
+CREATE OR REPLACE FUNCTION public.upsert_service_pricing(payload JSONB)
+RETURNS JSONB AS $$
+DECLARE
+    v_hospital_id UUID;
+    v_service_type TEXT;
+    v_base_price NUMERIC;
+BEGIN
+    v_hospital_id := (payload->>'hospital_id')::UUID;
+    v_service_type := payload->>'service_type';
+    v_base_price := (payload->>'base_price')::NUMERIC;
+    
+    INSERT INTO public.service_pricing (hospital_id, service_type, service_name, base_price, description)
+    VALUES (
+        v_hospital_id,
+        v_service_type,
+        payload->>'service_name',
+        v_base_price,
+        payload->>'description'
+    )
+    ON CONFLICT (hospital_id, service_type)
+    DO UPDATE SET
+        service_name = EXCLUDED.service_name,
+        base_price = EXCLUDED.base_price,
+        description = EXCLUDED.description,
+        updated_at = NOW();
+        
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.upsert_room_pricing(payload JSONB)
+RETURNS JSONB AS $$
+DECLARE
+    v_hospital_id UUID;
+    v_room_type TEXT;
+    v_price NUMERIC;
+BEGIN
+    v_hospital_id := (payload->>'hospital_id')::UUID;
+    v_room_type := payload->>'room_type';
+    v_price := (payload->>'price_per_night')::NUMERIC;
+    
+    INSERT INTO public.room_pricing (hospital_id, room_type, room_name, price_per_night, description)
+    VALUES (
+        v_hospital_id,
+        v_room_type,
+        payload->>'room_name',
+        v_price,
+        payload->>'description'
+    )
+    ON CONFLICT (hospital_id, room_type)
+    DO UPDATE SET
+        room_name = EXCLUDED.room_name,
+        price_per_night = EXCLUDED.price_per_night,
+        description = EXCLUDED.description,
+        updated_at = NOW();
+        
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.delete_service_pricing(target_id UUID)
+RETURNS JSONB AS $$
+BEGIN
+    DELETE FROM public.service_pricing WHERE id = target_id;
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.delete_room_pricing(target_id UUID)
+RETURNS JSONB AS $$
+BEGIN
+    DELETE FROM public.room_pricing WHERE id = target_id;
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Missing updated_at triggers for pricing tables
+CREATE TRIGGER handle_service_pricing_updated_at BEFORE UPDATE ON public.service_pricing FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER handle_room_pricing_updated_at BEFORE UPDATE ON public.room_pricing FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+-- Pricing Indexes
+CREATE INDEX IF NOT EXISTS idx_service_pricing_type ON public.service_pricing(service_type);
+CREATE INDEX IF NOT EXISTS idx_service_pricing_hospital ON public.service_pricing(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_room_pricing_type ON public.room_pricing(room_type);
+CREATE INDEX IF NOT EXISTS idx_room_pricing_hospital ON public.room_pricing(hospital_id);

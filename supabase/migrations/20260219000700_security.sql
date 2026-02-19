@@ -161,3 +161,110 @@ CREATE POLICY "Public read for support faqs" ON public.support_faqs FOR SELECT U
 -- 9. ANALYTICS
 CREATE POLICY "Users see own activity" ON public.user_activity FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users manage own search history" ON public.search_history FOR ALL USING (auth.uid() = user_id);
+
+-- 10. MISSING RLS ENABLES
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ivisit_main_wallet ENABLE ROW LEVEL SECURITY;
+
+-- 11. MISSING POLICIES
+
+-- Subscribers: allow public insert (newsletter sign-up), admin reads all
+CREATE POLICY "Public can subscribe" ON public.subscribers FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins read subscribers" ON public.subscribers FOR SELECT USING (public.p_is_admin());
+
+-- Doctors: public read, org admins manage their own
+CREATE POLICY "Public read doctors" ON public.doctors FOR SELECT USING (true);
+CREATE POLICY "Org Admins manage doctors" ON public.doctors FOR ALL
+USING (
+    hospital_id IN (SELECT id FROM public.hospitals WHERE organization_id = public.p_get_current_org_id())
+    OR public.p_is_admin()
+);
+
+-- Wallet Ledger: admins + org admins see relevant entries
+CREATE POLICY "Admins see all ledger" ON public.wallet_ledger FOR SELECT USING (public.p_is_admin());
+
+-- Support Tickets: users manage own, admins see all
+CREATE POLICY "Users manage own tickets" ON public.support_tickets FOR ALL
+USING (auth.uid() = user_id OR public.p_is_admin());
+
+-- Documents: public reads public tier, admins read all
+CREATE POLICY "Public read public documents" ON public.documents FOR SELECT
+USING (tier = 'public' OR public.p_is_admin());
+
+-- Admin Audit Log: admins only
+CREATE POLICY "Admins read audit log" ON public.admin_audit_log FOR SELECT USING (public.p_is_admin());
+
+-- Search Events: any authenticated user can insert, admins read
+CREATE POLICY "Authenticated users insert search events" ON public.search_events FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins read search events" ON public.search_events FOR SELECT USING (public.p_is_admin());
+
+-- Trending Topics: public read
+CREATE POLICY "Public read trending topics" ON public.trending_topics FOR SELECT USING (true);
+CREATE POLICY "Admins manage trending topics" ON public.trending_topics FOR ALL USING (public.p_is_admin());
+
+-- User Roles: users see own, admins see all
+CREATE POLICY "Users see own roles" ON public.user_roles FOR SELECT
+USING (auth.uid() = user_id OR public.p_is_admin());
+
+-- User Sessions: users see own
+CREATE POLICY "Users see own sessions" ON public.user_sessions FOR ALL
+USING (auth.uid() = user_id);
+
+-- iVisit Main Wallet: platform admins only
+CREATE POLICY "Admins manage main wallet" ON public.ivisit_main_wallet FOR ALL USING (public.p_is_admin());
+
+-- User Activity: admins can also insert (for RPC logging)
+CREATE POLICY "Users insert own activity" ON public.user_activity FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Admins read all activity" ON public.user_activity FOR SELECT USING (public.p_is_admin());
+
+-- 12. NEW TABLES: DOCTOR SCHEDULES, ASSIGNMENTS, INSURANCE BILLING
+
+ALTER TABLE public.doctor_schedules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_doctor_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.insurance_billing ENABLE ROW LEVEL SECURITY;
+
+-- Doctor Schedules: public read, org admins manage
+CREATE POLICY "Public read doctor schedules" ON public.doctor_schedules FOR SELECT USING (true);
+CREATE POLICY "Org Admins manage doctor schedules" ON public.doctor_schedules FOR ALL
+USING (
+    doctor_id IN (
+        SELECT d.id FROM public.doctors d
+        JOIN public.hospitals h ON d.hospital_id = h.id
+        WHERE h.organization_id = public.p_get_current_org_id()
+    )
+    OR public.p_is_admin()
+);
+
+-- Emergency Doctor Assignments: users see own, org admins see org
+CREATE POLICY "Users see own doctor assignments" ON public.emergency_doctor_assignments FOR SELECT
+USING (
+    emergency_request_id IN (
+        SELECT id FROM public.emergency_requests WHERE user_id = auth.uid()
+    )
+    OR public.p_is_admin()
+);
+
+CREATE POLICY "Org Admins manage doctor assignments" ON public.emergency_doctor_assignments FOR ALL
+USING (
+    doctor_id IN (
+        SELECT d.id FROM public.doctors d
+        JOIN public.hospitals h ON d.hospital_id = h.id
+        WHERE h.organization_id = public.p_get_current_org_id()
+    )
+    OR public.p_is_admin()
+);
+
+-- Insurance Billing: users see own, org admins see hospital, admins manage all
+CREATE POLICY "Users see own billing" ON public.insurance_billing FOR SELECT
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Org Admins see hospital billing" ON public.insurance_billing FOR SELECT
+USING (
+    hospital_id IN (
+        SELECT id FROM public.hospitals WHERE organization_id = public.p_get_current_org_id()
+    )
+);
+
+CREATE POLICY "Admins manage all billing" ON public.insurance_billing FOR ALL
+USING (public.p_is_admin());

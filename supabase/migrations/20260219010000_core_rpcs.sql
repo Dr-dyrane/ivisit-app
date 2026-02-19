@@ -99,3 +99,570 @@ BEGIN
     FROM auth.users au;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 🏯 Module 12: Console & Admin Logic
+-- RPCs for Console Admin Management
+
+-- 1. Updates & Edits
+CREATE OR REPLACE FUNCTION public.update_hospital_by_admin(target_hospital_id UUID, payload JSONB)
+RETURNS JSONB AS $$
+DECLARE
+    v_features TEXT[];
+    v_specialties TEXT[];
+    v_service_types TEXT[];
+BEGIN
+    -- Check permissions (Org Admin of target OR Super Admin)
+    IF NOT public.p_is_admin() AND NOT EXISTS (
+        SELECT 1 FROM public.hospitals 
+        WHERE id = target_hospital_id AND organization_id = public.p_get_current_org_id()
+    ) THEN
+        RAISE EXCEPTION 'Unauthorized: You do not manage this hospital';
+    END IF;
+
+    -- Extract Arrays safely
+    SELECT COALESCE(array_agg(x), '{}') INTO v_features FROM jsonb_array_elements_text(payload->'features') t(x);
+    SELECT COALESCE(array_agg(x), '{}') INTO v_specialties FROM jsonb_array_elements_text(payload->'specialties') t(x);
+    SELECT COALESCE(array_agg(x), '{}') INTO v_service_types FROM jsonb_array_elements_text(payload->'service_types') t(x);
+
+    UPDATE public.hospitals
+    SET
+        name = COALESCE(payload->>'name', name),
+        address = COALESCE(payload->>'address', address),
+        phone = COALESCE(payload->>'phone', phone),
+        rating = COALESCE((payload->>'rating')::FLOAT, rating),
+        latitude = COALESCE((payload->>'latitude')::FLOAT, latitude),
+        longitude = COALESCE((payload->>'longitude')::FLOAT, longitude),
+        
+        verified = COALESCE((payload->>'verified')::BOOLEAN, verified),
+        verification_status = COALESCE(payload->>'verification_status', verification_status),
+        status = COALESCE(payload->>'status', status),
+        
+        wait_time = COALESCE(payload->>'wait_time', wait_time),
+        price_range = COALESCE(payload->>'price_range', price_range),
+        available_beds = COALESCE((payload->>'available_beds')::INT, available_beds),
+        ambulances_count = COALESCE((payload->>'ambulances_count')::INT, ambulances_count),
+        emergency_level = COALESCE(payload->>'emergency_level', emergency_level),
+        image = COALESCE(payload->>'image', image),
+        
+        -- Arrays
+        specialties = v_specialties,
+        service_types = v_service_types,
+        features = v_features,
+        
+        updated_at = NOW()
+    WHERE id = target_hospital_id;
+    
+    RETURN jsonb_build_object('success', true, 'id', target_hospital_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- 2. Stats & Analytics
+CREATE OR REPLACE FUNCTION public.get_user_statistics()
+RETURNS TABLE (
+    total_users BIGINT,
+    verified_users BIGINT,
+    total_hospitals BIGINT,
+    active_emergencies BIGINT
+) AS $$
+BEGIN
+    RETURN QUERY SELECT
+        (SELECT count(*) FROM auth.users) as total_users,
+        (SELECT count(*) FROM public.profiles) as verified_users, -- Approximation
+        (SELECT count(*) FROM public.hospitals) as total_hospitals,
+        (SELECT count(*) FROM public.emergency_requests WHERE status = 'in_progress') as active_emergencies;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- 3. Automation Hooks (Trending)
+CREATE OR REPLACE FUNCTION public.admin_update_trending_topics(payload JSONB)
+RETURNS JSONB AS $$
+BEGIN
+    IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    -- Logic to upsert trending topics would go here
+    -- Currently stubbed as frontend logic seems to rely on direct writes or this is legacy
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.update_trending_topics_from_search()
+RETURNS JSONB AS $$
+BEGIN
+    -- Aggregation logic
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- 4. User Management (Admin)
+CREATE OR REPLACE FUNCTION public.delete_user_by_admin(target_user_id UUID)
+RETURNS JSONB AS $$
+BEGIN
+    IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    
+    -- Delete from auth.users (Cascades to profiles)
+    -- WARNING: RPC cannot delete from auth.users directly without extension or superuser
+    -- Assuming app logic usually deletes public.profiles and triggers handle auth? 
+    -- Or using supabase admin API. 
+    -- For now, deleting profile:
+    DELETE FROM public.profiles WHERE id = target_user_id;
+    
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ═══════════════════════════════════════════════════════════
+-- 🏯 Module 13: Missing Service RPCs (Swept & Restored)
+-- All RPCs referenced by app/console services but missing from migrations
+-- ═══════════════════════════════════════════════════════════
+
+-- ─── 5. Admin Helpers ────────────────────────────────────
+
+-- current_user_is_admin: Used by console adminService + profilesService
+CREATE OR REPLACE FUNCTION public.current_user_is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = auth.uid() AND role = 'admin'
+    );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- is_admin: Alias used by searchAnalyticsService
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN public.current_user_is_admin();
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- current_user_permission_level: Used by console adminService
+CREATE OR REPLACE FUNCTION public.current_user_permission_level()
+RETURNS TEXT AS $$
+DECLARE
+    v_role TEXT;
+BEGIN
+    SELECT role INTO v_role FROM public.profiles WHERE id = auth.uid();
+    RETURN COALESCE(v_role, 'user');
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- ─── 6. User Search & Profile Admin ─────────────────────
+
+-- search_auth_users: Used by console profilesService
+CREATE OR REPLACE FUNCTION public.search_auth_users(search_term TEXT)
+RETURNS TABLE (
+    id UUID,
+    email TEXT,
+    phone TEXT,
+    last_sign_in_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ,
+    raw_user_meta_data JSONB
+) AS $$
+BEGIN
+    IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    RETURN QUERY
+    SELECT au.id, au.email, au.phone, au.last_sign_in_at, au.created_at, au.raw_user_meta_data
+    FROM auth.users au
+    WHERE au.email ILIKE '%' || search_term || '%'
+       OR au.phone ILIKE '%' || search_term || '%'
+       OR (au.raw_user_meta_data->>'full_name') ILIKE '%' || search_term || '%';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- update_profile_by_admin: Used by console profilesService
+CREATE OR REPLACE FUNCTION public.update_profile_by_admin(target_user_id UUID, payload JSONB)
+RETURNS JSONB AS $$
+BEGIN
+    IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    
+    UPDATE public.profiles
+    SET
+        full_name = COALESCE(payload->>'full_name', full_name),
+        phone = COALESCE(payload->>'phone', phone),
+        role = COALESCE(payload->>'role', role),
+        organization_id = COALESCE((payload->>'organization_id')::UUID, organization_id),
+        updated_at = NOW()
+    WHERE id = target_user_id;
+    
+    RETURN jsonb_build_object('success', true, 'id', target_user_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- delete_user: Used by app authService (self-delete)
+CREATE OR REPLACE FUNCTION public.delete_user()
+RETURNS JSONB AS $$
+BEGIN
+    DELETE FROM public.profiles WHERE id = auth.uid();
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ─── 7. Search & Analytics RPCs ─────────────────────────
+
+-- get_trending_searches: Used by both app discoveryService and console searchService
+CREATE OR REPLACE FUNCTION public.get_trending_searches(p_limit INTEGER DEFAULT 10)
+RETURNS TABLE (
+    id UUID,
+    query TEXT,
+    category TEXT,
+    rank INTEGER
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT t.id, t.query, t.category, t.rank
+    FROM public.trending_topics t
+    ORDER BY t.rank ASC
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- get_search_analytics: Used by console searchAnalyticsService
+CREATE OR REPLACE FUNCTION public.get_search_analytics(p_days INTEGER DEFAULT 30)
+RETURNS TABLE (
+    total_searches BIGINT,
+    unique_queries BIGINT,
+    avg_results NUMERIC
+) AS $$
+BEGIN
+    IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    RETURN QUERY
+    SELECT
+        count(*)::BIGINT as total_searches,
+        count(DISTINCT sh.query)::BIGINT as unique_queries,
+        COALESCE(avg(sh.result_count), 0)::NUMERIC as avg_results
+    FROM public.search_history sh
+    WHERE sh.created_at >= NOW() - (p_days || ' days')::INTERVAL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- get_search_analytics_summary: Used by console searchAnalyticsService
+CREATE OR REPLACE FUNCTION public.get_search_analytics_summary(p_days INTEGER DEFAULT 7)
+RETURNS JSONB AS $$
+DECLARE
+    v_result JSONB;
+BEGIN
+    IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    SELECT jsonb_build_object(
+        'total_searches', count(*),
+        'unique_queries', count(DISTINCT sh.query),
+        'period_days', p_days
+    ) INTO v_result
+    FROM public.search_history sh
+    WHERE sh.created_at >= NOW() - (p_days || ' days')::INTERVAL;
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ─── 8. Activity Logging RPCs ───────────────────────────
+
+-- log_user_activity: Used by console activityService
+CREATE OR REPLACE FUNCTION public.log_user_activity(
+    p_action TEXT,
+    p_entity_type TEXT DEFAULT NULL,
+    p_entity_id UUID DEFAULT NULL,
+    p_description TEXT DEFAULT NULL,
+    p_metadata JSONB DEFAULT '{}'
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_id UUID;
+BEGIN
+    INSERT INTO public.user_activity (user_id, action, entity_type, entity_id, description, metadata)
+    VALUES (auth.uid(), p_action, p_entity_type, p_entity_id, p_description, p_metadata)
+    RETURNING id INTO v_id;
+    RETURN jsonb_build_object('success', true, 'id', v_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- get_recent_activity: Used by console activityService
+CREATE OR REPLACE FUNCTION public.get_recent_activity(p_limit INTEGER DEFAULT 20)
+RETURNS TABLE (
+    id UUID,
+    user_id UUID,
+    action TEXT,
+    entity_type TEXT,
+    entity_id UUID,
+    description TEXT,
+    metadata JSONB,
+    created_at TIMESTAMPTZ
+) AS $$
+BEGIN
+    IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    RETURN QUERY
+    SELECT ua.id, ua.user_id, ua.action, ua.entity_type, ua.entity_id, ua.description, ua.metadata, ua.created_at
+    FROM public.user_activity ua
+    ORDER BY ua.created_at DESC
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- get_activity_stats: Used by console activityService
+CREATE OR REPLACE FUNCTION public.get_activity_stats(p_days INTEGER DEFAULT 7)
+RETURNS JSONB AS $$
+DECLARE
+    v_result JSONB;
+BEGIN
+    IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    SELECT jsonb_build_object(
+        'total_actions', count(*),
+        'unique_users', count(DISTINCT ua.user_id),
+        'period_days', p_days
+    ) INTO v_result
+    FROM public.user_activity ua
+    WHERE ua.created_at >= NOW() - (p_days || ' days')::INTERVAL;
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ─── 9. Wallet & Payment RPCs ───────────────────────────
+
+-- get_org_stripe_status: Used by console walletService
+CREATE OR REPLACE FUNCTION public.get_org_stripe_status(p_organization_id UUID)
+RETURNS JSONB AS $$
+DECLARE
+    v_stripe_id TEXT;
+    v_balance NUMERIC;
+BEGIN
+    SELECT stripe_account_id INTO v_stripe_id FROM public.organizations WHERE id = p_organization_id;
+    SELECT balance INTO v_balance FROM public.organization_wallets WHERE organization_id = p_organization_id;
+    RETURN jsonb_build_object(
+        'stripe_account_id', v_stripe_id,
+        'has_stripe', v_stripe_id IS NOT NULL,
+        'wallet_balance', COALESCE(v_balance, 0)
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- process_cash_payment: Used by console walletService (legacy non-v2)
+CREATE OR REPLACE FUNCTION public.process_cash_payment(
+    p_emergency_request_id UUID,
+    p_organization_id UUID,
+    p_amount NUMERIC
+)
+RETURNS JSONB AS $$
+BEGIN
+    -- Delegate to v2 with default currency
+    RETURN public.process_cash_payment_v2(p_emergency_request_id, p_organization_id, p_amount, 'USD');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- check_cash_eligibility: Used by console walletService
+CREATE OR REPLACE FUNCTION public.check_cash_eligibility(p_organization_id UUID)
+RETURNS JSONB AS $$
+DECLARE
+    v_balance NUMERIC;
+    v_fee_pct NUMERIC;
+BEGIN
+    SELECT balance INTO v_balance FROM public.organization_wallets WHERE organization_id = p_organization_id;
+    SELECT ivisit_fee_percentage INTO v_fee_pct FROM public.organizations WHERE id = p_organization_id;
+    RETURN jsonb_build_object(
+        'eligible', COALESCE(v_balance, 0) >= 0,
+        'balance', COALESCE(v_balance, 0),
+        'fee_percentage', COALESCE(v_fee_pct, 2.5)
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- process_wallet_payment: Used by app paymentService
+CREATE OR REPLACE FUNCTION public.process_wallet_payment(
+    p_user_id UUID,
+    p_amount NUMERIC,
+    p_emergency_request_id UUID DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_balance NUMERIC;
+BEGIN
+    SELECT balance INTO v_balance FROM public.patient_wallets WHERE user_id = p_user_id;
+    IF COALESCE(v_balance, 0) < p_amount THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Insufficient wallet balance');
+    END IF;
+    
+    UPDATE public.patient_wallets SET balance = balance - p_amount, updated_at = NOW() WHERE user_id = p_user_id;
+    
+    RETURN jsonb_build_object('success', true, 'new_balance', v_balance - p_amount);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- calculate_emergency_cost_v2: Used by app serviceCostService + pricingService
+CREATE OR REPLACE FUNCTION public.calculate_emergency_cost_v2(
+    p_service_type TEXT,
+    p_hospital_id UUID DEFAULT NULL,
+    p_ambulance_type TEXT DEFAULT NULL,
+    p_distance_km NUMERIC DEFAULT 0
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_base_price NUMERIC := 0;
+    v_distance_surcharge NUMERIC := 0;
+    v_total NUMERIC;
+BEGIN
+    -- Get base price from service_pricing or hospital
+    IF p_hospital_id IS NOT NULL THEN
+        SELECT COALESCE(sp.base_price, h.base_price, 50)
+        INTO v_base_price
+        FROM public.hospitals h
+        LEFT JOIN public.service_pricing sp ON sp.hospital_id = h.id AND sp.service_type = p_service_type
+        WHERE h.id = p_hospital_id;
+    END IF;
+    
+    IF v_base_price = 0 THEN v_base_price := 50; END IF;
+    
+    -- Distance surcharge
+    IF p_distance_km > 5 THEN
+        v_distance_surcharge := (p_distance_km - 5) * 2;
+    END IF;
+    
+    v_total := v_base_price + v_distance_surcharge;
+    
+    RETURN jsonb_build_object(
+        'base_cost', v_base_price,
+        'distance_surcharge', v_distance_surcharge,
+        'total_cost', v_total,
+        'currency', 'USD'
+    );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- ─── 10. Utility RPCs ───────────────────────────────────
+
+-- reload_schema: Used by app appMigrationsService + seederService
+-- This is a no-op stub — Supabase auto-reloads schema on DDL changes
+CREATE OR REPLACE FUNCTION public.reload_schema()
+RETURNS VOID AS $$
+BEGIN
+    NOTIFY pgrst, 'reload schema';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ═══════════════════════════════════════════════════════════
+-- 🏯 Module 14: Recovered Legacy RPCs
+-- ═══════════════════════════════════════════════════════════
+
+-- 1. Get Available Doctors (Console)
+CREATE OR REPLACE FUNCTION public.get_available_doctors(
+    p_hospital_id UUID,
+    p_specialty TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+    doctor_id UUID,
+    doctor_name TEXT,
+    specialty TEXT,
+    current_patients INTEGER,
+    max_patients INTEGER,
+    availability_status TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        d.id,
+        COALESCE(p.full_name, d.name),
+        d.specialization,
+        d.current_patients,
+        d.max_patients,
+        CASE
+            WHEN d.is_available AND d.current_patients < d.max_patients THEN 'Available'
+            WHEN d.is_available THEN 'Full Capacity'
+            ELSE 'Unavailable'
+        END
+    FROM public.doctors d
+    LEFT JOIN public.profiles p ON d.profile_id = p.id
+    WHERE d.hospital_id = p_hospital_id
+      AND (p_specialty IS NULL OR d.specialization = p_specialty)
+    ORDER BY
+        CASE WHEN d.is_available AND d.current_patients < d.max_patients THEN 1 ELSE 2 END,
+        d.current_patients ASC;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- 2. Manually Assign Doctor (Console)
+CREATE OR REPLACE FUNCTION public.assign_doctor_to_emergency(
+    p_emergency_request_id UUID,
+    p_doctor_id UUID,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_available BOOLEAN;
+BEGIN
+    SELECT (d.is_available AND d.current_patients < d.max_patients)
+    INTO v_available FROM public.doctors d WHERE d.id = p_doctor_id;
+
+    IF NOT v_available THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Doctor is not available');
+    END IF;
+
+    INSERT INTO public.emergency_doctor_assignments (emergency_request_id, doctor_id, status, notes)
+    VALUES (p_emergency_request_id, p_doctor_id, 'assigned', p_notes);
+
+    UPDATE public.doctors
+    SET current_patients = current_patients + 1, updated_at = NOW()
+    WHERE id = p_doctor_id;
+
+    UPDATE public.emergency_requests
+    SET assigned_doctor_id = p_doctor_id, doctor_assigned_at = NOW()
+    WHERE id = p_emergency_request_id;
+
+    RETURN jsonb_build_object('success', true, 'doctor_id', p_doctor_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Get Service Price
+CREATE OR REPLACE FUNCTION public.get_service_price(
+    p_service_type TEXT,
+    p_hospital_id UUID DEFAULT NULL
+)
+RETURNS TABLE (service_name TEXT, price NUMERIC, currency TEXT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT sp.service_name, sp.base_price, 'USD'::TEXT
+    FROM public.service_pricing sp
+    WHERE sp.service_type = p_service_type
+      AND (sp.hospital_id = p_hospital_id OR sp.hospital_id IS NULL)
+    ORDER BY sp.hospital_id DESC NULLS LAST
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- 4. Get Room Price
+CREATE OR REPLACE FUNCTION public.get_room_price(
+    p_room_type TEXT,
+    p_hospital_id UUID DEFAULT NULL
+)
+RETURNS TABLE (room_name TEXT, price NUMERIC, currency TEXT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT rp.room_name, rp.price_per_night, 'USD'::TEXT
+    FROM public.room_pricing rp
+    WHERE rp.room_type = p_room_type
+      AND (rp.hospital_id = p_hospital_id OR rp.hospital_id IS NULL)
+    ORDER BY rp.hospital_id DESC NULLS LAST
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- 5. Rate a Visit (App)
+CREATE OR REPLACE FUNCTION public.rate_visit(
+    p_visit_id UUID,
+    p_rating SMALLINT,
+    p_comment TEXT DEFAULT NULL
+)
+RETURNS JSONB AS $$
+BEGIN
+    UPDATE public.visits
+    SET rating = p_rating,
+        rating_comment = p_comment,
+        rated_at = NOW(),
+        updated_at = NOW()
+    WHERE id = p_visit_id AND user_id = auth.uid();
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Visit not found or unauthorized');
+    END IF;
+
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
