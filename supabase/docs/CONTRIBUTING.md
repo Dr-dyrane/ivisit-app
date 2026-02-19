@@ -4,27 +4,38 @@ To maintain a clean, resilient, and performant database, all developers must adh
 
 ---
 
-## 1. The Living Baseline (One File Policy)
-We do **not** create a trail of tiny migration files. We maintain a single, canonical schema file.
+## 1. The Living Blueprint (The 12 Core Pillars)
+We do **not** tolerate migration bloating (hundreds of tiny files). We maintain a modular set of 12 (currently 11) core migration files that represent the system's architecture.
 
-- **Current Baseline**: `supabase/migrations/20260218060000_consolidated_schema.sql`
-- **Correction over Proliferation**: If you need to fix a typo, add a column, or update a trigger, modify the **Baseline file** directly.
-- **Milestones**: New migration files are only permitted for major infrastructure shifts (e.g., v2.0), subject to Senior Review.
+- **Current Architecture**: 
+  - `0000_infra` (Extensions, Enums)
+  - `0001_identity` (Profiles, RBAC)
+  - `0002_org_structure` (Orgs, Hospitals, Doctors)
+  - `0003_logistics` (Visits, Fleet)
+  - `0004_finance` (Wallets, Ledger)
+  - `0005_ops_content` (Support, News)
+  - `0006_analytics` (History, Trends)
+  - `0007_security` (RLS Policies)
+  - `0008_emergency_logic` (Dispatches)
+  - `0009_automations` (Triggers)
+  - `0100_core_rpcs` (API Functions)
+- **Correction over Proliferation**: If you need to fix logic, add a column, or update a trigger, modify the **relevant Pillar file** directly.
+- **New Tables**: Only create a new migration file when adding a new feature/table that **literally does not fit** into any of the existing 12 categories.
 
 ## 2. Absolute UUID Compliance
 The "UUID = TEXT" era is over. 
 - All Primary Keys and Foreign Keys **must** use the `UUID` type.
-- Human-readable IDs (e.g., `AMB-123456`) must live in separate `display_id` or `request_id` columns of type `TEXT`.
-- **Never** perform implicit casts in your SQL functions. Use explicit types.
+- Human-readable IDs (e.g., `AMB-123456`) are **Display IDs** and must live in separate `display_id` columns.
+- **Never** perform implicit casts in your SQL/RPC functions. Use explicit Types.
 
-## 3. The "Staged Evolution" Workflow (Floating Fixes)
-To maintain the **Golden Master** schema while solving complex production bugs (like RLS recursion), follow the "Floating Fix" pattern:
+## 3. The "Staged Evolution" Workflow
+To maintain a clean schema while shipping fast, follow this cycle:
 
-- **Phase 1: Diagnosis**: Use inspection tools (e.g., `inspect_profile_policies()`) to see the actual live state on remote. 
-- **Phase 2: Floating Fixes**: Create standalone migration files (e.g., `20260218110000_kill_recursion.sql`). **DO NOT** fold into the baseline immediately.
-- **Phase 3: Verification**: Create a test script in `docs/archive/test-scripts/` and run it against remote.
-- **Phase 4: Documentation**: Record results in `docs/archive/task-verifications/`.
-- **Phase 5: Consolidation**: Once 3-4 floating fixes are confirmed stable over time, fold them into the **Golden Master** (`20260218060000`) and heal the migration history.
+1. **Fix In-Place**: Identify the pillar file relevant to your change.
+2. **Apply Local**: Apply the fix SQL directly to your local database or the core file.
+3. **Verify with Test Scripts**: Use scripts in `docs/archive/test-scripts/` to confirm the logic works (RLS, Triggers, etc.).
+4. **Confirm UI**: Verify the change resolves the frontend issue (e.g., no more UUID syntax errors).
+5. **Commit SQL Codes**: Once confirmed, the SQL code is permanently added/updated in the main Pillar migration file.
 
 ## 4. The "Nuclear De-Recursion" Standard
 When fixing RLS Infinite Recursion:

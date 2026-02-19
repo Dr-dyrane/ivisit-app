@@ -12,10 +12,10 @@ This directory contains the Source of Truth for the application's schema, migrat
 ## 🔄 Core Workflows
 *Detailed steps in [CONTRIBUTING.md](docs/CONTRIBUTING.md).*
 
-1. **Diagnose**: Run `docs/archive/test-scripts/run-inspection.js` to see remote state.
-2. **Fix & Verify**: Apply floating migrations and verify with `docs/archive/test-scripts/`.
-3. **Consolidate**: Once verified, fold into `migrations/20260218060000_consolidated_schema.sql`.
-4. **Sync**: `node scripts/sync_to_console.js`.
+1. **Diagnose**: Run `docs/archive/test-scripts/run-inspection.js` to see the live state.
+2. **Fix & Verify**: Apply fixes directly to the relevant **Migration Pillar** file and verify with `docs/archive/test-scripts/`.
+3. **Commit**: Once the UI is confirmed, permanently update the main migration files (No migration bloating!).
+4. **Sync**: Run `node scripts/sync_to_console.js` to align both workspaces.
 
 ## 🛠️ Commands
 - `docs/archive/test-scripts/run-inspection.js` : Check live RLS policies.

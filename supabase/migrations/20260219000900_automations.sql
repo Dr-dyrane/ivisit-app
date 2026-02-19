@@ -61,8 +61,11 @@ CREATE OR REPLACE FUNCTION public.sync_emergency_to_visit()
 RETURNS TRIGGER AS $$
 BEGIN
     IF (NEW.status = 'completed') AND (OLD.status != 'completed') THEN
-        INSERT INTO public.visits (user_id, hospital_id, request_id, hospital_name, specialty, type, status, cost)
-        VALUES (NEW.user_id, NEW.hospital_id, NEW.id, NEW.hospital_name, NEW.specialty, NEW.service_type, 'completed', NEW.total_cost::TEXT);
+        UPDATE public.visits 
+        SET status = 'completed',
+            cost = NEW.total_cost::TEXT,
+            updated_at = NOW()
+        WHERE request_id = NEW.id;
     END IF;
     RETURN NEW;
 END;

@@ -74,3 +74,12 @@ export async function getProfileDisplayId(userId) {
  * Universal getDisplayId (Alias for getProfileDisplayId to match app usage)
  */
 export const getDisplayId = getProfileDisplayId;
+
+/**
+ * Check if a string is a valid UUID (Backwards compatibility with Direct IDs)
+ */
+export function isValidUUID(id) {
+    if (!id || typeof id !== 'string') return false;
+    const pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return pattern.test(id);
+}

@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS public.payments (
     organization_id UUID REFERENCES public.organizations(id),
     amount NUMERIC NOT NULL,
     currency TEXT DEFAULT 'USD',
+    payment_method TEXT, -- 'cash', 'card', 'wallet'
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded', 'declined')),
     stripe_payment_intent_id TEXT UNIQUE,
     ivisit_fee_amount NUMERIC DEFAULT 0.00,

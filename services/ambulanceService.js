@@ -5,22 +5,22 @@ const TABLE = "ambulances";
 const mapFromDb = (row) => {
     // Safely handle location which might be GeoJSON object, string, or null
     let location = null;
-    
+
     try {
         if (row.location && typeof row.location === 'object' && row.location.coordinates) {
-             location = {
+            location = {
                 latitude: row.location.coordinates[1],
                 longitude: row.location.coordinates[0]
             };
         } else if (row.location && typeof row.location === 'string') {
-             // Try to parse if it's a string JSON (fallback)
-             const parsed = JSON.parse(row.location);
-             if (parsed && parsed.coordinates) {
-                 location = {
+            // Try to parse if it's a string JSON (fallback)
+            const parsed = JSON.parse(row.location);
+            if (parsed && parsed.coordinates) {
+                location = {
                     latitude: parsed.coordinates[1],
                     longitude: parsed.coordinates[0]
                 };
-             }
+            }
         }
     } catch (e) {
         console.warn('Failed to parse ambulance location:', e);
@@ -44,6 +44,8 @@ const mapFromDb = (row) => {
     };
 };
 
+import { isValidUUID, resolveEntityId } from "./displayIdService";
+
 export const ambulanceService = {
     async list() {
         const { data, error } = await supabase
@@ -59,13 +61,26 @@ export const ambulanceService = {
     },
 
     async getById(id) {
-        const { data, error } = await supabase
-            .from(TABLE)
-            .select('*')
-            .eq('id', id)
-            .single();
+        try {
+            if (!id) return null;
 
-        if (error) return null;
-        return mapFromDb(data);
+            // Resolve Display ID (AMB-XXXXXX) to UUID if necessary
+            const resolvedId = await resolveEntityId(id);
+            if (!resolvedId || !isValidUUID(resolvedId)) {
+                return null;
+            }
+
+            const { data, error } = await supabase
+                .from(TABLE)
+                .select('*')
+                .eq('id', resolvedId)
+                .single();
+
+            if (error) return null;
+            return mapFromDb(data);
+        } catch (error) {
+            console.error(`[ambulanceService] Error fetching ambulance ${id}:`, error);
+            return null;
+        }
     },
 };

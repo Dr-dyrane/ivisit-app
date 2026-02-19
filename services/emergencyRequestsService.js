@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 import { notificationDispatcher } from "./notificationDispatcher";
 import { calculateEmergencyCost, checkInsuranceCoverage } from "./pricingService";
 import { v4 as uuidv4 } from "uuid";
+import { isValidUUID } from "./displayIdService";
 
 export const EmergencyRequestStatus = {
     PENDING_APPROVAL: "pending_approval",
@@ -38,7 +39,7 @@ export const emergencyRequestsService = {
                 const rows = Array.isArray(data) ? data : [];
                 const requests = rows.map((r) => ({
                     id: r.id,
-                    requestId: r.request_id,
+                    requestId: r.display_id,
                     serviceType: r.service_type,
                     hospitalId: r.hospital_id,
                     hospitalName: r.hospital_name,
@@ -85,7 +86,7 @@ export const emergencyRequestsService = {
 
         // Prepare common fields
         const commonFields = {
-            request_id: displayId,
+            display_id: displayId,
             service_type: request?.serviceType ?? null,
             hospital_id: request?.hospitalId ?? null,
             hospital_name: request?.hospitalName ?? null,
@@ -174,7 +175,7 @@ export const emergencyRequestsService = {
         const nextUpdatedAt = new Date().toISOString();
 
         // Detect if this is a real UUID or a display ID (e.g., AMB-449811)
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId);
+        const isUUID = isValidUUID(requestId);
 
         if (user) {
             const dbUpdates = { updated_at: nextUpdatedAt };
@@ -210,12 +211,12 @@ export const emergencyRequestsService = {
                 if (data && data.length > 0) return { id: requestId, ...updates, updatedAt: nextUpdatedAt };
             }
 
-            // Fallback: try by request_id (display ID column, TEXT type)
-            console.log(`[emergencyRequestsService] Trying update by request_id: ${requestId}`);
+            // Fallback: try by display_id (TEXT type)
+            console.log(`[emergencyRequestsService] Trying update by display_id: ${requestId}`);
             const { error: error2, data: data2 } = await supabase
                 .from('emergency_requests')
                 .update(dbUpdates)
-                .eq('request_id', requestId)
+                .eq('display_id', requestId)
                 .eq('user_id', user.id)
                 .select();
 

@@ -1,14 +1,15 @@
 import { supabase } from "./supabase";
 import { database, StorageKeys } from "../database";
+import { isValidUUID } from "./displayIdService";
 
 const DEFAULT_PREFERENCES = {
-	demoModeEnabled: true,
-	notificationsEnabled: true,
-	notificationSoundsEnabled: true,
-	appointmentReminders: true,
-	emergencyUpdates: true,
-	privacyShareMedicalProfile: false,
-	privacyShareEmergencyContacts: false,
+    demoModeEnabled: true,
+    notificationsEnabled: true,
+    notificationSoundsEnabled: true,
+    appointmentReminders: true,
+    emergencyUpdates: true,
+    privacyShareMedicalProfile: false,
+    privacyShareEmergencyContacts: false,
 };
 
 const mapFromDb = (row) => ({
@@ -34,13 +35,12 @@ const mapToDb = (prefs) => {
 };
 
 export const preferencesService = {
-	async getPreferences() {
+    async getPreferences() {
         const { data: { user } } = await supabase.auth.getUser();
-        
-        // Fallback to local default if no user (e.g. before login)
-        if (!user) return { ...DEFAULT_PREFERENCES };
 
-		const { data, error } = await supabase
+        if (!user || !isValidUUID(user.id)) return { ...DEFAULT_PREFERENCES };
+
+        const { data, error } = await supabase
             .from('preferences')
             .select('*')
             .eq('user_id', user.id)
@@ -52,17 +52,17 @@ export const preferencesService = {
             return { ...DEFAULT_PREFERENCES };
         }
 
-		return { ...DEFAULT_PREFERENCES, ...mapFromDb(data) };
-	},
+        return { ...DEFAULT_PREFERENCES, ...mapFromDb(data) };
+    },
 
-	async updatePreferences(updates) {
+    async updatePreferences(updates) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not logged in");
 
         const dbUpdates = mapToDb(updates);
         dbUpdates.updated_at = new Date().toISOString();
 
-		const { data, error } = await supabase
+        const { data, error } = await supabase
             .from('preferences')
             .update(dbUpdates)
             .eq('user_id', user.id)
@@ -70,38 +70,38 @@ export const preferencesService = {
             .single();
 
         if (error) {
-             // If update fails because row doesn't exist (e.g. user created before triggers), try upsert
-             if (error.code === 'PGRST116' || error.message.includes('not found')) {
-                 const { data: upsertData, error: upsertError } = await supabase
+            // If update fails because row doesn't exist (e.g. user created before triggers), try upsert
+            if (error.code === 'PGRST116' || error.message.includes('not found')) {
+                const { data: upsertData, error: upsertError } = await supabase
                     .from('preferences')
                     .upsert({ user_id: user.id, ...dbUpdates })
                     .select()
                     .single();
-                 
-                 if (upsertError) throw upsertError;
-                 return { ...DEFAULT_PREFERENCES, ...mapFromDb(upsertData) };
-             }
-             throw error;
+
+                if (upsertError) throw upsertError;
+                return { ...DEFAULT_PREFERENCES, ...mapFromDb(upsertData) };
+            }
+            throw error;
         }
 
-		return { ...DEFAULT_PREFERENCES, ...mapFromDb(data) };
-	},
+        return { ...DEFAULT_PREFERENCES, ...mapFromDb(data) };
+    },
 
-	async resetPreferences() {
-         const { data: { user } } = await supabase.auth.getUser();
-         if (!user) return { ...DEFAULT_PREFERENCES };
+    async resetPreferences() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { ...DEFAULT_PREFERENCES };
 
-         const defaults = mapToDb(DEFAULT_PREFERENCES);
-         defaults.updated_at = new Date().toISOString();
+        const defaults = mapToDb(DEFAULT_PREFERENCES);
+        defaults.updated_at = new Date().toISOString();
 
-		const { data, error } = await supabase
+        const { data, error } = await supabase
             .from('preferences')
             .update(defaults)
             .eq('user_id', user.id)
             .select()
             .single();
-            
+
         if (error) throw error;
-		return { ...DEFAULT_PREFERENCES, ...mapFromDb(data) };
-	},
+        return { ...DEFAULT_PREFERENCES, ...mapFromDb(data) };
+    },
 };

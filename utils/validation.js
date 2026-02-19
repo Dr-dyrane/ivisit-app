@@ -51,3 +51,14 @@ export const isValidPhone = (phone) => {
     const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
     return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
 };
+
+/**
+ * Validates if a string is a valid UUID
+ * @param {string} id 
+ * @returns {boolean}
+ */
+export const isValidUUID = (id) => {
+    if (!id || typeof id !== 'string') return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+};

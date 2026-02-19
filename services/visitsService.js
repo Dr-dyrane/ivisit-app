@@ -3,11 +3,9 @@ import { normalizeVisit } from "../utils/domainNormalize";
 import { notificationsService } from "./notificationsService";
 import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY } from "../constants/notifications";
 import { notificationDispatcher } from "./notificationDispatcher";
+import { isValidUUID } from "./displayIdService";
 
 const TABLE = "visits";
-
-// UUID detection: prevents PostgreSQL cast errors when display IDs (AMB-xxx) are passed
-const isValidUUID = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
 
 // Helper: build the correct .eq() filter based on ID type
 const eqById = (query, id) => {
@@ -15,9 +13,9 @@ const eqById = (query, id) => {
     if (isValidUUID(strId)) {
         return query.eq('id', strId);
     }
-    // Display ID: use request_id column (TEXT type)
-    console.log(`[visitsService] Using request_id column for non-UUID: ${strId}`);
-    return query.eq('request_id', strId);
+    // Display ID: use display_id column (TEXT type)
+    console.log(`[visitsService] Using display_id column for non-UUID: ${strId}`);
+    return query.eq('display_id', strId);
 };
 
 let supportsExtendedEmergencyColumns = null;
@@ -98,6 +96,7 @@ const mapFromDb = (row) => ({
     insuranceCovered: row.insurance_covered,
     nextVisit: row.next_visit,
     meetingLink: row.meeting_link,
+    displayId: row.display_id,
     lifecycleState: row.lifecycle_state,
     lifecycleUpdatedAt: row.lifecycle_updated_at,
     rating: row.rating,

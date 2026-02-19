@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { isValidUUID, resolveEntityId } from "./displayIdService";
 
 /**
  * Service to handle hospital data operations
@@ -162,17 +163,25 @@ export const hospitalsService = {
 	 */
 	async getById(id) {
 		try {
+			if (!id) return null;
+
+			// Resolve Display ID (HSP-XXXXXX) to UUID if necessary
+			const resolvedId = await resolveEntityId(id);
+			if (!resolvedId || !isValidUUID(resolvedId)) {
+				return null;
+			}
+
 			const { data, error } = await supabase
 				.from("hospitals")
 				.select("*")
-				.eq("id", id)
+				.eq("id", resolvedId)
 				.single();
 
 			if (error) throw error;
 			return this._mapHospital(data);
 		} catch (err) {
-			console.error("hospitalsService.getById error:", err);
-			throw err;
+			console.error(`hospitalsService.getById error for ${id}:`, err);
+			return null;
 		}
 	},
 

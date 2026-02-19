@@ -8,6 +8,7 @@
  */
 
 import { supabase } from "./supabase";
+import { isValidUUID, resolveEntityId } from "./displayIdService";
 import { database, StorageKeys } from "../database";
 import * as Linking from 'expo-linking';
 import { notificationDispatcher } from "./notificationDispatcher";
@@ -270,36 +271,49 @@ const authService = {
      * Helper to get profile from 'profiles' table
      */
     async getUserProfile(userId) {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
+        try {
+            if (!userId) return {};
 
-        if (error) {
-            console.warn("Could not fetch user profile:", error);
+            // Resolve Display ID (USR-XXXXXX) to UUID if necessary
+            const resolvedId = await resolveEntityId(userId);
+            if (!resolvedId || !isValidUUID(resolvedId)) {
+                return {};
+            }
+
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', resolvedId)
+                .single();
+
+            if (error) {
+                console.warn(`[authService] Could not fetch profile for ${userId}:`, error);
+                return {};
+            }
+
+            // Normalize snake_case to camelCase for the app
+            return {
+                username: data.username,
+                firstName: data.first_name,
+                lastName: data.last_name,
+                fullName: data.full_name,
+                phone: data.phone,
+                imageUri: data.image_uri,
+                address: data.address,
+                gender: data.gender,
+                dateOfBirth: data.date_of_birth,
+                role: data.role || 'patient', // Default to patient
+                organizationId: data.organization_id,
+                assignedAmbulanceId: data.assigned_ambulance_id,
+                providerType: data.provider_type,
+                bvnVerified: data.bvn_verified,
+                createdAt: data.created_at,
+                updatedAt: data.updated_at
+            };
+        } catch (error) {
+            console.error(`[authService] getUserProfile error for ${userId}:`, error);
             return {};
         }
-
-        // Normalize snake_case to camelCase for the app
-        return {
-            username: data.username,
-            firstName: data.first_name,
-            lastName: data.last_name,
-            fullName: data.full_name,
-            phone: data.phone,
-            imageUri: data.image_uri,
-            address: data.address,
-            gender: data.gender,
-            dateOfBirth: data.date_of_birth,
-            role: data.role || 'patient', // Default to patient
-            organizationId: data.organization_id,
-            assignedAmbulanceId: data.assigned_ambulance_id,
-            providerType: data.provider_type,
-            bvnVerified: data.bvn_verified,
-            createdAt: data.created_at,
-            updatedAt: data.updated_at
-        };
     },
 
     /**
