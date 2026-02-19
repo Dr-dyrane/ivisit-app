@@ -43,25 +43,25 @@ node supabase/tests/scripts/test_runner.js [task_name]
 ```
 
 ### **Step 3: Error Detection & Logging**
-- JavaScript test runner detects errors automatically
+- JavaScript test runner (`scripts/test_runner.js`) detects errors automatically
 - Errors categorized as Critical/Warning/Info
 - Detailed error logs written to `validation/error_log.json`
 
 ### **Step 4: Fix Generation**
 - Mini SQL fixes generated automatically for common errors
-- Targeted fixes stored in `fixes/error_fixes.sql`
+- Targeted fixes stored in `fixes/`
 - Fixes designed to be idempotent and safe
 
 ### **Step 5: Fix Application**
 ```bash
-# Apply fixes from error_fixes.sql
+# Apply fixes from the fixes/ directory
 # (Manual execution or automated via test runner)
 ```
 
 ### **Step 6: Migration Integration**
-- Update core migration pillars with successful fixes
+- Update core migration pillars (`migrations/*.sql`) with successful fixes
 - Remove redundant fix migrations
-- Sync changes to console
+- Sync changes to console via `scripts/sync_to_console.js`
 
 ### **Step 7: Final Validation**
 - Run comprehensive test suite again
@@ -77,32 +77,12 @@ node supabase/tests/scripts/test_runner.js [task_name]
 - **Emergency system operational**
 - **Display ID mapping working**
 
-### **Required Test Results**
-```
-✅ Passed: 19
-❌ Failed: 0
-📊 Success Rate: 100.0%
-```
-
-### **Module Validation**
-- ✅ Infrastructure (Extensions, Utilities) - Deployed
-- ✅ Identity (Profiles, Preferences, Medical) - Deployed
-- ✅ Organizations (Hospitals, Doctors) - Deployed
-- ✅ Logistics (Ambulances, Emergency Requests) - Deployed
-- ✅ Financials (Wallets, Payments, Insurance) - Deployed
-- ✅ Operations (Notifications, Support, CMS) - Deployed
-- ✅ Analytics (Activity, Search, Audit) - Deployed
-- ✅ Security (RLS Policies, Access Control) - Deployed
-- ✅ Emergency Logic (Atomic Operations) - Deployed
-- ✅ Automations (Cross-Table Hooks) - Deployed
-- ✅ Core RPC Functions (Location Services) - Deployed
-
 ## 🚀 Running Tests
 
 ### **Comprehensive Test Suite**
 ```bash
 # Run full system validation
-node supabase/tests/test_comprehensive_system.js
+node supabase/tests/scripts/test_runner.js comprehensive_system
 ```
 
 ### **Migration Status Check**

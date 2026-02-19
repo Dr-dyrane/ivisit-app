@@ -37,7 +37,21 @@ if (fs.existsSync(path.join(appSupabaseDir, 'README.md'))) {
 // Sync docs/ subfolder
 const appDocsDir = path.join(appSupabaseDir, 'docs');
 const consoleDocsDir = path.join(consoleSupabaseDir, 'docs');
+
 if (fs.existsSync(appDocsDir)) {
+    console.log('  Pruning Console Docs Root (Syncing Archive Hierarchy)...');
+
+    // Safety: Prune only files in the root of console/supabase/docs 
+    // to reconcile files that moved to archive/
+    if (fs.existsSync(consoleDocsDir)) {
+        const consoleDocFiles = fs.readdirSync(consoleDocsDir)
+            .filter(f => f.endsWith('.md') && !fs.statSync(path.join(consoleDocsDir, f)).isDirectory());
+
+        consoleDocFiles.forEach(file => {
+            fs.unlinkSync(path.join(consoleDocsDir, file));
+        });
+    }
+
     console.log('  Syncing docs/ subfolder...');
     fs.cpSync(appDocsDir, consoleDocsDir, { recursive: true });
 }
@@ -65,6 +79,8 @@ activeAppFiles.forEach(file => {
     console.log(`  Copying ${file}...`);
     fs.copyFileSync(path.join(appMigrationsDir, file), path.join(consoleMigrationsDir, file));
 });
+
+// NOTE: supabase/functions/ are NOT synced to preserve independence.
 
 // 3. Sync Types
 console.log('Syncing Types...');
