@@ -64,8 +64,8 @@ serve(async (req) => {
             }
             isPlatformAction = true
         } else {
-            // ID Resolution: Check if beautified ID (e.g. ORG-000001)
-            if (/^(IVP|PRV|ORG|AMB|ADM|DSP)-\d{3,6}$/i.test(organization_id)) {
+            // ID Resolution: Check if beautified ID (e.g. ORG-XXXXXX)
+            if (/^(USR|HSP|AMB|REQ|VIST|ORG|DOC)-[A-F0-9]{3,6}$/i.test(organization_id)) {
                 console.log(`Resolving beautified ID: ${organization_id}`)
                 const { data: uuid, error: resolveError } = await supabaseAdmin.rpc('get_entity_id', {
                     p_display_id: organization_id.toUpperCase()
@@ -135,7 +135,7 @@ serve(async (req) => {
                 amount: amount,
                 currency: currency,
                 status: 'pending',
-                transaction_id: paymentIntent.id,
+                stripe_payment_intent_id: paymentIntent.id,
             })
 
         if (paymentRecordError) {

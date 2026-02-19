@@ -43,7 +43,7 @@ serve(async (req) => {
 
     if (organization_id) {
       // ID Resolution: Check if beautified ID
-      if (/^(IVP|PRV|ORG|AMB|ADM|DSP)-\d{3,6}$/i.test(organization_id)) {
+      if (/^(USR|HSP|AMB|REQ|VIST|ORG|DOC)-[A-F0-9]{3,6}$/i.test(organization_id)) {
         const { data: uuid, error: resolveError } = await supabaseAdmin.rpc('get_entity_id', {
           p_display_id: organization_id.toUpperCase()
         });

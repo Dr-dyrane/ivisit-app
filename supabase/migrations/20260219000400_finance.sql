@@ -32,9 +32,11 @@ CREATE TABLE IF NOT EXISTS public.wallet_ledger (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     wallet_id UUID NOT NULL,
     amount NUMERIC NOT NULL,
-    transaction_type TEXT NOT NULL, -- 'credit', 'debit'
+    transaction_type TEXT NOT NULL, -- 'credit', 'debit', 'payout', 'adjustment'
     description TEXT,
-    reference_id UUID, -- Payment ID or Request ID
+    reference_id UUID, -- Internal ID (Payment ID or Request ID)
+    external_reference TEXT, -- External ID (Stripe Intent, Payout ID)
+    metadata JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -60,6 +62,8 @@ CREATE TABLE IF NOT EXISTS public.payments (
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded', 'declined')),
     stripe_payment_intent_id TEXT UNIQUE,
     ivisit_fee_amount NUMERIC DEFAULT 0.00,
+    provider_response JSONB DEFAULT '{}',
+    processed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

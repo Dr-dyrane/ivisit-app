@@ -132,17 +132,41 @@ RETURNS TRIGGER AS $$
 DECLARE
     v_prefix TEXT;
     v_display_id TEXT;
+    v_entity_type TEXT;
 BEGIN
-    -- Determine Prefix
-    v_prefix := CASE TG_TABLE_NAME
-        WHEN 'profiles' THEN 'USR'
-        WHEN 'hospitals' THEN 'HSP'
-        WHEN 'ambulances' THEN 'AMB'
-        WHEN 'emergency_requests' THEN 'REQ'
-        WHEN 'visits' THEN 'VIST'
-        WHEN 'organizations' THEN 'ORG'
-        ELSE 'ID'
-    END;
+    -- Determine Prefix & Canonical Entity Type
+    CASE TG_TABLE_NAME
+        WHEN 'profiles' THEN 
+            v_prefix := 'USR';
+            v_entity_type := CASE 
+                WHEN NEW.role = 'patient' THEN 'patient'
+                WHEN NEW.role IN ('provider', 'ambulance') THEN 'provider'
+                WHEN NEW.role = 'admin' THEN 'admin'
+                WHEN NEW.role = 'dispatcher' THEN 'dispatcher'
+                ELSE 'patient'
+            END;
+        WHEN 'hospitals' THEN 
+            v_prefix := 'HSP';
+            v_entity_type := 'hospital';
+        WHEN 'ambulances' THEN 
+            v_prefix := 'AMB';
+            v_entity_type := 'ambulance';
+        WHEN 'emergency_requests' THEN 
+            v_prefix := 'REQ';
+            v_entity_type := 'emergency_request';
+        WHEN 'visits' THEN 
+            v_prefix := 'VIST';
+            v_entity_type := 'visit';
+        WHEN 'organizations' THEN 
+            v_prefix := 'ORG';
+            v_entity_type := 'organization';
+        WHEN 'doctors' THEN 
+            v_prefix := 'DOC';
+            v_entity_type := 'doctor';
+        ELSE 
+            v_prefix := 'ID';
+            v_entity_type := TG_TABLE_NAME;
+    END CASE;
 
     -- Generate Display ID
     IF NEW.display_id IS NULL THEN
@@ -152,12 +176,18 @@ BEGIN
 
     -- Register Mapping
     INSERT INTO public.id_mappings (entity_id, display_id, entity_type)
-    VALUES (NEW.id, NEW.display_id, TG_TABLE_NAME)
+    VALUES (NEW.id, NEW.display_id, v_entity_type)
     ON CONFLICT (display_id) DO NOTHING;
 
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 🛠️ ID RESOLUTION RPC (Used by Edge Functions)
+CREATE OR REPLACE FUNCTION public.get_entity_id(p_display_id TEXT)
+RETURNS UUID AS $$
+    SELECT entity_id FROM public.id_mappings WHERE display_id = p_display_id LIMIT 1;
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
 
 CREATE TRIGGER stamp_profile_display_id
 BEFORE INSERT ON public.profiles

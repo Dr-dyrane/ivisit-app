@@ -55,7 +55,7 @@ serve(async (req) => {
                         processed_at: new Date().toISOString(),
                         provider_response: paymentIntent
                     })
-                    .eq('transaction_id', paymentIntent.id)
+                    .eq('stripe_payment_intent_id', paymentIntent.id)
 
                 if (updateError) {
                     console.error('Error updating payment status:', updateError)
@@ -84,10 +84,10 @@ serve(async (req) => {
                     .from('payments')
                     .update({
                         status: 'failed',
-                        failure_reason: paymentIntent.last_payment_error?.message || 'Unknown error',
+                        processed_at: new Date().toISOString(),
                         provider_response: paymentIntent
                     })
-                    .eq('transaction_id', paymentIntent.id)
+                    .eq('stripe_payment_intent_id', paymentIntent.id)
                 break
             }
 
@@ -142,14 +142,11 @@ serve(async (req) => {
                                 .eq('id', wallet.id)
 
                             await supabaseAdmin.from('wallet_ledger').insert({
-                                wallet_type: 'organization',
                                 wallet_id: wallet.id,
-                                organization_id: org.id,
                                 amount: -amount,
                                 transaction_type: 'payout',
                                 description: `Payout ${payout.id} to bank`,
-                                reference_id: payout.id,
-                                reference_type: 'payout',
+                                external_reference: payout.id,
                                 metadata: { stripe_payout: payout }
                             })
                         }
@@ -173,14 +170,11 @@ serve(async (req) => {
                             .eq('id', mainWallet.id)
 
                         await supabaseAdmin.from('wallet_ledger').insert({
-                            wallet_type: 'main',
                             wallet_id: mainWallet.id,
-                            organization_id: null,
                             amount: -amount,
                             transaction_type: 'payout',
                             description: `Platform Payout ${payout.id} to bank`,
-                            reference_id: payout.id,
-                            reference_type: 'payout',
+                            external_reference: payout.id,
                             metadata: { stripe_payout: payout }
                         })
                     }

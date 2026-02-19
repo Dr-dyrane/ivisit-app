@@ -334,8 +334,6 @@ export type Database = {
           completed_at: string | null
           confirmed_cost: number | null
           cost_breakdown: Json | null
-          created_at: string
-          destination_location: unknown
           display_id: string | null
           distance_surcharge: number | null
           estimated_arrival: string | null
@@ -362,6 +360,7 @@ export type Database = {
           status: string
           total_cost: number | null
           updated_at: string
+          urgency_surcharge: number | null
           user_id: string | null
         }
         Insert: {
@@ -1688,6 +1687,7 @@ export type Database = {
           address: string | null
           cost: string | null
           created_at: string
+          date: string | null
           display_id: string | null
           doctor: string | null
           doctor_image: string | null
@@ -1708,6 +1708,7 @@ export type Database = {
           rated_at: string | null
           rating: number | null
           rating_comment: string | null
+          request_id: string | null
           room_number: string | null
           specialty: string | null
           status: string | null
