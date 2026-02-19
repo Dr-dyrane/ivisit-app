@@ -1,12 +1,10 @@
-# 📜 Ground Zero: System Reference (v2.0)
+# 📜 iVisit System Reference
 
-This document contains the verified inventory of the standardized iVisit modular schema.
+Single source of truth for the iVisit schema, ID system, data flows, and critical RPCs.
 
 ---
 
-## 🏗️ 1. Core Migration Pillars (The 11 Modules)
-
-The system is organized into functional modules to prevent migration bloating and ensure architectural clarity.
+## 1. Core Migration Pillars (The 11 Modules)
 
 | File Pillar | Module Name | Primary Responsibility |
 |---|---|---|
@@ -24,7 +22,9 @@ The system is organized into functional modules to prevent migration bloating an
 
 ---
 
-## 🏗️ 2. Core Tables (UUID Native)
+## 2. Core Tables (UUID Native)
+
+Every table uses `UUID` for internal identity. No exceptions.
 
 | Table | Primary Key | Foreign Keys | Display ID Prefix |
 |---|---|---|---|
@@ -39,39 +39,74 @@ The system is organized into functional modules to prevent migration bloating an
 
 ---
 
-## ⚡ 3. Automation (Master Triggers)
+## 3. Fluid Display ID System
+
+Users see clean alphanumeric IDs (e.g., `REQ-887213`). Internally, everything is UUID.
+
+- **Storage**: `display_id` column lives directly on each table. No mapping table.
+- **Generation**: `stamp_entity_display_id()` trigger fires `BEFORE INSERT`, generating a 6-char hex suffix with a module prefix.
+- **Resolution**: `get_entity_id(display_id)` RPC resolves any display ID to its UUID by checking the prefix and querying the correct table.
+- **Prefixes**: `USR-`, `ORG-`, `HSP-`, `DOC-`, `AMB-`, `REQ-`, `VIST-`, `PAY-`, `NTF-`
+
+---
+
+## 4. Master Triggers
 
 ### `stamp_entity_display_id()`
-- **Type**: `BEFORE INSERT`
-- **Tables**: All core entities.
-- **Logic**: Generates a 6-character alphanumeric suffix with a module-specific prefix. This is stored directly in the `display_id` column of the table.
+- **Type**: `BEFORE INSERT` on all core entities
+- **Logic**: Generates display ID, stamps it on the row. No external writes.
 
 ### `handle_updated_at()`
 - **Type**: `BEFORE UPDATE`
-- **Logic**: Automatically refreshes the `updated_at` timestamp.
+- **Logic**: Refreshes `updated_at` timestamp.
 
 ### `initialize_new_user()`
 - **Type**: `AFTER INSERT` on `auth.users`
-- **Logic**: Automatically creates the Profile, Preferences, Medical Profile, and Patient Wallet.
+- **Logic**: Creates Profile, Preferences, Medical Profile, and Patient Wallet.
 
 ---
 
-## 🛠️ 4. Critical RPCs
+## 5. Emergency Data Flow
+
+### Phase A: Initiation
+1. Patient calls `create_emergency_v4` (atomic RPC).
+2. `stamp_entity_display_id` sets `REQ-XXXXXX` on the record.
+3. Visit entry created with `status = 'pending'`.
+4. Payment entry created (`pending` for cash, `completed` for card).
+
+### Phase B: Cash Financial Guard
+1. Request held at `pending_approval`.
+2. `org_admin` calls `approve_cash_payment`.
+3. Org Wallet adjusted → Request moves to `in_progress` → Visit moves to `active`.
+
+### Phase C: Logistics Coupling
+1. `auto_assign_driver` assigns ambulance.
+2. `ambulances.status` → `on_duty`, `emergency_requests.ambulance_id` → UUID.
+3. Realtime update dispatched to patient via Supabase Channels.
+
+### Phase D: Stripe (Card)
+1. Webhook: `payment_intent.succeeded`.
+2. Resolve `PAY-XXXXXX` → update `payments` → update `emergency_requests`.
+3. `process_payment_distribution` credits Platform and Org wallets, logs to `wallet_ledger`.
+
+---
+
+## 6. Critical RPCs
 
 | Function | Module | Purpose |
 |---|---|---|
-| `get_entity_id(display_id)` | Identity | Resolves human-readable ID to UUID. |
-| `create_emergency_v4(...)` | Emergency | Atomic creation of request + payment intent. |
-| `nearby_hospitals(lat, lng)`| Core RPCs | PostGIS-powered discovery. |
-| `log_user_activity(...)` | Analytics | Structured audit logging. |
+| `get_entity_id(display_id)` | Identity | Resolves human-readable ID to UUID |
+| `create_emergency_v4(...)` | Emergency | Atomic creation of request + payment intent |
+| `nearby_hospitals(lat, lng)` | Core RPCs | PostGIS-powered discovery |
+| `nearby_ambulances(lat, lng)` | Core RPCs | PostGIS-powered ambulance lookup |
+| `log_user_activity(...)` | Analytics | Structured audit logging |
 
 ---
 
-## 📋 5. Documentation Hub
-- **[CONTRIBUTING.md](CONTRIBUTING.md)**: Staged Evolution Workflow.
-- **[ENGINEERING_PATTERNS.md](ENGINEERING_PATTERNS.md)**: Retry, Bulk, Streaming & Audit Patterns.
-- **[SERVICE_STANDARDS.md](SERVICE_STANDARDS.md)**: Cross-Codebase Service Contract.
-- **[TESTING.md](TESTING.md)**: Comprehensive Testing Guide.
+## 7. Documentation
+
+- **[CONTRIBUTING.md](CONTRIBUTING.md)**: Migration workflow, service patterns, scalability rules.
+- **[TESTING.md](TESTING.md)**: Comprehensive testing guide.
 
 ---
-**Strict Standard**: No tiny migration files. All fixes must be committed back to the relevant Pillar file.
+**Strict Standard**: No tiny migration files. All fixes committed to the relevant Pillar.
