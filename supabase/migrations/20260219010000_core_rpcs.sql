@@ -378,7 +378,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- get_recent_activity: Used by console activityService
-CREATE OR REPLACE FUNCTION public.get_recent_activity(p_limit INTEGER DEFAULT 20)
+CREATE OR REPLACE FUNCTION public.get_recent_activity(limit_count INTEGER DEFAULT 20, offset_count INTEGER DEFAULT 0)
 RETURNS TABLE (
     id UUID,
     user_id UUID,
@@ -395,12 +395,13 @@ BEGIN
     SELECT ua.id, ua.user_id, ua.action, ua.entity_type, ua.entity_id, ua.description, ua.metadata, ua.created_at
     FROM public.user_activity ua
     ORDER BY ua.created_at DESC
-    LIMIT p_limit;
+    LIMIT limit_count
+    OFFSET offset_count;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- get_activity_stats: Used by console activityService
-CREATE OR REPLACE FUNCTION public.get_activity_stats(p_days INTEGER DEFAULT 7)
+CREATE OR REPLACE FUNCTION public.get_activity_stats(days_back INTEGER DEFAULT 7)
 RETURNS JSONB AS $$
 DECLARE
     v_result JSONB;
@@ -409,10 +410,10 @@ BEGIN
     SELECT jsonb_build_object(
         'total_actions', count(*),
         'unique_users', count(DISTINCT ua.user_id),
-        'period_days', p_days
+        'period_days', days_back
     ) INTO v_result
     FROM public.user_activity ua
-    WHERE ua.created_at >= NOW() - (p_days || ' days')::INTERVAL;
+    WHERE ua.created_at >= NOW() - (days_back || ' days')::INTERVAL;
     RETURN v_result;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

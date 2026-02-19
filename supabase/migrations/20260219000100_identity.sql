@@ -82,6 +82,9 @@ CREATE TABLE IF NOT EXISTS public.subscribers (
     email TEXT NOT NULL UNIQUE,
     type TEXT DEFAULT 'free' CHECK (type IN ('free', 'paid')),
     status TEXT DEFAULT 'active',
+    new_user BOOLEAN DEFAULT true,
+    welcome_email_sent BOOLEAN DEFAULT false,
+    subscription_date TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
