@@ -1,7 +1,423 @@
 -- 🛰️ Module 08: Emergency Logic (Fluid Edition)
 -- Atomic operations for emergency lifecycles
 
--- 🛠️ ATOMIC: Create Emergency with Integrated Payment (Fluid v4)
+-- � AMBULANCE DISPATCH RPC FUNCTIONS
+-- Part of Master System Improvement Plan - Phase 1 Critical Emergency Flow Fixes
+
+-- 1. Get Available Ambulances
+CREATE OR REPLACE FUNCTION public.get_available_ambulances(
+    p_hospital_id UUID DEFAULT NULL,
+    p_radius_km INTEGER DEFAULT 50,
+    p_specialty TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+    id UUID,
+    call_sign TEXT,
+    status TEXT,
+    location JSONB,
+    hospital_id UUID,
+    crew TEXT,
+    vehicle_number TEXT,
+    rating NUMERIC,
+    last_maintenance TIMESTAMPTZ,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        a.id,
+        a.call_sign,
+        a.status,
+        a.location,
+        a.hospital_id,
+        a.crew,
+        a.vehicle_number,
+        a.rating,
+        a.last_maintenance,
+        a.created_at,
+        a.updated_at
+    FROM public.ambulances a
+    WHERE a.status = 'available'
+        AND (p_hospital_id IS NULL OR a.hospital_id = p_hospital_id)
+        AND (p_specialty IS NULL OR a.specialty = p_specialty)
+        AND a.location IS NOT NULL
+        AND ST_DWithin(
+            ST_GeomFromText(a.location),
+            ST_MakePoint(
+                CASE 
+                    WHEN h.coordinates IS NOT NULL 
+                    THEN ST_GeomFromText(h.coordinates)
+                    ELSE ST_MakePoint(0, 0)
+                END
+            ),
+            p_radius_km * 1000
+        );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- 2. Update Ambulance Status
+CREATE OR REPLACE FUNCTION public.update_ambulance_status(
+    p_ambulance_id UUID,
+    p_status TEXT,
+    p_location JSONB DEFAULT NULL,
+    p_eta TIMESTAMPTZ DEFAULT NULL,
+    p_current_call UUID DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_hospital_id UUID;
+    v_result JSONB;
+BEGIN
+    -- Validate status
+    IF p_status NOT IN ('available', 'dispatched', 'en_route', 'on_scene', 'returning', 'maintenance', 'offline') THEN
+        RETURN jsonb_build_object('error', 'Invalid status', 'code', 'INVALID_STATUS');
+    END IF;
+    
+    -- Get current hospital for validation
+    SELECT hospital_id INTO v_hospital_id 
+    FROM public.ambulances 
+    WHERE id = p_ambulance_id;
+    
+    -- Update ambulance
+    UPDATE public.ambulances 
+    SET 
+        status = p_status,
+        location = COALESCE(p_location, location),
+        eta = COALESCE(p_eta, eta),
+        current_call = COALESCE(p_current_call, current_call),
+        updated_at = NOW()
+    WHERE id = p_ambulance_id;
+    
+    -- If ambulance was dispatched, update hospital availability
+    IF p_status = 'dispatched' AND OLD.status = 'available' THEN
+        UPDATE public.hospitals 
+        SET available_ambulances = GREATEST(0, available_ambulances - 1)
+        WHERE id = v_hospital_id;
+    END IF;
+    
+    -- If ambulance returned to available, update hospital availability
+    IF p_status = 'available' AND OLD.status != 'available' THEN
+        UPDATE public.hospitals 
+        SET available_ambulances = available_ambulances + 1
+        WHERE id = v_hospital_id;
+    END IF;
+    
+    v_result := jsonb_build_object(
+        'success', true,
+        'ambulance_id', p_ambulance_id,
+        'status', p_status,
+        'updated_at', NOW()
+    );
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Assign Ambulance to Emergency
+CREATE OR REPLACE FUNCTION public.assign_ambulance_to_emergency(
+    p_emergency_request_id UUID,
+    p_ambulance_id UUID,
+    p_priority INTEGER DEFAULT 1
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_ambulance_status TEXT;
+    v_hospital_id UUID;
+    v_emergency_user_id UUID;
+    v_result JSONB;
+BEGIN
+    -- Get ambulance status
+    SELECT status, hospital_id INTO v_ambulance_status, v_hospital_id
+    FROM public.ambulances 
+    WHERE id = p_ambulance_id;
+    
+    -- Validate ambulance is available
+    IF v_ambulance_status != 'available' THEN
+        RETURN jsonb_build_object('error', 'Ambulance not available', 'code', 'AMBULANCE_UNAVAILABLE');
+    END IF;
+    
+    -- Get emergency user
+    SELECT user_id INTO v_emergency_user_id
+    FROM public.emergency_requests 
+    WHERE id = p_emergency_request_id;
+    
+    -- Update ambulance status to dispatched
+    UPDATE public.ambulances 
+    SET 
+        status = 'dispatched',
+        current_call = p_emergency_request_id,
+        updated_at = NOW()
+    WHERE id = p_ambulance_id;
+    
+    -- Update emergency request with ambulance assignment
+    UPDATE public.emergency_requests 
+    SET 
+        ambulance_id = p_ambulance_id,
+        status = 'accepted',
+        updated_at = NOW()
+    WHERE id = p_emergency_request_id;
+    
+    -- Update hospital availability
+    UPDATE public.hospitals 
+    SET available_ambulances = GREATEST(0, available_ambulances - 1)
+    WHERE id = v_hospital_id;
+    
+    v_result := jsonb_build_object(
+        'success', true,
+        'ambulance_id', p_ambulance_id,
+        'emergency_request_id', p_emergency_request_id,
+        'assigned_at', NOW()
+    );
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 4. Auto-Assign Best Ambulance
+CREATE OR REPLACE FUNCTION public.auto_assign_ambulance(
+    p_emergency_request_id UUID,
+    p_max_distance_km INTEGER DEFAULT 50,
+    p_specialty_required TEXT DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_user_id UUID;
+    v_user_location JSONB;
+    v_best_ambulance_id UUID;
+    v_best_distance NUMERIC;
+    v_result JSONB;
+BEGIN
+    -- Get emergency user and location
+    SELECT user_id INTO v_user_id
+    FROM public.emergency_requests 
+    WHERE id = p_emergency_request_id;
+    
+    -- Get user location from profile
+    SELECT location INTO v_user_location
+    FROM public.profiles 
+    WHERE id = v_user_id;
+    
+    -- Find best available ambulance
+    SELECT 
+        a.id, 
+        ST_Distance(
+            ST_GeomFromText(a.location),
+            ST_GeomFromText(v_user_location)
+        ) as distance
+    INTO v_best_ambulance_id, v_best_distance
+    FROM public.ambulances a
+    WHERE a.status = 'available'
+        AND (p_specialty_required IS NULL OR a.specialty = p_specialty_required)
+        AND a.location IS NOT NULL
+        AND ST_DWithin(
+            ST_GeomFromText(a.location),
+            ST_GeomFromText(v_user_location),
+            p_max_distance_km * 1000
+        )
+    ORDER BY distance
+    LIMIT 1;
+    
+    -- If ambulance found, assign it
+    IF v_best_ambulance_id IS NOT NULL THEN
+        -- Update ambulance status
+        UPDATE public.ambulances 
+        SET 
+            status = 'dispatched',
+            current_call = p_emergency_request_id,
+            updated_at = NOW()
+        WHERE id = v_best_ambulance_id;
+        
+        -- Update emergency request
+        UPDATE public.emergency_requests 
+        SET 
+            ambulance_id = v_best_ambulance_id,
+            status = 'accepted',
+            updated_at = NOW()
+        WHERE id = p_emergency_request_id;
+        
+        v_result := jsonb_build_object(
+            'success', true,
+            'ambulance_id', v_best_ambulance_id,
+            'distance', v_best_distance,
+            'auto_assigned', true
+        );
+    ELSE
+        v_result := jsonb_build_object(
+            'success', false,
+            'error', 'No available ambulances found',
+            'auto_assigned', false
+        );
+    END IF;
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5. Validate Emergency Request
+CREATE OR REPLACE FUNCTION public.validate_emergency_request(
+    p_user_id UUID,
+    p_request_data JSONB
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_hospital_id UUID;
+    v_patient_location JSONB;
+    v_hospital_available BOOLEAN;
+    v_result JSONB;
+BEGIN
+    -- Extract required fields
+    v_hospital_id := (p_request_data->>'hospital_id')::UUID;
+    v_patient_location := p_request_data->'patient_location';
+    
+    -- Validate hospital exists and is available
+    SELECT (available_beds > 0 AND status = 'active') INTO v_hospital_available
+    FROM public.hospitals 
+    WHERE id = v_hospital_id;
+    
+    IF NOT v_hospital_available THEN
+        RETURN jsonb_build_object(
+            'valid', false,
+            'error', 'Hospital not available',
+            'code', 'HOSPITAL_UNAVAILABLE'
+        );
+    END IF;
+    
+    -- Validate patient location
+    IF v_patient_location IS NULL OR 
+       v_patient_location->>'lat' IS NULL OR 
+       v_patient_location->>'lng' IS NULL THEN
+        RETURN jsonb_build_object(
+            'valid', false,
+            'error', 'Invalid patient location',
+            'code', 'INVALID_LOCATION'
+        );
+    END IF;
+    
+    -- Check for duplicate emergencies
+    IF EXISTS (
+        SELECT 1 FROM public.emergency_requests 
+        WHERE user_id = p_user_id 
+        AND status IN ('pending_approval', 'in_progress', 'accepted', 'arrived')
+        AND created_at > NOW() - INTERVAL '1 hour'
+    ) THEN
+        RETURN jsonb_build_object(
+            'valid', false,
+            'error', 'Duplicate emergency request',
+            'code', 'DUPLICATE_EMERGENCY'
+        );
+    END IF;
+    
+    v_result := jsonb_build_object(
+        'valid', true,
+        'hospital_id', v_hospital_id,
+        'patient_location', v_patient_location
+    );
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 6. Check Hospital Capacity
+CREATE OR REPLACE FUNCTION public.check_hospital_capacity(
+    p_hospital_id UUID,
+    p_required_beds INTEGER DEFAULT 1,
+    p_specialty TEXT DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_available_beds INTEGER;
+    v_icu_beds INTEGER;
+    v_total_beds INTEGER;
+    v_result JSONB;
+BEGIN
+    -- Get hospital capacity information
+    SELECT 
+        available_beds,
+        icu_beds_available,
+        total_beds
+    INTO v_available_beds, v_icu_beds, v_total_beds
+    FROM public.hospitals 
+    WHERE id = p_hospital_id;
+    
+    -- Check capacity
+    IF v_available_beds < p_required_beds THEN
+        v_result := jsonb_build_object(
+            'available', false,
+            'error', 'Insufficient bed capacity',
+            'available_beds', v_available_beds,
+            'required_beds', p_required_beds,
+            'code', 'INSUFFICIENT_CAPACITY'
+        );
+    ELSIF p_specialty = 'ICU' AND v_icu_beds < p_required_beds THEN
+        v_result := jsonb_build_object(
+            'available', false,
+            'error', 'Insufficient ICU capacity',
+            'icu_beds_available', v_icu_beds,
+            'required_beds', p_required_beds,
+            'code', 'INSUFFICIENT_ICU'
+        );
+    ELSE
+        v_result := jsonb_build_object(
+            'available', true,
+            'available_beds', v_available_beds,
+            'icu_beds_available', v_icu_beds,
+            'total_beds', v_total_beds
+        );
+    END IF;
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- 7. Calculate Emergency Priority
+CREATE OR REPLACE FUNCTION public.calculate_emergency_priority(
+    p_request_data JSONB,
+    p_user_medical_profile JSONB DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_priority INTEGER := 1; -- Default priority
+    v_urgency_score INTEGER := 0;
+    v_medical_urgency INTEGER := 0;
+    v_result JSONB;
+BEGIN
+    -- Calculate urgency based on request data
+    IF p_request_data->>'severity' = 'critical' THEN
+        v_urgency_score := v_urgency_score + 3;
+    ELSIF p_request_data->>'severity' = 'urgent' THEN
+        v_urgency_score := v_urgency_score + 2;
+    ELSIF p_request_data->>'severity' = 'moderate' THEN
+        v_urgency_score := v_urgency_score + 1;
+    END IF;
+    
+    -- Calculate medical urgency if profile available
+    IF p_user_medical_profile IS NOT NULL THEN
+        IF p_user_medical_profile->>'conditions' IS NOT NULL THEN
+            v_medical_urgency := v_medical_urgency + 1;
+        END IF;
+        
+        IF p_user_medical_profile->>'allergies' IS NOT NULL AND 
+           p_user_medical_profile->>'allergies' != '' THEN
+            v_medical_urgency := v_medical_urgency + 1;
+        END IF;
+    END IF;
+    
+    -- Calculate final priority (1-5 scale)
+    v_priority := LEAST(5, GREATEST(1, 1 + v_urgency_score + v_medical_urgency));
+    
+    v_result := jsonb_build_object(
+        'priority', v_priority,
+        'urgency_score', v_urgency_score,
+        'medical_urgency', v_medical_urgency,
+        'calculated_at', NOW()
+    );
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- �🛠️ ATOMIC: Create Emergency with Integrated Payment (Fluid v4)
 -- Matches emergencyRequestsService.js expectation for create_emergency_v4
 CREATE OR REPLACE FUNCTION public.create_emergency_v4(
     p_user_id UUID,

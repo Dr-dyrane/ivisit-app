@@ -208,3 +208,202 @@ FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
 CREATE TRIGGER handle_prefs_updated_at BEFORE UPDATE ON public.preferences FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_med_profile_updated_at BEFORE UPDATE ON public.medical_profiles FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_subscriber_updated_at BEFORE UPDATE ON public.subscribers FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+-- 🏥 Medical Profile RPC Functions
+-- Part of Master System Improvement Plan - Phase 2 Important System Enhancements
+
+-- 1. Get Medical Summary
+CREATE OR REPLACE FUNCTION public.get_medical_summary(
+    p_user_id UUID
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_medical_profile JSONB;
+    v_result JSONB;
+BEGIN
+    -- Get user's medical profile
+    SELECT jsonb_build_object(
+        'blood_type', blood_type,
+        'allergies', allergies,
+        'medications', medications,
+        'conditions', conditions,
+        'emergency_notes', emergency_notes,
+        'updated_at', updated_at
+    ) INTO v_medical_profile
+    FROM public.medical_profiles 
+    WHERE user_id = p_user_id;
+    
+    IF v_medical_profile IS NULL THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Medical profile not found',
+            'code', 'PROFILE_NOT_FOUND'
+        );
+    END IF;
+    
+    v_result := jsonb_build_object(
+        'success', true,
+        'medical_summary', v_medical_profile,
+        'retrieved_at', NOW()
+    );
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- 2. Validate Medical Profile
+CREATE OR REPLACE FUNCTION public.validate_medical_profile(
+    p_user_id UUID,
+    p_medical_data JSONB
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_validation_errors TEXT[];
+    v_result JSONB;
+BEGIN
+    -- Validate required fields
+    IF p_medical_data->>'blood_type' IS NULL OR p_medical_data->>'blood_type' = '' THEN
+        v_validation_errors := array_append(v_validation_errors, 'Blood type is required');
+    END IF;
+    
+    -- Validate blood type format
+    IF p_medical_data->>'blood_type' IS NOT NULL THEN
+        IF p_medical_data->>'blood_type' NOT IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-') THEN
+            v_validation_errors := array_append(v_validation_errors, 'Invalid blood type format');
+        END IF;
+    END IF;
+    
+    -- Validate allergies format
+    IF p_medical_data->>'allergies' IS NOT NULL AND LENGTH(p_medical_data->>'allergies') > 1000 THEN
+        v_validation_errors := array_append(v_validation_errors, 'Allergies field too long (max 1000 chars)');
+    END IF;
+    
+    -- Validate medications format
+    IF p_medical_data->>'medications' IS NOT NULL AND LENGTH(p_medical_data->>'medications') > 1000 THEN
+        v_validation_errors := array_append(v_validation_errors, 'Medications field too long (max 1000 chars)');
+    END IF;
+    
+    -- Return validation result
+    IF array_length(v_validation_errors, 1) > 0 THEN
+        v_result := jsonb_build_object(
+            'valid', false,
+            'errors', v_validation_errors,
+            'code', 'VALIDATION_FAILED'
+        );
+    ELSE
+        v_result := jsonb_build_object(
+            'valid', true,
+            'code', 'VALIDATION_PASSED'
+        );
+    END IF;
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Update Medical Profile
+CREATE OR REPLACE FUNCTION public.update_medical_profile(
+    p_user_id UUID,
+    p_medical_data JSONB
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_validation_result JSONB;
+    v_profile_exists BOOLEAN;
+    v_result JSONB;
+BEGIN
+    -- Validate medical data first
+    v_validation_result := public.validate_medical_profile(p_user_id, p_medical_data);
+    
+    IF NOT (v_validation_result->>'valid')::BOOLEAN THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Validation failed',
+            'validation_errors', v_validation_result->'errors'
+        );
+    END IF;
+    
+    -- Check if profile exists
+    SELECT EXISTS(
+        SELECT 1 FROM public.medical_profiles 
+        WHERE user_id = p_user_id
+    ) INTO v_profile_exists;
+    
+    -- Update or insert profile
+    IF v_profile_exists THEN
+        UPDATE public.medical_profiles 
+        SET 
+            blood_type = p_medical_data->>'blood_type',
+            allergies = p_medical_data->>'allergies',
+            medications = p_medical_data->>'medications',
+            conditions = p_medical_data->>'conditions',
+            emergency_notes = p_medical_data->>'emergency_notes',
+            updated_at = NOW()
+        WHERE user_id = p_user_id;
+    ELSE
+        INSERT INTO public.medical_profiles (
+            user_id, blood_type, allergies, medications, conditions, emergency_notes
+        ) VALUES (
+            p_user_id, 
+            p_medical_data->>'blood_type',
+            p_medical_data->>'allergies',
+            p_medical_data->>'medications',
+            p_medical_data->>'conditions',
+            p_medical_data->>'emergency_notes'
+        );
+    END IF;
+    
+    v_result := jsonb_build_object(
+        'success', true,
+        'user_id', p_user_id,
+        'updated_at', NOW()
+    );
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 4. Get Emergency Medical Data
+CREATE OR REPLACE FUNCTION public.get_emergency_medical_data(
+    p_user_id UUID
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_medical_profile JSONB;
+    v_emergency_contacts JSONB;
+    v_result JSONB;
+BEGIN
+    -- Get medical profile
+    SELECT jsonb_build_object(
+        'blood_type', blood_type,
+        'allergies', allergies,
+        'medications', medications,
+        'conditions', conditions,
+        'emergency_notes', emergency_notes
+    ) INTO v_medical_profile
+    FROM public.medical_profiles 
+    WHERE user_id = p_user_id;
+    
+    -- Get emergency contacts
+    SELECT jsonb_agg(
+        jsonb_build_object(
+            'name', name,
+            'relationship', relationship,
+            'phone', phone,
+            'is_primary', is_primary
+        )
+    ) INTO v_emergency_contacts
+    FROM public.emergency_contacts 
+    WHERE user_id = p_user_id 
+    AND is_active = true;
+    
+    v_result := jsonb_build_object(
+        'success', true,
+        'medical_profile', v_medical_profile,
+        'emergency_contacts', v_emergency_contacts,
+        'retrieved_at', NOW()
+    );
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;

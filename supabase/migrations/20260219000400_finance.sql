@@ -78,16 +78,11 @@ CREATE TABLE IF NOT EXISTS public.insurance_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     provider_name TEXT NOT NULL,
-    policy_number TEXT,
-    plan_type TEXT DEFAULT 'basic',
-    status TEXT DEFAULT 'active',
+    policy_number TEXT NOT NULL,
+    policy_type TEXT DEFAULT 'basic',
+    coverage_amount NUMERIC(10,2) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
     is_default BOOLEAN DEFAULT false,
-    verified BOOLEAN DEFAULT false,
-    coverage_percentage INTEGER DEFAULT 80,
-    coverage_details JSONB DEFAULT '{}',
-    linked_payment_method TEXT,
-    starts_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -221,8 +216,169 @@ CREATE TRIGGER stamp_pay_display_id BEFORE INSERT ON public.payments FOR EACH RO
 CREATE TRIGGER stamp_pat_wallet_display_id BEFORE INSERT ON public.patient_wallets FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
 CREATE TRIGGER stamp_org_wallet_display_id BEFORE INSERT ON public.organization_wallets FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
 
+-- 💳 Payment Validation RPC Functions
+-- Part of Master System Improvement Plan - Phase 1 Critical Emergency Flow Fixes
+
+-- 1. Validate Payment Method
+CREATE OR REPLACE FUNCTION public.validate_payment_method(
+    p_user_id UUID,
+    p_payment_method_id UUID
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_method_exists BOOLEAN;
+    v_is_active BOOLEAN;
+    v_result JSONB;
+BEGIN
+    -- Check if payment method exists and belongs to user
+    SELECT EXISTS(
+        SELECT 1 FROM public.payment_methods 
+        WHERE id = p_payment_method_id 
+        AND user_id = p_user_id
+    ) INTO v_method_exists;
+    
+    IF NOT v_method_exists THEN
+        RETURN jsonb_build_object('valid', false, 'error', 'Payment method not found');
+    END IF;
+    
+    -- Check if payment method is active
+    SELECT is_active INTO v_is_active
+    FROM public.payment_methods 
+    WHERE id = p_payment_method_id 
+    AND user_id = p_user_id;
+    
+    IF NOT v_is_active THEN
+        RETURN jsonb_build_object('valid', false, 'error', 'Payment method is inactive');
+    END IF;
+    
+    RETURN jsonb_build_object('valid', true, 'payment_method_id', p_payment_method_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 2. Get Fallback Payment Options
+CREATE OR REPLACE FUNCTION public.get_fallback_payment_options(
+    p_user_id UUID,
+    p_amount NUMERIC
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_wallet_balance NUMERIC;
+    v_active_methods JSONB;
+    v_result JSONB;
+BEGIN
+    -- Check wallet balance
+    SELECT balance INTO v_wallet_balance
+    FROM public.patient_wallets 
+    WHERE user_id = p_user_id;
+    
+    -- Get active payment methods
+    SELECT jsonb_agg(
+        jsonb_build_object(
+            'id', id,
+            'type', type,
+            'provider', provider,
+            'last4', last4,
+            'is_default', is_default
+        )
+    ) INTO v_active_methods
+    FROM public.payment_methods 
+    WHERE user_id = p_user_id 
+    AND is_active = true;
+    
+    v_result := jsonb_build_object(
+        'wallet_available', v_wallet_balance >= p_amount,
+        'wallet_balance', v_wallet_balance,
+        'active_payment_methods', v_active_methods,
+        'fallback_options', CASE 
+            WHEN v_wallet_balance >= p_amount THEN 'wallet'
+            WHEN v_active_methods IS NOT NULL THEN 'payment_methods'
+            ELSE 'cash_only'
+        END
+    );
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Retry Payment with Different Method
+CREATE OR REPLACE FUNCTION public.retry_payment_with_different_method(
+    p_emergency_request_id UUID,
+    p_new_payment_method_id UUID,
+    p_user_id UUID
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_payment_amount NUMERIC;
+    v_validation_result JSONB;
+    v_result JSONB;
+BEGIN
+    -- Get payment amount from emergency request
+    SELECT estimated_amount INTO v_payment_amount
+    FROM public.emergency_requests 
+    WHERE id = p_emergency_request_id 
+    AND user_id = p_user_id;
+    
+    -- Validate new payment method
+    v_validation_result := public.validate_payment_method(p_user_id, p_new_payment_method_id);
+    
+    IF NOT (v_validation_result->>'valid')::BOOLEAN THEN
+        RETURN jsonb_build_object('success', false, 'error', v_validation_result->>'error');
+    END IF;
+    
+    -- Create new payment record
+    INSERT INTO public.payments (
+        user_id, emergency_request_id, payment_method_id, amount, status
+    ) VALUES (
+        p_user_id, p_emergency_request_id, p_new_payment_method_id, v_payment_amount, 'pending'
+    ) RETURNING id INTO v_result;
+    
+    RETURN jsonb_build_object('success', true, 'payment_id', v_result, 'retry_successful', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 4. Convert Currency for Payment
+CREATE OR REPLACE FUNCTION public.convert_currency_for_payment(
+    p_amount NUMERIC,
+    p_from_currency TEXT DEFAULT 'USD',
+    p_to_currency TEXT DEFAULT 'USD'
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_conversion_rate NUMERIC := 1.0;
+    v_converted_amount NUMERIC;
+    v_result JSONB;
+BEGIN
+    -- Simple currency conversion (in production, use real exchange rates)
+    IF p_from_currency = p_to_currency THEN
+        v_conversion_rate := 1.0;
+    ELSIF p_from_currency = 'USD' AND p_to_currency = 'EUR' THEN
+        v_conversion_rate := 0.85;
+    ELSIF p_from_currency = 'USD' AND p_to_currency = 'GBP' THEN
+        v_conversion_rate := 0.73;
+    ELSIF p_from_currency = 'EUR' AND p_to_currency = 'USD' THEN
+        v_conversion_rate := 1.18;
+    ELSIF p_from_currency = 'GBP' AND p_to_currency = 'USD' THEN
+        v_conversion_rate := 1.37;
+    ELSE
+        RETURN jsonb_build_object('success', false, 'error', 'Unsupported currency conversion');
+    END IF;
+    
+    v_converted_amount := p_amount * v_conversion_rate;
+    
+    v_result := jsonb_build_object(
+        'success', true,
+        'original_amount', p_amount,
+        'converted_amount', v_converted_amount,
+        'from_currency', p_from_currency,
+        'to_currency', p_to_currency,
+        'conversion_rate', v_conversion_rate
+    );
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 -- Standard Updates
-CREATE TRIGGER handle_pay_updated_at BEFORE UPDATE ON public.payments FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER handle_payment_method_updated_at BEFORE UPDATE ON public.payment_methods FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_org_wallet_updated_at BEFORE UPDATE ON public.organization_wallets FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_patient_wallet_updated_at BEFORE UPDATE ON public.patient_wallets FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_insurance_updated_at BEFORE UPDATE ON public.insurance_policies FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
@@ -230,6 +386,7 @@ CREATE TRIGGER handle_insurance_billing_updated_at BEFORE UPDATE ON public.insur
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_payment_methods_active ON public.payment_methods(user_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_payment_methods_default ON public.payment_methods(user_id, is_default);
 CREATE INDEX IF NOT EXISTS idx_insurance_user_id ON public.insurance_policies(user_id);
 CREATE INDEX IF NOT EXISTS idx_insurance_billing_request ON public.insurance_billing(emergency_request_id);
 CREATE INDEX IF NOT EXISTS idx_insurance_billing_hospital ON public.insurance_billing(hospital_id);

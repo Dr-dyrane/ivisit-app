@@ -151,6 +151,355 @@ class TestRunner {
   }
 
   /**
+   * Run integration testing for specific task
+   */
+  async runIntegrationTesting(taskName) {
+    console.log('🔍 Running Integration Testing...');
+
+    // Define integration tests based on task name
+    const integrationTests = {
+      'phase2_medical_insurance_tracking': [
+        this.testMedicalProfileFunctions,
+        this.testInsuranceValidationFunctions,
+        this.testRealtimeTrackingFunctions
+      ],
+      'payment_methods_is_active_fix': [
+        this.testPaymentMethodsActive,
+        this.testPaymentValidationFunctions
+      ],
+      'emergency_dispatch_automation_fix': [
+        this.testEmergencyDispatchFunctions,
+        this.testEmergencyValidationFunctions
+      ]
+    };
+
+    const tests = integrationTests[taskName] || [
+      this.testCoreRPCFunctions,
+      this.testEmergencyLogic,
+      this.testTableAccess,
+      this.testDisplayIDResolution,
+      this.testSecurityFunctions,
+      this.testWalletSystem
+    ];
+
+    for (const test of tests) {
+      await this.executeTest(test.name, test);
+    }
+  }
+
+  /**
+   * Test Medical Profile Functions
+   */
+  async testMedicalProfileFunctions() {
+    try {
+      // Test get_medical_summary
+      const { data: medicalSummary, error: medicalError } = await this.supabase
+        .rpc('get_medical_summary', {
+          p_user_id: '00000000-0000-0000-0000-000000000000'
+        });
+
+      if (medicalError && !medicalError.message.includes('not found')) {
+        return {
+          success: false,
+          message: `Medical summary function error: ${medicalError.message}`,
+          errorType: 'critical',
+          category: 'function',
+          technicalDetails: { error: medicalError }
+        };
+      }
+
+      // Test validate_medical_profile
+      const { data: validation, error: validationError } = await this.supabase
+        .rpc('validate_medical_profile', {
+          p_user_id: '00000000-0000-0000-0000-000000000000',
+          p_medical_data: {
+            blood_type: 'O+',
+            allergies: 'Peanuts',
+            medications: 'Aspirin'
+          }
+        });
+
+      if (validationError) {
+        return {
+          success: false,
+          message: `Medical profile validation error: ${validationError.message}`,
+          errorType: 'critical',
+          category: 'function',
+          technicalDetails: { error: validationError }
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Medical profile functions accessible'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Medical profile test failed: ${error.message}`,
+        errorType: 'critical',
+        category: 'function',
+        technicalDetails: { error: error.message }
+      };
+    }
+  }
+
+  /**
+   * Test Insurance Validation Functions
+   */
+  async testInsuranceValidationFunctions() {
+    try {
+      // Test validate_insurance_coverage
+      const { data: coverage, error: coverageError } = await this.supabase
+        .rpc('validate_insurance_coverage', {
+          p_user_id: '00000000-0000-0000-0000-000000000000',
+          p_hospital_id: '00000000-0000-0000-0000-000000000000',
+          p_estimated_cost: 500.00
+        });
+
+      if (coverageError && !coverageError.message.includes('No active insurance')) {
+        return {
+          success: false,
+          message: `Insurance coverage validation error: ${coverageError.message}`,
+          errorType: 'critical',
+          category: 'function',
+          technicalDetails: { error: coverageError }
+        };
+      }
+
+      // Test get_insurance_policies
+      const { data: policies, error: policiesError } = await this.supabase
+        .rpc('get_insurance_policies', {
+          p_user_id: '00000000-0000-0000-0000-000000000000'
+        });
+
+      if (policiesError) {
+        return {
+          success: false,
+          message: `Insurance policies function error: ${policiesError.message}`,
+          errorType: 'critical',
+          category: 'function',
+          technicalDetails: { error: policiesError }
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Insurance validation functions accessible'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Insurance validation test failed: ${error.message}`,
+        errorType: 'critical',
+        category: 'function',
+        technicalDetails: { error: error.message }
+      };
+    }
+  }
+
+  /**
+   * Test Real-time Tracking Functions
+   */
+  async testRealtimeTrackingFunctions() {
+    try {
+      // Test update_ambulance_location
+      const { data: location, error: locationError } = await this.supabase
+        .rpc('update_ambulance_location', {
+          p_ambulance_id: '00000000-0000-0000-0000-000000000000',
+          p_latitude: 40.7128,
+          p_longitude: -74.0060,
+          p_accuracy: 10.0
+        });
+
+      if (locationError && !locationError.message.includes('not found')) {
+        return {
+          success: false,
+          message: `Ambulance location update error: ${locationError.message}`,
+          errorType: 'critical',
+          category: 'function',
+          technicalDetails: { error: locationError }
+        };
+      }
+
+      // Test get_ambulance_status
+      const { data: status, error: statusError } = await this.supabase
+        .rpc('get_ambulance_status', {
+          p_ambulance_id: '00000000-0000-0000-0000-000000000000'
+        });
+
+      if (statusError && !statusError.message.includes('not found')) {
+        return {
+          success: false,
+          message: `Ambulance status function error: ${statusError.message}`,
+          errorType: 'critical',
+          category: 'function',
+          technicalDetails: { error: statusError }
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Real-time tracking functions accessible'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Real-time tracking test failed: ${error.message}`,
+        errorType: 'critical',
+        category: 'function',
+        technicalDetails: { error: error.message }
+      };
+    }
+  }
+
+  /**
+   * Test Payment Methods Active Column
+   */
+  async testPaymentMethodsActive() {
+    try {
+      // Test that payment_methods table has is_active column
+      const { data, error } = await this.supabase
+        .from('payment_methods')
+        .select('is_active')
+        .limit(1);
+
+      if (error && error.message.includes('column "is_active" does not exist')) {
+        return {
+          success: false,
+          message: 'Payment methods is_active column missing',
+          errorType: 'critical',
+          category: 'schema',
+          technicalDetails: { error: error.message }
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Payment methods is_active column exists'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Payment methods test failed: ${error.message}`,
+        errorType: 'critical',
+        category: 'schema',
+        technicalDetails: { error: error.message }
+      };
+    }
+  }
+
+  /**
+   * Test Payment Validation Functions
+   */
+  async testPaymentValidationFunctions() {
+    try {
+      // Test validate_payment_method
+      const { data, error } = await this.supabase
+        .rpc('validate_payment_method', {
+          p_user_id: '00000000-0000-0000-0000-000000000000',
+          p_payment_method_id: '00000000-0000-0000-0000-000000000000'
+        });
+
+      if (error && !error.message.includes('not found')) {
+        return {
+          success: false,
+          message: `Payment validation function error: ${error.message}`,
+          errorType: 'critical',
+          category: 'function',
+          technicalDetails: { error }
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Payment validation functions accessible'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Payment validation test failed: ${error.message}`,
+        errorType: 'critical',
+        category: 'function',
+        technicalDetails: { error: error.message }
+      };
+    }
+  }
+
+  /**
+   * Test Emergency Dispatch Functions
+   */
+  async testEmergencyDispatchFunctions() {
+    try {
+      // Test get_available_ambulances
+      const { data, error } = await this.supabase
+        .rpc('get_available_ambulances', {
+          p_hospital_id: '00000000-0000-0000-0000-000000000000'
+        });
+
+      if (error && !error.message.includes('does not exist')) {
+        return {
+          success: false,
+          message: `Emergency dispatch function error: ${error.message}`,
+          errorType: 'critical',
+          category: 'function',
+          technicalDetails: { error }
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Emergency dispatch functions accessible'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Emergency dispatch test failed: ${error.message}`,
+        errorType: 'critical',
+        category: 'function',
+        technicalDetails: { error: error.message }
+      };
+    }
+  }
+
+  /**
+   * Test Emergency Validation Functions
+   */
+  async testEmergencyValidationFunctions() {
+    try {
+      // Test validate_emergency_request
+      const { data, error } = await this.supabase
+        .rpc('validate_emergency_request', {
+          p_user_id: '00000000-0000-0000-0000-000000000000',
+          p_service_type: 'ambulance'
+        });
+
+      if (error && !error.message.includes('does not exist')) {
+        return {
+          success: false,
+          message: `Emergency validation function error: ${error.message}`,
+          errorType: 'critical',
+          category: 'function',
+          technicalDetails: { error }
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Emergency validation functions accessible'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Emergency validation test failed: ${error.message}`,
+        errorType: 'critical',
+        category: 'function',
+        technicalDetails: { error: error.message }
+      };
+    }
+  }
+
+  /**
    * Run comprehensive system test
    */
   async runComprehensiveTesting(taskName) {

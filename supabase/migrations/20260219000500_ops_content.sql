@@ -110,3 +110,184 @@ CREATE TRIGGER stamp_ntf_display_id BEFORE INSERT ON public.notifications FOR EA
 CREATE TRIGGER handle_note_updated_at BEFORE UPDATE ON public.notifications FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_ticket_updated_at BEFORE UPDATE ON public.support_tickets FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_doc_updated_at BEFORE UPDATE ON public.documents FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+-- 🛡️ Insurance Validation RPC Functions
+-- Part of Master System Improvement Plan - Phase 2 Important System Enhancements
+
+-- 1. Validate Insurance Coverage
+CREATE OR REPLACE FUNCTION public.validate_insurance_coverage(
+    p_user_id UUID,
+    p_hospital_id UUID,
+    p_estimated_cost NUMERIC
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_active_policy BOOLEAN;
+    v_coverage_amount NUMERIC;
+    v_policy_type TEXT;
+    v_result JSONB;
+BEGIN
+    -- Get user's active insurance policy
+    SELECT 
+        is_active,
+        coverage_amount,
+        policy_type
+    INTO v_active_policy, v_coverage_amount, v_policy_type
+    FROM public.insurance_policies 
+    WHERE user_id = p_user_id 
+    AND is_active = true
+    ORDER BY is_default DESC, created_at DESC
+    LIMIT 1;
+    
+    IF NOT v_active_policy THEN
+        RETURN jsonb_build_object(
+            'covered', false,
+            'error', 'No active insurance policy found',
+            'code', 'NO_ACTIVE_POLICY'
+        );
+    END IF;
+    
+    -- Check if hospital is in network
+    IF NOT EXISTS (
+        SELECT 1 FROM public.insurance_network 
+        WHERE policy_id = (
+            SELECT id FROM public.insurance_policies 
+            WHERE user_id = p_user_id AND is_active = true
+            ORDER BY is_default DESC, created_at DESC LIMIT 1
+        ) AND hospital_id = p_hospital_id
+    ) THEN
+        RETURN jsonb_build_object(
+            'covered', false,
+            'error', 'Hospital not in insurance network',
+            'code', 'OUT_OF_NETWORK'
+        );
+    END IF;
+    
+    -- Check coverage amount
+    IF v_coverage_amount < p_estimated_cost THEN
+        RETURN jsonb_build_object(
+            'covered', false,
+            'error', 'Estimated cost exceeds coverage amount',
+            'coverage_amount', v_coverage_amount,
+            'estimated_cost', p_estimated_cost,
+            'code', 'INSUFFICIENT_COVERAGE'
+        );
+    END IF;
+    
+    v_result := jsonb_build_object(
+        'covered', true,
+        'policy_type', v_policy_type,
+        'coverage_amount', v_coverage_amount,
+        'estimated_cost', p_estimated_cost,
+        'remaining_coverage', v_coverage_amount - p_estimated_cost,
+        'validated_at', NOW()
+    );
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 2. Process Insurance Claim
+CREATE OR REPLACE FUNCTION public.process_insurance_claim(
+    p_emergency_request_id UUID,
+    p_user_id UUID,
+    p_hospital_id UUID,
+    p_actual_cost NUMERIC
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_policy_id UUID;
+    v_coverage_amount NUMERIC;
+    v_claim_amount NUMERIC;
+    v_result JSONB;
+BEGIN
+    -- Get user's active policy
+    SELECT id, coverage_amount INTO v_policy_id, v_coverage_amount
+    FROM public.insurance_policies 
+    WHERE user_id = p_user_id 
+    AND is_active = true
+    ORDER BY is_default DESC, created_at DESC
+    LIMIT 1;
+    
+    IF v_policy_id IS NULL THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'No active insurance policy found',
+            'code', 'NO_ACTIVE_POLICY'
+        );
+    END IF;
+    
+    -- Calculate claim amount (minimum of actual cost and coverage)
+    v_claim_amount := LEAST(p_actual_cost, v_coverage_amount);
+    
+    -- Create insurance claim record
+    INSERT INTO public.insurance_billing (
+        emergency_request_id,
+        user_id,
+        hospital_id,
+        policy_id,
+        billed_amount,
+        covered_amount,
+        status,
+        created_at
+    ) VALUES (
+        p_emergency_request_id,
+        p_user_id,
+        p_hospital_id,
+        v_policy_id,
+        p_actual_cost,
+        v_claim_amount,
+        'pending',
+        NOW()
+    ) RETURNING id INTO v_result;
+    
+    RETURN jsonb_build_object(
+        'success', true,
+        'claim_id', v_result,
+        'billed_amount', p_actual_cost,
+        'covered_amount', v_claim_amount,
+        'patient_responsibility', p_actual_cost - v_claim_amount,
+        'processed_at', NOW()
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Get Insurance Policies
+CREATE OR REPLACE FUNCTION public.get_insurance_policies(
+    p_user_id UUID,
+    p_include_inactive BOOLEAN DEFAULT false
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_policies JSONB;
+    v_result JSONB;
+BEGIN
+    -- Get user's insurance policies
+    SELECT jsonb_agg(
+        jsonb_build_object(
+            'id', id,
+            'provider', provider,
+            'policy_number', policy_number,
+            'policy_type', policy_type,
+            'coverage_amount', coverage_amount,
+            'is_active', is_active,
+            'is_default', is_default,
+            'created_at', created_at,
+            'updated_at', updated_at
+        )
+    ) INTO v_policies
+    FROM public.insurance_policies 
+    WHERE user_id = p_user_id 
+    AND (p_include_inactive OR is_active = true)
+    ORDER BY is_default DESC, created_at DESC;
+    
+    v_result := jsonb_build_object(
+        'success', true,
+        'policies', v_policies,
+        'user_id', p_user_id,
+        'retrieved_at', NOW()
+    );
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
