@@ -37,8 +37,44 @@ Maps every record to its human-friendly counterpart.
 | Function | Purpose |
 |---|---|
 | `is_admin()` | Returns `TRUE` if currently authenticated user is an admin. |
-| `get_system_stats()` | Returns aggregated counts for the dashboard. |
+| `get_system_stats()` | Returns aggregated counts for dashboard. |
 | `generate_display_id(prefix)` | Internal helper for ID generation. |
+| `get_recent_activity(limit, offset)` | Returns recent user activity with time formatting. |
+| `get_activity_stats(days_back)` | Returns activity statistics for dashboard. |
+| `get_user_statistics(org_id)` | Returns user statistics with role alignment. |
+
+## 📋 5. Consolidated Schema Files
+
+| File | Purpose |
+|---|---|
+| `20260218060000_consolidated_schema.sql` | Master consolidated schema (baseline) |
+| `20260218170000_consolidate_verified_fixes.sql` | Latest consolidation with verified fixes |
+
+## 🚨 6. Error Management Reference
+
+### Error Directory Structure
+```
+supabase/errors/
+├── consolidation/         # Consolidation-specific errors
+├── testing/              # Test execution errors
+├── migration/            # Migration execution errors
+├── patterns/             # Error pattern analysis
+└── archive/               # Historical error logs
+```
+
+### Error Classification System
+- **DATABASE**: Connection, query, constraint, permission errors
+- **RPC**: Function execution, parameter validation errors
+- **RLS**: Row level security, policy errors
+- **TRIGGER**: Trigger execution, dependency errors
+- **TEST**: Assertion, validation, timeout errors
+- **CONSOLIDATION**: Migration, conflict, dependency errors
+
+### Testing Architecture Reference
+- **Modular Components**: `docs/archive/test-scripts/lib/`
+- **Test Suites**: `docs/archive/test-scripts/suites/`
+- **Test Runners**: `docs/archive/test-scripts/runners/`
+- **Error Management**: Integrated with `supabase/errors/`
 
 ---
-**Strict Standard**: Any modification to these structures must be added to the Baseline and synced across workspaces.
+**Strict Standard**: Any modification to these structures must be added to Baseline and synced across workspaces.

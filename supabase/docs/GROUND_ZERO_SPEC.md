@@ -43,5 +43,26 @@ The system uses a `SECURITY DEFINER` function `stamp_entity_display_id()` and a 
 ## 5. Transition Rule: Any historical data required?
 Reference the **Archived Migrations** in `supabase/migrations/archive/` to understand old logic or data structures. The current `migrations/` folder remains the **pristine "Ground Zero" state.**
 
+## 5. Consolidation Compliance Requirements
+
+### UUID Native Consolidation Requirements
+All consolidated changes must comply with:
+- **UUID Internal IDs**: All primary/foreign keys use UUID
+- **Display ID Mapping**: Human-readable IDs preserved
+- **No TEXT for Internal**: Never use TEXT for internal identifiers
+- **Type Safety**: Strong typing throughout consolidated schema
+
+### Living Baseline Management
+- **Single Consolidated File**: `20260218060000_consolidated_schema.sql`
+- **Floating Fixes**: Temporary migrations for production issues
+- **Staged Evolution**: Complex changes in phases
+- **Nuclear De-Recursion**: RLS fixes using SECURITY DEFINER
+
+### Consolidation Quality Gates
+- **Testing Required**: All consolidated changes must pass tests
+- **Error Management**: Proper error logging and classification
+- **Documentation**: Update all relevant documentation
+- **Performance**: No degradation in response times
+
 ---
 *Confirmed and Standardized - February 18, 2026*

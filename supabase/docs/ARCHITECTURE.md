@@ -28,5 +28,51 @@ Every system entity has a persistent entry in the central registry.
 ## 4. Maintenance (Living Baseline)
 We maintain a **Consolidated Baseline** (`20260218060000`). If the schema needs adjustment, the Baseline is modified directly and redeployed using the Repair Workflow.
 
+## 5. Consolidation Strategy
+
+### Ground Zero Consolidation Principle
+The iVisit system follows a "Ground Zero" consolidation approach where:
+- **Single Source of Truth**: One consolidated schema file
+- **Floating Fixes**: Temporary migrations for production issues
+- **Staged Evolution**: Complex changes deployed in phases
+- **Nuclear De-Recursion**: RLS fixes using SECURITY DEFINER functions
+
+### Consolidation Workflow
+1. **Development**: Create floating migrations for fixes
+2. **Testing**: Verify fixes with comprehensive testing
+3. **Staging**: Deploy to staging environment
+4. **Consolidation**: Merge stable fixes into consolidated schema
+5. **Archival**: Move old migrations to archive
+
+### Consolidation Process
+1. **Verification Phase**
+   ```bash
+   # Test all floating fixes
+   node docs/archive/test-scripts/runners/suite-runner.js
+   
+   # Verify error handling
+   node docs/archive/test-scripts/runners/consolidation-runner.js
+   ```
+
+2. **Consolidation Phase**
+   ```sql
+   -- Create consolidation migration
+   -- Merge verified fixes into consolidated schema
+   -- Update master schema file
+   ```
+
+3. **Archival Phase**
+   ```bash
+   # Archive old migrations
+   mkdir supabase/migrations/archive/
+   mv supabase/migrations/20260218_*.sql supabase/migrations/archive/
+   ```
+
+### Error Management Architecture
+- **Centralized Logging**: All errors logged to `supabase/errors/`
+- **Structured Classification**: Database, Test, RPC, RLS, Trigger categories
+- **Pattern Analysis**: Automated error pattern detection
+- **Debugging Support**: Enhanced error readability and resolution guidance
+
 ---
 *Architected for clarity, scale, and clinical precision.*

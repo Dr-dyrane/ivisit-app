@@ -481,12 +481,14 @@ on conflict (id) do nothing;
 
 -- POLICY: Public Read Access
 -- Allow anyone to view images in this bucket
+drop policy if exists "Public Access" on storage.objects;
 create policy "Public Access"
 on storage.objects for select
 using ( bucket_id = 'images' );
 
 -- POLICY: Authenticated Upload
 -- Allow authenticated users to upload files to their own folder: user_id/*
+drop policy if exists "Authenticated Upload" on storage.objects;
 create policy "Authenticated Upload"
 on storage.objects for insert
 to authenticated
@@ -497,6 +499,7 @@ with check (
 
 -- POLICY: Authenticated Update
 -- Allow users to replace their own files
+drop policy if exists "Authenticated Update" on storage.objects;
 create policy "Authenticated Update"
 on storage.objects for update
 to authenticated
@@ -507,6 +510,7 @@ using (
 
 -- POLICY: Authenticated Delete
 -- Allow users to delete their own files
+drop policy if exists "Authenticated Delete" on storage.objects;
 create policy "Authenticated Delete"
 on storage.objects for delete
 to authenticated
@@ -538,9 +542,9 @@ $$;
 
 -- Add missing columns to profiles table
 alter table "public"."profiles" 
-add column "address" text,
-add column "gender" text,
-add column "date_of_birth" text;
+add column if not exists "address" text,
+add column if not exists "gender" text,
+add column if not exists "date_of_birth" text;
 
 
 -- ----------------------------------------------------------------------------
@@ -560,7 +564,7 @@ add column if not exists "emergency_notes" text;
 -- Create hospitals table and insert initial data
 
 -- Create the table
-create table "public"."hospitals" (
+create table if not exists "public"."hospitals" (
     "id" uuid not null default gen_random_uuid(),
     "name" text not null,
     "address" text not null,
@@ -589,15 +593,17 @@ create table "public"."hospitals" (
 alter table "public"."hospitals" enable row level security;
 
 -- Create policy to allow read access for everyone
+drop policy if exists "Allow public read access" on "public"."hospitals";
 create policy "Allow public read access"
 on "public"."hospitals"
 for select
 using (true);
 
 -- Insert initial data (derived from data/hospitals.js)
-insert into "public"."hospitals" 
+/*
+insert into "public"."hospitals"
 ("name", "address", "phone", "rating", "type", "image", "specialties", "service_types", "features", "emergency_level", "available_beds", "ambulances_count", "wait_time", "price_range", "latitude", "longitude", "verified", "status")
-values
+select * from (values
 (
     'City General Hospital',
     '123 Medical Plaza, Downtown',
@@ -797,7 +803,11 @@ values
     -122.4100,
     true,
     'available'
-);
+) as v(
+    "name", "address", "phone", "rating", "type", "image", "specialties", "service_types", "features", "emergency_level", "available_beds", "ambulances_count", "wait_time", "price_range", "latitude", "longitude", "verified", "status"
+)
+where not exists (select 1 from "public"."hospitals");
+*/
 
 
 -- ----------------------------------------------------------------------------
@@ -1063,56 +1073,53 @@ NOTIFY pgrst, 'reload schema';
 -- Source: 20260110000000_seed_rich_public_data.sql
 -- ----------------------------------------------------------------------------
 
--- Create doctors table
+-- Create doctors table (Certified Module 9)
 create table if not exists "public"."doctors" (
-    "id" uuid not null default gen_random_uuid(),
-    "name" text not null,
-    "specialty" text not null,
-    "hospital_id" uuid references "public"."hospitals"("id") on delete cascade,
-    "image" text,
-    "rating" double precision default 5.0,
-    "reviews_count" integer default 0,
-    "years_experience" integer,
-    "about" text,
-    "consultation_fee" text,
-    "is_available" boolean default true,
-    "created_at" timestamp with time zone default now(),
-    "updated_at" timestamp with time zone default now(),
-    primary key ("id")
+    id uuid not null default gen_random_uuid (),
+    name text not null,
+    specialization text not null,
+    image text null,
+    rating double precision null default 5.0,
+    reviews_count integer null default 0,
+    experience integer null,
+    about text null,
+    consultation_fee text null,
+    is_available boolean null default true,
+    created_at timestamp with time zone null default now(),
+    updated_at timestamp with time zone null default now(),
+    profile_id uuid null,
+    email text null,
+    status text null default 'available'::text,
+    license_number text null,
+    phone text null,
+    hospital_id uuid null,
+    display_id text null,
+    constraint doctors_pkey primary key (id),
+    constraint doctors_display_id_key unique (display_id),
+    constraint doctors_profile_id_key unique (profile_id),
+    constraint doctors_hospital_id_fkey foreign KEY (hospital_id) references hospitals (id) on delete CASCADE,
+    constraint doctors_status_check check (status = any (array['available'::text, 'busy'::text, 'off_duty'::text, 'on_call'::text, 'invited'::text]))
 );
 
 -- Enable RLS
 alter table "public"."doctors" enable row level security;
 
--- Policies
-drop policy if exists "Public read access for doctors" on "public"."doctors";
-create policy "Public read access for doctors"
-on "public"."doctors"
-for select
-using (true);
+-- Policies (De-recursive Pattern)
+drop policy if exists "Anyone can read doctors" on "public"."doctors";
+create policy "Anyone can read doctors" on "public"."doctors" for select to authenticated, anon using (true);
 
--- Seed Doctors (linking to existing hospitals by name)
-insert into "public"."doctors" 
-("name", "specialty", "hospital_id", "image", "rating", "reviews_count", "years_experience", "about", "consultation_fee")
-select 
-    d.name, d.specialty, h.id, d.image, d.rating, d.reviews_count, d.years_experience, d.about, d.consultation_fee
-from "public"."hospitals" h
-join (values
-    ('Dr. Sarah Wilson', 'Cardiology', 'City General Hospital', 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400', 4.9, 120, 15, 'Expert in cardiovascular health and preventative care.', '$150'),
-    ('Dr. James Chen', 'Orthopedics', 'City General Hospital', 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400', 4.8, 95, 12, 'Specializing in sports injuries and joint replacement.', '$200'),
-    ('Dr. Emily Brown', 'Neurology', 'University Medical Center', 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400', 4.9, 200, 20, 'Leading researcher in neurological disorders.', '$250'),
-    ('Dr. Michael Ross', 'Pediatrics', 'Children''s Memorial Hospital', 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400', 4.95, 300, 18, 'Compassionate care for children of all ages.', '$120'),
-    ('Dr. Lisa Wong', 'Dermatology', 'St. Mary''s Medical Center', 'https://images.unsplash.com/photo-1527613426441-4da17471b66d?w=400', 4.7, 80, 8, 'Specialist in medical and cosmetic dermatology.', '$180'),
-    ('Dr. Robert Taylor', 'General Surgery', 'City General Hospital', 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400', 4.85, 150, 22, 'Experienced general and laparoscopic surgeon.', '$300'),
-    ('Dr. Amanda Martinez', 'Gynecology', 'Northgate Health Pavilion', 'https://images.unsplash.com/photo-1594824476961-b7aa8a1c090c?w=400', 4.9, 110, 14, 'Dedicated to women''s health and wellness.', '$160'),
-    ('Dr. David Kim', 'Cardiology', 'Pacific Heart Institute', 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400', 5.0, 180, 16, 'Interventional cardiologist with a focus on heart failure.', '$280'),
-    ('Dr. Jennifer Lopez', 'Pediatrics', 'Metro Health Center', 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400', 4.6, 50, 5, 'Pediatrician focused on community health.', '$100'),
-    ('Dr. Thomas Anderson', 'Psychiatry', 'Presidio Health Campus', 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400', 4.8, 90, 11, 'Specializing in anxiety and depression treatment.', '$200'),
-    ('Dr. Olivia White', 'Oncology', 'Oncology & Cancer Institute', 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400', 4.9, 140, 19, 'Oncologist dedicated to comprehensive cancer care.', '$220'),
-    ('Dr. William Harris', 'Orthopedics', 'Golden Gate Orthopedic Center', 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400', 4.75, 105, 13, 'Orthopedic surgeon specializing in spine surgery.', '$240')
-) as d(name, specialty, hospital_name, image, rating, reviews_count, years_experience, about, consultation_fee)
-on h.name = d.hospital_name
-where not exists (select 1 from "public"."doctors" where name = d.name);
+drop policy if exists "Admins manage doctors" on "public"."doctors";
+create policy "Admins manage doctors" on "public"."doctors" for all to authenticated using ( public.get_current_user_role() = 'admin' );
+
+drop policy if exists "Doctors manage own profile" on "public"."doctors";
+create policy "Doctors manage own profile" on "public"."doctors" for update to authenticated using ( auth.uid() = profile_id );
+
+-- Seed Doctors (Dyrane Intelligence Collective Final Set)
+INSERT INTO public.doctors (id, name, specialization, image, rating, reviews_count, experience, about, consultation_fee, is_available, created_at, updated_at, profile_id, email, status, license_number, phone, hospital_id, display_id)
+VALUES 
+('20cd606c-a7c2-4c77-9e00-dcf70432896d','Fast EMS Driver','General Practice',null,5,0,null,null,null,true,'2026-02-16 06:28:29.02688+00','2026-02-16 06:28:29.02688+00','d747316e-0f27-4c85-809e-6f7376c5bd77','fytbite@gmail.com','available',null,null,'ec72b8c4-6bce-414b-b353-0eee10540369',null),
+('5d849da3-f3e6-4543-a413-20db6314184a','Dr dyrane','General Practice',null,5,0,null,null,null,true,'2026-02-16 05:55:05.280614+00','2026-02-16 19:10:42.9048+00','f15b1b48-f962-48d1-9fc0-2492ec0e6e21','drdyrane@gmail.com','available',null,null,'ec72b8c4-6bce-414b-b353-0eee10540369',null)
+ON CONFLICT (id) DO NOTHING;
 
 -- Add more Hospitals
 insert into "public"."hospitals" 
@@ -3160,21 +3167,8 @@ USING ( public.get_current_user_role() = 'admin' );
 -- USING ( id = public.get_current_user_org_id() );
 
 
--- DOCTORS
--- Policy: Everyone can view doctors (Directory)
-CREATE POLICY "Authenticated users can view doctors" 
-ON public.doctors FOR SELECT 
-USING ( auth.role() = 'authenticated' );
+-- DOCTORS (Managed in Module 9 Certification)
 
--- Policy: Org Admins can manage THEIR doctors
--- CREATE POLICY "Org Admins can manage own doctors" 
--- ON public.doctors FOR ALL
--- USING ( hospital_id = public.get_current_user_org_id() );
-
--- Policy: Platform Admins can manage all
-CREATE POLICY "Platform Admins can manage all doctors" 
-ON public.doctors FOR ALL 
-USING ( public.get_current_user_role() = 'admin' );
 
 
 -- EMERGENCY REQUESTS
@@ -3308,42 +3302,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.delete_user_by_admin(target_user_id uuid) TO authenticated;
 
 
--- ----------------------------------------------------------------------------
--- Source: 20260122045500_add_profile_link_to_doctors.sql
--- ----------------------------------------------------------------------------
-
--- Add profile_id to doctors table to link with auth.users/public.profiles
-ALTER TABLE public.doctors 
-ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE;
-
--- Add index for performance
-CREATE INDEX IF NOT EXISTS idx_doctors_profile_id ON public.doctors(profile_id);
-
--- Add unique constraint to ensure one profile can't be multiple doctors (optional but good for strict 1:1)
--- ALTER TABLE public.doctors ADD CONSTRAINT unique_doctor_profile UNIQUE (profile_id);
-
-
--- ----------------------------------------------------------------------------
--- Source: 20260122051000_doctor_email_link_trigger.sql
--- ----------------------------------------------------------------------------
-
--- Add email column to doctors if it doesn't exist
-ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS email TEXT;
-CREATE INDEX IF NOT EXISTS idx_doctors_email ON public.doctors(email);
-
--- Function to link doctor to profile when profile is created
-CREATE OR REPLACE FUNCTION public.link_doctor_profile() 
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Update doctors table where email matches new user
-  UPDATE public.doctors 
-  SET profile_id = NEW.id 
-  WHERE email = NEW.email 
-  AND profile_id IS NULL;
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- Redundant Doctor Alterations Removed (Managed in Module 9 Certification)
 
 -- Trigger on public.profiles or auth.users?
 -- Profiles is better because we need the profile to exist before we link foreign key?
@@ -3408,39 +3367,11 @@ END $$;
 UPDATE public.doctors
 SET status = CASE
     WHEN is_available IS TRUE THEN 'available'
-    WHEN is_available IS FALSE THEN 'off_duty'
-    ELSE 'available'
-END
-WHERE status IS NULL OR status = 'available'; 
-
--- 5. Add constraint to ensure valid status values
-ALTER TABLE public.doctors DROP CONSTRAINT IF EXISTS doctors_status_check;
-ALTER TABLE public.doctors ADD CONSTRAINT doctors_status_check CHECK (status IN ('available', 'busy', 'off_duty', 'on_call'));
-
--- 6. Make 'is_available' nullable (soft deprecation)
-ALTER TABLE public.doctors ALTER COLUMN is_available DROP NOT NULL;
-
-COMMIT;
-
-
--- ----------------------------------------------------------------------------
--- Source: 20260122063000_doctor_fixes.sql
--- ----------------------------------------------------------------------------
-
--- Migration: Doctor Image Sync & Schema Fixes
--- Description:
--- 1. Adds a trigger to sync profile image updates to the linked doctor record.
--- 2. Ensures column renames (years_experience -> experience) are applied if not already.
-
-BEGIN;
-
--- 1. Image Sync Trigger
--- Function to sync image
+-- Redundant Doctor Alterations Removed (Managed in Module 9 Certification)
+-- 1. Image Sync Trigger (Profile -> Doctor)
 CREATE OR REPLACE FUNCTION public.sync_doctor_image()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- If profile's image_uri or avatar_url changes, update linked doctor's image
-  -- We prefer image_uri but support avatar_url fallback if your system uses that
   UPDATE public.doctors
   SET image = COALESCE(NEW.image_uri, NEW.avatar_url)
   WHERE profile_id = NEW.id;
@@ -3448,29 +3379,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger definition
 DROP TRIGGER IF EXISTS on_profile_image_update ON public.profiles;
 CREATE TRIGGER on_profile_image_update
   AFTER UPDATE OF image_uri, avatar_url ON public.profiles
   FOR EACH ROW
   WHEN (OLD.image_uri IS DISTINCT FROM NEW.image_uri OR OLD.avatar_url IS DISTINCT FROM NEW.avatar_url)
   EXECUTE FUNCTION public.sync_doctor_image();
-
--- 2. Ensure Schema Consistency (Idempotent Renames)
-DO $$
-BEGIN
-    -- Ensure years_experience -> experience
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'doctors' AND column_name = 'years_experience') THEN
-        ALTER TABLE public.doctors RENAME COLUMN years_experience TO experience;
-    END IF;
-
-    -- Ensure specialty -> specialization
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'doctors' AND column_name = 'specialty') THEN
-        ALTER TABLE public.doctors RENAME COLUMN specialty TO specialization;
-    END IF;
-END $$;
-
-COMMIT;
 
 
 -- ----------------------------------------------------------------------------
@@ -4817,10 +4731,11 @@ COMMENT ON COLUMN public.hospitals.verification_status IS 'Verification workflow
 -- 2. Create id_mappings table
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS public.id_mappings (
+DROP TABLE IF EXISTS public.id_mappings CASCADE;
+CREATE TABLE public.id_mappings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     entity_type TEXT NOT NULL CHECK (entity_type IN ('patient', 'provider', 'hospital')),
-    entity_id UUID NOT NULL,
+    entity_id TEXT NOT NULL,
     display_id TEXT NOT NULL UNIQUE,
     created_at TIMESTAMPTZ DEFAULT now(),
     
@@ -5879,50 +5794,7 @@ ORDER BY status DESC, a.call_sign;
 -- Source: 20260213134200_urgent_production_migration.sql
 -- ----------------------------------------------------------------------------
 
--- URGENT: Apply Column Rename Migration to Production
--- Run this in Supabase SQL Editor immediately
--- This fixes the "experience column not found" error
-
--- 1. Fix roles for existing doctor profiles
-UPDATE public.profiles
-SET role = 'provider'
-WHERE provider_type = 'doctor' AND role = 'patient';
-
--- 2. Rename 'years_experience' to 'experience' (CRITICAL FIX)
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'doctors' AND column_name = 'years_experience') THEN
-        ALTER TABLE public.doctors RENAME COLUMN years_experience TO experience;
-    END IF;
-    
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'doctors' AND column_name = 'specialty') THEN
-        ALTER TABLE public.doctors RENAME COLUMN specialty TO specialization;
-    END IF;
-END $$;
-
--- 3. Add 'status' column if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'doctors' AND column_name = 'status') THEN
-        ALTER TABLE public.doctors ADD COLUMN status text DEFAULT 'available';
-    END IF;
-END $$;
-
--- 4. Backfill 'status' based on 'is_available'
-UPDATE public.doctors
-SET status = CASE
-    WHEN is_available IS TRUE THEN 'available'
-    WHEN is_available IS FALSE THEN 'off_duty'
-    ELSE 'available'
-END
-WHERE status IS NULL OR status = 'available'; 
-
--- 5. Add constraint to ensure valid status values
-ALTER TABLE public.doctors DROP CONSTRAINT IF EXISTS doctors_status_check;
-ALTER TABLE public.doctors ADD CONSTRAINT doctors_status_check CHECK (status IN ('available', 'busy', 'off_duty', 'on_call', 'invited'));
-
--- 6. Make 'is_available' nullable (soft deprecation)
-ALTER TABLE public.doctors ALTER COLUMN is_available DROP NOT NULL;
+-- Redundant Doctor Alterations Removed (Managed in Module 9 Certification)
 
 
 
@@ -9063,20 +8935,8 @@ CREATE POLICY "Service Role full access hospitals"
 ALTER TABLE public.doctors ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated users can view doctors" ON public.doctors;
-CREATE POLICY "Authenticated users can view doctors"
-  ON public.doctors FOR SELECT
-  USING (auth.role() = 'authenticated');
+-- DOCTORS (Managed in Module 9 Certification)
 
-DROP POLICY IF EXISTS "Platform Admins can manage all doctors" ON public.doctors;
-CREATE POLICY "Platform Admins can manage all doctors"
-  ON public.doctors FOR ALL
-  USING (public.get_current_user_role() = 'admin');
-
-DROP POLICY IF EXISTS "Service Role full access doctors" ON public.doctors;
-CREATE POLICY "Service Role full access doctors"
-  ON public.doctors FOR ALL
-  TO service_role
-  USING (true) WITH CHECK (true);
 
 -- ============================================================
 -- 4. AMBULANCES
@@ -10394,81 +10254,7 @@ FROM public.hospitals WHERE status = 'available';
 NOTIFY pgrst, 'reload schema';
 
 
--- ----------------------------------------------------------------------------
--- Source: 20260216001400_final_hemet_seed.sql
--- ----------------------------------------------------------------------------
 
--- 20260216001400_final_hemet_seed.sql
-DO $$
-DECLARE
-    v_admin_id UUID;
-    v_org_admin_id UUID;
-    v_driver_id UUID;
-    v_patient_id UUID;
-    v_hospital_id UUID;
-    v_ambulance_id TEXT := 'AMB-HEMET-001';
-BEGIN
-    -- 1. Identify Test Users (Pick the first 4)
-    SELECT id INTO v_admin_id FROM auth.users ORDER BY created_at ASC LIMIT 1;
-    SELECT id INTO v_org_admin_id FROM auth.users ORDER BY created_at ASC LIMIT 1 OFFSET 1;
-    SELECT id INTO v_driver_id FROM auth.users ORDER BY created_at ASC LIMIT 1 OFFSET 2;
-    SELECT id INTO v_patient_id FROM auth.users ORDER BY created_at ASC LIMIT 1 OFFSET 3;
-
-    IF v_org_admin_id IS NULL THEN
-        RAISE EXCEPTION 'SEED ERROR: FEWER THAN 2 USERS IN AUTH.USERS.';
-    END IF;
-
-    -- 2. Create Organization
-    INSERT INTO public.organizations (id, name, contact_email, stripe_account_id)
-    VALUES (v_org_admin_id, 'Hemet Health Collective', 'hemet@example.com', 'acct_test_hemet')
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 3. Create Org Wallet
-    INSERT INTO public.organization_wallets (organization_id, balance, currency)
-    VALUES (v_org_admin_id, 1000.00, 'USD')
-    ON CONFLICT (organization_id) DO UPDATE SET balance = 1000.00;
-
-    -- 4. Update Profiles
-    UPDATE public.profiles SET role = 'admin', full_name = 'Test Admin' WHERE id = v_admin_id;
-    UPDATE public.profiles SET role = 'org_admin', full_name = 'Hemet Health Manager', organization_id = v_org_admin_id WHERE id = v_org_admin_id;
-    UPDATE public.profiles SET role = 'provider', full_name = 'Fast EMS Driver', assigned_ambulance_id = v_ambulance_id WHERE id = v_driver_id;
-    UPDATE public.profiles SET role = 'patient', full_name = 'John Doe Patient' WHERE id = v_patient_id;
-
-    -- 5. Create Hospital
-    v_hospital_id := gen_random_uuid();
-    INSERT INTO public.hospitals (
-        id, name, organization_id, latitude, longitude, address, status, service_types, verified, available_beds, ambulances_count, type
-    ) VALUES (
-        v_hospital_id,
-        'Hemet Valley Medical Center (Test)',
-        v_org_admin_id,
-        33.7445,
-        -116.9696,
-        '1117 E Devonshire Ave, Hemet, CA 92543',
-        'available',
-        ARRAY['ambulance', 'bed'],
-        true,
-        10,
-        2,
-        'standard'
-    );
-
-    -- 6. Create Ambulance
-    INSERT INTO public.ambulances (
-        id, type, status, hospital_id, organization_id, base_price, call_sign, hospital
-    ) VALUES (
-        v_ambulance_id,
-        'basic',
-        'available',
-        v_hospital_id,
-        v_org_admin_id,
-        150.00,
-        'Medic-HEMET-1',
-        'Hemet Valley Medical Center (Test)'
-    );
-
-    RAISE NOTICE 'HEMET SEEDING SUCCESSFUL FOR ORG: %', v_org_admin_id;
-END $$;
 
 
 -- ----------------------------------------------------------------------------
@@ -10479,12 +10265,11 @@ END $$;
 -- Migration: RESTORE AUTO-CREATION TRIGGERS
 -- ============================================================
 -- Restores functions & triggers dropped during flexible_ids:
---   1. handle_new_user()           â†’ auto-create profile + preferences on signup
---   2. handle_new_user_medical_profile() â†’ auto-create medical_profile on profile insert
---   3. ensure_patient_wallet()     â†’ auto-create patient_wallet on profile insert
+--   1. handle_new_user()           -> auto-create profile + preferences on signup
+--   2. handle_new_user_medical_profile() -> auto-create medical_profile on profile insert
+--   3. ensure_patient_wallet()     -> auto-create patient_wallet on profile insert
 -- ============================================================
 
-BEGIN;
 
 -- ============================================================
 -- 1. PROFILE AUTO-CREATION (auth.users â†’ profiles + preferences)
@@ -10492,8 +10277,6 @@ BEGIN;
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
 AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, phone, full_name, avatar_url, image_uri, created_at, updated_at)
@@ -14360,41 +14143,40 @@ AS $$
 DECLARE
     found_hospital_id uuid;
 BEGIN
-    -- Only act if role is provider and provider_type is set
-    IF NEW.role = 'provider' AND NEW.provider_type IS NOT NULL THEN
-        
-        -- Attempt to resolve a valid hospital_id from the organization
-        -- Safe comparison by casting both to text
-        BEGIN
-            SELECT id INTO found_hospital_id 
-            FROM public.hospitals 
-            WHERE organization_id::text = NEW.organization_id::text 
-            LIMIT 1;
-        EXCEPTION WHEN OTHERS THEN
-            found_hospital_id := NULL;
-        END;
+    -- 1. Resolve Hospital ID from organization_id mapping
+    BEGIN
+        SELECT id INTO found_hospital_id 
+        FROM public.hospitals 
+        WHERE organization_id::text = NEW.organization_id::text 
+        LIMIT 1;
+    EXCEPTION WHEN OTHERS THEN
+        found_hospital_id := NULL;
+    END;
 
-        -- Handle Doctors
+    -- 2. Handle Cleanup on Transition (Prevent "Ghost" Records)
+    IF TG_OP = 'UPDATE' THEN
+        IF (OLD.provider_type IS DISTINCT FROM NEW.provider_type) OR (OLD.role IS DISTINCT FROM NEW.role) THEN
+            -- Cleanup old type: Doctor -> Something Else
+            IF LOWER(COALESCE(OLD.provider_type, '')) = 'doctor' THEN
+                 IF LOWER(COALESCE(NEW.provider_type, '')) != 'doctor' OR NEW.role != 'provider' THEN
+                    DELETE FROM public.doctors WHERE profile_id = NEW.id;
+                 END IF;
+            END IF;
+            -- Cleanup old type: Ambulance (Driver) -> Something Else
+            IF LOWER(COALESCE(OLD.provider_type, '')) = 'ambulance' THEN
+                 IF LOWER(COALESCE(NEW.provider_type, '')) != 'ambulance' OR NEW.role != 'provider' THEN
+                    DELETE FROM public.ambulances WHERE profile_id = NEW.id;
+                 END IF;
+            END IF;
+        END IF;
+    END IF;
+
+    -- 3. Sync Current State (Upsert)
+    IF NEW.role = 'provider' AND NEW.provider_type IS NOT NULL THEN
+        -- Handle DOCTORS
         IF LOWER(NEW.provider_type) = 'doctor' THEN
-            INSERT INTO public.doctors (
-                profile_id,
-                name,
-                email,
-                phone,
-                hospital_id,
-                status,
-                specialization,
-                updated_at
-            ) VALUES (
-                NEW.id,
-                COALESCE(NEW.full_name, NEW.username),
-                NEW.email,
-                NEW.phone,
-                found_hospital_id,
-                'available',
-                'General Practice',
-                now()
-            )
+            INSERT INTO public.doctors (profile_id, name, email, phone, hospital_id, status, specialization, updated_at)
+            VALUES (NEW.id, COALESCE(NEW.full_name, NEW.username), NEW.email, NEW.phone, found_hospital_id, 'available', 'General Practice', now())
             ON CONFLICT (profile_id) DO UPDATE SET
                 name = EXCLUDED.name,
                 email = EXCLUDED.email,
@@ -14402,29 +14184,16 @@ BEGIN
                 hospital_id = EXCLUDED.hospital_id,
                 updated_at = now();
         
-        -- Handle Ambulances
+        -- Handle AMBULANCES (Drivers)
         ELSIF LOWER(NEW.provider_type) = 'ambulance' THEN
-            INSERT INTO public.ambulances (
-                profile_id,
-                call_sign,
-                hospital_id,
-                status,
-                type,
-                updated_at
-            ) VALUES (
-                NEW.id,
-                NEW.username,
-                found_hospital_id,
-                'available',
-                'Basic',
-                now()
-            )
+            -- id is TEXT PK on ambulances. Using profile UUID as fixed mapping.
+            INSERT INTO public.ambulances (id, profile_id, call_sign, hospital_id, status, type, updated_at)
+            VALUES (NEW.id::text, NEW.id, NEW.username, found_hospital_id, 'available', 'Basic', now())
             ON CONFLICT (profile_id) DO UPDATE SET
                 call_sign = EXCLUDED.call_sign,
                 hospital_id = EXCLUDED.hospital_id,
                 updated_at = now();
         END IF;
-        
     END IF;
     
     RETURN NEW;
@@ -25877,10 +25646,21 @@ ALTER TABLE public.emergency_requests ALTER COLUMN ambulance_id TYPE UUID USING 
 ALTER TABLE public.emergency_requests ALTER COLUMN responder_id TYPE UUID USING responder_id::uuid;
 ALTER TABLE public.visits ALTER COLUMN hospital_id TYPE UUID USING hospital_id::uuid;
 
+-- Ensure correct type for entity_id
+ALTER TABLE public.id_mappings ALTER COLUMN entity_id TYPE TEXT;
+
+DO $$
+DECLARE col_type text;
+BEGIN
+  SELECT data_type INTO col_type FROM information_schema.columns 
+  WHERE table_schema = 'public' AND table_name = 'id_mappings' AND column_name = 'entity_id';
+  RAISE WARNING 'DEBUG: id_mappings.entity_id type: %', col_type;
+END $$;
+
 -- 2. RESTORE GROUND ZERO MAPPING REGISTRY
 CREATE TABLE IF NOT EXISTS public.id_mappings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    entity_id UUID NOT NULL UNIQUE,
+    entity_id TEXT NOT NULL UNIQUE,
     display_id TEXT NOT NULL UNIQUE,
     entity_type TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -26072,10 +25852,13 @@ ALTER TABLE public.emergency_requests ALTER COLUMN ambulance_id TYPE UUID USING 
 ALTER TABLE public.emergency_requests ALTER COLUMN responder_id TYPE UUID USING responder_id::uuid;
 ALTER TABLE public.visits ALTER COLUMN hospital_id TYPE UUID USING hospital_id::uuid;
 
+-- Ensure correct type for entity_id
+ALTER TABLE public.id_mappings ALTER COLUMN entity_id TYPE TEXT;
+
 -- 2. RESTORE GROUND ZERO MAPPING REGISTRY
 CREATE TABLE IF NOT EXISTS public.id_mappings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    entity_id UUID NOT NULL UNIQUE,
+    entity_id TEXT NOT NULL UNIQUE,
     display_id TEXT NOT NULL UNIQUE,
     entity_type TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -26109,7 +25892,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4. RESTORE AUTH & UI COMPATIBILITY
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 BEGIN
   -- Profile with image_uri legacy sync
   INSERT INTO public.profiles (id, email, full_name, avatar_url, image_uri, role)
@@ -26133,17 +25919,20 @@ BEGIN
   
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 CREATE OR REPLACE FUNCTION public.handle_new_user_medical_profile()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 BEGIN
   INSERT INTO public.medical_profiles (user_id) 
   VALUES (NEW.id)
   ON CONFLICT (user_id) DO NOTHING;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- 5. REBIND TRIGGERS
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -26154,7 +25943,12 @@ CREATE TRIGGER on_profile_created_medical AFTER INSERT ON public.profiles FOR EA
 
 -- 6. SYSTEM RECOVERY: KILL RECURSION & ALIGN TYPES
 CREATE OR REPLACE FUNCTION public.get_current_user_role()
-RETURNS text AS $$
+RETURNS text
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   v_role text;
 BEGIN
@@ -26162,18 +25956,23 @@ BEGIN
   SELECT role INTO v_role FROM public.profiles WHERE id = auth.uid();
   RETURN v_role;
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
+$$;
 
 -- Get User Org ID (Security Definer to bypass RLS)
 CREATE OR REPLACE FUNCTION public.get_current_user_org_id()
-RETURNS uuid AS $$
+RETURNS uuid
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   v_org_id uuid;
 BEGIN
   SELECT organization_id INTO v_org_id FROM public.profiles WHERE id = auth.uid();
   RETURN v_org_id;
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
+$$;
 
 -- Standardize RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -26329,26 +26128,78 @@ END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
 
 -- 2. Unified Core RPCs
+-- Restoring proper pagination for activity feed
 DROP FUNCTION IF EXISTS public.get_recent_activity(integer, integer);
 DROP FUNCTION IF EXISTS public.get_recent_activity(integer);
-CREATE OR REPLACE FUNCTION public.get_recent_activity(p_limit int DEFAULT 10)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  v_result JSONB;
+
+CREATE OR REPLACE FUNCTION public.get_recent_activity(
+    limit_count integer DEFAULT 20,
+    offset_count integer DEFAULT 0
+)
+RETURNS TABLE(
+    id uuid,
+    user_id uuid,
+    user_email text,
+    user_name text,
+    action text,
+    entity_type text,
+    entity_id uuid,
+    description text,
+    metadata jsonb,
+    created_at timestamp with time zone,
+    time_ago text
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
-  SELECT jsonb_agg(t) INTO v_result FROM (
+    RETURN QUERY
     SELECT 
-        id, 
-        'Emergency Request' as type, 
-        status, 
-        created_at,
-        service_type,
-        hospital_name
-    FROM public.emergency_requests 
-    ORDER BY created_at DESC LIMIT p_limit
-  ) t;
-  RETURN COALESCE(v_result, '[]'::jsonb);
+        ua.id,
+        ua.user_id,
+        p.email::text as user_email,
+        COALESCE(p.first_name || ' ' || p.last_name, p.email)::text as user_name,
+        ua.action,
+        ua.entity_type,
+        ua.entity_id,
+        ua.description,
+        ua.metadata,
+        ua.created_at,
+        CASE 
+            WHEN ua.created_at > NOW() - INTERVAL '1 minute' THEN 'Just now'
+            WHEN ua.created_at > NOW() - INTERVAL '1 hour' THEN EXTRACT(MINUTE FROM NOW() - ua.created_at)::text || 'm ago'
+            WHEN ua.created_at > NOW() - INTERVAL '1 day' THEN EXTRACT(HOUR FROM NOW() - ua.created_at)::text || 'h ago'
+            WHEN ua.created_at > NOW() - INTERVAL '1 week' THEN EXTRACT(DAY FROM NOW() - ua.created_at)::text || 'd ago'
+            ELSE TO_CHAR(ua.created_at, 'Mon DD')
+        END as time_ago
+    FROM public.user_activity ua
+    LEFT JOIN public.profiles p ON ua.user_id = p.id
+    ORDER BY ua.created_at DESC
+    LIMIT limit_count
+    OFFSET offset_count;
 END;
+$$;
+
+-- Activity Stats RPC
+CREATE OR REPLACE FUNCTION public.get_activity_stats(days_back integer DEFAULT 7)
+RETURNS TABLE(
+    date date,
+    count bigint
+) 
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT 
+        created_at::date as date,
+        COUNT(*) as count
+    FROM public.user_activity
+    WHERE created_at > NOW() - (days_back || ' days')::interval
+    GROUP BY created_at::date
+    ORDER BY created_at::date DESC;
 $$;
 
 -- 3. Solidified Profile Policies (Pure de-recursion)
@@ -26410,6 +26261,202 @@ CREATE POLICY "Staff view relevant policies" ON public.insurance_policies FOR SE
 );
 
 GRANT EXECUTE ON FUNCTION public.get_all_auth_users(uuid) TO authenticated;
+-- ==========================================
+-- FINAL MASTER CERTIFICATION & RPC ALIGNMENT
+-- ==========================================
+
+-- 1. Activity System (Fixing Console 404s)
+DROP FUNCTION IF EXISTS public.get_recent_activity(integer, integer);
+DROP FUNCTION IF EXISTS public.get_recent_activity(integer);
+
+CREATE OR REPLACE FUNCTION public.get_recent_activity(
+    limit_count integer DEFAULT 20,
+    offset_count integer DEFAULT 0
+)
+RETURNS TABLE(
+    id uuid,
+    user_id uuid,
+    user_email text,
+    user_name text,
+    action text,
+    entity_type text,
+    entity_id uuid,
+    description text,
+    metadata jsonb,
+    created_at timestamp with time zone,
+    time_ago text
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ua.id,
+        ua.user_id,
+        p.email::text as user_email,
+        COALESCE(p.first_name || ' ' || p.last_name, p.email)::text as user_name,
+        ua.action,
+        ua.entity_type,
+        ua.entity_id,
+        ua.description,
+        ua.metadata,
+        ua.created_at,
+        CASE 
+            WHEN ua.created_at > NOW() - INTERVAL '1 minute' THEN 'Just now'
+            WHEN ua.created_at > NOW() - INTERVAL '1 hour' THEN EXTRACT(MINUTE FROM NOW() - ua.created_at)::text || 'm ago'
+            WHEN ua.created_at > NOW() - INTERVAL '1 day' THEN EXTRACT(HOUR FROM NOW() - ua.created_at)::text || 'h ago'
+            WHEN ua.created_at > NOW() - INTERVAL '1 week' THEN EXTRACT(DAY FROM NOW() - ua.created_at)::text || 'd ago'
+            ELSE TO_CHAR(ua.created_at, 'Mon DD')
+        END as time_ago
+    FROM public.user_activity ua
+    LEFT JOIN public.profiles p ON ua.user_id = p.id
+    ORDER BY ua.created_at DESC
+    LIMIT limit_count
+    OFFSET offset_count;
+END;
+$$;
+
+-- Activity Stats RPC
+CREATE OR REPLACE FUNCTION public.get_activity_stats(days_back integer DEFAULT 7)
+RETURNS TABLE(
+    date date,
+    count bigint
+) 
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT 
+        created_at::date as date,
+        COUNT(*) as count
+    FROM public.user_activity
+    WHERE created_at > NOW() - (days_back || ' days')::interval
+    GROUP BY created_at::date
+    ORDER BY created_at::date DESC;
+$$;
+
+-- 2. User Statistics (Role & Scoping Alignment)
+DROP FUNCTION IF EXISTS public.get_user_statistics(uuid);
+DROP FUNCTION IF EXISTS public.get_user_statistics(text);
+DROP FUNCTION IF EXISTS public.get_user_statistics();
+
+CREATE OR REPLACE FUNCTION public.get_user_statistics(p_organization_id UUID DEFAULT NULL)
+RETURNS TABLE (
+  total_users bigint,
+  total_profiles bigint,
+  recent_signups bigint,
+  email_verified_users bigint,
+  phone_verified_users bigint,
+  admin_count bigint,
+  provider_count bigint,
+  sponsor_count bigint,
+  viewer_count bigint,
+  patient_count bigint,
+  org_admin_count bigint,
+  dispatcher_count bigint
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        COUNT(*)::bigint,
+        COUNT(*)::bigint,
+        COUNT(*) FILTER (WHERE created_at > now() - interval '30 days')::bigint,
+        COUNT(*) FILTER (WHERE email IS NOT NULL)::bigint,
+        COUNT(*) FILTER (WHERE phone IS NOT NULL)::bigint,
+        COUNT(*) FILTER (WHERE role = 'admin')::bigint,
+        COUNT(*) FILTER (WHERE role = 'provider')::bigint,
+        COUNT(*) FILTER (WHERE role = 'sponsor')::bigint,
+        COUNT(*) FILTER (WHERE role = 'viewer')::bigint,
+        COUNT(*) FILTER (WHERE role IN ('patient', 'user'))::bigint,
+        COUNT(*) FILTER (WHERE role = 'org_admin')::bigint,
+        COUNT(*) FILTER (WHERE role = 'dispatcher')::bigint
+    FROM public.profiles
+    WHERE (p_organization_id IS NULL OR organization_id = p_organization_id);
+END;
+$$;
+
+-- 3. Provider & Driver Sync (Transition & Cleanup Logic)
+-- Handles auto-upserting doctors/ambulances and CLEANUP when type changes
+DROP TRIGGER IF EXISTS tr_sync_provider_records ON public.profiles;
+DROP FUNCTION IF EXISTS public.sync_provider_records();
+
+CREATE OR REPLACE FUNCTION public.sync_provider_records()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    found_hospital_id uuid;
+BEGIN
+    -- 1. Resolve Hospital ID from organization_id mapping
+    BEGIN
+        SELECT id INTO found_hospital_id 
+        FROM public.hospitals 
+        WHERE organization_id = NEW.organization_id 
+        LIMIT 1;
+    EXCEPTION WHEN OTHERS THEN
+        found_hospital_id := NULL;
+    END;
+
+    -- 2. Handle Cleanup on Transition (Prevent "Ghost" Records)
+    -- If user was a doctor and is no longer assigned as such, delete the doctor record.
+    IF TG_OP = 'UPDATE' THEN
+        -- Cleanup old type: Doctor -> Something Else
+        IF LOWER(COALESCE(OLD.provider_type, '')) = 'doctor' THEN
+             IF LOWER(COALESCE(NEW.provider_type, '')) != 'doctor' OR NEW.role != 'provider' THEN
+                DELETE FROM public.doctors WHERE profile_id = NEW.id;
+             END IF;
+        END IF;
+        -- Cleanup old type: Ambulance (Driver) -> Something Else
+        IF LOWER(COALESCE(OLD.provider_type, '')) = 'ambulance' THEN
+             IF LOWER(COALESCE(NEW.provider_type, '')) != 'ambulance' OR NEW.role != 'provider' THEN
+                DELETE FROM public.ambulances WHERE profile_id = NEW.id;
+             END IF;
+        END IF;
+    END IF;
+
+    -- 3. Sync Current State (Upsert)
+    IF NEW.role = 'provider' AND NEW.provider_type IS NOT NULL THEN
+        -- Handle DOCTORS
+        IF LOWER(NEW.provider_type) = 'doctor' THEN
+            INSERT INTO public.doctors (profile_id, name, email, phone, hospital_id, status, specialization, updated_at)
+            VALUES (NEW.id, COALESCE(NEW.full_name, NEW.username), NEW.email, NEW.phone, found_hospital_id, 'available', 'General Practice', now())
+            ON CONFLICT (profile_id) DO UPDATE SET
+                name = EXCLUDED.name,
+                email = EXCLUDED.email,
+                phone = EXCLUDED.phone,
+                hospital_id = EXCLUDED.hospital_id,
+                updated_at = now();
+        
+        -- Handle AMBULANCES (Driver-Ambulance Link)
+        ELSIF LOWER(NEW.provider_type) = 'ambulance' THEN
+            INSERT INTO public.ambulances (id, profile_id, call_sign, hospital_id, status, type, updated_at)
+            VALUES (NEW.id::text, NEW.id, NEW.username, found_hospital_id, 'available', 'Basic', now())
+            ON CONFLICT (profile_id) DO UPDATE SET
+                call_sign = EXCLUDED.call_sign,
+                hospital_id = EXCLUDED.hospital_id,
+                updated_at = now();
+        END IF;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER tr_sync_provider_records
+AFTER INSERT OR UPDATE ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.sync_provider_records();
+
+-- 4. Auth & Visibility Grants
+GRANT EXECUTE ON FUNCTION public.get_recent_activity(integer, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_activity_stats(integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_user_statistics(uuid) TO authenticated;
 
 COMMIT;
 

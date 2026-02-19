@@ -42,6 +42,71 @@ Every major fix must leave a trail:
 - **Verification Report**: `docs/archive/task-verifications/[task-name]-verification.md`
 - **Reference Updated**: `docs/REFERENCE.md` if schema changed.
 
+## 5. Consolidation Guidelines
+
+### When to Consolidate
+Consolidate floating fixes when:
+- **3-4 floating fixes** are confirmed stable in production
+- **Major feature releases** are planned
+- **Migration history** becomes complex (>10 migrations)
+- **Performance issues** detected from migration chain
+
+### Consolidation Process
+1. **Verification Phase**
+   ```bash
+   # Test all floating fixes
+   node docs/archive/test-scripts/runners/suite-runner.js
+   
+   # Verify error handling
+   node docs/archive/test-scripts/runners/consolidation-runner.js
+   ```
+
+2. **Consolidation Phase**
+   ```sql
+   -- Create consolidation migration
+   -- Merge verified fixes into consolidated schema
+   -- Update master schema file
+   ```
+
+3. **Archival Phase**
+   ```bash
+   # Archive old migrations
+   mkdir supabase/migrations/archive/
+   mv supabase/migrations/20260218_*.sql supabase/migrations/archive/
+   ```
+
+### Consolidation Risk Management
+- **Phase-based deployment**: Deploy by risk level (low → medium → high)
+- **Rollback procedures**: Backup and revert capabilities
+- **Testing requirements**: Comprehensive verification before consolidation
+- **Documentation updates**: Update all relevant documentation
+
+## 6. Error Management Guidelines
+
+### Error Directory Structure
+```
+supabase/errors/
+├── consolidation/         # Consolidation-specific errors
+├── testing/              # Test execution errors
+├── migration/            # Migration execution errors
+├── patterns/             # Error pattern analysis
+└── archive/               # Historical error logs
+```
+
+### Error Logging Standards
+- **Never log errors to project root** - use `supabase/errors/`
+- **Always categorize errors** - use structured classification
+- **Include resolution suggestions** - provide debugging guidance
+- **Archive error patterns** - maintain historical reference
+
+### Error Classification System
+- **DATABASE**: Connection, query, constraint, permission errors
+- **RPC**: Function execution, parameter validation errors
+- **RLS**: Row level security, policy errors
+- **TRIGGER**: Trigger execution, dependency errors
+- **TEST**: Assertion, validation, timeout errors
+- **CONSOLIDATION**: Migration, conflict, dependency errors
+
 ---
 **Standard**: All IDs are **UUID native**. Mapping to Display IDs (REQ-XXXX) is handled by triggers.
 **Quality is intentional. Every fix is verified before it is baseline.**
