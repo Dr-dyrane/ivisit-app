@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     role TEXT DEFAULT 'patient' CHECK (role IN ('patient', 'provider', 'admin', 'org_admin', 'dispatcher', 'viewer', 'sponsor')),
     provider_type TEXT CHECK (provider_type IN ('hospital', 'ambulance_service', 'ambulance', 'doctor', 'driver', 'paramedic', 'pharmacy', 'clinic')),
     bvn_verified BOOLEAN DEFAULT false,
-    onboarding_status TEXT CHECK (onboarding_status IN ('pending', 'complete')),
+    onboarding_status TEXT CHECK (onboarding_status IN ('pending', 'complete', 'skipped')),
     stripe_customer_id TEXT,
     stripe_account_id TEXT,
     organization_name TEXT,

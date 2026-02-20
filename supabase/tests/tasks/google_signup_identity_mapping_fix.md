@@ -31,16 +31,27 @@ Resolve the issue where new users signing up with Google OAuth experience a redi
 - **Action**: Run `node supabase/scripts/sync_to_console.js`.
 - **Validation**: `ivisit-console/frontend/supabase/migrations/20260219000100_identity.sql` matches the source of truth.
 
+### **Step 5: Universal Skip Strategy**
+- Implement "Skip for now" logic for all authentication methods.
+- **Threshold**: Skip is allowed once an Identity exists (Profile has been created).
+- **Logic**:
+    - Users on Step 3 (Organization Details) or higher can defer setup.
+    - Profile `onboarding_status` is updated to `'skipped'`.
+    - Dashboard detects `'skipped'` status and displays the `IncompleteOnboardingCard`.
+- **Validation**: Verify that both Google and Email/Password users can land in the dashboard with a pending organization setup.
+
 ## 🔧 **Expected Results**
 - New Google signups complete without a page refresh loop.
 - The `profiles` and `id_mappings` tables are correctly populated for every new user.
 - The `AuthContext` provides a consistent "Loading" state until identity is fully resolved.
-- Database migrations are cleanly updated in both repositories.
+- Users can "Skip" organization setup once their account is created.
+- Dashboard displays a beautiful reminder for incomplete profiles.
 
 ## ✅ **Success Criteria**
-- New user can sign up with Google and land on the Dashboard successfully.
+- New user can sign up and land on the Dashboard successfully.
+- "Skip for now" button appears on Step 3 of the wizard.
 - `id_mappings` contains a record for the new user with `entity_type` ∈ `['patient', 'admin', 'provider', ...]`.
-- No `PGRST116` errors are left unhandled in the browser console.
+- Dashboard shows `IncompleteOnboardingCard` only for users with `onboarding_status = 'skipped'`.
 - `npx supabase db push` reports "Remote database is up to date" or applies the fix successfully.
 
 ## 🚨 **Critical Fixes Implemented**
