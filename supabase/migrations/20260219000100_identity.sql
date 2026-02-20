@@ -161,8 +161,17 @@ BEGIN
 
     -- Sync to Central Registry (redundancy for cross-table lookup speed)
     IF TG_OP = 'INSERT' THEN
+        -- Use v_role for profiles to match the entity_type check constraint, 
+        -- otherwise use the table name for other entities.
+        v_type := CASE WHEN TG_TABLE_NAME = 'profiles' THEN v_role ELSE TG_TABLE_NAME END;
+        
+        -- Fallback if v_role didn't map to a valid entity_type
+        IF v_type NOT IN ('patient', 'provider', 'hospital', 'admin', 'dispatcher', 'doctor', 'ambulance', 'driver', 'emergency_request', 'visit', 'organization', 'payment', 'notification', 'wallet') THEN
+            v_type := 'patient'; -- Default safe fallback for identity
+        END IF;
+
         INSERT INTO public.id_mappings (entity_id, display_id, entity_type)
-        VALUES (NEW.id, NEW.display_id, TG_TABLE_NAME)
+        VALUES (NEW.id, NEW.display_id, v_type)
         ON CONFLICT (display_id) DO NOTHING;
     END IF;
 
