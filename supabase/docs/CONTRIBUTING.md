@@ -66,6 +66,11 @@ Migration workflow, service patterns, and scalability rules for both codebases.
 | Domain mapping | `utils/domainNormalize.js` | `utils/dataMappingUtils.js` |
 | RBAC | RLS only | `services/rbacPatterns.js` |
 
+### **Rule: Silent Guarding (UX Rule)**
+Frontend services for restricted modules (Analytics, Activity, Admin, Finance) **MUST** include a client-side role check (Guard) to return empty/neutral states instantly if the user lacks the required role.
+- **Why**: Prevents `400 Bad Request` log spam in the browser console.
+- **Pattern**: `if (user?.role === 'patient') return [];`
+
 ### Canonical Imports
 | Function | App From | Console From |
 |---|---|---|
@@ -327,6 +332,11 @@ node supabase/tests/scripts/test_runner.js [task_name]
 - Row Level Security (RLS) policies
 - User permissions and roles
 - Authentication security helpers
+
+### **The RBAC Consolidation Rule**
+Avoid hardcoding role strings (e.g., `IF role IN ('admin', 'viewer')...`) inside individual RPCs.
+- **Do**: Create a centralized helper in `0007_security.sql` (e.g., `public.p_is_console_allowed()`).
+- **Why**: Ensures authorization logic is DRY and evolves without multi-file refactoring.
 
 #### **0008_emergency_logic** - Emergency Business Logic
 - Emergency cost calculation

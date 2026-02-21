@@ -239,7 +239,13 @@ supabase.rpc('function_name').then(console.log);
 ### **Query Performance**
 - **Geospatial queries**: Test with various distances
 - **Complex joins**: Validate emergency request flows
-- **Index usage**: Ensure proper query optimization
+- **Performance Fixes** - Index additions, query optimization
+
+### **Zero-Leak Testing Rule**
+Tests that create database side-effects (Auth users, profiles) **MUST** include an exhaustive cleanup phase.
+- **Patterned Emails**: Use `test-TASKNAME-UNIXTIME@example.com`.
+- **Mandatory Cleanup**: Every test runner must include a `finally` block or a dedicated `cleanup()` function that deletes all data matching the test pattern.
+- **No Residuals**: A successful test is one that leaves the database exactly as it found it.
 
 ### **Load Testing**
 - **Concurrent requests**: Multiple emergency creations
