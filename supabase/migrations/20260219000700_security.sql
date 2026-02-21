@@ -12,6 +12,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 🛡️ RBAC: Console Access Control
+CREATE OR REPLACE FUNCTION public.p_is_console_allowed()
+RETURNS BOOLEAN SECURITY DEFINER AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE id = auth.uid() 
+        AND role IN ('admin', 'org_admin', 'dispatcher', 'viewer')
+    );
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION public.p_get_current_org_id()
 RETURNS UUID SECURITY DEFINER AS $$
 BEGIN

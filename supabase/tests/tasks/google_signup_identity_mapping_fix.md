@@ -40,6 +40,19 @@ Resolve the issue where new users signing up with Google OAuth experience a redi
     - Dashboard detects `'skipped'` status and displays the `IncompleteOnboardingCard`.
 - **Validation**: Verify that both Google and Email/Password users can land in the dashboard with a pending organization setup.
 
+### **Step 6: Authorization & Performance Hardening**
+- **Auth Timeout**: Increased `fetchProfile` timeout to 15s to handle database "cold starts".
+- **Activity Access**: Updated `get_recent_activity` and `get_activity_stats` RPCs to allow `org_admin`, `dispatcher`, and `viewer` roles.
+- **Pillar Integration**: Integrated the fix directly into `20260219010000_core_rpcs.sql` (Core Pillar) and deleted the temporary patch migration per `CONTRIBUTING.md`.
+- **Security Verification**: Ran Node.js test wrapper `run_activity_test.js` which confirmed access control requirements meet the Dyrane UI standards.
+
+## **Final Sync Checklist**
+- [x] Integrate fix into `20260219010000_core_rpcs.sql`.
+- [x] Delete `20260220999999_fix_activity_perms.sql`.
+- [x] Run `node supabase/scripts/sync_to_console.js`. (COMPLETE)
+- [x] Verify `AuthContext.jsx` timeout is 15s.
+- [x] Verify `onboardingService.js` sets `role: 'viewer'` on skip.
+
 ## 🔧 **Expected Results**
 - New Google signups complete without a page refresh loop.
 - The `profiles` and `id_mappings` tables are correctly populated for every new user.

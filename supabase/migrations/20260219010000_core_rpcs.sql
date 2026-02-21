@@ -467,7 +467,11 @@ RETURNS TABLE (
     created_at TIMESTAMPTZ
 ) AS $$
 BEGIN
-    IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    -- Security: RBAC check
+    IF NOT public.p_is_console_allowed() THEN
+        RAISE EXCEPTION 'Unauthorized: Access denied';
+    END IF;
+
     RETURN QUERY
     SELECT ua.id, ua.user_id, ua.action, ua.entity_type, ua.entity_id, ua.description, ua.metadata, ua.created_at
     FROM public.user_activity ua
@@ -483,7 +487,11 @@ RETURNS JSONB AS $$
 DECLARE
     v_result JSONB;
 BEGIN
-    IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    -- Security: RBAC check
+    IF NOT public.p_is_console_allowed() THEN
+        RAISE EXCEPTION 'Unauthorized: Access denied';
+    END IF;
+
     SELECT jsonb_build_object(
         'total_actions', count(*),
         'unique_users', count(DISTINCT ua.user_id),
