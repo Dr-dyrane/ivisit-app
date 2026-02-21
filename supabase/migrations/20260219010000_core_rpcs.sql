@@ -315,17 +315,47 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- update_profile_by_admin: Used by console profilesService
-CREATE OR REPLACE FUNCTION public.update_profile_by_admin(target_user_id UUID, payload JSONB)
+CREATE OR REPLACE FUNCTION public.update_profile_by_admin(target_user_id UUID, profile_data JSONB)
 RETURNS JSONB AS $$
 BEGIN
-    IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    IF NOT public.p_is_console_allowed() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
     
     UPDATE public.profiles
     SET
-        full_name = COALESCE(payload->>'full_name', full_name),
-        phone = COALESCE(payload->>'phone', phone),
-        role = COALESCE(payload->>'role', role),
-        organization_id = COALESCE((payload->>'organization_id')::UUID, organization_id),
+        full_name = COALESCE(profile_data->>'full_name', full_name),
+        username = CASE 
+            WHEN (profile_data->>'username') = '' THEN NULL
+            WHEN (profile_data->>'username') IS NOT NULL THEN profile_data->>'username'
+            ELSE username
+        END,
+        phone = COALESCE(profile_data->>'phone', phone),
+        role = COALESCE(profile_data->>'role', role),
+        organization_id = CASE 
+            WHEN (profile_data->>'organization_id') = '' THEN NULL
+            WHEN (profile_data->>'organization_id') IS NOT NULL THEN (profile_data->>'organization_id')::UUID
+            ELSE organization_id
+        END,
+        provider_type = CASE 
+            WHEN (profile_data->>'provider_type') = '' THEN NULL
+            WHEN (profile_data->>'provider_type') IS NOT NULL THEN profile_data->>'provider_type'
+            ELSE provider_type
+        END,
+        bvn_verified = COALESCE((profile_data->>'bvn_verified')::BOOLEAN, bvn_verified),
+        address = CASE 
+            WHEN (profile_data->>'address') = '' THEN NULL
+            WHEN (profile_data->>'address') IS NOT NULL THEN profile_data->>'address'
+            ELSE address
+        END,
+        gender = CASE 
+            WHEN (profile_data->>'gender') = '' THEN NULL
+            WHEN (profile_data->>'gender') IS NOT NULL THEN profile_data->>'gender'
+            ELSE gender
+        END,
+        date_of_birth = CASE 
+            WHEN (profile_data->>'date_of_birth') = '' THEN NULL
+            WHEN (profile_data->>'date_of_birth') IS NOT NULL THEN profile_data->>'date_of_birth'
+            ELSE date_of_birth
+        END,
         updated_at = NOW()
     WHERE id = target_user_id;
     

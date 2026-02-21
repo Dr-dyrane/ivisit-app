@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.id_mappings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     entity_id UUID NOT NULL,
     display_id TEXT NOT NULL UNIQUE,
-    entity_type TEXT NOT NULL CHECK (entity_type IN ('patient', 'provider', 'hospital', 'admin', 'dispatcher', 'doctor', 'ambulance', 'driver', 'emergency_request', 'visit', 'organization', 'payment', 'notification', 'wallet')),
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('patient', 'provider', 'hospital', 'admin', 'dispatcher', 'doctor', 'ambulance', 'driver', 'emergency_request', 'visit', 'organization', 'payment', 'notification', 'wallet', 'org_admin', 'viewer', 'sponsor')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -128,6 +128,8 @@ BEGIN
             ELSIF v_role = 'patient' THEN v_prefix := 'PAT';
             ELSIF v_role = 'dispatcher' THEN v_prefix := 'DPC';
             ELSIF v_role = 'org_admin' THEN v_prefix := 'OAD';
+            ELSIF v_role = 'viewer' THEN v_prefix := 'VWR';
+            ELSIF v_role = 'sponsor' THEN v_prefix := 'SPN';
             ELSIF v_role = 'provider' THEN
                 CASE v_type
                     WHEN 'doctor' THEN v_prefix := 'DOC';
@@ -155,8 +157,13 @@ BEGIN
     END CASE;
 
     -- Generate and set Display ID on current record
-    IF NEW.display_id IS NULL THEN
+    IF TG_OP = 'INSERT' AND NEW.display_id IS NULL THEN
         NEW.display_id := public.generate_display_id(v_prefix);
+    ELSIF TG_OP = 'UPDATE' AND TG_TABLE_NAME = 'profiles' THEN
+        -- Rule: Ensure display_id prefix matches the role/type on every touch
+        IF NEW.display_id IS NULL OR LEFT(NEW.display_id, 3) != v_prefix THEN
+            NEW.display_id := public.generate_display_id(v_prefix);
+        END IF;
     END IF;
 
     -- Sync to Central Registry (redundancy for cross-table lookup speed)
@@ -166,13 +173,24 @@ BEGIN
         v_type := CASE WHEN TG_TABLE_NAME = 'profiles' THEN v_role ELSE TG_TABLE_NAME END;
         
         -- Fallback if v_role didn't map to a valid entity_type
-        IF v_type NOT IN ('patient', 'provider', 'hospital', 'admin', 'dispatcher', 'doctor', 'ambulance', 'driver', 'emergency_request', 'visit', 'organization', 'payment', 'notification', 'wallet') THEN
+        IF v_type NOT IN ('patient', 'provider', 'hospital', 'admin', 'dispatcher', 'doctor', 'ambulance', 'driver', 'emergency_request', 'visit', 'organization', 'payment', 'notification', 'wallet', 'org_admin', 'viewer', 'sponsor') THEN
             v_type := 'patient'; -- Default safe fallback for identity
         END IF;
 
         INSERT INTO public.id_mappings (entity_id, display_id, entity_type)
         VALUES (NEW.id, NEW.display_id, v_type)
         ON CONFLICT (display_id) DO NOTHING;
+    ELSIF TG_OP = 'UPDATE' AND TG_TABLE_NAME = 'profiles' AND NEW.display_id IS DISTINCT FROM OLD.display_id THEN
+        -- Role or type changed, update the display_id and entity_type in the registry
+        v_type := NEW.role;
+        IF v_type NOT IN ('patient', 'provider', 'hospital', 'admin', 'dispatcher', 'doctor', 'ambulance', 'driver', 'emergency_request', 'visit', 'organization', 'payment', 'notification', 'wallet', 'org_admin', 'viewer', 'sponsor') THEN
+            v_type := 'patient';
+        END IF;
+
+        UPDATE public.id_mappings 
+        SET display_id = NEW.display_id,
+            entity_type = v_type
+        WHERE entity_id = NEW.id;
     END IF;
 
     RETURN NEW;
@@ -189,7 +207,7 @@ BEGIN
     v_prefix := SPLIT_PART(p_display_id, '-', 1);
     
     CASE v_prefix
-        WHEN 'PAT', 'ADM', 'DPC', 'OAD', 'PRO', 'DOC', 'DRV', 'PMD', 'AMS', 'PHR', 'CLN', 'USR' THEN 
+        WHEN 'PAT', 'ADM', 'DPC', 'OAD', 'VWR', 'SPN', 'PRO', 'DOC', 'DRV', 'PMD', 'AMS', 'PHR', 'CLN', 'USR' THEN 
             SELECT id INTO v_id FROM public.profiles WHERE display_id = p_display_id;
         WHEN 'HSP' THEN SELECT id INTO v_id FROM public.hospitals WHERE display_id = p_display_id;
         WHEN 'ORG' THEN SELECT id INTO v_id FROM public.organizations WHERE display_id = p_display_id;
@@ -210,7 +228,7 @@ END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
 CREATE TRIGGER stamp_profile_display_id
-BEFORE INSERT ON public.profiles
+BEFORE INSERT OR UPDATE ON public.profiles
 FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
 
 -- Missing updated_at triggers for identity tables
