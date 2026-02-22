@@ -14,27 +14,18 @@ RETURNS TABLE (
     status TEXT,
     display_id TEXT
 ) AS $$
+DECLARE
+    v_user_location GEOMETRY;
 BEGIN
+    v_user_location := ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326);
+    
     RETURN QUERY
     SELECT 
-        h.id, 
-        h.name, 
-        h.address, 
-        h.latitude, 
-        h.longitude,
-        ST_Distance(
-            ST_SetSRID(ST_MakePoint(h.longitude, h.latitude), 4326),
-            ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)
-        ) / 1000 AS distance,
-        h.verified,
-        h.status,
-        h.display_id
+        h.id, h.name, h.address, h.latitude, h.longitude,
+        ST_Distance(COALESCE(h.coordinates, ST_SetSRID(ST_MakePoint(h.longitude, h.latitude), 4326)), v_user_location) / 1000 AS distance,
+        h.verified, h.status, h.display_id
     FROM public.hospitals h
-    WHERE ST_DWithin(
-        ST_SetSRID(ST_MakePoint(h.longitude, h.latitude), 4326),
-        ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326),
-        radius_km * 1000
-    )
+    WHERE ST_DWithin(COALESCE(h.coordinates, ST_SetSRID(ST_MakePoint(h.longitude, h.latitude), 4326)), v_user_location, radius_km * 1000)
     ORDER BY distance ASC;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
@@ -50,25 +41,22 @@ RETURNS TABLE (
     status TEXT,
     display_id TEXT
 ) AS $$
+DECLARE
+    v_user_location GEOMETRY;
 BEGIN
+    v_user_location := ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326);
+
     RETURN QUERY
     SELECT 
-        a.id, 
-        a.call_sign, 
+        a.id, a.call_sign, 
         ST_Y(a.location::geometry) as latitude,
         ST_X(a.location::geometry) as longitude,
-        ST_Distance(
-            a.location,
-            ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)
-        ) / 1000 AS distance,
-        a.status,
-        a.display_id
+        ST_Distance(a.location, v_user_location) / 1000 AS distance,
+        a.status, a.display_id
     FROM public.ambulances a
-    WHERE ST_DWithin(
-        a.location,
-        ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326),
-        radius_km * 1000
-    )
+    WHERE a.location IS NOT NULL 
+      AND a.status = 'available'
+      AND ST_DWithin(a.location, v_user_location, radius_km * 1000)
     ORDER BY distance ASC;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;

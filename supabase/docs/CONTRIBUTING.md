@@ -1,4 +1,4 @@
-# Contributing to iVisit
+# Contributing to iVisit.
 
 Migration workflow, service patterns, and scalability rules for both codebases.
 
@@ -11,6 +11,7 @@ Migration workflow, service patterns, and scalability rules for both codebases.
 - **Delete redundant migrations** after integrating fixes.
 - **Run tests** before and after schema changes.
 - **Sync to console** after any migration change via `node supabase/scripts/sync_to_console.js`.
+- **Repair Remote History** — After deleting local fix migrations, use `npx supabase migration repair --status reverted <timestamp>` to untrack them from the remote database history without affecting data.
 
 ### The 11 Modules
 1. `0000_infra` — Extensions, utilities
@@ -217,14 +218,15 @@ const result = await batchProcess(hospitals, async (batch) => {
 2. **Run the Test** - Execute the specific test/fix
 3. **Verify Success** - Confirm the fix works
 4. **Update Core Migration** - Integrate successful fix into core pillar
-5. **Delete Test SQL** - Remove the temporary test/fix file
-6. **Run Final Validation** - Confirm everything works with core migration
+5. **Delete Test SQL** - Remove the temporary test/fix file.
+6. **Repair History** - Use `migration repair --status reverted` to clean the remote migration log for the deleted files.
+7. **Run Final Validation** - Confirm everything works with the consolidated core migration.
 
 ### **🔄 Test/Fix Lifecycle**
 ```
-Test SQL → Test → Verify → Update Core Migration → Delete Test SQL → Final Validation
-     ↑           ↑          ↑                ↑              ↑                ↑
-   Temporary   Temporary   Temporary        Permanent      Temporary        Permanent
+Test SQL → Test → Verify → Update Core Migration → Delete Test SQL → Repair History → Final Validation
+     ↑           ↑          ↑                ↑              ↑                ↑                ↑
+   Temporary   Temporary   Temporary        Permanent      Temporary        Internal         Permanent
 ```
 
 ### **Error Classification**

@@ -9,12 +9,19 @@ CREATE TABLE IF NOT EXISTS public.ambulances (
     profile_id UUID UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE, -- Driver Profile
     type TEXT,
     call_sign TEXT,
-    status TEXT NOT NULL DEFAULT 'pending_approval' CHECK (status IN ('pending_approval', 'payment_declined', 'in_progress', 'accepted', 'arrived', 'completed', 'cancelled')),
+    -- Dispatch lifecycle statuses (matches automations + emergency_logic RPCs)
+    status TEXT NOT NULL DEFAULT 'available' CHECK (status IN (
+        'available', 'dispatched', 'on_trip', 'en_route', 'on_scene', 'returning',
+        'maintenance', 'offline', 'pending_approval'
+    )),
     location GEOMETRY(POINT, 4326),
     vehicle_number TEXT,
     license_plate TEXT,
     base_price NUMERIC,
     crew JSONB DEFAULT '{}',
+    -- Real-time dispatch fields
+    eta TIMESTAMPTZ,                          -- ETA to patient/destination
+    current_call UUID,                         -- Active emergency_request UUID
     display_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -27,6 +34,7 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     hospital_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
     ambulance_id UUID REFERENCES public.ambulances(id) ON DELETE SET NULL,
     status TEXT NOT NULL DEFAULT 'pending_approval' CHECK (status IN ('pending_approval', 'payment_declined', 'in_progress', 'accepted', 'arrived', 'completed', 'cancelled')),
+    payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded')),
     service_type TEXT NOT NULL CHECK (service_type IN ('ambulance', 'bed', 'booking')),
     
     -- Request snapshots

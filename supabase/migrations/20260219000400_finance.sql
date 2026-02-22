@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS public.payments (
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded', 'declined')),
     stripe_payment_intent_id TEXT UNIQUE,
     ivisit_fee_amount NUMERIC DEFAULT 0.00,
+    metadata JSONB DEFAULT '{}',             -- stores fee_amount, method_id, extra context
     provider_response JSONB DEFAULT '{}',
     processed_at TIMESTAMPTZ,
     display_id TEXT UNIQUE,

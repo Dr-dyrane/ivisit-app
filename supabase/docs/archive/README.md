@@ -1,4 +1,4 @@
-# Documentation Archive
+# Documentation Archive.
 
 This directory contains historical documentation and legacy files from the evolution of the iVisit Supabase architecture.
 

@@ -55,6 +55,24 @@ AFTER INSERT ON auth.users
 FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 
+-- 1B. Organization Wallet Auto-Creation
+-- When a new org is created, automatically create its wallet.
+CREATE OR REPLACE FUNCTION public.handle_new_organization()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.organization_wallets (organization_id, balance, currency)
+    VALUES (NEW.id, 0.00, 'USD')
+    ON CONFLICT (organization_id) DO NOTHING;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_org_created ON public.organizations;
+CREATE TRIGGER on_org_created
+AFTER INSERT ON public.organizations
+FOR EACH ROW EXECUTE PROCEDURE public.handle_new_organization();
+
+
 -- 2. Logistics & Operations Synchronization
 -- Sync Emergency -> Visit on Completion
 CREATE OR REPLACE FUNCTION public.sync_emergency_to_visit()
@@ -109,24 +127,39 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS on_emergency_start_dispatch ON public.emergency_requests;
 CREATE TRIGGER on_emergency_start_dispatch
-AFTER INSERT OR UPDATE ON public.emergency_requests
+AFTER INSERT ON public.emergency_requests
 FOR EACH ROW EXECUTE PROCEDURE public.auto_assign_driver();
 
 -- Update Resource Availability
 CREATE OR REPLACE FUNCTION public.update_resource_availability()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_current_amb_status TEXT;
 BEGIN
-    -- Handle Ambulance Status
+    -- Handle Ambulance Status transitions
     IF (NEW.ambulance_id IS NOT NULL) THEN
+        -- Get current ambulance status to validate transition
+        SELECT status INTO v_current_amb_status
+        FROM public.ambulances 
+        WHERE id = NEW.ambulance_id;
+        
         IF (NEW.status IN ('accepted', 'arrived', 'in_progress')) THEN
-            UPDATE public.ambulances SET status = 'on_trip' WHERE id = NEW.ambulance_id;
+            -- Only set on_trip if ambulance is in a transitional state (not already on_trip)
+            IF v_current_amb_status IN ('available', 'dispatched', 'en_route', 'on_scene') THEN
+                UPDATE public.ambulances SET status = 'on_trip', updated_at = NOW() WHERE id = NEW.ambulance_id;
+            END IF;
         ELSIF (NEW.status IN ('completed', 'cancelled', 'payment_declined')) THEN
-            UPDATE public.ambulances SET status = 'available' WHERE id = NEW.ambulance_id;
+            -- Return ambulance to available pool
+            IF v_current_amb_status NOT IN ('available', 'offline', 'maintenance') THEN
+                UPDATE public.ambulances 
+                SET status = 'available', current_call = NULL, updated_at = NOW() 
+                WHERE id = NEW.ambulance_id;
+            END IF;
         END IF;
     END IF;
 
-    -- Handle Bed Availability
-    IF (NEW.service_type = 'bed') THEN
+    -- Handle Bed Availability (only on UPDATE — OLD is available)
+    IF TG_OP = 'UPDATE' AND (NEW.service_type = 'bed') THEN
         IF (NEW.status = 'in_progress' AND OLD.status != 'in_progress') THEN
             UPDATE public.hospitals SET available_beds = GREATEST(0, available_beds - 1) WHERE id = NEW.hospital_id;
         ELSIF (NEW.status IN ('completed', 'cancelled') AND OLD.status NOT IN ('completed', 'cancelled')) THEN
@@ -140,7 +173,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS on_emergency_status_resource_sync ON public.emergency_requests;
 CREATE TRIGGER on_emergency_status_resource_sync
-AFTER UPDATE ON public.emergency_requests
+AFTER INSERT OR UPDATE ON public.emergency_requests
 FOR EACH ROW EXECUTE PROCEDURE public.update_resource_availability();
 
 -- 4. Auto-Assign Doctor on Emergency Acceptance (Recovered from Legacy)

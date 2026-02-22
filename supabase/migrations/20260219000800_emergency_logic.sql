@@ -14,12 +14,13 @@ RETURNS TABLE (
     id UUID,
     call_sign TEXT,
     status TEXT,
-    location JSONB,
     hospital_id UUID,
-    crew TEXT,
     vehicle_number TEXT,
-    rating NUMERIC,
-    last_maintenance TIMESTAMPTZ,
+    base_price NUMERIC,
+    crew JSONB,
+    type TEXT,
+    profile_id UUID,
+    display_id TEXT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) AS $$
@@ -29,32 +30,21 @@ BEGIN
         a.id,
         a.call_sign,
         a.status,
-        a.location,
         a.hospital_id,
-        a.crew,
         a.vehicle_number,
-        a.rating,
-        a.last_maintenance,
+        a.base_price,
+        a.crew,
+        a.type,
+        a.profile_id,
+        a.display_id,
         a.created_at,
         a.updated_at
     FROM public.ambulances a
     WHERE a.status = 'available'
-        AND (p_hospital_id IS NULL OR a.hospital_id = p_hospital_id)
-        AND (p_specialty IS NULL OR a.specialty = p_specialty)
-        AND a.location IS NOT NULL
-        AND ST_DWithin(
-            ST_GeomFromText(a.location),
-            ST_MakePoint(
-                CASE 
-                    WHEN h.coordinates IS NOT NULL 
-                    THEN ST_GeomFromText(h.coordinates)
-                    ELSE ST_MakePoint(0, 0)
-                END
-            ),
-            p_radius_km * 1000
-        );
+        AND (p_hospital_id IS NULL OR a.hospital_id = p_hospital_id);
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
 
 -- 2. Update Ambulance Status
 CREATE OR REPLACE FUNCTION public.update_ambulance_status(
@@ -124,53 +114,36 @@ RETURNS JSONB AS $$
 DECLARE
     v_ambulance_status TEXT;
     v_hospital_id UUID;
-    v_emergency_user_id UUID;
-    v_result JSONB;
 BEGIN
-    -- Get ambulance status
-    SELECT status, hospital_id INTO v_ambulance_status, v_hospital_id
-    FROM public.ambulances 
-    WHERE id = p_ambulance_id;
+    -- 1. Get current ambulance state
+    SELECT a.status, a.hospital_id INTO v_ambulance_status, v_hospital_id
+    FROM public.ambulances a
+    WHERE a.id = p_ambulance_id;
     
-    -- Validate ambulance is available
+    IF v_ambulance_status IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Ambulance not found', 'code', 'AMBULANCE_NOT_FOUND');
+    END IF;
+
+    -- 2. Validate availability
     IF v_ambulance_status != 'available' THEN
-        RETURN jsonb_build_object('error', 'Ambulance not available', 'code', 'AMBULANCE_UNAVAILABLE');
+        RETURN jsonb_build_object('success', false, 'error', 'Ambulance not available', 'code', 'AMBULANCE_UNAVAILABLE', 'current_status', v_ambulance_status);
     END IF;
     
-    -- Get emergency user
-    SELECT user_id INTO v_emergency_user_id
-    FROM public.emergency_requests 
-    WHERE id = p_emergency_request_id;
-    
-    -- Update ambulance status to dispatched
+    -- 3. Atomic Assignment
     UPDATE public.ambulances 
-    SET 
-        status = 'dispatched',
-        current_call = p_emergency_request_id,
-        updated_at = NOW()
+    SET status = 'dispatched', current_call = p_emergency_request_id, updated_at = NOW()
     WHERE id = p_ambulance_id;
     
-    -- Update emergency request with ambulance assignment
     UPDATE public.emergency_requests 
-    SET 
-        ambulance_id = p_ambulance_id,
-        status = 'accepted',
-        updated_at = NOW()
+    SET ambulance_id = p_ambulance_id, status = 'accepted', updated_at = NOW()
     WHERE id = p_emergency_request_id;
     
-    -- Update hospital availability
-    UPDATE public.hospitals 
-    SET available_ambulances = GREATEST(0, available_ambulances - 1)
-    WHERE id = v_hospital_id;
-    
-    v_result := jsonb_build_object(
+    RETURN jsonb_build_object(
         'success', true,
         'ambulance_id', p_ambulance_id,
         'emergency_request_id', p_emergency_request_id,
         'assigned_at', NOW()
     );
-    
-    RETURN v_result;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -417,8 +390,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
--- �🛠️ ATOMIC: Create Emergency with Integrated Payment (Fluid v4)
--- Matches emergencyRequestsService.js expectation for create_emergency_v4
+-- 🛠️ ATOMIC: Create Emergency with Integrated Payment (Fluid v4)
 CREATE OR REPLACE FUNCTION public.create_emergency_v4(
     p_user_id UUID,
     p_request_data JSONB,
@@ -427,17 +399,20 @@ CREATE OR REPLACE FUNCTION public.create_emergency_v4(
 DECLARE
     v_request_id UUID;
     v_display_id TEXT;
+    v_visit_id TEXT;
     v_payment_id UUID;
     v_fee_amount NUMERIC;
     v_total_amount NUMERIC;
     v_requires_approval BOOLEAN := FALSE;
     v_hospital_id UUID;
+    v_organization_id UUID;
     v_patient_location GEOMETRY;
 BEGIN
-    -- 1. Extract and Validate IDs
+    -- 1. Extract and Resolve IDs
     v_hospital_id := (p_request_data->>'hospital_id')::UUID;
+    SELECT organization_id INTO v_organization_id FROM public.hospitals WHERE id = v_hospital_id;
     
-    -- 2. Parse patient location from JSONB to GEOMETRY
+    -- 2. Physical Location Parse
     v_patient_location := ST_SetSRID(ST_MakePoint(
         (p_request_data->'patient_location'->>'lng')::DOUBLE PRECISION,
         (p_request_data->'patient_location'->>'lat')::DOUBLE PRECISION
@@ -445,96 +420,56 @@ BEGIN
     
     -- 3. Create the Emergency Request
     INSERT INTO public.emergency_requests (
-        user_id,
-        hospital_id,
-        service_type,
-        hospital_name,
-        specialty,
-        ambulance_type,
-        patient_location,
-        patient_snapshot,
-        status,
-        created_at,
-        updated_at
+        user_id, hospital_id, service_type, hospital_name, specialty, 
+        ambulance_type, patient_location, patient_snapshot, status
     ) VALUES (
-        p_user_id,
-        v_hospital_id,
-        p_request_data->>'service_type',
-        p_request_data->>'hospital_name',
-        p_request_data->>'specialty',
-        p_request_data->>'ambulance_type',
-        v_patient_location,
+        p_user_id, v_hospital_id, p_request_data->>'service_type', 
+        p_request_data->>'hospital_name', p_request_data->>'specialty',
+        p_request_data->>'ambulance_type', v_patient_location, 
         p_request_data->'patient_snapshot',
-        CASE 
-            WHEN p_payment_data->>'method' = 'cash' THEN 'pending_approval'
-            ELSE 'in_progress'
-        END,
-        NOW(),
-        NOW()
+        CASE WHEN p_payment_data->>'method' = 'cash' THEN 'pending_approval' ELSE 'in_progress' END
     ) RETURNING id, display_id INTO v_request_id, v_display_id;
 
-    -- 3. Sync to Visits (Fluid Flow)
-    INSERT INTO public.visits (
-        user_id,
-        hospital_id,
-        request_id,
-        status,
-        date,
-        time,
-        type,
-        created_at
-    ) VALUES (
-        p_user_id,
-        v_hospital_id,
-        v_request_id,
-        'pending',
-        CURRENT_DATE::TEXT,
-        CURRENT_TIME::TEXT,
-        'emergency',
-        NOW()
-    );
+    -- 4. Create Visit Record (Medical History)
+    BEGIN
+        INSERT INTO public.visits (
+            user_id, hospital_id, request_id, status, 
+            date, time, type
+        ) VALUES (
+            p_user_id, v_hospital_id, v_request_id, 'pending',
+            TO_CHAR(NOW(), 'YYYY-MM-DD'),
+            TO_CHAR(NOW(), 'HH24:MI:SS'),
+            'emergency'
+        ) RETURNING display_id INTO v_visit_id;
+    EXCEPTION WHEN OTHERS THEN
+        -- Non-blocking visit creation
+        RAISE NOTICE 'Non-blocking visit creation failure: %', SQLERRM;
+    END;
 
-    -- 4. Process Payment if Data Provided
+    -- 5. Process Payment Information
     IF p_payment_data IS NOT NULL THEN
         v_total_amount := (p_payment_data->>'total_amount')::NUMERIC;
         v_fee_amount := (p_payment_data->>'fee_amount')::NUMERIC;
         IF v_fee_amount IS NULL THEN v_fee_amount := v_total_amount * 0.025; END IF;
 
         INSERT INTO public.payments (
-            user_id,
-            emergency_request_id,
-            amount,
-            currency,
-            payment_method,
-            status,
-            metadata,
-            created_at
+            user_id, emergency_request_id, organization_id, amount, currency, 
+            payment_method, status, metadata
         ) VALUES (
-            p_user_id,
-            v_request_id,
-            v_total_amount,
-            p_payment_data->>'currency',
-            p_payment_data->>'method',
-            CASE 
-                WHEN p_payment_data->>'method' = 'cash' THEN 'pending'
-                ELSE 'completed'
-            END,
-            jsonb_build_object(
-                'fee_amount', v_fee_amount,
-                'method_id', p_payment_data->>'method_id'
-            ),
-            NOW()
+            p_user_id, v_request_id, v_organization_id, v_total_amount, 
+            p_payment_data->>'currency', p_payment_data->>'method',
+            CASE WHEN p_payment_data->>'method' = 'cash' THEN 'pending' ELSE 'completed' END,
+            jsonb_build_object('fee_amount', v_fee_amount, 'method_id', p_payment_data->>'method_id')
         ) RETURNING id INTO v_payment_id;
 
-        IF p_payment_data->>'method' = 'cash' THEN
-            v_requires_approval := TRUE;
-        END IF;
+        IF p_payment_data->>'method' = 'cash' THEN v_requires_approval := TRUE; END IF;
     END IF;
 
     RETURN jsonb_build_object(
         'success', TRUE,
         'request_id', v_request_id,
         'display_id', v_display_id,
+        'visit_id', v_visit_id,
         'payment_id', v_payment_id,
         'requires_approval', v_requires_approval,
         'emergency_status', CASE WHEN v_requires_approval THEN 'pending_approval' ELSE 'in_progress' END
@@ -543,7 +478,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 🛠️ ATOMIC: Approve Cash Payment
--- Matches paymentService.js:761 expectation
 CREATE OR REPLACE FUNCTION public.approve_cash_payment(p_payment_id UUID, p_request_id UUID)
 RETURNS JSONB AS $$
 DECLARE
@@ -552,51 +486,60 @@ DECLARE
     v_org_balance NUMERIC;
     v_platform_wallet_id UUID;
     v_patient_wallet_id UUID;
+    v_fee_amount NUMERIC;
 BEGIN
-    -- 1. Verify Payment & Resolve Org
-    SELECT * INTO v_payment FROM public.payments WHERE id = p_payment_id AND status = 'pending';
+    -- 1. Verify Payment & Resolve Data
+    SELECT p.*, (p.metadata->>'fee_amount')::NUMERIC as calculated_fee 
+    INTO v_payment 
+    FROM public.payments p 
+    WHERE p.id = p_payment_id AND p.status = 'pending';
+    
     IF v_payment.id IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'Pending payment not found');
     END IF;
 
-    -- 2. Get Wallets
+    -- 2. Guard: Auto-provision Org Wallet if missing
     SELECT id, balance INTO v_org_wallet_id, v_org_balance 
     FROM public.organization_wallets 
     WHERE organization_id = v_payment.organization_id;
+
+    IF v_org_wallet_id IS NULL AND v_payment.organization_id IS NOT NULL THEN
+        INSERT INTO public.organization_wallets (organization_id, balance)
+        VALUES (v_payment.organization_id, 0)
+        RETURNING id, balance INTO v_org_wallet_id, v_org_balance;
+    END IF;
     
     SELECT id INTO v_platform_wallet_id FROM public.ivisit_main_wallet LIMIT 1;
-    SELECT id INTO v_patient_wallet_id FROM public.patient_wallets WHERE user_id = v_payment.user_id;
 
-    -- 3. Check Org Balance for Fee
-    IF v_org_balance < v_payment.ivisit_fee_amount THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Organization balance insufficient for platform fee');
-    END IF;
+    -- 3. Check for Platform Fee
+    v_fee_amount := COALESCE(v_payment.ivisit_fee_amount, v_payment.calculated_fee, 0);
 
-    -- 4. Deduct Fee from Org (Debt Collection for Cash Trip)
-    UPDATE public.organization_wallets SET balance = balance - v_payment.ivisit_fee_amount WHERE id = v_org_wallet_id;
-    INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
-    VALUES (v_org_wallet_id, -v_payment.ivisit_fee_amount, 'debit', 'iVisit Platform Fee (Cash Payment Fee)', p_payment_id);
+    -- 4. Execute Ledger Operations (only if fee > 0)
+    IF v_fee_amount > 0 THEN
+        IF v_org_balance < v_fee_amount THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Organization balance insufficient for platform fee');
+        END IF;
 
-    -- 5. Credit Platform
-    UPDATE public.ivisit_main_wallet SET balance = balance + v_payment.ivisit_fee_amount WHERE id = v_platform_wallet_id;
-    INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
-    VALUES (v_platform_wallet_id, v_payment.ivisit_fee_amount, 'credit', 'Platform Fee (Cash Payment)', p_payment_id);
-
-    -- 6. Informational Patient Ledger entry
-    IF v_patient_wallet_id IS NOT NULL THEN
+        -- Deduct from Org
+        UPDATE public.organization_wallets SET balance = balance - v_fee_amount, updated_at = NOW() WHERE id = v_org_wallet_id;
         INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
-        VALUES (v_patient_wallet_id, 0, 'info', 'Paid via Cash (In-Person)', p_payment_id);
+        VALUES (v_org_wallet_id, -v_fee_amount, 'debit', 'iVisit Platform Fee (Cash Payment)', p_payment_id);
+
+        -- Credit Platform
+        UPDATE public.ivisit_main_wallet SET balance = balance + v_fee_amount, last_updated = NOW() WHERE id = v_platform_wallet_id;
+        INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
+        VALUES (v_platform_wallet_id, v_fee_amount, 'credit', 'Platform Fee (Cash Payment)', p_payment_id);
     END IF;
 
-    -- 7. Finalize Statuses (Payment, Emergency Request, and Visit)
+    -- 5. Finalize Statuses
     UPDATE public.payments SET status = 'completed', processed_at = NOW() WHERE id = p_payment_id;
-    UPDATE public.emergency_requests SET status = 'in_progress', updated_at = NOW() WHERE id = p_request_id;
+    UPDATE public.emergency_requests SET status = 'accepted', updated_at = NOW() WHERE id = p_request_id;
     UPDATE public.visits SET status = 'active', updated_at = NOW() WHERE request_id = p_request_id;
 
     RETURN jsonb_build_object(
         'success', true, 
-        'fee_deducted', v_payment.ivisit_fee_amount, 
-        'new_balance', (v_org_balance - v_payment.ivisit_fee_amount)
+        'fee_deducted', v_fee_amount, 
+        'new_balance', COALESCE((v_org_balance - v_fee_amount), 0)
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -719,7 +662,7 @@ CREATE OR REPLACE FUNCTION public.update_hospital_availability(
     hospital_id UUID,
     beds_available INTEGER,
     er_wait_time INTEGER,
-    status TEXT,
+    p_status TEXT,            -- renamed from 'status' to avoid ambiguity with column name
     ambulance_count INTEGER
 ) RETURNS BOOLEAN AS $$
 BEGIN
@@ -728,13 +671,14 @@ BEGIN
         available_beds = beds_available,
         emergency_wait_time_minutes = er_wait_time,
         wait_time = er_wait_time || ' mins',
-        status = status, -- 'available', 'busy', 'full'
+        status = p_status,    -- 'available', 'busy', 'full'
         ambulances_count = ambulance_count,
         updated_at = NOW()
     WHERE id = hospital_id;
     RETURN FOUND;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
 
 
 -- 🏯 Module 11: Pricing System

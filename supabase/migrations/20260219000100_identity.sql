@@ -76,6 +76,20 @@ CREATE TABLE IF NOT EXISTS public.medical_profiles (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 5. Emergency Contacts
+CREATE TABLE IF NOT EXISTS public.emergency_contacts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    relationship TEXT,
+    phone TEXT NOT NULL,
+    is_primary BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    display_id TEXT UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- 5. Subscribers
 CREATE TABLE IF NOT EXISTS public.subscribers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -107,6 +121,54 @@ CREATE TABLE IF NOT EXISTS public.user_sessions (
 
 -- 🛠️ AUTOMATION: IDENTITY HOOKS
 -- triggers moved to 20260219000900_automations.sql to resolve dependency on Finance module
+
+
+-- 🛠️ AUTOMATION: SMART ONBOARDING
+-- Automatic Onboarding Completion based on Data Presence
+CREATE OR REPLACE FUNCTION public.recalculate_onboarding_status()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Only attempt to auto-complete if the current status is 'pending'
+    IF NEW.onboarding_status = 'pending' THEN
+        
+        -- Rule 1: Administrative Blessing / Manual Assignment
+        -- If an org_admin, provider, or dispatcher is linked to an organization, onboarding is effectively over.
+        IF (NEW.role IN ('org_admin', 'provider', 'dispatcher') AND NEW.organization_id IS NOT NULL) THEN
+            NEW.onboarding_status := 'complete';
+        
+        -- Rule 2: Field Operative Assignment
+        -- If a driver or paramedic is assigned to an ambulance, they are ready for duty.
+        ELSIF (NEW.assigned_ambulance_id IS NOT NULL) THEN
+            NEW.onboarding_status := 'complete';
+            
+        -- Rule 3: System Sovereign
+        -- Admins never need to onboarding.
+        ELSIF (NEW.role = 'admin') THEN
+            NEW.onboarding_status := 'complete';
+            
+        -- Rule 4: Verified Identity
+        -- If a patient completes BVN verification, they have satisfied the core requirement.
+        ELSIF (NEW.role = 'patient' AND NEW.bvn_verified = true) THEN
+            NEW.onboarding_status := 'complete';
+            
+        -- Rule 5: Financial Commitment
+        -- If a Stripe Customer ID is present, they have bypassed or completed the payment setup.
+        ELSIF (NEW.stripe_customer_id IS NOT NULL) THEN
+            NEW.onboarding_status := 'complete';
+        END IF;
+
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_profile_data_presence_onboarding ON public.profiles;
+CREATE TRIGGER on_profile_data_presence_onboarding
+BEFORE INSERT OR UPDATE OF organization_id, assigned_ambulance_id, role, bvn_verified, stripe_customer_id, onboarding_status
+ON public.profiles
+FOR EACH ROW
+EXECUTE PROCEDURE public.recalculate_onboarding_status();
 
 
 -- 🛠️ STAMP DISPLAY ID TRIGGER (Fluid Edition: Role-Aware)
@@ -234,7 +296,10 @@ FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
 -- Missing updated_at triggers for identity tables
 CREATE TRIGGER handle_prefs_updated_at BEFORE UPDATE ON public.preferences FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_med_profile_updated_at BEFORE UPDATE ON public.medical_profiles FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER handle_emergency_contact_updated_at BEFORE UPDATE ON public.emergency_contacts FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_subscriber_updated_at BEFORE UPDATE ON public.subscribers FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+CREATE TRIGGER stamp_emergency_contact_display_id BEFORE INSERT ON public.emergency_contacts FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
 
 -- 🏥 Medical Profile RPC Functions
 -- Part of Master System Improvement Plan - Phase 2 Important System Enhancements
