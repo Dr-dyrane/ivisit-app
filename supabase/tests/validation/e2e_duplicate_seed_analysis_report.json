@@ -1,0 +1,109 @@
+{
+  "generatedAt": "2026-02-23T04:40:05.643Z",
+  "source": "analyze_duplicate_seed_records.js",
+  "supabaseUrl": "https://dlwtcmhdzoklveihuhjf.supabase.co",
+  "queryErrors": [],
+  "totals": {
+    "organizations": 9,
+    "hospitals": 2,
+    "ambulances": 6
+  },
+  "analyses": {
+    "organizationsByName": {
+      "entity": "organizations",
+      "keyField": "name",
+      "clusterCount": 0,
+      "clusters": [],
+      "safeDeleteCandidates": [],
+      "mergeRequired": [],
+      "summary": {
+        "duplicateRows": 0,
+        "safeDeleteCandidates": 0,
+        "mergeRequired": 0
+      }
+    },
+    "hospitalsByName": {
+      "entity": "hospitals",
+      "keyField": "name",
+      "clusterCount": 0,
+      "clusters": [],
+      "safeDeleteCandidates": [],
+      "mergeRequired": [],
+      "summary": {
+        "duplicateRows": 0,
+        "safeDeleteCandidates": 0,
+        "mergeRequired": 0
+      }
+    },
+    "ambulancesByHospitalAndCallSign": {
+      "entity": "ambulances",
+      "keyField": "call_sign_scope_key",
+      "clusterCount": 0,
+      "clusters": [],
+      "safeDeleteCandidates": [],
+      "mergeRequired": [],
+      "summary": {
+        "duplicateRows": 0,
+        "safeDeleteCandidates": 0,
+        "mergeRequired": 0
+      }
+    }
+  },
+  "informational": {
+    "ambulancesByCallSignGlobal": [
+      {
+        "key": "alfa-01",
+        "count": 2,
+        "ids": [
+          "e4dab68a-3d1b-4736-976e-b16409ad7986",
+          "7ff48d58-28fe-449e-850e-0142ef0b1772"
+        ],
+        "hospital_ids": [
+          "654f779c-159f-4db1-8bd5-f113c442b775",
+          "c32c4600-1275-4630-be98-6c0836f67245"
+        ]
+      },
+      {
+        "key": "bravo-02",
+        "count": 2,
+        "ids": [
+          "8ef02e8c-bc84-45b0-ada8-674f92372327",
+          "a106da43-484e-4e7d-aa11-3985c94ffd9f"
+        ],
+        "hospital_ids": [
+          "654f779c-159f-4db1-8bd5-f113c442b775",
+          "c32c4600-1275-4630-be98-6c0836f67245"
+        ]
+      },
+      {
+        "key": "charlie-03",
+        "count": 2,
+        "ids": [
+          "27fa9777-d88e-43ea-9e95-813c6ceb5d16",
+          "de39691b-80bd-40ff-97c4-36d8e25c4a64"
+        ],
+        "hospital_ids": [
+          "654f779c-159f-4db1-8bd5-f113c442b775",
+          "c32c4600-1275-4630-be98-6c0836f67245"
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "clusterCounts": {
+      "organizationsByName": 0,
+      "hospitalsByName": 0,
+      "ambulancesByHospitalAndCallSign": 0
+    },
+    "safeDeleteCandidates": {
+      "organizations": 0,
+      "hospitals": 0,
+      "ambulances": 0
+    },
+    "mergeRequired": {
+      "organizations": 0,
+      "hospitals": 0,
+      "ambulances": 0
+    }
+  }
+}

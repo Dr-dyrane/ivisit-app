@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-02-23T04:36:53.410Z",
+  "source": "plan_hospital_ambulance_canonical_merges.js",
+  "supabaseUrl": "https://dlwtcmhdzoklveihuhjf.supabase.co",
+  "counts": {
+    "hospitals": 2,
+    "organizations": 14,
+    "ambulances": 6,
+    "emergency_requests": 132,
+    "visits": 132,
+    "doctors": 2,
+    "service_pricing": 0,
+    "room_pricing": 0
+  },
+  "clusterPlans": [],
+  "summary": {
+    "duplicateHospitalClusters": 0,
+    "totalSourceHospitalsToMerge": 0,
+    "autoSafeSourceHospitalMerges": 0,
+    "manualSourceHospitalMerges": 0,
+    "ambulanceManualActions": 0,
+    "pricingManualActions": 0,
+    "recommendAutoApply": false
+  }
+}

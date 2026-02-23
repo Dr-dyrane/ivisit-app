@@ -147,9 +147,16 @@ export const usePaymentFlow = () => {
       }
 
       // Process payment
+      const organizationId =
+        emergencyRequest.organizationId ||
+        emergencyRequest.organization_id ||
+        emergencyRequest.hospitalOrganizationId ||
+        emergencyRequest.hospital_id ||
+        emergencyRequest.hospitalId;
+
       const result = await paymentService.processPayment(
         emergencyRequest.id,
-        defaultMethod.id,
+        organizationId,
         cost
       );
 
@@ -161,8 +168,11 @@ export const usePaymentFlow = () => {
           error: null
         }));
         
-        currentPaymentRef.current = result.payment;
-        return { success: true, payment: result.payment };
+        currentPaymentRef.current = {
+          clientSecret: result.clientSecret,
+          paymentIntentId: result.paymentIntentId
+        };
+        return { success: true, payment: currentPaymentRef.current };
       } else {
         throw new Error(result.error);
       }

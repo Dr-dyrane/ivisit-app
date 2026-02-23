@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     hospital_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
     ambulance_id UUID REFERENCES public.ambulances(id) ON DELETE SET NULL,
     status TEXT NOT NULL DEFAULT 'pending_approval' CHECK (status IN ('pending_approval', 'payment_declined', 'in_progress', 'accepted', 'arrived', 'completed', 'cancelled')),
-    payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded')),
+    payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'completed', 'failed', 'refunded', 'declined')),
     service_type TEXT NOT NULL CHECK (service_type IN ('ambulance', 'bed', 'booking')),
     
     -- Request snapshots
@@ -64,7 +64,6 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     
     -- Costs
     total_cost NUMERIC DEFAULT 0,
-    payment_status TEXT DEFAULT 'pending',
     display_id TEXT UNIQUE,
     
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

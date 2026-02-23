@@ -15,6 +15,38 @@ export const EmergencyRequestStatus = {
     PAYMENT_DECLINED: "payment_declined",
 };
 
+const parsePointInput = (value) => {
+    if (!value) return null;
+
+    if (typeof value === "object") {
+        if (Number.isFinite(value.lat) && Number.isFinite(value.lng)) {
+            return { lat: Number(value.lat), lng: Number(value.lng) };
+        }
+        if (Number.isFinite(value.latitude) && Number.isFinite(value.longitude)) {
+            return { lat: Number(value.latitude), lng: Number(value.longitude) };
+        }
+        if (
+            value.type === "Point" &&
+            Array.isArray(value.coordinates) &&
+            value.coordinates.length >= 2
+        ) {
+            return {
+                lat: Number(value.coordinates[1]),
+                lng: Number(value.coordinates[0]),
+            };
+        }
+    }
+
+    if (typeof value === "string") {
+        const match = value.trim().match(/^POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)$/i);
+        if (match) {
+            return { lat: Number(match[2]), lng: Number(match[1]) };
+        }
+    }
+
+    return null;
+};
+
 export const emergencyRequestsService = {
     async list() {
         const { data: { user } } = await supabase.auth.getUser();
@@ -119,6 +151,7 @@ export const emergencyRequestsService = {
                 method, isCash, total, hospitalId: request.hospitalId
             });
 
+            const rpcPatientLocation = parsePointInput(request.patientLocation);
             const { data, error } = await supabase.rpc('create_emergency_v4', {
                 p_user_id: user.id,
                 p_request_data: {
@@ -126,7 +159,7 @@ export const emergencyRequestsService = {
                     hospital_name: request.hospitalName,
                     service_type: request.serviceType,
                     specialty: request.specialty,
-                    patient_location: request.patientLocation,
+                    patient_location: rpcPatientLocation,
                     patient_snapshot: request.patient,
                     ambulance_type: request.ambulanceType
                 },
@@ -186,13 +219,8 @@ export const emergencyRequestsService = {
             if (updates.ambulanceType !== undefined) dbUpdates.ambulance_type = updates.ambulanceType;
             if (updates.ambulanceId !== undefined) dbUpdates.ambulance_id = updates.ambulanceId;
             if (updates.bedNumber !== undefined) dbUpdates.bed_number = updates.bedNumber;
-            if (updates.bedType !== undefined) dbUpdates.bed_type = updates.bedType;
-            if (updates.bedCount !== undefined) dbUpdates.bed_count = updates.bedCount;
-            if (updates.estimatedArrival !== undefined) dbUpdates.estimated_arrival = updates.estimatedArrival;
             if (updates.patientLocation !== undefined) dbUpdates.patient_location = updates.patientLocation;
-            if (updates.patientHeading !== undefined) dbUpdates.patient_heading = updates.patientHeading;
             if (updates.paymentStatus !== undefined) dbUpdates.payment_status = updates.paymentStatus;
-            if (updates.paymentMethodId !== undefined) dbUpdates.payment_method_id = updates.paymentMethodId;
             if (updates.totalCost !== undefined) dbUpdates.total_cost = updates.totalCost;
 
             if (isUUID) {

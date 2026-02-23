@@ -532,8 +532,10 @@ BEGIN
     END IF;
 
     -- 5. Finalize Statuses
-    UPDATE public.payments SET status = 'completed', processed_at = NOW() WHERE id = p_payment_id;
-    UPDATE public.emergency_requests SET status = 'accepted', updated_at = NOW() WHERE id = p_request_id;
+    UPDATE public.payments SET status = 'completed', processed_at = NOW(), updated_at = NOW() WHERE id = p_payment_id;
+    UPDATE public.emergency_requests
+    SET status = 'accepted', payment_status = 'completed', updated_at = NOW()
+    WHERE id = p_request_id;
     UPDATE public.visits SET status = 'active', updated_at = NOW() WHERE request_id = p_request_id;
 
     RETURN jsonb_build_object(
@@ -551,7 +553,9 @@ CREATE OR REPLACE FUNCTION public.decline_cash_payment(
 ) RETURNS JSONB AS $$
 BEGIN
     UPDATE public.payments SET status = 'failed', updated_at = NOW() WHERE id = p_payment_id;
-    UPDATE public.emergency_requests SET status = 'payment_declined', updated_at = NOW() WHERE id = p_request_id;
+    UPDATE public.emergency_requests
+    SET status = 'payment_declined', payment_status = 'failed', updated_at = NOW()
+    WHERE id = p_request_id;
     UPDATE public.visits SET status = 'cancelled', updated_at = NOW() WHERE request_id = p_request_id;
     
     RETURN jsonb_build_object('success', TRUE, 'status', 'declined');

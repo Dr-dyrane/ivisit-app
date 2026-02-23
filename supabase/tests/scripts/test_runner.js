@@ -636,8 +636,10 @@ class TestRunner {
           }
         });
 
-      // Expected to fail with invalid UUID, but function should be accessible
-      if (error && !error.message.includes('does not exist')) {
+      // Accessible outcomes:
+      // - Returns an error for invalid IDs/data (expected)
+      // - Returns a structured payload (some DBs may not enforce FK here due test setup)
+      if (!error || (error && !error.message.includes('does not exist'))) {
         return {
           success: true,
           message: 'Emergency logic function exists and is callable'
@@ -943,9 +945,15 @@ class ErrorLogger {
     this.errors.push(logEntry);
 
     // Append to error log file
-    const existingLog = fs.existsSync(this.errorLogPath)
-      ? JSON.parse(fs.readFileSync(this.errorLogPath, 'utf8'))
-      : [];
+    let existingLog = [];
+    if (fs.existsSync(this.errorLogPath)) {
+      try {
+        const parsed = JSON.parse(fs.readFileSync(this.errorLogPath, 'utf8'));
+        existingLog = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        existingLog = [];
+      }
+    }
 
     existingLog.push(logEntry);
     fs.writeFileSync(this.errorLogPath, JSON.stringify(existingLog, null, 2));

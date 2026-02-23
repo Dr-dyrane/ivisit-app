@@ -1,0 +1,572 @@
+{
+  "generatedAt": "2026-02-23T04:36:29.213Z",
+  "source": "apply_hospital_ambulance_canonical_merges.js",
+  "mode": "apply",
+  "summary": {
+    "eligibleSourceHospitalMerges": 5,
+    "skippedSourceHospitalMerges": 0
+  },
+  "eligibleSources": [
+    {
+      "clusterKey": "hemet valley medical center",
+      "source_hospital_id": "838098d1-ffcc-4458-b167-faea34bcd8d5",
+      "target_hospital_id": "c32c4600-1275-4630-be98-6c0836f67245",
+      "source_display_id": "HSP-92CEB4",
+      "target_display_id": "HSP-110376"
+    },
+    {
+      "clusterKey": "hemet valley medical center",
+      "source_hospital_id": "53990921-b4de-4428-8633-80f586caffa3",
+      "target_hospital_id": "c32c4600-1275-4630-be98-6c0836f67245",
+      "source_display_id": "HSP-D71B5A",
+      "target_display_id": "HSP-110376"
+    },
+    {
+      "clusterKey": "hemet valley medical center",
+      "source_hospital_id": "04d45ef0-5fb8-416f-b9e1-9f826de877a6",
+      "target_hospital_id": "c32c4600-1275-4630-be98-6c0836f67245",
+      "source_display_id": "HSP-C5390B",
+      "target_display_id": "HSP-110376"
+    },
+    {
+      "clusterKey": "hemet valley medical center",
+      "source_hospital_id": "2f53526b-d82f-4381-b2d9-5c74d6e957e8",
+      "target_hospital_id": "c32c4600-1275-4630-be98-6c0836f67245",
+      "source_display_id": "HSP-C8A17F",
+      "target_display_id": "HSP-110376"
+    },
+    {
+      "clusterKey": "premier victoria island",
+      "source_hospital_id": "55c5249c-42bb-43da-bc2d-bbc5519fe83b",
+      "target_hospital_id": "654f779c-159f-4db1-8bd5-f113c442b775",
+      "source_display_id": "HSP-675B49",
+      "target_display_id": "HSP-3545FB"
+    }
+  ],
+  "skippedSources": [],
+  "appliedSources": [
+    {
+      "source_hospital_id": "838098d1-ffcc-4458-b167-faea34bcd8d5",
+      "target_hospital_id": "c32c4600-1275-4630-be98-6c0836f67245",
+      "ambulanceActions": [
+        {
+          "source_ambulance_id": "897a8650-83d5-4ad2-986b-344533f466f6",
+          "source_display_id": "AMB-B76FB0",
+          "target_ambulance_id": "7ff48d58-28fe-449e-850e-0142ef0b1772",
+          "target_display_id": "AMB-3E6817",
+          "call_sign": "ALFA-01",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        },
+        {
+          "source_ambulance_id": "92fee7ce-f8eb-42de-a5a1-8d2c7b0c64a5",
+          "source_display_id": "AMB-74E43D",
+          "target_ambulance_id": "a106da43-484e-4e7d-aa11-3985c94ffd9f",
+          "target_display_id": "AMB-7CB29D",
+          "call_sign": "BRAVO-02",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        },
+        {
+          "source_ambulance_id": "349791dc-6029-45cf-8353-4bcb3eb3664b",
+          "source_display_id": "AMB-53A98A",
+          "target_ambulance_id": "de39691b-80bd-40ff-97c4-36d8e25c4a64",
+          "target_display_id": "AMB-FD6F48",
+          "call_sign": "CHARLIE-03",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        }
+      ],
+      "servicePricingActions": [],
+      "roomPricingActions": [],
+      "rowRewires": {
+        "doctors": {
+          "updatedIds": [],
+          "updatedCount": 0,
+          "error": null
+        },
+        "emergency_requests": {
+          "updatedIds": [
+            "b6f9a247-2ba0-43c6-965c-7545e3d77503",
+            "bca00f79-460b-4102-85bf-64bedf623035",
+            "03bb8a47-1832-46c9-a959-9b73726ee7d4",
+            "ab0c704e-8fe0-40cc-a985-2e6d22135caf",
+            "2c9f8b59-8d76-4e12-8a8b-bbfc7524d3c6",
+            "0df3a0ea-f80e-496d-9fc0-ccce4ec6b6fb",
+            "b912e65b-348f-440f-8a77-7e4bf1027331",
+            "9dd54416-2a8a-4267-94c1-092007dd2e89",
+            "73d38221-d828-4cc0-9030-c8ca4fb64e1e",
+            "28178896-c259-4323-9f09-d97597d532e3",
+            "9145de0a-677b-49b0-9d97-179ce5b4cbac",
+            "1297d678-ef4a-41f6-ad8b-a716964a3c45",
+            "dd7d4144-42b8-44c5-a2b4-e97f903221c7",
+            "00034b33-e2d8-4b83-8752-e881195ebb58",
+            "4c873bf9-1687-447e-9a45-bf3d7e70c0ce",
+            "8cd21a6c-bf0f-4923-b297-069e15b946b8",
+            "cab16701-5ef9-4502-869b-dd498b6886ac",
+            "9fa51585-82ef-4a9d-ac27-c4b1053e53b1",
+            "460cde80-46d6-4274-9302-aa59fc2f1ef4",
+            "c5b4fe27-6cfa-49c3-a972-adee3895757a",
+            "1da9b5fb-fb5e-4faf-b113-ecf4f42ce658",
+            "b96ce48c-6f9e-417b-9077-be3d529e38c1"
+          ],
+          "updatedCount": 22,
+          "error": null
+        },
+        "visits": {
+          "updatedIds": [
+            "17774641-9093-4de4-b630-66f3180b5182",
+            "7841a74a-d67e-47d8-9334-675c2dc04bfe",
+            "da36c452-a8c5-4bde-8574-2737da19c207",
+            "710033f3-4508-434f-a67d-f412e5e79022",
+            "d0b99356-fe0b-4d5a-8c4e-009f9b81e73b",
+            "25cbe816-a697-44b1-b993-9ed59ebcd07f",
+            "9df2e51a-2570-4dbf-9457-0569a86b9954",
+            "212c5da8-42ab-4e4a-97d9-e8ef866a0944",
+            "74584558-8b76-4b6c-beff-45e24bcc8218",
+            "3823217a-fa15-432a-805c-0350dc502c52",
+            "20dac71c-8fa2-40ca-aa00-72f3233d7e2a",
+            "1904ae4a-bf39-4825-8b3b-c43072c34898",
+            "36d03868-14bc-4f2c-83ca-0513d82bcc40",
+            "24764e2e-e442-4a71-b6b6-81c6acf218bf",
+            "436f210d-4af5-4119-9afd-ef43772fa0cc",
+            "8eda78ae-b558-4aac-85c7-8b1ce182fc3a",
+            "01a29176-c8ac-4bb3-825b-1f664598885f",
+            "3a571cd6-8a52-48d0-b24b-80e8e152d514",
+            "cf6aeb86-f84c-4ea5-b650-ee917a4d7042",
+            "e96d66ad-6f5a-4c2d-9ced-1a5a55a4ff49",
+            "2f315419-1aae-48c1-acb4-ac16cb8189e8",
+            "886c508b-4c4f-4901-b4b0-515a081ee100"
+          ],
+          "updatedCount": 22,
+          "error": null
+        },
+        "insurance_billing": {
+          "updatedIds": [],
+          "updatedCount": 0,
+          "error": null
+        }
+      },
+      "hospitalDeleted": true
+    },
+    {
+      "source_hospital_id": "53990921-b4de-4428-8633-80f586caffa3",
+      "target_hospital_id": "c32c4600-1275-4630-be98-6c0836f67245",
+      "ambulanceActions": [
+        {
+          "source_ambulance_id": "cc90b483-e06c-4598-9f2f-037d8c446336",
+          "source_display_id": "AMB-2702FB",
+          "target_ambulance_id": "7ff48d58-28fe-449e-850e-0142ef0b1772",
+          "target_display_id": "AMB-3E6817",
+          "call_sign": "ALFA-01",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        },
+        {
+          "source_ambulance_id": "05bcbdf7-e8db-48d4-a4f1-69833c735145",
+          "source_display_id": "AMB-EE07F5",
+          "target_ambulance_id": "a106da43-484e-4e7d-aa11-3985c94ffd9f",
+          "target_display_id": "AMB-7CB29D",
+          "call_sign": "BRAVO-02",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        },
+        {
+          "source_ambulance_id": "9d82c102-023d-4876-bae6-0c9e86eeea12",
+          "source_display_id": "AMB-7CDDA7",
+          "target_ambulance_id": "de39691b-80bd-40ff-97c4-36d8e25c4a64",
+          "target_display_id": "AMB-FD6F48",
+          "call_sign": "CHARLIE-03",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        }
+      ],
+      "servicePricingActions": [],
+      "roomPricingActions": [],
+      "rowRewires": {
+        "doctors": {
+          "updatedIds": [],
+          "updatedCount": 0,
+          "error": null
+        },
+        "emergency_requests": {
+          "updatedIds": [
+            "5611f636-0235-4395-9bab-7e94b52cd79a",
+            "85429bd0-859b-4c88-be22-c8579cfa3710",
+            "60fdfda2-e11f-49a9-95ca-1c53002615a3",
+            "c159635f-c3ae-47ee-a51d-ace6fa30accd",
+            "879780ce-821c-4227-951c-ae1725dddd45",
+            "5bee5e6e-52ce-4fc3-b2a4-da429783ae53",
+            "e13fa7a4-e1e3-4713-80da-f805be1f7ac3",
+            "c3aeac95-8052-4d1c-b743-8cd289c47a96",
+            "fa03b409-d473-4787-a756-fa306021c739",
+            "7cf124c1-fbb3-447a-a107-d7a92ca61254",
+            "5bee4374-c1a7-49ca-a6dc-e784c8f3e6f5",
+            "d3253831-a794-45eb-9ffc-e166bec83556",
+            "fdd72843-985f-4f07-a383-ef4d82dc1a77",
+            "f9e7114e-1c55-4f85-b604-5d7fa8cea9cc",
+            "ecbdafad-8565-471a-a016-c99e6f09df35",
+            "f4873993-a868-4f93-8e91-b2ddaabf5027",
+            "d6735b61-e763-4d7b-8a1b-5d1e3c1e9973",
+            "cb920e85-583b-4814-93b6-25c3316173e2",
+            "0649b6f4-6bf6-44c9-abd5-d321d163ece1",
+            "670eb652-a999-469b-abea-fc8b1adc3e91",
+            "7eedc2cd-0bd3-419c-bb5c-64268c7f519f",
+            "ba491dbd-1d26-45d9-adfa-487b0d798114"
+          ],
+          "updatedCount": 22,
+          "error": null
+        },
+        "visits": {
+          "updatedIds": [
+            "c31fee17-24bb-4b9a-a1a6-dddb2378ad24",
+            "9ab52392-bf36-481b-8848-aaa1255e123d",
+            "978c7ad8-bf07-4dd8-a6c7-794d422beb9c",
+            "810fbfd1-42e4-4f7a-8a6d-b3aa8c3f8d3f",
+            "f12bf721-e93c-40ef-8dca-ed54971f9f5f",
+            "51657229-1dc4-4279-a3d5-da3410cb7eb5",
+            "2b6f36fa-74a7-42cb-a539-de2a0a38344e",
+            "5051e1e1-efff-4202-902d-d0bc836d7f98",
+            "28a11274-7f0a-4eb6-a691-525c8ab5266e",
+            "a28cb0b1-2284-436a-bf1d-3551630f0a62",
+            "50303d33-dba2-4f46-80cd-f4e16718e02f",
+            "664474c6-c822-4adf-975b-c479f25f6a79",
+            "d9b34945-4d08-45ee-a165-880671dce120",
+            "b5e0da1f-304d-4d40-89f9-8fcaa26ca841",
+            "5c5d0c30-bced-4013-936b-a1044e9b5f86",
+            "7d629a8b-baba-4ebf-aee3-14dff2002e8a",
+            "3514e9a1-cc8c-490c-bad4-345bddecd997",
+            "596115a0-7c0c-4669-b4de-c1a01a5a4f70",
+            "8c55725e-d9d9-4536-8dff-2ad48cdedb15",
+            "c62b5b2d-d1f7-4027-8340-a4c407f7a881",
+            "5ad7e644-af7b-4f3b-9720-de372912dce7",
+            "3241bdce-609e-4a79-a784-16d755672c42"
+          ],
+          "updatedCount": 22,
+          "error": null
+        },
+        "insurance_billing": {
+          "updatedIds": [],
+          "updatedCount": 0,
+          "error": null
+        }
+      },
+      "hospitalDeleted": true
+    },
+    {
+      "source_hospital_id": "04d45ef0-5fb8-416f-b9e1-9f826de877a6",
+      "target_hospital_id": "c32c4600-1275-4630-be98-6c0836f67245",
+      "ambulanceActions": [
+        {
+          "source_ambulance_id": "fdb1fab8-9707-4e54-84ea-a537e0b9178a",
+          "source_display_id": "AMB-FFE9AA",
+          "target_ambulance_id": "7ff48d58-28fe-449e-850e-0142ef0b1772",
+          "target_display_id": "AMB-3E6817",
+          "call_sign": "ALFA-01",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        },
+        {
+          "source_ambulance_id": "37f72048-812a-4d0d-abc3-c212b7a24209",
+          "source_display_id": "AMB-C1E0CB",
+          "target_ambulance_id": "a106da43-484e-4e7d-aa11-3985c94ffd9f",
+          "target_display_id": "AMB-7CB29D",
+          "call_sign": "BRAVO-02",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        },
+        {
+          "source_ambulance_id": "c60d0f43-33b5-46c1-82df-79c44bd56013",
+          "source_display_id": "AMB-A327F6",
+          "target_ambulance_id": "de39691b-80bd-40ff-97c4-36d8e25c4a64",
+          "target_display_id": "AMB-FD6F48",
+          "call_sign": "CHARLIE-03",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        }
+      ],
+      "servicePricingActions": [],
+      "roomPricingActions": [],
+      "rowRewires": {
+        "doctors": {
+          "updatedIds": [],
+          "updatedCount": 0,
+          "error": null
+        },
+        "emergency_requests": {
+          "updatedIds": [
+            "c4b8807c-d48b-422c-8abe-e72e492dbde9",
+            "eec440aa-f2fa-4a44-870d-3a83d7e43629",
+            "317e7dec-80e1-41fb-8ab9-8be10e3ddf81",
+            "19d56ccf-1f6a-42cf-b40e-89b67b519a1d",
+            "087c2abf-9ddf-4ea7-96c1-29902bbd43c6",
+            "eda4febb-0941-4005-8a7c-bfea6429a541",
+            "0943c91a-61a3-4b3d-a945-7c669a78d5cd",
+            "2fad68c3-932d-4e29-b4ce-6c93a70f2a88",
+            "b0c5a721-0fed-4ac6-a147-4e2f5b682e06",
+            "da2fc001-486f-48bd-860f-72f60eabc81f",
+            "6cea2a2d-f11a-4a4d-8976-e64c8d6e8c6e",
+            "1124e94b-1e23-40b3-8266-6a9494ad7dff",
+            "75db4629-dc48-4c7c-b40e-30f14666370d",
+            "0cf40c92-fc8b-43ff-bb11-cba4700b1270",
+            "1c92f96a-f1e5-4dce-867b-39f3417da263",
+            "acf6aae1-81a4-4c97-8c81-ccb3f310f1c3",
+            "342e56cb-f939-4957-8bce-fbf85be44147",
+            "6460fe72-a7e7-40e3-96e9-bef5085146f5",
+            "f61c5a67-e2d6-4c36-b507-00f53dc794a3",
+            "cb9a713c-cb98-4e0b-91cd-56fcdbbe12ef",
+            "aeaa56d7-3248-4ae9-95a7-1ab73d08ddcc",
+            "121a1325-7d84-4a38-82b6-b7091c1a2ca6"
+          ],
+          "updatedCount": 22,
+          "error": null
+        },
+        "visits": {
+          "updatedIds": [
+            "c0a1b018-036e-4255-b842-c6111d8bedd7",
+            "64520a53-92ac-4fd7-a189-32d74e9fa01c",
+            "aa8efa1f-e71d-4be4-b521-459a1593c0fa",
+            "fcf8bc1b-13bd-4005-8be8-e5e6ad607022",
+            "c683bc1d-0773-45f4-9aac-9f827f959426",
+            "4f1d36f6-2409-477c-9287-92ec3d8f3f09",
+            "f3dd65fb-3263-4969-a9e8-f188189473ae",
+            "5f7b5b8d-005c-4e75-ac92-5e9b7d74402d",
+            "0960336a-983e-4b7b-975e-6223b45b3320",
+            "376162f3-6b66-437f-8f81-91fde4872259",
+            "5d36250e-101b-4709-bd74-96ece33c6ad5",
+            "e5fcde0e-cc50-4952-83d5-22e0f19afb68",
+            "4fbdb8c0-01d0-4b35-a30d-d10aacc4ea1e",
+            "942feefe-b1f7-4b33-b07e-ad659c810434",
+            "1ea13dba-c326-4de2-9f7b-13918b5c4a4b",
+            "ed5b0047-053f-4999-b84f-6f579d70ebf3",
+            "1d6b5fe2-0711-4c88-8709-e25fc7639be0",
+            "0cffbe08-6dee-4f0e-96a4-da862ea5e61d",
+            "bb3cc7f4-aa9b-4a42-9887-702ceb865c49",
+            "688b478c-76d7-4faa-afc4-560797c72107",
+            "283c856c-2139-4f8f-9bf2-f3441fa6a211",
+            "0c3b1021-b7aa-46d8-9f2c-746f3d3f8976"
+          ],
+          "updatedCount": 22,
+          "error": null
+        },
+        "insurance_billing": {
+          "updatedIds": [],
+          "updatedCount": 0,
+          "error": null
+        }
+      },
+      "hospitalDeleted": true
+    },
+    {
+      "source_hospital_id": "2f53526b-d82f-4381-b2d9-5c74d6e957e8",
+      "target_hospital_id": "c32c4600-1275-4630-be98-6c0836f67245",
+      "ambulanceActions": [
+        {
+          "source_ambulance_id": "e3a8c7ad-41df-41b3-a147-459b5a9e6855",
+          "source_display_id": "AMB-982932",
+          "target_ambulance_id": "7ff48d58-28fe-449e-850e-0142ef0b1772",
+          "target_display_id": "AMB-3E6817",
+          "call_sign": "ALFA-01",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        },
+        {
+          "source_ambulance_id": "4b0ba31b-6cb9-45b3-84bc-6d7f421b9da6",
+          "source_display_id": "AMB-B5771C",
+          "target_ambulance_id": "a106da43-484e-4e7d-aa11-3985c94ffd9f",
+          "target_display_id": "AMB-7CB29D",
+          "call_sign": "BRAVO-02",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        },
+        {
+          "source_ambulance_id": "c0ba8b33-94a6-480c-8a24-9c46b71bbf72",
+          "source_display_id": "AMB-5731FA",
+          "target_ambulance_id": "de39691b-80bd-40ff-97c4-36d8e25c4a64",
+          "target_display_id": "AMB-FD6F48",
+          "call_sign": "CHARLIE-03",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        }
+      ],
+      "servicePricingActions": [],
+      "roomPricingActions": [],
+      "rowRewires": {
+        "doctors": {
+          "updatedIds": [
+            "2b03973b-952e-4fa6-a826-e0b616a49be5"
+          ],
+          "updatedCount": 1,
+          "error": null
+        },
+        "emergency_requests": {
+          "updatedIds": [
+            "7d9a9c02-c560-4b02-b437-b97de5e2f5ec",
+            "5d4bce83-f6cf-4b82-aabf-33e751c656f8",
+            "f12bc4e8-64da-4cd5-8ee1-49654aa11d24",
+            "cf7b2aba-0414-4b6d-a1c9-9bde9b4faae0",
+            "202e1040-15a8-4feb-8668-2a178e4bbf0f",
+            "01f07a48-3fee-4bb5-b368-7dde2ceb91b0",
+            "384e5080-abf8-47b1-a83e-5fcf0569a6f9",
+            "3a43d1cc-41f1-4c7a-8487-c58afc0f8d70",
+            "79057476-8944-40f3-8eb8-70a0326f37cc",
+            "e6036bf6-9d25-4b11-9eaa-4604b39d7bf6",
+            "93f97403-9350-495f-8afc-260bd1a16d6c",
+            "21bfeb75-df54-4092-81e1-6696bb7874fc",
+            "6f547ce9-b7b3-4612-a458-466d27901321",
+            "0bc90c2f-8bb4-4beb-8ac3-4b8b3c4962d9",
+            "f1b00aef-9621-441c-8603-58487ccb8377",
+            "b45c81a1-3003-4bb6-88b9-df5925f2dc09",
+            "ebd691a0-7d3a-4e84-9790-56e9e935fe28",
+            "281b3677-bb6a-4403-bb7a-20c589d2893f",
+            "d696a4d2-4f8e-4c2f-aecb-29c9813a0374",
+            "f73ff5ed-5b53-4679-a8ca-62ae1916e3c4",
+            "8e929536-dba3-4fc0-9e22-74e6bd8456b6",
+            "b45de2b6-3333-4501-8a83-83e1653f4ca9"
+          ],
+          "updatedCount": 22,
+          "error": null
+        },
+        "visits": {
+          "updatedIds": [
+            "09ea5781-ba31-496b-a0ae-b7ab20f578a9",
+            "116dd123-dce2-46bc-9a4c-701ba5cc0c9b",
+            "85bbfeb5-c484-475c-ac6d-c1e6127475cc",
+            "b1e3a6c0-db97-48f4-9929-16aa13d15e4b",
+            "13c6569f-dca0-4a91-afbb-d67298fb07c0",
+            "055d0ae1-3aa1-422a-b145-326871a62b49",
+            "1a1685a1-b864-4b83-a8b3-1a4cd6ec3dda",
+            "52a1f531-619c-47d9-8ff6-642f9f2d0e37",
+            "1b454bf3-5563-461c-a34e-d63442c366ba",
+            "d9c69a97-1227-4dc9-968b-17fb8303f120",
+            "176b6272-f21c-421a-866b-59a678223a6b",
+            "d3449d12-abe7-4853-8736-ce5e05831aa9",
+            "509c629d-25e8-4740-90cd-8a194b0fa3f9",
+            "264b0d74-af76-4951-9fdd-1f9d6c7debdc",
+            "b21b8939-315c-4f2c-8697-8da9de4b3b6e",
+            "59017e33-db8f-4a1b-a736-d7f7aa978298",
+            "96f98c63-9044-4d72-871e-92f2862ebef4",
+            "d23f861d-0d79-4237-8eb5-3c095d08e7da",
+            "df357f3f-990c-4ed1-a7f6-103f86de47dc",
+            "24bf3be9-5bd3-4669-8081-3cfb0bb9b73d",
+            "486e6c92-d406-42a1-b748-1603f80f8b78",
+            "6926734e-ae8e-429d-aa18-cf30dded0e36"
+          ],
+          "updatedCount": 22,
+          "error": null
+        },
+        "insurance_billing": {
+          "updatedIds": [],
+          "updatedCount": 0,
+          "error": null
+        }
+      },
+      "hospitalDeleted": true
+    },
+    {
+      "source_hospital_id": "55c5249c-42bb-43da-bc2d-bbc5519fe83b",
+      "target_hospital_id": "654f779c-159f-4db1-8bd5-f113c442b775",
+      "ambulanceActions": [
+        {
+          "source_ambulance_id": "5eeea632-5596-4a2e-aabe-6e0af88e7818",
+          "source_display_id": "AMB-0C7CBF",
+          "target_ambulance_id": "e4dab68a-3d1b-4736-976e-b16409ad7986",
+          "target_display_id": "AMB-080D5E",
+          "call_sign": "ALFA-01",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        },
+        {
+          "source_ambulance_id": "cce74ac7-074e-4a21-91f8-68cd81e48001",
+          "source_display_id": "AMB-8EED69",
+          "target_ambulance_id": "8ef02e8c-bc84-45b0-ada8-674f92372327",
+          "target_display_id": "AMB-075F0B",
+          "call_sign": "BRAVO-02",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        },
+        {
+          "source_ambulance_id": "399bcd17-4faf-479a-a92a-9a8895ccfffb",
+          "source_display_id": "AMB-9DDBF7",
+          "target_ambulance_id": "27fa9777-d88e-43ea-9e95-813c6ceb5d16",
+          "target_display_id": "AMB-E4DE9C",
+          "call_sign": "CHARLIE-03",
+          "action": "delete_source_duplicate_call_sign",
+          "sourceEmergencyRefCount": 0,
+          "targetEmergencyRefCount": 0,
+          "deleted": true,
+          "error": null
+        }
+      ],
+      "servicePricingActions": [],
+      "roomPricingActions": [],
+      "rowRewires": {
+        "doctors": {
+          "updatedIds": [],
+          "updatedCount": 0,
+          "error": null
+        },
+        "emergency_requests": {
+          "updatedIds": [],
+          "updatedCount": 0,
+          "error": null
+        },
+        "visits": {
+          "updatedIds": [],
+          "updatedCount": 0,
+          "error": null
+        },
+        "insurance_billing": {
+          "updatedIds": [],
+          "updatedCount": 0,
+          "error": null
+        }
+      },
+      "hospitalDeleted": true
+    }
+  ],
+  "skippedAlreadyAbsent": [],
+  "errors": []
+}

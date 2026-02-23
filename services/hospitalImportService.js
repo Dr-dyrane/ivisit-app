@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from './supabase';
 import googlePlacesService from './googlePlacesService';
 import mapboxService from './mapboxService';
 

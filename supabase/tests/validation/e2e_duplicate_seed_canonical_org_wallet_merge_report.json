@@ -1,0 +1,439 @@
+{
+  "generatedAt": "2026-02-23T04:39:52.695Z",
+  "source": "apply_duplicate_seed_canonical_org_wallet_merges.js",
+  "mode": "apply",
+  "summary": {
+    "eligibleActions": 5,
+    "skippedActions": 0
+  },
+  "eligibleActions": [
+    {
+      "clusterKey": "hemet health network",
+      "source_organization_id": "ceb9a4db-feba-4145-8b6d-c1b977b02048",
+      "target_organization_id": "12ae277e-474d-405f-b65f-2c6b2c044897",
+      "source_display_id": "ORG-4ABC4C",
+      "target_display_id": "ORG-0785E5",
+      "risk": "candidate_for_controlled_merge",
+      "conflictFlags": [],
+      "currentRewireCounts": {
+        "hospitals": 0,
+        "ambulances": 0,
+        "payments": 1,
+        "profiles": 2,
+        "support_tickets": 0
+      },
+      "projectedAfterHospitalMerge": {
+        "hospitals": 0,
+        "ambulances": 0,
+        "payments": 1,
+        "profiles": 2,
+        "support_tickets": 0
+      },
+      "walletMerge": {
+        "canonical_wallet_id": "87d6a6c0-d912-403e-800f-ecaa5696bf53",
+        "source_wallet_ids": [
+          "ef30f668-7e61-4b6f-b49f-e7906a1e7124"
+        ],
+        "source_wallet_balance_total": 160.87,
+        "source_wallet_ledger_entries": 1,
+        "requires_wallet_ledger_rewire": true,
+        "canonical_wallet_missing": false
+      },
+      "eligible": true,
+      "blockers": []
+    },
+    {
+      "clusterKey": "hemet health network",
+      "source_organization_id": "d2af77c3-f831-46d1-91e7-30dc7fcb463f",
+      "target_organization_id": "12ae277e-474d-405f-b65f-2c6b2c044897",
+      "source_display_id": "ORG-E2B0F3",
+      "target_display_id": "ORG-0785E5",
+      "risk": "candidate_for_controlled_merge",
+      "conflictFlags": [],
+      "currentRewireCounts": {
+        "hospitals": 0,
+        "ambulances": 0,
+        "payments": 1,
+        "profiles": 2,
+        "support_tickets": 0
+      },
+      "projectedAfterHospitalMerge": {
+        "hospitals": 0,
+        "ambulances": 0,
+        "payments": 1,
+        "profiles": 2,
+        "support_tickets": 0
+      },
+      "walletMerge": {
+        "canonical_wallet_id": "87d6a6c0-d912-403e-800f-ecaa5696bf53",
+        "source_wallet_ids": [
+          "01624fbd-8e77-473b-b02e-3d3a1c12ef0f"
+        ],
+        "source_wallet_balance_total": 160.87,
+        "source_wallet_ledger_entries": 1,
+        "requires_wallet_ledger_rewire": true,
+        "canonical_wallet_missing": false
+      },
+      "eligible": true,
+      "blockers": []
+    },
+    {
+      "clusterKey": "hemet health network",
+      "source_organization_id": "9a661ef6-d9e1-44a6-a94a-8ccf4b58cf1f",
+      "target_organization_id": "12ae277e-474d-405f-b65f-2c6b2c044897",
+      "source_display_id": "ORG-BA5C74",
+      "target_display_id": "ORG-0785E5",
+      "risk": "manual_merge_required",
+      "conflictFlags": [
+        "hospital_children_remain_after_hospital_merge_phase"
+      ],
+      "currentRewireCounts": {
+        "hospitals": 1,
+        "ambulances": 0,
+        "payments": 1,
+        "profiles": 2,
+        "support_tickets": 0
+      },
+      "projectedAfterHospitalMerge": {
+        "hospitals": 1,
+        "ambulances": 0,
+        "payments": 1,
+        "profiles": 2,
+        "support_tickets": 0
+      },
+      "walletMerge": {
+        "canonical_wallet_id": "87d6a6c0-d912-403e-800f-ecaa5696bf53",
+        "source_wallet_ids": [
+          "1c72ad9a-4412-4b2d-b19b-bc3630fcfb47"
+        ],
+        "source_wallet_balance_total": 160.87,
+        "source_wallet_ledger_entries": 1,
+        "requires_wallet_ledger_rewire": true,
+        "canonical_wallet_missing": false
+      },
+      "eligible": true,
+      "blockers": []
+    },
+    {
+      "clusterKey": "hemet health network",
+      "source_organization_id": "e432e63d-e9f4-40f2-9295-0865893953c4",
+      "target_organization_id": "12ae277e-474d-405f-b65f-2c6b2c044897",
+      "source_display_id": "ORG-9B4601",
+      "target_display_id": "ORG-0785E5",
+      "risk": "candidate_for_controlled_merge",
+      "conflictFlags": [],
+      "currentRewireCounts": {
+        "hospitals": 0,
+        "ambulances": 0,
+        "payments": 1,
+        "profiles": 2,
+        "support_tickets": 0
+      },
+      "projectedAfterHospitalMerge": {
+        "hospitals": 0,
+        "ambulances": 0,
+        "payments": 1,
+        "profiles": 2,
+        "support_tickets": 0
+      },
+      "walletMerge": {
+        "canonical_wallet_id": "87d6a6c0-d912-403e-800f-ecaa5696bf53",
+        "source_wallet_ids": [
+          "3335a311-5f22-41d3-b11a-778ad4c0b16b"
+        ],
+        "source_wallet_balance_total": 160.87,
+        "source_wallet_ledger_entries": 1,
+        "requires_wallet_ledger_rewire": true,
+        "canonical_wallet_missing": false
+      },
+      "eligible": true,
+      "blockers": []
+    },
+    {
+      "clusterKey": "lagos premier health",
+      "source_organization_id": "bbe56c47-ce9c-4863-ac67-b73ad9af5484",
+      "target_organization_id": "1102a7f6-276b-40ab-b784-3925561a0441",
+      "source_display_id": "ORG-57BF0E",
+      "target_display_id": "ORG-207F8E",
+      "risk": "candidate_for_controlled_merge",
+      "conflictFlags": [],
+      "currentRewireCounts": {
+        "hospitals": 0,
+        "ambulances": 0,
+        "payments": 1,
+        "profiles": 1,
+        "support_tickets": 0
+      },
+      "projectedAfterHospitalMerge": {
+        "hospitals": 0,
+        "ambulances": 0,
+        "payments": 1,
+        "profiles": 1,
+        "support_tickets": 0
+      },
+      "walletMerge": {
+        "canonical_wallet_id": "50f9f5b4-0451-4dae-a659-fe4a3ca6d7b7",
+        "source_wallet_ids": [
+          "400358d9-b156-4b11-9f7c-50a89a66b0e4"
+        ],
+        "source_wallet_balance_total": 160.87,
+        "source_wallet_ledger_entries": 1,
+        "requires_wallet_ledger_rewire": true,
+        "canonical_wallet_missing": false
+      },
+      "eligible": true,
+      "blockers": []
+    }
+  ],
+  "skippedActions": [],
+  "appliedActions": [
+    {
+      "source_organization_id": "ceb9a4db-feba-4145-8b6d-c1b977b02048",
+      "target_organization_id": "12ae277e-474d-405f-b65f-2c6b2c044897",
+      "source_display_id": "ORG-4ABC4C",
+      "target_display_id": "ORG-0785E5",
+      "rewires": {
+        "hospitals": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        },
+        "ambulances": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        },
+        "payments": {
+          "updatedCount": 1,
+          "updatedIds": [
+            "9751154e-0fed-4280-88e0-30ac25f9bd36"
+          ],
+          "error": null
+        },
+        "profiles": {
+          "updatedCount": 2,
+          "updatedIds": [
+            "2a415290-e619-4878-8015-b1a28cf0a068",
+            "639117b3-c337-49c9-b793-be52a654554c"
+          ],
+          "error": null
+        },
+        "support_tickets": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        }
+      },
+      "walletMerge": {
+        "source_wallet_id": "ef30f668-7e61-4b6f-b49f-e7906a1e7124",
+        "target_wallet_id": "87d6a6c0-d912-403e-800f-ecaa5696bf53",
+        "source_balance": 160.87,
+        "target_balance_before": 160.87,
+        "target_balance_after": 321.74,
+        "source_wallet_ledger_count_before": 1,
+        "rewired_wallet_ledger_count": 1,
+        "deleted_source_wallet": true
+      },
+      "deletedSourceOrganization": true
+    },
+    {
+      "source_organization_id": "d2af77c3-f831-46d1-91e7-30dc7fcb463f",
+      "target_organization_id": "12ae277e-474d-405f-b65f-2c6b2c044897",
+      "source_display_id": "ORG-E2B0F3",
+      "target_display_id": "ORG-0785E5",
+      "rewires": {
+        "hospitals": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        },
+        "ambulances": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        },
+        "payments": {
+          "updatedCount": 1,
+          "updatedIds": [
+            "d621d93e-2e97-4c19-a3b2-dd301e9abf42"
+          ],
+          "error": null
+        },
+        "profiles": {
+          "updatedCount": 2,
+          "updatedIds": [
+            "9da7f00d-0def-45bd-a0b2-917a6305f9fb",
+            "6ea694b9-faab-46fd-8413-8ca83b30dfa4"
+          ],
+          "error": null
+        },
+        "support_tickets": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        }
+      },
+      "walletMerge": {
+        "source_wallet_id": "01624fbd-8e77-473b-b02e-3d3a1c12ef0f",
+        "target_wallet_id": "87d6a6c0-d912-403e-800f-ecaa5696bf53",
+        "source_balance": 160.87,
+        "target_balance_before": 321.74,
+        "target_balance_after": 482.61,
+        "source_wallet_ledger_count_before": 1,
+        "rewired_wallet_ledger_count": 1,
+        "deleted_source_wallet": true
+      },
+      "deletedSourceOrganization": true
+    },
+    {
+      "source_organization_id": "9a661ef6-d9e1-44a6-a94a-8ccf4b58cf1f",
+      "target_organization_id": "12ae277e-474d-405f-b65f-2c6b2c044897",
+      "source_display_id": "ORG-BA5C74",
+      "target_display_id": "ORG-0785E5",
+      "rewires": {
+        "hospitals": {
+          "updatedCount": 1,
+          "updatedIds": [
+            "c32c4600-1275-4630-be98-6c0836f67245"
+          ],
+          "error": null
+        },
+        "ambulances": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        },
+        "payments": {
+          "updatedCount": 1,
+          "updatedIds": [
+            "155f208c-34ef-4963-baac-01be5c4063c9"
+          ],
+          "error": null
+        },
+        "profiles": {
+          "updatedCount": 2,
+          "updatedIds": [
+            "b0b4e2c6-d382-4a3e-b55f-d04fb93c8285",
+            "fbc6fb83-ccdd-440a-bf3f-f1abef6e8b7b"
+          ],
+          "error": null
+        },
+        "support_tickets": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        }
+      },
+      "walletMerge": {
+        "source_wallet_id": "1c72ad9a-4412-4b2d-b19b-bc3630fcfb47",
+        "target_wallet_id": "87d6a6c0-d912-403e-800f-ecaa5696bf53",
+        "source_balance": 160.87,
+        "target_balance_before": 482.61,
+        "target_balance_after": 643.48,
+        "source_wallet_ledger_count_before": 1,
+        "rewired_wallet_ledger_count": 1,
+        "deleted_source_wallet": true
+      },
+      "deletedSourceOrganization": true
+    },
+    {
+      "source_organization_id": "e432e63d-e9f4-40f2-9295-0865893953c4",
+      "target_organization_id": "12ae277e-474d-405f-b65f-2c6b2c044897",
+      "source_display_id": "ORG-9B4601",
+      "target_display_id": "ORG-0785E5",
+      "rewires": {
+        "hospitals": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        },
+        "ambulances": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        },
+        "payments": {
+          "updatedCount": 1,
+          "updatedIds": [
+            "426e1918-d7ca-4ce1-9e55-c290f75c0afb"
+          ],
+          "error": null
+        },
+        "profiles": {
+          "updatedCount": 2,
+          "updatedIds": [
+            "d28c3190-e39c-40e8-ae9b-e77551491cfc",
+            "b1a8fc71-043c-48b4-b092-1043015a4fb0"
+          ],
+          "error": null
+        },
+        "support_tickets": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        }
+      },
+      "walletMerge": {
+        "source_wallet_id": "3335a311-5f22-41d3-b11a-778ad4c0b16b",
+        "target_wallet_id": "87d6a6c0-d912-403e-800f-ecaa5696bf53",
+        "source_balance": 160.87,
+        "target_balance_before": 643.48,
+        "target_balance_after": 804.35,
+        "source_wallet_ledger_count_before": 1,
+        "rewired_wallet_ledger_count": 1,
+        "deleted_source_wallet": true
+      },
+      "deletedSourceOrganization": true
+    },
+    {
+      "source_organization_id": "bbe56c47-ce9c-4863-ac67-b73ad9af5484",
+      "target_organization_id": "1102a7f6-276b-40ab-b784-3925561a0441",
+      "source_display_id": "ORG-57BF0E",
+      "target_display_id": "ORG-207F8E",
+      "rewires": {
+        "hospitals": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        },
+        "ambulances": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        },
+        "payments": {
+          "updatedCount": 1,
+          "updatedIds": [
+            "1be1a050-39af-4dd0-828e-baf99e22954d"
+          ],
+          "error": null
+        },
+        "profiles": {
+          "updatedCount": 1,
+          "updatedIds": [
+            "426af75f-5d51-4a25-a564-29e83c1e36e9"
+          ],
+          "error": null
+        },
+        "support_tickets": {
+          "updatedCount": 0,
+          "updatedIds": [],
+          "error": null
+        }
+      },
+      "walletMerge": {
+        "source_wallet_id": "400358d9-b156-4b11-9f7c-50a89a66b0e4",
+        "target_wallet_id": "50f9f5b4-0451-4dae-a659-fe4a3ca6d7b7",
+        "source_balance": 160.87,
+        "target_balance_before": 160.87,
+        "target_balance_after": 321.74,
+        "source_wallet_ledger_count_before": 1,
+        "rewired_wallet_ledger_count": 1,
+        "deleted_source_wallet": true
+      },
+      "deletedSourceOrganization": true
+    }
+  ],
+  "skippedAlreadyAbsent": [],
+  "errors": []
+}

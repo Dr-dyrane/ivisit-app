@@ -1,0 +1,162 @@
+{
+  "generatedAt": "2026-02-23T04:17:11.317Z",
+  "source": "cleanup_duplicate_seed_records.js",
+  "mode": "apply",
+  "before": {
+    "organizations": 21,
+    "hospitals": 14,
+    "ambulances": 21
+  },
+  "planned": {
+    "deleteHospitals": [
+      {
+        "id": "b0000000-0000-0000-0000-000000000001",
+        "display_id": "HSP-21856A",
+        "name": "Hemet Valley Medical Center",
+        "organization_id": "a0000000-0000-0000-0000-000000000001",
+        "clusterKey": "hemet valley medical center"
+      },
+      {
+        "id": "8f3fcbe0-519a-4986-8d4b-5f7b1ffbfa18",
+        "display_id": "HSP-E29438",
+        "name": "Hemet Valley Medical Center",
+        "organization_id": "c2d8c35d-45fb-4b6a-8b1f-74e293453ec9",
+        "clusterKey": "hemet valley medical center"
+      },
+      {
+        "id": "3e272bd9-b9c2-40f8-a951-a77799b8d1ab",
+        "display_id": "HSP-B32061",
+        "name": "Hemet Valley Medical Center",
+        "organization_id": "43fdc37c-f8d9-4bc3-8efb-669917dee954",
+        "clusterKey": "hemet valley medical center"
+      },
+      {
+        "id": "86b431b3-8fc1-4f38-a3d2-07ac73114952",
+        "display_id": "HSP-E51180",
+        "name": "Premier Victoria Island",
+        "organization_id": "5ffe29cb-8afb-4973-8638-e44c22df4a95",
+        "clusterKey": "premier victoria island"
+      },
+      {
+        "id": "c398dddb-97de-4f4f-8e07-0cfd8e0a7f56",
+        "display_id": "HSP-A1BEB6",
+        "name": "Premier Victoria Island",
+        "organization_id": "bcefe93a-7de4-4582-b4ba-4ff31ae5d5eb",
+        "clusterKey": "premier victoria island"
+      },
+      {
+        "id": "7a736c4e-57fa-4093-9594-af7db6abb08e",
+        "display_id": "HSP-351ECA",
+        "name": "Premier Victoria Island",
+        "organization_id": "d641cedb-090e-4662-bdf7-f5b5cad12662",
+        "clusterKey": "premier victoria island"
+      },
+      {
+        "id": "a5942b77-6d98-4a44-a7f1-d32352daaae2",
+        "display_id": "HSP-F509C6",
+        "name": "Premier Victoria Island",
+        "organization_id": "b9dc28a2-44ae-4a4f-bfdd-afafe4c4e398",
+        "clusterKey": "premier victoria island"
+      }
+    ],
+    "deleteOrganizations": [
+      {
+        "id": "a059ff2f-f870-49da-bd0f-c838557fa255",
+        "display_id": "ORG-6DDD5A",
+        "name": "Lagos Premier Health",
+        "clusterKey": "lagos premier health",
+        "organization_wallets": 1
+      },
+      {
+        "id": "b9dc28a2-44ae-4a4f-bfdd-afafe4c4e398",
+        "display_id": "ORG-D11CB2",
+        "name": "Lagos Premier Health",
+        "clusterKey": "lagos premier health",
+        "organization_wallets": 1
+      },
+      {
+        "id": "5ffe29cb-8afb-4973-8638-e44c22df4a95",
+        "display_id": "ORG-AD468F",
+        "name": "Lagos Premier Health",
+        "clusterKey": "lagos premier health",
+        "organization_wallets": 1
+      },
+      {
+        "id": "bcefe93a-7de4-4582-b4ba-4ff31ae5d5eb",
+        "display_id": "ORG-22095E",
+        "name": "Lagos Premier Health",
+        "clusterKey": "lagos premier health",
+        "organization_wallets": 1
+      },
+      {
+        "id": "d641cedb-090e-4662-bdf7-f5b5cad12662",
+        "display_id": "ORG-03A2A3",
+        "name": "Lagos Premier Health",
+        "clusterKey": "lagos premier health",
+        "organization_wallets": 1
+      }
+    ],
+    "deleteOrganizationsAfterHospitalDelete": [
+      {
+        "id": "a059ff2f-f870-49da-bd0f-c838557fa255",
+        "display_id": "ORG-6DDD5A",
+        "name": "Lagos Premier Health",
+        "clusterKey": "lagos premier health",
+        "organization_wallets": 1
+      },
+      {
+        "id": "b9dc28a2-44ae-4a4f-bfdd-afafe4c4e398",
+        "display_id": "ORG-D11CB2",
+        "name": "Lagos Premier Health",
+        "clusterKey": "lagos premier health",
+        "organization_wallets": 1
+      },
+      {
+        "id": "5ffe29cb-8afb-4973-8638-e44c22df4a95",
+        "display_id": "ORG-AD468F",
+        "name": "Lagos Premier Health",
+        "clusterKey": "lagos premier health",
+        "organization_wallets": 1
+      },
+      {
+        "id": "bcefe93a-7de4-4582-b4ba-4ff31ae5d5eb",
+        "display_id": "ORG-22095E",
+        "name": "Lagos Premier Health",
+        "clusterKey": "lagos premier health",
+        "organization_wallets": 1
+      },
+      {
+        "id": "d641cedb-090e-4662-bdf7-f5b5cad12662",
+        "display_id": "ORG-03A2A3",
+        "name": "Lagos Premier Health",
+        "clusterKey": "lagos premier health",
+        "organization_wallets": 1
+      }
+    ]
+  },
+  "applied": {
+    "hospitalsDeleted": [
+      "b0000000-0000-0000-0000-000000000001",
+      "86b431b3-8fc1-4f38-a3d2-07ac73114952",
+      "c398dddb-97de-4f4f-8e07-0cfd8e0a7f56",
+      "7a736c4e-57fa-4093-9594-af7db6abb08e",
+      "a5942b77-6d98-4a44-a7f1-d32352daaae2",
+      "8f3fcbe0-519a-4986-8d4b-5f7b1ffbfa18",
+      "3e272bd9-b9c2-40f8-a951-a77799b8d1ab"
+    ],
+    "organizationsDeleted": [
+      "a059ff2f-f870-49da-bd0f-c838557fa255",
+      "b9dc28a2-44ae-4a4f-bfdd-afafe4c4e398",
+      "5ffe29cb-8afb-4973-8638-e44c22df4a95",
+      "bcefe93a-7de4-4582-b4ba-4ff31ae5d5eb",
+      "d641cedb-090e-4662-bdf7-f5b5cad12662"
+    ],
+    "errors": []
+  },
+  "after": {
+    "organizations": 16,
+    "hospitals": 7,
+    "ambulances": 21,
+    "organization_wallets": 16
+  }
+}

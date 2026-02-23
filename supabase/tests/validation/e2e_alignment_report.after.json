@@ -1,0 +1,486 @@
+{
+  "generatedAt": "2026-02-23T03:31:38.945Z",
+  "source": "run_alignment_audit.js",
+  "supabaseUrl": "https://dlwtcmhdzoklveihuhjf.supabase.co",
+  "queryErrors": [],
+  "counts": {
+    "profiles": 36,
+    "preferences": 37,
+    "medical_profiles": 38,
+    "patient_wallets": 38,
+    "organizations": 22,
+    "organization_wallets": 24,
+    "hospitals": 15,
+    "ambulances": 22,
+    "doctors": 2,
+    "emergency_requests": 132,
+    "visits": 132,
+    "payments": 17,
+    "emergency_doctor_assignments": 0,
+    "insurance_billing": 0,
+    "wallet_ledger": 7
+  },
+  "bootstrapCoverage": {
+    "profiles": 36,
+    "preferences": 36,
+    "medicalProfiles": 36,
+    "patientWallets": 36,
+    "missingPreferences": [],
+    "missingMedicalProfiles": [],
+    "missingPatientWallets": []
+  },
+  "orgWalletCoverage": {
+    "organizations": 21,
+    "organizationWallets": 23,
+    "nullOrgWallets": [
+      {
+        "id": "3ea5ca30-b09d-48e0-9fdf-16718041e706",
+        "display_id": "OWL-CA318B"
+      },
+      {
+        "id": "3d89ee0a-98d3-46da-8abb-7165b2399f21",
+        "display_id": "OWL-512293"
+      }
+    ],
+    "orphanOrgWallets": [],
+    "missing": []
+  },
+  "emergencyVisitHealth": {
+    "emergencyCount": 132,
+    "visitCount": 132,
+    "missingVisitsCount": 0,
+    "emergenciesMissingVisits": [],
+    "duplicateVisitsPerRequest": []
+  },
+  "paymentHealth": {
+    "total": 17,
+    "linkedToEmergency": 6,
+    "missingEmergencyLink": 11,
+    "missingOrganizationLink": 4,
+    "pendingCash": 6,
+    "paymentsMissingLinks": [
+      {
+        "id": "35e8b99e-003d-478e-9b87-a2a48bcc8756",
+        "display_id": "PAY-BA38CC",
+        "payment_method": "cash",
+        "status": "pending",
+        "amount": 400,
+        "emergency_request_id": null,
+        "organization_id": "e64db981-97d8-487c-8003-59e0e07a782b"
+      },
+      {
+        "id": "066776e3-5c09-4555-afa0-925e898c6b8d",
+        "display_id": "PAY-F23CC7",
+        "payment_method": null,
+        "status": "pending",
+        "amount": 0,
+        "emergency_request_id": null,
+        "organization_id": null
+      },
+      {
+        "id": "7d1eab4e-3649-498b-8e77-9656475f9211",
+        "display_id": "PAY-BC350F",
+        "payment_method": null,
+        "status": "pending",
+        "amount": 0,
+        "emergency_request_id": null,
+        "organization_id": null
+      },
+      {
+        "id": "6e88e3e0-7c84-4f6a-8d03-bf60d463603b",
+        "display_id": "PAY-582DBE",
+        "payment_method": null,
+        "status": "pending",
+        "amount": 0,
+        "emergency_request_id": null,
+        "organization_id": null
+      },
+      {
+        "id": "ba02fbcd-3e90-4856-b580-debcce77ed5e",
+        "display_id": "PAY-5CA0F6",
+        "payment_method": "cash",
+        "status": "pending",
+        "amount": 400,
+        "emergency_request_id": null,
+        "organization_id": "c3fd9e8a-034a-4ed4-b7a4-8f7516a240ee"
+      },
+      {
+        "id": "f6e61116-a6ac-4293-9240-93c41f4c2f0f",
+        "display_id": "PAY-2E6B3A",
+        "payment_method": null,
+        "status": "pending",
+        "amount": 0,
+        "emergency_request_id": null,
+        "organization_id": null
+      },
+      {
+        "id": "d73c051e-7cb4-4706-a983-ed72e46b8c82",
+        "display_id": "PAY-CD036E",
+        "payment_method": "cash",
+        "status": "pending",
+        "amount": 400,
+        "emergency_request_id": null,
+        "organization_id": "b4e35f14-68f4-4a93-aaa1-838e3b2f5b0f"
+      },
+      {
+        "id": "1be1a050-39af-4dd0-828e-baf99e22954d",
+        "display_id": "PAY-E660C7",
+        "payment_method": "card",
+        "status": "completed",
+        "amount": 165,
+        "emergency_request_id": null,
+        "organization_id": "bbe56c47-ce9c-4863-ac67-b73ad9af5484"
+      },
+      {
+        "id": "d92c2aa5-6b9e-40c0-88ee-dc13472413dd",
+        "display_id": "PAY-D96600",
+        "payment_method": "cash",
+        "status": "pending",
+        "amount": 400,
+        "emergency_request_id": null,
+        "organization_id": "a5df94db-ad82-48a9-bfff-27364dcf5990"
+      },
+      {
+        "id": "8e6f6671-4ee8-4f39-8d75-9606c305a612",
+        "display_id": "PAY-0197DD",
+        "payment_method": "cash",
+        "status": "pending",
+        "amount": 400,
+        "emergency_request_id": null,
+        "organization_id": "77e06401-3cb1-4bf5-b350-83553424e413"
+      },
+      {
+        "id": "962fb0c7-8242-4539-81e3-a3400221933a",
+        "display_id": "PAY-5EE944",
+        "payment_method": "cash",
+        "status": "pending",
+        "amount": 400,
+        "emergency_request_id": null,
+        "organization_id": "8fda72de-2239-4c37-925c-2f827ce7bfb5"
+      }
+    ],
+    "placeholderOrphans": [
+      {
+        "id": "066776e3-5c09-4555-afa0-925e898c6b8d",
+        "display_id": "PAY-F23CC7",
+        "created_at": "2026-02-22T16:17:34.622994+00:00"
+      },
+      {
+        "id": "7d1eab4e-3649-498b-8e77-9656475f9211",
+        "display_id": "PAY-BC350F",
+        "created_at": "2026-02-22T17:40:25.174488+00:00"
+      },
+      {
+        "id": "6e88e3e0-7c84-4f6a-8d03-bf60d463603b",
+        "display_id": "PAY-582DBE",
+        "created_at": "2026-02-22T17:43:47.572254+00:00"
+      },
+      {
+        "id": "f6e61116-a6ac-4293-9240-93c41f4c2f0f",
+        "display_id": "PAY-2E6B3A",
+        "created_at": "2026-02-22T17:47:01.838345+00:00"
+      }
+    ]
+  },
+  "dispatchHealth": {
+    "activeCount": 6,
+    "byServiceType": {
+      "bed": 6
+    },
+    "ambulanceFlow": {
+      "activeCount": 0,
+      "withAmbulanceId": 0,
+      "withResponderId": 0,
+      "withResponderLocation": 0,
+      "withPatientLocation": 0,
+      "activeRecords": []
+    },
+    "nonAmbulanceFlow": {
+      "activeCount": 6,
+      "activeRecords": [
+        {
+          "id": "e4f87778-82d0-4ce6-8c65-0e4cacb33e0c",
+          "display_id": "REQ-6C6D4B",
+          "status": "accepted",
+          "service_type": "bed",
+          "ambulance_id": null,
+          "responder_id": null
+        },
+        {
+          "id": "b96ce48c-6f9e-417b-9077-be3d529e38c1",
+          "display_id": "REQ-B87AC7",
+          "status": "accepted",
+          "service_type": "bed",
+          "ambulance_id": null,
+          "responder_id": null
+        },
+        {
+          "id": "ba491dbd-1d26-45d9-adfa-487b0d798114",
+          "display_id": "REQ-3C91D9",
+          "status": "accepted",
+          "service_type": "bed",
+          "ambulance_id": null,
+          "responder_id": null
+        },
+        {
+          "id": "121a1325-7d84-4a38-82b6-b7091c1a2ca6",
+          "display_id": "REQ-5F8B31",
+          "status": "accepted",
+          "service_type": "bed",
+          "ambulance_id": null,
+          "responder_id": null
+        },
+        {
+          "id": "17a2b151-3a10-4f32-b22d-40ae97a2d8d0",
+          "display_id": "REQ-BAEB55",
+          "status": "accepted",
+          "service_type": "bed",
+          "ambulance_id": null,
+          "responder_id": null
+        },
+        {
+          "id": "b45de2b6-3333-4501-8a83-83e1653f4ca9",
+          "display_id": "REQ-219389",
+          "status": "accepted",
+          "service_type": "bed",
+          "ambulance_id": null,
+          "responder_id": null
+        }
+      ]
+    },
+    "activeRecords": [
+      {
+        "id": "e4f87778-82d0-4ce6-8c65-0e4cacb33e0c",
+        "display_id": "REQ-6C6D4B",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": false
+      },
+      {
+        "id": "b96ce48c-6f9e-417b-9077-be3d529e38c1",
+        "display_id": "REQ-B87AC7",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": false
+      },
+      {
+        "id": "ba491dbd-1d26-45d9-adfa-487b0d798114",
+        "display_id": "REQ-3C91D9",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": false
+      },
+      {
+        "id": "121a1325-7d84-4a38-82b6-b7091c1a2ca6",
+        "display_id": "REQ-5F8B31",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": false
+      },
+      {
+        "id": "17a2b151-3a10-4f32-b22d-40ae97a2d8d0",
+        "display_id": "REQ-BAEB55",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": false
+      },
+      {
+        "id": "b45de2b6-3333-4501-8a83-83e1653f4ca9",
+        "display_id": "REQ-219389",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": false
+      }
+    ]
+  },
+  "duplicateCandidates": {
+    "organizationsByName": [
+      {
+        "key": "hemet health network",
+        "count": 7,
+        "ids": [
+          "12ae277e-474d-405f-b65f-2c6b2c044897",
+          "ceb9a4db-feba-4145-8b6d-c1b977b02048",
+          "d2af77c3-f831-46d1-91e7-30dc7fcb463f",
+          "c2d8c35d-45fb-4b6a-8b1f-74e293453ec9",
+          "43fdc37c-f8d9-4bc3-8efb-669917dee954",
+          "9a661ef6-d9e1-44a6-a94a-8ccf4b58cf1f",
+          "e432e63d-e9f4-40f2-9295-0865893953c4"
+        ],
+        "displayIds": [
+          "ORG-0785E5",
+          "ORG-4ABC4C",
+          "ORG-E2B0F3",
+          "ORG-4AF4EF",
+          "ORG-B6B561",
+          "ORG-BA5C74",
+          "ORG-9B4601"
+        ]
+      },
+      {
+        "key": "lagos premier health",
+        "count": 7,
+        "ids": [
+          "a059ff2f-f870-49da-bd0f-c838557fa255",
+          "bbe56c47-ce9c-4863-ac67-b73ad9af5484",
+          "b9dc28a2-44ae-4a4f-bfdd-afafe4c4e398",
+          "5ffe29cb-8afb-4973-8638-e44c22df4a95",
+          "bcefe93a-7de4-4582-b4ba-4ff31ae5d5eb",
+          "d641cedb-090e-4662-bdf7-f5b5cad12662",
+          "1102a7f6-276b-40ab-b784-3925561a0441"
+        ],
+        "displayIds": [
+          "ORG-6DDD5A",
+          "ORG-57BF0E",
+          "ORG-D11CB2",
+          "ORG-AD468F",
+          "ORG-22095E",
+          "ORG-03A2A3",
+          "ORG-207F8E"
+        ]
+      }
+    ],
+    "hospitalsByName": [
+      {
+        "key": "hemet valley medical center",
+        "count": 8,
+        "ids": [
+          "b0000000-0000-0000-0000-000000000001",
+          "838098d1-ffcc-4458-b167-faea34bcd8d5",
+          "53990921-b4de-4428-8633-80f586caffa3",
+          "04d45ef0-5fb8-416f-b9e1-9f826de877a6",
+          "8f3fcbe0-519a-4986-8d4b-5f7b1ffbfa18",
+          "3e272bd9-b9c2-40f8-a951-a77799b8d1ab",
+          "c32c4600-1275-4630-be98-6c0836f67245",
+          "2f53526b-d82f-4381-b2d9-5c74d6e957e8"
+        ],
+        "displayIds": [
+          "HSP-21856A",
+          "HSP-92CEB4",
+          "HSP-D71B5A",
+          "HSP-C5390B",
+          "HSP-E29438",
+          "HSP-B32061",
+          "HSP-110376",
+          "HSP-C8A17F"
+        ]
+      },
+      {
+        "key": "premier victoria island",
+        "count": 6,
+        "ids": [
+          "86b431b3-8fc1-4f38-a3d2-07ac73114952",
+          "c398dddb-97de-4f4f-8e07-0cfd8e0a7f56",
+          "7a736c4e-57fa-4093-9594-af7db6abb08e",
+          "654f779c-159f-4db1-8bd5-f113c442b775",
+          "55c5249c-42bb-43da-bc2d-bbc5519fe83b",
+          "a5942b77-6d98-4a44-a7f1-d32352daaae2"
+        ],
+        "displayIds": [
+          "HSP-E51180",
+          "HSP-A1BEB6",
+          "HSP-351ECA",
+          "HSP-3545FB",
+          "HSP-675B49",
+          "HSP-F509C6"
+        ]
+      }
+    ],
+    "ambulancesByCallSign": [
+      {
+        "key": "alfa-01",
+        "count": 7,
+        "ids": [
+          "5eeea632-5596-4a2e-aabe-6e0af88e7818",
+          "e4dab68a-3d1b-4736-976e-b16409ad7986",
+          "897a8650-83d5-4ad2-986b-344533f466f6",
+          "cc90b483-e06c-4598-9f2f-037d8c446336",
+          "fdb1fab8-9707-4e54-84ea-a537e0b9178a",
+          "7ff48d58-28fe-449e-850e-0142ef0b1772",
+          "e3a8c7ad-41df-41b3-a147-459b5a9e6855"
+        ],
+        "displayIds": [
+          "AMB-0C7CBF",
+          "AMB-080D5E",
+          "AMB-B76FB0",
+          "AMB-2702FB",
+          "AMB-FFE9AA",
+          "AMB-3E6817",
+          "AMB-982932"
+        ]
+      },
+      {
+        "key": "bravo-02",
+        "count": 7,
+        "ids": [
+          "cce74ac7-074e-4a21-91f8-68cd81e48001",
+          "8ef02e8c-bc84-45b0-ada8-674f92372327",
+          "92fee7ce-f8eb-42de-a5a1-8d2c7b0c64a5",
+          "05bcbdf7-e8db-48d4-a4f1-69833c735145",
+          "37f72048-812a-4d0d-abc3-c212b7a24209",
+          "a106da43-484e-4e7d-aa11-3985c94ffd9f",
+          "4b0ba31b-6cb9-45b3-84bc-6d7f421b9da6"
+        ],
+        "displayIds": [
+          "AMB-8EED69",
+          "AMB-075F0B",
+          "AMB-74E43D",
+          "AMB-EE07F5",
+          "AMB-C1E0CB",
+          "AMB-7CB29D",
+          "AMB-B5771C"
+        ]
+      },
+      {
+        "key": "charlie-03",
+        "count": 7,
+        "ids": [
+          "399bcd17-4faf-479a-a92a-9a8895ccfffb",
+          "27fa9777-d88e-43ea-9e95-813c6ceb5d16",
+          "349791dc-6029-45cf-8353-4bcb3eb3664b",
+          "9d82c102-023d-4876-bae6-0c9e86eeea12",
+          "c60d0f43-33b5-46c1-82df-79c44bd56013",
+          "de39691b-80bd-40ff-97c4-36d8e25c4a64",
+          "c0ba8b33-94a6-480c-8a24-9c46b71bbf72"
+        ],
+        "displayIds": [
+          "AMB-9DDBF7",
+          "AMB-E4DE9C",
+          "AMB-53A98A",
+          "AMB-7CDDA7",
+          "AMB-A327F6",
+          "AMB-FD6F48",
+          "AMB-5731FA"
+        ]
+      }
+    ]
+  },
+  "severity": {
+    "critical": [],
+    "high": [],
+    "medium": [
+      "Invalid organization_wallet rows (null/orphan org refs): 2",
+      "Payments missing organization_id: 4",
+      "Placeholder/orphan pending payments: 4",
+      "Duplicate semantic records detected (hospital names and/or ambulance call signs)"
+    ]
+  }
+}

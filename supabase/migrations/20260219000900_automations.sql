@@ -101,8 +101,20 @@ DECLARE
     v_amb_id UUID;
     v_driver_id UUID;
     v_driver_name TEXT;
+    v_should_attempt BOOLEAN := FALSE;
 BEGIN
-    IF (NEW.status = 'in_progress' AND NEW.service_type = 'ambulance' AND NEW.responder_id IS NULL) THEN
+    IF NEW.service_type != 'ambulance' OR NEW.responder_id IS NOT NULL OR NEW.ambulance_id IS NOT NULL THEN
+        RETURN NEW;
+    END IF;
+
+    IF TG_OP = 'INSERT' THEN
+        v_should_attempt := NEW.status IN ('in_progress', 'accepted');
+    ELSIF TG_OP = 'UPDATE' THEN
+        v_should_attempt := NEW.status IN ('in_progress', 'accepted')
+            AND OLD.status IS DISTINCT FROM NEW.status;
+    END IF;
+
+    IF v_should_attempt THEN
         SELECT id, profile_id INTO v_amb_id, v_driver_id
         FROM public.ambulances
         WHERE hospital_id = NEW.hospital_id AND status = 'available'
@@ -115,10 +127,17 @@ BEGIN
             SET responder_id = v_driver_id,
                 responder_name = v_driver_name,
                 ambulance_id = v_amb_id,
-                status = 'accepted'
-            WHERE id = NEW.id;
+                status = 'accepted',
+                updated_at = NOW()
+            WHERE id = NEW.id
+              AND responder_id IS NULL
+              AND ambulance_id IS NULL;
 
-            UPDATE public.ambulances SET status = 'on_trip' WHERE id = v_amb_id;
+            UPDATE public.ambulances
+            SET status = 'on_trip',
+                current_call = NEW.id,
+                updated_at = NOW()
+            WHERE id = v_amb_id;
         END IF;
     END IF;
     RETURN NEW;
@@ -127,7 +146,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS on_emergency_start_dispatch ON public.emergency_requests;
 CREATE TRIGGER on_emergency_start_dispatch
-AFTER INSERT ON public.emergency_requests
+AFTER INSERT OR UPDATE ON public.emergency_requests
 FOR EACH ROW EXECUTE PROCEDURE public.auto_assign_driver();
 
 -- Update Resource Availability

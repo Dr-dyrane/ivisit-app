@@ -1,0 +1,1221 @@
+{
+  "generatedAt": "2026-02-23T03:14:53.773Z",
+  "source": "run_alignment_audit.js",
+  "supabaseUrl": "https://dlwtcmhdzoklveihuhjf.supabase.co",
+  "queryErrors": [],
+  "counts": {
+    "profiles": 36,
+    "preferences": 36,
+    "medical_profiles": 36,
+    "patient_wallets": 36,
+    "organizations": 21,
+    "organization_wallets": 17,
+    "hospitals": 14,
+    "ambulances": 21,
+    "doctors": 2,
+    "emergency_requests": 132,
+    "visits": 0,
+    "payments": 17,
+    "emergency_doctor_assignments": 0,
+    "insurance_billing": 0,
+    "wallet_ledger": 7
+  },
+  "bootstrapCoverage": {
+    "profiles": 36,
+    "preferences": 36,
+    "medicalProfiles": 36,
+    "patientWallets": 36,
+    "missingPreferences": [],
+    "missingMedicalProfiles": [],
+    "missingPatientWallets": []
+  },
+  "orgWalletCoverage": {
+    "organizations": 21,
+    "organizationWallets": 17,
+    "missing": [
+      {
+        "id": "b4e35f14-68f4-4a93-aaa1-838e3b2f5b0f",
+        "display_id": "ORG-668838",
+        "name": "iVisit Health Systems (Test 1771782623096)"
+      },
+      {
+        "id": "a5df94db-ad82-48a9-bfff-27364dcf5990",
+        "display_id": "ORG-86E5B4",
+        "name": "iVisit Health Systems (Test 1771782864630)"
+      },
+      {
+        "id": "77e06401-3cb1-4bf5-b350-83553424e413",
+        "display_id": "ORG-A93C0E",
+        "name": "iVisit Health Systems (Test 1771782943056)"
+      },
+      {
+        "id": "8fda72de-2239-4c37-925c-2f827ce7bfb5",
+        "display_id": "ORG-21C1B2",
+        "name": "iVisit Health Systems (Test 1771783052901)"
+      },
+      {
+        "id": "e64db981-97d8-487c-8003-59e0e07a782b",
+        "display_id": "ORG-4AC9A6",
+        "name": "iVisit Health Systems (Test 1771783128722)"
+      },
+      {
+        "id": "c3fd9e8a-034a-4ed4-b7a4-8f7516a240ee",
+        "display_id": "ORG-DC725A",
+        "name": "iVisit Health Systems (Test 1771783572564)"
+      }
+    ]
+  },
+  "emergencyVisitHealth": {
+    "emergencyCount": 132,
+    "visitCount": 0,
+    "missingVisitsCount": 132,
+    "emergenciesMissingVisits": [
+      {
+        "id": "2b436d2a-2e80-49bc-8346-ba66f54328b0",
+        "display_id": "REQ-E78587",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "d8508eef-c44f-4361-b17b-8d88b63524ae",
+        "display_id": "REQ-3477C6",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "5a47deb2-1f2f-43c4-bbee-d39af0d3ffc4",
+        "display_id": "REQ-D092FE",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "9cafff2f-b9a3-4b48-bcbd-b3f50d98974a",
+        "display_id": "REQ-642E21",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "b1a7fd28-406e-4b7e-bea6-44dfa9122e0a",
+        "display_id": "REQ-7CF365",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "bb82927f-90d4-4e28-b374-583032497acb",
+        "display_id": "REQ-C7D9F8",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "209fdf6e-de44-43c1-b300-08a93bfbee55",
+        "display_id": "REQ-6B507D",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "34320536-eb8b-4f66-91fc-65f1fe84a021",
+        "display_id": "REQ-58BA60",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "5c9bfeff-217b-419d-9e17-9b0611576240",
+        "display_id": "REQ-CC1A70",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "88c93ec1-a8ea-4695-83a2-cd8e1f8f3db9",
+        "display_id": "REQ-32F078",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "23282f01-4dbc-4fd1-885b-c3ec9abb746d",
+        "display_id": "REQ-06EA2B",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "28307695-fa1e-4e93-8416-6583ce901735",
+        "display_id": "REQ-34812B",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "adfe28b0-a927-434f-8a58-524f025029f0",
+        "display_id": "REQ-902B7A",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "58bea549-9a2d-4e36-8108-26f44996846a",
+        "display_id": "REQ-7EC4D7",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "4d7489e9-9247-4cd6-a1e0-e076b169729e",
+        "display_id": "REQ-B76BDD",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "9ac5d7d2-4a8e-4fc5-bd1e-46131029eade",
+        "display_id": "REQ-458C77",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "ae735529-d746-425b-939b-9673778fb7e7",
+        "display_id": "REQ-E35EB3",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "83e975dc-1a51-4736-8ae8-777d9b335465",
+        "display_id": "REQ-5D04F6",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "562d90fc-c7e1-4856-83e0-048129f58d53",
+        "display_id": "REQ-8322F7",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "70efa3c4-ef4e-494c-bedb-a0741f79a59d",
+        "display_id": "REQ-6099D7",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "053ed729-0ecb-4f3f-af9a-2af975f1bce2",
+        "display_id": "REQ-251FB3",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "e4f87778-82d0-4ce6-8c65-0e4cacb33e0c",
+        "display_id": "REQ-6C6D4B",
+        "status": "accepted",
+        "service_type": "bed"
+      },
+      {
+        "id": "b6f9a247-2ba0-43c6-965c-7545e3d77503",
+        "display_id": "REQ-3E694C",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "bca00f79-460b-4102-85bf-64bedf623035",
+        "display_id": "REQ-EAE967",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "03bb8a47-1832-46c9-a959-9b73726ee7d4",
+        "display_id": "REQ-FDC81E",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "ab0c704e-8fe0-40cc-a985-2e6d22135caf",
+        "display_id": "REQ-1098C5",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "2c9f8b59-8d76-4e12-8a8b-bbfc7524d3c6",
+        "display_id": "REQ-305473",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "0df3a0ea-f80e-496d-9fc0-ccce4ec6b6fb",
+        "display_id": "REQ-EF91ED",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "b912e65b-348f-440f-8a77-7e4bf1027331",
+        "display_id": "REQ-5C95FA",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "9dd54416-2a8a-4267-94c1-092007dd2e89",
+        "display_id": "REQ-4E8914",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "73d38221-d828-4cc0-9030-c8ca4fb64e1e",
+        "display_id": "REQ-10FDC9",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "28178896-c259-4323-9f09-d97597d532e3",
+        "display_id": "REQ-826D5B",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "9145de0a-677b-49b0-9d97-179ce5b4cbac",
+        "display_id": "REQ-6BACFD",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "1297d678-ef4a-41f6-ad8b-a716964a3c45",
+        "display_id": "REQ-8AD76A",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "dd7d4144-42b8-44c5-a2b4-e97f903221c7",
+        "display_id": "REQ-A216F7",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "00034b33-e2d8-4b83-8752-e881195ebb58",
+        "display_id": "REQ-D0CFAD",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "4c873bf9-1687-447e-9a45-bf3d7e70c0ce",
+        "display_id": "REQ-A5E19F",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "8cd21a6c-bf0f-4923-b297-069e15b946b8",
+        "display_id": "REQ-43FF4F",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "cab16701-5ef9-4502-869b-dd498b6886ac",
+        "display_id": "REQ-4C2205",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "9fa51585-82ef-4a9d-ac27-c4b1053e53b1",
+        "display_id": "REQ-872DBA",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "460cde80-46d6-4274-9302-aa59fc2f1ef4",
+        "display_id": "REQ-F80836",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "c5b4fe27-6cfa-49c3-a972-adee3895757a",
+        "display_id": "REQ-3B940D",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "1da9b5fb-fb5e-4faf-b113-ecf4f42ce658",
+        "display_id": "REQ-EFFE46",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "b96ce48c-6f9e-417b-9077-be3d529e38c1",
+        "display_id": "REQ-B87AC7",
+        "status": "accepted",
+        "service_type": "bed"
+      },
+      {
+        "id": "5611f636-0235-4395-9bab-7e94b52cd79a",
+        "display_id": "REQ-DDE32E",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "85429bd0-859b-4c88-be22-c8579cfa3710",
+        "display_id": "REQ-8C0A43",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "60fdfda2-e11f-49a9-95ca-1c53002615a3",
+        "display_id": "REQ-2DBCB4",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "c159635f-c3ae-47ee-a51d-ace6fa30accd",
+        "display_id": "REQ-861EAD",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "879780ce-821c-4227-951c-ae1725dddd45",
+        "display_id": "REQ-084166",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "5bee5e6e-52ce-4fc3-b2a4-da429783ae53",
+        "display_id": "REQ-7A35F3",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "e13fa7a4-e1e3-4713-80da-f805be1f7ac3",
+        "display_id": "REQ-C5475F",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "c3aeac95-8052-4d1c-b743-8cd289c47a96",
+        "display_id": "REQ-38E52F",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "fa03b409-d473-4787-a756-fa306021c739",
+        "display_id": "REQ-8D4B48",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "7cf124c1-fbb3-447a-a107-d7a92ca61254",
+        "display_id": "REQ-F64986",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "5bee4374-c1a7-49ca-a6dc-e784c8f3e6f5",
+        "display_id": "REQ-9D6E68",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "d3253831-a794-45eb-9ffc-e166bec83556",
+        "display_id": "REQ-738D45",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "fdd72843-985f-4f07-a383-ef4d82dc1a77",
+        "display_id": "REQ-EFA7F6",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "f9e7114e-1c55-4f85-b604-5d7fa8cea9cc",
+        "display_id": "REQ-6D226E",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "ecbdafad-8565-471a-a016-c99e6f09df35",
+        "display_id": "REQ-9B4964",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "f4873993-a868-4f93-8e91-b2ddaabf5027",
+        "display_id": "REQ-2C8DFD",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "d6735b61-e763-4d7b-8a1b-5d1e3c1e9973",
+        "display_id": "REQ-3EDA9A",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "cb920e85-583b-4814-93b6-25c3316173e2",
+        "display_id": "REQ-1B3FF6",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "0649b6f4-6bf6-44c9-abd5-d321d163ece1",
+        "display_id": "REQ-8DA3A1",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "670eb652-a999-469b-abea-fc8b1adc3e91",
+        "display_id": "REQ-F5FFE1",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "7eedc2cd-0bd3-419c-bb5c-64268c7f519f",
+        "display_id": "REQ-DCA5D7",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "ba491dbd-1d26-45d9-adfa-487b0d798114",
+        "display_id": "REQ-3C91D9",
+        "status": "accepted",
+        "service_type": "bed"
+      },
+      {
+        "id": "c4b8807c-d48b-422c-8abe-e72e492dbde9",
+        "display_id": "REQ-6AA88D",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "eec440aa-f2fa-4a44-870d-3a83d7e43629",
+        "display_id": "REQ-3EF71F",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "317e7dec-80e1-41fb-8ab9-8be10e3ddf81",
+        "display_id": "REQ-644136",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "19d56ccf-1f6a-42cf-b40e-89b67b519a1d",
+        "display_id": "REQ-BC96CD",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "087c2abf-9ddf-4ea7-96c1-29902bbd43c6",
+        "display_id": "REQ-093AB8",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "eda4febb-0941-4005-8a7c-bfea6429a541",
+        "display_id": "REQ-4DCA72",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "0943c91a-61a3-4b3d-a945-7c669a78d5cd",
+        "display_id": "REQ-3A89EC",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "2fad68c3-932d-4e29-b4ce-6c93a70f2a88",
+        "display_id": "REQ-9D36F6",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "b0c5a721-0fed-4ac6-a147-4e2f5b682e06",
+        "display_id": "REQ-839D21",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "da2fc001-486f-48bd-860f-72f60eabc81f",
+        "display_id": "REQ-C37C7A",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "6cea2a2d-f11a-4a4d-8976-e64c8d6e8c6e",
+        "display_id": "REQ-DB5C33",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "1124e94b-1e23-40b3-8266-6a9494ad7dff",
+        "display_id": "REQ-5EA367",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "75db4629-dc48-4c7c-b40e-30f14666370d",
+        "display_id": "REQ-8752D8",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "0cf40c92-fc8b-43ff-bb11-cba4700b1270",
+        "display_id": "REQ-ED87E1",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "1c92f96a-f1e5-4dce-867b-39f3417da263",
+        "display_id": "REQ-EA6EE0",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "acf6aae1-81a4-4c97-8c81-ccb3f310f1c3",
+        "display_id": "REQ-9DCF8D",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "342e56cb-f939-4957-8bce-fbf85be44147",
+        "display_id": "REQ-17E0F1",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "6460fe72-a7e7-40e3-96e9-bef5085146f5",
+        "display_id": "REQ-E87C4B",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "f61c5a67-e2d6-4c36-b507-00f53dc794a3",
+        "display_id": "REQ-4565FD",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "cb9a713c-cb98-4e0b-91cd-56fcdbbe12ef",
+        "display_id": "REQ-F04FCD",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "aeaa56d7-3248-4ae9-95a7-1ab73d08ddcc",
+        "display_id": "REQ-35C3C9",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "121a1325-7d84-4a38-82b6-b7091c1a2ca6",
+        "display_id": "REQ-5F8B31",
+        "status": "accepted",
+        "service_type": "bed"
+      },
+      {
+        "id": "2ab0091f-43a5-4a7f-9d35-83aa5b88db4f",
+        "display_id": "REQ-25EBBA",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "f871ece3-6a19-4d15-9112-d893bee3e823",
+        "display_id": "REQ-81B13B",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "2fec995d-c3e2-414a-b27c-4271f81b55c4",
+        "display_id": "REQ-D6E51E",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "e63ed9ce-a355-4b75-a9d1-6dd9e598e0e8",
+        "display_id": "REQ-CA4032",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "287a49f1-4c0b-4070-bc7f-3679539d041e",
+        "display_id": "REQ-414AA6",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "6048c8c6-57c8-44e9-b6b4-81de7d1eda24",
+        "display_id": "REQ-76F6B6",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "6a7f39f5-f75c-4882-887c-e0cde219ee38",
+        "display_id": "REQ-E66EE9",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "1ff12b6c-5f3c-4cd9-9fb8-eb1b8db23cc9",
+        "display_id": "REQ-86D03B",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "8cc14cfc-3672-4386-9256-2011136b9aec",
+        "display_id": "REQ-9663E6",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "76e82ee6-cec7-4654-b174-56c5c72f0cd3",
+        "display_id": "REQ-153BB9",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "37afd56c-d26a-4775-bf81-af20dbb4a9e7",
+        "display_id": "REQ-84F6BA",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "a118dd88-4995-4945-8568-f31fe1544898",
+        "display_id": "REQ-829DA1",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "de4900b2-49de-402f-be44-e87ed58c09d9",
+        "display_id": "REQ-99C84D",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "304096fa-df07-44a5-89a7-7a198e7205b8",
+        "display_id": "REQ-8D49E8",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "07d05ac1-d2ba-4c81-8d6e-c701e70aaff8",
+        "display_id": "REQ-30F7E7",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "b166e49b-29d1-4b33-87a6-3b444a4cabe7",
+        "display_id": "REQ-E3C61E",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "8e23c5c4-3ebe-4fe1-b50d-8a1dd3e35591",
+        "display_id": "REQ-6040C1",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "3c9b9871-0199-4365-b9fa-815458caf19e",
+        "display_id": "REQ-39C895",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "b27cd19d-a912-43a2-9ec3-41a824c1a29b",
+        "display_id": "REQ-BAA6EB",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "3c737d5a-a2d0-4211-b1fe-63d9b9aa3855",
+        "display_id": "REQ-EB51F9",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "51cfc7fd-e48b-4f56-93ca-e0ae5aff01c5",
+        "display_id": "REQ-B22D14",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "17a2b151-3a10-4f32-b22d-40ae97a2d8d0",
+        "display_id": "REQ-BAEB55",
+        "status": "accepted",
+        "service_type": "bed"
+      },
+      {
+        "id": "7d9a9c02-c560-4b02-b437-b97de5e2f5ec",
+        "display_id": "REQ-E903A8",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "5d4bce83-f6cf-4b82-aabf-33e751c656f8",
+        "display_id": "REQ-0A6204",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "f12bc4e8-64da-4cd5-8ee1-49654aa11d24",
+        "display_id": "REQ-0CCE09",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "cf7b2aba-0414-4b6d-a1c9-9bde9b4faae0",
+        "display_id": "REQ-73E91D",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "202e1040-15a8-4feb-8668-2a178e4bbf0f",
+        "display_id": "REQ-FEF3EE",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "01f07a48-3fee-4bb5-b368-7dde2ceb91b0",
+        "display_id": "REQ-933DBB",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "384e5080-abf8-47b1-a83e-5fcf0569a6f9",
+        "display_id": "REQ-666B08",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "3a43d1cc-41f1-4c7a-8487-c58afc0f8d70",
+        "display_id": "REQ-4A51AF",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "79057476-8944-40f3-8eb8-70a0326f37cc",
+        "display_id": "REQ-F81210",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "e6036bf6-9d25-4b11-9eaa-4604b39d7bf6",
+        "display_id": "REQ-AC382F",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "93f97403-9350-495f-8afc-260bd1a16d6c",
+        "display_id": "REQ-0925B5",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "21bfeb75-df54-4092-81e1-6696bb7874fc",
+        "display_id": "REQ-A0C908",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "6f547ce9-b7b3-4612-a458-466d27901321",
+        "display_id": "REQ-2BE0B5",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "0bc90c2f-8bb4-4beb-8ac3-4b8b3c4962d9",
+        "display_id": "REQ-9C4FBE",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "f1b00aef-9621-441c-8603-58487ccb8377",
+        "display_id": "REQ-EF74F9",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "b45c81a1-3003-4bb6-88b9-df5925f2dc09",
+        "display_id": "REQ-CC5228",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "ebd691a0-7d3a-4e84-9790-56e9e935fe28",
+        "display_id": "REQ-42FBC2",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "281b3677-bb6a-4403-bb7a-20c589d2893f",
+        "display_id": "REQ-D017EB",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "d696a4d2-4f8e-4c2f-aecb-29c9813a0374",
+        "display_id": "REQ-FA7B77",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "f73ff5ed-5b53-4679-a8ca-62ae1916e3c4",
+        "display_id": "REQ-859757",
+        "status": "completed",
+        "service_type": "bed"
+      },
+      {
+        "id": "8e929536-dba3-4fc0-9e22-74e6bd8456b6",
+        "display_id": "REQ-0F9F97",
+        "status": "completed",
+        "service_type": "ambulance"
+      },
+      {
+        "id": "b45de2b6-3333-4501-8a83-83e1653f4ca9",
+        "display_id": "REQ-219389",
+        "status": "accepted",
+        "service_type": "bed"
+      }
+    ],
+    "duplicateVisitsPerRequest": []
+  },
+  "paymentHealth": {
+    "total": 17,
+    "linkedToEmergency": 6,
+    "missingEmergencyLink": 11,
+    "missingOrganizationLink": 4,
+    "pendingCash": 6,
+    "paymentsMissingLinks": [
+      {
+        "id": "35e8b99e-003d-478e-9b87-a2a48bcc8756",
+        "display_id": "PAY-BA38CC",
+        "payment_method": "cash",
+        "status": "pending",
+        "amount": 400,
+        "emergency_request_id": null,
+        "organization_id": "e64db981-97d8-487c-8003-59e0e07a782b"
+      },
+      {
+        "id": "066776e3-5c09-4555-afa0-925e898c6b8d",
+        "display_id": "PAY-F23CC7",
+        "payment_method": null,
+        "status": "pending",
+        "amount": 0,
+        "emergency_request_id": null,
+        "organization_id": null
+      },
+      {
+        "id": "7d1eab4e-3649-498b-8e77-9656475f9211",
+        "display_id": "PAY-BC350F",
+        "payment_method": null,
+        "status": "pending",
+        "amount": 0,
+        "emergency_request_id": null,
+        "organization_id": null
+      },
+      {
+        "id": "6e88e3e0-7c84-4f6a-8d03-bf60d463603b",
+        "display_id": "PAY-582DBE",
+        "payment_method": null,
+        "status": "pending",
+        "amount": 0,
+        "emergency_request_id": null,
+        "organization_id": null
+      },
+      {
+        "id": "ba02fbcd-3e90-4856-b580-debcce77ed5e",
+        "display_id": "PAY-5CA0F6",
+        "payment_method": "cash",
+        "status": "pending",
+        "amount": 400,
+        "emergency_request_id": null,
+        "organization_id": "c3fd9e8a-034a-4ed4-b7a4-8f7516a240ee"
+      },
+      {
+        "id": "f6e61116-a6ac-4293-9240-93c41f4c2f0f",
+        "display_id": "PAY-2E6B3A",
+        "payment_method": null,
+        "status": "pending",
+        "amount": 0,
+        "emergency_request_id": null,
+        "organization_id": null
+      },
+      {
+        "id": "d73c051e-7cb4-4706-a983-ed72e46b8c82",
+        "display_id": "PAY-CD036E",
+        "payment_method": "cash",
+        "status": "pending",
+        "amount": 400,
+        "emergency_request_id": null,
+        "organization_id": "b4e35f14-68f4-4a93-aaa1-838e3b2f5b0f"
+      },
+      {
+        "id": "1be1a050-39af-4dd0-828e-baf99e22954d",
+        "display_id": "PAY-E660C7",
+        "payment_method": "card",
+        "status": "completed",
+        "amount": 165,
+        "emergency_request_id": null,
+        "organization_id": "bbe56c47-ce9c-4863-ac67-b73ad9af5484"
+      },
+      {
+        "id": "d92c2aa5-6b9e-40c0-88ee-dc13472413dd",
+        "display_id": "PAY-D96600",
+        "payment_method": "cash",
+        "status": "pending",
+        "amount": 400,
+        "emergency_request_id": null,
+        "organization_id": "a5df94db-ad82-48a9-bfff-27364dcf5990"
+      },
+      {
+        "id": "8e6f6671-4ee8-4f39-8d75-9606c305a612",
+        "display_id": "PAY-0197DD",
+        "payment_method": "cash",
+        "status": "pending",
+        "amount": 400,
+        "emergency_request_id": null,
+        "organization_id": "77e06401-3cb1-4bf5-b350-83553424e413"
+      },
+      {
+        "id": "962fb0c7-8242-4539-81e3-a3400221933a",
+        "display_id": "PAY-5EE944",
+        "payment_method": "cash",
+        "status": "pending",
+        "amount": 400,
+        "emergency_request_id": null,
+        "organization_id": "8fda72de-2239-4c37-925c-2f827ce7bfb5"
+      }
+    ]
+  },
+  "dispatchHealth": {
+    "activeCount": 6,
+    "withAmbulanceId": 0,
+    "withResponderId": 0,
+    "withResponderLocation": 0,
+    "withPatientLocation": 0,
+    "activeRecords": [
+      {
+        "id": "e4f87778-82d0-4ce6-8c65-0e4cacb33e0c",
+        "display_id": "REQ-6C6D4B",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": false
+      },
+      {
+        "id": "b96ce48c-6f9e-417b-9077-be3d529e38c1",
+        "display_id": "REQ-B87AC7",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": false
+      },
+      {
+        "id": "ba491dbd-1d26-45d9-adfa-487b0d798114",
+        "display_id": "REQ-3C91D9",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": false
+      },
+      {
+        "id": "121a1325-7d84-4a38-82b6-b7091c1a2ca6",
+        "display_id": "REQ-5F8B31",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": false
+      },
+      {
+        "id": "17a2b151-3a10-4f32-b22d-40ae97a2d8d0",
+        "display_id": "REQ-BAEB55",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": false
+      },
+      {
+        "id": "b45de2b6-3333-4501-8a83-83e1653f4ca9",
+        "display_id": "REQ-219389",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": false
+      }
+    ]
+  },
+  "duplicateCandidates": {
+    "organizationsByName": [
+      {
+        "key": "hemet health network",
+        "count": 7,
+        "ids": [
+          "12ae277e-474d-405f-b65f-2c6b2c044897",
+          "ceb9a4db-feba-4145-8b6d-c1b977b02048",
+          "d2af77c3-f831-46d1-91e7-30dc7fcb463f",
+          "c2d8c35d-45fb-4b6a-8b1f-74e293453ec9",
+          "43fdc37c-f8d9-4bc3-8efb-669917dee954",
+          "9a661ef6-d9e1-44a6-a94a-8ccf4b58cf1f",
+          "e432e63d-e9f4-40f2-9295-0865893953c4"
+        ],
+        "displayIds": [
+          "ORG-0785E5",
+          "ORG-4ABC4C",
+          "ORG-E2B0F3",
+          "ORG-4AF4EF",
+          "ORG-B6B561",
+          "ORG-BA5C74",
+          "ORG-9B4601"
+        ]
+      },
+      {
+        "key": "lagos premier health",
+        "count": 7,
+        "ids": [
+          "a059ff2f-f870-49da-bd0f-c838557fa255",
+          "bbe56c47-ce9c-4863-ac67-b73ad9af5484",
+          "b9dc28a2-44ae-4a4f-bfdd-afafe4c4e398",
+          "5ffe29cb-8afb-4973-8638-e44c22df4a95",
+          "bcefe93a-7de4-4582-b4ba-4ff31ae5d5eb",
+          "d641cedb-090e-4662-bdf7-f5b5cad12662",
+          "1102a7f6-276b-40ab-b784-3925561a0441"
+        ],
+        "displayIds": [
+          "ORG-6DDD5A",
+          "ORG-57BF0E",
+          "ORG-D11CB2",
+          "ORG-AD468F",
+          "ORG-22095E",
+          "ORG-03A2A3",
+          "ORG-207F8E"
+        ]
+      }
+    ],
+    "hospitalsByName": [
+      {
+        "key": "hemet valley medical center",
+        "count": 8,
+        "ids": [
+          "b0000000-0000-0000-0000-000000000001",
+          "838098d1-ffcc-4458-b167-faea34bcd8d5",
+          "53990921-b4de-4428-8633-80f586caffa3",
+          "04d45ef0-5fb8-416f-b9e1-9f826de877a6",
+          "8f3fcbe0-519a-4986-8d4b-5f7b1ffbfa18",
+          "3e272bd9-b9c2-40f8-a951-a77799b8d1ab",
+          "c32c4600-1275-4630-be98-6c0836f67245",
+          "2f53526b-d82f-4381-b2d9-5c74d6e957e8"
+        ],
+        "displayIds": [
+          "HSP-21856A",
+          "HSP-92CEB4",
+          "HSP-D71B5A",
+          "HSP-C5390B",
+          "HSP-E29438",
+          "HSP-B32061",
+          "HSP-110376",
+          "HSP-C8A17F"
+        ]
+      },
+      {
+        "key": "premier victoria island",
+        "count": 6,
+        "ids": [
+          "86b431b3-8fc1-4f38-a3d2-07ac73114952",
+          "c398dddb-97de-4f4f-8e07-0cfd8e0a7f56",
+          "7a736c4e-57fa-4093-9594-af7db6abb08e",
+          "654f779c-159f-4db1-8bd5-f113c442b775",
+          "55c5249c-42bb-43da-bc2d-bbc5519fe83b",
+          "a5942b77-6d98-4a44-a7f1-d32352daaae2"
+        ],
+        "displayIds": [
+          "HSP-E51180",
+          "HSP-A1BEB6",
+          "HSP-351ECA",
+          "HSP-3545FB",
+          "HSP-675B49",
+          "HSP-F509C6"
+        ]
+      }
+    ],
+    "ambulancesByCallSign": [
+      {
+        "key": "alfa-01",
+        "count": 7,
+        "ids": [
+          "5eeea632-5596-4a2e-aabe-6e0af88e7818",
+          "e4dab68a-3d1b-4736-976e-b16409ad7986",
+          "897a8650-83d5-4ad2-986b-344533f466f6",
+          "cc90b483-e06c-4598-9f2f-037d8c446336",
+          "fdb1fab8-9707-4e54-84ea-a537e0b9178a",
+          "7ff48d58-28fe-449e-850e-0142ef0b1772",
+          "e3a8c7ad-41df-41b3-a147-459b5a9e6855"
+        ],
+        "displayIds": [
+          "AMB-0C7CBF",
+          "AMB-080D5E",
+          "AMB-B76FB0",
+          "AMB-2702FB",
+          "AMB-FFE9AA",
+          "AMB-3E6817",
+          "AMB-982932"
+        ]
+      },
+      {
+        "key": "bravo-02",
+        "count": 7,
+        "ids": [
+          "cce74ac7-074e-4a21-91f8-68cd81e48001",
+          "8ef02e8c-bc84-45b0-ada8-674f92372327",
+          "92fee7ce-f8eb-42de-a5a1-8d2c7b0c64a5",
+          "05bcbdf7-e8db-48d4-a4f1-69833c735145",
+          "37f72048-812a-4d0d-abc3-c212b7a24209",
+          "a106da43-484e-4e7d-aa11-3985c94ffd9f",
+          "4b0ba31b-6cb9-45b3-84bc-6d7f421b9da6"
+        ],
+        "displayIds": [
+          "AMB-8EED69",
+          "AMB-075F0B",
+          "AMB-74E43D",
+          "AMB-EE07F5",
+          "AMB-C1E0CB",
+          "AMB-7CB29D",
+          "AMB-B5771C"
+        ]
+      },
+      {
+        "key": "charlie-03",
+        "count": 7,
+        "ids": [
+          "399bcd17-4faf-479a-a92a-9a8895ccfffb",
+          "27fa9777-d88e-43ea-9e95-813c6ceb5d16",
+          "349791dc-6029-45cf-8353-4bcb3eb3664b",
+          "9d82c102-023d-4876-bae6-0c9e86eeea12",
+          "c60d0f43-33b5-46c1-82df-79c44bd56013",
+          "de39691b-80bd-40ff-97c4-36d8e25c4a64",
+          "c0ba8b33-94a6-480c-8a24-9c46b71bbf72"
+        ],
+        "displayIds": [
+          "AMB-9DDBF7",
+          "AMB-E4DE9C",
+          "AMB-53A98A",
+          "AMB-7CDDA7",
+          "AMB-A327F6",
+          "AMB-FD6F48",
+          "AMB-5731FA"
+        ]
+      }
+    ]
+  },
+  "severity": {
+    "critical": [
+      "Emergencies missing visits: 132",
+      "Active emergencies exist but none has responder_id",
+      "Active emergencies exist but none has ambulance_id"
+    ],
+    "high": [
+      "Missing organization_wallets: 6"
+    ],
+    "medium": [
+      "Payments missing organization_id: 4",
+      "Duplicate semantic records detected (hospital names and/or ambulance call signs)"
+    ]
+  }
+}

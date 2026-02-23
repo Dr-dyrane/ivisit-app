@@ -309,7 +309,31 @@ export const paymentService = {
    */
   async processPayment(emergencyRequestId, organizationId, cost) {
     try {
-      const resolvedOrgId = await this.resolveId(organizationId);
+      let resolvedOrgId = await this.resolveId(organizationId);
+
+      // Accept either organization id/display_id or hospital id/display_id and resolve to org UUID.
+      if (resolvedOrgId) {
+        const { data: orgRow } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('id', resolvedOrgId)
+          .maybeSingle();
+
+        if (!orgRow) {
+          const { data: hospitalRow } = await supabase
+            .from('hospitals')
+            .select('organization_id')
+            .eq('id', resolvedOrgId)
+            .maybeSingle();
+
+          resolvedOrgId = hospitalRow?.organization_id || null;
+        }
+      }
+
+      if (!resolvedOrgId) {
+        throw new Error('Missing valid organization context for payment intent');
+      }
+
       const { data, error } = await supabase.functions.invoke('create-payment-intent', {
         body: {
           amount: cost.totalCost,
@@ -324,7 +348,11 @@ export const paymentService = {
       return {
         success: true,
         clientSecret: data.clientSecret,
-        paymentIntentId: data.paymentIntentId
+        paymentIntentId: data.paymentIntentId,
+        payment: {
+          clientSecret: data.clientSecret,
+          paymentIntentId: data.paymentIntentId
+        }
       };
     } catch (error) {
       console.error('Error initiating payment:', error);
@@ -781,7 +809,7 @@ export const paymentService = {
         // Look up patient user_id from the emergency request
         const { data: reqData } = await supabase
           .from('emergency_requests')
-          .select('user_id, hospital_name, service_type, request_id')
+          .select('user_id, hospital_name, service_type, display_id')
           .eq('id', requestId)
           .single();
 
@@ -794,7 +822,7 @@ export const paymentService = {
               requestId,
               hospitalName: reqData.hospital_name,
               serviceType: reqData.service_type,
-              displayId: reqData.request_id,
+              displayId: reqData.display_id,
             }
           );
         }
@@ -842,7 +870,7 @@ export const paymentService = {
         const { notificationDispatcher } = await import('./notificationDispatcher');
         const { data: reqData } = await supabase
           .from('emergency_requests')
-          .select('user_id, hospital_name, service_type, request_id')
+          .select('user_id, hospital_name, service_type, display_id')
           .eq('id', requestId)
           .single();
 
@@ -855,7 +883,7 @@ export const paymentService = {
               requestId,
               hospitalName: reqData.hospital_name,
               serviceType: reqData.service_type,
-              displayId: reqData.request_id,
+              displayId: reqData.display_id,
             }
           );
         }
