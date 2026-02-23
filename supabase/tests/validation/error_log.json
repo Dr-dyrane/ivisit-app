@@ -1,10 +1,12 @@
-{
-  "timestamp": "2026-02-22T18:06:31.154Z",
-  "results": {
-    "passed": 49,
-    "failed": 0,
-    "warnings": 0,
-    "errors": []
-  },
-  "schemaGaps": []
-}
+[
+  {
+    "timestamp": "2026-02-23T04:07:59.045Z",
+    "type": "critical",
+    "category": "function",
+    "message": "Emergency logic function not accessible",
+    "technicalDetails": {
+      "error": null
+    },
+    "status": "detected"
+  }
+]
