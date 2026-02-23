@@ -33,7 +33,7 @@ import { isValidCoordinate, calculateDistance } from "../../utils/mapUtils";
 
 const DEFAULT_APP_LOAD_DELTAS = { latitudeDelta: 0.04, longitudeDelta: 0.04 };
 const BASELINE_ZOOM_IN_FACTOR = 0.92;
-const ROUTE_ZOOM_FACTOR = 0.2; // previous was 0.125
+const ROUTE_ZOOM_FACTOR = 0.4; // previous was 0.125,2
 
 import HospitalMarkers from "./HospitalMarkers";
 import RouteLayer from "./RouteLayer";
@@ -68,7 +68,7 @@ const FullScreenEmergencyMap = forwardRef(
 	) => {
 		const componentId = useRef(Math.random().toString(36).substr(2, 9));
 		// Component mounting - no debug logs
-		
+
 		const { isDarkMode } = useTheme();
 		const insets = useSafeAreaInsets();
 		const mapRef = useRef(null);
@@ -271,9 +271,9 @@ const FullScreenEmergencyMap = forwardRef(
 		});
 
 		// Request location permission immediately on mount
-		useEffect(() => { 
+		useEffect(() => {
 			console.log("[FullScreenEmergencyMap] Requesting location permission on mount...");
-			requestLocationPermission(); 
+			requestLocationPermission();
 		}, [requestLocationPermission]);
 
 		// Route Calculation
@@ -415,7 +415,7 @@ const FullScreenEmergencyMap = forwardRef(
 		}, [routeHospitalIdResolved]);
 
 		if (isLoadingLocation) {
-		// Loading state - no debug logs
+			// Loading state - no debug logs
 			return (
 				<View style={[styles.container, styles.loadingContainer, { backgroundColor: isDarkMode ? "#0B0F1A" : "#F8FAFC" }]}>
 					<ActivityIndicator size="large" color={COLORS.brandPrimary} />
@@ -425,13 +425,13 @@ const FullScreenEmergencyMap = forwardRef(
 		}
 
 		if (locationError) {
-		// Error state - no debug logs
+			// Error state - no debug logs
 			return (
 				<View style={[styles.container, styles.errorContainer, { backgroundColor: isDarkMode ? "#0B0F1A" : "#F8FAFC" }]}>
 					<Ionicons name="warning-outline" size={48} color={COLORS.errorRed} />
 					<Text style={[styles.errorText, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>Location Error</Text>
 					<Text style={[styles.errorSubtext, { color: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted }]}>{locationError}</Text>
-					<Pressable 
+					<Pressable
 						style={[styles.retryButton, { backgroundColor: COLORS.brandPrimary }]}
 						onPress={() => requestLocationPermission()}
 					>
@@ -442,13 +442,13 @@ const FullScreenEmergencyMap = forwardRef(
 		}
 
 		if (!locationPermission) {
-		// Permission denied state - no debug logs
+			// Permission denied state - no debug logs
 			return (
 				<View style={[styles.container, styles.errorContainer, { backgroundColor: isDarkMode ? "#0B0F1A" : "#F8FAFC" }]}>
 					<Ionicons name="location-outline" size={48} color={isDarkMode ? COLORS.textMutedDark : COLORS.textMuted} />
 					<Text style={[styles.errorText, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary }]}>Location permission required</Text>
 					<Text style={[styles.errorSubtext, { color: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted }]}>Enable location to see nearby hospitals</Text>
-					<Pressable 
+					<Pressable
 						style={[styles.retryButton, { backgroundColor: COLORS.brandPrimary }]}
 						onPress={() => requestLocationPermission()}
 					>
@@ -515,11 +515,11 @@ const FullScreenEmergencyMap = forwardRef(
 					// Android fallback: semi-transparent status bar
 					<View
 						style={[
-							styles.statusBarBlur, 
-							{ 
-								height: insets.top, 
+							styles.statusBarBlur,
+							{
+								height: insets.top,
 								opacity: 0.5,
-								backgroundColor: isDarkMode 
+								backgroundColor: isDarkMode
 									? 'rgba(0,0,0,0.6)'  // Dark semi-transparent
 									: 'rgba(255,255,255,0.6)'  // Light semi-transparent
 							}
