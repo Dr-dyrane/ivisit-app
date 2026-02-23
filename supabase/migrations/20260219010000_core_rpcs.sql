@@ -228,17 +228,34 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 4. User Management (Admin)
 CREATE OR REPLACE FUNCTION public.delete_user_by_admin(target_user_id UUID)
 RETURNS JSONB AS $$
+DECLARE
+    v_auth_deleted INTEGER := 0;
+    v_profile_deleted INTEGER := 0;
 BEGIN
     IF NOT public.p_is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
-    
-    -- Delete from auth.users (Cascades to profiles)
-    -- WARNING: RPC cannot delete from auth.users directly without extension or superuser
-    -- Assuming app logic usually deletes public.profiles and triggers handle auth? 
-    -- Or using supabase admin API. 
-    -- For now, deleting profile:
-    DELETE FROM public.profiles WHERE id = target_user_id;
-    
-    RETURN jsonb_build_object('success', true);
+    IF target_user_id IS NULL THEN
+        RAISE EXCEPTION 'target_user_id is required';
+    END IF;
+
+    IF auth.uid() = target_user_id THEN
+        RAISE EXCEPTION 'You cannot delete your own account via admin console';
+    END IF;
+
+    DELETE FROM auth.users WHERE id = target_user_id;
+    GET DIAGNOSTICS v_auth_deleted = ROW_COUNT;
+
+    IF v_auth_deleted = 0 THEN
+        DELETE FROM public.profiles WHERE id = target_user_id;
+        GET DIAGNOSTICS v_profile_deleted = ROW_COUNT;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', (v_auth_deleted + v_profile_deleted) > 0,
+        'auth_deleted', v_auth_deleted,
+        'profile_deleted', v_profile_deleted,
+        'target_user_id', target_user_id,
+        'error', CASE WHEN (v_auth_deleted + v_profile_deleted) = 0 THEN 'User not found' ELSE NULL END
+    );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

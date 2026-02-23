@@ -13,9 +13,11 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     read BOOLEAN NOT NULL DEFAULT false,
     priority TEXT DEFAULT 'normal',
     action_type TEXT,
+    target_id UUID,
     action_data JSONB,
     metadata JSONB DEFAULT '{}',
     display_id TEXT UNIQUE,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

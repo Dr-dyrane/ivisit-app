@@ -72,6 +72,75 @@ CREATE TRIGGER on_org_created
 AFTER INSERT ON public.organizations
 FOR EACH ROW EXECUTE PROCEDURE public.handle_new_organization();
 
+-- 1C. Doctor Registry Auto-Sync (Profile -> doctors)
+-- When a profile becomes a provider doctor (or doctor profile details change), ensure a doctors row exists.
+CREATE OR REPLACE FUNCTION public.sync_doctor_record_from_profile()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_name TEXT;
+    v_hospital_id UUID;
+BEGIN
+    IF NEW.role = 'provider' AND NEW.provider_type = 'doctor' THEN
+        v_name := NULLIF(BTRIM(COALESCE(NEW.full_name, '')), '');
+        IF v_name IS NULL THEN
+            v_name := NULLIF(BTRIM(CONCAT_WS(' ', NULLIF(NEW.first_name, ''), NULLIF(NEW.last_name, ''))), '');
+        END IF;
+        IF v_name IS NULL THEN
+            v_name := COALESCE(NULLIF(SPLIT_PART(COALESCE(NEW.email, ''), '@', 1), ''), 'Doctor');
+        END IF;
+
+        -- Preserve existing doctor.hospital_id if already set; otherwise infer from the provider's organization.
+        SELECT d.hospital_id INTO v_hospital_id
+        FROM public.doctors d
+        WHERE d.profile_id = NEW.id;
+
+        IF v_hospital_id IS NULL AND NEW.organization_id IS NOT NULL THEN
+            SELECT h.id INTO v_hospital_id
+            FROM public.hospitals h
+            WHERE h.organization_id = NEW.organization_id
+            ORDER BY h.created_at ASC, h.id ASC
+            LIMIT 1;
+        END IF;
+
+        INSERT INTO public.doctors (
+            profile_id,
+            hospital_id,
+            name,
+            specialization,
+            email,
+            phone,
+            status,
+            is_available
+        )
+        VALUES (
+            NEW.id,
+            v_hospital_id,
+            v_name,
+            'General Medicine',
+            NEW.email,
+            NEW.phone,
+            'invited',
+            false
+        )
+        ON CONFLICT (profile_id) DO UPDATE
+        SET
+            name = EXCLUDED.name,
+            email = EXCLUDED.email,
+            phone = EXCLUDED.phone,
+            hospital_id = COALESCE(doctors.hospital_id, EXCLUDED.hospital_id),
+            updated_at = NOW();
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_profile_sync_doctor_record ON public.profiles;
+CREATE TRIGGER on_profile_sync_doctor_record
+AFTER INSERT OR UPDATE OF role, provider_type, organization_id, full_name, first_name, last_name, email, phone
+ON public.profiles
+FOR EACH ROW EXECUTE PROCEDURE public.sync_doctor_record_from_profile();
+
 
 -- 2. Logistics & Operations Synchronization
 -- Sync Emergency -> Visit on Completion

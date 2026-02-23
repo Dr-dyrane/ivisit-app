@@ -144,6 +144,10 @@ ON public.notifications FOR UPDATE
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
+CREATE POLICY "Users insert own notifications"
+ON public.notifications FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
 -- 6. USER DATA (Preferences & Medical)
 CREATE POLICY "Users manage own preferences"
 ON public.preferences FOR ALL
