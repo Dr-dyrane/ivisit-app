@@ -124,6 +124,29 @@ export const notificationDispatcher = {
         }
 
         try {
+            // Preferred path: SECURITY DEFINER RPC (bypasses notifications RLS safely)
+            const { data: rpcData, error: rpcError } = await supabase.rpc('notify_cash_approval_org_admins', {
+                p_request_id: requestId,
+                p_payment_id: paymentId,
+                p_total_amount: Number(totalAmount) || 0,
+                p_fee_amount: Number(feeAmount) || 0,
+                p_hospital_name: hospitalName || 'Hospital',
+                p_service_type: serviceType || 'ambulance',
+                p_display_id: displayId || null,
+                p_organization_id: organizationId,
+            });
+
+            if (!rpcError && rpcData?.success) {
+                console.log('[notificationDispatcher] notify_cash_approval_org_admins RPC success:', rpcData);
+                return Array.from({ length: Number(rpcData.notified_count || 0) }, (_, i) => ({ id: `rpc:${i}` }));
+            }
+
+            if (rpcError) {
+                console.warn('[notificationDispatcher] notify_cash_approval_org_admins RPC failed, falling back to client inserts:', rpcError);
+            } else {
+                console.warn('[notificationDispatcher] notify_cash_approval_org_admins RPC returned non-success, falling back:', rpcData);
+            }
+
             // Find all hospitals in this organization to catch admins linked at hospital level
             const { data: hospitalIds } = await supabase
                 .from('hospitals')

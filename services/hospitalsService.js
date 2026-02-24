@@ -1,10 +1,42 @@
 import { supabase } from "./supabase";
 import { isValidUUID, resolveEntityId } from "./displayIdService";
 
+let hasWarnedMissingHospitalRoomsTable = false;
+
 /**
  * Service to handle hospital data operations
  */
 export const hospitalsService = {
+	/**
+	 * Hydrate sparse discovery/nearby rows with full hospital table columns so UI gating
+	 * (beds/ambulances/organization) matches the real DB state.
+	 */
+	async _hydrateHospitalRows(rows = []) {
+		const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
+		if (list.length === 0) return [];
+
+		const ids = [...new Set(list.map(r => r?.id).filter(Boolean))];
+		if (ids.length === 0) return list;
+
+		const { data, error } = await supabase
+			.from("hospitals")
+			.select("*")
+			.in("id", ids);
+
+		if (error) {
+			console.warn("hospitalsService._hydrateHospitalRows warning:", error);
+			return list;
+		}
+
+		const byId = new Map((data || []).map(h => [h.id, h]));
+		return list.map((row) => {
+			const full = row?.id ? byId.get(row.id) : null;
+			// Preserve computed discovery fields (distance/ETA/status from edge/RPC) while
+			// restoring actual availability/org fields from DB.
+			return full ? { ...full, ...row } : row;
+		});
+	},
+
 	/**
 	 * Internal helper to map database schema to application domain model
 	 * @private
@@ -15,6 +47,22 @@ export const hospitalsService = {
 		// Business Logic Constraints for Minimal Initial Launch:
 		// 1. Most hospitals have 0 ambulances (simplified UX)
 		// 2. Default beds to what's in DB, but ensure UI handles 0 gracefully
+
+		const distanceKm =
+			Number.isFinite(h?.distance_km) ? h.distance_km :
+				Number.isFinite(h?.distance) ? h.distance : 0;
+		const availableBeds =
+			Number.isFinite(h?.available_beds) ? h.available_beds :
+				Number.isFinite(h?.availableBeds) ? h.availableBeds : 0;
+		const ambulancesCount =
+			Number.isFinite(h?.ambulances_count) ? h.ambulances_count :
+				Number.isFinite(h?.ambulances) ? h.ambulances : 0;
+		const latitude =
+			Number.isFinite(h?.latitude) ? h.latitude :
+				(Array.isArray(h?.coordinates?.coordinates) ? h.coordinates.coordinates[1] : undefined);
+		const longitude =
+			Number.isFinite(h?.longitude) ? h.longitude :
+				(Array.isArray(h?.coordinates?.coordinates) ? h.coordinates.coordinates[0] : undefined);
 
 		return {
 			id: h.id,
@@ -28,10 +76,10 @@ export const hospitalsService = {
 			serviceTypes: h.service_types || [],
 			features: h.features || [],
 			emergencyLevel: h.emergency_level || 'Standard',
-			availableBeds: h.available_beds || 0,
+			availableBeds,
 			// Simplified UX: default to 0 ambulances unless explicitly set to something else in DB
 			// The user specified "no hospitals have ambulances" to keep things simple for now.
-			ambulances: h.ambulances_count || 0,
+			ambulances: ambulancesCount,
 
 			// Computed Time Fields
 			waitTime: h.emergency_wait_time_minutes
@@ -39,18 +87,18 @@ export const hospitalsService = {
 				: (h.wait_time || this.calculateDynamicWaitTime(h, null).displayText),
 
 			// Calculate ETA based on distance if not present
-			eta: h.eta || (h.distance_km > 0
-				? `${Math.max(2, Math.ceil(h.distance_km * 3))} mins`
+			eta: h.eta || (distanceKm > 0
+				? `${Math.max(2, Math.ceil(distanceKm * 3))} mins`
 				: '8-12 mins'), // Premium fallback instead of 'Unknown'
 
-			price: h.price_range || ((h.ambulances_count || 0) > 0 ? 'Emergency' : '$$$'),
-			distance: (h.distance_km && Number.isFinite(h.distance_km) && h.distance_km > 0)
-				? `${Math.round(h.distance_km * 10) / 10} km`
+			price: h.price_range || (ambulancesCount > 0 ? 'Emergency' : '$$$'),
+			distance: (distanceKm && Number.isFinite(distanceKm) && distanceKm > 0)
+				? `${Math.round(distanceKm * 10) / 10} km`
 				: '--',
-			distanceKm: (Number.isFinite(h.distance_km) ? h.distance_km : 0),
+			distanceKm,
 			coordinates: {
-				latitude: h.latitude,
-				longitude: h.longitude,
+				latitude,
+				longitude,
 			},
 			verified: h.verified || false,
 			status: h.status || 'available',
@@ -67,7 +115,8 @@ export const hospitalsService = {
 			importStatus: h.import_status,
 			importedFromGoogle: h.imported_from_google || false,
 			orgAdminId: h.org_admin_id,
-			organizationId: h.organization_id,
+			organizationId: h.organization_id || h.organizationId || null,
+			organization_id: h.organization_id || h.organizationId || null,
 			// Computed UI helpers
 			isCovered: h.verified === true && h.status === 'available',
 			isGoogleOnly: h.google_only || h.import_status === 'google_only' || false
@@ -110,7 +159,8 @@ export const hospitalsService = {
 				});
 
 			if (error) throw error;
-			return (data || []).map(h => this._mapHospital(h));
+			const hydrated = await this._hydrateHospitalRows(data || []);
+			return hydrated.map(h => this._mapHospital(h));
 		} catch (err) {
 			console.error("hospitalsService.listNearby error:", err);
 			throw err;
@@ -149,7 +199,8 @@ export const hospitalsService = {
 				return this.listNearby(lat, lng, radius / 1000);
 			}
 
-			return rawHospitals.map(h => this._mapHospital(h));
+			const hydrated = await this._hydrateHospitalRows(rawHospitals);
+			return hydrated.map(h => this._mapHospital(h));
 
 		} catch (error) {
 			console.error("hospitalsService.discoverNearby error:", error);
@@ -201,6 +252,16 @@ export const hospitalsService = {
 			if (error) throw error;
 			return data || [];
 		} catch (err) {
+			const isMissingTable =
+				err?.code === "PGRST205" &&
+				String(err?.message || "").toLowerCase().includes("hospital_rooms");
+			if (isMissingTable) {
+				if (__DEV__ && !hasWarnedMissingHospitalRoomsTable) {
+					hasWarnedMissingHospitalRoomsTable = true;
+					console.warn("hospitalsService.getRooms: hospital_rooms table missing; using room_pricing fallback.");
+				}
+				return [];
+			}
 			console.error("hospitalsService.getRooms error:", err);
 			return [];
 		}
@@ -213,20 +274,38 @@ export const hospitalsService = {
 	 */
 	async getServicePricing(hospitalId = null, organizationId = null) {
 		try {
-			let query = supabase.from("service_pricing").select("*").eq("is_active", true);
-
+			let query = supabase.from("service_pricing").select("*");
 			if (hospitalId) {
+				// Current schema is hospital-scoped; allow global (null) fallback rows if present.
 				query = query.or(`hospital_id.eq.${hospitalId},hospital_id.is.null`);
-			}
-
-			if (organizationId) {
-				query = query.or(`organization_id.eq.${organizationId},organization_id.is.null`);
 			}
 
 			const { data, error } = await query;
 			if (error) throw error;
 
-			return data || [];
+			const rows = data || [];
+			if (!hospitalId) return rows;
+
+			// Prefer hospital-specific pricing over global fallback rows so UI shows the right baseline.
+			const sorted = rows.sort((a, b) => {
+				const aRank = a?.hospital_id === hospitalId ? 0 : 1;
+				const bRank = b?.hospital_id === hospitalId ? 0 : 1;
+				if (aRank !== bRank) return aRank - bRank;
+
+				const aKey = String(a?.service_type || a?.service_name || "");
+				const bKey = String(b?.service_type || b?.service_name || "");
+				return aKey.localeCompare(bKey);
+			});
+
+			// Collapse duplicate service types (global + hospital rows) after sorting.
+			const seen = new Set();
+			return sorted.filter((row) => {
+				const key = String(row?.service_type || "");
+				if (!key) return true;
+				if (seen.has(key)) return false;
+				seen.add(key);
+				return true;
+			});
 		} catch (err) {
 			console.error("hospitalsService.getServicePricing error:", err);
 			return [];
@@ -240,20 +319,37 @@ export const hospitalsService = {
 	 */
 	async getRoomPricing(hospitalId = null, organizationId = null) {
 		try {
-			let query = supabase.from("room_pricing").select("*").eq("is_active", true);
-
+			let query = supabase.from("room_pricing").select("*");
 			if (hospitalId) {
 				query = query.or(`hospital_id.eq.${hospitalId},hospital_id.is.null`);
-			}
-
-			if (organizationId) {
-				query = query.or(`organization_id.eq.${organizationId},organization_id.is.null`);
 			}
 
 			const { data, error } = await query;
 			if (error) throw error;
 
-			return data || [];
+			const rows = data || [];
+			if (!hospitalId) return rows;
+
+			// Prefer hospital-specific room pricing over global fallback rows for virtual room rendering.
+			const sorted = rows.sort((a, b) => {
+				const aRank = a?.hospital_id === hospitalId ? 0 : 1;
+				const bRank = b?.hospital_id === hospitalId ? 0 : 1;
+				if (aRank !== bRank) return aRank - bRank;
+
+				const aKey = String(a?.room_type || a?.room_name || "");
+				const bKey = String(b?.room_type || b?.room_name || "");
+				return aKey.localeCompare(bKey);
+			});
+
+			// Collapse duplicate room types (global + hospital rows) to avoid duplicate React keys.
+			const seen = new Set();
+			return sorted.filter((row) => {
+				const key = String(row?.room_type || "");
+				if (!key) return true;
+				if (seen.has(key)) return false;
+				seen.add(key);
+				return true;
+			});
 		} catch (err) {
 			console.error("hospitalsService.getRoomPricing error:", err);
 			return [];

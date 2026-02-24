@@ -154,22 +154,41 @@ export const TripSummaryCard = ({ activeAmbulanceTrip, hasOtherActiveVisit, allH
 
 	const isPending = activeAmbulanceTrip?.status === "pending_approval";
 	const displayStatus = isPending ? "Awaiting Approval" : (activeAmbulanceTrip?.status === "arrived" ? "Arrived" : (computedStatus || "En Route"));
-	const driverName = assigned?.crew?.[0] || assigned?.name || (isPending ? "Waiting for Hospital" : "Responder");
+	const driverName =
+		assigned?.crew?.[0] ||
+		assigned?.name ||
+		assigned?.callSign ||
+		assigned?.vehicleNumber ||
+		assigned?.type ||
+		(isPending ? "Waiting for Hospital" : "Responder");
 
 	if (collapsed) return <TripSummaryCollapsed isDarkMode={isDarkMode} statusLabel={displayStatus} etaText={formattedRemaining} callSign={assigned?.callSign} />;
 
 	return <TripSummaryHalf
-		{...{ isDarkMode, statusLabel: displayStatus, etaText: formattedRemaining, tripProgress, driverName, rating: assigned?.rating || "4.8", vehicle: assigned?.plate, assigned, callTarget, isBusy: !!busyAction, busyAction, computedStatus, pulseAnim, isPending }}
+		{...{
+			isDarkMode,
+			statusLabel: displayStatus,
+			etaText: formattedRemaining,
+			tripProgress,
+			driverName,
+			rating: assigned?.rating || "4.8",
+			vehicle: assigned?.plate || assigned?.vehicleNumber || assigned?.callSign || assigned?.type || "Ambulance",
+			assigned,
+			callTarget,
+			isBusy: !!busyAction,
+			busyAction,
+			computedStatus,
+			pulseAnim,
+			isPending
+		}}
 		showMarkArrived={computedStatus === "Arrived" && activeAmbulanceTrip?.status !== "arrived" && !isPending}
 		showComplete={activeAmbulanceTrip?.status === "arrived" && !isPending}
 		onCancelAmbulanceTrip={onCancelAmbulanceTrip}
 		onMarkAmbulanceArrived={() => {
-			console.log("[TripSummaryCard] MARK ARRIVED pressed");
 			setBusyAction('arrived');
 			onMarkAmbulanceArrived().finally(() => setBusyAction(null));
 		}}
 		onCompleteAmbulanceTrip={() => {
-			console.log("[TripSummaryCard] COMPLETE pressed");
 			setBusyAction('complete');
 			onCompleteAmbulanceTrip().finally(() => setBusyAction(null));
 		}}

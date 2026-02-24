@@ -154,6 +154,7 @@ const EmergencyScreen = () => {
 		startAmbulanceTrip,
 		stopAmbulanceTrip,
 		setAmbulanceTripStatus,
+		patchActiveAmbulanceTrip,
 		startBedBooking,
 		stopBedBooking,
 		setBedBookingStatus,
@@ -687,6 +688,56 @@ const EmergencyScreen = () => {
 			: activeBedBooking?.hospitalId ?? selectedHospital?.id ?? null;
 	const animateAmbulance = mode === "emergency" && !!activeAmbulanceTrip;
 	const ambulanceTripEtaSeconds = activeAmbulanceTrip?.etaSeconds ?? null;
+
+	useEffect(() => {
+		const routeEtaRaw = currentRoute?.durationSec ?? currentRoute?.duration ?? null;
+		const routeEtaSeconds = Number.isFinite(routeEtaRaw) ? Math.max(1, Math.round(routeEtaRaw)) : null;
+		if (!activeAmbulanceTrip?.requestId) return;
+		if (!Number.isFinite(routeEtaSeconds)) return;
+
+		const hasEtaSeconds =
+			Number.isFinite(activeAmbulanceTrip?.etaSeconds) && activeAmbulanceTrip.etaSeconds > 0;
+		const hasEstimatedArrivalText =
+			typeof activeAmbulanceTrip?.estimatedArrival === "string" &&
+			activeAmbulanceTrip.estimatedArrival.trim().length > 0;
+
+		if (hasEtaSeconds && hasEstimatedArrivalText) return;
+
+		const fallbackEtaLabel =
+			routeEtaSeconds < 60
+				? `${routeEtaSeconds}s`
+				: routeEtaSeconds % 60 === 0
+					? `${Math.floor(routeEtaSeconds / 60)} min`
+					: `${Math.floor(routeEtaSeconds / 60)}m ${routeEtaSeconds % 60}s`;
+
+		if (__DEV__) {
+			console.log("[EmergencyScreen] Backfilling activeAmbulanceTrip ETA from route", {
+				requestId: activeAmbulanceTrip?.requestId ?? null,
+				id: activeAmbulanceTrip?.id ?? null,
+				routeEtaSeconds,
+				prevEtaSeconds: activeAmbulanceTrip?.etaSeconds ?? null,
+				prevEstimatedArrival: activeAmbulanceTrip?.estimatedArrival ?? null,
+				nextEstimatedArrival: hasEstimatedArrivalText
+					? activeAmbulanceTrip?.estimatedArrival
+					: fallbackEtaLabel,
+			});
+		}
+
+		patchActiveAmbulanceTrip?.({
+			etaSeconds: hasEtaSeconds ? activeAmbulanceTrip?.etaSeconds : routeEtaSeconds,
+			estimatedArrival: hasEstimatedArrivalText
+				? activeAmbulanceTrip?.estimatedArrival
+				: fallbackEtaLabel,
+		});
+	}, [
+		activeAmbulanceTrip?.id,
+		activeAmbulanceTrip?.requestId,
+		activeAmbulanceTrip?.etaSeconds,
+		activeAmbulanceTrip?.estimatedArrival,
+		currentRoute?.duration,
+		currentRoute?.durationSec,
+		patchActiveAmbulanceTrip,
+	]);
 
 	useEffect(() => {
 		if (!routeHospitalId && currentRoute) {

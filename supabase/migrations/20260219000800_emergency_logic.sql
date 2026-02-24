@@ -482,11 +482,17 @@ CREATE OR REPLACE FUNCTION public.approve_cash_payment(p_payment_id UUID, p_requ
 RETURNS JSONB AS $$
 DECLARE
     v_payment RECORD;
+    v_request_service_type TEXT;
     v_org_wallet_id UUID;
     v_org_balance NUMERIC;
     v_platform_wallet_id UUID;
     v_patient_wallet_id UUID;
     v_fee_amount NUMERIC;
+    v_assigned_ambulance_id UUID;
+    v_responder_name TEXT;
+    v_responder_phone TEXT;
+    v_responder_vehicle_type TEXT;
+    v_responder_vehicle_plate TEXT;
 BEGIN
     -- 1. Verify Payment & Resolve Data
     SELECT p.*, (p.metadata->>'fee_amount')::NUMERIC as calculated_fee 
@@ -497,6 +503,11 @@ BEGIN
     IF v_payment.id IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'Pending payment not found');
     END IF;
+
+    SELECT service_type
+    INTO v_request_service_type
+    FROM public.emergency_requests
+    WHERE id = p_request_id;
 
     -- 2. Guard: Auto-provision Org Wallet if missing
     SELECT id, balance INTO v_org_wallet_id, v_org_balance 
@@ -538,10 +549,63 @@ BEGIN
     WHERE id = p_request_id;
     UPDATE public.visits SET status = 'active', updated_at = NOW() WHERE request_id = p_request_id;
 
+    -- Backfill responder snapshot fields after approval/auto-dispatch so mobile receives a usable driver label.
+    IF v_request_service_type = 'ambulance' THEN
+        UPDATE public.emergency_requests er
+        SET
+            responder_id = COALESCE(er.responder_id, a.profile_id),
+            responder_name = COALESCE(
+                NULLIF(BTRIM(er.responder_name), ''),
+                NULLIF(BTRIM(p.full_name), ''),
+                NULLIF(BTRIM(a.call_sign), ''),
+                NULLIF(BTRIM(a.vehicle_number), ''),
+                NULLIF(BTRIM(a.type), ''),
+                'Responder'
+            ),
+            responder_phone = COALESCE(
+                NULLIF(BTRIM(er.responder_phone), ''),
+                NULLIF(BTRIM(p.phone), '')
+            ),
+            responder_vehicle_type = COALESCE(
+                NULLIF(BTRIM(er.responder_vehicle_type), ''),
+                NULLIF(BTRIM(a.type), '')
+            ),
+            responder_vehicle_plate = COALESCE(
+                NULLIF(BTRIM(er.responder_vehicle_plate), ''),
+                NULLIF(BTRIM(a.license_plate), ''),
+                NULLIF(BTRIM(a.vehicle_number), '')
+            ),
+            updated_at = NOW()
+        FROM public.ambulances a
+        LEFT JOIN public.profiles p ON p.id = a.profile_id
+        WHERE er.id = p_request_id
+          AND er.ambulance_id = a.id;
+    END IF;
+
+    SELECT
+        ambulance_id,
+        responder_name,
+        responder_phone,
+        responder_vehicle_type,
+        responder_vehicle_plate
+    INTO
+        v_assigned_ambulance_id,
+        v_responder_name,
+        v_responder_phone,
+        v_responder_vehicle_type,
+        v_responder_vehicle_plate
+    FROM public.emergency_requests
+    WHERE id = p_request_id;
+
     RETURN jsonb_build_object(
         'success', true, 
         'fee_deducted', v_fee_amount, 
-        'new_balance', COALESCE((v_org_balance - v_fee_amount), 0)
+        'new_balance', COALESCE((v_org_balance - v_fee_amount), 0),
+        'ambulance_id', v_assigned_ambulance_id,
+        'responder_name', v_responder_name,
+        'responder_phone', v_responder_phone,
+        'responder_vehicle_type', v_responder_vehicle_type,
+        'responder_vehicle_plate', v_responder_vehicle_plate
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

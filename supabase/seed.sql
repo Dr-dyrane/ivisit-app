@@ -8,3 +8,158 @@
 
 -- Note: Demo data is currently loaded via migration 20260110000000_seed_rich_public_data.sql
 -- The \ir command is not supported by the Supabase CLI reset command when sent as a batch.
+
+-- ---------------------------------------------------------------------------
+-- Baseline Emergency Pricing + Room Catalog (Request Modal fallback support)
+-- Context:
+-- - EmergencyRequestModal reads `service_pricing` for ambulance options
+-- - EmergencyRequestModal reads `room_pricing` for virtual bed-room fallback
+-- - calculate_emergency_cost_v2 has safer service-type defaults, but seeded rows make
+--   pricing visible and customizable per hospital instead of relying on hardcoded fallbacks.
+-- ---------------------------------------------------------------------------
+
+-- 1) Global fallback service pricing rows (used by UI queries that include hospital_id IS NULL)
+WITH service_defaults AS (
+    SELECT *
+    FROM (VALUES
+        ('ambulance',   'Emergency Ambulance Dispatch', 150.00::NUMERIC, 'Baseline fallback ambulance dispatch pricing'),
+        ('bed',         'Emergency Bed Reservation',    200.00::NUMERIC, 'Baseline fallback emergency bed reservation pricing'),
+        ('bed_booking', 'Emergency Bed Booking',        200.00::NUMERIC, 'Legacy-compatible bed booking pricing fallback')
+    ) AS t(service_type, service_name, base_price, description)
+)
+UPDATE public.service_pricing sp
+SET
+    service_name = d.service_name,
+    base_price = CASE WHEN COALESCE(sp.base_price, 0) <= 0 THEN d.base_price ELSE sp.base_price END,
+    description = COALESCE(NULLIF(sp.description, ''), d.description),
+    updated_at = NOW()
+FROM service_defaults d
+WHERE sp.hospital_id IS NULL
+  AND sp.service_type = d.service_type;
+
+WITH service_defaults AS (
+    SELECT *
+    FROM (VALUES
+        ('ambulance',   'Emergency Ambulance Dispatch', 150.00::NUMERIC, 'Baseline fallback ambulance dispatch pricing'),
+        ('bed',         'Emergency Bed Reservation',    200.00::NUMERIC, 'Baseline fallback emergency bed reservation pricing'),
+        ('bed_booking', 'Emergency Bed Booking',        200.00::NUMERIC, 'Legacy-compatible bed booking pricing fallback')
+    ) AS t(service_type, service_name, base_price, description)
+)
+INSERT INTO public.service_pricing (hospital_id, service_type, service_name, base_price, description)
+SELECT
+    NULL,
+    d.service_type,
+    d.service_name,
+    d.base_price,
+    d.description
+FROM service_defaults d
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM public.service_pricing sp
+    WHERE sp.hospital_id IS NULL
+      AND sp.service_type = d.service_type
+);
+
+-- 2) Per-hospital baseline service pricing rows (only fills missing/zero values)
+WITH service_defaults AS (
+    SELECT *
+    FROM (VALUES
+        ('ambulance',   'Emergency Ambulance Dispatch', 150.00::NUMERIC, 'Baseline hospital ambulance dispatch pricing'),
+        ('bed',         'Emergency Bed Reservation',    200.00::NUMERIC, 'Baseline hospital emergency bed reservation pricing'),
+        ('bed_booking', 'Emergency Bed Booking',        200.00::NUMERIC, 'Legacy-compatible hospital bed booking pricing')
+    ) AS t(service_type, service_name, base_price, description)
+)
+INSERT INTO public.service_pricing (hospital_id, service_type, service_name, base_price, description)
+SELECT
+    h.id,
+    d.service_type,
+    d.service_name,
+    d.base_price,
+    d.description
+FROM public.hospitals h
+CROSS JOIN service_defaults d
+ON CONFLICT (hospital_id, service_type)
+DO UPDATE SET
+    service_name = COALESCE(NULLIF(service_pricing.service_name, ''), EXCLUDED.service_name),
+    base_price = CASE
+        WHEN COALESCE(service_pricing.base_price, 0) <= 0 THEN EXCLUDED.base_price
+        ELSE service_pricing.base_price
+    END,
+    description = COALESCE(NULLIF(service_pricing.description, ''), EXCLUDED.description),
+    updated_at = NOW();
+
+-- 3) Global fallback room pricing rows (used by UI virtual room fallback when hospital_rooms missing/empty)
+WITH room_defaults AS (
+    SELECT *
+    FROM (VALUES
+        ('general',      'General Ward',        150.00::NUMERIC, 'Shared ward bed with nursing supervision'),
+        ('standard',     'Standard Bed',        150.00::NUMERIC, 'Standard emergency admission bed'),
+        ('semi_private', 'Semi-Private Room',   250.00::NUMERIC, 'Shared room with reduced occupancy'),
+        ('private',      'Private Room',        350.00::NUMERIC, 'Private room with dedicated space'),
+        ('icu',          'ICU Bed',             500.00::NUMERIC, 'Intensive care bed (critical monitoring)')
+    ) AS t(room_type, room_name, price_per_night, description)
+)
+UPDATE public.room_pricing rp
+SET
+    room_name = d.room_name,
+    price_per_night = CASE WHEN COALESCE(rp.price_per_night, 0) <= 0 THEN d.price_per_night ELSE rp.price_per_night END,
+    description = COALESCE(NULLIF(rp.description, ''), d.description),
+    updated_at = NOW()
+FROM room_defaults d
+WHERE rp.hospital_id IS NULL
+  AND rp.room_type = d.room_type;
+
+WITH room_defaults AS (
+    SELECT *
+    FROM (VALUES
+        ('general',      'General Ward',        150.00::NUMERIC, 'Shared ward bed with nursing supervision'),
+        ('standard',     'Standard Bed',        150.00::NUMERIC, 'Standard emergency admission bed'),
+        ('semi_private', 'Semi-Private Room',   250.00::NUMERIC, 'Shared room with reduced occupancy'),
+        ('private',      'Private Room',        350.00::NUMERIC, 'Private room with dedicated space'),
+        ('icu',          'ICU Bed',             500.00::NUMERIC, 'Intensive care bed (critical monitoring)')
+    ) AS t(room_type, room_name, price_per_night, description)
+)
+INSERT INTO public.room_pricing (hospital_id, room_type, room_name, price_per_night, description)
+SELECT
+    NULL,
+    d.room_type,
+    d.room_name,
+    d.price_per_night,
+    d.description
+FROM room_defaults d
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM public.room_pricing rp
+    WHERE rp.hospital_id IS NULL
+      AND rp.room_type = d.room_type
+);
+
+-- 4) Per-hospital baseline room pricing rows (only fills missing/zero values)
+WITH room_defaults AS (
+    SELECT *
+    FROM (VALUES
+        ('general',      'General Ward',        150.00::NUMERIC, 'Shared ward bed with nursing supervision'),
+        ('standard',     'Standard Bed',        150.00::NUMERIC, 'Standard emergency admission bed'),
+        ('semi_private', 'Semi-Private Room',   250.00::NUMERIC, 'Shared room with reduced occupancy'),
+        ('private',      'Private Room',        350.00::NUMERIC, 'Private room with dedicated space'),
+        ('icu',          'ICU Bed',             500.00::NUMERIC, 'Intensive care bed (critical monitoring)')
+    ) AS t(room_type, room_name, price_per_night, description)
+)
+INSERT INTO public.room_pricing (hospital_id, room_type, room_name, price_per_night, description)
+SELECT
+    h.id,
+    d.room_type,
+    d.room_name,
+    d.price_per_night,
+    d.description
+FROM public.hospitals h
+CROSS JOIN room_defaults d
+ON CONFLICT (hospital_id, room_type)
+DO UPDATE SET
+    room_name = COALESCE(NULLIF(room_pricing.room_name, ''), EXCLUDED.room_name),
+    price_per_night = CASE
+        WHEN COALESCE(room_pricing.price_per_night, 0) <= 0 THEN EXCLUDED.price_per_night
+        ELSE room_pricing.price_per_night
+    END,
+    description = COALESCE(NULLIF(room_pricing.description, ''), EXCLUDED.description),
+    updated_at = NOW();

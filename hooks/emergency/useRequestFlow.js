@@ -13,6 +13,59 @@ import { usePaymentFlow } from "./usePaymentFlow";
 import { serviceCostService } from "../../services/serviceCostService";
 import { notificationDispatcher } from "../../services/notificationDispatcher";
 
+const toFiniteNumber = (value) => {
+	const n = Number(value);
+	return Number.isFinite(n) ? n : null;
+};
+
+const normalizeRequestCostSnapshot = (raw) => {
+	if (!raw || typeof raw !== "object") return null;
+
+	const baseCost = toFiniteNumber(raw.base_cost ?? raw.baseCost);
+	const grossTotal = toFiniteNumber(raw.total_cost ?? raw.totalCost ?? raw.total_amount);
+
+	let feeAmount = toFiniteNumber(
+		raw.feeAmount ?? raw.fee_amount ?? raw.service_fee ?? raw.ivisit_fee_amount
+	);
+
+	if (feeAmount == null && Array.isArray(raw.breakdown)) {
+		const breakdownFee = raw.breakdown.reduce((sum, item) => {
+			const type = String(item?.type || "").toLowerCase();
+			const name = String(item?.name || "").toLowerCase();
+			const looksLikeFee = type === "fee" || name.includes("fee");
+			if (!looksLikeFee) return sum;
+			const itemCost = Number(item?.cost);
+			return Number.isFinite(itemCost) ? sum + itemCost : sum;
+		}, 0);
+		if (breakdownFee > 0) {
+			feeAmount = Number(breakdownFee.toFixed(2));
+		}
+	}
+
+	const totalBeforeFee = (() => {
+		if (grossTotal != null && feeAmount != null) {
+			return Number(Math.max(0, grossTotal - feeAmount).toFixed(2));
+		}
+		if (grossTotal != null) return grossTotal;
+		if (baseCost != null) return baseCost;
+		return null;
+	})();
+
+	if (baseCost == null && totalBeforeFee == null) return null;
+
+	return {
+		base_cost: baseCost ?? totalBeforeFee,
+		distance_surcharge: toFiniteNumber(raw.distance_surcharge),
+		urgency_surcharge: toFiniteNumber(raw.urgency_surcharge),
+		total_cost: totalBeforeFee ?? baseCost,
+		totalCost: totalBeforeFee ?? baseCost,
+		breakdown: Array.isArray(raw.breakdown) ? raw.breakdown : undefined,
+		feeAmount,
+		grossTotal,
+		source: "modal_pricing_snapshot",
+	};
+};
+
 /**
  * 💡 STABILITY NOTE:
  * This hook uses a "Latest Props Ref" pattern (ref-guarded props) to ensure that the returned 
@@ -148,51 +201,69 @@ export const useRequestFlow = (props) => {
 
 			inflightByTypeRef.current[request.serviceType] = true;
 			try {
-				// Calculate cost for the emergency request
-				let costData = null;
-				try {
-					// Calculate distance for cost calculation
-					let distance = 0;
-					try {
-						const currentLocation = await Location.getCurrentPositionAsync({});
-						const userLocation = {
-							latitude: currentLocation.coords.latitude,
-							longitude: currentLocation.coords.longitude
-						};
-
-						// Calculate distance to hospital (simplified)
-						if (hospital) {
-							distance = DispatchService.calculateDistance(
-								userLocation,
-								{ latitude: hospital.latitude, longitude: hospital.longitude }
-							);
-						}
-					} catch (locationError) {
-						console.warn('[useRequestFlow] Could not calculate distance for cost:', locationError);
-					}
-
-					// Calculate cost
-					costData = await serviceCostService.calculateEmergencyCost(
-						request.serviceType,
-						{
-							distance,
-							isUrgent: request?.isUrgent || false
-						}
-					);
-				} catch (costError) {
-					console.warn('[useRequestFlow] Cost calculation failed:', costError);
-					// Continue without cost - payment will be handled separately
-				}
-
-				// Get user location for patient_location
+				let liveUserLocation = null;
 				let patientLocation = null;
 				try {
 					const currentLocation = await Location.getCurrentPositionAsync({});
+					liveUserLocation = {
+						latitude: currentLocation.coords.latitude,
+						longitude: currentLocation.coords.longitude
+					};
 					patientLocation = `POINT(${currentLocation.coords.longitude} ${currentLocation.coords.latitude})`;
 				} catch (locationError) {
 					console.warn('[useRequestFlow] Could not get user location:', locationError);
 					// Fallback to Hemet coordinates
 					patientLocation = 'POINT(-116.9730 33.7475)';
+				}
+
+				const hospitalCoords = hospital?.coordinates && Number.isFinite(hospital.coordinates.latitude) && Number.isFinite(hospital.coordinates.longitude)
+					? hospital.coordinates
+					: (Number.isFinite(hospital?.latitude) && Number.isFinite(hospital?.longitude)
+						? { latitude: hospital.latitude, longitude: hospital.longitude }
+						: null);
+
+				let computedDistanceKm = 0;
+				if (liveUserLocation && hospitalCoords) {
+					try {
+						// Ambulance origin is assumed to be the selected hospital.
+						computedDistanceKm = DispatchService.calculateDistance(liveUserLocation, hospitalCoords) || 0;
+					} catch (e) {
+						console.warn('[useRequestFlow] Distance calculation failed:', e);
+					}
+				}
+
+				const computedEtaSeconds = Number.isFinite(computedDistanceKm) && computedDistanceKm > 0
+					? Math.max(120, Math.round(computedDistanceKm * 60 * 3)) // ~3 min/km, min 2 mins
+					: null;
+				const computedEtaLabel = computedEtaSeconds == null
+					? null
+					: (computedEtaSeconds < 60
+						? `${computedEtaSeconds}s`
+						: (computedEtaSeconds % 60 === 0
+							? `${Math.floor(computedEtaSeconds / 60)} min`
+							: `${Math.floor(computedEtaSeconds / 60)}m ${computedEtaSeconds % 60}s`));
+
+				const derivedEstimatedArrival =
+					request?.estimatedArrival ??
+					(request?.serviceType === 'ambulance' ? (hospital?.eta || computedEtaLabel) : (hospital?.waitTime || computedEtaLabel)) ??
+					null;
+
+				// Calculate cost for the emergency request.
+				// Prefer the modal-calculated pricing snapshot so bed booking uses the selected room price.
+				let costData = normalizeRequestCostSnapshot(request?.pricingSnapshot);
+				try {
+					if (!costData) {
+						costData = await serviceCostService.calculateEmergencyCost(
+							request.serviceType,
+							{
+								distance: computedDistanceKm,
+								isUrgent: request?.isUrgent || false
+							}
+						);
+					}
+				} catch (costError) {
+					console.warn('[useRequestFlow] Cost calculation failed:', costError);
+					// Continue without cost - payment will be handled separately
 				}
 
 				// Determine payment method for atomic RPC
@@ -206,6 +277,9 @@ export const useRequestFlow = (props) => {
 					paymentMethod: paymentMethodId,
 					totalCost: costData?.total_cost || costData?.totalCost,
 					baseCost: costData?.base_cost,
+					feeAmount: costData?.feeAmount ?? null,
+					grossTotal: costData?.grossTotal ?? null,
+					costSource: costData?.source || "serviceCostService",
 					hasCostData: !!costData,
 				});
 
@@ -220,7 +294,7 @@ export const useRequestFlow = (props) => {
 					bedNumber: request?.bedNumber ?? null,
 					bedType: request?.bedType ?? null,
 					bedCount: request?.bedCount ?? null,
-					estimatedArrival: request?.estimatedArrival ?? null,
+					estimatedArrival: derivedEstimatedArrival,
 					status: EmergencyRequestStatus.IN_PROGRESS,
 					patient,
 					shared,
@@ -233,6 +307,7 @@ export const useRequestFlow = (props) => {
 						total_cost: costData.total_cost ?? costData.totalCost,
 						totalCost: costData.totalCost ?? costData.total_cost,
 						cost_breakdown: costData.breakdown,
+						feeAmount: costData.feeAmount,
 						payment_status: 'pending',
 					}),
 					// Payment method — triggers atomic RPC path in emergencyRequestsService
@@ -290,6 +365,8 @@ export const useRequestFlow = (props) => {
 					requestId: realId,
 					displayId,
 					serviceType: request.serviceType,
+					estimatedArrival: derivedEstimatedArrival,
+					etaSeconds: computedEtaSeconds,
 					requiresApproval,
 					paymentId: createdRequest?.paymentId || null,
 					paymentStatus: createdRequest?.paymentStatus || 'completed',
@@ -378,19 +455,32 @@ export const useRequestFlow = (props) => {
 			}
 
 			if (request.serviceType === "ambulance") {
+				const routeEtaSeconds = request?.etaSeconds ?? currentRoute?.durationSec ?? currentRoute?.duration ?? null;
+				const fallbackEtaLabel =
+					request?.estimatedArrival ??
+					(Number.isFinite(routeEtaSeconds)
+						? (routeEtaSeconds < 60
+							? `${Math.max(1, Math.round(routeEtaSeconds))}s`
+							: `${Math.max(1, Math.round(routeEtaSeconds / 60))} min`)
+						: null);
 				startAmbulanceTrip({
 					hospitalId,
 					requestId: visitId,
 					status: EmergencyRequestStatus.ACCEPTED,
 					ambulanceId: request?.ambulanceId ?? null,
 					ambulanceType: request?.ambulanceType ?? null,
-					estimatedArrival: request?.estimatedArrival ?? null,
+					assignedAmbulance: request?.assignedAmbulance ?? null,
+					currentResponderLocation: request?.currentResponderLocation ?? null,
+					currentResponderHeading: request?.currentResponderHeading ?? null,
+					estimatedArrival: fallbackEtaLabel,
+					etaSeconds: routeEtaSeconds,
 					hospitalName: request?.hospitalName ?? null,
 					route: currentRoute?.coordinates ?? null,
 				});
 			}
 
 			if (request.serviceType === "bed") {
+				const routeEtaSeconds = request?.etaSeconds ?? currentRoute?.durationSec ?? currentRoute?.duration ?? null;
 				startBedBooking({
 					hospitalId,
 					requestId: visitId,
@@ -401,7 +491,7 @@ export const useRequestFlow = (props) => {
 					bedType: request?.bedType ?? null,
 					bedCount: request?.bedCount ?? null,
 					estimatedWait: request?.estimatedArrival ?? null,
-					etaSeconds: request?.etaSeconds ?? (currentRoute?.duration || null),
+					etaSeconds: routeEtaSeconds,
 				});
 			}
 

@@ -578,11 +578,25 @@ export const paymentService = {
       let query = supabase.from('wallet_ledger').select('*');
 
       if (profile?.organization_id) {
-        // If Org User, show both personal and organizational ledger entries
-        query = query.or(`user_id.eq.${user.id},organization_id.eq.${profile.organization_id}`);
+        // Org wallet ledger is linked by wallet_id (works across old/new schema variants)
+        const { data: orgWallet } = await supabase
+          .from('organization_wallets')
+          .select('id')
+          .eq('organization_id', profile.organization_id)
+          .maybeSingle();
+
+        if (!orgWallet?.id) return [];
+        query = query.eq('wallet_id', orgWallet.id);
       } else {
-        // Standard Patient
-        query = query.eq('user_id', user.id);
+        // Patient wallet ledger is linked by wallet_id (safer than assuming wallet_ledger.user_id exists)
+        const { data: patientWallet } = await supabase
+          .from('patient_wallets')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!patientWallet?.id) return [];
+        query = query.eq('wallet_id', patientWallet.id);
       }
 
       const { data, error } = await query

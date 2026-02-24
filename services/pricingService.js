@@ -14,6 +14,9 @@ import { supabase } from './supabase';
 export async function getEffectivePrice(type, { hospitalId = null, ambulanceId = null } = {}) {
   try {
     let overridePrice = null;
+    let hospitalServicePrice = null;
+    let hospitalBasePrice = null;
+    let adminDefaultPrice = null;
 
     // 1. Check for Entity Overrides (Higher Priority)
     if (type === 'ambulance' && ambulanceId) {
@@ -25,15 +28,6 @@ export async function getEffectivePrice(type, { hospitalId = null, ambulanceId =
       overridePrice = amb?.base_price;
     }
 
-    if (!overridePrice && hospitalId) {
-      const { data: hosp } = await supabase
-        .from('hospitals')
-        .select('base_price')
-        .eq('id', hospitalId)
-        .single();
-      overridePrice = hosp?.base_price;
-    }
-
     if (overridePrice) {
       return {
         base_price: parseFloat(overridePrice),
@@ -42,19 +36,83 @@ export async function getEffectivePrice(type, { hospitalId = null, ambulanceId =
       };
     }
 
-    // 2. Fallback to Admin Defaults (service_pricing OR room_pricing)
+    // 2. Hospital-specific pricing rows (org/hospital managed pricing DB)
+    if (hospitalId) {
+      if (type === 'bed' || type === 'bed_booking') {
+        const { data: hospitalRoomPrice } = await supabase
+          .from('room_pricing')
+          .select('price_per_night, room_name')
+          .eq('hospital_id', hospitalId)
+          .eq('room_type', 'general')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        hospitalServicePrice = hospitalRoomPrice
+          ? {
+            base_price: parseFloat(hospitalRoomPrice.price_per_night),
+            currency: 'USD',
+            source: 'hospital_room_pricing',
+            service_name: hospitalRoomPrice.room_name
+          }
+          : null;
+      } else {
+        const { data: hospitalSp } = await supabase
+          .from('service_pricing')
+          .select('base_price, service_name')
+          .eq('hospital_id', hospitalId)
+          .eq('service_type', type)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        hospitalServicePrice = hospitalSp
+          ? {
+            base_price: parseFloat(hospitalSp.base_price),
+            currency: 'USD',
+            source: 'hospital_service_pricing',
+            service_name: hospitalSp.service_name
+          }
+          : null;
+      }
+
+      const { data: hosp } = await supabase
+        .from('hospitals')
+        .select('base_price')
+        .eq('id', hospitalId)
+        .maybeSingle();
+      hospitalBasePrice = hosp?.base_price != null
+        ? {
+          base_price: parseFloat(hosp.base_price),
+          currency: 'USD',
+          source: 'hospital_base_price'
+        }
+        : null;
+    }
+
+    if (hospitalServicePrice?.base_price > 0) {
+      return hospitalServicePrice;
+    }
+
+    if (hospitalBasePrice?.base_price > 0) {
+      return hospitalBasePrice;
+    }
+
+    // 3. Admin defaults (global pricing rows with hospital_id IS NULL)
     if (type === 'bed' || type === 'bed_booking') {
       const { data: roomPrice } = await supabase
         .from('room_pricing')
-        .select('price_per_night, currency, room_name')
+        .select('price_per_night, room_name')
+        .is('hospital_id', null)
         .eq('room_type', 'general') // Default to general ward if no specific type
+        .order('updated_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (roomPrice) {
-        return {
+        adminDefaultPrice = {
           base_price: parseFloat(roomPrice.price_per_night),
-          currency: roomPrice.currency || 'USD',
+          currency: 'USD',
           source: 'admin_default_room',
           service_name: roomPrice.room_name
         };
@@ -62,25 +120,32 @@ export async function getEffectivePrice(type, { hospitalId = null, ambulanceId =
     } else {
       const { data: adminPrice } = await supabase
         .from('service_pricing')
-        .select('base_price, currency, service_name')
+        .select('base_price, service_name')
+        .is('hospital_id', null)
         .eq('service_type', type)
+        .order('updated_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (adminPrice) {
-        return {
+        adminDefaultPrice = {
           base_price: parseFloat(adminPrice.base_price),
-          currency: adminPrice.currency || 'USD',
+          currency: 'USD',
           source: 'admin_default',
           service_name: adminPrice.service_name
         };
       }
     }
 
-    // 3. Final Hardcoded Fallbacks (Safety Net)
+    if (adminDefaultPrice?.base_price > 0) {
+      return adminDefaultPrice;
+    }
+
+    // 4. Final Hardcoded Fallbacks (Safety Net)
     const fallbacks = {
       'ambulance': 150.00,
-      'bed': 200.00
+      'bed': 200.00,
+      'bed_booking': 200.00
     };
 
     return {
@@ -105,26 +170,49 @@ export async function calculateEmergencyCost(requestData) {
 
   // Use the RPC for more robust calculation
   try {
+    const ambulanceType =
+      typeof ambulance_id === 'string' && !/^[0-9a-f]{8}-/i.test(ambulance_id)
+        ? ambulance_id
+        : null;
+
     const { data, error } = await supabase.rpc('calculate_emergency_cost_v2', {
       p_service_type: service_type,
       p_hospital_id: hospital_id,
-      p_ambulance_id: ambulance_id,
-      p_room_id: room_id,
-      p_distance: distance || 0,
-      p_is_urgent: is_urgent || false
+      p_ambulance_type: ambulanceType,
+      p_distance_km: Number(distance) || 0
     });
 
     if (error) throw error;
-    const cost = data[0];
+    const cost = Array.isArray(data) ? data[0] : data;
+    if (!cost) {
+      throw new Error('Empty pricing response');
+    }
+
+    const baseCost = Number(cost.base_cost ?? 0);
+    const distanceSurcharge = Number(cost.distance_surcharge ?? 0);
+    const urgencySurcharge = Number(cost.urgency_surcharge ?? 0);
+    const serviceFee = Number(cost.service_fee ?? 0);
+    const total = Number(cost.total_cost ?? (baseCost + distanceSurcharge + urgencySurcharge + serviceFee));
+    const breakdown = Array.isArray(cost.breakdown) ? cost.breakdown : [
+      {
+        name: service_type === 'ambulance' ? 'Emergency Ride' : 'Bed Reservation',
+        cost: baseCost,
+        type: 'base'
+      },
+      ...(distanceSurcharge > 0 ? [{ name: 'Distance Surcharge', cost: distanceSurcharge, type: 'distance' }] : []),
+      ...(urgencySurcharge > 0 ? [{ name: 'Urgency Surcharge', cost: urgencySurcharge, type: 'urgency' }] : []),
+      ...(serviceFee > 0 ? [{ name: 'Service Fee', cost: serviceFee, type: 'fee' }] : []),
+    ];
 
     return {
-      totalCost: parseFloat(cost.total_cost),
-      breakdown: cost.breakdown,
-      currency: 'USD',
-      base_cost: parseFloat(cost.base_cost),
-      distance_surcharge: parseFloat(cost.distance_surcharge),
-      urgency_surcharge: parseFloat(cost.urgency_surcharge),
-      service_fee: parseFloat(cost.service_fee || 0)
+      totalCost: total,
+      total_cost: total,
+      breakdown,
+      currency: cost.currency || 'USD',
+      base_cost: baseCost,
+      distance_surcharge: distanceSurcharge,
+      urgency_surcharge: urgencySurcharge,
+      service_fee: serviceFee
     };
   } catch (err) {
     console.error('[pricingService] Error calculating cost via RPC:', err);

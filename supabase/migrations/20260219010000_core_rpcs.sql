@@ -170,6 +170,34 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION public.delete_hospital_by_admin(target_hospital_id UUID)
+RETURNS JSONB AS $$
+DECLARE
+    v_deleted INTEGER := 0;
+BEGIN
+    IF target_hospital_id IS NULL THEN
+        RAISE EXCEPTION 'target_hospital_id is required';
+    END IF;
+
+    IF NOT public.p_is_admin() AND NOT EXISTS (
+        SELECT 1 FROM public.hospitals
+        WHERE id = target_hospital_id AND organization_id = public.p_get_current_org_id()
+    ) THEN
+        RAISE EXCEPTION 'Unauthorized: You do not manage this hospital';
+    END IF;
+
+    DELETE FROM public.hospitals WHERE id = target_hospital_id;
+    GET DIAGNOSTICS v_deleted = ROW_COUNT;
+
+    RETURN jsonb_build_object(
+        'success', v_deleted > 0,
+        'id', target_hospital_id,
+        'deleted', v_deleted,
+        'error', CASE WHEN v_deleted = 0 THEN 'Hospital not found' ELSE NULL END
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 
 -- 2. Stats & Analytics
 CREATE OR REPLACE FUNCTION public.get_user_statistics()
@@ -365,6 +393,121 @@ BEGIN
     WHERE id = target_user_id;
     
     RETURN jsonb_build_object('success', true, 'id', target_user_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- notify_cash_approval_org_admins: Used by app notificationDispatcher to notify org/admin approvers
+CREATE OR REPLACE FUNCTION public.notify_cash_approval_org_admins(
+    p_request_id UUID,
+    p_payment_id UUID,
+    p_total_amount NUMERIC DEFAULT 0,
+    p_fee_amount NUMERIC DEFAULT 0,
+    p_hospital_name TEXT DEFAULT 'Hospital',
+    p_service_type TEXT DEFAULT 'ambulance',
+    p_display_id TEXT DEFAULT NULL,
+    p_organization_id UUID DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_req RECORD;
+    v_org_id UUID;
+    v_notified_count INTEGER := 0;
+    v_service_label TEXT;
+    v_message TEXT;
+BEGIN
+    SELECT id, user_id, hospital_id, hospital_name, service_type, display_id
+    INTO v_req
+    FROM public.emergency_requests
+    WHERE id = p_request_id;
+
+    IF v_req.id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Emergency request not found');
+    END IF;
+
+    -- Only the request owner or privileged console/admin callers may trigger this
+    IF auth.uid() IS DISTINCT FROM v_req.user_id AND NOT public.p_is_console_allowed() THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    v_org_id := COALESCE(
+        p_organization_id,
+        (SELECT h.organization_id FROM public.hospitals h WHERE h.id = v_req.hospital_id)
+    );
+
+    IF v_org_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Organization not found for emergency request');
+    END IF;
+
+    v_service_label := CASE COALESCE(p_service_type, v_req.service_type)
+        WHEN 'bed' THEN 'Bed Booking'
+        ELSE 'Ambulance Ride'
+    END;
+
+    v_message := format(
+        'A patient has requested a %s (%s) at %s with cash payment of $%s. Platform fee: $%s. Tap to approve or decline.',
+        v_service_label,
+        COALESCE(p_display_id, v_req.display_id, 'REQUEST'),
+        COALESCE(p_hospital_name, v_req.hospital_name, 'Hospital'),
+        to_char(COALESCE(p_total_amount, 0), 'FM999999990.00'),
+        to_char(COALESCE(p_fee_amount, 0), 'FM999999990.00')
+    );
+
+    INSERT INTO public.notifications (
+        user_id,
+        type,
+        action_type,
+        title,
+        message,
+        icon,
+        color,
+        priority,
+        action_data,
+        metadata,
+        read,
+        created_at,
+        updated_at,
+        target_id,
+        "timestamp"
+    )
+    SELECT
+        p.id,
+        'emergency',
+        'approve_cash_payment',
+        'Cash Payment Approval Required',
+        v_message,
+        'cash-outline',
+        'warning',
+        'urgent',
+        jsonb_build_object(
+            'paymentId', p_payment_id,
+            'requestId', p_request_id,
+            'totalAmount', COALESCE(p_total_amount, 0),
+            'feeAmount', COALESCE(p_fee_amount, 0),
+            'hospitalName', COALESCE(p_hospital_name, v_req.hospital_name, 'Hospital'),
+            'serviceType', COALESCE(p_service_type, v_req.service_type, 'ambulance'),
+            'displayId', COALESCE(p_display_id, v_req.display_id),
+            'organizationId', v_org_id
+        ),
+        jsonb_build_object(
+            'requestId', p_request_id,
+            'paymentId', p_payment_id,
+            'organizationId', v_org_id,
+            'targetName', COALESCE(p_hospital_name, v_req.hospital_name, 'Hospital')
+        ),
+        false,
+        NOW(),
+        NOW(),
+        p_request_id,
+        NOW()
+    FROM public.profiles p
+    WHERE p.role IN ('org_admin', 'admin')
+      AND (
+          p.organization_id = v_org_id
+          OR p.organization_id IN (SELECT h.id FROM public.hospitals h WHERE h.organization_id = v_org_id)
+      );
+
+    GET DIAGNOSTICS v_notified_count = ROW_COUNT;
+    RETURN jsonb_build_object('success', true, 'notified_count', v_notified_count, 'organization_id', v_org_id);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -618,19 +761,58 @@ CREATE OR REPLACE FUNCTION public.calculate_emergency_cost_v2(
 RETURNS JSONB AS $$
 DECLARE
     v_base_price NUMERIC := 0;
+    v_default_base_price NUMERIC := 100;
+    v_hospital_service_price NUMERIC := NULL;
+    v_hospital_base_price NUMERIC := NULL;
+    v_admin_service_price NUMERIC := NULL;
     v_distance_surcharge NUMERIC := 0;
     v_total NUMERIC;
 BEGIN
-    -- Get base price from service_pricing or hospital
+    -- Canonical service defaults (used only when DB pricing rows are missing)
+    v_default_base_price := CASE
+        WHEN p_service_type IN ('ambulance', 'emergency', 'emergency_transport') THEN 150
+        WHEN p_service_type IN ('bed', 'bed_booking') THEN 200
+        ELSE 100
+    END;
+
+    -- Pricing hierarchy (payment calculation source of truth):
+    -- 1) Hospital-specific service_pricing (org/hospital managed)
+    -- 2) Hospital.base_price (legacy hospital override)
+    -- 3) Global service_pricing (admin baseline, hospital_id IS NULL)
+    -- 4) Hardcoded service-type default
     IF p_hospital_id IS NOT NULL THEN
-        SELECT COALESCE(sp.base_price, h.base_price, 50)
-        INTO v_base_price
+        SELECT h.base_price
+        INTO v_hospital_base_price
         FROM public.hospitals h
-        LEFT JOIN public.service_pricing sp ON sp.hospital_id = h.id AND sp.service_type = p_service_type
         WHERE h.id = p_hospital_id;
+
+        SELECT sp.base_price
+        INTO v_hospital_service_price
+        FROM public.service_pricing sp
+        WHERE sp.hospital_id = p_hospital_id
+          AND sp.service_type = p_service_type
+        ORDER BY sp.updated_at DESC NULLS LAST, sp.created_at DESC
+        LIMIT 1;
     END IF;
-    
-    IF v_base_price = 0 THEN v_base_price := 50; END IF;
+
+    SELECT sp.base_price
+    INTO v_admin_service_price
+    FROM public.service_pricing sp
+    WHERE sp.hospital_id IS NULL
+      AND sp.service_type = p_service_type
+    ORDER BY sp.updated_at DESC NULLS LAST, sp.created_at DESC
+    LIMIT 1;
+
+    v_base_price := COALESCE(
+        NULLIF(v_hospital_service_price, 0),
+        NULLIF(v_hospital_base_price, 0),
+        NULLIF(v_admin_service_price, 0),
+        v_default_base_price
+    );
+
+    IF COALESCE(v_base_price, 0) = 0 THEN
+        v_base_price := v_default_base_price;
+    END IF;
     
     -- Distance surcharge
     IF p_distance_km > 5 THEN

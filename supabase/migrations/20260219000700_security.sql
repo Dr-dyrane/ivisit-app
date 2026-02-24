@@ -162,6 +162,23 @@ CREATE POLICY "Public read for ambulances"
 ON public.ambulances FOR SELECT
 USING (true);
 
+CREATE POLICY "Org Admins manage ambulances"
+ON public.ambulances FOR ALL
+USING (
+    organization_id = public.p_get_current_org_id()
+    OR hospital_id IN (
+        SELECT id FROM public.hospitals WHERE organization_id = public.p_get_current_org_id()
+    )
+    OR public.p_is_admin()
+)
+WITH CHECK (
+    organization_id = public.p_get_current_org_id()
+    OR hospital_id IN (
+        SELECT id FROM public.hospitals WHERE organization_id = public.p_get_current_org_id()
+    )
+    OR public.p_is_admin()
+);
+
 CREATE POLICY "Users see own visits"
 ON public.visits FOR SELECT
 USING (auth.uid() = user_id);

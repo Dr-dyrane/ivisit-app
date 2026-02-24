@@ -24,6 +24,9 @@ import { useHeaderState } from "../../contexts/HeaderStateContext";
 import HeaderBackButton from "../navigation/HeaderBackButton";
 import { useEmergency } from "../../contexts/EmergencyContext";
 
+const isValidUUIDValue = (id) =>
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id ?? ""));
+
 /**
  * 💡 STABILITY NOTE:
  * This component is wrapped in React.memo and uses `useFABActions()` instead of `useFAB()`.
@@ -115,9 +118,12 @@ const EmergencyRequestModal = React.memo(({
 	const [dynamicServices, setDynamicServices] = useState([]);
 	const [dynamicRooms, setDynamicRooms] = useState([]);
 	const [selectedRoomId, setSelectedRoomId] = useState(null);
+	const [bookingPricingReady, setBookingPricingReady] = useState(mode !== "booking");
 
 	// Cash approval gate state (Managed by context for persistence)
 	const { pendingApproval, setPendingApproval, activeAmbulanceTrip } = useEmergency();
+	const approvalHandledRef = useRef(false);
+	const approvalDispatchWaitNotifiedRef = useRef(false);
 
 	// If mounting and we have a pending approval, ensure we are on the right step
 	useEffect(() => {
@@ -125,99 +131,297 @@ const EmergencyRequestModal = React.memo(({
 			setRequestStep("waiting_approval");
 		}
 	}, []);
+	useEffect(() => {
+		approvalHandledRef.current = false;
+		approvalDispatchWaitNotifiedRef.current = false;
+	}, [pendingApproval?.requestId, pendingApproval?.displayId]);
 	const approvalSubRef = useRef(null);
 
-	// 🔄 REAL-TIME: Listen for approval/decline on pending cash payment
+	// REAL-TIME + POLL FALLBACK: Listen for approval/decline on pending cash payment
 	useEffect(() => {
 		if (!pendingApproval?.requestId) return;
 
-		console.log('[EmergencyRequestModal] 📡 Subscribing to approval for:', pendingApproval.requestId);
+		const requestId = pendingApproval.requestId;
+		const displayId = pendingApproval.displayId;
+		const paymentId = pendingApproval.paymentId ?? null;
+		const isUuidRequestId = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(String(requestId));
+		const emergencyRequestUuid =
+			pendingApproval?.id ?? (isUuidRequestId ? String(requestId) : null);
+		const pendingServiceType =
+			pendingApproval?.serviceType || (mode === 'booking' ? 'bed' : 'ambulance');
+		const isPendingAmbulance = pendingServiceType === 'ambulance';
+
+		const handleApprovalRow = (row, source = 'realtime') => {
+			if (!row || approvalHandledRef.current) return;
+
+			const newStatus = row.status;
+			const newPaymentStatus = row.payment_status;
+			const rowAmbulanceId = row.ambulance_id ?? row.ambulanceId ?? null;
+			const rowResponderName = row.responder_name ?? row.responderName ?? null;
+			const rowResponderPhone = row.responder_phone ?? row.responderPhone ?? null;
+			const rowResponderVehicleType = row.responder_vehicle_type ?? row.responderVehicleType ?? null;
+			const rowResponderVehiclePlate = row.responder_vehicle_plate ?? row.responderVehiclePlate ?? null;
+			const rowResponderHeading = row.responder_heading ?? row.responderHeading ?? null;
+			const hasResponderAssignment = !!(rowAmbulanceId || rowResponderName);
+			const isApprovedTransition =
+				newStatus === 'accepted' ||
+				newStatus === 'in_progress' ||
+				newStatus === 'assigned' ||
+				newPaymentStatus === 'completed';
+
+			const isDeclinedTransition =
+				newStatus === 'payment_declined' ||
+				newPaymentStatus === 'declined' ||
+				newPaymentStatus === 'failed';
+
+			// For ambulance cash approvals, payment completion can arrive before auto-dispatch assignment.
+			// Stay on waiting screen until the emergency row carries responder assignment info.
+			if (isApprovedTransition && isPendingAmbulance && !hasResponderAssignment) {
+				if (!approvalDispatchWaitNotifiedRef.current) {
+					approvalDispatchWaitNotifiedRef.current = true;
+					showToast('Payment approved. Waiting for driver assignment...', 'info');
+				}
+				return;
+			}
+
+			if (isApprovedTransition) {
+				approvalHandledRef.current = true;
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+				showToast('Payment approved! Dispatching...', 'success');
+
+				const waitTime = row.estimated_arrival ?? pendingApproval.estimatedArrival ?? requestHospital?.waitTime ?? null;
+				const hospitalEta = row.estimated_arrival ?? pendingApproval.estimatedArrival ?? requestHospital?.eta ?? null;
+				const ambulanceEta =
+					(typeof hospitalEta === 'string' && hospitalEta.length > 0 ? hospitalEta : null) ?? '8 mins';
+
+				const next =
+					pendingServiceType === 'bed'
+						? {
+							success: true,
+							requestId,
+							displayId,
+							estimatedArrival: waitTime ?? '15 mins',
+							hospitalId: pendingApproval.hospitalId,
+							hospitalName: pendingApproval.hospitalName,
+							serviceType: 'bed',
+							specialty: pendingApproval.specialty,
+							bedCount: pendingApproval.bedCount,
+							bedType: pendingApproval.bedType,
+							bedNumber: pendingApproval.bedNumber,
+							etaSeconds: pendingApproval?.etaSeconds ?? null,
+						}
+						: {
+							success: true,
+							requestId,
+							displayId,
+							hospitalId: pendingApproval.hospitalId,
+							hospitalName: pendingApproval.hospitalName,
+							ambulanceId: rowAmbulanceId ?? null,
+							ambulanceType: pendingApproval.ambulanceType,
+							assignedAmbulance: hasResponderAssignment
+								? {
+									id: rowAmbulanceId ?? 'ems_001',
+									type:
+										rowResponderVehicleType ??
+										(typeof pendingApproval.ambulanceType === 'object'
+											? pendingApproval.ambulanceType?.title
+											: pendingApproval.ambulanceType) ??
+										'Ambulance',
+									plate: rowResponderVehiclePlate ?? null,
+									name: rowResponderName ?? null,
+									phone: rowResponderPhone ?? null,
+									heading: Number.isFinite(Number(rowResponderHeading))
+										? Number(rowResponderHeading)
+										: 0,
+								}
+								: null,
+							currentResponderLocation: row.responder_location ?? row.responderLocation ?? null,
+							currentResponderHeading: Number.isFinite(Number(rowResponderHeading))
+								? Number(rowResponderHeading)
+								: null,
+							serviceType: 'ambulance',
+							estimatedArrival: ambulanceEta,
+							etaSeconds: pendingApproval?.etaSeconds ?? null,
+						};
+
+				setRequestData(next);
+				setRequestStep('dispatched');
+				setPendingApproval(null);
+
+				if (typeof onRequestComplete === 'function') {
+					onRequestComplete(next);
+				}
+				return;
+			}
+
+			if (isDeclinedTransition) {
+				approvalHandledRef.current = true;
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+				setErrorMessage(
+					'The hospital declined your cash payment. Please choose a different payment method.'
+				);
+				setSelectedPaymentMethod(null);
+				setRequestStep('payment');
+				setPendingApproval(null);
+				showToast('Payment declined by hospital', 'error');
+			}
+		};
+
+		const handlePaymentUpdate = (paymentRow, source = 'payment_realtime') => {
+			if (!paymentRow || approvalHandledRef.current) return;
+			handleApprovalRow(
+				{
+					id: requestId,
+					display_id: displayId,
+					status: null,
+					payment_status: paymentRow.status,
+					estimated_arrival: pendingApproval?.estimatedArrival ?? null,
+				},
+				source
+			);
+		};
 
 		const channel = supabase
-			.channel(`approval_${pendingApproval.requestId}`)
+			.channel(`approval_${requestId}`)
 			.on(
 				'postgres_changes',
 				{
 					event: 'UPDATE',
 					schema: 'public',
 					table: 'emergency_requests',
-					filter: `id=eq.${pendingApproval.requestId}`,
+					filter: isUuidRequestId ? `id=eq.${requestId}` : `display_id=eq.${displayId || requestId}`,
 				},
-				(payload) => {
-					const newStatus = payload.new?.status;
-					console.log('[EmergencyRequestModal] 📡 Status update received:', newStatus);
-
-					if (newStatus === 'in_progress') {
-						// ✅ APPROVED: Transition to dispatched view
-						Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-						showToast("Payment approved! Dispatching...", "success");
-
-						const waitTime = requestHospital?.waitTime ?? null;
-						const hospitalEta = requestHospital?.eta ?? null;
-						const ambulanceEta =
-							(typeof hospitalEta === "string" && hospitalEta.length > 0
-								? hospitalEta
-								: null) ?? "8 mins";
-
-						const next =
-							mode === "booking"
-								? {
-									success: true,
-									requestId: pendingApproval.requestId,
-									displayId: pendingApproval.displayId,
-									estimatedArrival: waitTime ?? "15 mins",
-									hospitalId: pendingApproval.hospitalId,
-									hospitalName: pendingApproval.hospitalName,
-									serviceType: "bed",
-									specialty: pendingApproval.specialty,
-									bedCount: pendingApproval.bedCount,
-									bedType: pendingApproval.bedType,
-									bedNumber: pendingApproval.bedNumber,
-									etaSeconds: null,
-								}
-								: {
-									success: true,
-									requestId: pendingApproval.requestId,
-									displayId: pendingApproval.displayId,
-									hospitalId: pendingApproval.hospitalId,
-									hospitalName: pendingApproval.hospitalName,
-									ambulanceType: pendingApproval.ambulanceType,
-									serviceType: "ambulance",
-									estimatedArrival: ambulanceEta,
-									etaSeconds: null,
-								};
-
-						setRequestData(next);
-						setRequestStep("dispatched");
-						setPendingApproval(null);
-
-						if (typeof onRequestComplete === "function") {
-							onRequestComplete(next);
-						}
-					} else if (newStatus === 'payment_declined') {
-						// ❌ DECLINED: Return to payment step, preserve selections
-						Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-						setErrorMessage(
-							"The hospital declined your cash payment. Please choose a different payment method."
-						);
-						// Keep selections intact — user doesn't have to re-pick hospital/ambulance
-						setSelectedPaymentMethod(null);
-						setRequestStep("payment");
-						setPendingApproval(null);
-						showToast("Payment declined by hospital", "error");
-					}
-				}
+				(payload) => handleApprovalRow(payload.new, 'realtime')
 			)
 			.subscribe();
+
+		let cancelled = false;
+
+		if (!paymentId && emergencyRequestUuid) {
+			(async () => {
+				try {
+					const { data: paymentRow, error } = await supabase
+						.from('payments')
+						.select('id, status, emergency_request_id, updated_at')
+						.eq('emergency_request_id', emergencyRequestUuid)
+						.order('created_at', { ascending: false })
+						.limit(1)
+						.maybeSingle();
+
+					if (error) {
+						console.warn('[EmergencyRequestModal] Failed to bootstrap payment row for approval listener:', error);
+						return;
+					}
+
+					if (!cancelled && paymentRow) {
+						handlePaymentUpdate(paymentRow, 'payment_bootstrap');
+					}
+				} catch (e) {
+					console.warn('[EmergencyRequestModal] Payment bootstrap query failed:', e);
+				}
+			})();
+		}
+
+		const pollId = setInterval(async () => {
+			if (approvalHandledRef.current || cancelled) return;
+			try {
+				// Poll emergency request status as primary truth
+				const emergencyQuery = supabase
+					.from('emergency_requests')
+					.select('*')
+					.limit(1);
+
+				const emergencyFilterQuery = isUuidRequestId
+					? emergencyQuery.eq('id', requestId)
+					: emergencyQuery.eq('display_id', displayId || requestId);
+
+				const { data: emergencyRow, error: emergencyErr } = await emergencyFilterQuery.maybeSingle();
+				if (!emergencyErr && emergencyRow) {
+					handleApprovalRow(emergencyRow, 'poll_emergency');
+				}
+
+				if (approvalHandledRef.current || cancelled) return;
+
+				// Poll payments as secondary source (covers cases where emergency row update is missed)
+				if (paymentId || emergencyRequestUuid) {
+					let paymentQuery = supabase
+						.from('payments')
+						.select('id, status, emergency_request_id, updated_at')
+						.order('created_at', { ascending: false })
+						.limit(1);
+
+					if (paymentId) {
+						paymentQuery = paymentQuery.eq('id', paymentId);
+					} else if (emergencyRequestUuid) {
+						paymentQuery = paymentQuery.eq('emergency_request_id', emergencyRequestUuid);
+					}
+
+					const { data: polledPaymentRow, error: paymentErr } = await paymentQuery.maybeSingle();
+					if (!paymentErr && polledPaymentRow) {
+						handlePaymentUpdate(polledPaymentRow, 'poll_payment');
+					}
+				}
+			} catch (e) {
+				// Keep polling resilient; realtime remains primary
+				if (__DEV__) {
+					console.warn('[EmergencyRequestModal] Approval poll failed:', e);
+				}
+			}
+		}, 3000);
+
+		const paymentChannel = paymentId
+			? supabase
+				.channel(`approval_payment_${paymentId}`)
+				.on(
+					'postgres_changes',
+					{
+						event: 'UPDATE',
+						schema: 'public',
+						table: 'payments',
+						filter: `id=eq.${paymentId}`,
+					},
+					(payload) => handlePaymentUpdate(payload.new)
+				)
+				.subscribe()
+			: (emergencyRequestUuid
+				? supabase
+					.channel(`approval_payment_req_${emergencyRequestUuid}`)
+					.on(
+						'postgres_changes',
+						{
+							event: 'UPDATE',
+							schema: 'public',
+							table: 'payments',
+							filter: `emergency_request_id=eq.${emergencyRequestUuid}`,
+						},
+						(payload) => handlePaymentUpdate(payload.new, 'payment_realtime_by_request')
+					)
+					.subscribe()
+				: null);
 
 		approvalSubRef.current = channel;
 
 		return () => {
-			console.log('[EmergencyRequestModal] 📡 Unsubscribing approval listener');
+			cancelled = true;
 			supabase.removeChannel(channel);
+			if (paymentChannel) {
+				supabase.removeChannel(paymentChannel);
+			}
+			clearInterval(pollId);
 			approvalSubRef.current = null;
 		};
-	}, [pendingApproval?.requestId, mode, requestHospital, onRequestComplete, showToast]);
+	}, [
+		pendingApproval?.requestId,
+		pendingApproval?.id,
+		pendingApproval?.displayId,
+		pendingApproval?.paymentId,
+		pendingApproval?.etaSeconds,
+		pendingApproval?.estimatedArrival,
+		mode,
+		requestHospital,
+		onRequestComplete,
+		showToast,
+	]);
 
 	// Zero-ambulance fallback logic
 	const hasAmbulances = useMemo(() => {
@@ -250,6 +454,10 @@ const EmergencyRequestModal = React.memo(({
 		let isMounted = true;
 		const calculateCost = async () => {
 			if (!requestHospital) return;
+			if (mode === "booking" && !bookingPricingReady) {
+				if (isMounted) setIsCalculatingCost(true);
+				return;
+			}
 
 			setIsCalculatingCost(true);
 			setErrorMessage(null);
@@ -257,19 +465,47 @@ const EmergencyRequestModal = React.memo(({
 			try {
 				const serviceType = mode === "booking" ? "bed" : "ambulance";
 
-				// Validate UUIDs to prevent "invalid input syntax" RPC errors
-				const isValidUUID = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-
 				// Fetch cost from RPC and org fee in parallel
 				const [cost, orgFee] = await Promise.all([
 					calculateEmergencyCost({
 						hospital_id: requestHospital.id,
-						ambulance_id: isValidUUID(selectedAmbulanceType?.id) ? selectedAmbulanceType.id : null,
-						room_id: isValidUUID(selectedRoomId) ? selectedRoomId : null,
+						ambulance_id: isValidUUIDValue(selectedAmbulanceType?.id) ? selectedAmbulanceType.id : null,
+						room_id: isValidUUIDValue(selectedRoomId) ? selectedRoomId : null,
 						service_type: serviceType
 					}),
 					paymentService.getOrganizationFee(requestHospital.id)
 				]);
+
+				// Booking mode uses room_pricing virtual options (or room rows) for selection, but the shared RPC
+				// currently prices generic "bed" unless it receives room-type semantics. Override the base cost
+				// from the selected room row so the payment total matches the UI option price.
+				if (mode === "booking") {
+					const selectedRoom = dynamicRooms.find((r) => r.id === selectedRoomId) || null;
+					const roomBasePrice = Number(selectedRoom?.base_price);
+					const currentBaseCost = Number(cost?.base_cost ?? cost?.totalCost ?? cost?.total_cost ?? 0);
+					const currentTotalCost = Number(cost?.totalCost ?? cost?.total_cost ?? currentBaseCost);
+
+					if (Number.isFinite(roomBasePrice) && roomBasePrice > 0 && roomBasePrice !== currentBaseCost) {
+						const nonBaseAmount = Math.max(0, currentTotalCost - (Number.isFinite(currentBaseCost) ? currentBaseCost : 0));
+						const nextTotal = roomBasePrice + nonBaseAmount;
+
+						cost.base_cost = roomBasePrice;
+						cost.totalCost = nextTotal;
+						cost.total_cost = nextTotal;
+
+						if (Array.isArray(cost.breakdown) && cost.breakdown.length > 0) {
+							let patchedBase = false;
+							cost.breakdown = cost.breakdown.map((item, idx) => {
+								const itemType = String(item?.type || "").toLowerCase();
+								if (!patchedBase && (itemType === "base" || idx === 0)) {
+									patchedBase = true;
+									return { ...item, cost: roomBasePrice };
+								}
+								return item;
+							});
+						}
+					}
+				}
 
 				// Ensure service fee is in the breakdown
 				// The RPC should include it, but if not (stale schema), inject it client-side
@@ -282,13 +518,6 @@ const EmergencyRequestModal = React.memo(({
 					const feeRate = orgFee.feePercentage / 100;
 					const baseCost = cost.base_cost || cost.totalCost || 0;
 					const feeAmount = parseFloat((baseCost * feeRate).toFixed(2));
-
-					console.log('[EmergencyRequestModal] Injecting service fee into breakdown:', {
-						feeRate: `${orgFee.feePercentage}%`,
-						baseCost,
-						feeAmount,
-						orgName: orgFee.orgName,
-					});
 
 					breakdown = [
 						...breakdown,
@@ -322,12 +551,19 @@ const EmergencyRequestModal = React.memo(({
 
 		calculateCost();
 		return () => { isMounted = false; };
-	}, [requestHospital?.id, mode, selectedAmbulanceType?.id, selectedRoomId]);
+	}, [requestHospital?.id, mode, bookingPricingReady, selectedAmbulanceType?.id, selectedRoomId, dynamicRooms]);
 
 	// Fetch dynamic data
 	useEffect(() => {
 		const fetchDynamicData = async () => {
 			if (!requestHospital?.id) return;
+			if (mode === "booking") {
+				setBookingPricingReady(false);
+				setEstimatedCost(null);
+				setIsCalculatingCost(true);
+			} else {
+				setBookingPricingReady(true);
+			}
 
 			try {
 				if (mode === "booking") {
@@ -344,14 +580,31 @@ const EmergencyRequestModal = React.memo(({
 						const virtualRooms = roomPricing.map(rp => ({
 							id: rp.room_type, // Use type as ID for generic selection
 							room_number: 'Any',
-							room_type: rp.room_name || rp.room_type,
+							room_type: rp.room_type, // Keep canonical code for request payloads / matching
+							room_label: rp.room_name || rp.room_type, // Human-readable label for UI
 							base_price: rp.price_per_night,
 							features: [rp.description || 'Standard accommodation'],
 							check_in: null,
 							check_out: null
 						}));
-						setDynamicRooms(virtualRooms);
-						if (virtualRooms.length > 0) setSelectedRoomId(virtualRooms[0].id);
+
+						// Defensive de-dupe in case upstream queries return both global + hospital rows
+						// for the same room type (prevents duplicate React keys in BedBookingOptions).
+						const seenRoomTypes = new Set();
+						const dedupedVirtualRooms = virtualRooms.filter((room) => {
+							const key = String(room?.id || "").trim().toLowerCase();
+							if (!key) return true;
+							if (seenRoomTypes.has(key)) return false;
+							seenRoomTypes.add(key);
+							return true;
+						});
+						setDynamicRooms(dedupedVirtualRooms);
+						if (dedupedVirtualRooms.length > 0) {
+							setSelectedRoomId(dedupedVirtualRooms[0].id);
+							if (typeof dedupedVirtualRooms[0]?.room_type === "string") {
+								setBedType(dedupedVirtualRooms[0].room_type);
+							}
+						}
 					}
 
 					// Deprecated: dynamicServices for beds was incorrect.
@@ -378,6 +631,10 @@ const EmergencyRequestModal = React.memo(({
 				}
 			} catch (error) {
 				console.error("Error fetching dynamic modal data:", error);
+			} finally {
+				if (mode === "booking") {
+					setBookingPricingReady(true);
+				}
 			}
 		};
 
@@ -405,6 +662,10 @@ const EmergencyRequestModal = React.memo(({
 
 		// BIPHASIC FLOW: Step 1 -> Step 2
 		if (requestStep === "select") {
+			if (mode === "booking" && (!bookingPricingReady || isCalculatingCost)) {
+				showToast("Loading bed options and pricing...", "info");
+				return;
+			}
 			if (mode === "emergency" && !selectedAmbulanceType) {
 				showToast("Please select an ambulance type", "error");
 				return;
@@ -420,6 +681,11 @@ const EmergencyRequestModal = React.memo(({
 			showToast("Payment method required", "error");
 			return;
 		}
+		if (mode === "booking" && (!bookingPricingReady || isCalculatingCost || !estimatedCost)) {
+			setErrorMessage("Bed pricing is still loading. Please wait a moment.");
+			showToast("Pricing still loading", "info");
+			return;
+		}
 
 		// Cash Eligibility Check
 		if (selectedPaymentMethod.is_cash) {
@@ -433,19 +699,11 @@ const EmergencyRequestModal = React.memo(({
 					targetOrgId = null;
 				}
 
-				console.log('[EmergencyRequestModal] 🔍 Starting Cash Eligibility Trace:', {
-					hospitalName: requestHospital.name,
-					hospitalId: requestHospital.id,
-					providedOrgId: targetOrgId,
-					estimatedCost: estimatedCost?.totalCost
-				});
-
 				// SAFETY FALLBACK: If hospital object missing Org ID (or cleared above), re-fetch hospital record
 				if (!targetOrgId) {
 					console.log('[EmergencyRequestModal] ⚠️ Missing/Invalid Org ID. Re-fetching fresh record from Service...');
 					const freshHospital = await hospitalsService.getById(requestHospital.id);
 					targetOrgId = freshHospital?.organizationId;
-					console.log('[EmergencyRequestModal] 🏥 Re-fetched Org ID:', targetOrgId);
 				}
 
 				if (!targetOrgId) {
@@ -460,8 +718,6 @@ const EmergencyRequestModal = React.memo(({
 					targetOrgId,
 					estimatedCost?.totalCost || 0
 				);
-
-				console.log('[EmergencyRequestModal] ✅ Cash Eligibility Result:', { targetOrgId, isEligible });
 
 				if (!isEligible) {
 					setErrorMessage("Cash payment not available for this medical center (insufficient organizational wallet balance)");
@@ -488,6 +744,26 @@ const EmergencyRequestModal = React.memo(({
 				? `BED-${Math.floor(Math.random() * 900000) + 100000}`
 				: `AMB-${Math.floor(Math.random() * 900000) + 100000}`;
 
+		const selectedRoom = dynamicRooms.find((r) => r.id === selectedRoomId) || null;
+		const derivedBedType =
+			mode === "booking"
+				? (
+					typeof selectedRoom?.room_type === "string" && selectedRoom.room_type.length > 0
+						? selectedRoom.room_type
+						: (typeof selectedRoomId === "string" && !isValidUUIDValue(selectedRoomId) ? selectedRoomId : bedType)
+				)
+				: null;
+		const pricingSnapshot =
+			estimatedCost && typeof estimatedCost === "object"
+				? {
+					...estimatedCost,
+					breakdown: Array.isArray(estimatedCost.breakdown)
+						? estimatedCost.breakdown.map((item) => ({ ...item }))
+						: [],
+					orgFee: estimatedCost.orgFee ? { ...estimatedCost.orgFee } : estimatedCost.orgFee,
+				}
+				: null;
+
 		const initiated =
 			mode === "booking"
 				? {
@@ -497,10 +773,11 @@ const EmergencyRequestModal = React.memo(({
 					serviceType: "bed",
 					specialty: selectedSpecialty ?? "Any",
 					bedCount,
-					bedType,
-					bedNumber: dynamicRooms.find(r => r.id === selectedRoomId)?.room_number || `B${Math.floor(Math.random() * 900) + 100}`,
+					bedType: derivedBedType || bedType,
+					bedNumber: selectedRoom?.room_number || `B${Math.floor(Math.random() * 900) + 100}`,
 					roomId: selectedRoomId,
 					paymentMethod: selectedPaymentMethod,
+					pricingSnapshot,
 				}
 				: {
 					requestId,
@@ -510,6 +787,7 @@ const EmergencyRequestModal = React.memo(({
 					serviceType: "ambulance",
 					specialty: selectedSpecialty ?? "Any",
 					paymentMethod: selectedPaymentMethod,
+					pricingSnapshot,
 				};
 
 
@@ -528,7 +806,6 @@ const EmergencyRequestModal = React.memo(({
 
 				// 🔑 CRITICAL: Capture the real UUID from the hook result
 				if (result?.requestId) {
-					console.log('[EmergencyRequestModal] ✅ Real ID received:', result.requestId, '(display:', initiated.requestId, ')');
 					initiated._realId = result.requestId;
 					initiated._displayId = result.displayId || initiated.requestId;
 				}
@@ -542,9 +819,9 @@ const EmergencyRequestModal = React.memo(({
 
 		// 💰 CASH APPROVAL GATE: If requires approval, enter waiting state
 		if (result?.requiresApproval) {
-			console.log('[EmergencyRequestModal] ⏳ Cash payment requires org approval. Entering waiting state.');
 			const realRequestId = initiated._realId || initiated.requestId;
 			setPendingApproval({
+				id: realRequestId,
 				requestId: realRequestId,
 				displayId: initiated._displayId || initiated.requestId,
 				paymentId: result.paymentId,
@@ -556,6 +833,8 @@ const EmergencyRequestModal = React.memo(({
 				bedCount: initiated.bedCount,
 				bedType: initiated.bedType,
 				bedNumber: initiated.bedNumber,
+				estimatedArrival: result?.estimatedArrival ?? null,
+				etaSeconds: Number.isFinite(result?.etaSeconds) ? result.etaSeconds : null,
 				initiatedData: initiated,
 			});
 			setRequestStep("waiting_approval");
@@ -1049,7 +1328,6 @@ const EmergencyRequestModal = React.memo(({
 						{/* Identity & Transaction Card (Alexander UI: Depth over Color) */}
 						<View style={[styles.transactionCard, {
 							backgroundColor: requestColors.card,
-							borderColor: requestColors.border,
 						}]}>
 							<BlurView intensity={isDarkMode ? 10 : 30} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
 
@@ -1381,20 +1659,22 @@ const styles = StyleSheet.create({
 	},
 	// Waiting Step Styles (Alexander UI)
 	waitingContainer: {
-		padding: 24,
-		gap: 32,
+		paddingHorizontal: 14,
+		paddingTop: 12,
+		paddingBottom: 8,
+		gap: 18,
 		alignItems: 'center',
 	},
 	waitingHeader: {
 		alignItems: 'center',
-		gap: 12,
+		gap: 8,
 	},
 	pulseContainer: {
 		width: 64,
 		height: 64,
 		alignItems: 'center',
 		justifyContent: 'center',
-		marginBottom: 16,
+		marginBottom: 8,
 	},
 	pulseCircle: {
 		position: 'absolute',
@@ -1409,8 +1689,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'center',
 		overflow: 'hidden',
-		borderWidth: 1,
-		borderColor: 'rgba(255, 149, 0, 0.3)',
+		borderWidth: 0,
 	},
 	waitingTitle: {
 		fontSize: 24,
@@ -1422,21 +1701,22 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		lineHeight: 22,
 		textAlign: 'center',
-		paddingHorizontal: 20,
+		paddingHorizontal: 8,
 		fontWeight: '500',
 	},
 	transactionCard: {
 		width: '100%',
 		borderRadius: 32,
-		padding: 32,
-		borderWidth: 1,
+		paddingHorizontal: 18,
+		paddingVertical: 16,
+		borderWidth: 0,
 		overflow: 'hidden',
-		gap: 24,
+		gap: 14,
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 20 },
-		shadowOpacity: 0.1,
-		shadowRadius: 30,
-		elevation: 10,
+		shadowOpacity: 0.06,
+		shadowRadius: 18,
+		elevation: 4,
 	},
 	transactionSection: {
 		gap: 4,
@@ -1449,9 +1729,9 @@ const styles = StyleSheet.create({
 		textTransform: 'uppercase',
 	},
 	transactionValue: {
-		fontSize: 20,
+		fontSize: 18,
 		fontWeight: '900',
-		letterSpacing: 1,
+		letterSpacing: 0.4,
 	},
 	transactionDivider: {
 		height: 1,
@@ -1466,7 +1746,7 @@ const styles = StyleSheet.create({
 		gap: 2,
 	},
 	transactionBriefValue: {
-		fontSize: 15,
+		fontSize: 14,
 		fontWeight: '700',
 	},
 	statusPillLarge: {
@@ -1474,8 +1754,8 @@ const styles = StyleSheet.create({
 		justifyContent: 'space-between',
 		alignItems: 'center',
 		backgroundColor: 'rgba(255, 149, 0, 0.1)',
-		paddingHorizontal: 16,
-		paddingVertical: 12,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
 		borderRadius: 16,
 	},
 	statusIndicator: {
@@ -1502,8 +1782,8 @@ const styles = StyleSheet.create({
 	},
 	waitingFooter: {
 		flexDirection: 'row',
-		gap: 12,
-		paddingHorizontal: 24,
+		gap: 10,
+		paddingHorizontal: 8,
 		alignItems: 'flex-start',
 		opacity: 0.8,
 	},
@@ -1515,3 +1795,4 @@ const styles = StyleSheet.create({
 });
 
 export default EmergencyRequestModal;
+

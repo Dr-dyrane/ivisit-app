@@ -24,13 +24,17 @@ export default function BedBookingOptions({
 	};
 
 	const BED_OPTIONS = rooms.length > 0
-		? rooms.map(room => ({
-			id: room.id,
-			name: `${room.room_type.replace('_', ' ').toUpperCase()} #${room.room_number}`,
-			description: room.features ? room.features.join(' • ') : "Professional Care • Clinical Environment",
-			icon: room.room_type.includes('vip') || room.room_type.includes('private') ? "home" : "bed-patient",
-			price: `$${room.base_price}`,
-		}))
+        ? rooms.map((room) => {
+            const roomTypeCode = String(room?.id || room?.room_type || "").toLowerCase();
+            const roomLabel = String(room?.room_label || room?.room_name || room?.room_type || "Room");
+            return {
+                id: room.id,
+                name: `${roomLabel.replace('_', ' ').toUpperCase()} #${room.room_number}`,
+                description: room.features ? room.features.join(' • ') : "Professional Care • Clinical Environment",
+                icon: roomTypeCode.includes('vip') || roomTypeCode.includes('private') ? "home" : "bed-patient",
+                price: `$${room.base_price}`,
+            };
+        })
 		: [
 			{
 				id: "standard",
@@ -57,7 +61,7 @@ export default function BedBookingOptions({
 			</View>
 
 			<View style={styles.optionsGrid}>
-				{BED_OPTIONS.map((option) => {
+				{BED_OPTIONS.map((option, index) => {
 					const isSelected = bedType === option.id;
 
 					// Dynamic Styles based on your logic
@@ -71,7 +75,7 @@ export default function BedBookingOptions({
 
 					return (
 						<Pressable
-							key={option.id}
+							key={`${String(option.id ?? "bed")}-${index}`}
 							onPress={() => handleBedTypeSelect(option.id)}
 							style={({ pressed }) => [
 								styles.optionCard,

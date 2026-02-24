@@ -72,6 +72,7 @@ export const emergencyRequestsService = {
                 const requests = rows.map((r) => ({
                     id: r.id,
                     requestId: r.display_id,
+                    displayId: r.display_id,
                     serviceType: r.service_type,
                     hospitalId: r.hospital_id,
                     hospitalName: r.hospital_name,
@@ -83,6 +84,9 @@ export const emergencyRequestsService = {
                     bedCount: r.bed_count,
                     estimatedArrival: r.estimated_arrival,
                     status: r.status,
+                    totalCost: r.total_cost,
+                    paymentStatus: r.payment_status,
+                    paymentMethodId: r.payment_method_id ?? r.payment_method ?? null,
                     patient: r.patient_snapshot,
                     shared: r.shared_data_snapshot,
                     createdAt: r.created_at,
@@ -96,7 +100,6 @@ export const emergencyRequestsService = {
                     patientLocation: r.patient_location,
                     patientHeading: r.patient_heading,
                 }));
-
                 await database.write(StorageKeys.EMERGENCY_REQUESTS, requests);
 
                 return requests;
@@ -335,14 +338,20 @@ export const emergencyRequestsService = {
 
     // REAL-TIME SUBSCRIPTIONS
     async subscribeToEmergencyUpdates(requestId, callback) {
+        const requestKey = String(requestId ?? "");
+        const requestIdIsUuid = isValidUUID(requestKey);
+        const filter = requestIdIsUuid
+            ? `id=eq.${requestKey}`
+            : `display_id=eq.${requestKey}`;
+
         const channel = supabase
-            .channel(`emergency_${requestId}`)
+            .channel(`emergency_${requestKey}`)
             .on('postgres_changes',
                 {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'emergency_requests',
-                    filter: `id=eq.${requestId}`
+                    filter
                 },
                 callback
             )
@@ -352,14 +361,15 @@ export const emergencyRequestsService = {
     },
 
     async subscribeToAmbulanceLocation(requestId, callback) {
+        const requestKey = String(requestId ?? "");
         const channel = supabase
-            .channel(`ambulance_location_${requestId}`)
+            .channel(`ambulance_location_${requestKey}`)
             .on('postgres_changes',
                 {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'ambulances',
-                    filter: `current_call=eq.${requestId}`
+                    filter: `current_call=eq.${requestKey}`
                 },
                 callback
             )

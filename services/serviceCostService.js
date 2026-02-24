@@ -13,8 +13,7 @@ export const serviceCostService = {
     try {
       const { data, error } = await supabase
         .from('service_pricing')
-        .select('*')
-        .eq('is_active', true);
+        .select('*');
 
       if (error) throw error;
       return data || [];
@@ -29,22 +28,22 @@ export const serviceCostService = {
    */
   async calculateEmergencyCost(serviceType, options = {}) {
     try {
-      const { distance = 0, isUrgent = false, hospitalId = null } = options;
+      const { distance = 0, hospitalId = null } = options;
+      const ambulanceType =
+        typeof options.ambulanceType === 'string' ? options.ambulanceType :
+          (typeof options.ambulanceId === 'string' && !/^[0-9a-f]{8}-/i.test(options.ambulanceId) ? options.ambulanceId : null);
 
       // Call the database function v2 (to avoid overload ambiguity)
       const { data, error } = await supabase
         .rpc('calculate_emergency_cost_v2', {
           p_service_type: serviceType,
-          p_distance: distance,
-          p_is_urgent: isUrgent,
           p_hospital_id: hospitalId,
-          p_ambulance_id: options.ambulanceId || null,
-          p_room_id: options.roomId || null
+          p_ambulance_type: ambulanceType,
+          p_distance_km: Number(distance) || 0
         });
 
       if (error) throw error;
-
-      return data[0];
+      return Array.isArray(data) ? data[0] : data;
     } catch (error) {
       console.error('Error calculating emergency cost:', error);
       return this.getMockCost(serviceType, options);

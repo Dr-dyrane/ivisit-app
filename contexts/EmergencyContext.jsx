@@ -213,8 +213,20 @@ export function EmergencyProvider({ children }) {
 
 	// Helper to parse PostGIS Point — handles both WKT and WKB hex formats
 	const parsePoint = (input) => {
-		if (!input || typeof input !== 'string') return null;
+		if (!input) return null;
 		try {
+			// Format 0: GeoJSON object ? { type: 'Point', coordinates: [lon, lat] }
+			if (typeof input === 'object' && Array.isArray(input.coordinates) && input.coordinates.length >= 2) {
+				const longitude = Number(input.coordinates[0]);
+				const latitude = Number(input.coordinates[1]);
+				if (Number.isFinite(longitude) && Number.isFinite(latitude)) {
+					return { longitude, latitude };
+				}
+				return null;
+			}
+
+			if (typeof input !== 'string') return null;
+
 			// Format 1: WKT — POINT(longitude latitude)
 			if (input.startsWith('POINT')) {
 				const matches = input.match(/POINT\(([-\d.]+) ([-\d.]+)\)/);
@@ -223,12 +235,8 @@ export function EmergencyProvider({ children }) {
 				}
 			}
 
-			// Format 2: GeoJSON object — { type: 'Point', coordinates: [lon, lat] }
-			if (typeof input === 'object' && input.coordinates) {
-				return { longitude: input.coordinates[0], latitude: input.coordinates[1] };
-			}
 
-			// Format 3: WKB Hex — e.g. "0101000020E610000079BB4DC0B23F5DC08A0A14EB67E04040"
+			// Format 2: WKB Hex — e.g. "0101000020E610000079BB4DC0B23F5DC08A0A14EB67E04040"
 			// Structure: byte_order(2) + type(8) + SRID(8) + X_double(16) + Y_double(16) = 50 chars min
 			if (/^[0-9a-fA-F]{40,}$/.test(input)) {
 				// Parse as little-endian WKB with SRID (byte order = 01)
@@ -278,10 +286,14 @@ export function EmergencyProvider({ children }) {
 					},
 					(payload) => {
 						const newRecord = payload.new;
+						const payloadDisplayId = newRecord?.display_id ?? newRecord?.request_id ?? null;
 						// console.log("Realtime Update:", newRecord.status, newRecord.id);
 
 						setActiveBedBooking((prev) => {
-							if (!prev || prev.requestId !== newRecord.request_id) return prev;
+							if (!prev) return prev;
+							if (prev.requestId !== payloadDisplayId) {
+								return prev;
+							}
 							if (newRecord.status === "completed" || newRecord.status === "cancelled" || newRecord.status === "payment_declined") {
 								return null;
 							}
@@ -300,7 +312,10 @@ export function EmergencyProvider({ children }) {
 						});
 
 						setActiveAmbulanceTrip((prev) => {
-							if (!prev || prev.requestId !== newRecord.request_id) return prev;
+							if (!prev) return prev;
+							if (prev.requestId !== payloadDisplayId) {
+								return prev;
+							}
 
 							if (newRecord.status === "completed" || newRecord.status === "cancelled" || newRecord.status === "payment_declined") {
 								// REMOVED: simulationService.stopSimulation();
@@ -467,8 +482,8 @@ export function EmergencyProvider({ children }) {
 					? Date.parse(activeAmbulance.createdAt)
 					: Date.now();
 				const etaSeconds = parseEtaToSeconds(activeAmbulance.estimatedArrival);
-
-				setActiveAmbulanceTrip({
+				const hydratedTrip = {
+					id: activeAmbulance.id ?? null,
 					hospitalId: activeAmbulance.hospitalId,
 					requestId: activeAmbulance.requestId,
 					status: activeAmbulance.status,
@@ -494,14 +509,16 @@ export function EmergencyProvider({ children }) {
 						: null,
 					currentResponderLocation: loc,
 					currentResponderHeading: activeAmbulance.responderHeading,
-				});
+				};
+
+				setActiveAmbulanceTrip(hydratedTrip);
 			}
 
 			if (activeBed) {
 				const startedAt = activeBed.createdAt ? Date.parse(activeBed.createdAt) : Date.now();
 				const etaSeconds = parseEtaToSeconds(activeBed.estimatedArrival);
-
-				setActiveBedBooking({
+				const hydratedBedBooking = {
+					id: activeBed.id ?? null,
 					hospitalId: activeBed.hospitalId,
 					requestId: activeBed.requestId,
 					status: activeBed.status,
@@ -513,22 +530,32 @@ export function EmergencyProvider({ children }) {
 					estimatedWait: activeBed.estimatedArrival ?? null,
 					etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
 					startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
-				});
+				};
+
+				setActiveBedBooking(hydratedBedBooking);
 			}
 
 			// HYDRATE PENDING APPROVALS
 			// If a request exists in 'pending_approval' status, it's a cash job waiting for hospital review
 			const pendingMatch = activeRequests.find(r => r?.status === 'pending_approval');
 			if (pendingMatch) {
+				const pendingEtaSeconds = parseEtaToSeconds(pendingMatch.estimatedArrival);
 				setPendingApproval({
+					id: pendingMatch.id ?? null,
 					requestId: pendingMatch.requestId,
-					displayId: pendingMatch.displayId,
+					displayId: pendingMatch.displayId ?? pendingMatch.requestId ?? null,
 					hospitalId: pendingMatch.hospitalId,
 					hospitalName: pendingMatch.hospitalName,
 					serviceType: pendingMatch.serviceType,
 					ambulanceType: pendingMatch.responderVehicleType, // Capture if ambulance
+					specialty: pendingMatch.specialty ?? null,
+					bedNumber: pendingMatch.bedNumber ?? null,
 					bedType: pendingMatch.bedType,
-					totalAmount: pendingMatch.totalCost,
+					bedCount: pendingMatch.bedCount ?? null,
+					totalAmount: pendingMatch.totalCost ?? null,
+					paymentStatus: pendingMatch.paymentStatus ?? null,
+					estimatedArrival: pendingMatch.estimatedArrival ?? null,
+					etaSeconds: Number.isFinite(pendingEtaSeconds) ? pendingEtaSeconds : null,
 				});
 			}
 		})();
@@ -663,6 +690,10 @@ export function EmergencyProvider({ children }) {
 			if (!trip?.hospitalId) return;
 			const etaSeconds =
 				Number.isFinite(trip?.etaSeconds) ? trip.etaSeconds : parseEtaToSeconds(trip?.estimatedArrival);
+			const explicitAssigned =
+				trip?.assignedAmbulance && typeof trip.assignedAmbulance === "object"
+					? trip.assignedAmbulance
+					: null;
 
 			const byId =
 				trip?.ambulanceId
@@ -677,9 +708,13 @@ export function EmergencyProvider({ children }) {
 				activeAmbulances[0] ??
 				null;
 
-			const assignedAmbulance = byId ?? byHospital ?? fallback;
+			const discoveredAssigned = byId ?? byHospital ?? fallback;
+			const assignedAmbulance = explicitAssigned
+				? { ...(discoveredAssigned || {}), ...explicitAssigned }
+				: discoveredAssigned;
 
 			setActiveAmbulanceTrip({
+				id: trip.id ?? null,
 				hospitalId: trip.hospitalId,
 				requestId: trip.requestId ?? null,
 				status: trip.status ?? null,
@@ -689,8 +724,15 @@ export function EmergencyProvider({ children }) {
 				etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
 				assignedAmbulance,
 				startedAt: Number.isFinite(trip?.startedAt) ? trip.startedAt : Date.now(),
+				currentResponderLocation:
+					trip?.currentResponderLocation ??
+					assignedAmbulance?.location ??
+					null,
+				currentResponderHeading:
+					Number.isFinite(trip?.currentResponderHeading)
+						? trip.currentResponderHeading
+						: (Number.isFinite(assignedAmbulance?.heading) ? assignedAmbulance.heading : null),
 			});
-
 			// REMOVED: simulationService.startSimulation(trip.requestId, trip.route);
 			// Real-time ambulance tracking handled by subscriptions
 		},
@@ -708,6 +750,24 @@ export function EmergencyProvider({ children }) {
 		});
 	}, []);
 
+	const patchActiveAmbulanceTrip = useCallback((updates) => {
+		if (!updates || typeof updates !== "object") return;
+		setActiveAmbulanceTrip((prev) => {
+			if (!prev) return prev;
+			return {
+				...prev,
+				...updates,
+				assignedAmbulance:
+					updates.assignedAmbulance && typeof updates.assignedAmbulance === "object"
+						? {
+							...(prev.assignedAmbulance || {}),
+							...updates.assignedAmbulance,
+						}
+						: prev.assignedAmbulance,
+			};
+		});
+	}, []);
+
 	const startBedBooking = useCallback(
 		(booking) => {
 			if (!booking?.hospitalId) return;
@@ -720,6 +780,7 @@ export function EmergencyProvider({ children }) {
 					: parseEtaToSeconds(booking?.estimatedWait ?? booking?.estimatedArrival);
 
 			setActiveBedBooking({
+				id: booking.id ?? null,
 				hospitalId: booking.hospitalId,
 				bookingId: booking.bookingId ?? booking.requestId ?? null,
 				requestId: booking.requestId ?? booking.bookingId ?? null,
@@ -809,7 +870,9 @@ export function EmergencyProvider({ children }) {
 
 	// REAL-TIME SUBSCRIPTIONS
 	useEffect(() => {
-		if (!activeAmbulanceTrip?.requestId) return;
+		const emergencyRequestSubscriptionKey =
+			activeAmbulanceTrip?.id ?? activeAmbulanceTrip?.requestId ?? null;
+		if (!emergencyRequestSubscriptionKey) return;
 
 		let unsubscribeEmergency = null;
 		let unsubscribeAmbulance = null;
@@ -817,7 +880,7 @@ export function EmergencyProvider({ children }) {
 		const setupSubscriptions = async () => {
 			try {
 				unsubscribeEmergency = await emergencyRequestsService.subscribeToEmergencyUpdates(
-					activeAmbulanceTrip.requestId,
+					emergencyRequestSubscriptionKey,
 					(payload) => {
 						if (payload.new) {
 							setAmbulanceTripStatus(payload.new.status);
@@ -826,16 +889,11 @@ export function EmergencyProvider({ children }) {
 				);
 
 				unsubscribeAmbulance = await emergencyRequestsService.subscribeToAmbulanceLocation(
-					activeAmbulanceTrip.requestId,
+					emergencyRequestSubscriptionKey,
 					(payload) => {
 						if (payload.new?.location) {
-							const loc = payload.new.location; // POINT(-116.9730 33.7475)
-							const match = loc.match(/POINT\(([-\d.]+) ([\d.]+)\)/);
-							if (match) {
-								const coords = {
-									longitude: parseFloat(match[1]),
-									latitude: parseFloat(match[2])
-								};
+							const coords = parsePoint(payload.new.location);
+							if (coords) {
 
 								setActiveAmbulanceTrip(prev => {
 									if (!prev) return prev;
@@ -867,7 +925,7 @@ export function EmergencyProvider({ children }) {
 				unsubscribeAmbulance();
 			}
 		};
-	}, [activeAmbulanceTrip?.requestId]);
+	}, [activeAmbulanceTrip?.id, activeAmbulanceTrip?.requestId]);
 
 	useEffect(() => {
 		if (!activeBedBooking?.hospitalId) return;
@@ -880,7 +938,6 @@ export function EmergencyProvider({ children }) {
 					activeBedBooking.hospitalId,
 					(payload) => {
 						if (payload.new) {
-							console.log('[EmergencyContext] Hospital beds updated:', payload.new.available_beds);
 							// Update hospital bed count in real-time
 							updateHospitals(hospitals.map(h =>
 								h.id === payload.new.id
@@ -933,6 +990,7 @@ export function EmergencyProvider({ children }) {
 			startAmbulanceTrip,
 			stopAmbulanceTrip,
 			setAmbulanceTripStatus,
+			patchActiveAmbulanceTrip,
 			startBedBooking,
 			stopBedBooking,
 			setBedBookingStatus,
@@ -963,6 +1021,7 @@ export function EmergencyProvider({ children }) {
 			startAmbulanceTrip,
 			stopAmbulanceTrip,
 			setAmbulanceTripStatus,
+			patchActiveAmbulanceTrip,
 			startBedBooking,
 			stopBedBooking,
 			setBedBookingStatus,
