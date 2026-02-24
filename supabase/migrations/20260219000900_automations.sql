@@ -205,6 +205,7 @@ BEGIN
             UPDATE public.ambulances
             SET status = 'on_trip',
                 current_call = NEW.id,
+                eta = COALESCE(NEW.estimated_arrival, eta),
                 updated_at = NOW()
             WHERE id = v_amb_id;
         END IF;
@@ -234,13 +235,17 @@ BEGIN
         IF (NEW.status IN ('accepted', 'arrived', 'in_progress')) THEN
             -- Only set on_trip if ambulance is in a transitional state (not already on_trip)
             IF v_current_amb_status IN ('available', 'dispatched', 'en_route', 'on_scene') THEN
-                UPDATE public.ambulances SET status = 'on_trip', updated_at = NOW() WHERE id = NEW.ambulance_id;
+                UPDATE public.ambulances
+                SET status = 'on_trip',
+                    eta = COALESCE(NEW.estimated_arrival, eta),
+                    updated_at = NOW()
+                WHERE id = NEW.ambulance_id;
             END IF;
         ELSIF (NEW.status IN ('completed', 'cancelled', 'payment_declined')) THEN
             -- Return ambulance to available pool
             IF v_current_amb_status NOT IN ('available', 'offline', 'maintenance') THEN
                 UPDATE public.ambulances 
-                SET status = 'available', current_call = NULL, updated_at = NOW() 
+                SET status = 'available', current_call = NULL, eta = NULL, updated_at = NOW() 
                 WHERE id = NEW.ambulance_id;
             END IF;
         END IF;

@@ -261,9 +261,14 @@ const FullScreenEmergencyMap = forwardRef(
 			}, 420);
 		}, [routeCoordinates.length, selectedHospitalId, userLocation, isMapReadyState]);
 
+		const animatedRouteCoordinates = useMemo(
+			() => (animateAmbulance ? [...routeCoordinates].reverse() : []),
+			[animateAmbulance, routeCoordinates]
+		);
+
 		// Ambulance Animation logic
 		const { ambulanceCoordinate, ambulanceHeading } = useAmbulanceAnimation({
-			routeCoordinates: animateAmbulance ? [...routeCoordinates].reverse() : [],
+			routeCoordinates: animatedRouteCoordinates,
 			animateAmbulance,
 			ambulanceTripEtaSeconds: ambulanceTripEtaSeconds || (routeInfo?.durationSec || 600),
 			responderLocation,
