@@ -134,8 +134,8 @@ export default function ThemeToggle() {
 		collapse();
 	};
 
-	// Skip rendering if not mounted yet or on Android
-	if (!mounted || Platform.OS === "android") return null;
+	// Skip rendering until delayed mount is complete
+	if (!mounted) return null;
 
 	// Platform-specific background
 	const getBgColor = () => {
