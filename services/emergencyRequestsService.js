@@ -47,6 +47,22 @@ const parsePointInput = (value) => {
     return null;
 };
 
+const resolveOwnedRequestUuid = async (requestKey, userId) => {
+    if (isValidUUID(requestKey)) {
+        return requestKey;
+    }
+
+    const { data, error } = await supabase
+        .from('emergency_requests')
+        .select('id')
+        .eq('display_id', requestKey)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (error) throw error;
+    return data?.id ?? null;
+};
+
 export const emergencyRequestsService = {
     async list() {
         const { data: { user } } = await supabase.auth.getUser();
@@ -210,68 +226,45 @@ export const emergencyRequestsService = {
         const requestId = String(id);
         const nextUpdatedAt = new Date().toISOString();
 
-        // Detect if this is a real UUID or a display ID (e.g., AMB-449811)
-        const isUUID = isValidUUID(requestId);
-
         if (user) {
-            const dbUpdates = { updated_at: nextUpdatedAt };
-            if (updates.status) dbUpdates.status = updates.status;
-            if (updates.hospitalId !== undefined) dbUpdates.hospital_id = updates.hospitalId;
-            if (updates.hospitalName !== undefined) dbUpdates.hospital_name = updates.hospitalName;
-            if (updates.specialty !== undefined) dbUpdates.specialty = updates.specialty;
-            if (updates.ambulanceType !== undefined) dbUpdates.ambulance_type = updates.ambulanceType;
-            if (updates.ambulanceId !== undefined) dbUpdates.ambulance_id = updates.ambulanceId;
-            if (updates.bedNumber !== undefined) dbUpdates.bed_number = updates.bedNumber;
-            if (updates.patientLocation !== undefined) dbUpdates.patient_location = updates.patientLocation;
-            if (updates.paymentStatus !== undefined) dbUpdates.payment_status = updates.paymentStatus;
-            if (updates.totalCost !== undefined) dbUpdates.total_cost = updates.totalCost;
+            const resolvedRequestId = await resolveOwnedRequestUuid(requestId, user.id);
+            if (!resolvedRequestId) {
+                console.warn(`[emergencyRequestsService] No matching emergency request for update: ${requestId}`);
+                return { id: requestId, ...updates, updatedAt: nextUpdatedAt };
+            }
 
-            if (isUUID) {
-                // Try by UUID primary key first
-                const { error, data } = await supabase
-                    .from('emergency_requests')
-                    .update(dbUpdates)
-                    .eq('id', requestId)
-                    .eq('user_id', user.id)
-                    .select();
+            const rpcPayload = {};
+            if (updates.status !== undefined) {
+                rpcPayload.status = updates.status;
+            }
+            if (updates.patientLocation !== undefined) {
+                rpcPayload.patient_location = parsePointInput(updates.patientLocation) || updates.patientLocation;
+            }
+
+            if (Object.keys(rpcPayload).length > 0) {
+                const { data, error } = await supabase.rpc('patient_update_emergency_request', {
+                    p_request_id: resolvedRequestId,
+                    p_payload: rpcPayload
+                });
 
                 if (error) {
-                    console.error(`[emergencyRequestsService] Update failed for UUID ${requestId}:`, error);
+                    console.error(`[emergencyRequestsService] RPC update failed for ${requestId}:`, error);
                     throw error;
                 }
-                if (data && data.length > 0) return { id: requestId, ...updates, updatedAt: nextUpdatedAt };
+                if (!data?.success || !data?.request) {
+                    throw new Error(data?.error || 'Emergency update failed');
+                }
             }
 
-            // Fallback: try by display_id (TEXT type)
-            console.log(`[emergencyRequestsService] Trying update by display_id: ${requestId}`);
-            const { error: error2, data: data2 } = await supabase
-                .from('emergency_requests')
-                .update(dbUpdates)
-                .eq('display_id', requestId)
-                .eq('user_id', user.id)
-                .select();
-
-            if (error2) {
-                console.error(`[emergencyRequestsService] Update by request_id also failed for ${requestId}:`, error2);
-                throw error2;
-            }
-            if (data2 && data2.length > 0) {
-                console.log(`[emergencyRequestsService] ✅ Updated via request_id: ${requestId}`);
-            } else {
-                console.warn(`[emergencyRequestsService] No rows matched for ${requestId} (neither id nor request_id)`);
-            }
+            return { id: resolvedRequestId, ...updates, updatedAt: nextUpdatedAt };
         }
 
-        if (!user) {
-            const item = await database.updateOne(
-                StorageKeys.EMERGENCY_REQUESTS,
-                (r) => String(r?.id ?? r?.requestId) === requestId,
-                { ...updates, updatedAt: nextUpdatedAt }
-            );
-            return item;
-        }
-
-        return { id: requestId, ...updates, updatedAt: nextUpdatedAt };
+        const item = await database.updateOne(
+            StorageKeys.EMERGENCY_REQUESTS,
+            (r) => String(r?.id ?? r?.requestId) === requestId,
+            { ...updates, updatedAt: nextUpdatedAt }
+        );
+        return item;
     },
 
     /**
@@ -281,21 +274,22 @@ export const emergencyRequestsService = {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return; // Only sync location if logged in
 
-        const { error } = await supabase
-            .from('emergency_requests')
-            .update({
-                patient_location: location, // Expects PostGIS point or compatible format if using raw SQL, but JS client handles basic objects often? 
-                // Actually, Supabase JS client usually needs `st_point(lon, lat)` via RPC or a specific format.
-                // However, if the column is geography, sending a GeoJSON object often works:
-                // { type: 'Point', coordinates: [lon, lat] }
-                patient_heading: heading,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', id)
-            .eq('user_id', user.id);
+        void heading;
 
-        if (error) {
-            // console.warn("Failed to update patient location:", error);
+        const requestId = String(id);
+        const resolvedRequestId = await resolveOwnedRequestUuid(requestId, user.id);
+        if (!resolvedRequestId) return;
+
+        const normalizedLocation = parsePointInput(location) || location;
+        const { error, data } = await supabase.rpc('patient_update_emergency_request', {
+            p_request_id: resolvedRequestId,
+            p_payload: {
+                patient_location: normalizedLocation
+            }
+        });
+
+        if (error || !data?.success) {
+            // console.warn("Failed to update patient location:", error || data?.error);
         }
     },
 
@@ -432,3 +426,4 @@ export const emergencyRequestsService = {
         }
     },
 };
+

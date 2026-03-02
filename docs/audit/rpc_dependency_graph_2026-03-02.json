@@ -1,0 +1,1081 @@
+﻿{
+    "generated_at_utc":  "2026-03-02T18:20:47.2876468Z",
+    "runtime_rpc_rows":  [
+                             {
+                                 "rpc":  "admin_update_trending_topics",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/analyticsAutomationService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/analyticsAutomationService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "approve_cash_payment",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  5,
+                                 "prod_caller_count":  2,
+                                 "callers":  [
+                                                 "ivisit-app:services/paymentService.js",
+                                                 "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+                                                 "ivisit-console:frontend/src/services/emergencyService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/paymentService.js",
+                                                      "ivisit-console:frontend/src/services/emergencyService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "ambulances",
+                                                                         "emergency_requests",
+                                                                         "ivisit_main_wallet",
+                                                                         "Org",
+                                                                         "organization_wallets",
+                                                                         "payments",
+                                                                         "profiles",
+                                                                         "seeing",
+                                                                         "v_assigned_ambulance_id",
+                                                                         "v_conflict",
+                                                                         "v_org_wallet_id",
+                                                                         "v_payment",
+                                                                         "v_platform_wallet_id",
+                                                                         "v_request",
+                                                                         "v_request_service_type",
+                                                                         "visits",
+                                                                         "wallet_ledger"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "assign_ambulance_to_emergency",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_ecosystem.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "ambulances",
+                                                                         "emergency_requests",
+                                                                         "v_ambulance_status"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "calculate_emergency_cost_v2",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  2,
+                                 "callers":  [
+                                                 "ivisit-app:services/pricingService.js",
+                                                 "ivisit-app:services/serviceCostService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/pricingService.js",
+                                                      "ivisit-app:services/serviceCostService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "hospitals",
+                                                                         "service_pricing",
+                                                                         "v_admin_service_price",
+                                                                         "v_hospital_base_price",
+                                                                         "v_hospital_service_price"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "cancel_bed_reservation",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/bedManagementService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/bedManagementService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "emergency_requests"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "cancel_trip",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/driverManagementService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/driverManagementService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "emergency_requests"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "check_cash_eligibility",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/walletService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/walletService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "organization_wallets",
+                                                                         "organizations",
+                                                                         "v_balance",
+                                                                         "v_fee_pct"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "complete_trip",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/driverManagementService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/driverManagementService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "emergency_requests"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "create_emergency_v4",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  7,
+                                 "prod_caller_count":  2,
+                                 "callers":  [
+                                                 "ivisit-app:services/emergencyRequestsService.js",
+                                                 "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_comprehensive_system.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js",
+                                                 "ivisit-console:frontend/src/services/emergencyService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/emergencyRequestsService.js",
+                                                      "ivisit-console:frontend/src/services/emergencyService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "emergency_requests",
+                                                                         "hospitals",
+                                                                         "payments",
+                                                                         "v_conflict",
+                                                                         "v_organization_id",
+                                                                         "v_payment_id",
+                                                                         "v_request_id",
+                                                                         "v_visit_id",
+                                                                         "visits"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "create_emergency_with_payment",
+                                 "exists_in_live_public_schema":  false,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+                                                 "ivisit-console:frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+
+                                                                     ],
+                                 "migration_definition_found":  false
+                             },
+                             {
+                                 "rpc":  "current_user_is_admin",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  2,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/adminService.js",
+                                                 "ivisit-console:frontend/src/services/profilesService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/adminService.js",
+                                                      "ivisit-console:frontend/src/services/profilesService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "profiles"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "current_user_permission_level",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/adminService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/adminService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "profiles",
+                                                                         "v_role"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "decline_cash_payment",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  2,
+                                 "callers":  [
+                                                 "ivisit-app:services/paymentService.js",
+                                                 "ivisit-console:frontend/src/services/emergencyService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/paymentService.js",
+                                                      "ivisit-console:frontend/src/services/emergencyService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "emergency_requests",
+                                                                         "payments",
+                                                                         "visits"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "delete_hospital_by_admin",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/components/pages/HospitalsPage.jsx"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/components/pages/HospitalsPage.jsx"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "hospitals"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "delete_room_pricing",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/pricingService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/pricingService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "room_pricing"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "delete_service_pricing",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/pricingService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/pricingService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "service_pricing"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "delete_user",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:services/authService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/authService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "profiles"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "delete_user_by_admin",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/components/pages/UsersPage.jsx"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/components/pages/UsersPage.jsx"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "auth",
+                                                                         "profiles"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "discharge_patient",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+                                                 "ivisit-console:frontend/src/services/bedManagementService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/bedManagementService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "emergency_requests"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "exec_sql",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  6,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:scripts/check_remote_sync.js",
+                                                 "ivisit-app:supabase/tests/scripts/apply_schema_fixes.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_helper.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js",
+                                                 "ivisit-console:frontend/scripts/run-migrations.js",
+                                                 "ivisit-console:frontend/src/utils/runMigrations.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/utils/runMigrations.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "function_exists",
+                                 "exists_in_live_public_schema":  false,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_helper.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+
+                                                                     ],
+                                 "migration_definition_found":  false
+                             },
+                             {
+                                 "rpc":  "get_activity_stats",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/verify_platform_setup.js",
+                                                 "ivisit-console:frontend/src/services/activityService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/activityService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "user_activity",
+                                                                         "v_result"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "get_all_auth_users",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/profilesService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/profilesService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "auth",
+                                                                         "profiles"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "get_ambulance_status",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "ambulances",
+                                                                         "v_ambulance_data"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "get_available_ambulances",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "ambulances"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "get_entity_id",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  5,
+                                 "prod_caller_count":  4,
+                                 "callers":  [
+                                                 "ivisit-app:services/displayIdService.js",
+                                                 "ivisit-app:supabase/functions/payments/create-payment-intent/index.ts",
+                                                 "ivisit-app:supabase/functions/payments/manage-payment-methods/index.ts",
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js",
+                                                 "ivisit-console:frontend/src/services/displayIdService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/displayIdService.js",
+                                                      "ivisit-app:supabase/functions/payments/create-payment-intent/index.ts",
+                                                      "ivisit-app:supabase/functions/payments/manage-payment-methods/index.ts",
+                                                      "ivisit-console:frontend/src/services/displayIdService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "ambulances",
+                                                                         "emergency_requests",
+                                                                         "hospitals",
+                                                                         "id_mappings",
+                                                                         "notifications",
+                                                                         "organization_wallets",
+                                                                         "organizations",
+                                                                         "patient_wallets",
+                                                                         "payments",
+                                                                         "profiles",
+                                                                         "v_id",
+                                                                         "visits"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "get_insurance_policies",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "insurance_policies",
+                                                                         "v_policies"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "get_medical_summary",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "medical_profiles",
+                                                                         "v_medical_profile"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "get_org_stripe_status",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/walletService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/walletService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "organization_wallets",
+                                                                         "organizations",
+                                                                         "v_balance",
+                                                                         "v_stripe_id"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "get_recent_activity",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/verify_platform_setup.js",
+                                                 "ivisit-console:frontend/src/services/activityService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/activityService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "user_activity"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "get_search_analytics",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/searchAnalyticsService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/searchAnalyticsService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "query_stats",
+                                                                         "search_history"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "get_search_analytics_summary",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/searchAnalyticsService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/searchAnalyticsService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "search_history",
+                                                                         "stats",
+                                                                         "top"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "get_system_stats",
+                                 "exists_in_live_public_schema":  false,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+                                                 "ivisit-console:frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+
+                                                                     ],
+                                 "migration_definition_found":  false
+                             },
+                             {
+                                 "rpc":  "get_table_structure",
+                                 "exists_in_live_public_schema":  false,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_helper.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+
+                                                                     ],
+                                 "migration_definition_found":  false
+                             },
+                             {
+                                 "rpc":  "get_trending_searches",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  3,
+                                 "prod_caller_count":  2,
+                                 "callers":  [
+                                                 "ivisit-app:scripts/debug_rpc.js",
+                                                 "ivisit-app:services/discoveryService.js",
+                                                 "ivisit-console:frontend/src/services/searchService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/discoveryService.js",
+                                                      "ivisit-console:frontend/src/services/searchService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "trending_topics"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "get_user_statistics",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  3,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+                                                 "ivisit-console:frontend/src/services/profilesService.js",
+                                                 "ivisit-console:frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/profilesService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "auth",
+                                                                         "profiles"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "is_admin",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  4,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js",
+                                                 "ivisit-console:frontend/src/services/searchAnalyticsService.js",
+                                                 "ivisit-console:frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/searchAnalyticsService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "log_user_activity",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  3,
+                                 "prod_caller_count":  3,
+                                 "callers":  [
+                                                 "ivisit-app:services/supabaseHelpers.js",
+                                                 "ivisit-console:frontend/src/services/activityService.js",
+                                                 "ivisit-console:frontend/src/services/supabaseHelpers.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/supabaseHelpers.js",
+                                                      "ivisit-console:frontend/src/services/activityService.js",
+                                                      "ivisit-console:frontend/src/services/supabaseHelpers.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "user_activity",
+                                                                         "v_id"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "nearby_ambulances",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "ambulances"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "nearby_hospitals",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  6,
+                                 "prod_caller_count":  4,
+                                 "callers":  [
+                                                 "ivisit-app:services/hospitalsService.js",
+                                                 "ivisit-app:supabase/functions/discovery/discover-hospitals/index.ts",
+                                                 "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js",
+                                                 "ivisit-console:frontend/src/services/hospitalImportService.js",
+                                                 "ivisit-console:frontend/src/services/supabaseMapService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/hospitalsService.js",
+                                                      "ivisit-app:supabase/functions/discovery/discover-hospitals/index.ts",
+                                                      "ivisit-console:frontend/src/services/hospitalImportService.js",
+                                                      "ivisit-console:frontend/src/services/supabaseMapService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "hospitals"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "notify_cash_approval_org_admins",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:services/notificationDispatcher.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/notificationDispatcher.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "emergency_requests",
+                                                                         "hospitals",
+                                                                         "notifications",
+                                                                         "profiles",
+                                                                         "v_req"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "process_cash_payment",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/walletService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/walletService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "process_cash_payment_v2",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:services/paymentService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/paymentService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "emergency_requests",
+                                                                         "organizations",
+                                                                         "payments",
+                                                                         "v_fee_percentage",
+                                                                         "v_payment_id",
+                                                                         "v_user_id"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "process_wallet_payment",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:services/paymentService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/paymentService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "patient_wallets",
+                                                                         "payments",
+                                                                         "v_balance",
+                                                                         "v_payment_id",
+                                                                         "v_wallet_id",
+                                                                         "wallet_ledger"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "reload_schema",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  3,
+                                 "prod_caller_count":  2,
+                                 "callers":  [
+                                                 "ivisit-app:services/appMigrationsService.js",
+                                                 "ivisit-app:services/seederService.js",
+                                                 "ivisit-app:supabase/tests/scripts/check_db.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/appMigrationsService.js",
+                                                      "ivisit-app:services/seederService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "search_auth_users",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/profilesService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/profilesService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "auth"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "update_ambulance_location",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "ambulance",
+                                                                         "ambulances",
+                                                                         "v_ambulance_status"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "update_hospital_availability",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:services/realtimeAvailabilityService.js",
+                                                 "ivisit-app:supabase/tests/scripts/test_ecosystem.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-app:services/realtimeAvailabilityService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "hospitals"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "update_hospital_by_admin",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/hospitalsService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/hospitalsService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "hospitals",
+                                                                         "jsonb_array_elements_text",
+                                                                         "v_features",
+                                                                         "v_service_types",
+                                                                         "v_specialties"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "update_profile_by_admin",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/profilesService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/profilesService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "profiles"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "update_trending_topics_from_search",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-console:frontend/src/services/analyticsAutomationService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/analyticsAutomationService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "upsert_room_pricing",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+                                                 "ivisit-console:frontend/src/services/pricingService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/pricingService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "room_pricing",
+                                                                         "SET"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "upsert_service_pricing",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  2,
+                                 "prod_caller_count":  1,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+                                                 "ivisit-console:frontend/src/services/pricingService.js"
+                                             ],
+                                 "prod_callers":  [
+                                                      "ivisit-console:frontend/src/services/pricingService.js"
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "service_pricing",
+                                                                         "SET"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "validate_emergency_request",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "emergency_requests",
+                                                                         "hospitals",
+                                                                         "v_conflict",
+                                                                         "v_hospital_available"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "validate_insurance_coverage",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "insurance_network",
+                                                                         "insurance_policies",
+                                                                         "v_active_policy"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "validate_medical_profile",
+                                 "exists_in_live_public_schema":  true,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+
+                                                                     ],
+                                 "migration_definition_found":  true
+                             },
+                             {
+                                 "rpc":  "validate_payment_method",
+                                 "exists_in_live_public_schema":  false,
+                                 "caller_count":  1,
+                                 "prod_caller_count":  0,
+                                 "callers":  [
+                                                 "ivisit-app:supabase/tests/scripts/test_runner.js"
+                                             ],
+                                 "prod_callers":  [
+
+                                                  ],
+                                 "inferred_tables_from_migrations":  [
+                                                                         "payment_methods",
+                                                                         "v_is_active",
+                                                                         "v_method_exists"
+                                                                     ],
+                                 "migration_definition_found":  true
+                             }
+                         ],
+    "unresolved_runtime_rpcs":  [
+                                    "create_emergency_with_payment",
+                                    "function_exists",
+                                    "get_system_stats",
+                                    "get_table_structure",
+                                    "validate_payment_method"
+                                ],
+    "unresolved_runtime_rpcs_prod":  [
+
+                                     ]
+}

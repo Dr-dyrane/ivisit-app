@@ -1,0 +1,53 @@
+﻿{
+    "generated_at_utc":  "2026-03-02T18:21:29.4022278Z",
+    "duplicate_trigger_groups":  [
+                                     {
+                                         "schema":  "public",
+                                         "table":  "notifications",
+                                         "event":  "INSERT",
+                                         "timing":  "BEFORE",
+                                         "action":  "EXECUTE FUNCTION stamp_entity_display_id()",
+                                         "duplicate_count":  2,
+                                         "trigger_names":  [
+                                                               "stamp_notification_display_id",
+                                                               "stamp_ntf_display_id"
+                                                           ]
+                                     },
+                                     {
+                                         "schema":  "public",
+                                         "table":  "organization_wallets",
+                                         "event":  "INSERT",
+                                         "timing":  "BEFORE",
+                                         "action":  "EXECUTE FUNCTION stamp_entity_display_id()",
+                                         "duplicate_count":  2,
+                                         "trigger_names":  [
+                                                               "stamp_org_wallet_display_id",
+                                                               "stamp_organization_wallet_display_id"
+                                                           ]
+                                     },
+                                     {
+                                         "schema":  "public",
+                                         "table":  "patient_wallets",
+                                         "event":  "INSERT",
+                                         "timing":  "BEFORE",
+                                         "action":  "EXECUTE FUNCTION stamp_entity_display_id()",
+                                         "duplicate_count":  2,
+                                         "trigger_names":  [
+                                                               "stamp_pat_wallet_display_id",
+                                                               "stamp_patient_wallet_display_id"
+                                                           ]
+                                     },
+                                     {
+                                         "schema":  "public",
+                                         "table":  "payments",
+                                         "event":  "INSERT",
+                                         "timing":  "BEFORE",
+                                         "action":  "EXECUTE FUNCTION stamp_entity_display_id()",
+                                         "duplicate_count":  2,
+                                         "trigger_names":  [
+                                                               "stamp_pay_display_id",
+                                                               "stamp_payment_display_id"
+                                                           ]
+                                     }
+                                 ]
+}

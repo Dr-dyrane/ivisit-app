@@ -43,6 +43,7 @@ import SetPasswordCard from "./SetPasswordCard";
 import ForgotPasswordCard from "./ForgotPasswordCard";
 import ResetPasswordCard from "./ResetPasswordCard";
 import SmartContactInput from "../auth/SmartContactInput";
+import { isValidPassword } from "../../utils/validation";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 

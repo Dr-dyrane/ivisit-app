@@ -4,6 +4,13 @@ import { supabase } from './supabase';
  * Discovery Service
  * Handles Trending topics and Health News from Supabase
  */
+const isMissingRelationError = (error, relationName) => {
+	if (!error) return false;
+	if (error.code === '42P01') return true;
+	const message = String(error.message || '').toLowerCase();
+	return message.includes(relationName.toLowerCase()) && message.includes('does not exist');
+};
+
 export const discoveryService = {
 	/**
 	 * Get trending searches from console (via Supabase RPC)
@@ -47,13 +54,31 @@ export const discoveryService = {
 	 */
 	trackSearchSelection: async ({ query, source = 'search_screen', resultType, resultId }) => {
 		try {
-			const { error } = await supabase.from('search_selections').insert({
+			const payload = {
 				query: typeof query === "string" ? query.toLowerCase() : null,
 				source: source,
 				result_type: resultType,
 				result_id: resultId,
 				created_at: new Date().toISOString(),
-			});
+			};
+
+			const { error } = await supabase.from('search_selections').insert(payload);
+
+			if (error && isMissingRelationError(error, 'search_selections')) {
+				// Live schema no longer includes search_selections; keep analytics via search_events.
+				const { error: fallbackError } = await supabase.from('search_events').insert({
+					query: payload.query,
+					source: payload.source,
+					selected_key: payload.result_id,
+					extra: {
+						result_type: payload.result_type,
+						origin: 'search_selection_fallback',
+					},
+				});
+
+				if (fallbackError) throw fallbackError;
+				return true;
+			}
 
 			if (error) throw error;
 			return true;

@@ -1,0 +1,235 @@
+﻿{
+    "generated_at_utc":  "2026-03-02T18:19:59.0889263Z",
+    "table_grant_summary":  [
+                                {
+                                    "grantee":  "anon",
+                                    "privilege_type":  "DELETE",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "anon",
+                                    "privilege_type":  "INSERT",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "anon",
+                                    "privilege_type":  "REFERENCES",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "anon",
+                                    "privilege_type":  "SELECT",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "anon",
+                                    "privilege_type":  "TRIGGER",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "anon",
+                                    "privilege_type":  "TRUNCATE",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "anon",
+                                    "privilege_type":  "UPDATE",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "authenticated",
+                                    "privilege_type":  "DELETE",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "authenticated",
+                                    "privilege_type":  "INSERT",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "authenticated",
+                                    "privilege_type":  "REFERENCES",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "authenticated",
+                                    "privilege_type":  "SELECT",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "authenticated",
+                                    "privilege_type":  "TRIGGER",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "authenticated",
+                                    "privilege_type":  "TRUNCATE",
+                                    "table_count":  40
+                                },
+                                {
+                                    "grantee":  "authenticated",
+                                    "privilege_type":  "UPDATE",
+                                    "table_count":  40
+                                }
+                            ],
+    "public_tables_with_write_grants_for_anon":  [
+                                                     "access_requests",
+                                                     "admin_audit_log",
+                                                     "ambulances",
+                                                     "doctor_schedules",
+                                                     "doctors",
+                                                     "document_invites",
+                                                     "documents",
+                                                     "emergency_doctor_assignments",
+                                                     "emergency_requests",
+                                                     "geography_columns",
+                                                     "geometry_columns",
+                                                     "health_news",
+                                                     "hospitals",
+                                                     "id_mappings",
+                                                     "insurance_billing",
+                                                     "insurance_policies",
+                                                     "ivisit_main_wallet",
+                                                     "medical_profiles",
+                                                     "notifications",
+                                                     "organization_wallets",
+                                                     "organizations",
+                                                     "patient_wallets",
+                                                     "payment_methods",
+                                                     "payments",
+                                                     "preferences",
+                                                     "profiles",
+                                                     "room_pricing",
+                                                     "search_events",
+                                                     "search_history",
+                                                     "service_pricing",
+                                                     "spatial_ref_sys",
+                                                     "subscribers",
+                                                     "support_faqs",
+                                                     "support_tickets",
+                                                     "trending_topics",
+                                                     "user_activity",
+                                                     "user_roles",
+                                                     "user_sessions",
+                                                     "visits",
+                                                     "wallet_ledger"
+                                                 ],
+    "public_tables_with_write_grants_for_authenticated":  [
+                                                              "access_requests",
+                                                              "admin_audit_log",
+                                                              "ambulances",
+                                                              "doctor_schedules",
+                                                              "doctors",
+                                                              "document_invites",
+                                                              "documents",
+                                                              "emergency_doctor_assignments",
+                                                              "emergency_requests",
+                                                              "geography_columns",
+                                                              "geometry_columns",
+                                                              "health_news",
+                                                              "hospitals",
+                                                              "id_mappings",
+                                                              "insurance_billing",
+                                                              "insurance_policies",
+                                                              "ivisit_main_wallet",
+                                                              "medical_profiles",
+                                                              "notifications",
+                                                              "organization_wallets",
+                                                              "organizations",
+                                                              "patient_wallets",
+                                                              "payment_methods",
+                                                              "payments",
+                                                              "preferences",
+                                                              "profiles",
+                                                              "room_pricing",
+                                                              "search_events",
+                                                              "search_history",
+                                                              "service_pricing",
+                                                              "spatial_ref_sys",
+                                                              "subscribers",
+                                                              "support_faqs",
+                                                              "support_tickets",
+                                                              "trending_topics",
+                                                              "user_activity",
+                                                              "user_roles",
+                                                              "user_sessions",
+                                                              "visits",
+                                                              "wallet_ledger"
+                                                          ],
+    "public_security_definer_routines_count":  82,
+    "security_definer_execute_grants":  [
+                                            {
+                                                "grantee":  "PUBLIC",
+                                                "routine_count":  81
+                                            },
+                                            {
+                                                "grantee":  "anon",
+                                                "routine_count":  82
+                                            },
+                                            {
+                                                "grantee":  "authenticated",
+                                                "routine_count":  82
+                                            },
+                                            {
+                                                "grantee":  "postgres",
+                                                "routine_count":  82
+                                            },
+                                            {
+                                                "grantee":  "service_role",
+                                                "routine_count":  82
+                                            }
+                                        ],
+    "high_risk_mutating_security_definer_routines":  [
+                                                         "admin_update_trending_topics",
+                                                         "approve_cash_payment",
+                                                         "assign_ambulance_to_emergency",
+                                                         "assign_doctor_to_emergency",
+                                                         "auto_assign_doctor",
+                                                         "auto_assign_driver",
+                                                         "cancel_bed_reservation",
+                                                         "cancel_trip",
+                                                         "complete_trip",
+                                                         "create_emergency_v4",
+                                                         "create_insurance_billing_on_completion",
+                                                         "decline_cash_payment",
+                                                         "delete_hospital_by_admin",
+                                                         "delete_room_pricing",
+                                                         "delete_service_pricing",
+                                                         "delete_user",
+                                                         "delete_user_by_admin",
+                                                         "exec_sql",
+                                                         "log_profile_updates",
+                                                         "release_doctor_assignment",
+                                                         "update_ambulance_location",
+                                                         "update_hospital_availability",
+                                                         "update_hospital_by_admin",
+                                                         "update_medical_profile",
+                                                         "update_profile_by_admin",
+                                                         "update_resource_availability",
+                                                         "update_trending_topics_from_search",
+                                                         "upsert_room_pricing",
+                                                         "upsert_service_pricing"
+                                                     ],
+    "exec_sql_grants":  [
+                            {
+                                "grantee":  "PUBLIC",
+                                "privilege_type":  "EXECUTE"
+                            },
+                            {
+                                "grantee":  "anon",
+                                "privilege_type":  "EXECUTE"
+                            },
+                            {
+                                "grantee":  "authenticated",
+                                "privilege_type":  "EXECUTE"
+                            },
+                            {
+                                "grantee":  "postgres",
+                                "privilege_type":  "EXECUTE"
+                            },
+                            {
+                                "grantee":  "service_role",
+                                "privilege_type":  "EXECUTE"
+                            }
+                        ]
+}

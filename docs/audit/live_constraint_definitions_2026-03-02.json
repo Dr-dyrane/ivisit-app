@@ -1,0 +1,915 @@
+{
+  "generated_at_utc": "2026-03-02T18:10:48.560Z",
+  "constraints": [
+    {
+      "schema_name": "public",
+      "table_name": "access_requests",
+      "constraint_name": "access_requests_document_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "access_requests",
+      "constraint_name": "access_requests_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "access_requests",
+      "constraint_name": "access_requests_status_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'revoked'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "access_requests",
+      "constraint_name": "access_requests_user_id_document_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (user_id, document_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "access_requests",
+      "constraint_name": "access_requests_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "admin_audit_log",
+      "constraint_name": "admin_audit_log_admin_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (admin_id) REFERENCES profiles(id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "admin_audit_log",
+      "constraint_name": "admin_audit_log_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ambulances",
+      "constraint_name": "ambulances_display_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (display_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ambulances",
+      "constraint_name": "ambulances_hospital_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (hospital_id) REFERENCES hospitals(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ambulances",
+      "constraint_name": "ambulances_organization_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ambulances",
+      "constraint_name": "ambulances_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ambulances",
+      "constraint_name": "ambulances_profile_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ambulances",
+      "constraint_name": "ambulances_profile_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (profile_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ambulances",
+      "constraint_name": "ambulances_status_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((status = ANY (ARRAY['available'::text, 'dispatched'::text, 'on_trip'::text, 'en_route'::text, 'on_scene'::text, 'returning'::text, 'maintenance'::text, 'offline'::text, 'pending_approval'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "doctor_schedules",
+      "constraint_name": "doctor_schedules_doctor_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "doctor_schedules",
+      "constraint_name": "doctor_schedules_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "doctor_schedules",
+      "constraint_name": "doctor_schedules_shift_type_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((shift_type = ANY (ARRAY['day'::text, 'evening'::text, 'night'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "doctors",
+      "constraint_name": "doctors_display_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (display_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "doctors",
+      "constraint_name": "doctors_hospital_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (hospital_id) REFERENCES hospitals(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "doctors",
+      "constraint_name": "doctors_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "doctors",
+      "constraint_name": "doctors_profile_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "doctors",
+      "constraint_name": "doctors_profile_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (profile_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "doctors",
+      "constraint_name": "doctors_status_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((status = ANY (ARRAY['available'::text, 'busy'::text, 'off_duty'::text, 'on_call'::text, 'invited'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "document_invites",
+      "constraint_name": "document_invites_claimed_by_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (claimed_by) REFERENCES auth.users(id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "document_invites",
+      "constraint_name": "document_invites_document_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "document_invites",
+      "constraint_name": "document_invites_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "document_invites",
+      "constraint_name": "document_invites_token_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (token)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "documents",
+      "constraint_name": "documents_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "documents",
+      "constraint_name": "documents_slug_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (slug)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "documents",
+      "constraint_name": "documents_tier_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((tier = ANY (ARRAY['public'::text, 'confidential'::text, 'restricted'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_doctor_assignments",
+      "constraint_name": "eda_emergency_request_fk",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (emergency_request_id) REFERENCES emergency_requests(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_doctor_assignments",
+      "constraint_name": "emergency_doctor_assignments_doctor_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_doctor_assignments",
+      "constraint_name": "emergency_doctor_assignments_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_doctor_assignments",
+      "constraint_name": "emergency_doctor_assignments_status_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((status = ANY (ARRAY['assigned'::text, 'accepted'::text, 'completed'::text, 'cancelled'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_requests",
+      "constraint_name": "emergency_requests_ambulance_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (ambulance_id) REFERENCES ambulances(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_requests",
+      "constraint_name": "emergency_requests_assigned_doctor_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (assigned_doctor_id) REFERENCES doctors(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_requests",
+      "constraint_name": "emergency_requests_display_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (display_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_requests",
+      "constraint_name": "emergency_requests_hospital_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (hospital_id) REFERENCES hospitals(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_requests",
+      "constraint_name": "emergency_requests_payment_status_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((payment_status = ANY (ARRAY['pending'::text, 'paid'::text, 'completed'::text, 'failed'::text, 'refunded'::text, 'declined'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_requests",
+      "constraint_name": "emergency_requests_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_requests",
+      "constraint_name": "emergency_requests_responder_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (responder_id) REFERENCES profiles(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_requests",
+      "constraint_name": "emergency_requests_service_type_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((service_type = ANY (ARRAY['ambulance'::text, 'bed'::text, 'booking'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_requests",
+      "constraint_name": "emergency_requests_status_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((status = ANY (ARRAY['pending_approval'::text, 'payment_declined'::text, 'in_progress'::text, 'accepted'::text, 'arrived'::text, 'completed'::text, 'cancelled'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "emergency_requests",
+      "constraint_name": "emergency_requests_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "health_news",
+      "constraint_name": "health_news_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "hospitals",
+      "constraint_name": "hospitals_display_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (display_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "hospitals",
+      "constraint_name": "hospitals_org_admin_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (org_admin_id) REFERENCES profiles(id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "hospitals",
+      "constraint_name": "hospitals_organization_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "hospitals",
+      "constraint_name": "hospitals_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "hospitals",
+      "constraint_name": "hospitals_place_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (place_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "id_mappings",
+      "constraint_name": "id_mappings_display_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (display_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "id_mappings",
+      "constraint_name": "id_mappings_entity_type_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((entity_type = ANY (ARRAY['patient'::text, 'provider'::text, 'hospital'::text, 'admin'::text, 'dispatcher'::text, 'doctor'::text, 'ambulance'::text, 'driver'::text, 'emergency_request'::text, 'visit'::text, 'organization'::text, 'payment'::text, 'notification'::text, 'wallet'::text, 'org_admin'::text, 'viewer'::text, 'sponsor'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "id_mappings",
+      "constraint_name": "id_mappings_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "insurance_billing",
+      "constraint_name": "insurance_billing_emergency_request_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (emergency_request_id) REFERENCES emergency_requests(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "insurance_billing",
+      "constraint_name": "insurance_billing_hospital_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (hospital_id) REFERENCES hospitals(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "insurance_billing",
+      "constraint_name": "insurance_billing_insurance_policy_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (insurance_policy_id) REFERENCES insurance_policies(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "insurance_billing",
+      "constraint_name": "insurance_billing_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "insurance_billing",
+      "constraint_name": "insurance_billing_status_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'paid'::text, 'rejected'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "insurance_billing",
+      "constraint_name": "insurance_billing_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "insurance_policies",
+      "constraint_name": "insurance_policies_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "insurance_policies",
+      "constraint_name": "insurance_policies_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ivisit_main_wallet",
+      "constraint_name": "ivisit_main_wallet_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "medical_profiles",
+      "constraint_name": "medical_profiles_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (user_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "medical_profiles",
+      "constraint_name": "medical_profiles_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "notifications",
+      "constraint_name": "notifications_display_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (display_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "notifications",
+      "constraint_name": "notifications_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "notifications",
+      "constraint_name": "notifications_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "organization_wallets",
+      "constraint_name": "organization_wallets_display_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (display_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "organization_wallets",
+      "constraint_name": "organization_wallets_organization_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "organization_wallets",
+      "constraint_name": "organization_wallets_organization_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (organization_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "organization_wallets",
+      "constraint_name": "organization_wallets_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "organizations",
+      "constraint_name": "organizations_display_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (display_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "organizations",
+      "constraint_name": "organizations_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "organizations",
+      "constraint_name": "organizations_stripe_account_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (stripe_account_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "patient_wallets",
+      "constraint_name": "patient_wallets_display_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (display_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "patient_wallets",
+      "constraint_name": "patient_wallets_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "patient_wallets",
+      "constraint_name": "patient_wallets_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "patient_wallets",
+      "constraint_name": "patient_wallets_user_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (user_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "payment_methods",
+      "constraint_name": "payment_methods_organization_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "payment_methods",
+      "constraint_name": "payment_methods_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "payment_methods",
+      "constraint_name": "payment_methods_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "payments",
+      "constraint_name": "payments_display_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (display_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "payments",
+      "constraint_name": "payments_emergency_request_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (emergency_request_id) REFERENCES emergency_requests(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "payments",
+      "constraint_name": "payments_organization_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "payments",
+      "constraint_name": "payments_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "payments",
+      "constraint_name": "payments_status_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((status = ANY (ARRAY['pending'::text, 'completed'::text, 'failed'::text, 'refunded'::text, 'declined'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "payments",
+      "constraint_name": "payments_stripe_payment_intent_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (stripe_payment_intent_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "payments",
+      "constraint_name": "payments_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "preferences",
+      "constraint_name": "preferences_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (user_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "preferences",
+      "constraint_name": "preferences_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "profiles",
+      "constraint_name": "profiles_display_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (display_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "profiles",
+      "constraint_name": "profiles_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "profiles",
+      "constraint_name": "profiles_onboarding_status_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((onboarding_status = ANY (ARRAY['pending'::text, 'complete'::text, 'skipped'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "profiles",
+      "constraint_name": "profiles_organization_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "profiles",
+      "constraint_name": "profiles_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "profiles",
+      "constraint_name": "profiles_provider_type_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((provider_type = ANY (ARRAY['hospital'::text, 'ambulance_service'::text, 'ambulance'::text, 'doctor'::text, 'driver'::text, 'paramedic'::text, 'pharmacy'::text, 'clinic'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "profiles",
+      "constraint_name": "profiles_role_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((role = ANY (ARRAY['patient'::text, 'provider'::text, 'admin'::text, 'org_admin'::text, 'dispatcher'::text, 'viewer'::text, 'sponsor'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "room_pricing",
+      "constraint_name": "room_pricing_hospital_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (hospital_id) REFERENCES hospitals(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "room_pricing",
+      "constraint_name": "room_pricing_hospital_id_room_type_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (hospital_id, room_type)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "room_pricing",
+      "constraint_name": "room_pricing_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "search_events",
+      "constraint_name": "search_events_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "search_history",
+      "constraint_name": "search_history_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "search_history",
+      "constraint_name": "search_history_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "service_pricing",
+      "constraint_name": "service_pricing_hospital_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (hospital_id) REFERENCES hospitals(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "service_pricing",
+      "constraint_name": "service_pricing_hospital_id_service_type_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (hospital_id, service_type)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "service_pricing",
+      "constraint_name": "service_pricing_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "spatial_ref_sys",
+      "constraint_name": "spatial_ref_sys_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (srid)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "spatial_ref_sys",
+      "constraint_name": "spatial_ref_sys_srid_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK (((srid > 0) AND (srid <= 998999)))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "subscribers",
+      "constraint_name": "subscribers_email_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (email)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "subscribers",
+      "constraint_name": "subscribers_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "subscribers",
+      "constraint_name": "subscribers_type_check",
+      "constraint_type": "c",
+      "constraint_def": "CHECK ((type = ANY (ARRAY['free'::text, 'paid'::text])))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "support_faqs",
+      "constraint_name": "support_faqs_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "support_tickets",
+      "constraint_name": "support_tickets_assigned_to_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (assigned_to) REFERENCES profiles(id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "support_tickets",
+      "constraint_name": "support_tickets_organization_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "support_tickets",
+      "constraint_name": "support_tickets_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "support_tickets",
+      "constraint_name": "support_tickets_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "trending_topics",
+      "constraint_name": "trending_topics_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "user_activity",
+      "constraint_name": "user_activity_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "user_activity",
+      "constraint_name": "user_activity_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "user_roles",
+      "constraint_name": "user_roles_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "user_roles",
+      "constraint_name": "user_roles_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "user_sessions",
+      "constraint_name": "user_sessions_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "user_sessions",
+      "constraint_name": "user_sessions_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "visits",
+      "constraint_name": "visits_display_id_key",
+      "constraint_type": "u",
+      "constraint_def": "UNIQUE (display_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "visits",
+      "constraint_name": "visits_hospital_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (hospital_id) REFERENCES hospitals(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "visits",
+      "constraint_name": "visits_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "visits",
+      "constraint_name": "visits_rating_range_chk",
+      "constraint_type": "c",
+      "constraint_def": "CHECK (((rating IS NULL) OR ((rating >= 1) AND (rating <= 5))))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "visits",
+      "constraint_name": "visits_request_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (request_id) REFERENCES emergency_requests(id) ON DELETE SET NULL"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "visits",
+      "constraint_name": "visits_user_id_fkey",
+      "constraint_type": "f",
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "wallet_ledger",
+      "constraint_name": "wallet_ledger_pkey",
+      "constraint_type": "p",
+      "constraint_def": "PRIMARY KEY (id)"
+    }
+  ]
+}

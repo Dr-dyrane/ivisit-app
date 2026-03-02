@@ -1,0 +1,237 @@
+﻿{
+    "generated_at_utc":  "2026-03-02T18:19:58.9569902Z",
+    "orphaned_tables":  [
+                            {
+                                "table":  "available_hospitals",
+                                "caller_count":  1,
+                                "callers":  [
+                                                "ivisit-app:services/realtimeAvailabilityService.js"
+                                            ]
+                            },
+                            {
+                                "table":  "hospital_import_logs",
+                                "caller_count":  2,
+                                "callers":  [
+                                                "ivisit-app:services/hospitalImportService.js",
+                                                "ivisit-console:frontend/src/services/hospitalImportService.js"
+                                            ]
+                            },
+                            {
+                                "table":  "hospital_rooms",
+                                "caller_count":  1,
+                                "callers":  [
+                                                "ivisit-app:services/hospitalsService.js"
+                                            ]
+                            },
+                            {
+                                "table":  "images",
+                                "caller_count":  1,
+                                "callers":  [
+                                                "ivisit-console:frontend/src/services/profilesService.js"
+                                            ]
+                            },
+                            {
+                                "table":  "information_schema.columns",
+                                "caller_count":  2,
+                                "callers":  [
+                                                "ivisit-console:frontend/scripts/inspect-schema-cli.js",
+                                                "ivisit-console:frontend/scripts/inspect-supabase-schema.js"
+                                            ]
+                            },
+                            {
+                                "table":  "information_schema.tables",
+                                "caller_count":  2,
+                                "callers":  [
+                                                "ivisit-console:frontend/scripts/inspect-schema-cli.js",
+                                                "ivisit-console:frontend/scripts/inspect-supabase-schema.js"
+                                            ]
+                            },
+                            {
+                                "table":  "search_selections",
+                                "caller_count":  2,
+                                "callers":  [
+                                                "ivisit-app:services/discoveryService.js",
+                                                "ivisit-console:frontend/src/services/searchService.js"
+                                            ]
+                            },
+                            {
+                                "table":  "trending_searches_view",
+                                "caller_count":  1,
+                                "callers":  [
+                                                "ivisit-console:frontend/src/services/analyticsAutomationService.js"
+                                            ]
+                            }
+                        ],
+    "realtime_publication_tables":  [
+                                        "access_requests"
+                                    ],
+    "postgres_changes_tables":  [
+                                    "active_bed_reservations",
+                                    "ambulances",
+                                    "doctors",
+                                    "emergency_requests",
+                                    "health_news",
+                                    "hospitals",
+                                    "insurance_policies",
+                                    "notifications",
+                                    "organizations",
+                                    "payments",
+                                    "profiles",
+                                    "room_pricing",
+                                    "service_pricing",
+                                    "support_tickets",
+                                    "user_activity",
+                                    "users",
+                                    "visits"
+                                ],
+    "postgres_changes_tables_missing_publication":  [
+                                                        {
+                                                            "table":  "active_bed_reservations",
+                                                            "subscriber_count":  1,
+                                                            "subscribers":  [
+                                                                                "ivisit-console:frontend/src/services/bedManagementService.js"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "ambulances",
+                                                            "subscriber_count":  5,
+                                                            "subscribers":  [
+                                                                                "ivisit-app:hooks/emergency/useAmbulances.js",
+                                                                                "ivisit-app:services/emergencyRequestsService.js",
+                                                                                "ivisit-console:frontend/src/services/driverManagementService.js",
+                                                                                "ivisit-console:frontend/src/services/staffSchedulingService.js",
+                                                                                "ivisit-console:frontend/src/services/supabaseMapService.js"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "doctors",
+                                                            "subscriber_count":  2,
+                                                            "subscribers":  [
+                                                                                "ivisit-console:frontend/src/contexts/PageDataContext.jsx",
+                                                                                "ivisit-console:frontend/src/services/staffSchedulingService.js"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "emergency_requests",
+                                                            "subscriber_count":  8,
+                                                            "subscribers":  [
+                                                                                "ivisit-app:components/emergency/EmergencyRequestModal.jsx",
+                                                                                "ivisit-app:contexts/EmergencyContext.jsx",
+                                                                                "ivisit-app:services/emergencyRequestsService.js",
+                                                                                "ivisit-console:frontend/src/components/pages/EmergencyRequestsPage.jsx",
+                                                                                "ivisit-console:frontend/src/contexts/PageDataContext.jsx",
+                                                                                "ivisit-console:frontend/src/hooks/useAnalytics.js",
+                                                                                "ivisit-console:frontend/src/services/driverManagementService.js",
+                                                                                "ivisit-console:frontend/src/services/supabaseMapService.js"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "health_news",
+                                                            "subscriber_count":  1,
+                                                            "subscribers":  [
+                                                                                "ivisit-console:frontend/src/components/context/HealthNewsPanel.jsx"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "hospitals",
+                                                            "subscriber_count":  4,
+                                                            "subscribers":  [
+                                                                                "ivisit-app:services/emergencyRequestsService.js",
+                                                                                "ivisit-app:services/realtimeAvailabilityService.js",
+                                                                                "ivisit-console:frontend/src/components/pages/HospitalsPage.jsx",
+                                                                                "ivisit-console:frontend/src/services/bedManagementService.js"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "insurance_policies",
+                                                            "subscriber_count":  1,
+                                                            "subscribers":  [
+                                                                                "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "notifications",
+                                                            "subscriber_count":  1,
+                                                            "subscribers":  [
+                                                                                "ivisit-console:frontend/src/services/notificationService.js"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "organizations",
+                                                            "subscriber_count":  1,
+                                                            "subscribers":  [
+                                                                                "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "payments",
+                                                            "subscriber_count":  1,
+                                                            "subscribers":  [
+                                                                                "ivisit-app:components/emergency/EmergencyRequestModal.jsx"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "profiles",
+                                                            "subscriber_count":  1,
+                                                            "subscribers":  [
+                                                                                "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "room_pricing",
+                                                            "subscriber_count":  1,
+                                                            "subscribers":  [
+                                                                                "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "service_pricing",
+                                                            "subscriber_count":  1,
+                                                            "subscribers":  [
+                                                                                "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "support_tickets",
+                                                            "subscriber_count":  2,
+                                                            "subscribers":  [
+                                                                                "ivisit-console:frontend/src/components/context/SupportTicketsPanel.jsx",
+                                                                                "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "user_activity",
+                                                            "subscriber_count":  1,
+                                                            "subscribers":  [
+                                                                                "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "users",
+                                                            "subscriber_count":  1,
+                                                            "subscribers":  [
+                                                                                "ivisit-console:frontend/src/services/supabaseMapService.js"
+                                                                            ]
+                                                        },
+                                                        {
+                                                            "table":  "visits",
+                                                            "subscriber_count":  3,
+                                                            "subscribers":  [
+                                                                                "ivisit-app:hooks/visits/useVisitsData.js",
+                                                                                "ivisit-console:frontend/src/components/pages/VisitsPage.jsx",
+                                                                                "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+                                                                            ]
+                                                        }
+                                                    ],
+    "runtime_rpcs_missing_live":  [
+                                      "create_emergency_with_payment",
+                                      "function_exists",
+                                      "get_system_stats",
+                                      "get_table_structure",
+                                      "validate_payment_method"
+                                  ],
+    "runtime_rpcs_missing_live_in_prod_paths":  [
+                                                    "create_emergency_with_payment",
+                                                    "get_system_stats"
+                                                ]
+}

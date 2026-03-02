@@ -1,0 +1,113 @@
+﻿{
+    "generated_at_utc":  "2026-03-02T18:21:49.4972851Z",
+    "canonical_entity":  "public.emergency_requests",
+    "version":  "2026-03-02",
+    "states":  [
+                   {
+                       "name":  "pending_approval",
+                       "terminal":  false,
+                       "description":  "Cash request awaiting org approval"
+                   },
+                   {
+                       "name":  "payment_declined",
+                       "terminal":  true,
+                       "description":  "Cash request declined by org wallet eligibility/approval"
+                   },
+                   {
+                       "name":  "in_progress",
+                       "terminal":  false,
+                       "description":  "Payment complete or cash approved, waiting assignment/workflow progress"
+                   },
+                   {
+                       "name":  "accepted",
+                       "terminal":  false,
+                       "description":  "Responder/ambulance assigned and acknowledged"
+                   },
+                   {
+                       "name":  "arrived",
+                       "terminal":  false,
+                       "description":  "Responder reached pickup or bed service started"
+                   },
+                   {
+                       "name":  "completed",
+                       "terminal":  true,
+                       "description":  "Emergency resolved and closed"
+                   },
+                   {
+                       "name":  "cancelled",
+                       "terminal":  true,
+                       "description":  "Emergency cancelled by user/system/operator"
+                   }
+               ],
+    "disallowed_states":  [
+                              "discharged"
+                          ],
+    "allowed_transitions":  [
+                                {
+                                    "from":  "__create__",
+                                    "to":  "pending_approval",
+                                    "trigger":  "create_emergency_v4",
+                                    "guard":  "payment_method=cash"
+                                },
+                                {
+                                    "from":  "__create__",
+                                    "to":  "in_progress",
+                                    "trigger":  "create_emergency_v4",
+                                    "guard":  "payment_method!=cash OR payment_status=completed"
+                                },
+                                {
+                                    "from":  "pending_approval",
+                                    "to":  "in_progress",
+                                    "trigger":  "approve_cash_payment",
+                                    "guard":  "wallet_eligibility=true"
+                                },
+                                {
+                                    "from":  "pending_approval",
+                                    "to":  "payment_declined",
+                                    "trigger":  "decline_cash_payment",
+                                    "guard":  "wallet_eligibility=false OR admin_decline=true"
+                                },
+                                {
+                                    "from":  "in_progress",
+                                    "to":  "accepted",
+                                    "trigger":  "auto_assign_driver",
+                                    "guard":  "service_type=ambulance AND ambulance_id IS NULL AND responder_id IS NULL"
+                                },
+                                {
+                                    "from":  "accepted",
+                                    "to":  "arrived",
+                                    "trigger":  "driver_update_status",
+                                    "guard":  "responder reports arrival"
+                                },
+                                {
+                                    "from":  "arrived",
+                                    "to":  "completed",
+                                    "trigger":  "complete_trip OR complete_bed_service",
+                                    "guard":  "resolution recorded"
+                                },
+                                {
+                                    "from":  "in_progress",
+                                    "to":  "cancelled",
+                                    "trigger":  "cancel_trip OR cancel_bed_reservation OR user_cancel",
+                                    "guard":  "not terminal"
+                                },
+                                {
+                                    "from":  "accepted",
+                                    "to":  "cancelled",
+                                    "trigger":  "cancel_trip OR dispatcher_cancel",
+                                    "guard":  "not terminal"
+                                },
+                                {
+                                    "from":  "arrived",
+                                    "to":  "cancelled",
+                                    "trigger":  "dispatcher_cancel",
+                                    "guard":  "not terminal and compensating actions emitted"
+                                }
+                            ],
+    "invariants":  [
+                       "Terminal states (payment_declined, completed, cancelled) are immutable except audit metadata.",
+                       "ambulance_id and responder_id must be set together for ambulance service transitions to accepted/arrived/completed.",
+                       "Every state transition must write audit row with actor, role, source, reason, previous_state, next_state.",
+                       "Realtime fanout emits only after commit and only for canonical state transitions."
+                   ]
+}

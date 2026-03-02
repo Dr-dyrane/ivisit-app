@@ -1,0 +1,86 @@
+﻿{
+    "generated_at_utc":  "2026-03-02T18:19:58.9539458Z",
+    "live_table_count":  40,
+    "runtime_table_reference_count":  42,
+    "runtime_tables_missing_live":  [
+                                        "available_hospitals",
+                                        "hospital_import_logs",
+                                        "hospital_rooms",
+                                        "images",
+                                        "information_schema.columns",
+                                        "information_schema.tables",
+                                        "search_selections",
+                                        "trending_searches_view"
+                                    ],
+    "live_tables_missing_runtime":  [
+                                        "access_requests",
+                                        "document_invites",
+                                        "geography_columns",
+                                        "geometry_columns",
+                                        "spatial_ref_sys",
+                                        "user_roles"
+                                    ],
+    "orphaned_table_reference_count":  8,
+    "orphaned_table_references":  [
+                                      {
+                                          "table":  "available_hospitals",
+                                          "caller_count":  1,
+                                          "callers":  [
+                                                          "ivisit-app:services/realtimeAvailabilityService.js"
+                                                      ]
+                                      },
+                                      {
+                                          "table":  "hospital_import_logs",
+                                          "caller_count":  2,
+                                          "callers":  [
+                                                          "ivisit-app:services/hospitalImportService.js",
+                                                          "ivisit-console:frontend/src/services/hospitalImportService.js"
+                                                      ]
+                                      },
+                                      {
+                                          "table":  "hospital_rooms",
+                                          "caller_count":  1,
+                                          "callers":  [
+                                                          "ivisit-app:services/hospitalsService.js"
+                                                      ]
+                                      },
+                                      {
+                                          "table":  "images",
+                                          "caller_count":  1,
+                                          "callers":  [
+                                                          "ivisit-console:frontend/src/services/profilesService.js"
+                                                      ]
+                                      },
+                                      {
+                                          "table":  "information_schema.columns",
+                                          "caller_count":  2,
+                                          "callers":  [
+                                                          "ivisit-console:frontend/scripts/inspect-schema-cli.js",
+                                                          "ivisit-console:frontend/scripts/inspect-supabase-schema.js"
+                                                      ]
+                                      },
+                                      {
+                                          "table":  "information_schema.tables",
+                                          "caller_count":  2,
+                                          "callers":  [
+                                                          "ivisit-console:frontend/scripts/inspect-schema-cli.js",
+                                                          "ivisit-console:frontend/scripts/inspect-supabase-schema.js"
+                                                      ]
+                                      },
+                                      {
+                                          "table":  "search_selections",
+                                          "caller_count":  2,
+                                          "callers":  [
+                                                          "ivisit-app:services/discoveryService.js",
+                                                          "ivisit-console:frontend/src/services/searchService.js"
+                                                      ]
+                                      },
+                                      {
+                                          "table":  "trending_searches_view",
+                                          "caller_count":  1,
+                                          "callers":  [
+                                                          "ivisit-console:frontend/src/services/analyticsAutomationService.js"
+                                                      ]
+                                      }
+                                  ]
+}

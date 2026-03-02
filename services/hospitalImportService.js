@@ -3,24 +3,55 @@ import googlePlacesService from './googlePlacesService';
 import mapboxService from './mapboxService';
 
 class HospitalImportService {
+  isMissingRelationError(error, relationName) {
+    if (!error) return false;
+    if (error.code === '42P01') return true;
+    const message = String(error.message || '').toLowerCase();
+    return message.includes(relationName.toLowerCase()) && message.includes('does not exist');
+  }
+
+  async createImportLog(payload) {
+    const { data, error } = await supabase
+      .from('hospital_import_logs')
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) {
+      if (this.isMissingRelationError(error, 'hospital_import_logs')) {
+        return null;
+      }
+      throw error;
+    }
+
+    return data;
+  }
+
+  async updateImportLog(importLogId, payload) {
+    if (!importLogId) return;
+
+    const { error } = await supabase
+      .from('hospital_import_logs')
+      .update(payload)
+      .eq('id', importLogId);
+
+    if (error && !this.isMissingRelationError(error, 'hospital_import_logs')) {
+      throw error;
+    }
+  }
+
   // Import hospitals from Google Places to Supabase
   async importHospitalsFromGoogle(lat, lng, radius = 10000, createdBy = null) {
     try {
       // Create import log entry
-      const { data: importLog, error: logError } = await supabase
-        .from('hospital_import_logs')
-        .insert({
+      const importLog = await this.createImportLog({
           import_type: 'google_places',
           location_lat: lat,
           location_lng: lng,
           radius_km: radius / 1000,
           status: 'running',
           created_by: createdBy
-        })
-        .select()
-        .single();
-
-      if (logError) throw logError;
+        });
 
       let totalFound = 0;
       let importedCount = 0;
@@ -79,18 +110,15 @@ class HospitalImportService {
         }
 
         // Update import log with results
-        await supabase
-          .from('hospital_import_logs')
-          .update({
-            total_found: totalFound,
-            imported_count: importedCount,
-            skipped_count: skippedCount,
-            error_count: errorCount,
-            errors: errors,
-            status: 'completed',
-            completed_at: new Date().toISOString()
-          })
-          .eq('id', importLog.id);
+        await this.updateImportLog(importLog?.id, {
+          total_found: totalFound,
+          imported_count: importedCount,
+          skipped_count: skippedCount,
+          error_count: errorCount,
+          errors: errors,
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        });
 
         return {
           success: true,
@@ -99,19 +127,16 @@ class HospitalImportService {
           skippedCount,
           errorCount,
           errors,
-          importLogId: importLog.id
+          importLogId: importLog?.id || null
         };
 
       } catch (error) {
         // Update import log with failure
-        await supabase
-          .from('hospital_import_logs')
-          .update({
-            status: 'failed',
-            errors: [{ error: error.message }],
-            completed_at: new Date().toISOString()
-          })
-          .eq('id', importLog.id);
+        await this.updateImportLog(importLog?.id, {
+          status: 'failed',
+          errors: [{ error: error.message }],
+          completed_at: new Date().toISOString()
+        });
 
         throw error;
       }
@@ -306,7 +331,12 @@ class HospitalImportService {
         .order('created_at', { ascending: false })
         .limit(limit);
 
-      if (error) throw error;
+      if (error) {
+        if (this.isMissingRelationError(error, 'hospital_import_logs')) {
+          return [];
+        }
+        throw error;
+      }
       return data;
 
     } catch (error) {

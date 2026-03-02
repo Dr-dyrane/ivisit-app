@@ -884,3 +884,138 @@ CREATE INDEX IF NOT EXISTS idx_service_pricing_type ON public.service_pricing(se
 CREATE INDEX IF NOT EXISTS idx_service_pricing_hospital ON public.service_pricing(hospital_id);
 CREATE INDEX IF NOT EXISTS idx_room_pricing_type ON public.room_pricing(room_type);
 CREATE INDEX IF NOT EXISTS idx_room_pricing_hospital ON public.room_pricing(hospital_id);
+
+-- ================================================================
+-- Integrated Fix Pack (2026-03-02): Deterministic Emergency State
+-- Source: consolidated from temporary fix migrations
+-- ================================================================
+
+-- Deterministic and safe ambulance status mutation.
+CREATE OR REPLACE FUNCTION public.update_ambulance_status(
+    p_ambulance_id UUID,
+    p_status TEXT,
+    p_location JSONB DEFAULT NULL,
+    p_eta TIMESTAMPTZ DEFAULT NULL,
+    p_current_call UUID DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_hospital_id UUID;
+    v_prev_status TEXT;
+    v_location geometry;
+BEGIN
+    IF p_status NOT IN ('available', 'dispatched', 'en_route', 'on_scene', 'returning', 'maintenance', 'offline', 'on_trip') THEN
+        RETURN jsonb_build_object('error', 'Invalid status', 'code', 'INVALID_STATUS');
+    END IF;
+
+    SELECT hospital_id, status
+    INTO v_hospital_id, v_prev_status
+    FROM public.ambulances
+    WHERE id = p_ambulance_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('error', 'Ambulance not found', 'code', 'NOT_FOUND');
+    END IF;
+
+    IF p_location IS NOT NULL THEN
+        BEGIN
+            v_location := ST_SetSRID(ST_GeomFromGeoJSON(p_location::TEXT), 4326);
+        EXCEPTION WHEN OTHERS THEN
+            v_location := NULL;
+        END;
+    END IF;
+
+    UPDATE public.ambulances
+    SET status = p_status,
+        location = COALESCE(v_location, location),
+        eta = COALESCE(p_eta, eta),
+        current_call = COALESCE(p_current_call, current_call),
+        updated_at = NOW()
+    WHERE id = p_ambulance_id;
+
+    IF v_hospital_id IS NOT NULL AND v_prev_status IS DISTINCT FROM p_status THEN
+        UPDATE public.hospitals
+        SET last_availability_update = NOW()
+        WHERE id = v_hospital_id;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'ambulance_id', p_ambulance_id,
+        'status', p_status,
+        'updated_at', NOW()
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- Bed discharge must use legal emergency status values.
+CREATE OR REPLACE FUNCTION public.discharge_patient(request_uuid TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+    UPDATE public.emergency_requests
+    SET status = 'completed',
+        completed_at = COALESCE(completed_at, NOW()),
+        updated_at = NOW()
+    WHERE id = request_uuid::UUID
+      AND service_type = 'bed'
+      AND status IN ('in_progress', 'accepted', 'arrived');
+
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- Canonical emergency status transition guard.
+CREATE OR REPLACE FUNCTION public.is_valid_emergency_status_transition(
+    p_current_status TEXT,
+    p_next_status TEXT
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_current TEXT := LOWER(COALESCE(NULLIF(p_current_status, ''), ''));
+    v_next TEXT := LOWER(COALESCE(NULLIF(p_next_status, ''), ''));
+BEGIN
+    IF v_current = '' OR v_next = '' THEN
+        RETURN FALSE;
+    END IF;
+
+    IF v_current = v_next THEN
+        RETURN TRUE;
+    END IF;
+
+    CASE v_current
+        WHEN 'pending_approval' THEN
+            RETURN v_next IN ('in_progress', 'accepted', 'cancelled', 'payment_declined');
+        WHEN 'in_progress' THEN
+            RETURN v_next IN ('accepted', 'arrived', 'completed', 'cancelled', 'payment_declined');
+        WHEN 'accepted' THEN
+            RETURN v_next IN ('arrived', 'completed', 'cancelled');
+        WHEN 'arrived' THEN
+            RETURN v_next IN ('completed', 'cancelled');
+        ELSE
+            RETURN FALSE;
+    END CASE;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION public.validate_emergency_status_transition()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' AND NEW.status IS DISTINCT FROM OLD.status THEN
+        IF NOT public.is_valid_emergency_status_transition(OLD.status, NEW.status) THEN
+            RAISE EXCEPTION 'Illegal emergency status transition: % -> %', OLD.status, NEW.status
+                USING ERRCODE = '23514';
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validate_emergency_status_transition ON public.emergency_requests;
+CREATE TRIGGER trg_validate_emergency_status_transition
+BEFORE UPDATE OF status ON public.emergency_requests
+FOR EACH ROW
+EXECUTE FUNCTION public.validate_emergency_status_transition();

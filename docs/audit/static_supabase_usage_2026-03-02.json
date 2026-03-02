@@ -1,0 +1,5833 @@
+{
+  "generated_at_utc": "2026-03-02T18:04:05.419Z",
+  "repos": {
+    "ivisit-app": {
+      "files_scanned": 380,
+      "files": {
+        "components/emergency/EmergencyRequestModal.jsx": {
+          "tables": [
+            "emergency_requests",
+            "payments"
+          ],
+          "rpcs": [],
+          "channels": [
+            "approval_${requestId}",
+            "approval_payment_${paymentId}",
+            "approval_payment_req_${emergencyRequestUuid}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "UPDATE",
+              "schema": "public",
+              "table": "emergency_requests"
+            },
+            {
+              "event": "UPDATE",
+              "schema": "public",
+              "table": "payments",
+              "filter": "id=eq.${paymentId}"
+            },
+            {
+              "event": "UPDATE",
+              "schema": "public",
+              "table": "payments",
+              "filter": "emergency_request_id=eq.${emergencyRequestUuid}"
+            }
+          ],
+          "role_tokens": [
+            "driver",
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "contexts/EmergencyContext.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "emergency_updates"
+          ],
+          "postgres_changes": [
+            {
+              "event": "UPDATE",
+              "schema": "public",
+              "table": "emergency_requests",
+              "filter": "user_id=eq.${user.id}"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "hooks/emergency/useAmbulances.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "ambulances_realtime"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "ambulances"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "hooks/emergency/usePaymentFlow.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "hooks/emergency/useRequestFlow.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "hooks/visits/useVisitsData.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "visits_updates"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "visits",
+              "filter": "user_id=eq.${user.id}"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "scripts/apply_live_beautification.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "scripts/apply_trending_fix.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "scripts/check_remote_sync.js": {
+          "tables": [],
+          "rpcs": [
+            "exec_sql"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "scripts/debug_rpc.js": {
+          "tables": [],
+          "rpcs": [
+            "get_trending_searches"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "scripts/verify_rpc_fix.js": {
+          "tables": [
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "services/appMigrationsService.js": {
+          "tables": [
+            "insurance_policies"
+          ],
+          "rpcs": [
+            "reload_schema"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "services/authService.js": {
+          "tables": [
+            "profiles"
+          ],
+          "rpcs": [
+            "delete_user"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "services/discoveryService.js": {
+          "tables": [
+            "health_news",
+            "search_events",
+            "search_selections"
+          ],
+          "rpcs": [
+            "get_trending_searches"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "services/displayIdService.js": {
+          "tables": [
+            "profiles"
+          ],
+          "rpcs": [
+            "get_entity_id"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "services/emergencyRequestsService.js": {
+          "tables": [
+            "emergency_requests"
+          ],
+          "rpcs": [
+            "create_emergency_v4"
+          ],
+          "channels": [
+            "ambulance_location_${requestKey}",
+            "emergency_${requestKey}",
+            "hospital_beds_${hospitalId}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "UPDATE",
+              "schema": "public",
+              "table": "emergency_requests"
+            },
+            {
+              "event": "UPDATE",
+              "schema": "public",
+              "table": "ambulances",
+              "filter": "current_call=eq.${requestKey}"
+            },
+            {
+              "event": "UPDATE",
+              "schema": "public",
+              "table": "hospitals",
+              "filter": "id=eq.${hospitalId}"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "services/helpSupportService.js": {
+          "tables": [
+            "support_faqs",
+            "support_tickets"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "services/hospitalImportService.js": {
+          "tables": [
+            "hospital_import_logs",
+            "hospitals"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": false
+        },
+        "services/hospitalsService.js": {
+          "tables": [
+            "hospital_rooms",
+            "hospitals",
+            "room_pricing",
+            "service_pricing"
+          ],
+          "rpcs": [
+            "nearby_hospitals"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "services/insuranceService.js": {
+          "tables": [
+            "documents",
+            "insurance_policies"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "services/medicalProfileService.js": {
+          "tables": [
+            "medical_profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "services/notificationDispatcher.js": {
+          "tables": [
+            "hospitals",
+            "notifications",
+            "profiles"
+          ],
+          "rpcs": [
+            "notify_cash_approval_org_admins"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "dispatcher",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "services/paymentService.js": {
+          "tables": [
+            "emergency_requests",
+            "hospitals",
+            "insurance_policies",
+            "organization_wallets",
+            "organizations",
+            "patient_wallets",
+            "payment_methods",
+            "payments",
+            "profiles",
+            "wallet_ledger"
+          ],
+          "rpcs": [
+            "approve_cash_payment",
+            "decline_cash_payment",
+            "process_cash_payment_v2",
+            "process_wallet_payment"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "services/preferencesService.js": {
+          "tables": [
+            "preferences"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "services/pricingService.js": {
+          "tables": [
+            "ambulances",
+            "hospitals",
+            "insurance_policies",
+            "room_pricing",
+            "service_pricing"
+          ],
+          "rpcs": [
+            "calculate_emergency_cost_v2"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "services/realtimeAvailabilityService.js": {
+          "tables": [
+            "available_hospitals"
+          ],
+          "rpcs": [
+            "update_hospital_availability"
+          ],
+          "channels": [
+            "area-availability",
+            "hospital-${hospitalId}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "UPDATE",
+              "schema": "public",
+              "table": "hospitals",
+              "filter": "id=eq.${hospitalId}"
+            },
+            {
+              "event": "UPDATE",
+              "schema": "public",
+              "table": "hospitals"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "services/seederService.js": {
+          "tables": [
+            "notifications",
+            "support_faqs",
+            "visits"
+          ],
+          "rpcs": [
+            "reload_schema"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": false
+        },
+        "services/serviceCostService.js": {
+          "tables": [
+            "emergency_requests",
+            "service_pricing"
+          ],
+          "rpcs": [
+            "calculate_emergency_cost_v2"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "services/supabase.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "services/supabaseHelpers.js": {
+          "tables": [],
+          "rpcs": [
+            "log_user_activity"
+          ],
+          "channels": [],
+          "postgres_changes": [
+            {
+              "schema": "public",
+              "filter": "${filter.column}=eq.${filter.value}"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "supabase/database.ts": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "is_admin",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/docs/archive/legacy-references/20260219012714_rls_policies.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/docs/archive/legacy-references/20260219012737_emergency_functions.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "dispatcher",
+            "is_admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/docs/archive/test-scripts/lib/database.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "supabase/docs/archive/test-scripts/runners/data_import.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "supabase/docs/archive/test-scripts/runners/test_emergency_system.js": {
+          "tables": [
+            "id_mappings"
+          ],
+          "rpcs": [
+            "create_emergency_with_payment",
+            "get_system_stats",
+            "get_user_statistics",
+            "is_admin"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "is_admin"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/functions/discovery/discover-hospitals/index.ts": {
+          "tables": [
+            "hospitals"
+          ],
+          "rpcs": [
+            "nearby_hospitals"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "supabase/functions/payments/create-payment-intent/index.ts": {
+          "tables": [
+            "organizations",
+            "payments",
+            "profiles"
+          ],
+          "rpcs": [
+            "get_entity_id"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/functions/payments/create-payout/index.ts": {
+          "tables": [
+            "organizations",
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/functions/payments/manage-payment-methods/index.ts": {
+          "tables": [
+            "organizations",
+            "profiles"
+          ],
+          "rpcs": [
+            "get_entity_id"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/functions/webhooks/stripe-webhook/index.ts": {
+          "tables": [
+            "emergency_requests",
+            "ivisit_main_wallet",
+            "organization_wallets",
+            "organizations",
+            "payments",
+            "wallet_ledger"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/migrations/20260219000000_infra.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/migrations/20260219000100_identity.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "dispatcher",
+            "driver",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/migrations/20260219000200_org_structure.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/migrations/20260219000300_logistics.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/migrations/20260219000400_finance.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/migrations/20260219000500_ops_content.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/migrations/20260219000700_security.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "dispatcher",
+            "organization_id",
+            "p_is_admin",
+            "p_is_console_allowed",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/migrations/20260219000800_emergency_logic.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "driver",
+            "organization_id",
+            "p_is_admin"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/migrations/20260219000900_automations.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/migrations/20260219010000_core_rpcs.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "current_user_permission_level",
+            "dispatcher",
+            "is_admin",
+            "organization_id",
+            "p_is_admin",
+            "p_is_console_allowed",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/scripts/apply_live_fixes.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "dispatcher",
+            "driver",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/scripts/data_import_fixed.js": {
+          "tables": [
+            "id_mappings"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "supabase/scripts/seed_platform.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "driver",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/tests/fixes/error_fixes.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "dispatcher",
+            "driver"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/tests/fixes/ivisit_e2e_alignment_audit.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/tests/fixes/ivisit_e2e_alignment_backfill.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/tests/fixes/ivisit_e2e_alignment_cleanup_legacy_rows.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/tests/fixes/migration_patches.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "supabase/tests/scripts/analyze_duplicate_seed_records.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/apply_alignment_backfill.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/apply_duplicate_seed_canonical_org_wallet_merges.js": {
+          "tables": [
+            "organization_wallets",
+            "organizations",
+            "wallet_ledger"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/apply_duplicate_seed_controlled_org_merges.js": {
+          "tables": [
+            "organizations"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/apply_hospital_ambulance_canonical_merges.js": {
+          "tables": [
+            "ambulances",
+            "emergency_requests",
+            "hospitals",
+            "room_pricing",
+            "service_pricing"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/apply_schema_fixes.js": {
+          "tables": [],
+          "rpcs": [
+            "exec_sql"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/check_db.js": {
+          "tables": [
+            "hospitals"
+          ],
+          "rpcs": [
+            "reload_schema"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/cleanup_alignment_legacy_rows.js": {
+          "tables": [
+            "organization_wallets",
+            "payments",
+            "wallet_ledger"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/cleanup_duplicate_seed_records.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/plan_duplicate_seed_merges.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/plan_hospital_ambulance_canonical_merges.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "driver",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/run_alignment_audit.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/run_e2e_flow_matrix.js": {
+          "tables": [
+            "ambulances",
+            "doctors",
+            "emergency_doctor_assignments",
+            "emergency_requests",
+            "hospitals",
+            "insurance_billing",
+            "organization_wallets",
+            "organizations",
+            "payments",
+            "profiles",
+            "visits",
+            "wallet_ledger"
+          ],
+          "rpcs": [
+            "approve_cash_payment",
+            "create_emergency_v4"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "driver",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/seed_realistic.js": {
+          "tables": [
+            "ambulances",
+            "doctors",
+            "emergency_requests",
+            "health_news",
+            "hospitals",
+            "organization_wallets",
+            "organizations",
+            "payments",
+            "profiles",
+            "trending_topics",
+            "user_activity",
+            "wallet_ledger"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "driver",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js": {
+          "tables": [
+            "ambulances",
+            "emergency_requests",
+            "hospitals",
+            "organization_wallets",
+            "organizations",
+            "payments",
+            "profiles",
+            "visits"
+          ],
+          "rpcs": [
+            "approve_cash_payment",
+            "create_emergency_v4"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "driver",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/test_comprehensive_system.js": {
+          "tables": [
+            "subscribers"
+          ],
+          "rpcs": [
+            "create_emergency_v4"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/test_ecosystem.js": {
+          "tables": [
+            "ambulances",
+            "doctor_schedules",
+            "doctors",
+            "emergency_doctor_assignments",
+            "emergency_requests",
+            "hospitals",
+            "insurance_policies",
+            "ivisit_main_wallet",
+            "medical_profiles",
+            "organization_wallets",
+            "organizations",
+            "patient_wallets",
+            "payments",
+            "preferences",
+            "profiles",
+            "room_pricing",
+            "service_pricing",
+            "visits",
+            "wallet_ledger"
+          ],
+          "rpcs": [
+            "approve_cash_payment",
+            "assign_ambulance_to_emergency",
+            "create_emergency_v4",
+            "discharge_patient",
+            "get_available_ambulances",
+            "get_insurance_policies",
+            "get_medical_summary",
+            "nearby_hospitals",
+            "update_hospital_availability",
+            "upsert_room_pricing",
+            "upsert_service_pricing"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "driver",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/test_helper.js": {
+          "tables": [
+            "profiles"
+          ],
+          "rpcs": [
+            "exec_sql",
+            "function_exists",
+            "get_table_structure"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "is_admin",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/test_profile_creation.js": {
+          "tables": [
+            "patient_wallets",
+            "preferences",
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/test_runner.js": {
+          "tables": [
+            "id_mappings",
+            "patient_wallets",
+            "payment_methods"
+          ],
+          "rpcs": [
+            "create_emergency_v4",
+            "exec_sql",
+            "get_ambulance_status",
+            "get_available_ambulances",
+            "get_entity_id",
+            "get_insurance_policies",
+            "get_medical_summary",
+            "is_admin",
+            "nearby_ambulances",
+            "nearby_hospitals",
+            "update_ambulance_location",
+            "validate_emergency_request",
+            "validate_insurance_coverage",
+            "validate_medical_profile",
+            "validate_payment_method"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "is_admin"
+          ],
+          "uses_create_client": true
+        },
+        "supabase/tests/scripts/verify_platform_setup.js": {
+          "tables": [
+            "hospitals",
+            "ivisit_main_wallet",
+            "organization_wallets",
+            "organizations",
+            "profiles",
+            "subscribers"
+          ],
+          "rpcs": [
+            "get_activity_stats",
+            "get_recent_activity"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "driver",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "types/database.ts": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "current_user_permission_level",
+            "is_admin",
+            "organization_id",
+            "p_is_admin",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "utils/profileCompletion.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        }
+      },
+      "tables": {
+        "emergency_requests": [
+          "components/emergency/EmergencyRequestModal.jsx",
+          "services/emergencyRequestsService.js",
+          "services/paymentService.js",
+          "services/serviceCostService.js",
+          "supabase/functions/webhooks/stripe-webhook/index.ts",
+          "supabase/tests/scripts/apply_hospital_ambulance_canonical_merges.js",
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/seed_realistic.js",
+          "supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "payments": [
+          "components/emergency/EmergencyRequestModal.jsx",
+          "services/paymentService.js",
+          "supabase/functions/payments/create-payment-intent/index.ts",
+          "supabase/functions/webhooks/stripe-webhook/index.ts",
+          "supabase/tests/scripts/cleanup_alignment_legacy_rows.js",
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/seed_realistic.js",
+          "supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "profiles": [
+          "scripts/verify_rpc_fix.js",
+          "services/authService.js",
+          "services/displayIdService.js",
+          "services/notificationDispatcher.js",
+          "services/paymentService.js",
+          "supabase/functions/payments/create-payment-intent/index.ts",
+          "supabase/functions/payments/create-payout/index.ts",
+          "supabase/functions/payments/manage-payment-methods/index.ts",
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/seed_realistic.js",
+          "supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+          "supabase/tests/scripts/test_ecosystem.js",
+          "supabase/tests/scripts/test_helper.js",
+          "supabase/tests/scripts/test_profile_creation.js",
+          "supabase/tests/scripts/verify_platform_setup.js"
+        ],
+        "insurance_policies": [
+          "services/appMigrationsService.js",
+          "services/insuranceService.js",
+          "services/paymentService.js",
+          "services/pricingService.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "health_news": [
+          "services/discoveryService.js",
+          "supabase/tests/scripts/seed_realistic.js"
+        ],
+        "search_events": [
+          "services/discoveryService.js"
+        ],
+        "search_selections": [
+          "services/discoveryService.js"
+        ],
+        "support_faqs": [
+          "services/helpSupportService.js",
+          "services/seederService.js"
+        ],
+        "support_tickets": [
+          "services/helpSupportService.js"
+        ],
+        "hospital_import_logs": [
+          "services/hospitalImportService.js"
+        ],
+        "hospitals": [
+          "services/hospitalImportService.js",
+          "services/hospitalsService.js",
+          "services/notificationDispatcher.js",
+          "services/paymentService.js",
+          "services/pricingService.js",
+          "supabase/functions/discovery/discover-hospitals/index.ts",
+          "supabase/tests/scripts/apply_hospital_ambulance_canonical_merges.js",
+          "supabase/tests/scripts/check_db.js",
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/seed_realistic.js",
+          "supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+          "supabase/tests/scripts/test_ecosystem.js",
+          "supabase/tests/scripts/verify_platform_setup.js"
+        ],
+        "hospital_rooms": [
+          "services/hospitalsService.js"
+        ],
+        "room_pricing": [
+          "services/hospitalsService.js",
+          "services/pricingService.js",
+          "supabase/tests/scripts/apply_hospital_ambulance_canonical_merges.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "service_pricing": [
+          "services/hospitalsService.js",
+          "services/pricingService.js",
+          "services/serviceCostService.js",
+          "supabase/tests/scripts/apply_hospital_ambulance_canonical_merges.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "documents": [
+          "services/insuranceService.js"
+        ],
+        "medical_profiles": [
+          "services/medicalProfileService.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "notifications": [
+          "services/notificationDispatcher.js",
+          "services/seederService.js"
+        ],
+        "organization_wallets": [
+          "services/paymentService.js",
+          "supabase/functions/webhooks/stripe-webhook/index.ts",
+          "supabase/tests/scripts/apply_duplicate_seed_canonical_org_wallet_merges.js",
+          "supabase/tests/scripts/cleanup_alignment_legacy_rows.js",
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/seed_realistic.js",
+          "supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+          "supabase/tests/scripts/test_ecosystem.js",
+          "supabase/tests/scripts/verify_platform_setup.js"
+        ],
+        "organizations": [
+          "services/paymentService.js",
+          "supabase/functions/payments/create-payment-intent/index.ts",
+          "supabase/functions/payments/create-payout/index.ts",
+          "supabase/functions/payments/manage-payment-methods/index.ts",
+          "supabase/functions/webhooks/stripe-webhook/index.ts",
+          "supabase/tests/scripts/apply_duplicate_seed_canonical_org_wallet_merges.js",
+          "supabase/tests/scripts/apply_duplicate_seed_controlled_org_merges.js",
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/seed_realistic.js",
+          "supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+          "supabase/tests/scripts/test_ecosystem.js",
+          "supabase/tests/scripts/verify_platform_setup.js"
+        ],
+        "patient_wallets": [
+          "services/paymentService.js",
+          "supabase/tests/scripts/test_ecosystem.js",
+          "supabase/tests/scripts/test_profile_creation.js",
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "payment_methods": [
+          "services/paymentService.js",
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "wallet_ledger": [
+          "services/paymentService.js",
+          "supabase/functions/webhooks/stripe-webhook/index.ts",
+          "supabase/tests/scripts/apply_duplicate_seed_canonical_org_wallet_merges.js",
+          "supabase/tests/scripts/cleanup_alignment_legacy_rows.js",
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/seed_realistic.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "preferences": [
+          "services/preferencesService.js",
+          "supabase/tests/scripts/test_ecosystem.js",
+          "supabase/tests/scripts/test_profile_creation.js"
+        ],
+        "ambulances": [
+          "services/pricingService.js",
+          "supabase/tests/scripts/apply_hospital_ambulance_canonical_merges.js",
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/seed_realistic.js",
+          "supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "available_hospitals": [
+          "services/realtimeAvailabilityService.js"
+        ],
+        "visits": [
+          "services/seederService.js",
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "id_mappings": [
+          "supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+          "supabase/scripts/data_import_fixed.js",
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "ivisit_main_wallet": [
+          "supabase/functions/webhooks/stripe-webhook/index.ts",
+          "supabase/tests/scripts/test_ecosystem.js",
+          "supabase/tests/scripts/verify_platform_setup.js"
+        ],
+        "doctors": [
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/seed_realistic.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "emergency_doctor_assignments": [
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "insurance_billing": [
+          "supabase/tests/scripts/run_e2e_flow_matrix.js"
+        ],
+        "trending_topics": [
+          "supabase/tests/scripts/seed_realistic.js"
+        ],
+        "user_activity": [
+          "supabase/tests/scripts/seed_realistic.js"
+        ],
+        "subscribers": [
+          "supabase/tests/scripts/test_comprehensive_system.js",
+          "supabase/tests/scripts/verify_platform_setup.js"
+        ],
+        "doctor_schedules": [
+          "supabase/tests/scripts/test_ecosystem.js"
+        ]
+      },
+      "rpcs": {
+        "exec_sql": [
+          "scripts/check_remote_sync.js",
+          "supabase/tests/scripts/apply_schema_fixes.js",
+          "supabase/tests/scripts/test_helper.js",
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "get_trending_searches": [
+          "scripts/debug_rpc.js",
+          "services/discoveryService.js"
+        ],
+        "reload_schema": [
+          "services/appMigrationsService.js",
+          "services/seederService.js",
+          "supabase/tests/scripts/check_db.js"
+        ],
+        "delete_user": [
+          "services/authService.js"
+        ],
+        "get_entity_id": [
+          "services/displayIdService.js",
+          "supabase/functions/payments/create-payment-intent/index.ts",
+          "supabase/functions/payments/manage-payment-methods/index.ts",
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "create_emergency_v4": [
+          "services/emergencyRequestsService.js",
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+          "supabase/tests/scripts/test_comprehensive_system.js",
+          "supabase/tests/scripts/test_ecosystem.js",
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "nearby_hospitals": [
+          "services/hospitalsService.js",
+          "supabase/functions/discovery/discover-hospitals/index.ts",
+          "supabase/tests/scripts/test_ecosystem.js",
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "notify_cash_approval_org_admins": [
+          "services/notificationDispatcher.js"
+        ],
+        "approve_cash_payment": [
+          "services/paymentService.js",
+          "supabase/tests/scripts/run_e2e_flow_matrix.js",
+          "supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "decline_cash_payment": [
+          "services/paymentService.js"
+        ],
+        "process_cash_payment_v2": [
+          "services/paymentService.js"
+        ],
+        "process_wallet_payment": [
+          "services/paymentService.js"
+        ],
+        "calculate_emergency_cost_v2": [
+          "services/pricingService.js",
+          "services/serviceCostService.js"
+        ],
+        "update_hospital_availability": [
+          "services/realtimeAvailabilityService.js",
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "log_user_activity": [
+          "services/supabaseHelpers.js"
+        ],
+        "create_emergency_with_payment": [
+          "supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+        ],
+        "get_system_stats": [
+          "supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+        ],
+        "get_user_statistics": [
+          "supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+        ],
+        "is_admin": [
+          "supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "assign_ambulance_to_emergency": [
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "discharge_patient": [
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "get_available_ambulances": [
+          "supabase/tests/scripts/test_ecosystem.js",
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "get_insurance_policies": [
+          "supabase/tests/scripts/test_ecosystem.js",
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "get_medical_summary": [
+          "supabase/tests/scripts/test_ecosystem.js",
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "upsert_room_pricing": [
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "upsert_service_pricing": [
+          "supabase/tests/scripts/test_ecosystem.js"
+        ],
+        "function_exists": [
+          "supabase/tests/scripts/test_helper.js"
+        ],
+        "get_table_structure": [
+          "supabase/tests/scripts/test_helper.js"
+        ],
+        "get_ambulance_status": [
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "nearby_ambulances": [
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "update_ambulance_location": [
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "validate_emergency_request": [
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "validate_insurance_coverage": [
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "validate_medical_profile": [
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "validate_payment_method": [
+          "supabase/tests/scripts/test_runner.js"
+        ],
+        "get_activity_stats": [
+          "supabase/tests/scripts/verify_platform_setup.js"
+        ],
+        "get_recent_activity": [
+          "supabase/tests/scripts/verify_platform_setup.js"
+        ]
+      },
+      "channels": {
+        "approval_${requestId}": [
+          "components/emergency/EmergencyRequestModal.jsx"
+        ],
+        "approval_payment_${paymentId}": [
+          "components/emergency/EmergencyRequestModal.jsx"
+        ],
+        "approval_payment_req_${emergencyRequestUuid}": [
+          "components/emergency/EmergencyRequestModal.jsx"
+        ],
+        "emergency_updates": [
+          "contexts/EmergencyContext.jsx"
+        ],
+        "ambulances_realtime": [
+          "hooks/emergency/useAmbulances.js"
+        ],
+        "visits_updates": [
+          "hooks/visits/useVisitsData.js"
+        ],
+        "ambulance_location_${requestKey}": [
+          "services/emergencyRequestsService.js"
+        ],
+        "emergency_${requestKey}": [
+          "services/emergencyRequestsService.js"
+        ],
+        "hospital_beds_${hospitalId}": [
+          "services/emergencyRequestsService.js"
+        ],
+        "area-availability": [
+          "services/realtimeAvailabilityService.js"
+        ],
+        "hospital-${hospitalId}": [
+          "services/realtimeAvailabilityService.js"
+        ]
+      },
+      "postgres_changes": [
+        {
+          "file": "components/emergency/EmergencyRequestModal.jsx",
+          "event": "UPDATE",
+          "schema": "public",
+          "table": "emergency_requests"
+        },
+        {
+          "file": "components/emergency/EmergencyRequestModal.jsx",
+          "event": "UPDATE",
+          "schema": "public",
+          "table": "payments",
+          "filter": "id=eq.${paymentId}"
+        },
+        {
+          "file": "components/emergency/EmergencyRequestModal.jsx",
+          "event": "UPDATE",
+          "schema": "public",
+          "table": "payments",
+          "filter": "emergency_request_id=eq.${emergencyRequestUuid}"
+        },
+        {
+          "file": "contexts/EmergencyContext.jsx",
+          "event": "UPDATE",
+          "schema": "public",
+          "table": "emergency_requests",
+          "filter": "user_id=eq.${user.id}"
+        },
+        {
+          "file": "hooks/emergency/useAmbulances.js",
+          "event": "*",
+          "schema": "public",
+          "table": "ambulances"
+        },
+        {
+          "file": "hooks/visits/useVisitsData.js",
+          "event": "*",
+          "schema": "public",
+          "table": "visits",
+          "filter": "user_id=eq.${user.id}"
+        },
+        {
+          "file": "services/emergencyRequestsService.js",
+          "event": "UPDATE",
+          "schema": "public",
+          "table": "emergency_requests"
+        },
+        {
+          "file": "services/emergencyRequestsService.js",
+          "event": "UPDATE",
+          "schema": "public",
+          "table": "ambulances",
+          "filter": "current_call=eq.${requestKey}"
+        },
+        {
+          "file": "services/emergencyRequestsService.js",
+          "event": "UPDATE",
+          "schema": "public",
+          "table": "hospitals",
+          "filter": "id=eq.${hospitalId}"
+        },
+        {
+          "file": "services/realtimeAvailabilityService.js",
+          "event": "UPDATE",
+          "schema": "public",
+          "table": "hospitals",
+          "filter": "id=eq.${hospitalId}"
+        },
+        {
+          "file": "services/realtimeAvailabilityService.js",
+          "event": "UPDATE",
+          "schema": "public",
+          "table": "hospitals"
+        },
+        {
+          "file": "services/supabaseHelpers.js",
+          "schema": "public",
+          "filter": "${filter.column}=eq.${filter.value}"
+        }
+      ],
+      "role_checks": {
+        "driver": 12,
+        "organization_id": 43,
+        "role": 38,
+        "provider_type": 12,
+        "admin": 26,
+        "dispatcher": 7,
+        "is_admin": 7,
+        "p_is_admin": 4,
+        "p_is_console_allowed": 2,
+        "current_user_permission_level": 2
+      },
+      "create_client_files": [
+        "scripts/apply_trending_fix.js",
+        "scripts/check_remote_sync.js",
+        "scripts/debug_rpc.js",
+        "scripts/verify_rpc_fix.js",
+        "services/supabase.js",
+        "supabase/docs/archive/test-scripts/lib/database.js",
+        "supabase/docs/archive/test-scripts/runners/data_import.js",
+        "supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+        "supabase/functions/discovery/discover-hospitals/index.ts",
+        "supabase/functions/payments/create-payment-intent/index.ts",
+        "supabase/functions/payments/create-payout/index.ts",
+        "supabase/functions/payments/manage-payment-methods/index.ts",
+        "supabase/functions/webhooks/stripe-webhook/index.ts",
+        "supabase/scripts/data_import_fixed.js",
+        "supabase/tests/scripts/analyze_duplicate_seed_records.js",
+        "supabase/tests/scripts/apply_alignment_backfill.js",
+        "supabase/tests/scripts/apply_duplicate_seed_canonical_org_wallet_merges.js",
+        "supabase/tests/scripts/apply_duplicate_seed_controlled_org_merges.js",
+        "supabase/tests/scripts/apply_hospital_ambulance_canonical_merges.js",
+        "supabase/tests/scripts/apply_schema_fixes.js",
+        "supabase/tests/scripts/check_db.js",
+        "supabase/tests/scripts/cleanup_alignment_legacy_rows.js",
+        "supabase/tests/scripts/cleanup_duplicate_seed_records.js",
+        "supabase/tests/scripts/plan_duplicate_seed_merges.js",
+        "supabase/tests/scripts/plan_hospital_ambulance_canonical_merges.js",
+        "supabase/tests/scripts/run_alignment_audit.js",
+        "supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "supabase/tests/scripts/seed_realistic.js",
+        "supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+        "supabase/tests/scripts/test_comprehensive_system.js",
+        "supabase/tests/scripts/test_ecosystem.js",
+        "supabase/tests/scripts/test_helper.js",
+        "supabase/tests/scripts/test_profile_creation.js",
+        "supabase/tests/scripts/test_runner.js",
+        "supabase/tests/scripts/verify_platform_setup.js"
+      ]
+    },
+    "ivisit-console": {
+      "files_scanned": 382,
+      "files": {
+        "frontend/scripts/add-unsubscribe-columns.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/scripts/inspect-schema-cli.js": {
+          "tables": [
+            "information_schema.columns",
+            "information_schema.tables"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "frontend/scripts/inspect-supabase-schema.js": {
+          "tables": [
+            "information_schema.columns",
+            "information_schema.tables"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "frontend/scripts/migrate_doctors.js": {
+          "tables": [
+            "doctors",
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "frontend/scripts/run-migrations.js": {
+          "tables": [],
+          "rpcs": [
+            "exec_sql"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "frontend/src/App.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/common/IslandNavigation.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/common/ProtectedRoute.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/common/RouteGuard.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/context/HealthNewsPanel.jsx": {
+          "tables": [
+            "health_news"
+          ],
+          "rpcs": [],
+          "channels": [
+            "health_news_panel_changes"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "health_news"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/components/context/PricingContextPanel.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/context/SupportTicketsPanel.jsx": {
+          "tables": [
+            "support_tickets"
+          ],
+          "rpcs": [],
+          "channels": [
+            "support_tickets_panel_changes"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "support_tickets"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/components/context/UsersPanel.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/context/VerificationPanel.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/dashboard/HospitalFleetManager.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/mobile/MobileDashboard.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/mobile/MobilePricing.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/mobile/MobileSettings.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/mobile/MobileUsers.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/mobile/MobileVerification.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/modals/AmbulanceModal.jsx": {
+          "tables": [
+            "ambulances",
+            "hospitals"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "driver",
+            "organization_id",
+            "provider_type"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/modals/ConfirmationModal.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/modals/DoctorModal.jsx": {
+          "tables": [
+            "hospitals"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "provider_type"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/modals/EmergencyDetailsModal.jsx": {
+          "tables": [
+            "payments"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/modals/EmergencyRequestModal.jsx": {
+          "tables": [
+            "emergency_requests",
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/components/modals/GlobalFinancialModals.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/modals/InsuranceModal.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/modals/InviteUserModal.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/modals/StaffSchedulingModal.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/modals/UserModal.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/modals/VerificationModal.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/navigation/ContextPanel.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/onboarding/AdminAccountStep.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/onboarding/OnboardingWizard.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/onboarding/OrganizationDetailsStep.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/AmbulancesPage.jsx": {
+          "tables": [
+            "ambulances"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/Analytics.jsx": {
+          "tables": [
+            "ambulances",
+            "emergency_requests",
+            "hospitals",
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/BentoHome.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/DoctorsPage.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/EmergencyRequestsPage.jsx": {
+          "tables": [
+            "emergency_requests"
+          ],
+          "rpcs": [],
+          "channels": [
+            "emergency_changes"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "emergency_requests"
+            }
+          ],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/HealthNewsManagementPage.jsx": {
+          "tables": [
+            "health_news"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/HospitalsPage.jsx": {
+          "tables": [
+            "hospitals"
+          ],
+          "rpcs": [
+            "delete_hospital_by_admin"
+          ],
+          "channels": [
+            "hospitals_page_changes"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "hospitals"
+            }
+          ],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/OrganizationsPage.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/Overview.jsx": {
+          "tables": [
+            "ambulances",
+            "emergency_requests",
+            "hospitals",
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/PricingManagementPage.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/SettingsPage.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/SupportTicketsPage.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/UsersPage.jsx": {
+          "tables": [
+            "profiles"
+          ],
+          "rpcs": [
+            "delete_user_by_admin"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/VerificationQueue.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/VisitsPage.jsx": {
+          "tables": [
+            "doctors",
+            "profiles",
+            "visits"
+          ],
+          "rpcs": [],
+          "channels": [
+            "visits"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "visits"
+            }
+          ],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/pages/WalletManagementPage.jsx": {
+          "tables": [
+            "ivisit_main_wallet",
+            "organization_wallets",
+            "payments",
+            "profiles",
+            "wallet_ledger"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/scheduling/StaffScheduler.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/ui/alert.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/ui/breadcrumb.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/ui/carousel.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/ui/input-otp.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/ui/pagination.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/ui/table.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/views/DoctorProfileCard.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/views/PricingListView.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/views/PricingTableView.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/views/UserListView.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/views/UserTableView.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/views/VerificationQueueListView.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/components/views/VerificationQueueTableView.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/config/navigation.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/config/routes.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/contexts/AuthContext.jsx": {
+          "tables": [
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "dispatcher",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/contexts/OnboardingContext.jsx": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/contexts/PageDataContext.jsx": {
+          "tables": [
+            "ivisit_main_wallet",
+            "organization_wallets",
+            "wallet_ledger"
+          ],
+          "rpcs": [],
+          "channels": [
+            "activity_changes",
+            "doctor_changes",
+            "emergency_changes",
+            "insurance_changes",
+            "organization_changes",
+            "pricing_changes",
+            "profile_changes",
+            "support_tickets_changes",
+            "visit_changes"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "emergency_requests"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "doctors"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "visits"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "insurance_policies"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "profiles"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "organizations"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "service_pricing"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "room_pricing"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "support_tickets"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "user_activity"
+            }
+          ],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/hooks/useAdmin.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/hooks/useAnalytics.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "analytics_changes"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "emergency_requests"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/hooks/useProfiles.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/lib/supabase.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "${tableName}-changes"
+          ],
+          "postgres_changes": [
+            {
+              "schema": "public"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "frontend/src/services/activityService.js": {
+          "tables": [],
+          "rpcs": [
+            "get_activity_stats",
+            "get_recent_activity",
+            "log_user_activity"
+          ],
+          "channels": [
+            "activity_changes",
+            "entity_activity_${entityType}_${entityId}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "entity_type=eq.${entityType}&entity_id=eq.${entityId}"
+            }
+          ],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/adminService.js": {
+          "tables": [
+            "admin_audit_log",
+            "profiles",
+            "user_activity",
+            "user_sessions"
+          ],
+          "rpcs": [
+            "current_user_is_admin",
+            "current_user_permission_level"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "current_user_permission_level",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/ambulancesService.js": {
+          "tables": [
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [
+            "ambulance_${ambulanceId}",
+            "ambulances_all"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "id=eq.${ambulanceId}"
+            },
+            {
+              "event": "*",
+              "schema": "public"
+            }
+          ],
+          "role_tokens": [
+            "driver",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/analyticsAutomationService.js": {
+          "tables": [
+            "search_events",
+            "trending_searches_view"
+          ],
+          "rpcs": [
+            "admin_update_trending_topics",
+            "update_trending_topics_from_search"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/analyticsService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/authService.js": {
+          "tables": [
+            "hospitals",
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/bedManagementService.js": {
+          "tables": [
+            "emergency_requests",
+            "hospitals",
+            "profiles"
+          ],
+          "rpcs": [
+            "cancel_bed_reservation",
+            "discharge_patient"
+          ],
+          "channels": [
+            "bed_reservations_${hospitalId}",
+            "hospital_beds_${hospitalId}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "active_bed_reservations"
+            },
+            {
+              "event": "UPDATE",
+              "schema": "public",
+              "table": "hospitals",
+              "filter": "id=eq.${hospitalId}"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/displayIdService.js": {
+          "tables": [
+            "hospitals",
+            "profiles"
+          ],
+          "rpcs": [
+            "get_entity_id"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/driverManagementService.js": {
+          "tables": [
+            "ambulances",
+            "emergency_requests",
+            "hospitals",
+            "profiles"
+          ],
+          "rpcs": [
+            "cancel_trip",
+            "complete_trip"
+          ],
+          "channels": [
+            "ambulance_status_${hospitalId}",
+            "driver_assignments_${hospitalId}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "emergency_requests",
+              "filter": "hospital_id=eq.${hospitalId}"
+            },
+            {
+              "event": "UPDATE",
+              "schema": "public",
+              "table": "ambulances",
+              "filter": "hospital_id=eq.${hospitalId}"
+            }
+          ],
+          "role_tokens": [
+            "driver"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/emergencyResponseService.js": {
+          "tables": [
+            "ambulances",
+            "emergency_requests"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/emergencyService.js": {
+          "tables": [],
+          "rpcs": [
+            "approve_cash_payment",
+            "create_emergency_v4",
+            "decline_cash_payment"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/healthNewsService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "health_news_all"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public"
+            }
+          ],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/hospitalImportService.js": {
+          "tables": [
+            "hospital_import_logs",
+            "hospitals",
+            "profiles"
+          ],
+          "rpcs": [
+            "nearby_hospitals"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/hospitalsService.js": {
+          "tables": [],
+          "rpcs": [
+            "update_hospital_by_admin"
+          ],
+          "channels": [
+            "hospital_${hospitalId}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "id=eq.${hospitalId}"
+            }
+          ],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/insurancePoliciesService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "insurance_policy_${policyId}",
+            "user_insurance_policies_${userId}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "id=eq.${policyId}"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "user_id=eq.${userId}"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/insuranceService.js": {
+          "tables": [
+            "documents"
+          ],
+          "rpcs": [],
+          "channels": [
+            "insurance_policies_changes"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public"
+            }
+          ],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/medicalProfilesService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "medical_profile_${userId}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "user_id=eq.${userId}"
+            }
+          ],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/notificationService.js": {
+          "tables": [
+            "notifications"
+          ],
+          "rpcs": [],
+          "channels": [
+            "notifications:user=${userId}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "INSERT",
+              "schema": "public",
+              "table": "notifications",
+              "filter": "user_id=eq.${userId}"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/onboardingService.js": {
+          "tables": [
+            "documents",
+            "hospitals",
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/organizationsService.js": {
+          "tables": [
+            "organization_wallets"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/orgVerificationService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "org_verification_queue"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "verification_status=eq.pending"
+            }
+          ],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/preferencesService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "preferences_${userId}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "user_id=eq.${userId}"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/pricingService.js": {
+          "tables": [
+            "hospitals"
+          ],
+          "rpcs": [
+            "delete_room_pricing",
+            "delete_service_pricing",
+            "upsert_room_pricing",
+            "upsert_service_pricing"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/profilesService.js": {
+          "tables": [
+            "images",
+            "profiles"
+          ],
+          "rpcs": [
+            "current_user_is_admin",
+            "get_all_auth_users",
+            "get_user_statistics",
+            "search_auth_users",
+            "update_profile_by_admin"
+          ],
+          "channels": [
+            "profile_${profileId}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "id=eq.${profileId}"
+            }
+          ],
+          "role_tokens": [
+            "admin",
+            "dispatcher",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/rbacPatterns.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "is_admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/searchAnalyticsService.js": {
+          "tables": [
+            "search_events"
+          ],
+          "rpcs": [
+            "get_search_analytics",
+            "get_search_analytics_summary",
+            "is_admin"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "is_admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/searchEventsService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "search_events_all"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/searchHistoryService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "search_history_${userId}"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "user_id=eq.${userId}"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/searchSelectionsService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "search_selections_all"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/searchService.js": {
+          "tables": [
+            "ambulances",
+            "doctors",
+            "emergency_requests",
+            "hospitals",
+            "profiles",
+            "search_history",
+            "search_selections",
+            "visits"
+          ],
+          "rpcs": [
+            "get_trending_searches"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/staffSchedulingService.js": {
+          "tables": [
+            "ambulances",
+            "doctors",
+            "hospitals",
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [
+            "ambulance_schedule_updates",
+            "doctor_schedule_updates"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "doctors"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "ambulances"
+            }
+          ],
+          "role_tokens": [
+            "driver",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/subscribersService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "subscribers_all"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/subscriptionService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "new_subscribers",
+            "subscribers_changes"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public"
+            },
+            {
+              "event": "INSERT",
+              "schema": "public"
+            }
+          ],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/supabaseHelpers.js": {
+          "tables": [],
+          "rpcs": [
+            "log_user_activity"
+          ],
+          "channels": [],
+          "postgres_changes": [
+            {
+              "schema": "public",
+              "filter": "${filter.column}=eq.${filter.value}"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/supabaseMapService.js": {
+          "tables": [
+            "ambulances",
+            "emergency_requests",
+            "hospitals"
+          ],
+          "rpcs": [
+            "nearby_hospitals"
+          ],
+          "channels": [
+            "map_ambulances_all",
+            "map_emergencies_all",
+            "map_users_all"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "emergency_requests"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "ambulances"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "table": "users"
+            }
+          ],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/supportFaqsService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "support_faqs_all"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/supportTicketsService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "support_tickets_changes"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public"
+            }
+          ],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/trendingTopicsService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "trending_topics_all"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/verificationService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "verification_queue_changes"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "role=eq.provider"
+            }
+          ],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/services/visitsService.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [
+            "user_visits_${userId}",
+            "visit_${visitId}",
+            "visits_all"
+          ],
+          "postgres_changes": [
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "id=eq.${visitId}"
+            },
+            {
+              "event": "*",
+              "schema": "public"
+            },
+            {
+              "event": "*",
+              "schema": "public",
+              "filter": "user_id=eq.${userId}"
+            }
+          ],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/src/services/walletService.js": {
+          "tables": [
+            "ivisit_main_wallet",
+            "organization_wallets",
+            "wallet_ledger"
+          ],
+          "rpcs": [
+            "check_cash_eligibility",
+            "get_org_stripe_status",
+            "process_cash_payment"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/types/database.ts": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "is_admin",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/types/emergency.ts": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "driver"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/types/index.ts": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "driver",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/utils/databaseFields.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/utils/runMigrations.js": {
+          "tables": [],
+          "rpcs": [
+            "exec_sql"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/src/utils/testDatabase.js": {
+          "tables": [
+            "health_news",
+            "insurance_policies",
+            "support_tickets"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": false
+        },
+        "frontend/supabase/docs/archive/legacy-references/20260219012714_rls_policies.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/docs/archive/legacy-references/20260219012737_emergency_functions.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "dispatcher",
+            "is_admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/docs/archive/test-scripts/lib/database.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "frontend/supabase/docs/archive/test-scripts/runners/data_import.js": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js": {
+          "tables": [
+            "id_mappings"
+          ],
+          "rpcs": [
+            "create_emergency_with_payment",
+            "get_system_stats",
+            "get_user_statistics",
+            "is_admin"
+          ],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "is_admin"
+          ],
+          "uses_create_client": true
+        },
+        "frontend/supabase/functions/discovery/index.ts": {
+          "tables": [
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "frontend/supabase/functions/payments/index.ts": {
+          "tables": [
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "frontend/supabase/functions/payments/process-subscribers/index.ts": {
+          "tables": [
+            "subscribers"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "frontend/supabase/functions/payments/sendWelcome/index.ts": {
+          "tables": [
+            "subscribers"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin"
+          ],
+          "uses_create_client": true
+        },
+        "frontend/supabase/functions/webhooks/index.ts": {
+          "tables": [
+            "subscribers"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [],
+          "uses_create_client": true
+        },
+        "frontend/supabase/migrations/20260219000000_infra.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/migrations/20260219000100_identity.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "dispatcher",
+            "driver",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/migrations/20260219000200_org_structure.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/migrations/20260219000300_logistics.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/migrations/20260219000400_finance.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/migrations/20260219000500_ops_content.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/migrations/20260219000700_security.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "dispatcher",
+            "organization_id",
+            "p_is_admin",
+            "p_is_console_allowed",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/migrations/20260219000800_emergency_logic.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "driver",
+            "organization_id",
+            "p_is_admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/migrations/20260219000900_automations.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/migrations/20260219010000_core_rpcs.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "current_user_permission_level",
+            "dispatcher",
+            "is_admin",
+            "organization_id",
+            "p_is_admin",
+            "p_is_console_allowed",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/scripts/manual_apply_core_pillar_hotfix_20260223.sql": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "organization_id",
+            "p_is_admin"
+          ],
+          "uses_create_client": false
+        },
+        "frontend/supabase/tests/test_profile_creation.js": {
+          "tables": [
+            "patient_wallets",
+            "preferences",
+            "profiles"
+          ],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "admin",
+            "role"
+          ],
+          "uses_create_client": true
+        },
+        "frontend/supabase_types.ts": {
+          "tables": [],
+          "rpcs": [],
+          "channels": [],
+          "postgres_changes": [],
+          "role_tokens": [
+            "is_admin",
+            "organization_id",
+            "provider_type",
+            "role"
+          ],
+          "uses_create_client": false
+        }
+      },
+      "tables": {
+        "information_schema.columns": [
+          "frontend/scripts/inspect-schema-cli.js",
+          "frontend/scripts/inspect-supabase-schema.js"
+        ],
+        "information_schema.tables": [
+          "frontend/scripts/inspect-schema-cli.js",
+          "frontend/scripts/inspect-supabase-schema.js"
+        ],
+        "doctors": [
+          "frontend/scripts/migrate_doctors.js",
+          "frontend/src/components/pages/VisitsPage.jsx",
+          "frontend/src/services/searchService.js",
+          "frontend/src/services/staffSchedulingService.js"
+        ],
+        "profiles": [
+          "frontend/scripts/migrate_doctors.js",
+          "frontend/src/components/modals/EmergencyRequestModal.jsx",
+          "frontend/src/components/pages/Analytics.jsx",
+          "frontend/src/components/pages/Overview.jsx",
+          "frontend/src/components/pages/UsersPage.jsx",
+          "frontend/src/components/pages/VisitsPage.jsx",
+          "frontend/src/components/pages/WalletManagementPage.jsx",
+          "frontend/src/contexts/AuthContext.jsx",
+          "frontend/src/services/adminService.js",
+          "frontend/src/services/ambulancesService.js",
+          "frontend/src/services/authService.js",
+          "frontend/src/services/bedManagementService.js",
+          "frontend/src/services/displayIdService.js",
+          "frontend/src/services/driverManagementService.js",
+          "frontend/src/services/hospitalImportService.js",
+          "frontend/src/services/onboardingService.js",
+          "frontend/src/services/profilesService.js",
+          "frontend/src/services/searchService.js",
+          "frontend/src/services/staffSchedulingService.js",
+          "frontend/supabase/functions/discovery/index.ts",
+          "frontend/supabase/functions/payments/index.ts",
+          "frontend/supabase/tests/test_profile_creation.js"
+        ],
+        "health_news": [
+          "frontend/src/components/context/HealthNewsPanel.jsx",
+          "frontend/src/components/pages/HealthNewsManagementPage.jsx",
+          "frontend/src/utils/testDatabase.js"
+        ],
+        "support_tickets": [
+          "frontend/src/components/context/SupportTicketsPanel.jsx",
+          "frontend/src/utils/testDatabase.js"
+        ],
+        "ambulances": [
+          "frontend/src/components/modals/AmbulanceModal.jsx",
+          "frontend/src/components/pages/AmbulancesPage.jsx",
+          "frontend/src/components/pages/Analytics.jsx",
+          "frontend/src/components/pages/Overview.jsx",
+          "frontend/src/services/driverManagementService.js",
+          "frontend/src/services/emergencyResponseService.js",
+          "frontend/src/services/searchService.js",
+          "frontend/src/services/staffSchedulingService.js",
+          "frontend/src/services/supabaseMapService.js"
+        ],
+        "hospitals": [
+          "frontend/src/components/modals/AmbulanceModal.jsx",
+          "frontend/src/components/modals/DoctorModal.jsx",
+          "frontend/src/components/pages/Analytics.jsx",
+          "frontend/src/components/pages/HospitalsPage.jsx",
+          "frontend/src/components/pages/Overview.jsx",
+          "frontend/src/services/authService.js",
+          "frontend/src/services/bedManagementService.js",
+          "frontend/src/services/displayIdService.js",
+          "frontend/src/services/driverManagementService.js",
+          "frontend/src/services/hospitalImportService.js",
+          "frontend/src/services/onboardingService.js",
+          "frontend/src/services/pricingService.js",
+          "frontend/src/services/searchService.js",
+          "frontend/src/services/staffSchedulingService.js",
+          "frontend/src/services/supabaseMapService.js"
+        ],
+        "payments": [
+          "frontend/src/components/modals/EmergencyDetailsModal.jsx",
+          "frontend/src/components/pages/WalletManagementPage.jsx"
+        ],
+        "emergency_requests": [
+          "frontend/src/components/modals/EmergencyRequestModal.jsx",
+          "frontend/src/components/pages/Analytics.jsx",
+          "frontend/src/components/pages/EmergencyRequestsPage.jsx",
+          "frontend/src/components/pages/Overview.jsx",
+          "frontend/src/services/bedManagementService.js",
+          "frontend/src/services/driverManagementService.js",
+          "frontend/src/services/emergencyResponseService.js",
+          "frontend/src/services/searchService.js",
+          "frontend/src/services/supabaseMapService.js"
+        ],
+        "visits": [
+          "frontend/src/components/pages/VisitsPage.jsx",
+          "frontend/src/services/searchService.js"
+        ],
+        "ivisit_main_wallet": [
+          "frontend/src/components/pages/WalletManagementPage.jsx",
+          "frontend/src/contexts/PageDataContext.jsx",
+          "frontend/src/services/walletService.js"
+        ],
+        "organization_wallets": [
+          "frontend/src/components/pages/WalletManagementPage.jsx",
+          "frontend/src/contexts/PageDataContext.jsx",
+          "frontend/src/services/organizationsService.js",
+          "frontend/src/services/walletService.js"
+        ],
+        "wallet_ledger": [
+          "frontend/src/components/pages/WalletManagementPage.jsx",
+          "frontend/src/contexts/PageDataContext.jsx",
+          "frontend/src/services/walletService.js"
+        ],
+        "admin_audit_log": [
+          "frontend/src/services/adminService.js"
+        ],
+        "user_activity": [
+          "frontend/src/services/adminService.js"
+        ],
+        "user_sessions": [
+          "frontend/src/services/adminService.js"
+        ],
+        "search_events": [
+          "frontend/src/services/analyticsAutomationService.js",
+          "frontend/src/services/searchAnalyticsService.js"
+        ],
+        "trending_searches_view": [
+          "frontend/src/services/analyticsAutomationService.js"
+        ],
+        "hospital_import_logs": [
+          "frontend/src/services/hospitalImportService.js"
+        ],
+        "documents": [
+          "frontend/src/services/insuranceService.js",
+          "frontend/src/services/onboardingService.js"
+        ],
+        "notifications": [
+          "frontend/src/services/notificationService.js"
+        ],
+        "images": [
+          "frontend/src/services/profilesService.js"
+        ],
+        "search_history": [
+          "frontend/src/services/searchService.js"
+        ],
+        "search_selections": [
+          "frontend/src/services/searchService.js"
+        ],
+        "insurance_policies": [
+          "frontend/src/utils/testDatabase.js"
+        ],
+        "id_mappings": [
+          "frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+        ],
+        "subscribers": [
+          "frontend/supabase/functions/payments/process-subscribers/index.ts",
+          "frontend/supabase/functions/payments/sendWelcome/index.ts",
+          "frontend/supabase/functions/webhooks/index.ts"
+        ],
+        "patient_wallets": [
+          "frontend/supabase/tests/test_profile_creation.js"
+        ],
+        "preferences": [
+          "frontend/supabase/tests/test_profile_creation.js"
+        ]
+      },
+      "rpcs": {
+        "exec_sql": [
+          "frontend/scripts/run-migrations.js",
+          "frontend/src/utils/runMigrations.js"
+        ],
+        "delete_hospital_by_admin": [
+          "frontend/src/components/pages/HospitalsPage.jsx"
+        ],
+        "delete_user_by_admin": [
+          "frontend/src/components/pages/UsersPage.jsx"
+        ],
+        "get_activity_stats": [
+          "frontend/src/services/activityService.js"
+        ],
+        "get_recent_activity": [
+          "frontend/src/services/activityService.js"
+        ],
+        "log_user_activity": [
+          "frontend/src/services/activityService.js",
+          "frontend/src/services/supabaseHelpers.js"
+        ],
+        "current_user_is_admin": [
+          "frontend/src/services/adminService.js",
+          "frontend/src/services/profilesService.js"
+        ],
+        "current_user_permission_level": [
+          "frontend/src/services/adminService.js"
+        ],
+        "admin_update_trending_topics": [
+          "frontend/src/services/analyticsAutomationService.js"
+        ],
+        "update_trending_topics_from_search": [
+          "frontend/src/services/analyticsAutomationService.js"
+        ],
+        "cancel_bed_reservation": [
+          "frontend/src/services/bedManagementService.js"
+        ],
+        "discharge_patient": [
+          "frontend/src/services/bedManagementService.js"
+        ],
+        "get_entity_id": [
+          "frontend/src/services/displayIdService.js"
+        ],
+        "cancel_trip": [
+          "frontend/src/services/driverManagementService.js"
+        ],
+        "complete_trip": [
+          "frontend/src/services/driverManagementService.js"
+        ],
+        "approve_cash_payment": [
+          "frontend/src/services/emergencyService.js"
+        ],
+        "create_emergency_v4": [
+          "frontend/src/services/emergencyService.js"
+        ],
+        "decline_cash_payment": [
+          "frontend/src/services/emergencyService.js"
+        ],
+        "nearby_hospitals": [
+          "frontend/src/services/hospitalImportService.js",
+          "frontend/src/services/supabaseMapService.js"
+        ],
+        "update_hospital_by_admin": [
+          "frontend/src/services/hospitalsService.js"
+        ],
+        "delete_room_pricing": [
+          "frontend/src/services/pricingService.js"
+        ],
+        "delete_service_pricing": [
+          "frontend/src/services/pricingService.js"
+        ],
+        "upsert_room_pricing": [
+          "frontend/src/services/pricingService.js"
+        ],
+        "upsert_service_pricing": [
+          "frontend/src/services/pricingService.js"
+        ],
+        "get_all_auth_users": [
+          "frontend/src/services/profilesService.js"
+        ],
+        "get_user_statistics": [
+          "frontend/src/services/profilesService.js",
+          "frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+        ],
+        "search_auth_users": [
+          "frontend/src/services/profilesService.js"
+        ],
+        "update_profile_by_admin": [
+          "frontend/src/services/profilesService.js"
+        ],
+        "get_search_analytics": [
+          "frontend/src/services/searchAnalyticsService.js"
+        ],
+        "get_search_analytics_summary": [
+          "frontend/src/services/searchAnalyticsService.js"
+        ],
+        "is_admin": [
+          "frontend/src/services/searchAnalyticsService.js",
+          "frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+        ],
+        "get_trending_searches": [
+          "frontend/src/services/searchService.js"
+        ],
+        "check_cash_eligibility": [
+          "frontend/src/services/walletService.js"
+        ],
+        "get_org_stripe_status": [
+          "frontend/src/services/walletService.js"
+        ],
+        "process_cash_payment": [
+          "frontend/src/services/walletService.js"
+        ],
+        "create_emergency_with_payment": [
+          "frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+        ],
+        "get_system_stats": [
+          "frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+        ]
+      },
+      "channels": {
+        "health_news_panel_changes": [
+          "frontend/src/components/context/HealthNewsPanel.jsx"
+        ],
+        "support_tickets_panel_changes": [
+          "frontend/src/components/context/SupportTicketsPanel.jsx"
+        ],
+        "emergency_changes": [
+          "frontend/src/components/pages/EmergencyRequestsPage.jsx",
+          "frontend/src/contexts/PageDataContext.jsx"
+        ],
+        "hospitals_page_changes": [
+          "frontend/src/components/pages/HospitalsPage.jsx"
+        ],
+        "visits": [
+          "frontend/src/components/pages/VisitsPage.jsx"
+        ],
+        "activity_changes": [
+          "frontend/src/contexts/PageDataContext.jsx",
+          "frontend/src/services/activityService.js"
+        ],
+        "doctor_changes": [
+          "frontend/src/contexts/PageDataContext.jsx"
+        ],
+        "insurance_changes": [
+          "frontend/src/contexts/PageDataContext.jsx"
+        ],
+        "organization_changes": [
+          "frontend/src/contexts/PageDataContext.jsx"
+        ],
+        "pricing_changes": [
+          "frontend/src/contexts/PageDataContext.jsx"
+        ],
+        "profile_changes": [
+          "frontend/src/contexts/PageDataContext.jsx"
+        ],
+        "support_tickets_changes": [
+          "frontend/src/contexts/PageDataContext.jsx",
+          "frontend/src/services/supportTicketsService.js"
+        ],
+        "visit_changes": [
+          "frontend/src/contexts/PageDataContext.jsx"
+        ],
+        "analytics_changes": [
+          "frontend/src/hooks/useAnalytics.js"
+        ],
+        "${tableName}-changes": [
+          "frontend/src/lib/supabase.js"
+        ],
+        "entity_activity_${entityType}_${entityId}": [
+          "frontend/src/services/activityService.js"
+        ],
+        "ambulance_${ambulanceId}": [
+          "frontend/src/services/ambulancesService.js"
+        ],
+        "ambulances_all": [
+          "frontend/src/services/ambulancesService.js"
+        ],
+        "bed_reservations_${hospitalId}": [
+          "frontend/src/services/bedManagementService.js"
+        ],
+        "hospital_beds_${hospitalId}": [
+          "frontend/src/services/bedManagementService.js"
+        ],
+        "ambulance_status_${hospitalId}": [
+          "frontend/src/services/driverManagementService.js"
+        ],
+        "driver_assignments_${hospitalId}": [
+          "frontend/src/services/driverManagementService.js"
+        ],
+        "health_news_all": [
+          "frontend/src/services/healthNewsService.js"
+        ],
+        "hospital_${hospitalId}": [
+          "frontend/src/services/hospitalsService.js"
+        ],
+        "insurance_policy_${policyId}": [
+          "frontend/src/services/insurancePoliciesService.js"
+        ],
+        "user_insurance_policies_${userId}": [
+          "frontend/src/services/insurancePoliciesService.js"
+        ],
+        "insurance_policies_changes": [
+          "frontend/src/services/insuranceService.js"
+        ],
+        "medical_profile_${userId}": [
+          "frontend/src/services/medicalProfilesService.js"
+        ],
+        "notifications:user=${userId}": [
+          "frontend/src/services/notificationService.js"
+        ],
+        "org_verification_queue": [
+          "frontend/src/services/orgVerificationService.js"
+        ],
+        "preferences_${userId}": [
+          "frontend/src/services/preferencesService.js"
+        ],
+        "profile_${profileId}": [
+          "frontend/src/services/profilesService.js"
+        ],
+        "search_events_all": [
+          "frontend/src/services/searchEventsService.js"
+        ],
+        "search_history_${userId}": [
+          "frontend/src/services/searchHistoryService.js"
+        ],
+        "search_selections_all": [
+          "frontend/src/services/searchSelectionsService.js"
+        ],
+        "ambulance_schedule_updates": [
+          "frontend/src/services/staffSchedulingService.js"
+        ],
+        "doctor_schedule_updates": [
+          "frontend/src/services/staffSchedulingService.js"
+        ],
+        "subscribers_all": [
+          "frontend/src/services/subscribersService.js"
+        ],
+        "new_subscribers": [
+          "frontend/src/services/subscriptionService.js"
+        ],
+        "subscribers_changes": [
+          "frontend/src/services/subscriptionService.js"
+        ],
+        "map_ambulances_all": [
+          "frontend/src/services/supabaseMapService.js"
+        ],
+        "map_emergencies_all": [
+          "frontend/src/services/supabaseMapService.js"
+        ],
+        "map_users_all": [
+          "frontend/src/services/supabaseMapService.js"
+        ],
+        "support_faqs_all": [
+          "frontend/src/services/supportFaqsService.js"
+        ],
+        "trending_topics_all": [
+          "frontend/src/services/trendingTopicsService.js"
+        ],
+        "verification_queue_changes": [
+          "frontend/src/services/verificationService.js"
+        ],
+        "user_visits_${userId}": [
+          "frontend/src/services/visitsService.js"
+        ],
+        "visit_${visitId}": [
+          "frontend/src/services/visitsService.js"
+        ],
+        "visits_all": [
+          "frontend/src/services/visitsService.js"
+        ]
+      },
+      "postgres_changes": [
+        {
+          "file": "frontend/src/components/context/HealthNewsPanel.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "health_news"
+        },
+        {
+          "file": "frontend/src/components/context/SupportTicketsPanel.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "support_tickets"
+        },
+        {
+          "file": "frontend/src/components/pages/EmergencyRequestsPage.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "emergency_requests"
+        },
+        {
+          "file": "frontend/src/components/pages/HospitalsPage.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "hospitals"
+        },
+        {
+          "file": "frontend/src/components/pages/VisitsPage.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "visits"
+        },
+        {
+          "file": "frontend/src/contexts/PageDataContext.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "emergency_requests"
+        },
+        {
+          "file": "frontend/src/contexts/PageDataContext.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "doctors"
+        },
+        {
+          "file": "frontend/src/contexts/PageDataContext.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "visits"
+        },
+        {
+          "file": "frontend/src/contexts/PageDataContext.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "insurance_policies"
+        },
+        {
+          "file": "frontend/src/contexts/PageDataContext.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "profiles"
+        },
+        {
+          "file": "frontend/src/contexts/PageDataContext.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "organizations"
+        },
+        {
+          "file": "frontend/src/contexts/PageDataContext.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "service_pricing"
+        },
+        {
+          "file": "frontend/src/contexts/PageDataContext.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "room_pricing"
+        },
+        {
+          "file": "frontend/src/contexts/PageDataContext.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "support_tickets"
+        },
+        {
+          "file": "frontend/src/contexts/PageDataContext.jsx",
+          "event": "*",
+          "schema": "public",
+          "table": "user_activity"
+        },
+        {
+          "file": "frontend/src/hooks/useAnalytics.js",
+          "event": "*",
+          "schema": "public",
+          "table": "emergency_requests"
+        },
+        {
+          "file": "frontend/src/lib/supabase.js",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/activityService.js",
+          "event": "*",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/activityService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "entity_type=eq.${entityType}&entity_id=eq.${entityId}"
+        },
+        {
+          "file": "frontend/src/services/ambulancesService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "id=eq.${ambulanceId}"
+        },
+        {
+          "file": "frontend/src/services/ambulancesService.js",
+          "event": "*",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/bedManagementService.js",
+          "event": "*",
+          "schema": "public",
+          "table": "active_bed_reservations"
+        },
+        {
+          "file": "frontend/src/services/bedManagementService.js",
+          "event": "UPDATE",
+          "schema": "public",
+          "table": "hospitals",
+          "filter": "id=eq.${hospitalId}"
+        },
+        {
+          "file": "frontend/src/services/driverManagementService.js",
+          "event": "*",
+          "schema": "public",
+          "table": "emergency_requests",
+          "filter": "hospital_id=eq.${hospitalId}"
+        },
+        {
+          "file": "frontend/src/services/driverManagementService.js",
+          "event": "UPDATE",
+          "schema": "public",
+          "table": "ambulances",
+          "filter": "hospital_id=eq.${hospitalId}"
+        },
+        {
+          "file": "frontend/src/services/healthNewsService.js",
+          "event": "*",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/hospitalsService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "id=eq.${hospitalId}"
+        },
+        {
+          "file": "frontend/src/services/insurancePoliciesService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "id=eq.${policyId}"
+        },
+        {
+          "file": "frontend/src/services/insurancePoliciesService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "user_id=eq.${userId}"
+        },
+        {
+          "file": "frontend/src/services/insuranceService.js",
+          "event": "*",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/medicalProfilesService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "user_id=eq.${userId}"
+        },
+        {
+          "file": "frontend/src/services/notificationService.js",
+          "event": "INSERT",
+          "schema": "public",
+          "table": "notifications",
+          "filter": "user_id=eq.${userId}"
+        },
+        {
+          "file": "frontend/src/services/orgVerificationService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "verification_status=eq.pending"
+        },
+        {
+          "file": "frontend/src/services/preferencesService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "user_id=eq.${userId}"
+        },
+        {
+          "file": "frontend/src/services/profilesService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "id=eq.${profileId}"
+        },
+        {
+          "file": "frontend/src/services/searchEventsService.js",
+          "event": "*",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/searchHistoryService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "user_id=eq.${userId}"
+        },
+        {
+          "file": "frontend/src/services/searchSelectionsService.js",
+          "event": "*",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/staffSchedulingService.js",
+          "event": "*",
+          "schema": "public",
+          "table": "doctors"
+        },
+        {
+          "file": "frontend/src/services/staffSchedulingService.js",
+          "event": "*",
+          "schema": "public",
+          "table": "ambulances"
+        },
+        {
+          "file": "frontend/src/services/subscribersService.js",
+          "event": "*",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/subscriptionService.js",
+          "event": "*",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/subscriptionService.js",
+          "event": "INSERT",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/supabaseHelpers.js",
+          "schema": "public",
+          "filter": "${filter.column}=eq.${filter.value}"
+        },
+        {
+          "file": "frontend/src/services/supabaseMapService.js",
+          "event": "*",
+          "schema": "public",
+          "table": "emergency_requests"
+        },
+        {
+          "file": "frontend/src/services/supabaseMapService.js",
+          "event": "*",
+          "schema": "public",
+          "table": "ambulances"
+        },
+        {
+          "file": "frontend/src/services/supabaseMapService.js",
+          "event": "*",
+          "schema": "public",
+          "table": "users"
+        },
+        {
+          "file": "frontend/src/services/supportFaqsService.js",
+          "event": "*",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/supportTicketsService.js",
+          "event": "*",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/trendingTopicsService.js",
+          "event": "*",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/verificationService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "role=eq.provider"
+        },
+        {
+          "file": "frontend/src/services/visitsService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "id=eq.${visitId}"
+        },
+        {
+          "file": "frontend/src/services/visitsService.js",
+          "event": "*",
+          "schema": "public"
+        },
+        {
+          "file": "frontend/src/services/visitsService.js",
+          "event": "*",
+          "schema": "public",
+          "filter": "user_id=eq.${userId}"
+        }
+      ],
+      "role_checks": {
+        "role": 83,
+        "admin": 58,
+        "organization_id": 45,
+        "provider_type": 18,
+        "driver": 8,
+        "dispatcher": 6,
+        "current_user_permission_level": 2,
+        "is_admin": 7,
+        "p_is_admin": 4,
+        "p_is_console_allowed": 2
+      },
+      "create_client_files": [
+        "frontend/scripts/inspect-schema-cli.js",
+        "frontend/scripts/inspect-supabase-schema.js",
+        "frontend/scripts/migrate_doctors.js",
+        "frontend/scripts/run-migrations.js",
+        "frontend/src/lib/supabase.js",
+        "frontend/supabase/docs/archive/test-scripts/lib/database.js",
+        "frontend/supabase/docs/archive/test-scripts/runners/data_import.js",
+        "frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+        "frontend/supabase/functions/discovery/index.ts",
+        "frontend/supabase/functions/payments/index.ts",
+        "frontend/supabase/functions/payments/process-subscribers/index.ts",
+        "frontend/supabase/functions/payments/sendWelcome/index.ts",
+        "frontend/supabase/functions/webhooks/index.ts",
+        "frontend/supabase/tests/test_profile_creation.js"
+      ]
+    }
+  },
+  "aggregate": {
+    "tables": {
+      "emergency_requests": [
+        "ivisit-app:components/emergency/EmergencyRequestModal.jsx",
+        "ivisit-app:services/emergencyRequestsService.js",
+        "ivisit-app:services/paymentService.js",
+        "ivisit-app:services/serviceCostService.js",
+        "ivisit-app:supabase/functions/webhooks/stripe-webhook/index.ts",
+        "ivisit-app:supabase/tests/scripts/apply_hospital_ambulance_canonical_merges.js",
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/seed_realistic.js",
+        "ivisit-app:supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-console:frontend/src/components/modals/EmergencyRequestModal.jsx",
+        "ivisit-console:frontend/src/components/pages/Analytics.jsx",
+        "ivisit-console:frontend/src/components/pages/EmergencyRequestsPage.jsx",
+        "ivisit-console:frontend/src/components/pages/Overview.jsx",
+        "ivisit-console:frontend/src/services/bedManagementService.js",
+        "ivisit-console:frontend/src/services/driverManagementService.js",
+        "ivisit-console:frontend/src/services/emergencyResponseService.js",
+        "ivisit-console:frontend/src/services/searchService.js",
+        "ivisit-console:frontend/src/services/supabaseMapService.js"
+      ],
+      "payments": [
+        "ivisit-app:components/emergency/EmergencyRequestModal.jsx",
+        "ivisit-app:services/paymentService.js",
+        "ivisit-app:supabase/functions/payments/create-payment-intent/index.ts",
+        "ivisit-app:supabase/functions/webhooks/stripe-webhook/index.ts",
+        "ivisit-app:supabase/tests/scripts/cleanup_alignment_legacy_rows.js",
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/seed_realistic.js",
+        "ivisit-app:supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-console:frontend/src/components/modals/EmergencyDetailsModal.jsx",
+        "ivisit-console:frontend/src/components/pages/WalletManagementPage.jsx"
+      ],
+      "profiles": [
+        "ivisit-app:scripts/verify_rpc_fix.js",
+        "ivisit-app:services/authService.js",
+        "ivisit-app:services/displayIdService.js",
+        "ivisit-app:services/notificationDispatcher.js",
+        "ivisit-app:services/paymentService.js",
+        "ivisit-app:supabase/functions/payments/create-payment-intent/index.ts",
+        "ivisit-app:supabase/functions/payments/create-payout/index.ts",
+        "ivisit-app:supabase/functions/payments/manage-payment-methods/index.ts",
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/seed_realistic.js",
+        "ivisit-app:supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-app:supabase/tests/scripts/test_helper.js",
+        "ivisit-app:supabase/tests/scripts/test_profile_creation.js",
+        "ivisit-app:supabase/tests/scripts/verify_platform_setup.js",
+        "ivisit-console:frontend/scripts/migrate_doctors.js",
+        "ivisit-console:frontend/src/components/modals/EmergencyRequestModal.jsx",
+        "ivisit-console:frontend/src/components/pages/Analytics.jsx",
+        "ivisit-console:frontend/src/components/pages/Overview.jsx",
+        "ivisit-console:frontend/src/components/pages/UsersPage.jsx",
+        "ivisit-console:frontend/src/components/pages/VisitsPage.jsx",
+        "ivisit-console:frontend/src/components/pages/WalletManagementPage.jsx",
+        "ivisit-console:frontend/src/contexts/AuthContext.jsx",
+        "ivisit-console:frontend/src/services/adminService.js",
+        "ivisit-console:frontend/src/services/ambulancesService.js",
+        "ivisit-console:frontend/src/services/authService.js",
+        "ivisit-console:frontend/src/services/bedManagementService.js",
+        "ivisit-console:frontend/src/services/displayIdService.js",
+        "ivisit-console:frontend/src/services/driverManagementService.js",
+        "ivisit-console:frontend/src/services/hospitalImportService.js",
+        "ivisit-console:frontend/src/services/onboardingService.js",
+        "ivisit-console:frontend/src/services/profilesService.js",
+        "ivisit-console:frontend/src/services/searchService.js",
+        "ivisit-console:frontend/src/services/staffSchedulingService.js",
+        "ivisit-console:frontend/supabase/functions/discovery/index.ts",
+        "ivisit-console:frontend/supabase/functions/payments/index.ts",
+        "ivisit-console:frontend/supabase/tests/test_profile_creation.js"
+      ],
+      "insurance_policies": [
+        "ivisit-app:services/appMigrationsService.js",
+        "ivisit-app:services/insuranceService.js",
+        "ivisit-app:services/paymentService.js",
+        "ivisit-app:services/pricingService.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-console:frontend/src/utils/testDatabase.js"
+      ],
+      "health_news": [
+        "ivisit-app:services/discoveryService.js",
+        "ivisit-app:supabase/tests/scripts/seed_realistic.js",
+        "ivisit-console:frontend/src/components/context/HealthNewsPanel.jsx",
+        "ivisit-console:frontend/src/components/pages/HealthNewsManagementPage.jsx",
+        "ivisit-console:frontend/src/utils/testDatabase.js"
+      ],
+      "search_events": [
+        "ivisit-app:services/discoveryService.js",
+        "ivisit-console:frontend/src/services/analyticsAutomationService.js",
+        "ivisit-console:frontend/src/services/searchAnalyticsService.js"
+      ],
+      "search_selections": [
+        "ivisit-app:services/discoveryService.js",
+        "ivisit-console:frontend/src/services/searchService.js"
+      ],
+      "support_faqs": [
+        "ivisit-app:services/helpSupportService.js",
+        "ivisit-app:services/seederService.js"
+      ],
+      "support_tickets": [
+        "ivisit-app:services/helpSupportService.js",
+        "ivisit-console:frontend/src/components/context/SupportTicketsPanel.jsx",
+        "ivisit-console:frontend/src/utils/testDatabase.js"
+      ],
+      "hospital_import_logs": [
+        "ivisit-app:services/hospitalImportService.js",
+        "ivisit-console:frontend/src/services/hospitalImportService.js"
+      ],
+      "hospitals": [
+        "ivisit-app:services/hospitalImportService.js",
+        "ivisit-app:services/hospitalsService.js",
+        "ivisit-app:services/notificationDispatcher.js",
+        "ivisit-app:services/paymentService.js",
+        "ivisit-app:services/pricingService.js",
+        "ivisit-app:supabase/functions/discovery/discover-hospitals/index.ts",
+        "ivisit-app:supabase/tests/scripts/apply_hospital_ambulance_canonical_merges.js",
+        "ivisit-app:supabase/tests/scripts/check_db.js",
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/seed_realistic.js",
+        "ivisit-app:supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-app:supabase/tests/scripts/verify_platform_setup.js",
+        "ivisit-console:frontend/src/components/modals/AmbulanceModal.jsx",
+        "ivisit-console:frontend/src/components/modals/DoctorModal.jsx",
+        "ivisit-console:frontend/src/components/pages/Analytics.jsx",
+        "ivisit-console:frontend/src/components/pages/HospitalsPage.jsx",
+        "ivisit-console:frontend/src/components/pages/Overview.jsx",
+        "ivisit-console:frontend/src/services/authService.js",
+        "ivisit-console:frontend/src/services/bedManagementService.js",
+        "ivisit-console:frontend/src/services/displayIdService.js",
+        "ivisit-console:frontend/src/services/driverManagementService.js",
+        "ivisit-console:frontend/src/services/hospitalImportService.js",
+        "ivisit-console:frontend/src/services/onboardingService.js",
+        "ivisit-console:frontend/src/services/pricingService.js",
+        "ivisit-console:frontend/src/services/searchService.js",
+        "ivisit-console:frontend/src/services/staffSchedulingService.js",
+        "ivisit-console:frontend/src/services/supabaseMapService.js"
+      ],
+      "hospital_rooms": [
+        "ivisit-app:services/hospitalsService.js"
+      ],
+      "room_pricing": [
+        "ivisit-app:services/hospitalsService.js",
+        "ivisit-app:services/pricingService.js",
+        "ivisit-app:supabase/tests/scripts/apply_hospital_ambulance_canonical_merges.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js"
+      ],
+      "service_pricing": [
+        "ivisit-app:services/hospitalsService.js",
+        "ivisit-app:services/pricingService.js",
+        "ivisit-app:services/serviceCostService.js",
+        "ivisit-app:supabase/tests/scripts/apply_hospital_ambulance_canonical_merges.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js"
+      ],
+      "documents": [
+        "ivisit-app:services/insuranceService.js",
+        "ivisit-console:frontend/src/services/insuranceService.js",
+        "ivisit-console:frontend/src/services/onboardingService.js"
+      ],
+      "medical_profiles": [
+        "ivisit-app:services/medicalProfileService.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js"
+      ],
+      "notifications": [
+        "ivisit-app:services/notificationDispatcher.js",
+        "ivisit-app:services/seederService.js",
+        "ivisit-console:frontend/src/services/notificationService.js"
+      ],
+      "organization_wallets": [
+        "ivisit-app:services/paymentService.js",
+        "ivisit-app:supabase/functions/webhooks/stripe-webhook/index.ts",
+        "ivisit-app:supabase/tests/scripts/apply_duplicate_seed_canonical_org_wallet_merges.js",
+        "ivisit-app:supabase/tests/scripts/cleanup_alignment_legacy_rows.js",
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/seed_realistic.js",
+        "ivisit-app:supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-app:supabase/tests/scripts/verify_platform_setup.js",
+        "ivisit-console:frontend/src/components/pages/WalletManagementPage.jsx",
+        "ivisit-console:frontend/src/contexts/PageDataContext.jsx",
+        "ivisit-console:frontend/src/services/organizationsService.js",
+        "ivisit-console:frontend/src/services/walletService.js"
+      ],
+      "organizations": [
+        "ivisit-app:services/paymentService.js",
+        "ivisit-app:supabase/functions/payments/create-payment-intent/index.ts",
+        "ivisit-app:supabase/functions/payments/create-payout/index.ts",
+        "ivisit-app:supabase/functions/payments/manage-payment-methods/index.ts",
+        "ivisit-app:supabase/functions/webhooks/stripe-webhook/index.ts",
+        "ivisit-app:supabase/tests/scripts/apply_duplicate_seed_canonical_org_wallet_merges.js",
+        "ivisit-app:supabase/tests/scripts/apply_duplicate_seed_controlled_org_merges.js",
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/seed_realistic.js",
+        "ivisit-app:supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-app:supabase/tests/scripts/verify_platform_setup.js"
+      ],
+      "patient_wallets": [
+        "ivisit-app:services/paymentService.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-app:supabase/tests/scripts/test_profile_creation.js",
+        "ivisit-app:supabase/tests/scripts/test_runner.js",
+        "ivisit-console:frontend/supabase/tests/test_profile_creation.js"
+      ],
+      "payment_methods": [
+        "ivisit-app:services/paymentService.js",
+        "ivisit-app:supabase/tests/scripts/test_runner.js"
+      ],
+      "wallet_ledger": [
+        "ivisit-app:services/paymentService.js",
+        "ivisit-app:supabase/functions/webhooks/stripe-webhook/index.ts",
+        "ivisit-app:supabase/tests/scripts/apply_duplicate_seed_canonical_org_wallet_merges.js",
+        "ivisit-app:supabase/tests/scripts/cleanup_alignment_legacy_rows.js",
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/seed_realistic.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-console:frontend/src/components/pages/WalletManagementPage.jsx",
+        "ivisit-console:frontend/src/contexts/PageDataContext.jsx",
+        "ivisit-console:frontend/src/services/walletService.js"
+      ],
+      "preferences": [
+        "ivisit-app:services/preferencesService.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-app:supabase/tests/scripts/test_profile_creation.js",
+        "ivisit-console:frontend/supabase/tests/test_profile_creation.js"
+      ],
+      "ambulances": [
+        "ivisit-app:services/pricingService.js",
+        "ivisit-app:supabase/tests/scripts/apply_hospital_ambulance_canonical_merges.js",
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/seed_realistic.js",
+        "ivisit-app:supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-console:frontend/src/components/modals/AmbulanceModal.jsx",
+        "ivisit-console:frontend/src/components/pages/AmbulancesPage.jsx",
+        "ivisit-console:frontend/src/components/pages/Analytics.jsx",
+        "ivisit-console:frontend/src/components/pages/Overview.jsx",
+        "ivisit-console:frontend/src/services/driverManagementService.js",
+        "ivisit-console:frontend/src/services/emergencyResponseService.js",
+        "ivisit-console:frontend/src/services/searchService.js",
+        "ivisit-console:frontend/src/services/staffSchedulingService.js",
+        "ivisit-console:frontend/src/services/supabaseMapService.js"
+      ],
+      "available_hospitals": [
+        "ivisit-app:services/realtimeAvailabilityService.js"
+      ],
+      "visits": [
+        "ivisit-app:services/seederService.js",
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-console:frontend/src/components/pages/VisitsPage.jsx",
+        "ivisit-console:frontend/src/services/searchService.js"
+      ],
+      "id_mappings": [
+        "ivisit-app:supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+        "ivisit-app:supabase/scripts/data_import_fixed.js",
+        "ivisit-app:supabase/tests/scripts/test_runner.js",
+        "ivisit-console:frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+      ],
+      "ivisit_main_wallet": [
+        "ivisit-app:supabase/functions/webhooks/stripe-webhook/index.ts",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-app:supabase/tests/scripts/verify_platform_setup.js",
+        "ivisit-console:frontend/src/components/pages/WalletManagementPage.jsx",
+        "ivisit-console:frontend/src/contexts/PageDataContext.jsx",
+        "ivisit-console:frontend/src/services/walletService.js"
+      ],
+      "doctors": [
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/seed_realistic.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-console:frontend/scripts/migrate_doctors.js",
+        "ivisit-console:frontend/src/components/pages/VisitsPage.jsx",
+        "ivisit-console:frontend/src/services/searchService.js",
+        "ivisit-console:frontend/src/services/staffSchedulingService.js"
+      ],
+      "emergency_doctor_assignments": [
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js"
+      ],
+      "insurance_billing": [
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js"
+      ],
+      "trending_topics": [
+        "ivisit-app:supabase/tests/scripts/seed_realistic.js"
+      ],
+      "user_activity": [
+        "ivisit-app:supabase/tests/scripts/seed_realistic.js",
+        "ivisit-console:frontend/src/services/adminService.js"
+      ],
+      "subscribers": [
+        "ivisit-app:supabase/tests/scripts/test_comprehensive_system.js",
+        "ivisit-app:supabase/tests/scripts/verify_platform_setup.js",
+        "ivisit-console:frontend/supabase/functions/payments/process-subscribers/index.ts",
+        "ivisit-console:frontend/supabase/functions/payments/sendWelcome/index.ts",
+        "ivisit-console:frontend/supabase/functions/webhooks/index.ts"
+      ],
+      "doctor_schedules": [
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js"
+      ],
+      "information_schema.columns": [
+        "ivisit-console:frontend/scripts/inspect-schema-cli.js",
+        "ivisit-console:frontend/scripts/inspect-supabase-schema.js"
+      ],
+      "information_schema.tables": [
+        "ivisit-console:frontend/scripts/inspect-schema-cli.js",
+        "ivisit-console:frontend/scripts/inspect-supabase-schema.js"
+      ],
+      "admin_audit_log": [
+        "ivisit-console:frontend/src/services/adminService.js"
+      ],
+      "user_sessions": [
+        "ivisit-console:frontend/src/services/adminService.js"
+      ],
+      "trending_searches_view": [
+        "ivisit-console:frontend/src/services/analyticsAutomationService.js"
+      ],
+      "images": [
+        "ivisit-console:frontend/src/services/profilesService.js"
+      ],
+      "search_history": [
+        "ivisit-console:frontend/src/services/searchService.js"
+      ]
+    },
+    "rpcs": {
+      "exec_sql": [
+        "ivisit-app:scripts/check_remote_sync.js",
+        "ivisit-app:supabase/tests/scripts/apply_schema_fixes.js",
+        "ivisit-app:supabase/tests/scripts/test_helper.js",
+        "ivisit-app:supabase/tests/scripts/test_runner.js",
+        "ivisit-console:frontend/scripts/run-migrations.js",
+        "ivisit-console:frontend/src/utils/runMigrations.js"
+      ],
+      "get_trending_searches": [
+        "ivisit-app:scripts/debug_rpc.js",
+        "ivisit-app:services/discoveryService.js",
+        "ivisit-console:frontend/src/services/searchService.js"
+      ],
+      "reload_schema": [
+        "ivisit-app:services/appMigrationsService.js",
+        "ivisit-app:services/seederService.js",
+        "ivisit-app:supabase/tests/scripts/check_db.js"
+      ],
+      "delete_user": [
+        "ivisit-app:services/authService.js"
+      ],
+      "get_entity_id": [
+        "ivisit-app:services/displayIdService.js",
+        "ivisit-app:supabase/functions/payments/create-payment-intent/index.ts",
+        "ivisit-app:supabase/functions/payments/manage-payment-methods/index.ts",
+        "ivisit-app:supabase/tests/scripts/test_runner.js",
+        "ivisit-console:frontend/src/services/displayIdService.js"
+      ],
+      "create_emergency_v4": [
+        "ivisit-app:services/emergencyRequestsService.js",
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+        "ivisit-app:supabase/tests/scripts/test_comprehensive_system.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-app:supabase/tests/scripts/test_runner.js",
+        "ivisit-console:frontend/src/services/emergencyService.js"
+      ],
+      "nearby_hospitals": [
+        "ivisit-app:services/hospitalsService.js",
+        "ivisit-app:supabase/functions/discovery/discover-hospitals/index.ts",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-app:supabase/tests/scripts/test_runner.js",
+        "ivisit-console:frontend/src/services/hospitalImportService.js",
+        "ivisit-console:frontend/src/services/supabaseMapService.js"
+      ],
+      "notify_cash_approval_org_admins": [
+        "ivisit-app:services/notificationDispatcher.js"
+      ],
+      "approve_cash_payment": [
+        "ivisit-app:services/paymentService.js",
+        "ivisit-app:supabase/tests/scripts/run_e2e_flow_matrix.js",
+        "ivisit-app:supabase/tests/scripts/test_cash_approval_dispatch_autoassign.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-console:frontend/src/services/emergencyService.js"
+      ],
+      "decline_cash_payment": [
+        "ivisit-app:services/paymentService.js",
+        "ivisit-console:frontend/src/services/emergencyService.js"
+      ],
+      "process_cash_payment_v2": [
+        "ivisit-app:services/paymentService.js"
+      ],
+      "process_wallet_payment": [
+        "ivisit-app:services/paymentService.js"
+      ],
+      "calculate_emergency_cost_v2": [
+        "ivisit-app:services/pricingService.js",
+        "ivisit-app:services/serviceCostService.js"
+      ],
+      "update_hospital_availability": [
+        "ivisit-app:services/realtimeAvailabilityService.js",
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js"
+      ],
+      "log_user_activity": [
+        "ivisit-app:services/supabaseHelpers.js",
+        "ivisit-console:frontend/src/services/activityService.js",
+        "ivisit-console:frontend/src/services/supabaseHelpers.js"
+      ],
+      "create_emergency_with_payment": [
+        "ivisit-app:supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+        "ivisit-console:frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+      ],
+      "get_system_stats": [
+        "ivisit-app:supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+        "ivisit-console:frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+      ],
+      "get_user_statistics": [
+        "ivisit-app:supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+        "ivisit-console:frontend/src/services/profilesService.js",
+        "ivisit-console:frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+      ],
+      "is_admin": [
+        "ivisit-app:supabase/docs/archive/test-scripts/runners/test_emergency_system.js",
+        "ivisit-app:supabase/tests/scripts/test_runner.js",
+        "ivisit-console:frontend/src/services/searchAnalyticsService.js",
+        "ivisit-console:frontend/supabase/docs/archive/test-scripts/runners/test_emergency_system.js"
+      ],
+      "assign_ambulance_to_emergency": [
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js"
+      ],
+      "discharge_patient": [
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-console:frontend/src/services/bedManagementService.js"
+      ],
+      "get_available_ambulances": [
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-app:supabase/tests/scripts/test_runner.js"
+      ],
+      "get_insurance_policies": [
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-app:supabase/tests/scripts/test_runner.js"
+      ],
+      "get_medical_summary": [
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-app:supabase/tests/scripts/test_runner.js"
+      ],
+      "upsert_room_pricing": [
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-console:frontend/src/services/pricingService.js"
+      ],
+      "upsert_service_pricing": [
+        "ivisit-app:supabase/tests/scripts/test_ecosystem.js",
+        "ivisit-console:frontend/src/services/pricingService.js"
+      ],
+      "function_exists": [
+        "ivisit-app:supabase/tests/scripts/test_helper.js"
+      ],
+      "get_table_structure": [
+        "ivisit-app:supabase/tests/scripts/test_helper.js"
+      ],
+      "get_ambulance_status": [
+        "ivisit-app:supabase/tests/scripts/test_runner.js"
+      ],
+      "nearby_ambulances": [
+        "ivisit-app:supabase/tests/scripts/test_runner.js"
+      ],
+      "update_ambulance_location": [
+        "ivisit-app:supabase/tests/scripts/test_runner.js"
+      ],
+      "validate_emergency_request": [
+        "ivisit-app:supabase/tests/scripts/test_runner.js"
+      ],
+      "validate_insurance_coverage": [
+        "ivisit-app:supabase/tests/scripts/test_runner.js"
+      ],
+      "validate_medical_profile": [
+        "ivisit-app:supabase/tests/scripts/test_runner.js"
+      ],
+      "validate_payment_method": [
+        "ivisit-app:supabase/tests/scripts/test_runner.js"
+      ],
+      "get_activity_stats": [
+        "ivisit-app:supabase/tests/scripts/verify_platform_setup.js",
+        "ivisit-console:frontend/src/services/activityService.js"
+      ],
+      "get_recent_activity": [
+        "ivisit-app:supabase/tests/scripts/verify_platform_setup.js",
+        "ivisit-console:frontend/src/services/activityService.js"
+      ],
+      "delete_hospital_by_admin": [
+        "ivisit-console:frontend/src/components/pages/HospitalsPage.jsx"
+      ],
+      "delete_user_by_admin": [
+        "ivisit-console:frontend/src/components/pages/UsersPage.jsx"
+      ],
+      "current_user_is_admin": [
+        "ivisit-console:frontend/src/services/adminService.js",
+        "ivisit-console:frontend/src/services/profilesService.js"
+      ],
+      "current_user_permission_level": [
+        "ivisit-console:frontend/src/services/adminService.js"
+      ],
+      "admin_update_trending_topics": [
+        "ivisit-console:frontend/src/services/analyticsAutomationService.js"
+      ],
+      "update_trending_topics_from_search": [
+        "ivisit-console:frontend/src/services/analyticsAutomationService.js"
+      ],
+      "cancel_bed_reservation": [
+        "ivisit-console:frontend/src/services/bedManagementService.js"
+      ],
+      "cancel_trip": [
+        "ivisit-console:frontend/src/services/driverManagementService.js"
+      ],
+      "complete_trip": [
+        "ivisit-console:frontend/src/services/driverManagementService.js"
+      ],
+      "update_hospital_by_admin": [
+        "ivisit-console:frontend/src/services/hospitalsService.js"
+      ],
+      "delete_room_pricing": [
+        "ivisit-console:frontend/src/services/pricingService.js"
+      ],
+      "delete_service_pricing": [
+        "ivisit-console:frontend/src/services/pricingService.js"
+      ],
+      "get_all_auth_users": [
+        "ivisit-console:frontend/src/services/profilesService.js"
+      ],
+      "search_auth_users": [
+        "ivisit-console:frontend/src/services/profilesService.js"
+      ],
+      "update_profile_by_admin": [
+        "ivisit-console:frontend/src/services/profilesService.js"
+      ],
+      "get_search_analytics": [
+        "ivisit-console:frontend/src/services/searchAnalyticsService.js"
+      ],
+      "get_search_analytics_summary": [
+        "ivisit-console:frontend/src/services/searchAnalyticsService.js"
+      ],
+      "check_cash_eligibility": [
+        "ivisit-console:frontend/src/services/walletService.js"
+      ],
+      "get_org_stripe_status": [
+        "ivisit-console:frontend/src/services/walletService.js"
+      ],
+      "process_cash_payment": [
+        "ivisit-console:frontend/src/services/walletService.js"
+      ]
+    },
+    "channels": {
+      "approval_${requestId}": [
+        "ivisit-app:components/emergency/EmergencyRequestModal.jsx"
+      ],
+      "approval_payment_${paymentId}": [
+        "ivisit-app:components/emergency/EmergencyRequestModal.jsx"
+      ],
+      "approval_payment_req_${emergencyRequestUuid}": [
+        "ivisit-app:components/emergency/EmergencyRequestModal.jsx"
+      ],
+      "emergency_updates": [
+        "ivisit-app:contexts/EmergencyContext.jsx"
+      ],
+      "ambulances_realtime": [
+        "ivisit-app:hooks/emergency/useAmbulances.js"
+      ],
+      "visits_updates": [
+        "ivisit-app:hooks/visits/useVisitsData.js"
+      ],
+      "ambulance_location_${requestKey}": [
+        "ivisit-app:services/emergencyRequestsService.js"
+      ],
+      "emergency_${requestKey}": [
+        "ivisit-app:services/emergencyRequestsService.js"
+      ],
+      "hospital_beds_${hospitalId}": [
+        "ivisit-app:services/emergencyRequestsService.js",
+        "ivisit-console:frontend/src/services/bedManagementService.js"
+      ],
+      "area-availability": [
+        "ivisit-app:services/realtimeAvailabilityService.js"
+      ],
+      "hospital-${hospitalId}": [
+        "ivisit-app:services/realtimeAvailabilityService.js"
+      ],
+      "health_news_panel_changes": [
+        "ivisit-console:frontend/src/components/context/HealthNewsPanel.jsx"
+      ],
+      "support_tickets_panel_changes": [
+        "ivisit-console:frontend/src/components/context/SupportTicketsPanel.jsx"
+      ],
+      "emergency_changes": [
+        "ivisit-console:frontend/src/components/pages/EmergencyRequestsPage.jsx",
+        "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+      ],
+      "hospitals_page_changes": [
+        "ivisit-console:frontend/src/components/pages/HospitalsPage.jsx"
+      ],
+      "visits": [
+        "ivisit-console:frontend/src/components/pages/VisitsPage.jsx"
+      ],
+      "activity_changes": [
+        "ivisit-console:frontend/src/contexts/PageDataContext.jsx",
+        "ivisit-console:frontend/src/services/activityService.js"
+      ],
+      "doctor_changes": [
+        "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+      ],
+      "insurance_changes": [
+        "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+      ],
+      "organization_changes": [
+        "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+      ],
+      "pricing_changes": [
+        "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+      ],
+      "profile_changes": [
+        "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+      ],
+      "support_tickets_changes": [
+        "ivisit-console:frontend/src/contexts/PageDataContext.jsx",
+        "ivisit-console:frontend/src/services/supportTicketsService.js"
+      ],
+      "visit_changes": [
+        "ivisit-console:frontend/src/contexts/PageDataContext.jsx"
+      ],
+      "analytics_changes": [
+        "ivisit-console:frontend/src/hooks/useAnalytics.js"
+      ],
+      "${tableName}-changes": [
+        "ivisit-console:frontend/src/lib/supabase.js"
+      ],
+      "entity_activity_${entityType}_${entityId}": [
+        "ivisit-console:frontend/src/services/activityService.js"
+      ],
+      "ambulance_${ambulanceId}": [
+        "ivisit-console:frontend/src/services/ambulancesService.js"
+      ],
+      "ambulances_all": [
+        "ivisit-console:frontend/src/services/ambulancesService.js"
+      ],
+      "bed_reservations_${hospitalId}": [
+        "ivisit-console:frontend/src/services/bedManagementService.js"
+      ],
+      "ambulance_status_${hospitalId}": [
+        "ivisit-console:frontend/src/services/driverManagementService.js"
+      ],
+      "driver_assignments_${hospitalId}": [
+        "ivisit-console:frontend/src/services/driverManagementService.js"
+      ],
+      "health_news_all": [
+        "ivisit-console:frontend/src/services/healthNewsService.js"
+      ],
+      "hospital_${hospitalId}": [
+        "ivisit-console:frontend/src/services/hospitalsService.js"
+      ],
+      "insurance_policy_${policyId}": [
+        "ivisit-console:frontend/src/services/insurancePoliciesService.js"
+      ],
+      "user_insurance_policies_${userId}": [
+        "ivisit-console:frontend/src/services/insurancePoliciesService.js"
+      ],
+      "insurance_policies_changes": [
+        "ivisit-console:frontend/src/services/insuranceService.js"
+      ],
+      "medical_profile_${userId}": [
+        "ivisit-console:frontend/src/services/medicalProfilesService.js"
+      ],
+      "notifications:user=${userId}": [
+        "ivisit-console:frontend/src/services/notificationService.js"
+      ],
+      "org_verification_queue": [
+        "ivisit-console:frontend/src/services/orgVerificationService.js"
+      ],
+      "preferences_${userId}": [
+        "ivisit-console:frontend/src/services/preferencesService.js"
+      ],
+      "profile_${profileId}": [
+        "ivisit-console:frontend/src/services/profilesService.js"
+      ],
+      "search_events_all": [
+        "ivisit-console:frontend/src/services/searchEventsService.js"
+      ],
+      "search_history_${userId}": [
+        "ivisit-console:frontend/src/services/searchHistoryService.js"
+      ],
+      "search_selections_all": [
+        "ivisit-console:frontend/src/services/searchSelectionsService.js"
+      ],
+      "ambulance_schedule_updates": [
+        "ivisit-console:frontend/src/services/staffSchedulingService.js"
+      ],
+      "doctor_schedule_updates": [
+        "ivisit-console:frontend/src/services/staffSchedulingService.js"
+      ],
+      "subscribers_all": [
+        "ivisit-console:frontend/src/services/subscribersService.js"
+      ],
+      "new_subscribers": [
+        "ivisit-console:frontend/src/services/subscriptionService.js"
+      ],
+      "subscribers_changes": [
+        "ivisit-console:frontend/src/services/subscriptionService.js"
+      ],
+      "map_ambulances_all": [
+        "ivisit-console:frontend/src/services/supabaseMapService.js"
+      ],
+      "map_emergencies_all": [
+        "ivisit-console:frontend/src/services/supabaseMapService.js"
+      ],
+      "map_users_all": [
+        "ivisit-console:frontend/src/services/supabaseMapService.js"
+      ],
+      "support_faqs_all": [
+        "ivisit-console:frontend/src/services/supportFaqsService.js"
+      ],
+      "trending_topics_all": [
+        "ivisit-console:frontend/src/services/trendingTopicsService.js"
+      ],
+      "verification_queue_changes": [
+        "ivisit-console:frontend/src/services/verificationService.js"
+      ],
+      "user_visits_${userId}": [
+        "ivisit-console:frontend/src/services/visitsService.js"
+      ],
+      "visit_${visitId}": [
+        "ivisit-console:frontend/src/services/visitsService.js"
+      ],
+      "visits_all": [
+        "ivisit-console:frontend/src/services/visitsService.js"
+      ]
+    },
+    "postgres_changes": [
+      {
+        "repo": "ivisit-app",
+        "file": "components/emergency/EmergencyRequestModal.jsx",
+        "event": "UPDATE",
+        "schema": "public",
+        "table": "emergency_requests"
+      },
+      {
+        "repo": "ivisit-app",
+        "file": "components/emergency/EmergencyRequestModal.jsx",
+        "event": "UPDATE",
+        "schema": "public",
+        "table": "payments",
+        "filter": "id=eq.${paymentId}"
+      },
+      {
+        "repo": "ivisit-app",
+        "file": "components/emergency/EmergencyRequestModal.jsx",
+        "event": "UPDATE",
+        "schema": "public",
+        "table": "payments",
+        "filter": "emergency_request_id=eq.${emergencyRequestUuid}"
+      },
+      {
+        "repo": "ivisit-app",
+        "file": "contexts/EmergencyContext.jsx",
+        "event": "UPDATE",
+        "schema": "public",
+        "table": "emergency_requests",
+        "filter": "user_id=eq.${user.id}"
+      },
+      {
+        "repo": "ivisit-app",
+        "file": "hooks/emergency/useAmbulances.js",
+        "event": "*",
+        "schema": "public",
+        "table": "ambulances"
+      },
+      {
+        "repo": "ivisit-app",
+        "file": "hooks/visits/useVisitsData.js",
+        "event": "*",
+        "schema": "public",
+        "table": "visits",
+        "filter": "user_id=eq.${user.id}"
+      },
+      {
+        "repo": "ivisit-app",
+        "file": "services/emergencyRequestsService.js",
+        "event": "UPDATE",
+        "schema": "public",
+        "table": "emergency_requests"
+      },
+      {
+        "repo": "ivisit-app",
+        "file": "services/emergencyRequestsService.js",
+        "event": "UPDATE",
+        "schema": "public",
+        "table": "ambulances",
+        "filter": "current_call=eq.${requestKey}"
+      },
+      {
+        "repo": "ivisit-app",
+        "file": "services/emergencyRequestsService.js",
+        "event": "UPDATE",
+        "schema": "public",
+        "table": "hospitals",
+        "filter": "id=eq.${hospitalId}"
+      },
+      {
+        "repo": "ivisit-app",
+        "file": "services/realtimeAvailabilityService.js",
+        "event": "UPDATE",
+        "schema": "public",
+        "table": "hospitals",
+        "filter": "id=eq.${hospitalId}"
+      },
+      {
+        "repo": "ivisit-app",
+        "file": "services/realtimeAvailabilityService.js",
+        "event": "UPDATE",
+        "schema": "public",
+        "table": "hospitals"
+      },
+      {
+        "repo": "ivisit-app",
+        "file": "services/supabaseHelpers.js",
+        "schema": "public",
+        "filter": "${filter.column}=eq.${filter.value}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/components/context/HealthNewsPanel.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "health_news"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/components/context/SupportTicketsPanel.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "support_tickets"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/components/pages/EmergencyRequestsPage.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "emergency_requests"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/components/pages/HospitalsPage.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "hospitals"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/components/pages/VisitsPage.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "visits"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/contexts/PageDataContext.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "emergency_requests"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/contexts/PageDataContext.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "doctors"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/contexts/PageDataContext.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "visits"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/contexts/PageDataContext.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "insurance_policies"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/contexts/PageDataContext.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "profiles"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/contexts/PageDataContext.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "organizations"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/contexts/PageDataContext.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "service_pricing"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/contexts/PageDataContext.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "room_pricing"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/contexts/PageDataContext.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "support_tickets"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/contexts/PageDataContext.jsx",
+        "event": "*",
+        "schema": "public",
+        "table": "user_activity"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/hooks/useAnalytics.js",
+        "event": "*",
+        "schema": "public",
+        "table": "emergency_requests"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/lib/supabase.js",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/activityService.js",
+        "event": "*",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/activityService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "entity_type=eq.${entityType}&entity_id=eq.${entityId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/ambulancesService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "id=eq.${ambulanceId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/ambulancesService.js",
+        "event": "*",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/bedManagementService.js",
+        "event": "*",
+        "schema": "public",
+        "table": "active_bed_reservations"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/bedManagementService.js",
+        "event": "UPDATE",
+        "schema": "public",
+        "table": "hospitals",
+        "filter": "id=eq.${hospitalId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/driverManagementService.js",
+        "event": "*",
+        "schema": "public",
+        "table": "emergency_requests",
+        "filter": "hospital_id=eq.${hospitalId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/driverManagementService.js",
+        "event": "UPDATE",
+        "schema": "public",
+        "table": "ambulances",
+        "filter": "hospital_id=eq.${hospitalId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/healthNewsService.js",
+        "event": "*",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/hospitalsService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "id=eq.${hospitalId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/insurancePoliciesService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "id=eq.${policyId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/insurancePoliciesService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "user_id=eq.${userId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/insuranceService.js",
+        "event": "*",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/medicalProfilesService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "user_id=eq.${userId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/notificationService.js",
+        "event": "INSERT",
+        "schema": "public",
+        "table": "notifications",
+        "filter": "user_id=eq.${userId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/orgVerificationService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "verification_status=eq.pending"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/preferencesService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "user_id=eq.${userId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/profilesService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "id=eq.${profileId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/searchEventsService.js",
+        "event": "*",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/searchHistoryService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "user_id=eq.${userId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/searchSelectionsService.js",
+        "event": "*",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/staffSchedulingService.js",
+        "event": "*",
+        "schema": "public",
+        "table": "doctors"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/staffSchedulingService.js",
+        "event": "*",
+        "schema": "public",
+        "table": "ambulances"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/subscribersService.js",
+        "event": "*",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/subscriptionService.js",
+        "event": "*",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/subscriptionService.js",
+        "event": "INSERT",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/supabaseHelpers.js",
+        "schema": "public",
+        "filter": "${filter.column}=eq.${filter.value}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/supabaseMapService.js",
+        "event": "*",
+        "schema": "public",
+        "table": "emergency_requests"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/supabaseMapService.js",
+        "event": "*",
+        "schema": "public",
+        "table": "ambulances"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/supabaseMapService.js",
+        "event": "*",
+        "schema": "public",
+        "table": "users"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/supportFaqsService.js",
+        "event": "*",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/supportTicketsService.js",
+        "event": "*",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/trendingTopicsService.js",
+        "event": "*",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/verificationService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "role=eq.provider"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/visitsService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "id=eq.${visitId}"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/visitsService.js",
+        "event": "*",
+        "schema": "public"
+      },
+      {
+        "repo": "ivisit-console",
+        "file": "frontend/src/services/visitsService.js",
+        "event": "*",
+        "schema": "public",
+        "filter": "user_id=eq.${userId}"
+      }
+    ],
+    "role_checks": {
+      "driver": 20,
+      "organization_id": 88,
+      "role": 121,
+      "provider_type": 30,
+      "admin": 84,
+      "dispatcher": 13,
+      "is_admin": 14,
+      "p_is_admin": 8,
+      "p_is_console_allowed": 4,
+      "current_user_permission_level": 4
+    },
+    "files_with_supabase_usage": 226
+  }
+}

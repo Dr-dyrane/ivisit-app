@@ -7,6 +7,43 @@ class RealtimeAvailabilityService {
     this.isPolling = false;
   }
 
+  static parseCoordinates(row) {
+    const latitude = Number(row?.latitude);
+    const longitude = Number(row?.longitude);
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      return { latitude, longitude };
+    }
+
+    const coords = row?.coordinates;
+    if (coords && typeof coords === 'object' && Array.isArray(coords.coordinates)) {
+      const [lng, lat] = coords.coordinates;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: Number(lat), longitude: Number(lng) };
+      }
+    }
+
+    if (typeof coords === 'string') {
+      const match = coords.match(/^POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)$/i);
+      if (match) {
+        return { latitude: Number(match[2]), longitude: Number(match[1]) };
+      }
+    }
+
+    return null;
+  }
+
+  static inBounds(row, bounds) {
+    const parsed = RealtimeAvailabilityService.parseCoordinates(row);
+    if (!parsed) return false;
+
+    return (
+      parsed.latitude >= bounds.south &&
+      parsed.latitude <= bounds.north &&
+      parsed.longitude >= bounds.west &&
+      parsed.longitude <= bounds.east
+    );
+  }
+
   /**
    * Subscribe to real-time availability updates for a specific hospital
    * @param {string} hospitalId - Hospital ID to watch
@@ -43,7 +80,12 @@ class RealtimeAvailabilityService {
         }
       });
 
-    this.subscriptions.set(hospitalId, subscription);
+    this.subscriptions.set(hospitalId, {
+      type: 'hospital',
+      hospitalId,
+      callback,
+      channel: subscription,
+    });
 
     // Return unsubscribe function
     return () => {
@@ -59,6 +101,11 @@ class RealtimeAvailabilityService {
    * @returns {function} Unsubscribe function
    */
   subscribeToArea(bounds, callback) {
+    if (!bounds || typeof callback !== 'function') {
+      console.warn('RealtimeAvailabilityService: Invalid area subscription parameters');
+      return () => {};
+    }
+
     const { north, south, east, west } = bounds;
     
     const subscription = supabase
@@ -73,12 +120,7 @@ class RealtimeAvailabilityService {
         (payload) => {
           // Check if updated hospital is within bounds
           const hospital = payload.new;
-          if (
-            hospital.latitude >= south &&
-            hospital.latitude <= north &&
-            hospital.longitude >= west &&
-            hospital.longitude <= east
-          ) {
+          if (RealtimeAvailabilityService.inBounds(hospital, { north, south, east, west })) {
             callback(hospital);
           }
         }
@@ -86,7 +128,12 @@ class RealtimeAvailabilityService {
       .subscribe();
 
     const unsubscribeId = `area-${Date.now()}`;
-    this.subscriptions.set(unsubscribeId, subscription);
+    this.subscriptions.set(unsubscribeId, {
+      type: 'area',
+      bounds: { north, south, east, west },
+      callback,
+      channel: subscription,
+    });
 
     return () => {
       subscription.unsubscribe();
@@ -110,20 +157,31 @@ class RealtimeAvailabilityService {
     const pollInterval = setInterval(async () => {
       try {
         const { data, error } = await supabase
-          .from('available_hospitals')
+          .from('hospitals')
           .select('*')
+          .eq('verified', true)
           .order('last_availability_update', { ascending: false })
-          .limit(10);
+          .limit(100);
 
         if (error) {
           console.error('Polling error:', error);
           return;
         }
 
-        // Emit updates to all subscribers
-        this.subscriptions.forEach((subscription, key) => {
-          if (key.startsWith('area-') && typeof subscription.callback === 'function') {
-            subscription.callback(data);
+        const rows = Array.isArray(data) ? data : [];
+
+        // Emit updates to all subscribers when realtime channel is degraded.
+        this.subscriptions.forEach((subscription) => {
+          if (subscription.type === 'area' && typeof subscription.callback === 'function') {
+            const inArea = rows.filter((row) => RealtimeAvailabilityService.inBounds(row, subscription.bounds));
+            subscription.callback(inArea);
+          }
+
+          if (subscription.type === 'hospital' && typeof subscription.callback === 'function') {
+            const row = rows.find((r) => String(r.id) === String(subscription.hospitalId));
+            if (row) {
+              subscription.callback(row);
+            }
           }
         });
 
@@ -181,8 +239,9 @@ class RealtimeAvailabilityService {
   async getCurrentAvailability() {
     try {
       const { data, error } = await supabase
-        .from('available_hospitals')
+        .from('hospitals')
         .select('*')
+        .eq('verified', true)
         .order('last_availability_update', { ascending: false });
 
       if (error) {
@@ -203,7 +262,7 @@ class RealtimeAvailabilityService {
   cleanup() {
     // Unsubscribe from all real-time subscriptions
     this.subscriptions.forEach((subscription) => {
-      subscription.unsubscribe();
+      subscription.channel?.unsubscribe?.();
     });
     this.subscriptions.clear();
 

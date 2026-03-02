@@ -1,0 +1,336 @@
+{
+  "generated_at_utc": "2026-03-02T18:09:21.937Z",
+  "app": {
+    "label": "ivisit-app/types/database.ts",
+    "table_counts": {
+      "types": 36,
+      "live": 40
+    },
+    "tables_missing_in_live": [],
+    "tables_missing_in_types": [
+      "access_requests",
+      "document_invites",
+      "geography_columns",
+      "geometry_columns"
+    ],
+    "column_diffs": [
+      {
+        "table": "ambulances",
+        "missing_in_types": [
+          "crew",
+          "current_call",
+          "eta"
+        ],
+        "extra_in_types": []
+      },
+      {
+        "table": "documents",
+        "missing_in_types": [
+          "icon"
+        ],
+        "extra_in_types": []
+      },
+      {
+        "table": "hospitals",
+        "missing_in_types": [
+          "coordinates",
+          "icu_beds_available",
+          "total_beds"
+        ],
+        "extra_in_types": []
+      },
+      {
+        "table": "insurance_policies",
+        "missing_in_types": [
+          "coverage_amount",
+          "is_active",
+          "policy_type",
+          "provider"
+        ],
+        "extra_in_types": []
+      },
+      {
+        "table": "notifications",
+        "missing_in_types": [
+          "color",
+          "icon",
+          "target_id",
+          "timestamp"
+        ],
+        "extra_in_types": []
+      },
+      {
+        "table": "payment_methods",
+        "missing_in_types": [
+          "expiry_month",
+          "expiry_year",
+          "is_active",
+          "metadata",
+          "organization_id",
+          "updated_at"
+        ],
+        "extra_in_types": []
+      },
+      {
+        "table": "payments",
+        "missing_in_types": [
+          "metadata"
+        ],
+        "extra_in_types": []
+      }
+    ]
+  },
+  "console": {
+    "label": "ivisit-console/frontend/src/types/database.ts",
+    "table_counts": {
+      "types": 36,
+      "live": 40
+    },
+    "tables_missing_in_live": [
+      "hospital_import_logs",
+      "hospital_rooms",
+      "search_selections"
+    ],
+    "tables_missing_in_types": [
+      "admin_audit_log",
+      "doctor_schedules",
+      "emergency_doctor_assignments",
+      "geography_columns",
+      "geometry_columns",
+      "insurance_billing",
+      "user_sessions"
+    ],
+    "column_diffs": [
+      {
+        "table": "ambulances",
+        "missing_in_types": [
+          "display_id",
+          "license_plate"
+        ],
+        "extra_in_types": [
+          "currency",
+          "driver_id",
+          "hospital",
+          "last_maintenance",
+          "rating"
+        ]
+      },
+      {
+        "table": "doctors",
+        "missing_in_types": [
+          "current_patients",
+          "department",
+          "display_id",
+          "is_on_call",
+          "max_patients"
+        ],
+        "extra_in_types": []
+      },
+      {
+        "table": "emergency_requests",
+        "missing_in_types": [
+          "assigned_doctor_id",
+          "created_at",
+          "destination_location",
+          "doctor_assigned_at"
+        ],
+        "extra_in_types": [
+          "base_cost",
+          "bed_count",
+          "bed_type",
+          "confirmed_cost",
+          "cost_breakdown",
+          "distance_surcharge",
+          "estimated_arrival",
+          "patient_heading",
+          "payment_id",
+          "payment_method_id",
+          "shared_data_snapshot",
+          "urgency_surcharge"
+        ]
+      },
+      {
+        "table": "health_news",
+        "missing_in_types": [
+          "image_url"
+        ],
+        "extra_in_types": [
+          "icon",
+          "time",
+          "updated_at"
+        ]
+      },
+      {
+        "table": "hospitals",
+        "missing_in_types": [
+          "coordinates",
+          "icu_beds_available",
+          "total_beds"
+        ],
+        "extra_in_types": [
+          "google_address",
+          "google_opening_hours",
+          "google_phone",
+          "google_photos",
+          "google_rating",
+          "google_types",
+          "google_website",
+          "import_status",
+          "imported_from_google",
+          "last_google_sync",
+          "real_time_sync"
+        ]
+      },
+      {
+        "table": "insurance_policies",
+        "missing_in_types": [
+          "coverage_amount",
+          "coverage_percentage",
+          "is_active",
+          "policy_type",
+          "provider",
+          "status"
+        ],
+        "extra_in_types": [
+          "back_image_url",
+          "coverage_type",
+          "end_date",
+          "front_image_url",
+          "group_number",
+          "policy_holder_name",
+          "start_date"
+        ]
+      },
+      {
+        "table": "notifications",
+        "missing_in_types": [
+          "display_id"
+        ],
+        "extra_in_types": []
+      },
+      {
+        "table": "organization_wallets",
+        "missing_in_types": [
+          "display_id"
+        ],
+        "extra_in_types": []
+      },
+      {
+        "table": "organizations",
+        "missing_in_types": [
+          "display_id"
+        ],
+        "extra_in_types": []
+      },
+      {
+        "table": "patient_wallets",
+        "missing_in_types": [
+          "display_id"
+        ],
+        "extra_in_types": []
+      },
+      {
+        "table": "payments",
+        "missing_in_types": [
+          "display_id",
+          "ivisit_fee_amount",
+          "payment_method",
+          "processed_at",
+          "provider_response"
+        ],
+        "extra_in_types": [
+          "ivisit_deduction_amount",
+          "organization_fee_rate",
+          "payment_method_id"
+        ]
+      },
+      {
+        "table": "room_pricing",
+        "missing_in_types": [],
+        "extra_in_types": [
+          "currency",
+          "is_active"
+        ]
+      },
+      {
+        "table": "search_events",
+        "missing_in_types": [
+          "metadata"
+        ],
+        "extra_in_types": [
+          "extra"
+        ]
+      },
+      {
+        "table": "service_pricing",
+        "missing_in_types": [],
+        "extra_in_types": [
+          "currency",
+          "is_active"
+        ]
+      },
+      {
+        "table": "subscribers",
+        "missing_in_types": [],
+        "extra_in_types": [
+          "last_engagement_at",
+          "sale_id",
+          "source",
+          "unsubscribed_at",
+          "welcome_email_sent_at"
+        ]
+      },
+      {
+        "table": "user_activity",
+        "missing_in_types": [],
+        "extra_in_types": [
+          "updated_at"
+        ]
+      },
+      {
+        "table": "user_roles",
+        "missing_in_types": [
+          "metadata"
+        ],
+        "extra_in_types": [
+          "updated_at"
+        ]
+      },
+      {
+        "table": "visits",
+        "missing_in_types": [
+          "doctor_name",
+          "hospital_name"
+        ],
+        "extra_in_types": [
+          "address",
+          "doctor",
+          "doctor_image",
+          "estimated_duration",
+          "hospital",
+          "image",
+          "insurance_covered",
+          "meeting_link",
+          "next_visit",
+          "phone",
+          "preparation",
+          "prescriptions",
+          "room_number",
+          "summary"
+        ]
+      },
+      {
+        "table": "wallet_ledger",
+        "missing_in_types": [
+          "external_reference"
+        ],
+        "extra_in_types": [
+          "organization_id",
+          "reference_type",
+          "user_id",
+          "wallet_type"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,828 @@
+{
+  "summary": {
+    "generated_at_utc": "2026-03-02T18:10:11.262Z",
+    "runtime_tables_total": 35,
+    "runtime_tables_missing_live": [
+      "available_hospitals",
+      "hospital_import_logs",
+      "hospital_rooms",
+      "images",
+      "search_selections",
+      "trending_searches_view"
+    ],
+    "app_type_mismatch_tables": [
+      "ambulances",
+      "documents",
+      "hospitals",
+      "insurance_policies",
+      "notifications",
+      "payment_methods",
+      "payments"
+    ],
+    "console_type_mismatch_tables": [
+      "ambulances",
+      "doctors",
+      "emergency_requests",
+      "health_news",
+      "hospitals",
+      "insurance_policies",
+      "notifications",
+      "organization_wallets",
+      "organizations",
+      "patient_wallets",
+      "payments",
+      "room_pricing",
+      "search_events",
+      "service_pricing",
+      "subscribers",
+      "user_activity",
+      "visits",
+      "wallet_ledger"
+    ]
+  },
+  "rows": [
+    {
+      "table": "admin_audit_log",
+      "live_exists": true,
+      "app_runtime_refs": [],
+      "console_runtime_refs": [
+        "frontend/src/services/adminService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": false,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "ambulances",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/pricingService.js"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/components/modals/AmbulanceModal.jsx",
+        "frontend/src/components/pages/AmbulancesPage.jsx",
+        "frontend/src/components/pages/Analytics.jsx",
+        "frontend/src/components/pages/Overview.jsx",
+        "frontend/src/services/driverManagementService.js",
+        "frontend/src/services/emergencyResponseService.js",
+        "frontend/src/services/searchService.js",
+        "frontend/src/services/staffSchedulingService.js",
+        "frontend/src/services/supabaseMapService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [
+        "crew",
+        "current_call",
+        "eta"
+      ],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "display_id",
+        "license_plate"
+      ],
+      "console_type_extra_columns": [
+        "currency",
+        "driver_id",
+        "hospital",
+        "last_maintenance",
+        "rating"
+      ]
+    },
+    {
+      "table": "available_hospitals",
+      "live_exists": false,
+      "app_runtime_refs": [
+        "services/realtimeAvailabilityService.js"
+      ],
+      "console_runtime_refs": [],
+      "app_type_present": false,
+      "console_type_present": false,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "doctors",
+      "live_exists": true,
+      "app_runtime_refs": [],
+      "console_runtime_refs": [
+        "frontend/src/components/pages/VisitsPage.jsx",
+        "frontend/src/services/searchService.js",
+        "frontend/src/services/staffSchedulingService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "current_patients",
+        "department",
+        "display_id",
+        "is_on_call",
+        "max_patients"
+      ],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "documents",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/insuranceService.js"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/services/insuranceService.js",
+        "frontend/src/services/onboardingService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [
+        "icon"
+      ],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "emergency_requests",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "components/emergency/EmergencyRequestModal.jsx",
+        "services/emergencyRequestsService.js",
+        "services/paymentService.js",
+        "services/serviceCostService.js",
+        "supabase/functions/webhooks/stripe-webhook/index.ts"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/components/modals/EmergencyRequestModal.jsx",
+        "frontend/src/components/pages/Analytics.jsx",
+        "frontend/src/components/pages/EmergencyRequestsPage.jsx",
+        "frontend/src/components/pages/Overview.jsx",
+        "frontend/src/services/bedManagementService.js",
+        "frontend/src/services/driverManagementService.js",
+        "frontend/src/services/emergencyResponseService.js",
+        "frontend/src/services/searchService.js",
+        "frontend/src/services/supabaseMapService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "assigned_doctor_id",
+        "created_at",
+        "destination_location",
+        "doctor_assigned_at"
+      ],
+      "console_type_extra_columns": [
+        "base_cost",
+        "bed_count",
+        "bed_type",
+        "confirmed_cost",
+        "cost_breakdown",
+        "distance_surcharge",
+        "estimated_arrival",
+        "patient_heading",
+        "payment_id",
+        "payment_method_id",
+        "shared_data_snapshot",
+        "urgency_surcharge"
+      ]
+    },
+    {
+      "table": "health_news",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/discoveryService.js"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/components/context/HealthNewsPanel.jsx",
+        "frontend/src/components/pages/HealthNewsManagementPage.jsx",
+        "frontend/src/utils/testDatabase.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "image_url"
+      ],
+      "console_type_extra_columns": [
+        "icon",
+        "time",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "hospital_import_logs",
+      "live_exists": false,
+      "app_runtime_refs": [
+        "services/hospitalImportService.js"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/services/hospitalImportService.js"
+      ],
+      "app_type_present": false,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "hospital_rooms",
+      "live_exists": false,
+      "app_runtime_refs": [
+        "services/hospitalsService.js"
+      ],
+      "console_runtime_refs": [],
+      "app_type_present": false,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "hospitals",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/hospitalImportService.js",
+        "services/hospitalsService.js",
+        "services/notificationDispatcher.js",
+        "services/paymentService.js",
+        "services/pricingService.js",
+        "supabase/functions/discovery/discover-hospitals/index.ts"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/components/modals/AmbulanceModal.jsx",
+        "frontend/src/components/modals/DoctorModal.jsx",
+        "frontend/src/components/pages/Analytics.jsx",
+        "frontend/src/components/pages/HospitalsPage.jsx",
+        "frontend/src/components/pages/Overview.jsx",
+        "frontend/src/services/authService.js",
+        "frontend/src/services/bedManagementService.js",
+        "frontend/src/services/displayIdService.js",
+        "frontend/src/services/driverManagementService.js",
+        "frontend/src/services/hospitalImportService.js",
+        "frontend/src/services/onboardingService.js",
+        "frontend/src/services/pricingService.js",
+        "frontend/src/services/searchService.js",
+        "frontend/src/services/staffSchedulingService.js",
+        "frontend/src/services/supabaseMapService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [
+        "coordinates",
+        "icu_beds_available",
+        "total_beds"
+      ],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "coordinates",
+        "icu_beds_available",
+        "total_beds"
+      ],
+      "console_type_extra_columns": [
+        "google_address",
+        "google_opening_hours",
+        "google_phone",
+        "google_photos",
+        "google_rating",
+        "google_types",
+        "google_website",
+        "import_status",
+        "imported_from_google",
+        "last_google_sync",
+        "real_time_sync"
+      ]
+    },
+    {
+      "table": "images",
+      "live_exists": false,
+      "app_runtime_refs": [],
+      "console_runtime_refs": [
+        "frontend/src/services/profilesService.js"
+      ],
+      "app_type_present": false,
+      "console_type_present": false,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "insurance_policies",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/appMigrationsService.js",
+        "services/insuranceService.js",
+        "services/paymentService.js",
+        "services/pricingService.js"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/utils/testDatabase.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [
+        "coverage_amount",
+        "is_active",
+        "policy_type",
+        "provider"
+      ],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "coverage_amount",
+        "coverage_percentage",
+        "is_active",
+        "policy_type",
+        "provider",
+        "status"
+      ],
+      "console_type_extra_columns": [
+        "back_image_url",
+        "coverage_type",
+        "end_date",
+        "front_image_url",
+        "group_number",
+        "policy_holder_name",
+        "start_date"
+      ]
+    },
+    {
+      "table": "ivisit_main_wallet",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "supabase/functions/webhooks/stripe-webhook/index.ts"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/components/pages/WalletManagementPage.jsx",
+        "frontend/src/contexts/PageDataContext.jsx",
+        "frontend/src/services/walletService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "medical_profiles",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/medicalProfileService.js"
+      ],
+      "console_runtime_refs": [],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "notifications",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/notificationDispatcher.js",
+        "services/seederService.js"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/services/notificationService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [
+        "color",
+        "icon",
+        "target_id",
+        "timestamp"
+      ],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "display_id"
+      ],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "organization_wallets",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/paymentService.js",
+        "supabase/functions/webhooks/stripe-webhook/index.ts"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/components/pages/WalletManagementPage.jsx",
+        "frontend/src/contexts/PageDataContext.jsx",
+        "frontend/src/services/organizationsService.js",
+        "frontend/src/services/walletService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "display_id"
+      ],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "organizations",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/paymentService.js",
+        "supabase/functions/payments/create-payment-intent/index.ts",
+        "supabase/functions/payments/create-payout/index.ts",
+        "supabase/functions/payments/manage-payment-methods/index.ts",
+        "supabase/functions/webhooks/stripe-webhook/index.ts"
+      ],
+      "console_runtime_refs": [],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "display_id"
+      ],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "patient_wallets",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/paymentService.js"
+      ],
+      "console_runtime_refs": [],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "display_id"
+      ],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "payment_methods",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/paymentService.js"
+      ],
+      "console_runtime_refs": [],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [
+        "expiry_month",
+        "expiry_year",
+        "is_active",
+        "metadata",
+        "organization_id",
+        "updated_at"
+      ],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "payments",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "components/emergency/EmergencyRequestModal.jsx",
+        "services/paymentService.js",
+        "supabase/functions/payments/create-payment-intent/index.ts",
+        "supabase/functions/webhooks/stripe-webhook/index.ts"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/components/modals/EmergencyDetailsModal.jsx",
+        "frontend/src/components/pages/WalletManagementPage.jsx"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [
+        "metadata"
+      ],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "display_id",
+        "ivisit_fee_amount",
+        "payment_method",
+        "processed_at",
+        "provider_response"
+      ],
+      "console_type_extra_columns": [
+        "ivisit_deduction_amount",
+        "organization_fee_rate",
+        "payment_method_id"
+      ]
+    },
+    {
+      "table": "preferences",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/preferencesService.js"
+      ],
+      "console_runtime_refs": [],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "profiles",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/authService.js",
+        "services/displayIdService.js",
+        "services/notificationDispatcher.js",
+        "services/paymentService.js",
+        "supabase/functions/payments/create-payment-intent/index.ts",
+        "supabase/functions/payments/create-payout/index.ts",
+        "supabase/functions/payments/manage-payment-methods/index.ts"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/components/modals/EmergencyRequestModal.jsx",
+        "frontend/src/components/pages/Analytics.jsx",
+        "frontend/src/components/pages/Overview.jsx",
+        "frontend/src/components/pages/UsersPage.jsx",
+        "frontend/src/components/pages/VisitsPage.jsx",
+        "frontend/src/components/pages/WalletManagementPage.jsx",
+        "frontend/src/contexts/AuthContext.jsx",
+        "frontend/src/services/adminService.js",
+        "frontend/src/services/ambulancesService.js",
+        "frontend/src/services/authService.js",
+        "frontend/src/services/bedManagementService.js",
+        "frontend/src/services/displayIdService.js",
+        "frontend/src/services/driverManagementService.js",
+        "frontend/src/services/hospitalImportService.js",
+        "frontend/src/services/onboardingService.js",
+        "frontend/src/services/profilesService.js",
+        "frontend/src/services/searchService.js",
+        "frontend/src/services/staffSchedulingService.js",
+        "frontend/supabase/functions/discovery/index.ts",
+        "frontend/supabase/functions/payments/index.ts"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "room_pricing",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/hospitalsService.js",
+        "services/pricingService.js"
+      ],
+      "console_runtime_refs": [],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": [
+        "currency",
+        "is_active"
+      ]
+    },
+    {
+      "table": "search_events",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/discoveryService.js"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/services/analyticsAutomationService.js",
+        "frontend/src/services/searchAnalyticsService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "metadata"
+      ],
+      "console_type_extra_columns": [
+        "extra"
+      ]
+    },
+    {
+      "table": "search_history",
+      "live_exists": true,
+      "app_runtime_refs": [],
+      "console_runtime_refs": [
+        "frontend/src/services/searchService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "search_selections",
+      "live_exists": false,
+      "app_runtime_refs": [
+        "services/discoveryService.js"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/services/searchService.js"
+      ],
+      "app_type_present": false,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "service_pricing",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/hospitalsService.js",
+        "services/pricingService.js",
+        "services/serviceCostService.js"
+      ],
+      "console_runtime_refs": [],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": [
+        "currency",
+        "is_active"
+      ]
+    },
+    {
+      "table": "subscribers",
+      "live_exists": true,
+      "app_runtime_refs": [],
+      "console_runtime_refs": [
+        "frontend/supabase/functions/payments/process-subscribers/index.ts",
+        "frontend/supabase/functions/payments/sendWelcome/index.ts",
+        "frontend/supabase/functions/webhooks/index.ts"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": [
+        "last_engagement_at",
+        "sale_id",
+        "source",
+        "unsubscribed_at",
+        "welcome_email_sent_at"
+      ]
+    },
+    {
+      "table": "support_faqs",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/helpSupportService.js",
+        "services/seederService.js"
+      ],
+      "console_runtime_refs": [],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "support_tickets",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/helpSupportService.js"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/components/context/SupportTicketsPanel.jsx",
+        "frontend/src/utils/testDatabase.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "trending_searches_view",
+      "live_exists": false,
+      "app_runtime_refs": [],
+      "console_runtime_refs": [
+        "frontend/src/services/analyticsAutomationService.js"
+      ],
+      "app_type_present": false,
+      "console_type_present": false,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "user_activity",
+      "live_exists": true,
+      "app_runtime_refs": [],
+      "console_runtime_refs": [
+        "frontend/src/services/adminService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": [
+        "updated_at"
+      ]
+    },
+    {
+      "table": "user_sessions",
+      "live_exists": true,
+      "app_runtime_refs": [],
+      "console_runtime_refs": [
+        "frontend/src/services/adminService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": false,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [],
+      "console_type_extra_columns": []
+    },
+    {
+      "table": "visits",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/seederService.js"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/components/pages/VisitsPage.jsx",
+        "frontend/src/services/searchService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "doctor_name",
+        "hospital_name"
+      ],
+      "console_type_extra_columns": [
+        "address",
+        "doctor",
+        "doctor_image",
+        "estimated_duration",
+        "hospital",
+        "image",
+        "insurance_covered",
+        "meeting_link",
+        "next_visit",
+        "phone",
+        "preparation",
+        "prescriptions",
+        "room_number",
+        "summary"
+      ]
+    },
+    {
+      "table": "wallet_ledger",
+      "live_exists": true,
+      "app_runtime_refs": [
+        "services/paymentService.js",
+        "supabase/functions/webhooks/stripe-webhook/index.ts"
+      ],
+      "console_runtime_refs": [
+        "frontend/src/components/pages/WalletManagementPage.jsx",
+        "frontend/src/contexts/PageDataContext.jsx",
+        "frontend/src/services/walletService.js"
+      ],
+      "app_type_present": true,
+      "console_type_present": true,
+      "app_type_missing_columns": [],
+      "app_type_extra_columns": [],
+      "console_type_missing_columns": [
+        "external_reference"
+      ],
+      "console_type_extra_columns": [
+        "organization_id",
+        "reference_type",
+        "user_id",
+        "wallet_type"
+      ]
+    }
+  ]
+}

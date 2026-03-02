@@ -391,3 +391,265 @@ DROP TRIGGER IF EXISTS on_emergency_create_billing ON public.emergency_requests;
 CREATE TRIGGER on_emergency_create_billing
 AFTER UPDATE ON public.emergency_requests
 FOR EACH ROW EXECUTE PROCEDURE public.create_insurance_billing_on_completion();
+
+-- ================================================================
+-- Integrated Fix Pack (2026-03-02): Automation Determinism + Realtime
+-- Source: consolidated from temporary fix migrations
+-- ================================================================
+
+-- Harden auto assignment against race conditions.
+CREATE OR REPLACE FUNCTION public.auto_assign_driver()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_amb_id UUID;
+    v_driver_id UUID;
+    v_driver_name TEXT;
+    v_should_attempt BOOLEAN := FALSE;
+BEGIN
+    IF NEW.service_type != 'ambulance' OR NEW.hospital_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    IF NEW.responder_id IS NOT NULL OR NEW.ambulance_id IS NOT NULL THEN
+        RETURN NEW;
+    END IF;
+
+    IF TG_OP = 'INSERT' THEN
+        v_should_attempt := NEW.status IN ('in_progress', 'accepted');
+    ELSIF TG_OP = 'UPDATE' THEN
+        v_should_attempt := NEW.status IN ('in_progress', 'accepted')
+            AND (
+                OLD.status IS DISTINCT FROM NEW.status
+                OR OLD.hospital_id IS DISTINCT FROM NEW.hospital_id
+            );
+    END IF;
+
+    IF NOT v_should_attempt THEN
+        RETURN NEW;
+    END IF;
+
+    WITH candidate AS (
+        SELECT a.id, a.profile_id
+        FROM public.ambulances a
+        WHERE a.hospital_id = NEW.hospital_id
+          AND a.status = 'available'
+        ORDER BY a.created_at ASC
+        FOR UPDATE SKIP LOCKED
+        LIMIT 1
+    ),
+    claimed AS (
+        UPDATE public.ambulances a
+        SET status = 'on_trip',
+            current_call = NEW.id,
+            updated_at = NOW()
+        FROM candidate c
+        WHERE a.id = c.id
+        RETURNING a.id, c.profile_id
+    )
+    SELECT id, profile_id INTO v_amb_id, v_driver_id FROM claimed;
+
+    IF v_amb_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT full_name INTO v_driver_name
+    FROM public.profiles
+    WHERE id = v_driver_id;
+
+    UPDATE public.emergency_requests
+    SET responder_id = v_driver_id,
+        responder_name = v_driver_name,
+        ambulance_id = v_amb_id,
+        status = 'accepted',
+        updated_at = NOW()
+    WHERE id = NEW.id
+      AND responder_id IS NULL
+      AND ambulance_id IS NULL;
+
+    IF NOT FOUND THEN
+        UPDATE public.ambulances
+        SET status = 'available',
+            current_call = NULL,
+            updated_at = NOW()
+        WHERE id = v_amb_id
+          AND current_call = NEW.id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- Resource sync must not depend on removed columns.
+CREATE OR REPLACE FUNCTION public.update_resource_availability()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_current_amb_status TEXT;
+BEGIN
+    IF NEW.ambulance_id IS NOT NULL THEN
+        SELECT status INTO v_current_amb_status
+        FROM public.ambulances
+        WHERE id = NEW.ambulance_id;
+
+        IF NEW.status IN ('accepted', 'arrived', 'in_progress') THEN
+            IF v_current_amb_status IN ('available', 'dispatched', 'en_route', 'on_scene') THEN
+                UPDATE public.ambulances
+                SET status = 'on_trip',
+                    current_call = NEW.id,
+                    updated_at = NOW()
+                WHERE id = NEW.ambulance_id;
+            END IF;
+        ELSIF NEW.status IN ('completed', 'cancelled', 'payment_declined') THEN
+            IF v_current_amb_status NOT IN ('available', 'offline', 'maintenance') THEN
+                UPDATE public.ambulances
+                SET status = 'available',
+                    current_call = NULL,
+                    eta = NULL,
+                    updated_at = NOW()
+                WHERE id = NEW.ambulance_id;
+            END IF;
+        END IF;
+    END IF;
+
+    IF TG_OP = 'UPDATE' AND NEW.service_type = 'bed' THEN
+        IF NEW.status = 'in_progress' AND OLD.status != 'in_progress' THEN
+            UPDATE public.hospitals
+            SET available_beds = GREATEST(0, available_beds - 1)
+            WHERE id = NEW.hospital_id;
+        ELSIF NEW.status IN ('completed', 'cancelled') AND OLD.status NOT IN ('completed', 'cancelled') THEN
+            UPDATE public.hospitals
+            SET available_beds = available_beds + 1
+            WHERE id = NEW.hospital_id;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- Realtime publication parity for live subscriptions.
+DO $$
+DECLARE
+    v_table TEXT;
+    v_targets TEXT[] := ARRAY[
+        'ambulances',
+        'doctors',
+        'emergency_requests',
+        'health_news',
+        'hospitals',
+        'insurance_policies',
+        'notifications',
+        'organizations',
+        'payments',
+        'profiles',
+        'room_pricing',
+        'service_pricing',
+        'support_tickets',
+        'user_activity',
+        'visits'
+    ];
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        RETURN;
+    END IF;
+
+    FOREACH v_table IN ARRAY v_targets LOOP
+        IF EXISTS (
+            SELECT 1
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public'
+              AND c.relname = v_table
+              AND c.relkind = 'r'
+        )
+        AND NOT EXISTS (
+            SELECT 1
+            FROM pg_publication_rel pr
+            JOIN pg_publication p ON p.oid = pr.prpubid
+            JOIN pg_class c ON c.oid = pr.prrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE p.pubname = 'supabase_realtime'
+              AND n.nspname = 'public'
+              AND c.relname = v_table
+        ) THEN
+            EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', v_table);
+        END IF;
+    END LOOP;
+END;
+$$;
+
+
+-- Remove duplicate display-id trigger variants only when both exist.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'notifications' AND t.tgname = 'stamp_ntf_display_id'
+    )
+    AND EXISTS (
+        SELECT 1 FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'notifications' AND t.tgname = 'stamp_notification_display_id'
+    ) THEN
+        DROP TRIGGER IF EXISTS stamp_ntf_display_id ON public.notifications;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'organization_wallets' AND t.tgname = 'stamp_organization_wallet_display_id'
+    )
+    AND EXISTS (
+        SELECT 1 FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'organization_wallets' AND t.tgname = 'stamp_org_wallet_display_id'
+    ) THEN
+        DROP TRIGGER IF EXISTS stamp_organization_wallet_display_id ON public.organization_wallets;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'patient_wallets' AND t.tgname = 'stamp_patient_wallet_display_id'
+    )
+    AND EXISTS (
+        SELECT 1 FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'patient_wallets' AND t.tgname = 'stamp_pat_wallet_display_id'
+    ) THEN
+        DROP TRIGGER IF EXISTS stamp_patient_wallet_display_id ON public.patient_wallets;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'payments' AND t.tgname = 'stamp_payment_display_id'
+    )
+    AND EXISTS (
+        SELECT 1 FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'payments' AND t.tgname = 'stamp_pay_display_id'
+    ) THEN
+        DROP TRIGGER IF EXISTS stamp_payment_display_id ON public.payments;
+    END IF;
+END;
+$$;
+
+
+-- Hot path indexes for emergency lifecycle reads.
+CREATE INDEX IF NOT EXISTS idx_emergency_requests_status ON public.emergency_requests(status);
+CREATE INDEX IF NOT EXISTS idx_emergency_requests_hospital_id ON public.emergency_requests(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_emergency_requests_created_at ON public.emergency_requests(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ambulances_hospital_status ON public.ambulances(hospital_id, status);
+CREATE INDEX IF NOT EXISTS idx_payments_emergency_request_id ON public.payments(emergency_request_id);
+CREATE INDEX IF NOT EXISTS idx_visits_request_id ON public.visits(request_id);

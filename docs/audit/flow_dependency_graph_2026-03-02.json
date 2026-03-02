@@ -1,0 +1,87 @@
+﻿{
+    "generated_at_utc":  "2026-03-02T18:19:59.1177901Z",
+    "nodes":  [
+                  "mobile:create_emergency_v4",
+                  "db:emergency_requests.insert",
+                  "db:payments.insert",
+                  "trigger:on_emergency_start_dispatch",
+                  "fn:auto_assign_driver",
+                  "db:ambulances.update_on_trip",
+                  "db:emergency_requests.update_assignment",
+                  "realtime:postgres_changes_emergency_requests",
+                  "console:dispatch_views",
+                  "driver:update_responder_location",
+                  "db:emergency_requests.update_status",
+                  "trigger:on_emergency_completed",
+                  "fn:sync_emergency_to_visit",
+                  "db:visits.upsert",
+                  "audit:user_activity"
+              ],
+    "edges":  [
+                  {
+                      "from":  "mobile:create_emergency_v4",
+                      "to":  "db:emergency_requests.insert",
+                      "type":  "rpc_write"
+                  },
+                  {
+                      "from":  "mobile:create_emergency_v4",
+                      "to":  "db:payments.insert",
+                      "type":  "rpc_write"
+                  },
+                  {
+                      "from":  "db:emergency_requests.insert",
+                      "to":  "trigger:on_emergency_start_dispatch",
+                      "type":  "trigger"
+                  },
+                  {
+                      "from":  "trigger:on_emergency_start_dispatch",
+                      "to":  "fn:auto_assign_driver",
+                      "type":  "trigger_exec"
+                  },
+                  {
+                      "from":  "fn:auto_assign_driver",
+                      "to":  "db:emergency_requests.update_assignment",
+                      "type":  "internal_update"
+                  },
+                  {
+                      "from":  "fn:auto_assign_driver",
+                      "to":  "db:ambulances.update_on_trip",
+                      "type":  "internal_update"
+                  },
+                  {
+                      "from":  "db:emergency_requests.update_assignment",
+                      "to":  "realtime:postgres_changes_emergency_requests",
+                      "type":  "cdc"
+                  },
+                  {
+                      "from":  "realtime:postgres_changes_emergency_requests",
+                      "to":  "console:dispatch_views",
+                      "type":  "subscription"
+                  },
+                  {
+                      "from":  "driver:update_responder_location",
+                      "to":  "db:emergency_requests.update_status",
+                      "type":  "write"
+                  },
+                  {
+                      "from":  "db:emergency_requests.update_status",
+                      "to":  "trigger:on_emergency_completed",
+                      "type":  "trigger"
+                  },
+                  {
+                      "from":  "trigger:on_emergency_completed",
+                      "to":  "fn:sync_emergency_to_visit",
+                      "type":  "trigger_exec"
+                  },
+                  {
+                      "from":  "fn:sync_emergency_to_visit",
+                      "to":  "db:visits.upsert",
+                      "type":  "internal_upsert"
+                  },
+                  {
+                      "from":  "db:emergency_requests.update_status",
+                      "to":  "audit:user_activity",
+                      "type":  "audit_emit"
+                  }
+              ]
+}
