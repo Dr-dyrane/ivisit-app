@@ -4,6 +4,7 @@
  */
 
 import { supabase } from './supabase';
+import { emergencyRequestsService } from './emergencyRequestsService';
 
 export const serviceCostService = {
   /**
@@ -55,19 +56,44 @@ export const serviceCostService = {
    */
   async updateEmergencyPayment(emergencyRequestId, paymentData) {
     try {
-      const { data, error } = await supabase
-        .from('emergency_requests')
-        .update({
-          payment_status: paymentData.status,
-          payment_id: paymentData.paymentId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', emergencyRequestId)
-        .select()
-        .single();
+      const requestKey = String(emergencyRequestId ?? '');
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(requestKey);
+
+      let resolvedRequestId = requestKey;
+      if (!isUuid) {
+        const { data: requestRow, error: lookupError } = await supabase
+          .from('emergency_requests')
+          .select('id')
+          .eq('display_id', requestKey)
+          .limit(1)
+          .maybeSingle();
+
+        if (lookupError) throw lookupError;
+        if (!requestRow?.id) {
+          throw new Error(`Emergency request not found: ${requestKey}`);
+        }
+        resolvedRequestId = requestRow.id;
+      }
+
+      const rpcPayload = {};
+      if (paymentData?.status) {
+        rpcPayload.payment_status = paymentData.status;
+      }
+      if (paymentData?.paymentId) {
+        rpcPayload.payment_method_id = paymentData.paymentId;
+      }
+
+      const { data: rpcResult, error } = await supabase.rpc('console_update_emergency_request', {
+        p_request_id: resolvedRequestId,
+        p_payload: rpcPayload,
+      });
 
       if (error) throw error;
-      return data;
+      if (!rpcResult?.success || !rpcResult?.request) {
+        throw new Error(rpcResult?.error || 'Emergency payment update failed');
+      }
+
+      return rpcResult.request;
     } catch (error) {
       console.error('Error updating emergency payment:', error);
       throw error;
@@ -132,25 +158,31 @@ export const serviceCostService = {
         }
       );
 
-      // Create emergency request with cost information
-      const emergencyData = {
-        ...requestData,
-        base_cost: cost.base_cost,
-        distance_surcharge: cost.distance_surcharge,
-        urgency_surcharge: cost.urgency_surcharge,
+      const created = await emergencyRequestsService.create({
+        requestId: requestData?.display_id || requestData?.requestId,
+        serviceType: requestData?.service_type || requestData?.serviceType,
+        hospitalId: requestData?.hospital_id || requestData?.hospitalId,
+        hospitalName: requestData?.hospital_name || requestData?.hospitalName,
+        specialty: requestData?.specialty,
+        ambulanceType: requestData?.ambulance_type || requestData?.ambulanceType,
+        patient: requestData?.patient_snapshot || requestData?.patient || null,
+        patientLocation:
+          requestData?.patient_location ||
+          requestData?.patientLocation ||
+          requestData?.pickup_location ||
+          null,
         total_cost: cost.total_cost,
-        cost_breakdown: cost.breakdown,
-        payment_status: 'pending'
-      };
+        payment_status: requestData?.payment_status || 'pending',
+        payment_method_id:
+          requestData?.payment_method_id ||
+          requestData?.paymentMethodId ||
+          requestData?.payment_method ||
+          null,
+        feeAmount: requestData?.fee_amount || null,
+        currency: requestData?.currency || 'USD',
+      });
 
-      const { data, error } = await supabase
-        .from('emergency_requests')
-        .insert(emergencyData)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return created;
     } catch (error) {
       console.error('Error creating emergency request with cost:', error);
       throw error;

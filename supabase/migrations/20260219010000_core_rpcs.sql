@@ -1181,7 +1181,7 @@ BEGIN
     FROM public.emergency_requests er
     LEFT JOIN public.hospitals h ON h.id = er.hospital_id
     WHERE er.id = p_request_id
-    FOR UPDATE;
+    FOR UPDATE OF er;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Emergency request not found';
@@ -1310,7 +1310,7 @@ BEGIN
     FROM public.emergency_requests er
     LEFT JOIN public.hospitals h ON h.id = er.hospital_id
     WHERE er.id = p_request_id
-    FOR UPDATE;
+    FOR UPDATE OF er;
 
     IF v_req_status IS NULL THEN
         RAISE EXCEPTION 'Emergency request not found';
@@ -1326,7 +1326,7 @@ BEGIN
     LEFT JOIN public.hospitals h ON h.id = a.hospital_id
     LEFT JOIN public.profiles p ON p.id = a.profile_id
     WHERE a.id = p_ambulance_id
-    FOR UPDATE;
+    FOR UPDATE OF a;
 
     IF v_amb_status IS NULL THEN
         RAISE EXCEPTION 'Ambulance not found';
@@ -1409,7 +1409,7 @@ BEGIN
     FROM public.emergency_requests er
     LEFT JOIN public.hospitals h ON h.id = er.hospital_id
     WHERE er.id = p_request_id
-    FOR UPDATE;
+    FOR UPDATE OF er;
 
     IF v_status IS NULL THEN
         RAISE EXCEPTION 'Emergency request not found';
@@ -1489,7 +1489,7 @@ BEGIN
     FROM public.emergency_requests er
     LEFT JOIN public.hospitals h ON h.id = er.hospital_id
     WHERE er.id = p_request_id
-    FOR UPDATE;
+    FOR UPDATE OF er;
 
     IF v_status IS NULL THEN
         RAISE EXCEPTION 'Emergency request not found';
@@ -1576,7 +1576,7 @@ BEGIN
     FROM public.emergency_requests er
     LEFT JOIN public.hospitals h ON h.id = er.hospital_id
     WHERE er.id = p_request_id
-    FOR UPDATE;
+    FOR UPDATE OF er;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Emergency request not found';

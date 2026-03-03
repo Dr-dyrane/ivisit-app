@@ -92,6 +92,25 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
 - Console responder and dispatcher actions must go through console RPCs.
 - Cash approval/decline separated to org-admin path (`approve_cash_payment`, `decline_cash_payment`).
 
+## Verification Snapshot (2026-03-03)
+
+- Runtime write-surface scan:
+  - `ivisit-app`: no direct runtime `insert/update/delete/upsert` on `emergency_requests`.
+  - `ivisit-console`: no direct runtime `insert/update/delete/upsert` on `emergency_requests`.
+  - Remaining direct writes are test/seed-only scripts.
+- Remote RPC lock fix deployed (linked project `dlwtcmhdzoklveihuhjf`):
+  - `console_update_emergency_request`
+  - `console_dispatch_emergency`
+  - `console_complete_emergency`
+  - `console_cancel_emergency`
+  - `console_update_responder_location`
+  - Change: `LEFT JOIN ... FOR UPDATE` -> explicit base-table locks (`FOR UPDATE OF er` / `FOR UPDATE OF a`).
+- Realtime publication membership check: PASS for expected emergency-surface tables (`emergency_requests`, `payments`, `visits`, `ambulances`, `hospitals`, etc.).
+- RLS snapshot (critical tables):
+  - `emergency_requests`, `payments`, `visits` all have RLS enabled.
+  - Policies are currently defined with roles `{public}` and ownership predicates (`auth.uid() = user_id`) for write paths.
+  - Keep this under active audit to prevent future broad-policy drift.
+
 ## Failure and Degraded Behavior
 
 - Client guards prevent duplicate in-flight request creation (`useRequestFlow` inflight map).
@@ -106,4 +125,3 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
 - [../../../supabase/docs/REFERENCE.md](../../../supabase/docs/REFERENCE.md)
 - [../../../supabase/docs/API_REFERENCE.md](../../../supabase/docs/API_REFERENCE.md)
 - [../../audit/deterministic_emergency_state_model_2026-03-02.json](../../audit/deterministic_emergency_state_model_2026-03-02.json)
-

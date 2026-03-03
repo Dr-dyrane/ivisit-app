@@ -66,7 +66,7 @@ serve(async (req) => {
                 if (emergencyRequestId) {
                     const { error: tripError } = await supabaseAdmin
                         .from('emergency_requests')
-                        .update({ payment_status: 'paid' })
+                        .update({ payment_status: 'completed' })
                         .eq('id', emergencyRequestId)
 
                     if (tripError) {

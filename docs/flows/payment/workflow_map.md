@@ -93,6 +93,7 @@ This map covers both emergency in-flow payments and wallet/payment-management fl
 - `create_emergency_v4` sets payment/request initial states atomically.
 - `approve_cash_payment` mutates `payments`, `emergency_requests`, `visits`, and `wallet_ledger`.
 - `decline_cash_payment` marks payment declined/failed and cancels request lifecycle.
+- Stripe webhook (`supabase/functions/webhooks/stripe-webhook`) normalizes emergency payment sync to `payment_status = 'completed'` on successful card intents.
 
 ## Realtime and Confirmation Channels
 
@@ -120,4 +121,3 @@ This map covers both emergency in-flow payments and wallet/payment-management fl
 - [../emergency/workflow_map.md](../emergency/workflow_map.md)
 - [../../../supabase/docs/API_REFERENCE.md](../../../supabase/docs/API_REFERENCE.md)
 - [../../../supabase/docs/REFERENCE.md](../../../supabase/docs/REFERENCE.md)
-
