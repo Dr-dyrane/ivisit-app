@@ -85,18 +85,22 @@ WITH CHECK (auth.uid() = id);
 -- 2. EMERGENCY REQUESTS
 CREATE POLICY "Users see own emergency requests"
 ON public.emergency_requests FOR SELECT
+TO authenticated
 USING (auth.uid() = user_id OR public.p_is_admin());
 
 CREATE POLICY "Users can create emergency requests"
 ON public.emergency_requests FOR INSERT
+TO authenticated
 WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update own emergency requests"
 ON public.emergency_requests FOR UPDATE
+TO authenticated
 USING (auth.uid() = user_id);
 
 CREATE POLICY "Org Admins see their hospital emergencies"
 ON public.emergency_requests FOR SELECT
+TO authenticated
 USING (
     hospital_id IN (
         SELECT id FROM public.hospitals 
@@ -124,7 +128,13 @@ USING (organization_id = public.p_get_current_org_id() OR public.p_is_admin());
 
 CREATE POLICY "Users see own payments"
 ON public.payments FOR SELECT
+TO authenticated
 USING (auth.uid() = user_id OR public.p_is_admin());
+
+CREATE POLICY "Org Admins see org payments"
+ON public.payments FOR SELECT
+TO authenticated
+USING (organization_id = public.p_get_current_org_id() OR public.p_is_admin());
 
 CREATE POLICY "Users manage own payment methods"
 ON public.payment_methods FOR ALL
@@ -181,10 +191,12 @@ WITH CHECK (
 
 CREATE POLICY "Users see own visits"
 ON public.visits FOR SELECT
+TO authenticated
 USING (auth.uid() = user_id);
 
 CREATE POLICY "Users insert/update own visits"
 ON public.visits FOR ALL
+TO authenticated
 USING (auth.uid() = user_id);
 
 -- 8. OPS CONTENT

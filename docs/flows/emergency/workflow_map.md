@@ -108,8 +108,8 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
 - Realtime publication membership check: PASS for expected emergency-surface tables (`emergency_requests`, `payments`, `visits`, `ambulances`, `hospitals`, etc.).
 - RLS snapshot (critical tables):
   - `emergency_requests`, `payments`, `visits` all have RLS enabled.
-  - Policies are currently defined with roles `{public}` and ownership predicates (`auth.uid() = user_id`) for write paths.
-  - Keep this under active audit to prevent future broad-policy drift.
+  - Policy roles tightened to `{authenticated}` on critical read/write paths (no `anon/public` write-surface).
+  - Payments include explicit org scope read policy: `Org Admins see org payments`.
 
 ## Failure and Degraded Behavior
 

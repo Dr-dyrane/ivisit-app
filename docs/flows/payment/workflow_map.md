@@ -106,6 +106,7 @@ This map covers both emergency in-flow payments and wallet/payment-management fl
 
 - Patient actions are limited to their own request/payment context.
 - Org admin approval path is isolated to approval RPCs.
+- Critical payment/emergency/visit policies are scoped to `authenticated` role (no anon write path).
 - Console-side actions should use console RPCs, not direct table writes.
 - Financial writes are centralized in RPCs/edge functions for auditability.
 
