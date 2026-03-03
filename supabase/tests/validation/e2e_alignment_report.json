@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-03T15:33:27.320Z",
+  "generatedAt": "2026-03-03T17:17:06.071Z",
   "source": "run_alignment_audit.js",
   "supabaseUrl": "https://dlwtcmhdzoklveihuhjf.supabase.co",
   "queryErrors": [],
@@ -14,7 +14,7 @@
     "ambulances": 8,
     "doctors": 9,
     "emergency_requests": 376,
-    "visits": 346,
+    "visits": 381,
     "payments": 47,
     "emergency_doctor_assignments": 10,
     "insurance_billing": 73,
@@ -294,18 +294,6 @@
     ],
     "ambulancesByCallSignGlobal": [
       {
-        "key": "alfa-01",
-        "count": 2,
-        "ids": [
-          "e4dab68a-3d1b-4736-976e-b16409ad7986",
-          "7ff48d58-28fe-449e-850e-0142ef0b1772"
-        ],
-        "displayIds": [
-          "AMB-080D5E",
-          "AMB-3E6817"
-        ]
-      },
-      {
         "key": "bravo-02",
         "count": 2,
         "ids": [
@@ -330,27 +318,11 @@
         ]
       }
     ],
-    "ambulancesByHospitalAndCallSign": [
-      {
-        "hospital_id": "c32c4600-1275-4630-be98-6c0836f67245",
-        "call_sign": "alfa-01",
-        "count": 2,
-        "ids": [
-          "e4dab68a-3d1b-4736-976e-b16409ad7986",
-          "7ff48d58-28fe-449e-850e-0142ef0b1772"
-        ],
-        "displayIds": [
-          "AMB-080D5E",
-          "AMB-3E6817"
-        ]
-      }
-    ]
+    "ambulancesByHospitalAndCallSign": []
   },
   "severity": {
     "critical": [],
     "high": [],
-    "medium": [
-      "Duplicate semantic records detected (hospital names and/or duplicate ambulance call signs within same hospital)"
-    ]
+    "medium": []
   }
 }

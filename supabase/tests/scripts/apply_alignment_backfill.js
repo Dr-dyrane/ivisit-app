@@ -377,6 +377,50 @@ $$;
       invalidDispatchPhaseAmbulanceRequests.length;
   }
 
+  const ambulancesForDedup = await fetchAll('ambulances', 'id,hospital_id,call_sign,created_at');
+  const groupedAmbulances = new Map();
+  for (const row of ambulancesForDedup) {
+    if (!row.hospital_id || !row.call_sign || !String(row.call_sign).trim()) continue;
+    const key = `${row.hospital_id}::${String(row.call_sign).trim().toLowerCase()}`;
+    if (!groupedAmbulances.has(key)) groupedAmbulances.set(key, []);
+    groupedAmbulances.get(key).push(row);
+  }
+
+  const ambulanceCallSignUpdates = [];
+  for (const rows of groupedAmbulances.values()) {
+    if (rows.length <= 1) continue;
+    rows.sort((a, b) => {
+      const ta = a.created_at ? new Date(a.created_at).getTime() : Number.POSITIVE_INFINITY;
+      const tb = b.created_at ? new Date(b.created_at).getTime() : Number.POSITIVE_INFINITY;
+      if (ta !== tb) return ta - tb;
+      return String(a.id).localeCompare(String(b.id));
+    });
+    for (let i = 1; i < rows.length; i += 1) {
+      const row = rows[i];
+      if (/-DUP-[0-9A-F]{4}$/i.test(String(row.call_sign))) continue;
+      const suffix = String(row.id).slice(0, 4).toUpperCase();
+      ambulanceCallSignUpdates.push({
+        id: row.id,
+        payload: {
+          call_sign: `${row.call_sign}-DUP-${suffix}`,
+          updated_at: nowIso(),
+        },
+      });
+    }
+  }
+
+  report.steps.ambulance_duplicate_callsign_normalized = {
+    candidateUpdates: ambulanceCallSignUpdates.length,
+    updatedCount: 0,
+  };
+
+  if (APPLY) {
+    for (const row of ambulanceCallSignUpdates) {
+      await updateRow('ambulances', row.id, row.payload);
+      report.steps.ambulance_duplicate_callsign_normalized.updatedCount += 1;
+    }
+  }
+
   report.postflight = {
     organizations: await countRows('organizations'),
     organization_wallets: await countRows('organization_wallets'),
@@ -401,6 +445,8 @@ $$;
     report.steps.payment_org_backfill_from_emergency_hospital.updatedCount);
   console.log('[alignment-backfill] invalid dispatch-phase ambulance requests cancelled:',
     report.steps.ambulance_invalid_dispatch_phase_cancelled.updatedCount);
+  console.log('[alignment-backfill] duplicate ambulance call signs normalized:',
+    report.steps.ambulance_duplicate_callsign_normalized.updatedCount);
 
   if (!APPLY) {
     console.log('[alignment-backfill] Dry-run only. Re-run with --apply to execute writes.');

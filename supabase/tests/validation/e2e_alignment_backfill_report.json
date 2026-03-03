@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-03-03T15:33:23.385Z",
-  "completedAt": "2026-03-03T15:33:33.287Z",
+  "startedAt": "2026-03-03T17:17:00.719Z",
+  "completedAt": "2026-03-03T17:17:05.442Z",
   "mode": "apply",
   "supabaseUrl": "https://dlwtcmhdzoklveihuhjf.supabase.co",
   "steps": {
@@ -17,16 +17,16 @@
       "updatedCount": 0
     },
     "emergency_responder_snapshot_backfill": {
-      "candidateUpdates": 8,
-      "updatedCount": 8
+      "candidateUpdates": 0,
+      "updatedCount": 0
     },
     "visit_backfill_from_emergencies": {
-      "missingEmergencyCount": 35,
-      "insertedCount": 35
+      "missingEmergencyCount": 0,
+      "insertedCount": 0
     },
     "visit_sync_from_emergency": {
-      "candidateUpdates": 36,
-      "updatedCount": 36
+      "candidateUpdates": 0,
+      "updatedCount": 0
     },
     "payment_org_backfill_from_emergency_hospital": {
       "candidateUpdates": 0,
@@ -35,6 +35,10 @@
     "ambulance_invalid_dispatch_phase_cancelled": {
       "candidateCount": 0,
       "updatedCount": 0
+    },
+    "ambulance_duplicate_callsign_normalized": {
+      "candidateUpdates": 1,
+      "updatedCount": 1
     }
   },
   "warnings": [],
@@ -44,7 +48,7 @@
     "organization_wallets": 21,
     "ivisit_main_wallet": 1,
     "emergency_requests": 376,
-    "visits": 346,
+    "visits": 381,
     "payments": 47
   },
   "postflight": {

@@ -226,7 +226,37 @@ SELECT 'ambulance_invalid_dispatch_phase_cancelled' AS step, COUNT(*) AS updated
 FROM normalized_requests;
 
 -- ---------------------------------------------------------------------------
--- 8) Post-backfill summary
+-- 8) Normalize duplicate ambulance call signs within same hospital
+--    Keep the oldest row unchanged; suffix duplicates deterministically.
+-- ---------------------------------------------------------------------------
+WITH ranked AS (
+  SELECT
+    a.id,
+    a.call_sign,
+    ROW_NUMBER() OVER (
+      PARTITION BY a.hospital_id, LOWER(BTRIM(a.call_sign))
+      ORDER BY a.created_at ASC NULLS LAST, a.id ASC
+    ) AS rn
+  FROM public.ambulances a
+  WHERE a.hospital_id IS NOT NULL
+    AND a.call_sign IS NOT NULL
+    AND BTRIM(a.call_sign) <> ''
+),
+normalized AS (
+  UPDATE public.ambulances a
+  SET call_sign = CONCAT(a.call_sign, '-DUP-', UPPER(LEFT(a.id::TEXT, 4))),
+      updated_at = NOW()
+  FROM ranked r
+  WHERE a.id = r.id
+    AND r.rn > 1
+    AND a.call_sign !~* '-DUP-[0-9A-F]{4}$'
+  RETURNING a.id
+)
+SELECT 'ambulance_duplicate_callsign_normalized' AS step, COUNT(*) AS updated_rows
+FROM normalized;
+
+-- ---------------------------------------------------------------------------
+-- 9) Post-backfill summary
 -- ---------------------------------------------------------------------------
 SELECT 'post_backfill' AS stage,
        (SELECT COUNT(*) FROM public.organizations) AS organizations_count,

@@ -353,8 +353,8 @@ async function run() {
   if (paymentHealth.placeholderOrphans.length > 0) {
     severity.medium.push(`Placeholder/orphan pending payments: ${paymentHealth.placeholderOrphans.length}`);
   }
-  if (duplicateCandidates.hospitalsByName.length > 0 || duplicateCandidates.ambulancesByHospitalAndCallSign.length > 0) {
-    severity.medium.push('Duplicate semantic records detected (hospital names and/or duplicate ambulance call signs within same hospital)');
+  if (duplicateCandidates.ambulancesByHospitalAndCallSign.length > 0) {
+    severity.medium.push('Duplicate ambulance call signs detected within the same hospital');
   }
 
   const report = {
