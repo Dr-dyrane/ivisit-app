@@ -27,7 +27,6 @@ import { authService } from "../services/authService";
 import { appMigrationsService } from "../services/appMigrationsService";
 import { useOTAUpdates } from "../hooks/useOTAUpdates";
 import UpdateAvailableModal from "../components/ui/UpdateAvailableModal";
-import { setPendingOAuthCallbackUrl } from "../services/auth/oauthCallbackStore";
 
 /**
  * Root layout wraps the entire app with context providers
@@ -123,7 +122,6 @@ function AuthenticatedStack() {
 
 			if (isAuthCallback) {
 				console.log("[DeepLink] Redirecting to auth callback page");
-				setPendingOAuthCallbackUrl(url);
 				router.replace("/auth/callback");
 				return;
 			}

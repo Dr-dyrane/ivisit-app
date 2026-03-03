@@ -1,6 +1,8 @@
 import { useCallback, useContext } from "react";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
+import Constants from "expo-constants";
+import * as Linking from "expo-linking";
 import { authService } from "../../services/authService";
 import { supabase } from "../../services/supabase";
 import { AuthContext } from "../../contexts/AuthContext";
@@ -36,16 +38,35 @@ export function useSocialAuth() {
 	const signInWithProvider = useCallback(async (provider) => {
 		try {
 			await WebBrowser.warmUpAsync();
-			const { data, redirectUrl } = await authService.signInWithProvider(provider);
+			const { data } = await authService.signInWithProvider(provider);
 
 			if (data?.url) {
 				// Log OAuth URL without sensitive data
 				console.log("[useSocialAuth] OAuth URL received for provider");
 
-				// Use the exact same callback URL as Supabase redirectTo to avoid
-				// handler/scheme mismatches across Expo Go, dev client, and builds.
-				const browserReturnUrl = redirectUrl;
-				console.log("[useSocialAuth] Platform:", Platform.OS, "| Browser return URL:", browserReturnUrl);
+				// Determine the correct browser return URL based on platform
+				//
+				// iOS: Use custom scheme - Safari closes when it detects ivisit://
+				//      The exp:// redirect is caught by deep link handler in _layout.js
+				//
+				// Android Expo Go: Use the ACTUAL exp:// redirect URL
+				//      Chrome Custom Tabs needs to match the exact redirect URL to close properly
+				//      Using ivisit:// doesn't work because Supabase redirects to exp://
+				//
+				// Android Production: Use custom scheme ivisit://
+				const isExpoGo = Constants.appOwnership === "expo";
+				const isAndroid = Platform.OS === "android";
+
+				let browserReturnUrl;
+				if (isAndroid && isExpoGo) {
+					// For Android Expo Go, use the actual exp:// URL that Supabase will redirect to
+					browserReturnUrl = Linking.createURL("auth/callback");
+				} else {
+					// For iOS (all) and Android Production, use custom scheme
+					browserReturnUrl = "ivisit://auth/callback";
+				}
+
+				console.log("[useSocialAuth] Platform:", Platform.OS, "| Expo Go:", isExpoGo, "| Return URL scheme:", isAndroid && isExpoGo ? "exp://" : "ivisit://");
 
 				// Build platform-specific options for WebBrowser
 				// Android: createTask: false keeps browser in same task for proper redirect
