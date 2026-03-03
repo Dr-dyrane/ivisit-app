@@ -68,9 +68,9 @@ const styles = StyleSheet.create({
 		overflow: "visible",
 		...Platform.select({
 			android: {
-				// Android renders custom markers as bitmaps; use a larger box to prevent icon clipping.
-				width: 84,
-				height: 84,
+				// Keep a modest buffer so Android marker snapshots don't clip icon edges.
+				width: 58,
+				height: 58,
 			},
 			default: {
 				width: 50,

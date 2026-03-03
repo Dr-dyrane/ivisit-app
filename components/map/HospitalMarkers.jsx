@@ -16,16 +16,6 @@ const HospitalMarkers = ({
     // PREVIOUS: Hardcoded to false, which caused missing markers in some frames
     // NEW: Allow a few frames of rendering then freeze for performance
     // REVERT TO: Platform.OS === 'android' ? false : isSelected
-    const [tracksViewChanges, setTracksViewChanges] = React.useState(true);
-
-    React.useEffect(() => {
-        if (Platform.OS === 'android') {
-            const timer = setTimeout(() => {
-                setTracksViewChanges(false);
-            }, 1000); // 1s is plenty for markers to mount
-            return () => clearTimeout(timer);
-        }
-    }, [hospitals?.length]); // Reset when list changes
 
     if (!hospitals || hospitals.length === 0) return null;
 
@@ -48,13 +38,13 @@ const HospitalMarkers = ({
                     coordinate={hospital.coordinates}
                     onPress={() => onHospitalPress(hospital)}
                     anchor={{ x: 0.5, y: 1 }}
-                    centerOffset={{ x: 0, y: -16 }}
+                    centerOffset={{ x: 0, y: Platform.OS === "android" ? -10 : -16 }}
                     // 🔴 REVERT POINT: Persistent Pulse on Android
                     // PREVIOUS: tracksViewChanges froze for all markers after 1s
                     // NEW: Keep tracksViewChanges=true for selected marker so pulse animation works
                     // REVERT TO: Platform.OS === 'android' ? tracksViewChanges : isSelected
                     tracksViewChanges={Platform.OS === 'android'
-                        ? (isSelected ? true : tracksViewChanges)
+                        ? true
                         : isSelected
                     }
                     zIndex={isSelected ? 100 : 1}
@@ -139,3 +129,4 @@ const styles = StyleSheet.create({
 });
 
 export default memo(HospitalMarkers);
+
