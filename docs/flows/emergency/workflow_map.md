@@ -121,6 +121,10 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
   - Runner: `npm run hardening:console-matrix`
   - Report: `supabase/tests/validation/console_transition_matrix_report.json`
   - Covers console mutation RPCs across `org_admin/dispatcher/provider/viewer/patient` with expected allow/deny and illegal transition rejection.
+- Deterministic mutation role-isolation validation:
+  - Runner: `npm run hardening:mutation-matrix`
+  - Report: `supabase/tests/validation/mutation_role_isolation_matrix_report.json`
+  - Covers legacy mutation RPCs (`update_hospital_availability`, pricing upsert/delete, trip/bed lifecycle RPCs) across same-org, cross-org, patient, viewer, and anon actors.
 
 ## Failure and Degraded Behavior
 

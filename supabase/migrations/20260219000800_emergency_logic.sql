@@ -948,7 +948,7 @@ BEGIN
     END IF;
 
     UPDATE public.emergency_requests
-    SET status = 'discharged', updated_at = NOW()
+    SET status = 'completed', updated_at = NOW()
     WHERE id = request_uuid::UUID AND service_type = 'bed';
     RETURN FOUND;
 END;
@@ -1419,17 +1419,20 @@ DECLARE
     v_actor_id UUID := auth.uid();
     v_actor_role TEXT;
     v_actor_org_id UUID;
+    v_hospital_id UUID;
     v_hospital_org_id UUID;
+    v_row_exists BOOLEAN := FALSE;
     v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
-    SELECT h.organization_id
-    INTO v_hospital_org_id
+    SELECT rp.hospital_id, h.organization_id
+    INTO v_hospital_id, v_hospital_org_id
     FROM public.room_pricing rp
     LEFT JOIN public.hospitals h ON h.id = rp.hospital_id
     WHERE rp.id = target_id;
 
-    IF v_hospital_org_id IS NULL THEN
+    v_row_exists := FOUND;
+    IF NOT v_row_exists THEN
         RETURN jsonb_build_object('success', false, 'error', 'Pricing row not found');
     END IF;
 
@@ -1448,6 +1451,10 @@ BEGIN
         END IF;
 
         IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_hospital_id IS NULL THEN
+                RAISE EXCEPTION 'Unauthorized: global pricing mutations require admin role';
+            END IF;
+
             IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_hospital_org_id THEN
                 RAISE EXCEPTION 'Unauthorized: hospital outside actor organization';
             END IF;
