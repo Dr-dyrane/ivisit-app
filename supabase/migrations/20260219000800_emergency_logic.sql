@@ -397,6 +397,10 @@ CREATE OR REPLACE FUNCTION public.create_emergency_v4(
     p_payment_data JSONB DEFAULT NULL
 ) RETURNS JSONB AS $$
 DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_request_id UUID;
     v_display_id TEXT;
     v_visit_id TEXT;
@@ -408,6 +412,26 @@ DECLARE
     v_organization_id UUID;
     v_patient_location GEOMETRY;
 BEGIN
+    IF p_user_id IS NULL THEN
+        RAISE EXCEPTION 'user id is required';
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        IF v_actor_id IS DISTINCT FROM p_user_id THEN
+            SELECT role INTO v_actor_role
+            FROM public.profiles
+            WHERE id = v_actor_id;
+
+            IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+                RAISE EXCEPTION 'Unauthorized: cannot create emergency for another user';
+            END IF;
+        END IF;
+    END IF;
+
     -- 1. Extract and Resolve IDs
     v_hospital_id := (p_request_data->>'hospital_id')::UUID;
     SELECT organization_id INTO v_organization_id FROM public.hospitals WHERE id = v_hospital_id;
@@ -609,6 +633,16 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE ALL ON FUNCTION public.create_emergency_v4(UUID, JSONB, JSONB) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.approve_cash_payment(UUID, UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.decline_cash_payment(UUID, UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.process_cash_payment_v2(UUID, UUID, NUMERIC, TEXT) FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.create_emergency_v4(UUID, JSONB, JSONB) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.approve_cash_payment(UUID, UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.decline_cash_payment(UUID, UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.process_cash_payment_v2(UUID, UUID, NUMERIC, TEXT) TO authenticated, service_role;
 
 -- 🛠️ ATOMIC: Decline Cash Payment
 CREATE OR REPLACE FUNCTION public.decline_cash_payment(

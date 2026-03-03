@@ -105,6 +105,10 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
   - `console_cancel_emergency`
   - `console_update_responder_location`
   - Change: `LEFT JOIN ... FOR UPDATE` -> explicit base-table locks (`FOR UPDATE OF er` / `FOR UPDATE OF a`).
+- RPC execute scope hardening:
+  - Removed `anon` execute exposure from `create_emergency_v4`, `approve_cash_payment`, `decline_cash_payment`, `process_cash_payment_v2`, and `notify_cash_approval_org_admins`.
+  - Added explicit execute grants to `authenticated` + `service_role` only for those functions.
+  - Added server-side actor guard in `create_emergency_v4` (owner, console privileged roles, or service role).
 - Realtime publication membership check: PASS for expected emergency-surface tables (`emergency_requests`, `payments`, `visits`, `ambulances`, `hospitals`, etc.).
 - RLS snapshot (critical tables):
   - `emergency_requests`, `payments`, `visits` all have RLS enabled.

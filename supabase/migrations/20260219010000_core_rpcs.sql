@@ -1699,6 +1699,7 @@ REVOKE ALL ON FUNCTION public.console_complete_emergency(UUID) FROM PUBLIC, anon
 REVOKE ALL ON FUNCTION public.console_cancel_emergency(UUID, TEXT) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.console_update_responder_location(UUID, JSONB, DOUBLE PRECISION) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.patient_update_emergency_request(UUID, JSONB) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.notify_cash_approval_org_admins(UUID, UUID, NUMERIC, NUMERIC, TEXT, TEXT, TEXT, UUID) FROM PUBLIC, anon;
 
 GRANT EXECUTE ON FUNCTION public.console_create_emergency_request(JSONB) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.console_update_emergency_request(UUID, JSONB) TO authenticated, service_role;
@@ -1707,3 +1708,4 @@ GRANT EXECUTE ON FUNCTION public.console_complete_emergency(UUID) TO authenticat
 GRANT EXECUTE ON FUNCTION public.console_cancel_emergency(UUID, TEXT) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.console_update_responder_location(UUID, JSONB, DOUBLE PRECISION) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.patient_update_emergency_request(UUID, JSONB) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.notify_cash_approval_org_admins(UUID, UUID, NUMERIC, NUMERIC, TEXT, TEXT, TEXT, UUID) TO authenticated, service_role;

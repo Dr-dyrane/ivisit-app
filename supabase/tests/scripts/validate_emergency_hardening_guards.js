@@ -151,12 +151,48 @@ $$;
   console.log('[hardening-guards] Console RPC lock semantics: PASS');
 }
 
+async function assertRpcExecuteScope() {
+  await execSql(`
+DO $$
+DECLARE
+  v_fn text;
+BEGIN
+  FOREACH v_fn IN ARRAY ARRAY[
+    'create_emergency_v4(uuid,jsonb,jsonb)',
+    'approve_cash_payment(uuid,uuid)',
+    'decline_cash_payment(uuid,uuid)',
+    'process_cash_payment_v2(uuid,uuid,numeric,text)',
+    'notify_cash_approval_org_admins(uuid,uuid,numeric,numeric,text,text,text,uuid)',
+    'console_create_emergency_request(jsonb)',
+    'console_update_emergency_request(uuid,jsonb)',
+    'console_dispatch_emergency(uuid,uuid,uuid,text,text,text,text,text,text)',
+    'console_complete_emergency(uuid)',
+    'console_cancel_emergency(uuid,text)',
+    'console_update_responder_location(uuid,jsonb,double precision)',
+    'patient_update_emergency_request(uuid,jsonb)'
+  ] LOOP
+    IF has_function_privilege('anon', format('public.%s', v_fn), 'EXECUTE') THEN
+      RAISE EXCEPTION 'anon execute exposure on %', v_fn;
+    END IF;
+
+    IF NOT has_function_privilege('authenticated', format('public.%s', v_fn), 'EXECUTE') THEN
+      RAISE EXCEPTION 'authenticated execute missing on %', v_fn;
+    END IF;
+  END LOOP;
+END;
+$$;
+  `);
+
+  console.log('[hardening-guards] RPC execute scope: PASS');
+}
+
 async function main() {
   try {
     console.log('[hardening-guards] Starting emergency hardening checks...');
     await assertRealtimePublicationCoverage();
     await assertCriticalRlsScope();
     await assertConsoleRpcLockSemantics();
+    await assertRpcExecuteScope();
     console.log('[hardening-guards] All checks passed.');
   } catch (error) {
     console.error('[hardening-guards] Check failed:', error.message || error);
@@ -165,4 +201,3 @@ async function main() {
 }
 
 main();
-
