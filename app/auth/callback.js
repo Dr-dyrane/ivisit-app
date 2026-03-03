@@ -4,6 +4,7 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import * as Linking from 'expo-linking';
 import { authService } from '../../services/authService';
 import { database, StorageKeys } from '../../database';
+import { consumePendingOAuthCallbackUrl } from '../../services/auth/oauthCallbackStore';
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -12,11 +13,29 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        const pendingOAuthUrl = consumePendingOAuthCallbackUrl();
+
         // Check for authentication errors
         if (error) {
           console.error('Auth callback error:', error);
           router.replace('/(auth)/login');
           return;
+        }
+
+        // Preferred path: process full OAuth callback URL captured by deep-link listener.
+        if (pendingOAuthUrl && (pendingOAuthUrl.includes('code=') || pendingOAuthUrl.includes('access_token='))) {
+          console.log('Handling OAuth callback from pending deep link URL');
+          const result = await authService.handleOAuthCallback(pendingOAuthUrl);
+
+          if (result?.data?.user) {
+            const accessToken = result?.data?.session?.access_token || result?.data?.user?.token;
+            if (accessToken) {
+              await database.write(StorageKeys.AUTH_TOKEN, accessToken);
+            }
+            await database.write(StorageKeys.CURRENT_USER, result.data.user);
+            router.replace('/(user)/(tabs)');
+            return;
+          }
         }
 
         // Handle successful authentication from URL params
@@ -71,15 +90,19 @@ export default function AuthCallback() {
           }
 
           // Handle OAuth callback with code parameter
-          const code = queryParams?.code;
-          if (code) {
+          const hasCode = typeof queryParams?.code === 'string' && queryParams.code.length > 0;
+          const hasAccessToken = currentUrl.includes('access_token=');
+          if (hasCode || hasAccessToken) {
             console.log('Handling OAuth callback with code');
             try {
               const result = await authService.handleOAuthCallback(currentUrl);
               
               if (result?.data?.user) {
                 // Store authentication data and redirect to main app
-                await database.write(StorageKeys.AUTH_TOKEN, result.data.token);
+                const accessToken = result?.data?.session?.access_token || result?.data?.user?.token;
+                if (accessToken) {
+                  await database.write(StorageKeys.AUTH_TOKEN, accessToken);
+                }
                 await database.write(StorageKeys.CURRENT_USER, result.data.user);
                 router.replace('/(user)/(tabs)');
                 return;

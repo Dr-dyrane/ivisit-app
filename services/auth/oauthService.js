@@ -8,6 +8,8 @@ import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { AuthErrors, createAuthError, handleSupabaseError } from "../../utils/authErrorUtils";
 
+const CUSTOM_SCHEME = "ivisit";
+
 /**
  * Get the redirect URL for OAuth and Magic Links
  * Works for both Expo Go and production builds
@@ -22,14 +24,35 @@ export const getRedirectUrl = (path = "/auth/callback") => {
 };
 
 /**
+ * Resolve the most reliable OAuth redirect URL for the current runtime.
+ * Prefers custom scheme when this runtime can open it; otherwise falls back
+ * to Linking.createURL (Expo Go exp:// flow).
+ */
+export const resolveOAuthRedirectUrl = async (path = "/auth/callback") => {
+    const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+    const runtimeRedirectUrl = Linking.createURL(normalizedPath);
+    const customSchemeRedirectUrl = `${CUSTOM_SCHEME}://${normalizedPath}`;
+
+    let canUseCustomScheme = false;
+    try {
+        canUseCustomScheme = await Linking.canOpenURL(customSchemeRedirectUrl);
+    } catch (error) {
+        console.warn("[oauthService] Linking.canOpenURL(customScheme) failed, falling back to runtime URL");
+    }
+
+    const resolvedRedirectUrl = canUseCustomScheme ? customSchemeRedirectUrl : runtimeRedirectUrl;
+    console.log("[oauthService] Resolved OAuth redirect URL:", resolvedRedirectUrl, "| customSchemeSupported:", canUseCustomScheme);
+    return resolvedRedirectUrl;
+};
+
+/**
  * Sign in with OAuth Provider (Google, Twitter/X, Apple)
  * @param {string} provider - 'google', 'twitter', 'apple'
  * @returns {Promise<{ data: { url: string } }>}
  */
 export const signInWithProvider = async (provider) => {
-    // Use Linking.createURL to get platform-appropriate redirect
-    // This is registered in Supabase's allowed redirect URLs
-    const redirectUrl = getRedirectUrl('auth/callback');
+    // Resolve a callback URL that this runtime can actually handle.
+    const redirectUrl = await resolveOAuthRedirectUrl('auth/callback');
     console.log("[oauthService] signInWithProvider - redirect URL:", redirectUrl);
 
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -42,7 +65,7 @@ export const signInWithProvider = async (provider) => {
 
     if (error) throw handleSupabaseError(error);
     console.log("[oauthService] signInWithProvider - OAuth URL generated");
-    return { data };
+    return { data, redirectUrl };
 };
 
 /**
