@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import { Animated, Platform, StyleSheet, View } from "react-native";
 import { COLORS } from "../../constants/colors";
 
 export default function PulsingMarker({ isSelected, children }) {
@@ -44,7 +44,7 @@ export default function PulsingMarker({ isSelected, children }) {
 	}, [isSelected, opacityAnim, pulseAnim]);
 
 	return (
-		<View style={styles.markerWrapper}>
+		<View style={styles.markerWrapper} collapsable={false}>
 			{isSelected && (
 				<Animated.View
 					style={[
@@ -65,8 +65,18 @@ const styles = StyleSheet.create({
 	markerWrapper: {
 		alignItems: "center",
 		justifyContent: "center",
-		width: 50,
-		height: 50,
+		overflow: "visible",
+		...Platform.select({
+			android: {
+				// Android renders custom markers as bitmaps; use a larger box to prevent icon clipping.
+				width: 84,
+				height: 84,
+			},
+			default: {
+				width: 50,
+				height: 50,
+			},
+		}),
 	},
 	pulseRing: {
 		position: "absolute",

@@ -116,6 +116,7 @@ const styles = StyleSheet.create({
     hospitalMarker: {
         alignItems: "center",
         justifyContent: "center",
+        overflow: "visible",
     },
     hospitalMarkerSelected: {
         transform: [{ scale: 1.1 }],
