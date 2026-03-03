@@ -25,9 +25,17 @@ export default function HospitalCard({
 	const hospitalImageUri = typeof hospital?.image === "string" && hospital.image.length > 0 ? hospital.image : null;
 	const hospitalRating = hospital?.rating ?? "--";
 
-	// Check if this is a Google-imported hospital (not verified)
-	const isGoogleHospital = hospital?.importedFromGoogle && hospital?.importStatus !== 'verified';
-	const isVerifiedHospital = hospital?.verified || (!isGoogleHospital);
+	// Treat any non-verified imported/provider-discovered facility as unverified.
+	const isVerifiedHospital = hospital?.verified === true;
+	const isUnverifiedImportedHospital =
+		!isVerifiedHospital &&
+		(
+			hospital?.importStatus === "pending" ||
+			hospital?.importedFromGoogle === true ||
+			hospital?.importedFromMapbox === true ||
+			hospital?.isGoogleOnly === true ||
+			hospital?.isMapboxOnly === true
+		);
 
 	const hospitalDistance = hospital?.distance ?? "--";
 	const hospitalEta = hospital?.eta ?? "--";
@@ -110,7 +118,7 @@ export default function HospitalCard({
 					<Text style={styles.priceText}>{hospitalPrice}</Text>
 				</View>
 
-				{isGoogleHospital ? (
+				{isUnverifiedImportedHospital ? (
 					<View style={styles.unverifiedBadge}>
 						<Ionicons name="warning" size={12} color="#FFFFFF" />
 						<Text style={styles.unverifiedText}>CALL 911</Text>
@@ -188,7 +196,7 @@ export default function HospitalCard({
 								name={
 									mode === "booking"
 										? (hospital.availableBeds > 0 ? "bed-patient" : "phone")
-										: (isGoogleHospital) // REMOVED: || (hospital.ambulances !== undefined && hospital.ambulances <= 0))
+										: (isUnverifiedImportedHospital)
 											? "phone"
 											: "ambulance"
 								}
@@ -198,7 +206,7 @@ export default function HospitalCard({
 							<Text style={styles.actionText}>
 								{mode === "booking"
 									? (hospital.availableBeds > 0 ? "Secure a Bed" : (hospitalPhone ? "Call Hospital" : "Call 911"))
-									: (isGoogleHospital) // REMOVED: || (hospital.ambulances !== undefined && hospital.ambulances <= 0))
+									: (isUnverifiedImportedHospital)
 										? (hospitalPhone ? "Call Hospital" : "Call 911")
 										: "Request Now"
 								}

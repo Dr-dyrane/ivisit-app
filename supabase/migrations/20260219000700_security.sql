@@ -115,7 +115,11 @@ USING (is_active = true);
 
 CREATE POLICY "Public read for verified hospitals"
 ON public.hospitals FOR SELECT
-USING (verified = true OR organization_id = public.p_get_current_org_id());
+USING (
+    verified = true
+    OR organization_id = public.p_get_current_org_id()
+    OR public.p_is_admin()
+);
 
 -- 4. FINANCIALS (Very Restricted)
 CREATE POLICY "Users see own wallets"

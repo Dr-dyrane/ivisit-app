@@ -230,14 +230,20 @@ BEGIN
 
     -- Sync to Central Registry (redundancy for cross-table lookup speed)
     IF TG_OP = 'INSERT' THEN
-        -- Use v_role for profiles to match the entity_type check constraint, 
-        -- otherwise use the table name for other entities.
-        v_type := CASE WHEN TG_TABLE_NAME = 'profiles' THEN v_role ELSE TG_TABLE_NAME END;
-        
-        -- Fallback if v_role didn't map to a valid entity_type
-        IF v_type NOT IN ('patient', 'provider', 'hospital', 'admin', 'dispatcher', 'doctor', 'ambulance', 'driver', 'emergency_request', 'visit', 'organization', 'payment', 'notification', 'wallet', 'org_admin', 'viewer', 'sponsor') THEN
-            v_type := 'patient'; -- Default safe fallback for identity
-        END IF;
+        -- Map plural table names to canonical id_mappings entity_type values.
+        v_type := CASE
+            WHEN TG_TABLE_NAME = 'profiles' THEN COALESCE(v_role, 'patient')
+            WHEN TG_TABLE_NAME = 'organizations' THEN 'organization'
+            WHEN TG_TABLE_NAME = 'hospitals' THEN 'hospital'
+            WHEN TG_TABLE_NAME = 'doctors' THEN 'doctor'
+            WHEN TG_TABLE_NAME = 'ambulances' THEN 'ambulance'
+            WHEN TG_TABLE_NAME = 'emergency_requests' THEN 'emergency_request'
+            WHEN TG_TABLE_NAME = 'visits' THEN 'visit'
+            WHEN TG_TABLE_NAME = 'payments' THEN 'payment'
+            WHEN TG_TABLE_NAME = 'notifications' THEN 'notification'
+            WHEN TG_TABLE_NAME IN ('patient_wallets', 'organization_wallets') THEN 'wallet'
+            ELSE 'patient'
+        END;
 
         INSERT INTO public.id_mappings (entity_id, display_id, entity_type)
         VALUES (NEW.id, NEW.display_id, v_type)

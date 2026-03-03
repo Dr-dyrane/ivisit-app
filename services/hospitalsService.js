@@ -3,6 +3,35 @@ import { isValidUUID, resolveEntityId } from "./displayIdService";
 
 let hasWarnedMissingHospitalRoomsTable = false;
 
+const DEFAULT_HOSPITAL_IMAGES = [
+	"https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
+	"https://images.unsplash.com/photo-1632833239869-a37e3a5806d2?auto=format&fit=crop&w=1200&q=80",
+	"https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=1200&q=80",
+	"https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=1200&q=80",
+];
+
+const toFinite = (value, fallback = 0) => (Number.isFinite(value) ? Number(value) : fallback);
+const toNonNegativeInt = (value, fallback = 0) => {
+	const n = Number(value);
+	return Number.isFinite(n) ? Math.max(0, Math.round(n)) : fallback;
+};
+const toText = (value, fallback = "") => (typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback);
+const toTextArray = (value) =>
+	Array.isArray(value)
+		? value.filter((item) => typeof item === "string").map((item) => item.trim()).filter(Boolean)
+		: [];
+const toObject = (value, fallback = {}) => (value && typeof value === "object" && !Array.isArray(value) ? value : fallback);
+const hashString = (seed) => {
+	const input = String(seed || "hospital");
+	let hash = 0;
+	for (let i = 0; i < input.length; i += 1) {
+		hash = (hash << 5) - hash + input.charCodeAt(i);
+		hash |= 0;
+	}
+	return Math.abs(hash);
+};
+const pickDefaultHospitalImage = (seed) => DEFAULT_HOSPITAL_IMAGES[hashString(seed) % DEFAULT_HOSPITAL_IMAGES.length];
+
 /**
  * Service to handle hospital data operations
  */
@@ -15,7 +44,13 @@ export const hospitalsService = {
 		const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
 		if (list.length === 0) return [];
 
-		const ids = [...new Set(list.map(r => r?.id).filter(Boolean))];
+		const ids = [
+			...new Set(
+				list
+					.map((r) => r?.id)
+					.filter((id) => typeof id === "string" && isValidUUID(id))
+			),
+		];
 		if (ids.length === 0) return list;
 
 		const { data, error } = await supabase
@@ -44,82 +79,113 @@ export const hospitalsService = {
 	_mapHospital(h) {
 		if (!h) return null;
 
-		// Business Logic Constraints for Minimal Initial Launch:
-		// 1. Most hospitals have 0 ambulances (simplified UX)
-		// 2. Default beds to what's in DB, but ensure UI handles 0 gracefully
-
 		const distanceKm =
-			Number.isFinite(h?.distance_km) ? h.distance_km :
-				Number.isFinite(h?.distance) ? h.distance : 0;
+			Number.isFinite(h?.distance_km)
+				? Number(h.distance_km)
+				: (Number.isFinite(h?.distance) ? Number(h.distance) : 0);
 		const availableBeds =
-			Number.isFinite(h?.available_beds) ? h.available_beds :
-				Number.isFinite(h?.availableBeds) ? h.availableBeds : 0;
+			Number.isFinite(h?.available_beds)
+				? toNonNegativeInt(h.available_beds, 0)
+				: toNonNegativeInt(h?.availableBeds, 0);
 		const ambulancesCount =
-			Number.isFinite(h?.ambulances_count) ? h.ambulances_count :
-				Number.isFinite(h?.ambulances) ? h.ambulances : 0;
-		const latitude =
-			Number.isFinite(h?.latitude) ? h.latitude :
-				(Array.isArray(h?.coordinates?.coordinates) ? h.coordinates.coordinates[1] : undefined);
-		const longitude =
-			Number.isFinite(h?.longitude) ? h.longitude :
-				(Array.isArray(h?.coordinates?.coordinates) ? h.coordinates.coordinates[0] : undefined);
+			Number.isFinite(h?.ambulances_count)
+				? toNonNegativeInt(h.ambulances_count, 0)
+				: toNonNegativeInt(h?.ambulances, 0);
+
+		const latFromGeo = Array.isArray(h?.coordinates?.coordinates) ? Number(h.coordinates.coordinates[1]) : NaN;
+		const lngFromGeo = Array.isArray(h?.coordinates?.coordinates) ? Number(h.coordinates.coordinates[0]) : NaN;
+		const latitude = Number.isFinite(h?.latitude) ? Number(h.latitude) : (Number.isFinite(latFromGeo) ? latFromGeo : 0);
+		const longitude = Number.isFinite(h?.longitude) ? Number(h.longitude) : (Number.isFinite(lngFromGeo) ? lngFromGeo : 0);
+		const hasValidCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude) && (latitude !== 0 || longitude !== 0);
+
+		const isVerified = h?.verified === true;
+		const hasExternalPlaceRef = typeof h?.place_id === "string" && h.place_id.trim().length > 0;
+		const importedFromGoogle = h?.imported_from_google === true || h?.google_only === true;
+		const importedFromMapbox = h?.mapbox_only === true || (!importedFromGoogle && hasExternalPlaceRef && !isVerified);
+		const importStatus = toText(
+			h?.import_status,
+			hasExternalPlaceRef && !isVerified ? "pending" : "verified"
+		);
+
+		const image = toText(
+			h?.image,
+			toTextArray(h?.google_photos)[0] || pickDefaultHospitalImage(h?.place_id || h?.id || h?.name)
+		);
+		const dynamicWait = this.calculateDynamicWaitTime(
+			{
+				distanceKm,
+				rating: toFinite(h?.google_rating, toFinite(h?.rating, 0)),
+				verified: isVerified,
+				availableBeds,
+				emergencyLevel: toText(h?.emergency_level, "Standard"),
+				placeId: toText(h?.place_id),
+			},
+			null
+		);
+		const waitTime = Number.isFinite(h?.emergency_wait_time_minutes)
+			? `${toNonNegativeInt(h.emergency_wait_time_minutes, 0)} min`
+			: toText(h?.wait_time, dynamicWait.displayText);
+		const eta = toText(
+			h?.eta,
+			distanceKm > 0 ? `${Math.max(2, Math.ceil(distanceKm * 3))} mins` : "8-12 mins"
+		);
+		const status = toText(h?.status, "available");
+		const phone = toText(h?.google_phone, toText(h?.phone, ""));
+		const rating = toFinite(h?.google_rating, toFinite(h?.rating, 0));
+		const emergencyLevel = toText(h?.emergency_level, "Standard");
+		const imageConfidence = Number.isFinite(h?.image_confidence) ? Number(h.image_confidence) : (image === h?.image ? 0.95 : 0.35);
+		const imageSource = toText(h?.image_source, image === h?.image ? "provider_image" : "deterministic_fallback");
 
 		return {
-			id: h.id,
-			name: h.name,
-			address: h.google_address || h.address,
-			phone: h.google_phone || h.phone,
-			rating: h.google_rating || h.rating || 0,
-			type: h.type || 'General',
-			image: h.image || (h.google_photos && h.google_photos[0]) || null,
-			specialties: h.specialties || [],
-			serviceTypes: h.service_types || [],
-			features: h.features || [],
-			emergencyLevel: h.emergency_level || 'Standard',
+			id: toText(h?.id),
+			name: toText(h?.name, "Unnamed Hospital"),
+			address: toText(h?.google_address, toText(h?.address, "Address unavailable")),
+			phone,
+			rating,
+			type: toText(h?.type, "General"),
+			image,
+			imageSource,
+			imageConfidence,
+			specialties: toTextArray(h?.specialties),
+			serviceTypes: toTextArray(h?.service_types),
+			features: toTextArray(h?.features),
+			emergencyLevel,
 			availableBeds,
-			// Simplified UX: default to 0 ambulances unless explicitly set to something else in DB
-			// The user specified "no hospitals have ambulances" to keep things simple for now.
 			ambulances: ambulancesCount,
-
-			// Computed Time Fields
-			waitTime: h.emergency_wait_time_minutes
-				? `${h.emergency_wait_time_minutes} min`
-				: (h.wait_time || this.calculateDynamicWaitTime(h, null).displayText),
-
-			// Calculate ETA based on distance if not present
-			eta: h.eta || (distanceKm > 0
-				? `${Math.max(2, Math.ceil(distanceKm * 3))} mins`
-				: '8-12 mins'), // Premium fallback instead of 'Unknown'
-
-			price: h.price_range || (ambulancesCount > 0 ? 'Emergency' : '$$$'),
+			waitTime,
+			eta,
+			price: toText(h?.price_range, ambulancesCount > 0 ? "Emergency" : "$$$"),
 			distance: (distanceKm && Number.isFinite(distanceKm) && distanceKm > 0)
 				? `${Math.round(distanceKm * 10) / 10} km`
-				: '--',
+				: "--",
 			distanceKm,
 			coordinates: {
 				latitude,
 				longitude,
 			},
-			verified: h.verified || false,
-			status: h.status || 'available',
-			lastAvailabilityUpdate: h.last_availability_update,
-			bedAvailability: h.bed_availability,
-			ambulanceAvailability: h.ambulance_availability,
-			emergencyWaitTimeMinutes: h.emergency_wait_time_minutes,
-			realTimeSync: h.real_time_sync || false,
+			hasValidCoordinates,
+			verified: isVerified,
+			status,
+			lastAvailabilityUpdate: toText(h?.last_availability_update),
+			bedAvailability: toObject(h?.bed_availability, {}),
+			ambulanceAvailability: toObject(h?.ambulance_availability, {}),
+			emergencyWaitTimeMinutes: toNonNegativeInt(h?.emergency_wait_time_minutes, 0),
+			realTimeSync: h?.real_time_sync === true,
 			// Google/External Fields
-			placeId: h.place_id,
-			googleWebsite: h.google_website,
-			googlePhotos: h.google_photos,
-			googleTypes: h.google_types,
-			importStatus: h.import_status,
-			importedFromGoogle: h.imported_from_google || false,
-			orgAdminId: h.org_admin_id,
-			organizationId: h.organization_id || h.organizationId || null,
-			organization_id: h.organization_id || h.organizationId || null,
+			placeId: toText(h?.place_id),
+			googleWebsite: toText(h?.google_website),
+			googlePhotos: toTextArray(h?.google_photos),
+			googleTypes: toTextArray(h?.google_types),
+			importStatus,
+			importedFromGoogle,
+			importedFromMapbox,
+			orgAdminId: toText(h?.org_admin_id),
+			organizationId: toText(h?.organization_id, toText(h?.organizationId)),
+			organization_id: toText(h?.organization_id, toText(h?.organizationId)),
 			// Computed UI helpers
-			isCovered: h.verified === true && h.status === 'available',
-			isGoogleOnly: h.google_only || h.import_status === 'google_only' || false
+			isCovered: isVerified && status === "available",
+			isGoogleOnly: h.google_only === true,
+			isMapboxOnly: importedFromMapbox,
 		};
 	},
 
@@ -172,9 +238,13 @@ export const hospitalsService = {
 	 * @param {number} lat - Latitude
 	 * @param {number} lng - Longitude
 	 * @param {number} radius - Radius in meters (default 50000)
+	 * @param {{ includeMapboxPlaces?: boolean, includeGooglePlaces?: boolean }} options
 	 */
-	async discoverNearby(lat, lng, radius = 50000) {
+	async discoverNearby(lat, lng, radius = 50000, options = {}) {
 		try {
+			const includeMapboxPlaces = options?.includeMapboxPlaces !== false;
+			const includeGooglePlaces = options?.includeGooglePlaces === true;
+
 			const { data, error } = await supabase.functions.invoke('discover-hospitals', {
 				body: {
 					latitude: lat,
@@ -182,7 +252,11 @@ export const hospitalsService = {
 					radius,
 					mode: 'nearby',
 					limit: 15,
-					includeGooglePlaces: true,
+					// Mapbox-first discovery keeps provider costs predictable while still
+					// allowing explicit Google fallback when requested.
+					includeProviderDiscovery: true,
+					includeMapboxPlaces,
+					includeGooglePlaces,
 					mergeWithDatabase: true
 				}
 			});

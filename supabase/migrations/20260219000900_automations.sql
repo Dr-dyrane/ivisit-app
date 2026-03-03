@@ -275,39 +275,81 @@ RETURNS TRIGGER AS $$
 DECLARE
     v_doctor_id UUID;
     v_specialty TEXT;
+    v_should_attempt BOOLEAN := FALSE;
 BEGIN
-    IF NEW.status IN ('accepted', 'in_progress') AND OLD.status NOT IN ('accepted', 'in_progress') THEN
-        v_specialty := CASE NEW.service_type
-            WHEN 'ambulance' THEN 'Emergency Medicine'
-            WHEN 'bed' THEN 'Internal Medicine'
-            ELSE 'Emergency Medicine'
-        END;
-
-        SELECT d.id INTO v_doctor_id
-        FROM public.doctors d
-        LEFT JOIN public.emergency_doctor_assignments eda
-            ON d.id = eda.doctor_id AND eda.status NOT IN ('completed', 'cancelled')
-        WHERE d.hospital_id = NEW.hospital_id
-          AND d.specialization = v_specialty
-          AND d.is_available = true
-          AND d.current_patients < d.max_patients
-          AND eda.id IS NULL
-        ORDER BY d.current_patients ASC, d.created_at ASC
-        LIMIT 1;
-
-        IF v_doctor_id IS NOT NULL THEN
-            INSERT INTO public.emergency_doctor_assignments (emergency_request_id, doctor_id, status)
-            VALUES (NEW.id, v_doctor_id, 'assigned');
-
-            UPDATE public.doctors
-            SET current_patients = current_patients + 1, updated_at = NOW()
-            WHERE id = v_doctor_id;
-
-            UPDATE public.emergency_requests
-            SET assigned_doctor_id = v_doctor_id, doctor_assigned_at = NOW()
-            WHERE id = NEW.id;
-        END IF;
+    IF TG_OP = 'UPDATE' THEN
+        v_should_attempt := NEW.status IN ('accepted', 'in_progress')
+            AND (
+                OLD.status IS DISTINCT FROM NEW.status
+                OR OLD.ambulance_id IS DISTINCT FROM NEW.ambulance_id
+                OR OLD.responder_id IS DISTINCT FROM NEW.responder_id
+                OR OLD.hospital_id IS DISTINCT FROM NEW.hospital_id
+            );
     END IF;
+
+    IF NOT v_should_attempt OR NEW.hospital_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    -- Idempotency guard: never assign twice for the same active request.
+    IF NEW.assigned_doctor_id IS NOT NULL OR EXISTS (
+        SELECT 1
+        FROM public.emergency_doctor_assignments eda
+        WHERE eda.emergency_request_id = NEW.id
+          AND eda.status = 'assigned'
+    ) THEN
+        RETURN NEW;
+    END IF;
+
+    v_specialty := CASE NEW.service_type
+        WHEN 'ambulance' THEN 'Emergency Medicine'
+        WHEN 'bed' THEN 'Internal Medicine'
+        ELSE 'Emergency Medicine'
+    END;
+
+    /*
+      Selection logic:
+      1) Prefer matching specialty where capacity is available.
+      2) Fall back to any available in-hospital doctor with capacity.
+      This keeps assignment resilient in low-coverage regions.
+    */
+    SELECT d.id INTO v_doctor_id
+    FROM public.doctors d
+    WHERE d.hospital_id = NEW.hospital_id
+      AND d.is_available = true
+      AND COALESCE(d.current_patients, 0) < COALESCE(NULLIF(d.max_patients, 0), 1)
+      AND (
+            d.specialization = v_specialty
+            OR NOT EXISTS (
+                SELECT 1
+                FROM public.doctors ds
+                WHERE ds.hospital_id = NEW.hospital_id
+                  AND ds.is_available = true
+                  AND COALESCE(ds.current_patients, 0) < COALESCE(NULLIF(ds.max_patients, 0), 1)
+                  AND ds.specialization = v_specialty
+            )
+      )
+    ORDER BY
+      CASE WHEN d.specialization = v_specialty THEN 0 ELSE 1 END,
+      COALESCE(d.current_patients, 0) ASC,
+      d.created_at ASC
+    LIMIT 1;
+
+    IF v_doctor_id IS NOT NULL THEN
+        INSERT INTO public.emergency_doctor_assignments (emergency_request_id, doctor_id, status)
+        VALUES (NEW.id, v_doctor_id, 'assigned');
+
+        UPDATE public.doctors
+        SET current_patients = COALESCE(current_patients, 0) + 1,
+            updated_at = NOW()
+        WHERE id = v_doctor_id;
+
+        UPDATE public.emergency_requests
+        SET assigned_doctor_id = v_doctor_id,
+            doctor_assigned_at = NOW()
+        WHERE id = NEW.id;
+    END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

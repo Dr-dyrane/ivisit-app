@@ -356,14 +356,34 @@ export const emergencyRequestsService = {
 
     async subscribeToAmbulanceLocation(requestId, callback) {
         const requestKey = String(requestId ?? "");
+        let requestUuid = requestKey;
+
+        if (!isValidUUID(requestKey)) {
+            try {
+                const { data, error } = await supabase
+                    .from('emergency_requests')
+                    .select('id')
+                    .eq('display_id', requestKey)
+                    .limit(1)
+                    .maybeSingle();
+
+                if (!error && data?.id && isValidUUID(data.id)) {
+                    requestUuid = data.id;
+                }
+            } catch (resolveError) {
+                console.warn('[emergencyRequestsService] Could not resolve request UUID for ambulance subscription:', resolveError);
+            }
+        }
+
+        const filterValue = isValidUUID(requestUuid) ? requestUuid : requestKey;
         const channel = supabase
-            .channel(`ambulance_location_${requestKey}`)
+            .channel(`ambulance_location_${filterValue}`)
             .on('postgres_changes',
                 {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'ambulances',
-                    filter: `current_call=eq.${requestKey}`
+                    filter: `current_call=eq.${filterValue}`
                 },
                 callback
             )

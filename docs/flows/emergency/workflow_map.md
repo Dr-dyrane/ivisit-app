@@ -36,6 +36,26 @@ Allowed transitions are enforced by DB function `is_valid_emergency_status_trans
 - `arrived` -> `completed` | `cancelled`
 - terminal: `completed`, `cancelled`, `payment_declined`
 
+## Minimum Flexible Runtime Baseline
+
+This baseline is intentionally non-strict on pricing and provider assignment, while still preserving deterministic emergency behavior.
+
+- Request identity:
+  - `emergency_requests.id` is canonical UUID.
+  - `display_id` is UI-facing only and must resolve to UUID before mutations/subscriptions.
+- Hospital visibility:
+  - If verified DB hospitals are unavailable in a region, provider-discovered hospitals (Mapbox/Google) should still render to avoid empty state.
+  - Provider-only rows are callable fallback entries, not fully onboarded provider guarantees.
+- Ambulance flow minimum:
+  - `service_type='ambulance'`, `hospital_id`, and valid patient location payload for create/update path.
+  - Dispatch/assignment can remain flexible (no hard requirement for pre-attached driver profile), but state transitions must remain valid and auditable.
+- Doctor assignment minimum:
+  - On actionable emergency transitions (`in_progress`/`accepted` with dispatch activity), auto-assign doctor if capacity exists.
+  - If specialty match is unavailable, fallback assignment may select any available in-hospital doctor.
+- Pricing:
+  - Keep flexible fallback chain (hospital pricing -> global pricing -> defaults).
+  - Pricing absence must not hard-break request creation path.
+
 ## Supabase Contracts
 
 ### Core RPCs

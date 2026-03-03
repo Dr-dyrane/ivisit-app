@@ -15,17 +15,30 @@ RETURNS TABLE (
     display_id TEXT
 ) AS $$
 DECLARE
-    v_user_location GEOMETRY;
+    v_user_location GEOGRAPHY;
 BEGIN
-    v_user_location := ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326);
+    v_user_location := ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)::GEOGRAPHY;
     
     RETURN QUERY
     SELECT 
         h.id, h.name, h.address, h.latitude, h.longitude,
-        ST_Distance(COALESCE(h.coordinates, ST_SetSRID(ST_MakePoint(h.longitude, h.latitude), 4326)), v_user_location) / 1000 AS distance,
+        ST_Distance(
+            COALESCE(
+                h.coordinates,
+                ST_SetSRID(ST_MakePoint(h.longitude, h.latitude), 4326)
+            )::GEOGRAPHY,
+            v_user_location
+        ) / 1000 AS distance,
         h.verified, h.status, h.display_id
     FROM public.hospitals h
-    WHERE ST_DWithin(COALESCE(h.coordinates, ST_SetSRID(ST_MakePoint(h.longitude, h.latitude), 4326)), v_user_location, radius_km * 1000)
+    WHERE ST_DWithin(
+        COALESCE(
+            h.coordinates,
+            ST_SetSRID(ST_MakePoint(h.longitude, h.latitude), 4326)
+        )::GEOGRAPHY,
+        v_user_location,
+        radius_km * 1000
+    )
     ORDER BY distance ASC;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;

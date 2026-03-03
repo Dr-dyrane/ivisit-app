@@ -50,15 +50,41 @@ BEGIN
     END CASE;
 
     -- Generate and set Display ID on current record
-    IF NEW.display_id IS NULL THEN
+    IF TG_OP = 'INSERT' AND NEW.display_id IS NULL THEN
         NEW.display_id := public.generate_display_id(v_prefix);
+    ELSIF TG_OP = 'UPDATE' AND TG_TABLE_NAME = 'profiles' THEN
+        -- Keep profile display IDs aligned with role/type prefix as account role evolves.
+        IF NEW.display_id IS NULL OR LEFT(NEW.display_id, 3) != v_prefix THEN
+            NEW.display_id := public.generate_display_id(v_prefix);
+        END IF;
     END IF;
 
     -- Sync to Central Registry
     IF TG_OP = 'INSERT' THEN
+        -- Map plural table names to canonical id_mappings entity_type values.
+        v_type := CASE
+            WHEN TG_TABLE_NAME = 'profiles' THEN COALESCE(v_role, 'patient')
+            WHEN TG_TABLE_NAME = 'organizations' THEN 'organization'
+            WHEN TG_TABLE_NAME = 'hospitals' THEN 'hospital'
+            WHEN TG_TABLE_NAME = 'doctors' THEN 'doctor'
+            WHEN TG_TABLE_NAME = 'ambulances' THEN 'ambulance'
+            WHEN TG_TABLE_NAME = 'emergency_requests' THEN 'emergency_request'
+            WHEN TG_TABLE_NAME = 'visits' THEN 'visit'
+            WHEN TG_TABLE_NAME = 'payments' THEN 'payment'
+            WHEN TG_TABLE_NAME = 'notifications' THEN 'notification'
+            WHEN TG_TABLE_NAME IN ('patient_wallets', 'organization_wallets') THEN 'wallet'
+            ELSE 'patient'
+        END;
+
         INSERT INTO public.id_mappings (entity_id, display_id, entity_type)
-        VALUES (NEW.id, NEW.display_id, TG_TABLE_NAME)
+        VALUES (NEW.id, NEW.display_id, v_type)
         ON CONFLICT (display_id) DO NOTHING;
+    ELSIF TG_OP = 'UPDATE' AND TG_TABLE_NAME = 'profiles' AND NEW.display_id IS DISTINCT FROM OLD.display_id THEN
+        v_type := COALESCE(NEW.role, 'patient');
+        UPDATE public.id_mappings
+        SET display_id = NEW.display_id,
+            entity_type = v_type
+        WHERE entity_id = NEW.id;
     END IF;
 
     RETURN NEW;
@@ -113,5 +139,152 @@ BEGIN
         CREATE TRIGGER stamp_ntf_display_id BEFORE INSERT ON public.notifications FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
     END IF;
 END $$;
+
+COMMIT;
+
+-- 5. Hospitals RLS visibility fix (admin parity + imported hospitals visibility for admins)
+BEGIN;
+
+DROP POLICY IF EXISTS "Public read for verified hospitals" ON public.hospitals;
+CREATE POLICY "Public read for verified hospitals"
+ON public.hospitals FOR SELECT
+USING (
+    verified = true
+    OR organization_id = public.p_get_current_org_id()
+    OR public.p_is_admin()
+);
+
+COMMIT;
+
+-- 6. Nearby hospital geospatial fix (meters-safe geography distance)
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.nearby_hospitals(user_lat DOUBLE PRECISION, user_lng DOUBLE PRECISION, radius_km INTEGER DEFAULT 15)
+RETURNS TABLE (
+    id UUID,
+    name TEXT,
+    address TEXT,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    distance DOUBLE PRECISION,
+    verified BOOLEAN,
+    status TEXT,
+    display_id TEXT
+) AS $$
+DECLARE
+    v_user_location GEOGRAPHY;
+BEGIN
+    v_user_location := ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)::GEOGRAPHY;
+    
+    RETURN QUERY
+    SELECT 
+        h.id, h.name, h.address, h.latitude, h.longitude,
+        ST_Distance(
+            COALESCE(
+                h.coordinates,
+                ST_SetSRID(ST_MakePoint(h.longitude, h.latitude), 4326)
+            )::GEOGRAPHY,
+            v_user_location
+        ) / 1000 AS distance,
+        h.verified, h.status, h.display_id
+    FROM public.hospitals h
+    WHERE ST_DWithin(
+        COALESCE(
+            h.coordinates,
+            ST_SetSRID(ST_MakePoint(h.longitude, h.latitude), 4326)
+        )::GEOGRAPHY,
+        v_user_location,
+        radius_km * 1000
+    )
+    ORDER BY distance ASC;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+COMMIT;
+
+-- 4. Emergency doctor auto-assignment resilience patch (non-destructive)
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.auto_assign_doctor()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_doctor_id UUID;
+    v_specialty TEXT;
+    v_should_attempt BOOLEAN := FALSE;
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        v_should_attempt := NEW.status IN ('accepted', 'in_progress')
+            AND (
+                OLD.status IS DISTINCT FROM NEW.status
+                OR OLD.ambulance_id IS DISTINCT FROM NEW.ambulance_id
+                OR OLD.responder_id IS DISTINCT FROM NEW.responder_id
+                OR OLD.hospital_id IS DISTINCT FROM NEW.hospital_id
+            );
+    END IF;
+
+    IF NOT v_should_attempt OR NEW.hospital_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    IF NEW.assigned_doctor_id IS NOT NULL OR EXISTS (
+        SELECT 1
+        FROM public.emergency_doctor_assignments eda
+        WHERE eda.emergency_request_id = NEW.id
+          AND eda.status = 'assigned'
+    ) THEN
+        RETURN NEW;
+    END IF;
+
+    v_specialty := CASE NEW.service_type
+        WHEN 'ambulance' THEN 'Emergency Medicine'
+        WHEN 'bed' THEN 'Internal Medicine'
+        ELSE 'Emergency Medicine'
+    END;
+
+    SELECT d.id INTO v_doctor_id
+    FROM public.doctors d
+    WHERE d.hospital_id = NEW.hospital_id
+      AND d.is_available = true
+      AND COALESCE(d.current_patients, 0) < COALESCE(NULLIF(d.max_patients, 0), 1)
+      AND (
+            d.specialization = v_specialty
+            OR NOT EXISTS (
+                SELECT 1
+                FROM public.doctors ds
+                WHERE ds.hospital_id = NEW.hospital_id
+                  AND ds.is_available = true
+                  AND COALESCE(ds.current_patients, 0) < COALESCE(NULLIF(ds.max_patients, 0), 1)
+                  AND ds.specialization = v_specialty
+            )
+      )
+    ORDER BY
+      CASE WHEN d.specialization = v_specialty THEN 0 ELSE 1 END,
+      COALESCE(d.current_patients, 0) ASC,
+      d.created_at ASC
+    LIMIT 1;
+
+    IF v_doctor_id IS NOT NULL THEN
+        INSERT INTO public.emergency_doctor_assignments (emergency_request_id, doctor_id, status)
+        VALUES (NEW.id, v_doctor_id, 'assigned');
+
+        UPDATE public.doctors
+        SET current_patients = COALESCE(current_patients, 0) + 1,
+            updated_at = NOW()
+        WHERE id = v_doctor_id;
+
+        UPDATE public.emergency_requests
+        SET assigned_doctor_id = v_doctor_id,
+            doctor_assigned_at = NOW()
+        WHERE id = NEW.id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_emergency_auto_assign_doctor ON public.emergency_requests;
+CREATE TRIGGER on_emergency_auto_assign_doctor
+AFTER UPDATE ON public.emergency_requests
+FOR EACH ROW EXECUTE PROCEDURE public.auto_assign_doctor();
 
 COMMIT;
