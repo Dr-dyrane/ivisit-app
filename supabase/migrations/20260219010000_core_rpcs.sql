@@ -1110,12 +1110,18 @@ DECLARE
     v_payment_status TEXT;
     v_patient_snapshot JSONB;
     v_patient_location geometry;
+    v_transition_reason TEXT;
     v_request public.emergency_requests%ROWTYPE;
 BEGIN
     SELECT role, organization_id
     INTO v_actor_role, v_actor_org_id
     FROM public.profiles
     WHERE id = v_actor_id;
+
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
 
     IF v_actor_id IS NULL OR v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
         RAISE EXCEPTION 'Unauthorized';
@@ -1172,6 +1178,25 @@ BEGIN
     IF v_payment_status NOT IN ('pending', 'paid', 'completed', 'failed', 'refunded', 'declined') THEN
         v_payment_status := 'pending';
     END IF;
+
+    v_transition_reason := COALESCE(
+        NULLIF(p_payload->>'transition_reason', ''),
+        NULLIF(p_payload->>'reason', ''),
+        'console_created_emergency'
+    );
+
+    PERFORM set_config('ivisit.transition_source', 'console_create_emergency_request', true);
+    PERFORM set_config('ivisit.transition_reason', v_transition_reason, true);
+    PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    PERFORM set_config('ivisit.transition_actor_role', v_actor_role, true);
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object(
+            'service_type', v_service_type,
+            'payment_status', v_payment_status
+        )::TEXT,
+        true
+    );
 
     IF NOT v_is_admin THEN
         IF v_hospital_id IS NULL THEN
@@ -1255,6 +1280,11 @@ BEGIN
     FROM public.profiles
     WHERE id = v_actor_id;
 
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
+
     IF v_actor_id IS NULL THEN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
@@ -1289,6 +1319,23 @@ BEGIN
        AND v_next_status NOT IN ('pending_approval', 'payment_declined', 'in_progress', 'accepted', 'arrived', 'completed', 'cancelled') THEN
         RAISE EXCEPTION 'Invalid emergency status';
     END IF;
+
+    PERFORM set_config('ivisit.transition_source', 'console_update_emergency_request', true);
+    PERFORM set_config(
+        'ivisit.transition_reason',
+        COALESCE(NULLIF(p_payload->>'transition_reason', ''), NULLIF(p_payload->>'reason', ''), 'console_update'),
+        true
+    );
+    PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object(
+            'requested_status', v_next_status,
+            'request_id', p_request_id
+        )::TEXT,
+        true
+    );
 
     v_hospital_id := NULLIF(p_payload->>'hospital_id', '')::UUID;
     IF NOT v_is_admin AND v_hospital_id IS NOT NULL THEN
@@ -1376,6 +1423,17 @@ DECLARE
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'console_dispatch_emergency', true);
+    PERFORM set_config('ivisit.transition_reason', 'console_dispatch', true);
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object('request_id', p_request_id, 'ambulance_id', p_ambulance_id)::TEXT,
+        true
+    );
 
     IF p_request_id IS NULL OR p_ambulance_id IS NULL THEN
         RAISE EXCEPTION 'request id and ambulance id are required';
@@ -1477,6 +1535,13 @@ DECLARE
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'console_complete_emergency', true);
+    PERFORM set_config('ivisit.transition_reason', 'console_complete', true);
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
+    PERFORM set_config('ivisit.transition_metadata', jsonb_build_object('request_id', p_request_id)::TEXT, true);
 
     IF p_request_id IS NULL THEN
         RAISE EXCEPTION 'request id is required';
@@ -1486,6 +1551,11 @@ BEGIN
     INTO v_actor_role, v_actor_org_id
     FROM public.profiles
     WHERE id = v_actor_id;
+
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
 
     IF v_actor_id IS NULL THEN
         RAISE EXCEPTION 'Unauthorized';
@@ -1559,6 +1629,17 @@ DECLARE
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'console_cancel_emergency', true);
+    PERFORM set_config(
+        'ivisit.transition_reason',
+        COALESCE(NULLIF(p_reason, ''), 'console_cancel'),
+        true
+    );
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
+    PERFORM set_config('ivisit.transition_metadata', jsonb_build_object('request_id', p_request_id)::TEXT, true);
 
     IF p_request_id IS NULL THEN
         RAISE EXCEPTION 'request id is required';
@@ -1722,6 +1803,17 @@ DECLARE
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'patient_update_emergency_request', true);
+    PERFORM set_config(
+        'ivisit.transition_reason',
+        COALESCE(NULLIF(p_payload->>'transition_reason', ''), NULLIF(p_payload->>'reason', ''), 'patient_update'),
+        true
+    );
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    PERFORM set_config('ivisit.transition_actor_role', 'patient', true);
+    PERFORM set_config('ivisit.transition_metadata', jsonb_build_object('request_id', p_request_id)::TEXT, true);
 
     IF v_actor_id IS NULL THEN
         RAISE EXCEPTION 'Unauthorized';

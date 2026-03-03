@@ -43,6 +43,7 @@ ALTER TABLE public.doctors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ambulances ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.emergency_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_status_transitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.visits ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.organization_wallets ENABLE ROW LEVEL SECURITY;
@@ -119,6 +120,25 @@ USING (
     verified = true
     OR organization_id = public.p_get_current_org_id()
     OR public.p_is_admin()
+);
+
+DROP POLICY IF EXISTS "Users see emergency status transitions in scope" ON public.emergency_status_transitions;
+CREATE POLICY "Users see emergency status transitions in scope"
+ON public.emergency_status_transitions FOR SELECT
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1
+        FROM public.emergency_requests er
+        LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+        WHERE er.id = emergency_status_transitions.emergency_request_id
+          AND (
+              er.user_id = auth.uid()
+              OR er.responder_id = auth.uid()
+              OR h.organization_id = public.p_get_current_org_id()
+              OR public.p_is_admin()
+          )
+    )
 );
 
 -- 4. FINANCIALS (Very Restricted)

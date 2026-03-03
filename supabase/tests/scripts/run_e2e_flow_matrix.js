@@ -520,6 +520,36 @@ async function run() {
         visitCreated: !!bedVisit.id
       }
     };
+
+    const transitionRequestIds = [cardReq.id, cashCreate.request_id, bedCreate.request_id];
+    const { data: transitionRows, error: transitionErr } = await supabase
+      .from('emergency_status_transitions')
+      .select('emergency_request_id,from_status,to_status,source,reason,actor_role,request_snapshot,occurred_at')
+      .in('emergency_request_id', transitionRequestIds)
+      .order('occurred_at', { ascending: true });
+
+    const transitions = transitionErr ? [] : (transitionRows || []);
+    const hasNonDecreasingTimestamps = transitions.every((row, index, arr) => {
+      if (index === 0) return true;
+      return new Date(arr[index - 1].occurred_at).getTime() <= new Date(row.occurred_at).getTime();
+    });
+
+    report.scenarios.transitionAudit = {
+      requests: transitionRequestIds,
+      error: transitionErr ? transitionErr.message : null,
+      rows: transitions,
+      assertions: {
+        rowsCaptured: !transitionErr && transitions.length >= transitionRequestIds.length,
+        eachRequestHasInitialRow: transitionRequestIds.every((id) => transitions.some((row) => row.emergency_request_id === id && row.from_status === null)),
+        completionRowsCaptured:
+          transitions.some((row) => row.emergency_request_id === cardReq.id && row.to_status === 'completed')
+          && transitions.some((row) => row.emergency_request_id === bedCreate.request_id && row.to_status === 'completed'),
+        sourcesPresent: transitions.every((row) => !!row.source),
+        reasonsPresent: transitions.every((row) => !!row.reason),
+        snapshotsPresent: transitions.every((row) => !!row.request_snapshot && !!row.request_snapshot.id),
+        chronological: hasNonDecreasingTimestamps
+      }
+    };
   } finally {
     report.completedAt = nowIso();
     await cleanup(ctx, report);

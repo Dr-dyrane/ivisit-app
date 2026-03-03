@@ -116,6 +116,39 @@ DECLARE
     v_hospital_id UUID;
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'approve_cash_payment', true);
+    PERFORM set_config('ivisit.transition_reason', 'cash_payment_approved', true);
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object('payment_id', p_payment_id, 'request_id', p_request_id)::TEXT,
+        true
+    );
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    IF v_is_service_role THEN
+        PERFORM set_config('ivisit.transition_actor_role', 'service_role', true);
+    END IF;
+    PERFORM set_config('ivisit.transition_source', 'approve_cash_payment', true);
+    PERFORM set_config('ivisit.transition_reason', 'cash_payment_approved', true);
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object('payment_id', p_payment_id, 'request_id', p_request_id)::TEXT,
+        true
+    );
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    IF v_is_service_role THEN
+        PERFORM set_config('ivisit.transition_actor_role', 'service_role', true);
+    END IF;
+    PERFORM set_config('ivisit.transition_source', 'assign_ambulance_to_emergency', true);
+    PERFORM set_config('ivisit.transition_reason', 'manual_ambulance_assignment', true);
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object('priority', p_priority, 'ambulance_id', p_ambulance_id)::TEXT,
+        true
+    );
 
     -- 1. Get current ambulance state
     SELECT a.status, a.hospital_id INTO v_ambulance_status, v_hospital_id
@@ -164,6 +197,16 @@ DECLARE
     v_result JSONB;
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'auto_assign_ambulance', true);
+    PERFORM set_config('ivisit.transition_reason', 'auto_ambulance_assignment', true);
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object(
+            'max_distance_km', p_max_distance_km,
+            'specialty_required', p_specialty_required
+        )::TEXT,
+        true
+    );
 
     -- Get emergency user and location
     SELECT user_id INTO v_user_id
@@ -415,6 +458,7 @@ DECLARE
     v_hospital_id UUID;
     v_organization_id UUID;
     v_patient_location GEOMETRY;
+    v_transition_reason TEXT;
 BEGIN
     IF p_user_id IS NULL THEN
         RAISE EXCEPTION 'user id is required';
@@ -435,6 +479,33 @@ BEGIN
             END IF;
         END IF;
     END IF;
+
+    v_transition_reason := COALESCE(
+        NULLIF(p_request_data->>'transition_reason', ''),
+        NULLIF(p_request_data->>'reason', ''),
+        'emergency_created'
+    );
+
+    PERFORM set_config('ivisit.transition_source', 'create_emergency_v4', true);
+    PERFORM set_config('ivisit.transition_reason', v_transition_reason, true);
+    PERFORM set_config('ivisit.transition_actor_id', COALESCE(v_actor_id, p_user_id)::TEXT, true);
+    PERFORM set_config(
+        'ivisit.transition_actor_role',
+        COALESCE(
+            CASE WHEN v_is_service_role THEN 'service_role' ELSE NULL END,
+            NULLIF(v_actor_role, ''),
+            'patient'
+        ),
+        true
+    );
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object(
+            'service_type', COALESCE(p_request_data->>'service_type', 'ambulance'),
+            'payment_method', COALESCE(NULLIF(p_payment_data->>'method', ''), 'unknown')
+        )::TEXT,
+        true
+    );
 
     -- 1. Extract and Resolve IDs
     v_hospital_id := (p_request_data->>'hospital_id')::UUID;
@@ -727,6 +798,19 @@ DECLARE
     v_request_payment_status TEXT;
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'decline_cash_payment', true);
+    PERFORM set_config('ivisit.transition_reason', 'cash_payment_declined', true);
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object('payment_id', p_payment_id, 'request_id', p_request_id)::TEXT,
+        true
+    );
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    IF v_is_service_role THEN
+        PERFORM set_config('ivisit.transition_actor_role', 'service_role', true);
+    END IF;
 
     SELECT p.*
     INTO v_payment
@@ -923,6 +1007,14 @@ DECLARE
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'discharge_patient', true);
+    PERFORM set_config('ivisit.transition_reason', 'patient_discharged', true);
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    IF v_is_service_role THEN
+        PERFORM set_config('ivisit.transition_actor_role', 'service_role', true);
+    END IF;
 
     SELECT h.organization_id
     INTO v_request_org_id
@@ -975,6 +1067,14 @@ DECLARE
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'cancel_bed_reservation', true);
+    PERFORM set_config('ivisit.transition_reason', 'bed_reservation_cancelled', true);
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    IF v_is_service_role THEN
+        PERFORM set_config('ivisit.transition_actor_role', 'service_role', true);
+    END IF;
 
     SELECT h.organization_id
     INTO v_request_org_id
@@ -1028,6 +1128,14 @@ DECLARE
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'complete_trip', true);
+    PERFORM set_config('ivisit.transition_reason', 'trip_completed', true);
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    IF v_is_service_role THEN
+        PERFORM set_config('ivisit.transition_actor_role', 'service_role', true);
+    END IF;
 
     SELECT h.organization_id
     INTO v_request_org_id
@@ -1080,6 +1188,14 @@ DECLARE
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'cancel_trip', true);
+    PERFORM set_config('ivisit.transition_reason', 'trip_cancelled', true);
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    IF v_is_service_role THEN
+        PERFORM set_config('ivisit.transition_actor_role', 'service_role', true);
+    END IF;
 
     SELECT h.organization_id
     INTO v_request_org_id
@@ -1589,6 +1705,14 @@ DECLARE
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'discharge_patient', true);
+    PERFORM set_config('ivisit.transition_reason', 'patient_discharged', true);
+    IF v_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
+    END IF;
+    IF v_is_service_role THEN
+        PERFORM set_config('ivisit.transition_actor_role', 'service_role', true);
+    END IF;
 
     SELECT h.organization_id
     INTO v_request_org_id
@@ -1659,6 +1783,110 @@ CREATE TRIGGER trg_enforce_emergency_status_write_path
 BEFORE UPDATE OF status ON public.emergency_requests
 FOR EACH ROW
 EXECUTE FUNCTION public.enforce_emergency_status_write_path();
+
+CREATE OR REPLACE FUNCTION public.log_emergency_status_transition()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_claim_role TEXT := NULLIF(v_claims->>'role', '');
+    v_actor_setting TEXT := NULLIF(current_setting('ivisit.transition_actor_id', true), '');
+    v_actor_user_id UUID;
+    v_actor_role TEXT := NULLIF(current_setting('ivisit.transition_actor_role', true), '');
+    v_source TEXT := NULLIF(current_setting('ivisit.transition_source', true), '');
+    v_reason TEXT := NULLIF(current_setting('ivisit.transition_reason', true), '');
+    v_transition_metadata JSONB := '{}'::JSONB;
+    v_metadata_setting TEXT := NULLIF(current_setting('ivisit.transition_metadata', true), '');
+BEGIN
+    IF TG_OP = 'UPDATE' AND NEW.status IS NOT DISTINCT FROM OLD.status THEN
+        RETURN NEW;
+    END IF;
+
+    IF v_actor_setting IS NOT NULL AND v_actor_setting ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
+        v_actor_user_id := v_actor_setting::UUID;
+    ELSE
+        v_actor_user_id := auth.uid();
+    END IF;
+
+    IF v_actor_role IS NULL AND v_actor_user_id IS NOT NULL THEN
+        SELECT role INTO v_actor_role
+        FROM public.profiles
+        WHERE id = v_actor_user_id;
+    END IF;
+
+    IF v_actor_role IS NULL THEN
+        v_actor_role := COALESCE(v_claim_role, 'system');
+    END IF;
+
+    IF v_source IS NULL THEN
+        IF TG_OP = 'INSERT' THEN
+            v_source := 'emergency_request_insert';
+        ELSIF pg_trigger_depth() > 1 THEN
+            v_source := 'trigger_chain';
+        ELSIF v_claim_role = 'service_role' THEN
+            v_source := 'service_role';
+        ELSE
+            v_source := 'direct_update';
+        END IF;
+    END IF;
+
+    IF v_reason IS NULL THEN
+        IF TG_OP = 'INSERT' THEN
+            v_reason := 'initial_status';
+        ELSE
+            v_reason := 'status_transition';
+        END IF;
+    END IF;
+
+    IF v_metadata_setting IS NOT NULL THEN
+        BEGIN
+            v_transition_metadata := v_metadata_setting::JSONB;
+        EXCEPTION WHEN OTHERS THEN
+            v_transition_metadata := jsonb_build_object('metadata_parse_error', true, 'raw', v_metadata_setting);
+        END;
+    END IF;
+
+    v_transition_metadata := COALESCE(v_transition_metadata, '{}'::JSONB)
+        || jsonb_build_object(
+            'trigger_op', TG_OP,
+            'trigger_depth', pg_trigger_depth(),
+            'jwt_role', COALESCE(v_claim_role, ''),
+            'txid', txid_current()::TEXT
+        );
+
+    INSERT INTO public.emergency_status_transitions (
+        emergency_request_id,
+        from_status,
+        to_status,
+        actor_user_id,
+        actor_role,
+        source,
+        reason,
+        transition_metadata,
+        request_snapshot,
+        occurred_at
+    )
+    VALUES (
+        NEW.id,
+        CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE OLD.status END,
+        NEW.status,
+        v_actor_user_id,
+        v_actor_role,
+        v_source,
+        v_reason,
+        v_transition_metadata,
+        to_jsonb(NEW),
+        NOW()
+    );
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS trg_log_emergency_status_transition ON public.emergency_requests;
+CREATE TRIGGER trg_log_emergency_status_transition
+AFTER INSERT OR UPDATE OF status ON public.emergency_requests
+FOR EACH ROW
+EXECUTE FUNCTION public.log_emergency_status_transition();
 
 
 -- Canonical emergency status transition guard.

@@ -191,6 +191,14 @@ BEGIN
 
         IF v_amb_id IS NOT NULL THEN
             SELECT full_name INTO v_driver_name FROM public.profiles WHERE id = v_driver_id;
+            PERFORM set_config('ivisit.transition_source', 'automation:auto_assign_driver', true);
+            PERFORM set_config('ivisit.transition_reason', 'auto_dispatch_assignment', true);
+            PERFORM set_config('ivisit.transition_actor_role', 'automation', true);
+            PERFORM set_config(
+                'ivisit.transition_metadata',
+                jsonb_build_object('ambulance_id', v_amb_id, 'driver_id', v_driver_id)::TEXT,
+                true
+            );
             
             UPDATE public.emergency_requests
             SET responder_id = v_driver_id,
@@ -499,6 +507,15 @@ BEGIN
     SELECT full_name INTO v_driver_name
     FROM public.profiles
     WHERE id = v_driver_id;
+
+    PERFORM set_config('ivisit.transition_source', 'automation:auto_assign_driver', true);
+    PERFORM set_config('ivisit.transition_reason', 'auto_dispatch_assignment', true);
+    PERFORM set_config('ivisit.transition_actor_role', 'automation', true);
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object('ambulance_id', v_amb_id, 'driver_id', v_driver_id)::TEXT,
+        true
+    );
 
     UPDATE public.emergency_requests
     SET responder_id = v_driver_id,

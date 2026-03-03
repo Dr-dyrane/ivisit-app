@@ -72,6 +72,52 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     cancelled_at TIMESTAMPTZ
 );
 
+-- 2b. Emergency Status Transition Audit (append-only)
+CREATE TABLE IF NOT EXISTS public.emergency_status_transitions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    emergency_request_id UUID NOT NULL REFERENCES public.emergency_requests(id) ON DELETE CASCADE,
+    from_status TEXT CHECK (from_status IS NULL OR from_status IN ('pending_approval', 'payment_declined', 'in_progress', 'accepted', 'arrived', 'completed', 'cancelled')),
+    to_status TEXT NOT NULL CHECK (to_status IN ('pending_approval', 'payment_declined', 'in_progress', 'accepted', 'arrived', 'completed', 'cancelled')),
+    actor_user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    actor_role TEXT,
+    source TEXT NOT NULL DEFAULT 'unknown',
+    reason TEXT NOT NULL DEFAULT 'status_transition',
+    transition_metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    request_snapshot JSONB NOT NULL DEFAULT '{}'::JSONB,
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT emergency_status_transitions_status_change_chk CHECK (from_status IS NULL OR from_status <> to_status)
+);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_status_transitions_request_time
+ON public.emergency_status_transitions (emergency_request_id, occurred_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_status_transitions_actor_time
+ON public.emergency_status_transitions (actor_user_id, occurred_at DESC);
+
+ALTER TABLE public.emergency_status_transitions
+ALTER COLUMN reason SET DEFAULT 'status_transition';
+
+UPDATE public.emergency_status_transitions
+SET reason = 'status_transition'
+WHERE reason IS NULL;
+
+ALTER TABLE public.emergency_status_transitions
+ALTER COLUMN reason SET NOT NULL;
+
+CREATE OR REPLACE FUNCTION public.prevent_emergency_status_transition_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'emergency_status_transitions is append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_emergency_status_transitions_append_only ON public.emergency_status_transitions;
+CREATE TRIGGER trg_emergency_status_transitions_append_only
+BEFORE UPDATE OR DELETE ON public.emergency_status_transitions
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_emergency_status_transition_mutation();
+
 -- Add FK on emergency_doctor_assignments now that emergency_requests exists
 ALTER TABLE public.emergency_doctor_assignments
 ADD CONSTRAINT eda_emergency_request_fk

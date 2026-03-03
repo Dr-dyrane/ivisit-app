@@ -114,6 +114,105 @@ $$;
   console.log('[hardening-guards] Critical RLS scope: PASS');
 }
 
+async function assertTransitionAuditWritePath() {
+  await execSql(`
+DO $$
+DECLARE
+  v_def text;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'emergency_status_transitions'
+  ) THEN
+    RAISE EXCEPTION 'emergency_status_transitions table is missing';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'emergency_status_transitions'
+      AND c.relrowsecurity
+  ) THEN
+    RAISE EXCEPTION 'RLS is not enabled on emergency_status_transitions';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'emergency_status_transitions'
+      AND column_name = 'reason'
+      AND is_nullable = 'YES'
+  ) THEN
+    RAISE EXCEPTION 'emergency_status_transitions.reason must be NOT NULL';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies p
+    WHERE p.schemaname = 'public'
+      AND p.tablename = 'emergency_status_transitions'
+      AND p.cmd = 'SELECT'
+  ) THEN
+    RAISE EXCEPTION 'SELECT policy missing on emergency_status_transitions';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_policies p
+    WHERE p.schemaname = 'public'
+      AND p.tablename = 'emergency_status_transitions'
+      AND p.cmd IN ('INSERT', 'UPDATE', 'DELETE')
+  ) THEN
+    RAISE EXCEPTION 'emergency_status_transitions should not expose INSERT/UPDATE/DELETE policies';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'emergency_requests'
+      AND t.tgname = 'trg_log_emergency_status_transition'
+      AND NOT t.tgisinternal
+  ) THEN
+    RAISE EXCEPTION 'trg_log_emergency_status_transition is missing';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'emergency_status_transitions'
+      AND t.tgname = 'trg_emergency_status_transitions_append_only'
+      AND NOT t.tgisinternal
+  ) THEN
+    RAISE EXCEPTION 'trg_emergency_status_transitions_append_only is missing';
+  END IF;
+
+  SELECT pg_get_functiondef('public.log_emergency_status_transition()'::regprocedure) INTO v_def;
+  IF position('request_snapshot' in v_def) = 0 OR position('transition_metadata' in v_def) = 0 THEN
+    RAISE EXCEPTION 'log_emergency_status_transition missing snapshot/metadata persistence';
+  END IF;
+
+  SELECT pg_get_functiondef('public.enforce_emergency_status_write_path()'::regprocedure) INTO v_def;
+  IF position('ivisit.allow_emergency_status_write' in v_def) = 0 THEN
+    RAISE EXCEPTION 'enforce_emergency_status_write_path missing allow-write gate';
+  END IF;
+END;
+$$;
+  `);
+
+  console.log('[hardening-guards] Transition audit write-path: PASS');
+}
+
 async function assertConsoleRpcLockSemantics() {
   await execSql(`
 DO $$
@@ -311,6 +410,7 @@ async function main() {
     console.log('[hardening-guards] Starting emergency hardening checks...');
     await assertRealtimePublicationCoverage();
     await assertCriticalRlsScope();
+    await assertTransitionAuditWritePath();
     await assertConsoleRpcLockSemantics();
     await assertRpcExecuteScope();
     await assertMutationRoleGates();
