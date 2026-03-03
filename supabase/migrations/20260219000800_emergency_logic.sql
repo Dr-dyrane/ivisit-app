@@ -115,6 +115,8 @@ DECLARE
     v_ambulance_status TEXT;
     v_hospital_id UUID;
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     -- 1. Get current ambulance state
     SELECT a.status, a.hospital_id INTO v_ambulance_status, v_hospital_id
     FROM public.ambulances a
@@ -161,6 +163,8 @@ DECLARE
     v_best_distance NUMERIC;
     v_result JSONB;
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     -- Get emergency user and location
     SELECT user_id INTO v_user_id
     FROM public.emergency_requests 
@@ -526,6 +530,8 @@ DECLARE
     v_responder_vehicle_type TEXT;
     v_responder_vehicle_plate TEXT;
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     -- 1. Verify Payment/Request Integrity + lock target rows
     SELECT p.*, (p.metadata->>'fee_amount')::NUMERIC as calculated_fee 
     INTO v_payment 
@@ -720,6 +726,8 @@ DECLARE
     v_request_status TEXT;
     v_request_payment_status TEXT;
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     SELECT p.*
     INTO v_payment
     FROM public.payments p
@@ -914,6 +922,8 @@ DECLARE
     v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     SELECT h.organization_id
     INTO v_request_org_id
     FROM public.emergency_requests er
@@ -964,6 +974,8 @@ DECLARE
     v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     SELECT h.organization_id
     INTO v_request_org_id
     FROM public.emergency_requests er
@@ -1015,6 +1027,8 @@ DECLARE
     v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     SELECT h.organization_id
     INTO v_request_org_id
     FROM public.emergency_requests er
@@ -1065,6 +1079,8 @@ DECLARE
     v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     SELECT h.organization_id
     INTO v_request_org_id
     FROM public.emergency_requests er
@@ -1564,7 +1580,49 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Bed discharge must use legal emergency status values.
 CREATE OR REPLACE FUNCTION public.discharge_patient(request_uuid TEXT)
 RETURNS BOOLEAN AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_request_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
+    SELECT h.organization_id
+    INTO v_request_org_id
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = request_uuid::UUID
+      AND er.service_type = 'bed'
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for bed discharge';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id THEN
+                RAISE EXCEPTION 'Unauthorized: request outside actor organization';
+            END IF;
+        END IF;
+    END IF;
+
     UPDATE public.emergency_requests
     SET status = 'completed',
         completed_at = COALESCE(completed_at, NOW()),
@@ -1576,6 +1634,31 @@ BEGIN
     RETURN FOUND;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- Enforce RPC-only status mutations for deterministic state transitions.
+CREATE OR REPLACE FUNCTION public.enforce_emergency_status_write_path()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_allow_status_write TEXT := current_setting('ivisit.allow_emergency_status_write', true);
+BEGIN
+    IF TG_OP = 'UPDATE'
+       AND NEW.status IS DISTINCT FROM OLD.status
+       AND pg_trigger_depth() <= 1
+       AND COALESCE(v_allow_status_write, '0') <> '1' THEN
+        RAISE EXCEPTION 'Direct emergency status updates are blocked; use canonical emergency RPCs'
+            USING ERRCODE = '42501';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_enforce_emergency_status_write_path ON public.emergency_requests;
+CREATE TRIGGER trg_enforce_emergency_status_write_path
+BEFORE UPDATE OF status ON public.emergency_requests
+FOR EACH ROW
+EXECUTE FUNCTION public.enforce_emergency_status_write_path();
 
 
 -- Canonical emergency status transition guard.

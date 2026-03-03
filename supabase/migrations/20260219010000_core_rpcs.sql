@@ -1244,6 +1244,8 @@ DECLARE
     v_total_cost NUMERIC;
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     IF p_request_id IS NULL THEN
         RAISE EXCEPTION 'request id is required';
     END IF;
@@ -1373,6 +1375,8 @@ DECLARE
     v_effective_hospital_name TEXT;
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     IF p_request_id IS NULL OR p_ambulance_id IS NULL THEN
         RAISE EXCEPTION 'request id and ambulance id are required';
     END IF;
@@ -1472,6 +1476,8 @@ DECLARE
     v_status TEXT;
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     IF p_request_id IS NULL THEN
         RAISE EXCEPTION 'request id is required';
     END IF;
@@ -1552,6 +1558,8 @@ DECLARE
     v_status TEXT;
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     IF p_request_id IS NULL THEN
         RAISE EXCEPTION 'request id is required';
     END IF;
@@ -1713,6 +1721,8 @@ DECLARE
     v_patient_location geometry;
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+
     IF v_actor_id IS NULL THEN
         RAISE EXCEPTION 'Unauthorized';
     END IF;

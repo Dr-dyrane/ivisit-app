@@ -369,24 +369,30 @@ async function run() {
     };
 
     // Scenario B: completion -> visit sync + ambulance release + insurance billing hook behavior.
-    const { data: completeUpdate, error: completeErr } = await supabase
+    await supabase
       .from('emergency_requests')
       .update({
-        status: 'completed',
         total_cost: 155,
-        completed_at: nowIso(),
         updated_at: nowIso()
       })
-      .eq('id', cardReq.id)
-      .select('id,status,total_cost,completed_at,payment_status')
-      .single();
+      .eq('id', cardReq.id);
 
-    if (completeErr) {
+    const { data: completeRpc, error: completeErr } = await supabase.rpc('complete_trip', {
+      request_uuid: cardReq.id
+    });
+
+    if (completeErr || completeRpc !== true) {
       report.scenarios.completion = {
         failed: true,
-        error: completeErr.message
+        error: completeErr ? completeErr.message : 'complete_trip returned false'
       };
     } else {
+      const completeUpdate = await qOne(
+        'emergency_requests',
+        'id,status,total_cost,completed_at,payment_status',
+        'id',
+        cardReq.id
+      );
       const visitAfterComplete = await qOne('visits', 'id,request_id,status,cost', 'request_id', cardReq.id);
       const ambAfterComplete = await qOne('ambulances', 'id,status,current_call', 'id', foundation.ambulance.id);
       const { data: billingRows, error: billingErr } = await supabase
@@ -471,12 +477,24 @@ async function run() {
     const { data: hospAfterApprove } = await supabase
       .from('hospitals').select('id,available_beds').eq('id', foundation.hospital.id).single();
 
-    const { data: bedComplete, error: bedCompleteErr } = await supabase
+    await supabase
       .from('emergency_requests')
-      .update({ status: 'completed', total_cost: 80, completed_at: nowIso(), updated_at: nowIso() })
-      .eq('id', bedCreate.request_id)
-      .select('id,status,payment_status')
-      .single();
+      .update({ total_cost: 80, updated_at: nowIso() })
+      .eq('id', bedCreate.request_id);
+
+    const { data: bedCompleteRpc, error: bedCompleteErr } = await supabase.rpc('discharge_patient', {
+      request_uuid: bedCreate.request_id
+    });
+
+    let bedComplete = null;
+    if (!bedCompleteErr && bedCompleteRpc === true) {
+      bedComplete = await qOne(
+        'emergency_requests',
+        'id,status,payment_status',
+        'id',
+        bedCreate.request_id
+      );
+    }
 
     const { data: hospAfterBedComplete } = await supabase
       .from('hospitals').select('id,available_beds').eq('id', foundation.hospital.id).single();
@@ -488,7 +506,9 @@ async function run() {
       approve: bedApproveErr ? { error: bedApproveErr.message } : bedApprove,
       afterApproval: bedAfterApprove,
       hospitalAfterApproval: hospAfterApprove,
-      complete: bedCompleteErr ? { error: bedCompleteErr.message } : bedComplete,
+      complete: bedCompleteErr
+        ? { error: bedCompleteErr.message }
+        : (bedCompleteRpc === true ? bedComplete : { error: 'discharge_patient returned false' }),
       hospitalAfterComplete: hospAfterBedComplete,
       visit: bedVisit,
       assertions: {

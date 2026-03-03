@@ -83,6 +83,25 @@ async function safeRun(label, fn, warnings) {
   }
 }
 
+async function settleActiveEmergencyRequestsForUser(userId) {
+  const sql = `
+    SELECT set_config('ivisit.allow_emergency_status_write', '1', true);
+    UPDATE public.emergency_requests
+    SET status = 'cancelled',
+        cancelled_at = COALESCE(cancelled_at, NOW()),
+        updated_at = NOW()
+    WHERE user_id = '${userId}'
+      AND status IN ('pending_approval', 'in_progress', 'accepted', 'arrived');
+  `;
+  const { data, error } = await admin.rpc('exec_sql', { sql });
+  if (error) {
+    throw new Error(`exec_sql settle failed: ${error.message}`);
+  }
+  if (!data?.success) {
+    throw new Error(`exec_sql settle rejected: ${data?.error || 'unknown error'}`);
+  }
+}
+
 function makeResult(caseId, role, action, fromStatus, expectSuccess) {
   return {
     caseId,
@@ -468,11 +487,7 @@ async function main() {
       await safeRun(
         `settle active requests after ${tc.caseId}`,
         async () => {
-          await admin
-            .from('emergency_requests')
-            .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-            .eq('user_id', ctx.users.patient.id)
-            .in('status', ['pending_approval', 'in_progress', 'accepted', 'arrived']);
+          await settleActiveEmergencyRequestsForUser(ctx.users.patient.id);
         },
         report.cleanupWarnings
       );
