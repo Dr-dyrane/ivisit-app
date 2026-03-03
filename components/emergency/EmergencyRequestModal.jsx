@@ -27,6 +27,27 @@ import { useEmergency } from "../../contexts/EmergencyContext";
 const isValidUUIDValue = (id) =>
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id ?? ""));
 
+const canonicalizeEmergencyStatus = (value) => {
+	const normalized = String(value ?? "").trim().toLowerCase();
+	if (!normalized) return normalized;
+	switch (normalized) {
+		case "pending":
+			return "pending_approval";
+		case "dispatched":
+			return "in_progress";
+		case "assigned":
+		case "responding":
+		case "en_route":
+			return "accepted";
+		case "resolved":
+			return "completed";
+		case "canceled":
+			return "cancelled";
+		default:
+			return normalized;
+	}
+};
+
 /**
  * 💡 STABILITY NOTE:
  * This component is wrapped in React.memo and uses `useFABActions()` instead of `useFAB()`.
@@ -161,7 +182,7 @@ const EmergencyRequestModal = React.memo(({
 		const handleApprovalRow = (row, source = 'realtime') => {
 			if (!row || approvalHandledRef.current) return;
 
-			const newStatus = row.status;
+			const newStatus = canonicalizeEmergencyStatus(row.status);
 			const newPaymentStatus = row.payment_status;
 			const rowAmbulanceId = row.ambulance_id ?? row.ambulanceId ?? null;
 			const rowResponderName = row.responder_name ?? row.responderName ?? null;
@@ -173,7 +194,6 @@ const EmergencyRequestModal = React.memo(({
 			const isApprovedTransition =
 				newStatus === 'accepted' ||
 				newStatus === 'in_progress' ||
-				newStatus === 'assigned' ||
 				newPaymentStatus === 'completed';
 
 			const isDeclinedTransition =

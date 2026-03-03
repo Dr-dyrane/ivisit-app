@@ -15,6 +15,22 @@ export const EmergencyRequestStatus = {
     PAYMENT_DECLINED: "payment_declined",
 };
 
+const EMERGENCY_STATUS_ALIASES = Object.freeze({
+    pending: EmergencyRequestStatus.PENDING_APPROVAL,
+    dispatched: EmergencyRequestStatus.IN_PROGRESS,
+    assigned: EmergencyRequestStatus.ACCEPTED,
+    responding: EmergencyRequestStatus.ACCEPTED,
+    en_route: EmergencyRequestStatus.ACCEPTED,
+    resolved: EmergencyRequestStatus.COMPLETED,
+    canceled: EmergencyRequestStatus.CANCELLED,
+});
+
+const canonicalizeEmergencyStatus = (value, fallback = null) => {
+    const normalized = String(value ?? "").trim().toLowerCase();
+    if (!normalized) return fallback;
+    return EMERGENCY_STATUS_ALIASES[normalized] || normalized;
+};
+
 const parsePointInput = (value) => {
     if (!value) return null;
 
@@ -235,7 +251,7 @@ export const emergencyRequestsService = {
 
             const rpcPayload = {};
             if (updates.status !== undefined) {
-                rpcPayload.status = updates.status;
+                rpcPayload.status = canonicalizeEmergencyStatus(updates.status, null);
             }
             if (updates.patientLocation !== undefined) {
                 rpcPayload.patient_location = parsePointInput(updates.patientLocation) || updates.patientLocation;

@@ -235,6 +235,18 @@ RETURNS TRIGGER AS $$
 DECLARE
     v_current_amb_status TEXT;
 BEGIN
+    IF TG_OP = 'UPDATE'
+       AND OLD.ambulance_id IS NOT NULL
+       AND OLD.ambulance_id IS DISTINCT FROM NEW.ambulance_id THEN
+        UPDATE public.ambulances
+        SET status = 'available',
+            current_call = NULL,
+            eta = NULL,
+            updated_at = NOW()
+        WHERE id = OLD.ambulance_id
+          AND (current_call = NEW.id OR current_call IS NULL);
+    END IF;
+
     -- Handle Ambulance Status transitions
     IF (NEW.ambulance_id IS NOT NULL) THEN
         -- Get current ambulance status to validate transition
@@ -296,6 +308,7 @@ BEGIN
                 OR OLD.ambulance_id IS DISTINCT FROM NEW.ambulance_id
                 OR OLD.responder_id IS DISTINCT FROM NEW.responder_id
                 OR OLD.hospital_id IS DISTINCT FROM NEW.hospital_id
+                OR OLD.assigned_doctor_id IS DISTINCT FROM NEW.assigned_doctor_id
             );
     END IF;
 
@@ -377,13 +390,27 @@ FOR EACH ROW EXECUTE PROCEDURE public.auto_assign_doctor();
 CREATE OR REPLACE FUNCTION public.release_doctor_assignment()
 RETURNS TRIGGER AS $$
 DECLARE
-    v_terminal_assignment_status TEXT :=
-        CASE WHEN NEW.status = 'completed' THEN 'completed' ELSE 'cancelled' END;
+    v_should_release BOOLEAN := FALSE;
+    v_release_status TEXT := 'cancelled';
 BEGIN
     IF OLD.status NOT IN ('completed', 'cancelled') AND NEW.status IN ('completed', 'cancelled') THEN
+        v_should_release := TRUE;
+        v_release_status := CASE WHEN NEW.status = 'completed' THEN 'completed' ELSE 'cancelled' END;
+    ELSIF NEW.status IN ('in_progress', 'accepted', 'arrived')
+          AND OLD.assigned_doctor_id IS NOT NULL
+          AND (
+              OLD.hospital_id IS DISTINCT FROM NEW.hospital_id
+              OR OLD.ambulance_id IS DISTINCT FROM NEW.ambulance_id
+              OR OLD.responder_id IS DISTINCT FROM NEW.responder_id
+          ) THEN
+        v_should_release := TRUE;
+        v_release_status := 'cancelled';
+    END IF;
+
+    IF v_should_release THEN
         WITH released_assignments AS (
             UPDATE public.emergency_doctor_assignments
-            SET status = v_terminal_assignment_status,
+            SET status = v_release_status,
                 updated_at = NOW()
             WHERE emergency_request_id = NEW.id
               AND status = 'assigned'
@@ -569,6 +596,18 @@ RETURNS TRIGGER AS $$
 DECLARE
     v_current_amb_status TEXT;
 BEGIN
+    IF TG_OP = 'UPDATE'
+       AND OLD.ambulance_id IS NOT NULL
+       AND OLD.ambulance_id IS DISTINCT FROM NEW.ambulance_id THEN
+        UPDATE public.ambulances
+        SET status = 'available',
+            current_call = NULL,
+            eta = NULL,
+            updated_at = NOW()
+        WHERE id = OLD.ambulance_id
+          AND (current_call = NEW.id OR current_call IS NULL);
+    END IF;
+
     IF NEW.ambulance_id IS NOT NULL THEN
         SELECT status INTO v_current_amb_status
         FROM public.ambulances

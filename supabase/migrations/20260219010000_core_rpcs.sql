@@ -1094,6 +1094,74 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
+CREATE OR REPLACE FUNCTION public.canonicalize_emergency_status(
+    p_status TEXT,
+    p_default TEXT DEFAULT NULL
+)
+RETURNS TEXT AS $$
+DECLARE
+    v_status TEXT := LOWER(COALESCE(NULLIF(TRIM(p_status), ''), ''));
+    v_default TEXT := LOWER(COALESCE(NULLIF(TRIM(p_default), ''), ''));
+BEGIN
+    IF v_status = '' THEN
+        RETURN NULLIF(v_default, '');
+    END IF;
+
+    RETURN CASE v_status
+        WHEN 'pending' THEN 'pending_approval'
+        WHEN 'pending_approval' THEN 'pending_approval'
+        WHEN 'dispatched' THEN 'in_progress'
+        WHEN 'in_progress' THEN 'in_progress'
+        WHEN 'assigned' THEN 'accepted'
+        WHEN 'responding' THEN 'accepted'
+        WHEN 'en_route' THEN 'accepted'
+        WHEN 'accepted' THEN 'accepted'
+        WHEN 'arrived' THEN 'arrived'
+        WHEN 'resolved' THEN 'completed'
+        WHEN 'completed' THEN 'completed'
+        WHEN 'canceled' THEN 'cancelled'
+        WHEN 'cancelled' THEN 'cancelled'
+        WHEN 'declined' THEN 'payment_declined'
+        WHEN 'payment_declined' THEN 'payment_declined'
+        ELSE v_status
+    END;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION public.set_emergency_transition_context(
+    p_source TEXT,
+    p_reason TEXT DEFAULT NULL,
+    p_actor_id UUID DEFAULT auth.uid(),
+    p_actor_role TEXT DEFAULT NULL,
+    p_metadata JSONB DEFAULT '{}'::JSONB,
+    p_allow_status_write BOOLEAN DEFAULT true
+)
+RETURNS VOID AS $$
+DECLARE
+    v_actor_role TEXT := NULLIF(TRIM(COALESCE(p_actor_role, '')), '');
+BEGIN
+    IF p_allow_status_write THEN
+        PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    END IF;
+
+    IF p_actor_id IS NOT NULL THEN
+        PERFORM set_config('ivisit.transition_actor_id', p_actor_id::TEXT, true);
+    END IF;
+
+    IF v_actor_role IS NULL AND p_actor_id IS NOT NULL THEN
+        SELECT role
+        INTO v_actor_role
+        FROM public.profiles
+        WHERE id = p_actor_id;
+    END IF;
+
+    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
+    PERFORM set_config('ivisit.transition_source', COALESCE(NULLIF(TRIM(p_source), ''), 'unspecified_source'), true);
+    PERFORM set_config('ivisit.transition_reason', COALESCE(NULLIF(TRIM(p_reason), ''), 'status_transition'), true);
+    PERFORM set_config('ivisit.transition_metadata', COALESCE(p_metadata, '{}'::JSONB)::TEXT, true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 
 CREATE OR REPLACE FUNCTION public.console_create_emergency_request(p_payload JSONB)
 RETURNS JSONB AS $$
@@ -1118,11 +1186,6 @@ BEGIN
     FROM public.profiles
     WHERE id = v_actor_id;
 
-    IF v_actor_id IS NOT NULL THEN
-        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
-    END IF;
-    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
-
     IF v_actor_id IS NULL OR v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
@@ -1142,7 +1205,7 @@ BEGIN
             END
         )
     );
-    v_status := LOWER(COALESCE(NULLIF(p_payload->>'status', ''), 'pending_approval'));
+    v_status := public.canonicalize_emergency_status(p_payload->>'status', 'pending_approval');
     v_total_cost := COALESCE(NULLIF(p_payload->>'total_cost', '')::NUMERIC, 0);
     v_payment_status := LOWER(COALESCE(NULLIF(p_payload->>'payment_status', ''), 'pending'));
     v_patient_snapshot := COALESCE(
@@ -1185,17 +1248,17 @@ BEGIN
         'console_created_emergency'
     );
 
-    PERFORM set_config('ivisit.transition_source', 'console_create_emergency_request', true);
-    PERFORM set_config('ivisit.transition_reason', v_transition_reason, true);
-    PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
-    PERFORM set_config('ivisit.transition_actor_role', v_actor_role, true);
-    PERFORM set_config(
-        'ivisit.transition_metadata',
+    PERFORM public.set_emergency_transition_context(
+        p_source => 'console_create_emergency_request',
+        p_reason => v_transition_reason,
+        p_actor_id => v_actor_id,
+        p_actor_role => v_actor_role,
+        p_metadata =>
         jsonb_build_object(
             'service_type', v_service_type,
             'payment_status', v_payment_status
-        )::TEXT,
-        true
+        ),
+        p_allow_status_write => false
     );
 
     IF NOT v_is_admin THEN
@@ -1262,6 +1325,7 @@ DECLARE
     v_is_admin BOOLEAN := public.p_is_admin();
     v_request_org_id UUID;
     v_request_responder_id UUID;
+    v_current_status TEXT;
     v_next_status TEXT;
     v_hospital_id UUID;
     v_patient_location geometry;
@@ -1269,8 +1333,6 @@ DECLARE
     v_total_cost NUMERIC;
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
-    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
-
     IF p_request_id IS NULL THEN
         RAISE EXCEPTION 'request id is required';
     END IF;
@@ -1280,17 +1342,12 @@ BEGIN
     FROM public.profiles
     WHERE id = v_actor_id;
 
-    IF v_actor_id IS NOT NULL THEN
-        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
-    END IF;
-    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
-
     IF v_actor_id IS NULL THEN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
 
-    SELECT h.organization_id, er.responder_id
-    INTO v_request_org_id, v_request_responder_id
+    SELECT h.organization_id, er.responder_id, er.status
+    INTO v_request_org_id, v_request_responder_id, v_current_status
     FROM public.emergency_requests er
     LEFT JOIN public.hospitals h ON h.id = er.hospital_id
     WHERE er.id = p_request_id
@@ -1314,27 +1371,32 @@ BEGIN
         END IF;
     END IF;
 
-    v_next_status := LOWER(NULLIF(COALESCE(p_payload->>'status', ''), ''));
+    v_next_status := public.canonicalize_emergency_status(
+        p_payload->>'status',
+        NULL
+    );
     IF v_next_status IS NOT NULL
        AND v_next_status NOT IN ('pending_approval', 'payment_declined', 'in_progress', 'accepted', 'arrived', 'completed', 'cancelled') THEN
         RAISE EXCEPTION 'Invalid emergency status';
     END IF;
 
-    PERFORM set_config('ivisit.transition_source', 'console_update_emergency_request', true);
-    PERFORM set_config(
-        'ivisit.transition_reason',
-        COALESCE(NULLIF(p_payload->>'transition_reason', ''), NULLIF(p_payload->>'reason', ''), 'console_update'),
-        true
-    );
-    PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
-    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
-    PERFORM set_config(
-        'ivisit.transition_metadata',
+    IF v_next_status IS NOT NULL
+       AND NOT public.is_valid_emergency_status_transition(v_current_status, v_next_status) THEN
+        RAISE EXCEPTION 'Illegal emergency status transition: % -> %', v_current_status, v_next_status;
+    END IF;
+
+    PERFORM public.set_emergency_transition_context(
+        p_source => 'console_update_emergency_request',
+        p_reason => COALESCE(NULLIF(p_payload->>'transition_reason', ''), NULLIF(p_payload->>'reason', ''), 'console_update'),
+        p_actor_id => v_actor_id,
+        p_actor_role => v_actor_role,
+        p_metadata =>
         jsonb_build_object(
+            'current_status', v_current_status,
             'requested_status', v_next_status,
             'request_id', p_request_id
-        )::TEXT,
-        true
+        ),
+        p_allow_status_write => true
     );
 
     v_hospital_id := NULLIF(p_payload->>'hospital_id', '')::UUID;
@@ -1409,6 +1471,7 @@ DECLARE
     v_req_status TEXT;
     v_req_hospital_id UUID;
     v_req_org_id UUID;
+    v_req_current_ambulance_id UUID;
     v_amb_status TEXT;
     v_amb_hospital_id UUID;
     v_amb_org_id UUID;
@@ -1422,19 +1485,6 @@ DECLARE
     v_effective_hospital_name TEXT;
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
-    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
-    PERFORM set_config('ivisit.transition_source', 'console_dispatch_emergency', true);
-    PERFORM set_config('ivisit.transition_reason', 'console_dispatch', true);
-    IF v_actor_id IS NOT NULL THEN
-        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
-    END IF;
-    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
-    PERFORM set_config(
-        'ivisit.transition_metadata',
-        jsonb_build_object('request_id', p_request_id, 'ambulance_id', p_ambulance_id)::TEXT,
-        true
-    );
-
     IF p_request_id IS NULL OR p_ambulance_id IS NULL THEN
         RAISE EXCEPTION 'request id and ambulance id are required';
     END IF;
@@ -1448,19 +1498,25 @@ BEGIN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
 
-    SELECT er.status, er.hospital_id, h.organization_id
-    INTO v_req_status, v_req_hospital_id, v_req_org_id
+    SELECT er.status, er.hospital_id, h.organization_id, er.ambulance_id
+    INTO v_req_status, v_req_hospital_id, v_req_org_id, v_req_current_ambulance_id
     FROM public.emergency_requests er
     LEFT JOIN public.hospitals h ON h.id = er.hospital_id
     WHERE er.id = p_request_id
     FOR UPDATE OF er;
 
+    v_req_status := public.canonicalize_emergency_status(v_req_status, v_req_status);
     IF v_req_status IS NULL THEN
         RAISE EXCEPTION 'Emergency request not found';
     END IF;
 
     IF v_req_status IN ('completed', 'cancelled', 'payment_declined') THEN
         RAISE EXCEPTION 'Cannot dispatch a terminal emergency request';
+    END IF;
+
+    IF v_req_status <> 'accepted'
+       AND NOT public.is_valid_emergency_status_transition(v_req_status, 'accepted') THEN
+        RAISE EXCEPTION 'Illegal emergency status transition for dispatch: % -> accepted', v_req_status;
     END IF;
 
     SELECT a.status, a.hospital_id, h.organization_id, a.profile_id, a.current_call, a.type, a.vehicle_number, p.full_name, p.phone
@@ -1489,6 +1545,20 @@ BEGIN
         END IF;
     END IF;
 
+    PERFORM public.set_emergency_transition_context(
+        p_source => 'console_dispatch_emergency',
+        p_reason => 'console_dispatch',
+        p_actor_id => v_actor_id,
+        p_actor_role => v_actor_role,
+        p_metadata => jsonb_build_object(
+            'request_id', p_request_id,
+            'previous_status', v_req_status,
+            'previous_ambulance_id', v_req_current_ambulance_id,
+            'ambulance_id', p_ambulance_id
+        ),
+        p_allow_status_write => true
+    );
+
     v_effective_hospital_id := COALESCE(p_hospital_id, v_req_hospital_id, v_amb_hospital_id);
     v_effective_hospital_name := p_hospital_name;
     IF v_effective_hospital_name IS NULL AND v_effective_hospital_id IS NOT NULL THEN
@@ -1516,6 +1586,17 @@ BEGIN
     WHERE er.id = p_request_id
     RETURNING * INTO v_updated;
 
+    IF v_req_current_ambulance_id IS NOT NULL
+       AND v_req_current_ambulance_id IS DISTINCT FROM p_ambulance_id THEN
+        UPDATE public.ambulances
+        SET status = 'available',
+            current_call = NULL,
+            eta = NULL,
+            updated_at = NOW()
+        WHERE id = v_req_current_ambulance_id
+          AND (current_call = p_request_id OR current_call IS NULL);
+    END IF;
+
     RETURN jsonb_build_object('success', true, 'request', to_jsonb(v_updated));
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -1534,15 +1615,6 @@ DECLARE
     v_status TEXT;
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
-    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
-    PERFORM set_config('ivisit.transition_source', 'console_complete_emergency', true);
-    PERFORM set_config('ivisit.transition_reason', 'console_complete', true);
-    IF v_actor_id IS NOT NULL THEN
-        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
-    END IF;
-    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
-    PERFORM set_config('ivisit.transition_metadata', jsonb_build_object('request_id', p_request_id)::TEXT, true);
-
     IF p_request_id IS NULL THEN
         RAISE EXCEPTION 'request id is required';
     END IF;
@@ -1551,11 +1623,6 @@ BEGIN
     INTO v_actor_role, v_actor_org_id
     FROM public.profiles
     WHERE id = v_actor_id;
-
-    IF v_actor_id IS NOT NULL THEN
-        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
-    END IF;
-    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
 
     IF v_actor_id IS NULL THEN
         RAISE EXCEPTION 'Unauthorized';
@@ -1568,6 +1635,7 @@ BEGIN
     WHERE er.id = p_request_id
     FOR UPDATE OF er;
 
+    v_status := public.canonicalize_emergency_status(v_status, v_status);
     IF v_status IS NULL THEN
         RAISE EXCEPTION 'Emergency request not found';
     END IF;
@@ -1593,6 +1661,22 @@ BEGIN
     IF v_status IN ('cancelled', 'payment_declined') THEN
         RAISE EXCEPTION 'Cannot complete terminal cancelled/declined request';
     END IF;
+
+    IF NOT public.is_valid_emergency_status_transition(v_status, 'completed') THEN
+        RAISE EXCEPTION 'Illegal emergency status transition: % -> completed', v_status;
+    END IF;
+
+    PERFORM public.set_emergency_transition_context(
+        p_source => 'console_complete_emergency',
+        p_reason => 'console_complete',
+        p_actor_id => v_actor_id,
+        p_actor_role => v_actor_role,
+        p_metadata => jsonb_build_object(
+            'request_id', p_request_id,
+            'previous_status', v_status
+        ),
+        p_allow_status_write => true
+    );
 
     UPDATE public.emergency_requests
     SET status = 'completed',
@@ -1628,19 +1712,6 @@ DECLARE
     v_status TEXT;
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
-    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
-    PERFORM set_config('ivisit.transition_source', 'console_cancel_emergency', true);
-    PERFORM set_config(
-        'ivisit.transition_reason',
-        COALESCE(NULLIF(p_reason, ''), 'console_cancel'),
-        true
-    );
-    IF v_actor_id IS NOT NULL THEN
-        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
-    END IF;
-    PERFORM set_config('ivisit.transition_actor_role', COALESCE(v_actor_role, 'unknown'), true);
-    PERFORM set_config('ivisit.transition_metadata', jsonb_build_object('request_id', p_request_id)::TEXT, true);
-
     IF p_request_id IS NULL THEN
         RAISE EXCEPTION 'request id is required';
     END IF;
@@ -1661,6 +1732,7 @@ BEGIN
     WHERE er.id = p_request_id
     FOR UPDATE OF er;
 
+    v_status := public.canonicalize_emergency_status(v_status, v_status);
     IF v_status IS NULL THEN
         RAISE EXCEPTION 'Emergency request not found';
     END IF;
@@ -1686,6 +1758,22 @@ BEGIN
     IF v_status = 'completed' THEN
         RAISE EXCEPTION 'Cannot cancel completed request';
     END IF;
+
+    IF NOT public.is_valid_emergency_status_transition(v_status, 'cancelled') THEN
+        RAISE EXCEPTION 'Illegal emergency status transition: % -> cancelled', v_status;
+    END IF;
+
+    PERFORM public.set_emergency_transition_context(
+        p_source => 'console_cancel_emergency',
+        p_reason => COALESCE(NULLIF(p_reason, ''), 'console_cancel'),
+        p_actor_id => v_actor_id,
+        p_actor_role => v_actor_role,
+        p_metadata => jsonb_build_object(
+            'request_id', p_request_id,
+            'previous_status', v_status
+        ),
+        p_allow_status_write => true
+    );
 
     UPDATE public.emergency_requests
     SET status = 'cancelled',
@@ -1830,19 +1918,6 @@ DECLARE
     v_patient_location geometry;
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
-    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
-    PERFORM set_config('ivisit.transition_source', 'patient_update_emergency_request', true);
-    PERFORM set_config(
-        'ivisit.transition_reason',
-        COALESCE(NULLIF(p_payload->>'transition_reason', ''), NULLIF(p_payload->>'reason', ''), 'patient_update'),
-        true
-    );
-    IF v_actor_id IS NOT NULL THEN
-        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
-    END IF;
-    PERFORM set_config('ivisit.transition_actor_role', 'patient', true);
-    PERFORM set_config('ivisit.transition_metadata', jsonb_build_object('request_id', p_request_id)::TEXT, true);
-
     IF v_actor_id IS NULL THEN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
@@ -1865,7 +1940,10 @@ BEGIN
         RAISE EXCEPTION 'Unauthorized: emergency request does not belong to user';
     END IF;
 
-    v_next_status := LOWER(NULLIF(COALESCE(p_payload->>'status', ''), ''));
+    v_next_status := public.canonicalize_emergency_status(
+        p_payload->>'status',
+        NULL
+    );
     IF v_next_status IS NOT NULL THEN
         IF v_next_status = 'payment_declined' THEN
             RAISE EXCEPTION 'Invalid emergency status';
@@ -1875,6 +1953,19 @@ BEGIN
             RAISE EXCEPTION 'Illegal emergency status transition: % -> %', v_current_status, v_next_status;
         END IF;
     END IF;
+
+    PERFORM public.set_emergency_transition_context(
+        p_source => 'patient_update_emergency_request',
+        p_reason => COALESCE(NULLIF(p_payload->>'transition_reason', ''), NULLIF(p_payload->>'reason', ''), 'patient_update'),
+        p_actor_id => v_actor_id,
+        p_actor_role => 'patient',
+        p_metadata => jsonb_build_object(
+            'request_id', p_request_id,
+            'current_status', v_current_status,
+            'requested_status', v_next_status
+        ),
+        p_allow_status_write => true
+    );
 
     IF p_payload ? 'patient_location' THEN
         v_patient_location := public.jsonb_to_point_geometry(p_payload->'patient_location');
@@ -1910,6 +2001,7 @@ REVOKE ALL ON FUNCTION public.console_complete_emergency(UUID) FROM PUBLIC, anon
 REVOKE ALL ON FUNCTION public.console_cancel_emergency(UUID, TEXT) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.console_update_responder_location(UUID, JSONB, DOUBLE PRECISION) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.patient_update_emergency_request(UUID, JSONB) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.set_emergency_transition_context(TEXT, TEXT, UUID, TEXT, JSONB, BOOLEAN) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.notify_cash_approval_org_admins(UUID, UUID, NUMERIC, NUMERIC, TEXT, TEXT, TEXT, UUID) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.process_cash_payment(UUID, UUID, NUMERIC) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.process_wallet_payment(UUID, NUMERIC, UUID) FROM PUBLIC, anon;
@@ -1921,6 +2013,7 @@ GRANT EXECUTE ON FUNCTION public.console_complete_emergency(UUID) TO authenticat
 GRANT EXECUTE ON FUNCTION public.console_cancel_emergency(UUID, TEXT) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.console_update_responder_location(UUID, JSONB, DOUBLE PRECISION) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.patient_update_emergency_request(UUID, JSONB) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.set_emergency_transition_context(TEXT, TEXT, UUID, TEXT, JSONB, BOOLEAN) TO service_role;
 GRANT EXECUTE ON FUNCTION public.notify_cash_approval_org_admins(UUID, UUID, NUMERIC, NUMERIC, TEXT, TEXT, TEXT, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.process_cash_payment(UUID, UUID, NUMERIC) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.process_wallet_payment(UUID, NUMERIC, UUID) TO authenticated, service_role;

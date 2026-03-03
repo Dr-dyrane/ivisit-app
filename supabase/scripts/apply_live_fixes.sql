@@ -142,19 +142,103 @@ END $$;
 
 COMMIT;
 
+-- 9. Resource reassignment closure patch (non-destructive)
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.update_resource_availability()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_current_amb_status TEXT;
+BEGIN
+    IF TG_OP = 'UPDATE'
+       AND OLD.ambulance_id IS NOT NULL
+       AND OLD.ambulance_id IS DISTINCT FROM NEW.ambulance_id THEN
+        UPDATE public.ambulances
+        SET status = 'available',
+            current_call = NULL,
+            eta = NULL,
+            updated_at = NOW()
+        WHERE id = OLD.ambulance_id
+          AND (current_call = NEW.id OR current_call IS NULL);
+    END IF;
+
+    IF NEW.ambulance_id IS NOT NULL THEN
+        SELECT status INTO v_current_amb_status
+        FROM public.ambulances
+        WHERE id = NEW.ambulance_id;
+
+        IF NEW.status IN ('accepted', 'arrived', 'in_progress') THEN
+            IF v_current_amb_status IN ('available', 'dispatched', 'en_route', 'on_scene') THEN
+                UPDATE public.ambulances
+                SET status = 'on_trip',
+                    current_call = NEW.id,
+                    updated_at = NOW()
+                WHERE id = NEW.ambulance_id;
+            END IF;
+        ELSIF NEW.status IN ('completed', 'cancelled', 'payment_declined') THEN
+            IF v_current_amb_status NOT IN ('available', 'offline', 'maintenance') THEN
+                UPDATE public.ambulances
+                SET status = 'available',
+                    current_call = NULL,
+                    eta = NULL,
+                    updated_at = NOW()
+                WHERE id = NEW.ambulance_id;
+            END IF;
+        END IF;
+    END IF;
+
+    IF TG_OP = 'UPDATE' AND NEW.service_type = 'bed' THEN
+        IF NEW.status IN ('in_progress', 'accepted', 'arrived')
+           AND OLD.status NOT IN ('in_progress', 'accepted', 'arrived') THEN
+            UPDATE public.hospitals
+            SET available_beds = GREATEST(0, available_beds - 1)
+            WHERE id = NEW.hospital_id;
+        ELSIF NEW.status IN ('completed', 'cancelled')
+              AND OLD.status IN ('in_progress', 'accepted', 'arrived') THEN
+            UPDATE public.hospitals
+            SET available_beds = available_beds + 1
+            WHERE id = NEW.hospital_id;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_emergency_status_resource_sync ON public.emergency_requests;
+CREATE TRIGGER on_emergency_status_resource_sync
+AFTER INSERT OR UPDATE ON public.emergency_requests
+FOR EACH ROW EXECUTE PROCEDURE public.update_resource_availability();
+
+COMMIT;
+
 -- 7. Emergency doctor release determinism patch (non-destructive)
 BEGIN;
 
 CREATE OR REPLACE FUNCTION public.release_doctor_assignment()
 RETURNS TRIGGER AS $$
 DECLARE
-    v_terminal_assignment_status TEXT :=
-        CASE WHEN NEW.status = 'completed' THEN 'completed' ELSE 'cancelled' END;
+    v_should_release BOOLEAN := FALSE;
+    v_release_status TEXT := 'cancelled';
 BEGIN
     IF OLD.status NOT IN ('completed', 'cancelled') AND NEW.status IN ('completed', 'cancelled') THEN
+        v_should_release := TRUE;
+        v_release_status := CASE WHEN NEW.status = 'completed' THEN 'completed' ELSE 'cancelled' END;
+    ELSIF NEW.status IN ('in_progress', 'accepted', 'arrived')
+          AND OLD.assigned_doctor_id IS NOT NULL
+          AND (
+              OLD.hospital_id IS DISTINCT FROM NEW.hospital_id
+              OR OLD.ambulance_id IS DISTINCT FROM NEW.ambulance_id
+              OR OLD.responder_id IS DISTINCT FROM NEW.responder_id
+          ) THEN
+        v_should_release := TRUE;
+        v_release_status := 'cancelled';
+    END IF;
+
+    IF v_should_release THEN
         WITH released_assignments AS (
             UPDATE public.emergency_doctor_assignments
-            SET status = v_terminal_assignment_status,
+            SET status = v_release_status,
                 updated_at = NOW()
             WHERE emergency_request_id = NEW.id
               AND status = 'assigned'
@@ -375,6 +459,7 @@ BEGIN
                 OR OLD.ambulance_id IS DISTINCT FROM NEW.ambulance_id
                 OR OLD.responder_id IS DISTINCT FROM NEW.responder_id
                 OR OLD.hospital_id IS DISTINCT FROM NEW.hospital_id
+                OR OLD.assigned_doctor_id IS DISTINCT FROM NEW.assigned_doctor_id
             );
     END IF;
 
