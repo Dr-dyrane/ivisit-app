@@ -539,11 +539,12 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Pending payment/request pair not found');
     END IF;
 
-    SELECT service_type, organization_id, status, payment_status
+    SELECT er.service_type, h.organization_id, er.status, er.payment_status
     INTO v_request_service_type, v_request_org_id, v_request_status, v_request_payment_status
-    FROM public.emergency_requests
-    WHERE id = p_request_id
-    FOR UPDATE OF emergency_requests;
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = p_request_id
+    FOR UPDATE OF er;
 
     IF NOT FOUND THEN
         RETURN jsonb_build_object('success', false, 'error', 'Emergency request not found');
@@ -731,11 +732,12 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Pending payment/request pair not found');
     END IF;
 
-    SELECT organization_id, status, payment_status
+    SELECT h.organization_id, er.status, er.payment_status
     INTO v_request_org_id, v_request_status, v_request_payment_status
-    FROM public.emergency_requests
-    WHERE id = p_request_id
-    FOR UPDATE OF emergency_requests;
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = p_request_id
+    FOR UPDATE OF er;
 
     IF NOT FOUND THEN
         RETURN jsonb_build_object('success', false, 'error', 'Emergency request not found');
@@ -830,11 +832,12 @@ BEGIN
     END IF;
 
     -- 2. Validate request scope + lock target row
-    SELECT user_id, organization_id, status
+    SELECT er.user_id, h.organization_id, er.status
     INTO v_user_id, v_request_org_id, v_request_status
-    FROM public.emergency_requests
-    WHERE id = p_emergency_request_id
-    FOR UPDATE OF emergency_requests;
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = p_emergency_request_id
+    FOR UPDATE OF er;
 
     IF NOT FOUND THEN
         RETURN jsonb_build_object('success', false, 'error', 'Emergency request not found');
@@ -903,7 +906,47 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 1. Bed Management
 CREATE OR REPLACE FUNCTION public.discharge_patient(request_uuid TEXT)
 RETURNS BOOLEAN AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_request_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
+    SELECT h.organization_id
+    INTO v_request_org_id
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = request_uuid::UUID
+      AND er.service_type = 'bed'
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for bed discharge';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id THEN
+                RAISE EXCEPTION 'Unauthorized: request outside actor organization';
+            END IF;
+        END IF;
+    END IF;
+
     UPDATE public.emergency_requests
     SET status = 'discharged', updated_at = NOW()
     WHERE id = request_uuid::UUID AND service_type = 'bed';
@@ -913,7 +956,47 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.cancel_bed_reservation(request_uuid TEXT)
 RETURNS BOOLEAN AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_request_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
+    SELECT h.organization_id
+    INTO v_request_org_id
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = request_uuid::UUID
+      AND er.service_type = 'bed'
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for bed cancel';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id THEN
+                RAISE EXCEPTION 'Unauthorized: request outside actor organization';
+            END IF;
+        END IF;
+    END IF;
+
     UPDATE public.emergency_requests
     SET status = 'cancelled', updated_at = NOW()
     WHERE id = request_uuid::UUID AND service_type = 'bed';
@@ -924,7 +1007,46 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 2. Driver Management
 CREATE OR REPLACE FUNCTION public.complete_trip(request_uuid TEXT)
 RETURNS BOOLEAN AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_request_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
+    SELECT h.organization_id
+    INTO v_request_org_id
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = request_uuid::UUID
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for trip completion';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id THEN
+                RAISE EXCEPTION 'Unauthorized: request outside actor organization';
+            END IF;
+        END IF;
+    END IF;
+
     UPDATE public.emergency_requests
     SET status = 'completed', updated_at = NOW()
     WHERE id = request_uuid::UUID;
@@ -935,7 +1057,46 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.cancel_trip(request_uuid TEXT)
 RETURNS BOOLEAN AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_request_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
+    SELECT h.organization_id
+    INTO v_request_org_id
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = request_uuid::UUID
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for trip cancellation';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id THEN
+                RAISE EXCEPTION 'Unauthorized: request outside actor organization';
+            END IF;
+        END IF;
+    END IF;
+
     UPDATE public.emergency_requests
     SET status = 'cancelled', updated_at = NOW()
     WHERE id = request_uuid::UUID;
@@ -951,7 +1112,45 @@ CREATE OR REPLACE FUNCTION public.update_hospital_availability(
     p_status TEXT,            -- renamed from 'status' to avoid ambiguity with column name
     ambulance_count INTEGER
 ) RETURNS BOOLEAN AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_hospital_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
+    SELECT organization_id
+    INTO v_hospital_org_id
+    FROM public.hospitals h
+    WHERE h.id = hospital_id
+    FOR UPDATE OF h;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for hospital availability update';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_hospital_org_id THEN
+                RAISE EXCEPTION 'Unauthorized: hospital outside actor organization';
+            END IF;
+        END IF;
+    END IF;
+
     UPDATE public.hospitals
     SET 
         available_beds = beds_available,
@@ -1020,6 +1219,12 @@ USING (
 CREATE OR REPLACE FUNCTION public.upsert_service_pricing(payload JSONB)
 RETURNS JSONB AS $$
 DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_hospital_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_hospital_id UUID;
     v_service_type TEXT;
     v_base_price NUMERIC;
@@ -1027,6 +1232,42 @@ BEGIN
     v_hospital_id := (payload->>'hospital_id')::UUID;
     v_service_type := payload->>'service_type';
     v_base_price := (payload->>'base_price')::NUMERIC;
+
+    IF v_hospital_id IS NOT NULL THEN
+        SELECT organization_id
+        INTO v_hospital_org_id
+        FROM public.hospitals
+        WHERE id = v_hospital_id;
+
+        IF v_hospital_org_id IS NULL THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Hospital not found');
+        END IF;
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for pricing update';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_hospital_id IS NULL THEN
+                RAISE EXCEPTION 'Unauthorized: global pricing mutations require admin role';
+            END IF;
+
+            IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_hospital_org_id THEN
+                RAISE EXCEPTION 'Unauthorized: hospital outside actor organization';
+            END IF;
+        END IF;
+    END IF;
     
     INSERT INTO public.service_pricing (hospital_id, service_type, service_name, base_price, description)
     VALUES (
@@ -1050,6 +1291,12 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION public.upsert_room_pricing(payload JSONB)
 RETURNS JSONB AS $$
 DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_hospital_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_hospital_id UUID;
     v_room_type TEXT;
     v_price NUMERIC;
@@ -1057,6 +1304,42 @@ BEGIN
     v_hospital_id := (payload->>'hospital_id')::UUID;
     v_room_type := payload->>'room_type';
     v_price := (payload->>'price_per_night')::NUMERIC;
+
+    IF v_hospital_id IS NOT NULL THEN
+        SELECT organization_id
+        INTO v_hospital_org_id
+        FROM public.hospitals
+        WHERE id = v_hospital_id;
+
+        IF v_hospital_org_id IS NULL THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Hospital not found');
+        END IF;
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for pricing update';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_hospital_id IS NULL THEN
+                RAISE EXCEPTION 'Unauthorized: global pricing mutations require admin role';
+            END IF;
+
+            IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_hospital_org_id THEN
+                RAISE EXCEPTION 'Unauthorized: hospital outside actor organization';
+            END IF;
+        END IF;
+    END IF;
     
     INSERT INTO public.room_pricing (hospital_id, room_type, room_name, price_per_night, description)
     VALUES (
@@ -1079,7 +1362,52 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.delete_service_pricing(target_id UUID)
 RETURNS JSONB AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_hospital_id UUID;
+    v_hospital_org_id UUID;
+    v_row_exists BOOLEAN := FALSE;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
+    SELECT sp.hospital_id, h.organization_id
+    INTO v_hospital_id, v_hospital_org_id
+    FROM public.service_pricing sp
+    LEFT JOIN public.hospitals h ON h.id = sp.hospital_id
+    WHERE sp.id = target_id;
+
+    v_row_exists := FOUND;
+    IF NOT v_row_exists THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Pricing row not found');
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for pricing delete';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_hospital_id IS NULL THEN
+                RAISE EXCEPTION 'Unauthorized: global pricing mutations require admin role';
+            END IF;
+
+            IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_hospital_org_id THEN
+                RAISE EXCEPTION 'Unauthorized: hospital outside actor organization';
+            END IF;
+        END IF;
+    END IF;
+
     DELETE FROM public.service_pricing WHERE id = target_id;
     RETURN jsonb_build_object('success', true);
 END;
@@ -1087,11 +1415,69 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.delete_room_pricing(target_id UUID)
 RETURNS JSONB AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_hospital_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
 BEGIN
+    SELECT h.organization_id
+    INTO v_hospital_org_id
+    FROM public.room_pricing rp
+    LEFT JOIN public.hospitals h ON h.id = rp.hospital_id
+    WHERE rp.id = target_id;
+
+    IF v_hospital_org_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Pricing row not found');
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for pricing delete';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_hospital_org_id THEN
+                RAISE EXCEPTION 'Unauthorized: hospital outside actor organization';
+            END IF;
+        END IF;
+    END IF;
+
     DELETE FROM public.room_pricing WHERE id = target_id;
     RETURN jsonb_build_object('success', true);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE ALL ON FUNCTION public.discharge_patient(TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cancel_bed_reservation(TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.complete_trip(TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cancel_trip(TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.update_hospital_availability(UUID, INTEGER, INTEGER, TEXT, INTEGER) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.upsert_service_pricing(JSONB) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.upsert_room_pricing(JSONB) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.delete_service_pricing(UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.delete_room_pricing(UUID) FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.discharge_patient(TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cancel_bed_reservation(TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.complete_trip(TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cancel_trip(TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.update_hospital_availability(UUID, INTEGER, INTEGER, TEXT, INTEGER) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.upsert_service_pricing(JSONB) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.upsert_room_pricing(JSONB) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.delete_service_pricing(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.delete_room_pricing(UUID) TO authenticated, service_role;
 
 -- Missing updated_at triggers for pricing tables
 CREATE TRIGGER handle_service_pricing_updated_at BEFORE UPDATE ON public.service_pricing FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();

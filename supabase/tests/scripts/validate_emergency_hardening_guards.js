@@ -163,7 +163,18 @@ BEGIN
     'decline_cash_payment(uuid,uuid)',
     'process_cash_payment(uuid,uuid,numeric)',
     'process_cash_payment_v2(uuid,uuid,numeric,text)',
+    'process_wallet_payment(uuid,numeric,uuid)',
+    'process_wallet_payment(uuid,uuid,uuid,numeric,text)',
     'notify_cash_approval_org_admins(uuid,uuid,numeric,numeric,text,text,text,uuid)',
+    'upsert_service_pricing(jsonb)',
+    'upsert_room_pricing(jsonb)',
+    'delete_service_pricing(uuid)',
+    'delete_room_pricing(uuid)',
+    'update_hospital_availability(uuid,integer,integer,text,integer)',
+    'discharge_patient(text)',
+    'cancel_bed_reservation(text)',
+    'complete_trip(text)',
+    'cancel_trip(text)',
     'console_create_emergency_request(jsonb)',
     'console_update_emergency_request(uuid,jsonb)',
     'console_dispatch_emergency(uuid,uuid,uuid,text,text,text,text,text,text)',
@@ -230,6 +241,63 @@ BEGIN
   SELECT pg_get_functiondef('public.process_cash_payment(uuid,uuid,numeric)'::regprocedure) INTO v_def;
   IF position('public.p_is_console_allowed()' in v_def) = 0 THEN
     RAISE EXCEPTION 'process_cash_payment missing console role gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.process_wallet_payment(uuid,numeric,uuid)'::regprocedure) INTO v_def;
+  IF position('v_actor_id IS DISTINCT FROM p_user_id' in v_def) = 0 THEN
+    RAISE EXCEPTION 'process_wallet_payment(uuid,numeric,uuid) missing actor ownership gate';
+  END IF;
+
+  IF to_regprocedure('public.process_wallet_payment(uuid,uuid,uuid,numeric,text)') IS NOT NULL THEN
+    SELECT pg_get_functiondef('public.process_wallet_payment(uuid,uuid,uuid,numeric,text)'::regprocedure) INTO v_def;
+    IF position('v_actor_id IS DISTINCT FROM p_user_id' in v_def) = 0 THEN
+      RAISE EXCEPTION 'process_wallet_payment(uuid,uuid,uuid,numeric,text) missing actor ownership gate';
+    END IF;
+  END IF;
+
+  SELECT pg_get_functiondef('public.upsert_service_pricing(jsonb)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'upsert_service_pricing missing strict operator role gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.upsert_room_pricing(jsonb)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'upsert_room_pricing missing strict operator role gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.delete_service_pricing(uuid)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'delete_service_pricing missing strict operator role gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.delete_room_pricing(uuid)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'delete_room_pricing missing strict operator role gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.update_hospital_availability(uuid,integer,integer,text,integer)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'update_hospital_availability missing strict operator role gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.complete_trip(text)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'complete_trip missing strict operator role gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.cancel_trip(text)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'cancel_trip missing strict operator role gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.discharge_patient(text)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'discharge_patient missing strict operator role gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.cancel_bed_reservation(text)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'cancel_bed_reservation missing strict operator role gate';
   END IF;
 END;
 $$;

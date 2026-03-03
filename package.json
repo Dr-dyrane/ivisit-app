@@ -8,7 +8,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "hardening:emergency": "node supabase/tests/scripts/validate_emergency_hardening_guards.js",
-    "hardening:console-matrix": "node supabase/tests/scripts/run_console_transition_matrix.js"
+    "hardening:console-matrix": "node supabase/tests/scripts/run_console_transition_matrix.js",
+    "hardening:cash-matrix": "node supabase/tests/scripts/run_cash_role_isolation_matrix.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

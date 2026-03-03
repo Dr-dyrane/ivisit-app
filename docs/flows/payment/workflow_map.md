@@ -116,6 +116,12 @@ This map covers both emergency in-flow payments and wallet/payment-management fl
 - Eligibility check prevents cash requests if org collateral is insufficient.
 - Realtime gaps are handled by polling fallback in approval wait state.
 
+## Deterministic Validation Commands
+
+- `npm run hardening:emergency`
+- `npm run hardening:console-matrix`
+- `npm run hardening:cash-matrix`
+
 ## Related Docs
 
 - [payment.md](./payment.md)
