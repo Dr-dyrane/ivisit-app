@@ -328,6 +328,7 @@ BEGIN
     SELECT d.id INTO v_doctor_id
     FROM public.doctors d
     WHERE d.hospital_id = NEW.hospital_id
+      AND COALESCE(d.status, 'available') = 'available'
       AND d.is_available = true
       AND COALESCE(d.current_patients, 0) < COALESCE(NULLIF(d.max_patients, 0), 1)
       AND (
@@ -345,6 +346,7 @@ BEGIN
       CASE WHEN d.specialization = v_specialty THEN 0 ELSE 1 END,
       COALESCE(d.current_patients, 0) ASC,
       d.created_at ASC
+    FOR UPDATE OF d SKIP LOCKED
     LIMIT 1;
 
     IF v_doctor_id IS NOT NULL THEN
@@ -374,20 +376,37 @@ FOR EACH ROW EXECUTE PROCEDURE public.auto_assign_doctor();
 -- 5. Release Doctor on Emergency Completion/Cancellation (Recovered from Legacy)
 CREATE OR REPLACE FUNCTION public.release_doctor_assignment()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_terminal_assignment_status TEXT :=
+        CASE WHEN NEW.status = 'completed' THEN 'completed' ELSE 'cancelled' END;
 BEGIN
     IF OLD.status NOT IN ('completed', 'cancelled') AND NEW.status IN ('completed', 'cancelled') THEN
-        UPDATE public.emergency_doctor_assignments
-        SET status = CASE WHEN NEW.status = 'completed' THEN 'completed' ELSE 'cancelled' END,
-            updated_at = NOW()
-        WHERE emergency_request_id = NEW.id AND status = 'assigned';
-
-        UPDATE public.doctors
-        SET current_patients = GREATEST(0, current_patients - 1), updated_at = NOW()
-        WHERE id = (
-            SELECT doctor_id FROM public.emergency_doctor_assignments
+        WITH released_assignments AS (
+            UPDATE public.emergency_doctor_assignments
+            SET status = v_terminal_assignment_status,
+                updated_at = NOW()
             WHERE emergency_request_id = NEW.id
-            ORDER BY assigned_at DESC LIMIT 1
-        );
+              AND status = 'assigned'
+            RETURNING doctor_id
+        ),
+        released_counts AS (
+            SELECT doctor_id, COUNT(*)::INTEGER AS release_count
+            FROM released_assignments
+            WHERE doctor_id IS NOT NULL
+            GROUP BY doctor_id
+        )
+        UPDATE public.doctors d
+        SET current_patients = GREATEST(0, COALESCE(d.current_patients, 0) - rc.release_count),
+            updated_at = NOW()
+        FROM released_counts rc
+        WHERE d.id = rc.doctor_id;
+
+        UPDATE public.emergency_requests
+        SET assigned_doctor_id = NULL,
+            doctor_assigned_at = NULL,
+            updated_at = NOW()
+        WHERE id = NEW.id
+          AND assigned_doctor_id IS NOT NULL;
     END IF;
     RETURN NEW;
 END;

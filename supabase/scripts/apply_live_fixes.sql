@@ -142,6 +142,162 @@ END $$;
 
 COMMIT;
 
+-- 7. Emergency doctor release determinism patch (non-destructive)
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.release_doctor_assignment()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_terminal_assignment_status TEXT :=
+        CASE WHEN NEW.status = 'completed' THEN 'completed' ELSE 'cancelled' END;
+BEGIN
+    IF OLD.status NOT IN ('completed', 'cancelled') AND NEW.status IN ('completed', 'cancelled') THEN
+        WITH released_assignments AS (
+            UPDATE public.emergency_doctor_assignments
+            SET status = v_terminal_assignment_status,
+                updated_at = NOW()
+            WHERE emergency_request_id = NEW.id
+              AND status = 'assigned'
+            RETURNING doctor_id
+        ),
+        released_counts AS (
+            SELECT doctor_id, COUNT(*)::INTEGER AS release_count
+            FROM released_assignments
+            WHERE doctor_id IS NOT NULL
+            GROUP BY doctor_id
+        )
+        UPDATE public.doctors d
+        SET current_patients = GREATEST(0, COALESCE(d.current_patients, 0) - rc.release_count),
+            updated_at = NOW()
+        FROM released_counts rc
+        WHERE d.id = rc.doctor_id;
+
+        UPDATE public.emergency_requests
+        SET assigned_doctor_id = NULL,
+            doctor_assigned_at = NULL,
+            updated_at = NOW()
+        WHERE id = NEW.id
+          AND assigned_doctor_id IS NOT NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_emergency_release_doctor ON public.emergency_requests;
+CREATE TRIGGER on_emergency_release_doctor
+AFTER UPDATE ON public.emergency_requests
+FOR EACH ROW EXECUTE PROCEDURE public.release_doctor_assignment();
+
+COMMIT;
+
+-- 8. Responder telemetry gate patch (active-only + dispatch-only)
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.console_update_responder_location(
+    p_request_id UUID,
+    p_location JSONB,
+    p_heading DOUBLE PRECISION DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_is_admin BOOLEAN := public.p_is_admin();
+    v_req_org_id UUID;
+    v_req_status TEXT;
+    v_req_responder_id UUID;
+    v_ambulance_id UUID;
+    v_location geometry;
+    v_heading DOUBLE PRECISION;
+    v_now TIMESTAMPTZ := NOW();
+BEGIN
+    IF p_request_id IS NULL THEN
+        RAISE EXCEPTION 'request id is required';
+    END IF;
+
+    SELECT role, organization_id
+    INTO v_actor_role, v_actor_org_id
+    FROM public.profiles
+    WHERE id = v_actor_id;
+
+    IF v_actor_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    SELECT h.organization_id, er.status, er.responder_id, er.ambulance_id
+    INTO v_req_org_id, v_req_status, v_req_responder_id, v_ambulance_id
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = p_request_id
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Emergency request not found';
+    END IF;
+
+    IF NOT v_is_admin THEN
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_actor_org_id IS NULL OR v_req_org_id IS DISTINCT FROM v_actor_org_id THEN
+                RAISE EXCEPTION 'Unauthorized';
+            END IF;
+        ELSIF v_actor_role = 'provider' THEN
+            IF v_req_responder_id IS DISTINCT FROM v_actor_id THEN
+                RAISE EXCEPTION 'Unauthorized';
+            END IF;
+        ELSE
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+    END IF;
+
+    IF v_req_status NOT IN ('in_progress', 'accepted', 'arrived') THEN
+        RAISE EXCEPTION 'Cannot update responder location for terminal request status: %', v_req_status;
+    END IF;
+
+    IF v_req_responder_id IS NULL AND v_ambulance_id IS NULL THEN
+        RAISE EXCEPTION 'Cannot update responder location before dispatch';
+    END IF;
+
+    v_location := public.jsonb_to_point_geometry(p_location);
+    IF v_location IS NULL THEN
+        RAISE EXCEPTION 'Invalid responder location payload';
+    END IF;
+
+    IF p_heading IS NOT NULL THEN
+        IF p_heading::TEXT IN ('NaN', 'Infinity', '-Infinity') THEN
+            RAISE EXCEPTION 'Invalid responder heading';
+        END IF;
+        v_heading := p_heading - FLOOR(p_heading / 360::DOUBLE PRECISION) * 360::DOUBLE PRECISION;
+        IF v_heading < 0 THEN
+            v_heading := v_heading + 360::DOUBLE PRECISION;
+        END IF;
+    ELSE
+        v_heading := NULL;
+    END IF;
+
+    UPDATE public.emergency_requests
+    SET responder_location = v_location,
+        responder_heading = COALESCE(v_heading, responder_heading),
+        updated_at = v_now
+    WHERE id = p_request_id;
+
+    IF v_ambulance_id IS NOT NULL THEN
+        UPDATE public.ambulances
+        SET location = v_location,
+            updated_at = v_now
+        WHERE id = v_ambulance_id;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'request_id', p_request_id,
+        'status', v_req_status,
+        'updated_at', v_now
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+COMMIT;
 -- 5. Hospitals RLS visibility fix (admin parity + imported hospitals visibility for admins)
 BEGIN;
 
@@ -244,6 +400,7 @@ BEGIN
     SELECT d.id INTO v_doctor_id
     FROM public.doctors d
     WHERE d.hospital_id = NEW.hospital_id
+      AND COALESCE(d.status, 'available') = 'available'
       AND d.is_available = true
       AND COALESCE(d.current_patients, 0) < COALESCE(NULLIF(d.max_patients, 0), 1)
       AND (
@@ -261,6 +418,7 @@ BEGIN
       CASE WHEN d.specialization = v_specialty THEN 0 ELSE 1 END,
       COALESCE(d.current_patients, 0) ASC,
       d.created_at ASC
+    FOR UPDATE OF d SKIP LOCKED
     LIMIT 1;
 
     IF v_doctor_id IS NOT NULL THEN

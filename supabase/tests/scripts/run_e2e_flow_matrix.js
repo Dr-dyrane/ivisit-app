@@ -52,6 +52,39 @@ async function safeDelete(table, col, value) {
   if (error) throw error;
 }
 
+async function deleteEmergencyRequestsWithTransitionCascade(requestIds) {
+  const ids = [...new Set((requestIds || []).filter(Boolean))];
+  if (ids.length === 0) return;
+
+  const literals = ids.map((id) => `'${id}'::uuid`).join(', ');
+  const sql = `
+DO $$
+BEGIN
+  ALTER TABLE public.emergency_status_transitions
+    DISABLE TRIGGER trg_emergency_status_transitions_append_only;
+
+  DELETE FROM public.emergency_requests
+  WHERE id IN (${literals});
+
+  ALTER TABLE public.emergency_status_transitions
+    ENABLE TRIGGER trg_emergency_status_transitions_append_only;
+EXCEPTION WHEN OTHERS THEN
+  ALTER TABLE public.emergency_status_transitions
+    ENABLE TRIGGER trg_emergency_status_transitions_append_only;
+  RAISE;
+END;
+$$;
+  `;
+
+  const { data, error } = await supabase.rpc('exec_sql', { sql });
+  if (error) {
+    throw new Error(`delete emergency_requests via exec_sql failed: ${error.message}`);
+  }
+  if (!data?.success) {
+    throw new Error(`delete emergency_requests via exec_sql rejected: ${data?.error || 'unknown error'}`);
+  }
+}
+
 async function cleanup(ctx, report) {
   const warnings = [];
   let emergencyRowsDeleted = true;
@@ -72,11 +105,7 @@ async function cleanup(ctx, report) {
   if (ctx.requestIds.size > 0) {
     const reqIds = [...ctx.requestIds];
     await safe('delete emergency_requests', async () => {
-      const { error } = await supabase.from('emergency_requests').delete().in('id', reqIds);
-      if (error) {
-        emergencyRowsDeleted = false;
-        throw error;
-      }
+      await deleteEmergencyRequestsWithTransitionCascade(reqIds);
     });
 
     if (emergencyRowsDeleted) {
@@ -93,7 +122,16 @@ async function cleanup(ctx, report) {
         if (error) throw error;
       });
       await safe('delete payments', async () => {
-        const { error } = await supabase.from('payments').delete().in('emergency_request_id', reqIds);
+        let q = supabase.from('payments').delete().in('emergency_request_id', reqIds);
+        if (ctx.paymentIds.size > 0) {
+          q = q.or(`id.in.(${[...ctx.paymentIds].join(',')})`);
+        }
+        const { error } = await q;
+        if (error) throw error;
+      });
+      await safe('delete org payments', async () => {
+        if (!ctx.orgId) return;
+        const { error } = await supabase.from('payments').delete().eq('organization_id', ctx.orgId);
         if (error) throw error;
       });
     } else {
@@ -346,6 +384,10 @@ async function run() {
     const cardVisit = await qOne('visits', 'id,request_id,status,type', 'request_id', cardCreate.request_id);
     const cardPayment = await qOne('payments', 'id,status,payment_method,emergency_request_id,organization_id,amount', 'id', cardCreate.payment_id);
     const ambAfterCard = await qOne('ambulances', 'id,status,current_call', 'id', foundation.ambulance.id);
+    const { data: cardDoctorAssignments, error: cardDoctorAssignmentsErr } = await supabase
+      .from('emergency_doctor_assignments')
+      .select('doctor_id,status')
+      .eq('emergency_request_id', cardReq.id);
 
     report.scenarios.cardAmbulance = {
       createResult: cardCreate,
@@ -353,12 +395,17 @@ async function run() {
       visit: cardVisit,
       payment: cardPayment,
       ambulance: ambAfterCard,
+      doctorAssignments: cardDoctorAssignmentsErr ? { error: cardDoctorAssignmentsErr.message } : (cardDoctorAssignments || []),
       assertions: {
         visitCreated: !!cardVisit.id,
         paymentCompleted: cardPayment.status === 'completed',
         emergencyHasPaymentStatus: ['pending', 'paid', 'completed'].includes(cardReq.payment_status),
         dispatchAssigned: !!cardReq.ambulance_id && !!cardReq.responder_id,
-        ambulanceCurrentCallLinked: ambAfterCard.current_call === cardReq.id
+        ambulanceCurrentCallLinked: ambAfterCard.current_call === cardReq.id,
+        doctorAutoAssigned: !!cardReq.assigned_doctor_id,
+        doctorAssignmentRowExists:
+          !cardDoctorAssignmentsErr &&
+          (cardDoctorAssignments || []).some((row) => row.status === 'assigned' && row.doctor_id === cardReq.assigned_doctor_id)
       }
     };
 
@@ -402,12 +449,17 @@ async function run() {
     } else {
       const completeUpdate = await qOne(
         'emergency_requests',
-        'id,status,total_cost,completed_at,payment_status',
+        'id,status,total_cost,completed_at,payment_status,assigned_doctor_id,doctor_assigned_at',
         'id',
         cardReq.id
       );
       const visitAfterComplete = await qOne('visits', 'id,request_id,status,cost', 'request_id', cardReq.id);
       const ambAfterComplete = await qOne('ambulances', 'id,status,current_call', 'id', foundation.ambulance.id);
+      const doctorAfterComplete = await qOne('doctors', 'id,current_patients', 'id', foundation.doctor.id);
+      const { data: doctorAssignmentsAfterComplete, error: doctorAssignmentsAfterCompleteErr } = await supabase
+        .from('emergency_doctor_assignments')
+        .select('doctor_id,status')
+        .eq('emergency_request_id', cardReq.id);
       const { data: billingRows, error: billingErr } = await supabase
         .from('insurance_billing')
         .select('id,emergency_request_id,status,total_amount')
@@ -418,11 +470,20 @@ async function run() {
         emergency: completeUpdate,
         visit: visitAfterComplete,
         ambulance: ambAfterComplete,
+        doctor: doctorAfterComplete,
+        doctorAssignments: doctorAssignmentsAfterCompleteErr
+          ? { error: doctorAssignmentsAfterCompleteErr.message }
+          : (doctorAssignmentsAfterComplete || []),
         insuranceBilling: billingErr ? { error: billingErr.message } : (billingRows || []),
         assertions: {
           visitCompleted: visitAfterComplete.status === 'completed',
           visitCostSynced: String(visitAfterComplete.cost || '') === '155',
-          ambulanceReleased: ambAfterComplete.status === 'available' && ambAfterComplete.current_call === null
+          ambulanceReleased: ambAfterComplete.status === 'available' && ambAfterComplete.current_call === null,
+          doctorLinkCleared: completeUpdate.assigned_doctor_id === null && completeUpdate.doctor_assigned_at === null,
+          doctorCounterReleased: Number(doctorAfterComplete.current_patients || 0) === 0,
+          assignmentRowsTerminal:
+            !doctorAssignmentsAfterCompleteErr &&
+            (doctorAssignmentsAfterComplete || []).every((row) => row.status !== 'assigned')
         }
       };
     }

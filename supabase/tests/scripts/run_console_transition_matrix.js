@@ -102,6 +102,39 @@ async function settleActiveEmergencyRequestsForUser(userId) {
   }
 }
 
+async function deleteEmergencyRequestsWithTransitionCascade(requestIds) {
+  const ids = [...new Set((requestIds || []).filter(Boolean))];
+  if (ids.length === 0) return;
+
+  const literals = ids.map((id) => `'${id}'::uuid`).join(', ');
+  const sql = `
+DO $$
+BEGIN
+  ALTER TABLE public.emergency_status_transitions
+    DISABLE TRIGGER trg_emergency_status_transitions_append_only;
+
+  DELETE FROM public.emergency_requests
+  WHERE id IN (${literals});
+
+  ALTER TABLE public.emergency_status_transitions
+    ENABLE TRIGGER trg_emergency_status_transitions_append_only;
+EXCEPTION WHEN OTHERS THEN
+  ALTER TABLE public.emergency_status_transitions
+    ENABLE TRIGGER trg_emergency_status_transitions_append_only;
+  RAISE;
+END;
+$$;
+  `;
+
+  const { data, error } = await admin.rpc('exec_sql', { sql });
+  if (error) {
+    throw new Error(`delete emergency_requests via exec_sql failed: ${error.message}`);
+  }
+  if (!data?.success) {
+    throw new Error(`delete emergency_requests via exec_sql rejected: ${data?.error || 'unknown error'}`);
+  }
+}
+
 function makeResult(caseId, role, action, fromStatus, expectSuccess) {
   return {
     caseId,
@@ -225,15 +258,16 @@ async function main() {
     };
 
     // Helper to create isolated request for each case
-    const createRequest = async ({ status, responderId = null }) => {
+    const createRequest = async ({ status, responderId = null, ambulanceId = null, serviceType = 'ambulance' }) => {
       const payload = {
         user_id: ctx.users.patient.id,
         hospital_id: ctx.hospitalId,
         hospital_name: hospital.name,
-        service_type: 'ambulance',
+        service_type: serviceType,
         status,
         payment_status: status === 'pending_approval' ? 'pending' : 'completed',
         responder_id: responderId,
+        ambulance_id: ambulanceId,
       };
 
       const { data, error } = await admin
@@ -470,6 +504,97 @@ async function main() {
           });
         },
       },
+      {
+        caseId: 'L1',
+        role: 'orgAdmin',
+        action: 'console_update_responder_location',
+        fromStatus: 'accepted',
+        expectSuccess: true,
+        execute: async (client) => {
+          const requestId = await createRequest({
+            status: 'accepted',
+            responderId: ctx.users.providerAssigned.id,
+            ambulanceId: ctx.ambulanceId,
+          });
+          return client.rpc('console_update_responder_location', {
+            p_request_id: requestId,
+            p_location: { lat: 6.5244, lng: 3.3792 },
+            p_heading: 12.5,
+          });
+        },
+      },
+      {
+        caseId: 'L2',
+        role: 'providerAssigned',
+        action: 'console_update_responder_location',
+        fromStatus: 'arrived',
+        expectSuccess: true,
+        execute: async (client) => {
+          const requestId = await createRequest({
+            status: 'arrived',
+            responderId: ctx.users.providerAssigned.id,
+            ambulanceId: ctx.ambulanceId,
+          });
+          return client.rpc('console_update_responder_location', {
+            p_request_id: requestId,
+            p_location: { lat: 6.5246, lng: 3.3794 },
+            p_heading: 32,
+          });
+        },
+      },
+      {
+        caseId: 'L3',
+        role: 'providerOther',
+        action: 'console_update_responder_location',
+        fromStatus: 'accepted',
+        expectSuccess: false,
+        execute: async (client) => {
+          const requestId = await createRequest({
+            status: 'accepted',
+            responderId: ctx.users.providerAssigned.id,
+            ambulanceId: ctx.ambulanceId,
+          });
+          return client.rpc('console_update_responder_location', {
+            p_request_id: requestId,
+            p_location: { lat: 6.5241, lng: 3.3791 },
+            p_heading: 181,
+          });
+        },
+      },
+      {
+        caseId: 'L4',
+        role: 'orgAdmin',
+        action: 'console_update_responder_location',
+        fromStatus: 'completed',
+        expectSuccess: false,
+        execute: async (client) => {
+          const requestId = await createRequest({
+            status: 'completed',
+            responderId: ctx.users.providerAssigned.id,
+            ambulanceId: ctx.ambulanceId,
+          });
+          return client.rpc('console_update_responder_location', {
+            p_request_id: requestId,
+            p_location: { lat: 6.5244, lng: 3.3792 },
+            p_heading: 280,
+          });
+        },
+      },
+      {
+        caseId: 'L5',
+        role: 'dispatcher',
+        action: 'console_update_responder_location',
+        fromStatus: 'accepted_no_dispatch',
+        expectSuccess: false,
+        execute: async (client) => {
+          const requestId = await createRequest({ status: 'accepted', serviceType: 'bed' });
+          return client.rpc('console_update_responder_location', {
+            p_request_id: requestId,
+            p_location: { lat: 6.5244, lng: 3.3792 },
+            p_heading: 90,
+          });
+        },
+      },
     ];
 
     report.summary.totalCases = cases.length;
@@ -543,11 +668,7 @@ async function main() {
       await safeRun(
         'delete emergency_requests',
         async () => {
-          const { error } = await admin.from('emergency_requests').delete().in('id', reqIds);
-          if (error) {
-            emergencyRowsDeleted = false;
-            throw new Error(error.message);
-          }
+          await deleteEmergencyRequestsWithTransitionCascade(reqIds);
         },
         report.cleanupWarnings
       );

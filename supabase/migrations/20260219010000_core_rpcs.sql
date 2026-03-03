@@ -1724,9 +1724,12 @@ DECLARE
     v_actor_org_id UUID;
     v_is_admin BOOLEAN := public.p_is_admin();
     v_req_org_id UUID;
+    v_req_status TEXT;
     v_req_responder_id UUID;
     v_ambulance_id UUID;
     v_location geometry;
+    v_heading DOUBLE PRECISION;
+    v_now TIMESTAMPTZ := NOW();
 BEGIN
     IF p_request_id IS NULL THEN
         RAISE EXCEPTION 'request id is required';
@@ -1741,8 +1744,8 @@ BEGIN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
 
-    SELECT h.organization_id, er.responder_id, er.ambulance_id
-    INTO v_req_org_id, v_req_responder_id, v_ambulance_id
+    SELECT h.organization_id, er.status, er.responder_id, er.ambulance_id
+    INTO v_req_org_id, v_req_status, v_req_responder_id, v_ambulance_id
     FROM public.emergency_requests er
     LEFT JOIN public.hospitals h ON h.id = er.hospital_id
     WHERE er.id = p_request_id
@@ -1766,25 +1769,50 @@ BEGIN
         END IF;
     END IF;
 
+    IF v_req_status NOT IN ('in_progress', 'accepted', 'arrived') THEN
+        RAISE EXCEPTION 'Cannot update responder location for terminal request status: %', v_req_status;
+    END IF;
+
+    IF v_req_responder_id IS NULL AND v_ambulance_id IS NULL THEN
+        RAISE EXCEPTION 'Cannot update responder location before dispatch';
+    END IF;
+
     v_location := public.jsonb_to_point_geometry(p_location);
     IF v_location IS NULL THEN
         RAISE EXCEPTION 'Invalid responder location payload';
     END IF;
 
+    IF p_heading IS NOT NULL THEN
+        IF p_heading::TEXT IN ('NaN', 'Infinity', '-Infinity') THEN
+            RAISE EXCEPTION 'Invalid responder heading';
+        END IF;
+        v_heading := p_heading - FLOOR(p_heading / 360::DOUBLE PRECISION) * 360::DOUBLE PRECISION;
+        IF v_heading < 0 THEN
+            v_heading := v_heading + 360::DOUBLE PRECISION;
+        END IF;
+    ELSE
+        v_heading := NULL;
+    END IF;
+
     UPDATE public.emergency_requests
     SET responder_location = v_location,
-        responder_heading = COALESCE(p_heading, responder_heading),
-        updated_at = NOW()
+        responder_heading = COALESCE(v_heading, responder_heading),
+        updated_at = v_now
     WHERE id = p_request_id;
 
     IF v_ambulance_id IS NOT NULL THEN
         UPDATE public.ambulances
         SET location = v_location,
-            updated_at = NOW()
+            updated_at = v_now
         WHERE id = v_ambulance_id;
     END IF;
 
-    RETURN jsonb_build_object('success', true, 'request_id', p_request_id);
+    RETURN jsonb_build_object(
+        'success', true,
+        'request_id', p_request_id,
+        'status', v_req_status,
+        'updated_at', v_now
+    );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

@@ -52,6 +52,7 @@ This baseline is intentionally non-strict on pricing and provider assignment, wh
 - Doctor assignment minimum:
   - On actionable emergency transitions (`in_progress`/`accepted` with dispatch activity), auto-assign doctor if capacity exists.
   - If specialty match is unavailable, fallback assignment may select any available in-hospital doctor.
+  - On terminal transitions (`completed`/`cancelled`), doctor assignment rows must be closed and doctor patient counters released deterministically.
 - Pricing:
   - Keep flexible fallback chain (hospital pricing -> global pricing -> defaults).
   - Pricing absence must not hard-break request creation path.
@@ -110,6 +111,9 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
   - Enforces owner check (`user_id == auth.uid()`).
   - Rejects illegal transitions and invalid location payloads.
 - Console responder and dispatcher actions must go through console RPCs.
+- Driver telemetry is active-only and dispatch-only:
+  - `console_update_responder_location` rejects terminal requests and undispached requests.
+  - Heading values are normalized server-side (`0 <= heading < 360`).
 - Cash approval/decline separated to org-admin path (`approve_cash_payment`, `decline_cash_payment`).
 
 ## Verification Snapshot (2026-03-03)
@@ -118,6 +122,10 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
   - `ivisit-app`: no direct runtime `insert/update/delete/upsert` on `emergency_requests`.
   - `ivisit-console`: no direct runtime `insert/update/delete/upsert` on `emergency_requests`.
   - Remaining direct writes are test/seed-only scripts.
+- Closed-loop automation hardening (2026-03-03):
+  - `auto_assign_doctor` now locks candidate rows (`FOR UPDATE SKIP LOCKED`) and filters to available doctor status.
+  - `release_doctor_assignment` now releases all active assignment rows deterministically and clears stale doctor links on the request.
+  - `EmergencyContext` map merge path now applies stale-event guards (timestamp/version gate) across `emergency_requests` + `ambulances` realtime channels.
 - Remote RPC lock fix deployed (linked project `dlwtcmhdzoklveihuhjf`):
   - `console_update_emergency_request`
   - `console_dispatch_emergency`

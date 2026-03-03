@@ -243,6 +243,12 @@ BEGIN
   IF position('FOR UPDATE OF er' in v_def) = 0 THEN
     RAISE EXCEPTION 'console_update_responder_location is missing FOR UPDATE OF er lock semantics';
   END IF;
+  IF position('v_req_status NOT IN (''in_progress'', ''accepted'', ''arrived'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'console_update_responder_location is missing active-status telemetry guard';
+  END IF;
+  IF position('Cannot update responder location before dispatch' in v_def) = 0 THEN
+    RAISE EXCEPTION 'console_update_responder_location is missing dispatch assignment guard';
+  END IF;
 END;
 $$;
   `);
