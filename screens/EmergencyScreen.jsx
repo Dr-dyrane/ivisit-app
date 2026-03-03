@@ -129,6 +129,8 @@ const EmergencyScreen = () => {
 		subtitle: null,
 	});
 	const [quickButtonPulse, setQuickButtonPulse] = useState(false);
+	// DEV ONLY: temporary map-design trigger to preview ambulance motion on route.
+	const [forceAmbulanceAnimation, setForceAmbulanceAnimation] = useState(false);
 
 	// Data state from EmergencyContext
 	const {
@@ -686,8 +688,26 @@ const EmergencyScreen = () => {
 		mode === "emergency"
 			? activeAmbulanceTrip?.hospitalId ?? selectedHospital?.id ?? null
 			: activeBedBooking?.hospitalId ?? selectedHospital?.id ?? null;
-	const animateAmbulance = mode === "emergency" && !!activeAmbulanceTrip;
-	const ambulanceTripEtaSeconds = activeAmbulanceTrip?.etaSeconds ?? null;
+	const canUseDesignAnimation =
+		__DEV__ &&
+		mode === "emergency" &&
+		!!routeHospitalId &&
+		!activeAmbulanceTrip?.requestId;
+	const animateAmbulance =
+		(mode === "emergency" && !!activeAmbulanceTrip) ||
+		(canUseDesignAnimation && forceAmbulanceAnimation);
+	const ambulanceTripEtaSeconds =
+		activeAmbulanceTrip?.etaSeconds ??
+		(canUseDesignAnimation && forceAmbulanceAnimation
+			? currentRoute?.durationSec ?? currentRoute?.duration ?? 180
+			: null);
+
+	useEffect(() => {
+		if (canUseDesignAnimation) return;
+		if (forceAmbulanceAnimation) {
+			setForceAmbulanceAnimation(false);
+		}
+	}, [canUseDesignAnimation, forceAmbulanceAnimation]);
 
 	useEffect(() => {
 		const routeEtaRaw = currentRoute?.durationSec ?? currentRoute?.duration ?? null;
@@ -969,6 +989,31 @@ const EmergencyScreen = () => {
 					v{Constants.expoConfig?.version || '1.0.4'} • {Constants.expoConfig?.extra?.eas?.buildId?.substring(0, 8) || 'dev'}
 				</Text>
 			</View>
+
+			{__DEV__ && mode === "emergency" && (
+				<TouchableOpacity
+					onPress={() => setForceAmbulanceAnimation((prev) => !prev)}
+					disabled={!canUseDesignAnimation}
+					style={[
+						styles.designAnimationToggle,
+						{
+							backgroundColor: forceAmbulanceAnimation
+								? COLORS.brandPrimary
+								: (isDarkMode ? "rgba(17,24,39,0.75)" : "rgba(255,255,255,0.82)"),
+							opacity: canUseDesignAnimation ? 1 : 0.55,
+						},
+					]}
+				>
+					<Text
+						style={[
+							styles.designAnimationToggleText,
+							{ color: forceAmbulanceAnimation ? "#FFFFFF" : (isDarkMode ? "#E5E7EB" : "#111827") },
+						]}
+					>
+						{forceAmbulanceAnimation ? "Ambulance Anim: ON" : "Ambulance Anim: OFF"}
+					</Text>
+				</TouchableOpacity>
+			)}
 		</View>
 	);
 };
@@ -989,5 +1034,18 @@ const styles = StyleSheet.create({
 		fontSize: 10,
 		fontWeight: '500',
 		letterSpacing: 0.5,
+	},
+	designAnimationToggle: {
+		position: "absolute",
+		left: 12,
+		bottom: 78,
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		borderRadius: 20,
+	},
+	designAnimationToggleText: {
+		fontSize: 11,
+		fontWeight: "700",
+		letterSpacing: 0.2,
 	},
 });
