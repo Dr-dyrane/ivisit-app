@@ -62,6 +62,7 @@ const FullScreenEmergencyMap = forwardRef(
 			onRouteCalculated,
 			responderLocation,
 			responderHeading,
+			ambulanceTelemetryHealth = null,
 			sheetSnapIndex = 1,
 		},
 		ref
@@ -402,6 +403,32 @@ const FullScreenEmergencyMap = forwardRef(
 		// Apple Maps does not support Google-style JSON map styling.
 		// Keep iOS premium-muted via mapType + userInterfaceStyle, and apply JSON style on Android.
 		const customMapStyle = Platform.OS === "android" ? mapStyle : undefined;
+		const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
+		const shouldShowTelemetryBanner =
+			!!routeHospitalIdResolved &&
+			(telemetryState === "stale" || telemetryState === "lost");
+		const telemetryBanner = useMemo(() => {
+			if (!shouldShowTelemetryBanner) return null;
+			const ageLabel = ambulanceTelemetryHealth?.ageLabel ?? null;
+			if (telemetryState === "lost") {
+				return {
+					title: "Tracking signal lost",
+					subtitle: ageLabel ? `Last update ${ageLabel} ago` : "Waiting for responder telemetry",
+					icon: "alert-circle",
+					backgroundColor: isDarkMode ? "rgba(127, 29, 29, 0.92)" : "rgba(254, 226, 226, 0.96)",
+					titleColor: isDarkMode ? "#FEE2E2" : "#991B1B",
+					subtitleColor: isDarkMode ? "rgba(254, 226, 226, 0.85)" : "#B91C1C",
+				};
+			}
+			return {
+				title: "Tracking signal delayed",
+				subtitle: ageLabel ? `Last update ${ageLabel} ago` : "Waiting for fresh telemetry",
+				icon: "time",
+				backgroundColor: isDarkMode ? "rgba(120, 53, 15, 0.9)" : "rgba(255, 247, 237, 0.96)",
+				titleColor: isDarkMode ? "#FED7AA" : "#9A3412",
+				subtitleColor: isDarkMode ? "rgba(254, 215, 170, 0.85)" : "#C2410C",
+			};
+		}, [ambulanceTelemetryHealth?.ageLabel, isDarkMode, shouldShowTelemetryBanner, telemetryState]);
 
 		const handleRecenter = useCallback(() => {
 			if (mapRef.current && userLocation) {
@@ -504,6 +531,7 @@ const FullScreenEmergencyMap = forwardRef(
 							ambulanceCoordinate={ambulanceCoordinate}
 							ambulanceHeading={ambulanceHeading}
 							animateAmbulance={animateAmbulance}
+							telemetryHealth={ambulanceTelemetryHealth}
 						/>
 
 						<HospitalMarkers
@@ -515,6 +543,29 @@ const FullScreenEmergencyMap = forwardRef(
 						/>
 					</MapView>
 				</MapErrorBoundary>
+
+				{telemetryBanner && (
+					<View
+						pointerEvents="none"
+						style={[
+							styles.telemetryBanner,
+							{
+								top: insets.top + 12,
+								backgroundColor: telemetryBanner.backgroundColor,
+							},
+						]}
+					>
+						<Ionicons name={telemetryBanner.icon} size={16} color={telemetryBanner.titleColor} />
+						<View style={styles.telemetryBannerTextWrap}>
+							<Text style={[styles.telemetryBannerTitle, { color: telemetryBanner.titleColor }]}>
+								{telemetryBanner.title}
+							</Text>
+							<Text style={[styles.telemetryBannerSubtitle, { color: telemetryBanner.subtitleColor }]}>
+								{telemetryBanner.subtitle}
+							</Text>
+						</View>
+					</View>
+				)}
 
 				{Platform.OS === "ios" ? (
 					<BlurView
@@ -599,6 +650,29 @@ const styles = StyleSheet.create({
 		top: 0,
 		left: 0,
 		right: 0,
+	},
+	telemetryBanner: {
+		position: "absolute",
+		left: 16,
+		right: 16,
+		borderRadius: 16,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	telemetryBannerTextWrap: {
+		marginLeft: 10,
+		flex: 1,
+	},
+	telemetryBannerTitle: {
+		fontSize: 13,
+		fontWeight: "700",
+	},
+	telemetryBannerSubtitle: {
+		fontSize: 11,
+		fontWeight: "500",
+		marginTop: 1,
 	},
 	hospitalMarker: {
 		alignItems: "center",

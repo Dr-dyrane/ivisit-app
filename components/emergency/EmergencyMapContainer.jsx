@@ -21,6 +21,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 		onRouteCalculated,
 		responderLocation,
 		responderHeading,
+		ambulanceTelemetryHealth,
 		sheetSnapIndex,
 		mapStateKey,
 	} = props;
@@ -90,6 +91,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 					onRouteCalculated={onRouteCalculated}
 					responderLocation={responderLocation}
 					responderHeading={responderHeading}
+					ambulanceTelemetryHealth={ambulanceTelemetryHealth}
 					sheetSnapIndex={sheetSnapIndex}
 					mapStateKey={mapStateKey}
 				/>
@@ -111,6 +113,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 					onRouteCalculated={undefined}
 					responderLocation={null}
 					responderHeading={null}
+					ambulanceTelemetryHealth={null}
 					sheetSnapIndex={sheetSnapIndex}
 					mapStateKey={mapStateKey}
 				/>

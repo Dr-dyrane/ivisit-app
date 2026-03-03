@@ -38,17 +38,38 @@ const RouteLayer = ({
     routeCoordinates,
     ambulanceCoordinate,
     ambulanceHeading,
-    animateAmbulance
+    animateAmbulance,
+	telemetryHealth = null,
 }) => {
     const ambulanceSprite = getHeadingSprite(ambulanceHeading);
+	const telemetryState = telemetryHealth?.state ?? "inactive";
+	const routeStrokeColor =
+		telemetryState === "lost"
+			? "#B91C1C"
+			: telemetryState === "stale"
+				? "#B45309"
+				: COLORS.brandPrimary;
+	const routeDashPattern =
+		telemetryState === "lost"
+			? [6, 7]
+			: telemetryState === "stale"
+				? [10, 6]
+				: undefined;
+	const markerOpacity =
+		telemetryState === "lost"
+			? 0.62
+			: telemetryState === "stale"
+				? 0.85
+				: 1;
 
     return (
         <>
             {routeCoordinates && routeCoordinates.length > 1 && (
                 <Polyline
                     coordinates={routeCoordinates}
-                    strokeColor={COLORS.brandPrimary}
-                    strokeWidth={4}
+                    strokeColor={routeStrokeColor}
+                    strokeWidth={telemetryState === "lost" ? 3 : 4}
+					lineDashPattern={routeDashPattern}
                     lineCap="round"
                     lineJoin="round"
                 />
@@ -62,6 +83,7 @@ const RouteLayer = ({
                     image={ambulanceSprite}
                     // optimize for Android by only tracking changes during animation
                     tracksViewChanges={Platform.OS === "ios" || animateAmbulance}
+					opacity={markerOpacity}
                     zIndex={200}
                 />
             )}

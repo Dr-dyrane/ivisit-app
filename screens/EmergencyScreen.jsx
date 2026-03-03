@@ -163,6 +163,7 @@ const EmergencyScreen = () => {
 		selectedHospital,
 		filteredHospitals,
 		activeAmbulanceTrip,
+		ambulanceTelemetryHealth,
 		activeBedBooking,
 		serviceType,
 		selectedSpecialty,
@@ -1090,6 +1091,7 @@ const EmergencyScreen = () => {
 				onRouteCalculated={setCurrentRoute}
 				responderLocation={activeAmbulanceTrip?.currentResponderLocation}
 				responderHeading={activeAmbulanceTrip?.currentResponderHeading}
+				ambulanceTelemetryHealth={ambulanceTelemetryHealth}
 				sheetSnapIndex={sheetSnapIndex}
 			/>
 
@@ -1103,6 +1105,7 @@ const EmergencyScreen = () => {
 				allHospitals={allHospitals || hospitals}
 				selectedHospital={selectedHospital}
 				activeAmbulanceTrip={activeAmbulanceTrip}
+				ambulanceTelemetryHealth={ambulanceTelemetryHealth}
 				activeBedBooking={activeBedBooking}
 				onCancelAmbulanceTrip={onCancelAmbulanceTrip}
 				onMarkAmbulanceArrived={onMarkAmbulanceArrived}

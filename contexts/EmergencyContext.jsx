@@ -21,6 +21,108 @@ export const EmergencyMode = {
 	BOOKING: "booking",
 };
 
+const AMBULANCE_LIVE_TRACK_STATUSES = new Set(["accepted", "in_progress", "arrived"]);
+const TELEMETRY_STALE_THRESHOLD_MS = 30000;
+const TELEMETRY_LOST_THRESHOLD_MS = 120000;
+
+const parseTimestampMs = (value) => {
+	if (!value) return null;
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return value;
+	}
+	if (typeof value === "string" && value.trim()) {
+		const parsed = Date.parse(value);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+};
+
+const formatTelemetryAge = (ageSeconds) => {
+	if (!Number.isFinite(ageSeconds) || ageSeconds < 0) return null;
+	if (ageSeconds < 60) return `${Math.round(ageSeconds)}s`;
+	const mins = Math.floor(ageSeconds / 60);
+	const secs = ageSeconds % 60;
+	if (secs <= 0) return `${mins}m`;
+	return `${mins}m ${secs}s`;
+};
+
+const deriveAmbulanceTelemetryHealth = (trip, nowMs = Date.now()) => {
+	const tripKey = trip?.requestId ?? trip?.id ?? null;
+	if (!tripKey) {
+		return {
+			state: "inactive",
+			ageMs: null,
+			ageSeconds: null,
+			ageLabel: null,
+			lastUpdateAt: null,
+			hasResponderLocation: false,
+			staleAfterMs: TELEMETRY_STALE_THRESHOLD_MS,
+			lostAfterMs: TELEMETRY_LOST_THRESHOLD_MS,
+			isFresh: false,
+			isStale: false,
+			isLost: false,
+			summary: null,
+		};
+	}
+
+	const status = String(trip?.status ?? "").toLowerCase();
+	const isTrackedStatus = AMBULANCE_LIVE_TRACK_STATUSES.has(status);
+	const hasResponderLocation = !!(
+		trip?.currentResponderLocation ||
+		trip?.assignedAmbulance?.location
+	);
+	const rawTelemetryTs = trip?.responderTelemetryAt ?? trip?.updatedAt ?? null;
+	const telemetryTsMs = parseTimestampMs(rawTelemetryTs);
+
+	if (!isTrackedStatus || !hasResponderLocation || !telemetryTsMs) {
+		return {
+			state: "inactive",
+			ageMs: null,
+			ageSeconds: null,
+			ageLabel: null,
+			lastUpdateAt: rawTelemetryTs,
+			hasResponderLocation,
+			staleAfterMs: TELEMETRY_STALE_THRESHOLD_MS,
+			lostAfterMs: TELEMETRY_LOST_THRESHOLD_MS,
+			isFresh: false,
+			isStale: false,
+			isLost: false,
+			summary: null,
+		};
+	}
+
+	const ageMs = Math.max(0, nowMs - telemetryTsMs);
+	const ageSeconds = Math.floor(ageMs / 1000);
+	const ageLabel = formatTelemetryAge(ageSeconds);
+
+	let state = "live";
+	if (ageMs > TELEMETRY_LOST_THRESHOLD_MS) {
+		state = "lost";
+	} else if (ageMs > TELEMETRY_STALE_THRESHOLD_MS) {
+		state = "stale";
+	}
+
+	return {
+		state,
+		ageMs,
+		ageSeconds,
+		ageLabel,
+		lastUpdateAt: rawTelemetryTs,
+		hasResponderLocation,
+		staleAfterMs: TELEMETRY_STALE_THRESHOLD_MS,
+		lostAfterMs: TELEMETRY_LOST_THRESHOLD_MS,
+		isFresh: state === "live",
+		isStale: state === "stale",
+		isLost: state === "lost",
+		summary:
+			state === "lost"
+				? `Signal lost ${ageLabel ? `${ageLabel} ago` : ""}`.trim()
+				: state === "stale"
+					? `Signal delayed ${ageLabel ? `${ageLabel} ago` : ""}`.trim()
+					: "Live tracking",
+	};
+};
+
 /**
  * Helper to enrich hospitals with service types.
  * Used by both the initial sync effect and the updateHospitals callback.
@@ -202,6 +304,7 @@ export function EmergencyProvider({ children }) {
 	const lastHydratedAmbulanceIdRef = useRef(null);
 	const isHydratingAmbulanceRef = useRef(false);
 	const activeAmbulanceEventRef = useRef({ requestKey: null, versionMs: 0 });
+	const [telemetryNowMs, setTelemetryNowMs] = useState(Date.now());
 
 	// Emergency mode state
 	const [serviceType, setServiceType] = useState(null); // null = show all, "premium" or "standard"
@@ -325,6 +428,24 @@ export function EmergencyProvider({ children }) {
 		activeAmbulanceEventRef.current = { requestKey, versionMs: nextVersionMs };
 		return true;
 	};
+
+	useEffect(() => {
+		const shouldTrack =
+			!!activeAmbulanceTrip?.requestId &&
+			AMBULANCE_LIVE_TRACK_STATUSES.has(String(activeAmbulanceTrip?.status ?? "").toLowerCase());
+		if (!shouldTrack) return;
+
+		setTelemetryNowMs(Date.now());
+		const intervalId = setInterval(() => {
+			setTelemetryNowMs(Date.now());
+		}, 5000);
+		return () => clearInterval(intervalId);
+	}, [activeAmbulanceTrip?.requestId, activeAmbulanceTrip?.status]);
+
+	const ambulanceTelemetryHealth = useMemo(
+		() => deriveAmbulanceTelemetryHealth(activeAmbulanceTrip, telemetryNowMs),
+		[activeAmbulanceTrip, telemetryNowMs]
+	);
 
 	// Real-time Subscription to Emergency Requests
 	useEffect(() => {
@@ -1114,6 +1235,7 @@ export function EmergencyProvider({ children }) {
 			mode,
 			userLocation,
 			activeAmbulanceTrip,
+			ambulanceTelemetryHealth,
 			activeBedBooking,
 			serviceType,
 			selectedSpecialty,
@@ -1148,6 +1270,7 @@ export function EmergencyProvider({ children }) {
 			mode,
 			userLocation,
 			activeAmbulanceTrip,
+			ambulanceTelemetryHealth,
 			activeBedBooking,
 			serviceType,
 			selectedSpecialty,

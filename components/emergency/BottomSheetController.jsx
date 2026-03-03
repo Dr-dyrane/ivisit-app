@@ -11,6 +11,7 @@ export const BottomSheetController = forwardRef((props, ref) => {
 		allHospitals,
 		selectedHospital,
 		activeAmbulanceTrip,
+		ambulanceTelemetryHealth,
 		activeBedBooking,
 		onCancelAmbulanceTrip,
 		onMarkAmbulanceArrived,
@@ -85,6 +86,7 @@ export const BottomSheetController = forwardRef((props, ref) => {
 			allHospitals={allHospitals}
 			selectedHospital={selectedHospital}
 			activeAmbulanceTrip={activeAmbulanceTrip}
+			ambulanceTelemetryHealth={ambulanceTelemetryHealth}
 			activeBedBooking={activeBedBooking}
 			onCancelAmbulanceTrip={wrappedOnCancelAmbulanceTrip}
 			onMarkAmbulanceArrived={onMarkAmbulanceArrived}
