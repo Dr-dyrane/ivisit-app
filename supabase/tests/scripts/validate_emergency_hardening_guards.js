@@ -161,6 +161,7 @@ BEGIN
     'create_emergency_v4(uuid,jsonb,jsonb)',
     'approve_cash_payment(uuid,uuid)',
     'decline_cash_payment(uuid,uuid)',
+    'process_cash_payment(uuid,uuid,numeric)',
     'process_cash_payment_v2(uuid,uuid,numeric,text)',
     'notify_cash_approval_org_admins(uuid,uuid,numeric,numeric,text,text,text,uuid)',
     'console_create_emergency_request(jsonb)',
@@ -200,6 +201,35 @@ BEGIN
   SELECT pg_get_functiondef('public.notify_cash_approval_org_admins(uuid,uuid,numeric,numeric,text,text,text,uuid)'::regprocedure) INTO v_def;
   IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
     RAISE EXCEPTION 'notify_cash_approval_org_admins missing strict operator role gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.approve_cash_payment(uuid,uuid)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'approve_cash_payment missing strict operator role gate';
+  END IF;
+  IF position('p.emergency_request_id = p_request_id' in v_def) = 0 THEN
+    RAISE EXCEPTION 'approve_cash_payment missing payment/request integrity gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.decline_cash_payment(uuid,uuid)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'decline_cash_payment missing strict operator role gate';
+  END IF;
+  IF position('p.emergency_request_id = p_request_id' in v_def) = 0 THEN
+    RAISE EXCEPTION 'decline_cash_payment missing payment/request integrity gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.process_cash_payment_v2(uuid,uuid,numeric,text)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'process_cash_payment_v2 missing strict operator role gate';
+  END IF;
+  IF position('v_request_org_id IS DISTINCT FROM p_organization_id' in v_def) = 0 THEN
+    RAISE EXCEPTION 'process_cash_payment_v2 missing request/org integrity gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.process_cash_payment(uuid,uuid,numeric)'::regprocedure) INTO v_def;
+  IF position('public.p_is_console_allowed()' in v_def) = 0 THEN
+    RAISE EXCEPTION 'process_cash_payment missing console role gate';
   END IF;
 END;
 $$;

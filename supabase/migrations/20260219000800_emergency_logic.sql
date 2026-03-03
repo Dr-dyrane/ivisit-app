@@ -505,7 +505,15 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION public.approve_cash_payment(p_payment_id UUID, p_request_id UUID)
 RETURNS JSONB AS $$
 DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_payment RECORD;
+    v_request_org_id UUID;
+    v_request_status TEXT;
+    v_request_payment_status TEXT;
     v_request_service_type TEXT;
     v_org_wallet_id UUID;
     v_org_balance NUMERIC;
@@ -518,25 +526,76 @@ DECLARE
     v_responder_vehicle_type TEXT;
     v_responder_vehicle_plate TEXT;
 BEGIN
-    -- 1. Verify Payment & Resolve Data
+    -- 1. Verify Payment/Request Integrity + lock target rows
     SELECT p.*, (p.metadata->>'fee_amount')::NUMERIC as calculated_fee 
     INTO v_payment 
     FROM public.payments p 
-    WHERE p.id = p_payment_id AND p.status = 'pending';
+    WHERE p.id = p_payment_id
+      AND p.status = 'pending'
+      AND p.emergency_request_id = p_request_id
+    FOR UPDATE;
     
     IF v_payment.id IS NULL THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Pending payment not found');
+        RETURN jsonb_build_object('success', false, 'error', 'Pending payment/request pair not found');
     END IF;
 
-    SELECT service_type
-    INTO v_request_service_type
+    SELECT service_type, organization_id, status, payment_status
+    INTO v_request_service_type, v_request_org_id, v_request_status, v_request_payment_status
     FROM public.emergency_requests
-    WHERE id = p_request_id;
+    WHERE id = p_request_id
+    FOR UPDATE OF emergency_requests;
 
-    -- 2. Guard: Auto-provision Org Wallet if missing
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Emergency request not found');
+    END IF;
+
+    IF v_payment.organization_id IS DISTINCT FROM v_request_org_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Payment/request organization mismatch');
+    END IF;
+
+    IF v_request_status NOT IN ('pending_approval', 'pending') THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Request is not awaiting cash approval',
+            'request_status', v_request_status
+        );
+    END IF;
+
+    IF COALESCE(v_request_payment_status, 'pending') NOT IN ('pending', 'requires_approval') THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Request payment is not in a pending approval state',
+            'payment_status', v_request_payment_status
+        );
+    END IF;
+
+    -- 2. Authorization (service_role bypass; authenticated callers must be operator-scoped)
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for cash approval';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id THEN
+                RAISE EXCEPTION 'Unauthorized: request outside actor organization';
+            END IF;
+        END IF;
+    END IF;
+
+    -- 3. Guard: Auto-provision Org Wallet if missing
     SELECT id, balance INTO v_org_wallet_id, v_org_balance 
     FROM public.organization_wallets 
-    WHERE organization_id = v_payment.organization_id;
+    WHERE organization_id = v_payment.organization_id
+    FOR UPDATE;
 
     IF v_org_wallet_id IS NULL AND v_payment.organization_id IS NOT NULL THEN
         INSERT INTO public.organization_wallets (organization_id, balance)
@@ -544,12 +603,12 @@ BEGIN
         RETURNING id, balance INTO v_org_wallet_id, v_org_balance;
     END IF;
     
-    SELECT id INTO v_platform_wallet_id FROM public.ivisit_main_wallet LIMIT 1;
+    SELECT id INTO v_platform_wallet_id FROM public.ivisit_main_wallet LIMIT 1 FOR UPDATE;
 
-    -- 3. Check for Platform Fee
+    -- 4. Check for Platform Fee
     v_fee_amount := COALESCE(v_payment.ivisit_fee_amount, v_payment.calculated_fee, 0);
 
-    -- 4. Execute Ledger Operations (only if fee > 0)
+    -- 5. Execute Ledger Operations (only if fee > 0)
     IF v_fee_amount > 0 THEN
         IF v_org_balance < v_fee_amount THEN
             RETURN jsonb_build_object('success', false, 'error', 'Organization balance insufficient for platform fee');
@@ -566,7 +625,7 @@ BEGIN
         VALUES (v_platform_wallet_id, v_fee_amount, 'credit', 'Platform Fee (Cash Payment)', p_payment_id);
     END IF;
 
-    -- 5. Finalize Statuses
+    -- 6. Finalize Statuses
     UPDATE public.payments SET status = 'completed', processed_at = NOW(), updated_at = NOW() WHERE id = p_payment_id;
     UPDATE public.emergency_requests
     SET status = 'accepted', payment_status = 'completed', updated_at = NOW()
@@ -649,7 +708,80 @@ CREATE OR REPLACE FUNCTION public.decline_cash_payment(
     p_payment_id UUID,
     p_request_id UUID
 ) RETURNS JSONB AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_payment RECORD;
+    v_request_org_id UUID;
+    v_request_status TEXT;
+    v_request_payment_status TEXT;
 BEGIN
+    SELECT p.*
+    INTO v_payment
+    FROM public.payments p
+    WHERE p.id = p_payment_id
+      AND p.status = 'pending'
+      AND p.emergency_request_id = p_request_id
+    FOR UPDATE;
+
+    IF v_payment.id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Pending payment/request pair not found');
+    END IF;
+
+    SELECT organization_id, status, payment_status
+    INTO v_request_org_id, v_request_status, v_request_payment_status
+    FROM public.emergency_requests
+    WHERE id = p_request_id
+    FOR UPDATE OF emergency_requests;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Emergency request not found');
+    END IF;
+
+    IF v_payment.organization_id IS DISTINCT FROM v_request_org_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Payment/request organization mismatch');
+    END IF;
+
+    IF v_request_status NOT IN ('pending_approval', 'pending') THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Request is not awaiting cash approval',
+            'request_status', v_request_status
+        );
+    END IF;
+
+    IF COALESCE(v_request_payment_status, 'pending') NOT IN ('pending', 'requires_approval') THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Request payment is not in a pending approval state',
+            'payment_status', v_request_payment_status
+        );
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for cash decline';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher') THEN
+            IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id THEN
+                RAISE EXCEPTION 'Unauthorized: request outside actor organization';
+            END IF;
+        END IF;
+    END IF;
+
     UPDATE public.payments SET status = 'failed', updated_at = NOW() WHERE id = p_payment_id;
     UPDATE public.emergency_requests
     SET status = 'payment_declined', payment_status = 'failed', updated_at = NOW()
@@ -669,18 +801,65 @@ CREATE OR REPLACE FUNCTION public.process_cash_payment_v2(
     p_currency TEXT DEFAULT 'USD'
 ) RETURNS JSONB AS $$
 DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_user_id UUID;
+    v_request_org_id UUID;
+    v_request_status TEXT;
     v_fee_amount NUMERIC;
     v_fee_percentage NUMERIC;
     v_payment_id UUID;
 BEGIN
-    -- 1. Get User ID and Fee Config
-    SELECT user_id INTO v_user_id FROM public.emergency_requests WHERE id = p_emergency_request_id;
+    -- 1. Validate actor scope for a mutation RPC
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for cash processing';
+        END IF;
+    END IF;
+
+    -- 2. Validate request scope + lock target row
+    SELECT user_id, organization_id, status
+    INTO v_user_id, v_request_org_id, v_request_status
+    FROM public.emergency_requests
+    WHERE id = p_emergency_request_id
+    FOR UPDATE OF emergency_requests;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Emergency request not found');
+    END IF;
+
+    IF v_request_org_id IS DISTINCT FROM p_organization_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Request/organization mismatch');
+    END IF;
+
+    IF NOT v_is_service_role AND v_actor_role IN ('org_admin', 'dispatcher') THEN
+        IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM p_organization_id THEN
+            RAISE EXCEPTION 'Unauthorized: request outside actor organization';
+        END IF;
+    END IF;
+
+    IF v_request_status IN ('cancelled', 'completed') THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Request is not eligible for manual cash processing');
+    END IF;
+
+    -- 3. Get Fee Config
     SELECT ivisit_fee_percentage INTO v_fee_percentage FROM public.organizations WHERE id = p_organization_id;
     
     v_fee_amount := p_amount * (COALESCE(v_fee_percentage, 2.5) / 100);
 
-    -- 2. Create Completed Payment
+    -- 4. Create Completed Payment
     INSERT INTO public.payments (
         user_id, 
         emergency_request_id, 
@@ -704,6 +883,11 @@ BEGIN
         NOW()
     )
     RETURNING id INTO v_payment_id;
+
+    UPDATE public.emergency_requests
+    SET payment_status = 'completed',
+        updated_at = NOW()
+    WHERE id = p_emergency_request_id;
 
     RETURN jsonb_build_object(
         'success', true, 
