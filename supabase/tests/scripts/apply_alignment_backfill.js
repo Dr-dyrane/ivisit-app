@@ -81,6 +81,11 @@ async function countRows(table) {
   return count || 0;
 }
 
+async function execSql(sql) {
+  const { error } = await supabase.rpc('exec_sql', { sql });
+  if (error) throw new Error(`[exec_sql] failed: ${error.message || error.code}`);
+}
+
 async function run() {
   const startedAt = nowIso();
   console.log(`[alignment-backfill] Starting at ${startedAt}`);
@@ -334,6 +339,44 @@ async function run() {
     }
   }
 
+  const invalidDispatchPhaseAmbulanceRequests = emergencies.filter((er) =>
+    er.service_type === 'ambulance'
+    && (er.status === 'accepted' || er.status === 'arrived')
+    && (!er.hospital_id || !er.ambulance_id || !er.responder_id)
+  );
+
+  report.steps.ambulance_invalid_dispatch_phase_cancelled = {
+    candidateCount: invalidDispatchPhaseAmbulanceRequests.length,
+    updatedCount: 0
+  };
+
+  if (APPLY && invalidDispatchPhaseAmbulanceRequests.length > 0) {
+    await execSql(`
+DO $$
+BEGIN
+  PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+  PERFORM set_config('ivisit.transition_source', 'alignment_backfill', true);
+  PERFORM set_config('ivisit.transition_reason', 'invalid_dispatch_phase_ambulance_assignment', true);
+  PERFORM set_config('ivisit.transition_actor_role', 'automation', true);
+
+  UPDATE public.emergency_requests er
+  SET status = 'cancelled',
+      cancelled_at = COALESCE(er.cancelled_at, NOW()),
+      updated_at = NOW()
+  WHERE er.service_type = 'ambulance'
+    AND er.status IN ('accepted', 'arrived')
+    AND (
+      er.hospital_id IS NULL
+      OR er.ambulance_id IS NULL
+      OR er.responder_id IS NULL
+    );
+END;
+$$;
+    `);
+    report.steps.ambulance_invalid_dispatch_phase_cancelled.updatedCount =
+      invalidDispatchPhaseAmbulanceRequests.length;
+  }
+
   report.postflight = {
     organizations: await countRows('organizations'),
     organization_wallets: await countRows('organization_wallets'),
@@ -356,6 +399,8 @@ async function run() {
     report.steps.visit_backfill_from_emergencies.missingEmergencyCount, '->', report.steps.visit_backfill_from_emergencies.insertedCount);
   console.log('[alignment-backfill] payment org links updated:',
     report.steps.payment_org_backfill_from_emergency_hospital.updatedCount);
+  console.log('[alignment-backfill] invalid dispatch-phase ambulance requests cancelled:',
+    report.steps.ambulance_invalid_dispatch_phase_cancelled.updatedCount);
 
   if (!APPLY) {
     console.log('[alignment-backfill] Dry-run only. Re-run with --apply to execute writes.');

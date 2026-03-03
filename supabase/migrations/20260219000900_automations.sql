@@ -186,7 +186,9 @@ BEGIN
     IF v_should_attempt THEN
         SELECT id, profile_id INTO v_amb_id, v_driver_id
         FROM public.ambulances
-        WHERE hospital_id = NEW.hospital_id AND status = 'available'
+        WHERE hospital_id = NEW.hospital_id
+          AND status = 'available'
+          AND profile_id IS NOT NULL
         LIMIT 1;
 
         IF v_amb_id IS NOT NULL THEN
@@ -485,6 +487,7 @@ BEGIN
         FROM public.ambulances a
         WHERE a.hospital_id = NEW.hospital_id
           AND a.status = 'available'
+          AND a.profile_id IS NOT NULL
         ORDER BY a.created_at ASC
         FOR UPDATE SKIP LOCKED
         LIMIT 1

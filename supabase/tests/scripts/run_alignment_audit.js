@@ -217,9 +217,17 @@ async function run() {
     .map(([requestId, arr]) => ({ requestId, count: arr.length, visitIds: arr.map((v) => v.id) }));
 
   const activeStatuses = new Set(['in_progress', 'accepted', 'arrived']);
+  const dispatchPhaseStatuses = new Set(['accepted', 'arrived']);
   const activeEmergencies = emergencies.filter((e) => activeStatuses.has(e.status));
   const activeAmbulanceEmergencies = activeEmergencies.filter((e) => e.service_type === 'ambulance');
   const activeNonAmbulanceEmergencies = activeEmergencies.filter((e) => e.service_type !== 'ambulance');
+  const dispatchPhaseAmbulanceEmergencies = activeAmbulanceEmergencies.filter((e) =>
+    dispatchPhaseStatuses.has(e.status)
+  );
+  const dispatchPhaseMissingAssignments = dispatchPhaseAmbulanceEmergencies.filter((e) =>
+    !e.ambulance_id || !e.responder_id
+  );
+  const dispatchPhaseMissingHospital = dispatchPhaseAmbulanceEmergencies.filter((e) => !e.hospital_id);
 
   const dispatchHealth = {
     activeCount: activeEmergencies.length,
@@ -229,10 +237,22 @@ async function run() {
     }, {}),
     ambulanceFlow: {
       activeCount: activeAmbulanceEmergencies.length,
+      dispatchPhaseCount: dispatchPhaseAmbulanceEmergencies.length,
       withAmbulanceId: activeAmbulanceEmergencies.filter((e) => !!e.ambulance_id).length,
       withResponderId: activeAmbulanceEmergencies.filter((e) => !!e.responder_id).length,
       withResponderLocation: activeAmbulanceEmergencies.filter((e) => !!e.responder_location).length,
       withPatientLocation: activeAmbulanceEmergencies.filter((e) => !!e.patient_location).length,
+      dispatchPhaseMissingAssignments: dispatchPhaseMissingAssignments.length,
+      dispatchPhaseMissingHospital: dispatchPhaseMissingHospital.length,
+      dispatchPhaseRecords: dispatchPhaseAmbulanceEmergencies.map((e) => ({
+        id: e.id,
+        display_id: e.display_id,
+        status: e.status,
+        service_type: e.service_type,
+        hospital_id: e.hospital_id,
+        ambulance_id: e.ambulance_id,
+        responder_id: e.responder_id
+      })),
       activeRecords: activeAmbulanceEmergencies.map((e) => ({
         id: e.id,
         display_id: e.display_id,
@@ -321,11 +341,11 @@ async function run() {
   if (emergenciesMissingVisits.length > 0) {
     severity.critical.push(`Emergencies missing visits: ${emergenciesMissingVisits.length}`);
   }
-  if (dispatchHealth.ambulanceFlow.activeCount > 0 && dispatchHealth.ambulanceFlow.withResponderId === 0) {
-    severity.critical.push('Active emergencies exist but none has responder_id');
+  if (dispatchHealth.ambulanceFlow.dispatchPhaseMissingHospital > 0) {
+    severity.critical.push(`Dispatch-phase ambulance emergencies missing hospital_id: ${dispatchHealth.ambulanceFlow.dispatchPhaseMissingHospital}`);
   }
-  if (dispatchHealth.ambulanceFlow.activeCount > 0 && dispatchHealth.ambulanceFlow.withAmbulanceId === 0) {
-    severity.critical.push('Active emergencies exist but none has ambulance_id');
+  if (dispatchHealth.ambulanceFlow.dispatchPhaseMissingAssignments > 0) {
+    severity.critical.push(`Dispatch-phase ambulance emergencies missing ambulance_id/responder_id: ${dispatchHealth.ambulanceFlow.dispatchPhaseMissingAssignments}`);
   }
   if (paymentHealth.missingOrganizationLink > 0) {
     severity.medium.push(`Payments missing organization_id: ${paymentHealth.missingOrganizationLink}`);

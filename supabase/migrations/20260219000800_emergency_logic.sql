@@ -508,8 +508,15 @@ BEGIN
     );
 
     -- 1. Extract and Resolve IDs
-    v_hospital_id := (p_request_data->>'hospital_id')::UUID;
+    v_hospital_id := NULLIF(p_request_data->>'hospital_id', '')::UUID;
+    IF v_hospital_id IS NULL THEN
+        RAISE EXCEPTION 'hospital_id is required';
+    END IF;
+
     SELECT organization_id INTO v_organization_id FROM public.hospitals WHERE id = v_hospital_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Hospital not found';
+    END IF;
     
     -- 2. Physical Location Parse
     v_patient_location := ST_SetSRID(ST_MakePoint(
@@ -706,7 +713,7 @@ BEGIN
     -- 6. Finalize Statuses
     UPDATE public.payments SET status = 'completed', processed_at = NOW(), updated_at = NOW() WHERE id = p_payment_id;
     UPDATE public.emergency_requests
-    SET status = 'accepted', payment_status = 'completed', updated_at = NOW()
+    SET status = 'in_progress', payment_status = 'completed', updated_at = NOW()
     WHERE id = p_request_id;
     UPDATE public.visits SET status = 'active', updated_at = NOW() WHERE request_id = p_request_id;
 

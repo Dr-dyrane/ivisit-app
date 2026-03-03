@@ -198,7 +198,35 @@ SELECT 'payment_org_backfill_from_emergency_hospital' AS step, COUNT(*) AS updat
 FROM updated_payments;
 
 -- ---------------------------------------------------------------------------
--- 7) Post-backfill summary
+-- 7) Cancel invalid dispatch-phase ambulance requests.
+--    Criteria: status in accepted/arrived with missing dispatch linkage
+--    (missing hospital_id or ambulance_id or responder_id).
+--    This preserves deterministic lifecycle integrity and clears ghost-active rows.
+-- ---------------------------------------------------------------------------
+SELECT set_config('ivisit.allow_emergency_status_write', '1', true);
+SELECT set_config('ivisit.transition_source', 'alignment_backfill', true);
+SELECT set_config('ivisit.transition_reason', 'invalid_dispatch_phase_ambulance_assignment', true);
+SELECT set_config('ivisit.transition_actor_role', 'automation', true);
+
+WITH normalized_requests AS (
+  UPDATE public.emergency_requests er
+  SET status = 'cancelled',
+      cancelled_at = COALESCE(er.cancelled_at, NOW()),
+      updated_at = NOW()
+  WHERE er.service_type = 'ambulance'
+    AND er.status IN ('accepted', 'arrived')
+    AND (
+      er.hospital_id IS NULL
+      OR er.ambulance_id IS NULL
+      OR er.responder_id IS NULL
+    )
+  RETURNING er.id
+)
+SELECT 'ambulance_invalid_dispatch_phase_cancelled' AS step, COUNT(*) AS updated_rows
+FROM normalized_requests;
+
+-- ---------------------------------------------------------------------------
+-- 8) Post-backfill summary
 -- ---------------------------------------------------------------------------
 SELECT 'post_backfill' AS stage,
        (SELECT COUNT(*) FROM public.organizations) AS organizations_count,

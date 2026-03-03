@@ -54,6 +54,7 @@ async function safeDelete(table, col, value) {
 
 async function cleanup(ctx, report) {
   const warnings = [];
+  let emergencyRowsDeleted = true;
   const safe = async (label, fn) => {
     try { await fn(); } catch (e) { warnings.push(`${label}: ${e.message}`); }
   };
@@ -70,49 +71,61 @@ async function cleanup(ctx, report) {
   // Insurance billing / doctor assignments / visits / payments / emergencies
   if (ctx.requestIds.size > 0) {
     const reqIds = [...ctx.requestIds];
-    await safe('delete insurance_billing', async () => {
-      const { error } = await supabase.from('insurance_billing').delete().in('emergency_request_id', reqIds);
-      if (error) throw error;
-    });
-    await safe('delete emergency_doctor_assignments', async () => {
-      const { error } = await supabase.from('emergency_doctor_assignments').delete().in('emergency_request_id', reqIds);
-      if (error) throw error;
-    });
-    await safe('delete visits', async () => {
-      const { error } = await supabase.from('visits').delete().in('request_id', reqIds);
-      if (error) throw error;
-    });
-    await safe('delete payments', async () => {
-      const { error } = await supabase.from('payments').delete().in('emergency_request_id', reqIds);
-      if (error) throw error;
-    });
     await safe('delete emergency_requests', async () => {
       const { error } = await supabase.from('emergency_requests').delete().in('id', reqIds);
-      if (error) throw error;
+      if (error) {
+        emergencyRowsDeleted = false;
+        throw error;
+      }
     });
+
+    if (emergencyRowsDeleted) {
+      await safe('delete insurance_billing', async () => {
+        const { error } = await supabase.from('insurance_billing').delete().in('emergency_request_id', reqIds);
+        if (error) throw error;
+      });
+      await safe('delete emergency_doctor_assignments', async () => {
+        const { error } = await supabase.from('emergency_doctor_assignments').delete().in('emergency_request_id', reqIds);
+        if (error) throw error;
+      });
+      await safe('delete visits', async () => {
+        const { error } = await supabase.from('visits').delete().in('request_id', reqIds);
+        if (error) throw error;
+      });
+      await safe('delete payments', async () => {
+        const { error } = await supabase.from('payments').delete().in('emergency_request_id', reqIds);
+        if (error) throw error;
+      });
+    } else {
+      warnings.push('skipped dependent cleanup because emergency_requests delete failed');
+    }
   }
 
-  if (ctx.ambulanceIds.size > 0) {
+  if (!emergencyRowsDeleted) {
+    warnings.push('skipped foundation cleanup because emergency_requests delete failed');
+  }
+
+  if (emergencyRowsDeleted && ctx.ambulanceIds.size > 0) {
     await safe('delete ambulances', async () => {
       const { error } = await supabase.from('ambulances').delete().in('id', [...ctx.ambulanceIds]);
       if (error) throw error;
     });
   }
 
-  if (ctx.doctorIds.size > 0) {
+  if (emergencyRowsDeleted && ctx.doctorIds.size > 0) {
     await safe('delete doctors', async () => {
       const { error } = await supabase.from('doctors').delete().in('id', [...ctx.doctorIds]);
       if (error) throw error;
     });
   }
 
-  if (ctx.hospitalId) {
+  if (emergencyRowsDeleted && ctx.hospitalId) {
     await safe('delete hospitals', async () => {
       await safeDelete('hospitals', 'id', ctx.hospitalId);
     });
   }
 
-  if (ctx.orgId) {
+  if (emergencyRowsDeleted && ctx.orgId) {
     await safe('delete org wallet', async () => {
       const { error } = await supabase.from('organization_wallets').delete().eq('organization_id', ctx.orgId);
       if (error) throw error;

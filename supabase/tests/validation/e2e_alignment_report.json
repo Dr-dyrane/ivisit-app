@@ -1,54 +1,54 @@
 {
-  "generatedAt": "2026-02-23T04:40:11.034Z",
+  "generatedAt": "2026-03-03T15:33:27.320Z",
   "source": "run_alignment_audit.js",
   "supabaseUrl": "https://dlwtcmhdzoklveihuhjf.supabase.co",
   "queryErrors": [],
   "counts": {
-    "profiles": 36,
-    "preferences": 36,
-    "medical_profiles": 36,
-    "patient_wallets": 36,
-    "organizations": 9,
-    "organization_wallets": 9,
-    "hospitals": 2,
-    "ambulances": 6,
-    "doctors": 2,
-    "emergency_requests": 132,
-    "visits": 132,
-    "payments": 13,
-    "emergency_doctor_assignments": 0,
-    "insurance_billing": 0,
-    "wallet_ledger": 9
+    "profiles": 108,
+    "preferences": 108,
+    "medical_profiles": 108,
+    "patient_wallets": 108,
+    "organizations": 21,
+    "organization_wallets": 21,
+    "hospitals": 73,
+    "ambulances": 8,
+    "doctors": 9,
+    "emergency_requests": 376,
+    "visits": 346,
+    "payments": 47,
+    "emergency_doctor_assignments": 10,
+    "insurance_billing": 73,
+    "wallet_ledger": 21
   },
   "bootstrapCoverage": {
-    "profiles": 36,
-    "preferences": 36,
-    "medicalProfiles": 36,
-    "patientWallets": 36,
+    "profiles": 108,
+    "preferences": 108,
+    "medicalProfiles": 108,
+    "patientWallets": 108,
     "missingPreferences": [],
     "missingMedicalProfiles": [],
     "missingPatientWallets": []
   },
   "orgWalletCoverage": {
-    "organizations": 9,
-    "organizationWallets": 9,
+    "organizations": 21,
+    "organizationWallets": 21,
     "nullOrgWallets": [],
     "orphanOrgWallets": [],
     "missing": []
   },
   "emergencyVisitHealth": {
-    "emergencyCount": 132,
-    "visitCount": 132,
+    "emergencyCount": 376,
+    "visitCount": 381,
     "missingVisitsCount": 0,
     "emergenciesMissingVisits": [],
     "duplicateVisitsPerRequest": []
   },
   "paymentHealth": {
-    "total": 13,
-    "linkedToEmergency": 6,
-    "missingEmergencyLink": 7,
+    "total": 47,
+    "linkedToEmergency": 39,
+    "missingEmergencyLink": 8,
     "missingOrganizationLink": 0,
-    "pendingCash": 6,
+    "pendingCash": 16,
     "paymentsMissingLinks": [
       {
         "id": "35e8b99e-003d-478e-9b87-a2a48bcc8756",
@@ -112,25 +112,38 @@
         "amount": 400,
         "emergency_request_id": null,
         "organization_id": "8fda72de-2239-4c37-925c-2f827ce7bfb5"
+      },
+      {
+        "id": "d621d93e-2e97-4c19-a3b2-dd301e9abf42",
+        "display_id": "PAY-C06590",
+        "payment_method": "card",
+        "status": "completed",
+        "amount": 165,
+        "emergency_request_id": null,
+        "organization_id": "12ae277e-474d-405f-b65f-2c6b2c044897"
       }
     ],
     "placeholderOrphans": []
   },
   "dispatchHealth": {
-    "activeCount": 6,
+    "activeCount": 5,
     "byServiceType": {
-      "bed": 6
+      "bed": 5
     },
     "ambulanceFlow": {
       "activeCount": 0,
+      "dispatchPhaseCount": 0,
       "withAmbulanceId": 0,
       "withResponderId": 0,
       "withResponderLocation": 0,
       "withPatientLocation": 0,
+      "dispatchPhaseMissingAssignments": 0,
+      "dispatchPhaseMissingHospital": 0,
+      "dispatchPhaseRecords": [],
       "activeRecords": []
     },
     "nonAmbulanceFlow": {
-      "activeCount": 6,
+      "activeCount": 5,
       "activeRecords": [
         {
           "id": "e4f87778-82d0-4ce6-8c65-0e4cacb33e0c",
@@ -159,14 +172,6 @@
         {
           "id": "ba491dbd-1d26-45d9-adfa-487b0d798114",
           "display_id": "REQ-3C91D9",
-          "status": "accepted",
-          "service_type": "bed",
-          "ambulance_id": null,
-          "responder_id": null
-        },
-        {
-          "id": "121a1325-7d84-4a38-82b6-b7091c1a2ca6",
-          "display_id": "REQ-5F8B31",
           "status": "accepted",
           "service_type": "bed",
           "ambulance_id": null,
@@ -224,16 +229,6 @@
         "has_patient_location": false
       },
       {
-        "id": "121a1325-7d84-4a38-82b6-b7091c1a2ca6",
-        "display_id": "REQ-5F8B31",
-        "status": "accepted",
-        "service_type": "bed",
-        "ambulance_id": null,
-        "responder_id": null,
-        "has_responder_location": false,
-        "has_patient_location": false
-      },
-      {
         "id": "b45de2b6-3333-4501-8a83-83e1653f4ca9",
         "display_id": "REQ-219389",
         "status": "accepted",
@@ -247,7 +242,56 @@
   },
   "duplicateCandidates": {
     "organizationsByName": [],
-    "hospitalsByName": [],
+    "hospitalsByName": [
+      {
+        "key": "hemet valley medical center",
+        "count": 2,
+        "ids": [
+          "5bde70b9-212e-42f2-b51a-61ced5f649ce",
+          "c32c4600-1275-4630-be98-6c0836f67245"
+        ],
+        "displayIds": [
+          "HSP-24B5EA",
+          "HSP-110376"
+        ]
+      },
+      {
+        "key": "kindred hospital riverside",
+        "count": 2,
+        "ids": [
+          "e00d3dfc-432b-4f74-b382-169af461b61c",
+          "d2baf8c1-5337-426b-aa84-eab9ae99bb23"
+        ],
+        "displayIds": [
+          "HSP-6AAC1C",
+          "HSP-A43DB3"
+        ]
+      },
+      {
+        "key": "new york blood center - grand central donor center",
+        "count": 2,
+        "ids": [
+          "c93c9302-9d18-4fff-8aa8-5546bdb5e180",
+          "a90b1860-74cc-4894-b510-d07402f47a11"
+        ],
+        "displayIds": [
+          "HSP-5D6651",
+          "HSP-F23484"
+        ]
+      },
+      {
+        "key": "odyssey hospice",
+        "count": 2,
+        "ids": [
+          "aea90c0b-e11b-4e6e-9450-a13c4fc8012f",
+          "58e8e4b5-5e37-4672-a5e5-446bfc0ff539"
+        ],
+        "displayIds": [
+          "HSP-6B320A",
+          "HSP-EE0C40"
+        ]
+      }
+    ],
     "ambulancesByCallSignGlobal": [
       {
         "key": "alfa-01",
@@ -286,11 +330,27 @@
         ]
       }
     ],
-    "ambulancesByHospitalAndCallSign": []
+    "ambulancesByHospitalAndCallSign": [
+      {
+        "hospital_id": "c32c4600-1275-4630-be98-6c0836f67245",
+        "call_sign": "alfa-01",
+        "count": 2,
+        "ids": [
+          "e4dab68a-3d1b-4736-976e-b16409ad7986",
+          "7ff48d58-28fe-449e-850e-0142ef0b1772"
+        ],
+        "displayIds": [
+          "AMB-080D5E",
+          "AMB-3E6817"
+        ]
+      }
+    ]
   },
   "severity": {
     "critical": [],
     "high": [],
-    "medium": []
+    "medium": [
+      "Duplicate semantic records detected (hospital names and/or duplicate ambulance call signs within same hospital)"
+    ]
   }
 }

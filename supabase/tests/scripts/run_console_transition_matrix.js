@@ -243,6 +243,28 @@ async function main() {
         .single();
       if (error) throw new Error(`request create(${status}) failed: ${error.message}`);
 
+      const { data: existingVisits, error: existingVisitsErr } = await admin
+        .from('visits')
+        .select('id')
+        .eq('request_id', data.id)
+        .limit(1);
+      if (existingVisitsErr) throw new Error(`visit lookup failed: ${existingVisitsErr.message}`);
+
+      if (!existingVisits || existingVisits.length === 0) {
+        const { error: visitErr } = await admin
+          .from('visits')
+          .insert({
+            user_id: ctx.users.patient.id,
+            hospital_id: ctx.hospitalId,
+            request_id: data.id,
+            status: status === 'completed' ? 'completed' : (status === 'cancelled' ? 'cancelled' : 'pending'),
+            date: new Date().toISOString().slice(0, 10),
+            time: new Date().toISOString().slice(11, 19),
+            type: 'emergency',
+          });
+        if (visitErr) throw new Error(`visit create failed: ${visitErr.message}`);
+      }
+
       ctx.requestIds.push(data.id);
       return data.id;
     };
@@ -515,70 +537,90 @@ async function main() {
       report.cleanupWarnings
     );
 
+    let emergencyRowsDeleted = true;
     if (ctx.requestIds.length > 0) {
       const reqIds = [...new Set(ctx.requestIds)];
       await safeRun(
-        'delete visits',
-        async () => {
-          await admin.from('visits').delete().in('request_id', reqIds);
-        },
-        report.cleanupWarnings
-      );
-      await safeRun(
-        'delete payments',
-        async () => {
-          await admin.from('payments').delete().in('emergency_request_id', reqIds);
-        },
-        report.cleanupWarnings
-      );
-      await safeRun(
         'delete emergency_requests',
         async () => {
-          await admin.from('emergency_requests').delete().in('id', reqIds);
+          const { error } = await admin.from('emergency_requests').delete().in('id', reqIds);
+          if (error) {
+            emergencyRowsDeleted = false;
+            throw new Error(error.message);
+          }
         },
         report.cleanupWarnings
       );
+
+      if (emergencyRowsDeleted) {
+        await safeRun(
+          'delete visits',
+          async () => {
+            const { error } = await admin.from('visits').delete().in('request_id', reqIds);
+            if (error) throw new Error(error.message);
+          },
+          report.cleanupWarnings
+        );
+        await safeRun(
+          'delete payments',
+          async () => {
+            const { error } = await admin.from('payments').delete().in('emergency_request_id', reqIds);
+            if (error) throw new Error(error.message);
+          },
+          report.cleanupWarnings
+        );
+      } else {
+        report.cleanupWarnings.push('skipped dependent cleanup because emergency_requests delete failed');
+      }
     }
 
-    await safeRun(
-      'delete ambulance',
-      async () => {
-        if (ctx.ambulanceId) {
-          await admin.from('ambulances').delete().eq('id', ctx.ambulanceId);
-        }
-      },
-      report.cleanupWarnings
-    );
+    if (emergencyRowsDeleted) {
+      await safeRun(
+        'delete ambulance',
+        async () => {
+          if (ctx.ambulanceId) {
+            const { error } = await admin.from('ambulances').delete().eq('id', ctx.ambulanceId);
+            if (error) throw new Error(error.message);
+          }
+        },
+        report.cleanupWarnings
+      );
 
-    await safeRun(
-      'delete hospital',
-      async () => {
-        if (ctx.hospitalId) {
-          await admin.from('hospitals').delete().eq('id', ctx.hospitalId);
-        }
-      },
-      report.cleanupWarnings
-    );
+      await safeRun(
+        'delete hospital',
+        async () => {
+          if (ctx.hospitalId) {
+            const { error } = await admin.from('hospitals').delete().eq('id', ctx.hospitalId);
+            if (error) throw new Error(error.message);
+          }
+        },
+        report.cleanupWarnings
+      );
 
-    await safeRun(
-      'delete organization wallet',
-      async () => {
-        if (ctx.orgId) {
-          await admin.from('organization_wallets').delete().eq('organization_id', ctx.orgId);
-        }
-      },
-      report.cleanupWarnings
-    );
+      await safeRun(
+        'delete organization wallet',
+        async () => {
+          if (ctx.orgId) {
+            const { error } = await admin.from('organization_wallets').delete().eq('organization_id', ctx.orgId);
+            if (error) throw new Error(error.message);
+          }
+        },
+        report.cleanupWarnings
+      );
 
-    await safeRun(
-      'delete organization',
-      async () => {
-        if (ctx.orgId) {
-          await admin.from('organizations').delete().eq('id', ctx.orgId);
-        }
-      },
-      report.cleanupWarnings
-    );
+      await safeRun(
+        'delete organization',
+        async () => {
+          if (ctx.orgId) {
+            const { error } = await admin.from('organizations').delete().eq('id', ctx.orgId);
+            if (error) throw new Error(error.message);
+          }
+        },
+        report.cleanupWarnings
+      );
+    } else {
+      report.cleanupWarnings.push('skipped foundation cleanup because emergency_requests delete failed');
+    }
 
     for (const userId of ctx.userIds) {
       await safeRun(
