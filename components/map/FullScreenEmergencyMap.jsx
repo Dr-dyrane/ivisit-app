@@ -398,6 +398,10 @@ const FullScreenEmergencyMap = forwardRef(
 		}, [isLoadingLocation, isMapReadyState, locationPermission, userLocation]);
 
 		const mapStyle = isDarkMode ? darkMapStyle : lightMapStyle;
+		const mapType = Platform.OS === "ios" ? "mutedStandard" : "standard";
+		// Apple Maps does not support Google-style JSON map styling.
+		// Keep iOS premium-muted via mapType + userInterfaceStyle, and apply JSON style on Android.
+		const customMapStyle = Platform.OS === "android" ? mapStyle : undefined;
 
 		const handleRecenter = useCallback(() => {
 			if (mapRef.current && userLocation) {
@@ -474,7 +478,8 @@ const FullScreenEmergencyMap = forwardRef(
 						style={styles.map}
 						provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
 						googleRenderer={Platform.OS === "android" ? "LEGACY" : undefined}
-						customMapStyle={mapStyle}
+						customMapStyle={customMapStyle}
+						mapType={mapType}
 						initialRegion={initialRegion}
 						showsUserLocation={locationPermission}
 						showsMyLocationButton={false}
