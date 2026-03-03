@@ -554,11 +554,13 @@ BEGIN
     END IF;
 
     IF TG_OP = 'UPDATE' AND NEW.service_type = 'bed' THEN
-        IF NEW.status = 'in_progress' AND OLD.status != 'in_progress' THEN
+        IF NEW.status IN ('in_progress', 'accepted', 'arrived')
+           AND OLD.status NOT IN ('in_progress', 'accepted', 'arrived') THEN
             UPDATE public.hospitals
             SET available_beds = GREATEST(0, available_beds - 1)
             WHERE id = NEW.hospital_id;
-        ELSIF NEW.status IN ('completed', 'cancelled') AND OLD.status NOT IN ('completed', 'cancelled') THEN
+        ELSIF NEW.status IN ('completed', 'cancelled')
+              AND OLD.status IN ('in_progress', 'accepted', 'arrived') THEN
             UPDATE public.hospitals
             SET available_beds = available_beds + 1
             WHERE id = NEW.hospital_id;

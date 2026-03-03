@@ -1,54 +1,54 @@
 {
-  "tag": "flow-matrix-1771821611141",
-  "startedAt": "2026-02-23T04:40:11.141Z",
+  "tag": "flow-matrix-1772539863030",
+  "startedAt": "2026-03-03T12:11:03.030Z",
   "foundation": {
-    "orgId": "dbd71b19-0ded-4496-85aa-f9f3aae2131b",
-    "hospitalId": "7574e50a-70cb-4671-a086-9488967ae4ed",
-    "doctorId": "f38a808c-1d50-4661-9010-98466bb3cc99",
-    "ambulanceId": "79126ca0-96cc-4dcc-80c4-0d59e35b5c56",
-    "patientId": "2353b02b-ee62-4cfb-b0a2-b12c346e97af",
-    "driverId": "c85b82db-2377-413d-9c32-ffb91948fae1"
+    "orgId": "e525a9f5-859a-49e7-a12f-d47590c5ed00",
+    "hospitalId": "aaea09da-9c48-4dcb-8140-730e391ab877",
+    "doctorId": "fbae6e23-2fc2-4ceb-abe9-14c72fa1d1bc",
+    "ambulanceId": "0c387a97-7b67-4d55-954f-fc75499c16a4",
+    "patientId": "e4d146dc-de32-4705-a490-718f8c57b10d",
+    "driverId": "9bf0f9d0-165c-4003-8595-a18522a1bdee"
   },
   "scenarios": {
     "cardAmbulance": {
       "createResult": {
         "success": true,
-        "visit_id": "c6a29e9d-0c45-4723-ada1-569839f232ea",
-        "display_id": "REQ-C08CBB",
-        "payment_id": "fc214e5f-20ee-40bb-9731-8278d8ca4f20",
-        "request_id": "dd96d4d5-59a2-4f99-88fc-6cbc57b0afaa",
+        "visit_id": "VIST-E3DEA8",
+        "display_id": "REQ-B74C83",
+        "payment_id": "e4a59090-6bff-4e00-baa4-2dfaab9a0874",
+        "request_id": "2e1ac064-17d4-4290-8961-6e22e92ea0d8",
         "emergency_status": "in_progress",
         "requires_approval": false
       },
       "emergency": {
-        "id": "dd96d4d5-59a2-4f99-88fc-6cbc57b0afaa",
-        "display_id": "REQ-C08CBB",
+        "id": "2e1ac064-17d4-4290-8961-6e22e92ea0d8",
+        "display_id": "REQ-B74C83",
         "status": "accepted",
         "payment_status": "pending",
-        "ambulance_id": "79126ca0-96cc-4dcc-80c4-0d59e35b5c56",
-        "responder_id": "c85b82db-2377-413d-9c32-ffb91948fae1",
-        "assigned_doctor_id": null,
-        "hospital_id": "7574e50a-70cb-4671-a086-9488967ae4ed",
+        "ambulance_id": "0c387a97-7b67-4d55-954f-fc75499c16a4",
+        "responder_id": "9bf0f9d0-165c-4003-8595-a18522a1bdee",
+        "assigned_doctor_id": "fbae6e23-2fc2-4ceb-abe9-14c72fa1d1bc",
+        "hospital_id": "aaea09da-9c48-4dcb-8140-730e391ab877",
         "total_cost": 0
       },
       "visit": {
-        "id": "c6a29e9d-0c45-4723-ada1-569839f232ea",
-        "request_id": "dd96d4d5-59a2-4f99-88fc-6cbc57b0afaa",
+        "id": "3d2116e1-ab26-4b03-81b0-e82874247472",
+        "request_id": "2e1ac064-17d4-4290-8961-6e22e92ea0d8",
         "status": "pending",
-        "type": "ambulance"
+        "type": "emergency"
       },
       "payment": {
-        "id": "fc214e5f-20ee-40bb-9731-8278d8ca4f20",
+        "id": "e4a59090-6bff-4e00-baa4-2dfaab9a0874",
         "status": "completed",
         "payment_method": "card",
-        "emergency_request_id": "dd96d4d5-59a2-4f99-88fc-6cbc57b0afaa",
-        "organization_id": "dbd71b19-0ded-4496-85aa-f9f3aae2131b",
+        "emergency_request_id": "2e1ac064-17d4-4290-8961-6e22e92ea0d8",
+        "organization_id": "e525a9f5-859a-49e7-a12f-d47590c5ed00",
         "amount": 120
       },
       "ambulance": {
-        "id": "79126ca0-96cc-4dcc-80c4-0d59e35b5c56",
+        "id": "0c387a97-7b67-4d55-954f-fc75499c16a4",
         "status": "on_trip",
-        "current_call": "dd96d4d5-59a2-4f99-88fc-6cbc57b0afaa"
+        "current_call": "2e1ac064-17d4-4290-8961-6e22e92ea0d8"
       },
       "assertions": {
         "visitCreated": true,
@@ -59,7 +59,7 @@
       }
     },
     "trackingContract": {
-      "emergencyId": "dd96d4d5-59a2-4f99-88fc-6cbc57b0afaa",
+      "emergencyId": "2e1ac064-17d4-4290-8961-6e22e92ea0d8",
       "assertions": {
         "responderLocationSet": true,
         "patientLocationSet": true,
@@ -69,27 +69,27 @@
     "completion": {
       "failed": false,
       "emergency": {
-        "id": "dd96d4d5-59a2-4f99-88fc-6cbc57b0afaa",
+        "id": "2e1ac064-17d4-4290-8961-6e22e92ea0d8",
         "status": "completed",
         "total_cost": 155,
-        "completed_at": "2026-02-23T04:40:14.838+00:00",
+        "completed_at": "2026-03-03T12:11:06.406+00:00",
         "payment_status": "pending"
       },
       "visit": {
-        "id": "c6a29e9d-0c45-4723-ada1-569839f232ea",
-        "request_id": "dd96d4d5-59a2-4f99-88fc-6cbc57b0afaa",
+        "id": "3d2116e1-ab26-4b03-81b0-e82874247472",
+        "request_id": "2e1ac064-17d4-4290-8961-6e22e92ea0d8",
         "status": "completed",
         "cost": "155"
       },
       "ambulance": {
-        "id": "79126ca0-96cc-4dcc-80c4-0d59e35b5c56",
+        "id": "0c387a97-7b67-4d55-954f-fc75499c16a4",
         "status": "available",
         "current_call": null
       },
       "insuranceBilling": [
         {
-          "id": "5af03d42-48bf-4f48-8312-2f0dfbd17e3e",
-          "emergency_request_id": "dd96d4d5-59a2-4f99-88fc-6cbc57b0afaa",
+          "id": "3fa78e88-c265-413b-a5c8-4189df34c223",
+          "emergency_request_id": "2e1ac064-17d4-4290-8961-6e22e92ea0d8",
           "status": "pending",
           "total_amount": 155
         }
@@ -103,15 +103,15 @@
     "cashAmbulance": {
       "createResult": {
         "success": true,
-        "visit_id": "b97a0954-7273-401b-b8b7-b2aa25de2a10",
-        "display_id": "REQ-206140",
-        "payment_id": "197b64af-6b0f-4c70-9f8e-be18418140e8",
-        "request_id": "3054dfb6-0bc1-45a9-8ff5-a40d9a75c482",
+        "visit_id": "VIST-FE19CF",
+        "display_id": "REQ-1CC268",
+        "payment_id": "710efa62-432f-4f5a-9384-3f890688fbf9",
+        "request_id": "071ccc3a-2e12-47c2-a288-8e70b42a3cc9",
         "emergency_status": "pending_approval",
         "requires_approval": true
       },
       "beforeApproval": {
-        "id": "3054dfb6-0bc1-45a9-8ff5-a40d9a75c482",
+        "id": "071ccc3a-2e12-47c2-a288-8e70b42a3cc9",
         "status": "pending_approval",
         "payment_status": "pending",
         "ambulance_id": null,
@@ -119,15 +119,20 @@
       },
       "approveResult": {
         "success": true,
-        "new_balance": 96.75,
-        "fee_deducted": 3.25
+        "new_balance": 100,
+        "ambulance_id": "0c387a97-7b67-4d55-954f-fc75499c16a4",
+        "fee_deducted": 0,
+        "responder_name": "Driver flow-matrix-1772539863030",
+        "responder_phone": null,
+        "responder_vehicle_type": "basic",
+        "responder_vehicle_plate": null
       },
       "afterApproval": {
-        "id": "3054dfb6-0bc1-45a9-8ff5-a40d9a75c482",
+        "id": "071ccc3a-2e12-47c2-a288-8e70b42a3cc9",
         "status": "accepted",
         "payment_status": "completed",
-        "ambulance_id": "79126ca0-96cc-4dcc-80c4-0d59e35b5c56",
-        "responder_id": "c85b82db-2377-413d-9c32-ffb91948fae1"
+        "ambulance_id": "0c387a97-7b67-4d55-954f-fc75499c16a4",
+        "responder_id": "9bf0f9d0-165c-4003-8595-a18522a1bdee"
       },
       "assertions": {
         "approvalRpcSucceeded": true,
@@ -137,46 +142,53 @@
     },
     "bedReservation": {
       "hospitalBefore": {
-        "id": "7574e50a-70cb-4671-a086-9488967ae4ed",
+        "id": "aaea09da-9c48-4dcb-8140-730e391ab877",
         "available_beds": 5
       },
       "approve": {
         "success": true,
-        "new_balance": 94.75,
-        "fee_deducted": 2
+        "new_balance": 100,
+        "ambulance_id": null,
+        "fee_deducted": 0,
+        "responder_name": null,
+        "responder_phone": null,
+        "responder_vehicle_type": null,
+        "responder_vehicle_plate": null
       },
-      "inProgress": {
-        "id": "242a9cdf-35a3-4004-9d52-14732673d895",
-        "status": "in_progress"
+      "afterApproval": {
+        "id": "99b5d45e-aa7e-44b0-a90d-24db064636f5",
+        "status": "accepted",
+        "payment_status": "completed"
       },
-      "hospitalAfterInProgress": {
-        "id": "7574e50a-70cb-4671-a086-9488967ae4ed",
-        "available_beds": 4
+      "hospitalAfterApproval": {
+        "id": "aaea09da-9c48-4dcb-8140-730e391ab877",
+        "available_beds": 5
       },
       "complete": {
-        "id": "242a9cdf-35a3-4004-9d52-14732673d895",
+        "id": "99b5d45e-aa7e-44b0-a90d-24db064636f5",
         "status": "completed",
         "payment_status": "completed"
       },
       "hospitalAfterComplete": {
-        "id": "7574e50a-70cb-4671-a086-9488967ae4ed",
-        "available_beds": 5
+        "id": "aaea09da-9c48-4dcb-8140-730e391ab877",
+        "available_beds": 6
       },
       "visit": {
-        "id": "056d0506-75b4-4dd0-a4ec-a934686012b3",
-        "request_id": "242a9cdf-35a3-4004-9d52-14732673d895",
+        "id": "e1ca4c4a-f83f-4e21-9f76-874c1b62f40b",
+        "request_id": "99b5d45e-aa7e-44b0-a90d-24db064636f5",
         "status": "completed",
-        "type": "bed"
+        "type": "emergency"
       },
       "assertions": {
         "approveSucceeded": true,
         "noAmbulanceExpected": true,
-        "bedDecrementedOnInProgress": true,
-        "bedRestoredOnComplete": true,
+        "bedRequestActivated": true,
+        "bedDecrementedOnActivation": false,
+        "bedRestoredOnComplete": false,
         "visitCreated": true
       }
     }
   },
   "cleanupWarnings": [],
-  "completedAt": "2026-02-23T04:40:17.411Z"
+  "completedAt": "2026-03-03T12:11:08.532Z"
 }

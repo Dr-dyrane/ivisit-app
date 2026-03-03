@@ -188,36 +188,78 @@ async function createFoundation(ctx) {
   // Ensure org wallet can pay platform fees during cash approvals.
   await supabase.from('organization_wallets').update({ balance: 100, updated_at: nowIso() }).eq('organization_id', org.id);
 
-  const { data: doctor, error: doctorErr } = await supabase
+  const doctorPayload = {
+    profile_id: doctorUser.id,
+    hospital_id: hospital.id,
+    name: `Dr ${TAG}`,
+    specialization: 'Emergency Medicine',
+    status: 'available',
+    is_available: true,
+    current_patients: 0,
+    max_patients: 10
+  };
+  const { data: existingDoctors, error: existingDoctorErr } = await supabase
     .from('doctors')
-    .insert({
-      profile_id: doctorUser.id,
-      hospital_id: hospital.id,
-      name: `Dr ${TAG}`,
-      specialization: 'Emergency Medicine',
-      status: 'available',
-      is_available: true,
-      current_patients: 0,
-      max_patients: 10
-    })
-    .select()
-    .single();
-  if (doctorErr) throw new Error(`doctor create failed: ${doctorErr.message}`);
+    .select('id')
+    .eq('profile_id', doctorUser.id)
+    .limit(1);
+  if (existingDoctorErr) throw new Error(`doctor lookup failed: ${existingDoctorErr.message}`);
+
+  let doctor;
+  if (existingDoctors?.length) {
+    const { data: updatedDoctor, error: updateDoctorErr } = await supabase
+      .from('doctors')
+      .update(doctorPayload)
+      .eq('id', existingDoctors[0].id)
+      .select()
+      .single();
+    if (updateDoctorErr) throw new Error(`doctor update failed: ${updateDoctorErr.message}`);
+    doctor = updatedDoctor;
+  } else {
+    const { data: createdDoctor, error: createDoctorErr } = await supabase
+      .from('doctors')
+      .insert(doctorPayload)
+      .select()
+      .single();
+    if (createDoctorErr) throw new Error(`doctor create failed: ${createDoctorErr.message}`);
+    doctor = createdDoctor;
+  }
   ctx.doctorIds.add(doctor.id);
 
-  const { data: ambulance, error: ambErr } = await supabase
+  const ambulancePayload = {
+    hospital_id: hospital.id,
+    organization_id: org.id,
+    profile_id: driver.id,
+    call_sign: `E2E-${String(TS).slice(-6)}`,
+    type: 'basic',
+    status: 'available'
+  };
+  const { data: existingAmbulances, error: existingAmbErr } = await supabase
     .from('ambulances')
-    .insert({
-      hospital_id: hospital.id,
-      organization_id: org.id,
-      profile_id: driver.id,
-      call_sign: `E2E-${String(TS).slice(-6)}`,
-      type: 'basic',
-      status: 'available'
-    })
-    .select()
-    .single();
-  if (ambErr) throw new Error(`ambulance create failed: ${ambErr.message}`);
+    .select('id')
+    .eq('profile_id', driver.id)
+    .limit(1);
+  if (existingAmbErr) throw new Error(`ambulance lookup failed: ${existingAmbErr.message}`);
+
+  let ambulance;
+  if (existingAmbulances?.length) {
+    const { data: updatedAmbulance, error: updateAmbErr } = await supabase
+      .from('ambulances')
+      .update(ambulancePayload)
+      .eq('id', existingAmbulances[0].id)
+      .select()
+      .single();
+    if (updateAmbErr) throw new Error(`ambulance update failed: ${updateAmbErr.message}`);
+    ambulance = updatedAmbulance;
+  } else {
+    const { data: createdAmbulance, error: createAmbErr } = await supabase
+      .from('ambulances')
+      .insert(ambulancePayload)
+      .select()
+      .single();
+    if (createAmbErr) throw new Error(`ambulance create failed: ${createAmbErr.message}`);
+    ambulance = createdAmbulance;
+  }
   ctx.ambulanceIds.add(ambulance.id);
 
   return { patient, driver, doctorUser, org, hospital, doctor, ambulance };
@@ -401,7 +443,7 @@ async function run() {
       }
     };
 
-    // Scenario D: Bed reservation cash flow -> approve -> in_progress decrements bed -> complete restores bed.
+    // Scenario D: Bed reservation cash flow -> approve -> active status decrements bed -> complete restores bed.
     const { data: hospBeforeBed, error: hbErr } = await supabase
       .from('hospitals').select('id,available_beds').eq('id', foundation.hospital.id).single();
     if (hbErr) throw new Error(`hospital pre-bed query failed: ${hbErr.message}`);
@@ -422,14 +464,11 @@ async function run() {
       p_request_id: bedCreate.request_id
     });
 
-    const { data: bedInProg, error: bedInProgErr } = await supabase
-      .from('emergency_requests')
-      .update({ status: 'in_progress', updated_at: nowIso() })
-      .eq('id', bedCreate.request_id)
-      .select('id,status')
-      .single();
+    const bedAfterApprove = bedApproveErr
+      ? null
+      : await qOne('emergency_requests', 'id,status,payment_status', 'id', bedCreate.request_id);
 
-    const { data: hospAfterInProg } = await supabase
+    const { data: hospAfterApprove } = await supabase
       .from('hospitals').select('id,available_beds').eq('id', foundation.hospital.id).single();
 
     const { data: bedComplete, error: bedCompleteErr } = await supabase
@@ -447,15 +486,16 @@ async function run() {
     report.scenarios.bedReservation = {
       hospitalBefore: hospBeforeBed,
       approve: bedApproveErr ? { error: bedApproveErr.message } : bedApprove,
-      inProgress: bedInProgErr ? { error: bedInProgErr.message } : bedInProg,
-      hospitalAfterInProgress: hospAfterInProg,
+      afterApproval: bedAfterApprove,
+      hospitalAfterApproval: hospAfterApprove,
       complete: bedCompleteErr ? { error: bedCompleteErr.message } : bedComplete,
       hospitalAfterComplete: hospAfterBedComplete,
       visit: bedVisit,
       assertions: {
         approveSucceeded: !bedApproveErr && bedApprove?.success === true,
         noAmbulanceExpected: true,
-        bedDecrementedOnInProgress: hospAfterInProg && hospAfterInProg.available_beds === (hospBeforeBed.available_beds - 1),
+        bedRequestActivated: !!bedAfterApprove && ['accepted', 'arrived', 'in_progress'].includes(bedAfterApprove.status),
+        bedDecrementedOnActivation: hospAfterApprove && hospAfterApprove.available_beds === (hospBeforeBed.available_beds - 1),
         bedRestoredOnComplete: hospAfterBedComplete && hospAfterBedComplete.available_beds === hospBeforeBed.available_beds,
         visitCreated: !!bedVisit.id
       }
