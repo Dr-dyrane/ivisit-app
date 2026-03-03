@@ -7,7 +7,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "hardening:emergency": "node supabase/tests/scripts/validate_emergency_hardening_guards.js"
+    "hardening:emergency": "node supabase/tests/scripts/validate_emergency_hardening_guards.js",
+    "hardening:console-matrix": "node supabase/tests/scripts/run_console_transition_matrix.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

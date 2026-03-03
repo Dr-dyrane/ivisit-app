@@ -117,6 +117,10 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
   - `emergency_requests`, `payments`, `visits` all have RLS enabled.
   - Policy roles tightened to `{authenticated}` on critical read/write paths (no `anon/public` write-surface).
   - Payments include explicit org scope read policy: `Org Admins see org payments`.
+- Deterministic role x state matrix validation:
+  - Runner: `npm run hardening:console-matrix`
+  - Report: `supabase/tests/validation/console_transition_matrix_report.json`
+  - Covers console mutation RPCs across `org_admin/dispatcher/provider/viewer/patient` with expected allow/deny and illegal transition rejection.
 
 ## Failure and Degraded Behavior
 
