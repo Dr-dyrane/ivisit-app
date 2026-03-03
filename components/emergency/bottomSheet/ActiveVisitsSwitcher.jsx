@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { COLORS } from "../../../constants/colors";
 
@@ -34,7 +34,10 @@ export function ActiveVisitsSwitcher({
 			style={[
 				styles.container,
 				{
-					backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : "#F1F5F9",
+					backgroundColor:
+						Platform.OS === "android"
+							? (isDarkMode ? COLORS.bgDarkAlt : "#F1F5F9")
+							: (isDarkMode ? "rgba(255,255,255,0.06)" : "#F1F5F9"),
 					borderColor: isDarkMode ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.08)",
 				},
 			]}
@@ -98,4 +101,3 @@ const styles = StyleSheet.create({
 		letterSpacing: -0.2,
 	},
 });
-

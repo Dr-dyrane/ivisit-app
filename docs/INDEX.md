@@ -51,6 +51,7 @@ docs/
 - Product blueprint: [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)
 - Docs entry: [README.md](./README.md)
 - Workflow map hub: [flows/README.md](./flows/README.md)
+- Android glass standard: [product_design/ANDROID_GLASS_PATTERN.md](./product_design/ANDROID_GLASS_PATTERN.md)
 
 ## Workflow Maps
 

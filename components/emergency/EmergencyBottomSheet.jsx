@@ -16,6 +16,7 @@ import BottomSheet, {
 	BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { COLORS } from "../../constants/colors";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { usePreferences } from "../../contexts/PreferencesContext";
@@ -205,12 +206,20 @@ const EmergencyBottomSheet = forwardRef(
 		}), [clampSheetIndex, currentSnapIndex]);
 
 		const gradientColors = isDarkMode
-			? ["rgba(18, 24, 38, 0.95)", "rgba(18, 24, 38, 0.85)", "rgba(18, 24, 38, 0.85)"]
-			: ["rgba(255, 255, 255, 0.95)", "rgba(255, 255, 255, 0.85)", "rgba(255, 255, 255, 0.85)"];
+			? Platform.OS === "android"
+				? [COLORS.bgDarkAlt, COLORS.bgDarkAlt, COLORS.bgDarkAlt]
+				: ["rgba(18, 24, 38, 0.95)", "rgba(18, 24, 38, 0.85)", "rgba(18, 24, 38, 0.85)"]
+			: Platform.OS === "android"
+				? [COLORS.bgLight, COLORS.bgLight, COLORS.bgLight]
+				: ["rgba(255, 255, 255, 0.95)", "rgba(255, 255, 255, 0.85)", "rgba(255, 255, 255, 0.85)"];
 
 		const handleColor = isDarkMode
-			? "rgba(255, 255, 255, 0.3)"
-			: "rgba(0, 0, 0, 0.15)";
+			? Platform.OS === "android"
+				? "#7B8798"
+				: "rgba(255, 255, 255, 0.3)"
+			: Platform.OS === "android"
+				? "#9AA4B2"
+				: "rgba(0, 0, 0, 0.15)";
 
 		// 🔴 REVERT POINT: Consoldated Stability Synchronizer
 		// PREVIOUS: Multiple scattered useEffects fighting over snapIndex
@@ -476,16 +485,17 @@ const EmergencyBottomSheet = forwardRef(
 const styles = StyleSheet.create({
 	sheet: {
 		zIndex: 1000,
-		elevation: 1000,
+		elevation: Platform.OS === "android" ? 24 : 1000,
 	},
 	sheetBackground: {
+		borderRadius: 36,
 		borderTopLeftRadius: 36,
 		borderTopRightRadius: 36,
 		shadowColor: "#000",
-		shadowOffset: { width: 0, height: -6 },
-		shadowOpacity: 0.12,
-		shadowRadius: 20,
-		elevation: 20,
+		shadowOffset: { width: 0, height: Platform.OS === "android" ? -2 : -6 },
+		shadowOpacity: Platform.OS === "android" ? 0.04 : 0.12,
+		shadowRadius: Platform.OS === "android" ? 8 : 20,
+		elevation: Platform.OS === "android" ? 6 : 20,
 	},
 	handleContainer: {
 		paddingTop: 8,

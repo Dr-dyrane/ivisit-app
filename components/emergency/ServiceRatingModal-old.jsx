@@ -114,7 +114,18 @@ export function ServiceRatingModal({
 							close();
 						}}
 					/>
-					<BlurView intensity={30} tint={isDarkMode ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+					{Platform.OS === "ios" ? (
+						<BlurView intensity={30} tint={isDarkMode ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+					) : (
+						<View
+							style={[
+								StyleSheet.absoluteFillObject,
+								{
+									backgroundColor: isDarkMode ? "rgba(0,0,0,0.34)" : "rgba(15,23,42,0.12)",
+								},
+							]}
+						/>
+					)}
 				</Animated.View>
 
 				<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>

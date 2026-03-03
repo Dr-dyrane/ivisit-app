@@ -8,8 +8,35 @@ import { AMBULANCE_STATUSES, AMBULANCE_TYPES } from "../../../constants/emergenc
 import { useTripProgress } from "../../../hooks/emergency/useTripProgress";
 import { navigateToBookBed } from "../../../utils/navigationHelpers";
 
+const SummaryCardSurface = ({ isDarkMode, children, style }) => {
+	const isAndroid = Platform.OS === "android";
+	const shadowLayerColor = isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)";
+
+	return (
+		<View style={styles.cardShell}>
+			{isAndroid && (
+				<View
+					pointerEvents="none"
+					style={[styles.cardShadowUnderlay, { backgroundColor: shadowLayerColor }]}
+				/>
+			)}
+			<View
+				style={[
+					styles.card,
+					{
+						backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight,
+					},
+					style,
+				]}
+			>
+				{children}
+			</View>
+		</View>
+	);
+};
+
 const TripSummaryCollapsed = ({ isDarkMode, statusLabel, etaText, tripHospital, callSign }) => (
-	<View style={[styles.card, styles.collapsedPadding, { backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight }]}>
+	<SummaryCardSurface isDarkMode={isDarkMode} style={styles.collapsedPadding}>
 		<View style={styles.headerIsland}>
 			<View style={{ flex: 1 }}>
 				<Text style={[styles.editorialSubtitle, { color: COLORS.brandPrimary }]}>STATUS</Text>
@@ -24,7 +51,7 @@ const TripSummaryCollapsed = ({ isDarkMode, statusLabel, etaText, tripHospital, 
 				)}
 			</View>
 		</View>
-	</View>
+	</SummaryCardSurface>
 );
 
 const TripSummaryHalf = (props) => {
@@ -33,7 +60,7 @@ const TripSummaryHalf = (props) => {
 	const mutedColor = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted;
 
 	return (
-		<View style={[styles.card, { backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight }]}>
+		<SummaryCardSurface isDarkMode={isDarkMode}>
 			{/* IDENTITY ISLAND */}
 			<View style={styles.headerIsland}>
 				<View style={{ flex: 1 }}>
@@ -112,7 +139,7 @@ const TripSummaryHalf = (props) => {
 					</Pressable>
 				)
 			}
-		</View >
+		</SummaryCardSurface >
 	);
 };
 
@@ -198,16 +225,28 @@ export const TripSummaryCard = ({ activeAmbulanceTrip, hasOtherActiveVisit, allH
 };
 
 const styles = StyleSheet.create({
+	cardShell: {
+		position: "relative",
+		marginHorizontal: 8,
+		marginBottom: 16,
+		borderRadius: 36,
+	},
+	cardShadowUnderlay: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 36,
+	},
 	card: {
 		borderRadius: 36,
 		padding: 24,
-		marginHorizontal: 8,
-		marginBottom: 16,
 		shadowColor: COLORS.brandPrimary,
 		shadowOffset: { width: 0, height: 12 },
-		shadowOpacity: 0.15,
-		shadowRadius: 20,
-		elevation: 10,
+		shadowOpacity: Platform.OS === "android" ? 0 : 0.15,
+		shadowRadius: Platform.OS === "android" ? 0 : 20,
+		elevation: Platform.OS === "android" ? 0 : 10,
 	},
 	collapsedPadding: { paddingVertical: 16 },
 	headerIsland: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },

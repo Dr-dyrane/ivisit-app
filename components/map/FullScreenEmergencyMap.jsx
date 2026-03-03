@@ -517,16 +517,14 @@ const FullScreenEmergencyMap = forwardRef(
 						style={[styles.statusBarBlur, { height: insets.top, opacity: 0.5 }]}
 					/>
 				) : (
-					// Android fallback: semi-transparent status bar
+					// Android fallback: solid status bar to avoid blur-smudge artifacts
 					<View
 						style={[
 							styles.statusBarBlur,
 							{
 								height: insets.top,
-								opacity: 0.5,
-								backgroundColor: isDarkMode
-									? 'rgba(0,0,0,0.6)'  // Dark semi-transparent
-									: 'rgba(255,255,255,0.6)'  // Light semi-transparent
+								opacity: 1,
+								backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight,
 							}
 						]}
 					/>

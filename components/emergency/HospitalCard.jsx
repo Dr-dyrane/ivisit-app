@@ -15,6 +15,7 @@ export default function HospitalCard({
 	hidePrimaryAction = false,
 }) {
 	const { isDarkMode } = useTheme();
+	const isAndroid = Platform.OS === "android";
 
 	if (!hospital) return null;
 
@@ -39,9 +40,20 @@ export default function HospitalCard({
 		: [];
 
 	// --- PREMIUM UI STYLING ---
-	const activeBG = isSelected
-		? isDarkMode ? COLORS.brandPrimary + "20" : COLORS.brandPrimary + "15"
-		: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
+	const selectedSurface = isAndroid
+		? (isDarkMode ? "rgba(27, 38, 56, 0.76)" : "rgba(255, 255, 255, 0.82)")
+		: (isDarkMode ? COLORS.brandPrimary + "20" : COLORS.brandPrimary + "15");
+	const defaultSurface = isAndroid
+		? (isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt)
+		: (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)");
+	const activeBG = isSelected ? selectedSurface : defaultSurface;
+	const shadowLayerColor = isSelected
+		? (isDarkMode ? "rgba(134, 16, 14, 0.20)" : "rgba(134, 16, 14, 0.12)")
+		: (isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)");
+	const cardShadowOpacity = isAndroid
+		? 0
+		: (isDarkMode ? 0.2 : 0.08);
+	const cardElevation = isAndroid ? 0 : (isSelected ? 10 : 2);
 
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
@@ -74,11 +86,18 @@ export default function HospitalCard({
 					backgroundColor: activeBG,
 					transform: [{ scale: pressed ? 0.98 : 1 }],
 					shadowColor: isSelected ? COLORS.brandPrimary : "#000",
-					shadowOpacity: isDarkMode ? 0.2 : 0.08,
-					elevation: isSelected ? 10 : 2,
+					shadowOpacity: cardShadowOpacity,
+					elevation: cardElevation,
 				},
 			]}
 		>
+			{isAndroid && (
+				<View
+					pointerEvents="none"
+					style={[styles.androidShadowLayer, { backgroundColor: shadowLayerColor }]}
+				/>
+			)}
+
 			{/* Image Section with Overlay Badges */}
 			<View style={styles.imageContainer}>
 				{hospitalImageUri ? (
@@ -124,11 +143,11 @@ export default function HospitalCard({
 				{/* Stats Pills */}
 				{!hideDistanceEta && (
 					<View style={styles.pillRow}>
-						<View style={[styles.statPill, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "#FFFFFF" }]}>
+						<View style={[styles.statPill, { backgroundColor: isDarkMode ? COLORS.bgDark : "#FFFFFF" }]}>
 							<Ionicons name="location" size={12} color={COLORS.brandPrimary} />
 							<Text style={[styles.statText, { color: textColor }]}>{hospitalDistance}</Text>
 						</View>
-						<View style={[styles.statPill, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "#FFFFFF" }]}>
+						<View style={[styles.statPill, { backgroundColor: isDarkMode ? COLORS.bgDark : "#FFFFFF" }]}>
 							<Ionicons name="time" size={12} color={COLORS.brandPrimary} />
 							<Text style={[styles.statText, { color: textColor }]}>
 								{mode === "booking" ? `${hospitalBeds} Beds` : `Wait: ${hospitalWaitTime}`}
@@ -148,7 +167,7 @@ export default function HospitalCard({
 							style={({ pressed }) => [
 								styles.callButton,
 								{
-									backgroundColor: isDarkMode ? "rgba(255,255,255,0.1)" : "#F1F5F9",
+									backgroundColor: isDarkMode ? COLORS.bgDark : "#F1F5F9",
 									opacity: pressed ? 0.8 : 1,
 									transform: [{ scale: pressed ? 0.95 : 1 }]
 								}
@@ -208,6 +227,14 @@ const styles = StyleSheet.create({
 		position: "relative",
 		shadowOffset: { width: 0, height: 10 },
 		shadowRadius: 15,
+	},
+	androidShadowLayer: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 36,
 	},
 	imageContainer: {
 		width: "100%",
@@ -326,10 +353,10 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 24,
 		flex: 1,
 		shadowColor: COLORS.brandPrimary, // Manifesto: Active Glow
-		shadowOffset: { width: 0, height: 8 },
-		shadowOpacity: 0.3,
-		shadowRadius: 12,
-		elevation: 8,
+		shadowOffset: { width: 0, height: Platform.OS === "android" ? 3 : 8 },
+		shadowOpacity: Platform.OS === "android" ? 0.16 : 0.3,
+		shadowRadius: Platform.OS === "android" ? 5 : 12,
+		elevation: Platform.OS === "android" ? 3 : 8,
 	},
 	actionLeft: {
 		flexDirection: "row",

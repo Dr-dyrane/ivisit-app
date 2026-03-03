@@ -7,6 +7,7 @@ import { getNotificationIcon, getPriorityColor, getRelativeTime, NOTIFICATION_PR
 
 export default function NotificationCard({ notification, onPress, onMarkRead, onDelete, isSelectMode = false, isSelected = false, onToggleSelection }) {
   const { isDarkMode } = useTheme();
+  const isAndroid = Platform.OS === "android";
 
   // Check for explicit icon/color first, then fall back to defaults
   const icon = notification.icon || getNotificationIcon(notification.type);
@@ -14,10 +15,21 @@ export default function NotificationCard({ notification, onPress, onMarkRead, on
   const timeAgo = getRelativeTime(notification.timestamp);
 
   const activeBG = isSelected
-    ? (COLORS.brandPrimary + "20")
+    ? (isAndroid
+      ? (isDarkMode ? "rgba(134, 16, 14, 0.24)" : "rgba(134, 16, 14, 0.12)")
+      : (COLORS.brandPrimary + "20"))
     : !notification.read
-      ? (isDarkMode ? COLORS.bgDarkAlt : "#FFF")
-      : (isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)");
+      ? (isAndroid
+        ? (isDarkMode ? "rgba(18, 24, 38, 0.74)" : "rgba(255, 255, 255, 0.80)")
+        : (isDarkMode ? COLORS.bgDarkAlt : "#FFF"))
+      : (isAndroid
+        ? (isDarkMode ? "rgba(18, 24, 38, 0.64)" : "rgba(255, 255, 255, 0.70)")
+        : (isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"));
+  const shadowLayerColor = isSelected
+    ? (isDarkMode ? "rgba(134, 16, 14, 0.20)" : "rgba(134, 16, 14, 0.12)")
+    : !notification.read
+      ? (isDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(15, 23, 42, 0.12)")
+      : (isDarkMode ? "rgba(0, 0, 0, 0.20)" : "rgba(15, 23, 42, 0.08)");
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -36,10 +48,18 @@ export default function NotificationCard({ notification, onPress, onMarkRead, on
           backgroundColor: activeBG,
           transform: [{ scale: pressed ? 0.98 : 1 }],
           shadowColor: !notification.read ? priorityColor : "#000",
-          shadowOpacity: isDarkMode ? 0.3 : 0.08,
+          shadowOpacity: isAndroid ? 0 : (isDarkMode ? 0.3 : 0.08),
+          elevation: isAndroid ? 0 : 4,
         }
       ]}
     >
+      {isAndroid && (
+        <View
+          pointerEvents="none"
+          style={[styles.androidShadowLayer, { backgroundColor: shadowLayerColor }]}
+        />
+      )}
+
       <View style={styles.row}>
         {/* ICON IDENTITY: 14px Nested Squircle */}
         <View style={[styles.iconBox, { backgroundColor: priorityColor + '15' }]}>
@@ -84,9 +104,16 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 12,
-    elevation: 4,
     position: 'relative',
     overflow: 'visible',
+  },
+  androidShadowLayer: {
+    position: "absolute",
+    top: 2,
+    left: 0,
+    right: 0,
+    bottom: -2,
+    borderRadius: 36,
   },
   row: { flexDirection: "row", alignItems: "center" },
   iconBox: {

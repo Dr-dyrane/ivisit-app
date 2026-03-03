@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, Linking, ActivityIndicator, Animated } from "react-native";
+import { View, Text, StyleSheet, Pressable, Linking, ActivityIndicator, Animated, Platform } from "react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -7,12 +7,39 @@ import { COLORS } from "../../../constants/colors";
 import { useBedBookingProgress } from "../../../hooks/emergency/useBedBookingProgress";
 import { navigateToRequestAmbulance } from "../../../utils/navigationHelpers";
 
+const SummaryCardSurface = ({ isDarkMode, children, style }) => {
+	const isAndroid = Platform.OS === "android";
+	const shadowLayerColor = isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)";
+
+	return (
+		<View style={styles.cardShell}>
+			{isAndroid && (
+				<View
+					pointerEvents="none"
+					style={[styles.cardShadowUnderlay, { backgroundColor: shadowLayerColor }]}
+				/>
+			)}
+			<View
+				style={[
+					styles.card,
+					{
+						backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight,
+					},
+					style,
+				]}
+			>
+				{children}
+			</View>
+		</View>
+	);
+};
+
 const BedBookingSummaryHalf = (props) => {
 	const { isDarkMode, statusLabel, etaText, hospitalName, bedType, bedNumber, specialty, bedProgress, isBusy, busyAction, showMarkOccupied, showComplete, showSecondaryCta, secondaryCtaLabel } = props;
 	const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
 
 	return (
-		<View style={[styles.card, { backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight }]}>
+		<SummaryCardSurface isDarkMode={isDarkMode}>
 			{/* LUXURY RESERVATION HEADER */}
 			<View style={styles.headerIsland}>
 				<View style={{ flex: 1 }}>
@@ -72,7 +99,7 @@ const BedBookingSummaryHalf = (props) => {
 					</Pressable>
 				)}
 			</View>
-		</View>
+		</SummaryCardSurface>
 	);
 };
 
@@ -154,16 +181,28 @@ export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, a
 
 // CONSOLIDATED SHARED STYLES
 const styles = StyleSheet.create({
+	cardShell: {
+		position: "relative",
+		marginHorizontal: 8,
+		marginBottom: 16,
+		borderRadius: 36,
+	},
+	cardShadowUnderlay: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 36,
+	},
 	card: {
 		borderRadius: 36,
 		padding: 24,
-		marginHorizontal: 8,
-		marginBottom: 16,
 		shadowColor: COLORS.brandPrimary,
 		shadowOffset: { width: 0, height: 12 },
-		shadowOpacity: 0.15,
-		shadowRadius: 20,
-		elevation: 10,
+		shadowOpacity: Platform.OS === "android" ? 0 : 0.15,
+		shadowRadius: Platform.OS === "android" ? 0 : 20,
+		elevation: Platform.OS === "android" ? 0 : 10,
 	},
 	collapsedPadding: { paddingVertical: 16 },
 	headerIsland: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },

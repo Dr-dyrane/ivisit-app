@@ -8,6 +8,7 @@ import * as Haptics from "expo-haptics";
 
 export default function ServiceTypeSelector({ selectedType, onSelect, counts }) {
 	const { isDarkMode } = useTheme();
+	const isAndroid = Platform.OS === "android";
 	const lastCallTime = useRef(0);
 	const DEBOUNCE_MS = 300;
 
@@ -58,8 +59,15 @@ export default function ServiceTypeSelector({ selectedType, onSelect, counts }) 
 
 				// Finalized Premium Background Logic
 				const activeBG = isSelected
-					? (isDarkMode ? COLORS.brandPrimary + "20" : COLORS.brandPrimary + "15")
-					: (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)");
+					? (isAndroid
+						? (isDarkMode ? "rgba(134, 16, 14, 0.24)" : "rgba(134, 16, 14, 0.12)")
+						: (isDarkMode ? COLORS.brandPrimary + "20" : COLORS.brandPrimary + "15"))
+					: (isAndroid
+						? (isDarkMode ? "rgba(18, 24, 38, 0.74)" : "rgba(255, 255, 255, 0.78)")
+						: (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)"));
+				const shadowLayerColor = isSelected
+					? (isDarkMode ? "rgba(134, 16, 14, 0.20)" : "rgba(134, 16, 14, 0.12)")
+					: (isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)");
 
 				return (
 					<Pressable
@@ -71,10 +79,18 @@ export default function ServiceTypeSelector({ selectedType, onSelect, counts }) 
 								backgroundColor: activeBG,
 								transform: [{ scale: pressed ? 0.98 : 1 }],
 								shadowColor: isSelected ? COLORS.brandPrimary : "#000",
-								shadowOpacity: isDarkMode ? 0.2 : 0.04,
+								shadowOpacity: isAndroid ? 0 : (isDarkMode ? 0.2 : 0.04),
+								elevation: isAndroid ? 0 : 2,
 							},
 						]}
 					>
+						{isAndroid && (
+							<View
+								pointerEvents="none"
+								style={[styles.androidShadowLayer, { backgroundColor: shadowLayerColor }]}
+							/>
+						)}
+
 						{/* Compact Icon Box */}
 						<LinearGradient
 							colors={service.gradientColors}
@@ -139,8 +155,16 @@ const styles = StyleSheet.create({
 				shadowOffset: { width: 0, height: 4 },
 				shadowRadius: 8,
 			},
-			android: { elevation: 2 },
+			android: { elevation: 0 },
 		}),
+	},
+	androidShadowLayer: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 28,
 	},
 	iconContainer: {
 		width: 42,

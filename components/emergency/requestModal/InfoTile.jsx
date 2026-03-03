@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Platform } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { COLORS } from '../../../constants/colors';
@@ -14,22 +14,33 @@ export default function InfoTile({
 	icon 
 }) {
 	const { isDarkMode } = useTheme();
+	const isAndroid = Platform.OS === "android";
 	
 	// Ensure value is always a string to prevent React rendering errors
 	const safeValue = typeof value === 'object' ? JSON.stringify(value) : String(value || '');
+	const surfaceColor = isAndroid
+		? (isDarkMode ? "rgba(18, 24, 38, 0.74)" : "rgba(255, 255, 255, 0.80)")
+		: cardColor;
+	const shadowLayerColor = isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)";
 	
 	return (
 		<View style={[
 			styles.card, 
 			{ 
-				backgroundColor: cardColor,
+				backgroundColor: surfaceColor,
 				shadowColor: '#000',
 				shadowOffset: { width: 0, height: 3 },
-				shadowOpacity: isDarkMode ? 0.2 : 0.08,
-				shadowRadius: 10,
-				elevation: 4,
+				shadowOpacity: isAndroid ? 0 : (isDarkMode ? 0.2 : 0.08),
+				shadowRadius: isAndroid ? 0 : 10,
+				elevation: isAndroid ? 0 : 4,
 			}
 		]}>
+			{isAndroid && (
+				<View
+					pointerEvents="none"
+					style={[styles.androidShadowLayer, { backgroundColor: shadowLayerColor }]}
+				/>
+			)}
 			<View style={styles.labelRow}>
 				{icon && (
 					<Ionicons 
@@ -59,6 +70,15 @@ const styles = StyleSheet.create({
 		paddingVertical: 12,
 		marginHorizontal: 2,
 		marginBottom: 8,
+		position: "relative",
+	},
+	androidShadowLayer: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 18,
 	},
 	labelRow: {
 		flexDirection: 'row',

@@ -25,11 +25,19 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
   const insets = useSafeAreaInsets();
   const { translateY, TAB_BAR_HEIGHT } = useTabBarVisibility();
 
-  const blurIntensity = isDarkMode ? 70 : 60;
-
   const PILL_HEIGHT = TAB_SIZE + (PILL_PADDING * 2);
   const paddingBottom = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 12);
   const height = PILL_HEIGHT + paddingBottom;
+  const isAndroid = Platform.OS === 'android';
+  const androidPillSurface = isDarkMode
+    ? 'rgba(18, 24, 38, 0.74)'
+    : 'rgba(255, 255, 255, 0.78)';
+  const androidPillShadow = isDarkMode
+    ? 'rgba(0, 0, 0, 0.24)'
+    : 'rgba(15, 23, 42, 0.12)';
+  const androidIndicatorSurface = isDarkMode
+    ? 'rgba(39, 52, 71, 0.72)'
+    : 'rgba(230, 235, 243, 0.86)';
 
   // Single shared animated value for indicator position - using useState to avoid ref mutation
   const [indicatorAnim] = React.useState(() => new Animated.Value(state.index));
@@ -63,109 +71,129 @@ const AnimatedTabBar = ({ state, descriptors, navigation }) => {
       pointerEvents="box-none"
     >
       <View style={[styles.pillContainer, { width: PILL_WIDTH, height: PILL_HEIGHT, borderRadius: PILL_HEIGHT / 2 }]} pointerEvents="box-none">
-
-        {/* Blur background */}
-        {Platform.OS === 'ios' ? (
-          <BlurView
-            intensity={isDarkMode ? 30 : 20}
-            tint={isDarkMode ? 'dark' : 'light'}
-            style={[styles.pillBackground, { borderRadius: PILL_HEIGHT / 2 }]}
-          />
-        ) : (
+        {isAndroid && (
           <View
+            pointerEvents="none"
             style={[
-              styles.pillBackground,
+              styles.androidShadowLayer,
               {
                 borderRadius: PILL_HEIGHT / 2,
-                backgroundColor: isDarkMode
-                  ? 'rgba(20, 20, 30, 0.85)'
-                  : 'rgba(255, 255, 255, 0.85)',
-              }
+                backgroundColor: androidPillShadow,
+              },
             ]}
           />
         )}
 
-        {/* Overlay tint */}
-        <View style={[
-          styles.pillBackground,
-          {
-            backgroundColor: isDarkMode ? 'rgba(20, 20, 30, 0.1)' : 'rgba(255, 255, 255, 0.1)',
-            borderRadius: PILL_HEIGHT / 2,
-          }
-        ]}
-        />
+        <View style={[styles.pillClip, { borderRadius: PILL_HEIGHT / 2 }]}>
 
-        {/* Sliding Pebble Indicator */}
-        <Animated.View
-          style={[
-            styles.indicator,
+          {/* Blur background */}
+          {Platform.OS === 'ios' ? (
+            <BlurView
+              intensity={isDarkMode ? 30 : 20}
+              tint={isDarkMode ? 'dark' : 'light'}
+              style={[styles.pillBackground, { borderRadius: PILL_HEIGHT / 2 }]}
+            />
+          ) : (
+            <View
+              style={[
+                styles.pillBackground,
+                {
+                  borderRadius: PILL_HEIGHT / 2,
+                  backgroundColor: androidPillSurface,
+                }
+              ]}
+            />
+          )}
+
+          {/* Overlay tint */}
+          <View style={[
+            styles.pillBackground,
             {
-              width: TAB_SIZE,
-              height: TAB_SIZE,
-              borderRadius: TAB_RADIUS,
-              top: PILL_PADDING,
-              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
-              transform: [{ translateX: indicatorTranslateX }],
-            },
-            Platform.OS === 'android' && !isDarkMode && { elevation: 2 }
+              backgroundColor:
+                Platform.OS === 'android'
+                  ? 'transparent'
+                  : isDarkMode
+                    ? 'rgba(20, 20, 30, 0.1)'
+                    : 'rgba(255, 255, 255, 0.1)',
+              borderRadius: PILL_HEIGHT / 2,
+            }
           ]}
-        />
+          />
 
-        {/* Tab Buttons */}
-        <View style={styles.tabContainer}>
-          {state.routes.map((route, index) => {
-            const { options } = descriptors[route.key];
-            const isFocused = state.index === index;
+          {/* Sliding Pebble Indicator */}
+          <Animated.View
+            style={[
+              styles.indicator,
+              {
+                width: TAB_SIZE,
+                height: TAB_SIZE,
+                borderRadius: TAB_RADIUS,
+                top: PILL_PADDING,
+                backgroundColor:
+                  Platform.OS === 'android'
+                    ? androidIndicatorSurface
+                    : (isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'),
+                transform: [{ translateX: indicatorTranslateX }],
+              },
+            ]}
+          />
 
-            const onPress = () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(route.name);
-              }
-            };
+          {/* Tab Buttons */}
+          <View style={styles.tabContainer}>
+            {state.routes.map((route, index) => {
+              const { options } = descriptors[route.key];
+              const isFocused = state.index === index;
 
-            const onLongPress = () => {
-              navigation.emit({ type: 'tabLongPress', target: route.key });
-            };
+              const onPress = () => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                const event = navigation.emit({
+                  type: 'tabPress',
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+                if (!isFocused && !event.defaultPrevented) {
+                  navigation.navigate(route.name);
+                }
+              };
 
-            // Static colors based on focus state (no animation needed for icons)
-            const color = isFocused
-              ? (isDarkMode ? COLORS.brandSecondary : COLORS.brandPrimary)
-              : (isDarkMode ? COLORS.textMutedDark : COLORS.textSecondary);
+              const onLongPress = () => {
+                navigation.emit({ type: 'tabLongPress', target: route.key });
+              };
 
-            return (
-              <View
-                key={route.key}
-                style={[
-                  styles.tab,
-                  {
-                    width: TAB_SIZE,
-                    height: TAB_SIZE,
-                    borderRadius: TAB_RADIUS,
-                  },
-                ]}
-              >
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={isFocused ? { selected: true } : {}}
-                  accessibilityLabel={options.tabBarAccessibilityLabel}
-                  testID={options.tabBarTestID}
-                  onPress={onPress}
-                  onLongPress={onLongPress}
-                  style={styles.pressable}
+              // Static colors based on focus state (no animation needed for icons)
+              const color = isFocused
+                ? (isDarkMode ? COLORS.brandSecondary : COLORS.brandPrimary)
+                : (isDarkMode ? COLORS.textMutedDark : COLORS.textSecondary);
+
+              return (
+                <View
+                  key={route.key}
+                  style={[
+                    styles.tab,
+                    {
+                      width: TAB_SIZE,
+                      height: TAB_SIZE,
+                      borderRadius: TAB_RADIUS,
+                    },
+                  ]}
                 >
-                  <View style={{ transform: [{ scale: isFocused ? 1.1 : 1 }] }}>
-                    {options.tabBarIcon?.({ focused: isFocused, color, size: 24 })}
-                  </View>
-                </Pressable>
-              </View>
-            );
-          })}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={isFocused ? { selected: true } : {}}
+                    accessibilityLabel={options.tabBarAccessibilityLabel}
+                    testID={options.tabBarTestID}
+                    onPress={onPress}
+                    onLongPress={onLongPress}
+                    style={styles.pressable}
+                  >
+                    <View style={{ transform: [{ scale: isFocused ? 1.1 : 1 }] }}>
+                      {options.tabBarIcon?.({ focused: isFocused, color, size: 24 })}
+                    </View>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
         </View>
       </View>
     </Animated.View>
@@ -184,7 +212,19 @@ const styles = StyleSheet.create({
   },
   pillContainer: {
     marginLeft: 20,
+    overflow: 'visible',
+    position: 'relative',
+  },
+  pillClip: {
+    flex: 1,
     overflow: 'hidden',
+  },
+  androidShadowLayer: {
+    position: 'absolute',
+    top: 2,
+    left: 0,
+    right: 0,
+    bottom: -2,
   },
   pillBackground: {
     position: 'absolute',

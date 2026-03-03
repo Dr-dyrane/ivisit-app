@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet, Dimensions } from "react-native";
+import { View, Text, Pressable, StyleSheet, Dimensions, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
 import { useTheme } from "../../../contexts/ThemeContext";
@@ -14,15 +14,19 @@ export default function AmbulanceTypeCard({
 	mutedColor,
 }) {
 	const { isDarkMode } = useTheme();
+	const isAndroid = Platform.OS === "android";
 
 	// Dynamic Styles based on your logic
 	const activeBG = selected
-		? isDarkMode
-			? COLORS.brandPrimary + "20"
-			: COLORS.brandPrimary + "15"
-		: isDarkMode
-		? "rgba(255,255,255,0.05)"
-		: "rgba(0,0,0,0.03)";
+		? (isAndroid
+			? (isDarkMode ? "rgba(134, 16, 14, 0.24)" : "rgba(134, 16, 14, 0.12)")
+			: (isDarkMode ? COLORS.brandPrimary + "20" : COLORS.brandPrimary + "15"))
+		: (isAndroid
+			? (isDarkMode ? "rgba(18, 24, 38, 0.74)" : "rgba(255, 255, 255, 0.78)")
+			: (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)"));
+	const shadowLayerColor = selected
+		? (isDarkMode ? "rgba(134, 16, 14, 0.20)" : "rgba(134, 16, 14, 0.12)")
+		: (isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)");
 
 	return (
 		<Pressable
@@ -34,11 +38,18 @@ export default function AmbulanceTypeCard({
 					transform: [{ scale: pressed ? 0.98 : 1 }],
 					// Using shadow instead of borders for depth
 					shadowColor: selected ? COLORS.brandPrimary : "#000",
-					shadowOpacity: isDarkMode ? 0.15 : 0.08,
-					elevation: selected ? 10 : 2,
+					shadowOpacity: isAndroid ? 0 : (isDarkMode ? 0.15 : 0.08),
+					elevation: isAndroid ? 0 : (selected ? 10 : 2),
 				},
 			]}
 		>
+			{isAndroid && (
+				<View
+					pointerEvents="none"
+					style={[styles.androidShadowLayer, { backgroundColor: shadowLayerColor }]}
+				/>
+			)}
+
 			{/* Top Row: Icon and Price */}
 			<View style={styles.header}>
 				<View
@@ -152,6 +163,14 @@ const styles = StyleSheet.create({
 		// Note: No borders applied as per request
 		shadowOffset: { width: 0, height: 12 },
 		shadowRadius: 16,
+	},
+	androidShadowLayer: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 36,
 	},
 	header: {
 		flexDirection: "row",

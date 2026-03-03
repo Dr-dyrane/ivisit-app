@@ -4,7 +4,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
-import { getStatusColor, getVisitTypeIcon } from "../../constants/visits";
 
 export default function VisitCard({ visit, isSelected, onSelect, onViewDetails, onDelete }) {
   const { isDarkMode } = useTheme();
@@ -14,10 +13,25 @@ export default function VisitCard({ visit, isSelected, onSelect, onViewDetails, 
   const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
   const mutedColor = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted;
   const cardBase = isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt;
+  const isAndroid = Platform.OS === "android";
+  const selectedCardSurface = isAndroid
+    ? (isDarkMode ? "rgba(134, 16, 14, 0.24)" : "rgba(134, 16, 14, 0.12)")
+    : COLORS.brandPrimary + "15";
+  const defaultCardSurface = isAndroid
+    ? (isDarkMode ? "rgba(18, 24, 38, 0.74)" : "rgba(255, 255, 255, 0.76)")
+    : cardBase;
+  const accentSurface = isAndroid
+    ? (isDarkMode ? "rgba(43, 26, 26, 0.62)" : "rgba(253, 236, 236, 0.72)")
+    : COLORS.brandPrimary + "15";
+  const shadowLayerColor = isSelected
+    ? (isDarkMode ? "rgba(134, 16, 14, 0.20)" : "rgba(134, 16, 14, 0.12)")
+    : (isDarkMode ? "rgba(0, 0, 0, 0.20)" : "rgba(15, 23, 42, 0.10)");
+  const cardShadowOpacity = isAndroid ? 0 : (isDarkMode ? 0.3 : 0.08);
+  const cardElevation = isAndroid ? 0 : 4;
 
   const activeBG = isSelected
-    ? COLORS.brandPrimary + "15"
-    : cardBase;
+    ? selectedCardSurface
+    : defaultCardSurface;
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "No date";
@@ -39,10 +53,18 @@ export default function VisitCard({ visit, isSelected, onSelect, onViewDetails, 
           backgroundColor: activeBG,
           transform: [{ scale: pressed ? 0.98 : 1 }],
           shadowColor: isSelected ? COLORS.brandPrimary : "#000",
-          shadowOpacity: isDarkMode ? 0.3 : 0.08,
+          shadowOpacity: cardShadowOpacity,
+          elevation: cardElevation,
         },
       ]}
     >
+      {isAndroid && (
+        <View
+          pointerEvents="none"
+          style={[styles.androidShadowLayer, { backgroundColor: shadowLayerColor }]}
+        />
+      )}
+
       {/* Hero Image Section */}
       <View style={styles.imageContainer}>
         <Image source={{ uri: visit?.image }} style={styles.image} resizeMode="cover" />
@@ -66,7 +88,7 @@ export default function VisitCard({ visit, isSelected, onSelect, onViewDetails, 
 
         {/* Identity Widget: Nested Squircle */}
         <View style={[styles.doctorWidget, { backgroundColor: isDarkMode ? COLORS.bgDark : COLORS.bgLight }]}>
-          <View style={[styles.doctorSquircle, { backgroundColor: COLORS.brandPrimary + "15" }]}>
+          <View style={[styles.doctorSquircle, { backgroundColor: accentSurface }]}>
             <Text style={[styles.doctorInitials, { color: COLORS.brandPrimary }]}>
               {visit?.doctor?.split(" ")?.map(n => n?.[0])?.join("") || "D"}
             </Text>
@@ -95,7 +117,10 @@ export default function VisitCard({ visit, isSelected, onSelect, onViewDetails, 
         <View style={styles.actionContainer}>
           <Pressable
             onPress={() => onDelete?.(visit?.id)}
-            style={styles.deleteSquircle}
+            style={[
+              styles.deleteSquircle,
+              Platform.OS === "android" && { backgroundColor: isDarkMode ? "#2B1A1A" : "#FDECEC" },
+            ]}
           >
             <Ionicons name="trash" size={20} color={COLORS.brandPrimary} />
           </Pressable>
@@ -129,9 +154,16 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     minHeight: 220,
     position: "relative",
-    elevation: 4,
     shadowOffset: { width: 0, height: 10 },
     shadowRadius: 15,
+  },
+  androidShadowLayer: {
+    position: "absolute",
+    top: 2,
+    left: 0,
+    right: 0,
+    bottom: -2,
+    borderRadius: 36,
   },
   imageContainer: {
     width: "100%",

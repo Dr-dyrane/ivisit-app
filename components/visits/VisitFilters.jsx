@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
@@ -7,6 +7,7 @@ import * as Haptics from "expo-haptics";
 
 export default function VisitFilters({ filters, selectedFilter, onSelect, counts = {} }) {
   const { isDarkMode } = useTheme();
+  const isAndroid = Platform.OS === "android";
 
   const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
   const mutedColor = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted;
@@ -20,8 +21,15 @@ export default function VisitFilters({ filters, selectedFilter, onSelect, counts
           const count = counts[filter.id] || 0;
 
           const activeBG = isSelected
-            ? COLORS.brandPrimary + "15"
-            : cardBase;
+            ? (isAndroid
+              ? (isDarkMode ? "rgba(134, 16, 14, 0.24)" : "rgba(134, 16, 14, 0.12)")
+              : COLORS.brandPrimary + "15")
+            : (isAndroid
+              ? (isDarkMode ? "rgba(18, 24, 38, 0.74)" : "rgba(255, 255, 255, 0.78)")
+              : cardBase);
+          const shadowLayerColor = isSelected
+            ? (isDarkMode ? "rgba(134, 16, 14, 0.20)" : "rgba(134, 16, 14, 0.12)")
+            : (isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)");
 
           return (
             <Pressable
@@ -36,10 +44,18 @@ export default function VisitFilters({ filters, selectedFilter, onSelect, counts
                   backgroundColor: activeBG,
                   transform: [{ scale: pressed ? 0.96 : 1 }],
                   shadowColor: isSelected ? COLORS.brandPrimary : "#000",
-                  shadowOpacity: isDarkMode ? 0.2 : 0.05,
+                  shadowOpacity: isAndroid ? 0 : (isDarkMode ? 0.2 : 0.05),
+                  elevation: isAndroid ? 0 : 3,
                 },
               ]}
             >
+              {isAndroid && (
+                <View
+                  pointerEvents="none"
+                  style={[styles.androidShadowLayer, { backgroundColor: shadowLayerColor }]}
+                />
+              )}
+
               <View style={styles.contentRow}>
                 <Text style={[styles.label, { color: isSelected ? COLORS.brandPrimary : textColor }]}>
                   {filter.label}
@@ -77,9 +93,16 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     minWidth: 100,
     position: "relative",
-    elevation: 3,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
+  },
+  androidShadowLayer: {
+    position: "absolute",
+    top: 2,
+    left: 0,
+    right: 0,
+    bottom: -2,
+    borderRadius: 28,
   },
   contentRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   label: { fontSize: 14, fontWeight: "800", letterSpacing: -0.4 },

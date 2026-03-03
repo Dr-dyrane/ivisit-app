@@ -49,10 +49,33 @@ export default function EmergencySearchBar({
 	*/
 
 	// Finalized Premium Colors
-	const backgroundColor = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
+	const isAndroid = Platform.OS === "android";
+	const backgroundColor =
+		Platform.OS === "android"
+			? (isDarkMode ? COLORS.bgDarkAlt : "#EEF2F7")
+			: (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)");
 	const activeBG = isDarkMode ? "#1E293B" : "#FFFFFF";
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
+	const inputGlassSurface = isFocused
+		? (isAndroid
+			? (isDarkMode ? "rgba(30, 41, 59, 0.78)" : "rgba(255, 255, 255, 0.88)")
+			: activeBG)
+		: (isAndroid
+			? (isDarkMode ? "rgba(18, 24, 38, 0.74)" : "rgba(238, 242, 247, 0.80)")
+			: backgroundColor);
+	const inputShadowLayer = isFocused
+		? (isDarkMode ? "rgba(134, 16, 14, 0.16)" : "rgba(134, 16, 14, 0.10)")
+		: (isDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(15, 23, 42, 0.12)");
+	const micGlassSurface = isFocused
+		? (isAndroid
+			? (isDarkMode ? "rgba(45, 55, 72, 0.72)" : "rgba(241, 245, 249, 0.84)")
+			: (isDarkMode ? "#2D3748" : "#F1F5F9"))
+		: (isAndroid
+			? (isDarkMode ? "rgba(11, 15, 26, 0.70)" : "rgba(226, 232, 240, 0.74)")
+			: "rgba(0,0,0,0.05)");
+	const micShadowLayer = isDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(15, 23, 42, 0.12)";
+	const dropdownShadowLayer = isDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(15, 23, 42, 0.12)";
 
 	const handleFocus = useCallback(() => {
 		setIsFocused(true);
@@ -88,19 +111,29 @@ export default function EmergencySearchBar({
 	return (
 		<View style={[styles.wrapper, style]}>
 			<Animated.View style={[styles.container, animatedContainerStyle]}>
-				<View
-					style={[
-						styles.inputContainer,
-						{
-							backgroundColor: isFocused ? activeBG : backgroundColor,
-							// Shadow Glow on Focus
-							shadowColor: isFocused ? COLORS.brandPrimary : "#000",
-							shadowOpacity: isFocused ? 0.15 : 0.03,
-							shadowRadius: isFocused ? 15 : 8,
-							elevation: isFocused ? 6 : 2,
-						},
-					]}
-				>
+				<View style={styles.inputShell}>
+					{isAndroid && (
+						<View
+							pointerEvents="none"
+							style={[
+								styles.inputShadowUnderlay,
+								{ backgroundColor: inputShadowLayer },
+							]}
+						/>
+					)}
+					<View
+						style={[
+							styles.inputContainer,
+							{
+								backgroundColor: inputGlassSurface,
+								// Shadow Glow on Focus
+								shadowColor: isFocused ? COLORS.brandPrimary : "#000",
+								shadowOpacity: isAndroid ? 0 : (isFocused ? 0.15 : 0.03),
+								shadowRadius: isAndroid ? 0 : (isFocused ? 15 : 8),
+								elevation: isAndroid ? 0 : (isFocused ? 6 : 2),
+							},
+						]}
+					>
 					<Ionicons
 						name="search"
 						size={20}
@@ -132,16 +165,28 @@ export default function EmergencySearchBar({
 							<Pressable
 								onPress={handleVoice}
 								style={({ pressed }) => [
-									styles.micSquircle,
+									styles.micPressable,
 									{
-										backgroundColor: isFocused ? (isDarkMode ? "#2D3748" : "#F1F5F9") : "rgba(0,0,0,0.05)",
-										opacity: pressed ? 0.7 : 1
+										opacity: pressed ? 0.7 : 1,
+										transform: [{ scale: pressed ? 0.96 : 1 }],
 									}
 								]}
 							>
-								<Ionicons name="mic" size={18} color={COLORS.brandPrimary} />
+								{isAndroid && (
+									<View
+										pointerEvents="none"
+										style={[
+											styles.micShadowUnderlay,
+											{ backgroundColor: micShadowLayer },
+										]}
+									/>
+								)}
+								<View style={[styles.micSquircle, { backgroundColor: micGlassSurface }]}>
+									<Ionicons name="mic" size={18} color={COLORS.brandPrimary} />
+								</View>
 							</Pressable>
 						)}
+					</View>
 					</View>
 				</View>
 			</Animated.View>
@@ -155,10 +200,21 @@ export default function EmergencySearchBar({
 						styles.dropdown,
 						{
 							backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
-							shadowOpacity: isDarkMode ? 0.3 : 0.08,
+							shadowOpacity: isAndroid ? 0 : (isDarkMode ? 0.3 : 0.08),
+							shadowRadius: isAndroid ? 0 : 16,
+							elevation: isAndroid ? 0 : 8,
 						},
 					]}
 				>
+					{isAndroid && (
+						<View
+							pointerEvents="none"
+							style={[
+								styles.dropdownShadowUnderlay,
+								{ backgroundColor: dropdownShadowLayer },
+							]}
+						/>
+					)}
 					<Text style={[styles.label, { color: mutedColor }]}>QUICK SEARCH</Text>
 					<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipList} keyboardShouldPersistTaps="handled">
 						{suggestedItems.map((item, index) => (
@@ -171,7 +227,13 @@ export default function EmergencySearchBar({
 								}}
 								style={({ pressed }) => [
 									styles.chip,
-									{ backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", opacity: pressed ? 0.7 : 1 }
+									{
+										backgroundColor:
+											Platform.OS === "android"
+												? (isDarkMode ? COLORS.bgDark : "#EEF2F7")
+												: (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)"),
+										opacity: pressed ? 0.7 : 1,
+									}
 								]}
 							>
 								<Ionicons name={item.icon} size={14} color={COLORS.brandPrimary} style={{ marginRight: 6 }} />
@@ -189,6 +251,19 @@ const styles = StyleSheet.create({
 	wrapper: {
 		marginBottom: 16,
 		zIndex: 50,
+	},
+	inputShell: {
+		position: "relative",
+		borderRadius: 28,
+		overflow: "visible",
+	},
+	inputShadowUnderlay: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 28,
 	},
 	inputContainer: {
 		flexDirection: "row",
@@ -211,6 +286,21 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 	},
+	micPressable: {
+		width: 38,
+		height: 38,
+		position: "relative",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	micShadowUnderlay: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 12,
+	},
 	micSquircle: {
 		width: 38,
 		height: 38,
@@ -222,6 +312,7 @@ const styles = StyleSheet.create({
 		padding: 4,
 	},
 	dropdown: {
+		position: "relative",
 		marginTop: 10,
 		borderRadius: 32, // Consistent with cards
 		padding: 16,
@@ -229,6 +320,14 @@ const styles = StyleSheet.create({
 		shadowOffset: { width: 0, height: 12 },
 		shadowRadius: 16,
 		elevation: 8,
+	},
+	dropdownShadowUnderlay: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 32,
 	},
 	label: {
 		fontSize: 10,

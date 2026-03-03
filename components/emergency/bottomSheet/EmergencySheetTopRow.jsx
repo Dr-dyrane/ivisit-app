@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { View, Image, Pressable, StyleSheet, Animated } from "react-native";
+import { View, Image, Pressable, StyleSheet, Animated, Platform } from "react-native";
 import EmergencySearchBar from "../EmergencySearchBar";
 import MiniProfileModal from "../MiniProfileModal";
 import { COLORS } from "../../../constants/colors";
@@ -18,6 +18,8 @@ export default function EmergencySheetTopRow({
 	onCloseProfileModal,
 }) {
 	const { isDarkMode } = useTheme();
+	const isAndroid = Platform.OS === "android";
+	const avatarShadowLayer = isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)";
 	const fadeAnim = useRef(new Animated.Value(1)).current;
 
 	useEffect(() => {
@@ -64,12 +66,24 @@ export default function EmergencySheetTopRow({
 					style={({ pressed }) => [
 						styles.avatarFrame,
 						{
-							backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+							backgroundColor:
+								isAndroid
+									? (isDarkMode ? COLORS.bgDarkAlt : "#EEF2F7")
+									: (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)"),
 							borderColor: isDarkMode ? COLORS.brandPrimary + "40" : COLORS.brandPrimary + "20",
 							transform: [{ scale: pressed ? 0.92 : 1 }],
 						},
 					]}
 				>
+					{isAndroid && (
+						<View
+							pointerEvents="none"
+							style={[
+								styles.avatarShadowUnderlay,
+								{ backgroundColor: avatarShadowLayer },
+							]}
+						/>
+					)}
 					<Image
 						source={avatarSource}
 						style={styles.avatarImage}
@@ -110,11 +124,19 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		// Soft shadow to lift identity card
 		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.1,
-		shadowRadius: 8,
-		elevation: 4,
+		shadowOffset: { width: 0, height: Platform.OS === "android" ? 1 : 4 },
+		shadowOpacity: Platform.OS === "android" ? 0 : 0.1,
+		shadowRadius: Platform.OS === "android" ? 0 : 8,
+		elevation: Platform.OS === "android" ? 0 : 4,
 		position: 'relative',
+	},
+	avatarShadowUnderlay: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 18,
 	},
 	avatarImage: {
 		width: 46,

@@ -37,6 +37,7 @@ import { COLORS } from "../constants/colors";
 export default function ThemeToggle() {
 	const { isDarkMode, toggleTheme } = useTheme();
 	const pathname = usePathname();
+	const isAndroid = Platform.OS === "android";
 
 	// Component states
 	const [mounted, setMounted] = useState(false);
@@ -137,15 +138,13 @@ export default function ThemeToggle() {
 	// Skip rendering until delayed mount is complete
 	if (!mounted) return null;
 
-	// Platform-specific background
-	const getBgColor = () => {
-		if (Platform.OS === "android") {
-			return isDarkMode
-				? "rgba(15, 15, 15, 0.95)"
-				: "rgba(255, 255, 255, 0.95)";
-		}
-		return isDarkMode ? "rgba(134, 16, 14, 0.05)" : "rgba(255, 255, 255, 0.05)";
-	};
+	// Android split-layer glass surfaces
+	const androidGlassSurface = isDarkMode
+		? "rgba(18, 24, 38, 0.74)"
+		: "rgba(255, 255, 255, 0.80)";
+	const androidShadowLayer = isDarkMode
+		? "rgba(0, 0, 0, 0.24)"
+		: "rgba(15, 23, 42, 0.12)";
 
 	// ------------------------
 	// Render
@@ -167,9 +166,9 @@ export default function ThemeToggle() {
 					width: 48,
 					height: heightAnim,
 					borderRadius: 24,
-					overflow: "hidden",
-					backgroundColor: getBgColor(),
-					borderWidth: 1,
+					overflow: "visible",
+					backgroundColor: "transparent",
+					borderWidth: isAndroid ? 0 : 1,
 					borderColor: isDarkMode
 						? "rgba(255,255,255,0.1)"
 						: "rgba(134, 16, 14, 0.2)",
@@ -180,83 +179,93 @@ export default function ThemeToggle() {
 							shadowRadius: 10,
 							shadowOffset: { width: 0, height: 4 },
 						},
-						android: { elevation: 4 },
+						android: { elevation: 0 },
 					}),
 				}}
 			>
-				{Platform.OS === "ios" ? (
-					<BlurView
-						intensity={30}
-						tint={isDarkMode ? "dark" : "light"}
-						style={StyleSheet.absoluteFill}
-					/>
-				) : (
-					// Android fallback: semi-transparent background
+				{isAndroid && (
 					<View
 						style={[
-							StyleSheet.absoluteFill,
-							{
-								backgroundColor: isDarkMode 
-									? 'rgba(0,0,0,0.3)'  // Dark semi-transparent
-									: 'rgba(255,255,255,0.8)'  // Light semi-transparent
-							}
+							styles.androidShadowLayer,
+							{ backgroundColor: androidShadowLayer },
 						]}
 					/>
 				)}
 
 				<View
-					style={{
-						flex: 1,
-						alignItems: "center",
-						justifyContent: "space-around",
-						paddingVertical: 4,
-					}}
+					style={[
+						styles.toggleClip,
+						{
+							height: "100%",
+							borderRadius: 24,
+							backgroundColor: isAndroid
+								? androidGlassSurface
+								: (isDarkMode ? "rgba(134, 16, 14, 0.05)" : "rgba(255, 255, 255, 0.05)"),
+						},
+					]}
 				>
-					{/* Sun Icon */}
-					<Pressable
-						onPress={
-							expanded ? (isDarkMode ? handleThemeChange : null) : expand
-						}
-						style={({ pressed }) => [
-							styles.iconCircle,
-							expanded &&
-							!isDarkMode && { backgroundColor: COLORS.brandPrimary },
-							pressed && { opacity: 0.7 },
-						]}
-					>
-						<Feather
-							name="sun"
-							size={iconSize}
-							color={
-								expanded
-									? !isDarkMode
-										? COLORS.bgLight
-										: "rgba(255,255,255,0.3)"
-									: isDarkMode
-										? COLORS.bgLight
-										: COLORS.brandPrimary
-							}
+					{Platform.OS === "ios" ? (
+						<BlurView
+							intensity={30}
+							tint={isDarkMode ? "dark" : "light"}
+							style={StyleSheet.absoluteFill}
 						/>
-					</Pressable>
+					) : null}
 
-					{/* Moon Icon (Expanded Only) */}
-					{expanded && (
+					<View
+						style={{
+							flex: 1,
+							alignItems: "center",
+							justifyContent: "space-around",
+							paddingVertical: 4,
+						}}
+					>
+						{/* Sun Icon */}
 						<Pressable
-							onPress={isDarkMode ? null : handleThemeChange}
-							style={[
+							onPress={
+								expanded ? (isDarkMode ? handleThemeChange : null) : expand
+							}
+							style={({ pressed }) => [
 								styles.iconCircle,
-								isDarkMode && { backgroundColor: COLORS.bgLight },
+								expanded &&
+								!isDarkMode && { backgroundColor: COLORS.brandPrimary },
+								pressed && { opacity: 0.7 },
 							]}
 						>
 							<Feather
-								name="moon"
+								name="sun"
 								size={iconSize}
 								color={
-									isDarkMode ? COLORS.brandPrimary : "rgba(134, 16, 14, 0.3)"
+									expanded
+										? !isDarkMode
+											? COLORS.bgLight
+											: "rgba(255,255,255,0.3)"
+										: isDarkMode
+											? COLORS.bgLight
+											: COLORS.brandPrimary
 								}
 							/>
 						</Pressable>
-					)}
+
+						{/* Moon Icon (Expanded Only) */}
+						{expanded && (
+							<Pressable
+								onPress={isDarkMode ? null : handleThemeChange}
+								style={[
+									styles.iconCircle,
+									isDarkMode && { backgroundColor: COLORS.bgLight },
+								]}
+							>
+								<Feather
+									name="moon"
+									size={iconSize}
+									color={
+										isDarkMode ? COLORS.brandPrimary : "rgba(134, 16, 14, 0.3)"
+									}
+								/>
+							</Pressable>
+						)}
+					</View>
 				</View>
 			</Animated.View>
 
@@ -280,6 +289,17 @@ export default function ThemeToggle() {
 }
 
 const styles = StyleSheet.create({
+	toggleClip: {
+		overflow: "hidden",
+	},
+	androidShadowLayer: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 24,
+	},
 	iconCircle: {
 		width: 36,
 		height: 36,

@@ -43,6 +43,14 @@ const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
 
   const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
   const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
+  const OverlayContainer = Platform.OS === 'ios' ? BlurView : View;
+  const overlayProps = Platform.OS === 'ios' ? { intensity: isDarkMode ? 40 : 80 } : {};
+  const overlayStyle = [
+    styles.overlay,
+    Platform.OS === 'android' && {
+      backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.86)' : 'rgba(255, 255, 255, 0.84)',
+    },
+  ];
 
   const handleSecureAdd = async () => {
     if (!cardDetails?.complete) {
@@ -93,7 +101,7 @@ const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
   };
 
   return (
-    <BlurView intensity={isDarkMode ? 40 : 80} style={styles.overlay}>
+    <OverlayContainer {...overlayProps} style={overlayStyle}>
       <Pressable onPress={Keyboard.dismiss} style={StyleSheet.absoluteFill} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -161,7 +169,7 @@ const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </BlurView>
+    </OverlayContainer>
   );
 };
 

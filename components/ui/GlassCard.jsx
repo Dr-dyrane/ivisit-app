@@ -22,6 +22,7 @@ export default function GlassCard({
   borderRadius = 36, // Primary Artifact Layer
 }) {
   const { isDarkMode } = useTheme();
+  const isAndroid = Platform.OS === "android";
 
   // Blur intensity based on prop
   const blurIntensity = {
@@ -34,10 +35,24 @@ export default function GlassCard({
   const overlayColor = isDarkMode
     ? selected
       ? `${selectedColor}25`
-      : "rgba(18, 24, 38, 0.96)"
+      : isAndroid
+        ? "#121826"
+        : "rgba(18, 24, 38, 0.96)"
     : selected
       ? `${selectedColor}15`
-      : "rgba(255, 255, 255, 0.98)";
+      : isAndroid
+        ? "#FFFFFF"
+        : "rgba(255, 255, 255, 0.98)";
+  const androidOverlayColor = isDarkMode
+    ? selected
+      ? "rgba(134, 16, 14, 0.24)"
+      : "rgba(18, 24, 38, 0.74)"
+    : selected
+      ? "rgba(134, 16, 14, 0.12)"
+      : "rgba(255, 255, 255, 0.80)";
+  const androidShadowLayer = selected
+    ? (isDarkMode ? "rgba(134, 16, 14, 0.20)" : "rgba(134, 16, 14, 0.12)")
+    : (isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)");
 
   // Shadow for active glow effect
   const shadowStyle = Platform.select({
@@ -47,9 +62,7 @@ export default function GlassCard({
       shadowOpacity: selected ? 0.4 : isDarkMode ? 0.4 : 0.08,
       shadowRadius: selected ? 24 : 16,
     },
-    android: {
-      elevation: selected ? 12 : 4,
-    },
+    android: { elevation: 0 },
   });
 
   return (
@@ -63,6 +76,24 @@ export default function GlassCard({
         style,
       ]}
     >
+      {isAndroid && (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.androidShadowLayer,
+            {
+              top: 2,
+              left: 0,
+              right: 0,
+              bottom: -2,
+              borderRadius,
+              backgroundColor: androidShadowLayer,
+            },
+          ]}
+        />
+      )}
+
+      <View style={[styles.clip, { borderRadius }]}>
       {Platform.OS === "ios" ? (
         <BlurView
           intensity={blurIntensity}
@@ -83,19 +114,13 @@ export default function GlassCard({
           </View>
         </BlurView>
       ) : (
-        // Android fallback: semi-transparent background with elevated opacity
+        // Android split-layer glass: translucent surface on aligned underlay
         <View
           style={[
             styles.blur,
             {
               borderRadius,
-              backgroundColor: isDarkMode 
-                ? selected
-                  ? `${selectedColor}35`  // Dark selected with more opacity
-                  : "rgba(18, 24, 38, 0.98)"  // Dark background
-                : selected
-                  ? `${selectedColor}25`  // Light selected with more opacity
-                  : "rgba(255, 255, 255, 0.98)",  // Light background
+              backgroundColor: androidOverlayColor,
             }
           ]}
         >
@@ -113,16 +138,24 @@ export default function GlassCard({
           </View>
         </View>
       )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    overflow: "visible",
+    position: "relative",
+  },
+  clip: {
     overflow: "hidden",
   },
   blur: {
     overflow: "hidden",
+  },
+  androidShadowLayer: {
+    position: "absolute",
   },
   overlay: {
     // Inner content container

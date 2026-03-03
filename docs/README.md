@@ -7,6 +7,7 @@ Primary entry for project documentation and workflow maps.
 - [INDEX.md](./INDEX.md): full folder index and navigation.
 - [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md): product-level blueprint.
 - [project_state/QUICK_START.md](./project_state/QUICK_START.md): development quick start.
+- [product_design/ANDROID_GLASS_PATTERN.md](./product_design/ANDROID_GLASS_PATTERN.md): Android shadow/glass anti-smudge standard.
 
 ## Workflow Maps (Distributed)
 

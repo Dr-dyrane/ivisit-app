@@ -154,7 +154,7 @@ export function ServiceRatingModal({
 							style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
 						/>
 					) : (
-						// Android fallback: semi-transparent background
+						// Android fallback: solid surface to avoid blur-smudge artifacts
 						<View
 							style={{
 								position: 'absolute',
@@ -162,9 +162,7 @@ export function ServiceRatingModal({
 								left: 0,
 								right: 0,
 								bottom: 0,
-								backgroundColor: isDarkMode
-									? 'rgba(0,0,0,0.2)'  // Dark semi-transparent
-									: 'rgba(255,255,255,0.2)'  // Light semi-transparent
+								backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight,
 							}}
 						/>
 					)}

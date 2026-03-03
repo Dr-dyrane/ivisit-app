@@ -1,9 +1,17 @@
 import { useRef, useState, useEffect } from "react";
-import { View, Text, TextInput, Pressable, Animated } from "react-native";
+import { View, Text, TextInput, Pressable, Animated, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Clipboard from "expo-clipboard";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
+
+const OTP_LENGTH = 6;
+const EMPTY_OTP = Array(OTP_LENGTH).fill("");
+const getDigitsOnly = (value) => String(value ?? "").replace(/\D/g, "");
+
+const sanitizeOtp = (value) =>
+	getDigitsOnly(value).slice(0, OTP_LENGTH);
 
 /**
  * OTPInputCard - iVisit
@@ -12,20 +20,16 @@ import { COLORS } from "../../constants/colors";
  */
 export default function OTPInputCard({ method, contact, onVerified, onResend, loading }) {
 	const { isDarkMode } = useTheme();
-	const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+	const [otp, setOtp] = useState(EMPTY_OTP);
 	const [timer, setTimer] = useState(60);
 	const [canResend, setCanResend] = useState(false);
 
 	const inputRefs = useRef([]);
 	const shakeAnim = useRef(new Animated.Value(0)).current;
 	const buttonScale = useRef(new Animated.Value(1)).current;
+	const clipboardAutofilledRef = useRef(false);
 
 	const isComplete = otp.every((digit) => digit !== "");
-
-	// Update OTP length if needed (e.g. from props or config)
-	// Currently hardcoded to 6 as per standard Supabase OTP.
-	// If you receive an 8 digit code, we need to update the state initialization and UI mapping.
-	// For now, let's keep it 6. If the user reports 8, we can change the initial state to 8 empty strings.
 
 	// Timer countdown
 	useEffect(() => {
@@ -38,26 +42,6 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 			setCanResend(true);
 		}
 	}, [timer]);
-
-	const handleOTPChange = (value, index) => {
-		const digit = value.slice(-1);
-		if (!/^\d*$/.test(digit)) return;
-
-		const newOtp = [...otp];
-		newOtp[index] = digit;
-		setOtp(newOtp);
-
-		// Auto-focus next input
-		if (digit && index < 5) {
-			inputRefs.current[index + 1]?.focus();
-		}
-
-		// Auto-submit when complete
-		if (newOtp.every((d) => d !== "")) {
-			const otpString = newOtp.join("");
-			handleVerify(otpString);
-		}
-	};
 
 	const handleKeyPress = (e, index) => {
 		if (e.nativeEvent.key === "Backspace") {
@@ -96,7 +80,7 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 	const handleVerify = (otpString) => {
 		if (loading) return; // Prevent double submission
 
-		if (otpString.length !== 6) {
+		if (otpString.length !== OTP_LENGTH) {
 			triggerShake();
 			return;
 		}
@@ -105,13 +89,85 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 		onVerified?.(otpString);
 	};
 
+	const applyOtpDigits = (rawValue, startIndex = 0, options = {}) => {
+		const { autoVerify = true, autoFocus = true } = options;
+		const digits = sanitizeOtp(rawValue);
+		if (!digits) return;
+
+		const nextOtp = [...otp];
+		for (let i = 0; i < digits.length; i += 1) {
+			const targetIndex = startIndex + i;
+			if (targetIndex >= OTP_LENGTH) break;
+			nextOtp[targetIndex] = digits[i];
+		}
+
+		setOtp(nextOtp);
+
+		const isCompleteCode = nextOtp.every((digit) => digit !== "");
+		if (isCompleteCode && autoVerify) {
+			handleVerify(nextOtp.join(""));
+			return;
+		}
+
+		if (autoFocus) {
+			const focusIndex = Math.min(startIndex + digits.length, OTP_LENGTH - 1);
+			inputRefs.current[focusIndex]?.focus();
+		}
+	};
+
+	const handleOTPChange = (value, index) => {
+		const digits = sanitizeOtp(value);
+
+		if (!digits) {
+			const newOtp = [...otp];
+			newOtp[index] = "";
+			setOtp(newOtp);
+			return;
+		}
+
+		// Supports full-code paste from any field (especially first field).
+		if (digits.length > 1) {
+			applyOtpDigits(digits, index);
+			return;
+		}
+
+		const newOtp = [...otp];
+		newOtp[index] = digits;
+		setOtp(newOtp);
+
+		if (index < OTP_LENGTH - 1) {
+			inputRefs.current[index + 1]?.focus();
+		}
+
+		if (newOtp.every((digit) => digit !== "")) {
+			handleVerify(newOtp.join(""));
+		}
+	};
+
+	const tryAutofillFromClipboard = async () => {
+		if (loading || clipboardAutofilledRef.current) return;
+		if (otp.some((digit) => digit !== "")) return;
+
+		try {
+			const clipboardValue = await Clipboard.getStringAsync();
+			const digitsOnly = getDigitsOnly(clipboardValue);
+			if (digitsOnly.length !== OTP_LENGTH) return;
+
+			clipboardAutofilledRef.current = true;
+			applyOtpDigits(digitsOnly, 0, { autoVerify: true, autoFocus: false });
+		} catch (error) {
+			console.warn("Clipboard OTP autofill failed:", error?.message || error);
+		}
+	};
+
 	const handleResend = () => {
 		if (!canResend || loading) return;
 
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		setTimer(60);
 		setCanResend(false);
-		setOtp(["", "", "", "", "", ""]);
+		setOtp(EMPTY_OTP);
+		clipboardAutofilledRef.current = false;
 		inputRefs.current[0]?.focus();
 		// Propagate resend action to parent if needed, or re-trigger request in parent
 		if (onResend) {
@@ -156,10 +212,17 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 							value={digit}
 							onChangeText={(value) => handleOTPChange(value, index)}
 							onKeyPress={(e) => handleKeyPress(e, index)}
+							onFocus={() => {
+								if (index === 0) {
+									void tryAutofillFromClipboard();
+								}
+							}}
 							keyboardType="number-pad"
-							maxLength={1}
+							maxLength={index === 0 ? OTP_LENGTH : 1}
 							selectTextOnFocus
 							autoFocus={index === 0}
+							autoComplete={index === 0 ? (Platform.OS === "android" ? "sms-otp" : "one-time-code") : "off"}
+							textContentType={index === 0 ? "oneTimeCode" : undefined}
 							selectionColor={COLORS.brandPrimary}
 						/>
 					))}

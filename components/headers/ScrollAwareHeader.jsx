@@ -31,9 +31,19 @@ export default function ScrollAwareHeader({
 }) {
 	const insets = useSafeAreaInsets();
 	const { isDarkMode } = useTheme();
+	const isAndroid = Platform.OS === "android";
 	const { headerOpacity: scrollHeaderOpacity, titleOpacity: scrollTitleOpacity } = useScrollAwareHeader();
 	const headerOpacity = scrollAware ? scrollHeaderOpacity : 1;
 	const titleOpacity = scrollAware ? scrollTitleOpacity : 1;
+	const islandGlassSurface = isDarkMode
+		? "rgba(18, 24, 38, 0.74)"
+		: "rgba(255, 255, 255, 0.82)";
+	const islandShadowLayer = isDarkMode
+		? "rgba(0, 0, 0, 0.24)"
+		: "rgba(15, 23, 42, 0.12)";
+	const actionGlassSurface = isDarkMode
+		? "rgba(18, 24, 38, 0.70)"
+		: "rgba(238, 242, 247, 0.78)";
 
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
 	const textMuted = isDarkMode ? "#94A3B8" : "#64748B";
@@ -42,10 +52,10 @@ export default function ScrollAwareHeader({
 		rightComponent === false ? null : rightComponent == null ? (
 			<View style={styles.rightActions}>
 				{/* Nested Squircle backgrounds for action buttons */}
-				<View style={[styles.actionWrapper, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }]}>
+				<View style={[styles.actionWrapper, { backgroundColor: isAndroid ? actionGlassSurface : (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)") }]}>
 					<SearchIconButton />
 				</View>
-				<View style={[styles.actionWrapper, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }]}>
+				<View style={[styles.actionWrapper, { backgroundColor: isAndroid ? actionGlassSurface : (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)") }]}>
 					<NotificationIconButton />
 				</View>
 			</View>
@@ -65,6 +75,21 @@ export default function ScrollAwareHeader({
 			]}
 		>
 			<View style={styles.islandWrapper}>
+				{isAndroid && (
+					<View
+						pointerEvents="none"
+						style={[
+							styles.islandShadowUnderlay,
+							{ backgroundColor: islandShadowLayer },
+						]}
+					/>
+				)}
+				<View
+					style={[
+						styles.islandClip,
+						{ backgroundColor: isAndroid ? islandGlassSurface : "transparent" },
+					]}
+				>
 				{Platform.OS === "ios" ? (
 					<BlurView
 						intensity={isDarkMode ? 80 : 90}
@@ -86,13 +111,13 @@ export default function ScrollAwareHeader({
 						</View>
 					</BlurView>
 				) : (
-					// Android fallback: semi-transparent background
+					// Android: split-layer glass surface (shadow underlay + translucent island clip)
 					<View style={[styles.blur, {
 						minHeight: HEADER_HEIGHT,
-						backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.95)"
+						backgroundColor: "transparent"
 					}]}>
 						<View style={[styles.innerContent, {
-							backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.2)" : "rgba(255, 255, 255, 0.3)"
+							backgroundColor: "transparent"
 						}]}>
 							{/* LEFT: Identity / Navigation */}
 							<View style={styles.leftSection}>{leftComponent ? leftComponent : icon ? (<View style={[styles.iconSquircle, { backgroundColor: backgroundColor }]}>{icon}</View>) : null}</View>
@@ -106,6 +131,7 @@ export default function ScrollAwareHeader({
 						</View>
 					</View>
 				)}
+				</View>
 			</View>
 		</Animated.View>
 	);
@@ -122,17 +148,30 @@ const styles = StyleSheet.create({
 	islandWrapper: {
 		// Floating "Island" feel
 		borderRadius: 48,
-		overflow: "hidden",
+		overflow: "visible",
+		position: "relative",
 		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 12 },
-		shadowOpacity: 0.12,
-		shadowRadius: 16,
-		elevation: 10,
+		shadowOffset: { width: 0, height: Platform.OS === "android" ? 0 : 12 },
+		shadowOpacity: Platform.OS === "android" ? 0 : 0.12,
+		shadowRadius: Platform.OS === "android" ? 0 : 16,
+		elevation: Platform.OS === "android" ? 0 : 10,
 		...Platform.select({
 			web: {
 				boxShadow: "0px 12px 16px rgba(0,0,0,0.12)",
 			},
 		}),
+	},
+	islandClip: {
+		borderRadius: 48,
+		overflow: "hidden",
+	},
+	islandShadowUnderlay: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 48,
 	},
 	blur: {
 		borderRadius: 48,

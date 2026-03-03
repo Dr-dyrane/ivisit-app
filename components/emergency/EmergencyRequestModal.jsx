@@ -77,6 +77,13 @@ const EmergencyRequestModal = React.memo(({
 		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
 		border: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)"
 	}), [isDarkMode]);
+	const isAndroid = Platform.OS === "android";
+	const balanceCardShadowLayer = isDarkMode
+		? "rgba(79, 70, 229, 0.22)"
+		: "rgba(79, 70, 229, 0.14)";
+	const transactionCardShadowLayer = isDarkMode
+		? "rgba(0, 0, 0, 0.24)"
+		: "rgba(15, 23, 42, 0.12)";
 
 	// --- Header Synchronization ---
 	useEffect(() => {
@@ -1234,33 +1241,53 @@ const EmergencyRequestModal = React.memo(({
 					<>
 						<View style={styles.paymentContainer}>
 							{/* NG Theme: Gradient Payment Card */}
-							<View style={[styles.balanceCardWrapper, { borderColor: requestColors.border }]}>
-								<BlurView intensity={isDarkMode ? 40 : 80} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-								<LinearGradient
-									colors={[COLORS.brandPrimary, '#4f46e5']}
-									start={{ x: 0, y: 0 }}
-									end={{ x: 1, y: 1 }}
-									style={[styles.balanceCard, { opacity: 0.95 }]}
-								>
-									<View style={styles.balanceHeader}>
-										<View>
-											<Text style={styles.walletLabel}>TOTAL TO PAY</Text>
-											<Text style={styles.balanceValue}>
-												${estimatedCost?.totalCost?.toFixed(2) || "0.00"}
+							<View style={styles.balanceCardShell}>
+								{isAndroid && (
+									<View
+										pointerEvents="none"
+										style={[
+											styles.balanceCardShadowUnderlay,
+											{ backgroundColor: balanceCardShadowLayer },
+										]}
+									/>
+								)}
+								<View style={[styles.balanceCardWrapper, { borderColor: requestColors.border }]}>
+									{Platform.OS === "ios" ? (
+										<BlurView intensity={isDarkMode ? 40 : 80} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+									) : (
+										<View
+											style={[
+												StyleSheet.absoluteFill,
+												{ backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight },
+											]}
+										/>
+									)}
+									<LinearGradient
+										colors={[COLORS.brandPrimary, '#4f46e5']}
+										start={{ x: 0, y: 0 }}
+										end={{ x: 1, y: 1 }}
+										style={[styles.balanceCard, { opacity: 0.95 }]}
+									>
+										<View style={styles.balanceHeader}>
+											<View>
+												<Text style={styles.walletLabel}>TOTAL TO PAY</Text>
+												<Text style={styles.balanceValue}>
+													${estimatedCost?.totalCost?.toFixed(2) || "0.00"}
+												</Text>
+											</View>
+											<View style={styles.currencyBadge}>
+												<Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
+												<Text style={styles.currencyText}>SECURE</Text>
+											</View>
+										</View>
+
+										<View style={styles.serviceAssurance}>
+											<Text style={[styles.serviceText, { color: 'rgba(255,255,255,0.8)' }]}>
+												PCI-DSS Encrypted Transaction
 											</Text>
 										</View>
-										<View style={styles.currencyBadge}>
-											<Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
-											<Text style={styles.currencyText}>SECURE</Text>
-										</View>
-									</View>
-
-									<View style={styles.serviceAssurance}>
-										<Text style={[styles.serviceText, { color: 'rgba(255,255,255,0.8)' }]}>
-											PCI-DSS Encrypted Transaction
-										</Text>
-									</View>
-								</LinearGradient>
+									</LinearGradient>
+								</View>
 							</View>
 
 							{isCalculatingCost ? (
@@ -1312,9 +1339,24 @@ const EmergencyRequestModal = React.memo(({
 						<View style={styles.waitingHeader}>
 							<View style={styles.pulseContainer}>
 								<View style={[styles.pulseCircle, { backgroundColor: isDarkMode ? 'rgba(255, 149, 0, 0.2)' : 'rgba(255, 149, 0, 0.1)' }]} />
-								<BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={styles.pulseBlur}>
-									<ActivityIndicator size="small" color="#FF9500" />
-								</BlurView>
+								{Platform.OS === "ios" ? (
+									<BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={styles.pulseBlur}>
+										<ActivityIndicator size="small" color="#FF9500" />
+									</BlurView>
+								) : (
+									<View
+										style={[
+											styles.pulseBlur,
+											{
+												backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight,
+												alignItems: "center",
+												justifyContent: "center",
+											},
+										]}
+									>
+										<ActivityIndicator size="small" color="#FF9500" />
+									</View>
+								)}
 							</View>
 
 							<Text style={[styles.waitingTitle, { color: requestColors.text }]}>
@@ -1326,10 +1368,29 @@ const EmergencyRequestModal = React.memo(({
 						</View>
 
 						{/* Identity & Transaction Card (Alexander UI: Depth over Color) */}
-						<View style={[styles.transactionCard, {
-							backgroundColor: requestColors.card,
-						}]}>
-							<BlurView intensity={isDarkMode ? 10 : 30} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+						<View style={styles.transactionCardShell}>
+							{isAndroid && (
+								<View
+									pointerEvents="none"
+									style={[
+										styles.transactionCardShadowUnderlay,
+										{ backgroundColor: transactionCardShadowLayer },
+									]}
+								/>
+							)}
+							<View style={[styles.transactionCard, {
+								backgroundColor: requestColors.card,
+							}]}>
+							{Platform.OS === "ios" ? (
+								<BlurView intensity={isDarkMode ? 10 : 30} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+							) : (
+								<View
+									style={[
+										StyleSheet.absoluteFill,
+										{ backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight },
+									]}
+								/>
+							)}
 
 							<View style={styles.transactionSection}>
 								<Text style={styles.transactionLabel}>REFERENCE ID</Text>
@@ -1364,6 +1425,7 @@ const EmergencyRequestModal = React.memo(({
 								</View>
 								<Text style={styles.statusMethod}>PHYSICAL CASH</Text>
 							</View>
+						</View>
 						</View>
 
 						{/* Calm Secondary Info */}
@@ -1442,6 +1504,19 @@ const styles = StyleSheet.create({
 	paymentContainer: {
 		paddingTop: 16,
 	},
+	balanceCardShell: {
+		position: "relative",
+		borderRadius: 32,
+		marginBottom: 24,
+	},
+	balanceCardShadowUnderlay: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 32,
+	},
 	balanceCardWrapper: {
 		borderRadius: 32,
 		overflow: 'hidden',
@@ -1449,10 +1524,9 @@ const styles = StyleSheet.create({
 		height: 160,
 		shadowColor: COLORS.brandPrimary,
 		shadowOffset: { width: 0, height: 12 },
-		shadowOpacity: 0.3,
-		shadowRadius: 20,
-		elevation: 8,
-		marginBottom: 24,
+		shadowOpacity: Platform.OS === "android" ? 0 : 0.3,
+		shadowRadius: Platform.OS === "android" ? 0 : 20,
+		elevation: Platform.OS === "android" ? 0 : 8,
 	},
 	balanceCard: {
 		padding: 24,
@@ -1704,6 +1778,19 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 8,
 		fontWeight: '500',
 	},
+	transactionCardShell: {
+		width: "100%",
+		position: "relative",
+		borderRadius: 32,
+	},
+	transactionCardShadowUnderlay: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 32,
+	},
 	transactionCard: {
 		width: '100%',
 		borderRadius: 32,
@@ -1714,9 +1801,9 @@ const styles = StyleSheet.create({
 		gap: 14,
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 20 },
-		shadowOpacity: 0.06,
-		shadowRadius: 18,
-		elevation: 4,
+		shadowOpacity: Platform.OS === "android" ? 0 : 0.06,
+		shadowRadius: Platform.OS === "android" ? 0 : 18,
+		elevation: Platform.OS === "android" ? 0 : 4,
 	},
 	transactionSection: {
 		gap: 4,

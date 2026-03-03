@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet, Dimensions } from "react-native";
+import { View, Text, Pressable, StyleSheet, Dimensions, Platform } from "react-native";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { COLORS } from "../../../constants/colors";
@@ -17,6 +17,7 @@ export default function BedBookingOptions({
 	rooms = [],
 }) {
 	const { isDarkMode } = useTheme();
+	const isAndroid = Platform.OS === "android";
 
 	const handleBedTypeSelect = (typeId) => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -66,12 +67,15 @@ export default function BedBookingOptions({
 
 					// Dynamic Styles based on your logic
 					const activeBG = isSelected
-						? isDarkMode
-							? COLORS.brandPrimary + "20"
-							: COLORS.brandPrimary + "15"
-						: isDarkMode
-							? "rgba(255,255,255,0.05)"
-							: "rgba(0,0,0,0.03)";
+						? (isAndroid
+							? (isDarkMode ? "rgba(134, 16, 14, 0.24)" : "rgba(134, 16, 14, 0.12)")
+							: (isDarkMode ? COLORS.brandPrimary + "20" : COLORS.brandPrimary + "15"))
+						: (isAndroid
+							? (isDarkMode ? "rgba(18, 24, 38, 0.74)" : "rgba(255, 255, 255, 0.78)")
+							: (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)"));
+					const shadowLayerColor = isSelected
+						? (isDarkMode ? "rgba(134, 16, 14, 0.20)" : "rgba(134, 16, 14, 0.12)")
+						: (isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)");
 
 					return (
 						<Pressable
@@ -82,10 +86,19 @@ export default function BedBookingOptions({
 								{
 									backgroundColor: activeBG,
 									transform: [{ scale: pressed ? 0.98 : 1 }],
-									shadowOpacity: isDarkMode ? 0.3 : 0.08,
+									shadowColor: isSelected ? COLORS.brandPrimary : "#000",
+									shadowOpacity: isAndroid ? 0 : (isDarkMode ? 0.3 : 0.08),
+									elevation: isAndroid ? 0 : 4,
 								},
 							]}
 						>
+							{isAndroid && (
+								<View
+									pointerEvents="none"
+									style={[styles.androidShadowLayer, { backgroundColor: shadowLayerColor }]}
+								/>
+							)}
+
 							{/* Top Row: Icon & Price */}
 							<View style={styles.cardHeader}>
 								<View
@@ -235,10 +248,17 @@ const styles = StyleSheet.create({
 		justifyContent: "space-between",
 		position: "relative",
 		// Depth instead of borders
-		elevation: 4,
 		shadowColor: "#000",
 		shadowOffset: { width: 0, height: 8 },
 		shadowRadius: 12,
+	},
+	androidShadowLayer: {
+		position: "absolute",
+		top: 2,
+		left: 0,
+		right: 0,
+		bottom: -2,
+		borderRadius: 36,
 	},
 	cardHeader: {
 		flexDirection: "row",

@@ -356,6 +356,16 @@ const PaymentScreen = () => {
   // Layout Constants
   const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
   const bottomPadding = tabBarHeight + 20;
+  const ModalOverlayContainer = Platform.OS === "ios" ? BlurView : View;
+  const modalOverlayProps = Platform.OS === "ios"
+    ? { intensity: isDarkMode ? 60 : 80, tint: isDarkMode ? 'dark' : 'light' }
+    : {};
+  const modalOverlayStyle = [
+    styles.modalOverlay,
+    Platform.OS === "android" && {
+      backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.86)" : "rgba(255, 255, 255, 0.84)",
+    },
+  ];
 
   return (
     <LinearGradient colors={colors.background} style={styles.container}>
@@ -378,7 +388,18 @@ const PaymentScreen = () => {
           <View style={styles.walletDashboard}>
             {/* Premium Balance Card */}
             <View style={[styles.balanceCardWrapper, { borderColor: colors.border }]}>
-              <BlurView intensity={isDarkMode ? 40 : 80} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+              {Platform.OS === "ios" ? (
+                <BlurView intensity={isDarkMode ? 40 : 80} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+              ) : (
+                <View
+                  style={[
+                    StyleSheet.absoluteFill,
+                    {
+                      backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight,
+                    },
+                  ]}
+                />
+              )}
               <LinearGradient
                 colors={[COLORS.brandPrimary, '#4f46e5']}
                 start={{ x: 0, y: 0 }}
@@ -637,7 +658,7 @@ const PaymentScreen = () => {
         animationType="slide"
         onRequestClose={() => setSelectedTransaction(null)}
       >
-        <BlurView intensity={isDarkMode ? 60 : 80} tint={isDarkMode ? 'dark' : 'light'} style={styles.modalOverlay}>
+        <ModalOverlayContainer {...modalOverlayProps} style={modalOverlayStyle}>
           <Pressable style={styles.modalBackdrop} onPress={() => setSelectedTransaction(null)} />
           <View style={[styles.receiptCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.modalGrabber} />
@@ -700,7 +721,7 @@ const PaymentScreen = () => {
               <Text style={styles.doneButtonText}>Done</Text>
             </Pressable>
           </View>
-        </BlurView>
+        </ModalOverlayContainer>
       </Modal>
     </LinearGradient>
   );

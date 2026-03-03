@@ -108,21 +108,33 @@ const ServicePickerModal = ({ visible, onClose, onSelectService, currentMode }) 
         >
             {/* Subtle blurred overlay - tap to dismiss */}
             <Pressable style={styles.overlay} onPress={handleClose}>
-                <BlurView
-                    intensity={isDarkMode ? 12 : 8}
-                    tint={isDarkMode ? 'dark' : 'light'}
-                    style={StyleSheet.absoluteFill}
-                >
+                {Platform.OS === 'ios' ? (
+                    <BlurView
+                        intensity={isDarkMode ? 12 : 8}
+                        tint={isDarkMode ? 'dark' : 'light'}
+                        style={StyleSheet.absoluteFill}
+                    >
+                        <Animated.View
+                            style={[
+                                StyleSheet.absoluteFill,
+                                {
+                                    backgroundColor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.05)',
+                                    opacity: opacityAnim,
+                                }
+                            ]}
+                        />
+                    </BlurView>
+                ) : (
                     <Animated.View
                         style={[
                             StyleSheet.absoluteFill,
                             {
-                                backgroundColor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.05)',
+                                backgroundColor: isDarkMode ? 'rgba(0,0,0,0.28)' : 'rgba(15,23,42,0.14)',
                                 opacity: opacityAnim,
                             }
                         ]}
                     />
-                </BlurView>
+                )}
             </Pressable>
 
             {/* Bottom sheet - anchored at FAB bottom, grows left and up */}
