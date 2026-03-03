@@ -689,7 +689,6 @@ const EmergencyScreen = () => {
 			? activeAmbulanceTrip?.hospitalId ?? selectedHospital?.id ?? null
 			: activeBedBooking?.hospitalId ?? selectedHospital?.id ?? null;
 	const canUseDesignAnimation =
-		__DEV__ &&
 		mode === "emergency" &&
 		!!routeHospitalId &&
 		!activeAmbulanceTrip?.requestId;
@@ -990,7 +989,7 @@ const EmergencyScreen = () => {
 				</Text>
 			</View>
 
-			{__DEV__ && mode === "emergency" && (
+			{mode === "emergency" && (
 				<TouchableOpacity
 					onPress={() => setForceAmbulanceAnimation((prev) => !prev)}
 					disabled={!canUseDesignAnimation}
@@ -1038,7 +1037,7 @@ const styles = StyleSheet.create({
 	designAnimationToggle: {
 		position: "absolute",
 		left: 12,
-		bottom: 78,
+		top: 160,
 		paddingHorizontal: 12,
 		paddingVertical: 8,
 		borderRadius: 20,
