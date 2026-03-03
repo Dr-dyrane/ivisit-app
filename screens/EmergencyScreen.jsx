@@ -1131,7 +1131,7 @@ const EmergencyScreen = () => {
 				</Text>
 			</View>
 
-			{mode === "emergency" && (
+			{mode === "emergency" && !activeAmbulanceTrip?.requestId && !activeBedBooking?.requestId && (
 				<TouchableOpacity
 					onPress={() => setForceAmbulanceAnimation((prev) => !prev)}
 					disabled={!canUseDesignAnimation}
