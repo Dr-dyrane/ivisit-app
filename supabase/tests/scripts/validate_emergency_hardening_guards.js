@@ -186,6 +186,28 @@ $$;
   console.log('[hardening-guards] RPC execute scope: PASS');
 }
 
+async function assertMutationRoleGates() {
+  await execSql(`
+DO $$
+DECLARE
+  v_def text;
+BEGIN
+  SELECT pg_get_functiondef('public.update_profile_by_admin(uuid,jsonb)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'update_profile_by_admin missing strict operator role gate';
+  END IF;
+
+  SELECT pg_get_functiondef('public.notify_cash_approval_org_admins(uuid,uuid,numeric,numeric,text,text,text,uuid)'::regprocedure) INTO v_def;
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+    RAISE EXCEPTION 'notify_cash_approval_org_admins missing strict operator role gate';
+  END IF;
+END;
+$$;
+  `);
+
+  console.log('[hardening-guards] Mutation role gates: PASS');
+}
+
 async function main() {
   try {
     console.log('[hardening-guards] Starting emergency hardening checks...');
@@ -193,6 +215,7 @@ async function main() {
     await assertCriticalRlsScope();
     await assertConsoleRpcLockSemantics();
     await assertRpcExecuteScope();
+    await assertMutationRoleGates();
     console.log('[hardening-guards] All checks passed.');
   } catch (error) {
     console.error('[hardening-guards] Check failed:', error.message || error);

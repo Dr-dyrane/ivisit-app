@@ -350,8 +350,16 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- update_profile_by_admin: Used by console profilesService
 CREATE OR REPLACE FUNCTION public.update_profile_by_admin(target_user_id UUID, profile_data JSONB)
 RETURNS JSONB AS $$
+DECLARE
+    v_actor_role TEXT;
 BEGIN
-    IF NOT public.p_is_console_allowed() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    SELECT role INTO v_actor_role
+    FROM public.profiles
+    WHERE id = auth.uid();
+
+    IF auth.uid() IS NULL OR v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
     
     UPDATE public.profiles
     SET
@@ -414,6 +422,7 @@ DECLARE
     v_notified_count INTEGER := 0;
     v_service_label TEXT;
     v_message TEXT;
+    v_actor_role TEXT;
 BEGIN
     SELECT id, user_id, hospital_id, hospital_name, service_type, display_id
     INTO v_req
@@ -424,9 +433,15 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Emergency request not found');
     END IF;
 
-    -- Only the request owner or privileged console/admin callers may trigger this
-    IF auth.uid() IS DISTINCT FROM v_req.user_id AND NOT public.p_is_console_allowed() THEN
-        RAISE EXCEPTION 'Unauthorized';
+    -- Only the request owner or privileged dispatch-capable roles may trigger this.
+    IF auth.uid() IS DISTINCT FROM v_req.user_id THEN
+        SELECT role INTO v_actor_role
+        FROM public.profiles
+        WHERE id = auth.uid();
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
     END IF;
 
     v_org_id := COALESCE(
