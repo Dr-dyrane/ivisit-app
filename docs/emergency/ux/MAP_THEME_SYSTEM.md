@@ -7,6 +7,7 @@ Deliver a premium, monochromatic map that keeps road hierarchy highly legible in
 - Base: desaturated neutral tones (low visual noise).
 - Roads: explicit contrast ladder (`local` < `arterial` < `highway`) so routing is always easy to parse.
 - Accent usage: iVisit red only for medical POIs and emergency overlays, not for full map tinting.
+- POI strategy: keep POIs visible in a muted monochrome treatment so iVisit hospital markers still remain primary.
 
 ## Platform Behavior
 - Android (`Google Maps`):
@@ -44,3 +45,4 @@ Core token groups:
   3. `roadHighway`
 - If labels compete with overlays, reduce `roadLabel` contrast before touching road geometry.
 - Keep medical accents subtle; avoid bright reds on non-medical features.
+- Keep POI labels/icons desaturated and low-contrast instead of removing them entirely.

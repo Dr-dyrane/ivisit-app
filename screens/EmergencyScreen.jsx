@@ -4,6 +4,7 @@ import { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import React from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { View, StyleSheet, Dimensions, Text, TouchableOpacity, Linking } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEmergency } from "../contexts/EmergencyContext";
 import { useEmergencyUI } from "../contexts/EmergencyUIContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -37,12 +38,26 @@ import Constants from "expo-constants";
 import { EmergencyMapContainer } from "../components/emergency/EmergencyMapContainer";
 import { BottomSheetController } from "../components/emergency/BottomSheetController";
 import { ServiceRatingModal } from "../components/emergency/ServiceRatingModal";
+import CoverageDisclaimerModal from "../components/emergency/CoverageDisclaimerModal";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 import NotificationIconButton from "../components/headers/NotificationIconButton";
 import { useEmergencyHandlers } from "../hooks/emergency/useEmergencyHandlers";
 import { useHospitalSelection } from "../hooks/emergency/useHospitalSelection";
 import { useRequestFlow } from "../hooks/emergency/useRequestFlow";
 import { useSearchFiltering } from "../hooks/emergency/useSearchFiltering";
+
+const COVERAGE_POOR_THRESHOLD = 3;
+const COVERAGE_DISCLAIMER_STORAGE_KEY = "@ivisit/coverage_disclaimer_opt_out_v1";
+const isHospitalVerifiedForCoverage = (hospital) => {
+	if (!hospital || typeof hospital !== "object") return false;
+
+	const verified = hospital?.verified === true;
+	const importStatus = String(
+		hospital?.importStatus ?? hospital?.import_status ?? ""
+	).toLowerCase();
+
+	return verified || importStatus === "verified";
+};
 
 /**
  * EmergencyScreen - Apple Maps Style Layout
@@ -60,6 +75,7 @@ const EmergencyScreen = () => {
 	// Component mounting - no debug logs
 
 	const router = useRouter();
+	const hasShownCoverageDisclaimerRef = useRef(false);
 
 	// Track focus state manually using useFocusEffect
 	const [isFocused, setIsFocused] = useState(false);
@@ -76,9 +92,11 @@ const EmergencyScreen = () => {
 		useCallback(() => {
 			// Tab focused
 			setIsFocused(true);
+			hasShownCoverageDisclaimerRef.current = false;
 			return () => {
 				// Tab unfocused
 				setIsFocused(false);
+				setCoverageDisclaimerVisible(false);
 			};
 		}, [])
 	);
@@ -111,6 +129,7 @@ const EmergencyScreen = () => {
 		searchQuery,
 		updateSearch: setSearchQuery,
 		setMapReady,
+		isMapLoading,
 		getLastScrollY,
 		timing,
 	} = useEmergencyUI();
@@ -131,6 +150,10 @@ const EmergencyScreen = () => {
 	const [quickButtonPulse, setQuickButtonPulse] = useState(false);
 	// DEV ONLY: temporary map-design trigger to preview ambulance motion on route.
 	const [forceAmbulanceAnimation, setForceAmbulanceAnimation] = useState(false);
+	const [coverageDisclaimerVisible, setCoverageDisclaimerVisible] = useState(false);
+	const [coverageDontRemind, setCoverageDontRemind] = useState(false);
+	const [coverageOptOut, setCoverageOptOut] = useState(false);
+	const [coveragePreferenceLoaded, setCoveragePreferenceLoaded] = useState(false);
 
 	// Data state from EmergencyContext
 	const {
@@ -194,6 +217,26 @@ const EmergencyScreen = () => {
 			setPendingSelectedHospitalId(null);
 		}
 	}, [pendingSelectedHospitalId, selectedHospitalId]);
+
+	useEffect(() => {
+		let isMounted = true;
+		const loadCoveragePreference = async () => {
+			try {
+				const stored = await AsyncStorage.getItem(COVERAGE_DISCLAIMER_STORAGE_KEY);
+				if (!isMounted) return;
+				setCoverageOptOut(stored === "1");
+			} catch (error) {
+				console.warn("[EmergencyScreen] Failed to load coverage disclaimer preference", error);
+			} finally {
+				if (isMounted) setCoveragePreferenceLoaded(true);
+			}
+		};
+
+		loadCoveragePreference();
+		return () => {
+			isMounted = false;
+		};
+	}, []);
 
 	// 🔴 REVERT POINT: Clear route when selection is reset
 	// PREVIOUS: Route persisted until a new one was calculated
@@ -818,6 +861,93 @@ const EmergencyScreen = () => {
 			: [...searchFilteredHospitals, routeHospital];
 	}, [activeAmbulanceTrip, hospitals, allHospitals, searchFilteredHospitals]);
 
+	const nearbyCoverageCounts = useMemo(() => {
+		const source = Array.isArray(allHospitals) && allHospitals.length > 0 ? allHospitals : hospitals;
+		if (!Array.isArray(source) || source.length === 0) {
+			return { allNearby: 0, verifiedNearby: 0 };
+		}
+
+		const seen = new Set();
+		return source.reduce((acc, hospital) => {
+			const latitude = hospital?.coordinates?.latitude ?? hospital?.latitude;
+			const longitude = hospital?.coordinates?.longitude ?? hospital?.longitude;
+			if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return acc;
+
+			const key =
+				hospital?.id ??
+				`${hospital?.name || "hospital"}:${Number(latitude).toFixed(4)}:${Number(longitude).toFixed(4)}`;
+			if (seen.has(key)) return acc;
+
+			seen.add(key);
+			acc.allNearby += 1;
+			if (isHospitalVerifiedForCoverage(hospital)) {
+				acc.verifiedNearby += 1;
+			}
+			return acc;
+		}, { allNearby: 0, verifiedNearby: 0 });
+	}, [allHospitals, hospitals]);
+
+	const coverageStatus = useMemo(() => {
+		if (nearbyCoverageCounts.verifiedNearby <= 0) return "none";
+		if (nearbyCoverageCounts.verifiedNearby < COVERAGE_POOR_THRESHOLD) return "poor";
+		return "good";
+	}, [nearbyCoverageCounts]);
+
+	const handleCoverageDisclaimerContinue = useCallback(async () => {
+		setCoverageDisclaimerVisible(false);
+
+		if (!coverageDontRemind) return;
+
+		try {
+			await AsyncStorage.setItem(COVERAGE_DISCLAIMER_STORAGE_KEY, "1");
+			setCoverageOptOut(true);
+		} catch (error) {
+			console.warn("[EmergencyScreen] Failed to persist coverage disclaimer preference", error);
+		} finally {
+			setCoverageDontRemind(false);
+		}
+	}, [coverageDontRemind]);
+
+	const handleCoverageDisclaimerCall911 = useCallback(() => {
+		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+		Linking.openURL("tel:911");
+	}, []);
+
+	const handleCoverageDisclaimerToggle = useCallback(() => {
+		setCoverageDontRemind((prev) => !prev);
+	}, []);
+
+	useEffect(() => {
+		const hasActiveEmergency =
+			!!activeAmbulanceTrip?.requestId || !!activeBedBooking?.requestId;
+
+		if (!isFocused || isMapLoading || !coveragePreferenceLoaded || coverageOptOut || hasActiveEmergency) {
+			return;
+		}
+
+		if (coverageStatus === "good" || hasShownCoverageDisclaimerRef.current) {
+			return;
+		}
+
+		const timer = setTimeout(() => {
+			if (hasShownCoverageDisclaimerRef.current) return;
+			if (coverageStatus === "good" || coverageOptOut || !isFocused || isMapLoading) return;
+			setCoverageDontRemind(false);
+			setCoverageDisclaimerVisible(true);
+			hasShownCoverageDisclaimerRef.current = true;
+		}, 1000);
+
+		return () => clearTimeout(timer);
+	}, [
+		isFocused,
+		isMapLoading,
+		coveragePreferenceLoaded,
+		coverageOptOut,
+		coverageStatus,
+		activeAmbulanceTrip?.requestId,
+		activeBedBooking?.requestId,
+	]);
+
 	useEffect(() => {
 		// console.log("[EmergencyScreen] Active State:", {
 		// 	mode,
@@ -898,6 +1028,18 @@ const EmergencyScreen = () => {
 
 	return (
 		<View style={styles.container}>
+			<CoverageDisclaimerModal
+				visible={coverageDisclaimerVisible}
+				coverageStatus={coverageStatus}
+				nearbyHospitalCount={nearbyCoverageCounts.allNearby}
+				nearbyVerifiedHospitalCount={nearbyCoverageCounts.verifiedNearby}
+				coverageThreshold={COVERAGE_POOR_THRESHOLD}
+				dontRemind={coverageDontRemind}
+				onToggleDontRemind={handleCoverageDisclaimerToggle}
+				onContinue={handleCoverageDisclaimerContinue}
+				onCall911={handleCoverageDisclaimerCall911}
+			/>
+
 			<ServiceRatingModal
 				visible={ratingState.visible}
 				serviceType={ratingState.serviceType || "visit"}

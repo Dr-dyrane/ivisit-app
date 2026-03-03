@@ -3,6 +3,7 @@ const MAP_THEME = {
 		base: "#F2F4F7",
 		land: "#ECEFF3",
 		poi: "#E6EBF2",
+		poiLabel: "#8A95A7",
 		roadLocal: "#FFFFFF",
 		roadArterial: "#F4F6FA",
 		roadHighway: "#E7ECF4",
@@ -20,6 +21,7 @@ const MAP_THEME = {
 		base: "#0F131A",
 		land: "#151B24",
 		poi: "#1A212D",
+		poiLabel: "#6F7E94",
 		roadLocal: "#202734",
 		roadArterial: "#2A3444",
 		roadHighway: "#3A4458",
@@ -42,14 +44,16 @@ const buildMapStyle = (theme) => [
 		elementType: "labels.text.stroke",
 		stylers: [{ color: theme.labelStroke }, { weight: 1.5 }],
 	},
-	{ elementType: "labels.icon", stylers: [{ visibility: "on" }] },
+	{
+		elementType: "labels.icon",
+		stylers: [{ visibility: "on" }, { saturation: -100 }, { lightness: 18 }],
+	},
 
 	{
 		featureType: "administrative",
 		elementType: "geometry.stroke",
 		stylers: [{ color: theme.roadStroke }],
 	},
-
 	{
 		featureType: "landscape.natural",
 		elementType: "geometry",
@@ -59,6 +63,26 @@ const buildMapStyle = (theme) => [
 		featureType: "poi",
 		elementType: "geometry",
 		stylers: [{ color: theme.poi }],
+	},
+	{
+		featureType: "poi",
+		elementType: "labels.text",
+		stylers: [{ visibility: "on" }],
+	},
+	{
+		featureType: "poi",
+		elementType: "labels.text.fill",
+		stylers: [{ color: theme.poiLabel }],
+	},
+	{
+		featureType: "poi",
+		elementType: "labels.text.stroke",
+		stylers: [{ color: theme.labelStroke }, { weight: 1 }],
+	},
+	{
+		featureType: "poi",
+		elementType: "labels.icon",
+		stylers: [{ visibility: "on" }, { saturation: -100 }, { lightness: 20 }],
 	},
 	{
 		featureType: "poi.park",
@@ -75,7 +99,6 @@ const buildMapStyle = (theme) => [
 		elementType: "labels.text.fill",
 		stylers: [{ color: theme.medicalLabel }],
 	},
-
 	{
 		featureType: "road",
 		elementType: "labels.text.fill",
@@ -126,6 +149,16 @@ const buildMapStyle = (theme) => [
 		featureType: "transit.line",
 		elementType: "geometry",
 		stylers: [{ color: theme.roadStroke }],
+	},
+	{
+		featureType: "transit.station",
+		elementType: "labels",
+		stylers: [{ visibility: "on" }],
+	},
+	{
+		featureType: "transit.station",
+		elementType: "labels.text.fill",
+		stylers: [{ color: theme.poiLabel }],
 	},
 
 	{

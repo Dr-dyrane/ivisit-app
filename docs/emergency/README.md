@@ -36,3 +36,4 @@ Then use the detailed scenario doc:
 ## Map Theme
 
 - [ux/MAP_THEME_SYSTEM.md](ux/MAP_THEME_SYSTEM.md)
+- [ux/COVERAGE_NOTICE_MODAL.md](ux/COVERAGE_NOTICE_MODAL.md)

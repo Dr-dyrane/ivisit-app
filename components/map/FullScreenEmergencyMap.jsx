@@ -497,7 +497,7 @@ const FullScreenEmergencyMap = forwardRef(
 						onMapReady={() => { setIsMapReadyState(true); onMapReady?.(); }}
 						onPanDrag={() => { lastUserPanAtRef.current = Date.now(); }}
 						showsZoomControls={false}
-						showsPointsOfInterest={false}
+						showsPointsOfInterest={true}
 					>
 						<RouteLayer
 							routeCoordinates={routeCoordinates}

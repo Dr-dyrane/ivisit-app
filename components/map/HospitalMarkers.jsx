@@ -41,6 +41,10 @@ const HospitalMarkers = ({
 		.map((hospital) => {
 			const isSelected = selectedHospitalId === hospital.id;
 			const centerOffset = getBottomPinnedCenterOffset(isSelected);
+			const hospitalName =
+				typeof hospital?.name === "string" && hospital.name.trim().length > 0
+					? hospital.name.trim()
+					: "Hospital";
 
 			return (
 				<Marker
@@ -52,6 +56,7 @@ const HospitalMarkers = ({
 					tracksViewChanges={false}
 					zIndex={isSelected ? 100 : 1}
 					image={isSelected ? LOGO_MARKER_IMAGE_SELECTED : LOGO_MARKER_IMAGE}
+					title={hospitalName}
 				/>
 			);
 		});
