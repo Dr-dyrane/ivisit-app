@@ -473,6 +473,7 @@ const FullScreenEmergencyMap = forwardRef(
 						ref={mapRef}
 						style={styles.map}
 						provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+						googleRenderer={Platform.OS === "android" ? "LEGACY" : undefined}
 						customMapStyle={mapStyle}
 						initialRegion={initialRegion}
 						showsUserLocation={locationPermission}
