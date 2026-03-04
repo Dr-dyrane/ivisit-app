@@ -2639,6 +2639,384 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION public.discharge_patient(request_uuid TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_request_id UUID;
+    v_request_org_id UUID;
+    v_service_type TEXT;
+    v_current_status TEXT;
+BEGIN
+    IF request_uuid IS NULL OR BTRIM(request_uuid) = '' THEN
+        RETURN FALSE;
+    END IF;
+
+    IF request_uuid ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
+        v_request_id := request_uuid::UUID;
+    ELSE
+        v_request_id := public.get_entity_id(request_uuid);
+    END IF;
+
+    IF v_request_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    SELECT h.organization_id, er.service_type, er.status
+    INTO v_request_org_id, v_service_type, v_current_status
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = v_request_id
+    FOR UPDATE OF er;
+
+    IF NOT FOUND OR v_service_type IS DISTINCT FROM 'bed' THEN
+        RETURN FALSE;
+    END IF;
+
+    v_current_status := public.canonicalize_emergency_status(v_current_status, v_current_status);
+    IF v_current_status = 'completed' THEN
+        RETURN TRUE;
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for bed discharge';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher')
+           AND (v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id) THEN
+            RAISE EXCEPTION 'Unauthorized: request outside actor organization';
+        END IF;
+    END IF;
+
+    IF NOT public.is_valid_emergency_status_transition(v_current_status, 'completed') THEN
+        RAISE EXCEPTION 'Illegal emergency status transition: % -> completed', v_current_status;
+    END IF;
+
+    PERFORM public.set_emergency_transition_context(
+        p_source => 'discharge_patient',
+        p_reason => 'patient_discharged',
+        p_actor_id => v_actor_id,
+        p_actor_role => CASE
+            WHEN v_is_service_role THEN 'service_role'
+            ELSE COALESCE(v_actor_role, 'unknown')
+        END,
+        p_metadata => jsonb_build_object(
+            'request_id', v_request_id,
+            'service_type', v_service_type,
+            'previous_status', v_current_status
+        ),
+        p_allow_status_write => true
+    );
+
+    UPDATE public.emergency_requests
+    SET status = 'completed',
+        updated_at = NOW()
+    WHERE id = v_request_id
+      AND service_type = 'bed';
+
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.cancel_bed_reservation(request_uuid TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_request_id UUID;
+    v_request_org_id UUID;
+    v_service_type TEXT;
+    v_current_status TEXT;
+BEGIN
+    IF request_uuid IS NULL OR BTRIM(request_uuid) = '' THEN
+        RETURN FALSE;
+    END IF;
+
+    IF request_uuid ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
+        v_request_id := request_uuid::UUID;
+    ELSE
+        v_request_id := public.get_entity_id(request_uuid);
+    END IF;
+
+    IF v_request_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    SELECT h.organization_id, er.service_type, er.status
+    INTO v_request_org_id, v_service_type, v_current_status
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = v_request_id
+    FOR UPDATE OF er;
+
+    IF NOT FOUND OR v_service_type IS DISTINCT FROM 'bed' THEN
+        RETURN FALSE;
+    END IF;
+
+    v_current_status := public.canonicalize_emergency_status(v_current_status, v_current_status);
+    IF v_current_status = 'cancelled' THEN
+        RETURN TRUE;
+    END IF;
+
+    IF v_current_status = 'completed' THEN
+        RAISE EXCEPTION 'Cannot cancel completed bed reservation';
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for bed cancel';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher')
+           AND (v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id) THEN
+            RAISE EXCEPTION 'Unauthorized: request outside actor organization';
+        END IF;
+    END IF;
+
+    IF NOT public.is_valid_emergency_status_transition(v_current_status, 'cancelled') THEN
+        RAISE EXCEPTION 'Illegal emergency status transition: % -> cancelled', v_current_status;
+    END IF;
+
+    PERFORM public.set_emergency_transition_context(
+        p_source => 'cancel_bed_reservation',
+        p_reason => 'bed_reservation_cancelled',
+        p_actor_id => v_actor_id,
+        p_actor_role => CASE
+            WHEN v_is_service_role THEN 'service_role'
+            ELSE COALESCE(v_actor_role, 'unknown')
+        END,
+        p_metadata => jsonb_build_object(
+            'request_id', v_request_id,
+            'service_type', v_service_type,
+            'previous_status', v_current_status
+        ),
+        p_allow_status_write => true
+    );
+
+    UPDATE public.emergency_requests
+    SET status = 'cancelled',
+        updated_at = NOW()
+    WHERE id = v_request_id
+      AND service_type = 'bed';
+
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.complete_trip(request_uuid TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_request_id UUID;
+    v_request_org_id UUID;
+    v_service_type TEXT;
+    v_current_status TEXT;
+BEGIN
+    IF request_uuid IS NULL OR BTRIM(request_uuid) = '' THEN
+        RETURN FALSE;
+    END IF;
+
+    IF request_uuid ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
+        v_request_id := request_uuid::UUID;
+    ELSE
+        v_request_id := public.get_entity_id(request_uuid);
+    END IF;
+
+    IF v_request_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    SELECT h.organization_id, er.service_type, er.status
+    INTO v_request_org_id, v_service_type, v_current_status
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = v_request_id
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    v_current_status := public.canonicalize_emergency_status(v_current_status, v_current_status);
+    IF v_current_status = 'completed' THEN
+        RETURN TRUE;
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for trip completion';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher')
+           AND (v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id) THEN
+            RAISE EXCEPTION 'Unauthorized: request outside actor organization';
+        END IF;
+    END IF;
+
+    IF NOT public.is_valid_emergency_status_transition(v_current_status, 'completed') THEN
+        RAISE EXCEPTION 'Illegal emergency status transition: % -> completed', v_current_status;
+    END IF;
+
+    PERFORM public.set_emergency_transition_context(
+        p_source => 'complete_trip',
+        p_reason => 'trip_completed',
+        p_actor_id => v_actor_id,
+        p_actor_role => CASE
+            WHEN v_is_service_role THEN 'service_role'
+            ELSE COALESCE(v_actor_role, 'unknown')
+        END,
+        p_metadata => jsonb_build_object(
+            'request_id', v_request_id,
+            'service_type', v_service_type,
+            'previous_status', v_current_status
+        ),
+        p_allow_status_write => true
+    );
+
+    UPDATE public.emergency_requests
+    SET status = 'completed',
+        updated_at = NOW()
+    WHERE id = v_request_id;
+
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.cancel_trip(request_uuid TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_request_id UUID;
+    v_request_org_id UUID;
+    v_service_type TEXT;
+    v_current_status TEXT;
+BEGIN
+    IF request_uuid IS NULL OR BTRIM(request_uuid) = '' THEN
+        RETURN FALSE;
+    END IF;
+
+    IF request_uuid ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
+        v_request_id := request_uuid::UUID;
+    ELSE
+        v_request_id := public.get_entity_id(request_uuid);
+    END IF;
+
+    IF v_request_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    SELECT h.organization_id, er.service_type, er.status
+    INTO v_request_org_id, v_service_type, v_current_status
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = v_request_id
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    v_current_status := public.canonicalize_emergency_status(v_current_status, v_current_status);
+    IF v_current_status = 'cancelled' THEN
+        RETURN TRUE;
+    END IF;
+
+    IF v_current_status = 'completed' THEN
+        RAISE EXCEPTION 'Cannot cancel completed trip';
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized: insufficient role for trip cancellation';
+        END IF;
+
+        IF v_actor_role IN ('org_admin', 'dispatcher')
+           AND (v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id) THEN
+            RAISE EXCEPTION 'Unauthorized: request outside actor organization';
+        END IF;
+    END IF;
+
+    IF NOT public.is_valid_emergency_status_transition(v_current_status, 'cancelled') THEN
+        RAISE EXCEPTION 'Illegal emergency status transition: % -> cancelled', v_current_status;
+    END IF;
+
+    PERFORM public.set_emergency_transition_context(
+        p_source => 'cancel_trip',
+        p_reason => 'trip_cancelled',
+        p_actor_id => v_actor_id,
+        p_actor_role => CASE
+            WHEN v_is_service_role THEN 'service_role'
+            ELSE COALESCE(v_actor_role, 'unknown')
+        END,
+        p_metadata => jsonb_build_object(
+            'request_id', v_request_id,
+            'service_type', v_service_type,
+            'previous_status', v_current_status
+        ),
+        p_allow_status_write => true
+    );
+
+    UPDATE public.emergency_requests
+    SET status = 'cancelled',
+        updated_at = NOW()
+    WHERE id = v_request_id;
+
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 
 REVOKE ALL ON FUNCTION public.console_create_emergency_request(JSONB) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.console_update_emergency_request(UUID, JSONB) FROM PUBLIC, anon;
@@ -2653,6 +3031,10 @@ REVOKE ALL ON FUNCTION public.create_emergency_v4(UUID, JSONB, JSONB) FROM PUBLI
 REVOKE ALL ON FUNCTION public.approve_cash_payment(UUID, UUID) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.decline_cash_payment(UUID, UUID) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.process_cash_payment_v2(UUID, UUID, NUMERIC, TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.discharge_patient(TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cancel_bed_reservation(TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.complete_trip(TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cancel_trip(TEXT) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.set_emergency_transition_context(TEXT, TEXT, UUID, TEXT, JSONB, BOOLEAN) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.notify_cash_approval_org_admins(UUID, UUID, NUMERIC, NUMERIC, TEXT, TEXT, TEXT, UUID) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.process_cash_payment(UUID, UUID, NUMERIC) FROM PUBLIC, anon;
@@ -2671,6 +3053,10 @@ GRANT EXECUTE ON FUNCTION public.create_emergency_v4(UUID, JSONB, JSONB) TO auth
 GRANT EXECUTE ON FUNCTION public.approve_cash_payment(UUID, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.decline_cash_payment(UUID, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.process_cash_payment_v2(UUID, UUID, NUMERIC, TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.discharge_patient(TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cancel_bed_reservation(TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.complete_trip(TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cancel_trip(TEXT) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.set_emergency_transition_context(TEXT, TEXT, UUID, TEXT, JSONB, BOOLEAN) TO service_role;
 GRANT EXECUTE ON FUNCTION public.notify_cash_approval_org_admins(UUID, UUID, NUMERIC, NUMERIC, TEXT, TEXT, TEXT, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.process_cash_payment(UUID, UUID, NUMERIC) TO authenticated, service_role;

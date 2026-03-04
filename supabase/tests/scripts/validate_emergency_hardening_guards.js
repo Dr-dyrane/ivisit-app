@@ -389,20 +389,44 @@ BEGIN
   IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
     RAISE EXCEPTION 'complete_trip missing strict operator role gate';
   END IF;
+  IF position('set_emergency_transition_context' in v_def) = 0 THEN
+    RAISE EXCEPTION 'complete_trip missing canonical transition context helper';
+  END IF;
+  IF position('is_valid_emergency_status_transition' in v_def) = 0 THEN
+    RAISE EXCEPTION 'complete_trip missing legal status transition guard';
+  END IF;
 
   SELECT pg_get_functiondef('public.cancel_trip(text)'::regprocedure) INTO v_def;
   IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
     RAISE EXCEPTION 'cancel_trip missing strict operator role gate';
+  END IF;
+  IF position('set_emergency_transition_context' in v_def) = 0 THEN
+    RAISE EXCEPTION 'cancel_trip missing canonical transition context helper';
+  END IF;
+  IF position('is_valid_emergency_status_transition' in v_def) = 0 THEN
+    RAISE EXCEPTION 'cancel_trip missing legal status transition guard';
   END IF;
 
   SELECT pg_get_functiondef('public.discharge_patient(text)'::regprocedure) INTO v_def;
   IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
     RAISE EXCEPTION 'discharge_patient missing strict operator role gate';
   END IF;
+  IF position('set_emergency_transition_context' in v_def) = 0 THEN
+    RAISE EXCEPTION 'discharge_patient missing canonical transition context helper';
+  END IF;
+  IF position('is_valid_emergency_status_transition' in v_def) = 0 THEN
+    RAISE EXCEPTION 'discharge_patient missing legal status transition guard';
+  END IF;
 
   SELECT pg_get_functiondef('public.cancel_bed_reservation(text)'::regprocedure) INTO v_def;
   IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
     RAISE EXCEPTION 'cancel_bed_reservation missing strict operator role gate';
+  END IF;
+  IF position('set_emergency_transition_context' in v_def) = 0 THEN
+    RAISE EXCEPTION 'cancel_bed_reservation missing canonical transition context helper';
+  END IF;
+  IF position('is_valid_emergency_status_transition' in v_def) = 0 THEN
+    RAISE EXCEPTION 'cancel_bed_reservation missing legal status transition guard';
   END IF;
 END;
 $$;
