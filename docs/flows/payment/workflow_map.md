@@ -100,7 +100,7 @@ This map covers both emergency in-flow payments and wallet/payment-management fl
 - Cash approval waiting UI listens to:
   - `approval_<request>` (`emergency_requests`)
   - `approval_payment_<payment>` (`payments`)
-  - Polling fallback every 3s
+  - Recovery-aware truth-sync on reconnect/recovery (no interval polling path)
 
 ## Permission Surface
 
@@ -114,7 +114,7 @@ This map covers both emergency in-flow payments and wallet/payment-management fl
 
 - Missing org mapping for hospital blocks cash path with explicit UI error.
 - Eligibility check prevents cash requests if org collateral is insufficient.
-- Realtime gaps are handled by polling fallback in approval wait state.
+- Realtime channel interruptions trigger stale-event gating and canonical state refresh to keep request/payment state deterministic.
 
 ## Deterministic Validation Commands
 

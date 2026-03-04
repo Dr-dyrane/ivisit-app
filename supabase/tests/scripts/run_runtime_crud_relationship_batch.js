@@ -168,6 +168,8 @@ async function run() {
     userActivityId: null,
     adminAuditLogId: null,
     documentId: null,
+    documentInviteId: null,
+    accessRequestId: null,
     userRoleId: null,
     userSessionId: null,
     patientUserId: null,
@@ -1020,6 +1022,71 @@ async function run() {
       .eq('id', document.id);
     if (documentUpdateErr) throw new Error(`documents update failed: ${documentUpdateErr.message}`);
 
+    let documentInvite = null;
+    const documentInviteInsert = await supabase
+      .from('document_invites')
+      .insert({
+        document_id: document.id,
+        email: `${TAG}-invite@ivisit-docs.local`,
+      })
+      .select('*')
+      .single();
+    if (documentInviteInsert.error) {
+      if (isMissingRelationError(documentInviteInsert.error, 'document_invites')) {
+        report.cleanupWarnings.push('document_invites table missing; skipping optional docs invite CRUD coverage');
+      } else {
+        throw new Error(`document_invites insert failed: ${documentInviteInsert.error.message}`);
+      }
+    } else {
+      documentInvite = documentInviteInsert.data;
+      ctx.documentInviteId = documentInvite.id;
+
+      const { error: documentInviteUpdateErr } = await supabase
+        .from('document_invites')
+        .update({
+          claimed: true,
+          claimed_by: patientAuth.id,
+        })
+        .eq('id', documentInvite.id);
+      if (documentInviteUpdateErr) {
+        throw new Error(`document_invites update failed: ${documentInviteUpdateErr.message}`);
+      }
+    }
+
+    let accessRequest = null;
+    const accessRequestInsert = await supabase
+      .from('access_requests')
+      .insert({
+        document_id: document.id,
+        user_id: patientAuth.id,
+        signer_name: `Patient ${TAG}`,
+        signer_entity: 'iVisit Runtime Validation',
+        signer_title: 'Patient',
+      })
+      .select('*')
+      .single();
+    if (accessRequestInsert.error) {
+      if (isMissingRelationError(accessRequestInsert.error, 'access_requests')) {
+        report.cleanupWarnings.push('access_requests table missing; skipping optional document access CRUD coverage');
+      } else {
+        throw new Error(`access_requests insert failed: ${accessRequestInsert.error.message}`);
+      }
+    } else {
+      accessRequest = accessRequestInsert.data;
+      ctx.accessRequestId = accessRequest.id;
+
+      const { error: accessRequestUpdateErr } = await supabase
+        .from('access_requests')
+        .update({
+          signer_title: 'Patient (updated)',
+          nda_signed_at: nowIso(),
+        })
+        .eq('id', accessRequest.id);
+      if (accessRequestUpdateErr) {
+        throw new Error(`access_requests update failed: ${accessRequestUpdateErr.message}`);
+      }
+    }
+
     const { data: userRole, error: userRoleErr } = await supabase
       .from('user_roles')
       .insert({
@@ -1056,7 +1123,7 @@ async function run() {
       .eq('id', userSession.id);
     if (userSessionUpdateErr) throw new Error(`user_sessions update failed: ${userSessionUpdateErr.message}`);
     report.steps.push(
-      'ivisit_main_wallet/patient_wallets/admin_audit_log/documents/user_roles/user_sessions CRUD complete'
+      'ivisit_main_wallet/patient_wallets/admin_audit_log/documents/document_invites/access_requests/user_roles/user_sessions CRUD complete'
     );
 
     const { data: subscriber, error: subscriberErr } = await supabase
@@ -1460,6 +1527,32 @@ async function run() {
       throw new Error(`documents mirror query failed: ${documentRowsErr.message}`);
     }
 
+    let documentInviteRows = [];
+    if (documentInvite?.id) {
+      const { data, error: documentInviteRowsErr } = await supabase
+        .from('document_invites')
+        .select('*')
+        .eq('id', documentInvite.id)
+        .limit(1);
+      if (documentInviteRowsErr) {
+        throw new Error(`document_invites mirror query failed: ${documentInviteRowsErr.message}`);
+      }
+      documentInviteRows = data || [];
+    }
+
+    let accessRequestRows = [];
+    if (accessRequest?.id) {
+      const { data, error: accessRequestRowsErr } = await supabase
+        .from('access_requests')
+        .select('*')
+        .eq('id', accessRequest.id)
+        .limit(1);
+      if (accessRequestRowsErr) {
+        throw new Error(`access_requests mirror query failed: ${accessRequestRowsErr.message}`);
+      }
+      accessRequestRows = data || [];
+    }
+
     const { data: userRoleRows, error: userRoleRowsErr } = await supabase
       .from('user_roles')
       .select('*')
@@ -1831,6 +1924,29 @@ async function run() {
     );
     assertPush(
       report,
+      'document_invites_row_persisted',
+      !documentInvite?.id ||
+        (Array.isArray(documentInviteRows) &&
+          documentInviteRows.length === 1 &&
+          documentInviteRows[0].document_id === document.id &&
+          documentInviteRows[0].claimed === true &&
+          documentInviteRows[0].claimed_by === patientAuth.id),
+      'document_invites row missing expected claim/document linkage (or optional table fallback failed)'
+    );
+    assertPush(
+      report,
+      'access_requests_row_persisted',
+      !accessRequest?.id ||
+        (Array.isArray(accessRequestRows) &&
+          accessRequestRows.length === 1 &&
+          accessRequestRows[0].document_id === document.id &&
+          accessRequestRows[0].user_id === patientAuth.id &&
+          String(accessRequestRows[0].signer_title || '') === 'Patient (updated)' &&
+          Boolean(accessRequestRows[0].nda_signed_at)),
+      'access_requests row missing expected signer/nda/document linkage (or optional table fallback failed)'
+    );
+    assertPush(
+      report,
       'user_roles_row_persisted',
       Array.isArray(userRoleRows) &&
         userRoleRows.length === 1 &&
@@ -2024,6 +2140,8 @@ async function run() {
       patient_wallets: patientWalletRows?.length || 0,
       admin_audit_log: adminAuditRows?.length || 0,
       documents: documentRows?.length || 0,
+      document_invites: documentInviteRows?.length || 0,
+      access_requests: accessRequestRows?.length || 0,
       user_roles: userRoleRows?.length || 0,
       user_sessions: userSessionRows?.length || 0,
       id_mappings: idMappingRows?.length || 0,
@@ -2179,6 +2297,18 @@ async function run() {
     await safeDelete('user_roles.delete', async () => {
       if (!ctx.userRoleId) return;
       const { error } = await supabase.from('user_roles').delete().eq('id', ctx.userRoleId);
+      if (error) throw error;
+    });
+
+    await safeDelete('access_requests.delete', async () => {
+      if (!ctx.accessRequestId) return;
+      const { error } = await supabase.from('access_requests').delete().eq('id', ctx.accessRequestId);
+      if (error) throw error;
+    });
+
+    await safeDelete('document_invites.delete', async () => {
+      if (!ctx.documentInviteId) return;
+      const { error } = await supabase.from('document_invites').delete().eq('id', ctx.documentInviteId);
       if (error) throw error;
     });
 
