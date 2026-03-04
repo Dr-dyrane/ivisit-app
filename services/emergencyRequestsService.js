@@ -347,7 +347,7 @@ export const emergencyRequestsService = {
     },
 
     // REAL-TIME SUBSCRIPTIONS
-    async subscribeToEmergencyUpdates(requestId, callback) {
+    async subscribeToEmergencyUpdates(requestId, callback, onStatus = null) {
         const requestKey = String(requestId ?? "");
         const requestIdIsUuid = isValidUUID(requestKey);
         const filter = requestIdIsUuid
@@ -365,12 +365,16 @@ export const emergencyRequestsService = {
                 },
                 callback
             )
-            .subscribe();
+            .subscribe((status) => {
+                if (typeof onStatus === 'function') {
+                    onStatus(status);
+                }
+            });
 
         return () => supabase.removeChannel(channel);
     },
 
-    async subscribeToAmbulanceLocation(requestId, callback) {
+    async subscribeToAmbulanceLocation(requestId, callback, onStatus = null) {
         const requestKey = String(requestId ?? "");
         let requestUuid = requestKey;
 
@@ -403,12 +407,16 @@ export const emergencyRequestsService = {
                 },
                 callback
             )
-            .subscribe();
+            .subscribe((status) => {
+                if (typeof onStatus === 'function') {
+                    onStatus(status);
+                }
+            });
 
         return () => supabase.removeChannel(channel);
     },
 
-    async subscribeToHospitalBeds(hospitalId, callback) {
+    async subscribeToHospitalBeds(hospitalId, callback, onStatus = null) {
         const channel = supabase
             .channel(`hospital_beds_${hospitalId}`)
             .on('postgres_changes',
@@ -420,7 +428,11 @@ export const emergencyRequestsService = {
                 },
                 callback
             )
-            .subscribe();
+            .subscribe((status) => {
+                if (typeof onStatus === 'function') {
+                    onStatus(status);
+                }
+            });
 
         return () => supabase.removeChannel(channel);
     },

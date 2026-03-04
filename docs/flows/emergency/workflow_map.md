@@ -129,7 +129,9 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
 - Driver telemetry + map truth-sync hardening (2026-03-04):
   - Console `GodModeMap` streams driver telemetry in active-trip mode (`in_progress`/`accepted`/`arrived`) with interval + distance throttling.
   - Console `MapContext` now applies freshness-based realtime reconciliation (`updated_at`/`created_at`), drops stale events, and runs silent truth-sync refresh on interval, recovery statuses, and post-failover resubscribe transitions.
+  - Patient app `EmergencyContext` now runs the same recovery-aware truth-sync pattern (channel recovery + resubscribe) and uses shared realtime projection helpers for stale-event rejection + deterministic trip merge.
   - `run_console_transition_matrix` now enforces telemetry mirror invariants for responder updates (`emergency_requests.responder_location` + `ambulances.location` + call linkage + timestamp coherence).
+  - `run_console_transition_matrix` now also validates app-side realtime projection continuity (`appRealtimeProjection`) using shared consumer merge logic for stale-event rejection and canonical map-state convergence.
   - `assign_doctor_to_emergency` now enforces deterministic reassignment semantics (org scope guardrails, terminal-state denial, previous-assignment cancellation, doctor-load counter rebalance, idempotent same-doctor replay).
   - `run_console_transition_matrix` now covers doctor assignment lifecycle continuity (`DR1`-`DR6`), including closed-loop auto-reassignment after ambulance/request reassignment mid-trip.
   - Reassignment continuity hardened:

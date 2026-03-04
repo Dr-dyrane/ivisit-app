@@ -13,6 +13,14 @@ import { useAmbulances } from "../hooks/emergency/useAmbulances";
 import { ambulanceService } from "../services/ambulanceService";
 import { usePreferences } from "./PreferencesContext";
 import { useAuth } from "./AuthContext";
+import {
+	parseRecordTimestampMs,
+	parsePointGeometry,
+	matchesTripRecord,
+	shouldApplyTripEvent,
+	mergeEmergencyRealtimeTrip,
+	mergeAmbulanceRealtimeTrip,
+} from "../utils/emergencyRealtimeProjection";
 
 // Create the emergency context
 const EmergencyContext = createContext();
@@ -26,6 +34,9 @@ export const EmergencyMode = {
 const AMBULANCE_LIVE_TRACK_STATUSES = new Set(["accepted", "in_progress", "arrived"]);
 const TELEMETRY_STALE_THRESHOLD_MS = 30000;
 const TELEMETRY_LOST_THRESHOLD_MS = 120000;
+const REALTIME_RECOVERY_STATUSES = new Set(["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"]);
+const REALTIME_HEALTHY_STATUSES = new Set(["SUBSCRIBED"]);
+const REALTIME_TRUTH_SYNC_DEBOUNCE_MS = 6000;
 
 const parseTimestampMs = (value) => {
 	if (!value) return null;
@@ -310,6 +321,9 @@ export function EmergencyProvider({ children }) {
 	const lastHydratedAmbulanceIdRef = useRef(null);
 	const isHydratingAmbulanceRef = useRef(false);
 	const activeAmbulanceEventRef = useRef({ requestKey: null, versionMs: 0 });
+	const syncActiveTripsInFlightRef = useRef(false);
+	const realtimeStatusRef = useRef({});
+	const lastRealtimeSyncMsRef = useRef(0);
 	const [telemetryNowMs, setTelemetryNowMs] = useState(Date.now());
 
 	// Emergency mode state
@@ -322,117 +336,23 @@ export function EmergencyProvider({ children }) {
 	const [viewMode, setViewMode] = useState("map"); // "map" or "list"
 
 	// Helper to parse PostGIS Point — handles both WKT and WKB hex formats
-	const parsePoint = (input) => {
-		if (!input) return null;
-		try {
-			// Format 0: GeoJSON object ? { type: 'Point', coordinates: [lon, lat] }
-			if (typeof input === 'object' && Array.isArray(input.coordinates) && input.coordinates.length >= 2) {
-				const longitude = Number(input.coordinates[0]);
-				const latitude = Number(input.coordinates[1]);
-				if (Number.isFinite(longitude) && Number.isFinite(latitude)) {
-					return { longitude, latitude };
-				}
-				return null;
-			}
-
-			if (typeof input !== 'string') return null;
-
-			// Format 1: WKT — POINT(longitude latitude)
-			if (input.startsWith('POINT')) {
-				const matches = input.match(/POINT\(([-\d.]+) ([-\d.]+)\)/);
-				if (matches && matches.length === 3) {
-					return { longitude: parseFloat(matches[1]), latitude: parseFloat(matches[2]) };
-				}
-			}
-
-
-			// Format 2: WKB Hex — e.g. "0101000020E610000079BB4DC0B23F5DC08A0A14EB67E04040"
-			// Structure: byte_order(2) + type(8) + SRID(8) + X_double(16) + Y_double(16) = 50 chars min
-			if (/^[0-9a-fA-F]{40,}$/.test(input)) {
-				// Parse as little-endian WKB with SRID (byte order = 01)
-				const hexToDouble = (hex) => {
-					const bytes = new Uint8Array(8);
-					for (let i = 0; i < 8; i++) {
-						bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
-					}
-					return new Float64Array(bytes.buffer)[0];
-				};
-
-				// Skip: byte_order(2) + type(8) + SRID(8) = 18 hex chars
-				// Then: X(16 hex) + Y(16 hex)
-				const offset = input.length >= 50 ? 18 : 2 + 8; // With or without SRID
-				const xHex = input.substring(offset, offset + 16);
-				const yHex = input.substring(offset + 16, offset + 32);
-
-				const longitude = hexToDouble(xHex);
-				const latitude = hexToDouble(yHex);
-
-				if (Number.isFinite(longitude) && Number.isFinite(latitude) &&
-					Math.abs(longitude) <= 180 && Math.abs(latitude) <= 90) {
-					return { longitude, latitude };
-				}
-			}
-		} catch (e) { return null; }
-		return null;
-	};
-
-	const toEventTimestampMs = (record, fallbackMs = Date.now()) => {
-		const rawTs = record?.updated_at ?? record?.created_at ?? null;
-		if (typeof rawTs === "string" && rawTs.trim()) {
-			const parsed = Date.parse(rawTs);
-			if (Number.isFinite(parsed)) return parsed;
-		}
-		return fallbackMs;
-	};
-
-	const getTripKeys = (trip) => {
-		const keys = [];
-		if (trip?.id) keys.push(String(trip.id));
-		if (trip?.requestId) keys.push(String(trip.requestId));
-		return keys;
-	};
-
-	const getRecordKeys = (record) => {
-		const keys = [];
-		if (record?.id) keys.push(String(record.id));
-		if (record?.display_id) keys.push(String(record.display_id));
-		if (record?.request_id) keys.push(String(record.request_id));
-		if (record?.current_call) keys.push(String(record.current_call));
-		return keys;
-	};
-
-	const matchesTripRecord = (trip, record) => {
-		if (!trip || !record) return false;
-		const tripKeys = getTripKeys(trip);
-		if (tripKeys.length === 0) return false;
-		const recordKeys = getRecordKeys(record);
-		if (recordKeys.length === 0) return false;
-		return recordKeys.some((key) => tripKeys.includes(key));
-	};
+	const parsePoint = parsePointGeometry;
 
 	const resetAmbulanceEventVersion = () => {
 		activeAmbulanceEventRef.current = { requestKey: null, versionMs: 0 };
 	};
 
 	const shouldApplyAmbulanceEvent = (trip, record) => {
-		if (!matchesTripRecord(trip, record)) return false;
-		const requestKey = String(trip?.id ?? trip?.requestId ?? "");
-		if (!requestKey) return false;
-
-		const nextVersionMs = toEventTimestampMs(record);
-		const current = activeAmbulanceEventRef.current;
-
-		if (current.requestKey && current.requestKey !== requestKey) {
-			activeAmbulanceEventRef.current = { requestKey, versionMs: nextVersionMs };
-			return true;
+		const decision = shouldApplyTripEvent(
+			activeAmbulanceEventRef.current,
+			trip,
+			record,
+			Date.now()
+		);
+		if (decision.apply) {
+			activeAmbulanceEventRef.current = decision.nextGateState;
 		}
-
-		if (nextVersionMs < (current.versionMs ?? 0)) {
-			return false;
-		}
-
-		activeAmbulanceEventRef.current = { requestKey, versionMs: nextVersionMs };
-		return true;
+		return decision.apply;
 	};
 
 	useEffect(() => {
@@ -451,6 +371,175 @@ export function EmergencyProvider({ children }) {
 	const ambulanceTelemetryHealth = useMemo(
 		() => deriveAmbulanceTelemetryHealth(activeAmbulanceTrip, telemetryNowMs),
 		[activeAmbulanceTrip, telemetryNowMs]
+	);
+
+	const syncActiveTripsFromServer = useCallback(
+		async (reason = "manual", { waitForSession = false } = {}) => {
+			if (syncActiveTripsInFlightRef.current) return;
+			syncActiveTripsInFlightRef.current = true;
+
+			try {
+				if (waitForSession) {
+					let attempt = 0;
+					while (attempt < 10) {
+						const { data: { user: sessionUser } } = await supabase.auth.getUser();
+						if (sessionUser) break;
+						attempt += 1;
+						await new Promise((resolve) => setTimeout(resolve, 400));
+					}
+				}
+
+				const activeRequests = await emergencyRequestsService.list();
+				const isActiveStatus = (status) =>
+					status === "pending_approval" ||
+					status === "in_progress" ||
+					status === "accepted" ||
+					status === "arrived";
+
+				const activeAmbulance = activeRequests.find(
+					(r) => r?.serviceType === "ambulance" && isActiveStatus(r?.status)
+				);
+				const activeBed = activeRequests.find(
+					(r) => r?.serviceType === "bed" && isActiveStatus(r?.status)
+				);
+
+				if (activeAmbulance) {
+					const loc = parsePoint(activeAmbulance.responderLocation);
+					let fullAmbulance = null;
+					if (activeAmbulance.ambulanceId) {
+						try {
+							fullAmbulance = await ambulanceService.getById(activeAmbulance.ambulanceId);
+						} catch (_error) {
+							fullAmbulance = null;
+						}
+					}
+
+					const startedAt = activeAmbulance.createdAt
+						? Date.parse(activeAmbulance.createdAt)
+						: Date.now();
+					const etaSeconds = parseEtaToSeconds(activeAmbulance.estimatedArrival);
+					const hasResponderIdentity = !!(
+						activeAmbulance.responderName ||
+						activeAmbulance.responderPhone ||
+						activeAmbulance.responderVehicleType ||
+						activeAmbulance.responderVehiclePlate ||
+						activeAmbulance.ambulanceId ||
+						loc
+					);
+
+					setActiveAmbulanceTrip({
+						id: activeAmbulance.id ?? null,
+						hospitalId: activeAmbulance.hospitalId,
+						requestId: activeAmbulance.requestId,
+						status: activeAmbulance.status,
+						estimatedArrival: activeAmbulance.estimatedArrival ?? null,
+						etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
+						startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
+						assignedAmbulance: hasResponderIdentity
+							? {
+									...fullAmbulance,
+									id: activeAmbulance.ambulanceId || "ems_001",
+									type:
+										activeAmbulance.responderVehicleType ||
+										fullAmbulance?.type ||
+										"Ambulance",
+									plate:
+										activeAmbulance.responderVehiclePlate ||
+										fullAmbulance?.vehicleNumber,
+									name: activeAmbulance.responderName,
+									phone: activeAmbulance.responderPhone,
+									location: loc || fullAmbulance?.location,
+									heading: activeAmbulance.responderHeading || 0,
+							  }
+							: null,
+						currentResponderLocation: loc,
+						currentResponderHeading: activeAmbulance.responderHeading,
+						responderTelemetryAt: activeAmbulance.updatedAt ?? null,
+						updatedAt: activeAmbulance.updatedAt ?? null,
+					});
+				} else {
+					resetAmbulanceEventVersion();
+					setActiveAmbulanceTrip(null);
+				}
+
+				if (activeBed) {
+					const startedAt = activeBed.createdAt ? Date.parse(activeBed.createdAt) : Date.now();
+					const etaSeconds = parseEtaToSeconds(activeBed.estimatedArrival);
+					setActiveBedBooking({
+						id: activeBed.id ?? null,
+						hospitalId: activeBed.hospitalId,
+						bookingId: activeBed.bookingId ?? activeBed.requestId ?? null,
+						requestId: activeBed.requestId ?? activeBed.bookingId ?? null,
+						status: activeBed.status ?? null,
+						bedNumber: activeBed.bedNumber ?? null,
+						bedType: activeBed.bedType ?? null,
+						bedCount: activeBed.bedCount ?? null,
+						specialty: activeBed.specialty ?? null,
+						hospitalName: activeBed.hospitalName ?? null,
+						estimatedWait: activeBed.estimatedArrival ?? null,
+						etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
+						startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
+					});
+				} else {
+					setActiveBedBooking(null);
+				}
+
+				const pendingMatch = activeRequests.find((r) => r?.status === "pending_approval");
+				if (pendingMatch) {
+					const pendingEtaSeconds = parseEtaToSeconds(pendingMatch.estimatedArrival);
+					setPendingApproval({
+						id: pendingMatch.id ?? null,
+						requestId: pendingMatch.requestId,
+						displayId: pendingMatch.displayId ?? pendingMatch.requestId ?? null,
+						hospitalId: pendingMatch.hospitalId,
+						hospitalName: pendingMatch.hospitalName,
+						serviceType: pendingMatch.serviceType,
+						ambulanceType: pendingMatch.responderVehicleType,
+						specialty: pendingMatch.specialty ?? null,
+						bedNumber: pendingMatch.bedNumber ?? null,
+						bedType: pendingMatch.bedType,
+						bedCount: pendingMatch.bedCount ?? null,
+						totalAmount: pendingMatch.totalCost ?? null,
+						paymentStatus: pendingMatch.paymentStatus ?? null,
+						estimatedArrival: pendingMatch.estimatedArrival ?? null,
+						etaSeconds: Number.isFinite(pendingEtaSeconds) ? pendingEtaSeconds : null,
+					});
+				} else {
+					setPendingApproval(null);
+				}
+			} catch (error) {
+				console.warn(`[EmergencyContext] Truth sync failed (${reason}):`, error);
+			} finally {
+				syncActiveTripsInFlightRef.current = false;
+			}
+		},
+		[parseEtaToSeconds]
+	);
+
+	const handleRealtimeStatus = useCallback(
+		(channelName, status) => {
+			const previousStatus = realtimeStatusRef.current[channelName] ?? null;
+			realtimeStatusRef.current[channelName] = status;
+
+			const now = Date.now();
+			if (REALTIME_RECOVERY_STATUSES.has(status)) {
+				if (now - lastRealtimeSyncMsRef.current < REALTIME_TRUTH_SYNC_DEBOUNCE_MS) {
+					return;
+				}
+				lastRealtimeSyncMsRef.current = now;
+				syncActiveTripsFromServer(`recovery:${channelName}:${status}`);
+				return;
+			}
+
+			if (REALTIME_HEALTHY_STATUSES.has(status) && previousStatus && previousStatus !== status) {
+				if (now - lastRealtimeSyncMsRef.current < REALTIME_TRUTH_SYNC_DEBOUNCE_MS) {
+					return;
+				}
+				lastRealtimeSyncMsRef.current = now;
+				syncActiveTripsFromServer(`resubscribed:${channelName}:${previousStatus}->${status}`);
+			}
+		},
+		[syncActiveTripsFromServer]
 	);
 
 	// Real-time Subscription to Emergency Requests
@@ -473,90 +562,44 @@ export function EmergencyProvider({ children }) {
 					},
 						(payload) => {
 							const newRecord = payload.new;
-							const isTerminalStatus =
-								newRecord?.status === "completed" ||
-								newRecord?.status === "cancelled" ||
-								newRecord?.status === "payment_declined";
 
 							setActiveBedBooking((prev) => {
 								if (!prev) return prev;
 								if (!matchesTripRecord(prev, newRecord)) {
 									return prev;
 								}
-								if (isTerminalStatus) {
+								const status = String(newRecord?.status ?? "").toLowerCase();
+								if (status === "completed" || status === "cancelled" || status === "payment_declined") {
 									return null;
 								}
 
 								return {
 									...prev,
-								status: newRecord.status,
-								hospitalId: newRecord.hospital_id ?? prev.hospitalId,
-								hospitalName: newRecord.hospital_name ?? prev.hospitalName,
-								specialty: newRecord.specialty ?? prev.specialty,
-								bedNumber: newRecord.bed_number ?? prev.bedNumber,
-								bedType: newRecord.bed_type ?? prev.bedType,
-								bedCount: newRecord.bed_count ?? prev.bedCount,
-								estimatedWait: newRecord.estimated_arrival ?? prev.estimatedWait,
-							};
-						});
+									status: newRecord.status,
+									hospitalId: newRecord.hospital_id ?? prev.hospitalId,
+									hospitalName: newRecord.hospital_name ?? prev.hospitalName,
+									specialty: newRecord.specialty ?? prev.specialty,
+									bedNumber: newRecord.bed_number ?? prev.bedNumber,
+									bedType: newRecord.bed_type ?? prev.bedType,
+									bedCount: newRecord.bed_count ?? prev.bedCount,
+									estimatedWait: newRecord.estimated_arrival ?? prev.estimatedWait,
+								};
+							});
 
 							setActiveAmbulanceTrip((prev) => {
 								if (!prev) return prev;
 								if (!shouldApplyAmbulanceEvent(prev, newRecord)) {
 									return prev;
 								}
-
-								if (isTerminalStatus) {
+								const mergedTrip = mergeEmergencyRealtimeTrip(prev, newRecord);
+								if (!mergedTrip) {
 									resetAmbulanceEventVersion();
-									return null;
 								}
-
-								const loc = parsePoint(newRecord.responder_location);
-								const prevAssigned = prev?.assignedAmbulance ?? null;
-								const hasResponderIdentity = !!(
-									newRecord.responder_name ||
-									newRecord.responder_phone ||
-									newRecord.responder_vehicle_type ||
-									newRecord.responder_vehicle_plate ||
-									newRecord.responder_id ||
-									newRecord.ambulance_id ||
-									loc
-								);
-									const mergedAssigned = hasResponderIdentity
-									? {
-										...(prevAssigned && typeof prevAssigned === "object" ? prevAssigned : {}),
-										id: newRecord.ambulance_id || prevAssigned?.id || "ems_001",
-									type:
-										newRecord.responder_vehicle_type || prevAssigned?.type || "Ambulance",
-									plate: newRecord.responder_vehicle_plate || prevAssigned?.plate,
-									name: newRecord.responder_name || prevAssigned?.name,
-									phone: newRecord.responder_phone || prevAssigned?.phone,
-									location: loc || prevAssigned?.location,
-									heading:
-											Number.isFinite(newRecord.responder_heading)
-												? newRecord.responder_heading
-												: prevAssigned?.heading || 0,
-									}
-									: prevAssigned;
-
-								return {
-									...prev,
-									id: newRecord.id ?? prev.id,
-									requestId: newRecord.display_id ?? prev.requestId,
-									status: newRecord.status,
-									assignedAmbulance: mergedAssigned,
-									currentResponderLocation: loc || prev.currentResponderLocation,
-									currentResponderHeading:
-										Number.isFinite(newRecord.responder_heading)
-											? newRecord.responder_heading
-											: prev.currentResponderHeading,
-									responderTelemetryAt: newRecord.updated_at ?? prev.responderTelemetryAt ?? null,
-									updatedAt: newRecord.updated_at ?? prev.updatedAt ?? null,
-								};
+								return mergedTrip;
 							});
 						}
 					)
-				.subscribe();
+				.subscribe((status) => handleRealtimeStatus("emergency_updates", status));
 		};
 
 		setupSubscription();
@@ -566,7 +609,7 @@ export function EmergencyProvider({ children }) {
 			// REMOVED: simulationService.stopSimulation();
 			// Real-time tracking handled by subscriptions
 		};
-	}, []); // Removed dependency on activeAmbulanceTrip to avoid re-subscribing
+	}, [handleRealtimeStatus]); // Removed dependency on activeAmbulanceTrip to avoid re-subscribing
 
 	useEffect(() => {
 		const requestKey = activeAmbulanceTrip?.id ?? activeAmbulanceTrip?.requestId ?? null;
@@ -575,7 +618,7 @@ export function EmergencyProvider({ children }) {
 			return;
 		}
 
-		const persistedVersion = toEventTimestampMs(
+		const persistedVersion = parseRecordTimestampMs(
 			{
 				updated_at:
 					activeAmbulanceTrip?.responderTelemetryAt ??
@@ -645,162 +688,8 @@ export function EmergencyProvider({ children }) {
 
 
 	useEffect(() => {
-		let isActive = true;
-		(async () => {
-			let attempt = 0;
-			let activeRequests = [];
-			while (isActive && attempt < 10) {
-				const { data: { user } } = await supabase.auth.getUser();
-				if (user) break;
-				attempt += 1;
-				// if (__DEV__) {
-				// 	console.log("[EmergencyContext] Hydrate requests: waiting for user session", {
-				// 		attempt,
-				// 	});
-				// }
-				await new Promise((resolve) => setTimeout(resolve, 400));
-			}
-
-			activeRequests = await emergencyRequestsService.list();
-			const isActiveStatus = (status) =>
-				status === "pending_approval" || status === "in_progress" || status === "accepted" || status === "arrived";
-			const activeAmbulance = activeRequests.find(
-				(r) => r?.serviceType === "ambulance" && isActiveStatus(r?.status)
-			);
-			const activeBed = activeRequests.find(
-				(r) => r?.serviceType === "bed" && isActiveStatus(r?.status)
-			);
-
-			if (!isActive) return;
-			// if (__DEV__) {
-			// 	console.log("[EmergencyContext] Hydrate requests result:", {
-			// 		count: Array.isArray(activeRequests) ? activeRequests.length : 0,
-			// 		activeAmbulanceId: activeAmbulance?.requestId ?? null,
-			// 		activeAmbulanceStatus: activeAmbulance?.status ?? null,
-			// 		activeBedId: activeBed?.requestId ?? null,
-			// 		activeBedStatus: activeBed?.status ?? null,
-			// 	});
-			// }
-
-			if (activeAmbulance) {
-				let loc = null;
-				if (activeAmbulance.responderLocation) {
-					if (
-						typeof activeAmbulance.responderLocation === "object" &&
-						activeAmbulance.responderLocation.coordinates
-					) {
-						loc = {
-							latitude: activeAmbulance.responderLocation.coordinates[1],
-							longitude: activeAmbulance.responderLocation.coordinates[0],
-						};
-					} else if (typeof activeAmbulance.responderLocation === "string") {
-						loc = parsePoint(activeAmbulance.responderLocation);
-					}
-				}
-
-				let fullAmbulance = null;
-				if (activeAmbulance.ambulanceId) {
-					try {
-						fullAmbulance = await ambulanceService.getById(activeAmbulance.ambulanceId);
-					} catch (e) {
-					}
-				}
-
-				const startedAt = activeAmbulance.createdAt
-					? Date.parse(activeAmbulance.createdAt)
-					: Date.now();
-					const etaSeconds = parseEtaToSeconds(activeAmbulance.estimatedArrival);
-					const hasResponderIdentity = !!(
-						activeAmbulance.responderName ||
-						activeAmbulance.responderPhone ||
-						activeAmbulance.responderVehicleType ||
-						activeAmbulance.responderVehiclePlate ||
-						activeAmbulance.ambulanceId ||
-						loc
-					);
-					const hydratedTrip = {
-						id: activeAmbulance.id ?? null,
-						hospitalId: activeAmbulance.hospitalId,
-						requestId: activeAmbulance.requestId,
-						status: activeAmbulance.status,
-					estimatedArrival: activeAmbulance.estimatedArrival ?? null,
-					etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
-					startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
-						assignedAmbulance: hasResponderIdentity
-							? {
-								...fullAmbulance,
-								id: activeAmbulance.ambulanceId || "ems_001",
-							type:
-								activeAmbulance.responderVehicleType ||
-								fullAmbulance?.type ||
-								"Ambulance",
-							plate:
-								activeAmbulance.responderVehiclePlate ||
-								fullAmbulance?.vehicleNumber,
-							name: activeAmbulance.responderName,
-							phone: activeAmbulance.responderPhone,
-							location: loc || fullAmbulance?.location,
-							heading: activeAmbulance.responderHeading || 0,
-							}
-							: null,
-						currentResponderLocation: loc,
-						currentResponderHeading: activeAmbulance.responderHeading,
-						responderTelemetryAt: activeAmbulance.updatedAt ?? null,
-						updatedAt: activeAmbulance.updatedAt ?? null,
-					};
-
-				setActiveAmbulanceTrip(hydratedTrip);
-			}
-
-			if (activeBed) {
-				const startedAt = activeBed.createdAt ? Date.parse(activeBed.createdAt) : Date.now();
-				const etaSeconds = parseEtaToSeconds(activeBed.estimatedArrival);
-				const hydratedBedBooking = {
-					id: activeBed.id ?? null,
-					hospitalId: activeBed.hospitalId,
-					requestId: activeBed.requestId,
-					status: activeBed.status,
-					hospitalName: activeBed.hospitalName ?? null,
-					specialty: activeBed.specialty ?? null,
-					bedNumber: activeBed.bedNumber ?? null,
-					bedType: activeBed.bedType ?? null,
-					bedCount: activeBed.bedCount ?? null,
-					estimatedWait: activeBed.estimatedArrival ?? null,
-					etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
-					startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
-				};
-
-				setActiveBedBooking(hydratedBedBooking);
-			}
-
-			// HYDRATE PENDING APPROVALS
-			// If a request exists in 'pending_approval' status, it's a cash job waiting for hospital review
-			const pendingMatch = activeRequests.find(r => r?.status === 'pending_approval');
-			if (pendingMatch) {
-				const pendingEtaSeconds = parseEtaToSeconds(pendingMatch.estimatedArrival);
-				setPendingApproval({
-					id: pendingMatch.id ?? null,
-					requestId: pendingMatch.requestId,
-					displayId: pendingMatch.displayId ?? pendingMatch.requestId ?? null,
-					hospitalId: pendingMatch.hospitalId,
-					hospitalName: pendingMatch.hospitalName,
-					serviceType: pendingMatch.serviceType,
-					ambulanceType: pendingMatch.responderVehicleType, // Capture if ambulance
-					specialty: pendingMatch.specialty ?? null,
-					bedNumber: pendingMatch.bedNumber ?? null,
-					bedType: pendingMatch.bedType,
-					bedCount: pendingMatch.bedCount ?? null,
-					totalAmount: pendingMatch.totalCost ?? null,
-					paymentStatus: pendingMatch.paymentStatus ?? null,
-					estimatedArrival: pendingMatch.estimatedArrival ?? null,
-					etaSeconds: Number.isFinite(pendingEtaSeconds) ? pendingEtaSeconds : null,
-				});
-			}
-		})();
-		return () => {
-			isActive = false;
-		};
-	}, []);
+		syncActiveTripsFromServer("initial_hydrate", { waitForSession: true });
+	}, [syncActiveTripsFromServer]);
 
 	useEffect(() => {
 		const assigned = activeAmbulanceTrip?.assignedAmbulance;
@@ -1144,54 +1033,29 @@ export function EmergencyProvider({ children }) {
 						setActiveAmbulanceTrip((prev) => {
 							if (!prev) return prev;
 							if (!shouldApplyAmbulanceEvent(prev, payload.new)) return prev;
-
-							const isTerminalStatus =
-								payload.new.status === "completed" ||
-								payload.new.status === "cancelled" ||
-								payload.new.status === "payment_declined";
-							if (isTerminalStatus) {
+							const mergedTrip = mergeEmergencyRealtimeTrip(prev, payload.new);
+							if (!mergedTrip) {
 								resetAmbulanceEventVersion();
 								return null;
 							}
-
-							const loc = parsePoint(payload.new.responder_location);
-							return {
-								...prev,
-								status: payload.new.status ?? prev.status,
-								currentResponderLocation: loc || prev.currentResponderLocation,
-								currentResponderHeading:
-									Number.isFinite(payload.new.responder_heading)
-										? payload.new.responder_heading
-										: prev.currentResponderHeading,
-								responderTelemetryAt: payload.new.updated_at ?? prev.responderTelemetryAt ?? null,
-								updatedAt: payload.new.updated_at ?? prev.updatedAt ?? null,
-							};
+							return mergedTrip;
 						});
-					}
+					},
+					(status) => handleRealtimeStatus("active_emergency_request", status)
 				);
 
 				unsubscribeAmbulance = await emergencyRequestsService.subscribeToAmbulanceLocation(
 					emergencyRequestSubscriptionKey,
 					(payload) => {
 						if (!payload.new?.location) return;
-						const coords = parsePoint(payload.new.location);
-						if (!coords) return;
 
 						setActiveAmbulanceTrip((prev) => {
 							if (!prev) return prev;
 							if (!shouldApplyAmbulanceEvent(prev, payload.new)) return prev;
-							return {
-								...prev,
-								currentResponderLocation: coords,
-								responderTelemetryAt: payload.new.updated_at ?? prev.responderTelemetryAt ?? null,
-								updatedAt: payload.new.updated_at ?? prev.updatedAt ?? null,
-								assignedAmbulance: {
-									...(prev.assignedAmbulance || {}),
-									location: coords,
-								},
-							};
+							return mergeAmbulanceRealtimeTrip(prev, payload.new);
 						});
-					}
+					},
+					(status) => handleRealtimeStatus("active_ambulance_location", status)
 				);
 			} catch (error) {
 				console.warn('[EmergencyContext] Failed to setup subscriptions:', error);
@@ -1208,7 +1072,7 @@ export function EmergencyProvider({ children }) {
 				unsubscribeAmbulance();
 			}
 		};
-	}, [activeAmbulanceTrip?.id, activeAmbulanceTrip?.requestId]);
+	}, [activeAmbulanceTrip?.id, activeAmbulanceTrip?.requestId, handleRealtimeStatus]);
 
 	useEffect(() => {
 		if (!activeBedBooking?.hospitalId) return;
@@ -1228,7 +1092,8 @@ export function EmergencyProvider({ children }) {
 									: h
 							));
 						}
-					}
+					},
+					(status) => handleRealtimeStatus("active_hospital_beds", status)
 				);
 			} catch (error) {
 				console.warn('[EmergencyContext] Failed to setup bed subscription:', error);
@@ -1242,7 +1107,7 @@ export function EmergencyProvider({ children }) {
 				unsubscribeBeds();
 			}
 		};
-	}, [activeBedBooking?.hospitalId, hospitals, updateHospitals]);
+	}, [activeBedBooking?.hospitalId, handleRealtimeStatus, hospitals, updateHospitals]);
 
 	const value = useMemo(
 		() => ({

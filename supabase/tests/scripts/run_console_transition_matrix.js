@@ -2,6 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 const { createClient } = require('@supabase/supabase-js');
+const {
+  parsePointGeometry,
+  shouldApplyTripEvent,
+  mergeEmergencyRealtimeTrip,
+  mergeAmbulanceRealtimeTrip,
+  projectTripFromCanonicalRows,
+} = require('../../../utils/emergencyRealtimeProjection');
 
 dotenv.config({ path: '.env.local' });
 dotenv.config({ path: '.env' });
@@ -147,6 +154,7 @@ function makeResult(caseId, role, action, fromStatus, expectSuccess) {
     rpcData: null,
     error: null,
     telemetryMirror: null,
+    appRealtimeProjection: null,
   };
 }
 
@@ -213,6 +221,142 @@ async function verifyTelemetryMirror(requestId, ambulanceId) {
       hasAmbulanceLocation,
       requestAmbulanceLinked,
       ambulanceCallLinked,
+    },
+  };
+}
+
+function sameCoordinate(a, b, epsilon = 1e-6) {
+  if (!a || !b) return false;
+  const aLat = Number(a.latitude);
+  const aLng = Number(a.longitude);
+  const bLat = Number(b.latitude);
+  const bLng = Number(b.longitude);
+  if (!Number.isFinite(aLat) || !Number.isFinite(aLng) || !Number.isFinite(bLat) || !Number.isFinite(bLng)) {
+    return false;
+  }
+  return Math.abs(aLat - bLat) <= epsilon && Math.abs(aLng - bLng) <= epsilon;
+}
+
+async function verifyAppRealtimeProjection(requestId, ambulanceId) {
+  if (!requestId || !ambulanceId) {
+    return {
+      passed: false,
+      error: 'app realtime projection verification missing request/ambulance id',
+      details: null,
+    };
+  }
+
+  const { data: request, error: requestErr } = await admin
+    .from('emergency_requests')
+    .select(
+      'id,display_id,status,ambulance_id,responder_id,responder_name,responder_phone,responder_vehicle_type,responder_vehicle_plate,responder_location,responder_heading,updated_at,created_at'
+    )
+    .eq('id', requestId)
+    .maybeSingle();
+  if (requestErr) {
+    return { passed: false, error: `app projection request lookup failed: ${requestErr.message}`, details: null };
+  }
+
+  const { data: ambulance, error: ambulanceErr } = await admin
+    .from('ambulances')
+    .select('id,current_call,location,updated_at,created_at')
+    .eq('id', ambulanceId)
+    .maybeSingle();
+  if (ambulanceErr) {
+    return { passed: false, error: `app projection ambulance lookup failed: ${ambulanceErr.message}`, details: null };
+  }
+
+  const baseTrip = {
+    id: request?.id ?? requestId,
+    requestId: request?.display_id ?? requestId,
+    status: 'accepted',
+    assignedAmbulance: { id: ambulanceId },
+    currentResponderLocation: null,
+    currentResponderHeading: null,
+    responderTelemetryAt: null,
+    updatedAt: null,
+  };
+
+  let gateState = { requestKey: null, versionMs: 0 };
+  const freshDecision = shouldApplyTripEvent(gateState, baseTrip, request, Date.now());
+  if (!freshDecision.apply) {
+    return {
+      passed: false,
+      error: `app projection rejected canonical fresh event (${freshDecision.reason})`,
+      details: { request, ambulance, freshDecision },
+    };
+  }
+
+  gateState = freshDecision.nextGateState;
+  let projected = mergeEmergencyRealtimeTrip(baseTrip, request);
+  if (!projected) {
+    return {
+      passed: false,
+      error: 'app projection collapsed canonical non-terminal trip unexpectedly',
+      details: { request, ambulance, gateState },
+    };
+  }
+
+  const requestUpdatedMs = parseTimestampMs(request?.updated_at || request?.created_at || null, Date.now());
+  const staleRecord = {
+    ...request,
+    updated_at: new Date(requestUpdatedMs - 90000).toISOString(),
+    responder_heading: 7,
+  };
+  const staleDecision = shouldApplyTripEvent(gateState, projected, staleRecord, Date.now());
+  if (staleDecision.apply) {
+    return {
+      passed: false,
+      error: 'app projection accepted a stale emergency event',
+      details: { request, staleRecord, staleDecision, gateState },
+    };
+  }
+
+  if (ambulance) {
+    const ambulanceDecision = shouldApplyTripEvent(gateState, projected, ambulance, Date.now());
+    if (ambulanceDecision.apply) {
+      gateState = ambulanceDecision.nextGateState;
+      projected = mergeAmbulanceRealtimeTrip(projected, ambulance);
+    }
+  }
+
+  const canonicalProjected = projectTripFromCanonicalRows(baseTrip, request, ambulance || null);
+  const canonicalLocation = parsePointGeometry(ambulance?.location) || parsePointGeometry(request?.responder_location);
+  const projectedLocation = projected?.currentResponderLocation || null;
+
+  if (canonicalLocation && !sameCoordinate(projectedLocation, canonicalLocation)) {
+    return {
+      passed: false,
+      error: 'app projection location diverges from canonical emergency/ambulance rows',
+      details: { request, ambulance, projected, canonicalLocation, projectedLocation, gateState, canonicalProjected },
+    };
+  }
+
+  if (projected?.status !== request?.status) {
+    return {
+      passed: false,
+      error: 'app projection status diverges from canonical emergency row',
+      details: { request, ambulance, projected, gateState, canonicalProjected },
+    };
+  }
+
+  if ((projected?.assignedAmbulance?.id || null) !== (request?.ambulance_id || ambulanceId)) {
+    return {
+      passed: false,
+      error: 'app projection ambulance identity diverges from canonical emergency row',
+      details: { request, ambulance, projected, gateState, canonicalProjected },
+    };
+  }
+
+  return {
+    passed: true,
+    error: null,
+    details: {
+      request,
+      ambulance,
+      projected,
+      canonicalProjected,
+      gateState,
     },
   };
 }
@@ -699,6 +843,7 @@ async function main() {
         fromStatus: 'accepted',
         expectSuccess: true,
         assertTelemetryMirror: true,
+        assertAppRealtimeProjection: true,
         execute: async (client) => {
           const requestId = await createRequest({
             status: 'accepted',
@@ -726,6 +871,7 @@ async function main() {
         fromStatus: 'arrived',
         expectSuccess: true,
         assertTelemetryMirror: true,
+        assertAppRealtimeProjection: true,
         execute: async (client) => {
           const requestId = await createRequest({
             status: 'arrived',
@@ -852,6 +998,7 @@ async function main() {
         fromStatus: 'accepted_reassign_new_driver',
         expectSuccess: true,
         assertTelemetryMirror: true,
+        assertAppRealtimeProjection: true,
         execute: async (client) => {
           const requestId = await createRequest({
             status: 'accepted',
@@ -1246,6 +1393,20 @@ async function main() {
         if (!telemetryMirror.passed) {
           result.success = false;
           result.error = telemetryMirror.error;
+        }
+      }
+
+      const shouldAssertAppRealtimeProjection =
+        !!tc.assertAppRealtimeProjection || !!tc.assertTelemetryMirror;
+      if (result.success && shouldAssertAppRealtimeProjection) {
+        const appProjection = await verifyAppRealtimeProjection(
+          ctx.lastCaseRequestId,
+          ctx.lastCaseAmbulanceId || ctx.ambulanceId
+        );
+        result.appRealtimeProjection = appProjection.details;
+        if (!appProjection.passed) {
+          result.success = false;
+          result.error = appProjection.error;
         }
       }
 
