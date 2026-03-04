@@ -3041,7 +3041,7 @@ export type Database = {
           beds_available: number
           er_wait_time: number
           hospital_id: string
-          status: string
+          p_status: string
         }
         Returns: boolean
       }

@@ -2075,16 +2075,7 @@ export type Database = {
         }
         Returns: string
       }
-      admin_update_trending_topics: {
-        Args: { days_back?: number; limit_count?: number }
-        Returns: {
-          category: string
-          query: string
-          rank: number
-          search_count: number
-          unique_users: number
-        }[]
-      }
+      admin_update_trending_topics: { Args: { payload: Json }; Returns: Json }
       create_emergency_v4: {
         Args: { p_payment_data?: Json; p_request_data: Json; p_user_id: string }
         Returns: Json
@@ -2127,8 +2118,8 @@ export type Database = {
       }
       cancel_trip: { Args: { request_uuid: string }; Returns: boolean }
       check_cash_eligibility: {
-        Args: { p_estimated_amount: number; p_organization_id: string }
-        Returns: boolean
+        Args: { p_organization_id: string }
+        Returns: Json
       }
       complete_trip: { Args: { request_uuid: string }; Returns: boolean }
       confirm_cash_payment: { Args: { p_payment_id: string }; Returns: Json }
@@ -2316,7 +2307,10 @@ export type Database = {
         } & "Could not choose the best candidate function between: public.get_display_ids(p_entity_ids => _text), public.get_display_ids(p_entity_ids => _uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"[]
       }
       get_entity_id: { Args: { p_display_id: string }; Returns: string }
-      get_org_stripe_status: { Args: { p_org_id: string }; Returns: Json }
+      get_org_stripe_status: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
       get_recent_activity: {
         Args: { limit_count?: number; offset_count?: number }
         Returns: {
@@ -2401,13 +2395,12 @@ export type Database = {
       log_user_activity: {
         Args: {
           p_action: string
-          p_description: string
+          p_description?: string
           p_entity_id?: string
           p_entity_type?: string
           p_metadata?: Json
-          p_user_id?: string
         }
-        Returns: string
+        Returns: Json
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
       nearby_hospitals: {
@@ -2495,7 +2488,6 @@ export type Database = {
       process_cash_payment: {
         Args: {
           p_amount: number
-          p_currency?: string
           p_emergency_request_id: string
           p_organization_id: string
         }

@@ -214,9 +214,16 @@ class RealtimeAvailabilityService {
    */
   async updateAvailability(hospitalId, updates) {
     try {
-      const { error } = await supabase.rpc('update_hospital_availability', {
+      const payload = {
         hospital_id: hospitalId,
-        ...updates
+        beds_available: updates?.beds_available ?? updates?.available_beds ?? null,
+        er_wait_time: updates?.er_wait_time ?? updates?.emergency_wait_time_minutes ?? null,
+        p_status: updates?.p_status ?? updates?.status ?? null,
+        ambulance_count: updates?.ambulance_count ?? updates?.ambulances_count ?? null,
+      };
+
+      const { error } = await supabase.rpc('update_hospital_availability', {
+        ...payload
       });
 
       if (error) {
