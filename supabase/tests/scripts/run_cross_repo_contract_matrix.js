@@ -267,6 +267,109 @@ function extractFirstObjectLiteral(sourceText, fromIndex) {
   return null;
 }
 
+function extractBalancedBlock(sourceText, startIndex, openChar, closeChar, maxLength = 8000) {
+  if (!sourceText || startIndex < 0 || sourceText[startIndex] !== openChar) return null;
+  const hardEnd = Math.min(sourceText.length, startIndex + maxLength);
+  let depth = 0;
+  let quote = null;
+  let escaped = false;
+
+  for (let i = startIndex; i < hardEnd; i += 1) {
+    const ch = sourceText[i];
+
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'" || ch === '`') {
+      quote = ch;
+      continue;
+    }
+    if (ch === openChar) depth += 1;
+    if (ch === closeChar) {
+      depth -= 1;
+      if (depth === 0) {
+        return sourceText.slice(startIndex, i + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+function escapeRegex(text) {
+  return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function extractVariableInitializer(sourceText, variableName, beforeIndex) {
+  if (!sourceText || !variableName) return null;
+  const re = new RegExp(`(?:const|let|var)\\s+${escapeRegex(variableName)}\\s*=\\s*`, 'g');
+  let match;
+  let last = null;
+  while ((match = re.exec(sourceText)) !== null) {
+    if (typeof beforeIndex === 'number' && match.index >= beforeIndex) break;
+    last = match;
+  }
+  if (!last) return null;
+
+  let start = last.index + last[0].length;
+  while (start < sourceText.length && /\s/.test(sourceText[start])) start += 1;
+  const ch = sourceText[start];
+  if (ch === '{') return extractBalancedBlock(sourceText, start, '{', '}');
+  if (ch === '[') return extractBalancedBlock(sourceText, start, '[', ']');
+  return null;
+}
+
+function isSimpleIdentifier(token) {
+  return /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(token || '');
+}
+
+function extractPayloadKeysFromExpression(exprText, sourceText, beforeIndex, seenVars = new Set()) {
+  const expr = String(exprText || '').trim();
+  if (!expr) return [];
+
+  if (expr[0] === '{') {
+    return extractTopLevelObjectKeys(expr);
+  }
+
+  if (expr[0] === '[') {
+    const keys = [];
+    const objectBlocks = extractObjectBlocksFromArray(expr);
+    for (const block of objectBlocks) {
+      keys.push(...extractTopLevelObjectKeys(block));
+    }
+    if (keys.length > 0) return keys;
+
+    const inner = expr.slice(1, -1).trim();
+    const first = splitTopLevelComma(inner)[0]?.trim();
+    if (isSimpleIdentifier(first) && !seenVars.has(first)) {
+      seenVars.add(first);
+      const init = extractVariableInitializer(sourceText, first, beforeIndex);
+      if (init) return extractPayloadKeysFromExpression(init, sourceText, beforeIndex, seenVars);
+    }
+    return keys;
+  }
+
+  if (isSimpleIdentifier(expr) && !seenVars.has(expr)) {
+    seenVars.add(expr);
+    const init = extractVariableInitializer(sourceText, expr, beforeIndex);
+    if (init) {
+      return extractPayloadKeysFromExpression(init, sourceText, beforeIndex, seenVars);
+    }
+  }
+
+  return [];
+}
+
 function extractTopLevelObjectKeys(objectText) {
   if (!objectText || objectText[0] !== '{') return [];
   const keys = [];
@@ -345,14 +448,18 @@ function extractTopLevelObjectKeys(objectText) {
   return keys;
 }
 
-function extractWritePayloadKeys(windowText, fnName) {
+function extractWritePayloadKeys(windowText, fnName, minCallIndex = 0) {
   const keys = [];
   const re = new RegExp(`\\.${fnName}\\s*\\(`, 'g');
   let match;
   while ((match = re.exec(windowText)) !== null) {
-    const objectText = extractFirstObjectLiteral(windowText, match.index + match[0].length);
-    const objectKeys = extractTopLevelObjectKeys(objectText);
-    keys.push(...objectKeys);
+    if (match.index < minCallIndex) continue;
+    const callArgs = extractCallArgsText(windowText, match.index);
+    if (!callArgs) continue;
+    const firstArg = splitTopLevelComma(callArgs)[0]?.trim();
+    if (!firstArg) continue;
+    const payloadKeys = extractPayloadKeysFromExpression(firstArg, windowText, match.index);
+    keys.push(...payloadKeys);
   }
   return keys;
 }
@@ -685,6 +792,10 @@ function scanFileForUsage(filePath, tableUsageMap, rpcUsageMap) {
     const index = match.index;
     const line = indexToLine(content, index);
     const localWindow = extractStatementWindow(content, index, 2500);
+    const contextStart = Math.max(0, index - 3000);
+    const contextEnd = Math.min(content.length, index + 2500);
+    const contextWindow = content.slice(contextStart, contextEnd);
+    const contextAnchor = index - contextStart;
 
     if (!tableUsageMap.has(table)) tableUsageMap.set(table, makeEmptyTableUsage(table));
     const usage = tableUsageMap.get(table);
@@ -707,7 +818,7 @@ function scanFileForUsage(filePath, tableUsageMap, rpcUsageMap) {
 
     const writeFns = ['insert', 'upsert', 'update'];
     for (const fn of writeFns) {
-      const keys = extractWritePayloadKeys(localWindow, fn);
+      const keys = extractWritePayloadKeys(contextWindow, fn, contextAnchor);
       for (const key of keys) {
         usage.columns.add(key);
         if (fn === 'update') usage.updateKeys.add(key);

@@ -3,6 +3,28 @@ import googlePlacesService from './googlePlacesService';
 import mapboxService from './mapboxService';
 
 class HospitalImportService {
+  buildImportLogUpdatePayload(payload = {}) {
+    const allowed = {
+      status: payload.status,
+      total_found: payload.total_found,
+      imported_count: payload.imported_count,
+      skipped_count: payload.skipped_count,
+      error_count: payload.error_count,
+      errors: payload.errors,
+      completed_at: payload.completed_at,
+      search_query: payload.search_query,
+      location_lat: payload.location_lat,
+      location_lng: payload.location_lng,
+      radius_km: payload.radius_km,
+      created_by: payload.created_by,
+      import_type: payload.import_type
+    };
+
+    return Object.fromEntries(
+      Object.entries(allowed).filter(([, value]) => value !== undefined)
+    );
+  }
+
   isMissingRelationError(error, relationName) {
     if (!error) return false;
     if (error.code === '42P01') return true;
@@ -13,7 +35,21 @@ class HospitalImportService {
   async createImportLog(payload) {
     const { data, error } = await supabase
       .from('hospital_import_logs')
-      .insert(payload)
+      .insert({
+        import_type: payload?.import_type ?? 'provider_import',
+        location_lat: payload?.location_lat ?? null,
+        location_lng: payload?.location_lng ?? null,
+        radius_km: payload?.radius_km ?? null,
+        search_query: payload?.search_query ?? null,
+        status: payload?.status ?? 'running',
+        created_by: payload?.created_by ?? null,
+        total_found: payload?.total_found ?? null,
+        imported_count: payload?.imported_count ?? null,
+        skipped_count: payload?.skipped_count ?? null,
+        error_count: payload?.error_count ?? null,
+        errors: payload?.errors ?? null,
+        completed_at: payload?.completed_at ?? null
+      })
       .select()
       .single();
 
@@ -29,10 +65,12 @@ class HospitalImportService {
 
   async updateImportLog(importLogId, payload) {
     if (!importLogId) return;
+    const updatePayload = this.buildImportLogUpdatePayload(payload);
+    if (Object.keys(updatePayload).length === 0) return;
 
     const { error } = await supabase
       .from('hospital_import_logs')
-      .update(payload)
+      .update(updatePayload)
       .eq('id', importLogId);
 
     if (error && !this.isMissingRelationError(error, 'hospital_import_logs')) {
