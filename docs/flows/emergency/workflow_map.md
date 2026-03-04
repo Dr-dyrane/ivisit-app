@@ -90,6 +90,8 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
 - `on_emergency_completed` -> `sync_emergency_to_visit`
 - `on_emergency_auto_assign_doctor` -> `auto_assign_doctor`
 - `on_emergency_release_doctor` -> `release_doctor_assignment`
+- `on_ambulance_unavailability_failover` -> `handle_ambulance_unavailability_failover`
+- `on_doctor_unavailability_failover` -> `handle_doctor_unavailability_failover`
 - `trg_validate_emergency_status_transition` -> `validate_emergency_status_transition`
 
 ## Realtime Propagation Map
@@ -103,7 +105,7 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
 - `components/emergency/EmergencyRequestModal.jsx`
   - `approval_<request>` on `emergency_requests`
   - `approval_payment_<payment>` on `payments`
-  - Poll fallback every 3s to cover missed realtime events
+  - recovery-aware truth-sync on channel recovery/resubscribe (no polling)
 
 ## Role and Permission Surface
 
@@ -132,6 +134,10 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
   - Patient app `EmergencyContext` now runs the same recovery-aware truth-sync pattern (channel recovery + resubscribe) and uses shared realtime projection helpers for stale-event rejection + deterministic trip merge.
   - `run_console_transition_matrix` now enforces telemetry mirror invariants for responder updates (`emergency_requests.responder_location` + `ambulances.location` + call linkage + timestamp coherence).
   - `run_console_transition_matrix` now also validates app-side realtime projection continuity (`appRealtimeProjection`) using shared consumer merge logic for stale-event rejection and canonical map-state convergence.
+  - `EmergencyRequestModal` approval stream now uses deterministic realtime projection gates (`updated_at` ordering), recovery-aware truth-sync on channel recovery, and converges `pending_approval -> in_progress/accepted/payment_declined` without polling drift.
+  - `run_console_transition_matrix` now covers approval determinism (`AP1`-`AP3`) and closed-loop unavailability failover (`RA4`, `DR7`) with append-only transition-audit assertions.
+  - `handle_ambulance_unavailability_failover` now reassigns to an available replacement unit atomically and clears stale responder linkage when no replacement exists.
+  - `handle_doctor_unavailability_failover` now reassigns in-trigger with capacity-safe load rebalancing and fallback clearing when no replacement doctor exists.
   - `assign_doctor_to_emergency` now enforces deterministic reassignment semantics (org scope guardrails, terminal-state denial, previous-assignment cancellation, doctor-load counter rebalance, idempotent same-doctor replay).
   - `run_console_transition_matrix` now covers doctor assignment lifecycle continuity (`DR1`-`DR6`), including closed-loop auto-reassignment after ambulance/request reassignment mid-trip.
   - Reassignment continuity hardened:
@@ -171,7 +177,7 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
 
 - Client guards prevent duplicate in-flight request creation (`useRequestFlow` inflight map).
 - `emergencyRequestsService` supports local fallback only when unauthenticated.
-- Approval waiting flow has realtime + polling fallback for resilience.
+- Approval waiting flow uses realtime + channel-recovery truth-sync (no interval polling), with stale-event rejection to prevent status regressions.
 - Status guard trigger prevents ghost transitions even if client has stale UI state.
 
 ## Related Docs

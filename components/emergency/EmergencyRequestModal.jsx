@@ -48,6 +48,35 @@ const canonicalizeEmergencyStatus = (value) => {
 	}
 };
 
+const REALTIME_RECOVERY_STATUSES = new Set(["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"]);
+const REALTIME_HEALTHY_STATUSES = new Set(["SUBSCRIBED"]);
+const APPROVAL_TRUTH_SYNC_DEBOUNCE_MS = 6000;
+
+const parseRealtimeVersionMs = (row, fallbackMs = Date.now()) => {
+	if (!row || typeof row !== "object") return fallbackMs;
+	const value = row.updated_at ?? row.created_at ?? null;
+	if (!value) return fallbackMs;
+	const parsed = Date.parse(value);
+	return Number.isFinite(parsed) ? parsed : fallbackMs;
+};
+
+const shouldApplyRealtimeEvent = (gateRef, streamKey, row) => {
+	const current = gateRef.current || { streamKey: null, versionMs: 0 };
+	const nextVersionMs = parseRealtimeVersionMs(row, Date.now());
+
+	if (current.streamKey && current.streamKey !== streamKey) {
+		gateRef.current = { streamKey, versionMs: nextVersionMs };
+		return true;
+	}
+
+	if (nextVersionMs < (current.versionMs ?? 0)) {
+		return false;
+	}
+
+	gateRef.current = { streamKey, versionMs: nextVersionMs };
+	return true;
+};
+
 /**
  * 💡 STABILITY NOTE:
  * This component is wrapped in React.memo and uses `useFABActions()` instead of `useFAB()`.
@@ -152,6 +181,11 @@ const EmergencyRequestModal = React.memo(({
 	const { pendingApproval, setPendingApproval, activeAmbulanceTrip } = useEmergency();
 	const approvalHandledRef = useRef(false);
 	const approvalDispatchWaitNotifiedRef = useRef(false);
+	const approvalRealtimeStatusRef = useRef({});
+	const approvalLastRealtimeSyncMsRef = useRef(0);
+	const approvalSyncInFlightRef = useRef(false);
+	const approvalEmergencyEventGateRef = useRef({ streamKey: null, versionMs: 0 });
+	const approvalPaymentEventGateRef = useRef({ streamKey: null, versionMs: 0 });
 
 	// If mounting and we have a pending approval, ensure we are on the right step
 	useEffect(() => {
@@ -162,10 +196,14 @@ const EmergencyRequestModal = React.memo(({
 	useEffect(() => {
 		approvalHandledRef.current = false;
 		approvalDispatchWaitNotifiedRef.current = false;
+		approvalRealtimeStatusRef.current = {};
+		approvalLastRealtimeSyncMsRef.current = 0;
+		approvalSyncInFlightRef.current = false;
+		approvalEmergencyEventGateRef.current = { streamKey: null, versionMs: 0 };
+		approvalPaymentEventGateRef.current = { streamKey: null, versionMs: 0 };
 	}, [pendingApproval?.requestId, pendingApproval?.displayId]);
-	const approvalSubRef = useRef(null);
 
-	// REAL-TIME + POLL FALLBACK: Listen for approval/decline on pending cash payment
+	// REAL-TIME deterministic approval sync: stale-gating + truth-sync on channel recovery.
 	useEffect(() => {
 		if (!pendingApproval?.requestId) return;
 
@@ -178,9 +216,20 @@ const EmergencyRequestModal = React.memo(({
 		const pendingServiceType =
 			pendingApproval?.serviceType || (mode === 'booking' ? 'bed' : 'ambulance');
 		const isPendingAmbulance = pendingServiceType === 'ambulance';
+		const emergencyStreamKey = `${emergencyRequestUuid || requestId}:${displayId || requestId}:emergency`;
+		const paymentStreamKey = `${emergencyRequestUuid || requestId}:${displayId || requestId}:payment`;
+		const hospitalWaitTime = requestHospital?.waitTime ?? null;
+		const hospitalEtaDefault = requestHospital?.eta ?? null;
+		let cancelled = false;
 
-		const handleApprovalRow = (row, source = 'realtime') => {
+		const handleApprovalRow = (row, source = 'realtime', { skipEmergencyGate = false } = {}) => {
 			if (!row || approvalHandledRef.current) return;
+			if (
+				!skipEmergencyGate &&
+				!shouldApplyRealtimeEvent(approvalEmergencyEventGateRef, emergencyStreamKey, row)
+			) {
+				return;
+			}
 
 			const newStatus = canonicalizeEmergencyStatus(row.status);
 			const newPaymentStatus = row.payment_status;
@@ -216,8 +265,8 @@ const EmergencyRequestModal = React.memo(({
 				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 				showToast('Payment approved! Dispatching...', 'success');
 
-				const waitTime = row.estimated_arrival ?? pendingApproval.estimatedArrival ?? requestHospital?.waitTime ?? null;
-				const hospitalEta = row.estimated_arrival ?? pendingApproval.estimatedArrival ?? requestHospital?.eta ?? null;
+				const waitTime = row.estimated_arrival ?? pendingApproval.estimatedArrival ?? hospitalWaitTime;
+				const hospitalEta = row.estimated_arrival ?? pendingApproval.estimatedArrival ?? hospitalEtaDefault;
 				const ambulanceEta =
 					(typeof hospitalEta === 'string' && hospitalEta.length > 0 ? hospitalEta : null) ?? '8 mins';
 
@@ -296,6 +345,9 @@ const EmergencyRequestModal = React.memo(({
 
 		const handlePaymentUpdate = (paymentRow, source = 'payment_realtime') => {
 			if (!paymentRow || approvalHandledRef.current) return;
+			if (!shouldApplyRealtimeEvent(approvalPaymentEventGateRef, paymentStreamKey, paymentRow)) {
+				return;
+			}
 			handleApprovalRow(
 				{
 					id: requestId,
@@ -303,12 +355,87 @@ const EmergencyRequestModal = React.memo(({
 					status: null,
 					payment_status: paymentRow.status,
 					estimated_arrival: pendingApproval?.estimatedArrival ?? null,
+					updated_at: paymentRow.updated_at ?? paymentRow.created_at ?? null,
 				},
-				source
+				source,
+				{ skipEmergencyGate: true }
 			);
 		};
 
-		const channel = supabase
+		const syncApprovalTruthFromServer = async (reason = 'manual') => {
+			if (cancelled || approvalHandledRef.current || approvalSyncInFlightRef.current) return;
+			approvalSyncInFlightRef.current = true;
+
+			try {
+				const emergencyQuery = supabase
+					.from('emergency_requests')
+					.select('*')
+					.limit(1);
+
+				const emergencyFilterQuery = isUuidRequestId
+					? emergencyQuery.eq('id', requestId)
+					: emergencyQuery.eq('display_id', displayId || requestId);
+
+				const { data: emergencyRow, error: emergencyErr } = await emergencyFilterQuery.maybeSingle();
+				if (emergencyErr) {
+					console.warn(`[EmergencyRequestModal] Emergency truth sync failed (${reason}):`, emergencyErr);
+				} else if (emergencyRow) {
+					handleApprovalRow(emergencyRow, `truth_sync_emergency:${reason}`);
+				}
+
+				if (cancelled || approvalHandledRef.current) return;
+
+				if (paymentId || emergencyRequestUuid) {
+					let paymentQuery = supabase
+						.from('payments')
+						.select('id, status, emergency_request_id, created_at, updated_at')
+						.order('created_at', { ascending: false })
+						.limit(1);
+
+					if (paymentId) {
+						paymentQuery = paymentQuery.eq('id', paymentId);
+					} else {
+						paymentQuery = paymentQuery.eq('emergency_request_id', emergencyRequestUuid);
+					}
+
+					const { data: paymentRow, error: paymentErr } = await paymentQuery.maybeSingle();
+					if (paymentErr) {
+						console.warn(`[EmergencyRequestModal] Payment truth sync failed (${reason}):`, paymentErr);
+					} else if (paymentRow) {
+						handlePaymentUpdate(paymentRow, `truth_sync_payment:${reason}`);
+					}
+				}
+			} catch (error) {
+				console.warn(`[EmergencyRequestModal] Truth sync exception (${reason}):`, error);
+			} finally {
+				approvalSyncInFlightRef.current = false;
+			}
+		};
+
+		const handleRealtimeStatus = (channelName, status) => {
+			const previous = approvalRealtimeStatusRef.current[channelName] ?? null;
+			approvalRealtimeStatusRef.current[channelName] = status;
+
+			const now = Date.now();
+			if (REALTIME_RECOVERY_STATUSES.has(status)) {
+				if (now - approvalLastRealtimeSyncMsRef.current < APPROVAL_TRUTH_SYNC_DEBOUNCE_MS) {
+					return;
+				}
+				approvalLastRealtimeSyncMsRef.current = now;
+				void syncApprovalTruthFromServer(`recovery:${channelName}:${status}`);
+				return;
+			}
+
+			if (REALTIME_HEALTHY_STATUSES.has(status) && previous && previous !== status) {
+				if (now - approvalLastRealtimeSyncMsRef.current < APPROVAL_TRUTH_SYNC_DEBOUNCE_MS) {
+					return;
+				}
+				approvalLastRealtimeSyncMsRef.current = now;
+				void syncApprovalTruthFromServer(`resubscribed:${channelName}:${previous}->${status}`);
+			}
+		};
+
+		const emergencyChannel = supabase
 			.channel(`approval_${requestId}`)
 			.on(
 				'postgres_changes',
@@ -320,81 +447,7 @@ const EmergencyRequestModal = React.memo(({
 				},
 				(payload) => handleApprovalRow(payload.new, 'realtime')
 			)
-			.subscribe();
-
-		let cancelled = false;
-
-		if (!paymentId && emergencyRequestUuid) {
-			(async () => {
-				try {
-					const { data: paymentRow, error } = await supabase
-						.from('payments')
-						.select('id, status, emergency_request_id, updated_at')
-						.eq('emergency_request_id', emergencyRequestUuid)
-						.order('created_at', { ascending: false })
-						.limit(1)
-						.maybeSingle();
-
-					if (error) {
-						console.warn('[EmergencyRequestModal] Failed to bootstrap payment row for approval listener:', error);
-						return;
-					}
-
-					if (!cancelled && paymentRow) {
-						handlePaymentUpdate(paymentRow, 'payment_bootstrap');
-					}
-				} catch (e) {
-					console.warn('[EmergencyRequestModal] Payment bootstrap query failed:', e);
-				}
-			})();
-		}
-
-		const pollId = setInterval(async () => {
-			if (approvalHandledRef.current || cancelled) return;
-			try {
-				// Poll emergency request status as primary truth
-				const emergencyQuery = supabase
-					.from('emergency_requests')
-					.select('*')
-					.limit(1);
-
-				const emergencyFilterQuery = isUuidRequestId
-					? emergencyQuery.eq('id', requestId)
-					: emergencyQuery.eq('display_id', displayId || requestId);
-
-				const { data: emergencyRow, error: emergencyErr } = await emergencyFilterQuery.maybeSingle();
-				if (!emergencyErr && emergencyRow) {
-					handleApprovalRow(emergencyRow, 'poll_emergency');
-				}
-
-				if (approvalHandledRef.current || cancelled) return;
-
-				// Poll payments as secondary source (covers cases where emergency row update is missed)
-				if (paymentId || emergencyRequestUuid) {
-					let paymentQuery = supabase
-						.from('payments')
-						.select('id, status, emergency_request_id, updated_at')
-						.order('created_at', { ascending: false })
-						.limit(1);
-
-					if (paymentId) {
-						paymentQuery = paymentQuery.eq('id', paymentId);
-					} else if (emergencyRequestUuid) {
-						paymentQuery = paymentQuery.eq('emergency_request_id', emergencyRequestUuid);
-					}
-
-					const { data: polledPaymentRow, error: paymentErr } = await paymentQuery.maybeSingle();
-					if (!paymentErr && polledPaymentRow) {
-						handlePaymentUpdate(polledPaymentRow, 'poll_payment');
-					}
-				}
-			} catch (e) {
-				// Keep polling resilient; realtime remains primary
-				if (__DEV__) {
-					console.warn('[EmergencyRequestModal] Approval poll failed:', e);
-				}
-			}
-		}, 3000);
+			.subscribe((status) => handleRealtimeStatus('approval_emergency', status));
 
 		const paymentChannel = paymentId
 			? supabase
@@ -409,7 +462,7 @@ const EmergencyRequestModal = React.memo(({
 					},
 					(payload) => handlePaymentUpdate(payload.new)
 				)
-				.subscribe()
+				.subscribe((status) => handleRealtimeStatus('approval_payment', status))
 			: (emergencyRequestUuid
 				? supabase
 					.channel(`approval_payment_req_${emergencyRequestUuid}`)
@@ -423,19 +476,17 @@ const EmergencyRequestModal = React.memo(({
 						},
 						(payload) => handlePaymentUpdate(payload.new, 'payment_realtime_by_request')
 					)
-					.subscribe()
+					.subscribe((status) => handleRealtimeStatus('approval_payment_by_request', status))
 				: null);
 
-		approvalSubRef.current = channel;
+		void syncApprovalTruthFromServer('initial_subscribe');
 
 		return () => {
 			cancelled = true;
-			supabase.removeChannel(channel);
+			supabase.removeChannel(emergencyChannel);
 			if (paymentChannel) {
 				supabase.removeChannel(paymentChannel);
 			}
-			clearInterval(pollId);
-			approvalSubRef.current = null;
 		};
 	}, [
 		pendingApproval?.requestId,
@@ -444,8 +495,17 @@ const EmergencyRequestModal = React.memo(({
 		pendingApproval?.paymentId,
 		pendingApproval?.etaSeconds,
 		pendingApproval?.estimatedArrival,
+		pendingApproval?.serviceType,
+		pendingApproval?.hospitalId,
+		pendingApproval?.hospitalName,
+		pendingApproval?.specialty,
+		pendingApproval?.bedCount,
+		pendingApproval?.bedType,
+		pendingApproval?.bedNumber,
+		pendingApproval?.ambulanceType,
 		mode,
-		requestHospital,
+		requestHospital?.waitTime,
+		requestHospital?.eta,
 		onRequestComplete,
 		showToast,
 	]);

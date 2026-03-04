@@ -244,10 +244,14 @@ node supabase/tests/scripts/cleanup_test_side_effects.js
 
 # 4) Enforced guard (fails if planned counts are non-zero)
 npm run hardening:cleanup-dry-run-guard
+
+# 5) Enforced contract drift guard (fails on schema/RPC drift)
+npm run hardening:contract-drift-guard
 ```
 
 Rules:
 - Do not push if cleanup preview still shows planned test rows.
+- Do not merge if contract drift guard reports missing tables/columns/RPC signatures.
 - CI also enforces this via `cleanup-side-effects-guard` workflow on push/pull_request.
 - Keep test identifiers patterned (`*-matrix-*`, `flow-matrix-*`, `cash-role-matrix-*`, `mutation-role-matrix-*`, `@ivisit-e2e.local`) so cleanup is deterministic.
 - Cleanup must run after test suites and before final validation/commit.

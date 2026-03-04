@@ -40,8 +40,12 @@ jobs:
       - name: Skip cleanup dry-run guard without credentials
         if: steps.supabase_creds.outputs.available != 'true'
         run: |
-          echo "Skipping cleanup dry-run guard: Supabase credentials are not configured in GitHub secrets."
+          echo "Skipping Supabase hardening guards: credentials are not configured in GitHub secrets."
 
       - name: Enforce zero cleanup side-effects
         if: steps.supabase_creds.outputs.available == 'true'
         run: npm run hardening:cleanup-dry-run-guard
+
+      - name: Enforce zero contract drift
+        if: steps.supabase_creds.outputs.available == 'true'
+        run: npm run hardening:contract-drift-guard

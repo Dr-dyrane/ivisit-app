@@ -164,6 +164,94 @@ function parseTimestampMs(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function canonicalizeEmergencyStatus(value) {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (!normalized) return normalized;
+  switch (normalized) {
+    case 'pending':
+      return 'pending_approval';
+    case 'dispatched':
+      return 'in_progress';
+    case 'assigned':
+    case 'responding':
+    case 'en_route':
+      return 'accepted';
+    case 'resolved':
+      return 'completed';
+    case 'canceled':
+      return 'cancelled';
+    default:
+      return normalized;
+  }
+}
+
+function evaluatePendingApprovalUiState(row, serviceType = 'ambulance') {
+  const status = canonicalizeEmergencyStatus(row?.status);
+  const paymentStatus = String(row?.payment_status ?? row?.paymentStatus ?? '').trim().toLowerCase();
+  const rowAmbulanceId = row?.ambulance_id ?? row?.ambulanceId ?? null;
+  const rowResponderName = row?.responder_name ?? row?.responderName ?? null;
+  const hasResponderAssignment = !!(rowAmbulanceId || rowResponderName);
+
+  if (status === 'payment_declined' || paymentStatus === 'declined' || paymentStatus === 'failed') {
+    return 'declined';
+  }
+
+  const approvedTransition =
+    status === 'accepted' || status === 'in_progress' || paymentStatus === 'completed';
+
+  if (!approvedTransition) {
+    return 'pending';
+  }
+
+  if (serviceType === 'ambulance' && !hasResponderAssignment) {
+    return 'awaiting_assignment';
+  }
+
+  return 'approved';
+}
+
+async function sleep(ms) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitFor(condition, { timeoutMs = 8000, intervalMs = 250, label = 'condition' } = {}) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt <= timeoutMs) {
+    const result = await condition();
+    if (result) return result;
+    await sleep(intervalMs);
+  }
+  throw new Error(`timed out waiting for ${label}`);
+}
+
+async function fetchTransitionAuditRows(requestId) {
+  const { data, error } = await admin
+    .from('emergency_status_transitions')
+    .select('id,from_status,to_status,reason,source,occurred_at')
+    .eq('emergency_request_id', requestId)
+    .order('occurred_at', { ascending: true });
+  if (error) {
+    throw new Error(`transition audit lookup failed: ${error.message}`);
+  }
+  return data || [];
+}
+
+function assertAppendOnlyTransitionAudit(beforeRows, afterRows, { requireGrowth = true } = {}) {
+  if (afterRows.length < beforeRows.length) {
+    throw new Error(
+      `transition audit rows shrank unexpectedly (${beforeRows.length} -> ${afterRows.length})`
+    );
+  }
+  if (requireGrowth && afterRows.length === beforeRows.length) {
+    throw new Error('transition audit row count did not grow for transition path');
+  }
+  for (const row of afterRows) {
+    if (!row?.reason || !String(row.reason).trim()) {
+      throw new Error('transition audit row missing reason');
+    }
+  }
+}
+
 async function verifyTelemetryMirror(requestId, ambulanceId) {
   if (!requestId || !ambulanceId) {
     return {
@@ -618,6 +706,26 @@ async function main() {
       return data.id;
     };
 
+    const createPendingCashPayment = async (requestId, amount = 180) => {
+      const { data: payment, error: paymentErr } = await admin
+        .from('payments')
+        .insert({
+          organization_id: ctx.orgId,
+          emergency_request_id: requestId,
+          amount,
+          currency: 'USD',
+          status: 'pending',
+          payment_method: 'cash',
+          metadata: { tag: TAG, source: 'console_transition_matrix', fee_amount: 0 },
+        })
+        .select('id,status,emergency_request_id')
+        .single();
+      if (paymentErr) {
+        throw new Error(`pending payment create failed: ${paymentErr.message}`);
+      }
+      return payment.id;
+    };
+
     const resetAmbulance = async () => {
       const ambulanceIds = [ctx.ambulanceId, ctx.ambulanceOtherId].filter(Boolean);
       if (!ambulanceIds.length) return;
@@ -837,6 +945,166 @@ async function main() {
         },
       },
       {
+        caseId: 'AP1',
+        role: 'orgAdmin',
+        action: 'approve_cash_payment',
+        fromStatus: 'pending_approval_to_in_progress_or_accepted',
+        expectSuccess: true,
+        execute: async (client) => {
+          const requestId = await createRequest({
+            status: 'pending_approval',
+            serviceType: 'ambulance',
+            requestOverrides: { payment_status: 'pending' },
+          });
+          const paymentId = await createPendingCashPayment(requestId);
+          const beforeTransitions = await fetchTransitionAuditRows(requestId);
+
+          const { data, error } = await client.rpc('approve_cash_payment', {
+            p_payment_id: paymentId,
+            p_request_id: requestId,
+          });
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || 'approve_cash_payment failed');
+
+          const { data: paymentAfter, error: paymentAfterErr } = await admin
+            .from('payments')
+            .select('id,status,processed_at')
+            .eq('id', paymentId)
+            .single();
+          if (paymentAfterErr) throw new Error(`approved payment lookup failed: ${paymentAfterErr.message}`);
+          if (paymentAfter.status !== 'completed') {
+            throw new Error(`approved payment status mismatch: expected completed, got ${paymentAfter.status}`);
+          }
+
+          let { data: requestAfter, error: requestAfterErr } = await admin
+            .from('emergency_requests')
+            .select('id,status,payment_status,ambulance_id,responder_id,responder_name')
+            .eq('id', requestId)
+            .single();
+          if (requestAfterErr) throw new Error(`approved request lookup failed: ${requestAfterErr.message}`);
+          if (!['in_progress', 'accepted'].includes(requestAfter.status)) {
+            throw new Error(`approved request status mismatch: got ${requestAfter.status}`);
+          }
+          if (requestAfter.payment_status !== 'completed') {
+            throw new Error(`approved request payment_status mismatch: got ${requestAfter.payment_status}`);
+          }
+
+          // Ensure the accepted branch is covered deterministically.
+          if (requestAfter.status !== 'accepted') {
+            await resetAmbulance();
+            const { data: assignData, error: assignErr } = await client.rpc('assign_ambulance_to_emergency', {
+              p_emergency_request_id: requestId,
+              p_ambulance_id: ctx.ambulanceId,
+              p_priority: 1,
+            });
+            if (assignErr) throw assignErr;
+            if (!assignData?.success) throw new Error(assignData?.error || 'post-approval ambulance assignment failed');
+
+            const requestAccepted = await waitFor(
+              async () => {
+                const { data: row, error: rowErr } = await admin
+                  .from('emergency_requests')
+                  .select('id,status,payment_status,ambulance_id,responder_id,responder_name')
+                  .eq('id', requestId)
+                  .maybeSingle();
+                if (rowErr) throw new Error(`accepted request poll failed: ${rowErr.message}`);
+                if (!row) return null;
+                return row.status === 'accepted' ? row : null;
+              },
+              { label: 'approved request accepted status' }
+            );
+            requestAfter = requestAccepted;
+          }
+
+          const uiState = evaluatePendingApprovalUiState(requestAfter, 'ambulance');
+          if (uiState !== 'approved') {
+            throw new Error(`pending_approval approval UI projection mismatch: expected approved, got ${uiState}`);
+          }
+
+          const afterTransitions = await fetchTransitionAuditRows(requestId);
+          assertAppendOnlyTransitionAudit(beforeTransitions, afterTransitions, { requireGrowth: true });
+
+          ctx.lastCaseRequestId = requestId;
+          ctx.lastCaseAmbulanceId = requestAfter.ambulance_id || ctx.ambulanceId;
+          return { data, error: null };
+        },
+      },
+      {
+        caseId: 'AP2',
+        role: 'dispatcher',
+        action: 'decline_cash_payment',
+        fromStatus: 'pending_approval_to_payment_declined',
+        expectSuccess: true,
+        execute: async (client) => {
+          const requestId = await createRequest({
+            status: 'pending_approval',
+            serviceType: 'ambulance',
+            requestOverrides: { payment_status: 'pending' },
+          });
+          const paymentId = await createPendingCashPayment(requestId);
+          const beforeTransitions = await fetchTransitionAuditRows(requestId);
+
+          const { data, error } = await client.rpc('decline_cash_payment', {
+            p_payment_id: paymentId,
+            p_request_id: requestId,
+          });
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || 'decline_cash_payment failed');
+
+          const { data: requestAfter, error: requestAfterErr } = await admin
+            .from('emergency_requests')
+            .select('id,status,payment_status')
+            .eq('id', requestId)
+            .single();
+          if (requestAfterErr) throw new Error(`declined request lookup failed: ${requestAfterErr.message}`);
+          if (requestAfter.status !== 'payment_declined') {
+            throw new Error(`declined request status mismatch: expected payment_declined, got ${requestAfter.status}`);
+          }
+          if (requestAfter.payment_status !== 'failed') {
+            throw new Error(`declined request payment_status mismatch: expected failed, got ${requestAfter.payment_status}`);
+          }
+
+          const { data: paymentAfter, error: paymentAfterErr } = await admin
+            .from('payments')
+            .select('id,status')
+            .eq('id', paymentId)
+            .single();
+          if (paymentAfterErr) throw new Error(`declined payment lookup failed: ${paymentAfterErr.message}`);
+          if (paymentAfter.status !== 'failed') {
+            throw new Error(`declined payment status mismatch: expected failed, got ${paymentAfter.status}`);
+          }
+
+          const uiState = evaluatePendingApprovalUiState(requestAfter, 'ambulance');
+          if (uiState !== 'declined') {
+            throw new Error(`pending_approval decline UI projection mismatch: expected declined, got ${uiState}`);
+          }
+
+          const afterTransitions = await fetchTransitionAuditRows(requestId);
+          assertAppendOnlyTransitionAudit(beforeTransitions, afterTransitions, { requireGrowth: true });
+
+          return { data, error: null };
+        },
+      },
+      {
+        caseId: 'AP3',
+        role: 'viewer',
+        action: 'approve_cash_payment',
+        fromStatus: 'pending_approval_unauthorized',
+        expectSuccess: false,
+        execute: async (client) => {
+          const requestId = await createRequest({
+            status: 'pending_approval',
+            serviceType: 'ambulance',
+            requestOverrides: { payment_status: 'pending' },
+          });
+          const paymentId = await createPendingCashPayment(requestId);
+          return client.rpc('approve_cash_payment', {
+            p_payment_id: paymentId,
+            p_request_id: requestId,
+          });
+        },
+      },
+      {
         caseId: 'L1',
         role: 'orgAdmin',
         action: 'console_update_responder_location',
@@ -1027,6 +1295,95 @@ async function main() {
             p_location: { lat: 6.5248, lng: 3.3797 },
             p_heading: 91,
           });
+        },
+      },
+      {
+        caseId: 'RA4',
+        role: 'orgAdmin',
+        action: 'auto_reassign_on_driver_unavailable',
+        fromStatus: 'in_progress_driver_unavailable_mid_flow',
+        expectSuccess: true,
+        execute: async () => {
+          const requestId = await createRequest({
+            status: 'in_progress',
+            responderId: ctx.users.providerAssigned.id,
+            ambulanceId: ctx.ambulanceId,
+            requestOverrides: {
+              responder_name: 'Primary Driver',
+              responder_vehicle_type: 'basic',
+              responder_vehicle_plate: 'RA4-OLD',
+            },
+          });
+
+          await admin
+            .from('ambulances')
+            .update({
+              status: 'on_trip',
+              current_call: requestId,
+              profile_id: ctx.users.providerAssigned.id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', ctx.ambulanceId);
+
+          await admin
+            .from('ambulances')
+            .update({
+              status: 'available',
+              current_call: null,
+              profile_id: ctx.users.providerOther.id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', ctx.ambulanceOtherId);
+
+          const beforeTransitions = await fetchTransitionAuditRows(requestId);
+
+          const { error: markUnavailableErr } = await admin
+            .from('ambulances')
+            .update({ status: 'maintenance', updated_at: new Date().toISOString() })
+            .eq('id', ctx.ambulanceId);
+          if (markUnavailableErr) throw new Error(`driver unavailable setup failed: ${markUnavailableErr.message}`);
+
+          const requestAfter = await waitFor(
+            async () => {
+              const { data: row, error: rowErr } = await admin
+                .from('emergency_requests')
+                .select('id,status,ambulance_id,responder_id,responder_name,responder_vehicle_type,responder_vehicle_plate')
+                .eq('id', requestId)
+                .maybeSingle();
+              if (rowErr) throw new Error(`driver failover request poll failed: ${rowErr.message}`);
+              if (!row) return null;
+              if (row.ambulance_id !== ctx.ambulanceOtherId) return null;
+              return row;
+            },
+            { label: 'driver failover reassignment' }
+          );
+
+          if (requestAfter.responder_id !== ctx.users.providerOther.id) {
+            throw new Error('driver failover did not switch responder_id to replacement driver');
+          }
+          if (!['accepted', 'in_progress'].includes(requestAfter.status)) {
+            throw new Error(`driver failover request status unexpected: ${requestAfter.status}`);
+          }
+
+          const { data: oldAmb, error: oldAmbErr } = await admin
+            .from('ambulances')
+            .select('id,status,current_call')
+            .eq('id', ctx.ambulanceId)
+            .single();
+          if (oldAmbErr) throw new Error(`driver failover old ambulance lookup failed: ${oldAmbErr.message}`);
+          if (oldAmb.status !== 'maintenance') {
+            throw new Error(`driver failover unexpectedly changed old ambulance status: ${oldAmb.status}`);
+          }
+          if (oldAmb.current_call !== null) {
+            throw new Error('driver failover did not release old ambulance current_call');
+          }
+
+          const afterTransitions = await fetchTransitionAuditRows(requestId);
+          assertAppendOnlyTransitionAudit(beforeTransitions, afterTransitions, { requireGrowth: true });
+
+          ctx.lastCaseRequestId = requestId;
+          ctx.lastCaseAmbulanceId = ctx.ambulanceOtherId;
+          return { data: { success: true }, error: null };
         },
       },
       {
@@ -1301,6 +1658,97 @@ async function main() {
           }
 
           return { data, error: null };
+        },
+      },
+      {
+        caseId: 'DR7',
+        role: 'orgAdmin',
+        action: 'auto_reassign_on_doctor_unavailable',
+        fromStatus: 'accepted_doctor_unavailable_mid_flow',
+        expectSuccess: true,
+        execute: async () => {
+          const requestId = await createRequest({ status: 'accepted', ambulanceId: ctx.ambulanceId });
+          const beforeTransitions = await fetchTransitionAuditRows(requestId);
+
+          const { data: assignData, error: assignErr } = await clients.orgAdmin.rpc('assign_doctor_to_emergency', {
+            p_emergency_request_id: requestId,
+            p_doctor_id: ctx.doctorId,
+            p_notes: 'doctor failover setup',
+          });
+          if (assignErr) throw assignErr;
+          if (!assignData?.success) throw new Error(assignData?.error || 'doctor failover setup assignment failed');
+
+          await admin
+            .from('doctors')
+            .update({
+              status: 'available',
+              is_available: true,
+              current_patients: 0,
+              max_patients: 4,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', ctx.doctorOtherId);
+
+          const { error: unavailableErr } = await admin
+            .from('doctors')
+            .update({
+              status: 'off_duty',
+              is_available: false,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', ctx.doctorId);
+          if (unavailableErr) throw new Error(`doctor failover unavailable update failed: ${unavailableErr.message}`);
+
+          const requestAfter = await waitFor(
+            async () => {
+              const { data: row, error: rowErr } = await admin
+                .from('emergency_requests')
+                .select('id,status,assigned_doctor_id')
+                .eq('id', requestId)
+                .maybeSingle();
+              if (rowErr) throw new Error(`doctor failover request poll failed: ${rowErr.message}`);
+              if (!row) return null;
+              return row.assigned_doctor_id === ctx.doctorOtherId ? row : null;
+            },
+            { label: 'doctor failover reassignment' }
+          );
+          if (requestAfter.status !== 'accepted') {
+            throw new Error(`doctor failover changed request status unexpectedly: ${requestAfter.status}`);
+          }
+
+          const { data: assignmentRows, error: assignmentRowsErr } = await admin
+            .from('emergency_doctor_assignments')
+            .select('doctor_id,status')
+            .eq('emergency_request_id', requestId);
+          if (assignmentRowsErr) throw new Error(`doctor failover assignments lookup failed: ${assignmentRowsErr.message}`);
+
+          const oldCancelled = (assignmentRows || []).some(
+            (row) => row.doctor_id === ctx.doctorId && row.status === 'cancelled'
+          );
+          const newAssigned = (assignmentRows || []).some(
+            (row) => row.doctor_id === ctx.doctorOtherId && row.status === 'assigned'
+          );
+          if (!oldCancelled || !newAssigned) {
+            throw new Error('doctor failover assignments did not close loop correctly');
+          }
+
+          const { data: doctorsAfter, error: doctorsAfterErr } = await admin
+            .from('doctors')
+            .select('id,current_patients')
+            .in('id', [ctx.doctorId, ctx.doctorOtherId]);
+          if (doctorsAfterErr) throw new Error(`doctor failover load lookup failed: ${doctorsAfterErr.message}`);
+          const loadByDoctor = new Map((doctorsAfter || []).map((row) => [row.id, row.current_patients ?? 0]));
+          if ((loadByDoctor.get(ctx.doctorId) ?? -1) !== 0) {
+            throw new Error('doctor failover did not release unavailable doctor load');
+          }
+          if ((loadByDoctor.get(ctx.doctorOtherId) ?? 0) < 1) {
+            throw new Error('doctor failover did not increment replacement doctor load');
+          }
+
+          const afterTransitions = await fetchTransitionAuditRows(requestId);
+          assertAppendOnlyTransitionAudit(beforeTransitions, afterTransitions, { requireGrowth: false });
+
+          return { data: { success: true }, error: null };
         },
       },
       {

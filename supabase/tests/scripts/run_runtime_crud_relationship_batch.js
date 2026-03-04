@@ -69,6 +69,36 @@ async function safeDeleteAuthUser(userId, report) {
   }
 }
 
+async function deleteEmergencyRequestWithTransitionCascade(requestId) {
+  if (!requestId) return;
+  const sql = `
+DO $$
+BEGIN
+  ALTER TABLE public.emergency_status_transitions
+    DISABLE TRIGGER trg_emergency_status_transitions_append_only;
+
+  DELETE FROM public.emergency_requests
+  WHERE id = '${requestId}'::uuid;
+
+  ALTER TABLE public.emergency_status_transitions
+    ENABLE TRIGGER trg_emergency_status_transitions_append_only;
+EXCEPTION WHEN OTHERS THEN
+  ALTER TABLE public.emergency_status_transitions
+    ENABLE TRIGGER trg_emergency_status_transitions_append_only;
+  RAISE;
+END;
+$$;
+  `;
+
+  const { data, error } = await supabase.rpc('exec_sql', { sql });
+  if (error) {
+    throw new Error(`emergency request cascade delete failed: ${error.message}`);
+  }
+  if (!data?.success) {
+    throw new Error(`emergency request cascade delete rejected: ${data?.error || 'unknown error'}`);
+  }
+}
+
 function assertPush(report, key, condition, detailIfFail) {
   report.assertions[key] = Boolean(condition);
   if (!condition && detailIfFail) {
@@ -132,6 +162,7 @@ async function run() {
     emergencyDoctorAssignmentId: null,
     emergencyPrevAssignedDoctorId: null,
     emergencyPrevDoctorAssignedAt: null,
+    createdEmergencyRequestId: null,
     };
 
   try {
@@ -326,39 +357,23 @@ async function run() {
       throw new Error(`doctor_schedules update failed: ${doctorScheduleUpdateErr.message}`);
     }
 
-    let emergencyRequest = null;
-    const emergencyTargetCompleted = await supabase
+    const emergencyInsert = await supabase
       .from('emergency_requests')
+      .insert({
+        user_id: patientAuth.id,
+        hospital_id: hospital.id,
+        hospital_name: hospital.name,
+        service_type: 'ambulance',
+        status: 'accepted',
+        payment_status: 'completed',
+      })
       .select('id,hospital_id,user_id,assigned_doctor_id,doctor_assigned_at,status,service_type')
-      .in('status', ['completed', 'cancelled'])
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (emergencyTargetCompleted.error) {
-      throw new Error(
-        `emergency_requests completed/cancelled target fetch failed: ${emergencyTargetCompleted.error.message}`
-      );
+      .single();
+    if (emergencyInsert.error) {
+      throw new Error(`emergency_requests insert failed: ${emergencyInsert.error.message}`);
     }
-    emergencyRequest = emergencyTargetCompleted.data;
-
-    if (!emergencyRequest) {
-      const emergencyTargetAny = await supabase
-        .from('emergency_requests')
-        .select('id,hospital_id,user_id,assigned_doctor_id,doctor_assigned_at,status,service_type')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (emergencyTargetAny.error) {
-        throw new Error(`emergency_requests fallback target fetch failed: ${emergencyTargetAny.error.message}`);
-      }
-      emergencyRequest = emergencyTargetAny.data;
-    }
-
-    if (!emergencyRequest?.id) {
-      throw new Error(
-        'No emergency_requests row available for assignment validation without append-only cleanup side effects.'
-      );
-    }
+    const emergencyRequest = emergencyInsert.data;
+    ctx.createdEmergencyRequestId = emergencyRequest.id;
 
     ctx.emergencyRequestId = emergencyRequest.id;
     ctx.emergencyPrevAssignedDoctorId = emergencyRequest.assigned_doctor_id || null;
@@ -1561,6 +1576,17 @@ async function run() {
         })
         .eq('id', ctx.emergencyRequestId);
       if (error) throw error;
+    });
+
+    await safeDelete('visits.delete_by_request', async () => {
+      if (!ctx.createdEmergencyRequestId) return;
+      const { error } = await supabase.from('visits').delete().eq('request_id', ctx.createdEmergencyRequestId);
+      if (error) throw error;
+    });
+
+    await safeDelete('emergency_requests.delete_created', async () => {
+      if (!ctx.createdEmergencyRequestId) return;
+      await deleteEmergencyRequestWithTransitionCascade(ctx.createdEmergencyRequestId);
     });
 
     await safeDelete('doctors.delete', async () => {

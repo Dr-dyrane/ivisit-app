@@ -375,7 +375,10 @@ BEGIN
     IF v_req_current_ambulance_id IS NOT NULL
        AND v_req_current_ambulance_id IS DISTINCT FROM p_ambulance_id THEN
         UPDATE public.ambulances
-        SET status = 'available',
+        SET status = CASE
+                WHEN LOWER(COALESCE(status, '')) IN ('offline', 'maintenance') THEN status
+                ELSE 'available'
+            END,
             current_call = NULL,
             eta = NULL,
             updated_at = NOW()
@@ -521,7 +524,8 @@ CREATE OR REPLACE FUNCTION public.assign_doctor_to_emergency(
 RETURNS JSONB AS $$
 DECLARE
     v_actor_id UUID := auth.uid();
-    v_is_service_role BOOLEAN := COALESCE(current_setting('request.jwt.claim.role', true), '') = 'service_role';
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_is_admin BOOLEAN := public.p_is_admin();
     v_actor_role TEXT;
     v_actor_org_id UUID;
@@ -1477,7 +1481,10 @@ BEGIN
        AND OLD.ambulance_id IS NOT NULL
        AND OLD.ambulance_id IS DISTINCT FROM NEW.ambulance_id THEN
         UPDATE public.ambulances
-        SET status = 'available',
+        SET status = CASE
+                WHEN LOWER(COALESCE(status, '')) IN ('offline', 'maintenance') THEN status
+                ELSE 'available'
+            END,
             current_call = NULL,
             eta = NULL,
             updated_at = NOW()
@@ -1532,6 +1539,317 @@ DROP TRIGGER IF EXISTS on_emergency_status_resource_sync ON public.emergency_req
 CREATE TRIGGER on_emergency_status_resource_sync
 AFTER INSERT OR UPDATE ON public.emergency_requests
 FOR EACH ROW EXECUTE PROCEDURE public.update_resource_availability();
+
+CREATE OR REPLACE FUNCTION public.handle_ambulance_unavailability_failover()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_request_id UUID;
+    v_request_status TEXT;
+    v_request_hospital_id UUID;
+    v_candidate_ambulance_id UUID;
+    v_candidate_driver_id UUID;
+    v_candidate_type TEXT;
+    v_candidate_vehicle_number TEXT;
+    v_candidate_driver_name TEXT;
+    v_candidate_driver_phone TEXT;
+    v_old_status TEXT := LOWER(COALESCE(OLD.status, ''));
+    v_new_status TEXT := LOWER(COALESCE(NEW.status, ''));
+    v_became_unavailable BOOLEAN := FALSE;
+BEGIN
+    IF TG_OP <> 'UPDATE' THEN
+        RETURN NEW;
+    END IF;
+
+    IF pg_trigger_depth() > 1 THEN
+        RETURN NEW;
+    END IF;
+
+    IF NEW.current_call IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    v_became_unavailable := (
+        v_old_status NOT IN ('offline', 'maintenance')
+        AND v_new_status IN ('offline', 'maintenance')
+    ) OR (
+        OLD.profile_id IS NOT NULL
+        AND NEW.profile_id IS NULL
+    );
+
+    IF NOT v_became_unavailable THEN
+        RETURN NEW;
+    END IF;
+
+    v_request_id := NEW.current_call;
+
+    SELECT public.canonicalize_emergency_status(er.status, er.status), er.hospital_id
+    INTO v_request_status, v_request_hospital_id
+    FROM public.emergency_requests er
+    WHERE er.id = v_request_id
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RETURN NEW;
+    END IF;
+
+    IF v_request_status NOT IN ('in_progress', 'accepted') THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT
+        a.id,
+        a.profile_id,
+        a.type,
+        COALESCE(NULLIF(BTRIM(a.vehicle_number), ''), NULLIF(BTRIM(a.license_plate), '')),
+        p.full_name,
+        p.phone
+    INTO
+        v_candidate_ambulance_id,
+        v_candidate_driver_id,
+        v_candidate_type,
+        v_candidate_vehicle_number,
+        v_candidate_driver_name,
+        v_candidate_driver_phone
+    FROM public.ambulances a
+    LEFT JOIN public.profiles p ON p.id = a.profile_id
+    WHERE a.id IS DISTINCT FROM NEW.id
+      AND a.hospital_id = v_request_hospital_id
+      AND a.status = 'available'
+      AND a.profile_id IS NOT NULL
+    ORDER BY a.created_at ASC
+    FOR UPDATE OF a SKIP LOCKED
+    LIMIT 1;
+
+    IF v_candidate_ambulance_id IS NULL THEN
+        UPDATE public.emergency_requests er
+        SET ambulance_id = NULL,
+            responder_id = NULL,
+            responder_name = NULL,
+            responder_phone = NULL,
+            responder_vehicle_type = NULL,
+            responder_vehicle_plate = NULL,
+            updated_at = NOW()
+        WHERE er.id = v_request_id
+          AND er.ambulance_id = NEW.id;
+
+        UPDATE public.ambulances
+        SET current_call = NULL,
+            eta = NULL,
+            updated_at = NOW()
+        WHERE id = NEW.id
+          AND current_call = v_request_id;
+
+        RETURN NEW;
+    END IF;
+
+    UPDATE public.ambulances
+    SET status = 'on_trip',
+        current_call = v_request_id,
+        updated_at = NOW()
+    WHERE id = v_candidate_ambulance_id;
+
+    UPDATE public.ambulances
+    SET current_call = NULL,
+        eta = NULL,
+        updated_at = NOW()
+    WHERE id = NEW.id
+      AND current_call = v_request_id;
+
+    PERFORM set_config('ivisit.transition_source', 'automation:driver_failover', true);
+    PERFORM set_config('ivisit.transition_reason', 'assigned_driver_unavailable_auto_reassign', true);
+    PERFORM set_config('ivisit.transition_actor_role', 'automation', true);
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object(
+            'request_id', v_request_id,
+            'unavailable_ambulance_id', NEW.id,
+            'replacement_ambulance_id', v_candidate_ambulance_id,
+            'old_status', v_old_status,
+            'new_status', v_new_status
+        )::TEXT,
+        true
+    );
+
+    UPDATE public.emergency_requests er
+    SET ambulance_id = v_candidate_ambulance_id,
+        responder_id = COALESCE(v_candidate_driver_id, er.responder_id),
+        responder_name = COALESCE(
+            NULLIF(BTRIM(v_candidate_driver_name), ''),
+            NULLIF(BTRIM(v_candidate_vehicle_number), ''),
+            NULLIF(BTRIM(v_candidate_type), ''),
+            NULLIF(BTRIM(er.responder_name), ''),
+            'Responder'
+        ),
+        responder_phone = COALESCE(
+            NULLIF(BTRIM(v_candidate_driver_phone), ''),
+            NULLIF(BTRIM(er.responder_phone), '')
+        ),
+        responder_vehicle_type = COALESCE(
+            NULLIF(BTRIM(v_candidate_type), ''),
+            NULLIF(BTRIM(er.responder_vehicle_type), '')
+        ),
+        responder_vehicle_plate = COALESCE(
+            NULLIF(BTRIM(v_candidate_vehicle_number), ''),
+            NULLIF(BTRIM(er.responder_vehicle_plate), '')
+        ),
+        status = CASE
+            WHEN v_request_status = 'in_progress' THEN 'accepted'
+            ELSE er.status
+        END,
+        updated_at = NOW()
+    WHERE er.id = v_request_id;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_ambulance_unavailability_failover ON public.ambulances;
+CREATE TRIGGER on_ambulance_unavailability_failover
+AFTER UPDATE OF status, profile_id, current_call ON public.ambulances
+FOR EACH ROW EXECUTE PROCEDURE public.handle_ambulance_unavailability_failover();
+
+CREATE OR REPLACE FUNCTION public.handle_doctor_unavailability_failover()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_old_available BOOLEAN;
+    v_new_available BOOLEAN;
+    v_request RECORD;
+    v_candidate_doctor_id UUID;
+    v_released_count INTEGER;
+BEGIN
+    IF TG_OP <> 'UPDATE' THEN
+        RETURN NEW;
+    END IF;
+
+    IF pg_trigger_depth() > 1 THEN
+        RETURN NEW;
+    END IF;
+
+    v_old_available := COALESCE(OLD.is_available, false)
+        AND LOWER(COALESCE(OLD.status, '')) = 'available'
+        AND COALESCE(OLD.current_patients, 0) < GREATEST(COALESCE(NULLIF(OLD.max_patients, 0), 1), 1);
+    v_new_available := COALESCE(NEW.is_available, false)
+        AND LOWER(COALESCE(NEW.status, '')) = 'available'
+        AND COALESCE(NEW.current_patients, 0) < GREATEST(COALESCE(NULLIF(NEW.max_patients, 0), 1), 1);
+
+    IF NOT v_old_available OR v_new_available THEN
+        RETURN NEW;
+    END IF;
+
+    FOR v_request IN
+        SELECT er.id, er.hospital_id, er.service_type
+        FROM public.emergency_requests er
+        WHERE er.assigned_doctor_id = NEW.id
+          AND public.canonicalize_emergency_status(er.status, er.status) IN ('accepted', 'in_progress', 'arrived')
+        ORDER BY er.created_at ASC
+        FOR UPDATE OF er SKIP LOCKED
+    LOOP
+        SELECT d.id
+        INTO v_candidate_doctor_id
+        FROM public.doctors d
+        WHERE d.id IS DISTINCT FROM NEW.id
+          AND d.hospital_id = v_request.hospital_id
+          AND COALESCE(d.status, 'available') = 'available'
+          AND d.is_available = true
+          AND COALESCE(d.current_patients, 0) < GREATEST(COALESCE(NULLIF(d.max_patients, 0), 1), 1)
+        ORDER BY
+            CASE
+                WHEN v_request.service_type = 'ambulance' AND d.specialization = 'Emergency Medicine' THEN 0
+                WHEN v_request.service_type = 'bed' AND d.specialization = 'Internal Medicine' THEN 0
+                ELSE 1
+            END,
+            COALESCE(d.current_patients, 0) ASC,
+            d.created_at ASC
+        FOR UPDATE OF d SKIP LOCKED
+        LIMIT 1;
+
+        IF v_candidate_doctor_id IS NULL THEN
+            WITH released AS (
+                UPDATE public.emergency_doctor_assignments
+                SET status = 'cancelled',
+                    updated_at = NOW()
+                WHERE emergency_request_id = v_request.id
+                  AND doctor_id = NEW.id
+                  AND status = 'assigned'
+                RETURNING 1
+            )
+            SELECT COUNT(*)::INTEGER
+            INTO v_released_count
+            FROM released;
+
+            IF COALESCE(v_released_count, 0) > 0 THEN
+                UPDATE public.doctors
+                SET current_patients = GREATEST(0, COALESCE(current_patients, 0) - v_released_count),
+                    updated_at = NOW()
+                WHERE id = NEW.id;
+            END IF;
+
+            UPDATE public.emergency_requests er
+            SET assigned_doctor_id = NULL,
+                doctor_assigned_at = NULL,
+                updated_at = NOW()
+            WHERE er.id = v_request.id
+              AND er.assigned_doctor_id = NEW.id;
+
+            CONTINUE;
+        END IF;
+
+        PERFORM set_config('ivisit.transition_source', 'automation:doctor_failover', true);
+        PERFORM set_config('ivisit.transition_reason', 'assigned_doctor_unavailable_auto_reassign', true);
+        PERFORM set_config('ivisit.transition_actor_role', 'automation', true);
+        PERFORM set_config(
+            'ivisit.transition_metadata',
+            jsonb_build_object(
+                'request_id', v_request.id,
+                'unavailable_doctor_id', NEW.id,
+                'replacement_doctor_id', v_candidate_doctor_id
+            )::TEXT,
+            true
+        );
+
+        WITH released AS (
+            UPDATE public.emergency_doctor_assignments
+            SET status = 'cancelled',
+                updated_at = NOW()
+            WHERE emergency_request_id = v_request.id
+              AND status = 'assigned'
+            RETURNING doctor_id
+        ),
+        released_counts AS (
+            SELECT doctor_id, COUNT(*)::INTEGER AS release_count
+            FROM released
+            WHERE doctor_id IS NOT NULL
+            GROUP BY doctor_id
+        )
+        UPDATE public.doctors d
+        SET current_patients = GREATEST(0, COALESCE(d.current_patients, 0) - rc.release_count),
+            updated_at = NOW()
+        FROM released_counts rc
+        WHERE d.id = rc.doctor_id;
+
+        INSERT INTO public.emergency_doctor_assignments (emergency_request_id, doctor_id, status, notes)
+        VALUES (v_request.id, v_candidate_doctor_id, 'assigned', 'Auto reassigned: previous doctor became unavailable');
+
+        UPDATE public.doctors
+        SET current_patients = COALESCE(current_patients, 0) + 1,
+            updated_at = NOW()
+        WHERE id = v_candidate_doctor_id;
+
+        UPDATE public.emergency_requests er
+        SET assigned_doctor_id = v_candidate_doctor_id,
+            doctor_assigned_at = NOW(),
+            updated_at = NOW()
+        WHERE er.id = v_request.id;
+    END LOOP;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_doctor_unavailability_failover ON public.doctors;
+CREATE TRIGGER on_doctor_unavailability_failover
+AFTER UPDATE OF status, is_available, current_patients, max_patients ON public.doctors
+FOR EACH ROW EXECUTE PROCEDURE public.handle_doctor_unavailability_failover();
 
 COMMIT;
 

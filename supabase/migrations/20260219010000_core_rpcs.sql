@@ -971,7 +971,8 @@ CREATE OR REPLACE FUNCTION public.assign_doctor_to_emergency(
 RETURNS JSONB AS $$
 DECLARE
     v_actor_id UUID := auth.uid();
-    v_is_service_role BOOLEAN := COALESCE(current_setting('request.jwt.claim.role', true), '') = 'service_role';
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_is_admin BOOLEAN := public.p_is_admin();
     v_actor_role TEXT;
     v_actor_org_id UUID;
@@ -2319,7 +2320,10 @@ BEGIN
     IF v_req_current_ambulance_id IS NOT NULL
        AND v_req_current_ambulance_id IS DISTINCT FROM p_ambulance_id THEN
         UPDATE public.ambulances
-        SET status = 'available',
+        SET status = CASE
+                WHEN LOWER(COALESCE(status, '')) IN ('offline', 'maintenance') THEN status
+                ELSE 'available'
+            END,
             current_call = NULL,
             eta = NULL,
             updated_at = NOW()
