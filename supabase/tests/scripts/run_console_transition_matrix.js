@@ -155,6 +155,7 @@ function makeResult(caseId, role, action, fromStatus, expectSuccess) {
     error: null,
     telemetryMirror: null,
     appRealtimeProjection: null,
+    approvalRealtimeProjection: null,
   };
 }
 
@@ -208,6 +209,298 @@ function evaluatePendingApprovalUiState(row, serviceType = 'ambulance') {
   }
 
   return 'approved';
+}
+
+function parseRealtimeVersionMs(row, fallbackMs = Date.now()) {
+  if (!row || typeof row !== 'object') return fallbackMs;
+  const value = row.updated_at ?? row.created_at ?? null;
+  if (!value) return fallbackMs;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : fallbackMs;
+}
+
+function shouldApplyPendingApprovalRealtimeEvent(gateState, streamKey, row) {
+  const current = gateState || { streamKey: null, versionMs: 0 };
+  const nextVersionMs = parseRealtimeVersionMs(row, Date.now());
+  if (current.streamKey && current.streamKey !== streamKey) {
+    return {
+      apply: true,
+      nextGateState: { streamKey, versionMs: nextVersionMs },
+      reason: 'stream_switch',
+    };
+  }
+
+  if (nextVersionMs < (current.versionMs ?? 0)) {
+    return {
+      apply: false,
+      nextGateState: current,
+      reason: 'stale_version',
+    };
+  }
+
+  return {
+    apply: true,
+    nextGateState: { streamKey, versionMs: nextVersionMs },
+    reason: 'fresh_or_equal',
+  };
+}
+
+async function verifyPendingApprovalRealtimeProjection({
+  requestId,
+  paymentId = null,
+  serviceType = 'ambulance',
+  expectedFinalState,
+}) {
+  if (!requestId) {
+    return {
+      passed: false,
+      error: 'approval realtime projection verification missing request id',
+      details: null,
+    };
+  }
+
+  const { data: request, error: requestErr } = await admin
+    .from('emergency_requests')
+    .select(
+      'id,display_id,status,payment_status,ambulance_id,responder_id,responder_name,responder_phone,responder_vehicle_type,responder_vehicle_plate,updated_at,created_at'
+    )
+    .eq('id', requestId)
+    .maybeSingle();
+  if (requestErr) {
+    return {
+      passed: false,
+      error: `approval projection request lookup failed: ${requestErr.message}`,
+      details: null,
+    };
+  }
+  if (!request?.id) {
+    return {
+      passed: false,
+      error: 'approval projection request missing after mutation',
+      details: null,
+    };
+  }
+
+  let payment = null;
+  if (paymentId) {
+    const { data: paymentById, error: paymentByIdErr } = await admin
+      .from('payments')
+      .select('id,emergency_request_id,status,updated_at,created_at')
+      .eq('id', paymentId)
+      .maybeSingle();
+    if (paymentByIdErr) {
+      return {
+        passed: false,
+        error: `approval projection payment lookup failed: ${paymentByIdErr.message}`,
+        details: { request },
+      };
+    }
+    payment = paymentById || null;
+  }
+
+  if (!payment) {
+    const { data: paymentByRequest, error: paymentByRequestErr } = await admin
+      .from('payments')
+      .select('id,emergency_request_id,status,updated_at,created_at')
+      .eq('emergency_request_id', requestId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (paymentByRequestErr) {
+      return {
+        passed: false,
+        error: `approval projection payment-by-request lookup failed: ${paymentByRequestErr.message}`,
+        details: { request },
+      };
+    }
+    payment = paymentByRequest || null;
+  }
+
+  const emergencyStreamKey = `${request.id}:${request.display_id || request.id}:emergency`;
+  const paymentStreamKey = `${request.id}:${request.display_id || request.id}:payment`;
+  let emergencyGate = { streamKey: null, versionMs: 0 };
+  let paymentGate = { streamKey: null, versionMs: 0 };
+
+  const timeline = [];
+  let projectedUiState = 'pending';
+
+  const pendingSeedRow = {
+    id: request.id,
+    status: 'pending_approval',
+    payment_status: 'pending',
+    updated_at: request.created_at || request.updated_at || new Date().toISOString(),
+  };
+  const pendingDecision = shouldApplyPendingApprovalRealtimeEvent(
+    emergencyGate,
+    emergencyStreamKey,
+    pendingSeedRow
+  );
+  if (pendingDecision.apply) {
+    emergencyGate = pendingDecision.nextGateState;
+    projectedUiState = evaluatePendingApprovalUiState(pendingSeedRow, serviceType);
+  }
+  timeline.push({
+    source: 'pending_seed',
+    applied: pendingDecision.apply,
+    reason: pendingDecision.reason,
+    uiState: projectedUiState,
+  });
+
+  let paymentUiState = projectedUiState;
+  if (payment?.id) {
+    const paymentEventRow = {
+      id: request.id,
+      status: null,
+      payment_status: payment.status,
+      updated_at: payment.updated_at || payment.created_at || new Date().toISOString(),
+    };
+    const paymentDecision = shouldApplyPendingApprovalRealtimeEvent(
+      paymentGate,
+      paymentStreamKey,
+      paymentEventRow
+    );
+    if (paymentDecision.apply) {
+      paymentGate = paymentDecision.nextGateState;
+      paymentUiState = evaluatePendingApprovalUiState(paymentEventRow, serviceType);
+      projectedUiState = paymentUiState;
+    }
+    timeline.push({
+      source: 'payment_event',
+      applied: paymentDecision.apply,
+      reason: paymentDecision.reason,
+      paymentStatus: payment.status,
+      uiState: paymentUiState,
+    });
+  }
+
+  const requestVersionMs = parseRealtimeVersionMs(request, Date.now());
+  const staleEmergencyEvent = {
+    ...request,
+    updated_at: new Date(Math.max(0, requestVersionMs - 90000)).toISOString(),
+    payment_status: 'pending',
+  };
+  const staleDecision = shouldApplyPendingApprovalRealtimeEvent(
+    emergencyGate,
+    emergencyStreamKey,
+    staleEmergencyEvent
+  );
+  timeline.push({
+    source: 'stale_emergency_event',
+    applied: staleDecision.apply,
+    reason: staleDecision.reason,
+    uiState: projectedUiState,
+  });
+
+  const canonicalDecision = shouldApplyPendingApprovalRealtimeEvent(
+    emergencyGate,
+    emergencyStreamKey,
+    request
+  );
+  let finalUiState = projectedUiState;
+  let truthSyncBypassUsed = false;
+  if (canonicalDecision.apply) {
+    emergencyGate = canonicalDecision.nextGateState;
+    finalUiState = evaluatePendingApprovalUiState(request, serviceType);
+  } else {
+    // Mirror EmergencyRequestModal syncApprovalTruthFromServer behavior (skip emergency gate on recovery).
+    truthSyncBypassUsed = true;
+    finalUiState = evaluatePendingApprovalUiState(request, serviceType);
+  }
+  timeline.push({
+    source: truthSyncBypassUsed ? 'canonical_truth_sync_bypass' : 'canonical_emergency_event',
+    applied: canonicalDecision.apply || truthSyncBypassUsed,
+    reason: canonicalDecision.reason,
+    uiState: finalUiState,
+  });
+
+  const expectedState = expectedFinalState || evaluatePendingApprovalUiState(request, serviceType);
+  const staleRejected = !staleDecision.apply;
+
+  if (!staleRejected) {
+    return {
+      passed: false,
+      error: 'approval projection accepted stale emergency event',
+      details: {
+        request,
+        payment,
+        timeline,
+        staleDecision,
+        emergencyGate,
+        paymentGate,
+      },
+    };
+  }
+
+  if (
+    serviceType === 'ambulance' &&
+    expectedState === 'approved' &&
+    String(payment?.status || '').toLowerCase() === 'completed' &&
+    paymentUiState !== 'awaiting_assignment'
+  ) {
+    return {
+      passed: false,
+      error: `approval projection payment-event phase mismatch: expected awaiting_assignment, got ${paymentUiState}`,
+      details: {
+        request,
+        payment,
+        timeline,
+        emergencyGate,
+        paymentGate,
+      },
+    };
+  }
+
+  if (
+    expectedState === 'declined' &&
+    payment?.id &&
+    paymentUiState !== 'declined'
+  ) {
+    return {
+      passed: false,
+      error: `approval projection decline phase mismatch: expected declined on payment event, got ${paymentUiState}`,
+      details: {
+        request,
+        payment,
+        timeline,
+        emergencyGate,
+        paymentGate,
+      },
+    };
+  }
+
+  if (finalUiState !== expectedState) {
+    return {
+      passed: false,
+      error: `approval projection final UI mismatch: expected ${expectedState}, got ${finalUiState}`,
+      details: {
+        request,
+        payment,
+        timeline,
+        staleDecision,
+        canonicalDecision,
+        truthSyncBypassUsed,
+        emergencyGate,
+        paymentGate,
+      },
+    };
+  }
+
+  return {
+    passed: true,
+    error: null,
+    details: {
+      request,
+      payment,
+      expectedState,
+      finalUiState,
+      paymentUiState,
+      staleRejected,
+      truthSyncBypassUsed,
+      timeline,
+      emergencyGate,
+      paymentGate,
+    },
+  };
 }
 
 async function sleep(ms) {
@@ -463,6 +756,8 @@ async function main() {
     requestIds: [],
     lastCaseRequestId: null,
     lastCaseAmbulanceId: null,
+    lastCasePaymentId: null,
+    lastCaseServiceType: null,
   };
 
   const report = {
@@ -950,6 +1245,10 @@ async function main() {
         action: 'approve_cash_payment',
         fromStatus: 'pending_approval_to_in_progress_or_accepted',
         expectSuccess: true,
+        assertApprovalRealtimeProjection: {
+          serviceType: 'ambulance',
+          expectedFinalState: 'approved',
+        },
         execute: async (client) => {
           const requestId = await createRequest({
             status: 'pending_approval',
@@ -991,6 +1290,12 @@ async function main() {
 
           // Ensure the accepted branch is covered deterministically.
           if (requestAfter.status !== 'accepted') {
+            const interimUiState = evaluatePendingApprovalUiState(requestAfter, 'ambulance');
+            if (interimUiState !== 'awaiting_assignment') {
+              throw new Error(
+                `pending_approval interim UI mismatch: expected awaiting_assignment, got ${interimUiState}`
+              );
+            }
             await resetAmbulance();
             const { data: assignData, error: assignErr } = await client.rpc('assign_ambulance_to_emergency', {
               p_emergency_request_id: requestId,
@@ -1026,6 +1331,8 @@ async function main() {
 
           ctx.lastCaseRequestId = requestId;
           ctx.lastCaseAmbulanceId = requestAfter.ambulance_id || ctx.ambulanceId;
+          ctx.lastCasePaymentId = paymentId;
+          ctx.lastCaseServiceType = 'ambulance';
           return { data, error: null };
         },
       },
@@ -1035,6 +1342,10 @@ async function main() {
         action: 'decline_cash_payment',
         fromStatus: 'pending_approval_to_payment_declined',
         expectSuccess: true,
+        assertApprovalRealtimeProjection: {
+          serviceType: 'ambulance',
+          expectedFinalState: 'declined',
+        },
         execute: async (client) => {
           const requestId = await createRequest({
             status: 'pending_approval',
@@ -1082,6 +1393,10 @@ async function main() {
           const afterTransitions = await fetchTransitionAuditRows(requestId);
           assertAppendOnlyTransitionAudit(beforeTransitions, afterTransitions, { requireGrowth: true });
 
+          ctx.lastCaseRequestId = requestId;
+          ctx.lastCaseAmbulanceId = requestAfter.ambulance_id || ctx.ambulanceId;
+          ctx.lastCasePaymentId = paymentId;
+          ctx.lastCaseServiceType = 'ambulance';
           return { data, error: null };
         },
       },
@@ -1812,6 +2127,8 @@ async function main() {
       const result = makeResult(tc.caseId, tc.role, tc.action, tc.fromStatus, tc.expectSuccess);
       ctx.lastCaseRequestId = null;
       ctx.lastCaseAmbulanceId = null;
+      ctx.lastCasePaymentId = null;
+      ctx.lastCaseServiceType = null;
       try {
         const { data, error } = await tc.execute(clients[tc.role]);
         result.rpcData = data || null;
@@ -1855,6 +2172,20 @@ async function main() {
         if (!appProjection.passed) {
           result.success = false;
           result.error = appProjection.error;
+        }
+      }
+
+      if (result.success && tc.assertApprovalRealtimeProjection) {
+        const approvalProjection = await verifyPendingApprovalRealtimeProjection({
+          requestId: ctx.lastCaseRequestId,
+          paymentId: ctx.lastCasePaymentId,
+          serviceType: tc.assertApprovalRealtimeProjection.serviceType || ctx.lastCaseServiceType || 'ambulance',
+          expectedFinalState: tc.assertApprovalRealtimeProjection.expectedFinalState,
+        });
+        result.approvalRealtimeProjection = approvalProjection.details;
+        if (!approvalProjection.passed) {
+          result.success = false;
+          result.error = approvalProjection.error;
         }
       }
 
