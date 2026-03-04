@@ -146,6 +146,74 @@ function makeResult(caseId, role, action, fromStatus, expectSuccess) {
     setupError: false,
     rpcData: null,
     error: null,
+    telemetryMirror: null,
+  };
+}
+
+function parseTimestampMs(value) {
+  if (!value || typeof value !== 'string') return 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+async function verifyTelemetryMirror(requestId, ambulanceId) {
+  if (!requestId || !ambulanceId) {
+    return {
+      passed: false,
+      error: 'telemetry mirror verification missing request/ambulance id',
+      details: null,
+    };
+  }
+
+  const { data: request, error: requestErr } = await admin
+    .from('emergency_requests')
+    .select('id,ambulance_id,responder_location,responder_heading,updated_at')
+    .eq('id', requestId)
+    .maybeSingle();
+  if (requestErr) {
+    return { passed: false, error: `request mirror lookup failed: ${requestErr.message}`, details: null };
+  }
+
+  const { data: ambulance, error: ambulanceErr } = await admin
+    .from('ambulances')
+    .select('id,current_call,location,updated_at')
+    .eq('id', ambulanceId)
+    .maybeSingle();
+  if (ambulanceErr) {
+    return { passed: false, error: `ambulance mirror lookup failed: ${ambulanceErr.message}`, details: null };
+  }
+
+  const requestUpdatedMs = parseTimestampMs(request?.updated_at);
+  const ambulanceUpdatedMs = parseTimestampMs(ambulance?.updated_at);
+  const timestampDeltaMs = Math.abs(requestUpdatedMs - ambulanceUpdatedMs);
+  const hasRequestLocation = !!request?.responder_location;
+  const hasAmbulanceLocation = !!ambulance?.location;
+  const requestAmbulanceLinked = request?.ambulance_id === ambulanceId;
+  const ambulanceCallLinked = ambulance?.current_call === requestId;
+
+  const passed =
+    !!request &&
+    !!ambulance &&
+    hasRequestLocation &&
+    hasAmbulanceLocation &&
+    requestAmbulanceLinked &&
+    ambulanceCallLinked &&
+    timestampDeltaMs <= 1500;
+
+  return {
+    passed,
+    error: passed
+      ? null
+      : `telemetry mirror mismatch (request_location=${hasRequestLocation}, ambulance_location=${hasAmbulanceLocation}, request_ambulance_linked=${requestAmbulanceLinked}, ambulance_call_linked=${ambulanceCallLinked}, timestamp_delta_ms=${timestampDeltaMs})`,
+    details: {
+      request,
+      ambulance,
+      timestampDeltaMs,
+      hasRequestLocation,
+      hasAmbulanceLocation,
+      requestAmbulanceLinked,
+      ambulanceCallLinked,
+    },
   };
 }
 
@@ -157,6 +225,8 @@ async function main() {
     hospitalId: null,
     ambulanceId: null,
     requestIds: [],
+    lastCaseRequestId: null,
+    lastCaseAmbulanceId: null,
   };
 
   const report = {
@@ -510,12 +580,15 @@ async function main() {
         action: 'console_update_responder_location',
         fromStatus: 'accepted',
         expectSuccess: true,
+        assertTelemetryMirror: true,
         execute: async (client) => {
           const requestId = await createRequest({
             status: 'accepted',
             responderId: ctx.users.providerAssigned.id,
             ambulanceId: ctx.ambulanceId,
           });
+          ctx.lastCaseRequestId = requestId;
+          ctx.lastCaseAmbulanceId = ctx.ambulanceId;
           return client.rpc('console_update_responder_location', {
             p_request_id: requestId,
             p_location: { lat: 6.5244, lng: 3.3792 },
@@ -529,12 +602,15 @@ async function main() {
         action: 'console_update_responder_location',
         fromStatus: 'arrived',
         expectSuccess: true,
+        assertTelemetryMirror: true,
         execute: async (client) => {
           const requestId = await createRequest({
             status: 'arrived',
             responderId: ctx.users.providerAssigned.id,
             ambulanceId: ctx.ambulanceId,
           });
+          ctx.lastCaseRequestId = requestId;
+          ctx.lastCaseAmbulanceId = ctx.ambulanceId;
           return client.rpc('console_update_responder_location', {
             p_request_id: requestId,
             p_location: { lat: 6.5246, lng: 3.3794 },
@@ -601,6 +677,8 @@ async function main() {
 
     for (const tc of cases) {
       const result = makeResult(tc.caseId, tc.role, tc.action, tc.fromStatus, tc.expectSuccess);
+      ctx.lastCaseRequestId = null;
+      ctx.lastCaseAmbulanceId = null;
       try {
         const { data, error } = await tc.execute(clients[tc.role]);
         result.rpcData = data || null;
@@ -618,6 +696,18 @@ async function main() {
         result.error = error.message;
         if (/^request create\(/.test(error.message)) {
           result.setupError = true;
+        }
+      }
+
+      if (result.success && tc.assertTelemetryMirror) {
+        const telemetryMirror = await verifyTelemetryMirror(
+          ctx.lastCaseRequestId,
+          ctx.lastCaseAmbulanceId || ctx.ambulanceId
+        );
+        result.telemetryMirror = telemetryMirror.details;
+        if (!telemetryMirror.passed) {
+          result.success = false;
+          result.error = telemetryMirror.error;
         }
       }
 

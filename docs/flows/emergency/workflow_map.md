@@ -126,6 +126,10 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
   - `auto_assign_doctor` now locks candidate rows (`FOR UPDATE SKIP LOCKED`) and filters to available doctor status.
   - `release_doctor_assignment` now releases all active assignment rows deterministically and clears stale doctor links on the request.
   - `EmergencyContext` map merge path now applies stale-event guards (timestamp/version gate) across `emergency_requests` + `ambulances` realtime channels.
+- Driver telemetry + map truth-sync hardening (2026-03-04):
+  - Console `GodModeMap` streams driver telemetry in active-trip mode (`in_progress`/`accepted`/`arrived`) with interval + distance throttling.
+  - Console `MapContext` now applies freshness-based realtime reconciliation (`updated_at`/`created_at`), drops stale events, and runs silent truth-sync refresh on interval and channel recovery statuses.
+  - `run_console_transition_matrix` now enforces telemetry mirror invariants for responder updates (`emergency_requests.responder_location` + `ambulances.location` + call linkage + timestamp coherence).
 - Remote RPC lock fix deployed (linked project `dlwtcmhdzoklveihuhjf`):
   - `console_update_emergency_request`
   - `console_dispatch_emergency`
