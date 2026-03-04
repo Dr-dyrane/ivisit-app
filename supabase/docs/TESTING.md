@@ -282,6 +282,9 @@ Current batch coverage:
 - `support_faqs`, `support_tickets`
 - `search_events`, `search_history`, `search_selections`
 - `medical_profiles`
+- `subscribers`, `health_news`, `trending_topics`
+- `notifications`, `preferences`, `user_activity`
+- `insurance_policies`, `insurance_billing`
 
 ### **Commit Gate: Cleanup Must Be Zero**
 Before every commit/push after running tests:

@@ -109,6 +109,13 @@ async function run() {
     searchEventId: null,
     searchHistoryId: null,
     searchSelectionId: null,
+    subscriberId: null,
+    healthNewsId: null,
+    trendingTopicId: null,
+    notificationId: null,
+    insurancePolicyId: null,
+    insuranceBillingId: null,
+    userActivityId: null,
     patientUserId: null,
     orgAdminUserId: null,
   };
@@ -428,6 +435,204 @@ async function run() {
     report.resources.preMedicalProfileExisted = Boolean(preMedical.data);
     report.steps.push('medical_profiles CRUD complete');
 
+    const { data: subscriber, error: subscriberErr } = await supabase
+      .from('subscribers')
+      .insert({
+        email: `${TAG}@ivisit-subscriber.local`,
+        type: 'free',
+        status: 'pending',
+        new_user: true,
+        welcome_email_sent: false,
+        subscription_date: nowIso(),
+      })
+      .select('*')
+      .single();
+    if (subscriberErr) throw new Error(`subscribers insert failed: ${subscriberErr.message}`);
+    ctx.subscriberId = subscriber.id;
+
+    const { error: subscriberUpdateErr } = await supabase
+      .from('subscribers')
+      .update({
+        status: 'active',
+        welcome_email_sent: true,
+        new_user: false,
+      })
+      .eq('id', subscriber.id);
+    if (subscriberUpdateErr) {
+      throw new Error(`subscribers update failed: ${subscriberUpdateErr.message}`);
+    }
+    report.resources.subscriber = {
+      id: subscriber.id,
+      email: subscriber.email,
+    };
+
+    const { data: healthNews, error: healthNewsErr } = await supabase
+      .from('health_news')
+      .insert({
+        title: `[${TAG}] Runtime health news`,
+        source: 'runtime_batch',
+        category: 'general',
+        published: true,
+        url: 'https://ivisit.example/runtime-health-news',
+        image_url: 'https://ivisit.example/runtime-health-news.png',
+      })
+      .select('*')
+      .single();
+    if (healthNewsErr) throw new Error(`health_news insert failed: ${healthNewsErr.message}`);
+    ctx.healthNewsId = healthNews.id;
+
+    const { error: healthNewsUpdateErr } = await supabase
+      .from('health_news')
+      .update({ published: false })
+      .eq('id', healthNews.id);
+    if (healthNewsUpdateErr) {
+      throw new Error(`health_news update failed: ${healthNewsUpdateErr.message}`);
+    }
+
+    const { data: trendingTopic, error: trendingTopicErr } = await supabase
+      .from('trending_topics')
+      .insert({
+        query: `${TAG} triage`,
+        category: 'emergency',
+        rank: 99,
+      })
+      .select('*')
+      .single();
+    if (trendingTopicErr) {
+      throw new Error(`trending_topics insert failed: ${trendingTopicErr.message}`);
+    }
+    ctx.trendingTopicId = trendingTopic.id;
+
+    const { error: trendingTopicUpdateErr } = await supabase
+      .from('trending_topics')
+      .update({ rank: 7 })
+      .eq('id', trendingTopic.id);
+    if (trendingTopicUpdateErr) {
+      throw new Error(`trending_topics update failed: ${trendingTopicUpdateErr.message}`);
+    }
+
+    const { data: notification, error: notificationErr } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: patientAuth.id,
+        type: 'system',
+        priority: 'normal',
+        title: 'Runtime Batch Notification',
+        message: `Runtime notification ${TAG}`,
+        action_type: 'view_request',
+        action_data: { tag: TAG },
+        metadata: { tag: TAG, source: 'runtime_batch' },
+        read: false,
+      })
+      .select('*')
+      .single();
+    if (notificationErr) throw new Error(`notifications insert failed: ${notificationErr.message}`);
+    ctx.notificationId = notification.id;
+
+    const { error: notificationUpdateErr } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', notification.id);
+    if (notificationUpdateErr) {
+      throw new Error(`notifications update failed: ${notificationUpdateErr.message}`);
+    }
+
+    const { data: preferencesRow, error: preferencesErr } = await supabase
+      .from('preferences')
+      .upsert(
+        {
+          user_id: patientAuth.id,
+          demo_mode_enabled: true,
+          notifications_enabled: true,
+          notification_sounds_enabled: true,
+          appointment_reminders: true,
+          emergency_updates: true,
+          privacy_share_medical_profile: false,
+          privacy_share_emergency_contacts: false,
+        },
+        { onConflict: 'user_id' }
+      )
+      .select('*')
+      .single();
+    if (preferencesErr) throw new Error(`preferences upsert failed: ${preferencesErr.message}`);
+    report.resources.preferences = {
+      user_id: preferencesRow.user_id,
+      demo_mode_enabled: preferencesRow.demo_mode_enabled,
+    };
+
+    const { data: insurancePolicy, error: insurancePolicyErr } = await supabase
+      .from('insurance_policies')
+      .insert({
+        user_id: patientAuth.id,
+        provider_name: `Runtime Health ${TAG}`,
+        policy_number: `POL-${TS}`,
+        plan_type: 'gold',
+        status: 'active',
+        coverage_percentage: 80,
+        is_default: true,
+        verified: false,
+      })
+      .select('*')
+      .single();
+    if (insurancePolicyErr) {
+      throw new Error(`insurance_policies insert failed: ${insurancePolicyErr.message}`);
+    }
+    ctx.insurancePolicyId = insurancePolicy.id;
+
+    const { error: insurancePolicyUpdateErr } = await supabase
+      .from('insurance_policies')
+      .update({ verified: true })
+      .eq('id', insurancePolicy.id);
+    if (insurancePolicyUpdateErr) {
+      throw new Error(`insurance_policies update failed: ${insurancePolicyUpdateErr.message}`);
+    }
+
+    const { data: insuranceBilling, error: insuranceBillingErr } = await supabase
+      .from('insurance_billing')
+      .insert({
+        user_id: patientAuth.id,
+        insurance_policy_id: insurancePolicy.id,
+        total_amount: 125,
+        insurance_amount: 100,
+        user_amount: 25,
+        status: 'pending',
+      })
+      .select('*')
+      .single();
+    if (insuranceBillingErr) {
+      throw new Error(`insurance_billing insert failed: ${insuranceBillingErr.message}`);
+    }
+    ctx.insuranceBillingId = insuranceBilling.id;
+
+    const { error: insuranceBillingUpdateErr } = await supabase
+      .from('insurance_billing')
+      .update({
+        claim_number: `CLM-${TS}`,
+        coverage_percentage: 80,
+      })
+      .eq('id', insuranceBilling.id);
+    if (insuranceBillingUpdateErr) {
+      throw new Error(`insurance_billing update failed: ${insuranceBillingUpdateErr.message}`);
+    }
+
+    const { data: userActivity, error: userActivityErr } = await supabase
+      .from('user_activity')
+      .insert({
+        user_id: patientAuth.id,
+        action: 'runtime_crud_batch',
+        description: `Runtime activity ${TAG}`,
+        entity_type: 'hardening',
+        entity_id: insurancePolicy.id,
+        metadata: { tag: TAG, source: 'runtime_batch' },
+      })
+      .select('*')
+      .single();
+    if (userActivityErr) throw new Error(`user_activity insert failed: ${userActivityErr.message}`);
+    ctx.userActivityId = userActivity.id;
+    report.steps.push(
+      'subscribers/health_news/trending_topics/notifications/preferences/insurance/user_activity CRUD complete'
+    );
+
     const { data: walletSummaryRows, error: walletSummaryErr } = await supabase
       .from('wallet_ledger')
       .select('amount, created_at')
@@ -483,6 +688,79 @@ async function run() {
       throw new Error(`medical_profiles mirror query failed: ${medicalRowsErr.message}`);
     }
 
+    const { data: subscribersRows, error: subscribersRowsErr } = await supabase
+      .from('subscribers')
+      .select('*')
+      .eq('id', subscriber.id)
+      .limit(1);
+    if (subscribersRowsErr) {
+      throw new Error(`subscribers mirror query failed: ${subscribersRowsErr.message}`);
+    }
+
+    const { data: healthNewsRows, error: healthNewsRowsErr } = await supabase
+      .from('health_news')
+      .select('*')
+      .eq('id', healthNews.id)
+      .limit(1);
+    if (healthNewsRowsErr) {
+      throw new Error(`health_news mirror query failed: ${healthNewsRowsErr.message}`);
+    }
+
+    const { data: trendingTopicRows, error: trendingTopicRowsErr } = await supabase
+      .from('trending_topics')
+      .select('*')
+      .eq('id', trendingTopic.id)
+      .limit(1);
+    if (trendingTopicRowsErr) {
+      throw new Error(`trending_topics mirror query failed: ${trendingTopicRowsErr.message}`);
+    }
+
+    const { data: notificationRows, error: notificationRowsErr } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('id', notification.id)
+      .eq('user_id', patientAuth.id)
+      .limit(1);
+    if (notificationRowsErr) {
+      throw new Error(`notifications mirror query failed: ${notificationRowsErr.message}`);
+    }
+
+    const { data: preferencesRows, error: preferencesRowsErr } = await supabase
+      .from('preferences')
+      .select('*')
+      .eq('user_id', patientAuth.id)
+      .limit(1);
+    if (preferencesRowsErr) {
+      throw new Error(`preferences mirror query failed: ${preferencesRowsErr.message}`);
+    }
+
+    const { data: insurancePolicyRows, error: insurancePolicyRowsErr } = await supabase
+      .from('insurance_policies')
+      .select('*')
+      .eq('id', insurancePolicy.id)
+      .limit(1);
+    if (insurancePolicyRowsErr) {
+      throw new Error(`insurance_policies mirror query failed: ${insurancePolicyRowsErr.message}`);
+    }
+
+    const { data: insuranceBillingRows, error: insuranceBillingRowsErr } = await supabase
+      .from('insurance_billing')
+      .select('*')
+      .eq('id', insuranceBilling.id)
+      .limit(1);
+    if (insuranceBillingRowsErr) {
+      throw new Error(`insurance_billing mirror query failed: ${insuranceBillingRowsErr.message}`);
+    }
+
+    const { data: userActivityRows, error: userActivityRowsErr } = await supabase
+      .from('user_activity')
+      .select('*')
+      .eq('id', userActivity.id)
+      .limit(1);
+    if (userActivityRowsErr) {
+      throw new Error(`user_activity mirror query failed: ${userActivityRowsErr.message}`);
+    }
+
     assertPush(
       report,
       'payment_org_relationship',
@@ -530,6 +808,68 @@ async function run() {
       Array.isArray(faqRows) && faqRows.some((row) => row.id === faq.id),
       'support_faq mirror query did not include inserted row'
     );
+    assertPush(
+      report,
+      'subscribers_row_persisted',
+      Array.isArray(subscribersRows) &&
+        subscribersRows.length === 1 &&
+        subscribersRows[0].status === 'active' &&
+        subscribersRows[0].welcome_email_sent === true,
+      'subscriber row not persisted with expected updated status'
+    );
+    assertPush(
+      report,
+      'health_news_row_persisted',
+      Array.isArray(healthNewsRows) &&
+        healthNewsRows.length === 1 &&
+        healthNewsRows[0].published === false,
+      'health_news row not persisted with expected update'
+    );
+    assertPush(
+      report,
+      'trending_topics_row_persisted',
+      Array.isArray(trendingTopicRows) &&
+        trendingTopicRows.length === 1 &&
+        Number(trendingTopicRows[0].rank) === 7,
+      'trending_topics row not persisted with expected rank update'
+    );
+    assertPush(
+      report,
+      'notifications_row_persisted',
+      Array.isArray(notificationRows) &&
+        notificationRows.length === 1 &&
+        notificationRows[0].read === true,
+      'notifications row not persisted with expected read state'
+    );
+    assertPush(
+      report,
+      'preferences_row_persisted',
+      Array.isArray(preferencesRows) &&
+        preferencesRows.length === 1 &&
+        preferencesRows[0].user_id === patientAuth.id &&
+        preferencesRows[0].demo_mode_enabled === true,
+      'preferences row not persisted for runtime user'
+    );
+    assertPush(
+      report,
+      'insurance_relationship_persisted',
+      Array.isArray(insurancePolicyRows) &&
+        insurancePolicyRows.length === 1 &&
+        Array.isArray(insuranceBillingRows) &&
+        insuranceBillingRows.length === 1 &&
+        insuranceBillingRows[0].insurance_policy_id === insurancePolicy.id &&
+        insuranceBillingRows[0].user_id === patientAuth.id &&
+        insurancePolicyRows[0].verified === true,
+      'insurance policy/billing relationship did not persist expected state'
+    );
+    assertPush(
+      report,
+      'user_activity_row_persisted',
+      Array.isArray(userActivityRows) &&
+        userActivityRows.length === 1 &&
+        userActivityRows[0].action === 'runtime_crud_batch',
+      'user_activity row not persisted with expected action'
+    );
 
     report.resources.mirrorCounts = {
       wallet_ledger: walletSummaryRows?.length || 0,
@@ -538,6 +878,14 @@ async function run() {
       search_history: searchHistoryRows?.length || 0,
       search_selections: searchSelectionRows?.length || 0,
       medical_profiles: medicalRows?.length || 0,
+      subscribers: subscribersRows?.length || 0,
+      health_news: healthNewsRows?.length || 0,
+      trending_topics: trendingTopicRows?.length || 0,
+      notifications: notificationRows?.length || 0,
+      preferences: preferencesRows?.length || 0,
+      insurance_policies: insurancePolicyRows?.length || 0,
+      insurance_billing: insuranceBillingRows?.length || 0,
+      user_activity: userActivityRows?.length || 0,
     };
 
     report.completedAt = nowIso();
@@ -606,6 +954,54 @@ async function run() {
     await safeDelete('search_selections.delete', async () => {
       if (!ctx.searchSelectionId) return;
       const { error } = await supabase.from('search_selections').delete().eq('id', ctx.searchSelectionId);
+      if (error) throw error;
+    });
+
+    await safeDelete('preferences.delete', async () => {
+      if (!ctx.patientUserId) return;
+      const { error } = await supabase.from('preferences').delete().eq('user_id', ctx.patientUserId);
+      if (error) throw error;
+    });
+
+    await safeDelete('user_activity.delete', async () => {
+      if (!ctx.userActivityId) return;
+      const { error } = await supabase.from('user_activity').delete().eq('id', ctx.userActivityId);
+      if (error) throw error;
+    });
+
+    await safeDelete('insurance_billing.delete', async () => {
+      if (!ctx.insuranceBillingId) return;
+      const { error } = await supabase.from('insurance_billing').delete().eq('id', ctx.insuranceBillingId);
+      if (error) throw error;
+    });
+
+    await safeDelete('insurance_policies.delete', async () => {
+      if (!ctx.insurancePolicyId) return;
+      const { error } = await supabase.from('insurance_policies').delete().eq('id', ctx.insurancePolicyId);
+      if (error) throw error;
+    });
+
+    await safeDelete('notifications.delete', async () => {
+      if (!ctx.notificationId) return;
+      const { error } = await supabase.from('notifications').delete().eq('id', ctx.notificationId);
+      if (error) throw error;
+    });
+
+    await safeDelete('trending_topics.delete', async () => {
+      if (!ctx.trendingTopicId) return;
+      const { error } = await supabase.from('trending_topics').delete().eq('id', ctx.trendingTopicId);
+      if (error) throw error;
+    });
+
+    await safeDelete('health_news.delete', async () => {
+      if (!ctx.healthNewsId) return;
+      const { error } = await supabase.from('health_news').delete().eq('id', ctx.healthNewsId);
+      if (error) throw error;
+    });
+
+    await safeDelete('subscribers.delete', async () => {
+      if (!ctx.subscriberId) return;
+      const { error } = await supabase.from('subscribers').delete().eq('id', ctx.subscriberId);
       if (error) throw error;
     });
 
