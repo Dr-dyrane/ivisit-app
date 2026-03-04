@@ -226,6 +226,8 @@ async function main() {
     ambulanceId: null,
     ambulanceOtherId: null,
     ambulanceOtherVehicleNumber: null,
+    doctorId: null,
+    doctorOtherId: null,
     requestIds: [],
     lastCaseRequestId: null,
     lastCaseAmbulanceId: null,
@@ -259,6 +261,16 @@ async function main() {
       role: 'provider',
       providerType: 'driver',
     });
+    ctx.users.doctorPrimary = await createAuthUser({
+      label: 'doctor-primary',
+      role: 'provider',
+      providerType: 'doctor',
+    });
+    ctx.users.doctorOther = await createAuthUser({
+      label: 'doctor-other',
+      role: 'provider',
+      providerType: 'doctor',
+    });
 
     ctx.userIds.push(
       ctx.users.patient.id,
@@ -266,7 +278,9 @@ async function main() {
       ctx.users.dispatcher.id,
       ctx.users.viewer.id,
       ctx.users.providerAssigned.id,
-      ctx.users.providerOther.id
+      ctx.users.providerOther.id,
+      ctx.users.doctorPrimary.id,
+      ctx.users.doctorOther.id
     );
 
     const { data: org, error: orgErr } = await admin
@@ -286,6 +300,8 @@ async function main() {
         ctx.users.viewer.id,
         ctx.users.providerAssigned.id,
         ctx.users.providerOther.id,
+        ctx.users.doctorPrimary.id,
+        ctx.users.doctorOther.id,
       ]);
     if (orgProfileErr) throw new Error(`profile org assignment failed: ${orgProfileErr.message}`);
 
@@ -337,6 +353,62 @@ async function main() {
     ctx.ambulanceOtherId = ambulanceOther.id;
     ctx.ambulanceOtherVehicleNumber = secondaryVehicleNumber;
 
+    const upsertDoctorForProfile = async ({ profileId, name }) => {
+      const { data: existingDoctor, error: existingDoctorErr } = await admin
+        .from('doctors')
+        .select('id')
+        .eq('profile_id', profileId)
+        .maybeSingle();
+      if (existingDoctorErr) throw new Error(`doctor lookup failed: ${existingDoctorErr.message}`);
+
+      if (existingDoctor?.id) {
+        const { data: updatedDoctor, error: doctorUpdateErr } = await admin
+          .from('doctors')
+          .update({
+            hospital_id: hospital.id,
+            name,
+            specialization: 'Emergency Medicine',
+            status: 'available',
+            is_available: true,
+            max_patients: 4,
+            current_patients: 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingDoctor.id)
+          .select('id')
+          .single();
+        if (doctorUpdateErr) throw new Error(`doctor update failed: ${doctorUpdateErr.message}`);
+        return updatedDoctor.id;
+      }
+
+      const { data: insertedDoctor, error: doctorInsertErr } = await admin
+        .from('doctors')
+        .insert({
+          profile_id: profileId,
+          hospital_id: hospital.id,
+          name,
+          specialization: 'Emergency Medicine',
+          status: 'available',
+          is_available: true,
+          max_patients: 4,
+          current_patients: 0,
+        })
+        .select('id')
+        .single();
+      if (doctorInsertErr) throw new Error(`doctor create failed: ${doctorInsertErr.message}`);
+      return insertedDoctor.id;
+    };
+
+    ctx.doctorId = await upsertDoctorForProfile({
+      profileId: ctx.users.doctorPrimary.id,
+      name: 'Matrix Doctor Primary',
+    });
+
+    ctx.doctorOtherId = await upsertDoctorForProfile({
+      profileId: ctx.users.doctorOther.id,
+      name: 'Matrix Doctor Other',
+    });
+
     // 2) Clients
     const clients = {
       orgAdmin: await signInAs(email('orgadmin')),
@@ -345,6 +417,8 @@ async function main() {
       patient: await signInAs(email('patient')),
       providerAssigned: await signInAs(email('provider-assigned')),
       providerOther: await signInAs(email('provider-other')),
+      doctorPrimary: await signInAs(email('doctor-primary')),
+      doctorOther: await signInAs(email('doctor-other')),
     };
 
     // Helper to create isolated request for each case
@@ -407,6 +481,21 @@ async function main() {
         .from('ambulances')
         .update({ status: 'available', current_call: null, eta: null, updated_at: new Date().toISOString() })
         .in('id', ambulanceIds);
+    };
+
+    const resetDoctors = async () => {
+      const doctorIds = [ctx.doctorId, ctx.doctorOtherId].filter(Boolean);
+      if (!doctorIds.length) return;
+      await admin
+        .from('doctors')
+        .update({
+          status: 'available',
+          is_available: true,
+          max_patients: 4,
+          current_patients: 0,
+          updated_at: new Date().toISOString(),
+        })
+        .in('id', doctorIds);
     };
 
     const cases = [
@@ -676,7 +765,7 @@ async function main() {
 
           const { data: reqAfter, error: reqAfterErr } = await admin
             .from('emergency_requests')
-            .select('id,ambulance_id,responder_id,status,responder_vehicle_type,responder_vehicle_plate')
+            .select('id,ambulance_id,responder_id,status,responder_name,responder_vehicle_type,responder_vehicle_plate')
             .eq('id', requestId)
             .single();
           if (reqAfterErr) throw new Error(`reassignment request lookup failed: ${reqAfterErr.message}`);
@@ -791,6 +880,280 @@ async function main() {
             p_location: { lat: 6.5248, lng: 3.3797 },
             p_heading: 91,
           });
+        },
+      },
+      {
+        caseId: 'DR1',
+        role: 'orgAdmin',
+        action: 'assign_doctor_to_emergency',
+        fromStatus: 'accepted',
+        expectSuccess: true,
+        execute: async (client) => {
+          const requestId = await createRequest({ status: 'accepted', ambulanceId: ctx.ambulanceId });
+          const { data, error } = await client.rpc('assign_doctor_to_emergency', {
+            p_emergency_request_id: requestId,
+            p_doctor_id: ctx.doctorId,
+            p_notes: 'matrix initial doctor assign',
+          });
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || 'doctor assignment failed');
+
+          const { data: reqAfter, error: reqAfterErr } = await admin
+            .from('emergency_requests')
+            .select('id,assigned_doctor_id')
+            .eq('id', requestId)
+            .single();
+          if (reqAfterErr) throw new Error(`doctor assignment request lookup failed: ${reqAfterErr.message}`);
+          if (reqAfter.assigned_doctor_id !== ctx.doctorId) {
+            throw new Error(`assigned_doctor_id not updated to target doctor`);
+          }
+
+          const { data: assignedRows, error: assignedRowsErr } = await admin
+            .from('emergency_doctor_assignments')
+            .select('doctor_id,status')
+            .eq('emergency_request_id', requestId)
+            .eq('doctor_id', ctx.doctorId)
+            .eq('status', 'assigned');
+          if (assignedRowsErr) throw new Error(`doctor assignment mirror lookup failed: ${assignedRowsErr.message}`);
+          if (!assignedRows || assignedRows.length === 0) {
+            throw new Error('doctor assignment mirror row missing after assignment');
+          }
+
+          const { data: doctorAfter, error: doctorAfterErr } = await admin
+            .from('doctors')
+            .select('id,current_patients')
+            .eq('id', ctx.doctorId)
+            .single();
+          if (doctorAfterErr) throw new Error(`doctor load lookup failed: ${doctorAfterErr.message}`);
+          if ((doctorAfter.current_patients ?? 0) < 1) {
+            throw new Error(`doctor current_patients was not incremented`);
+          }
+
+          return { data, error: null };
+        },
+      },
+      {
+        caseId: 'DR2',
+        role: 'orgAdmin',
+        action: 'assign_doctor_to_emergency',
+        fromStatus: 'accepted_reassign',
+        expectSuccess: true,
+        execute: async (client) => {
+          const requestId = await createRequest({ status: 'accepted', ambulanceId: ctx.ambulanceId });
+          const { data: firstAssign, error: firstAssignErr } = await clients.orgAdmin.rpc(
+            'assign_doctor_to_emergency',
+            {
+              p_emergency_request_id: requestId,
+              p_doctor_id: ctx.doctorId,
+              p_notes: 'matrix first doctor',
+            }
+          );
+          if (firstAssignErr) throw firstAssignErr;
+          if (!firstAssign?.success) throw new Error(firstAssign?.error || 'first doctor assignment failed');
+
+          const { data, error } = await client.rpc('assign_doctor_to_emergency', {
+            p_emergency_request_id: requestId,
+            p_doctor_id: ctx.doctorOtherId,
+            p_notes: 'matrix doctor reassignment',
+          });
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || 'doctor reassignment failed');
+
+          const { data: reqAfter, error: reqAfterErr } = await admin
+            .from('emergency_requests')
+            .select('id,assigned_doctor_id')
+            .eq('id', requestId)
+            .single();
+          if (reqAfterErr) throw new Error(`reassigned request lookup failed: ${reqAfterErr.message}`);
+          if (reqAfter.assigned_doctor_id !== ctx.doctorOtherId) {
+            throw new Error('reassignment did not switch assigned_doctor_id');
+          }
+
+          const { data: assignmentRows, error: assignmentRowsErr } = await admin
+            .from('emergency_doctor_assignments')
+            .select('doctor_id,status')
+            .eq('emergency_request_id', requestId);
+          if (assignmentRowsErr) throw new Error(`assignment rows lookup failed: ${assignmentRowsErr.message}`);
+
+          const hasCancelledPrevious = (assignmentRows || []).some(
+            (row) => row.doctor_id === ctx.doctorId && row.status === 'cancelled'
+          );
+          const hasAssignedNew = (assignmentRows || []).some(
+            (row) => row.doctor_id === ctx.doctorOtherId && row.status === 'assigned'
+          );
+          if (!hasCancelledPrevious || !hasAssignedNew) {
+            throw new Error('doctor reassignment row statuses are inconsistent');
+          }
+
+          const { data: doctorsAfter, error: doctorsAfterErr } = await admin
+            .from('doctors')
+            .select('id,current_patients')
+            .in('id', [ctx.doctorId, ctx.doctorOtherId]);
+          if (doctorsAfterErr) throw new Error(`doctor load mirror lookup failed: ${doctorsAfterErr.message}`);
+          const loadByDoctor = new Map((doctorsAfter || []).map((row) => [row.id, row.current_patients ?? 0]));
+          if ((loadByDoctor.get(ctx.doctorId) ?? -1) !== 0) {
+            throw new Error('previous doctor load was not released on reassignment');
+          }
+          if ((loadByDoctor.get(ctx.doctorOtherId) ?? 0) < 1) {
+            throw new Error('new doctor load was not incremented on reassignment');
+          }
+
+          return { data, error: null };
+        },
+      },
+      {
+        caseId: 'DR3',
+        role: 'viewer',
+        action: 'assign_doctor_to_emergency',
+        fromStatus: 'accepted',
+        expectSuccess: false,
+        execute: async (client) => {
+          const requestId = await createRequest({ status: 'accepted', ambulanceId: ctx.ambulanceId });
+          return client.rpc('assign_doctor_to_emergency', {
+            p_emergency_request_id: requestId,
+            p_doctor_id: ctx.doctorId,
+            p_notes: 'viewer unauthorized test',
+          });
+        },
+      },
+      {
+        caseId: 'DR4',
+        role: 'orgAdmin',
+        action: 'assign_doctor_to_emergency',
+        fromStatus: 'accepted_doctor_unavailable',
+        expectSuccess: false,
+        execute: async (client) => {
+          const requestId = await createRequest({ status: 'accepted', ambulanceId: ctx.ambulanceId });
+          const { error: doctorFillErr } = await admin
+            .from('doctors')
+            .update({
+              status: 'available',
+              is_available: true,
+              current_patients: 4,
+              max_patients: 4,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', ctx.doctorOtherId);
+          if (doctorFillErr) throw new Error(`doctor load setup failed: ${doctorFillErr.message}`);
+
+          return client.rpc('assign_doctor_to_emergency', {
+            p_emergency_request_id: requestId,
+            p_doctor_id: ctx.doctorOtherId,
+            p_notes: 'full doctor denial test',
+          });
+        },
+      },
+      {
+        caseId: 'DR5',
+        role: 'orgAdmin',
+        action: 'assign_doctor_to_emergency',
+        fromStatus: 'completed',
+        expectSuccess: false,
+        execute: async (client) => {
+          const requestId = await createRequest({ status: 'completed', ambulanceId: ctx.ambulanceId });
+          return client.rpc('assign_doctor_to_emergency', {
+            p_emergency_request_id: requestId,
+            p_doctor_id: ctx.doctorId,
+            p_notes: 'terminal request guard',
+          });
+        },
+      },
+      {
+        caseId: 'DR6',
+        role: 'orgAdmin',
+        action: 'assign_ambulance_to_emergency',
+        fromStatus: 'accepted_doctor_closed_loop_reassign',
+        expectSuccess: true,
+        execute: async (client) => {
+          const requestId = await createRequest({
+            status: 'accepted',
+            responderId: ctx.users.providerAssigned.id,
+            ambulanceId: ctx.ambulanceId,
+          });
+
+          const { data: firstAssign, error: firstAssignErr } = await clients.orgAdmin.rpc(
+            'assign_doctor_to_emergency',
+            {
+              p_emergency_request_id: requestId,
+              p_doctor_id: ctx.doctorId,
+              p_notes: 'pre-reassignment doctor setup',
+            }
+          );
+          if (firstAssignErr) throw firstAssignErr;
+          if (!firstAssign?.success) throw new Error(firstAssign?.error || 'doctor setup assignment failed');
+
+          await admin
+            .from('doctors')
+            .update({
+              status: 'off_duty',
+              is_available: false,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', ctx.doctorId);
+
+          await admin
+            .from('doctors')
+            .update({
+              status: 'available',
+              is_available: true,
+              current_patients: 0,
+              max_patients: 4,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', ctx.doctorOtherId);
+
+          await resetAmbulance();
+          const { data, error } = await client.rpc('assign_ambulance_to_emergency', {
+            p_emergency_request_id: requestId,
+            p_ambulance_id: ctx.ambulanceOtherId,
+            p_priority: 1,
+          });
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || 'ambulance reassignment failed');
+
+          const { data: reqAfter, error: reqAfterErr } = await admin
+            .from('emergency_requests')
+            .select('id,assigned_doctor_id,ambulance_id')
+            .eq('id', requestId)
+            .single();
+          if (reqAfterErr) throw new Error(`closed-loop request lookup failed: ${reqAfterErr.message}`);
+          if (reqAfter.ambulance_id !== ctx.ambulanceOtherId) {
+            throw new Error('ambulance reassignment did not persist');
+          }
+          if (reqAfter.assigned_doctor_id !== ctx.doctorOtherId) {
+            throw new Error('doctor was not automatically reassigned after ambulance reassignment');
+          }
+
+          const { data: assignmentRows, error: assignmentRowsErr } = await admin
+            .from('emergency_doctor_assignments')
+            .select('doctor_id,status')
+            .eq('emergency_request_id', requestId);
+          if (assignmentRowsErr) throw new Error(`closed-loop assignment row lookup failed: ${assignmentRowsErr.message}`);
+
+          const hasCancelledPrevious = (assignmentRows || []).some(
+            (row) => row.doctor_id === ctx.doctorId && row.status === 'cancelled'
+          );
+          const hasAssignedReplacement = (assignmentRows || []).some(
+            (row) => row.doctor_id === ctx.doctorOtherId && row.status === 'assigned'
+          );
+          if (!hasCancelledPrevious || !hasAssignedReplacement) {
+            throw new Error('closed-loop reassignment rows not consistent');
+          }
+
+          const { data: doctorsAfter, error: doctorsAfterErr } = await admin
+            .from('doctors')
+            .select('id,current_patients')
+            .in('id', [ctx.doctorId, ctx.doctorOtherId]);
+          if (doctorsAfterErr) throw new Error(`closed-loop doctor load lookup failed: ${doctorsAfterErr.message}`);
+          const loadByDoctor = new Map((doctorsAfter || []).map((row) => [row.id, row.current_patients ?? 0]));
+          if ((loadByDoctor.get(ctx.doctorId) ?? -1) !== 0) {
+            throw new Error('closed-loop reassignment did not release previous doctor load');
+          }
+          if ((loadByDoctor.get(ctx.doctorOtherId) ?? 0) < 1) {
+            throw new Error('closed-loop reassignment did not increment replacement doctor load');
+          }
+
+          return { data, error: null };
         },
       },
       {
@@ -911,6 +1274,14 @@ async function main() {
         },
         report.cleanupWarnings
       );
+
+      await safeRun(
+        `reset doctors after ${tc.caseId}`,
+        async () => {
+          await resetDoctors();
+        },
+        report.cleanupWarnings
+      );
     }
   } finally {
     // Cleanup (best effort)
@@ -923,6 +1294,26 @@ async function main() {
             .from('ambulances')
             .update({ status: 'available', current_call: null, eta: null, updated_at: new Date().toISOString() })
             .in('id', ambulanceIds);
+        }
+      },
+      report.cleanupWarnings
+    );
+
+    await safeRun(
+      'reset doctors',
+      async () => {
+        const doctorIds = [ctx.doctorId, ctx.doctorOtherId].filter(Boolean);
+        if (doctorIds.length > 0) {
+          await admin
+            .from('doctors')
+            .update({
+              status: 'available',
+              is_available: true,
+              max_patients: 4,
+              current_patients: 0,
+              updated_at: new Date().toISOString(),
+            })
+            .in('id', doctorIds);
         }
       },
       report.cleanupWarnings
@@ -968,6 +1359,18 @@ async function main() {
           const ambulanceIds = [ctx.ambulanceId, ctx.ambulanceOtherId].filter(Boolean);
           if (ambulanceIds.length > 0) {
             const { error } = await admin.from('ambulances').delete().in('id', ambulanceIds);
+            if (error) throw new Error(error.message);
+          }
+        },
+        report.cleanupWarnings
+      );
+
+      await safeRun(
+        'delete doctors',
+        async () => {
+          const doctorIds = [ctx.doctorId, ctx.doctorOtherId].filter(Boolean);
+          if (doctorIds.length > 0) {
+            const { error } = await admin.from('doctors').delete().in('id', doctorIds);
             if (error) throw new Error(error.message);
           }
         },

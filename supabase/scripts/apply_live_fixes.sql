@@ -513,6 +513,201 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION public.assign_doctor_to_emergency(
+    p_emergency_request_id UUID,
+    p_doctor_id UUID,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_is_service_role BOOLEAN := COALESCE(current_setting('request.jwt.claim.role', true), '') = 'service_role';
+    v_is_admin BOOLEAN := public.p_is_admin();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_req_status TEXT;
+    v_req_hospital_id UUID;
+    v_req_org_id UUID;
+    v_existing_doctor_id UUID;
+    v_doctor_hospital_id UUID;
+    v_doctor_org_id UUID;
+    v_doctor_is_available BOOLEAN;
+    v_doctor_status TEXT;
+    v_doctor_current_patients INTEGER;
+    v_doctor_max_patients INTEGER;
+    v_has_active_same_doctor BOOLEAN := FALSE;
+BEGIN
+    IF p_emergency_request_id IS NULL OR p_doctor_id IS NULL THEN
+        RAISE EXCEPTION 'emergency request id and doctor id are required';
+    END IF;
+
+    SELECT role, organization_id
+    INTO v_actor_role, v_actor_org_id
+    FROM public.profiles
+    WHERE id = v_actor_id;
+
+    IF NOT v_is_service_role AND v_actor_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    SELECT er.status, er.hospital_id, h.organization_id, er.assigned_doctor_id
+    INTO v_req_status, v_req_hospital_id, v_req_org_id, v_existing_doctor_id
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = p_emergency_request_id
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Emergency request not found',
+            'code', 'REQUEST_NOT_FOUND'
+        );
+    END IF;
+
+    v_req_status := public.canonicalize_emergency_status(v_req_status, v_req_status);
+    IF v_req_status IN ('completed', 'cancelled', 'payment_declined') THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Cannot assign doctor to terminal emergency request',
+            'code', 'REQUEST_TERMINAL'
+        );
+    END IF;
+
+    SELECT
+        d.hospital_id,
+        h.organization_id,
+        COALESCE(d.is_available, false),
+        LOWER(COALESCE(d.status, '')),
+        COALESCE(d.current_patients, 0),
+        GREATEST(COALESCE(NULLIF(d.max_patients, 0), 1), 1)
+    INTO
+        v_doctor_hospital_id,
+        v_doctor_org_id,
+        v_doctor_is_available,
+        v_doctor_status,
+        v_doctor_current_patients,
+        v_doctor_max_patients
+    FROM public.doctors d
+    LEFT JOIN public.hospitals h ON h.id = d.hospital_id
+    WHERE d.id = p_doctor_id
+    FOR UPDATE OF d;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Doctor not found',
+            'code', 'DOCTOR_NOT_FOUND'
+        );
+    END IF;
+
+    IF NOT v_is_service_role AND NOT v_is_admin THEN
+        IF v_actor_role NOT IN ('org_admin', 'dispatcher') THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        IF v_actor_org_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        IF v_req_org_id IS NOT NULL AND v_actor_org_id IS DISTINCT FROM v_req_org_id THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        IF v_doctor_org_id IS NOT NULL AND v_actor_org_id IS DISTINCT FROM v_doctor_org_id THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+    END IF;
+
+    IF v_req_hospital_id IS NOT NULL AND v_doctor_hospital_id IS DISTINCT FROM v_req_hospital_id THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Doctor does not belong to request hospital',
+            'code', 'DOCTOR_HOSPITAL_MISMATCH'
+        );
+    END IF;
+
+    IF NOT v_doctor_is_available
+       OR v_doctor_status <> 'available'
+       OR v_doctor_current_patients >= v_doctor_max_patients THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Doctor is not available',
+            'code', 'DOCTOR_UNAVAILABLE'
+        );
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.emergency_doctor_assignments eda
+        WHERE eda.emergency_request_id = p_emergency_request_id
+          AND eda.doctor_id = p_doctor_id
+          AND eda.status = 'assigned'
+    ) INTO v_has_active_same_doctor;
+
+    IF v_existing_doctor_id = p_doctor_id THEN
+        IF NOT v_has_active_same_doctor THEN
+            INSERT INTO public.emergency_doctor_assignments (emergency_request_id, doctor_id, status, notes)
+            VALUES (p_emergency_request_id, p_doctor_id, 'assigned', NULLIF(BTRIM(p_notes), ''));
+        END IF;
+
+        UPDATE public.emergency_requests
+        SET doctor_assigned_at = COALESCE(doctor_assigned_at, NOW()),
+            updated_at = NOW()
+        WHERE id = p_emergency_request_id;
+
+        RETURN jsonb_build_object(
+            'success', true,
+            'doctor_id', p_doctor_id,
+            'previous_doctor_id', v_existing_doctor_id,
+            'reassigned', false,
+            'idempotent', true
+        );
+    END IF;
+
+    WITH released_assignments AS (
+        UPDATE public.emergency_doctor_assignments
+        SET status = 'cancelled',
+            updated_at = NOW()
+        WHERE emergency_request_id = p_emergency_request_id
+          AND status = 'assigned'
+        RETURNING doctor_id
+    ),
+    released_counts AS (
+        SELECT doctor_id, COUNT(*)::INTEGER AS release_count
+        FROM released_assignments
+        WHERE doctor_id IS NOT NULL
+        GROUP BY doctor_id
+    )
+    UPDATE public.doctors d
+    SET current_patients = GREATEST(0, COALESCE(d.current_patients, 0) - rc.release_count),
+        updated_at = NOW()
+    FROM released_counts rc
+    WHERE d.id = rc.doctor_id;
+
+    INSERT INTO public.emergency_doctor_assignments (emergency_request_id, doctor_id, status, notes)
+    VALUES (p_emergency_request_id, p_doctor_id, 'assigned', NULLIF(BTRIM(p_notes), ''));
+
+    UPDATE public.doctors
+    SET current_patients = COALESCE(current_patients, 0) + 1,
+        updated_at = NOW()
+    WHERE id = p_doctor_id;
+
+    UPDATE public.emergency_requests
+    SET assigned_doctor_id = p_doctor_id,
+        doctor_assigned_at = NOW(),
+        updated_at = NOW()
+    WHERE id = p_emergency_request_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'doctor_id', p_doctor_id,
+        'previous_doctor_id', v_existing_doctor_id,
+        'reassigned', v_existing_doctor_id IS DISTINCT FROM p_doctor_id
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 CREATE OR REPLACE FUNCTION public.approve_cash_payment(
     p_payment_id UUID,
     p_request_id UUID

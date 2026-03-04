@@ -128,8 +128,10 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
   - `EmergencyContext` map merge path now applies stale-event guards (timestamp/version gate) across `emergency_requests` + `ambulances` realtime channels.
 - Driver telemetry + map truth-sync hardening (2026-03-04):
   - Console `GodModeMap` streams driver telemetry in active-trip mode (`in_progress`/`accepted`/`arrived`) with interval + distance throttling.
-  - Console `MapContext` now applies freshness-based realtime reconciliation (`updated_at`/`created_at`), drops stale events, and runs silent truth-sync refresh on interval and channel recovery statuses.
+  - Console `MapContext` now applies freshness-based realtime reconciliation (`updated_at`/`created_at`), drops stale events, and runs silent truth-sync refresh on interval, recovery statuses, and post-failover resubscribe transitions.
   - `run_console_transition_matrix` now enforces telemetry mirror invariants for responder updates (`emergency_requests.responder_location` + `ambulances.location` + call linkage + timestamp coherence).
+  - `assign_doctor_to_emergency` now enforces deterministic reassignment semantics (org scope guardrails, terminal-state denial, previous-assignment cancellation, doctor-load counter rebalance, idempotent same-doctor replay).
+  - `run_console_transition_matrix` now covers doctor assignment lifecycle continuity (`DR1`-`DR6`), including closed-loop auto-reassignment after ambulance/request reassignment mid-trip.
   - Reassignment continuity hardened:
     - `assign_ambulance_to_emergency` now rebases responder identity to the newly assigned ambulance driver.
     - responder display metadata now rehydrates from the newly assigned unit (name/vehicle), avoiding stale legacy responder labels.
