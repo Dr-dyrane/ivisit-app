@@ -62,6 +62,7 @@ ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
 -- Analytics Tables (UPDATED for 0006)
 ALTER TABLE public.user_activity ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.search_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.search_selections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.search_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trending_topics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_audit_log ENABLE ROW LEVEL SECURITY;
@@ -230,6 +231,9 @@ CREATE POLICY "Public read for support faqs" ON public.support_faqs FOR SELECT U
 -- 9. ANALYTICS
 CREATE POLICY "Users see own activity" ON public.user_activity FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users manage own search history" ON public.search_history FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users manage own search selections" ON public.search_selections FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Public insert search selections" ON public.search_selections FOR INSERT TO public WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+CREATE POLICY "Admins read search selections" ON public.search_selections FOR SELECT USING (public.p_is_admin());
 
 -- 10. MISSING RLS ENABLES
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;

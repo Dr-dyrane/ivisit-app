@@ -263,6 +263,26 @@ node supabase/tests/scripts/cleanup_test_side_effects.js --apply
 
 This targets test-pattern users and their linked side effects (`emergency_requests`, `visits`, `payments`, `notifications`, `doctors`, and related rows) without touching non-test identities.
 
+### **Commit Gate: Cleanup Must Be Zero**
+Before every commit/push after running tests:
+
+1. Run preview cleanup and inspect planned counts:
+```bash
+node supabase/tests/scripts/cleanup_test_side_effects.js
+```
+2. If any planned counts are non-zero, run apply:
+```bash
+node supabase/tests/scripts/cleanup_test_side_effects.js --apply
+```
+3. Run preview again and confirm all planned counts are zero.
+4. Run the dry-run guard (must pass):
+```bash
+npm run hardening:cleanup-dry-run-guard
+```
+
+The cleanup script also targets matrix/e2e hospital/org artifacts (including isolated org wallets/payments) when safely deletable.
+Do not ship test-generated side effects to shared environments.
+
 ### **Load Testing**
 - **Concurrent requests**: Multiple emergency creations
 - **Transaction integrity**: Payment processing under load

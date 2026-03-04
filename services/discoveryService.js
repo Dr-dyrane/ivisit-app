@@ -70,7 +70,7 @@ export const discoveryService = {
 					query: payload.query,
 					source: payload.source,
 					selected_key: payload.result_id,
-					extra: {
+					metadata: {
 						result_type: payload.result_type,
 						origin: 'search_selection_fallback',
 					},
@@ -136,7 +136,7 @@ export const discoveryService = {
 				query: typeof query === "string" ? query : null,
 				source: "conversion",
 				selected_key: typeof action === "string" ? action : null,
-				extra: {
+				metadata: {
 					hospitalId: hospitalId ? String(hospitalId) : null,
 					mode: typeof mode === "string" ? mode : null,
 				},

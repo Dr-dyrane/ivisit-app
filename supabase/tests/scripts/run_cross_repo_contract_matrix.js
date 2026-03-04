@@ -160,6 +160,49 @@ function extractSelectColumns(windowText) {
   return columns;
 }
 
+function extractStatementWindow(sourceText, fromIndex, maxLength = 2500) {
+  const hardEnd = Math.min(sourceText.length, fromIndex + maxLength);
+  let depthParen = 0;
+  let depthBracket = 0;
+  let depthBrace = 0;
+  let quote = null;
+  let escaped = false;
+
+  for (let i = fromIndex; i < hardEnd; i += 1) {
+    const ch = sourceText[i];
+
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'" || ch === '`') {
+      quote = ch;
+      continue;
+    }
+    if (ch === '(') depthParen += 1;
+    if (ch === ')') depthParen = Math.max(0, depthParen - 1);
+    if (ch === '[') depthBracket += 1;
+    if (ch === ']') depthBracket = Math.max(0, depthBracket - 1);
+    if (ch === '{') depthBrace += 1;
+    if (ch === '}') depthBrace = Math.max(0, depthBrace - 1);
+
+    if (ch === ';' && depthParen === 0 && depthBracket === 0 && depthBrace === 0) {
+      return sourceText.slice(fromIndex, i + 1);
+    }
+  }
+
+  return sourceText.slice(fromIndex, hardEnd);
+}
+
 function extractFirstObjectLiteral(sourceText, fromIndex) {
   const maxSearch = Math.min(sourceText.length, fromIndex + 2000);
   let start = -1;
@@ -641,7 +684,7 @@ function scanFileForUsage(filePath, tableUsageMap, rpcUsageMap) {
     const table = match[1];
     const index = match.index;
     const line = indexToLine(content, index);
-    const localWindow = content.slice(index, Math.min(content.length, index + 2500));
+    const localWindow = extractStatementWindow(content, index, 2500);
 
     if (!tableUsageMap.has(table)) tableUsageMap.set(table, makeEmptyTableUsage(table));
     const usage = tableUsageMap.get(table);

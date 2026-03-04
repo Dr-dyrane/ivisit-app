@@ -229,6 +229,29 @@ Test SQL → Test → Verify → Update Core Migration → Delete Test SQL → R
    Temporary   Temporary   Temporary        Permanent      Temporary        Internal         Permanent
 ```
 
+### **Zero Side-Effect Cleanup Gate (Required)**
+Test artifacts must be cleaned **every time** before commit/push. This is a hard gate, not optional.
+
+```bash
+# 1) Preview candidates (must review output)
+node supabase/tests/scripts/cleanup_test_side_effects.js
+
+# 2) Apply cleanup for matched test artifacts
+node supabase/tests/scripts/cleanup_test_side_effects.js --apply
+
+# 3) Re-run preview and confirm all planned counts are zero
+node supabase/tests/scripts/cleanup_test_side_effects.js
+
+# 4) Enforced guard (fails if planned counts are non-zero)
+npm run hardening:cleanup-dry-run-guard
+```
+
+Rules:
+- Do not push if cleanup preview still shows planned test rows.
+- CI also enforces this via `cleanup-side-effects-guard` workflow on push/pull_request.
+- Keep test identifiers patterned (`*-matrix-*`, `flow-matrix-*`, `cash-role-matrix-*`, `mutation-role-matrix-*`, `@ivisit-e2e.local`) so cleanup is deterministic.
+- Cleanup must run after test suites and before final validation/commit.
+
 ### **Error Classification**
 | Type | Impact | Action |
 |---|---|---|

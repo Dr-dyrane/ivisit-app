@@ -6,6 +6,7 @@ const path = require('path');
 const ROOT = process.cwd();
 const CONSOLE_FRONTEND = path.resolve(ROOT, '..', 'ivisit-console', 'frontend');
 const TYPES_FILE = path.join(ROOT, 'types', 'database.ts');
+const CONSOLE_TYPES_FILE = path.join(CONSOLE_FRONTEND, 'src', 'types', 'database.ts');
 
 if (!fs.existsSync(CONSOLE_FRONTEND)) {
   console.error('[console-ui-crud-contract] Missing ivisit-console frontend path:', CONSOLE_FRONTEND);
@@ -243,6 +244,130 @@ const UI_SURFACES = [
     dynamicCreatePayload: true,
     dynamicUpdatePayload: true,
     skipPageWiring: true,
+  },
+  {
+    id: 'organization_wallets',
+    table: 'organization_wallets',
+    modal: 'src/components/pages/WalletManagementPage.jsx',
+    page: 'src/components/pages/WalletManagementPage.jsx',
+    service: 'src/services/walletService.js',
+    createFn: 'getWalletSummary',
+    updateFn: 'getWalletSummary',
+    readOnlySurface: true,
+    preferConsoleTypes: true,
+    skipModalFieldExtraction: true,
+    skipPageWiring: true,
+    dynamicCreatePayload: true,
+    dynamicUpdatePayload: true,
+  },
+  {
+    id: 'wallet_ledger',
+    table: 'wallet_ledger',
+    modal: 'src/components/pages/WalletManagementPage.jsx',
+    page: 'src/components/pages/WalletManagementPage.jsx',
+    service: 'src/services/walletService.js',
+    createFn: 'backfillMissingFeeLedger',
+    updateFn: 'backfillMissingFeeLedger',
+    preferConsoleTypes: true,
+    skipModalFieldExtraction: true,
+    skipPageWiring: true,
+    dynamicCreatePayload: true,
+    dynamicUpdatePayload: true,
+  },
+  {
+    id: 'payments',
+    table: 'payments',
+    modal: 'src/components/pages/WalletManagementPage.jsx',
+    page: 'src/components/pages/WalletManagementPage.jsx',
+    service: 'src/services/walletService.js',
+    createFn: 'processCashPayment',
+    updateFn: 'backfillMissingFeeLedger',
+    preferConsoleTypes: true,
+    skipModalFieldExtraction: true,
+    skipPageWiring: true,
+    dynamicCreatePayload: true,
+    dynamicUpdatePayload: true,
+  },
+  {
+    id: 'payment_methods',
+    table: 'payment_methods',
+    modal: 'src/components/pages/WalletManagementPage.jsx',
+    page: 'src/components/pages/WalletManagementPage.jsx',
+    service: 'src/services/walletService.js',
+    createFn: 'createSetupIntent',
+    updateFn: 'setPayoutMethod',
+    preferConsoleTypes: true,
+    skipModalFieldExtraction: true,
+    skipPageWiring: true,
+    dynamicCreatePayload: true,
+    dynamicUpdatePayload: true,
+  },
+  {
+    id: 'support_faqs',
+    table: 'support_faqs',
+    modal: 'src/services/supportFaqsService.js',
+    page: 'src/services/supportFaqsService.js',
+    service: 'src/services/supportFaqsService.js',
+    createFn: 'createSupportFAQ',
+    updateFn: 'updateSupportFAQ',
+    preferConsoleTypes: true,
+    skipModalFieldExtraction: true,
+    skipPageWiring: true,
+    dynamicUpdatePayload: true,
+  },
+  {
+    id: 'search_events',
+    table: 'search_events',
+    modal: 'src/services/searchEventsService.js',
+    page: 'src/services/searchEventsService.js',
+    service: 'src/services/searchEventsService.js',
+    createFn: 'createSearchEvent',
+    updateFn: 'createSearchEvent',
+    skipModalFieldExtraction: true,
+    skipPageWiring: true,
+    dynamicCreatePayload: true,
+    dynamicUpdatePayload: true,
+  },
+  {
+    id: 'search_history',
+    table: 'search_history',
+    modal: 'src/services/searchHistoryService.js',
+    page: 'src/services/searchHistoryService.js',
+    service: 'src/services/searchHistoryService.js',
+    createFn: 'createSearchHistory',
+    updateFn: 'createSearchHistory',
+    preferConsoleTypes: true,
+    skipModalFieldExtraction: true,
+    skipPageWiring: true,
+    dynamicCreatePayload: true,
+    dynamicUpdatePayload: true,
+  },
+  {
+    id: 'search_selections',
+    table: 'search_selections',
+    modal: 'src/services/searchSelectionsService.js',
+    page: 'src/services/searchSelectionsService.js',
+    service: 'src/services/searchSelectionsService.js',
+    createFn: 'createSearchSelection',
+    updateFn: 'updateSearchSelection',
+    preferConsoleTypes: true,
+    skipModalFieldExtraction: true,
+    skipPageWiring: true,
+    dynamicCreatePayload: true,
+    dynamicUpdatePayload: true,
+  },
+  {
+    id: 'medical_profiles',
+    table: 'medical_profiles',
+    modal: 'src/services/medicalProfilesService.js',
+    page: 'src/services/medicalProfilesService.js',
+    service: 'src/services/medicalProfilesService.js',
+    createFn: 'createMedicalProfile',
+    updateFn: 'updateMedicalProfile',
+    preferConsoleTypes: true,
+    skipModalFieldExtraction: true,
+    skipPageWiring: true,
+    dynamicUpdatePayload: true,
   },
 ];
 
@@ -774,28 +899,42 @@ function includesAny(content, candidates) {
   return candidates.some((candidate) => typeof candidate === 'string' && candidate && content.includes(candidate));
 }
 
-function resolveTableMetaFromTypes(tableName, typeContent) {
-  const publicBlock = findKeyBlock(typeContent, 'public');
-  const tablesBlock = publicBlock ? findKeyBlock(publicBlock, 'Tables') : null;
-  const tableBlock = tablesBlock ? findKeyBlock(tablesBlock, tableName) : null;
-  if (!tableBlock) return { columns: [], required_insert_columns: [], relationships: [] };
-  const rowBlock = findKeyBlock(tableBlock, 'Row');
-  const insertBlock = findKeyBlock(tableBlock, 'Insert');
-  const relationshipsBlock = findKeyArrayBlock(tableBlock, 'Relationships');
-  const rowProps = extractTsObjectProps(rowBlock);
-  const insertProps = extractTsObjectProps(insertBlock);
-  return {
-    columns: uniq(rowProps.map((p) => p.key)).sort(),
-    required_insert_columns: uniq(insertProps.filter((p) => !p.optional).map((p) => p.key)).sort(),
-    relationships: parseRelationships(relationshipsBlock),
-  };
+function resolveTableMetaFromTypes(tableName, typeContents) {
+  const contents = Array.isArray(typeContents) ? typeContents : [typeContents];
+
+  for (const typeContent of contents) {
+    if (!typeContent) continue;
+    const publicBlock = findKeyBlock(typeContent, 'public');
+    const tablesBlock = publicBlock ? findKeyBlock(publicBlock, 'Tables') : null;
+    const tableBlock = tablesBlock ? findKeyBlock(tablesBlock, tableName) : null;
+    if (!tableBlock) continue;
+    const rowBlock = findKeyBlock(tableBlock, 'Row');
+    const insertBlock = findKeyBlock(tableBlock, 'Insert');
+    const relationshipsBlock = findKeyArrayBlock(tableBlock, 'Relationships');
+    const rowProps = extractTsObjectProps(rowBlock);
+    const insertProps = extractTsObjectProps(insertBlock);
+    return {
+      columns: uniq(rowProps.map((p) => p.key)).sort(),
+      required_insert_columns: uniq(insertProps.filter((p) => !p.optional).map((p) => p.key)).sort(),
+      relationships: parseRelationships(relationshipsBlock),
+    };
+  }
+
+  return { columns: [], required_insert_columns: [], relationships: [] };
 }
 
 function run() {
   const startedAt = nowIso();
   console.log(`[console-ui-crud-contract] Starting at ${startedAt}`);
 
-  const typeContent = safeRead(TYPES_FILE);
+  const appTypeContent = safeRead(TYPES_FILE);
+  const consoleTypeContent = safeRead(CONSOLE_TYPES_FILE);
+  if (!appTypeContent && !consoleTypeContent) {
+    console.error(
+      `[console-ui-crud-contract] Missing type files: ${TYPES_FILE} and ${CONSOLE_TYPES_FILE}`
+    );
+    process.exit(1);
+  }
   const surfaces = [];
 
   for (const surface of UI_SURFACES) {
@@ -806,12 +945,17 @@ function run() {
     const modalContent = safeRead(modalPath);
     const pageContent = safeRead(pagePath);
     const serviceContent = safeRead(servicePath);
-    const tableMeta = resolveTableMetaFromTypes(surface.table, typeContent);
+    const orderedTypeContents = surface.preferConsoleTypes
+      ? [consoleTypeContent, appTypeContent]
+      : [appTypeContent, consoleTypeContent];
+    const tableMeta = resolveTableMetaFromTypes(surface.table, orderedTypeContents);
 
-    const modalFields = extractModalFieldKeys(modalContent, {
-      stateVar: surface.modalStateVar,
-      setStateVar: surface.modalSetStateVar,
-    });
+    const modalFields = surface.skipModalFieldExtraction
+      ? []
+      : extractModalFieldKeys(modalContent, {
+          stateVar: surface.modalStateVar,
+          setStateVar: surface.modalSetStateVar,
+        });
     const createFnBody = extractFunctionBody(serviceContent, surface.createFn);
     const updateFnBody = extractFunctionBody(serviceContent, surface.updateFn);
 
@@ -869,13 +1013,21 @@ function run() {
     const updateLinked = surface.skipPageWiring ? true : includesAny(pageContent, updateCandidates);
 
     const risks = [];
-    if (missingRequiredCreateColumns.length > 0 && !surface.dynamicCreatePayload) {
+    if (
+      !surface.readOnlySurface &&
+      missingRequiredCreateColumns.length > 0 &&
+      !surface.dynamicCreatePayload
+    ) {
       risks.push('missing_required_create_columns');
     }
     if (tableMeta.columns.length > 0 && serviceUnknownColumns.length > 0) {
       risks.push('service_unknown_columns');
     }
-    if (modalDbFieldsNotPersisted.length > 0 && !surface.dynamicUpdatePayload) {
+    if (
+      !surface.readOnlySurface &&
+      modalDbFieldsNotPersisted.length > 0 &&
+      !surface.dynamicUpdatePayload
+    ) {
       risks.push('modal_db_fields_not_persisted');
     }
     if (!surface.skipPageWiring && (!createLinked || !updateLinked)) {
@@ -890,6 +1042,7 @@ function run() {
       service: surface.service,
       create_fn: surface.createFn,
       update_fn: surface.updateFn,
+      read_only_surface: !!surface.readOnlySurface,
       dynamic_create_payload: !!surface.dynamicCreatePayload,
       dynamic_update_payload: !!surface.dynamicUpdatePayload,
       modal_field_count: modalFields.length,

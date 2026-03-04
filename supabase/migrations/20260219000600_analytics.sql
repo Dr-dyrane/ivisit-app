@@ -32,6 +32,16 @@ CREATE TABLE IF NOT EXISTS public.search_history (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.search_selections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    query TEXT NOT NULL,
+    result_type TEXT NOT NULL,
+    result_id TEXT NOT NULL,
+    source TEXT DEFAULT 'search',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS public.search_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     query TEXT,
@@ -40,6 +50,15 @@ CREATE TABLE IF NOT EXISTS public.search_events (
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_search_selections_user_id
+ON public.search_selections(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_search_selections_created_at
+ON public.search_selections(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_search_selections_query
+ON public.search_selections(query);
 
 CREATE TABLE IF NOT EXISTS public.trending_topics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

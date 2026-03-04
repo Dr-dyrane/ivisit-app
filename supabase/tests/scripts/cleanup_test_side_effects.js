@@ -31,6 +31,15 @@ const TEST_EMAIL_PATTERNS = [
 ];
 
 const TEST_NAME_MARKERS = ['test', 'e2e', 'matrix', 'seed'];
+const TEST_HOSPITAL_PATTERNS = [
+  /cash-role-matrix-/i,
+  /mutation-role-matrix-/i,
+  /console-matrix-/i,
+  /flow-matrix-/i,
+  /ivisit-e2e/i,
+  /\bmatrix hospital\b/i,
+  /\be2e hospital\b/i,
+];
 
 function isTestEmail(email) {
   const value = (email || '').trim().toLowerCase();
@@ -42,6 +51,12 @@ function hasTestMarker(value) {
   const text = (value || '').toLowerCase();
   if (!text) return false;
   return TEST_NAME_MARKERS.some((marker) => text.includes(marker));
+}
+
+function isTestHospitalRow(row) {
+  const text = `${row?.name || ''} ${row?.address || ''} ${row?.place_id || ''}`.toLowerCase();
+  if (!text.trim()) return false;
+  return TEST_HOSPITAL_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 function unique(values) {
@@ -71,6 +86,21 @@ async function fetchAll(table, columns) {
   }
 
   return allRows;
+}
+
+async function fetchAllOptional(table, columns) {
+  try {
+    return await fetchAll(table, columns);
+  } catch (error) {
+    const message = String(error?.message || '');
+    if (
+      message.includes(`Could not find the table 'public.${table}'`) ||
+      message.includes(`relation "${table}" does not exist`)
+    ) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 async function execSql(sql) {
@@ -144,6 +174,8 @@ async function main() {
   const [
     profiles,
     hospitals,
+    organizations,
+    organizationWallets,
     doctors,
     ambulances,
     emergencies,
@@ -155,20 +187,30 @@ async function main() {
     notifications,
     userActivity,
     walletLedger,
+    servicePricing,
+    roomPricing,
+    hospitalRooms,
+    hospitalImportLogs,
   ] = await Promise.all([
-    fetchAll('profiles', 'id,email'),
-    fetchAll('hospitals', 'id,org_admin_id'),
-    fetchAll('doctors', 'id,profile_id,email'),
-    fetchAll('ambulances', 'id,profile_id,call_sign'),
-    fetchAll('emergency_requests', 'id,user_id,hospital_name'),
-    fetchAll('visits', 'id,user_id,request_id,hospital_name'),
-    fetchAll('payments', 'id,user_id,emergency_request_id'),
+    fetchAll('profiles', 'id,email,organization_id'),
+    fetchAll('hospitals', 'id,org_admin_id,organization_id,name,address,place_id'),
+    fetchAll('organizations', 'id,name,contact_email'),
+    fetchAll('organization_wallets', 'id,organization_id'),
+    fetchAll('doctors', 'id,profile_id,email,hospital_id'),
+    fetchAll('ambulances', 'id,profile_id,call_sign,hospital_id'),
+    fetchAll('emergency_requests', 'id,user_id,hospital_id,hospital_name'),
+    fetchAll('visits', 'id,user_id,request_id,hospital_id,hospital_name'),
+    fetchAll('payments', 'id,user_id,organization_id,emergency_request_id'),
     fetchAll('insurance_billing', 'id,user_id,emergency_request_id'),
     fetchAll('emergency_doctor_assignments', 'id,doctor_id,emergency_request_id'),
     fetchAll('emergency_status_transitions', 'id,emergency_request_id'),
     fetchAll('notifications', 'id,user_id,target_id'),
     fetchAll('user_activity', 'id,user_id'),
-    fetchAll('wallet_ledger', 'id,reference_id'),
+    fetchAll('wallet_ledger', 'id,reference_id,wallet_id'),
+    fetchAllOptional('service_pricing', 'id,hospital_id'),
+    fetchAllOptional('room_pricing', 'id,hospital_id'),
+    fetchAllOptional('hospital_rooms', 'id,hospital_id'),
+    fetchAllOptional('hospital_import_logs', 'id,hospital_id'),
   ]);
 
   const testProfileIds = unique(profiles.filter((p) => isTestEmail(p.email)).map((p) => p.id));
@@ -177,20 +219,58 @@ async function main() {
       .filter((h) => testProfileIds.includes(h.org_admin_id))
       .map((h) => h.id)
   );
+  const testHospitalMarkerIds = unique(
+    hospitals
+      .filter((h) => isTestHospitalRow(h))
+      .map((h) => h.id)
+  );
+  const testHospitalIds = unique([...testHospitalAdminLinkIds, ...testHospitalMarkerIds]);
+
+  const testOrganizationByMarkerIds = unique(
+    organizations
+      .filter((org) => {
+        const markerSource = `${org.name || ''} ${org.contact_email || ''}`;
+        return TEST_HOSPITAL_PATTERNS.some((pattern) => pattern.test(markerSource));
+      })
+      .map((org) => org.id)
+  );
+
+  const candidateOrganizationIds = unique([
+    ...hospitals
+      .filter((h) => testHospitalIds.includes(h.id))
+      .map((h) => h.organization_id),
+    ...testOrganizationByMarkerIds,
+  ]);
+
   const testDoctorIds = unique(
     doctors
-      .filter((d) => testProfileIds.includes(d.profile_id) || isTestEmail(d.email))
+      .filter(
+        (d) =>
+          testProfileIds.includes(d.profile_id) ||
+          isTestEmail(d.email) ||
+          testHospitalIds.includes(d.hospital_id)
+      )
       .map((d) => d.id)
   );
   const testAmbulanceIds = unique(
     ambulances
-      .filter((a) => testProfileIds.includes(a.profile_id) || hasTestMarker(a.call_sign))
+      .filter(
+        (a) =>
+          testProfileIds.includes(a.profile_id) ||
+          hasTestMarker(a.call_sign) ||
+          testHospitalIds.includes(a.hospital_id)
+      )
       .map((a) => a.id)
   );
 
   const testEmergencyIds = unique(
     emergencies
-      .filter((er) => testProfileIds.includes(er.user_id) || hasTestMarker(er.hospital_name))
+      .filter(
+        (er) =>
+          testProfileIds.includes(er.user_id) ||
+          hasTestMarker(er.hospital_name) ||
+          testHospitalIds.includes(er.hospital_id)
+      )
       .map((er) => er.id)
   );
 
@@ -200,14 +280,20 @@ async function main() {
         (v) =>
           testProfileIds.includes(v.user_id) ||
           testEmergencyIds.includes(v.request_id) ||
-          hasTestMarker(v.hospital_name)
+          hasTestMarker(v.hospital_name) ||
+          testHospitalIds.includes(v.hospital_id)
       )
       .map((v) => v.id)
   );
 
   const testPaymentIds = unique(
     payments
-      .filter((p) => testProfileIds.includes(p.user_id) || testEmergencyIds.includes(p.emergency_request_id))
+      .filter(
+        (p) =>
+          testProfileIds.includes(p.user_id) ||
+          testEmergencyIds.includes(p.emergency_request_id) ||
+          candidateOrganizationIds.includes(p.organization_id)
+      )
       .map((p) => p.id)
   );
 
@@ -243,17 +329,67 @@ async function main() {
     userActivity.filter((a) => testProfileIds.includes(a.user_id)).map((a) => a.id)
   );
 
+  const safeOrganizationIds = unique(
+    candidateOrganizationIds.filter((organizationId) => {
+      const hasNonTestHospitals = hospitals.some(
+        (h) => h.organization_id === organizationId && !testHospitalIds.includes(h.id)
+      );
+      const hasNonTestProfiles = profiles.some(
+        (p) => p.organization_id === organizationId && !testProfileIds.includes(p.id)
+      );
+      const hasNonTestPayments = payments.some(
+        (p) => p.organization_id === organizationId && !testPaymentIds.includes(p.id)
+      );
+      return !hasNonTestHospitals && !hasNonTestProfiles && !hasNonTestPayments;
+    })
+  );
+
+  const testOrganizationWalletIds = unique(
+    organizationWallets
+      .filter((wallet) => safeOrganizationIds.includes(wallet.organization_id))
+      .map((wallet) => wallet.id)
+  );
+
+  const testServicePricingIds = unique(
+    servicePricing
+      .filter((row) => testHospitalIds.includes(row.hospital_id))
+      .map((row) => row.id)
+  );
+  const testRoomPricingIds = unique(
+    roomPricing
+      .filter((row) => testHospitalIds.includes(row.hospital_id))
+      .map((row) => row.id)
+  );
+  const testHospitalRoomIds = unique(
+    hospitalRooms
+      .filter((row) => testHospitalIds.includes(row.hospital_id))
+      .map((row) => row.id)
+  );
+  const testHospitalImportLogIds = unique(
+    hospitalImportLogs
+      .filter((row) => testHospitalIds.includes(row.hospital_id))
+      .map((row) => row.id)
+  );
+
   const paymentReferenceSet = new Set(testPaymentIds);
   const emergencyReferenceSet = new Set(testEmergencyIds);
   const testWalletLedgerIds = unique(
     walletLedger
-      .filter((l) => paymentReferenceSet.has(l.reference_id) || emergencyReferenceSet.has(l.reference_id))
+      .filter(
+        (l) =>
+          paymentReferenceSet.has(l.reference_id) ||
+          emergencyReferenceSet.has(l.reference_id) ||
+          testOrganizationWalletIds.includes(l.wallet_id)
+      )
       .map((l) => l.id)
   );
 
   report.planned = {
     profiles: testProfileIds.length,
+    hospitals: testHospitalIds.length,
     hospitals_org_admin_links: testHospitalAdminLinkIds.length,
+    organizations: safeOrganizationIds.length,
+    organization_wallets: testOrganizationWalletIds.length,
     doctors: testDoctorIds.length,
     ambulances: testAmbulanceIds.length,
     emergency_requests: testEmergencyIds.length,
@@ -264,6 +400,10 @@ async function main() {
     emergency_status_transitions: testTransitionIds.length,
     notifications: testNotificationIds.length,
     user_activity: testActivityIds.length,
+    service_pricing: testServicePricingIds.length,
+    room_pricing: testRoomPricingIds.length,
+    hospital_rooms: testHospitalRoomIds.length,
+    hospital_import_logs: testHospitalImportLogIds.length,
     wallet_ledger: testWalletLedgerIds.length,
     auth_users: testProfileIds.length,
   };
@@ -275,6 +415,11 @@ async function main() {
       .map((p) => p.email),
     testEmergencyIds: testEmergencyIds.slice(0, 10),
     testVisitIds: testVisitIds.slice(0, 10),
+    testHospitalNames: hospitals
+      .filter((h) => testHospitalIds.includes(h.id))
+      .slice(0, 10)
+      .map((h) => h.name),
+    safeOrganizationIds: safeOrganizationIds.slice(0, 10),
   };
 
   printSummary({ mode: report.mode, planned: report.planned, preview }, 'plan');
@@ -345,6 +490,31 @@ END $$;`);
 
     report.deleted.doctors = await deleteByIds('doctors', testDoctorIds, 'id', report);
     report.deleted.ambulances = await deleteByIds('ambulances', testAmbulanceIds, 'id', report);
+    report.deleted.service_pricing = await deleteByIds(
+      'service_pricing',
+      testServicePricingIds,
+      'id',
+      report
+    );
+    report.deleted.room_pricing = await deleteByIds(
+      'room_pricing',
+      testRoomPricingIds,
+      'id',
+      report
+    );
+    report.deleted.hospital_rooms = await deleteByIds(
+      'hospital_rooms',
+      testHospitalRoomIds,
+      'id',
+      report
+    );
+    report.deleted.hospital_import_logs = await deleteByIds(
+      'hospital_import_logs',
+      testHospitalImportLogIds,
+      'id',
+      report
+    );
+    report.deleted.hospitals = await deleteByIds('hospitals', testHospitalIds, 'id', report);
 
     if (testHospitalAdminLinkIds.length > 0) {
       const { data, error } = await supabase
@@ -361,6 +531,19 @@ END $$;`);
     } else {
       report.deleted.hospitals_org_admin_links = 0;
     }
+
+    report.deleted.organization_wallets = await deleteByIds(
+      'organization_wallets',
+      safeOrganizationIds,
+      'organization_id',
+      report
+    );
+    report.deleted.organizations = await deleteByIds(
+      'organizations',
+      safeOrganizationIds,
+      'id',
+      report
+    );
 
     report.deleted.profiles = await deleteByIds('profiles', testProfileIds, 'id', report);
 
@@ -390,11 +573,13 @@ END $$;`);
     }
   }
 
-  const [postEmergencies, postVisits, postDoctors, postProfiles] = await Promise.all([
-    fetchAll('emergency_requests', 'id,user_id,hospital_name'),
-    fetchAll('visits', 'id,user_id,request_id,hospital_name'),
-    fetchAll('doctors', 'id,profile_id,email'),
-    fetchAll('profiles', 'id,email'),
+  const [postEmergencies, postVisits, postDoctors, postProfiles, postHospitals, postOrganizations] = await Promise.all([
+    fetchAll('emergency_requests', 'id,user_id,hospital_id,hospital_name'),
+    fetchAll('visits', 'id,user_id,request_id,hospital_id,hospital_name'),
+    fetchAll('doctors', 'id,profile_id,email,hospital_id'),
+    fetchAll('profiles', 'id,email,organization_id'),
+    fetchAll('hospitals', 'id,org_admin_id,organization_id,name,address,place_id'),
+    fetchAll('organizations', 'id,name,contact_email'),
   ]);
 
   const postTestProfileIds = unique(postProfiles.filter((p) => isTestEmail(p.email)).map((p) => p.id));
@@ -413,14 +598,34 @@ END $$;`);
       )
       .map((v) => v.id)
   );
+  const postTestHospitalIds = unique(
+    postHospitals
+      .filter((h) => postTestProfileIds.includes(h.org_admin_id) || isTestHospitalRow(h))
+      .map((h) => h.id)
+  );
   const postTestDoctorIds = unique(
     postDoctors
-      .filter((d) => postTestProfileIds.includes(d.profile_id) || isTestEmail(d.email))
+      .filter(
+        (d) =>
+          postTestProfileIds.includes(d.profile_id) ||
+          isTestEmail(d.email) ||
+          postTestHospitalIds.includes(d.hospital_id)
+      )
       .map((d) => d.id)
+  );
+  const postTestOrganizationIds = unique(
+    postOrganizations
+      .filter((org) => {
+        const markerSource = `${org.name || ''} ${org.contact_email || ''}`;
+        return TEST_HOSPITAL_PATTERNS.some((pattern) => pattern.test(markerSource));
+      })
+      .map((org) => org.id)
   );
 
   report.after = {
     test_profiles_remaining: postTestProfileIds.length,
+    test_hospitals_remaining: postTestHospitalIds.length,
+    test_organizations_remaining: postTestOrganizationIds.length,
     test_emergencies_remaining: postTestEmergencyIds.length,
     test_visits_remaining: postTestVisitIds.length,
     test_doctors_remaining: postTestDoctorIds.length,
