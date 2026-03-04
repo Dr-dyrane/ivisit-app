@@ -2166,25 +2166,25 @@ BEGIN
     UPDATE public.emergency_requests er
     SET ambulance_id = p_ambulance_id,
         status = 'accepted',
-        responder_id = COALESCE(er.responder_id, v_amb_profile_id),
+        responder_id = COALESCE(v_amb_profile_id, er.responder_id),
         responder_name = COALESCE(
-            NULLIF(BTRIM(er.responder_name), ''),
             NULLIF(BTRIM(v_driver_name), ''),
             NULLIF(BTRIM(v_amb_plate), ''),
             NULLIF(BTRIM(v_amb_type), ''),
+            NULLIF(BTRIM(er.responder_name), ''),
             'Responder'
         ),
         responder_phone = COALESCE(
-            NULLIF(BTRIM(er.responder_phone), ''),
-            NULLIF(BTRIM(v_driver_phone), '')
+            NULLIF(BTRIM(v_driver_phone), ''),
+            NULLIF(BTRIM(er.responder_phone), '')
         ),
         responder_vehicle_type = COALESCE(
-            NULLIF(BTRIM(er.responder_vehicle_type), ''),
-            NULLIF(BTRIM(v_amb_type), '')
+            NULLIF(BTRIM(v_amb_type), ''),
+            NULLIF(BTRIM(er.responder_vehicle_type), '')
         ),
         responder_vehicle_plate = COALESCE(
-            NULLIF(BTRIM(er.responder_vehicle_plate), ''),
-            NULLIF(BTRIM(v_amb_plate), '')
+            NULLIF(BTRIM(v_amb_plate), ''),
+            NULLIF(BTRIM(er.responder_vehicle_plate), '')
         ),
         updated_at = NOW()
     WHERE er.id = p_emergency_request_id
@@ -3061,3 +3061,4 @@ GRANT EXECUTE ON FUNCTION public.set_emergency_transition_context(TEXT, TEXT, UU
 GRANT EXECUTE ON FUNCTION public.notify_cash_approval_org_admins(UUID, UUID, NUMERIC, NUMERIC, TEXT, TEXT, TEXT, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.process_cash_payment(UUID, UUID, NUMERIC) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.process_wallet_payment(UUID, NUMERIC, UUID) TO authenticated, service_role;
+

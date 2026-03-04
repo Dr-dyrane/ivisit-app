@@ -386,25 +386,25 @@ BEGIN
     UPDATE public.emergency_requests er
     SET ambulance_id = p_ambulance_id,
         status = 'accepted',
-        responder_id = COALESCE(er.responder_id, v_amb_profile_id),
+        responder_id = COALESCE(v_amb_profile_id, er.responder_id),
         responder_name = COALESCE(
-            NULLIF(BTRIM(er.responder_name), ''),
             NULLIF(BTRIM(v_driver_name), ''),
             NULLIF(BTRIM(v_amb_plate), ''),
             NULLIF(BTRIM(v_amb_type), ''),
+            NULLIF(BTRIM(er.responder_name), ''),
             'Responder'
         ),
         responder_phone = COALESCE(
-            NULLIF(BTRIM(er.responder_phone), ''),
-            NULLIF(BTRIM(v_driver_phone), '')
+            NULLIF(BTRIM(v_driver_phone), ''),
+            NULLIF(BTRIM(er.responder_phone), '')
         ),
         responder_vehicle_type = COALESCE(
-            NULLIF(BTRIM(er.responder_vehicle_type), ''),
-            NULLIF(BTRIM(v_amb_type), '')
+            NULLIF(BTRIM(v_amb_type), ''),
+            NULLIF(BTRIM(er.responder_vehicle_type), '')
         ),
         responder_vehicle_plate = COALESCE(
-            NULLIF(BTRIM(er.responder_vehicle_plate), ''),
-            NULLIF(BTRIM(v_amb_plate), '')
+            NULLIF(BTRIM(v_amb_plate), ''),
+            NULLIF(BTRIM(er.responder_vehicle_plate), '')
         ),
         updated_at = NOW()
     WHERE er.id = p_emergency_request_id
@@ -1659,3 +1659,4 @@ AFTER UPDATE ON public.emergency_requests
 FOR EACH ROW EXECUTE PROCEDURE public.auto_assign_doctor();
 
 COMMIT;
+

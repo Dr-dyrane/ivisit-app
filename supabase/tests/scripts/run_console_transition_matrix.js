@@ -224,6 +224,8 @@ async function main() {
     orgId: null,
     hospitalId: null,
     ambulanceId: null,
+    ambulanceOtherId: null,
+    ambulanceOtherVehicleNumber: null,
     requestIds: [],
     lastCaseRequestId: null,
     lastCaseAmbulanceId: null,
@@ -317,6 +319,24 @@ async function main() {
     if (ambErr) throw new Error(`ambulance create failed: ${ambErr.message}`);
     ctx.ambulanceId = ambulance.id;
 
+    const secondaryVehicleNumber = `MTRXALT${String(TS).slice(-6)}`;
+    const { data: ambulanceOther, error: ambOtherErr } = await admin
+      .from('ambulances')
+      .insert({
+        hospital_id: hospital.id,
+        organization_id: org.id,
+        profile_id: ctx.users.providerOther.id,
+        type: 'advanced',
+        vehicle_number: secondaryVehicleNumber,
+        call_sign: `MTRX-ALT-${String(TS).slice(-5)}`,
+        status: 'available',
+      })
+      .select()
+      .single();
+    if (ambOtherErr) throw new Error(`secondary ambulance create failed: ${ambOtherErr.message}`);
+    ctx.ambulanceOtherId = ambulanceOther.id;
+    ctx.ambulanceOtherVehicleNumber = secondaryVehicleNumber;
+
     // 2) Clients
     const clients = {
       orgAdmin: await signInAs(email('orgadmin')),
@@ -328,7 +348,13 @@ async function main() {
     };
 
     // Helper to create isolated request for each case
-    const createRequest = async ({ status, responderId = null, ambulanceId = null, serviceType = 'ambulance' }) => {
+    const createRequest = async ({
+      status,
+      responderId = null,
+      ambulanceId = null,
+      serviceType = 'ambulance',
+      requestOverrides = {},
+    }) => {
       const payload = {
         user_id: ctx.users.patient.id,
         hospital_id: ctx.hospitalId,
@@ -338,6 +364,7 @@ async function main() {
         payment_status: status === 'pending_approval' ? 'pending' : 'completed',
         responder_id: responderId,
         ambulance_id: ambulanceId,
+        ...requestOverrides,
       };
 
       const { data, error } = await admin
@@ -374,10 +401,12 @@ async function main() {
     };
 
     const resetAmbulance = async () => {
+      const ambulanceIds = [ctx.ambulanceId, ctx.ambulanceOtherId].filter(Boolean);
+      if (!ambulanceIds.length) return;
       await admin
         .from('ambulances')
         .update({ status: 'available', current_call: null, eta: null, updated_at: new Date().toISOString() })
-        .eq('id', ctx.ambulanceId);
+        .in('id', ambulanceIds);
     };
 
     const cases = [
@@ -586,6 +615,11 @@ async function main() {
             status: 'accepted',
             responderId: ctx.users.providerAssigned.id,
             ambulanceId: ctx.ambulanceId,
+            requestOverrides: {
+              responder_name: 'Legacy Driver',
+              responder_vehicle_type: 'basic',
+              responder_vehicle_plate: 'OLD-UNIT-01',
+            },
           });
           ctx.lastCaseRequestId = requestId;
           ctx.lastCaseAmbulanceId = ctx.ambulanceId;
@@ -615,6 +649,147 @@ async function main() {
             p_request_id: requestId,
             p_location: { lat: 6.5246, lng: 3.3794 },
             p_heading: 32,
+          });
+        },
+      },
+      {
+        caseId: 'RA1',
+        role: 'orgAdmin',
+        action: 'assign_ambulance_to_emergency',
+        fromStatus: 'accepted_reassign',
+        expectSuccess: true,
+        execute: async (client) => {
+          const requestId = await createRequest({
+            status: 'accepted',
+            responderId: ctx.users.providerAssigned.id,
+            ambulanceId: ctx.ambulanceId,
+          });
+          await resetAmbulance();
+
+          const { data, error } = await client.rpc('assign_ambulance_to_emergency', {
+            p_emergency_request_id: requestId,
+            p_ambulance_id: ctx.ambulanceOtherId,
+            p_priority: 1,
+          });
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || 'reassignment failed');
+
+          const { data: reqAfter, error: reqAfterErr } = await admin
+            .from('emergency_requests')
+            .select('id,ambulance_id,responder_id,status,responder_vehicle_type,responder_vehicle_plate')
+            .eq('id', requestId)
+            .single();
+          if (reqAfterErr) throw new Error(`reassignment request lookup failed: ${reqAfterErr.message}`);
+          if (reqAfter.ambulance_id !== ctx.ambulanceOtherId) {
+            throw new Error(`reassignment did not switch ambulance_id to secondary unit`);
+          }
+          if (reqAfter.responder_id !== ctx.users.providerOther.id) {
+            throw new Error(`reassignment did not switch responder_id to new driver`);
+          }
+          if (reqAfter.responder_name === 'Legacy Driver') {
+            throw new Error(`reassignment retained stale responder display name`);
+          }
+          if (reqAfter.responder_vehicle_type !== 'advanced') {
+            throw new Error(`reassignment did not refresh responder vehicle type`);
+          }
+          if (
+            ctx.ambulanceOtherVehicleNumber &&
+            reqAfter.responder_vehicle_plate !== ctx.ambulanceOtherVehicleNumber
+          ) {
+            throw new Error(`reassignment did not refresh responder vehicle plate`);
+          }
+
+          const { data: oldAmb, error: oldAmbErr } = await admin
+            .from('ambulances')
+            .select('id,status,current_call')
+            .eq('id', ctx.ambulanceId)
+            .single();
+          if (oldAmbErr) throw new Error(`old ambulance lookup failed: ${oldAmbErr.message}`);
+          if (oldAmb.status !== 'available' || oldAmb.current_call !== null) {
+            throw new Error(`old ambulance was not released after reassignment`);
+          }
+
+          const { data: newAmb, error: newAmbErr } = await admin
+            .from('ambulances')
+            .select('id,status,current_call')
+            .eq('id', ctx.ambulanceOtherId)
+            .single();
+          if (newAmbErr) throw new Error(`new ambulance lookup failed: ${newAmbErr.message}`);
+          if (newAmb.status !== 'on_trip' || newAmb.current_call !== requestId) {
+            throw new Error(`new ambulance was not bound to reassigned request`);
+          }
+
+          return { data, error: null };
+        },
+      },
+      {
+        caseId: 'RA2',
+        role: 'providerAssigned',
+        action: 'console_update_responder_location',
+        fromStatus: 'accepted_reassign_old_driver',
+        expectSuccess: false,
+        execute: async (client) => {
+          const requestId = await createRequest({
+            status: 'accepted',
+            responderId: ctx.users.providerAssigned.id,
+            ambulanceId: ctx.ambulanceId,
+          });
+          await resetAmbulance();
+
+          const { data: assignData, error: assignError } = await clients.orgAdmin.rpc(
+            'assign_ambulance_to_emergency',
+            {
+              p_emergency_request_id: requestId,
+              p_ambulance_id: ctx.ambulanceOtherId,
+              p_priority: 1,
+            }
+          );
+          if (assignError) throw assignError;
+          if (!assignData?.success) {
+            throw new Error(assignData?.error || 'reassignment setup failed for old driver test');
+          }
+
+          return client.rpc('console_update_responder_location', {
+            p_request_id: requestId,
+            p_location: { lat: 6.5245, lng: 3.3796 },
+            p_heading: 56,
+          });
+        },
+      },
+      {
+        caseId: 'RA3',
+        role: 'providerOther',
+        action: 'console_update_responder_location',
+        fromStatus: 'accepted_reassign_new_driver',
+        expectSuccess: true,
+        assertTelemetryMirror: true,
+        execute: async (client) => {
+          const requestId = await createRequest({
+            status: 'accepted',
+            responderId: ctx.users.providerAssigned.id,
+            ambulanceId: ctx.ambulanceId,
+          });
+          await resetAmbulance();
+
+          const { data: assignData, error: assignError } = await clients.orgAdmin.rpc(
+            'assign_ambulance_to_emergency',
+            {
+              p_emergency_request_id: requestId,
+              p_ambulance_id: ctx.ambulanceOtherId,
+              p_priority: 1,
+            }
+          );
+          if (assignError) throw assignError;
+          if (!assignData?.success) {
+            throw new Error(assignData?.error || 'reassignment setup failed for new driver test');
+          }
+
+          ctx.lastCaseRequestId = requestId;
+          ctx.lastCaseAmbulanceId = ctx.ambulanceOtherId;
+          return client.rpc('console_update_responder_location', {
+            p_request_id: requestId,
+            p_location: { lat: 6.5248, lng: 3.3797 },
+            p_heading: 91,
           });
         },
       },
@@ -742,11 +917,12 @@ async function main() {
     await safeRun(
       'reset ambulance',
       async () => {
-        if (ctx.ambulanceId) {
+        const ambulanceIds = [ctx.ambulanceId, ctx.ambulanceOtherId].filter(Boolean);
+        if (ambulanceIds.length > 0) {
           await admin
             .from('ambulances')
             .update({ status: 'available', current_call: null, eta: null, updated_at: new Date().toISOString() })
-            .eq('id', ctx.ambulanceId);
+            .in('id', ambulanceIds);
         }
       },
       report.cleanupWarnings
@@ -789,8 +965,9 @@ async function main() {
       await safeRun(
         'delete ambulance',
         async () => {
-          if (ctx.ambulanceId) {
-            const { error } = await admin.from('ambulances').delete().eq('id', ctx.ambulanceId);
+          const ambulanceIds = [ctx.ambulanceId, ctx.ambulanceOtherId].filter(Boolean);
+          if (ambulanceIds.length > 0) {
+            const { error } = await admin.from('ambulances').delete().in('id', ambulanceIds);
             if (error) throw new Error(error.message);
           }
         },

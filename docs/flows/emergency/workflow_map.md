@@ -130,6 +130,11 @@ Defined in `20260219000900_automations.sql` and `20260219000800_emergency_logic.
   - Console `GodModeMap` streams driver telemetry in active-trip mode (`in_progress`/`accepted`/`arrived`) with interval + distance throttling.
   - Console `MapContext` now applies freshness-based realtime reconciliation (`updated_at`/`created_at`), drops stale events, and runs silent truth-sync refresh on interval and channel recovery statuses.
   - `run_console_transition_matrix` now enforces telemetry mirror invariants for responder updates (`emergency_requests.responder_location` + `ambulances.location` + call linkage + timestamp coherence).
+  - Reassignment continuity hardened:
+    - `assign_ambulance_to_emergency` now rebases responder identity to the newly assigned ambulance driver.
+    - responder display metadata now rehydrates from the newly assigned unit (name/vehicle), avoiding stale legacy responder labels.
+    - old driver loses telemetry write permission immediately after reassignment; new driver gains it on the same request.
+    - old ambulance is deterministically released (`available`, `current_call=NULL`) when reassigned to a new unit.
 - Remote RPC lock fix deployed (linked project `dlwtcmhdzoklveihuhjf`):
   - `console_update_emergency_request`
   - `console_dispatch_emergency`
