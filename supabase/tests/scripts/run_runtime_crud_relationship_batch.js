@@ -100,7 +100,9 @@ async function run() {
   const ctx = {
     authUserIds: [],
     organizationId: null,
+    createdMainWalletId: null,
     orgWalletId: null,
+    patientWalletId: null,
     paymentMethodId: null,
     paymentId: null,
     ledgerId: null,
@@ -116,13 +118,26 @@ async function run() {
     insurancePolicyId: null,
     insuranceBillingId: null,
     userActivityId: null,
+    adminAuditLogId: null,
+    documentId: null,
+    userRoleId: null,
+    userSessionId: null,
     patientUserId: null,
     orgAdminUserId: null,
-  };
+    doctorUserId: null,
+    hospitalId: null,
+    doctorId: null,
+    doctorScheduleId: null,
+    emergencyRequestId: null,
+    emergencyDoctorAssignmentId: null,
+    emergencyPrevAssignedDoctorId: null,
+    emergencyPrevDoctorAssignedAt: null,
+    };
 
   try {
     const patientEmail = `${TAG}-patient@ivisit-e2e.local`;
     const orgAdminEmail = `${TAG}-orgadmin@ivisit-e2e.local`;
+    const doctorEmail = `${TAG}-doctor@ivisit-e2e.local`;
 
     const patientAuth = await createAuthUser({
       email: patientEmail,
@@ -140,8 +155,17 @@ async function run() {
     ctx.authUserIds.push(orgAdminAuth.id);
     ctx.orgAdminUserId = orgAdminAuth.id;
 
+    const doctorAuth = await createAuthUser({
+      email: doctorEmail,
+      role: 'provider',
+      fullName: `Doctor ${TAG}`,
+    });
+    ctx.authUserIds.push(doctorAuth.id);
+    ctx.doctorUserId = doctorAuth.id;
+
     const patientProfile = await waitForProfile(patientAuth.id);
     const orgAdminProfile = await waitForProfile(orgAdminAuth.id);
+    const doctorProfile = await waitForProfile(doctorAuth.id);
     report.resources.patientProfile = {
       id: patientProfile.id,
       email: patientProfile.email,
@@ -149,6 +173,10 @@ async function run() {
     report.resources.orgAdminProfile = {
       id: orgAdminProfile.id,
       email: orgAdminProfile.email,
+    };
+    report.resources.doctorProfile = {
+      id: doctorProfile.id,
+      email: doctorProfile.email,
     };
     report.steps.push('auth/profile bootstrap complete');
 
@@ -191,6 +219,201 @@ async function run() {
     if (adminOrgLinkErr) {
       throw new Error(`org_admin org link failed: ${adminOrgLinkErr.message}`);
     }
+
+    const { error: doctorProfileLinkErr } = await supabase
+      .from('profiles')
+      .update({
+        role: 'provider',
+        provider_type: 'doctor',
+        organization_id: organization.id,
+      })
+      .eq('id', doctorAuth.id);
+    if (doctorProfileLinkErr) {
+      throw new Error(`doctor profile organization link failed: ${doctorProfileLinkErr.message}`);
+    }
+
+    const { data: hospital, error: hospitalErr } = await supabase
+      .from('hospitals')
+      .insert({
+        name: `Runtime Hospital ${TAG}`,
+        address: `123 Runtime Way, QA City`,
+        organization_id: organization.id,
+        org_admin_id: orgAdminAuth.id,
+        status: 'available',
+        verification_status: 'verified',
+        verified: true,
+        available_beds: 10,
+        ambulances_count: 1,
+        service_types: ['bed', 'ambulance'],
+        specialties: ['Internal Medicine'],
+      })
+      .select('id,name,organization_id,org_admin_id')
+      .single();
+    if (hospitalErr) throw new Error(`hospital insert failed: ${hospitalErr.message}`);
+    ctx.hospitalId = hospital.id;
+
+    let doctor = null;
+    const { data: existingDoctor, error: existingDoctorErr } = await supabase
+      .from('doctors')
+      .select('*')
+      .eq('profile_id', doctorAuth.id)
+      .maybeSingle();
+    if (existingDoctorErr) throw new Error(`doctor prefetch failed: ${existingDoctorErr.message}`);
+
+    if (existingDoctor) {
+      const { data: updatedDoctor, error: updateDoctorErr } = await supabase
+        .from('doctors')
+        .update({
+          hospital_id: hospital.id,
+          name: `Dr ${TAG}`,
+          specialization: 'Internal Medicine',
+          status: 'available',
+          is_available: true,
+          current_patients: 0,
+          max_patients: 10,
+          email: doctorEmail,
+          updated_at: nowIso(),
+        })
+        .eq('id', existingDoctor.id)
+        .select('*')
+        .single();
+      if (updateDoctorErr) throw new Error(`doctor update failed: ${updateDoctorErr.message}`);
+      doctor = updatedDoctor;
+    } else {
+      const { data: insertedDoctor, error: doctorErr } = await supabase
+        .from('doctors')
+        .insert({
+          profile_id: doctorAuth.id,
+          hospital_id: hospital.id,
+          name: `Dr ${TAG}`,
+          specialization: 'Internal Medicine',
+          status: 'available',
+          is_available: true,
+          current_patients: 0,
+          max_patients: 10,
+          email: doctorEmail,
+        })
+        .select('*')
+        .single();
+      if (doctorErr) throw new Error(`doctor insert failed: ${doctorErr.message}`);
+      doctor = insertedDoctor;
+    }
+
+    ctx.doctorId = doctor.id;
+
+    const { data: doctorSchedule, error: doctorScheduleErr } = await supabase
+      .from('doctor_schedules')
+      .insert({
+        doctor_id: doctor.id,
+        date: new Date().toISOString().slice(0, 10),
+        start_time: '08:00:00',
+        end_time: '16:00:00',
+        shift_type: 'day',
+        is_available: true,
+      })
+      .select('*')
+      .single();
+    if (doctorScheduleErr) {
+      throw new Error(`doctor_schedules insert failed: ${doctorScheduleErr.message}`);
+    }
+    ctx.doctorScheduleId = doctorSchedule.id;
+
+    const { error: doctorScheduleUpdateErr } = await supabase
+      .from('doctor_schedules')
+      .update({ is_available: false })
+      .eq('id', doctorSchedule.id);
+    if (doctorScheduleUpdateErr) {
+      throw new Error(`doctor_schedules update failed: ${doctorScheduleUpdateErr.message}`);
+    }
+
+    let emergencyRequest = null;
+    const emergencyTargetCompleted = await supabase
+      .from('emergency_requests')
+      .select('id,hospital_id,user_id,assigned_doctor_id,doctor_assigned_at,status,service_type')
+      .in('status', ['completed', 'cancelled'])
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (emergencyTargetCompleted.error) {
+      throw new Error(
+        `emergency_requests completed/cancelled target fetch failed: ${emergencyTargetCompleted.error.message}`
+      );
+    }
+    emergencyRequest = emergencyTargetCompleted.data;
+
+    if (!emergencyRequest) {
+      const emergencyTargetAny = await supabase
+        .from('emergency_requests')
+        .select('id,hospital_id,user_id,assigned_doctor_id,doctor_assigned_at,status,service_type')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (emergencyTargetAny.error) {
+        throw new Error(`emergency_requests fallback target fetch failed: ${emergencyTargetAny.error.message}`);
+      }
+      emergencyRequest = emergencyTargetAny.data;
+    }
+
+    if (!emergencyRequest?.id) {
+      throw new Error(
+        'No emergency_requests row available for assignment validation without append-only cleanup side effects.'
+      );
+    }
+
+    ctx.emergencyRequestId = emergencyRequest.id;
+    ctx.emergencyPrevAssignedDoctorId = emergencyRequest.assigned_doctor_id || null;
+    ctx.emergencyPrevDoctorAssignedAt = emergencyRequest.doctor_assigned_at || null;
+
+    const { data: assignDoctorResult, error: assignDoctorErr } = await supabase.rpc(
+      'assign_doctor_to_emergency',
+      {
+        p_emergency_request_id: emergencyRequest.id,
+        p_doctor_id: doctor.id,
+        p_notes: `Runtime assignment ${TAG}`,
+      }
+    );
+    if (assignDoctorErr) {
+      throw new Error(`assign_doctor_to_emergency failed: ${assignDoctorErr.message}`);
+    }
+    if (!assignDoctorResult?.success) {
+      throw new Error(
+        `assign_doctor_to_emergency returned non-success: ${JSON.stringify(assignDoctorResult)}`
+      );
+    }
+
+    const { data: assignmentRows, error: assignmentRowsErr } = await supabase
+      .from('emergency_doctor_assignments')
+      .select('*')
+      .eq('emergency_request_id', emergencyRequest.id)
+      .eq('doctor_id', doctor.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (assignmentRowsErr) {
+      throw new Error(`emergency_doctor_assignments fetch failed: ${assignmentRowsErr.message}`);
+    }
+    const assignmentRow = assignmentRows?.[0];
+    if (!assignmentRow?.id) {
+      throw new Error('emergency_doctor_assignments row missing after assignment RPC');
+    }
+    ctx.emergencyDoctorAssignmentId = assignmentRow.id;
+
+    const { error: assignmentUpdateErr } = await supabase
+      .from('emergency_doctor_assignments')
+      .update({ status: 'accepted' })
+      .eq('id', assignmentRow.id);
+    if (assignmentUpdateErr) {
+      throw new Error(`emergency_doctor_assignments update failed: ${assignmentUpdateErr.message}`);
+    }
+    report.resources.hospital = hospital;
+    report.resources.doctor = { id: doctor.id, hospital_id: doctor.hospital_id, profile_id: doctor.profile_id };
+    report.resources.emergencyRequestTarget = {
+      id: emergencyRequest.id,
+      status: emergencyRequest.status,
+      service_type: emergencyRequest.service_type,
+    };
+    report.steps.push(
+      'hospitals/doctors/doctor_schedules/emergency_doctor_assignments runtime relationship validated'
+    );
 
     await sleep(500);
     let { data: orgWallet, error: orgWalletErr } = await supabase
@@ -434,6 +657,135 @@ async function run() {
     };
     report.resources.preMedicalProfileExisted = Boolean(preMedical.data);
     report.steps.push('medical_profiles CRUD complete');
+
+    let { data: mainWallet, error: mainWalletErr } = await supabase
+      .from('ivisit_main_wallet')
+      .select('id,balance,currency,last_updated')
+      .limit(1)
+      .maybeSingle();
+    if (mainWalletErr) throw new Error(`ivisit_main_wallet fetch failed: ${mainWalletErr.message}`);
+    if (!mainWallet) {
+      const insertMainWallet = await supabase
+        .from('ivisit_main_wallet')
+        .insert({ balance: 0, currency: 'USD', last_updated: nowIso() })
+        .select('id,balance,currency,last_updated')
+        .single();
+      if (insertMainWallet.error) {
+        throw new Error(`ivisit_main_wallet insert failed: ${insertMainWallet.error.message}`);
+      }
+      mainWallet = insertMainWallet.data;
+      ctx.createdMainWalletId = mainWallet.id;
+    }
+    report.resources.mainWallet = {
+      id: mainWallet.id,
+      currency: mainWallet.currency,
+    };
+
+    let { data: patientWallet, error: patientWalletErr } = await supabase
+      .from('patient_wallets')
+      .select('id,user_id,balance,currency')
+      .eq('user_id', patientAuth.id)
+      .maybeSingle();
+    if (patientWalletErr) throw new Error(`patient_wallets fetch failed: ${patientWalletErr.message}`);
+    if (!patientWallet) {
+      const insertPatientWallet = await supabase
+        .from('patient_wallets')
+        .insert({
+          user_id: patientAuth.id,
+          balance: 0,
+          currency: 'USD',
+        })
+        .select('id,user_id,balance,currency')
+        .single();
+      if (insertPatientWallet.error) {
+        throw new Error(`patient_wallets insert failed: ${insertPatientWallet.error.message}`);
+      }
+      patientWallet = insertPatientWallet.data;
+    }
+    ctx.patientWalletId = patientWallet.id;
+
+    const { error: patientWalletUpdateErr } = await supabase
+      .from('patient_wallets')
+      .update({ balance: 12.34, currency: 'USD', updated_at: nowIso() })
+      .eq('id', patientWallet.id);
+    if (patientWalletUpdateErr) {
+      throw new Error(`patient_wallets update failed: ${patientWalletUpdateErr.message}`);
+    }
+
+    const { data: adminAuditLog, error: adminAuditLogErr } = await supabase
+      .from('admin_audit_log')
+      .insert({
+        admin_id: orgAdminAuth.id,
+        action: 'runtime_crud_batch',
+        details: { tag: TAG, source: 'runtime_batch' },
+      })
+      .select('*')
+      .single();
+    if (adminAuditLogErr) {
+      throw new Error(`admin_audit_log insert failed: ${adminAuditLogErr.message}`);
+    }
+    ctx.adminAuditLogId = adminAuditLog.id;
+
+    const { data: document, error: documentErr } = await supabase
+      .from('documents')
+      .insert({
+        title: `Runtime document ${TAG}`,
+        slug: `runtime-doc-${TS}`,
+        file_path: `runtime/${TAG}.md`,
+        content: `Runtime content ${TAG}`,
+        description: 'Runtime docs coverage',
+        visibility: ['public'],
+        tier: 'public',
+      })
+      .select('*')
+      .single();
+    if (documentErr) throw new Error(`documents insert failed: ${documentErr.message}`);
+    ctx.documentId = document.id;
+
+    const { error: documentUpdateErr } = await supabase
+      .from('documents')
+      .update({ description: `Runtime docs updated ${TAG}` })
+      .eq('id', document.id);
+    if (documentUpdateErr) throw new Error(`documents update failed: ${documentUpdateErr.message}`);
+
+    const { data: userRole, error: userRoleErr } = await supabase
+      .from('user_roles')
+      .insert({
+        user_id: patientAuth.id,
+        role: 'patient',
+        metadata: { tag: TAG, source: 'runtime_batch' },
+      })
+      .select('*')
+      .single();
+    if (userRoleErr) throw new Error(`user_roles insert failed: ${userRoleErr.message}`);
+    ctx.userRoleId = userRole.id;
+
+    const { error: userRoleUpdateErr } = await supabase
+      .from('user_roles')
+      .update({ metadata: { tag: TAG, source: 'runtime_batch', updated: true } })
+      .eq('id', userRole.id);
+    if (userRoleUpdateErr) throw new Error(`user_roles update failed: ${userRoleUpdateErr.message}`);
+
+    const { data: userSession, error: userSessionErr } = await supabase
+      .from('user_sessions')
+      .insert({
+        user_id: patientAuth.id,
+        last_active: nowIso(),
+        session_data: { tag: TAG, source: 'runtime_batch' },
+      })
+      .select('*')
+      .single();
+    if (userSessionErr) throw new Error(`user_sessions insert failed: ${userSessionErr.message}`);
+    ctx.userSessionId = userSession.id;
+
+    const { error: userSessionUpdateErr } = await supabase
+      .from('user_sessions')
+      .update({ session_data: { tag: TAG, source: 'runtime_batch', refreshed: true } })
+      .eq('id', userSession.id);
+    if (userSessionUpdateErr) throw new Error(`user_sessions update failed: ${userSessionUpdateErr.message}`);
+    report.steps.push(
+      'ivisit_main_wallet/patient_wallets/admin_audit_log/documents/user_roles/user_sessions CRUD complete'
+    );
 
     const { data: subscriber, error: subscriberErr } = await supabase
       .from('subscribers')
@@ -761,6 +1113,108 @@ async function run() {
       throw new Error(`user_activity mirror query failed: ${userActivityRowsErr.message}`);
     }
 
+    const { data: hospitalRows, error: hospitalRowsErr } = await supabase
+      .from('hospitals')
+      .select('id,organization_id,org_admin_id,status')
+      .eq('id', hospital.id)
+      .limit(1);
+    if (hospitalRowsErr) {
+      throw new Error(`hospitals mirror query failed: ${hospitalRowsErr.message}`);
+    }
+
+    const { data: doctorRows, error: doctorRowsErr } = await supabase
+      .from('doctors')
+      .select('id,hospital_id,profile_id,current_patients,max_patients,is_available,status')
+      .eq('id', doctor.id)
+      .limit(1);
+    if (doctorRowsErr) {
+      throw new Error(`doctors mirror query failed: ${doctorRowsErr.message}`);
+    }
+
+    const { data: doctorScheduleRows, error: doctorScheduleRowsErr } = await supabase
+      .from('doctor_schedules')
+      .select('*')
+      .eq('id', doctorSchedule.id)
+      .limit(1);
+    if (doctorScheduleRowsErr) {
+      throw new Error(`doctor_schedules mirror query failed: ${doctorScheduleRowsErr.message}`);
+    }
+
+    const { data: emergencyRows, error: emergencyRowsErr } = await supabase
+      .from('emergency_requests')
+      .select('id,user_id,hospital_id,assigned_doctor_id,doctor_assigned_at,status,service_type')
+      .eq('id', emergencyRequest.id)
+      .limit(1);
+    if (emergencyRowsErr) {
+      throw new Error(`emergency_requests mirror query failed: ${emergencyRowsErr.message}`);
+    }
+
+    const { data: emergencyDoctorAssignmentRows, error: emergencyDoctorAssignmentRowsErr } =
+      await supabase
+        .from('emergency_doctor_assignments')
+        .select('*')
+        .eq('id', assignmentRow.id)
+        .limit(1);
+    if (emergencyDoctorAssignmentRowsErr) {
+      throw new Error(
+        `emergency_doctor_assignments mirror query failed: ${emergencyDoctorAssignmentRowsErr.message}`
+      );
+    }
+
+    const { data: patientWalletRows, error: patientWalletRowsErr } = await supabase
+      .from('patient_wallets')
+      .select('*')
+      .eq('user_id', patientAuth.id)
+      .limit(1);
+    if (patientWalletRowsErr) {
+      throw new Error(`patient_wallets mirror query failed: ${patientWalletRowsErr.message}`);
+    }
+
+    const { data: adminAuditRows, error: adminAuditRowsErr } = await supabase
+      .from('admin_audit_log')
+      .select('*')
+      .eq('id', adminAuditLog.id)
+      .limit(1);
+    if (adminAuditRowsErr) {
+      throw new Error(`admin_audit_log mirror query failed: ${adminAuditRowsErr.message}`);
+    }
+
+    const { data: documentRows, error: documentRowsErr } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', document.id)
+      .limit(1);
+    if (documentRowsErr) {
+      throw new Error(`documents mirror query failed: ${documentRowsErr.message}`);
+    }
+
+    const { data: userRoleRows, error: userRoleRowsErr } = await supabase
+      .from('user_roles')
+      .select('*')
+      .eq('id', userRole.id)
+      .limit(1);
+    if (userRoleRowsErr) {
+      throw new Error(`user_roles mirror query failed: ${userRoleRowsErr.message}`);
+    }
+
+    const { data: userSessionRows, error: userSessionRowsErr } = await supabase
+      .from('user_sessions')
+      .select('*')
+      .eq('id', userSession.id)
+      .limit(1);
+    if (userSessionRowsErr) {
+      throw new Error(`user_sessions mirror query failed: ${userSessionRowsErr.message}`);
+    }
+
+    const idMappingsRead = await supabase
+      .from('id_mappings')
+      .select('entity_id,entity_type,display_id')
+      .in('entity_id', [organization.id, payment.id, ticket.id, patientAuth.id]);
+    if (idMappingsRead.error) {
+      throw new Error(`id_mappings mirror query failed: ${idMappingsRead.error.message}`);
+    }
+    const idMappingRows = idMappingsRead.data || [];
+
     assertPush(
       report,
       'payment_org_relationship',
@@ -870,6 +1324,110 @@ async function run() {
         userActivityRows[0].action === 'runtime_crud_batch',
       'user_activity row not persisted with expected action'
     );
+    assertPush(
+      report,
+      'hospital_org_admin_relationship',
+      Array.isArray(hospitalRows) &&
+        hospitalRows.length === 1 &&
+        hospitalRows[0].organization_id === organization.id &&
+        hospitalRows[0].org_admin_id === orgAdminAuth.id,
+      'hospital row is not linked to expected organization/org_admin'
+    );
+    assertPush(
+      report,
+      'doctor_hospital_profile_relationship',
+      Array.isArray(doctorRows) &&
+        doctorRows.length === 1 &&
+        doctorRows[0].hospital_id === hospital.id &&
+        doctorRows[0].profile_id === doctorAuth.id,
+      'doctor row is not linked to expected hospital/profile'
+    );
+    assertPush(
+      report,
+      'doctor_schedule_persisted',
+      Array.isArray(doctorScheduleRows) &&
+        doctorScheduleRows.length === 1 &&
+        doctorScheduleRows[0].doctor_id === doctor.id &&
+        doctorScheduleRows[0].shift_type === 'day' &&
+        doctorScheduleRows[0].is_available === false,
+      'doctor schedule row not persisted with expected update'
+    );
+    assertPush(
+      report,
+      'emergency_doctor_assignment_persisted',
+      Array.isArray(emergencyDoctorAssignmentRows) &&
+        emergencyDoctorAssignmentRows.length === 1 &&
+        emergencyDoctorAssignmentRows[0].doctor_id === doctor.id &&
+        emergencyDoctorAssignmentRows[0].emergency_request_id === emergencyRequest.id &&
+        emergencyDoctorAssignmentRows[0].status === 'accepted',
+      'emergency_doctor_assignments row not persisted with expected linkage/status'
+    );
+    assertPush(
+      report,
+      'emergency_request_assigned_doctor_synced',
+      Array.isArray(emergencyRows) &&
+        emergencyRows.length === 1 &&
+        emergencyRows[0].assigned_doctor_id === doctor.id &&
+        Boolean(emergencyRows[0].doctor_assigned_at),
+      'emergency request did not persist assigned_doctor_id/doctor_assigned_at'
+    );
+    assertPush(
+      report,
+      'doctor_capacity_incremented_after_assignment',
+      Array.isArray(doctorRows) &&
+        doctorRows.length === 1 &&
+        Number(doctorRows[0].current_patients) >= 1,
+      'doctor current_patients was not incremented after assignment'
+    );
+    assertPush(
+      report,
+      'patient_wallet_row_persisted',
+      Array.isArray(patientWalletRows) &&
+        patientWalletRows.length === 1 &&
+        patientWalletRows[0].user_id === patientAuth.id &&
+        Number(patientWalletRows[0].balance) === 12.34,
+      'patient_wallet row missing or not updated'
+    );
+    assertPush(
+      report,
+      'admin_audit_log_row_persisted',
+      Array.isArray(adminAuditRows) &&
+        adminAuditRows.length === 1 &&
+        adminAuditRows[0].action === 'runtime_crud_batch',
+      'admin_audit_log row missing expected action'
+    );
+    assertPush(
+      report,
+      'documents_row_persisted',
+      Array.isArray(documentRows) &&
+        documentRows.length === 1 &&
+        String(documentRows[0].slug || '').includes(`runtime-doc-${TS}`),
+      'documents row missing expected slug'
+    );
+    assertPush(
+      report,
+      'user_roles_row_persisted',
+      Array.isArray(userRoleRows) &&
+        userRoleRows.length === 1 &&
+        userRoleRows[0].role === 'patient',
+      'user_roles row missing expected role'
+    );
+    assertPush(
+      report,
+      'user_sessions_row_persisted',
+      Array.isArray(userSessionRows) &&
+        userSessionRows.length === 1 &&
+        userSessionRows[0].user_id === patientAuth.id,
+      'user_sessions row missing expected user relation'
+    );
+    assertPush(
+      report,
+      'id_mappings_rows_present_for_runtime_entities',
+      Array.isArray(idMappingRows) &&
+        idMappingRows.some((row) => row.entity_id === organization.id) &&
+        idMappingRows.some((row) => row.entity_id === patientAuth.id),
+      'id_mappings missing expected rows for runtime entities'
+    );
 
     report.resources.mirrorCounts = {
       wallet_ledger: walletSummaryRows?.length || 0,
@@ -886,6 +1444,17 @@ async function run() {
       insurance_policies: insurancePolicyRows?.length || 0,
       insurance_billing: insuranceBillingRows?.length || 0,
       user_activity: userActivityRows?.length || 0,
+      hospitals: hospitalRows?.length || 0,
+      doctors: doctorRows?.length || 0,
+      doctor_schedules: doctorScheduleRows?.length || 0,
+      emergency_requests: emergencyRows?.length || 0,
+      emergency_doctor_assignments: emergencyDoctorAssignmentRows?.length || 0,
+      patient_wallets: patientWalletRows?.length || 0,
+      admin_audit_log: adminAuditRows?.length || 0,
+      documents: documentRows?.length || 0,
+      user_roles: userRoleRows?.length || 0,
+      user_sessions: userSessionRows?.length || 0,
+      id_mappings: idMappingRows?.length || 0,
     };
 
     report.completedAt = nowIso();
@@ -957,9 +1526,88 @@ async function run() {
       if (error) throw error;
     });
 
+    await safeDelete('emergency_doctor_assignments.delete', async () => {
+      if (!ctx.emergencyDoctorAssignmentId && !ctx.emergencyRequestId) return;
+      let query = supabase.from('emergency_doctor_assignments').delete();
+      if (ctx.emergencyDoctorAssignmentId) {
+        query = query.eq('id', ctx.emergencyDoctorAssignmentId);
+      } else {
+        query = query.eq('emergency_request_id', ctx.emergencyRequestId);
+      }
+      const { error } = await query;
+      if (error) throw error;
+    });
+
+    await safeDelete('doctor_schedules.delete', async () => {
+      if (!ctx.doctorScheduleId && !ctx.doctorId) return;
+      let query = supabase.from('doctor_schedules').delete();
+      if (ctx.doctorScheduleId) {
+        query = query.eq('id', ctx.doctorScheduleId);
+      } else {
+        query = query.eq('doctor_id', ctx.doctorId);
+      }
+      const { error } = await query;
+      if (error) throw error;
+    });
+
+    await safeDelete('emergency_requests.revert_assignment', async () => {
+      if (!ctx.emergencyRequestId) return;
+      const { error } = await supabase
+        .from('emergency_requests')
+        .update({
+          assigned_doctor_id: ctx.emergencyPrevAssignedDoctorId,
+          doctor_assigned_at: ctx.emergencyPrevDoctorAssignedAt,
+          updated_at: nowIso(),
+        })
+        .eq('id', ctx.emergencyRequestId);
+      if (error) throw error;
+    });
+
+    await safeDelete('doctors.delete', async () => {
+      if (!ctx.doctorId) return;
+      const { error } = await supabase.from('doctors').delete().eq('id', ctx.doctorId);
+      if (error) throw error;
+    });
+
+    await safeDelete('hospitals.delete', async () => {
+      if (!ctx.hospitalId) return;
+      const { error } = await supabase.from('hospitals').delete().eq('id', ctx.hospitalId);
+      if (error) throw error;
+    });
+
     await safeDelete('preferences.delete', async () => {
       if (!ctx.patientUserId) return;
       const { error } = await supabase.from('preferences').delete().eq('user_id', ctx.patientUserId);
+      if (error) throw error;
+    });
+
+    await safeDelete('user_sessions.delete', async () => {
+      if (!ctx.userSessionId) return;
+      const { error } = await supabase.from('user_sessions').delete().eq('id', ctx.userSessionId);
+      if (error) throw error;
+    });
+
+    await safeDelete('user_roles.delete', async () => {
+      if (!ctx.userRoleId) return;
+      const { error } = await supabase.from('user_roles').delete().eq('id', ctx.userRoleId);
+      if (error) throw error;
+    });
+
+    await safeDelete('documents.delete', async () => {
+      if (!ctx.documentId) return;
+      const { error } = await supabase.from('documents').delete().eq('id', ctx.documentId);
+      if (error) throw error;
+    });
+
+    await safeDelete('admin_audit_log.delete', async () => {
+      if (!ctx.adminAuditLogId) return;
+      const { error } = await supabase.from('admin_audit_log').delete().eq('id', ctx.adminAuditLogId);
+      if (error) throw error;
+    });
+
+    await safeDelete('patient_wallets.delete', async () => {
+      if (!ctx.patientUserId) return;
+      const { error } = await supabase.from('patient_wallets').delete().eq('user_id', ctx.patientUserId);
       if (error) throw error;
     });
 
@@ -1020,8 +1668,14 @@ async function run() {
       if (error) throw error;
     });
 
+    await safeDelete('ivisit_main_wallet.delete', async () => {
+      if (!ctx.createdMainWalletId) return;
+      const { error } = await supabase.from('ivisit_main_wallet').delete().eq('id', ctx.createdMainWalletId);
+      if (error) throw error;
+    });
+
     await safeDelete('profiles.delete', async () => {
-      const ids = [ctx.patientUserId, ctx.orgAdminUserId].filter(Boolean);
+      const ids = [ctx.patientUserId, ctx.orgAdminUserId, ctx.doctorUserId].filter(Boolean);
       if (ids.length === 0) return;
       const { error } = await supabase.from('profiles').delete().in('id', ids);
       if (error) throw error;

@@ -285,6 +285,12 @@ Current batch coverage:
 - `subscribers`, `health_news`, `trending_topics`
 - `notifications`, `preferences`, `user_activity`
 - `insurance_policies`, `insurance_billing`
+- `admin_audit_log`, `documents`
+- `patient_wallets`, `user_roles`, `user_sessions`
+- `id_mappings` presence assertions for runtime entities
+- `ivisit_main_wallet` baseline presence validation
+- `hospitals`, `doctors`, `doctor_schedules`
+- `emergency_doctor_assignments` via canonical assignment RPC against an existing emergency request target (with assignment rollback in cleanup)
 
 ### **Commit Gate: Cleanup Must Be Zero**
 Before every commit/push after running tests:

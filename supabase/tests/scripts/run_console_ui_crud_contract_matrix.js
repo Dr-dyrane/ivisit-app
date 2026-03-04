@@ -423,6 +423,20 @@ const UI_SURFACES = [
     dynamicCreatePayload: true,
     dynamicUpdatePayload: true,
   },
+  {
+    id: 'admin_audit_log',
+    table: 'admin_audit_log',
+    modal: 'src/services/adminService.js',
+    page: 'src/services/adminService.js',
+    service: 'src/services/adminService.js',
+    createFn: 'logAdminAction',
+    updateFn: 'getAuditLog',
+    readOnlySurface: true,
+    skipModalFieldExtraction: true,
+    skipPageWiring: true,
+    dynamicCreatePayload: true,
+    dynamicUpdatePayload: true,
+  },
 ];
 
 function nowIso() {
