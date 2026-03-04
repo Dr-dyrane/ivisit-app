@@ -3,7 +3,7 @@
 import { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import React from "react";
 import { useFocusEffect, useRouter } from "expo-router";
-import { View, StyleSheet, Dimensions, Text, TouchableOpacity, Linking } from "react-native";
+import { View, StyleSheet, Dimensions, Text, TouchableOpacity, Linking, Switch } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEmergency } from "../contexts/EmergencyContext";
 import { useEmergencyUI } from "../contexts/EmergencyUIContext";
@@ -15,7 +15,7 @@ import { useVisits } from "../contexts/VisitsContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { COLORS } from "../constants/colors";
-import { Ionicons, Fontisto } from "@expo/vector-icons";
+import { Ionicons, Fontisto, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { EMERGENCY_VISIT_LIFECYCLE, VISIT_STATUS, VISIT_TYPES } from "../constants/visits";
 import { usePreferences } from "../contexts/PreferencesContext";
@@ -1300,29 +1300,32 @@ const EmergencyScreen = () => {
 				</Text>
 			</View>
 
-			{mode === "emergency" && !activeAmbulanceTrip?.requestId && !activeBedBooking?.requestId && (
-				<TouchableOpacity
-					onPress={() => setForceAmbulanceAnimation((prev) => !prev)}
-					disabled={!canUseDesignAnimation}
+			{canUseDesignAnimation && (
+				<View
 					style={[
 						styles.designAnimationToggle,
 						{
-							backgroundColor: forceAmbulanceAnimation
-								? COLORS.brandPrimary
-								: (isDarkMode ? "rgba(17,24,39,0.75)" : "rgba(255,255,255,0.82)"),
-							opacity: canUseDesignAnimation ? 1 : 0.55,
+							backgroundColor: isDarkMode ? "rgba(15,23,42,0.46)" : "rgba(255,255,255,0.62)",
 						},
 					]}
 				>
-					<Text
-						style={[
-							styles.designAnimationToggleText,
-							{ color: forceAmbulanceAnimation ? "#FFFFFF" : (isDarkMode ? "#E5E7EB" : "#111827") },
-						]}
-					>
-						{forceAmbulanceAnimation ? "Ambulance Anim: ON" : "Ambulance Anim: OFF"}
-					</Text>
-				</TouchableOpacity>
+					<MaterialCommunityIcons
+						name="ambulance"
+						size={16}
+						color={isDarkMode ? "rgba(241,245,249,0.68)" : "rgba(15,23,42,0.62)"}
+					/>
+					<Switch
+						value={forceAmbulanceAnimation}
+						onValueChange={setForceAmbulanceAnimation}
+						trackColor={{
+							false: isDarkMode ? "rgba(148,163,184,0.34)" : "rgba(148,163,184,0.4)",
+							true: "rgba(134,16,14,0.66)",
+						}}
+						thumbColor={forceAmbulanceAnimation ? "#F8FAFC" : "#E2E8F0"}
+						ios_backgroundColor={isDarkMode ? "rgba(148,163,184,0.34)" : "rgba(148,163,184,0.4)"}
+						style={styles.designAnimationSwitch}
+					/>
+				</View>
 			)}
 		</View>
 	);
@@ -1365,15 +1368,17 @@ const styles = StyleSheet.create({
 	},
 	designAnimationToggle: {
 		position: "absolute",
-		left: 12,
-		top: 160,
-		paddingHorizontal: 12,
-		paddingVertical: 8,
-		borderRadius: 20,
+		left: 10,
+		top: 156,
+		paddingHorizontal: 6,
+		paddingVertical: 2,
+		borderRadius: 24,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 0,
+		opacity: 0.62,
 	},
-	designAnimationToggleText: {
-		fontSize: 11,
-		fontWeight: "700",
-		letterSpacing: 0.2,
+	designAnimationSwitch: {
+		transform: [{ scaleX: 0.68 }, { scaleY: 0.68 }],
 	},
 });

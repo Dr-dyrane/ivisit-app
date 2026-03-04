@@ -8,6 +8,7 @@
 import { createContext, useState, useEffect, useMemo, useContext, useCallback } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { authService } from "../services/authService";
+import { supabase } from "../services/supabase";
 import { database, StorageKeys } from "../database";
 
 // Create AuthContext
@@ -17,6 +18,13 @@ export const AuthProvider = ({ children }) => {
 	const [user, setUser] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [token, setToken] = useState(null);
+
+	const clearLocalAuthState = useCallback(async () => {
+		setUser(null);
+		setToken(null);
+		await database.delete(StorageKeys.CURRENT_USER);
+		await database.delete(StorageKeys.AUTH_TOKEN);
+	}, []);
 
 	// **1. Fetch and Sync User Data from API/Service**
 	const syncUserData = useCallback(async () => {
@@ -53,10 +61,7 @@ export const AuthProvider = ({ children }) => {
 
 			if (isRefreshTokenError || isNotLoggedIn) {
 				// Clean up local state on token expiry
-				setUser(null);
-				setToken(null);
-				await database.delete(StorageKeys.CURRENT_USER);
-				await database.delete(StorageKeys.AUTH_TOKEN);
+				await clearLocalAuthState();
 				return; // Silent handling - no error needed
 			}
 
@@ -64,11 +69,41 @@ export const AuthProvider = ({ children }) => {
 		} finally {
 			setLoading(false);
 		}
-	}, []);
+	}, [clearLocalAuthState]);
 
 	useEffect(() => {
 		syncUserData();
 	}, [syncUserData]);
+
+	useEffect(() => {
+		const { data: authSubscription } = supabase.auth.onAuthStateChange((event, session) => {
+			(async () => {
+				try {
+					if (event === "SIGNED_OUT" || !session) {
+						await clearLocalAuthState();
+						setLoading(false);
+						return;
+					}
+
+					if (event === "TOKEN_REFRESHED" && session?.access_token) {
+						setToken(session.access_token);
+						await database.write(StorageKeys.AUTH_TOKEN, session.access_token);
+						return;
+					}
+
+					if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session) {
+						await syncUserData();
+					}
+				} catch (error) {
+					console.error("[AuthContext] Auth state listener failed:", error);
+				}
+			})();
+		});
+
+		return () => {
+			authSubscription?.subscription?.unsubscribe?.();
+		};
+	}, [clearLocalAuthState, syncUserData]);
 
 	const authStatus = useMemo(
 		() => ({
