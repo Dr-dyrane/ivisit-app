@@ -1,12 +1,12 @@
 {
-  "startedAt": "2026-03-03T17:17:00.719Z",
-  "completedAt": "2026-03-03T17:17:05.442Z",
+  "startedAt": "2026-03-04T02:41:10.473Z",
+  "completedAt": "2026-03-04T02:41:15.986Z",
   "mode": "apply",
   "supabaseUrl": "https://dlwtcmhdzoklveihuhjf.supabase.co",
   "steps": {
     "org_wallet_backfill": {
-      "missingCount": 0,
-      "insertedCount": 0
+      "missingCount": 2,
+      "insertedCount": 2
     },
     "platform_wallet_backfill": {
       "needed": false,
@@ -37,26 +37,26 @@
       "updatedCount": 0
     },
     "ambulance_duplicate_callsign_normalized": {
-      "candidateUpdates": 1,
-      "updatedCount": 1
+      "candidateUpdates": 0,
+      "updatedCount": 0
     }
   },
   "warnings": [],
   "errors": [],
   "preflight": {
-    "organizations": 21,
-    "organization_wallets": 21,
+    "organizations": 43,
+    "organization_wallets": 41,
     "ivisit_main_wallet": 1,
-    "emergency_requests": 376,
-    "visits": 381,
-    "payments": 47
+    "emergency_requests": 11,
+    "visits": 16,
+    "payments": 25
   },
   "postflight": {
-    "organizations": 21,
-    "organization_wallets": 21,
+    "organizations": 43,
+    "organization_wallets": 43,
     "ivisit_main_wallet": 1,
-    "emergency_requests": 376,
-    "visits": 381,
-    "payments": 47
+    "emergency_requests": 11,
+    "visits": 16,
+    "payments": 25
   }
 }

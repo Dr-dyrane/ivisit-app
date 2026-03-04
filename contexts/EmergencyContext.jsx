@@ -11,6 +11,8 @@ import { useNotifications } from "./NotificationsContext";
 import { useHospitals } from "../hooks/emergency/useHospitals";
 import { useAmbulances } from "../hooks/emergency/useAmbulances";
 import { ambulanceService } from "../services/ambulanceService";
+import { usePreferences } from "./PreferencesContext";
+import { useAuth } from "./AuthContext";
 
 // Create the emergency context
 const EmergencyContext = createContext();
@@ -160,10 +162,14 @@ const enrichHospitalsWithServiceTypes = (hospitalList) => {
 // Emergency provider component
 export function EmergencyProvider({ children }) {
 	const { addNotification } = useNotifications();
+	const { preferences } = usePreferences();
+	const { user } = useAuth();
 	// Fetch real hospitals from Supabase
 	const { hospitals: dbHospitals, isLoading: isLoadingHospitals } = useHospitals();
 	// Fetch real ambulances
 	const { ambulances: activeAmbulances } = useAmbulances();
+	const demoModeEnabled = preferences?.demoModeEnabled !== false;
+	const demoOwnerSlug = String(user?.id || "").replace(/-/g, "").slice(0, 12).toLowerCase();
 
 	// User location (for map centering and distance calculations)
 	const [userLocation, setUserLocation] = useState(null);
@@ -857,13 +863,27 @@ export function EmergencyProvider({ children }) {
 		return hospital;
 	}, [hospitals, selectedHospitalId]);
 
+	const visibleHospitals = useMemo(() => {
+		if (!Array.isArray(hospitals) || hospitals.length === 0) return [];
+		return hospitals.filter((hospital) => {
+			if (hospital?.isDemo !== true) return true;
+
+			const owner = String(hospital?.demoOwner || "").toLowerCase();
+			const isOwnedByCurrentUser =
+				owner.length > 0 && demoOwnerSlug.length > 0 && owner === demoOwnerSlug;
+
+			if (!isOwnedByCurrentUser) return false;
+			return demoModeEnabled;
+		});
+	}, [demoModeEnabled, demoOwnerSlug, hospitals]);
+
 	// Filter hospitals based on current mode and criteria
 	const filteredHospitals = useMemo(() => {
-		if (!hospitals || hospitals.length === 0) {
+		if (!visibleHospitals || visibleHospitals.length === 0) {
 			return [];
 		}
 
-		return hospitals.filter((hospital) => {
+		return visibleHospitals.filter((hospital) => {
 			if (!hospital) return false;
 
 			// Emergency Mode Logic
@@ -890,7 +910,7 @@ export function EmergencyProvider({ children }) {
 				);
 			}
 		});
-	}, [hospitals, mode, serviceType, selectedSpecialty]);
+	}, [visibleHospitals, mode, serviceType, selectedSpecialty]);
 
 	// Check if any filters are active
 	const hasActiveFilters = useMemo(() => {
@@ -1228,7 +1248,7 @@ export function EmergencyProvider({ children }) {
 		() => ({
 			// State
 			hospitals: filteredHospitals,
-			allHospitals: hospitals,
+			allHospitals: visibleHospitals,
 			filteredHospitals,
 			selectedHospitalId,
 			selectedHospital,
@@ -1264,7 +1284,7 @@ export function EmergencyProvider({ children }) {
 		}),
 		[
 			filteredHospitals,
-			hospitals,
+			visibleHospitals,
 			selectedHospitalId,
 			selectedHospital,
 			mode,

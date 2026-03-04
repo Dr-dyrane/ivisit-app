@@ -393,3 +393,8 @@ entrypoint = "./functions/manage-payment-methods/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/manage-payment-methods/*.html" ]
+
+[functions.bootstrap-demo-ecosystem]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/bootstrap-demo-ecosystem/index.ts"

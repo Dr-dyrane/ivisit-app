@@ -1,0 +1,439 @@
+#!/usr/bin/env node
+
+const dotenv = require('dotenv');
+const { createClient } = require('@supabase/supabase-js');
+
+dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env' });
+
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const serviceRoleKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error('[cleanup-test-side-effects] Missing Supabase credentials (.env/.env.local).');
+  process.exit(1);
+}
+
+const APPLY = process.argv.includes('--apply');
+const SKIP_AUTH_DELETE = process.argv.includes('--skip-auth-delete');
+
+const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+const TEST_EMAIL_PATTERNS = [
+  /@ivisit-e2e\.local$/i,
+  /@ivisit-test\.com$/i,
+  /^test-/i,
+  /^seed-/i,
+  /@example\.com$/i,
+];
+
+const TEST_NAME_MARKERS = ['test', 'e2e', 'matrix', 'seed'];
+
+function isTestEmail(email) {
+  const value = (email || '').trim().toLowerCase();
+  if (!value) return false;
+  return TEST_EMAIL_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function hasTestMarker(value) {
+  const text = (value || '').toLowerCase();
+  if (!text) return false;
+  return TEST_NAME_MARKERS.some((marker) => text.includes(marker));
+}
+
+function unique(values) {
+  return [...new Set((values || []).filter(Boolean))];
+}
+
+async function fetchAll(table, columns) {
+  const pageSize = 1000;
+  let offset = 0;
+  const allRows = [];
+
+  while (true) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(columns)
+      .range(offset, offset + pageSize - 1);
+
+    if (error) {
+      throw new Error(`fetchAll(${table}) failed: ${error.message}`);
+    }
+
+    const rows = data || [];
+    allRows.push(...rows);
+
+    if (rows.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return allRows;
+}
+
+async function execSql(sql) {
+  const { data, error } = await supabase.rpc('exec_sql', { sql });
+  if (error) {
+    throw new Error(`exec_sql failed: ${error.message}`);
+  }
+  if (!data?.success) {
+    throw new Error(`exec_sql rejected SQL: ${data?.error || 'unknown error'}`);
+  }
+}
+
+async function deleteByIds(table, ids, idColumn = 'id', report) {
+  const uniqueIds = unique(ids);
+  if (uniqueIds.length === 0) return 0;
+
+  const chunkSize = 200;
+  let deleted = 0;
+
+  for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+    const chunk = uniqueIds.slice(i, i + chunkSize);
+    const { data, error } = await supabase
+      .from(table)
+      .delete()
+      .in(idColumn, chunk)
+      .select(idColumn);
+
+    if (error) {
+      report.errors.push(`${table} delete failed (${idColumn}): ${error.message}`);
+      continue;
+    }
+
+    deleted += (data || []).length;
+  }
+
+  return deleted;
+}
+
+async function deleteAuthUsersById(userIds, report) {
+  const ids = unique(userIds);
+  if (ids.length === 0) return 0;
+
+  let deleted = 0;
+  for (const id of ids) {
+    const { error } = await supabase.auth.admin.deleteUser(id);
+    if (error) {
+      report.errors.push(`auth.users delete failed (${id}): ${error.message}`);
+      continue;
+    }
+    deleted += 1;
+  }
+
+  return deleted;
+}
+
+function printSummary(summary, phase) {
+  console.log(`\n[cleanup-test-side-effects] ${phase}`);
+  console.log(JSON.stringify(summary, null, 2));
+}
+
+async function main() {
+  const startedAt = new Date().toISOString();
+  const report = {
+    mode: APPLY ? 'apply' : 'dry-run',
+    startedAt,
+    planned: {},
+    deleted: {},
+    errors: [],
+  };
+
+  const [
+    profiles,
+    hospitals,
+    doctors,
+    ambulances,
+    emergencies,
+    visits,
+    payments,
+    insuranceBilling,
+    doctorAssignments,
+    transitions,
+    notifications,
+    userActivity,
+    walletLedger,
+  ] = await Promise.all([
+    fetchAll('profiles', 'id,email'),
+    fetchAll('hospitals', 'id,org_admin_id'),
+    fetchAll('doctors', 'id,profile_id,email'),
+    fetchAll('ambulances', 'id,profile_id,call_sign'),
+    fetchAll('emergency_requests', 'id,user_id,hospital_name'),
+    fetchAll('visits', 'id,user_id,request_id,hospital_name'),
+    fetchAll('payments', 'id,user_id,emergency_request_id'),
+    fetchAll('insurance_billing', 'id,user_id,emergency_request_id'),
+    fetchAll('emergency_doctor_assignments', 'id,doctor_id,emergency_request_id'),
+    fetchAll('emergency_status_transitions', 'id,emergency_request_id'),
+    fetchAll('notifications', 'id,user_id,target_id'),
+    fetchAll('user_activity', 'id,user_id'),
+    fetchAll('wallet_ledger', 'id,reference_id'),
+  ]);
+
+  const testProfileIds = unique(profiles.filter((p) => isTestEmail(p.email)).map((p) => p.id));
+  const testHospitalAdminLinkIds = unique(
+    hospitals
+      .filter((h) => testProfileIds.includes(h.org_admin_id))
+      .map((h) => h.id)
+  );
+  const testDoctorIds = unique(
+    doctors
+      .filter((d) => testProfileIds.includes(d.profile_id) || isTestEmail(d.email))
+      .map((d) => d.id)
+  );
+  const testAmbulanceIds = unique(
+    ambulances
+      .filter((a) => testProfileIds.includes(a.profile_id) || hasTestMarker(a.call_sign))
+      .map((a) => a.id)
+  );
+
+  const testEmergencyIds = unique(
+    emergencies
+      .filter((er) => testProfileIds.includes(er.user_id) || hasTestMarker(er.hospital_name))
+      .map((er) => er.id)
+  );
+
+  const testVisitIds = unique(
+    visits
+      .filter(
+        (v) =>
+          testProfileIds.includes(v.user_id) ||
+          testEmergencyIds.includes(v.request_id) ||
+          hasTestMarker(v.hospital_name)
+      )
+      .map((v) => v.id)
+  );
+
+  const testPaymentIds = unique(
+    payments
+      .filter((p) => testProfileIds.includes(p.user_id) || testEmergencyIds.includes(p.emergency_request_id))
+      .map((p) => p.id)
+  );
+
+  const testInsuranceBillingIds = unique(
+    insuranceBilling
+      .filter(
+        (b) => testProfileIds.includes(b.user_id) || testEmergencyIds.includes(b.emergency_request_id)
+      )
+      .map((b) => b.id)
+  );
+
+  const testAssignmentIds = unique(
+    doctorAssignments
+      .filter(
+        (a) => testEmergencyIds.includes(a.emergency_request_id) || testDoctorIds.includes(a.doctor_id)
+      )
+      .map((a) => a.id)
+  );
+
+  const testTransitionIds = unique(
+    transitions
+      .filter((t) => testEmergencyIds.includes(t.emergency_request_id))
+      .map((t) => t.id)
+  );
+
+  const testNotificationIds = unique(
+    notifications
+      .filter((n) => testProfileIds.includes(n.user_id) || testEmergencyIds.includes(n.target_id))
+      .map((n) => n.id)
+  );
+
+  const testActivityIds = unique(
+    userActivity.filter((a) => testProfileIds.includes(a.user_id)).map((a) => a.id)
+  );
+
+  const paymentReferenceSet = new Set(testPaymentIds);
+  const emergencyReferenceSet = new Set(testEmergencyIds);
+  const testWalletLedgerIds = unique(
+    walletLedger
+      .filter((l) => paymentReferenceSet.has(l.reference_id) || emergencyReferenceSet.has(l.reference_id))
+      .map((l) => l.id)
+  );
+
+  report.planned = {
+    profiles: testProfileIds.length,
+    hospitals_org_admin_links: testHospitalAdminLinkIds.length,
+    doctors: testDoctorIds.length,
+    ambulances: testAmbulanceIds.length,
+    emergency_requests: testEmergencyIds.length,
+    visits: testVisitIds.length,
+    payments: testPaymentIds.length,
+    insurance_billing: testInsuranceBillingIds.length,
+    emergency_doctor_assignments: testAssignmentIds.length,
+    emergency_status_transitions: testTransitionIds.length,
+    notifications: testNotificationIds.length,
+    user_activity: testActivityIds.length,
+    wallet_ledger: testWalletLedgerIds.length,
+    auth_users: testProfileIds.length,
+  };
+
+  const preview = {
+    testProfileEmails: profiles
+      .filter((p) => testProfileIds.includes(p.id))
+      .slice(0, 15)
+      .map((p) => p.email),
+    testEmergencyIds: testEmergencyIds.slice(0, 10),
+    testVisitIds: testVisitIds.slice(0, 10),
+  };
+
+  printSummary({ mode: report.mode, planned: report.planned, preview }, 'plan');
+
+  if (!APPLY) {
+    console.log('[cleanup-test-side-effects] Dry-run complete. Re-run with --apply to execute deletes.');
+    return;
+  }
+
+  let transitionsGuardDisabled = false;
+
+  try {
+    report.deleted.wallet_ledger = await deleteByIds(
+      'wallet_ledger',
+      testWalletLedgerIds,
+      'id',
+      report
+    );
+    report.deleted.notifications = await deleteByIds(
+      'notifications',
+      testNotificationIds,
+      'id',
+      report
+    );
+    report.deleted.user_activity = await deleteByIds('user_activity', testActivityIds, 'id', report);
+
+    report.deleted.insurance_billing = await deleteByIds(
+      'insurance_billing',
+      testInsuranceBillingIds,
+      'id',
+      report
+    );
+    report.deleted.emergency_doctor_assignments = await deleteByIds(
+      'emergency_doctor_assignments',
+      testAssignmentIds,
+      'id',
+      report
+    );
+    report.deleted.payments = await deleteByIds('payments', testPaymentIds, 'id', report);
+    report.deleted.visits = await deleteByIds('visits', testVisitIds, 'id', report);
+
+    await execSql(`
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'trg_emergency_status_transitions_append_only'
+      AND tgrelid = 'public.emergency_status_transitions'::regclass
+  ) THEN
+    ALTER TABLE public.emergency_status_transitions
+      DISABLE TRIGGER trg_emergency_status_transitions_append_only;
+  END IF;
+END $$;`);
+    transitionsGuardDisabled = true;
+
+    report.deleted.emergency_status_transitions = await deleteByIds(
+      'emergency_status_transitions',
+      testTransitionIds,
+      'id',
+      report
+    );
+    report.deleted.emergency_requests = await deleteByIds(
+      'emergency_requests',
+      testEmergencyIds,
+      'id',
+      report
+    );
+
+    report.deleted.doctors = await deleteByIds('doctors', testDoctorIds, 'id', report);
+    report.deleted.ambulances = await deleteByIds('ambulances', testAmbulanceIds, 'id', report);
+
+    if (testHospitalAdminLinkIds.length > 0) {
+      const { data, error } = await supabase
+        .from('hospitals')
+        .update({ org_admin_id: null })
+        .in('id', testHospitalAdminLinkIds)
+        .select('id');
+      if (error) {
+        report.errors.push(`hospitals org_admin cleanup failed: ${error.message}`);
+        report.deleted.hospitals_org_admin_links = 0;
+      } else {
+        report.deleted.hospitals_org_admin_links = (data || []).length;
+      }
+    } else {
+      report.deleted.hospitals_org_admin_links = 0;
+    }
+
+    report.deleted.profiles = await deleteByIds('profiles', testProfileIds, 'id', report);
+
+    if (!SKIP_AUTH_DELETE) {
+      report.deleted.auth_users = await deleteAuthUsersById(testProfileIds, report);
+    } else {
+      report.deleted.auth_users = 0;
+    }
+  } finally {
+    if (transitionsGuardDisabled) {
+      try {
+        await execSql(`
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'trg_emergency_status_transitions_append_only'
+      AND tgrelid = 'public.emergency_status_transitions'::regclass
+  ) THEN
+    ALTER TABLE public.emergency_status_transitions
+      ENABLE TRIGGER trg_emergency_status_transitions_append_only;
+  END IF;
+END $$;`);
+      } catch (error) {
+        report.errors.push(`failed to re-enable transition append-only trigger: ${error.message}`);
+      }
+    }
+  }
+
+  const [postEmergencies, postVisits, postDoctors, postProfiles] = await Promise.all([
+    fetchAll('emergency_requests', 'id,user_id,hospital_name'),
+    fetchAll('visits', 'id,user_id,request_id,hospital_name'),
+    fetchAll('doctors', 'id,profile_id,email'),
+    fetchAll('profiles', 'id,email'),
+  ]);
+
+  const postTestProfileIds = unique(postProfiles.filter((p) => isTestEmail(p.email)).map((p) => p.id));
+  const postTestEmergencyIds = unique(
+    postEmergencies
+      .filter((er) => postTestProfileIds.includes(er.user_id) || hasTestMarker(er.hospital_name))
+      .map((er) => er.id)
+  );
+  const postTestVisitIds = unique(
+    postVisits
+      .filter(
+        (v) =>
+          postTestProfileIds.includes(v.user_id) ||
+          postTestEmergencyIds.includes(v.request_id) ||
+          hasTestMarker(v.hospital_name)
+      )
+      .map((v) => v.id)
+  );
+  const postTestDoctorIds = unique(
+    postDoctors
+      .filter((d) => postTestProfileIds.includes(d.profile_id) || isTestEmail(d.email))
+      .map((d) => d.id)
+  );
+
+  report.after = {
+    test_profiles_remaining: postTestProfileIds.length,
+    test_emergencies_remaining: postTestEmergencyIds.length,
+    test_visits_remaining: postTestVisitIds.length,
+    test_doctors_remaining: postTestDoctorIds.length,
+  };
+
+  printSummary(report, 'result');
+
+  if (report.errors.length > 0) {
+    process.exitCode = 1;
+  }
+}
+
+main().catch((error) => {
+  console.error('[cleanup-test-side-effects] FAIL:', error.message);
+  process.exit(1);
+});

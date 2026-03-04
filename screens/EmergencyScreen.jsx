@@ -34,11 +34,14 @@ import { discoveryService } from "../services/discoveryService";
 import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigationHelpers";
 import { useToast } from "../contexts/ToastContext";
 import Constants from "expo-constants";
+import { hospitalsService } from "../services/hospitalsService";
+import { demoEcosystemService, DEMO_BOOTSTRAP_PHASES } from "../services/demoEcosystemService";
 
 import { EmergencyMapContainer } from "../components/emergency/EmergencyMapContainer";
 import { BottomSheetController } from "../components/emergency/BottomSheetController";
 import { ServiceRatingModal } from "../components/emergency/ServiceRatingModal";
 import CoverageDisclaimerModal from "../components/emergency/CoverageDisclaimerModal";
+import DemoBootstrapModal from "../components/emergency/DemoBootstrapModal";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 import NotificationIconButton from "../components/headers/NotificationIconButton";
 import { useEmergencyHandlers } from "../hooks/emergency/useEmergencyHandlers";
@@ -48,6 +51,12 @@ import { useSearchFiltering } from "../hooks/emergency/useSearchFiltering";
 
 const COVERAGE_POOR_THRESHOLD = 3;
 const COVERAGE_DISCLAIMER_STORAGE_KEY = "@ivisit/coverage_disclaimer_opt_out_v1";
+const createDemoPhaseStatuses = () =>
+	DEMO_BOOTSTRAP_PHASES.reduce((acc, phase) => {
+		acc[phase.key] = "pending";
+		return acc;
+	}, {});
+
 const isHospitalVerifiedForCoverage = (hospital) => {
 	if (!hospital || typeof hospital !== "object") return false;
 
@@ -109,12 +118,13 @@ const EmergencyScreen = () => {
 	const { registerFAB, unregisterFAB } = useFABActions();
 	const { addVisit, updateVisit, cancelVisit, completeVisit } = useVisits();
 	const { user } = useAuth();
-	const { preferences } = usePreferences();
+	const { preferences, updatePreferences } = usePreferences();
 	const { isDarkMode } = useTheme(); // Get theme state
 	const { contacts: emergencyContacts } = useEmergencyContacts();
 	const { profile: medicalProfile } = useMedicalProfile();
 	const { setRequestStatus } = useEmergencyRequests();
 	const { addNotification } = useNotifications();
+	const demoModeEnabled = preferences?.demoModeEnabled !== false;
 
 	const screenHeight = Dimensions.get("window").height;
 
@@ -154,6 +164,12 @@ const EmergencyScreen = () => {
 	const [coverageDontRemind, setCoverageDontRemind] = useState(false);
 	const [coverageOptOut, setCoverageOptOut] = useState(false);
 	const [coveragePreferenceLoaded, setCoveragePreferenceLoaded] = useState(false);
+	const [demoBootstrapVisible, setDemoBootstrapVisible] = useState(false);
+	const [demoBootstrapRunning, setDemoBootstrapRunning] = useState(false);
+	const [demoBootstrapCompleted, setDemoBootstrapCompleted] = useState(false);
+	const [demoBootstrapError, setDemoBootstrapError] = useState(null);
+	const [demoActivePhaseKey, setDemoActivePhaseKey] = useState(null);
+	const [demoPhaseStatuses, setDemoPhaseStatuses] = useState(createDemoPhaseStatuses);
 
 	// Data state from EmergencyContext
 	const {
@@ -184,6 +200,7 @@ const EmergencyScreen = () => {
 		startBedBooking,
 		stopBedBooking,
 		setBedBookingStatus,
+		userLocation,
 		mode, // Add missing mode
 	} = useEmergency();
 	const { showToast } = useToast();
@@ -888,6 +905,14 @@ const EmergencyScreen = () => {
 		}, { allNearby: 0, verifiedNearby: 0 });
 	}, [allHospitals, hospitals]);
 
+	const hasDemoHospitalsNearby = useMemo(() => {
+		const source = Array.isArray(allHospitals) && allHospitals.length > 0 ? allHospitals : hospitals;
+		if (!Array.isArray(source) || source.length === 0) return false;
+		return source.some((hospital) => demoEcosystemService.isDemoHospital(hospital));
+	}, [allHospitals, hospitals]);
+
+	const demoModeActive = demoModeEnabled && hasDemoHospitalsNearby;
+
 	const coverageStatus = useMemo(() => {
 		if (nearbyCoverageCounts.verifiedNearby <= 0) return "none";
 		if (nearbyCoverageCounts.verifiedNearby < COVERAGE_POOR_THRESHOLD) return "poor";
@@ -918,11 +943,114 @@ const EmergencyScreen = () => {
 		setCoverageDontRemind((prev) => !prev);
 	}, []);
 
+	const resolveCoverageCoordinates = useCallback(() => {
+		const fallbackHospital =
+			(Array.isArray(allHospitals) && allHospitals[0]) ||
+			(Array.isArray(hospitals) && hospitals[0]) ||
+			null;
+		const latitude =
+			userLocation?.latitude ??
+			fallbackHospital?.coordinates?.latitude ??
+			fallbackHospital?.latitude ??
+			null;
+		const longitude =
+			userLocation?.longitude ??
+			fallbackHospital?.coordinates?.longitude ??
+			fallbackHospital?.longitude ??
+			null;
+
+		if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+			throw new Error("Unable to resolve your location for demo provisioning");
+		}
+
+		return { latitude: Number(latitude), longitude: Number(longitude) };
+	}, [allHospitals, hospitals, userLocation?.latitude, userLocation?.longitude]);
+
+	const handleCloseDemoBootstrap = useCallback(() => {
+		if (demoBootstrapRunning) return;
+		setDemoBootstrapVisible(false);
+		if (!demoBootstrapCompleted) {
+			setDemoBootstrapError(null);
+			setDemoActivePhaseKey(null);
+			setDemoPhaseStatuses(createDemoPhaseStatuses());
+		}
+	}, [demoBootstrapCompleted, demoBootstrapRunning]);
+
+	const handleCoverageDisclaimerSwitchToDemo = useCallback(async () => {
+		try {
+			const coords = resolveCoverageCoordinates();
+
+			setCoverageDisclaimerVisible(false);
+			setDemoBootstrapVisible(true);
+			setDemoBootstrapRunning(true);
+			setDemoBootstrapCompleted(false);
+			setDemoBootstrapError(null);
+			setDemoActivePhaseKey(null);
+			setDemoPhaseStatuses(createDemoPhaseStatuses());
+
+			await demoEcosystemService.bootstrapDemoEcosystem({
+				latitude: coords.latitude,
+				longitude: coords.longitude,
+				radiusKm: 50,
+				onProgress: ({ key, status }) => {
+					if (!key) return;
+					setDemoActivePhaseKey(status === "running" ? key : null);
+					setDemoPhaseStatuses((prev) => ({
+						...prev,
+						[key]: status === "completed" ? "completed" : "running",
+					}));
+				},
+			});
+
+			try {
+				await updatePreferences?.({ demoModeEnabled: true });
+			} catch (prefError) {
+				console.warn("[EmergencyScreen] Failed to persist demo mode preference", prefError);
+			}
+
+			try {
+				const refreshed = await hospitalsService.discoverNearby(
+					coords.latitude,
+					coords.longitude,
+					50000
+				);
+				if (Array.isArray(refreshed) && refreshed.length > 0) {
+					updateHospitals(refreshed);
+				}
+			} catch (refreshError) {
+				console.warn("[EmergencyScreen] Demo bootstrap refresh failed", refreshError);
+			}
+
+			setDemoBootstrapCompleted(true);
+			showToast("Demo experience is ready. You can disable it later in More > Demo Mode.", "success");
+		} catch (error) {
+			const message = error?.message || "Failed to create demo ecosystem";
+			console.error("[EmergencyScreen] Demo bootstrap failed", error);
+			setDemoBootstrapError(message);
+			setDemoPhaseStatuses((prev) => {
+				const runningPhase = Object.keys(prev).find((phaseKey) => prev[phaseKey] === "running");
+				if (!runningPhase) return prev;
+				return { ...prev, [runningPhase]: "failed" };
+			});
+			showToast(message, "error");
+		} finally {
+			setDemoBootstrapRunning(false);
+			setDemoActivePhaseKey(null);
+		}
+	}, [resolveCoverageCoordinates, showToast, updateHospitals, updatePreferences]);
+
 	useEffect(() => {
 		const hasActiveEmergency =
 			!!activeAmbulanceTrip?.requestId || !!activeBedBooking?.requestId;
 
-		if (!isFocused || isMapLoading || !coveragePreferenceLoaded || coverageOptOut || hasActiveEmergency) {
+		if (
+			!isFocused ||
+			isMapLoading ||
+			!coveragePreferenceLoaded ||
+			coverageOptOut ||
+			hasActiveEmergency ||
+			demoBootstrapVisible
+		) {
 			return;
 		}
 
@@ -945,6 +1073,7 @@ const EmergencyScreen = () => {
 		coveragePreferenceLoaded,
 		coverageOptOut,
 		coverageStatus,
+		demoBootstrapVisible,
 		activeAmbulanceTrip?.requestId,
 		activeBedBooking?.requestId,
 	]);
@@ -1035,10 +1164,23 @@ const EmergencyScreen = () => {
 				nearbyHospitalCount={nearbyCoverageCounts.allNearby}
 				nearbyVerifiedHospitalCount={nearbyCoverageCounts.verifiedNearby}
 				coverageThreshold={COVERAGE_POOR_THRESHOLD}
+				demoModeEnabled={demoModeActive}
 				dontRemind={coverageDontRemind}
 				onToggleDontRemind={handleCoverageDisclaimerToggle}
+				onSwitchToDemo={handleCoverageDisclaimerSwitchToDemo}
 				onContinue={handleCoverageDisclaimerContinue}
 				onCall911={handleCoverageDisclaimerCall911}
+			/>
+
+			<DemoBootstrapModal
+				visible={demoBootstrapVisible}
+				phases={DEMO_BOOTSTRAP_PHASES}
+				phaseStatuses={demoPhaseStatuses}
+				activePhaseKey={demoActivePhaseKey}
+				isRunning={demoBootstrapRunning}
+				isCompleted={demoBootstrapCompleted}
+				error={demoBootstrapError}
+				onClose={handleCloseDemoBootstrap}
 			/>
 
 			<ServiceRatingModal
@@ -1074,6 +1216,30 @@ const EmergencyScreen = () => {
 					setRatingState({ visible: false, visitId: null, title: null, subtitle: null, serviceType: null, serviceDetails: null });
 				}}
 			/>
+
+			{demoModeActive && !coverageOptOut && !coverageDisclaimerVisible && (
+				<View
+					style={[
+						styles.demoModeBanner,
+						{
+							backgroundColor: isDarkMode
+								? "rgba(15,23,42,0.82)"
+								: "rgba(255,255,255,0.86)",
+						},
+					]}
+				>
+					<Ionicons name="flask-outline" size={14} color={COLORS.brandPrimary} />
+					<Text
+						style={[
+							styles.demoModeBannerText,
+							{ color: isDarkMode ? "#E2E8F0" : "#334155" },
+						]}
+					>
+						Demo mode is active. Turn it off in More {">"} Demo Mode.
+					</Text>
+				</View>
+			)}
+
 			{/* Emergency Map Container - Always render since only one instance exists */}
 			<EmergencyMapContainer
 				ref={mapRef}
@@ -1167,6 +1333,24 @@ export default EmergencyScreen;
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
+	},
+	demoModeBanner: {
+		position: "absolute",
+		top: 124,
+		left: 12,
+		right: 12,
+		zIndex: 12,
+		borderRadius: 16,
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+	demoModeBannerText: {
+		flex: 1,
+		fontSize: 12,
+		fontWeight: "600",
 	},
 	versionContainer: {
 		position: 'absolute',

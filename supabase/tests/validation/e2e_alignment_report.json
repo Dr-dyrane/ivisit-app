@@ -1,54 +1,54 @@
 {
-  "generatedAt": "2026-03-03T17:17:06.071Z",
+  "generatedAt": "2026-03-04T02:48:15.902Z",
   "source": "run_alignment_audit.js",
   "supabaseUrl": "https://dlwtcmhdzoklveihuhjf.supabase.co",
   "queryErrors": [],
   "counts": {
-    "profiles": 108,
-    "preferences": 108,
-    "medical_profiles": 108,
-    "patient_wallets": 108,
-    "organizations": 21,
-    "organization_wallets": 21,
-    "hospitals": 73,
-    "ambulances": 8,
-    "doctors": 9,
-    "emergency_requests": 376,
-    "visits": 381,
-    "payments": 47,
-    "emergency_doctor_assignments": 10,
-    "insurance_billing": 73,
-    "wallet_ledger": 21
+    "profiles": 7,
+    "preferences": 7,
+    "medical_profiles": 7,
+    "patient_wallets": 7,
+    "organizations": 45,
+    "organization_wallets": 45,
+    "hospitals": 95,
+    "ambulances": 5,
+    "doctors": 1,
+    "emergency_requests": 19,
+    "visits": 24,
+    "payments": 25,
+    "emergency_doctor_assignments": 0,
+    "insurance_billing": 75,
+    "wallet_ledger": 16
   },
   "bootstrapCoverage": {
-    "profiles": 108,
-    "preferences": 108,
-    "medicalProfiles": 108,
-    "patientWallets": 108,
+    "profiles": 7,
+    "preferences": 7,
+    "medicalProfiles": 7,
+    "patientWallets": 7,
     "missingPreferences": [],
     "missingMedicalProfiles": [],
     "missingPatientWallets": []
   },
   "orgWalletCoverage": {
-    "organizations": 21,
-    "organizationWallets": 21,
+    "organizations": 45,
+    "organizationWallets": 45,
     "nullOrgWallets": [],
     "orphanOrgWallets": [],
     "missing": []
   },
   "emergencyVisitHealth": {
-    "emergencyCount": 376,
-    "visitCount": 381,
+    "emergencyCount": 19,
+    "visitCount": 24,
     "missingVisitsCount": 0,
     "emergenciesMissingVisits": [],
     "duplicateVisitsPerRequest": []
   },
   "paymentHealth": {
-    "total": 47,
-    "linkedToEmergency": 39,
-    "missingEmergencyLink": 8,
+    "total": 25,
+    "linkedToEmergency": 11,
+    "missingEmergencyLink": 14,
     "missingOrganizationLink": 0,
-    "pendingCash": 16,
+    "pendingCash": 6,
     "paymentsMissingLinks": [
       {
         "id": "35e8b99e-003d-478e-9b87-a2a48bcc8756",
@@ -121,15 +121,67 @@
         "amount": 165,
         "emergency_request_id": null,
         "organization_id": "12ae277e-474d-405f-b65f-2c6b2c044897"
+      },
+      {
+        "id": "6d6d3aab-6339-4425-aea6-e7ce75ee9409",
+        "display_id": "PAY-401799",
+        "payment_method": "card",
+        "status": "completed",
+        "amount": 120,
+        "emergency_request_id": null,
+        "organization_id": "754dd2bf-33ee-4bdd-860f-33c304b0e126"
+      },
+      {
+        "id": "00ed5b18-d11e-4f8d-9257-9bfab1e387d4",
+        "display_id": "PAY-18E7DE",
+        "payment_method": "cash",
+        "status": "completed",
+        "amount": 130,
+        "emergency_request_id": null,
+        "organization_id": "754dd2bf-33ee-4bdd-860f-33c304b0e126"
+      },
+      {
+        "id": "610bda23-e811-4a3a-b116-6072b7cb581d",
+        "display_id": "PAY-527C40",
+        "payment_method": "cash",
+        "status": "completed",
+        "amount": 80,
+        "emergency_request_id": null,
+        "organization_id": "754dd2bf-33ee-4bdd-860f-33c304b0e126"
+      },
+      {
+        "id": "2f2abb8d-f8bc-4fe8-a457-09239a849619",
+        "display_id": "PAY-C0F98C",
+        "payment_method": "cash",
+        "status": "completed",
+        "amount": 130,
+        "emergency_request_id": null,
+        "organization_id": "4cb4eee3-9b90-49e9-911a-fa248d1cf87d"
+      },
+      {
+        "id": "bf670392-f12d-4bb6-96bd-1d3b4275da75",
+        "display_id": "PAY-2D9F22",
+        "payment_method": "cash",
+        "status": "completed",
+        "amount": 80,
+        "emergency_request_id": null,
+        "organization_id": "4cb4eee3-9b90-49e9-911a-fa248d1cf87d"
+      },
+      {
+        "id": "d043d1f8-e4ab-45b1-acb7-cc84215a4090",
+        "display_id": "PAY-663FBA",
+        "payment_method": "card",
+        "status": "completed",
+        "amount": 120,
+        "emergency_request_id": null,
+        "organization_id": "4cb4eee3-9b90-49e9-911a-fa248d1cf87d"
       }
     ],
     "placeholderOrphans": []
   },
   "dispatchHealth": {
-    "activeCount": 5,
-    "byServiceType": {
-      "bed": 5
-    },
+    "activeCount": 0,
+    "byServiceType": {},
     "ambulanceFlow": {
       "activeCount": 0,
       "dispatchPhaseCount": 0,
@@ -143,102 +195,10 @@
       "activeRecords": []
     },
     "nonAmbulanceFlow": {
-      "activeCount": 5,
-      "activeRecords": [
-        {
-          "id": "e4f87778-82d0-4ce6-8c65-0e4cacb33e0c",
-          "display_id": "REQ-6C6D4B",
-          "status": "accepted",
-          "service_type": "bed",
-          "ambulance_id": null,
-          "responder_id": null
-        },
-        {
-          "id": "17a2b151-3a10-4f32-b22d-40ae97a2d8d0",
-          "display_id": "REQ-BAEB55",
-          "status": "accepted",
-          "service_type": "bed",
-          "ambulance_id": null,
-          "responder_id": null
-        },
-        {
-          "id": "b96ce48c-6f9e-417b-9077-be3d529e38c1",
-          "display_id": "REQ-B87AC7",
-          "status": "accepted",
-          "service_type": "bed",
-          "ambulance_id": null,
-          "responder_id": null
-        },
-        {
-          "id": "ba491dbd-1d26-45d9-adfa-487b0d798114",
-          "display_id": "REQ-3C91D9",
-          "status": "accepted",
-          "service_type": "bed",
-          "ambulance_id": null,
-          "responder_id": null
-        },
-        {
-          "id": "b45de2b6-3333-4501-8a83-83e1653f4ca9",
-          "display_id": "REQ-219389",
-          "status": "accepted",
-          "service_type": "bed",
-          "ambulance_id": null,
-          "responder_id": null
-        }
-      ]
+      "activeCount": 0,
+      "activeRecords": []
     },
-    "activeRecords": [
-      {
-        "id": "e4f87778-82d0-4ce6-8c65-0e4cacb33e0c",
-        "display_id": "REQ-6C6D4B",
-        "status": "accepted",
-        "service_type": "bed",
-        "ambulance_id": null,
-        "responder_id": null,
-        "has_responder_location": false,
-        "has_patient_location": false
-      },
-      {
-        "id": "17a2b151-3a10-4f32-b22d-40ae97a2d8d0",
-        "display_id": "REQ-BAEB55",
-        "status": "accepted",
-        "service_type": "bed",
-        "ambulance_id": null,
-        "responder_id": null,
-        "has_responder_location": false,
-        "has_patient_location": false
-      },
-      {
-        "id": "b96ce48c-6f9e-417b-9077-be3d529e38c1",
-        "display_id": "REQ-B87AC7",
-        "status": "accepted",
-        "service_type": "bed",
-        "ambulance_id": null,
-        "responder_id": null,
-        "has_responder_location": false,
-        "has_patient_location": false
-      },
-      {
-        "id": "ba491dbd-1d26-45d9-adfa-487b0d798114",
-        "display_id": "REQ-3C91D9",
-        "status": "accepted",
-        "service_type": "bed",
-        "ambulance_id": null,
-        "responder_id": null,
-        "has_responder_location": false,
-        "has_patient_location": false
-      },
-      {
-        "id": "b45de2b6-3333-4501-8a83-83e1653f4ca9",
-        "display_id": "REQ-219389",
-        "status": "accepted",
-        "service_type": "bed",
-        "ambulance_id": null,
-        "responder_id": null,
-        "has_responder_location": false,
-        "has_patient_location": false
-      }
-    ]
+    "activeRecords": []
   },
   "duplicateCandidates": {
     "organizationsByName": [],
@@ -319,6 +279,11 @@
       }
     ],
     "ambulancesByHospitalAndCallSign": []
+  },
+  "schemaContracts": {
+    "checkedTables": 16,
+    "missingColumnsByTable": [],
+    "probeErrors": []
   },
   "severity": {
     "critical": [],

@@ -13,8 +13,10 @@ export default function CoverageDisclaimerModal({
 	nearbyVerifiedHospitalCount = 0,
 	nearbyHospitalCount = 0,
 	coverageThreshold = 3,
+	demoModeEnabled = true,
 	dontRemind = false,
 	onToggleDontRemind,
+	onSwitchToDemo,
 	onContinue,
 	onCall911,
 }) {
@@ -23,6 +25,7 @@ export default function CoverageDisclaimerModal({
 	const fade = useRef(new Animated.Value(0)).current;
 	const contentY = useRef(new Animated.Value(12)).current;
 	const contentFade = useRef(new Animated.Value(0)).current;
+	const demoScale = useRef(new Animated.Value(1)).current;
 	const primaryScale = useRef(new Animated.Value(1)).current;
 	const secondaryScale = useRef(new Animated.Value(1)).current;
 	const checkboxScale = useRef(new Animated.Value(1)).current;
@@ -49,6 +52,10 @@ export default function CoverageDisclaimerModal({
 			fade.setValue(0);
 			contentY.setValue(12);
 			contentFade.setValue(0);
+			demoScale.setValue(1);
+			primaryScale.setValue(1);
+			secondaryScale.setValue(1);
+			checkboxScale.setValue(1);
 			return;
 		}
 
@@ -81,7 +88,7 @@ export default function CoverageDisclaimerModal({
 				]),
 			]),
 		]).start();
-	}, [contentFade, contentY, fade, slideY, visible]);
+	}, [checkboxScale, contentFade, contentY, demoScale, fade, primaryScale, secondaryScale, slideY, visible]);
 
 	const animateButtonScale = (animatedValue, toValue) => {
 		Animated.spring(animatedValue, {
@@ -92,7 +99,7 @@ export default function CoverageDisclaimerModal({
 		}).start();
 	};
 
-	const sheetHeight = Math.min(Math.max(SCREEN_HEIGHT * 0.56, 420), SCREEN_HEIGHT * 0.72);
+	const sheetHeight = Math.min(Math.max(SCREEN_HEIGHT * 0.75, 420), SCREEN_HEIGHT * 0.72);
 	const cardBackground = isDarkMode ? "#0D1420" : "#FFFFFF";
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
 	const subtitleColor = isDarkMode ? "#CBD5E1" : "#475569";
@@ -171,20 +178,47 @@ export default function CoverageDisclaimerModal({
 							</Text>
 						)}
 
+						{!demoModeEnabled && (
+							<Animated.View style={{ transform: [{ scale: demoScale }] }}>
+								<Pressable
+									onPress={onSwitchToDemo}
+									disabled={!onSwitchToDemo}
+									onPressIn={() => animateButtonScale(demoScale, 0.985)}
+									onPressOut={() => animateButtonScale(demoScale, 1)}
+									style={({ pressed }) => [
+										styles.primaryButton,
+										{
+											backgroundColor: COLORS.brandPrimary,
+											opacity: !onSwitchToDemo ? 0.6 : (pressed ? 0.95 : 1),
+										},
+									]}
+								>
+									<Text style={styles.primaryButtonText}>Switch To Demo Experience</Text>
+								</Pressable>
+							</Animated.View>
+						)}
+
 						<Animated.View style={{ transform: [{ scale: primaryScale }] }}>
 							<Pressable
 								onPress={onContinue}
 								onPressIn={() => animateButtonScale(primaryScale, 0.985)}
 								onPressOut={() => animateButtonScale(primaryScale, 1)}
 								style={({ pressed }) => [
-									styles.primaryButton,
+									styles.secondaryPrimaryButton,
 									{
-										backgroundColor: COLORS.brandPrimary,
+										backgroundColor: surfaceColor,
 										opacity: pressed ? 0.95 : 1,
 									},
 								]}
 							>
-								<Text style={styles.primaryButtonText}>Show Nearby Hospitals</Text>
+								<Text
+									style={[
+										styles.primaryButtonText,
+										{ color: isDarkMode ? "#E2E8F0" : "#334155" },
+									]}
+								>
+									Show Nearby Hospitals
+								</Text>
 							</Pressable>
 						</Animated.View>
 
@@ -355,6 +389,13 @@ const styles = StyleSheet.create({
 		borderRadius: 14,
 		alignItems: "center",
 		justifyContent: "center",
+	},
+	secondaryPrimaryButton: {
+		minHeight: 46,
+		borderRadius: 14,
+		alignItems: "center",
+		justifyContent: "center",
+		marginTop: 10,
 	},
 	primaryButtonText: {
 		color: "#FFFFFF",

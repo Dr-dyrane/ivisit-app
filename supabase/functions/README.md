@@ -56,6 +56,19 @@ Searches for hospitals based on location, specialty, and availability.
 - `specialty`: Medical specialty (optional)
 - `availability`: Filter by availability (optional)
 
+### **bootstrap-demo-ecosystem**
+Builds a deterministic demo healthcare ecosystem for users in low/no verified coverage zones.
+
+**Endpoint**: `/functions/v1/bootstrap-demo-ecosystem`
+**Method**: POST
+**Authentication**: Required
+
+**Body Parameters**:
+- `phase`: `prepare | hospitals | staff | pricing | summary | full`
+- `latitude`: number (required)
+- `longitude`: number (required)
+- `radiusKm`: number (optional, default 50)
+
 ## 🪝 **Webhook Functions**
 
 ### **stripe-webhook**

@@ -40,6 +40,9 @@ node supabase/tests/scripts/test_runner.js comprehensive_system
 
 # Run specific task
 node supabase/tests/scripts/test_runner.js [task_name]
+
+# Verify provider->doctor profile automation path
+node supabase/tests/scripts/verify_provider_doctor_automation.js
 ```
 
 ### **Step 3: Error Detection & Logging**
@@ -246,6 +249,19 @@ Tests that create database side-effects (Auth users, profiles) **MUST** include 
 - **Patterned Emails**: Use `test-TASKNAME-UNIXTIME@example.com`.
 - **Mandatory Cleanup**: Every test runner must include a `finally` block or a dedicated `cleanup()` function that deletes all data matching the test pattern.
 - **No Residuals**: A successful test is one that leaves the database exactly as it found it.
+
+### **Global Side-Effect Cleanup Command**
+When historical test runs left residual rows, run the centralized cleanup script:
+
+```bash
+# Preview only (no deletes)
+node supabase/tests/scripts/cleanup_test_side_effects.js
+
+# Apply deletes for test-pattern side effects
+node supabase/tests/scripts/cleanup_test_side_effects.js --apply
+```
+
+This targets test-pattern users and their linked side effects (`emergency_requests`, `visits`, `payments`, `notifications`, `doctors`, and related rows) without touching non-test identities.
 
 ### **Load Testing**
 - **Concurrent requests**: Multiple emergency creations

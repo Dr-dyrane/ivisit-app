@@ -20,6 +20,7 @@ import { useRouter } from "expo-router";
 import { useToast } from "../contexts/ToastContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
+import { usePreferences } from "../contexts/PreferencesContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
@@ -47,6 +48,7 @@ const MoreScreen = () => {
 	const { showToast } = useToast();
 	const { logout, user } = useAuth();
 	const { isDarkMode, toggleTheme } = useTheme();
+	const { preferences, updatePreferences } = usePreferences();
 	const insets = useSafeAreaInsets();
 	const { handleScroll: handleTabBarScroll, resetTabBar } =
 		useTabBarVisibility();
@@ -185,6 +187,7 @@ const MoreScreen = () => {
 	const bottomPadding = tabBarHeight + 20;
 	const headerHeight = 80;
 	const topPadding = STACK_TOP_PADDING;
+	const demoModeEnabled = preferences?.demoModeEnabled !== false;
 
 	useEffect(() => {
 		Animated.parallel([
@@ -223,6 +226,25 @@ const MoreScreen = () => {
 			router.replace("/(auth)");
 		} else {
 			showToast(result.message, "error");
+		}
+	};
+
+	const handleDemoModeToggle = async () => {
+		if (!preferences) return;
+		const nextValue = !demoModeEnabled;
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+		try {
+			await updatePreferences({ demoModeEnabled: nextValue });
+			showToast(
+				nextValue
+					? "Demo mode enabled. Demo hospitals will appear on emergency map."
+					: "Demo mode disabled. Showing only live verified coverage.",
+				"success"
+			);
+		} catch (error) {
+			console.error("[MoreScreen] Failed to toggle demo mode", error);
+			showToast("Unable to update demo mode right now", "error");
 		}
 	};
 
@@ -893,6 +915,87 @@ const MoreScreen = () => {
 					>
 						PREFERENCES
 					</Text>
+
+					<TouchableOpacity
+						onPress={handleDemoModeToggle}
+						disabled={!preferences}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							justifyContent: "space-between",
+							padding: 20,
+							marginBottom: 12,
+							backgroundColor: colors.card,
+							borderRadius: 30,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+							opacity: preferences ? 1 : 0.6,
+						}}
+					>
+						<View style={{ flexDirection: "row", alignItems: "center" }}>
+							<View
+								style={{
+									width: 56,
+									height: 56,
+									borderRadius: 16,
+									backgroundColor: COLORS.brandPrimary,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons name="flask-outline" size={24} color="#FFFFFF" />
+							</View>
+							<View>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -0.5,
+									}}
+								>
+									Demo Mode
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+									}}
+								>
+									{demoModeEnabled ? "Enabled for emergency map" : "Show only live verified hospitals"}
+								</Text>
+							</View>
+						</View>
+						<View
+							style={{
+								width: 52,
+								height: 30,
+								borderRadius: 15,
+								backgroundColor: demoModeEnabled ? COLORS.brandPrimary : "#D1D5DB",
+								justifyContent: "center",
+							}}
+						>
+							<View
+								style={{
+									width: 24,
+									height: 24,
+									borderRadius: 12,
+									backgroundColor: "#FFFFFF",
+									position: "absolute",
+									left: demoModeEnabled ? 25 : 3,
+									shadowColor: "#000",
+									shadowOffset: { width: 0, height: 2 },
+									shadowOpacity: 0.15,
+									shadowRadius: 3,
+									elevation: 3,
+								}}
+							/>
+						</View>
+					</TouchableOpacity>
 
 					{/* Theme Toggle */}
 

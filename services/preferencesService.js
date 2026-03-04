@@ -35,6 +35,10 @@ const mapToDb = (prefs) => {
 };
 
 export const preferencesService = {
+    async get() {
+        return this.getPreferences();
+    },
+
     async getPreferences() {
         const { data: { user } } = await supabase.auth.getUser();
 
@@ -87,6 +91,10 @@ export const preferencesService = {
         return { ...DEFAULT_PREFERENCES, ...mapFromDb(data) };
     },
 
+    async update(updates) {
+        return this.updatePreferences(updates);
+    },
+
     async resetPreferences() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return { ...DEFAULT_PREFERENCES };
@@ -103,5 +111,9 @@ export const preferencesService = {
 
         if (error) throw error;
         return { ...DEFAULT_PREFERENCES, ...mapFromDb(data) };
+    },
+
+    async reset() {
+        return this.resetPreferences();
     },
 };

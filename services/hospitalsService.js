@@ -106,6 +106,19 @@ export const hospitalsService = {
 			h?.import_status,
 			hasExternalPlaceRef && !isVerified ? "pending" : "verified"
 		);
+		const featureList = toTextArray(h?.features);
+		const demoOwnerTag = featureList.find((flag) =>
+			flag.toLowerCase().startsWith("demo_owner:")
+		);
+		const demoOwner = demoOwnerTag ? demoOwnerTag.split(":")[1] || "" : "";
+		const verificationStatus = toText(
+			h?.verification_status,
+			isVerified ? "verified" : "pending"
+		);
+		const isDemoSeed =
+			featureList.some((flag) => flag.toLowerCase().includes("demo")) ||
+			verificationStatus.toLowerCase().startsWith("demo") ||
+			toText(h?.place_id).toLowerCase().startsWith("demo:");
 
 		const image = toText(
 			h?.image,
@@ -148,7 +161,7 @@ export const hospitalsService = {
 			imageConfidence,
 			specialties: toTextArray(h?.specialties),
 			serviceTypes: toTextArray(h?.service_types),
-			features: toTextArray(h?.features),
+			features: featureList,
 			emergencyLevel,
 			availableBeds,
 			ambulances: ambulancesCount,
@@ -177,6 +190,7 @@ export const hospitalsService = {
 			googlePhotos: toTextArray(h?.google_photos),
 			googleTypes: toTextArray(h?.google_types),
 			importStatus,
+			verificationStatus,
 			importedFromGoogle,
 			importedFromMapbox,
 			orgAdminId: toText(h?.org_admin_id),
@@ -186,6 +200,8 @@ export const hospitalsService = {
 			isCovered: isVerified && status === "available",
 			isGoogleOnly: h.google_only === true,
 			isMapboxOnly: importedFromMapbox,
+			isDemo: isDemoSeed,
+			demoOwner,
 		};
 	},
 

@@ -10,6 +10,10 @@ const DEFAULT_PREFERENCES = {
 };
 
 export const preferencesService = {
+	async get() {
+		return this.getPreferences();
+	},
+
 	async getPreferences() {
 		const stored = await database.read(StorageKeys.PREFERENCES, null);
 		if (!stored || typeof stored !== "object") return { ...DEFAULT_PREFERENCES };
@@ -24,9 +28,17 @@ export const preferencesService = {
 		return next;
 	},
 
+	async update(updates) {
+		return this.updatePreferences(updates);
+	},
+
 	async resetPreferences() {
 		await database.write(StorageKeys.PREFERENCES, { ...DEFAULT_PREFERENCES });
 		return { ...DEFAULT_PREFERENCES };
+	},
+
+	async reset() {
+		return this.resetPreferences();
 	},
 };
 

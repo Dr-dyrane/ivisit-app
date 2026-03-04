@@ -19,6 +19,141 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { persistSession: false }
 });
 
+const COLUMN_CONTRACTS = {
+  profiles: [
+    'id',
+    'email',
+    'role',
+    'organization_id',
+    'provider_type',
+    'onboarding_status'
+  ],
+  preferences: [
+    'user_id',
+    'notifications_enabled',
+    'demo_mode_enabled'
+  ],
+  medical_profiles: [
+    'user_id'
+  ],
+  organizations: [
+    'id',
+    'name',
+    'is_active'
+  ],
+  organization_wallets: [
+    'id',
+    'organization_id',
+    'balance',
+    'currency'
+  ],
+  hospitals: [
+    'id',
+    'name',
+    'organization_id',
+    'status',
+    'verified',
+    'available_beds',
+    'total_beds',
+    'latitude',
+    'longitude'
+  ],
+  ambulances: [
+    'id',
+    'hospital_id',
+    'organization_id',
+    'profile_id',
+    'status',
+    'type',
+    'call_sign',
+    'current_call'
+  ],
+  doctors: [
+    'id',
+    'hospital_id',
+    'profile_id',
+    'status',
+    'specialization',
+    'current_patients'
+  ],
+  emergency_requests: [
+    'id',
+    'user_id',
+    'hospital_id',
+    'status',
+    'service_type',
+    'payment_status',
+    'ambulance_id',
+    'responder_id',
+    'assigned_doctor_id',
+    'total_cost',
+    'patient_location',
+    'responder_location'
+  ],
+  emergency_status_transitions: [
+    'id',
+    'emergency_request_id',
+    'from_status',
+    'to_status',
+    'source',
+    'reason',
+    'actor_role',
+    'request_snapshot',
+    'occurred_at'
+  ],
+  visits: [
+    'id',
+    'request_id',
+    'user_id',
+    'hospital_id',
+    'status',
+    'type',
+    'cost'
+  ],
+  payments: [
+    'id',
+    'emergency_request_id',
+    'organization_id',
+    'payment_method',
+    'status',
+    'amount'
+  ],
+  subscribers: [
+    'id',
+    'email',
+    'type',
+    'status',
+    'new_user',
+    'welcome_email_sent',
+    'subscription_date',
+    'source',
+    'last_engagement_at',
+    'welcome_email_sent_at',
+    'unsubscribed_at',
+    'sale_id'
+  ],
+  emergency_doctor_assignments: [
+    'id',
+    'emergency_request_id',
+    'doctor_id',
+    'status'
+  ],
+  insurance_billing: [
+    'id',
+    'emergency_request_id',
+    'status',
+    'total_amount'
+  ],
+  wallet_ledger: [
+    'id',
+    'wallet_id',
+    'transaction_type',
+    'amount',
+    'reference_id',
+    'external_reference'
+  ]
+};
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -84,6 +219,26 @@ async function fetchRows(table, columns) {
   return { data: data || [], error: null };
 }
 
+function isMissingColumnError(error) {
+  const code = error?.code ? String(error.code) : '';
+  const message = String(error?.message || '');
+  return (
+    code === 'PGRST204' ||
+    code === '42703' ||
+    message.includes('Could not find the') ||
+    (message.includes('column') && message.includes('does not exist'))
+  );
+}
+
+async function probeColumn(table, column) {
+  const { error } = await supabase.from(table).select(column).limit(1);
+  if (!error) return { ok: true };
+  if (isMissingColumnError(error)) {
+    return { ok: false, missing: true, error: error.message || error.code || 'unknown error' };
+  }
+  return { ok: false, missing: false, error: error.message || error.code || 'unknown error' };
+}
+
 async function run() {
   const startedAt = nowIso();
   console.log(`[alignment-audit] Starting at ${startedAt}`);
@@ -114,6 +269,31 @@ async function run() {
     counts[table] = result.count;
     if (result.error) {
       queryErrors.push({ kind: 'count', table, error: result.error });
+    }
+  }
+
+  const schemaContracts = {
+    checkedTables: Object.keys(COLUMN_CONTRACTS).length,
+    missingColumnsByTable: [],
+    probeErrors: []
+  };
+
+  for (const [table, columns] of Object.entries(COLUMN_CONTRACTS)) {
+    const missingColumns = [];
+    for (const column of columns) {
+      const probe = await probeColumn(table, column);
+      if (probe.ok) continue;
+      if (probe.missing) {
+        missingColumns.push(column);
+      } else {
+        schemaContracts.probeErrors.push({ table, column, error: probe.error });
+      }
+    }
+    if (missingColumns.length > 0) {
+      schemaContracts.missingColumnsByTable.push({
+        table,
+        missing_columns: missingColumns
+      });
     }
   }
 
@@ -356,6 +536,12 @@ async function run() {
   if (duplicateCandidates.ambulancesByHospitalAndCallSign.length > 0) {
     severity.medium.push('Duplicate ambulance call signs detected within the same hospital');
   }
+  if (schemaContracts.missingColumnsByTable.length > 0) {
+    severity.high.push(`Schema contract missing columns: ${schemaContracts.missingColumnsByTable.length} tables`);
+  }
+  if (schemaContracts.probeErrors.length > 0) {
+    severity.medium.push(`Schema contract probe errors: ${schemaContracts.probeErrors.length}`);
+  }
 
   const report = {
     generatedAt: nowIso(),
@@ -381,6 +567,7 @@ async function run() {
     paymentHealth,
     dispatchHealth,
     duplicateCandidates,
+    schemaContracts,
     severity
   };
 

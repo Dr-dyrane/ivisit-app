@@ -20,19 +20,42 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const TS = Date.now();
+
+async function listAllAuthUsers() {
+    const users = [];
+    let page = 1;
+    const perPage = 200;
+
+    while (true) {
+        const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+        if (error) throw error;
+
+        const batch = data?.users || [];
+        users.push(...batch);
+
+        if (batch.length < perPage) break;
+        page += 1;
+    }
+
+    return users;
+}
+
+function isSeedTestEmail(email = '') {
+    const value = String(email).toLowerCase();
+    return value.startsWith('seed-') && value.endsWith('@ivisit-test.com');
+}
+
 async function seedRealistic() {
     console.log(`🚀 Starting Realistic Seeding (Session: ${TS})...`);
 
     // 1. CLEANUP (Keep legacy cleanup just in case)
     console.log('🧹 Cleaning up old seed users...');
-    const { data: usersData } = await supabase.auth.admin.listUsers();
-    if (usersData && usersData.users) {
-        const toDelete = usersData.users.filter(u => u.email.includes('seed-user-'));
-        for (const u of toDelete) {
-            await supabase.auth.admin.deleteUser(u.id);
-        }
-        console.log(`Deleted ${toDelete.length} legacy users.`);
+    const existingUsers = await listAllAuthUsers();
+    const toDelete = existingUsers.filter(u => isSeedTestEmail(u.email));
+    for (const u of toDelete) {
+        await supabase.auth.admin.deleteUser(u.id);
     }
+    console.log(`Deleted ${toDelete.length} old seed users.`);
 
     // 2. CREATE PERSONAS
     const personas = [
