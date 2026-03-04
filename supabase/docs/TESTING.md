@@ -263,6 +263,26 @@ node supabase/tests/scripts/cleanup_test_side_effects.js --apply
 
 This targets test-pattern users and their linked side effects (`emergency_requests`, `visits`, `payments`, `notifications`, `doctors`, and related rows) without touching non-test identities.
 
+### **Runtime CRUD Batch (Console UI -> App Flow)**
+For table-by-table runtime hardening, run the deterministic batch runner and enforce cleanup immediately after each batch:
+
+```bash
+# 1) Execute runtime CRUD + relationship validation batch
+npm run hardening:runtime-crud-batch
+
+# 2) Cleanup any residual test artifacts (safety net)
+node supabase/tests/scripts/cleanup_test_side_effects.js --apply
+
+# 3) Confirm zero planned side-effects before commit/push
+npm run hardening:cleanup-dry-run-guard
+```
+
+Current batch coverage:
+- `organization_wallets`, `wallet_ledger`, `payments`, `payment_methods`
+- `support_faqs`, `support_tickets`
+- `search_events`, `search_history`, `search_selections`
+- `medical_profiles`
+
 ### **Commit Gate: Cleanup Must Be Zero**
 Before every commit/push after running tests:
 

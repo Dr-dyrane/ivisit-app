@@ -11,6 +11,7 @@ jobs:
     env:
       EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,5 +26,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check Supabase credentials
+        id: supabase_creds
+        shell: bash
+        run: |
+          if [[ -n "${EXPO_PUBLIC_SUPABASE_URL}" && ( -n "${SUPABASE_SERVICE_ROLE_KEY}" || -n "${EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY}" ) ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Supabase credentials unavailable; cleanup dry-run guard will be skipped for this run."
+          fi
+
+      - name: Require credentials on push
+        if: steps.supabase_creds.outputs.available != 'true' && github.event_name == 'push'
+        run: |
+          echo "Missing Supabase secrets on push."
+          echo "Required: EXPO_PUBLIC_SUPABASE_URL and one of SUPABASE_SERVICE_ROLE_KEY or EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY."
+          exit 1
+
       - name: Enforce zero cleanup side-effects
+        if: steps.supabase_creds.outputs.available == 'true'
         run: npm run hardening:cleanup-dry-run-guard

@@ -14,6 +14,7 @@
     "hardening:console-matrix": "node supabase/tests/scripts/run_console_transition_matrix.js",
     "hardening:cash-matrix": "node supabase/tests/scripts/run_cash_role_isolation_matrix.js",
     "hardening:mutation-matrix": "node supabase/tests/scripts/run_mutation_role_isolation_matrix.js",
+    "hardening:runtime-crud-batch": "node supabase/tests/scripts/run_runtime_crud_relationship_batch.js",
     "hardening:full": "npm run hardening:cleanup-dry-run-guard && npm run hardening:contract-matrix && npm run hardening:console-ui-crud-matrix && npm run hardening:emergency && npm run hardening:console-matrix && npm run hardening:cash-matrix && npm run hardening:mutation-matrix && node supabase/tests/scripts/run_e2e_flow_matrix.js"
   },
   "dependencies": {
