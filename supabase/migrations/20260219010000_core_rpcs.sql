@@ -1634,6 +1634,7 @@ DECLARE
     v_actor_org_id UUID;
     v_is_admin BOOLEAN := public.p_is_admin();
     v_req_status TEXT;
+    v_req_payment_status TEXT;
     v_req_hospital_id UUID;
     v_req_org_id UUID;
     v_req_current_ambulance_id UUID;
@@ -1663,16 +1664,21 @@ BEGIN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
 
-    SELECT er.status, er.hospital_id, h.organization_id, er.ambulance_id
-    INTO v_req_status, v_req_hospital_id, v_req_org_id, v_req_current_ambulance_id
+    SELECT er.status, er.payment_status, er.hospital_id, h.organization_id, er.ambulance_id
+    INTO v_req_status, v_req_payment_status, v_req_hospital_id, v_req_org_id, v_req_current_ambulance_id
     FROM public.emergency_requests er
     LEFT JOIN public.hospitals h ON h.id = er.hospital_id
     WHERE er.id = p_request_id
     FOR UPDATE OF er;
 
     v_req_status := public.canonicalize_emergency_status(v_req_status, v_req_status);
+    v_req_payment_status := LOWER(COALESCE(v_req_payment_status, 'pending'));
     IF v_req_status IS NULL THEN
         RAISE EXCEPTION 'Emergency request not found';
+    END IF;
+
+    IF v_req_status = 'pending_approval' OR v_req_payment_status = 'requires_approval' THEN
+        RAISE EXCEPTION 'Cannot dispatch before cash approval';
     END IF;
 
     IF v_req_status IN ('completed', 'cancelled', 'payment_declined') THEN
@@ -1718,6 +1724,7 @@ BEGIN
         p_metadata => jsonb_build_object(
             'request_id', p_request_id,
             'previous_status', v_req_status,
+            'previous_payment_status', v_req_payment_status,
             'previous_ambulance_id', v_req_current_ambulance_id,
             'ambulance_id', p_ambulance_id
         ),
@@ -2081,6 +2088,7 @@ DECLARE
     v_current_status TEXT;
     v_next_status TEXT;
     v_patient_location geometry;
+    v_triage_snapshot JSONB;
     v_updated public.emergency_requests%ROWTYPE;
 BEGIN
     IF v_actor_id IS NULL THEN
@@ -2127,7 +2135,8 @@ BEGIN
         p_metadata => jsonb_build_object(
             'request_id', p_request_id,
             'current_status', v_current_status,
-            'requested_status', v_next_status
+            'requested_status', v_next_status,
+            'triage_update', (p_payload ? 'triage_snapshot') OR (p_payload ? 'triage')
         ),
         p_allow_status_write => true
     );
@@ -2139,8 +2148,27 @@ BEGIN
         END IF;
     END IF;
 
+    IF p_payload ? 'triage_snapshot' THEN
+        v_triage_snapshot := p_payload->'triage_snapshot';
+    ELSIF p_payload ? 'triage' THEN
+        v_triage_snapshot := p_payload->'triage';
+    END IF;
+
+    IF v_triage_snapshot IS NOT NULL AND jsonb_typeof(v_triage_snapshot) <> 'object' THEN
+        RAISE EXCEPTION 'Invalid triage snapshot payload';
+    END IF;
+
     UPDATE public.emergency_requests er
     SET patient_location = COALESCE(v_patient_location, er.patient_location),
+        patient_snapshot = CASE
+            WHEN v_triage_snapshot IS NULL THEN er.patient_snapshot
+            ELSE jsonb_set(
+                COALESCE(er.patient_snapshot, '{}'::JSONB),
+                '{triage}',
+                v_triage_snapshot,
+                true
+            )
+        END,
         status = COALESCE(v_next_status, er.status),
         cancelled_at = CASE
             WHEN COALESCE(v_next_status, er.status) = 'cancelled' THEN COALESCE(er.cancelled_at, NOW())

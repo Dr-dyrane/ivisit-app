@@ -51,6 +51,7 @@ const canonicalizeEmergencyStatus = (value) => {
 const REALTIME_RECOVERY_STATUSES = new Set(["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"]);
 const REALTIME_HEALTHY_STATUSES = new Set(["SUBSCRIBED"]);
 const APPROVAL_TRUTH_SYNC_DEBOUNCE_MS = 6000;
+const APPROVAL_TRUTH_SYNC_INTERVAL_MS = 7000;
 
 const parseRealtimeVersionMs = (row, fallbackMs = Date.now()) => {
 	if (!row || typeof row !== "object") return fallbackMs;
@@ -233,6 +234,7 @@ const EmergencyRequestModal = React.memo(({
 
 			const newStatus = canonicalizeEmergencyStatus(row.status);
 			const newPaymentStatus = row.payment_status;
+			const normalizedPaymentStatus = String(newPaymentStatus ?? "").trim().toLowerCase();
 			const rowAmbulanceId = row.ambulance_id ?? row.ambulanceId ?? null;
 			const rowResponderName = row.responder_name ?? row.responderName ?? null;
 			const rowResponderPhone = row.responder_phone ?? row.responderPhone ?? null;
@@ -243,21 +245,24 @@ const EmergencyRequestModal = React.memo(({
 			const isApprovedTransition =
 				newStatus === 'accepted' ||
 				newStatus === 'in_progress' ||
-				newPaymentStatus === 'completed';
+				newStatus === 'arrived' ||
+				normalizedPaymentStatus === 'completed' ||
+				normalizedPaymentStatus === 'paid' ||
+				normalizedPaymentStatus === 'approved';
 
 			const isDeclinedTransition =
 				newStatus === 'payment_declined' ||
-				newPaymentStatus === 'declined' ||
-				newPaymentStatus === 'failed';
+				normalizedPaymentStatus === 'declined' ||
+				normalizedPaymentStatus === 'failed';
 
-			// For ambulance cash approvals, payment completion can arrive before auto-dispatch assignment.
-			// Stay on waiting screen until the emergency row carries responder assignment info.
+			// For ambulance cash approvals, payment completion may arrive before responder fields.
+			// Do not block approval completion UI on assignment presence; proceed with partial payload
+			// and allow downstream realtime sync to hydrate responder details when available.
 			if (isApprovedTransition && isPendingAmbulance && !hasResponderAssignment) {
 				if (!approvalDispatchWaitNotifiedRef.current) {
 					approvalDispatchWaitNotifiedRef.current = true;
-					showToast('Payment approved. Waiting for driver assignment...', 'info');
+					showToast('Payment approved. Dispatch started, assigning driver...', 'info');
 				}
-				return;
 			}
 
 			if (isApprovedTransition) {
@@ -481,8 +486,22 @@ const EmergencyRequestModal = React.memo(({
 
 		void syncApprovalTruthFromServer('initial_subscribe');
 
+		// Fallback polling protects against missed realtime events or delayed channel readiness.
+		const truthSyncInterval = setInterval(() => {
+			if (cancelled || approvalHandledRef.current) return;
+			if (approvalSyncInFlightRef.current) return;
+
+			const now = Date.now();
+			if (now - approvalLastRealtimeSyncMsRef.current < APPROVAL_TRUTH_SYNC_DEBOUNCE_MS) {
+				return;
+			}
+			approvalLastRealtimeSyncMsRef.current = now;
+			void syncApprovalTruthFromServer('interval_poll');
+		}, APPROVAL_TRUTH_SYNC_INTERVAL_MS);
+
 		return () => {
 			cancelled = true;
+			clearInterval(truthSyncInterval);
 			supabase.removeChannel(emergencyChannel);
 			if (paymentChannel) {
 				supabase.removeChannel(paymentChannel);

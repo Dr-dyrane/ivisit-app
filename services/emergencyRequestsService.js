@@ -131,6 +131,9 @@ export const emergencyRequestsService = {
                     responderHeading: r.responder_heading,
                     patientLocation: r.patient_location,
                     patientHeading: r.patient_heading,
+                    triage: (r?.patient_snapshot && typeof r.patient_snapshot === "object")
+                        ? r.patient_snapshot.triage ?? null
+                        : null,
                 }));
                 await database.write(StorageKeys.EMERGENCY_REQUESTS, requests);
 
@@ -256,6 +259,15 @@ export const emergencyRequestsService = {
             if (updates.patientLocation !== undefined) {
                 rpcPayload.patient_location = parsePointInput(updates.patientLocation) || updates.patientLocation;
             }
+            if (updates.triageSnapshot !== undefined) {
+                rpcPayload.triage_snapshot = updates.triageSnapshot;
+            }
+            if (typeof updates.transition_reason === "string" && updates.transition_reason.trim()) {
+                rpcPayload.transition_reason = updates.transition_reason.trim();
+            }
+            if (typeof updates.reason === "string" && updates.reason.trim()) {
+                rpcPayload.reason = updates.reason.trim();
+            }
 
             if (Object.keys(rpcPayload).length > 0) {
                 const { data, error } = await supabase.rpc('patient_update_emergency_request', {
@@ -331,6 +343,27 @@ export const emergencyRequestsService = {
         }
 
         return result;
+    },
+
+    async updateTriage(id, triageSnapshot, options = {}) {
+        if (!id || !triageSnapshot || typeof triageSnapshot !== "object") {
+            return null;
+        }
+
+        const reason =
+            typeof options.reason === "string" && options.reason.trim()
+                ? options.reason.trim()
+                : "triage_parallel_capture";
+
+        try {
+            return await this.update(id, {
+                triageSnapshot,
+                transition_reason: reason,
+            });
+        } catch (error) {
+            console.warn("[emergencyRequestsService] updateTriage failed (non-blocking):", error);
+            return null;
+        }
     },
 
     async getActive() {

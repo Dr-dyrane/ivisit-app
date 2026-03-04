@@ -42,7 +42,7 @@ export default function RequestAmbulanceScreen() {
 	const { preferences } = usePreferences();
 	const { contacts: emergencyContacts } = useEmergencyContacts();
 	const { profile: medicalProfile } = useMedicalProfile();
-	const { createRequest, updateRequest, setRequestStatus } = useEmergencyRequests();
+	const { createRequest, updateRequest, updateTriage, setRequestStatus } = useEmergencyRequests();
 	const { addVisit, updateVisit } = useVisits();
 
 	const { registerFAB, unregisterFAB } = useFABActions();
@@ -66,6 +66,7 @@ export default function RequestAmbulanceScreen() {
 	const { handleRequestInitiated, handleRequestComplete } = useRequestFlow({
 		createRequest,
 		updateRequest,
+		updateTriage,
 		addVisit,
 		updateVisit,
 		setRequestStatus,

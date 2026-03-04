@@ -12,6 +12,7 @@ import { EmergencyRequestStatus } from "../../services/emergencyRequestsService"
 import { usePaymentFlow } from "./usePaymentFlow";
 import { serviceCostService } from "../../services/serviceCostService";
 import { notificationDispatcher } from "../../services/notificationDispatcher";
+import { triageService } from "../../services/triageService";
 
 const toFiniteNumber = (value) => {
 	const n = Number(value);
@@ -360,6 +361,71 @@ export const useRequestFlow = (props) => {
 					}
 				}
 
+				// Non-blocking AI triage lane: collect + persist in parallel without delaying dispatch.
+				const triagePersist = propsRef.current?.updateTriage;
+				if (typeof triagePersist === "function") {
+					void triageService
+						.collectAndPersist({
+							requestId: realId,
+							stage: "post_request",
+							request: {
+								...request,
+								requestId: displayId,
+								hospitalId,
+								hospitalName: request?.hospitalName ?? hospital?.name ?? null,
+							},
+							hospitals,
+							selectedHospitalId: hospitalId,
+							medicalProfile: propsRef.current?.medicalProfile ?? null,
+							emergencyContacts: propsRef.current?.emergencyContacts ?? [],
+							currentRoute: null,
+							persist: triagePersist,
+						})
+						.then((snapshot) => {
+							const severityBand = snapshot?.severity?.band ?? "unknown";
+							const careType = snapshot?.careType?.type ?? "unknown";
+							console.log(
+								`[useRequestFlow] triage captured (post_request): requestId=${realId} severity=${severityBand} careType=${careType}`
+							);
+						})
+						.catch((triageError) => {
+							console.warn("[useRequestFlow] triage post-request capture failed (non-blocking):", triageError);
+						});
+
+					// Cash approvals can wait in pending_approval; refresh triage during that wait window.
+					if (requiresApproval) {
+						setTimeout(() => {
+							void triageService
+								.collectAndPersist({
+									requestId: realId,
+									stage: "waiting_approval",
+									request: {
+										...request,
+										requestId: displayId,
+										hospitalId,
+										hospitalName: request?.hospitalName ?? hospital?.name ?? null,
+									},
+									hospitals,
+									selectedHospitalId: hospitalId,
+									medicalProfile: propsRef.current?.medicalProfile ?? null,
+									emergencyContacts: propsRef.current?.emergencyContacts ?? [],
+									currentRoute: null,
+									persist: triagePersist,
+								})
+								.then((snapshot) => {
+									const severityBand = snapshot?.severity?.band ?? "unknown";
+									const careType = snapshot?.careType?.type ?? "unknown";
+									console.log(
+										`[useRequestFlow] triage captured (waiting_approval): requestId=${realId} severity=${severityBand} careType=${careType}`
+									);
+								})
+								.catch((triageError) => {
+									console.warn("[useRequestFlow] triage waiting-approval capture failed (non-blocking):", triageError);
+								});
+						}, 2500);
+					}
+				}
+
 				return {
 					ok: true,
 					requestId: realId,
@@ -493,6 +559,38 @@ export const useRequestFlow = (props) => {
 					estimatedWait: request?.estimatedArrival ?? null,
 					etaSeconds: routeEtaSeconds,
 				});
+			}
+
+			// Non-blocking routing-stage triage refresh (parallel to active trip/booking lifecycle).
+			const triagePersist = propsRef.current?.updateTriage;
+			if (typeof triagePersist === "function") {
+				void triageService
+					.collectAndPersist({
+						requestId: visitId,
+						stage: "routing",
+						request: {
+							...request,
+							requestId: visitId,
+							hospitalId,
+							hospitalName: request?.hospitalName ?? hospital?.name ?? null,
+						},
+						hospitals,
+						selectedHospitalId: hospitalId,
+						medicalProfile: propsRef.current?.medicalProfile ?? null,
+						emergencyContacts: propsRef.current?.emergencyContacts ?? [],
+						currentRoute,
+						persist: triagePersist,
+					})
+					.then((snapshot) => {
+						const severityBand = snapshot?.severity?.band ?? "unknown";
+						const careType = snapshot?.careType?.type ?? "unknown";
+						console.log(
+							`[useRequestFlow] triage captured (routing): requestId=${visitId} severity=${severityBand} careType=${careType}`
+						);
+					})
+					.catch((triageError) => {
+						console.warn("[useRequestFlow] triage routing capture failed (non-blocking):", triageError);
+					});
 			}
 
 			inflightByTypeRef.current[request.serviceType] = false;

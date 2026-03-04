@@ -40,9 +40,19 @@ export function useEmergencyRequests() {
         }
     }, []);
 
+	const updateTriage = useCallback(async (requestId, triageSnapshot, options = {}) => {
+		try {
+			return await emergencyRequestsService.updateTriage(requestId, triageSnapshot, options);
+		} catch (err) {
+			console.warn(`[updateTriage] Failed to update triage for ${requestId} (non-blocking):`, err);
+			return null;
+		}
+	}, []);
+
 	return {
 		createRequest,
         updateRequest,
+		updateTriage,
 		setRequestStatus,
 		isLoading,
 		error,

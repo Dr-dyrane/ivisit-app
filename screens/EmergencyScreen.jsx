@@ -209,6 +209,7 @@ const EmergencyScreen = () => {
 	const { handleQuickEmergency } = useRequestFlow({
 		createRequest: emergencyRequestsService.create,
 		updateRequest: emergencyRequestsService.update,
+		updateTriage: emergencyRequestsService.updateTriage,
 		addVisit,
 		updateVisit,
 		setRequestStatus: emergencyRequestsService.setStatus,
