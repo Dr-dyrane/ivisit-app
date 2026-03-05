@@ -130,6 +130,24 @@ npm run hardening:payments-surface-field-guard
 npm run hardening:cash-fee-contract-guard
 ```
 
+### **Runtime Data Integrity Audit**
+```bash
+# Audit recent live data quality (cash fee ledger coherence, pending-approval/payment coherence, visits linkage)
+npm run hardening:runtime-data-integrity
+
+# Optional window override (default: 168 hours)
+RUNTIME_AUDIT_LOOKBACK_HOURS=72 npm run hardening:runtime-data-integrity
+```
+
+### **Runtime Data Integrity Repair**
+```bash
+# Dry-run repair plan for detected runtime data integrity gaps
+npm run hardening:runtime-data-repair
+
+# Apply deterministic repair actions (fee ledger backfill + visit hospital-name backfill)
+npm run hardening:runtime-data-repair -- --apply
+```
+
 ### **Visits Runtime Confidence Gate**
 ```bash
 # Run E2E flow matrix and assert required visits lifecycle outcomes

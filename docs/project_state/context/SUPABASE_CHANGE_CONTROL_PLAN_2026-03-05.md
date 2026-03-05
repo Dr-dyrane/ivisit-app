@@ -490,6 +490,39 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-024: Runtime Data Integrity Audit + Deterministic Repair Lane
+Objective:
+- Add a mandatory live-data quality lane to catch and repair ghost slips that static contract checks cannot detect:
+  - missing cash fee ledger movements,
+  - pending-approval/payment coherence drift,
+  - linked visit display-field gaps.
+
+Deliverables:
+- runtime integrity audit script:
+  - `supabase/tests/scripts/assert_runtime_data_integrity.js`
+  - artifact:
+    - `supabase/tests/validation/runtime_data_integrity_report.json`
+  - command:
+    - `hardening:runtime-data-integrity`
+- deterministic repair script:
+  - `supabase/tests/scripts/repair_runtime_data_integrity.js`
+  - artifact:
+    - `supabase/tests/validation/runtime_data_integrity_repair_report.json`
+  - command:
+    - `hardening:runtime-data-repair`
+    - supports dry-run and `--apply`.
+- docs + tracker evidence updates proving:
+  - issue detection,
+  - repair execution,
+  - post-repair green audit.
+
+Verification:
+- `npm run hardening:runtime-data-integrity` (initial detect) recorded,
+- `npm run hardening:runtime-data-repair -- --apply` green,
+- `npm run hardening:runtime-data-integrity` green post-repair,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

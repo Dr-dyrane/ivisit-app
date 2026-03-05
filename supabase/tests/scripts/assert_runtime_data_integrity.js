@@ -1,0 +1,362 @@
+#!/usr/bin/env node
+
+const fs = require('fs');
+const path = require('path');
+const dotenv = require('dotenv');
+const { createClient } = require('@supabase/supabase-js');
+
+dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env' });
+
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const serviceRoleKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error(
+    '[runtime-data-integrity] Missing Supabase credentials. Expected EXPO_PUBLIC_SUPABASE_URL and service role key.'
+  );
+  process.exit(1);
+}
+
+const LOOKBACK_HOURS = Number(process.env.RUNTIME_AUDIT_LOOKBACK_HOURS || 168);
+const PAGE_SIZE = 1000;
+const MAX_SAMPLE = 25;
+const OUT_DIR = path.join(process.cwd(), 'supabase', 'tests', 'validation');
+const OUT_FILE = path.join(OUT_DIR, 'runtime_data_integrity_report.json');
+
+const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function toNum(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function round2(value) {
+  return Math.round((toNum(value) + Number.EPSILON) * 100) / 100;
+}
+
+function approxEqual(a, b, epsilon = 0.02) {
+  return Math.abs(toNum(a) - toNum(b)) <= epsilon;
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function addSample(bucket, value) {
+  if (bucket.length < MAX_SAMPLE) {
+    bucket.push(value);
+  }
+}
+
+async function fetchInChunks(table, selectClause, values, key) {
+  if (!values || values.length === 0) return [];
+  const unique = [...new Set(values.filter(Boolean))];
+  const out = [];
+  const chunkSize = 250;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
+    const { data, error } = await supabase.from(table).select(selectClause).in(key, chunk);
+    if (error) {
+      throw new Error(`${table}.in(${key}) failed: ${error.message}`);
+    }
+    out.push(...asArray(data));
+  }
+  return out;
+}
+
+async function fetchPaged(builderFactory) {
+  const out = [];
+  for (let page = 0; ; page += 1) {
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const { data, error } = await builderFactory().range(from, to);
+    if (error) throw error;
+    const rows = asArray(data);
+    out.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+  }
+  return out;
+}
+
+async function run() {
+  const startedAt = nowIso();
+  const cutoffDate = new Date(Date.now() - LOOKBACK_HOURS * 60 * 60 * 1000);
+  const cutoffIso = cutoffDate.toISOString();
+
+  const report = {
+    generated_at: startedAt,
+    source: 'assert_runtime_data_integrity.js',
+    lookback_hours: LOOKBACK_HOURS,
+    cutoff_iso: cutoffIso,
+    checks: {},
+    critical: [],
+    warnings: [],
+    success: false,
+  };
+
+  try {
+    // --- payments + fee ledger integrity ---
+    const payments = await fetchPaged(() =>
+      supabase
+        .from('payments')
+        .select(
+          'id,organization_id,emergency_request_id,amount,ivisit_fee_amount,payment_method,status,metadata,created_at,updated_at'
+        )
+        .eq('status', 'completed')
+        .eq('payment_method', 'cash')
+        .gte('created_at', cutoffIso)
+        .order('created_at', { ascending: false })
+    );
+
+    const orgIds = [...new Set(payments.map((p) => p.organization_id).filter(Boolean))];
+    const paymentIds = payments.map((p) => p.id).filter(Boolean);
+
+    const organizations = await fetchInChunks(
+      'organizations',
+      'id,ivisit_fee_percentage',
+      orgIds,
+      'id'
+    );
+    const wallets = await fetchInChunks(
+      'organization_wallets',
+      'id,organization_id,balance',
+      orgIds,
+      'organization_id'
+    );
+    const ledgerRows = await fetchInChunks(
+      'wallet_ledger',
+      'id,wallet_id,amount,transaction_type,reference_id,description,created_at',
+      paymentIds,
+      'reference_id'
+    );
+    const { data: platformWallet, error: platformWalletErr } = await supabase
+      .from('ivisit_main_wallet')
+      .select('id,balance')
+      .limit(1)
+      .maybeSingle();
+    if (platformWalletErr) {
+      throw new Error(`ivisit_main_wallet fetch failed: ${platformWalletErr.message}`);
+    }
+
+    const orgFeeById = new Map(
+      organizations.map((org) => [org.id, toNum(org.ivisit_fee_percentage || 2.5)])
+    );
+    const orgWalletByOrgId = new Map(wallets.map((w) => [w.organization_id, w.id]));
+    const ledgerByRef = new Map();
+    for (const row of ledgerRows) {
+      const key = String(row.reference_id || '');
+      if (!ledgerByRef.has(key)) ledgerByRef.set(key, []);
+      ledgerByRef.get(key).push(row);
+    }
+
+    let cashPaymentsWithExpectedFee = 0;
+    let cashPaymentsMissingLedger = 0;
+    let cashPaymentsMissingFeePersistence = 0;
+
+    for (const payment of payments) {
+      const meta = payment && typeof payment.metadata === 'object' && payment.metadata ? payment.metadata : {};
+      const orgFeePct = orgFeeById.get(payment.organization_id) ?? 2.5;
+      const expectedFee = round2(
+        (toNum(payment.ivisit_fee_amount) > 0 && toNum(payment.ivisit_fee_amount)) ||
+          (toNum(meta.fee_amount) > 0 && toNum(meta.fee_amount)) ||
+          (toNum(meta.fee) > 0 && toNum(meta.fee)) ||
+          (toNum(payment.amount) * orgFeePct) / 100
+      );
+
+      if (expectedFee <= 0) continue;
+      cashPaymentsWithExpectedFee += 1;
+
+      if (toNum(payment.ivisit_fee_amount) <= 0 || toNum(meta.fee_amount || meta.fee) <= 0) {
+        cashPaymentsMissingFeePersistence += 1;
+        addSample(report.warnings, {
+          type: 'cash_fee_not_persisted_cleanly',
+          payment_id: payment.id,
+          organization_id: payment.organization_id,
+          ivisit_fee_amount: payment.ivisit_fee_amount,
+          metadata_fee_amount: meta.fee_amount ?? null,
+          metadata_fee: meta.fee ?? null,
+          expected_fee: expectedFee,
+        });
+      }
+
+      const orgWalletId = orgWalletByOrgId.get(payment.organization_id);
+      const platformWalletId = platformWallet?.id || null;
+      const rows = ledgerByRef.get(String(payment.id)) || [];
+
+      const hasOrgDebit =
+        orgWalletId &&
+        rows.some(
+          (row) =>
+            row.wallet_id === orgWalletId &&
+            row.transaction_type === 'debit' &&
+            approxEqual(row.amount, -expectedFee)
+        );
+      const hasPlatformCredit =
+        platformWalletId &&
+        rows.some(
+          (row) =>
+            row.wallet_id === platformWalletId &&
+            row.transaction_type === 'credit' &&
+            approxEqual(row.amount, expectedFee)
+        );
+
+      if (!hasOrgDebit || !hasPlatformCredit) {
+        cashPaymentsMissingLedger += 1;
+        addSample(report.critical, {
+          type: 'cash_fee_ledger_missing',
+          payment_id: payment.id,
+          emergency_request_id: payment.emergency_request_id,
+          organization_id: payment.organization_id,
+          expected_fee: expectedFee,
+          has_org_debit: Boolean(hasOrgDebit),
+          has_platform_credit: Boolean(hasPlatformCredit),
+        });
+      }
+    }
+
+    report.checks.cash_payments_completed = payments.length;
+    report.checks.cash_payments_with_expected_fee = cashPaymentsWithExpectedFee;
+    report.checks.cash_payments_missing_fee_ledger = cashPaymentsMissingLedger;
+    report.checks.cash_payments_missing_fee_persistence = cashPaymentsMissingFeePersistence;
+
+    // --- pending approval coherence ---
+    const pendingRequests = await fetchPaged(() =>
+      supabase
+        .from('emergency_requests')
+        .select('id,status,payment_status,updated_at,created_at')
+        .eq('status', 'pending_approval')
+        .gte('updated_at', cutoffIso)
+        .order('updated_at', { ascending: false })
+    );
+    const pendingRequestIds = pendingRequests.map((r) => r.id).filter(Boolean);
+    const pendingPayments = await fetchInChunks(
+      'payments',
+      'id,emergency_request_id,status,payment_method,created_at',
+      pendingRequestIds,
+      'emergency_request_id'
+    );
+    const latestPaymentByReq = new Map();
+    for (const p of pendingPayments) {
+      const key = String(p.emergency_request_id || '');
+      const prev = latestPaymentByReq.get(key);
+      if (!prev || String(p.created_at || '') > String(prev.created_at || '')) {
+        latestPaymentByReq.set(key, p);
+      }
+    }
+
+    let pendingApprovalMismatches = 0;
+    for (const req of pendingRequests) {
+      const latest = latestPaymentByReq.get(String(req.id));
+      const validPayment = latest && latest.status === 'pending';
+      const validReqPaymentStatus =
+        !req.payment_status ||
+        ['pending', 'requires_approval', 'pending_approval'].includes(req.payment_status);
+
+      if (!validPayment || !validReqPaymentStatus) {
+        pendingApprovalMismatches += 1;
+        addSample(report.critical, {
+          type: 'pending_approval_payment_mismatch',
+          request_id: req.id,
+          request_status: req.status,
+          request_payment_status: req.payment_status,
+          latest_payment_id: latest?.id || null,
+          latest_payment_status: latest?.status || null,
+          latest_payment_method: latest?.payment_method || null,
+        });
+      }
+    }
+    report.checks.pending_approval_requests = pendingRequests.length;
+    report.checks.pending_approval_payment_mismatches = pendingApprovalMismatches;
+
+    // --- visits linkage quality ---
+    const recentVisits = await fetchPaged(() =>
+      supabase
+        .from('visits')
+        .select('id,request_id,status,hospital_name,updated_at,type')
+        .not('request_id', 'is', null)
+        .gte('updated_at', cutoffIso)
+        .order('updated_at', { ascending: false })
+    );
+    const visitRequestIds = [...new Set(recentVisits.map((v) => v.request_id).filter(Boolean))];
+    const linkedEmergencyRows = await fetchInChunks(
+      'emergency_requests',
+      'id,status,hospital_name,service_type,updated_at',
+      visitRequestIds,
+      'id'
+    );
+    const emergencyById = new Map(linkedEmergencyRows.map((r) => [r.id, r]));
+
+    let visitsOrphaned = 0;
+    let visitsMissingHospitalDisplay = 0;
+    for (const visit of recentVisits) {
+      const linked = emergencyById.get(visit.request_id);
+      if (!linked) {
+        visitsOrphaned += 1;
+        addSample(report.critical, {
+          type: 'visit_request_orphan',
+          visit_id: visit.id,
+          request_id: visit.request_id,
+          visit_status: visit.status,
+        });
+        continue;
+      }
+
+      const visitHospital = String(visit.hospital_name || '').trim();
+      const reqHospital = String(linked.hospital_name || '').trim();
+      if (!visitHospital && reqHospital) {
+        visitsMissingHospitalDisplay += 1;
+        addSample(report.warnings, {
+          type: 'visit_hospital_name_missing',
+          visit_id: visit.id,
+          request_id: visit.request_id,
+          request_hospital_name: reqHospital,
+          visit_status: visit.status,
+          request_status: linked.status,
+        });
+      }
+    }
+    report.checks.recent_linked_visits = recentVisits.length;
+    report.checks.visit_request_orphans = visitsOrphaned;
+    report.checks.visits_missing_hospital_display = visitsMissingHospitalDisplay;
+
+    report.success = report.critical.length === 0;
+    fs.mkdirSync(OUT_DIR, { recursive: true });
+    fs.writeFileSync(OUT_FILE, JSON.stringify(report, null, 2));
+
+    if (!report.success) {
+      console.error('[runtime-data-integrity] FAIL: critical anomalies detected.');
+      console.error(
+        `[runtime-data-integrity] critical=${report.critical.length} warnings=${report.warnings.length}`
+      );
+      console.error(`[runtime-data-integrity] report=${OUT_FILE}`);
+      process.exit(1);
+    }
+
+    console.log('[runtime-data-integrity] PASS: no critical anomalies detected.');
+    console.log(
+      `[runtime-data-integrity] checks=${JSON.stringify(report.checks)} warnings=${report.warnings.length}`
+    );
+    console.log(`[runtime-data-integrity] report=${OUT_FILE}`);
+  } catch (error) {
+    report.success = false;
+    addSample(report.critical, {
+      type: 'script_error',
+      message: error.message || String(error),
+    });
+    fs.mkdirSync(OUT_DIR, { recursive: true });
+    fs.writeFileSync(OUT_FILE, JSON.stringify(report, null, 2));
+    console.error('[runtime-data-integrity] FAIL:', error.message || error);
+    console.error(`[runtime-data-integrity] report=${OUT_FILE}`);
+    process.exit(1);
+  }
+}
+
+run();

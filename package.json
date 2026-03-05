@@ -33,6 +33,8 @@
     "hardening:mutation-matrix": "node supabase/tests/scripts/run_mutation_role_isolation_matrix.js",
     "hardening:runtime-crud-batch": "node supabase/tests/scripts/run_runtime_crud_relationship_batch.js",
     "hardening:targeted-matrix-guard": "npm run hardening:console-ui-crud-matrix && npm run hardening:runtime-crud-batch && node supabase/tests/scripts/assert_targeted_matrix_coverage.js",
+    "hardening:runtime-data-integrity": "node supabase/tests/scripts/assert_runtime_data_integrity.js",
+    "hardening:runtime-data-repair": "node supabase/tests/scripts/repair_runtime_data_integrity.js",
     "hardening:full": "npm run hardening:cleanup-dry-run-guard && npm run hardening:governance-guards && npm run hardening:contract-drift-guard && npm run hardening:console-ui-crud-matrix && npm run hardening:emergency && npm run hardening:console-matrix && npm run hardening:cash-matrix && npm run hardening:mutation-matrix && node supabase/tests/scripts/run_e2e_flow_matrix.js && npm run hardening:emergency-runtime-confidence-assert && npm run hardening:visits-runtime-confidence-assert && npm run hardening:cleanup-apply && npm run hardening:cleanup-dry-run-guard && npm run hardening:governance-guards && npm run hardening:contract-drift-guard"
   },
   "dependencies": {
