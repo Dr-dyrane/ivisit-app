@@ -118,6 +118,12 @@ npm run hardening:emergency-runtime-confidence-assert
 npm run hardening:visits-surface-field-guard
 ```
 
+### **Hospitals Surface Field Guard**
+```bash
+# Detect hospitals table contract drift across app+console JS/JSX + core admin RPC persistence
+npm run hardening:hospitals-surface-field-guard
+```
+
 ### **Payments/Wallet JS/JSX Field Guard**
 ```bash
 # Detect stale/non-schema payments + wallet UI field usage in console JS/JSX surfaces

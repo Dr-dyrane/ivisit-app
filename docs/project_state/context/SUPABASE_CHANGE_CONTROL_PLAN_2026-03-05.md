@@ -523,6 +523,44 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-025: Hospitals Table Surface Contract Hardening (App + Console + Admin RPC)
+Objective:
+- Close `hospitals` table drift discovered in SCC table-flow review where UI/services referenced non-schema import/google columns and admin update RPC dropped canonical edits (`type`, `total_beds`, `place_id`).
+
+Deliverables:
+- app hospitals import hardening:
+  - `services/hospitalImportService.js`
+  - remove writes/filters against non-schema hospitals columns (`google_*`, `import_status`, `imported_from_google`, `last_google_sync`),
+  - map provider onboarding state to canonical columns (`verification_status`, `verified`, `status`, `place_id`, base profile fields).
+- console hospitals import/UI hardening:
+  - `../ivisit-console/frontend/src/services/hospitalImportService.js`
+  - `../ivisit-console/frontend/src/components/modals/HospitalModal.jsx`
+  - `../ivisit-console/frontend/src/components/pages/HospitalsPage.jsx`
+  - `../ivisit-console/frontend/src/components/views/HospitalListView.jsx`
+  - `../ivisit-console/frontend/src/components/views/HospitalTableView.jsx`
+  - replace legacy `import_status` dependencies with canonical `verification_status`,
+  - remove non-schema `google_photos` image fallbacks in hospitals surfaces,
+  - stop persisting non-schema `reserved_beds` from modal state.
+- console hospitals CRUD payload hardening:
+  - `../ivisit-console/frontend/src/services/hospitalsService.js`
+  - canonicalize create/update payloads and persist `total_beds` + `place_id`.
+- admin RPC hardening:
+  - `supabase/migrations/20260219010000_core_rpcs.sql`
+  - `update_hospital_by_admin` must persist `type`, `place_id`, and `total_beds`.
+- deterministic guard:
+  - `supabase/tests/scripts/assert_hospitals_surface_field_guard.js`
+  - artifact:
+    - `supabase/tests/validation/hospitals_surface_field_guard_report.json`
+  - npm command:
+    - `hardening:hospitals-surface-field-guard`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table hospitals` green,
+- `npm run hardening:hospitals-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

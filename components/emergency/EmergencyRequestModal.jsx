@@ -587,13 +587,13 @@ const EmergencyRequestModal = React.memo(({
 	}, [requestHospital, mode]);
 
 	const handleCallHospital = useCallback(() => {
-		const phone = requestHospital?.phone || requestHospital?.google_phone;
+		const phone = requestHospital?.phone;
 		if (phone) {
 			Linking.openURL(`tel:${phone.replace(/\s/g, '')}`);
 		} else {
 			showToast("No phone number available", "error");
 		}
-	}, [requestHospital?.phone, requestHospital?.google_phone, showToast]);
+	}, [requestHospital?.phone, showToast]);
 
 	const handleStepPress = useCallback((idx) => {
 		if (idx >= currentStepIndex || isRequesting) return;

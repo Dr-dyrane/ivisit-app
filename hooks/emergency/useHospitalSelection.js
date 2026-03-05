@@ -20,8 +20,8 @@ export const useHospitalSelection = ({
 		(hospital) => {
 			if (!hospital?.id) return;
 
-			// Check if this is a Google-imported hospital (not verified)
-			if (hospital.imported_from_google && hospital.import_status !== 'verified') {
+			// Check if this is provider-discovered and not verified yet
+			if (hospital.importedFromGoogle && hospital.verificationStatus !== 'verified') {
 				// 🔴 REVERT POINT: Allow unverified hospitals to show selected view
 				// PREVIOUS: Returned early with toast, preventing selection
 				// NEW: Allow selection to continue so user sees "Call Hospital" CTA

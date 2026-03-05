@@ -99,13 +99,6 @@ export const hospitalsService = {
 		const hasValidCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude) && (latitude !== 0 || longitude !== 0);
 
 		const isVerified = h?.verified === true;
-		const hasExternalPlaceRef = typeof h?.place_id === "string" && h.place_id.trim().length > 0;
-		const importedFromGoogle = h?.imported_from_google === true || h?.google_only === true;
-		const importedFromMapbox = h?.mapbox_only === true || (!importedFromGoogle && hasExternalPlaceRef && !isVerified);
-		const importStatus = toText(
-			h?.import_status,
-			hasExternalPlaceRef && !isVerified ? "pending" : "verified"
-		);
 		const featureList = toTextArray(h?.features);
 		const demoOwnerTag = featureList.find((flag) =>
 			flag.toLowerCase().startsWith("demo_owner:")
@@ -115,6 +108,9 @@ export const hospitalsService = {
 			h?.verification_status,
 			isVerified ? "verified" : "pending"
 		);
+		const importedFromGoogle = h?.google_only === true;
+		const importedFromMapbox = h?.mapbox_only === true;
+		const importStatus = verificationStatus === "verified" ? "verified" : "pending";
 		const isDemoSeed =
 			featureList.some((flag) => flag.toLowerCase().includes("demo")) ||
 			verificationStatus.toLowerCase().startsWith("demo") ||

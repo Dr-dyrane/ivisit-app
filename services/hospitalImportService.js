@@ -3,6 +3,40 @@ import googlePlacesService from './googlePlacesService';
 import mapboxService from './mapboxService';
 
 class HospitalImportService {
+  toFiniteOrNull(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  pruneUndefined(payload = {}) {
+    return Object.fromEntries(
+      Object.entries(payload).filter(([, value]) => value !== undefined)
+    );
+  }
+
+  buildProviderHospitalFields(hospital = {}) {
+    const providerTypeTags = Array.isArray(hospital.types)
+      ? hospital.types
+          .map((entry) => String(entry || '').trim())
+          .filter(Boolean)
+          .map((entry) => `provider_type:${entry}`)
+      : [];
+
+    return this.pruneUndefined({
+      name: hospital.name || 'Unnamed Hospital',
+      address: hospital.address || 'Address unavailable',
+      phone: hospital.phone || null,
+      rating: this.toFiniteOrNull(hospital.rating),
+      latitude: this.toFiniteOrNull(hospital.latitude),
+      longitude: this.toFiniteOrNull(hospital.longitude),
+      features: providerTypeTags,
+      place_id: hospital.place_id || null,
+      verification_status: 'pending',
+      verified: false,
+      status: 'available',
+    });
+  }
+
   buildImportLogUpdatePayload(payload = {}) {
     const allowed = {
       status: payload.status,
@@ -189,26 +223,11 @@ class HospitalImportService {
   async insertHospitalFromProvider(hospital) {
     try {
       const hospitalData = {
-        place_id: hospital.place_id,
-        name: hospital.name,
-        address: hospital.address,
-        google_address: hospital.address,
-        google_phone: hospital.phone,
-        google_website: hospital.website,
-        google_rating: hospital.rating,
-        google_photos: hospital.photos || [],
-        google_opening_hours: hospital.opening_hours,
-        google_types: hospital.types || [],
-        latitude: hospital.latitude,
-        longitude: hospital.longitude,
-        imported_from_google: hospital.source !== 'mapbox',
-        import_status: 'pending',
-        verified: false,
-        status: 'available',
+        ...this.buildProviderHospitalFields(hospital),
         available_beds: 0,
+        total_beds: 0,
         ambulances_count: 0,
         wait_time: 'Unknown',
-        last_google_sync: new Date().toISOString()
       };
 
       const { data, error } = await supabase
@@ -229,16 +248,14 @@ class HospitalImportService {
   // Update existing hospital with fresh provider data
   async updateHospitalFromProvider(hospitalId, hospital) {
     try {
-      const updateData = {
-        google_address: hospital.address,
-        google_phone: hospital.phone,
-        google_website: hospital.website,
-        google_rating: hospital.rating,
-        google_photos: hospital.photos || [],
-        google_opening_hours: hospital.opening_hours,
-        google_types: hospital.types || [],
-        last_google_sync: new Date().toISOString()
-      };
+      const updateData = this.pruneUndefined({
+        ...this.buildProviderHospitalFields(hospital),
+        features: undefined,
+        verified: undefined,
+        verification_status: undefined,
+        status: undefined,
+        updated_at: new Date().toISOString(),
+      });
 
       const { data, error } = await supabase
         .from('hospitals')
@@ -262,7 +279,7 @@ class HospitalImportService {
       const { data, error } = await supabase
         .from('hospitals')
         .select('*')
-        .eq('import_status', 'pending')
+        .eq('verification_status', 'pending')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -280,7 +297,7 @@ class HospitalImportService {
       const { data, error } = await supabase
         .from('hospitals')
         .update({
-          import_status: 'verified',
+          verification_status: 'verified',
           verified: true,
           status: 'available'
         })
@@ -303,9 +320,9 @@ class HospitalImportService {
       const { data, error } = await supabase
         .from('hospitals')
         .update({
-          import_status: 'rejected',
+          verification_status: 'rejected',
           verified: false,
-          status: 'inactive'
+          status: 'closed'
         })
         .eq('id', hospitalId)
         .select()
@@ -348,7 +365,7 @@ class HospitalImportService {
         .from('hospitals')
         .select('*')
         .eq('org_admin_id', orgAdminId)
-        .eq('import_status', 'verified')
+        .eq('verification_status', 'verified')
         .order('name');
 
       if (error) throw error;
