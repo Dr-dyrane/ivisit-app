@@ -436,6 +436,33 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-022: Payments Surface Field Guard + UI Contract Reconciliation
+Objective:
+- Eliminate JS/JSX field drift in console wallet/payment surfaces where payments are fetched correctly but rendered with non-schema fields (for example, ledger-only `description` and legacy `payment_method_id` fallback).
+
+Deliverables:
+- deterministic payments surface guard:
+  - `supabase/tests/scripts/assert_payments_surface_field_guard.js`
+  - validation artifact:
+    - `supabase/tests/validation/payments_surface_field_guard_report.json`
+- hardening command:
+  - `hardening:payments-surface-field-guard`
+- payments UI contract patches in console:
+  - `src/components/pages/WalletManagementPage.jsx`
+  - `src/components/mobile/MobileWallet.jsx`
+  - `src/components/modals/EmergencyDetailsModal.jsx`
+  - remove non-schema payment field rendering in payment contexts,
+  - keep ledger description rendering only in ledger contexts,
+  - remove legacy non-schema fee fallback usage in emergency payment card.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table payments` green,
+- `npm run hardening:payments-surface-field-guard` green,
+- `npm run build` green in `ivisit-console/frontend`,
+- `npm run hardening:console-ui-crud-matrix` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

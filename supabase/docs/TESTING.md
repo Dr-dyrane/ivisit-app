@@ -118,6 +118,12 @@ npm run hardening:emergency-runtime-confidence-assert
 npm run hardening:visits-surface-field-guard
 ```
 
+### **Payments/Wallet JS/JSX Field Guard**
+```bash
+# Detect stale/non-schema payments + wallet UI field usage in console JS/JSX surfaces
+npm run hardening:payments-surface-field-guard
+```
+
 ### **Visits Runtime Confidence Gate**
 ```bash
 # Run E2E flow matrix and assert required visits lifecycle outcomes
