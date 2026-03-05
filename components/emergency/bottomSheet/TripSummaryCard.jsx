@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { COLORS } from "../../../constants/colors";
 import { useTripProgress } from "../../../hooks/emergency/useTripProgress";
 import { navigateToBookBed } from "../../../utils/navigationHelpers";
+import TriageIntakeModal from "../triage/TriageIntakeModal";
 
 const SummaryCardSurface = ({ isDarkMode, children, style }) => {
 	const isAndroid = Platform.OS === "android";
@@ -185,6 +186,15 @@ const TripSummaryHalf = (props) => {
 					</Pressable>
 				)
 			}
+
+			{props.showTriageLane ? (
+				<Pressable onPress={props.onPressTriage} style={styles.triageCta}>
+					<Ionicons name="chatbubble-ellipses-outline" size={16} color={COLORS.brandPrimary} />
+					<Text style={styles.triageCtaText}>
+						Continue Guided Intake
+					</Text>
+				</Pressable>
+			) : null}
 		</SummaryCardSurface >
 	);
 };
@@ -206,6 +216,8 @@ export const TripSummaryCard = ({
 	const collapsed = sheetPhase === "collapsed";
 	const [nowMs, setNowMs] = useState(Date.now());
 	const [busyAction, setBusyAction] = useState(null);
+	const [triageModalVisible, setTriageModalVisible] = useState(false);
+	const [triageDraft, setTriageDraft] = useState(null);
 	const pulseAnim = useRef(new Animated.Value(1)).current;
 
 	useEffect(() => {
@@ -261,6 +273,28 @@ export const TripSummaryCard = ({
 		assigned?.vehicleNumber ||
 		assigned?.type ||
 		(isPending ? "Waiting for Hospital" : "Responder");
+	const triageRequestId = activeAmbulanceTrip?.id ?? activeAmbulanceTrip?.requestId ?? null;
+	const triageRequestContext = useMemo(
+		() => ({
+			serviceType: "ambulance",
+			specialty: tripHospital?.specialty ?? null,
+			hospitalId: activeAmbulanceTrip?.hospitalId ?? null,
+			hospitalName: tripHospital?.name ?? activeAmbulanceTrip?.hospitalName ?? null,
+			requestId: activeAmbulanceTrip?.requestId ?? null,
+		}),
+		[
+			tripHospital?.specialty,
+			tripHospital?.name,
+			activeAmbulanceTrip?.hospitalId,
+			activeAmbulanceTrip?.hospitalName,
+			activeAmbulanceTrip?.requestId,
+		]
+	);
+	const initialTriageDraft = activeAmbulanceTrip?.triage?.signals?.userCheckin ?? null;
+
+	useEffect(() => {
+		setTriageDraft(initialTriageDraft);
+	}, [triageRequestId, initialTriageDraft]);
 
 	if (collapsed) {
 		return (
@@ -273,40 +307,65 @@ export const TripSummaryCard = ({
 		);
 	}
 
-	return <TripSummaryHalf
-		{...{
-			isDarkMode,
-			statusLabel: displayStatus,
-			etaText,
-			tripProgress,
-			driverName,
-			rating: assigned?.rating || "4.8",
-			vehicle: assigned?.plate || assigned?.vehicleNumber || assigned?.callSign || assigned?.type || "Ambulance",
-			assigned,
-			callTarget,
-			isBusy: !!busyAction,
-			busyAction,
-			computedStatus,
-			pulseAnim,
-			isPending,
-			telemetryState,
-			telemetryStatusLabel,
-			telemetryMetaText: telemetryStatusLabel ? "ETA may shift until signal returns" : null,
-		}}
-		showMarkArrived={canAdvanceTripStatus && computedStatus === "Arrived" && activeAmbulanceTrip?.status !== "arrived" && !isPending}
-		showComplete={activeAmbulanceTrip?.status === "arrived" && !isPending}
-		onCancelAmbulanceTrip={onCancelAmbulanceTrip}
-		onMarkAmbulanceArrived={() => {
-			setBusyAction('arrived');
-			onMarkAmbulanceArrived().finally(() => setBusyAction(null));
-		}}
-		onCompleteAmbulanceTrip={() => {
-			setBusyAction('complete');
-			onCompleteAmbulanceTrip().finally(() => setBusyAction(null));
-		}}
-		showSecondaryCta={!hasOtherActiveVisit}
-		onPressSecondaryCta={() => navigateToBookBed({ router, hospitalId: activeAmbulanceTrip.hospitalId })}
-	/>;
+	return (
+		<>
+			<TripSummaryHalf
+				{...{
+					isDarkMode,
+					statusLabel: displayStatus,
+					etaText,
+					tripProgress,
+					driverName,
+					rating: assigned?.rating || "4.8",
+					vehicle: assigned?.plate || assigned?.vehicleNumber || assigned?.callSign || assigned?.type || "Ambulance",
+					assigned,
+					callTarget,
+					isBusy: !!busyAction,
+					busyAction,
+					computedStatus,
+					pulseAnim,
+					isPending,
+					telemetryState,
+					telemetryStatusLabel,
+					telemetryMetaText: telemetryStatusLabel ? "ETA may shift until signal returns" : null,
+					showTriageLane: !!triageRequestId,
+					triageRequestId,
+					triageRequestContext,
+					hospitalsForTriage: Array.isArray(allHospitals) ? allHospitals : [],
+					initialTriageDraft,
+				}}
+				showMarkArrived={canAdvanceTripStatus && computedStatus === "Arrived" && activeAmbulanceTrip?.status !== "arrived" && !isPending}
+				showComplete={activeAmbulanceTrip?.status === "arrived" && !isPending}
+				onCancelAmbulanceTrip={onCancelAmbulanceTrip}
+				onMarkAmbulanceArrived={() => {
+					setBusyAction('arrived');
+					onMarkAmbulanceArrived().finally(() => setBusyAction(null));
+				}}
+				onCompleteAmbulanceTrip={() => {
+					setBusyAction('complete');
+					onCompleteAmbulanceTrip().finally(() => setBusyAction(null));
+				}}
+				showSecondaryCta={!hasOtherActiveVisit}
+				onPressSecondaryCta={() => navigateToBookBed({ router, hospitalId: activeAmbulanceTrip.hospitalId })}
+				onPressTriage={() => setTriageModalVisible(true)}
+			/>
+
+			{triageRequestId ? (
+				<TriageIntakeModal
+					visible={triageModalVisible}
+					onClose={() => setTriageModalVisible(false)}
+					phase="waiting"
+					requestId={triageRequestId}
+					requestContext={triageRequestContext}
+					hospitals={Array.isArray(allHospitals) ? allHospitals : []}
+					selectedHospitalId={triageRequestContext?.hospitalId || null}
+					initialDraft={triageDraft}
+					onDraftChange={setTriageDraft}
+					isDarkMode={isDarkMode}
+				/>
+			) : null}
+		</>
+	);
 };
 
 const styles = StyleSheet.create({
@@ -387,5 +446,20 @@ const styles = StyleSheet.create({
 	completeAction: { flex: 1.5, height: 56, borderRadius: 20, backgroundColor: COLORS.brandPrimary, alignItems: 'center', justifyContent: 'center' },
 	completeActionText: { color: '#FFF', fontSize: 13, fontWeight: '900', letterSpacing: 1 },
 	secondaryCta: { marginTop: 12, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.brandPrimary + '08' },
-	secondaryCtaText: { fontSize: 13, fontWeight: '900' }
+	secondaryCtaText: { fontSize: 13, fontWeight: '900' },
+	triageCta: {
+		marginTop: 12,
+		height: 44,
+		borderRadius: 22,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: COLORS.brandPrimary + "0F",
+		flexDirection: "row",
+	},
+	triageCtaText: {
+		marginLeft: 8,
+		fontSize: 13,
+		fontWeight: "900",
+		color: COLORS.brandPrimary,
+	},
 });

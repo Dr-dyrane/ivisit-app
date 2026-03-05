@@ -432,6 +432,7 @@ export function EmergencyProvider({ children }) {
 						hospitalId: activeAmbulance.hospitalId,
 						requestId: activeAmbulance.requestId,
 						status: activeAmbulance.status,
+						triage: activeAmbulance.triage ?? null,
 						estimatedArrival: activeAmbulance.estimatedArrival ?? null,
 						etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
 						startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
@@ -471,6 +472,7 @@ export function EmergencyProvider({ children }) {
 						bookingId: activeBed.bookingId ?? activeBed.requestId ?? null,
 						requestId: activeBed.requestId ?? activeBed.bookingId ?? null,
 						status: activeBed.status ?? null,
+						triage: activeBed.triage ?? null,
 						bedNumber: activeBed.bedNumber ?? null,
 						bedType: activeBed.bedType ?? null,
 						bedCount: activeBed.bedCount ?? null,
@@ -503,6 +505,7 @@ export function EmergencyProvider({ children }) {
 						paymentStatus: pendingMatch.paymentStatus ?? null,
 						estimatedArrival: pendingMatch.estimatedArrival ?? null,
 						etaSeconds: Number.isFinite(pendingEtaSeconds) ? pendingEtaSeconds : null,
+						triageSnapshot: pendingMatch.triage ?? null,
 					});
 				} else {
 					setPendingApproval(null);

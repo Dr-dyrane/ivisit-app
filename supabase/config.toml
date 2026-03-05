@@ -398,3 +398,8 @@ entrypoint = "./functions/manage-payment-methods/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/bootstrap-demo-ecosystem/index.ts"
+
+[functions.triage-copilot]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/triage-copilot/index.ts"

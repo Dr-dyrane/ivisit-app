@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { COLORS } from "../../../constants/colors";
 import { useBedBookingProgress } from "../../../hooks/emergency/useBedBookingProgress";
 import { navigateToRequestAmbulance } from "../../../utils/navigationHelpers";
+import TriageIntakeModal from "../triage/TriageIntakeModal";
 
 const SummaryCardSurface = ({ isDarkMode, children, style }) => {
 	const isAndroid = Platform.OS === "android";
@@ -99,6 +100,13 @@ const BedBookingSummaryHalf = (props) => {
 					</Pressable>
 				)}
 			</View>
+
+			{props.showTriageLane ? (
+				<Pressable onPress={props.onPressTriage} style={styles.triageCta}>
+					<Ionicons name="chatbubble-ellipses-outline" size={16} color={COLORS.brandPrimary} />
+					<Text style={styles.triageCtaText}>Continue Guided Intake</Text>
+				</Pressable>
+			) : null}
 		</SummaryCardSurface>
 	);
 };
@@ -108,6 +116,8 @@ export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, a
 	const collapsed = sheetPhase === "collapsed";
 	const [nowMs, setNowMs] = useState(Date.now());
 	const [busyAction, setBusyAction] = useState(null);
+	const [triageModalVisible, setTriageModalVisible] = useState(false);
+	const [triageDraft, setTriageDraft] = useState(null);
 	const pulseAnim = useRef(new Animated.Value(1)).current;
 
 	useEffect(() => {
@@ -139,44 +149,90 @@ export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, a
 	}
 
 	const hospitalName = activeBedBooking?.hospitalName || "Hospital";
+	const triageRequestId = activeBedBooking?.id ?? activeBedBooking?.requestId ?? null;
+	const triageRequestContext = useMemo(
+		() => ({
+			serviceType: "bed",
+			specialty: activeBedBooking?.specialty ?? null,
+			hospitalId: activeBedBooking?.hospitalId ?? null,
+			hospitalName: activeBedBooking?.hospitalName ?? null,
+			requestId: activeBedBooking?.requestId ?? null,
+		}),
+		[
+			activeBedBooking?.specialty,
+			activeBedBooking?.hospitalId,
+			activeBedBooking?.hospitalName,
+			activeBedBooking?.requestId,
+		]
+	);
+	const initialTriageDraft = activeBedBooking?.triage?.signals?.userCheckin ?? null;
+
+	useEffect(() => {
+		setTriageDraft(initialTriageDraft);
+	}, [triageRequestId, initialTriageDraft]);
 
 	const isPending = activeBedBooking?.status === "pending_approval";
 	const displayStatus = isPending ? "Awaiting Approval" : (activeBedBooking?.status === "arrived" ? "Occupied" : (bedStatus || "Confirmed"));
 	const isReady = bedStatus === "Ready" && !isPending;
 
-	return <BedBookingSummaryHalf
-		{...{
-			isDarkMode,
-			statusLabel: displayStatus,
-			hospitalName,
-			bedType: activeBedBooking?.bedType === "private" ? "Private Suite" : "Standard Bed",
-			bedNumber: activeBedBooking?.bedNumber || (isPending ? "Pending Verification" : "TBA"),
-			specialty: activeBedBooking?.specialty || "General",
-			bedProgress,
-			isBusy: !!busyAction,
-			busyAction,
-			etaText: isPending ? "WAIT" : (isReady ? "READY" : (formattedBedRemaining || "--")),
-			pulseAnim,
-			isPending
-		}}
-		showMarkOccupied={bedStatus === "Ready" && activeBedBooking?.status !== "arrived" && !isPending}
-		showComplete={activeBedBooking?.status === "arrived" && !isPending}
-		onCancelBedBooking={() => {
-			setBusyAction('cancel');
-			onCancelBedBooking().finally(() => setBusyAction(null));
-		}}
-		onMarkBedOccupied={() => {
-			console.log("[BedBookingSummaryCard] CHECK-IN pressed");
-			setBusyAction('occupied');
-			onMarkBedOccupied().finally(() => setBusyAction(null));
-		}}
-		onCompleteBedBooking={() => {
-			setBusyAction('complete');
-			onCompleteBedBooking().finally(() => setBusyAction(null));
-		}}
-		showSecondaryCta={!hasOtherActiveVisit}
-		onPressSecondaryCta={() => navigateToRequestAmbulance({ router, hospitalId: activeBedBooking.hospitalId })}
-	/>;
+	return (
+		<>
+			<BedBookingSummaryHalf
+				{...{
+					isDarkMode,
+					statusLabel: displayStatus,
+					hospitalName,
+					bedType: activeBedBooking?.bedType === "private" ? "Private Suite" : "Standard Bed",
+					bedNumber: activeBedBooking?.bedNumber || (isPending ? "Pending Verification" : "TBA"),
+					specialty: activeBedBooking?.specialty || "General",
+					bedProgress,
+					isBusy: !!busyAction,
+					busyAction,
+					etaText: isPending ? "WAIT" : (isReady ? "READY" : (formattedBedRemaining || "--")),
+					pulseAnim,
+					isPending,
+					showTriageLane: !!triageRequestId,
+					triageRequestId,
+					triageRequestContext,
+					hospitalsForTriage: Array.isArray(allHospitals) ? allHospitals : [],
+					initialTriageDraft,
+				}}
+				showMarkOccupied={bedStatus === "Ready" && activeBedBooking?.status !== "arrived" && !isPending}
+				showComplete={activeBedBooking?.status === "arrived" && !isPending}
+				onCancelBedBooking={() => {
+					setBusyAction('cancel');
+					onCancelBedBooking().finally(() => setBusyAction(null));
+				}}
+				onMarkBedOccupied={() => {
+					console.log("[BedBookingSummaryCard] CHECK-IN pressed");
+					setBusyAction('occupied');
+					onMarkBedOccupied().finally(() => setBusyAction(null));
+				}}
+				onCompleteBedBooking={() => {
+					setBusyAction('complete');
+					onCompleteBedBooking().finally(() => setBusyAction(null));
+				}}
+				showSecondaryCta={!hasOtherActiveVisit}
+				onPressSecondaryCta={() => navigateToRequestAmbulance({ router, hospitalId: activeBedBooking.hospitalId })}
+				onPressTriage={() => setTriageModalVisible(true)}
+			/>
+
+			{triageRequestId ? (
+				<TriageIntakeModal
+					visible={triageModalVisible}
+					onClose={() => setTriageModalVisible(false)}
+					phase="waiting"
+					requestId={triageRequestId}
+					requestContext={triageRequestContext}
+					hospitals={Array.isArray(allHospitals) ? allHospitals : []}
+					selectedHospitalId={triageRequestContext?.hospitalId || null}
+					initialDraft={triageDraft}
+					onDraftChange={setTriageDraft}
+					isDarkMode={isDarkMode}
+				/>
+			) : null}
+		</>
+	);
 };
 
 // CONSOLIDATED SHARED STYLES
@@ -243,5 +299,20 @@ const styles = StyleSheet.create({
 	completeAction: { flex: 1.5, height: 56, borderRadius: 20, backgroundColor: COLORS.brandPrimary, alignItems: 'center', justifyContent: 'center' },
 	completeActionText: { color: '#FFF', fontSize: 13, fontWeight: '900', letterSpacing: 1 },
 	secondaryCta: { marginTop: 12, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.brandPrimary + '08' },
-	secondaryCtaText: { fontSize: 13, fontWeight: '900' }
+	secondaryCtaText: { fontSize: 13, fontWeight: '900' },
+	triageCta: {
+		marginTop: 12,
+		height: 44,
+		borderRadius: 22,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: COLORS.brandPrimary + "0F",
+		flexDirection: "row",
+	},
+	triageCtaText: {
+		marginLeft: 8,
+		fontSize: 13,
+		fontWeight: "900",
+		color: COLORS.brandPrimary,
+	},
 });

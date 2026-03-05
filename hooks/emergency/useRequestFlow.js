@@ -19,6 +19,12 @@ const toFiniteNumber = (value) => {
 	return Number.isFinite(n) ? n : null;
 };
 
+const getRequestUserCheckin = (request) => {
+	if (!request || typeof request !== "object") return null;
+	const candidate = request.triageCheckin ?? request.userCheckin ?? null;
+	return candidate && typeof candidate === "object" ? candidate : null;
+};
+
 const normalizeRequestCostSnapshot = (raw) => {
 	if (!raw || typeof raw !== "object") return null;
 
@@ -364,6 +370,7 @@ export const useRequestFlow = (props) => {
 				// Non-blocking AI triage lane: collect + persist in parallel without delaying dispatch.
 				const triagePersist = propsRef.current?.updateTriage;
 				if (typeof triagePersist === "function") {
+					const userCheckin = getRequestUserCheckin(request);
 					void triageService
 						.collectAndPersist({
 							requestId: realId,
@@ -378,6 +385,7 @@ export const useRequestFlow = (props) => {
 							selectedHospitalId: hospitalId,
 							medicalProfile: propsRef.current?.medicalProfile ?? null,
 							emergencyContacts: propsRef.current?.emergencyContacts ?? [],
+							userCheckin,
 							currentRoute: null,
 							persist: triagePersist,
 						})
@@ -409,6 +417,7 @@ export const useRequestFlow = (props) => {
 									selectedHospitalId: hospitalId,
 									medicalProfile: propsRef.current?.medicalProfile ?? null,
 									emergencyContacts: propsRef.current?.emergencyContacts ?? [],
+									userCheckin,
 									currentRoute: null,
 									persist: triagePersist,
 								})
@@ -564,6 +573,7 @@ export const useRequestFlow = (props) => {
 			// Non-blocking routing-stage triage refresh (parallel to active trip/booking lifecycle).
 			const triagePersist = propsRef.current?.updateTriage;
 			if (typeof triagePersist === "function") {
+				const userCheckin = getRequestUserCheckin(request);
 				void triageService
 					.collectAndPersist({
 						requestId: visitId,
@@ -578,6 +588,7 @@ export const useRequestFlow = (props) => {
 						selectedHospitalId: hospitalId,
 						medicalProfile: propsRef.current?.medicalProfile ?? null,
 						emergencyContacts: propsRef.current?.emergencyContacts ?? [],
+						userCheckin,
 						currentRoute,
 						persist: triagePersist,
 					})

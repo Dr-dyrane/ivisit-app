@@ -80,6 +80,29 @@ const inferSeverity = ({ serviceType, specialty, medicalProfile, userCheckin }) 
 		score += 3;
 		reasons.push("chest_pain");
 	}
+	if (userCheckin?.unconscious === true) {
+		score += 4;
+		reasons.push("unconscious_flag");
+	}
+
+	const painScale = toFiniteNumber(userCheckin?.painScale, null);
+	if (Number.isFinite(painScale) && painScale >= 8) {
+		score += 2;
+		reasons.push("pain_scale_high");
+	} else if (Number.isFinite(painScale) && painScale >= 6) {
+		score += 1;
+		reasons.push("pain_scale_moderate_high");
+	}
+
+	const symptomTrend = String(
+		userCheckin?.symptomTrend || userCheckin?.symptomProgression || ""
+	)
+		.trim()
+		.toLowerCase();
+	if (symptomTrend === "worsening" || symptomTrend === "rapidly_worsening") {
+		score += 2;
+		reasons.push("symptoms_worsening");
+	}
 
 	let band = SEVERITY_BANDS.low;
 	if (score >= 8) band = SEVERITY_BANDS.critical;

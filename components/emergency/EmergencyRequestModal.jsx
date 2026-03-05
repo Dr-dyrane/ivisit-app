@@ -23,6 +23,7 @@ import { hospitalsService } from "../../services/hospitalsService";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
 import HeaderBackButton from "../navigation/HeaderBackButton";
 import { useEmergency } from "../../contexts/EmergencyContext";
+import TriageIntakeModal from "./triage/TriageIntakeModal";
 
 const isValidUUIDValue = (id) =>
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id ?? ""));
@@ -177,9 +178,13 @@ const EmergencyRequestModal = React.memo(({
 	const [dynamicRooms, setDynamicRooms] = useState([]);
 	const [selectedRoomId, setSelectedRoomId] = useState(null);
 	const [bookingPricingReady, setBookingPricingReady] = useState(mode !== "booking");
+	const [prebookingCheckin, setPrebookingCheckin] = useState(null);
+	const [waitingCheckinDraft, setWaitingCheckinDraft] = useState(null);
+	const [triageModalVisible, setTriageModalVisible] = useState(false);
+	const [triageModalPhase, setTriageModalPhase] = useState("prebooking");
 
 	// Cash approval gate state (Managed by context for persistence)
-	const { pendingApproval, setPendingApproval, activeAmbulanceTrip } = useEmergency();
+	const { pendingApproval, setPendingApproval, activeAmbulanceTrip, allHospitals } = useEmergency();
 	const approvalHandledRef = useRef(false);
 	const approvalDispatchWaitNotifiedRef = useRef(false);
 	const approvalRealtimeStatusRef = useRef({});
@@ -203,6 +208,47 @@ const EmergencyRequestModal = React.memo(({
 		approvalEmergencyEventGateRef.current = { streamKey: null, versionMs: 0 };
 		approvalPaymentEventGateRef.current = { streamKey: null, versionMs: 0 };
 	}, [pendingApproval?.requestId, pendingApproval?.displayId]);
+
+	useEffect(() => {
+		if (!pendingApproval) {
+			setWaitingCheckinDraft(null);
+			return;
+		}
+		const incomingDraft = pendingApproval?.triageSnapshot?.signals?.userCheckin ?? null;
+		if (incomingDraft && typeof incomingDraft === "object") {
+			setWaitingCheckinDraft(incomingDraft);
+		}
+	}, [pendingApproval?.id, pendingApproval?.requestId, pendingApproval?.triageSnapshot]);
+
+	const openTriageModal = useCallback((phase) => {
+		setTriageModalPhase(phase);
+		setTriageModalVisible(true);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+	}, []);
+
+	const closeTriageModal = useCallback(() => {
+		setTriageModalVisible(false);
+	}, []);
+
+	const handleWaitingDraftChange = useCallback(
+		(nextDraft) => {
+			setWaitingCheckinDraft(nextDraft);
+			setPendingApproval((prev) => {
+				if (!prev) return prev;
+				return {
+					...prev,
+					triageSnapshot: {
+						...(prev.triageSnapshot || {}),
+						signals: {
+							...(prev.triageSnapshot?.signals || {}),
+							userCheckin: nextDraft,
+						},
+					},
+				};
+			});
+		},
+		[setPendingApproval]
+	);
 
 	// REAL-TIME deterministic approval sync: stale-gating + truth-sync on channel recovery.
 	useEffect(() => {
@@ -290,6 +336,7 @@ const EmergencyRequestModal = React.memo(({
 							bedType: pendingApproval.bedType,
 							bedNumber: pendingApproval.bedNumber,
 							etaSeconds: pendingApproval?.etaSeconds ?? null,
+							triageCheckin: pendingApproval?.initiatedData?.triageCheckin ?? null,
 						}
 						: {
 							success: true,
@@ -323,6 +370,7 @@ const EmergencyRequestModal = React.memo(({
 							serviceType: 'ambulance',
 							estimatedArrival: ambulanceEta,
 							etaSeconds: pendingApproval?.etaSeconds ?? null,
+							triageCheckin: pendingApproval?.initiatedData?.triageCheckin ?? null,
 						};
 
 				setRequestData(next);
@@ -884,6 +932,7 @@ const EmergencyRequestModal = React.memo(({
 					roomId: selectedRoomId,
 					paymentMethod: selectedPaymentMethod,
 					pricingSnapshot,
+					triageCheckin: prebookingCheckin,
 				}
 				: {
 					requestId,
@@ -894,6 +943,7 @@ const EmergencyRequestModal = React.memo(({
 					specialty: selectedSpecialty ?? "Any",
 					paymentMethod: selectedPaymentMethod,
 					pricingSnapshot,
+					triageCheckin: prebookingCheckin,
 				};
 
 
@@ -941,6 +991,9 @@ const EmergencyRequestModal = React.memo(({
 				bedNumber: initiated.bedNumber,
 				estimatedArrival: result?.estimatedArrival ?? null,
 				etaSeconds: Number.isFinite(result?.etaSeconds) ? result.etaSeconds : null,
+				triageSnapshot: initiated?.triageCheckin
+					? { signals: { userCheckin: initiated.triageCheckin } }
+					: null,
 				initiatedData: initiated,
 			});
 			setRequestStep("waiting_approval");
@@ -977,6 +1030,7 @@ const EmergencyRequestModal = React.memo(({
 						bedType: initiated.bedType,
 						bedNumber: initiated.bedNumber,
 						etaSeconds: null,
+						triageCheckin: initiated.triageCheckin ?? null,
 					}
 					: {
 						success: true,
@@ -988,6 +1042,7 @@ const EmergencyRequestModal = React.memo(({
 						serviceType: "ambulance",
 						estimatedArrival: ambulanceEta,
 						etaSeconds: null,
+						triageCheckin: initiated.triageCheckin ?? null,
 					};
 
 			setRequestData(next);
@@ -1017,6 +1072,7 @@ const EmergencyRequestModal = React.memo(({
 		selectedPaymentMethod,
 		selectedSpecialty,
 		showToast,
+		prebookingCheckin,
 	]);
 
 
@@ -1136,6 +1192,7 @@ const EmergencyRequestModal = React.memo(({
 
 		setBedType("standard");
 		setBedCount(1);
+		setPrebookingCheckin(null);
 		setIsRequesting(false);
 		setRequestData(null);
 		setErrorMessage(null);
@@ -1335,6 +1392,34 @@ const EmergencyRequestModal = React.memo(({
 								})}
 							</View>
 						)}
+
+						<Pressable
+							onPress={() => openTriageModal("prebooking")}
+							style={[
+								styles.triageEntryCard,
+								{
+									backgroundColor: requestColors.card,
+									borderColor: requestColors.border,
+								},
+							]}
+						>
+							<View style={styles.triageEntryIcon}>
+								<Ionicons name="chatbubble-ellipses-outline" size={18} color={COLORS.brandPrimary} />
+							</View>
+							<View style={{ flex: 1 }}>
+								<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}>
+									Guided Intake
+								</Text>
+								<Text style={[styles.triageEntrySubtitle, { color: requestColors.textMuted }]}>
+									One-tap questions for smarter hospital and unit fit.
+								</Text>
+							</View>
+							<View style={styles.triageEntryAction}>
+								<Text style={styles.triageEntryActionText}>
+									{prebookingCheckin ? "Resume" : "Start"}
+								</Text>
+							</View>
+						</Pressable>
 					</>
 				) : requestStep === "payment" ? (
 					<>
@@ -1527,6 +1612,33 @@ const EmergencyRequestModal = React.memo(({
 						</View>
 						</View>
 
+						<Pressable
+							onPress={() => openTriageModal("waiting")}
+							style={[
+								styles.triageEntryCard,
+								{
+									backgroundColor: requestColors.card,
+									borderColor: requestColors.border,
+									marginTop: 6,
+								},
+							]}
+						>
+							<View style={styles.triageEntryIcon}>
+								<Ionicons name="sparkles-outline" size={18} color={COLORS.brandPrimary} />
+							</View>
+							<View style={{ flex: 1 }}>
+								<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}>
+									Continue Guided Intake
+								</Text>
+								<Text style={[styles.triageEntrySubtitle, { color: requestColors.textMuted }]}>
+									Keep answering while approval runs. Dispatch is not delayed.
+								</Text>
+							</View>
+							<View style={styles.triageEntryAction}>
+								<Text style={styles.triageEntryActionText}>Open</Text>
+							</View>
+						</Pressable>
+
 						{/* Calm Secondary Info */}
 						<View style={styles.waitingFooter}>
 							<Ionicons name="finger-print-outline" size={16} color={requestColors.textMuted} />
@@ -1546,6 +1658,51 @@ const EmergencyRequestModal = React.memo(({
 					</>
 				)}
 			</ScrollView >
+
+			<TriageIntakeModal
+				visible={triageModalVisible}
+				onClose={closeTriageModal}
+				phase={triageModalPhase}
+				requestId={
+					triageModalPhase === "waiting"
+						? (pendingApproval?.id || pendingApproval?.requestId || null)
+						: null
+				}
+				requestContext={
+					triageModalPhase === "waiting"
+						? {
+							serviceType: pendingApproval?.serviceType || (mode === "booking" ? "bed" : "ambulance"),
+							specialty: pendingApproval?.specialty || selectedSpecialty || null,
+							hospitalId: pendingApproval?.hospitalId || requestHospital?.id || null,
+							hospitalName: pendingApproval?.hospitalName || requestHospital?.name || null,
+							requestId: pendingApproval?.displayId || pendingApproval?.requestId || null,
+						}
+						: {
+							serviceType: mode === "booking" ? "bed" : "ambulance",
+							specialty: selectedSpecialty ?? null,
+							hospitalId: requestHospital?.id ?? null,
+							hospitalName: requestHospital?.name ?? null,
+							requestId: null,
+						}
+				}
+				hospitals={Array.isArray(allHospitals) && allHospitals.length > 0 ? allHospitals : []}
+				selectedHospitalId={
+					triageModalPhase === "waiting"
+						? (pendingApproval?.hospitalId || requestHospital?.id || null)
+						: (requestHospital?.id || null)
+				}
+				initialDraft={
+					triageModalPhase === "waiting"
+						? (waitingCheckinDraft || pendingApproval?.triageSnapshot?.signals?.userCheckin || prebookingCheckin || null)
+						: prebookingCheckin
+				}
+				onDraftChange={
+					triageModalPhase === "waiting"
+						? handleWaitingDraftChange
+						: setPrebookingCheckin
+				}
+				isDarkMode={isDarkMode}
+			/>
 		</View >
 	);
 });
@@ -1599,6 +1756,41 @@ const styles = StyleSheet.create({
 		width: '100%',
 		paddingVertical: 20,
 		paddingHorizontal: 4,
+	},
+	triageEntryCard: {
+		marginTop: 14,
+		borderRadius: 18,
+		paddingVertical: 12,
+		paddingHorizontal: 12,
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	triageEntryIcon: {
+		width: 34,
+		height: 34,
+		borderRadius: 17,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: `${COLORS.brandPrimary}12`,
+		marginRight: 10,
+	},
+	triageEntryTitle: {
+		fontSize: 14,
+		fontWeight: "800",
+	},
+	triageEntrySubtitle: {
+		marginTop: 2,
+		fontSize: 12,
+		lineHeight: 16,
+	},
+	triageEntryAction: {
+		paddingHorizontal: 10,
+		paddingVertical: 8,
+	},
+	triageEntryActionText: {
+		fontSize: 12,
+		fontWeight: "900",
+		color: COLORS.brandPrimary,
 	},
 	paymentContainer: {
 		paddingTop: 16,
