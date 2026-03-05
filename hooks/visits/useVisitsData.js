@@ -1,6 +1,29 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { visitsService } from "../../services/visitsService";
 import { supabase } from "../../services/supabase";
+
+const buildKeySet = (...values) => {
+    const set = new Set();
+    values
+        .filter((value) => value !== undefined && value !== null && String(value).trim() !== "")
+        .forEach((value) => set.add(String(value)));
+    return set;
+};
+
+const visitMatchesKeys = (visit, keySet) => {
+    if (!visit || keySet.size === 0) return false;
+    return (
+        keySet.has(String(visit.id)) ||
+        keySet.has(String(visit.requestId || "")) ||
+        keySet.has(String(visit.displayId || ""))
+    );
+};
+
+const replaceVisitByKey = (prev, key, updated) => {
+    if (!updated) return prev;
+    const keySet = buildKeySet(key, updated.id, updated.requestId, updated.displayId);
+    return prev.map((visit) => (visitMatchesKeys(visit, keySet) ? updated : visit));
+};
 
 /**
  * Hook to manage visits data
@@ -39,7 +62,7 @@ export function useVisitsData() {
     const updateVisit = useCallback(async (id, updates) => {
         try {
             const updated = await visitsService.update(id, updates);
-            setVisits(prev => prev.map(v => v.id === id ? updated : v));
+            setVisits((prev) => replaceVisitByKey(prev, id, updated));
             return updated;
         } catch (err) {
             if (err?.code === "PGRST204") {
@@ -53,7 +76,7 @@ export function useVisitsData() {
     const cancelVisit = useCallback(async (id) => {
         try {
             const updated = await visitsService.cancel(id);
-            setVisits(prev => prev.map(v => v.id === id ? updated : v));
+            setVisits((prev) => replaceVisitByKey(prev, id, updated));
             return updated;
         } catch (err) {
             if (err?.code === "PGRST204") {
@@ -67,7 +90,7 @@ export function useVisitsData() {
     const completeVisit = useCallback(async (id) => {
         try {
             const updated = await visitsService.complete(id);
-            setVisits(prev => prev.map(v => v.id === id ? updated : v));
+            setVisits((prev) => replaceVisitByKey(prev, id, updated));
             return updated;
         } catch (err) {
             if (err?.code === "PGRST204") {
@@ -81,7 +104,8 @@ export function useVisitsData() {
     const deleteVisit = useCallback(async (id) => {
         try {
             await visitsService.delete(id);
-            setVisits(prev => prev.filter(v => v.id !== id));
+            const keySet = buildKeySet(id);
+            setVisits((prev) => prev.filter((visit) => !visitMatchesKeys(visit, keySet)));
         } catch (err) {
             console.error("[useVisitsData] delete error for", id, ":", err);
             throw err;

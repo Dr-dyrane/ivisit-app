@@ -1,6 +1,6 @@
 # iVisit Documentation Index
 
-Last Updated: 2026-03-02
+Last Updated: 2026-03-05
 
 ## Folder Structure
 
@@ -75,6 +75,12 @@ All schema, RPC, and migration conventions are under `supabase/docs/`.
 - [audit/flow_dependency_graph_2026-03-02.json](./audit/flow_dependency_graph_2026-03-02.json)
 - [audit/rpc_dependency_graph_2026-03-02.json](./audit/rpc_dependency_graph_2026-03-02.json)
 - [audit/ui_db_parity_matrix_2026-03-02.json](./audit/ui_db_parity_matrix_2026-03-02.json)
+
+## Active Change Control
+
+- [project_state/context/SUPABASE_CHANGE_CONTROL_PLAN_2026-03-05.md](./project_state/context/SUPABASE_CHANGE_CONTROL_PLAN_2026-03-05.md)
+- [project_state/context/SUPABASE_CHANGE_TRACKER_2026-03-05.md](./project_state/context/SUPABASE_CHANGE_TRACKER_2026-03-05.md)
+- [project_state/context/SCC-001_EMERGENCY_REQUESTS_CONTRACT_AUDIT_2026-03-05.md](./project_state/context/SCC-001_EMERGENCY_REQUESTS_CONTRACT_AUDIT_2026-03-05.md)
 
 ## Documentation Maintenance
 

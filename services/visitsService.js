@@ -18,6 +18,76 @@ const eqById = (query, id) => {
     return query.eq('display_id', strId);
 };
 
+const toFlatName = (value) => {
+    if (typeof value === "string") return value;
+    if (value && typeof value === "object" && typeof value.name === "string") {
+        return value.name;
+    }
+    return null;
+};
+
+const resolveEmergencyRequestIdForUser = async (key, userId) => {
+    const lookup = String(key || "").trim();
+    if (!lookup || !userId) return null;
+
+    let requestQuery = supabase
+        .from("emergency_requests")
+        .select("id")
+        .eq("user_id", userId);
+
+    if (isValidUUID(lookup)) {
+        requestQuery = requestQuery.eq("id", lookup);
+    } else {
+        requestQuery = requestQuery.eq("display_id", lookup);
+    }
+
+    const { data, error } = await requestQuery.maybeSingle();
+    if (error) {
+        console.warn(`[visitsService] resolveEmergencyRequestIdForUser failed for ${lookup}:`, error);
+        return null;
+    }
+    return data?.id ?? null;
+};
+
+const resolveVisitRowForKey = async (key, userId) => {
+    const lookup = String(key || "").trim();
+    if (!lookup || !userId) return null;
+
+    let visitQuery = supabase
+        .from(TABLE)
+        .select("*")
+        .eq("user_id", userId);
+
+    if (isValidUUID(lookup)) {
+        visitQuery = visitQuery.eq("id", lookup);
+    } else {
+        visitQuery = visitQuery.eq("display_id", lookup);
+    }
+
+    const { data: directVisit, error: directError } = await visitQuery.maybeSingle();
+    if (directError) {
+        console.warn(`[visitsService] resolveVisitRowForKey direct lookup failed for ${lookup}:`, directError);
+    }
+    if (directVisit) return directVisit;
+
+    const requestId = await resolveEmergencyRequestIdForUser(lookup, userId);
+    if (!requestId) return null;
+
+    const { data: requestVisit, error: requestError } = await supabase
+        .from(TABLE)
+        .select("*")
+        .eq("user_id", userId)
+        .eq("request_id", requestId)
+        .maybeSingle();
+
+    if (requestError) {
+        console.warn(`[visitsService] resolveVisitRowForKey request lookup failed for ${lookup}:`, requestError);
+        return null;
+    }
+
+    return requestVisit ?? null;
+};
+
 let supportsExtendedEmergencyColumns = null;
 
 const isMissingColumnError = (err, column) => {
@@ -52,6 +122,10 @@ const shouldDisableExtendedColumns = (err) => {
 const mapToDb = (item) => {
     const db = { ...item };
     if (item.hospitalId !== undefined) db.hospital_id = item.hospitalId;
+    if (item.hospitalName !== undefined) db.hospital_name = item.hospitalName;
+    if (item.hospital !== undefined && item.hospitalName === undefined) db.hospital_name = toFlatName(item.hospital);
+    if (item.doctorName !== undefined) db.doctor_name = item.doctorName;
+    if (item.doctor !== undefined && item.doctorName === undefined) db.doctor_name = toFlatName(item.doctor);
     if (item.roomNumber !== undefined) db.room_number = item.roomNumber;
     if (item.estimatedDuration !== undefined) db.estimated_duration = item.estimatedDuration;
     if (item.requestId !== undefined) db.request_id = item.requestId;
@@ -67,6 +141,10 @@ const mapToDb = (item) => {
 
     // Remove camelCase keys
     delete db.hospitalId;
+    delete db.hospital;
+    delete db.hospitalName;
+    delete db.doctor;
+    delete db.doctorName;
     delete db.roomNumber;
     delete db.estimatedDuration;
     delete db.requestId;
@@ -89,6 +167,10 @@ const mapToDb = (item) => {
 const mapFromDb = (row) => ({
     ...row,
     hospitalId: row.hospital_id,
+    hospital: row.hospital_name ?? row.hospital ?? null,
+    hospitalName: row.hospital_name ?? row.hospital ?? null,
+    doctor: row.doctor_name ?? row.doctor ?? null,
+    doctorName: row.doctor_name ?? row.doctor ?? null,
     roomNumber: row.room_number,
     estimatedDuration: row.estimated_duration,
     requestId: row.request_id,
@@ -153,7 +235,7 @@ export const visitsService = {
             user_id: user.id,
             request_id: requestId ?? String(id),
             hospital_id: hospitalId ?? null,
-            hospital: hospital ?? null,
+            hospital_name: hospital ?? null,
             specialty: specialty ?? null,
             type: type ?? null,
             status: status ?? "upcoming",
@@ -250,6 +332,12 @@ export const visitsService = {
     async update(id, updates) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not logged in");
+        const lookupId = String(id);
+        const [resolvedVisitRow, resolvedEmergencyRequestId] = await Promise.all([
+            resolveVisitRowForKey(lookupId, user.id),
+            resolveEmergencyRequestIdForUser(lookupId, user.id),
+        ]);
+        const targetId = resolvedVisitRow?.id ?? lookupId;
 
         let dbUpdates = mapToDb(updates);
         dbUpdates.updated_at = new Date().toISOString();
@@ -262,7 +350,7 @@ export const visitsService = {
         let updateQuery = supabase
             .from(TABLE)
             .update(dbUpdates);
-        updateQuery = eqById(updateQuery, id);
+        updateQuery = eqById(updateQuery, targetId);
         ({ data, error } = await updateQuery
             .eq("user_id", user.id)
             .select());
@@ -273,7 +361,7 @@ export const visitsService = {
             let retryQuery = supabase
                 .from(TABLE)
                 .update(retryUpdates);
-            retryQuery = eqById(retryQuery, id);
+            retryQuery = eqById(retryQuery, targetId);
             ({ data, error } = await retryQuery
                 .eq("user_id", user.id)
                 .select());
@@ -283,14 +371,23 @@ export const visitsService = {
             if (error?.code === "PGRST204") {
                 throw error;
             }
-            console.error(`[visitsService] Update error for ${id}:`, error);
+            console.error(`[visitsService] Update error for ${lookupId}:`, error);
             throw error;
         }
         if (!data || data.length === 0) {
-            // Only attempt upsert if ID is a valid UUID (can't upsert with display IDs)
-            if (!isValidUUID(id)) {
-                console.warn(`[visitsService] No visit found for display ID ${id}, skipping upsert (backend trigger handles creation)`);
-                return normalizeVisit({ id: String(id), ...dbUpdates });
+            // Never invent visit rows from emergency request keys; DB sync owns those rows.
+            if (resolvedEmergencyRequestId || !isValidUUID(targetId)) {
+                console.warn(
+                    `[visitsService] No visit matched key ${lookupId}; skipping upsert fallback`
+                );
+                return normalizeVisit(
+                    mapFromDb({
+                        ...(resolvedVisitRow || {}),
+                        id: targetId,
+                        request_id: resolvedVisitRow?.request_id ?? resolvedEmergencyRequestId ?? null,
+                        ...dbUpdates,
+                    })
+                );
             }
             let upserted;
             let upsertError;
@@ -298,7 +395,7 @@ export const visitsService = {
                 .from(TABLE)
                 .upsert(
                     {
-                        id: String(id),
+                        id: targetId,
                         user_id: user.id,
                         ...dbUpdates,
                     },
@@ -314,7 +411,7 @@ export const visitsService = {
             ) {
                 supportsExtendedEmergencyColumns = false;
                 const retryUpsert = stripExtendedEmergencyColumns({
-                    id: String(id),
+                    id: targetId,
                     user_id: user.id,
                     ...dbUpdates,
                 });
@@ -326,13 +423,13 @@ export const visitsService = {
             }
 
             if (upsertError) {
-                console.error(`[visitsService] Upsert fallback failed for ${id}:`, upsertError);
+                console.error(`[visitsService] Upsert fallback failed for ${lookupId}:`, upsertError);
                 throw upsertError;
             }
 
             if (__DEV__) {
                 console.log("[visitsService] Update fallback upserted missing visit:", {
-                    id: String(id),
+                    id: targetId,
                 });
             }
 
@@ -341,7 +438,7 @@ export const visitsService = {
                 await notificationDispatcher.dispatchVisitUpdate(result, "updated", updates);
             } catch (notifError) {
                 console.error(
-                    `[visitsService] Failed to create notification for visit update ${id}:`,
+                    `[visitsService] Failed to create notification for visit update ${lookupId}:`,
                     notifError
                 );
             }
@@ -352,7 +449,7 @@ export const visitsService = {
         try {
             await notificationDispatcher.dispatchVisitUpdate(result, 'updated', updates);
         } catch (notifError) {
-            console.error(`[visitsService] Failed to create notification for visit update ${id}:`, notifError);
+            console.error(`[visitsService] Failed to create notification for visit update ${lookupId}:`, notifError);
         }
 
         return result;
@@ -361,30 +458,45 @@ export const visitsService = {
     async cancel(id) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not logged in");
+        const lookupId = String(id);
+        const [resolvedVisitRow, resolvedEmergencyRequestId] = await Promise.all([
+            resolveVisitRowForKey(lookupId, user.id),
+            resolveEmergencyRequestIdForUser(lookupId, user.id),
+        ]);
+        const targetId = resolvedVisitRow?.id ?? lookupId;
 
         const dbUpdates = { status: 'cancelled', updated_at: new Date().toISOString() };
 
         let cancelQuery = supabase
             .from(TABLE)
             .update(dbUpdates);
-        cancelQuery = eqById(cancelQuery, id);
+        cancelQuery = eqById(cancelQuery, targetId);
         const { data, error } = await cancelQuery
             .eq('user_id', user.id)
             .select();
 
         if (error) {
-            console.error(`[visitsService] Cancel error for ${id}:`, error);
+            console.error(`[visitsService] Cancel error for ${lookupId}:`, error);
             throw error;
         }
         if (!data || data.length === 0) {
             // Don't try to ensureExists with display IDs — backend trigger handles creation
-            if (!isValidUUID(id)) {
-                console.warn(`[visitsService] No visit for display ID ${id}, cancel skipped (not in DB)`);
-                return normalizeVisit({ id: String(id), status: 'cancelled' });
+            if (resolvedEmergencyRequestId || !isValidUUID(targetId)) {
+                console.warn(
+                    `[visitsService] No visit matched key ${lookupId}; cancel skipped without upsert`
+                );
+                return normalizeVisit(
+                    mapFromDb({
+                        ...(resolvedVisitRow || {}),
+                        id: targetId,
+                        request_id: resolvedVisitRow?.request_id ?? resolvedEmergencyRequestId ?? null,
+                        ...dbUpdates,
+                    })
+                );
             }
             const ensured = await this.ensureExists({
-                id,
-                requestId: String(id),
+                id: targetId,
+                requestId: resolvedEmergencyRequestId ?? String(targetId),
                 status: "cancelled",
             });
 
@@ -392,7 +504,7 @@ export const visitsService = {
                 await notificationDispatcher.dispatchVisitUpdate(ensured, 'cancelled');
             } catch (notifError) {
                 console.error(
-                    `[visitsService] Failed to create notification for visit cancellation ${id}:`,
+                    `[visitsService] Failed to create notification for visit cancellation ${lookupId}:`,
                     notifError
                 );
             }
@@ -404,7 +516,7 @@ export const visitsService = {
         try {
             await notificationDispatcher.dispatchVisitUpdate(result, 'cancelled');
         } catch (notifError) {
-            console.error(`[visitsService] Failed to create notification for visit cancellation ${id}:`, notifError);
+            console.error(`[visitsService] Failed to create notification for visit cancellation ${lookupId}:`, notifError);
         }
 
         return result;
@@ -413,29 +525,44 @@ export const visitsService = {
     async complete(id) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not logged in");
+        const lookupId = String(id);
+        const [resolvedVisitRow, resolvedEmergencyRequestId] = await Promise.all([
+            resolveVisitRowForKey(lookupId, user.id),
+            resolveEmergencyRequestIdForUser(lookupId, user.id),
+        ]);
+        const targetId = resolvedVisitRow?.id ?? lookupId;
 
         const dbUpdates = { status: 'completed', updated_at: new Date().toISOString() };
 
         let completeQuery = supabase
             .from(TABLE)
             .update(dbUpdates);
-        completeQuery = eqById(completeQuery, id);
+        completeQuery = eqById(completeQuery, targetId);
         const { data, error } = await completeQuery
             .eq('user_id', user.id)
             .select();
 
         if (error) {
-            console.error(`[visitsService] Complete error for ${id}:`, error);
+            console.error(`[visitsService] Complete error for ${lookupId}:`, error);
             throw error;
         }
         if (!data || data.length === 0) {
-            if (!isValidUUID(id)) {
-                console.warn(`[visitsService] No visit for display ID ${id}, complete skipped`);
-                return normalizeVisit({ id: String(id), status: 'completed' });
+            if (resolvedEmergencyRequestId || !isValidUUID(targetId)) {
+                console.warn(
+                    `[visitsService] No visit matched key ${lookupId}; complete skipped without upsert`
+                );
+                return normalizeVisit(
+                    mapFromDb({
+                        ...(resolvedVisitRow || {}),
+                        id: targetId,
+                        request_id: resolvedVisitRow?.request_id ?? resolvedEmergencyRequestId ?? null,
+                        ...dbUpdates,
+                    })
+                );
             }
             const ensured = await this.ensureExists({
-                id,
-                requestId: String(id),
+                id: targetId,
+                requestId: resolvedEmergencyRequestId ?? String(targetId),
                 status: "completed",
             });
 
@@ -443,7 +570,7 @@ export const visitsService = {
                 await notificationDispatcher.dispatchVisitUpdate(ensured, 'completed');
             } catch (notifError) {
                 console.error(
-                    `[visitsService] Failed to create notification for visit completion ${id}:`,
+                    `[visitsService] Failed to create notification for visit completion ${lookupId}:`,
                     notifError
                 );
             }
@@ -455,7 +582,7 @@ export const visitsService = {
         try {
             await notificationDispatcher.dispatchVisitUpdate(result, 'completed');
         } catch (notifError) {
-            console.error(`[visitsService] Failed to create notification for visit completion ${id}:`, notifError);
+            console.error(`[visitsService] Failed to create notification for visit completion ${lookupId}:`, notifError);
         }
 
         return result;

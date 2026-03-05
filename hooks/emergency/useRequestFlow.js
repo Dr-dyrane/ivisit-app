@@ -335,7 +335,7 @@ export const useRequestFlow = (props) => {
 					isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(realId),
 				});
 
-				// 🏥 Visit is NOW created by backend trigger (sync_emergency_to_history)
+				// 🏥 Visit is NOW created by backend trigger (sync_emergency_to_visit)
 				// No frontend addVisit() needed — eliminates RLS and UUID errors.
 
 				// 💰 CASH APPROVAL: Notify org_admin if payment needs approval
