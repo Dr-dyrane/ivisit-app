@@ -216,6 +216,22 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-012: Hardening Pipeline Governance Integration
+Objective:
+- Make governance checks non-optional by integrating inventory and RPC authority guards into the canonical `hardening:full` pipeline at both pre-run and post-cleanup gates.
+
+Deliverables:
+- governance aggregate script:
+  - `hardening:governance-guards` (`inventory-guard` + `rpc-authority-guard`)
+- updated `hardening:full` command to run governance guards:
+  - before contract/matrix suites,
+  - after cleanup-apply and before final contract guard.
+
+Verification:
+- `npm run hardening:governance-guards` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
