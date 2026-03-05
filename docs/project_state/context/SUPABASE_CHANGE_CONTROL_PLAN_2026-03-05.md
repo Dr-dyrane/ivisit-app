@@ -129,6 +129,20 @@ Verification:
 - `npm run hardening:contract-drift-guard` green,
 - `npm run hardening:cash-matrix` green.
 
+### SCC-007: Console Logistics/Finance Type-Contract Reconciliation
+Objective:
+- Reconcile console-side canonical type contracts and schema helper maps for `emergency_requests`, `payments`, and wallet-adjacent finance tables to live schema.
+
+Deliverables:
+- updated console `src/types/database.ts` targeted table shapes,
+- updated console `src/types/emergency.ts` model alignment,
+- updated console schema helper maps (`databaseFields`, `schemaValidator`) removing stale fields.
+
+Verification:
+- console build green (`npm run build` in `ivisit-console/frontend`),
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
