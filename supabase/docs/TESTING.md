@@ -124,6 +124,36 @@ npm run hardening:visits-surface-field-guard
 npm run hardening:hospitals-surface-field-guard
 ```
 
+### **Organizations Surface Field Guard**
+```bash
+# Detect organizations table surface contract drift (console types + organizations CRUD payload)
+npm run hardening:organizations-surface-field-guard
+```
+
+### **Profiles Surface Field Guard**
+```bash
+# Detect profiles type parity drift and enforce profile update whitelist contract in console service
+npm run hardening:profiles-surface-field-guard
+```
+
+### **Organization Wallets Surface Field Guard**
+```bash
+# Detect organization_wallets type parity + query select-column drift across console wallet surfaces
+npm run hardening:organization-wallets-surface-field-guard
+```
+
+### **Patient Wallets Surface Field Guard**
+```bash
+# Detect patient_wallets type parity + query select-column drift across console surfaces
+npm run hardening:patient-wallets-surface-field-guard
+```
+
+### **Payment Methods Surface Field Guard**
+```bash
+# Detect payment_methods type parity + query/select drift and forbid direct console table mutations
+npm run hardening:payment-methods-surface-field-guard
+```
+
 ### **Payments/Wallet JS/JSX Field Guard**
 ```bash
 # Detect stale/non-schema payments + wallet UI field usage in console JS/JSX surfaces

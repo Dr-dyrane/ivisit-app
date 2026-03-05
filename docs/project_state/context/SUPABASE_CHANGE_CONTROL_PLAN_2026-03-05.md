@@ -561,6 +561,147 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-026: Organizations Table Surface Contract Hardening (Console Types + CRUD Payload)
+Objective:
+- Close `organizations` table surface drift by aligning console type contracts and organizations CRUD payload sanitation with canonical schema (including `display_id` presence in type contract and strict numeric fee persistence).
+
+Deliverables:
+- console organizations service hardening:
+  - `../ivisit-console/frontend/src/services/organizationsService.js`
+  - add deterministic payload builder/sanitizer:
+    - trim nullable text fields,
+    - sanitize `ivisit_fee_percentage` as numeric,
+    - prune undefined keys before insert/update.
+- console organizations type contract reconciliation:
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - ensure canonical `organizations` contract includes `display_id` in:
+    - `Row`
+    - `Insert`
+    - `Update`.
+- deterministic organizations surface guard:
+  - `supabase/tests/scripts/assert_organizations_surface_field_guard.js`
+  - report:
+    - `supabase/tests/validation/organizations_surface_field_guard_report.json`
+  - npm command:
+    - `hardening:organizations-surface-field-guard`.
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table organizations` green,
+- `npm run hardening:organizations-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
+### SCC-027: Profiles Table Surface Contract Hardening (Type Parity + Guard Lane)
+Objective:
+- Lock `profiles` table contract parity between app and console type surfaces and add a deterministic guard lane to prevent future `display_id`-class type drift in high-traffic profile flows.
+
+Deliverables:
+- console profile type contract reconciliation:
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - ensure canonical `profiles.Update` includes:
+    - `display_id?: string | null`
+  - keep `profiles` row/insert/update parity aligned with app canonical type contract for audited fields.
+- deterministic profiles surface guard:
+  - `supabase/tests/scripts/assert_profiles_surface_field_guard.js`
+  - report:
+    - `supabase/tests/validation/profiles_surface_field_guard_report.json`
+  - npm command:
+    - `hardening:profiles-surface-field-guard`.
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table profiles` green,
+- `npm run hardening:profiles-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
+### SCC-028: Organization Wallets Surface Contract Hardening (Type Parity + Query Field Guard)
+Objective:
+- Lock `organization_wallets` contract parity and enforce deterministic query-field safety in console wallet surfaces so reads only use canonical wallet fields and type drift (including FK relationship cardinality flags) is blocked.
+
+Deliverables:
+- console organization-wallet type parity fix:
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align `organization_wallets` relationship metadata with app canonical contract:
+    - `organization_wallets_organization_id_fkey` -> `isOneToOne: true`.
+- deterministic organization-wallets guard:
+  - `supabase/tests/scripts/assert_organization_wallets_surface_field_guard.js`
+  - report:
+    - `supabase/tests/validation/organization_wallets_surface_field_guard_report.json`
+  - command:
+    - `hardening:organization-wallets-surface-field-guard`
+  - enforce:
+    - app/console `organization_wallets` Row/Insert/Update field parity,
+    - console `organization_wallets` relationship cardinality parity for `organization_wallets_organization_id_fkey`,
+    - console `organization_wallets` select clauses use only canonical columns (or `*`) in wallet surfaces.
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table organization_wallets` green,
+- `npm run hardening:organization-wallets-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
+### SCC-029: Patient Wallets Surface Contract Guard Hardening (Preventive Parity Lock)
+Objective:
+- Add a deterministic preventive guard lane for `patient_wallets` to lock app/console type parity and enforce canonical column safety for any future patient-wallet query surfaces.
+
+Deliverables:
+- deterministic patient-wallets guard:
+  - `supabase/tests/scripts/assert_patient_wallets_surface_field_guard.js`
+  - report:
+    - `supabase/tests/validation/patient_wallets_surface_field_guard_report.json`
+  - command:
+    - `hardening:patient-wallets-surface-field-guard`
+  - enforce:
+    - app/console `patient_wallets` `Row`/`Insert`/`Update` parity,
+    - relationship cardinality parity for `patient_wallets_user_id_fkey`,
+    - canonical select-column safety for any console `.from('patient_wallets')` query paths.
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table patient_wallets` green,
+- `npm run hardening:patient-wallets-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
+### SCC-030: Payment Methods Surface Contract Guard Hardening (Preventive Control Lane)
+Objective:
+- Add a deterministic preventive guard lane for `payment_methods` so app/console type parity stays locked, query columns remain canonical, and console bypass mutations do not drift around edge-function control paths.
+
+Deliverables:
+- deterministic payment-methods guard:
+  - `supabase/tests/scripts/assert_payment_methods_surface_field_guard.js`
+  - report:
+    - `supabase/tests/validation/payment_methods_surface_field_guard_report.json`
+  - command:
+    - `hardening:payment-methods-surface-field-guard`
+  - enforce:
+    - app/console `payment_methods` `Row`/`Insert`/`Update` parity,
+    - relationship-cardinality parity for:
+      - `payment_methods_organization_id_fkey`
+      - `payment_methods_user_id_fkey`,
+    - canonical select-column safety for any console `.from('payment_methods').select(...)`,
+    - no direct console `.insert/.update/.delete/.upsert` against `payment_methods` (edge-function lane only).
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table payment_methods` green,
+- `npm run hardening:payment-methods-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
