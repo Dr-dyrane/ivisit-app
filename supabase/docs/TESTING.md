@@ -112,6 +112,21 @@ npm run hardening:emergency-runtime-confidence
 npm run hardening:emergency-runtime-confidence-assert
 ```
 
+### **Visits JS/JSX Field Guard**
+```bash
+# Detect stale/non-schema visits field reads/writes in console JS/JSX surfaces
+npm run hardening:visits-surface-field-guard
+```
+
+### **Visits Runtime Confidence Gate**
+```bash
+# Run E2E flow matrix and assert required visits lifecycle outcomes
+npm run hardening:visits-runtime-confidence
+
+# If E2E report already exists, run assertion only
+npm run hardening:visits-runtime-confidence-assert
+```
+
 ### **Expected Output**
 ```
 🧪 Comprehensive System Test...

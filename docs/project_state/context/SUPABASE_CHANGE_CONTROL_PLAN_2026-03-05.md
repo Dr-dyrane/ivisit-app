@@ -388,6 +388,54 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-020: Comprehensive Table Flow Trace (`visits` Baseline)
+Objective:
+- Apply the same deterministic trace + closure method used for `emergency_requests` to `visits`, including schema authority, app/console UI service paths, and modal/list/table/card parity visibility.
+
+Deliverables:
+- table flow trace artifacts for `visits`:
+  - `supabase/tests/validation/table_flow_trace_visits.json`
+  - `supabase/tests/validation/table_flow_trace_visits.md`
+- SCC context audit note with:
+  - high-signal mismatches,
+  - direct patch plan,
+  - closure criteria.
+- deterministic stale-field guard for JS/JSX visits surfaces:
+  - `supabase/tests/scripts/assert_visits_surface_field_guard.js`
+  - validation artifact:
+    - `supabase/tests/validation/visits_surface_field_guard_report.json`
+- follow-up parity/runtime guards (if new gaps are found) documented under this SCC before moving to next table.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table visits` green,
+- `npm run hardening:visits-surface-field-guard` green,
+- `npm run hardening:console-ui-crud-matrix` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
+### SCC-021: Visits Runtime Confidence Gate
+Objective:
+- Enforce runtime confidence for `visits` lifecycle outcomes (creation/sync/completion) from live E2E matrix evidence so we do not rely on static schema/UI parity alone.
+
+Deliverables:
+- visits runtime assertion script:
+  - `supabase/tests/scripts/assert_visits_runtime_confidence.js`
+  - validates required visit outcomes in `e2e_flow_matrix_report.json`:
+    - visit creation in emergency and bed flows,
+    - completed visit terminal state after completion flow,
+    - visit cost/status sync assertions.
+  - emits:
+    - `supabase/tests/validation/visits_runtime_confidence_report.json`
+- npm hardening commands:
+  - `hardening:visits-runtime-confidence-assert`
+  - `hardening:visits-runtime-confidence`
+- integrate visits runtime assert into `hardening:full` after E2E execution.
+
+Verification:
+- `npm run hardening:visits-runtime-confidence` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

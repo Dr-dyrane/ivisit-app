@@ -1,58 +1,58 @@
 {
-  "tag": "flow-matrix-1772707943030",
-  "startedAt": "2026-03-05T10:52:23.031Z",
+  "tag": "flow-matrix-1772709415678",
+  "startedAt": "2026-03-05T11:16:55.678Z",
   "foundation": {
-    "orgId": "c389caf0-a707-42b5-8588-ed747bc3dcf7",
-    "hospitalId": "38bd574a-9882-4292-a096-e3f5482df182",
-    "doctorId": "11aa027b-7758-4e0b-84e8-4f696df91816",
-    "ambulanceId": "e94a9761-36c7-4619-8213-d14c6cbaa460",
-    "patientId": "3274675c-5156-45de-8c8e-a5ed0f542911",
-    "driverId": "251ccc38-0f88-4d1b-823c-86d454899868"
+    "orgId": "46178fa1-cc2b-471d-b52d-ee9b35417a23",
+    "hospitalId": "9aece791-1e24-4aa4-8c25-19a23ae89681",
+    "doctorId": "1a6a082d-3736-4b45-8e43-5aa957333185",
+    "ambulanceId": "27d77c72-0332-4939-bee3-310686cc4004",
+    "patientId": "21642919-cc14-4645-98d5-581a971871dd",
+    "driverId": "44aa1c65-6545-420e-8eb5-e1ca6d3cd754"
   },
   "scenarios": {
     "cardAmbulance": {
       "createResult": {
         "success": true,
-        "visit_id": "VIST-A09788",
-        "display_id": "REQ-5BB42A",
-        "payment_id": "da8dcc7a-35ee-44f7-8bfd-651a713447df",
-        "request_id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
+        "visit_id": "VIST-FBC060",
+        "display_id": "REQ-7EFD6A",
+        "payment_id": "3ffac5ee-a093-4d06-8a82-97afc8db1793",
+        "request_id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
         "emergency_status": "in_progress",
         "requires_approval": false
       },
       "emergency": {
-        "id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
-        "display_id": "REQ-5BB42A",
+        "id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
+        "display_id": "REQ-7EFD6A",
         "status": "accepted",
         "payment_status": "pending",
-        "ambulance_id": "e94a9761-36c7-4619-8213-d14c6cbaa460",
-        "responder_id": "251ccc38-0f88-4d1b-823c-86d454899868",
-        "assigned_doctor_id": "11aa027b-7758-4e0b-84e8-4f696df91816",
-        "hospital_id": "38bd574a-9882-4292-a096-e3f5482df182",
+        "ambulance_id": "27d77c72-0332-4939-bee3-310686cc4004",
+        "responder_id": "44aa1c65-6545-420e-8eb5-e1ca6d3cd754",
+        "assigned_doctor_id": "1a6a082d-3736-4b45-8e43-5aa957333185",
+        "hospital_id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
         "total_cost": 0
       },
       "visit": {
-        "id": "7acf6e28-2020-49e3-8218-88838ee64f63",
-        "request_id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
+        "id": "bd47251b-cf7f-4e78-8615-8d35f353feb4",
+        "request_id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
         "status": "pending",
         "type": "emergency"
       },
       "payment": {
-        "id": "da8dcc7a-35ee-44f7-8bfd-651a713447df",
+        "id": "3ffac5ee-a093-4d06-8a82-97afc8db1793",
         "status": "completed",
         "payment_method": "card",
-        "emergency_request_id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
-        "organization_id": "c389caf0-a707-42b5-8588-ed747bc3dcf7",
+        "emergency_request_id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
+        "organization_id": "46178fa1-cc2b-471d-b52d-ee9b35417a23",
         "amount": 120
       },
       "ambulance": {
-        "id": "e94a9761-36c7-4619-8213-d14c6cbaa460",
+        "id": "27d77c72-0332-4939-bee3-310686cc4004",
         "status": "on_trip",
-        "current_call": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7"
+        "current_call": "9483c369-42ec-4c86-9e26-0b4e953fb82f"
       },
       "doctorAssignments": [
         {
-          "doctor_id": "11aa027b-7758-4e0b-84e8-4f696df91816",
+          "doctor_id": "1a6a082d-3736-4b45-8e43-5aa957333185",
           "status": "assigned"
         }
       ],
@@ -67,7 +67,7 @@
       }
     },
     "trackingContract": {
-      "emergencyId": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
+      "emergencyId": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
       "assertions": {
         "responderLocationSet": true,
         "patientLocationSet": true,
@@ -77,7 +77,7 @@
     "completion": {
       "failed": false,
       "emergency": {
-        "id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
+        "id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
         "status": "completed",
         "total_cost": 155,
         "completed_at": null,
@@ -86,30 +86,30 @@
         "doctor_assigned_at": null
       },
       "visit": {
-        "id": "7acf6e28-2020-49e3-8218-88838ee64f63",
-        "request_id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
+        "id": "bd47251b-cf7f-4e78-8615-8d35f353feb4",
+        "request_id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
         "status": "completed",
         "cost": "155"
       },
       "ambulance": {
-        "id": "e94a9761-36c7-4619-8213-d14c6cbaa460",
+        "id": "27d77c72-0332-4939-bee3-310686cc4004",
         "status": "available",
         "current_call": null
       },
       "doctor": {
-        "id": "11aa027b-7758-4e0b-84e8-4f696df91816",
+        "id": "1a6a082d-3736-4b45-8e43-5aa957333185",
         "current_patients": 0
       },
       "doctorAssignments": [
         {
-          "doctor_id": "11aa027b-7758-4e0b-84e8-4f696df91816",
+          "doctor_id": "1a6a082d-3736-4b45-8e43-5aa957333185",
           "status": "completed"
         }
       ],
       "insuranceBilling": [
         {
-          "id": "15161dae-ff1e-4384-83d4-81b0282fb363",
-          "emergency_request_id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
+          "id": "507eda47-4516-46f4-9260-3d9c68aba4a6",
+          "emergency_request_id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
           "status": "pending",
           "total_amount": 155
         }
@@ -126,15 +126,15 @@
     "cashAmbulance": {
       "createResult": {
         "success": true,
-        "visit_id": "VIST-6D206D",
-        "display_id": "REQ-A139F9",
-        "payment_id": "5a0414b2-b291-41e0-9979-37c28058bd84",
-        "request_id": "c6f69bbd-6dc9-4332-b0cb-a1f5b6cf6a58",
+        "visit_id": "VIST-C89A2B",
+        "display_id": "REQ-8410CC",
+        "payment_id": "4262cc06-cf4f-451d-87af-dd4dec775aa4",
+        "request_id": "52e52c1d-ccf3-4977-bdcd-caafa315a4fc",
         "emergency_status": "pending_approval",
         "requires_approval": true
       },
       "beforeApproval": {
-        "id": "c6f69bbd-6dc9-4332-b0cb-a1f5b6cf6a58",
+        "id": "52e52c1d-ccf3-4977-bdcd-caafa315a4fc",
         "status": "pending_approval",
         "payment_status": "pending",
         "ambulance_id": null,
@@ -143,19 +143,19 @@
       "approveResult": {
         "success": true,
         "new_balance": 100,
-        "ambulance_id": "e94a9761-36c7-4619-8213-d14c6cbaa460",
+        "ambulance_id": "27d77c72-0332-4939-bee3-310686cc4004",
         "fee_deducted": 0,
-        "responder_name": "Driver flow-matrix-1772707943030",
+        "responder_name": "Driver flow-matrix-1772709415678",
         "responder_phone": null,
         "responder_vehicle_type": "basic",
         "responder_vehicle_plate": null
       },
       "afterApproval": {
-        "id": "c6f69bbd-6dc9-4332-b0cb-a1f5b6cf6a58",
+        "id": "52e52c1d-ccf3-4977-bdcd-caafa315a4fc",
         "status": "accepted",
         "payment_status": "completed",
-        "ambulance_id": "e94a9761-36c7-4619-8213-d14c6cbaa460",
-        "responder_id": "251ccc38-0f88-4d1b-823c-86d454899868"
+        "ambulance_id": "27d77c72-0332-4939-bee3-310686cc4004",
+        "responder_id": "44aa1c65-6545-420e-8eb5-e1ca6d3cd754"
       },
       "assertions": {
         "approvalRpcSucceeded": true,
@@ -165,7 +165,7 @@
     },
     "bedReservation": {
       "hospitalBefore": {
-        "id": "38bd574a-9882-4292-a096-e3f5482df182",
+        "id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
         "available_beds": 5
       },
       "approve": {
@@ -179,26 +179,26 @@
         "responder_vehicle_plate": null
       },
       "afterApproval": {
-        "id": "419d27ff-74fd-48b3-ac86-4de68fac6aa0",
+        "id": "7b0b3cde-9cbb-49dc-b514-736bfd0d90d2",
         "status": "in_progress",
         "payment_status": "completed"
       },
       "hospitalAfterApproval": {
-        "id": "38bd574a-9882-4292-a096-e3f5482df182",
+        "id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
         "available_beds": 4
       },
       "complete": {
-        "id": "419d27ff-74fd-48b3-ac86-4de68fac6aa0",
+        "id": "7b0b3cde-9cbb-49dc-b514-736bfd0d90d2",
         "status": "completed",
         "payment_status": "completed"
       },
       "hospitalAfterComplete": {
-        "id": "38bd574a-9882-4292-a096-e3f5482df182",
+        "id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
         "available_beds": 5
       },
       "visit": {
-        "id": "2f04005b-f235-49f2-b430-5e286c0f86ee",
-        "request_id": "419d27ff-74fd-48b3-ac86-4de68fac6aa0",
+        "id": "5f60f07d-9b64-41e3-a0ca-0fe4073a22bc",
+        "request_id": "7b0b3cde-9cbb-49dc-b514-736bfd0d90d2",
         "status": "completed",
         "type": "emergency"
       },
@@ -213,36 +213,91 @@
     },
     "transitionAudit": {
       "requests": [
-        "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
-        "c6f69bbd-6dc9-4332-b0cb-a1f5b6cf6a58",
-        "419d27ff-74fd-48b3-ac86-4de68fac6aa0"
+        "9483c369-42ec-4c86-9e26-0b4e953fb82f",
+        "52e52c1d-ccf3-4977-bdcd-caafa315a4fc",
+        "7b0b3cde-9cbb-49dc-b514-736bfd0d90d2"
       ],
       "error": null,
       "rows": [
         {
-          "emergency_request_id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
+          "emergency_request_id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
+          "from_status": "in_progress",
+          "to_status": "accepted",
+          "source": "automation:auto_assign_driver",
+          "reason": "auto_dispatch_assignment",
+          "actor_role": "automation",
+          "request_snapshot": {
+            "id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
+            "status": "accepted",
+            "user_id": "21642919-cc14-4645-98d5-581a971871dd",
+            "specialty": "Emergency Medicine",
+            "bed_number": null,
+            "created_at": "2026-03-05T11:16:59.476948+00:00",
+            "display_id": "REQ-7EFD6A",
+            "total_cost": 0,
+            "updated_at": "2026-03-05T11:16:59.476948+00:00",
+            "hospital_id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
+            "ambulance_id": "27d77c72-0332-4939-bee3-310686cc4004",
+            "cancelled_at": null,
+            "completed_at": null,
+            "responder_id": "44aa1c65-6545-420e-8eb5-e1ca6d3cd754",
+            "service_type": "ambulance",
+            "hospital_name": "E2E Hospital flow-matrix-1772709415678",
+            "ambulance_type": "basic",
+            "payment_status": "pending",
+            "responder_name": "Driver flow-matrix-1772709415678",
+            "pickup_location": null,
+            "responder_phone": null,
+            "patient_location": {
+              "crs": {
+                "type": "name",
+                "properties": {
+                  "name": "EPSG:4326"
+                }
+              },
+              "type": "Point",
+              "coordinates": [
+                3.3792,
+                6.5244
+              ]
+            },
+            "patient_snapshot": {
+              "fullName": "Patient flow-matrix-1772709415678"
+            },
+            "responder_heading": null,
+            "assigned_doctor_id": null,
+            "doctor_assigned_at": null,
+            "responder_location": null,
+            "destination_location": null,
+            "responder_vehicle_type": null,
+            "responder_vehicle_plate": null
+          },
+          "occurred_at": "2026-03-05T11:16:59.476948+00:00"
+        },
+        {
+          "emergency_request_id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
           "from_status": null,
           "to_status": "in_progress",
           "source": "automation:auto_assign_driver",
           "reason": "auto_dispatch_assignment",
           "actor_role": "automation",
           "request_snapshot": {
-            "id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
+            "id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
             "status": "in_progress",
-            "user_id": "3274675c-5156-45de-8c8e-a5ed0f542911",
+            "user_id": "21642919-cc14-4645-98d5-581a971871dd",
             "specialty": "Emergency Medicine",
             "bed_number": null,
-            "created_at": "2026-03-05T10:52:25.181562+00:00",
-            "display_id": "REQ-5BB42A",
+            "created_at": "2026-03-05T11:16:59.476948+00:00",
+            "display_id": "REQ-7EFD6A",
             "total_cost": 0,
-            "updated_at": "2026-03-05T10:52:25.181562+00:00",
-            "hospital_id": "38bd574a-9882-4292-a096-e3f5482df182",
+            "updated_at": "2026-03-05T11:16:59.476948+00:00",
+            "hospital_id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
             "ambulance_id": null,
             "cancelled_at": null,
             "completed_at": null,
             "responder_id": null,
             "service_type": "ambulance",
-            "hospital_name": "E2E Hospital flow-matrix-1772707943030",
+            "hospital_name": "E2E Hospital flow-matrix-1772709415678",
             "ambulance_type": "basic",
             "payment_status": "pending",
             "responder_name": null,
@@ -262,7 +317,7 @@
               ]
             },
             "patient_snapshot": {
-              "fullName": "Patient flow-matrix-1772707943030"
+              "fullName": "Patient flow-matrix-1772709415678"
             },
             "responder_heading": null,
             "assigned_doctor_id": null,
@@ -272,90 +327,35 @@
             "responder_vehicle_type": null,
             "responder_vehicle_plate": null
           },
-          "occurred_at": "2026-03-05T10:52:25.181562+00:00"
+          "occurred_at": "2026-03-05T11:16:59.476948+00:00"
         },
         {
-          "emergency_request_id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
-          "from_status": "in_progress",
-          "to_status": "accepted",
-          "source": "automation:auto_assign_driver",
-          "reason": "auto_dispatch_assignment",
-          "actor_role": "automation",
-          "request_snapshot": {
-            "id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
-            "status": "accepted",
-            "user_id": "3274675c-5156-45de-8c8e-a5ed0f542911",
-            "specialty": "Emergency Medicine",
-            "bed_number": null,
-            "created_at": "2026-03-05T10:52:25.181562+00:00",
-            "display_id": "REQ-5BB42A",
-            "total_cost": 0,
-            "updated_at": "2026-03-05T10:52:25.181562+00:00",
-            "hospital_id": "38bd574a-9882-4292-a096-e3f5482df182",
-            "ambulance_id": "e94a9761-36c7-4619-8213-d14c6cbaa460",
-            "cancelled_at": null,
-            "completed_at": null,
-            "responder_id": "251ccc38-0f88-4d1b-823c-86d454899868",
-            "service_type": "ambulance",
-            "hospital_name": "E2E Hospital flow-matrix-1772707943030",
-            "ambulance_type": "basic",
-            "payment_status": "pending",
-            "responder_name": "Driver flow-matrix-1772707943030",
-            "pickup_location": null,
-            "responder_phone": null,
-            "patient_location": {
-              "crs": {
-                "type": "name",
-                "properties": {
-                  "name": "EPSG:4326"
-                }
-              },
-              "type": "Point",
-              "coordinates": [
-                3.3792,
-                6.5244
-              ]
-            },
-            "patient_snapshot": {
-              "fullName": "Patient flow-matrix-1772707943030"
-            },
-            "responder_heading": null,
-            "assigned_doctor_id": null,
-            "doctor_assigned_at": null,
-            "responder_location": null,
-            "destination_location": null,
-            "responder_vehicle_type": null,
-            "responder_vehicle_plate": null
-          },
-          "occurred_at": "2026-03-05T10:52:25.181562+00:00"
-        },
-        {
-          "emergency_request_id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
+          "emergency_request_id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
           "from_status": "accepted",
           "to_status": "completed",
           "source": "complete_trip",
           "reason": "trip_completed",
           "actor_role": "service_role",
           "request_snapshot": {
-            "id": "a1e66d9f-b6ea-40b5-b198-18f37458fbd7",
+            "id": "9483c369-42ec-4c86-9e26-0b4e953fb82f",
             "status": "completed",
-            "user_id": "3274675c-5156-45de-8c8e-a5ed0f542911",
+            "user_id": "21642919-cc14-4645-98d5-581a971871dd",
             "specialty": "Emergency Medicine",
             "bed_number": null,
-            "created_at": "2026-03-05T10:52:25.181562+00:00",
-            "display_id": "REQ-5BB42A",
+            "created_at": "2026-03-05T11:16:59.476948+00:00",
+            "display_id": "REQ-7EFD6A",
             "total_cost": 155,
-            "updated_at": "2026-03-05T10:52:26.560659+00:00",
-            "hospital_id": "38bd574a-9882-4292-a096-e3f5482df182",
-            "ambulance_id": "e94a9761-36c7-4619-8213-d14c6cbaa460",
+            "updated_at": "2026-03-05T11:17:01.120333+00:00",
+            "hospital_id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
+            "ambulance_id": "27d77c72-0332-4939-bee3-310686cc4004",
             "cancelled_at": null,
             "completed_at": null,
-            "responder_id": "251ccc38-0f88-4d1b-823c-86d454899868",
+            "responder_id": "44aa1c65-6545-420e-8eb5-e1ca6d3cd754",
             "service_type": "ambulance",
-            "hospital_name": "E2E Hospital flow-matrix-1772707943030",
+            "hospital_name": "E2E Hospital flow-matrix-1772709415678",
             "ambulance_type": "basic",
             "payment_status": "pending",
-            "responder_name": "Driver flow-matrix-1772707943030",
+            "responder_name": "Driver flow-matrix-1772709415678",
             "pickup_location": null,
             "responder_phone": null,
             "patient_location": {
@@ -372,11 +372,11 @@
               ]
             },
             "patient_snapshot": {
-              "fullName": "Patient flow-matrix-1772707943030"
+              "fullName": "Patient flow-matrix-1772709415678"
             },
             "responder_heading": 42.5,
-            "assigned_doctor_id": "11aa027b-7758-4e0b-84e8-4f696df91816",
-            "doctor_assigned_at": "2026-03-05T10:52:25.181562+00:00",
+            "assigned_doctor_id": "1a6a082d-3736-4b45-8e43-5aa957333185",
+            "doctor_assigned_at": "2026-03-05T11:16:59.476948+00:00",
             "responder_location": {
               "crs": {
                 "type": "name",
@@ -394,32 +394,32 @@
             "responder_vehicle_type": null,
             "responder_vehicle_plate": null
           },
-          "occurred_at": "2026-03-05T10:52:26.560659+00:00"
+          "occurred_at": "2026-03-05T11:17:01.120333+00:00"
         },
         {
-          "emergency_request_id": "c6f69bbd-6dc9-4332-b0cb-a1f5b6cf6a58",
+          "emergency_request_id": "52e52c1d-ccf3-4977-bdcd-caafa315a4fc",
           "from_status": null,
           "to_status": "pending_approval",
           "source": "create_emergency_v4",
           "reason": "emergency_created",
           "actor_role": "service_role",
           "request_snapshot": {
-            "id": "c6f69bbd-6dc9-4332-b0cb-a1f5b6cf6a58",
+            "id": "52e52c1d-ccf3-4977-bdcd-caafa315a4fc",
             "status": "pending_approval",
-            "user_id": "3274675c-5156-45de-8c8e-a5ed0f542911",
+            "user_id": "21642919-cc14-4645-98d5-581a971871dd",
             "specialty": "Emergency Medicine",
             "bed_number": null,
-            "created_at": "2026-03-05T10:52:28.257278+00:00",
-            "display_id": "REQ-A139F9",
+            "created_at": "2026-03-05T11:17:02.37243+00:00",
+            "display_id": "REQ-8410CC",
             "total_cost": 0,
-            "updated_at": "2026-03-05T10:52:28.257278+00:00",
-            "hospital_id": "38bd574a-9882-4292-a096-e3f5482df182",
+            "updated_at": "2026-03-05T11:17:02.37243+00:00",
+            "hospital_id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
             "ambulance_id": null,
             "cancelled_at": null,
             "completed_at": null,
             "responder_id": null,
             "service_type": "ambulance",
-            "hospital_name": "E2E Hospital flow-matrix-1772707943030",
+            "hospital_name": "E2E Hospital flow-matrix-1772709415678",
             "ambulance_type": "basic",
             "payment_status": "pending",
             "responder_name": null,
@@ -439,7 +439,7 @@
               ]
             },
             "patient_snapshot": {
-              "fullName": "Patient flow-matrix-1772707943030"
+              "fullName": "Patient flow-matrix-1772709415678"
             },
             "responder_heading": null,
             "assigned_doctor_id": null,
@@ -449,90 +449,35 @@
             "responder_vehicle_type": null,
             "responder_vehicle_plate": null
           },
-          "occurred_at": "2026-03-05T10:52:28.257278+00:00"
+          "occurred_at": "2026-03-05T11:17:02.37243+00:00"
         },
         {
-          "emergency_request_id": "c6f69bbd-6dc9-4332-b0cb-a1f5b6cf6a58",
-          "from_status": "pending_approval",
-          "to_status": "in_progress",
-          "source": "automation:auto_assign_driver",
-          "reason": "auto_dispatch_assignment",
-          "actor_role": "automation",
-          "request_snapshot": {
-            "id": "c6f69bbd-6dc9-4332-b0cb-a1f5b6cf6a58",
-            "status": "in_progress",
-            "user_id": "3274675c-5156-45de-8c8e-a5ed0f542911",
-            "specialty": "Emergency Medicine",
-            "bed_number": null,
-            "created_at": "2026-03-05T10:52:28.257278+00:00",
-            "display_id": "REQ-A139F9",
-            "total_cost": 0,
-            "updated_at": "2026-03-05T10:52:28.546017+00:00",
-            "hospital_id": "38bd574a-9882-4292-a096-e3f5482df182",
-            "ambulance_id": null,
-            "cancelled_at": null,
-            "completed_at": null,
-            "responder_id": null,
-            "service_type": "ambulance",
-            "hospital_name": "E2E Hospital flow-matrix-1772707943030",
-            "ambulance_type": "basic",
-            "payment_status": "completed",
-            "responder_name": null,
-            "pickup_location": null,
-            "responder_phone": null,
-            "patient_location": {
-              "crs": {
-                "type": "name",
-                "properties": {
-                  "name": "EPSG:4326"
-                }
-              },
-              "type": "Point",
-              "coordinates": [
-                3.3792,
-                6.5244
-              ]
-            },
-            "patient_snapshot": {
-              "fullName": "Patient flow-matrix-1772707943030"
-            },
-            "responder_heading": null,
-            "assigned_doctor_id": null,
-            "doctor_assigned_at": null,
-            "responder_location": null,
-            "destination_location": null,
-            "responder_vehicle_type": null,
-            "responder_vehicle_plate": null
-          },
-          "occurred_at": "2026-03-05T10:52:28.546017+00:00"
-        },
-        {
-          "emergency_request_id": "c6f69bbd-6dc9-4332-b0cb-a1f5b6cf6a58",
+          "emergency_request_id": "52e52c1d-ccf3-4977-bdcd-caafa315a4fc",
           "from_status": "in_progress",
           "to_status": "accepted",
           "source": "automation:auto_assign_driver",
           "reason": "auto_dispatch_assignment",
           "actor_role": "automation",
           "request_snapshot": {
-            "id": "c6f69bbd-6dc9-4332-b0cb-a1f5b6cf6a58",
+            "id": "52e52c1d-ccf3-4977-bdcd-caafa315a4fc",
             "status": "accepted",
-            "user_id": "3274675c-5156-45de-8c8e-a5ed0f542911",
+            "user_id": "21642919-cc14-4645-98d5-581a971871dd",
             "specialty": "Emergency Medicine",
             "bed_number": null,
-            "created_at": "2026-03-05T10:52:28.257278+00:00",
-            "display_id": "REQ-A139F9",
+            "created_at": "2026-03-05T11:17:02.37243+00:00",
+            "display_id": "REQ-8410CC",
             "total_cost": 0,
-            "updated_at": "2026-03-05T10:52:28.546017+00:00",
-            "hospital_id": "38bd574a-9882-4292-a096-e3f5482df182",
-            "ambulance_id": "e94a9761-36c7-4619-8213-d14c6cbaa460",
+            "updated_at": "2026-03-05T11:17:02.705636+00:00",
+            "hospital_id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
+            "ambulance_id": "27d77c72-0332-4939-bee3-310686cc4004",
             "cancelled_at": null,
             "completed_at": null,
-            "responder_id": "251ccc38-0f88-4d1b-823c-86d454899868",
+            "responder_id": "44aa1c65-6545-420e-8eb5-e1ca6d3cd754",
             "service_type": "ambulance",
-            "hospital_name": "E2E Hospital flow-matrix-1772707943030",
+            "hospital_name": "E2E Hospital flow-matrix-1772709415678",
             "ambulance_type": "basic",
             "payment_status": "completed",
-            "responder_name": "Driver flow-matrix-1772707943030",
+            "responder_name": "Driver flow-matrix-1772709415678",
             "pickup_location": null,
             "responder_phone": null,
             "patient_location": {
@@ -549,42 +494,97 @@
               ]
             },
             "patient_snapshot": {
-              "fullName": "Patient flow-matrix-1772707943030"
+              "fullName": "Patient flow-matrix-1772709415678"
             },
             "responder_heading": null,
-            "assigned_doctor_id": "11aa027b-7758-4e0b-84e8-4f696df91816",
-            "doctor_assigned_at": "2026-03-05T10:52:28.546017+00:00",
+            "assigned_doctor_id": "1a6a082d-3736-4b45-8e43-5aa957333185",
+            "doctor_assigned_at": "2026-03-05T11:17:02.705636+00:00",
             "responder_location": null,
             "destination_location": null,
             "responder_vehicle_type": null,
             "responder_vehicle_plate": null
           },
-          "occurred_at": "2026-03-05T10:52:28.546017+00:00"
+          "occurred_at": "2026-03-05T11:17:02.705636+00:00"
         },
         {
-          "emergency_request_id": "419d27ff-74fd-48b3-ac86-4de68fac6aa0",
+          "emergency_request_id": "52e52c1d-ccf3-4977-bdcd-caafa315a4fc",
+          "from_status": "pending_approval",
+          "to_status": "in_progress",
+          "source": "automation:auto_assign_driver",
+          "reason": "auto_dispatch_assignment",
+          "actor_role": "automation",
+          "request_snapshot": {
+            "id": "52e52c1d-ccf3-4977-bdcd-caafa315a4fc",
+            "status": "in_progress",
+            "user_id": "21642919-cc14-4645-98d5-581a971871dd",
+            "specialty": "Emergency Medicine",
+            "bed_number": null,
+            "created_at": "2026-03-05T11:17:02.37243+00:00",
+            "display_id": "REQ-8410CC",
+            "total_cost": 0,
+            "updated_at": "2026-03-05T11:17:02.705636+00:00",
+            "hospital_id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
+            "ambulance_id": null,
+            "cancelled_at": null,
+            "completed_at": null,
+            "responder_id": null,
+            "service_type": "ambulance",
+            "hospital_name": "E2E Hospital flow-matrix-1772709415678",
+            "ambulance_type": "basic",
+            "payment_status": "completed",
+            "responder_name": null,
+            "pickup_location": null,
+            "responder_phone": null,
+            "patient_location": {
+              "crs": {
+                "type": "name",
+                "properties": {
+                  "name": "EPSG:4326"
+                }
+              },
+              "type": "Point",
+              "coordinates": [
+                3.3792,
+                6.5244
+              ]
+            },
+            "patient_snapshot": {
+              "fullName": "Patient flow-matrix-1772709415678"
+            },
+            "responder_heading": null,
+            "assigned_doctor_id": null,
+            "doctor_assigned_at": null,
+            "responder_location": null,
+            "destination_location": null,
+            "responder_vehicle_type": null,
+            "responder_vehicle_plate": null
+          },
+          "occurred_at": "2026-03-05T11:17:02.705636+00:00"
+        },
+        {
+          "emergency_request_id": "7b0b3cde-9cbb-49dc-b514-736bfd0d90d2",
           "from_status": null,
           "to_status": "pending_approval",
           "source": "create_emergency_v4",
           "reason": "emergency_created",
           "actor_role": "service_role",
           "request_snapshot": {
-            "id": "419d27ff-74fd-48b3-ac86-4de68fac6aa0",
+            "id": "7b0b3cde-9cbb-49dc-b514-736bfd0d90d2",
             "status": "pending_approval",
-            "user_id": "3274675c-5156-45de-8c8e-a5ed0f542911",
+            "user_id": "21642919-cc14-4645-98d5-581a971871dd",
             "specialty": "Internal Medicine",
             "bed_number": null,
-            "created_at": "2026-03-05T10:52:29.033703+00:00",
-            "display_id": "REQ-3B3DB4",
+            "created_at": "2026-03-05T11:17:03.127171+00:00",
+            "display_id": "REQ-1C2E16",
             "total_cost": 0,
-            "updated_at": "2026-03-05T10:52:29.033703+00:00",
-            "hospital_id": "38bd574a-9882-4292-a096-e3f5482df182",
+            "updated_at": "2026-03-05T11:17:03.127171+00:00",
+            "hospital_id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
             "ambulance_id": null,
             "cancelled_at": null,
             "completed_at": null,
             "responder_id": null,
             "service_type": "bed",
-            "hospital_name": "E2E Hospital flow-matrix-1772707943030",
+            "hospital_name": "E2E Hospital flow-matrix-1772709415678",
             "ambulance_type": null,
             "payment_status": "pending",
             "responder_name": null,
@@ -604,7 +604,7 @@
               ]
             },
             "patient_snapshot": {
-              "fullName": "Patient flow-matrix-1772707943030"
+              "fullName": "Patient flow-matrix-1772709415678"
             },
             "responder_heading": null,
             "assigned_doctor_id": null,
@@ -614,32 +614,32 @@
             "responder_vehicle_type": null,
             "responder_vehicle_plate": null
           },
-          "occurred_at": "2026-03-05T10:52:29.033703+00:00"
+          "occurred_at": "2026-03-05T11:17:03.127171+00:00"
         },
         {
-          "emergency_request_id": "419d27ff-74fd-48b3-ac86-4de68fac6aa0",
+          "emergency_request_id": "7b0b3cde-9cbb-49dc-b514-736bfd0d90d2",
           "from_status": "pending_approval",
           "to_status": "in_progress",
           "source": "approve_cash_payment",
           "reason": "cash_payment_approved",
           "actor_role": "service_role",
           "request_snapshot": {
-            "id": "419d27ff-74fd-48b3-ac86-4de68fac6aa0",
+            "id": "7b0b3cde-9cbb-49dc-b514-736bfd0d90d2",
             "status": "in_progress",
-            "user_id": "3274675c-5156-45de-8c8e-a5ed0f542911",
+            "user_id": "21642919-cc14-4645-98d5-581a971871dd",
             "specialty": "Internal Medicine",
             "bed_number": null,
-            "created_at": "2026-03-05T10:52:29.033703+00:00",
-            "display_id": "REQ-3B3DB4",
+            "created_at": "2026-03-05T11:17:03.127171+00:00",
+            "display_id": "REQ-1C2E16",
             "total_cost": 0,
-            "updated_at": "2026-03-05T10:52:29.208334+00:00",
-            "hospital_id": "38bd574a-9882-4292-a096-e3f5482df182",
+            "updated_at": "2026-03-05T11:17:03.274439+00:00",
+            "hospital_id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
             "ambulance_id": null,
             "cancelled_at": null,
             "completed_at": null,
             "responder_id": null,
             "service_type": "bed",
-            "hospital_name": "E2E Hospital flow-matrix-1772707943030",
+            "hospital_name": "E2E Hospital flow-matrix-1772709415678",
             "ambulance_type": null,
             "payment_status": "completed",
             "responder_name": null,
@@ -659,7 +659,7 @@
               ]
             },
             "patient_snapshot": {
-              "fullName": "Patient flow-matrix-1772707943030"
+              "fullName": "Patient flow-matrix-1772709415678"
             },
             "responder_heading": null,
             "assigned_doctor_id": null,
@@ -669,32 +669,32 @@
             "responder_vehicle_type": null,
             "responder_vehicle_plate": null
           },
-          "occurred_at": "2026-03-05T10:52:29.208334+00:00"
+          "occurred_at": "2026-03-05T11:17:03.274439+00:00"
         },
         {
-          "emergency_request_id": "419d27ff-74fd-48b3-ac86-4de68fac6aa0",
+          "emergency_request_id": "7b0b3cde-9cbb-49dc-b514-736bfd0d90d2",
           "from_status": "in_progress",
           "to_status": "completed",
           "source": "discharge_patient",
           "reason": "patient_discharged",
           "actor_role": "service_role",
           "request_snapshot": {
-            "id": "419d27ff-74fd-48b3-ac86-4de68fac6aa0",
+            "id": "7b0b3cde-9cbb-49dc-b514-736bfd0d90d2",
             "status": "completed",
-            "user_id": "3274675c-5156-45de-8c8e-a5ed0f542911",
+            "user_id": "21642919-cc14-4645-98d5-581a971871dd",
             "specialty": "Internal Medicine",
             "bed_number": null,
-            "created_at": "2026-03-05T10:52:29.033703+00:00",
-            "display_id": "REQ-3B3DB4",
+            "created_at": "2026-03-05T11:17:03.127171+00:00",
+            "display_id": "REQ-1C2E16",
             "total_cost": 80,
-            "updated_at": "2026-03-05T10:52:29.750667+00:00",
-            "hospital_id": "38bd574a-9882-4292-a096-e3f5482df182",
+            "updated_at": "2026-03-05T11:17:03.823704+00:00",
+            "hospital_id": "9aece791-1e24-4aa4-8c25-19a23ae89681",
             "ambulance_id": null,
             "cancelled_at": null,
             "completed_at": null,
             "responder_id": null,
             "service_type": "bed",
-            "hospital_name": "E2E Hospital flow-matrix-1772707943030",
+            "hospital_name": "E2E Hospital flow-matrix-1772709415678",
             "ambulance_type": null,
             "payment_status": "completed",
             "responder_name": null,
@@ -714,17 +714,17 @@
               ]
             },
             "patient_snapshot": {
-              "fullName": "Patient flow-matrix-1772707943030"
+              "fullName": "Patient flow-matrix-1772709415678"
             },
             "responder_heading": null,
-            "assigned_doctor_id": "11aa027b-7758-4e0b-84e8-4f696df91816",
-            "doctor_assigned_at": "2026-03-05T10:52:29.208334+00:00",
+            "assigned_doctor_id": "1a6a082d-3736-4b45-8e43-5aa957333185",
+            "doctor_assigned_at": "2026-03-05T11:17:03.274439+00:00",
             "responder_location": null,
             "destination_location": null,
             "responder_vehicle_type": null,
             "responder_vehicle_plate": null
           },
-          "occurred_at": "2026-03-05T10:52:29.750667+00:00"
+          "occurred_at": "2026-03-05T11:17:03.823704+00:00"
         }
       ],
       "assertions": {
@@ -739,5 +739,5 @@
     }
   },
   "cleanupWarnings": [],
-  "completedAt": "2026-03-05T10:52:31.053Z"
+  "completedAt": "2026-03-05T11:17:05.194Z"
 }
