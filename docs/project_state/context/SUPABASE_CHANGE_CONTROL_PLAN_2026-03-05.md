@@ -299,6 +299,25 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-016: Console Visits Presentation Normalization from Emergency Context
+Objective:
+- Eliminate `Unknown Facility` and stale `upcoming`/`General` visit render states when a visit is linked to an emergency request by deriving canonical display fields from emergency context in console list/table/mobile surfaces.
+
+Deliverables:
+- console visits data normalization update in:
+  - `src/components/pages/VisitsPage.jsx`
+  - enrich visits with linked `emergency_requests` + `hospitals` data for display fallback
+  - map emergency status to visit display status where visit status is legacy/sparse
+  - map type fallback from emergency service type where visit type missing
+- console list/mobile render fallback updates:
+  - `src/components/views/VisitListView.jsx`
+  - `src/components/mobile/MobileVisits.jsx`
+  - prefer `hospital_name` before generic fallback labels.
+
+Verification:
+- console build green (`npm run build` in `ivisit-console/frontend`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
