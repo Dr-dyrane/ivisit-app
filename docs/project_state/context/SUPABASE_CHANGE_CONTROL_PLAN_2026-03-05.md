@@ -143,6 +143,23 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-008: Console Emergency Row Normalization + Canonical Field Adoption
+Objective:
+- Normalize emergency request rows at console ingress and migrate high-traffic emergency UI/action surfaces to canonical field contracts while preserving compatibility aliases in one mapper boundary.
+
+Deliverables:
+- shared emergency row mapper utility with:
+  - canonical status normalization,
+  - payment method/status enrichment support from `payments`,
+  - canonical alias fields for ETA/bed category display.
+- emergency request fetch path enriched with latest payment lookup keyed by `payments.emergency_request_id`.
+- emergency table/mobile/details/dispatch surfaces updated to canonical reads (`payment_method`, `eta_display`, `bed_category`) with mapper-level compatibility.
+
+Verification:
+- console build green (`npm run build` in `ivisit-console/frontend`),
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
