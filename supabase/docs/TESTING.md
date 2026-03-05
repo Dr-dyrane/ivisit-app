@@ -334,6 +334,26 @@ Current guard focus:
 - Retry flow must use canonical payment contract fields:
   - `total_cost`, `payment_method`, `metadata`
 
+### **Automation Contract Guard**
+For emergency logistics automations and emergency->visit lifecycle sync contract safety:
+
+```bash
+# Verify canonical automation migration does not reference stale emergency fields
+# and includes non-terminal visit sync mapping
+npm run hardening:automation-contract-guard
+```
+
+Current guard focus:
+- No `NEW.estimated_arrival` reference in `0009_automations`
+- `sync_emergency_to_visit` includes mapping for:
+  - `accepted`
+  - `arrived`
+  - `cancelled`
+- Visit sync updates include:
+  - `lifecycle_state`
+  - `hospital_name`
+  - `cost`
+
 ### **Commit Gate: Cleanup Must Be Zero**
 Before every commit/push after running tests:
 

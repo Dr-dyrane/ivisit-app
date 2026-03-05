@@ -280,6 +280,25 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-015: Automation Contract Hardening for Emergency->Visit Sync
+Objective:
+- Remove stale automation references to non-existent `emergency_requests` fields and harden `sync_emergency_to_visit` to keep visits lifecycle/facility fields aligned with emergency transitions (not only completion).
+
+Deliverables:
+- canonical migration update in `0009_automations`:
+  - remove `NEW.estimated_arrival` references from ambulance automation paths,
+  - expand `sync_emergency_to_visit` to map/update non-terminal statuses (`accepted`, `arrived`, `cancelled`) and lifecycle metadata.
+- deterministic automation contract guard script:
+  - `supabase/tests/scripts/assert_automation_contract.js`
+  - emits `supabase/tests/validation/automation_contract_guard_report.json`
+- npm hardening command:
+  - `hardening:automation-contract-guard`
+
+Verification:
+- `npm run hardening:automation-contract-guard` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

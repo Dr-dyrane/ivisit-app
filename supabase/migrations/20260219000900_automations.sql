@@ -143,17 +143,63 @@ FOR EACH ROW EXECUTE PROCEDURE public.sync_doctor_record_from_profile();
 
 
 -- 2. Logistics & Operations Synchronization
--- Sync Emergency -> Visit on Completion
+-- Sync Emergency -> Visit across lifecycle transitions
 CREATE OR REPLACE FUNCTION public.sync_emergency_to_visit()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_visit_status TEXT;
+    v_lifecycle_state TEXT;
+    v_doctor_name TEXT;
 BEGIN
-    IF (NEW.status = 'completed') AND (OLD.status != 'completed') THEN
-        UPDATE public.visits 
-        SET status = 'completed',
-            cost = NEW.total_cost::TEXT,
+    IF NEW.status IS DISTINCT FROM OLD.status
+       OR NEW.total_cost IS DISTINCT FROM OLD.total_cost
+       OR NEW.hospital_name IS DISTINCT FROM OLD.hospital_name
+       OR NEW.hospital_id IS DISTINCT FROM OLD.hospital_id
+       OR NEW.assigned_doctor_id IS DISTINCT FROM OLD.assigned_doctor_id
+       OR NEW.specialty IS DISTINCT FROM OLD.specialty
+       OR NEW.service_type IS DISTINCT FROM OLD.service_type THEN
+
+        v_visit_status := CASE NEW.status
+            WHEN 'completed' THEN 'completed'
+            WHEN 'cancelled' THEN 'cancelled'
+            WHEN 'in_progress' THEN 'in_progress'
+            WHEN 'accepted' THEN 'in_progress'
+            WHEN 'arrived' THEN 'in_progress'
+            ELSE 'scheduled'
+        END;
+
+        v_lifecycle_state := CASE NEW.status
+            WHEN 'pending_approval' THEN 'initiated'
+            WHEN 'payment_declined' THEN 'payment_declined'
+            WHEN 'in_progress' THEN 'confirmed'
+            WHEN 'accepted' THEN 'dispatched'
+            WHEN 'arrived' THEN 'arrived'
+            WHEN 'completed' THEN 'completed'
+            WHEN 'cancelled' THEN 'cancelled'
+            ELSE NULL
+        END;
+
+        SELECT d.name
+        INTO v_doctor_name
+        FROM public.doctors d
+        WHERE d.id = NEW.assigned_doctor_id;
+
+        UPDATE public.visits
+        SET
+            user_id = COALESCE(NEW.user_id, user_id),
+            hospital_id = COALESCE(NEW.hospital_id, hospital_id),
+            hospital_name = COALESCE(NEW.hospital_name, hospital_name),
+            doctor_name = COALESCE(v_doctor_name, doctor_name),
+            specialty = COALESCE(NEW.specialty, specialty),
+            type = COALESCE(NEW.service_type, type),
+            status = COALESCE(v_visit_status, status),
+            cost = CASE WHEN NEW.total_cost IS NULL THEN cost ELSE NEW.total_cost::TEXT END,
+            lifecycle_state = COALESCE(v_lifecycle_state, lifecycle_state),
+            lifecycle_updated_at = NOW(),
             updated_at = NOW()
         WHERE request_id = NEW.id;
     END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -215,7 +261,6 @@ BEGIN
             UPDATE public.ambulances
             SET status = 'on_trip',
                 current_call = NEW.id,
-                eta = COALESCE(NEW.estimated_arrival, eta),
                 updated_at = NOW()
             WHERE id = v_amb_id;
         END IF;
@@ -262,7 +307,6 @@ BEGIN
             IF v_current_amb_status IN ('available', 'dispatched', 'en_route', 'on_scene') THEN
                 UPDATE public.ambulances
                 SET status = 'on_trip',
-                    eta = COALESCE(NEW.estimated_arrival, eta),
                     updated_at = NOW()
                 WHERE id = NEW.ambulance_id;
             END IF;
