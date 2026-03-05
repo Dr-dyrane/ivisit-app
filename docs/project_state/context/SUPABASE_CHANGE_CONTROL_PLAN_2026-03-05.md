@@ -463,6 +463,33 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-023: Cash Approval Platform-Fee Deduction Hardening
+Objective:
+- Ensure cash emergency approval always deducts the iVisit platform fee from organization wallet balance when approval succeeds, including when legacy/default fee fields could mask the true fee value.
+
+Deliverables:
+- cash-approval contract hardening in canonical migrations:
+  - `supabase/migrations/20260219000800_emergency_logic.sql`
+  - `supabase/migrations/20260219010000_core_rpcs.sql`
+  - ensure `create_emergency_v4` persists `ivisit_fee_amount` explicitly,
+  - ensure `approve_cash_payment` resolves fee robustly:
+    - `NULLIF(ivisit_fee_amount, 0)` guard,
+    - metadata fallback (`fee_amount` and legacy `fee`),
+    - organization fee-percentage fallback formula,
+  - persist resolved fee back to `payments.ivisit_fee_amount` + metadata keys on approval.
+- deterministic contract guard:
+  - `supabase/tests/scripts/assert_cash_fee_deduction_contract.js`
+  - artifact:
+    - `supabase/tests/validation/cash_fee_deduction_contract_guard_report.json`
+- npm hardening command:
+  - `hardening:cash-fee-contract-guard`
+
+Verification:
+- `npm run hardening:cash-fee-contract-guard` green,
+- `npm run hardening:finance-rpc-contract-guard` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

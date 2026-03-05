@@ -2509,13 +2509,17 @@ DECLARE
     v_org_balance NUMERIC;
     v_platform_wallet_id UUID;
     v_fee_amount NUMERIC;
+    v_fee_percentage NUMERIC;
     v_assigned_ambulance_id UUID;
     v_responder_name TEXT;
     v_responder_phone TEXT;
     v_responder_vehicle_type TEXT;
     v_responder_vehicle_plate TEXT;
 BEGIN
-    SELECT p.*, (p.metadata->>'fee_amount')::NUMERIC AS calculated_fee
+    SELECT
+        p.*,
+        NULLIF((p.metadata->>'fee_amount')::NUMERIC, 0) AS calculated_fee,
+        NULLIF((p.metadata->>'fee')::NUMERIC, 0) AS legacy_calculated_fee
     INTO v_payment
     FROM public.payments p
     WHERE p.id = p_payment_id
@@ -2620,7 +2624,18 @@ BEGIN
 
     SELECT id INTO v_platform_wallet_id FROM public.ivisit_main_wallet LIMIT 1 FOR UPDATE;
 
-    v_fee_amount := COALESCE(v_payment.ivisit_fee_amount, v_payment.calculated_fee, 0);
+    SELECT ivisit_fee_percentage
+    INTO v_fee_percentage
+    FROM public.organizations
+    WHERE id = v_request_org_id;
+
+    v_fee_amount := COALESCE(
+        NULLIF(v_payment.ivisit_fee_amount, 0),
+        v_payment.calculated_fee,
+        v_payment.legacy_calculated_fee,
+        ROUND(COALESCE(v_payment.amount, 0) * (COALESCE(v_fee_percentage, 2.5) / 100.0), 2),
+        0
+    );
 
     IF v_fee_amount > 0 THEN
         IF v_org_balance < v_fee_amount THEN
@@ -2645,6 +2660,8 @@ BEGIN
     UPDATE public.payments
     SET status = 'completed',
         processed_at = NOW(),
+        ivisit_fee_amount = v_fee_amount,
+        metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('fee_amount', v_fee_amount, 'fee', v_fee_amount),
         updated_at = NOW()
     WHERE id = p_payment_id;
 

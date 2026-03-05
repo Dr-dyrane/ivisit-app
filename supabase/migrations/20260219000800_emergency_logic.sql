@@ -559,13 +559,18 @@ BEGIN
         IF v_fee_amount IS NULL THEN v_fee_amount := v_total_amount * 0.025; END IF;
 
         INSERT INTO public.payments (
-            user_id, emergency_request_id, organization_id, amount, currency, 
-            payment_method, status, metadata
+            user_id, emergency_request_id, organization_id, amount, currency,
+            payment_method, status, ivisit_fee_amount, metadata
         ) VALUES (
             p_user_id, v_request_id, v_organization_id, v_total_amount, 
             p_payment_data->>'currency', p_payment_data->>'method',
             CASE WHEN p_payment_data->>'method' = 'cash' THEN 'pending' ELSE 'completed' END,
-            jsonb_build_object('fee_amount', v_fee_amount, 'method_id', p_payment_data->>'method_id')
+            v_fee_amount,
+            jsonb_build_object(
+                'fee_amount', v_fee_amount,
+                'fee', v_fee_amount,
+                'method_id', p_payment_data->>'method_id'
+            )
         ) RETURNING id INTO v_payment_id;
 
         IF p_payment_data->>'method' = 'cash' THEN v_requires_approval := TRUE; END IF;
@@ -602,6 +607,7 @@ DECLARE
     v_platform_wallet_id UUID;
     v_patient_wallet_id UUID;
     v_fee_amount NUMERIC;
+    v_fee_percentage NUMERIC;
     v_assigned_ambulance_id UUID;
     v_responder_name TEXT;
     v_responder_phone TEXT;
@@ -611,7 +617,10 @@ BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
 
     -- 1. Verify Payment/Request Integrity + lock target rows
-    SELECT p.*, (p.metadata->>'fee_amount')::NUMERIC as calculated_fee 
+    SELECT
+        p.*,
+        NULLIF((p.metadata->>'fee_amount')::NUMERIC, 0) AS calculated_fee,
+        NULLIF((p.metadata->>'fee')::NUMERIC, 0) AS legacy_calculated_fee
     INTO v_payment 
     FROM public.payments p 
     WHERE p.id = p_payment_id
@@ -690,8 +699,19 @@ BEGIN
     
     SELECT id INTO v_platform_wallet_id FROM public.ivisit_main_wallet LIMIT 1 FOR UPDATE;
 
-    -- 4. Check for Platform Fee
-    v_fee_amount := COALESCE(v_payment.ivisit_fee_amount, v_payment.calculated_fee, 0);
+    -- 4. Resolve Platform Fee (protect against default 0.00 masking real metadata fee)
+    SELECT ivisit_fee_percentage
+    INTO v_fee_percentage
+    FROM public.organizations
+    WHERE id = v_request_org_id;
+
+    v_fee_amount := COALESCE(
+        NULLIF(v_payment.ivisit_fee_amount, 0),
+        v_payment.calculated_fee,
+        v_payment.legacy_calculated_fee,
+        ROUND(COALESCE(v_payment.amount, 0) * (COALESCE(v_fee_percentage, 2.5) / 100.0), 2),
+        0
+    );
 
     -- 5. Execute Ledger Operations (only if fee > 0)
     IF v_fee_amount > 0 THEN
@@ -711,7 +731,13 @@ BEGIN
     END IF;
 
     -- 6. Finalize Statuses
-    UPDATE public.payments SET status = 'completed', processed_at = NOW(), updated_at = NOW() WHERE id = p_payment_id;
+    UPDATE public.payments
+    SET status = 'completed',
+        processed_at = NOW(),
+        ivisit_fee_amount = v_fee_amount,
+        metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('fee_amount', v_fee_amount, 'fee', v_fee_amount),
+        updated_at = NOW()
+    WHERE id = p_payment_id;
     UPDATE public.emergency_requests
     SET status = 'in_progress', payment_status = 'completed', updated_at = NOW()
     WHERE id = p_request_id;

@@ -124,6 +124,12 @@ npm run hardening:visits-surface-field-guard
 npm run hardening:payments-surface-field-guard
 ```
 
+### **Cash Fee Deduction Contract Guard**
+```bash
+# Enforce cash approval fee deduction contract (fee resolution + persistence)
+npm run hardening:cash-fee-contract-guard
+```
+
 ### **Visits Runtime Confidence Gate**
 ```bash
 # Run E2E flow matrix and assert required visits lifecycle outcomes

@@ -14,6 +14,7 @@
     "hardening:rpc-authority-guard": "node supabase/tests/scripts/assert_rpc_authority_map.js",
     "hardening:finance-rpc-contract-guard": "node supabase/tests/scripts/assert_finance_rpc_contract.js",
     "hardening:automation-contract-guard": "node supabase/tests/scripts/assert_automation_contract.js",
+    "hardening:cash-fee-contract-guard": "node supabase/tests/scripts/assert_cash_fee_deduction_contract.js",
     "hardening:governance-guards": "npm run hardening:inventory-guard && npm run hardening:rpc-authority-guard",
     "hardening:contract-matrix": "node supabase/tests/scripts/run_cross_repo_contract_matrix.js",
     "hardening:contract-drift-guard": "npm run hardening:contract-matrix && node supabase/tests/scripts/assert_contract_drift_zero.js",
