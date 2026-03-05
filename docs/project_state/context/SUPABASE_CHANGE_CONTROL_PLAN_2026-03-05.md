@@ -160,6 +160,21 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-009: Console Emergency/Payment Realtime Synchronization
+Objective:
+- Remove refresh dependency for approval/dispatch state by synchronizing emergency request rows and payment updates in realtime for both list/table and details modal surfaces.
+
+Deliverables:
+- emergency page realtime channel listens to both `emergency_requests` and `payments`,
+- selected request snapshot auto-refreshes from normalized rows after each fetch,
+- emergency details modal subscribes to request-scoped payment and emergency updates while open,
+- live transitions refresh payment visibility and terminal visit outcome surface without manual reload.
+
+Verification:
+- console build green (`npm run build` in `ivisit-console/frontend`),
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
