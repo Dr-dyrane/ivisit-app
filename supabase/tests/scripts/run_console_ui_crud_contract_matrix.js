@@ -202,6 +202,8 @@ const UI_SURFACES = [
     updateFn: 'updateEmergencyRequest',
     dynamicCreatePayload: true,
     dynamicUpdatePayload: true,
+    createKeysFromSet: 'EMERGENCY_REQUEST_WRITABLE_FIELDS',
+    updateKeysFromSet: 'EMERGENCY_REQUEST_WRITABLE_FIELDS',
     skipPageWiring: true,
     uiOnlyFields: ['emergency_type', 'priority', 'location', 'latitude', 'longitude', 'description'],
   },

@@ -343,6 +343,51 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-018: Comprehensive Table Flow Trace (`emergency_requests` Baseline)
+Objective:
+- Produce a deterministic, line-level end-to-end trace for `emergency_requests` from schema contract through SQL authority surfaces and app/console UI/service touchpoints so CRUD regressions can be diagnosed before runtime failures.
+
+Deliverables:
+- table flow trace script:
+  - `supabase/tests/scripts/export_table_flow_trace.js`
+  - resolves table columns from canonical schema sources,
+  - classifies SQL references (insert/update/delete/select, triggers, RPC/function bodies),
+  - classifies app/console references at line level (inputs, table cells, display nodes, service queries/mutations, RPC calls),
+  - emits machine-readable artifact:
+    - `supabase/tests/validation/table_flow_trace_emergency_requests.json`
+- npm hardening command:
+  - `hardening:table-flow-trace`
+- SCC evidence note documenting audit findings and follow-on queue for next table slice.
+
+Verification:
+- `npm run hardening:table-flow-trace` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
+### SCC-019: Emergency Runtime Confidence Gate
+Objective:
+- Enforce runtime-behavior confidence for the `emergency_requests` lifecycle so closure requires both contract parity and live-flow behavior validation (console actions + app/E2E flow assertions), reducing regression ripple risk.
+
+Deliverables:
+- runtime confidence assertion script:
+  - `supabase/tests/scripts/assert_emergency_runtime_confidence.js`
+  - validates `console_transition_matrix_report.json` and `e2e_flow_matrix_report.json`:
+    - no failed console transition cases,
+    - required emergency transition case coverage present and passing,
+    - required E2E emergency scenarios present with all assertions true,
+    - critical terminal-state checks (`completion`, `approval`, `transitionAudit`) pass.
+  - emits machine-readable artifact:
+    - `supabase/tests/validation/emergency_runtime_confidence_report.json`
+- npm hardening commands:
+  - `hardening:emergency-runtime-confidence-assert`
+  - `hardening:emergency-runtime-confidence`
+- integrate runtime assertion into `hardening:full` after E2E matrix execution.
+
+Verification:
+- `npm run hardening:emergency-runtime-confidence` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

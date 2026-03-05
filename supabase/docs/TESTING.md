@@ -94,6 +94,24 @@ node supabase/tests/scripts/test_runner.js comprehensive_system
 npx supabase migration list
 ```
 
+### **Table Flow Trace Audit**
+```bash
+# Export end-to-end table flow trace (schema -> SQL authority -> app/console UI/service refs)
+npm run hardening:table-flow-trace
+
+# Optional: target another table directly
+node supabase/tests/scripts/export_table_flow_trace.js --table visits
+```
+
+### **Emergency Runtime Confidence Gate**
+```bash
+# Run console transition matrix + E2E emergency flow + confidence assertion
+npm run hardening:emergency-runtime-confidence
+
+# If reports already exist, run assertion only
+npm run hardening:emergency-runtime-confidence-assert
+```
+
 ### **Expected Output**
 ```
 🧪 Comprehensive System Test...
