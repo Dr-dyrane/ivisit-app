@@ -972,13 +972,17 @@ export type Database = {
         Row: {
           action_data: Json | null
           action_type: string | null
+          color: string | null
           created_at: string
           display_id: string | null
+          icon: string | null
           id: string
           message: string | null
           metadata: Json | null
           priority: string | null
           read: boolean
+          target_id: string | null
+          timestamp: string
           title: string | null
           type: string | null
           updated_at: string
@@ -987,13 +991,17 @@ export type Database = {
         Insert: {
           action_data?: Json | null
           action_type?: string | null
+          color?: string | null
           created_at?: string
           display_id?: string | null
+          icon?: string | null
           id?: string
           message?: string | null
           metadata?: Json | null
           priority?: string | null
           read?: boolean
+          target_id?: string | null
+          timestamp?: string
           title?: string | null
           type?: string | null
           updated_at?: string
@@ -1002,13 +1010,17 @@ export type Database = {
         Update: {
           action_data?: Json | null
           action_type?: string | null
+          color?: string | null
           created_at?: string
           display_id?: string | null
+          icon?: string | null
           id?: string
           message?: string | null
           metadata?: Json | null
           priority?: string | null
           read?: boolean
+          target_id?: string | null
+          timestamp?: string
           title?: string | null
           type?: string | null
           updated_at?: string

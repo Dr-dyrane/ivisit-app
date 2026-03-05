@@ -1050,6 +1050,68 @@ Verification:
 - `npm run build` green in `../ivisit-console/frontend`,
 - `npm run hardening:contract-drift-guard` green.
 
+### SCC-043: `emergency_requests` Surface Field Guard Closure
+Objective:
+- Add a deterministic preventive guard for `emergency_requests` so app/console type contracts, relationship contracts, query field usage, and compatibility alias boundaries stay canonical.
+
+Deliverables:
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_emergency_requests_surface_field_guard.js`
+  - enforce app/console type parity for `emergency_requests` (`Row`/`Insert`/`Update`)
+  - enforce relationship parity including required FKs:
+    - `emergency_requests_ambulance_id_fkey`
+    - `emergency_requests_assigned_doctor_id_fkey`
+    - `emergency_requests_hospital_id_fkey`
+    - `emergency_requests_responder_id_fkey`
+    - `emergency_requests_user_id_fkey`
+  - enforce canonical console select columns derived from app `Row` contract
+  - forbid direct console `insert/update/upsert/delete` on `emergency_requests` (RPC authority lanes only)
+  - enforce legacy alias boundaries (`payment_method_id`, `estimated_arrival`, `next_estimated_arrival`, `bed_type`) so aliases do not leak into non-compatibility UI surfaces.
+- remove remaining UI alias fallback leaks:
+  - `../ivisit-console/frontend/src/components/modals/EmergencyDetailsModal.jsx`
+  - `../ivisit-console/frontend/src/components/modals/HospitalModal.jsx`
+- wire guard command + docs:
+  - `package.json` add `hardening:emergency-requests-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section.
+- validate runtime coverage lane for this table:
+  - refresh trace and per-table runtime field coverage for `emergency_requests`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table emergency_requests` green,
+- `npm run hardening:table-field-runtime-coverage -- --table emergency_requests` green,
+- `npm run hardening:emergency-requests-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:contract-drift-guard` green.
+
+### SCC-044: `notifications` Surface Contract Guard Hardening
+Objective:
+- Reconcile `notifications` type contract drift across app/console and enforce deterministic guard coverage for canonical fields and relationship ownership.
+
+Deliverables:
+- app/console notifications type reconciliation:
+  - `types/database.ts`
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align `Row`/`Insert`/`Update` to canonical notifications schema (`display_id`, `icon`, `color`, `target_id`, `timestamp`, etc.)
+  - ensure `notifications_user_id_fkey` relationship parity.
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_notifications_surface_field_guard.js`
+  - enforce app/console type parity for `notifications` (`Row`/`Insert`/`Update`)
+  - enforce relationship parity and required FK (`notifications_user_id_fkey`)
+  - enforce canonical console select columns derived from app `Row` contract.
+- wire guard command + docs:
+  - `package.json` add `hardening:notifications-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section.
+- validate runtime coverage lane for this table:
+  - refresh trace and per-table runtime field coverage for `notifications`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table notifications` green,
+- `npm run hardening:table-field-runtime-coverage -- --table notifications` green,
+- `npm run hardening:notifications-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

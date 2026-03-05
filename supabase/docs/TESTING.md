@@ -172,6 +172,22 @@ npm run hardening:patient-wallets-surface-field-guard
 npm run hardening:ivisit-main-wallet-surface-field-guard
 ```
 
+### **Emergency Requests Surface Field Guard**
+```bash
+# Detect emergency_requests app/console type parity + relationship parity + select-column drift.
+# Also forbids direct console emergency_requests insert/update/upsert/delete and
+# keeps legacy aliases (payment_method_id, estimated_arrival, next_estimated_arrival, bed_type)
+# inside dedicated compatibility boundaries only.
+npm run hardening:emergency-requests-surface-field-guard
+```
+
+### **Notifications Surface Field Guard**
+```bash
+# Detect notifications app/console type parity + relationship parity and
+# enforce canonical notifications select-column usage in console source.
+npm run hardening:notifications-surface-field-guard
+```
+
 ### **Payment Methods Surface Field Guard**
 ```bash
 # Detect payment_methods type parity + query/select drift and forbid direct console table mutations
