@@ -494,6 +494,23 @@ Current guard focus:
 - console pricing writes must use RPC lanes (`upsert_*` / `delete_*`) instead of direct table mutations
 - pricing payload must not write non-schema fields (`currency`, `is_active`)
 
+### **Medical Profiles Surface Field Guard**
+For `medical_profiles` contract parity and canonical profile write safety:
+
+```bash
+# Export medical profile flow trace evidence
+node supabase/tests/scripts/export_table_flow_trace.js --table medical_profiles
+
+# Enforce medical_profiles type/service surface contract guard
+npm run hardening:medical-profiles-surface-field-guard
+```
+
+Current guard focus:
+- app/console type parity for `medical_profiles` (`Row`/`Insert`/`Update`)
+- ensure `medical_profiles_user_id_fkey` relationship parity in console type contract
+- console medical profile service must use explicit payload builder (no raw input spread)
+- app medical profile update path must upsert by `user_id` to avoid missing-row drift
+
 ### **Finance RPC Contract Guard**
 For canonical migration safety on finance RPCs (legacy field regression prevention):
 

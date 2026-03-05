@@ -12,6 +12,32 @@ const DEFAULT_MEDICAL_PROFILE = {
     updatedAt: null,
 };
 
+function normalizeTextArray(value) {
+    if (value === undefined) return undefined;
+    if (value === null || value === "") return null;
+    if (Array.isArray(value)) {
+        const normalized = value
+            .map((item) => (item == null ? "" : String(item).trim()))
+            .filter(Boolean);
+        return normalized.length ? Array.from(new Set(normalized)) : null;
+    }
+    if (typeof value === "string") {
+        const normalized = value
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean);
+        return normalized.length ? Array.from(new Set(normalized)) : null;
+    }
+    return null;
+}
+
+function normalizeNullableText(value) {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    const next = String(value).trim();
+    return next.length ? next : null;
+}
+
 export const medicalProfileService = {
     async get() {
         // Try fetching from Supabase first
@@ -57,29 +83,45 @@ export const medicalProfileService = {
             updated_at: new Date().toISOString()
         };
 
-        if (updates.bloodType !== undefined) dbPayload.blood_type = updates.bloodType;
-        if (updates.allergies !== undefined) dbPayload.allergies = updates.allergies.split(',').map(s => s.trim()).filter(Boolean);
-        if (updates.medications !== undefined) dbPayload.medications = updates.medications.split(',').map(s => s.trim()).filter(Boolean);
-        if (updates.conditions !== undefined) dbPayload.conditions = updates.conditions.split(',').map(s => s.trim()).filter(Boolean);
-        if (updates.notes !== undefined) {
-            // Fallback: If migration hasn't run, we can store notes in conditions temporarily 
-            // or just try to save and catch the error to prevent crash
-            dbPayload.emergency_notes = updates.notes;
+        if (updates.bloodType !== undefined) dbPayload.blood_type = normalizeNullableText(updates.bloodType);
+        if (updates.allergies !== undefined) dbPayload.allergies = normalizeTextArray(updates.allergies);
+        if (updates.medications !== undefined) dbPayload.medications = normalizeTextArray(updates.medications);
+        if (updates.conditions !== undefined) dbPayload.conditions = normalizeTextArray(updates.conditions);
+        if (updates.notes !== undefined) dbPayload.emergency_notes = normalizeNullableText(updates.notes);
+        if (updates.insuranceProvider !== undefined) {
+            dbPayload.insurance_provider = normalizeNullableText(updates.insuranceProvider);
+        }
+        if (updates.insurancePolicyNumber !== undefined) {
+            dbPayload.insurance_policy_number = normalizeNullableText(updates.insurancePolicyNumber);
+        }
+        if (updates.emergencyContactName !== undefined) {
+            dbPayload.emergency_contact_name = normalizeNullableText(updates.emergencyContactName);
+        }
+        if (updates.emergencyContactPhone !== undefined) {
+            dbPayload.emergency_contact_phone = normalizeNullableText(updates.emergencyContactPhone);
+        }
+        if (updates.emergencyContactRelationship !== undefined) {
+            dbPayload.emergency_contact_relationship = normalizeNullableText(updates.emergencyContactRelationship);
+        }
+        if (updates.organDonor !== undefined) {
+            dbPayload.organ_donor = updates.organDonor === null ? null : !!updates.organDonor;
         }
 
         let updateError = null;
         if (user) {
-            // First try standard update
+            dbPayload.user_id = user.id;
+
+            // Upsert guarantees row creation if bootstrap trigger missed the profile row.
             const { error } = await supabase
                 .from('medical_profiles')
-                .update(dbPayload)
-                .eq('user_id', user.id);
+                .upsert(dbPayload, { onConflict: 'user_id' });
 
             if (error) {
                 // Check for "column does not exist" error
                 if (error.code === 'PGRST204' || (error.message && error.message.includes('emergency_notes'))) {
                     console.warn("Schema mismatch: 'emergency_notes' column missing. Retrying without it.");
                     delete dbPayload.emergency_notes;
+                    delete dbPayload.user_id;
                     // Retry update without the problematic column
                     const { error: retryError } = await supabase
                         .from('medical_profiles')

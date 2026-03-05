@@ -862,6 +862,36 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-036: Medical Profiles Surface Contract Guard Hardening (Patient Safety Data Lane)
+Objective:
+- Eliminate `medical_profiles` type/service drift by locking app/console contract parity and ensuring profile updates use canonical payloads with missing-row safety.
+
+Deliverables:
+- console medical profile type reconciliation:
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - restore canonical `medical_profiles_user_id_fkey` relationship parity.
+- medical profile service hardening:
+  - `services/medicalProfileService.js` (app)
+  - `../ivisit-console/frontend/src/services/medicalProfilesService.js`
+  - enforce explicit whitelist payload builder for profile writes,
+  - normalize profile text/array inputs,
+  - app update path uses upsert keyed on `user_id` for row bootstrap safety.
+- deterministic medical profile surface guard:
+  - `supabase/tests/scripts/assert_medical_profiles_surface_field_guard.js`
+  - report:
+    - `supabase/tests/validation/medical_profiles_surface_field_guard_report.json`
+  - npm command:
+    - `hardening:medical-profiles-surface-field-guard`.
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table medical_profiles` green,
+- `npm run hardening:medical-profiles-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
