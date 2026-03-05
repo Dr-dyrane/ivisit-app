@@ -107,6 +107,7 @@ Users see clean alphanumeric IDs (e.g., `REQ-887213`). Internally, everything is
 
 - **[CONTRIBUTING.md](CONTRIBUTING.md)**: Migration workflow, service patterns, scalability rules.
 - **[TESTING.md](TESTING.md)**: Comprehensive testing guide.
+- **[MODULE_SCHEMA_BIBLE.md](MODULE_SCHEMA_BIBLE.md)**: Canonical module ownership map and runtime touchpoint index.
 
 ---
 **Strict Standard**: No tiny migration files. All fixes committed to the relevant Pillar.

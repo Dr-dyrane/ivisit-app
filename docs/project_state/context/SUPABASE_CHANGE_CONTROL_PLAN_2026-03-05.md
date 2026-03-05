@@ -85,6 +85,36 @@ Verification:
 - transition matrix pass evidence,
 - runtime scenario confirmation in tracker.
 
+### SCC-004: Modular Schema Bible Baseline
+Objective:
+- Establish a canonical modular schema index linking owner pillars, runtime app/console service touchpoints, and RPC authority boundaries.
+
+Deliverables:
+- modular schema bible document in `supabase/docs`,
+- baseline audit note in `docs/project_state/context`,
+- duplicate RPC ownership watchlist and operational rules for future SCC slices.
+
+Verification:
+- contract drift guard green,
+- cleanup guard green,
+- evidence links in tracker.
+
+### SCC-005: Logistics + Finance Contract Audit
+Objective:
+- Audit table contracts and mutation authority for `0003_logistics` and `0004_finance` against app/console runtime usage and current RPC wiring.
+
+Deliverables:
+- logistics/finance contract audit document with findings and severity,
+- writer authority map (tables, RPCs, triggers),
+- runtime touchpoint matrix (app and console service surfaces),
+- remediation queue for follow-on SCC slices.
+
+Verification:
+- `npm run hardening:mutation-matrix` green,
+- `npm run hardening:cash-matrix` green,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
