@@ -511,6 +511,24 @@ Current guard focus:
 - console medical profile service must use explicit payload builder (no raw input spread)
 - app medical profile update path must upsert by `user_id` to avoid missing-row drift
 
+### **Doctors Surface Field Guard**
+For `doctors` contract parity and canonical doctor search fields:
+
+```bash
+# Export doctors flow trace evidence
+node supabase/tests/scripts/export_table_flow_trace.js --table doctors
+
+# Enforce doctors type/search surface contract guard
+npm run hardening:doctors-surface-field-guard
+```
+
+Current guard focus:
+- app/console type parity for `doctors` (`Row`/`Insert`/`Update`)
+- required `doctors` relationship parity (`doctors_hospital_id_fkey`, `doctors_profile_id_fkey`)
+- no non-canonical `available_hospitals` drift in console `doctors` relationships
+- console doctor search uses canonical fields (`specialization`, `image`) with hospital relation join (`hospitals:hospital_id`)
+- console doctor search forbids legacy/non-schema fields (`specialty`, `avatar_url`)
+
 ### **Finance RPC Contract Guard**
 For canonical migration safety on finance RPCs (legacy field regression prevention):
 

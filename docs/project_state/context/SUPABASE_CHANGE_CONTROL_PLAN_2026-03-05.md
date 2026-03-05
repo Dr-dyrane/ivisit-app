@@ -892,6 +892,37 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-037: Doctors Surface Contract Guard Hardening (Provider Discovery + Scheduling Lane)
+Objective:
+- Eliminate `doctors` type/search surface drift by reconciling console type contract parity and enforcing canonical doctor-search field usage.
+
+Deliverables:
+- console doctors type reconciliation:
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align `Row`/`Insert`/`Update` fields with app canonical `doctors`,
+  - restore `doctors_profile_id_fkey`,
+  - remove non-canonical `available_hospitals` relationship drift.
+- console doctor search surface hardening:
+  - `../ivisit-console/frontend/src/services/searchService.js`
+  - use canonical doctor fields (`specialization`, `department`, `image`),
+  - resolve hospital label via relation join (`hospitals:hospital_id`),
+  - remove legacy/non-schema doctor fields (`specialty`, `avatar_url`).
+- deterministic doctors surface guard:
+  - `supabase/tests/scripts/assert_doctors_surface_field_guard.js`
+  - report:
+    - `supabase/tests/validation/doctors_surface_field_guard_report.json`
+  - npm command:
+    - `hardening:doctors-surface-field-guard`.
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table doctors` green,
+- `npm run hardening:doctors-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

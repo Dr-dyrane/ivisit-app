@@ -22,6 +22,7 @@
     "hardening:modal-domain-guard": "npm run hardening:console-ui-crud-matrix && node supabase/tests/scripts/assert_modal_domain_coverage.js",
     "hardening:table-flow-trace": "node supabase/tests/scripts/export_table_flow_trace.js --table emergency_requests",
     "hardening:ambulances-surface-field-guard": "node supabase/tests/scripts/assert_ambulances_surface_field_guard.js",
+    "hardening:doctors-surface-field-guard": "node supabase/tests/scripts/assert_doctors_surface_field_guard.js",
     "hardening:emergency-status-transitions-surface-field-guard": "node supabase/tests/scripts/assert_emergency_status_transitions_surface_field_guard.js",
     "hardening:insurance-surface-field-guard": "node supabase/tests/scripts/assert_insurance_surface_field_guard.js",
     "hardening:pricing-surface-field-guard": "node supabase/tests/scripts/assert_pricing_surface_field_guard.js",
