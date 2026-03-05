@@ -292,6 +292,33 @@ Current batch coverage:
 - `hospitals`, `doctors`, `doctor_schedules`
 - `emergency_doctor_assignments` via canonical assignment RPC against an existing emergency request target (with assignment rollback in cleanup)
 
+### **Targeted Emergency/Payments/Wallet Coverage Guard**
+When validating contract-critical emergency finance paths, run the targeted guard lane:
+
+```bash
+# Runs console UI CRUD matrix + runtime CRUD batch + targeted coverage assertions
+npm run hardening:targeted-matrix-guard
+
+# Then enforce zero side-effects and contract parity gates
+npm run hardening:cleanup-dry-run-guard
+npm run hardening:contract-drift-guard
+```
+
+Guard expectations:
+- Console matrix must include required surfaces:
+  - `emergency_requests`
+  - `organization_wallets`
+  - `wallet_ledger`
+  - `payments`
+  - `payment_methods`
+- Runtime batch must pass required assertions and mirror-count coverage for:
+  - `emergency_requests`
+  - `payments`
+  - `organization_wallets`
+  - `wallet_ledger`
+  - `patient_wallets`
+  - `ivisit_main_wallet`
+
 ### **Commit Gate: Cleanup Must Be Zero**
 Before every commit/push after running tests:
 

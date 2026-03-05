@@ -232,6 +232,34 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-013: Targeted Emergency/Payments/Wallet Matrix Coverage Guard
+Objective:
+- Enforce deterministic coverage for `emergency_requests`, `payments`, and wallet-adjacent contracts by requiring both console CRUD matrix surfaces and runtime relationship assertions in one explicit guard lane.
+
+Deliverables:
+- targeted matrix coverage guard script:
+  - validates required console UI CRUD surfaces for:
+    - `emergency_requests`
+    - `organization_wallets`
+    - `wallet_ledger`
+    - `payments`
+    - `payment_methods`
+  - validates required runtime relationship assertions and mirror counts for:
+    - `emergency_requests`
+    - `payments`
+    - `organization_wallets`
+    - `wallet_ledger`
+    - `patient_wallets`
+    - `ivisit_main_wallet`
+  - writes machine-readable validation artifact in `supabase/tests/validation`.
+- npm hardening command:
+  - `hardening:targeted-matrix-guard`
+
+Verification:
+- `npm run hardening:targeted-matrix-guard` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
