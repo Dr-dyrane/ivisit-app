@@ -154,6 +154,13 @@ npm run hardening:organizations-surface-field-guard
 npm run hardening:profiles-surface-field-guard
 ```
 
+### **Preferences Surface Field Guard**
+```bash
+# Detect preferences app/console type parity + relationship parity and
+# enforce canonical preferences select-column usage in console source.
+npm run hardening:preferences-surface-field-guard
+```
+
 ### **Organization Wallets Surface Field Guard**
 ```bash
 # Detect organization_wallets type parity + query select-column drift across console wallet surfaces

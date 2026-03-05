@@ -33,6 +33,7 @@
     "hardening:hospitals-surface-field-guard": "node supabase/tests/scripts/assert_hospitals_surface_field_guard.js",
     "hardening:organizations-surface-field-guard": "node supabase/tests/scripts/assert_organizations_surface_field_guard.js",
     "hardening:profiles-surface-field-guard": "node supabase/tests/scripts/assert_profiles_surface_field_guard.js",
+    "hardening:preferences-surface-field-guard": "node supabase/tests/scripts/assert_preferences_surface_field_guard.js",
     "hardening:organization-wallets-surface-field-guard": "node supabase/tests/scripts/assert_organization_wallets_surface_field_guard.js",
     "hardening:patient-wallets-surface-field-guard": "node supabase/tests/scripts/assert_patient_wallets_surface_field_guard.js",
     "hardening:ivisit-main-wallet-surface-field-guard": "node supabase/tests/scripts/assert_ivisit_main_wallet_surface_field_guard.js",

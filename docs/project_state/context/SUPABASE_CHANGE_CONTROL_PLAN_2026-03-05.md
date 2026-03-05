@@ -1112,6 +1112,33 @@ Verification:
 - `npm run hardening:cleanup-dry-run-guard` green,
 - `npm run hardening:contract-drift-guard` green.
 
+### SCC-045: `preferences` Surface Contract Guard Hardening
+Objective:
+- Reconcile `preferences` type relationship drift across app/console and add deterministic guard coverage for canonical fields and FK ownership.
+
+Deliverables:
+- console preferences type reconciliation:
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - restore canonical `preferences_user_id_fkey` relationship parity.
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_preferences_surface_field_guard.js`
+  - enforce app/console type parity for `preferences` (`Row`/`Insert`/`Update`)
+  - enforce relationship parity and required FK (`preferences_user_id_fkey`)
+  - enforce canonical console select columns derived from app `Row` contract.
+- wire guard command + docs:
+  - `package.json` add `hardening:preferences-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section.
+- validate runtime coverage lane for this table:
+  - refresh trace and per-table runtime field coverage for `preferences`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table preferences` green,
+- `npm run hardening:table-field-runtime-coverage -- --table preferences` green,
+- `npm run hardening:preferences-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
