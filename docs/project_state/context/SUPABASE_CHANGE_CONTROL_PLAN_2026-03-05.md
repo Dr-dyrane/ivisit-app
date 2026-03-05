@@ -260,6 +260,26 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-014: Finance RPC Legacy-Field Contract Hardening
+Objective:
+- Remove legacy finance RPC column assumptions (`emergency_requests.estimated_amount`, `payments.payment_method_id`) from canonical migration logic and enforce deterministic guard checks against regression.
+
+Deliverables:
+- migration hardening update for `retry_payment_with_different_method` in `0004_finance` to:
+  - source amount from canonical `emergency_requests.total_cost`,
+  - write canonical `payments.payment_method` and `payments.metadata`,
+  - avoid legacy `payments.payment_method_id` insert usage.
+- finance RPC contract guard script:
+  - `supabase/tests/scripts/assert_finance_rpc_contract.js`
+  - emits `supabase/tests/validation/finance_rpc_contract_guard_report.json`
+- npm hardening command:
+  - `hardening:finance-rpc-contract-guard`
+
+Verification:
+- `npm run hardening:finance-rpc-contract-guard` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

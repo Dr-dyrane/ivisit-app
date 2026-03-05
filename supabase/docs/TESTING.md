@@ -319,6 +319,21 @@ Guard expectations:
   - `patient_wallets`
   - `ivisit_main_wallet`
 
+### **Finance RPC Contract Guard**
+For canonical migration safety on finance RPCs (legacy field regression prevention):
+
+```bash
+# Verify canonical finance retry-payment RPC contract in migration SQL
+npm run hardening:finance-rpc-contract-guard
+```
+
+Current guard focus:
+- `retry_payment_with_different_method` must not reference legacy:
+  - `emergency_requests.estimated_amount`
+  - `payments.payment_method_id` insert column
+- Retry flow must use canonical payment contract fields:
+  - `total_cost`, `payment_method`, `metadata`
+
 ### **Commit Gate: Cleanup Must Be Zero**
 Before every commit/push after running tests:
 
