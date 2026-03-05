@@ -175,6 +175,28 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-010: Live Schema Inventory Refresh + Coverage Guard
+Objective:
+- Refresh the live schema inventory artifact and enforce deterministic coverage checks for logistics/finance critical tables, including transition audit table visibility.
+
+Deliverables:
+- inventory refresh script that probes live table/column contracts and writes:
+  - `docs/audit/live_schema_inventory_<YYYY-MM-DD>.json`
+  - `docs/audit/live_schema_inventory_latest.json`
+- inventory guard script that enforces:
+  - inventory freshness window,
+  - required logistics/finance table presence,
+  - required `emergency_status_transitions` columns.
+- npm hardening commands:
+  - `hardening:inventory-refresh`
+  - `hardening:inventory-guard`
+
+Verification:
+- `npm run hardening:inventory-refresh` green,
+- `npm run hardening:inventory-guard` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
