@@ -33,6 +33,8 @@ We confirmed a real gap:
 3. Commands added:
    - `hardening:runtime-data-integrity`
    - `hardening:runtime-data-repair`
+4. Pipeline integration:
+   - `hardening:full` now includes `hardening:runtime-data-integrity` as a required gate.
 
 ## Evidence (This Run)
 - Initial audit (detected issues): FAIL
