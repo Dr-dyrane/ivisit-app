@@ -24,6 +24,7 @@
     "hardening:ambulances-surface-field-guard": "node supabase/tests/scripts/assert_ambulances_surface_field_guard.js",
     "hardening:emergency-status-transitions-surface-field-guard": "node supabase/tests/scripts/assert_emergency_status_transitions_surface_field_guard.js",
     "hardening:insurance-surface-field-guard": "node supabase/tests/scripts/assert_insurance_surface_field_guard.js",
+    "hardening:pricing-surface-field-guard": "node supabase/tests/scripts/assert_pricing_surface_field_guard.js",
     "hardening:visits-surface-field-guard": "node supabase/tests/scripts/assert_visits_surface_field_guard.js",
     "hardening:hospitals-surface-field-guard": "node supabase/tests/scripts/assert_hospitals_surface_field_guard.js",
     "hardening:organizations-surface-field-guard": "node supabase/tests/scripts/assert_organizations_surface_field_guard.js",

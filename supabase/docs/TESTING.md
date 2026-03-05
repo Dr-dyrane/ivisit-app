@@ -476,6 +476,24 @@ Current guard focus:
 - insurance policy write services must use canonical payload builder and avoid legacy top-level column mutations
 - console `getUserInsurancePolicies` path must return normalized rows
 
+### **Pricing Surface Field Guard**
+For `service_pricing` + `room_pricing` contract parity and canonical pricing write safety:
+
+```bash
+# Export traces for pricing tables
+node supabase/tests/scripts/export_table_flow_trace.js --table service_pricing
+node supabase/tests/scripts/export_table_flow_trace.js --table room_pricing
+
+# Enforce pricing type/service surface contract guard
+npm run hardening:pricing-surface-field-guard
+```
+
+Current guard focus:
+- app/console type parity for `service_pricing` and `room_pricing` (`Row`/`Insert`/`Update`)
+- canonical required pricing row fields and FK relationship parity
+- console pricing writes must use RPC lanes (`upsert_*` / `delete_*`) instead of direct table mutations
+- pricing payload must not write non-schema fields (`currency`, `is_active`)
+
 ### **Finance RPC Contract Guard**
 For canonical migration safety on finance RPCs (legacy field regression prevention):
 

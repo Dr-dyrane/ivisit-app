@@ -830,6 +830,38 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-035: Pricing Surface Contract Guard Hardening (Service + Room Pricing Lane)
+Objective:
+- Eliminate pricing type drift and lock canonical write lanes for `service_pricing` + `room_pricing` across app/console surfaces.
+
+Deliverables:
+- console pricing type reconciliation:
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align `service_pricing` + `room_pricing` to canonical schema fields/relationships:
+    - remove non-schema drift (`currency`, `is_active`),
+    - restore FK relationships to `hospitals`.
+- deterministic pricing surface guard:
+  - `supabase/tests/scripts/assert_pricing_surface_field_guard.js`
+  - report:
+    - `supabase/tests/validation/pricing_surface_field_guard_report.json`
+  - npm command:
+    - `hardening:pricing-surface-field-guard`
+  - enforce:
+    - app/console type parity for `service_pricing` + `room_pricing`,
+    - canonical pricing required fields,
+    - console pricing service uses RPC mutation lanes (`upsert_*` / `delete_*`) only,
+    - no pricing payload writes for non-schema fields (`currency`, `is_active`).
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table service_pricing` green,
+- `node supabase/tests/scripts/export_table_flow_trace.js --table room_pricing` green,
+- `npm run hardening:pricing-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
