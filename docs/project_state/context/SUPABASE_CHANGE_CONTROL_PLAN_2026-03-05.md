@@ -197,6 +197,25 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-011: RPC Duplicate Authority Guard
+Objective:
+- Enforce canonical ownership for cross-module duplicate RPC signatures so wrapper-vs-domain authority drift is explicit and detected before merge.
+
+Deliverables:
+- deterministic RPC authority guard script that:
+  - scans migration function signatures,
+  - detects cross-file duplicate signatures,
+  - validates each duplicate against an allowlisted canonical owner map,
+  - detects same-file duplicate signatures and enforces explicit debt allowlist.
+- machine-readable validation artifact in `supabase/tests/validation`.
+- npm hardening command:
+  - `hardening:rpc-authority-guard`
+
+Verification:
+- `npm run hardening:rpc-authority-guard` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

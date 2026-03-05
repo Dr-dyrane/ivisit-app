@@ -11,6 +11,7 @@
     "hardening:cleanup-dry-run-guard": "node supabase/tests/scripts/assert_cleanup_dry_run_zero.js",
     "hardening:inventory-refresh": "node supabase/tests/scripts/export_live_schema_inventory.js",
     "hardening:inventory-guard": "node supabase/tests/scripts/assert_live_inventory_coverage.js",
+    "hardening:rpc-authority-guard": "node supabase/tests/scripts/assert_rpc_authority_map.js",
     "hardening:contract-matrix": "node supabase/tests/scripts/run_cross_repo_contract_matrix.js",
     "hardening:contract-drift-guard": "npm run hardening:contract-matrix && node supabase/tests/scripts/assert_contract_drift_zero.js",
     "hardening:console-ui-crud-matrix": "node supabase/tests/scripts/run_console_ui_crud_contract_matrix.js",
