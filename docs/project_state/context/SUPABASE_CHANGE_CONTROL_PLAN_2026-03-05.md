@@ -318,6 +318,31 @@ Verification:
 - console build green (`npm run build` in `ivisit-console/frontend`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-017: Modal Domain Coverage Guard (Emergency/Visits/Wallet/Pricing + Core Entities)
+Objective:
+- Add deterministic guard coverage for modal/page/service CRUD domain wiring across high-touch linked surfaces:
+  - emergency requests,
+  - visits,
+  - wallet/payments,
+  - pricing,
+  - users/profiles,
+  - hospitals,
+  - organizations.
+
+Deliverables:
+- modal domain guard script:
+  - `supabase/tests/scripts/assert_modal_domain_coverage.js`
+  - validates required surface IDs in console CRUD matrix report
+  - enforces zero risk/unknown-column regressions for required domain surfaces
+  - emits `supabase/tests/validation/modal_domain_coverage_report.json`
+- npm hardening command:
+  - `hardening:modal-domain-guard`
+
+Verification:
+- `npm run hardening:modal-domain-guard` green,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
