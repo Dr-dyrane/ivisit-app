@@ -728,6 +728,108 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-032: Ambulances Surface Contract Guard Hardening (Type + Service Parity Lane)
+Objective:
+- Lock `ambulances` contract parity between app and console to canonical logistics schema fields, and prevent non-schema ambulance field drift at service/mapping boundaries.
+
+Deliverables:
+- app ambulances type parity update:
+  - `types/database.ts`
+  - ensure canonical `ambulances` fields include:
+    - `crew`, `current_call`, `display_id`, `eta`, `license_plate`.
+- console ambulances type parity reconciliation:
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align `ambulances.Row/Insert/Update` with app canonical contract and remove non-schema fields:
+    - `currency`, `driver_id`, `hospital`, `last_maintenance`, `rating`
+  - ensure canonical FK relationship parity includes:
+    - `ambulances_profile_id_fkey`.
+- app ambulance mapper hardening:
+  - `services/ambulanceService.js`
+  - map canonical ambulance columns only and block non-schema row reads.
+- deterministic ambulances surface guard:
+  - `supabase/tests/scripts/assert_ambulances_surface_field_guard.js`
+  - report:
+    - `supabase/tests/validation/ambulances_surface_field_guard_report.json`
+  - command:
+    - `hardening:ambulances-surface-field-guard`.
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table ambulances` green,
+- `npm run hardening:ambulances-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
+### SCC-033: Emergency Status Transitions Surface Contract Guard Hardening (Append-Only Audit Lane)
+Objective:
+- Add canonical app/console type contract visibility for `emergency_status_transitions` and enforce a deterministic guard that blocks direct mutation surfaces for this append-only audit table.
+
+Deliverables:
+- app + console type contract parity:
+  - `types/database.ts`
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - add canonical `emergency_status_transitions` `Row`/`Insert`/`Update` contract blocks and relationships:
+    - `emergency_status_transitions_emergency_request_id_fkey`
+    - `emergency_status_transitions_actor_user_id_fkey`.
+- deterministic emergency-status-transitions guard:
+  - `supabase/tests/scripts/assert_emergency_status_transitions_surface_field_guard.js`
+  - report:
+    - `supabase/tests/validation/emergency_status_transitions_surface_field_guard_report.json`
+  - command:
+    - `hardening:emergency-status-transitions-surface-field-guard`
+  - enforce:
+    - app/console type parity for `Row`/`Insert`/`Update`,
+    - canonical required row fields,
+    - no direct `.insert/.update/.delete/.upsert` usage against `emergency_status_transitions` in app/console source surfaces.
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table emergency_status_transitions` green,
+- `npm run hardening:emergency-status-transitions-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
+### SCC-034: Insurance Policies/Billing Surface Contract Guard Hardening (Type + Coverage Lane)
+Objective:
+- Eliminate insurance contract drift by locking `insurance_policies` + `insurance_billing` app/console type parity and enforcing canonical insurance policy write surfaces (including `coverage_percentage` + `status` coverage).
+
+Deliverables:
+- console insurance type reconciliation:
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - add missing `insurance_billing` contract block,
+  - align `insurance_policies` to canonical columns/relationships:
+    - include `coverage_percentage`, `status`, `linked_payment_method` (string contract),
+    - remove legacy top-level policy card fields from schema contract.
+- insurance service surface hardening:
+  - `services/insuranceService.js` (app)
+  - `../ivisit-console/frontend/src/services/insuranceService.js`
+  - canonicalize insert/update payload construction through one builder boundary,
+  - preserve legacy UI aliases through `coverage_details` normalization only,
+  - prevent legacy top-level column writes.
+- console insurance policies service normalization fix:
+  - `../ivisit-console/frontend/src/services/insurancePoliciesService.js`
+  - ensure `getUserInsurancePolicies` returns normalized policy rows.
+- deterministic insurance surface guard:
+  - `supabase/tests/scripts/assert_insurance_surface_field_guard.js`
+  - report:
+    - `supabase/tests/validation/insurance_surface_field_guard_report.json`
+  - npm command:
+    - `hardening:insurance-surface-field-guard`.
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table insurance_policies` green,
+- `node supabase/tests/scripts/export_table_flow_trace.js --table insurance_billing` green,
+- `npm run hardening:insurance-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

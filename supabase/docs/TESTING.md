@@ -424,6 +424,58 @@ Guard expectations:
   - `patient_wallets`
   - `ivisit_main_wallet`
 
+### **Ambulances Surface Field Guard**
+For ambulance table contract parity and field-safety enforcement across app + console:
+
+```bash
+# Export current ambulances flow trace evidence
+node supabase/tests/scripts/export_table_flow_trace.js --table ambulances
+
+# Enforce ambulances type/service surface guard
+npm run hardening:ambulances-surface-field-guard
+```
+
+Current guard focus:
+- app/console `ambulances` `Row`/`Insert`/`Update` parity
+- canonical row fields must include:
+  - `crew`, `current_call`, `display_id`, `eta`, `license_plate`
+- app ambulance mapper must avoid non-schema row reads
+- console ambulance service payload/whitelist must avoid non-schema writes
+
+### **Emergency Status Transitions Surface Guard**
+For append-only emergency status audit contract parity and mutation-safety:
+
+```bash
+# Export flow trace evidence for transition audit table
+node supabase/tests/scripts/export_table_flow_trace.js --table emergency_status_transitions
+
+# Enforce emergency_status_transitions type parity + no direct mutation surfaces
+npm run hardening:emergency-status-transitions-surface-field-guard
+```
+
+Current guard focus:
+- app/console `emergency_status_transitions` `Row`/`Insert`/`Update` parity
+- canonical transition audit row fields must exist in type contracts
+- direct `.insert/.update/.delete/.upsert` against this table is forbidden in app/console source paths
+
+### **Insurance Surface Field Guard**
+For `insurance_policies` + `insurance_billing` contract parity and canonical policy-write safety:
+
+```bash
+# Export traces for insurance tables if needed
+node supabase/tests/scripts/export_table_flow_trace.js --table insurance_policies
+node supabase/tests/scripts/export_table_flow_trace.js --table insurance_billing
+
+# Enforce insurance type/service surface contract guard
+npm run hardening:insurance-surface-field-guard
+```
+
+Current guard focus:
+- app/console type parity for `insurance_policies` and `insurance_billing` (`Row`/`Insert`/`Update`)
+- canonical required row fields include `coverage_percentage` + `status` in insurance policy contract
+- insurance policy write services must use canonical payload builder and avoid legacy top-level column mutations
+- console `getUserInsurancePolicies` path must return normalized rows
+
 ### **Finance RPC Contract Guard**
 For canonical migration safety on finance RPCs (legacy field regression prevention):
 

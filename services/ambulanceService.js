@@ -28,19 +28,25 @@ const mapFromDb = (row) => {
 
     return {
         id: row.id,
+        displayId: row.display_id ?? null,
         type: row.type,
         callSign: row.call_sign,
         status: row.status,
         location,
         eta: row.eta,
         crew: row.crew,
-        hospital: row.hospital,
+        hospitalId: row.hospital_id ?? null,
+        organizationId: row.organization_id ?? null,
+        profileId: row.profile_id ?? null,
+        licensePlate: row.license_plate ?? null,
         vehicleNumber: row.vehicle_number,
-        lastMaintenance: row.last_maintenance,
-        rating: row.rating,
         currentCall: row.current_call,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        // Compatibility aliases for existing UI adapters.
+        hospital: row.hospital_id ?? null,
+        lastMaintenance: null,
+        rating: null,
     };
 };
 

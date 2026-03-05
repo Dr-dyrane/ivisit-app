@@ -76,7 +76,10 @@ export type Database = {
           base_price: number | null
           call_sign: string | null
           created_at: string
+          crew: Json | null
+          current_call: string | null
           display_id: string | null
+          eta: string | null
           hospital_id: string | null
           id: string
           license_plate: string | null
@@ -92,7 +95,10 @@ export type Database = {
           base_price?: number | null
           call_sign?: string | null
           created_at?: string
+          crew?: Json | null
+          current_call?: string | null
           display_id?: string | null
+          eta?: string | null
           hospital_id?: string | null
           id?: string
           license_plate?: string | null
@@ -108,7 +114,10 @@ export type Database = {
           base_price?: number | null
           call_sign?: string | null
           created_at?: string
+          crew?: Json | null
+          current_call?: string | null
           display_id?: string | null
+          eta?: string | null
           hospital_id?: string | null
           id?: string
           license_plate?: string | null
@@ -496,6 +505,66 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emergency_status_transitions: {
+        Row: {
+          actor_role: string | null
+          actor_user_id: string | null
+          created_at: string
+          emergency_request_id: string
+          from_status: string | null
+          id: string
+          occurred_at: string
+          reason: string
+          request_snapshot: Json
+          source: string
+          to_status: string
+          transition_metadata: Json
+        }
+        Insert: {
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          emergency_request_id: string
+          from_status?: string | null
+          id?: string
+          occurred_at?: string
+          reason?: string
+          request_snapshot?: Json
+          source?: string
+          to_status: string
+          transition_metadata?: Json
+        }
+        Update: {
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          emergency_request_id?: string
+          from_status?: string | null
+          id?: string
+          occurred_at?: string
+          reason?: string
+          request_snapshot?: Json
+          source?: string
+          to_status?: string
+          transition_metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_status_transitions_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_status_transitions_emergency_request_id_fkey"
+            columns: ["emergency_request_id"]
+            isOneToOne: false
+            referencedRelation: "emergency_requests"
             referencedColumns: ["id"]
           },
         ]
