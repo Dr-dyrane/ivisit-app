@@ -1139,6 +1139,79 @@ Verification:
 - `npm run hardening:cleanup-dry-run-guard` green,
 - `npm run hardening:contract-drift-guard` green.
 
+### SCC-046: `user_activity` Surface Contract Guard Hardening
+Objective:
+- Reconcile `user_activity` type/relationship drift across app/console and add deterministic guard coverage for canonical field usage and mutation authority.
+
+Deliverables:
+- console user_activity type reconciliation:
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align `description` nullability and remove non-schema `updated_at` from `Row`/`Insert`/`Update`
+  - restore canonical `user_activity_user_id_fkey` relationship parity.
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_user_activity_surface_field_guard.js`
+  - enforce app/console type parity for `user_activity` (`Row`/`Insert`/`Update`)
+  - enforce relationship parity and required FK (`user_activity_user_id_fkey`)
+  - enforce canonical console select columns derived from app `Row` contract
+  - forbid direct console `insert/update/upsert/delete` on `user_activity` (RPC/automation authority lanes only).
+- wire guard command + docs:
+  - `package.json` add `hardening:user-activity-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section.
+- validate runtime coverage lane for this table:
+  - refresh trace and per-table runtime field coverage for `user_activity`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table user_activity` green,
+- `npm run hardening:table-field-runtime-coverage -- --table user_activity` green,
+- `npm run hardening:user-activity-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
+### SCC-047: `support_tickets` Surface Contract + Auth Filter Hardening
+Objective:
+- Reconcile `support_tickets` type/relationship drift across app/console, fix support-role ownership filtering to canonical table fields, and add deterministic guard coverage for service-lane mutation authority.
+
+Deliverables:
+- console support ticket type reconciliation:
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align `created_at`/`updated_at` nullability with canonical schema
+  - restore canonical FK relationships:
+    - `support_tickets_assigned_to_fkey`
+    - `support_tickets_organization_id_fkey`
+    - `support_tickets_user_id_fkey`.
+- auth filter correction:
+  - `../ivisit-console/frontend/src/services/authService.js`
+  - for `resourceType: 'support'`, scope providers by canonical ownership field (`user_id`) via `userIdField` (remove non-schema `created_by` filter path).
+- support ticket service payload hardening:
+  - `../ivisit-console/frontend/src/services/supportTicketsService.js`
+  - enforce canonical create/update field allowlists
+  - stop explicit `created_at`/`updated_at` writes on create (DB default/trigger authority)
+  - retain explicit `updated_at` stamp on updates.
+- contract-matrix compatibility hardening for optional search history relation:
+  - `../ivisit-console/frontend/src/services/searchService.js`
+  - route `search_history` access through constant + fallback pattern so missing-relation environments degrade safely via `search_events`.
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_support_tickets_surface_field_guard.js`
+  - enforce app/console type parity for `support_tickets` (`Row`/`Insert`/`Update`)
+  - enforce relationship parity and required FKs
+  - enforce canonical console select-column usage
+  - enforce mutation-boundary ownership (mutations only via `src/services/supportTicketsService.js`)
+  - enforce service allowlist and timestamp-write contract.
+- wire guard command + docs:
+  - `package.json` add `hardening:support-tickets-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section.
+- validate runtime coverage lane for this table:
+  - refresh trace and per-table runtime field coverage for `support_tickets`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table support_tickets` green,
+- `npm run hardening:table-field-runtime-coverage -- --table support_tickets` green,
+- `npm run hardening:support-tickets-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

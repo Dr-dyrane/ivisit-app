@@ -161,6 +161,22 @@ npm run hardening:profiles-surface-field-guard
 npm run hardening:preferences-surface-field-guard
 ```
 
+### **User Activity Surface Field Guard**
+```bash
+# Detect user_activity app/console type parity + relationship parity, enforce
+# canonical user_activity select columns in console source, and forbid direct
+# console user_activity insert/update/upsert/delete mutation lanes.
+npm run hardening:user-activity-surface-field-guard
+```
+
+### **Support Tickets Surface Field Guard**
+```bash
+# Detect support_tickets app/console type parity + relationship parity, enforce
+# canonical support_tickets select columns in console source, and restrict
+# support_tickets mutations to the canonical supportTicketsService lane.
+npm run hardening:support-tickets-surface-field-guard
+```
+
 ### **Organization Wallets Surface Field Guard**
 ```bash
 # Detect organization_wallets type parity + query select-column drift across console wallet surfaces
