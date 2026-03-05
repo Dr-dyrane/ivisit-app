@@ -1,8 +1,6 @@
 import { supabase } from "./supabase";
 import { isValidUUID, resolveEntityId } from "./displayIdService";
 
-let hasWarnedMissingHospitalRoomsTable = false;
-
 const DEFAULT_HOSPITAL_IMAGES = [
 	"https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
 	"https://images.unsplash.com/photo-1632833239869-a37e3a5806d2?auto=format&fit=crop&w=1200&q=80",
@@ -31,6 +29,220 @@ const hashString = (seed) => {
 	return Math.abs(hash);
 };
 const pickDefaultHospitalImage = (seed) => DEFAULT_HOSPITAL_IMAGES[hashString(seed) % DEFAULT_HOSPITAL_IMAGES.length];
+const toOptionalNonNegativeInt = (value) => {
+	if (value === undefined || value === null || value === "") return null;
+	const n = Number(value);
+	return Number.isFinite(n) ? Math.max(0, Math.round(n)) : null;
+};
+const normalizeRoomTypeKey = (value) => {
+	const key = String(value || "").trim().toLowerCase();
+	if (!key) return "";
+	if (["general", "ward", "shared", "standard_bed"].includes(key)) return "standard";
+	if (["vip", "private_room", "suite"].includes(key)) return "private";
+	if (["critical", "critical_care", "intensive_care"].includes(key)) return "icu";
+	return key;
+};
+const readBedCount = (entry) => {
+	if (entry === undefined || entry === null) return null;
+	if (typeof entry === "number" || typeof entry === "string") {
+		return toOptionalNonNegativeInt(entry);
+	}
+	if (typeof entry === "object" && !Array.isArray(entry)) {
+		for (const key of ["available", "count", "beds", "units", "value"]) {
+			const parsed = toOptionalNonNegativeInt(entry[key]);
+			if (parsed !== null) return parsed;
+		}
+	}
+	return null;
+};
+const readBedPrice = (entry) => {
+	if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
+	for (const key of ["price", "base_price", "price_per_night"]) {
+		const candidate = Number(entry[key]);
+		if (Number.isFinite(candidate) && candidate >= 0) {
+			return Number(candidate);
+		}
+	}
+	return null;
+};
+const ROOM_TYPE_META = {
+	standard: {
+		label: "Standard Bed",
+		description: "General care accommodation",
+		features: ["General Care", "Shared Ward"],
+	},
+	private: {
+		label: "Private Room",
+		description: "Private inpatient room",
+		features: ["Private Space", "Enhanced Privacy"],
+	},
+	icu: {
+		label: "ICU Bed",
+		description: "Intensive care unit capacity",
+		features: ["Critical Care", "Continuous Monitoring"],
+	},
+	maternity: {
+		label: "Maternity Bed",
+		description: "Maternity care capacity",
+		features: ["Maternity Ward", "Specialized Support"],
+	},
+	pediatric: {
+		label: "Pediatric Bed",
+		description: "Pediatric care capacity",
+		features: ["Pediatric Ward", "Child Care Support"],
+	},
+	isolation: {
+		label: "Isolation Bed",
+		description: "Isolation-capable room",
+		features: ["Isolation", "Infection Control"],
+	},
+};
+const ROOM_TYPE_ORDER = ["standard", "private", "icu", "maternity", "pediatric", "isolation"];
+const RESERVED_BED_AVAILABILITY_KEYS = new Set([
+	"available",
+	"total",
+	"occupied",
+	"capacity",
+	"utilization",
+	"last_updated",
+	"updated_at",
+	"timestamp",
+]);
+const buildRoomsFromHospitalSnapshot = (hospitalRow, pricingRows = []) => {
+	const snapshot = toObject(hospitalRow?.bed_availability, {});
+	const pricingByType = new Map();
+	(pricingRows || []).forEach((row) => {
+		const key = normalizeRoomTypeKey(row?.room_type);
+		if (!key || pricingByType.has(key)) return;
+		pricingByType.set(key, row);
+	});
+
+	const availableTotal =
+		toOptionalNonNegativeInt(hospitalRow?.available_beds)
+		?? readBedCount(snapshot.available)
+		?? 0;
+	const icuFromColumns =
+		toOptionalNonNegativeInt(hospitalRow?.icu_beds_available)
+		?? readBedCount(snapshot.icu)
+		?? 0;
+	const totalBeds =
+		Math.max(
+			availableTotal,
+			toOptionalNonNegativeInt(hospitalRow?.total_beds)
+			?? readBedCount(snapshot.total)
+			?? availableTotal
+		);
+
+	const explicitCounts = {
+		standard: readBedCount(snapshot.standard ?? snapshot.general ?? snapshot.ward),
+		private: readBedCount(snapshot.private ?? snapshot.vip),
+		icu: readBedCount(snapshot.icu),
+		maternity: readBedCount(snapshot.maternity),
+		pediatric: readBedCount(snapshot.pediatric ?? snapshot.peds),
+		isolation: readBedCount(snapshot.isolation),
+	};
+
+	let remainingAvailable = availableTotal;
+	const takeFromRemaining = (count) => {
+		const parsed = toOptionalNonNegativeInt(count);
+		if (parsed === null || parsed <= 0 || remainingAvailable <= 0) return 0;
+		const reserved = Math.min(parsed, remainingAvailable);
+		remainingAvailable -= reserved;
+		return reserved;
+	};
+
+	const icuCount = takeFromRemaining(explicitCounts.icu ?? icuFromColumns);
+	const privateCount = takeFromRemaining(explicitCounts.private);
+	const maternityCount = takeFromRemaining(explicitCounts.maternity);
+	const pediatricCount = takeFromRemaining(explicitCounts.pediatric);
+	const isolationCount = takeFromRemaining(explicitCounts.isolation);
+	const standardCount = explicitCounts.standard === null
+		? remainingAvailable
+		: takeFromRemaining(explicitCounts.standard);
+	if (explicitCounts.standard === null) {
+		remainingAvailable = 0;
+	}
+
+	const availabilityByType = new Map();
+	const pushType = (rawType, count) => {
+		const normalizedType = normalizeRoomTypeKey(rawType);
+		const normalizedCount = toOptionalNonNegativeInt(count);
+		if (!normalizedType || normalizedCount === null || normalizedCount <= 0) return;
+		availabilityByType.set(normalizedType, normalizedCount);
+	};
+
+	pushType("standard", standardCount);
+	pushType("private", privateCount);
+	pushType("icu", icuCount);
+	pushType("maternity", maternityCount);
+	pushType("pediatric", pediatricCount);
+	pushType("isolation", isolationCount);
+
+	// Preserve additional custom bed buckets from bed_availability JSON.
+	Object.entries(snapshot).forEach(([rawType, entry]) => {
+		const normalizedType = normalizeRoomTypeKey(rawType);
+		if (!normalizedType || availabilityByType.has(normalizedType)) return;
+		if (RESERVED_BED_AVAILABILITY_KEYS.has(normalizedType)) return;
+		if (remainingAvailable <= 0) return;
+		const requestedCount = readBedCount(entry);
+		const parsedCount = toOptionalNonNegativeInt(requestedCount);
+		if (parsedCount === null || parsedCount <= 0) return;
+		const allocatedCount = Math.min(parsedCount, remainingAvailable);
+		if (allocatedCount <= 0) return;
+		pushType(normalizedType, allocatedCount);
+		remainingAvailable -= allocatedCount;
+	});
+
+	if (availabilityByType.size === 0 && availableTotal > 0) {
+		availabilityByType.set("standard", availableTotal);
+	}
+
+	const hospitalBasePrice = Number(hospitalRow?.base_price);
+	const rooms = [];
+	availabilityByType.forEach((count, type) => {
+		const pricing = pricingByType.get(type) || null;
+		const snapshotEntry = snapshot[type];
+		const entryPrice = readBedPrice(snapshotEntry);
+		const rowPrice = Number(pricing?.price_per_night);
+		const basePrice = Number.isFinite(entryPrice)
+			? entryPrice
+			: (Number.isFinite(rowPrice)
+				? rowPrice
+				: (Number.isFinite(hospitalBasePrice) ? hospitalBasePrice : 0));
+		const meta = ROOM_TYPE_META[type] || {
+			label: `${type.charAt(0).toUpperCase()}${type.slice(1)} Bed`,
+			description: "Hospital bed availability",
+			features: ["Hospital Care"],
+		};
+
+		rooms.push({
+			id: type,
+			room_type: type,
+			room_label: pricing?.room_name || meta.label,
+			room_name: pricing?.room_name || meta.label,
+			room_number: "Any",
+			base_price: basePrice,
+			price_per_night: basePrice,
+			available_units: count,
+			total_units: totalBeds,
+			status: "available",
+			description: pricing?.description || meta.description,
+			features: pricing?.description
+				? [pricing.description, `Available: ${count}`]
+				: [...meta.features, `Available: ${count}`],
+			check_in: null,
+			check_out: null,
+		});
+	});
+
+	const orderIndex = new Map(ROOM_TYPE_ORDER.map((type, index) => [type, index]));
+	return rooms.sort((a, b) => {
+		const aOrder = orderIndex.has(a.room_type) ? orderIndex.get(a.room_type) : 999;
+		const bOrder = orderIndex.has(b.room_type) ? orderIndex.get(b.room_type) : 999;
+		if (aOrder !== bOrder) return aOrder - bOrder;
+		return String(a.room_label || a.room_type || "").localeCompare(String(b.room_label || b.room_type || ""));
+	});
+};
 
 /**
  * Service to handle hospital data operations
@@ -328,26 +540,42 @@ export const hospitalsService = {
 	 */
 	async getRooms(hospitalId) {
 		try {
-			const { data, error } = await supabase
-				.from("hospital_rooms")
-				.select("*")
-				.eq("hospital_id", hospitalId)
-				.eq("status", "available")
-				.order("room_number");
+			if (!hospitalId) return [];
 
-			if (error) throw error;
-			return data || [];
-		} catch (err) {
-			const isMissingTable =
-				err?.code === "PGRST205" &&
-				String(err?.message || "").toLowerCase().includes("hospital_rooms");
-			if (isMissingTable) {
-				if (__DEV__ && !hasWarnedMissingHospitalRoomsTable) {
-					hasWarnedMissingHospitalRoomsTable = true;
-					console.warn("hospitalsService.getRooms: hospital_rooms table missing; using room_pricing fallback.");
-				}
-				return [];
+			const [{ data: hospital, error: hospitalError }, { data: roomPricing, error: pricingError }] = await Promise.all([
+				supabase
+					.from("hospitals")
+					.select("id, available_beds, icu_beds_available, total_beds, bed_availability, base_price")
+					.eq("id", hospitalId)
+					.maybeSingle(),
+				supabase
+					.from("room_pricing")
+					.select("hospital_id, room_type, room_name, price_per_night, description")
+					.or(`hospital_id.eq.${hospitalId},hospital_id.is.null`),
+			]);
+
+			if (hospitalError) throw hospitalError;
+			if (pricingError) throw pricingError;
+			if (!hospital) return [];
+
+			// Prefer hospital-specific pricing rows over global fallback rows.
+			const sortedPricing = (roomPricing || []).sort((a, b) => {
+				const aRank = a?.hospital_id === hospitalId ? 0 : 1;
+				const bRank = b?.hospital_id === hospitalId ? 0 : 1;
+				if (aRank !== bRank) return aRank - bRank;
+				return String(a?.room_type || "").localeCompare(String(b?.room_type || ""));
+			});
+			const dedupedPricing = [];
+			const seenTypes = new Set();
+			for (const row of sortedPricing) {
+				const key = normalizeRoomTypeKey(row?.room_type);
+				if (!key || seenTypes.has(key)) continue;
+				seenTypes.add(key);
+				dedupedPricing.push(row);
 			}
+
+			return buildRoomsFromHospitalSnapshot(hospital, dedupedPricing);
+		} catch (err) {
 			console.error("hospitalsService.getRooms error:", err);
 			return [];
 		}

@@ -148,7 +148,6 @@ async function run() {
     ambulanceId: null,
     servicePricingId: null,
     roomPricingId: null,
-    hospitalRoomId: null,
     hospitalImportLogId: null,
     patientWalletId: null,
     paymentMethodId: null,
@@ -344,38 +343,6 @@ async function run() {
       }
     }
 
-    let hospitalRoom = null;
-    const hospitalRoomInsert = await supabase
-      .from('hospital_rooms')
-      .insert({
-        hospital_id: hospital.id,
-        room_number: `R-${String(TS).slice(-4)}`,
-        room_type: 'standard',
-        status: 'available',
-        base_price: 180,
-        currency: 'USD',
-      })
-      .select('*')
-      .single();
-    if (hospitalRoomInsert.error) {
-      if (isMissingRelationError(hospitalRoomInsert.error, 'hospital_rooms')) {
-        report.cleanupWarnings.push('hospital_rooms table missing; skipping optional hospital-room CRUD coverage');
-      } else {
-        throw new Error(`hospital_rooms insert failed: ${hospitalRoomInsert.error.message}`);
-      }
-    } else {
-      hospitalRoom = hospitalRoomInsert.data;
-      ctx.hospitalRoomId = hospitalRoom.id;
-
-      const { error: hospitalRoomUpdateErr } = await supabase
-        .from('hospital_rooms')
-        .update({ status: 'occupied' })
-        .eq('id', hospitalRoom.id);
-      if (hospitalRoomUpdateErr) {
-        throw new Error(`hospital_rooms update failed: ${hospitalRoomUpdateErr.message}`);
-      }
-    }
-
     const { data: servicePricing, error: servicePricingErr } = await supabase
       .from('service_pricing')
       .insert({
@@ -438,9 +405,7 @@ async function run() {
       .single();
     if (ambulanceErr) throw new Error(`ambulances insert failed: ${ambulanceErr.message}`);
     ctx.ambulanceId = ambulance.id;
-    report.steps.push(
-      'hospital_import_logs/hospital_rooms/service_pricing/room_pricing/ambulances CRUD complete'
-    );
+    report.steps.push('hospital_import_logs/service_pricing/room_pricing/ambulances CRUD complete');
 
     let doctor = null;
     const { data: existingDoctor, error: existingDoctorErr } = await supabase
@@ -636,13 +601,6 @@ async function run() {
       hospital_id: roomPricing.hospital_id,
       room_type: roomPricing.room_type,
     };
-    if (hospitalRoom?.id) {
-      report.resources.hospitalRoom = {
-        id: hospitalRoom.id,
-        hospital_id: hospitalRoom.hospital_id,
-        room_type: hospitalRoom.room_type,
-      };
-    }
     if (hospitalImportLog?.id) {
       report.resources.hospitalImportLog = {
         id: hospitalImportLog.id,
@@ -1662,19 +1620,6 @@ async function run() {
       .limit(1);
     if (roomPricingRowsErr) throw new Error(`room_pricing mirror query failed: ${roomPricingRowsErr.message}`);
 
-    let hospitalRoomRows = [];
-    if (hospitalRoom?.id) {
-      const { data, error: hospitalRoomRowsErr } = await supabase
-        .from('hospital_rooms')
-        .select('*')
-        .eq('id', hospitalRoom.id)
-        .limit(1);
-      if (hospitalRoomRowsErr) {
-        throw new Error(`hospital_rooms mirror query failed: ${hospitalRoomRowsErr.message}`);
-      }
-      hospitalRoomRows = data || [];
-    }
-
     let hospitalImportLogRows = [];
     if (hospitalImportLog?.id) {
       const { data, error: hospitalImportLogRowsErr } = await supabase
@@ -2057,15 +2002,6 @@ async function run() {
     );
     assertPush(
       report,
-      'hospital_rooms_row_persisted',
-      !hospitalRoom?.id ||
-        (Array.isArray(hospitalRoomRows) &&
-          hospitalRoomRows.length === 1 &&
-          hospitalRoomRows[0].status === 'occupied'),
-      'hospital_rooms row missing expected status update (or optional table fallback failed)'
-    );
-    assertPush(
-      report,
       'hospital_import_logs_row_persisted',
       !hospitalImportLog?.id ||
         (Array.isArray(hospitalImportLogRows) &&
@@ -2104,7 +2040,6 @@ async function run() {
     report.resources.mirrorCounts = {
       ambulances: ambulanceRows?.length || 0,
       hospital_import_logs: hospitalImportLogRows?.length || 0,
-      hospital_rooms: hospitalRoomRows?.length || 0,
       images: imageRows?.length || 0,
       ivisit_main_wallet: mainWalletRows?.length || 0,
       organization_wallets: organizationWalletRows?.length || 0,
@@ -2387,12 +2322,6 @@ async function run() {
     await safeDelete('service_pricing.delete', async () => {
       if (!ctx.servicePricingId) return;
       const { error } = await supabase.from('service_pricing').delete().eq('id', ctx.servicePricingId);
-      if (error) throw error;
-    });
-
-    await safeDelete('hospital_rooms.delete', async () => {
-      if (!ctx.hospitalRoomId) return;
-      const { error } = await supabase.from('hospital_rooms').delete().eq('id', ctx.hospitalRoomId);
       if (error) throw error;
     });
 

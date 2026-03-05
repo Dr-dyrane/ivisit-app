@@ -923,11 +923,141 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-038: Hospital Capacity/Rooms Source Hardening (Canonical Bed Availability Lane)
+Objective:
+- Remove double-source room drift by making app bed-room rendering derive from canonical `hospitals` capacity columns/JSON, while hardening DB triggers/functions so bed columns and `bed_availability` stay synchronized.
+
+Deliverables:
+- app booking room source hardening:
+  - `services/hospitalsService.js`
+  - `components/emergency/EmergencyRequestModal.jsx`
+  - `getRooms` reads canonical `hospitals` capacity fields (`available_beds`, `icu_beds_available`, `total_beds`, `bed_availability`) and optional pricing metadata; no `hospital_rooms` dependency.
+  - booking fallback to pricing-only virtual rows only when hospital capacity indicates beds are available.
+- hospitals trigger/function synchronization hardening:
+  - `supabase/migrations/20260219000200_org_structure.sql`
+  - add `normalize_hospital_bed_state` trigger lane on `hospitals` writes to enforce non-negative/canonical capacity and rebuild `bed_availability`.
+  - `supabase/migrations/20260219000800_emergency_logic.sql`
+  - harden `update_hospital_availability` null-safe updates and `bed_availability` sync.
+  - `supabase/migrations/20260219000900_automations.sql`
+  - harden bed resource sync for hospital reassignment and ICU-sensitive bed decrements/increments.
+  - `supabase/migrations/20260219010000_core_rpcs.sql`
+  - include `icu_beds_available`/`bed_availability` handling in `update_hospital_by_admin`.
+- deterministic hospitals guard expansion:
+  - `supabase/tests/scripts/assert_hospitals_surface_field_guard.js`
+  - enforce no app `hospital_rooms` reads and require canonical capacity trigger/function patterns.
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table hospitals` green,
+- `npm run hardening:hospitals-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
+### SCC-039: Restore `hospital_import_logs` Canonical Schema Surface
+Objective:
+- Eliminate runtime/schema drift where app+console import-log flows reference `hospital_import_logs` but active schema lacks the table.
+
+Deliverables:
+- add canonical table migration:
+  - `supabase/migrations/20260305000100_hospital_import_logs_restore.sql`
+  - defines `hospital_import_logs` columns used by app/console runtime (`import_type`, location/query metadata, status/counters, `errors`, `created_by`, timestamps).
+  - adds non-negative counter constraint, indexes, RLS policies, and authenticated grants.
+- console runtime safety:
+  - `../ivisit-console/frontend/src/services/hospitalImportService.js`
+  - missing-relation fallback for `getImportLogs` returns empty list (non-fatal) in pre-migration environments.
+- field-coverage governance:
+  - `supabase/tests/scripts/assert_table_field_runtime_coverage.js`
+  - `package.json` script entry
+  - `supabase/docs/TESTING.md` gate docs
+  - add per-table runtime field coverage command to required validation gates.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table hospital_import_logs` green,
+- `npm run hardening:table-field-runtime-coverage -- --table hospital_import_logs` green,
+- app contract drift guard green (`npm run hardening:contract-drift-guard`),
+- console build green (`npm run build` in `../ivisit-console/frontend`).
+
+### SCC-040: Hospitals Ops Field UI/CRUD Wiring (Console)
+Objective:
+- Ensure backend-support hospital capacity/ops fields are consumed in dashboard CRUD surfaces (not only stored in DB), specifically for dispatch-oriented operational visibility.
+
+Deliverables:
+- console CRUD payload hardening:
+  - `../ivisit-console/frontend/src/services/hospitalsService.js`
+  - include canonical fields in mutation payload build:
+    - `icu_beds_available`
+    - `emergency_wait_time_minutes`
+- console modal UX hardening:
+  - `../ivisit-console/frontend/src/components/modals/HospitalModal.jsx`
+  - add edit/view inputs/surfaces for:
+    - ICU bed availability
+    - ER wait minutes
+    - last availability update (read-only display)
+- console list/table operational visibility:
+  - `../ivisit-console/frontend/src/components/views/HospitalTableView.jsx`
+  - `../ivisit-console/frontend/src/components/views/HospitalListView.jsx`
+  - render ICU + ER wait and bed ratio (`available/total`) in list/table summaries.
+
+Verification:
+- `npm run hardening:hospitals-surface-field-guard` green,
+- `node supabase/tests/scripts/export_table_flow_trace.js --table hospitals` green,
+- `npm run hardening:table-field-runtime-coverage -- --table hospitals` green,
+- console build green (`npm run build` in `../ivisit-console/frontend`).
+
+### SCC-041: `hospital_rooms` Retirement and Coverage Cleanup
+Objective:
+- Remove retired `hospital_rooms` table assumptions from remaining shared type artifacts and runtime hardening scripts so validation lanes reflect the canonical schema and no optional fallback paths continue to mask drift.
+
+Deliverables:
+- remove legacy type artifact blocks:
+  - `supabase/database.ts`
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - delete `hospital_rooms` `Row`/`Insert`/`Update` blocks.
+- remove retired table cleanup/runtime coverage paths:
+  - `supabase/tests/scripts/cleanup_test_side_effects.js`
+  - remove optional fetch/planned/delete logic for `hospital_rooms`.
+  - `supabase/tests/scripts/run_runtime_crud_relationship_batch.js`
+  - remove optional `hospital_rooms` CRUD, mirror assertions/counts, and cleanup handling.
+- keep validation lanes green with no schema-drift fallback on retired table paths.
+
+Verification:
+- `npm run hardening:contract-drift-guard` green,
+- `npm run hardening:hospitals-surface-field-guard` green,
+- console build green (`npm run build` in `../ivisit-console/frontend`).
+
+### SCC-042: `ivisit_main_wallet` Surface Guard Closure
+Objective:
+- Close the remaining wallet-table guard gap by adding deterministic type/query/mutation safety enforcement for `ivisit_main_wallet` across app/console surfaces.
+
+Deliverables:
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_ivisit_main_wallet_surface_field_guard.js`
+  - enforce app/console type parity for `ivisit_main_wallet` (`Row`/`Insert`/`Update`)
+  - enforce canonical select columns in console source reads (`id`, `balance`, `currency`, `last_updated`)
+  - forbid direct console `insert/update/upsert/delete` on `ivisit_main_wallet`
+- wire guard command + docs:
+  - `package.json` add `hardening:ivisit-main-wallet-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section
+- validate runtime coverage lane for this table:
+  - refresh table trace and runtime field coverage assertions.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table ivisit_main_wallet` green,
+- `npm run hardening:table-field-runtime-coverage -- --table ivisit_main_wallet` green,
+- `npm run hardening:ivisit-main-wallet-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:contract-drift-guard` green.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
 2. `npm run hardening:contract-drift-guard`
 3. relevant targeted matrix/test command(s) for the item
+4. per-table runtime field coverage assertion for each touched table:
+   - `node supabase/tests/scripts/export_table_flow_trace.js --table <table_name>`
+   - `npm run hardening:table-field-runtime-coverage -- --table <table_name>`
 
 ## Change Intake Rules
 Any new work must be added to this plan first with:

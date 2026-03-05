@@ -540,45 +540,6 @@ export type Database = {
         }
         Relationships: []
       }
-      hospital_rooms: {
-        Row: {
-          base_price: number | null
-          created_at: string | null
-          currency: string | null
-          features: string[] | null
-          hospital_id: string | null
-          id: string
-          room_number: string
-          room_type: string
-          status: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          base_price?: number | null
-          created_at?: string | null
-          currency?: string | null
-          features?: string[] | null
-          hospital_id?: string | null
-          id?: string
-          room_number: string
-          room_type: string
-          status?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          base_price?: number | null
-          created_at?: string | null
-          currency?: string | null
-          features?: string[] | null
-          hospital_id?: string | null
-          id?: string
-          room_number?: string
-          room_type?: string
-          status?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       hospitals: {
         Row: {
           address: string

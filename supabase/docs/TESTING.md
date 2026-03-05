@@ -103,6 +103,16 @@ npm run hardening:table-flow-trace
 node supabase/tests/scripts/export_table_flow_trace.js --table visits
 ```
 
+### **Per-Table Runtime Field Coverage Gate**
+```bash
+# Assert every column in the traced table has runtime references (not docs/tests-only).
+# Run this after exporting table flow trace.
+npm run hardening:table-field-runtime-coverage -- --table hospitals
+
+# Optional allowed-missing override (comma-separated) for intentionally dormant columns
+npm run hardening:table-field-runtime-coverage -- --table hospitals --allow-missing some_column
+```
+
 ### **Emergency Runtime Confidence Gate**
 ```bash
 # Run console transition matrix + E2E emergency flow + confidence assertion
@@ -123,6 +133,14 @@ npm run hardening:visits-surface-field-guard
 # Detect hospitals table contract drift across app+console JS/JSX + core admin RPC persistence
 npm run hardening:hospitals-surface-field-guard
 ```
+
+Current guard focus:
+- app/console hospital UI/service surfaces avoid legacy/non-schema import/google drift fields
+- app `hospitalsService.getRooms` must not query `hospital_rooms` and must source bed-room availability from canonical `hospitals` capacity fields
+- canonical SQL must keep hospital bed-capacity synchronization lanes:
+  - `normalize_hosp_bed_state` trigger on `hospitals`
+  - `update_hospital_availability` writes `bed_availability`
+  - `update_hospital_by_admin` persists canonical capacity columns used by runtime surfaces
 
 ### **Organizations Surface Field Guard**
 ```bash
@@ -146,6 +164,12 @@ npm run hardening:organization-wallets-surface-field-guard
 ```bash
 # Detect patient_wallets type parity + query select-column drift across console surfaces
 npm run hardening:patient-wallets-surface-field-guard
+```
+
+### **iVisit Main Wallet Surface Field Guard**
+```bash
+# Detect ivisit_main_wallet type parity + query/select drift and forbid direct console table mutations
+npm run hardening:ivisit-main-wallet-surface-field-guard
 ```
 
 ### **Payment Methods Surface Field Guard**

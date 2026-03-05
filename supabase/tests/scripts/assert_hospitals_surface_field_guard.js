@@ -56,6 +56,22 @@ const RULES = [
     message: 'emergency request modal should call canonical requestHospital.phone only.',
   },
   {
+    id: 'app_hospital_rooms_no_legacy_hospital_rooms_table_reads',
+    mode: 'forbid',
+    root: 'app',
+    file: 'services/hospitalsService.js',
+    pattern: /from\(\s*["']hospital_rooms["']\s*\)/g,
+    message: 'hospitalsService.getRooms must not read legacy hospital_rooms table.',
+  },
+  {
+    id: 'app_hospital_rooms_require_canonical_hospital_capacity_reads',
+    mode: 'require',
+    root: 'app',
+    file: 'services/hospitalsService.js',
+    pattern: /from\(\s*["']hospitals["']\s*\)[\s\S]{0,260}?(available_beds|bed_availability)/g,
+    message: 'hospitalsService.getRooms should source room availability from hospitals capacity fields.',
+  },
+  {
     id: 'console_hospital_import_no_import_status_column_filter',
     mode: 'forbid',
     root: 'console',
@@ -132,7 +148,7 @@ const RULES = [
     mode: 'require',
     root: 'app',
     file: 'supabase/migrations/20260219010000_core_rpcs.sql',
-    pattern: /total_beds\s*=\s*COALESCE\(\(payload->>'total_beds'\)::INT,\s*total_beds\)/g,
+    pattern: /total_beds\s*=\s*COALESCE\((?:NULLIF\(payload->>'total_beds',\s*''\)::INT|\(payload->>'total_beds'\)::INT),\s*total_beds\)/g,
     message: 'update_hospital_by_admin must persist total_beds.',
   },
   {
@@ -150,6 +166,30 @@ const RULES = [
     file: 'supabase/migrations/20260219010000_core_rpcs.sql',
     pattern: /type\s*=\s*COALESCE\(payload->>'type',\s*type\)/g,
     message: 'update_hospital_by_admin must persist type.',
+  },
+  {
+    id: 'db_hospital_capacity_trigger_present',
+    mode: 'require',
+    root: 'app',
+    file: 'supabase/migrations/20260219000200_org_structure.sql',
+    pattern: /CREATE TRIGGER normalize_hosp_bed_state[\s\S]{0,180}?BEFORE INSERT OR UPDATE ON public\.hospitals/g,
+    message: 'hospitals capacity normalization trigger must exist on hospitals writes.',
+  },
+  {
+    id: 'db_hospital_capacity_trigger_uses_bed_availability',
+    mode: 'require',
+    root: 'app',
+    file: 'supabase/migrations/20260219000200_org_structure.sql',
+    pattern: /CREATE OR REPLACE FUNCTION public\.normalize_hospital_bed_state[\s\S]{0,1200}?bed_availability/g,
+    message: 'normalize_hospital_bed_state must rebuild bed_availability snapshot.',
+  },
+  {
+    id: 'db_update_hospital_availability_writes_bed_availability',
+    mode: 'require',
+    root: 'app',
+    file: 'supabase/migrations/20260219000800_emergency_logic.sql',
+    pattern: /CREATE OR REPLACE FUNCTION public\.update_hospital_availability[\s\S]{0,2200}?bed_availability\s*=\s*jsonb_strip_nulls/g,
+    message: 'update_hospital_availability must update bed_availability alongside available_beds.',
   },
 ];
 

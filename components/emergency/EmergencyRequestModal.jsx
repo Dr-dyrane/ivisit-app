@@ -723,43 +723,63 @@ const EmergencyRequestModal = React.memo(({
 
 			try {
 				if (mode === "booking") {
-					const [rooms, roomPricing] = await Promise.all([
-						hospitalsService.getRooms(requestHospital.id),
-						hospitalsService.getRoomPricing(requestHospital.id, requestHospital.organization_id)
-					]);
-
-					// If specific rooms exist, use them. Otherwise, use Service/Room Types from DB.
-					if (rooms.length > 0) {
-						setDynamicRooms(rooms);
-					} else if (roomPricing.length > 0) {
-						// Transform room types into "virtual" rooms for display
-						const virtualRooms = roomPricing.map(rp => ({
-							id: rp.room_type, // Use type as ID for generic selection
-							room_number: 'Any',
-							room_type: rp.room_type, // Keep canonical code for request payloads / matching
-							room_label: rp.room_name || rp.room_type, // Human-readable label for UI
-							base_price: rp.price_per_night,
-							features: [rp.description || 'Standard accommodation'],
-							check_in: null,
-							check_out: null
-						}));
-
-						// Defensive de-dupe in case upstream queries return both global + hospital rows
-						// for the same room type (prevents duplicate React keys in BedBookingOptions).
-						const seenRoomTypes = new Set();
-						const dedupedVirtualRooms = virtualRooms.filter((room) => {
-							const key = String(room?.id || "").trim().toLowerCase();
-							if (!key) return true;
-							if (seenRoomTypes.has(key)) return false;
-							seenRoomTypes.add(key);
+					const applyRoomsWithSelection = (rows) => {
+						const list = Array.isArray(rows) ? rows : [];
+						const seen = new Set();
+						const deduped = list.filter((room) => {
+							const key = String(room?.id || room?.room_type || "").trim().toLowerCase();
+							if (!key) return false;
+							if (seen.has(key)) return false;
+							seen.add(key);
 							return true;
 						});
-						setDynamicRooms(dedupedVirtualRooms);
-						if (dedupedVirtualRooms.length > 0) {
-							setSelectedRoomId(dedupedVirtualRooms[0].id);
-							if (typeof dedupedVirtualRooms[0]?.room_type === "string") {
-								setBedType(dedupedVirtualRooms[0].room_type);
+
+						setDynamicRooms(deduped);
+
+						if (deduped.length > 0) {
+							const primary = deduped[0];
+							setSelectedRoomId(primary.id);
+							if (typeof primary?.room_type === "string" && primary.room_type.length > 0) {
+								setBedType(primary.room_type);
 							}
+						} else {
+							setSelectedRoomId(null);
+						}
+					};
+
+					// Canonical source: hospitals.available_beds / hospitals.icu_beds_available / hospitals.bed_availability.
+					const rooms = await hospitalsService.getRooms(requestHospital.id);
+					if (rooms.length > 0) {
+						applyRoomsWithSelection(rooms);
+					} else {
+						// Fallback pricing-only virtual rooms are allowed only when the hospital still advertises
+						// bed availability; this avoids showing "bookable" options for a full facility.
+						const availableBedsSignal = Number(
+							requestHospital?.availableBeds ?? requestHospital?.available_beds ?? 0
+						);
+						if (Number.isFinite(availableBedsSignal) && availableBedsSignal > 0) {
+							const roomPricing = await hospitalsService.getRoomPricing(
+								requestHospital.id,
+								requestHospital.organization_id || requestHospital.organizationId
+							);
+
+							if (roomPricing.length > 0) {
+								const virtualRooms = roomPricing.map((rp) => ({
+									id: rp.room_type,
+									room_number: "Any",
+									room_type: rp.room_type,
+									room_label: rp.room_name || rp.room_type,
+									base_price: rp.price_per_night,
+									features: [rp.description || "Standard accommodation"],
+									check_in: null,
+									check_out: null,
+								}));
+								applyRoomsWithSelection(virtualRooms);
+							} else {
+								applyRoomsWithSelection([]);
+							}
+						} else {
+							applyRoomsWithSelection([]);
 						}
 					}
 

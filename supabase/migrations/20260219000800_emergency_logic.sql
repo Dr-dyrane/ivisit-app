@@ -1316,15 +1316,34 @@ BEGIN
         END IF;
     END IF;
 
-    UPDATE public.hospitals
-    SET 
-        available_beds = beds_available,
-        emergency_wait_time_minutes = er_wait_time,
-        wait_time = er_wait_time || ' mins',
-        status = p_status,    -- 'available', 'busy', 'full'
-        ambulances_count = ambulance_count,
+    UPDATE public.hospitals h
+    SET
+        available_beds = COALESCE(beds_available, h.available_beds),
+        emergency_wait_time_minutes = COALESCE(er_wait_time, h.emergency_wait_time_minutes),
+        wait_time = CASE
+            WHEN er_wait_time IS NULL THEN h.wait_time
+            ELSE er_wait_time || ' mins'
+        END,
+        status = COALESCE(NULLIF(TRIM(p_status), ''), h.status),    -- 'available', 'busy', 'full'
+        ambulances_count = COALESCE(ambulance_count, h.ambulances_count),
+        bed_availability = jsonb_strip_nulls(
+            COALESCE(h.bed_availability, '{}'::jsonb)
+            || jsonb_build_object(
+                'available', COALESCE(beds_available, h.available_beds),
+                'icu', COALESCE(h.icu_beds_available, 0),
+                'standard', GREATEST(
+                    0,
+                    COALESCE(beds_available, h.available_beds) - COALESCE(h.icu_beds_available, 0)
+                ),
+                'total', GREATEST(
+                    COALESCE(h.total_beds, 0),
+                    COALESCE(beds_available, h.available_beds)
+                )
+            )
+        ),
+        last_availability_update = NOW(),
         updated_at = NOW()
-    WHERE id = hospital_id;
+    WHERE h.id = hospital_id;
     RETURN FOUND;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

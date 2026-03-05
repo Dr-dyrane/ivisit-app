@@ -53,6 +53,60 @@ CREATE TABLE IF NOT EXISTS public.hospitals (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Keep bed capacity columns and bed_availability JSON in sync.
+CREATE OR REPLACE FUNCTION public.normalize_hospital_bed_state()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_available INTEGER;
+    v_icu INTEGER;
+    v_total INTEGER;
+BEGIN
+    v_available := GREATEST(0, COALESCE(NEW.available_beds, 0));
+    v_icu := GREATEST(0, COALESCE(NEW.icu_beds_available, 0));
+    IF v_icu > v_available THEN
+        v_icu := v_available;
+    END IF;
+
+    v_total := GREATEST(COALESCE(NEW.total_beds, 0), v_available);
+
+    NEW.available_beds := v_available;
+    NEW.icu_beds_available := v_icu;
+    NEW.total_beds := v_total;
+
+    NEW.bed_availability := jsonb_strip_nulls(
+        COALESCE(NEW.bed_availability, '{}'::jsonb)
+        || jsonb_build_object(
+            'available', v_available,
+            'icu', v_icu,
+            'standard', GREATEST(0, v_available - v_icu),
+            'total', v_total
+        )
+    );
+
+    IF TG_OP = 'INSERT' THEN
+        NEW.last_availability_update := NOW();
+    ELSIF NEW.available_beds IS DISTINCT FROM OLD.available_beds
+       OR NEW.icu_beds_available IS DISTINCT FROM OLD.icu_beds_available
+       OR NEW.total_beds IS DISTINCT FROM OLD.total_beds
+       OR NEW.bed_availability IS DISTINCT FROM OLD.bed_availability THEN
+        NEW.last_availability_update := NOW();
+    END IF;
+
+    IF NEW.available_beds <= 0 AND COALESCE(NEW.status, 'available') = 'available' THEN
+        NEW.status := 'full';
+    ELSIF NEW.available_beds > 0 AND COALESCE(NEW.status, '') = 'full' THEN
+        NEW.status := 'available';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS normalize_hosp_bed_state ON public.hospitals;
+CREATE TRIGGER normalize_hosp_bed_state
+BEFORE INSERT OR UPDATE ON public.hospitals
+FOR EACH ROW EXECUTE PROCEDURE public.normalize_hospital_bed_state();
+
 -- 3. Doctors
 CREATE TABLE IF NOT EXISTS public.doctors (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

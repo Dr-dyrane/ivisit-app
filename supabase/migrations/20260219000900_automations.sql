@@ -209,136 +209,8 @@ CREATE TRIGGER on_emergency_completed
 AFTER UPDATE ON public.emergency_requests
 FOR EACH ROW EXECUTE PROCEDURE public.sync_emergency_to_visit();
 
--- Auto-Assign Driver (MVP)
-CREATE OR REPLACE FUNCTION public.auto_assign_driver()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_amb_id UUID;
-    v_driver_id UUID;
-    v_driver_name TEXT;
-    v_should_attempt BOOLEAN := FALSE;
-BEGIN
-    IF NEW.service_type != 'ambulance' OR NEW.responder_id IS NOT NULL OR NEW.ambulance_id IS NOT NULL THEN
-        RETURN NEW;
-    END IF;
-
-    IF TG_OP = 'INSERT' THEN
-        v_should_attempt := NEW.status IN ('in_progress', 'accepted');
-    ELSIF TG_OP = 'UPDATE' THEN
-        v_should_attempt := NEW.status IN ('in_progress', 'accepted')
-            AND OLD.status IS DISTINCT FROM NEW.status;
-    END IF;
-
-    IF v_should_attempt THEN
-        SELECT id, profile_id INTO v_amb_id, v_driver_id
-        FROM public.ambulances
-        WHERE hospital_id = NEW.hospital_id
-          AND status = 'available'
-          AND profile_id IS NOT NULL
-        LIMIT 1;
-
-        IF v_amb_id IS NOT NULL THEN
-            SELECT full_name INTO v_driver_name FROM public.profiles WHERE id = v_driver_id;
-            PERFORM set_config('ivisit.transition_source', 'automation:auto_assign_driver', true);
-            PERFORM set_config('ivisit.transition_reason', 'auto_dispatch_assignment', true);
-            PERFORM set_config('ivisit.transition_actor_role', 'automation', true);
-            PERFORM set_config(
-                'ivisit.transition_metadata',
-                jsonb_build_object('ambulance_id', v_amb_id, 'driver_id', v_driver_id)::TEXT,
-                true
-            );
-            
-            UPDATE public.emergency_requests
-            SET responder_id = v_driver_id,
-                responder_name = v_driver_name,
-                ambulance_id = v_amb_id,
-                status = 'accepted',
-                updated_at = NOW()
-            WHERE id = NEW.id
-              AND responder_id IS NULL
-              AND ambulance_id IS NULL;
-
-            UPDATE public.ambulances
-            SET status = 'on_trip',
-                current_call = NEW.id,
-                updated_at = NOW()
-            WHERE id = v_amb_id;
-        END IF;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS on_emergency_start_dispatch ON public.emergency_requests;
-CREATE TRIGGER on_emergency_start_dispatch
-AFTER INSERT OR UPDATE ON public.emergency_requests
-FOR EACH ROW EXECUTE PROCEDURE public.auto_assign_driver();
-
--- Update Resource Availability
-CREATE OR REPLACE FUNCTION public.update_resource_availability()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_current_amb_status TEXT;
-BEGIN
-    IF TG_OP = 'UPDATE'
-       AND OLD.ambulance_id IS NOT NULL
-       AND OLD.ambulance_id IS DISTINCT FROM NEW.ambulance_id THEN
-        UPDATE public.ambulances
-        SET status = CASE
-                WHEN LOWER(COALESCE(status, '')) IN ('offline', 'maintenance') THEN status
-                ELSE 'available'
-            END,
-            current_call = NULL,
-            eta = NULL,
-            updated_at = NOW()
-        WHERE id = OLD.ambulance_id
-          AND (current_call = NEW.id OR current_call IS NULL);
-    END IF;
-
-    -- Handle Ambulance Status transitions
-    IF (NEW.ambulance_id IS NOT NULL) THEN
-        -- Get current ambulance status to validate transition
-        SELECT status INTO v_current_amb_status
-        FROM public.ambulances 
-        WHERE id = NEW.ambulance_id;
-        
-        IF (NEW.status IN ('accepted', 'arrived', 'in_progress')) THEN
-            -- Only set on_trip if ambulance is in a transitional state (not already on_trip)
-            IF v_current_amb_status IN ('available', 'dispatched', 'en_route', 'on_scene') THEN
-                UPDATE public.ambulances
-                SET status = 'on_trip',
-                    updated_at = NOW()
-                WHERE id = NEW.ambulance_id;
-            END IF;
-        ELSIF (NEW.status IN ('completed', 'cancelled', 'payment_declined')) THEN
-            -- Return ambulance to available pool
-            IF v_current_amb_status NOT IN ('available', 'offline', 'maintenance') THEN
-                UPDATE public.ambulances 
-                SET status = 'available', current_call = NULL, eta = NULL, updated_at = NOW() 
-                WHERE id = NEW.ambulance_id;
-            END IF;
-        END IF;
-    END IF;
-
-    -- Handle Bed Availability (only on UPDATE — OLD is available)
-    IF TG_OP = 'UPDATE' AND (NEW.service_type = 'bed') THEN
-        IF NEW.status IN ('in_progress', 'accepted', 'arrived')
-           AND OLD.status NOT IN ('in_progress', 'accepted', 'arrived') THEN
-            UPDATE public.hospitals SET available_beds = GREATEST(0, available_beds - 1) WHERE id = NEW.hospital_id;
-        ELSIF NEW.status IN ('completed', 'cancelled')
-              AND OLD.status IN ('in_progress', 'accepted', 'arrived') THEN
-            UPDATE public.hospitals SET available_beds = available_beds + 1 WHERE id = NEW.hospital_id;
-        END IF;
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS on_emergency_status_resource_sync ON public.emergency_requests;
-CREATE TRIGGER on_emergency_status_resource_sync
-AFTER INSERT OR UPDATE ON public.emergency_requests
-FOR EACH ROW EXECUTE PROCEDURE public.update_resource_availability();
+-- Legacy duplicate versions of auto/resource automations were removed.
+-- Canonical hardened definitions are declared in the integrated fix-pack section below.
 
 -- 4. Auto-Assign Doctor on Emergency Acceptance (Recovered from Legacy)
 CREATE OR REPLACE FUNCTION public.auto_assign_doctor()
@@ -642,6 +514,7 @@ CREATE OR REPLACE FUNCTION public.update_resource_availability()
 RETURNS TRIGGER AS $$
 DECLARE
     v_current_amb_status TEXT;
+    v_is_icu_request BOOLEAN := FALSE;
 BEGIN
     IF TG_OP = 'UPDATE'
        AND OLD.ambulance_id IS NOT NULL
@@ -684,15 +557,48 @@ BEGIN
     END IF;
 
     IF TG_OP = 'UPDATE' AND NEW.service_type = 'bed' THEN
-        IF NEW.status IN ('in_progress', 'accepted', 'arrived')
-           AND OLD.status NOT IN ('in_progress', 'accepted', 'arrived') THEN
+        v_is_icu_request := UPPER(COALESCE(NEW.specialty, OLD.specialty, '')) LIKE '%ICU%';
+
+        -- Handle hospital reassignment while request is still active.
+        IF OLD.hospital_id IS DISTINCT FROM NEW.hospital_id THEN
+            IF OLD.hospital_id IS NOT NULL
+               AND OLD.status IN ('in_progress', 'accepted', 'arrived') THEN
+                UPDATE public.hospitals
+                SET available_beds = COALESCE(available_beds, 0) + 1,
+                    icu_beds_available = CASE
+                        WHEN v_is_icu_request THEN COALESCE(icu_beds_available, 0) + 1
+                        ELSE COALESCE(icu_beds_available, 0)
+                    END
+                WHERE id = OLD.hospital_id;
+            END IF;
+
+            IF NEW.hospital_id IS NOT NULL
+               AND NEW.status IN ('in_progress', 'accepted', 'arrived') THEN
+                UPDATE public.hospitals
+                SET available_beds = GREATEST(0, COALESCE(available_beds, 0) - 1),
+                    icu_beds_available = CASE
+                        WHEN v_is_icu_request THEN GREATEST(0, COALESCE(icu_beds_available, 0) - 1)
+                        ELSE COALESCE(icu_beds_available, 0)
+                    END
+                WHERE id = NEW.hospital_id;
+            END IF;
+        ELSIF NEW.status IN ('in_progress', 'accepted', 'arrived')
+              AND OLD.status NOT IN ('in_progress', 'accepted', 'arrived') THEN
             UPDATE public.hospitals
-            SET available_beds = GREATEST(0, available_beds - 1)
+            SET available_beds = GREATEST(0, COALESCE(available_beds, 0) - 1),
+                icu_beds_available = CASE
+                    WHEN v_is_icu_request THEN GREATEST(0, COALESCE(icu_beds_available, 0) - 1)
+                    ELSE COALESCE(icu_beds_available, 0)
+                END
             WHERE id = NEW.hospital_id;
         ELSIF NEW.status IN ('completed', 'cancelled')
               AND OLD.status IN ('in_progress', 'accepted', 'arrived') THEN
             UPDATE public.hospitals
-            SET available_beds = available_beds + 1
+            SET available_beds = COALESCE(available_beds, 0) + 1,
+                icu_beds_available = CASE
+                    WHEN v_is_icu_request THEN COALESCE(icu_beds_available, 0) + 1
+                    ELSE COALESCE(icu_beds_available, 0)
+                END
             WHERE id = NEW.hospital_id;
         END IF;
     END IF;
@@ -700,6 +606,17 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_emergency_start_dispatch ON public.emergency_requests;
+CREATE TRIGGER on_emergency_start_dispatch
+AFTER INSERT OR UPDATE ON public.emergency_requests
+FOR EACH ROW EXECUTE PROCEDURE public.auto_assign_driver();
+
+DROP TRIGGER IF EXISTS on_emergency_status_resource_sync ON public.emergency_requests;
+CREATE TRIGGER on_emergency_status_resource_sync
+AFTER INSERT OR UPDATE ON public.emergency_requests
+FOR EACH ROW EXECUTE PROCEDURE public.update_resource_availability();
+
 
 -- Closed-loop failover when an assigned ambulance/driver becomes unavailable mid-flow.
 CREATE OR REPLACE FUNCTION public.handle_ambulance_unavailability_failover()

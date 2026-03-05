@@ -168,11 +168,21 @@ BEGIN
         
         wait_time = COALESCE(payload->>'wait_time', wait_time),
         price_range = COALESCE(payload->>'price_range', price_range),
-        available_beds = COALESCE((payload->>'available_beds')::INT, available_beds),
-        total_beds = COALESCE((payload->>'total_beds')::INT, total_beds),
+        available_beds = COALESCE(NULLIF(payload->>'available_beds', '')::INT, available_beds),
+        icu_beds_available = COALESCE(NULLIF(payload->>'icu_beds_available', '')::INT, icu_beds_available),
+        total_beds = COALESCE(NULLIF(payload->>'total_beds', '')::INT, total_beds),
+        bed_availability = COALESCE(payload->'bed_availability', bed_availability),
         ambulances_count = COALESCE((payload->>'ambulances_count')::INT, ambulances_count),
         emergency_level = COALESCE(payload->>'emergency_level', emergency_level),
         image = COALESCE(payload->>'image', image),
+        last_availability_update = CASE
+            WHEN payload ? 'available_beds'
+              OR payload ? 'icu_beds_available'
+              OR payload ? 'total_beds'
+              OR payload ? 'bed_availability'
+            THEN NOW()
+            ELSE last_availability_update
+        END,
         
         -- Arrays
         specialties = v_specialties,

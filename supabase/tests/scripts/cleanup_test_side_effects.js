@@ -189,7 +189,6 @@ async function main() {
     walletLedger,
     servicePricing,
     roomPricing,
-    hospitalRooms,
     hospitalImportLogs,
   ] = await Promise.all([
     fetchAll('profiles', 'id,email,organization_id'),
@@ -209,7 +208,6 @@ async function main() {
     fetchAll('wallet_ledger', 'id,reference_id,wallet_id'),
     fetchAllOptional('service_pricing', 'id,hospital_id'),
     fetchAllOptional('room_pricing', 'id,hospital_id'),
-    fetchAllOptional('hospital_rooms', 'id,hospital_id'),
     fetchAllOptional('hospital_import_logs', 'id,hospital_id'),
   ]);
 
@@ -360,11 +358,6 @@ async function main() {
       .filter((row) => testHospitalIds.includes(row.hospital_id))
       .map((row) => row.id)
   );
-  const testHospitalRoomIds = unique(
-    hospitalRooms
-      .filter((row) => testHospitalIds.includes(row.hospital_id))
-      .map((row) => row.id)
-  );
   const testHospitalImportLogIds = unique(
     hospitalImportLogs
       .filter((row) => testHospitalIds.includes(row.hospital_id))
@@ -402,7 +395,6 @@ async function main() {
     user_activity: testActivityIds.length,
     service_pricing: testServicePricingIds.length,
     room_pricing: testRoomPricingIds.length,
-    hospital_rooms: testHospitalRoomIds.length,
     hospital_import_logs: testHospitalImportLogIds.length,
     wallet_ledger: testWalletLedgerIds.length,
     auth_users: testProfileIds.length,
@@ -499,12 +491,6 @@ END $$;`);
     report.deleted.room_pricing = await deleteByIds(
       'room_pricing',
       testRoomPricingIds,
-      'id',
-      report
-    );
-    report.deleted.hospital_rooms = await deleteByIds(
-      'hospital_rooms',
-      testHospitalRoomIds,
       'id',
       report
     );
