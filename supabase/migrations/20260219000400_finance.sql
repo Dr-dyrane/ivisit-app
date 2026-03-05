@@ -46,13 +46,18 @@ CREATE TABLE IF NOT EXISTS public.wallet_ledger (
 CREATE TABLE IF NOT EXISTS public.payment_methods (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
     type TEXT NOT NULL,
     provider TEXT NOT NULL,
     last4 TEXT,
     brand TEXT,
+    expiry_month INTEGER CHECK (expiry_month BETWEEN 1 AND 12),
+    expiry_year INTEGER,
     is_default BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS public.payments (

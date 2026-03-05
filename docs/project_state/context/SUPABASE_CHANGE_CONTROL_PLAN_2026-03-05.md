@@ -115,6 +115,20 @@ Verification:
 - `npm run hardening:cleanup-dry-run-guard` green,
 - `npm run hardening:contract-drift-guard` green.
 
+### SCC-006: Logistics/Finance Type-Contract Reconciliation
+Objective:
+- Reconcile app canonical type contracts for `emergency_requests`, `payments`, and wallet-adjacent finance tables with live schema and runtime service payloads.
+
+Deliverables:
+- updated canonical type definitions (`types/database.ts`) for targeted finance tables,
+- core finance migration alignment where canonical table definitions lag live/runtime contract,
+- SCC audit note documenting reconciled columns and remaining gaps.
+
+Verification:
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green,
+- `npm run hardening:cash-matrix` green.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

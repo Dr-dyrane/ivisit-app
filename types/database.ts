@@ -1074,34 +1074,59 @@ export type Database = {
         Row: {
           brand: string | null
           created_at: string
+          expiry_month: number | null
+          expiry_year: number | null
           id: string
           is_default: boolean | null
+          is_active: boolean | null
           last4: string | null
+          metadata: Json | null
+          organization_id: string | null
           provider: string
           type: string
+          updated_at: string
           user_id: string | null
         }
         Insert: {
           brand?: string | null
           created_at?: string
+          expiry_month?: number | null
+          expiry_year?: number | null
           id?: string
           is_default?: boolean | null
+          is_active?: boolean | null
           last4?: string | null
+          metadata?: Json | null
+          organization_id?: string | null
           provider: string
           type: string
+          updated_at?: string
           user_id?: string | null
         }
         Update: {
           brand?: string | null
           created_at?: string
+          expiry_month?: number | null
+          expiry_year?: number | null
           id?: string
           is_default?: boolean | null
+          is_active?: boolean | null
           last4?: string | null
+          metadata?: Json | null
+          organization_id?: string | null
           provider?: string
           type?: string
+          updated_at?: string
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_methods_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payment_methods_user_id_fkey"
             columns: ["user_id"]
@@ -1120,6 +1145,7 @@ export type Database = {
           emergency_request_id: string | null
           id: string
           ivisit_fee_amount: number | null
+          metadata: Json | null
           organization_id: string | null
           payment_method: string | null
           processed_at: string | null
@@ -1137,6 +1163,7 @@ export type Database = {
           emergency_request_id?: string | null
           id?: string
           ivisit_fee_amount?: number | null
+          metadata?: Json | null
           organization_id?: string | null
           payment_method?: string | null
           processed_at?: string | null
@@ -1154,6 +1181,7 @@ export type Database = {
           emergency_request_id?: string | null
           id?: string
           ivisit_fee_amount?: number | null
+          metadata?: Json | null
           organization_id?: string | null
           payment_method?: string | null
           processed_at?: string | null
