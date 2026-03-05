@@ -36,8 +36,8 @@ export default function BookBedRequestScreen() {
 	const hospitalId = typeof params?.hospitalId === "string" ? params.hospitalId : null;
 
 	const { setHeaderState } = useHeaderState();
-	const { handleScroll: handleTabBarScroll, showTabBar, unlockTabBarHidden } = useTabBarVisibility();
-	const { handleScroll: handleHeaderScroll, showHeader, unlockHeaderHidden: unlockHeader } = useScrollAwareHeader();
+	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
+	const { resetHeader } = useScrollAwareHeader();
 
 	const { user } = useAuth();
 	const { preferences } = usePreferences();
@@ -95,17 +95,27 @@ export default function BookBedRequestScreen() {
 		useCallback(() => {
 			// 🔓 UNIFIED UI UNLOCK: Force header and tab bar into view on navigation
 			// This prevents the "missing header" glitch when navigating from scrolled views
-			unlockTabBarHidden();
-			unlockHeader();
-			showTabBar();
-			showHeader();
+			resetTabBar();
+			resetHeader();
+
+			setHeaderState({
+				title: requestHospital?.name || "Medical Center",
+				subtitle: "STEP 1: OPTIONS",
+				icon: <Fontisto name="bed-patient" size={22} color="#FFFFFF" />,
+				backgroundColor: COLORS.brandPrimary,
+				leftComponent: backButton(),
+				rightComponent: false,
+				hidden: false,
+				scrollAware: false,
+			});
 
 			setMode("booking");
 		}, [
-			unlockHeader,
-			unlockTabBarHidden,
-			showTabBar,
-			showHeader,
+			backButton,
+			requestHospital?.name,
+			resetHeader,
+			resetTabBar,
+			setHeaderState,
 			setMode,
 		])
 	);

@@ -163,6 +163,8 @@ const EmergencyRequestModal = React.memo(({
 				}
 			}} />,
 			rightComponent: false,
+			hidden: false,
+			scrollAware: false,
 		});
 	}, [currentStepIndex, requestStep, requestHospital, mode, onRequestClose, steps, setHeaderState]);
 	const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);

@@ -14,6 +14,7 @@ export function ScrollAwareHeaderProvider({ children }) {
     hideHeader: unifiedScroll.hideHeader,
     lockHeaderHidden: unifiedScroll.lockHeaderHidden,
     unlockHeaderHidden: unifiedScroll.unlockHeaderHidden,
+    forceHeaderVisible: unifiedScroll.forceHeaderVisible,
     resetHeader: unifiedScroll.resetBoth,
     HEADER_HEIGHT: unifiedScroll.HEADER_HEIGHT,
   };

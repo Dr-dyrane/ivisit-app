@@ -1,22 +1,44 @@
 // app/(user)/(stacks)/_layout.js
-import { useEffect } from "react";
-import { Stack } from "expo-router";
+import { useEffect, useMemo } from "react";
+import { Stack, useSegments } from "expo-router";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useFABActions } from "../../../contexts/FABContext";
+import { useHeaderState } from "../../../contexts/HeaderStateContext";
+import { useScrollAwareHeader } from "../../../contexts/ScrollAwareHeaderContext";
 import { COLORS } from "../../../constants/colors";
 import { STACK_TOP_PADDING } from "../../../constants/layout";
 import HeaderBackButton from "../../../components/navigation/HeaderBackButton";
 
 export default function StacksLayout() {
 	const { isDarkMode } = useTheme();
+	const segments = useSegments();
 	// Use stable actions hook to prevent re-render loops on FAB registration
 	const { enterStack, exitStack } = useFABActions();
+	const { setHeaderState } = useHeaderState();
+	const { unlockHeaderHidden, forceHeaderVisible } = useScrollAwareHeader();
+
+	const isEmergencyRequestRoute = useMemo(() => {
+		const hasEmergencySegment = segments.includes("emergency");
+		const isRequestAmbulance = segments.includes("request-ambulance");
+		const isBookBed = segments.includes("book-bed");
+		return hasEmergencySegment && (isRequestAmbulance || isBookBed);
+	}, [segments]);
 
 	// Hide FAB when entering stack screens
 	useEffect(() => {
 		enterStack();
 		return () => exitStack();
 	}, [enterStack, exitStack]);
+
+	useEffect(() => {
+		if (!isEmergencyRequestRoute) return;
+		unlockHeaderHidden();
+		forceHeaderVisible();
+		setHeaderState({
+			hidden: false,
+			scrollAware: false,
+		});
+	}, [isEmergencyRequestRoute, unlockHeaderHidden, forceHeaderVisible, setHeaderState]);
 
 	return (
 		<Stack

@@ -432,6 +432,8 @@ const EmergencyScreen = () => {
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent,
 				rightComponent,
+				hidden: false,
+				scrollAware: true,
 			});
 		}, [resetTabBar, resetHeader, setHeaderState, mode, leftComponent, rightComponent])
 	);

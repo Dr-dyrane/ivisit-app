@@ -35,8 +35,8 @@ export default function RequestAmbulanceScreen() {
 	const hospitalId = typeof params?.hospitalId === "string" ? params.hospitalId : null;
 
 	const { setHeaderState } = useHeaderState();
-	const { handleScroll: handleTabBarScroll, showTabBar, unlockTabBarHidden } = useTabBarVisibility();
-	const { handleScroll: handleHeaderScroll, showHeader, unlockHeaderHidden: unlockHeader } = useScrollAwareHeader();
+	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
+	const { resetHeader } = useScrollAwareHeader();
 
 	const { user } = useAuth();
 	const { preferences } = usePreferences();
@@ -93,17 +93,27 @@ export default function RequestAmbulanceScreen() {
 		useCallback(() => {
 			// 🔓 UNIFIED UI UNLOCK: Force header and tab bar into view on navigation
 			// This prevents the "missing header" glitch when navigating from scrolled views
-			unlockTabBarHidden();
-			unlockHeader();
-			showTabBar();
-			showHeader();
+			resetTabBar();
+			resetHeader();
+
+			setHeaderState({
+				title: requestHospital?.name || "Medical Center",
+				subtitle: "STEP 1: RESOURCE",
+				icon: <Ionicons name="medical" size={26} color="#FFFFFF" />,
+				backgroundColor: COLORS.emergency,
+				leftComponent: backButton(),
+				rightComponent: false,
+				hidden: false,
+				scrollAware: false,
+			});
 
 			setMode("emergency");
 		}, [
-			unlockHeader,
-			unlockTabBarHidden,
-			showTabBar,
-			showHeader,
+			backButton,
+			requestHospital?.name,
+			resetHeader,
+			resetTabBar,
+			setHeaderState,
 			setMode,
 		])
 	);
@@ -127,9 +137,9 @@ export default function RequestAmbulanceScreen() {
 	const handleScroll = useCallback(
 		(event) => {
 			handleTabBarScroll(event);
-			handleHeaderScroll(event);
+			// Keep request-flow header always visible while user scrolls form content.
 		},
-		[handleHeaderScroll, handleTabBarScroll]
+		[handleTabBarScroll]
 	);
 
 	const delay = useCallback((ms) => new Promise((resolve) => setTimeout(resolve, ms)), []);

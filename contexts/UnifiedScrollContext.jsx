@@ -259,6 +259,14 @@ export function UnifiedScrollProvider({ children }) {
     showBoth();
   }, [showBoth]);
 
+  const forceHeaderVisible = useCallback(() => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    headerOpacity.setValue(1);
+    titleOpacity.setValue(1);
+    isHeaderHidden.current = false;
+    isAnimating.current = false;
+  }, [headerOpacity, titleOpacity]);
+
   const value = useMemo(() => ({
     tabTranslateY,
     showTabBar: showBoth,
@@ -277,6 +285,7 @@ export function UnifiedScrollProvider({ children }) {
     isHeaderLockedHidden: isHeaderLockedHiddenState,
     lockHeaderHidden,
     unlockHeaderHidden,
+    forceHeaderVisible,
     HEADER_HEIGHT,
 
     handleScroll,
@@ -286,7 +295,7 @@ export function UnifiedScrollProvider({ children }) {
   }), [
     tabTranslateY, headerOpacity, titleOpacity,
     isTabBarHiddenState, isTabBarLockedHiddenState, isHeaderLockedHiddenState,
-    lockTabBarHidden, unlockTabBarHidden, lockHeaderHidden, unlockHeaderHidden,
+    lockTabBarHidden, unlockTabBarHidden, lockHeaderHidden, unlockHeaderHidden, forceHeaderVisible,
     handleScroll, resetBoth, showBoth, hideBoth,
     TAB_BAR_HEIGHT, HIDE_DISTANCE, HEADER_HEIGHT,
   ]);
