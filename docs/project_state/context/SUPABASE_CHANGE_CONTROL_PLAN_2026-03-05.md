@@ -1212,6 +1212,36 @@ Verification:
 - `npm run hardening:cleanup-dry-run-guard` green,
 - `npm run hardening:contract-drift-guard` green.
 
+### SCC-048: `search_history` Surface Contract Guard Hardening
+Objective:
+- Reconcile `search_history` type/relationship drift across app/console and add deterministic guard coverage for canonical search-history field usage and mutation boundaries.
+
+Deliverables:
+- console search history type reconciliation:
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align `created_at` and `user_id` nullability to canonical app contract
+  - restore canonical FK relationship parity (`search_history_user_id_fkey`).
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_search_history_surface_field_guard.js`
+  - enforce app/console type parity for `search_history` (`Row`/`Insert`/`Update`)
+  - enforce relationship parity and required FK (`search_history_user_id_fkey`)
+  - enforce search_history reference boundaries to approved console surfaces
+  - enforce canonical select-column usage for `search_history` reads
+  - enforce mutation-boundary ownership for `search_history` write operations.
+- wire guard command + docs:
+  - `package.json` add `hardening:search-history-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section.
+- validate runtime coverage lane for this table:
+  - refresh trace and per-table runtime field coverage for `search_history`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table search_history` green,
+- `npm run hardening:table-field-runtime-coverage -- --table search_history` green,
+- `npm run hardening:search-history-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

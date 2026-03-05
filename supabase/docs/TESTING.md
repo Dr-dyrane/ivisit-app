@@ -177,6 +177,14 @@ npm run hardening:user-activity-surface-field-guard
 npm run hardening:support-tickets-surface-field-guard
 ```
 
+### **Search History Surface Field Guard**
+```bash
+# Detect search_history app/console type parity + relationship parity, enforce
+# canonical select-column usage for search_history access paths, and keep
+# search_history references/mutations inside approved search service surfaces.
+npm run hardening:search-history-surface-field-guard
+```
+
 ### **Organization Wallets Surface Field Guard**
 ```bash
 # Detect organization_wallets type parity + query select-column drift across console wallet surfaces
