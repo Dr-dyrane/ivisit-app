@@ -28,6 +28,7 @@
     "hardening:organization-wallets-surface-field-guard": "node supabase/tests/scripts/assert_organization_wallets_surface_field_guard.js",
     "hardening:patient-wallets-surface-field-guard": "node supabase/tests/scripts/assert_patient_wallets_surface_field_guard.js",
     "hardening:payment-methods-surface-field-guard": "node supabase/tests/scripts/assert_payment_methods_surface_field_guard.js",
+    "hardening:wallet-ledger-surface-field-guard": "node supabase/tests/scripts/assert_wallet_ledger_surface_field_guard.js",
     "hardening:payments-surface-field-guard": "node supabase/tests/scripts/assert_payments_surface_field_guard.js",
     "hardening:visits-runtime-confidence-assert": "node supabase/tests/scripts/assert_visits_runtime_confidence.js",
     "hardening:visits-runtime-confidence": "node supabase/tests/scripts/run_e2e_flow_matrix.js && npm run hardening:visits-runtime-confidence-assert",

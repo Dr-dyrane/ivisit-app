@@ -702,6 +702,32 @@ Verification:
 - app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
 - app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
 
+### SCC-031: Wallet Ledger Surface Contract Guard Hardening (Preventive Control Lane)
+Objective:
+- Add a deterministic preventive guard lane for `wallet_ledger` so app/console type parity and query-column safety remain locked while console ledger writes stay constrained to approved insert-only repair paths.
+
+Deliverables:
+- deterministic wallet-ledger guard:
+  - `supabase/tests/scripts/assert_wallet_ledger_surface_field_guard.js`
+  - report:
+    - `supabase/tests/validation/wallet_ledger_surface_field_guard_report.json`
+  - command:
+    - `hardening:wallet-ledger-surface-field-guard`
+  - enforce:
+    - app/console `wallet_ledger` `Row`/`Insert`/`Update` parity,
+    - canonical select-column safety for any console `.from('wallet_ledger').select(...)`,
+    - forbid direct console `.update/.delete/.upsert` against `wallet_ledger`,
+    - constrain direct console `.insert(...)` against `wallet_ledger` to approved wallet service paths only.
+- testing docs update:
+  - `supabase/docs/TESTING.md`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table wallet_ledger` green,
+- `npm run hardening:wallet-ledger-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- app cleanup guard green (`npm run hardening:cleanup-dry-run-guard`),
+- app cross-repo contract guard green (`npm run hardening:contract-drift-guard`).
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

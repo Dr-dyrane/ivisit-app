@@ -154,6 +154,12 @@ npm run hardening:patient-wallets-surface-field-guard
 npm run hardening:payment-methods-surface-field-guard
 ```
 
+### **Wallet Ledger Surface Field Guard**
+```bash
+# Detect wallet_ledger type parity + query/select drift and enforce allowed console mutation paths
+npm run hardening:wallet-ledger-surface-field-guard
+```
+
 ### **Payments/Wallet JS/JSX Field Guard**
 ```bash
 # Detect stale/non-schema payments + wallet UI field usage in console JS/JSX surfaces
