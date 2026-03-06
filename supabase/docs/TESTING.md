@@ -161,6 +161,27 @@ npm run hardening:profiles-surface-field-guard
 npm run hardening:preferences-surface-field-guard
 ```
 
+### **Admin Audit Log Surface Field Guard**
+```bash
+# Detect admin_audit_log app/generated/console type parity + relationship parity,
+# enforce canonical select-column usage, and restrict mutations to adminService.
+npm run hardening:admin-audit-log-surface-field-guard
+```
+
+### **User Sessions Surface Field Guard**
+```bash
+# Detect user_sessions app/generated/console type parity + relationship parity,
+# enforce canonical select-column usage, and block direct mutation lanes.
+npm run hardening:user-sessions-surface-field-guard
+```
+
+### **ID Mappings Surface Field Guard**
+```bash
+# Detect id_mappings app/generated/console type parity, enforce canonical
+# select-column usage, and block direct mutation lanes from console source.
+npm run hardening:id-mappings-surface-field-guard
+```
+
 ### **User Activity Surface Field Guard**
 ```bash
 # Detect user_activity app/console type parity + relationship parity, enforce

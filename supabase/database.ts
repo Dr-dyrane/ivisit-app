@@ -39,6 +39,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+        }
+        Insert: {
+          action: string
+          admin_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          admin_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       access_requests: {
         Row: {
           created_at: string | null
@@ -679,23 +711,23 @@ export type Database = {
       }
       id_mappings: {
         Row: {
-          created_at: string | null
+          created_at: string
           display_id: string
-          entity_id: string | null
+          entity_id: string
           entity_type: string
           id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           display_id: string
-          entity_id?: string | null
+          entity_id: string
           entity_type: string
           id?: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           display_id?: string
-          entity_id?: string | null
+          entity_id?: string
           entity_type?: string
           id?: string
         }
@@ -1629,6 +1661,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_sessions: {
+        Row: {
+          id: string
+          last_active: string | null
+          session_data: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          last_active?: string | null
+          session_data?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          last_active?: string | null
+          session_data?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       visits: {
         Row: {
