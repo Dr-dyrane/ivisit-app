@@ -96,6 +96,9 @@ async function run() {
       cash_fee_payment_rows_persisted: 0,
       visit_rows_scanned: 0,
       visit_hospital_backfills: 0,
+      visit_request_link_backfills: 0,
+      visit_hospital_id_backfills: 0,
+      visit_hospital_name_backfills: 0,
     },
     samples: {
       cash_fee_repairs: [],
@@ -278,45 +281,76 @@ async function run() {
       }
     }
 
-    // --- visits hospital-name backfill ---
+    // --- visits linkage/hospital display backfill ---
     const visits = await fetchPaged(() =>
       supabase
         .from('visits')
-        .select('id,request_id,hospital_name,updated_at')
-        .not('request_id', 'is', null)
+        .select('id,request_id,hospital_id,hospital_name,updated_at')
         .gte('updated_at', cutoffIso)
         .order('updated_at', { ascending: false })
     );
     report.actions.visit_rows_scanned = visits.length;
-    const visitRequestIds = [...new Set(visits.map((v) => v.request_id).filter(Boolean))];
+    const emergencyLookupIds = [...new Set(visits.map((v) => v.request_id || v.id).filter(Boolean))];
     const emergencyRows = await fetchInChunks(
       'emergency_requests',
-      'id,hospital_name',
-      visitRequestIds,
+      'id,hospital_id,hospital_name',
+      emergencyLookupIds,
       'id'
     );
     const emergencyById = new Map(emergencyRows.map((row) => [row.id, row]));
+    const unknownHospitalTokens = new Set([
+      'unknown facility',
+      'unknown hospital',
+      'unknown',
+      'n/a',
+      'na',
+      'none',
+    ]);
 
     for (const visit of visits) {
-      const visitHospital = String(visit.hospital_name || '').trim();
-      if (visitHospital) continue;
-      const linked = emergencyById.get(visit.request_id);
-      const requestHospital = String(linked?.hospital_name || '').trim();
-      if (!requestHospital) continue;
+      const linked = emergencyById.get(visit.request_id) || emergencyById.get(visit.id);
+      if (!linked) continue;
+
+      const visitHospitalRaw = String(visit.hospital_name || '').trim();
+      const visitHospital = visitHospitalRaw.toLowerCase();
+      const requestHospital = String(linked.hospital_name || '').trim();
+      const needsRequestLinkBackfill = !visit.request_id && Boolean(linked.id);
+      const needsHospitalIdBackfill = !visit.hospital_id && Boolean(linked.hospital_id);
+      const needsHospitalNameBackfill =
+        Boolean(requestHospital) && (!visitHospital || unknownHospitalTokens.has(visitHospital));
+
+      if (!needsRequestLinkBackfill && !needsHospitalIdBackfill && !needsHospitalNameBackfill) {
+        continue;
+      }
 
       report.samples.visit_backfills.push({
         visit_id: visit.id,
-        request_id: visit.request_id,
-        hospital_name: requestHospital,
+        existing_request_id: visit.request_id || null,
+        emergency_id: linked.id,
+        existing_hospital_id: visit.hospital_id || null,
+        emergency_hospital_id: linked.hospital_id || null,
+        existing_hospital_name: visitHospitalRaw || null,
+        emergency_hospital_name: requestHospital || null,
+        needs_request_link_backfill: needsRequestLinkBackfill,
+        needs_hospital_id_backfill: needsHospitalIdBackfill,
+        needs_hospital_name_backfill: needsHospitalNameBackfill,
       });
 
       if (APPLY) {
+        const patch = { updated_at: nowIso() };
+        if (needsRequestLinkBackfill) patch.request_id = linked.id;
+        if (needsHospitalIdBackfill) patch.hospital_id = linked.hospital_id;
+        if (needsHospitalNameBackfill) patch.hospital_name = requestHospital;
+
         const { error: visitUpdateErr } = await supabase
           .from('visits')
-          .update({ hospital_name: requestHospital, updated_at: nowIso() })
+          .update(patch)
           .eq('id', visit.id);
-        if (visitUpdateErr) throw new Error(`visit hospital backfill failed: ${visitUpdateErr.message}`);
+        if (visitUpdateErr) throw new Error(`visit backfill failed: ${visitUpdateErr.message}`);
         report.actions.visit_hospital_backfills += 1;
+        if (needsRequestLinkBackfill) report.actions.visit_request_link_backfills += 1;
+        if (needsHospitalIdBackfill) report.actions.visit_hospital_id_backfills += 1;
+        if (needsHospitalNameBackfill) report.actions.visit_hospital_name_backfills += 1;
       }
     }
 

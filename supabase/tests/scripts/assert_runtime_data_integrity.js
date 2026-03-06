@@ -280,44 +280,74 @@ async function run() {
     const recentVisits = await fetchPaged(() =>
       supabase
         .from('visits')
-        .select('id,request_id,status,hospital_name,updated_at,type')
-        .not('request_id', 'is', null)
+        .select('id,request_id,status,hospital_id,hospital_name,updated_at,type')
         .gte('updated_at', cutoffIso)
         .order('updated_at', { ascending: false })
     );
-    const visitRequestIds = [...new Set(recentVisits.map((v) => v.request_id).filter(Boolean))];
+    const emergencyLookupIds = [
+      ...new Set(recentVisits.map((v) => v.request_id || v.id).filter(Boolean)),
+    ];
     const linkedEmergencyRows = await fetchInChunks(
       'emergency_requests',
-      'id,status,hospital_name,service_type,updated_at',
-      visitRequestIds,
+      'id,status,hospital_id,hospital_name,service_type,updated_at',
+      emergencyLookupIds,
       'id'
     );
     const emergencyById = new Map(linkedEmergencyRows.map((r) => [r.id, r]));
 
     let visitsOrphaned = 0;
     let visitsMissingHospitalDisplay = 0;
+    let visitsMissingHospitalFk = 0;
+    const unknownHospitalTokens = new Set([
+      'unknown facility',
+      'unknown hospital',
+      'unknown',
+      'n/a',
+      'na',
+      'none',
+    ]);
     for (const visit of recentVisits) {
-      const linked = emergencyById.get(visit.request_id);
+      const linked = emergencyById.get(visit.request_id) || emergencyById.get(visit.id);
       if (!linked) {
-        visitsOrphaned += 1;
-        addSample(report.critical, {
-          type: 'visit_request_orphan',
-          visit_id: visit.id,
-          request_id: visit.request_id,
-          visit_status: visit.status,
-        });
+        if (visit.request_id) {
+          visitsOrphaned += 1;
+          addSample(report.critical, {
+            type: 'visit_request_orphan',
+            visit_id: visit.id,
+            request_id: visit.request_id,
+            visit_status: visit.status,
+          });
+        }
         continue;
       }
 
-      const visitHospital = String(visit.hospital_name || '').trim();
+      const visitHospitalRaw = String(visit.hospital_name || '').trim();
+      const visitHospital = visitHospitalRaw.toLowerCase();
       const reqHospital = String(linked.hospital_name || '').trim();
-      if (!visitHospital && reqHospital) {
+      const placeholderHospital =
+        !visitHospital || unknownHospitalTokens.has(visitHospital);
+      if (placeholderHospital && reqHospital) {
         visitsMissingHospitalDisplay += 1;
         addSample(report.warnings, {
           type: 'visit_hospital_name_missing',
           visit_id: visit.id,
           request_id: visit.request_id,
+          emergency_id: linked.id,
+          visit_hospital_name: visitHospitalRaw || null,
           request_hospital_name: reqHospital,
+          visit_status: visit.status,
+          request_status: linked.status,
+        });
+      }
+
+      if (!visit.hospital_id && linked.hospital_id) {
+        visitsMissingHospitalFk += 1;
+        addSample(report.warnings, {
+          type: 'visit_hospital_id_missing',
+          visit_id: visit.id,
+          request_id: visit.request_id,
+          emergency_id: linked.id,
+          request_hospital_id: linked.hospital_id,
           visit_status: visit.status,
           request_status: linked.status,
         });
@@ -326,6 +356,7 @@ async function run() {
     report.checks.recent_linked_visits = recentVisits.length;
     report.checks.visit_request_orphans = visitsOrphaned;
     report.checks.visits_missing_hospital_display = visitsMissingHospitalDisplay;
+    report.checks.visits_missing_hospital_fk = visitsMissingHospitalFk;
 
     report.success = report.critical.length === 0;
     fs.mkdirSync(OUT_DIR, { recursive: true });

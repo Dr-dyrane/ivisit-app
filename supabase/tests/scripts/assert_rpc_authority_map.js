@@ -37,6 +37,10 @@ const ALLOWED_CROSS_FILE_DUPLICATES = {
     canonicalOwner: '20260219010000_core_rpcs.sql',
     allowedOwners: ['20260219000800_emergency_logic.sql', '20260219010000_core_rpcs.sql'],
   },
+  'retry_payment_with_different_method#3': {
+    canonicalOwner: '20260306000200_retry_payment_rpc_runtime_sync.sql',
+    allowedOwners: ['20260219000400_finance.sql', '20260306000200_retry_payment_rpc_runtime_sync.sql'],
+  },
 };
 
 const ALLOWED_SAME_FILE_DUPLICATES = new Set([
