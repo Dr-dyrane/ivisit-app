@@ -9,8 +9,10 @@ dotenv.config({ path: '.env' });
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const serviceRoleKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const TEST_USER_PASSWORD = 'password123!';
 
-if (!supabaseUrl || !serviceRoleKey) {
+if (!supabaseUrl || !serviceRoleKey || !anonKey) {
   console.error('Missing Supabase credentials.');
   process.exit(1);
 }
@@ -33,12 +35,28 @@ function email(role) {
 async function createAuthUser({ email, role, full_name }) {
   const { data, error } = await supabase.auth.admin.createUser({
     email,
-    password: 'password123!',
+    password: TEST_USER_PASSWORD,
     email_confirm: true,
     user_metadata: { full_name, role }
   });
   if (error) throw new Error(`createUser(${email}) failed: ${error.message}`);
   return data.user;
+}
+
+async function createPatientAuthedClient(patientEmail) {
+  const client = createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false }
+  });
+
+  const { error: signInError } = await client.auth.signInWithPassword({
+    email: patientEmail,
+    password: TEST_USER_PASSWORD
+  });
+  if (signInError) {
+    throw new Error(`patient sign-in failed for tip scenario: ${signInError.message}`);
+  }
+
+  return client;
 }
 
 async function qOne(table, select, filterCol, filterVal) {
@@ -357,6 +375,8 @@ async function run() {
     scenarios: {},
     cleanupWarnings: []
   };
+  let completedAmbulanceVisitId = null;
+  let completedBedVisitId = null;
 
   try {
     const foundation = await createFoundation(ctx);
@@ -486,6 +506,7 @@ async function run() {
             (doctorAssignmentsAfterComplete || []).every((row) => row.status !== 'assigned')
         }
       };
+      completedAmbulanceVisitId = visitAfterComplete.id;
     }
 
     // Reset ambulance to available if needed before next scenario.
@@ -574,6 +595,7 @@ async function run() {
       .from('hospitals').select('id,available_beds').eq('id', foundation.hospital.id).single();
 
     const bedVisit = await qOne('visits', 'id,request_id,status,type', 'request_id', bedCreate.request_id);
+    completedBedVisitId = bedVisit.id;
 
     report.scenarios.bedReservation = {
       hospitalBefore: hospBeforeBed,
@@ -592,6 +614,133 @@ async function run() {
         bedDecrementedOnActivation: hospAfterApprove && hospAfterApprove.available_beds === (hospBeforeBed.available_beds - 1),
         bedRestoredOnComplete: hospAfterBedComplete && hospAfterBedComplete.available_beds === hospBeforeBed.available_beds,
         visitCreated: !!bedVisit.id
+      }
+    };
+
+    // Scenario E: Runtime tip contract check (wallet + cash tip RPC path).
+    const TIP_AMOUNT_WALLET = 5;
+    const TIP_AMOUNT_CASH = 3;
+    let walletTipErrorMessage = null;
+    let cashTipErrorMessage = null;
+    let walletTipData = null;
+    let cashTipData = null;
+    let walletTipPayment = null;
+    let cashTipPayment = null;
+    let walletVisitAfterTip = null;
+    let cashVisitAfterTip = null;
+
+    if (completedAmbulanceVisitId && completedBedVisitId) {
+      const { data: patientWallet, error: patientWalletErr } = await supabase
+        .from('patient_wallets')
+        .select('id, balance')
+        .eq('user_id', foundation.patient.id)
+        .maybeSingle();
+      if (patientWalletErr) {
+        throw new Error(`patient wallet lookup failed for tip scenario: ${patientWalletErr.message}`);
+      }
+
+      const desiredWalletBalance = 50;
+      if (patientWallet?.id) {
+        await supabase
+          .from('patient_wallets')
+          .update({ balance: desiredWalletBalance, updated_at: nowIso() })
+          .eq('id', patientWallet.id);
+      } else {
+        const { error: walletInsertErr } = await supabase
+          .from('patient_wallets')
+          .insert({
+            user_id: foundation.patient.id,
+            balance: desiredWalletBalance,
+            currency: 'USD',
+          });
+        if (walletInsertErr) {
+          throw new Error(`patient wallet insert failed for tip scenario: ${walletInsertErr.message}`);
+        }
+      }
+
+      const patientClient = await createPatientAuthedClient(foundation.patient.email);
+
+      const { data: walletTipRpcData, error: walletTipErr } = await patientClient.rpc('process_visit_tip', {
+        p_visit_id: completedAmbulanceVisitId,
+        p_tip_amount: TIP_AMOUNT_WALLET,
+        p_currency: 'USD'
+      });
+      walletTipData = walletTipRpcData || null;
+      walletTipErrorMessage = walletTipErr?.message || null;
+      if (walletTipData?.payment_id) ctx.paymentIds.add(walletTipData.payment_id);
+
+      const { data: cashTipRpcData, error: cashTipErr } = await patientClient.rpc('record_visit_cash_tip', {
+        p_visit_id: completedBedVisitId,
+        p_tip_amount: TIP_AMOUNT_CASH,
+        p_currency: 'USD'
+      });
+      cashTipData = cashTipRpcData || null;
+      cashTipErrorMessage = cashTipErr?.message || null;
+      if (cashTipData?.payment_id) ctx.paymentIds.add(cashTipData.payment_id);
+
+      if (walletTipData?.payment_id) {
+        walletTipPayment = await qOne(
+          'payments',
+          'id,organization_id,payment_method,status,amount,metadata',
+          'id',
+          walletTipData.payment_id
+        );
+      }
+      if (cashTipData?.payment_id) {
+        cashTipPayment = await qOne(
+          'payments',
+          'id,organization_id,payment_method,status,amount,metadata',
+          'id',
+          cashTipData.payment_id
+        );
+      }
+
+      walletVisitAfterTip = await qOne(
+        'visits',
+        'id,tip_amount,tip_currency,tip_payment_id',
+        'id',
+        completedAmbulanceVisitId
+      );
+      cashVisitAfterTip = await qOne(
+        'visits',
+        'id,tip_amount,tip_currency,tip_payment_id',
+        'id',
+        completedBedVisitId
+      );
+    }
+
+    report.scenarios.tipFlow = {
+      walletTip: walletTipData,
+      walletTipError: walletTipErrorMessage,
+      cashTip: cashTipData,
+      cashTipError: cashTipErrorMessage,
+      walletTipPayment,
+      cashTipPayment,
+      walletVisitAfterTip,
+      cashVisitAfterTip,
+      assertions: {
+        scenarioPreconditionsMet: !!completedAmbulanceVisitId && !!completedBedVisitId,
+        walletTipSucceeded: walletTipData?.success === true,
+        cashTipSucceeded: cashTipData?.success === true,
+        noLegacyOrgColumnError:
+          !/column\s+\"organization_id\"\s+does\s+not\s+exist/i.test(walletTipErrorMessage || '') &&
+          !/column\s+\"organization_id\"\s+does\s+not\s+exist/i.test(cashTipErrorMessage || ''),
+        walletTipVisitSynced:
+          Number(walletVisitAfterTip?.tip_amount || 0) === TIP_AMOUNT_WALLET &&
+          walletVisitAfterTip?.tip_currency === 'USD' &&
+          !!walletVisitAfterTip?.tip_payment_id,
+        cashTipVisitSynced:
+          Number(cashVisitAfterTip?.tip_amount || 0) === TIP_AMOUNT_CASH &&
+          cashVisitAfterTip?.tip_currency === 'USD' &&
+          !!cashVisitAfterTip?.tip_payment_id,
+        walletTipPaymentResolvedOrg:
+          !!walletTipPayment?.organization_id &&
+          walletTipPayment?.payment_method === 'wallet' &&
+          walletTipPayment?.status === 'completed',
+        cashTipPaymentResolvedOrg:
+          !!cashTipPayment?.organization_id &&
+          cashTipPayment?.payment_method === 'cash' &&
+          cashTipPayment?.status === 'completed'
       }
     };
 

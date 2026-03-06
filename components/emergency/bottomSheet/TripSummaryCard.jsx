@@ -219,23 +219,26 @@ export const TripSummaryCard = ({
 	const [triageModalVisible, setTriageModalVisible] = useState(false);
 	const [triageDraft, setTriageDraft] = useState(null);
 	const pulseAnim = useRef(new Animated.Value(1)).current;
+	const pulseLoopRef = useRef(null);
 
 	useEffect(() => {
-		if (collapsed) return;
-
-		// 1. Progress Timer
 		const id = setInterval(() => setNowMs(Date.now()), 1000);
 
-		// 2. Pulse Animation
-		Animated.loop(
+		pulseLoopRef.current?.stop?.();
+		pulseLoopRef.current = Animated.loop(
 			Animated.sequence([
 				Animated.timing(pulseAnim, { toValue: 1.15, duration: 800, useNativeDriver: true }),
 				Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
 			])
-		).start();
+		);
+		pulseLoopRef.current.start();
 
-		return () => clearInterval(id);
-	}, [collapsed, activeAmbulanceTrip?.requestId]);
+		return () => {
+			clearInterval(id);
+			pulseLoopRef.current?.stop?.();
+			pulseAnim.setValue(1);
+		};
+	}, [activeAmbulanceTrip?.requestId, pulseAnim]);
 
 	const assigned = activeAmbulanceTrip?.assignedAmbulance ?? null;
 	const tripHospital = activeAmbulanceTrip?.hospitalId && Array.isArray(allHospitals) ? allHospitals.find((h) => h?.id === activeAmbulanceTrip.hospitalId) : null;

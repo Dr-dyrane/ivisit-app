@@ -21,7 +21,9 @@ export default function HospitalCard({
 
 	// --- RESTORED ORIGINAL DATA LOGIC ---
 	const hospitalId = hospital?.id;
-	const hospitalName = typeof hospital?.name === "string" ? hospital.name : "Hospital";
+	const rawHospitalName = typeof hospital?.name === "string" ? hospital.name : "Hospital";
+	const isDemoHospital = /\(demo\)/i.test(rawHospitalName);
+	const hospitalName = rawHospitalName.replace(/\s*\(demo\)\s*/gi, " ").trim();
 	const hospitalImageUri = typeof hospital?.image === "string" && hospital.image.length > 0 ? hospital.image : null;
 	const hospitalRating = hospital?.rating ?? "--";
 
@@ -134,9 +136,16 @@ export default function HospitalCard({
 			{/* Info Section */}
 			<View style={styles.content}>
 				<View style={styles.titleRow}>
-					<Text style={[styles.name, { color: textColor }]} numberOfLines={1}>
-						{hospitalName}
-					</Text>
+					<View style={styles.nameWrap}>
+						<Text style={[styles.name, { color: textColor }]} numberOfLines={1}>
+							{hospitalName}
+						</Text>
+						{isDemoHospital ? (
+							<View style={styles.demoIconBadge}>
+								<Ionicons name="flask-outline" size={12} color={COLORS.brandPrimary} />
+							</View>
+						) : null}
+					</View>
 					<View style={styles.ratingBox}>
 						<Ionicons name="star" size={14} color="#FFC107" />
 						<Text style={[styles.ratingText, { color: textColor }]}>{hospitalRating}</Text>
@@ -313,6 +322,21 @@ const styles = StyleSheet.create({
 		justifyContent: "space-between",
 		alignItems: "center",
 		marginBottom: 4,
+	},
+	nameWrap: {
+		flexDirection: "row",
+		alignItems: "center",
+		flex: 1,
+		marginRight: 10,
+	},
+	demoIconBadge: {
+		marginLeft: 8,
+		width: 20,
+		height: 20,
+		borderRadius: 10,
+		backgroundColor: COLORS.brandPrimary + "22",
+		alignItems: "center",
+		justifyContent: "center",
 	},
 	ratingBox: {
 		flexDirection: "row",

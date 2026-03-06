@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Ionicons, Fontisto } from '@expo/vector-icons';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { COLORS } from "../../../constants/colors";
@@ -23,11 +23,13 @@ export default function EmergencyRequestModalDispatched({
 	textColor, 
 	mutedColor, 
 	cardColor,
-	onRequestDone 
+	onRequestDone,
+	onViewClinicalRecord,
 }) {
 	const { isDarkMode } = useTheme();
 	const isBed = requestData?.serviceType === "bed";
 	const bedNumber = requestData?.bedNumber ?? (isBed ? `B-${Math.floor(Math.random() * 90) + 10}` : null);
+	const canOpenClinicalRecord = typeof onViewClinicalRecord === "function";
 
 	return (
 		<View style={styles.container}>
@@ -101,6 +103,14 @@ export default function EmergencyRequestModalDispatched({
 					/>
 				)}
 			</View>
+			{canOpenClinicalRecord ? (
+				<Pressable onPress={onViewClinicalRecord} style={styles.clinicalCta}>
+					<Ionicons name="document-text-outline" size={16} color={COLORS.brandPrimary} />
+					<Text style={[styles.clinicalCtaText, { color: COLORS.brandPrimary }]}>
+						View Full Clinical Record
+					</Text>
+				</Pressable>
+			) : null}
 		</View>
 	);
 }
@@ -141,6 +151,21 @@ const styles = StyleSheet.create({
 		width: "100%",
 		borderRadius: 16,
 		overflow: 'hidden',
+	},
+	clinicalCta: {
+		marginTop: 14,
+		height: 44,
+		borderRadius: 22,
+		paddingHorizontal: 16,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 8,
+		backgroundColor: COLORS.brandPrimary + "10",
+	},
+	clinicalCtaText: {
+		fontSize: 13,
+		fontWeight: "800",
 	},
 	detailRow: {
 		flexDirection: 'row',

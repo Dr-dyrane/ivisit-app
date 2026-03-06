@@ -52,6 +52,17 @@ import { useSearchFiltering } from "../hooks/emergency/useSearchFiltering";
 
 const COVERAGE_POOR_THRESHOLD = 3;
 const COVERAGE_DISCLAIMER_STORAGE_KEY = "@ivisit/coverage_disclaimer_opt_out_v1";
+
+const formatRemainingLabel = (etaSeconds, startedAt, nowMs = Date.now()) => {
+	if (!Number.isFinite(etaSeconds) || !Number.isFinite(startedAt)) return null;
+	const elapsedSec = (nowMs - startedAt) / 1000;
+	const remaining = Math.max(0, Math.round(etaSeconds - elapsedSec));
+	const mins = Math.floor(remaining / 60);
+	const secs = remaining % 60;
+	if (mins <= 0) return `${secs}s`;
+	return secs === 0 ? `${mins}m` : `${mins}m ${secs}s`;
+};
+
 const createDemoPhaseStatuses = () =>
 	DEMO_BOOTSTRAP_PHASES.reduce((acc, phase) => {
 		acc[phase.key] = "pending";
@@ -345,6 +356,17 @@ const EmergencyScreen = () => {
 		}
 	}, [mode, activeAmbulanceTrip?.requestId, showToast, handleQuickEmergency, router]);
 
+	const hasAnyVisitActive =
+		!!activeAmbulanceTrip?.requestId || !!activeBedBooking?.requestId;
+	const [headerNowMs, setHeaderNowMs] = useState(Date.now());
+
+	useEffect(() => {
+		if (!hasAnyVisitActive) return;
+		setHeaderNowMs(Date.now());
+		const tickId = setInterval(() => setHeaderNowMs(Date.now()), 1000);
+		return () => clearInterval(tickId);
+	}, [hasAnyVisitActive]);
+
 	// Header components - memoized
 	const leftComponent = useMemo(() => <ProfileAvatarButton />, []);
 
@@ -406,7 +428,108 @@ const EmergencyScreen = () => {
 				<NotificationIconButton />
 			</View>
 		);
-	}, [mode, activeAmbulanceTrip?.requestId, handleQuickEmergencyAction, quickButtonPulse, isDarkMode]);
+	}, [mode, activeAmbulanceTrip?.requestId, handleQuickEmergencyPress, handleQuickEmergencyPressIn, handleQuickEmergencyPressOut, quickButtonPulse, isDarkMode]);
+
+	const telemetryHeaderSubtitle = useMemo(() => {
+		if (!activeAmbulanceTrip?.requestId) return null;
+		const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
+		const ageLabel = ambulanceTelemetryHealth?.ageLabel ?? null;
+		if (telemetryState === "lost") {
+			return ageLabel ? `Tracking lost (${ageLabel})` : "Tracking lost";
+		}
+		if (telemetryState === "stale") {
+			return ageLabel ? `Tracking delayed (${ageLabel})` : "Tracking delayed";
+		}
+		return null;
+	}, [activeAmbulanceTrip?.requestId, ambulanceTelemetryHealth?.ageLabel, ambulanceTelemetryHealth?.state]);
+
+	const liveHeaderState = useMemo(() => {
+		if (activeAmbulanceTrip?.requestId) {
+			const hospitalLabel = activeAmbulanceTrip?.hospitalName ?? null;
+			const etaLabel = formatRemainingLabel(
+				activeAmbulanceTrip?.etaSeconds,
+				activeAmbulanceTrip?.startedAt,
+				headerNowMs
+			);
+			const status = String(activeAmbulanceTrip?.status ?? "").toLowerCase();
+			const title = status === "arrived" ? "Ambulance Arrived" : "Ambulance In Progress";
+			const subtitleBase =
+				status === "pending_approval"
+					? "Cash approval in progress"
+					: telemetryHeaderSubtitle || (etaLabel ? `ETA ${etaLabel}` : "Responder en route");
+			const subtitle = hospitalLabel ? `${subtitleBase} · ${hospitalLabel}` : subtitleBase;
+			return {
+				title,
+				subtitle,
+				icon: <Ionicons name="medical" size={26} color="#FFFFFF" />,
+				backgroundColor: COLORS.brandPrimary,
+				leftComponent,
+				rightComponent,
+				hidden: false,
+				scrollAware: false,
+			};
+		}
+
+		if (activeBedBooking?.requestId) {
+			const hospitalLabel = activeBedBooking?.hospitalName ?? null;
+			const etaLabel = formatRemainingLabel(
+				activeBedBooking?.etaSeconds,
+				activeBedBooking?.startedAt,
+				headerNowMs
+			);
+			const status = String(activeBedBooking?.status ?? "").toLowerCase();
+			const title = status === "arrived" ? "Bed Checked In" : "Bed Reservation Active";
+			const subtitleBase =
+				status === "pending_approval"
+					? "Cash approval in progress"
+					: etaLabel
+						? `Ready in ${etaLabel}`
+						: "Reservation active";
+			const subtitle = hospitalLabel ? `${subtitleBase} · ${hospitalLabel}` : subtitleBase;
+			return {
+				title,
+				subtitle,
+				icon: <Fontisto name="bed-patient" size={22} color="#FFFFFF" />,
+				backgroundColor: COLORS.brandPrimary,
+				leftComponent,
+				rightComponent,
+				hidden: false,
+				scrollAware: false,
+			};
+		}
+
+		return {
+			title: mode === "emergency" ? "Ambulance Call" : "Reserve Bed",
+			subtitle: mode === "emergency" ? "EMERGENCY" : "BOOK BED",
+			icon:
+				mode === "emergency" ? (
+					<Ionicons name="medical" size={26} color="#FFFFFF" />
+				) : (
+					<Fontisto name="bed-patient" size={22} color="#FFFFFF" />
+				),
+			backgroundColor: COLORS.brandPrimary,
+			leftComponent,
+			rightComponent,
+			hidden: false,
+			scrollAware: true,
+		};
+	}, [
+		activeAmbulanceTrip?.etaSeconds,
+		activeAmbulanceTrip?.hospitalName,
+		activeAmbulanceTrip?.requestId,
+		activeAmbulanceTrip?.startedAt,
+		activeAmbulanceTrip?.status,
+		activeBedBooking?.etaSeconds,
+		activeBedBooking?.hospitalName,
+		activeBedBooking?.requestId,
+		activeBedBooking?.startedAt,
+		activeBedBooking?.status,
+		headerNowMs,
+		leftComponent,
+		mode,
+		rightComponent,
+		telemetryHeaderSubtitle,
+	]);
 
 	// Handle sheet snap changes
 	const handleSheetSnapChange = useCallback(
@@ -421,23 +544,14 @@ const EmergencyScreen = () => {
 		useCallback(() => {
 			resetTabBar();
 			resetHeader();
-			setHeaderState({
-				title: mode === "emergency" ? "Ambulance Call" : "Reserve Bed",
-				subtitle: mode === "emergency" ? "EMERGENCY" : "BOOK BED",
-				icon:
-					mode === "emergency" ? (
-						<Ionicons name="medical" size={26} color="#FFFFFF" />
-					) : (
-						<Fontisto name="bed-patient" size={22} color="#FFFFFF" />
-					),
-				backgroundColor: COLORS.brandPrimary,
-				leftComponent,
-				rightComponent,
-				hidden: false,
-				scrollAware: true,
-			});
-		}, [resetTabBar, resetHeader, setHeaderState, mode, leftComponent, rightComponent])
+			setHeaderState(liveHeaderState);
+		}, [liveHeaderState, resetTabBar, resetHeader, setHeaderState])
 	);
+
+	useEffect(() => {
+		if (!isFocused) return;
+		setHeaderState(liveHeaderState);
+	}, [isFocused, liveHeaderState, setHeaderState]);
 
 	// Tab bar locking: removed aggressive locking to prevent "locked out" feeling.
 	// We now rely on useBottomSheetSnap and GlobalFAB's decoupled translation.
@@ -460,7 +574,6 @@ const EmergencyScreen = () => {
 	}, [toggleMode]);
 
 	// Enhanced FAB visibility logic that accounts for different modes and snap points
-	const hasAnyVisitActive = !!activeAmbulanceTrip?.requestId || !!activeBedBooking?.requestId;
 	const shouldHideFAB = useMemo(() => {
 		// During active trips, ALWAYS show FAB for mode switching
 		if (hasAnyVisitActive) {
@@ -1118,7 +1231,7 @@ const EmergencyScreen = () => {
 	});
 
 	const handleCompleteAmbulanceTripWithRating = useCallback(async () => {
-		const visitId = activeAmbulanceTrip?.requestId ?? null;
+		const visitId = activeAmbulanceTrip?.id ?? activeAmbulanceTrip?.requestId ?? null;
 		const hospitalName = activeAmbulanceTrip?.hospitalName ?? null;
 		await onCompleteAmbulanceTrip?.();
 		if (!visitId) return;
@@ -1134,10 +1247,10 @@ const EmergencyScreen = () => {
 				provider: activeAmbulanceTrip?.assignedAmbulance?.name || "Emergency Services",
 			},
 		});
-	}, [activeAmbulanceTrip?.hospitalName, activeAmbulanceTrip?.requestId, activeAmbulanceTrip?.duration, activeAmbulanceTrip?.assignedAmbulance?.name, onCompleteAmbulanceTrip]);
+	}, [activeAmbulanceTrip?.hospitalName, activeAmbulanceTrip?.id, activeAmbulanceTrip?.requestId, activeAmbulanceTrip?.duration, activeAmbulanceTrip?.assignedAmbulance?.name, onCompleteAmbulanceTrip]);
 
 	const handleCompleteBedBookingWithRating = useCallback(async () => {
-		const visitId = activeBedBooking?.requestId;
+		const visitId = activeBedBooking?.id ?? activeBedBooking?.requestId;
 		const hospitalName = activeBedBooking?.hospitalName;
 
 		// Complete the booking first (like ambulance)
@@ -1158,7 +1271,7 @@ const EmergencyScreen = () => {
 				provider: activeBedBooking?.provider || "Hospital Staff",
 			},
 		});
-	}, [activeBedBooking?.hospitalName, activeBedBooking?.requestId, activeBedBooking?.duration, activeBedBooking?.provider, onCompleteBedBooking]);
+	}, [activeBedBooking?.hospitalName, activeBedBooking?.id, activeBedBooking?.requestId, activeBedBooking?.duration, activeBedBooking?.provider, onCompleteBedBooking]);
 
 	return (
 		<View style={styles.container}>
@@ -1331,6 +1444,7 @@ const EmergencyScreen = () => {
 				responderLocation={activeAmbulanceTrip?.currentResponderLocation}
 				responderHeading={activeAmbulanceTrip?.currentResponderHeading}
 				ambulanceTelemetryHealth={ambulanceTelemetryHealth}
+				hideTelemetryBanner={true}
 				sheetSnapIndex={sheetSnapIndex}
 			/>
 

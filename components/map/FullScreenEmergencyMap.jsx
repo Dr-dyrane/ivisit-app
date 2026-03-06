@@ -58,6 +58,7 @@ const FullScreenEmergencyMap = forwardRef(
 			ambulanceTripEtaSeconds = null,
 			mode = "emergency",
 			showControls = true,
+			hideTelemetryBanner = false,
 			bottomPadding = 0,
 			onRouteCalculated,
 			responderLocation,
@@ -405,6 +406,7 @@ const FullScreenEmergencyMap = forwardRef(
 		const customMapStyle = Platform.OS === "android" ? mapStyle : undefined;
 		const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
 		const shouldShowTelemetryBanner =
+			!hideTelemetryBanner &&
 			!!routeHospitalIdResolved &&
 			(telemetryState === "stale" || telemetryState === "lost");
 		const telemetryBanner = useMemo(() => {
@@ -428,7 +430,13 @@ const FullScreenEmergencyMap = forwardRef(
 				titleColor: isDarkMode ? "#FED7AA" : "#9A3412",
 				subtitleColor: isDarkMode ? "rgba(254, 215, 170, 0.85)" : "#C2410C",
 			};
-		}, [ambulanceTelemetryHealth?.ageLabel, isDarkMode, shouldShowTelemetryBanner, telemetryState]);
+		}, [
+			ambulanceTelemetryHealth?.ageLabel,
+			hideTelemetryBanner,
+			isDarkMode,
+			shouldShowTelemetryBanner,
+			telemetryState,
+		]);
 
 		const handleRecenter = useCallback(() => {
 			if (mapRef.current && userLocation) {

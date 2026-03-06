@@ -6,6 +6,31 @@ import { notificationDispatcher } from "./notificationDispatcher";
 import { isValidUUID } from "./displayIdService";
 
 const TABLE = "visits";
+const DEFAULT_HOSPITAL_IMAGES = [
+    "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1632833239869-a37e3a5806d2?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=1200&q=80",
+];
+
+const hashString = (seed) => {
+    const input = String(seed || "hospital");
+    let hash = 0;
+    for (let i = 0; i < input.length; i += 1) {
+        hash = (hash << 5) - hash + input.charCodeAt(i);
+        hash |= 0;
+    }
+    return Math.abs(hash);
+};
+
+const pickDefaultHospitalImage = (seed) =>
+    DEFAULT_HOSPITAL_IMAGES[hashString(seed) % DEFAULT_HOSPITAL_IMAGES.length];
+
+const toNonEmptyText = (value) => {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+};
 
 // Helper: build the correct .eq() filter based on ID type
 const eqById = (query, id) => {
@@ -183,8 +208,22 @@ const mapToDb = (item) => {
 const mapFromDb = (row) => ({
     ...row,
     hospitalId: row.hospital_id,
-    hospital: row.hospital_name ?? row.hospital ?? null,
-    hospitalName: row.hospital_name ?? row.hospital ?? null,
+    hospital: row.hospital_name ?? row.hospital ?? row._hospital_name_resolved ?? null,
+    hospitalName: row.hospital_name ?? row.hospital ?? row._hospital_name_resolved ?? null,
+    hospitalImage:
+        toNonEmptyText(row.hospital_image) ??
+        toNonEmptyText(row.image) ??
+        toNonEmptyText(row._hospital_image_resolved) ??
+        pickDefaultHospitalImage(
+            row.hospital_id ?? row.hospital_name ?? row._hospital_name_resolved ?? row.id
+        ),
+    image:
+        toNonEmptyText(row.image) ??
+        toNonEmptyText(row.hospital_image) ??
+        toNonEmptyText(row._hospital_image_resolved) ??
+        pickDefaultHospitalImage(
+            row.hospital_id ?? row.hospital_name ?? row._hospital_name_resolved ?? row.id
+        ),
     doctor: row.doctor_name ?? row.doctor ?? null,
     doctorName: row.doctor_name ?? row.doctor ?? null,
     roomNumber: row.room_number,
@@ -208,6 +247,105 @@ const mapFromDb = (row) => ({
     updatedAt: row.updated_at,
 });
 
+const hydrateVisitRowsWithHospitals = async (rows) => {
+    if (!Array.isArray(rows) || rows.length === 0) return Array.isArray(rows) ? rows : [];
+
+    const requestKeysNeedingFallback = Array.from(
+        new Set(
+            rows
+                .filter((row) =>
+                    (!row?.hospital_name || String(row.hospital_name).trim().length === 0) &&
+                    typeof row?.request_id === "string" &&
+                    row.request_id.trim().length > 0
+                )
+                .map((row) => row.request_id)
+        )
+    );
+
+    let rowsWithRequestFallback = rows;
+    if (requestKeysNeedingFallback.length > 0) {
+        const requestUuidKeys = requestKeysNeedingFallback.filter((key) => isValidUUID(String(key)));
+        const requestDisplayKeys = requestKeysNeedingFallback.filter((key) => !isValidUUID(String(key)));
+        const requestRows = [];
+
+        if (requestUuidKeys.length > 0) {
+            const { data: uuidRequests, error: uuidLookupError } = await supabase
+                .from("emergency_requests")
+                .select("id,display_id,hospital_id,hospital_name")
+                .in("id", requestUuidKeys);
+            if (uuidLookupError) {
+                console.warn("[visitsService] emergency request uuid fallback hydration failed:", uuidLookupError);
+            } else {
+                requestRows.push(...(uuidRequests || []));
+            }
+        }
+
+        if (requestDisplayKeys.length > 0) {
+            const { data: displayRequests, error: displayLookupError } = await supabase
+                .from("emergency_requests")
+                .select("id,display_id,hospital_id,hospital_name")
+                .in("display_id", requestDisplayKeys);
+            if (displayLookupError) {
+                console.warn("[visitsService] emergency request display fallback hydration failed:", displayLookupError);
+            } else {
+                requestRows.push(...(displayRequests || []));
+            }
+        }
+
+        const requestByAnyKey = new Map();
+        for (const requestRow of requestRows) {
+            if (requestRow?.id) requestByAnyKey.set(String(requestRow.id), requestRow);
+            if (requestRow?.display_id) requestByAnyKey.set(String(requestRow.display_id), requestRow);
+        }
+
+        rowsWithRequestFallback = rows.map((row) => {
+            const requestRow = requestByAnyKey.get(String(row?.request_id ?? ""));
+            if (!requestRow) return row;
+            return {
+                ...row,
+                hospital_id: row?.hospital_id ?? requestRow?.hospital_id ?? null,
+                hospital_name:
+                    row?.hospital_name && String(row.hospital_name).trim().length > 0
+                        ? row.hospital_name
+                        : requestRow?.hospital_name ?? null,
+            };
+        });
+    }
+
+    const hospitalIds = Array.from(
+        new Set(
+            rowsWithRequestFallback
+                .map((row) => row?.hospital_id)
+                .filter((value) => typeof value === "string" && value.trim().length > 0)
+        )
+    );
+    if (hospitalIds.length === 0) return rowsWithRequestFallback;
+
+    const { data: hospitals, error } = await supabase
+        .from("hospitals")
+        .select("id,name,image")
+        .in("id", hospitalIds);
+
+    if (error) {
+        console.warn("[visitsService] hospital hydration failed:", error);
+        return rowsWithRequestFallback;
+    }
+
+    const hospitalById = new Map(
+        (hospitals || []).map((hospital) => [hospital.id, hospital])
+    );
+
+    return rowsWithRequestFallback.map((row) => {
+        const linked = hospitalById.get(row?.hospital_id);
+        if (!linked) return row;
+        return {
+            ...row,
+            _hospital_name_resolved: linked?.name ?? null,
+            _hospital_image_resolved: linked?.image ?? null,
+        };
+    });
+};
+
 export const visitsService = {
     fromDbRow(row) {
         return normalizeVisit(mapFromDb(row));
@@ -229,7 +367,8 @@ export const visitsService = {
             return [];
         }
 
-        const result = data.map((row) => this.fromDbRow(row)).filter(Boolean);
+        const hydratedRows = await hydrateVisitRowsWithHospitals(data || []);
+        const result = hydratedRows.map((row) => this.fromDbRow(row)).filter(Boolean);
         return result;
     },
 

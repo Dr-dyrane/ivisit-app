@@ -1,28 +1,61 @@
 import { useMemo } from "react";
 
+const DEFAULT_BED_HOLD_SECONDS = 15 * 60;
+const ACTIVE_BED_TIMER_STATUSES = new Set([
+	"pending_approval",
+	"in_progress",
+	"accepted",
+	"arrived",
+]);
+
 export const useBedBookingProgress = ({
 	activeBedBooking,
 	nowMs = Date.now(),
 }) => {
-	const remainingBedSeconds = useMemo(() => {
-		const eta = activeBedBooking?.etaSeconds;
-		const startedAt = activeBedBooking?.startedAt;
-		if (!Number.isFinite(eta) || !Number.isFinite(startedAt)) {
-			if (__DEV__) console.log('[useBedBookingProgress] missing data:', { eta, startedAt });
-			return null;
+	const fallbackEtaSeconds = useMemo(() => {
+		const eta = activeBedBooking?.estimatedWait ?? activeBedBooking?.estimatedArrival ?? null;
+		if (eta === null || eta === undefined) return null;
+		if (typeof eta === "number" && Number.isFinite(eta)) return eta;
+		if (typeof eta !== "string") return null;
+		const lower = eta.toLowerCase();
+		if (lower === "unknown" || lower === "8-12 mins") return 600;
+		const minutesMatch = lower.match(/(\d+)\s*(min|mins|minute|minutes)/);
+		if (minutesMatch) return Number(minutesMatch[1]) * 60;
+		const secondsMatch = lower.match(/(\d+)\s*(sec|secs|second|seconds)/);
+		if (secondsMatch) return Number(secondsMatch[1]);
+		if (/^\d+$/.test(lower)) return Number(lower);
+		return null;
+	}, [activeBedBooking?.estimatedArrival, activeBedBooking?.estimatedWait]);
+
+	const resolvedHoldSeconds = useMemo(() => {
+		if (Number.isFinite(activeBedBooking?.etaSeconds)) {
+			return activeBedBooking.etaSeconds;
 		}
+		if (Number.isFinite(fallbackEtaSeconds)) {
+			return fallbackEtaSeconds;
+		}
+		const status = String(activeBedBooking?.status ?? "").toLowerCase();
+		const shouldUseHoldDefault =
+			ACTIVE_BED_TIMER_STATUSES.has(status) || !!activeBedBooking?.requestId;
+		return shouldUseHoldDefault ? DEFAULT_BED_HOLD_SECONDS : null;
+	}, [activeBedBooking?.etaSeconds, activeBedBooking?.requestId, activeBedBooking?.status, fallbackEtaSeconds]);
+
+	const remainingBedSeconds = useMemo(() => {
+		const eta = resolvedHoldSeconds;
+		const startedAt = activeBedBooking?.startedAt;
+		if (!Number.isFinite(eta) || !Number.isFinite(startedAt)) return null;
 		const elapsedSec = (nowMs - startedAt) / 1000;
 		return Math.max(0, Math.round(eta - elapsedSec));
-	}, [activeBedBooking?.etaSeconds, activeBedBooking?.startedAt, nowMs]);
+	}, [activeBedBooking?.startedAt, nowMs, resolvedHoldSeconds]);
 
 	const bedProgress = useMemo(() => {
-		const eta = activeBedBooking?.etaSeconds;
+		const eta = resolvedHoldSeconds;
 		const startedAt = activeBedBooking?.startedAt;
 		if (!Number.isFinite(eta) || eta <= 0 || !Number.isFinite(startedAt))
 			return null;
 		const elapsedSec = (nowMs - startedAt) / 1000;
 		return Math.min(1, Math.max(0, elapsedSec / eta));
-	}, [activeBedBooking?.etaSeconds, activeBedBooking?.startedAt, nowMs]);
+	}, [activeBedBooking?.startedAt, nowMs, resolvedHoldSeconds]);
 
 	const bedStatus = useMemo(() => {
 		if (!Number.isFinite(bedProgress)) return "Waiting";

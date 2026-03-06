@@ -22,6 +22,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 		responderLocation,
 		responderHeading,
 		ambulanceTelemetryHealth,
+		hideTelemetryBanner = false,
 		sheetSnapIndex,
 		mapStateKey,
 	} = props;
@@ -92,6 +93,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 					responderLocation={responderLocation}
 					responderHeading={responderHeading}
 					ambulanceTelemetryHealth={ambulanceTelemetryHealth}
+					hideTelemetryBanner={hideTelemetryBanner}
 					sheetSnapIndex={sheetSnapIndex}
 					mapStateKey={mapStateKey}
 				/>
@@ -114,6 +116,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 					responderLocation={null}
 					responderHeading={null}
 					ambulanceTelemetryHealth={null}
+					hideTelemetryBanner={hideTelemetryBanner}
 					sheetSnapIndex={sheetSnapIndex}
 					mapStateKey={mapStateKey}
 				/>

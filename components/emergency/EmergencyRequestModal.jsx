@@ -235,6 +235,14 @@ const EmergencyRequestModal = React.memo(({
 	const handleWaitingDraftChange = useCallback(
 		(nextDraft) => {
 			setWaitingCheckinDraft(nextDraft);
+			setRequestData((prev) =>
+				prev
+					? {
+						...prev,
+						triageCheckin: nextDraft,
+					}
+					: prev
+			);
 			setPendingApproval((prev) => {
 				if (!prev) return prev;
 				return {
@@ -249,8 +257,49 @@ const EmergencyRequestModal = React.memo(({
 				};
 			});
 		},
-		[setPendingApproval]
+		[setPendingApproval, setRequestData]
 	);
+
+	const waitingTriageRequestId =
+		pendingApproval?.id ||
+		pendingApproval?.requestId ||
+		requestData?.requestId ||
+		null;
+	const waitingTriageContext = {
+		serviceType:
+			pendingApproval?.serviceType ||
+			requestData?.serviceType ||
+			(mode === "booking" ? "bed" : "ambulance"),
+		specialty:
+			pendingApproval?.specialty ||
+			requestData?.specialty ||
+			selectedSpecialty ||
+			null,
+		hospitalId:
+			pendingApproval?.hospitalId ||
+			requestData?.hospitalId ||
+			requestHospital?.id ||
+			null,
+		hospitalName:
+			pendingApproval?.hospitalName ||
+			requestData?.hospitalName ||
+			requestHospital?.name ||
+			null,
+		requestId:
+			pendingApproval?.displayId ||
+			requestData?.displayId ||
+			pendingApproval?.requestId ||
+			requestData?.requestId ||
+			null,
+	};
+	const waitingTriageHospitalId =
+		pendingApproval?.hospitalId || requestData?.hospitalId || requestHospital?.id || null;
+	const waitingTriageDraft =
+		waitingCheckinDraft ||
+		pendingApproval?.triageSnapshot?.signals?.userCheckin ||
+		requestData?.triageCheckin ||
+		prebookingCheckin ||
+		null;
 
 	// REAL-TIME deterministic approval sync: stale-gating + truth-sync on channel recovery.
 	useEffect(() => {
@@ -1676,6 +1725,7 @@ const EmergencyRequestModal = React.memo(({
 							textColor={requestColors.text}
 							mutedColor={requestColors.textMuted}
 							cardColor={requestColors.card}
+							onViewClinicalRecord={() => openTriageModal("waiting")}
 						/>
 					</>
 				)}
@@ -1687,18 +1737,12 @@ const EmergencyRequestModal = React.memo(({
 				phase={triageModalPhase}
 				requestId={
 					triageModalPhase === "waiting"
-						? (pendingApproval?.id || pendingApproval?.requestId || null)
+						? waitingTriageRequestId
 						: null
 				}
 				requestContext={
 					triageModalPhase === "waiting"
-						? {
-							serviceType: pendingApproval?.serviceType || (mode === "booking" ? "bed" : "ambulance"),
-							specialty: pendingApproval?.specialty || selectedSpecialty || null,
-							hospitalId: pendingApproval?.hospitalId || requestHospital?.id || null,
-							hospitalName: pendingApproval?.hospitalName || requestHospital?.name || null,
-							requestId: pendingApproval?.displayId || pendingApproval?.requestId || null,
-						}
+						? waitingTriageContext
 						: {
 							serviceType: mode === "booking" ? "bed" : "ambulance",
 							specialty: selectedSpecialty ?? null,
@@ -1710,12 +1754,12 @@ const EmergencyRequestModal = React.memo(({
 				hospitals={Array.isArray(allHospitals) && allHospitals.length > 0 ? allHospitals : []}
 				selectedHospitalId={
 					triageModalPhase === "waiting"
-						? (pendingApproval?.hospitalId || requestHospital?.id || null)
+						? waitingTriageHospitalId
 						: (requestHospital?.id || null)
 				}
 				initialDraft={
 					triageModalPhase === "waiting"
-						? (waitingCheckinDraft || pendingApproval?.triageSnapshot?.signals?.userCheckin || prebookingCheckin || null)
+						? waitingTriageDraft
 						: prebookingCheckin
 				}
 				onDraftChange={

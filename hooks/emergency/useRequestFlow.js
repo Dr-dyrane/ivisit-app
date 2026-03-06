@@ -549,7 +549,7 @@ export const useRequestFlow = (props) => {
 					currentResponderHeading: request?.currentResponderHeading ?? null,
 					estimatedArrival: fallbackEtaLabel,
 					etaSeconds: routeEtaSeconds,
-					hospitalName: request?.hospitalName ?? null,
+					hospitalName: request?.hospitalName ?? hospital?.name ?? null,
 					route: currentRoute?.coordinates ?? null,
 				});
 			}
@@ -560,7 +560,7 @@ export const useRequestFlow = (props) => {
 					hospitalId,
 					requestId: visitId,
 					status: EmergencyRequestStatus.ACCEPTED,
-					hospitalName: request?.hospitalName ?? null,
+					hospitalName: request?.hospitalName ?? hospital?.name ?? null,
 					specialty: request?.specialty ?? null,
 					bedNumber: request?.bedNumber ?? null,
 					bedType: request?.bedType ?? null,

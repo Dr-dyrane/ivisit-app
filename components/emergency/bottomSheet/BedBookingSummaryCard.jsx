@@ -111,42 +111,35 @@ const BedBookingSummaryHalf = (props) => {
 	);
 };
 
-export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, allHospitals = [], onCancelBedBooking, onMarkBedOccupied, onCompleteBedBooking, isDarkMode, sheetPhase }) => {
+export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, allHospitals = [], onCancelBedBooking, onMarkBedOccupied, onCompleteBedBooking, isDarkMode }) => {
 	const router = useRouter();
-	const collapsed = sheetPhase === "collapsed";
 	const [nowMs, setNowMs] = useState(Date.now());
 	const [busyAction, setBusyAction] = useState(null);
 	const [triageModalVisible, setTriageModalVisible] = useState(false);
 	const [triageDraft, setTriageDraft] = useState(null);
 	const pulseAnim = useRef(new Animated.Value(1)).current;
+	const pulseLoopRef = useRef(null);
 
 	useEffect(() => {
-		if (collapsed) return;
-
-		// 1. Progress Timer
 		const id = setInterval(() => setNowMs(Date.now()), 1000);
 
-		// 2. Pulse Animation
-		Animated.loop(
+		pulseLoopRef.current?.stop?.();
+		pulseLoopRef.current = Animated.loop(
 			Animated.sequence([
 				Animated.timing(pulseAnim, { toValue: 1.15, duration: 800, useNativeDriver: true }),
 				Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
 			])
-		).start();
+		);
+		pulseLoopRef.current.start();
 
-		return () => clearInterval(id);
-	}, [collapsed, activeBedBooking?.requestId]);
+		return () => {
+			clearInterval(id);
+			pulseLoopRef.current?.stop?.();
+			pulseAnim.setValue(1);
+		};
+	}, [activeBedBooking?.requestId, pulseAnim]);
 
 	const { bedProgress, bedStatus, formattedBedRemaining } = useBedBookingProgress({ activeBedBooking, nowMs });
-
-	if (__DEV__) {
-		console.log('[BedBookingSummaryCard] status:', {
-			requestId: activeBedBooking?.requestId,
-			bedStatus,
-			formattedBedRemaining,
-			etaSeconds: activeBedBooking?.etaSeconds
-		});
-	}
 
 	const hospitalName = activeBedBooking?.hospitalName || "Hospital";
 	const triageRequestId = activeBedBooking?.id ?? activeBedBooking?.requestId ?? null;
@@ -188,7 +181,9 @@ export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, a
 					bedProgress,
 					isBusy: !!busyAction,
 					busyAction,
-					etaText: isPending ? "WAIT" : (isReady ? "READY" : (formattedBedRemaining || "--")),
+					etaText: isReady
+						? "READY"
+						: (formattedBedRemaining || (isPending ? "WAIT" : "--")),
 					pulseAnim,
 					isPending,
 					showTriageLane: !!triageRequestId,

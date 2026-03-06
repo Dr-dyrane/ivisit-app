@@ -6,7 +6,7 @@
 
 import { supabase } from './supabase';
 import { database, StorageKeys } from '../database';
-import { resolveEntityId } from './displayIdService';
+import { resolveEntityId, isValidUUID } from './displayIdService';
 
 // Payment method types
 export const PAYMENT_METHODS = {
@@ -52,6 +52,47 @@ export const paymentService = {
   async resolveId(id) {
     if (!id || id === 'default' || id === 'platform') return null;
     return await resolveEntityId(id);
+  },
+  /**
+   * Resolve any visit key (visit UUID/display_id or emergency request UUID/display_id)
+   * into the canonical visits.id UUID required by tip RPCs.
+   */
+  async resolveVisitUuid(visitKey) {
+    const rawKey = String(visitKey || "").trim();
+    if (!rawKey) return null;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const findVisitId = async (column, value) => {
+      const { data, error } = await supabase
+        .from('visits')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq(column, value)
+        .maybeSingle();
+
+      if (error) return null;
+      return data?.id || null;
+    };
+
+    if (isValidUUID(rawKey)) {
+      return (
+        (await findVisitId('id', rawKey)) ||
+        (await findVisitId('request_id', rawKey))
+      );
+    }
+
+    const byDisplayId = await findVisitId('display_id', rawKey);
+    if (byDisplayId) return byDisplayId;
+
+    const resolvedUuid = await this.resolveId(rawKey);
+    if (!isValidUUID(resolvedUuid)) return null;
+
+    return (
+      (await findVisitId('id', resolvedUuid)) ||
+      (await findVisitId('request_id', resolvedUuid))
+    );
   },
   /**
    * Get user's payment methods
@@ -622,9 +663,13 @@ export const paymentService = {
       if (!Number.isFinite(amount) || amount <= 0) {
         throw new Error('tipAmount must be greater than zero');
       }
+      const resolvedVisitId = await this.resolveVisitUuid(visitId);
+      if (!resolvedVisitId) {
+        throw new Error(`Unable to resolve visit UUID from "${visitId}"`);
+      }
 
       const { data, error } = await supabase.rpc('process_visit_tip', {
-        p_visit_id: visitId,
+        p_visit_id: resolvedVisitId,
         p_tip_amount: amount,
         p_currency: currency,
       });
@@ -652,9 +697,13 @@ export const paymentService = {
       if (!Number.isFinite(amount) || amount <= 0) {
         throw new Error('tipAmount must be greater than zero');
       }
+      const resolvedVisitId = await this.resolveVisitUuid(visitId);
+      if (!resolvedVisitId) {
+        throw new Error(`Unable to resolve visit UUID from "${visitId}"`);
+      }
 
       const { data, error } = await supabase.rpc('record_visit_cash_tip', {
-        p_visit_id: visitId,
+        p_visit_id: resolvedVisitId,
         p_tip_amount: amount,
         p_currency: currency,
       });

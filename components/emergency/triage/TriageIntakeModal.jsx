@@ -11,6 +11,7 @@ import {
 	Text,
 	View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -284,6 +285,7 @@ const TriageIntakeModal = ({
 	const [aiSource, setAiSource] = useState(null);
 	const [aiModel, setAiModel] = useState(null);
 	const persistTimerRef = useRef(null);
+	const draftStorageTimerRef = useRef(null);
 	const aiRequestRef = useRef(null);
 	const localDraftHashRef = useRef("");
 	const persistHashRef = useRef("");
@@ -302,24 +304,60 @@ const TriageIntakeModal = ({
 		[steps, draft]
 	);
 	const progressPct = steps.length > 0 ? Math.round((answeredCount / steps.length) * 100) : 100;
+	const draftStorageKey = useMemo(
+		() => (requestId ? `@ivisit/triage_draft/${String(requestId)}` : null),
+		[requestId]
+	);
 
 	useEffect(() => {
 		if (!visible) return;
-		setDraft(normalizeDraft(initialDraft));
+		let cancelled = false;
+		const hydrateDraft = async () => {
+			let nextDraft = normalizeDraft(initialDraft);
+			if (draftStorageKey) {
+				try {
+					const storedRaw = await AsyncStorage.getItem(draftStorageKey);
+					if (!cancelled && storedRaw) {
+						const storedDraft = normalizeDraft(JSON.parse(storedRaw));
+						if (hasMeaningfulDraftData(storedDraft)) {
+							nextDraft = storedDraft;
+						}
+					}
+				} catch (error) {
+					if (__DEV__) {
+						console.warn("[TriageIntakeModal] Failed to restore local draft:", error);
+					}
+				}
+			}
+			if (!cancelled) {
+				setDraft(nextDraft);
+			}
+		};
+		void hydrateDraft();
 		setStepIndex(0);
 		setShowExtendedComplaints(false);
 		setAiPrompt(null);
 		setAiSource(null);
 		setAiModel(null);
-	}, [visible, phase, requestId]);
+		return () => {
+			cancelled = true;
+		};
+	}, [visible, phase, requestId, draftStorageKey]);
 
 	useEffect(() => {
-		if (!visible || !initialDraft) return;
-		setDraft((prev) => {
-			if (hasMeaningfulDraftData(prev)) return prev;
-			return normalizeDraft(initialDraft);
-		});
-	}, [visible, initialDraft]);
+		if (!visible || !draftStorageKey) return;
+		if (draftStorageTimerRef.current) clearTimeout(draftStorageTimerRef.current);
+		draftStorageTimerRef.current = setTimeout(() => {
+			AsyncStorage.setItem(draftStorageKey, JSON.stringify(normalizeDraft(draft))).catch(
+				(error) => {
+					if (__DEV__) {
+						console.warn("[TriageIntakeModal] Failed to persist local draft:", error);
+					}
+				}
+			);
+		}, 180);
+		return () => clearTimeout(draftStorageTimerRef.current);
+	}, [visible, draftStorageKey, draft]);
 
 	useEffect(() => {
 		if (!visible) return;

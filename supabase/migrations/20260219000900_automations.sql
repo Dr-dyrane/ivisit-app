@@ -1057,3 +1057,129 @@ CREATE INDEX IF NOT EXISTS idx_emergency_requests_created_at ON public.emergency
 CREATE INDEX IF NOT EXISTS idx_ambulances_hospital_status ON public.ambulances(hospital_id, status);
 CREATE INDEX IF NOT EXISTS idx_payments_emergency_request_id ON public.payments(emergency_request_id);
 CREATE INDEX IF NOT EXISTS idx_visits_request_id ON public.visits(request_id);
+
+
+-- SCC-070: Backfill visit hospital metadata for stable UI cards
+-- Ensures visits have canonical hospital_id/hospital_name where possible.
+-- If visits.image exists, it is backfilled from hospitals.image as well.
+DO $$
+DECLARE
+    v_has_image_column BOOLEAN;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'visits'
+          AND column_name = 'image'
+    )
+    INTO v_has_image_column;
+
+    IF v_has_image_column THEN
+        -- 1) Backfill from linked emergency request (with image).
+        EXECUTE $sql$
+            UPDATE public.visits v
+            SET
+                hospital_id = COALESCE(v.hospital_id, er.hospital_id),
+                hospital_name = COALESCE(
+                    NULLIF(TRIM(v.hospital_name), ''),
+                    NULLIF(TRIM(er.hospital_name), ''),
+                    (
+                        SELECT h1.name
+                        FROM public.hospitals h1
+                        WHERE h1.id = COALESCE(v.hospital_id, er.hospital_id)
+                        LIMIT 1
+                    ),
+                    v.hospital_name
+                ),
+                image = COALESCE(
+                    NULLIF(TRIM(v.image), ''),
+                    (
+                        SELECT NULLIF(TRIM(h1.image), '')
+                        FROM public.hospitals h1
+                        WHERE h1.id = COALESCE(v.hospital_id, er.hospital_id)
+                        LIMIT 1
+                    ),
+                    v.image
+                ),
+                updated_at = NOW()
+            FROM public.emergency_requests er
+            WHERE v.request_id = er.id
+              AND (
+                  v.hospital_id IS NULL
+                  OR NULLIF(TRIM(v.hospital_name), '') IS NULL
+                  OR LOWER(TRIM(COALESCE(v.hospital_name, ''))) IN ('hospital', 'unknown facility')
+                  OR NULLIF(TRIM(v.image), '') IS NULL
+              )
+        $sql$;
+
+        -- 2) Backfill from direct hospital join (with image).
+        EXECUTE $sql$
+            UPDATE public.visits v
+            SET
+                hospital_name = COALESCE(
+                    NULLIF(TRIM(v.hospital_name), ''),
+                    h.name,
+                    v.hospital_name
+                ),
+                image = COALESCE(
+                    NULLIF(TRIM(v.image), ''),
+                    NULLIF(TRIM(h.image), ''),
+                    v.image
+                ),
+                updated_at = NOW()
+            FROM public.hospitals h
+            WHERE h.id = v.hospital_id
+              AND (
+                  NULLIF(TRIM(v.hospital_name), '') IS NULL
+                  OR LOWER(TRIM(COALESCE(v.hospital_name, ''))) IN ('hospital', 'unknown facility')
+                  OR NULLIF(TRIM(v.image), '') IS NULL
+              )
+        $sql$;
+    ELSE
+        -- 1) Backfill from linked emergency request (schema without visits.image).
+        EXECUTE $sql$
+            UPDATE public.visits v
+            SET
+                hospital_id = COALESCE(v.hospital_id, er.hospital_id),
+                hospital_name = COALESCE(
+                    NULLIF(TRIM(v.hospital_name), ''),
+                    NULLIF(TRIM(er.hospital_name), ''),
+                    (
+                        SELECT h1.name
+                        FROM public.hospitals h1
+                        WHERE h1.id = COALESCE(v.hospital_id, er.hospital_id)
+                        LIMIT 1
+                    ),
+                    v.hospital_name
+                ),
+                updated_at = NOW()
+            FROM public.emergency_requests er
+            WHERE v.request_id = er.id
+              AND (
+                  v.hospital_id IS NULL
+                  OR NULLIF(TRIM(v.hospital_name), '') IS NULL
+                  OR LOWER(TRIM(COALESCE(v.hospital_name, ''))) IN ('hospital', 'unknown facility')
+              )
+        $sql$;
+
+        -- 2) Backfill from direct hospital join (schema without visits.image).
+        EXECUTE $sql$
+            UPDATE public.visits v
+            SET
+                hospital_name = COALESCE(
+                    NULLIF(TRIM(v.hospital_name), ''),
+                    h.name,
+                    v.hospital_name
+                ),
+                updated_at = NOW()
+            FROM public.hospitals h
+            WHERE h.id = v.hospital_id
+              AND (
+                  NULLIF(TRIM(v.hospital_name), '') IS NULL
+                  OR LOWER(TRIM(COALESCE(v.hospital_name, ''))) IN ('hospital', 'unknown facility')
+              )
+        $sql$;
+    END IF;
+END
+$$;

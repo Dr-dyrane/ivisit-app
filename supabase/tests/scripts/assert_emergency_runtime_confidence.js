@@ -39,6 +39,7 @@ const REQUIRED_E2E_SCENARIOS = [
   'completion',
   'cashAmbulance',
   'bedReservation',
+  'tipFlow',
   'transitionAudit',
 ];
 
@@ -133,6 +134,18 @@ function run() {
     const rows = Array.isArray(scenarios.transitionAudit.rows) ? scenarios.transitionAudit.rows : [];
     if (rows.length === 0) {
       failures.push('transition audit rows are empty');
+    }
+  }
+
+  if (scenarios.tipFlow) {
+    if (!allAssertionsTrue(scenarios.tipFlow.assertions)) {
+      failures.push('tipFlow assertions not all true');
+    }
+    if (scenarios.tipFlow.walletTipError) {
+      failures.push(`tipFlow wallet tip error: ${scenarios.tipFlow.walletTipError}`);
+    }
+    if (scenarios.tipFlow.cashTipError) {
+      failures.push(`tipFlow cash tip error: ${scenarios.tipFlow.cashTipError}`);
     }
   }
 

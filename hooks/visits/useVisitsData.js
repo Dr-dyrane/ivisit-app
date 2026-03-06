@@ -149,11 +149,51 @@ export function useVisitsData() {
                         else if (payload.eventType === 'UPDATE') {
                             const updatedVisit = visitsService.fromDbRow(payload.new);
                             if (!updatedVisit) return;
-                            setVisits(prev => prev.map(v => v.id === updatedVisit.id ? updatedVisit : v));
+                            setVisits((prev) => {
+                                const keySet = buildKeySet(
+                                    payload?.new?.id,
+                                    payload?.new?.request_id,
+                                    payload?.new?.display_id,
+                                    updatedVisit?.id,
+                                    updatedVisit?.requestId,
+                                    updatedVisit?.displayId
+                                );
+                                const previousMatch = prev.find((visit) => visitMatchesKeys(visit, keySet)) || null;
+                                const merged = {
+                                    ...updatedVisit,
+                                    hospital:
+                                        updatedVisit?.hospital ||
+                                        previousMatch?.hospital ||
+                                        previousMatch?.hospitalName ||
+                                        null,
+                                    hospitalName:
+                                        updatedVisit?.hospitalName ||
+                                        previousMatch?.hospitalName ||
+                                        previousMatch?.hospital ||
+                                        null,
+                                    image:
+                                        updatedVisit?.image ||
+                                        updatedVisit?.hospitalImage ||
+                                        previousMatch?.image ||
+                                        previousMatch?.hospitalImage ||
+                                        null,
+                                    hospitalImage:
+                                        updatedVisit?.hospitalImage ||
+                                        updatedVisit?.image ||
+                                        previousMatch?.hospitalImage ||
+                                        previousMatch?.image ||
+                                        null,
+                                };
+                                return replaceVisitByKey(prev, payload?.new?.id || updatedVisit?.id, merged);
+                            });
                         }
                         else if (payload.eventType === 'DELETE') {
-                            const deletedId = payload.old.id;
-                            setVisits(prev => prev.filter(v => v.id !== deletedId));
+                            const keySet = buildKeySet(
+                                payload?.old?.id,
+                                payload?.old?.request_id,
+                                payload?.old?.display_id
+                            );
+                            setVisits(prev => prev.filter(v => !visitMatchesKeys(v, keySet)));
                         }
                     }
                 )

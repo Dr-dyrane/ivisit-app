@@ -11,7 +11,7 @@ RETURNS JSONB AS $$
 DECLARE
     v_actor_id UUID := auth.uid();
     v_visit RECORD;
-    v_request RECORD;
+    v_request_hospital_id UUID;
     v_org_id UUID;
     v_patient_wallet_id UUID;
     v_patient_balance NUMERIC;
@@ -55,22 +55,18 @@ BEGIN
     END IF;
 
     IF v_visit.request_id IS NOT NULL THEN
-        SELECT id, organization_id, hospital_id
-        INTO v_request
+        SELECT hospital_id
+        INTO v_request_hospital_id
         FROM public.emergency_requests
         WHERE id = v_visit.request_id
         LIMIT 1;
     END IF;
 
-    v_org_id := v_request.organization_id;
-
-    IF v_org_id IS NULL THEN
-        SELECT organization_id
-        INTO v_org_id
-        FROM public.hospitals
-        WHERE id = COALESCE(v_visit.hospital_id, v_request.hospital_id)
-        LIMIT 1;
-    END IF;
+    SELECT organization_id
+    INTO v_org_id
+    FROM public.hospitals
+    WHERE id = COALESCE(v_visit.hospital_id, v_request_hospital_id)
+    LIMIT 1;
 
     IF v_org_id IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'Unable to resolve destination organization');
@@ -192,7 +188,7 @@ RETURNS JSONB AS $$
 DECLARE
     v_actor_id UUID := auth.uid();
     v_visit RECORD;
-    v_request RECORD;
+    v_request_hospital_id UUID;
     v_org_id UUID;
     v_payment_id UUID;
     v_tip_amount NUMERIC := ROUND(COALESCE(p_tip_amount, 0)::NUMERIC, 2);
@@ -233,22 +229,18 @@ BEGIN
     END IF;
 
     IF v_visit.request_id IS NOT NULL THEN
-        SELECT id, organization_id, hospital_id
-        INTO v_request
+        SELECT hospital_id
+        INTO v_request_hospital_id
         FROM public.emergency_requests
         WHERE id = v_visit.request_id
         LIMIT 1;
     END IF;
 
-    v_org_id := v_request.organization_id;
-
-    IF v_org_id IS NULL THEN
-        SELECT organization_id
-        INTO v_org_id
-        FROM public.hospitals
-        WHERE id = COALESCE(v_visit.hospital_id, v_request.hospital_id)
-        LIMIT 1;
-    END IF;
+    SELECT organization_id
+    INTO v_org_id
+    FROM public.hospitals
+    WHERE id = COALESCE(v_visit.hospital_id, v_request_hospital_id)
+    LIMIT 1;
 
     IF v_org_id IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'Unable to resolve destination organization');

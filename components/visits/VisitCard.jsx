@@ -5,9 +5,55 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 
+const DEFAULT_VISIT_HOSPITAL_IMAGES = [
+  "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1632833239869-a37e3a5806d2?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=1200&q=80",
+];
+
+const hashString = (seed) => {
+  const input = String(seed || "hospital");
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
+
+const pickDefaultHospitalImage = (seed) =>
+  DEFAULT_VISIT_HOSPITAL_IMAGES[hashString(seed) % DEFAULT_VISIT_HOSPITAL_IMAGES.length];
+
 export default function VisitCard({ visit, isSelected, onSelect, onViewDetails, onDelete }) {
   const { isDarkMode } = useTheme();
+
+  const rawHospitalLabel =
+    (typeof visit?.hospitalName === "string" && visit.hospitalName) ||
+    (typeof visit?.hospital === "string" && visit.hospital) ||
+    "Hospital";
+  const isDemoVisit = /\(demo\)/i.test(rawHospitalLabel);
+  const hospitalLabel = rawHospitalLabel.replace(/\s*\(demo\)\s*/gi, " ").trim();
+  const primaryHospitalImageUri =
+    (typeof visit?.image === "string" && visit.image.trim()) ||
+    (typeof visit?.hospitalImage === "string" && visit.hospitalImage.trim()) ||
+    null;
+  const fallbackHospitalImageUri = pickDefaultHospitalImage(
+    visit?.hospitalId || hospitalLabel || visit?.id
+  );
+  const [imageLoadFailed, setImageLoadFailed] = React.useState(false);
+  React.useEffect(() => {
+    setImageLoadFailed(false);
+  }, [visit?.id, primaryHospitalImageUri]);
+  const hospitalImageUri =
+    !imageLoadFailed && primaryHospitalImageUri
+      ? primaryHospitalImageUri
+      : fallbackHospitalImageUri;
   if (!visit) return null;
+  const doctorLabel =
+    (typeof visit?.doctorName === "string" && visit.doctorName) ||
+    (typeof visit?.doctor === "string" && visit.doctor) ||
+    "Doctor";
 
   // Theme-Based Color Logic (No Hard-coded Hex)
   const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
@@ -67,7 +113,14 @@ export default function VisitCard({ visit, isSelected, onSelect, onViewDetails, 
 
       {/* Hero Image Section */}
       <View style={styles.imageContainer}>
-        <Image source={{ uri: visit?.image }} style={styles.image} resizeMode="cover" />
+        <Image
+          source={{ uri: hospitalImageUri }}
+          style={styles.image}
+          resizeMode="cover"
+          onError={() => {
+            if (!imageLoadFailed) setImageLoadFailed(true);
+          }}
+        />
         <View style={[styles.statusBadge, { backgroundColor: COLORS.brandPrimary }]}>
           <Text style={styles.statusText}>
             {visit?.status?.replace("_", " ") || "pending"}
@@ -78,9 +131,16 @@ export default function VisitCard({ visit, isSelected, onSelect, onViewDetails, 
       <View style={styles.content}>
         {/* Header Section */}
         <View style={styles.headerRow}>
-          <Text style={[styles.hospitalName, { color: textColor }]} numberOfLines={1}>
-            {visit?.hospital || "Hospital"}
-          </Text>
+          <View style={styles.hospitalTitleRow}>
+            <Text style={[styles.hospitalName, { color: textColor }]} numberOfLines={1}>
+              {hospitalLabel || "Hospital"}
+            </Text>
+            {isDemoVisit ? (
+              <View style={[styles.demoIconBadge, { backgroundColor: COLORS.brandPrimary + "22" }]}>
+                <Ionicons name="flask-outline" size={12} color={COLORS.brandPrimary} />
+              </View>
+            ) : null}
+          </View>
           <Text style={[styles.visitType, { color: mutedColor }]}>
             {visit?.type || "Appointment"}
           </Text>
@@ -90,11 +150,11 @@ export default function VisitCard({ visit, isSelected, onSelect, onViewDetails, 
         <View style={[styles.doctorWidget, { backgroundColor: isDarkMode ? COLORS.bgDark : COLORS.bgLight }]}>
           <View style={[styles.doctorSquircle, { backgroundColor: accentSurface }]}>
             <Text style={[styles.doctorInitials, { color: COLORS.brandPrimary }]}>
-              {visit?.doctor?.split(" ")?.map(n => n?.[0])?.join("") || "D"}
+              {doctorLabel?.split(" ")?.map(n => n?.[0])?.join("") || "D"}
             </Text>
           </View>
           <View style={styles.doctorInfo}>
-            <Text style={[styles.doctorName, { color: textColor }]}>{visit?.doctor || "Doctor"}</Text>
+            <Text style={[styles.doctorName, { color: textColor }]}>{doctorLabel}</Text>
             <Text style={[styles.specialtyText, { color: mutedColor }]}>{visit?.specialty || "Specialty"}</Text>
           </View>
         </View>
@@ -190,7 +250,19 @@ const styles = StyleSheet.create({
   },
   content: { paddingHorizontal: 4 },
   headerRow: { marginBottom: 16 },
-  hospitalName: { fontSize: 22, fontWeight: "900", letterSpacing: -0.8 },
+  hospitalTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  hospitalName: { fontSize: 22, fontWeight: "900", letterSpacing: -0.8, flexShrink: 1 },
+  demoIconBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   visitType: { fontSize: 14, fontWeight: "600", marginTop: 2 },
   doctorWidget: {
     flexDirection: "row",
