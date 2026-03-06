@@ -1937,6 +1937,10 @@ export type Database = {
           request_id: string | null
           specialty: string | null
           status: string | null
+          tip_amount: number | null
+          tip_currency: string | null
+          tip_payment_id: string | null
+          tipped_at: string | null
           time: string | null
           type: string | null
           updated_at: string
@@ -1960,6 +1964,10 @@ export type Database = {
           request_id?: string | null
           specialty?: string | null
           status?: string | null
+          tip_amount?: number | null
+          tip_currency?: string | null
+          tip_payment_id?: string | null
+          tipped_at?: string | null
           time?: string | null
           type?: string | null
           updated_at?: string
@@ -1983,6 +1991,10 @@ export type Database = {
           request_id?: string | null
           specialty?: string | null
           status?: string | null
+          tip_amount?: number | null
+          tip_currency?: string | null
+          tip_payment_id?: string | null
+          tipped_at?: string | null
           time?: string | null
           type?: string | null
           updated_at?: string
@@ -2001,6 +2013,13 @@ export type Database = {
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "emergency_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visits_tip_payment_id_fkey"
+            columns: ["tip_payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
           {
@@ -2588,6 +2607,10 @@ export type Database = {
           p_emergency_request_id?: string
           p_user_id: string
         }
+        Returns: Json
+      }
+      process_visit_tip: {
+        Args: { p_currency?: string; p_tip_amount: number; p_visit_id: string }
         Returns: Json
       }
       rate_visit: {

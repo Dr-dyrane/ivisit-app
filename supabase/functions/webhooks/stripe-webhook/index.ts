@@ -47,12 +47,49 @@ serve(async (req) => {
                 const paymentIntent = event.data.object as Stripe.PaymentIntent
                 console.log(`💰 PaymentIntent succeeded: ${paymentIntent.id}`)
 
+                const { data: existingPayment, error: existingPaymentError } = await supabaseAdmin
+                    .from('payments')
+                    .select('id,metadata,payment_method,ivisit_fee_amount')
+                    .eq('stripe_payment_intent_id', paymentIntent.id)
+                    .maybeSingle()
+
+                if (existingPaymentError) {
+                    console.error('Error loading existing payment row:', existingPaymentError)
+                }
+
+                const existingMetadata =
+                    existingPayment?.metadata &&
+                    typeof existingPayment.metadata === 'object' &&
+                    !Array.isArray(existingPayment.metadata)
+                        ? existingPayment.metadata
+                        : {}
+                const isTopUp = paymentIntent.metadata?.is_top_up === 'true'
+                const feeAmount = Number(
+                    (
+                        (paymentIntent.application_fee_amount ?? 0) / 100 ||
+                        Number(existingPayment?.ivisit_fee_amount || existingMetadata?.fee_amount || 0)
+                    ).toFixed(2)
+                )
+                const paymentMetadata = {
+                    ...existingMetadata,
+                    source: 'stripe-webhook',
+                    payment_kind: isTopUp
+                        ? 'top_up'
+                        : existingMetadata?.payment_kind || 'service',
+                    is_top_up: isTopUp || Boolean(existingMetadata?.is_top_up),
+                    fee_amount: feeAmount,
+                    fee: feeAmount,
+                }
+
                 // Update payment status in DB
                 const { error: updateError } = await supabaseAdmin
                     .from('payments')
                     .update({
                         status: 'completed',
                         processed_at: new Date().toISOString(),
+                        payment_method: existingPayment?.payment_method || 'card',
+                        ivisit_fee_amount: feeAmount,
+                        metadata: paymentMetadata,
                         provider_response: paymentIntent
                     })
                     .eq('stripe_payment_intent_id', paymentIntent.id)

@@ -96,18 +96,21 @@ serve(async (req) => {
             httpClient: Stripe.createFetchHttpClient(),
         })
 
+        const isTopUp = Boolean(is_top_up)
+
         // 3. Calculate Fee & Prep Intent
         const amountInCents = Math.round(amount * 100)
         let applicationFeeInCents = 0
+        const paymentCurrency = String(currency || 'usd').toLowerCase()
         let intentOptions: any = {
             amount: amountInCents,
-            currency: currency,
+            currency: paymentCurrency,
             automatic_payment_methods: { enabled: true },
             metadata: {
                 user_id: user.id,
                 organization_id: resolvedOrgId || 'platform',
                 emergency_request_id: emergency_request_id ?? '',
-                is_top_up: is_top_up ? 'true' : 'false'
+                is_top_up: isTopUp ? 'true' : 'false'
             },
         }
 
@@ -124,6 +127,14 @@ serve(async (req) => {
         }
 
         const paymentIntent = await stripe.paymentIntents.create(intentOptions)
+        const feeAmount = Number((applicationFeeInCents / 100).toFixed(2))
+        const paymentMetadata = {
+            source: 'create-payment-intent',
+            payment_kind: isTopUp ? 'top_up' : 'service',
+            is_top_up: isTopUp,
+            fee_amount: feeAmount,
+            fee: feeAmount,
+        }
 
         // 4. Create a record in our payments table (pending)
         const { error: paymentRecordError } = await supabaseAdmin
@@ -133,9 +144,12 @@ serve(async (req) => {
                 organization_id: resolvedOrgId, // null for platform
                 emergency_request_id: emergency_request_id,
                 amount: amount,
-                currency: currency,
+                currency: paymentCurrency.toUpperCase(),
+                payment_method: 'card',
                 status: 'pending',
                 stripe_payment_intent_id: paymentIntent.id,
+                ivisit_fee_amount: feeAmount,
+                metadata: paymentMetadata,
             })
 
         if (paymentRecordError) {

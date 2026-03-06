@@ -612,6 +612,36 @@ export const paymentService = {
   },
 
   /**
+   * Process a post-visit tip from patient wallet.
+   * Tip is credited fully to the destination organization (no platform fee).
+   */
+  async processVisitTip(visitId, tipAmount, currency = 'USD') {
+    try {
+      if (!visitId) throw new Error('visitId is required');
+      const amount = parseFloat(tipAmount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new Error('tipAmount must be greater than zero');
+      }
+
+      const { data, error } = await supabase.rpc('process_visit_tip', {
+        p_visit_id: visitId,
+        p_tip_amount: amount,
+        p_currency: currency,
+      });
+
+      if (error) throw error;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Tip payment failed');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('[paymentService] processVisitTip error:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Process cash payment with fee deduction
    * Deducts platform fee from organization wallet and records payment
    */

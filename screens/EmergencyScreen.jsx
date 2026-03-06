@@ -31,6 +31,7 @@ import { useNotifications } from "../contexts/NotificationsContext";
 import { getMapPaddingForSnapIndex } from "../constants/emergencyAnimations";
 // import { simulationService } from "../services/simulationService"; // REMOVED: Mock service
 import { discoveryService } from "../services/discoveryService";
+import { paymentService } from "../services/paymentService";
 import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigationHelpers";
 import { useToast } from "../contexts/ToastContext";
 import Constants from "expo-constants";
@@ -1202,7 +1203,7 @@ const EmergencyScreen = () => {
 						serviceDetails: null
 					});
 				}}
-				onSubmit={async ({ rating, comment, serviceType }) => {
+				onSubmit={async ({ rating, comment, serviceType, tipAmount, tipCurrency }) => {
 					const visitId = ratingState.visitId;
 					if (!visitId) return;
 					const nowIso = new Date().toISOString();
@@ -1215,6 +1216,29 @@ const EmergencyScreen = () => {
 						lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
 						lifecycleUpdatedAt: nowIso,
 					});
+
+					if (Number(tipAmount) > 0) {
+						try {
+							const tipResult = await paymentService.processVisitTip(
+								visitId,
+								Number(tipAmount),
+								tipCurrency || "USD"
+							);
+
+							if (tipResult?.success) {
+								showToast(
+									`Tip sent: ${tipResult.currency || tipCurrency || "USD"} ${Number(tipResult.tip_amount || tipAmount).toFixed(2)}`,
+									"success"
+								);
+							}
+						} catch (tipError) {
+							console.warn("[EmergencyScreen] Tip processing failed:", tipError);
+							showToast(
+								tipError?.message || "Tip could not be processed",
+								"error"
+							);
+						}
+					}
 
 					setRatingState({ visible: false, visitId: null, title: null, subtitle: null, serviceType: null, serviceDetails: null });
 				}}

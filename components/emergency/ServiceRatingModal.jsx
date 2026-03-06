@@ -24,8 +24,10 @@ import { BlurView } from "expo-blur";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
+import { paymentService } from "../../services/paymentService";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const TIP_PRESETS = [0, 5, 10, 20];
 
 export function ServiceRatingModal({
 	visible,
@@ -39,6 +41,13 @@ export function ServiceRatingModal({
 	const { isDarkMode } = useTheme();
 	const [rating, setRating] = useState(0);
 	const [comment, setComment] = useState("");
+	const [selectedTip, setSelectedTip] = useState(0);
+	const [customTip, setCustomTip] = useState("");
+	const [isCustomTip, setIsCustomTip] = useState(false);
+	const [tipError, setTipError] = useState("");
+	const [walletBalance, setWalletBalance] = useState(0);
+	const [walletCurrency, setWalletCurrency] = useState("USD");
+	const [walletLoading, setWalletLoading] = useState(false);
 
 	const { modalHeight, keyboardHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
 		useAndroidKeyboardAwareModal({
@@ -53,6 +62,10 @@ export function ServiceRatingModal({
 		if (!visible) return;
 		setRating(0);
 		setComment("");
+		setSelectedTip(0);
+		setCustomTip("");
+		setIsCustomTip(false);
+		setTipError("");
 		Animated.parallel([
 			Animated.spring(slideAnim, {
 				toValue: 0,
@@ -67,6 +80,34 @@ export function ServiceRatingModal({
 			}),
 		]).start();
 	}, [fadeAnim, slideAnim, visible]);
+
+	useEffect(() => {
+		if (!visible) return undefined;
+		let cancelled = false;
+
+		const loadWallet = async () => {
+			setWalletLoading(true);
+			try {
+				const wallet = await paymentService.getWalletBalance();
+				if (cancelled) return;
+				setWalletBalance(Number(wallet?.balance || 0));
+				setWalletCurrency(String(wallet?.currency || "USD"));
+			} catch (error) {
+				if (!cancelled) {
+					setWalletBalance(0);
+					setWalletCurrency("USD");
+				}
+				console.warn("[ServiceRatingModal] Wallet balance load failed:", error);
+			} finally {
+				if (!cancelled) setWalletLoading(false);
+			}
+		};
+
+		loadWallet();
+		return () => {
+			cancelled = true;
+		};
+	}, [visible]);
 
 	const colors = useMemo(() => ({
 		bg: isDarkMode ? COLORS.bgDark : COLORS.bgLight,
@@ -94,9 +135,26 @@ export function ServiceRatingModal({
 
 	const handleSubmit = useCallback(() => {
 		if (rating < 1) return;
-		onSubmit?.({ rating, comment: comment?.trim() || null, serviceType });
+		const normalizedCustomTip = Number.parseFloat(String(customTip || "").replace(/[^0-9.]/g, ""));
+		const tipAmount = isCustomTip
+			? (Number.isFinite(normalizedCustomTip) ? Math.max(0, Math.round(normalizedCustomTip * 100) / 100) : 0)
+			: selectedTip;
+
+		if (tipAmount > 0 && tipAmount > Number(walletBalance || 0)) {
+			setTipError("Insufficient wallet balance for selected tip.");
+			return;
+		}
+
+		setTipError("");
+		onSubmit?.({
+			rating,
+			comment: comment?.trim() || null,
+			serviceType,
+			tipAmount: tipAmount > 0 ? tipAmount : 0,
+			tipCurrency: walletCurrency || "USD",
+		});
 		close();
-	}, [close, comment, onSubmit, rating, serviceType]);
+	}, [close, comment, customTip, isCustomTip, onSubmit, rating, selectedTip, serviceType, walletBalance, walletCurrency]);
 
 	const stars = useMemo(() => [1, 2, 3, 4, 5], []);
 
@@ -318,6 +376,98 @@ export function ServiceRatingModal({
 									}}
 									multiline
 								/>
+							</View>
+
+							{/* Tip Section */}
+							<View className="mb-8">
+								<Text
+									className="text-base font-medium mb-2"
+									style={{ color: colors.text }}
+								>
+									Add a tip (optional)
+								</Text>
+								<Text
+									className="text-sm mb-4"
+									style={{ color: colors.subtext }}
+								>
+									Tips are charged from your wallet balance.
+								</Text>
+
+								<View className="flex-row flex-wrap mb-4" style={{ gap: 10 }}>
+									{TIP_PRESETS.map((amount) => {
+										const isActive = !isCustomTip && selectedTip === amount;
+										return (
+											<Pressable
+												key={`tip-${amount}`}
+												onPress={() => {
+													setIsCustomTip(false);
+													setSelectedTip(amount);
+													setTipError("");
+												}}
+												className="px-4 py-2 rounded-xl"
+												style={{
+													backgroundColor: isActive ? `${colors.accent}20` : colors.card,
+												}}
+											>
+												<Text
+													className="text-sm font-semibold"
+													style={{ color: isActive ? colors.accent : colors.text }}
+												>
+													{amount === 0 ? "No tip" : `$${amount}`}
+												</Text>
+											</Pressable>
+										);
+									})}
+
+									<Pressable
+										onPress={() => {
+											setIsCustomTip(true);
+											setSelectedTip(0);
+											setTipError("");
+										}}
+										className="px-4 py-2 rounded-xl"
+										style={{
+											backgroundColor: isCustomTip ? `${colors.accent}20` : colors.card,
+										}}
+									>
+										<Text
+											className="text-sm font-semibold"
+											style={{ color: isCustomTip ? colors.accent : colors.text }}
+										>
+											Custom
+										</Text>
+									</Pressable>
+								</View>
+
+								{isCustomTip && (
+									<TextInput
+										value={customTip}
+										onChangeText={(value) => {
+											setCustomTip(value);
+											setTipError("");
+										}}
+										placeholder="Enter tip amount"
+										placeholderTextColor={colors.subtext}
+										keyboardType="decimal-pad"
+										className="rounded-2xl px-4 py-3 text-base mb-3"
+										style={{ color: colors.text, backgroundColor: colors.card }}
+									/>
+								)}
+
+								<Text
+									className="text-sm"
+									style={{ color: colors.subtext }}
+								>
+									{walletLoading
+										? "Checking wallet balance..."
+										: `Wallet balance: ${walletCurrency} ${Number(walletBalance || 0).toFixed(2)}`}
+								</Text>
+
+								{tipError ? (
+									<Text className="text-sm mt-2" style={{ color: "#EF4444" }}>
+										{tipError}
+									</Text>
+								) : null}
 							</View>
 
 							{/* Actions */}

@@ -106,6 +106,10 @@ const stripExtendedEmergencyColumns = (dbItem) => {
     delete next.rating;
     delete next.rating_comment;
     delete next.rated_at;
+    delete next.tip_amount;
+    delete next.tip_currency;
+    delete next.tipped_at;
+    delete next.tip_payment_id;
     return next;
 };
 
@@ -115,7 +119,11 @@ const shouldDisableExtendedColumns = (err) => {
         isMissingColumnError(err, "lifecycle_updated_at") ||
         isMissingColumnError(err, "rating") ||
         isMissingColumnError(err, "rating_comment") ||
-        isMissingColumnError(err, "rated_at")
+        isMissingColumnError(err, "rated_at") ||
+        isMissingColumnError(err, "tip_amount") ||
+        isMissingColumnError(err, "tip_currency") ||
+        isMissingColumnError(err, "tipped_at") ||
+        isMissingColumnError(err, "tip_payment_id")
     );
 };
 
@@ -138,6 +146,10 @@ const mapToDb = (item) => {
     if (item.rating !== undefined) db.rating = item.rating;
     if (item.ratingComment !== undefined) db.rating_comment = item.ratingComment;
     if (item.ratedAt !== undefined) db.rated_at = item.ratedAt;
+    if (item.tipAmount !== undefined) db.tip_amount = item.tipAmount;
+    if (item.tipCurrency !== undefined) db.tip_currency = item.tipCurrency;
+    if (item.tippedAt !== undefined) db.tipped_at = item.tippedAt;
+    if (item.tipPaymentId !== undefined) db.tip_payment_id = item.tipPaymentId;
 
     // Remove camelCase keys
     delete db.hospitalId;
@@ -160,6 +172,10 @@ const mapToDb = (item) => {
     delete db.rating;
     delete db.ratingComment;
     delete db.ratedAt;
+    delete db.tipAmount;
+    delete db.tipCurrency;
+    delete db.tippedAt;
+    delete db.tipPaymentId;
 
     return db;
 };
@@ -184,6 +200,10 @@ const mapFromDb = (row) => ({
     rating: row.rating,
     ratingComment: row.rating_comment,
     ratedAt: row.rated_at,
+    tipAmount: row.tip_amount,
+    tipCurrency: row.tip_currency,
+    tippedAt: row.tipped_at,
+    tipPaymentId: row.tip_payment_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
 });

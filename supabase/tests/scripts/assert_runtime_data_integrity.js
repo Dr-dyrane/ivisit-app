@@ -56,6 +56,16 @@ function addSample(bucket, value) {
   }
 }
 
+function normalizePaymentMethod(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isTruthyFlag(value) {
+  if (typeof value === 'boolean') return value;
+  const normalized = String(value || '').trim().toLowerCase();
+  return normalized === 'true' || normalized === '1' || normalized === 'yes';
+}
+
 async function fetchInChunks(table, selectClause, values, key) {
   if (!values || values.length === 0) return [];
   const unique = [...new Set(values.filter(Boolean))];
@@ -103,21 +113,28 @@ async function run() {
   };
 
   try {
-    // --- payments + fee ledger integrity ---
+    // --- payments + fee ledger integrity (cash + non-cash) ---
     const payments = await fetchPaged(() =>
       supabase
         .from('payments')
         .select(
-          'id,organization_id,emergency_request_id,amount,ivisit_fee_amount,payment_method,status,metadata,created_at,updated_at'
+          'id,user_id,organization_id,emergency_request_id,amount,ivisit_fee_amount,payment_method,status,metadata,stripe_payment_intent_id,created_at,updated_at'
         )
         .eq('status', 'completed')
-        .eq('payment_method', 'cash')
         .gte('created_at', cutoffIso)
         .order('created_at', { ascending: false })
     );
 
     const orgIds = [...new Set(payments.map((p) => p.organization_id).filter(Boolean))];
     const paymentIds = payments.map((p) => p.id).filter(Boolean);
+    const walletPaymentUserIds = [
+      ...new Set(
+        payments
+          .filter((p) => normalizePaymentMethod(p.payment_method) === 'wallet')
+          .map((p) => p.user_id)
+          .filter(Boolean)
+      ),
+    ];
 
     const organizations = await fetchInChunks(
       'organizations',
@@ -137,6 +154,12 @@ async function run() {
       paymentIds,
       'reference_id'
     );
+    const patientWallets = await fetchInChunks(
+      'patient_wallets',
+      'id,user_id',
+      walletPaymentUserIds,
+      'user_id'
+    );
     const { data: platformWallet, error: platformWalletErr } = await supabase
       .from('ivisit_main_wallet')
       .select('id,balance')
@@ -150,6 +173,7 @@ async function run() {
       organizations.map((org) => [org.id, toNum(org.ivisit_fee_percentage || 2.5)])
     );
     const orgWalletByOrgId = new Map(wallets.map((w) => [w.organization_id, w.id]));
+    const patientWalletByUserId = new Map(patientWallets.map((w) => [w.user_id, w.id]));
     const ledgerByRef = new Map();
     for (const row of ledgerRows) {
       const key = String(row.reference_id || '');
@@ -157,29 +181,132 @@ async function run() {
       ledgerByRef.get(key).push(row);
     }
 
+    let cashPaymentsCompleted = 0;
     let cashPaymentsWithExpectedFee = 0;
     let cashPaymentsMissingLedger = 0;
     let cashPaymentsMissingFeePersistence = 0;
+    let nonCashPaymentsCompleted = 0;
+    let nonCashPaymentsWithOrganization = 0;
+    let nonCashPaymentsSkippedNoOrganization = 0;
+    let nonCashPaymentsWithExpectedFee = 0;
+    let nonCashPaymentsMissingLedger = 0;
+    let nonCashPaymentsMissingFeePersistence = 0;
+    let nonCashWalletPaymentsMissingPatientDebit = 0;
 
     for (const payment of payments) {
       const meta = payment && typeof payment.metadata === 'object' && payment.metadata ? payment.metadata : {};
+      const method = normalizePaymentMethod(payment.payment_method);
+      const paymentKind = normalizePaymentMethod(meta.payment_kind);
+      const isCash = method === 'cash';
+      const isWallet = method === 'wallet';
+      const isTip = paymentKind === 'tip';
+      const isTopUp =
+        isTruthyFlag(meta.is_top_up) ||
+        paymentKind === 'top_up' ||
+        (!payment.organization_id && !payment.emergency_request_id);
       const orgFeePct = orgFeeById.get(payment.organization_id) ?? 2.5;
-      const expectedFee = round2(
+      const persistedFee =
         (toNum(payment.ivisit_fee_amount) > 0 && toNum(payment.ivisit_fee_amount)) ||
-          (toNum(meta.fee_amount) > 0 && toNum(meta.fee_amount)) ||
-          (toNum(meta.fee) > 0 && toNum(meta.fee)) ||
-          (toNum(payment.amount) * orgFeePct) / 100
-      );
+        (toNum(meta.fee_amount) > 0 && toNum(meta.fee_amount)) ||
+        (toNum(meta.fee) > 0 && toNum(meta.fee)) ||
+        0;
+      const fallbackFee = round2((toNum(payment.amount) * orgFeePct) / 100);
+      const expectedFee =
+        isTip || isTopUp || !payment.organization_id
+          ? 0
+          : isCash
+            ? round2(persistedFee > 0 ? persistedFee : fallbackFee)
+            : round2(persistedFee > 0 ? persistedFee : 0);
 
-      if (expectedFee <= 0) continue;
-      cashPaymentsWithExpectedFee += 1;
+      const orgWalletId = orgWalletByOrgId.get(payment.organization_id);
+      const platformWalletId = platformWallet?.id || null;
+      const rows = ledgerByRef.get(String(payment.id)) || [];
 
-      if (toNum(payment.ivisit_fee_amount) <= 0 || toNum(meta.fee_amount || meta.fee) <= 0) {
-        cashPaymentsMissingFeePersistence += 1;
+      if (isCash) {
+        cashPaymentsCompleted += 1;
+
+        if (expectedFee <= 0) {
+          addSample(report.warnings, {
+            type: 'cash_expected_fee_zero',
+            payment_id: payment.id,
+            emergency_request_id: payment.emergency_request_id,
+            organization_id: payment.organization_id,
+            amount: toNum(payment.amount),
+          });
+          continue;
+        }
+        cashPaymentsWithExpectedFee += 1;
+
+        if (toNum(payment.ivisit_fee_amount) <= 0 || toNum(meta.fee_amount || meta.fee) <= 0) {
+          cashPaymentsMissingFeePersistence += 1;
+          addSample(report.warnings, {
+            type: 'cash_fee_not_persisted_cleanly',
+            payment_id: payment.id,
+            organization_id: payment.organization_id,
+            ivisit_fee_amount: payment.ivisit_fee_amount,
+            metadata_fee_amount: meta.fee_amount ?? null,
+            metadata_fee: meta.fee ?? null,
+            expected_fee: expectedFee,
+          });
+        }
+
+        const hasOrgDebit =
+          orgWalletId &&
+          rows.some(
+            (row) =>
+              row.wallet_id === orgWalletId &&
+              row.transaction_type === 'debit' &&
+              approxEqual(row.amount, -expectedFee)
+          );
+        const hasPlatformCredit =
+          platformWalletId &&
+          rows.some(
+            (row) =>
+              row.wallet_id === platformWalletId &&
+              row.transaction_type === 'credit' &&
+              approxEqual(row.amount, expectedFee)
+          );
+
+        if (!hasOrgDebit || !hasPlatformCredit) {
+          cashPaymentsMissingLedger += 1;
+          addSample(report.critical, {
+            type: 'cash_fee_ledger_missing',
+            payment_id: payment.id,
+            emergency_request_id: payment.emergency_request_id,
+            organization_id: payment.organization_id,
+            expected_fee: expectedFee,
+            has_org_debit: Boolean(hasOrgDebit),
+            has_platform_credit: Boolean(hasPlatformCredit),
+          });
+        }
+        continue;
+      }
+
+      nonCashPaymentsCompleted += 1;
+      if (!payment.organization_id || isTopUp) {
+        nonCashPaymentsSkippedNoOrganization += 1;
+        continue;
+      }
+      nonCashPaymentsWithOrganization += 1;
+
+      const expectedNet = round2(toNum(payment.amount) - expectedFee);
+      if (expectedFee > 0) {
+        nonCashPaymentsWithExpectedFee += 1;
+      }
+      const shouldPersistNonCashFee = !isTip && !isTopUp && Boolean(payment.organization_id);
+
+      if (
+        shouldPersistNonCashFee &&
+        (toNum(payment.ivisit_fee_amount) <= 0 || toNum(meta.fee_amount || meta.fee) <= 0)
+      ) {
+        nonCashPaymentsMissingFeePersistence += 1;
         addSample(report.warnings, {
-          type: 'cash_fee_not_persisted_cleanly',
+          type: 'non_cash_fee_not_persisted_cleanly',
           payment_id: payment.id,
+          payment_method: method || null,
+          emergency_request_id: payment.emergency_request_id,
           organization_id: payment.organization_id,
+          amount: toNum(payment.amount),
           ivisit_fee_amount: payment.ivisit_fee_amount,
           metadata_fee_amount: meta.fee_amount ?? null,
           metadata_fee: meta.fee ?? null,
@@ -187,45 +314,78 @@ async function run() {
         });
       }
 
-      const orgWalletId = orgWalletByOrgId.get(payment.organization_id);
-      const platformWalletId = platformWallet?.id || null;
-      const rows = ledgerByRef.get(String(payment.id)) || [];
-
-      const hasOrgDebit =
+      const hasOrgCredit =
         orgWalletId &&
         rows.some(
           (row) =>
             row.wallet_id === orgWalletId &&
-            row.transaction_type === 'debit' &&
-            approxEqual(row.amount, -expectedFee)
+            row.transaction_type === 'credit' &&
+            approxEqual(row.amount, expectedNet)
         );
       const hasPlatformCredit =
-        platformWalletId &&
-        rows.some(
-          (row) =>
-            row.wallet_id === platformWalletId &&
-            row.transaction_type === 'credit' &&
-            approxEqual(row.amount, expectedFee)
-        );
+        expectedFee <= 0 ||
+        (platformWalletId &&
+          rows.some(
+            (row) =>
+              row.wallet_id === platformWalletId &&
+              row.transaction_type === 'credit' &&
+              approxEqual(row.amount, expectedFee)
+          ));
 
-      if (!hasOrgDebit || !hasPlatformCredit) {
-        cashPaymentsMissingLedger += 1;
+      if (!hasOrgCredit || !hasPlatformCredit) {
+        nonCashPaymentsMissingLedger += 1;
         addSample(report.critical, {
-          type: 'cash_fee_ledger_missing',
+          type: 'non_cash_distribution_ledger_missing',
           payment_id: payment.id,
+          payment_method: method || null,
+          stripe_payment_intent_id: payment.stripe_payment_intent_id || null,
           emergency_request_id: payment.emergency_request_id,
           organization_id: payment.organization_id,
+          amount: toNum(payment.amount),
+          expected_net: expectedNet,
           expected_fee: expectedFee,
-          has_org_debit: Boolean(hasOrgDebit),
+          has_org_credit: Boolean(hasOrgCredit),
           has_platform_credit: Boolean(hasPlatformCredit),
         });
       }
+
+      if (isWallet && !isTip) {
+        const patientWalletId = patientWalletByUserId.get(payment.user_id);
+        const hasPatientDebit =
+          patientWalletId &&
+          rows.some(
+            (row) =>
+              row.wallet_id === patientWalletId &&
+              row.transaction_type === 'debit' &&
+              approxEqual(row.amount, -toNum(payment.amount))
+          );
+
+        if (!hasPatientDebit) {
+          nonCashWalletPaymentsMissingPatientDebit += 1;
+          addSample(report.critical, {
+            type: 'wallet_payment_patient_debit_missing',
+            payment_id: payment.id,
+            user_id: payment.user_id,
+            emergency_request_id: payment.emergency_request_id,
+            patient_wallet_id: patientWalletId || null,
+            expected_debit: -toNum(payment.amount),
+          });
+        }
+      }
     }
 
-    report.checks.cash_payments_completed = payments.length;
+    report.checks.cash_payments_completed = cashPaymentsCompleted;
     report.checks.cash_payments_with_expected_fee = cashPaymentsWithExpectedFee;
     report.checks.cash_payments_missing_fee_ledger = cashPaymentsMissingLedger;
     report.checks.cash_payments_missing_fee_persistence = cashPaymentsMissingFeePersistence;
+    report.checks.non_cash_payments_completed = nonCashPaymentsCompleted;
+    report.checks.non_cash_payments_with_organization = nonCashPaymentsWithOrganization;
+    report.checks.non_cash_payments_skipped_no_organization = nonCashPaymentsSkippedNoOrganization;
+    report.checks.non_cash_payments_with_expected_fee = nonCashPaymentsWithExpectedFee;
+    report.checks.non_cash_payments_missing_distribution_ledger = nonCashPaymentsMissingLedger;
+    report.checks.non_cash_payments_missing_fee_persistence = nonCashPaymentsMissingFeePersistence;
+    report.checks.non_cash_wallet_payments_missing_patient_debit =
+      nonCashWalletPaymentsMissingPatientDebit;
 
     // --- pending approval coherence ---
     const pendingRequests = await fetchPaged(() =>
