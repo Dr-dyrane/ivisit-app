@@ -1472,24 +1472,24 @@ export type Database = {
         Row: {
           answer: string
           category: string | null
-          created_at: string | null
-          id: number
+          created_at: string
+          id: string
           question: string
           rank: number | null
         }
         Insert: {
           answer: string
           category?: string | null
-          created_at?: string | null
-          id?: number
+          created_at?: string
+          id?: string
           question: string
           rank?: number | null
         }
         Update: {
           answer?: string
           category?: string | null
-          created_at?: string | null
-          id?: number
+          created_at?: string
+          id?: string
           question?: string
           rank?: number | null
         }

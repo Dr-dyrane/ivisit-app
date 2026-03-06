@@ -177,6 +177,14 @@ npm run hardening:user-activity-surface-field-guard
 npm run hardening:support-tickets-surface-field-guard
 ```
 
+### **Support FAQs Surface Field Guard**
+```bash
+# Detect support_faqs app/generated/console type parity, enforce canonical
+# support_faqs select-column usage, and keep FAQ mutations inside the
+# canonical supportFaqsService lane.
+npm run hardening:support-faqs-surface-field-guard
+```
+
 ### **Search History Surface Field Guard**
 ```bash
 # Detect search_history app/console type parity + relationship parity, enforce

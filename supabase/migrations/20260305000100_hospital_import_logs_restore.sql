@@ -37,8 +37,8 @@ CREATE POLICY "Admins manage hospital import logs"
 ON public.hospital_import_logs
 FOR ALL
 TO authenticated
-USING (public.get_current_user_role() = 'admin')
-WITH CHECK (public.get_current_user_role() = 'admin');
+USING (public.p_is_admin())
+WITH CHECK (public.p_is_admin());
 
 DROP POLICY IF EXISTS "Users read own hospital import logs" ON public.hospital_import_logs;
 CREATE POLICY "Users read own hospital import logs"
@@ -47,7 +47,7 @@ FOR SELECT
 TO authenticated
 USING (
     created_by = auth.uid()
-    OR public.get_current_user_role() = 'admin'
+    OR public.p_is_admin()
 );
 
 DROP POLICY IF EXISTS "Users insert own hospital import logs" ON public.hospital_import_logs;
@@ -58,7 +58,7 @@ TO authenticated
 WITH CHECK (
     created_by IS NULL
     OR created_by = auth.uid()
-    OR public.get_current_user_role() = 'admin'
+    OR public.p_is_admin()
 );
 
 DROP POLICY IF EXISTS "Users update own hospital import logs" ON public.hospital_import_logs;
@@ -68,12 +68,11 @@ FOR UPDATE
 TO authenticated
 USING (
     created_by = auth.uid()
-    OR public.get_current_user_role() = 'admin'
+    OR public.p_is_admin()
 )
 WITH CHECK (
     created_by = auth.uid()
-    OR public.get_current_user_role() = 'admin'
+    OR public.p_is_admin()
 );
 
 GRANT SELECT, INSERT, UPDATE ON public.hospital_import_logs TO authenticated;
-

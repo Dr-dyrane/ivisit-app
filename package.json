@@ -36,6 +36,7 @@
     "hardening:preferences-surface-field-guard": "node supabase/tests/scripts/assert_preferences_surface_field_guard.js",
     "hardening:user-activity-surface-field-guard": "node supabase/tests/scripts/assert_user_activity_surface_field_guard.js",
     "hardening:support-tickets-surface-field-guard": "node supabase/tests/scripts/assert_support_tickets_surface_field_guard.js",
+    "hardening:support-faqs-surface-field-guard": "node supabase/tests/scripts/assert_support_faqs_surface_field_guard.js",
     "hardening:search-history-surface-field-guard": "node supabase/tests/scripts/assert_search_history_surface_field_guard.js",
     "hardening:search-selections-surface-field-guard": "node supabase/tests/scripts/assert_search_selections_surface_field_guard.js",
     "hardening:search-events-surface-field-guard": "node supabase/tests/scripts/assert_search_events_surface_field_guard.js",

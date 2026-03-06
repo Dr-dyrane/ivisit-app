@@ -1436,6 +1436,85 @@ Verification:
 - `npm run hardening:cleanup-dry-run-guard` green,
 - `npm run hardening:contract-drift-guard` green.
 
+### SCC-054: `support_faqs` Surface Contract Guard Hardening
+Objective:
+- Reconcile `support_faqs` app/generated/console type drift and enforce deterministic guard coverage for canonical FAQ field usage + mutation boundaries.
+
+Deliverables:
+- app/generated/console type reconciliation:
+  - `supabase/database.ts`
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align `support_faqs.id` to canonical `UUID`
+  - align `support_faqs.created_at` nullability to canonical migration (`NOT NULL`).
+- console service payload hardening:
+  - `../ivisit-console/frontend/src/services/supportFaqsService.js`
+  - enforce canonical writable-field allowlist (`question`, `answer`, `category`, `rank`)
+  - normalize/trim payload fields
+  - validate required fields on create/update
+  - block raw spread updates and empty update payload writes.
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_support_faqs_surface_field_guard.js`
+  - enforce app/generated/console type parity for `support_faqs` (`Row`/`Insert`/`Update`)
+  - enforce approved console reference boundaries
+  - enforce canonical select-column usage
+  - enforce mutation-boundary ownership and FAQ service payload contract checks.
+- wire guard command + docs:
+  - `package.json` add `hardening:support-faqs-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section.
+- validate runtime coverage lane for this table:
+  - refresh trace and per-table runtime field coverage for `support_faqs`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table support_faqs` green,
+- `npm run hardening:table-field-runtime-coverage -- --table support_faqs` green,
+- `npm run hardening:support-faqs-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
+### SCC-055: `admin_audit_log` + `user_sessions` + `id_mappings` Surface Contract Hardening
+Objective:
+- Close remaining shared app/console identity+admin audit contract drift by reconciling canonical type surfaces and adding deterministic guard coverage for `admin_audit_log`, `user_sessions`, and `id_mappings`.
+
+Deliverables:
+- type parity reconciliation across:
+  - `types/database.ts`
+  - `supabase/database.ts`
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - restore/align canonical table surfaces for:
+    - `admin_audit_log`
+    - `user_sessions`
+    - `id_mappings`.
+- console service surface hardening:
+  - `../ivisit-console/frontend/src/services/adminService.js`
+  - enforce canonical select/write field usage for `admin_audit_log` and `user_sessions` dashboard counters.
+- dedicated guard scripts:
+  - `supabase/tests/scripts/assert_admin_audit_log_surface_field_guard.js`
+  - `supabase/tests/scripts/assert_user_sessions_surface_field_guard.js`
+  - `supabase/tests/scripts/assert_id_mappings_surface_field_guard.js`
+  - enforce app/generated/console parity, canonical select-column usage, and approved mutation boundaries.
+- wire guard commands + docs:
+  - `package.json` hardening commands for all three guards
+  - `supabase/docs/TESTING.md` usage sections.
+- validate runtime coverage lane for each table:
+  - `admin_audit_log`
+  - `user_sessions`
+  - `id_mappings`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table admin_audit_log` green,
+- `node supabase/tests/scripts/export_table_flow_trace.js --table user_sessions` green,
+- `node supabase/tests/scripts/export_table_flow_trace.js --table id_mappings` green,
+- `npm run hardening:table-field-runtime-coverage -- --table admin_audit_log` green,
+- `npm run hardening:table-field-runtime-coverage -- --table user_sessions` green,
+- `npm run hardening:table-field-runtime-coverage -- --table id_mappings` green,
+- `npm run hardening:admin-audit-log-surface-field-guard` green,
+- `npm run hardening:user-sessions-surface-field-guard` green,
+- `npm run hardening:id-mappings-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
@@ -1454,3 +1533,22 @@ Any new work must be added to this plan first with:
 - explicit acceptance criteria.
 
 If an implementation is done without a planned ID, it must be marked as an exception in the tracker.
+
+## Addendum Notes
+- 2026-03-06 (SCC-054): canonical FAQ content backfill is owned by module `0005_ops_content`; implementation must live in `supabase/migrations/20260219000500_ops_content.sql` (not standalone fix migrations). `supabase/seed.sql` mirrors the same FAQ catalog for local seed parity.
+- 2026-03-06 (SCC-054 runtime deployment): because `20260219000500` was already applied in remote history, a forward, idempotent runtime migration (`20260306000100_support_faqs_runtime_backfill.sql`) is required to populate existing environments without reset/replay.
+- 2026-03-06 (cross-repo ownership guard): runtime scan of `../iVisit-docs` references the following tables:
+  - `documents`
+  - `document_invites`
+  - `access_requests`
+  - `user_roles`
+  - `notifications`
+  - `recent_code_chunks`
+- 2026-03-06 (cross-repo ownership guard): reserved skip set for `ivisit-app`/`ivisit-console` hardening sweeps (unless explicitly requested for joint migration work):
+  - `documents`
+  - `document_invites`
+  - `access_requests`
+  - `user_roles`
+- 2026-03-06 (cross-repo ownership guard): shared tables remain in-scope for app/console hardening (do not auto-skip):
+  - `notifications`
+- 2026-03-06 (cross-repo ownership guard): `recent_code_chunks` is external to app/console operational scope and is ignored by this plan.

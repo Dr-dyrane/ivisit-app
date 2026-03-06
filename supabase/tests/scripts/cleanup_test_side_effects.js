@@ -208,7 +208,7 @@ async function main() {
     fetchAll('wallet_ledger', 'id,reference_id,wallet_id'),
     fetchAllOptional('service_pricing', 'id,hospital_id'),
     fetchAllOptional('room_pricing', 'id,hospital_id'),
-    fetchAllOptional('hospital_import_logs', 'id,hospital_id'),
+    fetchAllOptional('hospital_import_logs', 'id,created_by,search_query'),
   ]);
 
   const testProfileIds = unique(profiles.filter((p) => isTestEmail(p.email)).map((p) => p.id));
@@ -360,7 +360,11 @@ async function main() {
   );
   const testHospitalImportLogIds = unique(
     hospitalImportLogs
-      .filter((row) => testHospitalIds.includes(row.hospital_id))
+      .filter(
+        (row) =>
+          testProfileIds.includes(row.created_by) ||
+          hasTestMarker(row.search_query)
+      )
       .map((row) => row.id)
   );
 
