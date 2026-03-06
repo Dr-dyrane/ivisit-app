@@ -1515,6 +1515,42 @@ Verification:
 - `npm run hardening:cleanup-dry-run-guard` green,
 - `npm run hardening:contract-drift-guard` green.
 
+### SCC-056: Console CRUD Matrix Surface Coverage Closure (hospitals/organizations/support/medical_profiles)
+Objective:
+- Close residual `console_ui_crud_contract_matrix` risk surfaces by aligning parser coverage and explicit writable-field contracts for helper-built payload services.
+
+Deliverables:
+- matrix parser/config hardening:
+  - `supabase/tests/scripts/run_console_ui_crud_contract_matrix.js`
+  - add explicit `createKeysFromSet`/`updateKeysFromSet` wiring for:
+    - `hospitals`
+    - `organizations`
+    - `support_tickets`
+    - `support_faqs`
+    - `medical_profiles`
+  - extend `extractSetConstantValues` to parse both:
+    - `new Set([ ... ])`
+    - `const X = [ ... ]` array constants.
+- console service writable-surface contracts:
+  - `../ivisit-console/frontend/src/services/hospitalsService.js`
+    - add explicit `HOSPITAL_CREATE_FIELDS`/`HOSPITAL_UPDATE_FIELDS` and enforce payload field filtering.
+  - `../ivisit-console/frontend/src/services/organizationsService.js`
+    - add explicit `ORGANIZATION_CREATE_FIELDS`/`ORGANIZATION_UPDATE_FIELDS` and enforce payload field filtering.
+  - `../ivisit-console/frontend/src/services/medicalProfilesService.js`
+    - add explicit `MEDICAL_PROFILE_CREATE_FIELDS`/`MEDICAL_PROFILE_UPDATE_FIELDS` and enforce payload field filtering.
+- type parity closure for newly surfaced drift:
+  - `types/database.ts`
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - add missing `hospitals` columns used by runtime payloads:
+    - `icu_beds_available`
+    - `total_beds`.
+
+Verification:
+- `npm run hardening:console-ui-crud-matrix` green with `surfaces=28 risks=0`,
+- `npm run hardening:targeted-matrix-guard` green,
+- `npm run hardening:governance-guards` green,
+- `npm run build` green in `../ivisit-console/frontend`.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

@@ -27,6 +27,8 @@ const UI_SURFACES = [
     service: 'src/services/hospitalsService.js',
     createFn: 'createHospital',
     updateFn: 'updateHospital',
+    createKeysFromSet: 'HOSPITAL_CREATE_FIELDS',
+    updateKeysFromSet: 'HOSPITAL_UPDATE_FIELDS',
     dynamicUpdatePayload: true,
     uiOnlyFields: [
       'website',
@@ -114,6 +116,8 @@ const UI_SURFACES = [
     service: 'src/services/organizationsService.js',
     createFn: 'saveOrganization',
     updateFn: 'saveOrganization',
+    createKeysFromSet: 'ORGANIZATION_CREATE_FIELDS',
+    updateKeysFromSet: 'ORGANIZATION_UPDATE_FIELDS',
   },
   {
     id: 'visits',
@@ -188,6 +192,8 @@ const UI_SURFACES = [
     service: 'src/services/supportTicketsService.js',
     createFn: 'createSupportTicket',
     updateFn: 'updateSupportTicket',
+    createKeysFromSet: 'SUPPORT_TICKET_CREATE_FIELDS',
+    updateKeysFromSet: 'SUPPORT_TICKET_UPDATE_FIELDS',
     dynamicUpdatePayload: true,
     pageCreateAliases: ['createTicket'],
     pageUpdateAliases: ['updateTicket'],
@@ -312,6 +318,8 @@ const UI_SURFACES = [
     service: 'src/services/supportFaqsService.js',
     createFn: 'createSupportFAQ',
     updateFn: 'updateSupportFAQ',
+    createKeysFromSet: 'SUPPORT_FAQ_WRITABLE_FIELDS',
+    updateKeysFromSet: 'SUPPORT_FAQ_WRITABLE_FIELDS',
     preferConsoleTypes: true,
     skipModalFieldExtraction: true,
     skipPageWiring: true,
@@ -366,6 +374,8 @@ const UI_SURFACES = [
     service: 'src/services/medicalProfilesService.js',
     createFn: 'createMedicalProfile',
     updateFn: 'updateMedicalProfile',
+    createKeysFromSet: 'MEDICAL_PROFILE_CREATE_FIELDS',
+    updateKeysFromSet: 'MEDICAL_PROFILE_UPDATE_FIELDS',
     preferConsoleTypes: true,
     skipModalFieldExtraction: true,
     skipPageWiring: true,
@@ -673,8 +683,14 @@ function extractFunctionBody(sourceText, fnName) {
 
 function extractSetConstantValues(sourceText, constName) {
   const escaped = constName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`const\\s+${escaped}\\s*=\\s*new\\s+Set\\s*\\(\\s*\\[([\\s\\S]*?)\\]\\s*\\)`, 'm');
-  const match = re.exec(sourceText);
+  const setRe = new RegExp(
+    `const\\s+${escaped}\\s*=\\s*new\\s+Set\\s*\\(\\s*\\[([\\s\\S]*?)\\]\\s*\\)`,
+    'm'
+  );
+  const arrayRe = new RegExp(`const\\s+${escaped}\\s*=\\s*\\[([\\s\\S]*?)\\]`, 'm');
+  const setMatch = setRe.exec(sourceText);
+  const arrayMatch = arrayRe.exec(sourceText);
+  const match = setMatch || arrayMatch;
   if (!match) return [];
   const values = [];
   const valueRe = /['"`]([a-zA-Z0-9_]+)['"`]/g;

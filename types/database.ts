@@ -616,6 +616,7 @@ export type Database = {
           emergency_wait_time_minutes: number | null
           features: string[] | null
           id: string
+          icu_beds_available: number | null
           image: string | null
           last_availability_update: string | null
           latitude: number | null
@@ -630,6 +631,7 @@ export type Database = {
           service_types: string[] | null
           specialties: string[] | null
           status: string | null
+          total_beds: number | null
           type: string | null
           updated_at: string
           verification_status: string | null
@@ -649,6 +651,7 @@ export type Database = {
           emergency_wait_time_minutes?: number | null
           features?: string[] | null
           id?: string
+          icu_beds_available?: number | null
           image?: string | null
           last_availability_update?: string | null
           latitude?: number | null
@@ -663,6 +666,7 @@ export type Database = {
           service_types?: string[] | null
           specialties?: string[] | null
           status?: string | null
+          total_beds?: number | null
           type?: string | null
           updated_at?: string
           verification_status?: string | null
@@ -682,6 +686,7 @@ export type Database = {
           emergency_wait_time_minutes?: number | null
           features?: string[] | null
           id?: string
+          icu_beds_available?: number | null
           image?: string | null
           last_availability_update?: string | null
           latitude?: number | null
@@ -696,6 +701,7 @@ export type Database = {
           service_types?: string[] | null
           specialties?: string[] | null
           status?: string | null
+          total_beds?: number | null
           type?: string | null
           updated_at?: string
           verification_status?: string | null
