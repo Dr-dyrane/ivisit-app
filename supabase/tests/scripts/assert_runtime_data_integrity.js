@@ -182,6 +182,7 @@ async function run() {
     }
 
     let cashPaymentsCompleted = 0;
+    let cashTipPaymentsCompleted = 0;
     let cashPaymentsWithExpectedFee = 0;
     let cashPaymentsMissingLedger = 0;
     let cashPaymentsMissingFeePersistence = 0;
@@ -224,6 +225,11 @@ async function run() {
 
       if (isCash) {
         cashPaymentsCompleted += 1;
+
+        if (isTip) {
+          cashTipPaymentsCompleted += 1;
+          continue;
+        }
 
         if (expectedFee <= 0) {
           addSample(report.warnings, {
@@ -375,6 +381,7 @@ async function run() {
     }
 
     report.checks.cash_payments_completed = cashPaymentsCompleted;
+    report.checks.cash_tip_payments_completed = cashTipPaymentsCompleted;
     report.checks.cash_payments_with_expected_fee = cashPaymentsWithExpectedFee;
     report.checks.cash_payments_missing_fee_ledger = cashPaymentsMissingLedger;
     report.checks.cash_payments_missing_fee_persistence = cashPaymentsMissingFeePersistence;

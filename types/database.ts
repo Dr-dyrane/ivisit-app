@@ -2613,6 +2613,10 @@ export type Database = {
         Args: { p_currency?: string; p_tip_amount: number; p_visit_id: string }
         Returns: Json
       }
+      record_visit_cash_tip: {
+        Args: { p_currency?: string; p_tip_amount: number; p_visit_id: string }
+        Returns: Json
+      }
       rate_visit: {
         Args: { p_comment?: string; p_rating: number; p_visit_id: string }
         Returns: Json

@@ -3,7 +3,7 @@
 import { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import React from "react";
 import { useFocusEffect, useRouter } from "expo-router";
-import { View, StyleSheet, Dimensions, Text, TouchableOpacity, Linking, Switch } from "react-native";
+import { View, StyleSheet, Dimensions, Text, TouchableOpacity, Linking, Switch, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEmergency } from "../contexts/EmergencyContext";
 import { useEmergencyUI } from "../contexts/EmergencyUIContext";
@@ -1233,10 +1233,56 @@ const EmergencyScreen = () => {
 							}
 						} catch (tipError) {
 							console.warn("[EmergencyScreen] Tip processing failed:", tipError);
-							showToast(
-								tipError?.message || "Tip could not be processed",
-								"error"
-							);
+							const tipErrorMessage = String(tipError?.message || "");
+							const isWalletShort =
+								tipErrorMessage.toLowerCase().includes("insufficient wallet");
+
+							if (isWalletShort) {
+								Alert.alert(
+									"Tip Payment Options",
+									"Your wallet balance is low. Use a cash tip or add a debit card.",
+									[
+										{
+											text: "Add Debit Card",
+											onPress: () => {
+												router.push({
+													pathname: "/(user)/(stacks)/payment",
+													params: { isLinking: "true" },
+												});
+											},
+										},
+										{
+											text: "Use Cash Tip",
+											onPress: async () => {
+												try {
+													const cashTipResult = await paymentService.recordVisitCashTip(
+														visitId,
+														Number(tipAmount),
+														tipCurrency || "USD"
+													);
+													if (cashTipResult?.success) {
+														showToast(
+															`Cash tip recorded: ${cashTipResult.currency || tipCurrency || "USD"} ${Number(cashTipResult.tip_amount || tipAmount).toFixed(2)}`,
+															"success"
+														);
+													}
+												} catch (cashTipError) {
+													showToast(
+														cashTipError?.message || "Cash tip could not be recorded",
+														"error"
+													);
+												}
+											},
+										},
+										{ text: "Skip", style: "cancel" },
+									]
+								);
+							} else {
+								showToast(
+									tipError?.message || "Tip could not be processed",
+									"error"
+								);
+							}
 						}
 					}
 

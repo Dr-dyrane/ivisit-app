@@ -44,7 +44,6 @@ export function ServiceRatingModal({
 	const [selectedTip, setSelectedTip] = useState(0);
 	const [customTip, setCustomTip] = useState("");
 	const [isCustomTip, setIsCustomTip] = useState(false);
-	const [tipError, setTipError] = useState("");
 	const [walletBalance, setWalletBalance] = useState(0);
 	const [walletCurrency, setWalletCurrency] = useState("USD");
 	const [walletLoading, setWalletLoading] = useState(false);
@@ -65,7 +64,6 @@ export function ServiceRatingModal({
 		setSelectedTip(0);
 		setCustomTip("");
 		setIsCustomTip(false);
-		setTipError("");
 		Animated.parallel([
 			Animated.spring(slideAnim, {
 				toValue: 0,
@@ -117,6 +115,19 @@ export function ServiceRatingModal({
 		accent: COLORS.brandPrimary,
 	}), [isDarkMode]);
 
+	const currentTipAmount = useMemo(() => {
+		const normalizedCustomTip = Number.parseFloat(String(customTip || "").replace(/[^0-9.]/g, ""));
+		if (isCustomTip) {
+			return Number.isFinite(normalizedCustomTip)
+				? Math.max(0, Math.round(normalizedCustomTip * 100) / 100)
+				: 0;
+		}
+		return Number(selectedTip) || 0;
+	}, [customTip, isCustomTip, selectedTip]);
+
+	const isWalletShortForTip =
+		currentTipAmount > 0 && currentTipAmount > Number(walletBalance || 0);
+
 	const close = useCallback(() => {
 		Keyboard.dismiss();
 		Animated.parallel([
@@ -135,26 +146,15 @@ export function ServiceRatingModal({
 
 	const handleSubmit = useCallback(() => {
 		if (rating < 1) return;
-		const normalizedCustomTip = Number.parseFloat(String(customTip || "").replace(/[^0-9.]/g, ""));
-		const tipAmount = isCustomTip
-			? (Number.isFinite(normalizedCustomTip) ? Math.max(0, Math.round(normalizedCustomTip * 100) / 100) : 0)
-			: selectedTip;
-
-		if (tipAmount > 0 && tipAmount > Number(walletBalance || 0)) {
-			setTipError("Insufficient wallet balance for selected tip.");
-			return;
-		}
-
-		setTipError("");
 		onSubmit?.({
 			rating,
 			comment: comment?.trim() || null,
 			serviceType,
-			tipAmount: tipAmount > 0 ? tipAmount : 0,
+			tipAmount: currentTipAmount > 0 ? currentTipAmount : 0,
 			tipCurrency: walletCurrency || "USD",
 		});
 		close();
-	}, [close, comment, customTip, isCustomTip, onSubmit, rating, selectedTip, serviceType, walletBalance, walletCurrency]);
+	}, [close, comment, currentTipAmount, onSubmit, rating, serviceType, walletCurrency]);
 
 	const stars = useMemo(() => [1, 2, 3, 4, 5], []);
 
@@ -402,7 +402,6 @@ export function ServiceRatingModal({
 												onPress={() => {
 													setIsCustomTip(false);
 													setSelectedTip(amount);
-													setTipError("");
 												}}
 												className="px-4 py-2 rounded-xl"
 												style={{
@@ -423,7 +422,6 @@ export function ServiceRatingModal({
 										onPress={() => {
 											setIsCustomTip(true);
 											setSelectedTip(0);
-											setTipError("");
 										}}
 										className="px-4 py-2 rounded-xl"
 										style={{
@@ -442,10 +440,7 @@ export function ServiceRatingModal({
 								{isCustomTip && (
 									<TextInput
 										value={customTip}
-										onChangeText={(value) => {
-											setCustomTip(value);
-											setTipError("");
-										}}
+										onChangeText={setCustomTip}
 										placeholder="Enter tip amount"
 										placeholderTextColor={colors.subtext}
 										keyboardType="decimal-pad"
@@ -463,9 +458,9 @@ export function ServiceRatingModal({
 										: `Wallet balance: ${walletCurrency} ${Number(walletBalance || 0).toFixed(2)}`}
 								</Text>
 
-								{tipError ? (
-									<Text className="text-sm mt-2" style={{ color: "#EF4444" }}>
-										{tipError}
+								{isWalletShortForTip ? (
+									<Text className="text-sm mt-2" style={{ color: "#F59E0B" }}>
+										Wallet is low. You can still continue and choose cash or card fallback next.
 									</Text>
 								) : null}
 							</View>

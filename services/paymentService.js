@@ -642,6 +642,36 @@ export const paymentService = {
   },
 
   /**
+   * Record a cash tip for a completed visit.
+   * Used as fallback when wallet tip cannot be processed.
+   */
+  async recordVisitCashTip(visitId, tipAmount, currency = 'USD') {
+    try {
+      if (!visitId) throw new Error('visitId is required');
+      const amount = parseFloat(tipAmount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new Error('tipAmount must be greater than zero');
+      }
+
+      const { data, error } = await supabase.rpc('record_visit_cash_tip', {
+        p_visit_id: visitId,
+        p_tip_amount: amount,
+        p_currency: currency,
+      });
+
+      if (error) throw error;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Cash tip could not be recorded');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('[paymentService] recordVisitCashTip error:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Process cash payment with fee deduction
    * Deducts platform fee from organization wallet and records payment
    */
