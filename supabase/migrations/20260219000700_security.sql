@@ -39,6 +39,7 @@ ALTER TABLE public.subscribers ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.hospitals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hospital_import_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.doctors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ambulances ENABLE ROW LEVEL SECURITY;
 
@@ -227,6 +228,51 @@ USING (auth.uid() = user_id);
 -- 8. OPS CONTENT
 CREATE POLICY "Public read for health news" ON public.health_news FOR SELECT USING (published = true);
 CREATE POLICY "Public read for support faqs" ON public.support_faqs FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Admins manage hospital import logs" ON public.hospital_import_logs;
+CREATE POLICY "Admins manage hospital import logs"
+ON public.hospital_import_logs
+FOR ALL
+TO authenticated
+USING (public.p_is_admin())
+WITH CHECK (public.p_is_admin());
+
+DROP POLICY IF EXISTS "Users read own hospital import logs" ON public.hospital_import_logs;
+CREATE POLICY "Users read own hospital import logs"
+ON public.hospital_import_logs
+FOR SELECT
+TO authenticated
+USING (
+    created_by = auth.uid()
+    OR public.p_is_admin()
+);
+
+DROP POLICY IF EXISTS "Users insert own hospital import logs" ON public.hospital_import_logs;
+CREATE POLICY "Users insert own hospital import logs"
+ON public.hospital_import_logs
+FOR INSERT
+TO authenticated
+WITH CHECK (
+    created_by IS NULL
+    OR created_by = auth.uid()
+    OR public.p_is_admin()
+);
+
+DROP POLICY IF EXISTS "Users update own hospital import logs" ON public.hospital_import_logs;
+CREATE POLICY "Users update own hospital import logs"
+ON public.hospital_import_logs
+FOR UPDATE
+TO authenticated
+USING (
+    created_by = auth.uid()
+    OR public.p_is_admin()
+)
+WITH CHECK (
+    created_by = auth.uid()
+    OR public.p_is_admin()
+);
+
+GRANT SELECT, INSERT, UPDATE ON public.hospital_import_logs TO authenticated;
 
 -- 9. ANALYTICS
 CREATE POLICY "Users see own activity" ON public.user_activity FOR SELECT USING (auth.uid() = user_id);

@@ -7,7 +7,7 @@ const filePath = path.join(
 	process.cwd(),
 	"supabase",
 	"migrations",
-	"20260306000600_tip_fallback_and_settlement_fix.sql"
+	"20260219000400_finance.sql"
 );
 
 if (!fs.existsSync(filePath)) {

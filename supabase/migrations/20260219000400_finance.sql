@@ -79,6 +79,38 @@ CREATE TABLE IF NOT EXISTS public.payments (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_schema = 'public'
+          AND table_name = 'visits'
+          AND constraint_name = 'visits_tip_amount_nonnegative_chk'
+    ) THEN
+        ALTER TABLE public.visits
+        ADD CONSTRAINT visits_tip_amount_nonnegative_chk
+        CHECK (tip_amount IS NULL OR tip_amount >= 0);
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_schema = 'public'
+          AND table_name = 'visits'
+          AND constraint_name = 'visits_tip_payment_id_fkey'
+    ) THEN
+        ALTER TABLE public.visits
+        ADD CONSTRAINT visits_tip_payment_id_fkey
+        FOREIGN KEY (tip_payment_id) REFERENCES public.payments(id) ON DELETE SET NULL;
+    END IF;
+END
+$$;
+
 -- 4. Insurance
 CREATE TABLE IF NOT EXISTS public.insurance_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -119,30 +151,124 @@ RETURNS TRIGGER AS $$
 DECLARE
     v_org_wallet_id UUID;
     v_platform_wallet_id UUID;
-    v_net_amount NUMERIC;
+    v_net_amount NUMERIC := 0;
+    v_fee_amount NUMERIC := 0;
+    v_is_top_up BOOLEAN := false;
 BEGIN
-    -- Only distribute for COMPLETED payments that are NOT cash
-    -- (Cash payments are handled manually via Emergency Logic: approve_cash_payment)
-    IF (NEW.status = 'completed') AND (OLD.status != 'completed') AND (NEW.payment_method != 'cash') THEN
-        -- Get Organization Wallet
-        SELECT id INTO v_org_wallet_id FROM public.organization_wallets WHERE organization_id = NEW.organization_id;
-        
-        -- Get Platform Wallet
-        SELECT id INTO v_platform_wallet_id FROM public.ivisit_main_wallet LIMIT 1;
-        
-        -- Calculate Net
-        v_net_amount := NEW.amount - NEW.ivisit_fee_amount;
-        
-        -- Credit Org Wallet
-        UPDATE public.organization_wallets SET balance = balance + v_net_amount WHERE id = v_org_wallet_id;
-        INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
-        VALUES (v_org_wallet_id, v_net_amount, 'credit', 'Service Payment (Net)', NEW.id);
-        
-        -- Credit Platform Wallet
-        UPDATE public.ivisit_main_wallet SET balance = balance + NEW.ivisit_fee_amount WHERE id = v_platform_wallet_id;
-        INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
-        VALUES (v_platform_wallet_id, NEW.ivisit_fee_amount, 'credit', 'Platform Fee', NEW.id);
+    IF NEW.status IS DISTINCT FROM 'completed' THEN
+        RETURN NEW;
     END IF;
+
+    IF COALESCE(OLD.status, '') = 'completed' THEN
+        RETURN NEW;
+    END IF;
+
+    IF COALESCE(NEW.payment_method, '') = 'cash' THEN
+        RETURN NEW;
+    END IF;
+
+    v_is_top_up := COALESCE((NEW.metadata->>'is_top_up')::BOOLEAN, false);
+
+    -- Platform top-ups and payments without destination org do not feed org/platform settlement wallets.
+    IF v_is_top_up OR NEW.organization_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT id INTO v_org_wallet_id
+    FROM public.organization_wallets
+    WHERE organization_id = NEW.organization_id
+    LIMIT 1
+    FOR UPDATE;
+
+    IF v_org_wallet_id IS NULL THEN
+        INSERT INTO public.organization_wallets (organization_id, balance, currency, created_at, updated_at)
+        VALUES (
+            NEW.organization_id,
+            0,
+            COALESCE(NULLIF(NEW.currency, ''), 'USD'),
+            NOW(),
+            NOW()
+        )
+        RETURNING id INTO v_org_wallet_id;
+    END IF;
+
+    SELECT id INTO v_platform_wallet_id
+    FROM public.ivisit_main_wallet
+    LIMIT 1
+    FOR UPDATE;
+
+    IF v_platform_wallet_id IS NULL THEN
+        INSERT INTO public.ivisit_main_wallet (balance, currency, last_updated)
+        VALUES (
+            0,
+            COALESCE(NULLIF(NEW.currency, ''), 'USD'),
+            NOW()
+        )
+        RETURNING id INTO v_platform_wallet_id;
+    END IF;
+
+    v_fee_amount := GREATEST(ROUND(COALESCE(NEW.ivisit_fee_amount, 0)::NUMERIC, 2), 0);
+    v_net_amount := GREATEST(ROUND(COALESCE(NEW.amount, 0)::NUMERIC - v_fee_amount, 2), 0);
+
+    IF v_net_amount > 0 THEN
+        UPDATE public.organization_wallets
+        SET balance = COALESCE(balance, 0) + v_net_amount,
+            updated_at = NOW()
+        WHERE id = v_org_wallet_id;
+
+        INSERT INTO public.wallet_ledger (
+            wallet_id,
+            amount,
+            transaction_type,
+            description,
+            reference_id,
+            metadata,
+            created_at
+        )
+        VALUES (
+            v_org_wallet_id,
+            v_net_amount,
+            'credit',
+            'Service Payment (Net)',
+            NEW.id,
+            jsonb_build_object(
+                'source', 'process_payment_distribution',
+                'payment_method', COALESCE(NEW.payment_method, 'unknown'),
+                'ivisit_fee_amount', v_fee_amount
+            ),
+            COALESCE(NEW.processed_at, NEW.updated_at, NEW.created_at, NOW())
+        );
+    END IF;
+
+    IF v_fee_amount > 0 THEN
+        UPDATE public.ivisit_main_wallet
+        SET balance = COALESCE(balance, 0) + v_fee_amount,
+            last_updated = NOW()
+        WHERE id = v_platform_wallet_id;
+
+        INSERT INTO public.wallet_ledger (
+            wallet_id,
+            amount,
+            transaction_type,
+            description,
+            reference_id,
+            metadata,
+            created_at
+        )
+        VALUES (
+            v_platform_wallet_id,
+            v_fee_amount,
+            'credit',
+            'Platform Fee',
+            NEW.id,
+            jsonb_build_object(
+                'source', 'process_payment_distribution',
+                'payment_method', COALESCE(NEW.payment_method, 'unknown')
+            ),
+            COALESCE(NEW.processed_at, NEW.updated_at, NEW.created_at, NOW())
+        );
+    END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -165,6 +291,8 @@ DECLARE
     v_wallet_id UUID;
     v_balance NUMERIC;
     v_payment_id UUID;
+    v_fee_percentage NUMERIC := 2.5;
+    v_fee_amount NUMERIC := 0;
 BEGIN
     IF p_user_id IS NULL OR p_organization_id IS NULL OR p_emergency_request_id IS NULL OR p_amount IS NULL OR p_amount <= 0 THEN
         RETURN jsonb_build_object('success', false, 'error', 'Invalid wallet payment payload');
@@ -193,8 +321,7 @@ BEGIN
         END IF;
     END IF;
 
-    -- 1. Check Wallet
-    SELECT id, balance INTO v_wallet_id, v_balance 
+    SELECT id, balance INTO v_wallet_id, v_balance
     FROM public.patient_wallets 
     WHERE user_id = p_user_id
     FOR UPDATE;
@@ -207,41 +334,82 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Insufficient balance');
     END IF;
 
-    -- 2. Deduct Funds
-    UPDATE public.patient_wallets 
-    SET balance = balance - p_amount 
+    SELECT COALESCE(NULLIF(ivisit_fee_percentage, 0), 2.5)
+    INTO v_fee_percentage
+    FROM public.organizations
+    WHERE id = p_organization_id;
+
+    v_fee_amount := ROUND(COALESCE(p_amount, 0) * (COALESCE(v_fee_percentage, 2.5) / 100.0), 2);
+
+    -- Deduct user wallet first (same transaction)
+    UPDATE public.patient_wallets
+    SET balance = balance - p_amount,
+        updated_at = NOW()
     WHERE id = v_wallet_id;
 
-    -- 3. Create Payment Record
+    -- Persist payment with explicit fee metadata for downstream settlement trigger.
     INSERT INTO public.payments (
-        user_id, 
-        emergency_request_id, 
-        organization_id, 
-        amount, 
-        currency, 
-        payment_method, 
-        status, 
-        processed_at
+        user_id,
+        emergency_request_id,
+        organization_id,
+        amount,
+        currency,
+        payment_method,
+        status,
+        ivisit_fee_amount,
+        metadata,
+        processed_at,
+        created_at,
+        updated_at
     )
     VALUES (
-        p_user_id, 
-        p_emergency_request_id, 
-        p_organization_id, 
-        p_amount, 
-        p_currency, 
-        'wallet', 
-        'completed', 
+        p_user_id,
+        p_emergency_request_id,
+        p_organization_id,
+        p_amount,
+        UPPER(COALESCE(NULLIF(TRIM(p_currency), ''), 'USD')),
+        'wallet',
+        'completed',
+        v_fee_amount,
+        jsonb_build_object(
+            'source', 'process_wallet_payment',
+            'payment_kind', 'service',
+            'fee_percentage', v_fee_percentage,
+            'fee_amount', v_fee_amount,
+            'fee', v_fee_amount
+        ),
+        NOW(),
+        NOW(),
         NOW()
     )
     RETURNING id INTO v_payment_id;
 
-    -- 4. Record Ledger
-    INSERT INTO public.wallet_ledger (wallet_id, amount, transaction_type, description, reference_id)
-    VALUES (v_wallet_id, -p_amount, 'debit', 'Emergency Service Payment', v_payment_id);
+    INSERT INTO public.wallet_ledger (
+        wallet_id,
+        amount,
+        transaction_type,
+        description,
+        reference_id,
+        metadata,
+        created_at
+    )
+    VALUES (
+        v_wallet_id,
+        -p_amount,
+        'debit',
+        'Emergency Service Payment',
+        v_payment_id,
+        jsonb_build_object(
+            'source', 'process_wallet_payment',
+            'payment_kind', 'service'
+        ),
+        NOW()
+    );
 
     RETURN jsonb_build_object(
-        'success', true, 
-        'payment_id', v_payment_id, 
+        'success', true,
+        'payment_id', v_payment_id,
+        'fee_amount', v_fee_amount,
         'new_balance', (v_balance - p_amount)
     );
 END;
@@ -249,6 +417,310 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 REVOKE ALL ON FUNCTION public.process_wallet_payment(UUID, UUID, UUID, NUMERIC, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.process_wallet_payment(UUID, UUID, UUID, NUMERIC, TEXT) TO authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.process_visit_tip(
+    p_visit_id UUID,
+    p_tip_amount NUMERIC,
+    p_currency TEXT DEFAULT 'USD'
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_visit RECORD;
+    v_request_hospital_id UUID;
+    v_org_id UUID;
+    v_patient_wallet_id UUID;
+    v_patient_balance NUMERIC;
+    v_patient_balance_after NUMERIC;
+    v_payment_id UUID;
+    v_tip_amount NUMERIC := ROUND(COALESCE(p_tip_amount, 0)::NUMERIC, 2);
+    v_currency TEXT := UPPER(COALESCE(NULLIF(TRIM(p_currency), ''), 'USD'));
+BEGIN
+    IF v_actor_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Unauthorized');
+    END IF;
+
+    IF p_visit_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Visit id is required');
+    END IF;
+
+    IF v_tip_amount <= 0 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Tip amount must be greater than zero');
+    END IF;
+
+    SELECT *
+    INTO v_visit
+    FROM public.visits
+    WHERE id = p_visit_id
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Visit not found');
+    END IF;
+
+    IF v_visit.user_id IS DISTINCT FROM v_actor_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Unauthorized');
+    END IF;
+
+    IF COALESCE(v_visit.tip_amount, 0) > 0 OR v_visit.tip_payment_id IS NOT NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Tip already processed for this visit');
+    END IF;
+
+    IF COALESCE(v_visit.status, '') <> 'completed' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Visit must be completed before tipping');
+    END IF;
+
+    IF v_visit.request_id IS NOT NULL THEN
+        SELECT hospital_id
+        INTO v_request_hospital_id
+        FROM public.emergency_requests
+        WHERE id = v_visit.request_id
+        LIMIT 1;
+    END IF;
+
+    SELECT organization_id
+    INTO v_org_id
+    FROM public.hospitals
+    WHERE id = COALESCE(v_visit.hospital_id, v_request_hospital_id)
+    LIMIT 1;
+
+    IF v_org_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Unable to resolve destination organization');
+    END IF;
+
+    SELECT id, balance
+    INTO v_patient_wallet_id, v_patient_balance
+    FROM public.patient_wallets
+    WHERE user_id = v_actor_id
+    LIMIT 1
+    FOR UPDATE;
+
+    IF v_patient_wallet_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Patient wallet not found');
+    END IF;
+
+    IF COALESCE(v_patient_balance, 0) < v_tip_amount THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Insufficient wallet balance for tip',
+            'required', v_tip_amount,
+            'available', COALESCE(v_patient_balance, 0)
+        );
+    END IF;
+
+    INSERT INTO public.payments (
+        user_id,
+        emergency_request_id,
+        organization_id,
+        amount,
+        currency,
+        payment_method,
+        status,
+        ivisit_fee_amount,
+        metadata,
+        processed_at,
+        created_at,
+        updated_at
+    )
+    VALUES (
+        v_actor_id,
+        v_visit.request_id,
+        v_org_id,
+        v_tip_amount,
+        v_currency,
+        'wallet',
+        'completed',
+        0,
+        jsonb_build_object(
+            'payment_kind', 'tip',
+            'tip_method', 'wallet',
+            'visit_id', p_visit_id,
+            'fee_amount', 0,
+            'fee', 0,
+            'source', 'process_visit_tip'
+        ),
+        NOW(),
+        NOW(),
+        NOW()
+    )
+    RETURNING id INTO v_payment_id;
+
+    UPDATE public.patient_wallets
+    SET balance = COALESCE(balance, 0) - v_tip_amount,
+        updated_at = NOW()
+    WHERE id = v_patient_wallet_id
+    RETURNING balance INTO v_patient_balance_after;
+
+    INSERT INTO public.wallet_ledger (
+        wallet_id,
+        amount,
+        transaction_type,
+        description,
+        reference_id,
+        metadata,
+        created_at
+    )
+    VALUES (
+        v_patient_wallet_id,
+        -v_tip_amount,
+        'debit',
+        'Patient Tip',
+        v_payment_id,
+        jsonb_build_object(
+            'payment_kind', 'tip',
+            'tip_method', 'wallet',
+            'visit_id', p_visit_id,
+            'source', 'process_visit_tip'
+        ),
+        NOW()
+    );
+
+    UPDATE public.visits
+    SET tip_amount = v_tip_amount,
+        tip_currency = v_currency,
+        tipped_at = NOW(),
+        tip_payment_id = v_payment_id,
+        updated_at = NOW()
+    WHERE id = p_visit_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'visit_id', p_visit_id,
+        'payment_id', v_payment_id,
+        'tip_amount', v_tip_amount,
+        'currency', v_currency,
+        'new_wallet_balance', COALESCE(v_patient_balance_after, 0)
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.record_visit_cash_tip(
+    p_visit_id UUID,
+    p_tip_amount NUMERIC,
+    p_currency TEXT DEFAULT 'USD'
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_visit RECORD;
+    v_request_hospital_id UUID;
+    v_org_id UUID;
+    v_payment_id UUID;
+    v_tip_amount NUMERIC := ROUND(COALESCE(p_tip_amount, 0)::NUMERIC, 2);
+    v_currency TEXT := UPPER(COALESCE(NULLIF(TRIM(p_currency), ''), 'USD'));
+BEGIN
+    IF v_actor_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Unauthorized');
+    END IF;
+
+    IF p_visit_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Visit id is required');
+    END IF;
+
+    IF v_tip_amount <= 0 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Tip amount must be greater than zero');
+    END IF;
+
+    SELECT *
+    INTO v_visit
+    FROM public.visits
+    WHERE id = p_visit_id
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Visit not found');
+    END IF;
+
+    IF v_visit.user_id IS DISTINCT FROM v_actor_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Unauthorized');
+    END IF;
+
+    IF COALESCE(v_visit.tip_amount, 0) > 0 OR v_visit.tip_payment_id IS NOT NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Tip already processed for this visit');
+    END IF;
+
+    IF COALESCE(v_visit.status, '') <> 'completed' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Visit must be completed before tipping');
+    END IF;
+
+    IF v_visit.request_id IS NOT NULL THEN
+        SELECT hospital_id
+        INTO v_request_hospital_id
+        FROM public.emergency_requests
+        WHERE id = v_visit.request_id
+        LIMIT 1;
+    END IF;
+
+    SELECT organization_id
+    INTO v_org_id
+    FROM public.hospitals
+    WHERE id = COALESCE(v_visit.hospital_id, v_request_hospital_id)
+    LIMIT 1;
+
+    IF v_org_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Unable to resolve destination organization');
+    END IF;
+
+    INSERT INTO public.payments (
+        user_id,
+        emergency_request_id,
+        organization_id,
+        amount,
+        currency,
+        payment_method,
+        status,
+        ivisit_fee_amount,
+        metadata,
+        processed_at,
+        created_at,
+        updated_at
+    )
+    VALUES (
+        v_actor_id,
+        v_visit.request_id,
+        v_org_id,
+        v_tip_amount,
+        v_currency,
+        'cash',
+        'completed',
+        0,
+        jsonb_build_object(
+            'payment_kind', 'tip',
+            'tip_method', 'cash',
+            'visit_id', p_visit_id,
+            'fee_amount', 0,
+            'fee', 0,
+            'source', 'record_visit_cash_tip'
+        ),
+        NOW(),
+        NOW(),
+        NOW()
+    )
+    RETURNING id INTO v_payment_id;
+
+    UPDATE public.visits
+    SET tip_amount = v_tip_amount,
+        tip_currency = v_currency,
+        tipped_at = NOW(),
+        tip_payment_id = v_payment_id,
+        updated_at = NOW()
+    WHERE id = p_visit_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'visit_id', p_visit_id,
+        'payment_id', v_payment_id,
+        'tip_amount', v_tip_amount,
+        'currency', v_currency,
+        'tip_method', 'cash'
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.process_visit_tip(UUID, NUMERIC, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.process_visit_tip(UUID, NUMERIC, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.record_visit_cash_tip(UUID, NUMERIC, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.record_visit_cash_tip(UUID, NUMERIC, TEXT) TO service_role;
 
 CREATE TRIGGER on_payment_completed
 AFTER UPDATE ON public.payments
@@ -375,18 +847,18 @@ BEGIN
         ORDER BY created_at DESC
         LIMIT 1
     ) p ON TRUE
-    WHERE id = p_emergency_request_id 
-    AND user_id = p_user_id;
+    WHERE er.id = p_emergency_request_id
+      AND er.user_id = p_user_id;
 
     IF v_payment_amount IS NULL OR v_payment_amount <= 0 THEN
         RETURN jsonb_build_object('success', false, 'error', 'Emergency request has no payable total_cost');
     END IF;
 
-    -- Validate new payment method
+    -- Validate the selected replacement payment method.
     v_validation_result := public.validate_payment_method(p_user_id, p_new_payment_method_id);
 
     IF NOT (v_validation_result->>'valid')::BOOLEAN THEN
-        RETURN jsonb_build_object('success', false, 'error', v_validation_result->>'error');
+        RETURN jsonb_build_object('success', false, 'error', COALESCE(v_validation_result->>'error', 'Invalid payment method'));
     END IF;
 
     -- Create canonical pending card payment and preserve method-id context in metadata.

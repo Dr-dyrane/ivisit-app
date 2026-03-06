@@ -138,6 +138,10 @@ CREATE TABLE IF NOT EXISTS public.visits (
     status TEXT DEFAULT 'upcoming',
     notes TEXT,
     cost TEXT,
+    tip_amount NUMERIC DEFAULT 0,
+    tip_currency TEXT DEFAULT 'USD',
+    tipped_at TIMESTAMPTZ,
+    tip_payment_id UUID,
     -- Lifecycle & Rating (recovered from legacy)
     lifecycle_state TEXT,
     lifecycle_updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -147,6 +151,7 @@ CREATE TABLE IF NOT EXISTS public.visits (
     display_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT visits_tip_amount_nonnegative_chk CHECK (tip_amount IS NULL OR tip_amount >= 0),
     CONSTRAINT visits_rating_range_chk CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5))
 );
 

@@ -53,6 +53,37 @@ CREATE TABLE IF NOT EXISTS public.hospitals (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 2b. Hospital Import Logs (admin/provider operational ingest audit)
+CREATE TABLE IF NOT EXISTS public.hospital_import_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    import_type TEXT NOT NULL,
+    location_lat DOUBLE PRECISION,
+    location_lng DOUBLE PRECISION,
+    radius_km NUMERIC,
+    search_query TEXT,
+    status TEXT DEFAULT 'running',
+    total_found INTEGER DEFAULT 0,
+    imported_count INTEGER DEFAULT 0,
+    skipped_count INTEGER DEFAULT 0,
+    error_count INTEGER DEFAULT 0,
+    errors JSONB,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ,
+    CONSTRAINT hospital_import_logs_counts_non_negative CHECK (
+        COALESCE(total_found, 0) >= 0
+        AND COALESCE(imported_count, 0) >= 0
+        AND COALESCE(skipped_count, 0) >= 0
+        AND COALESCE(error_count, 0) >= 0
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_hospital_import_logs_created_at
+ON public.hospital_import_logs(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_hospital_import_logs_created_by
+ON public.hospital_import_logs(created_by);
+
 -- Keep bed capacity columns and bed_availability JSON in sync.
 CREATE OR REPLACE FUNCTION public.normalize_hospital_bed_state()
 RETURNS TRIGGER AS $$
