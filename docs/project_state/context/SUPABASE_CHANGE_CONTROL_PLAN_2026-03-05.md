@@ -1242,6 +1242,200 @@ Verification:
 - `npm run hardening:cleanup-dry-run-guard` green,
 - `npm run hardening:contract-drift-guard` green.
 
+### SCC-049: `search_selections` Surface Contract Guard Hardening
+Objective:
+- Reconcile `search_selections` type/relationship drift across app/console and add deterministic guard coverage for canonical selection-field usage and mutation boundaries.
+
+Deliverables:
+- app/console search selections type reconciliation:
+  - `types/database.ts`
+  - `supabase/database.ts`
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align `created_at` nullability to canonical migration contract (`NOT NULL`)
+  - restore canonical FK relationship parity (`search_selections_user_id_fkey`).
+- console search selections service payload hardening:
+  - `../ivisit-console/frontend/src/services/searchSelectionsService.js`
+  - enforce canonical create/update allowlists
+  - block `user_id` reassignment in update payloads
+  - validate required selection fields and preserve fallback-safe behavior.
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_search_selections_surface_field_guard.js`
+  - enforce app/console type parity for `search_selections` (`Row`/`Insert`/`Update`)
+  - enforce required FK relationship parity (`search_selections_user_id_fkey`)
+  - enforce approved reference boundaries + canonical select-column usage
+  - enforce mutation-boundary ownership and service allowlist contract checks.
+- wire guard command + docs:
+  - `package.json` add `hardening:search-selections-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section.
+- validate runtime coverage lane for this table:
+  - refresh trace and per-table runtime field coverage for `search_selections`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table search_selections` green,
+- `npm run hardening:table-field-runtime-coverage -- --table search_selections` green,
+- `npm run hardening:search-selections-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
+### SCC-050: `search_events` Surface Contract Guard Hardening
+Objective:
+- Reconcile `search_events` type drift across app/console and add deterministic guard coverage for canonical event-field usage + mutation boundaries in search analytics lanes.
+
+Deliverables:
+- app/console search events type reconciliation:
+  - `supabase/database.ts`
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align legacy drift (`extra`) to canonical `metadata`
+  - align `created_at` nullability to canonical migration contract (`NOT NULL`).
+- console search events service payload hardening:
+  - `../ivisit-console/frontend/src/services/searchEventsService.js`
+  - enforce canonical create allowlist (`query`, `source`, `selected_key`, `metadata`)
+  - keep legacy `input.extra` compatibility only as fallback mapping into `metadata`
+  - enforce deterministic source default and created-at stamping.
+- search service consistency hardening:
+  - `../ivisit-console/frontend/src/services/searchService.js`
+  - ensure `search_events` inserts use `SEARCH_EVENTS_TABLE` constant.
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_search_events_surface_field_guard.js`
+  - enforce app/console type parity for `search_events` (`Row`/`Insert`/`Update`)
+  - enforce approved console reference boundaries
+  - enforce canonical select-column usage
+  - enforce mutation-boundary ownership (search event writes limited to approved search services)
+  - enforce service allowlist/defaulting contract checks.
+- wire guard command + docs:
+  - `package.json` add `hardening:search-events-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section.
+- validate runtime coverage lane for this table:
+  - refresh trace and per-table runtime field coverage for `search_events`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table search_events` green,
+- `npm run hardening:table-field-runtime-coverage -- --table search_events` green,
+- `npm run hardening:search-events-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
+### SCC-051: `trending_topics` Surface Contract Guard Hardening
+Objective:
+- Reconcile `trending_topics` app/console type drift and enforce deterministic guard coverage for canonical trending-topic field usage + mutation boundaries.
+
+Deliverables:
+- app/console type reconciliation:
+  - `supabase/database.ts`
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align `trending_topics.created_at/updated_at` nullability to canonical migration (`NOT NULL`)
+  - align `update_trending_topics_from_search` RPC return type to canonical `JSONB`.
+- console service payload hardening:
+  - `../ivisit-console/frontend/src/services/trendingTopicsService.js`
+  - enforce create/update allowlists (`query`, `category`, `rank`)
+  - block raw spread update payload drift
+  - normalize/validate rank and required string fields
+  - keep deterministic `updated_at` stamping.
+- analytics automation response normalization:
+  - `../ivisit-console/frontend/src/services/analyticsAutomationService.js`
+  - normalize RPC success handling for `admin_update_trending_topics` JSONB return payload.
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_trending_topics_surface_field_guard.js`
+  - enforce app/console type parity for `trending_topics` (`Row`/`Insert`/`Update`)
+  - enforce approved console reference boundaries
+  - enforce canonical select-column usage
+  - enforce mutation-boundary ownership for direct `trending_topics` writes
+  - enforce trending topics service allowlist contract checks.
+- wire guard command + docs:
+  - `package.json` add `hardening:trending-topics-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section.
+- validate runtime coverage lane for this table:
+  - refresh trace and per-table runtime field coverage for `trending_topics`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table trending_topics` green,
+- `npm run hardening:table-field-runtime-coverage -- --table trending_topics` green,
+- `npm run hardening:trending-topics-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
+### SCC-052: `health_news` Surface Contract Guard Hardening
+Objective:
+- Reconcile `health_news` app/generated/console type drift and enforce deterministic guard coverage for canonical health-news field usage + mutation boundaries.
+
+Deliverables:
+- app/generated/console type reconciliation:
+  - `supabase/database.ts`
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - align canonical `health_news` field surface:
+    - remove non-schema legacy fields (`icon`, `time`, `updated_at`)
+    - add canonical `image_url`
+    - align `created_at` nullability to canonical migration (`NOT NULL`).
+- console service payload hardening:
+  - `../ivisit-console/frontend/src/services/healthNewsService.js`
+  - enforce canonical writable payload allowlist (`title`, `source`, `category`, `url`, `published`, `image_url`)
+  - trim/sanitize string fields
+  - enforce required field guards for create (`title`, `source`)
+  - block empty-string updates for required fields and guard empty update payloads.
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_health_news_surface_field_guard.js`
+  - enforce app/generated/console type parity for `health_news` (`Row`/`Insert`/`Update`)
+  - enforce approved console reference boundaries
+  - enforce canonical select-column usage
+  - enforce mutation-boundary ownership and health-news service allowlist contract checks.
+- wire guard command + docs:
+  - `package.json` add `hardening:health-news-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section.
+- validate runtime coverage lane for this table:
+  - refresh trace and per-table runtime field coverage for `health_news`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table health_news` green,
+- `npm run hardening:table-field-runtime-coverage -- --table health_news` green,
+- `npm run hardening:health-news-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
+### SCC-053: `subscribers` Surface Contract Guard Hardening
+Objective:
+- Reconcile `subscribers` app/generated/console type drift and enforce deterministic guard coverage for canonical subscriber field usage + mutation boundaries.
+
+Deliverables:
+- app/generated/console type reconciliation:
+  - `supabase/database.ts`
+  - `../ivisit-console/frontend/src/types/database.ts`
+  - remove non-schema legacy subscriber fields (`source`, `sale_id`, `last_engagement_at`, `welcome_email_sent_at`, `unsubscribed_at`)
+  - align `created_at`/`updated_at` nullability to canonical migration (`NOT NULL`).
+- console service + UI surface hardening:
+  - `../ivisit-console/frontend/src/services/subscriptionService.js`
+  - `../ivisit-console/frontend/src/services/subscribersService.js`
+  - `../ivisit-console/frontend/src/components/modals/SubscriptionModal.jsx`
+  - `../ivisit-console/frontend/src/components/views/SubscriptionListView.jsx`
+  - `../ivisit-console/frontend/src/components/views/SubscriptionTableView.jsx`
+  - `../ivisit-console/frontend/src/components/pages/SubscriptionManagementPage.jsx`
+  - keep subscriber CRUD/list/detail surfaces constrained to canonical table fields only.
+- alignment audit expectation refresh:
+  - `supabase/tests/scripts/run_alignment_audit.js`
+  - align `subscribers` expected columns list with canonical schema.
+- add dedicated guard script:
+  - `supabase/tests/scripts/assert_subscribers_surface_field_guard.js`
+  - enforce app/generated/console type parity for `subscribers` (`Row`/`Insert`/`Update`)
+  - enforce approved console reference boundaries
+  - enforce canonical select-column usage
+  - enforce mutation-boundary ownership + subscriber service writable-field contract checks.
+- wire guard command + docs:
+  - `package.json` add `hardening:subscribers-surface-field-guard`
+  - `supabase/docs/TESTING.md` add guard usage section.
+- validate runtime coverage lane for this table:
+  - refresh trace and per-table runtime field coverage for `subscribers`.
+
+Verification:
+- `node supabase/tests/scripts/export_table_flow_trace.js --table subscribers` green,
+- `npm run hardening:table-field-runtime-coverage -- --table subscribers` green,
+- `npm run hardening:subscribers-surface-field-guard` green,
+- `npm run build` green in `../ivisit-console/frontend`,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

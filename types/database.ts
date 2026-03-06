@@ -1547,6 +1547,44 @@ export type Database = {
           },
         ]
       }
+      search_selections: {
+        Row: {
+          created_at: string
+          id: string
+          query: string
+          result_id: string
+          result_type: string
+          source: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          query: string
+          result_id: string
+          result_type: string
+          source?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          query?: string
+          result_id?: string
+          result_type?: string
+          source?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_selections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_pricing: {
         Row: {
           base_price: number

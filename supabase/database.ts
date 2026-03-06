@@ -450,38 +450,32 @@ export type Database = {
       health_news: {
         Row: {
           category: string | null
-          created_at: string | null
-          icon: string
+          created_at: string
           id: string
+          image_url: string | null
           published: boolean | null
           source: string
-          time: string
           title: string
-          updated_at: string | null
           url: string | null
         }
         Insert: {
           category?: string | null
-          created_at?: string | null
-          icon: string
+          created_at?: string
           id?: string
+          image_url?: string | null
           published?: boolean | null
           source: string
-          time: string
           title: string
-          updated_at?: string | null
           url?: string | null
         }
         Update: {
           category?: string | null
-          created_at?: string | null
-          icon?: string
+          created_at?: string
           id?: string
+          image_url?: string | null
           published?: boolean | null
           source?: string
-          time?: string
           title?: string
-          updated_at?: string | null
           url?: string | null
         }
         Relationships: []
@@ -1288,25 +1282,25 @@ export type Database = {
       }
       search_events: {
         Row: {
-          created_at: string | null
-          extra: Json | null
+          created_at: string
           id: string
+          metadata: Json | null
           query: string | null
           selected_key: string | null
           source: string | null
         }
         Insert: {
-          created_at?: string | null
-          extra?: Json | null
+          created_at?: string
           id?: string
+          metadata?: Json | null
           query?: string | null
           selected_key?: string | null
           source?: string | null
         }
         Update: {
-          created_at?: string | null
-          extra?: Json | null
+          created_at?: string
           id?: string
+          metadata?: Json | null
           query?: string | null
           selected_key?: string | null
           source?: string | null
@@ -1339,7 +1333,7 @@ export type Database = {
       }
       search_selections: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
           query: string
           result_id: string
@@ -1348,7 +1342,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           query: string
           result_id: string
@@ -1357,7 +1351,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           query?: string
           result_id?: string
@@ -1365,7 +1359,15 @@ export type Database = {
           source?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "search_selections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_pricing: {
         Row: {
@@ -1432,52 +1434,37 @@ export type Database = {
       }
       subscribers: {
         Row: {
-          created_at: string | null
+          created_at: string
           email: string
           id: string
-          last_engagement_at: string | null
           new_user: boolean | null
-          sale_id: string | null
-          source: string | null
           status: string | null
           subscription_date: string | null
           type: string | null
-          unsubscribed_at: string | null
-          updated_at: string | null
+          updated_at: string
           welcome_email_sent: boolean | null
-          welcome_email_sent_at: string | null
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           email: string
           id?: string
-          last_engagement_at?: string | null
           new_user?: boolean | null
-          sale_id?: string | null
-          source?: string | null
           status?: string | null
           subscription_date?: string | null
           type?: string | null
-          unsubscribed_at?: string | null
-          updated_at?: string | null
+          updated_at?: string
           welcome_email_sent?: boolean | null
-          welcome_email_sent_at?: string | null
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           email?: string
           id?: string
-          last_engagement_at?: string | null
           new_user?: boolean | null
-          sale_id?: string | null
-          source?: string | null
           status?: string | null
           subscription_date?: string | null
           type?: string | null
-          unsubscribed_at?: string | null
-          updated_at?: string | null
+          updated_at?: string
           welcome_email_sent?: boolean | null
-          welcome_email_sent_at?: string | null
         }
         Relationships: []
       }
@@ -1553,27 +1540,27 @@ export type Database = {
       trending_topics: {
         Row: {
           category: string
-          created_at: string | null
+          created_at: string
           id: string
           query: string
           rank: number
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
           category: string
-          created_at?: string | null
+          created_at?: string
           id?: string
           query: string
           rank: number
-          updated_at?: string | null
+          updated_at?: string
         }
         Update: {
           category?: string
-          created_at?: string | null
+          created_at?: string
           id?: string
           query?: string
           rank?: number
-          updated_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3072,7 +3059,7 @@ export type Database = {
         Returns: unknown
       }
       unlockrows: { Args: { "": string }; Returns: number }
-      update_trending_topics_from_search: { Args: never; Returns: undefined }
+      update_trending_topics_from_search: { Args: never; Returns: Json }
       updategeometrysrid: {
         Args: {
           catalogn_name: string

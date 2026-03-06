@@ -185,6 +185,46 @@ npm run hardening:support-tickets-surface-field-guard
 npm run hardening:search-history-surface-field-guard
 ```
 
+### **Search Selections Surface Field Guard**
+```bash
+# Detect search_selections app/console type parity + relationship parity, enforce
+# canonical search_selections select-column usage, and keep search_selections
+# references/mutations inside approved search selection service boundaries.
+npm run hardening:search-selections-surface-field-guard
+```
+
+### **Search Events Surface Field Guard**
+```bash
+# Detect search_events app/console type parity, enforce canonical select-column
+# usage, and keep search_events references/mutations inside approved
+# search analytics/search service boundaries.
+npm run hardening:search-events-surface-field-guard
+```
+
+### **Trending Topics Surface Field Guard**
+```bash
+# Detect trending_topics app/console type parity, enforce canonical select-column
+# usage, enforce RPC return type parity for update_trending_topics_from_search,
+# and keep trending_topics mutations inside approved trending topic service lanes.
+npm run hardening:trending-topics-surface-field-guard
+```
+
+### **Subscribers Surface Field Guard**
+```bash
+# Detect subscribers app/generated/console type parity, enforce canonical
+# select-column usage, and keep subscribers mutations inside approved
+# subscription service lanes.
+npm run hardening:subscribers-surface-field-guard
+```
+
+### **Health News Surface Field Guard**
+```bash
+# Detect health_news app/generated/console type parity, enforce canonical
+# select-column usage, and keep health_news mutations inside approved
+# health news service boundaries.
+npm run hardening:health-news-surface-field-guard
+```
+
 ### **Organization Wallets Surface Field Guard**
 ```bash
 # Detect organization_wallets type parity + query select-column drift across console wallet surfaces

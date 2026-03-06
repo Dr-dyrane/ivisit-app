@@ -125,12 +125,7 @@ const COLUMN_CONTRACTS = {
     'status',
     'new_user',
     'welcome_email_sent',
-    'subscription_date',
-    'source',
-    'last_engagement_at',
-    'welcome_email_sent_at',
-    'unsubscribed_at',
-    'sale_id'
+    'subscription_date'
   ],
   emergency_doctor_assignments: [
     'id',
