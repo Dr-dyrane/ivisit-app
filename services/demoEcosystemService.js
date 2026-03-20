@@ -83,6 +83,10 @@ export const demoEcosystemService = {
 		);
 	},
 
+	isDemoFlowActive({ hospital, demoModeEnabled = true } = {}) {
+		return Boolean(demoModeEnabled) && this.isDemoHospital(hospital);
+	},
+
 	async bootstrapDemoEcosystem({ latitude, longitude, radiusKm = 50, onProgress }) {
 		const coords = normalizeCoordinates({ latitude, longitude });
 		const summary = {
@@ -127,4 +131,3 @@ export const demoEcosystemService = {
 
 	getPhaseMeta,
 };
-

@@ -1,6 +1,6 @@
 # iVisit Documentation Index
 
-Last Updated: 2026-03-05
+Last Updated: 2026-03-19
 
 ## Folder Structure
 
@@ -41,6 +41,9 @@ docs/
   console/
   onboarding/
   product_design/
+    marketing/
+      STRATEGY.md
+      MANUSCRIPT.md
   project_state/
   audit/
   archive/
@@ -52,6 +55,8 @@ docs/
 - Docs entry: [README.md](./README.md)
 - Workflow map hub: [flows/README.md](./flows/README.md)
 - Android glass standard: [product_design/ANDROID_GLASS_PATTERN.md](./product_design/ANDROID_GLASS_PATTERN.md)
+- Marketing strategy: [product_design/marketing/STRATEGY.md](./product_design/marketing/STRATEGY.md)
+- Ad manuscript: [product_design/marketing/MANUSCRIPT.md](./product_design/marketing/MANUSCRIPT.md)
 
 ## Workflow Maps
 

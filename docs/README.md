@@ -8,6 +8,8 @@ Primary entry for project documentation and workflow maps.
 - [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md): product-level blueprint.
 - [project_state/QUICK_START.md](./project_state/QUICK_START.md): development quick start.
 - [product_design/ANDROID_GLASS_PATTERN.md](./product_design/ANDROID_GLASS_PATTERN.md): Android shadow/glass anti-smudge standard.
+- [product_design/marketing/STRATEGY.md](./product_design/marketing/STRATEGY.md): Marketing strategy and brand pillars.
+- [product_design/marketing/MANUSCRIPT.md](./product_design/marketing/MANUSCRIPT.md): 60-second cinematic ad script.
 
 ## Workflow Maps (Distributed)
 

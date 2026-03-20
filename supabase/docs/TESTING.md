@@ -122,6 +122,16 @@ npm run hardening:emergency-runtime-confidence
 npm run hardening:emergency-runtime-confidence-assert
 ```
 
+### **High-Profile CTA Trace Matrix**
+```bash
+# Validate high-impact app/console UX actions with deterministic trace checks:
+# UI handler -> flow/service -> RPC/trigger (plus runtime guard report prerequisites).
+npm run hardening:high-profile-cta-trace
+```
+Artifacts:
+- `supabase/tests/validation/high_profile_cta_trace_report.json`
+- `supabase/tests/validation/high_profile_cta_trace_report.md`
+
 ### **Visits JS/JSX Field Guard**
 ```bash
 # Detect stale/non-schema visits field reads/writes in console JS/JSX surfaces

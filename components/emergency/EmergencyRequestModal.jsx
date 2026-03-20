@@ -23,7 +23,9 @@ import { hospitalsService } from "../../services/hospitalsService";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
 import HeaderBackButton from "../navigation/HeaderBackButton";
 import { useEmergency } from "../../contexts/EmergencyContext";
+import { usePreferences } from "../../contexts/PreferencesContext";
 import TriageIntakeModal from "./triage/TriageIntakeModal";
+import { demoEcosystemService } from "../../services/demoEcosystemService";
 
 const isValidUUIDValue = (id) =>
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id ?? ""));
@@ -108,6 +110,7 @@ const EmergencyRequestModal = React.memo(({
 	const { registerFAB, unregisterFAB } = useFABActions();
 	const insets = useSafeAreaInsets();
 	const { setHeaderState } = useHeaderState();
+	const { preferences } = usePreferences();
 
 	// MODULAR STEPS: 0: select, 1: payment, 2: dispatched
 	const [requestStep, setRequestStep] = useState("select");
@@ -187,6 +190,22 @@ const EmergencyRequestModal = React.memo(({
 
 	// Cash approval gate state (Managed by context for persistence)
 	const { pendingApproval, setPendingApproval, activeAmbulanceTrip, allHospitals } = useEmergency();
+	const demoModeEnabled = preferences?.demoModeEnabled !== false;
+	const resolvedRequestHospital = useMemo(() => {
+		if (!requestHospital?.id) return requestHospital;
+		return (
+			allHospitals?.find((hospital) => hospital?.id === requestHospital.id) ??
+			requestHospital
+		);
+	}, [allHospitals, requestHospital]);
+	const demoCashFlowActive = useMemo(
+		() =>
+			demoEcosystemService.isDemoFlowActive({
+				hospital: resolvedRequestHospital,
+				demoModeEnabled,
+			}),
+		[demoModeEnabled, resolvedRequestHospital]
+	);
 	const approvalHandledRef = useRef(false);
 	const approvalDispatchWaitNotifiedRef = useRef(false);
 	const approvalRealtimeStatusRef = useRef({});
@@ -913,7 +932,11 @@ const EmergencyRequestModal = React.memo(({
 		}
 
 		// Cash Eligibility Check
-		if (selectedPaymentMethod.is_cash) {
+		if (selectedPaymentMethod.is_cash && demoCashFlowActive) {
+			console.log("[EmergencyRequestModal] Demo cash flow active: skipping collateral gate.");
+		}
+
+		if (selectedPaymentMethod.is_cash && !demoCashFlowActive) {
 			try {
 				setIsRequesting(true);
 				let targetOrgId = requestHospital.organization_id || requestHospital.organizationId;

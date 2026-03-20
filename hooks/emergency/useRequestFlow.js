@@ -13,6 +13,7 @@ import { usePaymentFlow } from "./usePaymentFlow";
 import { serviceCostService } from "../../services/serviceCostService";
 import { notificationDispatcher } from "../../services/notificationDispatcher";
 import { triageService } from "../../services/triageService";
+import { demoEcosystemService } from "../../services/demoEcosystemService";
 
 const toFiniteNumber = (value) => {
 	const n = Number(value);
@@ -154,7 +155,9 @@ export const useRequestFlow = (props) => {
 				selectedHospital,
 				createRequest,
 				addVisit,
-				selectedSpecialty
+				selectedSpecialty,
+				updateRequest,
+				preferences,
 			} = propsRef.current;
 
 			if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") {
@@ -276,6 +279,13 @@ export const useRequestFlow = (props) => {
 				// Determine payment method for atomic RPC
 				const paymentMethodId = request?.paymentMethod?.id ||
 					(request?.paymentMethod?.is_cash ? 'cash' : null);
+				const isDemoCashFlow = demoEcosystemService.isDemoFlowActive({
+					hospital,
+					demoModeEnabled: preferences?.demoModeEnabled !== false,
+				}) && (
+					request?.paymentMethod?.is_cash === true ||
+					String(paymentMethodId ?? "").toLowerCase().includes("cash")
+				);
 
 				console.log('[useRequestFlow] 📋 Creating Emergency Request:', {
 					displayId: visitId,
@@ -325,15 +335,39 @@ export const useRequestFlow = (props) => {
 				// 🔑 CRITICAL: Use the REAL UUID from the DB, not the display ID
 				const realId = createdRequest?.id || visitId;
 				const displayId = createdRequest?.requestId || visitId;
-				const requiresApproval = createdRequest?.requiresApproval || false;
+				const backendRequiresApproval = createdRequest?.requiresApproval || false;
+				const requiresApproval = isDemoCashFlow ? false : backendRequiresApproval;
+				const normalizedPaymentStatus =
+					isDemoCashFlow &&
+					["pending", "requires_approval"].includes(
+						String(createdRequest?.paymentStatus || "").toLowerCase()
+					)
+						? "completed"
+						: createdRequest?.paymentStatus || "completed";
 
 				console.log('[useRequestFlow] ✅ Request Created:', {
 					realId,
 					displayId,
-					paymentStatus: createdRequest?.paymentStatus,
+					paymentStatus: normalizedPaymentStatus,
 					requiresApproval,
+					backendRequiresApproval,
+					demoCashFlow: isDemoCashFlow,
 					isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(realId),
 				});
+
+				if (isDemoCashFlow && backendRequiresApproval) {
+					try {
+						await updateRequest?.(realId, {
+							status: EmergencyRequestStatus.ACCEPTED,
+							transition_reason: "demo_cash_auto_accept",
+						});
+					} catch (demoStatusError) {
+						console.warn(
+							"[useRequestFlow] Demo cash auto-accept sync failed (non-blocking):",
+							demoStatusError
+						);
+					}
+				}
 
 				// 🏥 Visit is NOW created by backend trigger (sync_emergency_to_visit)
 				// No frontend addVisit() needed — eliminates RLS and UUID errors.
@@ -444,7 +478,7 @@ export const useRequestFlow = (props) => {
 					etaSeconds: computedEtaSeconds,
 					requiresApproval,
 					paymentId: createdRequest?.paymentId || null,
-					paymentStatus: createdRequest?.paymentStatus || 'completed',
+					paymentStatus: normalizedPaymentStatus,
 				};
 			} catch (err) {
 				inflightByTypeRef.current[request.serviceType] = false;

@@ -595,16 +595,6 @@ const EmergencyScreen = () => {
 
 	useFocusEffect(
 		useCallback(() => {
-			// Registering FAB
-			const fabDetails = {
-				id: 'emergency-mode-toggle',
-				visible: !shouldHideFAB,
-				priority: 15,
-				mode: mode,
-				selectedHospital: selectedHospital?.name,
-				hasAnyVisitActive
-			};
-
 			// Register FAB with unique ID and enhanced configuration
 			registerFAB('emergency-mode-toggle', {
 				icon: mode === "emergency" ? "bed-outline" : "alarm-light-outline",
@@ -630,8 +620,7 @@ const EmergencyScreen = () => {
 			mode,
 			shouldHideFAB,
 			handleFloatingButtonPress,
-			activeAmbulanceTrip,
-			activeBedBooking,
+			hasAnyVisitActive,
 		])
 	);
 

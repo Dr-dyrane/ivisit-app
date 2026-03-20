@@ -11,8 +11,10 @@ import { useNotifications } from "./NotificationsContext";
 import { useHospitals } from "../hooks/emergency/useHospitals";
 import { useAmbulances } from "../hooks/emergency/useAmbulances";
 import { ambulanceService } from "../services/ambulanceService";
+import { demoEcosystemService } from "../services/demoEcosystemService";
 import { usePreferences } from "./PreferencesContext";
 import { useAuth } from "./AuthContext";
+import { calculateBearing, isValidCoordinate } from "../utils/mapUtils";
 import {
 	parseRecordTimestampMs,
 	parsePointGeometry,
@@ -37,6 +39,7 @@ const TELEMETRY_LOST_THRESHOLD_MS = 120000;
 const REALTIME_RECOVERY_STATUSES = new Set(["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"]);
 const REALTIME_HEALTHY_STATUSES = new Set(["SUBSCRIBED"]);
 const REALTIME_TRUTH_SYNC_DEBOUNCE_MS = 6000;
+const DEMO_RESPONDER_HEARTBEAT_MS = 4000;
 
 const parseTimestampMs = (value) => {
 	if (!value) return null;
@@ -133,6 +136,61 @@ const deriveAmbulanceTelemetryHealth = (trip, nowMs = Date.now()) => {
 				: state === "stale"
 					? `Signal delayed ${ageLabel ? `${ageLabel} ago` : ""}`.trim()
 					: "Live tracking",
+	};
+};
+
+const normalizeCoordinate = (value) => {
+	if (!value || typeof value !== "object") return null;
+	if (isValidCoordinate(value)) {
+		return {
+			latitude: Number(value.latitude),
+			longitude: Number(value.longitude),
+		};
+	}
+	if (Number.isFinite(value.lat) && Number.isFinite(value.lng)) {
+		return {
+			latitude: Number(value.lat),
+			longitude: Number(value.lng),
+		};
+	}
+	return null;
+};
+
+const normalizeRouteCoordinates = (route) => {
+	if (!Array.isArray(route)) return [];
+	return route
+		.map((point) => normalizeCoordinate(point))
+		.filter((point) => isValidCoordinate(point));
+};
+
+const interpolateRoutePosition = (routeCoordinates, progressRatio) => {
+	if (!Array.isArray(routeCoordinates) || routeCoordinates.length < 2) {
+		return null;
+	}
+
+	const boundedProgress = Math.min(1, Math.max(0, progressRatio));
+	const totalSegments = routeCoordinates.length - 1;
+	const segmentProgress = boundedProgress * totalSegments;
+	const currentSegmentIndex = Math.min(
+		routeCoordinates.length - 2,
+		Math.floor(segmentProgress)
+	);
+	const segmentRatio = segmentProgress - currentSegmentIndex;
+	const currentCoord = routeCoordinates[currentSegmentIndex];
+	const nextCoord = routeCoordinates[currentSegmentIndex + 1];
+
+	const coordinate = {
+		latitude:
+			currentCoord.latitude +
+			(nextCoord.latitude - currentCoord.latitude) * segmentRatio,
+		longitude:
+			currentCoord.longitude +
+			(nextCoord.longitude - currentCoord.longitude) * segmentRatio,
+	};
+
+	return {
+		coordinate,
+		heading: calculateBearing(currentCoord, nextCoord),
 	};
 };
 
@@ -325,6 +383,16 @@ export function EmergencyProvider({ children }) {
 	const realtimeStatusRef = useRef({});
 	const lastRealtimeSyncMsRef = useRef(0);
 	const [telemetryNowMs, setTelemetryNowMs] = useState(Date.now());
+	const activeAmbulanceTripRef = useRef(activeAmbulanceTrip);
+	const userLocationRef = useRef(userLocation);
+
+	useEffect(() => {
+		activeAmbulanceTripRef.current = activeAmbulanceTrip;
+	}, [activeAmbulanceTrip]);
+
+	useEffect(() => {
+		userLocationRef.current = userLocation;
+	}, [userLocation]);
 
 	// Emergency mode state
 	const [serviceType, setServiceType] = useState(null); // null = show all, "premium" or "standard"
@@ -456,6 +524,8 @@ export function EmergencyProvider({ children }) {
 						currentResponderLocation: loc,
 						currentResponderHeading: activeAmbulance.responderHeading,
 						responderTelemetryAt: activeAmbulance.updatedAt ?? null,
+						patientLocation: parsePoint(activeAmbulance.patientLocation),
+						route: null,
 						updatedAt: activeAmbulance.updatedAt ?? null,
 					});
 				} else {
@@ -872,6 +942,11 @@ export function EmergencyProvider({ children }) {
 					trip?.currentResponderLocation ??
 					assignedAmbulance?.location ??
 					null,
+					patientLocation:
+						trip?.patientLocation ??
+						userLocation ??
+						null,
+					route: normalizeRouteCoordinates(trip?.route),
 					currentResponderHeading:
 						Number.isFinite(trip?.currentResponderHeading)
 							? trip.currentResponderHeading
@@ -917,6 +992,119 @@ export function EmergencyProvider({ children }) {
 			};
 		});
 	}, []);
+
+	const activeAmbulanceDemoHospital = useMemo(() => {
+		if (!activeAmbulanceTrip?.hospitalId) return null;
+		const hospital = hospitals.find((item) => item?.id === activeAmbulanceTrip.hospitalId) ?? null;
+		return demoEcosystemService.isDemoFlowActive({
+			hospital,
+			demoModeEnabled,
+		})
+			? hospital
+			: null;
+	}, [activeAmbulanceTrip?.hospitalId, demoModeEnabled, hospitals]);
+
+	useEffect(() => {
+		const requestId = activeAmbulanceTrip?.requestId ?? null;
+		if (!requestId || !activeAmbulanceDemoHospital) return;
+
+		const status = String(activeAmbulanceTrip?.status ?? "").toLowerCase();
+		if (!AMBULANCE_LIVE_TRACK_STATUSES.has(status)) return;
+
+		const hospitalCoordinate =
+			normalizeCoordinate(activeAmbulanceDemoHospital?.coordinates) ||
+			(Number.isFinite(activeAmbulanceDemoHospital?.latitude) &&
+			Number.isFinite(activeAmbulanceDemoHospital?.longitude)
+				? {
+						latitude: Number(activeAmbulanceDemoHospital.latitude),
+						longitude: Number(activeAmbulanceDemoHospital.longitude),
+				  }
+				: null);
+
+		const tickHeartbeat = () => {
+			const trip = activeAmbulanceTripRef.current;
+			if (!trip || trip?.requestId !== requestId) return;
+
+			const tripStatus = String(trip?.status ?? "").toLowerCase();
+			if (!AMBULANCE_LIVE_TRACK_STATUSES.has(tripStatus)) return;
+
+			const now = Date.now();
+			const nowIso = new Date(now).toISOString();
+			const explicitRoute = normalizeRouteCoordinates(trip?.route);
+			const reversedRoute = explicitRoute.length >= 2 ? [...explicitRoute].reverse() : [];
+			const destinationCoordinate =
+				normalizeCoordinate(trip?.patientLocation) ||
+				normalizeCoordinate(userLocationRef.current);
+			const syntheticRoute =
+				reversedRoute.length >= 2
+					? reversedRoute
+					: isValidCoordinate(hospitalCoordinate) && isValidCoordinate(destinationCoordinate)
+						? [hospitalCoordinate, destinationCoordinate]
+						: [];
+
+			if (syntheticRoute.length < 2) {
+				patchActiveAmbulanceTrip({
+					responderTelemetryAt: nowIso,
+					updatedAt: nowIso,
+				});
+				return;
+			}
+
+			const etaSeconds =
+				Number.isFinite(trip?.etaSeconds) && trip.etaSeconds > 0
+					? trip.etaSeconds
+					: 600;
+			const startedAt = Number.isFinite(trip?.startedAt)
+				? trip.startedAt
+				: now;
+			const elapsedSeconds = Math.max(0, (now - startedAt) / 1000);
+			const progressRatio = Math.min(0.985, elapsedSeconds / etaSeconds);
+			const projected = interpolateRoutePosition(syntheticRoute, progressRatio);
+
+			if (!projected?.coordinate) {
+				patchActiveAmbulanceTrip({
+					responderTelemetryAt: nowIso,
+					updatedAt: nowIso,
+				});
+				return;
+			}
+
+			const previousCoordinate = normalizeCoordinate(trip?.currentResponderLocation);
+			const previousHeading = Number.isFinite(trip?.currentResponderHeading)
+				? Number(trip.currentResponderHeading)
+				: null;
+			const locationChanged =
+				!previousCoordinate ||
+				Math.abs(previousCoordinate.latitude - projected.coordinate.latitude) > 0.000001 ||
+				Math.abs(previousCoordinate.longitude - projected.coordinate.longitude) > 0.000001;
+			const headingChanged =
+				previousHeading === null ||
+				Math.abs(previousHeading - projected.heading) > 0.1;
+
+			const telemetryUpdates = {
+				responderTelemetryAt: nowIso,
+				updatedAt: nowIso,
+			};
+
+			if (locationChanged) {
+				telemetryUpdates.currentResponderLocation = projected.coordinate;
+			}
+			if (headingChanged) {
+				telemetryUpdates.currentResponderHeading = projected.heading;
+			}
+
+			patchActiveAmbulanceTrip(telemetryUpdates);
+		};
+
+		tickHeartbeat();
+		const intervalId = setInterval(tickHeartbeat, DEMO_RESPONDER_HEARTBEAT_MS);
+		return () => clearInterval(intervalId);
+	}, [
+		activeAmbulanceDemoHospital,
+		activeAmbulanceTrip?.requestId,
+		activeAmbulanceTrip?.status,
+		patchActiveAmbulanceTrip,
+	]);
 
 	const startBedBooking = useCallback(
 		(booking) => {

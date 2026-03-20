@@ -9,6 +9,8 @@ import { useHospitals } from "../../hooks/emergency/useHospitals";
 import { serviceCostService } from "../../services/serviceCostService";
 import { paymentService } from "../../services/paymentService";
 import { useAuth } from "../../contexts/AuthContext";
+import { usePreferences } from "../../contexts/PreferencesContext";
+import { demoEcosystemService } from "../../services/demoEcosystemService";
 
 export const STEPS = {
 	SERVICE: 0,
@@ -35,6 +37,7 @@ export const TIME_SLOTS = [
 export function useBookVisit(props = {}) {
 	const { initialData = {} } = props;
 	const { user } = useAuth();
+	const { preferences } = usePreferences();
 	const router = useRouter();
 	const { addVisit } = useVisits();
 	const { hospitals } = useHospitals();
@@ -198,6 +201,14 @@ export function useBookVisit(props = {}) {
 
 	const handleSelectDate = useCallback((date) => updateData('date', date), [updateData]);
 	const handleSelectTime = useCallback((time) => updateData('time', time), [updateData]);
+	const isDemoBookingFlow = useMemo(
+		() =>
+			demoEcosystemService.isDemoFlowActive({
+				hospital: bookingData.hospital,
+				demoModeEnabled: preferences?.demoModeEnabled !== false,
+			}),
+		[bookingData.hospital, preferences?.demoModeEnabled]
+	);
 
 	const handleConfirmDateTime = useCallback(async () => {
 		if (bookingData.date && bookingData.time) {
@@ -227,7 +238,7 @@ export function useBookVisit(props = {}) {
 			setIsSubmitting(true);
 
 			// Financial Guardrail: Check Cash Eligibility if needed
-			if (bookingData.hospital?.organizationId && cost?.total_cost) {
+			if (!isDemoBookingFlow && bookingData.hospital?.organizationId && cost?.total_cost) {
 				const isEligible = await paymentService.checkCashEligibility(
 					bookingData.hospital.organizationId,
 					cost.total_cost
@@ -270,7 +281,7 @@ export function useBookVisit(props = {}) {
 			Alert.alert("Error", "Failed to book visit. Please try again.");
 			setIsSubmitting(false);
 		}
-	}, [bookingData, addVisit, router]);
+	}, [addVisit, bookingData, cost?.total_cost, isDemoBookingFlow, router]);
 
 	return {
 		step,

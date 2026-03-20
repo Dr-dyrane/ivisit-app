@@ -1551,6 +1551,47 @@ Verification:
 - `npm run hardening:governance-guards` green,
 - `npm run build` green in `../ivisit-console/frontend`.
 
+### SCC-057: High-Profile UX CTA/Action Trace Baseline
+Objective:
+- Start a UX-first restart lane by deterministically validating high-impact app/console CTAs and tracing each action from UI handler to service and backend authority boundary (RPC/trigger), with runtime confidence prerequisites.
+
+Deliverables:
+- high-profile CTA trace matrix script:
+  - `supabase/tests/scripts/run_high_profile_cta_trace_matrix.js`
+  - validates curated P0/P1 journeys across:
+    - mobile emergency request/dispatch start,
+    - cash-approval notification + console realtime visibility,
+    - console approve/decline,
+    - console dispatch,
+    - retry-payment lane,
+    - visit synchronization hydration,
+    - triage parallel capture lane,
+    - rating/tip settlement lane.
+  - checks for each journey:
+    - UI handler wiring,
+    - flow/service wiring,
+    - canonical migration authority signature presence.
+- runtime guard coupling inside the CTA trace report:
+  - `emergency_runtime_confidence_report.json`
+  - `visits_runtime_confidence_report.json`
+  - `modal_domain_coverage_report.json`
+  - `console_transition_matrix_report.json`
+  - `e2e_flow_matrix_report.json`
+- artifacts:
+  - `supabase/tests/validation/high_profile_cta_trace_report.json`
+  - `supabase/tests/validation/high_profile_cta_trace_report.md`
+- npm command + testing docs wiring:
+  - `package.json` add `hardening:high-profile-cta-trace`
+  - `supabase/docs/TESTING.md` add command usage and artifact location.
+
+Verification:
+- `npm run hardening:emergency-runtime-confidence` green,
+- `npm run hardening:visits-runtime-confidence` green,
+- `npm run hardening:modal-domain-guard` green,
+- `npm run hardening:high-profile-cta-trace` green,
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
