@@ -83,7 +83,13 @@
         }
       ],
       "expo-web-browser",
-      "react-native-vision-camera"
+      "react-native-vision-camera",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.ivisit"
+        }
+      ]
     ],
     "updates": {
       "fallbackToCacheTimeout": 0,
