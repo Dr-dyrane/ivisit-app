@@ -20,23 +20,16 @@ import { useRouter } from "expo-router";
 import { useToast } from "../contexts/ToastContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
-import { usePreferences } from "../contexts/PreferencesContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
 import { COLORS } from "../constants/colors";
 import * as Haptics from "expo-haptics";
-import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 import { seederService } from "../services/seederService";
-import { demoEcosystemService } from "../services/demoEcosystemService";
 import { useEmergency } from "../contexts/EmergencyContext";
-import {
-	DEFAULT_APP_COORDINATES,
-	DEFAULT_DEMO_CITY_LABEL,
-} from "../constants/locationDefaults";
+import { COVERAGE_MODES } from "../services/coverageModeService";
 import {
 	navigateToEmergencyContacts,
 	navigateToHelpSupport,
@@ -55,8 +48,15 @@ const MoreScreen = () => {
 	const { showToast } = useToast();
 	const { logout, user } = useAuth();
 	const { isDarkMode, toggleTheme } = useTheme();
-	const { preferences, updatePreferences } = usePreferences();
-	const { refreshHospitals } = useEmergency();
+	const {
+		coverageMode,
+		coverageStatus,
+		isLiveOnlyAvailable,
+		setCoverageMode,
+		coverageModeOperation,
+		hasDemoHospitalsNearby,
+		coverageModePreferenceLoaded,
+	} = useEmergency();
 	const insets = useSafeAreaInsets();
 	const { handleScroll: handleTabBarScroll, resetTabBar } =
 		useTabBarVisibility();
@@ -193,9 +193,19 @@ const MoreScreen = () => {
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
-	const headerHeight = 80;
 	const topPadding = STACK_TOP_PADDING;
-	const demoModeEnabled = preferences?.demoModeEnabled !== false;
+	const coverageModeLabel =
+		coverageMode === COVERAGE_MODES.DEMO_ONLY
+			? "Demo Only"
+			: coverageMode === COVERAGE_MODES.LIVE_ONLY
+				? "Live Only"
+				: "Hybrid";
+	const coverageModeSummary =
+		coverageStatus === "none"
+			? "Live-only is locked until verified live coverage appears nearby."
+			: coverageStatus === "poor"
+				? "Live coverage is limited nearby. Hybrid keeps live hospitals visible and adds demo fallback."
+				: "Verified live coverage is available nearby.";
 
 	useEffect(() => {
 		Animated.parallel([
@@ -237,75 +247,44 @@ const MoreScreen = () => {
 		}
 	};
 
-	const resolveDemoBootstrapLocation = useCallback(async () => {
-		try {
-			const lastKnown = await Location.getLastKnownPositionAsync({});
-			if (lastKnown?.coords) {
-				return {
-					latitude: lastKnown.coords.latitude,
-					longitude: lastKnown.coords.longitude,
-				};
-			}
-		} catch (error) {
-			console.warn("[MoreScreen] Last known location unavailable for demo bootstrap", error);
-		}
+	const handleCoverageModePress = useCallback(
+		async (nextMode) => {
+			if (!coverageModePreferenceLoaded || coverageModeOperation?.isPending) return;
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-		try {
-			const { status } = await Location.getForegroundPermissionsAsync();
-			if (status === "granted") {
-				const current = await Location.getCurrentPositionAsync({
-					accuracy: Location.Accuracy.Balanced,
+			try {
+				if (
+					nextMode !== COVERAGE_MODES.LIVE_ONLY &&
+					!hasDemoHospitalsNearby
+				) {
+					showToast("Preparing nearby demo hospitals...", "info");
+				}
+
+				await setCoverageMode(nextMode, {
+					forceBootstrap:
+						nextMode !== COVERAGE_MODES.LIVE_ONLY && !hasDemoHospitalsNearby,
 				});
-				return {
-					latitude: current.coords.latitude,
-					longitude: current.coords.longitude,
-				};
+
+				const successMessage =
+					nextMode === COVERAGE_MODES.LIVE_ONLY
+						? "Coverage mode set to Live Only."
+						: nextMode === COVERAGE_MODES.DEMO_ONLY
+							? "Coverage mode set to Demo Only."
+							: "Coverage mode set to Hybrid.";
+				showToast(successMessage, "success");
+			} catch (error) {
+				console.error("[MoreScreen] Failed to update coverage mode", error);
+				showToast("Unable to update coverage mode right now", "error");
 			}
-		} catch (error) {
-			console.warn("[MoreScreen] Current location unavailable for demo bootstrap", error);
-		}
-
-		return { ...DEFAULT_APP_COORDINATES };
-	}, []);
-
-	const handleDemoModeToggle = useCallback(async () => {
-		if (!preferences) return;
-		const nextValue = !demoModeEnabled;
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-		try {
-			if (nextValue) {
-				showToast(`Preparing ${DEFAULT_DEMO_CITY_LABEL} demo hospitals...`, "info");
-				const coords = await resolveDemoBootstrapLocation();
-
-				await demoEcosystemService.bootstrapDemoEcosystem({
-					latitude: coords.latitude,
-					longitude: coords.longitude,
-					radiusKm: 50,
-				});
-			}
-
-			await updatePreferences({ demoModeEnabled: nextValue });
-			await refreshHospitals?.();
-
-			showToast(
-				nextValue
-					? `Demo mode enabled. ${DEFAULT_DEMO_CITY_LABEL} demo hospitals are ready on the emergency map.`
-					: "Demo mode disabled. Showing only live verified coverage.",
-				"success"
-			);
-		} catch (error) {
-			console.error("[MoreScreen] Failed to toggle demo mode", error);
-			showToast("Unable to update demo mode right now", "error");
-		}
-	}, [
-		demoModeEnabled,
-		preferences,
-		refreshHospitals,
-		resolveDemoBootstrapLocation,
-		showToast,
-		updatePreferences,
-	]);
+		},
+		[
+			coverageModeOperation?.isPending,
+			coverageModePreferenceLoaded,
+			hasDemoHospitalsNearby,
+			setCoverageMode,
+			showToast,
+		]
+	);
 
 	const handleSeedData = async () => {
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -975,13 +954,8 @@ const MoreScreen = () => {
 						PREFERENCES
 					</Text>
 
-					<TouchableOpacity
-						onPress={handleDemoModeToggle}
-						disabled={!preferences}
+					<View
 						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							justifyContent: "space-between",
 							padding: 20,
 							marginBottom: 12,
 							backgroundColor: colors.card,
@@ -990,10 +964,10 @@ const MoreScreen = () => {
 							shadowOffset: { width: 0, height: 4 },
 							shadowOpacity: isDarkMode ? 0 : 0.03,
 							shadowRadius: 10,
-							opacity: preferences ? 1 : 0.6,
+							opacity: coverageModePreferenceLoaded ? 1 : 0.6,
 						}}
 					>
-						<View style={{ flexDirection: "row", alignItems: "center" }}>
+						<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
 							<View
 								style={{
 									width: 56,
@@ -1005,9 +979,9 @@ const MoreScreen = () => {
 									marginRight: 16,
 								}}
 							>
-								<Ionicons name="flask-outline" size={24} color="#FFFFFF" />
+								<Ionicons name="layers-outline" size={24} color="#FFFFFF" />
 							</View>
-							<View>
+							<View style={{ flex: 1 }}>
 								<Text
 									style={{
 										fontSize: 19,
@@ -1016,7 +990,7 @@ const MoreScreen = () => {
 										letterSpacing: -0.5,
 									}}
 								>
-									Demo Mode
+									Coverage Mode
 								</Text>
 								<Text
 									style={{
@@ -1025,36 +999,96 @@ const MoreScreen = () => {
 										marginTop: 2,
 									}}
 								>
-									{demoModeEnabled ? "Enabled for emergency map" : "Show only live verified hospitals"}
+									{coverageModeLabel}
 								</Text>
 							</View>
 						</View>
-						<View
+
+						<Text
 							style={{
-								width: 52,
-								height: 30,
-								borderRadius: 15,
-								backgroundColor: demoModeEnabled ? COLORS.brandPrimary : "#D1D5DB",
-								justifyContent: "center",
+								fontSize: 13,
+								lineHeight: 19,
+								color: colors.textMuted,
+								marginBottom: 14,
 							}}
 						>
-							<View
-								style={{
-									width: 24,
-									height: 24,
-									borderRadius: 12,
-									backgroundColor: "#FFFFFF",
-									position: "absolute",
-									left: demoModeEnabled ? 25 : 3,
-									shadowColor: "#000",
-									shadowOffset: { width: 0, height: 2 },
-									shadowOpacity: 0.15,
-									shadowRadius: 3,
-									elevation: 3,
-								}}
-							/>
+							{coverageModeSummary}
+						</Text>
+
+						<View style={{ flexDirection: "row", gap: 10 }}>
+							{[
+								{
+									key: COVERAGE_MODES.LIVE_ONLY,
+									label: "Live",
+									disabled: !isLiveOnlyAvailable,
+								},
+								{
+									key: COVERAGE_MODES.HYBRID,
+									label: "Hybrid",
+									disabled: false,
+								},
+								{
+									key: COVERAGE_MODES.DEMO_ONLY,
+									label: "Demo",
+									disabled: false,
+								},
+							].map((option) => {
+								const isSelected = coverageMode === option.key;
+								const isDisabled =
+									option.disabled || coverageModeOperation?.isPending;
+
+								return (
+									<Pressable
+										key={option.key}
+										onPress={() => {
+											void handleCoverageModePress(option.key);
+										}}
+										disabled={isDisabled || !coverageModePreferenceLoaded}
+										style={({ pressed }) => ({
+											flex: 1,
+											minHeight: 52,
+											borderRadius: 18,
+											alignItems: "center",
+											justifyContent: "center",
+											backgroundColor: isSelected
+												? COLORS.brandPrimary
+												: isDarkMode
+													? "rgba(255,255,255,0.05)"
+													: "rgba(0,0,0,0.035)",
+											borderWidth: isSelected ? 0 : 1,
+											borderColor: isDarkMode
+												? "rgba(255,255,255,0.08)"
+												: "rgba(0,0,0,0.06)",
+											opacity: isDisabled ? 0.45 : (pressed ? 0.88 : 1),
+										})}
+									>
+										<Text
+											style={{
+												fontSize: 14,
+												fontWeight: "800",
+												color: isSelected ? "#FFFFFF" : colors.text,
+											}}
+										>
+											{option.label}
+										</Text>
+									</Pressable>
+								);
+							})}
 						</View>
-					</TouchableOpacity>
+
+						{!isLiveOnlyAvailable && (
+							<Text
+								style={{
+									fontSize: 12,
+									lineHeight: 18,
+									color: colors.textMuted,
+									marginTop: 12,
+								}}
+							>
+								Live-only is disabled because there are no verified nearby live hospitals right now.
+							</Text>
+						)}
+					</View>
 
 					{/* Theme Toggle */}
 

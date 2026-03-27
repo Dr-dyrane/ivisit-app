@@ -5,11 +5,10 @@ import * as Haptics from "expo-haptics";
 import { format, startOfToday, addDays } from "date-fns";
 import { useVisits } from "../../contexts/VisitsContext";
 import { VISIT_STATUS, VISIT_TYPES } from "../../constants/visits";
-import { useHospitals } from "../../hooks/emergency/useHospitals";
 import { serviceCostService } from "../../services/serviceCostService";
 import { paymentService } from "../../services/paymentService";
 import { useAuth } from "../../contexts/AuthContext";
-import { usePreferences } from "../../contexts/PreferencesContext";
+import { useEmergency } from "../../contexts/EmergencyContext";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 
 export const STEPS = {
@@ -37,10 +36,10 @@ export const TIME_SLOTS = [
 export function useBookVisit(props = {}) {
 	const { initialData = {} } = props;
 	const { user } = useAuth();
-	const { preferences } = usePreferences();
+	const { allHospitals, effectiveDemoModeEnabled } = useEmergency();
 	const router = useRouter();
 	const { addVisit } = useVisits();
-	const { hospitals } = useHospitals();
+	const hospitals = Array.isArray(allHospitals) ? allHospitals : [];
 
 	const safeParse = (val) => {
 		if (!val) return null;
@@ -205,9 +204,9 @@ export function useBookVisit(props = {}) {
 		() =>
 			demoEcosystemService.isDemoFlowActive({
 				hospital: bookingData.hospital,
-				demoModeEnabled: preferences?.demoModeEnabled !== false,
+				demoModeEnabled: effectiveDemoModeEnabled,
 			}),
-		[bookingData.hospital, preferences?.demoModeEnabled]
+		[bookingData.hospital, effectiveDemoModeEnabled]
 	);
 
 	const handleConfirmDateTime = useCallback(async () => {

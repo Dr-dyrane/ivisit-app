@@ -1,9 +1,20 @@
 import React, { useMemo, useEffect, useRef } from "react";
-import { Modal, View, Text, Pressable, StyleSheet, Platform, Animated, Dimensions } from "react-native";
+import {
+	Modal,
+	View,
+	Text,
+	Pressable,
+	StyleSheet,
+	Platform,
+	Animated,
+	Dimensions,
+	ScrollView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
+import SlideButton from "../ui/SlideButton";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -13,10 +24,13 @@ export default function CoverageDisclaimerModal({
 	nearbyVerifiedHospitalCount = 0,
 	nearbyHospitalCount = 0,
 	coverageThreshold = 3,
-	demoModeEnabled = true,
+	selectedMode = "hybrid",
+	liveOnlyAvailable = true,
 	dontRemind = false,
 	onToggleDontRemind,
-	onSwitchToDemo,
+	onChooseLiveOnly,
+	onChooseHybrid,
+	onChooseDemoOnly,
 	onContinue,
 	onCall911,
 }) {
@@ -25,26 +39,6 @@ export default function CoverageDisclaimerModal({
 	const fade = useRef(new Animated.Value(0)).current;
 	const contentY = useRef(new Animated.Value(12)).current;
 	const contentFade = useRef(new Animated.Value(0)).current;
-	const demoScale = useRef(new Animated.Value(1)).current;
-	const primaryScale = useRef(new Animated.Value(1)).current;
-	const secondaryScale = useRef(new Animated.Value(1)).current;
-	const checkboxScale = useRef(new Animated.Value(1)).current;
-
-	const copy = useMemo(() => {
-		if (coverageStatus === "none") {
-			return {
-				title: "We're sorry, iVisit has not reached your area yet",
-				subtitle:
-					"You deserve fast care, and we know this is frustrating. We are expanding city by city and working hard to reach you soon.",
-			};
-		}
-
-		return {
-			title: "We're sorry, coverage is still limited nearby",
-			subtitle:
-				"We currently have limited iVisit-verified hospitals near you, and we are actively onboarding more partners around your location.",
-		};
-	}, [coverageStatus]);
 
 	useEffect(() => {
 		if (!visible) {
@@ -52,10 +46,6 @@ export default function CoverageDisclaimerModal({
 			fade.setValue(0);
 			contentY.setValue(12);
 			contentFade.setValue(0);
-			demoScale.setValue(1);
-			primaryScale.setValue(1);
-			secondaryScale.setValue(1);
-			checkboxScale.setValue(1);
 			return;
 		}
 
@@ -88,23 +78,62 @@ export default function CoverageDisclaimerModal({
 				]),
 			]),
 		]).start();
-	}, [checkboxScale, contentFade, contentY, demoScale, fade, primaryScale, secondaryScale, slideY, visible]);
+	}, [contentFade, contentY, fade, slideY, visible]);
 
-	const animateButtonScale = (animatedValue, toValue) => {
-		Animated.spring(animatedValue, {
-			toValue,
-			tension: 280,
-			friction: 20,
-			useNativeDriver: true,
-		}).start();
-	};
+	const palette = useMemo(() => {
+		const isNone = coverageStatus === "none";
+		return {
+			accent: isNone ? "#D97706" : COLORS.brandPrimary,
+			accentSoft: isDarkMode
+				? isNone
+					? "rgba(217,119,6,0.18)"
+					: "rgba(134,16,14,0.18)"
+				: isNone
+					? "rgba(217,119,6,0.10)"
+					: "rgba(134,16,14,0.10)",
+			surface: isDarkMode ? "#0D1420" : "#FFFFFF",
+			surfaceMuted: isDarkMode ? "rgba(148,163,184,0.12)" : "rgba(100,116,139,0.10)",
+			text: isDarkMode ? "#F8FAFC" : "#0F172A",
+			textMuted: isDarkMode ? "#CBD5E1" : "#475569",
+			textSubtle: isDarkMode ? "#9FB1C8" : "#64748B",
+		};
+	}, [coverageStatus, isDarkMode]);
 
-	const sheetHeight = Math.min(Math.max(SCREEN_HEIGHT * 0.75, 420), SCREEN_HEIGHT * 0.72);
-	const cardBackground = isDarkMode ? "#0D1420" : "#FFFFFF";
-	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
-	const subtitleColor = isDarkMode ? "#CBD5E1" : "#475569";
-	const helperColor = isDarkMode ? "#9FB1C8" : "#64748B";
-	const surfaceColor = isDarkMode ? "rgba(148,163,184,0.12)" : "rgba(100,116,139,0.10)";
+	const copy = useMemo(() => {
+		if (coverageStatus === "none") {
+			return {
+				badge: "No verified live coverage yet",
+				title: "Coverage is still growing here",
+				subtitle:
+					"We recommend Hybrid so the app stays useful around you.",
+			};
+		}
+
+		return {
+			badge: "Limited live coverage nearby",
+			title: "Coverage is limited here",
+			subtitle:
+				"We recommend Hybrid so you keep real nearby hospitals and get fallback coverage where needed.",
+		};
+	}, [coverageStatus]);
+
+	const recommendedMode = "hybrid";
+	const isRecommendedSelected = selectedMode === recommendedMode;
+	const primaryAction = isRecommendedSelected ? onContinue : onChooseHybrid;
+	const primaryLabel = isRecommendedSelected
+		? "Continue"
+		: coverageStatus === "none"
+			? "Turn On Hybrid"
+			: "Use Hybrid";
+	const primaryIconName = isRecommendedSelected ? "arrow-forward" : "sparkles";
+	const keepCurrentLabel =
+		selectedMode === "live_only"
+			? "Keep Live Only"
+			: selectedMode === "demo_only"
+				? "Keep Demo Only"
+				: "Keep Current Mode";
+
+	const sheetHeight = Math.min(Math.max(SCREEN_HEIGHT * 0.78, 480), SCREEN_HEIGHT * 0.86);
 
 	return (
 		<Modal visible={visible} transparent animationType="none" statusBarTranslucent>
@@ -118,7 +147,7 @@ export default function CoverageDisclaimerModal({
 						styles.card,
 						{
 							height: sheetHeight,
-							backgroundColor: cardBackground,
+							backgroundColor: palette.surface,
 							transform: [{ translateY: slideY }],
 							opacity: fade,
 						},
@@ -127,138 +156,179 @@ export default function CoverageDisclaimerModal({
 					<LinearGradient
 						colors={
 							isDarkMode
-								? ["rgba(134,16,14,0.45)", "rgba(13,20,32,0.0)"]
-								: ["rgba(134,16,14,0.18)", "rgba(255,255,255,0.0)"]
+								? [`${palette.accent}66`, "rgba(13,20,32,0.0)"]
+								: [`${palette.accent}24`, "rgba(255,255,255,0.0)"]
 						}
 						start={{ x: 0, y: 0 }}
 						end={{ x: 1, y: 1 }}
 						style={styles.headerGradient}
 					/>
 
-					<View style={styles.geometryOne} />
-					<View style={styles.geometryTwo} />
+					<View style={styles.handle} />
 
 					<Animated.View
 						style={{
+							flex: 1,
 							opacity: contentFade,
 							transform: [{ translateY: contentY }],
 						}}
 					>
-						<View style={styles.heroRow}>
-						<View style={styles.emojiPill}>
-							<Text style={styles.emojiText}>🫶</Text>
-						</View>
-						<View style={styles.emojiPillSecondary}>
-							<Text style={styles.emojiText}>🏥</Text>
-						</View>
-						</View>
+						<ScrollView
+							showsVerticalScrollIndicator={false}
+							contentContainerStyle={styles.scrollContent}
+						>
+							<View style={styles.topRow}>
+								<View
+									style={[
+										styles.statusBadge,
+										{ backgroundColor: palette.accentSoft },
+									]}
+								>
+									<Ionicons
+										name={
+											coverageStatus === "none"
+												? "warning-outline"
+												: "pulse-outline"
+										}
+										size={14}
+										color={palette.accent}
+									/>
+									<Text style={[styles.statusBadgeText, { color: palette.accent }]}>
+										{copy.badge}
+									</Text>
+								</View>
 
-						<Text style={[styles.title, { color: titleColor }]}>{copy.title}</Text>
-						<Text style={[styles.subtitle, { color: subtitleColor }]}>{copy.subtitle}</Text>
-
-						<View style={styles.metricsRow}>
-						<View style={[styles.metricCard, { backgroundColor: surfaceColor }]}>
-							<Text style={styles.metricEmoji}>✅</Text>
-							<Text style={[styles.metricValue, { color: titleColor }]}>{nearbyVerifiedHospitalCount}</Text>
-							<Text style={[styles.metricLabel, { color: helperColor }]}>Verified nearby</Text>
-						</View>
-						<View style={[styles.metricCard, { backgroundColor: surfaceColor }]}>
-							<Text style={styles.metricEmoji}>📍</Text>
-							<Text style={[styles.metricValue, { color: titleColor }]}>{nearbyHospitalCount}</Text>
-							<Text style={[styles.metricLabel, { color: helperColor }]}>Nearby shown</Text>
-						</View>
-						</View>
-
-						<Text style={[styles.helper, { color: helperColor }]}>
-							You can still view nearby hospitals, see how close they are, and call them directly while we expand verified iVisit coverage.
-						</Text>
-						{coverageStatus === "poor" && (
-							<Text style={[styles.targetText, { color: helperColor }]}>
-								Target for stronger coverage: {coverageThreshold}+ verified hospitals nearby.
-							</Text>
-						)}
-
-						{!demoModeEnabled && (
-							<Animated.View style={{ transform: [{ scale: demoScale }] }}>
 								<Pressable
-									onPress={onSwitchToDemo}
-									disabled={!onSwitchToDemo}
-									onPressIn={() => animateButtonScale(demoScale, 0.985)}
-									onPressOut={() => animateButtonScale(demoScale, 1)}
-									style={({ pressed }) => [
-										styles.primaryButton,
+									onPress={onContinue}
+									hitSlop={12}
+									style={[
+										styles.closeButton,
+										{ backgroundColor: palette.surfaceMuted },
+									]}
+								>
+									<Ionicons
+										name="close"
+										size={16}
+										color={palette.textSubtle}
+									/>
+								</Pressable>
+							</View>
+
+							<View style={styles.heroRow}>
+								<View
+									style={[
+										styles.heroIconWrap,
+										{ backgroundColor: palette.accentSoft },
+									]}
+								>
+									<Ionicons
+										name="navigate-circle-outline"
+										size={26}
+										color={palette.accent}
+									/>
+								</View>
+								<View style={styles.heroCopy}>
+									<Text style={[styles.title, { color: palette.text }]}>
+										{copy.title}
+									</Text>
+									<Text style={[styles.subtitle, { color: palette.textMuted }]}>
+										{copy.subtitle}
+									</Text>
+								</View>
+							</View>
+
+							<View style={styles.metricsRow}>
+								<View
+									style={[
+										styles.metricCard,
 										{
-											backgroundColor: COLORS.brandPrimary,
-											opacity: !onSwitchToDemo ? 0.6 : (pressed ? 0.95 : 1),
+											backgroundColor: palette.surfaceMuted,
 										},
 									]}
 								>
-									<Text style={styles.primaryButtonText}>Switch To Demo Experience</Text>
-								</Pressable>
-							</Animated.View>
-						)}
-
-						<Animated.View style={{ transform: [{ scale: primaryScale }] }}>
-							<Pressable
-								onPress={onContinue}
-								onPressIn={() => animateButtonScale(primaryScale, 0.985)}
-								onPressOut={() => animateButtonScale(primaryScale, 1)}
-								style={({ pressed }) => [
-									styles.secondaryPrimaryButton,
-									{
-										backgroundColor: surfaceColor,
-										opacity: pressed ? 0.95 : 1,
-									},
-								]}
-							>
-								<Text
+									<Text style={[styles.metricValue, { color: palette.text }]}>
+										{nearbyVerifiedHospitalCount}
+									</Text>
+									<Text style={[styles.metricLabel, { color: palette.textSubtle }]}>
+										Verified live nearby
+									</Text>
+								</View>
+								<View
 									style={[
-										styles.primaryButtonText,
-										{ color: isDarkMode ? "#E2E8F0" : "#334155" },
+										styles.metricCard,
+										{
+											backgroundColor: palette.surfaceMuted,
+										},
 									]}
 								>
-									Show Nearby Hospitals
-								</Text>
-							</Pressable>
-						</Animated.View>
+									<Text style={[styles.metricValue, { color: palette.text }]}>
+										{nearbyHospitalCount}
+									</Text>
+									<Text style={[styles.metricLabel, { color: palette.textSubtle }]}>
+										Nearby hospitals shown
+									</Text>
+								</View>
+							</View>
 
-						<Animated.View style={{ transform: [{ scale: secondaryScale }] }}>
-							<Pressable
-								onPress={onCall911}
-								onPressIn={() => animateButtonScale(secondaryScale, 0.988)}
-								onPressOut={() => animateButtonScale(secondaryScale, 1)}
-								style={({ pressed }) => [
-									styles.secondaryButton,
+							<View
+								style={[
+									styles.reassuranceCard,
 									{
-										backgroundColor: surfaceColor,
-										opacity: pressed ? 0.92 : 1,
+										backgroundColor: palette.surfaceMuted,
 									},
 								]}
 							>
-								<Ionicons name="call-outline" size={16} color={isDarkMode ? "#E2E8F0" : "#334155"} />
-								<Text style={[styles.secondaryButtonText, { color: isDarkMode ? "#E2E8F0" : "#334155" }]}>
-									Call 911
+								<Ionicons name="sparkles-outline" size={18} color={palette.accent} />
+								<View style={styles.reassuranceBody}>
+									<Text style={[styles.reassuranceTitle, { color: palette.text }]}>
+										Recommended
+									</Text>
+									<Text style={[styles.reassuranceText, { color: palette.textMuted }]}>
+										Hybrid keeps nearby hospitals visible and fills gaps with demo coverage.
+									</Text>
+								</View>
+							</View>
+						</ScrollView>
+
+						<View style={styles.footer}>
+							<View style={styles.primaryButtonWrap}>
+								<SlideButton
+									onPress={primaryAction}
+									height={62}
+									radius={22}
+									icon={(color) => (
+										<Ionicons name={primaryIconName} size={20} color={color} />
+									)}
+								>
+									{primaryLabel.toUpperCase()}
+								</SlideButton>
+							</View>
+
+							{!isRecommendedSelected ? (
+								<Pressable onPress={onContinue} style={styles.keepCurrentRow}>
+									<Text style={[styles.keepCurrentText, { color: palette.textSubtle }]}>
+										{keepCurrentLabel}
+									</Text>
+								</Pressable>
+							) : null}
+
+							<Pressable onPress={onCall911} style={styles.altActionRow}>
+								<Text style={[styles.altActionText, { color: palette.textSubtle }]}>
+									Emergency? Call 911
 								</Text>
 							</Pressable>
-						</Animated.View>
 
-						<Animated.View style={{ transform: [{ scale: checkboxScale }] }}>
-							<Pressable
-								onPress={onToggleDontRemind}
-								onPressIn={() => animateButtonScale(checkboxScale, 0.992)}
-								onPressOut={() => animateButtonScale(checkboxScale, 1)}
-								style={styles.checkboxRow}
-							>
+							<Pressable onPress={onToggleDontRemind} style={styles.checkboxRow}>
 								<Ionicons
 									name={dontRemind ? "checkmark-circle" : "ellipse-outline"}
 									size={18}
-									color={dontRemind ? COLORS.brandPrimary : helperColor}
+									color={dontRemind ? palette.accent : palette.textSubtle}
 								/>
-								<Text style={[styles.checkboxText, { color: helperColor }]}>
-									Don't show this message again on this device
+								<Text style={[styles.checkboxText, { color: palette.textSubtle }]}>
+									Do not show this again on this device
 								</Text>
 							</Pressable>
-						</Animated.View>
+						</View>
 					</Animated.View>
 				</Animated.View>
 			</View>
@@ -282,137 +352,145 @@ const styles = StyleSheet.create({
 		overflow: "hidden",
 		borderTopLeftRadius: 30,
 		borderTopRightRadius: 30,
-		paddingHorizontal: 22,
-		paddingTop: 18,
-		paddingBottom: Platform.OS === "ios" ? 34 : 24,
+		paddingHorizontal: 20,
+		paddingTop: 12,
+		paddingBottom: Platform.OS === "ios" ? 26 : 20,
 	},
 	headerGradient: {
 		position: "absolute",
 		left: 0,
 		right: 0,
 		top: 0,
-		height: 170,
+		height: 190,
 	},
-	geometryOne: {
-		position: "absolute",
-		width: 230,
-		height: 230,
+	handle: {
+		alignSelf: "center",
+		width: 42,
+		height: 4,
 		borderRadius: 999,
-		right: -90,
-		top: -120,
-		backgroundColor: "rgba(148,163,184,0.10)",
+		backgroundColor: "rgba(148,163,184,0.45)",
+		marginBottom: 14,
 	},
-	geometryTwo: {
-		position: "absolute",
-		width: 150,
-		height: 150,
-		borderRadius: 999,
-		left: -55,
-		top: 40,
-		backgroundColor: "rgba(134,16,14,0.08)",
+	scrollContent: {
+		paddingBottom: 14,
 	},
-	heroRow: {
+	topRow: {
 		flexDirection: "row",
 		alignItems: "center",
-		marginBottom: 12,
-		gap: 8,
+		justifyContent: "space-between",
+		marginBottom: 16,
 	},
-	emojiPill: {
-		width: 48,
-		height: 48,
+	statusBadge: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 6,
+		paddingHorizontal: 10,
+		paddingVertical: 8,
+		borderRadius: 999,
+	},
+	statusBadgeText: {
+		fontSize: 12,
+		fontWeight: "700",
+	},
+	closeButton: {
+		width: 32,
+		height: 32,
 		borderRadius: 16,
 		alignItems: "center",
 		justifyContent: "center",
-		backgroundColor: "rgba(134,16,14,0.15)",
 	},
-	emojiPillSecondary: {
-		width: 42,
-		height: 42,
-		borderRadius: 14,
+	heroRow: {
+		flexDirection: "row",
+		alignItems: "flex-start",
+		gap: 14,
+		marginBottom: 18,
+	},
+	heroIconWrap: {
+		width: 54,
+		height: 54,
+		borderRadius: 18,
 		alignItems: "center",
 		justifyContent: "center",
-		backgroundColor: "rgba(148,163,184,0.18)",
 	},
-	emojiText: {
-		fontSize: 22,
+	heroCopy: {
+		flex: 1,
 	},
 	title: {
-		fontSize: 21,
+		fontSize: 23,
 		fontWeight: "800",
-		letterSpacing: -0.3,
-		marginBottom: 8,
+		letterSpacing: -0.4,
 	},
 	subtitle: {
 		fontSize: 14,
 		lineHeight: 21,
-		marginBottom: 14,
+		marginTop: 8,
 	},
 	metricsRow: {
 		flexDirection: "row",
 		gap: 10,
-		marginBottom: 12,
+		marginBottom: 14,
 	},
 	metricCard: {
 		flex: 1,
-		minHeight: 82,
-		borderRadius: 16,
-		paddingVertical: 10,
-		paddingHorizontal: 10,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	metricEmoji: {
-		fontSize: 16,
-		marginBottom: 4,
+		borderRadius: 18,
+		paddingVertical: 14,
+		paddingHorizontal: 14,
 	},
 	metricValue: {
-		fontSize: 20,
+		fontSize: 24,
 		fontWeight: "800",
-		letterSpacing: -0.3,
+		letterSpacing: -0.4,
 	},
 	metricLabel: {
-		fontSize: 11,
+		marginTop: 4,
+		fontSize: 12,
 		fontWeight: "600",
 	},
-	helper: {
-		fontSize: 13,
-		lineHeight: 19,
-		marginBottom: 8,
+	reassuranceCard: {
+		flexDirection: "row",
+		alignItems: "flex-start",
+		gap: 10,
+		borderRadius: 18,
+		padding: 14,
+		marginBottom: 18,
 	},
-	targetText: {
-		fontSize: 11,
-		fontWeight: "500",
-		marginBottom: 12,
+	reassuranceBody: {
+		flex: 1,
 	},
-	primaryButton: {
-		minHeight: 48,
-		borderRadius: 14,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	secondaryPrimaryButton: {
-		minHeight: 46,
-		borderRadius: 14,
-		alignItems: "center",
-		justifyContent: "center",
-		marginTop: 10,
-	},
-	primaryButtonText: {
-		color: "#FFFFFF",
-		fontSize: 15,
+	reassuranceTitle: {
+		fontSize: 14,
 		fontWeight: "700",
 	},
-	secondaryButton: {
-		marginTop: 10,
-		minHeight: 44,
-		borderRadius: 14,
-		alignItems: "center",
-		justifyContent: "center",
-		flexDirection: "row",
-		gap: 8,
+	reassuranceText: {
+		fontSize: 13,
+		lineHeight: 19,
+		marginTop: 4,
 	},
-	secondaryButtonText: {
-		fontSize: 14,
+	reassuranceHint: {
+		fontSize: 12,
+		lineHeight: 18,
+		marginTop: 8,
+	},
+	footer: {
+		paddingTop: 12,
+	},
+	primaryButtonWrap: {
+		width: "100%",
+	},
+	keepCurrentRow: {
+		marginTop: 10,
+		alignItems: "center",
+	},
+	keepCurrentText: {
+		fontSize: 13,
+		fontWeight: "600",
+	},
+	altActionRow: {
+		marginTop: 8,
+		alignItems: "center",
+	},
+	altActionText: {
+		fontSize: 13,
 		fontWeight: "600",
 	},
 	checkboxRow: {

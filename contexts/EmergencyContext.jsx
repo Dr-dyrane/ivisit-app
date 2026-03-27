@@ -14,6 +14,12 @@ import { ambulanceService } from "../services/ambulanceService";
 import { demoEcosystemService } from "../services/demoEcosystemService";
 import { usePreferences } from "./PreferencesContext";
 import { useAuth } from "./AuthContext";
+import {
+	coverageModeService,
+	COVERAGE_MODES,
+	COVERAGE_STATUS,
+	COVERAGE_POOR_THRESHOLD,
+} from "../services/coverageModeService";
 import { DEFAULT_APP_REGION } from "../constants/locationDefaults";
 import { calculateBearing, isValidCoordinate } from "../utils/mapUtils";
 import {
@@ -232,30 +238,68 @@ const enrichHospitalsWithServiceTypes = (hospitalList) => {
 // Emergency provider component
 export function EmergencyProvider({ children }) {
 	const { addNotification } = useNotifications();
-	const { preferences } = usePreferences();
+	const { preferences, updatePreferences } = usePreferences();
 	const { user } = useAuth();
+	const legacyDemoModeEnabled = preferences?.demoModeEnabled !== false;
+	const legacyCoverageMode = coverageModeService.modeFromDemoPreference(
+		legacyDemoModeEnabled
+	);
+	const demoOwnerSlug = String(user?.id || "").replace(/-/g, "").slice(0, 12).toLowerCase();
+	const [coverageModePreference, setCoverageModePreference] = useState(null);
+	const [coverageModePreferenceLoaded, setCoverageModePreferenceLoaded] = useState(false);
+	const [coverageModeOperation, setCoverageModeOperation] = useState({
+		isPending: false,
+		targetMode: null,
+	});
+	const [forceDemoFetch, setForceDemoFetch] = useState(false);
+	const preferredCoverageMode = coverageModePreference || legacyCoverageMode;
+	const allowsPreferredDemo = coverageModeService.allowsDemo(preferredCoverageMode);
+
+	// User location is the single source of truth for both the map and nearby hospital discovery.
+	const [userLocation, setUserLocation] = useState(null);
 	// Fetch real hospitals from Supabase
 	const {
 		hospitals: dbHospitals,
 		isLoading: isLoadingHospitals,
 		refetch: refetchHospitals,
-	} = useHospitals();
+	} = useHospitals({
+		location: userLocation,
+		demoModeEnabled: allowsPreferredDemo || forceDemoFetch,
+		userId: user?.id,
+	});
 	// Fetch real ambulances
 	const { ambulances: activeAmbulances } = useAmbulances();
-	const demoModeEnabled = preferences?.demoModeEnabled !== false;
-	const demoOwnerSlug = String(user?.id || "").replace(/-/g, "").slice(0, 12).toLowerCase();
-
-	// User location (for map centering and distance calculations)
-	const [userLocation, setUserLocation] = useState(null);
 
 	// Computed state for hospitals (mock location for now + DB data)
 	const [hospitals, setHospitals] = useState([]);
 
-	// Sync DB hospitals when loaded, but still randomize location for demo purposes
-	// In a real app, you'd use PostGIS to query nearby hospitals
 	useEffect(() => {
-		// If loading or no hospitals, do nothing
-		if (isLoadingHospitals || dbHospitals.length === 0) return;
+		let isMounted = true;
+
+		const loadCoverageModePreference = async () => {
+			setCoverageModePreferenceLoaded(false);
+			setForceDemoFetch(false);
+
+			const storedMode = await coverageModeService.getStoredMode(user?.id);
+			if (!isMounted) return;
+
+			setCoverageModePreference(storedMode);
+			setCoverageModePreferenceLoaded(true);
+		};
+
+		loadCoverageModePreference();
+		return () => {
+			isMounted = false;
+		};
+	}, [user?.id]);
+
+	// Sync DB hospitals whenever nearby discovery changes for the current map location.
+	useEffect(() => {
+		if (isLoadingHospitals) return;
+		if (dbHospitals.length === 0) {
+			setHospitals([]);
+			return;
+		}
 
 		// If we don't have user location yet, preserve database distance data
 		if (!userLocation) {
@@ -819,25 +863,123 @@ export function EmergencyProvider({ children }) {
 	// 	emergencyStateService.set({ mode, activeAmbulanceTrip, activeBedBooking }).catch(() => {});
 	// }, [activeAmbulanceTrip, activeBedBooking, mode]);
 
-	// Get selected hospital object
-	const selectedHospital = useMemo(() => {
-		const hospital = hospitals.find(h => h.id === selectedHospitalId) || null;
-		return hospital;
-	}, [hospitals, selectedHospitalId]);
+	const nearbyCoverageCounts = useMemo(() => {
+		if (!Array.isArray(hospitals) || hospitals.length === 0) {
+			return coverageModeService.deriveNearbyCoverageCounts([]);
+		}
 
-	const visibleHospitals = useMemo(() => {
+		const coverageSource = hospitals.filter((hospital) => {
+			if (demoEcosystemService.isDemoHospital(hospital) !== true) return true;
+			const owner = String(hospital?.demoOwner || "").toLowerCase();
+			return owner.length > 0 && demoOwnerSlug.length > 0 && owner === demoOwnerSlug;
+		});
+
+		return coverageModeService.deriveNearbyCoverageCounts(coverageSource);
+	}, [demoOwnerSlug, hospitals]);
+
+	const coverageStatus = useMemo(
+		() =>
+			coverageModeService.deriveCoverageStatus(
+				nearbyCoverageCounts,
+				COVERAGE_POOR_THRESHOLD
+			),
+		[nearbyCoverageCounts]
+	);
+
+	const effectiveCoverageMode = useMemo(
+		() =>
+			coverageModeService.resolveEffectiveMode({
+				preferredMode: preferredCoverageMode,
+				coverageStatus,
+				demoModeEnabled: legacyDemoModeEnabled,
+			}),
+		[coverageStatus, legacyDemoModeEnabled, preferredCoverageMode]
+	);
+
+	const effectiveDemoModeEnabled = coverageModeService.allowsDemo(
+		effectiveCoverageMode
+	);
+	const isLiveOnlyAvailable = coverageModeService.isLiveOnlyAvailable(
+		coverageStatus
+	);
+
+	useEffect(() => {
+		if (coverageStatus === COVERAGE_STATUS.NONE) {
+			setForceDemoFetch(true);
+			return;
+		}
+
+		setForceDemoFetch(allowsPreferredDemo);
+	}, [allowsPreferredDemo, coverageStatus]);
+
+	const availableHospitals = useMemo(() => {
 		if (!Array.isArray(hospitals) || hospitals.length === 0) return [];
 		return hospitals.filter((hospital) => {
-			if (hospital?.isDemo !== true) return true;
+			if (demoEcosystemService.isDemoHospital(hospital) !== true) return true;
 
 			const owner = String(hospital?.demoOwner || "").toLowerCase();
-			const isOwnedByCurrentUser =
-				owner.length > 0 && demoOwnerSlug.length > 0 && owner === demoOwnerSlug;
-
-			if (!isOwnedByCurrentUser) return false;
-			return demoModeEnabled;
+			return owner.length > 0 && demoOwnerSlug.length > 0 && owner === demoOwnerSlug;
 		});
-	}, [demoModeEnabled, demoOwnerSlug, hospitals]);
+	}, [demoOwnerSlug, hospitals]);
+
+	const hasDemoHospitalsNearby = useMemo(
+		() =>
+			availableHospitals.some((hospital) =>
+				demoEcosystemService.isDemoHospital(hospital)
+			),
+		[availableHospitals]
+	);
+
+	const visibleHospitals = useMemo(() => {
+		if (!Array.isArray(availableHospitals) || availableHospitals.length === 0) {
+			return [];
+		}
+
+		switch (effectiveCoverageMode) {
+			case COVERAGE_MODES.DEMO_ONLY:
+				return availableHospitals.filter((hospital) =>
+					demoEcosystemService.isDemoHospital(hospital)
+				);
+			case COVERAGE_MODES.LIVE_ONLY:
+				return availableHospitals.filter(
+					(hospital) => !demoEcosystemService.isDemoHospital(hospital)
+				);
+			case COVERAGE_MODES.HYBRID:
+			default:
+				return [...availableHospitals].sort((left, right) => {
+					const leftIsDemo = demoEcosystemService.isDemoHospital(left);
+					const rightIsDemo = demoEcosystemService.isDemoHospital(right);
+					if (leftIsDemo === rightIsDemo) return 0;
+					return leftIsDemo ? 1 : -1;
+				});
+		}
+	}, [availableHospitals, effectiveCoverageMode]);
+
+	const specialties = useMemo(() => {
+		const derived = new Set();
+		availableHospitals.forEach((hospital) => {
+			if (!Array.isArray(hospital?.specialties)) return;
+			hospital.specialties.forEach((specialty) => {
+				if (typeof specialty === "string" && specialty.trim()) {
+					derived.add(specialty);
+				}
+			});
+		});
+
+		return derived.size > 0 ? Array.from(derived).sort() : SPECIALTIES;
+	}, [availableHospitals]);
+
+	// Get selected hospital object
+	const selectedHospital = useMemo(() => {
+		const hospital = visibleHospitals.find((item) => item.id === selectedHospitalId) || null;
+		return hospital;
+	}, [selectedHospitalId, visibleHospitals]);
+
+	useEffect(() => {
+		if (!selectedHospitalId) return;
+		if (visibleHospitals.some((hospital) => hospital?.id === selectedHospitalId)) return;
+		setSelectedHospitalId(null);
+	}, [selectedHospitalId, visibleHospitals]);
 
 	// Filter hospitals based on current mode and criteria
 	const filteredHospitals = useMemo(() => {
@@ -898,6 +1040,95 @@ export function EmergencyProvider({ children }) {
 	const clearSelectedHospital = useCallback(() => {
 		setSelectedHospitalId(null);
 	}, []);
+
+	const resolveCoverageCoordinates = useCallback(() => {
+		const latitude = Number(userLocation?.latitude ?? DEFAULT_APP_REGION.latitude);
+		const longitude = Number(userLocation?.longitude ?? DEFAULT_APP_REGION.longitude);
+
+		if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+			throw new Error("Unable to resolve location for coverage mode");
+		}
+
+		return { latitude, longitude };
+	}, [userLocation?.latitude, userLocation?.longitude]);
+
+	const setCoverageMode = useCallback(
+		async (mode, options = {}) => {
+			const requestedMode = coverageModeService.normalizeMode(mode);
+			const nextMode =
+				coverageStatus === COVERAGE_STATUS.NONE &&
+				requestedMode === COVERAGE_MODES.LIVE_ONLY
+					? COVERAGE_MODES.HYBRID
+					: requestedMode;
+			const shouldFetchDemo =
+				coverageModeService.allowsDemo(nextMode) ||
+				coverageStatus === COVERAGE_STATUS.NONE;
+			const shouldBootstrapDemo =
+				shouldFetchDemo &&
+				user?.id &&
+				(options.forceBootstrap === true || !hasDemoHospitalsNearby);
+
+			setCoverageModeOperation({
+				isPending: true,
+				targetMode: nextMode,
+			});
+			setCoverageModePreference(nextMode);
+			setForceDemoFetch(shouldFetchDemo);
+
+			try {
+				if (shouldBootstrapDemo) {
+					const coords = resolveCoverageCoordinates();
+					await demoEcosystemService.ensureDemoEcosystemForLocation({
+						userId: user.id,
+						latitude: coords.latitude,
+						longitude: coords.longitude,
+						radiusKm: 50,
+						force: options.forceBootstrap === true,
+						onProgress: options.onProgress,
+					});
+				}
+
+				await coverageModeService.setStoredMode(user?.id, nextMode);
+
+				try {
+					await updatePreferences?.({
+						demoModeEnabled: nextMode !== COVERAGE_MODES.LIVE_ONLY,
+					});
+				} catch (error) {
+					console.warn("[EmergencyContext] Failed to sync demo mode preference", error);
+				}
+
+				if (typeof refetchHospitals === "function") {
+					await new Promise((resolve) => setTimeout(resolve, 0));
+					await refetchHospitals();
+				}
+
+				return nextMode;
+			} catch (error) {
+				setCoverageModePreference((prev) =>
+					prev === nextMode ? preferredCoverageMode : prev
+				);
+				setForceDemoFetch(
+					coverageModeService.allowsDemo(preferredCoverageMode)
+				);
+				throw error;
+			} finally {
+				setCoverageModeOperation({
+					isPending: false,
+					targetMode: null,
+				});
+			}
+		},
+		[
+			coverageStatus,
+			hasDemoHospitalsNearby,
+			preferredCoverageMode,
+			refetchHospitals,
+			resolveCoverageCoordinates,
+			updatePreferences,
+			user?.id,
+		]
+	);
 
 	const startAmbulanceTrip = useCallback(
 		(trip) => {
@@ -995,14 +1226,20 @@ export function EmergencyProvider({ children }) {
 
 	const activeAmbulanceDemoHospital = useMemo(() => {
 		if (!activeAmbulanceTrip?.hospitalId) return null;
-		const hospital = hospitals.find((item) => item?.id === activeAmbulanceTrip.hospitalId) ?? null;
+		const hospital =
+			availableHospitals.find((item) => item?.id === activeAmbulanceTrip.hospitalId) ??
+			null;
 		return demoEcosystemService.isDemoFlowActive({
 			hospital,
-			demoModeEnabled,
+			demoModeEnabled: effectiveDemoModeEnabled,
 		})
 			? hospital
 			: null;
-	}, [activeAmbulanceTrip?.hospitalId, demoModeEnabled, hospitals]);
+	}, [
+		activeAmbulanceTrip?.hospitalId,
+		availableHospitals,
+		effectiveDemoModeEnabled,
+	]);
 
 	useEffect(() => {
 		const requestId = activeAmbulanceTrip?.requestId ?? null;
@@ -1310,6 +1547,7 @@ export function EmergencyProvider({ children }) {
 			hospitals: filteredHospitals,
 			allHospitals: visibleHospitals,
 			filteredHospitals,
+			specialties,
 			selectedHospitalId,
 			selectedHospital,
 			mode,
@@ -1321,6 +1559,16 @@ export function EmergencyProvider({ children }) {
 			selectedSpecialty,
 			viewMode,
 			pendingApproval,
+			hasActiveFilters,
+			coverageMode: effectiveCoverageMode,
+			coverageModePreference,
+			coverageModePreferenceLoaded,
+			coverageStatus,
+			nearbyCoverageCounts,
+			effectiveDemoModeEnabled,
+			isLiveOnlyAvailable,
+			hasDemoHospitalsNearby,
+			coverageModeOperation,
 
 			// Actions
 			selectHospital,
@@ -1342,10 +1590,12 @@ export function EmergencyProvider({ children }) {
 			refreshHospitals,
 			setUserLocation,
 			setPendingApproval,
+			setCoverageMode,
 		}),
 		[
 			filteredHospitals,
 			visibleHospitals,
+			specialties,
 			selectedHospitalId,
 			selectedHospital,
 			mode,
@@ -1357,9 +1607,20 @@ export function EmergencyProvider({ children }) {
 			selectedSpecialty,
 			viewMode,
 			pendingApproval,
+			hasActiveFilters,
+			effectiveCoverageMode,
+			coverageModePreference,
+			coverageModePreferenceLoaded,
+			coverageStatus,
+			nearbyCoverageCounts,
+			effectiveDemoModeEnabled,
+			isLiveOnlyAvailable,
+			hasDemoHospitalsNearby,
+			coverageModeOperation,
 			selectHospital,
 			clearSelectedHospital,
 			toggleMode,
+			setMode,
 			toggleViewMode,
 			selectSpecialty,
 			selectServiceType,
@@ -1375,6 +1636,7 @@ export function EmergencyProvider({ children }) {
 			refreshHospitals,
 			setUserLocation,
 			setPendingApproval,
+			setCoverageMode,
 		]
 	);
 

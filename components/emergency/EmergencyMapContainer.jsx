@@ -25,6 +25,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 		hideTelemetryBanner = false,
 		sheetSnapIndex,
 		mapStateKey,
+		onUserLocationChange,
 	} = props;
 
 	const baseMapRef = useRef(null);
@@ -96,6 +97,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 					hideTelemetryBanner={hideTelemetryBanner}
 					sheetSnapIndex={sheetSnapIndex}
 					mapStateKey={mapStateKey}
+					onUserLocationChange={onUserLocationChange}
 				/>
 			) : (
 				<FullScreenEmergencyMap
@@ -119,6 +121,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 					hideTelemetryBanner={hideTelemetryBanner}
 					sheetSnapIndex={sheetSnapIndex}
 					mapStateKey={mapStateKey}
+					onUserLocationChange={onUserLocationChange}
 				/>
 			)}
 		</View>

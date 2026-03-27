@@ -1,7 +1,6 @@
 import { useMemo, useCallback } from "react";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useHospitals } from "../../contexts/SearchContext"; // Or wherever useHospitals is exported from - checking imports
 import { useVisits } from "../../contexts/VisitsContext";
 import { useNotifications } from "../../contexts/NotificationsContext";
 import { useEmergency, EmergencyMode } from "../../contexts/EmergencyContext";
@@ -17,10 +16,6 @@ import {
     navigateToVisits,
 } from "../../utils/navigationHelpers";
 
-// Note: In the original file, useHospitals came from hooks/emergency/useHospitals
-// We need to verify imports during implementation.
-import { useHospitals as useHospitalsHook } from "../emergency/useHospitals"; 
-
 /**
  * Custom Hook: Search Ranking Logic
  * 
@@ -33,9 +28,8 @@ export const useSearchRanking = () => {
     const router = useRouter();
     
     // Context Consumption
-    const { hospitals: dbHospitals } = useHospitalsHook();
     const { updateSearch } = useEmergencyUI();
-    const { setMode, selectedSpecialty } = useEmergency();
+    const { allHospitals, setMode, selectedSpecialty } = useEmergency();
     const { query, commitQuery } = useSearch();
     const { visits } = useVisits();
     const { notifications } = useNotifications();
@@ -165,7 +159,7 @@ export const useSearchRanking = () => {
         }
 
         // 3. Hospitals
-        const hospitals = Array.isArray(dbHospitals) ? dbHospitals : [];
+        const hospitals = Array.isArray(allHospitals) ? allHospitals : [];
         for (const h of hospitals) {
             const id = h?.id ? String(h.id) : null;
             if (!id) continue;
@@ -244,7 +238,7 @@ export const useSearchRanking = () => {
 
         return results.sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 18);
     }, [
-        dbHospitals,
+        allHospitals,
         isBedQuery,
         notifications,
         openHospitalInSOS,

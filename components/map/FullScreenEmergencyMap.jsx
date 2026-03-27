@@ -65,6 +65,7 @@ const FullScreenEmergencyMap = forwardRef(
 			responderHeading,
 			ambulanceTelemetryHealth = null,
 			sheetSnapIndex = 1,
+			onUserLocationChange,
 		},
 		ref
 	) => {
@@ -100,6 +101,16 @@ const FullScreenEmergencyMap = forwardRef(
 			locationError,
 			requestLocationPermission,
 		} = useMapLocation();
+
+		useEffect(() => {
+			if (!isValidCoordinate(userLocation)) return;
+			onUserLocationChange?.({
+				latitude: userLocation.latitude,
+				longitude: userLocation.longitude,
+				latitudeDelta: DEFAULT_APP_LOAD_DELTAS.latitudeDelta,
+				longitudeDelta: DEFAULT_APP_LOAD_DELTAS.longitudeDelta,
+			});
+		}, [onUserLocationChange, userLocation]);
 
 		// Debug logs removed for production
 

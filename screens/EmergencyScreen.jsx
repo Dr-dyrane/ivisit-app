@@ -35,8 +35,11 @@ import { paymentService } from "../services/paymentService";
 import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigationHelpers";
 import { useToast } from "../contexts/ToastContext";
 import Constants from "expo-constants";
-import { hospitalsService } from "../services/hospitalsService";
-import { demoEcosystemService, DEMO_BOOTSTRAP_PHASES } from "../services/demoEcosystemService";
+import { DEMO_BOOTSTRAP_PHASES } from "../services/demoEcosystemService";
+import {
+	COVERAGE_MODES,
+	COVERAGE_POOR_THRESHOLD,
+} from "../services/coverageModeService";
 
 import { EmergencyMapContainer } from "../components/emergency/EmergencyMapContainer";
 import { BottomSheetController } from "../components/emergency/BottomSheetController";
@@ -50,7 +53,6 @@ import { useHospitalSelection } from "../hooks/emergency/useHospitalSelection";
 import { useRequestFlow } from "../hooks/emergency/useRequestFlow";
 import { useSearchFiltering } from "../hooks/emergency/useSearchFiltering";
 
-const COVERAGE_POOR_THRESHOLD = 3;
 const COVERAGE_DISCLAIMER_STORAGE_KEY = "@ivisit/coverage_disclaimer_opt_out_v1";
 
 const formatRemainingLabel = (etaSeconds, startedAt, nowMs = Date.now()) => {
@@ -68,17 +70,6 @@ const createDemoPhaseStatuses = () =>
 		acc[phase.key] = "pending";
 		return acc;
 	}, {});
-
-const isHospitalVerifiedForCoverage = (hospital) => {
-	if (!hospital || typeof hospital !== "object") return false;
-
-	const verified = hospital?.verified === true;
-	const importStatus = String(
-		hospital?.importStatus ?? hospital?.import_status ?? ""
-	).toLowerCase();
-
-	return verified || importStatus === "verified";
-};
 
 /**
  * EmergencyScreen - Apple Maps Style Layout
@@ -130,14 +121,12 @@ const EmergencyScreen = () => {
 	const { registerFAB, unregisterFAB } = useFABActions();
 	const { addVisit, updateVisit, cancelVisit, completeVisit } = useVisits();
 	const { user } = useAuth();
-	const { preferences, updatePreferences } = usePreferences();
+	const { preferences } = usePreferences();
 	const { isDarkMode } = useTheme(); // Get theme state
 	const { contacts: emergencyContacts } = useEmergencyContacts();
 	const { profile: medicalProfile } = useMedicalProfile();
 	const { setRequestStatus } = useEmergencyRequests();
 	const { addNotification } = useNotifications();
-	const demoModeEnabled = preferences?.demoModeEnabled !== false;
-
 	const screenHeight = Dimensions.get("window").height;
 
 	// Refs for map and bottom sheet
@@ -213,7 +202,15 @@ const EmergencyScreen = () => {
 		stopBedBooking,
 		setBedBookingStatus,
 		userLocation,
-		mode, // Add missing mode
+		setUserLocation,
+		mode,
+		coverageMode,
+		coverageStatus,
+		nearbyCoverageCounts,
+		effectiveDemoModeEnabled,
+		hasDemoHospitalsNearby,
+		isLiveOnlyAvailable,
+		setCoverageMode,
 	} = useEmergency();
 	const { showToast } = useToast();
 
@@ -239,6 +236,7 @@ const EmergencyScreen = () => {
 		activeAmbulanceTrip,
 		activeBedBooking,
 		currentRoute,
+		effectiveDemoModeEnabled,
 	});
 
 	const [pendingSelectedHospitalId, setPendingSelectedHospitalId] = useState(null);
@@ -985,45 +983,7 @@ const EmergencyScreen = () => {
 			: [...searchFilteredHospitals, routeHospital];
 	}, [activeAmbulanceTrip, hospitals, allHospitals, searchFilteredHospitals]);
 
-	const nearbyCoverageCounts = useMemo(() => {
-		const source = Array.isArray(allHospitals) && allHospitals.length > 0 ? allHospitals : hospitals;
-		if (!Array.isArray(source) || source.length === 0) {
-			return { allNearby: 0, verifiedNearby: 0 };
-		}
-
-		const seen = new Set();
-		return source.reduce((acc, hospital) => {
-			const latitude = hospital?.coordinates?.latitude ?? hospital?.latitude;
-			const longitude = hospital?.coordinates?.longitude ?? hospital?.longitude;
-			if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return acc;
-
-			const key =
-				hospital?.id ??
-				`${hospital?.name || "hospital"}:${Number(latitude).toFixed(4)}:${Number(longitude).toFixed(4)}`;
-			if (seen.has(key)) return acc;
-
-			seen.add(key);
-			acc.allNearby += 1;
-			if (isHospitalVerifiedForCoverage(hospital)) {
-				acc.verifiedNearby += 1;
-			}
-			return acc;
-		}, { allNearby: 0, verifiedNearby: 0 });
-	}, [allHospitals, hospitals]);
-
-	const hasDemoHospitalsNearby = useMemo(() => {
-		const source = Array.isArray(allHospitals) && allHospitals.length > 0 ? allHospitals : hospitals;
-		if (!Array.isArray(source) || source.length === 0) return false;
-		return source.some((hospital) => demoEcosystemService.isDemoHospital(hospital));
-	}, [allHospitals, hospitals]);
-
-	const demoModeActive = demoModeEnabled && hasDemoHospitalsNearby;
-
-	const coverageStatus = useMemo(() => {
-		if (nearbyCoverageCounts.verifiedNearby <= 0) return "none";
-		if (nearbyCoverageCounts.verifiedNearby < COVERAGE_POOR_THRESHOLD) return "poor";
-		return "good";
-	}, [nearbyCoverageCounts]);
+	const demoModeActive = effectiveDemoModeEnabled && hasDemoHospitalsNearby;
 
 	const handleCoverageDisclaimerContinue = useCallback(async () => {
 		setCoverageDisclaimerVisible(false);
@@ -1049,29 +1009,6 @@ const EmergencyScreen = () => {
 		setCoverageDontRemind((prev) => !prev);
 	}, []);
 
-	const resolveCoverageCoordinates = useCallback(() => {
-		const fallbackHospital =
-			(Array.isArray(allHospitals) && allHospitals[0]) ||
-			(Array.isArray(hospitals) && hospitals[0]) ||
-			null;
-		const latitude =
-			userLocation?.latitude ??
-			fallbackHospital?.coordinates?.latitude ??
-			fallbackHospital?.latitude ??
-			null;
-		const longitude =
-			userLocation?.longitude ??
-			fallbackHospital?.coordinates?.longitude ??
-			fallbackHospital?.longitude ??
-			null;
-
-		if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-			throw new Error("Unable to resolve your location for demo provisioning");
-		}
-
-		return { latitude: Number(latitude), longitude: Number(longitude) };
-	}, [allHospitals, hospitals, userLocation?.latitude, userLocation?.longitude]);
-
 	const handleCloseDemoBootstrap = useCallback(() => {
 		if (demoBootstrapRunning) return;
 		setDemoBootstrapVisible(false);
@@ -1082,68 +1019,81 @@ const EmergencyScreen = () => {
 		}
 	}, [demoBootstrapCompleted, demoBootstrapRunning]);
 
-	const handleCoverageDisclaimerSwitchToDemo = useCallback(async () => {
-		try {
-			const coords = resolveCoverageCoordinates();
+	const handleCoverageModeSelection = useCallback(
+		async (nextMode) => {
+			const shouldShowBootstrap =
+				nextMode !== COVERAGE_MODES.LIVE_ONLY && !hasDemoHospitalsNearby;
 
 			setCoverageDisclaimerVisible(false);
-			setDemoBootstrapVisible(true);
-			setDemoBootstrapRunning(true);
-			setDemoBootstrapCompleted(false);
-			setDemoBootstrapError(null);
-			setDemoActivePhaseKey(null);
-			setDemoPhaseStatuses(createDemoPhaseStatuses());
 
-			await demoEcosystemService.bootstrapDemoEcosystem({
-				latitude: coords.latitude,
-				longitude: coords.longitude,
-				radiusKm: 50,
-				onProgress: ({ key, status }) => {
-					if (!key) return;
-					setDemoActivePhaseKey(status === "running" ? key : null);
-					setDemoPhaseStatuses((prev) => ({
-						...prev,
-						[key]: status === "completed" ? "completed" : "running",
-					}));
-				},
-			});
-
-			try {
-				await updatePreferences?.({ demoModeEnabled: true });
-			} catch (prefError) {
-				console.warn("[EmergencyScreen] Failed to persist demo mode preference", prefError);
+			if (shouldShowBootstrap) {
+				setDemoBootstrapVisible(true);
+				setDemoBootstrapRunning(true);
+				setDemoBootstrapCompleted(false);
+				setDemoBootstrapError(null);
+				setDemoActivePhaseKey(null);
+				setDemoPhaseStatuses(createDemoPhaseStatuses());
 			}
 
 			try {
-				const refreshed = await hospitalsService.discoverNearby(
-					coords.latitude,
-					coords.longitude,
-					50000
-				);
-				if (Array.isArray(refreshed) && refreshed.length > 0) {
-					updateHospitals(refreshed);
+				await setCoverageMode(nextMode, {
+					forceBootstrap: shouldShowBootstrap,
+					onProgress: shouldShowBootstrap
+						? ({ key, status }) => {
+								if (!key) return;
+								setDemoActivePhaseKey(status === "running" ? key : null);
+								setDemoPhaseStatuses((prev) => ({
+									...prev,
+									[key]: status === "completed" ? "completed" : "running",
+								}));
+						  }
+						: undefined,
+				});
+
+				if (shouldShowBootstrap) {
+					setDemoBootstrapCompleted(true);
 				}
-			} catch (refreshError) {
-				console.warn("[EmergencyScreen] Demo bootstrap refresh failed", refreshError);
-			}
 
-			setDemoBootstrapCompleted(true);
-			showToast("Demo experience is ready. You can disable it later in More > Demo Mode.", "success");
-		} catch (error) {
-			const message = error?.message || "Failed to create demo ecosystem";
-			console.error("[EmergencyScreen] Demo bootstrap failed", error);
-			setDemoBootstrapError(message);
-			setDemoPhaseStatuses((prev) => {
-				const runningPhase = Object.keys(prev).find((phaseKey) => prev[phaseKey] === "running");
-				if (!runningPhase) return prev;
-				return { ...prev, [runningPhase]: "failed" };
-			});
-			showToast(message, "error");
-		} finally {
-			setDemoBootstrapRunning(false);
-			setDemoActivePhaseKey(null);
-		}
-	}, [resolveCoverageCoordinates, showToast, updateHospitals, updatePreferences]);
+				const successMessage =
+					nextMode === COVERAGE_MODES.LIVE_ONLY
+						? "Showing only live nearby hospitals."
+						: nextMode === COVERAGE_MODES.DEMO_ONLY
+							? "Showing demo-only experience."
+							: "Showing hybrid nearby coverage.";
+				showToast(successMessage, "success");
+			} catch (error) {
+				const message = error?.message || "Failed to update coverage mode";
+				console.error("[EmergencyScreen] Coverage mode update failed", error);
+				setDemoBootstrapError(message);
+				setDemoPhaseStatuses((prev) => {
+					const runningPhase = Object.keys(prev).find(
+						(phaseKey) => prev[phaseKey] === "running"
+					);
+					if (!runningPhase) return prev;
+					return { ...prev, [runningPhase]: "failed" };
+				});
+				showToast(message, "error");
+			} finally {
+				if (shouldShowBootstrap) {
+					setDemoBootstrapRunning(false);
+					setDemoActivePhaseKey(null);
+				}
+			}
+		},
+		[hasDemoHospitalsNearby, setCoverageMode, showToast]
+	);
+
+	const handleCoverageDisclaimerChooseLiveOnly = useCallback(() => {
+		void handleCoverageModeSelection(COVERAGE_MODES.LIVE_ONLY);
+	}, [handleCoverageModeSelection]);
+
+	const handleCoverageDisclaimerChooseHybrid = useCallback(() => {
+		void handleCoverageModeSelection(COVERAGE_MODES.HYBRID);
+	}, [handleCoverageModeSelection]);
+
+	const handleCoverageDisclaimerChooseDemoOnly = useCallback(() => {
+		void handleCoverageModeSelection(COVERAGE_MODES.DEMO_ONLY);
+	}, [handleCoverageModeSelection]);
 
 	useEffect(() => {
 		const hasActiveEmergency =
@@ -1270,10 +1220,13 @@ const EmergencyScreen = () => {
 				nearbyHospitalCount={nearbyCoverageCounts.allNearby}
 				nearbyVerifiedHospitalCount={nearbyCoverageCounts.verifiedNearby}
 				coverageThreshold={COVERAGE_POOR_THRESHOLD}
-				demoModeEnabled={demoModeActive}
+				selectedMode={coverageMode}
+				liveOnlyAvailable={isLiveOnlyAvailable}
 				dontRemind={coverageDontRemind}
 				onToggleDontRemind={handleCoverageDisclaimerToggle}
-				onSwitchToDemo={handleCoverageDisclaimerSwitchToDemo}
+				onChooseLiveOnly={handleCoverageDisclaimerChooseLiveOnly}
+				onChooseHybrid={handleCoverageDisclaimerChooseHybrid}
+				onChooseDemoOnly={handleCoverageDisclaimerChooseDemoOnly}
 				onContinue={handleCoverageDisclaimerContinue}
 				onCall911={handleCoverageDisclaimerCall911}
 			/>
@@ -1410,7 +1363,9 @@ const EmergencyScreen = () => {
 							{ color: isDarkMode ? "#E2E8F0" : "#334155" },
 						]}
 					>
-						Demo mode is active. Turn it off in More {">"} Demo Mode.
+						{coverageMode === COVERAGE_MODES.DEMO_ONLY
+							? "Demo-only coverage is active. Change it in More > Coverage Mode."
+							: "Hybrid coverage is active. Change it in More > Coverage Mode."}
 					</Text>
 				</View>
 			)}
@@ -1435,6 +1390,7 @@ const EmergencyScreen = () => {
 				ambulanceTelemetryHealth={ambulanceTelemetryHealth}
 				hideTelemetryBanner={true}
 				sheetSnapIndex={sheetSnapIndex}
+				onUserLocationChange={setUserLocation}
 			/>
 
 			<BottomSheetController

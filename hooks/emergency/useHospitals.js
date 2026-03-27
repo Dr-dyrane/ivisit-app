@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { hospitalsService } from "../../services/hospitalsService";
+import { demoEcosystemService } from "../../services/demoEcosystemService";
 import * as Location from "expo-location";
 import { DEFAULT_APP_COORDINATES } from "../../constants/locationDefaults";
 
@@ -71,27 +72,49 @@ let globalHospitalCache = {
 	timestamp: 0
 };
 
+const normalizeLocation = (location) => {
+	const latitude = Number(location?.latitude);
+	const longitude = Number(location?.longitude);
+
+	if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+		return null;
+	}
+
+	return { latitude, longitude };
+};
+
+const isSameLocation = (left, right) =>
+	Number(left?.latitude) === Number(right?.latitude) &&
+	Number(left?.longitude) === Number(right?.longitude);
+
 /**
  * Hook to fetch hospitals using the hospitals service with real-time location.
  * Streamlined to prevent infinite loops and excessive API calls.
  * 
  * @returns {Object} { hospitals, allHospitals, categories, isLoading, error, refetch, userLocation }
  */
-export function useHospitals() {
+export function useHospitals(options = {}) {
+	const externalLocation = useMemo(
+		() => normalizeLocation(options?.location),
+		[options?.location?.latitude, options?.location?.longitude]
+	);
+	const demoModeEnabled = options?.demoModeEnabled !== false;
+	const userId = options?.userId ?? null;
 	const [hospitals, setHospitals] = useState(globalHospitalCache.hospitals);
 	const [allHospitals, setAllHospitals] = useState(globalHospitalCache.allHospitals);
 	const [categories, setCategories] = useState(globalHospitalCache.categories);
 	const [isLoading, setIsLoading] = useState(globalHospitalCache.hospitals.length === 0);
 	const [error, setError] = useState(null);
-	const [userLocation, setUserLocation] = useState(null);
+	const [resolvedLocation, setResolvedLocation] = useState(externalLocation);
 
 	const lastLocationRef = useRef(null);
-	const isInitialLoadRef = useRef(true);
 	const hasFetchedRef = useRef(globalHospitalCache.hospitals.length > 0);
+	const userLocation = externalLocation || resolvedLocation;
 
 	// Core fetching logic - pure functional approach
 	const performFetch = useCallback(async (location) => {
-		if (!location) return;
+		const normalizedLocation = normalizeLocation(location);
+		if (!normalizedLocation) return;
 
 		try {
 			// 🔴 REVERT POINT: Background Refresh Stability
@@ -102,12 +125,26 @@ export function useHospitals() {
 			if (!hasFetchedRef.current) {
 				setIsLoading(true);
 			}
+			setError(null);
+
+			if (demoModeEnabled && userId) {
+				try {
+					await demoEcosystemService.ensureDemoEcosystemForLocation({
+						userId,
+						latitude: normalizedLocation.latitude,
+						longitude: normalizedLocation.longitude,
+						radiusKm: 50,
+					});
+				} catch (bootstrapError) {
+					console.warn("[useHospitals] Demo bootstrap sync skipped", bootstrapError);
+				}
+			}
 
 			// We use a generous 50km radius by default to avoid multiple roundtrips
 			// The backend/RPC handles the heavy lifting
 			const data = await hospitalsService.discoverNearby(
-				location.latitude,
-				location.longitude,
+				normalizedLocation.latitude,
+				normalizedLocation.longitude,
 				50000 // 50km
 			);
 
@@ -117,12 +154,12 @@ export function useHospitals() {
 
 			// Apply smart logic
 			const categorized = categorizeHospitals(data);
-			const display = getDisplayHospitals(data, location);
+			const display = getDisplayHospitals(data, normalizedLocation);
 
 			// Calculate dynamic wait times
 			const hospitalsWithWaitTimes = display.map(hospital => ({
 				...hospital,
-				dynamicWaitTime: hospitalsService.calculateDynamicWaitTime(hospital, location)
+				dynamicWaitTime: hospitalsService.calculateDynamicWaitTime(hospital, normalizedLocation)
 			}));
 
 			setAllHospitals(data);
@@ -146,11 +183,20 @@ export function useHospitals() {
 		} finally {
 			setIsLoading(false);
 		}
-	}, []);
+	}, [demoModeEnabled, userId]);
 
-	// Get initial location
+	// Resolve initial location when nothing upstream has provided one yet.
 	useEffect(() => {
 		let isMounted = true;
+
+		if (externalLocation) {
+			setResolvedLocation((current) =>
+				isSameLocation(current, externalLocation) ? current : externalLocation
+			);
+			return () => {
+				isMounted = false;
+			};
+		}
 
 		const getInitialLocation = async () => {
 			try {
@@ -171,9 +217,7 @@ export function useHospitals() {
 				}
 
 				if (isMounted) {
-					setUserLocation(location);
-					lastLocationRef.current = location;
-					performFetch(location);
+					setResolvedLocation(location);
 				}
 			} catch (err) {
 				console.error("[useHospitals] Location error (falling back):", err);
@@ -182,32 +226,31 @@ export function useHospitals() {
 				// NEW: Fallback to default location so app isn't broken
 				const fallbackLocation = { ...DEFAULT_APP_COORDINATES };
 				if (isMounted) {
-					setUserLocation(fallbackLocation);
-					lastLocationRef.current = fallbackLocation;
-					performFetch(fallbackLocation);
+					setResolvedLocation(fallbackLocation);
 				}
 			}
 		};
 
 		getInitialLocation();
 		return () => { isMounted = false; };
-	}, [performFetch]);
+	}, [externalLocation]);
 
-	// Refetch only on significant location change
+	// Refetch only on significant location change, regardless of whether the
+	// location came from the emergency map or direct device lookup.
 	useEffect(() => {
-		if (!userLocation || isInitialLoadRef.current) {
-			isInitialLoadRef.current = false;
+		const nextLocation = normalizeLocation(userLocation);
+		if (!nextLocation) {
 			return;
 		}
 
 		const significantChange = lastLocationRef.current ? (
-			Math.abs(lastLocationRef.current.latitude - userLocation.latitude) > 0.005 ||
-			Math.abs(lastLocationRef.current.longitude - userLocation.longitude) > 0.005
+			Math.abs(lastLocationRef.current.latitude - nextLocation.latitude) > 0.005 ||
+			Math.abs(lastLocationRef.current.longitude - nextLocation.longitude) > 0.005
 		) : true;
 
 		if (significantChange) {
-			lastLocationRef.current = userLocation;
-			performFetch(userLocation);
+			lastLocationRef.current = nextLocation;
+			performFetch(nextLocation);
 		}
 	}, [userLocation, performFetch]);
 

@@ -6,7 +6,6 @@ import {
 	VISIT_TYPES,
 } from "../../constants/visits";
 import { emergencyRequestsService } from "../../services/emergencyRequestsService";
-import { useHospitals } from "./useHospitals";
 import { DispatchService } from "../../services/dispatchService";
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 import { usePaymentFlow } from "./usePaymentFlow";
@@ -162,6 +161,7 @@ export const useRequestFlow = (props) => {
 				selectedSpecialty,
 				updateRequest,
 				preferences,
+				effectiveDemoModeEnabled,
 			} = propsRef.current;
 
 			if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") {
@@ -285,7 +285,9 @@ export const useRequestFlow = (props) => {
 					(request?.paymentMethod?.is_cash ? 'cash' : null);
 				const isDemoCashFlow = demoEcosystemService.isDemoFlowActive({
 					hospital,
-					demoModeEnabled: preferences?.demoModeEnabled !== false,
+					demoModeEnabled:
+						effectiveDemoModeEnabled ??
+						(preferences?.demoModeEnabled !== false),
 				}) && (
 					request?.paymentMethod?.is_cash === true ||
 					String(paymentMethodId ?? "").toLowerCase().includes("cash")

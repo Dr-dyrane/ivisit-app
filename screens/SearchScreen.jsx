@@ -22,7 +22,6 @@ import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSearch } from "../contexts/SearchContext";
 import { useEmergency, EmergencyMode } from "../contexts/EmergencyContext";
-import { useHospitals } from "../hooks/emergency/useHospitals";
 
 // Hooks
 import { useSearchRanking } from "../hooks/search/useSearchRanking";
@@ -47,8 +46,14 @@ export default function SearchScreen() {
     const { setHeaderState } = useHeaderState();
     const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
     const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
-    const { hospitals: dbHospitals } = useHospitals();
-    const { mode, setMode, specialties, selectedSpecialty, selectSpecialty } = useEmergency();
+    const {
+        allHospitals,
+        mode,
+        setMode,
+        specialties,
+        selectedSpecialty,
+        selectSpecialty,
+    } = useEmergency();
     const { query, setSearchQuery, recentQueries, commitQuery } = useSearch();
 
     // --- Custom Hooks ---
@@ -116,7 +121,7 @@ export default function SearchScreen() {
     // --- Computed ---
     const specialtyCounts = useMemo(() => {
         const counts = {};
-        const hospitals = Array.isArray(dbHospitals) ? dbHospitals : [];
+        const hospitals = Array.isArray(allHospitals) ? allHospitals : [];
         const list = Array.isArray(specialties) ? specialties : [];
         for (const s of list) {
             if (!s) continue;
@@ -135,7 +140,7 @@ export default function SearchScreen() {
             counts[s] = c;
         }
         return counts;
-    }, [dbHospitals, specialties]);
+    }, [allHospitals, specialties]);
 
     // --- Styles & Layout ---
     const backgroundColors = isDarkMode

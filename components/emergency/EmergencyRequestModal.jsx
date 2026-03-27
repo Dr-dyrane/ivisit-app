@@ -23,7 +23,6 @@ import { hospitalsService } from "../../services/hospitalsService";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
 import HeaderBackButton from "../navigation/HeaderBackButton";
 import { useEmergency } from "../../contexts/EmergencyContext";
-import { usePreferences } from "../../contexts/PreferencesContext";
 import TriageIntakeModal from "./triage/TriageIntakeModal";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 
@@ -110,8 +109,6 @@ const EmergencyRequestModal = React.memo(({
 	const { registerFAB, unregisterFAB } = useFABActions();
 	const insets = useSafeAreaInsets();
 	const { setHeaderState } = useHeaderState();
-	const { preferences } = usePreferences();
-
 	// MODULAR STEPS: 0: select, 1: payment, 2: dispatched
 	const [requestStep, setRequestStep] = useState("select");
 	const steps = useMemo(() => mode === "booking"
@@ -189,8 +186,13 @@ const EmergencyRequestModal = React.memo(({
 	const [triageModalPhase, setTriageModalPhase] = useState("prebooking");
 
 	// Cash approval gate state (Managed by context for persistence)
-	const { pendingApproval, setPendingApproval, activeAmbulanceTrip, allHospitals } = useEmergency();
-	const demoModeEnabled = preferences?.demoModeEnabled !== false;
+	const {
+		pendingApproval,
+		setPendingApproval,
+		activeAmbulanceTrip,
+		allHospitals,
+		effectiveDemoModeEnabled,
+	} = useEmergency();
 	const resolvedRequestHospital = useMemo(() => {
 		if (!requestHospital?.id) return requestHospital;
 		return (
@@ -202,9 +204,9 @@ const EmergencyRequestModal = React.memo(({
 		() =>
 			demoEcosystemService.isDemoFlowActive({
 				hospital: resolvedRequestHospital,
-				demoModeEnabled,
+				demoModeEnabled: effectiveDemoModeEnabled,
 			}),
-		[demoModeEnabled, resolvedRequestHospital]
+		[effectiveDemoModeEnabled, resolvedRequestHospital]
 	);
 	const approvalHandledRef = useRef(false);
 	const approvalDispatchWaitNotifiedRef = useRef(false);

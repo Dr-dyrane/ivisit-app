@@ -56,6 +56,7 @@ export default function RequestAmbulanceScreen() {
 		startBedBooking,
 		clearSelectedHospital,
 		setMode,
+		effectiveDemoModeEnabled,
 	} = useEmergency();
 
 	const requestHospital = useMemo(() => {
@@ -84,6 +85,7 @@ export default function RequestAmbulanceScreen() {
 		activeAmbulanceTrip,
 		activeBedBooking,
 		currentRoute: null,
+		effectiveDemoModeEnabled,
 		onRequestComplete: () => { },
 	});
 
