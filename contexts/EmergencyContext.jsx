@@ -14,6 +14,7 @@ import { ambulanceService } from "../services/ambulanceService";
 import { demoEcosystemService } from "../services/demoEcosystemService";
 import { usePreferences } from "./PreferencesContext";
 import { useAuth } from "./AuthContext";
+import { DEFAULT_APP_REGION } from "../constants/locationDefaults";
 import { calculateBearing, isValidCoordinate } from "../utils/mapUtils";
 import {
 	parseRecordTimestampMs,
@@ -234,7 +235,11 @@ export function EmergencyProvider({ children }) {
 	const { preferences } = usePreferences();
 	const { user } = useAuth();
 	// Fetch real hospitals from Supabase
-	const { hospitals: dbHospitals, isLoading: isLoadingHospitals } = useHospitals();
+	const {
+		hospitals: dbHospitals,
+		isLoading: isLoadingHospitals,
+		refetch: refetchHospitals,
+	} = useHospitals();
 	// Fetch real ambulances
 	const { ambulances: activeAmbulances } = useAmbulances();
 	const demoModeEnabled = preferences?.demoModeEnabled !== false;
@@ -339,12 +344,7 @@ export function EmergencyProvider({ children }) {
 				// Ignore errors here, Map component will handle explicit permission requests
 				console.log("Context location fetch failed (using fallback):", e);
 				// Standard fallback location
-				setUserLocation({
-					latitude: 33.7475,
-					longitude: -116.9730,
-					latitudeDelta: 0.04,
-					longitudeDelta: 0.04,
-				});
+				setUserLocation({ ...DEFAULT_APP_REGION });
 			}
 		})();
 	}, []);
@@ -1206,6 +1206,10 @@ export function EmergencyProvider({ children }) {
 		setHospitals(enriched);
 	}, [normalizeHospitals]);
 
+	const refreshHospitals = useCallback(async () => {
+		await refetchHospitals?.();
+	}, [refetchHospitals]);
+
 	// REAL-TIME SUBSCRIPTIONS
 	useEffect(() => {
 		const emergencyRequestSubscriptionKey =
@@ -1335,6 +1339,7 @@ export function EmergencyProvider({ children }) {
 			stopBedBooking,
 			setBedBookingStatus,
 			updateHospitals,
+			refreshHospitals,
 			setUserLocation,
 			setPendingApproval,
 		}),
@@ -1367,6 +1372,7 @@ export function EmergencyProvider({ children }) {
 			stopBedBooking,
 			setBedBookingStatus,
 			updateHospitals,
+			refreshHospitals,
 			setUserLocation,
 			setPendingApproval,
 		]

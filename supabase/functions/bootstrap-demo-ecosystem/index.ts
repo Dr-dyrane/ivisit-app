@@ -13,6 +13,56 @@ const DEMO_HOSPITAL_OFFSETS = [
   { lat: 0.0042, lng: -0.0068 },
 ];
 
+const LAGOS_REFERENCE_POINT = {
+  latitude: 6.5244,
+  longitude: 3.3792,
+};
+
+const LAGOS_DEMO_HOSPITAL_TEMPLATES = [
+  {
+    name: "Lagos Island General Hospital",
+    address: "1-3 Broad St, Lagos Island, Lagos",
+    phone: "+234 1 234 5678",
+    rating: 4.5,
+    type: "standard",
+    image: "",
+    specialties: ["Emergency Medicine", "Internal Medicine", "Cardiology"],
+    service_types: ["standard", "premium"],
+    features: ["lagos_demo", "island_coverage"],
+    emergency_level: "Level 1",
+    wait_time: "9 min",
+    price_range: "Flexible",
+  },
+  {
+    name: "Victoria Island Emergency Centre",
+    address: "Ozumba Mbadiwe Ave, Victoria Island, Lagos",
+    phone: "+234 1 700 4400",
+    rating: 4.4,
+    type: "premium",
+    image: "",
+    specialties: ["Emergency Medicine", "Trauma Care", "Orthopedics"],
+    service_types: ["premium", "standard"],
+    features: ["lagos_demo", "island_coverage"],
+    emergency_level: "Level 1",
+    wait_time: "11 min",
+    price_range: "Premium",
+  },
+  {
+    name: "Yaba Community Hospital",
+    address: "Herbert Macaulay Way, Yaba, Lagos",
+    phone: "+234 1 515 2121",
+    rating: 4.3,
+    type: "standard",
+    image: "",
+    specialties: ["Emergency Medicine", "Pediatrics", "Family Medicine"],
+    service_types: ["standard", "premium"],
+    features: ["lagos_demo", "mainland_coverage"],
+    emergency_level: "Level 2",
+    wait_time: "12 min",
+    price_range: "Accessible",
+  },
+];
+
 const DEMO_FEATURE_FLAGS = [
   "demo_seed",
   "demo_verified",
@@ -135,6 +185,33 @@ const toGeometryPoint = (latitude: number, longitude: number): string =>
 
 const nowIso = () => new Date().toISOString();
 
+const toRadians = (value: number) => (value * Math.PI) / 180;
+
+const haversineDistanceKm = (
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number }
+) => {
+  const earthRadiusKm = 6371;
+  const latDelta = toRadians(b.latitude - a.latitude);
+  const lngDelta = toRadians(b.longitude - a.longitude);
+  const lat1 = toRadians(a.latitude);
+  const lat2 = toRadians(b.latitude);
+
+  const sinLat = Math.sin(latDelta / 2);
+  const sinLng = Math.sin(lngDelta / 2);
+  const haversine =
+    sinLat * sinLat +
+    Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+
+  return 2 * earthRadiusKm * Math.asin(Math.min(1, Math.sqrt(haversine)));
+};
+
+const shouldUseLagosFallbackCatalog = (ctx: DemoContext) =>
+  haversineDistanceKm(
+    { latitude: ctx.latitude, longitude: ctx.longitude },
+    LAGOS_REFERENCE_POINT
+  ) <= 120;
+
 const getNearbySeedHospitals = async (admin: any, ctx: DemoContext) => {
   const { data, error } = await admin.rpc("nearby_hospitals", {
     user_lat: ctx.latitude,
@@ -178,6 +255,19 @@ const buildFallbackHospital = (ctx: DemoContext, slotIndex: number) => {
   const offset = DEMO_HOSPITAL_OFFSETS[slotIndex % DEMO_HOSPITAL_OFFSETS.length];
   const latitude = ctx.latitude + offset.lat;
   const longitude = ctx.longitude + offset.lng;
+
+  if (shouldUseLagosFallbackCatalog(ctx)) {
+    const template =
+      LAGOS_DEMO_HOSPITAL_TEMPLATES[
+        slotIndex % LAGOS_DEMO_HOSPITAL_TEMPLATES.length
+      ];
+
+    return {
+      ...template,
+      latitude,
+      longitude,
+    };
+  }
 
   return {
     name: `iVisit Demo Hospital ${slotIndex + 1}`,

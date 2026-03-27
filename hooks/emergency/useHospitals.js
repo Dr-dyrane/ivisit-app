@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { hospitalsService } from "../../services/hospitalsService";
 import * as Location from "expo-location";
+import { DEFAULT_APP_COORDINATES } from "../../constants/locationDefaults";
 
 /**
  * Calculate relevance score for hospitals based on distance, rating, and availability
@@ -158,7 +159,7 @@ export function useHospitals() {
 
 				if (status !== 'granted') {
 					console.warn('[useHospitals] Location permission denied, using fallback');
-					location = { latitude: 33.7475, longitude: -116.9730 };
+					location = { ...DEFAULT_APP_COORDINATES };
 				} else {
 					const currentLocation = await Location.getCurrentPositionAsync({
 						accuracy: Location.Accuracy.Balanced
@@ -179,7 +180,7 @@ export function useHospitals() {
 				// 🔴 REVERT POINT: Graceful Fallback
 				// PREVIOUS: if (isMounted) setError(err);
 				// NEW: Fallback to default location so app isn't broken
-				const fallbackLocation = { latitude: 33.7475, longitude: -116.9730 };
+				const fallbackLocation = { ...DEFAULT_APP_COORDINATES };
 				if (isMounted) {
 					setUserLocation(fallbackLocation);
 					lastLocationRef.current = fallbackLocation;
@@ -211,7 +212,7 @@ export function useHospitals() {
 	}, [userLocation, performFetch]);
 
 	const manualRefetch = useCallback(() => {
-		if (userLocation) performFetch(userLocation);
+		performFetch(userLocation || DEFAULT_APP_COORDINATES);
 	}, [userLocation, performFetch]);
 
 	return {

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import * as Location from "expo-location";
+import { DEFAULT_APP_COORDINATES } from "../constants/locationDefaults";
 
 // Location configuration constants
 const LOCATION_CONFIG = {
@@ -73,7 +74,7 @@ export function GlobalLocationProvider({ children }) {
 					console.log("[GlobalLocationContext] Location obtained:", locationData);
 				} catch (locationErr) {
 					console.error("[GlobalLocationContext] Failed to get location (using fallback):", locationErr);
-					const fallbackData = { latitude: 33.7475, longitude: -116.9730 };
+					const fallbackData = { ...DEFAULT_APP_COORDINATES };
 					setUserLocation(fallbackData);
 					setLastUpdated(Date.now());
 					setLocationError(null);
@@ -111,14 +112,14 @@ export function GlobalLocationProvider({ children }) {
 						console.error("[GlobalLocationContext] Failed to get location after permission (using fallback):", locationErr);
 						// 🔴 REVERT POINT: Context Fallback
 						// NEW: Use standard coordinate if GPS fails
-						const fallbackData = { latitude: 33.7475, longitude: -116.9730 };
+						const fallbackData = { ...DEFAULT_APP_COORDINATES };
 						setUserLocation(fallbackData);
 						setLastUpdated(Date.now());
 						setLocationError(null); // Clear error since we have a fallback
 					}
 				} else {
 					console.log("[GlobalLocationContext] Permission denied (using fallback)");
-					const fallbackData = { latitude: 33.7475, longitude: -116.9730 };
+					const fallbackData = { ...DEFAULT_APP_COORDINATES };
 					setUserLocation(fallbackData);
 					setLastUpdated(Date.now());
 					setLocationError(null);

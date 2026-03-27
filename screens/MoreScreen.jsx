@@ -27,9 +27,16 @@ import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
 import { COLORS } from "../constants/colors";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ProfileAvatarButton from "../components/headers/ProfileAvatarButton";
 import { seederService } from "../services/seederService";
+import { demoEcosystemService } from "../services/demoEcosystemService";
+import { useEmergency } from "../contexts/EmergencyContext";
+import {
+	DEFAULT_APP_COORDINATES,
+	DEFAULT_DEMO_CITY_LABEL,
+} from "../constants/locationDefaults";
 import {
 	navigateToEmergencyContacts,
 	navigateToHelpSupport,
@@ -49,6 +56,7 @@ const MoreScreen = () => {
 	const { logout, user } = useAuth();
 	const { isDarkMode, toggleTheme } = useTheme();
 	const { preferences, updatePreferences } = usePreferences();
+	const { refreshHospitals } = useEmergency();
 	const insets = useSafeAreaInsets();
 	const { handleScroll: handleTabBarScroll, resetTabBar } =
 		useTabBarVisibility();
@@ -229,16 +237,60 @@ const MoreScreen = () => {
 		}
 	};
 
-	const handleDemoModeToggle = async () => {
+	const resolveDemoBootstrapLocation = useCallback(async () => {
+		try {
+			const lastKnown = await Location.getLastKnownPositionAsync({});
+			if (lastKnown?.coords) {
+				return {
+					latitude: lastKnown.coords.latitude,
+					longitude: lastKnown.coords.longitude,
+				};
+			}
+		} catch (error) {
+			console.warn("[MoreScreen] Last known location unavailable for demo bootstrap", error);
+		}
+
+		try {
+			const { status } = await Location.getForegroundPermissionsAsync();
+			if (status === "granted") {
+				const current = await Location.getCurrentPositionAsync({
+					accuracy: Location.Accuracy.Balanced,
+				});
+				return {
+					latitude: current.coords.latitude,
+					longitude: current.coords.longitude,
+				};
+			}
+		} catch (error) {
+			console.warn("[MoreScreen] Current location unavailable for demo bootstrap", error);
+		}
+
+		return { ...DEFAULT_APP_COORDINATES };
+	}, []);
+
+	const handleDemoModeToggle = useCallback(async () => {
 		if (!preferences) return;
 		const nextValue = !demoModeEnabled;
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
 		try {
+			if (nextValue) {
+				showToast(`Preparing ${DEFAULT_DEMO_CITY_LABEL} demo hospitals...`, "info");
+				const coords = await resolveDemoBootstrapLocation();
+
+				await demoEcosystemService.bootstrapDemoEcosystem({
+					latitude: coords.latitude,
+					longitude: coords.longitude,
+					radiusKm: 50,
+				});
+			}
+
 			await updatePreferences({ demoModeEnabled: nextValue });
+			await refreshHospitals?.();
+
 			showToast(
 				nextValue
-					? "Demo mode enabled. Demo hospitals will appear on emergency map."
+					? `Demo mode enabled. ${DEFAULT_DEMO_CITY_LABEL} demo hospitals are ready on the emergency map.`
 					: "Demo mode disabled. Showing only live verified coverage.",
 				"success"
 			);
@@ -246,7 +298,14 @@ const MoreScreen = () => {
 			console.error("[MoreScreen] Failed to toggle demo mode", error);
 			showToast("Unable to update demo mode right now", "error");
 		}
-	};
+	}, [
+		demoModeEnabled,
+		preferences,
+		refreshHospitals,
+		resolveDemoBootstrapLocation,
+		showToast,
+		updatePreferences,
+	]);
 
 	const handleSeedData = async () => {
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);

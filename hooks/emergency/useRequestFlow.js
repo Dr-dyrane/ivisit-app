@@ -14,6 +14,10 @@ import { serviceCostService } from "../../services/serviceCostService";
 import { notificationDispatcher } from "../../services/notificationDispatcher";
 import { triageService } from "../../services/triageService";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
+import {
+	DEFAULT_APP_COORDINATES,
+	toPointWkt,
+} from "../../constants/locationDefaults";
 
 const toFiniteNumber = (value) => {
 	const n = Number(value);
@@ -222,8 +226,8 @@ export const useRequestFlow = (props) => {
 					patientLocation = `POINT(${currentLocation.coords.longitude} ${currentLocation.coords.latitude})`;
 				} catch (locationError) {
 					console.warn('[useRequestFlow] Could not get user location:', locationError);
-					// Fallback to Hemet coordinates
-					patientLocation = 'POINT(-116.9730 33.7475)';
+					liveUserLocation = { ...DEFAULT_APP_COORDINATES };
+					patientLocation = toPointWkt(DEFAULT_APP_COORDINATES);
 				}
 
 				const hospitalCoords = hospital?.coordinates && Number.isFinite(hospital.coordinates.latitude) && Number.isFinite(hospital.coordinates.longitude)
@@ -670,8 +674,8 @@ export const useRequestFlow = (props) => {
 					longitude: currentLocation.coords.longitude
 				};
 			} catch (locationError) {
-				console.warn('[useRequestFlow] Quick emergency location failed:', locationError);
-				return blockResult("LOCATION_ERROR", { serviceType });
+				console.warn('[useRequestFlow] Quick emergency location failed, using fallback:', locationError);
+				userLocation = { ...DEFAULT_APP_COORDINATES };
 			}
 
 			// Auto-select best hospital
