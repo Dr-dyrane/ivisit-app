@@ -2,7 +2,7 @@
 import "../polyfills";
 
 import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import { View, Text, ActivityIndicator, Platform } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
@@ -27,6 +27,7 @@ import { authService } from "../services/authService";
 import { appMigrationsService } from "../services/appMigrationsService";
 import { useOTAUpdates } from "../hooks/useOTAUpdates";
 import UpdateAvailableModal from "../components/ui/UpdateAvailableModal";
+import { getWelcomeRootBackground } from "../constants/welcomeTheme";
 
 /**
  * Root layout wraps the entire app with context providers
@@ -83,9 +84,7 @@ export default function RootLayout() {
 					<AppProviders>
 						<View style={{ flex: 1 }}>
 							<AuthenticatedStack />
-							<View className="absolute right-0 top-16 px-2 py-4">
-								<ThemeToggle showLabel={false} />
-							</View>
+							<ThemeToggle showLabel={false} />
 						</View>
 					</AppProviders>
 				</GlobalLocationProvider>
@@ -103,6 +102,21 @@ function AuthenticatedStack() {
 	const { showToast } = useToast();
 	const router = useRouter();
 	const segments = useSegments();
+	const loadingBackground = Platform.OS === "web"
+		? getWelcomeRootBackground(isDarkMode)
+		: isDarkMode
+			? "#0D121D"
+			: "#FFFFFF";
+	const loadingIndicator = Platform.OS === "web"
+		? isDarkMode ? "#F8FAFC" : "#86100E"
+		: isDarkMode
+			? "#FFFFFF"
+			: "#007AFF";
+	const loadingText = Platform.OS === "web"
+		? isDarkMode ? "#D6DFEB" : "#5D677A"
+		: isDarkMode
+			? "#FFFFFF"
+			: "#666";
 
 	// Check for OTA updates on app launch
 	const { showModal, showSuccessModal, handleRestart, handleLater, handleDismissSuccess } = useOTAUpdates();
@@ -117,8 +131,14 @@ function AuthenticatedStack() {
 			console.log("[DeepLink] Received URL with scheme:", urlScheme);
 
 			// Let the dedicated auth callback page handle auth callbacks
-			const isAuthCallback = url.includes("auth/callback") || url.includes("code=") || url.includes("access_token=");
-			console.log("[DeepLink] URL check:", { scheme: urlScheme, isAuthCallback });
+			const isResetPassword = url.includes("auth/reset-password");
+			const isAuthCallback = !isResetPassword && (url.includes("auth/callback") || url.includes("code=") || url.includes("access_token="));
+			console.log("[DeepLink] URL check:", { scheme: urlScheme, isAuthCallback, isResetPassword });
+
+			if (isResetPassword) {
+				router.replace("/auth/reset-password");
+				return;
+			}
 
 			if (isAuthCallback) {
 				console.log("[DeepLink] Redirecting to auth callback page");
@@ -190,21 +210,22 @@ function AuthenticatedStack() {
 					flex: 1,
 					justifyContent: 'center',
 					alignItems: 'center',
-					backgroundColor: isDarkMode ? '#0D121D' : '#FFFFFF'
+					backgroundColor: loadingBackground,
 				}}>
-					<ActivityIndicator size="large" color={isDarkMode ? '#FFFFFF' : '#007AFF'} />
+					<ActivityIndicator size="large" color={loadingIndicator} />
 					<Text style={{
 						marginTop: 20,
 						fontSize: 16,
-						color: isDarkMode ? '#FFFFFF' : '#666',
+						color: loadingText,
 						textAlign: 'center'
 					}}>
-						Checking authentication...
+						Opening iVisit...
 					</Text>
 				</View>
 			) : (
 				<Stack screenOptions={{ headerShown: false }}>
 					<Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+					<Stack.Screen name="auth/reset-password" options={{ headerShown: false }} />
 					<Stack.Screen name="(auth)" />
 					<Stack.Screen name="(user)" />
 				</Stack>

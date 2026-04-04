@@ -1,0 +1,290 @@
+{
+  "ivisit_system_rules": {
+    "version": "2.0",
+    "status": "locked",
+    "goal": "Build a production-grade, map-first emergency care product that feels immediate, calm, trustworthy, and consistent across marketing, web PWA, iOS, Android, and provider surfaces.",
+    "north_star": {
+      "product_promise": "Get help fast when something feels wrong.",
+      "user_feeling": "We are already helping you.",
+      "core_truth": "In urgent situations, users do not explore. They act.",
+      "decision_rule": "If a decision can be safely made by the system, the system should make it."
+    },
+    "product_truth": {
+      "public_identity": "iVisit is an emergency response and hospital capacity platform.",
+      "primary_actions": [
+        "Request Ambulance",
+        "Find Hospital Bed"
+      ],
+      "supporting_capabilities": [
+        "Share live location",
+        "Track response progress",
+        "Coordinate handoff",
+        "Continue into follow-up care"
+      ],
+      "rule": "Only actions that strengthen ambulance dispatch or hospital bed access may lead the experience.",
+      "anti_patterns": [
+        "feature-first home screens",
+        "marketplace-style exploration before action",
+        "secondary services competing with urgent actions"
+      ]
+    },
+    "repo_boundaries": {
+      "rule": "Each repository owns one surface only.",
+      "mapping": {
+        "ivisit": "marketing, acquisition, public trust, SEO, legal, and product handoff",
+        "ivisit-app": "canonical patient product across iOS, Android, and web PWA",
+        "ivisit-console": "provider onboarding, provider operations, and admin workflows"
+      },
+      "source_of_truth": {
+        "patient_product": "ivisit-app is the single source of truth for patient-facing product UI and flow.",
+        "marketing": "ivisit must not recreate authenticated patient flows.",
+        "provider": "ivisit-console must not be mixed into patient or marketing surfaces."
+      },
+      "anti_patterns": [
+        "duplicating patient app logic in the marketing repo",
+        "rebuilding the same screen independently in web and native repos",
+        "mixing provider and patient flows in one surface"
+      ]
+    },
+    "cross_surface_alignment": {
+      "rule": "Marketing promise, app entry, and live care flow must say the same thing.",
+      "checks": [
+        "marketing promise is visible in the first app state",
+        "app entry does not contradict the marketing CTA",
+        "handoff language is honest about preview or live access",
+        "the first product action feels like continuation, not restart"
+      ]
+    },
+    "human_interface_guidelines": {
+      "rule": "The interface must feel calm, direct, borderless, and low-friction.",
+      "surface_rules": [
+        "avoid visible borders where spacing, background contrast, and elevation can create separation",
+        "prefer soft depth and whitespace over hard outlines",
+        "keep visual noise low and hierarchy obvious",
+        "do not use theatrical dashboard decoration to imply seriousness"
+      ],
+      "interaction_rules": [
+        "one primary action per screen",
+        "bottom sheets on mobile where action continuation is needed",
+        "centered dialogs on tablet and desktop for focused tasks",
+        "tap targets must remain comfortable on compact phones",
+        "respect reduced motion and avoid looping animation gimmicks"
+      ],
+      "anti_patterns": [
+        "multiple primary CTAs on one screen",
+        "explainer-heavy UI blocks",
+        "debug or internal artifacts visible in production",
+        "visual separation that depends on border clutter"
+      ]
+    },
+    "copy_system": {
+      "rule": "Use short, directive, human wording.",
+      "checks": [
+        "headlines communicate outcome, not category",
+        "buttons describe the action, not the implementation",
+        "status text explains what is happening now",
+        "support text is concise and only appears when needed"
+      ],
+      "language_rules": [
+        "prefer decision copy over explanatory copy",
+        "prefer verbs over labels",
+        "avoid technical, system, or internal wording",
+        "avoid hype when trust is more important than novelty"
+      ],
+      "examples": {
+        "good": [
+          "Find help near you...",
+          "Open iVisit",
+          "Continue",
+          "Code sent"
+        ],
+        "avoid": [
+          "Emergency response platform",
+          "System nominal",
+          "Processing request pipeline",
+          "Open in Expo"
+        ]
+      }
+    },
+    "entry_experience": {
+      "rule": "Within 2 seconds of app open, the user must understand what is happening, what the system is doing, and what to do next.",
+      "checks": [
+        "the first screen is not a feature list or dashboard",
+        "the primary action is obvious immediately",
+        "setup steps feel like continuation, not friction",
+        "auth and profile completion remain calm and linear"
+      ],
+      "anti_patterns": [
+        "forcing users to decode options before acting",
+        "making the user choose among equal-weight actions too early",
+        "using onboarding theater instead of progress"
+      ]
+    },
+    "core_flow": {
+      "path": [
+        "Request",
+        "Share",
+        "Track",
+        "Coordinate"
+      ],
+      "rule": "The main emergency path must move forward with minimal interruption.",
+      "checks": [
+        "the system advances the user wherever possible",
+        "every state change is visible",
+        "there are no dead ends or broken branches",
+        "manual step chaining is avoided"
+      ],
+      "anti_patterns": [
+        "unnecessary confirmation steps",
+        "multi-branch confusion during urgent flow",
+        "silent state changes"
+      ]
+    },
+    "state_and_feedback": {
+      "rule": "The user must always know what is happening.",
+      "checks": [
+        "every action gives visible feedback immediately",
+        "loading states are meaningful, not generic",
+        "requesting, matched, tracking, and arrival states are explicit",
+        "realtime changes reflect backend truth without stale UI"
+      ],
+      "status_style": [
+        "state text should be human and present-tense",
+        "never leave users in a blank or silent state",
+        "feedback should reduce panic, not increase it"
+      ]
+    },
+    "responsive_strategy": {
+      "rule": "Build one shared product surface that adapts by size class before adding platform-specific forks.",
+      "size_classes": {
+        "small_phone": "320-390",
+        "large_phone": "391-430",
+        "tablet": "768-1024",
+        "desktop_web": "1280+"
+      },
+      "layout_rules": [
+        "mobile-first by default",
+        "single-column is the baseline for urgent flows",
+        "tablet and desktop may widen and center content but must not change the core mental model",
+        "web PWA, iOS, and Android should feel like the same product with adaptive layout, not different products"
+      ]
+    },
+    "screen_hardening_workflow": {
+      "rule": "Harden one screen at a time and do not move on while the current screen still leaks friction.",
+      "current_priority_order": [
+        "Welcome and auth entry",
+        "Emergency surface",
+        "Emergency bottom sheets and tracking states",
+        "Visits and secondary tabs",
+        "Settings and support surfaces"
+      ],
+      "per_screen_sequence": [
+        "make small phone solid first",
+        "then adapt for tablet",
+        "then adapt for desktop web",
+        "then validate native edge cases on iPhone and Android aspect ratios"
+      ],
+      "done_definition": [
+        "layout is stable with no overflow",
+        "primary action is obvious",
+        "copy is concise",
+        "touch targets are correct",
+        "state transitions are smooth",
+        "screen behavior matches the same logic across web and native"
+      ]
+    },
+    "live_proof_and_demo_policy": {
+      "rule": "Product proof must feel real, not theatrical.",
+      "checks": [
+        "live previews should demonstrate actual flow or real UI behavior",
+        "preview states must remain human-readable",
+        "proof should reinforce emergency action, not distract from it"
+      ],
+      "demo_data_policy": "If live hospital or provider coverage is not yet fully onboarded, preview hospitals may be rendered for sponsor and product evaluation, but they must be framed as preview coverage while the live network expands.",
+      "anti_patterns": [
+        "fake enterprise dashboard metrics",
+        "simulation language that makes the product feel fictional",
+        "decorative activity that does not represent real product behavior"
+      ]
+    },
+    "distribution_and_handoff": {
+      "rule": "If a setup or install step exists, it must be guided and honest.",
+      "checks": [
+        "never blind-link users into an unfamiliar setup flow",
+        "handoff copy remains product-first and calm",
+        "returning users can continue quickly",
+        "distribution steps must not overpromise direct action if setup is still required"
+      ]
+    },
+    "sponsor_review_standard": {
+      "rule": "Sponsor-facing surfaces must communicate product maturity, not internal experimentation.",
+      "checks": [
+        "no visible debug overlays or internal toggles",
+        "preview coverage is intentional and explained honestly",
+        "product proof feels live and credible",
+        "repo structure matches actual product ownership"
+      ]
+    },
+    "engineering_and_architecture": {
+      "rule": "Code must support clarity, reuse, and no-drift execution.",
+      "checks": [
+        "business logic is not duplicated across repos",
+        "service boundaries remain clear",
+        "UI components do not hide critical business logic",
+        "unused code and dead branches are removed as screens are hardened"
+      ],
+      "separation_of_concerns": [
+        "UI handles presentation and interaction",
+        "hooks and services handle flow, data, and side effects",
+        "contracts and env usage remain explicit"
+      ]
+    },
+    "security_and_env": {
+      "rule": "Production configuration must be explicit, documented, and safe.",
+      "checks": [
+        "no secrets exposed through public env names",
+        "web, iOS, and Android env requirements are documented",
+        "deployment config does not depend on local machine state",
+        "preview and production environments are clearly separated"
+      ]
+    },
+    "release_gates": {
+      "rule": "No screen is complete until it is verified across the surfaces it serves.",
+      "global": [
+        "build passes",
+        "critical flow is manually verified",
+        "no broken states remain in the current screen",
+        "copy and layout are aligned with the rules file"
+      ],
+      "app_specific": [
+        "Expo web export passes",
+        "responsive checks are complete for the current screen",
+        "native aspect-ratio edge cases are reviewed before declaring parity",
+        "do not push or declare complete while the current screen still drifts across platforms"
+      ]
+    },
+    "anti_patterns": [
+      "rebuilding the same product flow twice",
+      "feature drift between web and native",
+      "multiple competing actions on an urgent screen",
+      "explaining instead of directing",
+      "using setup friction as hidden product behavior",
+      "calling a screen complete before phone, tablet, desktop, and native edge cases are checked"
+    ],
+    "target_scores": {
+      "sponsor_confidence": 90,
+      "product_clarity": 95,
+      "cross_surface_consistency": 95,
+      "release_readiness": 90
+    },
+    "change_policy": {
+      "rule": "These rules change only when product truth changes, not when taste changes.",
+      "update_trigger": [
+        "new product surface ownership",
+        "new safety or compliance requirement",
+        "new platform constraint that affects flow",
+        "a proven workflow lesson that should become doctrine"
+      ]
+    }
+  }
+}

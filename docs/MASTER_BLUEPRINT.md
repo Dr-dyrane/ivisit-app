@@ -1,411 +1,340 @@
-# 🧬 iVisit Master Blueprint & Snapshot
-> **Version:** 1.0.0 (The "Unity" Release)
-> **Date:** 2026-01-13
-> **Status:** Live / Active Development
-
----
-
-## 💌 The Philosophy ("A Love Letter to the Future")
-
-iVisit is not just an app; it is a **lifeline infrastructure** for Lagos and developing nations. It bridges the gap between a fragmented healthcare system and patients in desperate need.
-
-**The Mission:**
-> To democratize emergency response. We don't own the ambulances; we connect the person in pain to the nearest help—whether that's a sophisticated hospital ambulance, a registered private paramedic, or a "Good Samaritan" driver.
-
-**The "Unity" Concept:**
-This codebase is designed to be **mirrored**.
-*   **Patient App (Current):** The SOS beacon.
-*   **Provider App (The Mirror):** The responder dashboard.
-*   **Admin Dashboard (The Overseer):** The traffic control tower.
-
-This document serves as the **DNA** for all three. You should be able to drop this file into an empty Expo or Next.js project, and an AI agent should know exactly what to build to complete the ecosystem.
-
----
-
-## 👥 User Ecosystem & Roles
-
-We share a single `public.profiles` table, distinguished by `role`.
-
-### 1. The Patient (Default)
-*   **Goal:** Survival. Needs help NOW.
-*   **Key Features:** SOS Button, Location Tracking, Medical Profile, Insurance Wallet.
-*   **Payment:** Cashless preference (Insurance-first).
-
-### 2. The Service Provider (The "Driver")
-*   **Sub-types:**
-    *   `hospital`: A facility with beds and ambulances.
-    *   `ambulance_service`: A private fleet.
-    *   `doctor`: A verified medical practitioner (Telemedicine/Home visit).
-    *   `driver`: A registered individual with a vehicle capable of transport.
-*   **Goal:** Rescue & Revenue.
-*   **Key Features:**
-    *   **"Online/Offline" Toggle:** Ready to receive requests.
-    *   **Request Feed:** "Incoming SOS: 2.3km away".
-    *   **Navigation:** Turn-by-turn to patient.
-    *   **Asset Management:** "I have 3 beds free", "My ambulance is busy".
-
-### 3. The Admin (Investor/Manager)
-*   **Goal:** Oversight.
-*   **Key Features:** Live Map (God View), KPI Dashboard (Response times, active trips), User Verification queue.
-
----
-
-## 🏗️ Data Architecture (Supabase)
-
-### Core Tables
-1.  **`profiles`**: The Identity.
-    *   `id` (UUID), `role` (enum: patient, provider, admin), `provider_type` (hospital, doctor, etc.), `bvn_verified` (bool).
-2.  **`medical_profiles`**: The Health Data.
-    *   Linked to `profiles`. Blood type, allergies, conditions.
-3.  **`emergency_requests`**: The "Trip".
-    *   **State Machine:** `pending` -> `accepted` -> `arrived` -> `in_progress` (trip) -> `completed`.
-    *   **Location:**
-        *   `pickup_location` (Static start).
-        *   `patient_location` (Dynamic/Live).
-        *   `responder_location` (Dynamic/Live).
-        *   `destination_location` (Hospital).
-4.  **`visits`**: The History.
-    *   Archived emergency requests + Scheduled appointments.
-5.  **`insurance_policies`**: The Wallet.
-    *   `user_id`, `provider` (e.g., 'iVisit Basic', 'AXA Mansard'), `policy_number`, `status` (active/expired).
-
----
-
-## 📱 Patient App Flow (Current Implementation)
-
-1.  **Onboarding**:
-    *   **Phone/Email Auth** (Supabase).
-    *   **Profile Gate**: Must complete Name/Phone.
-    *   **Insurance Auto-Enrollment**: User is automatically given "iVisit Basic" coverage (Simulated).
-2.  **Home (Emergency)**:
-    *   **Map Interface**: Shows nearby hospitals (seeded from DB).
-    *   **SOS Button**:
-        *   **Mode A (Ambulance):** Request pickup.
-        *   **Mode B (Booking):** Reserve a bed (self-transport).
-3.  **The Request Lifecycle**:
-    *   **Searching**: Animation, finding nearby providers.
-    *   **Dispatch**: Provider accepts.
-    *   **Tracking**: Live map shows Ambulance icon moving (Realtime subscription).
-    *   **Feedback**: Haptic pulses and Sounds (Urgent/High/Normal priorities).
-4.  **Telemedicine**:
-    *   "Consult a Doctor" button -> Deep link to WhatsApp/Zoom with pre-filled message.
-    *   *Why?* Low bandwidth, high familiarity in Lagos. Don't reinvent the wheel yet.
-
----
-
-## 🚗 Provider App Flow (The Mirror - To Be Built)
+# iVisit Master Blueprint
 
-1.  **Onboarding**:
-    *   Register as Hospital/Doctor/Driver.
-    *   Upload Credentials (Medical License, Vehicle Papers).
-    *   **Verification**: Pending Admin approval.
-2.  **Dashboard**:
-    *   **Status**: "Go Online".
-    *   **Assets**: "Update Bed Count" (Quick toggle).
-3.  **The Rescue Lifecycle**:
-    *   **Alert**: Loud ringtone (like Uber). "Emergency Request nearby".
-    *   **Accept**: Locks the request. Updates `emergency_requests.status` to `accepted`.
-    *   **Navigate**: Open Google Maps/Waze to `patient_location`.
-    *   **Arrive**: Button "I'm here". Updates status to `arrived`.
-    *   **Transport**: "Start Trip" to Hospital.
-    *   **Handover**: "Complete Job".
+> Version: 2.0
+> Status: Locked doctrine
+> Scope: `ivisit-app`
 
----
+## Purpose
 
-## 💻 Admin Dashboard Flow (The Overseer - To Be Built)
+This blueprint is the operating doctrine for the patient product in `ivisit-app`.
 
-1.  **Map View**:
-    *   Cluster map of all active `emergency_requests` and `online_providers`.
-2.  **Verification Queue**:
-    *   List of new Providers awaiting document check.
-3.  **Analytics**:
-    *   Average Response Time.
-    *   Total Lives Touched.
+It exists to keep product, design, engineering, and deployment aligned while iVisit is built screen by screen across:
 
----
+- iOS
+- Android
+- web PWA at `app.ivisit.ng`
 
-## 🎨 UI/UX Manifesto
+This file must stay aligned with [rules.json](./rules.json). If the two conflict, `rules.json` wins.
 
-*   **Feel:** "Unity". Clean, rounded, premium.
-*   **Colors:**
-    *   Primary: `#E63946` (Urgent Red).
-    *   Secondary: `#1D3557` (Trust Blue).
-    *   Background: `#F1FAEE` (Calm White) / `#0B0F1A` (Deep Night).
-*   **Interaction:**
-    *   **Haptics**: Heavy usage. The user should *feel* the urgency.
-    *   **Sound**: Custom alerts for different states.
-    *   **Maps**: Custom styled (Google Maps JSON).
+Active screen dossier:
 
----
+- [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
 
-## 🚀 Edge Cases & Safety
+## Product Truth
 
-1.  **Offline Mode**:
-    *   App caches `medical_profile` and `active_trip` locally.
-    *   Syncs immediately upon reconnection.
-2.  **Location Drift**:
-    *   Patient might move (e.g., walking to a main road).
-    *   **Solution**: Patient App pushes `patient_location` every 10s during active request. Provider App subscribes to this.
-3.  **Payment Failure**:
-    *   **Solution**: Insurance-first. If "iVisit Basic", we cover the dispatch fee. We deal with the insurance backend, not the panicked user.
+iVisit is an emergency response and hospital capacity platform.
 
----
+The patient product has only two leading actions:
 
-## 🍏 App Store Compliance (Medical/Emergency)
+1. Request Ambulance
+2. Find Hospital Bed
 
-1.  **Disclaimer**: "Not a replacement for 911/112 in life-threatening situations" (Must be visible).
-2.  **Data Privacy**: Medical data (`medical_profiles`) must be treated with HIPAA/NDPR standards (Row Level Security in Supabase).
-3.  **Location**: "Always Allow" permission justification is "Dispatching emergency services".
+Everything else supports these actions. Nothing else leads the experience.
 
----
+The product promise is:
 
-## 🛠️ Technical Stack (The "Kit")
+> Get help fast when something feels wrong.
 
-*   **Frontend**: React Native (Expo).
-*   **Backend**: Supabase (Postgres, Auth, Realtime, Storage).
-*   **Maps**: `react-native-maps` + Google Places API.
-*   **State**: React Context + TanStack Query (or custom hooks with Supabase).
-*   **Notifications**: Expo Notifications + Supabase Realtime (In-app).
+The app must make the user feel:
 
----
+> We are already helping you.
 
-*Use this blueprint to build the future.*
+## Surface Ownership
 
+The product ecosystem is split by responsibility:
 
-# 🧬 iVisit Master Blueprint & Snapshot
+- `ivisit` owns marketing, acquisition, legal, and public trust
+- `ivisit-app` owns the canonical patient product across native and web
+- `ivisit-console` owns provider onboarding, provider operations, and admin workflows
 
-> **Version:** 1.1.0 (Doctrine Lock)
-> **Date:** 2026-01-15
-> **Status:** Live / Active Development
+`ivisit-app` is the single source of truth for patient-facing product UI and flow.
 
----
+The marketing site must not recreate authenticated patient flows.
 
-## 🧠 Core Doctrine (Non‑Negotiable)
+## Current Phase
 
-**Public Truth:** iVisit is an **emergency response and hospital capacity platform**.
+Current live-facing checkpoint:
 
-**Face of the Product (only two):**
+- Welcome and auth entry are the active first hardening checkpoint
+- `app.ivisit.ng` is the live product-facing web PWA
+- preview hospitals remain allowed until live provider coverage expands
+- the detailed welcome target is tracked in [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
 
-1. **Emergency Ambulance Service**
-2. **Hospital Bed Booking / Reservation**
+Current working model:
 
-Everything else exists **inside, after, or because of** these two actions.
+- no git push until screen parity is tighter
+- deploy checkpoints to Vercel when a live-facing screen is stable enough to review
+- harden one screen at a time
 
-> If a feature does not strengthen ambulance dispatch or bed availability, it may exist — but it may never lead.
+## Experience Doctrine
 
----
+In urgent situations, users do not explore. They act.
 
-## 🌍 Vision · Mission · Promise
+That means:
 
-### Vision
+- the first screen must be understood within 2 seconds
+- every screen gets one dominant action
+- the system should make safe decisions for the user
+- the interface must reduce hesitation, not introduce it
 
-To make emergency access and hospital capacity **instant, reliable, and life‑saving** everywhere.
+The app must not ask:
 
-### Mission
+> What do you want to do?
 
-To connect patients, verified providers, and operations **in real time**, ensuring every emergency visit is coordinated efficiently and safely.
+The app should assume:
 
-### The iVisit Promise
+> You need help. We are already helping you.
 
-**Immediate Access. Coordinated Care. Every Visit Matters.**
+## Core User Flow
 
----
+The canonical urgent-care path is:
 
-## 🧩 The Unity Architecture
+`Request -> Share -> Track -> Coordinate`
 
-The system is intentionally mirrored:
+Rules for this flow:
 
-* **iVisit (Patient App)** → Demand / SOS Beacon
-* **iVisit Ops (Provider App)** → Field Operations
-* **iVisit Console (Dashboard)** → Oversight & Control
+- every step should flow into the next with minimal interruption
+- the system should initiate progress wherever possible
+- each state change must be visible
+- no dead ends or silent transitions
+- no feature-first branching before urgent action
 
-This document is the **single source of truth** for all three.
+## Home and Entry Rules
 
----
+### Entry
 
-## 👥 User Ecosystem & Roles
+The first app state must not feel like:
 
-All users share a single identity model and are distinguished by **role + context**.
+- a menu
+- a dashboard
+- a feature list
 
-### 1. Patient (Default)
+It must feel like:
 
-* **Goal:** Get help fast.
-* **Primary Actions:** Request Ambulance · Book Hospital Bed
-* **Concept:** Every action creates a **Visit**.
+- one clear next step
+- or an active helping state
 
-### 2. Provider (Service Supply)
+### Home
 
-Providers are **entities**, not just people.
+Only two primary actions may lead:
 
-**Provider Types (internal):**
+- Request Ambulance
+- Find Hospital Bed
 
-* Hospital
-* Ambulance Service
-* Pharmacy (support)
-* Diagnostics (support)
-* Mobile Medic (fallback)
+Secondary capabilities may exist only if they do not compete with the urgent action hierarchy.
 
-**Important:** Only **ambulance** and **hospital** providers drive first‑class flows.
+## Responsive Product Strategy
 
-### 3. Operator (Field / Ops)
+iVisit must be one shared patient product that adapts by size class, not separate redesigns per platform.
 
-* Acts on behalf of a provider
-* Uses **iVisit Ops**
-* Handles live visits, assets, and updates
+Size classes:
 
-### 4. Admin (Console)
+- small phone: `320-390`
+- large phone: `391-430`
+- tablet: `768-1024`
+- desktop web: `1280+`
 
-* Verification
-* Oversight
-* Analytics
-* No field interaction
+Build order for every screen:
 
----
+1. small and large phone
+2. tablet
+3. desktop web
+4. native edge cases on iPhone and Android aspect ratios
 
-## 🧱 Core Data Model (Supabase)
+Rule:
 
-### Core Objects
+- mobile-first layout is the baseline
+- tablet and desktop may widen and center content
+- the mental model must not change across platforms
+- web PWA, iOS, and Android must feel like the same product
 
-### `profiles`
+## UI System
 
-* `id`, `role`, `provider_id`, `operator_role`, `verified`
+The UI should feel:
 
-### `providers`
+- calm
+- direct
+- premium
+- borderless
+- low-noise
 
-* `id`, `type`, `name`, `status`, `verified`
+### Surface Rules
 
-### `assets`
+- avoid visible borders when spacing, contrast, and elevation can separate content
+- use whitespace and soft depth instead of outline clutter
+- remove decorative or theatrical dashboard styling
+- never ship visible debug artifacts on live-facing screens
 
-* Ambulances, beds, equipment
-* Availability + status driven
+### Interaction Rules
 
-### `visits` (Core Object)
+- one primary action per screen
+- bottom sheets on mobile for focused continuation flows
+- centered dialogs on tablet and desktop where appropriate
+- tap targets must remain comfortable on compact phones
+- motion should assist orientation, not perform for attention
 
-A **Visit** is the unit of value.
+## Copy Doctrine
 
-**Visit Types:**
+Copy must be:
 
-* Emergency Ambulance Visit
-* Bed Reservation Visit
-* Follow‑up Visit
+- short
+- directive
+- human
+- calm
+- action-oriented
 
-**Lifecycle:**
-`created → accepted → active → completed → follow‑up`
+Copy must not be:
 
-### `insurance_policies`
+- technical
+- explanatory unless necessary
+- category-led
+- hype-driven when trust matters more
 
-* Auto‑enrolled ($1/month cap)
-* NGO / partner subsidy compatible
+Examples:
 
----
+- use `Open iVisit`, not `Open in Expo`
+- use `Find help near you...`, not `Connecting...`
+- use `Code sent`, not `Verification pipeline started`
 
-## 📱 iVisit (Patient App) — Locked Scope
+## Live Proof and Preview Policy
 
-### Home Screen Rule
+The product should show real proof where possible.
 
-Only **two primary actions** may exist:
+That means:
 
-* **Request Ambulance**
-* **Find Hospital Bed**
+- live UI behavior is better than static screenshots when it reflects real flow
+- previews must stay human-readable
+- proof must reinforce urgent action, not distract from it
 
-### Messaging
+Because live provider coverage is still expanding:
 
-**Hero:** Skip the wait. Get care now.
-**Support:** Book a bed. Get an ambulance. See a doctor. Right when you need it.
+- preview hospitals are allowed
+- they must be framed honestly as preview coverage
+- they are valid for sponsor review and product demonstration at this stage
 
-### Search & News
+What is not allowed:
 
-* Discovery surface, not a marketplace
-* Contextual visibility for new hospitals/providers
-* No ads during emergencies
+- fake enterprise metrics
+- theatrical system dashboards
+- decorative simulation that makes the product feel fictional
 
----
+## Data and System Model
 
-## 🚑 iVisit Ops (Provider App) — Primary Focus
+Core entities:
 
-### Access Rule
+- `profiles`
+- `providers`
+- `assets`
+- `visits`
+- `insurance_policies`
 
-* Only **approved providers/operators** can interact
-* Unverified users see **map preview only**
+Working doctrine:
 
-### Welcome (Pre‑Verification)
+- every meaningful interaction becomes or supports a visit
+- every visit can continue into follow-up care
+- realtime state must reflect backend truth
+- data writes must be validated and contract-driven
 
-* Read‑only map preview
-* Hero: **Start Saving Lives. Get Verified.**
-* CTA: Request Access
+## Provider and Console Relationship
 
-### Onboarding
+Providers and admins are critical to the product, but they do not lead the patient app.
 
-* Select Provider Type
-* Upload credentials
-* Verification pending state
+Patient app responsibilities:
 
-### Authentication
+- urgent patient entry
+- live request state
+- bed search and booking
+- tracking and coordination
 
-* Role‑aware login
-* Operator vs Provider routing
+Provider and admin responsibilities belong in:
 
-### Home (Ops)
+- `ivisit-console`
 
-* **Map‑first always**
-* Live visits
-* Asset status
-* Alerts & dispatch
+The patient app may show provider-facing proof only when it supports user trust or sponsor understanding.
 
----
+## Safety and Compliance
 
-## 💻 iVisit Console (Dashboard)
+The system must remain honest about emergency limitations.
 
-* Provider verification
-* Asset & capacity management
-* System‑wide map view
-* Analytics (response time, visits)
+Non-negotiables:
 
----
+- not a replacement for 911/112 in life-threatening situations
+- privacy handling must match actual data use
+- location permission must be justified by dispatch and coordination
+- health data handling must remain explicit and role-bound
 
-## 💰 Monetization & Sustainability
+## Deployment Doctrine
 
-### Insurance‑First Model
+`ivisit-app` serves:
 
-* All users auto‑enrolled ($1/month cap)
-* Covers emergency dispatch
+- native app builds
+- live web PWA deployment on Vercel
 
-### Revenue Sources
+Deployment rules:
 
-* Visit‑based fees
-* Provider sponsorship / priority
-* Event coverage
-* NGO / government subsidy
+- local `.env` files must not be relied on for production deployment
+- public and private envs must be clearly separated
+- web auth callbacks must be configured in Supabase
+- no service-role key should ever be exposed through a public env name
 
-All revenue flows **through visits**.
+Current public web app:
 
----
+- `https://app.ivisit.ng`
 
-## 🗺️ The Map Is the Product
+## Hardening Workflow
 
-If it doesn’t improve:
+The product is hardened one screen at a time.
 
-* Accuracy
-* Availability
-* Capacity
-* Speed
+Current sequence:
 
-…it doesn’t ship.
+1. Welcome and auth entry
+2. Emergency surface
+3. Emergency bottom sheets and tracking states
+4. Visits and secondary tabs
+5. Settings and support
 
----
+A screen is not complete until:
 
-## 🍏 Compliance & Safety
+- the main action is obvious
+- copy is concise
+- layout is stable
+- responsive behavior works across target size classes
+- native edge cases are reviewed
+- the screen can be deployed without visible friction leaks
 
-* Not a replacement for 911/112
-* Strict data privacy (HIPAA / NDPR)
-* Always‑on location justified by emergency dispatch
+## Sponsor Review Standard
 
----
+Sponsor-facing evaluation should see:
 
-## 🧠 One‑Line Internal Doctrine
+- clear product identity
+- calm urgent-action UX
+- live product proof
+- no debug or prototype clutter
+- honest preview coverage where live supply is still growing
 
-**iVisit is a map‑first emergency platform where every interaction is a visit and every visit can continue into follow‑up care.**
+The sponsor should feel they are seeing a real operating product, not a concept deck in UI form.
 
----
+## Current Checkpoint Standard
 
-*This blueprint is locked. All future features must obey it.*
+For the current phase, the welcome and auth chain is the public checkpoint for `ivisit-app`.
+
+This means:
+
+- welcome, login, signup, auth sheets, and profile completion must feel polished
+- web and native logic must match
+- this checkpoint can be deployed to Vercel before the rest of the app reaches the same level
+
+## Locked Internal Doctrine
+
+One-line product doctrine:
+
+> iVisit is a map-first emergency care product where the patient should feel helped immediately, every interaction supports a visit, and every live surface must stay aligned across web and native.
+
+Do not change this blueprint casually.
+
+Update it only when:
+
+- product truth changes
+- repository ownership changes
+- platform reality changes
+- a hard-earned workflow lesson becomes a permanent rule

@@ -34,10 +34,11 @@ const RENDER_DELAY_MS = 2000; // Delay initial mount for Hero/CTA to be seen
 const AUTO_COLLAPSE_MS = 3000; // Auto-collapse delay
 import { COLORS } from "../constants/colors";
 
-export default function ThemeToggle() {
+export default function ThemeToggle({ showLabel = true }) {
 	const { isDarkMode, toggleTheme } = useTheme();
 	const pathname = usePathname();
 	const isAndroid = Platform.OS === "android";
+	const isWeb = Platform.OS === "web";
 
 	// Component states
 	const [mounted, setMounted] = useState(false);
@@ -154,7 +155,7 @@ export default function ThemeToggle() {
 			style={{
 				position: "absolute",
 				right: 16,
-				top: Platform.OS === "ios" ? 54 : 34,
+				top: Platform.OS === "ios" ? 54 : isWeb ? 18 : 34,
 				opacity: opacityAnim,
 				transform: [{ translateX: slideAnim }],
 				zIndex: 99999,
@@ -270,20 +271,22 @@ export default function ThemeToggle() {
 			</Animated.View>
 
 			{/* Morphing label */}
-			<Animated.Text
-				style={[
-					styles.label,
-					{
-						color: isDarkMode ? "white" : "#333",
-						opacity: labelFadeAnim.interpolate({
-							inputRange: [0, 1],
-							outputRange: [0, 0.5],
-						}),
-					},
-				]}
-			>
-				{expanded ? "THEME" : isDarkMode ? "DARK" : "LIGHT"}
-			</Animated.Text>
+			{showLabel ? (
+				<Animated.Text
+					style={[
+						styles.label,
+						{
+							color: isDarkMode ? "white" : "#333",
+							opacity: labelFadeAnim.interpolate({
+								inputRange: [0, 1],
+								outputRange: [0, 0.5],
+							}),
+						},
+					]}
+				>
+					{expanded ? "THEME" : isDarkMode ? "DARK" : "LIGHT"}
+				</Animated.Text>
+			) : null}
 		</Animated.View>
 	);
 }
