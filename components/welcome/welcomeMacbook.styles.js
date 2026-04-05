@@ -1,6 +1,9 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "../../constants/colors";
-import { getWelcomeThemePalette } from "../../constants/welcomeTheme";
+import {
+	getWelcomeAmbientGeometry,
+	getWelcomeThemePalette,
+} from "../../constants/welcomeTheme";
 
 export function createWelcomeMacbookTheme({
 	isDarkMode,
@@ -17,6 +20,10 @@ export function createWelcomeMacbookTheme({
 		panel: isDarkMode ? "rgba(12, 18, 32, 0.56)" : "rgba(255, 255, 255, 0.56)",
 		panelRing: isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.86)",
 	};
+	const ambient = getWelcomeAmbientGeometry({
+		surface: "macbook",
+		isDarkMode,
+	});
 
 	const metrics = {
 		topPadding: insetsTop + (isShortHeight ? 36 : 52),
@@ -50,23 +57,13 @@ export function createWelcomeMacbookTheme({
 		},
 		topGlow: {
 			position: "absolute",
-			top: -140,
-			left: "-4%",
-			width: 420,
-			height: 420,
-			borderRadius: 999,
+			...ambient.topGlow,
 			backgroundColor: colors.topGlow,
-			opacity: isDarkMode ? 0.06 : 0.04,
 		},
 		bottomGlow: {
 			position: "absolute",
-			right: "-8%",
-			bottom: -180,
-			width: 520,
-			height: 520,
-			borderRadius: 999,
+			...ambient.bottomGlow,
 			backgroundColor: colors.bottomGlow,
-			opacity: isDarkMode ? 0.12 : 0.2,
 		},
 		scrollContent: {
 			flexGrow: 1,

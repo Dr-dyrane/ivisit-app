@@ -34,7 +34,6 @@ import { discoveryService } from "../services/discoveryService";
 import { paymentService } from "../services/paymentService";
 import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigationHelpers";
 import { useToast } from "../contexts/ToastContext";
-import Constants from "expo-constants";
 import { DEMO_BOOTSTRAP_PHASES } from "../services/demoEcosystemService";
 import {
 	COVERAGE_MODES,
@@ -321,13 +320,13 @@ const EmergencyScreen = () => {
 	// 🚨 Quick Emergency Handler - Auto-dispatch without hospital selection
 	const handleQuickEmergencyAction = useCallback(async () => {
 		if (mode !== "emergency") {
-			showToast("Quick Emergency only available in Ambulance mode", "warning");
+			showToast("Switch to Ambulance first", "warning");
 			return;
 		}
 
 		const hasActiveTrip = !!activeAmbulanceTrip?.requestId;
 		if (hasActiveTrip) {
-			showToast("You already have an active ambulance trip", "warning");
+			showToast("Help is already on the way", "warning");
 			return;
 		}
 
@@ -336,21 +335,21 @@ const EmergencyScreen = () => {
 			const result = await handleQuickEmergency("ambulance");
 
 			if (result.ok) {
-				showToast(`🚨 Auto-dispatched to ${result.hospital}`, "success");
+				showToast(`Help request sent to ${result.hospital}`, "success");
 
 				// 🎯 Navigate to selected hospital view after auto-dispatch
 				if (result.requestId) {
 					navigateToRequestAmbulance({
 						router,
-						hospitalId: result.hospitalId || 'auto-dispatched',
+						hospitalId: result.hospitalId || "auto-dispatched",
 						method: "push"
 					});
 				}
 			} else {
-				showToast(`Emergency failed: ${result.reason}`, "error");
+				showToast(result.reason || "Couldn't send your request", "error");
 			}
 		} catch (error) {
-			showToast("Emergency request failed", "error");
+			showToast("Couldn't send your request", "error");
 		}
 	}, [mode, activeAmbulanceTrip?.requestId, showToast, handleQuickEmergency, router]);
 
@@ -450,10 +449,10 @@ const EmergencyScreen = () => {
 				headerNowMs
 			);
 			const status = String(activeAmbulanceTrip?.status ?? "").toLowerCase();
-			const title = status === "arrived" ? "Ambulance Arrived" : "Ambulance In Progress";
+			const title = status === "arrived" ? "Help has arrived" : "Help is on the way";
 			const subtitleBase =
 				status === "pending_approval"
-					? "Cash approval in progress"
+					? "Confirming payment"
 					: telemetryHeaderSubtitle || (etaLabel ? `ETA ${etaLabel}` : "Responder en route");
 			const subtitle = hospitalLabel ? `${subtitleBase} · ${hospitalLabel}` : subtitleBase;
 			return {
@@ -476,10 +475,10 @@ const EmergencyScreen = () => {
 				headerNowMs
 			);
 			const status = String(activeBedBooking?.status ?? "").toLowerCase();
-			const title = status === "arrived" ? "Bed Checked In" : "Bed Reservation Active";
+			const title = status === "arrived" ? "Bed is ready" : "Bed reservation active";
 			const subtitleBase =
 				status === "pending_approval"
-					? "Cash approval in progress"
+					? "Confirming payment"
 					: etaLabel
 						? `Ready in ${etaLabel}`
 						: "Reservation active";
@@ -497,8 +496,8 @@ const EmergencyScreen = () => {
 		}
 
 		return {
-			title: mode === "emergency" ? "Ambulance Call" : "Reserve Bed",
-			subtitle: mode === "emergency" ? "EMERGENCY" : "BOOK BED",
+			title: mode === "emergency" ? "Get help" : "Find a bed",
+			subtitle: mode === "emergency" ? "Choose a nearby hospital" : "Choose a hospital with space",
 			icon:
 				mode === "emergency" ? (
 					<Ionicons name="medical" size={26} color="#FFFFFF" />
@@ -1056,13 +1055,13 @@ const EmergencyScreen = () => {
 
 				const successMessage =
 					nextMode === COVERAGE_MODES.LIVE_ONLY
-						? "Showing only live nearby hospitals."
+						? "Showing live hospitals nearby."
 						: nextMode === COVERAGE_MODES.DEMO_ONLY
-							? "Showing demo-only experience."
-							: "Showing hybrid nearby coverage.";
+							? "Preview coverage is on."
+							: "Showing more nearby options.";
 				showToast(successMessage, "success");
 			} catch (error) {
-				const message = error?.message || "Failed to update coverage mode";
+				const message = "Couldn't update coverage right now";
 				console.error("[EmergencyScreen] Coverage mode update failed", error);
 				setDemoBootstrapError(message);
 				setDemoPhaseStatuses((prev) => {
@@ -1364,8 +1363,8 @@ const EmergencyScreen = () => {
 						]}
 					>
 						{coverageMode === COVERAGE_MODES.DEMO_ONLY
-							? "Demo-only coverage is active. Change it in More > Coverage Mode."
-							: "Hybrid coverage is active. Change it in More > Coverage Mode."}
+							? "Preview coverage is on nearby."
+							: "Preview coverage is filling gaps nearby."}
 					</Text>
 				</View>
 			)}
@@ -1425,14 +1424,7 @@ const EmergencyScreen = () => {
 				onCloseFocus={wrappedHandleCloseFocus}
 			/>
 
-			{/* Subtle Version Display */}
-			<View style={styles.versionContainer} pointerEvents="none">
-				<Text style={[styles.versionText, { color: isDarkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)" }]}>
-					v{Constants.expoConfig?.version || '1.0.4'} • {Constants.expoConfig?.extra?.eas?.buildId?.substring(0, 8) || 'dev'}
-				</Text>
-			</View>
-
-			{canUseDesignAnimation && (
+			{__DEV__ && canUseDesignAnimation && (
 				<View
 					style={[
 						styles.designAnimationToggle,
@@ -1486,17 +1478,6 @@ const styles = StyleSheet.create({
 		flex: 1,
 		fontSize: 12,
 		fontWeight: "600",
-	},
-	versionContainer: {
-		position: 'absolute',
-		bottom: 54, // Avoid map attribution
-		left: 12,
-		zIndex: 0,
-	},
-	versionText: {
-		fontSize: 10,
-		fontWeight: '500',
-		letterSpacing: 0.5,
 	},
 	designAnimationToggle: {
 		position: "absolute",

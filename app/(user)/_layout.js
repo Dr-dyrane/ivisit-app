@@ -9,6 +9,7 @@ import ScrollAwareHeader from "../../components/headers/ScrollAwareHeader";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import GlobalFAB from "../../components/navigation/GlobalFAB";
 import { appMigrationsService } from "../../services/appMigrationsService";
+import WebAppShell from "../../components/web/WebAppShell";
 
 export default function UserLayout() {
 	useEffect(() => {
@@ -17,26 +18,28 @@ export default function UserLayout() {
 
 	return (
 		<UserProviders>
-			<View style={styles.container}>
-				<UserHeaderWrapper />
+			<WebAppShell variant="app">
+				<View style={styles.container}>
+					<UserHeaderWrapper />
 
-				<Stack
-					screenOptions={{
-						headerShown: false,
-						animation: "slide_from_right",
-					}}
-				>
-					<Stack.Screen name="(tabs)" />
-					<Stack.Screen
-						name="(stacks)"
-						options={{
-							presentation: "card",
+					<Stack
+						screenOptions={{
+							headerShown: false,
+							animation: "slide_from_right",
 						}}
-					/>
-				</Stack>
+					>
+						<Stack.Screen name="(tabs)" />
+						<Stack.Screen
+							name="(stacks)"
+							options={{
+								presentation: "card",
+							}}
+						/>
+					</Stack>
 
-				<GlobalFAB />
-			</View>
+					<GlobalFAB />
+				</View>
+			</WebAppShell>
 		</UserProviders>
 	);
 }

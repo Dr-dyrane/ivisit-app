@@ -79,6 +79,7 @@
     },
     "copy_system": {
       "rule": "Use short, directive, human wording.",
+      "hierarchy_rule": "Across headline, support line, CTA, and status text, avoid repeating the same word unless repetition clearly improves panic-time comprehension.",
       "checks": [
         "headlines communicate outcome, not category",
         "buttons describe the action, not the implementation",
@@ -87,18 +88,43 @@
       ],
       "language_rules": [
         "prefer decision copy over explanatory copy",
+        "prefer evolving meaning over repeated wording",
         "prefer verbs over labels",
         "avoid technical, system, or internal wording",
         "avoid hype when trust is more important than novelty"
       ],
+      "language_engine": {
+        "rule": "Keep meaning consistent while the vocabulary evolves by state.",
+        "screen_structure": [
+          "emotion -> system action -> user action",
+          "headline carries the human trigger",
+          "support line carries the system motion",
+          "CTA carries the user action"
+        ],
+        "vocabulary_map": {
+          "help": "human trigger for panic-time action and reassurance",
+          "care": "calmer medical context and reassurance",
+          "connect": "system transition or active linking state",
+          "response": "operational progress and tracking context",
+          "arrival": "clear end-state confirmation"
+        },
+        "welcome_example": {
+          "headline": "Get help now",
+          "support": "Connecting you to care nearby.",
+          "chip": "Available near you",
+          "primary_cta": "Request Help"
+        }
+      },
       "examples": {
         "good": [
+          "Connecting you to care nearby.",
           "Find help near you...",
           "Open iVisit",
           "Continue",
           "Code sent"
         ],
         "avoid": [
+          "We help you find help",
           "Emergency response platform",
           "System nominal",
           "Processing request pipeline",
@@ -233,6 +259,21 @@
         "UI components do not hide critical business logic",
         "unused code and dead branches are removed as screens are hardened"
       ],
+      "frontend_implementation": {
+        "rule": "Frontend files should be separated by responsibility, not mixed by convenience.",
+        "layering": [
+          ".jsx or .tsx files own UI structure, interaction wiring, and platform composition",
+          ".js or .ts files own tokens, themes, helpers, hooks, config, and pure logic",
+          "collocated style modules own presentation rules for the surface they serve",
+          "real CSS should be limited to web-only exceptions instead of becoming the cross-platform styling system"
+        ],
+        "anti_patterns": [
+          "copying colors or spacing values directly into every component",
+          "mixing business logic into style modules",
+          "repeating the same layout skeleton across many files with only number changes",
+          "letting web-specific fixes leak into native implementation layers"
+        ]
+      },
       "separation_of_concerns": [
         "UI handles presentation and interaction",
         "hooks and services handle flow, data, and side effects",

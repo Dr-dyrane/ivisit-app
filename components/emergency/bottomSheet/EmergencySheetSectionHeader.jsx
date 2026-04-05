@@ -18,7 +18,7 @@ export default function EmergencySheetSectionHeader({
 	const titleText = searchQuery.trim()
 		? "SEARCH RESULTS"
 		: mode === "emergency"
-		? "NEARBY SERVICES"
+		? "NEARBY HOSPITALS"
 		: "AVAILABLE BEDS";
 
 	return (
@@ -54,7 +54,7 @@ export default function EmergencySheetSectionHeader({
 					]}
 				>
 					<Text style={[styles.resetButton, { color: COLORS.brandPrimary, marginBottom: 0 }]}>
-						RESET
+						CLEAR
 					</Text>
 				</Pressable>
 			)}

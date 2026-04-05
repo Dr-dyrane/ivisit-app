@@ -196,15 +196,15 @@ const MoreScreen = () => {
 	const topPadding = STACK_TOP_PADDING;
 	const coverageModeLabel =
 		coverageMode === COVERAGE_MODES.DEMO_ONLY
-			? "Demo Only"
+			? "Preview Only"
 			: coverageMode === COVERAGE_MODES.LIVE_ONLY
 				? "Live Only"
-				: "Hybrid";
+				: "Live + Preview";
 	const coverageModeSummary =
 		coverageStatus === "none"
 			? "Live-only is locked until verified live coverage appears nearby."
 			: coverageStatus === "poor"
-				? "Live coverage is limited nearby. Hybrid keeps live hospitals visible and adds demo fallback."
+				? "Live coverage is limited nearby. Live + Preview keeps nearby hospitals visible and fills the gaps."
 				: "Verified live coverage is available nearby.";
 
 	useEffect(() => {
@@ -257,7 +257,7 @@ const MoreScreen = () => {
 					nextMode !== COVERAGE_MODES.LIVE_ONLY &&
 					!hasDemoHospitalsNearby
 				) {
-					showToast("Preparing nearby demo hospitals...", "info");
+					showToast("Preparing nearby preview coverage...", "info");
 				}
 
 				await setCoverageMode(nextMode, {
@@ -269,8 +269,8 @@ const MoreScreen = () => {
 					nextMode === COVERAGE_MODES.LIVE_ONLY
 						? "Coverage mode set to Live Only."
 						: nextMode === COVERAGE_MODES.DEMO_ONLY
-							? "Coverage mode set to Demo Only."
-							: "Coverage mode set to Hybrid.";
+							? "Coverage mode set to Preview Only."
+							: "Coverage mode set to Live + Preview.";
 				showToast(successMessage, "success");
 			} catch (error) {
 				console.error("[MoreScreen] Failed to update coverage mode", error);
@@ -1024,12 +1024,12 @@ const MoreScreen = () => {
 								},
 								{
 									key: COVERAGE_MODES.HYBRID,
-									label: "Hybrid",
+									label: "Live + Preview",
 									disabled: false,
 								},
 								{
 									key: COVERAGE_MODES.DEMO_ONLY,
-									label: "Demo",
+									label: "Preview",
 									disabled: false,
 								},
 							].map((option) => {

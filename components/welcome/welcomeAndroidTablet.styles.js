@@ -1,6 +1,9 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "../../constants/colors";
-import { getWelcomeThemePalette } from "../../constants/welcomeTheme";
+import {
+	getWelcomeAmbientGeometry,
+	getWelcomeThemePalette,
+} from "../../constants/welcomeTheme";
 
 export function createWelcomeAndroidTabletTheme({
 	isDarkMode,
@@ -15,6 +18,10 @@ export function createWelcomeAndroidTabletTheme({
 		panel: isDarkMode ? "rgba(11, 18, 32, 0.52)" : "rgba(255,255,255,0.58)",
 		ring: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.84)",
 	};
+	const ambient = getWelcomeAmbientGeometry({
+		surface: "android-tablet",
+		isDarkMode,
+	});
 
 	const metrics = {
 		topPadding: insetsTop + (isShortHeight ? 24 : 40),
@@ -45,23 +52,13 @@ export function createWelcomeAndroidTabletTheme({
 		gradient: { flex: 1, backgroundColor: colors.backgroundBase },
 		topGlow: {
 			position: "absolute",
-			top: -110,
-			left: "-10%",
-			width: 320,
-			height: 320,
-			borderRadius: 999,
+			...ambient.topGlow,
 			backgroundColor: colors.topGlow,
-			opacity: isDarkMode ? 0.05 : 0.03,
 		},
 		bottomGlow: {
 			position: "absolute",
-			right: "-10%",
-			bottom: -130,
-			width: 340,
-			height: 340,
-			borderRadius: 999,
+			...ambient.bottomGlow,
 			backgroundColor: colors.bottomGlow,
-			opacity: isDarkMode ? 0.1 : 0.18,
 		},
 		scrollContent: {
 			flexGrow: 1,

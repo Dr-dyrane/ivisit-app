@@ -106,7 +106,7 @@ export default function DemoBootstrapModal({
 		if (error) {
 			return {
 				badge: "Setup interrupted",
-				title: "Demo setup paused",
+				title: "Preview setup paused",
 				subtitle:
 					"We could not finish right now. You can close this and try again.",
 				helper:
@@ -116,18 +116,18 @@ export default function DemoBootstrapModal({
 
 		if (isCompleted) {
 			return {
-				badge: "Demo is ready",
-				title: "Demo coverage is ready",
+				badge: "Preview is ready",
+				title: "Preview hospitals are ready",
 				subtitle:
 					"You can continue now.",
 				helper:
-					"You can change coverage mode again later in More.",
+					"You'll see preview hospitals until live coverage expands nearby.",
 			};
 		}
 
 		return {
-			badge: "Preparing demo coverage",
-			title: "Setting things up nearby",
+			badge: "Preparing preview coverage",
+			title: "Preparing preview hospitals nearby",
 			subtitle:
 				"This usually takes a few seconds.",
 			helper:

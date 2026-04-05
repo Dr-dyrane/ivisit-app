@@ -1,7 +1,7 @@
 //components/auth/SocialAuthButton.jsx
 
 import { useRef, useState } from "react";
-import { Pressable, Animated, Dimensions } from "react-native";
+import { Pressable, Animated, useWindowDimensions } from "react-native";
 import { Ionicons, FontAwesome6 } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useRegistration } from "../../contexts/RegistrationContext";
@@ -25,8 +25,6 @@ import ComingSoonModal from "../ui/ComingSoonModal";
  * No screen knowledge.
  */
 
-const { width } = Dimensions.get("window");
-
 const PROVIDER_META = {
 	apple: { icon: "logo-apple", name: "Apple Sign In", set: "Ionicons" }, // [SOCIAL-AUTH-UPDATE] Enabled Apple Sign In
 	google: { icon: "logo-google", name: "Google Sign In", set: "Ionicons" },
@@ -38,6 +36,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function SocialAuthButton({ provider }) {
 	const scale = useRef(new Animated.Value(1)).current;
+	const { width } = useWindowDimensions();
 	const { isDarkMode } = useTheme();
 	const { showToast } = useToast();
 	const { login } = useAuth();
@@ -45,6 +44,10 @@ export default function SocialAuthButton({ provider }) {
 	const [showComingSoon, setShowComingSoon] = useState(false);
 
 	const meta = PROVIDER_META[provider];
+	const isDesktop = width >= 1180;
+	const isTablet = width >= 768 && width < 1180;
+	const buttonWidth = isDesktop ? 104 : isTablet ? 96 : Math.min((width - 88) / 3, 92);
+	const buttonHeight = isDesktop ? 72 : isTablet ? 68 : 64;
 
 	const handlePress = async () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -108,9 +111,9 @@ export default function SocialAuthButton({ provider }) {
 			<Pressable onPress={handlePress}>
 				<Animated.View
 					style={{
-						width: width * 0.23,
-						height: 64,
-						borderRadius: 20,
+						width: buttonWidth,
+						height: buttonHeight,
+						borderRadius: isDesktop ? 24 : 20,
 						alignItems: "center",
 						justifyContent: "center",
 						backgroundColor: isDarkMode ? "#121826" : "#F3E7E7",

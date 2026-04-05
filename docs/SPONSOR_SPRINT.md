@@ -36,7 +36,7 @@ Current screen in focus:
 
 - welcome / first-paint entry state
 
-The current job is not “finish the whole app.”
+The current job is not "finish the whole app."
 
 The current job is:
 
@@ -68,7 +68,8 @@ Current first-paint structure:
 
 - Brand: `iVisit`
 - State title: `Get help now`
-- Support line: `We'll guide you step by step.`
+- Support line: `Connecting you to care nearby.`
+- Readiness chip: `Available near you`
 - Primary action: `Request Help`
 - Secondary action: `Find a hospital bed`
 - Quiet fallback: `Sign in`
@@ -80,6 +81,27 @@ Rules:
 - no duplicated onboarding hero
 - no competing equal-weight actions beyond the two core intents
 - no telemedicine or revisits in entry context
+
+## Current Progress
+
+The welcome screen foundation is now in place:
+
+- modular surface routing through [WelcomeScreenOrchestrator.jsx](../components/welcome/WelcomeScreenOrchestrator.jsx)
+- shared copy in [welcomeContent.js](../components/welcome/welcomeContent.js)
+- shared welcome tokens in [welcomeTheme.js](../constants/welcomeTheme.js)
+- standardized breakpoint tokens in [breakpoints.js](../constants/breakpoints.js)
+- dedicated Apple, Android, and web surface families
+- shared web-surface chrome through [useWelcomeWebSurfaceChrome.js](../components/welcome/hooks/useWelcomeWebSurfaceChrome.js)
+- shared wide-web styling through [buildWideWebWelcomeTheme.js](../components/welcome/buildWideWebWelcomeTheme.js)
+
+The current phase is no longer architecture discovery.
+
+The current phase is:
+
+- surface tuning
+- accessibility baseline
+- validation across implemented bands
+- keeping documentation aligned with the real checkpoint
 
 ## Why This Sprint Matters
 
@@ -100,12 +122,11 @@ If the first screen feels unresolved, the whole product feels less mature.
 In scope now:
 
 - welcome / first-paint screen
-- live Expo web behavior on `localhost:8081`
-- export/web review pipeline reliability
-- breakpoint behavior
-- spacing, hierarchy, and first visible action
-- alignment with marketing preview language
-- ongoing sync with the marketing page `How it works` preview
+- responsive surface behavior across implemented Apple, Android, and web bands
+- welcome tokens, geometry, spacing, and action hierarchy
+- accessibility and keyboard/focus quality on the entry surface
+- deterministic web preview and review behavior
+- ongoing sync with the marketing page `How it works` preview after the app screen is locked
 
 Not in scope right now:
 
@@ -131,20 +152,21 @@ This sprint must explicitly work across:
 
 Rule:
 
-- no single “scaled layout”
+- no single scaled layout
 - responsive behavior must be intentional per class
 
 ## Current Technical Focus
 
 The welcome screen is being hardened through:
 
-- responsive layout modules
-- shared entry actions
-- web shell cleanup
-- auth-root behavior cleanup
-- deterministic web preview/export behavior
+- modular view routing
+- shared copy and action definitions
+- shared breakpoint tokens
+- shared welcome theme tokens
+- shared web-surface root handling
+- reduced duplication in wide-web styling
 
-Recent pipeline rule:
+Pipeline rule:
 
 - local exported review builds must not reuse stale service-worker state on `localhost`
 
@@ -155,7 +177,7 @@ Before this sprint can be considered complete, the welcome screen must satisfy a
 1. The first visible action is clear within 2 seconds.
 2. The screen feels like app entry, not marketing.
 3. The screen fills mobile web correctly.
-4. The screen does not collapse into a framed phone-shell on tablet/desktop.
+4. The screen does not collapse into a framed phone-shell on tablet or desktop.
 5. The primary and secondary actions remain obvious across breakpoints.
 6. Reduced-height viewports still keep action visible early.
 7. Live Expo web and exported web are both reliable for review.
@@ -169,7 +191,8 @@ This sprint follows a strict sequence:
 2. Validate on device classes.
 3. Fix the exported review pipeline.
 4. Re-check screenshots.
-5. Only then move to the next screen.
+5. Tighten accessibility and interaction quality.
+6. Only then move to the next screen.
 
 No rushing.
 
@@ -181,8 +204,8 @@ One screen at a time.
 
 Known risks during this sprint:
 
-- web export can mislead review if service-worker/cache behavior is not controlled
-- desktop can look underfilled if mobile layout is merely centered without intentional posture
+- web can still drift if each band is tuned independently without shared tokens
+- desktop can look underfilled if large surfaces inherit tablet posture
 - native and web can drift if copy or action ordering changes in only one place
 - tracked repo noise can hide what this sprint is actually changing
 
@@ -204,7 +227,8 @@ That means:
 - structure is locked
 - cross-device behavior is believable
 - live web review is reliable
-- the screen reflects the product’s real voice
+- accessibility baseline is in place
+- the screen reflects the product's real voice
 
 Only after that should work move forward to:
 

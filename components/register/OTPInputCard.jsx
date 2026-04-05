@@ -189,7 +189,7 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 				className="text-sm font-medium mb-6"
 				style={{ color: COLORS.textMuted }}
 			>
-				We sent a verification code to{" "}
+				Enter the code sent to{" "}
 				<Text className="font-black" style={{ color: colors.text }}>
 					{contact}
 				</Text>
@@ -253,7 +253,7 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 							className="text-sm font-black"
 							style={{ color: COLORS.brandPrimary }}
 						>
-							Resend Code
+							Resend code
 						</Text>
 					</Pressable>
 				)}
@@ -290,7 +290,7 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 						className="text-base font-black tracking-[2px]"
 						style={{ color: isComplete && !loading ? COLORS.bgLight : COLORS.textMuted }}
 					>
-						{loading ? "VERIFYING..." : "VERIFY"}
+						{loading ? "CHECKING..." : "CONTINUE"}
 					</Text>
 				</Pressable>
 			</Animated.View>
@@ -299,7 +299,7 @@ export default function OTPInputCard({ method, contact, onVerified, onResend, lo
 				className="mt-4 text-xs text-center leading-5"
 				style={{ color: COLORS.textMuted }}
 			>
-				Enter the 6-digit code we sent to verify your{" "}
+				Use the 6-digit code to confirm your{" "}
 				{method === "phone" ? "phone number" : "email address"}.
 			</Text>
 		</View>

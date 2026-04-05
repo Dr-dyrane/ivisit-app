@@ -46,7 +46,7 @@ export default function RequestBedFAB({
 		if (isLoading) return mode === "dispatched" ? "Loading..." : "Reserving...";
 		if (mode === "dispatched") return "View Reservation";
 		if (bedCount > 1) return `Reserve ${bedCount} Beds`;
-		return "Reserve Bed";
+		return "Reserve a bed";
 	};
 
 	const getSubText = () => {

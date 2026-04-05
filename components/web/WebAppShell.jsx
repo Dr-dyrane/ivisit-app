@@ -15,9 +15,13 @@ export default function WebAppShell({ children, variant = "app", surfaceMode = "
     return children;
   }
 
+  if (surfaceMode === "none") {
+    return children;
+  }
+
   const isCompact = width < 768;
   const isDesktop = width >= 1200;
-  const showSurface = surfaceMode !== "none";
+  const showSurface = true;
   const maxWidth =
     !showSurface
       ? undefined

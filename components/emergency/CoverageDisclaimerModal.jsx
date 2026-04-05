@@ -102,18 +102,18 @@ export default function CoverageDisclaimerModal({
 	const copy = useMemo(() => {
 		if (coverageStatus === "none") {
 			return {
-				badge: "No verified live coverage yet",
-				title: "Coverage is still growing here",
+				badge: "Live coverage unavailable nearby",
+				title: "Keep help visible nearby",
 				subtitle:
-					"We recommend Hybrid so the app stays useful around you.",
+					"Use preview coverage so hospitals still show up while live coverage expands.",
 			};
 		}
 
 		return {
-			badge: "Limited live coverage nearby",
-			title: "Coverage is limited here",
+			badge: "Live coverage is limited nearby",
+			title: "Keep more options nearby",
 			subtitle:
-				"We recommend Hybrid so you keep real nearby hospitals and get fallback coverage where needed.",
+				"Use preview coverage to fill gaps while live coverage expands.",
 		};
 	}, [coverageStatus]);
 
@@ -123,15 +123,15 @@ export default function CoverageDisclaimerModal({
 	const primaryLabel = isRecommendedSelected
 		? "Continue"
 		: coverageStatus === "none"
-			? "Turn On Hybrid"
-			: "Use Hybrid";
+			? "Use Preview"
+			: "Keep More Options";
 	const primaryIconName = isRecommendedSelected ? "arrow-forward" : "sparkles";
 	const keepCurrentLabel =
 		selectedMode === "live_only"
 			? "Keep Live Only"
 			: selectedMode === "demo_only"
-				? "Keep Demo Only"
-				: "Keep Current Mode";
+				? "Keep Preview Only"
+				: "Keep Current";
 
 	const sheetHeight = Math.min(Math.max(SCREEN_HEIGHT * 0.78, 480), SCREEN_HEIGHT * 0.86);
 
@@ -284,7 +284,7 @@ export default function CoverageDisclaimerModal({
 										Recommended
 									</Text>
 									<Text style={[styles.reassuranceText, { color: palette.textMuted }]}>
-										Hybrid keeps nearby hospitals visible and fills gaps with demo coverage.
+										Preview coverage keeps nearby hospitals visible when live coverage is thin.
 									</Text>
 								</View>
 							</View>

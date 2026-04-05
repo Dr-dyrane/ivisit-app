@@ -16,6 +16,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useRegistration } from "../../contexts/RegistrationContext";
 import { useImageUpload } from "../../hooks/user/useImageUpload";
 import { COLORS } from "../../constants/colors";
+import useAuthViewport from "../../hooks/ui/useAuthViewport";
 
 /**
  * ProfileForm - iVisit Registration
@@ -30,6 +31,7 @@ import { COLORS } from "../../constants/colors";
  */
 export default function ProfileForm({ onComplete }) {
 	const { isDarkMode } = useTheme();
+	const { bodyTextSize, bodyTextLineHeight, isTablet, isDesktop } = useAuthViewport();
 	const { registrationData, updateRegistrationData, nextStep } =
 		useRegistration();
 
@@ -183,17 +185,25 @@ export default function ProfileForm({ onComplete }) {
 	return (
 		<View>
 			<Text
-				className="text-3xl font-black tracking-tight mb-3"
-				style={{ color: colors.text }}
+				className="font-black tracking-tight mb-3"
+				style={{
+					color: colors.text,
+					fontSize: isDesktop ? 36 : isTablet ? 34 : 30,
+					lineHeight: isDesktop ? 40 : isTablet ? 38 : 34,
+				}}
 			>
-				Complete Your Profile
+				Add your details
 			</Text>
 
 			<Text
-				className="text-base leading-6 mb-8"
-				style={{ color: COLORS.textMuted }}
+				className="mb-8"
+				style={{
+					color: COLORS.textMuted,
+					fontSize: bodyTextSize,
+					lineHeight: bodyTextLineHeight,
+				}}
 			>
-				Help us personalize your iVisit experience
+				Use the name care teams should see.
 			</Text>
 
 			{/* Profile Image Picker */}
@@ -215,7 +225,7 @@ export default function ProfileForm({ onComplete }) {
 					className="text-xs font-medium text-center mt-2"
 					style={{ color: COLORS.brandPrimary }}
 				>
-					Add Photo
+					Add photo
 				</Text>
 			</Pressable>
 
@@ -326,7 +336,7 @@ export default function ProfileForm({ onComplete }) {
 						className="text-base font-black tracking-[2px]"
 						style={{ color: isValid ? COLORS.bgLight : COLORS.textMuted }}
 					>
-						{loading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
+						{loading ? "Saving..." : "Continue"}
 					</Text>
 				</Pressable>
 			</Animated.View>

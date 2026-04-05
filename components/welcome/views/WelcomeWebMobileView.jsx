@@ -2,10 +2,13 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Image, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../../contexts/ThemeContext";
-import { getWelcomeRootBackground } from "../../../constants/welcomeTheme";
 import EntryActionButton from "../../entry/EntryActionButton";
+import WelcomeAmbientGlows from "../WelcomeAmbientGlows";
 import { WELCOME_COPY, WELCOME_INTENTS } from "../welcomeContent";
+import useWelcomeWebSurfaceChrome from "../hooks/useWelcomeWebSurfaceChrome";
 import createWelcomeWebMobileTheme from "../welcomeWebMobile.styles";
+
+const WELCOME_WEB_SCROLLBAR_STYLE_ID = "welcome-web-mobile-scrollbar-style";
 
 export default function WelcomeWebMobileView({
 	onRequestHelp,
@@ -16,6 +19,8 @@ export default function WelcomeWebMobileView({
 	const { height } = useWindowDimensions();
 	const entranceOpacity = useRef(new Animated.Value(0)).current;
 	const entranceTranslate = useRef(new Animated.Value(18)).current;
+
+	useWelcomeWebSurfaceChrome(isDarkMode);
 
 	useEffect(() => {
 		Animated.parallel([
@@ -38,40 +43,55 @@ export default function WelcomeWebMobileView({
 			return undefined;
 		}
 
-		const previousHtmlBackground = document.documentElement.style.backgroundColor;
-		const previousBodyBackground = document.body.style.backgroundColor;
-		const rootElement = document.getElementById("root");
-		const previousRootBackground = rootElement?.style.backgroundColor;
+		let styleElement = document.getElementById(WELCOME_WEB_SCROLLBAR_STYLE_ID);
+		let created = false;
 
-		const rootBackground = getWelcomeRootBackground(isDarkMode);
-		document.documentElement.style.backgroundColor = rootBackground;
-		document.body.style.backgroundColor = rootBackground;
-		document.documentElement.style.colorScheme = isDarkMode ? "dark" : "light";
-		if (rootElement) {
-			rootElement.style.backgroundColor = rootBackground;
+		if (!styleElement) {
+			styleElement = document.createElement("style");
+			styleElement.id = WELCOME_WEB_SCROLLBAR_STYLE_ID;
+			styleElement.textContent = `
+				#welcome-web-mobile-scroll,
+				#welcome-web-mobile-scroll > div {
+					scrollbar-width: none;
+					-ms-overflow-style: none;
+				}
+
+				#welcome-web-mobile-scroll::-webkit-scrollbar,
+				#welcome-web-mobile-scroll > div::-webkit-scrollbar {
+					width: 0;
+					height: 0;
+					display: none;
+				}
+			`;
+			document.head.appendChild(styleElement);
+			created = true;
 		}
 
 		return () => {
-			document.documentElement.style.backgroundColor = previousHtmlBackground;
-			document.body.style.backgroundColor = previousBodyBackground;
-			document.documentElement.style.colorScheme = "";
-			if (rootElement) {
-				rootElement.style.backgroundColor = previousRootBackground || "";
+			if (created && styleElement?.parentNode) {
+				styleElement.parentNode.removeChild(styleElement);
 			}
 		};
-	}, [isDarkMode]);
+	}, []);
 
 	const { colors, metrics, styles } = createWelcomeWebMobileTheme({
 		viewportHeight: height,
 		isDarkMode,
 	});
+	const actionWellMarginTop = metrics.showChip
+		? metrics.stageSpacing.chipToActionWell
+		: Math.max(metrics.stageSpacing.chipToActionWell - metrics.stageSpacing.helperToChip + 8, 20);
 
 	return (
 		<LinearGradient colors={colors.backgroundGradient} style={styles.gradient}>
-			<View pointerEvents="none" style={styles.topGlow} />
-			<View pointerEvents="none" style={styles.bottomGlow} />
+			<WelcomeAmbientGlows
+				topGlowStyle={styles.topGlow}
+				bottomGlowStyle={styles.bottomGlow}
+			/>
 
 			<ScrollView
+				nativeID="welcome-web-mobile-scroll"
+				style={styles.scrollView}
 				contentContainerStyle={styles.scrollContent}
 				showsVerticalScrollIndicator={false}
 				keyboardShouldPersistTaps="handled"
@@ -109,12 +129,14 @@ export default function WelcomeWebMobileView({
 						<Text style={styles.headline}>{WELCOME_COPY.headline}</Text>
 						<Text style={styles.helper}>{WELCOME_COPY.helper}</Text>
 
-						<View style={styles.chip}>
-							<Text style={styles.chipText}>{WELCOME_COPY.chip}</Text>
-						</View>
+						{metrics.showChip ? (
+							<View style={styles.chip}>
+								<Text style={styles.chipText}>{WELCOME_COPY.chip}</Text>
+							</View>
+						) : null}
 					</View>
 
-					<View style={styles.actionWell}>
+					<View style={[styles.actionWell, { marginTop: actionWellMarginTop }]}>
 						<View style={styles.actions}>
 							{WELCOME_INTENTS.map((intent) => (
 								<EntryActionButton

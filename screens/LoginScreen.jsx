@@ -23,6 +23,7 @@ import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import SwitchAuthButton from "../components/navigation/SwitchAuthButton";
+import useAuthViewport from "../hooks/ui/useAuthViewport";
 
 export default function LoginScreen() {
 	const router = useRouter();
@@ -32,6 +33,7 @@ export default function LoginScreen() {
 	const { resetLoginFlow } = useLogin();
 	const [modalVisible, setModalVisible] = useState(false);
 	const insets = useSafeAreaInsets();
+	const { horizontalPadding, authPanelMaxWidth, authTitleSize, authTitleLineHeight, bodyTextSize, bodyTextLineHeight, legalMaxWidth, ctaMaxWidth, isDesktop, isTablet } = useAuthViewport();
 
 	// Dynamic padding matching stack pages
 	// [ACCESSIBILITY-FIX] Dynamic top padding for scroll-aware headers and safe areas
@@ -42,8 +44,8 @@ export default function LoginScreen() {
 			resetLoginFlow();
 			resetHeader();
 			setHeaderState({
-				title: "Login",
-				subtitle: "SECURE ACCESS",
+				title: "Sign In",
+				subtitle: "CONTINUE",
 				icon: <Ionicons name="lock-closed" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent: <HeaderBackButton />,
@@ -109,39 +111,49 @@ export default function LoginScreen() {
 				>
 					<Animated.View
 						style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
-						className="px-8 pb-4"
+						className="pb-4"
 					>
+						<View
+							style={{
+								width: "100%",
+								maxWidth: authPanelMaxWidth,
+								alignSelf: "center",
+								paddingHorizontal: horizontalPadding,
+							}}
+						>
 						<Text
 							style={{
-								fontSize: 44,
+								fontSize: authTitleSize,
 								fontWeight: "900",
-								lineHeight: 48,
+								lineHeight: authTitleLineHeight,
 								marginBottom: 12,
 								color: colors.text,
 								letterSpacing: -1.5,
 							}}
 						>
-							Access Your{"\n"}
-							<Text style={{ color: COLORS.brandPrimary }}>Care Portal</Text>
+							Sign in to{"\n"}
+							<Text style={{ color: COLORS.brandPrimary }}>continue.</Text>
 						</Text>
 
-						<Text
-							style={{
-								fontSize: 16,
-								marginBottom: 48,
-								color: colors.subtitle,
-								lineHeight: 24,
-							}}
-						>
-							Sign in to access emergency response, medical records, and 24/7 care.
-						</Text>
+							<Text
+								style={{
+									fontSize: bodyTextSize,
+									marginBottom: 48,
+									color: colors.subtitle,
+									lineHeight: bodyTextLineHeight,
+								}}
+							>
+								Open iVisit and continue where you left off.
+							</Text>
 
-						<SlideButton
-							onPress={openLoginModal}
-							icon={(color) => <Ionicons name="log-in" size={24} color={color} />}
-						>
-							LOGIN NOW
-						</SlideButton>
+						<View style={{ width: "100%", maxWidth: ctaMaxWidth, alignSelf: isDesktop || isTablet ? "flex-start" : "stretch" }}>
+							<SlideButton
+								onPress={openLoginModal}
+								icon={(color) => <Ionicons name="log-in" size={24} color={color} />}
+							>
+								Sign In
+							</SlideButton>
+						</View>
 
 						<View className="flex-row items-center my-10">
 							<View className="flex-1 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />
@@ -153,7 +165,7 @@ export default function LoginScreen() {
 									letterSpacing: 1.5
 								}}
 							>
-								CONNECT QUICKLY
+								OR CONTINUE WITH
 							</Text>
 							<View className="flex-1 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />
 						</View>
@@ -162,16 +174,26 @@ export default function LoginScreen() {
 
 						<Pressable onPress={() => router.push("signup")} className="mt-12">
 							<Text className="text-center" style={{ color: colors.subtitle }}>
-								Need care for the first time?{" "}
+								New to iVisit?{" "}
 								<Text className="font-bold" style={{ color: COLORS.brandPrimary }}>
-									Create Account
+									Create account
 								</Text>
 							</Text>
 						</Pressable>
+						</View>
 					</Animated.View>
 
 					{/* [LAYOUT-REFACTOR] Using standardized sectionGap token instead of hardcoded mt-16 */}
-					<View style={{ marginTop: AUTH_LAYOUT.sectionGap }} className="pb-8 px-8">
+					<View
+						style={{
+							marginTop: AUTH_LAYOUT.sectionGap,
+							paddingBottom: 32,
+							paddingHorizontal: horizontalPadding,
+							width: "100%",
+							maxWidth: legalMaxWidth + horizontalPadding * 2,
+							alignSelf: "center",
+						}}
+					>
 						<Text className="text-center text-[10px] justify-center text-gray-500">
 							By continuing, you agree to our{" "}
 							<Text className="font-black underline" onPress={() => handleLinkPress("https://ivisit.ng/terms")}>Terms</Text>,{" "}
@@ -180,11 +202,11 @@ export default function LoginScreen() {
 							<Text className="font-black underline" onPress={() => handleLinkPress("https://ivisit.ng/health-data-consent")}>Health Data Consent</Text>
 						</Text>
 						<Text className="text-center text-[10px] text-gray-500 mt-1">
-							We require{" "}
+							Allow{" "}
 							<Text style={{ color: COLORS.brandPrimary, fontWeight: "900" }}>
 								Location Access
 							</Text>{" "}
-							for dispatch.
+							so responders can find you faster.
 						</Text>
 					</View>
 				</ScrollView>

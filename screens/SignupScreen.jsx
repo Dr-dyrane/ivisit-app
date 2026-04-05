@@ -22,6 +22,7 @@ import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
 import SwitchAuthButton from "../components/navigation/SwitchAuthButton";
+import useAuthViewport from "../hooks/ui/useAuthViewport";
 
 export default function SignupScreen() {
 	const router = useRouter();
@@ -34,6 +35,7 @@ export default function SignupScreen() {
 	const [modalVisible, setModalVisible] = useState(false);
 	const [authType, setAuthType] = useState(null);
 	const insets = useSafeAreaInsets();
+	const { horizontalPadding, authPanelMaxWidth, authTitleSize, authTitleLineHeight, bodyTextSize, bodyTextLineHeight, legalMaxWidth, ctaMaxWidth, isDesktop, isTablet } = useAuthViewport();
 
 	// Dynamic padding matching stack pages
 	// [ACCESSIBILITY-FIX] Dynamic top padding for scroll-aware headers and safe areas
@@ -60,8 +62,8 @@ export default function SignupScreen() {
 			init();
 			resetHeader();
 			setHeaderState({
-				title: "Sign Up",
-				subtitle: "CREATE IDENTITY",
+				title: "Create Account",
+				subtitle: "CONTINUE",
 				icon: <Ionicons name="person-add" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent: <HeaderBackButton />,
@@ -128,73 +130,93 @@ export default function SignupScreen() {
 				>
 					<Animated.View
 						style={{ opacity, transform: [{ translateY: methodAnim }] }}
-						className="px-8 pb-4"
+						className="pb-4"
 					>
-						<Text
+						<View
 							style={{
-								fontSize: 44,
-								fontWeight: "900",
-								lineHeight: 48,
-								marginBottom: 12,
-								color: colors.text,
-								letterSpacing: -1.5,
+								width: "100%",
+								maxWidth: authPanelMaxWidth,
+								alignSelf: "center",
+								paddingHorizontal: horizontalPadding,
 							}}
 						>
-							Ready for{"\n"}
-							<Text style={{ color: COLORS.brandPrimary }}>Better Care?</Text>
-						</Text>
-
-						<Text
-							style={{
-								fontSize: 16,
-								marginBottom: 48,
-								color: colors.subtitle,
-								lineHeight: 24,
-							}}
-						>
-							Create your account in seconds and unlock 24/7 medical access.
-						</Text>
-
-						<SlideButton
-							onPress={openAuthModal}
-							icon={(color) => <Ionicons name="person-add" size={24} color={color} />}
-						>
-							START REGISTRATION
-						</SlideButton>
-
-						<View className="flex-row items-center my-10">
-							<View className="flex-1 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />
 							<Text
-								className="px-6 text-[10px] uppercase"
 								style={{
-									color: colors.subtitle,
-									fontWeight: "800",
-									letterSpacing: 1.5
+									fontSize: authTitleSize,
+									fontWeight: "900",
+									lineHeight: authTitleLineHeight,
+									marginBottom: 12,
+									color: colors.text,
+									letterSpacing: -1.5,
 								}}
 							>
-								CONNECT QUICKLY
+								Create your{"\n"}
+								<Text style={{ color: COLORS.brandPrimary }}>account.</Text>
 							</Text>
-							<View className="flex-1 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />
-						</View>
 
-						<Animated.View
-							style={{ opacity, transform: [{ translateY: socialAnim }] }}
-						>
-							<SocialAuthRow />
-						</Animated.View>
+							<Text
+								style={{
+									fontSize: bodyTextSize,
+									marginBottom: 48,
+									color: colors.subtitle,
+									lineHeight: bodyTextLineHeight,
+								}}
+							>
+								Use your phone, email, or a trusted sign-in to continue.
+							</Text>
 
-						<Pressable onPress={() => router.push("login")} className="mt-12">
-							<Text className="text-center" style={{ color: colors.subtitle }}>
-								Already have an account?{" "}
-								<Text className="font-bold" style={{ color: COLORS.brandPrimary }}>
-									Sign In
+							<View style={{ width: "100%", maxWidth: ctaMaxWidth, alignSelf: isDesktop || isTablet ? "flex-start" : "stretch" }}>
+								<SlideButton
+									onPress={openAuthModal}
+									icon={(color) => <Ionicons name="person-add" size={24} color={color} />}
+								>
+									Create Account
+								</SlideButton>
+							</View>
+
+							<View className="flex-row items-center my-10">
+								<View className="flex-1 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />
+								<Text
+									className="px-6 text-[10px] uppercase"
+									style={{
+										color: colors.subtitle,
+										fontWeight: "800",
+										letterSpacing: 1.5
+									}}
+								>
+									OR CONTINUE WITH
 								</Text>
-							</Text>
-						</Pressable>
+								<View className="flex-1 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />
+							</View>
+
+							<Animated.View
+								style={{ opacity, transform: [{ translateY: socialAnim }] }}
+							>
+								<SocialAuthRow />
+							</Animated.View>
+
+							<Pressable onPress={() => router.push("login")} className="mt-12">
+								<Text className="text-center" style={{ color: colors.subtitle }}>
+									Already have an account?{" "}
+									<Text className="font-bold" style={{ color: COLORS.brandPrimary }}>
+										Sign In
+									</Text>
+								</Text>
+							</Pressable>
+						</View>
 					</Animated.View>
 
 					{/* [LAYOUT-REFACTOR] Using standardized sectionGap token instead of hardcoded mt-16 */}
-					<View style={{ marginTop: AUTH_LAYOUT.sectionGap }} className="pb-8 px-8">
+					<View
+						style={{
+							marginTop: AUTH_LAYOUT.sectionGap,
+							paddingBottom: 32,
+							paddingHorizontal: horizontalPadding,
+							width: "100%",
+							maxWidth: legalMaxWidth + horizontalPadding * 2,
+							alignSelf: "center",
+						}}
+					>
 						<Text className="text-center text-[10px] justify-center text-gray-500">
 							By continuing, you agree to our{" "}
 							<Text className="font-black underline" onPress={() => handleLinkPress("https://ivisit.ng/terms")}>Terms</Text>,{" "}
@@ -203,11 +225,11 @@ export default function SignupScreen() {
 							<Text className="font-black underline" onPress={() => handleLinkPress("https://ivisit.ng/health-data-consent")}>Health Data Consent</Text>
 						</Text>
 						<Text className="text-center text-[10px] text-gray-500 mt-1">
-							We require{" "}
+							Allow{" "}
 							<Text style={{ color: COLORS.brandPrimary, fontWeight: "900" }}>
 								Location Access
 							</Text>{" "}
-							for dispatch.
+							so responders can find you faster.
 						</Text>
 					</View>
 				</ScrollView>

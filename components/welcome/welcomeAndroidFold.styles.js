@@ -1,6 +1,9 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "../../constants/colors";
-import { getWelcomeThemePalette } from "../../constants/welcomeTheme";
+import {
+	getWelcomeAmbientGeometry,
+	getWelcomeThemePalette,
+} from "../../constants/welcomeTheme";
 
 export function createWelcomeAndroidFoldTheme({
 	isDarkMode,
@@ -11,6 +14,10 @@ export function createWelcomeAndroidFoldTheme({
 	entryPrimaryActionHeight,
 }) {
 	const colors = getWelcomeThemePalette({ isDarkMode, profile: "android" });
+	const ambient = getWelcomeAmbientGeometry({
+		surface: "android-fold",
+		isDarkMode,
+	});
 
 	const metrics = {
 		topPadding: insetsTop + (isShortHeight ? 18 : 28),
@@ -41,23 +48,13 @@ export function createWelcomeAndroidFoldTheme({
 		gradient: { flex: 1, backgroundColor: colors.backgroundBase },
 		topGlow: {
 			position: "absolute",
-			top: -90,
-			left: "-14%",
-			width: 260,
-			height: 260,
-			borderRadius: 999,
+			...ambient.topGlow,
 			backgroundColor: colors.topGlow,
-			opacity: isDarkMode ? 0.05 : 0.03,
 		},
 		bottomGlow: {
 			position: "absolute",
-			right: "-14%",
-			bottom: -110,
-			width: 280,
-			height: 280,
-			borderRadius: 999,
+			...ambient.bottomGlow,
 			backgroundColor: colors.bottomGlow,
-			opacity: isDarkMode ? 0.1 : 0.18,
 		},
 		scrollContent: {
 			flexGrow: 1,

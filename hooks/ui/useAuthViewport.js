@@ -1,18 +1,27 @@
 import { Platform, useWindowDimensions } from "react-native";
+import {
+	BREAKPOINTS,
+	DEVICE_BREAKPOINTS,
+	VIEWPORT_BREAKPOINTS,
+} from "../../constants/breakpoints";
 
 export function useAuthViewport() {
 	const { width, height } = useWindowDimensions();
 
-	const isDesktop = width >= 1180;
-	const isTablet = width >= 768 && width < 1180;
+	const isDesktop = width >= VIEWPORT_BREAKPOINTS.nativeDesktopMin;
+	const isTablet =
+		width >= VIEWPORT_BREAKPOINTS.tabletMin &&
+		width < VIEWPORT_BREAKPOINTS.nativeDesktopMin;
 	const isTabletPortrait = isTablet && height >= width;
 	const isTabletLandscape = isTablet && width > height;
-	const isCompactPhone = width < 360;
-	const isLargePhone = width >= 390 && width < 768;
-	const isLargeMonitor = width >= 1600;
+	const isCompactPhone = width < DEVICE_BREAKPOINTS.compactPhone;
+	const isLargePhone =
+		width >= DEVICE_BREAKPOINTS.largePhone &&
+		width < BREAKPOINTS.md;
+	const isLargeMonitor = width >= VIEWPORT_BREAKPOINTS.largeMonitorMin;
 	const isShortHeight = height < 780;
 	const isVeryShortHeight = height < 680;
-	const isDialog = width >= 768;
+	const isDialog = width >= VIEWPORT_BREAKPOINTS.tabletMin;
 
 	return {
 		width,

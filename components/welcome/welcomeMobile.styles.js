@@ -1,6 +1,7 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "../../constants/colors";
 import {
+	getWelcomeAmbientGeometry,
 	getWelcomeEntrySpacing,
 	getWelcomeThemePalette,
 } from "../../constants/welcomeTheme";
@@ -18,6 +19,10 @@ export function createWelcomeMobileTheme({
 	insetsBottom,
 }) {
 	const colors = getWelcomeThemePalette({ isDarkMode });
+	const ambient = getWelcomeAmbientGeometry({
+		surface: "ios-mobile",
+		isDarkMode,
+	});
 	const entrySpacing = getWelcomeEntrySpacing({
 		profile: "ios",
 		isVeryShortHeight,
@@ -43,6 +48,7 @@ export function createWelcomeMobileTheme({
 		helperLineHeight: isVeryShortHeight ? 22 : Math.max(24, bodyTextLineHeight),
 		primaryActionHeight: entryPrimaryActionHeight,
 		secondaryActionHeight: Math.max(entryPrimaryActionHeight - 4, 56),
+		showChip: !isVeryShortHeight,
 		stageSpacing: {
 			brandToHero: isVeryShortHeight ? 18 : 28,
 			heroToHeadline: isVeryShortHeight ? 20 : 28,
@@ -78,23 +84,13 @@ export function createWelcomeMobileTheme({
 		},
 		topGlow: {
 			position: "absolute",
-			top: -82,
-			left: "-22%",
-			width: 220,
-			height: 220,
-			borderRadius: 999,
+			...ambient.topGlow,
 			backgroundColor: colors.topGlow,
-			opacity: isDarkMode ? 0.05 : 0.03,
 		},
 		bottomGlow: {
 			position: "absolute",
-			right: "-20%",
-			bottom: -88,
-			width: 220,
-			height: 220,
-			borderRadius: 999,
+			...ambient.bottomGlow,
 			backgroundColor: colors.bottomGlow,
-			opacity: isDarkMode ? 0.1 : 0.18,
 		},
 		brandBlock: {
 			alignItems: "center",

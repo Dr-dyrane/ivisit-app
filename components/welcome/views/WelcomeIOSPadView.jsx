@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../contexts/ThemeContext";
 import useAuthViewport from "../../../hooks/ui/useAuthViewport";
 import EntryActionButton from "../../entry/EntryActionButton";
+import WelcomeAmbientGlows from "../WelcomeAmbientGlows";
 import { WELCOME_COPY, WELCOME_INTENTS } from "../welcomeContent";
 import createWelcomePadTheme from "../welcomePad.styles";
 
@@ -47,8 +48,10 @@ export default function WelcomeIOSPadView({
 
 	return (
 		<LinearGradient colors={colors.backgroundGradient} style={styles.gradient}>
-			<View pointerEvents="none" style={styles.topGlow} />
-			<View pointerEvents="none" style={styles.bottomGlow} />
+			<WelcomeAmbientGlows
+				topGlowStyle={styles.topGlow}
+				bottomGlowStyle={styles.bottomGlow}
+			/>
 
 			<ScrollView
 				contentContainerStyle={styles.scrollContent}

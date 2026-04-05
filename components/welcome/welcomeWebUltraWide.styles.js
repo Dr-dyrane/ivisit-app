@@ -1,0 +1,60 @@
+import buildWideWebWelcomeTheme from "./buildWideWebWelcomeTheme";
+
+export function createWelcomeWebUltraWideTheme({
+	viewportHeight = 1200,
+	viewportWidth = 2560,
+	isDarkMode = true,
+} = {}) {
+	return buildWideWebWelcomeTheme({
+		surface: "web-ultra-wide",
+		viewportHeight,
+		viewportWidth,
+		isDarkMode,
+		panelDark: "rgba(12, 18, 32, 0.42)",
+		panelLight: "rgba(255,255,255,0.54)",
+		panelRingLight: "rgba(255,255,255,0.82)",
+		heroRingOpacityLight: 0.4,
+		resolveMetrics: ({ viewportHeight: currentHeight, viewportWidth: currentWidth }) => ({
+			viewportHeight: currentHeight,
+			topPadding: currentHeight < 1080 ? 56 : 72,
+			bottomPadding: 48,
+			horizontalPadding: 88,
+			stageWidth: Math.min(Math.max(currentWidth - 220, 2140), 2800),
+			leftColumnWidth: Math.min(Math.max(currentWidth * 0.27, 560), 720),
+			logoSize: 66,
+			brandSize: 40,
+			brandMarginTop: 14,
+			brandLetterSpacing: -1.2,
+			heroWidth: Math.min(Math.max(currentWidth * 0.4, 980), 1240),
+			heroHeight: Math.min(Math.max(currentHeight * 0.54, 620), 820),
+			heroPanelExtraHeight: 140,
+			heroPanelRadius: 56,
+			heroShadowRadius: 36,
+			heroShadowHeight: 24,
+			heroRingScale: 0.76,
+			headlineSize: currentWidth >= 3200 ? 108 : 96,
+			headlineLineHeight: currentWidth >= 3200 ? 112 : 100,
+			headlineLetterSpacing: -2.5,
+			helperSize: 26,
+			helperLineHeight: 38,
+			helperMaxWidth: 620,
+			primaryActionHeight: 72,
+			secondaryActionHeight: 66,
+			actionsMaxWidth: 580,
+			secondaryActionMaxWidth: 520,
+			signInSize: 18,
+			signInLineHeight: 24,
+			stageSpacing: {
+				brandToHeadline: 46,
+				headlineToHelper: 20,
+				helperToChip: 20,
+				chipToActions: 44,
+				actionGap: 16,
+				signInTop: 18,
+				columnGap: currentWidth >= 3200 ? 160 : 128,
+			},
+		}),
+	});
+}
+
+export default createWelcomeWebUltraWideTheme;

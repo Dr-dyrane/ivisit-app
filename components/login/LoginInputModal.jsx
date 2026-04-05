@@ -13,14 +13,12 @@ import {
 	Pressable,
 	KeyboardAvoidingView,
 	Platform,
-	Dimensions,
 	Keyboard,
 	ScrollView,
+	useWindowDimensions,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
 import {
 	LOGIN_STEPS,
 	LOGIN_AUTH_METHODS,
@@ -44,16 +42,22 @@ import ForgotPasswordCard from "./ForgotPasswordCard";
 import ResetPasswordCard from "./ResetPasswordCard";
 import SmartContactInput from "../auth/SmartContactInput";
 import { isValidPassword } from "../../utils/validation";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import useAuthViewport from "../../hooks/ui/useAuthViewport";
 
 export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) {
-	const insets = useSafeAreaInsets();
-	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+	const { height: viewportHeight } = useWindowDimensions();
+	const {
+		modalMode,
+		modalHeight: responsiveModalHeight,
+		modalMaxWidth,
+		modalContentPadding,
+		modalRadius,
+	} = useAuthViewport();
+	const slideAnim = useRef(new Animated.Value(viewportHeight)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
 	const { modalHeight, keyboardHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
-		useAndroidKeyboardAwareModal({ defaultHeight: SCREEN_HEIGHT * 0.85 });
+		useAndroidKeyboardAwareModal({ defaultHeight: responsiveModalHeight });
 
 	const [resetEmail, setResetEmail] = useState(null);
 	const [resetToken, setResetToken] = useState(null); // DEV: Store mock reset token
@@ -61,7 +65,6 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 	const [mockOtp, setMockOtp] = useState(null); // DEV: Display mock OTP for testing
 	const [showSignUpOption, setShowSignUpOption] = useState(false); // Show sign up option when account not found
 
-	const router = useRouter();
 	const { showToast } = useToast();
 	const { syncUserData, login: authLogin } = useAuth();
 	const {
@@ -90,6 +93,13 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		setError: setLoginError,
 		clearError,
 	});
+	const isDialog = modalMode === "dialog";
+
+	useEffect(() => {
+		if (!visible) {
+			slideAnim.setValue(isDialog ? 40 : viewportHeight);
+		}
+	}, [isDialog, viewportHeight, visible]);
 
 	useEffect(() => {
 		if (visible) {
@@ -117,7 +127,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 
 		Animated.parallel([
 			Animated.timing(slideAnim, {
-				toValue: SCREEN_HEIGHT,
+				toValue: isDialog ? 40 : viewportHeight,
 				duration: 250,
 				useNativeDriver: true,
 			}),
@@ -142,7 +152,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		// Close this modal and open sign up
 		Animated.parallel([
 			Animated.timing(slideAnim, {
-				toValue: SCREEN_HEIGHT,
+				toValue: isDialog ? 40 : viewportHeight,
 				duration: 250,
 				useNativeDriver: true,
 			}),
@@ -162,6 +172,59 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 				onSwitchToSignUp(savedContactType);
 			}
 		});
+	};
+
+	const handleContactSubmit = async (value) => {
+		const contact = String(value || "").trim();
+		if (!contact || !loginData.contactType) return;
+
+		startLoading();
+		clearError();
+
+		try {
+			const isEmailContact = loginData.contactType === "email";
+			const authMethod = loginData.authMethod || (isEmailContact ? LOGIN_AUTH_METHODS.PASSWORD : LOGIN_AUTH_METHODS.OTP);
+
+			updateLoginData({
+				contact,
+				authMethod,
+				contactType: loginData.contactType,
+				email: isEmailContact ? contact : null,
+				phone: isEmailContact ? null : contact,
+			});
+
+			if (authMethod === LOGIN_AUTH_METHODS.OTP) {
+				const otpResult = await requestOtp(
+					isEmailContact ? { email: contact } : { phone: contact }
+				);
+
+				if (!otpResult.success) {
+					setLoginError(otpResult.error || "Unable to send verification code");
+					showToast(otpResult.error || "Failed to send code", "error");
+					return;
+				}
+
+				if (otpResult.data?.otp) {
+					setMockOtp(otpResult.data.otp);
+				} else {
+					setMockOtp(null);
+				}
+
+				showToast("Code sent", "success");
+				goToStep(LOGIN_STEPS.OTP_VERIFICATION);
+				return;
+			}
+
+			nextStep({
+				authMethod,
+				contactType: loginData.contactType,
+			});
+		} catch (err) {
+			console.error("LoginInputModal handleContactSubmit error:", err);
+			setLoginError("Unable to continue. Please try again.");
+		} finally {
+			stopLoading();
+		}
 	};
 
 	const handleGoBack = () => {
@@ -225,10 +288,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 			}
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast(
-				`Verification code sent to your ${loginData.contactType}`,
-				"success"
-			);
+			showToast("Code sent", "success");
 		} catch (err) {
 			console.error("LoginInputModal handleResendOtpLogin error:", err);
 			const errorMessage = err.message || "Failed to send verification code";
@@ -237,18 +297,6 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 		} finally {
 			stopLoading();
 		}
-	};
-
-	// Email validation helper
-	const isValidEmail = (email) => {
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		return emailRegex.test(email);
-	};
-
-	// Phone validation helper
-	const isValidPhone = (phone) => {
-		const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
-		return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
 	};
 
 	const handleSmartContactSubmit = async (value, type) => {
@@ -282,7 +330,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 					setMockOtp(otpResult.data.otp);
 				}
 
-				showToast("Verification code sent to your phone", "success");
+				showToast("Code sent", "success");
 				goToStep(LOGIN_STEPS.OTP_VERIFICATION);
 			} else {
 				// For email, go to password screen
@@ -453,6 +501,12 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 	};
 
 	const handleForgotPasswordInitiated = (email, token) => {
+		if (!token) {
+			showToast("Check your email for a reset link", "success");
+			handleDismiss();
+			return;
+		}
+
 		setResetEmail(email);
 		setResetToken(token); // DEV: Store mock reset token for display
 		goToStep(LOGIN_STEPS.RESET_PASSWORD);
@@ -471,14 +525,14 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 	};
 
 	const getHeaderTitle = () => {
-		if (currentStep === LOGIN_STEPS.SMART_CONTACT) return "Identity";
-		if (currentStep === LOGIN_STEPS.AUTH_METHOD) return "Identity";
-		if (currentStep === LOGIN_STEPS.CONTACT_TYPE) return "Identity";
-		if (currentStep === LOGIN_STEPS.CONTACT_INPUT) return "Identity";
-		if (currentStep === LOGIN_STEPS.OTP_VERIFICATION) return "Verification";
-		if (currentStep === LOGIN_STEPS.PASSWORD_INPUT) return "Authorization";
-		if (currentStep === LOGIN_STEPS.SET_PASSWORD) return "Secure Account";
-		if (currentStep === LOGIN_STEPS.FORGOT_PASSWORD) return "Recovery";
+		if (currentStep === LOGIN_STEPS.SMART_CONTACT) return "Phone or Email";
+		if (currentStep === LOGIN_STEPS.AUTH_METHOD) return "Phone or Email";
+		if (currentStep === LOGIN_STEPS.CONTACT_TYPE) return "Phone or Email";
+		if (currentStep === LOGIN_STEPS.CONTACT_INPUT) return "Phone or Email";
+		if (currentStep === LOGIN_STEPS.OTP_VERIFICATION) return "Enter Code";
+		if (currentStep === LOGIN_STEPS.PASSWORD_INPUT) return "Password";
+		if (currentStep === LOGIN_STEPS.SET_PASSWORD) return "Create Password";
+		if (currentStep === LOGIN_STEPS.FORGOT_PASSWORD) return "Reset Password";
 		if (currentStep === LOGIN_STEPS.RESET_PASSWORD) return "Reset Password";
 		return "Sign In";
 	};
@@ -498,8 +552,12 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 			statusBarTranslucent={true}
 		>
 			<View
-				className="flex-1 justify-end"
-				style={{ paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }}
+				className={`flex-1 ${isDialog ? "justify-center" : "justify-end"}`}
+				style={{
+					paddingBottom: !isDialog && Platform.OS === 'android' ? keyboardHeight : 24,
+					paddingTop: isDialog ? 24 : 0,
+					paddingHorizontal: isDialog ? 24 : 0,
+				}}
 			>
 				<Animated.View
 					style={{ opacity: bgOpacity }}
@@ -509,14 +567,22 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 				</Animated.View>
 
 				<Animated.View
-					style={{
-						transform: [{ translateY: slideAnim }],
-						backgroundColor: colors.bg,
-						height: modalHeight,
-					}}
-					className="rounded-t-[48px] px-8 pt-4 shadow-2xl"
+					className="shadow-2xl"
+					style={[
+						{
+							transform: [{ translateY: slideAnim }],
+							backgroundColor: colors.bg,
+							height: modalHeight,
+							width: "100%",
+							maxWidth: isDialog ? modalMaxWidth : undefined,
+							alignSelf: "center",
+							borderRadius: modalRadius,
+							paddingHorizontal: modalContentPadding,
+							paddingTop: 16,
+						},
+					]}
 				>
-					<View className="w-12 h-1.5 bg-gray-500/10 rounded-full self-center mb-6" />
+					{!isDialog && <View className="w-12 h-1.5 bg-gray-500/10 rounded-full self-center mb-6" />}
 
 					<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
 						<ScrollView {...getScrollViewProps()}>
@@ -620,7 +686,7 @@ export default function LoginInputModal({ visible, onClose, onSwitchToSignUp }) 
 													letterSpacing: -0.5
 												}}
 											>
-												CREATE ACCOUNT
+												Create Account
 											</Text>
 										</Pressable>
 									)}

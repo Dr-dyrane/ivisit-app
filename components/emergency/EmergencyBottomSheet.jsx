@@ -421,8 +421,8 @@ const EmergencyBottomSheet = forwardRef(
 								onSearchClear={handleSearchClear}
 								placeholder={
 									mode === "emergency"
-										? "Search ambulance services..."
-										: "Search hospitals, specialties..."
+										? "Search nearby hospitals..."
+										: "Search hospitals or specialties..."
 								}
 								avatarSource={
 									user?.imageUri

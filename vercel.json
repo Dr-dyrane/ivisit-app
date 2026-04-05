@@ -1,0 +1,23 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!_expo/|assets/|icons/|favicon.ico|manifest.webmanifest|sw.js).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

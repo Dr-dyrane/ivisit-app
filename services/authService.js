@@ -389,7 +389,7 @@ const authService = {
             redirectTo: oauthService.getRedirectUrl('/auth/reset-password'),
         });
         if (error) throw handleSupabaseError(error);
-        return { message: "Password reset instructions sent" };
+        return { message: "Password reset link sent" };
     },
 
     // Reset password (update) with token logic handled by Supabase automatically if session is active

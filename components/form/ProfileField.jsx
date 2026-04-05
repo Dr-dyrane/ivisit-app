@@ -22,12 +22,10 @@ const ProfileField = ({
 	const scaleAnim = useRef(new Animated.Value(1)).current;
 
 	const handleChangeText = (text) => {
-		console.log('[ProfileField] onChangeText:', { text, label, value });
 		onChange(text);
 	};
 
 	const handleFocus = () => {
-		console.log('[ProfileField] onFocus:', { label, value });
 		setIsFocused(true);
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		Animated.spring(scaleAnim, {
@@ -38,7 +36,6 @@ const ProfileField = ({
 	};
 
 	const handleBlur = () => {
-		console.log('[ProfileField] onBlur:', { label, value });
 		setIsFocused(false);
 		Animated.spring(scaleAnim, {
 			toValue: 1,
@@ -47,17 +44,11 @@ const ProfileField = ({
 		}).start();
 	};
 
-	const handlePressIn = () => {
-		console.log('[ProfileField] handlePressIn:', { label });
-	};
+	const handlePressIn = () => {};
 
-	const handlePressOut = () => {
-		console.log('[ProfileField] handlePressOut:', { label });
-	};
+	const handlePressOut = () => {};
 
-	const handleContainerPress = () => {
-		console.log('[ProfileField] handleContainerPress:', { label, editable });
-	};
+	const handleContainerPress = () => {};
 
 	const colors = {
 		bg: isDarkMode ? COLORS.bgDarkAlt : "#F3F4F6",

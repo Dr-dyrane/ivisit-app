@@ -92,6 +92,32 @@ That means:
 
 Everything else stays off the first screen.
 
+## Element Purpose Map
+
+Every visible element on the welcome screen must have a job.
+
+- brand mark:
+  trust, orientation, and product identity
+- hero image:
+  immediate emergency context and domain recognition
+- headline:
+  human trigger for urgent action
+- support line:
+  system motion and reassurance
+- readiness chip:
+  optional trust signal only when the surface has enough room to support it
+- primary CTA:
+  starts the urgent path
+- secondary CTA:
+  supports the bed-only path without flattening the hierarchy
+- sign in:
+  return-user fallback, never a competing primary action
+- theme toggle:
+  utility only, visually quieter than the decision path
+- ambient geometry:
+  atmosphere and depth only, never layout structure or informational content
+  it should bleed into the welcome background as soft ambient light, not read as a visible solid circle
+
 ## What Must Not Appear Here
 
 Do not place these on the welcome screen:
@@ -172,6 +198,12 @@ Current variant implementation:
   - [WelcomeAndroidChromebookView.jsx](../components/welcome/views/WelcomeAndroidChromebookView.jsx)
 - Web:
   - [WelcomeWebMobileView.jsx](../components/welcome/views/WelcomeWebMobileView.jsx)
+  - [WelcomeWebSmWideView.jsx](../components/welcome/views/WelcomeWebSmWideView.jsx)
+  - [WelcomeWebMdView.jsx](../components/welcome/views/WelcomeWebMdView.jsx)
+  - [WelcomeWebLgView.jsx](../components/welcome/views/WelcomeWebLgView.jsx)
+  - [WelcomeWebXlView.jsx](../components/welcome/views/WelcomeWebXlView.jsx)
+  - [WelcomeWeb2Xl3XlView.jsx](../components/welcome/views/WelcomeWeb2Xl3XlView.jsx)
+  - [WelcomeWebUltraWideView.jsx](../components/welcome/views/WelcomeWebUltraWideView.jsx)
 
 Current collocated style modules:
 
@@ -183,6 +215,12 @@ Current collocated style modules:
 - [welcomeAndroidTablet.styles.js](../components/welcome/welcomeAndroidTablet.styles.js)
 - [welcomeAndroidChromebook.styles.js](../components/welcome/welcomeAndroidChromebook.styles.js)
 - [welcomeWebMobile.styles.js](../components/welcome/welcomeWebMobile.styles.js)
+- [welcomeWebSmWide.styles.js](../components/welcome/welcomeWebSmWide.styles.js)
+- [welcomeWebMd.styles.js](../components/welcome/welcomeWebMd.styles.js)
+- [welcomeWebLg.styles.js](../components/welcome/welcomeWebLg.styles.js)
+- [welcomeWebXl.styles.js](../components/welcome/welcomeWebXl.styles.js)
+- [welcomeWeb2Xl3Xl.styles.js](../components/welcome/welcomeWeb2Xl3Xl.styles.js)
+- [welcomeWebUltraWide.styles.js](../components/welcome/welcomeWebUltraWide.styles.js)
 
 Current improvements already made:
 
@@ -196,7 +234,34 @@ Current improvements already made:
 - improved local export reliability by preventing stale localhost service-worker interference
 - moved the screen to a modular orchestrator/view/style architecture
 - completed the Android variant family at the architecture level
-- started the web family with a dedicated web-mobile module
+- completed the web surface family from `web-mobile` through `web-ultra-wide`
+- standardized web breakpoints through shared breakpoint tokens
+- moved welcome geometry into shared tokens instead of per-view guesswork
+- replaced plain solid ambient circles with a shared radial-glow implementation so the background reads as atmosphere instead of geometry
+- added a shared web-surface chrome hook for document/root theme control
+- reduced wide-web style duplication through a shared style builder
+
+## Current Progress Snapshot
+
+The welcome screen is now in a different phase than when this dossier started.
+
+Architecture that is now in place:
+
+- modular surface routing
+- single-source welcome copy
+- shared breakpoint tokens
+- shared welcome background, spacing, and geometry tokens
+- dedicated Apple, Android, and web surface families
+- dedicated web bands from `sm` through ultra-wide
+
+What remains is not architecture invention.
+
+What remains is:
+
+- variant-by-variant tuning
+- accessibility hardening
+- state evolution beyond the static idle entry
+- validation against real device classes
 
 ## Current Problems Still Open
 
@@ -207,8 +272,8 @@ Known remaining issues:
 1. Surface tuning is still incomplete.
    The architecture is now correct, but each variant still needs spacing and posture refinement by real device class.
 
-2. Web-specific bands are not finished yet.
-   The welcome screen still needs dedicated web-mobile, md, lg, xl, 2xl/3xl, and ultra-wide variants instead of relying on Apple desktop assumptions.
+2. Accessibility baseline is not fully locked yet.
+   The screen still needs a deliberate keyboard, focus, text-scaling, and reduced-motion pass.
 
 3. The screen must be validated against real device classes, not just code assumptions.
 
@@ -216,7 +281,8 @@ Known remaining issues:
 
 5. The marketing preview must mirror the app screen after the app version is truly locked, not before.
 
-6. The screen is still too static. Entry should be able to evolve into live system state when appropriate.
+6. The screen is still too static.
+   Entry should be able to evolve into live system state when appropriate.
 
 ## Current Surface Map
 
@@ -233,21 +299,44 @@ Current implemented family:
   - Chromebook
 - Web:
   - mobile
-
-Current next family:
-
-- Web:
+  - sm-wide
   - md
   - lg
   - xl
   - 2xl / 3xl
   - ultra-wide
 
+Current next focus:
+
+- tuning and validation across implemented web bands
+- CTA accessibility hardening
+- state-aware entry progression
+
 Rule:
 
 - no one-layout-scaled-up behavior
 - no platform drift in product logic
 - variant-specific spacing and posture live in the variant style module, not in the route screen
+
+Current web breakpoint token map:
+
+- `sm = 640`
+- `md = 768`
+- `lg = 1024`
+- `xl = 1280`
+- `2xl = 1536`
+- `3xl = 1920`
+- `ultra-wide = 2560`
+
+Current web routing:
+
+- `< 640` -> `web-mobile`
+- `640-767` -> `web-sm-wide`
+- `768-1023` -> `web-md`
+- `1024-1279` -> `web-lg`
+- `1280-1535` -> `web-xl`
+- `1536-2559` -> `web-2xl-3xl`
+- `2560+` -> `web-ultra-wide`
 
 ## Device Requirements
 
@@ -316,6 +405,8 @@ Allowed style:
 Current approved copy:
 
 - `Get help now`
+- `Connecting you to care nearby.`
+- `Available near you`
 - `Request Help`
 - `Find a hospital bed`
 - `Sign in`
@@ -325,19 +416,30 @@ Support line direction:
 - active
 - reassuring
 - non-explanatory
+- system-in-motion
 
 Preferred direction:
 
-- `We're finding help near you.`
+- `Connecting you to care nearby.`
 - `We'll connect you to help nearby.`
 - `Ready to connect you to help.`
 
 The support line should not sound like onboarding instruction.
 
+Language system rule:
+
+- do not repeat the same word across headline, support line, and CTA if the meaning can evolve cleanly
+- the welcome screen should follow `emotion -> system action -> user action`
+- example:
+  - `Get help now`
+  - `Connecting you to care nearby.`
+  - `Request Help`
+
 Copy that should not return:
 
 - marketing-style feature explanation
 - "Get help fast when something feels wrong" inside the app first screen
+- "We help you find help"
 - feature bullets
 - long reassurance paragraphs
 

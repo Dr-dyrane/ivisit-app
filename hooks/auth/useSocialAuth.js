@@ -41,6 +41,11 @@ export function useSocialAuth() {
 			const { data } = await authService.signInWithProvider(provider);
 
 			if (data?.url) {
+				if (Platform.OS === "web" && typeof window !== "undefined") {
+					window.location.assign(data.url);
+					return { success: true, pendingRedirect: true };
+				}
+
 				// Log OAuth URL without sensitive data
 				console.log("[useSocialAuth] OAuth URL received for provider");
 

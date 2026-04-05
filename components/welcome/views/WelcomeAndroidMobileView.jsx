@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../contexts/ThemeContext";
 import useAuthViewport from "../../../hooks/ui/useAuthViewport";
 import EntryActionButton from "../../entry/EntryActionButton";
+import WelcomeAmbientGlows from "../WelcomeAmbientGlows";
 import { WELCOME_COPY, WELCOME_INTENTS } from "../welcomeContent";
 import createWelcomeAndroidMobileTheme from "../welcomeAndroidMobile.styles";
 
@@ -56,11 +57,16 @@ export default function WelcomeAndroidMobileView({
 		insetsTop: insets?.top || 0,
 		insetsBottom: insets?.bottom || 0,
 	});
+	const actionWellMarginTop = metrics.showChip
+		? metrics.stageSpacing.chipToActionWell
+		: Math.max(metrics.stageSpacing.chipToActionWell - metrics.stageSpacing.helperToChip + 8, 20);
 
 	return (
 		<LinearGradient colors={colors.backgroundGradient} style={styles.gradient}>
-			<View pointerEvents="none" style={styles.topGlow} />
-			<View pointerEvents="none" style={styles.bottomGlow} />
+			<WelcomeAmbientGlows
+				topGlowStyle={styles.topGlow}
+				bottomGlowStyle={styles.bottomGlow}
+			/>
 
 			<ScrollView
 				contentContainerStyle={styles.scrollContent}
@@ -100,12 +106,14 @@ export default function WelcomeAndroidMobileView({
 						<Text style={styles.headline}>{WELCOME_COPY.headline}</Text>
 						<Text style={styles.helper}>{WELCOME_COPY.helper}</Text>
 
-						<View style={styles.chip}>
-							<Text style={styles.chipText}>{WELCOME_COPY.chip}</Text>
-						</View>
+						{metrics.showChip ? (
+							<View style={styles.chip}>
+								<Text style={styles.chipText}>{WELCOME_COPY.chip}</Text>
+							</View>
+						) : null}
 					</View>
 
-					<View style={styles.actionWell}>
+					<View style={[styles.actionWell, { marginTop: actionWellMarginTop }]}>
 						<View style={styles.actions}>
 							{WELCOME_INTENTS.map((intent) => (
 								<EntryActionButton

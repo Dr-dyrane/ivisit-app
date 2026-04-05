@@ -38,9 +38,9 @@ const TripSummaryCollapsed = ({ isDarkMode, statusLabel, etaText, telemetryStatu
 	<SummaryCardSurface isDarkMode={isDarkMode} style={styles.collapsedPadding}>
 		<View style={styles.headerIsland}>
 			<View style={{ flex: 1 }}>
-				<Text style={[styles.editorialSubtitle, { color: COLORS.brandPrimary }]}>STATUS</Text>
+				<Text style={[styles.editorialSubtitle, { color: COLORS.brandPrimary }]}>HELP STATUS</Text>
 				<Text style={[styles.editorialTitle, { color: isDarkMode ? COLORS.textLight : COLORS.textPrimary, fontSize: 20 }]} numberOfLines={1}>
-					{statusLabel.toUpperCase()}
+					{statusLabel}
 				</Text>
 				{telemetryStatusLabel ? (
 					<Text style={[styles.telemetryCollapsedText, { color: isDarkMode ? "#FDBA74" : "#B45309" }]}>
@@ -99,8 +99,8 @@ const TripSummaryHalf = (props) => {
 			{/* IDENTITY ISLAND */}
 			<View style={styles.headerIsland}>
 				<View style={{ flex: 1 }}>
-					<Text style={[styles.editorialSubtitle, { color: COLORS.brandPrimary }]}>AMBULANCE STATUS</Text>
-					<Text style={[styles.editorialTitle, { color: textColor }]}>{statusLabel.toUpperCase()}</Text>
+					<Text style={[styles.editorialSubtitle, { color: COLORS.brandPrimary }]}>HELP STATUS</Text>
+					<Text style={[styles.editorialTitle, { color: textColor }]}>{statusLabel}</Text>
 				</View>
 				<View style={styles.etaBadge}>
 					<Text style={[styles.etaValue, { fontSize: etaText?.length > 5 ? 14 : 22 }]}>{etaText}</Text>
@@ -182,7 +182,7 @@ const TripSummaryHalf = (props) => {
 			{
 				showSecondaryCta && (
 					<Pressable onPress={props.onPressSecondaryCta} style={styles.secondaryCta}>
-						<Text style={[styles.secondaryCtaText, { color: COLORS.brandPrimary }]}>{secondaryCtaLabel ?? "BOOK BED"}</Text>
+						<Text style={[styles.secondaryCtaText, { color: COLORS.brandPrimary }]}>{secondaryCtaLabel ?? "Reserve a bed"}</Text>
 					</Pressable>
 				)
 			}
@@ -191,7 +191,7 @@ const TripSummaryHalf = (props) => {
 				<Pressable onPress={props.onPressTriage} style={styles.triageCta}>
 					<Ionicons name="chatbubble-ellipses-outline" size={16} color={COLORS.brandPrimary} />
 					<Text style={styles.triageCtaText}>
-						Continue Guided Intake
+						Continue check-in
 					</Text>
 				</Pressable>
 			) : null}
@@ -259,14 +259,14 @@ export const TripSummaryCard = ({
 				? `Tracking delayed${telemetryAgeLabel ? ` (${telemetryAgeLabel})` : ""}`
 				: null;
 	const displayStatus = isPending
-		? "Awaiting Approval"
+		? "Confirming request"
 		: (activeAmbulanceTrip?.status === "arrived"
-			? "Arrived"
+			? "Help has arrived"
 			: (telemetryState === "lost"
-				? "Signal Lost"
+				? "Location update needed"
 				: telemetryState === "stale"
-					? "Signal Delayed"
-					: (computedStatus || "En Route")));
+					? "Updating location"
+					: (computedStatus || "On the way")));
 	const etaText = telemetryState === "lost" && !isPending ? "--" : formattedRemaining;
 	const canAdvanceTripStatus = telemetryState !== "lost";
 	const driverName =
@@ -330,7 +330,7 @@ export const TripSummaryCard = ({
 					isPending,
 					telemetryState,
 					telemetryStatusLabel,
-					telemetryMetaText: telemetryStatusLabel ? "ETA may shift until signal returns" : null,
+					telemetryMetaText: telemetryStatusLabel ? "We'll refresh ETA when tracking returns" : null,
 					showTriageLane: !!triageRequestId,
 					triageRequestId,
 					triageRequestContext,

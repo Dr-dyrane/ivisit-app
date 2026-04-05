@@ -1,6 +1,7 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "../../constants/colors";
 import {
+	getWelcomeAmbientGeometry,
 	getWelcomeEntrySpacing,
 	getWelcomeThemePalette,
 } from "../../constants/welcomeTheme";
@@ -18,6 +19,10 @@ export function createWelcomeAndroidMobileTheme({
 	insetsBottom,
 }) {
 	const colors = getWelcomeThemePalette({ isDarkMode, profile: "android" });
+	const ambient = getWelcomeAmbientGeometry({
+		surface: "android-mobile",
+		isDarkMode,
+	});
 	const entrySpacing = getWelcomeEntrySpacing({
 		profile: "android",
 		isVeryShortHeight,
@@ -43,6 +48,7 @@ export function createWelcomeAndroidMobileTheme({
 		helperLineHeight: isVeryShortHeight ? 22 : Math.max(24, bodyTextLineHeight),
 		primaryActionHeight: entryPrimaryActionHeight,
 		secondaryActionHeight: Math.max(entryPrimaryActionHeight - 4, 56),
+		showChip: !isVeryShortHeight,
 		stageSpacing: {
 			brandToHero: isVeryShortHeight ? 14 : 22,
 			heroToHeadline: isVeryShortHeight ? 16 : 22,
@@ -78,23 +84,13 @@ export function createWelcomeAndroidMobileTheme({
 		},
 		topGlow: {
 			position: "absolute",
-			top: -74,
-			left: "-18%",
-			width: 200,
-			height: 200,
-			borderRadius: 999,
+			...ambient.topGlow,
 			backgroundColor: colors.topGlow,
-			opacity: isDarkMode ? 0.05 : 0.03,
 		},
 		bottomGlow: {
 			position: "absolute",
-			right: "-18%",
-			bottom: -84,
-			width: 220,
-			height: 220,
-			borderRadius: 999,
+			...ambient.bottomGlow,
 			backgroundColor: colors.bottomGlow,
-			opacity: isDarkMode ? 0.1 : 0.18,
 		},
 		brandBlock: {
 			alignItems: "center",

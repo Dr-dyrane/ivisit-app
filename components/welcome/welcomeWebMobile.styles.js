@@ -1,6 +1,7 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "../../constants/colors";
 import {
+	getWelcomeAmbientGeometry,
 	getWelcomeEntrySpacing,
 	getWelcomeThemePalette,
 } from "../../constants/welcomeTheme";
@@ -11,6 +12,10 @@ export function createWelcomeWebMobileTheme({ viewportHeight = 760, isDarkMode =
 		chipBackground: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.74)",
 		bottomGlow: isDarkMode ? "#14253F" : "#E8EEF8",
 	};
+	const ambient = getWelcomeAmbientGeometry({
+		surface: "web-mobile",
+		isDarkMode,
+	});
 	const entrySpacing = getWelcomeEntrySpacing({
 		profile: "web",
 		isVeryShortHeight: viewportHeight < 680,
@@ -18,6 +23,7 @@ export function createWelcomeWebMobileTheme({ viewportHeight = 760, isDarkMode =
 
 	const metrics = {
 		viewportHeight,
+		showChip: viewportHeight >= 700,
 		topPadding: 24,
 		bottomPadding: 20,
 		logoSize: 46,
@@ -47,39 +53,37 @@ export function createWelcomeWebMobileTheme({ viewportHeight = 760, isDarkMode =
 			backgroundColor: colors.backgroundBase,
 			overflow: "hidden",
 		},
+		scrollView: {
+			flex: 1,
+			width: "100%",
+			alignSelf: "stretch",
+		},
 		scrollContent: {
 			flexGrow: 1,
+			width: "100%",
 			minHeight: metrics.viewportHeight,
 			paddingHorizontal: 20,
 			paddingTop: metrics.topPadding,
 			paddingBottom: metrics.bottomPadding,
+			alignItems: "stretch",
 			backgroundColor: "transparent",
 		},
 		stage: {
 			width: "100%",
 			minHeight: metrics.viewportHeight - metrics.topPadding - metrics.bottomPadding,
+			alignSelf: "stretch",
 			alignItems: "center",
 			backgroundColor: "transparent",
 		},
 		topGlow: {
 			position: "absolute",
-			top: -72,
-			left: -72,
-			width: 180,
-			height: 180,
-			borderRadius: 999,
+			...ambient.topGlow,
 			backgroundColor: colors.topGlow,
-			opacity: isDarkMode ? 0.05 : 0.03,
 		},
 		bottomGlow: {
 			position: "absolute",
-			right: -84,
-			bottom: -84,
-			width: 220,
-			height: 220,
-			borderRadius: 999,
+			...ambient.bottomGlow,
 			backgroundColor: colors.bottomGlow,
-			opacity: isDarkMode ? 0.12 : 0.18,
 		},
 		brandBlock: {
 			alignItems: "center",

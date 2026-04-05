@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	View,
 	Text,
-	ScrollView,
 	StyleSheet,
 	Platform,
 	Pressable,
@@ -25,7 +24,8 @@ import ProfileField from "../components/form/ProfileField";
 import { useUpdateProfile } from "../hooks/user/useUpdateProfile";
 import { useAuth } from "../contexts/AuthContext";
 import { useProfileCompletion } from "../hooks/auth";
-import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import { useToast } from "../contexts/ToastContext";
+import useAuthViewport from "../hooks/ui/useAuthViewport";
 
 export default function CompleteProfileScreen() {
 	const router = useRouter();
@@ -39,6 +39,8 @@ export default function CompleteProfileScreen() {
 	const { user, syncUserData, logout } = useAuth();
 	const { updateProfile, isLoading: isSaving } = useUpdateProfile();
 	const { getDraft, saveDraft, clearDraft } = useProfileCompletion();
+	const { showToast } = useToast();
+	const { horizontalPadding, surfaceMaxWidth, bodyTextSize, bodyTextLineHeight } = useAuthViewport();
 
 	// Ensure we have the latest verification status
 	useEffect(() => {
@@ -74,8 +76,8 @@ export default function CompleteProfileScreen() {
 			resetTabBar();
 			resetHeader();
 			setHeaderState({
-				title: "Complete Your Profile",
-				subtitle: "REQUIRED",
+				title: "Finish Setup",
+				subtitle: "ONE STEP LEFT",
 				icon: <Ionicons name="person" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent: null,
@@ -192,15 +194,20 @@ export default function CompleteProfileScreen() {
 			router.replace("/(user)/(tabs)");
 		} catch (error) {
 			console.error("Update profile failed", error);
+			showToast("Couldn't save your profile", "error");
 		}
-	}, [canSave, fullName, isSaving, normalizedUsername, router, splitName, syncUserData, updateProfile, clearDraft]);
+	}, [canSave, fullName, isSaving, normalizedUsername, router, splitName, syncUserData, updateProfile, clearDraft, showToast]);
 
 	return (
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			<Animated.ScrollView
 				contentContainerStyle={[
 					styles.content,
-					{ paddingTop: topPadding, paddingBottom: bottomPadding },
+					{
+						paddingTop: topPadding,
+						paddingBottom: bottomPadding,
+						paddingHorizontal: horizontalPadding,
+					},
 				]}
 				showsVerticalScrollIndicator={false}
 				scrollEventThrottle={16}
@@ -210,73 +217,83 @@ export default function CompleteProfileScreen() {
 					transform: [{ translateY: slideAnim }],
 				}}
 			>
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.title, { color: colors.text }]}>
-						Let’s set up your account
-					</Text>
-					<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-						We need your name and a username to personalize visits, bookings, and
-						emergency flows.
-					</Text>
-				</View>
-
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-						Verified Contact
-					</Text>
-					<Text style={[styles.subtitle, { color: colors.text }]}>
-						{user?.emailVerified && user?.email ? user.email : user?.phone ?? user?.email ?? "--"}
-					</Text>
-					<Text style={[styles.helperText, { color: colors.textMuted }]}>
-						{user?.emailVerified || user?.phoneVerified ? "Verified" : "Not verified"}
-					</Text>
-				</View>
-
-				<View style={[styles.card, { backgroundColor: colors.card }]}>
-					<ProfileField
-						label="Full Name"
-						value={fullName}
-						onChange={setFullName}
-						iconName="person-outline"
-					/>
-					<ProfileField
-						label="Username"
-						value={username}
-						onChange={setUsername}
-						iconName="at-outline"
-					/>
-
-					<View style={styles.helperRow}>
-						<Ionicons name="sparkles-outline" size={16} color={COLORS.brandPrimary} />
-						<Text style={[styles.helperText, { color: colors.textMuted }]}>
-							We’ll save as @{normalizedUsername || "username"}
+				<View style={[styles.surface, { maxWidth: surfaceMaxWidth }]}>
+					<View style={[styles.card, { backgroundColor: colors.card }]}>
+						<Text style={[styles.title, { color: colors.text }]}>
+							Finish your account
+						</Text>
+						<Text
+							style={[
+								styles.subtitle,
+								{
+									color: colors.textMuted,
+									fontSize: bodyTextSize,
+									lineHeight: bodyTextLineHeight,
+								},
+							]}
+						>
+							Add your name and username so care teams can identify you quickly.
 						</Text>
 					</View>
 
-					<Pressable
-						disabled={!canSave || isSaving}
-						onPress={handleSave}
-						style={({ pressed }) => ({
-							marginTop: 8,
-							height: 54,
-							borderRadius: 22,
-							backgroundColor: COLORS.brandPrimary,
-							opacity: !canSave || isSaving ? 0.5 : pressed ? 0.92 : 1,
-							flexDirection: "row",
-							alignItems: "center",
-							justifyContent: "center",
-							gap: 10,
-						})}
-					>
-						{isSaving ? (
-							<ActivityIndicator color="#FFFFFF" />
-						) : (
-							<Ionicons name="checkmark" size={18} color="#FFFFFF" />
-						)}
-						<Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>
-							Finish Setup
+					<View style={[styles.card, { backgroundColor: colors.card }]}>
+						<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+							Signed In As
 						</Text>
-					</Pressable>
+						<Text style={[styles.subtitle, { color: colors.text }]}>
+							{user?.emailVerified && user?.email ? user.email : user?.phone ?? user?.email ?? "--"}
+						</Text>
+						<Text style={[styles.helperText, { color: colors.textMuted }]}>
+							{user?.emailVerified || user?.phoneVerified ? "Verified and ready" : "Needs verification"}
+						</Text>
+					</View>
+
+					<View style={[styles.card, { backgroundColor: colors.card }]}>
+						<ProfileField
+							label="Full Name"
+							value={fullName}
+							onChange={setFullName}
+							iconName="person-outline"
+						/>
+						<ProfileField
+							label="Username"
+							value={username}
+							onChange={setUsername}
+							iconName="at-outline"
+						/>
+
+						<View style={styles.helperRow}>
+							<Ionicons name="sparkles-outline" size={16} color={COLORS.brandPrimary} />
+							<Text style={[styles.helperText, { color: colors.textMuted }]}>
+								We'll save this as @{normalizedUsername || "username"}
+							</Text>
+						</View>
+
+						<Pressable
+							disabled={!canSave || isSaving}
+							onPress={handleSave}
+							style={({ pressed }) => ({
+								marginTop: 8,
+								height: 54,
+								borderRadius: 22,
+								backgroundColor: COLORS.brandPrimary,
+								opacity: !canSave || isSaving ? 0.5 : pressed ? 0.92 : 1,
+								flexDirection: "row",
+								alignItems: "center",
+								justifyContent: "center",
+								gap: 10,
+							})}
+						>
+							{isSaving ? (
+								<ActivityIndicator color="#FFFFFF" />
+							) : (
+								<Ionicons name="checkmark" size={18} color="#FFFFFF" />
+							)}
+							<Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>
+								Continue to iVisit
+							</Text>
+						</Pressable>
+					</View>
 				</View>
 			</Animated.ScrollView>
 		</LinearGradient>
@@ -285,7 +302,8 @@ export default function CompleteProfileScreen() {
 
 const styles = StyleSheet.create({
 	container: { flex: 1 },
-	content: { flexGrow: 1, padding: 20, gap: 12 },
+	content: { flexGrow: 1, gap: 12 },
+	surface: { width: "100%", alignSelf: "center", gap: 12 },
 	card: {
 		borderRadius: 30,
 		padding: 20,

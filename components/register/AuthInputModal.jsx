@@ -13,11 +13,10 @@ import {
 	Pressable,
 	KeyboardAvoidingView,
 	Platform,
-	Dimensions,
 	Keyboard,
 	ScrollView,
+	useWindowDimensions,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { REGISTRATION_STEPS } from "../../constants/registrationSteps";
@@ -28,24 +27,26 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useSignUp } from "../../hooks/auth";
 import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
-import PhoneInputField from "./PhoneInputField";
-import EmailInputField from "./EmailInputField";
 import OTPInputCard from "./OTPInputCard";
 import ProfileForm from "./ProfileForm";
 import PasswordInputField from "./PasswordInputField";
 import SmartContactInput from "../auth/SmartContactInput";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import useAuthViewport from "../../hooks/ui/useAuthViewport";
 
 export default function AuthInputModal({ visible, onClose, type }) {
-	const insets = useSafeAreaInsets();
-	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+	const { height: viewportHeight } = useWindowDimensions();
+	const {
+		modalMode,
+		modalHeight: responsiveModalHeight,
+		modalMaxWidth,
+		modalContentPadding,
+		modalRadius,
+	} = useAuthViewport();
+	const slideAnim = useRef(new Animated.Value(viewportHeight)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
 	const { modalHeight, keyboardHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
-		useAndroidKeyboardAwareModal({ defaultHeight: SCREEN_HEIGHT * 0.85 });
-
-	const [mockOtp, setMockOtp] = useState(null); // DEV: Display mock OTP for testing
+		useAndroidKeyboardAwareModal({ defaultHeight: responsiveModalHeight });
 
 	const { showToast } = useToast();
 	const {
@@ -54,7 +55,6 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		updateRegistrationData,
 		nextStep,
 		previousStep,
-		goToStep,
 		checkAndApplyPendingRegistration,
 		resetRegistration,
 		// Use context error/loading states
@@ -67,7 +67,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 	} = useRegistration();
 
 	// Pass context state functions to hook
-	const { signUpUser, completeRegistration, requestRegistrationOtp, verifyRegistrationOtp } =
+	const { completeRegistration, requestRegistrationOtp, verifyRegistrationOtp } =
 		useSignUp({
 			startLoading,
 			stopLoading,
@@ -77,6 +77,13 @@ export default function AuthInputModal({ visible, onClose, type }) {
 
 	const { login, syncUserData } = useAuth();
 	const { isDarkMode } = useTheme();
+	const isDialog = modalMode === "dialog";
+
+	useEffect(() => {
+		if (!visible) {
+			slideAnim.setValue(isDialog ? 40 : viewportHeight);
+		}
+	}, [isDialog, viewportHeight, visible]);
 
 	/* ------------------ Animations ------------------ */
 	useEffect(() => {
@@ -114,7 +121,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 
 		Animated.parallel([
 			Animated.timing(slideAnim, {
-				toValue: SCREEN_HEIGHT,
+				toValue: isDialog ? 40 : viewportHeight,
 				duration: 250,
 				useNativeDriver: true,
 			}),
@@ -134,18 +141,6 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		clearError();
 		previousStep();
-	};
-
-	// Email validation helper
-	const isValidEmail = (email) => {
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		return emailRegex.test(email);
-	};
-
-	// Phone validation helper
-	const isValidPhone = (phone) => {
-		const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
-		return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
 	};
 
 	const handleSmartInputSubmit = async (value, detectedType) => {
@@ -175,7 +170,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 
 			nextStep();
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast("Verification code sent", "success");
+			showToast("Code sent", "success");
 		} catch (err) {
 			console.error("AuthInputModal handleSmartInputSubmit error:", err);
 			setRegistrationError("Failed to process. Please try again.");
@@ -196,7 +191,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			if (!otpResult.success) {
 				showToast(otpResult.error || "Failed to resend code", "error");
 			} else {
-				showToast("Code resent successfully", "success");
+				showToast("Code sent again", "success");
 			}
 		} catch (e) {
 			showToast("Failed to resend code", "error");
@@ -235,9 +230,9 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			nextStep();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast("OTP verified successfully", "success");
+			showToast("Code confirmed", "success");
 		} else {
-			showToast(result.error || "OTP verification failed", "error");
+			showToast(result.error || "That code didn't work", "error");
 		}
 	};
 
@@ -268,7 +263,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			await syncUserData();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast("Registration successful!", "success");
+			showToast("Account ready", "success");
 
 			handleDismiss();
 		} else {
@@ -298,7 +293,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			await syncUserData();
 
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-			showToast("Registered successfully", "info");
+			showToast("Account ready", "success");
 
 			handleDismiss();
 		} else {
@@ -316,11 +311,11 @@ export default function AuthInputModal({ visible, onClose, type }) {
 		isInputStep ? 1 : isOTPStep ? 2 : isProfileStep ? 3 : 4;
 
 	const getHeaderTitle = () => {
-		if (isInputStep) return "Identity";
-		if (isOTPStep) return "Verification";
-		if (isProfileStep) return "Profile Setup";
+		if (isInputStep) return "Phone or Email";
+		if (isOTPStep) return "Enter Code";
+		if (isProfileStep) return "Your Details";
 		if (isPasswordStep) return "Create Password";
-		return "Sign Up";
+		return "Create Account";
 	};
 
 	const colors = {
@@ -339,8 +334,12 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			statusBarTranslucent={true}
 		>
 			<View
-				className="flex-1 justify-end"
-				style={{ paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }}
+				className={`flex-1 ${isDialog ? "justify-center" : "justify-end"}`}
+				style={{
+					paddingBottom: !isDialog && Platform.OS === 'android' ? keyboardHeight : 24,
+					paddingTop: isDialog ? 24 : 0,
+					paddingHorizontal: isDialog ? 24 : 0,
+				}}
 			>
 				<Animated.View
 					style={{ opacity: bgOpacity }}
@@ -350,14 +349,20 @@ export default function AuthInputModal({ visible, onClose, type }) {
 				</Animated.View>
 
 				<Animated.View
+					className="shadow-2xl"
 					style={{
 						transform: [{ translateY: slideAnim }],
 						backgroundColor: colors.bg,
 						height: modalHeight,
+						width: "100%",
+						maxWidth: isDialog ? modalMaxWidth : undefined,
+						alignSelf: "center",
+						borderRadius: modalRadius,
+						paddingHorizontal: modalContentPadding,
+						paddingTop: 16,
 					}}
-					className="rounded-t-[40px] px-8 pt-4 shadow-2xl"
 				>
-					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-6" />
+					{!isDialog && <View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-6" />}
 
 					<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
 						<ScrollView {...getScrollViewProps()}>
@@ -377,7 +382,7 @@ export default function AuthInputModal({ visible, onClose, type }) {
 										className="text-[10px] tracking-[3px] mb-2 uppercase font-black"
 										style={{ color: COLORS.brandPrimary }}
 									>
-										Step {getStepNumber()} of 3
+										Step {getStepNumber()} of 4
 									</Text>
 									<Text
 										className="text-3xl font-black tracking-tighter"
@@ -400,10 +405,8 @@ export default function AuthInputModal({ visible, onClose, type }) {
 									style={{
 										backgroundColor: `${COLORS.error}15`,
 										padding: 16,
-										borderRadius: 12,
+										borderRadius: 20,
 										marginBottom: 16,
-										borderLeftWidth: 4,
-										borderLeftColor: COLORS.error,
 									}}
 								>
 									<View style={{ flexDirection: "row", alignItems: "center" }}>

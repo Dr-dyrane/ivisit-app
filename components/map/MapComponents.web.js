@@ -1,5 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import Constants from 'expo-constants';
 import { View, StyleSheet } from 'react-native';
+
+const getGoogleMapsApiKey = () => {
+  const fromEnv = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
+  const fromConfig = Constants?.expoConfig?.extra?.googleMapsApiKey?.trim?.();
+  return fromEnv || fromConfig || null;
+};
 
 // Google Maps Web Implementation
 const GoogleMapsAPI = () => {
@@ -14,12 +21,22 @@ const GoogleMapsAPI = () => {
         return;
       }
 
+      const apiKey = getGoogleMapsApiKey();
+      if (!apiKey) {
+        setError('Google Maps key is missing');
+        return;
+      }
+
+      const existingScript = document.querySelector('script[data-google-maps-loader="ivisit"]');
+      if (existingScript) {
+        existingScript.addEventListener('load', () => setIsLoaded(true), { once: true });
+        return;
+      }
+
       const script = document.createElement('script');
       script.async = true;
       script.defer = true;
-
-      // Use environment variable for Google Maps API key
-      const apiKey = 'AIzaSyCdXlyL3bUR-lFN_G5L5zdaIiNbRiCEp9A' || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY';
+      script.dataset.googleMapsLoader = 'ivisit';
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
 
       window.initGoogleMaps = () => {

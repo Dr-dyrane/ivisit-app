@@ -24,18 +24,24 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Platform, Dimensions, Keyboard } from 'react-native';
+import { Platform, Keyboard, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 export function useAndroidKeyboardAwareModal({
-  defaultHeight = SCREEN_HEIGHT * 0.85,
+  defaultHeight,
   maxHeightPercentage = 0.85
 } = {}) {
+  const { height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const resolvedDefaultHeight = defaultHeight ?? screenHeight * maxHeightPercentage;
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [modalHeight, setModalHeight] = useState(defaultHeight);
+  const [modalHeight, setModalHeight] = useState(resolvedDefaultHeight);
+
+  useEffect(() => {
+    if (keyboardHeight === 0) {
+      setModalHeight(resolvedDefaultHeight);
+    }
+  }, [keyboardHeight, resolvedDefaultHeight]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow';
@@ -50,13 +56,13 @@ export function useAndroidKeyboardAwareModal({
         if (Platform.OS === 'android') {
           // Calculate available space above keyboard
           // We subtract insets.top to respect the status bar
-          const availableHeight = SCREEN_HEIGHT - height - insets.top;
+          const availableHeight = screenHeight - height - insets.top - insets.bottom;
 
           // Shrink modal if it would exceed available height
           // We add a small buffer (20px)
           const adjustedHeight = Math.min(
             availableHeight - 20,
-            defaultHeight
+            resolvedDefaultHeight
           );
 
           setModalHeight(adjustedHeight);
@@ -69,7 +75,7 @@ export function useAndroidKeyboardAwareModal({
       () => {
         setKeyboardHeight(0);
         if (Platform.OS === 'android') {
-          setModalHeight(defaultHeight);
+          setModalHeight(resolvedDefaultHeight);
         }
       }
     );
@@ -78,7 +84,7 @@ export function useAndroidKeyboardAwareModal({
       keyboardDidShowListener.remove();
       keyboardDidHideListener.remove();
     };
-  }, [defaultHeight, maxHeightPercentage, insets.top]);
+  }, [resolvedDefaultHeight, maxHeightPercentage, insets.top, insets.bottom, screenHeight]);
 
   // Helper function to get KeyboardAvoidingView props
   const getKeyboardAvoidingViewProps = (additionalProps = {}) => ({

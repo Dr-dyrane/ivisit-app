@@ -12,6 +12,8 @@ export default function EntryActionButton({
 	height = 60,
 	fullWidth = true,
 	iconName = null,
+	accessibilityLabel,
+	accessibilityHint,
 }) {
 	const { isDarkMode } = useTheme();
 	const isPrimary = variant === "primary";
@@ -33,18 +35,42 @@ export default function EntryActionButton({
 	return (
 		<Pressable
 			onPress={onPress}
-			style={({ pressed }) => [
+			accessible
+			accessibilityRole="button"
+			accessibilityLabel={accessibilityLabel || label}
+			accessibilityHint={accessibilityHint}
+			focusable={Platform.OS === "web" ? true : undefined}
+			style={({ pressed, focused }) => [
 				styles.base,
 				{
 					width: fullWidth ? "100%" : "auto",
 					minHeight: height,
 					backgroundColor,
 					borderRadius: radius,
+					borderWidth: focused ? 2 : 0,
+					borderColor: focused
+						? isPrimary
+							? "rgba(255,255,255,0.74)"
+							: COLORS.brandPrimary
+						: "transparent",
 					opacity: pressed ? 0.92 : 1,
 					transform: [{ scale: pressed ? 0.978 : 1 }],
 					shadowColor: isPrimary ? COLORS.brandPrimary : "#0F172A",
-					shadowOpacity: isPrimary ? (isDarkMode ? 0.34 : 0.18) : isDarkMode ? 0.18 : 0.05,
-					shadowRadius: isPrimary ? 28 : 20,
+					shadowOpacity:
+						focused && Platform.OS === "web"
+							? Math.max(
+								isPrimary ? (isDarkMode ? 0.34 : 0.18) : isDarkMode ? 0.18 : 0.05,
+								0.22,
+							)
+							: isPrimary
+								? (isDarkMode ? 0.34 : 0.18)
+								: isDarkMode
+									? 0.18
+									: 0.05,
+					shadowRadius:
+						focused && Platform.OS === "web"
+							? (isPrimary ? 34 : 26)
+							: (isPrimary ? 28 : 20),
 				},
 				Platform.OS === "web" ? styles.cursor : null,
 			]}

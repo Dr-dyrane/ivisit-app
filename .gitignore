@@ -5,7 +5,10 @@ node_modules/
 
 # Expo
 .expo/
+.vercel/
 dist/
+dist-review/
+dist-review-next/
 web-build/
 
 # Native
@@ -37,3 +40,7 @@ yarn-error.*
 
 # test artifacts
 supabase/tests/validation/
+test-results/
+tmp-screens/
+
+.vercel

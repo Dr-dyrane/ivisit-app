@@ -13,7 +13,6 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
-import { isValidEmail } from "../../utils/validation";
 import usePhoneValidation from "../../hooks/validators/usePhoneValidation";
 import useCountryDetection from "../../hooks/validators/useCountryDetection";
 import CountryPickerModal from "../register/CountryPickerModal";
@@ -237,7 +236,7 @@ export default function SmartContactInput({
                         ref={inputRef}
                         className="flex-1 text-xl font-bold"
                         style={{ color: colors.text }}
-                        placeholder="Email or Phone"
+                        placeholder="Phone or email"
                         placeholderTextColor={colors.label}
                         // Always use default to avoid flicker when switching intent mid-way
                         keyboardType="default"
@@ -316,8 +315,8 @@ export default function SmartContactInput({
                 style={{ color: colors.label }}
             >
                 {contactType === "phone" || !contactType
-                    ? `Using ${country.name} phone for secure access.`
-                    : "Verification codes will be sent to your email."}
+                    ? `Use your ${country.name} number to continue.`
+                    : "We'll send a code to your email."}
             </Text>
         </View>
     );

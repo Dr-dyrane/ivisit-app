@@ -1,6 +1,6 @@
 export const WELCOME_COPY = {
 	headline: "Get help now",
-	helper: "We're finding help near you.",
+	helper: "Connecting you to care nearby.",
 	chip: "Available near you",
 };
 

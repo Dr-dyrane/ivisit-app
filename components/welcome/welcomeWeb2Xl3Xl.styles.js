@@ -1,0 +1,60 @@
+import buildWideWebWelcomeTheme from "./buildWideWebWelcomeTheme";
+
+export function createWelcomeWeb2Xl3XlTheme({
+	viewportHeight = 1120,
+	viewportWidth = 1536,
+	isDarkMode = true,
+} = {}) {
+	return buildWideWebWelcomeTheme({
+		surface: "web-2xl-3xl",
+		viewportHeight,
+		viewportWidth,
+		isDarkMode,
+		panelDark: "rgba(12, 18, 32, 0.44)",
+		panelLight: "rgba(255,255,255,0.56)",
+		panelRingLight: "rgba(255,255,255,0.84)",
+		heroRingOpacityLight: 0.42,
+		resolveMetrics: ({ viewportHeight: currentHeight, viewportWidth: currentWidth }) => ({
+			viewportHeight: currentHeight,
+			topPadding: currentHeight < 1000 ? 48 : 64,
+			bottomPadding: 44,
+			horizontalPadding: 72,
+			stageWidth: Math.min(Math.max(currentWidth - 160, 1640), 2140),
+			leftColumnWidth: Math.min(Math.max(currentWidth * 0.29, 500), 620),
+			logoSize: 62,
+			brandSize: 38,
+			brandMarginTop: 14,
+			brandLetterSpacing: -1.2,
+			heroWidth: Math.min(Math.max(currentWidth * 0.38, 760), 940),
+			heroHeight: Math.min(Math.max(currentHeight * 0.5, 520), 680),
+			heroPanelExtraHeight: 110,
+			heroPanelRadius: 52,
+			heroShadowRadius: 34,
+			heroShadowHeight: 22,
+			heroRingScale: 0.78,
+			headlineSize: currentWidth >= 2200 ? 92 : 84,
+			headlineLineHeight: currentWidth >= 2200 ? 96 : 88,
+			headlineLetterSpacing: -2.2,
+			helperSize: 24,
+			helperLineHeight: 36,
+			helperMaxWidth: 560,
+			primaryActionHeight: 70,
+			secondaryActionHeight: 64,
+			actionsMaxWidth: 540,
+			secondaryActionMaxWidth: 484,
+			signInSize: 18,
+			signInLineHeight: 24,
+			stageSpacing: {
+				brandToHeadline: 42,
+				headlineToHelper: 18,
+				helperToChip: 20,
+				chipToActions: 42,
+				actionGap: 16,
+				signInTop: 18,
+				columnGap: currentWidth >= 2200 ? 120 : 96,
+			},
+		}),
+	});
+}
+
+export default createWelcomeWeb2Xl3XlTheme;

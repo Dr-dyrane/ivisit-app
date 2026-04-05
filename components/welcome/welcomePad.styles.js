@@ -1,6 +1,9 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "../../constants/colors";
-import { getWelcomeThemePalette } from "../../constants/welcomeTheme";
+import {
+	getWelcomeAmbientGeometry,
+	getWelcomeThemePalette,
+} from "../../constants/welcomeTheme";
 
 export function createWelcomePadTheme({
 	isDarkMode,
@@ -11,6 +14,10 @@ export function createWelcomePadTheme({
 	entryPrimaryActionHeight,
 }) {
 	const colors = getWelcomeThemePalette({ isDarkMode });
+	const ambient = getWelcomeAmbientGeometry({
+		surface: "ios-pad",
+		isDarkMode,
+	});
 
 	const metrics = {
 		topPadding: insetsTop + (isShortHeight ? 28 : 40),
@@ -44,23 +51,13 @@ export function createWelcomePadTheme({
 		},
 		topGlow: {
 			position: "absolute",
-			top: -110,
-			left: "-10%",
-			width: 320,
-			height: 320,
-			borderRadius: 999,
+			...ambient.topGlow,
 			backgroundColor: colors.topGlow,
-			opacity: isDarkMode ? 0.06 : 0.04,
 		},
 		bottomGlow: {
 			position: "absolute",
-			right: "-10%",
-			bottom: -120,
-			width: 320,
-			height: 320,
-			borderRadius: 999,
+			...ambient.bottomGlow,
 			backgroundColor: colors.bottomGlow,
-			opacity: isDarkMode ? 0.12 : 0.18,
 		},
 		scrollContent: {
 			flexGrow: 1,

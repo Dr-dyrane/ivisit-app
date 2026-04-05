@@ -1,6 +1,9 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "../../constants/colors";
-import { getWelcomeThemePalette } from "../../constants/welcomeTheme";
+import {
+	getWelcomeAmbientGeometry,
+	getWelcomeThemePalette,
+} from "../../constants/welcomeTheme";
 
 export function createWelcomeAndroidChromebookTheme({
 	isDarkMode,
@@ -16,6 +19,10 @@ export function createWelcomeAndroidChromebookTheme({
 		panel: isDarkMode ? "rgba(11, 18, 32, 0.5)" : "rgba(255,255,255,0.56)",
 		ring: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.84)",
 	};
+	const ambient = getWelcomeAmbientGeometry({
+		surface: "android-chromebook",
+		isDarkMode,
+	});
 
 	const metrics = {
 		topPadding: insetsTop + (isShortHeight ? 30 : 48),
@@ -46,23 +53,13 @@ export function createWelcomeAndroidChromebookTheme({
 		gradient: { flex: 1, backgroundColor: colors.backgroundBase },
 		topGlow: {
 			position: "absolute",
-			top: -140,
-			left: "-6%",
-			width: 420,
-			height: 420,
-			borderRadius: 999,
+			...ambient.topGlow,
 			backgroundColor: colors.topGlow,
-			opacity: isDarkMode ? 0.05 : 0.03,
 		},
 		bottomGlow: {
 			position: "absolute",
-			right: "-8%",
-			bottom: -180,
-			width: 520,
-			height: 520,
-			borderRadius: 999,
+			...ambient.bottomGlow,
 			backgroundColor: colors.bottomGlow,
-			opacity: isDarkMode ? 0.1 : 0.18,
 		},
 		scrollContent: {
 			flexGrow: 1,

@@ -17,6 +17,9 @@ export default function SocialAuthRow() {
 			className="flex-row justify-center"
 			style={{
 				gap: 16,
+				alignSelf: "center",
+				width: "100%",
+				maxWidth: 360,
 			}}
 		>
 			<SocialAuthButton provider="apple" />

@@ -96,8 +96,7 @@ export default function ForgotPasswordCard({ onResetInitiated }) {
 				className="text-sm font-medium mb-6"
 				style={{ color: COLORS.textMuted }}
 			>
-				Enter your email and we'll send you a secure code to reset your
-				password.
+				Enter your email and we'll send you a reset link.
 			</Text>
 
 			{error && (
@@ -200,7 +199,7 @@ export default function ForgotPasswordCard({ onResetInitiated }) {
 							color: isValid && !loading ? COLORS.bgLight : COLORS.textMuted,
 						}}
 					>
-						{loading ? "SENDING..." : "SEND RESET CODE"}
+						{loading ? "SENDING..." : "SEND RESET LINK"}
 					</Text>
 				</Pressable>
 			</Animated.View>

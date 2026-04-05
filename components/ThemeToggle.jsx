@@ -39,20 +39,24 @@ export default function ThemeToggle({ showLabel = true }) {
 	const pathname = usePathname();
 	const isAndroid = Platform.OS === "android";
 	const isWeb = Platform.OS === "web";
+	const isWelcomeRoute = pathname === "/";
+	const shellSize = isWelcomeRoute ? 44 : 48;
+	const expandedHeight = isWelcomeRoute ? 100 : 110;
+	const targetOpacity = isWelcomeRoute ? 0.46 : 0.6;
+	const iconSize = isWelcomeRoute ? 18 : 20;
+	const iconCircleSize = isWelcomeRoute ? 32 : 36;
 
 	// Component states
 	const [mounted, setMounted] = useState(false);
 	const [expanded, setExpanded] = useState(false);
 
 	// Animation refs
-	const heightAnim = useRef(new Animated.Value(48)).current;
+	const heightAnim = useRef(new Animated.Value(shellSize)).current;
 	const opacityAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(20)).current;
 	const labelFadeAnim = useRef(new Animated.Value(1)).current;
 
 	const collapseTimer = useRef(null);
-	const iconSize = 20;
-
 	// ------------------------
 	// Lifecycle Effects
 	// ------------------------
@@ -69,7 +73,7 @@ export default function ThemeToggle({ showLabel = true }) {
 
 		Animated.parallel([
 			Animated.timing(opacityAnim, {
-				toValue: 0.6,
+				toValue: targetOpacity,
 				duration: 1000,
 				useNativeDriver: Platform.OS !== 'web',
 			}),
@@ -79,7 +83,11 @@ export default function ThemeToggle({ showLabel = true }) {
 				useNativeDriver: Platform.OS !== 'web',
 			}),
 		]).start();
-	}, [mounted]);
+	}, [mounted, targetOpacity]);
+
+	useEffect(() => {
+		heightAnim.setValue(expanded ? expandedHeight : shellSize);
+	}, [expanded, expandedHeight, shellSize, heightAnim]);
 
 	// Collapse on navigation
 	useEffect(() => {
@@ -96,7 +104,7 @@ export default function ThemeToggle({ showLabel = true }) {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
 		Animated.spring(heightAnim, {
-			toValue: 110,
+			toValue: expandedHeight,
 			friction: 8,
 			tension: 50,
 			useNativeDriver: false,
@@ -110,13 +118,13 @@ export default function ThemeToggle({ showLabel = true }) {
 		setExpanded(false);
 
 		Animated.spring(heightAnim, {
-			toValue: 48,
+			toValue: shellSize,
 			friction: 8,
 			tension: 50,
 			useNativeDriver: false,
 		}).start(() => {
 			Animated.timing(opacityAnim, {
-				toValue: 0.6,
+				toValue: targetOpacity,
 				duration: 500,
 				useNativeDriver: Platform.OS !== 'web',
 			}).start();
@@ -155,7 +163,7 @@ export default function ThemeToggle({ showLabel = true }) {
 			style={{
 				position: "absolute",
 				right: 16,
-				top: Platform.OS === "ios" ? 54 : isWeb ? 18 : 34,
+				top: Platform.OS === "ios" ? (isWelcomeRoute ? 50 : 54) : isWeb ? 18 : 34,
 				opacity: opacityAnim,
 				transform: [{ translateX: slideAnim }],
 				zIndex: 99999,
@@ -164,9 +172,9 @@ export default function ThemeToggle({ showLabel = true }) {
 		>
 			<Animated.View
 				style={{
-					width: 48,
+					width: shellSize,
 					height: heightAnim,
-					borderRadius: 24,
+					borderRadius: shellSize / 2,
 					overflow: "visible",
 					backgroundColor: "transparent",
 					borderWidth: isAndroid ? 0 : 1,
@@ -198,7 +206,7 @@ export default function ThemeToggle({ showLabel = true }) {
 						styles.toggleClip,
 						{
 							height: "100%",
-							borderRadius: 24,
+							borderRadius: shellSize / 2,
 							backgroundColor: isAndroid
 								? androidGlassSurface
 								: (isDarkMode ? "rgba(134, 16, 14, 0.05)" : "rgba(255, 255, 255, 0.05)"),
@@ -228,6 +236,7 @@ export default function ThemeToggle({ showLabel = true }) {
 							}
 							style={({ pressed }) => [
 								styles.iconCircle,
+								{ width: iconCircleSize, height: iconCircleSize, borderRadius: iconCircleSize / 2 },
 								expanded &&
 								!isDarkMode && { backgroundColor: COLORS.brandPrimary },
 								pressed && { opacity: 0.7 },
@@ -252,11 +261,12 @@ export default function ThemeToggle({ showLabel = true }) {
 						{expanded && (
 							<Pressable
 								onPress={isDarkMode ? null : handleThemeChange}
-								style={[
-									styles.iconCircle,
-									isDarkMode && { backgroundColor: COLORS.bgLight },
-								]}
-							>
+							style={[
+								styles.iconCircle,
+								{ width: iconCircleSize, height: iconCircleSize, borderRadius: iconCircleSize / 2 },
+								isDarkMode && { backgroundColor: COLORS.bgLight },
+							]}
+						>
 								<Feather
 									name="moon"
 									size={iconSize}
