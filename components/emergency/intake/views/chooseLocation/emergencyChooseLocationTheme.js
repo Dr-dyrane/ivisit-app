@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 import { COLORS } from "../../../../../constants/colors";
 
 const STACK_PROFILE = {
@@ -205,7 +205,7 @@ const VARIANT_PROFILES = {
 		sectionGap: 16,
 		heroTopPadding: 18,
 		actionTopSpacing: 12,
-		actionBottomSpacing: 0,
+		actionBottomSpacing: 8,
 		primaryHeight: 56,
 	},
 	"web-sm-wide": {
@@ -695,6 +695,19 @@ export default function createEmergencyChooseLocationTheme({
 					: 0,
 			gap: 12,
 			flexShrink: 0,
+		},
+		floatingActionDock: {
+			paddingTop: 10,
+			paddingHorizontal: 10,
+			paddingBottom: 8,
+			borderRadius: 26,
+			backgroundColor: isDarkMode ? "rgba(11,15,26,0.72)" : "rgba(255,255,255,0.88)",
+			shadowColor: isDarkMode ? "#000000" : "#0F172A",
+			shadowOpacity: isDarkMode ? 0.24 : 0.12,
+			shadowRadius: 18,
+			shadowOffset: { width: 0, height: 10 },
+			elevation: 0,
+			backdropFilter: Platform.OS === "web" ? "blur(14px)" : undefined,
 		},
 		sideMapWrap: {
 			width: "100%",

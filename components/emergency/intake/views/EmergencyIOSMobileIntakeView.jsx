@@ -330,6 +330,9 @@ export default function EmergencyIOSMobileIntakeView({
 	const routePreviewRefreshTimeoutRef = useRef(null);
 	const snapshotHashRef = useRef("");
 	const committedMapRef = useRef(null);
+	const scrollViewRef = useRef(null);
+	const chooseLocationActionYRef = useRef(0);
+	const lastCtaAutoScrollKeyRef = useRef("");
 	const { routeCoordinates, routeInfo, isCalculatingRoute, calculateRoute, clearRoute } = useMapRoute();
 
 	const entranceOpacity = useRef(new Animated.Value(0)).current;
@@ -1236,11 +1239,19 @@ export default function EmergencyIOSMobileIntakeView({
 		useIosPadLayout && !shouldShowReviewShell && !isResponderMatched;
 	const shouldUseChooseLocationStage = !shouldUseChooseHospitalStage && !isResponderMatched;
 	const shouldLockWebViewport =
-		(isWebMobile || isWideDesktopWeb) && shouldUseChooseLocationStage;
+		shouldUseChooseLocationStage &&
+		((isWideDesktopWeb && !isVeryShortHeight) ||
+			(isWebMobile && !isVeryShortHeight && height >= 760));
 	const confirmPrimaryLabel =
 		flowState === EMERGENCY_FLOW_STATES.location_failed.key
 			? EMERGENCY_FLOW_STATES.location_failed.primaryAction
 			: EMERGENCY_FLOW_STATES.confirm_location.primaryAction;
+	const handleChooseLocationActionLayout = useCallback((event) => {
+		const nextY = Number(event?.nativeEvent?.layout?.y);
+		if (Number.isFinite(nextY)) {
+			chooseLocationActionYRef.current = nextY;
+		}
+	}, []);
 	const centeredShellOpacity = reviewTransition.interpolate({
 		inputRange: [0, 1],
 		outputRange: [1, 0],
@@ -1265,6 +1276,37 @@ export default function EmergencyIOSMobileIntakeView({
 		inputRange: [0, 1],
 		outputRange: [1, 1.04],
 	});
+
+	useEffect(() => {
+		if (
+			Platform.OS !== "web" ||
+			shouldLockWebViewport ||
+			!shouldUseChooseLocationStage ||
+			(flowState !== EMERGENCY_FLOW_STATES.confirm_location.key &&
+				flowState !== EMERGENCY_FLOW_STATES.location_failed.key)
+		) {
+			return undefined;
+		}
+
+		const scrollKey = [flowState, activeAddressModel?.primaryText || "", Math.round(height)].join(":");
+		if (lastCtaAutoScrollKeyRef.current === scrollKey) {
+			return undefined;
+		}
+
+		const timeout = setTimeout(() => {
+			const targetY = Math.max(0, chooseLocationActionYRef.current - Math.max(16, height * 0.12));
+			scrollViewRef.current?.scrollTo?.({ y: targetY, animated: true });
+			lastCtaAutoScrollKeyRef.current = scrollKey;
+		}, 220);
+
+		return () => clearTimeout(timeout);
+	}, [
+		activeAddressModel?.primaryText,
+		flowState,
+		height,
+		shouldLockWebViewport,
+		shouldUseChooseLocationStage,
+	]);
 
 	return (
 		<LinearGradient colors={colors.backgroundGradient} style={styles.gradient}>
@@ -1293,6 +1335,7 @@ export default function EmergencyIOSMobileIntakeView({
 				}}
 			/>
 			<ScrollView
+				ref={scrollViewRef}
 				nativeID={
 					screenVariant === "web-mobile"
 						? "emergency-web-mobile-scroll"
@@ -1378,6 +1421,7 @@ export default function EmergencyIOSMobileIntakeView({
 									findingGlowOpacity={findingGlowOpacity}
 									findingGlowScale={findingGlowScale}
 									findingRailProgress={findingRailProgress}
+								onActionLayout={handleChooseLocationActionLayout}
 								/>
 							) : null}
 						</Animated.View>

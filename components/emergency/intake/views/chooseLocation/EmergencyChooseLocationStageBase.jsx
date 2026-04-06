@@ -59,6 +59,7 @@ export default function EmergencyChooseLocationStageBase({
 	findingGlowOpacity,
 	findingGlowScale,
 	findingRailProgress,
+	onActionLayout,
 }) {
 	const { isDarkMode } = useTheme();
 	const { height } = useAuthViewport();
@@ -72,6 +73,7 @@ export default function EmergencyChooseLocationStageBase({
 	const actionLayout = profile.actionLayout || "quiet-link";
 	const actionPlacement = profile.actionPlacement || "after-map";
 	const useSideMapPlacement = profile.sideMapPlacement === true;
+	const useFloatingActionDock = Platform.OS === "web" && variant === "web-mobile";
 	const useInlineSecondaryLocationAction = actionLayout === "inline-icon";
 	const usePairedActionBand = actionLayout === "paired";
 	const useSurfacelessPairedActions =
@@ -99,7 +101,10 @@ export default function EmergencyChooseLocationStageBase({
 			}
 		: null;
 	const actionBlock = (
-		<View style={styles.actionWell}>
+		<View
+			onLayout={onActionLayout}
+			style={[styles.actionWell, useFloatingActionDock ? styles.floatingActionDock : null]}
+		>
 			{flowState === "request_started" ? (
 				<Animated.View style={[styles.loadingWell, { opacity: skeletonOpacity }]}>
 					{useInlineSecondaryLocationAction ? (

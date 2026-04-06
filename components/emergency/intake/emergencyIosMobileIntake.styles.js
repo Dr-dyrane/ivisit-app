@@ -53,11 +53,16 @@ export function createEmergencyIosMobileIntakeTheme({
 			? (isVeryShortHeight ? 30 : 38)
 		: headerOffset +
 			(isDesktop ? 40 : isTablet ? 32 : isVeryShortHeight ? 18 : 30);
+	const webBottomBuffer = isWebMobile
+		? Math.max(insetsBottom, isVeryShortHeight ? 30 : 14)
+		: isWebWideChooseLocation
+			? Math.max(insetsBottom, isVeryShortHeight ? 20 : 12)
+			: 0;
 	const bottomPadding = isAndroidMobile
 		? insetsBottom + (isVeryShortHeight ? 18 : 24)
-		: isWebMobile
-			? (isVeryShortHeight ? 12 : 16)
-		: insetsBottom + (isDesktop ? 28 : isTablet ? 24 : isVeryShortHeight ? 18 : 24);
+		: isWebMobile || isWebWideChooseLocation
+			? webBottomBuffer
+			: insetsBottom + (isDesktop ? 28 : isTablet ? 24 : isVeryShortHeight ? 18 : 24);
 	const stageMinHeight = Math.max(viewportHeight - topPadding - bottomPadding, 0);
 
 	const metrics = {
