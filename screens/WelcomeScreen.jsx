@@ -19,6 +19,11 @@ const WelcomeScreen = () => {
 	);
 
 	const handleIntentPress = (intent) => {
+		if (intent === "emergency") {
+			router.push("/(auth)/request-help");
+			return;
+		}
+
 		router.push({
 			pathname: "/(auth)/signup",
 			params: { intent },

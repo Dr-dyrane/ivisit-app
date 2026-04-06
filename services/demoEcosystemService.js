@@ -10,7 +10,7 @@ export const DEMO_BOOTSTRAP_PHASES = [
 	{
 		key: "hospitals",
 		label: "Creating demo hospitals",
-		description: "Building verified demo hospitals from nearby coverage",
+		description: "Building complete nearby hospitals for demo coverage",
 	},
 	{
 		key: "staff",
@@ -30,6 +30,7 @@ export const DEMO_BOOTSTRAP_PHASES = [
 ];
 
 const DEMO_BOOTSTRAP_STATE_KEY = "@ivisit/demo-bootstrap-state:v1";
+const DEMO_BOOTSTRAP_GUEST_ID_KEY = "@ivisit/demo-bootstrap-guest-id:v1";
 const DEMO_RESEED_DISTANCE_KM = 3;
 const DEMO_RESEED_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
@@ -82,10 +83,42 @@ const calculateDistanceKm = (origin, destination) => {
 	return earthRadiusKm * c;
 };
 
-const invokePhase = async ({ phase, latitude, longitude, radiusKm }) => {
+const createGuestProvisioningId = () =>
+	`guest_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+
+const toProvisioningOwnerSlug = (value) => {
+	const normalized = String(value || "")
+		.replace(/[^a-zA-Z0-9]/g, "")
+		.slice(0, 12)
+		.toLowerCase();
+	return normalized || "guestdemo";
+};
+
+const resolveProvisioningUserId = async (userId) => {
+	const normalizedUserId = normalizeUserKey(userId);
+	if (normalizedUserId && normalizedUserId.toLowerCase() !== "guest") {
+		return normalizedUserId;
+	}
+
+	try {
+		const existingGuestId = await AsyncStorage.getItem(DEMO_BOOTSTRAP_GUEST_ID_KEY);
+		if (existingGuestId && existingGuestId.trim().length > 0) {
+			return existingGuestId.trim();
+		}
+
+		const nextGuestId = createGuestProvisioningId();
+		await AsyncStorage.setItem(DEMO_BOOTSTRAP_GUEST_ID_KEY, nextGuestId);
+		return nextGuestId;
+	} catch (_error) {
+		return normalizedUserId || "guest";
+	}
+};
+
+const invokePhase = async ({ phase, latitude, longitude, radiusKm, userId }) => {
 	const { data, error } = await supabase.functions.invoke("bootstrap-demo-ecosystem", {
 		body: {
 			phase,
+			userId,
 			latitude,
 			longitude,
 			radiusKm,
@@ -108,6 +141,8 @@ const getPhaseMeta = (phaseKey) =>
 	{ key: phaseKey, label: phaseKey, description: "" };
 
 export const demoEcosystemService = {
+	toProvisioningOwnerSlug,
+
 	isDemoHospital(hospital) {
 		if (!hospital || typeof hospital !== "object") return false;
 
@@ -124,12 +159,34 @@ export const demoEcosystemService = {
 			verificationStatus.startsWith("demo") ||
 			features.includes("demo_seed") ||
 			features.includes("demo_verified") ||
+			features.includes("demo_complete") ||
 			features.includes("ivisit_demo")
 		);
 	},
 
 	isDemoFlowActive({ hospital, demoModeEnabled = true } = {}) {
 		return Boolean(demoModeEnabled) && this.isDemoHospital(hospital);
+	},
+
+	shouldSimulatePayments({ hospital, demoModeEnabled = true } = {}) {
+		return this.isDemoFlowActive({ hospital, demoModeEnabled });
+	},
+
+	async getProvisioningUserId(userId) {
+		return resolveProvisioningUserId(userId);
+	},
+
+	async getProvisioningOwnerSlug(userId) {
+		const provisioningUserId = await resolveProvisioningUserId(userId);
+		return toProvisioningOwnerSlug(provisioningUserId);
+	},
+
+	matchesDemoOwner(hospital, ownerSlug) {
+		if (this.isDemoHospital(hospital) !== true) return true;
+		const normalizedOwnerSlug = String(ownerSlug || "").trim().toLowerCase();
+		if (!normalizedOwnerSlug) return false;
+		const hospitalOwner = String(hospital?.demoOwner || "").trim().toLowerCase();
+		return hospitalOwner.length > 0 && hospitalOwner === normalizedOwnerSlug;
 	},
 
 	async getBootstrapState(userId) {
@@ -192,7 +249,7 @@ export const demoEcosystemService = {
 		}
 	},
 
-	async bootstrapDemoEcosystem({ latitude, longitude, radiusKm = 50, onProgress }) {
+	async bootstrapDemoEcosystem({ userId, latitude, longitude, radiusKm = 50, onProgress }) {
 		const coords = normalizeCoordinates({ latitude, longitude });
 		const summary = {
 			organizationId: null,
@@ -211,6 +268,7 @@ export const demoEcosystemService = {
 
 			const result = await invokePhase({
 				phase: phase.key,
+				userId,
 				latitude: coords.latitude,
 				longitude: coords.longitude,
 				radiusKm,
@@ -245,7 +303,8 @@ export const demoEcosystemService = {
 		onProgress,
 	}) {
 		const coords = normalizeCoordinates({ latitude, longitude });
-		const lastBootstrapState = await this.getBootstrapState(userId);
+		const provisioningUserId = await resolveProvisioningUserId(userId);
+		const lastBootstrapState = await this.getBootstrapState(provisioningUserId);
 		const decision = force
 			? { needed: true, reason: "forced", distanceKm: null, ageMs: null }
 			: this.shouldRebootstrapForLocation({
@@ -258,6 +317,7 @@ export const demoEcosystemService = {
 		if (!decision.needed) {
 			return {
 				bootstrapped: false,
+				userId: provisioningUserId,
 				location: coords,
 				lastBootstrapState,
 				...decision,
@@ -265,6 +325,7 @@ export const demoEcosystemService = {
 		}
 
 		const summary = await this.bootstrapDemoEcosystem({
+			userId: provisioningUserId,
 			latitude: coords.latitude,
 			longitude: coords.longitude,
 			radiusKm,
@@ -272,7 +333,7 @@ export const demoEcosystemService = {
 		});
 
 		await this.recordBootstrapState({
-			userId,
+			userId: provisioningUserId,
 			latitude: coords.latitude,
 			longitude: coords.longitude,
 			radiusKm,
@@ -280,6 +341,7 @@ export const demoEcosystemService = {
 
 		return {
 			...summary,
+			userId: provisioningUserId,
 			bootstrapped: true,
 			location: coords,
 			lastBootstrapState,

@@ -117,7 +117,7 @@ export function createWelcomeAndroidTabletTheme({
 		},
 		helper: {
 			color: colors.helper,
-			fontWeight: "500",
+			fontWeight: "400",
 			fontSize: metrics.helperSize,
 			lineHeight: metrics.helperLineHeight,
 			textAlign: "left",
@@ -139,7 +139,7 @@ export function createWelcomeAndroidTabletTheme({
 			color: colors.chipText,
 			fontSize: 14,
 			lineHeight: 18,
-			fontWeight: "700",
+			fontWeight: "400",
 			letterSpacing: 0.2,
 		},
 		actions: {
@@ -156,7 +156,7 @@ export function createWelcomeAndroidTabletTheme({
 			color: colors.support,
 			fontSize: 17,
 			lineHeight: 23,
-			fontWeight: "700",
+			fontWeight: "600",
 			opacity: isDarkMode ? 0.84 : 0.88,
 			textAlign: "left",
 		},

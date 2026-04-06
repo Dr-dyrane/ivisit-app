@@ -19,6 +19,8 @@ This file must stay aligned with [rules.json](./rules.json). If the two conflict
 Active screen dossier:
 
 - [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
+- [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
+- [EMERGENCY_INTEGRATION_AUDIT.md](./EMERGENCY_INTEGRATION_AUDIT.md)
 
 ## Product Truth
 
@@ -55,10 +57,12 @@ The marketing site must not recreate authenticated patient flows.
 
 Current live-facing checkpoint:
 
-- Welcome and auth entry are the active first hardening checkpoint
+- Welcome is the locked first-paint foundation
+- Emergency is the next active hardening checkpoint
 - `app.ivisit.ng` is the live product-facing web PWA
 - preview hospitals remain allowed until live provider coverage expands
 - the detailed welcome target is tracked in [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
+- the emergency action target is tracked in [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
 
 Current working model:
 

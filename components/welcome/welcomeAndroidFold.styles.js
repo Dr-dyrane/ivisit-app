@@ -106,7 +106,7 @@ export function createWelcomeAndroidFoldTheme({
 		},
 		helper: {
 			color: colors.helper,
-			fontWeight: "500",
+			fontWeight: "400",
 			fontSize: metrics.helperSize,
 			lineHeight: metrics.helperLineHeight,
 			textAlign: "center",
@@ -128,7 +128,7 @@ export function createWelcomeAndroidFoldTheme({
 			color: colors.chipText,
 			fontSize: 13,
 			lineHeight: 16,
-			fontWeight: "700",
+			fontWeight: "400",
 			letterSpacing: 0.2,
 		},
 		actions: {
@@ -145,7 +145,7 @@ export function createWelcomeAndroidFoldTheme({
 			color: colors.support,
 			fontSize: 17,
 			lineHeight: 23,
-			fontWeight: "700",
+			fontWeight: "600",
 			opacity: isDarkMode ? 0.84 : 0.88,
 			textAlign: "center",
 		},

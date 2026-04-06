@@ -65,9 +65,11 @@ const LAGOS_DEMO_HOSPITAL_TEMPLATES = [
 
 const DEMO_FEATURE_FLAGS = [
   "demo_seed",
-  "demo_verified",
+  "demo_complete",
   "ivisit_demo",
 ];
+
+const MAPBOX_PROVIDER_LIMIT = 8;
 
 const SERVICE_PRICING_BASELINES = [
   {
@@ -119,6 +121,11 @@ const toSafeString = (value: unknown, fallback = ""): string => {
   if (typeof value !== "string") return fallback;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : fallback;
+};
+
+const toSafeUserSlug = (value: string) => {
+  const normalized = value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
+  return normalized.length > 0 ? normalized.toLowerCase() : "guestdemo";
 };
 
 const toSafeStringArray = (value: unknown): string[] => {
@@ -251,6 +258,90 @@ const getNearbySeedHospitals = async (admin: any, ctx: DemoContext) => {
     .sort((a, b) => a.distance_km - b.distance_km);
 };
 
+const getMapboxSeedHospitals = async (ctx: DemoContext) => {
+  const mapboxToken = Deno.env.get("MAPBOX_ACCESS_TOKEN");
+  if (!mapboxToken) return [];
+
+  const url = `https://api.mapbox.com/search/searchbox/v1/category/hospital?proximity=${ctx.longitude},${ctx.latitude}&limit=${MAPBOX_PROVIDER_LIMIT}&access_token=${mapboxToken}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`mapbox hospital discovery failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const rows = Array.isArray(data?.features)
+    ? data.features
+    : Array.isArray(data?.suggestions)
+      ? data.suggestions
+      : [];
+
+  return rows
+    .map((row: any, index: number) => {
+      const properties = row?.properties ?? {};
+      const geometryCoordinates = Array.isArray(row?.geometry?.coordinates)
+        ? row.geometry.coordinates
+        : null;
+      const centerCoordinates = Array.isArray(row?.center) ? row.center : null;
+      const coordinates = geometryCoordinates ?? centerCoordinates;
+      const latitude = toFiniteNumber(coordinates?.[1]) ?? ctx.latitude;
+      const longitude = toFiniteNumber(coordinates?.[0]) ?? ctx.longitude;
+
+      return {
+        place_id:
+          toSafeString(row?.id) ||
+          toSafeString(properties?.mapbox_id) ||
+          `mapbox_demo_${index}_${Math.abs(Math.round(latitude * 10000))}_${Math.abs(
+            Math.round(longitude * 10000)
+          )}`,
+        name: toSafeString(properties?.name, toSafeString(row?.name, "Nearby Hospital")),
+        address: toSafeString(
+          properties?.full_address,
+          toSafeString(
+            properties?.address,
+            toSafeString(row?.full_address, toSafeString(row?.place_formatted, "Address unavailable"))
+          )
+        ),
+        phone: toSafeString(
+          properties?.phone,
+          toSafeString(properties?.metadata?.phone, "")
+        ),
+        rating: 4.2,
+        type: "standard",
+        image: "",
+        specialties: ["Emergency Medicine", "Internal Medicine"],
+        service_types: ["standard", "premium"],
+        features: ["mapbox_seed", "provider_discovered"],
+        emergency_level: "Level 2",
+        wait_time: "12 min",
+        price_range: "Flexible",
+        distance_km: haversineDistanceKm(
+          { latitude: ctx.latitude, longitude: ctx.longitude },
+          { latitude, longitude }
+        ),
+        latitude,
+        longitude,
+      };
+    })
+    .sort((a: any, b: any) => a.distance_km - b.distance_km);
+};
+
+const dedupeSeedHospitals = (rows: any[]) => {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const key = [
+      toSafeString(row?.place_id).toLowerCase(),
+      toSafeString(row?.name).toLowerCase(),
+      Number(toFiniteNumber(row?.latitude) ?? 0).toFixed(3),
+      Number(toFiniteNumber(row?.longitude) ?? 0).toFixed(3),
+    ].join("|");
+
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 const buildFallbackHospital = (ctx: DemoContext, slotIndex: number) => {
   const offset = DEMO_HOSPITAL_OFFSETS[slotIndex % DEMO_HOSPITAL_OFFSETS.length];
   const latitude = ctx.latitude + offset.lat;
@@ -349,7 +440,10 @@ const ensureDemoHospitals = async (
   organizationId: string,
   orgAdminId: string | null
 ) => {
-  const seeds = await getNearbySeedHospitals(admin, ctx);
+  const nearbySeeds = await getNearbySeedHospitals(admin, ctx);
+  const providerSeeds =
+    nearbySeeds.length >= DEMO_MIN_HOSPITALS ? [] : await getMapboxSeedHospitals(ctx);
+  const seeds = dedupeSeedHospitals([...nearbySeeds, ...providerSeeds]);
   const targetCount = Math.max(
     DEMO_MIN_HOSPITALS,
     Math.min(DEMO_MAX_HOSPITALS, seeds.length > 0 ? seeds.length : DEMO_MIN_HOSPITALS)
@@ -380,7 +474,7 @@ const ensureDemoHospitals = async (
 
     return {
       place_id: toDemoPlaceId(ctx, slotIndex),
-      name: `${toSafeString(seed.name, fallback.name)} (Demo)`,
+      name: toSafeString(seed.name, fallback.name),
       address: toSafeString(seed.address, fallback.address),
       phone: toSafeString(seed.phone, ""),
       rating: toFiniteNumber(seed.rating) ?? 4.2,
@@ -397,8 +491,8 @@ const ensureDemoHospitals = async (
       latitude,
       longitude,
       coordinates: toGeometryPoint(latitude, longitude),
-      verified: true,
-      verification_status: "demo_verified",
+      verified: false,
+      verification_status: "not_certified",
       status: "available",
       organization_id: organizationId,
       org_admin_id: orgAdminId,
@@ -719,16 +813,7 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing Authorization header" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+    const authHeader = req.headers.get("Authorization") ?? "";
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -737,8 +822,19 @@ serve(async (req) => {
       throw new Error("Supabase environment is not configured");
     }
 
+    const body = await req.json();
+    const phase = toSafeString(body?.phase, "full");
+    const requestedUserId = toSafeString(body?.userId, "");
+    const latitude = toFiniteNumber(body?.latitude);
+    const longitude = toFiniteNumber(body?.longitude);
+    const radiusKm = Math.max(1, Math.min(100, Math.round((toFiniteNumber(body?.radiusKm) ?? 50))));
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      throw new Error("latitude and longitude are required");
+    }
+
     const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
+      global: authHeader ? { headers: { Authorization: authHeader } } : undefined,
     });
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
@@ -747,7 +843,10 @@ serve(async (req) => {
       error: userError,
     } = await userClient.auth.getUser();
 
-    if (userError || !user?.id) {
+    const effectiveUserId =
+      !userError && user?.id ? String(user.id) : toSafeString(requestedUserId, "");
+
+    if (!effectiveUserId) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         {
@@ -757,19 +856,9 @@ serve(async (req) => {
       );
     }
 
-    const body = await req.json();
-    const phase = toSafeString(body?.phase, "full");
-    const latitude = toFiniteNumber(body?.latitude);
-    const longitude = toFiniteNumber(body?.longitude);
-    const radiusKm = Math.max(1, Math.min(100, Math.round((toFiniteNumber(body?.radiusKm) ?? 50))));
-
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      throw new Error("latitude and longitude are required");
-    }
-
     const ctx: DemoContext = {
-      userId: user.id,
-      userSlug: user.id.replace(/-/g, "").slice(0, 12),
+      userId: effectiveUserId,
+      userSlug: toSafeUserSlug(effectiveUserId),
       latitude: Number(latitude),
       longitude: Number(longitude),
       radiusKm,

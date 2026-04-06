@@ -22,10 +22,12 @@ export default function HospitalCard({
 	// --- RESTORED ORIGINAL DATA LOGIC ---
 	const hospitalId = hospital?.id;
 	const rawHospitalName = typeof hospital?.name === "string" ? hospital.name : "Hospital";
-	const isDemoHospital = /\(demo\)/i.test(rawHospitalName);
 	const hospitalName = rawHospitalName.replace(/\s*\(demo\)\s*/gi, " ").trim();
 	const hospitalImageUri = typeof hospital?.image === "string" && hospital.image.length > 0 ? hospital.image : null;
 	const hospitalRating = hospital?.rating ?? "--";
+	const isNotCertifiedHospital =
+		String(hospital?.verificationStatus || hospital?.verification_status || "").toLowerCase() ===
+		"not_certified";
 
 	// Treat any non-verified imported/provider-discovered facility as unverified.
 	const isVerifiedHospital = hospital?.verified === true;
@@ -120,7 +122,12 @@ export default function HospitalCard({
 					<Text style={styles.priceText}>{hospitalPrice}</Text>
 				</View>
 
-				{isUnverifiedImportedHospital ? (
+				{isNotCertifiedHospital ? (
+					<View style={styles.unverifiedBadge}>
+						<Ionicons name="alert-circle-outline" size={12} color="#FFFFFF" />
+						<Text style={styles.unverifiedText}>NOT CERTIFIED</Text>
+					</View>
+				) : isUnverifiedImportedHospital ? (
 					<View style={styles.unverifiedBadge}>
 						<Ionicons name="warning" size={12} color="#FFFFFF" />
 						<Text style={styles.unverifiedText}>CALL 911</Text>
@@ -140,11 +147,6 @@ export default function HospitalCard({
 						<Text style={[styles.name, { color: textColor }]} numberOfLines={1}>
 							{hospitalName}
 						</Text>
-						{isDemoHospital ? (
-							<View style={styles.demoIconBadge}>
-								<Ionicons name="flask-outline" size={12} color={COLORS.brandPrimary} />
-							</View>
-						) : null}
 					</View>
 					<View style={styles.ratingBox}>
 						<Ionicons name="star" size={14} color="#FFC107" />

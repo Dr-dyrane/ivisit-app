@@ -43,10 +43,10 @@ export default function EmergencyRequestModalDispatched({
 					)}
 				</View>
 				<Text style={[styles.title, { color: textColor }]}>
-					{isBed ? "Bed Reserved" : "Service Dispatched"}
+					{isBed ? "Bed Reserved" : "Help is on the way"}
 				</Text>
 				<Text style={[styles.subtitle, { color: mutedColor }]}>
-					{isBed ? "You're confirmed" : "Help is on the way"}
+					{isBed ? "You're confirmed" : "Responder assigned and moving toward you."}
 				</Text>
 			</View>
 

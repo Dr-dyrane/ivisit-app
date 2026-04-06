@@ -23,27 +23,35 @@ Primary doctrine still lives in:
 - [rules.json](./rules.json)
 - [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)
 - [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
+- [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
 
 ## Current Goal
 
-Harden the first live-facing patient entry surface so it is production-credible across:
+Carry the product from first paint into the first live emergency action surface so it is production-credible across:
 
 - iOS
 - Android
 - web PWA at `app.ivisit.ng`
 
-Current screen in focus:
+Current screens in focus:
 
-- welcome / first-paint entry state
+- welcome / first-paint entry state is now the locked foundation
+- emergency / first live-action ambulance surface is the next active build
 
 The current job is not "finish the whole app."
 
 The current job is:
 
-- make the first screen feel trustworthy
-- make the first screen responsive across real device classes
-- make the first screen align with the marketing promise
-- make the first screen strong enough to stand up to sponsor review
+- keep welcome stable
+- build the first live-action emergency surface intentionally
+- make the handoff from welcome into ambulance request feel seamless
+- make the first emergency states strong enough to stand up to sponsor review
+
+Immediate next milestone:
+
+- turn the first successful match into a real iVisit state
+- make ETA the primary visual anchor
+- let route and responder details support trust without turning the screen into a dashboard
 
 ## Sprint Principle
 
@@ -94,14 +102,32 @@ The welcome screen foundation is now in place:
 - shared web-surface chrome through [useWelcomeWebSurfaceChrome.js](../components/welcome/hooks/useWelcomeWebSurfaceChrome.js)
 - shared wide-web styling through [buildWideWebWelcomeTheme.js](../components/welcome/buildWideWebWelcomeTheme.js)
 
-The current phase is no longer architecture discovery.
+The next active phase is:
 
-The current phase is:
+- emergency flow audit
+- emergency state model lock
+- refactor of the direct ambulance request path
+- documentation aligned with the real runtime constraints
 
-- surface tuning
-- accessibility baseline
-- validation across implemented bands
-- keeping documentation aligned with the real checkpoint
+Current emergency intake checkpoint:
+
+- emergency intake now follows the welcome-screen implementation pattern: an orchestrator chooses phone, tablet, or desktop composition while flow logic stays shared
+- phone intake is now address-first instead of copy-first
+- `Change location` opens a real bottom search sheet
+- intake-selected location now carries into request creation
+- intake-selected location now also triggers hospital coverage refresh and demo ecosystem backfill when nearby hospital data is too incomplete for a full sponsor-facing experience
+- `finding_nearby_help` is now the reviewed active state before legacy handoff
+- `responder_matched` is the next locked build target and must reuse real trip truth
+- iPhone mobile now holds on the real `responder_matched` state for UI review after request completion
+- the proposed-hospital route preview no longer depends on a lucky re-render to show the polyline
+- route data now preloads in the intake controller while the native map mounts only when the review posture is actually shown
+- hospital reselection in `Choose another` now uses cached route payloads plus a pending-selection swap, so returning to a previous hospital no longer forces the visible review map to mutate in the same interaction window
+- emergency debug checkpoints now exist for hospital-sheet interaction so Expo Go traces can separate healthy JS flow from native map failures
+- the proposed-hospital map now shows the full route immediately when route data is already ready, instead of making the polyline arrive after the review state mounts
+- review-map framing now compensates for horizontal routes and bottom-sheet occlusion so pins do not collapse toward the sheet edge
+- spinner-based map loading has been removed from this lane; sponsor review now sees skeleton-only loading treatment
+- the iPhone committed-response checkpoint now uses the real emergency map contract instead of a placeholder matched card
+- matched and tracking states now reuse the existing trip-progress hook, live responder coordinates, telemetry health, and route map animation inside the iPhone review shell
 
 ## Why This Sprint Matters
 
@@ -121,21 +147,19 @@ If the first screen feels unresolved, the whole product feels less mature.
 
 In scope now:
 
-- welcome / first-paint screen
-- responsive surface behavior across implemented Apple, Android, and web bands
-- welcome tokens, geometry, spacing, and action hierarchy
-- accessibility and keyboard/focus quality on the entry surface
-- deterministic web preview and review behavior
-- ongoing sync with the marketing page `How it works` preview after the app screen is locked
+- emergency / first live-action ambulance surface
+- the handoff from welcome into the ambulance path
+- request-started, location-confirm, finding-help, matched, and tracking states
+- emergency copy discipline and state hierarchy
+- reuse and simplification of the existing request / trip / tracking modules
 
 Not in scope right now:
 
 - redesigning the whole visual system
-- emergency screen redesign
-- full auth flow redesign
 - provider console
 - telemedicine or revisits
-- broad navigation cleanup outside first paint
+- broad navigation cleanup unrelated to emergency flow
+- marketing redesign beyond emergency-flow parity
 
 ## Device Classes
 
@@ -154,45 +178,45 @@ Rule:
 
 - no single scaled layout
 - responsive behavior must be intentional per class
+- once a surface needs distinct posture by size class, use welcome-style orchestration instead of just inflating the phone implementation
 
 ## Current Technical Focus
 
-The welcome screen is being hardened through:
+The emergency build is being grounded through:
 
-- modular view routing
-- shared copy and action definitions
-- shared breakpoint tokens
-- shared welcome theme tokens
-- shared web-surface root handling
-- reduced duplication in wide-web styling
+- runtime audit of [RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx)
+- runtime audit of [EmergencyRequestModal.jsx](../components/emergency/EmergencyRequestModal.jsx)
+- runtime audit of [EmergencyScreen.jsx](../screens/EmergencyScreen.jsx)
+- shared emergency state copy in [emergencyFlowContent.js](../components/emergency/emergencyFlowContent.js)
+- explicit constraints documented in [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
 
 Pipeline rule:
 
-- local exported review builds must not reuse stale service-worker state on `localhost`
+- build the narrow emergency request surface first, not the broad map shell
 
 ## Acceptance Criteria
 
-Before this sprint can be considered complete, the welcome screen must satisfy all of the following:
+Before this sprint can be considered complete, the emergency surface must satisfy all of the following:
 
-1. The first visible action is clear within 2 seconds.
-2. The screen feels like app entry, not marketing.
-3. The screen fills mobile web correctly.
-4. The screen does not collapse into a framed phone-shell on tablet or desktop.
-5. The primary and secondary actions remain obvious across breakpoints.
-6. Reduced-height viewports still keep action visible early.
-7. Live Expo web and exported web are both reliable for review.
-8. The marketing preview can be synchronized from this screen without drift.
+1. The user knows the ambulance request started immediately.
+2. The next action is always obvious.
+3. Request Help clearly resolves to ambulance response.
+4. Location confirmation is minimal and calm.
+5. Finding-help states do not feel empty.
+6. Matched and tracking states reuse real trip truth.
+7. The handoff from welcome feels continuous.
+8. Auth, if required, does not erase intent.
 
 ## Working Method
 
 This sprint follows a strict sequence:
 
-1. Fix the real live render.
-2. Validate on device classes.
-3. Fix the exported review pipeline.
-4. Re-check screenshots.
-5. Tighten accessibility and interaction quality.
-6. Only then move to the next screen.
+1. Audit the real runtime flow.
+2. Lock the emergency state model.
+3. Refactor the direct ambulance request surface.
+4. Reuse matched and tracking truth from existing trip modules.
+5. Validate on device classes.
+6. Only then reconcile the broader emergency tab shell.
 
 No rushing.
 
@@ -204,34 +228,43 @@ One screen at a time.
 
 Known risks during this sprint:
 
-- web can still drift if each band is tuned independently without shared tokens
-- desktop can look underfilled if large surfaces inherit tablet posture
-- native and web can drift if copy or action ordering changes in only one place
-- tracked repo noise can hide what this sprint is actually changing
+- current runtime still routes welcome into auth before emergency intent is fulfilled
+- `EmergencyScreen` can be mistaken for the first live-action surface even though it is broader than needed
+- payment and hospital-selection assumptions can leak too early into urgent flow
+- existing request and tracking logic is strong, but the current UI layering is split across multiple surfaces
+
+## Demo Coverage Rule
+
+When nearby live hospitals are too sparse and the product backfills complete demo hospitals:
+
+- those hospitals may support a full request flow
+- they must remain visibly `NOT CERTIFIED`
+- payment is simulated for sponsor/demo coverage
+- simulated payment must not introduce org-admin approval waits
 
 ## Sponsor Review Framing
 
 When reviewed during this sprint, the correct framing is:
 
-- this is a live hardening checkpoint
-- the team is intentionally locking first paint before moving deeper
-- the goal is product credibility, not decorative redesign
+- this is the first true emergency-action hardening checkpoint
+- the team is intentionally reusing existing trip logic instead of rebuilding fiction
+- the goal is seamless ambulance request, not decorative redesign
 - web, iOS, and Android are being treated as one patient product surface
 
 ## Exit Condition
 
-This sprint ends only when the welcome screen is stable enough that the next screen can inherit from it instead of compensating for it.
+This sprint ends only when the emergency screen is stable enough that downstream tracking and trip surfaces can inherit from it instead of compensating for it.
 
 That means:
 
-- structure is locked
-- cross-device behavior is believable
-- live web review is reliable
-- accessibility baseline is in place
-- the screen reflects the product's real voice
+- request semantics are locked
+- state order is locked
+- the first live-action emergency screen feels continuous from welcome
+- real trip truth is visible without dashboard clutter
+- the screen reflects the product's real voice under urgency
 
 Only after that should work move forward to:
 
-- signup
-- login
-- first post-auth state
+- post-match tracking refinements
+- broader emergency tab reconciliation
+- deeper auth-after-intent integration

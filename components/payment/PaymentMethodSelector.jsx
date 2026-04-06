@@ -29,6 +29,7 @@ const PaymentMethodSelector = ({
   cost,
   hospitalId = null,
   organizationId = null,
+  simulatePayments = false,
   showAddButton = true,
   isManagementMode = false,
   refreshTrigger,
@@ -51,7 +52,7 @@ const PaymentMethodSelector = ({
 
   useEffect(() => {
     loadPaymentMethods();
-  }, [refreshTrigger, hospitalId, cost?.totalCost]);
+  }, [refreshTrigger, hospitalId, cost?.totalCost, simulatePayments]);
 
   const loadPaymentMethods = async () => {
     try {
@@ -84,7 +85,10 @@ const PaymentMethodSelector = ({
       };
 
       // Check Cash Eligibility if we have a hospital context
-      if (hospitalId && cost?.totalCost > 0) {
+      if (simulatePayments) {
+        setIsCashEligible(true);
+        setCheckingCash(false);
+      } else if (hospitalId && cost?.totalCost > 0) {
         setCheckingCash(true);
         try {
           const checkId = organizationId || hospitalId;
@@ -184,6 +188,21 @@ const PaymentMethodSelector = ({
   const renderPaymentMethod = (method) => {
     const isSelected = selectedMethod?.id === method.id;
     const isDefault = method.is_default;
+    const isUnavailable =
+      !simulatePayments &&
+      ((method.is_wallet && !isManagementMode && method.balance < (cost?.totalCost || 0)) ||
+        (method.is_cash && !isCashEligible && !isManagementMode));
+    const methodSubtitle = method.is_wallet
+      ? (simulatePayments
+          ? 'SIMULATED PAYMENT'
+          : (method.balance < (cost?.totalCost || 0) && !isManagementMode
+              ? 'INSUFFICIENT BALANCE'
+              : `AVAILABLE: ${method.currency} ${method.last4}`))
+      : method.is_cash
+        ? (simulatePayments
+            ? 'SIMULATED FOR DEMO'
+            : (isCashEligible ? 'PAY ON ARRIVAL' : (checkingCash ? 'VERIFYING...' : 'UNAVAILABLE (LOW COLLATERAL)')))
+        : (simulatePayments ? 'SIMULATED PAYMENT' : `EXPIRES ${method.expiry_month}/${method.expiry_year}`);
 
     return (
       <View key={method.id} style={styles.methodWrapper}>
@@ -202,10 +221,10 @@ const PaymentMethodSelector = ({
               backgroundColor: colors.cardBg,
               borderColor: isSelected ? colors.activeRing : 'rgba(255,255,255,0.05)',
               borderWidth: 1,
-              opacity: (method.is_wallet && !isManagementMode && method.balance < (cost?.totalCost || 0)) || (method.is_cash && !isCashEligible && !isManagementMode) ? 0.6 : 1
+              opacity: isUnavailable ? 0.6 : 1
             }
           ]}
-          disabled={method.is_cash && !isCashEligible && !isManagementMode}
+          disabled={isUnavailable}
         >
           <View style={styles.methodMain}>
             <View style={[styles.iconBox, { backgroundColor: isSelected ? colors.activeRing : 'rgba(255,255,255,0.05)' }]}>
@@ -226,12 +245,8 @@ const PaymentMethodSelector = ({
                   </View>
                 )}
               </View>
-              <Text style={[styles.methodSub, { color: (method.is_wallet && !isManagementMode && method.balance < (cost?.totalCost || 0)) || (method.is_cash && !isCashEligible && !isManagementMode) ? COLORS.error : colors.muted }]}>
-                {method.is_wallet
-                  ? (method.balance < (cost?.totalCost || 0) && !isManagementMode ? 'INSUFFICIENT BALANCE' : `AVAILABLE: ${method.currency} ${method.last4}`)
-                  : method.is_cash
-                    ? (isCashEligible ? 'PAY ON ARRIVAL' : (checkingCash ? 'VERIFYING...' : 'UNAVAILABLE (LOW COLLATERAL)'))
-                    : `EXPIRES ${method.expiry_month}/${method.expiry_year}`}
+              <Text style={[styles.methodSub, { color: isUnavailable ? COLORS.error : colors.muted }]}>
+                {methodSubtitle}
               </Text>
             </View>
           </View>

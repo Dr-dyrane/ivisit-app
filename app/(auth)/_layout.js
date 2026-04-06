@@ -9,20 +9,26 @@ import WebAppShell from "../../components/web/WebAppShell";
 
 function AuthStackScreens() {
 	const segments = useSegments();
-	const isWelcomeRoute =
-		segments?.[0] === "(auth)" && (!segments?.[1] || segments?.[1] === "index");
+	const authLeaf = segments?.[1] || "index";
+	const isFullCanvasAuthRoute =
+		segments?.[0] === "(auth)" &&
+		(authLeaf === "index" || authLeaf === "request-help");
 
 	return (
-		<WebAppShell variant="auth" surfaceMode={isWelcomeRoute ? "none" : "surface"}>
+		<WebAppShell
+			variant="auth"
+			surfaceMode={isFullCanvasAuthRoute ? "none" : "surface"}
+		>
 			<View style={styles.container}>
 				<AuthHeaderWrapper />
 				<Stack screenOptions={{ headerShown: false }}>
-					<Stack.Screen name="index" options={{ headerShown: false }} />
-					<Stack.Screen name="login" options={{ headerShown: false }} />
-					<Stack.Screen name="onboarding" options={{ headerShown: false }} />
-					<Stack.Screen name="signup" options={{ headerShown: false }} />
-				</Stack>
-			</View>
+				<Stack.Screen name="index" options={{ headerShown: false }} />
+				<Stack.Screen name="request-help" options={{ headerShown: false }} />
+				<Stack.Screen name="login" options={{ headerShown: false }} />
+				<Stack.Screen name="onboarding" options={{ headerShown: false }} />
+				<Stack.Screen name="signup" options={{ headerShown: false }} />
+			</Stack>
+		</View>
 		</WebAppShell>
 	);
 }

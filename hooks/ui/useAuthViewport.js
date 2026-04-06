@@ -1,6 +1,5 @@
 import { Platform, useWindowDimensions } from "react-native";
 import {
-	BREAKPOINTS,
 	DEVICE_BREAKPOINTS,
 	VIEWPORT_BREAKPOINTS,
 } from "../../constants/breakpoints";
@@ -17,7 +16,7 @@ export function useAuthViewport() {
 	const isCompactPhone = width < DEVICE_BREAKPOINTS.compactPhone;
 	const isLargePhone =
 		width >= DEVICE_BREAKPOINTS.largePhone &&
-		width < BREAKPOINTS.md;
+		width < VIEWPORT_BREAKPOINTS.tabletMin;
 	const isLargeMonitor = width >= VIEWPORT_BREAKPOINTS.largeMonitorMin;
 	const isShortHeight = height < 780;
 	const isVeryShortHeight = height < 680;

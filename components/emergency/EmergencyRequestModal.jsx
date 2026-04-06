@@ -25,6 +25,7 @@ import HeaderBackButton from "../navigation/HeaderBackButton";
 import { useEmergency } from "../../contexts/EmergencyContext";
 import TriageIntakeModal from "./triage/TriageIntakeModal";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
+import { EMERGENCY_FLOW_STATES } from "./emergencyFlowContent";
 
 const isValidUUIDValue = (id) =>
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id ?? ""));
@@ -100,6 +101,7 @@ const EmergencyRequestModal = React.memo(({
 	onRequestClose,
 	onRequestInitiated,
 	onRequestComplete,
+	intakeDraft = null,
 	showClose = true,
 	onScroll,
 	scrollContentStyle,
@@ -113,7 +115,7 @@ const EmergencyRequestModal = React.memo(({
 	const [requestStep, setRequestStep] = useState("select");
 	const steps = useMemo(() => mode === "booking"
 		? ["Options", "Verification", "Confirmation"]
-		: ["Resource", "Payment", "Dispatched"], [mode]);
+		: ["Started", "Confirm", "Track"], [mode]);
 
 	const currentStepIndex = useMemo(() => {
 		if (requestStep === "select") return 0;
@@ -139,15 +141,53 @@ const EmergencyRequestModal = React.memo(({
 
 	// --- Header Synchronization ---
 	useEffect(() => {
-		const stepName = steps[currentStepIndex];
 		const hospitalName = requestHospital?.name || "Medical Center";
-		const isFirstStep = currentStepIndex === 0;
-
 		const isWaiting = requestStep === "waiting_approval";
+		const emergencyHeaderState = (() => {
+			if (isWaiting) {
+				return {
+					title: "Confirming request",
+					subtitle: hospitalName ? `VERIFYING WITH ${hospitalName.toUpperCase()}` : "VERIFYING REQUEST",
+				};
+			}
+
+			if (currentStepIndex === 2) {
+				return {
+					title: EMERGENCY_FLOW_STATES.responder_matched.title,
+					subtitle: hospitalName ? `AMBULANCE FROM ${hospitalName.toUpperCase()}` : "AMBULANCE REQUEST",
+				};
+			}
+
+			if (currentStepIndex === 1) {
+				return {
+					title: "Confirm request",
+					subtitle: "ONE LAST STEP",
+				};
+			}
+
+			return {
+				title: "Request Help",
+				subtitle: "AMBULANCE REQUEST",
+			};
+		})();
 
 		setHeaderState({
-			title: isWaiting ? "Awaiting Approval" : (currentStepIndex === 2 ? "Request Complete" : hospitalName),
-			subtitle: isWaiting ? "HOSPITAL REVIEW" : (currentStepIndex === 1 ? "SECURE CHECKOUT" : `STEP ${currentStepIndex + 1}: ${stepName.toUpperCase()}`),
+			title:
+				mode === "booking"
+					? isWaiting
+						? "Awaiting Approval"
+						: currentStepIndex === 2
+							? "Request Complete"
+							: hospitalName
+					: emergencyHeaderState.title,
+			subtitle:
+				mode === "booking"
+					? isWaiting
+						? "HOSPITAL REVIEW"
+						: currentStepIndex === 1
+							? "SECURE CHECKOUT"
+							: `STEP ${currentStepIndex + 1}: ${steps[currentStepIndex].toUpperCase()}`
+					: emergencyHeaderState.subtitle,
 			icon: <Ionicons
 				name={isWaiting ? "time-outline" : (mode === "emergency" ? "medical" : "bed")}
 				size={26}
@@ -200,9 +240,9 @@ const EmergencyRequestModal = React.memo(({
 			requestHospital
 		);
 	}, [allHospitals, requestHospital]);
-	const demoCashFlowActive = useMemo(
+	const demoSimulatedPaymentActive = useMemo(
 		() =>
-			demoEcosystemService.isDemoFlowActive({
+			demoEcosystemService.shouldSimulatePayments({
 				hospital: resolvedRequestHospital,
 				demoModeEnabled: effectiveDemoModeEnabled,
 			}),
@@ -934,11 +974,11 @@ const EmergencyRequestModal = React.memo(({
 		}
 
 		// Cash Eligibility Check
-		if (selectedPaymentMethod.is_cash && demoCashFlowActive) {
-			console.log("[EmergencyRequestModal] Demo cash flow active: skipping collateral gate.");
+		if (selectedPaymentMethod.is_cash && demoSimulatedPaymentActive) {
+			console.log("[EmergencyRequestModal] Demo payment simulation active: skipping collateral gate.");
 		}
 
-		if (selectedPaymentMethod.is_cash && !demoCashFlowActive) {
+		if (selectedPaymentMethod.is_cash && !demoSimulatedPaymentActive) {
 			try {
 				setIsRequesting(true);
 				let targetOrgId = requestHospital.organization_id || requestHospital.organizationId;
@@ -1040,6 +1080,9 @@ const EmergencyRequestModal = React.memo(({
 					paymentMethod: selectedPaymentMethod,
 					pricingSnapshot,
 					triageCheckin: prebookingCheckin,
+					patientLocation: intakeDraft?.location ?? null,
+					locationLabel: intakeDraft?.locationLabel ?? null,
+					locationConfirmedAt: intakeDraft?.locationConfirmedAt ?? null,
 				};
 
 
@@ -1232,8 +1275,8 @@ const EmergencyRequestModal = React.memo(({
 			} else if (selectedAmbulanceType) {
 				registerFAB('ambulance-select', {
 					icon: 'chevron-forward',
-					label: 'Next Step',
-					subText: `Total: $${estimatedCost?.totalCost?.toFixed(0) || '--'}`,
+					label: 'Continue',
+					subText: 'Confirm this ambulance request',
 					visible: true,
 					onPress: handleSubmitRequest,
 					style: 'emergency',
@@ -1247,7 +1290,7 @@ const EmergencyRequestModal = React.memo(({
 		} else if (requestStep === "payment") {
 			registerFAB('payment-confirm', {
 				icon: 'shield-checkmark',
-				label: mode === "booking" ? 'Confirm Slot' : 'Confirm Dispatch',
+				label: mode === "booking" ? 'Confirm Slot' : 'Send Request',
 				subText: `Final: $${estimatedCost?.totalCost?.toFixed(2) || '0.00'}`,
 				visible: true,
 				onPress: handleSubmitRequest,
@@ -1347,7 +1390,7 @@ const EmergencyRequestModal = React.memo(({
 						>
 							{mode === "booking"
 								? "Configure Stay"
-								: "Medical Transport"}
+								: "Ambulance request"}
 						</Text>
 
 						{/* Step-specific content */}
@@ -1563,7 +1606,7 @@ const EmergencyRequestModal = React.memo(({
 
 										<View style={styles.serviceAssurance}>
 											<Text style={[styles.serviceText, { color: 'rgba(255,255,255,0.8)' }]}>
-												PCI-DSS Encrypted Transaction
+												{demoSimulatedPaymentActive ? "SIMULATED DEMO PAYMENT" : "PCI-DSS Encrypted Transaction"}
 											</Text>
 										</View>
 									</LinearGradient>
@@ -1603,12 +1646,38 @@ const EmergencyRequestModal = React.memo(({
 								<Text style={[styles.sectionTitle, { color: requestColors.text, marginLeft: 8, marginBottom: 12 }]}>
 									Payment Method
 								</Text>
+								{demoSimulatedPaymentActive ? (
+									<View
+										style={[
+											styles.demoPaymentNote,
+											{
+												backgroundColor: requestColors.card,
+												borderColor: requestColors.border,
+											},
+										]}
+									>
+										<Ionicons
+											name="sparkles-outline"
+											size={16}
+											color={COLORS.brandPrimary}
+										/>
+										<Text
+											style={[
+												styles.demoPaymentNoteText,
+												{ color: requestColors.textMuted },
+											]}
+										>
+											Payment is simulated for this demo hospital. Dispatch will not wait for admin confirmation.
+										</Text>
+									</View>
+								) : null}
 								<PaymentMethodSelector
 									selectedMethod={selectedPaymentMethod}
 									onMethodSelect={setSelectedPaymentMethod}
 									cost={estimatedCost}
 									hospitalId={requestHospital?.id}
 									organizationId={estimatedCost?.orgFee?.organizationId}
+									simulatePayments={demoSimulatedPaymentActive}
 								/>
 							</View>
 						</View>
@@ -2015,6 +2084,23 @@ const styles = StyleSheet.create({
 	},
 	paymentSelectorContainer: {
 		marginTop: 8,
+	},
+	demoPaymentNote: {
+		marginHorizontal: 8,
+		marginBottom: 12,
+		borderRadius: 16,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		borderWidth: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+	},
+	demoPaymentNoteText: {
+		flex: 1,
+		fontSize: 12,
+		lineHeight: 17,
+		fontWeight: "600",
 	},
 	costBanner: {
 		borderRadius: 24,

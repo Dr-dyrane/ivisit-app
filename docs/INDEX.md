@@ -52,6 +52,9 @@ docs/
 ## Primary Navigation
 
 - Product blueprint: [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)
+- Welcome screen dossier: [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
+- Emergency screen dossier: [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
+- Emergency integration audit: [EMERGENCY_INTEGRATION_AUDIT.md](./EMERGENCY_INTEGRATION_AUDIT.md)
 - Docs entry: [README.md](./README.md)
 - Workflow map hub: [flows/README.md](./flows/README.md)
 - Android glass standard: [product_design/ANDROID_GLASS_PATTERN.md](./product_design/ANDROID_GLASS_PATTERN.md)

@@ -154,6 +154,12 @@ Design characteristics:
 - soft depth
 - red used with restraint
 
+Typography rule:
+
+- headlines can stay bold
+- helper and support lines should default to regular weight so they do not compete with the headline
+- quiet tertiary text such as `Sign in` should stay softer than the main CTA hierarchy, including in font weight
+
 The goal is not "minimal for its own sake."
 
 The goal is:
@@ -425,6 +431,12 @@ Preferred direction:
 - `Ready to connect you to help.`
 
 The support line should not sound like onboarding instruction.
+
+Typography note:
+
+- the welcome family now uses lighter helper/support weights across iPhone, Android, tablet, desktop, and web
+- this is intentional and should not be reverted casually
+- if support copy starts competing with the headline again, the hierarchy has drifted
 
 Language system rule:
 

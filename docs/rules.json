@@ -21,6 +21,10 @@
         "Coordinate handoff",
         "Continue into follow-up care"
       ],
+      "primary_action_meaning": {
+        "request_help_user_facing": "Request Help remains the human CTA.",
+        "request_help_system_meaning": "For the urgent path, Request Help maps to ambulance request."
+      },
       "rule": "Only actions that strengthen ambulance dispatch or hospital bed access may lead the experience.",
       "anti_patterns": [
         "feature-first home screens",
@@ -57,6 +61,11 @@
     },
     "human_interface_guidelines": {
       "rule": "The interface must feel calm, direct, borderless, and low-friction.",
+      "typography_rules": [
+        "headlines may use strong weight, but support text should default to regular weight unless explicit emphasis is necessary",
+        "helper, subtitle, and meta text must not compete with the headline or dominant value",
+        "quiet tertiary actions such as Sign in should read softer than primary and secondary CTAs, including in font weight"
+      ],
       "surface_rules": [
         "avoid visible borders where spacing, background contrast, and elevation can create separation",
         "prefer soft depth and whitespace over hard outlines",
@@ -84,7 +93,8 @@
         "headlines communicate outcome, not category",
         "buttons describe the action, not the implementation",
         "status text explains what is happening now",
-        "support text is concise and only appears when needed"
+        "support text is concise and only appears when needed",
+        "urgent decision sheets stay silent unless helper copy directly changes the user's choice"
       ],
       "language_rules": [
         "prefer decision copy over explanatory copy",
@@ -138,6 +148,7 @@
         "the first screen is not a feature list or dashboard",
         "the primary action is obvious immediately",
         "setup steps feel like continuation, not friction",
+        "auth happens after intent where feasible, not before intent by default",
         "auth and profile completion remain calm and linear"
       ],
       "anti_patterns": [
@@ -172,16 +183,36 @@
         "every action gives visible feedback immediately",
         "loading states are meaningful, not generic",
         "requesting, matched, tracking, and arrival states are explicit",
-        "realtime changes reflect backend truth without stale UI"
+        "if the system proposes one hospital before commitment, that review state is explicit and separate from true matched state",
+        "active urgent-phase drafts should persist locally across refresh until the user exits the flow or a live request fully commits",
+        "realtime changes reflect backend truth without stale UI",
+        "route previews must preload route data before the map-backed state appears, instead of depending on hidden native map mounts",
+        "destination changes inside a map-backed review must use stable route keys, cache previous route payloads, and treat the next destination as pending until the replacement route is ready",
+        "location-to-hospital transitions should preserve geographic continuity instead of hard-cutting from one map context to another",
+        "if route data is already ready before a review map mounts, show the full route immediately and let the screen transition provide the motion instead of delaying the polyline",
+        "route-preview framing must account for review-sheet occlusion, including stronger upward bias for horizontally dominant routes",
+        "do not use activity indicators for emergency map-loading states; use skeleton or scrim-based loading treatment instead"
       ],
       "status_style": [
         "state text should be human and present-tense",
         "never leave users in a blank or silent state",
         "feedback should reduce panic, not increase it"
-      ]
+      ],
+      "emergency_matched_state": {
+        "rule": "Once a responder is matched, the interface must pivot from searching to arrival confidence immediately.",
+        "checks": [
+          "ETA is the dominant value on the screen",
+          "route or map context supports trust without becoming the primary task",
+          "matched and tracking states should reuse the existing trip-progress, telemetry, and route-map contracts instead of inventing a second tracking UI",
+          "responder or unit identity is secondary to ETA clarity",
+          "matched state must feel like continuation, not a new dashboard"
+        ]
+      }
     },
     "responsive_strategy": {
-      "rule": "Build one shared product surface that adapts by size class before adding platform-specific forks.",
+      "rule": "Share flow logic and visual language across size classes, but use orchestrated view variants when layout posture meaningfully changes.",
+      "system_rule": "This applies to every major screen in the product, not only welcome or emergency surfaces.",
+      "variant_discipline": "Use the welcome-screen 13-variant discipline as the default standard for major screens. Do not collapse important surfaces back into a generic shared layout once posture meaningfully diverges.",
       "size_classes": {
         "small_phone": "320-390",
         "large_phone": "391-430",
@@ -192,7 +223,13 @@
         "mobile-first by default",
         "single-column is the baseline for urgent flows",
         "tablet and desktop may widen and center content but must not change the core mental model",
-        "web PWA, iOS, and Android should feel like the same product with adaptive layout, not different products"
+        "web PWA, iOS, and Android should feel like the same product with adaptive layout, not different products",
+        "follow the welcome-screen pattern when a surface needs distinct phone, tablet, and desktop view composition",
+        "share the state machine and business logic underneath the orchestrator instead of duplicating flow rules in each size-class view",
+        "do not treat responsive orchestration as a special-case technique; it is the default rule once a screen meaningfully diverges by size class",
+        "prefer full-canvas screen composition before introducing centered containers; sheets and panels may be focal surfaces, but the screen itself should not feel boxed by default",
+        "web variants must be built as true web surfaces with explicit rendering, spacing, and map-treatment decisions instead of inheriting native assumptions unchanged",
+        "urgent entry routes must use the same full-canvas root-shell discipline as welcome instead of inheriting the default boxed auth surface wrapper"
       ]
     },
     "screen_hardening_workflow": {
@@ -206,12 +243,16 @@
       ],
       "per_screen_sequence": [
         "make small phone solid first",
-        "then adapt for tablet",
-        "then adapt for desktop web",
-        "then validate native edge cases on iPhone and Android aspect ratios"
+        "for each locked phone phase, adapt that same phase to iPad before starting the next phase",
+        "then adapt that same phase to Android variants",
+        "then adapt that same phase to desktop and web variants",
+        "then run a cleanup pass for sponsor-review artifacts before moving to the next phase",
+        "do not sprint-build all phases on one size class before backfilling the others",
+        "validate native edge cases on iPhone and Android aspect ratios after each phase is propagated"
       ],
       "done_definition": [
         "layout is stable with no overflow",
+        "screen uses the available canvas intentionally instead of feeling boxed by inherited container limits",
         "primary action is obvious",
         "copy is concise",
         "touch targets are correct",
@@ -226,7 +267,7 @@
         "preview states must remain human-readable",
         "proof should reinforce emergency action, not distract from it"
       ],
-      "demo_data_policy": "If live hospital or provider coverage is not yet fully onboarded, preview hospitals may be rendered for sponsor and product evaluation, but they must be framed as preview coverage while the live network expands.",
+      "demo_data_policy": "If live hospital or provider coverage is not yet fully onboarded, preview hospitals may be rendered for sponsor and product evaluation, but they must be framed as preview coverage while the live network expands. Generated NOT CERTIFIED demo hospitals may run a complete request flow, but payment must be simulated and must not wait on org-admin approval.",
       "anti_patterns": [
         "fake enterprise dashboard metrics",
         "simulation language that makes the product feel fictional",
@@ -271,7 +312,8 @@
           "copying colors or spacing values directly into every component",
           "mixing business logic into style modules",
           "repeating the same layout skeleton across many files with only number changes",
-          "letting web-specific fixes leak into native implementation layers"
+          "letting web-specific fixes leak into native implementation layers",
+          "forcing one mobile render tree to cover phone, tablet, and desktop after the posture has already diverged"
         ]
       },
       "separation_of_concerns": [

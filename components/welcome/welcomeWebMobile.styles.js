@@ -129,7 +129,7 @@ export function createWelcomeWebMobileTheme({ viewportHeight = 760, isDarkMode =
 		},
 		helper: {
 			color: colors.helper,
-			fontWeight: "600",
+			fontWeight: "400",
 			fontSize: metrics.helperSize,
 			lineHeight: metrics.helperLineHeight,
 			textAlign: "center",
@@ -147,7 +147,7 @@ export function createWelcomeWebMobileTheme({ viewportHeight = 760, isDarkMode =
 			color: colors.chipText,
 			fontSize: 13,
 			lineHeight: 16,
-			fontWeight: "700",
+			fontWeight: "400",
 			letterSpacing: 0.2,
 		},
 		actionWell: {
@@ -169,7 +169,7 @@ export function createWelcomeWebMobileTheme({ viewportHeight = 760, isDarkMode =
 			color: colors.support,
 			fontSize: 15,
 			lineHeight: 22,
-			fontWeight: "700",
+			fontWeight: "600",
 			opacity: 0.84,
 			textAlign: "center",
 		},

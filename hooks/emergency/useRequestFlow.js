@@ -77,6 +77,28 @@ const normalizeRequestCostSnapshot = (raw) => {
 	};
 };
 
+const getRequestedLocation = (request) => {
+	if (!request || typeof request !== "object") return null;
+	const candidate = request.patientLocation ?? request.location ?? null;
+	if (!candidate) return null;
+
+	if (Number.isFinite(candidate.latitude) && Number.isFinite(candidate.longitude)) {
+		return {
+			latitude: Number(candidate.latitude),
+			longitude: Number(candidate.longitude),
+		};
+	}
+
+	if (Number.isFinite(candidate.lat) && Number.isFinite(candidate.lng)) {
+		return {
+			latitude: Number(candidate.lat),
+			longitude: Number(candidate.lng),
+		};
+	}
+
+	return null;
+};
+
 /**
  * 💡 STABILITY NOTE:
  * This hook uses a "Latest Props Ref" pattern (ref-guarded props) to ensure that the returned 
@@ -181,23 +203,34 @@ export const useRequestFlow = (props) => {
 
 			// 🤖 AUTO-DISPATCH: Select best hospital if none provided
 			if (!hospitalId && hospitals && hospitals.length > 0) {
-				try {
-					// Get user location for dispatch calculation
-					const currentLocation = await Location.getCurrentPositionAsync({});
-					const userLocation = {
-						latitude: currentLocation.coords.latitude,
-						longitude: currentLocation.coords.longitude
-					};
-
-					const bestHospital = DispatchService.selectBestHospital(hospitals, userLocation);
+				const requestedLocation = getRequestedLocation(request);
+				if (requestedLocation) {
+					const bestHospital = DispatchService.selectBestHospital(hospitals, requestedLocation);
 					if (bestHospital) {
 						hospitalId = bestHospital.id;
 						console.log('[useRequestFlow] Auto-dispatch selected hospital:', bestHospital.name);
 					}
-				} catch (locationError) {
-					console.warn('[useRequestFlow] Auto-dispatch failed, using fallback:', locationError);
-					// Fallback to first available hospital
-					hospitalId = hospitals[0]?.id;
+				}
+
+				if (!hospitalId) {
+					try {
+						// Get user location for dispatch calculation
+						const currentLocation = await Location.getCurrentPositionAsync({});
+						const userLocation = {
+							latitude: currentLocation.coords.latitude,
+							longitude: currentLocation.coords.longitude
+						};
+
+						const bestHospital = DispatchService.selectBestHospital(hospitals, userLocation);
+						if (bestHospital) {
+							hospitalId = bestHospital.id;
+							console.log('[useRequestFlow] Auto-dispatch selected hospital:', bestHospital.name);
+						}
+					} catch (locationError) {
+						console.warn('[useRequestFlow] Auto-dispatch failed, using fallback:', locationError);
+						// Fallback to first available hospital
+						hospitalId = hospitals[0]?.id;
+					}
 				}
 			}
 
@@ -215,19 +248,21 @@ export const useRequestFlow = (props) => {
 
 			inflightByTypeRef.current[request.serviceType] = true;
 			try {
-				let liveUserLocation = null;
-				let patientLocation = null;
-				try {
-					const currentLocation = await Location.getCurrentPositionAsync({});
-					liveUserLocation = {
-						latitude: currentLocation.coords.latitude,
-						longitude: currentLocation.coords.longitude
-					};
-					patientLocation = `POINT(${currentLocation.coords.longitude} ${currentLocation.coords.latitude})`;
-				} catch (locationError) {
-					console.warn('[useRequestFlow] Could not get user location:', locationError);
-					liveUserLocation = { ...DEFAULT_APP_COORDINATES };
-					patientLocation = toPointWkt(DEFAULT_APP_COORDINATES);
+				let liveUserLocation = getRequestedLocation(request);
+				let patientLocation = liveUserLocation ? toPointWkt(liveUserLocation) : null;
+				if (!liveUserLocation) {
+					try {
+						const currentLocation = await Location.getCurrentPositionAsync({});
+						liveUserLocation = {
+							latitude: currentLocation.coords.latitude,
+							longitude: currentLocation.coords.longitude
+						};
+						patientLocation = `POINT(${currentLocation.coords.longitude} ${currentLocation.coords.latitude})`;
+					} catch (locationError) {
+						console.warn('[useRequestFlow] Could not get user location:', locationError);
+						liveUserLocation = { ...DEFAULT_APP_COORDINATES };
+						patientLocation = toPointWkt(DEFAULT_APP_COORDINATES);
+					}
 				}
 
 				const hospitalCoords = hospital?.coordinates && Number.isFinite(hospital.coordinates.latitude) && Number.isFinite(hospital.coordinates.longitude)
@@ -281,23 +316,25 @@ export const useRequestFlow = (props) => {
 				}
 
 				// Determine payment method for atomic RPC
-				const paymentMethodId = request?.paymentMethod?.id ||
+				const requestedPaymentMethodId = request?.paymentMethod?.id ||
 					(request?.paymentMethod?.is_cash ? 'cash' : null);
-				const isDemoCashFlow = demoEcosystemService.isDemoFlowActive({
+				const isDemoSimulatedPaymentFlow = demoEcosystemService.shouldSimulatePayments({
 					hospital,
 					demoModeEnabled:
 						effectiveDemoModeEnabled ??
 						(preferences?.demoModeEnabled !== false),
-				}) && (
-					request?.paymentMethod?.is_cash === true ||
-					String(paymentMethodId ?? "").toLowerCase().includes("cash")
-				);
+				});
+				const paymentMethodId = isDemoSimulatedPaymentFlow
+					? "demo_simulated"
+					: requestedPaymentMethodId;
 
 				console.log('[useRequestFlow] 📋 Creating Emergency Request:', {
 					displayId: visitId,
 					hospitalId,
 					serviceType: request.serviceType,
 					paymentMethod: paymentMethodId,
+					requestedPaymentMethod: requestedPaymentMethodId,
+					simulatedPayment: isDemoSimulatedPaymentFlow,
 					totalCost: costData?.total_cost || costData?.totalCost,
 					baseCost: costData?.base_cost,
 					feeAmount: costData?.feeAmount ?? null,
@@ -342,14 +379,10 @@ export const useRequestFlow = (props) => {
 				const realId = createdRequest?.id || visitId;
 				const displayId = createdRequest?.requestId || visitId;
 				const backendRequiresApproval = createdRequest?.requiresApproval || false;
-				const requiresApproval = isDemoCashFlow ? false : backendRequiresApproval;
-				const normalizedPaymentStatus =
-					isDemoCashFlow &&
-					["pending", "requires_approval"].includes(
-						String(createdRequest?.paymentStatus || "").toLowerCase()
-					)
-						? "completed"
-						: createdRequest?.paymentStatus || "completed";
+				const requiresApproval = isDemoSimulatedPaymentFlow ? false : backendRequiresApproval;
+				const normalizedPaymentStatus = isDemoSimulatedPaymentFlow
+					? "completed"
+					: createdRequest?.paymentStatus || "completed";
 
 				console.log('[useRequestFlow] ✅ Request Created:', {
 					realId,
@@ -357,19 +390,19 @@ export const useRequestFlow = (props) => {
 					paymentStatus: normalizedPaymentStatus,
 					requiresApproval,
 					backendRequiresApproval,
-					demoCashFlow: isDemoCashFlow,
+					simulatedPayment: isDemoSimulatedPaymentFlow,
 					isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(realId),
 				});
 
-				if (isDemoCashFlow && backendRequiresApproval) {
+				if (isDemoSimulatedPaymentFlow && backendRequiresApproval) {
 					try {
 						await updateRequest?.(realId, {
 							status: EmergencyRequestStatus.ACCEPTED,
-							transition_reason: "demo_cash_auto_accept",
+							transition_reason: "demo_payment_auto_accept",
 						});
 					} catch (demoStatusError) {
 						console.warn(
-							"[useRequestFlow] Demo cash auto-accept sync failed (non-blocking):",
+							"[useRequestFlow] Demo payment auto-accept sync failed (non-blocking):",
 							demoStatusError
 						);
 					}

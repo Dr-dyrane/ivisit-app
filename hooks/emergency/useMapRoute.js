@@ -2,8 +2,10 @@ import { useState, useCallback, useRef } from "react";
 import Constants from "expo-constants";
 import { decodeGooglePolyline } from "../../utils/mapUtils";
 import { ROUTE_CONFIG } from "../../constants/mapConfig";
+import { isEmergencyDebugEnabled } from "../../utils/emergencyDebug";
 
 export const useMapRoute = () => {
+	const emergencyDebugEnabled = isEmergencyDebugEnabled();
 	const [routeCoordinates, setRouteCoordinates] = useState([]);
 	const [routeInfo, setRouteInfo] = useState({
 		durationSec: null,
@@ -12,6 +14,24 @@ export const useMapRoute = () => {
 	const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
 	const routeFetchIdRef = useRef(0);
 	const lastRouteFitKeyRef = useRef(null);
+	const lastRequestedRouteKeyRef = useRef(null);
+	const routeCoordinatesRef = useRef([]);
+	const routeInfoRef = useRef({
+		durationSec: null,
+		distanceMeters: null,
+	});
+	const inflightRouteKeyRef = useRef(null);
+	const routeCacheRef = useRef(new Map());
+
+	const buildRouteKey = useCallback((origin, destination) => {
+		if (!origin || !destination) return null;
+		return [
+			Number(origin.latitude).toFixed(6),
+			Number(origin.longitude).toFixed(6),
+			Number(destination.latitude).toFixed(6),
+			Number(destination.longitude).toFixed(6),
+		].join(":");
+	}, []);
 
 	const getGoogleApiKey = useCallback(() => {
 		return (
@@ -101,12 +121,61 @@ export const useMapRoute = () => {
 	const calculateRoute = useCallback(
 		async (origin, destination) => {
 			if (!origin || !destination) {
-				console.warn("[useMapRoute] Missing origin or destination");
+				if (emergencyDebugEnabled) {
+					console.warn("[useMapRoute] Missing origin or destination");
+				}
+				return;
+			}
+
+			const routeKey = buildRouteKey(origin, destination);
+			if (!routeKey) {
+				return;
+			}
+
+			const applyRouteResult = (result) => {
+				lastRequestedRouteKeyRef.current = routeKey;
+				routeCoordinatesRef.current = result.coordinates;
+				setRouteCoordinates(result.coordinates);
+				if (emergencyDebugEnabled) {
+					console.log("[useMapRoute] Route calculated:", {
+						distance: result.distanceMeters,
+						duration: result.durationSec,
+					});
+				}
+
+				const finalDuration =
+					result.durationSec === 0
+						? 900
+						: Math.max(result.durationSec, 60);
+
+				const nextRouteInfo = {
+					durationSec: finalDuration,
+					distanceMeters: result.distanceMeters,
+				};
+				routeInfoRef.current = nextRouteInfo;
+				setRouteInfo(nextRouteInfo);
+			};
+
+			if (
+				lastRequestedRouteKeyRef.current === routeKey &&
+				routeCoordinatesRef.current.length >= 2
+			) {
+				return;
+			}
+
+			if (inflightRouteKeyRef.current === routeKey) {
+				return;
+			}
+
+			const cachedRoute = routeCacheRef.current.get(routeKey);
+			if (cachedRoute?.coordinates?.length >= 2) {
+				applyRouteResult(cachedRoute);
 				return;
 			}
 
 			setIsCalculatingRoute(true);
 			const currentFetchId = ++routeFetchIdRef.current;
+			inflightRouteKeyRef.current = routeKey;
 
 			try {
 				let result = null;
@@ -114,44 +183,44 @@ export const useMapRoute = () => {
 				if (ROUTE_CONFIG.PRIMARY_ROUTE_API === "GOOGLE") {
 					result = await getGoogleRoute({ origin, destination });
 					if (!result) {
-						console.log("[useMapRoute] Falling back to OSRM");
+						if (emergencyDebugEnabled) {
+							console.log("[useMapRoute] Falling back to OSRM");
+						}
 						result = await getOSRMRoute({ origin, destination });
 					}
 				} else {
 					result = await getOSRMRoute({ origin, destination });
 					if (!result) {
-						console.log("[useMapRoute] Falling back to Google");
+						if (emergencyDebugEnabled) {
+							console.log("[useMapRoute] Falling back to Google");
+						}
 						result = await getGoogleRoute({ origin, destination });
 					}
 				}
 
 				if (currentFetchId === routeFetchIdRef.current && result) {
-					setRouteCoordinates(result.coordinates);
-					console.log("[useMapRoute] Route calculated:", {
-						distance: result.distanceMeters,
-						duration: result.durationSec,
-					});
-
-					// Enforce minimum 1 minute (60s) and handle 0 as "fallback to 15 mins" (900s)
-					const finalDuration = result.durationSec === 0 ? 900 : Math.max(result.durationSec, 60);
-
-					setRouteInfo({
-						durationSec: finalDuration,
-						distanceMeters: result.distanceMeters,
-					});
+					routeCacheRef.current.set(routeKey, result);
+					applyRouteResult(result);
 				}
 			} catch (err) {
 				console.error("[useMapRoute] Route calculation failed:", err);
 			} finally {
-				setIsCalculatingRoute(false);
+				if (currentFetchId === routeFetchIdRef.current) {
+					inflightRouteKeyRef.current = null;
+					setIsCalculatingRoute(false);
+				}
 			}
 		},
-		[getGoogleRoute, getOSRMRoute]
+		[buildRouteKey, emergencyDebugEnabled, getGoogleRoute, getOSRMRoute]
 	);
 
 	const clearRoute = useCallback(() => {
 		setRouteCoordinates([]);
 		setRouteInfo({ durationSec: null, distanceMeters: null });
+		routeCoordinatesRef.current = [];
+		routeInfoRef.current = { durationSec: null, distanceMeters: null };
+		lastRequestedRouteKeyRef.current = null;
+		inflightRouteKeyRef.current = null;
 		lastRouteFitKeyRef.current = null;
 	}, []);
 

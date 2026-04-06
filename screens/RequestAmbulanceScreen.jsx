@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useMemo, useCallback, useEffect } from "react";
+import { useRef, useMemo, useCallback, useEffect, useState } from "react";
 import { View, StyleSheet, Animated, Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,8 +23,64 @@ import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
 import { useEmergencyRequests } from "../hooks/emergency/useEmergencyRequests";
 import { useVisits } from "../contexts/VisitsContext";
 import { useRequestFlow } from "../hooks/emergency/useRequestFlow";
+import useAuthViewport from "../hooks/ui/useAuthViewport";
 import EmergencyRequestModal from "../components/emergency/EmergencyRequestModal";
+import EmergencyIntakeOrchestrator from "../components/emergency/intake/EmergencyIntakeOrchestrator";
 import { navigateBack } from "../utils/navigationHelpers";
+import { triageService } from "../services/triageService";
+import { demoEcosystemService } from "../services/demoEcosystemService";
+
+const HOLD_RESPONDER_MATCHED_FOR_REVIEW = true;
+const MIN_FINDING_NEARBY_HELP_MS = 1600;
+const EMERGENCY_INTAKE_PHASE_STORAGE_VERSION = 1;
+
+const buildEmergencyIntakePhaseStorageKey = (userId) =>
+	`@ivisit/emergency_intake_phase/v${EMERGENCY_INTAKE_PHASE_STORAGE_VERSION}:${userId || "guest"}`;
+
+const normalizeLocationCoordinate = (location) => {
+	const latitude = Number(location?.latitude);
+	const longitude = Number(location?.longitude);
+	if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+		return null;
+	}
+	return { latitude, longitude };
+};
+
+const hasHospitalCoordinates = (hospital) =>
+	Number.isFinite(Number(hospital?.coordinates?.latitude ?? hospital?.latitude)) &&
+	Number.isFinite(Number(hospital?.coordinates?.longitude ?? hospital?.longitude));
+
+const hasHospitalDistance = (hospital) =>
+	(typeof hospital?.distance === "string" && hospital.distance.trim().length > 0) ||
+	Number.isFinite(Number(hospital?.distanceKm));
+
+const hasHospitalEta = (hospital) =>
+	(typeof hospital?.eta === "string" && hospital.eta.trim().length > 0) ||
+	(typeof hospital?.estimatedArrival === "string" &&
+		hospital.estimatedArrival.trim().length > 0) ||
+	Number.isFinite(Number(hospital?.etaSeconds));
+
+const hasHospitalAmbulanceCoverage = (hospital) =>
+	Number(hospital?.ambulances ?? 0) > 0 ||
+	Object.keys(hospital?.ambulanceAvailability || {}).length > 0 ||
+	(Array.isArray(hospital?.serviceTypes) && hospital.serviceTypes.length > 0);
+
+const hasHospitalOrganization = (hospital) =>
+	(typeof hospital?.organization_id === "string" &&
+		hospital.organization_id.trim().length > 0) ||
+	(typeof hospital?.organizationId === "string" &&
+		hospital.organizationId.trim().length > 0);
+
+const isHospitalExperienceComplete = (hospital) =>
+	Boolean(
+		hospital?.id &&
+			hospital?.name &&
+			hasHospitalCoordinates(hospital) &&
+			hasHospitalDistance(hospital) &&
+			hasHospitalEta(hospital) &&
+			hasHospitalAmbulanceCoverage(hospital) &&
+			hasHospitalOrganization(hospital),
+	);
 
 export default function RequestAmbulanceScreen() {
 	const router = useRouter();
@@ -33,6 +90,22 @@ export default function RequestAmbulanceScreen() {
 	const slideAnim = useRef(new Animated.Value(30)).current;
 	const params = useLocalSearchParams();
 	const hospitalId = typeof params?.hospitalId === "string" ? params.hospitalId : null;
+	const [showLegacyFlow, setShowLegacyFlow] = useState(false);
+	const [intakeDraft, setIntakeDraft] = useState(null);
+	const [matchedResponderState, setMatchedResponderState] = useState(null);
+	const [persistedIntakeViewState, setPersistedIntakeViewState] = useState(null);
+	const [intakePersistenceReady, setIntakePersistenceReady] = useState(false);
+	const findingStartedAtRef = useRef(0);
+	const intakeBackActionRef = useRef(null);
+	const persistTimerRef = useRef(null);
+	const persistHashRef = useRef("");
+	const demoBootstrapKeyRef = useRef("");
+	const demoBootstrapInFlightRef = useRef(false);
+	const [intakeHeaderState, setIntakeHeaderState] = useState({
+		title: "Where are you?",
+		subtitle: "CHOOSE LOCATION",
+	});
+	const [intakeBackMode, setIntakeBackMode] = useState("exit");
 
 	const { setHeaderState } = useHeaderState();
 	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
@@ -51,11 +124,18 @@ export default function RequestAmbulanceScreen() {
 		selectedHospital,
 		selectedSpecialty,
 		activeAmbulanceTrip,
+		ambulanceTelemetryHealth,
 		activeBedBooking,
 		startAmbulanceTrip,
 		startBedBooking,
+		selectHospital,
 		clearSelectedHospital,
 		setMode,
+		setCoverageMode,
+		refreshHospitals,
+		setUserLocation,
+		coverageStatus,
+		coverageModeOperation,
 		effectiveDemoModeEnabled,
 	} = useEmergency();
 
@@ -63,6 +143,109 @@ export default function RequestAmbulanceScreen() {
 		if (!hospitalId) return selectedHospital;
 		return hospitals.find((h) => h?.id === hospitalId) ?? selectedHospital;
 	}, [hospitalId, hospitals, selectedHospital]);
+	const intakeRequestHospital = intakeDraft?.hospital ?? null;
+	const resolvedRequestHospital = intakeRequestHospital ?? requestHospital;
+	const activeIntakeLocation = useMemo(
+		() =>
+			normalizeLocationCoordinate(
+				persistedIntakeViewState?.selectedLocation?.location || intakeDraft?.location || null,
+			),
+		[persistedIntakeViewState?.selectedLocation?.location, intakeDraft?.location],
+	);
+	const matchedTripState = useMemo(() => {
+		if (activeAmbulanceTrip?.requestId) {
+			return activeAmbulanceTrip;
+		}
+		return matchedResponderState;
+	}, [activeAmbulanceTrip, matchedResponderState]);
+	const showResponsiveIntakeBase = !showLegacyFlow || !!matchedTripState;
+	const hospitalRecommendation = useMemo(() => {
+		const completeHospitals = hospitals.filter((hospital) =>
+			isHospitalExperienceComplete(hospital),
+		);
+		const incompleteHospitals = hospitals.filter(
+			(hospital) => !isHospitalExperienceComplete(hospital),
+		);
+		const recommendationPool =
+			completeHospitals.length > 0 ? completeHospitals : hospitals;
+		const alternativePool =
+			completeHospitals.length > 0
+				? [...completeHospitals, ...incompleteHospitals]
+				: hospitals;
+
+		if (
+			requestHospital?.id &&
+			(completeHospitals.length === 0 || isHospitalExperienceComplete(requestHospital))
+		) {
+			return {
+				recommendedHospital: requestHospital,
+				alternativeHospitals: [
+					requestHospital,
+					...alternativePool.filter((item) => item?.id !== requestHospital.id),
+				],
+			};
+		}
+
+		const snapshot = triageService.buildTriageSnapshot({
+			stage: "intake_review",
+			request: {
+				serviceType: "ambulance",
+				specialty: selectedSpecialty ?? null,
+			},
+			hospitals: recommendationPool,
+			selectedHospitalId: selectedHospital?.id ?? null,
+			medicalProfile,
+			emergencyContacts,
+			userCheckin: null,
+			currentRoute: null,
+		});
+
+		const recommendedHospitalId = snapshot?.suitability?.recommendedHospitalId ?? null;
+		const recommendedHospital =
+			recommendationPool.find((item) => item?.id === recommendedHospitalId) ??
+			recommendationPool.find((item) => item?.id === selectedHospital?.id) ??
+			recommendationPool[0] ??
+			null;
+		const alternativeHospitals = recommendedHospital?.id
+			? [
+				recommendedHospital,
+				...alternativePool.filter(
+					(item) => item?.id && item.id !== recommendedHospital.id,
+				),
+			]
+			: alternativePool;
+
+		return {
+			recommendedHospital,
+			alternativeHospitals,
+		};
+	}, [
+		emergencyContacts,
+		hospitals,
+		medicalProfile,
+		requestHospital,
+		selectedHospital,
+		selectedSpecialty,
+	]);
+	const completeHospitalCount = useMemo(
+		() =>
+			hospitalRecommendation.alternativeHospitals.filter((hospital) =>
+				isHospitalExperienceComplete(hospital),
+			).length,
+		[hospitalRecommendation.alternativeHospitals],
+	);
+	const recommendedHospitalIsComplete = isHospitalExperienceComplete(
+		hospitalRecommendation.recommendedHospital,
+	);
+	const shouldBackfillDemoExperience = Boolean(
+		activeIntakeLocation &&
+			!matchedTripState &&
+			(!recommendedHospitalIsComplete || completeHospitalCount < 3),
+	);
+	const intakePhaseStorageKey = useMemo(
+		() => buildEmergencyIntakePhaseStorageKey(user?.id),
+		[user?.id],
+	);
 
 	const { handleRequestInitiated, handleRequestComplete } = useRequestFlow({
 		createRequest,
@@ -89,7 +272,43 @@ export default function RequestAmbulanceScreen() {
 		onRequestComplete: () => { },
 	});
 
-	const backButton = useCallback(() => <HeaderBackButton />, []);
+	const clearPersistedIntakePhase = useCallback(() => {
+		persistHashRef.current = "";
+		if (persistTimerRef.current) {
+			clearTimeout(persistTimerRef.current);
+			persistTimerRef.current = null;
+		}
+		return AsyncStorage.removeItem(intakePhaseStorageKey).catch(() => {});
+	}, [intakePhaseStorageKey]);
+
+	const handleClose = useCallback(() => {
+		void clearPersistedIntakePhase();
+		navigateBack({ router });
+	}, [clearPersistedIntakePhase, router]);
+
+	const handleIntakeBackChange = useCallback((nextState) => {
+		intakeBackActionRef.current =
+			typeof nextState?.handler === "function" ? nextState.handler : null;
+		setIntakeBackMode(nextState?.mode === "phase" ? "phase" : "exit");
+	}, []);
+
+	const handleHeaderBack = useCallback(() => {
+		if (
+			showResponsiveIntakeBase &&
+			intakeBackMode === "phase" &&
+			typeof intakeBackActionRef.current === "function"
+		) {
+			intakeBackActionRef.current();
+			return;
+		}
+
+		handleClose();
+	}, [handleClose, intakeBackMode, showResponsiveIntakeBase]);
+
+	const backButton = useCallback(
+		() => <HeaderBackButton onPress={handleHeaderBack} />,
+		[handleHeaderBack],
+	);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -99,8 +318,12 @@ export default function RequestAmbulanceScreen() {
 			resetHeader();
 
 			setHeaderState({
-				title: requestHospital?.name || "Medical Center",
-				subtitle: "STEP 1: RESOURCE",
+				title: showResponsiveIntakeBase
+					? intakeHeaderState.title
+					: resolvedRequestHospital?.name || "Medical Center",
+				subtitle: showResponsiveIntakeBase
+					? intakeHeaderState.subtitle
+					: "STEP 1: RESOURCE",
 				icon: <Ionicons name="medical" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.emergency,
 				leftComponent: backButton(),
@@ -110,15 +333,81 @@ export default function RequestAmbulanceScreen() {
 			});
 
 			setMode("emergency");
-		}, [
+			}, [
 			backButton,
+			intakeHeaderState.subtitle,
+			intakeHeaderState.title,
+			showResponsiveIntakeBase,
 			requestHospital?.name,
+			resolvedRequestHospital?.name,
 			resetHeader,
 			resetTabBar,
 			setHeaderState,
 			setMode,
 		])
 	);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		const hydrateIntakePhase = async () => {
+			try {
+				const storedRaw = await AsyncStorage.getItem(intakePhaseStorageKey);
+				if (!storedRaw || cancelled) {
+					return;
+				}
+
+				const parsed = JSON.parse(storedRaw);
+				if (!parsed || typeof parsed !== "object") {
+					return;
+				}
+
+				setShowLegacyFlow(parsed.showLegacyFlow === true);
+				setIntakeDraft(parsed.intakeDraft && typeof parsed.intakeDraft === "object" ? parsed.intakeDraft : null);
+				setMatchedResponderState(
+					parsed.matchedResponderState && typeof parsed.matchedResponderState === "object"
+						? parsed.matchedResponderState
+						: null,
+				);
+				setPersistedIntakeViewState(
+					parsed.intakeViewState && typeof parsed.intakeViewState === "object"
+						? parsed.intakeViewState
+						: null,
+				);
+				setIntakeHeaderState(
+					parsed.intakeHeaderState &&
+						typeof parsed.intakeHeaderState.title === "string" &&
+						typeof parsed.intakeHeaderState.subtitle === "string"
+						? parsed.intakeHeaderState
+						: {
+							title: "Where are you?",
+							subtitle: "CHOOSE LOCATION",
+						},
+				);
+				setIntakeBackMode(parsed.intakeBackMode === "phase" ? "phase" : "exit");
+				findingStartedAtRef.current = Number.isFinite(Number(parsed.findingStartedAt))
+					? Number(parsed.findingStartedAt)
+					: 0;
+			} catch (error) {
+				if (__DEV__) {
+					console.warn("[RequestAmbulanceScreen] Failed to restore intake phase:", error);
+				}
+			} finally {
+				if (!cancelled) {
+					setIntakePersistenceReady(true);
+				}
+			}
+		};
+
+		void hydrateIntakePhase();
+
+		return () => {
+			cancelled = true;
+			if (persistTimerRef.current) {
+				clearTimeout(persistTimerRef.current);
+			}
+		};
+	}, [intakePhaseStorageKey]);
 
 	useEffect(() => {
 		Animated.parallel([
@@ -136,6 +425,157 @@ export default function RequestAmbulanceScreen() {
 		]).start();
 	}, [fadeAnim, slideAnim]);
 
+	useEffect(() => {
+		if (!intakePersistenceReady) return;
+
+		const hasMeaningfulPhaseState = Boolean(
+			showLegacyFlow ||
+			intakeDraft ||
+			matchedResponderState ||
+			persistedIntakeViewState,
+		);
+
+		if (!hasMeaningfulPhaseState) {
+			if (persistHashRef.current) {
+				void clearPersistedIntakePhase();
+			}
+			return;
+		}
+
+		const snapshot = {
+			version: EMERGENCY_INTAKE_PHASE_STORAGE_VERSION,
+			showLegacyFlow,
+			intakeDraft,
+			matchedResponderState,
+			intakeHeaderState,
+			intakeBackMode,
+			intakeViewState: persistedIntakeViewState,
+			findingStartedAt: findingStartedAtRef.current || 0,
+		};
+
+		const nextHash = JSON.stringify(snapshot);
+		if (persistHashRef.current === nextHash) return;
+		persistHashRef.current = nextHash;
+
+		if (persistTimerRef.current) {
+			clearTimeout(persistTimerRef.current);
+		}
+
+		persistTimerRef.current = setTimeout(() => {
+			AsyncStorage.setItem(intakePhaseStorageKey, nextHash).catch((error) => {
+				if (__DEV__) {
+					console.warn("[RequestAmbulanceScreen] Failed to persist intake phase:", error);
+				}
+			});
+		}, 180);
+
+		return () => {
+			if (persistTimerRef.current) {
+				clearTimeout(persistTimerRef.current);
+			}
+		};
+	}, [
+		clearPersistedIntakePhase,
+		intakeBackMode,
+		intakeDraft,
+		intakeHeaderState,
+		intakePersistenceReady,
+		intakePhaseStorageKey,
+		matchedResponderState,
+		persistedIntakeViewState,
+		showLegacyFlow,
+	]);
+
+	useEffect(() => {
+		if (!activeIntakeLocation) return;
+
+		setUserLocation((current) => {
+			const currentLatitude = Number(current?.latitude);
+			const currentLongitude = Number(current?.longitude);
+			const sameCoordinate =
+				Number.isFinite(currentLatitude) &&
+				Number.isFinite(currentLongitude) &&
+				Math.abs(currentLatitude - activeIntakeLocation.latitude) < 0.0001 &&
+				Math.abs(currentLongitude - activeIntakeLocation.longitude) < 0.0001;
+
+			if (sameCoordinate) {
+				return current;
+			}
+
+			return {
+				latitude: activeIntakeLocation.latitude,
+				longitude: activeIntakeLocation.longitude,
+				latitudeDelta: Number(current?.latitudeDelta) || 0.04,
+				longitudeDelta: Number(current?.longitudeDelta) || 0.04,
+			};
+		});
+	}, [activeIntakeLocation, setUserLocation]);
+
+	useEffect(() => {
+		if (!showResponsiveIntakeBase || !shouldBackfillDemoExperience || !activeIntakeLocation) {
+			return;
+		}
+		if (coverageModeOperation?.isPending || demoBootstrapInFlightRef.current) {
+			return;
+		}
+
+		const bootstrapKey = [
+			activeIntakeLocation.latitude.toFixed(4),
+			activeIntakeLocation.longitude.toFixed(4),
+			coverageStatus,
+			effectiveDemoModeEnabled ? "demo" : "live",
+		].join(":");
+		if (demoBootstrapKeyRef.current === bootstrapKey) {
+			return;
+		}
+
+		demoBootstrapKeyRef.current = bootstrapKey;
+		demoBootstrapInFlightRef.current = true;
+		let cancelled = false;
+
+		const ensureCompleteDemoExperience = async () => {
+			try {
+				await demoEcosystemService.ensureDemoEcosystemForLocation({
+					userId: user?.id || "guest",
+					latitude: activeIntakeLocation.latitude,
+					longitude: activeIntakeLocation.longitude,
+					radiusKm: 50,
+					force: true,
+				});
+
+				if (cancelled) return;
+
+				if (!effectiveDemoModeEnabled) {
+					await setCoverageMode?.("hybrid");
+				} else {
+					await refreshHospitals?.();
+				}
+			} catch (error) {
+				if (__DEV__) {
+					console.warn("[RequestAmbulanceScreen] Demo backfill failed:", error);
+				}
+			} finally {
+				demoBootstrapInFlightRef.current = false;
+			}
+		};
+
+		void ensureCompleteDemoExperience();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [
+		activeIntakeLocation,
+		coverageModeOperation?.isPending,
+		coverageStatus,
+		effectiveDemoModeEnabled,
+		refreshHospitals,
+		setCoverageMode,
+		showResponsiveIntakeBase,
+		shouldBackfillDemoExperience,
+		user?.id,
+	]);
+
 	const handleScroll = useCallback(
 		(event) => {
 			handleTabBarScroll(event);
@@ -146,10 +586,6 @@ export default function RequestAmbulanceScreen() {
 
 	const delay = useCallback((ms) => new Promise((resolve) => setTimeout(resolve, ms)), []);
 
-	const handleClose = useCallback(() => {
-		navigateBack({ router });
-	}, [router]);
-
 	const handleDispatched = useCallback(
 		async (payload) => {
 			const minMs = 800;
@@ -159,9 +595,19 @@ export default function RequestAmbulanceScreen() {
 			if (elapsed < minMs) {
 				await delay(minMs - elapsed);
 			}
+			if (HOLD_RESPONDER_MATCHED_FOR_REVIEW) {
+				const findingElapsed = Date.now() - (findingStartedAtRef.current || 0);
+				if (findingStartedAtRef.current && findingElapsed < MIN_FINDING_NEARBY_HELP_MS) {
+					await delay(MIN_FINDING_NEARBY_HELP_MS - findingElapsed);
+				}
+				setMatchedResponderState(payload ?? null);
+				setShowLegacyFlow(false);
+				return;
+			}
+			await clearPersistedIntakePhase();
 			navigateBack({ router });
 		},
-		[delay, handleRequestComplete, router]
+		[clearPersistedIntakePhase, delay, handleRequestComplete, router]
 	);
 
 	const backgroundColors = isDarkMode
@@ -171,6 +617,10 @@ export default function RequestAmbulanceScreen() {
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
 	const topPadding = STACK_TOP_PADDING;
+
+	if (!intakePersistenceReady) {
+		return <LinearGradient colors={backgroundColors} style={styles.container} />;
+	}
 
 	return (
 		<LinearGradient colors={backgroundColors} style={styles.container}>
@@ -182,21 +632,45 @@ export default function RequestAmbulanceScreen() {
 				}}
 			>
 				<View style={{ flex: 1 }}>
-					<EmergencyRequestModal
-						mode="emergency"
-						requestHospital={requestHospital}
-						selectedSpecialty={selectedSpecialty}
-						onRequestClose={handleClose}
-						onRequestInitiated={handleRequestInitiated}
-						onRequestComplete={handleDispatched}
-						showClose={false}
-						onScroll={handleScroll}
-						scrollContentStyle={{
-							paddingHorizontal: 12,
-							paddingTop: topPadding,
-							paddingBottom: bottomPadding,
-						}}
-					/>
+					{showResponsiveIntakeBase ? (
+						<EmergencyIntakeOrchestrator
+							onContinue={(payload) => {
+								if (payload?.hospital?.id) {
+									selectHospital(payload.hospital.id);
+								}
+								setIntakeDraft(payload || null);
+								setMatchedResponderState(null);
+								findingStartedAtRef.current = Date.now();
+								setShowLegacyFlow(true);
+							}}
+							initialSnapshot={persistedIntakeViewState}
+							onStateSnapshotChange={setPersistedIntakeViewState}
+							onHeaderStateChange={setIntakeHeaderState}
+							onBackNavigationChange={handleIntakeBackChange}
+							headerOffset={topPadding}
+							matchedTrip={matchedTripState}
+							ambulanceTelemetryHealth={ambulanceTelemetryHealth}
+							recommendedHospital={hospitalRecommendation.recommendedHospital}
+							alternativeHospitals={hospitalRecommendation.alternativeHospitals}
+						/>
+					) : (
+						<EmergencyRequestModal
+							mode="emergency"
+							requestHospital={resolvedRequestHospital}
+							selectedSpecialty={selectedSpecialty}
+							onRequestClose={handleClose}
+							onRequestInitiated={handleRequestInitiated}
+							onRequestComplete={handleDispatched}
+							intakeDraft={intakeDraft}
+							showClose={false}
+							onScroll={handleScroll}
+							scrollContentStyle={{
+								paddingHorizontal: 12,
+								paddingTop: topPadding,
+								paddingBottom: bottomPadding,
+							}}
+						/>
+					)}
 				</View>
 			</Animated.View>
 		</LinearGradient>

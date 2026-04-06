@@ -1,9 +1,12 @@
 // Mapbox Service for cost-effective Location and Geocoding
-import { EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN } from '@env';
+const MAPBOX_ACCESS_TOKEN =
+    process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ||
+    process.env.MAPBOX_ACCESS_TOKEN ||
+    "";
 
 class MapboxService {
     constructor() {
-        this.accessToken = EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
+        this.accessToken = MAPBOX_ACCESS_TOKEN;
         this.baseUrl = 'https://api.mapbox.com';
     }
 
@@ -80,6 +83,57 @@ class MapboxService {
         } catch (error) {
             console.error('MapboxService.geocodeAddress error:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Suggest addresses as the user types using Mapbox Geocoding.
+     */
+    async suggestAddresses(query, proximity = null) {
+        if (!this.accessToken) {
+            return [];
+        }
+
+        const trimmed = query?.trim();
+        if (!trimmed) {
+            return [];
+        }
+
+        try {
+            let url =
+                `${this.baseUrl}/geocoding/v5/mapbox.places/${encodeURIComponent(trimmed)}.json?` +
+                `access_token=${this.accessToken}&` +
+                `autocomplete=true&` +
+                `limit=5&` +
+                `types=address,place`;
+
+            if (proximity?.latitude && proximity?.longitude) {
+                url += `&proximity=${proximity.longitude},${proximity.latitude}`;
+            }
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            return (data.features || []).map((feature) => ({
+                placeId: feature.id,
+                primaryText: feature.text || feature.place_name || 'Selected location',
+                secondaryText:
+                    Array.isArray(feature.context) && feature.context.length > 0
+                        ? feature.context.map((item) => item.text).filter(Boolean).join(', ')
+                        : feature.place_name || '',
+                location: feature.center
+                    ? {
+                        latitude: feature.center[1],
+                        longitude: feature.center[0],
+                    }
+                    : null,
+                formattedAddress: feature.place_name || '',
+                source: 'mapbox',
+                requiresDetails: false,
+            }));
+        } catch (error) {
+            console.error('MapboxService.suggestAddresses error:', error);
+            return [];
         }
     }
 

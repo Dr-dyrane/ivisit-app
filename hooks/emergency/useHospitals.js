@@ -127,10 +127,12 @@ export function useHospitals(options = {}) {
 			}
 			setError(null);
 
-			if (demoModeEnabled && userId) {
+			if (demoModeEnabled) {
 				try {
+					const provisioningUserId =
+						await demoEcosystemService.getProvisioningUserId(userId);
 					await demoEcosystemService.ensureDemoEcosystemForLocation({
-						userId,
+						userId: provisioningUserId,
 						latitude: normalizedLocation.latitude,
 						longitude: normalizedLocation.longitude,
 						radiusKm: 50,

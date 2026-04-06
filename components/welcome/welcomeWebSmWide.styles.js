@@ -141,7 +141,7 @@ export function createWelcomeWebSmWideTheme({
 		},
 		helper: {
 			color: colors.helper,
-			fontWeight: "600",
+			fontWeight: "400",
 			fontSize: metrics.helperSize,
 			lineHeight: metrics.helperLineHeight,
 			textAlign: "center",
@@ -159,7 +159,7 @@ export function createWelcomeWebSmWideTheme({
 			color: colors.chipText,
 			fontSize: 14,
 			lineHeight: 18,
-			fontWeight: "700",
+			fontWeight: "400",
 			letterSpacing: 0.2,
 		},
 		actionWell: {
@@ -192,7 +192,7 @@ export function createWelcomeWebSmWideTheme({
 			color: colors.support,
 			fontSize: 16,
 			lineHeight: 22,
-			fontWeight: "700",
+			fontWeight: "600",
 			opacity: 0.84,
 			textAlign: "center",
 		},

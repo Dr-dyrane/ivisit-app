@@ -44,6 +44,8 @@ const SERVICE_PRICING = {
   }
 };
 
+const missingHospitalOrganizationWarnings = new Set();
+
 export const paymentService = {
   supabase,
   /**
@@ -783,7 +785,10 @@ export const paymentService = {
         .single();
 
       if (hospError || !hospital?.organization_id) {
-        console.warn('[paymentService] Hospital has no organization linked:', hospitalId);
+        if (!missingHospitalOrganizationWarnings.has(hospitalId)) {
+          missingHospitalOrganizationWarnings.add(hospitalId);
+          console.warn('[paymentService] Hospital has no organization linked:', hospitalId);
+        }
         return null;
       }
 

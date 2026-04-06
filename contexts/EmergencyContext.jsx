@@ -244,7 +244,7 @@ export function EmergencyProvider({ children }) {
 	const legacyCoverageMode = coverageModeService.modeFromDemoPreference(
 		legacyDemoModeEnabled
 	);
-	const demoOwnerSlug = String(user?.id || "").replace(/-/g, "").slice(0, 12).toLowerCase();
+	const [demoOwnerSlug, setDemoOwnerSlug] = useState("");
 	const [coverageModePreference, setCoverageModePreference] = useState(null);
 	const [coverageModePreferenceLoaded, setCoverageModePreferenceLoaded] = useState(false);
 	const [coverageModeOperation, setCoverageModeOperation] = useState({
@@ -288,6 +288,29 @@ export function EmergencyProvider({ children }) {
 		};
 
 		loadCoverageModePreference();
+		return () => {
+			isMounted = false;
+		};
+	}, [user?.id]);
+
+	useEffect(() => {
+		let isMounted = true;
+
+		const resolveDemoOwnerSlug = async () => {
+			try {
+				const nextSlug = await demoEcosystemService.getProvisioningOwnerSlug(user?.id);
+				if (isMounted) {
+					setDemoOwnerSlug(nextSlug);
+				}
+			} catch (_error) {
+				if (isMounted) {
+					setDemoOwnerSlug("");
+				}
+			}
+		};
+
+		void resolveDemoOwnerSlug();
+
 		return () => {
 			isMounted = false;
 		};
@@ -868,11 +891,9 @@ export function EmergencyProvider({ children }) {
 			return coverageModeService.deriveNearbyCoverageCounts([]);
 		}
 
-		const coverageSource = hospitals.filter((hospital) => {
-			if (demoEcosystemService.isDemoHospital(hospital) !== true) return true;
-			const owner = String(hospital?.demoOwner || "").toLowerCase();
-			return owner.length > 0 && demoOwnerSlug.length > 0 && owner === demoOwnerSlug;
-		});
+		const coverageSource = hospitals.filter((hospital) =>
+			demoEcosystemService.matchesDemoOwner(hospital, demoOwnerSlug)
+		);
 
 		return coverageModeService.deriveNearbyCoverageCounts(coverageSource);
 	}, [demoOwnerSlug, hospitals]);
@@ -914,12 +935,9 @@ export function EmergencyProvider({ children }) {
 
 	const availableHospitals = useMemo(() => {
 		if (!Array.isArray(hospitals) || hospitals.length === 0) return [];
-		return hospitals.filter((hospital) => {
-			if (demoEcosystemService.isDemoHospital(hospital) !== true) return true;
-
-			const owner = String(hospital?.demoOwner || "").toLowerCase();
-			return owner.length > 0 && demoOwnerSlug.length > 0 && owner === demoOwnerSlug;
-		});
+		return hospitals.filter((hospital) =>
+			demoEcosystemService.matchesDemoOwner(hospital, demoOwnerSlug)
+		);
 	}, [demoOwnerSlug, hospitals]);
 
 	const hasDemoHospitalsNearby = useMemo(

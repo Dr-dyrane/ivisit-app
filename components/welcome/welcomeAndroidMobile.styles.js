@@ -136,7 +136,7 @@ export function createWelcomeAndroidMobileTheme({
 		},
 		helper: {
 			color: colors.helper,
-			fontWeight: "500",
+			fontWeight: "400",
 			fontSize: metrics.helperSize,
 			lineHeight: metrics.helperLineHeight,
 			textAlign: "center",
@@ -158,7 +158,7 @@ export function createWelcomeAndroidMobileTheme({
 			color: colors.chipText,
 			fontSize: 13,
 			lineHeight: 16,
-			fontWeight: "700",
+			fontWeight: "400",
 			letterSpacing: 0.2,
 		},
 		actionWell: {
@@ -180,7 +180,7 @@ export function createWelcomeAndroidMobileTheme({
 			color: colors.support,
 			fontSize: metrics.helperSize - 1,
 			lineHeight: metrics.helperLineHeight - 2,
-			fontWeight: "700",
+			fontWeight: "600",
 			opacity: isDarkMode ? 0.84 : 0.88,
 			textAlign: "center",
 		},
