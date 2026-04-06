@@ -134,6 +134,7 @@ export default function RequestAmbulanceScreen() {
 		setCoverageMode,
 		refreshHospitals,
 		setUserLocation,
+		isLoadingHospitals,
 		coverageStatus,
 		coverageModeOperation,
 		effectiveDemoModeEnabled,
@@ -237,6 +238,47 @@ export default function RequestAmbulanceScreen() {
 	const recommendedHospitalIsComplete = isHospitalExperienceComplete(
 		hospitalRecommendation.recommendedHospital,
 	);
+	const hospitalChoiceState = useMemo(() => {
+		const totalOptions = hospitalRecommendation.alternativeHospitals.length;
+		const verifiedOptions = completeHospitalCount;
+		const isRefreshingCatalog = Boolean(
+			isLoadingHospitals || coverageModeOperation?.isPending,
+		);
+		const hasOptions = totalOptions > 0;
+		const status = !hasOptions && isRefreshingCatalog
+			? "loading"
+			: hasOptions
+				? "ready"
+				: "empty";
+		const optionLabel = totalOptions === 1 ? "hospital" : "hospitals";
+		const verifiedLabel = verifiedOptions === 1 ? "option" : "options";
+
+		let message = "";
+		if (status === "loading") {
+			message = "Checking nearby hospitals and route availability for this location.";
+		} else if (status === "empty") {
+			message = "No nearby hospitals are ready yet. Change the location or refresh options.";
+		} else if (isRefreshingCatalog) {
+			message = `Refreshing nearby hospitals. ${totalOptions} ${optionLabel} ready to review.`;
+		} else if (verifiedOptions > 0 && verifiedOptions < totalOptions) {
+			message = `${verifiedOptions} verified ${verifiedLabel} ready now. More nearby hospitals are still syncing.`;
+		} else if (totalOptions > 0) {
+			message = `${totalOptions} nearby ${optionLabel} ready to review.`;
+		}
+
+		return {
+			status,
+			message,
+			totalOptions,
+			verifiedOptions,
+			isRefreshingCatalog: hasOptions && isRefreshingCatalog,
+		};
+	}, [
+		completeHospitalCount,
+		coverageModeOperation?.isPending,
+		hospitalRecommendation.alternativeHospitals.length,
+		isLoadingHospitals,
+	]);
 	const shouldBackfillDemoExperience = Boolean(
 		activeIntakeLocation &&
 			!matchedTripState &&
@@ -658,6 +700,8 @@ export default function RequestAmbulanceScreen() {
 							ambulanceTelemetryHealth={ambulanceTelemetryHealth}
 							recommendedHospital={hospitalRecommendation.recommendedHospital}
 							alternativeHospitals={hospitalRecommendation.alternativeHospitals}
+							hospitalChoiceState={hospitalChoiceState}
+							onRefreshHospitalOptions={refreshHospitals}
 						/>
 					) : (
 						<EmergencyRequestModal

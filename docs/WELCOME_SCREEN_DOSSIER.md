@@ -185,6 +185,7 @@ Current implementation lives in:
 
 - [WelcomeScreen.jsx](../screens/WelcomeScreen.jsx)
 - [WelcomeScreenOrchestrator.jsx](../components/welcome/WelcomeScreenOrchestrator.jsx)
+- [WelcomeStageBase.jsx](../components/welcome/views/WelcomeStageBase.jsx)
 - [welcomeContent.js](../components/welcome/welcomeContent.js)
 - [EntryActionButton.jsx](../components/entry/EntryActionButton.jsx)
 - [useAuthViewport.js](../hooks/ui/useAuthViewport.js)
@@ -254,6 +255,7 @@ The welcome screen is now in a different phase than when this dossier started.
 Architecture that is now in place:
 
 - modular surface routing
+- shared stage base for the non-wide welcome family
 - single-source welcome copy
 - shared breakpoint tokens
 - shared welcome background, spacing, and geometry tokens

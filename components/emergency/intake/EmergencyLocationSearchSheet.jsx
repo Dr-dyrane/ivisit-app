@@ -80,6 +80,7 @@ export default function EmergencyLocationSearchSheet({
 	onUseCurrentLocation,
 	onSelectLocation,
 	currentLocation = null,
+	variant = "ios-mobile",
 	keyboardAwareMode = "ios",
 	presentationMode = "sheet",
 }) {
@@ -100,6 +101,71 @@ export default function EmergencyLocationSearchSheet({
 	const useDialogPresentation =
 		presentationMode === "dialog" &&
 		Platform.OS !== "android";
+	const isCompactVariant = [
+		"ios-mobile",
+		"android-mobile",
+		"android-fold",
+		"web-mobile",
+	].includes(variant);
+	const isLargeDesktopVariant = [
+		"web-lg",
+		"web-xl",
+		"web-2xl-3xl",
+		"web-ultra-wide",
+		"macbook",
+	].includes(variant);
+	const isTabletScaleVariant = [
+		"ios-pad",
+		"android-tablet",
+		"android-chromebook",
+		"web-sm-wide",
+		"web-md",
+	].includes(variant);
+	const dialogMaxWidth = useMemo(() => {
+		switch (variant) {
+			case "ios-pad":
+				return 760;
+			case "android-chromebook":
+			case "macbook":
+			case "web-md":
+				return 820;
+			case "web-lg":
+				return 900;
+			case "web-xl":
+				return 980;
+			case "web-2xl-3xl":
+				return 1060;
+			case "web-ultra-wide":
+				return 1140;
+			case "web-sm-wide":
+			case "android-tablet":
+				return 720;
+			default:
+				return 680;
+		}
+	}, [variant]);
+	const sheetHorizontalPadding = useDialogPresentation
+		? isLargeDesktopVariant
+			? 28
+			: 24
+		: isCompactVariant
+			? 18
+			: 22;
+	const inputHeight = isLargeDesktopVariant ? 58 : isCompactVariant ? 52 : 56;
+	const resultsMaxHeight = useDialogPresentation
+		? isLargeDesktopVariant
+			? 480
+			: isTabletScaleVariant
+				? 440
+				: 420
+		: isCompactVariant
+			? 286
+			: 340;
+	const overlayHorizontalPadding = useDialogPresentation
+		? isLargeDesktopVariant
+			? 40
+			: 28
+		: 0;
 	const { keyboardHeight, modalHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
 		useAndroidKeyboardAwareModal({
 			defaultHeight: 620,
@@ -116,13 +182,21 @@ export default function EmergencyLocationSearchSheet({
 			};
 	const scrollProps = enableAndroidKeyboardAware
 		? getScrollViewProps({
-				style: styles.resultsList,
+				style: [
+					styles.resultsList,
+					{
+						maxHeight: resultsMaxHeight,
+					},
+				],
 				contentContainerStyle: styles.resultsContent,
 			})
 		: {
 				style: [
 					styles.resultsList,
 					useDialogPresentation ? styles.dialogResultsList : null,
+					{
+						maxHeight: resultsMaxHeight,
+					},
 				],
 				contentContainerStyle: [
 					styles.resultsContent,
@@ -344,7 +418,7 @@ export default function EmergencyLocationSearchSheet({
 						useDialogPresentation ? styles.dialogOverlay : null,
 						{
 							backgroundColor: colors.overlay,
-							paddingHorizontal: useDialogPresentation ? 28 : 0,
+							paddingHorizontal: overlayHorizontalPadding,
 							paddingTop: useDialogPresentation ? Math.max((insets?.top || 0) + 24, 32) : 0,
 							paddingBottom:
 								enableAndroidKeyboardAware && Platform.OS === "android"
@@ -365,6 +439,7 @@ export default function EmergencyLocationSearchSheet({
 									useDialogPresentation ? styles.dialogSheet : null,
 									{
 										backgroundColor: colors.sheet,
+										maxWidth: useDialogPresentation ? dialogMaxWidth : undefined,
 										maxHeight: enableAndroidKeyboardAware
 											? modalHeight
 											: useDialogPresentation
@@ -380,6 +455,7 @@ export default function EmergencyLocationSearchSheet({
 												: useDialogPresentation
 													? 24
 												: Math.max((insets?.bottom || 0) + 18, 24),
+										paddingHorizontal: sheetHorizontalPadding,
 									},
 								]}
 							>
@@ -389,7 +465,17 @@ export default function EmergencyLocationSearchSheet({
 										<Text style={[styles.eyebrow, { color: colors.muted }]}>
 											SEARCH LOCATION
 										</Text>
-										<Text style={[styles.title, { color: colors.text }]}>
+										<Text
+											style={[
+												styles.title,
+												isLargeDesktopVariant
+													? styles.titleLarge
+													: isCompactVariant
+														? styles.titleCompact
+														: null,
+												{ color: colors.text },
+											]}
+										>
 											Choose location
 										</Text>
 									</View>
@@ -401,7 +487,15 @@ export default function EmergencyLocationSearchSheet({
 									</Pressable>
 								</View>
 
-								<View style={[styles.inputShell, { backgroundColor: colors.input }]}>
+								<View
+									style={[
+										styles.inputShell,
+										{
+											backgroundColor: colors.input,
+											height: inputHeight,
+										},
+									]}
+								>
 									<Ionicons name="search" size={18} color={colors.muted} />
 									<TextInput
 										ref={inputRef}
@@ -680,6 +774,14 @@ const styles = StyleSheet.create({
 		lineHeight: 28,
 		fontWeight: "800",
 		letterSpacing: -0.4,
+	},
+	titleCompact: {
+		fontSize: 22,
+		lineHeight: 26,
+	},
+	titleLarge: {
+		fontSize: 28,
+		lineHeight: 32,
 	},
 	closeButton: {
 		width: 32,

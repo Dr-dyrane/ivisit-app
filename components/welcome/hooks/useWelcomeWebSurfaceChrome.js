@@ -2,9 +2,13 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 import { getWelcomeRootBackground } from "../../../constants/welcomeTheme";
 
-export function useWelcomeWebSurfaceChrome(isDarkMode) {
+export function useWelcomeWebSurfaceChrome(isDarkMode, enabled = true) {
 	useEffect(() => {
-		if (Platform.OS !== "web" || typeof document === "undefined") {
+		if (
+			!enabled ||
+			Platform.OS !== "web" ||
+			typeof document === "undefined"
+		) {
 			return undefined;
 		}
 
@@ -30,7 +34,7 @@ export function useWelcomeWebSurfaceChrome(isDarkMode) {
 				rootElement.style.backgroundColor = previousRootBackground || "";
 			}
 		};
-	}, [isDarkMode]);
+	}, [enabled, isDarkMode]);
 }
 
 export default useWelcomeWebSurfaceChrome;

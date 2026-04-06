@@ -20,13 +20,13 @@ import { useMapRoute } from "../../../../hooks/emergency/useMapRoute";
 import { useTripProgress } from "../../../../hooks/emergency/useTripProgress";
 import mapboxService from "../../../../services/mapboxService";
 import { EMERGENCY_FLOW_STATES } from "../../emergencyFlowContent";
-import EntryActionButton from "../../../entry/EntryActionButton";
 import createEmergencyIosMobileIntakeTheme from "../emergencyIosMobileIntake.styles";
-import EmergencyLocationSearchSheet from "../EmergencyLocationSearchSheet";
 import EmergencyHospitalChoiceSheet from "../EmergencyHospitalChoiceSheet";
 import EmergencyHospitalRoutePreview from "../EmergencyHospitalRoutePreview";
 import { EmergencyMapContainer } from "../../EmergencyMapContainer";
 import EmergencyChooseLocationStageOrchestrator from "./chooseLocation/EmergencyChooseLocationStageOrchestrator";
+import EmergencyChooseHospitalStageOrchestrator from "./chooseHospital/EmergencyChooseHospitalStageOrchestrator";
+import EmergencyLocationSearchStageOrchestrator from "./locationSearch/EmergencyLocationSearchStageOrchestrator";
 import {
 	logEmergencyDebug,
 	summarizeHospitalForDebug,
@@ -232,11 +232,22 @@ function buildAddressModelFromFormattedAddress(formattedAddress, fallbackLocatio
 	};
 }
 
+function mergeHospitalOptionList(primaryHospital, hospitals = []) {
+	const seen = new Set();
+	const merged = [];
+
+	[primaryHospital, ...hospitals].forEach((hospital) => {
+		if (!hospital?.id || seen.has(hospital.id)) return;
+		seen.add(hospital.id);
+		merged.push(hospital);
+	});
+
+	return merged;
+}
+
 export default function EmergencyIOSMobileIntakeView({
 	viewportMode = "phone",
 	screenVariant = "ios-mobile",
-	locationSheetBehavior = "ios",
-	locationSheetPresentation = "sheet",
 	onContinue,
 	initialSnapshot = null,
 	onStateSnapshotChange,
@@ -247,6 +258,8 @@ export default function EmergencyIOSMobileIntakeView({
 	ambulanceTelemetryHealth = null,
 	recommendedHospital = null,
 	alternativeHospitals = [],
+	hospitalChoiceState = null,
+	onRefreshHospitalOptions,
 }) {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
@@ -272,6 +285,10 @@ export default function EmergencyIOSMobileIntakeView({
 	const useTabletLayout = viewportMode === "tablet" || useIosPadLayout || isTablet;
 	const useDesktopLayout = viewportMode === "desktop" || isDesktop;
 	const chooseLocationVariant =
+		screenVariant === "mobile-baseline" ? "ios-mobile" : screenVariant;
+	const chooseHospitalVariant =
+		screenVariant === "mobile-baseline" ? "ios-mobile" : screenVariant;
+	const locationSearchVariant =
 		screenVariant === "mobile-baseline" ? "ios-mobile" : screenVariant;
 	const {
 		userLocation,
@@ -329,7 +346,17 @@ export default function EmergencyIOSMobileIntakeView({
 	const findingStartedAtRef = useRef(0);
 	const activeLocation = selectedLocation?.location || userLocation;
 	const activeAddressModel = selectedLocation || addressModel;
-	const routeTargetHospital = pendingHospitalSelection || selectedHospital;
+	const activeProposedHospital =
+		pendingHospitalSelection || selectedHospital || recommendedHospital || null;
+	const hospitalChoiceStatus =
+		hospitalChoiceState?.status ||
+		(alternativeHospitals.length > 0 ? "ready" : "empty");
+	const hospitalChoiceMessage = hospitalChoiceState?.message || "";
+	const hospitalChoiceOptions = useMemo(
+		() => mergeHospitalOptionList(activeProposedHospital, alternativeHospitals),
+		[activeProposedHospital, alternativeHospitals],
+	);
+	const routeTargetHospital = activeProposedHospital;
 	const routeOriginLatitude = Number(activeLocation?.latitude);
 	const routeOriginLongitude = Number(activeLocation?.longitude);
 	const routeDestinationLatitude = Number(routeTargetHospital?.coordinates?.latitude);
@@ -442,17 +469,17 @@ export default function EmergencyIOSMobileIntakeView({
 			flowState,
 			addressModel,
 			selectedLocation,
-			selectedHospital,
+			selectedHospital: activeProposedHospital,
 		};
 		const nextHash = JSON.stringify(snapshot);
 		if (snapshotHashRef.current === nextHash) return;
 		snapshotHashRef.current = nextHash;
 		onStateSnapshotChange(snapshot);
 	}, [
+		activeProposedHospital,
 		addressModel,
 		flowState,
 		onStateSnapshotChange,
-		selectedHospital,
 		selectedLocation,
 	]);
 
@@ -642,8 +669,8 @@ export default function EmergencyIOSMobileIntakeView({
 		() => getTelemetryChipLabel(ambulanceTelemetryHealth),
 		[ambulanceTelemetryHealth],
 	);
-	const proposedHospitalEta = getHospitalEta(selectedHospital);
-	const proposedHospitalDistance = getHospitalDistance(selectedHospital);
+	const proposedHospitalEta = getHospitalEta(activeProposedHospital);
+	const proposedHospitalDistance = getHospitalDistance(activeProposedHospital);
 	const matchedPhaseState = useMemo(
 		() =>
 			getCommittedPhaseState({
@@ -654,16 +681,19 @@ export default function EmergencyIOSMobileIntakeView({
 			}),
 		[ambulanceTelemetryHealth, computedStatus, formattedRemaining, matchedTrip],
 	);
-	const matchedHospitalId = matchedTrip?.hospitalId ?? selectedHospital?.id ?? null;
+	const matchedHospitalId = matchedTrip?.hospitalId ?? activeProposedHospital?.id ?? null;
 	const matchedHospitals = useMemo(() => {
-		if (alternativeHospitals.some((item) => item?.id === matchedHospitalId)) {
-			return alternativeHospitals;
+		if (hospitalChoiceOptions.some((item) => item?.id === matchedHospitalId)) {
+			return hospitalChoiceOptions;
 		}
-		if (selectedHospital?.id && !alternativeHospitals.some((item) => item?.id === selectedHospital.id)) {
-			return [selectedHospital, ...alternativeHospitals];
+		if (
+			activeProposedHospital?.id &&
+			!hospitalChoiceOptions.some((item) => item?.id === activeProposedHospital.id)
+		) {
+			return [activeProposedHospital, ...hospitalChoiceOptions];
 		}
-		return alternativeHospitals;
-	}, [alternativeHospitals, matchedHospitalId, selectedHospital]);
+		return hospitalChoiceOptions;
+	}, [activeProposedHospital, hospitalChoiceOptions, matchedHospitalId]);
 	const committedEtaText = useMemo(
 		() => formatRouteEta(committedRouteInfo, formattedRemaining !== "--" ? formattedRemaining : matchedEtaText),
 		[committedRouteInfo, formattedRemaining, matchedEtaText],
@@ -759,9 +789,9 @@ export default function EmergencyIOSMobileIntakeView({
 
 	useEffect(() => {
 		const isRecommendedHospitalSelected =
-			!!selectedHospital?.id &&
+			!!activeProposedHospital?.id &&
 			!!recommendedHospital?.id &&
-			selectedHospital.id === recommendedHospital.id;
+			activeProposedHospital.id === recommendedHospital.id;
 		const proposedHospitalHeaderTitle = isRecommendedHospitalSelected
 			? "Closest hospital"
 			: "Selected hospital";
@@ -778,6 +808,16 @@ export default function EmergencyIOSMobileIntakeView({
 				? {
 					title: "Finding help",
 					subtitle: "REQUEST STARTED",
+				}
+				: hospitalSheetVisible
+				? {
+					title: "Choose hospital",
+					subtitle:
+						hospitalChoiceStatus === "loading"
+							? "LOADING OPTIONS"
+							: hospitalChoiceStatus === "empty"
+								? "NO OPTIONS YET"
+								: "REVIEW OPTIONS",
 				}
 				: isProposedHospital
 				? {
@@ -796,6 +836,9 @@ export default function EmergencyIOSMobileIntakeView({
 
 		onHeaderStateChange?.(nextHeaderState);
 	}, [
+		activeProposedHospital?.id,
+		hospitalChoiceStatus,
+		hospitalSheetVisible,
 		isProposedHospital,
 		isResponderMatched,
 		matchedPhaseState.headerSubtitle,
@@ -804,7 +847,6 @@ export default function EmergencyIOSMobileIntakeView({
 		proposedHospitalDistance,
 		recommendedHospital?.id,
 		searchSheetVisible,
-		selectedHospital?.id,
 		shouldRenderFindingUi,
 	]);
 
@@ -824,18 +866,18 @@ export default function EmergencyIOSMobileIntakeView({
 		if (isProposedHospital || shouldRenderFindingUi) {
 			logEmergencyDebug("phase_back_to_confirm_location", {
 				from: flowState,
-				selectedHospital: summarizeHospitalForDebug(selectedHospital),
+				selectedHospital: summarizeHospitalForDebug(activeProposedHospital),
 			});
 			setRenderReviewShell(false);
 			setFlowState(EMERGENCY_FLOW_STATES.confirm_location.key);
 			return;
 		}
 	}, [
+		activeProposedHospital,
 		flowState,
 		hospitalSheetVisible,
 		isProposedHospital,
 		searchSheetVisible,
-		selectedHospital,
 		shouldRenderFindingUi,
 	]);
 
@@ -1007,7 +1049,7 @@ export default function EmergencyIOSMobileIntakeView({
 		isResponderMatched
 			? matchedPhaseState.title
 			: isProposedHospital
-			? getHospitalPrimaryText(selectedHospital)
+			? getHospitalPrimaryText(activeProposedHospital)
 			: shouldShowAddressBody
 			? activeAddressModel?.primaryText || currentState.title
 			: currentState.title;
@@ -1015,7 +1057,7 @@ export default function EmergencyIOSMobileIntakeView({
 		isResponderMatched
 			? matchedPhaseState.support
 			: isProposedHospital
-			? getHospitalSecondaryText(selectedHospital)
+			? getHospitalSecondaryText(activeProposedHospital)
 			: shouldShowAddressBody
 			? activeAddressModel?.secondaryText || ""
 			: currentState.support;
@@ -1033,6 +1075,9 @@ export default function EmergencyIOSMobileIntakeView({
 		}
 
 		if (isProposedHospital) {
+			if (isRefreshingRoutePreview || !activeProposedHospital?.id) {
+				return;
+			}
 			onContinue?.({
 				location: activeLocation,
 				locationLabel: [
@@ -1042,7 +1087,7 @@ export default function EmergencyIOSMobileIntakeView({
 					.filter(Boolean)
 					.join(" | "),
 				locationConfirmedAt: new Date().toISOString(),
-				hospital: selectedHospital || null,
+				hospital: activeProposedHospital,
 			});
 			return;
 		}
@@ -1059,12 +1104,17 @@ export default function EmergencyIOSMobileIntakeView({
 		findingStartedAtRef.current = Date.now();
 		setFlowState(EMERGENCY_FLOW_STATES.finding_nearby_help.key);
 	}, [
+		activeAddressModel?.primaryText,
+		activeAddressModel?.secondaryText,
 		activeLocation,
+		activeProposedHospital,
 		flowState,
 		handleRetry,
 		isProposedHospital,
-		shouldRenderFindingUi,
+		isRefreshingRoutePreview,
 		isResponderMatched,
+		onContinue,
+		shouldRenderFindingUi,
 	]);
 
 	const handleShareMatchedDetails = useCallback(async () => {
@@ -1099,10 +1149,10 @@ export default function EmergencyIOSMobileIntakeView({
 	const handleChooseAnotherHospital = useCallback(() => {
 		logEmergencyDebug("hospital_choice_open_requested", {
 			flowState,
-			selectedHospitalId: selectedHospital?.id || null,
+			selectedHospitalId: activeProposedHospital?.id || null,
 		});
 		setHospitalSheetVisible(true);
-	}, [flowState, selectedHospital?.id]);
+	}, [activeProposedHospital?.id, flowState]);
 
 	const handleSelectHospital = useCallback((hospital) => {
 		setHospitalSheetVisible(false);
@@ -1150,15 +1200,31 @@ export default function EmergencyIOSMobileIntakeView({
 	}, [activeLocation, flowState, selectedHospital]);
 
 	const displayedProposedEta = formatRouteEta(previewRouteInfo, proposedHospitalEta);
+	const shouldUseChooseHospitalStage = shouldShowReviewShell && !isResponderMatched;
+	const useSplitChooseHospitalLayout =
+		shouldUseChooseHospitalStage &&
+		[
+			"ios-pad",
+			"android-tablet",
+			"android-chromebook",
+			"macbook",
+			"web-sm-wide",
+			"web-md",
+			"web-lg",
+			"web-xl",
+			"web-2xl-3xl",
+			"web-ultra-wide",
+		].includes(chooseHospitalVariant);
 	const shouldShowPreviewMap =
-		shouldShowReviewShell &&
+		shouldUseChooseHospitalStage &&
+		!useSplitChooseHospitalLayout &&
 		!!activeLocation &&
-		!!selectedHospital &&
+		!!activeProposedHospital &&
 		(!isProposedHospital || (!isRefreshingRoutePreview && routePreviewReady));
 	const shouldShowCommittedMap = isResponderMatched && !!matchedHospitalId;
 	const shouldUseIosPadPhaseLayout =
 		useIosPadLayout && !shouldShowReviewShell && !isResponderMatched;
-	const shouldUseChooseLocationStage = !shouldShowReviewShell && !isResponderMatched;
+	const shouldUseChooseLocationStage = !shouldUseChooseHospitalStage && !isResponderMatched;
 	const shouldLockWebViewport =
 		(isWebMobile || isWideDesktopWeb) && shouldUseChooseLocationStage;
 	const confirmPrimaryLabel =
@@ -1192,21 +1258,25 @@ export default function EmergencyIOSMobileIntakeView({
 
 	return (
 		<LinearGradient colors={colors.backgroundGradient} style={styles.gradient}>
-			<EmergencyLocationSearchSheet
+			<EmergencyLocationSearchStageOrchestrator
 				visible={searchSheetVisible}
+				variant={locationSearchVariant}
 				onClose={() => setSearchSheetVisible(false)}
 				onUseCurrentLocation={handleUseCurrentLocation}
 				onSelectLocation={handleSelectLocation}
 				currentLocation={activeLocation}
-				keyboardAwareMode={locationSheetBehavior}
-				presentationMode={locationSheetPresentation}
 			/>
 			<EmergencyHospitalChoiceSheet
 				visible={hospitalSheetVisible}
 				onClose={() => setHospitalSheetVisible(false)}
-				hospitals={alternativeHospitals}
-				selectedHospitalId={selectedHospital?.id || null}
+				hospitals={hospitalChoiceOptions}
+				selectedHospitalId={activeProposedHospital?.id || null}
+				recommendedHospitalId={recommendedHospital?.id || null}
 				onSelectHospital={handleSelectHospital}
+				onRetry={onRefreshHospitalOptions}
+				isLoading={hospitalChoiceStatus === "loading"}
+				isRefreshing={hospitalChoiceState?.isRefreshingCatalog === true}
+				statusMessage={hospitalChoiceMessage}
 				onChangeLocation={() => {
 					setHospitalSheetVisible(false);
 					setSearchSheetVisible(true);
@@ -1251,9 +1321,9 @@ export default function EmergencyIOSMobileIntakeView({
 				>
 					{shouldShowPreviewMap ? (
 						<EmergencyHospitalRoutePreview
-							key={`route-preview-${selectedHospital?.id || "none"}`}
+							key={`route-preview-${activeProposedHospital?.id || "none"}`}
 							origin={activeLocation}
-							hospital={selectedHospital}
+							hospital={activeProposedHospital}
 							bottomPadding={metrics.primaryHeight + 228}
 							routeCoordinates={routeCoordinates}
 							routeInfo={previewRouteInfo}
@@ -1304,7 +1374,7 @@ export default function EmergencyIOSMobileIntakeView({
 						</Animated.View>
 					) : null}
 
-					{shouldShowReviewShell ? (
+					{shouldUseChooseHospitalStage ? (
 						<Animated.View
 							pointerEvents={isProposedHospital ? "auto" : "none"}
 							style={[
@@ -1315,36 +1385,24 @@ export default function EmergencyIOSMobileIntakeView({
 								},
 							]}
 						>
-							<View style={styles.reviewSheet}>
-								<View style={styles.reviewWell}>
-									<View style={styles.reviewEtaCard}>
-										<Text style={styles.reviewEtaLabel}>Estimated arrival</Text>
-										<Text style={styles.reviewEtaValue}>{displayedProposedEta}</Text>
-									</View>
-									<View style={styles.reviewCopyBlock}>
-										<Text style={styles.reviewHeadline}>{headlineText}</Text>
-										{helperText ? (
-											<Text style={styles.reviewHelper}>{helperText}</Text>
-										) : null}
-									</View>
-									<View style={styles.reviewActions}>
-										<EntryActionButton
-											label={EMERGENCY_FLOW_STATES.proposed_hospital.primaryAction}
-											variant="primary"
-											height={metrics.primaryHeight}
-											onPress={handlePrimary}
-										/>
-										<Pressable
-											onPress={handleChooseAnotherHospital}
-											style={styles.reviewQuietLink}
-										>
-											<Text style={styles.quietLinkText}>
-												{EMERGENCY_FLOW_STATES.proposed_hospital.secondaryAction}
-											</Text>
-										</Pressable>
-									</View>
-								</View>
-							</View>
+							<EmergencyChooseHospitalStageOrchestrator
+								variant={chooseHospitalVariant}
+								activeLocation={activeLocation}
+								hospital={activeProposedHospital}
+								routeCoordinates={routeCoordinates}
+								routeInfo={previewRouteInfo}
+								isCalculatingRoute={isCalculatingRoute}
+								displayedEta={displayedProposedEta}
+								headlineText={headlineText}
+								helperText={helperText}
+								isRefreshingRoutePreview={isRefreshingRoutePreview}
+								isRefreshingCatalog={hospitalChoiceState?.isRefreshingCatalog === true}
+								hospitalChoiceMessage={hospitalChoiceMessage}
+								onPrimaryPress={handlePrimary}
+								onSecondaryPress={handleChooseAnotherHospital}
+								metrics={metrics}
+								styles={styles}
+							/>
 						</Animated.View>
 					) : null}
 
