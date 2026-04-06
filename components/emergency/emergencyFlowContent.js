@@ -22,8 +22,8 @@ export const EMERGENCY_FLOW_STATES = {
 		key: "proposed_hospital",
 		title: "Closest help nearby",
 		support: "",
-		primaryAction: "Continue",
-		secondaryAction: "Choose another",
+		primaryAction: "Use this hospital",
+		secondaryAction: "See other hospitals",
 	},
 	responder_matched: {
 		key: "responder_matched",

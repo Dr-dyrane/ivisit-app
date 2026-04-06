@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Platform, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from "../../map/MapComponents";
@@ -86,8 +86,10 @@ export default function EmergencyHospitalRoutePreview({
 	showLoadingBadge = true,
 }) {
 	const { isDarkMode } = useTheme();
+	const mapRef = useRef(null);
 	const fade = useRef(new Animated.Value(visible ? 1 : 0)).current;
 	const loadingOverlayOpacity = useRef(new Animated.Value(0.46)).current;
+	const [isMapReady, setIsMapReady] = useState(Platform.OS !== "android");
 
 	const originCoordinate = useMemo(() => toCoordinate(origin), [origin]);
 	const hospitalCoordinate = useMemo(() => toCoordinate(hospital), [hospital]);
@@ -122,6 +124,48 @@ export default function EmergencyHospitalRoutePreview({
 			].join(":"),
 		[hospital?.id, routeCoordinates.length, routeInfo?.distanceMeters, routeInfo?.durationSec],
 	);
+
+	useEffect(() => {
+		if (Platform.OS !== "android") return undefined;
+		if (!visible || !isMapReady || !mapRef.current || routeBoundsCoordinates.length < 2) {
+			return undefined;
+		}
+
+		const edgePadding = {
+			top: 28,
+			right: 28,
+			bottom: Math.max(28, bottomPadding + 22),
+			left: 28,
+		};
+
+		const fit = () => {
+			if (!mapRef.current) return;
+			if (routeCoordinates.length > 1 && mapRef.current.fitToCoordinates) {
+				mapRef.current.fitToCoordinates(routeCoordinates, {
+					edgePadding,
+					animated: true,
+				});
+				return;
+			}
+
+			mapRef.current.animateToRegion?.(initialRegion, 280);
+		};
+
+		const firstPassTimeout = setTimeout(fit, 90);
+		const secondPassTimeout = setTimeout(fit, 280);
+
+		return () => {
+			clearTimeout(firstPassTimeout);
+			clearTimeout(secondPassTimeout);
+		};
+	}, [
+		bottomPadding,
+		initialRegion,
+		isMapReady,
+		routeBoundsCoordinates.length,
+		routeCoordinates,
+		visible,
+	]);
 
 	useEffect(() => {
 		Animated.timing(fade, {
@@ -165,6 +209,7 @@ export default function EmergencyHospitalRoutePreview({
 	return (
 		<Animated.View pointerEvents="none" style={[styles.container, { opacity: fade }]}>
 			<MapView
+				ref={mapRef}
 				style={styles.map}
 				provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
 				googleRenderer={Platform.OS === "android" ? "LEGACY" : undefined}
@@ -182,6 +227,7 @@ export default function EmergencyHospitalRoutePreview({
 				showsMyLocationButton={false}
 				showsUserLocation={false}
 				userInterfaceStyle={isDarkMode ? "dark" : "light"}
+				onMapReady={() => setIsMapReady(true)}
 			>
 				{routeCoordinates.length > 1 ? (
 					<Polyline
@@ -204,6 +250,7 @@ export default function EmergencyHospitalRoutePreview({
 					<Marker
 						coordinate={hospitalCoordinate}
 						image={HOSPITAL_MARKER_IMAGE}
+						pinColor={COLORS.brandPrimary}
 						anchor={{ x: 0.5, y: 0.5 }}
 						centerOffset={HOSPITAL_MARKER_CENTER_OFFSET}
 						tracksViewChanges={false}
