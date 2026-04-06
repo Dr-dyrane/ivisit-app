@@ -1246,6 +1246,18 @@ export default function EmergencyIOSMobileIntakeView({
 		flowState === EMERGENCY_FLOW_STATES.location_failed.key
 			? EMERGENCY_FLOW_STATES.location_failed.primaryAction
 			: EMERGENCY_FLOW_STATES.confirm_location.primaryAction;
+	const shouldUseHospitalChoiceDialog = [
+		"ios-pad",
+		"android-tablet",
+		"android-chromebook",
+		"macbook",
+		"web-sm-wide",
+		"web-md",
+		"web-lg",
+		"web-xl",
+		"web-2xl-3xl",
+		"web-ultra-wide",
+	].includes(screenVariant);
 	const handleChooseLocationActionLayout = useCallback((event) => {
 		const nextY = Number(event?.nativeEvent?.layout?.y);
 		if (Number.isFinite(nextY)) {
@@ -1321,6 +1333,8 @@ export default function EmergencyIOSMobileIntakeView({
 			<EmergencyHospitalChoiceSheet
 				visible={hospitalSheetVisible}
 				onClose={() => setHospitalSheetVisible(false)}
+				variant={screenVariant}
+				presentationMode={shouldUseHospitalChoiceDialog ? "dialog" : "sheet"}
 				hospitals={hospitalChoiceOptions}
 				selectedHospitalId={activeProposedHospital?.id || null}
 				recommendedHospitalId={recommendedHospital?.id || null}

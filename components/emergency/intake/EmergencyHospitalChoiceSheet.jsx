@@ -2,11 +2,13 @@ import React, { useEffect, useMemo } from "react";
 import {
 	ActivityIndicator,
 	Modal,
+	Platform,
 	Pressable,
 	ScrollView,
 	StyleSheet,
 	Text,
 	View,
+	useWindowDimensions,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -66,11 +68,79 @@ export default function EmergencyHospitalChoiceSheet({
 	isLoading = false,
 	isRefreshing = false,
 	statusMessage = "",
+	variant = "ios-mobile",
+	presentationMode = "sheet",
 }) {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
+	const { height: windowHeight } = useWindowDimensions();
 	const hasHospitals = hospitals.length > 0;
 	const mode = !hasHospitals && isLoading ? "loading" : hasHospitals ? "results" : "empty";
+	const useDialogPresentation =
+		presentationMode === "dialog" && Platform.OS !== "android";
+	const isCompactVariant = [
+		"ios-mobile",
+		"android-mobile",
+		"android-fold",
+		"web-mobile",
+	].includes(variant);
+	const isLargeDesktopVariant = [
+		"web-lg",
+		"web-xl",
+		"web-2xl-3xl",
+		"web-ultra-wide",
+		"macbook",
+	].includes(variant);
+	const isTabletScaleVariant = [
+		"ios-pad",
+		"android-tablet",
+		"android-chromebook",
+		"web-sm-wide",
+		"web-md",
+	].includes(variant);
+	const dialogMaxWidth = useMemo(() => {
+		switch (variant) {
+			case "ios-pad":
+				return 760;
+			case "android-chromebook":
+			case "macbook":
+			case "web-md":
+				return 820;
+			case "web-lg":
+				return 900;
+			case "web-xl":
+				return 980;
+			case "web-2xl-3xl":
+				return 1060;
+			case "web-ultra-wide":
+				return 1140;
+			case "web-sm-wide":
+			case "android-tablet":
+				return 720;
+			default:
+				return 640;
+		}
+	}, [variant]);
+	const overlayHorizontalPadding = useDialogPresentation
+		? isLargeDesktopVariant
+			? 40
+			: 28
+		: 0;
+	const sheetHorizontalPadding = useDialogPresentation
+		? isLargeDesktopVariant
+			? 28
+			: isTabletScaleVariant
+				? 24
+				: 20
+		: isCompactVariant
+			? 18
+			: 20;
+	const listMaxHeight = useDialogPresentation
+		? Math.min(
+				windowHeight * 0.48,
+				isLargeDesktopVariant ? 480 : isTabletScaleVariant ? 440 : 380,
+			)
+		: undefined;
 
 	const colors = useMemo(
 		() => ({
@@ -142,23 +212,41 @@ export default function EmergencyHospitalChoiceSheet({
 
 	return (
 		<Modal
-			animationType="slide"
+			animationType={useDialogPresentation ? "fade" : "slide"}
 			transparent
 			visible={visible}
 			onRequestClose={onClose}
 		>
-			<Pressable style={[styles.scrim, { backgroundColor: colors.scrim }]} onPress={onClose} />
 			<View
 				style={[
-					styles.sheet,
-					{
-						backgroundColor: colors.sheet,
-						paddingBottom: (insets?.bottom || 0) + 18,
-					},
+					styles.modalHost,
+					useDialogPresentation ? styles.dialogHost : null,
+					{ paddingHorizontal: overlayHorizontalPadding },
 				]}
 			>
-				<View pointerEvents="none" style={[styles.sheetGlow, { backgroundColor: colors.sheetGlow }]} />
-				<View style={[styles.handle, { backgroundColor: colors.handle }]} />
+				<Pressable style={[styles.scrim, { backgroundColor: colors.scrim }]} onPress={onClose} />
+				<View
+					style={[
+						styles.sheet,
+						useDialogPresentation ? styles.dialogSheet : null,
+						{
+							backgroundColor: colors.sheet,
+							paddingBottom: (insets?.bottom || 0) + (useDialogPresentation ? 14 : 18),
+							paddingHorizontal: sheetHorizontalPadding,
+							maxWidth: useDialogPresentation ? dialogMaxWidth : undefined,
+							maxHeight: useDialogPresentation
+								? Math.min(
+										windowHeight * 0.82,
+										isLargeDesktopVariant ? 820 : isTabletScaleVariant ? 760 : 680,
+								  )
+								: Math.min(windowHeight * 0.78, 720),
+						},
+					]}
+				>
+					<View pointerEvents="none" style={[styles.sheetGlow, { backgroundColor: colors.sheetGlow }]} />
+					{!useDialogPresentation ? (
+						<View style={[styles.handle, { backgroundColor: colors.handle }]} />
+					) : null}
 
 				<View style={styles.headerRow}>
 					<View style={styles.headerTextBlock}>
@@ -224,10 +312,11 @@ export default function EmergencyHospitalChoiceSheet({
 					</View>
 				) : null}
 
-				<ScrollView
-					showsVerticalScrollIndicator={false}
-					contentContainerStyle={styles.list}
-				>
+					<ScrollView
+						showsVerticalScrollIndicator={false}
+						style={listMaxHeight ? { maxHeight: listMaxHeight } : null}
+						contentContainerStyle={styles.list}
+					>
 					{mode === "loading" ? (
 						<View style={[styles.resultsGroup, { backgroundColor: colors.groupedSurface }]}>
 							{Array.from({ length: 3 }).map((_, index) => (
@@ -420,21 +509,28 @@ export default function EmergencyHospitalChoiceSheet({
 							})}
 						</View>
 					) : null}
-				</ScrollView>
+					</ScrollView>
+				</View>
 			</View>
 		</Modal>
 	);
 }
 
 const styles = StyleSheet.create({
-	scrim: {
+	modalHost: {
 		flex: 1,
+		justifyContent: "flex-end",
+	},
+	dialogHost: {
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	scrim: {
+		...StyleSheet.absoluteFillObject,
 	},
 	sheet: {
-		position: "absolute",
-		left: 0,
-		right: 0,
-		bottom: 0,
+		width: "100%",
+		alignSelf: "stretch",
 		borderTopLeftRadius: 32,
 		borderTopRightRadius: 32,
 		paddingTop: 10,
@@ -446,6 +542,11 @@ const styles = StyleSheet.create({
 		elevation: 18,
 		maxHeight: "78%",
 		overflow: "hidden",
+	},
+	dialogSheet: {
+		alignSelf: "center",
+		borderBottomLeftRadius: 32,
+		borderBottomRightRadius: 32,
 	},
 	sheetGlow: {
 		position: "absolute",
