@@ -33,15 +33,21 @@ function nav(router, method, target) {
 	}, 500);
 }
 
-export function navigateBack({ router }) {
+export function navigateBack({ router, fallbackRoute = null }) {
 	if (isNavigating) return;
-	const fn = router?.back;
-	if (!fn) return;
-	isNavigating = true;
-	fn();
-	setTimeout(() => {
-		isNavigating = false;
-	}, 500);
+	const canGoBack = typeof router?.canGoBack === "function" ? router.canGoBack() : false;
+	if (canGoBack && typeof router?.back === "function") {
+		isNavigating = true;
+		router.back();
+		setTimeout(() => {
+			isNavigating = false;
+		}, 500);
+		return;
+	}
+
+	if (typeof fallbackRoute === "string" && fallbackRoute.trim() && typeof router?.replace === "function") {
+		nav(router, "replace", fallbackRoute);
+	}
 }
 
 export function navigateToSOS({

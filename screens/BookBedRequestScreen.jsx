@@ -23,7 +23,7 @@ import { useEmergencyRequests } from "../hooks/emergency/useEmergencyRequests";
 import { useVisits } from "../contexts/VisitsContext";
 import { useRequestFlow } from "../hooks/emergency/useRequestFlow";
 import EmergencyRequestModal from "../components/emergency/EmergencyRequestModal";
-import { navigateBack } from "../utils/navigationHelpers";
+import { navigateBack, ROUTES } from "../utils/navigationHelpers";
 import NotificationIconButton from "../components/headers/NotificationIconButton";
 
 export default function BookBedRequestScreen() {
@@ -90,7 +90,14 @@ export default function BookBedRequestScreen() {
 		onRequestComplete: () => { },
 	});
 
-	const backButton = useCallback(() => <HeaderBackButton />, []);
+	const handleClose = useCallback(() => {
+		navigateBack({ router, fallbackRoute: ROUTES.TABS_ROOT });
+	}, [router]);
+
+	const backButton = useCallback(
+		() => <HeaderBackButton onPress={handleClose} />,
+		[handleClose],
+	);
 	const rightComponent = useCallback(() => <NotificationIconButton />, []);
 
 	useFocusEffect(
@@ -149,10 +156,6 @@ export default function BookBedRequestScreen() {
 
 	const delay = useCallback((ms) => new Promise((resolve) => setTimeout(resolve, ms)), []);
 
-	const handleClose = useCallback(() => {
-		navigateBack({ router });
-	}, [router]);
-
 	const handleDispatched = useCallback(
 		async (payload) => {
 			const minMs = 800;
@@ -162,7 +165,7 @@ export default function BookBedRequestScreen() {
 			if (elapsed < minMs) {
 				await delay(minMs - elapsed);
 			}
-			navigateBack({ router });
+			navigateBack({ router, fallbackRoute: ROUTES.TABS_ROOT });
 		},
 		[delay, handleRequestComplete, router]
 	);

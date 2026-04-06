@@ -10,8 +10,9 @@ export default function HeaderBackButton({ onPress }) {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
 	const color = isDarkMode ? COLORS.bgLight : COLORS.brandPrimary;
+	const canGoBack = typeof router.canGoBack === "function" ? router.canGoBack() : false;
 
-	if (!router.canGoBack()) return null;
+	if (!canGoBack && !onPress) return null;
 
 	const handlePress = () => {
 		Haptics.selectionAsync();

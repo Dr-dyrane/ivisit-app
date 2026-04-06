@@ -26,7 +26,7 @@ import { useRequestFlow } from "../hooks/emergency/useRequestFlow";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
 import EmergencyRequestModal from "../components/emergency/EmergencyRequestModal";
 import EmergencyIntakeOrchestrator from "../components/emergency/intake/EmergencyIntakeOrchestrator";
-import { navigateBack } from "../utils/navigationHelpers";
+import { navigateBack, ROUTES } from "../utils/navigationHelpers";
 import { triageService } from "../services/triageService";
 import { demoEcosystemService } from "../services/demoEcosystemService";
 
@@ -330,7 +330,7 @@ export default function RequestAmbulanceScreen() {
 
 	const handleClose = useCallback(() => {
 		void clearPersistedIntakePhase();
-		navigateBack({ router });
+		navigateBack({ router, fallbackRoute: "/(auth)" });
 	}, [clearPersistedIntakePhase, router]);
 
 	const handleIntakeBackChange = useCallback((nextState) => {
@@ -653,7 +653,7 @@ export default function RequestAmbulanceScreen() {
 				return;
 			}
 			await clearPersistedIntakePhase();
-			navigateBack({ router });
+			navigateBack({ router, fallbackRoute: "/(auth)" });
 		},
 		[clearPersistedIntakePhase, delay, handleRequestComplete, router]
 	);
