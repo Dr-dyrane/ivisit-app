@@ -214,6 +214,7 @@ export default function EmergencyIOSMobileIntakeView({
 	viewportMode = "phone",
 	screenVariant = "ios-mobile",
 	locationSheetBehavior = "ios",
+	locationSheetPresentation = "sheet",
 	onContinue,
 	initialSnapshot = null,
 	onStateSnapshotChange,
@@ -236,6 +237,7 @@ export default function EmergencyIOSMobileIntakeView({
 		height,
 	} = useAuthViewport();
 	const useIosPadLayout = viewportMode === "ios-pad";
+	const isAndroidMobile = screenVariant === "android-mobile";
 	const useTabletLayout = viewportMode === "tablet" || useIosPadLayout || isTablet;
 	const useDesktopLayout = viewportMode === "desktop" || isDesktop;
 	const chooseLocationVariant =
@@ -273,6 +275,7 @@ export default function EmergencyIOSMobileIntakeView({
 	const [routePreviewReady, setRoutePreviewReady] = useState(false);
 	const [renderReviewShell, setRenderReviewShell] = useState(false);
 	const [renderLocationPreviewBridge, setRenderLocationPreviewBridge] = useState(false);
+	const [locationPreviewRenderKey, setLocationPreviewRenderKey] = useState(0);
 	const [isRefreshingRoutePreview, setIsRefreshingRoutePreview] = useState(false);
 	const [nowMs, setNowMs] = useState(Date.now());
 	const selectionInteractionRef = useRef(null);
@@ -309,6 +312,7 @@ export default function EmergencyIOSMobileIntakeView({
 	const { colors, metrics, ambient, styles } = createEmergencyIosMobileIntakeTheme({
 		isDarkMode,
 		isCompactPhone,
+		isAndroidMobile,
 		isTablet: useTabletLayout,
 		isIosPad: useIosPadLayout,
 		isDesktop: useDesktopLayout,
@@ -580,6 +584,7 @@ export default function EmergencyIOSMobileIntakeView({
 		!isResponderMatched &&
 		!!activeLocation &&
 		(shouldShowLocationSurface || renderLocationPreviewBridge);
+	const previousShouldShowLocationPreviewMapRef = useRef(false);
 	const findingStatusMessage = FINDING_STATUS_MESSAGES[findingStatusIndex] || "";
 	const matchedEtaText = useMemo(() => formatEtaText(matchedTrip), [matchedTrip]);
 	const matchedResponderLabel = useMemo(() => getResponderLabel(matchedTrip), [matchedTrip]);
@@ -658,6 +663,22 @@ export default function EmergencyIOSMobileIntakeView({
 
 		return undefined;
 	}, [isProposedHospital, isResponderMatched, reviewTransition]);
+
+	useEffect(() => {
+		const previewBecameVisible =
+			shouldShowLocationPreviewMap && !previousShouldShowLocationPreviewMapRef.current;
+		if (previewBecameVisible) {
+			setLocationPreviewRenderKey((prev) => prev + 1);
+		}
+		previousShouldShowLocationPreviewMapRef.current = shouldShowLocationPreviewMap;
+	}, [shouldShowLocationPreviewMap]);
+
+	useEffect(() => {
+		if (!activeLocation?.latitude || !activeLocation?.longitude) {
+			return;
+		}
+		setLocationPreviewRenderKey((prev) => prev + 1);
+	}, [activeLocation?.latitude, activeLocation?.longitude]);
 
 	useEffect(() => {
 		if (
@@ -1127,6 +1148,7 @@ export default function EmergencyIOSMobileIntakeView({
 				onSelectLocation={handleSelectLocation}
 				currentLocation={activeLocation}
 				keyboardAwareMode={locationSheetBehavior}
+				presentationMode={locationSheetPresentation}
 			/>
 			<EmergencyHospitalChoiceSheet
 				visible={hospitalSheetVisible}
@@ -1192,6 +1214,7 @@ export default function EmergencyIOSMobileIntakeView({
 									shouldRenderFindingUi={shouldRenderFindingUi}
 									shouldShowLocationSkeleton={shouldShowLocationSkeleton}
 									shouldShowLocationPreviewMap={shouldShowLocationPreviewMap}
+									locationPreviewRenderKey={locationPreviewRenderKey}
 									activeLocation={activeLocation}
 									findingStatusMessage={findingStatusMessage}
 									confirmPrimaryLabel={confirmPrimaryLabel}

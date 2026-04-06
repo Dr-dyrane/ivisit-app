@@ -183,6 +183,15 @@ export const demoEcosystemService = {
 
 	matchesDemoOwner(hospital, ownerSlug) {
 		if (this.isDemoHospital(hospital) !== true) return true;
+		const featureList = Array.isArray(hospital?.features)
+			? hospital.features.map((feature) => String(feature).trim().toLowerCase())
+			: [];
+		if (
+			featureList.includes("demo_shared") ||
+			featureList.some((feature) => feature.startsWith("demo_scope:"))
+		) {
+			return true;
+		}
 		const normalizedOwnerSlug = String(ownerSlug || "").trim().toLowerCase();
 		if (!normalizedOwnerSlug) return false;
 		const hospitalOwner = String(hospital?.demoOwner || "").trim().toLowerCase();

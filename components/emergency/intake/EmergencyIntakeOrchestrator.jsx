@@ -105,6 +105,7 @@ export default function EmergencyIntakeOrchestrator(props) {
 			viewportMode={viewportMode}
 			screenVariant={variant}
 			locationSheetBehavior="ios"
+			locationSheetPresentation={variant === "ios-pad" ? "dialog" : "sheet"}
 		/>
 	);
 }

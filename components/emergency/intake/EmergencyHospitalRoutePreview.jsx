@@ -2,7 +2,12 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, Platform, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from "../../map/MapComponents";
-import { darkMapStyle, lightMapStyle } from "../../map/mapStyles";
+import {
+	darkAndroidMapStyle,
+	darkMapStyle,
+	lightAndroidMapStyle,
+	lightMapStyle,
+} from "../../map/mapStyles";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { COLORS } from "../../../constants/colors";
 
@@ -93,7 +98,14 @@ export default function EmergencyHospitalRoutePreview({
 	const initialRegion = useMemo(() => {
 		return getRegionForCoordinates(routeBoundsCoordinates, bottomPadding);
 	}, [bottomPadding, routeBoundsCoordinates]);
-	const customMapStyle = isDarkMode ? darkMapStyle : lightMapStyle;
+	const customMapStyle =
+		Platform.OS === "android"
+			? isDarkMode
+				? darkAndroidMapStyle
+				: lightAndroidMapStyle
+			: isDarkMode
+				? darkMapStyle
+				: lightMapStyle;
 	const routeRenderKey = useMemo(
 		() =>
 			[
@@ -198,8 +210,8 @@ export default function EmergencyHospitalRoutePreview({
 				pointerEvents="none"
 				colors={
 					isDarkMode
-						? ["rgba(11,15,26,0.14)", "rgba(11,15,26,0.28)", "rgba(11,15,26,0.88)"]
-						: ["rgba(255,255,255,0.06)", "rgba(255,255,255,0.18)", "rgba(255,255,255,0.92)"]
+						? ["rgba(11,15,26,0.04)", "rgba(11,15,26,0.12)", "rgba(11,15,26,0.52)"]
+						: ["rgba(255,255,255,0.00)", "rgba(255,255,255,0.05)", "rgba(255,255,255,0.32)"]
 				}
 				style={styles.scrim}
 			/>

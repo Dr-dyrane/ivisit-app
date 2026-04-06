@@ -43,6 +43,7 @@ export default function EmergencyChooseLocationStageBase({
 	shouldRenderFindingUi,
 	shouldShowLocationSkeleton,
 	shouldShowLocationPreviewMap,
+	locationPreviewRenderKey = 0,
 	activeLocation,
 	findingStatusMessage,
 	confirmPrimaryLabel,
@@ -68,7 +69,26 @@ export default function EmergencyChooseLocationStageBase({
 		viewportHeight: height,
 		fontScale,
 	});
-	const useInlineSecondaryLocationAction = variant === "ios-mobile";
+	const useInlineSecondaryLocationAction =
+		variant === "ios-mobile" || variant === "android-mobile";
+	const usePairedActionBand = variant === "ios-pad";
+	const preserveAndroidMapDuringSkeleton =
+		variant === "android-mobile" &&
+		!!activeLocation &&
+		Number.isFinite(Number(activeLocation.latitude)) &&
+		Number.isFinite(Number(activeLocation.longitude));
+	const shouldRenderMapPreview =
+		shouldShowLocationPreviewMap ||
+		(preserveAndroidMapDuringSkeleton && shouldShowLocationSkeleton);
+	const mapAnimatedStyle = shouldShowLocationPreviewMap
+		? {
+				opacity: locationPreviewOpacity,
+				transform: [
+					{ translateY: locationPreviewTranslateY },
+					{ scale: locationPreviewScale },
+				],
+			}
+		: null;
 
 	const heroPulseScale =
 		flowState === "request_started" || shouldRenderFindingUi ? pulseScale : 1;
@@ -153,7 +173,7 @@ export default function EmergencyChooseLocationStageBase({
 					</View>
 				</View>
 
-				{shouldShowLocationSkeleton ? (
+				{shouldShowLocationSkeleton && !preserveAndroidMapDuringSkeleton ? (
 					<Animated.View style={[styles.mapSkeleton, { opacity: skeletonOpacity }]}>
 						<View style={styles.mapSkeletonGridA} />
 						<View style={styles.mapSkeletonGridB} />
@@ -162,20 +182,17 @@ export default function EmergencyChooseLocationStageBase({
 							<View style={styles.mapSkeletonPin} />
 						</View>
 					</Animated.View>
-				) : shouldShowLocationPreviewMap ? (
+				) : shouldRenderMapPreview ? (
 					<Animated.View
 						style={[
 							styles.mapWrap,
-							{
-								opacity: locationPreviewOpacity,
-								transform: [
-									{ translateY: locationPreviewTranslateY },
-									{ scale: locationPreviewScale },
-								],
-							},
+							mapAnimatedStyle,
 						]}
 					>
-						<EmergencyLocationPreviewMap location={activeLocation} />
+						<EmergencyLocationPreviewMap
+							key={`location-preview-${locationPreviewRenderKey}`}
+							location={activeLocation}
+						/>
 					</Animated.View>
 				) : null}
 			</View>
@@ -188,6 +205,15 @@ export default function EmergencyChooseLocationStageBase({
 								<View style={styles.inlineLocationButtonSkeleton} />
 								<View style={styles.inlinePrimaryAction}>
 									<View style={styles.primarySkeleton} />
+								</View>
+							</View>
+						) : usePairedActionBand ? (
+							<View style={styles.pairedActionSurface}>
+								<View style={styles.pairedActionRow}>
+									<View style={styles.pairedSecondarySkeleton} />
+									<View style={styles.pairedPrimaryAction}>
+										<View style={styles.primarySkeleton} />
+									</View>
 								</View>
 							</View>
 						) : (
@@ -245,6 +271,27 @@ export default function EmergencyChooseLocationStageBase({
 										height={profile.primaryHeight}
 										onPress={onPrimaryPress}
 									/>
+								</View>
+							</View>
+						) : usePairedActionBand ? (
+							<View style={styles.pairedActionSurface}>
+								<View style={styles.pairedActionRow}>
+									<View style={styles.pairedSecondaryAction}>
+										<EntryActionButton
+											label={secondaryLabel}
+											variant="secondary"
+											height={profile.primaryHeight}
+											onPress={onSecondaryPress}
+										/>
+									</View>
+									<View style={styles.pairedPrimaryAction}>
+										<EntryActionButton
+											label={confirmPrimaryLabel}
+											variant="primary"
+											height={profile.primaryHeight}
+											onPress={onPrimaryPress}
+										/>
+									</View>
 								</View>
 							</View>
 						) : (

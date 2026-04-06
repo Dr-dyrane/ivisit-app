@@ -4,6 +4,7 @@ import { COLORS } from "../../../constants/colors";
 export function createEmergencyIosMobileIntakeTheme({
 	isDarkMode,
 	isCompactPhone,
+	isAndroidMobile = false,
 	isTablet = false,
 	isIosPad = false,
 	isDesktop = false,
@@ -32,21 +33,23 @@ export function createEmergencyIosMobileIntakeTheme({
 			caption: "#7C879A",
 		};
 
-	const topPadding =
-		headerOffset +
-		(isDesktop ? 40 : isTablet ? 32 : isVeryShortHeight ? 18 : 30);
-	const bottomPadding =
-		insetsBottom + (isDesktop ? 28 : isTablet ? 24 : isVeryShortHeight ? 18 : 24);
+	const topPadding = isAndroidMobile
+		? headerOffset + (isVeryShortHeight ? 8 : 16)
+		: headerOffset +
+			(isDesktop ? 40 : isTablet ? 32 : isVeryShortHeight ? 18 : 30);
+	const bottomPadding = isAndroidMobile
+		? insetsBottom + (isVeryShortHeight ? 18 : 24)
+		: insetsBottom + (isDesktop ? 28 : isTablet ? 24 : isVeryShortHeight ? 18 : 24);
 	const stageMinHeight = Math.max(viewportHeight - topPadding - bottomPadding, 0);
 
 	const metrics = {
 		topPadding,
 		bottomPadding,
 		stageMinHeight,
-		contentMaxWidth: isDesktop ? 1120 : isTablet ? 860 : 430,
-		centerClusterMaxWidth: isDesktop ? 720 : isTablet ? 620 : 430,
-		locationPreviewMaxWidth: isDesktop ? 720 : isTablet ? 620 : 430,
-		actionMaxWidth: isDesktop ? 420 : isTablet ? 440 : 430,
+		contentMaxWidth: isDesktop ? 1120 : isTablet ? 860 : isAndroidMobile ? 460 : 430,
+		centerClusterMaxWidth: isDesktop ? 720 : isTablet ? 620 : isAndroidMobile ? 460 : 430,
+		locationPreviewMaxWidth: isDesktop ? 720 : isTablet ? 620 : isAndroidMobile ? 460 : 430,
+		actionMaxWidth: isDesktop ? 420 : isTablet ? 440 : isAndroidMobile ? 460 : 430,
 		reviewSheetMaxWidth: isDesktop ? 480 : isTablet ? 520 : 430,
 		heroImageWidth: isDesktop ? 268 : isTablet ? 236 : isCompactPhone ? 194 : 214,
 		heroImageHeight: isDesktop ? 190 : isTablet ? 168 : isCompactPhone ? 138 : 152,
@@ -125,8 +128,8 @@ export function createEmergencyIosMobileIntakeTheme({
 		committedMapScrim: {
 			...StyleSheet.absoluteFillObject,
 			backgroundColor: isDarkMode
-				? "rgba(11, 15, 26, 0.20)"
-				: "rgba(255, 255, 255, 0.18)",
+				? "rgba(11, 15, 26, 0.10)"
+				: "rgba(255, 255, 255, 0.06)",
 		},
 		centerCluster: {
 			width: "100%",
@@ -385,10 +388,21 @@ export function createEmergencyIosMobileIntakeTheme({
 			justifyContent: "center",
 		},
 		reviewWell: {
-			paddingTop: 10,
+			paddingTop: 12,
+			paddingHorizontal: 14,
+			paddingBottom: 16,
 			alignItems: "center",
 			justifyContent: "center",
 			width: "100%",
+			borderRadius: 34,
+			backgroundColor: isDarkMode
+				? "rgba(11, 15, 26, 0.38)"
+				: "rgba(255, 255, 255, 0.60)",
+			shadowColor: isDarkMode ? "#000000" : "#0F172A",
+			shadowOpacity: isDarkMode ? 0.08 : 0.04,
+			shadowRadius: 18,
+			shadowOffset: { width: 0, height: 10 },
+			elevation: 0,
 		},
 		reviewActions: {
 			width: "100%",
@@ -416,7 +430,7 @@ export function createEmergencyIosMobileIntakeTheme({
 		reviewSheet: {
 			width: "100%",
 			maxWidth: metrics.reviewSheetMaxWidth,
-			paddingHorizontal: isCompactPhone ? 14 : 16,
+			paddingHorizontal: isCompactPhone ? 8 : 10,
 			paddingBottom: 8,
 			marginTop: "auto",
 			alignSelf: "center",

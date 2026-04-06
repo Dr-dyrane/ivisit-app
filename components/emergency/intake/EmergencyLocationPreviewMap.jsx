@@ -3,7 +3,12 @@ import { Platform, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { MapView, Marker, PROVIDER_GOOGLE } from "../../map/MapComponents";
-import { darkMapStyle, lightMapStyle } from "../../map/mapStyles";
+import {
+	darkAndroidMapStyle,
+	darkMapStyle,
+	lightAndroidMapStyle,
+	lightMapStyle,
+} from "../../map/mapStyles";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { COLORS } from "../../../constants/colors";
 
@@ -34,7 +39,17 @@ function buildRegion(location) {
 export default function EmergencyLocationPreviewMap({ location }) {
 	const { isDarkMode } = useTheme();
 	const mapRef = useRef(null);
-	const [isMapReady, setIsMapReady] = useState(Platform.OS === "web");
+	const [isMapReady, setIsMapReady] = useState(
+		Platform.OS === "web" || Platform.OS === "android",
+	);
+	const isAndroid = Platform.OS === "android";
+	const customMapStyle = isAndroid
+		? isDarkMode
+			? darkAndroidMapStyle
+			: lightAndroidMapStyle
+		: isDarkMode
+			? darkMapStyle
+			: lightMapStyle;
 	const region = useMemo(
 		() => buildRegion(location),
 		[location?.latitude, location?.longitude],
@@ -46,16 +61,17 @@ export default function EmergencyLocationPreviewMap({ location }) {
 
 	useEffect(() => {
 		if (!mapRef.current || !hasLocation) return;
+		if (isAndroid && !isMapReady) return;
 
 		const timeout = setTimeout(() => {
 			mapRef.current?.animateToRegion?.(region, 260);
-		}, 60);
+		}, isAndroid ? 120 : 60);
 
 		return () => clearTimeout(timeout);
-	}, [hasLocation, region]);
+	}, [hasLocation, isAndroid, isMapReady, region]);
 
 	useEffect(() => {
-		if (Platform.OS === "web" || isMapReady || !hasLocation) {
+		if (Platform.OS === "web" || Platform.OS === "android" || isMapReady || !hasLocation) {
 			return undefined;
 		}
 
@@ -67,13 +83,14 @@ export default function EmergencyLocationPreviewMap({ location }) {
 	}, [hasLocation, isMapReady]);
 
 	return (
-		<View style={styles.shell}>
+		<View style={styles.shell} collapsable={false}>
 			<MapView
 				ref={mapRef}
+				collapsable={false}
 				style={styles.map}
 				provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
 				googleRenderer={Platform.OS === "android" ? "LEGACY" : undefined}
-				customMapStyle={isDarkMode ? darkMapStyle : lightMapStyle}
+				customMapStyle={customMapStyle}
 				mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
 				initialRegion={region}
 				scrollEnabled={false}
@@ -162,8 +179,8 @@ export default function EmergencyLocationPreviewMap({ location }) {
 				pointerEvents="none"
 				colors={
 					isDarkMode
-						? ["rgba(11,15,26,0.02)", "rgba(11,15,26,0.08)", "rgba(11,15,26,0.34)"]
-						: ["rgba(255,255,255,0.02)", "rgba(255,255,255,0.08)", "rgba(255,255,255,0.28)"]
+						? ["rgba(11,15,26,0.00)", "rgba(11,15,26,0.04)", "rgba(11,15,26,0.18)"]
+						: ["rgba(255,255,255,0.00)", "rgba(255,255,255,0.03)", "rgba(255,255,255,0.10)"]
 				}
 				style={styles.scrim}
 			/>

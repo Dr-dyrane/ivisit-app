@@ -81,6 +81,7 @@ export default function EmergencyLocationSearchSheet({
 	onSelectLocation,
 	currentLocation = null,
 	keyboardAwareMode = "ios",
+	presentationMode = "sheet",
 }) {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
@@ -96,6 +97,9 @@ export default function EmergencyLocationSearchSheet({
 	const sessionTokenRef = useRef(null);
 	const requestIdRef = useRef(0);
 	const enableAndroidKeyboardAware = keyboardAwareMode === "android";
+	const useDialogPresentation =
+		presentationMode === "dialog" &&
+		Platform.OS !== "android";
 	const { keyboardHeight, modalHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
 		useAndroidKeyboardAwareModal({
 			defaultHeight: 620,
@@ -103,6 +107,10 @@ export default function EmergencyLocationSearchSheet({
 		});
 	const keyboardAvoidingProps = enableAndroidKeyboardAware
 		? getKeyboardAvoidingViewProps({ style: styles.keyboardWrap })
+		: useDialogPresentation
+			? {
+					style: styles.dialogKeyboardWrap,
+				}
 		: {
 				style: styles.iosKeyboardWrap,
 			};
@@ -112,8 +120,14 @@ export default function EmergencyLocationSearchSheet({
 				contentContainerStyle: styles.resultsContent,
 			})
 		: {
-				style: styles.resultsList,
-				contentContainerStyle: styles.resultsContent,
+				style: [
+					styles.resultsList,
+					useDialogPresentation ? styles.dialogResultsList : null,
+				],
+				contentContainerStyle: [
+					styles.resultsContent,
+					useDialogPresentation ? styles.dialogResultsContent : null,
+				],
 				keyboardShouldPersistTaps: "handled",
 			};
 
@@ -240,6 +254,28 @@ export default function EmergencyLocationSearchSheet({
 		);
 	}, [insets?.top, iosKeyboardHeight, isIosKeyboardVisible, windowHeight]);
 
+	const iosDialogMaxHeight = useMemo(() => {
+		if (Platform.OS !== "ios") return 760;
+		const topInset = insets?.top || 0;
+		const bottomInset = insets?.bottom || 0;
+		const keyboardAllowance = isIosKeyboardVisible
+			? Math.min(iosKeyboardHeight * 0.42, 180)
+			: 0;
+		return Math.min(
+			760,
+			Math.max(
+				420,
+				windowHeight - topInset - bottomInset - keyboardAllowance - 64,
+			),
+		);
+	}, [
+		insets?.bottom,
+		insets?.top,
+		iosKeyboardHeight,
+		isIosKeyboardVisible,
+		windowHeight,
+	]);
+
 	useEffect(() => {
 		if (!visible) {
 			return undefined;
@@ -297,7 +333,7 @@ export default function EmergencyLocationSearchSheet({
 		<Modal
 			visible={visible}
 			transparent
-			animationType="slide"
+			animationType={useDialogPresentation ? "fade" : "slide"}
 			statusBarTranslucent
 			onRequestClose={handleClose}
 		>
@@ -305,14 +341,19 @@ export default function EmergencyLocationSearchSheet({
 				<View
 					style={[
 						styles.overlay,
+						useDialogPresentation ? styles.dialogOverlay : null,
 						{
 							backgroundColor: colors.overlay,
+							paddingHorizontal: useDialogPresentation ? 28 : 0,
+							paddingTop: useDialogPresentation ? Math.max((insets?.top || 0) + 24, 32) : 0,
 							paddingBottom:
 								enableAndroidKeyboardAware && Platform.OS === "android"
 									? keyboardHeight
-									: Platform.OS === "ios"
+									: Platform.OS === "ios" && !useDialogPresentation
 										? iosKeyboardHeight
-									: 0,
+										: useDialogPresentation
+											? Math.max((insets?.bottom || 0) + 24, 32)
+											: 0,
 						},
 					]}
 				>
@@ -321,19 +362,28 @@ export default function EmergencyLocationSearchSheet({
 							<View
 								style={[
 									styles.sheet,
+									useDialogPresentation ? styles.dialogSheet : null,
 									{
 										backgroundColor: colors.sheet,
-										maxHeight: enableAndroidKeyboardAware ? modalHeight : iosSheetMaxHeight,
+										maxHeight: enableAndroidKeyboardAware
+											? modalHeight
+											: useDialogPresentation
+												? iosDialogMaxHeight
+												: iosSheetMaxHeight,
 										marginBottom:
-											Platform.OS === "ios" && isIosKeyboardVisible ? -12 : 0,
+											Platform.OS === "ios" && isIosKeyboardVisible && !useDialogPresentation
+												? -12
+												: 0,
 										paddingBottom:
-											Platform.OS === "ios" && isIosKeyboardVisible
+											Platform.OS === "ios" && isIosKeyboardVisible && !useDialogPresentation
 												? 12
+												: useDialogPresentation
+													? 24
 												: Math.max((insets?.bottom || 0) + 18, 24),
 									},
 								]}
 							>
-								<View style={styles.handle} />
+								{!useDialogPresentation ? <View style={styles.handle} /> : null}
 								<View style={styles.header}>
 									<View style={styles.headerCopy}>
 										<Text style={[styles.eyebrow, { color: colors.muted }]}>
@@ -564,6 +614,10 @@ const styles = StyleSheet.create({
 		flex: 1,
 		justifyContent: "flex-end",
 	},
+	dialogOverlay: {
+		justifyContent: "center",
+		alignItems: "center",
+	},
 	keyboardWrap: {
 		justifyContent: "flex-end",
 	},
@@ -571,11 +625,29 @@ const styles = StyleSheet.create({
 		width: "100%",
 		justifyContent: "flex-end",
 	},
+	dialogKeyboardWrap: {
+		width: "100%",
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
+	},
 	sheet: {
 		borderTopLeftRadius: 30,
 		borderTopRightRadius: 30,
 		paddingHorizontal: 20,
 		paddingTop: 10,
+	},
+	dialogSheet: {
+		width: "100%",
+		maxWidth: 680,
+		borderRadius: 32,
+		paddingTop: 18,
+		paddingHorizontal: 24,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.14,
+		shadowRadius: 28,
+		shadowOffset: { width: 0, height: 18 },
+		elevation: 10,
 	},
 	handle: {
 		alignSelf: "center",
@@ -684,6 +756,12 @@ const styles = StyleSheet.create({
 	},
 	resultsContent: {
 		paddingBottom: 8,
+	},
+	dialogResultsList: {
+		maxHeight: 420,
+	},
+	dialogResultsContent: {
+		paddingBottom: 14,
 	},
 	resultsGroup: {
 		borderRadius: 24,

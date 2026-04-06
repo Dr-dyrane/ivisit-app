@@ -68,36 +68,37 @@ const DEMO_FEATURE_FLAGS = [
   "demo_complete",
   "ivisit_demo",
 ];
+const DEMO_SHARED_FLAG = "demo_shared";
 
 const MAPBOX_PROVIDER_LIMIT = 8;
 
 const SERVICE_PRICING_BASELINES = [
   {
     service_type: "ambulance",
-    service_name: "Demo Ambulance Dispatch",
+    service_name: "Ambulance Dispatch",
     base_price: 160,
-    description: "Demo baseline for ambulance dispatch",
+    description: "Baseline for ambulance dispatch",
   },
   {
     service_type: "bed",
-    service_name: "Demo Bed Reservation",
+    service_name: "Bed Reservation",
     base_price: 120,
-    description: "Demo baseline for bed reservation",
+    description: "Baseline for bed reservation",
   },
 ];
 
 const ROOM_PRICING_BASELINES = [
   {
     room_type: "general",
-    room_name: "General Ward (Demo)",
+    room_name: "General Ward",
     price_per_night: 140,
-    description: "Demo baseline room pricing",
+    description: "Baseline room pricing",
   },
   {
     room_type: "private",
-    room_name: "Private Room (Demo)",
+    room_name: "Private Room",
     price_per_night: 260,
-    description: "Demo private room baseline",
+    description: "Private room baseline",
   },
 ];
 
@@ -107,6 +108,7 @@ const DEMO_MAX_HOSPITALS = 3;
 type DemoContext = {
   userId: string;
   userSlug: string;
+  coverageKey: string;
   latitude: number;
   longitude: number;
   radiusKm: number;
@@ -155,6 +157,55 @@ const uniqueStrings = (values: string[]): string[] => {
   return out;
 };
 
+const stripDemoSuffixes = (value: string) =>
+  value.replace(/\s*(?:\((?:demo)\))+$/i, "").replace(/\s*\(demo\)/gi, "").replace(/\s{2,}/g, " ").trim();
+
+const normalizeHospitalName = (value: unknown, fallback = "Nearby Hospital") =>
+  toSafeString(stripDemoSuffixes(toSafeString(value, fallback)), fallback);
+
+const toCoverageAxisKey = (value: number) =>
+  `${value >= 0 ? "p" : "n"}${Math.round(Math.abs(value) * 100)
+    .toString()
+    .padStart(4, "0")}`;
+
+const toCoverageKey = (latitude: number, longitude: number) =>
+  `${toCoverageAxisKey(latitude)}_${toCoverageAxisKey(longitude)}`;
+
+const toStableIdFragment = (value: string, fallback: string) => {
+  const normalized = String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, 32);
+  return normalized || fallback;
+};
+
+const isBootstrapDemoFeature = (feature: string) => {
+  const normalized = String(feature || "").trim().toLowerCase();
+  return (
+    normalized === DEMO_SHARED_FLAG ||
+    normalized === "demo_seed" ||
+    normalized === "demo_complete" ||
+    normalized === "demo_verified" ||
+    normalized === "ivisit_demo" ||
+    normalized.startsWith("demo_owner:") ||
+    normalized.startsWith("demo_scope:")
+  );
+};
+
+const isDemoSeedRow = (row: any) => {
+  const placeId = toSafeString(row?.place_id, "").toLowerCase();
+  const verificationStatus = toSafeString(row?.verification_status, "").toLowerCase();
+  const featureList = toSafeStringArray(row?.features).map((feature) => feature.toLowerCase());
+  const name = toSafeString(row?.name, "").toLowerCase();
+
+  return (
+    placeId.startsWith("demo:") ||
+    verificationStatus.startsWith("demo") ||
+    featureList.some((feature) => feature.includes("demo")) ||
+    /\(demo\)/i.test(name)
+  );
+};
+
 const parseHospitalCoordinates = (row: any): { latitude: number | null; longitude: number | null } => {
   const lat = toFiniteNumber(row?.latitude);
   const lng = toFiniteNumber(row?.longitude);
@@ -171,12 +222,17 @@ const parseHospitalCoordinates = (row: any): { latitude: number | null; longitud
   return { latitude: null, longitude: null };
 };
 
-const toDemoPlaceId = (ctx: DemoContext, slotIndex: number): string =>
-  `demo:${ctx.userSlug}:slot:${slotIndex + 1}`;
+const toDemoPlaceId = (ctx: DemoContext, seed: any, slotIndex: number): string => {
+  const sourcePlaceId = toSafeString(seed?.source_place_id || seed?.place_id, "");
+  if (sourcePlaceId) {
+    return `demo:${ctx.coverageKey}:src:${toStableIdFragment(sourcePlaceId, `slot${slotIndex + 1}`)}`;
+  }
+  return `demo:${ctx.coverageKey}:slot:${slotIndex + 1}`;
+};
 
 const toAuthEmail = (ctx: DemoContext, kind: string, slotIndex?: number): string => {
   const slotSuffix = Number.isFinite(slotIndex) ? `-${Number(slotIndex) + 1}` : "";
-  return `demo-${kind}${slotSuffix}+${ctx.userSlug}@ivisit-demo.local`;
+  return `demo-${kind}${slotSuffix}+${ctx.coverageKey}@ivisit-demo.local`;
 };
 
 const toDisplayName = (kind: string, slotIndex?: number): string => {
@@ -231,14 +287,14 @@ const getNearbySeedHospitals = async (admin: any, ctx: DemoContext) => {
   }
 
   const rows = Array.isArray(data) ? data : [];
-  const demoPrefix = `demo:${ctx.userSlug}:`;
 
   return rows
-    .filter((row) => !String(row?.place_id || "").startsWith(demoPrefix))
+    .filter((row) => !isDemoSeedRow(row))
     .map((row) => {
       const coords = parseHospitalCoordinates(row);
       return {
-        name: toSafeString(row?.name, "Nearby Hospital"),
+        source_place_id: toSafeString(row?.place_id, ""),
+        name: normalizeHospitalName(row?.name, "Nearby Hospital"),
         address: toSafeString(row?.address, "Address unavailable"),
         phone: toSafeString(row?.phone),
         rating: toFiniteNumber(row?.rating) ?? 4.2,
@@ -294,7 +350,12 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
           `mapbox_demo_${index}_${Math.abs(Math.round(latitude * 10000))}_${Math.abs(
             Math.round(longitude * 10000)
           )}`,
-        name: toSafeString(properties?.name, toSafeString(row?.name, "Nearby Hospital")),
+        source_place_id:
+          toSafeString(row?.id) || toSafeString(properties?.mapbox_id, ""),
+        name: normalizeHospitalName(
+          properties?.name,
+          normalizeHospitalName(row?.name, "Nearby Hospital")
+        ),
         address: toSafeString(
           properties?.full_address,
           toSafeString(
@@ -330,8 +391,9 @@ const dedupeSeedHospitals = (rows: any[]) => {
   const seen = new Set<string>();
   return rows.filter((row) => {
     const key = [
-      toSafeString(row?.place_id).toLowerCase(),
-      toSafeString(row?.name).toLowerCase(),
+      toSafeString(row?.source_place_id || row?.place_id).toLowerCase(),
+      normalizeHospitalName(row?.name).toLowerCase(),
+      toSafeString(row?.address).toLowerCase(),
       Number(toFiniteNumber(row?.latitude) ?? 0).toFixed(3),
       Number(toFiniteNumber(row?.longitude) ?? 0).toFixed(3),
     ].join("|");
@@ -361,8 +423,9 @@ const buildFallbackHospital = (ctx: DemoContext, slotIndex: number) => {
   }
 
   return {
-    name: `iVisit Demo Hospital ${slotIndex + 1}`,
-    address: `Demo Coverage Zone ${slotIndex + 1}`,
+    source_place_id: "",
+    name: `Emergency Care Center ${slotIndex + 1}`,
+    address: `Coverage Zone ${slotIndex + 1}`,
     phone: "",
     rating: 4.3,
     type: "standard",
@@ -379,7 +442,7 @@ const buildFallbackHospital = (ctx: DemoContext, slotIndex: number) => {
 };
 
 const ensureDemoOrganization = async (admin: any, ctx: DemoContext) => {
-  const contactEmail = `demo+${ctx.userSlug}@ivisit-demo.local`;
+  const contactEmail = `demo+coverage-${ctx.coverageKey}@ivisit-demo.local`;
 
   const { data: existing, error: existingError } = await admin
     .from("organizations")
@@ -398,7 +461,7 @@ const ensureDemoOrganization = async (admin: any, ctx: DemoContext) => {
   }
 
   const payload = {
-    name: `iVisit Demo Network ${ctx.userSlug.toUpperCase()}`,
+    name: `iVisit Coverage Network ${ctx.coverageKey.toUpperCase()}`,
     contact_email: contactEmail,
     fee_tier: "standard",
     ivisit_fee_percentage: 0,
@@ -424,7 +487,7 @@ const listDemoHospitals = async (admin: any, ctx: DemoContext, organizationId: s
     .from("hospitals")
     .select("id,name,place_id,organization_id,latitude,longitude,features,verified,verification_status,status")
     .eq("organization_id", organizationId)
-    .like("place_id", `demo:${ctx.userSlug}:%`)
+    .like("place_id", `demo:${ctx.coverageKey}:%`)
     .order("place_id", { ascending: true });
 
   if (error) {
@@ -456,8 +519,9 @@ const ensureDemoHospitals = async (
     const longitude = Number.isFinite(seed.longitude) ? Number(seed.longitude) : fallback.longitude;
     const features = uniqueStrings([
       ...DEMO_FEATURE_FLAGS,
-      `demo_owner:${ctx.userSlug}`,
-      ...toSafeStringArray(seed.features),
+      DEMO_SHARED_FLAG,
+      `demo_scope:${ctx.coverageKey}`,
+      ...toSafeStringArray(seed.features).filter((feature) => !isBootstrapDemoFeature(feature)),
     ]);
 
     const specialties = uniqueStrings(
@@ -473,8 +537,8 @@ const ensureDemoHospitals = async (
     );
 
     return {
-      place_id: toDemoPlaceId(ctx, slotIndex),
-      name: toSafeString(seed.name, fallback.name),
+      place_id: toDemoPlaceId(ctx, seed, slotIndex),
+      name: normalizeHospitalName(seed.name, fallback.name),
       address: toSafeString(seed.address, fallback.address),
       phone: toSafeString(seed.phone, ""),
       rating: toFiniteNumber(seed.rating) ?? 4.2,
@@ -672,8 +736,8 @@ const ensureDemoStaff = async (
           type: "BLS",
           call_sign: callSign,
           status: "available",
-          vehicle_number: `DEMO-${ctx.userSlug.toUpperCase()}-${i + 1}`,
-          license_plate: `DMO-${ctx.userSlug.slice(0, 4).toUpperCase()}-${i + 1}`,
+          vehicle_number: `COV-${ctx.coverageKey.toUpperCase().slice(0, 8)}-${i + 1}`,
+          license_plate: `COV-${ctx.coverageKey.toUpperCase().slice(0, 4)}-${i + 1}`,
           base_price: 0,
           crew: {
             mode: "demo",
@@ -859,6 +923,7 @@ serve(async (req) => {
     const ctx: DemoContext = {
       userId: effectiveUserId,
       userSlug: toSafeUserSlug(effectiveUserId),
+      coverageKey: toCoverageKey(Number(latitude), Number(longitude)),
       latitude: Number(latitude),
       longitude: Number(longitude),
       radiusKm,

@@ -24,7 +24,12 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import { useHospitals } from "../../hooks/emergency/useHospitals";
 import PulsingMarker from "./PulsingMarker";
-import { darkMapStyle, lightMapStyle } from "./mapStyles";
+import {
+	darkAndroidMapStyle,
+	darkMapStyle,
+	lightAndroidMapStyle,
+	lightMapStyle,
+} from "./mapStyles";
 import { useMapLocation } from "../../hooks/emergency/useMapLocation";
 import { useMapRoute } from "../../hooks/emergency/useMapRoute";
 import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from "./MapComponents";
@@ -410,7 +415,14 @@ const FullScreenEmergencyMap = forwardRef(
 			}
 		}, [isLoadingLocation, isMapReadyState, locationPermission, userLocation]);
 
-		const mapStyle = isDarkMode ? darkMapStyle : lightMapStyle;
+		const mapStyle =
+			Platform.OS === "android"
+				? isDarkMode
+					? darkAndroidMapStyle
+					: lightAndroidMapStyle
+				: isDarkMode
+					? darkMapStyle
+					: lightMapStyle;
 		const mapType = Platform.OS === "ios" ? "mutedStandard" : "standard";
 		// Apple Maps does not support Google-style JSON map styling.
 		// Keep iOS premium-muted via mapType + userInterfaceStyle, and apply JSON style on Android.

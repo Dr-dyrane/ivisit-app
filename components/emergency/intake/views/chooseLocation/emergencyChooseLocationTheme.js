@@ -27,6 +27,26 @@ const STACK_PROFILE = {
 	primaryHeight: 60,
 };
 
+const ANDROID_MOBILE_PROFILE = {
+	...STACK_PROFILE,
+	stageMaxWidth: 480,
+	heroWidth: 206,
+	heroHeight: 146,
+	headlineSize: 32,
+	headlineLineHeight: 36,
+	helperSize: 16,
+	helperLineHeight: 24,
+	mapHeight: 224,
+	mapMaxWidth: 440,
+	actionMaxWidth: 430,
+	rowGap: 18,
+	storyGap: 20,
+	sectionGap: 16,
+	actionTopSpacing: 18,
+	actionBottomSpacing: 6,
+	primaryHeight: 60,
+};
+
 const STORY_PROFILE = {
 	layout: "story",
 	copyAlign: "left",
@@ -50,6 +70,35 @@ const STORY_PROFILE = {
 	actionTopSpacing: 20,
 	actionBottomSpacing: 6,
 	primaryHeight: 62,
+};
+
+const IOS_PAD_PROFILE = {
+	layout: "story",
+	copyAlign: "left",
+	mapShape: "square",
+	stageMaxWidth: 1040,
+	heroRailWidth: 320,
+	heroWidth: 258,
+	heroHeight: 184,
+	headlineSize: 44,
+	headlineLineHeight: 48,
+	helperSize: 18,
+	helperLineHeight: 28,
+	mapHeight: 0,
+	mapMaxWidth: 620,
+	actionMaxWidth: 700,
+	actionAlign: "center",
+	actionLayout: "paired",
+	secondaryActionWidth: 244,
+	railWidth: 272,
+	railTravel: 122,
+	rowGap: 36,
+	storyGap: 32,
+	sectionGap: 24,
+	heroTopPadding: 0,
+	actionTopSpacing: 24,
+	actionBottomSpacing: 0,
+	primaryHeight: 64,
 };
 
 const STUDIO_PROFILE = {
@@ -104,12 +153,7 @@ const CINEMA_PROFILE = {
 
 const VARIANT_PROFILES = {
 	"ios-mobile": STACK_PROFILE,
-	"android-mobile": {
-		...STACK_PROFILE,
-		heroWidth: 206,
-		heroHeight: 146,
-		mapHeight: 224,
-	},
+	"android-mobile": ANDROID_MOBILE_PROFILE,
 	"web-mobile": {
 		...STACK_PROFILE,
 		stageMaxWidth: 500,
@@ -128,7 +172,7 @@ const VARIANT_PROFILES = {
 		actionMaxWidth: 380,
 		rowGap: 22,
 	},
-	"ios-pad": STORY_PROFILE,
+	"ios-pad": IOS_PAD_PROFILE,
 	"android-tablet": {
 		...STORY_PROFILE,
 		stageMaxWidth: 980,
@@ -238,6 +282,9 @@ export default function createEmergencyChooseLocationTheme({
 		};
 
 	const leftAligned = profile.copyAlign === "left";
+	const actionAlign =
+		profile.actionAlign || (leftAligned ? "flex-start" : "center");
+	const mapRadius = profile.mapRadius || 28;
 	const stageBottomPadding = profile.actionBottomSpacing;
 
 	const styles = StyleSheet.create({
@@ -350,7 +397,7 @@ export default function createEmergencyChooseLocationTheme({
 			height: isSquareMap ? undefined : mapHeight,
 			aspectRatio: isSquareMap ? 1 : undefined,
 			alignSelf: "center",
-			borderRadius: 28,
+			borderRadius: mapRadius,
 			overflow: "hidden",
 		},
 		mapSkeleton: {
@@ -358,7 +405,7 @@ export default function createEmergencyChooseLocationTheme({
 			maxWidth: isSquareMap ? squareMapMaxWidth : profile.mapMaxWidth,
 			height: isSquareMap ? undefined : mapHeight,
 			aspectRatio: isSquareMap ? 1 : undefined,
-			borderRadius: 28,
+			borderRadius: mapRadius,
 			backgroundColor: colors.skeleton,
 			borderWidth: 1,
 			borderColor: colors.surfaceBorder,
@@ -409,10 +456,30 @@ export default function createEmergencyChooseLocationTheme({
 		actionWell: {
 			width: "100%",
 			maxWidth: profile.actionMaxWidth,
-			alignSelf: leftAligned ? "flex-start" : "center",
+			alignSelf: actionAlign,
 			marginTop: Math.round(profile.actionTopSpacing * compressedSpacingFactor),
 			gap: 12,
 			flexShrink: 0,
+		},
+		pairedActionSurface: {
+			width: "100%",
+			padding: 14,
+			borderRadius: 28,
+			backgroundColor: colors.surface,
+			borderWidth: 1,
+			borderColor: colors.surfaceBorder,
+		},
+		pairedActionRow: {
+			width: "100%",
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 14,
+		},
+		pairedSecondaryAction: {
+			width: profile.secondaryActionWidth || 220,
+		},
+		pairedPrimaryAction: {
+			flex: 1,
 		},
 		inlineActionRow: {
 			width: "100%",
@@ -436,6 +503,21 @@ export default function createEmergencyChooseLocationTheme({
 			height: profile.primaryHeight,
 			borderRadius: profile.primaryHeight / 2,
 			backgroundColor: colors.skeleton,
+		},
+		pairedSecondarySkeleton: {
+			width: profile.secondaryActionWidth || 220,
+			height: profile.primaryHeight,
+			borderRadius: profile.primaryHeight / 2,
+			backgroundColor: colors.skeletonHighlight,
+		},
+		stackedSecondaryAction: {
+			width: "100%",
+		},
+		stackedSecondarySkeleton: {
+			width: "100%",
+			height: profile.primaryHeight,
+			borderRadius: profile.primaryHeight / 2,
+			backgroundColor: colors.skeletonHighlight,
 		},
 		inlineLocationButtonPressed: {
 			opacity: 0.82,
