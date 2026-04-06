@@ -34,6 +34,27 @@ const setGoogleMapsLoadState = (status, error = null) => {
 const getResolvedGoogleMaps = () =>
   typeof window !== 'undefined' && window.google?.maps ? window.google.maps : null;
 
+const getReadyGoogleMaps = async () => {
+  const resolvedMaps = getResolvedGoogleMaps();
+  if (!resolvedMaps) {
+    return null;
+  }
+
+  if (typeof resolvedMaps.importLibrary === 'function') {
+    try {
+      const module = await resolvedMaps.importLibrary('maps');
+      if (module?.Map) {
+        return module;
+      }
+      console.warn('[MapComponents.web] importLibrary returned no Map constructor', module);
+    } catch (err) {
+      console.warn('[MapComponents.web] google.maps.importLibrary failed', err);
+    }
+  }
+
+  return typeof resolvedMaps.Map === 'function' ? resolvedMaps : null;
+};
+
 const resolveMarkerImageAsset = (image) => {
   if (!image) return null;
 
@@ -117,11 +138,22 @@ const getGoogleMapsApiKey = () => {
   return fromEnv || fromConfig || null;
 };
 
-const ensureGoogleMapsLoaded = () => {
+const getGoogleMapsMapId = () => {
+  const fromEnv =
+    process.env.EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID?.trim() ||
+    process.env.EXPO_PUBLIC_GOOGLE_MAP_ID?.trim();
+  const fromConfig = Constants?.expoConfig?.extra?.googleMapsMapId?.trim?.();
+  return fromEnv || fromConfig || null;
+};
+
+const ensureGoogleMapsLoaded = async () => {
   const existingMaps = getResolvedGoogleMaps();
   if (existingMaps) {
-    setGoogleMapsLoadState('loaded', null);
-    return Promise.resolve(existingMaps);
+    const readyMaps = await getReadyGoogleMaps();
+    if (readyMaps) {
+      setGoogleMapsLoadState('loaded', null);
+      return readyMaps;
+    }
   }
 
   if (googleMapsLoadPromise) {
@@ -153,14 +185,12 @@ const ensureGoogleMapsLoaded = () => {
         timeoutId = null;
       }
       if (activeScript) {
-        activeScript.removeEventListener('load', handleLoad);
         activeScript.removeEventListener('error', handleError);
       }
     };
 
-    const finishLoaded = () => {
+    const finishLoaded = (maps) => {
       if (settled) return;
-      const maps = getResolvedGoogleMaps();
       if (!maps) return;
       settled = true;
       cleanup();
@@ -184,16 +214,6 @@ const ensureGoogleMapsLoaded = () => {
       reject(new Error(message));
     };
 
-    function handleLoad() {
-      window.setTimeout(() => {
-        if (getResolvedGoogleMaps()) {
-          finishLoaded();
-          return;
-        }
-        finishError('Failed to initialize Google Maps');
-      }, 0);
-    }
-
     function handleError() {
       finishError('Failed to load Google Maps');
     }
@@ -201,25 +221,26 @@ const ensureGoogleMapsLoaded = () => {
     const existingScript = document.querySelector('script[data-google-maps-loader="ivisit"]');
     activeScript = existingScript || document.createElement('script');
 
-    window.initGoogleMaps = () => {
-      finishLoaded();
+    const tryFinishLoaded = async () => {
+      const maps = await getReadyGoogleMaps();
+      if (!maps) return;
+      finishLoaded(maps);
     };
 
-    activeScript.addEventListener('load', handleLoad);
+    window.initGoogleMaps = tryFinishLoaded;
+
     activeScript.addEventListener('error', handleError);
 
     if (!existingScript) {
       activeScript.async = true;
       activeScript.defer = true;
       activeScript.dataset.googleMapsLoader = 'ivisit';
-      activeScript.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
+      activeScript.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker,routes&callback=initGoogleMaps&loading=async`;
       document.head.appendChild(activeScript);
     }
 
     pollId = window.setInterval(() => {
-      if (getResolvedGoogleMaps()) {
-        finishLoaded();
-      }
+      tryFinishLoaded();
     }, 120);
 
     timeoutId = window.setTimeout(() => {
@@ -273,6 +294,23 @@ const getZoomForRegion = (region) => {
   return Math.max(3, Math.min(20, Math.round(zoom)));
 };
 
+const getGoogleMapsModule = async () => {
+  if (typeof window === 'undefined' || !window.google?.maps) {
+    return null;
+  }
+
+  if (typeof window.google.maps.importLibrary === 'function') {
+    try {
+      return await window.google.maps.importLibrary('maps');
+    } catch (err) {
+      console.warn('[MapComponents.web] google.maps.importLibrary failed, falling back to window.google.maps', err);
+      return window.google.maps;
+    }
+  }
+
+  return window.google.maps;
+};
+
 // Web MapView Component
 export const MapView = React.forwardRef(({
   children,
@@ -290,6 +328,21 @@ export const MapView = React.forwardRef(({
   rotateEnabled = false,
   showsCompass = false,
   showsZoomControls = undefined,
+  provider,
+  googleRenderer,
+  mapType,
+  showsMyLocationButton,
+  showsScale,
+  showsBuildings,
+  showsTraffic,
+  showsIndoors,
+  loadingEnabled,
+  loadingIndicatorColor,
+  loadingBackgroundColor,
+  mapPadding,
+  toolbarEnabled,
+  onPanDrag,
+  showsPointsOfInterest,
   ...props
 }, ref) => {
   const mapRef = useRef(null);
@@ -297,8 +350,15 @@ export const MapView = React.forwardRef(({
   const idleListenerRef = useRef(null);
   const resizeObserverRef = useRef(null);
   const appliedRegionRef = useRef(null);
+  const onMapReadyRef = useRef(onMapReady);
+  const onMapLoadedRef = useRef(onMapLoaded);
   const [mapInstance, setMapInstance] = useState(null);
   const { isLoaded, error } = GoogleMapsAPI();
+
+  useEffect(() => {
+    onMapReadyRef.current = onMapReady;
+    onMapLoadedRef.current = onMapLoaded;
+  }, [onMapLoaded, onMapReady]);
 
   useEffect(() => {
     if (!isLoaded || !mapRef.current || mapInstanceRef.current) return;
@@ -325,16 +385,32 @@ export const MapView = React.forwardRef(({
       backgroundColor: userInterfaceStyle === 'dark' ? '#0F131A' : '#F8FAFC'
     };
 
-    const map = new window.google.maps.Map(mapRef.current, mapOptions);
-    mapInstanceRef.current = map;
-    setMapInstance(map);
+    const googleMapsMapId = getGoogleMapsMapId();
+    if (googleMapsMapId) {
+      mapOptions.mapId = googleMapsMapId;
+    }
 
-    if (onMapReady) {
-      onMapReady();
-    }
-    if (onMapLoaded) {
-      onMapLoaded();
-    }
+    let isMounted = true;
+
+    const initializeMap = async () => {
+      const maps = await getGoogleMapsModule();
+      if (!isMounted || !maps || !mapRef.current) return;
+
+      const MapClass = maps.Map;
+      if (typeof MapClass !== 'function') {
+        console.error('[MapComponents.web] Google Maps library loaded but Map constructor is unavailable', maps);
+        return;
+      }
+
+      const map = new MapClass(mapRef.current, mapOptions);
+      mapInstanceRef.current = map;
+      setMapInstance(map);
+
+      onMapReadyRef.current?.();
+      onMapLoadedRef.current?.();
+    };
+
+    initializeMap();
 
     return () => {
       if (resizeObserverRef.current) {
@@ -352,7 +428,7 @@ export const MapView = React.forwardRef(({
       appliedRegionRef.current = null;
       setMapInstance(null);
     };
-  }, [isLoaded, onMapLoaded, onMapReady]);
+  }, [isLoaded]);
 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
@@ -549,6 +625,55 @@ export const MapView = React.forwardRef(({
 });
 
 // Web Marker Component
+const buildMarkerContent = ({ pinColor, resolvedMarkerAsset, imageSize }) => {
+  if (typeof document === 'undefined') return null;
+
+  if (resolvedMarkerAsset?.uri) {
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    wrapper.style.display = 'flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.justifyContent = 'center';
+    wrapper.style.width = `${toFiniteNumber(imageSize?.width) || 48}px`;
+    wrapper.style.height = `${toFiniteNumber(imageSize?.height) || 48}px`;
+    wrapper.style.transform = 'translate(-50%, -100%)';
+
+    const img = document.createElement('img');
+    img.src = resolvedMarkerAsset.uri;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'contain';
+    img.style.display = 'block';
+
+    wrapper.appendChild(img);
+    return wrapper;
+  }
+
+  if (pinColor) {
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    wrapper.style.width = '32px';
+    wrapper.style.height = '32px';
+    wrapper.style.transform = 'translate(-50%, -50%)';
+    wrapper.style.display = 'flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.justifyContent = 'center';
+
+    const dot = document.createElement('div');
+    dot.style.width = '16px';
+    dot.style.height = '16px';
+    dot.style.borderRadius = '50%';
+    dot.style.backgroundColor = pinColor;
+    dot.style.border = '2px solid white';
+    dot.style.boxSizing = 'border-box';
+
+    wrapper.appendChild(dot);
+    return wrapper;
+  }
+
+  return null;
+};
+
 export const Marker = ({
   coordinate,
   onPress,
@@ -592,14 +717,33 @@ export const Marker = ({
           }
         : undefined;
 
-    const marker = new window.google.maps.Marker({
+    const googleMapsMapId = getGoogleMapsMapId();
+    const advancedMarkerAvailable =
+      window.google?.maps?.marker?.AdvancedMarkerElement &&
+      Boolean(googleMapsMapId);
+    const markerContent = buildMarkerContent({
+      pinColor,
+      resolvedMarkerAsset,
+      imageSize,
+    });
+
+    const markerOptions = {
       position: { lat: coordinate.latitude, lng: coordinate.longitude },
       map,
       zIndex,
       title,
-      icon,
-      ...props
-    });
+      ...props,
+    };
+
+    const marker = advancedMarkerAvailable
+      ? new window.google.maps.marker.AdvancedMarkerElement({
+          ...markerOptions,
+          content: markerContent || undefined,
+        })
+      : new window.google.maps.Marker({
+          ...markerOptions,
+          icon,
+        });
 
     if (onPress) {
       marker.addListener('click', onPress);

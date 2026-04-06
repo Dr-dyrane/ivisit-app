@@ -1223,11 +1223,13 @@ export default function EmergencyIOSMobileIntakeView({
 			"web-2xl-3xl",
 			"web-ultra-wide",
 		].includes(chooseHospitalVariant);
+	const shouldDelayRoutePreviewOnWeb = Platform.OS === "web" && renderLocationPreviewBridge;
 	const shouldShowPreviewMap =
 		shouldUseChooseHospitalStage &&
 		!useSplitChooseHospitalLayout &&
 		!!activeLocation &&
 		!!activeProposedHospital &&
+		!shouldDelayRoutePreviewOnWeb &&
 		(!isProposedHospital || !isRefreshingRoutePreview);
 	const shouldShowCommittedMap = isResponderMatched && !!matchedHospitalId;
 	const shouldUseIosPadPhaseLayout =
@@ -1329,7 +1331,6 @@ export default function EmergencyIOSMobileIntakeView({
 				>
 					{shouldShowPreviewMap ? (
 						<EmergencyHospitalRoutePreview
-							key={`route-preview-${activeProposedHospital?.id || "none"}`}
 							origin={activeLocation}
 							hospital={activeProposedHospital}
 							bottomPadding={metrics.primaryHeight + 228}
@@ -1397,6 +1398,7 @@ export default function EmergencyIOSMobileIntakeView({
 								variant={chooseHospitalVariant}
 								activeLocation={activeLocation}
 								hospital={activeProposedHospital}
+								showRouteMap={!shouldDelayRoutePreviewOnWeb}
 								routeCoordinates={routeCoordinates}
 								routeInfo={previewRouteInfo}
 								isCalculatingRoute={isCalculatingRoute}

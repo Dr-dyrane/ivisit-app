@@ -128,7 +128,7 @@ export default function EmergencyHospitalRoutePreview({
 
 	useEffect(() => {
 		if (!needsProgrammaticFit) return undefined;
-		if (!visible || !isMapReady || !mapRef.current || routeBoundsCoordinates.length < 2) {
+		if (!visible || !isMapReady || !mapRef.current || routeBoundsCoordinates.length < 1) {
 			return undefined;
 		}
 
@@ -141,31 +141,27 @@ export default function EmergencyHospitalRoutePreview({
 
 		const fit = () => {
 			if (!mapRef.current) return;
-			if (routeCoordinates.length > 1 && mapRef.current.fitToCoordinates) {
-				mapRef.current.fitToCoordinates(routeCoordinates, {
+			mapRef.current.animateToRegion?.(initialRegion, 240);
+			if (routeBoundsCoordinates.length > 1 && mapRef.current.fitToCoordinates) {
+				mapRef.current.fitToCoordinates(routeBoundsCoordinates, {
 					edgePadding,
 					animated: true,
 				});
-				return;
 			}
-
-			mapRef.current.animateToRegion?.(initialRegion, 280);
 		};
 
-		const firstPassTimeout = setTimeout(fit, 90);
-		const secondPassTimeout = setTimeout(fit, 280);
+		const passDelays = Platform.OS === "web" ? [70, 220, 460] : [90, 280];
+		const timers = passDelays.map((delay) => setTimeout(fit, delay));
 
 		return () => {
-			clearTimeout(firstPassTimeout);
-			clearTimeout(secondPassTimeout);
+			timers.forEach(clearTimeout);
 		};
 	}, [
 		bottomPadding,
 		initialRegion,
 		isMapReady,
 		needsProgrammaticFit,
-		routeBoundsCoordinates.length,
-		routeCoordinates,
+		routeBoundsCoordinates,
 		visible,
 	]);
 

@@ -30,6 +30,7 @@ export default function EmergencyChooseHospitalStageBase({
 	isRefreshingRoutePreview = false,
 	isRefreshingCatalog = false,
 	hospitalChoiceMessage = "",
+	showRouteMap = true,
 	onPrimaryPress,
 	onSecondaryPress,
 	metrics,
@@ -45,7 +46,7 @@ export default function EmergencyChooseHospitalStageBase({
 		? "Updating route..."
 		: EMERGENCY_FLOW_STATES.proposed_hospital.primaryAction;
 	const secondaryLabel = EMERGENCY_FLOW_STATES.proposed_hospital.secondaryAction;
-	const canRenderMap = !!activeLocation && !!hospital;
+	const canRenderMap = showRouteMap && !!activeLocation && !!hospital;
 	const mapBottomPadding = useSplitLayout ? 32 : metrics.primaryHeight + 228;
 
 	const reviewCard = (
@@ -98,7 +99,6 @@ export default function EmergencyChooseHospitalStageBase({
 			<View style={styles.reviewSplitMapPanel}>
 				{canRenderMap ? (
 					<EmergencyHospitalRoutePreview
-						key={`choose-hospital-${variant}-${hospital?.id || "none"}`}
 						origin={activeLocation}
 						hospital={hospital}
 						bottomPadding={mapBottomPadding}

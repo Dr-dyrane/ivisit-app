@@ -41,9 +41,7 @@ function buildRegion(location) {
 export default function EmergencyLocationPreviewMap({ location }) {
 	const { isDarkMode } = useTheme();
 	const mapRef = useRef(null);
-	const [isMapReady, setIsMapReady] = useState(
-		Platform.OS === "web" || Platform.OS === "android",
-	);
+	const [isMapReady, setIsMapReady] = useState(false);
 	const isAndroid = Platform.OS === "android";
 	const isWeb = Platform.OS === "web";
 	const customMapStyle = isAndroid
@@ -67,33 +65,35 @@ export default function EmergencyLocationPreviewMap({ location }) {
 		Number.isFinite(Number(location.longitude));
 
 	useEffect(() => {
-		if (!mapRef.current || !hasLocation) return;
-		if (isAndroid && !isMapReady) return;
+		if (!mapRef.current || !hasLocation || !isMapReady) return;
 
-		const timeout = setTimeout(() => {
-			mapRef.current?.animateToRegion?.(region, 260);
-		}, isAndroid ? 120 : 60);
+		const delays = isAndroid ? [120, 280] : isWeb ? [80, 220] : [60];
+		const timers = delays.map((delay) =>
+			setTimeout(() => {
+				mapRef.current?.animateToRegion?.(region, 260);
+			}, delay),
+		);
 
-		return () => clearTimeout(timeout);
-	}, [hasLocation, isAndroid, isMapReady, region]);
+		return () => timers.forEach(clearTimeout);
+	}, [hasLocation, isAndroid, isMapReady, isWeb, region]);
 
 	useEffect(() => {
-		if (Platform.OS === "web" || Platform.OS === "android" || isMapReady || !hasLocation) {
+		if (isMapReady || !hasLocation) {
 			return undefined;
 		}
 
 		const fallbackTimeout = setTimeout(() => {
 			setIsMapReady(true);
-		}, 900);
+		}, isWeb ? 1200 : 900);
 
 		return () => clearTimeout(fallbackTimeout);
-	}, [hasLocation, isMapReady]);
+	}, [hasLocation, isMapReady, isWeb]);
 
 	return (
-		<View style={styles.shell} collapsable={false}>
+		<View style={styles.shell} collapsable={Platform.OS !== "web" ? false : undefined}>
 			<MapView
 				ref={mapRef}
-				collapsable={false}
+				collapsable={Platform.OS !== "web" ? false : undefined}
 				style={styles.map}
 				provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
 				googleRenderer={Platform.OS === "android" ? "LEGACY" : undefined}

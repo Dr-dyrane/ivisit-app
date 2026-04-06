@@ -272,10 +272,7 @@ export default function EmergencyChooseLocationStageBase({
 					mapAnimatedStyle,
 				]}
 			>
-				<EmergencyLocationPreviewMap
-					key={`location-preview-${locationPreviewRenderKey}`}
-					location={activeLocation}
-				/>
+				<EmergencyLocationPreviewMap location={activeLocation} />
 			</Animated.View>
 		) : null;
 

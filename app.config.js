@@ -23,6 +23,9 @@ const getWebAppUrl = () => {
 
 module.exports = ({ config }) => {
   const googleMapsWebApiKey = cleanEnvValue(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY);
+  const googleMapsWebMapId =
+    cleanEnvValue(process.env.EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID) ||
+    cleanEnvValue(process.env.EXPO_PUBLIC_GOOGLE_MAP_ID);
   const googleMapsAndroidApiKey =
     cleanEnvValue(process.env.GOOGLE_MAPS_ANDROID_API_KEY) ?? googleMapsWebApiKey;
 
@@ -135,6 +138,7 @@ module.exports = ({ config }) => {
         projectId: "a3777b70-b973-4b3b-ba59-ed32bf5662e0",
       },
       googleMapsApiKey: googleMapsWebApiKey,
+      googleMapsMapId: googleMapsWebMapId,
       webAppUrl: getWebAppUrl(),
     },
     runtimeVersion: {
