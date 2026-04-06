@@ -89,7 +89,8 @@ export default function EmergencyHospitalRoutePreview({
 	const mapRef = useRef(null);
 	const fade = useRef(new Animated.Value(visible ? 1 : 0)).current;
 	const loadingOverlayOpacity = useRef(new Animated.Value(0.46)).current;
-	const [isMapReady, setIsMapReady] = useState(Platform.OS !== "android");
+	const needsProgrammaticFit = Platform.OS === "android" || Platform.OS === "web";
+	const [isMapReady, setIsMapReady] = useState(!needsProgrammaticFit);
 
 	const originCoordinate = useMemo(() => toCoordinate(origin), [origin]);
 	const hospitalCoordinate = useMemo(() => toCoordinate(hospital), [hospital]);
@@ -126,7 +127,7 @@ export default function EmergencyHospitalRoutePreview({
 	);
 
 	useEffect(() => {
-		if (Platform.OS !== "android") return undefined;
+		if (!needsProgrammaticFit) return undefined;
 		if (!visible || !isMapReady || !mapRef.current || routeBoundsCoordinates.length < 2) {
 			return undefined;
 		}
@@ -162,6 +163,7 @@ export default function EmergencyHospitalRoutePreview({
 		bottomPadding,
 		initialRegion,
 		isMapReady,
+		needsProgrammaticFit,
 		routeBoundsCoordinates.length,
 		routeCoordinates,
 		visible,
@@ -250,6 +252,7 @@ export default function EmergencyHospitalRoutePreview({
 					<Marker
 						coordinate={hospitalCoordinate}
 						image={HOSPITAL_MARKER_IMAGE}
+						imageSize={{ width: 81, height: 137 }}
 						pinColor={COLORS.brandPrimary}
 						anchor={{ x: 0.5, y: 0.5 }}
 						centerOffset={HOSPITAL_MARKER_CENTER_OFFSET}

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import * as Location from "expo-location";
+import { Platform } from "react-native";
 import { DEFAULT_APP_COORDINATES } from "../constants/locationDefaults";
 
 // Location configuration constants
@@ -44,6 +45,12 @@ export function GlobalLocationProvider({ children }) {
 		setLocationError(null);
 
 		try {
+			if (Platform.OS === "web" && typeof window !== "undefined" && !window.isSecureContext) {
+				console.warn(
+					"[GlobalLocationContext] Web geolocation may be blocked because this page is not a secure context. Use HTTPS or localhost for precise browser location."
+				);
+			}
+
 			// Check if permission is already granted
 			const { status } = await Location.getForegroundPermissionsAsync();
 

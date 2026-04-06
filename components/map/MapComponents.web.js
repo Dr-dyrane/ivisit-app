@@ -3,6 +3,83 @@ import Constants from 'expo-constants';
 import { View, StyleSheet } from 'react-native';
 import { Image } from 'react-native';
 
+const resolveMarkerImageAsset = (image) => {
+  if (!image) return null;
+
+  const resolveAssetSource =
+    (typeof Image?.resolveAssetSource === 'function' && Image.resolveAssetSource) ||
+    (typeof Image?.default?.resolveAssetSource === 'function' && Image.default.resolveAssetSource) ||
+    null;
+
+  try {
+    if (resolveAssetSource) {
+      const asset = resolveAssetSource(image);
+      if (asset?.uri) {
+        return asset;
+      }
+    }
+  } catch (_error) {
+    // Fall through to web-safe shape checks below.
+  }
+
+  if (typeof image === 'string') {
+    return { uri: image };
+  }
+
+  if (image && typeof image === 'object' && typeof image.uri === 'string') {
+    return image;
+  }
+
+  return null;
+};
+
+const toFiniteNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const buildResolvedMarkerIcon = ({
+  asset,
+  anchor,
+  centerOffset,
+  imageSize,
+  googleMaps,
+}) => {
+  if (!asset?.uri || !googleMaps?.Size || !googleMaps?.Point) {
+    return undefined;
+  }
+
+  const sourceWidth =
+    toFiniteNumber(imageSize?.width) ||
+    toFiniteNumber(asset.width) ||
+    56;
+  const sourceHeight =
+    toFiniteNumber(imageSize?.height) ||
+    toFiniteNumber(asset.height) ||
+    56;
+  const targetHeight = sourceHeight > 96 ? 72 : 56;
+  const targetWidth = Math.max(
+    20,
+    Math.round((sourceWidth / Math.max(sourceHeight, 1)) * targetHeight)
+  );
+
+  const anchorXRatio = toFiniteNumber(anchor?.x);
+  const anchorYRatio = toFiniteNumber(anchor?.y);
+  const offsetX = toFiniteNumber(centerOffset?.x) || 0;
+  const offsetY = toFiniteNumber(centerOffset?.y) || 0;
+
+  const anchorPoint = new googleMaps.Point(
+    Math.round((anchorXRatio ?? 0.5) * targetWidth - offsetX),
+    Math.round((anchorYRatio ?? 1) * targetHeight - offsetY)
+  );
+
+  return {
+    url: asset.uri,
+    scaledSize: new googleMaps.Size(targetWidth, targetHeight),
+    anchor: anchorPoint,
+  };
+};
+
 const getGoogleMapsApiKey = () => {
   const fromEnv = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
   const fromConfig = Constants?.expoConfig?.extra?.googleMapsApiKey?.trim?.();
@@ -295,6 +372,9 @@ export const Marker = ({
   pinColor,
   image,
   title,
+  anchor,
+  centerOffset,
+  imageSize,
   ...props
 }) => {
   const markerRef = useRef(null);
@@ -304,26 +384,26 @@ export const Marker = ({
   useEffect(() => {
     if (!isLoaded || !map || !coordinate) return;
 
-    const icon =
-      image && window.google?.maps
-        ? (() => {
-            const asset = Image.resolveAssetSource(image);
-            if (!asset?.uri) return undefined;
-            return {
-              url: asset.uri,
-              scaledSize: new window.google.maps.Size(56, 56),
-            };
-          })()
-        : pinColor
-          ? {
-              path: window.google.maps.SymbolPath.CIRCLE,
-              scale: 9,
-              fillColor: pinColor,
-              fillOpacity: 1,
-              strokeColor: pinColor,
-              strokeWeight: 1,
-            }
-          : undefined;
+    const resolvedMarkerAsset =
+      image && window.google?.maps ? resolveMarkerImageAsset(image) : null;
+    const icon = resolvedMarkerAsset?.uri
+        ? buildResolvedMarkerIcon({
+          asset: resolvedMarkerAsset,
+          anchor,
+          centerOffset,
+          imageSize,
+          googleMaps: window.google.maps,
+        })
+      : pinColor
+        ? {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 9,
+            fillColor: pinColor,
+            fillOpacity: 1,
+            strokeColor: pinColor,
+            strokeWeight: 1,
+          }
+        : undefined;
 
     const marker = new window.google.maps.Marker({
       position: { lat: coordinate.latitude, lng: coordinate.longitude },
@@ -345,7 +425,7 @@ export const Marker = ({
         markerRef.current.marker.setMap(null);
       }
     };
-  }, [coordinate, image, isLoaded, map, onPress, pinColor, props, title, zIndex]);
+  }, [anchor, centerOffset, coordinate, image, imageSize, isLoaded, map, onPress, pinColor, props, title, zIndex]);
 
   return null;
 };
