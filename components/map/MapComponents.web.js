@@ -3,6 +3,37 @@ import Constants from 'expo-constants';
 import { View, StyleSheet } from 'react-native';
 import { Image } from 'react-native';
 
+let googleMapsLoadStatus =
+  typeof window !== 'undefined' && window.google?.maps ? 'loaded' : 'idle';
+let googleMapsLoadError = null;
+let googleMapsLoadPromise = null;
+const googleMapsSubscribers = new Set();
+
+const getGoogleMapsSnapshot = () => ({
+  isLoaded: googleMapsLoadStatus === 'loaded',
+  error: googleMapsLoadError,
+});
+
+const notifyGoogleMapsSubscribers = () => {
+  const snapshot = getGoogleMapsSnapshot();
+  googleMapsSubscribers.forEach((listener) => {
+    try {
+      listener(snapshot);
+    } catch (_error) {
+      // Ignore subscriber failures.
+    }
+  });
+};
+
+const setGoogleMapsLoadState = (status, error = null) => {
+  googleMapsLoadStatus = status;
+  googleMapsLoadError = error;
+  notifyGoogleMapsSubscribers();
+};
+
+const getResolvedGoogleMaps = () =>
+  typeof window !== 'undefined' && window.google?.maps ? window.google.maps : null;
+
 const resolveMarkerImageAsset = (image) => {
   if (!image) return null;
 
@@ -86,53 +117,142 @@ const getGoogleMapsApiKey = () => {
   return fromEnv || fromConfig || null;
 };
 
-// Google Maps Web Implementation
-const GoogleMapsAPI = () => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [error, setError] = useState(null);
+const ensureGoogleMapsLoaded = () => {
+  const existingMaps = getResolvedGoogleMaps();
+  if (existingMaps) {
+    setGoogleMapsLoadState('loaded', null);
+    return Promise.resolve(existingMaps);
+  }
 
-  useEffect(() => {
-    // Load Google Maps API script
-    const loadGoogleMaps = () => {
-      if (window.google && window.google.maps) {
-        setIsLoaded(true);
-        return;
+  if (googleMapsLoadPromise) {
+    return googleMapsLoadPromise;
+  }
+
+  const apiKey = getGoogleMapsApiKey();
+  if (!apiKey) {
+    const message = 'Google Maps key is missing';
+    setGoogleMapsLoadState('error', message);
+    return Promise.reject(new Error(message));
+  }
+
+  setGoogleMapsLoadState('loading', null);
+
+  googleMapsLoadPromise = new Promise((resolve, reject) => {
+    let settled = false;
+    let pollId = null;
+    let timeoutId = null;
+    let activeScript = null;
+
+    const cleanup = () => {
+      if (pollId) {
+        window.clearInterval(pollId);
+        pollId = null;
       }
-
-      const apiKey = getGoogleMapsApiKey();
-      if (!apiKey) {
-        setError('Google Maps key is missing');
-        return;
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
       }
-
-      const existingScript = document.querySelector('script[data-google-maps-loader="ivisit"]');
-      if (existingScript) {
-        existingScript.addEventListener('load', () => setIsLoaded(true), { once: true });
-        return;
+      if (activeScript) {
+        activeScript.removeEventListener('load', handleLoad);
+        activeScript.removeEventListener('error', handleError);
       }
-
-      const script = document.createElement('script');
-      script.async = true;
-      script.defer = true;
-      script.dataset.googleMapsLoader = 'ivisit';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
-
-      window.initGoogleMaps = () => {
-        setIsLoaded(true);
-        delete window.initGoogleMaps;
-      };
-
-      script.onerror = () => {
-        setError('Failed to load Google Maps');
-      };
-
-      document.head.appendChild(script);
     };
 
-    loadGoogleMaps();
+    const finishLoaded = () => {
+      if (settled) return;
+      const maps = getResolvedGoogleMaps();
+      if (!maps) return;
+      settled = true;
+      cleanup();
+      googleMapsLoadPromise = Promise.resolve(maps);
+      setGoogleMapsLoadState('loaded', null);
+      if (typeof window !== 'undefined' && window.initGoogleMaps) {
+        delete window.initGoogleMaps;
+      }
+      resolve(maps);
+    };
+
+    const finishError = (message) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      googleMapsLoadPromise = null;
+      setGoogleMapsLoadState('error', message);
+      if (typeof window !== 'undefined' && window.initGoogleMaps) {
+        delete window.initGoogleMaps;
+      }
+      reject(new Error(message));
+    };
+
+    function handleLoad() {
+      window.setTimeout(() => {
+        if (getResolvedGoogleMaps()) {
+          finishLoaded();
+          return;
+        }
+        finishError('Failed to initialize Google Maps');
+      }, 0);
+    }
+
+    function handleError() {
+      finishError('Failed to load Google Maps');
+    }
+
+    const existingScript = document.querySelector('script[data-google-maps-loader="ivisit"]');
+    activeScript = existingScript || document.createElement('script');
+
+    window.initGoogleMaps = () => {
+      finishLoaded();
+    };
+
+    activeScript.addEventListener('load', handleLoad);
+    activeScript.addEventListener('error', handleError);
+
+    if (!existingScript) {
+      activeScript.async = true;
+      activeScript.defer = true;
+      activeScript.dataset.googleMapsLoader = 'ivisit';
+      activeScript.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
+      document.head.appendChild(activeScript);
+    }
+
+    pollId = window.setInterval(() => {
+      if (getResolvedGoogleMaps()) {
+        finishLoaded();
+      }
+    }, 120);
+
+    timeoutId = window.setTimeout(() => {
+      if (getResolvedGoogleMaps()) {
+        finishLoaded();
+        return;
+      }
+      finishError('Timed out loading Google Maps');
+    }, 12000);
+  });
+
+  return googleMapsLoadPromise;
+};
+
+// Google Maps Web Implementation
+const GoogleMapsAPI = () => {
+  const [state, setState] = useState(getGoogleMapsSnapshot);
+
+  useEffect(() => {
+    const listener = (nextState) => {
+      setState(nextState);
+    };
+
+    googleMapsSubscribers.add(listener);
+    listener(getGoogleMapsSnapshot());
+    ensureGoogleMapsLoaded().catch(() => {});
+
+    return () => {
+      googleMapsSubscribers.delete(listener);
+    };
   }, []);
 
-  return { isLoaded, error };
+  return state;
 };
 
 const WebMapContext = React.createContext(null);
@@ -175,6 +295,8 @@ export const MapView = React.forwardRef(({
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const idleListenerRef = useRef(null);
+  const resizeObserverRef = useRef(null);
+  const appliedRegionRef = useRef(null);
   const [mapInstance, setMapInstance] = useState(null);
   const { isLoaded, error } = GoogleMapsAPI();
 
@@ -215,6 +337,10 @@ export const MapView = React.forwardRef(({
     }
 
     return () => {
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+        resizeObserverRef.current = null;
+      }
       if (idleListenerRef.current) {
         window.google.maps.event.removeListener(idleListenerRef.current);
         idleListenerRef.current = null;
@@ -223,6 +349,7 @@ export const MapView = React.forwardRef(({
         window.google.maps.event.clearInstanceListeners(mapInstanceRef.current);
       }
       mapInstanceRef.current = null;
+      appliedRegionRef.current = null;
       setMapInstance(null);
     };
   }, [isLoaded, onMapLoaded, onMapReady]);
@@ -243,12 +370,31 @@ export const MapView = React.forwardRef(({
       backgroundColor: userInterfaceStyle === 'dark' ? '#0F131A' : '#F8FAFC',
     });
 
-    if (initialRegion?.latitude && initialRegion?.longitude) {
+    const nextRegion =
+      initialRegion?.latitude && initialRegion?.longitude
+        ? {
+            latitude: Number(initialRegion.latitude),
+            longitude: Number(initialRegion.longitude),
+            latitudeDelta: Number(initialRegion.latitudeDelta) || 0,
+            longitudeDelta: Number(initialRegion.longitudeDelta) || 0,
+          }
+        : null;
+    const previousRegion = appliedRegionRef.current;
+    const regionChanged =
+      !previousRegion ||
+      !nextRegion ||
+      Math.abs(previousRegion.latitude - nextRegion.latitude) > 0.000001 ||
+      Math.abs(previousRegion.longitude - nextRegion.longitude) > 0.000001 ||
+      Math.abs(previousRegion.latitudeDelta - nextRegion.latitudeDelta) > 0.000001 ||
+      Math.abs(previousRegion.longitudeDelta - nextRegion.longitudeDelta) > 0.000001;
+
+    if (nextRegion && regionChanged) {
       map.setCenter({
-        lat: initialRegion.latitude,
-        lng: initialRegion.longitude,
+        lat: nextRegion.latitude,
+        lng: nextRegion.longitude,
       });
-      map.setZoom(getZoomForRegion(initialRegion));
+      map.setZoom(getZoomForRegion(nextRegion));
+      appliedRegionRef.current = nextRegion;
     }
   }, [
     customMapStyle,
@@ -259,6 +405,47 @@ export const MapView = React.forwardRef(({
     userInterfaceStyle,
     zoomEnabled,
   ]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || !mapRef.current || typeof ResizeObserver !== 'function') {
+      return undefined;
+    }
+
+    const map = mapInstanceRef.current;
+    const element = mapRef.current;
+    let frameId = null;
+
+    const observer = new ResizeObserver(() => {
+      if (!mapInstanceRef.current) return;
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+      frameId = window.requestAnimationFrame(() => {
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+        window.google?.maps?.event?.trigger?.(map, 'resize');
+        if (center) {
+          map.setCenter(center);
+        }
+        if (typeof zoom === 'number') {
+          map.setZoom(zoom);
+        }
+      });
+    });
+
+    observer.observe(element);
+    resizeObserverRef.current = observer;
+
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+      observer.disconnect();
+      if (resizeObserverRef.current === observer) {
+        resizeObserverRef.current = null;
+      }
+    };
+  }, [mapInstance]);
 
   useEffect(() => {
     if (!mapInstanceRef.current) return undefined;

@@ -191,8 +191,8 @@ function buildAddressModel(place, fallbackLocation = null) {
 		}
 
 		return {
-			primaryText: `${fallbackLocation.latitude.toFixed(4)}, ${fallbackLocation.longitude.toFixed(4)}`,
-			secondaryText: "",
+			primaryText: "Current location",
+			secondaryText: "Using device location",
 		};
 	}
 
@@ -588,6 +588,14 @@ export default function EmergencyIOSMobileIntakeView({
 						Number(userLocation.longitude),
 					);
 					if (cancelled) return;
+					if (
+						typeof formattedAddress !== "string" ||
+						!formattedAddress.trim() ||
+						formattedAddress === "Unknown Address"
+					) {
+						setAddressModel(buildAddressModel(null, userLocation));
+						return;
+					}
 					setAddressModel(
 						buildAddressModelFromFormattedAddress(
 							formattedAddress,
@@ -1220,7 +1228,7 @@ export default function EmergencyIOSMobileIntakeView({
 		!useSplitChooseHospitalLayout &&
 		!!activeLocation &&
 		!!activeProposedHospital &&
-		(!isProposedHospital || (!isRefreshingRoutePreview && routePreviewReady));
+		(!isProposedHospital || !isRefreshingRoutePreview);
 	const shouldShowCommittedMap = isResponderMatched && !!matchedHospitalId;
 	const shouldUseIosPadPhaseLayout =
 		useIosPadLayout && !shouldShowReviewShell && !isResponderMatched;
