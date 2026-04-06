@@ -242,6 +242,11 @@ export default function RequestAmbulanceScreen() {
 			!matchedTripState &&
 			(!recommendedHospitalIsComplete || completeHospitalCount < 3),
 	);
+	const shouldForceDemoBootstrap = Boolean(
+		activeIntakeLocation &&
+			!matchedTripState &&
+			completeHospitalCount === 0,
+	);
 	const intakePhaseStorageKey = useMemo(
 		() => buildEmergencyIntakePhaseStorageKey(user?.id),
 		[user?.id],
@@ -535,19 +540,19 @@ export default function RequestAmbulanceScreen() {
 
 		const ensureCompleteDemoExperience = async () => {
 			try {
-				await demoEcosystemService.ensureDemoEcosystemForLocation({
+				const bootstrapResult = await demoEcosystemService.ensureDemoEcosystemForLocation({
 					userId: user?.id || "guest",
 					latitude: activeIntakeLocation.latitude,
 					longitude: activeIntakeLocation.longitude,
 					radiusKm: 50,
-					force: true,
+					force: shouldForceDemoBootstrap,
 				});
 
 				if (cancelled) return;
 
 				if (!effectiveDemoModeEnabled) {
 					await setCoverageMode?.("hybrid");
-				} else {
+				} else if (bootstrapResult?.bootstrapped) {
 					await refreshHospitals?.();
 				}
 			} catch (error) {
@@ -573,6 +578,7 @@ export default function RequestAmbulanceScreen() {
 		setCoverageMode,
 		showResponsiveIntakeBase,
 		shouldBackfillDemoExperience,
+		shouldForceDemoBootstrap,
 		user?.id,
 	]);
 
