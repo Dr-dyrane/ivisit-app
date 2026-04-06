@@ -4,6 +4,7 @@ import { COLORS } from "../../../../../constants/colors";
 const STACK_PROFILE = {
 	layout: "stack",
 	copyAlign: "center",
+	mapShape: "square",
 	stageMaxWidth: 460,
 	heroRailWidth: "100%",
 	heroWidth: 214,
@@ -188,12 +189,23 @@ const VARIANT_PROFILES = {
 export default function createEmergencyChooseLocationTheme({
 	variant,
 	isDarkMode,
-	insetsBottom = 0,
 	viewportHeight = 0,
+	fontScale = 1,
 }) {
 	const profile = VARIANT_PROFILES[variant] || VARIANT_PROFILES["ios-mobile"];
+	const isSquareMap = profile.mapShape === "square";
+	const cappedFontScale = Math.min(Math.max(fontScale || 1, 1), 1.24);
+	const compressedSpacingFactor =
+		cappedFontScale >= 1.18 ? 0.76 : cappedFontScale >= 1.08 ? 0.88 : 1;
+	const squareMapScale =
+		isSquareMap && cappedFontScale >= 1.18
+			? 0.86
+			: isSquareMap && cappedFontScale >= 1.08
+				? 0.93
+				: 1;
 	const reducedMapHeight = viewportHeight > 0 && viewportHeight < 780 ? 18 : 0;
 	const mapHeight = Math.max(208, profile.mapHeight - reducedMapHeight);
+	const squareMapMaxWidth = Math.round(profile.mapMaxWidth * squareMapScale);
 
 	const colors = isDarkMode
 		? {
@@ -226,7 +238,7 @@ export default function createEmergencyChooseLocationTheme({
 		};
 
 	const leftAligned = profile.copyAlign === "left";
-	const stageBottomPadding = insetsBottom + profile.actionBottomSpacing;
+	const stageBottomPadding = profile.actionBottomSpacing;
 
 	const styles = StyleSheet.create({
 		stageRoot: {
@@ -239,14 +251,15 @@ export default function createEmergencyChooseLocationTheme({
 		},
 		storyBlock: {
 			width: "100%",
-			gap: profile.storyGap,
+			gap: Math.round(profile.storyGap * compressedSpacingFactor),
+			flexShrink: 1,
 		},
 		heroCopyRow: {
 			width: "100%",
 			flexDirection: profile.layout === "stack" ? "column" : "row",
 			alignItems: profile.layout === "stack" ? "center" : "center",
-			columnGap: profile.rowGap,
-			rowGap: profile.rowGap,
+			columnGap: Math.round(profile.rowGap * compressedSpacingFactor),
+			rowGap: Math.round(profile.rowGap * compressedSpacingFactor),
 		},
 		heroRail: {
 			width: profile.layout === "stack" ? "100%" : profile.heroRailWidth,
@@ -263,7 +276,7 @@ export default function createEmergencyChooseLocationTheme({
 		heroBlock: {
 			alignItems: "center",
 			justifyContent: "center",
-			minHeight: profile.heroHeight + 24,
+			minHeight: profile.heroHeight + Math.round(24 * compressedSpacingFactor),
 		},
 		heroImage: {
 			width: profile.heroWidth,
@@ -333,15 +346,18 @@ export default function createEmergencyChooseLocationTheme({
 		},
 		mapWrap: {
 			width: "100%",
-			maxWidth: profile.mapMaxWidth,
-			height: mapHeight,
+			maxWidth: isSquareMap ? squareMapMaxWidth : profile.mapMaxWidth,
+			height: isSquareMap ? undefined : mapHeight,
+			aspectRatio: isSquareMap ? 1 : undefined,
 			alignSelf: "center",
 			borderRadius: 28,
 			overflow: "hidden",
 		},
 		mapSkeleton: {
 			width: "100%",
-			height: mapHeight,
+			maxWidth: isSquareMap ? squareMapMaxWidth : profile.mapMaxWidth,
+			height: isSquareMap ? undefined : mapHeight,
+			aspectRatio: isSquareMap ? 1 : undefined,
 			borderRadius: 28,
 			backgroundColor: colors.skeleton,
 			borderWidth: 1,
@@ -394,8 +410,36 @@ export default function createEmergencyChooseLocationTheme({
 			width: "100%",
 			maxWidth: profile.actionMaxWidth,
 			alignSelf: leftAligned ? "flex-start" : "center",
-			marginTop: profile.actionTopSpacing,
+			marginTop: Math.round(profile.actionTopSpacing * compressedSpacingFactor),
 			gap: 12,
+			flexShrink: 0,
+		},
+		inlineActionRow: {
+			width: "100%",
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 12,
+		},
+		inlinePrimaryAction: {
+			flex: 1,
+		},
+		inlineLocationButton: {
+			width: profile.primaryHeight,
+			height: profile.primaryHeight,
+			borderRadius: profile.primaryHeight / 2,
+			alignItems: "center",
+			justifyContent: "center",
+			backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.05)",
+		},
+		inlineLocationButtonSkeleton: {
+			width: profile.primaryHeight,
+			height: profile.primaryHeight,
+			borderRadius: profile.primaryHeight / 2,
+			backgroundColor: colors.skeleton,
+		},
+		inlineLocationButtonPressed: {
+			opacity: 0.82,
+			transform: [{ scale: 0.97 }],
 		},
 		loadingWell: {
 			width: "100%",
@@ -458,6 +502,7 @@ export default function createEmergencyChooseLocationTheme({
 	return {
 		profile: {
 			...profile,
+			mapShape: profile.mapShape || "landscape",
 			mapHeight,
 		},
 		colors,

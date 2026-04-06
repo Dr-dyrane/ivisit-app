@@ -168,6 +168,8 @@ Current implementation checkpoint:
 - the proposed-hospital preview now uses skeleton-style map loading only; no activity indicator is allowed in this lane
 - review-map framing is now orientation-aware, so mostly horizontal routes are lifted into the visible top half of the map instead of collapsing toward the review sheet
 - the chosen intake location now also drives hospital coverage refresh and demo ecosystem backfill, so sparse live hospital data does not break the sponsor-review experience after location confirmation
+- the `Where are you?` page-shell now follows the welcome-screen page contract more closely: the route is full-canvas, the stage no longer double-owns bottom safe-area spacing, and stage height is calculated after page padding instead of before it
+- the `Choose location` sheet now treats keyboard behavior as platform-specific: iOS uses a tighter, flush-to-keyboard bottom sheet path while Android keeps the keyboard-aware modal treatment
 
 Responsive composition rule:
 
@@ -198,6 +200,14 @@ Canvas rule:
 - use centered stages, sheets, and panels inside the canvas when the phase needs focus
 - do not let old `maxWidth` or margin habits turn a live emergency screen into a contained card unless that container is the intentional focal surface
 - urgent entry routes such as `request-help` must inherit the same full-canvas shell discipline as welcome instead of passing through the default boxed auth surface wrapper
+- when a phase is page-based like `Where are you?`, the stage must not reapply bottom safe-area ownership that the page shell already owns
+- stage height math must follow the welcome rule: subtract top and bottom page padding before assigning stage min-height, otherwise the screen will overflow and feel scrollable when it should snap to the viewport
+
+Keyboard behavior rule:
+
+- keyboard treatment is platform-specific doctrine, not a generic shared modal behavior
+- iOS location sheets should sit tightly on the keyboard instead of hovering above it with extra offsets
+- Android may use the keyboard-aware modal helper where needed, but that behavior must not leak into iOS mobile variants
 
 Web-specific implementation rule:
 

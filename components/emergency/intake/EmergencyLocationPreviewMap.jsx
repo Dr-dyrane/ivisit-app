@@ -171,18 +171,6 @@ export default function EmergencyLocationPreviewMap({ location }) {
 			<View
 				pointerEvents="none"
 				style={[
-					styles.outerRing,
-					{
-						borderColor: isDarkMode
-							? "rgba(166, 180, 201, 0.28)"
-							: "rgba(94, 104, 123, 0.18)",
-					},
-				]}
-			/>
-
-			<View
-				pointerEvents="none"
-				style={[
 					styles.pill,
 					{
 						backgroundColor: isDarkMode
@@ -257,15 +245,6 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.08,
 		shadowRadius: 12,
 		shadowOffset: { width: 0, height: 6 },
-	},
-	outerRing: {
-		...StyleSheet.absoluteFillObject,
-		top: 2,
-		right: 2,
-		bottom: 2,
-		left: 2,
-		borderRadius: 26,
-		borderWidth: 2,
 	},
 	pill: {
 		position: "absolute",

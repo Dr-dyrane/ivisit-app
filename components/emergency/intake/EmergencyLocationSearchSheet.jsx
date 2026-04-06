@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+	Keyboard,
 	KeyboardAvoidingView,
 	Modal,
 	Platform,
@@ -9,6 +10,7 @@ import {
 	Text,
 	TextInput,
 	TouchableWithoutFeedback,
+	useWindowDimensions,
 	View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -78,22 +80,42 @@ export default function EmergencyLocationSearchSheet({
 	onUseCurrentLocation,
 	onSelectLocation,
 	currentLocation = null,
+	keyboardAwareMode = "ios",
 }) {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
+	const { height: windowHeight } = useWindowDimensions();
 	const [query, setQuery] = useState("");
 	const [suggestions, setSuggestions] = useState([]);
 	const [error, setError] = useState(null);
 	const [isSearching, setIsSearching] = useState(false);
 	const [resolvingPlaceId, setResolvingPlaceId] = useState(null);
+	const [isIosKeyboardVisible, setIsIosKeyboardVisible] = useState(false);
+	const [iosKeyboardHeight, setIosKeyboardHeight] = useState(0);
 	const inputRef = useRef(null);
 	const sessionTokenRef = useRef(null);
 	const requestIdRef = useRef(0);
+	const enableAndroidKeyboardAware = keyboardAwareMode === "android";
 	const { keyboardHeight, modalHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
 		useAndroidKeyboardAwareModal({
 			defaultHeight: 620,
 			maxHeightPercentage: 0.82,
 		});
+	const keyboardAvoidingProps = enableAndroidKeyboardAware
+		? getKeyboardAvoidingViewProps({ style: styles.keyboardWrap })
+		: {
+				style: styles.iosKeyboardWrap,
+			};
+	const scrollProps = enableAndroidKeyboardAware
+		? getScrollViewProps({
+				style: styles.resultsList,
+				contentContainerStyle: styles.resultsContent,
+			})
+		: {
+				style: styles.resultsList,
+				contentContainerStyle: styles.resultsContent,
+				keyboardShouldPersistTaps: "handled",
+			};
 
 	const colors = useMemo(
 		() =>
@@ -181,6 +203,44 @@ export default function EmergencyLocationSearchSheet({
 	}, [visible]);
 
 	useEffect(() => {
+		if (!visible || enableAndroidKeyboardAware || Platform.OS !== "ios") {
+			setIsIosKeyboardVisible(false);
+			setIosKeyboardHeight(0);
+			return undefined;
+		}
+
+		const handleKeyboardFrame = (event) => {
+			const nextHeight = Math.max(
+				0,
+				windowHeight - Number(event?.endCoordinates?.screenY || windowHeight),
+			);
+			setIosKeyboardHeight(nextHeight);
+			setIsIosKeyboardVisible(nextHeight > 0);
+		};
+		const showSubscription = Keyboard.addListener("keyboardWillChangeFrame", handleKeyboardFrame);
+		const hideSubscription = Keyboard.addListener("keyboardWillHide", () => {
+			setIosKeyboardHeight(0);
+			setIsIosKeyboardVisible(false);
+		});
+
+		return () => {
+			showSubscription.remove();
+			hideSubscription.remove();
+			setIosKeyboardHeight(0);
+			setIsIosKeyboardVisible(false);
+		};
+	}, [enableAndroidKeyboardAware, visible, windowHeight]);
+
+	const iosSheetMaxHeight = useMemo(() => {
+		if (Platform.OS !== "ios") return 620;
+		if (!isIosKeyboardVisible || iosKeyboardHeight <= 0) return 620;
+		return Math.min(
+			620,
+			Math.max(360, windowHeight - iosKeyboardHeight - (insets?.top || 0) - 18),
+		);
+	}, [insets?.top, iosKeyboardHeight, isIosKeyboardVisible, windowHeight]);
+
+	useEffect(() => {
 		if (!visible) {
 			return undefined;
 		}
@@ -247,19 +307,29 @@ export default function EmergencyLocationSearchSheet({
 						styles.overlay,
 						{
 							backgroundColor: colors.overlay,
-							paddingBottom: Platform.OS === "android" ? keyboardHeight : 0,
+							paddingBottom:
+								enableAndroidKeyboardAware && Platform.OS === "android"
+									? keyboardHeight
+									: Platform.OS === "ios"
+										? iosKeyboardHeight
+									: 0,
 						},
 					]}
 				>
 					<TouchableWithoutFeedback>
-						<KeyboardAvoidingView {...getKeyboardAvoidingViewProps({ style: styles.keyboardWrap })}>
+						<KeyboardAvoidingView {...keyboardAvoidingProps}>
 							<View
 								style={[
 									styles.sheet,
 									{
 										backgroundColor: colors.sheet,
-										maxHeight: modalHeight,
-										paddingBottom: Math.max((insets?.bottom || 0) + 18, 24),
+										maxHeight: enableAndroidKeyboardAware ? modalHeight : iosSheetMaxHeight,
+										marginBottom:
+											Platform.OS === "ios" && isIosKeyboardVisible ? -12 : 0,
+										paddingBottom:
+											Platform.OS === "ios" && isIosKeyboardVisible
+												? 12
+												: Math.max((insets?.bottom || 0) + 18, 24),
 									},
 								]}
 							>
@@ -338,10 +408,7 @@ export default function EmergencyLocationSearchSheet({
 								{error ? <Text style={styles.errorText}>{error}</Text> : null}
 
 								<ScrollView
-									{...getScrollViewProps({
-										style: styles.resultsList,
-										contentContainerStyle: styles.resultsContent,
-									})}
+									{...scrollProps}
 								>
 									{isSearching && suggestions.length === 0 ? (
 										<View
@@ -498,6 +565,10 @@ const styles = StyleSheet.create({
 		justifyContent: "flex-end",
 	},
 	keyboardWrap: {
+		justifyContent: "flex-end",
+	},
+	iosKeyboardWrap: {
+		width: "100%",
 		justifyContent: "flex-end",
 	},
 	sheet: {

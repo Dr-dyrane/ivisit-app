@@ -7,6 +7,7 @@ import {
 } from "../../../constants/breakpoints";
 import useAuthViewport from "../../../hooks/ui/useAuthViewport";
 import EmergencyIOSMobileIntakeView from "./views/EmergencyIOSMobileIntakeView";
+import EmergencyAndroidMobileIntakeView from "./views/EmergencyAndroidMobileIntakeView";
 
 export function getEmergencyIntakeVariant({ platform, isWeb, width }) {
 	if (platform === "android") {
@@ -88,11 +89,22 @@ export default function EmergencyIntakeOrchestrator(props) {
 	});
 	const viewportMode = getViewportModeForVariant(variant);
 
+	if (variant === "android-mobile") {
+		return (
+			<EmergencyAndroidMobileIntakeView
+				{...props}
+				viewportMode={viewportMode}
+				screenVariant={variant}
+			/>
+		);
+	}
+
 	return (
 		<EmergencyIOSMobileIntakeView
 			{...props}
 			viewportMode={viewportMode}
 			screenVariant={variant}
+			locationSheetBehavior="ios"
 		/>
 	);
 }

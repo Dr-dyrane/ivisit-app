@@ -213,6 +213,7 @@ function buildAddressModel(place, fallbackLocation = null) {
 export default function EmergencyIOSMobileIntakeView({
 	viewportMode = "phone",
 	screenVariant = "ios-mobile",
+	locationSheetBehavior = "ios",
 	onContinue,
 	initialSnapshot = null,
 	onStateSnapshotChange,
@@ -1125,6 +1126,7 @@ export default function EmergencyIOSMobileIntakeView({
 				onUseCurrentLocation={handleUseCurrentLocation}
 				onSelectLocation={handleSelectLocation}
 				currentLocation={activeLocation}
+				keyboardAwareMode={locationSheetBehavior}
 			/>
 			<EmergencyHospitalChoiceSheet
 				visible={hospitalSheetVisible}

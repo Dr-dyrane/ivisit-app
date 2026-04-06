@@ -4,10 +4,11 @@ import {
 	Platform,
 	Pressable,
 	Text,
+	useWindowDimensions,
 	View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../../../contexts/ThemeContext";
 import useAuthViewport from "../../../../../hooks/ui/useAuthViewport";
 import EntryActionButton from "../../../../entry/EntryActionButton";
@@ -59,14 +60,15 @@ export default function EmergencyChooseLocationStageBase({
 	findingRailProgress,
 }) {
 	const { isDarkMode } = useTheme();
-	const insets = useSafeAreaInsets();
 	const { height } = useAuthViewport();
+	const { fontScale } = useWindowDimensions();
 	const { profile, colors, styles } = createEmergencyChooseLocationTheme({
 		variant,
 		isDarkMode,
-		insetsBottom: insets?.bottom || 0,
 		viewportHeight: height,
+		fontScale,
 	});
+	const useInlineSecondaryLocationAction = variant === "ios-mobile";
 
 	const heroPulseScale =
 		flowState === "request_started" || shouldRenderFindingUi ? pulseScale : 1;
@@ -129,8 +131,22 @@ export default function EmergencyChooseLocationStageBase({
 								</Animated.View>
 							) : (
 								<>
-									<Text style={styles.headline}>{headlineText}</Text>
-									{helperText ? <Text style={styles.helper}>{helperText}</Text> : null}
+									<Text
+										style={styles.headline}
+										numberOfLines={3}
+										maxFontSizeMultiplier={1.22}
+									>
+										{headlineText}
+									</Text>
+									{helperText ? (
+										<Text
+											style={styles.helper}
+											numberOfLines={3}
+											maxFontSizeMultiplier={1.16}
+										>
+											{helperText}
+										</Text>
+									) : null}
 								</>
 							)}
 						</View>
@@ -167,8 +183,19 @@ export default function EmergencyChooseLocationStageBase({
 			<View style={styles.actionWell}>
 				{flowState === "request_started" ? (
 					<Animated.View style={[styles.loadingWell, { opacity: skeletonOpacity }]}>
-						<View style={styles.primarySkeleton} />
-						<View style={styles.quietLinkSkeleton} />
+						{useInlineSecondaryLocationAction ? (
+							<View style={styles.inlineActionRow}>
+								<View style={styles.inlineLocationButtonSkeleton} />
+								<View style={styles.inlinePrimaryAction}>
+									<View style={styles.primarySkeleton} />
+								</View>
+							</View>
+						) : (
+							<>
+								<View style={styles.primarySkeleton} />
+								<View style={styles.quietLinkSkeleton} />
+							</>
+						)}
 					</Animated.View>
 				) : shouldRenderFindingUi ? (
 					<View style={styles.findingWell}>
@@ -193,21 +220,52 @@ export default function EmergencyChooseLocationStageBase({
 					</View>
 				) : (
 					<>
-						<EntryActionButton
-							label={confirmPrimaryLabel}
-							variant="primary"
-							height={profile.primaryHeight}
-							onPress={onPrimaryPress}
-						/>
-						<Pressable
-							onPress={onSecondaryPress}
-							style={[
-								styles.quietLink,
-								Platform.OS === "web" ? { cursor: "pointer" } : null,
-							]}
-						>
-							<Text style={styles.quietLinkText}>{secondaryLabel}</Text>
-						</Pressable>
+						{useInlineSecondaryLocationAction ? (
+							<View style={styles.inlineActionRow}>
+								<Pressable
+									onPress={onSecondaryPress}
+									accessible
+									accessibilityRole="button"
+									accessibilityLabel={secondaryLabel}
+									style={({ pressed }) => [
+										styles.inlineLocationButton,
+										pressed ? styles.inlineLocationButtonPressed : null,
+									]}
+								>
+									<Ionicons
+										name="location-outline"
+										size={20}
+										color={colors.quiet}
+									/>
+								</Pressable>
+								<View style={styles.inlinePrimaryAction}>
+									<EntryActionButton
+										label={confirmPrimaryLabel}
+										variant="primary"
+										height={profile.primaryHeight}
+										onPress={onPrimaryPress}
+									/>
+								</View>
+							</View>
+						) : (
+							<>
+								<EntryActionButton
+									label={confirmPrimaryLabel}
+									variant="primary"
+									height={profile.primaryHeight}
+									onPress={onPrimaryPress}
+								/>
+								<Pressable
+									onPress={onSecondaryPress}
+									style={[
+										styles.quietLink,
+										Platform.OS === "web" ? { cursor: "pointer" } : null,
+									]}
+								>
+									<Text style={styles.quietLinkText}>{secondaryLabel}</Text>
+								</Pressable>
+							</>
+						)}
 					</>
 				)}
 			</View>

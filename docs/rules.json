@@ -77,7 +77,8 @@
         "bottom sheets on mobile where action continuation is needed",
         "centered dialogs on tablet and desktop for focused tasks",
         "tap targets must remain comfortable on compact phones",
-        "respect reduced motion and avoid looping animation gimmicks"
+        "respect reduced motion and avoid looping animation gimmicks",
+        "keyboard-aware sheet behavior must be platform-specific when iOS and Android require materially different modal behavior"
       ],
       "anti_patterns": [
         "multiple primary CTAs on one screen",
@@ -229,7 +230,9 @@
         "do not treat responsive orchestration as a special-case technique; it is the default rule once a screen meaningfully diverges by size class",
         "prefer full-canvas screen composition before introducing centered containers; sheets and panels may be focal surfaces, but the screen itself should not feel boxed by default",
         "web variants must be built as true web surfaces with explicit rendering, spacing, and map-treatment decisions instead of inheriting native assumptions unchanged",
-        "urgent entry routes must use the same full-canvas root-shell discipline as welcome instead of inheriting the default boxed auth surface wrapper"
+        "urgent entry routes must use the same full-canvas root-shell discipline as welcome instead of inheriting the default boxed auth surface wrapper",
+        "page-based stages must not double-own safe-area padding inside a page shell that already owns it",
+        "stage min-height must be computed after subtracting the page's top and bottom padding, following the welcome-screen pattern, or the screen will overflow when it should snap to the viewport"
       ]
     },
     "screen_hardening_workflow": {
@@ -253,6 +256,7 @@
       "done_definition": [
         "layout is stable with no overflow",
         "screen uses the available canvas intentionally instead of feeling boxed by inherited container limits",
+        "page-shell padding and inner stage padding do not stack into accidental y-axis overflow",
         "primary action is obvious",
         "copy is concise",
         "touch targets are correct",

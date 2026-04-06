@@ -32,12 +32,17 @@ export function createEmergencyIosMobileIntakeTheme({
 			caption: "#7C879A",
 		};
 
+	const topPadding =
+		headerOffset +
+		(isDesktop ? 40 : isTablet ? 32 : isVeryShortHeight ? 18 : 30);
+	const bottomPadding =
+		insetsBottom + (isDesktop ? 28 : isTablet ? 24 : isVeryShortHeight ? 18 : 24);
+	const stageMinHeight = Math.max(viewportHeight - topPadding - bottomPadding, 0);
+
 	const metrics = {
-		topPadding:
-			headerOffset +
-			(isDesktop ? 40 : isTablet ? 32 : isVeryShortHeight ? 18 : 30),
-		bottomPadding: insetsBottom + (isDesktop ? 28 : isTablet ? 24 : isVeryShortHeight ? 18 : 24),
-		stageMinHeight: Math.max(viewportHeight - headerOffset - insetsBottom - 28, 0),
+		topPadding,
+		bottomPadding,
+		stageMinHeight,
 		contentMaxWidth: isDesktop ? 1120 : isTablet ? 860 : 430,
 		centerClusterMaxWidth: isDesktop ? 720 : isTablet ? 620 : 430,
 		locationPreviewMaxWidth: isDesktop ? 720 : isTablet ? 620 : 430,
