@@ -69,9 +69,18 @@ export default function EmergencyChooseLocationStageBase({
 		viewportHeight: height,
 		fontScale,
 	});
-	const useInlineSecondaryLocationAction =
-		variant === "ios-mobile" || variant === "android-mobile";
-	const usePairedActionBand = variant === "ios-pad";
+	const actionLayout = profile.actionLayout || "quiet-link";
+	const actionPlacement = profile.actionPlacement || "after-map";
+	const useSideMapPlacement = profile.sideMapPlacement === true;
+	const useInlineSecondaryLocationAction = actionLayout === "inline-icon";
+	const usePairedActionBand = actionLayout === "paired";
+	const useSurfacelessPairedActions =
+		usePairedActionBand && profile.actionSurfaceless === true;
+	const pairedActionContainerStyle = useSurfacelessPairedActions
+		? styles.pairedActionRow
+		: styles.pairedActionSurface;
+	const confirmPrimaryIconName =
+		flowState === "confirm_location" ? "navigate" : null;
 	const preserveAndroidMapDuringSkeleton =
 		variant === "android-mobile" &&
 		!!activeLocation &&
@@ -89,6 +98,186 @@ export default function EmergencyChooseLocationStageBase({
 				],
 			}
 		: null;
+	const actionBlock = (
+		<View style={styles.actionWell}>
+			{flowState === "request_started" ? (
+				<Animated.View style={[styles.loadingWell, { opacity: skeletonOpacity }]}>
+					{useInlineSecondaryLocationAction ? (
+						<View style={styles.inlineActionRow}>
+							<View style={styles.inlineLocationButtonSkeleton} />
+							<View style={styles.inlinePrimaryAction}>
+								<View style={styles.primarySkeleton} />
+							</View>
+						</View>
+					) : usePairedActionBand ? (
+						<View style={pairedActionContainerStyle}>
+							{useSurfacelessPairedActions ? (
+								<>
+									<View style={styles.pairedSecondarySkeleton} />
+									<View style={styles.pairedPrimaryAction}>
+										<View style={styles.primarySkeleton} />
+									</View>
+								</>
+							) : (
+								<View style={styles.pairedActionRow}>
+									<View style={styles.pairedSecondarySkeleton} />
+									<View style={styles.pairedPrimaryAction}>
+										<View style={styles.primarySkeleton} />
+									</View>
+								</View>
+							)}
+						</View>
+					) : (
+						<>
+							<View style={styles.primarySkeleton} />
+							<View style={styles.quietLinkSkeleton} />
+						</>
+					)}
+				</Animated.View>
+			) : shouldRenderFindingUi ? (
+				<View style={styles.findingWell}>
+					<View style={styles.findingRail}>
+						<Animated.View
+							style={[
+								styles.findingRailIndicator,
+								{
+									transform: [
+										{
+											translateX: findingRailProgress.interpolate({
+												inputRange: [0, 1],
+												outputRange: [-profile.railTravel, profile.railTravel],
+											}),
+										},
+									],
+								},
+							]}
+						/>
+					</View>
+					<Text style={styles.findingStatusText}>{findingStatusMessage}</Text>
+				</View>
+			) : (
+				<>
+					{useInlineSecondaryLocationAction ? (
+						<View style={styles.inlineActionRow}>
+							<Pressable
+								onPress={onSecondaryPress}
+								accessible
+								accessibilityRole="button"
+								accessibilityLabel={secondaryLabel}
+								style={({ pressed }) => [
+									styles.inlineLocationButton,
+									pressed ? styles.inlineLocationButtonPressed : null,
+								]}
+							>
+								<Ionicons
+									name="location-outline"
+									size={20}
+									color={colors.quiet}
+								/>
+							</Pressable>
+							<View style={styles.inlinePrimaryAction}>
+								<EntryActionButton
+									label={confirmPrimaryLabel}
+									variant="primary"
+									height={profile.primaryHeight}
+									iconName={confirmPrimaryIconName}
+									onPress={onPrimaryPress}
+								/>
+							</View>
+						</View>
+					) : usePairedActionBand ? (
+						<View style={pairedActionContainerStyle}>
+							{useSurfacelessPairedActions ? (
+								<>
+									<View style={styles.pairedSecondaryAction}>
+										<EntryActionButton
+											label={secondaryLabel}
+											variant="secondary"
+											height={profile.primaryHeight}
+											onPress={onSecondaryPress}
+										/>
+									</View>
+									<View style={styles.pairedPrimaryAction}>
+										<EntryActionButton
+											label={confirmPrimaryLabel}
+											variant="primary"
+											height={profile.primaryHeight}
+											iconName={confirmPrimaryIconName}
+											onPress={onPrimaryPress}
+										/>
+									</View>
+								</>
+							) : (
+								<View style={styles.pairedActionRow}>
+									<View style={styles.pairedSecondaryAction}>
+										<EntryActionButton
+											label={secondaryLabel}
+											variant="secondary"
+											height={profile.primaryHeight}
+											onPress={onSecondaryPress}
+										/>
+									</View>
+									<View style={styles.pairedPrimaryAction}>
+										<EntryActionButton
+											label={confirmPrimaryLabel}
+											variant="primary"
+											height={profile.primaryHeight}
+											iconName={confirmPrimaryIconName}
+											onPress={onPrimaryPress}
+										/>
+									</View>
+								</View>
+							)}
+						</View>
+					) : (
+						<>
+							<EntryActionButton
+								label={confirmPrimaryLabel}
+								variant="primary"
+								height={profile.primaryHeight}
+								iconName={confirmPrimaryIconName}
+								onPress={onPrimaryPress}
+							/>
+							<Pressable
+								onPress={onSecondaryPress}
+								style={[
+									styles.quietLink,
+									Platform.OS === "web" ? { cursor: "pointer" } : null,
+								]}
+							>
+								<Text style={styles.quietLinkText}>{secondaryLabel}</Text>
+							</Pressable>
+						</>
+					)}
+				</>
+			)}
+		</View>
+	);
+	const mapBlock =
+		shouldShowLocationSkeleton && !preserveAndroidMapDuringSkeleton ? (
+			<Animated.View style={[styles.mapSkeleton, { opacity: skeletonOpacity }]}>
+				<View style={styles.mapSkeletonGridA} />
+				<View style={styles.mapSkeletonGridB} />
+				<View style={styles.mapSkeletonGridC} />
+				<View style={styles.mapSkeletonPill} />
+				<View style={styles.mapSkeletonPinWrap}>
+					<View style={styles.mapSkeletonPin} />
+				</View>
+			</Animated.View>
+		) : shouldRenderMapPreview ? (
+			<Animated.View
+				style={[
+					useSideMapPlacement ? styles.sideMapWrap : null,
+					styles.mapWrap,
+					mapAnimatedStyle,
+				]}
+			>
+				<EmergencyLocationPreviewMap
+					key={`location-preview-${locationPreviewRenderKey}`}
+					location={activeLocation}
+				/>
+			</Animated.View>
+		) : null;
 
 	const heroPulseScale =
 		flowState === "request_started" || shouldRenderFindingUi ? pulseScale : 1;
@@ -173,149 +362,12 @@ export default function EmergencyChooseLocationStageBase({
 					</View>
 				</View>
 
-				{shouldShowLocationSkeleton && !preserveAndroidMapDuringSkeleton ? (
-					<Animated.View style={[styles.mapSkeleton, { opacity: skeletonOpacity }]}>
-						<View style={styles.mapSkeletonGridA} />
-						<View style={styles.mapSkeletonGridB} />
-						<View style={styles.mapSkeletonGridC} />
-						<View style={styles.mapSkeletonRing}>
-							<View style={styles.mapSkeletonPin} />
-						</View>
-					</Animated.View>
-				) : shouldRenderMapPreview ? (
-					<Animated.View
-						style={[
-							styles.mapWrap,
-							mapAnimatedStyle,
-						]}
-					>
-						<EmergencyLocationPreviewMap
-							key={`location-preview-${locationPreviewRenderKey}`}
-							location={activeLocation}
-						/>
-					</Animated.View>
-				) : null}
+				{actionPlacement === "before-map" ? actionBlock : null}
+				{useSideMapPlacement ? null : mapBlock}
 			</View>
 
-			<View style={styles.actionWell}>
-				{flowState === "request_started" ? (
-					<Animated.View style={[styles.loadingWell, { opacity: skeletonOpacity }]}>
-						{useInlineSecondaryLocationAction ? (
-							<View style={styles.inlineActionRow}>
-								<View style={styles.inlineLocationButtonSkeleton} />
-								<View style={styles.inlinePrimaryAction}>
-									<View style={styles.primarySkeleton} />
-								</View>
-							</View>
-						) : usePairedActionBand ? (
-							<View style={styles.pairedActionSurface}>
-								<View style={styles.pairedActionRow}>
-									<View style={styles.pairedSecondarySkeleton} />
-									<View style={styles.pairedPrimaryAction}>
-										<View style={styles.primarySkeleton} />
-									</View>
-								</View>
-							</View>
-						) : (
-							<>
-								<View style={styles.primarySkeleton} />
-								<View style={styles.quietLinkSkeleton} />
-							</>
-						)}
-					</Animated.View>
-				) : shouldRenderFindingUi ? (
-					<View style={styles.findingWell}>
-						<View style={styles.findingRail}>
-							<Animated.View
-								style={[
-									styles.findingRailIndicator,
-									{
-										transform: [
-											{
-												translateX: findingRailProgress.interpolate({
-													inputRange: [0, 1],
-													outputRange: [-profile.railTravel, profile.railTravel],
-												}),
-											},
-										],
-									},
-								]}
-							/>
-						</View>
-						<Text style={styles.findingStatusText}>{findingStatusMessage}</Text>
-					</View>
-				) : (
-					<>
-						{useInlineSecondaryLocationAction ? (
-							<View style={styles.inlineActionRow}>
-								<Pressable
-									onPress={onSecondaryPress}
-									accessible
-									accessibilityRole="button"
-									accessibilityLabel={secondaryLabel}
-									style={({ pressed }) => [
-										styles.inlineLocationButton,
-										pressed ? styles.inlineLocationButtonPressed : null,
-									]}
-								>
-									<Ionicons
-										name="location-outline"
-										size={20}
-										color={colors.quiet}
-									/>
-								</Pressable>
-								<View style={styles.inlinePrimaryAction}>
-									<EntryActionButton
-										label={confirmPrimaryLabel}
-										variant="primary"
-										height={profile.primaryHeight}
-										onPress={onPrimaryPress}
-									/>
-								</View>
-							</View>
-						) : usePairedActionBand ? (
-							<View style={styles.pairedActionSurface}>
-								<View style={styles.pairedActionRow}>
-									<View style={styles.pairedSecondaryAction}>
-										<EntryActionButton
-											label={secondaryLabel}
-											variant="secondary"
-											height={profile.primaryHeight}
-											onPress={onSecondaryPress}
-										/>
-									</View>
-									<View style={styles.pairedPrimaryAction}>
-										<EntryActionButton
-											label={confirmPrimaryLabel}
-											variant="primary"
-											height={profile.primaryHeight}
-											onPress={onPrimaryPress}
-										/>
-									</View>
-								</View>
-							</View>
-						) : (
-							<>
-								<EntryActionButton
-									label={confirmPrimaryLabel}
-									variant="primary"
-									height={profile.primaryHeight}
-									onPress={onPrimaryPress}
-								/>
-								<Pressable
-									onPress={onSecondaryPress}
-									style={[
-										styles.quietLink,
-										Platform.OS === "web" ? { cursor: "pointer" } : null,
-									]}
-								>
-									<Text style={styles.quietLinkText}>{secondaryLabel}</Text>
-								</Pressable>
-							</>
-						)}
-					</>
-				)}
-			</View>
+			{useSideMapPlacement ? mapBlock : null}
+			{actionPlacement === "before-map" ? null : actionBlock}
 		</View>
 	);
 }

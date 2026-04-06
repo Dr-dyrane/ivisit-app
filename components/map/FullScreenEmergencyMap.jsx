@@ -27,8 +27,10 @@ import PulsingMarker from "./PulsingMarker";
 import {
 	darkAndroidMapStyle,
 	darkMapStyle,
+	darkWebMapStyle,
 	lightAndroidMapStyle,
 	lightMapStyle,
+	lightWebMapStyle,
 } from "./mapStyles";
 import { useMapLocation } from "../../hooks/emergency/useMapLocation";
 import { useMapRoute } from "../../hooks/emergency/useMapRoute";
@@ -420,13 +422,18 @@ const FullScreenEmergencyMap = forwardRef(
 				? isDarkMode
 					? darkAndroidMapStyle
 					: lightAndroidMapStyle
+				: Platform.OS === "web"
+					? isDarkMode
+						? darkWebMapStyle
+						: lightWebMapStyle
 				: isDarkMode
 					? darkMapStyle
 					: lightMapStyle;
 		const mapType = Platform.OS === "ios" ? "mutedStandard" : "standard";
 		// Apple Maps does not support Google-style JSON map styling.
 		// Keep iOS premium-muted via mapType + userInterfaceStyle, and apply JSON style on Android.
-		const customMapStyle = Platform.OS === "android" ? mapStyle : undefined;
+		const customMapStyle =
+			Platform.OS === "android" || Platform.OS === "web" ? mapStyle : undefined;
 		const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
 		const shouldShowTelemetryBanner =
 			!hideTelemetryBanner &&

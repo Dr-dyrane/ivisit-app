@@ -8,6 +8,16 @@ import {
 import useAuthViewport from "../../../hooks/ui/useAuthViewport";
 import EmergencyIOSMobileIntakeView from "./views/EmergencyIOSMobileIntakeView";
 import EmergencyAndroidMobileIntakeView from "./views/EmergencyAndroidMobileIntakeView";
+import EmergencyAndroidFoldIntakeView from "./views/EmergencyAndroidFoldIntakeView";
+import EmergencyAndroidTabletIntakeView from "./views/EmergencyAndroidTabletIntakeView";
+import EmergencyAndroidChromebookIntakeView from "./views/EmergencyAndroidChromebookIntakeView";
+import EmergencyWebMobileIntakeView from "./views/EmergencyWebMobileIntakeView";
+import EmergencyWebSmWideIntakeView from "./views/EmergencyWebSmWideIntakeView";
+import EmergencyWebMdIntakeView from "./views/EmergencyWebMdIntakeView";
+import EmergencyWebLgIntakeView from "./views/EmergencyWebLgIntakeView";
+import EmergencyWebXlIntakeView from "./views/EmergencyWebXlIntakeView";
+import EmergencyWeb2xl3xlIntakeView from "./views/EmergencyWeb2xl3xlIntakeView";
+import EmergencyWebUltraWideIntakeView from "./views/EmergencyWebUltraWideIntakeView";
 
 export function getEmergencyIntakeVariant({ platform, isWeb, width }) {
 	if (platform === "android") {
@@ -92,6 +102,106 @@ export default function EmergencyIntakeOrchestrator(props) {
 	if (variant === "android-mobile") {
 		return (
 			<EmergencyAndroidMobileIntakeView
+				{...props}
+				viewportMode={viewportMode}
+				screenVariant={variant}
+			/>
+		);
+	}
+
+	if (variant === "android-fold") {
+		return (
+			<EmergencyAndroidFoldIntakeView
+				{...props}
+				viewportMode={viewportMode}
+				screenVariant={variant}
+			/>
+		);
+	}
+
+	if (variant === "android-tablet") {
+		return (
+			<EmergencyAndroidTabletIntakeView
+				{...props}
+				viewportMode={viewportMode}
+				screenVariant={variant}
+			/>
+		);
+	}
+
+	if (variant === "android-chromebook") {
+		return (
+			<EmergencyAndroidChromebookIntakeView
+				{...props}
+				viewportMode={viewportMode}
+				screenVariant={variant}
+			/>
+		);
+	}
+
+	if (variant === "web-mobile") {
+		return (
+			<EmergencyWebMobileIntakeView
+				{...props}
+				viewportMode={viewportMode}
+				screenVariant={variant}
+			/>
+		);
+	}
+
+	if (variant === "web-sm-wide") {
+		return (
+			<EmergencyWebSmWideIntakeView
+				{...props}
+				viewportMode={viewportMode}
+				screenVariant={variant}
+			/>
+		);
+	}
+
+	if (variant === "web-md") {
+		return (
+			<EmergencyWebMdIntakeView
+				{...props}
+				viewportMode={viewportMode}
+				screenVariant={variant}
+			/>
+		);
+	}
+
+	if (variant === "web-lg") {
+		return (
+			<EmergencyWebLgIntakeView
+				{...props}
+				viewportMode={viewportMode}
+				screenVariant={variant}
+			/>
+		);
+	}
+
+	if (variant === "web-xl") {
+		return (
+			<EmergencyWebXlIntakeView
+				{...props}
+				viewportMode={viewportMode}
+				screenVariant={variant}
+			/>
+		);
+	}
+
+	if (variant === "web-2xl-3xl") {
+		return (
+			<EmergencyWeb2xl3xlIntakeView
+				{...props}
+				viewportMode={viewportMode}
+				screenVariant={variant}
+			/>
+		);
+	}
+
+	if (variant === "web-ultra-wide") {
+		return (
+			<EmergencyWebUltraWideIntakeView
 				{...props}
 				viewportMode={viewportMode}
 				screenVariant={variant}

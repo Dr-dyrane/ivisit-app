@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useContext } from 'react';
 import Constants from 'expo-constants';
 import { View, StyleSheet } from 'react-native';
+import { Image } from 'react-native';
 
 const getGoogleMapsApiKey = () => {
   const fromEnv = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
@@ -57,51 +58,142 @@ const GoogleMapsAPI = () => {
   return { isLoaded, error };
 };
 
+const WebMapContext = React.createContext(null);
+
+const getZoomForRegion = (region) => {
+  const latitudeDelta = Number(region?.latitudeDelta);
+  const longitudeDelta = Number(region?.longitudeDelta);
+  const delta = Math.max(
+    Number.isFinite(latitudeDelta) && latitudeDelta > 0 ? latitudeDelta : 0,
+    Number.isFinite(longitudeDelta) && longitudeDelta > 0 ? longitudeDelta : 0
+  );
+
+  if (!delta) {
+    return 16;
+  }
+
+  const zoom = Math.log2(360 / delta);
+  return Math.max(3, Math.min(20, Math.round(zoom)));
+};
+
 // Web MapView Component
 export const MapView = React.forwardRef(({
   children,
   style,
   initialRegion,
   onMapReady,
+  onMapLoaded,
   onRegionChangeComplete,
   showsUserLocation = false,
   userInterfaceStyle = 'light',
   customMapStyle = null,
+  scrollEnabled = true,
+  zoomEnabled = true,
+  pitchEnabled = false,
+  rotateEnabled = false,
+  showsCompass = false,
+  showsZoomControls = undefined,
   ...props
 }, ref) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const idleListenerRef = useRef(null);
+  const [mapInstance, setMapInstance] = useState(null);
   const { isLoaded, error } = GoogleMapsAPI();
 
   useEffect(() => {
-    if (!isLoaded || !mapRef.current) return;
+    if (!isLoaded || !mapRef.current || mapInstanceRef.current) return;
 
-    // Initialize Google Map
     const mapOptions = {
       center: {
         lat: initialRegion?.latitude || 37.7749,
         lng: initialRegion?.longitude || -122.4194
       },
-      zoom: 12,
+      zoom: getZoomForRegion(initialRegion),
       styles: customMapStyle || [],
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
-      zoomControl: true,
-      gestureHandling: 'greedy',
-      backgroundColor: userInterfaceStyle === 'dark' ? '#1a1a1a' : '#f8f9fa'
+      zoomControl: typeof showsZoomControls === 'boolean' ? showsZoomControls : zoomEnabled,
+      rotateControl: rotateEnabled,
+      scaleControl: false,
+      draggable: scrollEnabled || zoomEnabled,
+      scrollwheel: zoomEnabled,
+      disableDoubleClickZoom: !zoomEnabled,
+      keyboardShortcuts: scrollEnabled || zoomEnabled,
+      gestureHandling: scrollEnabled || zoomEnabled ? 'greedy' : 'none',
+      clickableIcons: false,
+      backgroundColor: userInterfaceStyle === 'dark' ? '#0F131A' : '#F8FAFC'
     };
 
     const map = new window.google.maps.Map(mapRef.current, mapOptions);
     mapInstanceRef.current = map;
+    setMapInstance(map);
 
     if (onMapReady) {
       onMapReady();
     }
+    if (onMapLoaded) {
+      onMapLoaded();
+    }
 
-    // Handle map events
+    return () => {
+      if (idleListenerRef.current) {
+        window.google.maps.event.removeListener(idleListenerRef.current);
+        idleListenerRef.current = null;
+      }
+      if (mapInstanceRef.current) {
+        window.google.maps.event.clearInstanceListeners(mapInstanceRef.current);
+      }
+      mapInstanceRef.current = null;
+      setMapInstance(null);
+    };
+  }, [isLoaded, onMapLoaded, onMapReady]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    const map = mapInstanceRef.current;
+    map.setOptions({
+      styles: customMapStyle || [],
+      zoomControl: typeof showsZoomControls === 'boolean' ? showsZoomControls : zoomEnabled,
+      rotateControl: rotateEnabled,
+      draggable: scrollEnabled || zoomEnabled,
+      scrollwheel: zoomEnabled,
+      disableDoubleClickZoom: !zoomEnabled,
+      keyboardShortcuts: scrollEnabled || zoomEnabled,
+      gestureHandling: scrollEnabled || zoomEnabled ? 'greedy' : 'none',
+      backgroundColor: userInterfaceStyle === 'dark' ? '#0F131A' : '#F8FAFC',
+    });
+
+    if (initialRegion?.latitude && initialRegion?.longitude) {
+      map.setCenter({
+        lat: initialRegion.latitude,
+        lng: initialRegion.longitude,
+      });
+      map.setZoom(getZoomForRegion(initialRegion));
+    }
+  }, [
+    customMapStyle,
+    initialRegion,
+    rotateEnabled,
+    scrollEnabled,
+    showsZoomControls,
+    userInterfaceStyle,
+    zoomEnabled,
+  ]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return undefined;
+    const map = mapInstanceRef.current;
+
+    if (idleListenerRef.current) {
+      window.google.maps.event.removeListener(idleListenerRef.current);
+      idleListenerRef.current = null;
+    }
+
     if (onRegionChangeComplete) {
-      map.addListener('idle', () => {
+      idleListenerRef.current = mapInstanceRef.current.addListener('idle', () => {
         const center = map.getCenter();
         const bounds = map.getBounds();
 
@@ -120,14 +212,13 @@ export const MapView = React.forwardRef(({
     }
 
     return () => {
-      // Cleanup map instance
-      if (mapInstanceRef.current) {
-        window.google.maps.event.clearInstanceListeners(mapInstanceRef.current);
+      if (idleListenerRef.current) {
+        window.google.maps.event.removeListener(idleListenerRef.current);
+        idleListenerRef.current = null;
       }
     };
-  }, [isLoaded, initialRegion, onMapReady, onRegionChangeComplete, userInterfaceStyle, customMapStyle]);
+  }, [onRegionChangeComplete]);
 
-  // Expose map methods via ref
   React.useImperativeHandle(ref, () => ({
     animateToRegion: (region, duration = 300) => {
       if (mapInstanceRef.current) {
@@ -135,6 +226,7 @@ export const MapView = React.forwardRef(({
           lat: region.latitude,
           lng: region.longitude
         });
+        mapInstanceRef.current.setZoom(getZoomForRegion(region));
       }
     },
     fitToCoordinates: (coordinates, options) => {
@@ -185,7 +277,9 @@ export const MapView = React.forwardRef(({
         style={styles.mapContainer}
         {...props}
       />
-      {children}
+      <WebMapContext.Provider value={mapInstance}>
+        {children}
+      </WebMapContext.Provider>
     </View>
   );
 });
@@ -198,18 +292,45 @@ export const Marker = ({
   style,
   tracksViewChanges = false,
   zIndex = 1,
+  pinColor,
+  image,
+  title,
   ...props
 }) => {
   const markerRef = useRef(null);
   const { isLoaded } = GoogleMapsAPI();
+  const map = useContext(WebMapContext);
 
   useEffect(() => {
-    if (!isLoaded || !coordinate) return;
+    if (!isLoaded || !map || !coordinate) return;
+
+    const icon =
+      image && window.google?.maps
+        ? (() => {
+            const asset = Image.resolveAssetSource(image);
+            if (!asset?.uri) return undefined;
+            return {
+              url: asset.uri,
+              scaledSize: new window.google.maps.Size(56, 56),
+            };
+          })()
+        : pinColor
+          ? {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 9,
+              fillColor: pinColor,
+              fillOpacity: 1,
+              strokeColor: pinColor,
+              strokeWeight: 1,
+            }
+          : undefined;
 
     const marker = new window.google.maps.Marker({
       position: { lat: coordinate.latitude, lng: coordinate.longitude },
-      map: markerRef.current?.map,
+      map,
       zIndex,
+      title,
+      icon,
       ...props
     });
 
@@ -224,10 +345,8 @@ export const Marker = ({
         markerRef.current.marker.setMap(null);
       }
     };
-  }, [isLoaded, coordinate, onPress, zIndex]);
+  }, [coordinate, image, isLoaded, map, onPress, pinColor, props, title, zIndex]);
 
-  // This is a simplified version - in a real implementation you'd need
-  // to handle custom markers and children properly
   return null;
 };
 
@@ -239,9 +358,10 @@ export const Polyline = ({
   ...props
 }) => {
   const { isLoaded } = GoogleMapsAPI();
+  const map = useContext(WebMapContext);
 
   useEffect(() => {
-    if (!isLoaded || !coordinates || coordinates.length < 2) return;
+    if (!isLoaded || !map || !coordinates || coordinates.length < 2) return;
 
     const path = coordinates.map(coord => ({
       lat: coord.latitude,
@@ -254,16 +374,14 @@ export const Polyline = ({
       strokeColor,
       strokeOpacity: 1.0,
       strokeWeight: strokeWidth,
+      map,
       ...props
     });
-
-    // This is a simplified approach - you'd need to get the map instance
-    // polyline.setMap(mapInstance);
 
     return () => {
       polyline.setMap(null);
     };
-  }, [isLoaded, coordinates, strokeColor, strokeWidth]);
+  }, [coordinates, isLoaded, map, props, strokeColor, strokeWidth]);
 
   return null;
 };

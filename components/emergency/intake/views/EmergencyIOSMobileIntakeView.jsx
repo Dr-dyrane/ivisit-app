@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
 	Animated,
 	InteractionManager,
+	Platform,
 	Pressable,
 	Share,
 	ScrollView,
@@ -17,6 +18,7 @@ import { useGlobalLocation } from "../../../../contexts/GlobalLocationContext";
 import useAuthViewport from "../../../../hooks/ui/useAuthViewport";
 import { useMapRoute } from "../../../../hooks/emergency/useMapRoute";
 import { useTripProgress } from "../../../../hooks/emergency/useTripProgress";
+import mapboxService from "../../../../services/mapboxService";
 import { EMERGENCY_FLOW_STATES } from "../../emergencyFlowContent";
 import EntryActionButton from "../../../entry/EntryActionButton";
 import createEmergencyIosMobileIntakeTheme from "../emergencyIosMobileIntake.styles";
@@ -210,6 +212,26 @@ function buildAddressModel(place, fallbackLocation = null) {
 	return { primaryText, secondaryText };
 }
 
+function buildAddressModelFromFormattedAddress(formattedAddress, fallbackLocation = null) {
+	if (typeof formattedAddress !== "string" || !formattedAddress.trim()) {
+		return buildAddressModel(null, fallbackLocation);
+	}
+
+	const parts = formattedAddress
+		.split(",")
+		.map((part) => part.trim())
+		.filter(Boolean);
+
+	if (parts.length === 0) {
+		return buildAddressModel(null, fallbackLocation);
+	}
+
+	return {
+		primaryText: parts[0] || buildAddressModel(null, fallbackLocation).primaryText,
+		secondaryText: parts.slice(1, 3).join(", "),
+	};
+}
+
 export default function EmergencyIOSMobileIntakeView({
 	viewportMode = "phone",
 	screenVariant = "ios-mobile",
@@ -238,6 +260,15 @@ export default function EmergencyIOSMobileIntakeView({
 	} = useAuthViewport();
 	const useIosPadLayout = viewportMode === "ios-pad";
 	const isAndroidMobile = screenVariant === "android-mobile";
+	const isWebMobile = screenVariant === "web-mobile";
+	const isWebSmWide = screenVariant === "web-sm-wide";
+	const isWebMd = screenVariant === "web-md";
+	const isWebLg = screenVariant === "web-lg";
+	const isWebXl = screenVariant === "web-xl";
+	const isWeb2xl3xl = screenVariant === "web-2xl-3xl";
+	const isWebUltraWide = screenVariant === "web-ultra-wide";
+	const isWideDesktopWeb =
+		isWebLg || isWebXl || isWeb2xl3xl || isWebUltraWide;
 	const useTabletLayout = viewportMode === "tablet" || useIosPadLayout || isTablet;
 	const useDesktopLayout = viewportMode === "desktop" || isDesktop;
 	const chooseLocationVariant =
@@ -313,6 +344,9 @@ export default function EmergencyIOSMobileIntakeView({
 		isDarkMode,
 		isCompactPhone,
 		isAndroidMobile,
+		isWebMobile,
+		isWebSmWide,
+		isWebMd,
 		isTablet: useTabletLayout,
 		isIosPad: useIosPadLayout,
 		isDesktop: useDesktopLayout,
@@ -521,6 +555,21 @@ export default function EmergencyIOSMobileIntakeView({
 			}
 
 			try {
+				if (Platform.OS === "web") {
+					const formattedAddress = await mapboxService.reverseGeocode(
+						Number(userLocation.latitude),
+						Number(userLocation.longitude),
+					);
+					if (cancelled) return;
+					setAddressModel(
+						buildAddressModelFromFormattedAddress(
+							formattedAddress,
+							userLocation,
+						),
+					);
+					return;
+				}
+
 				const geocode = await Location.reverseGeocodeAsync(userLocation);
 				if (cancelled) return;
 				const firstPlace = geocode?.[0] || null;
@@ -1110,6 +1159,8 @@ export default function EmergencyIOSMobileIntakeView({
 	const shouldUseIosPadPhaseLayout =
 		useIosPadLayout && !shouldShowReviewShell && !isResponderMatched;
 	const shouldUseChooseLocationStage = !shouldShowReviewShell && !isResponderMatched;
+	const shouldLockWebViewport =
+		(isWebMobile || isWideDesktopWeb) && shouldUseChooseLocationStage;
 	const confirmPrimaryLabel =
 		flowState === EMERGENCY_FLOW_STATES.location_failed.key
 			? EMERGENCY_FLOW_STATES.location_failed.primaryAction
@@ -1162,10 +1213,28 @@ export default function EmergencyIOSMobileIntakeView({
 				}}
 			/>
 			<ScrollView
+				nativeID={
+					screenVariant === "web-mobile"
+						? "emergency-web-mobile-scroll"
+						: isWebSmWide
+							? "emergency-web-sm-wide-scroll"
+							: isWebMd
+								? "emergency-web-md-scroll"
+								: isWebLg
+									? "emergency-web-lg-scroll"
+									: isWebXl
+										? "emergency-web-xl-scroll"
+										: isWeb2xl3xl
+											? "emergency-web-2xl-3xl-scroll"
+											: isWebUltraWide
+												? "emergency-web-ultra-wide-scroll"
+								: undefined
+				}
 				contentContainerStyle={[
 					styles.scrollContent,
 					shouldUseIosPadPhaseLayout ? styles.padScrollContent : null,
 				]}
+				scrollEnabled={!shouldLockWebViewport}
 				showsVerticalScrollIndicator={false}
 				keyboardShouldPersistTaps="handled"
 			>

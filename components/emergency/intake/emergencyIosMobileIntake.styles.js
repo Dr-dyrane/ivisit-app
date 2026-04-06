@@ -5,6 +5,9 @@ export function createEmergencyIosMobileIntakeTheme({
 	isDarkMode,
 	isCompactPhone,
 	isAndroidMobile = false,
+	isWebMobile = false,
+	isWebSmWide = false,
+	isWebMd = false,
 	isTablet = false,
 	isIosPad = false,
 	isDesktop = false,
@@ -33,12 +36,27 @@ export function createEmergencyIosMobileIntakeTheme({
 			caption: "#7C879A",
 		};
 
+	const isWebWideChooseLocation = isWebSmWide || isWebMd;
+	const pageHorizontalPadding = isWebMobile
+		? 16
+		: isWebSmWide
+			? 20
+			: isWebMd
+				? 24
+				: horizontalPadding;
+
 	const topPadding = isAndroidMobile
 		? headerOffset + (isVeryShortHeight ? 8 : 16)
+		: isWebMobile
+			? (isVeryShortHeight ? 28 : 34)
+		: isWebWideChooseLocation
+			? (isVeryShortHeight ? 30 : 38)
 		: headerOffset +
 			(isDesktop ? 40 : isTablet ? 32 : isVeryShortHeight ? 18 : 30);
 	const bottomPadding = isAndroidMobile
 		? insetsBottom + (isVeryShortHeight ? 18 : 24)
+		: isWebMobile
+			? (isVeryShortHeight ? 12 : 16)
 		: insetsBottom + (isDesktop ? 28 : isTablet ? 24 : isVeryShortHeight ? 18 : 24);
 	const stageMinHeight = Math.max(viewportHeight - topPadding - bottomPadding, 0);
 
@@ -46,10 +64,10 @@ export function createEmergencyIosMobileIntakeTheme({
 		topPadding,
 		bottomPadding,
 		stageMinHeight,
-		contentMaxWidth: isDesktop ? 1120 : isTablet ? 860 : isAndroidMobile ? 460 : 430,
-		centerClusterMaxWidth: isDesktop ? 720 : isTablet ? 620 : isAndroidMobile ? 460 : 430,
-		locationPreviewMaxWidth: isDesktop ? 720 : isTablet ? 620 : isAndroidMobile ? 460 : 430,
-		actionMaxWidth: isDesktop ? 420 : isTablet ? 440 : isAndroidMobile ? 460 : 430,
+		contentMaxWidth: isDesktop ? 1120 : isTablet ? 860 : isAndroidMobile ? 460 : isWebMobile ? 420 : 430,
+		centerClusterMaxWidth: isDesktop ? 720 : isTablet ? 620 : isAndroidMobile ? 460 : isWebMobile ? 420 : 430,
+		locationPreviewMaxWidth: isDesktop ? 720 : isTablet ? 620 : isAndroidMobile ? 460 : isWebMobile ? 340 : 430,
+		actionMaxWidth: isDesktop ? 420 : isTablet ? 440 : isAndroidMobile ? 460 : isWebMobile ? 420 : 430,
 		reviewSheetMaxWidth: isDesktop ? 480 : isTablet ? 520 : 430,
 		heroImageWidth: isDesktop ? 268 : isTablet ? 236 : isCompactPhone ? 194 : 214,
 		heroImageHeight: isDesktop ? 190 : isTablet ? 168 : isCompactPhone ? 138 : 152,
@@ -83,7 +101,7 @@ export function createEmergencyIosMobileIntakeTheme({
 			flexGrow: 1,
 			paddingTop: metrics.topPadding,
 			paddingBottom: metrics.bottomPadding,
-			paddingHorizontal: horizontalPadding,
+			paddingHorizontal: pageHorizontalPadding,
 		},
 		padScrollContent: {
 			justifyContent: "stretch",
@@ -109,7 +127,17 @@ export function createEmergencyIosMobileIntakeTheme({
 			width: "100%",
 			justifyContent: "flex-start",
 			alignItems: "center",
-			paddingTop: isDesktop ? 24 : isTablet ? 18 : isVeryShortHeight ? 6 : 14,
+			paddingTop: isDesktop
+				? 24
+				: isWebWideChooseLocation
+					? (isVeryShortHeight ? 14 : 18)
+				: isTablet
+					? 18
+					: isWebMobile
+						? (isVeryShortHeight ? 14 : 20)
+						: isVeryShortHeight
+							? 6
+							: 14,
 		},
 		padCenteredStateLayer: {
 			justifyContent: "space-between",
@@ -201,7 +229,7 @@ export function createEmergencyIosMobileIntakeTheme({
 			height: isIosPad ? 190 : metrics.heroImageHeight,
 		},
 		copyBlock: {
-			marginTop: isDesktop ? 28 : isTablet ? 24 : isVeryShortHeight ? 18 : 22,
+			marginTop: isDesktop ? 28 : isTablet ? 24 : isWebMobile ? 10 : isVeryShortHeight ? 18 : 22,
 			width: "100%",
 			alignItems: "center",
 			minHeight: 92,
@@ -338,10 +366,10 @@ export function createEmergencyIosMobileIntakeTheme({
 		},
 		actionWell: {
 			justifyContent: "flex-end",
-			marginTop: isVeryShortHeight ? 10 : 14,
+			marginTop: isWebMobile || isWebWideChooseLocation ? 8 : isVeryShortHeight ? 10 : 14,
 			width: "100%",
 			maxWidth: metrics.actionMaxWidth,
-			minHeight: isVeryShortHeight ? 104 : 118,
+			minHeight: isWebMobile || isWebWideChooseLocation ? 96 : isVeryShortHeight ? 104 : 118,
 			alignSelf: "center",
 		},
 		padActionWell: {

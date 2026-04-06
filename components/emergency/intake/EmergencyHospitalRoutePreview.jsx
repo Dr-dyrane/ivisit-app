@@ -5,8 +5,10 @@ import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from "../../map/MapCompone
 import {
 	darkAndroidMapStyle,
 	darkMapStyle,
+	darkWebMapStyle,
 	lightAndroidMapStyle,
 	lightMapStyle,
+	lightWebMapStyle,
 } from "../../map/mapStyles";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { COLORS } from "../../../constants/colors";
@@ -103,6 +105,10 @@ export default function EmergencyHospitalRoutePreview({
 			? isDarkMode
 				? darkAndroidMapStyle
 				: lightAndroidMapStyle
+			: Platform.OS === "web"
+				? isDarkMode
+					? darkWebMapStyle
+					: lightWebMapStyle
 			: isDarkMode
 				? darkMapStyle
 				: lightMapStyle;
@@ -211,7 +217,7 @@ export default function EmergencyHospitalRoutePreview({
 				colors={
 					isDarkMode
 						? ["rgba(11,15,26,0.04)", "rgba(11,15,26,0.12)", "rgba(11,15,26,0.52)"]
-						: ["rgba(255,255,255,0.00)", "rgba(255,255,255,0.05)", "rgba(255,255,255,0.32)"]
+						: ["rgba(255,255,255,0.00)", "rgba(255,255,255,0.025)", "rgba(255,255,255,0.14)"]
 				}
 				style={styles.scrim}
 			/>

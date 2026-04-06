@@ -10,7 +10,7 @@ export const EMERGENCY_FLOW_STATES = {
 		key: "confirm_location",
 		title: "Confirm location",
 		support: "",
-		primaryAction: "Continue",
+		primaryAction: "Use this location",
 		secondaryAction: "Change location",
 	},
 	finding_nearby_help: {

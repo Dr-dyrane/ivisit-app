@@ -6,8 +6,10 @@ import { MapView, Marker, PROVIDER_GOOGLE } from "../../map/MapComponents";
 import {
 	darkAndroidMapStyle,
 	darkMapStyle,
+	darkWebMapStyle,
 	lightAndroidMapStyle,
 	lightMapStyle,
+	lightWebMapStyle,
 } from "../../map/mapStyles";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { COLORS } from "../../../constants/colors";
@@ -43,10 +45,15 @@ export default function EmergencyLocationPreviewMap({ location }) {
 		Platform.OS === "web" || Platform.OS === "android",
 	);
 	const isAndroid = Platform.OS === "android";
+	const isWeb = Platform.OS === "web";
 	const customMapStyle = isAndroid
 		? isDarkMode
 			? darkAndroidMapStyle
 			: lightAndroidMapStyle
+		: isWeb
+			? isDarkMode
+				? darkWebMapStyle
+				: lightWebMapStyle
 		: isDarkMode
 			? darkMapStyle
 			: lightMapStyle;
@@ -97,6 +104,7 @@ export default function EmergencyLocationPreviewMap({ location }) {
 				zoomEnabled={false}
 				pitchEnabled={false}
 				rotateEnabled={false}
+				toolbarEnabled={false}
 				showsCompass={false}
 				showsScale={false}
 				showsBuildings={true}
@@ -180,7 +188,7 @@ export default function EmergencyLocationPreviewMap({ location }) {
 				colors={
 					isDarkMode
 						? ["rgba(11,15,26,0.00)", "rgba(11,15,26,0.04)", "rgba(11,15,26,0.18)"]
-						: ["rgba(255,255,255,0.00)", "rgba(255,255,255,0.03)", "rgba(255,255,255,0.10)"]
+						: ["rgba(255,255,255,0.00)", "rgba(255,255,255,0.015)", "rgba(255,255,255,0.045)"]
 				}
 				style={styles.scrim}
 			/>

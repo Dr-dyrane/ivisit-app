@@ -459,6 +459,7 @@ export default function EmergencyLocationSearchSheet({
 
 								<ScrollView
 									{...scrollProps}
+									nativeID={Platform.OS === "web" ? "emergency-location-search-results-scroll" : undefined}
 								>
 									{isSearching && suggestions.length === 0 ? (
 										<View
@@ -635,7 +636,7 @@ const styles = StyleSheet.create({
 		borderTopLeftRadius: 30,
 		borderTopRightRadius: 30,
 		paddingHorizontal: 20,
-		paddingTop: 10,
+		paddingTop: Platform.OS === "web" ? 18 : 10,
 	},
 	dialogSheet: {
 		width: "100%",
