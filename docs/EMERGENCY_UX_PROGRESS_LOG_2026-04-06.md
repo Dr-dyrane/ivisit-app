@@ -210,6 +210,52 @@ This is especially important for:
 
 ---
 
+### 9) The dispatch-clearance bridge is now explicitly documented as the handoff between new and legacy flow
+
+#### Bridge doctrine now locked
+
+- the new intake flow owns the calm, stepwise front half: `request_started` → `confirm_location` → `finding_nearby_help` → `proposed_hospital`
+- the current bridge surface is the existing `EmergencyRequestModal`, but it is now treated as the intentional `dispatch_clearance` checkpoint
+- legacy responder/tracking code is still reused after this handoff, which keeps the live map and telemetry truth without forcing a full rewrite first
+
+#### Rules alignment captured
+
+- one process at a time
+- one decision at a time
+- progressive disclosure
+- state preservation in context
+- reload persistence so urgent progress survives interruption
+
+#### Auth/product implication
+
+- Google auth at the bridge should confirm identity quickly without kicking the user into full profile completion before dispatch is released
+- optional details should be completed later while waiting, during matching, or during the ride
+
+---
+
+### 10) The `Choose resource` phase now has a full 13-variant rollout plan
+
+Current baseline is the locked **iOS mobile** version.
+
+The next 12 screens are now explicitly planned as:
+
+- iOS iPad
+- Android mobile
+- Android fold
+- Android tablet
+- Chromebook
+- Web mobile
+- Web sm-wide
+- Web md
+- Web lg
+- Web xl
+- Web 2xl–3xl
+- Web ultra-wide
+
+This keeps the emergency flow aligned with the welcome-screen responsive discipline instead of stretching one phone UI everywhere.
+
+---
+
 ## Verification evidence we used
 
 These were the important verification commands and outcomes:

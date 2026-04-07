@@ -30,7 +30,6 @@ import { navigateBack, ROUTES } from "../utils/navigationHelpers";
 import { triageService } from "../services/triageService";
 import { demoEcosystemService } from "../services/demoEcosystemService";
 
-const HOLD_RESPONDER_MATCHED_FOR_REVIEW = true;
 const MIN_FINDING_NEARBY_HELP_MS = 1600;
 const EMERGENCY_INTAKE_PHASE_STORAGE_VERSION = 1;
 
@@ -92,7 +91,6 @@ export default function RequestAmbulanceScreen() {
 	const hospitalId = typeof params?.hospitalId === "string" ? params.hospitalId : null;
 	const [showLegacyFlow, setShowLegacyFlow] = useState(false);
 	const [intakeDraft, setIntakeDraft] = useState(null);
-	const [matchedResponderState, setMatchedResponderState] = useState(null);
 	const [persistedIntakeViewState, setPersistedIntakeViewState] = useState(null);
 	const [intakePersistenceReady, setIntakePersistenceReady] = useState(false);
 	const findingStartedAtRef = useRef(0);
@@ -153,12 +151,10 @@ export default function RequestAmbulanceScreen() {
 			),
 		[persistedIntakeViewState?.selectedLocation?.location, intakeDraft?.location],
 	);
-	const matchedTripState = useMemo(() => {
-		if (activeAmbulanceTrip?.requestId) {
-			return activeAmbulanceTrip;
-		}
-		return matchedResponderState;
-	}, [activeAmbulanceTrip, matchedResponderState]);
+	const matchedTripState = useMemo(
+		() => (activeAmbulanceTrip?.requestId ? activeAmbulanceTrip : null),
+		[activeAmbulanceTrip],
+	);
 	const showResponsiveIntakeBase = !showLegacyFlow || !!matchedTripState;
 	const hospitalRecommendation = useMemo(() => {
 		const completeHospitals = hospitals.filter((hospital) =>
@@ -329,9 +325,33 @@ export default function RequestAmbulanceScreen() {
 	}, [intakePhaseStorageKey]);
 
 	const handleClose = useCallback(() => {
+		if (__DEV__) {
+			console.log("[EmergencyTrace][RequestAmbulanceScreen] handleClose -> leaving emergency stack");
+		}
 		void clearPersistedIntakePhase();
-		navigateBack({ router, fallbackRoute: "/(auth)" });
+		navigateBack({ router, fallbackRoute: ROUTES.TABS_ROOT });
 	}, [clearPersistedIntakePhase, router]);
+
+	const returnToLastIntakePhase = useCallback(() => {
+		if (__DEV__) {
+			console.log("[EmergencyTrace][RequestAmbulanceScreen] returning to last intake phase", {
+				showLegacyFlow,
+				hasMatchedTrip: Boolean(matchedTripState),
+				hasIntakeDraft: Boolean(intakeDraft),
+				hasPersistedSnapshot: Boolean(persistedIntakeViewState),
+			});
+		}
+		setShowLegacyFlow(false);
+	}, [showLegacyFlow, matchedTripState, intakeDraft, persistedIntakeViewState]);
+
+	const handleLegacyFlowClose = useCallback(() => {
+		if (!matchedTripState) {
+			returnToLastIntakePhase();
+			return;
+		}
+
+		handleClose();
+	}, [handleClose, matchedTripState, returnToLastIntakePhase]);
 
 	const handleIntakeBackChange = useCallback((nextState) => {
 		intakeBackActionRef.current =
@@ -345,17 +365,39 @@ export default function RequestAmbulanceScreen() {
 			intakeBackMode === "phase" &&
 			typeof intakeBackActionRef.current === "function"
 		) {
+			if (__DEV__) {
+				console.log("[EmergencyTrace][RequestAmbulanceScreen] header back -> intake phase handler");
+			}
 			intakeBackActionRef.current();
 			return;
 		}
 
+		if (!showResponsiveIntakeBase && !matchedTripState) {
+			if (__DEV__) {
+				console.log("[EmergencyTrace][RequestAmbulanceScreen] header back -> return to proposed hospital");
+			}
+			returnToLastIntakePhase();
+			return;
+		}
+
 		handleClose();
-	}, [handleClose, intakeBackMode, showResponsiveIntakeBase]);
+	}, [handleClose, intakeBackMode, matchedTripState, returnToLastIntakePhase, showResponsiveIntakeBase]);
 
 	const backButton = useCallback(
 		() => <HeaderBackButton onPress={handleHeaderBack} />,
 		[handleHeaderBack],
 	);
+
+	useEffect(() => {
+		if (__DEV__) {
+			console.log("[EmergencyTrace][RequestAmbulanceScreen] render state", {
+				showLegacyFlow,
+				showResponsiveIntakeBase,
+				hasMatchedTrip: Boolean(matchedTripState),
+				hospital: resolvedRequestHospital?.name || null,
+			});
+		}
+	}, [matchedTripState, resolvedRequestHospital?.name, showLegacyFlow, showResponsiveIntakeBase]);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -411,11 +453,6 @@ export default function RequestAmbulanceScreen() {
 
 				setShowLegacyFlow(parsed.showLegacyFlow === true);
 				setIntakeDraft(parsed.intakeDraft && typeof parsed.intakeDraft === "object" ? parsed.intakeDraft : null);
-				setMatchedResponderState(
-					parsed.matchedResponderState && typeof parsed.matchedResponderState === "object"
-						? parsed.matchedResponderState
-						: null,
-				);
 				setPersistedIntakeViewState(
 					parsed.intakeViewState && typeof parsed.intakeViewState === "object"
 						? parsed.intakeViewState
@@ -476,10 +513,7 @@ export default function RequestAmbulanceScreen() {
 		if (!intakePersistenceReady) return;
 
 		const hasMeaningfulPhaseState = Boolean(
-			showLegacyFlow ||
-			intakeDraft ||
-			matchedResponderState ||
-			persistedIntakeViewState,
+			showLegacyFlow || intakeDraft || persistedIntakeViewState,
 		);
 
 		if (!hasMeaningfulPhaseState) {
@@ -493,7 +527,6 @@ export default function RequestAmbulanceScreen() {
 			version: EMERGENCY_INTAKE_PHASE_STORAGE_VERSION,
 			showLegacyFlow,
 			intakeDraft,
-			matchedResponderState,
 			intakeHeaderState,
 			intakeBackMode,
 			intakeViewState: persistedIntakeViewState,
@@ -528,7 +561,6 @@ export default function RequestAmbulanceScreen() {
 		intakeHeaderState,
 		intakePersistenceReady,
 		intakePhaseStorageKey,
-		matchedResponderState,
 		persistedIntakeViewState,
 		showLegacyFlow,
 	]);
@@ -643,15 +675,6 @@ export default function RequestAmbulanceScreen() {
 			if (elapsed < minMs) {
 				await delay(minMs - elapsed);
 			}
-			if (HOLD_RESPONDER_MATCHED_FOR_REVIEW) {
-				const findingElapsed = Date.now() - (findingStartedAtRef.current || 0);
-				if (findingStartedAtRef.current && findingElapsed < MIN_FINDING_NEARBY_HELP_MS) {
-					await delay(MIN_FINDING_NEARBY_HELP_MS - findingElapsed);
-				}
-				setMatchedResponderState(payload ?? null);
-				setShowLegacyFlow(false);
-				return;
-			}
 			await clearPersistedIntakePhase();
 			navigateBack({ router, fallbackRoute: "/(auth)" });
 		},
@@ -687,7 +710,6 @@ export default function RequestAmbulanceScreen() {
 									selectHospital(payload.hospital.id);
 								}
 								setIntakeDraft(payload || null);
-								setMatchedResponderState(null);
 								findingStartedAtRef.current = Date.now();
 								setShowLegacyFlow(true);
 							}}
@@ -708,7 +730,7 @@ export default function RequestAmbulanceScreen() {
 							mode="emergency"
 							requestHospital={resolvedRequestHospital}
 							selectedSpecialty={selectedSpecialty}
-							onRequestClose={handleClose}
+							onRequestClose={handleLegacyFlowClose}
 							onRequestInitiated={handleRequestInitiated}
 							onRequestComplete={handleDispatched}
 							intakeDraft={intakeDraft}

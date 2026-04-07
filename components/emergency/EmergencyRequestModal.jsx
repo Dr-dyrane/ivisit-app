@@ -23,6 +23,8 @@ import { hospitalsService } from "../../services/hospitalsService";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
 import HeaderBackButton from "../navigation/HeaderBackButton";
 import { useEmergency } from "../../contexts/EmergencyContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { useSocialAuth } from "../../hooks/auth";
 import TriageIntakeModal from "./triage/TriageIntakeModal";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 import { EMERGENCY_FLOW_STATES } from "./emergencyFlowContent";
@@ -111,6 +113,9 @@ const EmergencyRequestModal = React.memo(({
 	const { registerFAB, unregisterFAB } = useFABActions();
 	const insets = useSafeAreaInsets();
 	const { setHeaderState } = useHeaderState();
+	const { user } = useAuth();
+	const { signInWithProvider } = useSocialAuth();
+	const hasSignedInUser = Boolean(user?.id);
 	// MODULAR STEPS: 0: select, 1: payment, 2: dispatched
 	const [requestStep, setRequestStep] = useState("select");
 	const steps = useMemo(() => mode === "booking"
@@ -161,13 +166,13 @@ const EmergencyRequestModal = React.memo(({
 			if (currentStepIndex === 1) {
 				return {
 					title: "Confirm request",
-					subtitle: "ONE LAST STEP",
+					subtitle: hospitalName ? hospitalName.toUpperCase() : "REQUEST",
 				};
 			}
 
 			return {
-				title: "Request Help",
-				subtitle: "AMBULANCE REQUEST",
+				title: mode === "booking" ? "Choose stay" : "Choose resource",
+				subtitle: hospitalName ? hospitalName.toUpperCase() : "AMBULANCE",
 			};
 		})();
 
@@ -217,6 +222,7 @@ const EmergencyRequestModal = React.memo(({
 	const [estimatedCost, setEstimatedCost] = useState(null);
 	const [isCalculatingCost, setIsCalculatingCost] = useState(false);
 	const [dynamicServices, setDynamicServices] = useState([]);
+	const [isHydratingServices, setIsHydratingServices] = useState(false);
 	const [dynamicRooms, setDynamicRooms] = useState([]);
 	const [selectedRoomId, setSelectedRoomId] = useState(null);
 	const [bookingPricingReady, setBookingPricingReady] = useState(mode !== "booking");
@@ -224,6 +230,23 @@ const EmergencyRequestModal = React.memo(({
 	const [waitingCheckinDraft, setWaitingCheckinDraft] = useState(null);
 	const [triageModalVisible, setTriageModalVisible] = useState(false);
 	const [triageModalPhase, setTriageModalPhase] = useState("prebooking");
+	const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
+	const formattedPaymentAmount = useMemo(() => {
+		const total = Number(estimatedCost?.totalCost);
+		if (Number.isFinite(total) && total > 0) {
+			return `$${total.toFixed(2)}`;
+		}
+
+		const rawPrice = selectedAmbulanceType?.price;
+		if (typeof rawPrice === "string" && rawPrice.trim().length > 0) {
+			return rawPrice.trim().startsWith("$") ? rawPrice.trim() : `$${rawPrice.trim()}`;
+		}
+
+		const numericPrice = Number(rawPrice);
+		return Number.isFinite(numericPrice) && numericPrice > 0
+			? `$${numericPrice.toFixed(2)}`
+			: null;
+	}, [estimatedCost?.totalCost, selectedAmbulanceType?.price]);
 
 	// Cash approval gate state (Managed by context for persistence)
 	const {
@@ -255,6 +278,7 @@ const EmergencyRequestModal = React.memo(({
 	const approvalSyncInFlightRef = useRef(false);
 	const approvalEmergencyEventGateRef = useRef({ streamKey: null, versionMs: 0 });
 	const approvalPaymentEventGateRef = useRef({ streamKey: null, versionMs: 0 });
+	const demoAutoApprovalTimerStartedRef = useRef(false);
 
 	// If mounting and we have a pending approval, ensure we are on the right step
 	useEffect(() => {
@@ -270,6 +294,7 @@ const EmergencyRequestModal = React.memo(({
 		approvalSyncInFlightRef.current = false;
 		approvalEmergencyEventGateRef.current = { streamKey: null, versionMs: 0 };
 		approvalPaymentEventGateRef.current = { streamKey: null, versionMs: 0 };
+		demoAutoApprovalTimerStartedRef.current = false;
 	}, [pendingApproval?.requestId, pendingApproval?.displayId]);
 
 	useEffect(() => {
@@ -361,6 +386,45 @@ const EmergencyRequestModal = React.memo(({
 		requestData?.triageCheckin ||
 		prebookingCheckin ||
 		null;
+
+	useEffect(() => {
+		if (
+			requestStep !== "waiting_approval" ||
+			pendingApproval?.demoAutoApprove !== true ||
+			!pendingApproval?.paymentId ||
+			!pendingApproval?.requestId
+		) {
+			return;
+		}
+
+		if (demoAutoApprovalTimerStartedRef.current) {
+			return;
+		}
+
+		demoAutoApprovalTimerStartedRef.current = true;
+		const timeoutId = setTimeout(() => {
+			void paymentService
+				.requestDemoCashAutoApproval(
+					pendingApproval.paymentId,
+					pendingApproval.requestId
+				)
+				.then(() => {
+					showToast("Demo dispatch desk confirmed the cash handoff.", "success");
+				})
+				.catch((error) => {
+					demoAutoApprovalTimerStartedRef.current = false;
+					console.warn("[EmergencyRequestModal] Demo cash auto-approval failed:", error);
+				});
+		}, 2600);
+
+		return () => clearTimeout(timeoutId);
+	}, [
+		pendingApproval?.demoAutoApprove,
+		pendingApproval?.paymentId,
+		pendingApproval?.requestId,
+		requestStep,
+		showToast,
+	]);
 
 	// REAL-TIME deterministic approval sync: stale-gating + truth-sync on channel recovery.
 	useEffect(() => {
@@ -705,6 +769,33 @@ const EmergencyRequestModal = React.memo(({
 		}
 	}, [requestHospital?.phone, showToast]);
 
+	const handleGoogleSignIn = useCallback(async () => {
+		if (isSigningInWithGoogle) return;
+		setIsSigningInWithGoogle(true);
+		setErrorMessage(null);
+
+		try {
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+			const result = await signInWithProvider("google", { deferProfileCompletion: true });
+
+			if (!result?.success) {
+				if (result?.error && result.error !== "cancelled") {
+					setErrorMessage(result.error);
+					showToast(result.error, "error");
+				}
+				return;
+			}
+
+			showToast("Identity confirmed.", "success");
+		} catch (error) {
+			const message = error?.message || "Google sign-in failed";
+			setErrorMessage(message);
+			showToast(message, "error");
+		} finally {
+			setIsSigningInWithGoogle(false);
+		}
+	}, [isSigningInWithGoogle, showToast, signInWithProvider]);
+
 	const handleStepPress = useCallback((idx) => {
 		if (idx >= currentStepIndex || isRequesting) return;
 
@@ -821,14 +912,28 @@ const EmergencyRequestModal = React.memo(({
 
 	// Fetch dynamic data
 	useEffect(() => {
+		let isMounted = true;
+
 		const fetchDynamicData = async () => {
-			if (!requestHospital?.id) return;
+			if (!requestHospital?.id) {
+				if (isMounted) {
+					setDynamicServices([]);
+					setDynamicRooms([]);
+					setIsHydratingServices(false);
+				}
+				return;
+			}
 			if (mode === "booking") {
-				setBookingPricingReady(false);
-				setEstimatedCost(null);
-				setIsCalculatingCost(true);
-			} else {
+				if (isMounted) {
+					setBookingPricingReady(false);
+					setEstimatedCost(null);
+					setIsCalculatingCost(true);
+					setIsHydratingServices(false);
+				}
+			} else if (isMounted) {
 				setBookingPricingReady(true);
+				setDynamicServices([]);
+				setIsHydratingServices(true);
 			}
 
 			try {
@@ -897,34 +1002,59 @@ const EmergencyRequestModal = React.memo(({
 					// We keep the state empty or could use it for debugging.
 					setDynamicServices([]);
 				} else {
-					const services = await hospitalsService.getServicePricing(requestHospital.id, requestHospital.organization_id || requestHospital.organizationId);
-					setDynamicServices(services.filter(s => s.service_type === 'ambulance'));
-					// Prioritize DB services over hardcoded constants
-					if (services.length > 0) {
-						const firstAmb = services.find(s => s.service_type === 'ambulance');
-						if (firstAmb) {
-							setSelectedAmbulanceType({
-								id: firstAmb.id,
-								title: firstAmb.service_name,
-								subtitle: firstAmb.description || "Emergency medical transport",
-								price: `$${firstAmb.base_price}`,
-								icon: 'medical-outline',
-								eta: requestHospital.eta || '8-12 min',
-								crew: '2 Paramedics'
-							});
-						}
+					const services = await hospitalsService.getServicePricing(
+						requestHospital.id,
+						requestHospital.organization_id || requestHospital.organizationId
+					);
+					const ambulanceServices = services.filter((service) =>
+						String(service?.service_type || "").toLowerCase().startsWith("ambulance")
+					);
+
+					if (!isMounted) return;
+
+					setDynamicServices(ambulanceServices);
+					// Prioritize DB services over hardcoded constants when ambulance variants are available.
+					if (ambulanceServices.length > 0) {
+						const firstAmb = ambulanceServices[0];
+						const serviceKey = String(firstAmb?.service_type || "").toLowerCase();
+						setSelectedAmbulanceType({
+							id: firstAmb.id,
+							title: firstAmb.service_name,
+							subtitle: firstAmb.description || "Emergency medical transport",
+							price: `$${firstAmb.base_price}`,
+							icon: serviceKey.includes("critical")
+								? 'warning-outline'
+								: serviceKey.includes("advanced")
+									? 'pulse-outline'
+									: 'medical-outline',
+							eta: requestHospital.eta || '8-12 min',
+							crew: serviceKey.includes("critical")
+								? 'Critical Care Crew'
+								: serviceKey.includes("advanced")
+									? 'ALS Team'
+									: '2 Paramedics'
+						});
 					}
 				}
 			} catch (error) {
 				console.error("Error fetching dynamic modal data:", error);
+				if (isMounted && mode !== "booking") {
+					setDynamicServices([]);
+				}
 			} finally {
+				if (!isMounted) return;
 				if (mode === "booking") {
 					setBookingPricingReady(true);
+				} else {
+					setIsHydratingServices(false);
 				}
 			}
 		};
 
 		fetchDynamicData();
+		return () => {
+			isMounted = false;
+		};
 	}, [requestHospital?.id, mode]);
 
 	// Event handlers
@@ -961,6 +1091,14 @@ const EmergencyRequestModal = React.memo(({
 			return;
 		}
 
+		// Fast identity gate before formal hospital submission.
+		if (!hasSignedInUser) {
+			setErrorMessage("Continue with Google to send your request.");
+			showToast("Google sign-in required", "info");
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+			return;
+		}
+
 		// Payment Validation
 		if (!selectedPaymentMethod) {
 			setErrorMessage("Please select a payment method");
@@ -975,7 +1113,7 @@ const EmergencyRequestModal = React.memo(({
 
 		// Cash Eligibility Check
 		if (selectedPaymentMethod.is_cash && demoSimulatedPaymentActive) {
-			console.log("[EmergencyRequestModal] Demo payment simulation active: skipping collateral gate.");
+			console.log("[EmergencyRequestModal] Demo cash confirmation lane active: skipping collateral gate.");
 		}
 
 		if (selectedPaymentMethod.is_cash && !demoSimulatedPaymentActive) {
@@ -1120,6 +1258,7 @@ const EmergencyRequestModal = React.memo(({
 				requestId: realRequestId,
 				displayId: initiated._displayId || initiated.requestId,
 				paymentId: result.paymentId,
+				demoAutoApprove: result?.demoAutoApproveEligible === true,
 				hospitalId: initiated.hospitalId,
 				hospitalName: initiated.hospitalName,
 				serviceType: initiated.serviceType || (mode === "booking" ? "bed" : "ambulance"),
@@ -1202,6 +1341,7 @@ const EmergencyRequestModal = React.memo(({
 		bedCount,
 		bedType,
 		estimatedCost,
+		hasSignedInUser,
 		isRequesting,
 		mode,
 		onRequestComplete,
@@ -1225,6 +1365,17 @@ const EmergencyRequestModal = React.memo(({
 		// Clean start
 		const fabIds = ['ambulance-select', 'ambulance-prompt', 'bed-select', 'call-hospital', 'payment-confirm', 'emergency-done'];
 		fabIds.forEach(id => unregisterFAB(id));
+
+		if (__DEV__) {
+			console.log('[FABTrace][EmergencyRequestModal] evaluating FAB state', {
+				requestStep,
+				mode,
+				hasAmbulances,
+				selectedAmbulanceType: selectedAmbulanceType?.title || selectedAmbulanceType?.service_name || null,
+				selectedPaymentMethod: selectedPaymentMethod?.label || null,
+				requestSuccess: Boolean(requestData?.success),
+			});
+		}
 
 		if (requestData?.success) {
 			registerFAB('emergency-done', {
@@ -1272,16 +1423,15 @@ const EmergencyRequestModal = React.memo(({
 					allowInStack: true,
 					isFixed: true,
 				});
-			} else if (selectedAmbulanceType) {
+			} else {
 				registerFAB('ambulance-select', {
-					icon: 'chevron-forward',
-					label: 'Continue',
-					subText: 'Confirm this ambulance request',
+					icon: 'cash-outline',
+					label: formattedPaymentAmount ? `Pay ${formattedPaymentAmount}` : 'Pay now',
 					visible: true,
 					onPress: handleSubmitRequest,
-					style: 'emergency',
+					style: 'success',
 					haptic: 'heavy',
-					priority: 10,
+					priority: 30,
 					animation: 'prominent',
 					allowInStack: true,
 					isFixed: true,
@@ -1289,15 +1439,25 @@ const EmergencyRequestModal = React.memo(({
 			}
 		} else if (requestStep === "payment") {
 			registerFAB('payment-confirm', {
-				icon: 'shield-checkmark',
-				label: mode === "booking" ? 'Confirm Slot' : 'Send Request',
-				subText: `Final: $${estimatedCost?.totalCost?.toFixed(2) || '0.00'}`,
+				icon: mode === "booking" ? 'shield-checkmark' : 'cash-outline',
+				label:
+					mode === "booking"
+						? 'Confirm Slot'
+						: formattedPaymentAmount
+							? `Pay ${formattedPaymentAmount}`
+							: 'Pay now',
+				subText:
+					mode === "booking"
+						? selectedPaymentMethod?.label
+							? `${selectedPaymentMethod.label} • $${estimatedCost?.totalCost?.toFixed(2) || '0.00'}`
+							: `Final: $${estimatedCost?.totalCost?.toFixed(2) || '0.00'}`
+						: undefined,
 				visible: true,
 				onPress: handleSubmitRequest,
 				loading: isRequesting,
 				style: 'success',
 				haptic: 'heavy',
-				priority: 10,
+				priority: 30,
 				animation: 'prominent',
 				allowInStack: true,
 				isFixed: true,
@@ -1317,7 +1477,9 @@ const EmergencyRequestModal = React.memo(({
 		hasAmbulances,
 		handleCallHospital,
 		estimatedCost,
+		selectedPaymentMethod,
 		requestData,
+		formattedPaymentAmount,
 		registerFAB,
 		unregisterFAB
 	]);
@@ -1345,12 +1507,33 @@ const EmergencyRequestModal = React.memo(({
 				? Number(requestHospital.availableBeds)
 				: null;
 	const waitTime = requestHospital?.waitTime ?? null;
+	const requestedTopPadding = typeof scrollContentStyle?.paddingTop === "number" ? scrollContentStyle.paddingTop : 0;
+	const requestedBottomPadding = typeof scrollContentStyle?.paddingBottom === "number" ? scrollContentStyle.paddingBottom : 0;
+	const effectiveTopPadding = Math.max(requestedTopPadding, insets.top + (showClose ? 56 : 72), 96);
+	const effectiveBottomPadding = Math.max(requestedBottomPadding, 120 + insets.bottom);
+	const serviceSkeletonBase = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)";
+	const serviceSkeletonSoft = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.05)";
+	const showServiceSkeletons =
+		mode !== "booking" &&
+		Boolean(requestHospital?.id) &&
+		isHydratingServices &&
+		dynamicServices.length === 0;
+	const ambulanceOptionsToRender =
+		dynamicServices.length > 0
+			? dynamicServices
+			: requestHospital?.id
+				? (selectedAmbulanceType && !showServiceSkeletons ? [selectedAmbulanceType] : [])
+				: AMBULANCE_TYPES;
 
 	return (
 		<View style={styles.container}>
 			<ScrollView
 				style={{ flex: 1 }}
-				contentContainerStyle={[styles.requestScrollContent, scrollContentStyle]}
+				contentContainerStyle={[
+					styles.requestScrollContent,
+					scrollContentStyle,
+					{ paddingTop: effectiveTopPadding, paddingBottom: effectiveBottomPadding },
+				]}
 				showsVerticalScrollIndicator={false}
 				keyboardShouldPersistTaps="handled"
 				onScroll={onScroll}
@@ -1377,21 +1560,7 @@ const EmergencyRequestModal = React.memo(({
 								</Text>
 							</View>
 						) : null}
-						<Text
-							style={{
-								fontSize: 12,
-								fontWeight: "900",
-								letterSpacing: 1.6,
-								color: COLORS.brandPrimary,
-								marginTop: 32,
-								marginBottom: 14,
-								textTransform: "uppercase",
-							}}
-						>
-							{mode === "booking"
-								? "Configure Stay"
-								: "Ambulance request"}
-						</Text>
+						<View style={styles.selectStepSpacer} />
 
 						{/* Step-specific content */}
 						{mode === "booking" ? (
@@ -1500,35 +1669,67 @@ const EmergencyRequestModal = React.memo(({
 							</View>
 						) : (
 							<View style={styles.ambulanceSelectionContainer}>
-								{(dynamicServices.length > 0 ? dynamicServices : AMBULANCE_TYPES).map((type, index) => {
-									const isDbService = !!type.service_name;
-									const cardType = isDbService ? {
-										id: type.id,
-										title: type.service_name,
-										subtitle: type.description || type.service_type,
-										price: `$${type.base_price}`,
-										icon: type.service_type === 'ambulance' ? 'medical-outline' : 'pulse-outline',
-										eta: requestHospital.eta || '8-12 min',
-										crew: type.service_type === 'ambulance' ? '2 Paramedics' : '1 Specialist'
-									} : {
-										...type,
-										eta: type.eta || requestHospital.eta || '10 min',
-										crew: type.crew || '2 Crew'
-									};
+								{showServiceSkeletons
+									? Array.from({ length: 2 }).map((_, index) => (
+										<View
+											key={`ambulance-skeleton-${index}`}
+											style={[
+												styles.serviceSkeletonCard,
+												{
+													backgroundColor: requestColors.card,
+													borderColor: requestColors.border,
+												},
+											]}
+										>
+											<View style={[styles.serviceSkeletonIcon, { backgroundColor: serviceSkeletonBase }]} />
+											<View style={styles.serviceSkeletonBody}>
+												<View style={[styles.serviceSkeletonLinePrimary, { backgroundColor: serviceSkeletonBase }]} />
+												<View style={[styles.serviceSkeletonLineSecondary, { backgroundColor: serviceSkeletonSoft }]} />
+												<View style={styles.serviceSkeletonMetaRow}>
+													<View style={[styles.serviceSkeletonChip, { backgroundColor: serviceSkeletonSoft }]} />
+													<View style={[styles.serviceSkeletonChipShort, { backgroundColor: serviceSkeletonSoft }]} />
+												</View>
+											</View>
+										</View>
+									))
+									: ambulanceOptionsToRender.map((type) => {
+										const isDbService = !!type.service_name;
+										const serviceKey = String(type?.service_type || "").toLowerCase();
+										const cardType = isDbService ? {
+											id: type.id,
+											title: type.service_name,
+											subtitle: type.description || type.service_type,
+											price: `$${type.base_price}`,
+											icon: serviceKey.includes('critical')
+												? 'warning-outline'
+												: serviceKey.includes('advanced')
+													? 'pulse-outline'
+													: 'medical-outline',
+											eta: requestHospital.eta || '8-12 min',
+											crew: serviceKey.includes('critical')
+												? 'Critical Care Crew'
+												: serviceKey.includes('advanced')
+													? 'ALS Team'
+													: '2 Paramedics'
+										} : {
+											...type,
+											eta: type.eta || requestHospital.eta || '10 min',
+											crew: type.crew || '2 Crew'
+										};
 
-									return (
-										<AmbulanceTypeCard
-											key={type.id}
-											type={cardType}
-											selected={selectedAmbulanceType?.id === type.id}
-											onPress={() => setSelectedAmbulanceType(cardType)}
-											textColor={requestColors.text}
-											mutedColor={requestColors.textMuted}
-											cardColor={requestColors.card}
-											style={styles.ambulanceCard}
-										/>
-									);
-								})}
+										return (
+											<AmbulanceTypeCard
+												key={type.id}
+												type={cardType}
+												selected={selectedAmbulanceType?.id === type.id}
+												onPress={() => setSelectedAmbulanceType(cardType)}
+												textColor={requestColors.text}
+												mutedColor={requestColors.textMuted}
+												cardColor={requestColors.card}
+												style={styles.ambulanceCard}
+											/>
+										);
+									})}
 							</View>
 						)}
 
@@ -1546,16 +1747,14 @@ const EmergencyRequestModal = React.memo(({
 								<Ionicons name="chatbubble-ellipses-outline" size={18} color={COLORS.brandPrimary} />
 							</View>
 							<View style={{ flex: 1 }}>
-								<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}>
-									Guided Intake
+								<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}> 
+									Add details
 								</Text>
-								<Text style={[styles.triageEntrySubtitle, { color: requestColors.textMuted }]}>
-									One-tap questions for smarter hospital and unit fit.
-								</Text>
+								<Text style={[styles.triageEntrySubtitle, { color: requestColors.textMuted }]}>Optional</Text>
 							</View>
 							<View style={styles.triageEntryAction}>
 								<Text style={styles.triageEntryActionText}>
-									{prebookingCheckin ? "Resume" : "Start"}
+									{prebookingCheckin ? "Resume" : "Add"}
 								</Text>
 							</View>
 						</Pressable>
@@ -1606,7 +1805,7 @@ const EmergencyRequestModal = React.memo(({
 
 										<View style={styles.serviceAssurance}>
 											<Text style={[styles.serviceText, { color: 'rgba(255,255,255,0.8)' }]}>
-												{demoSimulatedPaymentActive ? "SIMULATED DEMO PAYMENT" : "PCI-DSS Encrypted Transaction"}
+												{demoSimulatedPaymentActive ? "DEMO CASH CONFIRMATION" : "PCI-DSS Encrypted Transaction"}
 											</Text>
 										</View>
 									</LinearGradient>
@@ -1643,9 +1842,6 @@ const EmergencyRequestModal = React.memo(({
 							) : null}
 
 							<View style={styles.paymentSelectorContainer}>
-								<Text style={[styles.sectionTitle, { color: requestColors.text, marginLeft: 8, marginBottom: 12 }]}>
-									Payment Method
-								</Text>
 								{demoSimulatedPaymentActive ? (
 									<View
 										style={[
@@ -1667,9 +1863,33 @@ const EmergencyRequestModal = React.memo(({
 												{ color: requestColors.textMuted },
 											]}
 										>
-											Payment is simulated for this demo hospital. Dispatch will not wait for admin confirmation.
+											Cash is confirmed at handoff.
 										</Text>
 									</View>
+								) : null}
+								{!hasSignedInUser ? (
+									<Pressable
+										onPress={handleGoogleSignIn}
+										style={[
+											styles.demoPaymentNote,
+											{
+												backgroundColor: requestColors.card,
+												borderColor: requestColors.border,
+												marginBottom: 12,
+											},
+										]}
+									>
+										<Ionicons name="logo-google" size={16} color={COLORS.brandPrimary} />
+										<View style={{ flex: 1 }}>
+											<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}>Continue with Google</Text>
+											<Text style={[styles.demoPaymentNoteText, { color: requestColors.textMuted }]}>Confirm identity</Text>
+										</View>
+										{isSigningInWithGoogle ? (
+											<ActivityIndicator size="small" color={COLORS.brandPrimary} />
+										) : (
+											<Text style={styles.triageEntryActionText}>Continue</Text>
+										)}
+									</Pressable>
 								) : null}
 								<PaymentMethodSelector
 									selectedMethod={selectedPaymentMethod}
@@ -1678,6 +1898,8 @@ const EmergencyRequestModal = React.memo(({
 									hospitalId={requestHospital?.id}
 									organizationId={estimatedCost?.orgFee?.organizationId}
 									simulatePayments={demoSimulatedPaymentActive}
+									preferCashFirst={demoSimulatedPaymentActive}
+									demoCashOnly={demoSimulatedPaymentActive}
 								/>
 							</View>
 						</View>
@@ -1709,10 +1931,12 @@ const EmergencyRequestModal = React.memo(({
 							</View>
 
 							<Text style={[styles.waitingTitle, { color: requestColors.text }]}>
-								Verification in Progress
+								Confirming request
 							</Text>
 							<Text style={[styles.waitingSubtitle, { color: requestColors.textMuted }]}>
-								{pendingApproval?.hospitalName || 'Medical Center'} is authenticating your cash transaction.
+								{pendingApproval?.demoAutoApprove
+									? `${pendingApproval?.hospitalName || 'Medical Center'} is confirming the demo cash handoff now.`
+									: `${pendingApproval?.hospitalName || 'Medical Center'} is authenticating your cash transaction.`}
 							</Text>
 						</View>
 
@@ -1792,12 +2016,8 @@ const EmergencyRequestModal = React.memo(({
 								<Ionicons name="sparkles-outline" size={18} color={COLORS.brandPrimary} />
 							</View>
 							<View style={{ flex: 1 }}>
-								<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}>
-									Continue Guided Intake
-								</Text>
-								<Text style={[styles.triageEntrySubtitle, { color: requestColors.textMuted }]}>
-									Keep answering while approval runs. Dispatch is not delayed.
-								</Text>
+								<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}>Continue details</Text>
+								<Text style={[styles.triageEntrySubtitle, { color: requestColors.textMuted }]}>Optional</Text>
 							</View>
 							<View style={styles.triageEntryAction}>
 								<Text style={styles.triageEntryActionText}>Open</Text>
@@ -1885,8 +2105,11 @@ const styles = StyleSheet.create({
 	},
 	requestScrollContent: {
 		paddingHorizontal: 8,
-		paddingTop: 12,
+		paddingTop: 16,
 		paddingBottom: 120,
+	},
+	selectStepSpacer: {
+		height: 8,
 	},
 	infoGrid: {
 		flexDirection: "row",
@@ -1902,6 +2125,50 @@ const styles = StyleSheet.create({
 	},
 	ambulanceCard: {
 		marginBottom: 8,
+	},
+	serviceSkeletonCard: {
+		flexDirection: "row",
+		alignItems: "center",
+		borderRadius: 18,
+		borderWidth: 1,
+		paddingHorizontal: 14,
+		paddingVertical: 16,
+		marginBottom: 8,
+	},
+	serviceSkeletonIcon: {
+		width: 44,
+		height: 44,
+		borderRadius: 14,
+		marginRight: 12,
+	},
+	serviceSkeletonBody: {
+		flex: 1,
+		gap: 8,
+	},
+	serviceSkeletonLinePrimary: {
+		height: 14,
+		width: "62%",
+		borderRadius: 999,
+	},
+	serviceSkeletonLineSecondary: {
+		height: 12,
+		width: "84%",
+		borderRadius: 999,
+	},
+	serviceSkeletonMetaRow: {
+		flexDirection: "row",
+		gap: 8,
+		marginTop: 2,
+	},
+	serviceSkeletonChip: {
+		height: 10,
+		width: 76,
+		borderRadius: 999,
+	},
+	serviceSkeletonChipShort: {
+		height: 10,
+		width: 52,
+		borderRadius: 999,
 	},
 	banner: {
 		width: "100%",

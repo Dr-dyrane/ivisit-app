@@ -399,6 +399,11 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/bootstrap-demo-ecosystem/index.ts"
 
+[functions.demo-approve-cash-payment]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/demo-approve-cash-payment/index.ts"
+
 [functions.triage-copilot]
 enabled = true
 verify_jwt = false

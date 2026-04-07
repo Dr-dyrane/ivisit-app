@@ -22,7 +22,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import ThemeToggle from "../components/ThemeToggle";
 import GlobalErrorBoundary from "../components/GlobalErrorBoundary";
-import { isProfileComplete } from "../utils/profileCompletion";
+import { isProfileComplete, shouldDeferProfileCompletion } from "../utils/profileCompletion";
 import { authService } from "../services/authService";
 import { appMigrationsService } from "../services/appMigrationsService";
 import { useOTAUpdates } from "../hooks/useOTAUpdates";
@@ -189,9 +189,18 @@ function AuthenticatedStack() {
 			return;
 		}
 
-		if (!isProfileComplete(user) && !onCompleteProfile) {
+		const deferProfileCompletion = shouldDeferProfileCompletion(user);
+		const profileComplete = isProfileComplete(user);
+
+		if (!profileComplete && !onCompleteProfile && !deferProfileCompletion) {
 			router.replace("/(user)/(stacks)/complete-profile");
 			return;
+		}
+
+		if (profileComplete && deferProfileCompletion) {
+			authService.clearEmergencyProfileCompletionDeferred().catch((error) => {
+				console.warn("[RootLayout] Failed to clear deferred profile completion flag:", error);
+			});
 		}
 
 		if (rootGroup === "(auth)" || rootGroup !== "(user)") {

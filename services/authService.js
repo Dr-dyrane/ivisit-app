@@ -68,7 +68,9 @@ const authService = {
         // HEURISTIC: Check if user has a password.
         const hasPassword = true;
 
-        const user = formatUser(data.user, data.session?.access_token, profile, hasInsurance, hasPassword);
+        const user = await this._decorateCurrentUser(
+            formatUser(data.user, data.session?.access_token, profile, hasInsurance, hasPassword)
+        );
 
         // Cache locally for offline support
         await database.write(StorageKeys.CURRENT_USER, user);
@@ -149,9 +151,9 @@ const authService = {
 
         if (data.session) {
             // If we have a session, format it properly
-            const fullUser = formatUser(data.user, data.session.access_token, {
+            const fullUser = await this._decorateCurrentUser(formatUser(data.user, data.session.access_token, {
                 username, firstName, lastName
-            }, false, true); // hasPassword = true
+            }, false, true)); // hasPassword = true
 
             await database.write(StorageKeys.CURRENT_USER, fullUser);
             await database.write(StorageKeys.AUTH_TOKEN, data.session.access_token);
@@ -192,6 +194,47 @@ const authService = {
     // Delegate to oauthService
     getRedirectUrl: oauthService.getRedirectUrl,
     signInWithProvider: oauthService.signInWithProvider,
+    _formatUser: formatUser,
+
+    async _decorateCurrentUser(user) {
+        if (!user) return user;
+
+        const deferProfileCompletion = Boolean(
+            await database.read(StorageKeys.PROFILE_COMPLETION_DEFERRED, false)
+        );
+
+        return {
+            ...user,
+            deferProfileCompletion,
+        };
+    },
+
+    async setEmergencyProfileCompletionDeferred(deferred = true) {
+        const value = Boolean(deferred);
+        await database.write(StorageKeys.PROFILE_COMPLETION_DEFERRED, value);
+
+        const cachedUser = await database.read(StorageKeys.CURRENT_USER, null);
+        if (cachedUser) {
+            await database.write(StorageKeys.CURRENT_USER, {
+                ...cachedUser,
+                deferProfileCompletion: value,
+            });
+        }
+
+        return value;
+    },
+
+    async clearEmergencyProfileCompletionDeferred() {
+        await database.delete(StorageKeys.PROFILE_COMPLETION_DEFERRED);
+
+        const cachedUser = await database.read(StorageKeys.CURRENT_USER, null);
+        if (cachedUser) {
+            await database.write(StorageKeys.CURRENT_USER, {
+                ...cachedUser,
+                deferProfileCompletion: false,
+            });
+        }
+    },
 
     /**
      * Handle OAuth callback URL from WebBrowser
@@ -221,7 +264,9 @@ const authService = {
     async _processSuccessfulSession(session) {
         await database.write(StorageKeys.AUTH_TOKEN, session.access_token);
         const profile = await this.getUserProfile(session.user.id);
-        const user = formatUser(session.user, session.access_token, profile);
+        const user = await this._decorateCurrentUser(
+            formatUser(session.user, session.access_token, profile)
+        );
         await database.write(StorageKeys.CURRENT_USER, user);
 
         // Auto-enroll deps removed
@@ -233,7 +278,9 @@ const authService = {
      */
     async _getUserFromSession(session) {
         const profile = await this.getUserProfile(session.user.id);
-        return formatUser(session.user, session.access_token, profile);
+        return this._decorateCurrentUser(
+            formatUser(session.user, session.access_token, profile)
+        );
     },
 
     /**
@@ -246,6 +293,7 @@ const authService = {
         if (error || !session) {
             // Try to clear local state if session is invalid
             await database.delete(StorageKeys.AUTH_TOKEN);
+            await database.delete(StorageKeys.PROFILE_COMPLETION_DEFERRED);
             throw createAuthError(AuthErrors.NOT_LOGGED_IN, "No active session");
         }
 
@@ -260,7 +308,9 @@ const authService = {
             console.warn("Failed to fetch insurance status:", e);
         }
 
-        const user = formatUser(session.user, session.access_token, profile, hasInsurance);
+        const user = await this._decorateCurrentUser(
+            formatUser(session.user, session.access_token, profile, hasInsurance)
+        );
 
         await database.write(StorageKeys.CURRENT_USER, user);
 
@@ -486,6 +536,7 @@ const authService = {
         await supabase.auth.signOut();
         await database.delete(StorageKeys.AUTH_TOKEN);
         await database.delete(StorageKeys.CURRENT_USER);
+        await database.delete(StorageKeys.PROFILE_COMPLETION_DEFERRED);
         return true;
     },
 
@@ -596,7 +647,9 @@ const authService = {
             }
         }
 
-        const user = formatUser(data.user, data.session?.access_token, profile, hasInsurance);
+        const user = await this._decorateCurrentUser(
+            formatUser(data.user, data.session?.access_token, profile, hasInsurance)
+        );
 
         await database.write(StorageKeys.CURRENT_USER, user);
         await database.write(StorageKeys.AUTH_TOKEN, data.session?.access_token);

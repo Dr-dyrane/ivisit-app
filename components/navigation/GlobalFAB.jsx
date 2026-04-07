@@ -47,6 +47,18 @@ const GlobalFAB = () => {
     }).start();
   }, [activeFAB?.visible]);
 
+  useEffect(() => {
+    if (!__DEV__) return;
+    console.log('[FABTrace][GlobalFAB] render state', {
+      id: activeFAB?.id || null,
+      label: activeFAB?.label || null,
+      visible: activeFAB?.visible === true,
+      isInStack,
+      isFixed: activeFAB?.isFixed === true,
+      isTabBarLockedHidden,
+    });
+  }, [activeFAB?.id, activeFAB?.isFixed, activeFAB?.label, activeFAB?.visible, isInStack, isTabBarLockedHidden]);
+
   // Animation Interpolations
   const opacity = visibilityAnim;
   const slideUp = visibilityAnim.interpolate({

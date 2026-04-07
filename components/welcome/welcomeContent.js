@@ -6,5 +6,5 @@ export const WELCOME_COPY = {
 
 export const WELCOME_INTENTS = [
 	{ key: "emergency", label: "Request Help", variant: "primary" },
-	{ key: "bed", label: "Find a hospital bed", variant: "secondary" },
+	{ key: "bed", label: "Explore iVisit", variant: "secondary" },
 ];

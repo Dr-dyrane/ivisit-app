@@ -1,3 +1,7 @@
+export function shouldDeferProfileCompletion(user) {
+	return Boolean(user?.deferProfileCompletion);
+}
+
 export function isProfileComplete(user) {
 	// [AUTH-GUARD-RELAX] Allow admins and org admins to bypass profile completion
 	// This allows them to access the dashboard and finance pages immediately.

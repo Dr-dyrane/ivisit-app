@@ -30,6 +30,8 @@ const PaymentMethodSelector = ({
   hospitalId = null,
   organizationId = null,
   simulatePayments = false,
+  preferCashFirst = false,
+  demoCashOnly = false,
   showAddButton = true,
   isManagementMode = false,
   refreshTrigger,
@@ -52,7 +54,7 @@ const PaymentMethodSelector = ({
 
   useEffect(() => {
     loadPaymentMethods();
-  }, [refreshTrigger, hospitalId, cost?.totalCost, simulatePayments]);
+  }, [refreshTrigger, hospitalId, cost?.totalCost, simulatePayments, preferCashFirst, demoCashOnly]);
 
   const loadPaymentMethods = async () => {
     try {
@@ -101,7 +103,9 @@ const PaymentMethodSelector = ({
         }
       }
 
-      const finalMethods = [walletMethod, cashMethod, ...methods];
+      const finalMethods = preferCashFirst
+        ? [cashMethod, walletMethod, ...methods]
+        : [walletMethod, cashMethod, ...methods];
       setPaymentMethods(finalMethods);
 
       if (finalMethods.length > 0) {
@@ -116,11 +120,17 @@ const PaymentMethodSelector = ({
         const enoughBalance = wallet.balance >= (cost?.totalCost || 0);
         const dbDefault = finalMethods.find(m => m.is_default);
 
+        const selectedMatch = selectedMethod
+          ? finalMethods.find(m => m.id === selectedMethod.id)
+          : null;
+
         const defaultMethod =
-          selectedMethod ? finalMethods.find(m => m.id === selectedMethod.id) : // Keep current if valid
-            cachedMatch || // Respect user's explicit choice
-            (enoughBalance ? walletMethod : dbDefault) || // Automation
-            finalMethods[0];
+          (demoCashOnly && simulatePayments ? cashMethod : null) ||
+          selectedMatch || // Keep current if valid
+          cachedMatch || // Respect user's explicit choice
+          (preferCashFirst ? cashMethod : null) ||
+          (enoughBalance ? walletMethod : dbDefault) || // Automation
+          finalMethods[0];
 
         if (defaultMethod && (!selectedMethod || selectedMethod.id !== defaultMethod.id)) {
           onMethodSelect(defaultMethod);
@@ -188,21 +198,25 @@ const PaymentMethodSelector = ({
   const renderPaymentMethod = (method) => {
     const isSelected = selectedMethod?.id === method.id;
     const isDefault = method.is_default;
+    const isDemoLocked = simulatePayments && demoCashOnly && !method.is_cash;
     const isUnavailable =
-      !simulatePayments &&
-      ((method.is_wallet && !isManagementMode && method.balance < (cost?.totalCost || 0)) ||
-        (method.is_cash && !isCashEligible && !isManagementMode));
+      isDemoLocked ||
+      (!simulatePayments &&
+        ((method.is_wallet && !isManagementMode && method.balance < (cost?.totalCost || 0)) ||
+          (method.is_cash && !isCashEligible && !isManagementMode)));
     const methodSubtitle = method.is_wallet
       ? (simulatePayments
-          ? 'SIMULATED PAYMENT'
+          ? (demoCashOnly ? 'LIVE MODE ONLY' : 'WALLET CHECKOUT')
           : (method.balance < (cost?.totalCost || 0) && !isManagementMode
               ? 'INSUFFICIENT BALANCE'
               : `AVAILABLE: ${method.currency} ${method.last4}`))
       : method.is_cash
         ? (simulatePayments
-            ? 'SIMULATED FOR DEMO'
+            ? 'AUTO-CONFIRMS IN DEMO'
             : (isCashEligible ? 'PAY ON ARRIVAL' : (checkingCash ? 'VERIFYING...' : 'UNAVAILABLE (LOW COLLATERAL)')))
-        : (simulatePayments ? 'SIMULATED PAYMENT' : `EXPIRES ${method.expiry_month}/${method.expiry_year}`);
+        : (simulatePayments
+            ? (demoCashOnly ? 'LIVE MODE ONLY' : 'CARD CHECKOUT')
+            : `EXPIRES ${method.expiry_month}/${method.expiry_year}`);
 
     return (
       <View key={method.id} style={styles.methodWrapper}>
@@ -281,7 +295,7 @@ const PaymentMethodSelector = ({
       >
         {paymentMethods.map(renderPaymentMethod)}
 
-        {showAddButton && (
+        {showAddButton && !(simulatePayments && demoCashOnly) && (
           <TouchableOpacity
             activeOpacity={0.7}
             style={[styles.addCard, { borderColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }]}

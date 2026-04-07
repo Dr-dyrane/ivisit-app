@@ -35,9 +35,24 @@ import { AuthContext } from "../../contexts/AuthContext";
 export function useSocialAuth() {
 	const { login, syncUserData } = useContext(AuthContext);
 
-	const signInWithProvider = useCallback(async (provider) => {
+	const signInWithProvider = useCallback(async (provider, options = {}) => {
+		const deferProfileCompletion = options?.deferProfileCompletion === true;
+		const clearDeferredProfileFlag = async () => {
+			if (!deferProfileCompletion) return;
+			try {
+				await authService.clearEmergencyProfileCompletionDeferred();
+			} catch (flagError) {
+				console.warn("[useSocialAuth] Failed to clear deferred profile flag:", flagError);
+			}
+		};
+
 		try {
 			await WebBrowser.warmUpAsync();
+
+			if (deferProfileCompletion) {
+				await authService.setEmergencyProfileCompletionDeferred(true);
+			}
+
 			const { data } = await authService.signInWithProvider(provider);
 
 			if (data?.url) {
@@ -123,9 +138,10 @@ export function useSocialAuth() {
 						}
 						
 						return { success: true };
-					} else {
-						return { success: false, error: "Authentication failed" };
 					}
+
+					await clearDeferredProfileFlag();
+					return { success: false, error: "Authentication failed" };
 				} else if (result.type === "cancel" || result.type === "dismiss") {
 					console.log(`[useSocialAuth] Auth ${result.type}, checking for background success...`);
 
@@ -134,20 +150,24 @@ export function useSocialAuth() {
 					const { data: { session } } = await supabase.auth.getSession();
 					if (session?.user) {
 						console.log("[useSocialAuth] Session found! Deep link handler processed auth.");
-						const profile = await authService.getUserProfile(session.user.id);
-						const user = authService._formatUser(session.user, session.access_token, profile);
-						await login(user);
+						const { data: currentUser } = await authService.getCurrentUser();
+						await login(currentUser);
 						return { success: true };
 					}
 
+					await clearDeferredProfileFlag();
 					return { success: false, error: result.type };
-				} else {
-					return { success: false, error: "Unexpected authentication result" };
 				}
+
+				await clearDeferredProfileFlag();
+				return { success: false, error: "Unexpected authentication result" };
 			}
+
+			await clearDeferredProfileFlag();
 			return { success: false, error: "Cancelled or failed" };
 		} catch (error) {
 			console.error("Social Auth Error:", error);
+			await clearDeferredProfileFlag();
 
 			let errorMessage = "Failed to initiate login";
 

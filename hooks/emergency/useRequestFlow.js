@@ -315,18 +315,23 @@ export const useRequestFlow = (props) => {
 					// Continue without cost - payment will be handled separately
 				}
 
-				// Determine payment method for atomic RPC
-				const requestedPaymentMethodId = request?.paymentMethod?.id ||
-					(request?.paymentMethod?.is_cash ? 'cash' : null);
-				const isDemoSimulatedPaymentFlow = demoEcosystemService.shouldSimulatePayments({
+				// Determine payment method for atomic RPC.
+				// Demo hospitals now use the real cash-approval path so the backend still creates
+				// actual emergency, payment, and visit records before dispatch is released.
+				const requestedPaymentMethodId =
+					request?.paymentMethod?.id ||
+					(request?.paymentMethod?.is_cash ? 'cash_payment' : null);
+				const isDemoCashApprovalFlow = demoEcosystemService.shouldSimulatePayments({
 					hospital,
 					demoModeEnabled:
 						effectiveDemoModeEnabled ??
 						(preferences?.demoModeEnabled !== false),
 				});
-				const paymentMethodId = isDemoSimulatedPaymentFlow
-					? "demo_simulated"
-					: requestedPaymentMethodId;
+				const paymentMethodId =
+					requestedPaymentMethodId ||
+					(isDemoCashApprovalFlow ? 'cash_payment' : null);
+				const isCashPayment =
+					typeof paymentMethodId === 'string' && paymentMethodId.toLowerCase().includes('cash');
 
 				console.log('[useRequestFlow] 📋 Creating Emergency Request:', {
 					displayId: visitId,
@@ -334,7 +339,8 @@ export const useRequestFlow = (props) => {
 					serviceType: request.serviceType,
 					paymentMethod: paymentMethodId,
 					requestedPaymentMethod: requestedPaymentMethodId,
-					simulatedPayment: isDemoSimulatedPaymentFlow,
+					demoCashApprovalFlow: isDemoCashApprovalFlow,
+					isCashPayment,
 					totalCost: costData?.total_cost || costData?.totalCost,
 					baseCost: costData?.base_cost,
 					feeAmount: costData?.feeAmount ?? null,
@@ -379,10 +385,11 @@ export const useRequestFlow = (props) => {
 				const realId = createdRequest?.id || visitId;
 				const displayId = createdRequest?.requestId || visitId;
 				const backendRequiresApproval = createdRequest?.requiresApproval || false;
-				const requiresApproval = isDemoSimulatedPaymentFlow ? false : backendRequiresApproval;
-				const normalizedPaymentStatus = isDemoSimulatedPaymentFlow
-					? "completed"
-					: createdRequest?.paymentStatus || "completed";
+				const requiresApproval = backendRequiresApproval;
+				const normalizedPaymentStatus =
+					createdRequest?.paymentStatus || (requiresApproval ? "pending" : "completed");
+				const demoAutoApproveEligible =
+					isDemoCashApprovalFlow && isCashPayment && requiresApproval;
 
 				console.log('[useRequestFlow] ✅ Request Created:', {
 					realId,
@@ -390,23 +397,9 @@ export const useRequestFlow = (props) => {
 					paymentStatus: normalizedPaymentStatus,
 					requiresApproval,
 					backendRequiresApproval,
-					simulatedPayment: isDemoSimulatedPaymentFlow,
+					demoAutoApproveEligible,
 					isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(realId),
 				});
-
-				if (isDemoSimulatedPaymentFlow && backendRequiresApproval) {
-					try {
-						await updateRequest?.(realId, {
-							status: EmergencyRequestStatus.ACCEPTED,
-							transition_reason: "demo_payment_auto_accept",
-						});
-					} catch (demoStatusError) {
-						console.warn(
-							"[useRequestFlow] Demo payment auto-accept sync failed (non-blocking):",
-							demoStatusError
-						);
-					}
-				}
 
 				// 🏥 Visit is NOW created by backend trigger (sync_emergency_to_visit)
 				// No frontend addVisit() needed — eliminates RLS and UUID errors.
@@ -516,6 +509,7 @@ export const useRequestFlow = (props) => {
 					estimatedArrival: derivedEstimatedArrival,
 					etaSeconds: computedEtaSeconds,
 					requiresApproval,
+					demoAutoApproveEligible,
 					paymentId: createdRequest?.paymentId || null,
 					paymentStatus: normalizedPaymentStatus,
 				};

@@ -25,7 +25,7 @@ const WelcomeScreen = () => {
 		}
 
 		router.push({
-			pathname: "/(auth)/signup",
+			pathname: "/(auth)/onboarding",
 			params: { intent },
 		});
 	};

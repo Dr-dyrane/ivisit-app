@@ -92,6 +92,12 @@ Primary states:
 5. `responder_matched`
 6. `tracking_arrival`
 
+Operational truth lock:
+
+- `responder_matched` is only feasible after a hospital has accepted the request and released a responder
+- `tracking_arrival` is only feasible after a responder has actually been assigned and route truth exists
+- for uninsured or unknown first-time users, there must be a dispatch-clearance checkpoint between `proposed_hospital` and true dispatch, even if the temporary implementation still lives inside the legacy modal
+
 Edge states:
 
 - `location_failed`
@@ -149,6 +155,7 @@ Current implementation checkpoint:
 - the urgent path now inserts a `proposed_hospital` review state before the legacy request modal
 - it sits in front of the existing request modal instead of replacing the full flow at once
 - current behavior after location confirmation still hands into the legacy ambulance request modal
+- that modal is now being treated as the **temporary `dispatch_clearance` bridge**, not as an unrelated legacy detour
 - the intake body now mirrors the welcome-screen grammar: hero first, address as the headline, city/state as the support line, CTA cluster at the bottom
 - `Change location` now opens a real bottom search sheet instead of acting like decorative copy
 - `Choose another` now opens a hospital choice sheet so the user can reject the first recommendation without losing the locked location
@@ -160,6 +167,8 @@ Current implementation checkpoint:
 - this is intentional: the new state-first intake is being staged before the later request/payment/tracking states are refactored
 - support typography has been lightened in the iPhone intake and hospital-choice surfaces to align with Apple-style hierarchy and keep subtitle/meta text from competing with the main state
 - the iPhone emergency intake phase now persists locally, so refresh restores the current phase draft instead of resetting the user back to the start of the urgent flow
+- emergency-auth users who continue with Google from the bridge are now allowed to finish dispatch first; full profile completion is intentionally deferred instead of interrupting the urgent flow
+- the bridge must keep **one process at a time**, **one decision at a time**, and **progressive disclosure** as hard rules: identity, callback, and payment release now; everything else later while waiting or riding
 - the iPhone committed-response state now reuses real trip truth instead of a placeholder matched card
 - once a live trip exists, the iPhone flow pivots into a map-backed bottom-sheet shell that uses the existing trip route, responder position, telemetry health, and ETA/progress logic
 - the committed-response sheet stays ETA-first, while the map continues to provide route proof and ambulance motion in the background
@@ -196,6 +205,38 @@ Per-phase implementation sequence:
 3. Android mobile / fold / tablet / chromebook
 4. Web mobile / sm-wide / md / lg / xl / 2xl-3xl / ultra-wide
 5. sponsor-review cleanup pass across the whole phase
+
+## Choose Resource Phase — 12 Remaining Screens
+
+Current locked baseline:
+
+- `Choose resource` on **iOS mobile** is the source posture for this phase
+- it establishes the calm card stack, the green payment FAB, and the rule that the user is only choosing the responder level and confirming payment responsibility
+
+The next 12 screens to build for this same phase are:
+
+| # | Variant | Build posture for `Choose resource` |
+| --- | --- | --- |
+| 1 | `iOS iPad` | Keep the map visible longer, center the decision sheet, and allow a roomier two-card comparison without turning the screen into a dashboard. |
+| 2 | `Android mobile` | Mirror the iPhone flow in a tighter single-column stack with Android-safe keyboard, header, and FAB spacing. |
+| 3 | `Android fold` | Closed state behaves like phone; open state uses a split posture with route proof on one side and the decision sheet on the other. |
+| 4 | `Android tablet` | Use a broader centered review sheet with more breathing room, but preserve one decision at a time and a single primary CTA. |
+| 5 | `Chromebook` | Treat it as touch-first landscape: persistent route context, stronger keyboard focus states, and compact horizontal scan paths. |
+| 6 | `Web mobile` | Preserve the native mobile sheet feel inside the PWA so the web experience still feels urgent and handheld. |
+| 7 | `Web sm-wide` | Slightly widen the review surface and let service cards breathe, without introducing a second focal action. |
+| 8 | `Web md` | Move to a true web composition with more stable map framing and a centered decision column. |
+| 9 | `Web lg` | Support a balanced map-plus-sheet layout where the map proves location and route while the sheet owns the choice. |
+| 10 | `Web xl` | Increase horizontal polish, calm spacing, and comparison clarity for multi-service hospitals while keeping the green pay CTA dominant. |
+| 11 | `Web 2xl–3xl` | Prevent the phase from feeling sparse by constraining the decision surface and using the extra canvas only for trust-building route context. |
+| 12 | `Web ultra-wide` | Keep the decision lane intentionally narrow and cinematic; the extra width supports reassurance, not more complexity. |
+
+Shared lock across all 12:
+
+- same state contract
+- same copy discipline
+- same progressive disclosure
+- same green money-only FAB treatment
+- no marketplace feel, no dashboard feel, no extra explanatory clutter
 
 Canvas rule:
 
@@ -251,10 +292,107 @@ Desired urgent path:
    - `confirm_location`
    - `finding_nearby_help`
    - `proposed_hospital`
+   - `dispatch_clearance` *(identity, callback, incident summary, access notes, payment responsibility, hospital submission)*
    - `responder_matched`
    - `tracking_arrival`
 
+Quick-auth placement rule:
+
+- auth should not block the initial urgent intent or the first location-confirmation step
+- quick auth belongs at `dispatch_clearance`, right before the request is formally submitted to the hospital for release
+- if the user is already signed in, this step becomes a fast identity-confirmation sheet with prefilled name/phone
+- if the user is a guest, this step should use **Google auth first** as the fastest trusted path already supported by the app, with other verification only as fallback
+
+Legacy mitigation rule to preserve:
+
+- the old flow already captured the right risk-reduction signals through triage and payment approval
+- keep the minimum real-world questions: who is requesting, how can dispatch call back, what happened, how severe is it, how do responders get in, and who is taking payment responsibility
+- keep the existing `pending_approval` / cash-approval gate as the operational bridge before true responder release
+
+### Dispatch Clearance Data Contract
+
+Compulsory before hospital submission:
+
+1. **Identity + callback**
+   - patient or requester name
+   - reachable phone number
+   - quick auth or verification if the user is still a guest
+2. **Pickup certainty**
+   - confirmed location
+   - at least one access note when needed (gate, stair, landmark, apartment, entrance)
+3. **Incident summary**
+   - chief complaint / what happened
+   - red-flag triage checks: breathing, consciousness, severe bleeding, or equivalent severity signal
+4. **Payment responsibility**
+   - card, cash, sponsor, or other real method
+   - clear responsibility acknowledgment, without expanding into insurance collection on this screen
+5. **Dispatch consent**
+   - clear user action that submits the request to the hospital for release review
+
+Skippable or deferrable until waiting / matched / in-visit:
+
+- sponsor paperwork or extended billing detail
+- full medical history and medication review
+- extended AI triage follow-up
+- caregiver support detail
+- facility preference nuance
+- nice-to-have profile completion like username, avatar, or broader onboarding
+
+System correction note:
+
+- the current runtime still creates the request too early in `useRequestFlow.js` with `status: EmergencyRequestStatus.IN_PROGRESS`
+- the backend then syncs a `visit` immediately after request creation
+- for the real product model, that should tighten into: `dispatch_clearance -> pending_approval -> accepted/released -> responder_matched -> tracking_arrival`
+- in short: no true trip / visit start before the compulsory clearance contract is satisfied
+
+### Map Posture Rule By Phase
+
+- `confirm_location`: yes, use the subtle proof map
+- `proposed_hospital`: yes, use the route review map
+- `dispatch_clearance`: **no full live map as the main surface**; use a clean form/review sheet with a compact location summary row instead
+- `responder_matched` and `tracking_arrival`: yes, return to the stronger legacy-style map + bottom-sheet composition because the product has now entered the live route stage
+
 The broader map shell may still exist, but it should support tracking and context after the request is live. It should not be the first emotional response to the CTA.
+
+## Bridge Contract — New Intake Into Legacy Runtime
+
+This bridge is the current product-safe handshake between the new urgent flow and the older responder/tracking runtime.
+
+### Ownership by phase
+
+1. **New intake owns the front half**
+   - `request_started`
+   - `confirm_location`
+   - `finding_nearby_help`
+   - `proposed_hospital`
+
+2. **`dispatch_clearance` is the bridge layer**
+   - currently rendered inside [`EmergencyRequestModal.jsx`](../components/emergency/EmergencyRequestModal.jsx)
+   - must feel like one compact release checkpoint, not a generic payment modal
+   - Google auth belongs here if the user is still a guest
+
+3. **Legacy code is still reused after clearance**
+   - `pending_approval`
+   - `responder_matched`
+   - `tracking_arrival`
+   - live map, telemetry, and trip summary remain valuable once real dispatch truth exists
+
+### Rules.json alignment lock
+
+The bridge must continue to obey the UI rules already locked across the product:
+
+- **one process at a time**: each state should ask for one class of action only
+- **one decision at a time**: the user should never be choosing hospital, auth, triage depth, and billing detail all at once
+- **progressive disclosure**: show only what is needed to release dispatch now; defer everything else to waiting, matched, or in-ride
+- **state preservation**: keep the emergency phase, selected hospital, location proof, and approval state stable in context instead of recomputing from scratch on every transition
+- **reload persistence**: if the app reloads, resume the truthful urgent state instead of dropping the user back to the start
+
+### Persistence doctrine for this bridge
+
+- location confirmation should remain locked through the hospital review and bridge submission
+- the proposed hospital should survive handoff into the bridge without a blind re-pick
+- emergency auth triggered from this bridge may defer profile completion until the urgent task is safely past dispatch release
+- triage follow-up and optional profile enrichment should persist as secondary flows, never as blockers to the release decision
 
 ## UX Plan Lock
 

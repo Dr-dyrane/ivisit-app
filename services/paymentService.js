@@ -966,6 +966,31 @@ export const paymentService = {
   },
 
   /**
+   * Demo-only helper: ask the backend demo desk to auto-approve a pending cash payment.
+   * This still goes through the real approval RPC so wallet debits/credits and request state remain truthful.
+   */
+  async requestDemoCashAutoApproval(paymentId, requestId) {
+    try {
+      const { data, error } = await supabase.functions.invoke('demo-approve-cash-payment', {
+        body: {
+          paymentId,
+          requestId,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Demo cash auto-approval failed');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('[paymentService] requestDemoCashAutoApproval error:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Decline a pending cash payment (called by org_admin).
    * Marks payment as declined, updates emergency status to payment_declined.
    * @param {string} paymentId - Payment UUID

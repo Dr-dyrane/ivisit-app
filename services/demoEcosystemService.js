@@ -19,8 +19,8 @@ export const DEMO_BOOTSTRAP_PHASES = [
 	},
 	{
 		key: "pricing",
-		label: "Configuring pricing",
-		description: "Applying service and room pricing baselines",
+		label: "Configuring dispatch",
+		description: "Applying ambulance pricing and cash-approval readiness",
 	},
 	{
 		key: "summary",

@@ -101,6 +101,7 @@ export const StorageKeys = {
 	THEME: `${DB_PREFIX}theme`,
 
 	PROFILE_COMPLETION_DRAFT: `${DB_PREFIX}profile_completion_draft`,
+	PROFILE_COMPLETION_DEFERRED: `${DB_PREFIX}profile_completion_deferred`,
 
 	MIGRATION_VERSION: `${DB_PREFIX}migration_version`,
 };

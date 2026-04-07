@@ -259,6 +259,8 @@ export default function EmergencyIOSMobileIntakeView({
 	recommendedHospital = null,
 	alternativeHospitals = [],
 	hospitalChoiceState = null,
+	allowMatchedPhaseBackNavigation = false,
+	onMatchedPhaseBack,
 	onRefreshHospitalOptions,
 }) {
 	const { isDarkMode } = useTheme();
@@ -715,6 +717,47 @@ export default function EmergencyIOSMobileIntakeView({
 		tripProgress < 1 &&
 		matchedPhaseState.key !== "arrived";
 	const shouldShowReviewShell = renderReviewShell || isProposedHospital;
+	const canPhaseBackFromMatched =
+		isResponderMatched && allowMatchedPhaseBackNavigation;
+	const matchedResponderMeta = useMemo(() => {
+		const assigned = matchedTrip?.assignedAmbulance ?? null;
+		return [
+			assigned?.type || matchedTrip?.ambulanceType || null,
+			assigned?.plate || assigned?.vehicleNumber || assigned?.callSign || null,
+		]
+			.filter(Boolean)
+			.join(" • ");
+	}, [matchedTrip]);
+	const matchedEtaSupportText =
+		matchedPhaseState.key === "arrived"
+			? "Your responder should be nearby now."
+			: matchedPhaseState.key === EMERGENCY_FLOW_STATES.responder_matched.key
+				? "A responder has been assigned and is locking the fastest route."
+				: "We’ll keep this ETA updated as help gets closer.";
+	const matchedNextStepText =
+		matchedPhaseState.key === "arrived"
+			? "If it’s safe, make yourself visible and be ready to confirm your name."
+			: matchedTelemetryLabel
+				? "Stay near your phone while dispatch keeps refreshing the route."
+				: "Stay near your phone and keep location sharing on if possible.";
+	const matchedPhaseSteps = [
+		{ key: EMERGENCY_FLOW_STATES.responder_matched.key, label: "Matched" },
+		{ key: EMERGENCY_FLOW_STATES.tracking_arrival.key, label: "En route" },
+		{ key: "arrived", label: "Arrival" },
+	];
+	const matchedPhaseStepIndex = Math.max(
+		0,
+		matchedPhaseSteps.findIndex((step) => step.key === matchedPhaseState.key),
+	);
+
+	useEffect(() => {
+		if (!isResponderMatched) return;
+		const nextCommittedFlowKey =
+			matchedPhaseState.key === "arrived"
+				? EMERGENCY_FLOW_STATES.tracking_arrival.key
+				: matchedPhaseState.key;
+		setFlowState((prev) => (prev === nextCommittedFlowKey ? prev : nextCommittedFlowKey));
+	}, [isResponderMatched, matchedPhaseState.key]);
 
 	useEffect(() => {
 		if (isResponderMatched) {
@@ -874,6 +917,17 @@ export default function EmergencyIOSMobileIntakeView({
 			return;
 		}
 
+		if (canPhaseBackFromMatched) {
+			logEmergencyDebug("phase_back_to_proposed_hospital_from_matched", {
+				from: flowState,
+				matchedRequestId: matchedTrip?.requestId ?? null,
+				selectedHospital: summarizeHospitalForDebug(activeProposedHospital),
+			});
+			setFlowState(EMERGENCY_FLOW_STATES.proposed_hospital.key);
+			onMatchedPhaseBack?.();
+			return;
+		}
+
 		if (isProposedHospital || shouldRenderFindingUi) {
 			logEmergencyDebug("phase_back_to_confirm_location", {
 				from: flowState,
@@ -885,9 +939,12 @@ export default function EmergencyIOSMobileIntakeView({
 		}
 	}, [
 		activeProposedHospital,
+		canPhaseBackFromMatched,
 		flowState,
 		hospitalSheetVisible,
 		isProposedHospital,
+		matchedTrip?.requestId,
+		onMatchedPhaseBack,
 		searchSheetVisible,
 		shouldRenderFindingUi,
 	]);
@@ -897,7 +954,8 @@ export default function EmergencyIOSMobileIntakeView({
 			hospitalSheetVisible ||
 			searchSheetVisible ||
 			isProposedHospital ||
-			shouldRenderFindingUi;
+			shouldRenderFindingUi ||
+			canPhaseBackFromMatched;
 
 		onBackNavigationChange?.(
 			hasPhaseBackPath
@@ -911,6 +969,7 @@ export default function EmergencyIOSMobileIntakeView({
 				  },
 		);
 	}, [
+		canPhaseBackFromMatched,
 		handlePhaseBack,
 		hospitalSheetVisible,
 		isProposedHospital,
@@ -1499,11 +1558,54 @@ export default function EmergencyIOSMobileIntakeView({
 							<View pointerEvents="none" style={styles.committedMapScrim} />
 							<View style={styles.reviewLayer}>
 								<View style={styles.reviewSheet}>
-									<View style={styles.reviewWell}>
-										<View style={styles.reviewEtaCard}>
-											<Text style={styles.reviewEtaLabel}>Estimated arrival</Text>
-											<Text style={styles.reviewEtaValue}>{committedEtaText}</Text>
+									<View style={[styles.reviewWell, styles.matchedWell]}>
+										<View style={styles.matchedStatusPill}>
+											<Text style={styles.matchedStatusPillText}>
+												{matchedPhaseState.headerSubtitle}
+											</Text>
 										</View>
+
+										<View style={styles.matchedEtaCard}>
+											<Text style={styles.matchedEtaLabel}>Estimated arrival</Text>
+											<Text style={styles.matchedEtaValue}>{committedEtaText}</Text>
+											<Text style={styles.matchedEtaSupport}>{matchedEtaSupportText}</Text>
+										</View>
+
+										<View style={styles.matchedIdentityCard}>
+											<View style={styles.matchedIdentityHeader}>
+												<View style={styles.matchedIdentityBadge}>
+													<Text style={styles.matchedIdentityBadgeText}>EMS</Text>
+												</View>
+												<View style={styles.matchedIdentityCopy}>
+													<Text style={styles.matchedIdentityTitle}>
+														{matchedResponderLabel}
+													</Text>
+													{matchedResponderMeta ? (
+														<Text style={styles.matchedIdentitySubtitle}>
+															{matchedResponderMeta}
+														</Text>
+													) : null}
+												</View>
+											</View>
+
+											<View style={styles.matchedIdentityDivider} />
+
+											<View style={styles.matchedDetailRow}>
+												<View style={styles.matchedDetailBlock}>
+													<Text style={styles.matchedDetailLabel}>Responding from</Text>
+													<Text style={styles.matchedDetailValue}>{matchedContextLabel}</Text>
+												</View>
+												<View style={styles.matchedDetailBlock}>
+													<Text style={styles.matchedDetailLabel}>Live status</Text>
+													<Text style={styles.matchedDetailValue}>
+														{matchedPhaseState.key === "arrived"
+															? "Arrived"
+															: computedStatus || "En route"}
+													</Text>
+												</View>
+											</View>
+										</View>
+
 										{showMatchedProgressRail ? (
 											<View style={styles.matchedProgressWrap}>
 												<View style={styles.matchedProgressTrack}>
@@ -1511,32 +1613,63 @@ export default function EmergencyIOSMobileIntakeView({
 														style={[
 															styles.matchedProgressFill,
 															{
-																width: `${Math.max(8, Math.min(100, Math.round((tripProgress || 0) * 100)))}%`,
+																width: `${Math.max(
+																	8,
+																	Math.min(100, Math.round((tripProgress || 0) * 100)),
+																)}%`,
 															},
 														]}
 													/>
 												</View>
 											</View>
 										) : null}
-										<View style={styles.reviewCopyBlock}>
-											<Text style={styles.reviewHeadline}>{headlineText}</Text>
-											{helperText ? (
-												<Text style={styles.reviewHelper}>{helperText}</Text>
-											) : null}
+
+										<View style={styles.matchedTimelineRow}>
+											{matchedPhaseSteps.map((step, index) => {
+												const isActive = index === matchedPhaseStepIndex;
+												const isComplete = index < matchedPhaseStepIndex;
+
+												return (
+													<View key={step.key} style={styles.matchedTimelineItem}>
+														<View
+															style={[
+																styles.matchedTimelineDot,
+																(isActive || isComplete)
+																	? styles.matchedTimelineDotActive
+																	: null,
+															]}
+														/>
+														<Text
+															style={[
+																styles.matchedTimelineText,
+																(isActive || isComplete)
+																	? styles.matchedTimelineTextActive
+																	: null,
+															]}
+														>
+															{step.label}
+														</Text>
+													</View>
+												);
+											})}
 										</View>
-										<View style={styles.reviewMetaRow}>
-											<View style={styles.reviewMetaChip}>
-												<Text style={styles.reviewMetaText}>{matchedResponderLabel}</Text>
-											</View>
-											<View style={styles.reviewMetaChip}>
-												<Text style={styles.reviewMetaText}>{matchedContextLabel}</Text>
+
+										<View style={styles.matchedGuidanceCard}>
+											<Text style={styles.matchedGuidanceLabel}>What to do now</Text>
+											<Text style={styles.matchedGuidanceText}>{matchedNextStepText}</Text>
+										</View>
+
+										<View style={styles.matchedMetaRow}>
+											<View style={styles.matchedMetaChip}>
+												<Text style={styles.matchedMetaText}>{matchedContextLabel}</Text>
 											</View>
 											{matchedTelemetryLabel ? (
-												<View style={styles.reviewMetaChip}>
-													<Text style={styles.reviewMetaText}>{matchedTelemetryLabel}</Text>
+												<View style={styles.matchedMetaChip}>
+													<Text style={styles.matchedMetaText}>{matchedTelemetryLabel}</Text>
 												</View>
 											) : null}
 										</View>
+
 										<Pressable
 											onPress={handleShareMatchedDetails}
 											style={styles.reviewQuietLink}

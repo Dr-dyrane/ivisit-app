@@ -2,17 +2,28 @@
 
 import { Stack, useSegments } from "expo-router";
 import { View, StyleSheet } from "react-native";
+import { useEffect } from "react";
 import { AuthProviders } from "../../providers/AuthProviders";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
+import { useFABActions } from "../../contexts/FABContext";
 import ScrollAwareHeader from "../../components/headers/ScrollAwareHeader";
 import WebAppShell from "../../components/web/WebAppShell";
+import GlobalFAB from "../../components/navigation/GlobalFAB";
 
 function AuthStackScreens() {
 	const segments = useSegments();
 	const authLeaf = segments?.[1] || "index";
+	const isRequestHelpRoute = segments?.[0] === "(auth)" && authLeaf === "request-help";
 	const isFullCanvasAuthRoute =
 		segments?.[0] === "(auth)" &&
 		(authLeaf === "index" || authLeaf === "request-help");
+	const { enterStack, exitStack } = useFABActions();
+
+	useEffect(() => {
+		if (!isRequestHelpRoute) return undefined;
+		enterStack();
+		return () => exitStack();
+	}, [enterStack, exitStack, isRequestHelpRoute]);
 
 	return (
 		<WebAppShell
@@ -28,6 +39,7 @@ function AuthStackScreens() {
 				<Stack.Screen name="onboarding" options={{ headerShown: false }} />
 				<Stack.Screen name="signup" options={{ headerShown: false }} />
 			</Stack>
+			{isRequestHelpRoute ? <GlobalFAB /> : null}
 		</View>
 		</WebAppShell>
 	);

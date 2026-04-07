@@ -660,9 +660,10 @@ export function createEmergencyIosMobileIntakeTheme({
 			paddingTop: 0,
 		},
 		matchedWell: {
-			paddingTop: 8,
-			alignItems: "center",
-			justifyContent: "center",
+			paddingTop: isContextPanelSurface ? 18 : 12,
+			alignItems: "stretch",
+			justifyContent: "flex-start",
+			gap: 12,
 		},
 		reviewWell: {
 			paddingTop: isContextPanelSurface ? 18 : isWebMd || isIosPad ? 14 : 10,
@@ -836,6 +837,23 @@ export function createEmergencyIosMobileIntakeTheme({
 			lineHeight: 20,
 			fontWeight: "600",
 		},
+		matchedStatusPill: {
+			alignSelf: isContextPanelSurface ? "flex-start" : "center",
+			paddingHorizontal: 12,
+			paddingVertical: 7,
+			borderRadius: 999,
+			backgroundColor: isDarkMode
+				? "rgba(59, 130, 246, 0.18)"
+				: "rgba(59, 130, 246, 0.10)",
+		},
+		matchedStatusPillText: {
+			color: COLORS.brandPrimary,
+			fontSize: 11,
+			lineHeight: 14,
+			fontWeight: "800",
+			letterSpacing: 1,
+			textTransform: "uppercase",
+		},
 		matchedEtaCard: {
 			width: "100%",
 			paddingVertical: 20,
@@ -868,12 +886,155 @@ export function createEmergencyIosMobileIntakeTheme({
 			fontWeight: "900",
 			letterSpacing: -1.2,
 		},
+		matchedEtaSupport: {
+			marginTop: 8,
+			color: colors.helper,
+			fontSize: 14,
+			lineHeight: 20,
+			fontWeight: "500",
+			textAlign: "center",
+			maxWidth: 280,
+		},
+		matchedIdentityCard: {
+			width: "100%",
+			paddingVertical: 16,
+			paddingHorizontal: 16,
+			borderRadius: 24,
+			backgroundColor: isDarkMode
+				? "rgba(255,255,255,0.045)"
+				: "rgba(255,255,255,0.76)",
+		},
+		matchedIdentityHeader: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 12,
+		},
+		matchedIdentityBadge: {
+			width: 42,
+			height: 42,
+			borderRadius: 14,
+			alignItems: "center",
+			justifyContent: "center",
+			backgroundColor: isDarkMode
+				? "rgba(59, 130, 246, 0.18)"
+				: "rgba(59, 130, 246, 0.12)",
+		},
+		matchedIdentityBadgeText: {
+			color: COLORS.brandPrimary,
+			fontSize: 11,
+			lineHeight: 13,
+			fontWeight: "900",
+			letterSpacing: 0.8,
+		},
+		matchedIdentityCopy: {
+			flex: 1,
+		},
+		matchedIdentityTitle: {
+			color: colors.headline,
+			fontSize: 17,
+			lineHeight: 22,
+			fontWeight: "800",
+		},
+		matchedIdentitySubtitle: {
+			marginTop: 2,
+			color: colors.helper,
+			fontSize: 13,
+			lineHeight: 18,
+			fontWeight: "500",
+		},
+		matchedIdentityDivider: {
+			height: 1,
+			marginVertical: 14,
+			backgroundColor: isDarkMode
+				? "rgba(255,255,255,0.08)"
+				: "rgba(15, 23, 42, 0.08)",
+		},
+		matchedDetailRow: {
+			flexDirection: "row",
+			gap: 12,
+		},
+		matchedDetailBlock: {
+			flex: 1,
+		},
+		matchedDetailLabel: {
+			color: colors.support,
+			fontSize: 11,
+			lineHeight: 14,
+			fontWeight: "700",
+			letterSpacing: 0.5,
+			textTransform: "uppercase",
+		},
+		matchedDetailValue: {
+			marginTop: 4,
+			color: colors.headline,
+			fontSize: 14,
+			lineHeight: 19,
+			fontWeight: "600",
+		},
+		matchedTimelineRow: {
+			width: "100%",
+			flexDirection: "row",
+			justifyContent: "space-between",
+			alignItems: "flex-start",
+			gap: 10,
+			marginTop: 2,
+		},
+		matchedTimelineItem: {
+			flex: 1,
+			alignItems: "center",
+			gap: 8,
+		},
+		matchedTimelineDot: {
+			width: 10,
+			height: 10,
+			borderRadius: 999,
+			backgroundColor: isDarkMode
+				? "rgba(255,255,255,0.18)"
+				: "rgba(15, 23, 42, 0.16)",
+		},
+		matchedTimelineDotActive: {
+			backgroundColor: COLORS.brandPrimary,
+		},
+		matchedTimelineText: {
+			color: colors.support,
+			fontSize: 12,
+			lineHeight: 16,
+			fontWeight: "600",
+			textAlign: "center",
+		},
+		matchedTimelineTextActive: {
+			color: colors.headline,
+		},
+		matchedGuidanceCard: {
+			width: "100%",
+			paddingVertical: 14,
+			paddingHorizontal: 16,
+			borderRadius: 20,
+			backgroundColor: isDarkMode
+				? "rgba(255,255,255,0.05)"
+				: "rgba(248, 250, 252, 0.88)",
+		},
+		matchedGuidanceLabel: {
+			color: colors.support,
+			fontSize: 11,
+			lineHeight: 14,
+			fontWeight: "800",
+			letterSpacing: 0.9,
+			textTransform: "uppercase",
+		},
+		matchedGuidanceText: {
+			marginTop: 6,
+			color: colors.helper,
+			fontSize: 14,
+			lineHeight: 20,
+			fontWeight: "500",
+		},
 		matchedMetaRow: {
 			flexDirection: "row",
 			flexWrap: "wrap",
-			justifyContent: "center",
+			justifyContent: isContextPanelSurface ? "flex-start" : "center",
 			gap: 10,
-			marginTop: 16,
+			marginTop: 2,
 		},
 		matchedMetaChip: {
 			paddingHorizontal: 14,
