@@ -412,7 +412,7 @@ export default function RequestAmbulanceScreen() {
 					: resolvedRequestHospital?.name || "Medical Center",
 				subtitle: showResponsiveIntakeBase
 					? intakeHeaderState.subtitle
-					: "STEP 1: RESOURCE",
+					: "",
 				icon: <Ionicons name="medical" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.emergency,
 				leftComponent: backButton(),

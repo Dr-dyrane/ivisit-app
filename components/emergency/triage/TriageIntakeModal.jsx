@@ -509,10 +509,30 @@ const TriageIntakeModal = ({
 	const phaseAccent = phase === "prebooking" ? COLORS.emergency : COLORS.brandPrimary;
 	const promptCopy = aiPrompt || activeStep.prompt;
 	const progressLabel = `Step ${safeStepIndex + 1} of ${steps.length}`;
+	const isLastStep = safeStepIndex >= steps.length - 1;
+	const isAnswered = stepAnswered(activeStep, draft);
+	const primaryActionLabel = isLastStep ? "Done" : isAnswered ? "Continue" : "Skip for now";
+	const backActionLabel = safeStepIndex > 0 ? "Go back" : "Close";
 	const progressWidth = progressAnim.interpolate({
 		inputRange: [0, 1],
 		outputRange: ["0%", "100%"],
 	});
+
+	const handleBackAction = () => {
+		if (safeStepIndex > 0) {
+			moveStep(-1);
+			return;
+		}
+		onClose?.();
+	};
+
+	const handlePrimaryAction = () => {
+		if (isLastStep) {
+			onClose?.();
+			return;
+		}
+		moveStep(1);
+	};
 
 	return (
 		<Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
@@ -574,89 +594,106 @@ const TriageIntakeModal = ({
 
 
 							{critical ? (
-								<View style={styles.criticalPanel}>
+								<View style={[styles.criticalPanel, { backgroundColor: `${COLORS.emergency}10` }]}>
 									<View style={[styles.criticalIconWrap, { backgroundColor: `${COLORS.emergency}1A` }]}>
 										<Ionicons name="warning-outline" size={20} color={COLORS.emergency} />
 									</View>
-									<Text style={[styles.questionText, { color: textColor }]}>This sounds critical.</Text>
-									<Text style={[styles.helperText, { color: mutedColor }]}>Stay reachable and keep the area clear for responders.</Text>
+									<View style={styles.criticalCopyWrap}>
+										<Text style={[styles.criticalTitle, { color: textColor }]}>This sounds critical.</Text>
+										<Text style={[styles.helperText, { color: mutedColor }]}>Stay reachable and keep the area clear for responders while you finish these quick details.</Text>
+									</View>
 								</View>
-							) : (
-								<>
-									<Text style={[styles.questionText, { color: textColor }]}>{promptCopy}</Text>
-									<View style={styles.optionsGrid}>
-										{activeStep.options.map((option) => {
-											const selected =
+							) : null}
+
+							<Text style={[styles.questionText, { color: textColor }]}>{promptCopy}</Text>
+							<View style={styles.optionsGrid}>
+								{activeStep.options.map((option) => {
+									const selected =
+										activeStep.type === "multi"
+											? Array.isArray(draft?.[activeStep.field]) &&
+												draft[activeStep.field].includes(option.value)
+											: draft?.[activeStep.field] === option.value;
+									const spanFull = shouldSpanFullWidth(activeStep, option, activeStep.options.length);
+									const gridTone = selected
+										? `${phaseAccent}24`
+										: isDarkMode
+											? "rgba(255,255,255,0.07)"
+											: "rgba(255,255,255,0.72)";
+									const iconName = getOptionIcon(activeStep, option);
+									return (
+										<Pressable
+											key={`${activeStep.id}:${String(option.value)}`}
+											onPress={() =>
 												activeStep.type === "multi"
-													? Array.isArray(draft?.[activeStep.field]) &&
-														draft[activeStep.field].includes(option.value)
-													: draft?.[activeStep.field] === option.value;
-											const spanFull = shouldSpanFullWidth(activeStep, option, activeStep.options.length);
-											const gridTone = selected
-												? `${phaseAccent}24`
-												: isDarkMode
-													? "rgba(255,255,255,0.07)"
-													: "rgba(255,255,255,0.72)";
-											const iconName = getOptionIcon(activeStep, option);
-											return (
-												<Pressable
-													key={`${activeStep.id}:${String(option.value)}`}
-													onPress={() =>
-														activeStep.type === "multi"
-															? toggleMulti(activeStep, option.value)
-															: selectOption(activeStep, option.value)
-													}
+													? toggleMulti(activeStep, option.value)
+													: selectOption(activeStep, option.value)
+											}
+											style={[
+												styles.optionCard,
+												spanFull ? styles.optionSpanFull : styles.optionSpanHalf,
+												{
+													backgroundColor: gridTone,
+													borderColor: selected ? phaseAccent : "transparent",
+												},
+											]}
+										>
+											<View style={styles.optionContent}>
+												<View
 													style={[
-														styles.optionCard,
-														spanFull ? styles.optionSpanFull : styles.optionSpanHalf,
-														{
-															backgroundColor: gridTone,
-															borderColor: selected ? phaseAccent : "transparent",
-														},
+														styles.optionIconBubble,
+														{ backgroundColor: selected ? `${phaseAccent}24` : "transparent" },
 													]}
 												>
-													<View style={styles.optionContent}>
-														<View
-															style={[
-																styles.optionIconBubble,
-																{ backgroundColor: selected ? `${phaseAccent}24` : "transparent" },
-															]}
-														>
-															<Ionicons
-																name={iconName}
-																size={16}
-																color={selected ? phaseAccent : mutedColor}
-															/>
-														</View>
-														<Text
-															style={[
-																styles.optionLabel,
-																{ color: selected ? phaseAccent : textColor },
-															]}
-															numberOfLines={2}
-														>
-															{option.label}
-														</Text>
-													</View>
-												</Pressable>
-											);
-										})}
-									</View>
-									{activeStep.id === "chiefComplaint" && !showExtendedComplaints ? (
-										<Pressable
-											onPress={() => setShowExtendedComplaints(true)}
-											style={[styles.showMoreButton, { borderColor: `${phaseAccent}40` }]}
-										>
-											<Ionicons name="add-circle-outline" size={14} color={phaseAccent} />
-											<Text style={[styles.showMoreText, { color: phaseAccent }]}>More symptoms</Text>
+													<Ionicons
+														name={iconName}
+														size={16}
+														color={selected ? phaseAccent : mutedColor}
+													/>
+												</View>
+												<Text
+													style={[
+														styles.optionLabel,
+														{ color: selected ? phaseAccent : textColor },
+													]}
+													numberOfLines={2}
+												>
+													{option.label}
+												</Text>
+											</View>
 										</Pressable>
-									) : null}
-								</>
-							)}
+									);
+								})}
+							</View>
+							{activeStep.id === "chiefComplaint" && !showExtendedComplaints ? (
+								<Pressable
+									onPress={() => setShowExtendedComplaints(true)}
+									style={[styles.showMoreButton, { borderColor: `${phaseAccent}40` }]}
+								>
+									<Ionicons name="add-circle-outline" size={14} color={phaseAccent} />
+									<Text style={[styles.showMoreText, { color: phaseAccent }]}>More symptoms</Text>
+								</Pressable>
+							) : null}
 						</LinearGradient>
 					</Animated.View>
 				</ScrollView>
 
+				<View style={styles.footerBar}>
+					<Pressable
+						onPress={handleBackAction}
+						style={[
+							styles.footerSecondaryButton,
+							{ backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.05)" },
+						]}
+					>
+						<Text style={[styles.footerSecondaryText, { color: textColor }]}>{backActionLabel}</Text>
+					</Pressable>
+					<Pressable
+						onPress={handlePrimaryAction}
+						style={[styles.footerPrimaryButton, { backgroundColor: phaseAccent }]}
+					>
+						<Text style={styles.footerPrimaryText}>{primaryActionLabel}</Text>
+					</Pressable>
+				</View>
 			</SafeAreaView>
 		</Modal>
 	);
@@ -749,7 +786,13 @@ const styles = StyleSheet.create({
 		left: -22,
 	},
 	criticalPanel: {
-		paddingVertical: 6,
+		paddingVertical: 12,
+		paddingHorizontal: 12,
+		borderRadius: 18,
+		flexDirection: "row",
+		alignItems: "flex-start",
+		gap: 10,
+		marginBottom: 14,
 	},
 	criticalIconWrap: {
 		width: 36,
@@ -757,7 +800,14 @@ const styles = StyleSheet.create({
 		borderRadius: 18,
 		alignItems: "center",
 		justifyContent: "center",
-		marginBottom: 10,
+	},
+	criticalCopyWrap: {
+		flex: 1,
+	},
+	criticalTitle: {
+		fontSize: 22,
+		fontWeight: "900",
+		lineHeight: 28,
 	},
 	questionText: {
 		fontSize: 27,
@@ -820,6 +870,37 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		fontWeight: "700",
 		marginLeft: 6,
+	},
+	footerBar: {
+		flexDirection: "row",
+		gap: 10,
+		paddingTop: 8,
+		paddingBottom: 12,
+	},
+	footerSecondaryButton: {
+		flex: 1,
+		minHeight: 50,
+		borderRadius: 16,
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 14,
+	},
+	footerSecondaryText: {
+		fontSize: 14,
+		fontWeight: "800",
+	},
+	footerPrimaryButton: {
+		flex: 1.2,
+		minHeight: 50,
+		borderRadius: 16,
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 14,
+	},
+	footerPrimaryText: {
+		fontSize: 14,
+		fontWeight: "900",
+		color: "#FFFFFF",
 	},
 });
 

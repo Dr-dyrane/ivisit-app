@@ -23,15 +23,32 @@ const HOSPITAL_MARKER_CENTER_OFFSET = {
 
 function toCoordinate(source) {
 	if (!source || typeof source !== "object") return null;
-	if (Number.isFinite(source.latitude) && Number.isFinite(source.longitude)) {
-		return { latitude: Number(source.latitude), longitude: Number(source.longitude) };
+
+	const geoPair = Array.isArray(source?.coordinates?.coordinates)
+		? source.coordinates.coordinates
+		: Array.isArray(source?.geometry?.coordinates)
+			? source.geometry.coordinates
+			: null;
+	const latitude = Number(
+		source.latitude ??
+			source.lat ??
+			source?.coords?.latitude ??
+			source?.coordinates?.latitude ??
+			(geoPair ? geoPair[1] : NaN),
+	);
+	const longitude = Number(
+		source.longitude ??
+			source.lng ??
+			source.lon ??
+			source?.coords?.longitude ??
+			source?.coordinates?.longitude ??
+			(geoPair ? geoPair[0] : NaN),
+	);
+
+	if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+		return { latitude, longitude };
 	}
-	if (source.coordinates && Number.isFinite(source.coordinates.latitude) && Number.isFinite(source.coordinates.longitude)) {
-		return {
-			latitude: Number(source.coordinates.latitude),
-			longitude: Number(source.coordinates.longitude),
-		};
-	}
+
 	return null;
 }
 
@@ -50,15 +67,17 @@ function getRegionForCoordinates(coordinates, bottomPadding = 0) {
 	const maxLatitude = Math.max(...latitudes);
 	const minLongitude = Math.min(...longitudes);
 	const maxLongitude = Math.max(...longitudes);
-	const latitudeSpan = Math.max(0.0048, (maxLatitude - minLatitude) * 1.75);
-	const longitudeSpan = Math.max(0.0048, (maxLongitude - minLongitude) * 1.6);
-	const routeIsMostlyHorizontal = longitudeSpan > latitudeSpan * 1.3;
-	const effectiveVerticalSpan = routeIsMostlyHorizontal
-		? Math.max(latitudeSpan, longitudeSpan * 0.7)
-		: latitudeSpan;
-	const verticalBias = routeIsMostlyHorizontal
-		? Math.min(0.68, Math.max(0.5, bottomPadding / 720))
-		: Math.min(0.52, Math.max(0.36, bottomPadding / 860));
+	const rawLatitudeSpan = Math.max(maxLatitude - minLatitude, 0);
+	const rawLongitudeSpan = Math.max(maxLongitude - minLongitude, 0);
+	const routeIsMostlyHorizontal = rawLongitudeSpan > Math.max(rawLatitudeSpan, 0.0001) * 1.2;
+	const latitudeSpan = Math.max(0.0062, rawLatitudeSpan * (routeIsMostlyHorizontal ? 2.15 : 1.9) + 0.0018);
+	const longitudeSpan = Math.max(0.0062, rawLongitudeSpan * 1.85 + 0.0018);
+	const effectiveVerticalSpan = Math.max(
+		latitudeSpan,
+		routeIsMostlyHorizontal ? longitudeSpan * 0.46 : latitudeSpan,
+	);
+	const bottomPadBias = Math.min(0.10, Math.max(0.02, bottomPadding / 2200));
+	const verticalBias = routeIsMostlyHorizontal ? 0.12 + bottomPadBias : 0.08 + bottomPadBias;
 
 	return {
 		latitude: (minLatitude + maxLatitude) / 2 - effectiveVerticalSpan * verticalBias,
@@ -89,17 +108,22 @@ export default function EmergencyHospitalRoutePreview({
 	const mapRef = useRef(null);
 	const fade = useRef(new Animated.Value(visible ? 1 : 0)).current;
 	const loadingOverlayOpacity = useRef(new Animated.Value(0.46)).current;
+	const lastFitSignatureRef = useRef(null);
 	const needsProgrammaticFit = Platform.OS === "android" || Platform.OS === "web";
 	const [isMapReady, setIsMapReady] = useState(!needsProgrammaticFit);
 
 	const originCoordinate = useMemo(() => toCoordinate(origin), [origin]);
 	const hospitalCoordinate = useMemo(() => toCoordinate(hospital), [hospital]);
+	const normalizedRouteCoordinates = useMemo(
+		() => (Array.isArray(routeCoordinates) ? routeCoordinates.map((point) => toCoordinate(point)).filter(Boolean) : []),
+		[routeCoordinates],
+	);
 	const routeBoundsCoordinates = useMemo(() => {
-		if (routeCoordinates.length >= 2) {
-			return routeCoordinates;
+		if (normalizedRouteCoordinates.length >= 2) {
+			return normalizedRouteCoordinates;
 		}
 		return [originCoordinate, hospitalCoordinate].filter(Boolean);
-	}, [hospitalCoordinate, originCoordinate, routeCoordinates]);
+	}, [hospitalCoordinate, normalizedRouteCoordinates, originCoordinate]);
 	const initialRegion = useMemo(() => {
 		return getRegionForCoordinates(routeBoundsCoordinates, bottomPadding);
 	}, [bottomPadding, routeBoundsCoordinates]);
@@ -118,19 +142,26 @@ export default function EmergencyHospitalRoutePreview({
 	const routeRenderKey = useMemo(
 		() =>
 			[
-				hospital?.id || "hospital",
-				routeCoordinates.length,
+				hospital?.id || hospital?.name || "hospital",
+				normalizedRouteCoordinates.length,
 				routeInfo?.distanceMeters || 0,
 				routeInfo?.durationSec || 0,
 			].join(":"),
-		[hospital?.id, routeCoordinates.length, routeInfo?.distanceMeters, routeInfo?.durationSec],
+		[hospital?.id, hospital?.name, normalizedRouteCoordinates.length, routeInfo?.distanceMeters, routeInfo?.durationSec],
 	);
+	const iosRegion = Platform.OS === "ios" ? initialRegion : undefined;
 
 	useEffect(() => {
 		if (!needsProgrammaticFit) return undefined;
 		if (!visible || !isMapReady || !mapRef.current || routeBoundsCoordinates.length < 1) {
 			return undefined;
 		}
+
+		const fitSignature = `${routeRenderKey}:${bottomPadding}`;
+		if (lastFitSignatureRef.current === fitSignature) {
+			return undefined;
+		}
+		lastFitSignatureRef.current = fitSignature;
 
 		const edgePadding = {
 			top: 28,
@@ -141,16 +172,23 @@ export default function EmergencyHospitalRoutePreview({
 
 		const fit = () => {
 			if (!mapRef.current) return;
-			mapRef.current.animateToRegion?.(initialRegion, 240);
-			if (routeBoundsCoordinates.length > 1 && mapRef.current.fitToCoordinates) {
-				mapRef.current.fitToCoordinates(routeBoundsCoordinates, {
-					edgePadding,
-					animated: true,
-				});
+			try {
+				if (routeBoundsCoordinates.length > 1 && typeof mapRef.current.fitToCoordinates === "function") {
+					mapRef.current.fitToCoordinates(routeBoundsCoordinates, {
+						edgePadding,
+						animated: true,
+					});
+					return;
+				}
+				if (typeof mapRef.current.animateToRegion === "function") {
+					mapRef.current.animateToRegion(initialRegion, 240);
+				}
+			} catch (error) {
+				console.warn("[EmergencyHospitalRoutePreview] Skipping programmatic fit:", error?.message || error);
 			}
 		};
 
-		const passDelays = Platform.OS === "web" ? [70, 220, 460] : [90, 280];
+		const passDelays = Platform.OS === "web" ? [90, 260] : [140];
 		const timers = passDelays.map((delay) => setTimeout(fit, delay));
 
 		return () => {
@@ -162,6 +200,7 @@ export default function EmergencyHospitalRoutePreview({
 		isMapReady,
 		needsProgrammaticFit,
 		routeBoundsCoordinates,
+		routeRenderKey,
 		visible,
 	]);
 
@@ -214,6 +253,7 @@ export default function EmergencyHospitalRoutePreview({
 				customMapStyle={customMapStyle}
 				mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
 				initialRegion={initialRegion}
+				region={iosRegion}
 				scrollEnabled={false}
 				zoomEnabled={false}
 				pitchEnabled={false}
@@ -226,11 +266,12 @@ export default function EmergencyHospitalRoutePreview({
 				showsUserLocation={false}
 				userInterfaceStyle={isDarkMode ? "dark" : "light"}
 				onMapReady={() => setIsMapReady(true)}
+				onMapLoaded={() => setIsMapReady(true)}
 			>
-				{routeCoordinates.length > 1 ? (
+				{normalizedRouteCoordinates.length > 1 ? (
 					<Polyline
 						key={`${routeRenderKey}-${visible ? "visible" : "hidden"}`}
-						coordinates={routeCoordinates}
+						coordinates={normalizedRouteCoordinates}
 						strokeColor={COLORS.brandPrimary}
 						strokeWidth={4}
 						lineCap="round"

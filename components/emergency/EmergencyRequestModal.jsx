@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, Pressable, ScrollView, Linking, ActivityIndicator, Dimensions, Platform, KeyboardAvoidingView, StyleSheet } from "react-native";
+import { View, Text, Pressable, ScrollView, Linking, ActivityIndicator, Platform, StyleSheet } from "react-native";
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from "@expo/vector-icons";
@@ -10,11 +10,14 @@ import { useFABActions } from "../../contexts/FABContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
 import { AMBULANCE_TYPES } from "../../constants/emergency";
+import useAuthViewport from "../../hooks/ui/useAuthViewport";
 
 import AmbulanceTypeCard from "./requestModal/AmbulanceTypeCard";
+import AmbulanceServiceDetailSheet from "./requestModal/AmbulanceServiceDetailSheet";
 import EmergencyRequestModalDispatched from "./requestModal/EmergencyRequestModalDispatched";
 import InfoTile from "./requestModal/InfoTile";
 import BedBookingOptions from "./requestModal/BedBookingOptions";
+import EmergencyChooseResourceStageOrchestrator from "./requestModal/views/chooseResource/EmergencyChooseResourceStageOrchestrator";
 import PaymentMethodSelector from "../payment/PaymentMethodSelector";
 import { paymentService } from "../../services/paymentService";
 import { calculateEmergencyCost } from "../../services/pricingService";
@@ -28,6 +31,8 @@ import { useSocialAuth } from "../../hooks/auth";
 import TriageIntakeModal from "./triage/TriageIntakeModal";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 import { EMERGENCY_FLOW_STATES } from "./emergencyFlowContent";
+import { getEmergencyIntakeVariant } from "./intake/EmergencyIntakeOrchestrator";
+import { getAmbulanceVisualProfile } from "./requestModal/ambulanceTierVisuals";
 
 const isValidUUIDValue = (id) =>
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id ?? ""));
@@ -115,6 +120,7 @@ const EmergencyRequestModal = React.memo(({
 	const { setHeaderState } = useHeaderState();
 	const { user } = useAuth();
 	const { signInWithProvider } = useSocialAuth();
+	const { width, isWeb } = useAuthViewport();
 	const hasSignedInUser = Boolean(user?.id);
 	// MODULAR STEPS: 0: select, 1: payment, 2: dispatched
 	const [requestStep, setRequestStep] = useState("select");
@@ -143,11 +149,40 @@ const EmergencyRequestModal = React.memo(({
 	const transactionCardShadowLayer = isDarkMode
 		? "rgba(0, 0, 0, 0.24)"
 		: "rgba(15, 23, 42, 0.12)";
+	const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);
+	const [bedType, setBedType] = useState("standard");
+	const [bedCount, setBedCount] = useState(2);
+	const [isRequesting, setIsRequesting] = useState(false);
+	const [requestData, setRequestData] = useState(null);
+	const [errorMessage, setErrorMessage] = useState(null);
+	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+	const [estimatedCost, setEstimatedCost] = useState(null);
+	const [isCalculatingCost, setIsCalculatingCost] = useState(false);
+	const [dynamicServices, setDynamicServices] = useState([]);
+	const [isHydratingServices, setIsHydratingServices] = useState(false);
+	const [dynamicRooms, setDynamicRooms] = useState([]);
+	const [selectedRoomId, setSelectedRoomId] = useState(null);
+	const [bookingPricingReady, setBookingPricingReady] = useState(mode !== "booking");
+	const [prebookingCheckin, setPrebookingCheckin] = useState(null);
+	const [waitingCheckinDraft, setWaitingCheckinDraft] = useState(null);
+	const [triageModalVisible, setTriageModalVisible] = useState(false);
+	const [triageModalPhase, setTriageModalPhase] = useState("prebooking");
+	const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
+	const [showOtherDispatchOptions, setShowOtherDispatchOptions] = useState(false);
+	const [serviceDetailSelection, setServiceDetailSelection] = useState(null);
 
 	// --- Header Synchronization ---
 	useEffect(() => {
 		const hospitalName = requestHospital?.name || "Medical Center";
 		const isWaiting = requestStep === "waiting_approval";
+		const rawSelectedDispatchLabel =
+			selectedAmbulanceType?.name ||
+			selectedAmbulanceType?.title ||
+			selectedAmbulanceType?.service_name ||
+			"";
+		const selectedDispatchLabel = /dispatch/i.test(rawSelectedDispatchLabel)
+			? getAmbulanceVisualProfile(selectedAmbulanceType).label
+			: rawSelectedDispatchLabel || getAmbulanceVisualProfile(selectedAmbulanceType).label;
 		const emergencyHeaderState = (() => {
 			if (isWaiting) {
 				return {
@@ -165,14 +200,28 @@ const EmergencyRequestModal = React.memo(({
 
 			if (currentStepIndex === 1) {
 				return {
-					title: mode === "booking" ? "Confirm request" : "Confirm dispatch",
-					subtitle: hospitalName ? hospitalName.toUpperCase() : "REQUEST",
+					title: mode === "booking" ? "Confirm request" : hospitalName,
+					subtitle:
+						mode === "booking"
+							? hospitalName
+								? hospitalName.toUpperCase()
+								: "REQUEST"
+							: selectedDispatchLabel
+								? selectedDispatchLabel.toUpperCase()
+								: "AMBULANCE DISPATCH",
 				};
 			}
 
 			return {
-				title: mode === "booking" ? "Choose stay" : "Confirm help",
-				subtitle: hospitalName ? hospitalName.toUpperCase() : "AMBULANCE",
+				title: mode === "booking" ? "Choose stay" : hospitalName,
+				subtitle:
+					mode === "booking"
+						? hospitalName
+							? hospitalName.toUpperCase()
+							: "STAY"
+						: selectedDispatchLabel
+							? selectedDispatchLabel.toUpperCase()
+							: "AMBULANCE DISPATCH",
 			};
 		})();
 
@@ -211,27 +260,11 @@ const EmergencyRequestModal = React.memo(({
 			hidden: false,
 			scrollAware: false,
 		});
-	}, [currentStepIndex, requestStep, requestHospital, mode, onRequestClose, steps, setHeaderState]);
-	const [selectedAmbulanceType, setSelectedAmbulanceType] = useState(null);
-	const [bedType, setBedType] = useState("standard");
-	const [bedCount, setBedCount] = useState(2);
-	const [isRequesting, setIsRequesting] = useState(false);
-	const [requestData, setRequestData] = useState(null);
-	const [errorMessage, setErrorMessage] = useState(null);
-	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
-	const [estimatedCost, setEstimatedCost] = useState(null);
-	const [isCalculatingCost, setIsCalculatingCost] = useState(false);
-	const [dynamicServices, setDynamicServices] = useState([]);
-	const [isHydratingServices, setIsHydratingServices] = useState(false);
-	const [dynamicRooms, setDynamicRooms] = useState([]);
-	const [selectedRoomId, setSelectedRoomId] = useState(null);
-	const [bookingPricingReady, setBookingPricingReady] = useState(mode !== "booking");
-	const [prebookingCheckin, setPrebookingCheckin] = useState(null);
-	const [waitingCheckinDraft, setWaitingCheckinDraft] = useState(null);
-	const [triageModalVisible, setTriageModalVisible] = useState(false);
-	const [triageModalPhase, setTriageModalPhase] = useState("prebooking");
-	const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
-	const [showOtherDispatchOptions, setShowOtherDispatchOptions] = useState(false);
+	}, [currentStepIndex, requestStep, requestHospital, mode, onRequestClose, selectedAmbulanceType, setHeaderState, steps]);
+	const emergencyRequestVariant = useMemo(
+		() => getEmergencyIntakeVariant({ platform: Platform.OS, isWeb, width }),
+		[isWeb, width],
+	);
 	const formattedPaymentAmount = useMemo(() => {
 		const total = Number(estimatedCost?.totalCost);
 		if (Number.isFinite(total) && total > 0) {
@@ -318,6 +351,23 @@ const EmergencyRequestModal = React.memo(({
 	const closeTriageModal = useCallback(() => {
 		setTriageModalVisible(false);
 	}, []);
+
+	const openServiceDetailSheet = useCallback((service) => {
+		if (!service) return;
+		setServiceDetailSelection(service);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+	}, []);
+
+	const closeServiceDetailSheet = useCallback(() => {
+		setServiceDetailSelection(null);
+	}, []);
+
+	const handleDispatchOptionPreview = useCallback((type) => {
+		if (!type) return;
+		setSelectedAmbulanceType(type);
+		setShowOtherDispatchOptions(false);
+		openServiceDetailSheet(type);
+	}, [openServiceDetailSheet]);
 
 	const handleWaitingDraftChange = useCallback(
 		(nextDraft) => {
@@ -1430,7 +1480,7 @@ const EmergencyRequestModal = React.memo(({
 					label: formattedPaymentAmount ? `Confirm dispatch (${formattedPaymentAmount})` : 'Confirm dispatch',
 					visible: true,
 					onPress: handleSubmitRequest,
-					style: 'success',
+					style: 'emergency',
 					haptic: 'heavy',
 					priority: 30,
 					animation: 'prominent',
@@ -1456,7 +1506,7 @@ const EmergencyRequestModal = React.memo(({
 				visible: true,
 				onPress: handleSubmitRequest,
 				loading: isRequesting,
-				style: 'success',
+				style: mode === "booking" ? 'success' : 'emergency',
 				haptic: 'heavy',
 				priority: 30,
 				animation: 'prominent',
@@ -1492,6 +1542,7 @@ const EmergencyRequestModal = React.memo(({
 		const defaultAmbulance = AMBULANCE_TYPES.find(t => t.id === "standard");
 		setSelectedAmbulanceType(defaultAmbulance || null);
 		setShowOtherDispatchOptions(false);
+		setServiceDetailSelection(null);
 
 		setBedType("standard");
 		setBedCount(1);
@@ -1583,6 +1634,65 @@ const EmergencyRequestModal = React.memo(({
 	const primaryEtaText = recommendedDispatchOption?.eta
 		? `Arriving in ~${String(recommendedDispatchOption.eta).replace(/^~/, "").trim()}`
 		: "Arriving soon";
+	const triageEntryCard = (
+		<Pressable
+			onPress={() => openTriageModal("prebooking")}
+			style={[
+				styles.triageEntryCard,
+				{
+					backgroundColor: requestColors.card,
+					borderColor: requestColors.border,
+				},
+			]}
+		>
+			<View style={styles.triageEntryIcon}>
+				<Ionicons name="chatbubble-ellipses-outline" size={18} color={COLORS.brandPrimary} />
+			</View>
+			<View style={{ flex: 1 }}>
+				<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}>
+					Add details
+				</Text>
+				<Text style={[styles.triageEntrySubtitle, { color: requestColors.textMuted }]}>Optional</Text>
+			</View>
+			<View style={styles.triageEntryAction}>
+				<Text style={styles.triageEntryActionText}>
+					{prebookingCheckin ? "Resume" : "Add"}
+				</Text>
+			</View>
+		</Pressable>
+	);
+	const dispatchSelectionContent = otherDispatchOptions.length > 0 ? (
+		<View style={styles.ambulanceSelectionContainer}>
+			<Pressable
+				onPress={() => setShowOtherDispatchOptions((prev) => !prev)}
+				style={styles.otherOptionsButton}
+			>
+				<Text style={[styles.otherOptionsButtonText, { color: requestColors.text }]}>
+					{showOtherDispatchOptions ? 'Hide other teams' : 'Other teams'}
+				</Text>
+				<Ionicons
+					name={showOtherDispatchOptions ? 'chevron-up' : 'chevron-down'}
+					size={18}
+					color={requestColors.textMuted}
+				/>
+			</Pressable>
+
+			{showOtherDispatchOptions
+				? otherDispatchOptions.map((type) => (
+					<AmbulanceTypeCard
+						key={type.id}
+						type={type}
+						selected={selectedAmbulanceType?.id === type.id}
+						onPress={() => handleDispatchOptionPreview(type)}
+						showCheckmark={false}
+						statusLine={`Arriving in ~${String(type.eta).replace(/^~/, '').trim()}`}
+						textColor={requestColors.text}
+						mutedColor={requestColors.textMuted}
+					/>
+				))
+				: null}
+		</View>
+	) : null;
 
 	return (
 		<View style={styles.container}>
@@ -1727,115 +1837,29 @@ const EmergencyRequestModal = React.memo(({
 								</Pressable>
 							</View>
 						) : (
-							<View style={styles.ambulanceSelectionContainer}>
-								{showServiceSkeletons
-									? Array.from({ length: 2 }).map((_, index) => (
-										<View
-											key={`ambulance-skeleton-${index}`}
-											style={[
-												styles.serviceSkeletonCard,
-												{
-													backgroundColor: requestColors.card,
-													borderColor: requestColors.border,
-												},
-											]}
-										>
-											<View style={[styles.serviceSkeletonIcon, { backgroundColor: serviceSkeletonBase }]} />
-											<View style={styles.serviceSkeletonBody}>
-												<View style={[styles.serviceSkeletonLinePrimary, { backgroundColor: serviceSkeletonBase }]} />
-												<View style={[styles.serviceSkeletonLineSecondary, { backgroundColor: serviceSkeletonSoft }]} />
-												<View style={styles.serviceSkeletonMetaRow}>
-													<View style={[styles.serviceSkeletonChip, { backgroundColor: serviceSkeletonSoft }]} />
-													<View style={[styles.serviceSkeletonChipShort, { backgroundColor: serviceSkeletonSoft }]} />
-												</View>
-											</View>
-										</View>
-									))
-									: recommendedDispatchOption ? (
-										<>
-											<AmbulanceTypeCard
-												key={recommendedDispatchOption.id}
-												type={recommendedDispatchOption}
-												selected={true}
-												interactive={false}
-												showCheckmark={false}
-												statusLine={primaryEtaText}
-												badgeLabel={hasMultipleDispatchOptions ? 'Recommended' : null}
-												textColor={requestColors.text}
-												mutedColor={requestColors.textMuted}
-											/>
-
-											{otherDispatchOptions.length > 0 ? (
-												<>
-													<Pressable
-														onPress={() => setShowOtherDispatchOptions((prev) => !prev)}
-														style={[
-															styles.otherOptionsButton,
-															{
-																backgroundColor: requestColors.card,
-																borderColor: requestColors.border,
-															},
-														]}
-													>
-														<Text style={[styles.otherOptionsButtonText, { color: requestColors.text }]}>
-															{showOtherDispatchOptions ? 'Hide other options' : 'Other options'}
-														</Text>
-														<Ionicons
-															name={showOtherDispatchOptions ? 'chevron-up' : 'chevron-down'}
-															size={18}
-															color={requestColors.textMuted}
-														/>
-													</Pressable>
-
-													{showOtherDispatchOptions
-														? otherDispatchOptions.map((type) => (
-															<AmbulanceTypeCard
-																key={type.id}
-																type={type}
-																selected={selectedAmbulanceType?.id === type.id}
-																onPress={() => {
-																	setSelectedAmbulanceType(type);
-																	setShowOtherDispatchOptions(false);
-																}}
-																showCheckmark={false}
-																statusLine={`Arriving in ~${String(type.eta).replace(/^~/, '').trim()}`}
-																textColor={requestColors.text}
-																mutedColor={requestColors.textMuted}
-															/>
-														))
-														: null}
-												</>
-											) : null}
-										</>
-									) : null}
-							</View>
+							<EmergencyChooseResourceStageOrchestrator
+								variant={emergencyRequestVariant}
+								requestColors={requestColors}
+								hospitalName={hospitalName}
+								requestHospital={requestHospital}
+								intakeDraft={intakeDraft}
+								selectedSpecialty={selectedSpecialty}
+								primaryEtaText={primaryEtaText}
+								formattedPaymentAmount={formattedPaymentAmount}
+								recommendedDispatchOption={recommendedDispatchOption}
+								hasMultipleDispatchOptions={hasMultipleDispatchOptions}
+								availableDispatchOptions={normalizedAmbulanceOptions}
+								selectedDispatchOptionId={selectedAmbulanceType?.id || null}
+								onSelectDispatchOption={(option) => {
+									if (!option) return;
+									setSelectedAmbulanceType(option);
+									setShowOtherDispatchOptions(false);
+								}}
+								triageCard={triageEntryCard}
+								onOpenServiceDetails={openServiceDetailSheet}
+							/>
 						)}
 
-						<Pressable
-							onPress={() => openTriageModal("prebooking")}
-							style={[
-								styles.triageEntryCard,
-								{
-									backgroundColor: requestColors.card,
-									borderColor: requestColors.border,
-								},
-							]}
-						>
-							<View style={styles.triageEntryIcon}>
-								<Ionicons name="chatbubble-ellipses-outline" size={18} color={COLORS.brandPrimary} />
-							</View>
-							<View style={{ flex: 1 }}>
-								<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}> 
-									Add details
-								</Text>
-								<Text style={[styles.triageEntrySubtitle, { color: requestColors.textMuted }]}>Optional</Text>
-							</View>
-							<View style={styles.triageEntryAction}>
-								<Text style={styles.triageEntryActionText}>
-									{prebookingCheckin ? "Resume" : "Add"}
-								</Text>
-							</View>
-						</Pressable>
 					</>
 				) : requestStep === "payment" ? (
 					<>
@@ -2123,6 +2147,31 @@ const EmergencyRequestModal = React.memo(({
 				)}
 			</ScrollView >
 
+			<AmbulanceServiceDetailSheet
+				visible={Boolean(serviceDetailSelection)}
+				service={serviceDetailSelection}
+				onClose={closeServiceDetailSheet}
+				onConfirm={() => {
+					if (serviceDetailSelection) {
+						setSelectedAmbulanceType(serviceDetailSelection);
+					}
+					setShowOtherDispatchOptions(false);
+					closeServiceDetailSheet();
+				}}
+				isSelected={serviceDetailSelection?.id === selectedAmbulanceType?.id}
+				requestColors={requestColors}
+				pickupLine={
+					typeof intakeDraft?.locationLabel === "string" && intakeDraft.locationLabel.trim().length > 0
+						? intakeDraft.locationLabel.trim()
+						: typeof requestHospital?.address === "string" && requestHospital.address.trim().length > 0
+							? requestHospital.address.trim()
+							: "Location confirmed"
+				}
+				hospitalName={requestHospital?.name || "Medical Center"}
+				costLine={formattedPaymentAmount || serviceDetailSelection?.price || "Price shown before you send"}
+				etaText={serviceDetailSelection?.eta ? `Arriving in ~${String(serviceDetailSelection.eta).replace(/^~/, '').trim()}` : primaryEtaText}
+			/>
+
 			<TriageIntakeModal
 				visible={triageModalVisible}
 				onClose={closeTriageModal}
@@ -2210,10 +2259,12 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 14,
 		paddingVertical: 12,
 		borderRadius: 16,
-		borderWidth: 1,
+		borderWidth: 0,
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
+		shadowOpacity: 0,
+		elevation: 0,
 	},
 	otherOptionsButtonText: {
 		fontSize: 14,
@@ -2223,7 +2274,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		borderRadius: 18,
-		borderWidth: 1,
+		borderWidth: 0,
 		paddingHorizontal: 14,
 		paddingVertical: 16,
 		marginBottom: 8,
@@ -2278,12 +2329,18 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 4,
 	},
 	triageEntryCard: {
-		marginTop: 14,
+		marginTop: 10,
+		width: "100%",
+		maxWidth: 460,
+		alignSelf: "center",
 		borderRadius: 18,
-		paddingVertical: 12,
-		paddingHorizontal: 12,
+		paddingVertical: 14,
+		paddingHorizontal: 14,
 		flexDirection: "row",
 		alignItems: "center",
+		justifyContent: "space-between",
+		gap: 10,
+		borderWidth: 0,
 	},
 	triageEntryIcon: {
 		width: 34,
@@ -2304,8 +2361,10 @@ const styles = StyleSheet.create({
 		lineHeight: 16,
 	},
 	triageEntryAction: {
-		paddingHorizontal: 10,
-		paddingVertical: 8,
+		paddingHorizontal: 4,
+		paddingVertical: 4,
+		alignItems: "flex-end",
+		justifyContent: "center",
 	},
 	triageEntryActionText: {
 		fontSize: 12,

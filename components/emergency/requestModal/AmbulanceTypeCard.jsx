@@ -3,6 +3,8 @@ import { View, Text, Pressable, StyleSheet, Dimensions, Platform } from "react-n
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
 import { useTheme } from "../../../contexts/ThemeContext";
+import AmbulanceTierProductGraphic from "./AmbulanceTierProductGraphic";
+import { getAmbulanceVisualProfile } from "./ambulanceTierVisuals";
 
 const { width } = Dimensions.get("window");
 
@@ -23,32 +25,20 @@ export default function AmbulanceTypeCard({
 	// Dynamic Styles based on your logic
 	const activeBG = selected
 		? (isAndroid
-			? (isDarkMode ? "rgba(134, 16, 14, 0.24)" : "rgba(134, 16, 14, 0.12)")
-			: (isDarkMode ? COLORS.brandPrimary + "20" : COLORS.brandPrimary + "15"))
+			? (isDarkMode ? "rgba(134, 16, 14, 0.18)" : "rgba(134, 16, 14, 0.08)")
+			: (isDarkMode ? "rgba(134, 16, 14, 0.14)" : "rgba(134, 16, 14, 0.06)"))
 		: (isAndroid
 			? (isDarkMode ? "rgba(18, 24, 38, 0.74)" : "rgba(255, 255, 255, 0.78)")
-			: (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)"));
+			: (isDarkMode ? "rgba(255,255,255,0.045)" : "rgba(15,23,42,0.03)"));
 	const shadowLayerColor = selected
-		? (isDarkMode ? "rgba(134, 16, 14, 0.20)" : "rgba(134, 16, 14, 0.12)")
-		: (isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)");
-
-	return (
-		<Pressable
-			onPress={interactive ? onPress : undefined}
-			disabled={!interactive}
-			style={({ pressed }) => [
-				styles.card,
-				{
-					backgroundColor: activeBG,
-					transform: [{ scale: interactive && pressed ? 0.98 : 1 }],
-					// Using shadow instead of borders for depth
-					shadowColor: selected ? COLORS.brandPrimary : "#000",
-					shadowOpacity: isAndroid ? 0 : (isDarkMode ? 0.15 : 0.08),
-					elevation: isAndroid ? 0 : (selected ? 10 : 2),
-					opacity: interactive ? 1 : 0.98,
-				},
-			]}
-		>
+		? (isDarkMode ? "rgba(134, 16, 14, 0.14)" : "rgba(134, 16, 14, 0.08)")
+		: (isDarkMode ? "rgba(0, 0, 0, 0.18)" : "rgba(15, 23, 42, 0.08)");
+	const staticSurfaceColor = selected
+		? (isDarkMode ? "rgba(134, 16, 14, 0.16)" : "rgba(134, 16, 14, 0.08)")
+		: activeBG;
+	const visualProfile = getAmbulanceVisualProfile(type);
+	const cardContent = (
+		<>
 			{isAndroid && (
 				<View
 					pointerEvents="none"
@@ -60,21 +50,33 @@ export default function AmbulanceTypeCard({
 			<View style={styles.header}>
 				<View
 					style={[
-						styles.iconBox,
+						styles.visualShell,
 						{
-							backgroundColor: selected
-								? COLORS.brandPrimary
-								: isDarkMode
-								? "#1E293B"
-								: "#F1F5F9",
+							backgroundColor: isDarkMode
+								? `${visualProfile.accent}22`
+								: `${visualProfile.accent}14`,
 						},
 					]}
 				>
-					<Ionicons
-						name={type.icon}
-						size={26}
-						color={selected ? "#FFFFFF" : isDarkMode ? "#94A3B8" : "#64748B"}
-					/>
+					<AmbulanceTierProductGraphic type={type} width={60} height={44} />
+					<View
+						style={[
+							styles.visualIconBadge,
+							{
+								backgroundColor: selected
+									? COLORS.brandPrimary
+									: isDarkMode
+										? "rgba(15,23,42,0.82)"
+										: "rgba(255,255,255,0.92)",
+							},
+						]}
+					>
+						<Ionicons
+							name={type.icon}
+							size={12}
+							color={selected ? "#FFFFFF" : visualProfile.accent}
+						/>
+					</View>
 				</View>
 
 				<View style={styles.headerRight}>
@@ -84,9 +86,7 @@ export default function AmbulanceTypeCard({
 						</View>
 					) : null}
 					<View style={styles.priceContainer}>
-						<Text style={[styles.priceLabel, { color: mutedColor }]}>
-							Estimated cost
-						</Text>
+						<Text style={[styles.priceLabel, { color: mutedColor }]}>Base fare</Text>
 						<Text style={[styles.priceValue, { color: textColor }]}>
 							{type.price}
 						</Text>
@@ -96,6 +96,9 @@ export default function AmbulanceTypeCard({
 
 			{/* Middle: Title & Description */}
 			<View style={styles.content}>
+				<Text style={[styles.tierEyebrow, { color: visualProfile.accent }]}>
+					{visualProfile.label}
+				</Text>
 				{statusLine ? (
 					<Text style={[styles.statusLine, { color: selected ? "#FDE68A" : COLORS.brandPrimary }]}>
 						{statusLine}
@@ -155,7 +158,11 @@ export default function AmbulanceTypeCard({
 				</View>
 
 				{/* The Checkmark - Occupying bottom right corner */}
-				{selected && showCheckmark && (
+				{interactive ? (
+					<View style={styles.chevronHint}>
+						<Ionicons name="chevron-forward" size={18} color={mutedColor} />
+					</View>
+				) : selected && showCheckmark ? (
 					<View style={styles.checkmarkWrapper}>
 						<Ionicons
 							name="checkmark-circle"
@@ -163,8 +170,45 @@ export default function AmbulanceTypeCard({
 							color={COLORS.brandPrimary}
 						/>
 					</View>
-				)}
+				) : null}
 			</View>
+		</>
+	);
+
+	if (!interactive) {
+		return (
+			<View
+				style={[
+					styles.card,
+					styles.staticCard,
+					{
+						backgroundColor: staticSurfaceColor,
+						shadowColor: selected ? COLORS.brandPrimary : "#000",
+						shadowOpacity: isAndroid ? 0 : (isDarkMode ? 0.08 : 0.04),
+						elevation: 0,
+					},
+				]}
+			>
+				{cardContent}
+			</View>
+		);
+	}
+
+	return (
+		<Pressable
+			onPress={onPress}
+			style={({ pressed }) => [
+				styles.card,
+				{
+					backgroundColor: activeBG,
+					transform: [{ scale: pressed ? 0.98 : 1 }],
+					shadowColor: selected ? COLORS.brandPrimary : "#000",
+					shadowOpacity: isAndroid ? 0 : (isDarkMode ? 0.15 : 0.08),
+					elevation: isAndroid ? 0 : (selected ? 10 : 2),
+				},
+			]}
+		>
+			{cardContent}
 		</Pressable>
 	);
 }
@@ -172,15 +216,14 @@ export default function AmbulanceTypeCard({
 const styles = StyleSheet.create({
 	card: {
 		width: "100%",
-		padding: 24,
-		borderRadius: 36, // Maximum roundness
-		marginBottom: 16,
-		minHeight: 190, // Increased vertical space
+		padding: 20,
+		borderRadius: 28,
+		marginBottom: 12,
+		minHeight: 172,
 		justifyContent: "space-between",
 		position: "relative",
-		// Note: No borders applied as per request
-		shadowOffset: { width: 0, height: 12 },
-		shadowRadius: 16,
+		shadowOffset: { width: 0, height: 10 },
+		shadowRadius: 18,
 	},
 	androidShadowLayer: {
 		position: "absolute",
@@ -189,6 +232,9 @@ const styles = StyleSheet.create({
 		right: 0,
 		bottom: -2,
 		borderRadius: 36,
+	},
+	staticCard: {
+		marginBottom: 12,
 	},
 	header: {
 		flexDirection: "row",
@@ -199,10 +245,26 @@ const styles = StyleSheet.create({
 		alignItems: "flex-end",
 		gap: 8,
 	},
-	iconBox: {
-		width: 54,
-		height: 54,
+	visualShell: {
+		width: 72,
+		height: 72,
 		borderRadius: 20,
+		alignItems: "center",
+		justifyContent: "center",
+		position: "relative",
+		overflow: "hidden",
+	},
+	visualImage: {
+		width: 60,
+		height: 60,
+	},
+	visualIconBadge: {
+		position: "absolute",
+		right: 6,
+		top: 6,
+		width: 22,
+		height: 22,
+		borderRadius: 11,
 		alignItems: "center",
 		justifyContent: "center",
 	},
@@ -223,9 +285,8 @@ const styles = StyleSheet.create({
 	},
 	priceLabel: {
 		fontSize: 11,
-		textTransform: "uppercase",
 		fontWeight: "700",
-		letterSpacing: 1,
+		letterSpacing: 0.2,
 		marginBottom: 2,
 	},
 	priceValue: {
@@ -235,6 +296,12 @@ const styles = StyleSheet.create({
 	},
 	content: {
 		marginTop: 12,
+	},
+	tierEyebrow: {
+		fontSize: 11,
+		fontWeight: "800",
+		letterSpacing: 0.4,
+		marginBottom: 4,
 	},
 	statusLine: {
 		fontSize: 15,
@@ -274,11 +341,14 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 		fontWeight: "700",
 	},
+	chevronHint: {
+		paddingLeft: 8,
+		paddingVertical: 6,
+	},
 	checkmarkWrapper: {
 		position: "absolute",
 		right: -4,
 		bottom: -4,
-		// Adding a small glow to the checkmark if needed
 		shadowColor: COLORS.brandPrimary,
 		shadowOpacity: 0.3,
 		shadowRadius: 10,
