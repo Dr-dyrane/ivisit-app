@@ -159,7 +159,7 @@ class RealtimeAvailabilityService {
         const { data, error } = await supabase
           .from('hospitals')
           .select('*')
-          .eq('verified', true)
+          .or('verified.eq.true,place_id.like.demo:%')
           .order('last_availability_update', { ascending: false })
           .limit(100);
 
@@ -248,7 +248,7 @@ class RealtimeAvailabilityService {
       const { data, error } = await supabase
         .from('hospitals')
         .select('*')
-        .eq('verified', true)
+        .or('verified.eq.true,place_id.like.demo:%')
         .order('last_availability_update', { ascending: false });
 
       if (error) {

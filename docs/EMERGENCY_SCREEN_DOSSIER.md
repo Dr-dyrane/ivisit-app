@@ -22,6 +22,7 @@ Related references:
 - [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)
 - [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
 - [EMERGENCY_INTEGRATION_AUDIT.md](./EMERGENCY_INTEGRATION_AUDIT.md)
+- [EMERGENCY_UX_PROGRESS_LOG_2026-04-06.md](./EMERGENCY_UX_PROGRESS_LOG_2026-04-06.md)
 - [rules.json](./rules.json)
 
 ## Semantic Lock
@@ -168,6 +169,8 @@ Current implementation checkpoint:
 - the proposed-hospital preview now uses skeleton-style map loading only; no activity indicator is allowed in this lane
 - review-map framing is now orientation-aware, so mostly horizontal routes are lifted into the visible top half of the map instead of collapsing toward the review sheet
 - the chosen intake location now also drives hospital coverage refresh and demo ecosystem backfill, so sparse live hospital data does not break the sponsor-review experience after location confirmation
+- demo coverage has now been hardened and reseeded so fallback hospitals behave like true responder-ready providers (`verified`, `available`, ambulance-linked, and clean-cycle checked)
+- a live guest-path validation at `2235 Corinto Court` now proves the system can reach a credible responder-ready state with `clean_cycle_ready: true`, `dispatch_ready: true`, and a real available ambulance in scope before auth is required
 - the `Where are you?` page-shell now follows the welcome-screen page contract more closely: the route is full-canvas, the stage no longer double-owns bottom safe-area spacing, and stage height is calculated after page padding instead of before it
 - the `Choose location` sheet now treats keyboard behavior as platform-specific: iOS uses a tighter, flush-to-keyboard bottom sheet path while Android keeps the keyboard-aware modal treatment
 
@@ -572,7 +575,7 @@ That separation solved both problems:
 
 There was a second crash path after the first route-preview fix.
 
-#### Symptom
+#### Crash Symptom
 
 The flow was stable when the user accepted the first proposed hospital.
 
@@ -592,7 +595,7 @@ Expo Go logs showed the JS path completing cleanly:
 
 Then iOS crashed after commit, which meant the failure was happening during the live review-map update rather than during the sheet interaction itself.
 
-#### Real Cause
+#### Crash Root Cause
 
 The visible review state was still mutating too aggressively during hospital swaps.
 

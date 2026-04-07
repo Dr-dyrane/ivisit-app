@@ -24,6 +24,7 @@ Primary doctrine still lives in:
 - [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)
 - [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
 - [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
+- [EMERGENCY_UX_PROGRESS_LOG_2026-04-06.md](./EMERGENCY_UX_PROGRESS_LOG_2026-04-06.md)
 
 ## Current Goal
 
@@ -128,6 +129,8 @@ Current emergency intake checkpoint:
 - spinner-based map loading has been removed from this lane; sponsor review now sees skeleton-only loading treatment
 - the iPhone committed-response checkpoint now uses the real emergency map contract instead of a placeholder matched card
 - matched and tracking states now reuse the existing trip-progress hook, live responder coordinates, telemetry health, and route map animation inside the iPhone review shell
+- demo fallback coverage has now been reseeded/backfilled and verified so sparse-coverage users can still enter a sponsor-credible responder-ready path without being stopped by missing verified hospitals
+- Corinto (`2235 Corinto Court`) has been used as a live proof point: the guest/no-auth intake now returns `clean_cycle_ready: true`, `dispatch_ready: true`, and an available ambulance for responder matching
 
 ## Why This Sprint Matters
 

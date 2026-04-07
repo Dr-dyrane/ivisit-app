@@ -468,7 +468,7 @@ const main = async () => {
         .from(TABLES.VISITS)
         .update({
           hospital_id: group.canonical.id,
-          hospital: group.canonical.name,
+          hospital_name: group.canonical.name,
           updated_at: new Date().toISOString(),
         })
         .in('id', donorVisitIds);

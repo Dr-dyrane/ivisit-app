@@ -298,6 +298,17 @@ export const demoEcosystemService = {
 			});
 		}
 
+		const finalSummary = summary.phaseResults?.summary?.summary;
+		if (finalSummary && finalSummary.clean_cycle_ready === false) {
+			const blockers = [];
+			if (finalSummary.coverage_ready !== true) blockers.push("coverage");
+			if (finalSummary.staffing_ready !== true) blockers.push("staffing");
+			if (finalSummary.pricing_ready !== true) blockers.push("pricing");
+			throw new Error(
+				`Demo provisioning incomplete${blockers.length ? `: ${blockers.join(", ")} not ready` : ""}`
+			);
+		}
+
 		return summary;
 	},
 

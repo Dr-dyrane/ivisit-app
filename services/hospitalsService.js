@@ -310,23 +310,25 @@ export const hospitalsService = {
 		const longitude = Number.isFinite(h?.longitude) ? Number(h.longitude) : (Number.isFinite(lngFromGeo) ? lngFromGeo : 0);
 		const hasValidCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude) && (latitude !== 0 || longitude !== 0);
 
-		const isVerified = h?.verified === true;
 		const featureList = toTextArray(h?.features);
 		const demoOwnerTag = featureList.find((flag) =>
 			flag.toLowerCase().startsWith("demo_owner:")
 		);
 		const demoOwner = demoOwnerTag ? demoOwnerTag.split(":")[1] || "" : "";
-		const verificationStatus = toText(
-			h?.verification_status,
-			isVerified ? "verified" : "pending"
-		);
-		const importedFromGoogle = h?.google_only === true;
-		const importedFromMapbox = h?.mapbox_only === true;
-		const importStatus = verificationStatus === "verified" ? "verified" : "pending";
 		const isDemoSeed =
 			featureList.some((flag) => flag.toLowerCase().includes("demo")) ||
-			verificationStatus.toLowerCase().startsWith("demo") ||
+			toText(h?.verification_status).toLowerCase().startsWith("demo") ||
 			toText(h?.place_id).toLowerCase().startsWith("demo:");
+		const isVerified = h?.verified === true || isDemoSeed;
+		const verificationStatus = isDemoSeed
+			? "verified"
+			: toText(
+				h?.verification_status,
+				isVerified ? "verified" : "pending"
+			);
+		const importedFromGoogle = h?.google_only === true;
+		const importedFromMapbox = h?.mapbox_only === true;
+		const importStatus = (isVerified || verificationStatus === "verified") ? "verified" : "pending";
 
 		const image = toText(
 			h?.image,

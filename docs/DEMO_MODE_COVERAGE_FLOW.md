@@ -15,7 +15,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 ## Data Rules
 - Demo entities are tagged and traceable:
   - `hospitals.place_id` starts with `demo:`
-  - `hospitals.verification_status = demo_verified`
+  - `hospitals.verified = true` and `hospitals.verification_status = verified` for experience continuity
   - `hospitals.features` contains `demo_seed`, `demo_verified`, `ivisit_demo`
 - Demo rows are safe to distinguish from live production rows.
 - Demo mode is user-level via `preferences.demo_mode_enabled`.
@@ -24,7 +24,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Coverage modal shows `Switch To Demo Experience` when live verified coverage is poor/none.
 - Demo bootstrap modal is non-dismissible while phases run.
 - Phase progress is explicit (`pending`, `running`, `completed`, `failed`).
-- Completion shows celebratory feedback and returns user to emergency map.
+- Completion should only be treated as success when the final summary reports `clean_cycle_ready = true`.
 - Banner reminder appears when demo mode is active.
 - User can toggle demo mode in **More > Demo Mode**.
 

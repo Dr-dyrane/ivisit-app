@@ -65,6 +65,7 @@ const LAGOS_DEMO_HOSPITAL_TEMPLATES = [
 
 const DEMO_FEATURE_FLAGS = [
   "demo_seed",
+  "demo_verified",
   "demo_complete",
   "ivisit_demo",
 ];
@@ -555,8 +556,10 @@ const ensureDemoHospitals = async (
       latitude,
       longitude,
       coordinates: toGeometryPoint(latitude, longitude),
-      verified: false,
-      verification_status: "not_certified",
+      // Demo hospitals must behave like fully dispatchable coverage providers in-app.
+      // We preserve demo provenance via place_id/features while surfacing them as verified.
+      verified: true,
+      verification_status: "verified",
       status: "available",
       organization_id: organizationId,
       org_admin_id: orgAdminId,
@@ -841,6 +844,8 @@ const getDemoSummary = async (admin: any, ctx: DemoContext, organizationId: stri
 
   let doctorsCount = 0;
   let ambulancesCount = 0;
+  let servicePricingCount = 0;
+  let roomPricingCount = 0;
 
   if (hospitalIds.length > 0) {
     const { count: doctors, error: doctorsError } = await admin
@@ -860,14 +865,46 @@ const getDemoSummary = async (admin: any, ctx: DemoContext, organizationId: stri
       throw new Error(`summary ambulances count failed: ${ambulancesError.message}`);
     }
     ambulancesCount = Number(ambulances || 0);
+
+    const { count: servicePricing, error: servicePricingError } = await admin
+      .from("service_pricing")
+      .select("id", { count: "exact", head: true })
+      .in("hospital_id", hospitalIds);
+    if (servicePricingError) {
+      throw new Error(`summary service pricing count failed: ${servicePricingError.message}`);
+    }
+    servicePricingCount = Number(servicePricing || 0);
+
+    const { count: roomPricing, error: roomPricingError } = await admin
+      .from("room_pricing")
+      .select("id", { count: "exact", head: true })
+      .in("hospital_id", hospitalIds);
+    if (roomPricingError) {
+      throw new Error(`summary room pricing count failed: ${roomPricingError.message}`);
+    }
+    roomPricingCount = Number(roomPricing || 0);
   }
+
+  const hospitalsReady = hospitals.length >= DEMO_MIN_HOSPITALS;
+  const staffingReady = hospitalsReady && doctorsCount >= hospitals.length && ambulancesCount >= hospitals.length;
+  const pricingReady = hospitalsReady
+    && servicePricingCount >= hospitals.length * SERVICE_PRICING_BASELINES.length
+    && roomPricingCount >= hospitals.length * ROOM_PRICING_BASELINES.length;
+  const dispatchReady = hospitalsReady && staffingReady;
+  const cleanCycleReady = dispatchReady && pricingReady;
 
   return {
     organization_id: organizationId,
     hospitals_count: hospitals.length,
     doctors_count: doctorsCount,
     ambulances_count: ambulancesCount,
-    coverage_ready: hospitals.length >= DEMO_MIN_HOSPITALS,
+    service_pricing_count: servicePricingCount,
+    room_pricing_count: roomPricingCount,
+    coverage_ready: hospitalsReady,
+    staffing_ready: staffingReady,
+    pricing_ready: pricingReady,
+    dispatch_ready: dispatchReady,
+    clean_cycle_ready: cleanCycleReady,
   };
 };
 
