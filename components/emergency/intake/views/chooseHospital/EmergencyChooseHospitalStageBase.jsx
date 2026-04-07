@@ -83,15 +83,15 @@ export default function EmergencyChooseHospitalStageBase({
 		typeof hospital?.name === "string" && hospital.name.trim().length > 0
 			? hospital.name.trim().charAt(0).toUpperCase()
 			: "H";
-	const panelMeta = [
+	const panelFacts = [
 		hospitalDistance
-			? { key: "distance", icon: "navigate-outline", label: hospitalDistance }
+			? { key: "distance", label: "Distance", value: hospitalDistance }
 			: null,
 		hospitalWaitTime
-			? { key: "wait", icon: "time-outline", label: `Wait ${hospitalWaitTime}` }
+			? { key: "wait", label: "Expected wait", value: hospitalWaitTime }
 			: null,
 		hospitalRating
-			? { key: "rating", icon: "star", label: hospitalRating }
+			? { key: "rating", label: "Rating", value: `${hospitalRating} / 5` }
 			: null,
 	].filter(Boolean);
 	const canRenderMap = showRouteMap && !!activeLocation && !!hospital;
@@ -110,11 +110,14 @@ export default function EmergencyChooseHospitalStageBase({
 						<Text style={styles.reviewSectionEyebrow}>Emergency destination</Text>
 						<View style={styles.reviewHeroMedia}>
 							{hospitalImageUri ? (
-								<Image
-									source={{ uri: hospitalImageUri }}
-									style={styles.reviewHeroImage}
-									resizeMode="cover"
-								/>
+								<>
+									<Image
+										source={{ uri: hospitalImageUri }}
+										style={styles.reviewHeroImage}
+										resizeMode="cover"
+									/>
+									<View style={styles.reviewHeroImageScrim} />
+								</>
 							) : (
 								<View style={styles.reviewHeroFallback}>
 									<Text style={styles.reviewHeroFallbackMonogram}>{hospitalInitial}</Text>
@@ -122,8 +125,8 @@ export default function EmergencyChooseHospitalStageBase({
 								</View>
 							)}
 							<View style={styles.reviewHeroBadge}>
-								<Ionicons name="medical-outline" size={12} color="#F8FAFC" />
-								<Text style={styles.reviewHeroBadgeText}>Ready for intake</Text>
+								<Ionicons name="navigate-outline" size={11} color="#F8FAFC" />
+								<Text style={styles.reviewHeroBadgeText}>Recommended route</Text>
 							</View>
 						</View>
 					</View>
@@ -147,16 +150,12 @@ export default function EmergencyChooseHospitalStageBase({
 				</View>
 				{useSideBySideLayout ? (
 					<View style={styles.reviewSummaryList}>
-						{panelMeta.length ? (
-							<View style={styles.reviewHospitalMetaRow}>
-								{panelMeta.map((item) => (
-									<View key={item.key} style={styles.reviewHospitalMetaChip}>
-										<Ionicons name={item.icon} size={13} color="#B91C1C" />
-										<Text style={styles.reviewHospitalMetaText}>{item.label}</Text>
-									</View>
-								))}
+						{panelFacts.map((item) => (
+							<View key={item.key} style={styles.reviewSummaryRow}>
+								<Text style={styles.reviewSummaryLabel}>{item.label}</Text>
+								<Text style={styles.reviewSummaryValue}>{item.value}</Text>
 							</View>
-						) : null}
+						))}
 						<View style={styles.reviewSummaryRow}>
 							<Text style={styles.reviewSummaryLabel}>Care focus</Text>
 							<Text style={styles.reviewSummaryValue} numberOfLines={2}>

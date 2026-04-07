@@ -110,13 +110,15 @@ export function createEmergencyIosMobileIntakeTheme({
 		stageMinHeight,
 		contentMaxWidth: isDesktop
 			? 1120
-			: isWebMd
-				? 720
-				: isWebSmWide
-					? 560
-					: isTablet
-						? 860
-						: isAndroidMobile
+			: isIosPad
+				? 1040
+				: isWebMd
+					? 720
+					: isWebSmWide
+						? 560
+						: isTablet
+							? 860
+							: isAndroidMobile
 							? 460
 							: isWebMobile
 								? 420
@@ -220,7 +222,7 @@ export function createEmergencyIosMobileIntakeTheme({
 			alignItems: "center",
 		},
 		padStage: {
-			maxWidth: 980,
+			maxWidth: isIosPad ? 1040 : 980,
 			alignItems: "stretch",
 		},
 		reviewStage: {
@@ -234,11 +236,11 @@ export function createEmergencyIosMobileIntakeTheme({
 			flexDirection: "row",
 			alignItems: "stretch",
 			justifyContent: "center",
-			gap: isIosPad ? 24 : isDesktop ? 28 : 20,
+			gap: isIosPad ? 18 : isDesktop ? 28 : 20,
 			paddingBottom: isIosPad ? 0 : 8,
 		},
 		reviewSplitMapPanel: {
-			flex: isIosPad ? 1.7 : 1,
+			flex: isIosPad ? 1.52 : 1,
 			position: "relative",
 			overflow: "hidden",
 			borderRadius: isIosPad ? 30 : isDesktop ? 40 : 34,
@@ -251,9 +253,9 @@ export function createEmergencyIosMobileIntakeTheme({
 			elevation: 0,
 		},
 		reviewSplitCardRail: {
-			width: isIosPad ? 320 : isDesktop ? 420 : 392,
-			maxWidth: isIosPad ? "35%" : "42%",
-			minWidth: isIosPad ? 300 : undefined,
+			width: isIosPad ? 390 : isDesktop ? 420 : 392,
+			maxWidth: isIosPad ? "41%" : "42%",
+			minWidth: isIosPad ? 360 : undefined,
 			justifyContent: "stretch",
 		},
 		reviewSplitSheet: {
@@ -537,21 +539,21 @@ export function createEmergencyIosMobileIntakeTheme({
 		},
 		reviewPanelLead: {
 			width: "100%",
-			marginBottom: 14,
+			marginBottom: 16,
 		},
 		reviewSectionEyebrow: {
 			color: colors.support,
-			fontSize: 11,
-			lineHeight: 14,
+			fontSize: 10,
+			lineHeight: 12,
 			fontWeight: "700",
-			letterSpacing: 1.05,
+			letterSpacing: 0.9,
 			textTransform: "uppercase",
-			marginBottom: 10,
+			marginBottom: 8,
 		},
 		reviewHeroMedia: {
 			width: "100%",
-			height: isIosPad ? 128 : isDesktop ? 144 : 120,
-			borderRadius: 22,
+			height: isIosPad ? 132 : isDesktop ? 108 : 96,
+			borderRadius: 20,
 			overflow: "hidden",
 			justifyContent: "flex-end",
 			backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(15, 23, 42, 0.06)",
@@ -559,6 +561,10 @@ export function createEmergencyIosMobileIntakeTheme({
 		reviewHeroImage: {
 			width: "100%",
 			height: "100%",
+		},
+		reviewHeroImageScrim: {
+			...StyleSheet.absoluteFillObject,
+			backgroundColor: isDarkMode ? "rgba(4, 8, 15, 0.32)" : "rgba(15, 23, 42, 0.18)",
 		},
 		reviewHeroFallback: {
 			flex: 1,
@@ -584,22 +590,22 @@ export function createEmergencyIosMobileIntakeTheme({
 		},
 		reviewHeroBadge: {
 			position: "absolute",
-			top: 12,
-			left: 12,
+			top: 10,
+			left: 10,
 			flexDirection: "row",
 			alignItems: "center",
-			gap: 6,
-			paddingHorizontal: 10,
-			paddingVertical: 6,
+			gap: 5,
+			paddingHorizontal: 9,
+			paddingVertical: 5,
 			borderRadius: 999,
-			backgroundColor: "rgba(2, 6, 23, 0.56)",
+			backgroundColor: "rgba(2, 6, 23, 0.42)",
 		},
 		reviewHeroBadgeText: {
 			color: "#F8FAFC",
-			fontSize: 11,
-			lineHeight: 13,
+			fontSize: 10,
+			lineHeight: 12,
 			fontWeight: "700",
-			letterSpacing: 0.2,
+			letterSpacing: 0.15,
 		},
 		quietLinkText: {
 			color: colors.helper,
@@ -660,7 +666,7 @@ export function createEmergencyIosMobileIntakeTheme({
 		},
 		reviewWell: {
 			paddingTop: isContextPanelSurface ? 18 : isWebMd || isIosPad ? 14 : 10,
-			paddingHorizontal: isContextPanelSurface ? 20 : isStackedHospitalReviewSurface ? 18 : 16,
+			paddingHorizontal: isIosPad ? 22 : isContextPanelSurface ? 20 : isStackedHospitalReviewSurface ? 18 : 16,
 			paddingBottom: isContextPanelSurface ? 20 : isStackedHospitalReviewSurface ? 16 : 14,
 			alignItems: isContextPanelSurface ? "stretch" : "center",
 			justifyContent: "flex-start",
@@ -679,7 +685,7 @@ export function createEmergencyIosMobileIntakeTheme({
 		reviewActions: {
 			width: "100%",
 			marginTop: isContextPanelSurface ? "auto" : isStackedHospitalReviewSurface ? 18 : 20,
-			paddingTop: isContextPanelSurface ? 20 : 0,
+			paddingTop: isContextPanelSurface ? 24 : 0,
 		},
 		matchedProgressWrap: {
 			width: "100%",
@@ -725,7 +731,7 @@ export function createEmergencyIosMobileIntakeTheme({
 			elevation: 0,
 		},
 		reviewCopyBlock: {
-			marginTop: 16,
+			marginTop: isContextPanelSurface ? 18 : 16,
 			width: "100%",
 			alignItems: isContextPanelSurface ? "flex-start" : "center",
 		},
@@ -788,8 +794,8 @@ export function createEmergencyIosMobileIntakeTheme({
 		},
 		reviewSummaryList: {
 			width: "100%",
-			marginTop: 14,
-			gap: 12,
+			marginTop: 18,
+			gap: 10,
 		},
 		reviewHospitalMetaRow: {
 			width: "100%",
@@ -814,17 +820,17 @@ export function createEmergencyIosMobileIntakeTheme({
 		},
 		reviewSummaryRow: {
 			width: "100%",
+			paddingVertical: 2,
 		},
 		reviewSummaryLabel: {
 			color: colors.support,
-			fontSize: 11,
-			lineHeight: 14,
-			fontWeight: "700",
-			letterSpacing: 0.95,
-			textTransform: "uppercase",
+			fontSize: 12,
+			lineHeight: 16,
+			fontWeight: "600",
+			letterSpacing: 0.1,
 		},
 		reviewSummaryValue: {
-			marginTop: 4,
+			marginTop: 2,
 			color: colors.headline,
 			fontSize: 14,
 			lineHeight: 20,
