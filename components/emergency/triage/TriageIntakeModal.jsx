@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-	ActivityIndicator,
 	Animated,
 	Easing,
 	Modal,
@@ -153,6 +152,9 @@ const getOptionIcon = (step, option) => {
 
 const shouldSpanFullWidth = (step, option, optionCount) => {
 	if (step?.field === "painScale") return false;
+	if (step?.field === "chiefComplaint") {
+		return ["chest_pain", "breathing_difficulty"].includes(String(option?.value || ""));
+	}
 	if (step?.field === "accessNotes") return true;
 	if (optionCount <= 2) return true;
 	return String(option?.label || "").length > 16;
@@ -168,7 +170,7 @@ const buildSteps = (phase, draft, showExtendedComplaints) => {
 			id: "chiefComplaint",
 			field: "chiefComplaint",
 			type: "single",
-			prompt: "What feels most wrong right now?",
+			prompt: "What is your most urgent concern right now?",
 			options: complaintOptions,
 		},
 		{
@@ -202,7 +204,7 @@ const buildSteps = (phase, draft, showExtendedComplaints) => {
 		{
 			id: "accessNotes",
 			field: "accessNotes",
-			type: "multi",
+			type: "single",
 			prompt: "Anything responders should know to get in fast?",
 			options: ACCESS_OPTIONS,
 		},
@@ -279,11 +281,11 @@ const TriageIntakeModal = ({
 	const [draft, setDraft] = useState(() => normalizeDraft(initialDraft));
 	const [stepIndex, setStepIndex] = useState(0);
 	const [showExtendedComplaints, setShowExtendedComplaints] = useState(false);
-	const [persisting, setPersisting] = useState(false);
-	const [aiLoading, setAiLoading] = useState(false);
+	const [, setPersisting] = useState(false);
+	const [, setAiLoading] = useState(false);
 	const [aiPrompt, setAiPrompt] = useState(null);
-	const [aiSource, setAiSource] = useState(null);
-	const [aiModel, setAiModel] = useState(null);
+	const [, setAiSource] = useState(null);
+	const [, setAiModel] = useState(null);
 	const persistTimerRef = useRef(null);
 	const draftStorageTimerRef = useRef(null);
 	const aiRequestRef = useRef(null);
@@ -479,11 +481,14 @@ const TriageIntakeModal = ({
 				step.field === "chiefComplaint" ? COMPLAINT_SIGNAL_MAP?.[optionValue] || null : null;
 			setDraft((prev) => ({ ...prev, [step.field]: optionValue, ...(impliedSignals || {}) }));
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-			if (step.type === "single" && safeStepIndex < steps.length - 1) {
-				setTimeout(() => moveStep(1), 100);
+			if (step.type !== "single") return;
+			if (safeStepIndex < steps.length - 1) {
+				setTimeout(() => moveStep(1), 90);
+				return;
 			}
+			setTimeout(() => onClose?.(), 120);
 		},
-		[safeStepIndex, steps.length, moveStep]
+		[safeStepIndex, steps.length, moveStep, onClose]
 	);
 
 	const toggleMulti = useCallback((step, value) => {
@@ -498,16 +503,12 @@ const TriageIntakeModal = ({
 	if (!activeStep) return null;
 
 	const bgColor = isDarkMode ? COLORS.bgDark : COLORS.bgLight;
-	const cardColor = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.82)";
+	const cardColor = isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.88)";
 	const textColor = isDarkMode ? COLORS.textLight : COLORS.textPrimary;
 	const mutedColor = isDarkMode ? COLORS.textMutedDark : COLORS.textMuted;
 	const phaseAccent = phase === "prebooking" ? COLORS.emergency : COLORS.brandPrimary;
 	const promptCopy = aiPrompt || activeStep.prompt;
-	const aiBadgeLabel = aiLoading
-		? "Personalizing..."
-		: aiSource === "anthropic"
-			? "AI Copilot"
-			: "Smart defaults";
+	const progressLabel = `Step ${safeStepIndex + 1} of ${steps.length}`;
 	const progressWidth = progressAnim.interpolate({
 		inputRange: [0, 1],
 		outputRange: ["0%", "100%"],
@@ -521,13 +522,11 @@ const TriageIntakeModal = ({
 						<Ionicons name="close" size={20} color={textColor} />
 					</Pressable>
 					<View style={styles.headerCenter}>
-						<Text style={[styles.headerTitle, { color: textColor }]}>Guided Intake</Text>
-						<Text style={[styles.headerSub, { color: mutedColor }]}>
-							{phase === "prebooking" ? "Fast routing check" : "Progressive waiting check"}
-						</Text>
+						<Text style={[styles.headerTitle, { color: textColor }]}>Tell us what’s happening</Text>
+						<Text style={[styles.headerSub, { color: mutedColor }]}>We’ll get you the right help</Text>
 					</View>
-					<View style={[styles.progressRing, { borderColor: phaseAccent }]}>
-						<Text style={[styles.progressText, { color: phaseAccent }]}>{progressPct}%</Text>
+					<View style={styles.stepCounterWrap}>
+						<Text style={[styles.stepCounterText, { color: mutedColor }]}>{progressLabel}</Text>
 					</View>
 				</View>
 				<View
@@ -565,79 +564,26 @@ const TriageIntakeModal = ({
 						<LinearGradient
 							colors={
 								isDarkMode
-									? ["rgba(59,130,246,0.17)", "rgba(124,58,237,0.12)", "rgba(17,24,39,0.28)"]
-									: ["rgba(239,68,68,0.10)", "rgba(14,165,233,0.12)", "rgba(255,255,255,0.22)"]
+									? ["rgba(255,255,255,0.02)", "rgba(255,255,255,0.03)", "rgba(255,255,255,0.015)"]
+									: ["rgba(255,255,255,0.72)", "rgba(248,250,252,0.88)", "rgba(255,255,255,0.76)"]
 							}
 							start={{ x: 0, y: 0 }}
 							end={{ x: 1, y: 1 }}
 							style={[styles.questionShell, { backgroundColor: cardColor }]}
 						>
-							<View
-								style={[
-									styles.shellOrb,
-									styles.shellOrbA,
-									{ backgroundColor: isDarkMode ? "rgba(248,113,113,0.15)" : "rgba(248,113,113,0.18)" },
-								]}
-							/>
-							<View
-								style={[
-									styles.shellOrb,
-									styles.shellOrbB,
-									{ backgroundColor: isDarkMode ? "rgba(14,165,233,0.14)" : "rgba(14,165,233,0.18)" },
-								]}
-							/>
-							<View style={styles.stepMetaRow}>
-								<View style={[styles.stepMetaPill, { backgroundColor: `${phaseAccent}1F` }]}>
-									<Text style={[styles.stepMetaPillText, { color: phaseAccent }]}>
-										{safeStepIndex + 1} / {steps.length}
-									</Text>
-								</View>
-								<View style={[styles.guidePill, { backgroundColor: `${phaseAccent}16` }]}>
-									<Text style={[styles.guidePillText, { color: phaseAccent }]}>
-										{activeStep.type === "multi" ? "Tap all that apply" : "Tap one to continue"}
-									</Text>
-								</View>
-							</View>
+
 
 							{critical ? (
 								<View style={styles.criticalPanel}>
 									<View style={[styles.criticalIconWrap, { backgroundColor: `${COLORS.emergency}1A` }]}>
 										<Ionicons name="warning-outline" size={20} color={COLORS.emergency} />
 									</View>
-									<Text style={[styles.questionText, { color: textColor }]}>Safety mode active now.</Text>
-									<Text style={[styles.helperText, { color: mutedColor }]}>
-										Keep airway clear, apply direct pressure for bleeding, and stay reachable for responders.
-									</Text>
+									<Text style={[styles.questionText, { color: textColor }]}>This sounds critical.</Text>
+									<Text style={[styles.helperText, { color: mutedColor }]}>Stay reachable and keep the area clear for responders.</Text>
 								</View>
 							) : (
 								<>
-									<Text style={[styles.questionPreamble, { color: mutedColor }]}>iVisit guide</Text>
 									<Text style={[styles.questionText, { color: textColor }]}>{promptCopy}</Text>
-									<View style={styles.aiMetaRow}>
-										<View
-											style={[
-												styles.aiMetaPill,
-												{
-													backgroundColor:
-														aiSource === "anthropic"
-															? `${phaseAccent}24`
-															: isDarkMode
-																? "rgba(255,255,255,0.08)"
-																: "rgba(15,23,42,0.08)",
-												},
-											]}
-										>
-											{aiLoading ? <ActivityIndicator size="small" color={phaseAccent} /> : null}
-											<Text style={[styles.aiMetaText, { color: aiSource === "anthropic" ? phaseAccent : mutedColor }]}>
-												{aiBadgeLabel}
-											</Text>
-										</View>
-										{aiSource === "anthropic" && aiModel ? (
-											<Text style={[styles.aiModelText, { color: mutedColor }]} numberOfLines={1}>
-												{aiModel}
-											</Text>
-										) : null}
-									</View>
 									<View style={styles.optionsGrid}>
 										{activeStep.options.map((option) => {
 											const selected =
@@ -702,7 +648,7 @@ const TriageIntakeModal = ({
 											style={[styles.showMoreButton, { borderColor: `${phaseAccent}40` }]}
 										>
 											<Ionicons name="add-circle-outline" size={14} color={phaseAccent} />
-											<Text style={[styles.showMoreText, { color: phaseAccent }]}>Show more options</Text>
+											<Text style={[styles.showMoreText, { color: phaseAccent }]}>More symptoms</Text>
 										</Pressable>
 									) : null}
 								</>
@@ -711,54 +657,6 @@ const TriageIntakeModal = ({
 					</Animated.View>
 				</ScrollView>
 
-				<View style={styles.footer}>
-					<Pressable
-						onPress={() => moveStep(-1)}
-						disabled={safeStepIndex <= 0}
-						style={[
-							styles.footerButton,
-							safeStepIndex <= 0 ? styles.footerButtonDisabled : null,
-							{ backgroundColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)" },
-						]}
-					>
-						<Text style={[styles.footerActionText, { color: safeStepIndex <= 0 ? mutedColor : textColor }]}>
-							Back
-						</Text>
-					</Pressable>
-					<Pressable
-						onPress={() => moveStep(1)}
-						style={[
-							styles.footerButton,
-							{
-								backgroundColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)",
-							},
-						]}
-					>
-						<Text style={[styles.footerActionText, { color: mutedColor }]}>Skip</Text>
-					</Pressable>
-					<Pressable
-						onPress={() => (safeStepIndex >= steps.length - 1 ? onClose?.() : moveStep(1))}
-						style={[styles.footerButton, { backgroundColor: phaseAccent }]}
-					>
-						<Text style={[styles.footerActionText, { color: "#FFFFFF" }]}>
-							{safeStepIndex >= steps.length - 1 ? "Done" : "Next"}
-						</Text>
-					</Pressable>
-				</View>
-				{persisting ? (
-					<View
-						style={[
-							styles.persistingBadge,
-							{
-								backgroundColor: isDarkMode ? "rgba(15,23,42,0.70)" : "rgba(255,255,255,0.92)",
-								borderColor: isDarkMode ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.08)",
-							},
-						]}
-					>
-						<ActivityIndicator size="small" color={phaseAccent} />
-						<Text style={[styles.persistingText, { color: mutedColor }]}>Saving in background...</Text>
-					</View>
-				) : null}
 			</SafeAreaView>
 		</Modal>
 	);
@@ -786,30 +684,27 @@ const styles = StyleSheet.create({
 	headerCenter: {
 		flex: 1,
 		alignItems: "center",
+		paddingHorizontal: 10,
 	},
 	headerTitle: {
-		fontSize: 19,
+		fontSize: 17,
 		fontWeight: "900",
+		textAlign: "center",
 	},
 	headerSub: {
 		fontSize: 12,
 		marginTop: 3,
 	},
-	progressRing: {
-		width: 46,
-		height: 46,
-		borderRadius: 23,
-		borderWidth: 3,
-		alignItems: "center",
-		justifyContent: "center",
+	stepCounterWrap: {
+		minWidth: 72,
+		alignItems: "flex-end",
 	},
-	progressText: {
-		fontSize: 11,
-		fontWeight: "900",
-		color: COLORS.brandPrimary,
+	stepCounterText: {
+		fontSize: 12,
+		fontWeight: "700",
 	},
 	progressTrack: {
-		height: 7,
+		height: 5,
 		borderRadius: 999,
 		overflow: "hidden",
 		marginHorizontal: 16,
@@ -822,18 +717,20 @@ const styles = StyleSheet.create({
 		marginTop: 10,
 	},
 	questionShell: {
-		borderRadius: 24,
-		padding: 18,
+		borderRadius: 28,
+		paddingHorizontal: 16,
+		paddingVertical: 18,
 		overflow: "hidden",
 		position: "relative",
-		marginHorizontal: 8,
+		marginHorizontal: 4,
+		minHeight: 0,
 	},
 	questionScroll: {
 		flex: 1,
 		marginTop: 8,
 	},
 	questionScrollContent: {
-		paddingBottom: 12,
+		paddingBottom: 28,
 	},
 	shellOrb: {
 		position: "absolute",
@@ -851,30 +748,6 @@ const styles = StyleSheet.create({
 		bottom: -30,
 		left: -22,
 	},
-	stepMetaRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		marginBottom: 12,
-	},
-	stepMetaPill: {
-		paddingHorizontal: 10,
-		paddingVertical: 5,
-		borderRadius: 999,
-	},
-	stepMetaPillText: {
-		fontSize: 11,
-		fontWeight: "900",
-	},
-	guidePill: {
-		paddingHorizontal: 10,
-		paddingVertical: 5,
-		borderRadius: 999,
-	},
-	guidePillText: {
-		fontSize: 11,
-		fontWeight: "700",
-	},
 	criticalPanel: {
 		paddingVertical: 6,
 	},
@@ -886,47 +759,16 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		marginBottom: 10,
 	},
-	questionPreamble: {
-		fontSize: 12,
-		fontWeight: "700",
-		textTransform: "uppercase",
-		letterSpacing: 0.8,
-	},
 	questionText: {
-		fontSize: 29,
+		fontSize: 27,
 		fontWeight: "900",
-		lineHeight: 35,
-		marginTop: 8,
+		lineHeight: 34,
+		marginTop: 4,
 	},
 	helperText: {
 		marginTop: 10,
 		fontSize: 15,
 		lineHeight: 22,
-	},
-	aiMetaRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		marginTop: 14,
-	},
-	aiMetaPill: {
-		paddingHorizontal: 10,
-		paddingVertical: 6,
-		borderRadius: 999,
-		flexDirection: "row",
-		alignItems: "center",
-	},
-	aiMetaText: {
-		fontSize: 12,
-		fontWeight: "700",
-		marginLeft: 6,
-	},
-	aiModelText: {
-		fontSize: 11,
-		fontWeight: "600",
-		flex: 1,
-		textAlign: "right",
-		marginLeft: 10,
 	},
 	optionsGrid: {
 		marginTop: 16,
@@ -969,7 +811,7 @@ const styles = StyleSheet.create({
 		alignSelf: "flex-start",
 		paddingVertical: 8,
 		paddingHorizontal: 12,
-		borderRadius: 12,
+		borderRadius: 999,
 		borderWidth: 1,
 		flexDirection: "row",
 		alignItems: "center",
@@ -978,43 +820,6 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		fontWeight: "700",
 		marginLeft: 6,
-	},
-	footer: {
-		paddingTop: 10,
-		paddingBottom: 8,
-		flexDirection: "row",
-		gap: 8,
-		marginHorizontal: 8,
-	},
-	footerButton: {
-		flex: 1,
-		minHeight: 42,
-		borderRadius: 13,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	footerButtonDisabled: {
-		opacity: 0.45,
-	},
-	footerActionText: {
-		fontSize: 14,
-		fontWeight: "800",
-	},
-	persistingBadge: {
-		position: "absolute",
-		bottom: 12,
-		alignSelf: "center",
-		flexDirection: "row",
-		alignItems: "center",
-		paddingHorizontal: 12,
-		paddingVertical: 7,
-		borderRadius: 999,
-		borderWidth: 1,
-	},
-	persistingText: {
-		marginLeft: 8,
-		fontSize: 12,
-		fontWeight: "600",
 	},
 });
 

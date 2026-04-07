@@ -12,6 +12,10 @@ export default function AmbulanceTypeCard({
 	onPress,
 	textColor,
 	mutedColor,
+	interactive = true,
+	showCheckmark = true,
+	statusLine = null,
+	badgeLabel = null,
 }) {
 	const { isDarkMode } = useTheme();
 	const isAndroid = Platform.OS === "android";
@@ -30,16 +34,18 @@ export default function AmbulanceTypeCard({
 
 	return (
 		<Pressable
-			onPress={onPress}
+			onPress={interactive ? onPress : undefined}
+			disabled={!interactive}
 			style={({ pressed }) => [
 				styles.card,
 				{
 					backgroundColor: activeBG,
-					transform: [{ scale: pressed ? 0.98 : 1 }],
+					transform: [{ scale: interactive && pressed ? 0.98 : 1 }],
 					// Using shadow instead of borders for depth
 					shadowColor: selected ? COLORS.brandPrimary : "#000",
 					shadowOpacity: isAndroid ? 0 : (isDarkMode ? 0.15 : 0.08),
 					elevation: isAndroid ? 0 : (selected ? 10 : 2),
+					opacity: interactive ? 1 : 0.98,
 				},
 			]}
 		>
@@ -71,18 +77,30 @@ export default function AmbulanceTypeCard({
 					/>
 				</View>
 
-				<View style={styles.priceContainer}>
-					<Text style={[styles.priceLabel, { color: mutedColor }]}>
-						Estimate
-					</Text>
-					<Text style={[styles.priceValue, { color: textColor }]}>
-						{type.price}
-					</Text>
+				<View style={styles.headerRight}>
+					{badgeLabel ? (
+						<View style={styles.badgePill}>
+							<Text style={styles.badgeText}>{badgeLabel}</Text>
+						</View>
+					) : null}
+					<View style={styles.priceContainer}>
+						<Text style={[styles.priceLabel, { color: mutedColor }]}>
+							Estimated cost
+						</Text>
+						<Text style={[styles.priceValue, { color: textColor }]}>
+							{type.price}
+						</Text>
+					</View>
 				</View>
 			</View>
 
 			{/* Middle: Title & Description */}
 			<View style={styles.content}>
+				{statusLine ? (
+					<Text style={[styles.statusLine, { color: selected ? "#FDE68A" : COLORS.brandPrimary }]}>
+						{statusLine}
+					</Text>
+				) : null}
 				<Text style={[styles.name, { color: textColor }]}>
 					{type.name || type.title}
 				</Text>
@@ -132,12 +150,12 @@ export default function AmbulanceTypeCard({
 						]}
 					>
 						<Ionicons name="people-outline" size={14} color={mutedColor} />
-						<Text style={[styles.pillText, { color: textColor }]}>1-2</Text>
+						<Text style={[styles.pillText, { color: textColor }]}>{type.crew || "1-2"}</Text>
 					</View>
 				</View>
 
 				{/* The Checkmark - Occupying bottom right corner */}
-				{selected && (
+				{selected && showCheckmark && (
 					<View style={styles.checkmarkWrapper}>
 						<Ionicons
 							name="checkmark-circle"
@@ -177,6 +195,10 @@ const styles = StyleSheet.create({
 		justifyContent: "space-between",
 		alignItems: "flex-start",
 	},
+	headerRight: {
+		alignItems: "flex-end",
+		gap: 8,
+	},
 	iconBox: {
 		width: 54,
 		height: 54,
@@ -187,6 +209,18 @@ const styles = StyleSheet.create({
 	priceContainer: {
 		alignItems: "flex-end",
 	},
+	badgePill: {
+		paddingHorizontal: 10,
+		paddingVertical: 5,
+		borderRadius: 999,
+		backgroundColor: "rgba(255,255,255,0.14)",
+	},
+	badgeText: {
+		color: "#FFFFFF",
+		fontSize: 11,
+		fontWeight: "800",
+		letterSpacing: 0.4,
+	},
 	priceLabel: {
 		fontSize: 11,
 		textTransform: "uppercase",
@@ -195,12 +229,17 @@ const styles = StyleSheet.create({
 		marginBottom: 2,
 	},
 	priceValue: {
-		fontSize: 24,
+		fontSize: 22,
 		fontWeight: "900",
-		letterSpacing: -1,
+		letterSpacing: -0.8,
 	},
 	content: {
 		marginTop: 12,
+	},
+	statusLine: {
+		fontSize: 15,
+		fontWeight: "800",
+		marginBottom: 6,
 	},
 	name: {
 		fontSize: 20,
@@ -211,7 +250,7 @@ const styles = StyleSheet.create({
 	description: {
 		fontSize: 14,
 		lineHeight: 20,
-		maxWidth: "85%", // Prevent text hitting the checkmark
+		maxWidth: "96%",
 	},
 	footer: {
 		flexDirection: "row",

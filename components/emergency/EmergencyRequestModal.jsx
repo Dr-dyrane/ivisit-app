@@ -165,13 +165,13 @@ const EmergencyRequestModal = React.memo(({
 
 			if (currentStepIndex === 1) {
 				return {
-					title: "Confirm request",
+					title: mode === "booking" ? "Confirm request" : "Confirm dispatch",
 					subtitle: hospitalName ? hospitalName.toUpperCase() : "REQUEST",
 				};
 			}
 
 			return {
-				title: mode === "booking" ? "Choose stay" : "Choose resource",
+				title: mode === "booking" ? "Choose stay" : "Confirm help",
 				subtitle: hospitalName ? hospitalName.toUpperCase() : "AMBULANCE",
 			};
 		})();
@@ -231,6 +231,7 @@ const EmergencyRequestModal = React.memo(({
 	const [triageModalVisible, setTriageModalVisible] = useState(false);
 	const [triageModalPhase, setTriageModalPhase] = useState("prebooking");
 	const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
+	const [showOtherDispatchOptions, setShowOtherDispatchOptions] = useState(false);
 	const formattedPaymentAmount = useMemo(() => {
 		const total = Number(estimatedCost?.totalCost);
 		if (Number.isFinite(total) && total > 0) {
@@ -1083,7 +1084,7 @@ const EmergencyRequestModal = React.memo(({
 				return;
 			}
 			if (mode === "emergency" && !selectedAmbulanceType) {
-				showToast("Please select an ambulance type", "error");
+				showToast("Dispatch option is still loading", "info");
 				return;
 			}
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1425,8 +1426,8 @@ const EmergencyRequestModal = React.memo(({
 				});
 			} else {
 				registerFAB('ambulance-select', {
-					icon: 'cash-outline',
-					label: formattedPaymentAmount ? `Pay ${formattedPaymentAmount}` : 'Pay now',
+					icon: 'checkmark-circle-outline',
+					label: formattedPaymentAmount ? `Confirm dispatch (${formattedPaymentAmount})` : 'Confirm dispatch',
 					visible: true,
 					onPress: handleSubmitRequest,
 					style: 'success',
@@ -1439,13 +1440,13 @@ const EmergencyRequestModal = React.memo(({
 			}
 		} else if (requestStep === "payment") {
 			registerFAB('payment-confirm', {
-				icon: mode === "booking" ? 'shield-checkmark' : 'cash-outline',
+				icon: mode === "booking" ? 'shield-checkmark' : 'checkmark-circle-outline',
 				label:
 					mode === "booking"
 						? 'Confirm Slot'
 						: formattedPaymentAmount
-							? `Pay ${formattedPaymentAmount}`
-							: 'Pay now',
+							? `Confirm dispatch (${formattedPaymentAmount})`
+							: 'Confirm dispatch',
 				subText:
 					mode === "booking"
 						? selectedPaymentMethod?.label
@@ -1490,6 +1491,7 @@ const EmergencyRequestModal = React.memo(({
 		// Default to BLS (Basic Life Support) - ID: 'standard'
 		const defaultAmbulance = AMBULANCE_TYPES.find(t => t.id === "standard");
 		setSelectedAmbulanceType(defaultAmbulance || null);
+		setShowOtherDispatchOptions(false);
 
 		setBedType("standard");
 		setBedCount(1);
@@ -1524,6 +1526,63 @@ const EmergencyRequestModal = React.memo(({
 			: requestHospital?.id
 				? (selectedAmbulanceType && !showServiceSkeletons ? [selectedAmbulanceType] : [])
 				: AMBULANCE_TYPES;
+	const normalizedAmbulanceOptions = useMemo(() => {
+		return ambulanceOptionsToRender.map((type) => {
+			const isDbService = !!type?.service_name;
+			const serviceKey = String(type?.service_type || "").toLowerCase();
+			const eta = type?.eta || requestHospital?.eta || "8-12 min";
+			const rawSubtitle = isDbService
+				? type.description || "Emergency medical transport"
+				: type.description || type.subtitle || "Emergency medical transport";
+			const cleanedSubtitle = String(rawSubtitle || "")
+				.replace(/baseline/gi, "")
+				.replace(/pricing/gi, "")
+				.replace(/\s{2,}/g, " ")
+				.replace(/^[\s\-–:]+/, "")
+				.trim();
+			const subtitle =
+				cleanedSubtitle && !/^(hospital ambulance dispatch)$/i.test(cleanedSubtitle)
+					? cleanedSubtitle
+					: "Emergency medical transport";
+
+			return isDbService
+				? {
+					id: type.id,
+					title: type.service_name,
+					subtitle,
+					price: `$${type.base_price}`,
+					icon: serviceKey.includes("critical")
+						? "warning-outline"
+						: serviceKey.includes("advanced")
+							? "pulse-outline"
+							: "medical-outline",
+					eta,
+					crew: serviceKey.includes("critical")
+						? "Critical Care Crew"
+						: serviceKey.includes("advanced")
+							? "ALS Team"
+							: "2 Paramedics",
+				}
+				: {
+					...type,
+					title: type.name || type.title,
+					subtitle,
+					eta,
+					crew: type.crew || "2 Paramedics",
+				};
+		});
+	}, [ambulanceOptionsToRender, requestHospital?.eta]);
+	const hasMultipleDispatchOptions = normalizedAmbulanceOptions.length > 1;
+	const recommendedDispatchOption =
+		normalizedAmbulanceOptions.find((option) => option.id === selectedAmbulanceType?.id) ||
+		normalizedAmbulanceOptions[0] ||
+		null;
+	const otherDispatchOptions = recommendedDispatchOption
+		? normalizedAmbulanceOptions.filter((option) => option.id !== recommendedDispatchOption.id)
+		: [];
+	const primaryEtaText = recommendedDispatchOption?.eta
+		? `Arriving in ~${String(recommendedDispatchOption.eta).replace(/^~/, "").trim()}`
+		: "Arriving soon";
 
 	return (
 		<View style={styles.container}>
@@ -1692,44 +1751,63 @@ const EmergencyRequestModal = React.memo(({
 											</View>
 										</View>
 									))
-									: ambulanceOptionsToRender.map((type) => {
-										const isDbService = !!type.service_name;
-										const serviceKey = String(type?.service_type || "").toLowerCase();
-										const cardType = isDbService ? {
-											id: type.id,
-											title: type.service_name,
-											subtitle: type.description || type.service_type,
-											price: `$${type.base_price}`,
-											icon: serviceKey.includes('critical')
-												? 'warning-outline'
-												: serviceKey.includes('advanced')
-													? 'pulse-outline'
-													: 'medical-outline',
-											eta: requestHospital.eta || '8-12 min',
-											crew: serviceKey.includes('critical')
-												? 'Critical Care Crew'
-												: serviceKey.includes('advanced')
-													? 'ALS Team'
-													: '2 Paramedics'
-										} : {
-											...type,
-											eta: type.eta || requestHospital.eta || '10 min',
-											crew: type.crew || '2 Crew'
-										};
-
-										return (
+									: recommendedDispatchOption ? (
+										<>
 											<AmbulanceTypeCard
-												key={type.id}
-												type={cardType}
-												selected={selectedAmbulanceType?.id === type.id}
-												onPress={() => setSelectedAmbulanceType(cardType)}
+												key={recommendedDispatchOption.id}
+												type={recommendedDispatchOption}
+												selected={true}
+												interactive={false}
+												showCheckmark={false}
+												statusLine={primaryEtaText}
+												badgeLabel={hasMultipleDispatchOptions ? 'Recommended' : null}
 												textColor={requestColors.text}
 												mutedColor={requestColors.textMuted}
-												cardColor={requestColors.card}
-												style={styles.ambulanceCard}
 											/>
-										);
-									})}
+
+											{otherDispatchOptions.length > 0 ? (
+												<>
+													<Pressable
+														onPress={() => setShowOtherDispatchOptions((prev) => !prev)}
+														style={[
+															styles.otherOptionsButton,
+															{
+																backgroundColor: requestColors.card,
+																borderColor: requestColors.border,
+															},
+														]}
+													>
+														<Text style={[styles.otherOptionsButtonText, { color: requestColors.text }]}>
+															{showOtherDispatchOptions ? 'Hide other options' : 'Other options'}
+														</Text>
+														<Ionicons
+															name={showOtherDispatchOptions ? 'chevron-up' : 'chevron-down'}
+															size={18}
+															color={requestColors.textMuted}
+														/>
+													</Pressable>
+
+													{showOtherDispatchOptions
+														? otherDispatchOptions.map((type) => (
+															<AmbulanceTypeCard
+																key={type.id}
+																type={type}
+																selected={selectedAmbulanceType?.id === type.id}
+																onPress={() => {
+																	setSelectedAmbulanceType(type);
+																	setShowOtherDispatchOptions(false);
+																}}
+																showCheckmark={false}
+																statusLine={`Arriving in ~${String(type.eta).replace(/^~/, '').trim()}`}
+																textColor={requestColors.text}
+																mutedColor={requestColors.textMuted}
+															/>
+														))
+														: null}
+												</>
+											) : null}
+										</>
+									) : null}
 							</View>
 						)}
 
@@ -2125,6 +2203,21 @@ const styles = StyleSheet.create({
 	},
 	ambulanceCard: {
 		marginBottom: 8,
+	},
+	otherOptionsButton: {
+		marginTop: 4,
+		marginBottom: 6,
+		paddingHorizontal: 14,
+		paddingVertical: 12,
+		borderRadius: 16,
+		borderWidth: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+	},
+	otherOptionsButtonText: {
+		fontSize: 14,
+		fontWeight: "700",
 	},
 	serviceSkeletonCard: {
 		flexDirection: "row",
