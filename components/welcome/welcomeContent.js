@@ -1,6 +1,6 @@
 export const WELCOME_COPY = {
-	headline: "Emergency",
-	helper: "Choose ambulance or hospital",
+	headline: "Get help now",
+	helper: "Fast help. Nearby.",
 	chip: "",
 	ctaFootnote: "",
 	openingLabel: "Opening…",

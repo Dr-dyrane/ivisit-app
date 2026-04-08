@@ -85,13 +85,12 @@ ELSE
 Purpose: start the system instantly.
 
 ```text
-Emergency
+[ Animated visual ]
 
-Choose ambulance or hospital
+Get help now
+Fast help. Nearby.
 
 [ Continue ]
-
-Already using iVisit? Sign in
 ```
 
 No:
@@ -99,6 +98,24 @@ No:
 - onboarding
 - long explanations
 - forced authentication
+- sign-in prompt on the first screen
+
+Session restore path after entry:
+
+```text
+Open app
+→ Welcome
+→ Map
+
+→ Tap profile / header icon
+→ Activity sheet
+
+→ Continue with phone
+→ OTP
+→ session restored
+
+→ visits / history appear
+```
 
 ---
 
@@ -116,21 +133,20 @@ Ready to help
 ### Bottom Sheet
 
 ```text
-Emergency
+[ Animated visual ]
 
-Choose ambulance or hospital
+Get help now
+Fast help. Nearby.
 
 [ Continue ]
-
-Already using iVisit? Sign in
 ```
 
 ### Behavior
 
 - one dominant urgent CTA
-- no competing secondary button on the first screen
-- the sign-in line stays quiet unless a real resumable visit state exists later
-- optional micro hint shown once
+- subtle motion makes the surface feel like a live system, not a poster
+- one light reassurance line supports the headline without adding cognitive load
+- auth/session restore starts from the profile or header entry after the map opens
 
 ## 4.2 Returning User (Idle State)
 
@@ -142,20 +158,19 @@ Already using iVisit? Sign in
 ### Bottom Sheet
 
 ```text
-Emergency
+[ Animated visual ]
 
-Choose ambulance or hospital
+Get help now
+Fast help. Nearby.
 
 [ Continue ]
-
-Already using iVisit? Sign in
 ```
 
 ### Behavior
 
 - no extra hints
 - no explanations
-- use `Resume Visit` only when there is a true active or resumable visit context
+- identity and session restore live under the profile/header activity sheet once inside the product
 
 ---
 

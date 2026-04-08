@@ -40,11 +40,11 @@ export default function ThemeToggle({ showLabel = true }) {
 	const isAndroid = Platform.OS === "android";
 	const isWeb = Platform.OS === "web";
 	const isWelcomeRoute = pathname === "/";
-	const shellSize = isWelcomeRoute ? 44 : 48;
-	const expandedHeight = isWelcomeRoute ? 100 : 110;
-	const targetOpacity = isWelcomeRoute ? 0.46 : 0.6;
-	const iconSize = isWelcomeRoute ? 18 : 20;
-	const iconCircleSize = isWelcomeRoute ? 32 : 36;
+	const shellSize = isWelcomeRoute ? 40 : 48;
+	const expandedHeight = isWelcomeRoute ? 92 : 110;
+	const targetOpacity = isWelcomeRoute ? 0.28 : 0.6;
+	const iconSize = isWelcomeRoute ? 16 : 20;
+	const iconCircleSize = isWelcomeRoute ? 28 : 36;
 
 	// Component states
 	const [mounted, setMounted] = useState(false);
@@ -162,8 +162,8 @@ export default function ThemeToggle({ showLabel = true }) {
 		<Animated.View
 			style={{
 				position: "absolute",
-				right: 16,
-				top: Platform.OS === "ios" ? (isWelcomeRoute ? 50 : 54) : isWeb ? 18 : 34,
+				right: isWelcomeRoute ? 14 : 16,
+				top: Platform.OS === "ios" ? (isWelcomeRoute ? 46 : 54) : isWeb ? (isWelcomeRoute ? 14 : 18) : 34,
 				opacity: opacityAnim,
 				transform: [{ translateX: slideAnim }],
 				zIndex: 99999,
@@ -177,10 +177,12 @@ export default function ThemeToggle({ showLabel = true }) {
 					borderRadius: shellSize / 2,
 					overflow: "visible",
 					backgroundColor: "transparent",
-					borderWidth: isAndroid ? 0 : 1,
-					borderColor: isDarkMode
-						? "rgba(255,255,255,0.1)"
-						: "rgba(134, 16, 14, 0.2)",
+					borderWidth: isWelcomeRoute ? 0 : isAndroid ? 0 : 1,
+					borderColor: isWelcomeRoute
+						? "transparent"
+						: isDarkMode
+							? "rgba(255,255,255,0.1)"
+							: "rgba(134, 16, 14, 0.2)",
 					...Platform.select({
 						ios: {
 							shadowColor: "#000",

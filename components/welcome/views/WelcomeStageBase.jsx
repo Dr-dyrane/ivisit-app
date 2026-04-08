@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import {
 	Animated,
+	Easing,
 	Image,
 	Platform,
 	Pressable,
@@ -22,6 +23,7 @@ import useWelcomeWebSurfaceChrome from "../hooks/useWelcomeWebSurfaceChrome";
 
 const LOGO = require("../../../assets/logo.png");
 const HERO = require("../../../assets/hero/speed.png");
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 function useHiddenWebScrollbars({ enabled, styleId, nativeID }) {
 	useEffect(() => {
@@ -109,6 +111,8 @@ export default function WelcomeStageBase({
 	const { height, width } = useWindowDimensions();
 	const entranceOpacity = useRef(new Animated.Value(0)).current;
 	const entranceTranslate = useRef(new Animated.Value(18)).current;
+	const heroMotion = useRef(new Animated.Value(0)).current;
+	const pulseMotion = useRef(new Animated.Value(0)).current;
 	const {
 		duration = 240,
 		tension = 50,
@@ -136,7 +140,48 @@ export default function WelcomeStageBase({
 				useNativeDriver: true,
 			}),
 		]).start();
-	}, [duration, tension, friction, entranceOpacity, entranceTranslate]);
+
+		const driftLoop = Animated.loop(
+			Animated.sequence([
+				Animated.timing(heroMotion, {
+					toValue: 1,
+					duration: 2200,
+					easing: Easing.inOut(Easing.ease),
+					useNativeDriver: true,
+				}),
+				Animated.timing(heroMotion, {
+					toValue: 0,
+					duration: 2200,
+					easing: Easing.inOut(Easing.ease),
+					useNativeDriver: true,
+				}),
+			]),
+		);
+		const pulseLoop = Animated.loop(
+			Animated.sequence([
+				Animated.timing(pulseMotion, {
+					toValue: 1,
+					duration: 800,
+					easing: Easing.inOut(Easing.ease),
+					useNativeDriver: true,
+				}),
+				Animated.timing(pulseMotion, {
+					toValue: 0,
+					duration: 800,
+					easing: Easing.inOut(Easing.ease),
+					useNativeDriver: true,
+				}),
+			]),
+		);
+
+		driftLoop.start();
+		pulseLoop.start();
+
+		return () => {
+			driftLoop.stop();
+			pulseLoop.stop();
+		};
+	}, [duration, tension, friction, entranceOpacity, entranceTranslate, heroMotion, pulseMotion]);
 
 	const themeContext = useMemo(
 		() => ({
@@ -244,13 +289,13 @@ export default function WelcomeStageBase({
 	});
 
 	const headlineDisplayStyle = {
-		fontSize: Math.round((metrics?.headlineSize || 44) * 1.08),
-		lineHeight: Math.round((metrics?.headlineLineHeight || 50) * 1.16),
-		paddingBottom: 6,
+		fontSize: Math.round((metrics?.headlineSize || 44) * 1.12),
+		lineHeight: Math.round((metrics?.headlineLineHeight || 50) * 1.24),
+		paddingBottom: 8,
 		maxWidth:
 			layout === "split"
-				? Math.max(metrics?.helperMaxWidth || 520, 520)
-				: 360,
+				? Math.max(metrics?.helperMaxWidth || 560, 560)
+				: 392,
 	};
 
 	const helperDisplayStyle = {
@@ -259,7 +304,33 @@ export default function WelcomeStageBase({
 			layout === "split"
 				? Math.max(metrics?.helperMaxWidth || 520, 520)
 				: 336,
+		fontSize: Math.max(13, (metrics?.helperSize || 16) - 2),
+		lineHeight: Math.max(18, (metrics?.helperLineHeight || 22) - 4),
+		opacity: isDarkMode ? 0.74 : 0.66,
+		letterSpacing: 0.1,
 	};
+
+	const elevatedActionsMarginTop = Math.max(actionsMarginTop + 10, 30);
+	const heroTranslateX = heroMotion.interpolate({
+		inputRange: [0, 1],
+		outputRange: [-3, 4],
+	});
+	const trailTranslateX = heroMotion.interpolate({
+		inputRange: [0, 1],
+		outputRange: [-10, 8],
+	});
+	const trailOpacity = heroMotion.interpolate({
+		inputRange: [0, 1],
+		outputRange: [isDarkMode ? 0.18 : 0.1, isDarkMode ? 0.3 : 0.18],
+	});
+	const ringScale = pulseMotion.interpolate({
+		inputRange: [0, 1],
+		outputRange: [0.98, 1.04],
+	});
+	const ringOpacity = pulseMotion.interpolate({
+		inputRange: [0, 1],
+		outputRange: [isDarkMode ? 0.46 : 0.28, isDarkMode ? 0.74 : 0.46],
+	});
 
 	const premiumHeadline = Platform.OS === "web" ? (
 		<Text
@@ -331,18 +402,18 @@ export default function WelcomeStageBase({
 
 	const actionBlock =
 		actionContainer === "well" ? (
-			<View style={[styles.actionWell, { marginTop: actionsMarginTop }]}>
+			<View style={[styles.actionWell, { marginTop: elevatedActionsMarginTop }]}>
 				<View style={styles.actions}>{actionButtons}</View>
 				{ctaFootnote}
-				{signInPressable}
+				{/* {signInPressable} */}
 			</View>
 		) : (
 			<>
-				<View style={[styles.actions, { marginTop: actionsMarginTop }]}>
+				<View style={[styles.actions, { marginTop: elevatedActionsMarginTop }]}>
 					{actionButtons}
 				</View>
 				{ctaFootnote}
-				{signInPressable}
+				{/* {signInPressable} */}
 			</>
 		);
 
@@ -372,25 +443,59 @@ export default function WelcomeStageBase({
 	const heroBlock =
 		layout === "split" ? (
 			<View style={styles.heroPanel}>
-				<View
+				<AnimatedLinearGradient
+					pointerEvents="none"
+					colors={
+						isDarkMode
+							? ["transparent", "rgba(134,16,14,0.20)", "rgba(255,255,255,0.05)", "transparent"]
+							: ["transparent", "rgba(134,16,14,0.12)", "rgba(255,255,255,0.6)", "transparent"]
+					}
+					start={{ x: 0, y: 0.5 }}
+					end={{ x: 1, y: 0.5 }}
+					style={[
+						{
+							position: "absolute",
+							left: "10%",
+							bottom: "28%",
+							width: "66%",
+							height: 22,
+							borderRadius: 999,
+						},
+						{
+							opacity: trailOpacity,
+							transform: [{ translateX: trailTranslateX }, { scaleX: 1.04 }],
+						},
+					]}
+				/>
+				<Animated.View
 					pointerEvents="none"
 					style={[
 						styles.heroRing,
-						{ backgroundColor: isDarkMode ? "rgba(134,16,14,0.16)" : "rgba(134,16,14,0.08)" },
+						{
+							backgroundColor: isDarkMode ? "rgba(134,16,14,0.16)" : "rgba(134,16,14,0.08)",
+							opacity: ringOpacity,
+							transform: [{ scale: ringScale }],
+						},
 					]}
 				/>
-				<Image
+				<Animated.Image
 					source={HERO}
 					resizeMode="contain"
-					style={[styles.heroImage, { transform: [{ translateY: -8 }, { scale: 0.94 }] }]}
+					style={[
+						styles.heroImage,
+						{ transform: [{ translateX: heroTranslateX }, { translateY: -8 }, { scale: 0.94 }] },
+					]}
 				/>
 			</View>
 		) : (
 			<View style={styles.heroBlock}>
-				<Image
+				<Animated.Image
 					source={HERO}
 					resizeMode="contain"
-					style={[styles.heroImage, { transform: [{ translateY: -8 }, { scale: 0.94 }] }]}
+					style={[
+						styles.heroImage,
+						{ transform: [{ translateX: heroTranslateX }, { translateY: -8 }, { scale: 0.94 }] },
+					]}
 				/>
 			</View>
 		);
