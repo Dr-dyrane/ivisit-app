@@ -345,13 +345,13 @@ Implication:
 Without changing backend auth rules, the new urgent flow can become:
 
 1. welcome
-2. user taps `Request Help`
-3. app opens focused emergency intake immediately
-4. app shows `request_started`
-5. app confirms location
-6. app captures any minimum remaining details
-7. if real request creation now requires identity, auth is called here
-8. after auth, the same emergency flow resumes
+2. idle map appears immediately
+3. user taps `Request Help` or `Book bed`
+4. app confirms location and shows nearby help first
+5. app shows the recommended hospital or available hospital list before any payment gate
+6. user taps `Continue` into the commit phase
+7. if real request creation requires identity, auth is called here without restarting the flow
+8. optional triage / transport detail stays fast and skippable
 9. app commits the real request with `create_emergency_v4`
 10. backend automations and console take over the live operations path
 11. app continues into matched / tracking states
@@ -386,17 +386,19 @@ This is the best flow that fits the existing system.
 
 1. landing page handoff
 2. app welcome
-3. user taps `Request Help`
-4. focused emergency intake opens immediately
-5. state: `request_started`
-6. state: `confirm_location`
-7. auth checkpoint only if required to commit
-8. real request created in Supabase
-9. state: `finding_nearby_help`
-10. console receives request
-11. dispatch / assignment happens
-12. state: `responder_matched`
-13. state: `tracking_arrival`
+3. user taps `Request Help` or `Book bed`
+4. focused map-first intake opens immediately
+5. state: `confirm_location`
+6. state: `finding_nearby_help`
+7. state: `proposed_hospital` (recommended hospital for ambulance, selectable hospitals for bed)
+8. user taps `Continue` into `dispatch_clearance`
+9. identity / auth checkpoint happens only if required to commit
+10. optional triage and transport detail remain fast and skippable
+11. payment becomes the single irreversible commit trigger
+12. real request is created in Supabase
+13. console + automations take over the live operations path
+14. state: `responder_matched` or `bed_confirmed`
+15. state: `tracking_arrival` / directions
 
 ### Why This Is Correct
 

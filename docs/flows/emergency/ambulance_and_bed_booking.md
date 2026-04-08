@@ -1,6 +1,6 @@
 # Ambulance + Bed Booking User Flow (SOS)
 
-> **Last Updated:** 2026-01-12  
+> **Last Updated:** 2026-04-07  
 > **Owner:** Emergency (SOS) feature  
 > **Scope:** Mobile app SOS screen end-to-end flow for requesting an ambulance or reserving a bed.
 
@@ -9,6 +9,23 @@ This document audits the actual, current user flow implemented in the codebase f
 - **Bed reservation** (Booking mode)
 
 It focuses on what the app does today: which screens the user touches, what state changes happen, and what is written to Supabase (including realtime updates).
+
+## Current Target Product Model (2026-04-07)
+
+The product is now being aligned to a map-first, state-driven emergency model:
+
+- `map = constant reality layer`
+- `bottom sheet = state + action`
+- `header = orientation + system status`
+- ambulance is the **system-led** path
+- bed booking is the **user-led** path
+- there is only **one irreversible commit moment**: the final pay-and-send / pay-and-reserve action
+
+Canonical product reference:
+
+- [MASTER_REFERENCE_FLOW_V1.md](./MASTER_REFERENCE_FLOW_V1.md)
+
+This file remains the implementation audit, while the linked master reference is the product target for future emergency-flow updates.
 
 ---
 

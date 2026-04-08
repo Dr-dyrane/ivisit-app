@@ -128,7 +128,7 @@ export default function WelcomeWideWebView({
 						</View>
 
 						<Pressable onPress={onSignIn} style={styles.signInPressable}>
-							<Text style={styles.signInText}>Sign in</Text>
+							<Text style={styles.signInText}>{WELCOME_COPY.resumeLabel || "Resume Visit"}</Text>
 						</Pressable>
 					</View>
 

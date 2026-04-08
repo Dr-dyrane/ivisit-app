@@ -70,14 +70,21 @@ function getRegionForCoordinates(coordinates, bottomPadding = 0) {
 	const rawLatitudeSpan = Math.max(maxLatitude - minLatitude, 0);
 	const rawLongitudeSpan = Math.max(maxLongitude - minLongitude, 0);
 	const routeIsMostlyHorizontal = rawLongitudeSpan > Math.max(rawLatitudeSpan, 0.0001) * 1.2;
-	const latitudeSpan = Math.max(0.0062, rawLatitudeSpan * (routeIsMostlyHorizontal ? 2.15 : 1.9) + 0.0018);
-	const longitudeSpan = Math.max(0.0062, rawLongitudeSpan * 1.85 + 0.0018);
+	const cameraDiameter = Math.max(
+		0.0058,
+		Math.max(
+			rawLatitudeSpan * (routeIsMostlyHorizontal ? 1.62 : 1.54),
+			rawLongitudeSpan * (routeIsMostlyHorizontal ? 1.7 : 1.48),
+		) + 0.00115,
+	);
+	const latitudeSpan = Math.max(0.0058, routeIsMostlyHorizontal ? cameraDiameter * 0.88 : cameraDiameter);
+	const longitudeSpan = Math.max(0.0058, routeIsMostlyHorizontal ? cameraDiameter : cameraDiameter * 0.92);
 	const effectiveVerticalSpan = Math.max(
 		latitudeSpan,
-		routeIsMostlyHorizontal ? longitudeSpan * 0.46 : latitudeSpan,
+		routeIsMostlyHorizontal ? longitudeSpan * 0.4 : latitudeSpan,
 	);
-	const bottomPadBias = Math.min(0.10, Math.max(0.02, bottomPadding / 2200));
-	const verticalBias = routeIsMostlyHorizontal ? 0.12 + bottomPadBias : 0.08 + bottomPadBias;
+	const bottomPadBias = Math.min(0.24, Math.max(0.06, bottomPadding / 1100));
+	const verticalBias = routeIsMostlyHorizontal ? 0.18 + bottomPadBias : 0.15 + bottomPadBias * 0.94;
 
 	return {
 		latitude: (minLatitude + maxLatitude) / 2 - effectiveVerticalSpan * verticalBias,
@@ -164,10 +171,10 @@ export default function EmergencyHospitalRoutePreview({
 		lastFitSignatureRef.current = fitSignature;
 
 		const edgePadding = {
-			top: 28,
-			right: 28,
-			bottom: Math.max(28, bottomPadding + 22),
-			left: 28,
+			top: 58,
+			right: 34,
+			bottom: Math.max(58, bottomPadding + 42),
+			left: 34,
 		};
 
 		const fit = () => {

@@ -242,7 +242,7 @@ export default function WelcomeStageBase({
 				Platform.OS === "web" ? { cursor: "pointer" } : null,
 			]}
 		>
-			<Text style={styles.signInText}>Sign in</Text>
+			<Text style={styles.signInText}>{WELCOME_COPY.resumeLabel || "Resume Visit"}</Text>
 		</Pressable>
 	);
 

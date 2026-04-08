@@ -13,15 +13,32 @@ This is the deterministic runtime map for ambulance and bed emergency flows.
 - `screens/BookBedRequestScreen.jsx`
 - `components/emergency/EmergencyRequestModal.jsx`
 
+## Product-Facing State Spine (v1)
+
+The patient experience is now locked to this product sequence:
+
+`idle_map -> confirm_location -> finding_nearby_help -> proposed_hospital -> dispatch_clearance -> commit_ready -> responder_matched/bed_confirmed -> tracking`
+
+Rules:
+
+- the map stays visible as the constant reality layer
+- the bottom sheet carries state + action
+- the header reflects the current system status
+- there is only **one irreversible commit moment**: the final payment / release action at the end of `commit_ready`
+
 ## Client Execution Path
 
-1. User selects hospital + service options in `EmergencyRequestModal`.
-2. Request creation path:
+1. User enters the emergency surface and confirms location in `RequestAmbulanceScreen.jsx` / `BookBedRequestScreen.jsx`.
+2. The app finds nearby hospitals and either:
+   - recommends one for ambulance, or
+   - lets the user choose for bed booking.
+3. The selected hospital carries into `EmergencyRequestModal.jsx`, which currently acts as the `dispatch_clearance` / `commit_ready` bridge.
+4. Only after identity, payment, and any required details are ready does the app call:
    - `hooks/emergency/useRequestFlow.js` -> `useEmergencyRequests.createRequest`
    - `services/emergencyRequestsService.create`
    - RPC: `create_emergency_v4`
-3. Active trip/booking state is hydrated and tracked in `contexts/EmergencyContext.jsx`.
-4. User mutations (cancel, arrived/occupied, complete) path:
+5. Active trip/booking state is hydrated and tracked in `contexts/EmergencyContext.jsx`.
+6. User mutations (cancel, arrived/occupied, complete) path:
    - `hooks/emergency/useEmergencyHandlers.js` -> `setRequestStatus`
    - `services/emergencyRequestsService.setStatus/update`
    - RPC: `patient_update_emergency_request`

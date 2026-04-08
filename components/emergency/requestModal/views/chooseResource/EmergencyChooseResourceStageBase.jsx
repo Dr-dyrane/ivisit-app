@@ -1,14 +1,15 @@
 import React, { useEffect, useMemo } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useMapRoute } from "../../../../../hooks/emergency/useMapRoute";
 import EmergencyHospitalRoutePreview from "../../../intake/EmergencyHospitalRoutePreview";
 import AmbulanceTierProductGraphic from "../../AmbulanceTierProductGraphic";
-import { getAmbulanceTierKey, getAmbulanceVisualProfile } from "../../ambulanceTierVisuals";
+import { getAmbulanceVisualProfile } from "../../ambulanceTierVisuals";
 import { useTheme } from "../../../../../contexts/ThemeContext";
 import createEmergencyChooseResourceTheme from "./EmergencyChooseResourceStageBase.styles";
-import { CHOOSE_RESOURCE_COPY, TIER_ORDER } from "./EmergencyChooseResourceStageBase.content";
+import { CHOOSE_RESOURCE_COPY, FLOW_STEPS } from "./EmergencyChooseResourceStageBase.content";
 
 function normalizeEtaLabel(value) {
 	const text = String(value || CHOOSE_RESOURCE_COPY.etaFallback).trim();
@@ -62,6 +63,36 @@ function formatRouteDistance(routeInfo) {
 	return `${km >= 10 ? km.toFixed(0) : km.toFixed(1)} km`;
 }
 
+function toPlainServiceLabel(value, visualProfile) {
+	const raw = String(value || "").trim();
+	const lookup = raw.toLowerCase();
+
+	if (/critical|icu|intensive|critical care|cct/.test(lookup)) {
+		return "Critical care ambulance";
+	}
+	if (/advanced|als|cardiac|life support/.test(lookup)) {
+		return "Ambulance with extra support";
+	}
+	if (/basic|bls|standard/.test(lookup)) {
+		return "Standard ambulance";
+	}
+	if (!raw || /dispatch|ambulance/.test(lookup)) {
+		return visualProfile.label || CHOOSE_RESOURCE_COPY.serviceFallback;
+	}
+
+	return raw;
+}
+
+function toPlainCrewLabel(value) {
+	const raw = String(value || CHOOSE_RESOURCE_COPY.crewFallback).trim();
+	const lookup = raw.toLowerCase();
+
+	if (/critical/.test(lookup)) return "Critical care crew";
+	if (/advanced|als/.test(lookup)) return "Medical crew with extra support";
+	if (/paramedic|bls|basic/.test(lookup)) return "2-person medical crew";
+	return raw;
+}
+
 export default function EmergencyChooseResourceStageBase({
 	variant = "ios-mobile",
 	requestColors,
@@ -70,28 +101,24 @@ export default function EmergencyChooseResourceStageBase({
 	primaryEtaText = CHOOSE_RESOURCE_COPY.etaFallback,
 	formattedPaymentAmount,
 	recommendedDispatchOption,
-	availableDispatchOptions = [],
-	selectedDispatchOptionId = null,
 	triageCard,
 	onOpenServiceDetails,
-	onSelectDispatchOption,
+	selectFlowStep = "triage",
+	onSelectFlowStepChange,
+	hasSignedInUser = false,
+	requesterLabel = "Account confirmed",
+	onContinueWithGoogle,
+	onAdvanceFlow,
+	isSigningIn = false,
 }) {
 	const { isDarkMode } = useTheme();
+	const insets = useSafeAreaInsets();
+	const { height: windowHeight } = useWindowDimensions();
 	const { routeCoordinates, routeInfo, isCalculatingRoute, calculateRoute, clearRoute } = useMapRoute();
 	const visualProfile = getAmbulanceVisualProfile(recommendedDispatchOption);
 	const {
 		tuning,
-		showExpandedContext,
-		showCompactRowLayout,
-		surfaces: {
-			heroArtworkBackground,
-			heroOverlayColors,
-			heroGlassBackground,
-			tierBaseSurface,
-			tierSelectedSurface,
-			tierUnavailableSurface,
-			mapTintColors,
-		},
+		surfaces: { heroGlassBackground, mapTintColors },
 		styles,
 	} = useMemo(
 		() =>
@@ -102,15 +129,14 @@ export default function EmergencyChooseResourceStageBase({
 			}),
 		[variant, isDarkMode, visualProfile.accent],
 	);
+
 	const rawServiceLabel =
 		recommendedDispatchOption?.name ||
 		recommendedDispatchOption?.service_name ||
 		recommendedDispatchOption?.title ||
 		"";
-	const serviceLabel = /dispatch/i.test(rawServiceLabel)
-		? visualProfile.label
-		: rawServiceLabel || visualProfile.label || CHOOSE_RESOURCE_COPY.serviceFallback;
-	const crewLabel = recommendedDispatchOption?.crew || CHOOSE_RESOURCE_COPY.crewFallback;
+	const serviceLabel = toPlainServiceLabel(rawServiceLabel, visualProfile);
+	const crewLabel = toPlainCrewLabel(recommendedDispatchOption?.crew);
 	const pickupLine =
 		typeof intakeDraft?.locationLabel === "string" && intakeDraft.locationLabel.trim().length > 0
 			? intakeDraft.locationLabel.trim()
@@ -139,7 +165,6 @@ export default function EmergencyChooseResourceStageBase({
 				: requestHospital,
 		[hospitalCoordinate, requestHospital],
 	);
-	const selectedOptionId = selectedDispatchOptionId || recommendedDispatchOption?.id || null;
 
 	useEffect(() => {
 		if (originCoordinate && hospitalCoordinate) {
@@ -164,208 +189,248 @@ export default function EmergencyChooseResourceStageBase({
 	const routeEtaLabel = formatRouteDuration(routeInfo, primaryEtaText);
 	const routeDistanceLabel = formatRouteDistance(routeInfo);
 	const routeMetaLabel = [routeEtaLabel, routeDistanceLabel].filter(Boolean).join(" • ");
-	const summaryLine = [crewLabel, costLine, routeDistanceLabel].filter(Boolean).join(" • ");
-	const tierCards = useMemo(
-		() =>
-			TIER_ORDER.map((key) => {
-				const service = availableDispatchOptions.find((option) => getAmbulanceTierKey(option) === key) || null;
-				const meta = getAmbulanceVisualProfile(service || { id: key, title: key });
-				return {
-					key,
-					meta,
-					service,
-					available: Boolean(service),
-					selected: service ? service.id === selectedOptionId : visualProfile.key === key,
-				};
-			}),
-		[availableDispatchOptions, selectedOptionId, visualProfile.key],
+	const summaryLine = [crewLabel, costLine].filter(Boolean).join(" • ");
+	const flowCopy = CHOOSE_RESOURCE_COPY.flow[selectFlowStep] || CHOOSE_RESOURCE_COPY.flow.dispatch;
+	const activeStepIndex = Math.max(0, FLOW_STEPS.indexOf(selectFlowStep));
+	const stageHeight = Math.max(
+		tuning.stageMinHeight,
+		Math.min(windowHeight + insets.top + insets.bottom + 12, tuning.stageMaxHeight),
 	);
+	const mapHudTop = Math.max(12, insets.top + 78);
+	const solidSheetBackground = isDarkMode ? "rgba(2,6,23,0.92)" : "rgba(243,246,250,0.92)";
+	const sheetPanelBackground = isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.78)";
+	const sheetIconBackground = isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(15,23,42,0.06)";
+	const sheetHeight = Math.max(320, Math.min(Math.round(stageHeight * 0.5), 460));
+	const fixedMapBottomPadding = Math.max(250, Math.round(sheetHeight * 1.12));
+	const shouldShowPrimaryAction = selectFlowStep !== "triage";
+	const primaryActionLabel =
+		selectFlowStep === "identity"
+			? hasSignedInUser
+				? "Select payment"
+				: isSigningIn
+					? "Connecting..."
+					: CHOOSE_RESOURCE_COPY.signInCta
+			: selectFlowStep === "dispatch"
+				? "Confirm and continue"
+				: "Continue";
+	const primaryActionIcon =
+		selectFlowStep === "identity" && !hasSignedInUser ? "logo-google" : "arrow-forward";
+	const primaryActionHandler =
+		selectFlowStep === "identity" && !hasSignedInUser ? onContinueWithGoogle : onAdvanceFlow;
 
 	return (
 		<View style={[styles.shell, { gap: tuning.gap, maxWidth: tuning.maxWidth }]}>
-			<View
-				style={[
-					styles.primarySurface,
-					{
-						backgroundColor: requestColors.card,
-						paddingHorizontal: tuning.padding,
-						paddingTop: tuning.padding,
-						paddingBottom: Math.max(8, tuning.padding - 2),
-					},
-				]}
-			>
-				<Pressable
-					onPress={() => onOpenServiceDetails?.(recommendedDispatchOption)}
-					style={({ pressed }) => [
-						styles.previewHeroCard,
-						{ minHeight: showCompactRowLayout ? 196 : 184 },
-						pressed ? { opacity: 0.97 } : null,
+			<View style={[styles.mapShell, { height: stageHeight }]}>
+				<View style={[styles.flatMapStage, { height: stageHeight }]}>
+					{showMapPreview ? (
+						<EmergencyHospitalRoutePreview
+							origin={originCoordinate}
+							hospital={normalizedHospitalForMap}
+							routeCoordinates={previewRouteCoordinates}
+							routeInfo={routeInfo}
+							isCalculatingRoute={isCalculatingRoute}
+							bottomPadding={fixedMapBottomPadding}
+							showLoadingBadge={false}
+							visible
+						/>
+					) : null}
+
+					<LinearGradient pointerEvents="none" colors={mapTintColors} style={styles.mapTint} />
+
+					<View style={[styles.mapHud, { top: mapHudTop }]}> 
+						<View style={[styles.mapHudPill, { backgroundColor: heroGlassBackground }]}> 
+							<Ionicons name="checkmark-circle" size={13} color={visualProfile.accent} />
+							<Text style={[styles.mapHudText, { color: requestColors.text }]} numberOfLines={1}>
+								{CHOOSE_RESOURCE_COPY.selectedBadge}
+							</Text>
+						</View>
+						<View style={[styles.mapHudPill, { backgroundColor: heroGlassBackground }]}> 
+							<Ionicons name="time-outline" size={13} color={visualProfile.accent} />
+							<Text style={[styles.mapHudText, { color: requestColors.text }]} numberOfLines={1}>
+								{routeMetaLabel || CHOOSE_RESOURCE_COPY.routePreview}
+							</Text>
+						</View>
+					</View>
+
+					{!showMapPreview ? (
+						<View style={styles.mapPlaceholder}>
+							<Ionicons name="map-outline" size={18} color={visualProfile.accent} />
+							<Text style={[styles.mapPlaceholderText, { color: requestColors.textMuted }]}>
+								{CHOOSE_RESOURCE_COPY.mapPlaceholder}
+							</Text>
+						</View>
+					) : null}
+				</View>
+
+				<View
+					style={[
+						styles.bottomSheet,
+						{
+							backgroundColor: solidSheetBackground,
+							borderColor: requestColors.border,
+							paddingTop: 12,
+							paddingHorizontal: tuning.padding,
+							paddingBottom: tuning.padding + Math.max(insets.bottom, 10),
+							height: sheetHeight,
+							minHeight: sheetHeight,
+							maxHeight: sheetHeight,
+						},
 					]}
 				>
+					<View style={[styles.sheetHandle, { backgroundColor: requestColors.border }]} />
 					<View
 						style={[
-							styles.previewHeroArtwork,
-							{
-								backgroundColor: heroArtworkBackground,
-							},
+							styles.sheetHeaderSurface,
+							{ backgroundColor: sheetPanelBackground },
 						]}
 					>
-						<AmbulanceTierProductGraphic
-							type={recommendedDispatchOption}
-							width={showExpandedContext ? 282 : showCompactRowLayout ? 230 : 214}
-							height={showExpandedContext ? 170 : showCompactRowLayout ? 138 : 124}
-							showBackdrop={false}
-						/>
+						<View style={styles.sheetHeaderRow}>
+							<View style={styles.sheetCopy}>
+								<Text style={[styles.sheetEyebrow, { color: visualProfile.accent }]}>{flowCopy.eyebrow}</Text>
+								<Text style={[styles.sheetTitle, { color: requestColors.text }]}>{flowCopy.title}</Text>
+								{flowCopy.description ? (
+									<Text style={[styles.sheetSubtitle, { color: requestColors.textMuted }]}>{flowCopy.description}</Text>
+								) : null}
+							</View>
+						</View>
 					</View>
 
-					<LinearGradient
-						pointerEvents="none"
-						colors={heroOverlayColors}
-						start={{ x: 0, y: 0.15 }}
-						end={{ x: 1, y: 0.8 }}
-						style={styles.previewOverlayGradient}
-					/>
+					<View style={styles.sheetBody}>
+						{selectFlowStep === "triage" ? triageCard : null}
 
-					<View style={styles.previewOverlayContent}>
-						<View style={styles.previewHeaderRow}>
+						{selectFlowStep === "dispatch" ? (
+							<Pressable
+								onPress={() => onOpenServiceDetails?.(recommendedDispatchOption)}
+								style={[
+									styles.dispatchCard,
+									{ backgroundColor: sheetPanelBackground },
+								]}
+							>
+								<View style={styles.dispatchArtwork}>
+									<AmbulanceTierProductGraphic
+										type={recommendedDispatchOption}
+										width={96}
+										height={72}
+										showBackdrop={false}
+									/>
+								</View>
+								<View style={styles.dispatchCopy}>
+									<Text style={[styles.dispatchTitle, { color: requestColors.text }]}>{serviceLabel}</Text>
+									<Text style={[styles.dispatchEta, { color: requestColors.text }]}>{routeEtaLabel}</Text>
+									<Text style={[styles.dispatchMeta, { color: requestColors.textMuted }]}>{summaryLine}</Text>
+								</View>
+								<View style={[styles.previewIconButton, { backgroundColor: sheetIconBackground }]}> 
+									<Ionicons name="chevron-forward" size={15} color={visualProfile.accent} />
+								</View>
+							</Pressable>
+						) : null}
+
+						{selectFlowStep === "route" ? (
 							<View
 								style={[
-									styles.previewBadge,
+									styles.routeDetailsSurface,
+									{ backgroundColor: sheetPanelBackground },
+								]}
+							>
+								<View style={styles.routeHeaderInline}>
+									<Text style={[styles.routeHeaderTitle, { color: requestColors.text }]}>{CHOOSE_RESOURCE_COPY.routeTitle}</Text>
+									<Text style={[styles.routeHeaderMeta, { color: requestColors.textMuted }]}>{routeMetaLabel || CHOOSE_RESOURCE_COPY.routePreview}</Text>
+								</View>
+
+								<View style={styles.addressStack}>
+									<View style={styles.addressRow}>
+										<View style={[styles.addressIconWrap, { backgroundColor: sheetIconBackground }]}> 
+											<Ionicons name="navigate" size={14} color={visualProfile.accent} />
+										</View>
+										<View style={styles.addressCopy}>
+											<Text style={[styles.addressLabel, { color: requestColors.textMuted }]}>{CHOOSE_RESOURCE_COPY.pickupLabel}</Text>
+											<Text style={[styles.addressValue, { color: requestColors.text }]}>{pickupLine}</Text>
+										</View>
+									</View>
+									<View style={styles.addressRow}>
+										<View style={[styles.addressIconWrap, { backgroundColor: sheetIconBackground }]}> 
+											<Ionicons name="medical-outline" size={14} color={visualProfile.accent} />
+										</View>
+										<View style={styles.addressCopy}>
+											<Text style={[styles.addressLabel, { color: requestColors.textMuted }]}>{CHOOSE_RESOURCE_COPY.hospitalLabel}</Text>
+											<Text style={[styles.addressValue, { color: requestColors.text }]}>{facilityLine}</Text>
+											<Text style={[styles.addressSubvalue, { color: requestColors.textMuted }]}>{facilityAddress}</Text>
+										</View>
+									</View>
+								</View>
+							</View>
+						) : null}
+
+						{selectFlowStep === "identity" ? (
+							<View
+								style={[
+									styles.identityCard,
+									{ backgroundColor: sheetPanelBackground },
+								]}
+							>
+								<View style={styles.addressRow}>
+									<View style={[styles.addressIconWrap, { backgroundColor: sheetIconBackground }]}> 
+										<Ionicons
+											name={hasSignedInUser ? "checkmark-circle" : "logo-google"}
+											size={14}
+											color={visualProfile.accent}
+										/>
+									</View>
+									<View style={styles.addressCopy}>
+										<Text style={[styles.addressLabel, { color: requestColors.textMuted }]}>
+											{hasSignedInUser ? CHOOSE_RESOURCE_COPY.signedInLabel : CHOOSE_RESOURCE_COPY.signInCta}
+										</Text>
+										<Text style={[styles.addressValue, { color: requestColors.text }]}>
+											{hasSignedInUser ? requesterLabel : "Use Google so the hospital can identify the requester."}
+										</Text>
+										<Text style={[styles.addressSubvalue, { color: requestColors.textMuted }]}>
+											{hasSignedInUser ? "You’ll choose payment next." : CHOOSE_RESOURCE_COPY.signInHelp}
+										</Text>
+									</View>
+								</View>
+							</View>
+						) : null}
+					</View>
+
+					<View style={styles.sheetFooter}>
+						{shouldShowPrimaryAction ? (
+							<Pressable
+								onPress={primaryActionHandler}
+								disabled={!primaryActionHandler || isSigningIn}
+								style={[
+									styles.primaryActionButton,
 									{
-										backgroundColor: heroGlassBackground,
+										backgroundColor: visualProfile.accent,
+										opacity: !primaryActionHandler || isSigningIn ? 0.6 : 1,
 									},
 								]}
 							>
-								<Text style={[styles.previewBadgeText, { color: visualProfile.accent }]}>{CHOOSE_RESOURCE_COPY.selectedBadge}</Text>
-							</View>
-							<View
-								style={[
-									styles.previewIconButton,
-									{
-										backgroundColor: heroGlassBackground,
-									},
-								]}
-							>
-								<Ionicons name="chevron-forward" size={15} color={visualProfile.accent} />
-							</View>
-						</View>
+								<Text style={styles.primaryActionText}>{primaryActionLabel}</Text>
+								<Ionicons name={primaryActionIcon} size={16} color="#FFFFFF" />
+							</Pressable>
+						) : null}
 
-						<View style={styles.previewInfoStack}>
-							<Text style={[styles.previewTitle, { color: requestColors.text }]} numberOfLines={2}>
-								{serviceLabel}
-							</Text>
-							<Text style={[styles.previewEta, { color: requestColors.text }]} numberOfLines={2}>
-								{routeEtaLabel}
-							</Text>
-							<Text style={[styles.previewSummaryText, { color: requestColors.textMuted }]} numberOfLines={2}>
-								{summaryLine}
-							</Text>
-						</View>
-					</View>
-				</Pressable>
-
-				<ScrollView
-					horizontal
-					showsHorizontalScrollIndicator={false}
-					decelerationRate="fast"
-					snapToInterval={200}
-					snapToAlignment="start"
-					onMomentumScrollEnd={(event) => {
-						const nextIndex = Math.round((event?.nativeEvent?.contentOffset?.x || 0) / 200);
-						const nextTier = tierCards[nextIndex];
-						if (nextTier?.available && nextTier.service?.id !== selectedOptionId) {
-							onSelectDispatchOption?.(nextTier.service);
-						}
-					}}
-					contentContainerStyle={styles.tierRailContent}
-					style={styles.tierRailScroll}
-				>
-					{tierCards.map((item) => (
-						<Pressable
-							key={item.key}
-							disabled={!item.available}
-							onPress={() => item.available && onSelectDispatchOption?.(item.service)}
-							style={[
-								styles.tierCard,
-								{
-									backgroundColor: item.selected
-										? tierSelectedSurface
-										: item.available
-											? tierBaseSurface
-											: tierUnavailableSurface,
-								},
-								!item.available ? styles.tierCardUnavailable : null,
-							]}
-						>
-							<View style={styles.tierCardHeader}>
-								<Text style={[styles.tierChip, { color: item.meta.accent }]}>{item.meta.shortLabel || item.meta.label}</Text>
-								{item.selected ? <Ionicons name="checkmark-circle" size={16} color={item.meta.accent} /> : null}
-							</View>
-							<Text style={[styles.tierCardTitle, { color: requestColors.text }]}>{item.meta.label}</Text>
-							<Text style={[styles.tierCardSubtitle, { color: requestColors.textMuted }]} numberOfLines={2}>
-								{item.available ? item.meta.marketingLine : CHOOSE_RESOURCE_COPY.unavailableAtHospital}
-							</Text>
-						</Pressable>
-					))}
-				</ScrollView>
-			</View>
-
-			<View style={[styles.routeDetailsSurface, { backgroundColor: requestColors.card, padding: tuning.padding }]}>
-				<View style={styles.routeHeaderInline}>
-					<Text style={[styles.routeHeaderTitle, { color: requestColors.text }]}>{CHOOSE_RESOURCE_COPY.routeTitle}</Text>
-					<Text style={[styles.routeHeaderMeta, { color: requestColors.textMuted }]}>{routeMetaLabel || CHOOSE_RESOURCE_COPY.routePreview}</Text>
-				</View>
-
-				<View style={styles.addressStack}>
-					<View style={styles.addressRow}>
-						<View style={[styles.addressIconWrap, { backgroundColor: `${visualProfile.accent}18` }]}>
-							<Ionicons name="navigate" size={14} color={visualProfile.accent} />
-						</View>
-						<View style={styles.addressCopy}>
-							<Text style={[styles.addressLabel, { color: requestColors.textMuted }]}>{CHOOSE_RESOURCE_COPY.pickupLabel}</Text>
-							<Text style={[styles.addressValue, { color: requestColors.text }]}>{pickupLine}</Text>
-						</View>
-					</View>
-					<View style={styles.addressRow}>
-						<View style={[styles.addressIconWrap, { backgroundColor: `${visualProfile.accent}18` }]}>
-							<Ionicons name="medical-outline" size={14} color={visualProfile.accent} />
-						</View>
-						<View style={styles.addressCopy}>
-							<Text style={[styles.addressLabel, { color: requestColors.textMuted }]}>{CHOOSE_RESOURCE_COPY.hospitalLabel}</Text>
-							<Text style={[styles.addressValue, { color: requestColors.text }]}>{facilityLine}</Text>
-							<Text style={[styles.addressSubvalue, { color: requestColors.textMuted }]}>{facilityAddress}</Text>
+						<View style={styles.progressRow}>
+							{FLOW_STEPS.map((step, index) => (
+								<Pressable
+									key={step}
+									hitSlop={8}
+									onPress={() => onSelectFlowStepChange?.(step)}
+									style={styles.progressButton}
+								>
+									<View
+										style={[
+											styles.progressDot,
+											{ backgroundColor: visualProfile.accent },
+											index === activeStepIndex ? styles.progressDotActive : null,
+										]}
+									/>
+								</Pressable>
+							))}
 						</View>
 					</View>
 				</View>
 			</View>
-
-			<View style={[styles.flatMapStage, { height: tuning.routeHeight }]}>
-				{showMapPreview ? (
-					<EmergencyHospitalRoutePreview
-						origin={originCoordinate}
-						hospital={normalizedHospitalForMap}
-						routeCoordinates={previewRouteCoordinates}
-						routeInfo={routeInfo}
-						isCalculatingRoute={isCalculatingRoute}
-						bottomPadding={16}
-						showLoadingBadge={false}
-						visible
-					/>
-				) : null}
-				<LinearGradient
-					pointerEvents="none"
-					colors={mapTintColors}
-					style={styles.mapTint}
-				/>
-				{!showMapPreview ? (
-					<View style={styles.mapPlaceholder}>
-						<Ionicons name="map-outline" size={18} color={visualProfile.accent} />
-						<Text style={[styles.mapPlaceholderText, { color: requestColors.textMuted }]}>{CHOOSE_RESOURCE_COPY.mapPlaceholder}</Text>
-					</View>
-				) : null}
-			</View>
-
-			{triageCard}
 		</View>
 	);
 }

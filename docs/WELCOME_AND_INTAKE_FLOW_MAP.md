@@ -87,18 +87,23 @@ Current orchestration path:
 Current high-level order:
 
 1. Welcome
-2. Request help
-3. Where are you?
-4. Search location
-5. Confirm location
+2. Idle map
+3. Request help or book bed
+4. Where are you?
+5. Search / confirm location
 6. Finding nearby help
-7. Choose hospital
-8. Review proposed hospital
-9. Request dispatch
-10. Responder matched
-11. Live tracking
-12. Arrival
-13. Completion / handoff
+7. Proposed hospital or nearby hospital list
+8. Continue into commit phase
+9. Add patient details + verify phone
+10. Optional triage / transport detail
+11. Pay & commit
+12. Responder matched or reservation confirmed
+13. Live tracking / directions
+14. Completion / handoff
+
+Canonical product reference:
+
+- [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
 
 ## Current Source Of Truth
 

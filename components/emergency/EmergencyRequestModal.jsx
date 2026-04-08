@@ -62,6 +62,13 @@ const REALTIME_RECOVERY_STATUSES = new Set(["CHANNEL_ERROR", "TIMED_OUT", "CLOSE
 const REALTIME_HEALTHY_STATUSES = new Set(["SUBSCRIBED"]);
 const APPROVAL_TRUTH_SYNC_DEBOUNCE_MS = 6000;
 const APPROVAL_TRUTH_SYNC_INTERVAL_MS = 7000;
+const DISPATCH_CLEARANCE_STEPS = ["triage", "dispatch", "route", "identity"];
+const DISPATCH_CLEARANCE_SUBTITLES = {
+	triage: "ADD DETAILS",
+	dispatch: "CONFIRM AMBULANCE",
+	route: "CHECK ROUTE",
+	identity: "YOUR DETAILS",
+};
 
 const parseRealtimeVersionMs = (row, fallbackMs = Date.now()) => {
 	if (!row || typeof row !== "object") return fallbackMs;
@@ -124,6 +131,7 @@ const EmergencyRequestModal = React.memo(({
 	const hasSignedInUser = Boolean(user?.id);
 	// MODULAR STEPS: 0: select, 1: payment, 2: dispatched
 	const [requestStep, setRequestStep] = useState("select");
+	const [selectFlowStep, setSelectFlowStep] = useState("triage");
 	const steps = useMemo(() => mode === "booking"
 		? ["Options", "Verification", "Confirmation"]
 		: ["Started", "Confirm", "Track"], [mode]);
@@ -183,6 +191,7 @@ const EmergencyRequestModal = React.memo(({
 		const selectedDispatchLabel = /dispatch/i.test(rawSelectedDispatchLabel)
 			? getAmbulanceVisualProfile(selectedAmbulanceType).label
 			: rawSelectedDispatchLabel || getAmbulanceVisualProfile(selectedAmbulanceType).label;
+		const selectFlowSubtitle = DISPATCH_CLEARANCE_SUBTITLES[selectFlowStep] || "CONFIRM DISPATCH";
 		const emergencyHeaderState = (() => {
 			if (isWaiting) {
 				return {
@@ -219,9 +228,7 @@ const EmergencyRequestModal = React.memo(({
 						? hospitalName
 							? hospitalName.toUpperCase()
 							: "STAY"
-						: selectedDispatchLabel
-							? selectedDispatchLabel.toUpperCase()
-							: "AMBULANCE DISPATCH",
+						: selectFlowSubtitle,
 			};
 		})();
 
@@ -250,6 +257,13 @@ const EmergencyRequestModal = React.memo(({
 			backgroundColor: isWaiting ? "#FF9500" : (mode === "emergency" ? COLORS.emergency : COLORS.brandPrimary),
 			leftComponent: isWaiting ? null : <HeaderBackButton onPress={() => {
 				Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+				if (mode === "emergency" && requestStep === "select") {
+					const currentFlowIndex = DISPATCH_CLEARANCE_STEPS.indexOf(selectFlowStep);
+					if (currentFlowIndex > 0) {
+						setSelectFlowStep(DISPATCH_CLEARANCE_STEPS[currentFlowIndex - 1]);
+						return;
+					}
+				}
 				if (currentStepIndex === 0 || currentStepIndex === 2) {
 					onRequestClose();
 				} else {
@@ -260,7 +274,7 @@ const EmergencyRequestModal = React.memo(({
 			hidden: false,
 			scrollAware: false,
 		});
-	}, [currentStepIndex, requestStep, requestHospital, mode, onRequestClose, selectedAmbulanceType, setHeaderState, steps]);
+	}, [currentStepIndex, requestStep, requestHospital, mode, onRequestClose, selectFlowStep, selectedAmbulanceType, setHeaderState, steps]);
 	const emergencyRequestVariant = useMemo(
 		() => getEmergencyIntakeVariant({ platform: Platform.OS, isWeb, width }),
 		[isWeb, width],
@@ -281,6 +295,19 @@ const EmergencyRequestModal = React.memo(({
 			? `$${numericPrice.toFixed(2)}`
 			: null;
 	}, [estimatedCost?.totalCost, selectedAmbulanceType?.price]);
+	const requesterLabel = useMemo(() => {
+		const metadata = user?.user_metadata || user?.metadata || {};
+		return (
+			user?.fullName ||
+			user?.full_name ||
+			user?.name ||
+			metadata?.full_name ||
+			metadata?.name ||
+			user?.email ||
+			user?.phone ||
+			"Account confirmed"
+		);
+	}, [user]);
 
 	// Cash approval gate state (Managed by context for persistence)
 	const {
@@ -1080,10 +1107,10 @@ const EmergencyRequestModal = React.memo(({
 									: 'medical-outline',
 							eta: requestHospital.eta || '8-12 min',
 							crew: serviceKey.includes("critical")
-								? 'Critical Care Crew'
+								? 'Critical care crew'
 								: serviceKey.includes("advanced")
-									? 'ALS Team'
-									: '2 Paramedics'
+									? 'Medical crew with extra support'
+									: '2-person medical crew'
 						});
 					}
 				}
@@ -1137,6 +1164,25 @@ const EmergencyRequestModal = React.memo(({
 				showToast("Dispatch option is still loading", "info");
 				return;
 			}
+
+			if (mode === "emergency") {
+				const currentFlowIndex = DISPATCH_CLEARANCE_STEPS.indexOf(selectFlowStep);
+				const isLastSelectStep = currentFlowIndex === DISPATCH_CLEARANCE_STEPS.length - 1;
+
+				if (!isLastSelectStep) {
+					Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+					setSelectFlowStep(DISPATCH_CLEARANCE_STEPS[currentFlowIndex + 1] || "identity");
+					return;
+				}
+
+				if (!hasSignedInUser) {
+					setErrorMessage("Continue with Google to move to payment.");
+					showToast("Continue with Google first", "info");
+					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+					return;
+				}
+			}
+
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 			setRequestStep("payment");
 			return;
@@ -1389,20 +1435,31 @@ const EmergencyRequestModal = React.memo(({
 			}
 		}, 100); // Reduced delay since we already awaited the network call
 	}, [
+		activeAmbulanceTrip,
 		bedCount,
 		bedType,
+		bookingPricingReady,
+		demoSimulatedPaymentActive,
+		dynamicRooms,
 		estimatedCost,
 		hasSignedInUser,
+		intakeDraft,
+		isCalculatingCost,
 		isRequesting,
 		mode,
 		onRequestComplete,
 		onRequestInitiated,
+		pendingApproval,
+		prebookingCheckin,
 		requestHospital,
+		requestStep,
+		selectFlowStep,
 		selectedAmbulanceType,
 		selectedPaymentMethod,
+		selectedRoomId,
 		selectedSpecialty,
+		setPendingApproval,
 		showToast,
-		prebookingCheckin,
 	]);
 
 
@@ -1474,19 +1531,6 @@ const EmergencyRequestModal = React.memo(({
 					allowInStack: true,
 					isFixed: true,
 				});
-			} else {
-				registerFAB('ambulance-select', {
-					icon: 'checkmark-circle-outline',
-					label: formattedPaymentAmount ? `Confirm dispatch (${formattedPaymentAmount})` : 'Confirm dispatch',
-					visible: true,
-					onPress: handleSubmitRequest,
-					style: 'emergency',
-					haptic: 'heavy',
-					priority: 30,
-					animation: 'prominent',
-					allowInStack: true,
-					isFixed: true,
-				});
 			}
 		} else if (requestStep === "payment") {
 			registerFAB('payment-confirm', {
@@ -1527,16 +1571,24 @@ const EmergencyRequestModal = React.memo(({
 		handleRequestDone,
 		hasAmbulances,
 		handleCallHospital,
+		handleGoogleSignIn,
 		estimatedCost,
-		selectedPaymentMethod,
+		isSigningInWithGoogle,
+		prebookingCheckin,
 		requestData,
+		requestStep,
+		selectFlowStep,
+		selectedAmbulanceType,
+		selectedPaymentMethod,
 		formattedPaymentAmount,
+		hasSignedInUser,
 		registerFAB,
 		unregisterFAB
 	]);
 
 	useEffect(() => {
 		setRequestStep("select");
+		setSelectFlowStep("triage");
 
 		// Default to BLS (Basic Life Support) - ID: 'standard'
 		const defaultAmbulance = AMBULANCE_TYPES.find(t => t.id === "standard");
@@ -1562,8 +1614,13 @@ const EmergencyRequestModal = React.memo(({
 	const waitTime = requestHospital?.waitTime ?? null;
 	const requestedTopPadding = typeof scrollContentStyle?.paddingTop === "number" ? scrollContentStyle.paddingTop : 0;
 	const requestedBottomPadding = typeof scrollContentStyle?.paddingBottom === "number" ? scrollContentStyle.paddingBottom : 0;
-	const effectiveTopPadding = Math.max(requestedTopPadding, insets.top + (showClose ? 56 : 72), 96);
-	const effectiveBottomPadding = Math.max(requestedBottomPadding, 120 + insets.bottom);
+	const isEdgeToEdgeMapStage = mode === "emergency" && requestStep === "select" && hasAmbulances;
+	const effectiveTopPadding = isEdgeToEdgeMapStage
+		? 0
+		: Math.max(requestedTopPadding, insets.top + (showClose ? 56 : 72), 96);
+	const effectiveBottomPadding = isEdgeToEdgeMapStage
+		? 0
+		: Math.max(requestedBottomPadding, 120 + insets.bottom);
 	const serviceSkeletonBase = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)";
 	const serviceSkeletonSoft = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.05)";
 	const showServiceSkeletons =
@@ -1581,6 +1638,7 @@ const EmergencyRequestModal = React.memo(({
 		return ambulanceOptionsToRender.map((type) => {
 			const isDbService = !!type?.service_name;
 			const serviceKey = String(type?.service_type || "").toLowerCase();
+			const visualProfile = getAmbulanceVisualProfile(type);
 			const eta = type?.eta || requestHospital?.eta || "8-12 min";
 			const rawSubtitle = isDbService
 				? type.description || "Emergency medical transport"
@@ -1599,7 +1657,7 @@ const EmergencyRequestModal = React.memo(({
 			return isDbService
 				? {
 					id: type.id,
-					title: type.service_name,
+					title: visualProfile.label,
 					subtitle,
 					price: `$${type.base_price}`,
 					icon: serviceKey.includes("critical")
@@ -1609,17 +1667,17 @@ const EmergencyRequestModal = React.memo(({
 							: "medical-outline",
 					eta,
 					crew: serviceKey.includes("critical")
-						? "Critical Care Crew"
+						? "Critical care crew"
 						: serviceKey.includes("advanced")
-							? "ALS Team"
-							: "2 Paramedics",
+							? "Medical crew with extra support"
+							: "2-person medical crew",
 				}
 				: {
 					...type,
-					title: type.name || type.title,
+					title: visualProfile.label,
 					subtitle,
 					eta,
-					crew: type.crew || "2 Paramedics",
+					crew: type.crew || "2-person medical crew",
 				};
 		});
 	}, [ambulanceOptionsToRender, requestHospital?.eta]);
@@ -1635,31 +1693,40 @@ const EmergencyRequestModal = React.memo(({
 		? `Arriving in ~${String(recommendedDispatchOption.eta).replace(/^~/, "").trim()}`
 		: "Arriving soon";
 	const triageEntryCard = (
-		<Pressable
-			onPress={() => openTriageModal("prebooking")}
+		<View
 			style={[
-				styles.triageEntryCard,
+				styles.triageHeroCard,
 				{
-					backgroundColor: requestColors.card,
-					borderColor: requestColors.border,
+					backgroundColor: isDarkMode ? requestColors.card : "rgba(255,255,255,0.86)",
 				},
 			]}
 		>
-			<View style={styles.triageEntryIcon}>
-				<Ionicons name="chatbubble-ellipses-outline" size={18} color={COLORS.brandPrimary} />
+			<View style={styles.triageHeroIntro}>
+				<Text style={styles.triageHeroEmoji}>💛</Text>
+				<Text style={[styles.triageHeroTitle, { color: requestColors.text }]}>What happened?</Text>
+				<Text style={[styles.triageHeroSubtitle, { color: requestColors.textMuted }]}>Respond now or later.</Text>
 			</View>
-			<View style={{ flex: 1 }}>
-				<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}>
-					Add details
-				</Text>
-				<Text style={[styles.triageEntrySubtitle, { color: requestColors.textMuted }]}>Optional</Text>
+
+			<View style={styles.triageHeroActions}>
+				<Pressable
+					onPress={() => setSelectFlowStep("dispatch")}
+					style={[
+						styles.triageHeroSecondaryButton,
+						{
+							backgroundColor: isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.04)",
+						},
+					]}
+				>
+					<Text style={[styles.triageHeroSecondaryText, { color: requestColors.text }]}>Respond later</Text>
+				</Pressable>
+				<Pressable
+					onPress={() => openTriageModal("prebooking")}
+					style={styles.triageHeroPrimaryButton}
+				>
+					<Text style={styles.triageHeroPrimaryText}>{prebookingCheckin ? "Edit response" : "Respond now"}</Text>
+				</Pressable>
 			</View>
-			<View style={styles.triageEntryAction}>
-				<Text style={styles.triageEntryActionText}>
-					{prebookingCheckin ? "Resume" : "Add"}
-				</Text>
-			</View>
-		</Pressable>
+		</View>
 	);
 	const dispatchSelectionContent = otherDispatchOptions.length > 0 ? (
 		<View style={styles.ambulanceSelectionContainer}>
@@ -1698,10 +1765,18 @@ const EmergencyRequestModal = React.memo(({
 		<View style={styles.container}>
 			<ScrollView
 				style={{ flex: 1 }}
+				scrollEnabled={!isEdgeToEdgeMapStage}
+				bounces={!isEdgeToEdgeMapStage}
+				alwaysBounceVertical={!isEdgeToEdgeMapStage}
 				contentContainerStyle={[
 					styles.requestScrollContent,
 					scrollContentStyle,
-					{ paddingTop: effectiveTopPadding, paddingBottom: effectiveBottomPadding },
+					{
+						flexGrow: isEdgeToEdgeMapStage ? 1 : 0,
+						paddingTop: effectiveTopPadding,
+						paddingBottom: effectiveBottomPadding,
+						paddingHorizontal: isEdgeToEdgeMapStage ? 0 : 8,
+					},
 				]}
 				showsVerticalScrollIndicator={false}
 				keyboardShouldPersistTaps="handled"
@@ -1729,7 +1804,7 @@ const EmergencyRequestModal = React.memo(({
 								</Text>
 							</View>
 						) : null}
-						<View style={styles.selectStepSpacer} />
+						{isEdgeToEdgeMapStage ? null : <View style={styles.selectStepSpacer} />}
 
 						{/* Step-specific content */}
 						{mode === "booking" ? (
@@ -1855,6 +1930,13 @@ const EmergencyRequestModal = React.memo(({
 									setSelectedAmbulanceType(option);
 									setShowOtherDispatchOptions(false);
 								}}
+								selectFlowStep={selectFlowStep}
+								onSelectFlowStepChange={setSelectFlowStep}
+								hasSignedInUser={hasSignedInUser}
+								requesterLabel={requesterLabel}
+								onContinueWithGoogle={handleGoogleSignIn}
+								onAdvanceFlow={handleSubmitRequest}
+								isSigningIn={isSigningInWithGoogle}
 								triageCard={triageEntryCard}
 								onOpenServiceDetails={openServiceDetailSheet}
 							/>
@@ -2370,6 +2452,73 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 		fontWeight: "900",
 		color: COLORS.brandPrimary,
+	},
+	triageHeroCard: {
+		marginTop: 8,
+		width: "100%",
+		minHeight: 172,
+		borderRadius: 22,
+		paddingHorizontal: 16,
+		paddingVertical: 16,
+		justifyContent: "space-between",
+		gap: 18,
+		shadowColor: "#020617",
+		shadowOffset: { width: 0, height: 8 },
+		shadowOpacity: Platform.OS === "android" ? 0 : 0.06,
+		shadowRadius: Platform.OS === "android" ? 0 : 14,
+		elevation: Platform.OS === "android" ? 0 : 3,
+	},
+	triageHeroIntro: {
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 8,
+		paddingTop: 4,
+	},
+	triageHeroEmoji: {
+		fontSize: 28,
+	},
+	triageHeroTitle: {
+		fontSize: 27,
+		lineHeight: 31,
+		fontWeight: "900",
+		textAlign: "center",
+		letterSpacing: -0.7,
+	},
+	triageHeroSubtitle: {
+		fontSize: 13,
+		lineHeight: 19,
+		textAlign: "center",
+		maxWidth: 320,
+	},
+	triageHeroActions: {
+		flexDirection: "row",
+		gap: 10,
+	},
+	triageHeroSecondaryButton: {
+		flex: 1,
+		minHeight: 44,
+		borderRadius: 999,
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 12,
+	},
+	triageHeroPrimaryButton: {
+		flex: 1,
+		minHeight: 44,
+		borderRadius: 999,
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 12,
+		backgroundColor: COLORS.brandPrimary,
+	},
+	triageHeroSecondaryText: {
+		fontSize: 13,
+		fontWeight: "800",
+	},
+	triageHeroPrimaryText: {
+		fontSize: 13,
+		fontWeight: "900",
+		color: "#FFFFFF",
 	},
 	paymentContainer: {
 		paddingTop: 16,

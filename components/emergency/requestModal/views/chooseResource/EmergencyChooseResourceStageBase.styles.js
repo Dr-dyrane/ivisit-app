@@ -23,23 +23,23 @@ const COMPACT_ROW_VARIANTS = new Set([
 function getVariantTuning(variant) {
 	switch (variant) {
 		case "ios-pad":
-			return { maxWidth: 760, gap: 16, padding: 20, routeHeight: 220 };
+			return { maxWidth: 760, gap: 16, padding: 20, routeHeight: 248, stageMinHeight: 720, stageMaxHeight: 1180 };
 		case "android-tablet":
 		case "web-sm-wide":
 		case "web-md":
-			return { maxWidth: 860, gap: 16, padding: 20, routeHeight: 228 };
+			return { maxWidth: 860, gap: 16, padding: 20, routeHeight: 256, stageMinHeight: 760, stageMaxHeight: 1220 };
 		case "android-chromebook":
 		case "macbook":
 		case "web-lg":
 		case "web-xl":
 		case "web-2xl-3xl":
 		case "web-ultra-wide":
-			return { maxWidth: 980, gap: 18, padding: 22, routeHeight: 244 };
+			return { maxWidth: 980, gap: 18, padding: 22, routeHeight: 272, stageMinHeight: 820, stageMaxHeight: 1280 };
 		case "android-mobile":
 		case "web-mobile":
 		case "ios-mobile":
 		default:
-			return { maxWidth: 680, gap: 12, padding: 14, routeHeight: 188 };
+			return { maxWidth: 680, gap: 12, padding: 14, routeHeight: 214, stageMinHeight: 680, stageMaxHeight: 1120 };
 	}
 }
 
@@ -61,15 +61,12 @@ export function createEmergencyChooseResourceTheme({
 	const surfaces = {
 		heroArtworkBackground: isDarkMode ? "rgba(255,255,255,0.045)" : welcomePalette.chipBackground,
 		heroOverlayColors: isDarkMode
-			? ["rgba(2,6,23,0.86)", "rgba(2,6,23,0.66)", "rgba(2,6,23,0.20)", "rgba(2,6,23,0.02)"]
-			: ["rgba(255,255,255,0.94)", "rgba(255,255,255,0.78)", "rgba(255,255,255,0.24)", "rgba(255,255,255,0.02)"],
-		heroGlassBackground: welcomePalette.chipBackground,
-		tierBaseSurface: isDarkMode ? "rgba(255,255,255,0.045)" : "rgba(255,255,255,0.72)",
-		tierSelectedSurface: isDarkMode ? `${resolvedAccent}26` : `${resolvedAccent}14`,
-		tierUnavailableSurface: isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(148,163,184,0.10)",
+			? ["rgba(2,6,23,0.18)", "rgba(2,6,23,0.12)", "rgba(2,6,23,0.30)"]
+			: ["rgba(255,255,255,0.02)", "rgba(255,255,255,0.04)", "rgba(15,23,42,0.10)"],
+		heroGlassBackground: isDarkMode ? "rgba(15,23,42,0.72)" : "rgba(255,255,255,0.84)",
 		mapTintColors: isDarkMode
-			? ["rgba(2,6,23,0.00)", "rgba(2,6,23,0.08)", "rgba(2,6,23,0.20)"]
-			: ["rgba(255,255,255,0.00)", "rgba(255,255,255,0.02)", "rgba(15,23,42,0.08)"],
+			? ["rgba(2,6,23,0.00)", "rgba(2,6,23,0.08)", "rgba(2,6,23,0.22)"]
+			: ["rgba(255,255,255,0.00)", "rgba(255,255,255,0.04)", "rgba(15,23,42,0.10)"],
 	};
 
 	const styles = StyleSheet.create({
@@ -77,65 +74,168 @@ export function createEmergencyChooseResourceTheme({
 			width: "100%",
 			alignItems: "center",
 			alignSelf: "center",
-			paddingHorizontal: 4,
+			paddingHorizontal: 0,
 		},
-		primarySurface: {
+		mapShell: {
 			width: "100%",
-			borderRadius: 28,
-			overflow: "hidden",
-		},
-		previewHeroCard: {
-			width: "100%",
-			borderRadius: 24,
-			overflow: "hidden",
 			position: "relative",
-			justifyContent: "center",
+			borderRadius: 0,
+			overflow: "hidden",
+			minHeight: 440,
+			backgroundColor: "transparent",
 		},
-		previewHeroArtwork: {
-			borderRadius: 24,
-			minHeight: 184,
-			alignItems: "flex-end",
+		flatMapStage: {
+			...StyleSheet.absoluteFillObject,
+			width: "100%",
+			borderRadius: 0,
+			overflow: "hidden",
+			position: "absolute",
+			backgroundColor: "rgba(148,163,184,0.08)",
+			zIndex: 0,
+		},
+		mapTint: {
+			...StyleSheet.absoluteFillObject,
+		},
+		mapPlaceholder: {
+			...StyleSheet.absoluteFillObject,
+			alignItems: "center",
 			justifyContent: "center",
+			paddingHorizontal: 20,
+			gap: 8,
+		},
+		mapPlaceholderText: {
+			fontSize: 13,
+			fontWeight: "600",
+			textAlign: "center",
+			lineHeight: 18,
+		},
+		mapHud: {
+			position: "absolute",
+			top: 12,
+			left: 12,
+			right: 12,
+			flexDirection: "row",
+			justifyContent: "space-between",
+			alignItems: "center",
+			gap: 8,
+			zIndex: 2,
+		},
+		mapHudPill: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 6,
+			paddingHorizontal: 10,
+			paddingVertical: 7,
+			borderRadius: 999,
+			maxWidth: "74%",
+		},
+		mapHudText: {
+			fontSize: 12,
+			fontWeight: "700",
+		},
+		bottomSheet: {
+			position: "absolute",
+			left: 0,
+			right: 0,
+			bottom: -2,
+			borderTopLeftRadius: 28,
+			borderTopRightRadius: 28,
+			borderBottomLeftRadius: 0,
+			borderBottomRightRadius: 0,
+			gap: 12,
+			zIndex: 4,
+			shadowColor: "#020617",
+			shadowOffset: { width: 0, height: 12 },
+			shadowOpacity: 0.12,
+			shadowRadius: 18,
+			elevation: 12,
+		},
+		sheetHeaderSurface: {
+			borderRadius: 20,
 			paddingHorizontal: 14,
 			paddingVertical: 12,
 		},
-		previewOverlayGradient: {
-			...StyleSheet.absoluteFillObject,
+		sheetHandle: {
+			width: 42,
+			height: 5,
+			borderRadius: 999,
+			alignSelf: "center",
+			marginTop: -2,
+			marginBottom: 4,
 		},
-		previewOverlayContent: {
-			...StyleSheet.absoluteFillObject,
-			paddingHorizontal: 16,
-			paddingVertical: 14,
-			justifyContent: "space-between",
-		},
-		previewHeaderRow: {
+		sheetHeaderRow: {
 			flexDirection: "row",
-			alignItems: "center",
+			alignItems: "flex-start",
 			justifyContent: "space-between",
 			gap: 10,
 		},
-		previewBadge: {
-			paddingHorizontal: 10,
-			paddingVertical: 6,
-			borderRadius: 999,
-			maxWidth: "82%",
+		sheetCopy: {
+			flex: 1,
+			gap: 4,
 		},
-		previewBadgeText: {
+		sheetEyebrow: {
 			fontSize: 11,
-			fontWeight: "700",
-			letterSpacing: -0.1,
-		},
-		previewInfoStack: {
-			gap: 6,
-			maxWidth: "60%",
-			paddingRight: 8,
-			justifyContent: "flex-end",
-		},
-		previewTitle: {
-			fontSize: 19,
 			fontWeight: "800",
-			letterSpacing: -0.45,
-			lineHeight: 24,
+			letterSpacing: 0.4,
+			textTransform: "uppercase",
+		},
+		sheetTitle: {
+			fontSize: 22,
+			fontWeight: "900",
+			letterSpacing: -0.7,
+		},
+		sheetSubtitle: {
+			fontSize: 13,
+			lineHeight: 19,
+			maxWidth: 420,
+		},
+		skipChip: {
+			paddingHorizontal: 12,
+			paddingVertical: 8,
+			borderRadius: 999,
+		},
+		skipChipText: {
+			fontSize: 12,
+			fontWeight: "700",
+		},
+		sheetBody: {
+			flex: 1,
+			justifyContent: "flex-start",
+			gap: 12,
+			paddingTop: 2,
+		},
+		dispatchCard: {
+			borderRadius: 20,
+			padding: 12,
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 12,
+		},
+		dispatchArtwork: {
+			width: 110,
+			height: 84,
+			borderRadius: 16,
+			alignItems: "center",
+			justifyContent: "center",
+			overflow: "hidden",
+		},
+		dispatchCopy: {
+			flex: 1,
+			gap: 4,
+		},
+		dispatchTitle: {
+			fontSize: 16,
+			fontWeight: "800",
+			letterSpacing: -0.25,
+		},
+		dispatchEta: {
+			fontSize: 22,
+			fontWeight: "900",
+			letterSpacing: -0.7,
+		},
+		dispatchMeta: {
+			fontSize: 12,
+			lineHeight: 18,
 		},
 		previewIconButton: {
 			width: 34,
@@ -145,58 +245,11 @@ export function createEmergencyChooseResourceTheme({
 			justifyContent: "center",
 			flexShrink: 0,
 		},
-		previewEta: {
-			fontSize: 30,
-			fontWeight: "900",
-			letterSpacing: -1,
-			lineHeight: 32,
-		},
-		previewSummaryText: {
-			fontSize: 13,
-			fontWeight: "400",
-			lineHeight: 19,
-		},
-		tierRailScroll: {
-			marginTop: 14,
-		},
-		tierRailContent: {
-			gap: 10,
-			paddingRight: 8,
-		},
-		tierCard: {
-			width: 190,
-			borderRadius: 18,
-			paddingHorizontal: 12,
-			paddingVertical: 12,
-			gap: 6,
-		},
-		tierCardUnavailable: {
-			opacity: 0.48,
-		},
-		tierCardHeader: {
-			flexDirection: "row",
-			justifyContent: "space-between",
-			alignItems: "center",
-		},
-		tierChip: {
-			fontSize: 11,
-			fontWeight: "800",
-			letterSpacing: 0.45,
-			textTransform: "uppercase",
-		},
-		tierCardTitle: {
-			fontSize: 15,
-			fontWeight: "800",
-			letterSpacing: -0.25,
-		},
-		tierCardSubtitle: {
-			fontSize: 12,
-			lineHeight: 17,
-		},
 		routeDetailsSurface: {
 			width: "100%",
-			borderRadius: 22,
+			borderRadius: 20,
 			gap: 12,
+			padding: 12,
 		},
 		routeHeaderInline: {
 			flexDirection: "row",
@@ -251,28 +304,54 @@ export function createEmergencyChooseResourceTheme({
 			fontWeight: "600",
 			lineHeight: 18,
 		},
-		flatMapStage: {
-			width: "100%",
-			borderRadius: 24,
-			overflow: "hidden",
-			position: "relative",
-			backgroundColor: "rgba(148,163,184,0.08)",
+		identityCard: {
+			borderRadius: 20,
+			padding: 12,
+			gap: 12,
 		},
-		mapTint: {
-			...StyleSheet.absoluteFillObject,
+		sheetFooter: {
+			gap: 8,
+			marginTop: "auto",
+			paddingTop: 4,
 		},
-		mapPlaceholder: {
-			...StyleSheet.absoluteFillObject,
+		primaryActionButton: {
+			minHeight: 46,
+			borderRadius: 999,
+			paddingHorizontal: 16,
+			flexDirection: "row",
 			alignItems: "center",
 			justifyContent: "center",
-			paddingHorizontal: 20,
 			gap: 8,
 		},
-		mapPlaceholderText: {
-			fontSize: 13,
-			fontWeight: "600",
-			textAlign: "center",
-			lineHeight: 18,
+		primaryActionText: {
+			color: "#FFFFFF",
+			fontSize: 14,
+			fontWeight: "800",
+			letterSpacing: -0.2,
+		},
+		progressRow: {
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "center",
+			gap: 2,
+			paddingTop: 2,
+		},
+		progressButton: {
+			width: 28,
+			height: 28,
+			alignItems: "center",
+			justifyContent: "center",
+		},
+		progressDot: {
+			width: 8,
+			height: 8,
+			borderRadius: 4,
+			opacity: 0.4,
+		},
+		progressDotActive: {
+			width: 22,
+			borderRadius: 999,
+			opacity: 1,
 		},
 	});
 

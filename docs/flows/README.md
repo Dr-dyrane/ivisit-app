@@ -12,6 +12,7 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 
 - [auth/login.md](./auth/login.md)
 - [auth/register.md](./auth/register.md)
+- [emergency/MASTER_REFERENCE_FLOW_V1.md](./emergency/MASTER_REFERENCE_FLOW_V1.md)
 - [emergency/ambulance_and_bed_booking.md](./emergency/ambulance_and_bed_booking.md)
 - [payment/payment.md](./payment/payment.md)
 

@@ -22,6 +22,7 @@ Related references:
 - [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)
 - [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
 - [EMERGENCY_INTEGRATION_AUDIT.md](./EMERGENCY_INTEGRATION_AUDIT.md)
+- [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
 - [EMERGENCY_UX_PROGRESS_LOG_2026-04-06.md](./EMERGENCY_UX_PROGRESS_LOG_2026-04-06.md)
 - [rules.json](./rules.json)
 
@@ -83,20 +84,30 @@ Typography rule:
 
 ## Locked State Model
 
+The emergency surface is now locked to a map-first, state-driven model:
+
+- `map = constant reality layer`
+- `sheet = state + action`
+- `header = orientation + system status`
+
 Primary states:
 
-1. `request_started`
+1. `idle_map`
 2. `confirm_location`
 3. `finding_nearby_help`
 4. `proposed_hospital`
-5. `responder_matched`
-6. `tracking_arrival`
+5. `dispatch_clearance`
+6. `commit_ready`
+7. `responder_matched`
+8. `tracking_arrival`
 
 Operational truth lock:
 
+- `dispatch_clearance` and `commit_ready` exist so the user sees hospital, ETA, identity, and payment clearly before live dispatch is released
+- there is only **one irreversible commit moment** in the patient flow
 - `responder_matched` is only feasible after a hospital has accepted the request and released a responder
 - `tracking_arrival` is only feasible after a responder has actually been assigned and route truth exists
-- for uninsured or unknown first-time users, there must be a dispatch-clearance checkpoint between `proposed_hospital` and true dispatch, even if the temporary implementation still lives inside the legacy modal
+- identity / auth should happen only when required to commit, not before intent
 
 Edge states:
 
