@@ -88,7 +88,7 @@ Purpose: start the system instantly.
 [ Animated visual ]
 
 Get help now
-Fast help. Nearby.
+Fast help nearby
 
 [ Continue ]
 ```
@@ -117,6 +117,20 @@ Open app
 → visits / history appear
 ```
 
+## 3.1 Cross-Platform Native Entry Rules (LOCK THIS)
+
+These rules apply across **iOS, Android, and web**:
+
+- same emotional hierarchy on every platform: quiet brand, one live-system visual, one headline, one reassurance line, one dominant CTA
+- default welcome copy stays locked to:
+  - `Get help now`
+  - `Fast help nearby`
+  - `Continue`
+- motion should be barely felt, not theatrical
+- web should feel like native product chrome, not a marketing landing page
+- avoid borders, promo chips, secondary CTAs, or busy utility chrome on first launch
+- minimal does not mean tiny: secondary text still needs immediate readability under stress
+
 ---
 
 # 4. First-Time vs Returning Idle State
@@ -136,7 +150,7 @@ Ready to help
 [ Animated visual ]
 
 Get help now
-Fast help. Nearby.
+Fast help nearby
 
 [ Continue ]
 ```
@@ -161,7 +175,7 @@ Fast help. Nearby.
 [ Animated visual ]
 
 Get help now
-Fast help. Nearby.
+Fast help nearby
 
 [ Continue ]
 ```

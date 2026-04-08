@@ -63,13 +63,13 @@ export default function WelcomeWideWebView({
 			Animated.sequence([
 				Animated.timing(heroMotion, {
 					toValue: 1,
-					duration: 2200,
+					duration: 2800,
 					easing: Easing.inOut(Easing.ease),
 					useNativeDriver: true,
 				}),
 				Animated.timing(heroMotion, {
 					toValue: 0,
-					duration: 2200,
+					duration: 2800,
 					easing: Easing.inOut(Easing.ease),
 					useNativeDriver: true,
 				}),
@@ -79,13 +79,13 @@ export default function WelcomeWideWebView({
 			Animated.sequence([
 				Animated.timing(pulseMotion, {
 					toValue: 1,
-					duration: 800,
+					duration: 1100,
 					easing: Easing.inOut(Easing.ease),
 					useNativeDriver: true,
 				}),
 				Animated.timing(pulseMotion, {
 					toValue: 0,
-					duration: 800,
+					duration: 1100,
 					easing: Easing.inOut(Easing.ease),
 					useNativeDriver: true,
 				}),
@@ -117,32 +117,33 @@ export default function WelcomeWideWebView({
 	const helperDisplayStyle = {
 		marginTop: Math.max(metrics?.stageSpacing?.headlineToHelper || 14, 14),
 		maxWidth: Math.max(metrics?.helperMaxWidth || 520, 520),
-		fontSize: Math.max(13, (metrics?.helperSize || 16) - 2),
-		lineHeight: Math.max(18, (metrics?.helperLineHeight || 22) - 4),
-		opacity: isDarkMode ? 0.74 : 0.66,
-		letterSpacing: 0.1,
+		fontSize: Math.max(15, metrics?.helperSize || 16),
+		lineHeight: Math.max(22, metrics?.helperLineHeight || 22),
+		opacity: isDarkMode ? 0.86 : 0.78,
+		letterSpacing: 0.05,
+		fontWeight: Platform.OS === "ios" ? "500" : "400",
 	};
 
 	const elevatedActionsMarginTop = Math.max((metrics?.stageSpacing?.chipToActions || 22) + 10, 30);
 	const heroTranslateX = heroMotion.interpolate({
 		inputRange: [0, 1],
-		outputRange: [-3, 4],
+		outputRange: [-2, 2],
 	});
 	const trailTranslateX = heroMotion.interpolate({
 		inputRange: [0, 1],
-		outputRange: [-10, 8],
+		outputRange: [-6, 5],
 	});
 	const trailOpacity = heroMotion.interpolate({
 		inputRange: [0, 1],
-		outputRange: [isDarkMode ? 0.18 : 0.1, isDarkMode ? 0.3 : 0.18],
+		outputRange: [isDarkMode ? 0.08 : 0.04, isDarkMode ? 0.14 : 0.08],
 	});
 	const ringScale = pulseMotion.interpolate({
 		inputRange: [0, 1],
-		outputRange: [0.98, 1.04],
+		outputRange: [0.995, 1.02],
 	});
 	const ringOpacity = pulseMotion.interpolate({
 		inputRange: [0, 1],
-		outputRange: [isDarkMode ? 0.46 : 0.28, isDarkMode ? 0.74 : 0.46],
+		outputRange: [isDarkMode ? 0.24 : 0.14, isDarkMode ? 0.4 : 0.24],
 	});
 
 	const premiumHeadline = Platform.OS === "web" ? (

@@ -21,7 +21,9 @@ export default function EntryActionButton({
 	const radius = Math.round(height / 2);
 
 	const backgroundColor = isDarkMode ? "#0E1522" : "#F6F0EF";
-	const primaryGradient = [COLORS.brandPrimary, COLORS.brandPrimary];
+	const primaryGradient = isDarkMode
+		? ["#941412", COLORS.brandPrimary]
+		: ["#A11412", COLORS.brandPrimary];
 	const secondaryGradient = isDarkMode
 		? ["rgba(31, 40, 58, 0.98)", "rgba(20, 27, 40, 0.98)"]
 		: ["#F7F0F0", "#F2E6E6"];
@@ -53,17 +55,17 @@ export default function EntryActionButton({
 							? "rgba(255,255,255,0.74)"
 							: COLORS.brandPrimary
 						: "transparent",
-					opacity: disabled ? 0.78 : pressed ? 0.94 : 1,
-					transform: [{ scale: pressed ? 0.97 : 1 }],
+					opacity: disabled ? 0.78 : pressed ? 0.96 : 1,
+					transform: [{ scale: pressed ? 0.982 : 1 }],
 					shadowColor: isPrimary ? COLORS.brandPrimary : "#0F172A",
 					shadowOpacity:
 						focused && Platform.OS === "web"
 							? Math.max(
-								isPrimary ? (isDarkMode ? 0.18 : 0.12) : isDarkMode ? 0.18 : 0.05,
-								0.14,
+								isPrimary ? (isDarkMode ? 0.24 : 0.16) : isDarkMode ? 0.18 : 0.05,
+								0.16,
 							)
 							: isPrimary
-								? (isDarkMode ? 0.16 : 0.1)
+								? (isDarkMode ? 0.2 : 0.12)
 								: isDarkMode
 									? 0.18
 									: 0.05,
@@ -87,7 +89,7 @@ export default function EntryActionButton({
 						styles.highlight,
 						{
 							borderRadius: radius,
-							opacity: isPrimary ? 0.04 : isDarkMode ? 0.06 : 0.1,
+							opacity: isPrimary ? 0.07 : isDarkMode ? 0.06 : 0.1,
 						},
 					]}
 				/>
@@ -118,7 +120,7 @@ export default function EntryActionButton({
 							{
 								color: textColor,
 								letterSpacing: -0.25,
-								fontWeight: isPrimary ? "900" : "800",
+								fontWeight: isPrimary ? "800" : "700",
 							},
 						]}
 						numberOfLines={1}

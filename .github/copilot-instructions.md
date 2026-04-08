@@ -224,3 +224,27 @@ eas update --branch preview2
 * Lottie/3D animations for empty states or success confirmation.
 * Swipe gestures for Stage 3 onboarding cards.
 * Toast/snackbar notifications for API errors.
+
+---
+
+## **11. Cross-Platform Native Emergency Entry Standard (LOCKED)**
+
+This applies to the welcome / emergency entry experience across **iOS, Android, and web**.
+
+* The welcome surface is **not a marketing landing page**; it is a **native system activation screen**.
+* Preserve the same hierarchy across platforms:
+  1. quiet brand
+  2. one live-system visual
+  3. headline
+  4. one short reassurance line
+  5. one dominant CTA
+* Locked default copy for the current welcome state:
+  * headline → `Get help now`
+  * reassurance line → `Fast help nearby`
+  * CTA → `Continue`
+* Motion must be **barely felt**: slow drift, soft pulse, subtle route energy only. Avoid decorative or theatrical animation.
+* Keep the surface **border-light / borderless**, with soft depth and restrained brand gradients only where needed for emphasis.
+* Secondary controls (theme toggle, utility icons, profile entry) must remain visually quiet and should never compete with the primary CTA.
+* Secondary text must remain readable at a glance on all platforms; minimal copy does **not** mean tiny copy.
+* Web should mirror the same native emotional posture as mobile — calm, immediate, spatial — and should not drift into a promo-site layout.
+* If a change makes the screen feel like onboarding, a poster, or a landing page, revert toward the native activation model above.
