@@ -12,6 +12,7 @@ export default function EntryActionButton({
 	height = 60,
 	fullWidth = true,
 	iconName = null,
+	disabled = false,
 	accessibilityLabel,
 	accessibilityHint,
 }) {
@@ -20,9 +21,7 @@ export default function EntryActionButton({
 	const radius = Math.round(height / 2);
 
 	const backgroundColor = isDarkMode ? "#0E1522" : "#F6F0EF";
-	const primaryGradient = isDarkMode
-		? ["#951311", COLORS.brandPrimary]
-		: ["#99110F", COLORS.brandPrimary];
+	const primaryGradient = [COLORS.brandPrimary, COLORS.brandPrimary];
 	const secondaryGradient = isDarkMode
 		? ["rgba(31, 40, 58, 0.98)", "rgba(20, 27, 40, 0.98)"]
 		: ["#F7F0F0", "#F2E6E6"];
@@ -35,6 +34,7 @@ export default function EntryActionButton({
 	return (
 		<Pressable
 			onPress={onPress}
+			disabled={disabled}
 			accessible
 			accessibilityRole="button"
 			accessibilityLabel={accessibilityLabel || label}
@@ -53,24 +53,24 @@ export default function EntryActionButton({
 							? "rgba(255,255,255,0.74)"
 							: COLORS.brandPrimary
 						: "transparent",
-					opacity: pressed ? 0.92 : 1,
-					transform: [{ scale: pressed ? 0.978 : 1 }],
+					opacity: disabled ? 0.78 : pressed ? 0.94 : 1,
+					transform: [{ scale: pressed ? 0.97 : 1 }],
 					shadowColor: isPrimary ? COLORS.brandPrimary : "#0F172A",
 					shadowOpacity:
 						focused && Platform.OS === "web"
 							? Math.max(
-								isPrimary ? (isDarkMode ? 0.34 : 0.18) : isDarkMode ? 0.18 : 0.05,
-								0.22,
+								isPrimary ? (isDarkMode ? 0.18 : 0.12) : isDarkMode ? 0.18 : 0.05,
+								0.14,
 							)
 							: isPrimary
-								? (isDarkMode ? 0.34 : 0.18)
+								? (isDarkMode ? 0.16 : 0.1)
 								: isDarkMode
 									? 0.18
 									: 0.05,
 					shadowRadius:
 						focused && Platform.OS === "web"
-							? (isPrimary ? 34 : 26)
-							: (isPrimary ? 28 : 20),
+							? (isPrimary ? 24 : 26)
+							: (isPrimary ? 18 : 20),
 				},
 				Platform.OS === "web" ? styles.cursor : null,
 			]}

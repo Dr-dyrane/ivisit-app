@@ -180,7 +180,7 @@ export function createWelcomeMobileTheme({
 			color: colors.support,
 			fontSize: metrics.helperSize - 1,
 			lineHeight: metrics.helperLineHeight - 2,
-			fontWeight: "600",
+			fontWeight: "400",
 			opacity: isDarkMode ? 0.84 : 0.88,
 			textAlign: "center",
 		},

@@ -85,9 +85,11 @@ ELSE
 Purpose: start the system instantly.
 
 ```text
-Get help now
+Emergency
 
-[ Start emergency request ]
+Choose ambulance or hospital
+
+[ Continue ]
 
 Already using iVisit? Sign in
 ```
@@ -114,9 +116,11 @@ Ready to help
 ### Bottom Sheet
 
 ```text
-📍 Detecting location...
+Emergency
 
-[ Start emergency request ]
+Choose ambulance or hospital
+
+[ Continue ]
 
 Already using iVisit? Sign in
 ```
@@ -138,9 +142,11 @@ Already using iVisit? Sign in
 ### Bottom Sheet
 
 ```text
-📍 2217 Corinto Ct
+Emergency
 
-[ Start emergency request ]
+Choose ambulance or hospital
+
+[ Continue ]
 
 Already using iVisit? Sign in
 ```
@@ -245,7 +251,7 @@ Rule:
 The first screen should lead with one urgent CTA only:
 
 ```text
-Start emergency request
+Continue
 ```
 
 After that CTA, the next state reveals the two real care intents:

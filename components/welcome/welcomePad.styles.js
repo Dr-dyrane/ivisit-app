@@ -156,7 +156,7 @@ export function createWelcomePadTheme({
 			color: colors.support,
 			fontSize: 18,
 			lineHeight: 24,
-			fontWeight: "600",
+			fontWeight: "400",
 			opacity: isDarkMode ? 0.84 : 0.88,
 			textAlign: "center",
 		},

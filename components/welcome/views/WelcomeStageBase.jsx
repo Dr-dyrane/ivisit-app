@@ -9,8 +9,10 @@ import {
 	View,
 	useWindowDimensions,
 } from "react-native";
+import MaskedView from "@react-native-masked-view/masked-view";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { COLORS } from "../../../constants/colors";
 import { useTheme } from "../../../contexts/ThemeContext";
 import useAuthViewport from "../../../hooks/ui/useAuthViewport";
 import EntryActionButton from "../../entry/EntryActionButton";
@@ -19,7 +21,7 @@ import { WELCOME_COPY, WELCOME_INTENTS } from "../welcomeContent";
 import useWelcomeWebSurfaceChrome from "../hooks/useWelcomeWebSurfaceChrome";
 
 const LOGO = require("../../../assets/logo.png");
-const HERO = require("../../../assets/features/emergency.png");
+const HERO = require("../../../assets/hero/speed.png");
 
 function useHiddenWebScrollbars({ enabled, styleId, nativeID }) {
 	useEffect(() => {
@@ -88,6 +90,8 @@ export default function WelcomeStageBase({
 	onRequestHelp,
 	onFindHospitalBed,
 	onSignIn,
+	primaryActionLabel,
+	isRequestOpening = false,
 	createTheme,
 	resolveThemeOverrides,
 	animation = {},
@@ -194,20 +198,25 @@ export default function WelcomeStageBase({
 		],
 	);
 	const { colors, metrics, styles } = theme;
-	const showChip = forceShowChip || metrics?.showChip;
+	const showChip = Boolean(WELCOME_COPY.chip) && (forceShowChip || metrics?.showChip);
 	const spacingKey =
 		actionContainer === "well" ? "chipToActionWell" : "chipToActions";
 	const actionsMarginTop = getActionSpacing(metrics, spacingKey);
 
 	const actionButtons = WELCOME_INTENTS.map((intent) => {
+		const resolvedLabel =
+			intent.key === "emergency" && typeof primaryActionLabel === "string" && primaryActionLabel.length > 0
+				? primaryActionLabel
+				: intent.label;
 		const button = (
 			<EntryActionButton
 				key={intent.key}
-				label={intent.label}
+				label={resolvedLabel}
 				variant={intent.variant}
+				disabled={isRequestOpening && intent.key === "emergency"}
 				height={
 					intent.variant === "primary"
-						? metrics.primaryActionHeight
+						? Math.max(metrics.primaryActionHeight, 60)
 						: metrics.secondaryActionHeight
 				}
 				onPress={
@@ -234,22 +243,97 @@ export default function WelcomeStageBase({
 		);
 	});
 
+	const headlineDisplayStyle = {
+		fontSize: Math.round((metrics?.headlineSize || 44) * 1.08),
+		lineHeight: Math.round((metrics?.headlineLineHeight || 50) * 1.16),
+		paddingBottom: 6,
+		maxWidth:
+			layout === "split"
+				? Math.max(metrics?.helperMaxWidth || 520, 520)
+				: 360,
+	};
+
+	const helperDisplayStyle = {
+		marginTop: Math.max(metrics?.stageSpacing?.headlineToHelper || 12, 12),
+		maxWidth:
+			layout === "split"
+				? Math.max(metrics?.helperMaxWidth || 520, 520)
+				: 336,
+	};
+
+	const premiumHeadline = Platform.OS === "web" ? (
+		<Text
+			style={[
+				styles.headline,
+				headlineDisplayStyle,
+				{
+					color: "transparent",
+					backgroundImage: `linear-gradient(135deg, ${colors.headline} 0%, ${colors.headline} 62%, ${COLORS.brandPrimary} 100%)`,
+					backgroundClip: "text",
+					WebkitBackgroundClip: "text",
+					WebkitTextFillColor: "transparent",
+					textShadowColor: isDarkMode ? "rgba(134,16,14,0.16)" : "rgba(134,16,14,0.10)",
+					textShadowRadius: 12,
+				},
+			]}
+		>
+			{WELCOME_COPY.headline}
+		</Text>
+	) : (
+		<MaskedView
+			maskElement={
+				<Text style={[styles.headline, headlineDisplayStyle]}>
+					{WELCOME_COPY.headline}
+				</Text>
+			}
+		>
+			<LinearGradient
+				colors={[colors.headline, colors.headline, COLORS.brandPrimary]}
+				start={{ x: 0, y: 0 }}
+				end={{ x: 1, y: 1 }}
+			>
+				<Text style={[styles.headline, headlineDisplayStyle, { opacity: 0 }]}>
+					{WELCOME_COPY.headline}
+				</Text>
+			</LinearGradient>
+		</MaskedView>
+	);
+
 	const signInPressable = (
 		<Pressable
 			onPress={onSignIn}
 			style={[
 				styles.signInPressable,
+				{ marginTop: (metrics?.stageSpacing?.signInTop || 0) + 6 },
 				Platform.OS === "web" ? { cursor: "pointer" } : null,
 			]}
 		>
-			<Text style={styles.signInText}>{WELCOME_COPY.resumeLabel || "Resume Visit"}</Text>
+			<Text style={[styles.signInText, { opacity: isDarkMode ? 0.68 : 0.6 }]}>{WELCOME_COPY.resumeLabel || "Resume Visit"}</Text>
 		</Pressable>
 	);
+
+	const ctaFootnote = WELCOME_COPY.ctaFootnote ? (
+		<Text
+			style={[
+				styles.helper,
+				{
+					marginTop: 12,
+					fontSize: Math.max(12, (metrics?.helperSize || 16) - 3),
+					lineHeight: Math.max(18, (metrics?.helperLineHeight || 22) - 6),
+					opacity: isDarkMode ? 0.7 : 0.62,
+					maxWidth: 280,
+				},
+			]}
+		>
+			{WELCOME_COPY.ctaFootnote}
+		</Text>
+	) : null;
 
 	const actionBlock =
 		actionContainer === "well" ? (
 			<View style={[styles.actionWell, { marginTop: actionsMarginTop }]}>
 				<View style={styles.actions}>{actionButtons}</View>
+				{ctaFootnote}
 				{signInPressable}
 			</View>
 		) : (
@@ -257,14 +341,15 @@ export default function WelcomeStageBase({
 				<View style={[styles.actions, { marginTop: actionsMarginTop }]}>
 					{actionButtons}
 				</View>
+				{ctaFootnote}
 				{signInPressable}
 			</>
 		);
 
 	const brandBlock = (
-		<View style={styles.brandBlock}>
-			<Image source={LOGO} resizeMode="contain" style={styles.logo} />
-			<Text style={styles.brandText}>
+		<View style={[styles.brandBlock, { opacity: 0.88 }]}> 
+			<Image source={LOGO} resizeMode="contain" style={[styles.logo, { transform: [{ scale: 0.88 }] }]} />
+			<Text style={[styles.brandText, { opacity: 0.84 }]}>
 				iVisit
 				<Text style={styles.brandDot}>.</Text>
 			</Text>
@@ -273,8 +358,8 @@ export default function WelcomeStageBase({
 
 	const copyBlock = (
 		<View style={styles.copyBlock}>
-			<Text style={styles.headline}>{WELCOME_COPY.headline}</Text>
-			<Text style={styles.helper}>{WELCOME_COPY.helper}</Text>
+			{premiumHeadline}
+			<Text style={[styles.helper, helperDisplayStyle]}>{WELCOME_COPY.helper}</Text>
 
 			{showChip ? (
 				<View style={styles.chip}>
@@ -287,12 +372,26 @@ export default function WelcomeStageBase({
 	const heroBlock =
 		layout === "split" ? (
 			<View style={styles.heroPanel}>
-				<View pointerEvents="none" style={styles.heroRing} />
-				<Image source={HERO} resizeMode="contain" style={styles.heroImage} />
+				<View
+					pointerEvents="none"
+					style={[
+						styles.heroRing,
+						{ backgroundColor: isDarkMode ? "rgba(134,16,14,0.16)" : "rgba(134,16,14,0.08)" },
+					]}
+				/>
+				<Image
+					source={HERO}
+					resizeMode="contain"
+					style={[styles.heroImage, { transform: [{ translateY: -8 }, { scale: 0.94 }] }]}
+				/>
 			</View>
 		) : (
 			<View style={styles.heroBlock}>
-				<Image source={HERO} resizeMode="contain" style={styles.heroImage} />
+				<Image
+					source={HERO}
+					resizeMode="contain"
+					style={[styles.heroImage, { transform: [{ translateY: -8 }, { scale: 0.94 }] }]}
+				/>
 			</View>
 		);
 
