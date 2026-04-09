@@ -102,12 +102,14 @@ function getPublicAuthRouteFromUrl(url) {
 			.replace(/^--\//, "")
 			.replace(/^\/+|\/+$/g, "");
 
+		if (normalizedPath === "map-loading") return "/(auth)/map-loading";
 		if (normalizedPath === "map") return "/(auth)/map";
 		if (normalizedPath === "request-help") return "/(auth)/request-help";
 	} catch (error) {
 		console.warn("[DeepLink] Failed to parse initial URL:", error?.message || error);
 	}
 
+	if (url.includes("/map-loading")) return "/(auth)/map-loading";
 	if (url.includes("/map")) return "/(auth)/map";
 	if (url.includes("/request-help")) return "/(auth)/request-help";
 	return null;
@@ -224,8 +226,10 @@ function AuthenticatedStack() {
 			segments?.[1] === "(stacks)" &&
 			segments?.[2] === "complete-profile";
 		const isPublicMapFlow =
+			pathname === "/map-loading" ||
 			pathname === "/map" ||
 			pathname === "/request-help" ||
+			startupPublicRoute === "/(auth)/map-loading" ||
 			startupPublicRoute === "/(auth)/map" ||
 			startupPublicRoute === "/(auth)/request-help";
 
@@ -267,6 +271,7 @@ function AuthenticatedStack() {
 	useEffect(() => {
 		if (!startupPublicRoute) return;
 		if (
+			(startupPublicRoute === "/(auth)/map-loading" && pathname === "/map-loading") ||
 			(startupPublicRoute === "/(auth)/map" && pathname === "/map") ||
 			(startupPublicRoute === "/(auth)/request-help" && pathname === "/request-help")
 		) {

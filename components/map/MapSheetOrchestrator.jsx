@@ -395,12 +395,11 @@ function FeaturedHospitalPlaceholderCard({ titleColor, bodyColor, compact = fals
 				style={[styles.placeholderCardInner, compact ? styles.placeholderCardInnerCompact : null]}
 			>
 				<View style={styles.placeholderCopy}>
-					<Text numberOfLines={2} style={[styles.featuredTitle, { color: titleColor }]}>
-						Loading nearby hospital
-					</Text>
-					<Text numberOfLines={2} style={[styles.featuredMeta, { color: bodyColor }]}>
-						More options nearby
-					</Text>
+					<View style={styles.placeholderTitleBlock}>
+						<View style={styles.placeholderTitleSkeleton} />
+						<View style={[styles.placeholderTitleSkeleton, styles.placeholderTitleSkeletonShort]} />
+					</View>
+					<View style={styles.placeholderMetaSkeleton} />
 				</View>
 			</LinearGradient>
 		</View>
@@ -1149,6 +1148,25 @@ const styles = StyleSheet.create({
 		justifyContent: "flex-end",
 		paddingHorizontal: 14,
 		paddingVertical: 14,
+	},
+	placeholderTitleBlock: {
+		gap: 6,
+	},
+	placeholderTitleSkeleton: {
+		height: 18,
+		borderRadius: 999,
+		backgroundColor: "rgba(248,250,252,0.22)",
+		width: "86%",
+	},
+	placeholderTitleSkeletonShort: {
+		width: "64%",
+	},
+	placeholderMetaSkeleton: {
+		height: 12,
+		borderRadius: 999,
+		backgroundColor: "rgba(248,250,252,0.14)",
+		width: "58%",
+		marginTop: 10,
 	},
 	footerSlot: {
 		width: "100%",

@@ -17,7 +17,7 @@ function AuthStackScreens() {
 	const isMapRoute = segments?.[0] === "(auth)" && authLeaf === "map";
 	const isFullCanvasAuthRoute =
 		segments?.[0] === "(auth)" &&
-		(authLeaf === "index" || authLeaf === "request-help" || authLeaf === "map");
+		(authLeaf === "index" || authLeaf === "request-help" || authLeaf === "map" || authLeaf === "map-loading");
 	const { enterStack, exitStack } = useFABActions();
 
 	useEffect(() => {
@@ -35,6 +35,7 @@ function AuthStackScreens() {
 				<AuthHeaderWrapper />
 				<Stack screenOptions={{ headerShown: false }}>
 				<Stack.Screen name="index" options={{ headerShown: false }} />
+				<Stack.Screen name="map-loading" options={{ headerShown: false }} />
 				<Stack.Screen name="map" options={{ headerShown: false }} />
 				<Stack.Screen name="request-help" options={{ headerShown: false }} />
 				<Stack.Screen name="login" options={{ headerShown: false }} />
