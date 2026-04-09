@@ -1221,15 +1221,28 @@ Default state:
 
 - partial sheet that can expand fully
 
+Important constraint:
+
+- Android must use the **same intent content, copy, order, and decision layout as iOS mobile**
+- only shell-level platform idioms should differ (sheet physics, blur/material treatment, keyboard behavior, map chrome)
+
 ## 5.3 Web / PWA
 
-Treat web mobile like native mobile.
+Treat web mobile like the same canonical mobile flow used on iOS and Android.
 
 Rules:
 
 - same decision order as native
 - same marker semantics as native
+- same card sequence and copy as mobile native
 - hide browser-like clutter where possible
+- platform-specific handling is allowed only for shell behavior and browser constraints
+
+For web mobile breakpoints:
+
+- `sm` (< 640px): same canonical mobile order in a narrow single-column lane
+- `md` (640px–1023px): same order and same components in a slightly wider centered lane
+- do not fork the emergency IA just because the browser width changes
 
 For wide web:
 

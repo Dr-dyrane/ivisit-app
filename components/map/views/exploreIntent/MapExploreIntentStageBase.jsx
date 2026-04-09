@@ -1,0 +1,243 @@
+import React, { useEffect, useMemo, useRef } from "react";
+import { Animated, Pressable, ScrollView, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import InAppBrowserLink from "../../../ui/InAppBrowserLink";
+import { useTheme } from "../../../../contexts/ThemeContext";
+import MapSheetShell from "../../MapSheetShell";
+import { MAP_CARE_PULSE_MS } from "../../mapMotionTokens";
+import { getMapSheetTokens } from "../../mapSheetTokens";
+import { MAP_SHEET_SNAP_STATES } from "../../mapSheet.constants";
+import { MAP_EXPLORE_INTENT_COPY, MAP_INTENT_VARIANTS } from "./mapExploreIntent.content";
+import MapExploreIntentCareSection from "./MapExploreIntentCareSection";
+import MapExploreIntentHospitalRail from "./MapExploreIntentHospitalRail";
+import MapExploreIntentHospitalSummaryCard from "./MapExploreIntentHospitalSummaryCard";
+import MapExploreIntentProfileTrigger from "./MapExploreIntentProfileTrigger";
+import MapExploreIntentScreenModularizer from "./MapExploreIntentScreenModularizer";
+import { getMapExploreIntentScreenConfig } from "./mapExploreIntent.screenConfigs";
+import styles from "./mapExploreIntent.styles";
+
+export default function MapExploreIntentStageBase({
+	variant = MAP_INTENT_VARIANTS.IOS_MOBILE,
+	screenConfig,
+	sheetHeight,
+	snapState,
+	nearestHospital,
+	nearestHospitalMeta,
+	selectedCare,
+	onOpenSearch,
+	onOpenHospitals,
+	onChooseCare,
+	onOpenProfile,
+	onOpenCareHistory,
+	onOpenFeaturedHospital,
+	onSnapStateChange,
+	profileImageSource,
+	isSignedIn,
+	nearbyHospitalCount,
+	totalAvailableBeds,
+	nearbyBedHospitals,
+	featuredHospitals = [],
+}) {
+	const { isDarkMode } = useTheme();
+	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
+	const pulseProgress = useRef(new Animated.Value(0)).current;
+	const resolvedScreenConfig = useMemo(
+		() => screenConfig || getMapExploreIntentScreenConfig(variant),
+		[screenConfig, variant],
+	);
+	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
+	const isExpanded = snapState === MAP_SHEET_SNAP_STATES.EXPANDED;
+	const isCanonicalMobileIntent =
+		variant === MAP_INTENT_VARIANTS.IOS_MOBILE ||
+		variant === MAP_INTENT_VARIANTS.ANDROID_MOBILE;
+	const isWebMobileVariant =
+		variant === MAP_INTENT_VARIANTS.WEB_MOBILE ||
+		variant === MAP_INTENT_VARIANTS.WEB_SM_WIDE ||
+		variant === MAP_INTENT_VARIANTS.WEB_MD;
+	const isWebMobileMd = variant === MAP_INTENT_VARIANTS.WEB_MD;
+	const careLayoutMode = resolvedScreenConfig?.careLayoutMode || "canonical";
+	const hospitalSummaryMode = resolvedScreenConfig?.hospitalSummaryMode || "canonical";
+	const presentationMode = resolvedScreenConfig?.presentationMode || "sheet";
+	const shouldCenterContent = Boolean(resolvedScreenConfig?.centerContent);
+	const contentMaxWidth = resolvedScreenConfig?.contentMaxWidth || null;
+	const shellMaxWidth = resolvedScreenConfig?.shellMaxWidth || contentMaxWidth || null;
+	const screenSections = [
+		{
+			key: "hospital_summary",
+			content: (
+				<MapExploreIntentHospitalSummaryCard
+					variant={variant}
+					layoutMode={hospitalSummaryMode}
+					isCentered={shouldCenterContent}
+					maxWidth={contentMaxWidth}
+					tokens={tokens}
+					isDarkMode={isDarkMode}
+					nearestHospital={nearestHospital}
+					nearestHospitalMeta={nearestHospitalMeta}
+					nearbyHospitalCount={nearbyHospitalCount}
+					totalAvailableBeds={totalAvailableBeds}
+					onOpenHospitals={onOpenHospitals}
+				/>
+			),
+		},
+		{
+			key: "care_selection",
+			content: (
+				<MapExploreIntentCareSection
+					layoutMode={careLayoutMode}
+					selectedCare={selectedCare}
+					onChooseCare={onChooseCare}
+					onOpenCareHistory={onOpenCareHistory}
+					nearbyHospitalCount={nearbyHospitalCount}
+					totalAvailableBeds={totalAvailableBeds}
+					nearbyBedHospitals={nearbyBedHospitals}
+					titleColor={tokens.titleColor}
+					mutedColor={tokens.mutedText}
+					pulseProgress={pulseProgress}
+				/>
+			),
+		},
+		isExpanded
+			? {
+					key: "featured_hospitals",
+					fullBleed: true,
+					content: (
+						<View style={styles.expandedSection}>
+							<View style={styles.featuredRailViewport}>
+								<MapExploreIntentHospitalRail
+									featuredHospitals={featuredHospitals}
+									titleColor="#F8FAFC"
+									bodyColor="rgba(248,250,252,0.82)"
+									onOpenFeaturedHospital={onOpenFeaturedHospital}
+								/>
+							</View>
+						</View>
+					),
+				}
+			: null,
+	].filter(Boolean);
+
+	useEffect(() => {
+		const pulseLoop = Animated.loop(
+			Animated.sequence([
+				Animated.timing(pulseProgress, {
+					toValue: 1,
+					duration: MAP_CARE_PULSE_MS,
+					useNativeDriver: true,
+				}),
+				Animated.timing(pulseProgress, {
+					toValue: 0,
+					duration: MAP_CARE_PULSE_MS,
+					useNativeDriver: true,
+				}),
+			]),
+		);
+		pulseLoop.start();
+
+		return () => {
+			pulseLoop.stop();
+			pulseProgress.stopAnimation();
+		};
+	}, [pulseProgress]);
+
+	const handleSnapToggle = (nextState = null) => {
+		if (typeof onSnapStateChange !== "function") return;
+		if (nextState) {
+			onSnapStateChange(nextState);
+			return;
+		}
+		if (snapState === MAP_SHEET_SNAP_STATES.COLLAPSED) {
+			onSnapStateChange(MAP_SHEET_SNAP_STATES.HALF);
+			return;
+		}
+		if (snapState === MAP_SHEET_SNAP_STATES.HALF) {
+			onSnapStateChange(MAP_SHEET_SNAP_STATES.EXPANDED);
+			return;
+		}
+		onSnapStateChange(MAP_SHEET_SNAP_STATES.HALF);
+	};
+
+	const topRow = (
+		<View
+			style={[
+				styles.topRow,
+				isCollapsed ? styles.topRowCollapsed : null,
+				isWebMobileVariant ? styles.topRowWebMobile : null,
+				isWebMobileMd ? styles.topRowWebMobileMd : null,
+				shouldCenterContent ? styles.topRowCentered : null,
+				presentationMode === "modal" ? styles.topRowModal : null,
+				presentationMode === "panel" ? styles.topRowPanel : null,
+				shouldCenterContent && shellMaxWidth ? { maxWidth: shellMaxWidth } : null,
+			]}
+		>
+			<Pressable
+				onPress={onOpenSearch}
+				style={[
+					styles.searchPill,
+					isCollapsed ? styles.searchPillCollapsed : null,
+					isWebMobileVariant ? styles.searchPillWebMobile : null,
+					{
+						borderRadius: tokens.cardRadius,
+						backgroundColor: tokens.searchSurface,
+					},
+				]}
+			>
+				<Ionicons name="search" size={isCollapsed ? 18 : 20} color={tokens.titleColor} />
+				<Text style={[styles.searchText, { color: tokens.titleColor }]}> 
+					{MAP_EXPLORE_INTENT_COPY.SEARCH}
+				</Text>
+			</Pressable>
+
+			<MapExploreIntentProfileTrigger
+				onPress={onOpenProfile}
+				userImageSource={profileImageSource}
+				isSignedIn={isSignedIn}
+				isCollapsed={isCollapsed}
+			/>
+		</View>
+	);
+
+	const footerTerms = isExpanded ? (
+		<View style={styles.footerSlot}>
+			<InAppBrowserLink
+				label={MAP_EXPLORE_INTENT_COPY.TERMS}
+				url="https://ivisit.ng/terms"
+				color={tokens.mutedText}
+				style={styles.termsLink}
+				textStyle={styles.termsText}
+			/>
+		</View>
+	) : null;
+
+	return (
+		<MapSheetShell
+			sheetHeight={sheetHeight}
+			snapState={snapState}
+			topSlot={topRow}
+			footerSlot={footerTerms}
+			onHandlePress={handleSnapToggle}
+		>
+			{isCollapsed ? null : (
+				<ScrollView
+					showsVerticalScrollIndicator={false}
+					scrollEnabled={isExpanded || isCanonicalMobileIntent || isWebMobileVariant || shouldCenterContent}
+					contentContainerStyle={[
+						styles.bodyScrollContent,
+						isWebMobileVariant ? styles.bodyScrollContentWebMobile : null,
+						presentationMode === "modal" ? styles.bodyScrollContentModal : null,
+						presentationMode === "panel" ? styles.bodyScrollContentPanel : null,
+					]}
+				>
+					<MapExploreIntentScreenModularizer
+						screens={screenSections}
+						isWebMobileVariant={isWebMobileVariant}
+						isWebMobileMd={isWebMobileMd}
+						presentationMode={presentationMode}
+						centerContent={shouldCenterContent}
+						contentMaxWidth={contentMaxWidth}
+					/>
+				</ScrollView>
+			)}
+		</MapSheetShell>
+	);
+}

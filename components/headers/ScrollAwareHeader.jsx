@@ -7,6 +7,7 @@ import { BlurView } from "expo-blur";
 import { COLORS } from "../../constants/colors";
 import NotificationIconButton from "./NotificationIconButton";
 import SearchIconButton from "./SearchIconButton";
+import ActionWrapper from "./ActionWrapper";
 
 const HEADER_HEIGHT = 80;
 
@@ -31,6 +32,7 @@ export default function ScrollAwareHeader({
 }) {
 	const insets = useSafeAreaInsets();
 	const { isDarkMode } = useTheme();
+	const isWeb = Platform.OS === "web";
 	const isAndroid = Platform.OS === "android";
 	const { headerOpacity: scrollHeaderOpacity, titleOpacity: scrollTitleOpacity } = useScrollAwareHeader();
 	const headerOpacity = scrollAware ? scrollHeaderOpacity : 1;
@@ -38,12 +40,12 @@ export default function ScrollAwareHeader({
 	const islandGlassSurface = isDarkMode
 		? "rgba(18, 24, 38, 0.74)"
 		: "rgba(255, 255, 255, 0.82)";
+	const islandWebGlassSurface = isDarkMode
+		? "rgba(18, 24, 38, 0.44)"
+		: "rgba(255, 255, 255, 0.40)";
 	const islandShadowLayer = isDarkMode
 		? "rgba(0, 0, 0, 0.24)"
 		: "rgba(15, 23, 42, 0.12)";
-	const actionGlassSurface = isDarkMode
-		? "rgba(18, 24, 38, 0.70)"
-		: "rgba(238, 242, 247, 0.78)";
 
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
 	const textMuted = isDarkMode ? "#94A3B8" : "#64748B";
@@ -51,13 +53,12 @@ export default function ScrollAwareHeader({
 	const resolvedRight =
 		rightComponent === false ? null : rightComponent == null ? (
 			<View style={styles.rightActions}>
-				{/* Nested Squircle backgrounds for action buttons */}
-				<View style={[styles.actionWrapper, { backgroundColor: isAndroid ? actionGlassSurface : (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)") }]}>
+				<ActionWrapper>
 					<SearchIconButton />
-				</View>
-				<View style={[styles.actionWrapper, { backgroundColor: isAndroid ? actionGlassSurface : (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)") }]}>
+				</ActionWrapper>
+				<ActionWrapper>
 					<NotificationIconButton />
-				</View>
+				</ActionWrapper>
 			</View>
 		) : (
 			rightComponent
@@ -87,7 +88,19 @@ export default function ScrollAwareHeader({
 				<View
 					style={[
 						styles.islandClip,
-						{ backgroundColor: isAndroid ? islandGlassSurface : "transparent" },
+						{
+							backgroundColor: isAndroid
+								? islandGlassSurface
+								: isWeb
+									? islandWebGlassSurface
+									: "transparent",
+							...Platform.select({
+								web: {
+									backdropFilter: "blur(18px) saturate(1.2)",
+									WebkitBackdropFilter: "blur(18px) saturate(1.2)",
+								},
+							}),
+						},
 					]}
 				>
 				{Platform.OS === "ios" ? (
@@ -225,13 +238,6 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 10,
-	},
-	actionWrapper: {
-		width: 42,
-		height: 42,
-		borderRadius: 14, // Nested Squircle logic
-		alignItems: "center",
-		justifyContent: "center",
 	},
 	badgeBox: {
 		minWidth: 32,
