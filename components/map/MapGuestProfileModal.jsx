@@ -18,8 +18,8 @@ const SCREEN_HEIGHT = Dimensions.get("window").height;
 export default function MapGuestProfileModal({
 	visible,
 	onClose,
-	nameValue,
-	onNameChange,
+	emailValue,
+	onEmailChange,
 }) {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
@@ -129,16 +129,20 @@ export default function MapGuestProfileModal({
 							<Ionicons name="person" size={52} color={mutedColor} />
 						</View>
 
-						<Text style={[styles.title, { color: titleColor }]}>What&apos;s your name?</Text>
+						<Text style={[styles.title, { color: titleColor }]}>What&apos;s your email?</Text>
 
 						<View style={[styles.inputShell, { backgroundColor: inputSurface }]}>
-							<Ionicons name="person-outline" size={18} color={mutedColor} />
+							<Ionicons name="mail-outline" size={18} color={mutedColor} />
 							<TextInput
-								value={nameValue}
-								onChangeText={onNameChange}
-								placeholder="Your name"
+								value={emailValue}
+								onChangeText={onEmailChange}
+								placeholder="Email"
 								placeholderTextColor={mutedColor}
 								style={[styles.input, { color: titleColor }]}
+								keyboardType="email-address"
+								autoCapitalize="none"
+								autoCorrect={false}
+								autoComplete="email"
 							/>
 						</View>
 					</View>

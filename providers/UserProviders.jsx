@@ -4,7 +4,6 @@ import { HeaderStateProvider } from "../contexts/HeaderStateContext";
 import { FABProvider } from "../contexts/FABContext";
 import { VisitsProvider } from "../contexts/VisitsContext";
 import { EmergencyUIProvider } from "../contexts/EmergencyUIContext";
-import { SearchProvider } from "../contexts/SearchContext";
 
 /**
  * UserProviders
@@ -19,9 +18,7 @@ export const UserProviders = ({ children }) => {
 			<HeaderStateProvider>
 				<FABProvider>
 					<VisitsProvider>
-						<SearchProvider>
-							<EmergencyUIProvider>{children}</EmergencyUIProvider>
-						</SearchProvider>
+						<EmergencyUIProvider>{children}</EmergencyUIProvider>
 					</VisitsProvider>
 				</FABProvider>
 			</HeaderStateProvider>

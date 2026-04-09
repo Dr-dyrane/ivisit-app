@@ -244,6 +244,110 @@ function MapSheetShell({
 	);
 }
 
+function CareIntentOrb({
+	label,
+	subtext,
+	iconName,
+	colors,
+	hierarchy = "secondary",
+	onPress,
+	isSelected = false,
+	titleColor,
+	mutedColor,
+	pulseProgress = null,
+}) {
+	const animatedScale =
+		hierarchy === "primary" && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 1],
+					outputRange: [1, 1.03],
+				})
+			: 1;
+	const wrapperOpacity =
+		hierarchy === "primary" ? 1 : hierarchy === "secondary" ? 0.84 : 0.68;
+	const shadowOpacity =
+		hierarchy === "primary" ? 0.26 : hierarchy === "secondary" ? 0.12 : 0.06;
+	const shadowRadius =
+		hierarchy === "primary" ? 24 : hierarchy === "secondary" ? 12 : 6;
+	const shadowOffset = hierarchy === "primary" ? 14 : hierarchy === "secondary" ? 8 : 4;
+	const elevation = hierarchy === "primary" ? 12 : hierarchy === "secondary" ? 5 : 2;
+
+	return (
+		<Pressable
+			onPress={onPress}
+			style={({ pressed }) => [
+				styles.careAction,
+				pressed ? styles.careActionPressed : null,
+				{ opacity: pressed ? Math.max(wrapperOpacity - 0.08, 0.54) : wrapperOpacity },
+			]}
+		>
+			<Animated.View
+				style={{
+					transform: [{ scale: isSelected ? 1.05 : animatedScale }],
+				}}
+			>
+				<LinearGradient
+					colors={colors}
+					start={{ x: 0.18, y: 0.18 }}
+					end={{ x: 0.82, y: 0.9 }}
+					style={[
+						styles.careIconWrap,
+						{
+							shadowColor: "#000000",
+							shadowOpacity,
+							shadowRadius,
+							shadowOffset: { width: 0, height: shadowOffset },
+							elevation,
+							...Platform.select({
+								web: {
+									boxShadow:
+										hierarchy === "primary"
+											? "0px 18px 30px rgba(15,23,42,0.24)"
+											: hierarchy === "secondary"
+												? "0px 10px 16px rgba(15,23,42,0.14)"
+												: "0px 5px 9px rgba(15,23,42,0.08)",
+								},
+							}),
+						},
+					]}
+				>
+					<MaterialCommunityIcons name={iconName} size={38} color="#FFFFFF" />
+				</LinearGradient>
+			</Animated.View>
+			<Text
+				style={[
+					styles.careLabel,
+					{
+						color:
+							hierarchy === "primary"
+								? titleColor
+								: hierarchy === "secondary"
+									? mutedColor
+									: mutedColor,
+					},
+				]}
+			>
+				{label}
+			</Text>
+			<Text
+				style={[
+					styles.careSubtext,
+					{
+						color:
+							hierarchy === "primary"
+								? mutedColor
+								: hierarchy === "secondary"
+									? mutedColor
+									: mutedColor,
+					},
+				]}
+			>
+				{subtext}
+			</Text>
+		</Pressable>
+	);
+}
+
 function MapExploreIntentSheet({
 	sheetHeight,
 	snapState,
@@ -263,6 +367,30 @@ function MapExploreIntentSheet({
 }) {
 	const { isDarkMode } = useTheme();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
+	const pulseProgress = useRef(new Animated.Value(0)).current;
+
+	useEffect(() => {
+		const pulseLoop = Animated.loop(
+			Animated.sequence([
+				Animated.timing(pulseProgress, {
+					toValue: 1,
+					duration: 1800,
+					useNativeDriver: true,
+				}),
+				Animated.timing(pulseProgress, {
+					toValue: 0,
+					duration: 1800,
+					useNativeDriver: true,
+				}),
+			]),
+		);
+		pulseLoop.start();
+
+		return () => {
+			pulseLoop.stop();
+			pulseProgress.stopAnimation();
+		};
+	}, [pulseProgress]);
 
 	const topRow = (
 		<View style={styles.topRow}>
@@ -341,81 +469,47 @@ function MapExploreIntentSheet({
 			</Pressable>
 
 			<View style={styles.careRow}>
-				<Pressable
+				<CareIntentOrb
+					label="Ambulance"
+					subtext={nearbyHospitalCount > 0 ? `${nearbyHospitalCount} nearby` : "Nearby help"}
+					iconName="ambulance"
+					colors={["#A11217", "#6D080D"]}
+					hierarchy="primary"
 					onPress={() => onChooseCare("ambulance")}
-					style={({ pressed }) => [
-						styles.careAction,
-						pressed ? styles.careActionPressed : null,
-					]}
-				>
-					<LinearGradient
-						colors={["#F97316", "#DC2626"]}
-						start={{ x: 0.18, y: 0.18 }}
-						end={{ x: 0.82, y: 0.9 }}
-						style={[
-							styles.careIconWrap,
-							selectedCare === "ambulance" ? styles.careIconWrapSelected : null,
-						]}
-					>
-						<MaterialCommunityIcons name="ambulance" size={38} color="#FFFFFF" />
-					</LinearGradient>
-					<Text style={[styles.careLabel, { color: tokens.titleColor }]}>Ambulance</Text>
-					<Text style={[styles.careSubtext, { color: tokens.mutedText }]}>
-						{nearbyHospitalCount > 0 ? `${nearbyHospitalCount} nearby` : "Nearby help"}
-					</Text>
-				</Pressable>
+					isSelected={selectedCare === "ambulance"}
+					titleColor={tokens.titleColor}
+					mutedColor={tokens.mutedText}
+					pulseProgress={pulseProgress}
+				/>
 
-				<Pressable
-					onPress={() => onChooseCare("bed")}
-					style={({ pressed }) => [
-						styles.careAction,
-						pressed ? styles.careActionPressed : null,
-					]}
-				>
-					<LinearGradient
-						colors={["#38BDF8", "#2563EB"]}
-						start={{ x: 0.18, y: 0.18 }}
-						end={{ x: 0.82, y: 0.9 }}
-						style={[
-							styles.careIconWrap,
-							selectedCare === "bed" ? styles.careIconWrapSelected : null,
-						]}
-					>
-						<MaterialCommunityIcons name="bed" size={38} color="#FFFFFF" />
-					</LinearGradient>
-					<Text style={[styles.careLabel, { color: tokens.titleColor }]}>Bed space</Text>
-					<Text style={[styles.careSubtext, { color: tokens.mutedText }]}>
-						{totalAvailableBeds > 0
+				<CareIntentOrb
+					label="Bed space"
+					subtext={
+						totalAvailableBeds > 0
 							? `${totalAvailableBeds} available`
 							: nearbyBedHospitals > 0
 								? `${nearbyBedHospitals} nearby`
-								: "Nearby beds"}
-					</Text>
-				</Pressable>
+								: "Nearby beds"
+					}
+					iconName="bed"
+					colors={["#6F8DA7", "#506A86"]}
+					hierarchy="secondary"
+					onPress={() => onChooseCare("bed")}
+					isSelected={selectedCare === "bed"}
+					titleColor={tokens.titleColor}
+					mutedColor={tokens.mutedText}
+				/>
 
-				<Pressable
-					onPress={() => onChooseCare("both")}
-					style={({ pressed }) => [
-						styles.careAction,
-						pressed ? styles.careActionPressed : null,
-					]}
-				>
-					<LinearGradient
-						colors={["#14B8A6", "#0F766E"]}
-						start={{ x: 0.18, y: 0.18 }}
-						end={{ x: 0.82, y: 0.9 }}
-						style={[
-							styles.careIconWrap,
-							selectedCare === "both" ? styles.careIconWrapSelected : null,
-						]}
-					>
-						<MaterialCommunityIcons name="hospital-box" size={38} color="#FFFFFF" />
-					</LinearGradient>
-					<Text style={[styles.careLabel, { color: tokens.titleColor }]}>Both</Text>
-					<Text style={[styles.careSubtext, { color: tokens.mutedText }]}>
-						{nearbyHospitalCount > 0 ? `${nearbyHospitalCount} options` : "Full support"}
-					</Text>
-				</Pressable>
+				<CareIntentOrb
+					label="Compare"
+					subtext="All options"
+					iconName="format-list-bulleted"
+					colors={["#7A8592", "#596370"]}
+					hierarchy="tertiary"
+					onPress={onOpenCareHistory}
+					titleColor={tokens.titleColor}
+					mutedColor={tokens.mutedText}
+				/>
 			</View>
 		</MapSheetShell>
 	);
@@ -616,18 +710,6 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 		marginBottom: 10,
-		shadowColor: "#000000",
-		shadowOpacity: 0.18,
-		shadowRadius: 18,
-		shadowOffset: { width: 0, height: 10 },
-		...Platform.select({
-			web: {
-				boxShadow: "0px 14px 26px rgba(15,23,42,0.16)",
-			},
-		}),
-	},
-	careIconWrapSelected: {
-		transform: [{ scale: 1.04 }],
 	},
 	careLabel: {
 		fontSize: 15,
@@ -639,7 +721,7 @@ const styles = StyleSheet.create({
 		marginTop: 3,
 		fontSize: 12,
 		lineHeight: 16,
-		fontWeight: "600",
+		fontWeight: "400",
 		textAlign: "center",
 	},
 });

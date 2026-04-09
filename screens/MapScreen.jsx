@@ -14,6 +14,7 @@ import EmergencyLocationPreviewMap from "../components/emergency/intake/Emergenc
 import EmergencyHospitalChoiceSheet from "../components/emergency/intake/EmergencyHospitalChoiceSheet";
 import EmergencyLocationSearchStageOrchestrator from "../components/emergency/intake/views/locationSearch/EmergencyLocationSearchStageOrchestrator";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
+import HeaderLocationButton from "../components/headers/HeaderLocationButton";
 import MiniProfileModal from "../components/emergency/MiniProfileModal";
 import AuthInputModal from "../components/register/AuthInputModal";
 import MapSheetOrchestrator, {
@@ -23,6 +24,18 @@ import MapSheetOrchestrator, {
 } from "../components/map/MapSheetOrchestrator";
 import MapGuestProfileModal from "../components/map/MapGuestProfileModal";
 import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
+import MapPublicSearchModal from "../components/map/MapPublicSearchModal";
+
+const COUNTRY_SEGMENTS = new Set([
+	"united states",
+	"united states of america",
+	"usa",
+	"nigeria",
+	"canada",
+	"united kingdom",
+	"uk",
+]);
+const ZIP_FRAGMENT_REGEX = /\b\d{4,6}(?:-\d{3,4})?\b/g;
 
 function toEmergencyLocation(location) {
 	if (!location) return null;
@@ -53,6 +66,39 @@ function formatDistance(hospital) {
 	return "Nearby";
 }
 
+function cleanAddressPiece(value) {
+	if (typeof value !== "string") return "";
+	return value
+		.replace(ZIP_FRAGMENT_REGEX, "")
+		.replace(/\s{2,}/g, " ")
+		.replace(/\s+,/g, ",")
+		.trim()
+		.replace(/,$/, "")
+		.trim();
+}
+
+function buildHeaderLocationModel(locationModel) {
+	if (!locationModel) {
+		return {
+			primaryText: "Current location",
+			secondaryText: "",
+		};
+	}
+
+	const primaryText = cleanAddressPiece(locationModel.primaryText) || "Current location";
+	const secondaryParts = String(locationModel.secondaryText || "")
+		.split(",")
+		.map((part) => cleanAddressPiece(part))
+		.filter(Boolean)
+		.filter((part) => !COUNTRY_SEGMENTS.has(part.toLowerCase()));
+
+	return {
+		...locationModel,
+		primaryText,
+		secondaryText: secondaryParts.join(", "),
+	};
+}
+
 export default function MapScreen() {
 	const router = useRouter();
 	const { resetHeader } = useScrollAwareHeader();
@@ -80,15 +126,16 @@ export default function MapScreen() {
 		setUserLocation,
 		userLocation: emergencyUserLocation,
 	} = useEmergency();
-	const [searchVisible, setSearchVisible] = useState(false);
+	const [locationSearchVisible, setLocationSearchVisible] = useState(false);
 	const [hospitalModalVisible, setHospitalModalVisible] = useState(false);
 	const [profileModalVisible, setProfileModalVisible] = useState(false);
 	const [guestProfileVisible, setGuestProfileVisible] = useState(false);
 	const [careHistoryVisible, setCareHistoryVisible] = useState(false);
+	const [publicSearchVisible, setPublicSearchVisible] = useState(false);
 	const [authModalVisible, setAuthModalVisible] = useState(false);
 	const [selectedCare, setSelectedCare] = useState(null);
 	const [manualLocation, setManualLocation] = useState(null);
-	const [guestProfileName, setGuestProfileName] = useState("");
+	const [guestProfileEmail, setGuestProfileEmail] = useState("");
 	const [sheetMode] = useState(MAP_SHEET_MODES.EXPLORE_INTENT);
 	const [sheetSnapState] = useState(MAP_SHEET_SNAP_STATES.HALF);
 
@@ -102,11 +149,13 @@ export default function MapScreen() {
 	);
 
 	const activeLocation = manualLocation?.location || emergencyUserLocation || globalUserLocation || null;
-	const currentLocationDetails = manualLocation || {
-		primaryText: locationLabel || "Current location",
-		secondaryText: locationLabelDetail || "",
-		location: activeLocation,
-	};
+	const currentLocationDetails = buildHeaderLocationModel(
+		manualLocation || {
+			primaryText: locationLabel || "Current location",
+			secondaryText: locationLabelDetail || "",
+			location: activeLocation,
+		},
+	);
 	const isSignedIn = Boolean(user?.isLoggedIn || user?.id);
 	const profileImageSource = user?.imageUri
 		? { uri: user.imageUri }
@@ -117,9 +166,9 @@ export default function MapScreen() {
 		setHeaderState({
 			hidden: shouldHideHeader,
 			title: currentLocationDetails?.primaryText || "Current location",
-			subtitle: currentLocationDetails?.secondaryText || "YOUR LOCATION",
+			subtitle: currentLocationDetails?.secondaryText || "Location",
 			backgroundColor: "#86100E",
-			rightComponent: false,
+			rightComponent: <HeaderLocationButton onPress={() => setLocationSearchVisible(true)} />,
 			leftComponent: <HeaderBackButton onPress={() => router.replace("/")} />,
 			badge: null,
 			scrollAware: false,
@@ -218,12 +267,12 @@ export default function MapScreen() {
 	const handleSearchLocation = useCallback((nextLocation) => {
 		if (!nextLocation?.location) return;
 		setManualLocation(nextLocation);
-		setSearchVisible(false);
+		setLocationSearchVisible(false);
 	}, []);
 
 	const handleUseCurrentLocation = useCallback(async () => {
 		setManualLocation(null);
-		setSearchVisible(false);
+		setLocationSearchVisible(false);
 		await refreshLocation?.();
 	}, [refreshLocation]);
 
@@ -263,7 +312,7 @@ export default function MapScreen() {
 
 		registerFAB("map-guest-profile-continue", {
 			icon: "arrow-forward",
-			label: "Continue",
+			label: "Next",
 			visible: true,
 			style: "primary",
 			priority: 40,
@@ -298,7 +347,7 @@ export default function MapScreen() {
 					nearestHospital={nearestHospital}
 					nearestHospitalMeta={nearestHospitalMeta}
 					selectedCare={selectedCare}
-					onOpenSearch={() => setSearchVisible(true)}
+					onOpenSearch={() => setPublicSearchVisible(true)}
 					onOpenHospitals={() => setHospitalModalVisible(true)}
 					onChooseCare={handleChooseCare}
 					onOpenProfile={handleOpenProfile}
@@ -313,11 +362,16 @@ export default function MapScreen() {
 
 			<EmergencyLocationSearchStageOrchestrator
 				variant={screenVariant}
-				visible={searchVisible}
-				onClose={() => setSearchVisible(false)}
+				visible={locationSearchVisible}
+				onClose={() => setLocationSearchVisible(false)}
 				onUseCurrentLocation={handleUseCurrentLocation}
 				onSelectLocation={handleSearchLocation}
 				currentLocation={currentLocationDetails}
+			/>
+
+			<MapPublicSearchModal
+				visible={publicSearchVisible}
+				onClose={() => setPublicSearchVisible(false)}
 			/>
 
 			<EmergencyHospitalChoiceSheet
@@ -329,7 +383,7 @@ export default function MapScreen() {
 				onSelectHospital={handleSelectHospital}
 				onChangeLocation={() => {
 					setHospitalModalVisible(false);
-					setSearchVisible(true);
+					setLocationSearchVisible(true);
 				}}
 				variant={screenVariant}
 				statusMessage="Select the best hospital for this location."
@@ -343,8 +397,8 @@ export default function MapScreen() {
 			<MapGuestProfileModal
 				visible={guestProfileVisible}
 				onClose={() => setGuestProfileVisible(false)}
-				nameValue={guestProfileName}
-				onNameChange={setGuestProfileName}
+				emailValue={guestProfileEmail}
+				onEmailChange={setGuestProfileEmail}
 			/>
 
 			<MapCareHistoryModal
@@ -360,6 +414,7 @@ export default function MapScreen() {
 				visible={authModalVisible}
 				onClose={() => setAuthModalVisible(false)}
 				type="email"
+				prefillValue={guestProfileEmail}
 			/>
 		</View>
 	);

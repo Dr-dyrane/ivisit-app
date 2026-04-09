@@ -25,7 +25,15 @@ function formatVisitSupport(visit) {
 	return [hospital, date, time].filter(Boolean).join(" | ");
 }
 
-function CareBlade({ colors, iconName, title, onPress, titleColor, mutedColor }) {
+function CareBlade({
+	colors,
+	iconName,
+	title,
+	subtext,
+	onPress,
+	titleColor,
+	mutedColor,
+}) {
 	return (
 		<Pressable onPress={onPress} style={styles.careBlade}>
 			<LinearGradient
@@ -38,6 +46,9 @@ function CareBlade({ colors, iconName, title, onPress, titleColor, mutedColor })
 			</LinearGradient>
 			<View style={styles.bladeCopy}>
 				<Text style={[styles.bladeTitle, { color: titleColor }]}>{title}</Text>
+				{subtext ? (
+					<Text style={[styles.bladeSubtext, { color: mutedColor }]}>{subtext}</Text>
+				) : null}
 			</View>
 			<Ionicons name="chevron-forward" size={18} color={mutedColor} />
 		</Pressable>
@@ -94,7 +105,8 @@ export default function MapCareHistoryModal({
 										<CareBlade
 											colors={["#F97316", "#DC2626"]}
 											iconName="ambulance"
-											title="Book ambulance"
+											title="Ambulance"
+											subtext="Fast transport nearby"
 											onPress={() => onChooseCare?.("ambulance")}
 											titleColor={titleColor}
 											mutedColor={mutedColor}
@@ -104,7 +116,8 @@ export default function MapCareHistoryModal({
 										<CareBlade
 											colors={["#38BDF8", "#2563EB"]}
 											iconName="bed"
-											title="Reserve bed space"
+											title="Bed space"
+											subtext="Available beds nearby"
 											onPress={() => onChooseCare?.("bed")}
 											titleColor={titleColor}
 											mutedColor={mutedColor}
@@ -114,7 +127,8 @@ export default function MapCareHistoryModal({
 										<CareBlade
 											colors={["#14B8A6", "#0F766E"]}
 											iconName="hospital-box"
-											title="Both"
+											title="Ambulance + bed"
+											subtext="Transport and admission"
 											onPress={() => onChooseCare?.("both")}
 											titleColor={titleColor}
 											mutedColor={mutedColor}
@@ -258,6 +272,12 @@ const styles = StyleSheet.create({
 		lineHeight: 21,
 		fontWeight: "800",
 	},
+	bladeSubtext: {
+		marginTop: 3,
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "400",
+	},
 	recentSection: {
 		marginTop: 8,
 	},
@@ -305,6 +325,6 @@ const styles = StyleSheet.create({
 		marginTop: 4,
 		fontSize: 13,
 		lineHeight: 18,
-		fontWeight: "500",
+		fontWeight: "400",
 	},
 });

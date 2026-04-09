@@ -11,6 +11,7 @@ import { EmergencyProvider } from "../contexts/EmergencyContext";
 import { EmergencyUIProvider } from "../contexts/EmergencyUIContext";
 import { NotificationsProvider } from "../contexts/NotificationsContext";
 import { VisitsProvider } from "../contexts/VisitsContext";
+import { SearchProvider } from "../contexts/SearchContext";
 import ToastProvider from "../contexts/ToastContext";
 import { HelpSupportProvider } from "../contexts/HelpSupportContext";
 import { FABProvider } from "../contexts/FABContext";
@@ -27,7 +28,7 @@ import { StripeProvider } from "@stripe/stripe-react-native";
  * 2. OTAUpdatesProvider (Shared update state - NEW)
  * 3. ThemeProvider (UI Theming)
  * 4. UnifiedScrollProvider (Synchronized scroll animations)
- * 5. Feature Providers (TabBar, Headers, Emergency, EmergencyUI, FAB, Toast)
+ * 5. Feature Providers (TabBar, Headers, Search, Emergency, EmergencyUI, FAB, Toast)
  */
 export const AppProviders = ({ children }) => {
 	return (
@@ -46,13 +47,15 @@ export const AppProviders = ({ children }) => {
 											<HeaderStateProvider>
 												<NotificationsProvider>
 													<VisitsProvider>
-														<EmergencyProvider>
-															<EmergencyUIProvider>
-																<FABProvider>
-																	<HelpSupportProvider>{children}</HelpSupportProvider>
-																</FABProvider>
-															</EmergencyUIProvider>
-														</EmergencyProvider>
+														<SearchProvider>
+															<EmergencyProvider>
+																<EmergencyUIProvider>
+																	<FABProvider>
+																		<HelpSupportProvider>{children}</HelpSupportProvider>
+																	</FABProvider>
+																</EmergencyUIProvider>
+															</EmergencyProvider>
+														</SearchProvider>
 													</VisitsProvider>
 												</NotificationsProvider>
 											</HeaderStateProvider>

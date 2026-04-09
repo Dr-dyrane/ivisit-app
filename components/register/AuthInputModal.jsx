@@ -33,7 +33,7 @@ import PasswordInputField from "./PasswordInputField";
 import SmartContactInput from "../auth/SmartContactInput";
 import useAuthViewport from "../../hooks/ui/useAuthViewport";
 
-export default function AuthInputModal({ visible, onClose, type }) {
+export default function AuthInputModal({ visible, onClose, type, prefillValue = "" }) {
 	const { height: viewportHeight } = useWindowDimensions();
 	const {
 		modalMode,
@@ -107,12 +107,22 @@ export default function AuthInputModal({ visible, onClose, type }) {
 			const initModal = async () => {
 				const hasPending = await checkAndApplyPendingRegistration();
 				if (!hasPending && currentStep === REGISTRATION_STEPS.SMART_CONTACT && type) {
-					updateRegistrationData({ method: type });
+					updateRegistrationData({
+						method: type,
+						email:
+							type === "email" && typeof prefillValue === "string" && prefillValue.trim()
+								? prefillValue.trim()
+								: null,
+						phone:
+							type === "phone" && typeof prefillValue === "string" && prefillValue.trim()
+								? prefillValue.trim()
+								: null,
+					});
 				}
 			};
 			initModal();
 		}
-	}, [visible]);
+	}, [currentStep, prefillValue, type, updateRegistrationData, visible, checkAndApplyPendingRegistration, clearError]);
 
 	/* ------------------ Handlers ------------------ */
 	const handleDismiss = () => {
