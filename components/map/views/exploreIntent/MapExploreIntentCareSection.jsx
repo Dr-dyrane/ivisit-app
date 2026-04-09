@@ -144,8 +144,10 @@ export default function MapExploreIntentCareSection({
 	const bedSubtext = getBedSpaceSubtext(totalAvailableBeds, nearbyBedHospitals);
 	const ambulanceSubtext =
 		nearbyHospitalCount > 0 ? `${nearbyHospitalCount} nearby` : MAP_EXPLORE_INTENT_COPY.NEARBY_HELP;
+	const usesCanonicalOrbLayout =
+		layoutMode === "canonical" || layoutMode === "web_canonical";
 
-if (layoutMode === "panel") {
+	if (layoutMode === "panel") {
 		return (
 			<>
 				<View style={styles.intentSectionHeader}>
@@ -233,6 +235,10 @@ if (layoutMode === "panel") {
 				</View>
 			</>
 		);
+	}
+
+	if (!usesCanonicalOrbLayout) {
+		return null;
 	}
 
 	return (

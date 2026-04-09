@@ -7,6 +7,7 @@ Related:
 
 - [../flows/emergency/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](../flows/emergency/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 - [../flows/emergency/MAP_FLOW_IMPLEMENTATION_V1.md](../flows/emergency/MAP_FLOW_IMPLEMENTATION_V1.md)
+- [../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
 
 ## Goal
 
@@ -40,14 +41,22 @@ Responsibility:
 ### 3. Persistent Sheet
 
 - [MapSheetOrchestrator.jsx](../../components/map/MapSheetOrchestrator.jsx)
+- [MapSheetShell.jsx](../../components/map/MapSheetShell.jsx)
+- [mapSheet.constants.js](../../components/map/mapSheet.constants.js)
+- [mapSheetShell.styles.js](../../components/map/mapSheetShell.styles.js)
 - [mapSheetTokens.js](../../components/map/mapSheetTokens.js)
 
 Responsibility:
 
-- one persistent floating sheet shell
+- `MapSheetOrchestrator` routes by mode
+- `MapSheetShell` owns one persistent floating sheet shell
 - one mode
 - one snap state
 - content changes without replacing the shell
+
+Current view decomposition example:
+
+- [components/map/views/exploreIntent](../../components/map/views/exploreIntent)
 
 ### 4. Modal Family
 

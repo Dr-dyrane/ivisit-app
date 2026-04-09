@@ -22,6 +22,12 @@ const CENTERED_PANEL_CONFIG = {
 	careLayoutMode: "panel",
 };
 
+const WEB_CANONICAL_MOBILE_CONFIG = {
+	...BASE_MOBILE_SCREEN_CONFIG,
+	hospitalSummaryMode: "web_canonical",
+	careLayoutMode: "web_canonical",
+};
+
 export function getMapExploreIntentScreenConfig(
 	variant = MAP_INTENT_VARIANTS.IOS_MOBILE,
 ) {
@@ -63,18 +69,15 @@ export function getMapExploreIntentScreenConfig(
 			};
 		case MAP_INTENT_VARIANTS.WEB_MOBILE:
 			return {
-				...BASE_MOBILE_SCREEN_CONFIG,
+				...WEB_CANONICAL_MOBILE_CONFIG,
 				posture: "web_mobile",
-				careLayoutMode: "canonical",
-				centerContent: true,
-				contentMaxWidth: 420,
-				shellMaxWidth: 460,
 			};
 		case MAP_INTENT_VARIANTS.WEB_SM_WIDE:
 			return {
 				...CENTERED_MODAL_CONFIG,
 				posture: "web_sm_wide",
-				careLayoutMode: "canonical",
+				hospitalSummaryMode: "web_canonical",
+				careLayoutMode: "web_canonical",
 				contentMaxWidth: 560,
 				shellMaxWidth: 620,
 			};
@@ -82,7 +85,8 @@ export function getMapExploreIntentScreenConfig(
 			return {
 				...CENTERED_MODAL_CONFIG,
 				posture: "web_md",
-				careLayoutMode: "canonical",
+				hospitalSummaryMode: "web_canonical",
+				careLayoutMode: "web_canonical",
 				contentMaxWidth: 640,
 				shellMaxWidth: 720,
 			};

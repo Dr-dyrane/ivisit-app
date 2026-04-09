@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { View, Text, Image, Pressable, Modal, Animated, Dimensions, ScrollView, StyleSheet } from "react-native";
+import { View, Text, Image, Pressable, Modal, Animated, ScrollView, StyleSheet, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -11,8 +11,6 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { navigateToMedicalProfile, navigateToProfile, navigateToVisits } from "../../utils/navigationHelpers";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 export default function MiniProfileModal({ visible, onClose }) {
 	const { isDarkMode } = useTheme();
 	const { user } = useAuth();
@@ -20,8 +18,9 @@ export default function MiniProfileModal({ visible, onClose }) {
 	const { profile: medicalProfile } = useMedicalProfile();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { height: screenHeight } = useWindowDimensions();
 
-	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+	const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
 	useEffect(() => {
@@ -36,7 +35,7 @@ export default function MiniProfileModal({ visible, onClose }) {
 	const handleDismiss = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		Animated.parallel([
-			Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 250, useNativeDriver: true }),
+			Animated.timing(slideAnim, { toValue: screenHeight, duration: 250, useNativeDriver: true }),
 			Animated.timing(bgOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
 		]).start(() => onClose());
 	};
@@ -61,7 +60,9 @@ export default function MiniProfileModal({ visible, onClose }) {
 				<Animated.View style={[styles.modalCard, { 
                     transform: [{ translateY: slideAnim }], 
                     backgroundColor: isDarkMode ? "#0F172A" : "#FFFFFF",
-                    paddingBottom: insets.bottom + 20
+                    paddingBottom: insets.bottom + 20,
+                    minHeight: screenHeight * 0.6,
+                    maxHeight: screenHeight * 0.85,
                 }]}>
 					{/* Handle */}
 					<View style={styles.handleContainer}>
@@ -151,8 +152,6 @@ const styles = StyleSheet.create({
 	modalCard: {
 		borderTopLeftRadius: 48, // Aggressive Premium Rounding
 		borderTopRightRadius: 48,
-		minHeight: SCREEN_HEIGHT * 0.6,
-		maxHeight: SCREEN_HEIGHT * 0.85,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: -10 },
         shadowOpacity: 0.2,
@@ -168,7 +167,7 @@ const styles = StyleSheet.create({
 	avatarImage: { 
         width: 100, 
         height: 100, 
-        borderRadius: 32, // Large Nested Squircle
+        borderRadius: 999,
         borderWidth: 3,
         borderColor: COLORS.brandPrimary 
     },
@@ -179,7 +178,7 @@ const styles = StyleSheet.create({
 		backgroundColor: COLORS.brandPrimary,
 		width: 28,
 		height: 28,
-		borderRadius: 10,
+		borderRadius: 999,
 		alignItems: 'center',
 		justifyContent: 'center',
 		borderWidth: 3,

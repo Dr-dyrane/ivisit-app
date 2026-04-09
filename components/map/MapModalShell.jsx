@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
 	Animated,
-	Dimensions,
+	Platform,
 	Pressable,
 	ScrollView,
 	Text,
 	View,
+	useWindowDimensions,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,8 +20,6 @@ import {
 } from "./mapMotionTokens";
 import { styles } from "./mapModalShell.styles";
 
-const SCREEN_HEIGHT = Dimensions.get("window").height;
-
 export default function MapModalShell({
 	visible,
 	onClose,
@@ -30,12 +29,15 @@ export default function MapModalShell({
 	showHandle = false,
 	scrollEnabled = true,
 	contentContainerStyle,
+	closeOnBackdropPress = Platform.OS !== "web",
 	children,
 }) {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
+	const { height: screenHeight } = useWindowDimensions();
+	const isWeb = Platform.OS === "web";
 	const [shouldRender, setShouldRender] = useState(visible);
-	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+	const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 
 	useEffect(() => {
@@ -62,7 +64,7 @@ export default function MapModalShell({
 
 		Animated.parallel([
 			Animated.timing(slideAnim, {
-				toValue: SCREEN_HEIGHT,
+				toValue: screenHeight,
 				duration: MAP_MODAL_EXIT_MS,
 				useNativeDriver: true,
 			}),
@@ -78,7 +80,7 @@ export default function MapModalShell({
 		});
 
 		return undefined;
-	}, [bgOpacity, shouldRender, slideAnim, visible]);
+	}, [bgOpacity, screenHeight, shouldRender, slideAnim, visible]);
 
 	if (!shouldRender) return null;
 
@@ -86,13 +88,55 @@ export default function MapModalShell({
 	const surfaceColor = isDarkMode ? "rgba(8, 15, 27, 0.84)" : "rgba(255, 255, 255, 0.88)";
 	const closeBg = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)";
 	const handleColor = isDarkMode ? "rgba(148,163,184,0.54)" : "rgba(100,116,139,0.30)";
-	const minHeight = SCREEN_HEIGHT * minHeightRatio;
-	const maxHeight = SCREEN_HEIGHT * maxHeightRatio;
+	const minHeight = screenHeight * minHeightRatio;
+	const maxHeight = screenHeight * maxHeightRatio;
+	const modalContent = (
+		<View
+			style={[
+				styles.sheetSurface,
+				{
+					backgroundColor: surfaceColor,
+					minHeight,
+					maxHeight,
+					paddingBottom: insets.bottom + 18,
+				},
+			]}
+		>
+			{showHandle ? (
+				<View style={styles.handleWrap}>
+					<View style={[styles.handle, { backgroundColor: handleColor }]} />
+				</View>
+			) : null}
+
+			<View style={styles.headerRow}>
+				{title ? (
+					<Text style={[styles.headerTitle, { color: titleColor }]}>{title}</Text>
+				) : (
+					<View style={styles.headerSpacer} />
+				)}
+				<Pressable onPress={onClose} style={[styles.closeButton, { backgroundColor: closeBg }]}>
+					<Ionicons name="close" size={18} color={titleColor} />
+				</Pressable>
+			</View>
+
+			<ScrollView
+				showsVerticalScrollIndicator={false}
+				keyboardShouldPersistTaps="handled"
+				scrollEnabled={scrollEnabled}
+				contentContainerStyle={[styles.content, contentContainerStyle]}
+			>
+				{children}
+			</ScrollView>
+		</View>
+	);
 
 	return (
 		<View style={styles.root} pointerEvents="box-none">
-			<Animated.View style={[styles.backdrop, { opacity: bgOpacity }]}>
-				<Pressable style={styles.backdrop} onPress={onClose} />
+			<Animated.View style={[styles.backdrop, { opacity: bgOpacity }]}> 
+				<Pressable
+					style={styles.backdrop}
+					onPress={closeOnBackdropPress ? onClose : undefined}
+				/>
 			</Animated.View>
 
 			<Animated.View
@@ -103,49 +147,17 @@ export default function MapModalShell({
 					},
 				]}
 			>
-				<BlurView
-					intensity={isDarkMode ? 44 : 56}
-					tint={isDarkMode ? "dark" : "light"}
-					style={styles.sheetBlur}
-				>
-					<View
-						style={[
-							styles.sheetSurface,
-							{
-								backgroundColor: surfaceColor,
-								minHeight,
-								maxHeight,
-								paddingBottom: insets.bottom + 18,
-							},
-						]}
+				{isWeb ? (
+					<View style={styles.sheetBlur}>{modalContent}</View>
+				) : (
+					<BlurView
+						intensity={isDarkMode ? 44 : 56}
+						tint={isDarkMode ? "dark" : "light"}
+						style={styles.sheetBlur}
 					>
-						{showHandle ? (
-							<View style={styles.handleWrap}>
-								<View style={[styles.handle, { backgroundColor: handleColor }]} />
-							</View>
-						) : null}
-
-						<View style={styles.headerRow}>
-							{title ? (
-								<Text style={[styles.headerTitle, { color: titleColor }]}>{title}</Text>
-							) : (
-								<View style={styles.headerSpacer} />
-							)}
-							<Pressable onPress={onClose} style={[styles.closeButton, { backgroundColor: closeBg }]}>
-								<Ionicons name="close" size={18} color={titleColor} />
-							</Pressable>
-						</View>
-
-						<ScrollView
-							showsVerticalScrollIndicator={false}
-							keyboardShouldPersistTaps="handled"
-							scrollEnabled={scrollEnabled}
-							contentContainerStyle={[styles.content, contentContainerStyle]}
-						>
-							{children}
-						</ScrollView>
-					</View>
-				</BlurView>
+						{modalContent}
+					</BlurView>
+				)}
 			</Animated.View>
 		</View>
 	);

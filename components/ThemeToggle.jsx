@@ -14,6 +14,8 @@ import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePathname } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useHeaderState } from "../contexts/HeaderStateContext";
 
 /**
  * ThemeToggle
@@ -37,6 +39,8 @@ import { COLORS } from "../constants/colors";
 export default function ThemeToggle({ showLabel = true }) {
 	const { isDarkMode, toggleTheme } = useTheme();
 	const pathname = usePathname();
+	const { headerState } = useHeaderState();
+	const insets = useSafeAreaInsets();
 	const isAndroid = Platform.OS === "android";
 	const isWeb = Platform.OS === "web";
 	const isWelcomeRoute = pathname === "/";
@@ -55,8 +59,28 @@ export default function ThemeToggle({ showLabel = true }) {
 	const opacityAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(20)).current;
 	const labelFadeAnim = useRef(new Animated.Value(1)).current;
+	const verticalOffsetAnim = useRef(new Animated.Value(0)).current;
 
 	const collapseTimer = useRef(null);
+	const hasVisibleHeaderContent =
+		Boolean(headerState?.title) ||
+		Boolean(headerState?.subtitle) ||
+		Boolean(headerState?.icon) ||
+		Boolean(headerState?.badge) ||
+		Boolean(headerState?.leftComponent) ||
+		Boolean(headerState?.rightComponent);
+	const hasActiveHeader = !headerState?.hidden && hasVisibleHeaderContent;
+	const defaultTop = Platform.OS === "ios"
+		? (isWelcomeRoute ? 46 : 54)
+		: isWeb
+			? (isWelcomeRoute ? 14 : 18)
+			: 34;
+	const headerAwareTop = Platform.OS === "ios"
+		? insets.top + 8 + 80 + 6
+		: isWeb
+			? 94
+			: insets.top + 8 + 80 + 6;
+	const targetTop = !isWelcomeRoute && hasActiveHeader ? headerAwareTop : defaultTop;
 	// ------------------------
 	// Lifecycle Effects
 	// ------------------------
@@ -84,6 +108,15 @@ export default function ThemeToggle({ showLabel = true }) {
 			}),
 		]).start();
 	}, [mounted, targetOpacity]);
+
+	useEffect(() => {
+		Animated.spring(verticalOffsetAnim, {
+			toValue: targetTop - defaultTop,
+			friction: 8,
+			tension: 60,
+			useNativeDriver: Platform.OS !== "web",
+		}).start();
+	}, [defaultTop, targetTop, verticalOffsetAnim]);
 
 	useEffect(() => {
 		heightAnim.setValue(expanded ? expandedHeight : shellSize);
@@ -163,9 +196,9 @@ export default function ThemeToggle({ showLabel = true }) {
 			style={{
 				position: "absolute",
 				right: isWelcomeRoute ? 14 : 16,
-				top: Platform.OS === "ios" ? (isWelcomeRoute ? 46 : 54) : isWeb ? (isWelcomeRoute ? 14 : 18) : 34,
+				top: defaultTop,
 				opacity: opacityAnim,
-				transform: [{ translateX: slideAnim }],
+				transform: [{ translateX: slideAnim }, { translateY: verticalOffsetAnim }],
 				zIndex: 99999,
 				alignItems: "center",
 			}}

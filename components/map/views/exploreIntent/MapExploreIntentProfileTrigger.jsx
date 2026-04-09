@@ -17,12 +17,10 @@ export default function MapExploreIntentProfileTrigger({
 				{ transform: [{ scale: pressed ? 0.96 : 1 }] },
 			]}
 		>
-			<Image
-				source={userImageSource}
-				resizeMode="cover"
+			<View
 				style={[
-					styles.avatarImage,
-					isCollapsed ? styles.avatarImageCollapsed : null,
+					styles.avatarImageShell,
+					isCollapsed ? styles.avatarImageShellCollapsed : null,
 					{
 						shadowColor: "#000000",
 						shadowOpacity: 0.16,
@@ -35,7 +33,16 @@ export default function MapExploreIntentProfileTrigger({
 						}),
 					},
 				]}
-			/>
+			>
+				<Image
+					source={userImageSource}
+					resizeMode="cover"
+					style={[
+						styles.avatarImage,
+						isCollapsed ? styles.avatarImageCollapsed : null,
+					]}
+				/>
+			</View>
 			{isSignedIn ? <View style={[styles.avatarDot, isCollapsed ? styles.avatarDotCollapsed : null]} /> : null}
 		</Pressable>
 	);

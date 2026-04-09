@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
@@ -365,8 +366,9 @@ export function useMapExploreFlow() {
 	}, []);
 
 	useEffect(() => {
-		if (!guestProfileVisible) {
-			unregisterFAB("map-guest-profile-continue");
+		unregisterFAB("map-guest-profile-continue");
+
+		if (!guestProfileVisible || Platform.OS === "web") {
 			return undefined;
 		}
 

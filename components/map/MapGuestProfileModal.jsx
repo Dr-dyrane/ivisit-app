@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import MapModalShell from "./MapModalShell";
@@ -9,6 +9,7 @@ export default function MapGuestProfileModal({
 	onClose,
 	emailValue,
 	onEmailChange,
+	onContinue,
 }) {
 	const { isDarkMode } = useTheme();
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
@@ -44,6 +45,12 @@ export default function MapGuestProfileModal({
 					autoComplete="email"
 				/>
 			</View>
+
+			{Platform.OS === "web" && typeof onContinue === "function" ? (
+				<Pressable onPress={onContinue} style={styles.continueButton}>
+					<Text style={styles.continueButtonText}>Continue</Text>
+				</Pressable>
+			) : null}
 		</MapModalShell>
 	);
 }
@@ -88,5 +95,21 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		lineHeight: 20,
 		fontWeight: "400",
+	},
+	continueButton: {
+		marginTop: 16,
+		minWidth: 160,
+		paddingHorizontal: 20,
+		paddingVertical: 14,
+		borderRadius: 999,
+		backgroundColor: "#86100E",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	continueButtonText: {
+		color: "#FFFFFF",
+		fontSize: 15,
+		lineHeight: 18,
+		fontWeight: "800",
 	},
 });

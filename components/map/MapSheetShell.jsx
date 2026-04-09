@@ -17,6 +17,8 @@ import styles from "./mapSheetShell.styles";
 export default function MapSheetShell({
 	sheetHeight,
 	snapState,
+	presentationMode = "sheet",
+	shellWidth = null,
 	topSlot = null,
 	footerSlot = null,
 	onHandlePress,
@@ -26,30 +28,54 @@ export default function MapSheetShell({
 	const isAndroid = Platform.OS === "android";
 	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
+	const useFloatingShell =
+		presentationMode !== "sheet" && Number.isFinite(shellWidth) && shellWidth > 0;
 	const snapProgress = useRef(
 		new Animated.Value(
 			MAP_SHEET_SNAP_INDEX[snapState] ?? MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.HALF],
 		),
 	).current;
 	const dragTranslateY = useRef(new Animated.Value(0)).current;
+	const hasMountedRef = useRef(false);
+	const snapTarget =
+		MAP_SHEET_SNAP_INDEX[snapState] ??
+		MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.HALF];
+	const snapSpringConfig = useMemo(
+		() => ({
+			...MAP_SHEET_SNAP_SPRING,
+			overshootClamping: isAndroid,
+		}),
+		[isAndroid],
+	);
 
 	useEffect(() => {
+		if (!hasMountedRef.current) {
+			snapProgress.setValue(snapTarget);
+			hasMountedRef.current = true;
+			return;
+		}
+
 		Animated.spring(snapProgress, {
-			toValue:
-				MAP_SHEET_SNAP_INDEX[snapState] ??
-				MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.HALF],
+			toValue: snapTarget,
 			useNativeDriver: false,
-			...MAP_SHEET_SNAP_SPRING,
+			...snapSpringConfig,
 		}).start();
-	}, [snapProgress, snapState]);
+	}, [snapProgress, snapSpringConfig, snapTarget]);
 
 	useEffect(() => {
-		Animated.spring(dragTranslateY, {
-			toValue: 0,
-			useNativeDriver: false,
-			...MAP_SHEET_SNAP_SPRING,
-		}).start();
-	}, [dragTranslateY, snapState]);
+		dragTranslateY.stopAnimation((currentValue) => {
+			if (Math.abs(currentValue) < 0.5) {
+				dragTranslateY.setValue(0);
+				return;
+			}
+
+			Animated.spring(dragTranslateY, {
+				toValue: 0,
+				useNativeDriver: false,
+				...snapSpringConfig,
+			}).start();
+		});
+	}, [dragTranslateY, snapSpringConfig, snapState]);
 
 	const sideInset = snapProgress.interpolate({
 		inputRange: [0, 1, 2],
@@ -118,7 +144,7 @@ export default function MapSheetShell({
 						Animated.spring(dragTranslateY, {
 							toValue: 0,
 							useNativeDriver: false,
-							...MAP_SHEET_SNAP_SPRING,
+							...snapSpringConfig,
 						}).start();
 					}
 				},
@@ -126,21 +152,27 @@ export default function MapSheetShell({
 					Animated.spring(dragTranslateY, {
 						toValue: 0,
 						useNativeDriver: false,
-						...MAP_SHEET_SNAP_SPRING,
+						...snapSpringConfig,
 					}).start();
 				},
 			}),
-		[dragTranslateY, onHandlePress, snapState],
+		[dragTranslateY, onHandlePress, snapSpringConfig, snapState],
 	);
 
 	return (
 		<Animated.View
+			renderToHardwareTextureAndroid={isAndroid}
+			needsOffscreenAlphaCompositing={isAndroid}
 			style={[
 				styles.sheetHost,
+				useFloatingShell ? styles.sheetHostFloating : null,
+				presentationMode === "modal" ? styles.sheetHostModal : null,
+				presentationMode === "panel" ? styles.sheetHostPanel : null,
 				tokens.shadowStyle,
 				{
-					left: sideInset,
-					right: sideInset,
+					left: useFloatingShell ? undefined : sideInset,
+					right: useFloatingShell ? undefined : sideInset,
+					width: useFloatingShell ? shellWidth : undefined,
 					bottom: bottomInset,
 					height: sheetHeight,
 					borderTopLeftRadius: topRadius,
@@ -168,6 +200,8 @@ export default function MapSheetShell({
 			) : null}
 
 			<Animated.View
+				renderToHardwareTextureAndroid={isAndroid}
+				needsOffscreenAlphaCompositing={isAndroid}
 				style={[
 					styles.sheetClip,
 					{

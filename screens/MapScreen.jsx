@@ -158,6 +158,10 @@ export default function MapScreen() {
 				onClose={() => setGuestProfileVisible(false)}
 				emailValue={guestProfileEmail}
 				onEmailChange={setGuestProfileEmail}
+				onContinue={() => {
+					setGuestProfileVisible(false);
+					setAuthModalVisible(true);
+				}}
 			/>
 
 			<MapCareHistoryModal

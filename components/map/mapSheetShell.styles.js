@@ -4,6 +4,16 @@ export default StyleSheet.create({
 	sheetHost: {
 		position: "absolute",
 		overflow: "visible",
+		backfaceVisibility: "hidden",
+	},
+	sheetHostFloating: {
+		alignSelf: "center",
+	},
+	sheetHostModal: {
+		maxWidth: "100%",
+	},
+	sheetHostPanel: {
+		maxWidth: "100%",
 	},
 	sheetUnderlay: {
 		position: "absolute",
@@ -11,11 +21,13 @@ export default StyleSheet.create({
 		left: 0,
 		right: 0,
 		bottom: -2,
+		backfaceVisibility: "hidden",
 	},
 	sheetClip: {
 		flex: 1,
 		overflow: "hidden",
 		borderCurve: "continuous",
+		backfaceVisibility: "hidden",
 	},
 	sheetContent: {
 		flex: 1,

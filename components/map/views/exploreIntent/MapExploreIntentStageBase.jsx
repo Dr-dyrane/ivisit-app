@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { Animated, Pressable, ScrollView, Text, View } from "react-native";
+import { Animated, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import InAppBrowserLink from "../../../ui/InAppBrowserLink";
 import { useTheme } from "../../../../contexts/ThemeContext";
@@ -39,6 +39,7 @@ export default function MapExploreIntentStageBase({
 	featuredHospitals = [],
 }) {
 	const { isDarkMode } = useTheme();
+	const { width } = useWindowDimensions();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const pulseProgress = useRef(new Animated.Value(0)).current;
 	const resolvedScreenConfig = useMemo(
@@ -61,6 +62,11 @@ export default function MapExploreIntentStageBase({
 	const shouldCenterContent = Boolean(resolvedScreenConfig?.centerContent);
 	const contentMaxWidth = resolvedScreenConfig?.contentMaxWidth || null;
 	const shellMaxWidth = resolvedScreenConfig?.shellMaxWidth || contentMaxWidth || null;
+	const shellWidth = useMemo(() => {
+		if (presentationMode === "sheet" || !shellMaxWidth || !shouldCenterContent) return null;
+		const horizontalGutter = presentationMode === "panel" ? 28 : 16;
+		return Math.max(320, Math.min(shellMaxWidth, width - horizontalGutter * 2));
+	}, [presentationMode, shellMaxWidth, shouldCenterContent, width]);
 	const screenSections = [
 		{
 			key: "hospital_summary",
@@ -213,6 +219,8 @@ export default function MapExploreIntentStageBase({
 		<MapSheetShell
 			sheetHeight={sheetHeight}
 			snapState={snapState}
+			presentationMode={presentationMode}
+			shellWidth={shellWidth}
 			topSlot={topRow}
 			footerSlot={footerTerms}
 			onHandlePress={handleSnapToggle}

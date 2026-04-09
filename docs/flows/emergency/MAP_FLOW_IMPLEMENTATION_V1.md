@@ -7,6 +7,7 @@ Related:
 
 - [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 - [MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md](./MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md)
+- [MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](./MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
 - [../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md](../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md)
 
 ## Current Architecture
@@ -20,7 +21,11 @@ The public map flow now follows this shape:
 - [EmergencyLocationPreviewMap.jsx](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx)
   - owns the persistent map render and route preview
 - [MapSheetOrchestrator.jsx](../../../components/map/MapSheetOrchestrator.jsx)
-  - owns the persistent sheet shell and current phase rendering
+  - thin mode router only
+- [MapSheetShell.jsx](../../../components/map/MapSheetShell.jsx)
+  - owns persistent sheet shell behavior
+- [components/map/views/exploreIntent](../../../components/map/views/exploreIntent)
+  - owns the current first mode using variant-based files
 
 ## Readiness Contract
 

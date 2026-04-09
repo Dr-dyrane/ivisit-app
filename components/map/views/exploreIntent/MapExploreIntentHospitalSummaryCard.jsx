@@ -21,8 +21,10 @@ export default function MapExploreIntentHospitalSummaryCard({
 		variant === MAP_INTENT_VARIANTS.WEB_MOBILE ||
 		variant === MAP_INTENT_VARIANTS.WEB_SM_WIDE ||
 		variant === MAP_INTENT_VARIANTS.WEB_MD;
+	const usesCanonicalSummaryLayout =
+		layoutMode === "canonical" || layoutMode === "web_canonical";
 
-	if (layoutMode === "canonical") {
+	if (usesCanonicalSummaryLayout) {
 		return (
 			<Pressable
 				onPress={onOpenHospitals}

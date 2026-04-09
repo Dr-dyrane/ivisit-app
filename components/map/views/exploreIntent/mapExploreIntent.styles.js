@@ -100,15 +100,24 @@ export default StyleSheet.create({
 		width: 40,
 		height: 40,
 	},
-	avatarImage: {
+	avatarImageShell: {
 		width: 42,
 		height: 42,
-		borderRadius: 21,
+		borderRadius: 999,
+		overflow: "hidden",
 	},
-	avatarImageCollapsed: {
+	avatarImageShellCollapsed: {
 		width: 38,
 		height: 38,
-		borderRadius: 19,
+		borderRadius: 999,
+	},
+	avatarImage: {
+		width: "100%",
+		height: "100%",
+		borderRadius: 999,
+	},
+	avatarImageCollapsed: {
+		borderRadius: 999,
 	},
 	avatarDot: {
 		position: "absolute",
