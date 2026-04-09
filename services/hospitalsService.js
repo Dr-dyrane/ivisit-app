@@ -19,6 +19,92 @@ const toTextArray = (value) =>
 		? value.filter((item) => typeof item === "string").map((item) => item.trim()).filter(Boolean)
 		: [];
 const toObject = (value, fallback = {}) => (value && typeof value === "object" && !Array.isArray(value) ? value : fallback);
+const normalizeFacilityText = (value) =>
+	String(value || "")
+		.toLowerCase()
+		.replace(/\s+/g, " ")
+		.trim();
+const coordinateClusterKey = (value, precision = 3) => {
+	const n = Number(value);
+	return Number.isFinite(n) ? Number(n).toFixed(precision) : null;
+};
+const isDemoLikeHospital = (hospital) => {
+	const placeId = toText(hospital?.place_id, "").toLowerCase();
+	const verificationStatus = toText(hospital?.verification_status, "").toLowerCase();
+	const features = toTextArray(hospital?.features).map((item) => item.toLowerCase());
+	return (
+		placeId.startsWith("demo:") ||
+		verificationStatus.startsWith("demo") ||
+		features.some((feature) => feature.includes("demo"))
+	);
+};
+const isDispatchableHospital = (hospital) => {
+	const status = toText(hospital?.status, "available").toLowerCase();
+	const verificationStatus = toText(hospital?.verification_status, "").toLowerCase();
+	return (
+		status === "available" &&
+		(hospital?.verified === true ||
+			isDemoLikeHospital(hospital) ||
+			verificationStatus === "verified" ||
+			verificationStatus === "not_certified")
+	);
+};
+const facilityKeyFromHospital = (hospital) => {
+	const name = normalizeFacilityText(hospital?.name);
+	const address = normalizeFacilityText(hospital?.address);
+	const latitude = coordinateClusterKey(hospital?.latitude ?? hospital?.coordinates?.coordinates?.[1]);
+	const longitude = coordinateClusterKey(hospital?.longitude ?? hospital?.coordinates?.coordinates?.[0]);
+
+	if (name && address && latitude && longitude) {
+		return `facility:${name}|${address}|${latitude}|${longitude}`;
+	}
+	if (name && address) {
+		return `facility:${name}|${address}`;
+	}
+	if (name && latitude && longitude) {
+		return `facility:${name}|${latitude}|${longitude}`;
+	}
+
+	const placeId = toText(hospital?.place_id, "").toLowerCase();
+	if (placeId) return `place:${placeId}`;
+	if (name) return `name:${name}`;
+	return `id:${toText(hospital?.id, "unknown")}`;
+};
+const hospitalPriorityScore = (hospital) => {
+	let score = 0;
+	const isDemo = isDemoLikeHospital(hospital);
+	if (hospital?.verified === true && !isDemo) score += 40;
+	if (hospital?.verified === true) score += 20;
+	if (!isDemo) score += 10;
+	if (toText(hospital?.status, "available").toLowerCase() === "available") score += 8;
+	if (toText(hospital?.organization_id || hospital?.organizationId)) score += 4;
+	if (toNonNegativeInt(hospital?.available_beds, 0) > 0) score += 3;
+	if (toText(hospital?.place_id)) score += 2;
+	return score;
+};
+const dedupeHospitalRows = (rows = []) => {
+	const buckets = new Map();
+
+	rows.filter(Boolean).forEach((row) => {
+		const key = facilityKeyFromHospital(row);
+		const current = buckets.get(key);
+		if (!current) {
+			buckets.set(key, row);
+			return;
+		}
+
+		const currentScore = hospitalPriorityScore(current);
+		const nextScore = hospitalPriorityScore(row);
+		if (nextScore > currentScore) {
+			buckets.set(key, { ...current, ...row });
+			return;
+		}
+
+		buckets.set(key, { ...row, ...current });
+	});
+
+	return Array.from(buckets.values());
+};
 const hashString = (seed) => {
 	const input = String(seed || "hospital");
 	let hash = 0;
@@ -263,7 +349,7 @@ export const hospitalsService = {
 					.filter((id) => typeof id === "string" && isValidUUID(id))
 			),
 		];
-		if (ids.length === 0) return list;
+		if (ids.length === 0) return dedupeHospitalRows(list);
 
 		const { data, error } = await supabase
 			.from("hospitals")
@@ -272,16 +358,16 @@ export const hospitalsService = {
 
 		if (error) {
 			console.warn("hospitalsService._hydrateHospitalRows warning:", error);
-			return list;
+			return dedupeHospitalRows(list);
 		}
 
 		const byId = new Map((data || []).map(h => [h.id, h]));
-		return list.map((row) => {
+		return dedupeHospitalRows(list.map((row) => {
 			const full = row?.id ? byId.get(row.id) : null;
 			// Preserve computed discovery fields (distance/ETA/status from edge/RPC) while
 			// restoring actual availability/org fields from DB.
 			return full ? { ...full, ...row } : row;
-		});
+		}));
 	},
 
 	/**
@@ -452,7 +538,9 @@ export const hospitalsService = {
 
 			if (error) throw error;
 			const hydrated = await this._hydrateHospitalRows(data || []);
-			return hydrated.map(h => this._mapHospital(h));
+			return hydrated
+				.filter(isDispatchableHospital)
+				.map(h => this._mapHospital(h));
 		} catch (err) {
 			console.error("hospitalsService.listNearby error:", err);
 			throw err;
@@ -500,7 +588,9 @@ export const hospitalsService = {
 			}
 
 			const hydrated = await this._hydrateHospitalRows(rawHospitals);
-			return hydrated.map(h => this._mapHospital(h));
+			return hydrated
+				.filter(isDispatchableHospital)
+				.map(h => this._mapHospital(h));
 
 		} catch (error) {
 			console.error("hospitalsService.discoverNearby error:", error);

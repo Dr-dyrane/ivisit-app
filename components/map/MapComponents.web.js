@@ -625,8 +625,116 @@ export const MapView = React.forwardRef(({
 });
 
 // Web Marker Component
-const buildMarkerContent = ({ pinColor, resolvedMarkerAsset, imageSize }) => {
+const buildMarkerContent = ({
+  pinColor,
+  resolvedMarkerAsset,
+  imageSize,
+  labelText,
+  markerVariant,
+  labelTone,
+  selected,
+}) => {
   if (typeof document === 'undefined') return null;
+
+  if (markerVariant === 'user') {
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    wrapper.style.width = '34px';
+    wrapper.style.height = '34px';
+    wrapper.style.transform = 'translate(-50%, -50%)';
+    wrapper.style.display = 'flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.justifyContent = 'center';
+
+    const halo = document.createElement('div');
+    halo.style.position = 'absolute';
+    halo.style.width = '30px';
+    halo.style.height = '30px';
+    halo.style.borderRadius = '50%';
+    halo.style.background = 'rgba(59,130,246,0.18)';
+    halo.style.border = '1px solid rgba(255,255,255,0.56)';
+    halo.style.boxShadow = '0 6px 18px rgba(37,99,235,0.28)';
+
+    const dot = document.createElement('div');
+    dot.style.width = '16px';
+    dot.style.height = '16px';
+    dot.style.borderRadius = '50%';
+    dot.style.background = '#3B82F6';
+    dot.style.border = '3px solid #FFFFFF';
+    dot.style.boxSizing = 'border-box';
+
+    wrapper.appendChild(halo);
+    wrapper.appendChild(dot);
+    return wrapper;
+  }
+
+  if (labelText) {
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.justifyContent = 'center';
+    wrapper.style.transform = 'translate(-50%, -100%)';
+
+    const label = document.createElement('div');
+    label.textContent = labelText;
+    label.style.maxWidth = selected ? '184px' : '144px';
+    label.style.padding = selected ? '7px 12px' : '5px 10px';
+    label.style.borderRadius = '999px';
+    label.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+    label.style.fontSize = selected ? '14px' : '12px';
+    label.style.fontWeight = selected ? '800' : '700';
+    label.style.lineHeight = '1.1';
+    label.style.whiteSpace = 'nowrap';
+    label.style.overflow = 'hidden';
+    label.style.textOverflow = 'ellipsis';
+    label.style.marginBottom = '8px';
+    label.style.color =
+      labelTone === 'subdued'
+        ? '#E2E8F0'
+        : selected
+          ? '#FFF7F7'
+          : '#F8FAFC';
+    label.style.background =
+      labelTone === 'subdued'
+        ? 'rgba(15,23,42,0.72)'
+        : selected
+          ? 'rgba(134,16,14,0.92)'
+          : 'rgba(15,23,42,0.82)';
+    label.style.boxShadow = selected
+      ? '0 14px 32px rgba(134,16,14,0.28)'
+      : '0 10px 24px rgba(2,6,23,0.22)';
+    label.style.border = '1px solid rgba(255,255,255,0.1)';
+
+    const pin = document.createElement('div');
+    pin.style.width = selected ? '28px' : '22px';
+    pin.style.height = selected ? '28px' : '22px';
+    pin.style.borderRadius = '50%';
+    pin.style.display = 'flex';
+    pin.style.alignItems = 'center';
+    pin.style.justifyContent = 'center';
+    pin.style.background =
+      labelTone === 'subdued'
+        ? 'rgba(30,41,59,0.96)'
+        : selected
+          ? '#B91C1C'
+          : '#475569';
+    pin.style.border = '2px solid rgba(255,255,255,0.88)';
+    pin.style.boxShadow = '0 8px 20px rgba(15,23,42,0.28)';
+
+    const glyph = document.createElement('span');
+    glyph.textContent = '+';
+    glyph.style.color = '#FFFFFF';
+    glyph.style.fontSize = selected ? '15px' : '13px';
+    glyph.style.fontWeight = '900';
+    glyph.style.transform = 'translateY(-1px)';
+
+    pin.appendChild(glyph);
+    wrapper.appendChild(label);
+    wrapper.appendChild(pin);
+    return wrapper;
+  }
 
   if (resolvedMarkerAsset?.uri) {
     const wrapper = document.createElement('div');
@@ -659,14 +767,25 @@ const buildMarkerContent = ({ pinColor, resolvedMarkerAsset, imageSize }) => {
     wrapper.style.alignItems = 'center';
     wrapper.style.justifyContent = 'center';
 
+    const halo = document.createElement('div');
+    halo.style.position = 'absolute';
+    halo.style.width = '24px';
+    halo.style.height = '24px';
+    halo.style.borderRadius = '50%';
+    halo.style.backgroundColor =
+      pinColor === '#3B82F6' ? 'rgba(59,130,246,0.22)' : `${pinColor}26`;
+    halo.style.border = '1px solid rgba(255,255,255,0.5)';
+    halo.style.boxSizing = 'border-box';
+
     const dot = document.createElement('div');
-    dot.style.width = '16px';
-    dot.style.height = '16px';
+    dot.style.width = '12px';
+    dot.style.height = '12px';
     dot.style.borderRadius = '50%';
     dot.style.backgroundColor = pinColor;
     dot.style.border = '2px solid white';
     dot.style.boxSizing = 'border-box';
 
+    wrapper.appendChild(halo);
     wrapper.appendChild(dot);
     return wrapper;
   }
@@ -687,6 +806,10 @@ export const Marker = ({
   anchor,
   centerOffset,
   imageSize,
+  labelText,
+  markerVariant,
+  labelTone,
+  selected = false,
   ...props
 }) => {
   const markerRef = useRef(null);
@@ -725,6 +848,10 @@ export const Marker = ({
       pinColor,
       resolvedMarkerAsset,
       imageSize,
+      labelText,
+      markerVariant,
+      labelTone,
+      selected,
     });
 
     const markerOptions = {
@@ -756,7 +883,7 @@ export const Marker = ({
         markerRef.current.marker.setMap(null);
       }
     };
-  }, [anchor, centerOffset, coordinate, image, imageSize, isLoaded, map, onPress, pinColor, props, title, zIndex]);
+  }, [anchor, centerOffset, coordinate, image, imageSize, isLoaded, labelText, labelTone, map, markerVariant, onPress, pinColor, props, selected, title, zIndex]);
 
   return null;
 };

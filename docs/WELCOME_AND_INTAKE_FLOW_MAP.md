@@ -26,6 +26,12 @@ Current orchestration path:
 - shared wide web base:
   - [WelcomeWideWebView.jsx](../components/welcome/views/WelcomeWideWebView.jsx)
 
+Runtime rule now locked:
+
+- welcome may pre-warm emergency location and nearby hospitals
+- welcome must not silently trigger demo bootstrap
+- discovery warmup should only run after emergency state has actually synced to the same location as global location state
+
 ## Intake Phase: "Where Are You?"
 
 The intake phase begins in the request-help route and the first active intake state is the location-confirmation phase.
@@ -45,6 +51,12 @@ The choose-location surface itself is split through:
 
 - [EmergencyChooseLocationStageOrchestrator.jsx](../components/emergency/intake/views/chooseLocation/EmergencyChooseLocationStageOrchestrator.jsx)
 - [EmergencyChooseLocationStageBase.jsx](../components/emergency/intake/views/chooseLocation/EmergencyChooseLocationStageBase.jsx)
+
+Current runtime doctrine:
+
+- [GlobalLocationContext.jsx](../contexts/GlobalLocationContext.jsx) is the single owner of initial device location and resolved place label
+- [EmergencyContext.jsx](../contexts/EmergencyContext.jsx) consumes that location for hospital discovery
+- explicit demo backfill belongs to [RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx), not the background welcome prewarm path
 
 ## Location Search Modal Phase
 
@@ -94,8 +106,8 @@ Current high-level order:
 6. Finding nearby help
 7. Proposed hospital or nearby hospital list
 8. Continue into commit phase
-9. Add patient details + verify phone
-10. Optional triage / transport detail
+9. Optional triage / transport detail
+10. Add patient details + verify identity (email OTP, phone collected as contact data)
 11. Pay & commit
 12. Responder matched or reservation confirmed
 13. Live tracking / directions
@@ -104,6 +116,7 @@ Current high-level order:
 Canonical product reference:
 
 - [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
+- [flows/emergency/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./flows/emergency/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 
 ## Current Source Of Truth
 
@@ -112,6 +125,20 @@ Canonical product reference:
 - The choose-location phase already uses a shared stage base.
 - The location-search modal phase now has its own wrapper family, with `ios-pad` and the web families using dialog-style treatments and the mobile families keeping the sheet pattern.
 - The choose-hospital phase now has an explicit `loading`, `ready`, `empty`, and `refreshing` contract driven from `RequestAmbulanceScreen` and consumed by the shared sheet and review shell.
+
+## Current Legacy Seam
+
+The remaining architectural seam is after intake:
+
+- [RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx) correctly owns persistence and the new intake orchestration
+- but after intake it still hands off into [EmergencyRequestModal.jsx](../components/emergency/EmergencyRequestModal.jsx) through `showLegacyFlow`
+- that modal is still the legacy commit/runtime surface
+
+Target direction:
+
+- keep the current welcome and intake families
+- replace the legacy modal handoff with a dedicated commit-phase stage family
+- reuse existing request orchestration and backend services instead of rebuilding the backend
 
 ## Extension Rule
 

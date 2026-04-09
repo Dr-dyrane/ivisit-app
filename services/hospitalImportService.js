@@ -8,6 +8,58 @@ class HospitalImportService {
     return Number.isFinite(parsed) ? parsed : null;
   }
 
+  normalizeText(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  calculateDistanceKm(left, right) {
+    const startLat = this.toFiniteOrNull(left?.latitude);
+    const startLng = this.toFiniteOrNull(left?.longitude);
+    const endLat = this.toFiniteOrNull(right?.latitude);
+    const endLng = this.toFiniteOrNull(right?.longitude);
+    if (
+      !Number.isFinite(startLat) ||
+      !Number.isFinite(startLng) ||
+      !Number.isFinite(endLat) ||
+      !Number.isFinite(endLng)
+    ) {
+      return null;
+    }
+
+    const toRadians = (value) => (value * Math.PI) / 180;
+    const earthRadiusKm = 6371;
+    const latDelta = toRadians(endLat - startLat);
+    const lngDelta = toRadians(endLng - startLng);
+    const lat1 = toRadians(startLat);
+    const lat2 = toRadians(endLat);
+    const haversine =
+      Math.sin(latDelta / 2) * Math.sin(latDelta / 2) +
+      Math.cos(lat1) * Math.cos(lat2) *
+      Math.sin(lngDelta / 2) * Math.sin(lngDelta / 2);
+
+    return 2 * earthRadiusKm * Math.asin(Math.min(1, Math.sqrt(haversine)));
+  }
+
+  isSemanticHospitalMatch(left, right) {
+    const leftName = this.normalizeText(left?.name);
+    const rightName = this.normalizeText(right?.name);
+    if (!leftName || !rightName || leftName !== rightName) {
+      return false;
+    }
+
+    const leftAddress = this.normalizeText(left?.address);
+    const rightAddress = this.normalizeText(right?.address);
+    if (leftAddress && rightAddress && leftAddress === rightAddress) {
+      return true;
+    }
+
+    const distanceKm = this.calculateDistanceKm(left, right);
+    return Number.isFinite(distanceKm) && distanceKm <= 0.25;
+  }
+
   pruneUndefined(payload = {}) {
     return Object.fromEntries(
       Object.entries(payload).filter(([, value]) => value !== undefined)
@@ -35,6 +87,60 @@ class HospitalImportService {
       verified: false,
       status: 'available',
     });
+  }
+
+  async findExistingHospitalMatch(hospital) {
+    const providerPlaceId = String(hospital?.place_id || '').trim();
+    if (providerPlaceId) {
+      const { data: exactMatch, error: exactError } = await supabase
+        .from('hospitals')
+        .select('id, place_id, name, address, latitude, longitude, verified, verification_status')
+        .eq('place_id', providerPlaceId)
+        .maybeSingle();
+
+      if (exactError) {
+        throw exactError;
+      }
+      if (exactMatch) {
+        return exactMatch;
+      }
+    }
+
+    const normalizedName = this.normalizeText(hospital?.name);
+    if (!normalizedName) return null;
+
+    let query = supabase
+      .from('hospitals')
+      .select('id, place_id, name, address, latitude, longitude, verified, verification_status')
+      .ilike('name', hospital.name.trim())
+      .limit(12);
+
+    if (this.normalizeText(hospital?.address)) {
+      query = query.ilike('address', hospital.address.trim());
+    }
+
+    const { data: candidates, error } = await query;
+    if (error) {
+      throw error;
+    }
+
+    const semanticMatches = (candidates || []).filter((candidate) =>
+      this.isSemanticHospitalMatch(candidate, hospital)
+    );
+
+    if (semanticMatches.length === 0) {
+      return null;
+    }
+
+    return semanticMatches.sort((left, right) => {
+      const leftScore =
+        (left?.verified ? 20 : 0) +
+        (left?.place_id ? 10 : 0);
+      const rightScore =
+        (right?.verified ? 20 : 0) +
+        (right?.place_id ? 10 : 0);
+      return rightScore - leftScore;
+    })[0];
   }
 
   buildImportLogUpdatePayload(payload = {}) {
@@ -155,16 +261,11 @@ class HospitalImportService {
         // Process each hospital
         for (const hospital of hospitals) {
           try {
-            // Check if hospital already exists
-            const { data: existing } = await supabase
-              .from('hospitals')
-              .select('id, place_id')
-              .eq('place_id', hospital.place_id)
-              .single();
+            const existing = await this.findExistingHospitalMatch(hospital);
 
             if (existing) {
               // Update existing hospital
-              await this.updateHospitalFromProvider(existing.id, hospital);
+              await this.updateHospitalFromProvider(existing.id, hospital, existing);
               skippedCount++;
             } else {
               // Insert new hospital
@@ -246,16 +347,24 @@ class HospitalImportService {
   }
 
   // Update existing hospital with fresh provider data
-  async updateHospitalFromProvider(hospitalId, hospital) {
+  async updateHospitalFromProvider(hospitalId, hospital, existingHospital = null) {
     try {
+      const providerFields = this.buildProviderHospitalFields(hospital);
+      const existingPlaceId = String(existingHospital?.place_id || '').trim();
+      const nextPlaceId = existingPlaceId || providerFields.place_id || undefined;
       const updateData = this.pruneUndefined({
-        ...this.buildProviderHospitalFields(hospital),
+        ...providerFields,
+        place_id: nextPlaceId,
         features: undefined,
         verified: undefined,
         verification_status: undefined,
         status: undefined,
         updated_at: new Date().toISOString(),
       });
+
+      if (existingPlaceId && providerFields.place_id && existingPlaceId !== providerFields.place_id) {
+        delete updateData.place_id;
+      }
 
       const { data, error } = await supabase
         .from('hospitals')

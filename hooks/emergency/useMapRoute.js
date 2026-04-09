@@ -7,6 +7,8 @@ import { isEmergencyDebugEnabled } from "../../utils/emergencyDebug";
 
 export const useMapRoute = () => {
 	const emergencyDebugEnabled = isEmergencyDebugEnabled();
+	const isBrowserRuntime =
+		typeof window !== "undefined" && typeof document !== "undefined";
 	const [routeCoordinates, setRouteCoordinates] = useState([]);
 	const [routeInfo, setRouteInfo] = useState({
 		durationSec: null,
@@ -118,7 +120,7 @@ export const useMapRoute = () => {
 			return null;
 		}
 
-		if (Platform.OS === "web") {
+		if (isBrowserRuntime) {
 			try {
 				const mapsApi = await new Promise((resolve) => {
 					const getMaps = () =>
@@ -235,9 +237,18 @@ export const useMapRoute = () => {
 		}
 
 		return null;
-	}, [fetchJsonWithTimeout, getGoogleApiKey]);
+	}, [fetchJsonWithTimeout, getGoogleApiKey, isBrowserRuntime]);
 
 	const getOSRMRoute = useCallback(async ({ origin, destination }) => {
+		if (isBrowserRuntime) {
+			if (emergencyDebugEnabled) {
+				console.warn(
+					"[useMapRoute] Skipping direct OSRM fetch in browser runtime; using JS route service or fallback preview."
+				);
+			}
+			return null;
+		}
+
 		try {
 			const url = `https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=geojson&alternatives=false&steps=false`;
 
@@ -268,7 +279,7 @@ export const useMapRoute = () => {
 		}
 
 		return null;
-	}, []);
+	}, [emergencyDebugEnabled, fetchJsonWithTimeout, isBrowserRuntime]);
 
 	const calculateRoute = useCallback(
 		async (origin, destination) => {
@@ -333,8 +344,8 @@ export const useMapRoute = () => {
 
 			try {
 				let result = null;
-				const routeOrder = Platform.OS === "web"
-					? ["GOOGLE", "OSRM"]
+				const routeOrder = isBrowserRuntime
+					? ["GOOGLE"]
 					: ROUTE_CONFIG.PRIMARY_ROUTE_API === "GOOGLE"
 						? ["GOOGLE", "OSRM"]
 						: ["OSRM", "GOOGLE"];
@@ -361,7 +372,7 @@ export const useMapRoute = () => {
 					result = getFallbackRoute({
 						origin,
 						destination,
-						reason: Platform.OS === "web" ? "osrm_timeout" : "route_api_unavailable",
+						reason: isBrowserRuntime ? "browser_route_fallback" : "route_api_unavailable",
 					});
 				}
 
@@ -382,7 +393,7 @@ export const useMapRoute = () => {
 				}
 			}
 		},
-		[buildRouteKey, emergencyDebugEnabled, getFallbackRoute, getGoogleRoute, getOSRMRoute]
+		[buildRouteKey, emergencyDebugEnabled, getFallbackRoute, getGoogleRoute, getOSRMRoute, isBrowserRuntime]
 	);
 
 	const clearRoute = useCallback(() => {

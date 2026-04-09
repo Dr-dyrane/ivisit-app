@@ -13,6 +13,9 @@ export default function EntryActionButton({
 	fullWidth = true,
 	iconName = null,
 	disabled = false,
+	maxWidth = null,
+	minWidth = null,
+	style,
 	accessibilityLabel,
 	accessibilityHint,
 }) {
@@ -46,6 +49,8 @@ export default function EntryActionButton({
 				styles.base,
 				{
 					width: fullWidth ? "100%" : "auto",
+					maxWidth: maxWidth ?? undefined,
+					minWidth: minWidth ?? undefined,
 					minHeight: height,
 					backgroundColor,
 					borderRadius: radius,
@@ -74,6 +79,7 @@ export default function EntryActionButton({
 							? (isPrimary ? 24 : 26)
 							: (isPrimary ? 18 : 20),
 				},
+				style,
 				Platform.OS === "web" ? styles.cursor : null,
 			]}
 		>

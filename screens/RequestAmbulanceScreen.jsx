@@ -100,8 +100,8 @@ export default function RequestAmbulanceScreen() {
 	const demoBootstrapKeyRef = useRef("");
 	const demoBootstrapInFlightRef = useRef(false);
 	const [intakeHeaderState, setIntakeHeaderState] = useState({
-		title: "Where are you?",
-		subtitle: "CHOOSE LOCATION",
+		title: "Finding location...",
+		subtitle: "",
 	});
 	const [intakeBackMode, setIntakeBackMode] = useState("exit");
 
@@ -417,13 +417,14 @@ export default function RequestAmbulanceScreen() {
 				backgroundColor: COLORS.emergency,
 				leftComponent: backButton(),
 				rightComponent: false,
-				hidden: false,
+				hidden: intakeHeaderState.hidden === true,
 				scrollAware: false,
 			});
 
 			setMode("emergency");
 			}, [
 			backButton,
+			intakeHeaderState.hidden,
 			intakeHeaderState.subtitle,
 			intakeHeaderState.title,
 			showResponsiveIntakeBase,
@@ -464,8 +465,8 @@ export default function RequestAmbulanceScreen() {
 						typeof parsed.intakeHeaderState.subtitle === "string"
 						? parsed.intakeHeaderState
 						: {
-							title: "Where are you?",
-							subtitle: "CHOOSE LOCATION",
+							title: "Finding location...",
+							subtitle: "",
 						},
 				);
 				setIntakeBackMode(parsed.intakeBackMode === "phase" ? "phase" : "exit");

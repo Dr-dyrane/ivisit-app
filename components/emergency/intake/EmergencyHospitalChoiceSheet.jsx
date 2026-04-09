@@ -172,6 +172,9 @@ export default function EmergencyHospitalChoiceSheet({
 			badgeBg: isDarkMode ? "rgba(134,16,14,0.16)" : "rgba(220,38,38,0.08)",
 			badgeText: isDarkMode ? "#FDE8E8" : "#991B1B",
 			emptyActionBg: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.05)",
+			panelSurface: isDarkMode ? "rgba(255,255,255,0.045)" : "rgba(15,23,42,0.035)",
+			rowSurface: isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)",
+			rowBorder: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.05)",
 		}),
 		[isDarkMode],
 	);
@@ -180,17 +183,17 @@ export default function EmergencyHospitalChoiceSheet({
 		? "Checking nearby hospitals"
 		: mode === "empty"
 			? "No nearby hospitals yet"
-			: "Choose another hospital";
+			: "See other hospitals";
 	const headerEyebrow = mode === "loading"
 		? "LOADING OPTIONS"
 		: mode === "empty"
 			? "NO OPTIONS YET"
-			: "CHOOSE HOSPITAL";
+			: "OTHER HOSPITALS";
 	const helperCopy = mode === "loading"
 		? statusMessage || "We are matching nearby hospitals and route details for this location."
 		: mode === "empty"
 			? statusMessage || "Try changing the location or refresh options."
-			: statusMessage;
+			: statusMessage || "Choose a different hospital for this request.";
 
 	useEffect(() => {
 		if (!visible) return;
@@ -252,7 +255,7 @@ export default function EmergencyHospitalChoiceSheet({
 					<View style={styles.headerTextBlock}>
 						<Text style={[styles.eyebrow, { color: colors.helper }]}>{headerEyebrow}</Text>
 						<Text style={[styles.title, { color: colors.title }]}>{headerTitle}</Text>
-						{helperCopy && mode !== "results" ? (
+						{helperCopy ? (
 							<Text style={[styles.headerHelper, { color: colors.helper }]}>
 								{helperCopy}
 							</Text>
@@ -267,7 +270,7 @@ export default function EmergencyHospitalChoiceSheet({
 					<View
 						style={[
 							styles.changeLocationGroup,
-							{ backgroundColor: colors.groupedSurface },
+							{ backgroundColor: colors.panelSurface },
 						]}
 					>
 						<Pressable
@@ -299,29 +302,16 @@ export default function EmergencyHospitalChoiceSheet({
 					</View>
 				) : null}
 
-				{mode === "results" && helperCopy ? (
-					<View style={[styles.banner, { backgroundColor: colors.bannerBg }]}>
-						{isRefreshing ? (
-							<ActivityIndicator size="small" color={COLORS.brandPrimary} />
-						) : (
-							<Ionicons name="information-circle-outline" size={16} color={COLORS.brandPrimary} />
-						)}
-						<Text style={[styles.bannerText, { color: colors.bannerText }]}>
-							{helperCopy}
-						</Text>
-					</View>
-				) : null}
-
 					<ScrollView
 						showsVerticalScrollIndicator={false}
 						style={listMaxHeight ? { maxHeight: listMaxHeight } : null}
 						contentContainerStyle={styles.list}
 					>
 					{mode === "loading" ? (
-						<View style={[styles.resultsGroup, { backgroundColor: colors.groupedSurface }]}>
+						<View style={styles.resultsList}>
 							{Array.from({ length: 3 }).map((_, index) => (
 								<View key={`hospital-loading-${index}`}>
-									<View style={styles.skeletonRow}>
+									<View style={[styles.skeletonRow, { backgroundColor: colors.rowSurface, borderColor: colors.rowBorder }]}>
 										<View style={[styles.skeletonIcon, { backgroundColor: colors.skeletonBase }]} />
 										<View style={styles.skeletonCopy}>
 											<View style={[styles.skeletonTitle, { backgroundColor: colors.skeletonBase }]} />
@@ -386,14 +376,13 @@ export default function EmergencyHospitalChoiceSheet({
 					) : null}
 
 					{mode === "results" ? (
-						<View style={[styles.resultsGroup, { backgroundColor: colors.groupedSurface }]}>
+						<View style={styles.resultsList}>
 							{hospitals.map((hospital, index) => {
 								const isSelected = hospital?.id === selectedHospitalId;
 								const isRecommended = hospital?.id === recommendedHospitalId;
 								const distanceLabel = buildHospitalDistance(hospital);
 								const ratingLabel = buildHospitalRating(hospital);
 								const priceLabel = buildHospitalPrice(hospital);
-								const isLast = index === hospitals.length - 1;
 								return (
 									<View key={hospital?.id || hospital?.name || `hospital-${index}`}>
 										<Pressable
@@ -414,7 +403,8 @@ export default function EmergencyHospitalChoiceSheet({
 														? colors.rowActive
 														: pressed
 															? colors.rowPressed
-															: "transparent",
+															: colors.rowSurface,
+													borderColor: isSelected ? colors.activeRing : colors.rowBorder,
 												},
 											]}
 										>
@@ -568,7 +558,7 @@ const styles = StyleSheet.create({
 		alignItems: "flex-start",
 		justifyContent: "space-between",
 		gap: 16,
-		marginBottom: 16,
+		marginBottom: 14,
 	},
 	headerTextBlock: {
 		flex: 1,
@@ -604,7 +594,7 @@ const styles = StyleSheet.create({
 	changeLocationGroup: {
 		borderRadius: 24,
 		overflow: "hidden",
-		marginBottom: 14,
+		marginBottom: 16,
 	},
 	changeLocationRow: {
 		flexDirection: "row",
@@ -637,32 +627,18 @@ const styles = StyleSheet.create({
 		lineHeight: 18,
 		fontWeight: "400",
 	},
-	banner: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 10,
-		borderRadius: 18,
-		paddingHorizontal: 14,
-		paddingVertical: 12,
-		marginBottom: 14,
-	},
-	bannerText: {
-		flex: 1,
-		fontSize: 13,
-		lineHeight: 18,
-		fontWeight: "500",
-	},
 	list: {
 		paddingBottom: 10,
 	},
-	resultsGroup: {
-		borderRadius: 28,
-		overflow: "hidden",
+	resultsList: {
+		gap: 10,
 	},
 	row: {
 		paddingHorizontal: 16,
 		paddingVertical: 15,
 		minHeight: 76,
+		borderRadius: 24,
+		borderWidth: 0,
 	},
 	rowTop: {
 		flexDirection: "row",
@@ -773,6 +749,8 @@ const styles = StyleSheet.create({
 		gap: 12,
 		paddingHorizontal: 16,
 		paddingVertical: 18,
+		borderRadius: 24,
+		borderWidth: 0,
 	},
 	skeletonIcon: {
 		width: 40,

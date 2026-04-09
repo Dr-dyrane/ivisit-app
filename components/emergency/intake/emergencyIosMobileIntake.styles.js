@@ -227,8 +227,8 @@ export function createEmergencyIosMobileIntakeTheme({
 		},
 		reviewStage: {
 			justifyContent: "flex-end",
-			overflow: "hidden",
-			borderRadius: isDesktop ? 44 : isTablet ? 40 : 36,
+			overflow: isDesktop || isTablet ? "hidden" : "visible",
+			borderRadius: isDesktop ? 44 : isTablet ? 40 : 0,
 		},
 		reviewSplitShell: {
 			flex: 1,
@@ -711,7 +711,9 @@ export function createEmergencyIosMobileIntakeTheme({
 			width: "100%",
 			maxWidth: metrics.reviewSheetMaxWidth,
 			paddingHorizontal: isStackedHospitalReviewSurface ? 0 : isCompactPhone ? 12 : 14,
-			paddingBottom: isStackedHospitalReviewSurface ? 4 : 10,
+			paddingBottom: isStackedHospitalReviewSurface
+				? 4
+				: Math.max(8, Math.min(18, insetsBottom || 0)),
 			marginTop: "auto",
 			alignSelf: "center",
 		},

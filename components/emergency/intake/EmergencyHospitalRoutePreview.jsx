@@ -20,6 +20,7 @@ const HOSPITAL_MARKER_CENTER_OFFSET = {
 	x: 0,
 	y: -HOSPITAL_MARKER_HEIGHT / 6,
 };
+const ORIGIN_MARKER_COLOR = "#3B82F6";
 
 function toCoordinate(source) {
 	if (!source || typeof source !== "object") return null;
@@ -276,33 +277,62 @@ export default function EmergencyHospitalRoutePreview({
 				onMapLoaded={() => setIsMapReady(true)}
 			>
 				{normalizedRouteCoordinates.length > 1 ? (
-					<Polyline
-						key={`${routeRenderKey}-${visible ? "visible" : "hidden"}`}
-						coordinates={normalizedRouteCoordinates}
-						strokeColor={COLORS.brandPrimary}
-						strokeWidth={4}
-						lineCap="round"
-						lineJoin="round"
-					/>
+					<>
+						<Polyline
+							key={`${routeRenderKey}-${visible ? "visible" : "hidden"}-halo`}
+							coordinates={normalizedRouteCoordinates}
+							strokeColor={isDarkMode ? "rgba(248,250,252,0.18)" : "rgba(15,23,42,0.10)"}
+							strokeWidth={10}
+							lineCap="round"
+							lineJoin="round"
+						/>
+						<Polyline
+							key={`${routeRenderKey}-${visible ? "visible" : "hidden"}-route`}
+							coordinates={normalizedRouteCoordinates}
+							strokeColor={COLORS.brandPrimary}
+							strokeWidth={4}
+							lineCap="round"
+							lineJoin="round"
+						/>
+					</>
 				) : null}
 				{originCoordinate ? (
 					<Marker
 						coordinate={originCoordinate}
-						pinColor={COLORS.brandPrimary}
+						pinColor={ORIGIN_MARKER_COLOR}
 						tracksViewChanges={false}
-					/>
+						zIndex={120}
+					>
+						{Platform.OS !== "web" ? (
+							<View style={styles.originMarkerOuter}>
+								<View style={styles.originMarkerInner} />
+							</View>
+						) : null}
+					</Marker>
 				) : null}
 				{hospitalCoordinate ? (
-					<Marker
-						coordinate={hospitalCoordinate}
-						image={HOSPITAL_MARKER_IMAGE}
-						imageSize={{ width: 81, height: 137 }}
-						pinColor={COLORS.brandPrimary}
-						anchor={{ x: 0.5, y: 0.5 }}
-						centerOffset={HOSPITAL_MARKER_CENTER_OFFSET}
-						tracksViewChanges={false}
-						title={hospital?.name || "Hospital"}
-					/>
+					<>
+						<Marker
+							coordinate={hospitalCoordinate}
+							tracksViewChanges={false}
+							zIndex={110}
+						>
+							{Platform.OS !== "web" ? (
+								<View style={styles.destinationHalo} />
+							) : null}
+						</Marker>
+						<Marker
+							coordinate={hospitalCoordinate}
+							image={HOSPITAL_MARKER_IMAGE}
+							imageSize={{ width: 81, height: 137 }}
+							pinColor={COLORS.brandPrimary}
+							anchor={{ x: 0.5, y: 0.5 }}
+							centerOffset={HOSPITAL_MARKER_CENTER_OFFSET}
+							tracksViewChanges={false}
+							title={hospital?.name || "Hospital"}
+							zIndex={140}
+						/>
+					</>
 				) : null}
 			</MapView>
 
@@ -310,8 +340,8 @@ export default function EmergencyHospitalRoutePreview({
 				pointerEvents="none"
 				colors={
 					isDarkMode
-						? ["rgba(11,15,26,0.04)", "rgba(11,15,26,0.12)", "rgba(11,15,26,0.52)"]
-						: ["rgba(255,255,255,0.00)", "rgba(255,255,255,0.025)", "rgba(255,255,255,0.14)"]
+						? ["rgba(11,15,26,0.03)", "rgba(11,15,26,0.10)", "rgba(11,15,26,0.44)"]
+						: ["rgba(255,255,255,0.00)", "rgba(255,255,255,0.02)", "rgba(255,255,255,0.10)"]
 				}
 				style={styles.scrim}
 			/>
@@ -337,6 +367,32 @@ const styles = StyleSheet.create({
 	},
 	map: {
 		...StyleSheet.absoluteFillObject,
+	},
+	originMarkerOuter: {
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		backgroundColor: "rgba(59,130,246,0.22)",
+		alignItems: "center",
+		justifyContent: "center",
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.5)",
+	},
+	originMarkerInner: {
+		width: 12,
+		height: 12,
+		borderRadius: 6,
+		backgroundColor: ORIGIN_MARKER_COLOR,
+		borderWidth: 2,
+		borderColor: "#FFFFFF",
+	},
+	destinationHalo: {
+		width: 22,
+		height: 22,
+		borderRadius: 11,
+		backgroundColor: "rgba(220,38,38,0.16)",
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.38)",
 	},
 	scrim: {
 		...StyleSheet.absoluteFillObject,

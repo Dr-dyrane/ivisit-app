@@ -9,10 +9,17 @@ const MapControls = ({
     onExpand,
     isZoomedOut,
     isDarkMode,
-    topOffset
+    topOffset,
+    bottomOffset,
+    secondaryIconName = "expand",
 }) => {
+    const positionStyle =
+        typeof bottomOffset === "number"
+            ? { bottom: bottomOffset }
+            : { top: topOffset };
+
     return (
-        <View style={[styles.controlsContainer, { top: topOffset }]}>
+        <View style={[styles.controlsContainer, positionStyle]}>
             <Pressable
                 onPress={onRecenter}
                 style={({ pressed }) => [
@@ -72,7 +79,7 @@ const MapControls = ({
                     />
                 )}
                 <Ionicons
-                    name="expand"
+                    name={secondaryIconName}
                     size={18}
                     color={isDarkMode ? "#FFFFFF" : "#0F172A"}
                 />
@@ -89,16 +96,16 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     controlButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 16,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         justifyContent: "center",
         alignItems: "center",
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        elevation: 3,
     },
 });
 

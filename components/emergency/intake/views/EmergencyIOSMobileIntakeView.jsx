@@ -207,7 +207,11 @@ function buildAddressModel(place, fallbackLocation = null) {
 		place.formattedAddress ||
 		place.formatted_address ||
 		"Current location";
-	const secondaryText = [place.city, place.region].filter(Boolean).join(", ").trim();
+	const secondaryText = [place.city, place.region]
+		.filter(Boolean)
+		.join(", ")
+		.replace(/\s*\d{5}(-\d{4})?\s*/g, "")
+		.trim();
 
 	return { primaryText, secondaryText };
 }
@@ -228,7 +232,11 @@ function buildAddressModelFromFormattedAddress(formattedAddress, fallbackLocatio
 
 	return {
 		primaryText: parts[0] || buildAddressModel(null, fallbackLocation).primaryText,
-		secondaryText: parts.slice(1, 3).join(", "),
+		secondaryText: parts
+			.slice(1)
+			.filter((p) => !/^\d{5}/.test(p) && !/united states|usa|us$/i.test(p))
+			.slice(0, 2)
+			.join(", "),
 	};
 }
 
@@ -297,6 +305,8 @@ export default function EmergencyIOSMobileIntakeView({
 		isLoadingLocation,
 		locationError,
 		refreshLocation,
+		resolvedPlace,
+		isResolvingPlaceName,
 	} = useGlobalLocation();
 	const [flowState, setFlowState] = useState(
 		initialSnapshot?.flowState || EMERGENCY_FLOW_STATES.request_started.key,
@@ -313,6 +323,7 @@ export default function EmergencyIOSMobileIntakeView({
 	});
 	const [searchSheetVisible, setSearchSheetVisible] = useState(false);
 	const [hospitalSheetVisible, setHospitalSheetVisible] = useState(false);
+	const [sheetFullScreen, setSheetFullScreen] = useState(false);
 	const [selectedLocation, setSelectedLocation] = useState(
 		initialSnapshot?.selectedLocation ?? null,
 	);
@@ -578,6 +589,11 @@ export default function EmergencyIOSMobileIntakeView({
 		let cancelled = false;
 
 		async function resolveAddress() {
+			if (selectedLocation?.primaryText) {
+				setAddressModel(selectedLocation);
+				return;
+			}
+
 			if (!userLocation) {
 				setAddressModel({
 					primaryText: "Finding your location...",
@@ -586,21 +602,25 @@ export default function EmergencyIOSMobileIntakeView({
 				return;
 			}
 
+			if (resolvedPlace?.primaryText) {
+				setAddressModel({
+					...resolvedPlace,
+					location: resolvedPlace.location || userLocation,
+				});
+				return;
+			}
+
 			try {
-				if (Platform.OS === "web") {
-					const formattedAddress = await mapboxService.reverseGeocode(
-						Number(userLocation.latitude),
-						Number(userLocation.longitude),
-					);
-					if (cancelled) return;
-					if (
-						typeof formattedAddress !== "string" ||
-						!formattedAddress.trim() ||
-						formattedAddress === "Unknown Address"
-					) {
-						setAddressModel(buildAddressModel(null, userLocation));
-						return;
-					}
+				const formattedAddress = await mapboxService.reverseGeocode(
+					Number(userLocation.latitude),
+					Number(userLocation.longitude),
+				);
+				if (cancelled) return;
+				if (
+					typeof formattedAddress === "string" &&
+					formattedAddress.trim() &&
+					formattedAddress !== "Unknown Address"
+				) {
 					setAddressModel(
 						buildAddressModelFromFormattedAddress(
 							formattedAddress,
@@ -621,12 +641,12 @@ export default function EmergencyIOSMobileIntakeView({
 			}
 		}
 
-		resolveAddress();
+		void resolveAddress();
 
 		return () => {
 			cancelled = true;
 		};
-	}, [userLocation]);
+	}, [resolvedPlace, selectedLocation, userLocation]);
 
 	const currentState = useMemo(
 		() =>
@@ -643,13 +663,14 @@ export default function EmergencyIOSMobileIntakeView({
 	const isLocationReady = !!activeLocation;
 	const hasResolvedAddress = useMemo(() => {
 		if (selectedLocation?.primaryText) return true;
+		if (resolvedPlace?.primaryText) return true;
 		if (!userLocation) return false;
 		return (
 			typeof addressModel?.primaryText === "string" &&
 			addressModel.primaryText.trim().length > 0 &&
 			addressModel.primaryText !== "Finding your location..."
 		);
-	}, [addressModel?.primaryText, selectedLocation?.primaryText, userLocation]);
+	}, [addressModel?.primaryText, resolvedPlace?.primaryText, selectedLocation?.primaryText, userLocation]);
 	const isResponderMatched = !!matchedTrip;
 	const isFindingNearbyHelp =
 		flowState === EMERGENCY_FLOW_STATES.finding_nearby_help.key;
@@ -884,11 +905,11 @@ export default function EmergencyIOSMobileIntakeView({
 						subtitle: "SEARCH LOCATION",
 					}
 					: {
-						title: "Where are you?",
-						subtitle: "CHOOSE LOCATION",
+						title: activeAddressModel?.primaryText || "Finding location...",
+						subtitle: activeAddressModel?.secondaryText || "",
 					};
 
-		onHeaderStateChange?.(nextHeaderState);
+		onHeaderStateChange?.({ ...nextHeaderState, hidden: sheetFullScreen });
 	}, [
 		activeProposedHospital?.id,
 		hospitalChoiceStatus,
@@ -898,12 +919,14 @@ export default function EmergencyIOSMobileIntakeView({
 		matchedPhaseState.headerSubtitle,
 		matchedPhaseState.headerTitle,
 		onHeaderStateChange,
+		sheetFullScreen,
 		proposedHospitalDistance,
 		recommendedHospital?.id,
 		searchSheetVisible,
 		shouldRenderFindingUi,
+		activeAddressModel?.primaryText,
+		activeAddressModel?.secondaryText,
 	]);
-
 	const handlePhaseBack = useCallback(() => {
 		if (hospitalSheetVisible) {
 			logEmergencyDebug("phase_back_closes_hospital_sheet", { flowState });
@@ -1211,6 +1234,21 @@ export default function EmergencyIOSMobileIntakeView({
 		await refreshLocation?.();
 	}, [refreshLocation]);
 
+	const handleAmbulanceIntent = useCallback(() => {
+		if (!activeLocation) return;
+		findingStartedAtRef.current = Date.now();
+		setFlowState(EMERGENCY_FLOW_STATES.finding_nearby_help.key);
+	}, [activeLocation]);
+
+	const handleBedIntent = useCallback(() => {
+		if (hospitalChoiceOptions.length > 0) {
+			setHospitalSheetVisible(true);
+		} else if (activeLocation) {
+			findingStartedAtRef.current = Date.now();
+			setFlowState(EMERGENCY_FLOW_STATES.finding_nearby_help.key);
+		}
+	}, [activeLocation, hospitalChoiceOptions.length]);
+
 	const handleSelectLocation = useCallback((nextLocation) => {
 		setSelectedLocation(nextLocation);
 		setFlowState(EMERGENCY_FLOW_STATES.confirm_location.key);
@@ -1429,8 +1467,12 @@ export default function EmergencyIOSMobileIntakeView({
 				contentContainerStyle={[
 					styles.scrollContent,
 					shouldUseIosPadPhaseLayout ? styles.padScrollContent : null,
+					shouldUseChooseLocationStage && !isResponderMatched
+						? { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }
+						: null,
+					shouldShowReviewShell ? { paddingBottom: 0 } : null,
 				]}
-				scrollEnabled={!shouldLockWebViewport}
+				scrollEnabled={!shouldLockWebViewport && !(shouldUseChooseLocationStage && !isResponderMatched)}
 				showsVerticalScrollIndicator={false}
 				keyboardShouldPersistTaps="handled"
 			>
@@ -1439,6 +1481,12 @@ export default function EmergencyIOSMobileIntakeView({
 						styles.stage,
 						shouldUseIosPadPhaseLayout ? styles.padStage : null,
 						shouldShowReviewShell ? styles.reviewStage : null,
+						shouldShowReviewShell
+							? { minHeight: Math.max(height - metrics.topPadding, 0) }
+							: null,
+						shouldUseChooseLocationStage && !isResponderMatched
+							? { maxWidth: undefined, alignItems: "stretch", alignSelf: "stretch" }
+							: null,
 						{
 							opacity: entranceOpacity,
 							transform: [{ translateY: entranceTranslate }],
@@ -1463,6 +1511,9 @@ export default function EmergencyIOSMobileIntakeView({
 							style={[
 								styles.centeredStateLayer,
 								shouldUseIosPadPhaseLayout ? styles.padCenteredStateLayer : null,
+								shouldUseChooseLocationStage
+									? { alignItems: "stretch", paddingTop: 0 }
+									: null,
 								{
 									opacity: centeredShellOpacity,
 									transform: [{ translateY: centeredShellTranslateY }],
@@ -1484,6 +1535,8 @@ export default function EmergencyIOSMobileIntakeView({
 									confirmPrimaryLabel={confirmPrimaryLabel}
 									onPrimaryPress={handlePrimary}
 									onSecondaryPress={() => setSearchSheetVisible(true)}
+									onAmbulancePress={handleAmbulanceIntent}
+									onBedPress={handleBedIntent}
 									secondaryLabel={EMERGENCY_FLOW_STATES.confirm_location.secondaryAction}
 									heroScale={heroScale}
 									pulseScale={pulseScale}
@@ -1494,7 +1547,13 @@ export default function EmergencyIOSMobileIntakeView({
 									findingGlowOpacity={findingGlowOpacity}
 									findingGlowScale={findingGlowScale}
 									findingRailProgress={findingRailProgress}
-								onActionLayout={handleChooseLocationActionLayout}
+									locationLabel={activeAddressModel?.primaryText}
+									locationDetail={activeAddressModel?.secondaryText}
+									hospitalOptions={hospitalChoiceOptions}
+									selectedHospital={activeProposedHospital}
+									onSheetFullScreen={setSheetFullScreen}
+									isResolvingPlaceName={isResolvingPlaceName}
+									onActionLayout={handleChooseLocationActionLayout}
 								/>
 							) : null}
 						</Animated.View>

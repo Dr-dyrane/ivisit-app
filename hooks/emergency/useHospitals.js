@@ -65,12 +65,20 @@ const getDisplayHospitals = (hospitals, userLocation) => {
 // PREVIOUS: Internal hook state only, cleared on unmount/refresh
 // NEW: Global module cache for instant "Apple-style" loading
 // REVERT TO: Remove globalHospitalCache and related logic
+const HOSPITAL_CACHE_TTL_MS = 2 * 60 * 1000;
+const LOCATION_BUCKET_PRECISION = 2;
+
 let globalHospitalCache = {
 	hospitals: [],
 	allHospitals: [],
 	categories: {},
-	timestamp: 0
+	timestamp: 0,
+	lastKey: null,
+	keyedSnapshots: {},
 };
+
+const globalFetchRegistry = new Map();
+const globalBootstrapRegistry = new Map();
 
 const normalizeLocation = (location) => {
 	const latitude = Number(location?.latitude);
@@ -87,6 +95,20 @@ const isSameLocation = (left, right) =>
 	Number(left?.latitude) === Number(right?.latitude) &&
 	Number(left?.longitude) === Number(right?.longitude);
 
+const buildLocationBucketKey = (location) => {
+	const normalizedLocation = normalizeLocation(location);
+	if (!normalizedLocation) return "fallback";
+	return [
+		normalizedLocation.latitude.toFixed(LOCATION_BUCKET_PRECISION),
+		normalizedLocation.longitude.toFixed(LOCATION_BUCKET_PRECISION),
+	].join(":");
+};
+
+const hasFreshSnapshot = (snapshot) => {
+	if (!snapshot?.timestamp) return false;
+	return Date.now() - snapshot.timestamp < HOSPITAL_CACHE_TTL_MS;
+};
+
 /**
  * Hook to fetch hospitals using the hospitals service with real-time location.
  * Streamlined to prevent infinite loops and excessive API calls.
@@ -99,6 +121,8 @@ export function useHospitals(options = {}) {
 		[options?.location?.latitude, options?.location?.longitude]
 	);
 	const demoModeEnabled = options?.demoModeEnabled !== false;
+	const demoBootstrapEnabled = options?.demoBootstrapEnabled === true;
+	const skipInternalLocationLookup = options?.skipInternalLocationLookup === true;
 	const userId = options?.userId ?? null;
 	const [hospitals, setHospitals] = useState(globalHospitalCache.hospitals);
 	const [allHospitals, setAllHospitals] = useState(globalHospitalCache.allHospitals);
@@ -108,6 +132,8 @@ export function useHospitals(options = {}) {
 	const [resolvedLocation, setResolvedLocation] = useState(externalLocation);
 
 	const lastLocationRef = useRef(null);
+	const lastLocationKeyRef = useRef(globalHospitalCache.lastKey);
+	const requestSequenceRef = useRef(0);
 	const hasFetchedRef = useRef(globalHospitalCache.hospitals.length > 0);
 	const userLocation = externalLocation || resolvedLocation;
 
@@ -116,49 +142,76 @@ export function useHospitals(options = {}) {
 		const normalizedLocation = normalizeLocation(location);
 		if (!normalizedLocation) return;
 
+		const locationKey = buildLocationBucketKey(normalizedLocation);
+		const activeRequestId = ++requestSequenceRef.current;
+		const cachedSnapshot = globalHospitalCache.keyedSnapshots?.[locationKey] ?? null;
+
 		try {
-			// 🔴 REVERT POINT: Background Refresh Stability
-			// PREVIOUS: Always set isLoading(true), clearing UI state
-			// NEW: Only show loading spinner on initial fetch; keep data visible during updates
-			// REVERT TO: setIsLoading(true); setError(null);
-			// Use ref instead of state to avoid stale closure
-			if (!hasFetchedRef.current) {
+			if (cachedSnapshot?.hospitals?.length) {
+				setAllHospitals(cachedSnapshot.allHospitals || []);
+				setHospitals(cachedSnapshot.hospitals || []);
+				setCategories(cachedSnapshot.categories || {});
+				hasFetchedRef.current = true;
+				setIsLoading(false);
+			} else if (!hasFetchedRef.current) {
 				setIsLoading(true);
 			}
 			setError(null);
 
-			if (demoModeEnabled) {
-				try {
-					const provisioningUserId =
-						await demoEcosystemService.getProvisioningUserId(userId);
-					await demoEcosystemService.ensureDemoEcosystemForLocation({
-						userId: provisioningUserId,
-						latitude: normalizedLocation.latitude,
-						longitude: normalizedLocation.longitude,
-						radiusKm: 50,
+			if (demoModeEnabled && demoBootstrapEnabled) {
+				const bootstrapKey = `${locationKey}:${userId || "guest"}`;
+				let bootstrapPromise = globalBootstrapRegistry.get(bootstrapKey);
+				if (!bootstrapPromise) {
+					bootstrapPromise = (async () => {
+						try {
+							const provisioningUserId =
+								await demoEcosystemService.getProvisioningUserId(userId);
+							await demoEcosystemService.ensureDemoEcosystemForLocation({
+								userId: provisioningUserId,
+								latitude: normalizedLocation.latitude,
+								longitude: normalizedLocation.longitude,
+								radiusKm: 50,
+							});
+						} catch (bootstrapError) {
+							console.warn("[useHospitals] Demo bootstrap sync skipped", bootstrapError);
+						}
+					})();
+					globalBootstrapRegistry.set(bootstrapKey, bootstrapPromise);
+					bootstrapPromise.finally(() => {
+						if (globalBootstrapRegistry.get(bootstrapKey) === bootstrapPromise) {
+							globalBootstrapRegistry.delete(bootstrapKey);
+						}
 					});
-				} catch (bootstrapError) {
-					console.warn("[useHospitals] Demo bootstrap sync skipped", bootstrapError);
 				}
+				await bootstrapPromise;
 			}
 
-			// We use a generous 50km radius by default to avoid multiple roundtrips
-			// The backend/RPC handles the heavy lifting
-			const data = await hospitalsService.discoverNearby(
-				normalizedLocation.latitude,
-				normalizedLocation.longitude,
-				50000 // 50km
-			);
+			let fetchPromise = globalFetchRegistry.get(locationKey);
+			if (!fetchPromise) {
+				fetchPromise = hospitalsService.discoverNearby(
+					normalizedLocation.latitude,
+					normalizedLocation.longitude,
+					50000 // 50km
+				);
+				globalFetchRegistry.set(locationKey, fetchPromise);
+				fetchPromise.finally(() => {
+					if (globalFetchRegistry.get(locationKey) === fetchPromise) {
+						globalFetchRegistry.delete(locationKey);
+					}
+				});
+			}
+
+			const data = await fetchPromise;
+			if (activeRequestId !== requestSequenceRef.current) {
+				return;
+			}
 
 			if (data.length === 0) {
 				console.warn('[useHospitals] No hospitals found in 50km radius');
 			}
 
-			// Apply smart logic
 			const categorized = categorizeHospitals(data);
 			const display = getDisplayHospitals(data, normalizedLocation);
-
-			// Calculate dynamic wait times
 			const hospitalsWithWaitTimes = display.map(hospital => ({
 				...hospital,
 				dynamicWaitTime: hospitalsService.calculateDynamicWaitTime(hospital, normalizedLocation)
@@ -167,25 +220,38 @@ export function useHospitals(options = {}) {
 			setAllHospitals(data);
 			setHospitals(hospitalsWithWaitTimes);
 			setCategories(categorized);
-
-			// Mark as fetched to prevent loading spinner on subsequent fetches
 			hasFetchedRef.current = true;
 
-			// Update the global cache for the next remount
-			globalHospitalCache = {
+			const nextSnapshot = {
 				hospitals: hospitalsWithWaitTimes,
 				allHospitals: data,
 				categories: categorized,
-				timestamp: Date.now()
+				timestamp: Date.now(),
 			};
-
+			globalHospitalCache = {
+				...globalHospitalCache,
+				hospitals: hospitalsWithWaitTimes,
+				allHospitals: data,
+				categories: categorized,
+				timestamp: nextSnapshot.timestamp,
+				lastKey: locationKey,
+				keyedSnapshots: {
+					...globalHospitalCache.keyedSnapshots,
+					[locationKey]: nextSnapshot,
+				},
+			};
 		} catch (err) {
+			if (activeRequestId !== requestSequenceRef.current) {
+				return;
+			}
 			console.error("[useHospitals] Fetch error:", err);
 			setError(err);
 		} finally {
-			setIsLoading(false);
+			if (activeRequestId === requestSequenceRef.current) {
+				setIsLoading(false);
+			}
 		}
-	}, [demoModeEnabled, userId]);
+	}, [demoBootstrapEnabled, demoModeEnabled, userId]);
 
 	// Resolve initial location when nothing upstream has provided one yet.
 	useEffect(() => {
@@ -195,6 +261,12 @@ export function useHospitals(options = {}) {
 			setResolvedLocation((current) =>
 				isSameLocation(current, externalLocation) ? current : externalLocation
 			);
+			return () => {
+				isMounted = false;
+			};
+		}
+
+		if (skipInternalLocationLookup) {
 			return () => {
 				isMounted = false;
 			};
@@ -235,7 +307,7 @@ export function useHospitals(options = {}) {
 
 		getInitialLocation();
 		return () => { isMounted = false; };
-	}, [externalLocation]);
+	}, [externalLocation, skipInternalLocationLookup]);
 
 	// Refetch only on significant location change, regardless of whether the
 	// location came from the emergency map or direct device lookup.
@@ -245,20 +317,40 @@ export function useHospitals(options = {}) {
 			return;
 		}
 
-		const significantChange = lastLocationRef.current ? (
-			Math.abs(lastLocationRef.current.latitude - nextLocation.latitude) > 0.005 ||
-			Math.abs(lastLocationRef.current.longitude - nextLocation.longitude) > 0.005
-		) : true;
+		const locationKey = buildLocationBucketKey(nextLocation);
+		const cachedSnapshot = globalHospitalCache.keyedSnapshots?.[locationKey] ?? null;
+		if (cachedSnapshot?.hospitals?.length) {
+			setAllHospitals(cachedSnapshot.allHospitals || []);
+			setHospitals(cachedSnapshot.hospitals || []);
+			setCategories(cachedSnapshot.categories || {});
+			hasFetchedRef.current = true;
+			setIsLoading(false);
+		}
 
-		if (significantChange) {
+		const significantChange = lastLocationRef.current ? (
+			buildLocationBucketKey(lastLocationRef.current) !== locationKey
+		) : true;
+		const shouldRefreshCache = !cachedSnapshot || !hasFreshSnapshot(cachedSnapshot);
+
+		if (significantChange || shouldRefreshCache) {
 			lastLocationRef.current = nextLocation;
+			lastLocationKeyRef.current = locationKey;
 			performFetch(nextLocation);
 		}
 	}, [userLocation, performFetch]);
 
 	const manualRefetch = useCallback(() => {
-		performFetch(userLocation || DEFAULT_APP_COORDINATES);
-	}, [userLocation, performFetch]);
+		const activeLocation = userLocation || (skipInternalLocationLookup ? null : DEFAULT_APP_COORDINATES);
+		if (!activeLocation) {
+			return;
+		}
+		const locationKey = buildLocationBucketKey(activeLocation);
+		if (locationKey && globalHospitalCache.keyedSnapshots?.[locationKey]) {
+			delete globalHospitalCache.keyedSnapshots[locationKey];
+		}
+		globalFetchRegistry.delete(locationKey);
+		performFetch(activeLocation);
+	}, [performFetch, skipInternalLocationLookup, userLocation]);
 
 	return {
 		hospitals,

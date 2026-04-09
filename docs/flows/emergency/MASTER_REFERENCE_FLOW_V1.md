@@ -9,9 +9,11 @@ Related references:
 
 - [workflow_map.md](./workflow_map.md)
 - [ambulance_and_bed_booking.md](./ambulance_and_bed_booking.md)
+- [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 - [../../WELCOME_AND_INTAKE_FLOW_MAP.md](../../WELCOME_AND_INTAKE_FLOW_MAP.md)
 - [../../EMERGENCY_SCREEN_DOSSIER.md](../../EMERGENCY_SCREEN_DOSSIER.md)
 - [../../EMERGENCY_INTEGRATION_AUDIT.md](../../EMERGENCY_INTEGRATION_AUDIT.md)
+- [../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
 
 ---
 
@@ -83,6 +85,19 @@ ELSE
 # 3. Welcome State
 
 Purpose: start the system instantly.
+
+### Current implementation note (2026-04-08)
+
+- `/(auth)/request-help` is the active orchestration shell for the first idle map state
+- welcome now pre-warms location, normalized place label, and nearby hospitals in the background
+- the first `request-help` surface should behave like a **map-first dashboard**, not a blank intake form
+
+### Runtime doctrine locked from current implementation review
+
+- [WelcomeScreen.jsx](../../../screens/WelcomeScreen.jsx) may pre-warm emergency discovery, but it must not silently trigger demo bootstrap.
+- [GlobalLocationContext.jsx](../../../contexts/GlobalLocationContext.jsx) is the single owner of initial device location and normalized place label.
+- [EmergencyContext.jsx](../../../contexts/EmergencyContext.jsx) should consume that app-owned location and nearby hospitals, not run a competing first-load location lookup.
+- explicit demo backfill belongs to the intake flow in [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx), where coverage quality is known and the user has already entered emergency intent.
 
 ```text
 [ Animated visual ]
@@ -404,8 +419,9 @@ Deposit: $50
 
 This is where:
 
-- identity is captured
-- payment is prepared
+- triage or transport detail is finalized
+- identity is captured last
+- payment is prepared immediately after identity
 - the real-world action is triggered
 
 ## Core rule
@@ -418,9 +434,44 @@ That means:
 - the final commit CTA triggers the actual dispatch or reservation
 - payment is the final release gate, not an early blocker
 
+## Current implementation constraint
+
+The new intake/runtime is already feasible on top of the current app shell, but one seam is still legacy:
+
+- [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx) already persists intake state and mounts the modern intake shell through [EmergencyIntakeOrchestrator.jsx](../../../components/emergency/intake/EmergencyIntakeOrchestrator.jsx).
+- choose-location and choose-hospital already live in shared stage families.
+- after intake, the screen still flips into [EmergencyRequestModal.jsx](../../../components/emergency/EmergencyRequestModal.jsx) through `showLegacyFlow`.
+- that modal still mixes selection, identity, payment, waiting, and dispatch assumptions in one large legacy surface.
+
+So the architectural target is:
+
+- keep the current intake shell
+- replace the `showLegacyFlow -> EmergencyRequestModal` handoff with a dedicated **commit phase stage family**
+- reuse backend services and request orchestration; do not rewrite the backend just to achieve the new Apple Maps-style flow
+
 ---
 
-# 13. Identity (Authentication Layer)
+# 13. Triage And Transport Detail (Pre-Auth)
+
+This detail belongs **before auth**.
+
+The user should first finish the operational choices that affect the request:
+
+- ambulance path:
+  - what is happening
+  - ambulance/support level if needed
+- bed path:
+  - whether transport is needed
+
+Rule:
+
+- auth should be the **last measure before payment**
+- do not interrupt triage or transport detail with identity capture
+- by the time auth appears, the user should already know what they are asking the system to do
+
+---
+
+# 14. Identity (Authentication Layer)
 
 ## UX framing
 
@@ -447,11 +498,39 @@ OTP verification happens here if required to commit.
 Rule:
 
 - auth should confirm identity quickly
+- auth should happen **after triage / transport detail and immediately before payment**
 - auth must **resume the same flow**, not restart the journey
+
+## Current v1 auth decision
+
+- use **email OTP** as the commit-time identity mechanism
+- still collect **phone number** as patient/contact data
+- do not force Google auth in the emergency commit path
+- do not route emergency users into email/password account-thinking
+
+This keeps the flow aligned with the product rule:
+
+- no auth before intent
+- no payment before clarity
+- one continuous emergency surface instead of a sign-up detour
+
+## Reuse strategy for implementation
+
+Do not rewrite the emergency commit flow from scratch.
+
+- reuse the stage-family pattern already used by:
+  - [EmergencyChooseLocationStageBase.jsx](../../../components/emergency/intake/views/chooseLocation/EmergencyChooseLocationStageBase.jsx)
+  - [EmergencyChooseHospitalStageBase.jsx](../../../components/emergency/intake/views/chooseHospital/EmergencyChooseHospitalStageBase.jsx)
+  - [EmergencyChooseResourceStageBase.jsx](../../../components/emergency/requestModal/views/chooseResource/EmergencyChooseResourceStageBase.jsx)
+- reuse OTP-first auth primitives already in the app:
+  - [AuthInputModal.jsx](../../../components/register/AuthInputModal.jsx)
+  - [SmartContactInput.jsx](../../../components/auth/SmartContactInput.jsx)
+  - [OTPInputCard.jsx](../../../components/register/OTPInputCard.jsx)
+- copy and adapt those surfaces into an emergency-specific commit family rather than extending the legacy modal further
 
 ---
 
-# 14. Optional Triage (Ambulance)
+# 15. Optional Triage (Ambulance)
 
 ```text
 What’s happening?
@@ -467,11 +546,11 @@ Rules:
 - fast tap
 - skippable
 - no friction
-- keep it after identity and before final payment in v1 unless triage must change the recommendation itself
+- keep it before identity and before final payment in v1 unless triage must change the recommendation itself
 
 ---
 
-# 15. Ambulance Type (Conditional)
+# 16. Ambulance Type (Conditional)
 
 If only one option exists:
 
@@ -493,7 +572,7 @@ If the choice does not truly help the user decide, keep it hidden.
 
 ---
 
-# 16. Payment Flow
+# 17. Payment Flow
 
 ## Core rule
 
@@ -504,6 +583,8 @@ It happens only after:
 - hospital is known
 - ETA is known
 - cost is known
+- triage / transport detail is complete
+- identity has just been verified
 
 ## Ambulance Payment
 
@@ -529,7 +610,7 @@ Secures your admission
 
 ---
 
-# 17. Execution Phase
+# 18. Execution Phase
 
 ## Ambulance
 
@@ -624,9 +705,10 @@ When tapped:
 
 ## 2. Commit
 
-- patient details
-- phone verification
 - optional triage
+- optional transport detail
+- patient details
+- email OTP verification
 - payment release
 
 ## 3. Active
@@ -650,10 +732,10 @@ Welcome
 → System recommends hospital
 → Show ETA + estimated cost
 → Continue
-→ Add patient details
-→ Verify phone
 → Optional What happened?
 → Ambulance type (if needed)
+→ Add patient details
+→ Verify identity
 → Pay & send ambulance
 → Dispatch triggered
 → Tracking
@@ -668,9 +750,9 @@ Welcome
 → Show hospitals
 → Select hospital
 → Continue
-→ Add patient details
-→ Verify phone
 → Optional transport
+→ Add patient details
+→ Verify identity
 → Pay & reserve
 → Reservation confirmed
 ```

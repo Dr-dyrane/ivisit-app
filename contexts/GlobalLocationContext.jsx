@@ -4,12 +4,80 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import * as Location from "expo-location";
 import { Platform } from "react-native";
 import { DEFAULT_APP_COORDINATES } from "../constants/locationDefaults";
+import mapboxService from "../services/mapboxService";
 
 // Location configuration constants
 const LOCATION_CONFIG = {
 	TIMEOUT: 10000, // 10 seconds
 	MAX_AGE: 30000, // 30 seconds cache
 	ACCURACY: Location.Accuracy.High,
+};
+
+const normalizeLocationCoordinates = (location) => {
+	const latitude = Number(location?.latitude);
+	const longitude = Number(location?.longitude);
+	if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+		return null;
+	}
+	return { latitude, longitude };
+};
+
+const buildFallbackPlaceModel = (location) => ({
+	primaryText: "Current location",
+	secondaryText:
+		Number.isFinite(Number(location?.latitude)) && Number.isFinite(Number(location?.longitude))
+			? `${Number(location.latitude).toFixed(4)}, ${Number(location.longitude).toFixed(4)}`
+			: "",
+	formattedAddress: "Current location",
+	source: "fallback",
+	location: normalizeLocationCoordinates(location),
+});
+
+const buildPlaceModelFromFormattedAddress = (formattedAddress, location, source = "mapbox") => {
+	if (typeof formattedAddress !== "string" || !formattedAddress.trim()) {
+		return buildFallbackPlaceModel(location);
+	}
+
+	const parts = formattedAddress
+		.split(",")
+		.map((part) => part.trim())
+		.filter(Boolean);
+	const primaryText = parts[0] || formattedAddress.trim();
+	const secondaryText = parts.slice(1).join(", ");
+
+	return {
+		primaryText,
+		secondaryText,
+		formattedAddress: formattedAddress.trim(),
+		source,
+		location: normalizeLocationCoordinates(location),
+	};
+};
+
+const buildPlaceModelFromNativePlace = (place, location) => {
+	if (!place || typeof place !== "object") {
+		return buildFallbackPlaceModel(location);
+	}
+
+	const primaryText =
+		[place.name, place.street]
+			.filter(Boolean)
+			.join(" ")
+			.trim() ||
+		place.city ||
+		place.region ||
+		"Current location";
+	const secondaryText = [place.district, place.city, place.region, place.country]
+		.filter(Boolean)
+		.join(", ");
+
+	return {
+		primaryText,
+		secondaryText,
+		formattedAddress: [primaryText, secondaryText].filter(Boolean).join(", "),
+		source: "native",
+		location: normalizeLocationCoordinates(location),
+	};
 };
 
 // Create context
@@ -26,10 +94,78 @@ export function GlobalLocationProvider({ children }) {
 	const [isLoadingLocation, setIsLoadingLocation] = useState(true);
 	const [locationError, setLocationError] = useState(null);
 	const [lastUpdated, setLastUpdated] = useState(null);
+	const [resolvedPlace, setResolvedPlace] = useState(null);
+	const [isResolvingPlaceName, setIsResolvingPlaceName] = useState(false);
 
 	// Prevent multiple simultaneous permission requests
 	const isRequestingPermission = useRef(false);
 	const isInitialized = useRef(false);
+	const placeRequestIdRef = useRef(0);
+	const resolvedPlaceKeyRef = useRef(null);
+
+	const resolveLocationDetails = useCallback(async (locationInput) => {
+		const normalizedLocation = normalizeLocationCoordinates(locationInput);
+		if (!normalizedLocation) {
+			const fallbackPlace = buildFallbackPlaceModel(locationInput);
+			setResolvedPlace(fallbackPlace);
+			return fallbackPlace;
+		}
+
+		const locationKey = `${normalizedLocation.latitude.toFixed(4)}:${normalizedLocation.longitude.toFixed(4)}`;
+		if (resolvedPlaceKeyRef.current === locationKey && resolvedPlace) {
+			return resolvedPlace;
+		}
+
+		const requestId = ++placeRequestIdRef.current;
+		setIsResolvingPlaceName(true);
+
+		try {
+			let nextPlace = null;
+
+			try {
+				const formattedAddress = await mapboxService.reverseGeocode(
+					normalizedLocation.latitude,
+					normalizedLocation.longitude,
+				);
+				if (
+					typeof formattedAddress === "string" &&
+					formattedAddress.trim() &&
+					formattedAddress !== "Unknown Address"
+				) {
+					nextPlace = buildPlaceModelFromFormattedAddress(
+						formattedAddress,
+						normalizedLocation,
+						"mapbox",
+					);
+				}
+			} catch (_mapboxError) {
+				// Fall through to native reverse geocoding below.
+			}
+
+			if (!nextPlace) {
+				try {
+					const nativePlaces = await Location.reverseGeocodeAsync(normalizedLocation);
+					nextPlace = buildPlaceModelFromNativePlace(
+						nativePlaces?.[0],
+						normalizedLocation,
+					);
+				} catch (_nativeError) {
+					nextPlace = buildFallbackPlaceModel(normalizedLocation);
+				}
+			}
+
+			if (requestId === placeRequestIdRef.current) {
+				resolvedPlaceKeyRef.current = locationKey;
+				setResolvedPlace(nextPlace);
+			}
+
+			return nextPlace;
+		} finally {
+			if (requestId === placeRequestIdRef.current) {
+				setIsResolvingPlaceName(false);
+			}
+		}
+	}, [resolvedPlace]);
 
 	// Request location permission and get location
 	const requestLocationPermission = useCallback(async () => {
@@ -78,12 +214,14 @@ export function GlobalLocationProvider({ children }) {
 
 					setUserLocation(locationData);
 					setLastUpdated(Date.now());
+					void resolveLocationDetails(locationData);
 					console.log("[GlobalLocationContext] Location obtained:", locationData);
 				} catch (locationErr) {
 					console.error("[GlobalLocationContext] Failed to get location (using fallback):", locationErr);
 					const fallbackData = { ...DEFAULT_APP_COORDINATES };
 					setUserLocation(fallbackData);
 					setLastUpdated(Date.now());
+					void resolveLocationDetails(fallbackData);
 					setLocationError(null);
 				}
 			} else {
@@ -114,6 +252,7 @@ export function GlobalLocationProvider({ children }) {
 
 						setUserLocation(locationData);
 						setLastUpdated(Date.now());
+						void resolveLocationDetails(locationData);
 						console.log("[GlobalLocationContext] Location obtained after permission:", locationData);
 					} catch (locationErr) {
 						console.error("[GlobalLocationContext] Failed to get location after permission (using fallback):", locationErr);
@@ -122,6 +261,7 @@ export function GlobalLocationProvider({ children }) {
 						const fallbackData = { ...DEFAULT_APP_COORDINATES };
 						setUserLocation(fallbackData);
 						setLastUpdated(Date.now());
+						void resolveLocationDetails(fallbackData);
 						setLocationError(null); // Clear error since we have a fallback
 					}
 				} else {
@@ -129,6 +269,7 @@ export function GlobalLocationProvider({ children }) {
 					const fallbackData = { ...DEFAULT_APP_COORDINATES };
 					setUserLocation(fallbackData);
 					setLastUpdated(Date.now());
+					void resolveLocationDetails(fallbackData);
 					setLocationError(null);
 				}
 			}
@@ -139,7 +280,7 @@ export function GlobalLocationProvider({ children }) {
 			setIsLoadingLocation(false);
 			isRequestingPermission.current = false;
 		}
-	}, []);
+	}, [resolveLocationDetails]);
 
 	// Initialize location on mount
 	useEffect(() => {
@@ -177,15 +318,21 @@ export function GlobalLocationProvider({ children }) {
 		isLoadingLocation,
 		locationError,
 		lastUpdated,
+		resolvedPlace,
+		isResolvingPlaceName,
+		locationLabel: resolvedPlace?.primaryText || null,
+		locationLabelDetail: resolvedPlace?.secondaryText || null,
 
 		// Methods
 		refreshLocation,
 		isLocationFresh,
 		requestLocationPermission,
+		resolveLocationDetails,
 
 		// Computed values
 		hasUserLocation: !!userLocation,
 		isLocationError: !!locationError,
+		hasResolvedPlace: !!resolvedPlace,
 	};
 
 	return (
@@ -214,13 +361,22 @@ export function useGlobalLocation() {
  * Returns cached location immediately, no waiting required
  */
 export function useOptionalLocation() {
-	const { userLocation, locationPermission, isLoadingLocation, hasUserLocation } = useGlobalLocation();
+	const {
+		userLocation,
+		locationPermission,
+		isLoadingLocation,
+		hasUserLocation,
+		locationError,
+		resolvedPlace,
+	} = useGlobalLocation();
 
 	return {
 		location: userLocation,
 		hasPermission: locationPermission,
 		isLoading: isLoadingLocation,
 		hasLocation: hasUserLocation,
+		locationError,
+		resolvedPlace,
 		// No blocking - components can work without location
 	};
 }

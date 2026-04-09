@@ -14,6 +14,7 @@ import { ambulanceService } from "../services/ambulanceService";
 import { demoEcosystemService } from "../services/demoEcosystemService";
 import { usePreferences } from "./PreferencesContext";
 import { useAuth } from "./AuthContext";
+import { useGlobalLocation } from "./GlobalLocationContext";
 import {
 	coverageModeService,
 	COVERAGE_MODES,
@@ -240,6 +241,7 @@ export function EmergencyProvider({ children }) {
 	const { addNotification } = useNotifications();
 	const { preferences, updatePreferences } = usePreferences();
 	const { user } = useAuth();
+	const { userLocation: globalUserLocation } = useGlobalLocation();
 	const legacyDemoModeEnabled = preferences?.demoModeEnabled !== false;
 	const legacyCoverageMode = coverageModeService.modeFromDemoPreference(
 		legacyDemoModeEnabled
@@ -265,6 +267,8 @@ export function EmergencyProvider({ children }) {
 	} = useHospitals({
 		location: userLocation,
 		demoModeEnabled: allowsPreferredDemo || forceDemoFetch,
+		demoBootstrapEnabled: false,
+		skipInternalLocationLookup: true,
 		userId: user?.id,
 	});
 	// Fetch real ambulances
@@ -380,41 +384,28 @@ export function EmergencyProvider({ children }) {
 
 	}, [dbHospitals, isLoadingHospitals, userLocation]);
 
-	// Fetch User Location on Mount (for context-aware data)
 	useEffect(() => {
-		(async () => {
-			try {
-				// Try last known first for speed
-				const lastKnown = await Location.getLastKnownPositionAsync({});
-				if (lastKnown) {
-					setUserLocation({
-						latitude: lastKnown.coords.latitude,
-						longitude: lastKnown.coords.longitude,
-						latitudeDelta: 0.04,
-						longitudeDelta: 0.04,
-					});
-				}
+		const latitude = Number(globalUserLocation?.latitude);
+		const longitude = Number(globalUserLocation?.longitude);
+		if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+			return;
+		}
 
-				// Then try to get permission and fresh location if needed
-				// We don't want to block the app or show alerts here, just silently try
-				const { status } = await Location.getForegroundPermissionsAsync();
-				if (status === 'granted') {
-					const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-					setUserLocation({
-						latitude: location.coords.latitude,
-						longitude: location.coords.longitude,
-						latitudeDelta: 0.04,
-						longitudeDelta: 0.04,
-					});
-				}
-			} catch (e) {
-				// Ignore errors here, Map component will handle explicit permission requests
-				console.log("Context location fetch failed (using fallback):", e);
-				// Standard fallback location
-				setUserLocation({ ...DEFAULT_APP_REGION });
+		setUserLocation((current) => {
+			const currentLatitude = Number(current?.latitude);
+			const currentLongitude = Number(current?.longitude);
+			if (Number.isFinite(currentLatitude) && Number.isFinite(currentLongitude)) {
+				return current;
 			}
-		})();
-	}, []);
+
+			return {
+				latitude,
+				longitude,
+				latitudeDelta: Number(current?.latitudeDelta) || DEFAULT_APP_REGION.latitudeDelta,
+				longitudeDelta: Number(current?.longitudeDelta) || DEFAULT_APP_REGION.longitudeDelta,
+			};
+		});
+	}, [globalUserLocation?.latitude, globalUserLocation?.longitude]);
 
 	const parseEtaToSeconds = useCallback((eta) => {
 		if (eta === null || eta === undefined) return null;

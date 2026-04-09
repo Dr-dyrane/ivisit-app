@@ -75,6 +75,18 @@ const toNonNegativeInt = (value: unknown, fallback = 0): number => {
   return Math.max(0, Math.round(n));
 };
 
+const normalizeFacilityText = (value: unknown): string =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+const coordinateKey = (value: unknown, precision = 3): string | null => {
+  const n = toFiniteNumber(value);
+  if (!Number.isFinite(n)) return null;
+  return Number(n).toFixed(precision);
+};
+
 const hashString = (seed: string): number => {
   let hash = 0;
   for (let i = 0; i < seed.length; i += 1) {
@@ -208,18 +220,24 @@ const withProviderDefaults = (row: any, providerSource: string) => {
 };
 
 const toMergeKey = (row: any): string => {
+  const name = normalizeFacilityText(row?.name);
+  const address = normalizeFacilityText(row?.address);
+  const latitude = coordinateKey(row?.latitude);
+  const longitude = coordinateKey(row?.longitude);
+
+  if (name && address && latitude && longitude) {
+    return `facility:${name}|${address}|${latitude}|${longitude}`;
+  }
+  if (name && address) {
+    return `facility:${name}|${address}`;
+  }
+  if (name && latitude && longitude) {
+    return `facility:${name}|${latitude}|${longitude}`;
+  }
+
   const placeId =
     typeof row?.place_id === "string" ? row.place_id.trim().toLowerCase() : "";
   if (placeId) return `place:${placeId}`;
-
-  const name =
-    typeof row?.name === "string" ? row.name.trim().toLowerCase() : "";
-  const latitude = toFiniteNumber(row?.latitude);
-  const longitude = toFiniteNumber(row?.longitude);
-
-  if (name && Number.isFinite(latitude) && Number.isFinite(longitude)) {
-    return `geo:${name}|${Number(latitude).toFixed(3)}|${Number(longitude).toFixed(3)}`;
-  }
   if (name) return `name:${name}`;
 
   const id = typeof row?.id === "string" ? row.id : "unknown";
@@ -473,7 +491,19 @@ serve(async (req) => {
         );
 
       if (mergeWithDatabase && normalizedProviderHospitals.length > 0) {
-        const upsertRows = normalizedProviderHospitals
+        const existingFacilityKeys = new Set(dbResults.map((row: any) => toMergeKey(row)));
+        const providerOnlyRows = [];
+        const providerSeen = new Set<string>();
+
+        normalizedProviderHospitals.forEach((row: any) => {
+          const key = toMergeKey(row);
+          if (existingFacilityKeys.has(key)) return;
+          if (providerSeen.has(key)) return;
+          providerSeen.add(key);
+          providerOnlyRows.push(row);
+        });
+
+        const upsertRows = providerOnlyRows
           .map(toHospitalUpsertRow)
           .filter(
             (row: any) =>
@@ -484,34 +514,39 @@ serve(async (req) => {
               Number.isFinite(row?.longitude)
           );
 
-        const { error: upsertError } = await supabaseClient
-          .from("hospitals")
-          .upsert(upsertRows, {
-            onConflict: "place_id",
-            ignoreDuplicates: false,
-          });
+        if (upsertRows.length > 0) {
+          const { error: upsertError } = await supabaseClient
+            .from("hospitals")
+            .upsert(upsertRows, {
+              onConflict: "place_id",
+              ignoreDuplicates: false,
+            });
 
-        if (upsertError) {
-          console.error("[discover-hospitals] provider upsert failed", upsertError);
+          if (upsertError) {
+            console.error("[discover-hospitals] provider upsert failed", upsertError);
+          } else {
+            // Re-read canonical DB rows so clients receive persisted ids/display_ids.
+            const { data: refreshedHospitals, error: refreshError } = await supabaseClient.rpc(
+              "nearby_hospitals",
+              {
+                user_lat: latitude,
+                user_lng: longitude,
+                radius_km: radiusKm,
+              }
+            );
+
+            if (refreshError) {
+              console.error(
+                "[discover-hospitals] nearby_hospitals refresh failed after upsert",
+                refreshError
+              );
+            } else {
+              dbResults = Array.isArray(refreshedHospitals) ? refreshedHospitals : dbResults;
+            }
+          }
         } else {
           // Re-read canonical DB rows so clients receive persisted ids/display_ids.
-          const { data: refreshedHospitals, error: refreshError } = await supabaseClient.rpc(
-            "nearby_hospitals",
-            {
-              user_lat: latitude,
-              user_lng: longitude,
-              radius_km: radiusKm,
-            }
-          );
-
-          if (refreshError) {
-            console.error(
-              "[discover-hospitals] nearby_hospitals refresh failed after upsert",
-              refreshError
-            );
-          } else {
-            dbResults = Array.isArray(refreshedHospitals) ? refreshedHospitals : dbResults;
-          }
+          dbResults = Array.isArray(dbResults) ? dbResults : [];
         }
       }
     }

@@ -177,6 +177,15 @@ const stripDemoSuffixes = (value: string) =>
 
 const normalizeHospitalName = (value: unknown, fallback = "Nearby Hospital") =>
   toSafeString(stripDemoSuffixes(toSafeString(value, fallback)), fallback);
+const normalizeFacilityText = (value: unknown) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+const coordinateKey = (value: unknown, precision = 3) => {
+  const n = toFiniteNumber(value);
+  return Number.isFinite(n) ? Number(n).toFixed(precision) : "0.000";
+};
 
 const toCoverageAxisKey = (value: number) =>
   `${value >= 0 ? "p" : "n"}${Math.round(Math.abs(value) * 100)
@@ -309,6 +318,7 @@ const getNearbySeedHospitals = async (admin: any, ctx: DemoContext) => {
       const coords = parseHospitalCoordinates(row);
       return {
         source_place_id: toSafeString(row?.place_id, ""),
+        identity_source: "database",
         name: normalizeHospitalName(row?.name, "Nearby Hospital"),
         address: toSafeString(row?.address, "Address unavailable"),
         phone: toSafeString(row?.phone),
@@ -367,6 +377,7 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
           )}`,
         source_place_id:
           toSafeString(row?.id) || toSafeString(properties?.mapbox_id, ""),
+        identity_source: "provider",
         name: normalizeHospitalName(
           properties?.name,
           normalizeHospitalName(row?.name, "Nearby Hospital")
@@ -406,11 +417,10 @@ const dedupeSeedHospitals = (rows: any[]) => {
   const seen = new Set<string>();
   return rows.filter((row) => {
     const key = [
-      toSafeString(row?.source_place_id || row?.place_id).toLowerCase(),
       normalizeHospitalName(row?.name).toLowerCase(),
       toSafeString(row?.address).toLowerCase(),
-      Number(toFiniteNumber(row?.latitude) ?? 0).toFixed(3),
-      Number(toFiniteNumber(row?.longitude) ?? 0).toFixed(3),
+      coordinateKey(row?.latitude),
+      coordinateKey(row?.longitude),
     ].join("|");
 
     if (seen.has(key)) return false;
@@ -440,7 +450,7 @@ const buildFallbackHospital = (ctx: DemoContext, slotIndex: number) => {
   return {
     source_place_id: "",
     name: `Emergency Care Center ${slotIndex + 1}`,
-    address: `Coverage Zone ${slotIndex + 1}`,
+    address: `Coverage ${ctx.coverageKey.toUpperCase()} Zone ${slotIndex + 1}`,
     phone: "",
     rating: 4.3,
     type: "standard",
@@ -619,6 +629,8 @@ const ensureDemoHospitals = async (
   const rows = new Array(targetCount).fill(null).map((_, slotIndex) => {
     const seed = seeds[slotIndex] ?? buildFallbackHospital(ctx, slotIndex);
     const fallback = buildFallbackHospital(ctx, slotIndex);
+    const useSyntheticIdentity =
+      seed?.identity_source === "database" || seed?.identity_source === "provider";
     const latitude = Number.isFinite(seed.latitude) ? Number(seed.latitude) : fallback.latitude;
     const longitude = Number.isFinite(seed.longitude) ? Number(seed.longitude) : fallback.longitude;
     const features = uniqueStrings([
@@ -642,8 +654,12 @@ const ensureDemoHospitals = async (
 
     return {
       place_id: toDemoPlaceId(ctx, seed, slotIndex),
-      name: normalizeHospitalName(seed.name, fallback.name),
-      address: toSafeString(seed.address, fallback.address),
+      name: useSyntheticIdentity
+        ? fallback.name
+        : normalizeHospitalName(seed.name, fallback.name),
+      address: useSyntheticIdentity
+        ? fallback.address
+        : toSafeString(seed.address, fallback.address),
       phone: toSafeString(seed.phone, ""),
       rating: toFiniteNumber(seed.rating) ?? 4.2,
       type: toSafeString(seed.type, "standard"),
