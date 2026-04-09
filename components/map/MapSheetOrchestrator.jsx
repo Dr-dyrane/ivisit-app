@@ -44,9 +44,9 @@ const MAP_SHEET_SNAP_INDEX = {
 };
 
 const FEATURED_HOSPITAL_IMAGE = require("../../assets/features/emergency.png");
-const FEATURED_CAROUSEL_SIDE_PADDING = 18;
-const FEATURED_CAROUSEL_GAP = 12;
-const FEATURED_CAROUSEL_PEEK = 22;
+const FEATURED_CAROUSEL_SIDE_PADDING = 24;
+const FEATURED_CAROUSEL_GAP = 10;
+const FEATURED_CAROUSEL_PEEK = 16;
 
 function getNextSnapStateUp(snapState) {
 	switch (snapState) {
@@ -173,7 +173,7 @@ function MapSheetShell({
 	});
 	const horizontalPadding = snapProgress.interpolate({
 		inputRange: [0, 1, 2],
-		outputRange: [8, 12, 18],
+		outputRange: [0, 0, 0],
 	});
 	const topPadding = snapProgress.interpolate({
 		inputRange: [0, 1, 2],
@@ -381,21 +381,25 @@ function SectionLabel({ title, color }) {
 	);
 }
 
-function FeaturedHospitalPlaceholderCard({ titleColor, bodyColor }) {
+function FeaturedHospitalPlaceholderCard({ titleColor, bodyColor, compact = false, cardWidth = null, cardHeight = null }) {
+	const cardStyle = compact
+		? styles.featuredStaticSlot
+		: [styles.featuredCard, cardWidth ? { width: cardWidth } : null, cardHeight ? { height: cardHeight } : null];
+
 	return (
-		<View style={[styles.featuredStaticSlot, styles.placeholderCard]}>
+		<View style={[cardStyle, styles.placeholderCard]}>
 			<LinearGradient
 				colors={["rgba(255,255,255,0.08)", "rgba(15,23,42,0.14)"]}
 				start={{ x: 0.12, y: 0.08 }}
 				end={{ x: 0.86, y: 0.92 }}
-				style={styles.placeholderCardInner}
+				style={[styles.placeholderCardInner, compact ? styles.placeholderCardInnerCompact : null]}
 			>
 				<View style={styles.placeholderCopy}>
 					<Text numberOfLines={2} style={[styles.featuredTitle, { color: titleColor }]}>
-						Nearby hospital
+						Loading nearby hospital
 					</Text>
 					<Text numberOfLines={2} style={[styles.featuredMeta, { color: bodyColor }]}>
-						More options appear here
+						More options nearby
 					</Text>
 				</View>
 			</LinearGradient>
@@ -447,15 +451,8 @@ function FeaturedHospitalCard({
 
 function buildVisibleHospitalSlots(featuredHospitals) {
 	const actualHospitals = Array.isArray(featuredHospitals) ? featuredHospitals.filter(Boolean) : [];
-
-	if (actualHospitals.length > 2) {
-		return {
-			items: actualHospitals,
-			useHorizontalScroll: true,
-		};
-	}
-
-	const placeholderCount = Math.max(0, 2 - actualHospitals.length);
+	const targetSlotCount = Math.max(3, actualHospitals.length + 2);
+	const placeholderCount = Math.max(0, targetSlotCount - actualHospitals.length);
 	return {
 		items: [
 			...actualHospitals.map((hospital) => ({ type: "hospital", hospital })),
@@ -464,55 +461,37 @@ function buildVisibleHospitalSlots(featuredHospitals) {
 				key: `placeholder-${index}`,
 			})),
 		],
-		useHorizontalScroll: false,
+		useHorizontalScroll: true,
 	};
 }
 
 function HospitalRail({ featuredHospitals, titleColor, bodyColor, onOpenFeaturedHospital }) {
-	const { items, useHorizontalScroll } = buildVisibleHospitalSlots(featuredHospitals);
+	const { items } = buildVisibleHospitalSlots(featuredHospitals);
 	const { width: screenWidth } = useWindowDimensions();
 	const carouselCardWidth = useMemo(() => {
 		const computedWidth = Math.round(
 			(screenWidth - FEATURED_CAROUSEL_SIDE_PADDING * 2 - FEATURED_CAROUSEL_GAP * 2 - FEATURED_CAROUSEL_PEEK) / 2,
 		);
-		return Math.max(160, Math.min(computedWidth, 198));
+		return Math.max(184, Math.min(computedWidth, 224));
 	}, [screenWidth]);
-	const carouselCardHeight = useMemo(() => Math.round(carouselCardWidth * 1.3), [carouselCardWidth]);
-
-	if (useHorizontalScroll) {
-		return (
-			<ScrollView
-				horizontal
-				showsHorizontalScrollIndicator={false}
-				decelerationRate="fast"
-				snapToAlignment="start"
-				snapToInterval={carouselCardWidth + FEATURED_CAROUSEL_GAP}
-				contentContainerStyle={[
-					styles.featuredScrollContent,
-					{
-						paddingLeft: FEATURED_CAROUSEL_SIDE_PADDING,
-						paddingRight: FEATURED_CAROUSEL_SIDE_PADDING,
-						gap: FEATURED_CAROUSEL_GAP,
-					},
-				]}
-			>
-				{items.map((hospital, index) => (
-					<FeaturedHospitalCard
-						key={hospital?.id || `${hospital?.name || "hospital"}-${index}`}
-						hospital={hospital}
-						titleColor={titleColor}
-						bodyColor={bodyColor}
-						onPress={onOpenFeaturedHospital}
-						cardWidth={carouselCardWidth}
-						cardHeight={carouselCardHeight}
-					/>
-				))}
-			</ScrollView>
-		);
-	}
+	const carouselCardHeight = useMemo(() => Math.round(carouselCardWidth * 1.36), [carouselCardWidth]);
 
 	return (
-		<View style={styles.featuredStaticRow}>
+		<ScrollView
+			horizontal
+			showsHorizontalScrollIndicator={false}
+			decelerationRate="fast"
+			snapToAlignment="start"
+			snapToInterval={carouselCardWidth + FEATURED_CAROUSEL_GAP}
+			contentContainerStyle={[
+				styles.featuredScrollContent,
+				{
+					paddingLeft: FEATURED_CAROUSEL_SIDE_PADDING,
+					paddingRight: FEATURED_CAROUSEL_SIDE_PADDING,
+					gap: FEATURED_CAROUSEL_GAP,
+				},
+			]}
+		>
 			{items.map((item, index) =>
 				item?.type === "hospital" ? (
 					<FeaturedHospitalCard
@@ -521,17 +500,20 @@ function HospitalRail({ featuredHospitals, titleColor, bodyColor, onOpenFeatured
 						titleColor={titleColor}
 						bodyColor={bodyColor}
 						onPress={onOpenFeaturedHospital}
-						compact
+						cardWidth={carouselCardWidth}
+						cardHeight={carouselCardHeight}
 					/>
 				) : (
 					<FeaturedHospitalPlaceholderCard
 						key={item.key || `placeholder-${index}`}
 						titleColor={titleColor}
 						bodyColor={bodyColor}
+						cardWidth={carouselCardWidth}
+						cardHeight={carouselCardHeight}
 					/>
 				),
 			)}
-		</View>
+		</ScrollView>
 	);
 }
 
@@ -719,11 +701,24 @@ function MapExploreIntentSheet({
 		</View>
 	);
 
+	const footerTerms = !isCollapsed ? (
+		<View style={styles.footerSlot}>
+			<InAppBrowserLink
+				label="Terms & conditions"
+				url="https://ivisit.ng/terms"
+				color={tokens.mutedText}
+				style={styles.termsLink}
+				textStyle={styles.termsText}
+			/>
+		</View>
+	) : null;
+
 	return (
 		<MapSheetShell
 			sheetHeight={sheetHeight}
 			snapState={snapState}
 			topSlot={topRow}
+			footerSlot={footerTerms}
 			onHandlePress={handleSnapToggle}
 		>
 			{isCollapsed ? null : (
@@ -732,98 +727,102 @@ function MapExploreIntentSheet({
 					scrollEnabled={isExpanded}
 					contentContainerStyle={styles.bodyScrollContent}
 				>
-					<Pressable
-						onPress={onOpenHospitals}
-						style={[
-							styles.hospitalCard,
-							{
-								borderRadius: tokens.cardRadius,
-								backgroundColor: tokens.strongCardSurface,
-							},
-						]}
-					>
-						<View
+					<View style={styles.contentSectionInset}>
+						<Pressable
+							onPress={onOpenHospitals}
 							style={[
-								styles.hospitalIconWrap,
+								styles.hospitalCard,
 								{
-									borderRadius: tokens.cardRadius - 10,
-									backgroundColor: tokens.mutedCardSurface,
+									borderRadius: tokens.cardRadius,
+									backgroundColor: tokens.strongCardSurface,
 								},
 							]}
 						>
-							<MaterialCommunityIcons
-								name="hospital-building"
-								size={18}
-								color={isDarkMode ? "#F8FAFC" : "#86100E"}
+							<View
+								style={[
+									styles.hospitalIconWrap,
+									{
+										borderRadius: tokens.cardRadius - 10,
+										backgroundColor: tokens.mutedCardSurface,
+									},
+								]}
+							>
+								<MaterialCommunityIcons
+									name="hospital-building"
+									size={18}
+									color={isDarkMode ? "#F8FAFC" : "#86100E"}
+								/>
+							</View>
+							<View style={styles.hospitalCardCopy}>
+								<Text style={[styles.hospitalEyebrow, { color: tokens.mutedText }]}>
+									Nearest hospital
+								</Text>
+								<Text numberOfLines={1} style={[styles.hospitalTitle, { color: tokens.titleColor }]}>
+									{nearestHospital?.name || "Finding nearest hospital"}
+								</Text>
+								<Text numberOfLines={1} style={[styles.hospitalMeta, { color: tokens.bodyText }]}>
+									{nearestHospitalMeta.join(" | ") || "Tap to see nearby hospitals"}
+								</Text>
+							</View>
+							<Ionicons name="chevron-forward" size={18} color={tokens.mutedText} />
+						</Pressable>
+					</View>
+
+					<View style={styles.contentSectionInset}>
+						<Pressable
+							onPress={onOpenCareHistory}
+							style={({ pressed }) => [
+								styles.sectionTrigger,
+								pressed ? styles.sectionTriggerPressed : null,
+							]}
+						>
+							<Text style={[styles.sectionLabel, { color: tokens.mutedText }]}>Choose care</Text>
+							<Ionicons name="chevron-forward" size={16} color={tokens.mutedText} />
+						</Pressable>
+
+						<View style={styles.careRow}>
+							<CareIntentOrb
+								label="Ambulance"
+								subtext={nearbyHospitalCount > 0 ? `${nearbyHospitalCount} nearby` : "Nearby help"}
+								iconName="ambulance"
+								colors={["#A11217", "#6D080D"]}
+								hierarchy="primary"
+								onPress={() => onChooseCare("ambulance")}
+								isSelected={selectedCare === "ambulance"}
+								titleColor={tokens.titleColor}
+								mutedColor={tokens.mutedText}
+								pulseProgress={pulseProgress}
+							/>
+
+							<CareIntentOrb
+								label="Bed space"
+								subtext={
+									totalAvailableBeds > 0
+										? `${totalAvailableBeds} available`
+										: nearbyBedHospitals > 0
+											? `${nearbyBedHospitals} nearby`
+											: "Nearby beds"
+								}
+								iconName="bed"
+								colors={["#6F8DA7", "#506A86"]}
+								hierarchy="secondary"
+								onPress={() => onChooseCare("bed")}
+								isSelected={selectedCare === "bed"}
+								titleColor={tokens.titleColor}
+								mutedColor={tokens.mutedText}
+							/>
+
+							<CareIntentOrb
+								label="Compare"
+								subtext="All options"
+								iconName="format-list-bulleted"
+								colors={["#7A8592", "#596370"]}
+								hierarchy="tertiary"
+								onPress={onOpenCareHistory}
+								titleColor={tokens.titleColor}
+								mutedColor={tokens.mutedText}
 							/>
 						</View>
-						<View style={styles.hospitalCardCopy}>
-							<Text style={[styles.hospitalEyebrow, { color: tokens.mutedText }]}>
-								Nearest hospital
-							</Text>
-							<Text numberOfLines={1} style={[styles.hospitalTitle, { color: tokens.titleColor }]}>
-								{nearestHospital?.name || "Finding nearest hospital"}
-							</Text>
-							<Text numberOfLines={1} style={[styles.hospitalMeta, { color: tokens.bodyText }]}>
-								{nearestHospitalMeta.join(" | ") || "Tap to see nearby hospitals"}
-							</Text>
-						</View>
-						<Ionicons name="chevron-forward" size={18} color={tokens.mutedText} />
-					</Pressable>
-
-					<Pressable
-						onPress={onOpenCareHistory}
-						style={({ pressed }) => [
-							styles.sectionTrigger,
-							pressed ? styles.sectionTriggerPressed : null,
-						]}
-					>
-						<Text style={[styles.sectionLabel, { color: tokens.mutedText }]}>Choose care</Text>
-						<Ionicons name="chevron-forward" size={16} color={tokens.mutedText} />
-					</Pressable>
-
-					<View style={styles.careRow}>
-						<CareIntentOrb
-							label="Ambulance"
-							subtext={nearbyHospitalCount > 0 ? `${nearbyHospitalCount} nearby` : "Nearby help"}
-							iconName="ambulance"
-							colors={["#A11217", "#6D080D"]}
-							hierarchy="primary"
-							onPress={() => onChooseCare("ambulance")}
-							isSelected={selectedCare === "ambulance"}
-							titleColor={tokens.titleColor}
-							mutedColor={tokens.mutedText}
-							pulseProgress={pulseProgress}
-						/>
-
-						<CareIntentOrb
-							label="Bed space"
-							subtext={
-								totalAvailableBeds > 0
-									? `${totalAvailableBeds} available`
-									: nearbyBedHospitals > 0
-										? `${nearbyBedHospitals} nearby`
-										: "Nearby beds"
-							}
-							iconName="bed"
-							colors={["#6F8DA7", "#506A86"]}
-							hierarchy="secondary"
-							onPress={() => onChooseCare("bed")}
-							isSelected={selectedCare === "bed"}
-							titleColor={tokens.titleColor}
-							mutedColor={tokens.mutedText}
-						/>
-
-						<CareIntentOrb
-							label="Compare"
-							subtext="All options"
-							iconName="format-list-bulleted"
-							colors={["#7A8592", "#596370"]}
-							hierarchy="tertiary"
-							onPress={onOpenCareHistory}
-							titleColor={tokens.titleColor}
-							mutedColor={tokens.mutedText}
-						/>
 					</View>
 
 					{isExpanded ? (
@@ -838,14 +837,6 @@ function MapExploreIntentSheet({
 									/>
 								</View>
 							</View>
-
-							<InAppBrowserLink
-								label="Terms & conditions"
-								url="https://ivisit.ng/terms"
-								color={tokens.mutedText}
-								style={styles.termsLink}
-								textStyle={styles.termsText}
-							/>
 						</>
 					) : null}
 				</ScrollView>
@@ -957,6 +948,7 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		gap: 12,
 		marginBottom: 24,
+		paddingHorizontal: 18,
 	},
 	topRowCollapsed: {
 		marginBottom: 0,
@@ -980,6 +972,9 @@ const styles = StyleSheet.create({
 	},
 	bodyScrollContent: {
 		paddingBottom: 6,
+	},
+	contentSectionInset: {
+		paddingHorizontal: 18,
 	},
 	avatarPressable: {
 		width: 44,
@@ -1088,9 +1083,9 @@ const styles = StyleSheet.create({
 		overflow: "hidden",
 	},
 	featuredScrollContent: {
-		paddingLeft: 18,
-		paddingRight: 18,
-		gap: 12,
+		paddingLeft: 24,
+		paddingRight: 24,
+		gap: 10,
 	},
 	featuredStaticRow: {
 		flexDirection: "row",
@@ -1099,8 +1094,8 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 18,
 	},
 	featuredCard: {
-		width: 188,
-		height: 246,
+		width: 212,
+		height: 288,
 		borderRadius: 30,
 		overflow: "hidden",
 	},
@@ -1146,18 +1141,29 @@ const styles = StyleSheet.create({
 		flex: 1,
 		borderRadius: 28,
 	},
+	placeholderCardInnerCompact: {
+		borderRadius: 28,
+	},
 	placeholderCopy: {
 		flex: 1,
 		justifyContent: "flex-end",
 		paddingHorizontal: 14,
 		paddingVertical: 14,
 	},
+	footerSlot: {
+		width: "100%",
+		alignItems: "center",
+		justifyContent: "center",
+		paddingTop: 6,
+		paddingBottom: 2,
+		paddingHorizontal: 18,
+	},
 	termsLink: {
-		marginTop: 20,
+		marginTop: 2,
 		alignSelf: "center",
 		alignItems: "center",
 		justifyContent: "center",
-		paddingVertical: 4,
+		paddingVertical: 2,
 	},
 	termsText: {
 		fontSize: 12,

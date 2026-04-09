@@ -250,13 +250,25 @@ Current implementation contract:
 
 Persistent shell constants:
 
-- one floating island with equal left, right, and bottom margins
+- one persistent sheet shell with zero internal horizontal gutter
+- collapsed and half states still read as a floating island
+- expanded state may grow wider, but the same shell remains alive
 - one drag handle
 - one top row slot
 - one content viewport
 - one optional footer slot
 - header hides only when the sheet reaches expanded
 - the handle supports drag up and drag down between snap states
+
+Local layout ownership:
+
+- shell owns shape, motion, blur, and snap behavior
+- normal content sections own their own horizontal inset
+- the hospital rail is exempt from normal section inset
+- the rail wrapper may run edge-to-edge inside the sheet
+- the rail content itself owns its own internal x-padding
+
+This is a locked iVisit rule, not a generic Apple translation.
 
 Returning-user rule:
 
@@ -297,6 +309,8 @@ Collapsed behavior:
 - search still opens the public iVisit search modal
 - avatar still opens profile / restore
 - no keyboard appears unless search is the user intent
+- there should be no visible dead strip below the search row
+- the only visible space above search should be enough to afford the drag bar
 
 Collapsed example:
 
@@ -310,6 +324,7 @@ Surface recommendation:
 - translucent but readable
 - no heavy border
 - collapsed padding should compress aggressively so the island feels truly resting
+- the shell should not preserve extra bottom spacing under search
 
 ## 3.2.4 Mid State
 
@@ -331,6 +346,11 @@ Mid contents, top to bottom:
 2. nearest hospital preview
 3. `Choose care`
 4. three large icon-first intent actions
+
+Mid layout rule:
+
+- search row, nearest hospital card, and choose-care content use the standard local content gutter
+- the sheet shell itself does not add x-padding
 
 The simplest Apple Maps-like version does not need extra wrappers around the intent actions. This is the fast decision layer, not the browse layer.
 
@@ -425,8 +445,14 @@ Expanded browse behavior:
 - header hides
 - the sheet grows to screen edges and bottom
 - drag down returns the sheet to `half`
-- if there are 3 or more real hospitals, the rail scrolls horizontally and the third card peeks
-- if there are only 1 or 2 real hospitals, render placeholder cards so the rail still shows 3 slots
+- the hospital rail has no heading
+- the hospital rail always behaves like a horizontal rail, not a static grid
+- two cards should dominate the visible row
+- the next card should partially peek to communicate scroll
+- real hospitals render first
+- two muted placeholder cards are always appended after the real hospitals for scroll awareness
+- placeholder cards must stay clearly non-data and non-committal
+- never inject fake hospital names, distances, ETA, or bed counts just to fill the rail
 - each hospital card uses app-owned imagery with bottom overlay copy
 - each featured card opens a hospital details modal
 
@@ -436,6 +462,9 @@ Featured hospital card contents:
 - optional one quiet support line only
 - no icon badge on the card
 - larger portrait card ratio than the first pass
+- cards should feel wider and taller than the original compact pass
+- the rail wrapper should visually reach the sheet edges
+- internal rail x-padding should live inside the rail, not in the parent content gutter
 - no section heading above the cards
 
 Expanded footer:

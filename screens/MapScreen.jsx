@@ -144,6 +144,7 @@ export default function MapScreen() {
 				visible={hospitalDetailsVisible}
 				onClose={() => setHospitalDetailsVisible(false)}
 				hospital={featuredHospital}
+				origin={activeLocation}
 				onOpenHospitals={() => setHospitalModalVisible(true)}
 			/>
 
