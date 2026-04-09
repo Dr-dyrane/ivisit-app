@@ -279,12 +279,13 @@ export default function MapHospitalDetailsModal({
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
 	const bodyColor = isDarkMode ? "#CBD5E1" : "#475569";
 	const subtleColor = isDarkMode ? "#94A3B8" : "#64748B";
-	const cardSurface = isDarkMode ? "#111827" : "#FFFFFF";
-	const rowSurface = isDarkMode ? "rgba(255,255,255,0.06)" : "#F4F6F8";
-	const panelSurface = isDarkMode ? "rgba(30,41,59,0.72)" : "#F8FAFC";
-	const badgeSurface = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)";
-	const activeTabBg = isDarkMode ? "rgba(161,20,18,0.28)" : "rgba(161,20,18,0.12)";
-	const activeTabText = isDarkMode ? "#FFE4E6" : COLORS.brandPrimary;
+	const cardSurface = isDarkMode ? "#101826" : "#FFFFFF";
+	const rowSurface = isDarkMode ? "rgba(255,255,255,0.07)" : "#EEF2F7";
+	const panelSurface = isDarkMode ? "#182233" : "#F7F9FC";
+	const badgeSurface = isDarkMode ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.05)";
+	const segmentSurface = isDarkMode ? "rgba(255,255,255,0.07)" : "#EEF2F6";
+	const activeTabBg = isDarkMode ? "rgba(255,255,255,0.11)" : "#FFFFFF";
+	const activeTabText = isDarkMode ? "#FFFFFF" : "#0F172A";
 
 	const destination = useMemo(() => getDestinationCoordinate(hospital), [hospital]);
 	const heroBadges = useMemo(() => buildHeroBadges(hospital), [hospital]);
@@ -431,7 +432,7 @@ export default function MapHospitalDetailsModal({
 					</View>
 				</ImageBackground>
 
-				<View style={[styles.segmentWrap, { backgroundColor: badgeSurface }]}> 
+				<View style={[styles.segmentWrap, { backgroundColor: segmentSurface }]}> 
 					{STORY_SECTIONS.map((label, index) => (
 						<Pressable
 							key={`${label}-${index}`}
@@ -567,7 +568,7 @@ export default function MapHospitalDetailsModal({
 
 				<View style={styles.secondaryRow}>
 					{canCallHospital ? (
-						<Pressable onPress={handleCallHospital}>
+						<Pressable onPress={handleCallHospital} style={styles.secondaryPressable}>
 							{({ pressed }) => (
 								<View
 									style={[
@@ -586,6 +587,7 @@ export default function MapHospitalDetailsModal({
 
 					{typeof onOpenHospitals === "function" ? (
 						<Pressable
+							style={styles.secondaryPressable}
 							onPress={() => {
 								onClose?.();
 								onOpenHospitals();
@@ -625,13 +627,17 @@ const styles = StyleSheet.create({
 		gap: 10,
 	},
 	hero: {
-		height: 236,
-		borderRadius: 24,
+		height: 244,
+		borderRadius: 26,
 		overflow: "hidden",
 		justifyContent: "space-between",
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.14,
+		shadowRadius: 20,
+		shadowOffset: { width: 0, height: 10 },
 	},
 	heroImage: {
-		borderRadius: 24,
+		borderRadius: 26,
 	},
 	heroBadgeRow: {
 		paddingTop: 10,
@@ -697,16 +703,20 @@ const styles = StyleSheet.create({
 	segmentWrap: {
 		flexDirection: "row",
 		gap: 6,
-		padding: 4,
-		borderRadius: 16,
+		padding: 5,
+		borderRadius: 18,
 	},
 	segmentButton: {
 		flex: 1,
-		minHeight: 36,
-		borderRadius: 12,
+		minHeight: 38,
+		borderRadius: 13,
 		alignItems: "center",
 		justifyContent: "center",
 		paddingHorizontal: 10,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.05,
+		shadowRadius: 8,
+		shadowOffset: { width: 0, height: 2 },
 	},
 	segmentButtonText: {
 		fontSize: 12,
@@ -718,6 +728,10 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 10,
 		paddingVertical: 10,
 		gap: 8,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.06,
+		shadowRadius: 12,
+		shadowOffset: { width: 0, height: 6 },
 	},
 	detailRow: {
 		minHeight: 52,
@@ -755,9 +769,10 @@ const styles = StyleSheet.create({
 		maxWidth: "48%",
 	},
 	routeShell: {
-		height: 208,
+		height: 212,
 		borderRadius: 18,
 		overflow: "hidden",
+		backgroundColor: "rgba(255,255,255,0.04)",
 	},
 	routePillRow: {
 		flexDirection: "row",
@@ -849,9 +864,9 @@ const styles = StyleSheet.create({
 		borderRadius: 20,
 		overflow: "hidden",
 		shadowColor: COLORS.brandPrimary,
-		shadowOpacity: 0.16,
-		shadowRadius: 14,
-		shadowOffset: { width: 0, height: 8 },
+		shadowOpacity: 0.2,
+		shadowRadius: 16,
+		shadowOffset: { width: 0, height: 10 },
 	},
 	primaryActionFill: {
 		minHeight: 54,
@@ -878,6 +893,9 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		gap: 8,
 	},
+	secondaryPressable: {
+		flex: 1,
+	},
 	secondaryAction: {
 		flex: 1,
 		minHeight: 46,
@@ -888,6 +906,10 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 		gap: 8,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.04,
+		shadowRadius: 8,
+		shadowOffset: { width: 0, height: 3 },
 	},
 	secondaryIconWrap: {
 		width: 28,
