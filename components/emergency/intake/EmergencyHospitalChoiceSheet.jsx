@@ -179,21 +179,7 @@ export default function EmergencyHospitalChoiceSheet({
 		[isDarkMode],
 	);
 
-	const headerTitle = mode === "loading"
-		? "Checking nearby hospitals"
-		: mode === "empty"
-			? "No nearby hospitals yet"
-			: "See other hospitals";
-	const headerEyebrow = mode === "loading"
-		? "LOADING OPTIONS"
-		: mode === "empty"
-			? "NO OPTIONS YET"
-			: "OTHER HOSPITALS";
-	const helperCopy = mode === "loading"
-		? statusMessage || "We are matching nearby hospitals and route details for this location."
-		: mode === "empty"
-			? statusMessage || "Try changing the location or refresh options."
-			: statusMessage || "Choose a different hospital for this request.";
+	const headerTitle = "Hospitals";
 
 	useEffect(() => {
 		if (!visible) return;
@@ -237,6 +223,12 @@ export default function EmergencyHospitalChoiceSheet({
 							paddingBottom: (insets?.bottom || 0) + (useDialogPresentation ? 14 : 18),
 							paddingHorizontal: sheetHorizontalPadding,
 							maxWidth: useDialogPresentation ? dialogMaxWidth : undefined,
+							minHeight: useDialogPresentation
+								? Math.min(
+										windowHeight * 0.74,
+										isLargeDesktopVariant ? 760 : isTabletScaleVariant ? 700 : 620,
+								  )
+								: windowHeight * 0.76,
 							maxHeight: useDialogPresentation
 								? Math.min(
 										windowHeight * 0.82,
@@ -253,54 +245,12 @@ export default function EmergencyHospitalChoiceSheet({
 
 				<View style={styles.headerRow}>
 					<View style={styles.headerTextBlock}>
-						<Text style={[styles.eyebrow, { color: colors.helper }]}>{headerEyebrow}</Text>
-						<Text style={[styles.title, { color: colors.title }]}>{headerTitle}</Text>
-						{helperCopy ? (
-							<Text style={[styles.headerHelper, { color: colors.helper }]}>
-								{helperCopy}
-							</Text>
-						) : null}
+						<Text style={[styles.title, styles.simpleTitle, { color: colors.title }]}>{headerTitle}</Text>
 					</View>
 					<Pressable onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.closeBg }]}>
 						<Ionicons name="close" size={18} color={colors.title} />
 					</Pressable>
 				</View>
-
-				{typeof onChangeLocation === "function" ? (
-					<View
-						style={[
-							styles.changeLocationGroup,
-							{ backgroundColor: colors.panelSurface },
-						]}
-					>
-						<Pressable
-							onPress={() => {
-								logEmergencyDebug("hospital_choice_change_location_pressed", {
-									selectedHospitalId,
-								});
-								onChangeLocation();
-							}}
-							style={styles.changeLocationRow}
-						>
-							<View style={[styles.changeLocationIconWrap, { backgroundColor: colors.iconSurface }]}>
-								<Ionicons name="navigate" size={16} color={colors.accent} />
-							</View>
-							<View style={styles.changeLocationCopy}>
-								<Text style={[styles.changeLocationTitle, { color: colors.title }]}>
-									Change location
-								</Text>
-								<Text style={[styles.changeLocationMeta, { color: colors.helper }]}>
-									Search a different address first
-								</Text>
-							</View>
-							<Ionicons
-								name="chevron-forward"
-								size={16}
-								color={colors.helper}
-							/>
-						</Pressable>
-					</View>
-				) : null}
 
 					<ScrollView
 						showsVerticalScrollIndicator={false}
@@ -555,20 +505,13 @@ const styles = StyleSheet.create({
 	},
 	headerRow: {
 		flexDirection: "row",
-		alignItems: "flex-start",
+		alignItems: "center",
 		justifyContent: "space-between",
 		gap: 16,
 		marginBottom: 14,
 	},
 	headerTextBlock: {
 		flex: 1,
-		paddingTop: 2,
-	},
-	eyebrow: {
-		fontSize: 11,
-		lineHeight: 14,
-		fontWeight: "700",
-		letterSpacing: 1.1,
 	},
 	title: {
 		marginTop: 4,
@@ -577,55 +520,17 @@ const styles = StyleSheet.create({
 		fontWeight: "800",
 		letterSpacing: -0.5,
 	},
-	headerHelper: {
-		marginTop: 8,
-		fontSize: 13,
-		lineHeight: 18,
-		fontWeight: "500",
-		maxWidth: 320,
+	simpleTitle: {
+		marginTop: 0,
+		fontSize: 21,
+		lineHeight: 24,
 	},
 	closeButton: {
-		width: 32,
-		height: 32,
-		borderRadius: 16,
+		width: 40,
+		height: 40,
+		borderRadius: 20,
 		alignItems: "center",
 		justifyContent: "center",
-	},
-	changeLocationGroup: {
-		borderRadius: 24,
-		overflow: "hidden",
-		marginBottom: 16,
-	},
-	changeLocationRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		paddingHorizontal: 14,
-		paddingVertical: 14,
-		minHeight: 64,
-	},
-	changeLocationIconWrap: {
-		width: 34,
-		height: 34,
-		borderRadius: 17,
-		alignItems: "center",
-		justifyContent: "center",
-		backgroundColor: `${COLORS.brandPrimary}14`,
-	},
-	changeLocationCopy: {
-		flex: 1,
-		marginLeft: 12,
-		marginRight: 10,
-	},
-	changeLocationTitle: {
-		fontSize: 15,
-		lineHeight: 19,
-		fontWeight: "700",
-	},
-	changeLocationMeta: {
-		marginTop: 3,
-		fontSize: 13,
-		lineHeight: 18,
-		fontWeight: "400",
 	},
 	list: {
 		paddingBottom: 10,

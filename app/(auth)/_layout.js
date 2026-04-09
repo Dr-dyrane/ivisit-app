@@ -21,10 +21,10 @@ function AuthStackScreens() {
 	const { enterStack, exitStack } = useFABActions();
 
 	useEffect(() => {
-		if (!isRequestHelpRoute) return undefined;
+		if (!isRequestHelpRoute && !isMapRoute) return undefined;
 		enterStack();
 		return () => exitStack();
-	}, [enterStack, exitStack, isRequestHelpRoute]);
+	}, [enterStack, exitStack, isMapRoute, isRequestHelpRoute]);
 
 	return (
 		<WebAppShell
@@ -41,7 +41,7 @@ function AuthStackScreens() {
 				<Stack.Screen name="onboarding" options={{ headerShown: false }} />
 				<Stack.Screen name="signup" options={{ headerShown: false }} />
 			</Stack>
-			{isRequestHelpRoute && !isMapRoute ? <GlobalFAB /> : null}
+			{isRequestHelpRoute || isMapRoute ? <GlobalFAB /> : null}
 		</View>
 		</WebAppShell>
 	);

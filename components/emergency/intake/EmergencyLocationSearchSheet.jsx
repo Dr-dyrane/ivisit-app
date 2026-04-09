@@ -440,6 +440,11 @@ export default function EmergencyLocationSearchSheet({
 									{
 										backgroundColor: colors.sheet,
 										maxWidth: useDialogPresentation ? dialogMaxWidth : undefined,
+										minHeight: enableAndroidKeyboardAware
+											? Math.min(modalHeight, windowHeight * 0.76)
+											: useDialogPresentation
+												? Math.min(iosDialogMaxHeight, windowHeight * 0.76)
+												: windowHeight * 0.76,
 										maxHeight: enableAndroidKeyboardAware
 											? modalHeight
 											: useDialogPresentation
@@ -462,12 +467,10 @@ export default function EmergencyLocationSearchSheet({
 								{!useDialogPresentation ? <View style={styles.handle} /> : null}
 								<View style={styles.header}>
 									<View style={styles.headerCopy}>
-										<Text style={[styles.eyebrow, { color: colors.muted }]}>
-											SEARCH LOCATION
-										</Text>
 										<Text
 											style={[
 												styles.title,
+												styles.simpleTitle,
 												isLargeDesktopVariant
 													? styles.titleLarge
 													: isCompactVariant
@@ -476,7 +479,7 @@ export default function EmergencyLocationSearchSheet({
 												{ color: colors.text },
 											]}
 										>
-											Choose location
+											Location
 										</Text>
 									</View>
 									<Pressable
@@ -501,7 +504,7 @@ export default function EmergencyLocationSearchSheet({
 										ref={inputRef}
 										value={query}
 										onChangeText={setQuery}
-										placeholder="Search address"
+										placeholder="Change location"
 										placeholderTextColor={colors.muted}
 										style={[styles.input, { color: colors.text }]}
 										returnKeyType="done"
@@ -536,9 +539,6 @@ export default function EmergencyLocationSearchSheet({
 										<View style={styles.useCurrentCopy}>
 											<Text style={[styles.useCurrentText, { color: colors.text }]}>
 												Use current location
-											</Text>
-											<Text style={[styles.useCurrentMeta, { color: colors.muted }]}>
-												Use the address detected by iVisit
 											</Text>
 										</View>
 										<Ionicons
@@ -754,19 +754,12 @@ const styles = StyleSheet.create({
 	},
 	header: {
 		flexDirection: "row",
-		alignItems: "flex-start",
+		alignItems: "center",
 		justifyContent: "space-between",
 		marginBottom: 14,
 	},
 	headerCopy: {
 		flex: 1,
-		paddingTop: 2,
-	},
-	eyebrow: {
-		fontSize: 11,
-		lineHeight: 14,
-		fontWeight: "700",
-		letterSpacing: 1.1,
 	},
 	title: {
 		marginTop: 4,
@@ -783,10 +776,15 @@ const styles = StyleSheet.create({
 		fontSize: 28,
 		lineHeight: 32,
 	},
+	simpleTitle: {
+		marginTop: 0,
+		fontSize: 21,
+		lineHeight: 24,
+	},
 	closeButton: {
-		width: 32,
-		height: 32,
-		borderRadius: 16,
+		width: 40,
+		height: 40,
+		borderRadius: 20,
 		alignItems: "center",
 		justifyContent: "center",
 		backgroundColor: "rgba(148,163,184,0.12)",
@@ -839,12 +837,6 @@ const styles = StyleSheet.create({
 		flex: 1,
 		marginLeft: 12,
 		marginRight: 10,
-	},
-	useCurrentMeta: {
-		marginTop: 3,
-		fontSize: 13,
-		lineHeight: 18,
-		fontWeight: "400",
 	},
 	errorText: {
 		marginTop: 12,

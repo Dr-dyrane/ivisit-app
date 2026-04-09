@@ -265,8 +265,8 @@ export default function WelcomeStageBase({
 						: metrics.secondaryActionHeight
 				}
 				fullWidth={false}
-				minWidth={intent.variant === "primary" ? 248 : 216}
-				maxWidth={intent.variant === "primary" ? (layout === "split" ? 320 : 336) : 256}
+				minWidth={intent.variant === "primary" ? 256 : 220}
+				maxWidth={intent.variant === "primary" ? (layout === "split" ? 332 : 348) : 264}
 				style={{ alignSelf: layout === "split" ? "flex-start" : "center" }}
 				onPress={
 					intent.key === "emergency" ? onRequestHelp : onFindHospitalBed

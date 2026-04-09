@@ -3,7 +3,7 @@ import "../polyfills";
 
 import React, { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, Platform } from "react-native";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -102,6 +102,7 @@ function AuthenticatedStack() {
 	const { showToast } = useToast();
 	const router = useRouter();
 	const segments = useSegments();
+	const pathname = usePathname();
 	const loadingBackground = Platform.OS === "web"
 		? getWelcomeRootBackground(isDarkMode)
 		: isDarkMode
@@ -175,6 +176,7 @@ function AuthenticatedStack() {
 			segments?.[0] === "(user)" &&
 			segments?.[1] === "(stacks)" &&
 			segments?.[2] === "complete-profile";
+		const isPublicMapFlow = pathname === "/map" || pathname === "/request-help";
 
 		// Don't do anything while auth is still loading
 		if (loading) {
@@ -183,7 +185,10 @@ function AuthenticatedStack() {
 
 		// Only navigate to login if we're sure user is not authenticated
 		if (!user.isAuthenticated) {
-			if (rootGroup !== "(auth)") {
+			if (!pathname) {
+				return;
+			}
+			if (!isPublicMapFlow && rootGroup !== "(auth)") {
 				router.replace("/(auth)");
 			}
 			return;
@@ -203,10 +208,10 @@ function AuthenticatedStack() {
 			});
 		}
 
-		if (rootGroup === "(auth)" || rootGroup !== "(user)") {
+		if (!isPublicMapFlow && (rootGroup === "(auth)" || rootGroup !== "(user)")) {
 			router.replace("/(user)/(tabs)");
 		}
-	}, [segments, user, loading]);
+	}, [loading, pathname, router, segments, user]);
 
 	return (
 		<>

@@ -1,5 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
+	Animated,
 	Image,
 	Platform,
 	Pressable,
@@ -28,6 +29,12 @@ export const MAP_SHEET_SNAP_STATES = {
 	COLLAPSED: "collapsed",
 	HALF: "half",
 	EXPANDED: "expanded",
+};
+
+const MAP_SHEET_SNAP_INDEX = {
+	[MAP_SHEET_SNAP_STATES.COLLAPSED]: 0,
+	[MAP_SHEET_SNAP_STATES.HALF]: 1,
+	[MAP_SHEET_SNAP_STATES.EXPANDED]: 2,
 };
 
 export function getMapSheetHeight(screenHeight, snapState) {
@@ -76,6 +83,7 @@ function MapSheetProfileTrigger({ onPress, userImageSource, isSignedIn }) {
 
 function MapSheetShell({
 	sheetHeight,
+	snapState,
 	topSlot = null,
 	footerSlot = null,
 	children,
@@ -83,39 +91,95 @@ function MapSheetShell({
 	const { isDarkMode } = useTheme();
 	const isAndroid = Platform.OS === "android";
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
+	const snapProgress = useRef(
+		new Animated.Value(MAP_SHEET_SNAP_INDEX[snapState] ?? MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.HALF]),
+	).current;
+
+	useEffect(() => {
+		Animated.spring(snapProgress, {
+			toValue:
+				MAP_SHEET_SNAP_INDEX[snapState] ??
+				MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.HALF],
+			tension: 56,
+			friction: 10,
+			useNativeDriver: false,
+		}).start();
+	}, [snapProgress, snapState]);
+
+	const sideInset = snapProgress.interpolate({
+		inputRange: [0, 1, 2],
+		outputRange: [16, tokens.islandMargin, 0],
+	});
+	const bottomInset = snapProgress.interpolate({
+		inputRange: [0, 1, 2],
+		outputRange: [18, tokens.islandMargin, 0],
+	});
+	const topRadius = snapProgress.interpolate({
+		inputRange: [0, 1, 2],
+		outputRange: [34, tokens.sheetRadius, 34],
+	});
+	const bottomRadius = snapProgress.interpolate({
+		inputRange: [0, 1, 2],
+		outputRange: [34, tokens.sheetRadius, 0],
+	});
+	const handleWidth = snapProgress.interpolate({
+		inputRange: [0, 1, 2],
+		outputRange: [54, 48, 46],
+	});
+	const horizontalPadding = snapProgress.interpolate({
+		inputRange: [0, 1, 2],
+		outputRange: [14, 12, 18],
+	});
+	const topPadding = snapProgress.interpolate({
+		inputRange: [0, 1, 2],
+		outputRange: [10, 10, 14],
+	});
+	const bottomPadding = snapProgress.interpolate({
+		inputRange: [0, 1, 2],
+		outputRange: [10, 12, 18],
+	});
 
 	return (
-		<View
+		<Animated.View
 			style={[
 				styles.sheetHost,
 				tokens.shadowStyle,
 				{
-					left: tokens.islandMargin,
-					right: tokens.islandMargin,
-					bottom: tokens.islandMargin,
+					left: sideInset,
+					right: sideInset,
+					bottom: bottomInset,
 					height: sheetHeight,
-					borderRadius: tokens.sheetRadius,
+					borderTopLeftRadius: topRadius,
+					borderTopRightRadius: topRadius,
+					borderBottomLeftRadius: bottomRadius,
+					borderBottomRightRadius: bottomRadius,
 				},
 			]}
 		>
 			{isAndroid ? (
-				<View
+				<Animated.View
 					pointerEvents="none"
 					style={[
 						styles.sheetUnderlay,
 						{
-							borderRadius: tokens.sheetRadius,
+							borderTopLeftRadius: topRadius,
+							borderTopRightRadius: topRadius,
+							borderBottomLeftRadius: bottomRadius,
+							borderBottomRightRadius: bottomRadius,
 							backgroundColor: tokens.glassUnderlay,
 						},
 					]}
 				/>
 			) : null}
 
-			<View
+			<Animated.View
 				style={[
 					styles.sheetClip,
 					{
-						borderRadius: tokens.sheetRadius,
+						borderTopLeftRadius: topRadius,
+						borderTopRightRadius: topRadius,
+						borderBottomLeftRadius: bottomRadius,
+						borderBottomRightRadius: bottomRadius,
 						backgroundColor: isAndroid ? tokens.glassSurface : "transparent",
 					},
 				]}
@@ -128,45 +192,61 @@ function MapSheetShell({
 					/>
 				) : null}
 
-				<View
+				<Animated.View
 					pointerEvents="none"
 					style={[
 						StyleSheet.absoluteFillObject,
 						{
-							borderRadius: tokens.sheetRadius,
+							borderTopLeftRadius: topRadius,
+							borderTopRightRadius: topRadius,
+							borderBottomLeftRadius: bottomRadius,
+							borderBottomRightRadius: bottomRadius,
 							backgroundColor: tokens.glassBackdrop,
 						},
 					]}
 				/>
-				<View
+				<Animated.View
 					pointerEvents="none"
 					style={[
 						StyleSheet.absoluteFillObject,
 						{
-							borderRadius: tokens.sheetRadius,
+							borderTopLeftRadius: topRadius,
+							borderTopRightRadius: topRadius,
+							borderBottomLeftRadius: bottomRadius,
+							borderBottomRightRadius: bottomRadius,
 							backgroundColor: tokens.glassOverlay,
 						},
 					]}
 				/>
 
-				<View style={styles.sheetContent}>
-					<View
+				<Animated.View
+					style={[
+						styles.sheetContent,
+						{
+							paddingHorizontal: horizontalPadding,
+							paddingTop: topPadding,
+							paddingBottom: bottomPadding,
+						},
+					]}
+				>
+					<Animated.View
 						style={[
 							styles.handle,
-							{ width: 42, backgroundColor: tokens.handleColor },
+							{ width: handleWidth, backgroundColor: tokens.handleColor },
 						]}
 					/>
 					{topSlot}
 					<View style={styles.contentViewport}>{children}</View>
 					{footerSlot}
-				</View>
-			</View>
-		</View>
+				</Animated.View>
+			</Animated.View>
+		</Animated.View>
 	);
 }
 
 function MapExploreIntentSheet({
 	sheetHeight,
+	snapState,
 	nearestHospital,
 	nearestHospitalMeta,
 	selectedCare,
@@ -209,7 +289,7 @@ function MapExploreIntentSheet({
 	);
 
 	return (
-		<MapSheetShell sheetHeight={sheetHeight} topSlot={topRow}>
+		<MapSheetShell sheetHeight={sheetHeight} snapState={snapState} topSlot={topRow}>
 			<Pressable
 				onPress={onOpenHospitals}
 				style={[
@@ -256,8 +336,8 @@ function MapExploreIntentSheet({
 					pressed ? styles.sectionTriggerPressed : null,
 				]}
 			>
-				<Ionicons name="chevron-forward" size={16} color={tokens.mutedText} />
 				<Text style={[styles.sectionLabel, { color: tokens.mutedText }]}>Choose care</Text>
+				<Ionicons name="chevron-forward" size={16} color={tokens.mutedText} />
 			</Pressable>
 
 			<View style={styles.careRow}>
@@ -277,7 +357,6 @@ function MapExploreIntentSheet({
 							selectedCare === "ambulance" ? styles.careIconWrapSelected : null,
 						]}
 					>
-						<View style={styles.careIconHighlight} />
 						<MaterialCommunityIcons name="ambulance" size={38} color="#FFFFFF" />
 					</LinearGradient>
 					<Text style={[styles.careLabel, { color: tokens.titleColor }]}>Ambulance</Text>
@@ -302,7 +381,6 @@ function MapExploreIntentSheet({
 							selectedCare === "bed" ? styles.careIconWrapSelected : null,
 						]}
 					>
-						<View style={styles.careIconHighlight} />
 						<MaterialCommunityIcons name="bed" size={38} color="#FFFFFF" />
 					</LinearGradient>
 					<Text style={[styles.careLabel, { color: tokens.titleColor }]}>Bed space</Text>
@@ -331,7 +409,6 @@ function MapExploreIntentSheet({
 							selectedCare === "both" ? styles.careIconWrapSelected : null,
 						]}
 					>
-						<View style={styles.careIconHighlight} />
 						<MaterialCommunityIcons name="hospital-box" size={38} color="#FFFFFF" />
 					</LinearGradient>
 					<Text style={[styles.careLabel, { color: tokens.titleColor }]}>Both</Text>
@@ -373,6 +450,7 @@ export default function MapSheetOrchestrator({
 			return (
 				<MapExploreIntentSheet
 					sheetHeight={sheetHeight}
+					snapState={snapState}
 					nearestHospital={nearestHospital}
 					nearestHospitalMeta={nearestHospitalMeta}
 					selectedCare={selectedCare}
@@ -412,15 +490,12 @@ const styles = StyleSheet.create({
 	},
 	sheetContent: {
 		flex: 1,
-		paddingHorizontal: 12,
-		paddingTop: 10,
-		paddingBottom: 12,
 	},
 	handle: {
 		alignSelf: "center",
 		height: 5,
 		borderRadius: 999,
-		marginBottom: 10,
+		marginBottom: 12,
 	},
 	contentViewport: {
 		flex: 1,
@@ -429,7 +504,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
-		marginBottom: 10,
+		marginBottom: 16,
 	},
 	searchPill: {
 		flex: 1,
@@ -473,7 +548,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 14,
-		marginBottom: 12,
+		marginBottom: 22,
 	},
 	hospitalIconWrap: {
 		width: 42,
@@ -508,7 +583,7 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		gap: 6,
 		alignSelf: "flex-start",
-		marginBottom: 10,
+		marginBottom: 18,
 	},
 	sectionTriggerPressed: {
 		opacity: 0.78,
@@ -522,7 +597,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "flex-start",
 		justifyContent: "space-between",
-		gap: 8,
+		gap: 10,
 	},
 	careAction: {
 		flex: 1,
@@ -550,15 +625,6 @@ const styles = StyleSheet.create({
 				boxShadow: "0px 14px 26px rgba(15,23,42,0.16)",
 			},
 		}),
-	},
-	careIconHighlight: {
-		position: "absolute",
-		top: 10,
-		left: 16,
-		width: 34,
-		height: 18,
-		borderRadius: 999,
-		backgroundColor: "rgba(255,255,255,0.24)",
 	},
 	careIconWrapSelected: {
 		transform: [{ scale: 1.04 }],

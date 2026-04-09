@@ -7,6 +7,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useGlobalLocation } from "../contexts/GlobalLocationContext";
 import { useEmergency } from "../contexts/EmergencyContext";
+import { useFABActions } from "../contexts/FABContext";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
 import { getEmergencyIntakeVariant } from "../components/emergency/intake/EmergencyIntakeOrchestrator";
 import EmergencyLocationPreviewMap from "../components/emergency/intake/EmergencyLocationPreviewMap";
@@ -58,6 +59,7 @@ export default function MapScreen() {
 	const { setHeaderState } = useHeaderState();
 	const { isDarkMode } = useTheme();
 	const { user } = useAuth();
+	const { registerFAB, unregisterFAB } = useFABActions();
 	const { width, height, isWeb } = useAuthViewport();
 	const screenVariant = getEmergencyIntakeVariant({
 		platform: Platform.OS,
@@ -86,6 +88,7 @@ export default function MapScreen() {
 	const [authModalVisible, setAuthModalVisible] = useState(false);
 	const [selectedCare, setSelectedCare] = useState(null);
 	const [manualLocation, setManualLocation] = useState(null);
+	const [guestProfileName, setGuestProfileName] = useState("");
 	const [sheetMode] = useState(MAP_SHEET_MODES.EXPLORE_INTENT);
 	const [sheetSnapState] = useState(MAP_SHEET_SNAP_STATES.HALF);
 
@@ -252,6 +255,29 @@ export default function MapScreen() {
 		setGuestProfileVisible(true);
 	}, [isSignedIn]);
 
+	useEffect(() => {
+		if (!guestProfileVisible) {
+			unregisterFAB("map-guest-profile-continue");
+			return undefined;
+		}
+
+		registerFAB("map-guest-profile-continue", {
+			icon: "arrow-forward",
+			label: "Continue",
+			visible: true,
+			style: "primary",
+			priority: 40,
+			allowInStack: true,
+			isFixed: true,
+			onPress: () => {
+				setGuestProfileVisible(false);
+				setAuthModalVisible(true);
+			},
+		});
+
+		return () => unregisterFAB("map-guest-profile-continue");
+	}, [guestProfileVisible, registerFAB, unregisterFAB]);
+
 	return (
 		<View style={[styles.screen, { backgroundColor: isDarkMode ? "#08101B" : "#EEF3F8" }]}>
 			<EmergencyLocationPreviewMap
@@ -317,18 +343,16 @@ export default function MapScreen() {
 			<MapGuestProfileModal
 				visible={guestProfileVisible}
 				onClose={() => setGuestProfileVisible(false)}
-				onContinueWithEmail={() => {
-					setGuestProfileVisible(false);
-					setAuthModalVisible(true);
-				}}
+				nameValue={guestProfileName}
+				onNameChange={setGuestProfileName}
 			/>
 
 			<MapCareHistoryModal
 				visible={careHistoryVisible}
 				onClose={() => setCareHistoryVisible(false)}
-				onRestoreProfile={() => {
+				onChooseCare={(mode) => {
 					setCareHistoryVisible(false);
-					setAuthModalVisible(true);
+					handleChooseCare(mode);
 				}}
 			/>
 

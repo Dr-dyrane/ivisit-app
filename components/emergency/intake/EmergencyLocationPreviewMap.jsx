@@ -89,9 +89,10 @@ function buildRegionForPoints(points = [], bottomSheetHeight = 0) {
 		0.12,
 	);
 	const sheetBias = Math.min(0.18, Math.max(0.05, (Number(bottomSheetHeight) || 0) / 1500));
+	const normalizedBias = Math.min(0.12, Math.max(0.02, sheetBias));
 
 	return {
-		latitude: (minLat + maxLat) / 2 + latitudeDelta * sheetBias,
+		latitude: (minLat + maxLat) / 2 + latitudeDelta * normalizedBias,
 		longitude: (minLng + maxLng) / 2,
 		latitudeDelta,
 		longitudeDelta,
@@ -112,19 +113,19 @@ function buildUserCenteredRegion(coordinate) {
 
 function getRoutePadding(bottomSheetHeight = 0) {
 	return {
-		top: 18,
-		right: 26,
-		bottom: Math.max(208, bottomSheetHeight + 18),
-		left: 26,
+		top: 136,
+		right: 42,
+		bottom: Math.max(256, bottomSheetHeight + 84),
+		left: 42,
 	};
 }
 
 function getNearbyPadding(bottomSheetHeight = 0) {
 	return {
-		top: 54,
-		right: 28,
-		bottom: Math.max(214, bottomSheetHeight + 24),
-		left: 28,
+		top: 132,
+		right: 44,
+		bottom: Math.max(264, bottomSheetHeight + 92),
+		left: 44,
 	};
 }
 
@@ -323,15 +324,15 @@ export default function EmergencyLocationPreviewMap({
 					<>
 						<Polyline
 							coordinates={routeBoundsCoordinates}
-							strokeColor={isDarkMode ? "rgba(248,113,113,0.08)" : "rgba(185,28,28,0.06)"}
-							strokeWidth={10}
+							strokeColor={isDarkMode ? "rgba(248,113,113,0.04)" : "rgba(185,28,28,0.035)"}
+							strokeWidth={8}
 							lineCap="round"
 							lineJoin="round"
 						/>
 						<Polyline
 							coordinates={routeBoundsCoordinates}
 							strokeColor={COLORS.brandPrimary}
-							strokeWidth={3.5}
+							strokeWidth={3.25}
 							lineCap="round"
 							lineJoin="round"
 						/>
@@ -441,7 +442,7 @@ export default function EmergencyLocationPreviewMap({
 					onExpand={fitNearbyHospitals}
 					isZoomedOut={isNearbyOverview}
 					isDarkMode={isDarkMode}
-					bottomOffset={Math.max(bottomSheetHeight + 18, 208)}
+					bottomOffset={Math.max(bottomSheetHeight + 14, 198)}
 					secondaryIconName="scan-circle-outline"
 				/>
 			) : null}

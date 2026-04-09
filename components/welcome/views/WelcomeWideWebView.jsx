@@ -253,8 +253,8 @@ export default function WelcomeWideWebView({
 												: metrics.secondaryActionHeight
 										}
 										fullWidth={false}
-										minWidth={intent.variant === "primary" ? 248 : 216}
-										maxWidth={intent.variant === "primary" ? 320 : 256}
+										minWidth={intent.variant === "primary" ? 256 : 220}
+										maxWidth={intent.variant === "primary" ? 332 : 264}
 										style={{ alignSelf: "flex-start" }}
 										onPress={
 											intent.key === "emergency"

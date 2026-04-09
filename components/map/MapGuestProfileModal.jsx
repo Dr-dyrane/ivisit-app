@@ -1,169 +1,235 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-	Modal,
+	Animated,
+	Dimensions,
 	Pressable,
 	StyleSheet,
 	Text,
+	TextInput,
 	View,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
+
+const SCREEN_HEIGHT = Dimensions.get("window").height;
 
 export default function MapGuestProfileModal({
 	visible,
 	onClose,
-	onContinueWithEmail,
+	nameValue,
+	onNameChange,
 }) {
 	const { isDarkMode } = useTheme();
+	const insets = useSafeAreaInsets();
+	const [shouldRender, setShouldRender] = useState(visible);
+	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+	const bgOpacity = useRef(new Animated.Value(0)).current;
+
+	useEffect(() => {
+		if (visible) {
+			setShouldRender(true);
+			Animated.parallel([
+				Animated.spring(slideAnim, {
+					toValue: 0,
+					tension: 45,
+					friction: 10,
+					useNativeDriver: true,
+				}),
+				Animated.timing(bgOpacity, {
+					toValue: 1,
+					duration: 280,
+					useNativeDriver: true,
+				}),
+			]).start();
+			return undefined;
+		}
+
+		if (!shouldRender) {
+			return undefined;
+		}
+
+		Animated.parallel([
+			Animated.timing(slideAnim, {
+				toValue: SCREEN_HEIGHT,
+				duration: 250,
+				useNativeDriver: true,
+			}),
+			Animated.timing(bgOpacity, {
+				toValue: 0,
+				duration: 200,
+				useNativeDriver: true,
+			}),
+		]).start(({ finished }) => {
+			if (finished) {
+				setShouldRender(false);
+			}
+		});
+
+		return undefined;
+	}, [bgOpacity, shouldRender, slideAnim, visible]);
+
+	const handleDismiss = () => {
+		onClose?.();
+	};
+
+	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
+	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
+	const inputSurface = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)";
+	const surfaceColor = isDarkMode ? "rgba(8, 15, 27, 0.84)" : "rgba(255, 255, 255, 0.86)";
+
+	if (!shouldRender) return null;
 
 	return (
-		<Modal
-			visible={visible}
-			transparent
-			animationType="fade"
-			statusBarTranslucent
-			onRequestClose={onClose}
-		>
-			<View style={styles.modalRoot}>
-				<Pressable style={styles.backdrop} onPress={onClose} />
-				<View style={styles.cardHost}>
-					<BlurView
-						intensity={isDarkMode ? 48 : 56}
-						tint={isDarkMode ? "dark" : "light"}
-						style={styles.cardBlur}
+		<View style={styles.modalWrapper} pointerEvents="box-none">
+			<Animated.View style={[styles.backdrop, { opacity: bgOpacity }]}>
+				<Pressable style={StyleSheet.absoluteFill} onPress={handleDismiss} />
+			</Animated.View>
+
+			<Animated.View
+				style={[
+					styles.sheetHost,
+					{
+						transform: [{ translateY: slideAnim }],
+					},
+				]}
+			>
+				<BlurView
+					intensity={isDarkMode ? 48 : 56}
+					tint={isDarkMode ? "dark" : "light"}
+					style={styles.sheetBlur}
+				>
+					<View
+						style={[
+							styles.sheetSurface,
+							{
+								backgroundColor: surfaceColor,
+								paddingBottom: insets.bottom + 18,
+							},
+						]}
 					>
+						<View style={styles.headerRow}>
+							<View style={styles.headerSpacer} />
+							<Pressable onPress={handleDismiss} style={[styles.closeButton, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)" }]}>
+								<Ionicons name="close" size={18} color={titleColor} />
+							</Pressable>
+						</View>
+
 						<View
 							style={[
-								styles.cardSurface,
+								styles.avatarOrb,
 								{
 									backgroundColor: isDarkMode
-										? "rgba(8, 15, 27, 0.82)"
-										: "rgba(255, 255, 255, 0.84)",
+										? "rgba(255,255,255,0.08)"
+										: "rgba(15,23,42,0.05)",
 								},
 							]}
 						>
-							<View
-								style={[
-									styles.iconWrap,
-									{
-										backgroundColor: isDarkMode
-											? "rgba(255, 255, 255, 0.08)"
-											: "rgba(15, 23, 42, 0.06)",
-									},
-								]}
-							>
-								<Ionicons
-									name="person-circle-outline"
-									size={32}
-									color={isDarkMode ? "#F8FAFC" : "#86100E"}
-								/>
-							</View>
-
-							<Text
-								style={[
-									styles.title,
-									{ color: isDarkMode ? "#F8FAFC" : "#0F172A" },
-								]}
-							>
-								Restore your profile
-							</Text>
-							<Text
-								style={[
-									styles.body,
-									{ color: isDarkMode ? "#CBD5E1" : "#475569" },
-								]}
-							>
-								Sign in to load your medical profile, saved details, and history on this
-								device. You can keep exploring as a guest until you commit.
-							</Text>
-
-							<Pressable onPress={onContinueWithEmail} style={styles.primaryButton}>
-								<Text style={styles.primaryButtonText}>Continue with email</Text>
-							</Pressable>
-							<Pressable onPress={onClose} style={styles.secondaryButton}>
-								<Text
-									style={[
-										styles.secondaryButtonText,
-										{ color: isDarkMode ? "#CBD5E1" : "#475569" },
-									]}
-								>
-									Not now
-								</Text>
-							</Pressable>
+							<Ionicons name="person" size={52} color={mutedColor} />
 						</View>
-					</BlurView>
-				</View>
-			</View>
-		</Modal>
+
+						<Text style={[styles.title, { color: titleColor }]}>What&apos;s your name?</Text>
+
+						<View style={[styles.inputShell, { backgroundColor: inputSurface }]}>
+							<Ionicons name="person-outline" size={18} color={mutedColor} />
+							<TextInput
+								value={nameValue}
+								onChangeText={onNameChange}
+								placeholder="Your name"
+								placeholderTextColor={mutedColor}
+								style={[styles.input, { color: titleColor }]}
+							/>
+						</View>
+					</View>
+				</BlurView>
+			</Animated.View>
+		</View>
 	);
 }
 
 const styles = StyleSheet.create({
-	modalRoot: {
-		flex: 1,
-		justifyContent: "center",
-		paddingHorizontal: 20,
+	modalWrapper: {
+		...StyleSheet.absoluteFillObject,
+		justifyContent: "flex-end",
+		zIndex: 200,
 	},
 	backdrop: {
 		...StyleSheet.absoluteFillObject,
-		backgroundColor: "rgba(0, 0, 0, 0.44)",
+		backgroundColor: "rgba(0,0,0,0.48)",
 	},
-	cardHost: {
-		borderRadius: 34,
+	sheetHost: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		borderTopLeftRadius: 38,
+		borderTopRightRadius: 38,
 		overflow: "hidden",
 	},
-	cardBlur: {
-		borderRadius: 34,
+	sheetBlur: {
+		borderTopLeftRadius: 38,
+		borderTopRightRadius: 38,
 	},
-	cardSurface: {
-		borderRadius: 34,
-		paddingHorizontal: 22,
-		paddingVertical: 24,
+	sheetSurface: {
+		borderTopLeftRadius: 38,
+		borderTopRightRadius: 38,
+		minHeight: SCREEN_HEIGHT * 0.78,
+		paddingHorizontal: 20,
+		paddingTop: 18,
+		alignItems: "center",
 	},
-	iconWrap: {
-		width: 64,
-		height: 64,
-		borderRadius: 32,
+	headerRow: {
+		width: "100%",
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		marginBottom: 18,
+	},
+	headerSpacer: {
+		width: 40,
+		height: 40,
+	},
+	closeButton: {
+		width: 40,
+		height: 40,
+		borderRadius: 20,
 		alignItems: "center",
 		justifyContent: "center",
-		marginBottom: 16,
+	},
+	avatarOrb: {
+		width: 112,
+		height: 112,
+		borderRadius: 56,
+		alignItems: "center",
+		justifyContent: "center",
+		marginBottom: 22,
+		shadowColor: "#000000",
+		shadowOpacity: 0.12,
+		shadowRadius: 18,
+		shadowOffset: { width: 0, height: 10 },
 	},
 	title: {
-		fontSize: 26,
-		lineHeight: 30,
+		fontSize: 28,
+		lineHeight: 32,
 		fontWeight: "900",
-		letterSpacing: -0.8,
+		letterSpacing: -0.9,
+		textAlign: "center",
 	},
-	body: {
-		marginTop: 10,
-		fontSize: 15,
-		lineHeight: 22,
-		fontWeight: "500",
-	},
-	primaryButton: {
-		marginTop: 24,
-		minHeight: 56,
+	inputShell: {
+		marginTop: 18,
+		width: "100%",
+		minHeight: 58,
 		borderRadius: 24,
-		backgroundColor: "#86100E",
+		paddingHorizontal: 16,
+		flexDirection: "row",
 		alignItems: "center",
-		justifyContent: "center",
+		gap: 12,
 	},
-	primaryButtonText: {
-		color: "#FFFFFF",
+	input: {
+		flex: 1,
 		fontSize: 16,
 		lineHeight: 20,
-		fontWeight: "800",
-	},
-	secondaryButton: {
-		marginTop: 10,
-		minHeight: 48,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	secondaryButtonText: {
-		fontSize: 15,
-		lineHeight: 20,
-		fontWeight: "700",
+		fontWeight: "600",
 	},
 });
