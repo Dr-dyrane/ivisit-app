@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getMapSheetTokens } from "./mapSheetTokens";
+import { MAP_CARE_PULSE_MS, MAP_SHEET_SNAP_SPRING } from "./mapMotionTokens";
 
 export const MAP_SHEET_MODES = {
 	EXPLORE_INTENT: "explore_intent",
@@ -100,9 +101,8 @@ function MapSheetShell({
 			toValue:
 				MAP_SHEET_SNAP_INDEX[snapState] ??
 				MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.HALF],
-			tension: 56,
-			friction: 10,
 			useNativeDriver: false,
+			...MAP_SHEET_SNAP_SPRING,
 		}).start();
 	}, [snapProgress, snapState]);
 
@@ -374,12 +374,12 @@ function MapExploreIntentSheet({
 			Animated.sequence([
 				Animated.timing(pulseProgress, {
 					toValue: 1,
-					duration: 1800,
+					duration: MAP_CARE_PULSE_MS,
 					useNativeDriver: true,
 				}),
 				Animated.timing(pulseProgress, {
 					toValue: 0,
-					duration: 1800,
+					duration: MAP_CARE_PULSE_MS,
 					useNativeDriver: true,
 				}),
 			]),

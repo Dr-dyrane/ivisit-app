@@ -66,7 +66,7 @@ const getDisplayHospitals = (hospitals, userLocation) => {
 // NEW: Global module cache for instant "Apple-style" loading
 // REVERT TO: Remove globalHospitalCache and related logic
 const HOSPITAL_CACHE_TTL_MS = 2 * 60 * 1000;
-const LOCATION_BUCKET_PRECISION = 2;
+const LOCATION_BUCKET_PRECISION = 3;
 
 let globalHospitalCache = {
 	hospitals: [],

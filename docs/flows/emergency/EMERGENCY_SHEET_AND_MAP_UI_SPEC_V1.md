@@ -11,6 +11,8 @@ Related references:
 - [../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
 - [../../CHOOSE_HOSPITAL_PHASE_DOSSIER.md](../../CHOOSE_HOSPITAL_PHASE_DOSSIER.md)
 - [MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md](./MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md)
+- [MAP_FLOW_IMPLEMENTATION_V1.md](./MAP_FLOW_IMPLEMENTATION_V1.md)
+- [../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md](../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md)
 
 External references used for this spec:
 
@@ -1223,3 +1225,261 @@ That is the correct Apple Maps-like structure:
 - one persistent map
 - one evolving sheet
 - one dominant decision at a time
+
+## 8. Ambulance Flow Refactor Runtime Appendix
+
+This appendix turns the design spec into the actual implementation determinants for the new `/map`-first ambulance path.
+
+### 8.1 Locked visible state spine
+
+For the first-pass ambulance runtime, the visible sheet sequence should be:
+
+`EXPLORE_INTENT -> AMBULANCE_DECISION -> COMMIT_DETAILS -> COMMIT_PAYMENT -> TRACKING`
+
+Important implementation note:
+
+- `COMMIT_AUTH` should not be a separate visible phase unless an OTP constraint truly forces it.
+- verification belongs inside `COMMIT_DETAILS` so the flow still feels like one care sheet instead of a registration detour.
+
+### 8.2 Current legacy seam to remove
+
+Current runtime seam:
+
+`EmergencyIntakeOrchestrator -> onContinue(payload) -> setShowLegacyFlow(true) -> EmergencyRequestModal`
+
+Evidence in current app:
+
+- `screens/RequestAmbulanceScreen.jsx` still flips into `EmergencyRequestModal.jsx` through `showLegacyFlow`.
+- `EmergencyRequestModal.jsx` still owns much of the legacy dispatch / payment / tracked-request transition behavior.
+
+Target runtime rule:
+
+- keep the user on `/map`
+- keep the map mounted
+- move the state machine into `MapScreen.jsx` + `MapSheetOrchestrator.jsx`
+- reuse legacy content patterns, but not the old modal handoff behavior
+
+### 8.3 Behind-the-scenes determinants by state
+
+| State | Primary user-facing job | Hidden determinants | DB write? | Runtime owner |
+|---|---|---|---|---|
+| `EXPLORE_INTENT` | orient and choose intent | resolved location, nearby hospitals, coverage mode, selected care intent, map readiness | no | `MapScreen.jsx` + `EmergencyContext.jsx` |
+| `AMBULANCE_DECISION` | show best dispatch candidate | recommended hospital, ETA, route confidence, pricing fallback, service summary | no | `MapSheetOrchestrator.jsx` + route helpers |
+| `COMMIT_DETAILS` | collect minimum safe info | patient name, phone, triage snapshot, inline verification if needed, local draft validity | not yet for guest-first pass | map sheet local state + request draft |
+| `COMMIT_PAYMENT` | perform real operational commit | authenticated actor, valid hospital id, payment method, amount, request payload ready | yes | `useRequestFlow.js` + RPCs |
+| `TRACKING` | show live certainty | request id, payment state, responder assignment, realtime status projection | updates only | `EmergencyContext.jsx` + realtime |
+
+### 8.4 User-type entry determinants
+
+#### A. First-time guest user
+
+Visible experience:
+
+- can fully use `EXPLORE_INTENT`
+- can reach `AMBULANCE_DECISION`
+- can fill `COMMIT_DETAILS`
+
+Behind the scenes:
+
+- the app may keep a local emergency draft first
+- a true database-backed request should **not** be created yet
+- this is because `create_emergency_v4` is granted to `authenticated` + `service_role`, not `anon`
+
+Implementation rule:
+
+- let the guest feel the whole map-first flow
+- ask for inline phone/email verification inside `COMMIT_DETAILS`
+- only move into `COMMIT_PAYMENT` once the actor is authenticated or otherwise linked to an owned patient identity
+
+#### B. First-time demo / hybrid-coverage user
+
+Visible experience:
+
+- should feel exactly like the real flow
+- no `demo` language should appear in the UI
+- hospitals can still look nearby and actionable
+
+Behind the scenes:
+
+- nearby options may come from hybrid/demo-backed coverage in `EmergencyContext.jsx`
+- the coverage mode may allow demo-like hospital inventory for sparse regions
+- bootstrap / fallback is a system concern, not a product-language concern
+
+Implementation rule:
+
+- keep the exact same sheet states as the live flow
+- do not fork the UI into a separate demo branch
+- if the user never completes verification/auth, the app stays in local draft / preview territory until real commit becomes possible
+
+#### C. Authenticated patient user
+
+Visible experience:
+
+- same map-first flow
+- less friction in `COMMIT_DETAILS`
+- profile details can prefill automatically
+
+Behind the scenes:
+
+- request commit can go straight through the DB-backed emergency lane
+- the request owner is already known
+- later mutations can safely use `patient_update_emergency_request`
+
+Implementation rule:
+
+- prefill identity/contact fields where possible
+- keep `COMMIT_DETAILS` short
+- let `COMMIT_PAYMENT` be the final real-world release gate
+
+#### D. Returning user with active trip
+
+Visible experience:
+
+- should not re-enter the full intake sequence
+- should land directly into `TRACKING` or the active live status state
+
+Behind the scenes:
+
+- `EmergencyContext.jsx` should hydrate existing active request/trip truth from realtime or stored recovery state
+
+### 8.5 Transition determinants
+
+#### `EXPLORE_INTENT -> AMBULANCE_DECISION`
+
+Trigger:
+
+- user taps `Ambulance`
+
+Minimum system conditions:
+
+- active location exists
+- at least one hospital candidate or fallback recommendation exists
+- route preview can be computed or reasonably faked from current location + selected hospital
+
+If coverage is weak:
+
+- still allow progress
+- degrade copy gently
+- keep `Other hospitals` secondary or hidden when there are no true alternatives
+
+#### `AMBULANCE_DECISION -> COMMIT_DETAILS`
+
+Trigger:
+
+- user taps `Confirm & dispatch`
+
+Behind the scenes:
+
+- freeze selected hospital
+- freeze the route emphasis state
+- initialize the request draft payload
+- do **not** call the DB commit yet
+
+#### `COMMIT_DETAILS -> COMMIT_PAYMENT`
+
+Trigger:
+
+- required details are valid
+- verification succeeds if needed
+
+Required minimum payload:
+
+- patient identity/contact
+- patient location / pickup context
+- selected hospital id
+- service type = `ambulance`
+- triage snapshot or minimal complaint summary if collected
+
+#### `COMMIT_PAYMENT -> TRACKING`
+
+Trigger:
+
+- request commit succeeds
+- payment method succeeds or enters an allowed pending state
+
+### 8.6 Database-backed commit lane
+
+This is the real behind-the-scenes operational path for the new map-first sheet flow.
+
+#### Real request creation
+
+Use:
+
+- `create_emergency_v4(UUID, JSONB, JSONB)`
+
+What it does:
+
+- creates the `emergency_requests` row
+- creates or links the `payments` row
+- creates the linked `visits` row
+- enters the automation / lifecycle chain
+
+#### Later patient mutation lane
+
+Use:
+
+- `patient_update_emergency_request(UUID, JSONB)`
+
+What it should handle after commit:
+
+- patient status changes allowed by DB state rules
+- patient-side location/note updates
+- triage snapshot or payload enrichment after request creation when allowed
+
+#### Payment lane
+
+Use one of:
+
+- `process_wallet_payment`
+- `process_cash_payment_v2`
+- `approve_cash_payment` / `decline_cash_payment` on the org-admin side when cash requires approval
+
+Important product implication:
+
+- cash may produce a `pending_approval` lane before true dispatch progresses
+- if that appears in the UI, it should still remain a map-first status state, not a legacy modal break
+
+### 8.7 Realtime / automation consequences after commit
+
+Once the real request exists, the backend already supports the rest of the journey.
+
+Existing automation / fan-out chain includes:
+
+- emergency-to-visit sync
+- ambulance assignment / reassignment
+- doctor assignment / failover
+- resource availability syncing
+- realtime status propagation into patient and console surfaces
+
+Product implication:
+
+- the app does **not** need a second UI system after payment
+- `TRACKING` should simply project the truth already maintained in `EmergencyContext.jsx` and realtime subscriptions
+
+### 8.8 Runtime ownership for the refactor
+
+Recommended ownership split:
+
+- `MapScreen.jsx` — owns the map shell, selected hospital, selected care, and top-level sheet mode
+- `MapSheetOrchestrator.jsx` — owns the visible sheet state machine and transitions between ambulance phases
+- `EmergencyContext.jsx` — owns nearby hospitals, coverage mode, active emergency truth, and realtime tracking state
+- `useRequestFlow.js` / `services/emergencyRequestsService.js` — own commit-time request creation and mutation
+- Supabase RPC layer — owns the irreversible operational commit and lifecycle validity
+
+### 8.9 Implementation rule for MVP
+
+For the first map-first refactor pass:
+
+1. move ambulance decision into the map sheet
+2. move details + verification inline into the map sheet
+3. keep payment in the same shell
+4. project tracking in the same shell after commit
+5. stop routing new users into the old `showLegacyFlow -> EmergencyRequestModal` branch for the main ambulance path
+
+That gives iVisit the correct first-pass emergency reading:
+
+- the user sees the map
+- the system recommends the closest workable response
+- the user confirms
+- details and payment complete the release
+- tracking begins without ever leaving the map

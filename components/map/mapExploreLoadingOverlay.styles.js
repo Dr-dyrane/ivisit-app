@@ -1,0 +1,147 @@
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+	root: {
+		...StyleSheet.absoluteFillObject,
+		zIndex: 160,
+	},
+	backdrop: {
+		...StyleSheet.absoluteFillObject,
+	},
+	headerGhost: {
+		position: "absolute",
+		top: 58,
+		left: 16,
+		right: 16,
+		height: 64,
+		borderRadius: 28,
+		paddingHorizontal: 14,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
+	},
+	headerButtonGhost: {
+		width: 42,
+		height: 42,
+		borderRadius: 999,
+	},
+	headerCopy: {
+		flex: 1,
+		gap: 8,
+	},
+	headerLinePrimary: {
+		height: 14,
+		width: "54%",
+		borderRadius: 999,
+	},
+	headerLineSecondary: {
+		height: 10,
+		width: "38%",
+		borderRadius: 999,
+	},
+	mapLanePrimary: {
+		position: "absolute",
+		top: "32%",
+		left: "12%",
+		width: "62%",
+		height: 8,
+		borderRadius: 999,
+		transform: [{ rotate: "-18deg" }],
+	},
+	mapLaneSecondary: {
+		position: "absolute",
+		top: "47%",
+		right: "8%",
+		width: "48%",
+		height: 6,
+		borderRadius: 999,
+		transform: [{ rotate: "14deg" }],
+	},
+	mapLaneTertiary: {
+		position: "absolute",
+		bottom: "34%",
+		left: "18%",
+		width: "38%",
+		height: 6,
+		borderRadius: 999,
+		transform: [{ rotate: "-10deg" }],
+	},
+	mapPinGhost: {
+		position: "absolute",
+		width: 16,
+		height: 16,
+		borderRadius: 999,
+	},
+	mapPinUser: {
+		top: "44%",
+		left: "46%",
+	},
+	mapPinHospital: {
+		top: "28%",
+		right: "24%",
+	},
+	mapPinHospitalAlt: {
+		top: "40%",
+		right: "14%",
+	},
+	sheetGhost: {
+		position: "absolute",
+		left: 8,
+		right: 8,
+		bottom: 8,
+		borderRadius: 44,
+		paddingHorizontal: 12,
+		paddingTop: 10,
+		paddingBottom: 12,
+		overflow: "hidden",
+	},
+	handle: {
+		alignSelf: "center",
+		width: 48,
+		height: 5,
+		borderRadius: 999,
+		marginBottom: 14,
+	},
+	searchRow: {
+		height: 52,
+		borderRadius: 30,
+		marginBottom: 16,
+	},
+	hospitalCard: {
+		height: 72,
+		borderRadius: 30,
+		marginBottom: 18,
+	},
+	sectionLabel: {
+		height: 14,
+		width: 108,
+		borderRadius: 999,
+		marginBottom: 18,
+	},
+	careRow: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		gap: 10,
+	},
+	careItem: {
+		flex: 1,
+		alignItems: "center",
+	},
+	careOrb: {
+		width: 88,
+		height: 88,
+		borderRadius: 44,
+		marginBottom: 10,
+	},
+	careLinePrimary: {
+		width: 66,
+		height: 12,
+		borderRadius: 999,
+		marginBottom: 6,
+	},
+	careLineSecondary: {
+		width: 56,
+		height: 10,
+		borderRadius: 999,
+	},
+});

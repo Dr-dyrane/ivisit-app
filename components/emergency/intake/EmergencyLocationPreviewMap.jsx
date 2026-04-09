@@ -144,6 +144,7 @@ export default function EmergencyLocationPreviewMap({
 	interactive = false,
 	bottomSheetHeight = 0,
 	onHospitalPress = null,
+	onReadinessChange = null,
 }) {
 	const { isDarkMode } = useTheme();
 	const mapRef = useRef(null);
@@ -151,7 +152,12 @@ export default function EmergencyLocationPreviewMap({
 	const [isNearbyOverview, setIsNearbyOverview] = useState(false);
 	const isAndroid = Platform.OS === "android";
 	const isWeb = Platform.OS === "web";
-	const { routeCoordinates: previewRouteCoordinates, calculateRoute, clearRoute } = useMapRoute();
+	const {
+		routeCoordinates: previewRouteCoordinates,
+		calculateRoute,
+		clearRoute,
+		isCalculatingRoute,
+	} = useMapRoute();
 	const customMapStyle = isAndroid
 		? isDarkMode
 			? darkAndroidMapStyle
@@ -206,6 +212,10 @@ export default function EmergencyLocationPreviewMap({
 		[bottomSheetHeight, routeBoundsCoordinates],
 	);
 	const hasLocation = !!userCoordinate;
+	const hasRouteTargets = Boolean(userCoordinate && selectedHospitalCoordinate);
+	const routeReady = hasRouteTargets
+		? routeBoundsCoordinates.length >= 2 && !isCalculatingRoute
+		: !isCalculatingRoute;
 
 	useEffect(() => {
 		if (userCoordinate && selectedHospitalCoordinate) {
@@ -291,6 +301,14 @@ export default function EmergencyLocationPreviewMap({
 
 		return () => clearTimeout(fallbackTimeout);
 	}, [hasLocation, isMapReady, isWeb]);
+
+	useEffect(() => {
+		onReadinessChange?.({
+			mapReady: isMapReady,
+			routeReady,
+			isCalculatingRoute,
+		});
+	}, [isCalculatingRoute, isMapReady, onReadinessChange, routeReady]);
 
 	return (
 		<View style={styles.shell} collapsable={Platform.OS !== "web" ? false : undefined}>

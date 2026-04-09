@@ -1,19 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
-import {
-	Animated,
-	Dimensions,
-	Pressable,
-	StyleSheet,
-	Text,
-	TextInput,
-	View,
-} from "react-native";
-import { BlurView } from "expo-blur";
+import React from "react";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
-
-const SCREEN_HEIGHT = Dimensions.get("window").height;
+import MapModalShell from "./MapModalShell";
 
 export default function MapGuestProfileModal({
 	visible,
@@ -22,184 +11,48 @@ export default function MapGuestProfileModal({
 	onEmailChange,
 }) {
 	const { isDarkMode } = useTheme();
-	const insets = useSafeAreaInsets();
-	const [shouldRender, setShouldRender] = useState(visible);
-	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-	const bgOpacity = useRef(new Animated.Value(0)).current;
-
-	useEffect(() => {
-		if (visible) {
-			setShouldRender(true);
-			Animated.parallel([
-				Animated.spring(slideAnim, {
-					toValue: 0,
-					tension: 45,
-					friction: 10,
-					useNativeDriver: true,
-				}),
-				Animated.timing(bgOpacity, {
-					toValue: 1,
-					duration: 280,
-					useNativeDriver: true,
-				}),
-			]).start();
-			return undefined;
-		}
-
-		if (!shouldRender) {
-			return undefined;
-		}
-
-		Animated.parallel([
-			Animated.timing(slideAnim, {
-				toValue: SCREEN_HEIGHT,
-				duration: 250,
-				useNativeDriver: true,
-			}),
-			Animated.timing(bgOpacity, {
-				toValue: 0,
-				duration: 200,
-				useNativeDriver: true,
-			}),
-		]).start(({ finished }) => {
-			if (finished) {
-				setShouldRender(false);
-			}
-		});
-
-		return undefined;
-	}, [bgOpacity, shouldRender, slideAnim, visible]);
-
-	const handleDismiss = () => {
-		onClose?.();
-	};
-
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 	const inputSurface = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)";
-	const surfaceColor = isDarkMode ? "rgba(8, 15, 27, 0.84)" : "rgba(255, 255, 255, 0.86)";
-
-	if (!shouldRender) return null;
+	const avatarSurface = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)";
 
 	return (
-		<View style={styles.modalWrapper} pointerEvents="box-none">
-			<Animated.View style={[styles.backdrop, { opacity: bgOpacity }]}>
-				<Pressable style={StyleSheet.absoluteFill} onPress={handleDismiss} />
-			</Animated.View>
+		<MapModalShell
+			visible={visible}
+			onClose={onClose}
+			title={null}
+			minHeightRatio={0.78}
+			contentContainerStyle={styles.content}
+		>
+			<View style={[styles.avatarOrb, { backgroundColor: avatarSurface }]}>
+				<Ionicons name="person" size={52} color={mutedColor} />
+			</View>
 
-			<Animated.View
-				style={[
-					styles.sheetHost,
-					{
-						transform: [{ translateY: slideAnim }],
-					},
-				]}
-			>
-				<BlurView
-					intensity={isDarkMode ? 48 : 56}
-					tint={isDarkMode ? "dark" : "light"}
-					style={styles.sheetBlur}
-				>
-					<View
-						style={[
-							styles.sheetSurface,
-							{
-								backgroundColor: surfaceColor,
-								paddingBottom: insets.bottom + 18,
-							},
-						]}
-					>
-						<View style={styles.headerRow}>
-							<View style={styles.headerSpacer} />
-							<Pressable onPress={handleDismiss} style={[styles.closeButton, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)" }]}>
-								<Ionicons name="close" size={18} color={titleColor} />
-							</Pressable>
-						</View>
+			<Text style={[styles.title, { color: titleColor }]}>What&apos;s your email?</Text>
 
-						<View
-							style={[
-								styles.avatarOrb,
-								{
-									backgroundColor: isDarkMode
-										? "rgba(255,255,255,0.08)"
-										: "rgba(15,23,42,0.05)",
-								},
-							]}
-						>
-							<Ionicons name="person" size={52} color={mutedColor} />
-						</View>
-
-						<Text style={[styles.title, { color: titleColor }]}>What&apos;s your email?</Text>
-
-						<View style={[styles.inputShell, { backgroundColor: inputSurface }]}>
-							<Ionicons name="mail-outline" size={18} color={mutedColor} />
-							<TextInput
-								value={emailValue}
-								onChangeText={onEmailChange}
-								placeholder="Email"
-								placeholderTextColor={mutedColor}
-								style={[styles.input, { color: titleColor }]}
-								keyboardType="email-address"
-								autoCapitalize="none"
-								autoCorrect={false}
-								autoComplete="email"
-							/>
-						</View>
-					</View>
-				</BlurView>
-			</Animated.View>
-		</View>
+			<View style={[styles.inputShell, { backgroundColor: inputSurface }]}>
+				<Ionicons name="mail-outline" size={18} color={mutedColor} />
+				<TextInput
+					value={emailValue}
+					onChangeText={onEmailChange}
+					placeholder="Email"
+					placeholderTextColor={mutedColor}
+					style={[styles.input, { color: titleColor }]}
+					keyboardType="email-address"
+					autoCapitalize="none"
+					autoCorrect={false}
+					autoComplete="email"
+				/>
+			</View>
+		</MapModalShell>
 	);
 }
 
 const styles = StyleSheet.create({
-	modalWrapper: {
-		...StyleSheet.absoluteFillObject,
-		justifyContent: "flex-end",
-		zIndex: 200,
-	},
-	backdrop: {
-		...StyleSheet.absoluteFillObject,
-		backgroundColor: "rgba(0,0,0,0.48)",
-	},
-	sheetHost: {
-		position: "absolute",
-		left: 0,
-		right: 0,
-		bottom: 0,
-		borderTopLeftRadius: 38,
-		borderTopRightRadius: 38,
-		overflow: "hidden",
-	},
-	sheetBlur: {
-		borderTopLeftRadius: 38,
-		borderTopRightRadius: 38,
-	},
-	sheetSurface: {
-		borderTopLeftRadius: 38,
-		borderTopRightRadius: 38,
-		minHeight: SCREEN_HEIGHT * 0.78,
-		paddingHorizontal: 20,
-		paddingTop: 18,
+	content: {
+		paddingTop: 10,
+		paddingBottom: 12,
 		alignItems: "center",
-	},
-	headerRow: {
-		width: "100%",
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		marginBottom: 18,
-	},
-	headerSpacer: {
-		width: 40,
-		height: 40,
-	},
-	closeButton: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
-		alignItems: "center",
-		justifyContent: "center",
 	},
 	avatarOrb: {
 		width: 112,
@@ -234,6 +87,6 @@ const styles = StyleSheet.create({
 		flex: 1,
 		fontSize: 16,
 		lineHeight: 20,
-		fontWeight: "600",
+		fontWeight: "400",
 	},
 });

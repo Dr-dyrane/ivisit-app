@@ -262,6 +262,7 @@ export function EmergencyProvider({ children }) {
 	// Fetch real hospitals from Supabase
 	const {
 		hospitals: dbHospitals,
+		allHospitals: discoveredDbHospitals,
 		isLoading: isLoadingHospitals,
 		refetch: refetchHospitals,
 	} = useHospitals({
@@ -323,14 +324,17 @@ export function EmergencyProvider({ children }) {
 	// Sync DB hospitals whenever nearby discovery changes for the current map location.
 	useEffect(() => {
 		if (isLoadingHospitals) return;
-		if (dbHospitals.length === 0) {
+		const sourceHospitals = Array.isArray(discoveredDbHospitals) && discoveredDbHospitals.length > 0
+			? discoveredDbHospitals
+			: dbHospitals;
+		if (sourceHospitals.length === 0) {
 			setHospitals([]);
 			return;
 		}
 
 		// If we don't have user location yet, preserve database distance data
 		if (!userLocation) {
-			const normalized = dbHospitals.map(h => ({
+			const normalized = sourceHospitals.map(h => ({
 				...h,
 				coordinates: h.coordinates || {
 					latitude: h.latitude,
@@ -351,7 +355,8 @@ export function EmergencyProvider({ children }) {
 
 		// If we DO have user location, use the distance data from database
 		// PRODUCTION READY: Use PostGIS calculated distances
-		const localized = dbHospitals.map((h) => {
+		const localized = sourceHospitals
+			.map((h) => {
 			// Use database distance if available, otherwise calculate fallback
 			const dbDistance = h.distance || h.distanceKm;
 			const distanceKm = dbDistance ?
@@ -377,12 +382,17 @@ export function EmergencyProvider({ children }) {
 				serviceTypes: h.serviceTypes || [],
 				features: h.features || [],
 			};
-		});
+		})
+			.sort((left, right) => {
+				const leftDistance = Number(left?.distanceKm ?? Number.MAX_SAFE_INTEGER);
+				const rightDistance = Number(right?.distanceKm ?? Number.MAX_SAFE_INTEGER);
+				return leftDistance - rightDistance;
+			});
 
 		// Enrich with service types before setting
 		setHospitals(enrichHospitalsWithServiceTypes(localized));
 
-	}, [dbHospitals, isLoadingHospitals, userLocation]);
+	}, [dbHospitals, discoveredDbHospitals, isLoadingHospitals, userLocation]);
 
 	useEffect(() => {
 		const latitude = Number(globalUserLocation?.latitude);
