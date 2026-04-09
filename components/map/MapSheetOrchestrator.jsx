@@ -2,16 +2,21 @@ import React, { useEffect, useMemo, useRef } from "react";
 import {
 	Animated,
 	Image,
+	ImageBackground,
+	PanResponder,
 	Platform,
 	Pressable,
+	ScrollView,
 	StyleSheet,
 	Text,
+	useWindowDimensions,
 	View,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
+import InAppBrowserLink from "../ui/InAppBrowserLink";
 import { getMapSheetTokens } from "./mapSheetTokens";
 import { MAP_CARE_PULSE_MS, MAP_SHEET_SNAP_SPRING } from "./mapMotionTokens";
 
@@ -38,24 +43,52 @@ const MAP_SHEET_SNAP_INDEX = {
 	[MAP_SHEET_SNAP_STATES.EXPANDED]: 2,
 };
 
+const FEATURED_HOSPITAL_IMAGE = require("../../assets/features/emergency.png");
+const FEATURED_CAROUSEL_SIDE_PADDING = 18;
+const FEATURED_CAROUSEL_GAP = 12;
+const FEATURED_CAROUSEL_PEEK = 22;
+
+function getNextSnapStateUp(snapState) {
+	switch (snapState) {
+		case MAP_SHEET_SNAP_STATES.COLLAPSED:
+			return MAP_SHEET_SNAP_STATES.HALF;
+		case MAP_SHEET_SNAP_STATES.HALF:
+			return MAP_SHEET_SNAP_STATES.EXPANDED;
+		default:
+			return MAP_SHEET_SNAP_STATES.EXPANDED;
+	}
+}
+
+function getNextSnapStateDown(snapState) {
+	switch (snapState) {
+		case MAP_SHEET_SNAP_STATES.EXPANDED:
+			return MAP_SHEET_SNAP_STATES.HALF;
+		case MAP_SHEET_SNAP_STATES.HALF:
+			return MAP_SHEET_SNAP_STATES.COLLAPSED;
+		default:
+			return MAP_SHEET_SNAP_STATES.COLLAPSED;
+	}
+}
+
 export function getMapSheetHeight(screenHeight, snapState) {
 	switch (snapState) {
 		case MAP_SHEET_SNAP_STATES.COLLAPSED:
-			return 156;
+			return 66;
 		case MAP_SHEET_SNAP_STATES.EXPANDED:
-			return Math.max(500, Math.min(screenHeight * 0.82, 760));
+			return Math.max(540, Math.min(screenHeight * 0.86, 780));
 		case MAP_SHEET_SNAP_STATES.HALF:
 		default:
 			return Math.max(360, Math.min(screenHeight * 0.5, 460));
 	}
 }
 
-function MapSheetProfileTrigger({ onPress, userImageSource, isSignedIn }) {
+function MapSheetProfileTrigger({ onPress, userImageSource, isSignedIn, isCollapsed = false }) {
 	return (
 		<Pressable
 			onPress={onPress}
 			style={({ pressed }) => [
 				styles.avatarPressable,
+				isCollapsed ? styles.avatarPressableCollapsed : null,
 				{ transform: [{ scale: pressed ? 0.96 : 1 }] },
 			]}
 		>
@@ -64,6 +97,7 @@ function MapSheetProfileTrigger({ onPress, userImageSource, isSignedIn }) {
 				resizeMode="cover"
 				style={[
 					styles.avatarImage,
+					isCollapsed ? styles.avatarImageCollapsed : null,
 					{
 						shadowColor: "#000000",
 						shadowOpacity: 0.16,
@@ -77,7 +111,7 @@ function MapSheetProfileTrigger({ onPress, userImageSource, isSignedIn }) {
 					},
 				]}
 			/>
-			{isSignedIn ? <View style={styles.avatarDot} /> : null}
+			{isSignedIn ? <View style={[styles.avatarDot, isCollapsed ? styles.avatarDotCollapsed : null]} /> : null}
 		</Pressable>
 	);
 }
@@ -87,14 +121,17 @@ function MapSheetShell({
 	snapState,
 	topSlot = null,
 	footerSlot = null,
+	onHandlePress,
 	children,
 }) {
 	const { isDarkMode } = useTheme();
 	const isAndroid = Platform.OS === "android";
+	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const snapProgress = useRef(
 		new Animated.Value(MAP_SHEET_SNAP_INDEX[snapState] ?? MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.HALF]),
 	).current;
+	const dragTranslateY = useRef(new Animated.Value(0)).current;
 
 	useEffect(() => {
 		Animated.spring(snapProgress, {
@@ -105,6 +142,14 @@ function MapSheetShell({
 			...MAP_SHEET_SNAP_SPRING,
 		}).start();
 	}, [snapProgress, snapState]);
+
+	useEffect(() => {
+		Animated.spring(dragTranslateY, {
+			toValue: 0,
+			useNativeDriver: false,
+			...MAP_SHEET_SNAP_SPRING,
+		}).start();
+	}, [dragTranslateY, snapState]);
 
 	const sideInset = snapProgress.interpolate({
 		inputRange: [0, 1, 2],
@@ -128,16 +173,65 @@ function MapSheetShell({
 	});
 	const horizontalPadding = snapProgress.interpolate({
 		inputRange: [0, 1, 2],
-		outputRange: [14, 12, 18],
+		outputRange: [8, 12, 18],
 	});
 	const topPadding = snapProgress.interpolate({
 		inputRange: [0, 1, 2],
-		outputRange: [10, 10, 14],
+		outputRange: [2, 6, 8],
 	});
 	const bottomPadding = snapProgress.interpolate({
 		inputRange: [0, 1, 2],
-		outputRange: [10, 12, 18],
+		outputRange: [4, 10, 12],
 	});
+	const handleBottomMargin = snapProgress.interpolate({
+		inputRange: [0, 1, 2],
+		outputRange: [3, 6, 7],
+	});
+
+	const panResponder = useMemo(
+		() =>
+			PanResponder.create({
+				onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dy) > 4,
+				onPanResponderGrant: () => {
+					dragTranslateY.stopAnimation();
+				},
+				onPanResponderMove: (_, gestureState) => {
+					const rawDy = gestureState.dy;
+					const minDy = snapState === MAP_SHEET_SNAP_STATES.EXPANDED ? 0 : -220;
+					const maxDy = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED ? 0 : 180;
+					const clampedDy = Math.max(minDy, Math.min(maxDy, rawDy));
+					dragTranslateY.setValue(clampedDy);
+				},
+				onPanResponderRelease: (_, gestureState) => {
+					const { dy, vy } = gestureState;
+					let nextState = snapState;
+
+					if (dy <= -44 || vy <= -0.28) {
+						nextState = getNextSnapStateUp(snapState);
+					} else if (dy >= 44 || vy >= 0.28) {
+						nextState = getNextSnapStateDown(snapState);
+					}
+
+					if (nextState !== snapState) {
+						onHandlePress?.(nextState);
+					} else {
+						Animated.spring(dragTranslateY, {
+							toValue: 0,
+							useNativeDriver: false,
+							...MAP_SHEET_SNAP_SPRING,
+						}).start();
+					}
+				},
+				onPanResponderTerminate: () => {
+					Animated.spring(dragTranslateY, {
+						toValue: 0,
+						useNativeDriver: false,
+						...MAP_SHEET_SNAP_SPRING,
+					}).start();
+				},
+			}),
+		[dragTranslateY, onHandlePress, snapState],
+	);
 
 	return (
 		<Animated.View
@@ -153,6 +247,7 @@ function MapSheetShell({
 					borderTopRightRadius: topRadius,
 					borderBottomLeftRadius: bottomRadius,
 					borderBottomRightRadius: bottomRadius,
+					transform: [{ translateY: dragTranslateY }],
 				},
 			]}
 		>
@@ -229,18 +324,214 @@ function MapSheetShell({
 						},
 					]}
 				>
-					<Animated.View
-						style={[
-							styles.handle,
-							{ width: handleWidth, backgroundColor: tokens.handleColor },
-						]}
-					/>
+					<View {...panResponder.panHandlers} style={styles.dragZone}>
+						<Pressable
+							onPress={() => onHandlePress?.()}
+							hitSlop={
+								isCollapsed
+									? { top: 14, bottom: 14, left: 16, right: 16 }
+									: 12
+							}
+							style={[
+								styles.handleTapTarget,
+								isCollapsed ? styles.handleTapTargetCollapsed : null,
+							]}
+						>
+						<Animated.View
+							style={[
+								styles.handle,
+								{
+									width: handleWidth,
+									backgroundColor: tokens.handleColor,
+									marginBottom: handleBottomMargin,
+								},
+							]}
+						/>
+						</Pressable>
+					</View>
 					{topSlot}
-					<View style={styles.contentViewport}>{children}</View>
+					{children ? <View style={styles.contentViewport}>{children}</View> : null}
 					{footerSlot}
 				</Animated.View>
 			</Animated.View>
 		</Animated.View>
+	);
+}
+
+function buildFeaturedHospitalFeatures(hospital) {
+	const features = [];
+	const distance = typeof hospital?.distance === "string" ? hospital.distance.trim() : "";
+	const eta = typeof hospital?.eta === "string" ? hospital.eta.trim() : "";
+	const beds = Number(hospital?.availableBeds);
+
+	if (distance) features.push(distance);
+	if (eta) features.push(eta);
+	if (Number.isFinite(beds) && beds > 0) {
+		features.push(`${beds} beds`);
+	}
+
+	return features.slice(0, 2);
+}
+
+function SectionLabel({ title, color }) {
+	return (
+		<View style={styles.sectionLabelBlock}>
+			<Text style={[styles.sectionLabel, { color }]}>{title}</Text>
+		</View>
+	);
+}
+
+function FeaturedHospitalPlaceholderCard({ titleColor, bodyColor }) {
+	return (
+		<View style={[styles.featuredStaticSlot, styles.placeholderCard]}>
+			<LinearGradient
+				colors={["rgba(255,255,255,0.08)", "rgba(15,23,42,0.14)"]}
+				start={{ x: 0.12, y: 0.08 }}
+				end={{ x: 0.86, y: 0.92 }}
+				style={styles.placeholderCardInner}
+			>
+				<View style={styles.placeholderCopy}>
+					<Text numberOfLines={2} style={[styles.featuredTitle, { color: titleColor }]}>
+						Nearby hospital
+					</Text>
+					<Text numberOfLines={2} style={[styles.featuredMeta, { color: bodyColor }]}>
+						More options appear here
+					</Text>
+				</View>
+			</LinearGradient>
+		</View>
+	);
+}
+
+function FeaturedHospitalCard({
+	hospital,
+	titleColor,
+	bodyColor,
+	onPress,
+	compact = false,
+	cardWidth = null,
+	cardHeight = null,
+}) {
+	const cardStyle = compact
+		? styles.featuredStaticSlot
+		: [styles.featuredCard, cardWidth ? { width: cardWidth } : null, cardHeight ? { height: cardHeight } : null];
+	const imageStyle = compact ? styles.featuredStaticImage : styles.featuredCardImage;
+	const imageImageStyle = compact ? styles.featuredStaticImageStyle : styles.featuredCardImageStyle;
+
+	return (
+		<Pressable onPress={() => onPress?.(hospital)} style={cardStyle}>
+			<ImageBackground
+				source={FEATURED_HOSPITAL_IMAGE}
+				resizeMode="cover"
+				style={imageStyle}
+				imageStyle={imageImageStyle}
+			>
+				<LinearGradient
+					colors={["rgba(8,15,27,0.02)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0.72)"]}
+					style={StyleSheet.absoluteFill}
+				/>
+				<View style={styles.featuredCardContent}>
+					<Text numberOfLines={2} style={[styles.featuredTitle, { color: titleColor }]}>
+						{hospital?.name || "Hospital"}
+					</Text>
+					{buildFeaturedHospitalFeatures(hospital).length > 0 ? (
+						<Text numberOfLines={compact ? 2 : 1} style={[styles.featuredMeta, { color: bodyColor }]}>
+							{buildFeaturedHospitalFeatures(hospital).join(" | ")}
+						</Text>
+					) : null}
+				</View>
+			</ImageBackground>
+		</Pressable>
+	);
+}
+
+function buildVisibleHospitalSlots(featuredHospitals) {
+	const actualHospitals = Array.isArray(featuredHospitals) ? featuredHospitals.filter(Boolean) : [];
+
+	if (actualHospitals.length > 2) {
+		return {
+			items: actualHospitals,
+			useHorizontalScroll: true,
+		};
+	}
+
+	const placeholderCount = Math.max(0, 2 - actualHospitals.length);
+	return {
+		items: [
+			...actualHospitals.map((hospital) => ({ type: "hospital", hospital })),
+			...Array.from({ length: placeholderCount }, (_, index) => ({
+				type: "placeholder",
+				key: `placeholder-${index}`,
+			})),
+		],
+		useHorizontalScroll: false,
+	};
+}
+
+function HospitalRail({ featuredHospitals, titleColor, bodyColor, onOpenFeaturedHospital }) {
+	const { items, useHorizontalScroll } = buildVisibleHospitalSlots(featuredHospitals);
+	const { width: screenWidth } = useWindowDimensions();
+	const carouselCardWidth = useMemo(() => {
+		const computedWidth = Math.round(
+			(screenWidth - FEATURED_CAROUSEL_SIDE_PADDING * 2 - FEATURED_CAROUSEL_GAP * 2 - FEATURED_CAROUSEL_PEEK) / 2,
+		);
+		return Math.max(160, Math.min(computedWidth, 198));
+	}, [screenWidth]);
+	const carouselCardHeight = useMemo(() => Math.round(carouselCardWidth * 1.3), [carouselCardWidth]);
+
+	if (useHorizontalScroll) {
+		return (
+			<ScrollView
+				horizontal
+				showsHorizontalScrollIndicator={false}
+				decelerationRate="fast"
+				snapToAlignment="start"
+				snapToInterval={carouselCardWidth + FEATURED_CAROUSEL_GAP}
+				contentContainerStyle={[
+					styles.featuredScrollContent,
+					{
+						paddingLeft: FEATURED_CAROUSEL_SIDE_PADDING,
+						paddingRight: FEATURED_CAROUSEL_SIDE_PADDING,
+						gap: FEATURED_CAROUSEL_GAP,
+					},
+				]}
+			>
+				{items.map((hospital, index) => (
+					<FeaturedHospitalCard
+						key={hospital?.id || `${hospital?.name || "hospital"}-${index}`}
+						hospital={hospital}
+						titleColor={titleColor}
+						bodyColor={bodyColor}
+						onPress={onOpenFeaturedHospital}
+						cardWidth={carouselCardWidth}
+						cardHeight={carouselCardHeight}
+					/>
+				))}
+			</ScrollView>
+		);
+	}
+
+	return (
+		<View style={styles.featuredStaticRow}>
+			{items.map((item, index) =>
+				item?.type === "hospital" ? (
+					<FeaturedHospitalCard
+						key={item.hospital?.id || `${item.hospital?.name || "hospital"}-${index}`}
+						hospital={item.hospital}
+						titleColor={titleColor}
+						bodyColor={bodyColor}
+						onPress={onOpenFeaturedHospital}
+						compact
+					/>
+				) : (
+					<FeaturedHospitalPlaceholderCard
+						key={item.key || `placeholder-${index}`}
+						titleColor={titleColor}
+						bodyColor={bodyColor}
+					/>
+				),
+			)}
+		</View>
 	);
 }
 
@@ -359,15 +650,20 @@ function MapExploreIntentSheet({
 	onChooseCare,
 	onOpenProfile,
 	onOpenCareHistory,
+	onOpenFeaturedHospital,
+	onSnapStateChange,
 	profileImageSource,
 	isSignedIn,
 	nearbyHospitalCount,
 	totalAvailableBeds,
 	nearbyBedHospitals,
+	featuredHospitals = [],
 }) {
 	const { isDarkMode } = useTheme();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const pulseProgress = useRef(new Animated.Value(0)).current;
+	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
+	const isExpanded = snapState === MAP_SHEET_SNAP_STATES.EXPANDED;
 
 	useEffect(() => {
 		const pulseLoop = Animated.loop(
@@ -392,19 +688,25 @@ function MapExploreIntentSheet({
 		};
 	}, [pulseProgress]);
 
+	const handleSnapToggle = (nextState = null) => {
+		if (typeof onSnapStateChange !== "function") return;
+		onSnapStateChange(nextState || getNextSnapStateUp(snapState));
+	};
+
 	const topRow = (
-		<View style={styles.topRow}>
+		<View style={[styles.topRow, isCollapsed ? styles.topRowCollapsed : null]}>
 			<Pressable
 				onPress={onOpenSearch}
 				style={[
 					styles.searchPill,
+					isCollapsed ? styles.searchPillCollapsed : null,
 					{
 						borderRadius: tokens.cardRadius,
 						backgroundColor: tokens.searchSurface,
 					},
 				]}
 			>
-				<Ionicons name="search" size={20} color={tokens.titleColor} />
+				<Ionicons name="search" size={isCollapsed ? 18 : 20} color={tokens.titleColor} />
 				<Text style={[styles.searchText, { color: tokens.titleColor }]}>Search</Text>
 			</Pressable>
 
@@ -412,105 +714,142 @@ function MapExploreIntentSheet({
 				onPress={onOpenProfile}
 				userImageSource={profileImageSource}
 				isSignedIn={isSignedIn}
+				isCollapsed={isCollapsed}
 			/>
 		</View>
 	);
 
 	return (
-		<MapSheetShell sheetHeight={sheetHeight} snapState={snapState} topSlot={topRow}>
-			<Pressable
-				onPress={onOpenHospitals}
-				style={[
-					styles.hospitalCard,
-					{
-						borderRadius: tokens.cardRadius,
-						backgroundColor: tokens.strongCardSurface,
-					},
-				]}
-			>
-				<View
-					style={[
-						styles.hospitalIconWrap,
-						{
-							borderRadius: tokens.cardRadius - 10,
-							backgroundColor: tokens.mutedCardSurface,
-						},
-					]}
+		<MapSheetShell
+			sheetHeight={sheetHeight}
+			snapState={snapState}
+			topSlot={topRow}
+			onHandlePress={handleSnapToggle}
+		>
+			{isCollapsed ? null : (
+				<ScrollView
+					showsVerticalScrollIndicator={false}
+					scrollEnabled={isExpanded}
+					contentContainerStyle={styles.bodyScrollContent}
 				>
-					<MaterialCommunityIcons
-						name="hospital-building"
-						size={18}
-						color={isDarkMode ? "#F8FAFC" : "#86100E"}
-					/>
-				</View>
-				<View style={styles.hospitalCardCopy}>
-					<Text style={[styles.hospitalEyebrow, { color: tokens.mutedText }]}>
-						Nearest hospital
-					</Text>
-					<Text numberOfLines={1} style={[styles.hospitalTitle, { color: tokens.titleColor }]}>
-						{nearestHospital?.name || "Finding nearest hospital"}
-					</Text>
-					<Text numberOfLines={1} style={[styles.hospitalMeta, { color: tokens.bodyText }]}>
-						{nearestHospitalMeta.join(" | ") || "Tap to see nearby hospitals"}
-					</Text>
-				</View>
-				<Ionicons name="chevron-forward" size={18} color={tokens.mutedText} />
-			</Pressable>
+					<Pressable
+						onPress={onOpenHospitals}
+						style={[
+							styles.hospitalCard,
+							{
+								borderRadius: tokens.cardRadius,
+								backgroundColor: tokens.strongCardSurface,
+							},
+						]}
+					>
+						<View
+							style={[
+								styles.hospitalIconWrap,
+								{
+									borderRadius: tokens.cardRadius - 10,
+									backgroundColor: tokens.mutedCardSurface,
+								},
+							]}
+						>
+							<MaterialCommunityIcons
+								name="hospital-building"
+								size={18}
+								color={isDarkMode ? "#F8FAFC" : "#86100E"}
+							/>
+						</View>
+						<View style={styles.hospitalCardCopy}>
+							<Text style={[styles.hospitalEyebrow, { color: tokens.mutedText }]}>
+								Nearest hospital
+							</Text>
+							<Text numberOfLines={1} style={[styles.hospitalTitle, { color: tokens.titleColor }]}>
+								{nearestHospital?.name || "Finding nearest hospital"}
+							</Text>
+							<Text numberOfLines={1} style={[styles.hospitalMeta, { color: tokens.bodyText }]}>
+								{nearestHospitalMeta.join(" | ") || "Tap to see nearby hospitals"}
+							</Text>
+						</View>
+						<Ionicons name="chevron-forward" size={18} color={tokens.mutedText} />
+					</Pressable>
 
-			<Pressable
-				onPress={onOpenCareHistory}
-				style={({ pressed }) => [
-					styles.sectionTrigger,
-					pressed ? styles.sectionTriggerPressed : null,
-				]}
-			>
-				<Text style={[styles.sectionLabel, { color: tokens.mutedText }]}>Choose care</Text>
-				<Ionicons name="chevron-forward" size={16} color={tokens.mutedText} />
-			</Pressable>
+					<Pressable
+						onPress={onOpenCareHistory}
+						style={({ pressed }) => [
+							styles.sectionTrigger,
+							pressed ? styles.sectionTriggerPressed : null,
+						]}
+					>
+						<Text style={[styles.sectionLabel, { color: tokens.mutedText }]}>Choose care</Text>
+						<Ionicons name="chevron-forward" size={16} color={tokens.mutedText} />
+					</Pressable>
 
-			<View style={styles.careRow}>
-				<CareIntentOrb
-					label="Ambulance"
-					subtext={nearbyHospitalCount > 0 ? `${nearbyHospitalCount} nearby` : "Nearby help"}
-					iconName="ambulance"
-					colors={["#A11217", "#6D080D"]}
-					hierarchy="primary"
-					onPress={() => onChooseCare("ambulance")}
-					isSelected={selectedCare === "ambulance"}
-					titleColor={tokens.titleColor}
-					mutedColor={tokens.mutedText}
-					pulseProgress={pulseProgress}
-				/>
+					<View style={styles.careRow}>
+						<CareIntentOrb
+							label="Ambulance"
+							subtext={nearbyHospitalCount > 0 ? `${nearbyHospitalCount} nearby` : "Nearby help"}
+							iconName="ambulance"
+							colors={["#A11217", "#6D080D"]}
+							hierarchy="primary"
+							onPress={() => onChooseCare("ambulance")}
+							isSelected={selectedCare === "ambulance"}
+							titleColor={tokens.titleColor}
+							mutedColor={tokens.mutedText}
+							pulseProgress={pulseProgress}
+						/>
 
-				<CareIntentOrb
-					label="Bed space"
-					subtext={
-						totalAvailableBeds > 0
-							? `${totalAvailableBeds} available`
-							: nearbyBedHospitals > 0
-								? `${nearbyBedHospitals} nearby`
-								: "Nearby beds"
-					}
-					iconName="bed"
-					colors={["#6F8DA7", "#506A86"]}
-					hierarchy="secondary"
-					onPress={() => onChooseCare("bed")}
-					isSelected={selectedCare === "bed"}
-					titleColor={tokens.titleColor}
-					mutedColor={tokens.mutedText}
-				/>
+						<CareIntentOrb
+							label="Bed space"
+							subtext={
+								totalAvailableBeds > 0
+									? `${totalAvailableBeds} available`
+									: nearbyBedHospitals > 0
+										? `${nearbyBedHospitals} nearby`
+										: "Nearby beds"
+							}
+							iconName="bed"
+							colors={["#6F8DA7", "#506A86"]}
+							hierarchy="secondary"
+							onPress={() => onChooseCare("bed")}
+							isSelected={selectedCare === "bed"}
+							titleColor={tokens.titleColor}
+							mutedColor={tokens.mutedText}
+						/>
 
-				<CareIntentOrb
-					label="Compare"
-					subtext="All options"
-					iconName="format-list-bulleted"
-					colors={["#7A8592", "#596370"]}
-					hierarchy="tertiary"
-					onPress={onOpenCareHistory}
-					titleColor={tokens.titleColor}
-					mutedColor={tokens.mutedText}
-				/>
-			</View>
+						<CareIntentOrb
+							label="Compare"
+							subtext="All options"
+							iconName="format-list-bulleted"
+							colors={["#7A8592", "#596370"]}
+							hierarchy="tertiary"
+							onPress={onOpenCareHistory}
+							titleColor={tokens.titleColor}
+							mutedColor={tokens.mutedText}
+						/>
+					</View>
+
+					{isExpanded ? (
+						<>
+							<View style={styles.expandedSection}>
+								<View style={styles.featuredRailViewport}>
+									<HospitalRail
+										featuredHospitals={featuredHospitals}
+										titleColor="#F8FAFC"
+										bodyColor="rgba(248,250,252,0.82)"
+										onOpenFeaturedHospital={onOpenFeaturedHospital}
+									/>
+								</View>
+							</View>
+
+							<InAppBrowserLink
+								label="Terms & conditions"
+								url="https://ivisit.ng/terms"
+								color={tokens.mutedText}
+								style={styles.termsLink}
+								textStyle={styles.termsText}
+							/>
+						</>
+					) : null}
+				</ScrollView>
+			)}
 		</MapSheetShell>
 	);
 }
@@ -527,11 +866,14 @@ export default function MapSheetOrchestrator({
 	onChooseCare,
 	onOpenProfile,
 	onOpenCareHistory = () => {},
+	onOpenFeaturedHospital = () => {},
+	onSnapStateChange = () => {},
 	profileImageSource,
 	isSignedIn = false,
 	nearbyHospitalCount = 0,
 	totalAvailableBeds = 0,
 	nearbyBedHospitals = 0,
+	featuredHospitals = [],
 }) {
 	const sheetHeight = useMemo(
 		() => getMapSheetHeight(screenHeight, snapState),
@@ -553,6 +895,8 @@ export default function MapSheetOrchestrator({
 					onChooseCare={onChooseCare}
 					onOpenProfile={onOpenProfile}
 					onOpenCareHistory={onOpenCareHistory}
+					onOpenFeaturedHospital={onOpenFeaturedHospital}
+					onSnapStateChange={onSnapStateChange}
 					profileImageSource={
 						profileImageSource || require("../../assets/profile.jpg")
 					}
@@ -560,6 +904,7 @@ export default function MapSheetOrchestrator({
 					nearbyHospitalCount={nearbyHospitalCount}
 					totalAvailableBeds={totalAvailableBeds}
 					nearbyBedHospitals={nearbyBedHospitals}
+					featuredHospitals={featuredHospitals}
 				/>
 			);
 	}
@@ -589,7 +934,20 @@ const styles = StyleSheet.create({
 		alignSelf: "center",
 		height: 5,
 		borderRadius: 999,
-		marginBottom: 12,
+	},
+	dragZone: {
+		alignItems: "center",
+	},
+	handleTapTarget: {
+		alignSelf: "center",
+		paddingHorizontal: 8,
+		paddingTop: 0,
+		paddingBottom: 0,
+	},
+	handleTapTargetCollapsed: {
+		paddingHorizontal: 10,
+		paddingTop: 2,
+		paddingBottom: 2,
 	},
 	contentViewport: {
 		flex: 1,
@@ -598,7 +956,10 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
-		marginBottom: 16,
+		marginBottom: 24,
+	},
+	topRowCollapsed: {
+		marginBottom: 0,
 	},
 	searchPill: {
 		flex: 1,
@@ -608,10 +969,17 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		gap: 12,
 	},
+	searchPillCollapsed: {
+		minHeight: 44,
+		paddingHorizontal: 14,
+	},
 	searchText: {
 		fontSize: 18,
 		lineHeight: 24,
 		fontWeight: "700",
+	},
+	bodyScrollContent: {
+		paddingBottom: 6,
 	},
 	avatarPressable: {
 		width: 44,
@@ -620,10 +988,19 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
+	avatarPressableCollapsed: {
+		width: 40,
+		height: 40,
+	},
 	avatarImage: {
 		width: 42,
 		height: 42,
 		borderRadius: 21,
+	},
+	avatarImageCollapsed: {
+		width: 38,
+		height: 38,
+		borderRadius: 19,
 	},
 	avatarDot: {
 		position: "absolute",
@@ -636,13 +1013,20 @@ const styles = StyleSheet.create({
 		borderWidth: 2,
 		borderColor: "#FFFFFF",
 	},
+	avatarDotCollapsed: {
+		bottom: 1,
+		right: 0,
+		width: 10,
+		height: 10,
+		borderRadius: 5,
+	},
 	hospitalCard: {
 		paddingHorizontal: 14,
 		paddingVertical: 14,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 14,
-		marginBottom: 22,
+		marginBottom: 28,
 	},
 	hospitalIconWrap: {
 		width: 42,
@@ -670,17 +1054,20 @@ const styles = StyleSheet.create({
 		marginTop: 4,
 		fontSize: 14,
 		lineHeight: 18,
-		fontWeight: "500",
+		fontWeight: "400",
 	},
 	sectionTrigger: {
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 6,
 		alignSelf: "flex-start",
-		marginBottom: 18,
+		marginBottom: 24,
 	},
 	sectionTriggerPressed: {
 		opacity: 0.78,
+	},
+	sectionLabelBlock: {
+		marginBottom: 18,
 	},
 	sectionLabel: {
 		fontSize: 16,
@@ -692,6 +1079,91 @@ const styles = StyleSheet.create({
 		alignItems: "flex-start",
 		justifyContent: "space-between",
 		gap: 10,
+	},
+	expandedSection: {
+		marginTop: 32,
+	},
+	featuredRailViewport: {
+		marginHorizontal: -18,
+		overflow: "hidden",
+	},
+	featuredScrollContent: {
+		paddingLeft: 18,
+		paddingRight: 18,
+		gap: 12,
+	},
+	featuredStaticRow: {
+		flexDirection: "row",
+		alignItems: "stretch",
+		gap: 10,
+		paddingHorizontal: 18,
+	},
+	featuredCard: {
+		width: 188,
+		height: 246,
+		borderRadius: 30,
+		overflow: "hidden",
+	},
+	featuredStaticSlot: {
+		flex: 1,
+		height: 218,
+		borderRadius: 28,
+		overflow: "hidden",
+	},
+	featuredCardImage: {
+		flex: 1,
+		justifyContent: "flex-end",
+	},
+	featuredStaticImage: {
+		flex: 1,
+		justifyContent: "flex-end",
+	},
+	featuredCardImageStyle: {
+		borderRadius: 30,
+	},
+	featuredStaticImageStyle: {
+		borderRadius: 28,
+	},
+	featuredCardContent: {
+		paddingHorizontal: 14,
+		paddingVertical: 14,
+	},
+	featuredTitle: {
+		fontSize: 18,
+		lineHeight: 22,
+		fontWeight: "800",
+	},
+	featuredMeta: {
+		marginTop: 4,
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "400",
+	},
+	placeholderCard: {
+		backgroundColor: "rgba(255,255,255,0.03)",
+	},
+	placeholderCardInner: {
+		flex: 1,
+		borderRadius: 28,
+	},
+	placeholderCopy: {
+		flex: 1,
+		justifyContent: "flex-end",
+		paddingHorizontal: 14,
+		paddingVertical: 14,
+	},
+	termsLink: {
+		marginTop: 20,
+		alignSelf: "center",
+		alignItems: "center",
+		justifyContent: "center",
+		paddingVertical: 4,
+	},
+	termsText: {
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "400",
+		textAlign: "center",
 	},
 	careAction: {
 		flex: 1,

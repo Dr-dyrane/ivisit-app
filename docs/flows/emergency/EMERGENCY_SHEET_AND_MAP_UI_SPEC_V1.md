@@ -256,6 +256,7 @@ Persistent shell constants:
 - one content viewport
 - one optional footer slot
 - header hides only when the sheet reaches expanded
+- the handle supports drag up and drag down between snap states
 
 Returning-user rule:
 
@@ -269,57 +270,58 @@ Returning-user rule:
 
 Collapsed:
 
-- current place label
 - `Search`
+- avatar/profile trigger
 
 Collapsed purpose:
 
 - preserve map visibility
-- keep location editable
-- let the user return to the sheet quickly after looking at the map
+- keep one fast re-entry point to the intent flow
+- behave like a resting island, not a second screen
 
 Collapsed contents:
 
-- compact place label
-- quiet search affordance
+- search row
+- avatar/profile trigger
 - no intent buttons
 - no explanation block
 
 Collapsed visual order:
 
-1. Place title
-2. Search affordance
+1. Search row
+2. Avatar
 
 Collapsed behavior:
 
-- tap anywhere expands to mid
-- tap search expands directly to expanded
+- handle tap expands to `half`
+- search still opens the public iVisit search modal
+- avatar still opens profile / restore
 - no keyboard appears unless search is the user intent
 
 Collapsed example:
 
-- label: `Choose care`
-- title: `2217 Corinto Ct`
-- action: `Search`
+- search: `Search`
+- avatar: profile or guest placeholder
 
 Surface recommendation:
 
-- shallow rounded card
+- shallow rounded island
 - short height
 - translucent but readable
 - no heavy border
+- collapsed padding should compress aggressively so the island feels truly resting
 
 ## 3.2.4 Mid State
 
 Mid:
 
-- place label or resolved current area
 - search affordance
 - profile/avatar trigger
 - nearest hospital preview card
-- two intent actions:
+- three intent actions:
   - `Ambulance`
   - `Bed space`
+  - `Compare`
 
 Mid is the default state.
 
@@ -328,9 +330,9 @@ Mid contents, top to bottom:
 1. search row
 2. nearest hospital preview
 3. `Choose care`
-4. two large icon-first intent actions
+4. three large icon-first intent actions
 
-The simplest Apple Maps-like version does not need extra wrappers around the intent actions.
+The simplest Apple Maps-like version does not need extra wrappers around the intent actions. This is the fast decision layer, not the browse layer.
 
 Each intent action should include:
 
@@ -348,6 +350,9 @@ Recommended intent copy:
 - title: `Bed space`
 - support: available beds or nearby bed count
 
+- title: `Compare`
+- support: all options
+
 Mid interaction rules:
 
 - tapping an intent gives immediate pressed feedback
@@ -356,6 +361,9 @@ Mid interaction rules:
 - search opens its own modal
 - tapping the nearest hospital preview opens the nearby-hospitals modal
 - tapping the avatar opens profile shortcuts or restore-account entry
+- drag up expands to `expanded`
+- drag down collapses to `collapsed`
+- handle tap may still step upward as a secondary affordance
 
 Mid loading behavior:
 
@@ -382,53 +390,57 @@ Mid no-data behavior:
 
 Design recommendation for intent cards:
 
-- full-width stacked cards on phone
-- icon at leading edge
+- equal-width orb actions on phone
+- icon as the primary visual
 - title in strong weight
 - support in one quiet line
-- no tertiary metadata
-- no price, ETA, or hospital count yet
+- no extra wrapper cards around the orb row
+- no price or operational commitment yet
 
 ## 3.2.5 Expanded State
 
 Expanded:
 
-- full search field
-- live results
-- current location action
+- everything in `half`
+- hospital image cards
+- minimal terms link
 
 Expanded purpose:
 
-- correct or change the starting location
-- keep the same shell while moving from decision mode to search mode
+- preserve the same decision shell while adding light browse depth
+- support recall and discovery without interrupting the map
+- keep hospital exploration out of the default `half` state so urgency stays clear
 
 Expanded contents, top to bottom:
 
-1. compact state label
-2. search title
-3. active text field
-4. current location action
-5. recent or suggested places
-6. live search results
+1. search row
+2. nearest hospital preview
+3. `Choose care`
+4. intent orbs
+5. hospital image cards
+6. terms link
 
-Expanded search behavior:
+Expanded browse behavior:
 
-- focus moves to the search field immediately
-- keyboard should not hide the top search affordance
-- results update continuously
-- the first good result is visually elevated
-- selection feedback appears immediately on tap
+- header hides
+- the sheet grows to screen edges and bottom
+- drag down returns the sheet to `half`
+- if there are 3 or more real hospitals, the rail scrolls horizontally and the third card peeks
+- if there are only 1 or 2 real hospitals, render placeholder cards so the rail still shows 3 slots
+- each hospital card uses app-owned imagery with bottom overlay copy
+- each featured card opens a hospital details modal
 
-Expanded result row contents:
+Featured hospital card contents:
 
-- place name
-- locality or secondary address
-- optional current-location badge when relevant
+- hospital name
+- optional one quiet support line only
+- no icon badge on the card
+- larger portrait card ratio than the first pass
+- no section heading above the cards
 
-Expanded action behavior:
+Expanded footer:
 
-- tapping a result updates the map first
-- a preview pin may appear briefly while reverse resolution finishes
+- small unobtrusive `Terms & conditions` link only
 - then the sheet returns to mid with the new resolved place
 - intent actions become fully visible again once a place is chosen
 

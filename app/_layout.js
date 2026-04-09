@@ -93,6 +93,26 @@ export default function RootLayout() {
 	);
 }
 
+function getPublicAuthRouteFromUrl(url) {
+	if (typeof url !== "string" || !url) return null;
+
+	try {
+		const parsed = Linking.parse(url);
+		const normalizedPath = String(parsed?.path || "")
+			.replace(/^--\//, "")
+			.replace(/^\/+|\/+$/g, "");
+
+		if (normalizedPath === "map") return "/(auth)/map";
+		if (normalizedPath === "request-help") return "/(auth)/request-help";
+	} catch (error) {
+		console.warn("[DeepLink] Failed to parse initial URL:", error?.message || error);
+	}
+
+	if (url.includes("/map")) return "/(auth)/map";
+	if (url.includes("/request-help")) return "/(auth)/request-help";
+	return null;
+}
+
 /**
  * Stack navigator that observes auth state
  */
@@ -103,6 +123,8 @@ function AuthenticatedStack() {
 	const router = useRouter();
 	const segments = useSegments();
 	const pathname = usePathname();
+	const [initialRouteResolved, setInitialRouteResolved] = useState(false);
+	const [startupPublicRoute, setStartupPublicRoute] = useState(null);
 	const loadingBackground = Platform.OS === "web"
 		? getWelcomeRootBackground(isDarkMode)
 		: isDarkMode
@@ -123,12 +145,14 @@ function AuthenticatedStack() {
 	const { showModal, showSuccessModal, handleRestart, handleLater, handleDismissSuccess } = useOTAUpdates();
 
 	useEffect(() => {
+		let isMounted = true;
+
 		const handleDeepLink = async (event) => {
 			const url = event.url;
 			if (!url) return;
 
 			// Log URL scheme without exposing tokens
-			const urlScheme = url.split('://')[0] || 'unknown';
+			const urlScheme = url.split("://")[0] || "unknown";
 			console.log("[DeepLink] Received URL with scheme:", urlScheme);
 
 			// Let the dedicated auth callback page handle auth callbacks
@@ -147,6 +171,14 @@ function AuthenticatedStack() {
 				return;
 			}
 
+			const publicAuthRoute = getPublicAuthRouteFromUrl(url);
+			if (publicAuthRoute) {
+				console.log("[DeepLink] Restoring public route:", publicAuthRoute);
+				if (isMounted) setStartupPublicRoute(publicAuthRoute);
+				router.replace(publicAuthRoute);
+				return;
+			}
+
 			// Prevent loop on base app URLs
 			const isRootDevUrl = url.includes(":8081") && !url.includes("?") && !url.includes("#");
 			const isBaseUrl =
@@ -162,12 +194,27 @@ function AuthenticatedStack() {
 			}
 		};
 
-		Linking.getInitialURL().then((url) => {
-			if (url) handleDeepLink({ url });
-		});
+		const hydrateInitialRoute = async () => {
+			try {
+				const url = await Linking.getInitialURL();
+				if (url) {
+					await handleDeepLink({ url });
+				}
+			} finally {
+				if (isMounted) setInitialRouteResolved(true);
+			}
+		};
 
-		const subscription = Linking.addEventListener("url", handleDeepLink);
-		return () => subscription.remove();
+		hydrateInitialRoute();
+
+		const subscription = Linking.addEventListener("url", (event) => {
+			void handleDeepLink(event);
+			if (isMounted) setInitialRouteResolved(true);
+		});
+		return () => {
+			isMounted = false;
+			subscription.remove();
+		};
 	}, [user?.isAuthenticated, router]);
 
 	useEffect(() => {
@@ -176,10 +223,14 @@ function AuthenticatedStack() {
 			segments?.[0] === "(user)" &&
 			segments?.[1] === "(stacks)" &&
 			segments?.[2] === "complete-profile";
-		const isPublicMapFlow = pathname === "/map" || pathname === "/request-help";
+		const isPublicMapFlow =
+			pathname === "/map" ||
+			pathname === "/request-help" ||
+			startupPublicRoute === "/(auth)/map" ||
+			startupPublicRoute === "/(auth)/request-help";
 
-		// Don't do anything while auth is still loading
-		if (loading) {
+		// Don't do anything while auth is still loading or startup route has not resolved yet
+		if (loading || !initialRouteResolved) {
 			return;
 		}
 
@@ -211,7 +262,17 @@ function AuthenticatedStack() {
 		if (!isPublicMapFlow && (rootGroup === "(auth)" || rootGroup !== "(user)")) {
 			router.replace("/(user)/(tabs)");
 		}
-	}, [loading, pathname, router, segments, user]);
+	}, [initialRouteResolved, loading, pathname, router, segments, startupPublicRoute, user]);
+
+	useEffect(() => {
+		if (!startupPublicRoute) return;
+		if (
+			(startupPublicRoute === "/(auth)/map" && pathname === "/map") ||
+			(startupPublicRoute === "/(auth)/request-help" && pathname === "/request-help")
+		) {
+			setStartupPublicRoute(null);
+		}
+	}, [pathname, startupPublicRoute]);
 
 	return (
 		<>

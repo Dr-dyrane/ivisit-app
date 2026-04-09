@@ -100,5 +100,6 @@ New map surfaces should reuse these first:
 2. `mapMotionTokens`
 3. `mapSheetTokens`
 4. `useMapExploreFlow`
+5. `MapLocationModal` / `MapHospitalModal` task-sheet patterns
 
 Only create new one-off modal or motion behavior if the shared contract truly cannot express the state.

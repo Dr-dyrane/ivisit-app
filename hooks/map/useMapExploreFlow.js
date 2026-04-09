@@ -6,6 +6,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useGlobalLocation } from "../../contexts/GlobalLocationContext";
 import { useEmergency } from "../../contexts/EmergencyContext";
 import { useFABActions } from "../../contexts/FABContext";
+import { useVisits } from "../../contexts/VisitsContext";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 import {
 	buildHeaderLocationModel,
@@ -32,6 +33,7 @@ export function useMapExploreFlow() {
 	const { resetHeader } = useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
 	const { user } = useAuth();
+	const { visits = [] } = useVisits();
 	const { registerFAB, unregisterFAB } = useFABActions();
 	const {
 		userLocation: globalUserLocation,
@@ -55,14 +57,17 @@ export function useMapExploreFlow() {
 
 	const [locationSearchVisible, setLocationSearchVisible] = useState(false);
 	const [hospitalModalVisible, setHospitalModalVisible] = useState(false);
+	const [hospitalDetailsVisible, setHospitalDetailsVisible] = useState(false);
 	const [profileModalVisible, setProfileModalVisible] = useState(false);
 	const [guestProfileVisible, setGuestProfileVisible] = useState(false);
 	const [careHistoryVisible, setCareHistoryVisible] = useState(false);
+	const [recentVisitsVisible, setRecentVisitsVisible] = useState(false);
 	const [publicSearchVisible, setPublicSearchVisible] = useState(false);
 	const [authModalVisible, setAuthModalVisible] = useState(false);
 	const [selectedCare, setSelectedCare] = useState(null);
 	const [manualLocation, setManualLocation] = useState(null);
 	const [guestProfileEmail, setGuestProfileEmail] = useState("");
+	const [featuredHospital, setFeaturedHospital] = useState(null);
 	const [sheetMode, setSheetMode] = useState(MAP_SHEET_MODES.EXPLORE_INTENT);
 	const [sheetSnapState, setSheetSnapState] = useState(MAP_SHEET_SNAP_STATES.HALF);
 	const [mapReadiness, setMapReadiness] = useState({
@@ -265,6 +270,14 @@ export function useMapExploreFlow() {
 			}).length,
 		[discoveredHospitals],
 	);
+	const recentVisits = useMemo(
+		() => (Array.isArray(visits) ? visits.slice(0, 3) : []),
+		[visits],
+	);
+	const featuredHospitals = useMemo(
+		() => (Array.isArray(discoveredHospitals) ? discoveredHospitals.slice(0, 6) : []),
+		[discoveredHospitals],
+	);
 
 	const handleSearchLocation = useCallback((nextLocation) => {
 		if (!nextLocation?.location) return;
@@ -304,6 +317,17 @@ export function useMapExploreFlow() {
 			setHospitalModalVisible(true);
 		}
 	}, []);
+
+	const handleOpenFeaturedHospital = useCallback(
+		(hospital) => {
+			if (hospital?.id) {
+				selectHospital(hospital.id);
+			}
+			setFeaturedHospital(hospital || null);
+			setHospitalDetailsVisible(true);
+		},
+		[selectHospital],
+	);
 
 	const handleMapHospitalPress = useCallback(
 		(hospital) => {
@@ -380,12 +404,15 @@ export function useMapExploreFlow() {
 		guestProfileEmail,
 		guestProfileVisible,
 		handleChooseCare,
+		featuredHospital,
 		handleMapHospitalPress,
 		handleMapReadinessChange,
+		handleOpenFeaturedHospital,
 		handleOpenProfile,
 		handleSearchLocation,
 		handleSelectHospital,
 		handleUseCurrentLocation,
+		hospitalDetailsVisible,
 		hospitalModalVisible,
 		isBootstrappingDemo,
 		isLoadingHospitals,
@@ -401,19 +428,24 @@ export function useMapExploreFlow() {
 		profileImageSource,
 		profileModalVisible,
 		publicSearchVisible,
+		recentVisits,
+		recentVisitsVisible,
 		selectedCare,
 		setAuthModalVisible,
 		setCareHistoryVisible,
 		setGuestProfileEmail,
 		setGuestProfileVisible,
+		setHospitalDetailsVisible,
 		setHospitalModalVisible,
 		setLocationSearchVisible,
 		setProfileModalVisible,
 		setPublicSearchVisible,
+		setRecentVisitsVisible,
 		setSheetMode,
 		setSheetSnapState,
 		sheetMode,
 		sheetSnapState,
+		featuredHospitals,
 		totalAvailableBeds,
 	};
 }

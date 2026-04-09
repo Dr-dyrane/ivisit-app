@@ -111,6 +111,12 @@ export function SearchProvider({ children }) {
 	return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>;
 }
 
+export function SearchBoundary({ children }) {
+	const ctx = useContext(SearchContext);
+	if (ctx) return children;
+	return <SearchProvider>{children}</SearchProvider>;
+}
+
 export function useSearch() {
 	const ctx = useContext(SearchContext);
 	if (!ctx) throw new Error("useSearch must be used within a SearchProvider");
@@ -118,4 +124,3 @@ export function useSearch() {
 }
 
 export default SearchContext;
-

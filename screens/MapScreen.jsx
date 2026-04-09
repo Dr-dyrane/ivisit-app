@@ -1,10 +1,7 @@
 import React from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
-import { getEmergencyIntakeVariant } from "../components/emergency/intake/EmergencyIntakeOrchestrator";
 import EmergencyLocationPreviewMap from "../components/emergency/intake/EmergencyLocationPreviewMap";
-import EmergencyHospitalChoiceSheet from "../components/emergency/intake/EmergencyHospitalChoiceSheet";
-import EmergencyLocationSearchStageOrchestrator from "../components/emergency/intake/views/locationSearch/EmergencyLocationSearchStageOrchestrator";
 import MiniProfileModal from "../components/emergency/MiniProfileModal";
 import AuthInputModal from "../components/register/AuthInputModal";
 import MapSheetOrchestrator, { getMapSheetHeight } from "../components/map/MapSheetOrchestrator";
@@ -12,32 +9,35 @@ import MapGuestProfileModal from "../components/map/MapGuestProfileModal";
 import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
 import MapPublicSearchModal from "../components/map/MapPublicSearchModal";
 import MapExploreLoadingOverlay from "../components/map/MapExploreLoadingOverlay";
+import MapHospitalModal from "../components/map/MapHospitalModal";
+import MapHospitalDetailsModal from "../components/map/MapHospitalDetailsModal";
+import MapLocationModal from "../components/map/MapLocationModal";
+import MapRecentVisitsModal from "../components/map/MapRecentVisitsModal";
 import { useTheme } from "../contexts/ThemeContext";
 import { useMapExploreFlow } from "../hooks/map/useMapExploreFlow";
 
 export default function MapScreen() {
 	const { isDarkMode } = useTheme();
-	const { width, height, isWeb } = useAuthViewport();
-	const screenVariant = getEmergencyIntakeVariant({
-		platform: Platform.OS,
-		isWeb,
-		width,
-	});
+	const { height } = useAuthViewport();
 	const {
 		activeLocation,
 		authModalVisible,
 		careHistoryVisible,
 		currentLocationDetails,
 		discoveredHospitals,
+		featuredHospital,
 		guestProfileEmail,
 		guestProfileVisible,
 		handleChooseCare,
 		handleMapHospitalPress,
 		handleMapReadinessChange,
+		handleOpenFeaturedHospital,
 		handleOpenProfile,
 		handleSearchLocation,
 		handleSelectHospital,
 		handleUseCurrentLocation,
+		featuredHospitals,
+		hospitalDetailsVisible,
 		hospitalModalVisible,
 		isMapSurfaceReady,
 		isSignedIn,
@@ -49,15 +49,20 @@ export default function MapScreen() {
 		profileImageSource,
 		profileModalVisible,
 		publicSearchVisible,
+		recentVisits,
+		recentVisitsVisible,
 		selectedCare,
 		setAuthModalVisible,
 		setCareHistoryVisible,
 		setGuestProfileEmail,
 		setGuestProfileVisible,
+		setHospitalDetailsVisible,
 		setHospitalModalVisible,
 		setLocationSearchVisible,
 		setProfileModalVisible,
 		setPublicSearchVisible,
+		setRecentVisitsVisible,
+		setSheetSnapState,
 		sheetMode,
 		sheetSnapState,
 		totalAvailableBeds,
@@ -89,11 +94,16 @@ export default function MapScreen() {
 					onChooseCare={handleChooseCare}
 					onOpenProfile={handleOpenProfile}
 					onOpenCareHistory={() => setCareHistoryVisible(true)}
+					onOpenRecents={() => setRecentVisitsVisible(true)}
+					onOpenFeaturedHospital={handleOpenFeaturedHospital}
+					onSnapStateChange={setSheetSnapState}
 					profileImageSource={profileImageSource}
 					isSignedIn={isSignedIn}
 					nearbyHospitalCount={nearbyHospitalCount}
 					totalAvailableBeds={totalAvailableBeds}
 					nearbyBedHospitals={nearbyBedHospitals}
+					recentVisits={recentVisits}
+					featuredHospitals={featuredHospitals}
 				/>
 			</View>
 
@@ -104,8 +114,7 @@ export default function MapScreen() {
 				/>
 			) : null}
 
-			<EmergencyLocationSearchStageOrchestrator
-				variant={screenVariant}
+			<MapLocationModal
 				visible={locationSearchVisible}
 				onClose={() => setLocationSearchVisible(false)}
 				onUseCurrentLocation={handleUseCurrentLocation}
@@ -118,7 +127,7 @@ export default function MapScreen() {
 				onClose={() => setPublicSearchVisible(false)}
 			/>
 
-			<EmergencyHospitalChoiceSheet
+			<MapHospitalModal
 				visible={hospitalModalVisible}
 				onClose={() => setHospitalModalVisible(false)}
 				hospitals={discoveredHospitals}
@@ -129,8 +138,13 @@ export default function MapScreen() {
 					setHospitalModalVisible(false);
 					setLocationSearchVisible(true);
 				}}
-				variant={screenVariant}
-				statusMessage="Select the best hospital for this location."
+			/>
+
+			<MapHospitalDetailsModal
+				visible={hospitalDetailsVisible}
+				onClose={() => setHospitalDetailsVisible(false)}
+				hospital={featuredHospital}
+				onOpenHospitals={() => setHospitalModalVisible(true)}
 			/>
 
 			<MiniProfileModal
@@ -152,6 +166,11 @@ export default function MapScreen() {
 					setCareHistoryVisible(false);
 					handleChooseCare(mode);
 				}}
+			/>
+
+			<MapRecentVisitsModal
+				visible={recentVisitsVisible}
+				onClose={() => setRecentVisitsVisible(false)}
 			/>
 
 			<AuthInputModal

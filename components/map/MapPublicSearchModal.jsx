@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
-import { useSearch } from "../../contexts/SearchContext";
+import { SearchBoundary, useSearch } from "../../contexts/SearchContext";
 import { useSearchRanking } from "../../hooks/search/useSearchRanking";
 import EmergencySearchBar from "../emergency/EmergencySearchBar";
 import { COLORS } from "../../constants/colors";
@@ -42,7 +42,7 @@ function QueryChip({ label, onPress, titleColor, surfaceColor }) {
 	);
 }
 
-export default function MapPublicSearchModal({ visible, onClose }) {
+function MapPublicSearchModalContent({ visible, onClose }) {
 	const { isDarkMode } = useTheme();
 	const {
 		query,
@@ -201,6 +201,14 @@ export default function MapPublicSearchModal({ visible, onClose }) {
 				</>
 			)}
 		</MapModalShell>
+	);
+}
+
+export default function MapPublicSearchModal(props) {
+	return (
+		<SearchBoundary>
+			<MapPublicSearchModalContent {...props} />
+		</SearchBoundary>
 	);
 }
 

@@ -265,8 +265,8 @@ export default function WelcomeStageBase({
 						: metrics.secondaryActionHeight
 				}
 				fullWidth={false}
-				minWidth={intent.variant === "primary" ? 256 : 220}
-				maxWidth={intent.variant === "primary" ? (layout === "split" ? 332 : 348) : 264}
+				minWidth={intent.variant === "primary" ? (layout === "split" ? 256 : 296) : 220}
+				maxWidth={intent.variant === "primary" ? (layout === "split" ? 332 : 384) : 264}
 				style={{ alignSelf: layout === "split" ? "flex-start" : "center" }}
 				onPress={
 					intent.key === "emergency" ? onRequestHelp : onFindHospitalBed
@@ -316,6 +316,13 @@ export default function WelcomeStageBase({
 	};
 
 	const elevatedActionsMarginTop = Math.max(actionsMarginTop + 10, 30);
+	const isTallSingleLayout =
+		layout !== "split" && (height >= 850 || height / Math.max(width, 1) >= 1.95);
+	const shouldCenterSingleLayoutCluster = layout !== "split" && !viewport.isVeryShortHeight;
+	const resolvedActionsMarginTop =
+		layout === "split"
+			? elevatedActionsMarginTop
+			: Math.min(elevatedActionsMarginTop, isTallSingleLayout ? 18 : 24);
 	const heroTranslateX = heroMotion.interpolate({
 		inputRange: [0, 1],
 		outputRange: [-2, 2],
@@ -407,14 +414,14 @@ export default function WelcomeStageBase({
 
 	const actionBlock =
 		actionContainer === "well" ? (
-			<View style={[styles.actionWell, { marginTop: elevatedActionsMarginTop }]}>
+			<View style={[styles.actionWell, { marginTop: resolvedActionsMarginTop }]}>
 				<View style={styles.actions}>{actionButtons}</View>
 				{ctaFootnote}
 				{/* {signInPressable} */}
 			</View>
 		) : (
 			<>
-				<View style={[styles.actions, { marginTop: elevatedActionsMarginTop }]}>
+				<View style={[styles.actions, { marginTop: resolvedActionsMarginTop }]}>
 					{actionButtons}
 				</View>
 				{ctaFootnote}
@@ -423,9 +430,9 @@ export default function WelcomeStageBase({
 		);
 
 	const brandBlock = (
-		<View style={[styles.brandBlock, { opacity: 0.88 }]}> 
+		<View style={[styles.brandBlock, { opacity: 0.88 }]}>
 			<Image source={LOGO} resizeMode="contain" style={[styles.logo, { transform: [{ scale: 0.88 }] }]} />
-			<Text style={[styles.brandText, { opacity: 0.84 }]}>
+			<Text style={[styles.brandText, { opacity: 0.84 }]}> 
 				iVisit
 				<Text style={styles.brandDot}>.</Text>
 			</Text>
@@ -538,12 +545,24 @@ export default function WelcomeStageBase({
 							{heroBlock}
 						</>
 					) : (
-						<>
-							{brandBlock}
-							{heroBlock}
-							{copyBlock}
-							{actionBlock}
-						</>
+						<View style={{ width: "100%", flex: 1 }}>
+							<View style={{ width: "100%", alignItems: "center" }}>{brandBlock}</View>
+							<View
+								style={[
+									{
+										width: "100%",
+										flex: shouldCenterSingleLayoutCluster ? 1 : 0,
+										justifyContent: shouldCenterSingleLayoutCluster ? "center" : "flex-start",
+										alignItems: "center",
+										paddingTop: isTallSingleLayout ? 4 : 0,
+									},
+								]}
+							>
+								{heroBlock}
+								{copyBlock}
+							</View>
+							<View style={{ width: "100%", justifyContent: "flex-end" }}>{actionBlock}</View>
+						</View>
 					)}
 				</Animated.View>
 			</ScrollView>

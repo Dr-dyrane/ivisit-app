@@ -51,6 +51,8 @@ Applied to:
 - [MapPublicSearchModal.jsx](../../../components/map/MapPublicSearchModal.jsx)
 - [MapCareHistoryModal.jsx](../../../components/map/MapCareHistoryModal.jsx)
 - [MapGuestProfileModal.jsx](../../../components/map/MapGuestProfileModal.jsx)
+- [MapLocationModal.jsx](../../../components/map/MapLocationModal.jsx)
+- [MapHospitalModal.jsx](../../../components/map/MapHospitalModal.jsx)
 
 Shared behavior:
 
@@ -84,5 +86,5 @@ For `ios-mobile` solidification, build in this order:
 1. keep `MapScreen.jsx` thin
 2. add more sheet modes into `useMapExploreFlow.js`
 3. keep new modal tasks on `MapModalShell`
-4. move legacy location and hospital pickers onto the same shell family
-5. add a `MapScreenOrchestrator` once Android and web variants start to diverge
+4. add a `MapScreenOrchestrator` once Android and web variants start to diverge
+5. migrate any remaining map-adjacent legacy overlays only if they are reintroduced into `/map`
