@@ -1,10 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { Animated, Image, Text, View } from "react-native";
+import { Animated, Image, Platform, Text, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getMapSheetHeight, MAP_SHEET_SNAP_STATES } from "./MapSheetOrchestrator";
 import { getMapSheetTokens } from "./mapSheetTokens";
+import {
+	getMapViewportSurfaceConfig,
+	getMapViewportVariant,
+} from "./mapViewportConfig";
 import { styles } from "./mapExploreLoadingOverlay.styles";
 
 const MIN_VISIBLE_MS = 420;
@@ -17,6 +22,10 @@ export default function MapExploreLoadingOverlay({
 	backgroundImageUri = null,
 }) {
 	const { isDarkMode } = useTheme();
+	const insets = useSafeAreaInsets();
+	const { width: screenWidth } = useWindowDimensions();
+	const viewportVariant = getMapViewportVariant({ platform: Platform.OS, width: screenWidth });
+	const surfaceConfig = getMapViewportSurfaceConfig(viewportVariant);
 	const sheetHeight = useMemo(
 		() => getMapSheetHeight(screenHeight, snapState),
 		[screenHeight, snapState],
@@ -46,6 +55,21 @@ export default function MapExploreLoadingOverlay({
 			{ key: "map", label: "Map + route", status: "pending" },
 		],
 	};
+	const headerWidth = surfaceConfig.overlayHeaderMaxWidth
+		? Math.min(
+				surfaceConfig.overlayHeaderMaxWidth,
+				Math.max(280, screenWidth - surfaceConfig.overlayHeaderSideInset * 2),
+			)
+		: Math.max(0, screenWidth - surfaceConfig.overlayHeaderSideInset * 2);
+	const headerLeft = (screenWidth - headerWidth) / 2;
+	const sheetWidth = surfaceConfig.overlaySheetMaxWidth
+		? Math.min(
+				surfaceConfig.overlaySheetMaxWidth,
+				Math.max(320, screenWidth - surfaceConfig.overlaySheetSideInset * 2),
+			)
+		: Math.max(0, screenWidth - surfaceConfig.overlaySheetSideInset * 2);
+	const sheetLeft = (screenWidth - sheetWidth) / 2;
+	const sheetBottom = surfaceConfig.overlaySheetBottomInset;
 	const opacity = useRef(new Animated.Value(resolvedVisible ? 1 : 0)).current;
 	const visibleSinceRef = useRef(resolvedVisible ? Date.now() : 0);
 	const [isRendered, setIsRendered] = useState(resolvedVisible);
@@ -106,7 +130,16 @@ export default function MapExploreLoadingOverlay({
 			<BlurView
 				intensity={tokens.blurIntensity}
 				tint={isDarkMode ? "dark" : "light"}
-				style={[styles.headerGhost, { backgroundColor: ghostSurface }]}
+				style={[
+					styles.headerGhost,
+					{
+						backgroundColor: ghostSurface,
+						top: insets.top + surfaceConfig.overlayHeaderTopInset,
+						left: headerLeft,
+						right: undefined,
+						width: headerWidth,
+					},
+				]}
 			>
 				<View style={[styles.headerButtonGhost, { backgroundColor: ghostCard }]} />
 				<View style={styles.headerCopy}>
@@ -124,6 +157,15 @@ export default function MapExploreLoadingOverlay({
 					{
 						backgroundColor: ghostSurface,
 						height: sheetHeight,
+						width: sheetWidth,
+						left: sheetLeft,
+						right: undefined,
+						bottom: sheetBottom,
+						borderRadius: surfaceConfig.overlaySheetRadius,
+						paddingHorizontal: surfaceConfig.isCenteredSurface ? 16 : 12,
+						paddingTop: surfaceConfig.isCenteredSurface ? 14 : 10,
+						paddingBottom:
+							(surfaceConfig.isCenteredSurface ? 16 : 12) + (surfaceConfig.isCenteredSurface ? 0 : insets.bottom),
 					},
 				]}
 			>
@@ -132,7 +174,16 @@ export default function MapExploreLoadingOverlay({
 					<Text style={[styles.loadingEyebrow, { color: quietColor }]}>Nearby help</Text>
 					<Text style={[styles.loadingTitle, { color: titleColor }]}>{resolvedStatus.title}</Text>
 					{resolvedStatus.message ? (
-						<Text numberOfLines={1} style={[styles.loadingMessage, { color: bodyColor }]}>
+						<Text
+							numberOfLines={1}
+							style={[
+								styles.loadingMessage,
+								{
+									color: bodyColor,
+									maxWidth: surfaceConfig.isCenteredSurface ? "72%" : "86%",
+								},
+							]}
+						>
 							{resolvedStatus.message}
 						</Text>
 					) : null}

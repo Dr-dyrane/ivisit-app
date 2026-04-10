@@ -21,6 +21,10 @@ import {
 	MAP_MODAL_EXIT_MS,
 } from "./mapMotionTokens";
 import { getMapSheetHeight, MAP_SHEET_SNAP_STATES } from "./mapSheet.constants";
+import {
+	getMapViewportSurfaceConfig,
+	getMapViewportVariant,
+} from "./mapViewportConfig";
 import { styles } from "./mapModalShell.styles";
 
 const APPLE_MODAL_EASE = Easing.bezier(0.21, 0.47, 0.32, 0.98);
@@ -32,7 +36,7 @@ export default function MapModalShell({
 	minHeightRatio = 0.78,
 	maxHeightRatio = 0.9,
 	matchExpandedSheetHeight = true,
-	topClearance = Platform.OS === "web" ? 16 : 10,
+	topClearance = null,
 	showHandle = false,
 	scrollEnabled = true,
 	contentContainerStyle,
@@ -44,8 +48,10 @@ export default function MapModalShell({
 	const { isDarkMode } = useTheme();
 	const { lockHeaderHidden, unlockHeaderHidden, forceHeaderVisible } = useScrollAwareHeader();
 	const insets = useSafeAreaInsets();
-	const { height: screenHeight } = useWindowDimensions();
+	const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 	const isWeb = Platform.OS === "web";
+	const viewportVariant = getMapViewportVariant({ platform: Platform.OS, width: screenWidth });
+	const surfaceConfig = getMapViewportSurfaceConfig(viewportVariant);
 	const [shouldRender, setShouldRender] = useState(visible);
 	const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
@@ -130,7 +136,20 @@ export default function MapModalShell({
 	const closeBg = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)";
 	const handleColor = isDarkMode ? "rgba(148,163,184,0.54)" : "rgba(100,116,139,0.30)";
 	const expandedSheetHeight = getMapSheetHeight(screenHeight, MAP_SHEET_SNAP_STATES.EXPANDED);
-	const viewportMaxHeight = Math.max(360, screenHeight - insets.top - topClearance);
+	const resolvedTopClearance = topClearance ?? surfaceConfig.topClearance;
+	const hostWidth = surfaceConfig.modalMaxWidth
+		? Math.min(
+				surfaceConfig.modalMaxWidth,
+				Math.max(320, screenWidth - surfaceConfig.modalSideInset * 2),
+			)
+		: screenWidth;
+	const hostLeft = surfaceConfig.isCenteredSurface ? (screenWidth - hostWidth) / 2 : 0;
+	const hostBottom = surfaceConfig.isCenteredSurface ? surfaceConfig.modalBottomInset : 0;
+	const modalRadius = surfaceConfig.modalCornerRadius;
+	const viewportMaxHeight = Math.max(
+		360,
+		screenHeight - insets.top - resolvedTopClearance - hostBottom,
+	);
 	const resolvedHeight = matchExpandedSheetHeight
 		? Math.min(expandedSheetHeight, viewportMaxHeight)
 		: Math.min(screenHeight * maxHeightRatio, viewportMaxHeight);
@@ -138,10 +157,25 @@ export default function MapModalShell({
 		? resolvedHeight
 		: Math.min(screenHeight * minHeightRatio, resolvedHeight);
 	const maxHeight = resolvedHeight;
+	const surfaceShapeStyle = surfaceConfig.isCenteredSurface
+		? {
+				borderRadius: modalRadius,
+				borderTopLeftRadius: modalRadius,
+				borderTopRightRadius: modalRadius,
+				borderBottomLeftRadius: modalRadius,
+				borderBottomRightRadius: modalRadius,
+			}
+		: {
+				borderTopLeftRadius: modalRadius,
+				borderTopRightRadius: modalRadius,
+				borderBottomLeftRadius: 0,
+				borderBottomRightRadius: 0,
+			};
 	const modalContent = (
 		<View
 			style={[
 				styles.sheetSurface,
+				surfaceShapeStyle,
 				{
 					backgroundColor: surfaceColor,
 					minHeight,
@@ -209,18 +243,31 @@ export default function MapModalShell({
 			<Animated.View
 				style={[
 					styles.sheetHost,
+					surfaceShapeStyle,
+					surfaceConfig.isCenteredSurface
+						? {
+								width: hostWidth,
+								left: hostLeft,
+								right: undefined,
+								bottom: hostBottom,
+							}
+						: {
+								left: 0,
+								right: 0,
+								bottom: 0,
+							},
 					{
 						transform: [{ translateY: slideAnim }],
 					},
 				]}
 			>
 				{isWeb ? (
-					<View style={styles.sheetBlur}>{modalContent}</View>
+					<View style={[styles.sheetBlur, surfaceShapeStyle]}>{modalContent}</View>
 				) : (
 					<BlurView
 						intensity={isDarkMode ? 44 : 56}
 						tint={isDarkMode ? "dark" : "light"}
-						style={styles.sheetBlur}
+						style={[styles.sheetBlur, surfaceShapeStyle]}
 					>
 						{modalContent}
 					</BlurView>
