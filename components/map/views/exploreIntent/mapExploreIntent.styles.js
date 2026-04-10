@@ -569,6 +569,10 @@ export default StyleSheet.create({
 	intentCardPressable: {
 		flex: 1,
 	},
+	intentCardPulseStage: {
+		position: "relative",
+		overflow: "visible",
+	},
 	intentCardPressed: {
 		opacity: 0.94,
 		transform: [{ scale: 0.988 }],
@@ -588,6 +592,15 @@ export default StyleSheet.create({
 		top: -148,
 		backgroundColor: "rgba(255,255,255,0.28)",
 	},
+	intentCardPulseFloor: {
+		position: "absolute",
+		left: 28,
+		right: 28,
+		bottom: -16,
+		height: 28,
+		borderRadius: 999,
+		backgroundColor: "rgba(74, 8, 12, 0.52)",
+	},
 	intentCardPulseSheen: {
 		position: "absolute",
 		left: -24,
@@ -600,7 +613,7 @@ export default StyleSheet.create({
 		position: "absolute",
 		top: -32,
 		bottom: -32,
-		width: 140,
+		width: 186,
 		transform: [{ rotate: "16deg" }],
 	},
 	intentCardPulseSheenBandFill: {
@@ -623,7 +636,15 @@ export default StyleSheet.create({
 		borderRadius: 14,
 		alignItems: "center",
 		justifyContent: "center",
+		overflow: "visible",
 		backgroundColor: "rgba(255,255,255,0.14)",
+	},
+	intentCardIconAura: {
+		position: "absolute",
+		width: 72,
+		height: 72,
+		borderRadius: 36,
+		backgroundColor: "rgba(255,255,255,0.22)",
 	},
 	intentCardCheckBadge: {
 		width: 22,

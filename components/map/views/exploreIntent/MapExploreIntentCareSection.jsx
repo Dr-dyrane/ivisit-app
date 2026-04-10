@@ -135,9 +135,16 @@ function CareIntentCard({
 		!isPrimary && pulseProgress && !isSelected
 			? pulseProgress.interpolate({
 					inputRange: [0, 1],
-					outputRange: [0.94, 0.74],
+					outputRange: [0.92, 0.62],
 				})
 			: 1;
+	const cardRotateX =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 1],
+					outputRange: ["0deg", "-2.4deg"],
+				})
+			: "0deg";
 	const pulseSheenOpacity =
 		isPrimary && pulseProgress
 			? pulseProgress.interpolate({
@@ -157,6 +164,27 @@ function CareIntentCard({
 			? pulseProgress.interpolate({
 					inputRange: [0, 1],
 					outputRange: [0.92, 1.18],
+				})
+			: 1;
+	const pulseFloorOpacity =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 1],
+					outputRange: [0.18, 0.34],
+				})
+			: 0;
+	const pulseFloorScaleX =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 1],
+					outputRange: [0.94, 1.16],
+				})
+			: 1;
+	const pulseFloorScaleY =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 1],
+					outputRange: [0.92, 1.08],
 				})
 			: 1;
 	const pulseSheenTranslateX =
@@ -180,6 +208,20 @@ function CareIntentCard({
 					outputRange: [0, 0, -1.5, 0],
 				})
 			: 0;
+	const iconAuraOpacity =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 0.3, 0.62, 1],
+					outputRange: [0.12, 0.12, 0.34, 0.16],
+				})
+			: 0;
+	const iconAuraScale =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 0.3, 0.62, 1],
+					outputRange: [0.88, 0.88, 1.22, 0.94],
+				})
+			: 1;
 
 	return (
 		<Pressable
@@ -190,14 +232,31 @@ function CareIntentCard({
 			]}
 		>
 			<Animated.View
-				style={{
-					opacity: animatedOpacity,
-					transform: [
-						{ translateY: isSelected ? 0 : animatedTranslateY },
-						{ scale: isSelected ? 1.01 : animatedScale },
-					],
-				}}
+				style={[
+					styles.intentCardPulseStage,
+					{
+						opacity: animatedOpacity,
+						transform: [
+							{ perspective: 1000 },
+							{ translateY: isSelected ? 0 : animatedTranslateY },
+							{ scale: isSelected ? 1.01 : animatedScale },
+							{ rotateX: isSelected ? "0deg" : cardRotateX },
+						],
+					},
+				]}
 			>
+				{isPrimary && !isSelected ? (
+					<Animated.View
+						pointerEvents="none"
+						style={[
+							styles.intentCardPulseFloor,
+							{
+								opacity: pulseFloorOpacity,
+								transform: [{ scaleX: pulseFloorScaleX }, { scaleY: pulseFloorScaleY }],
+							},
+						]}
+					/>
+				) : null}
 				<LinearGradient
 					colors={colors}
 					start={{ x: 0.15, y: 0.12 }}
@@ -253,6 +312,18 @@ function CareIntentCard({
 							}}
 						>
 							<View style={styles.intentCardIconWrap}>
+								{isPrimary && !isSelected ? (
+									<Animated.View
+										pointerEvents="none"
+										style={[
+											styles.intentCardIconAura,
+											{
+												opacity: iconAuraOpacity,
+												transform: [{ scale: iconAuraScale }],
+											},
+										]}
+									/>
+								) : null}
 								<MaterialCommunityIcons name={iconName} size={isPrimary ? 24 : 21} color="#FFFFFF" />
 							</View>
 						</Animated.View>
