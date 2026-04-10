@@ -113,6 +113,7 @@ function CareIntentCard({
 	hierarchy = "secondary",
 	onPress,
 	isSelected = false,
+	showSubtext = true,
 }) {
 	const isPrimary = hierarchy === "primary";
 
@@ -141,10 +142,16 @@ function CareIntentCard({
 						<View style={styles.intentCardCheckBadge}>
 							<Ionicons name="checkmark" size={12} color="#FFFFFF" />
 						</View>
-					) : null}
+					) : (
+						<View style={styles.intentCardChevronBadge}>
+							<Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.82)" />
+						</View>
+					)}
 				</View>
 				<Text style={styles.intentCardLabel}>{label}</Text>
-				<Text style={styles.intentCardSubtext}>{subtext}</Text>
+				{showSubtext && subtext ? (
+					<Text style={styles.intentCardSubtext}>{subtext}</Text>
+				) : null}
 			</LinearGradient>
 		</Pressable>
 	);
@@ -171,17 +178,29 @@ export default function MapExploreIntentCareSection({
 	if (layoutMode === "panel") {
 		return (
 			<>
-				<View style={styles.intentSectionHeader}>
+				<Pressable
+					onPress={onOpenCareHistory}
+					style={({ pressed }) => [
+						styles.intentSectionHeader,
+						styles.intentSectionHeaderTrigger,
+						pressed ? styles.sectionTriggerPressed : null,
+					]}
+				>
 					<Text style={[styles.sectionLabel, { color: mutedColor }]}>
 						{MAP_EXPLORE_INTENT_COPY.CHOOSE_CARE}
 					</Text>
-					<Text style={[styles.intentSectionMeta, { color: mutedColor }]}>
-						{getSelectedCareLabel(selectedCare)}
-					</Text>
-				</View>
+					<View
+						style={[
+							styles.intentSectionMetaIconWrap,
+							{ backgroundColor: "rgba(255,255,255,0.08)" },
+						]}
+					>
+						<Ionicons name="chevron-forward" size={14} color={mutedColor} />
+					</View>
+				</Pressable>
 
 				<View style={styles.intentPanelGrid}>
-					<View style={styles.intentPanelPrimary}>
+					<View style={styles.intentPanelFullSpan}>
 						<CareIntentCard
 							label={MAP_EXPLORE_INTENT_COPY.AMBULANCE}
 							subtext={ambulanceSubtext}
@@ -190,24 +209,31 @@ export default function MapExploreIntentCareSection({
 							hierarchy="primary"
 							onPress={() => onChooseCare("ambulance")}
 							isSelected={selectedCare === "ambulance"}
+							showSubtext={false}
 						/>
 					</View>
-					<View style={styles.intentPanelSecondaryColumn}>
-						<CareIntentCard
-							label={MAP_EXPLORE_INTENT_COPY.BED_SPACE}
-							subtext={bedSubtext}
-							iconName="bed"
-							colors={["#5F748E", "#4C6078"]}
-							onPress={() => onChooseCare("bed")}
-							isSelected={selectedCare === "bed"}
-						/>
-						<CareIntentCard
-							label={MAP_EXPLORE_INTENT_COPY.COMPARE}
-							subtext={MAP_EXPLORE_INTENT_COPY.COMPARE_SUBTEXT}
-							iconName="format-list-bulleted"
-							colors={["#737C88", "#596370"]}
-							onPress={onOpenCareHistory}
-						/>
+					<View style={styles.intentPanelBottomRow}>
+						<View style={styles.intentPanelHalf}>
+							<CareIntentCard
+								label={MAP_EXPLORE_INTENT_COPY.BED_SPACE}
+								subtext={bedSubtext}
+								iconName="bed"
+								colors={["#5F748E", "#4C6078"]}
+								onPress={() => onChooseCare("bed")}
+								isSelected={selectedCare === "bed"}
+								showSubtext={false}
+							/>
+						</View>
+						<View style={styles.intentPanelHalf}>
+							<CareIntentCard
+								label={MAP_EXPLORE_INTENT_COPY.COMPARE}
+								subtext={MAP_EXPLORE_INTENT_COPY.COMPARE_SUBTEXT}
+								iconName="format-list-bulleted"
+								colors={["#737C88", "#596370"]}
+								onPress={onOpenCareHistory}
+								showSubtext={false}
+							/>
+						</View>
 					</View>
 				</View>
 			</>

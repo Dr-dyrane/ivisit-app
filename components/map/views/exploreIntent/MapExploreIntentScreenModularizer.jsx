@@ -14,7 +14,14 @@ export default function MapExploreIntentScreenModularizer({
 	const panelMaxWidth = contentMaxWidth ? Math.min(contentMaxWidth * 1.55, 1180) : null;
 
 	const renderScreen = (
-		{ key, content, fullBleed = false, containerStyle = null },
+		{
+			key,
+			content,
+			fullBleed = false,
+			containerStyle = null,
+			panelFlex = 1,
+			panelMinWidth = 0,
+		},
 		{ inPanelRow = false } = {},
 	) => (
 		<View
@@ -27,7 +34,9 @@ export default function MapExploreIntentScreenModularizer({
 				!fullBleed && !inPanelRow && centerContent && contentMaxWidth
 					? { maxWidth: contentMaxWidth }
 					: null,
-				inPanelRow ? styles.screenPanelItem : null,
+				inPanelRow
+					? [styles.screenPanelItem, { flex: panelFlex, minWidth: panelMinWidth }]
+					: null,
 				containerStyle,
 			]}
 		>

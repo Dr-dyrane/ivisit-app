@@ -22,6 +22,65 @@ export const MAP_VIEWPORT_VARIANTS = {
 	WEB_ULTRA_WIDE: "web_ultra_wide",
 };
 
+const MOBILE_SURFACE_CONFIG = {
+	sheetLayout: "bottom-sheet",
+	modalPresentationMode: "bottom-sheet",
+	overlayLayout: "bottom-sheet",
+	sidebarMaxWidth: null,
+	drawerMaxWidth: null,
+	modalSideInset: 0,
+	modalBottomInset: 0,
+	modalCornerRadius: 38,
+	topClearance: Platform.OS === "web" ? 16 : 10,
+	overlayHeaderPlacement: "full",
+	overlayHeaderTopInset: Platform.OS === "web" ? 18 : 14,
+	overlayHeaderSideInset: 16,
+	overlayHeaderMaxWidth: null,
+	overlaySheetSideInset: 8,
+	overlaySheetBottomInset: 8,
+	overlaySheetMaxWidth: null,
+	overlaySheetRadius: 44,
+	mapOcclusionLeft: 0,
+	mapControlsMode: "bottom",
+	mapControlsRightInset: 14,
+	mapControlsTopInset: null,
+	mapControlsBottomInsetBase: 198,
+};
+
+function createSidebarSurfaceConfig({
+	sidebarMaxWidth,
+	drawerMaxWidth,
+	topClearance = 0,
+	overlayHeaderSideInset = 20,
+	mapControlsTopInset = 166,
+	mapControlsRightInset = 18,
+}) {
+	return {
+		sheetLayout: "left-sidebar",
+		modalPresentationMode: "left-drawer",
+		overlayLayout: "left-sidebar",
+		sidebarMaxWidth,
+		drawerMaxWidth,
+		modalSideInset: 0,
+		modalBottomInset: 0,
+		modalCornerRadius: 36,
+		topClearance,
+		overlayHeaderPlacement: "map",
+		overlayHeaderTopInset: 16,
+		overlayHeaderSideInset,
+		overlayHeaderMaxWidth: null,
+		overlaySheetSideInset: 0,
+		overlaySheetBottomInset: 0,
+		overlaySheetMaxWidth: sidebarMaxWidth,
+		overlaySheetRadius: 40,
+		mapOcclusionLeft: sidebarMaxWidth,
+		mapControlsMode: "top",
+		mapControlsRightInset,
+		mapControlsTopInset,
+		mapControlsBottomInsetBase: null,
+	};
+}
+
 export function getMapViewportVariant({ platform = Platform.OS, width = 0 }) {
 	const isWeb = platform === "web";
 
@@ -74,203 +133,113 @@ export function getMapViewportSurfaceConfig(
 	variant = MAP_VIEWPORT_VARIANTS.IOS_MOBILE,
 ) {
 	switch (variant) {
-		case MAP_VIEWPORT_VARIANTS.ANDROID_FOLD:
+		case MAP_VIEWPORT_VARIANTS.IOS_PAD:
 			return {
 				variant,
-				presentationMode: "modal",
-				isCenteredSurface: true,
-				modalMaxWidth: 620,
-				modalSideInset: 16,
-				modalBottomInset: 16,
-				modalCornerRadius: 42,
-				topClearance: 24,
-				overlayHeaderTopInset: 18,
-				overlayHeaderSideInset: 16,
-				overlayHeaderMaxWidth: 620,
-				overlaySheetSideInset: 16,
-				overlaySheetBottomInset: 16,
-				overlaySheetMaxWidth: 620,
-				overlaySheetRadius: 42,
+				...createSidebarSurfaceConfig({
+					sidebarMaxWidth: 420,
+					drawerMaxWidth: 468,
+					overlayHeaderSideInset: 20,
+					mapControlsTopInset: 164,
+				}),
 			};
 		case MAP_VIEWPORT_VARIANTS.ANDROID_TABLET:
 			return {
 				variant,
-				presentationMode: "panel",
-				isCenteredSurface: true,
-				modalMaxWidth: 760,
-				modalSideInset: 18,
-				modalBottomInset: 18,
-				modalCornerRadius: 42,
-				topClearance: 24,
-				overlayHeaderTopInset: 18,
-				overlayHeaderSideInset: 18,
-				overlayHeaderMaxWidth: 760,
-				overlaySheetSideInset: 18,
-				overlaySheetBottomInset: 18,
-				overlaySheetMaxWidth: 760,
-				overlaySheetRadius: 42,
+				...createSidebarSurfaceConfig({
+					sidebarMaxWidth: 430,
+					drawerMaxWidth: 476,
+					overlayHeaderSideInset: 20,
+					mapControlsTopInset: 164,
+				}),
 			};
 		case MAP_VIEWPORT_VARIANTS.ANDROID_CHROMEBOOK:
 			return {
 				variant,
-				presentationMode: "panel",
-				isCenteredSurface: true,
-				modalMaxWidth: 940,
-				modalSideInset: 20,
-				modalBottomInset: 20,
-				modalCornerRadius: 44,
-				topClearance: 28,
-				overlayHeaderTopInset: 18,
-				overlayHeaderSideInset: 20,
-				overlayHeaderMaxWidth: 940,
-				overlaySheetSideInset: 20,
-				overlaySheetBottomInset: 20,
-				overlaySheetMaxWidth: 940,
-				overlaySheetRadius: 44,
-			};
-		case MAP_VIEWPORT_VARIANTS.IOS_PAD:
-			return {
-				variant,
-				presentationMode: "modal",
-				isCenteredSurface: true,
-				modalMaxWidth: 700,
-				modalSideInset: 16,
-				modalBottomInset: 16,
-				modalCornerRadius: 42,
-				topClearance: 24,
-				overlayHeaderTopInset: 18,
-				overlayHeaderSideInset: 16,
-				overlayHeaderMaxWidth: 700,
-				overlaySheetSideInset: 16,
-				overlaySheetBottomInset: 16,
-				overlaySheetMaxWidth: 700,
-				overlaySheetRadius: 42,
-			};
-		case MAP_VIEWPORT_VARIANTS.WEB_SM_WIDE:
-			return {
-				variant,
-				presentationMode: "modal",
-				isCenteredSurface: true,
-				modalMaxWidth: 620,
-				modalSideInset: 16,
-				modalBottomInset: 16,
-				modalCornerRadius: 42,
-				topClearance: 24,
-				overlayHeaderTopInset: 18,
-				overlayHeaderSideInset: 16,
-				overlayHeaderMaxWidth: 620,
-				overlaySheetSideInset: 16,
-				overlaySheetBottomInset: 16,
-				overlaySheetMaxWidth: 620,
-				overlaySheetRadius: 42,
+				...createSidebarSurfaceConfig({
+					sidebarMaxWidth: 456,
+					drawerMaxWidth: 504,
+					overlayHeaderSideInset: 22,
+					mapControlsTopInset: 168,
+				}),
 			};
 		case MAP_VIEWPORT_VARIANTS.WEB_MD:
 			return {
 				variant,
-				presentationMode: "modal",
-				isCenteredSurface: true,
-				modalMaxWidth: 720,
-				modalSideInset: 18,
-				modalBottomInset: 18,
-				modalCornerRadius: 42,
-				topClearance: 24,
-				overlayHeaderTopInset: 18,
-				overlayHeaderSideInset: 18,
-				overlayHeaderMaxWidth: 720,
-				overlaySheetSideInset: 18,
-				overlaySheetBottomInset: 18,
-				overlaySheetMaxWidth: 720,
-				overlaySheetRadius: 42,
+				...createSidebarSurfaceConfig({
+					sidebarMaxWidth: 412,
+					drawerMaxWidth: 456,
+					overlayHeaderSideInset: 18,
+					mapControlsTopInset: 160,
+				}),
 			};
 		case MAP_VIEWPORT_VARIANTS.MACBOOK:
 			return {
 				variant,
-				presentationMode: "panel",
-				isCenteredSurface: true,
-				modalMaxWidth: 900,
-				modalSideInset: 20,
-				modalBottomInset: 20,
-				modalCornerRadius: 44,
-				topClearance: 28,
-				overlayHeaderTopInset: 18,
-				overlayHeaderSideInset: 20,
-				overlayHeaderMaxWidth: 900,
-				overlaySheetSideInset: 20,
-				overlaySheetBottomInset: 20,
-				overlaySheetMaxWidth: 900,
-				overlaySheetRadius: 44,
+				...createSidebarSurfaceConfig({
+					sidebarMaxWidth: 432,
+					drawerMaxWidth: 488,
+					overlayHeaderSideInset: 22,
+					mapControlsTopInset: 168,
+				}),
 			};
 		case MAP_VIEWPORT_VARIANTS.WEB_LG:
 			return {
 				variant,
-				presentationMode: "panel",
-				isCenteredSurface: true,
-				modalMaxWidth: 980,
-				modalSideInset: 20,
-				modalBottomInset: 20,
-				modalCornerRadius: 44,
-				topClearance: 28,
-				overlayHeaderTopInset: 18,
-				overlayHeaderSideInset: 20,
-				overlayHeaderMaxWidth: 980,
-				overlaySheetSideInset: 20,
-				overlaySheetBottomInset: 20,
-				overlaySheetMaxWidth: 980,
-				overlaySheetRadius: 44,
+				...createSidebarSurfaceConfig({
+					sidebarMaxWidth: 452,
+					drawerMaxWidth: 504,
+					overlayHeaderSideInset: 24,
+					mapControlsTopInset: 170,
+				}),
 			};
 		case MAP_VIEWPORT_VARIANTS.WEB_XL:
 			return {
 				variant,
-				presentationMode: "panel",
-				isCenteredSurface: true,
-				modalMaxWidth: 1080,
-				modalSideInset: 24,
-				modalBottomInset: 20,
-				modalCornerRadius: 44,
-				topClearance: 28,
-				overlayHeaderTopInset: 18,
-				overlayHeaderSideInset: 24,
-				overlayHeaderMaxWidth: 1080,
-				overlaySheetSideInset: 24,
-				overlaySheetBottomInset: 20,
-				overlaySheetMaxWidth: 1080,
-				overlaySheetRadius: 44,
+				...createSidebarSurfaceConfig({
+					sidebarMaxWidth: 480,
+					drawerMaxWidth: 540,
+					overlayHeaderSideInset: 24,
+					mapControlsTopInset: 174,
+				}),
 			};
 		case MAP_VIEWPORT_VARIANTS.WEB_2XL_3XL:
 			return {
 				variant,
-				presentationMode: "panel",
-				isCenteredSurface: true,
-				modalMaxWidth: 1140,
-				modalSideInset: 24,
-				modalBottomInset: 20,
-				modalCornerRadius: 44,
-				topClearance: 28,
-				overlayHeaderTopInset: 18,
-				overlayHeaderSideInset: 24,
-				overlayHeaderMaxWidth: 1140,
-				overlaySheetSideInset: 24,
-				overlaySheetBottomInset: 20,
-				overlaySheetMaxWidth: 1140,
-				overlaySheetRadius: 44,
+				...createSidebarSurfaceConfig({
+					sidebarMaxWidth: 512,
+					drawerMaxWidth: 576,
+					overlayHeaderSideInset: 28,
+					mapControlsTopInset: 176,
+					mapControlsRightInset: 22,
+				}),
 			};
 		case MAP_VIEWPORT_VARIANTS.WEB_ULTRA_WIDE:
 			return {
 				variant,
-				presentationMode: "panel",
-				isCenteredSurface: true,
-				modalMaxWidth: 1220,
-				modalSideInset: 28,
-				modalBottomInset: 20,
-				modalCornerRadius: 44,
-				topClearance: 28,
-				overlayHeaderTopInset: 18,
-				overlayHeaderSideInset: 28,
-				overlayHeaderMaxWidth: 1220,
-				overlaySheetSideInset: 28,
-				overlaySheetBottomInset: 20,
-				overlaySheetMaxWidth: 1220,
-				overlaySheetRadius: 44,
+				...createSidebarSurfaceConfig({
+					sidebarMaxWidth: 540,
+					drawerMaxWidth: 608,
+					overlayHeaderSideInset: 32,
+					mapControlsTopInset: 182,
+					mapControlsRightInset: 24,
+				}),
+			};
+		case MAP_VIEWPORT_VARIANTS.ANDROID_FOLD:
+			return {
+				variant,
+				...MOBILE_SURFACE_CONFIG,
+				modalPresentationMode: "left-drawer",
+				drawerMaxWidth: 420,
+				modalCornerRadius: 34,
+			};
+		case MAP_VIEWPORT_VARIANTS.WEB_SM_WIDE:
+			return {
+				variant,
+				...MOBILE_SURFACE_CONFIG,
+				modalPresentationMode: "left-drawer",
+				drawerMaxWidth: 420,
+				modalCornerRadius: 34,
 			};
 		case MAP_VIEWPORT_VARIANTS.ANDROID_MOBILE:
 		case MAP_VIEWPORT_VARIANTS.WEB_MOBILE:
@@ -278,20 +247,12 @@ export function getMapViewportSurfaceConfig(
 		default:
 			return {
 				variant,
-				presentationMode: "sheet",
-				isCenteredSurface: false,
-				modalMaxWidth: null,
-				modalSideInset: 0,
-				modalBottomInset: 0,
-				modalCornerRadius: 38,
-				topClearance: Platform.OS === "web" ? 16 : 10,
-				overlayHeaderTopInset: Platform.OS === "web" ? 18 : 14,
-				overlayHeaderSideInset: 16,
-				overlayHeaderMaxWidth: null,
-				overlaySheetSideInset: 8,
-				overlaySheetBottomInset: 8,
-				overlaySheetMaxWidth: null,
-				overlaySheetRadius: 44,
+				...MOBILE_SURFACE_CONFIG,
 			};
 	}
+}
+
+export function isSidebarMapVariant(variant = MAP_VIEWPORT_VARIANTS.IOS_MOBILE) {
+	const surfaceConfig = getMapViewportSurfaceConfig(variant);
+	return surfaceConfig.sheetLayout === "left-sidebar";
 }

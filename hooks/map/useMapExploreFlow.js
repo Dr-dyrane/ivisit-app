@@ -20,6 +20,10 @@ import {
 	MAP_SHEET_MODES,
 	MAP_SHEET_SNAP_STATES,
 } from "../../components/map/MapSheetOrchestrator";
+import {
+	getMapViewportVariant,
+	isSidebarMapVariant,
+} from "../../components/map/mapViewportConfig";
 import { HEADER_MODES } from "../../constants/header";
 import HeaderBackButton from "../../components/navigation/HeaderBackButton";
 import HeaderLocationButton from "../../components/headers/HeaderLocationButton";
@@ -38,6 +42,14 @@ export function useMapExploreFlow() {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
 	const { width, height } = useWindowDimensions();
+	const viewportVariant = useMemo(
+		() => getMapViewportVariant({ platform: Platform.OS, width }),
+		[width],
+	);
+	const usesSidebarLayout = useMemo(
+		() => isSidebarMapVariant(viewportVariant),
+		[viewportVariant],
+	);
 	const { resetHeader, lockHeaderHidden, unlockHeaderHidden, forceHeaderVisible } = useScrollAwareHeader();
 	const { setHeaderState, resetHeaderState } = useHeaderState();
 	const { user } = useAuth();
@@ -81,7 +93,9 @@ export function useMapExploreFlow() {
 	const [guestProfileEmail, setGuestProfileEmail] = useState("");
 	const [featuredHospital, setFeaturedHospital] = useState(null);
 	const [sheetMode, setSheetMode] = useState(MAP_SHEET_MODES.EXPLORE_INTENT);
-	const [sheetSnapState, setSheetSnapState] = useState(MAP_SHEET_SNAP_STATES.HALF);
+	const [sheetSnapState, setSheetSnapState] = useState(() =>
+		usesSidebarLayout ? MAP_SHEET_SNAP_STATES.EXPANDED : MAP_SHEET_SNAP_STATES.HALF,
+	);
 	const [mapReadiness, setMapReadiness] = useState({
 		mapReady: false,
 		routeReady: false,
@@ -113,7 +127,7 @@ export function useMapExploreFlow() {
 	);
 	const shouldHideMapHeader =
 		!hasCompletedInitialMapLoad ||
-		sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED ||
+		(!usesSidebarLayout && sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED) ||
 		isModalFocused;
 	const profileImageSource = user?.imageUri
 		? { uri: user.imageUri }
@@ -173,7 +187,9 @@ export function useMapExploreFlow() {
 			forceHeaderVisible();
 			resetHeaderState();
 			setSheetMode(MAP_SHEET_MODES.EXPLORE_INTENT);
-			setSheetSnapState(MAP_SHEET_SNAP_STATES.HALF);
+			setSheetSnapState(
+				usesSidebarLayout ? MAP_SHEET_SNAP_STATES.EXPANDED : MAP_SHEET_SNAP_STATES.HALF,
+			);
 			return () => {
 				unlockHeaderHidden();
 				forceHeaderVisible();
@@ -187,6 +203,7 @@ export function useMapExploreFlow() {
 			setSheetMode,
 			setSheetSnapState,
 			unlockHeaderHidden,
+			usesSidebarLayout,
 		]),
 	);
 

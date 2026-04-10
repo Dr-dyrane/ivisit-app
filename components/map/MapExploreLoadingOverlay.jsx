@@ -26,9 +26,10 @@ export default function MapExploreLoadingOverlay({
 	const { width: screenWidth } = useWindowDimensions();
 	const viewportVariant = getMapViewportVariant({ platform: Platform.OS, width: screenWidth });
 	const surfaceConfig = getMapViewportSurfaceConfig(viewportVariant);
+	const usesSidebarLayout = surfaceConfig.overlayLayout === "left-sidebar";
 	const sheetHeight = useMemo(
-		() => getMapSheetHeight(screenHeight, snapState),
-		[screenHeight, snapState],
+		() => (usesSidebarLayout ? screenHeight : getMapSheetHeight(screenHeight, snapState)),
+		[screenHeight, snapState, usesSidebarLayout],
 	);
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const ghostSurface = isDarkMode ? "rgba(8,15,27,0.74)" : "rgba(248,250,252,0.76)";
@@ -55,21 +56,40 @@ export default function MapExploreLoadingOverlay({
 			{ key: "map", label: "Map + route", status: "pending" },
 		],
 	};
-	const headerWidth = surfaceConfig.overlayHeaderMaxWidth
+	const sidebarWidth = usesSidebarLayout
 		? Math.min(
-				surfaceConfig.overlayHeaderMaxWidth,
-				Math.max(280, screenWidth - surfaceConfig.overlayHeaderSideInset * 2),
+				surfaceConfig.overlaySheetMaxWidth || surfaceConfig.sidebarMaxWidth || Math.max(380, screenWidth * 0.38),
+				Math.max(320, screenWidth - 64),
 			)
-		: Math.max(0, screenWidth - surfaceConfig.overlayHeaderSideInset * 2);
-	const headerLeft = (screenWidth - headerWidth) / 2;
-	const sheetWidth = surfaceConfig.overlaySheetMaxWidth
-		? Math.min(
-				surfaceConfig.overlaySheetMaxWidth,
-				Math.max(320, screenWidth - surfaceConfig.overlaySheetSideInset * 2),
-			)
-		: Math.max(0, screenWidth - surfaceConfig.overlaySheetSideInset * 2);
-	const sheetLeft = (screenWidth - sheetWidth) / 2;
-	const sheetBottom = surfaceConfig.overlaySheetBottomInset;
+		: 0;
+	const headerLeft = usesSidebarLayout
+		? sidebarWidth + surfaceConfig.overlayHeaderSideInset
+		: (screenWidth -
+				(surfaceConfig.overlayHeaderMaxWidth
+					? Math.min(
+							surfaceConfig.overlayHeaderMaxWidth,
+							Math.max(280, screenWidth - surfaceConfig.overlayHeaderSideInset * 2),
+						)
+					: Math.max(0, screenWidth - surfaceConfig.overlayHeaderSideInset * 2))) /
+			2;
+	const headerWidth = usesSidebarLayout
+		? Math.max(260, screenWidth - headerLeft - surfaceConfig.overlayHeaderSideInset)
+		: surfaceConfig.overlayHeaderMaxWidth
+			? Math.min(
+					surfaceConfig.overlayHeaderMaxWidth,
+					Math.max(280, screenWidth - surfaceConfig.overlayHeaderSideInset * 2),
+				)
+			: Math.max(0, screenWidth - surfaceConfig.overlayHeaderSideInset * 2);
+	const sheetWidth = usesSidebarLayout
+		? sidebarWidth
+		: surfaceConfig.overlaySheetMaxWidth
+			? Math.min(
+					surfaceConfig.overlaySheetMaxWidth,
+					Math.max(320, screenWidth - surfaceConfig.overlaySheetSideInset * 2),
+				)
+			: Math.max(0, screenWidth - surfaceConfig.overlaySheetSideInset * 2);
+	const sheetLeft = usesSidebarLayout ? 0 : (screenWidth - sheetWidth) / 2;
+	const sheetBottom = usesSidebarLayout ? 0 : surfaceConfig.overlaySheetBottomInset;
 	const opacity = useRef(new Animated.Value(resolvedVisible ? 1 : 0)).current;
 	const visibleSinceRef = useRef(resolvedVisible ? Date.now() : 0);
 	const [isRendered, setIsRendered] = useState(resolvedVisible);
@@ -138,6 +158,7 @@ export default function MapExploreLoadingOverlay({
 						left: headerLeft,
 						right: undefined,
 						width: headerWidth,
+						borderRadius: usesSidebarLayout ? 26 : 28,
 					},
 				]}
 			>
@@ -161,15 +182,18 @@ export default function MapExploreLoadingOverlay({
 						left: sheetLeft,
 						right: undefined,
 						bottom: sheetBottom,
-						borderRadius: surfaceConfig.overlaySheetRadius,
-						paddingHorizontal: surfaceConfig.isCenteredSurface ? 16 : 12,
-						paddingTop: surfaceConfig.isCenteredSurface ? 14 : 10,
-						paddingBottom:
-							(surfaceConfig.isCenteredSurface ? 16 : 12) + (surfaceConfig.isCenteredSurface ? 0 : insets.bottom),
+						top: usesSidebarLayout ? 0 : undefined,
+						borderTopLeftRadius: usesSidebarLayout ? 0 : surfaceConfig.overlaySheetRadius,
+						borderTopRightRadius: surfaceConfig.overlaySheetRadius,
+						borderBottomLeftRadius: usesSidebarLayout ? 0 : surfaceConfig.overlaySheetRadius,
+						borderBottomRightRadius: surfaceConfig.overlaySheetRadius,
+						paddingHorizontal: usesSidebarLayout ? 16 : 12,
+						paddingTop: usesSidebarLayout ? insets.top + 12 : 10,
+						paddingBottom: usesSidebarLayout ? Math.max(insets.bottom, 16) : 12 + insets.bottom,
 					},
 				]}
 			>
-				<View style={[styles.handle, { backgroundColor: tokens.handleColor }]} />
+				{usesSidebarLayout ? null : <View style={[styles.handle, { backgroundColor: tokens.handleColor }]} />}
 				<View style={styles.loadingCopyBlock}>
 					<Text style={[styles.loadingEyebrow, { color: quietColor }]}>Nearby help</Text>
 					<Text style={[styles.loadingTitle, { color: titleColor }]}>{resolvedStatus.title}</Text>
@@ -180,7 +204,7 @@ export default function MapExploreLoadingOverlay({
 								styles.loadingMessage,
 								{
 									color: bodyColor,
-									maxWidth: surfaceConfig.isCenteredSurface ? "72%" : "86%",
+									maxWidth: usesSidebarLayout ? "88%" : "86%",
 								},
 							]}
 						>

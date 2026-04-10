@@ -52,6 +52,8 @@ export default function MapModalShell({
 	const isWeb = Platform.OS === "web";
 	const viewportVariant = getMapViewportVariant({ platform: Platform.OS, width: screenWidth });
 	const surfaceConfig = getMapViewportSurfaceConfig(viewportVariant);
+	const isDrawer = surfaceConfig.modalPresentationMode === "left-drawer";
+	const resolvedCloseOnBackdropPress = closeOnBackdropPress || isDrawer;
 	const [shouldRender, setShouldRender] = useState(visible);
 	const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
@@ -84,8 +86,14 @@ export default function MapModalShell({
 	]);
 
 	useEffect(() => {
+		const closedOffset = isDrawer
+			? -(surfaceConfig.drawerMaxWidth || surfaceConfig.sidebarMaxWidth || screenWidth) - 24
+			: screenHeight;
 		if (visible) {
 			setShouldRender(true);
+			if (!shouldRender) {
+				slideAnim.setValue(closedOffset);
+			}
 			Animated.parallel([
 				Animated.timing(slideAnim, {
 					toValue: 0,
@@ -109,7 +117,7 @@ export default function MapModalShell({
 
 		Animated.parallel([
 			Animated.timing(slideAnim, {
-				toValue: screenHeight,
+				toValue: closedOffset,
 				duration: MAP_MODAL_EXIT_MS,
 				easing: APPLE_MODAL_EASE,
 				useNativeDriver: true,
@@ -127,7 +135,7 @@ export default function MapModalShell({
 		});
 
 		return undefined;
-	}, [bgOpacity, screenHeight, shouldRender, slideAnim, visible]);
+	}, [bgOpacity, isDrawer, screenHeight, screenWidth, shouldRender, slideAnim, surfaceConfig.drawerMaxWidth, surfaceConfig.sidebarMaxWidth, visible]);
 
 	if (!shouldRender) return null;
 
@@ -137,32 +145,37 @@ export default function MapModalShell({
 	const handleColor = isDarkMode ? "rgba(148,163,184,0.54)" : "rgba(100,116,139,0.30)";
 	const expandedSheetHeight = getMapSheetHeight(screenHeight, MAP_SHEET_SNAP_STATES.EXPANDED);
 	const resolvedTopClearance = topClearance ?? surfaceConfig.topClearance;
-	const hostWidth = surfaceConfig.modalMaxWidth
+	const hostWidth = isDrawer
 		? Math.min(
-				surfaceConfig.modalMaxWidth,
-				Math.max(320, screenWidth - surfaceConfig.modalSideInset * 2),
+				surfaceConfig.drawerMaxWidth || surfaceConfig.sidebarMaxWidth || Math.max(360, screenWidth * 0.44),
+				Math.max(320, screenWidth - 48),
 			)
 		: screenWidth;
-	const hostLeft = surfaceConfig.isCenteredSurface ? (screenWidth - hostWidth) / 2 : 0;
-	const hostBottom = surfaceConfig.isCenteredSurface ? surfaceConfig.modalBottomInset : 0;
+	const hostLeft = isDrawer ? 0 : 0;
+	const hostBottom = isDrawer ? 0 : 0;
 	const modalRadius = surfaceConfig.modalCornerRadius;
-	const viewportMaxHeight = Math.max(
-		360,
-		screenHeight - insets.top - resolvedTopClearance - hostBottom,
-	);
-	const resolvedHeight = matchExpandedSheetHeight
-		? Math.min(expandedSheetHeight, viewportMaxHeight)
-		: Math.min(screenHeight * maxHeightRatio, viewportMaxHeight);
-	const minHeight = matchExpandedSheetHeight
-		? resolvedHeight
-		: Math.min(screenHeight * minHeightRatio, resolvedHeight);
+	const viewportMaxHeight = isDrawer
+		? screenHeight
+		: Math.max(
+				360,
+				screenHeight - insets.top - resolvedTopClearance - hostBottom,
+			);
+	const resolvedHeight = isDrawer
+		? screenHeight
+		: matchExpandedSheetHeight
+			? Math.min(expandedSheetHeight, viewportMaxHeight)
+			: Math.min(screenHeight * maxHeightRatio, viewportMaxHeight);
+	const minHeight = isDrawer
+		? screenHeight
+		: matchExpandedSheetHeight
+			? resolvedHeight
+			: Math.min(screenHeight * minHeightRatio, resolvedHeight);
 	const maxHeight = resolvedHeight;
-	const surfaceShapeStyle = surfaceConfig.isCenteredSurface
+	const surfaceShapeStyle = isDrawer
 		? {
-				borderRadius: modalRadius,
-				borderTopLeftRadius: modalRadius,
+				borderTopLeftRadius: 0,
 				borderTopRightRadius: modalRadius,
-				borderBottomLeftRadius: modalRadius,
+				borderBottomLeftRadius: 0,
 				borderBottomRightRadius: modalRadius,
 			}
 		: {
@@ -180,11 +193,12 @@ export default function MapModalShell({
 					backgroundColor: surfaceColor,
 					minHeight,
 					maxHeight,
+					paddingTop: isDrawer ? insets.top + 12 : 14,
 					paddingBottom: insets.bottom + 18,
 				},
 			]}
 		>
-			{showHandle ? (
+			{showHandle && !isDrawer ? (
 				<View style={styles.handleWrap}>
 					<View style={[styles.handle, { backgroundColor: handleColor }]} />
 				</View>
@@ -236,7 +250,7 @@ export default function MapModalShell({
 			<Animated.View style={[styles.backdrop, { opacity: bgOpacity }]}> 
 				<Pressable
 					style={styles.backdrop}
-					onPress={closeOnBackdropPress ? onClose : undefined}
+					onPress={resolvedCloseOnBackdropPress ? onClose : undefined}
 				/>
 			</Animated.View>
 
@@ -244,12 +258,13 @@ export default function MapModalShell({
 				style={[
 					styles.sheetHost,
 					surfaceShapeStyle,
-					surfaceConfig.isCenteredSurface
+					isDrawer
 						? {
 								width: hostWidth,
 								left: hostLeft,
 								right: undefined,
-								bottom: hostBottom,
+								top: 0,
+								bottom: 0,
 							}
 						: {
 								left: 0,
@@ -257,7 +272,7 @@ export default function MapModalShell({
 								bottom: 0,
 							},
 					{
-						transform: [{ translateY: slideAnim }],
+						transform: isDrawer ? [{ translateX: slideAnim }] : [{ translateY: slideAnim }],
 					},
 				]}
 			>

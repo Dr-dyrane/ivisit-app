@@ -15,6 +15,9 @@ export default StyleSheet.create({
 	sheetHostPanel: {
 		maxWidth: "100%",
 	},
+	sheetHostSidebar: {
+		maxWidth: "100%",
+	},
 	sheetUnderlay: {
 		position: "absolute",
 		top: 2,
@@ -31,6 +34,7 @@ export default StyleSheet.create({
 	},
 	sheetContent: {
 		flex: 1,
+		minHeight: 0,
 	},
 	handle: {
 		alignSelf: "center",
@@ -53,5 +57,6 @@ export default StyleSheet.create({
 	},
 	contentViewport: {
 		flex: 1,
+		minHeight: 0,
 	},
 });

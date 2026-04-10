@@ -8,6 +8,7 @@ import {
 	Platform,
 	StyleSheet,
 	Text,
+	useWindowDimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -16,6 +17,10 @@ import { useTheme } from "../contexts/ThemeContext";
 import { usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderState } from "../contexts/HeaderStateContext";
+import {
+	getMapViewportVariant,
+	isSidebarMapVariant,
+} from "./map/mapViewportConfig";
 
 /**
  * ThemeToggle
@@ -41,9 +46,17 @@ export default function ThemeToggle({ showLabel = true }) {
 	const pathname = usePathname();
 	const { headerState } = useHeaderState();
 	const insets = useSafeAreaInsets();
+	const { width } = useWindowDimensions();
 	const isAndroid = Platform.OS === "android";
 	const isWeb = Platform.OS === "web";
 	const isWelcomeRoute = pathname === "/";
+	const isMapRoute = pathname === "/map" || pathname === "/map-loading";
+	const mapViewportVariant = isMapRoute
+		? getMapViewportVariant({ platform: Platform.OS, width })
+		: null;
+	const usesMapSidebar = isMapRoute && mapViewportVariant
+		? isSidebarMapVariant(mapViewportVariant)
+		: false;
 	const shellSize = isWelcomeRoute ? 40 : 48;
 	const expandedHeight = isWelcomeRoute ? 92 : 110;
 	const targetOpacity = isWelcomeRoute ? 0.28 : 0.6;
@@ -80,7 +93,8 @@ export default function ThemeToggle({ showLabel = true }) {
 		: isWeb
 			? 94
 			: insets.top + 8 + 80 + 6;
-	const targetTop = !isWelcomeRoute && hasActiveHeader ? headerAwareTop : defaultTop;
+	const shouldReserveHeaderOffset = !isWelcomeRoute && (hasActiveHeader || usesMapSidebar);
+	const targetTop = shouldReserveHeaderOffset ? headerAwareTop : defaultTop;
 	// ------------------------
 	// Lifecycle Effects
 	// ------------------------

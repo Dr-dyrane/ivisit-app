@@ -85,16 +85,27 @@ export default function MapExploreIntentHospitalRail({
 	titleColor,
 	bodyColor,
 	onOpenFeaturedHospital,
+	availableWidth = null,
+	contained = false,
 }) {
 	const { width: screenWidth } = useWindowDimensions();
 	const items = useMemo(() => buildVisibleHospitalSlots(featuredHospitals), [featuredHospitals]);
+	const railWidth = Number.isFinite(availableWidth) && availableWidth > 0 ? availableWidth : screenWidth;
+	const sidePadding = contained ? 0 : MAP_EXPLORE_INTENT_RAIL.sidePadding;
+	const visibleCards = contained && railWidth >= 880 ? 3 : 2;
+	const railPeek = contained ? 0 : MAP_EXPLORE_INTENT_RAIL.peek;
 	const cardWidth = useMemo(() => {
 		const computedWidth = Math.round(
-			(screenWidth - MAP_EXPLORE_INTENT_RAIL.sidePadding * 2 - MAP_EXPLORE_INTENT_RAIL.gap * 2 - MAP_EXPLORE_INTENT_RAIL.peek) / 2,
+			(
+				railWidth -
+				sidePadding * 2 -
+				MAP_EXPLORE_INTENT_RAIL.gap * Math.max(visibleCards - 1, 0) -
+				railPeek
+			) / visibleCards,
 		);
-		return Math.max(184, Math.min(computedWidth, 224));
-	}, [screenWidth]);
-	const cardHeight = useMemo(() => Math.round(cardWidth * 1.36), [cardWidth]);
+		return Math.max(184, Math.min(computedWidth, contained ? 264 : 224));
+	}, [contained, railPeek, railWidth, sidePadding, visibleCards]);
+	const cardHeight = useMemo(() => Math.round(cardWidth * (contained ? 1.28 : 1.36)), [cardWidth, contained]);
 
 	return (
 		<ScrollView
@@ -106,8 +117,8 @@ export default function MapExploreIntentHospitalRail({
 			contentContainerStyle={[
 				styles.featuredScrollContent,
 				{
-					paddingLeft: MAP_EXPLORE_INTENT_RAIL.sidePadding,
-					paddingRight: MAP_EXPLORE_INTENT_RAIL.sidePadding,
+					paddingLeft: sidePadding,
+					paddingRight: sidePadding,
 					gap: MAP_EXPLORE_INTENT_RAIL.gap,
 				},
 			]}

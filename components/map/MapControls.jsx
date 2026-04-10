@@ -11,12 +11,13 @@ const MapControls = ({
     isDarkMode,
     topOffset,
     bottomOffset,
+    rightOffset = 14,
     secondaryIconName = "expand",
 }) => {
     const positionStyle =
         typeof bottomOffset === "number"
-            ? { bottom: bottomOffset }
-            : { top: topOffset };
+            ? { bottom: bottomOffset, right: rightOffset }
+            : { top: topOffset, right: rightOffset };
 
     return (
         <View style={[styles.controlsContainer, positionStyle]}>
@@ -77,7 +78,6 @@ const MapControls = ({
 const styles = StyleSheet.create({
     controlsContainer: {
         position: "absolute",
-        right: 14,
         zIndex: 10,
     },
     controlsPill: {

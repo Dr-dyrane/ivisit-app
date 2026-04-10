@@ -59,6 +59,7 @@ export default function MapExploreIntentStageBase({
 	const careLayoutMode = resolvedScreenConfig?.careLayoutMode || "canonical";
 	const hospitalSummaryMode = resolvedScreenConfig?.hospitalSummaryMode || "canonical";
 	const presentationMode = resolvedScreenConfig?.presentationMode || "sheet";
+	const isSidebarPresentation = presentationMode === "sidebar";
 	const shouldCenterContent = Boolean(resolvedScreenConfig?.centerContent);
 	const contentMaxWidth = resolvedScreenConfig?.contentMaxWidth || null;
 	const shellMaxWidth = resolvedScreenConfig?.shellMaxWidth || contentMaxWidth || null;
@@ -67,6 +68,16 @@ export default function MapExploreIntentStageBase({
 		const horizontalGutter = presentationMode === "panel" ? 28 : 16;
 		return Math.max(320, Math.min(shellMaxWidth, width - horizontalGutter * 2));
 	}, [presentationMode, shellMaxWidth, shouldCenterContent, width]);
+	const featuredRailWidth = useMemo(() => {
+		if (!shouldCenterContent) return null;
+		if (presentationMode === "panel" && shellWidth) {
+			return Math.max(320, shellWidth - 40);
+		}
+		if (contentMaxWidth) {
+			return contentMaxWidth;
+		}
+		return null;
+	}, [contentMaxWidth, presentationMode, shellWidth, shouldCenterContent]);
 	const screenSections = [
 		{
 			key: "hospital_summary",
@@ -85,6 +96,8 @@ export default function MapExploreIntentStageBase({
 					onOpenHospitals={onOpenHospitals}
 				/>
 			),
+			panelFlex: 1.16,
+			panelMinWidth: 320,
 		},
 		{
 			key: "care_selection",
@@ -102,15 +115,31 @@ export default function MapExploreIntentStageBase({
 					pulseProgress={pulseProgress}
 				/>
 			),
+			panelFlex: 0.92,
+			panelMinWidth: 280,
 		},
 		isExpanded
 			? {
 					key: "featured_hospitals",
-					fullBleed: true,
+					fullBleed: !shouldCenterContent,
+					containerStyle: shouldCenterContent && contentMaxWidth ? { maxWidth: contentMaxWidth } : null,
 					content: (
-						<View style={styles.expandedSection}>
-							<View style={styles.expandedSectionHeader}>
+						<View
+							style={[
+								styles.expandedSection,
+								shouldCenterContent ? styles.expandedSectionContained : null,
+							]}
+						>
+							<View
+								style={[
+									styles.expandedSectionHeader,
+									shouldCenterContent ? styles.expandedSectionHeaderContained : null,
+								]}
+							>
 								<Text style={styles.expandedSectionTitle}>Nearby now</Text>
+								{shouldCenterContent ? (
+									<Text style={styles.expandedSectionSubtext}>Live options worth opening next</Text>
+								) : null}
 							</View>
 							<View style={styles.featuredRailViewport}>
 								<MapExploreIntentHospitalRail
@@ -118,6 +147,8 @@ export default function MapExploreIntentStageBase({
 									titleColor="#F8FAFC"
 									bodyColor="rgba(248,250,252,0.82)"
 									onOpenFeaturedHospital={onOpenFeaturedHospital}
+									availableWidth={featuredRailWidth}
+									contained={shouldCenterContent}
 								/>
 							</View>
 						</View>
@@ -230,8 +261,15 @@ export default function MapExploreIntentStageBase({
 		>
 			{isCollapsed ? null : (
 				<ScrollView
+					style={styles.bodyScrollViewport}
 					showsVerticalScrollIndicator={false}
-					scrollEnabled={isExpanded || isCanonicalMobileIntent || isWebMobileVariant || shouldCenterContent}
+					scrollEnabled={
+						isSidebarPresentation ||
+						isExpanded ||
+						isCanonicalMobileIntent ||
+						isWebMobileVariant ||
+						shouldCenterContent
+					}
 					contentContainerStyle={[
 						styles.bodyScrollContent,
 						isWebMobileVariant ? styles.bodyScrollContentWebMobile : null,

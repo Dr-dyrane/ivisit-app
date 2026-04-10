@@ -1,10 +1,13 @@
-import React from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useEffect, useMemo } from "react";
+import { Platform, StyleSheet, View } from "react-native";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
 import EmergencyLocationPreviewMap from "../components/emergency/intake/EmergencyLocationPreviewMap";
 import MiniProfileModal from "../components/emergency/MiniProfileModal";
 import AuthInputModal from "../components/register/AuthInputModal";
-import MapSheetOrchestrator, { getMapSheetHeight } from "../components/map/MapSheetOrchestrator";
+import MapSheetOrchestrator, {
+	MAP_SHEET_SNAP_STATES,
+	getMapSheetHeight,
+} from "../components/map/MapSheetOrchestrator";
 import MapGuestProfileModal from "../components/map/MapGuestProfileModal";
 import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
 import MapPublicSearchModal from "../components/map/MapPublicSearchModal";
@@ -15,10 +18,15 @@ import MapLocationModal from "../components/map/MapLocationModal";
 import MapRecentVisitsModal from "../components/map/MapRecentVisitsModal";
 import { useTheme } from "../contexts/ThemeContext";
 import { useMapExploreFlow } from "../hooks/map/useMapExploreFlow";
+import {
+	getMapViewportSurfaceConfig,
+	getMapViewportVariant,
+	isSidebarMapVariant,
+} from "../components/map/mapViewportConfig";
 
 export default function MapScreen() {
 	const { isDarkMode } = useTheme();
-	const { height } = useAuthViewport();
+	const { width, height } = useAuthViewport();
 	const {
 		activeLocation,
 		authModalVisible,
@@ -69,6 +77,38 @@ export default function MapScreen() {
 		sheetSnapState,
 		totalAvailableBeds,
 	} = useMapExploreFlow();
+	const viewportVariant = useMemo(
+		() => getMapViewportVariant({ platform: Platform.OS, width }),
+		[width],
+	);
+	const surfaceConfig = useMemo(
+		() => getMapViewportSurfaceConfig(viewportVariant),
+		[viewportVariant],
+	);
+	const usesSidebarLayout = isSidebarMapVariant(viewportVariant);
+	const renderedSnapState = usesSidebarLayout
+		? MAP_SHEET_SNAP_STATES.EXPANDED
+		: sheetSnapState;
+	const bottomSheetHeight = useMemo(
+		() => (usesSidebarLayout ? 0 : getMapSheetHeight(height, renderedSnapState)),
+		[height, renderedSnapState, usesSidebarLayout],
+	);
+	const sidebarWidth = useMemo(
+		() =>
+			usesSidebarLayout
+				? Math.min(
+						surfaceConfig.sidebarMaxWidth || Math.max(400, width * 0.36),
+						Math.max(320, width - 48),
+					)
+				: 0,
+		[surfaceConfig.sidebarMaxWidth, usesSidebarLayout, width],
+	);
+
+	useEffect(() => {
+		if (usesSidebarLayout && sheetSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED) {
+			setSheetSnapState(MAP_SHEET_SNAP_STATES.EXPANDED);
+		}
+	}, [setSheetSnapState, sheetSnapState, usesSidebarLayout]);
 
 	return (
 		<View style={[styles.screen, { backgroundColor: isDarkMode ? "#08101B" : "#EEF3F8" }]}>
@@ -79,7 +119,12 @@ export default function MapScreen() {
 				placeLabel={currentLocationDetails?.primaryText}
 				interactive={isMapFrameReady}
 				onReadinessChange={handleMapReadinessChange}
-				bottomSheetHeight={getMapSheetHeight(height, sheetSnapState)}
+				bottomSheetHeight={bottomSheetHeight}
+				leftPanelWidth={sidebarWidth}
+				controlsMode={surfaceConfig.mapControlsMode}
+				controlsTopOffset={surfaceConfig.mapControlsTopInset}
+				controlsRightOffset={surfaceConfig.mapControlsRightInset}
+				controlsBottomOffsetBase={surfaceConfig.mapControlsBottomInsetBase}
 				onHospitalPress={handleMapHospitalPress}
 				showInternalSkeleton={false}
 			/>
@@ -87,7 +132,7 @@ export default function MapScreen() {
 			<View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
 				<MapSheetOrchestrator
 					mode={sheetMode}
-					snapState={sheetSnapState}
+					snapState={renderedSnapState}
 					screenHeight={height}
 					nearestHospital={nearestHospital}
 					nearestHospitalMeta={nearestHospitalMeta}
@@ -112,7 +157,7 @@ export default function MapScreen() {
 
 			<MapExploreLoadingOverlay
 				screenHeight={height}
-				snapState={sheetSnapState}
+				snapState={renderedSnapState}
 				status={mapLoadingState}
 				visible={mapLoadingState?.visible}
 				backgroundImageUri={loadingBackgroundImageUri}

@@ -15,11 +15,26 @@ const CENTERED_MODAL_CONFIG = {
 	centerContent: true,
 };
 
+const CENTERED_HERO_MODAL_CONFIG = {
+	...CENTERED_MODAL_CONFIG,
+	hospitalSummaryMode: "hero",
+	careLayoutMode: "panel",
+};
+
+const LEFT_SIDEBAR_CONFIG = {
+	...BASE_MOBILE_SCREEN_CONFIG,
+	presentationMode: "sidebar",
+	centerContent: true,
+	careLayoutMode: "panel",
+	hospitalSummaryMode: "hero",
+};
+
 const CENTERED_PANEL_CONFIG = {
 	...BASE_MOBILE_SCREEN_CONFIG,
 	presentationMode: "panel",
 	centerContent: true,
 	careLayoutMode: "panel",
+	hospitalSummaryMode: "hero",
 };
 
 const WEB_CANONICAL_MOBILE_CONFIG = {
@@ -34,25 +49,24 @@ export function getMapExploreIntentScreenConfig(
 	switch (variant) {
 		case MAP_INTENT_VARIANTS.ANDROID_FOLD:
 			return {
-				...CENTERED_MODAL_CONFIG,
+				...CENTERED_HERO_MODAL_CONFIG,
 				posture: "android_fold",
-				careLayoutMode: "canonical",
 				contentMaxWidth: 560,
 				shellMaxWidth: 620,
 			};
 		case MAP_INTENT_VARIANTS.ANDROID_TABLET:
 			return {
-				...CENTERED_PANEL_CONFIG,
+				...LEFT_SIDEBAR_CONFIG,
 				posture: "android_tablet",
-				contentMaxWidth: 620,
-				shellMaxWidth: 760,
+				contentMaxWidth: 388,
+				shellMaxWidth: 430,
 			};
 		case MAP_INTENT_VARIANTS.ANDROID_CHROMEBOOK:
 			return {
-				...CENTERED_PANEL_CONFIG,
+				...LEFT_SIDEBAR_CONFIG,
 				posture: "android_chromebook",
-				contentMaxWidth: 760,
-				shellMaxWidth: 940,
+				contentMaxWidth: 412,
+				shellMaxWidth: 456,
 			};
 		case MAP_INTENT_VARIANTS.ANDROID_MOBILE:
 			return {
@@ -61,11 +75,10 @@ export function getMapExploreIntentScreenConfig(
 			};
 		case MAP_INTENT_VARIANTS.IOS_PAD:
 			return {
-				...CENTERED_MODAL_CONFIG,
+				...LEFT_SIDEBAR_CONFIG,
 				posture: "ios_pad",
-				careLayoutMode: "canonical",
-				contentMaxWidth: 620,
-				shellMaxWidth: 700,
+				contentMaxWidth: 382,
+				shellMaxWidth: 420,
 			};
 		case MAP_INTENT_VARIANTS.WEB_MOBILE:
 			return {
@@ -83,47 +96,45 @@ export function getMapExploreIntentScreenConfig(
 			};
 		case MAP_INTENT_VARIANTS.WEB_MD:
 			return {
-				...CENTERED_MODAL_CONFIG,
+				...LEFT_SIDEBAR_CONFIG,
 				posture: "web_md",
-				hospitalSummaryMode: "web_canonical",
-				careLayoutMode: "web_canonical",
-				contentMaxWidth: 640,
-				shellMaxWidth: 720,
+				contentMaxWidth: 372,
+				shellMaxWidth: 412,
 			};
 		case MAP_INTENT_VARIANTS.MACBOOK:
 			return {
-				...CENTERED_PANEL_CONFIG,
+				...LEFT_SIDEBAR_CONFIG,
 				posture: "macbook",
-				contentMaxWidth: 720,
-				shellMaxWidth: 900,
+				contentMaxWidth: 392,
+				shellMaxWidth: 432,
 			};
 		case MAP_INTENT_VARIANTS.WEB_LG:
 			return {
-				...CENTERED_PANEL_CONFIG,
+				...LEFT_SIDEBAR_CONFIG,
 				posture: "web_lg",
-				contentMaxWidth: 780,
-				shellMaxWidth: 980,
+				contentMaxWidth: 408,
+				shellMaxWidth: 452,
 			};
 		case MAP_INTENT_VARIANTS.WEB_XL:
 			return {
-				...CENTERED_PANEL_CONFIG,
+				...LEFT_SIDEBAR_CONFIG,
 				posture: "web_xl",
-				contentMaxWidth: 860,
-				shellMaxWidth: 1080,
+				contentMaxWidth: 432,
+				shellMaxWidth: 480,
 			};
 		case MAP_INTENT_VARIANTS.WEB_2XL_3XL:
 			return {
-				...CENTERED_PANEL_CONFIG,
+				...LEFT_SIDEBAR_CONFIG,
 				posture: "web_2xl_3xl",
-				contentMaxWidth: 920,
-				shellMaxWidth: 1140,
+				contentMaxWidth: 458,
+				shellMaxWidth: 512,
 			};
 		case MAP_INTENT_VARIANTS.WEB_ULTRA_WIDE:
 			return {
-				...CENTERED_PANEL_CONFIG,
+				...LEFT_SIDEBAR_CONFIG,
 				posture: "web_ultra_wide",
-				contentMaxWidth: 1020,
-				shellMaxWidth: 1220,
+				contentMaxWidth: 486,
+				shellMaxWidth: 540,
 			};
 		case MAP_INTENT_VARIANTS.IOS_MOBILE:
 		default:

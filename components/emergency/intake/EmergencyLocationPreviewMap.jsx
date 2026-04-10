@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from "../../map/MapComponents";
@@ -66,7 +66,14 @@ function sortHospitalsForPreview(hospitals, selectedHospitalId) {
 		});
 }
 
-function buildRegionForPoints(points = [], bottomSheetHeight = 0) {
+function getHorizontalOcclusionBias(leftPanelWidth = 0, screenWidth = 0) {
+	if (!Number.isFinite(leftPanelWidth) || leftPanelWidth <= 0 || !Number.isFinite(screenWidth) || screenWidth <= 0) {
+		return 0;
+	}
+	return Math.min(0.22, Math.max(0.06, (leftPanelWidth / screenWidth) * 0.4));
+}
+
+function buildRegionForPoints(points = [], bottomSheetHeight = 0, leftPanelWidth = 0, screenWidth = 0) {
 	if (points.length <= 1) {
 		return buildRegion(points[0] || null);
 	}
@@ -90,28 +97,38 @@ function buildRegionForPoints(points = [], bottomSheetHeight = 0) {
 	);
 	const sheetBias = Math.min(0.18, Math.max(0.05, (Number(bottomSheetHeight) || 0) / 1500));
 	const normalizedBias = Math.min(0.12, Math.max(0.02, sheetBias));
+	const horizontalBias = getHorizontalOcclusionBias(leftPanelWidth, screenWidth);
 
 	return {
 		latitude: (minLat + maxLat) / 2 + latitudeDelta * normalizedBias,
-		longitude: (minLng + maxLng) / 2,
+		longitude: (minLng + maxLng) / 2 - longitudeDelta * horizontalBias,
 		latitudeDelta,
 		longitudeDelta,
 	};
 }
 
-function buildUserCenteredRegion(coordinate) {
+function buildUserCenteredRegion(coordinate, leftPanelWidth = 0, screenWidth = 0) {
 	if (!coordinate) return DEFAULT_REGION;
 	const latitudeDelta = 0.016;
 	const longitudeDelta = 0.016;
+	const horizontalBias = getHorizontalOcclusionBias(leftPanelWidth, screenWidth);
 	return {
 		latitude: coordinate.latitude - latitudeDelta * 0.16,
-		longitude: coordinate.longitude,
+		longitude: coordinate.longitude - longitudeDelta * horizontalBias,
 		latitudeDelta,
 		longitudeDelta,
 	};
 }
 
-function getRoutePadding(bottomSheetHeight = 0) {
+function getRoutePadding(bottomSheetHeight = 0, leftPanelWidth = 0) {
+	if (Number(leftPanelWidth) > 0) {
+		return {
+			top: 92,
+			right: 54,
+			bottom: 58,
+			left: Math.max(88, leftPanelWidth + 42),
+		};
+	}
 	return {
 		top: 136,
 		right: 42,
@@ -120,7 +137,15 @@ function getRoutePadding(bottomSheetHeight = 0) {
 	};
 }
 
-function getNearbyPadding(bottomSheetHeight = 0) {
+function getNearbyPadding(bottomSheetHeight = 0, leftPanelWidth = 0) {
+	if (Number(leftPanelWidth) > 0) {
+		return {
+			top: 88,
+			right: 56,
+			bottom: 62,
+			left: Math.max(92, leftPanelWidth + 46),
+		};
+	}
 	return {
 		top: 132,
 		right: 44,
@@ -143,11 +168,17 @@ export default function EmergencyLocationPreviewMap({
 	placeLabel = null,
 	interactive = false,
 	bottomSheetHeight = 0,
+	leftPanelWidth = 0,
+	controlsMode = "bottom",
+	controlsTopOffset = null,
+	controlsRightOffset = 14,
+	controlsBottomOffsetBase = 198,
 	onHospitalPress = null,
 	onReadinessChange = null,
 	showInternalSkeleton = true,
 }) {
 	const { isDarkMode } = useTheme();
+	const { width: screenWidth } = useWindowDimensions();
 	const mapRef = useRef(null);
 	const [isMapReady, setIsMapReady] = useState(false);
 	const [isNearbyOverview, setIsNearbyOverview] = useState(false);
@@ -209,8 +240,8 @@ export default function EmergencyLocationPreviewMap({
 		return [userCoordinate, ...dynamicHospitals].filter(Boolean);
 	}, [nearbyRadiusKm, userCoordinate, visibleHospitals]);
 	const region = useMemo(
-		() => buildRegionForPoints(routeBoundsCoordinates, bottomSheetHeight),
-		[bottomSheetHeight, routeBoundsCoordinates],
+		() => buildRegionForPoints(routeBoundsCoordinates, bottomSheetHeight, leftPanelWidth, screenWidth),
+		[bottomSheetHeight, leftPanelWidth, routeBoundsCoordinates, screenWidth],
 	);
 	const hasLocation = !!userCoordinate;
 	const hasRouteTargets = Boolean(userCoordinate && selectedHospitalCoordinate);
@@ -244,7 +275,7 @@ export default function EmergencyLocationPreviewMap({
 			typeof mapRef.current?.fitToCoordinates === "function"
 		) {
 			mapRef.current.fitToCoordinates(routeBoundsCoordinates, {
-				edgePadding: getRoutePadding(bottomSheetHeight),
+				edgePadding: getRoutePadding(bottomSheetHeight, leftPanelWidth),
 				animated: true,
 			});
 			setIsNearbyOverview(false);
@@ -253,7 +284,7 @@ export default function EmergencyLocationPreviewMap({
 
 		mapRef.current?.animateToRegion?.(region, 320);
 		setIsNearbyOverview(false);
-	}, [bottomSheetHeight, hasLocation, region, routeBoundsCoordinates]);
+	}, [bottomSheetHeight, hasLocation, leftPanelWidth, region, routeBoundsCoordinates]);
 
 	const fitNearbyHospitals = useCallback(() => {
 		if (!mapRef.current || !hasLocation) return;
@@ -263,7 +294,7 @@ export default function EmergencyLocationPreviewMap({
 			typeof mapRef.current?.fitToCoordinates === "function"
 		) {
 			mapRef.current.fitToCoordinates(nearbyOverviewCoordinates, {
-				edgePadding: getNearbyPadding(bottomSheetHeight),
+				edgePadding: getNearbyPadding(bottomSheetHeight, leftPanelWidth),
 				animated: true,
 			});
 			setIsNearbyOverview(true);
@@ -271,16 +302,24 @@ export default function EmergencyLocationPreviewMap({
 		}
 
 		mapRef.current?.animateToRegion?.(
-			buildRegionForPoints(nearbyOverviewCoordinates, bottomSheetHeight),
+			buildRegionForPoints(
+				nearbyOverviewCoordinates,
+				bottomSheetHeight,
+				leftPanelWidth,
+				screenWidth,
+			),
 			320,
 		);
 		setIsNearbyOverview(true);
-	}, [bottomSheetHeight, hasLocation, nearbyOverviewCoordinates]);
+	}, [bottomSheetHeight, hasLocation, leftPanelWidth, nearbyOverviewCoordinates, screenWidth]);
 
 	const centerOnUser = useCallback(() => {
 		if (!mapRef.current || !userCoordinate) return;
-		mapRef.current?.animateToRegion?.(buildUserCenteredRegion(userCoordinate), 320);
-	}, [userCoordinate]);
+		mapRef.current?.animateToRegion?.(
+			buildUserCenteredRegion(userCoordinate, leftPanelWidth, screenWidth),
+			320,
+		);
+	}, [leftPanelWidth, screenWidth, userCoordinate]);
 
 	useEffect(() => {
 		if (!mapRef.current || !hasLocation || !isMapReady) return;
@@ -461,7 +500,13 @@ export default function EmergencyLocationPreviewMap({
 					onExpand={fitNearbyHospitals}
 					isZoomedOut={isNearbyOverview}
 					isDarkMode={isDarkMode}
-					bottomOffset={Math.max(bottomSheetHeight + 14, 198)}
+					topOffset={controlsMode === "top" ? controlsTopOffset : undefined}
+					bottomOffset={
+						controlsMode === "top"
+							? undefined
+							: Math.max(bottomSheetHeight + 14, controlsBottomOffsetBase || 198)
+					}
+					rightOffset={controlsRightOffset}
 					secondaryIconName="scan-circle-outline"
 				/>
 			) : null}

@@ -8,6 +8,7 @@ import {
 	View,
 } from "react-native";
 import { BlurView } from "expo-blur";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { MAP_SHEET_SNAP_INDEX, MAP_SHEET_SNAP_STATES, getNextMapSheetSnapStateDown, getNextMapSheetSnapStateUp } from "./mapSheet.constants";
 import { MAP_SHEET_SNAP_SPRING } from "./mapMotionTokens";
@@ -25,20 +26,23 @@ export default function MapSheetShell({
 	children,
 }) {
 	const { isDarkMode } = useTheme();
+	const insets = useSafeAreaInsets();
 	const isAndroid = Platform.OS === "android";
-	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
+	const isSidebar = presentationMode === "sidebar";
+	const resolvedSnapState = isSidebar ? MAP_SHEET_SNAP_STATES.EXPANDED : snapState;
+	const isCollapsed = resolvedSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const useFloatingShell =
 		presentationMode !== "sheet" && Number.isFinite(shellWidth) && shellWidth > 0;
 	const snapProgress = useRef(
 		new Animated.Value(
-			MAP_SHEET_SNAP_INDEX[snapState] ?? MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.HALF],
+			MAP_SHEET_SNAP_INDEX[resolvedSnapState] ?? MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.HALF],
 		),
 	).current;
 	const dragTranslateY = useRef(new Animated.Value(0)).current;
 	const hasMountedRef = useRef(false);
 	const snapTarget =
-		MAP_SHEET_SNAP_INDEX[snapState] ??
+		MAP_SHEET_SNAP_INDEX[resolvedSnapState] ??
 		MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.HALF];
 	const snapSpringConfig = useMemo(
 		() => ({
@@ -117,28 +121,31 @@ export default function MapSheetShell({
 	const panResponder = useMemo(
 		() =>
 			PanResponder.create({
-				onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dy) > 4,
+				onMoveShouldSetPanResponder: (_, gestureState) =>
+					isSidebar ? false : Math.abs(gestureState.dy) > 4,
 				onPanResponderGrant: () => {
 					dragTranslateY.stopAnimation();
 				},
 				onPanResponderMove: (_, gestureState) => {
+					if (isSidebar) return;
 					const rawDy = gestureState.dy;
-					const minDy = snapState === MAP_SHEET_SNAP_STATES.EXPANDED ? 0 : -220;
-					const maxDy = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED ? 0 : 180;
+					const minDy = resolvedSnapState === MAP_SHEET_SNAP_STATES.EXPANDED ? 0 : -220;
+					const maxDy = resolvedSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED ? 0 : 180;
 					const clampedDy = Math.max(minDy, Math.min(maxDy, rawDy));
 					dragTranslateY.setValue(clampedDy);
 				},
 				onPanResponderRelease: (_, gestureState) => {
+					if (isSidebar) return;
 					const { dy, vy } = gestureState;
-					let nextState = snapState;
+					let nextState = resolvedSnapState;
 
 					if (dy <= -44 || vy <= -0.28) {
-						nextState = getNextMapSheetSnapStateUp(snapState);
+						nextState = getNextMapSheetSnapStateUp(resolvedSnapState);
 					} else if (dy >= 44 || vy >= 0.28) {
-						nextState = getNextMapSheetSnapStateDown(snapState);
+						nextState = getNextMapSheetSnapStateDown(resolvedSnapState);
 					}
 
-					if (nextState !== snapState) {
+					if (nextState !== resolvedSnapState) {
 						onHandlePress?.(nextState);
 					} else {
 						Animated.spring(dragTranslateY, {
@@ -156,8 +163,36 @@ export default function MapSheetShell({
 					}).start();
 				},
 			}),
-		[dragTranslateY, onHandlePress, snapSpringConfig, snapState],
+		[dragTranslateY, isSidebar, onHandlePress, resolvedSnapState, snapSpringConfig],
 	);
+
+	const sidebarShapeStyle = isSidebar
+		? {
+				borderTopLeftRadius: 0,
+				borderTopRightRadius: tokens.sheetRadius,
+				borderBottomLeftRadius: 0,
+				borderBottomRightRadius: tokens.sheetRadius,
+			}
+		: null;
+	const contentPaddingTop = isSidebar ? insets.top + 12 : topPadding;
+	const contentPaddingBottom = isSidebar ? Math.max(insets.bottom, 14) : bottomPadding;
+	const resolvedHostStyle = isSidebar
+		? {
+				left: 0,
+				top: 0,
+				bottom: 0,
+				width: useFloatingShell ? shellWidth : undefined,
+				height: undefined,
+				transform: [{ translateY: 0 }],
+			}
+		: {
+				left: useFloatingShell ? undefined : sideInset,
+				right: useFloatingShell ? undefined : sideInset,
+				width: useFloatingShell ? shellWidth : undefined,
+				bottom: bottomInset,
+				height: sheetHeight,
+				transform: [{ translateY: dragTranslateY }],
+			};
 
 	return (
 		<Animated.View
@@ -168,19 +203,18 @@ export default function MapSheetShell({
 				useFloatingShell ? styles.sheetHostFloating : null,
 				presentationMode === "modal" ? styles.sheetHostModal : null,
 				presentationMode === "panel" ? styles.sheetHostPanel : null,
+				presentationMode === "sidebar" ? styles.sheetHostSidebar : null,
 				tokens.shadowStyle,
-				{
-					left: useFloatingShell ? undefined : sideInset,
-					right: useFloatingShell ? undefined : sideInset,
-					width: useFloatingShell ? shellWidth : undefined,
-					bottom: bottomInset,
-					height: sheetHeight,
-					borderTopLeftRadius: topRadius,
-					borderTopRightRadius: topRadius,
-					borderBottomLeftRadius: bottomRadius,
-					borderBottomRightRadius: bottomRadius,
-					transform: [{ translateY: dragTranslateY }],
-				},
+				isSidebar ? sidebarShapeStyle : null,
+				resolvedHostStyle,
+				isSidebar
+					? null
+					: {
+							borderTopLeftRadius: topRadius,
+							borderTopRightRadius: topRadius,
+							borderBottomLeftRadius: bottomRadius,
+							borderBottomRightRadius: bottomRadius,
+						},
 			]}
 		>
 			{isAndroid ? (
@@ -188,13 +222,18 @@ export default function MapSheetShell({
 					pointerEvents="none"
 					style={[
 						styles.sheetUnderlay,
-						{
-							borderTopLeftRadius: topRadius,
-							borderTopRightRadius: topRadius,
-							borderBottomLeftRadius: bottomRadius,
-							borderBottomRightRadius: bottomRadius,
-							backgroundColor: tokens.glassUnderlay,
-						},
+						isSidebar ? sidebarShapeStyle : null,
+						isSidebar
+							? {
+									backgroundColor: tokens.glassUnderlay,
+								}
+							: {
+									borderTopLeftRadius: topRadius,
+									borderTopRightRadius: topRadius,
+									borderBottomLeftRadius: bottomRadius,
+									borderBottomRightRadius: bottomRadius,
+									backgroundColor: tokens.glassUnderlay,
+								},
 					]}
 				/>
 			) : null}
@@ -204,13 +243,18 @@ export default function MapSheetShell({
 				needsOffscreenAlphaCompositing={isAndroid}
 				style={[
 					styles.sheetClip,
-					{
-						borderTopLeftRadius: topRadius,
-						borderTopRightRadius: topRadius,
-						borderBottomLeftRadius: bottomRadius,
-						borderBottomRightRadius: bottomRadius,
-						backgroundColor: isAndroid ? tokens.glassSurface : "transparent",
-					},
+					isSidebar ? sidebarShapeStyle : null,
+					isSidebar
+						? {
+								backgroundColor: isAndroid ? tokens.glassSurface : "transparent",
+							}
+						: {
+								borderTopLeftRadius: topRadius,
+								borderTopRightRadius: topRadius,
+								borderBottomLeftRadius: bottomRadius,
+								borderBottomRightRadius: bottomRadius,
+								backgroundColor: isAndroid ? tokens.glassSurface : "transparent",
+							},
 				]}
 			>
 				{Platform.OS === "ios" ? (
@@ -225,26 +269,36 @@ export default function MapSheetShell({
 					pointerEvents="none"
 					style={[
 						StyleSheet.absoluteFillObject,
-						{
-							borderTopLeftRadius: topRadius,
-							borderTopRightRadius: topRadius,
-							borderBottomLeftRadius: bottomRadius,
-							borderBottomRightRadius: bottomRadius,
-							backgroundColor: tokens.glassBackdrop,
-						},
+						isSidebar ? sidebarShapeStyle : null,
+						isSidebar
+							? {
+									backgroundColor: tokens.glassBackdrop,
+								}
+							: {
+									borderTopLeftRadius: topRadius,
+									borderTopRightRadius: topRadius,
+									borderBottomLeftRadius: bottomRadius,
+									borderBottomRightRadius: bottomRadius,
+									backgroundColor: tokens.glassBackdrop,
+								},
 					]}
 				/>
 				<Animated.View
 					pointerEvents="none"
 					style={[
 						StyleSheet.absoluteFillObject,
-						{
-							borderTopLeftRadius: topRadius,
-							borderTopRightRadius: topRadius,
-							borderBottomLeftRadius: bottomRadius,
-							borderBottomRightRadius: bottomRadius,
-							backgroundColor: tokens.glassOverlay,
-						},
+						isSidebar ? sidebarShapeStyle : null,
+						isSidebar
+							? {
+									backgroundColor: tokens.glassOverlay,
+								}
+							: {
+									borderTopLeftRadius: topRadius,
+									borderTopRightRadius: topRadius,
+									borderBottomLeftRadius: bottomRadius,
+									borderBottomRightRadius: bottomRadius,
+									backgroundColor: tokens.glassOverlay,
+								},
 					]}
 				/>
 
@@ -253,32 +307,34 @@ export default function MapSheetShell({
 						styles.sheetContent,
 						{
 							paddingHorizontal: horizontalPadding,
-							paddingTop: topPadding,
-							paddingBottom: bottomPadding,
+							paddingTop: contentPaddingTop,
+							paddingBottom: contentPaddingBottom,
 						},
 					]}
 				>
-					<View {...panResponder.panHandlers} style={styles.dragZone}>
-						<Pressable
-							onPress={() => onHandlePress?.()}
-							hitSlop={isCollapsed ? { top: 14, bottom: 14, left: 16, right: 16 } : 12}
-							style={[
-								styles.handleTapTarget,
-								isCollapsed ? styles.handleTapTargetCollapsed : null,
-							]}
-						>
-							<Animated.View
+					{isSidebar ? null : (
+						<View {...panResponder.panHandlers} style={styles.dragZone}>
+							<Pressable
+								onPress={() => onHandlePress?.()}
+								hitSlop={isCollapsed ? { top: 14, bottom: 14, left: 16, right: 16 } : 12}
 								style={[
-									styles.handle,
-									{
-										width: handleWidth,
-										backgroundColor: tokens.handleColor,
-										marginBottom: handleBottomMargin,
-									},
+									styles.handleTapTarget,
+									isCollapsed ? styles.handleTapTargetCollapsed : null,
 								]}
-							/>
-						</Pressable>
-					</View>
+							>
+								<Animated.View
+									style={[
+										styles.handle,
+										{
+											width: handleWidth,
+											backgroundColor: tokens.handleColor,
+											marginBottom: handleBottomMargin,
+										},
+									]}
+								/>
+							</Pressable>
+						</View>
+					)}
 					{topSlot}
 					{children ? <View style={styles.contentViewport}>{children}</View> : null}
 					{footerSlot}
