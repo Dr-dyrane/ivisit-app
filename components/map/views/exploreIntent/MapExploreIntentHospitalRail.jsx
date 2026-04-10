@@ -15,6 +15,9 @@ function FeaturedHospitalPlaceholderCard({ cardWidth, cardHeight }) {
 				end={{ x: 0.86, y: 0.92 }}
 				style={styles.placeholderCardInner}
 			>
+				<View style={styles.placeholderCardHeader}>
+					<View style={styles.placeholderTopPillSkeleton} />
+				</View>
 				<View style={styles.placeholderCopy}>
 					<View style={styles.placeholderTitleBlock}>
 						<View style={styles.placeholderTitleSkeleton} />

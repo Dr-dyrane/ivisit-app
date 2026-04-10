@@ -46,6 +46,34 @@ function SummaryHeroMetric({ label, value, tint, tokens }) {
 	);
 }
 
+function SummaryLoadingCopy({ hero = false }) {
+	return (
+		<View style={[styles.summaryLoadingCopy, hero ? styles.summaryLoadingCopyHero : null]}>
+			<View
+				style={[
+					styles.summaryLoadingLine,
+					styles.summaryLoadingLineKicker,
+					hero ? styles.summaryLoadingLineHeroKicker : null,
+				]}
+			/>
+			<View
+				style={[
+					styles.summaryLoadingLine,
+					styles.summaryLoadingLineTitle,
+					hero ? styles.summaryLoadingLineHeroTitle : null,
+				]}
+			/>
+			<View
+				style={[
+					styles.summaryLoadingLine,
+					styles.summaryLoadingLineMeta,
+					hero ? styles.summaryLoadingLineHeroMeta : null,
+				]}
+			/>
+		</View>
+	);
+}
+
 export default function MapExploreIntentHospitalSummaryCard({
 	variant = MAP_INTENT_VARIANTS.IOS_MOBILE,
 	layoutMode = "canonical",
@@ -66,6 +94,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 	const usesCanonicalSummaryLayout =
 		layoutMode === "canonical" || layoutMode === "web_canonical";
 	const usesHeroSummaryLayout = layoutMode === "hero";
+	const isSummaryLoading = !nearestHospital?.name;
 	const heroMeta = nearestHospitalMeta.filter(Boolean).join(" | ");
 	const heroMetrics = [
 		{
@@ -108,15 +137,21 @@ export default function MapExploreIntentHospitalSummaryCard({
 					/>
 				</SummaryIconTile>
 				<View style={styles.hospitalCardCopy}>
-					<Text style={[styles.hospitalEyebrow, { color: tokens.mutedText }]}>
-						{MAP_EXPLORE_INTENT_COPY.NEAREST_HOSPITAL}
-					</Text>
-					<Text numberOfLines={1} style={[styles.hospitalTitle, { color: tokens.titleColor }]}>
-						{nearestHospital?.name || MAP_EXPLORE_INTENT_COPY.FINDING_NEAREST_HOSPITAL}
-					</Text>
-					<Text numberOfLines={1} style={[styles.hospitalMeta, { color: tokens.bodyText }]}>
-						{nearestHospitalMeta.join(" • ") || MAP_EXPLORE_INTENT_COPY.TAP_TO_SEE_HOSPITALS}
-					</Text>
+					{isSummaryLoading ? (
+						<SummaryLoadingCopy />
+					) : (
+						<>
+							<Text style={[styles.hospitalEyebrow, { color: tokens.mutedText }]}>
+								{MAP_EXPLORE_INTENT_COPY.NEAREST_HOSPITAL}
+							</Text>
+							<Text numberOfLines={1} style={[styles.hospitalTitle, { color: tokens.titleColor }]}>
+								{nearestHospital?.name || MAP_EXPLORE_INTENT_COPY.FINDING_NEAREST_HOSPITAL}
+							</Text>
+							<Text numberOfLines={1} style={[styles.hospitalMeta, { color: tokens.bodyText }]}>
+								{nearestHospitalMeta.join(" • ") || MAP_EXPLORE_INTENT_COPY.TAP_TO_SEE_HOSPITALS}
+							</Text>
+						</>
+					)}
 					{nearbyHospitalCount > 0 || totalAvailableBeds > 0 ? (
 						<View style={styles.intentSignalRow}>
 							{nearbyHospitalCount > 0 ? (
@@ -171,9 +206,13 @@ export default function MapExploreIntentHospitalSummaryCard({
 				/>
 				<View style={styles.summaryHeroHeader}>
 					<View style={[styles.summaryHeroBadge, { backgroundColor: tokens.mutedCardSurface }]}>
-						<Text style={[styles.summaryHeroBadgeText, { color: tokens.mutedText }]}>
-							Nearby now
-						</Text>
+						{isSummaryLoading ? (
+							<View style={styles.summaryHeroBadgeSkeleton} />
+						) : (
+							<Text style={[styles.summaryHeroBadgeText, { color: tokens.mutedText }]}>
+								{MAP_EXPLORE_INTENT_COPY.NOW}
+							</Text>
+						)}
 					</View>
 					<SummaryIconTile isDarkMode={isDarkMode}>
 						<MaterialCommunityIcons
@@ -184,15 +223,21 @@ export default function MapExploreIntentHospitalSummaryCard({
 					</SummaryIconTile>
 				</View>
 				<View style={styles.summaryHeroCopy}>
-					<Text style={[styles.summaryHeroEyebrow, { color: tokens.mutedText }]}>
-						{MAP_EXPLORE_INTENT_COPY.NEAREST_HOSPITAL}
-					</Text>
-					<Text numberOfLines={2} style={[styles.summaryHeroTitle, { color: tokens.titleColor }]}>
-						{nearestHospital?.name || MAP_EXPLORE_INTENT_COPY.FINDING_NEAREST_HOSPITAL}
-					</Text>
-					<Text numberOfLines={2} style={[styles.summaryHeroMeta, { color: tokens.bodyText }]}>
-						{heroMeta || MAP_EXPLORE_INTENT_COPY.TAP_TO_SEE_HOSPITALS}
-					</Text>
+					{isSummaryLoading ? (
+						<SummaryLoadingCopy hero />
+					) : (
+						<>
+							<Text style={[styles.summaryHeroEyebrow, { color: tokens.mutedText }]}>
+								Closest hospital
+							</Text>
+							<Text numberOfLines={2} style={[styles.summaryHeroTitle, { color: tokens.titleColor }]}>
+								{nearestHospital?.name || MAP_EXPLORE_INTENT_COPY.FINDING_NEAREST_HOSPITAL}
+							</Text>
+							<Text numberOfLines={2} style={[styles.summaryHeroMeta, { color: tokens.bodyText }]}>
+								{heroMeta || MAP_EXPLORE_INTENT_COPY.TAP_TO_SEE_HOSPITALS}
+							</Text>
+						</>
+					)}
 				</View>
 				<View style={styles.summaryHeroMetricGrid}>
 					{heroMetrics.map((metric) => (

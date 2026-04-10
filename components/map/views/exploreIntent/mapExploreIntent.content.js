@@ -16,7 +16,7 @@ export const MAP_EXPLORE_INTENT_COPY = {
 	BED_SPACE: "Bed space",
 	COMPARE: "Compare",
 	COMPARE_SUBTEXT: "All options",
-	FINDING_NEAREST_HOSPITAL: "Finding nearby care",
+	FINDING_NEAREST_HOSPITAL: "Finding care",
 	FINDING_NEARBY_HOSPITAL: "Finding care",
 	TAP_TO_SEE_HOSPITALS: "See nearby hospitals",
 	SEE_NEARBY_HOSPITALS: "See nearby hospitals",

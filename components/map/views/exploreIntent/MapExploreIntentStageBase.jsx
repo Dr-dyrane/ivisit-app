@@ -243,6 +243,7 @@ export default function MapExploreIntentStageBase({
 				shouldCenterContent ? styles.topRowCentered : null,
 				presentationMode === "modal" ? styles.topRowModal : null,
 				presentationMode === "panel" || isSidebarPresentation ? styles.topRowPanel : null,
+				isSidebarPresentation ? styles.topRowSidebar : null,
 				shouldCenterContent && shellMaxWidth ? { maxWidth: shellMaxWidth } : null,
 			]}
 		>

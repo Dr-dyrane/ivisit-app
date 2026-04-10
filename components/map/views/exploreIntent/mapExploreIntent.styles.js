@@ -32,15 +32,15 @@ export default StyleSheet.create({
 		marginBottom: 22,
 	},
 	topRowSidebar: {
-		paddingHorizontal: 0,
+		paddingHorizontal: 16,
 		marginBottom: 18,
 		gap: 10,
 	},
 	sidebarHeader: {
 		width: "100%",
 		alignSelf: "center",
-		paddingHorizontal: 0,
-		marginBottom: 12,
+		paddingHorizontal: 16,
+		marginBottom: 18,
 	},
 	sidebarHeaderRow: {
 		flexDirection: "row",
@@ -359,6 +359,47 @@ export default StyleSheet.create({
 		flex: 1,
 		textAlign: "right",
 	},
+	summaryLoadingCopy: {
+		flex: 1,
+		gap: 8,
+		paddingVertical: 1,
+	},
+	summaryLoadingCopyHero: {
+		paddingTop: 2,
+	},
+	summaryLoadingLine: {
+		borderRadius: 999,
+		backgroundColor: "rgba(148,163,184,0.18)",
+	},
+	summaryLoadingLineKicker: {
+		width: 82,
+		height: 10,
+	},
+	summaryLoadingLineTitle: {
+		width: "78%",
+		height: 18,
+	},
+	summaryLoadingLineMeta: {
+		width: "58%",
+		height: 12,
+	},
+	summaryLoadingLineHeroKicker: {
+		width: 104,
+	},
+	summaryLoadingLineHeroTitle: {
+		width: "72%",
+		height: 24,
+	},
+	summaryLoadingLineHeroMeta: {
+		width: "62%",
+		height: 13,
+	},
+	summaryHeroBadgeSkeleton: {
+		width: 34,
+		height: 10,
+		borderRadius: 999,
+		backgroundColor: "rgba(148,163,184,0.22)",
+	},
 	summaryIconShell: {
 		width: 42,
 		height: 42,
@@ -657,6 +698,18 @@ export default StyleSheet.create({
 	placeholderCardInner: {
 		flex: 1,
 		borderRadius: 28,
+		justifyContent: "space-between",
+	},
+	placeholderCardHeader: {
+		paddingHorizontal: 14,
+		paddingTop: 14,
+		alignItems: "flex-start",
+	},
+	placeholderTopPillSkeleton: {
+		width: 74,
+		height: 22,
+		borderRadius: 999,
+		backgroundColor: "rgba(248,250,252,0.16)",
 	},
 	placeholderCopy: {
 		flex: 1,
