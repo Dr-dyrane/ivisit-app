@@ -109,6 +109,9 @@ export default function MapExploreIntentStageBase({
 					fullBleed: true,
 					content: (
 						<View style={styles.expandedSection}>
+							<View style={styles.expandedSectionHeader}>
+								<Text style={styles.expandedSectionTitle}>Nearby now</Text>
+							</View>
 							<View style={styles.featuredRailViewport}>
 								<MapExploreIntentHospitalRail
 									featuredHospitals={featuredHospitals}

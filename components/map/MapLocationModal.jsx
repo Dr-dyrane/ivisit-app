@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import googlePlacesService from "../../services/googlePlacesService";
@@ -48,6 +49,30 @@ function mapSuggestionToLocation(suggestion) {
 	return null;
 }
 
+function SheetIconTile({ iconName, isDarkMode, isLoading = false }) {
+	const colors = isDarkMode
+		? ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.05)"]
+		: ["#FFFFFF", "#EEF2F7"];
+
+	return (
+		<View style={styles.sheetIconShell}>
+			<LinearGradient
+				colors={colors}
+				start={{ x: 0.08, y: 0 }}
+				end={{ x: 1, y: 1 }}
+				style={styles.sheetIconFill}
+			>
+				<View pointerEvents="none" style={styles.sheetIconHighlight} />
+				{isLoading ? (
+					<ActivityIndicator size="small" color={COLORS.brandPrimary} />
+				) : (
+					<Ionicons name={iconName} size={18} color={COLORS.brandPrimary} />
+				)}
+			</LinearGradient>
+		</View>
+	);
+}
+
 function LocationRow({
 	title,
 	subtitle,
@@ -56,18 +81,13 @@ function LocationRow({
 	titleColor,
 	mutedColor,
 	surfaceColor,
+	isDarkMode,
 	isLoading = false,
 }) {
 	return (
 		<Pressable onPress={onPress} style={[styles.resultRow, { backgroundColor: surfaceColor }]}>
 			<View style={styles.resultLeading}>
-				<View style={styles.resultIconWrap}>
-					{isLoading ? (
-						<ActivityIndicator size="small" color={COLORS.brandPrimary} />
-					) : (
-						<Ionicons name={iconName} size={18} color={COLORS.brandPrimary} />
-					)}
-				</View>
+				<SheetIconTile iconName={iconName} isDarkMode={isDarkMode} isLoading={isLoading} />
 				<View style={styles.resultCopy}>
 					<Text numberOfLines={1} style={[styles.resultTitle, { color: titleColor }]}>
 						{title}
@@ -102,9 +122,9 @@ export default function MapLocationModal({
 
 	const titleColor = isDarkMode ? "#F8FAFC" : "#111827";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
-	const inputSurface = isDarkMode ? "rgba(255,255,255,0.07)" : "#F8FAFC";
+	const inputSurface = isDarkMode ? "rgba(255,255,255,0.07)" : "#FFFFFF";
 	const groupedSurface = isDarkMode ? "rgba(255,255,255,0.045)" : "rgba(15,23,42,0.035)";
-	const cardSurface = isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.04)";
+	const cardSurface = isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.94)";
 
 	const handleDismiss = useCallback(() => {
 		setQuery("");
@@ -208,7 +228,7 @@ export default function MapLocationModal({
 					<TextInput
 						value={query}
 						onChangeText={setQuery}
-						placeholder="Change location"
+						placeholder="Search area"
 						placeholderTextColor={mutedColor}
 						style={[styles.input, { color: titleColor }]}
 						autoCapitalize="words"
@@ -230,6 +250,7 @@ export default function MapLocationModal({
 						titleColor={titleColor}
 						mutedColor={mutedColor}
 						surfaceColor={cardSurface}
+						isDarkMode={isDarkMode}
 					/>
 				</View>
 
@@ -367,13 +388,31 @@ const styles = StyleSheet.create({
 		flex: 1,
 		gap: 12,
 	},
-	resultIconWrap: {
+	sheetIconShell: {
 		width: 40,
 		height: 40,
 		borderRadius: 20,
-		backgroundColor: `${COLORS.brandPrimary}14`,
+		padding: 1,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.05,
+		shadowRadius: 6,
+		shadowOffset: { width: 0, height: 3 },
+	},
+	sheetIconFill: {
+		flex: 1,
+		borderRadius: 19,
 		alignItems: "center",
 		justifyContent: "center",
+		overflow: "hidden",
+	},
+	sheetIconHighlight: {
+		position: "absolute",
+		left: 1,
+		right: 1,
+		top: 1,
+		height: "42%",
+		borderRadius: 18,
+		backgroundColor: "rgba(255,255,255,0.2)",
 	},
 	resultCopy: {
 		flex: 1,

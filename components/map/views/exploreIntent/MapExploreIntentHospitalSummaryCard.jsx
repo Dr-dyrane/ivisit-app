@@ -1,8 +1,29 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { MAP_EXPLORE_INTENT_COPY, MAP_INTENT_VARIANTS } from "./mapExploreIntent.content";
 import styles from "./mapExploreIntent.styles";
+
+function SummaryIconTile({ children, isDarkMode, compact = false }) {
+	const colors = isDarkMode
+		? ["rgba(255,255,255,0.16)", "rgba(255,255,255,0.06)"]
+		: ["#FFFFFF", "#EAF0F7"];
+
+	return (
+		<View style={[styles.summaryIconShell, compact ? styles.summaryIconShellCompact : null]}>
+			<LinearGradient
+				colors={colors}
+				start={{ x: 0.08, y: 0 }}
+				end={{ x: 1, y: 1 }}
+				style={[styles.summaryIconFill, compact ? styles.summaryIconFillCompact : null]}
+			>
+				<View pointerEvents="none" style={styles.summaryIconHighlight} />
+				{children}
+			</LinearGradient>
+		</View>
+	);
+}
 
 export default function MapExploreIntentHospitalSummaryCard({
 	variant = MAP_INTENT_VARIANTS.IOS_MOBILE,
@@ -28,31 +49,24 @@ export default function MapExploreIntentHospitalSummaryCard({
 		return (
 			<Pressable
 				onPress={onOpenHospitals}
-				style={[
+				style={({ pressed }) => [
 					styles.hospitalCard,
 					isCentered ? styles.hospitalCardCentered : null,
 					isCentered && maxWidth ? { maxWidth } : null,
+					pressed ? styles.hospitalCardPressed : null,
 					{
 						borderRadius: tokens.cardRadius,
 						backgroundColor: tokens.strongCardSurface,
 					},
 				]}
 			>
-				<View
-					style={[
-						styles.hospitalIconWrap,
-						{
-							borderRadius: tokens.cardRadius - 10,
-							backgroundColor: tokens.mutedCardSurface,
-						},
-					]}
-				>
+				<SummaryIconTile isDarkMode={isDarkMode}>
 					<MaterialCommunityIcons
 						name="hospital-building"
 						size={18}
 						color={isDarkMode ? "#F8FAFC" : "#86100E"}
 					/>
-				</View>
+				</SummaryIconTile>
 				<View style={styles.hospitalCardCopy}>
 					<Text style={[styles.hospitalEyebrow, { color: tokens.mutedText }]}>
 						{MAP_EXPLORE_INTENT_COPY.NEAREST_HOSPITAL}
@@ -61,10 +75,30 @@ export default function MapExploreIntentHospitalSummaryCard({
 						{nearestHospital?.name || MAP_EXPLORE_INTENT_COPY.FINDING_NEAREST_HOSPITAL}
 					</Text>
 					<Text numberOfLines={1} style={[styles.hospitalMeta, { color: tokens.bodyText }]}>
-						{nearestHospitalMeta.join(" | ") || MAP_EXPLORE_INTENT_COPY.TAP_TO_SEE_HOSPITALS}
+						{nearestHospitalMeta.join(" • ") || MAP_EXPLORE_INTENT_COPY.TAP_TO_SEE_HOSPITALS}
 					</Text>
+					{nearbyHospitalCount > 0 || totalAvailableBeds > 0 ? (
+						<View style={styles.intentSignalRow}>
+							{nearbyHospitalCount > 0 ? (
+								<View style={[styles.intentSignalPill, { backgroundColor: tokens.mutedCardSurface }]}> 
+									<Text style={[styles.intentSignalText, { color: tokens.titleColor }]}> 
+										{`${nearbyHospitalCount} nearby`}
+									</Text>
+								</View>
+							) : null}
+							{totalAvailableBeds > 0 ? (
+								<View style={[styles.intentSignalPill, { backgroundColor: tokens.mutedCardSurface }]}> 
+									<Text style={[styles.intentSignalText, { color: tokens.titleColor }]}> 
+										{`${totalAvailableBeds} beds`}
+									</Text>
+								</View>
+							) : null}
+						</View>
+					) : null}
 				</View>
-				<Ionicons name="chevron-forward" size={18} color={tokens.mutedText} />
+				<SummaryIconTile isDarkMode={isDarkMode} compact>
+					<Ionicons name="chevron-forward" size={15} color={tokens.titleColor} />
+				</SummaryIconTile>
 			</Pressable>
 		);
 	}
@@ -82,21 +116,13 @@ export default function MapExploreIntentHospitalSummaryCard({
 			]}
 		>
 			<View style={styles.intentStatusHeader}>
-				<View
-					style={[
-						styles.intentStatusIconWrap,
-						{
-							borderRadius: tokens.cardRadius - 12,
-							backgroundColor: tokens.mutedCardSurface,
-						},
-					]}
-				>
+				<SummaryIconTile isDarkMode={isDarkMode}>
 					<MaterialCommunityIcons
 						name="hospital-building"
 						size={18}
 						color={isDarkMode ? "#F8FAFC" : "#86100E"}
 					/>
-				</View>
+				</SummaryIconTile>
 				<View style={styles.intentStatusCopy}>
 					<Text style={[styles.hospitalEyebrow, { color: tokens.mutedText }]}>
 						{MAP_EXPLORE_INTENT_COPY.NEARBY_CARE}
@@ -108,9 +134,9 @@ export default function MapExploreIntentHospitalSummaryCard({
 						{nearestHospitalMeta.join(" | ") || MAP_EXPLORE_INTENT_COPY.SEE_NEARBY_HOSPITALS}
 					</Text>
 				</View>
-				<View style={[styles.intentStatusChevron, { backgroundColor: tokens.mutedCardSurface }]}>
-					<Ionicons name="chevron-forward" size={16} color={tokens.titleColor} />
-				</View>
+				<SummaryIconTile isDarkMode={isDarkMode} compact>
+					<Ionicons name="chevron-forward" size={15} color={tokens.titleColor} />
+				</SummaryIconTile>
 			</View>
 
 			<View style={styles.intentSignalRow}>

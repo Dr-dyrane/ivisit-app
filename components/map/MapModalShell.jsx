@@ -13,6 +13,8 @@ import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
+import { HEADER_MODES } from "../../constants/header";
 import {
 	MAP_MODAL_BACKDROP_IN_MS,
 	MAP_MODAL_BACKDROP_OUT_MS,
@@ -35,15 +37,45 @@ export default function MapModalShell({
 	scrollEnabled = true,
 	contentContainerStyle,
 	closeOnBackdropPress = Platform.OS !== "web",
+	headerModeWhenVisible = HEADER_MODES.HIDDEN,
+	syncHeaderVisibility = true,
 	children,
 }) {
 	const { isDarkMode } = useTheme();
+	const { lockHeaderHidden, unlockHeaderHidden, forceHeaderVisible } = useScrollAwareHeader();
 	const insets = useSafeAreaInsets();
 	const { height: screenHeight } = useWindowDimensions();
 	const isWeb = Platform.OS === "web";
 	const [shouldRender, setShouldRender] = useState(visible);
 	const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
+
+	useEffect(() => {
+		if (!syncHeaderVisibility) {
+			return undefined;
+		}
+
+		if (visible && headerModeWhenVisible === HEADER_MODES.HIDDEN) {
+			lockHeaderHidden();
+			return () => {
+				unlockHeaderHidden();
+				forceHeaderVisible();
+			};
+		}
+
+		unlockHeaderHidden();
+		if (visible || headerModeWhenVisible !== HEADER_MODES.HIDDEN) {
+			forceHeaderVisible();
+		}
+		return undefined;
+	}, [
+		forceHeaderVisible,
+		headerModeWhenVisible,
+		lockHeaderHidden,
+		syncHeaderVisibility,
+		unlockHeaderHidden,
+		visible,
+	]);
 
 	useEffect(() => {
 		if (visible) {

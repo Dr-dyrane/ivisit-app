@@ -29,30 +29,53 @@ function FeaturedHospitalPlaceholderCard({ cardWidth, cardHeight }) {
 
 function FeaturedHospitalCard({ hospital, titleColor, bodyColor, onPress, cardWidth, cardHeight }) {
 	const features = buildFeaturedHospitalFeatures(hospital);
+	const topLabel =
+		(typeof hospital?.distance === "string" && hospital.distance.trim()) ||
+		(typeof hospital?.eta === "string" && hospital.eta.trim()) ||
+		(hospital?.verified ? "Verified" : null);
 
 	return (
-		<Pressable onPress={() => onPress?.(hospital)} style={[styles.featuredCard, { width: cardWidth, height: cardHeight }]}>
-			<ImageBackground
-				source={getHospitalHeroSource(hospital)}
-				resizeMode="cover"
-				style={styles.featuredCardImage}
-				imageStyle={styles.featuredCardImageStyle}
-			>
-				<LinearGradient
-					colors={["rgba(8,15,27,0.02)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0.72)"]}
-					style={StyleSheet.absoluteFill}
-				/>
-				<View style={styles.featuredCardContent}>
-					<Text numberOfLines={2} style={[styles.featuredTitle, { color: titleColor }]}>
-						{hospital?.name || "Hospital"}
-					</Text>
-					{features.length > 0 ? (
-						<Text numberOfLines={1} style={[styles.featuredMeta, { color: bodyColor }]}>
-							{features.join(" | ")}
-						</Text>
-					) : null}
+		<Pressable onPress={() => onPress?.(hospital)}>
+			{({ pressed }) => (
+				<View
+					style={[
+						styles.featuredCard,
+						{ width: cardWidth, height: cardHeight },
+						pressed ? styles.featuredCardPressed : null,
+					]}
+				>
+					<ImageBackground
+						source={getHospitalHeroSource(hospital)}
+						resizeMode="cover"
+						style={styles.featuredCardImage}
+						imageStyle={styles.featuredCardImageStyle}
+					>
+						<LinearGradient
+							colors={["rgba(8,15,27,0.04)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0.74)"]}
+							style={StyleSheet.absoluteFill}
+						/>
+						{topLabel ? (
+							<View style={styles.featuredCardHeader}>
+								<View style={styles.featuredTopPill}>
+									<Text numberOfLines={1} style={styles.featuredTopPillText}>
+										{topLabel}
+									</Text>
+								</View>
+							</View>
+						) : null}
+						<View style={styles.featuredCardContent}>
+							<Text numberOfLines={2} style={[styles.featuredTitle, { color: titleColor }]}> 
+								{hospital?.name || "Hospital"}
+							</Text>
+							{features.length > 0 ? (
+								<Text numberOfLines={1} style={[styles.featuredMeta, { color: bodyColor }]}> 
+									{features.slice(0, 2).join(" • ")}
+								</Text>
+							) : null}
+						</View>
+					</ImageBackground>
 				</View>
-			</ImageBackground>
+			)}
 		</Pressable>
 	);
 }

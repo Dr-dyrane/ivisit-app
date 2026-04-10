@@ -13,7 +13,7 @@ export default function MapExploreLoadingOverlay({
 	screenHeight,
 	snapState = MAP_SHEET_SNAP_STATES.HALF,
 	status = null,
-	visible = true,
+	visible = false,
 	backgroundImageUri = null,
 }) {
 	const { isDarkMode } = useTheme();
@@ -36,7 +36,7 @@ export default function MapExploreLoadingOverlay({
 		: isDarkMode
 			? ["#08101B", "#0A1320", "#0D1727"]
 			: ["#F4F7FB", "#EDF3F8", "#E8EFF6"];
-	const resolvedVisible = Boolean(visible ?? status?.visible ?? true);
+	const resolvedVisible = Boolean(visible ?? status?.visible ?? false);
 	const resolvedStatus = status || {
 		title: "Preparing nearby help",
 		message: "Opening the live map and nearby emergency options for this area.",

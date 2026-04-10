@@ -30,17 +30,7 @@ export const discoveryService = {
 			return data || [];
 		} catch (error) {
 			console.error('Error fetching trending searches:', error);
-			// Fallback mock data matching the guide's format
-			return [
-				{ query: "Cardiologist", count: 145, rank: 1 },
-				{ query: "Hospital near me", count: 98, rank: 2 },
-				{ query: "Emergency bed", count: 87, rank: 3 },
-				{ query: "Pediatricians", count: 65, rank: 4 },
-				{ query: "24/7 Pharmacy", count: 54, rank: 5 },
-				{ query: "Malaria treatment", count: 43, rank: 6 },
-				{ query: "Dentist", count: 32, rank: 7 },
-				{ query: "Ambulance", count: 21, rank: 8 },
-			];
+			return [];
 		}
 	},
 

@@ -71,18 +71,18 @@ export function getMapIntentVariant({ platform = Platform.OS, width = 0 }) {
 }
 
 export const MAP_EXPLORE_INTENT_COPY = {
-	SEARCH: "Search",
-	TERMS: "Terms & conditions",
-	NEAREST_HOSPITAL: "Nearest hospital",
+	SEARCH: "Search care",
+	TERMS: "Terms",
+	NEAREST_HOSPITAL: "Nearby now",
 	NEARBY_CARE: "Nearby care",
 	CHOOSE_CARE: "Choose care",
 	AMBULANCE: "Ambulance",
 	BED_SPACE: "Bed space",
 	COMPARE: "Compare",
 	COMPARE_SUBTEXT: "All options",
-	FINDING_NEAREST_HOSPITAL: "Finding nearest hospital",
-	FINDING_NEARBY_HOSPITAL: "Finding nearby hospital",
-	TAP_TO_SEE_HOSPITALS: "Tap to see nearby hospitals",
+	FINDING_NEAREST_HOSPITAL: "Finding nearby care",
+	FINDING_NEARBY_HOSPITAL: "Finding care",
+	TAP_TO_SEE_HOSPITALS: "See nearby hospitals",
 	SEE_NEARBY_HOSPITALS: "See nearby hospitals",
 	NEARBY_HELP: "Nearby help",
 	NEARBY_BEDS: "Nearby beds",
@@ -90,7 +90,7 @@ export const MAP_EXPLORE_INTENT_COPY = {
 };
 
 export const MAP_EXPLORE_INTENT_RAIL = {
-	sidePadding: 24,
-	gap: 10,
-	peek: 16,
+	sidePadding: 18,
+	gap: 12,
+	peek: 18,
 };

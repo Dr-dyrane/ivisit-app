@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import MapModalShell from "./MapModalShell";
@@ -42,6 +43,26 @@ function buildHospitalPrice(hospital) {
 	return null;
 }
 
+function SheetIconTile({ children, isDarkMode }) {
+	const colors = isDarkMode
+		? ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.05)"]
+		: ["#FFFFFF", "#EEF2F7"];
+
+	return (
+		<View style={styles.sheetIconShell}>
+			<LinearGradient
+				colors={colors}
+				start={{ x: 0.08, y: 0 }}
+				end={{ x: 1, y: 1 }}
+				style={styles.sheetIconFill}
+			>
+				<View pointerEvents="none" style={styles.sheetIconHighlight} />
+				{children}
+			</LinearGradient>
+		</View>
+	);
+}
+
 export default function MapHospitalModal({
 	visible,
 	onClose,
@@ -56,16 +77,15 @@ export default function MapHospitalModal({
 	const hasHospitals = Array.isArray(hospitals) && hospitals.length > 0;
 	const titleColor = isDarkMode ? "#F8FAFC" : "#111827";
 	const helperColor = isDarkMode ? "#94A3B8" : "#667085";
-	const rowSurface = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)";
-	const rowPressed = isDarkMode ? "rgba(255,255,255,0.07)" : "rgba(15,23,42,0.055)";
-	const rowActive = isDarkMode ? "rgba(134,16,14,0.16)" : "rgba(220,38,38,0.06)";
-	const rowBorder = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.05)";
-	const iconSurface = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)";
+	const rowSurface = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.94)";
+	const rowPressed = isDarkMode ? "rgba(255,255,255,0.08)" : "#FFFFFF";
+	const rowActive = isDarkMode ? "rgba(134,16,14,0.14)" : "rgba(220,38,38,0.05)";
+	const rowBorder = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.04)";
 	const metaChipBg = isDarkMode ? "rgba(255,255,255,0.065)" : "rgba(15,23,42,0.045)";
 	const badgeBg = isDarkMode ? "rgba(134,16,14,0.16)" : "rgba(220,38,38,0.08)";
 	const badgeText = isDarkMode ? "#FDE8E8" : "#991B1B";
 	const activeText = isDarkMode ? "#FDE8E8" : "#7F1D1D";
-	const emptySurface = isDarkMode ? "rgba(255,255,255,0.045)" : "rgba(15,23,42,0.035)";
+	const emptySurface = isDarkMode ? "rgba(255,255,255,0.045)" : "rgba(255,255,255,0.9)";
 
 	const content = useMemo(() => {
 		if (isLoading) {
@@ -79,12 +99,14 @@ export default function MapHospitalModal({
 		if (!hasHospitals) {
 			return (
 				<View style={[styles.emptyCard, { backgroundColor: emptySurface }]}>
-					<View style={[styles.emptyIconWrap, { backgroundColor: iconSurface }]}>
-						<MaterialCommunityIcons
-							name="hospital-box-outline"
-							size={22}
-							color={COLORS.brandPrimary}
-						/>
+					<View style={styles.emptyIconWrap}>
+						<SheetIconTile isDarkMode={isDarkMode}>
+							<MaterialCommunityIcons
+								name="hospital-box-outline"
+								size={22}
+								color={COLORS.brandPrimary}
+							/>
+						</SheetIconTile>
 					</View>
 					<Text style={[styles.emptyTitle, { color: titleColor }]}>
 						No nearby hospitals yet
@@ -122,18 +144,20 @@ export default function MapHospitalModal({
 									? rowPressed
 									: rowSurface,
 							borderColor: isSelected ? badgeBg : rowBorder,
+							opacity: pressed ? 0.96 : 1,
+							transform: [{ scale: pressed ? 0.995 : 1 }],
 						},
 					]}
 				>
 					<View style={styles.rowTop}>
 						<View style={styles.rowHeading}>
-							<View style={[styles.iconWrap, { backgroundColor: iconSurface }]}>
+							<SheetIconTile isDarkMode={isDarkMode}>
 								<MaterialCommunityIcons
 									name="hospital-building"
 									size={18}
 									color={isDarkMode ? "#FFFFFF" : COLORS.brandPrimary}
 								/>
-							</View>
+							</SheetIconTile>
 							<View style={styles.titleBlock}>
 								<View style={styles.rowTitleLine}>
 									<Text
@@ -206,7 +230,6 @@ export default function MapHospitalModal({
 		hasHospitals,
 		helperColor,
 		hospitals,
-		iconSurface,
 		isDarkMode,
 		isLoading,
 		metaChipBg,
@@ -259,12 +282,31 @@ const styles = StyleSheet.create({
 		flex: 1,
 		gap: 12,
 	},
-	iconWrap: {
+	sheetIconShell: {
 		width: 40,
 		height: 40,
 		borderRadius: 16,
+		padding: 1,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.05,
+		shadowRadius: 6,
+		shadowOffset: { width: 0, height: 3 },
+	},
+	sheetIconFill: {
+		flex: 1,
+		borderRadius: 15,
 		alignItems: "center",
 		justifyContent: "center",
+		overflow: "hidden",
+	},
+	sheetIconHighlight: {
+		position: "absolute",
+		left: 1,
+		right: 1,
+		top: 1,
+		height: "42%",
+		borderRadius: 14,
+		backgroundColor: "rgba(255,255,255,0.2)",
 	},
 	titleBlock: {
 		flex: 1,
@@ -348,11 +390,6 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 	},
 	emptyIconWrap: {
-		width: 44,
-		height: 44,
-		borderRadius: 18,
-		alignItems: "center",
-		justifyContent: "center",
 		marginBottom: 14,
 	},
 	emptyTitle: {

@@ -5,8 +5,8 @@ export default StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
-		marginBottom: 24,
-		paddingHorizontal: 18,
+		marginBottom: 20,
+		paddingHorizontal: 16,
 	},
 	topRowCollapsed: {
 		marginBottom: 0,
@@ -33,11 +33,11 @@ export default StyleSheet.create({
 	},
 	searchPill: {
 		flex: 1,
-		minHeight: 52,
-		paddingHorizontal: 16,
+		minHeight: 50,
+		paddingHorizontal: 15,
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 12,
+		gap: 10,
 	},
 	searchPillCollapsed: {
 		minHeight: 44,
@@ -47,9 +47,9 @@ export default StyleSheet.create({
 		minHeight: 48,
 	},
 	searchText: {
-		fontSize: 18,
-		lineHeight: 24,
-		fontWeight: "700",
+		fontSize: 16,
+		lineHeight: 21,
+		fontWeight: "600",
 	},
 	bodyScrollContent: {
 		paddingBottom: 6,
@@ -143,7 +143,11 @@ export default StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 14,
-		marginBottom: 28,
+		marginBottom: 22,
+	},
+	hospitalCardPressed: {
+		opacity: 0.96,
+		transform: [{ scale: 0.996 }],
 	},
 	hospitalCardCentered: {
 		width: "100%",
@@ -184,7 +188,7 @@ export default StyleSheet.create({
 		marginTop: 4,
 		fontSize: 13,
 		lineHeight: 17,
-		fontWeight: "500",
+		fontWeight: "400",
 	},
 	intentStatusChevron: {
 		width: 30,
@@ -197,6 +201,7 @@ export default StyleSheet.create({
 		flexDirection: "row",
 		flexWrap: "wrap",
 		gap: 8,
+		marginTop: 8,
 	},
 	intentSignalPill: {
 		paddingHorizontal: 10,
@@ -207,6 +212,40 @@ export default StyleSheet.create({
 		fontSize: 11,
 		lineHeight: 14,
 		fontWeight: "700",
+	},
+	summaryIconShell: {
+		width: 42,
+		height: 42,
+		borderRadius: 16,
+		padding: 1,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.05,
+		shadowRadius: 6,
+		shadowOffset: { width: 0, height: 3 },
+	},
+	summaryIconShellCompact: {
+		width: 30,
+		height: 30,
+		borderRadius: 15,
+	},
+	summaryIconFill: {
+		flex: 1,
+		borderRadius: 15,
+		alignItems: "center",
+		justifyContent: "center",
+		overflow: "hidden",
+	},
+	summaryIconFillCompact: {
+		borderRadius: 14,
+	},
+	summaryIconHighlight: {
+		position: "absolute",
+		left: 1,
+		right: 1,
+		top: 1,
+		height: "42%",
+		borderRadius: 14,
+		backgroundColor: "rgba(255,255,255,0.2)",
 	},
 	hospitalIconWrap: {
 		width: 42,
@@ -232,8 +271,8 @@ export default StyleSheet.create({
 	},
 	hospitalMeta: {
 		marginTop: 4,
-		fontSize: 14,
-		lineHeight: 18,
+		fontSize: 13,
+		lineHeight: 17,
 		fontWeight: "400",
 	},
 	sectionTrigger: {
@@ -381,16 +420,26 @@ export default StyleSheet.create({
 		color: "rgba(255,255,255,0.84)",
 	},
 	expandedSection: {
-		marginTop: 32,
+		marginTop: 24,
+	},
+	expandedSectionHeader: {
+		paddingHorizontal: 18,
+		marginBottom: 10,
+	},
+	expandedSectionTitle: {
+		fontSize: 18,
+		lineHeight: 22,
+		fontWeight: "800",
+		color: "#F8FAFC",
 	},
 	featuredRailViewport: {
 		marginHorizontal: 0,
 		overflow: "hidden",
 	},
 	featuredScrollContent: {
-		paddingLeft: 24,
-		paddingRight: 24,
-		gap: 10,
+		paddingLeft: 18,
+		paddingRight: 18,
+		gap: 12,
 	},
 	featuredCard: {
 		width: 212,
@@ -398,12 +447,33 @@ export default StyleSheet.create({
 		borderRadius: 30,
 		overflow: "hidden",
 	},
+	featuredCardPressed: {
+		opacity: 0.96,
+		transform: [{ scale: 0.992 }],
+	},
 	featuredCardImage: {
 		flex: 1,
 		justifyContent: "flex-end",
 	},
 	featuredCardImageStyle: {
 		borderRadius: 30,
+	},
+	featuredCardHeader: {
+		paddingHorizontal: 12,
+		paddingTop: 12,
+		alignItems: "flex-start",
+	},
+	featuredTopPill: {
+		borderRadius: 999,
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		backgroundColor: "rgba(8,15,27,0.42)",
+	},
+	featuredTopPillText: {
+		fontSize: 11,
+		lineHeight: 14,
+		fontWeight: "700",
+		color: "#F8FAFC",
 	},
 	featuredCardContent: {
 		paddingHorizontal: 14,

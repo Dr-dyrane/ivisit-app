@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform } from "react-native";
+import { Platform, useWindowDimensions } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { useGlobalLocation } from "../../contexts/GlobalLocationContext";
 import { useEmergency } from "../../contexts/EmergencyContext";
 import { useFABActions } from "../../contexts/FABContext";
@@ -35,8 +36,10 @@ function buildDemoBootstrapKey(location, userId, coverageStatus, shouldForceBoot
 
 export function useMapExploreFlow() {
 	const router = useRouter();
-	const { resetHeader } = useScrollAwareHeader();
-	const { setHeaderState } = useHeaderState();
+	const { isDarkMode } = useTheme();
+	const { width, height } = useWindowDimensions();
+	const { resetHeader, lockHeaderHidden, unlockHeaderHidden, forceHeaderVisible } = useScrollAwareHeader();
+	const { setHeaderState, resetHeaderState } = useHeaderState();
 	const { user } = useAuth();
 	const { visits = [] } = useVisits();
 	const { registerFAB, unregisterFAB } = useFABActions();
@@ -108,9 +111,28 @@ export function useMapExploreFlow() {
 		publicSearchVisible ||
 		authModalVisible,
 	);
+	const shouldHideMapHeader =
+		!hasCompletedInitialMapLoad ||
+		sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED ||
+		isModalFocused;
 	const profileImageSource = user?.imageUri
 		? { uri: user.imageUri }
 		: require("../../assets/profile.jpg");
+	const loadingBackgroundImageUri = useMemo(() => {
+		const token = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
+		const latitude = Number(activeLocation?.latitude ?? activeLocation?.coords?.latitude);
+		const longitude = Number(activeLocation?.longitude ?? activeLocation?.coords?.longitude);
+
+		if (!token || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+			return null;
+		}
+
+		const styleId = isDarkMode ? "navigation-night-v1" : "light-v11";
+		const imageWidth = Math.max(360, Math.min(1280, Math.round((width || 390) * 1.4)));
+		const imageHeight = Math.max(720, Math.min(1600, Math.round((height || 844) * 1.3)));
+
+		return `https://api.mapbox.com/styles/v1/mapbox/${styleId}/static/${longitude.toFixed(5)},${latitude.toFixed(5)},13.2,0,0/${imageWidth}x${imageHeight}?logo=false&attribution=false&access_token=${encodeURIComponent(token)}`;
+	}, [activeLocation, height, isDarkMode, width]);
 	const needsCoverageExpansion = coverageModeService.needsDemoSupport(coverageStatus);
 	const shouldBootstrapDemoCoverage = coverageModeService.shouldBootstrapDemo({
 		coverageStatus,
@@ -123,36 +145,66 @@ export function useMapExploreFlow() {
 		return Array.isArray(hospitals) ? hospitals : [];
 	}, [allHospitals, hospitals]);
 
-	useFocusEffect(
-		useCallback(() => {
-			resetHeader();
-			setSheetMode(MAP_SHEET_MODES.EXPLORE_INTENT);
-			setSheetSnapState(MAP_SHEET_SNAP_STATES.HALF);
-			return () => {
-				setHeaderState({ mode: HEADER_MODES.HIDDEN });
-			};
-		}, [resetHeader, setHeaderState]),
-	);
-
-	useEffect(() => {
-		const shouldHideHeader =
-			sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED || isModalFocused;
-		setHeaderState({
-			mode: shouldHideHeader ? HEADER_MODES.HIDDEN : HEADER_MODES.MAP_OVERLAY,
+	const mapHeaderState = useMemo(
+		() => ({
+			mode: shouldHideMapHeader ? HEADER_MODES.HIDDEN : HEADER_MODES.MAP_OVERLAY,
 			title: currentLocationDetails?.primaryText || "Current location",
 			subtitle: currentLocationDetails?.secondaryText || "Location",
 			backgroundColor: "#86100E",
 			rightComponent: <HeaderLocationButton onPress={() => setLocationSearchVisible(true)} />,
 			leftComponent: <HeaderBackButton onPress={() => router.replace("/")} />,
 			badge: null,
-		});
+			hidden: shouldHideMapHeader,
+			scrollAware: false,
+		}),
+		[
+			currentLocationDetails?.primaryText,
+			currentLocationDetails?.secondaryText,
+			router,
+			setLocationSearchVisible,
+			shouldHideMapHeader,
+		],
+	);
+
+	useFocusEffect(
+		useCallback(() => {
+			resetHeader();
+			unlockHeaderHidden();
+			forceHeaderVisible();
+			resetHeaderState();
+			setSheetMode(MAP_SHEET_MODES.EXPLORE_INTENT);
+			setSheetSnapState(MAP_SHEET_SNAP_STATES.HALF);
+			return () => {
+				unlockHeaderHidden();
+				forceHeaderVisible();
+				resetHeader();
+				resetHeaderState();
+			};
+		}, [
+			forceHeaderVisible,
+			resetHeader,
+			resetHeaderState,
+			setSheetMode,
+			setSheetSnapState,
+			unlockHeaderHidden,
+		]),
+	);
+
+	useEffect(() => {
+		if (mapHeaderState.mode === HEADER_MODES.HIDDEN) {
+			lockHeaderHidden();
+		} else {
+			unlockHeaderHidden();
+			forceHeaderVisible();
+		}
+
+		setHeaderState(mapHeaderState);
 	}, [
-		currentLocationDetails?.primaryText,
-		currentLocationDetails?.secondaryText,
-		isModalFocused,
-		router,
-		sheetSnapState,
+		forceHeaderVisible,
+		lockHeaderHidden,
+		mapHeaderState,
 		setHeaderState,
+		unlockHeaderHidden,
 	]);
 
 	useEffect(() => {
@@ -555,6 +607,7 @@ export function useMapExploreFlow() {
 		isMapSurfaceReady,
 		isSignedIn,
 		locationSearchVisible,
+		loadingBackgroundImageUri,
 		manualLocation,
 		mapLoadingState,
 		mapReadiness,
