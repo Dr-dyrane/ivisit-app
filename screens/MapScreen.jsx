@@ -152,6 +152,7 @@ export default function MapScreen() {
 					nearbyBedHospitals={nearbyBedHospitals}
 					recentVisits={recentVisits}
 					featuredHospitals={featuredHospitals}
+					locationDetails={currentLocationDetails}
 				/>
 			</View>
 

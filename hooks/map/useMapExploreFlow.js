@@ -126,6 +126,7 @@ export function useMapExploreFlow() {
 		authModalVisible,
 	);
 	const shouldHideMapHeader =
+		usesSidebarLayout ||
 		!hasCompletedInitialMapLoad ||
 		(!usesSidebarLayout && sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED) ||
 		isModalFocused;

@@ -5,6 +5,7 @@ const BASE_MOBILE_SCREEN_CONFIG = {
 	careLayoutMode: "canonical",
 	presentationMode: "sheet",
 	centerContent: false,
+	shellAlignment: "center",
 	contentMaxWidth: null,
 	shellMaxWidth: null,
 };
@@ -25,8 +26,7 @@ const LEFT_SIDEBAR_CONFIG = {
 	...BASE_MOBILE_SCREEN_CONFIG,
 	presentationMode: "sidebar",
 	centerContent: true,
-	careLayoutMode: "panel",
-	hospitalSummaryMode: "hero",
+	shellAlignment: "left",
 };
 
 const CENTERED_PANEL_CONFIG = {

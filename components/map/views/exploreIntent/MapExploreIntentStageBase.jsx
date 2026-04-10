@@ -3,6 +3,8 @@ import { Animated, Pressable, ScrollView, Text, View, useWindowDimensions } from
 import { Ionicons } from "@expo/vector-icons";
 import InAppBrowserLink from "../../../ui/InAppBrowserLink";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import HeaderBackButton from "../../../navigation/HeaderBackButton";
+import HeaderLocationButton from "../../../headers/HeaderLocationButton";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_CARE_PULSE_MS } from "../../mapMotionTokens";
 import { getMapSheetTokens } from "../../mapSheetTokens";
@@ -37,6 +39,7 @@ export default function MapExploreIntentStageBase({
 	totalAvailableBeds,
 	nearbyBedHospitals,
 	featuredHospitals = [],
+	locationDetails = null,
 }) {
 	const { isDarkMode } = useTheme();
 	const { width } = useWindowDimensions();
@@ -51,26 +54,27 @@ export default function MapExploreIntentStageBase({
 	const isCanonicalMobileIntent =
 		variant === MAP_INTENT_VARIANTS.IOS_MOBILE ||
 		variant === MAP_INTENT_VARIANTS.ANDROID_MOBILE;
-	const isWebMobileVariant =
-		variant === MAP_INTENT_VARIANTS.WEB_MOBILE ||
-		variant === MAP_INTENT_VARIANTS.WEB_SM_WIDE ||
-		variant === MAP_INTENT_VARIANTS.WEB_MD;
-	const isWebMobileMd = variant === MAP_INTENT_VARIANTS.WEB_MD;
 	const careLayoutMode = resolvedScreenConfig?.careLayoutMode || "canonical";
 	const hospitalSummaryMode = resolvedScreenConfig?.hospitalSummaryMode || "canonical";
 	const presentationMode = resolvedScreenConfig?.presentationMode || "sheet";
 	const isSidebarPresentation = presentationMode === "sidebar";
+	const isWebMobileVariant =
+		variant === MAP_INTENT_VARIANTS.WEB_MOBILE ||
+		(!isSidebarPresentation && variant === MAP_INTENT_VARIANTS.WEB_SM_WIDE);
+	const isWebMobileMd = !isSidebarPresentation && variant === MAP_INTENT_VARIANTS.WEB_MD;
 	const shouldCenterContent = Boolean(resolvedScreenConfig?.centerContent);
+	const shellAlignment = resolvedScreenConfig?.shellAlignment || "center";
 	const contentMaxWidth = resolvedScreenConfig?.contentMaxWidth || null;
 	const shellMaxWidth = resolvedScreenConfig?.shellMaxWidth || contentMaxWidth || null;
 	const shellWidth = useMemo(() => {
 		if (presentationMode === "sheet" || !shellMaxWidth || !shouldCenterContent) return null;
-		const horizontalGutter = presentationMode === "panel" ? 28 : 16;
+		const horizontalGutter =
+			presentationMode === "panel" || presentationMode === "sidebar" ? 28 : 16;
 		return Math.max(320, Math.min(shellMaxWidth, width - horizontalGutter * 2));
 	}, [presentationMode, shellMaxWidth, shouldCenterContent, width]);
 	const featuredRailWidth = useMemo(() => {
 		if (!shouldCenterContent) return null;
-		if (presentationMode === "panel" && shellWidth) {
+		if ((presentationMode === "panel" || presentationMode === "sidebar") && shellWidth) {
 			return Math.max(320, shellWidth - 40);
 		}
 		if (contentMaxWidth) {
@@ -137,7 +141,7 @@ export default function MapExploreIntentStageBase({
 								]}
 							>
 								<Text style={styles.expandedSectionTitle}>Nearby now</Text>
-								{shouldCenterContent ? (
+								{shouldCenterContent && !isSidebarPresentation ? (
 									<Text style={styles.expandedSectionSubtext}>Live options worth opening next</Text>
 								) : null}
 							</View>
@@ -197,6 +201,38 @@ export default function MapExploreIntentStageBase({
 		onSnapStateChange(MAP_SHEET_SNAP_STATES.HALF);
 	};
 
+	const sidebarHeader = isSidebarPresentation ? (
+		<View
+			style={[
+				styles.sidebarHeader,
+				shouldCenterContent ? styles.topRowCentered : null,
+				shouldCenterContent && shellMaxWidth ? { maxWidth: shellMaxWidth } : null,
+			]}
+		>
+			<View style={styles.sidebarHeaderRow}>
+				<View style={styles.sidebarHeaderSide}>
+					<HeaderBackButton onPress={onOpenHospitals} />
+				</View>
+				<View style={styles.sidebarHeaderCenter}>
+					<Text numberOfLines={1} style={[styles.sidebarHeaderTitle, { color: tokens.titleColor }]}>
+						{locationDetails?.primaryText || "Current location"}
+					</Text>
+					{locationDetails?.secondaryText ? (
+						<Text
+							numberOfLines={1}
+							style={[styles.sidebarHeaderSubtitle, { color: tokens.bodyText }]}
+						>
+							{locationDetails.secondaryText}
+						</Text>
+					) : null}
+				</View>
+				<View style={styles.sidebarHeaderSide}>
+					<HeaderLocationButton onPress={onOpenSearch} />
+				</View>
+			</View>
+		</View>
+	) : null;
+
 	const topRow = (
 		<View
 			style={[
@@ -206,7 +242,7 @@ export default function MapExploreIntentStageBase({
 				isWebMobileMd ? styles.topRowWebMobileMd : null,
 				shouldCenterContent ? styles.topRowCentered : null,
 				presentationMode === "modal" ? styles.topRowModal : null,
-				presentationMode === "panel" ? styles.topRowPanel : null,
+				presentationMode === "panel" || isSidebarPresentation ? styles.topRowPanel : null,
 				shouldCenterContent && shellMaxWidth ? { maxWidth: shellMaxWidth } : null,
 			]}
 		>
@@ -237,6 +273,13 @@ export default function MapExploreIntentStageBase({
 		</View>
 	);
 
+	const headerSlot = (
+		<>
+			{sidebarHeader}
+			{topRow}
+		</>
+	);
+
 	const footerTerms = isExpanded ? (
 		<View style={styles.footerSlot}>
 			<InAppBrowserLink
@@ -255,7 +298,8 @@ export default function MapExploreIntentStageBase({
 			snapState={snapState}
 			presentationMode={presentationMode}
 			shellWidth={shellWidth}
-			topSlot={topRow}
+			shellAlignment={shellAlignment}
+			topSlot={headerSlot}
 			footerSlot={footerTerms}
 			onHandlePress={handleSnapToggle}
 		>
@@ -274,7 +318,9 @@ export default function MapExploreIntentStageBase({
 						styles.bodyScrollContent,
 						isWebMobileVariant ? styles.bodyScrollContentWebMobile : null,
 						presentationMode === "modal" ? styles.bodyScrollContentModal : null,
-						presentationMode === "panel" ? styles.bodyScrollContentPanel : null,
+						presentationMode === "panel" || isSidebarPresentation
+							? styles.bodyScrollContentPanel
+							: null,
 					]}
 				>
 					<MapExploreIntentScreenModularizer

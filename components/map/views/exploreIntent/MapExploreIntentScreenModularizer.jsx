@@ -11,6 +11,7 @@ export default function MapExploreIntentScreenModularizer({
 	contentMaxWidth = null,
 }) {
 	const resolvedScreens = Array.isArray(screens) ? screens.filter(Boolean) : [];
+	const isLeftSheet = presentationMode === "sidebar";
 	const panelMaxWidth = contentMaxWidth ? Math.min(contentMaxWidth * 1.55, 1180) : null;
 
 	const renderScreen = (
@@ -27,7 +28,7 @@ export default function MapExploreIntentScreenModularizer({
 		<View
 			key={key}
 			style={[
-				!fullBleed ? styles.contentSectionInset : null,
+				!fullBleed && !isLeftSheet ? styles.contentSectionInset : null,
 				!fullBleed && !inPanelRow && isWebMobileVariant ? styles.contentSectionInsetWebMobile : null,
 				!fullBleed && !inPanelRow && isWebMobileMd ? styles.contentSectionInsetWebMobileMd : null,
 				!fullBleed && !inPanelRow && centerContent ? styles.contentSectionCentered : null,

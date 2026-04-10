@@ -31,6 +31,43 @@ export default StyleSheet.create({
 	topRowPanel: {
 		marginBottom: 22,
 	},
+	topRowSidebar: {
+		paddingHorizontal: 0,
+		marginBottom: 18,
+		gap: 10,
+	},
+	sidebarHeader: {
+		width: "100%",
+		alignSelf: "center",
+		paddingHorizontal: 0,
+		marginBottom: 12,
+	},
+	sidebarHeaderRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+	},
+	sidebarHeaderSide: {
+		width: 42,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	sidebarHeaderCenter: {
+		flex: 1,
+		minWidth: 0,
+	},
+	sidebarHeaderTitle: {
+		fontSize: 18,
+		lineHeight: 22,
+		fontWeight: "800",
+		letterSpacing: -0.3,
+	},
+	sidebarHeaderSubtitle: {
+		marginTop: 3,
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "500",
+	},
 	searchPill: {
 		flex: 1,
 		minHeight: 50,
@@ -62,9 +99,13 @@ export default StyleSheet.create({
 	},
 	bodyScrollContentPanel: {
 		paddingBottom: 22,
+		paddingHorizontal: 0,
 	},
 	contentSectionInset: {
 		paddingHorizontal: 18,
+	},
+	bodyScrollViewport: {
+		flex: 1,
 	},
 	contentSectionInsetWebMobile: {
 		paddingHorizontal: 14,

@@ -202,7 +202,9 @@ export default function MapSheetShell({
 				styles.sheetHost,
 				useFloatingShell ? styles.sheetHostFloating : null,
 				presentationMode === "modal" ? styles.sheetHostModal : null,
-				presentationMode === "panel" ? styles.sheetHostPanel : null,
+				presentationMode === "panel" || presentationMode === "sidebar"
+					? styles.sheetHostPanel
+					: null,
 				presentationMode === "sidebar" ? styles.sheetHostSidebar : null,
 				tokens.shadowStyle,
 				isSidebar ? sidebarShapeStyle : null,
