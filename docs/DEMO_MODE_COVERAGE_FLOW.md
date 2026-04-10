@@ -36,6 +36,17 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Below that threshold, the app should keep `hybrid` / demo support eligible so the nearby-care UI does not feel under-filled or brittle.
 - Bootstrap/backfill should continue while the nearby verified experience is still below that cutoff.
 
+## Demo Hospital Identity Rule (2026-04-10)
+- Demo bootstrap may create demo-owned hospitals, but it must preserve real hospital `name` and `address` whenever a database or provider seed exists.
+- Synthetic identities such as `Emergency Care Center 1` are valid only for true no-seed fallback slots.
+- Provider seed fallback order is:
+  1. nearby database hospitals
+  2. Mapbox provider discovery
+  3. Google provider discovery
+  4. synthetic fallback
+- When identity rules change, the client bootstrap state key should be versioned so devices rerun provisioning instead of reusing stale placeholder output.
+- Legacy synthetic demo rows should be hidden when a real-named replacement exists at the same coordinates.
+
 ## Acceptance Checks
 1. No-coverage user sees coverage apology + demo switch CTA.
 2. Tapping demo switch runs all phases successfully.
@@ -44,6 +55,8 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 5. Demo mode toggle on restores demo hospitals.
 6. Coverage reminder opt-out still suppresses repeated reminder UX.
 7. No destructive DB operations are used.
+8. Previously affected locations no longer show `Emergency Care Center X` when seed hospitals exist.
+9. Placeholder hospital names appear only in true no-seed regions.
 
 ## Failure Handling
 - Any phase error:

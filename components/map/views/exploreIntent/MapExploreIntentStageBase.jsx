@@ -426,6 +426,13 @@ export default function MapExploreIntentStageBase({
 		</>
 	);
 
+	const bodyScrollEnabled =
+		isSidebarPresentation ||
+		isExpanded ||
+		allowScrollDetents ||
+		allowWheelDetents ||
+		shouldCenterContent;
+
 	const footerTerms = isExpanded ? (
 		<View style={styles.footerSlot}>
 			<InAppBrowserLink
@@ -465,13 +472,7 @@ export default function MapExploreIntentStageBase({
 					onScroll={handleBodyScroll}
 					onScrollEndDrag={handleBodyScrollEndDrag}
 					onMomentumScrollEnd={handleBodyScrollEndDrag}
-					scrollEnabled={
-						isSidebarPresentation ||
-						isExpanded ||
-						isCanonicalMobileIntent ||
-						isWebMobileVariant ||
-						shouldCenterContent
-					}
+					scrollEnabled={bodyScrollEnabled}
 					contentContainerStyle={[
 						styles.bodyScrollContent,
 						isWebMobileVariant ? styles.bodyScrollContentWebMobile : null,

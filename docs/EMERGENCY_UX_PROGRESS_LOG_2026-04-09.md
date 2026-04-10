@@ -112,6 +112,56 @@
 
 ---
 
+### 6) Demo bootstrap no longer masks real hospital names behind placeholder coverage names
+
+#### Problem addressed
+- `/map` and demo coverage could show placeholder hospitals such as `Emergency Care Center 1` and `Emergency Care Center 2`
+- this looked like leftover demo bootstrap data even in cases where real nearby hospital seeds existed
+
+#### Initial error snapshot
+- the edge function `bootstrap-demo-ecosystem` defined synthetic fallback names and addresses for uncovered regions
+- that same bootstrap path was also replacing real database/provider seed identity with the synthetic fallback identity
+- old client bootstrap state could keep earlier placeholder provisioning alive across reloads
+- already-seeded placeholder rows could continue to surface even after better nearby rows existed
+
+#### Change made
+- demo bootstrap now preserves real seed `name` and `address` when the seed comes from database or provider discovery
+- provider seed discovery now uses:
+  1. nearby database hospitals
+  2. Mapbox provider search
+  3. Google provider search
+  4. true synthetic fallback only if all seed sources fail
+- client bootstrap state key moved to `@ivisit/demo-bootstrap-state:v2` so clients rerun provisioning after the naming fix
+- client hospital hydration now suppresses legacy synthetic demo rows when a real-named replacement exists at the same coordinates
+
+#### Deployment status
+- `bootstrap-demo-ecosystem` was deployed to Supabase project `dlwtcmhdzoklveihuhjf` on `2026-04-10`
+
+#### Files involved
+- `supabase/functions/bootstrap-demo-ecosystem/index.ts`
+- `services/demoEcosystemService.js`
+- `services/hospitalsService.js`
+
+#### Compare results against this baseline
+
+Before fix:
+- a location with real nearby coverage seeds could still render `Emergency Care Center 1/2`
+- placeholder address strings like `Coverage ... Zone 1/2` could appear in the hospital data
+- repeated reloads could keep showing the old placeholder result because bootstrap state was cached
+
+After fix:
+- if database, Mapbox, or Google hospital seeds exist, demo hospitals should use real hospital names and addresses
+- placeholder `Emergency Care Center X` naming should appear only when no seed source exists at all for that slot
+- reload or location change should trigger fresh bootstrap behavior under the `v2` bootstrap-state key
+- stale placeholder rows should drop out when a real-named row exists at the same coordinates
+
+#### Regression signals
+- `Emergency Care Center X` still appears in a region where obvious real nearby hospitals exist
+- placeholder and real-named hospitals appear side by side for the same coordinates
+- clearing location or reloading still does not refresh old placeholder results
+
+---
+
 ## Verification evidence from today
 
 - Toronto validation for `43.6532, -79.3832` returned **15 nearby hospitals** through both:

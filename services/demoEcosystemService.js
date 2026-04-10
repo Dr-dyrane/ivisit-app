@@ -164,6 +164,22 @@ export const demoEcosystemService = {
 		);
 	},
 
+	isLegacySyntheticDemoHospital(hospital) {
+		if (!hospital || this.isDemoHospital(hospital) !== true) return false;
+
+		const name = String(hospital?.name || "").trim();
+		const address = String(hospital?.address || "").trim();
+
+		return (
+			/^Emergency Care Center\s+\d+$/i.test(name) ||
+			/^Coverage(?:\s+[A-Za-z0-9_:-]+)?\s+Zone\s+\d+$/i.test(address)
+		);
+	},
+
+	countsAsDemoCoverage(hospital) {
+		return this.isDemoHospital(hospital) && !this.isLegacySyntheticDemoHospital(hospital);
+	},
+
 	isDemoFlowActive({ hospital, demoModeEnabled = true } = {}) {
 		return Boolean(demoModeEnabled) && this.isDemoHospital(hospital);
 	},

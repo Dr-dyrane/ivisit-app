@@ -22,6 +22,48 @@ export const MAP_VIEWPORT_VARIANTS = {
 	WEB_ULTRA_WIDE: "web_ultra_wide",
 };
 
+export const MAP_RUNTIME_PLATFORMS = {
+	IOS: "ios",
+	ANDROID: "android",
+	WEB: "web",
+	IOS_WEB: "ios-web",
+	ANDROID_WEB: "android-web",
+};
+
+export function getMapRuntimePlatform({ platform = Platform.OS, userAgent = null } = {}) {
+	if (platform !== "web") {
+		return platform;
+	}
+
+	const resolvedUserAgent = String(
+		userAgent || (typeof navigator !== "undefined" ? navigator.userAgent || navigator.vendor || "" : ""),
+	).toLowerCase();
+	const hasTouchPoints = typeof navigator !== "undefined" ? Number(navigator.maxTouchPoints || 0) > 1 : false;
+	const isAndroidWeb = /android/.test(resolvedUserAgent);
+	const isIOSWeb =
+		/iphone|ipad|ipod/.test(resolvedUserAgent) ||
+		(resolvedUserAgent.includes("macintosh") && hasTouchPoints);
+
+	if (isAndroidWeb) return MAP_RUNTIME_PLATFORMS.ANDROID_WEB;
+	if (isIOSWeb) return MAP_RUNTIME_PLATFORMS.IOS_WEB;
+	return MAP_RUNTIME_PLATFORMS.WEB;
+}
+
+export function getMapViewportRuntimeProfile({
+	platform = Platform.OS,
+	height = 0,
+	userAgent = null,
+} = {}) {
+	const runtimePlatform = getMapRuntimePlatform({ platform, userAgent });
+	return {
+		runtimePlatform,
+		isIOSWeb: runtimePlatform === MAP_RUNTIME_PLATFORMS.IOS_WEB,
+		isAndroidWeb: runtimePlatform === MAP_RUNTIME_PLATFORMS.ANDROID_WEB,
+		isShortHeight: Number(height) > 0 && Number(height) < 780,
+		isVeryShortHeight: Number(height) > 0 && Number(height) < 700,
+	};
+}
+
 const MOBILE_SURFACE_CONFIG = {
 	sheetLayout: "bottom-sheet",
 	modalPresentationMode: "bottom-sheet",

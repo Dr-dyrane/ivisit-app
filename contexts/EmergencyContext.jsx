@@ -944,7 +944,7 @@ export function EmergencyProvider({ children }) {
 	const hasDemoHospitalsNearby = useMemo(
 		() =>
 			availableHospitals.some((hospital) =>
-				demoEcosystemService.isDemoHospital(hospital)
+				demoEcosystemService.countsAsDemoCoverage(hospital)
 			),
 		[availableHospitals]
 	);

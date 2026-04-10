@@ -63,6 +63,13 @@ export const styles = StyleSheet.create({
 		height: 5,
 		borderRadius: 999,
 	},
+	contentGestureRegion: {
+		flex: 1,
+		minHeight: 0,
+	},
+	contentGestureRegionActive: {
+		width: "100%",
+	},
 	content: {
 		flexGrow: 1,
 	},

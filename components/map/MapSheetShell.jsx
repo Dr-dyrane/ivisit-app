@@ -32,6 +32,15 @@ export default function MapSheetShell({
 	const isSidebar = presentationMode === "sidebar";
 	const resolvedSnapState = isSidebar ? MAP_SHEET_SNAP_STATES.EXPANDED : snapState;
 	const isCollapsed = resolvedSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
+	const shouldUseHeaderGestureRegion =
+		!isSidebar && Boolean(platformMotion.sheet.enableHeaderGestureRegion);
+	const shouldUseBodyGestureRegion =
+		!isSidebar &&
+		Boolean(platformMotion.sheet.enableBodyGestureRegion) &&
+		(
+			resolvedSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED ||
+			Boolean(platformMotion.sheet.enableBodyGestureInExpandedState)
+		);
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const useFloatingShell =
 		presentationMode !== "sheet" && Number.isFinite(shellWidth) && shellWidth > 0;
@@ -122,10 +131,24 @@ export default function MapSheetShell({
 	const panResponder = useMemo(
 		() =>
 			PanResponder.create({
-				onMoveShouldSetPanResponder: (_, gestureState) =>
-					isSidebar
-						? false
-						: Math.abs(gestureState.dy) > platformMotion.sheet.gestureActivationOffset,
+				onMoveShouldSetPanResponder: (_, gestureState) => {
+					if (isSidebar) return false;
+					const absDx = Math.abs(gestureState.dx || 0);
+					const absDy = Math.abs(gestureState.dy || 0);
+					return (
+						absDy > platformMotion.sheet.gestureActivationOffset &&
+						absDy > absDx * (platformMotion.sheet.axisLockRatio || 1.1)
+					);
+				},
+				onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+					if (isSidebar) return false;
+					const absDx = Math.abs(gestureState.dx || 0);
+					const absDy = Math.abs(gestureState.dy || 0);
+					return (
+						absDy > platformMotion.sheet.gestureActivationOffset &&
+						absDy > absDx * (platformMotion.sheet.axisLockRatio || 1.1)
+					);
+				},
 				onPanResponderGrant: () => {
 					dragTranslateY.stopAnimation();
 				},
@@ -352,8 +375,25 @@ export default function MapSheetShell({
 							</Pressable>
 						</View>
 					)}
-					{topSlot}
-					{children ? <View style={styles.contentViewport}>{children}</View> : null}
+					{topSlot ? (
+						<View
+							{...(shouldUseHeaderGestureRegion ? panResponder.panHandlers : {})}
+							style={styles.topSlotGestureRegion}
+						>
+							{topSlot}
+						</View>
+					) : null}
+					{children ? (
+						<View
+							{...(shouldUseBodyGestureRegion ? panResponder.panHandlers : {})}
+							style={[
+								styles.contentViewport,
+								shouldUseBodyGestureRegion ? styles.contentViewportGestureRegion : null,
+							]}
+						>
+							{children}
+						</View>
+					) : null}
 					{footerSlot}
 				</Animated.View>
 			</Animated.View>

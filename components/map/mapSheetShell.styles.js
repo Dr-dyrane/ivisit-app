@@ -43,6 +43,10 @@ export default StyleSheet.create({
 	},
 	dragZone: {
 		alignItems: "center",
+		paddingBottom: 2,
+	},
+	topSlotGestureRegion: {
+		width: "100%",
 	},
 	handleTapTarget: {
 		alignSelf: "center",
@@ -58,5 +62,9 @@ export default StyleSheet.create({
 	contentViewport: {
 		flex: 1,
 		minHeight: 0,
+	},
+	contentViewportGestureRegion: {
+		width: "100%",
+		flex: 1,
 	},
 });

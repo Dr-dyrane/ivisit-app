@@ -1,5 +1,6 @@
 import { Easing, Platform } from "react-native";
 import { MAP_SHEET_SNAP_STATES } from "./mapSheet.constants";
+import { getMapRuntimePlatform } from "./mapViewportConfig";
 
 export const MAP_APPLE_EASE = Easing.bezier(0.21, 0.47, 0.32, 0.98);
 
@@ -23,6 +24,10 @@ const MAP_PLATFORM_MOTION = {
 		ease: MAP_APPLE_EASE,
 		sheet: {
 			spring: MAP_SHEET_SNAP_SPRING,
+			enableHeaderGestureRegion: true,
+			enableBodyGestureRegion: true,
+			enableBodyGestureInExpandedState: false,
+			axisLockRatio: 1.15,
 			gestureActivationOffset: 4,
 			dragRange: { up: -220, down: 180 },
 			release: { distance: 44, velocity: 0.28 },
@@ -41,6 +46,10 @@ const MAP_PLATFORM_MOTION = {
 		},
 		modal: {
 			defaultSnapState: MAP_SHEET_SNAP_STATES.HALF,
+			enableHeaderGestureRegion: true,
+			enableBodyGestureRegion: true,
+			enableBodyGestureInExpandedState: false,
+			axisLockRatio: 1.15,
 			spring: {
 				damping: 24,
 				mass: 0.9,
@@ -67,18 +76,63 @@ const MAP_PLATFORM_MOTION = {
 	ios: {
 		defaultSnapState: MAP_SHEET_SNAP_STATES.EXPANDED,
 	},
+	"ios-web": {
+		sheet: {
+			gestureActivationOffset: 4,
+			scroll: {
+				enableContentDetents: true,
+				enableWheelDetents: false,
+			},
+		},
+		modal: {
+			scroll: {
+				enableContentDetents: true,
+				enableWheelDetents: false,
+			},
+		},
+	},
 	android: {
 		sheet: {
-			gestureActivationOffset: 3,
-			release: { distance: 38, velocity: 0.22 },
+			enableHeaderGestureRegion: true,
+			enableBodyGestureRegion: true,
+			enableBodyGestureInExpandedState: true,
+			gestureActivationOffset: 2,
+			release: { distance: 36, velocity: 0.2 },
 			scroll: {
 				enableContentDetents: false,
 				enableWheelDetents: false,
 			},
 		},
 		modal: {
-			gestureActivationOffset: 3,
-			release: { distance: 38, velocity: 0.22 },
+			enableHeaderGestureRegion: true,
+			enableBodyGestureRegion: true,
+			enableBodyGestureInExpandedState: true,
+			gestureActivationOffset: 2,
+			release: { distance: 36, velocity: 0.2 },
+			scroll: {
+				enableContentDetents: false,
+				enableWheelDetents: false,
+			},
+		},
+	},
+	"android-web": {
+		sheet: {
+			enableHeaderGestureRegion: true,
+			enableBodyGestureRegion: true,
+			enableBodyGestureInExpandedState: true,
+			gestureActivationOffset: 2,
+			release: { distance: 36, velocity: 0.2 },
+			scroll: {
+				enableContentDetents: false,
+				enableWheelDetents: false,
+			},
+		},
+		modal: {
+			enableHeaderGestureRegion: true,
+			enableBodyGestureRegion: true,
+			enableBodyGestureInExpandedState: true,
+			gestureActivationOffset: 2,
+			release: { distance: 36, velocity: 0.2 },
 			scroll: {
 				enableContentDetents: false,
 				enableWheelDetents: false,
@@ -87,19 +141,25 @@ const MAP_PLATFORM_MOTION = {
 	},
 	web: {
 		sheet: {
+			enableHeaderGestureRegion: true,
+			enableBodyGestureRegion: true,
+			enableBodyGestureInExpandedState: false,
 			gestureActivationOffset: 5,
 			release: { distance: 40, velocity: 0.24 },
 			scroll: {
-				enableContentDetents: false,
+				enableContentDetents: true,
 				enableWheelDetents: true,
 				halfCollapseWheelThreshold: -84,
 			},
 		},
 		modal: {
+			enableHeaderGestureRegion: true,
+			enableBodyGestureRegion: true,
+			enableBodyGestureInExpandedState: false,
 			gestureActivationOffset: 5,
 			release: { distance: 40, velocity: 0.24 },
 			scroll: {
-				enableContentDetents: false,
+				enableContentDetents: true,
 				enableWheelDetents: true,
 				halfCloseWheelThreshold: -96,
 				collapsedWheelThreshold: -72,
@@ -109,8 +169,14 @@ const MAP_PLATFORM_MOTION = {
 };
 
 export function getMapPlatformMotion(platform = Platform.OS) {
+	const resolvedPlatform = typeof platform === "string" ? platform : platform?.platform || Platform.OS;
+	const resolvedUserAgent = typeof platform === "object" ? platform?.userAgent || null : null;
+	const runtimePlatform = getMapRuntimePlatform({
+		platform: resolvedPlatform,
+		userAgent: resolvedUserAgent,
+	});
 	const base = MAP_PLATFORM_MOTION.default;
-	const override = MAP_PLATFORM_MOTION[platform] || {};
+	const override = MAP_PLATFORM_MOTION[runtimePlatform] || {};
 
 	return {
 		ease: override.ease || base.ease,

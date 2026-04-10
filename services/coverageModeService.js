@@ -64,6 +64,8 @@ const isVerifiedHospitalForCoverage = (hospital) => {
 
 const isDemoHospital = (hospital) =>
 	hospital?.isDemo === true || demoEcosystemService.isDemoHospital(hospital);
+const countsAsDemoCoverage = (hospital) =>
+	demoEcosystemService.countsAsDemoCoverage(hospital);
 
 export const coverageModeService = {
 	normalizeMode(value) {
@@ -128,7 +130,7 @@ export const coverageModeService = {
 				if (seen.has(key)) return acc;
 				seen.add(key);
 
-				if (isDemoHospital(hospital)) {
+				if (countsAsDemoCoverage(hospital)) {
 					acc.demoNearby += 1;
 					acc.allNearby += 1;
 					return acc;

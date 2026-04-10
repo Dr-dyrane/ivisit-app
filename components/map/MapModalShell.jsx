@@ -92,6 +92,13 @@ export default function MapModalShell({
 	const scrollSnapHandledRef = useRef(false);
 	const wheelSnapAccumRef = useRef(0);
 	const modalScrollMotion = modalMotion.scroll;
+	const shouldUseHeaderGestureRegion = Boolean(modalMotion.enableHeaderGestureRegion);
+	const shouldUseBodyGestureRegion =
+		Boolean(modalMotion.enableBodyGestureRegion) &&
+		(
+			modalSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED ||
+			Boolean(modalMotion.enableBodyGestureInExpandedState)
+		);
 	const allowScrollDetents = Boolean(modalScrollMotion.enableContentDetents);
 	const allowWheelDetents = isWeb && Boolean(modalScrollMotion.enableWheelDetents);
 	const SCROLL_TOP_THRESHOLD = modalScrollMotion.topThreshold;
@@ -476,8 +483,22 @@ export default function MapModalShell({
 
 	const panResponder = enableDetents
 		? PanResponder.create({
-				onMoveShouldSetPanResponder: (_, gestureState) =>
-					Math.abs(gestureState.dy) > modalMotion.gestureActivationOffset,
+				onMoveShouldSetPanResponder: (_, gestureState) => {
+					const absDx = Math.abs(gestureState.dx || 0);
+					const absDy = Math.abs(gestureState.dy || 0);
+					return (
+						absDy > modalMotion.gestureActivationOffset &&
+						absDy > absDx * (modalMotion.axisLockRatio || 1.1)
+					);
+				},
+				onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+					const absDx = Math.abs(gestureState.dx || 0);
+					const absDy = Math.abs(gestureState.dy || 0);
+					return (
+						absDy > modalMotion.gestureActivationOffset &&
+						absDy > absDx * (modalMotion.axisLockRatio || 1.1)
+					);
+				},
 				onPanResponderGrant: () => {
 					dragTranslateY.stopAnimation();
 					resetDetentInteractionState();
@@ -523,6 +544,13 @@ export default function MapModalShell({
 				},
 			})
 		: null;
+	const contentScrollEnabled =
+		scrollEnabled &&
+		(isDrawer ||
+			modalSnapState === MAP_SHEET_SNAP_STATES.EXPANDED ||
+			allowScrollDetents ||
+			allowWheelDetents);
+
 	const modalContent = (
 		<Animated.View
 			style={[
@@ -547,7 +575,10 @@ export default function MapModalShell({
 				</View>
 			) : null}
 
-			<View style={styles.headerRow}>
+			<View
+				{...(shouldUseHeaderGestureRegion ? (panResponder?.panHandlers || {}) : {})}
+				style={styles.headerRow}
+			>
 				{title ? (
 					<Text style={[styles.headerTitle, { color: titleColor }]}>{title}</Text>
 				) : (
@@ -572,26 +603,34 @@ export default function MapModalShell({
 			</View>
 
 			{scrollEnabled ? (
-				<ScrollView
-					ref={contentScrollRef}
-					showsVerticalScrollIndicator={false}
-					keyboardShouldPersistTaps="handled"
-					scrollEnabled={scrollEnabled}
-					nestedScrollEnabled
-					bounces={!isDrawer && !isWeb}
-					alwaysBounceVertical={!isDrawer && !isWeb}
-					overScrollMode={enableDetents && allowScrollDetents ? "always" : "auto"}
-					directionalLockEnabled
-					scrollEventThrottle={16}
-					onScrollBeginDrag={handleContentScrollBeginDrag}
-					onScroll={handleContentScroll}
-					onScrollEndDrag={handleContentScrollEndDrag}
-					onMomentumScrollEnd={handleContentScrollEndDrag}
-					onWheel={isWeb ? handleContentWheel : undefined}
-					contentContainerStyle={[styles.content, contentContainerStyle]}
+				<View
+					{...(shouldUseBodyGestureRegion ? (panResponder?.panHandlers || {}) : {})}
+					style={[
+						styles.contentGestureRegion,
+						shouldUseBodyGestureRegion ? styles.contentGestureRegionActive : null,
+					]}
 				>
-					{children}
-				</ScrollView>
+					<ScrollView
+						ref={contentScrollRef}
+						showsVerticalScrollIndicator={false}
+						keyboardShouldPersistTaps="handled"
+						scrollEnabled={contentScrollEnabled}
+						nestedScrollEnabled
+						bounces={!isDrawer && !isWeb}
+						alwaysBounceVertical={!isDrawer && !isWeb}
+						overScrollMode={enableDetents && allowScrollDetents ? "always" : "auto"}
+						directionalLockEnabled
+						scrollEventThrottle={16}
+						onScrollBeginDrag={handleContentScrollBeginDrag}
+						onScroll={handleContentScroll}
+						onScrollEndDrag={handleContentScrollEndDrag}
+						onMomentumScrollEnd={handleContentScrollEndDrag}
+						onWheel={isWeb ? handleContentWheel : undefined}
+						contentContainerStyle={[styles.content, contentContainerStyle]}
+					>
+						{children}
+					</ScrollView>
+				</View>
 			) : (
 				<View style={[styles.content, contentContainerStyle]}>
 					{children}

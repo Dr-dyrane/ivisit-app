@@ -222,12 +222,15 @@ const isDemoSeedRow = (row: any) => {
   const verificationStatus = toSafeString(row?.verification_status, "").toLowerCase();
   const featureList = toSafeStringArray(row?.features).map((feature) => feature.toLowerCase());
   const name = toSafeString(row?.name, "").toLowerCase();
+  const address = toSafeString(row?.address, "").toLowerCase();
 
   return (
     placeId.startsWith("demo:") ||
     verificationStatus.startsWith("demo") ||
     featureList.some((feature) => feature.includes("demo")) ||
-    /\(demo\)/i.test(name)
+    /\(demo\)/i.test(name) ||
+    /^emergency care center\s+\d+$/i.test(name) ||
+    /^coverage(?:\s+[a-z0-9_:-]+)?\s+zone\s+\d+$/i.test(address)
   );
 };
 
