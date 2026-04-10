@@ -121,21 +121,63 @@ function CareIntentCard({
 		isPrimary && pulseProgress
 			? pulseProgress.interpolate({
 					inputRange: [0, 1],
-					outputRange: [1, 1.014],
+					outputRange: [1, 1.042],
 				})
 			: 1;
 	const animatedTranslateY =
 		isPrimary && pulseProgress
 			? pulseProgress.interpolate({
 					inputRange: [0, 1],
-					outputRange: [0, -1],
+					outputRange: [0, -3.5],
 				})
 			: 0;
+	const animatedOpacity =
+		!isPrimary && pulseProgress && !isSelected
+			? pulseProgress.interpolate({
+					inputRange: [0, 1],
+					outputRange: [0.94, 0.74],
+				})
+			: 1;
 	const pulseSheenOpacity =
 		isPrimary && pulseProgress
 			? pulseProgress.interpolate({
 					inputRange: [0, 1],
-					outputRange: [0.04, 0.12],
+					outputRange: [0.12, 0.38],
+				})
+			: 0;
+	const pulseGlowOpacity =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 1],
+					outputRange: [0.18, 0.46],
+				})
+			: 0;
+	const pulseGlowScale =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 1],
+					outputRange: [0.92, 1.18],
+				})
+			: 1;
+	const pulseSheenTranslateX =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 1],
+					outputRange: [-180, 180],
+				})
+			: 0;
+	const iconPulseScale =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 0.28, 0.6, 1],
+					outputRange: [1, 1, 1.14, 1.02],
+				})
+			: 1;
+	const iconPulseTranslateY =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 0.28, 0.6, 1],
+					outputRange: [0, 0, -1.5, 0],
 				})
 			: 0;
 
@@ -149,6 +191,7 @@ function CareIntentCard({
 		>
 			<Animated.View
 				style={{
+					opacity: animatedOpacity,
 					transform: [
 						{ translateY: isSelected ? 0 : animatedTranslateY },
 						{ scale: isSelected ? 1.01 : animatedScale },
@@ -167,13 +210,52 @@ function CareIntentCard({
 					{isPrimary && !isSelected ? (
 						<Animated.View
 							pointerEvents="none"
-							style={[styles.intentCardPulseSheen, { opacity: pulseSheenOpacity }]}
+							style={[
+								styles.intentCardPulseGlow,
+								{
+									opacity: pulseGlowOpacity,
+									transform: [{ scale: pulseGlowScale }],
+								},
+							]}
 						/>
 					) : null}
+					{isPrimary && !isSelected ? (
+						<Animated.View
+							pointerEvents="none"
+							style={[styles.intentCardPulseSheen, { opacity: pulseSheenOpacity }]}
+						>
+							<Animated.View
+								style={[
+									styles.intentCardPulseSheenBand,
+									{ transform: [{ translateX: pulseSheenTranslateX }] },
+								]}
+							>
+								<LinearGradient
+									colors={[
+										"rgba(255,255,255,0)",
+										"rgba(255,255,255,0.68)",
+										"rgba(255,255,255,0)",
+									]}
+									start={{ x: 0, y: 0.5 }}
+									end={{ x: 1, y: 0.5 }}
+									style={styles.intentCardPulseSheenBandFill}
+								/>
+							</Animated.View>
+						</Animated.View>
+					) : null}
 					<View style={styles.intentCardHeader}>
-						<View style={styles.intentCardIconWrap}>
-							<MaterialCommunityIcons name={iconName} size={isPrimary ? 24 : 21} color="#FFFFFF" />
-						</View>
+						<Animated.View
+							style={{
+								transform: [
+									{ translateY: isSelected ? 0 : iconPulseTranslateY },
+									{ scale: isSelected ? 1.04 : iconPulseScale },
+								],
+							}}
+						>
+							<View style={styles.intentCardIconWrap}>
+								<MaterialCommunityIcons name={iconName} size={isPrimary ? 24 : 21} color="#FFFFFF" />
+							</View>
+						</Animated.View>
 						{isSelected ? (
 							<View style={styles.intentCardCheckBadge}>
 								<Ionicons name="checkmark" size={12} color="#FFFFFF" />
@@ -247,7 +329,7 @@ export default function MapExploreIntentCareSection({
 							onPress={() => onChooseCare("ambulance")}
 							isSelected={selectedCare === "ambulance"}
 							showSubtext={false}
-							pulseProgress={selectedCare === "ambulance" ? null : pulseProgress}
+							pulseProgress={!selectedCare ? pulseProgress : null}
 						/>
 					</View>
 					<View style={styles.intentPanelBottomRow}>
@@ -260,6 +342,7 @@ export default function MapExploreIntentCareSection({
 								onPress={() => onChooseCare("bed")}
 								isSelected={selectedCare === "bed"}
 								showSubtext={false}
+								pulseProgress={!selectedCare ? pulseProgress : null}
 							/>
 						</View>
 						<View style={styles.intentPanelHalf}>
@@ -270,6 +353,7 @@ export default function MapExploreIntentCareSection({
 								colors={["#737C88", "#596370"]}
 								onPress={onOpenCareHistory}
 								showSubtext={false}
+								pulseProgress={!selectedCare ? pulseProgress : null}
 							/>
 						</View>
 					</View>

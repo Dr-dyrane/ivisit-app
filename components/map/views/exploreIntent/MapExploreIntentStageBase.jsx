@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { Animated, Easing, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Animated, Easing, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import InAppBrowserLink from "../../../ui/InAppBrowserLink";
 import { useTheme } from "../../../../contexts/ThemeContext";
@@ -49,11 +49,18 @@ export default function MapExploreIntentStageBase({
 	const scrollStartOffsetYRef = useRef(0);
 	const lastScrollOffsetYRef = useRef(0);
 	const scrollSnapHandledRef = useRef(false);
+	const wheelSnapAccumRef = useRef(0);
+	const previousSnapStateRef = useRef(snapState);
+	const halfDetentLockRef = useRef(false);
+	const isWebPlatform = Platform.OS === "web";
 	const SCROLL_SNAP_TOP_THRESHOLD = 10;
 	const SCROLL_SNAP_EXPAND_OFFSET = 32;
 	const SCROLL_SNAP_COLLAPSE_PULL = -36;
 	const SCROLL_SNAP_EXPAND_VELOCITY = 0.72;
 	const SCROLL_SNAP_COLLAPSE_VELOCITY = -0.82;
+	const HALF_COLLAPSE_EXTRA_PULL = 18;
+	const HALF_COLLAPSE_VELOCITY_FACTOR = 1.45;
+	const HALF_COLLAPSE_WHEEL_THRESHOLD = -122;
 	const resolvedScreenConfig = useMemo(
 		() => screenConfig || getMapExploreIntentScreenConfig(variant),
 		[screenConfig, variant],
@@ -179,14 +186,12 @@ export default function MapExploreIntentStageBase({
 					easing: Easing.inOut(Easing.ease),
 					useNativeDriver: true,
 				}),
-				Animated.delay(120),
 				Animated.timing(pulseProgress, {
 					toValue: 0,
 					duration: MAP_CARE_PULSE_MS,
 					easing: Easing.inOut(Easing.ease),
 					useNativeDriver: true,
 				}),
-				Animated.delay(120),
 			]),
 		);
 		pulseLoop.start();
@@ -196,6 +201,17 @@ export default function MapExploreIntentStageBase({
 			pulseProgress.stopAnimation();
 		};
 	}, [pulseProgress]);
+
+	useEffect(() => {
+		halfDetentLockRef.current =
+			previousSnapStateRef.current === MAP_SHEET_SNAP_STATES.EXPANDED &&
+			snapState === MAP_SHEET_SNAP_STATES.HALF;
+		previousSnapStateRef.current = snapState;
+		scrollSnapHandledRef.current = false;
+		wheelSnapAccumRef.current = 0;
+		scrollStartOffsetYRef.current = 0;
+		lastScrollOffsetYRef.current = 0;
+	}, [snapState]);
 
 	const handleSnapToggle = (nextState = null) => {
 		if (typeof onSnapStateChange !== "function") return;
@@ -225,6 +241,9 @@ export default function MapExploreIntentStageBase({
 		}
 
 		scrollSnapHandledRef.current = true;
+		wheelSnapAccumRef.current = 0;
+		scrollStartOffsetYRef.current = 0;
+		lastScrollOffsetYRef.current = 0;
 		bodyScrollRef.current?.scrollTo?.({ y: 0, animated: false });
 		onSnapStateChange(nextState);
 	};
@@ -234,11 +253,18 @@ export default function MapExploreIntentStageBase({
 		scrollStartOffsetYRef.current = offsetY;
 		lastScrollOffsetYRef.current = offsetY;
 		scrollSnapHandledRef.current = false;
+		wheelSnapAccumRef.current = 0;
+		if (snapState === MAP_SHEET_SNAP_STATES.HALF && halfDetentLockRef.current) {
+			halfDetentLockRef.current = false;
+		}
 	};
 
 	const handleBodyScroll = (event) => {
 		const offsetY = event?.nativeEvent?.contentOffset?.y ?? 0;
 		lastScrollOffsetYRef.current = offsetY;
+		if (offsetY > SCROLL_SNAP_TOP_THRESHOLD) {
+			wheelSnapAccumRef.current = 0;
+		}
 
 		if (isSidebarPresentation || scrollSnapHandledRef.current) return;
 		const startedNearTop = scrollStartOffsetYRef.current <= SCROLL_SNAP_TOP_THRESHOLD;
@@ -256,7 +282,8 @@ export default function MapExploreIntentStageBase({
 			}
 			if (
 				snapState === MAP_SHEET_SNAP_STATES.HALF &&
-				offsetY < SCROLL_SNAP_COLLAPSE_PULL - 10
+				!halfDetentLockRef.current &&
+				offsetY < SCROLL_SNAP_COLLAPSE_PULL - HALF_COLLAPSE_EXTRA_PULL
 			) {
 				triggerScrollSnap(MAP_SHEET_SNAP_STATES.COLLAPSED);
 			}
@@ -288,10 +315,48 @@ export default function MapExploreIntentStageBase({
 			}
 			if (
 				snapState === MAP_SHEET_SNAP_STATES.HALF &&
-				velocityY < SCROLL_SNAP_COLLAPSE_VELOCITY * 1.3
+				!halfDetentLockRef.current &&
+				velocityY < SCROLL_SNAP_COLLAPSE_VELOCITY * HALF_COLLAPSE_VELOCITY_FACTOR
 			) {
 				triggerScrollSnap(MAP_SHEET_SNAP_STATES.COLLAPSED);
 			}
+		}
+	};
+
+	const handleBodyWheel = (event) => {
+		if (isSidebarPresentation || scrollSnapHandledRef.current || !isWebPlatform) return;
+
+		const deltaY = Number(event?.nativeEvent?.deltaY ?? 0);
+		if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 1) return;
+
+		const isAtTop = lastScrollOffsetYRef.current <= SCROLL_SNAP_TOP_THRESHOLD;
+		if (!isAtTop) {
+			wheelSnapAccumRef.current = 0;
+			return;
+		}
+
+		if (snapState === MAP_SHEET_SNAP_STATES.HALF && deltaY < 0 && halfDetentLockRef.current) {
+			halfDetentLockRef.current = false;
+			wheelSnapAccumRef.current = 0;
+			return;
+		}
+
+		wheelSnapAccumRef.current =
+			Math.sign(wheelSnapAccumRef.current) === Math.sign(deltaY) || wheelSnapAccumRef.current === 0
+				? wheelSnapAccumRef.current + deltaY
+				: deltaY;
+
+		if (snapState === MAP_SHEET_SNAP_STATES.EXPANDED && wheelSnapAccumRef.current <= -42) {
+			triggerScrollSnap(MAP_SHEET_SNAP_STATES.HALF);
+			return;
+		}
+
+		if (
+			snapState === MAP_SHEET_SNAP_STATES.HALF &&
+			!halfDetentLockRef.current &&
+			wheelSnapAccumRef.current <= HALF_COLLAPSE_WHEEL_THRESHOLD
+		) {
+			triggerScrollSnap(MAP_SHEET_SNAP_STATES.COLLAPSED);
 		}
 	};
 
@@ -403,9 +468,10 @@ export default function MapExploreIntentStageBase({
 					ref={bodyScrollRef}
 					style={styles.bodyScrollViewport}
 					showsVerticalScrollIndicator={false}
-					bounces={!isSidebarPresentation}
-					alwaysBounceVertical={!isSidebarPresentation}
+					bounces={!isSidebarPresentation && !isWebPlatform}
+					alwaysBounceVertical={!isSidebarPresentation && !isWebPlatform}
 					directionalLockEnabled
+					onWheel={isWebPlatform ? handleBodyWheel : undefined}
 					scrollEventThrottle={16}
 					onScrollBeginDrag={handleBodyScrollBeginDrag}
 					onScroll={handleBodyScroll}
