@@ -29,6 +29,7 @@ import EmergencyIntakeOrchestrator from "../components/emergency/intake/Emergenc
 import { navigateBack, ROUTES } from "../utils/navigationHelpers";
 import { triageService } from "../services/triageService";
 import { demoEcosystemService } from "../services/demoEcosystemService";
+import { COVERAGE_POOR_THRESHOLD } from "../services/coverageModeService";
 
 const MIN_FINDING_NEARBY_HELP_MS = 1600;
 const EMERGENCY_INTAKE_PHASE_STORAGE_VERSION = 1;
@@ -278,12 +279,12 @@ export default function RequestAmbulanceScreen() {
 	const shouldBackfillDemoExperience = Boolean(
 		activeIntakeLocation &&
 			!matchedTripState &&
-			(!recommendedHospitalIsComplete || completeHospitalCount < 3),
+			(!recommendedHospitalIsComplete || completeHospitalCount < COVERAGE_POOR_THRESHOLD),
 	);
 	const shouldForceDemoBootstrap = Boolean(
 		activeIntakeLocation &&
 			!matchedTripState &&
-			completeHospitalCount === 0,
+			completeHospitalCount < COVERAGE_POOR_THRESHOLD,
 	);
 	const intakePhaseStorageKey = useMemo(
 		() => buildEmergencyIntakePhaseStorageKey(user?.id),

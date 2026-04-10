@@ -7,6 +7,7 @@ import { useHeaderState } from "../../../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../../../contexts/ScrollAwareHeaderContext";
 import { COLORS } from "../../../constants/colors";
 import { STACK_TOP_PADDING } from "../../../constants/layout";
+import { HEADER_MODES } from "../../../constants/header";
 import HeaderBackButton from "../../../components/navigation/HeaderBackButton";
 
 export default function StacksLayout() {
@@ -35,8 +36,7 @@ export default function StacksLayout() {
 		unlockHeaderHidden();
 		forceHeaderVisible();
 		setHeaderState({
-			hidden: false,
-			scrollAware: false,
+			mode: HEADER_MODES.FIXED,
 		});
 	}, [isEmergencyRequestRoute, unlockHeaderHidden, forceHeaderVisible, setHeaderState]);
 

@@ -215,7 +215,7 @@ Rules:
 
 ## 12. Header Rule
 
-The smart header is still global, but the map controls it intentionally.
+The smart-header fix is the **global contract** for `/map`; the map should drive it intentionally instead of inventing separate top chrome.
 
 Header coordination lives in:
 
@@ -223,34 +223,87 @@ Header coordination lives in:
 
 Shared header implementation:
 
+- [constants/header.js](../../../constants/header.js)
 - [ScrollAwareHeader.jsx](../../../components/headers/ScrollAwareHeader.jsx)
 - [ActionWrapper.jsx](../../../components/headers/ActionWrapper.jsx)
 - [HeaderLocationButton.jsx](../../../components/headers/HeaderLocationButton.jsx)
 
 Rules:
 
-- map state should set header title from the resolved location model
-- header right action is location change
-- header left action returns to welcome
+- all top-surface state should flow through `setHeaderState(...)` and `getHeaderBehavior(...)`
+- use shared header modes (`MAP_OVERLAY`, `FIXED`, `HIDDEN`) instead of local one-off booleans
+- map state should set the header title from the resolved location model
+- modal/focused states should hide the header through the same global header contract
 - on web, glass blur must be handled explicitly, not by falling back to Android styling
 
 ## 13. Loading Rule
 
-There are two loading layers:
+There is now **one** startup loading layer inside the live `/map` route.
 
-1. entry loading
-2. in-route readiness protection
+Active file:
 
-Files:
-
-- [MapEntryLoadingScreen.jsx](../../../screens/MapEntryLoadingScreen.jsx)
 - [MapExploreLoadingOverlay.jsx](../../../components/map/MapExploreLoadingOverlay.jsx)
+
+Retired/dead path:
+
+- `app/(auth)/map-loading.js` removed
+- [MapEntryLoadingScreen.jsx](../../../screens/MapEntryLoadingScreen.jsx) no longer owns public map entry
 
 Rules:
 
-- entry skeleton acknowledges navigation intent immediately
-- live `/map` should still protect against partial or broken state
+- no separate blocking `map-loading` route
+- the real map mounts immediately and owns the startup state
+- one calm overlay protects readiness while location/map/provider context settles
+- provider expansion, demo bootstrap, and route enrichment continue in the background
 - do not flash a half-broken map surface before route and hospital context are ready
+
+## 14. Current `/map` UI Inventory Reference
+
+This is the current element inventory to reference during cleanup or global consistency passes.
+
+### Route / shell layer
+- `WebAppShell`
+- `ScrollAwareHeader` via auth layout / shared header state
+- `GlobalFAB`
+
+### Base map canvas
+- `EmergencyLocationPreviewMap`
+- `MapView`
+- hospital markers
+- selected hospital marker
+- user location marker
+- route polyline
+- `MapControls`
+
+### Main sheet surface
+- `MapSheetOrchestrator`
+- search pill
+- profile trigger / avatar
+- nearest hospital summary card
+- care choice section (`Ambulance`, `Bed space`, `Compare`)
+- featured hospital rail in expanded posture
+- terms footer in expanded posture
+
+### Loading surface
+- `MapExploreLoadingOverlay`
+- muted static map backdrop image (when available)
+- soft gradient scrim
+- ghost header + ghost sheet treatment
+- loading copy, status chips, and placeholder rows
+
+### Modal family
+- `MapLocationModal`
+- `MapPublicSearchModal`
+- `MapHospitalModal`
+- `MapHospitalDetailsModal`
+- `MiniProfileModal`
+- `MapGuestProfileModal`
+- `MapCareHistoryModal`
+- `MapRecentVisitsModal`
+- `AuthInputModal`
+
+### Suppressed internals
+- `EmergencyLocationPreviewMap` internal skeleton exists but is disabled on `/map` via `showInternalSkeleton={false}`
 
 ## 14. Readiness Rule
 

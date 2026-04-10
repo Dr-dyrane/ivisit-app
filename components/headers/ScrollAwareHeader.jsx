@@ -5,6 +5,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { BlurView } from "expo-blur";
 import { COLORS } from "../../constants/colors";
+import {
+	GLASS_SURFACE_VARIANTS,
+	SURFACE_RADII,
+	getGlassSurfaceTokens,
+} from "../../constants/surfaces";
 import NotificationIconButton from "./NotificationIconButton";
 import SearchIconButton from "./SearchIconButton";
 import ActionWrapper from "./ActionWrapper";
@@ -32,20 +37,15 @@ export default function ScrollAwareHeader({
 }) {
 	const insets = useSafeAreaInsets();
 	const { isDarkMode } = useTheme();
-	const isWeb = Platform.OS === "web";
+	const isIOS = Platform.OS === "ios";
 	const isAndroid = Platform.OS === "android";
 	const { headerOpacity: scrollHeaderOpacity, titleOpacity: scrollTitleOpacity } = useScrollAwareHeader();
 	const headerOpacity = scrollAware ? scrollHeaderOpacity : 1;
 	const titleOpacity = scrollAware ? scrollTitleOpacity : 1;
-	const islandGlassSurface = isDarkMode
-		? "rgba(18, 24, 38, 0.74)"
-		: "rgba(255, 255, 255, 0.82)";
-	const islandWebGlassSurface = isDarkMode
-		? "rgba(18, 24, 38, 0.44)"
-		: "rgba(255, 255, 255, 0.40)";
-	const islandShadowLayer = isDarkMode
-		? "rgba(0, 0, 0, 0.24)"
-		: "rgba(15, 23, 42, 0.12)";
+	const headerSurface = getGlassSurfaceTokens({
+		isDarkMode,
+		variant: GLASS_SURFACE_VARIANTS.HEADER,
+	});
 
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
 	const textMuted = isDarkMode ? "#94A3B8" : "#64748B";
@@ -64,6 +64,40 @@ export default function ScrollAwareHeader({
 			rightComponent
 		);
 
+	const headerContent = (
+		<View style={[styles.innerContent, { backgroundColor: headerSurface.overlayColor }]}>
+			<View style={styles.leftSection}>
+				{leftComponent ? (
+					leftComponent
+				) : icon ? (
+					<View style={[styles.iconSquircle, { backgroundColor }]}>{icon}</View>
+				) : null}
+			</View>
+			<View style={styles.centerSection}>
+				{subtitle ? (
+					<Text numberOfLines={1} style={[styles.subtitleText, { color: textMuted }]}>
+						{subtitle}
+					</Text>
+				) : null}
+				<Animated.Text
+					numberOfLines={1}
+					style={[styles.titleText, { color: textColor, opacity: titleOpacity }]}
+				>
+					{title}
+				</Animated.Text>
+			</View>
+			<View style={styles.rightSection}>
+				{badge ? (
+					<View style={[styles.badgeBox, { backgroundColor }]}>
+						<Text style={styles.badgeText}>{badge}</Text>
+					</View>
+				) : (
+					resolvedRight
+				)}
+			</View>
+		</View>
+	);
+
 	return (
 		<Animated.View
 			style={[
@@ -75,13 +109,13 @@ export default function ScrollAwareHeader({
 				},
 			]}
 		>
-			<View style={styles.islandWrapper}>
+			<View style={[styles.islandWrapper, headerSurface.shadowStyle]}>
 				{isAndroid && (
 					<View
 						pointerEvents="none"
 						style={[
 							styles.islandShadowUnderlay,
-							{ backgroundColor: islandShadowLayer },
+							{ backgroundColor: headerSurface.underlayColor },
 						]}
 					/>
 				)}
@@ -89,39 +123,18 @@ export default function ScrollAwareHeader({
 					style={[
 						styles.islandClip,
 						{
-							backgroundColor: isAndroid
-								? islandGlassSurface
-								: isWeb
-									? islandWebGlassSurface
-									: "transparent",
-							...Platform.select({
-								web: {
-									backdropFilter: "blur(18px) saturate(1.2)",
-									WebkitBackdropFilter: "blur(18px) saturate(1.2)",
-								},
-							}),
+							backgroundColor: headerSurface.surfaceColor,
+							...headerSurface.webBackdropStyle,
 						},
 					]}
 				>
-				{Platform.OS === "ios" ? (
+				{isIOS ? (
 					<BlurView
-						intensity={isDarkMode ? 80 : 90}
-						tint={isDarkMode ? "dark" : "light"}
+						intensity={headerSurface.blurIntensity}
+						tint={headerSurface.tint}
 						style={[styles.blur, { minHeight: HEADER_HEIGHT }]}
 					>
-						<View style={[styles.innerContent, {
-							backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.2)" : "rgba(255, 255, 255, 0.3)"
-						}]}>
-							{/* LEFT: Identity / Navigation */}
-							<View style={styles.leftSection}>{leftComponent ? leftComponent : icon ? (<View style={[styles.iconSquircle, { backgroundColor: backgroundColor }]}>{icon}</View>) : null}</View>
-							{/* MIDDLE: Editorial Typography */}
-							<View style={styles.centerSection}>{subtitle && (<Text numberOfLines={1} style={[styles.subtitleText, { color: textMuted }]}>{subtitle}</Text>)}<Animated.Text numberOfLines={1} style={[styles.titleText, { color: textColor, opacity: titleOpacity }]}>{title}</Animated.Text></View>
-
-							{/* RIGHT: Actions / Badge */}
-							<View style={styles.rightSection}>{badge ? (<View style={[styles.badgeBox, { backgroundColor }]}>
-								<Text style={styles.badgeText}>{badge}</Text>
-							</View>) : resolvedRight}</View>
-						</View>
+						{headerContent}
 					</BlurView>
 				) : (
 					// Android: split-layer glass surface (shadow underlay + translucent island clip)
@@ -129,19 +142,7 @@ export default function ScrollAwareHeader({
 						minHeight: HEADER_HEIGHT,
 						backgroundColor: "transparent"
 					}]}>
-						<View style={[styles.innerContent, {
-							backgroundColor: "transparent"
-						}]}>
-							{/* LEFT: Identity / Navigation */}
-							<View style={styles.leftSection}>{leftComponent ? leftComponent : icon ? (<View style={[styles.iconSquircle, { backgroundColor: backgroundColor }]}>{icon}</View>) : null}</View>
-							{/* MIDDLE: Editorial Typography */}
-							<View style={styles.centerSection}>{subtitle && (<Text numberOfLines={1} style={[styles.subtitleText, { color: textMuted }]}>{subtitle}</Text>)}<Animated.Text numberOfLines={1} style={[styles.titleText, { color: textColor, opacity: titleOpacity }]}>{title}</Animated.Text></View>
-
-							{/* RIGHT: Actions / Badge */}
-							<View style={styles.rightSection}>{badge ? (<View style={[styles.badgeBox, { backgroundColor }]}>
-								<Text style={styles.badgeText}>{badge}</Text>
-							</View>) : resolvedRight}</View>
-						</View>
+						{headerContent}
 					</View>
 				)}
 				</View>
@@ -159,23 +160,12 @@ const styles = StyleSheet.create({
 		zIndex: 9999,
 	},
 	islandWrapper: {
-		// Floating "Island" feel
-		borderRadius: 48,
+		borderRadius: SURFACE_RADII.HEADER_ISLAND,
 		overflow: "visible",
 		position: "relative",
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: Platform.OS === "android" ? 0 : 12 },
-		shadowOpacity: Platform.OS === "android" ? 0 : 0.12,
-		shadowRadius: Platform.OS === "android" ? 0 : 16,
-		elevation: Platform.OS === "android" ? 0 : 10,
-		...Platform.select({
-			web: {
-				boxShadow: "0px 12px 16px rgba(0,0,0,0.12)",
-			},
-		}),
 	},
 	islandClip: {
-		borderRadius: 48,
+		borderRadius: SURFACE_RADII.HEADER_ISLAND,
 		overflow: "hidden",
 	},
 	islandShadowUnderlay: {
@@ -184,10 +174,10 @@ const styles = StyleSheet.create({
 		left: 0,
 		right: 0,
 		bottom: -2,
-		borderRadius: 48,
+		borderRadius: SURFACE_RADII.HEADER_ISLAND,
 	},
 	blur: {
-		borderRadius: 48,
+		borderRadius: SURFACE_RADII.HEADER_ISLAND,
 	},
 	innerContent: {
 		height: HEADER_HEIGHT,
@@ -201,17 +191,20 @@ const styles = StyleSheet.create({
 	iconSquircle: {
 		width: 48,
 		height: 48,
-		borderRadius: 14, // Nested Squircle logic
+		borderRadius: SURFACE_RADII.ACTION_CHIP,
 		alignItems: "center",
 		justifyContent: "center",
-		shadowColor: "#000",
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
-		shadowOffset: { width: 0, height: 2 },
 		...Platform.select({
+			ios: {
+				shadowColor: "#000",
+				shadowOpacity: 0.1,
+				shadowRadius: 4,
+				shadowOffset: { width: 0, height: 2 },
+			},
 			web: {
 				boxShadow: "0px 2px 4px rgba(0,0,0,0.1)",
 			},
+			default: {},
 		}),
 	},
 	centerSection: {

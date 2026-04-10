@@ -145,6 +145,7 @@ export default function EmergencyLocationPreviewMap({
 	bottomSheetHeight = 0,
 	onHospitalPress = null,
 	onReadinessChange = null,
+	showInternalSkeleton = true,
 }) {
 	const { isDarkMode } = useTheme();
 	const mapRef = useRef(null);
@@ -389,7 +390,7 @@ export default function EmergencyLocationPreviewMap({
 				) : null}
 			</MapView>
 
-			{!isMapReady ? (
+			{showInternalSkeleton && !isMapReady ? (
 				<View
 					pointerEvents="none"
 					style={[

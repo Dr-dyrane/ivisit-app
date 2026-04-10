@@ -28,6 +28,14 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Banner reminder appears when demo mode is active.
 - User can toggle demo mode in **More > Demo Mode**.
 
+## Coverage Threshold Rule (2026-04-09)
+- `COVERAGE_POOR_THRESHOLD` is currently **3** verified nearby live hospitals.
+- `0` verified nearby live hospitals = `none` coverage.
+- `1–2` verified nearby live hospitals = `poor` coverage.
+- Only `3+` verified nearby live hospitals should count as `good` coverage for the emergency UX.
+- Below that threshold, the app should keep `hybrid` / demo support eligible so the nearby-care UI does not feel under-filled or brittle.
+- Bootstrap/backfill should continue while the nearby verified experience is still below that cutoff.
+
 ## Acceptance Checks
 1. No-coverage user sees coverage apology + demo switch CTA.
 2. Tapping demo switch runs all phases successfully.

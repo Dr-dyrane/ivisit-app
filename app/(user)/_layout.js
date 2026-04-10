@@ -10,6 +10,7 @@ import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import GlobalFAB from "../../components/navigation/GlobalFAB";
 import { appMigrationsService } from "../../services/appMigrationsService";
 import WebAppShell from "../../components/web/WebAppShell";
+import { getHeaderBehavior } from "../../constants/header";
 
 export default function UserLayout() {
 	useEffect(() => {
@@ -48,27 +49,39 @@ function UserHeaderWrapper() {
 	const { headerState } = useHeaderState();
 	const segments = useSegments();
 	const { resetHeader } = useScrollAwareHeader();
+	const resolvedHeader = getHeaderBehavior(headerState);
 
 	// Disable scroll sensitivity for stack screens (detail views)
-	const isStackScreen = segments.some(s => s === '(stacks)');
-	const scrollAware = !isStackScreen && headerState.scrollAware;
+	const isStackScreen = segments.some((segment) => segment === "(stacks)");
+	const scrollAware = !isStackScreen && resolvedHeader.isScrollAware;
+	const hasVisibleHeaderContent =
+		Boolean(resolvedHeader.title) ||
+		Boolean(resolvedHeader.subtitle) ||
+		Boolean(resolvedHeader.icon) ||
+		Boolean(resolvedHeader.badge) ||
+		Boolean(resolvedHeader.leftComponent) ||
+		Boolean(resolvedHeader.rightComponent);
 
-	// Reset header state when returning to tabs to ensure sensitivity is restored
+	// Reset header animation state when returning to tabs to ensure sensitivity is restored
 	useEffect(() => {
 		if (!isStackScreen) {
 			resetHeader();
 		}
-	}, [isStackScreen]);
+	}, [isStackScreen, resetHeader]);
+
+	if (resolvedHeader.isHidden || !hasVisibleHeaderContent) {
+		return null;
+	}
 
 	return (
 		<ScrollAwareHeader
-			title={headerState.title}
-			subtitle={headerState.subtitle}
-			icon={headerState.icon}
-			backgroundColor={headerState.backgroundColor}
-			badge={headerState.badge}
-			leftComponent={headerState.leftComponent}
-			rightComponent={headerState.rightComponent}
+			title={resolvedHeader.title}
+			subtitle={resolvedHeader.subtitle}
+			icon={resolvedHeader.icon}
+			backgroundColor={resolvedHeader.backgroundColor}
+			badge={resolvedHeader.badge}
+			leftComponent={resolvedHeader.leftComponent}
+			rightComponent={resolvedHeader.rightComponent}
 			scrollAware={scrollAware}
 		/>
 	);

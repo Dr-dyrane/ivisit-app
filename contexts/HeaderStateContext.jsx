@@ -1,39 +1,20 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { DEFAULT_HEADER_STATE, normalizeHeaderState } from '../constants/header';
 
 const HeaderStateContext = createContext(null);
 
 export function HeaderStateProvider({ children }) {
-  const [headerState, setHeaderStateInternal] = useState({
-    title: '',
-    subtitle: '',
-    icon: null,
-    backgroundColor: '#86100E',
-    badge: null,
-    leftComponent: null,
-    rightComponent: null,
-    hidden: false,
-    scrollAware: true,
-  });
+  const [headerState, setHeaderStateInternal] = useState(DEFAULT_HEADER_STATE);
 
   const setHeaderState = useCallback((newState) => {
-    setHeaderStateInternal((prev) => ({
+    setHeaderStateInternal((prev) => normalizeHeaderState({
       ...prev,
       ...newState,
     }));
   }, []);
 
   const resetHeaderState = useCallback(() => {
-    setHeaderStateInternal({
-      title: '',
-      subtitle: '',
-      icon: null,
-      backgroundColor: '#86100E',
-      badge: null,
-      leftComponent: null,
-      rightComponent: null,
-      hidden: false,
-      scrollAware: true,
-    });
+    setHeaderStateInternal(DEFAULT_HEADER_STATE);
   }, []);
 
   const value = React.useMemo(() => ({

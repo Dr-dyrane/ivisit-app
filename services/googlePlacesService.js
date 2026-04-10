@@ -112,6 +112,34 @@ class GooglePlacesService {
     }
   }
 
+  async reverseGeocode(lat, lng) {
+    try {
+      this.ensureApiKey();
+      const response = await fetch(
+        `${this.baseUrl}/geocode/json?` +
+        `latlng=${encodeURIComponent(`${lat},${lng}`)}&` +
+        `key=${this.apiKey}`
+      );
+
+      const data = await response.json();
+
+      if (data.status === 'ZERO_RESULTS') {
+        return null;
+      }
+
+      if (data.status !== 'OK') {
+        throw new Error(`Google Reverse Geocoding API error: ${data.status}`);
+      }
+
+      return data.results?.[0]?.formatted_address || null;
+    } catch (error) {
+      if (!this.isExpectedSearchError(error)) {
+        console.error('GooglePlacesService.reverseGeocode error:', error);
+      }
+      throw error;
+    }
+  }
+
   async autocompleteAddresses(
     query,
     {

@@ -80,8 +80,17 @@ export const coverageModeService = {
 		return normalizeCoverageMode(mode) !== COVERAGE_MODES.LIVE_ONLY;
 	},
 
+	needsDemoSupport(coverageStatus) {
+		return coverageStatus !== COVERAGE_STATUS.GOOD;
+	},
+
+	shouldBootstrapDemo({ coverageStatus, hasDemoHospitalsNearby = false, force = false } = {}) {
+		if (force) return true;
+		return this.needsDemoSupport(coverageStatus) && !hasDemoHospitalsNearby;
+	},
+
 	isLiveOnlyAvailable(coverageStatus) {
-		return coverageStatus !== COVERAGE_STATUS.NONE;
+		return coverageStatus === COVERAGE_STATUS.GOOD;
 	},
 
 	resolveEffectiveMode({ preferredMode, coverageStatus, demoModeEnabled } = {}) {
@@ -91,8 +100,8 @@ export const coverageModeService = {
 			: fallbackMode;
 
 		if (
-			coverageStatus === COVERAGE_STATUS.NONE &&
-			normalizedPreferred === COVERAGE_MODES.LIVE_ONLY
+			normalizedPreferred === COVERAGE_MODES.LIVE_ONLY &&
+			coverageStatus !== COVERAGE_STATUS.GOOD
 		) {
 			return COVERAGE_MODES.HYBRID;
 		}

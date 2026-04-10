@@ -1,6 +1,6 @@
 # iVisit Documentation Index
 
-Last Updated: 2026-03-19
+Last Updated: 2026-04-09
 
 ## Folder Structure
 
@@ -55,6 +55,7 @@ docs/
 - Welcome screen dossier: [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
 - Emergency screen dossier: [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
 - Emergency integration audit: [EMERGENCY_INTEGRATION_AUDIT.md](./EMERGENCY_INTEGRATION_AUDIT.md)
+- Emergency UX progress log (2026-04-09): [EMERGENCY_UX_PROGRESS_LOG_2026-04-09.md](./EMERGENCY_UX_PROGRESS_LOG_2026-04-09.md)
 - Docs entry: [README.md](./README.md)
 - Workflow map hub: [flows/README.md](./flows/README.md)
 - Android glass standard: [product_design/ANDROID_GLASS_PATTERN.md](./product_design/ANDROID_GLASS_PATTERN.md)

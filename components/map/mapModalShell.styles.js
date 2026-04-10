@@ -26,14 +26,14 @@ export const styles = StyleSheet.create({
 	sheetSurface: {
 		borderTopLeftRadius: 38,
 		borderTopRightRadius: 38,
-		paddingTop: 18,
-		paddingHorizontal: 18,
+		paddingTop: 14,
+		paddingHorizontal: 14,
 	},
 	headerRow: {
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
-		marginBottom: 14,
+		marginBottom: 10,
 	},
 	headerTitle: {
 		fontSize: 21,

@@ -9,6 +9,7 @@ import { useFABActions } from "../../contexts/FABContext";
 import ScrollAwareHeader from "../../components/headers/ScrollAwareHeader";
 import WebAppShell from "../../components/web/WebAppShell";
 import GlobalFAB from "../../components/navigation/GlobalFAB";
+import { getHeaderBehavior } from "../../constants/header";
 
 function AuthStackScreens() {
 	const segments = useSegments();
@@ -17,7 +18,7 @@ function AuthStackScreens() {
 	const isMapRoute = segments?.[0] === "(auth)" && authLeaf === "map";
 	const isFullCanvasAuthRoute =
 		segments?.[0] === "(auth)" &&
-		(authLeaf === "index" || authLeaf === "request-help" || authLeaf === "map" || authLeaf === "map-loading");
+		(authLeaf === "index" || authLeaf === "request-help" || authLeaf === "map");
 	const { enterStack, exitStack } = useFABActions();
 
 	useEffect(() => {
@@ -34,14 +35,13 @@ function AuthStackScreens() {
 			<View style={styles.container}>
 				<AuthHeaderWrapper />
 				<Stack screenOptions={{ headerShown: false }}>
-				<Stack.Screen name="index" options={{ headerShown: false }} />
-				<Stack.Screen name="map-loading" options={{ headerShown: false }} />
-				<Stack.Screen name="map" options={{ headerShown: false }} />
-				<Stack.Screen name="request-help" options={{ headerShown: false }} />
-				<Stack.Screen name="login" options={{ headerShown: false }} />
-				<Stack.Screen name="onboarding" options={{ headerShown: false }} />
-				<Stack.Screen name="signup" options={{ headerShown: false }} />
-			</Stack>
+					<Stack.Screen name="index" options={{ headerShown: false }} />
+					<Stack.Screen name="map" options={{ headerShown: false }} />
+					<Stack.Screen name="request-help" options={{ headerShown: false }} />
+					<Stack.Screen name="login" options={{ headerShown: false }} />
+					<Stack.Screen name="onboarding" options={{ headerShown: false }} />
+					<Stack.Screen name="signup" options={{ headerShown: false }} />
+				</Stack>
 			{isRequestHelpRoute || isMapRoute ? <GlobalFAB /> : null}
 		</View>
 		</WebAppShell>
@@ -50,26 +50,28 @@ function AuthStackScreens() {
 
 function AuthHeaderWrapper() {
 	const { headerState } = useHeaderState();
+	const resolvedHeader = getHeaderBehavior(headerState);
 
 	const hasVisibleHeaderContent =
-		Boolean(headerState.title) ||
-		Boolean(headerState.subtitle) ||
-		Boolean(headerState.icon) ||
-		Boolean(headerState.badge) ||
-		Boolean(headerState.leftComponent) ||
-		Boolean(headerState.rightComponent);
+		Boolean(resolvedHeader.title) ||
+		Boolean(resolvedHeader.subtitle) ||
+		Boolean(resolvedHeader.icon) ||
+		Boolean(resolvedHeader.badge) ||
+		Boolean(resolvedHeader.leftComponent) ||
+		Boolean(resolvedHeader.rightComponent);
 
-	if (headerState.hidden || !hasVisibleHeaderContent) return null;
+	if (resolvedHeader.isHidden || !hasVisibleHeaderContent) return null;
 
 	return (
 		<ScrollAwareHeader
-			title={headerState.title}
-			subtitle={headerState.subtitle}
-			icon={headerState.icon}
-			backgroundColor={headerState.backgroundColor}
-			badge={headerState.badge}
-			leftComponent={headerState.leftComponent}
-			rightComponent={headerState.rightComponent}
+			title={resolvedHeader.title}
+			subtitle={resolvedHeader.subtitle}
+			icon={resolvedHeader.icon}
+			backgroundColor={resolvedHeader.backgroundColor}
+			badge={resolvedHeader.badge}
+			leftComponent={resolvedHeader.leftComponent}
+			rightComponent={resolvedHeader.rightComponent}
+			scrollAware={resolvedHeader.isScrollAware}
 		/>
 	);
 }

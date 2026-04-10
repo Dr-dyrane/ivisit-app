@@ -27,12 +27,29 @@ function CareIntentOrb({
 			: 1;
 	const wrapperOpacity =
 		hierarchy === "primary" ? 1 : hierarchy === "secondary" ? 0.84 : 0.68;
-	const shadowOpacity =
-		hierarchy === "primary" ? 0.26 : hierarchy === "secondary" ? 0.12 : 0.06;
-	const shadowRadius =
-		hierarchy === "primary" ? 24 : hierarchy === "secondary" ? 12 : 6;
-	const shadowOffset = hierarchy === "primary" ? 14 : hierarchy === "secondary" ? 8 : 4;
-	const elevation = hierarchy === "primary" ? 12 : hierarchy === "secondary" ? 5 : 2;
+	const isAndroid = Platform.OS === "android";
+	const shadowOpacity = isAndroid
+		? 0
+		: hierarchy === "primary"
+			? 0.26
+			: hierarchy === "secondary"
+				? 0.12
+				: 0.06;
+	const shadowRadius = isAndroid
+		? 0
+		: hierarchy === "primary"
+			? 24
+			: hierarchy === "secondary"
+				? 12
+				: 6;
+	const shadowOffset = isAndroid
+		? 0
+		: hierarchy === "primary"
+			? 14
+			: hierarchy === "secondary"
+				? 8
+				: 4;
+	const elevation = isAndroid ? 0 : hierarchy === "primary" ? 12 : hierarchy === "secondary" ? 5 : 2;
 
 	return (
 		<Pressable
@@ -48,12 +65,9 @@ function CareIntentOrb({
 					transform: [{ scale: isSelected ? 1.05 : animatedScale }],
 				}}
 			>
-				<LinearGradient
-					colors={colors}
-					start={{ x: 0.18, y: 0.18 }}
-					end={{ x: 0.82, y: 0.9 }}
+				<View
 					style={[
-						styles.careIconWrap,
+						styles.careIconShadowWrap,
 						{
 							shadowColor: "#000000",
 							shadowOpacity,
@@ -73,8 +87,15 @@ function CareIntentOrb({
 						},
 					]}
 				>
-					<MaterialCommunityIcons name={iconName} size={38} color="#FFFFFF" />
-				</LinearGradient>
+					<LinearGradient
+						colors={colors}
+						start={{ x: 0.18, y: 0.18 }}
+						end={{ x: 0.82, y: 0.9 }}
+						style={styles.careIconWrap}
+					>
+						<MaterialCommunityIcons name={iconName} size={38} color="#FFFFFF" />
+					</LinearGradient>
+				</View>
 			</Animated.View>
 			<Text style={[styles.careLabel, { color: hierarchy === "primary" ? titleColor : mutedColor }]}>
 				{label}

@@ -926,7 +926,7 @@ export function EmergencyProvider({ children }) {
 	);
 
 	useEffect(() => {
-		if (coverageStatus === COVERAGE_STATUS.NONE) {
+		if (coverageModeService.needsDemoSupport(coverageStatus)) {
 			setForceDemoFetch(true);
 			return;
 		}
@@ -1075,13 +1075,13 @@ export function EmergencyProvider({ children }) {
 		async (mode, options = {}) => {
 			const requestedMode = coverageModeService.normalizeMode(mode);
 			const nextMode =
-				coverageStatus === COVERAGE_STATUS.NONE &&
-				requestedMode === COVERAGE_MODES.LIVE_ONLY
+				requestedMode === COVERAGE_MODES.LIVE_ONLY &&
+				coverageStatus !== COVERAGE_STATUS.GOOD
 					? COVERAGE_MODES.HYBRID
 					: requestedMode;
 			const shouldFetchDemo =
 				coverageModeService.allowsDemo(nextMode) ||
-				coverageStatus === COVERAGE_STATUS.NONE;
+				coverageStatus !== COVERAGE_STATUS.GOOD;
 			const shouldBootstrapDemo =
 				shouldFetchDemo &&
 				user?.id &&

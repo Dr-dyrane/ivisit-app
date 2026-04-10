@@ -97,7 +97,7 @@ const WelcomeScreen = () => {
 	const handleIntentPress = (intent) => {
 		if (intent === "emergency") {
 			setIsOpeningEmergency(true);
-			router.replace("/(auth)/map-loading");
+			router.replace("/(auth)/map");
 			return;
 		}
 

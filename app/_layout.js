@@ -7,6 +7,7 @@ import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 
@@ -14,6 +15,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 // Use a global to ensure this is truly only called once across re-mounts
 let isSplashPrevented = false;
+const LAST_PUBLIC_ROUTE_STORAGE_KEY = "@ivisit/last_public_route_v1";
 
 import { AppProviders } from "../providers/AppProviders";
 import { GlobalLocationProvider } from "../contexts/GlobalLocationContext";
@@ -102,16 +104,26 @@ function getPublicAuthRouteFromUrl(url) {
 			.replace(/^--\//, "")
 			.replace(/^\/+|\/+$/g, "");
 
-		if (normalizedPath === "map-loading") return "/(auth)/map-loading";
+		if (normalizedPath === "map-loading") return "/(auth)/map";
 		if (normalizedPath === "map") return "/(auth)/map";
 		if (normalizedPath === "request-help") return "/(auth)/request-help";
 	} catch (error) {
 		console.warn("[DeepLink] Failed to parse initial URL:", error?.message || error);
 	}
 
-	if (url.includes("/map-loading")) return "/(auth)/map-loading";
+	if (url.includes("/map-loading")) return "/(auth)/map";
 	if (url.includes("/map")) return "/(auth)/map";
 	if (url.includes("/request-help")) return "/(auth)/request-help";
+	return null;
+}
+
+function normalizeStoredPublicRoute(pathname) {
+	if (pathname === "/map" || pathname === "/map-loading") {
+		return "/(auth)/map";
+	}
+	if (pathname === "/request-help") {
+		return "/(auth)/request-help";
+	}
 	return null;
 }
 
@@ -201,6 +213,20 @@ function AuthenticatedStack() {
 				const url = await Linking.getInitialURL();
 				if (url) {
 					await handleDeepLink({ url });
+					return;
+				}
+
+				const storedPublicRoute = await AsyncStorage.getItem(LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(
+					() => null,
+				);
+				if (
+					storedPublicRoute === "/(auth)/map" ||
+					storedPublicRoute === "/(auth)/request-help"
+				) {
+					if (isMounted) {
+						setStartupPublicRoute(storedPublicRoute);
+					}
+					router.replace(storedPublicRoute);
 				}
 			} finally {
 				if (isMounted) setInitialRouteResolved(true);
@@ -220,6 +246,22 @@ function AuthenticatedStack() {
 	}, [user?.isAuthenticated, router]);
 
 	useEffect(() => {
+		if (!pathname) {
+			return;
+		}
+
+		const nextStoredRoute = normalizeStoredPublicRoute(pathname);
+		if (nextStoredRoute) {
+			AsyncStorage.setItem(LAST_PUBLIC_ROUTE_STORAGE_KEY, nextStoredRoute).catch(() => {});
+			return;
+		}
+
+		if (pathname === "/") {
+			AsyncStorage.removeItem(LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => {});
+		}
+	}, [pathname]);
+
+	useEffect(() => {
 		const rootGroup = segments?.[0] ?? null;
 		const onCompleteProfile =
 			segments?.[0] === "(user)" &&
@@ -229,7 +271,6 @@ function AuthenticatedStack() {
 			pathname === "/map-loading" ||
 			pathname === "/map" ||
 			pathname === "/request-help" ||
-			startupPublicRoute === "/(auth)/map-loading" ||
 			startupPublicRoute === "/(auth)/map" ||
 			startupPublicRoute === "/(auth)/request-help";
 
@@ -271,8 +312,8 @@ function AuthenticatedStack() {
 	useEffect(() => {
 		if (!startupPublicRoute) return;
 		if (
-			(startupPublicRoute === "/(auth)/map-loading" && pathname === "/map-loading") ||
-			(startupPublicRoute === "/(auth)/map" && pathname === "/map") ||
+			(startupPublicRoute === "/(auth)/map" &&
+				(pathname === "/map" || pathname === "/map-loading")) ||
 			(startupPublicRoute === "/(auth)/request-help" && pathname === "/request-help")
 		) {
 			setStartupPublicRoute(null);

@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import * as Location from "expo-location";
 import { Platform } from "react-native";
 import { DEFAULT_APP_COORDINATES } from "../constants/locationDefaults";
+import googlePlacesService from "../services/googlePlacesService";
 import mapboxService from "../services/mapboxService";
 
 // Location configuration constants
@@ -24,14 +25,75 @@ const normalizeLocationCoordinates = (location) => {
 
 const buildFallbackPlaceModel = (location) => ({
 	primaryText: "Current location",
-	secondaryText:
-		Number.isFinite(Number(location?.latitude)) && Number.isFinite(Number(location?.longitude))
-			? `${Number(location.latitude).toFixed(4)}, ${Number(location.longitude).toFixed(4)}`
-			: "",
+	secondaryText: "Nearby area",
 	formattedAddress: "Current location",
 	source: "fallback",
 	location: normalizeLocationCoordinates(location),
 });
+
+const buildPlaceModelFromOpenStreetMap = (payload, location) => {
+	if (!payload || typeof payload !== "object") {
+		return buildFallbackPlaceModel(location);
+	}
+
+	const address = payload.address || {};
+	const locality =
+		address.city || address.town || address.village || address.hamlet || address.county;
+	const primaryText =
+		[address.house_number, address.road].filter(Boolean).join(" ").trim() ||
+		address.neighbourhood ||
+		address.suburb ||
+		locality ||
+		payload.name ||
+		"Current location";
+	const secondaryText = [address.suburb, locality, address.state]
+		.filter(Boolean)
+		.filter((value, index, values) => values.indexOf(value) === index)
+		.join(", ");
+
+	return {
+		primaryText,
+		secondaryText,
+		formattedAddress:
+			typeof payload.display_name === "string" && payload.display_name.trim()
+				? payload.display_name.trim()
+				: [primaryText, secondaryText].filter(Boolean).join(", "),
+		source: "openstreetmap",
+		location: normalizeLocationCoordinates(location),
+	};
+};
+
+const reverseGeocodeWithOpenStreetMap = async (location) => {
+	const normalizedLocation = normalizeLocationCoordinates(location);
+	if (!normalizedLocation) {
+		return null;
+	}
+
+	try {
+		const response = await fetch(
+			`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${normalizedLocation.latitude}&lon=${normalizedLocation.longitude}&zoom=18&addressdetails=1`,
+			{
+				headers: {
+					Accept: "application/json",
+					"Accept-Language": "en",
+				},
+			},
+		);
+
+		if (!response.ok) {
+			throw new Error(`OpenStreetMap reverse geocode failed with ${response.status}`);
+		}
+
+		const data = await response.json();
+		if (!data?.display_name && !data?.address) {
+			return null;
+		}
+
+		return buildPlaceModelFromOpenStreetMap(data, normalizedLocation);
+	} catch (_openStreetMapError) {
+		return null;
+	}
+};
 
 const buildPlaceModelFromFormattedAddress = (formattedAddress, location, source = "mapbox") => {
 	if (typeof formattedAddress !== "string" || !formattedAddress.trim()) {
@@ -123,35 +185,64 @@ export function GlobalLocationProvider({ children }) {
 			let nextPlace = null;
 
 			try {
-				const formattedAddress = await mapboxService.reverseGeocode(
-					normalizedLocation.latitude,
-					normalizedLocation.longitude,
+				const nativePlaces = await Location.reverseGeocodeAsync(normalizedLocation);
+				const nativePlace = buildPlaceModelFromNativePlace(
+					nativePlaces?.[0],
+					normalizedLocation,
 				);
-				if (
-					typeof formattedAddress === "string" &&
-					formattedAddress.trim() &&
-					formattedAddress !== "Unknown Address"
-				) {
-					nextPlace = buildPlaceModelFromFormattedAddress(
-						formattedAddress,
-						normalizedLocation,
-						"mapbox",
-					);
+				if (nativePlace?.source !== "fallback") {
+					nextPlace = nativePlace;
 				}
-			} catch (_mapboxError) {
-				// Fall through to native reverse geocoding below.
+			} catch (_nativeError) {
+				// Fall through to Mapbox reverse geocoding below.
 			}
 
 			if (!nextPlace) {
 				try {
-					const nativePlaces = await Location.reverseGeocodeAsync(normalizedLocation);
-					nextPlace = buildPlaceModelFromNativePlace(
-						nativePlaces?.[0],
-						normalizedLocation,
+					const formattedAddress = await mapboxService.reverseGeocode(
+						normalizedLocation.latitude,
+						normalizedLocation.longitude,
 					);
-				} catch (_nativeError) {
-					nextPlace = buildFallbackPlaceModel(normalizedLocation);
+					if (
+						typeof formattedAddress === "string" &&
+						formattedAddress.trim() &&
+						formattedAddress !== "Unknown Address"
+					) {
+						nextPlace = buildPlaceModelFromFormattedAddress(
+							formattedAddress,
+							normalizedLocation,
+							"mapbox",
+						);
+					}
+				} catch (_mapboxError) {
+					// Fall through to web-safe public reverse geocoding below.
 				}
+			}
+
+			if (!nextPlace) {
+				nextPlace = await reverseGeocodeWithOpenStreetMap(normalizedLocation);
+			}
+
+			if (!nextPlace) {
+				try {
+					const formattedAddress = await googlePlacesService.reverseGeocode(
+						normalizedLocation.latitude,
+						normalizedLocation.longitude,
+					);
+					if (typeof formattedAddress === "string" && formattedAddress.trim()) {
+						nextPlace = buildPlaceModelFromFormattedAddress(
+							formattedAddress,
+							normalizedLocation,
+							"google",
+						);
+					}
+				} catch (_googleError) {
+					// Fall through to friendly final fallback below.
+				}
+			}
+
+			if (!nextPlace) {
+				nextPlace = buildFallbackPlaceModel(normalizedLocation);
 			}
 
 			if (requestId === placeRequestIdRef.current) {

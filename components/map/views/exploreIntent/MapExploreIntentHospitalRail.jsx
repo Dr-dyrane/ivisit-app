@@ -1,7 +1,8 @@
 import React, { useMemo } from "react";
 import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { MAP_EXPLORE_INTENT_ASSETS, MAP_EXPLORE_INTENT_RAIL } from "./mapExploreIntent.content";
+import { getHospitalHeroSource } from "../../mapHospitalImage";
+import { MAP_EXPLORE_INTENT_RAIL } from "./mapExploreIntent.content";
 import { buildFeaturedHospitalFeatures, buildVisibleHospitalSlots } from "./mapExploreIntent.helpers";
 import styles from "./mapExploreIntent.styles";
 
@@ -32,7 +33,7 @@ function FeaturedHospitalCard({ hospital, titleColor, bodyColor, onPress, cardWi
 	return (
 		<Pressable onPress={() => onPress?.(hospital)} style={[styles.featuredCard, { width: cardWidth, height: cardHeight }]}>
 			<ImageBackground
-				source={MAP_EXPLORE_INTENT_ASSETS.featuredHospitalImage}
+				source={getHospitalHeroSource(hospital)}
 				resizeMode="cover"
 				style={styles.featuredCardImage}
 				imageStyle={styles.featuredCardImageStyle}

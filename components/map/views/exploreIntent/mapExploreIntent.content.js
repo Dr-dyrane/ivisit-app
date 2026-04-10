@@ -89,10 +89,6 @@ export const MAP_EXPLORE_INTENT_COPY = {
 	NOW: "Now",
 };
 
-export const MAP_EXPLORE_INTENT_ASSETS = {
-	featuredHospitalImage: require("../../../../assets/features/emergency.png"),
-};
-
 export const MAP_EXPLORE_INTENT_RAIL = {
 	sidePadding: 24,
 	gap: 10,

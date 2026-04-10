@@ -281,13 +281,19 @@ export default StyleSheet.create({
 	careActionPressed: {
 		opacity: 0.88,
 	},
+	careIconShadowWrap: {
+		width: 88,
+		height: 88,
+		borderRadius: 44,
+		marginBottom: 10,
+	},
 	careIconWrap: {
 		width: 88,
 		height: 88,
 		borderRadius: 44,
+		overflow: "hidden",
 		alignItems: "center",
 		justifyContent: "center",
-		marginBottom: 10,
 	},
 	careLabel: {
 		fontSize: 15,

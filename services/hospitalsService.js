@@ -18,6 +18,26 @@ const toTextArray = (value) =>
 	Array.isArray(value)
 		? value.filter((item) => typeof item === "string").map((item) => item.trim()).filter(Boolean)
 		: [];
+const toMinutesLabel = (value, fallback = null) => {
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return `${Math.max(0, Math.round(value))} min`;
+	}
+
+	const text = typeof value === "string" ? value.trim() : "";
+	if (!text) return fallback;
+
+	const explicitMatch = text.match(/(\d+)\s*(min|mins|minute|minutes)/i);
+	if (explicitMatch) {
+		return `${Math.max(0, Math.round(Number(explicitMatch[1])))} min`;
+	}
+
+	const numericOnly = Number(text);
+	if (Number.isFinite(numericOnly)) {
+		return `${Math.max(0, Math.round(numericOnly))} min`;
+	}
+
+	return fallback ?? text;
+};
 const toObject = (value, fallback = {}) => (value && typeof value === "object" && !Array.isArray(value) ? value : fallback);
 const normalizeFacilityText = (value) =>
 	String(value || "")
@@ -432,8 +452,8 @@ export const hospitalsService = {
 			null
 		);
 		const waitTime = Number.isFinite(h?.emergency_wait_time_minutes)
-			? `${toNonNegativeInt(h.emergency_wait_time_minutes, 0)} min`
-			: toText(h?.wait_time, dynamicWait.displayText);
+			? toMinutesLabel(h.emergency_wait_time_minutes, "0 min")
+			: toMinutesLabel(h?.wait_time, dynamicWait.displayText);
 		const eta = toText(
 			h?.eta,
 			distanceKm > 0 ? `${Math.max(2, Math.ceil(distanceKm * 3))} mins` : "8-12 mins"
@@ -809,12 +829,12 @@ export const hospitalsService = {
 					isWeekend: dayFactor > 1.0,
 					isVerified: factors.verified
 				},
-				displayText: `${waitDescription} (~${calculatedWaitTime}min)`,
-				totalDisplayText: `~${totalTime}min total`
+				displayText: `${calculatedWaitTime} min`,
+				totalDisplayText: `${totalTime} min total`
 			};
 		} catch (error) {
 			console.error('Error calculating wait time:', error);
-			return { waitTimeMinutes: 30, travelTimeMinutes: 15, totalTimeMinutes: 45, waitDescription: 'Moderate wait', confidence: 'Low', displayText: 'Moderate wait (~30min)', totalDisplayText: '~45min total' };
+			return { waitTimeMinutes: 30, travelTimeMinutes: 15, totalTimeMinutes: 45, waitDescription: 'Moderate wait', confidence: 'Low', displayText: '30 min', totalDisplayText: '45 min total' };
 		}
 	}
 };

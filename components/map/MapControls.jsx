@@ -81,8 +81,9 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     controlsPill: {
-        width: 52,
+        width: 44,
         paddingVertical: 2,
+        paddingHorizontal:2,
         borderRadius: 22,
         overflow: "hidden",
         flexDirection: "column",
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     androidSurface: {
-        borderRadius: 22,
+        borderRadius: 32,
     },
     controlButton: {
         width: 42,

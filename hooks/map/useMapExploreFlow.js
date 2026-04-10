@@ -9,6 +9,7 @@ import { useEmergency } from "../../contexts/EmergencyContext";
 import { useFABActions } from "../../contexts/FABContext";
 import { useVisits } from "../../contexts/VisitsContext";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
+import { coverageModeService, COVERAGE_STATUS } from "../../services/coverageModeService";
 import {
 	buildHeaderLocationModel,
 	formatHospitalDistance,
@@ -18,14 +19,17 @@ import {
 	MAP_SHEET_MODES,
 	MAP_SHEET_SNAP_STATES,
 } from "../../components/map/MapSheetOrchestrator";
+import { HEADER_MODES } from "../../constants/header";
 import HeaderBackButton from "../../components/navigation/HeaderBackButton";
 import HeaderLocationButton from "../../components/headers/HeaderLocationButton";
 
-function buildDemoBootstrapKey(location, userId) {
+function buildDemoBootstrapKey(location, userId, coverageStatus, shouldForceBootstrap) {
 	return [
 		Number(location?.latitude).toFixed(3),
 		Number(location?.longitude).toFixed(3),
 		userId || "guest",
+		coverageStatus || "unknown",
+		shouldForceBootstrap ? "force" : "auto",
 	].join(":");
 }
 
@@ -41,6 +45,8 @@ export function useMapExploreFlow() {
 		locationLabel,
 		locationLabelDetail,
 		refreshLocation,
+		isLoadingLocation,
+		isResolvingPlaceName,
 	} = useGlobalLocation();
 	const {
 		hospitals,
@@ -54,6 +60,8 @@ export function useMapExploreFlow() {
 		refreshHospitals,
 		effectiveDemoModeEnabled,
 		coverageModePreferenceLoaded,
+		coverageStatus,
+		hasDemoHospitalsNearby,
 	} = useEmergency();
 
 	const [locationSearchVisible, setLocationSearchVisible] = useState(false);
@@ -77,6 +85,7 @@ export function useMapExploreFlow() {
 		isCalculatingRoute: false,
 	});
 	const [isBootstrappingDemo, setIsBootstrappingDemo] = useState(false);
+	const [hasCompletedInitialMapLoad, setHasCompletedInitialMapLoad] = useState(false);
 	const demoBootstrapKeyRef = useRef(null);
 
 	const activeLocation = manualLocation?.location || emergencyUserLocation || globalUserLocation || null;
@@ -88,9 +97,25 @@ export function useMapExploreFlow() {
 		},
 	);
 	const isSignedIn = Boolean(user?.isLoggedIn || user?.id);
+	const isModalFocused = Boolean(
+		locationSearchVisible ||
+		hospitalModalVisible ||
+		hospitalDetailsVisible ||
+		profileModalVisible ||
+		guestProfileVisible ||
+		careHistoryVisible ||
+		recentVisitsVisible ||
+		publicSearchVisible ||
+		authModalVisible,
+	);
 	const profileImageSource = user?.imageUri
 		? { uri: user.imageUri }
 		: require("../../assets/profile.jpg");
+	const needsCoverageExpansion = coverageModeService.needsDemoSupport(coverageStatus);
+	const shouldBootstrapDemoCoverage = coverageModeService.shouldBootstrapDemo({
+		coverageStatus,
+		hasDemoHospitalsNearby,
+	});
 	const discoveredHospitals = useMemo(() => {
 		if (Array.isArray(allHospitals) && allHospitals.length > 0) {
 			return allHospitals;
@@ -104,26 +129,27 @@ export function useMapExploreFlow() {
 			setSheetMode(MAP_SHEET_MODES.EXPLORE_INTENT);
 			setSheetSnapState(MAP_SHEET_SNAP_STATES.HALF);
 			return () => {
-				setHeaderState({ hidden: true });
+				setHeaderState({ mode: HEADER_MODES.HIDDEN });
 			};
 		}, [resetHeader, setHeaderState]),
 	);
 
 	useEffect(() => {
-		const shouldHideHeader = sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED;
+		const shouldHideHeader =
+			sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED || isModalFocused;
 		setHeaderState({
-			hidden: shouldHideHeader,
+			mode: shouldHideHeader ? HEADER_MODES.HIDDEN : HEADER_MODES.MAP_OVERLAY,
 			title: currentLocationDetails?.primaryText || "Current location",
 			subtitle: currentLocationDetails?.secondaryText || "Location",
 			backgroundColor: "#86100E",
 			rightComponent: <HeaderLocationButton onPress={() => setLocationSearchVisible(true)} />,
 			leftComponent: <HeaderBackButton onPress={() => router.replace("/")} />,
 			badge: null,
-			scrollAware: false,
 		});
 	}, [
 		currentLocationDetails?.primaryText,
 		currentLocationDetails?.secondaryText,
+		isModalFocused,
 		router,
 		sheetSnapState,
 		setHeaderState,
@@ -192,11 +218,17 @@ export function useMapExploreFlow() {
 		if (isLoadingHospitals || isBootstrappingDemo) {
 			return undefined;
 		}
-		if (Array.isArray(discoveredHospitals) && discoveredHospitals.length > 0) {
+		if (!shouldBootstrapDemoCoverage) {
 			return undefined;
 		}
 
-		const bootstrapKey = buildDemoBootstrapKey(activeLocation, user?.id);
+		const shouldForceDemoBootstrap = !hasDemoHospitalsNearby;
+		const bootstrapKey = buildDemoBootstrapKey(
+			activeLocation,
+			user?.id,
+			coverageStatus,
+			shouldForceDemoBootstrap,
+		);
 		if (demoBootstrapKeyRef.current === bootstrapKey) {
 			return undefined;
 		}
@@ -206,14 +238,20 @@ export function useMapExploreFlow() {
 		(async () => {
 			try {
 				const provisioningUserId = await demoEcosystemService.getProvisioningUserId(user?.id);
-				await demoEcosystemService.ensureDemoEcosystemForLocation({
+				const bootstrapResult = await demoEcosystemService.ensureDemoEcosystemForLocation({
 					userId: provisioningUserId,
 					latitude: activeLocation.latitude,
 					longitude: activeLocation.longitude,
 					radiusKm: 50,
+					force: shouldForceDemoBootstrap,
 				});
 				await refreshHospitals?.();
+
+				if (!bootstrapResult?.bootstrapped && shouldForceDemoBootstrap) {
+					demoBootstrapKeyRef.current = null;
+				}
 			} catch (error) {
+				demoBootstrapKeyRef.current = null;
 				console.warn("[useMapExploreFlow] Demo bootstrap skipped for /map", error);
 			} finally {
 				if (!cancelled) {
@@ -228,9 +266,11 @@ export function useMapExploreFlow() {
 	}, [
 		activeLocation,
 		coverageModePreferenceLoaded,
-		discoveredHospitals,
+		coverageStatus,
 		effectiveDemoModeEnabled,
+		hasDemoHospitalsNearby,
 		isBootstrappingDemo,
+		shouldBootstrapDemoCoverage,
 		isLoadingHospitals,
 		refreshHospitals,
 		user?.id,
@@ -282,6 +322,7 @@ export function useMapExploreFlow() {
 
 	const handleSearchLocation = useCallback((nextLocation) => {
 		if (!nextLocation?.location) return;
+		setHasCompletedInitialMapLoad(false);
 		setManualLocation(nextLocation);
 		setLocationSearchVisible(false);
 		setMapReadiness({
@@ -292,6 +333,7 @@ export function useMapExploreFlow() {
 	}, []);
 
 	const handleUseCurrentLocation = useCallback(async () => {
+		setHasCompletedInitialMapLoad(false);
 		setManualLocation(null);
 		setLocationSearchVisible(false);
 		setMapReadiness({
@@ -389,13 +431,104 @@ export function useMapExploreFlow() {
 		return () => unregisterFAB("map-guest-profile-continue");
 	}, [guestProfileVisible, registerFAB, unregisterFAB]);
 
+	const hasActiveLocation = Boolean(activeLocation?.latitude && activeLocation?.longitude);
+	const hasResolvedProviders = Array.isArray(discoveredHospitals) && discoveredHospitals.length > 0;
 	const expectsRoute = Boolean(activeLocation?.latitude && activeLocation?.longitude && nearestHospital?.id);
-	const isMapSurfaceReady =
-		Boolean(activeLocation?.latitude && activeLocation?.longitude) &&
-		!isLoadingHospitals &&
-		!isBootstrappingDemo &&
-		mapReadiness.mapReady &&
-		(!expectsRoute || mapReadiness.routeReady);
+	const isMapFrameReady = hasActiveLocation && mapReadiness.mapReady;
+	const isBackgroundCoverageLoading =
+		needsCoverageExpansion && (isLoadingHospitals || isBootstrappingDemo);
+	const isBackgroundRouteLoading =
+		expectsRoute && (mapReadiness.isCalculatingRoute || !mapReadiness.routeReady);
+	const isMapSurfaceReady = isMapFrameReady;
+
+	useEffect(() => {
+		if (isMapFrameReady && !hasCompletedInitialMapLoad) {
+			setHasCompletedInitialMapLoad(true);
+		}
+	}, [hasCompletedInitialMapLoad, isMapFrameReady]);
+
+	const shouldShowMapLoadingOverlay = !hasCompletedInitialMapLoad;
+	const mapLoadingState = useMemo(() => {
+		let title = "Preparing help";
+		let message = "";
+
+		if (!hasActiveLocation) {
+			title = "Locating you";
+			message = "Nearby help";
+		} else if (isResolvingPlaceName) {
+			title = "Naming area";
+			message = "Current location";
+		} else if (!coverageModePreferenceLoaded) {
+			title = "Preparing coverage";
+			message = "Nearby rules";
+		} else if (isLoadingHospitals) {
+			title = "Nearby care";
+			message = "Checking options";
+		} else if (isBootstrappingDemo) {
+			title = "Expanding options";
+			message = "Building fuller coverage";
+		} else if (!mapReadiness.mapReady) {
+			title = "Loading map";
+			message = "Live surface";
+		} else if (expectsRoute && mapReadiness.isCalculatingRoute) {
+			title = "Routing";
+			message = "Fastest path";
+		} else if (expectsRoute && !mapReadiness.routeReady) {
+			title = "Final touches";
+			message = "Emergency view";
+		} else if (!hasResolvedProviders) {
+			title = "Finishing nearby help";
+			message = "More options loading";
+		}
+
+		return {
+			visible: shouldShowMapLoadingOverlay,
+			title,
+			message,
+			steps: [
+				{
+					key: "location",
+					label: "Location",
+					status: hasActiveLocation ? "done" : isLoadingLocation ? "active" : "pending",
+				},
+				{
+					key: "providers",
+					label: "Nearby care",
+					status: hasResolvedProviders && !isBackgroundCoverageLoading
+						? "done"
+						: isBackgroundCoverageLoading || !coverageModePreferenceLoaded
+							? "active"
+							: "pending",
+				},
+				{
+					key: "map",
+					label: "Map + route",
+					status: isMapFrameReady && !isBackgroundRouteLoading
+						? "done"
+						: mapReadiness.mapReady || mapReadiness.isCalculatingRoute || mapReadiness.routeReady
+							? "active"
+							: "pending",
+				},
+			],
+		};
+	}, [
+		coverageModePreferenceLoaded,
+		hasActiveLocation,
+		hasCompletedInitialMapLoad,
+		hasResolvedProviders,
+		isBackgroundCoverageLoading,
+		isBackgroundRouteLoading,
+		isBootstrappingDemo,
+		isLoadingHospitals,
+		isLoadingLocation,
+		isMapSurfaceReady,
+		isResolvingPlaceName,
+		mapReadiness.isCalculatingRoute,
+		mapReadiness.mapReady,
+		mapReadiness.routeReady,
+		expectsRoute,
+		shouldShowMapLoadingOverlay,
+	]);
 
 	return {
 		activeLocation,
@@ -418,10 +551,12 @@ export function useMapExploreFlow() {
 		hospitalModalVisible,
 		isBootstrappingDemo,
 		isLoadingHospitals,
+		isMapFrameReady,
 		isMapSurfaceReady,
 		isSignedIn,
 		locationSearchVisible,
 		manualLocation,
+		mapLoadingState,
 		mapReadiness,
 		nearestHospital,
 		nearestHospitalMeta,

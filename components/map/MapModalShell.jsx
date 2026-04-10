@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
 	Animated,
+	Easing,
 	Platform,
 	Pressable,
 	ScrollView,
@@ -16,9 +17,11 @@ import {
 	MAP_MODAL_BACKDROP_IN_MS,
 	MAP_MODAL_BACKDROP_OUT_MS,
 	MAP_MODAL_EXIT_MS,
-	MAP_MODAL_SPRING,
 } from "./mapMotionTokens";
+import { getMapSheetHeight, MAP_SHEET_SNAP_STATES } from "./mapSheet.constants";
 import { styles } from "./mapModalShell.styles";
+
+const APPLE_MODAL_EASE = Easing.bezier(0.21, 0.47, 0.32, 0.98);
 
 export default function MapModalShell({
 	visible,
@@ -26,6 +29,8 @@ export default function MapModalShell({
 	title = null,
 	minHeightRatio = 0.78,
 	maxHeightRatio = 0.9,
+	matchExpandedSheetHeight = true,
+	topClearance = Platform.OS === "web" ? 16 : 10,
 	showHandle = false,
 	scrollEnabled = true,
 	contentContainerStyle,
@@ -44,14 +49,16 @@ export default function MapModalShell({
 		if (visible) {
 			setShouldRender(true);
 			Animated.parallel([
-				Animated.spring(slideAnim, {
+				Animated.timing(slideAnim, {
 					toValue: 0,
+					duration: 320,
+					easing: APPLE_MODAL_EASE,
 					useNativeDriver: true,
-					...MAP_MODAL_SPRING,
 				}),
 				Animated.timing(bgOpacity, {
 					toValue: 1,
 					duration: MAP_MODAL_BACKDROP_IN_MS,
+					easing: APPLE_MODAL_EASE,
 					useNativeDriver: true,
 				}),
 			]).start();
@@ -66,11 +73,13 @@ export default function MapModalShell({
 			Animated.timing(slideAnim, {
 				toValue: screenHeight,
 				duration: MAP_MODAL_EXIT_MS,
+				easing: APPLE_MODAL_EASE,
 				useNativeDriver: true,
 			}),
 			Animated.timing(bgOpacity, {
 				toValue: 0,
 				duration: MAP_MODAL_BACKDROP_OUT_MS,
+				easing: APPLE_MODAL_EASE,
 				useNativeDriver: true,
 			}),
 		]).start(({ finished }) => {
@@ -88,8 +97,15 @@ export default function MapModalShell({
 	const surfaceColor = isDarkMode ? "rgba(8, 15, 27, 0.84)" : "rgba(255, 255, 255, 0.88)";
 	const closeBg = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)";
 	const handleColor = isDarkMode ? "rgba(148,163,184,0.54)" : "rgba(100,116,139,0.30)";
-	const minHeight = screenHeight * minHeightRatio;
-	const maxHeight = screenHeight * maxHeightRatio;
+	const expandedSheetHeight = getMapSheetHeight(screenHeight, MAP_SHEET_SNAP_STATES.EXPANDED);
+	const viewportMaxHeight = Math.max(360, screenHeight - insets.top - topClearance);
+	const resolvedHeight = matchExpandedSheetHeight
+		? Math.min(expandedSheetHeight, viewportMaxHeight)
+		: Math.min(screenHeight * maxHeightRatio, viewportMaxHeight);
+	const minHeight = matchExpandedSheetHeight
+		? resolvedHeight
+		: Math.min(screenHeight * minHeightRatio, resolvedHeight);
+	const maxHeight = resolvedHeight;
 	const modalContent = (
 		<View
 			style={[
@@ -114,19 +130,38 @@ export default function MapModalShell({
 				) : (
 					<View style={styles.headerSpacer} />
 				)}
-				<Pressable onPress={onClose} style={[styles.closeButton, { backgroundColor: closeBg }]}>
-					<Ionicons name="close" size={18} color={titleColor} />
+				<Pressable onPress={onClose}>
+					{({ pressed }) => (
+						<View
+							style={[
+								styles.closeButton,
+								{
+									backgroundColor: closeBg,
+									opacity: pressed ? 0.82 : 1,
+									transform: [{ scale: pressed ? 0.96 : 1 }],
+								},
+							]}
+						>
+							<Ionicons name="close" size={18} color={titleColor} />
+						</View>
+					)}
 				</Pressable>
 			</View>
 
-			<ScrollView
-				showsVerticalScrollIndicator={false}
-				keyboardShouldPersistTaps="handled"
-				scrollEnabled={scrollEnabled}
-				contentContainerStyle={[styles.content, contentContainerStyle]}
-			>
-				{children}
-			</ScrollView>
+			{scrollEnabled ? (
+				<ScrollView
+					showsVerticalScrollIndicator={false}
+					keyboardShouldPersistTaps="handled"
+					scrollEnabled={scrollEnabled}
+					contentContainerStyle={[styles.content, contentContainerStyle]}
+				>
+					{children}
+				</ScrollView>
+			) : (
+				<View style={[styles.content, contentContainerStyle]}>
+					{children}
+				</View>
+			)}
 		</View>
 	);
 
