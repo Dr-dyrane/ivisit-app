@@ -29,6 +29,9 @@ export const styles = StyleSheet.create({
 		paddingTop: 14,
 		paddingHorizontal: 14,
 	},
+	keyboardAvoider: {
+		flex: 1,
+	},
 	headerRow: {
 		flexDirection: "row",
 		alignItems: "center",
@@ -62,5 +65,8 @@ export const styles = StyleSheet.create({
 	},
 	content: {
 		flexGrow: 1,
+	},
+	footerSlot: {
+		flexShrink: 0,
 	},
 });

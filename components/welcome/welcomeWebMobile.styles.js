@@ -6,7 +6,14 @@ import {
 	getWelcomeThemePalette,
 } from "../../constants/welcomeTheme";
 
-export function createWelcomeWebMobileTheme({ viewportHeight = 760, isDarkMode = true } = {}) {
+export function createWelcomeWebMobileTheme({
+	viewportHeight = 760,
+	isDarkMode = true,
+	isShortHeight = false,
+	isVeryShortHeight = false,
+} = {}) {
+	const resolvedVeryShortHeight = isVeryShortHeight || viewportHeight < 680;
+	const resolvedShortHeight = isShortHeight || viewportHeight < 780;
 	const colors = {
 		...getWelcomeThemePalette({ isDarkMode }),
 		chipBackground: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.74)",
@@ -18,28 +25,38 @@ export function createWelcomeWebMobileTheme({ viewportHeight = 760, isDarkMode =
 	});
 	const entrySpacing = getWelcomeEntrySpacing({
 		profile: "web",
-		isVeryShortHeight: viewportHeight < 680,
+		isVeryShortHeight: resolvedVeryShortHeight,
 	});
 
 	const metrics = {
 		viewportHeight,
-		showChip: viewportHeight >= 700,
-		topPadding: 24,
-		bottomPadding: 20,
-		logoSize: 46,
-		brandSize: 28,
-		heroWidth: 320,
-		heroHeight: 256,
-		headlineSize: 40,
-		headlineLineHeight: 44,
-		helperSize: 16,
-		helperLineHeight: 24,
+		showChip: !resolvedShortHeight,
+		topPadding: resolvedVeryShortHeight ? 14 : resolvedShortHeight ? 18 : 24,
+		bottomPadding: resolvedVeryShortHeight ? 14 : resolvedShortHeight ? 16 : 20,
+		logoSize: resolvedVeryShortHeight ? 42 : resolvedShortHeight ? 44 : 46,
+		brandSize: resolvedShortHeight ? 26 : 28,
+		heroWidth: resolvedVeryShortHeight ? 286 : resolvedShortHeight ? 300 : 320,
+		heroHeight: resolvedVeryShortHeight ? 220 : resolvedShortHeight ? 236 : 256,
+		headlineSize: resolvedVeryShortHeight ? 34 : resolvedShortHeight ? 36 : 40,
+		headlineLineHeight: resolvedVeryShortHeight ? 38 : resolvedShortHeight ? 40 : 44,
+		helperSize: resolvedShortHeight ? 15 : 16,
+		helperLineHeight: resolvedShortHeight ? 22 : 24,
 		primaryActionHeight: 60,
 		secondaryActionHeight: 56,
 		stageSpacing: {
+			brandToHero: resolvedVeryShortHeight ? 12 : resolvedShortHeight ? 16 : 24,
+			heroToHeadline: resolvedVeryShortHeight ? 10 : resolvedShortHeight ? 12 : 16,
 			helperToChip: entrySpacing.helperToChip,
-			chipToActionWell: entrySpacing.chipToActionWell,
-			actionWellMinHeight: entrySpacing.actionWellMinHeight,
+			chipToActionWell: resolvedVeryShortHeight
+				? Math.min(entrySpacing.chipToActionWell, 18)
+				: resolvedShortHeight
+					? Math.min(entrySpacing.chipToActionWell, 22)
+					: entrySpacing.chipToActionWell,
+			actionWellMinHeight: resolvedVeryShortHeight
+				? Math.min(entrySpacing.actionWellMinHeight, 12)
+				: resolvedShortHeight
+					? Math.min(entrySpacing.actionWellMinHeight, 28)
+					: entrySpacing.actionWellMinHeight,
 			actionGap: entrySpacing.actionGap,
 			signInTop: entrySpacing.signInTop,
 		},
@@ -106,7 +123,7 @@ export function createWelcomeWebMobileTheme({ viewportHeight = 760, isDarkMode =
 		},
 		heroBlock: {
 			width: "100%",
-			marginTop: 24,
+			marginTop: metrics.stageSpacing.brandToHero,
 			alignItems: "center",
 		},
 		heroImage: {
@@ -115,7 +132,7 @@ export function createWelcomeWebMobileTheme({ viewportHeight = 760, isDarkMode =
 		},
 		copyBlock: {
 			width: "100%",
-			marginTop: 16,
+			marginTop: metrics.stageSpacing.heroToHeadline,
 			alignItems: "center",
 		},
 		headline: {
@@ -133,7 +150,7 @@ export function createWelcomeWebMobileTheme({ viewportHeight = 760, isDarkMode =
 			fontSize: metrics.helperSize,
 			lineHeight: metrics.helperLineHeight,
 			textAlign: "center",
-			marginTop: 12,
+			marginTop: resolvedShortHeight ? 10 : 12,
 			maxWidth: 320,
 		},
 		chip: {

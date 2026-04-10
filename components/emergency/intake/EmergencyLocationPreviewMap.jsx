@@ -176,6 +176,7 @@ export default function EmergencyLocationPreviewMap({
 	onHospitalPress = null,
 	onReadinessChange = null,
 	showInternalSkeleton = true,
+	showControls = true,
 }) {
 	const { isDarkMode } = useTheme();
 	const { width: screenWidth } = useWindowDimensions();
@@ -494,7 +495,7 @@ export default function EmergencyLocationPreviewMap({
 				style={styles.scrim}
 			/>
 
-			{hasLocation ? (
+			{hasLocation && showControls ? (
 				<MapControls
 					onRecenter={centerOnUser}
 					onExpand={fitNearbyHospitals}

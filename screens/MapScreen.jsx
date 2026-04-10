@@ -103,6 +103,19 @@ export default function MapScreen() {
 				: 0,
 		[surfaceConfig.sidebarMaxWidth, usesSidebarLayout, width],
 	);
+	const hasActiveMapModal =
+		locationSearchVisible ||
+		publicSearchVisible ||
+		hospitalModalVisible ||
+		hospitalDetailsVisible ||
+		profileModalVisible ||
+		guestProfileVisible ||
+		careHistoryVisible ||
+		recentVisitsVisible ||
+		authModalVisible;
+	const shouldShowMapControls = usesSidebarLayout
+		? !hasActiveMapModal
+		: renderedSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED && !hasActiveMapModal;
 
 	useEffect(() => {
 		if (usesSidebarLayout && sheetSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED) {
@@ -121,6 +134,7 @@ export default function MapScreen() {
 				onReadinessChange={handleMapReadinessChange}
 				bottomSheetHeight={bottomSheetHeight}
 				leftPanelWidth={sidebarWidth}
+				showControls={shouldShowMapControls}
 				controlsMode={surfaceConfig.mapControlsMode}
 				controlsTopOffset={surfaceConfig.mapControlsTopInset}
 				controlsRightOffset={surfaceConfig.mapControlsRightInset}

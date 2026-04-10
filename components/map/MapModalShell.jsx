@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
 	Animated,
-	Easing,
+	PanResponder,
 	Platform,
 	Pressable,
 	ScrollView,
@@ -16,18 +16,24 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import { HEADER_MODES } from "../../constants/header";
 import {
+	MAP_APPLE_EASE,
 	MAP_MODAL_BACKDROP_IN_MS,
 	MAP_MODAL_BACKDROP_OUT_MS,
 	MAP_MODAL_EXIT_MS,
+	getMapPlatformMotion,
 } from "./mapMotionTokens";
-import { getMapSheetHeight, MAP_SHEET_SNAP_STATES } from "./mapSheet.constants";
+import {
+	getMapSheetHeight,
+	getNextMapSheetSnapStateDown,
+	getNextMapSheetSnapStateUp,
+	MAP_SHEET_SNAP_INDEX,
+	MAP_SHEET_SNAP_STATES,
+} from "./mapSheet.constants";
 import {
 	getMapViewportSurfaceConfig,
 	getMapViewportVariant,
 } from "./mapViewportConfig";
 import { styles } from "./mapModalShell.styles";
-
-const APPLE_MODAL_EASE = Easing.bezier(0.21, 0.47, 0.32, 0.98);
 
 export default function MapModalShell({
 	visible,
@@ -40,9 +46,14 @@ export default function MapModalShell({
 	showHandle = false,
 	scrollEnabled = true,
 	contentContainerStyle,
+	footerSlot = null,
 	closeOnBackdropPress = Platform.OS !== "web",
 	headerModeWhenVisible = HEADER_MODES.HIDDEN,
 	syncHeaderVisibility = true,
+	defaultSnapState = null,
+	enableSnapDetents = true,
+	allowCollapsedState = false,
+	closeFromCollapsed = true,
 	children,
 }) {
 	const { isDarkMode } = useTheme();
@@ -50,13 +61,60 @@ export default function MapModalShell({
 	const insets = useSafeAreaInsets();
 	const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 	const isWeb = Platform.OS === "web";
+	const platformMotion = useMemo(() => getMapPlatformMotion(Platform.OS), []);
+	const modalMotion = platformMotion.modal;
 	const viewportVariant = getMapViewportVariant({ platform: Platform.OS, width: screenWidth });
 	const surfaceConfig = getMapViewportSurfaceConfig(viewportVariant);
 	const isDrawer = surfaceConfig.modalPresentationMode === "left-drawer";
 	const resolvedCloseOnBackdropPress = closeOnBackdropPress || isDrawer;
+	const enableDetents = !isDrawer && enableSnapDetents;
+	const resolvedShowHandle = !isDrawer && (showHandle || enableDetents);
+	const requestedDefaultSnapState = defaultSnapState ?? modalMotion.defaultSnapState;
+	const resolvedDefaultSnapState = enableDetents
+		? !allowCollapsedState && requestedDefaultSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED
+			? MAP_SHEET_SNAP_STATES.HALF
+			: requestedDefaultSnapState
+		: MAP_SHEET_SNAP_STATES.EXPANDED;
 	const [shouldRender, setShouldRender] = useState(visible);
+	const [modalSnapState, setModalSnapState] = useState(resolvedDefaultSnapState);
 	const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
+	const snapProgress = useRef(
+		new Animated.Value(
+			MAP_SHEET_SNAP_INDEX[resolvedDefaultSnapState] ??
+				MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.EXPANDED],
+		),
+	).current;
+	const dragTranslateY = useRef(new Animated.Value(0)).current;
+	const contentScrollRef = useRef(null);
+	const scrollStartOffsetYRef = useRef(0);
+	const lastScrollOffsetYRef = useRef(0);
+	const scrollSnapHandledRef = useRef(false);
+	const wheelSnapAccumRef = useRef(0);
+	const modalScrollMotion = modalMotion.scroll;
+	const allowScrollDetents = Boolean(modalScrollMotion.enableContentDetents);
+	const allowWheelDetents = isWeb && Boolean(modalScrollMotion.enableWheelDetents);
+	const SCROLL_TOP_THRESHOLD = modalScrollMotion.topThreshold;
+	const SCROLL_EXPAND_OFFSET = modalScrollMotion.expandOffset;
+	const SCROLL_COLLAPSE_PULL = modalScrollMotion.collapsePull;
+	const SCROLL_EXPAND_VELOCITY = modalScrollMotion.expandVelocity;
+	const SCROLL_COLLAPSE_VELOCITY = modalScrollMotion.collapseVelocity;
+	const HALF_CLOSE_PULL_THRESHOLD = allowCollapsedState
+		? SCROLL_COLLAPSE_PULL
+		: SCROLL_COLLAPSE_PULL - modalScrollMotion.halfCloseExtraPull;
+	const HALF_CLOSE_VELOCITY_THRESHOLD = allowCollapsedState
+		? SCROLL_COLLAPSE_VELOCITY
+		: SCROLL_COLLAPSE_VELOCITY * modalScrollMotion.halfCloseVelocityFactor;
+	const HALF_CLOSE_WHEEL_THRESHOLD = allowCollapsedState
+		? modalScrollMotion.collapsedWheelThreshold
+		: modalScrollMotion.halfCloseWheelThreshold;
+	const modalSpringConfig = useMemo(
+		() => ({
+			...modalMotion.spring,
+			overshootClamping: Platform.OS === "android",
+		}),
+		[modalMotion],
+	);
 
 	useEffect(() => {
 		if (!syncHeaderVisibility) {
@@ -85,26 +143,37 @@ export default function MapModalShell({
 		visible,
 	]);
 
+
 	useEffect(() => {
 		const closedOffset = isDrawer
 			? -(surfaceConfig.drawerMaxWidth || surfaceConfig.sidebarMaxWidth || screenWidth) - 24
 			: screenHeight;
 		if (visible) {
 			setShouldRender(true);
+			setModalSnapState(resolvedDefaultSnapState);
+			scrollSnapHandledRef.current = false;
+			wheelSnapAccumRef.current = 0;
+			scrollStartOffsetYRef.current = 0;
+			lastScrollOffsetYRef.current = 0;
+			dragTranslateY.setValue(0);
 			if (!shouldRender) {
 				slideAnim.setValue(closedOffset);
+				snapProgress.setValue(
+					MAP_SHEET_SNAP_INDEX[resolvedDefaultSnapState] ??
+						MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.EXPANDED],
+				);
 			}
 			Animated.parallel([
 				Animated.timing(slideAnim, {
 					toValue: 0,
 					duration: 320,
-					easing: APPLE_MODAL_EASE,
+					easing: platformMotion.ease,
 					useNativeDriver: true,
 				}),
 				Animated.timing(bgOpacity, {
 					toValue: 1,
 					duration: MAP_MODAL_BACKDROP_IN_MS,
-					easing: APPLE_MODAL_EASE,
+					easing: platformMotion.ease,
 					useNativeDriver: true,
 				}),
 			]).start();
@@ -119,13 +188,13 @@ export default function MapModalShell({
 			Animated.timing(slideAnim, {
 				toValue: closedOffset,
 				duration: MAP_MODAL_EXIT_MS,
-				easing: APPLE_MODAL_EASE,
+				easing: platformMotion.ease,
 				useNativeDriver: true,
 			}),
 			Animated.timing(bgOpacity, {
 				toValue: 0,
 				duration: MAP_MODAL_BACKDROP_OUT_MS,
-				easing: APPLE_MODAL_EASE,
+				easing: platformMotion.ease,
 				useNativeDriver: true,
 			}),
 		]).start(({ finished }) => {
@@ -135,9 +204,75 @@ export default function MapModalShell({
 		});
 
 		return undefined;
-	}, [bgOpacity, isDrawer, screenHeight, screenWidth, shouldRender, slideAnim, surfaceConfig.drawerMaxWidth, surfaceConfig.sidebarMaxWidth, visible]);
+	}, [
+		bgOpacity,
+		dragTranslateY,
+		isDrawer,
+		resolvedDefaultSnapState,
+		screenHeight,
+		screenWidth,
+		shouldRender,
+		slideAnim,
+		snapProgress,
+		surfaceConfig.drawerMaxWidth,
+		surfaceConfig.sidebarMaxWidth,
+		visible,
+	]);
+
+	useEffect(() => {
+		if (!enableDetents || !visible) return;
+
+		scrollSnapHandledRef.current = false;
+		wheelSnapAccumRef.current = 0;
+		scrollStartOffsetYRef.current = 0;
+		lastScrollOffsetYRef.current = 0;
+
+		Animated.spring(snapProgress, {
+			toValue:
+				MAP_SHEET_SNAP_INDEX[modalSnapState] ??
+				MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.EXPANDED],
+			useNativeDriver: false,
+			...modalSpringConfig,
+		}).start();
+	}, [enableDetents, modalSnapState, snapProgress, visible]);
 
 	if (!shouldRender) return null;
+
+	const resetDetentInteractionState = () => {
+		scrollSnapHandledRef.current = false;
+		wheelSnapAccumRef.current = 0;
+		scrollStartOffsetYRef.current = 0;
+		lastScrollOffsetYRef.current = 0;
+	};
+
+	const resolveNextDetentDown = (currentState = modalSnapState) => {
+		if (currentState === MAP_SHEET_SNAP_STATES.COLLAPSED) {
+			return closeFromCollapsed ? "__close__" : MAP_SHEET_SNAP_STATES.COLLAPSED;
+		}
+
+		const nextState = getNextMapSheetSnapStateDown(currentState);
+		if (!allowCollapsedState && nextState === MAP_SHEET_SNAP_STATES.COLLAPSED) {
+			return closeFromCollapsed ? "__close__" : MAP_SHEET_SNAP_STATES.HALF;
+		}
+		return nextState;
+	};
+
+	const commitDetentState = (nextState) => {
+		if (!enableDetents || !nextState) return;
+		if (nextState === "__close__") {
+			onClose?.();
+			return;
+		}
+		setModalSnapState(nextState);
+	};
+
+	const triggerScrollDetent = (nextState) => {
+		if (!enableDetents || scrollSnapHandledRef.current || !nextState) return;
+		scrollSnapHandledRef.current = true;
+		wheelSnapAccumRef.current = 0;
+		contentScrollRef.current?.scrollTo?.({ y: 0, animated: false });
+		commitDetentState(nextState);
+	};
 
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
 	const surfaceColor = isDarkMode ? "rgba(8, 15, 27, 0.84)" : "rgba(255, 255, 255, 0.88)";
@@ -156,21 +291,36 @@ export default function MapModalShell({
 	const modalRadius = surfaceConfig.modalCornerRadius;
 	const viewportMaxHeight = isDrawer
 		? screenHeight
-		: Math.max(
-				360,
-				screenHeight - insets.top - resolvedTopClearance - hostBottom,
-			);
+		: Math.max(360, screenHeight - insets.top - resolvedTopClearance - hostBottom);
 	const resolvedHeight = isDrawer
 		? screenHeight
 		: matchExpandedSheetHeight
 			? Math.min(expandedSheetHeight, viewportMaxHeight)
 			: Math.min(screenHeight * maxHeightRatio, viewportMaxHeight);
-	const minHeight = isDrawer
+	const maxHeight = resolvedHeight;
+	const collapsedHeight = isDrawer
+		? screenHeight
+		: Math.max(insets.bottom + 72, resolvedShowHandle ? 94 : 80);
+	const halfHeight = isDrawer
+		? screenHeight
+		: Math.min(
+				maxHeight - 28,
+				Math.max(
+					collapsedHeight + 108,
+					Math.min(Math.max(320, screenHeight * 0.52), maxHeight - 72),
+				),
+			);
+	const minHeight = enableDetents ? collapsedHeight : isDrawer
 		? screenHeight
 		: matchExpandedSheetHeight
 			? resolvedHeight
 			: Math.min(screenHeight * minHeightRatio, resolvedHeight);
-	const maxHeight = resolvedHeight;
+	const animatedSheetHeight = enableDetents
+		? snapProgress.interpolate({
+				inputRange: [0, 1, 2],
+				outputRange: [collapsedHeight, halfHeight, maxHeight],
+			})
+		: maxHeight;
 	const surfaceShapeStyle = isDrawer
 		? {
 				borderTopLeftRadius: 0,
@@ -184,8 +334,197 @@ export default function MapModalShell({
 				borderBottomLeftRadius: 0,
 				borderBottomRightRadius: 0,
 			};
+
+	const handleHandlePress = () => {
+		if (!enableDetents) {
+			onClose?.();
+			return;
+		}
+		if (modalSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED) {
+			commitDetentState(MAP_SHEET_SNAP_STATES.HALF);
+			return;
+		}
+		if (modalSnapState === MAP_SHEET_SNAP_STATES.HALF) {
+			commitDetentState(MAP_SHEET_SNAP_STATES.EXPANDED);
+			return;
+		}
+		commitDetentState(MAP_SHEET_SNAP_STATES.HALF);
+	};
+
+	const handleContentScrollBeginDrag = (event) => {
+		const offsetY = event?.nativeEvent?.contentOffset?.y ?? 0;
+		scrollStartOffsetYRef.current = offsetY;
+		lastScrollOffsetYRef.current = offsetY;
+		scrollSnapHandledRef.current = false;
+		wheelSnapAccumRef.current = 0;
+	};
+
+	const handleContentScroll = (event) => {
+		const offsetY = event?.nativeEvent?.contentOffset?.y ?? 0;
+		lastScrollOffsetYRef.current = offsetY;
+
+		if (offsetY > SCROLL_TOP_THRESHOLD) {
+			wheelSnapAccumRef.current = 0;
+		}
+
+		if (!enableDetents || !allowScrollDetents || scrollSnapHandledRef.current) return;
+		const startedNearTop = scrollStartOffsetYRef.current <= SCROLL_TOP_THRESHOLD;
+		if (!startedNearTop) return;
+
+		if (modalSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED && offsetY > 14) {
+			triggerScrollDetent(MAP_SHEET_SNAP_STATES.HALF);
+			return;
+		}
+
+		if (modalSnapState === MAP_SHEET_SNAP_STATES.HALF && offsetY > SCROLL_EXPAND_OFFSET) {
+			triggerScrollDetent(MAP_SHEET_SNAP_STATES.EXPANDED);
+			return;
+		}
+
+		if (offsetY < SCROLL_COLLAPSE_PULL) {
+			if (modalSnapState === MAP_SHEET_SNAP_STATES.EXPANDED) {
+				triggerScrollDetent(MAP_SHEET_SNAP_STATES.HALF);
+				return;
+			}
+			if (modalSnapState === MAP_SHEET_SNAP_STATES.HALF && offsetY < HALF_CLOSE_PULL_THRESHOLD) {
+				triggerScrollDetent(resolveNextDetentDown(MAP_SHEET_SNAP_STATES.HALF));
+				return;
+			}
+			if (modalSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED) {
+				triggerScrollDetent(resolveNextDetentDown(MAP_SHEET_SNAP_STATES.COLLAPSED));
+			}
+		}
+	};
+
+	const handleContentScrollEndDrag = (event) => {
+		const offsetY = event?.nativeEvent?.contentOffset?.y ?? lastScrollOffsetYRef.current ?? 0;
+		const velocityY = event?.nativeEvent?.velocity?.y ?? 0;
+		lastScrollOffsetYRef.current = offsetY;
+
+		if (!enableDetents || !allowScrollDetents || scrollSnapHandledRef.current) return;
+		const startedNearTop = scrollStartOffsetYRef.current <= SCROLL_TOP_THRESHOLD;
+		if (!startedNearTop) return;
+
+		if (
+			modalSnapState === MAP_SHEET_SNAP_STATES.HALF &&
+			offsetY <= SCROLL_EXPAND_OFFSET * 0.75 &&
+			velocityY > SCROLL_EXPAND_VELOCITY
+		) {
+			triggerScrollDetent(MAP_SHEET_SNAP_STATES.EXPANDED);
+			return;
+		}
+
+		if (offsetY <= 0 && velocityY < SCROLL_COLLAPSE_VELOCITY) {
+			if (modalSnapState === MAP_SHEET_SNAP_STATES.EXPANDED) {
+				triggerScrollDetent(MAP_SHEET_SNAP_STATES.HALF);
+				return;
+			}
+			if (
+				modalSnapState === MAP_SHEET_SNAP_STATES.HALF &&
+				velocityY < HALF_CLOSE_VELOCITY_THRESHOLD
+			) {
+				triggerScrollDetent(resolveNextDetentDown(MAP_SHEET_SNAP_STATES.HALF));
+				return;
+			}
+			if (modalSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED) {
+				triggerScrollDetent(resolveNextDetentDown(MAP_SHEET_SNAP_STATES.COLLAPSED));
+			}
+		}
+	};
+
+	const handleContentWheel = (event) => {
+		if (!enableDetents || !allowWheelDetents || scrollSnapHandledRef.current || !isWeb) return;
+
+		const deltaY = Number(event?.nativeEvent?.deltaY ?? 0);
+		if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 1) return;
+
+		const isAtTop = lastScrollOffsetYRef.current <= SCROLL_TOP_THRESHOLD;
+		if (!isAtTop) {
+			wheelSnapAccumRef.current = 0;
+			return;
+		}
+
+		wheelSnapAccumRef.current =
+			Math.sign(wheelSnapAccumRef.current) === Math.sign(deltaY) || wheelSnapAccumRef.current === 0
+				? wheelSnapAccumRef.current + deltaY
+				: deltaY;
+
+		if (modalSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED && wheelSnapAccumRef.current >= 34) {
+			triggerScrollDetent(MAP_SHEET_SNAP_STATES.HALF);
+			return;
+		}
+
+		if (modalSnapState === MAP_SHEET_SNAP_STATES.HALF && wheelSnapAccumRef.current >= 52) {
+			triggerScrollDetent(MAP_SHEET_SNAP_STATES.EXPANDED);
+			return;
+		}
+
+		if (modalSnapState === MAP_SHEET_SNAP_STATES.EXPANDED && wheelSnapAccumRef.current <= -42) {
+			triggerScrollDetent(MAP_SHEET_SNAP_STATES.HALF);
+			return;
+		}
+
+		if (modalSnapState === MAP_SHEET_SNAP_STATES.HALF && wheelSnapAccumRef.current <= HALF_CLOSE_WHEEL_THRESHOLD) {
+			triggerScrollDetent(resolveNextDetentDown(MAP_SHEET_SNAP_STATES.HALF));
+			return;
+		}
+
+		if (modalSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED && wheelSnapAccumRef.current <= -112) {
+			triggerScrollDetent(resolveNextDetentDown(MAP_SHEET_SNAP_STATES.COLLAPSED));
+		}
+	};
+
+	const panResponder = enableDetents
+		? PanResponder.create({
+				onMoveShouldSetPanResponder: (_, gestureState) =>
+					Math.abs(gestureState.dy) > modalMotion.gestureActivationOffset,
+				onPanResponderGrant: () => {
+					dragTranslateY.stopAnimation();
+					resetDetentInteractionState();
+				},
+				onPanResponderMove: (_, gestureState) => {
+					const rawDy = gestureState.dy;
+					const minDy =
+						modalSnapState === MAP_SHEET_SNAP_STATES.EXPANDED ? 0 : modalMotion.dragRange.up;
+					const maxDy =
+						modalSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED ? 0 : modalMotion.dragRange.down;
+					const clampedDy = Math.max(minDy, Math.min(maxDy, rawDy));
+					dragTranslateY.setValue(clampedDy);
+				},
+				onPanResponderRelease: (_, gestureState) => {
+					const { dy, vy } = gestureState;
+					let nextState = modalSnapState;
+
+					if (dy <= -modalMotion.release.distance || vy <= -modalMotion.release.velocity) {
+						nextState = getNextMapSheetSnapStateUp(modalSnapState);
+					} else if (
+						dy >= modalMotion.release.distance ||
+						vy >= modalMotion.release.velocity
+					) {
+						nextState = resolveNextDetentDown(modalSnapState);
+					}
+
+					Animated.spring(dragTranslateY, {
+						toValue: 0,
+						useNativeDriver: false,
+						...modalSpringConfig,
+					}).start();
+
+					if (nextState !== modalSnapState) {
+						commitDetentState(nextState);
+					}
+				},
+				onPanResponderTerminate: () => {
+					Animated.spring(dragTranslateY, {
+						toValue: 0,
+						useNativeDriver: false,
+						...modalSpringConfig,
+					}).start();
+				},
+			})
+		: null;
 	const modalContent = (
-		<View
+		<Animated.View
 			style={[
 				styles.sheetSurface,
 				surfaceShapeStyle,
@@ -193,14 +532,18 @@ export default function MapModalShell({
 					backgroundColor: surfaceColor,
 					minHeight,
 					maxHeight,
+					height: animatedSheetHeight,
 					paddingTop: isDrawer ? insets.top + 12 : 14,
 					paddingBottom: insets.bottom + 18,
+					transform: enableDetents ? [{ translateY: dragTranslateY }] : undefined,
 				},
 			]}
 		>
-			{showHandle && !isDrawer ? (
-				<View style={styles.handleWrap}>
-					<View style={[styles.handle, { backgroundColor: handleColor }]} />
+			{resolvedShowHandle ? (
+				<View {...(panResponder?.panHandlers || {})} style={styles.handleWrap}>
+					<Pressable onPress={handleHandlePress} hitSlop={12}>
+						<View style={[styles.handle, { backgroundColor: handleColor }]} />
+					</Pressable>
 				</View>
 			) : null}
 
@@ -230,9 +573,21 @@ export default function MapModalShell({
 
 			{scrollEnabled ? (
 				<ScrollView
+					ref={contentScrollRef}
 					showsVerticalScrollIndicator={false}
 					keyboardShouldPersistTaps="handled"
 					scrollEnabled={scrollEnabled}
+					nestedScrollEnabled
+					bounces={!isDrawer && !isWeb}
+					alwaysBounceVertical={!isDrawer && !isWeb}
+					overScrollMode={enableDetents && allowScrollDetents ? "always" : "auto"}
+					directionalLockEnabled
+					scrollEventThrottle={16}
+					onScrollBeginDrag={handleContentScrollBeginDrag}
+					onScroll={handleContentScroll}
+					onScrollEndDrag={handleContentScrollEndDrag}
+					onMomentumScrollEnd={handleContentScrollEndDrag}
+					onWheel={isWeb ? handleContentWheel : undefined}
 					contentContainerStyle={[styles.content, contentContainerStyle]}
 				>
 					{children}
@@ -242,7 +597,8 @@ export default function MapModalShell({
 					{children}
 				</View>
 			)}
-		</View>
+			{footerSlot ? <View style={styles.footerSlot}>{footerSlot}</View> : null}
+		</Animated.View>
 	);
 
 	return (

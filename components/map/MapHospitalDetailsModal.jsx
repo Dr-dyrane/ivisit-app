@@ -4,7 +4,6 @@ import {
 	Linking,
 	Platform,
 	Pressable,
-	ScrollView,
 	StyleSheet,
 	Text,
 	View,
@@ -522,6 +521,31 @@ export default function MapHospitalDetailsModal(props) {
 		);
 	};
 
+	const footerActions = (
+		<View style={styles.actionDock}>
+			<View style={styles.compactActionRow}>
+				{canCallHospital ? (
+					<Pressable onPress={handleCallHospital} style={styles.callActionPressable}>
+						{({ pressed }) => (
+							<View style={[styles.callActionButton, { backgroundColor: rowSurface, opacity: pressed ? 0.86 : 1 }]}> 
+								<Ionicons name="call" size={20} color={titleColor} style={styles.callActionIcon} />
+							</View>
+						)}
+					</Pressable>
+				) : null}
+
+				<Pressable onPress={dockAction.onPress} style={styles.inlinePrimaryPressable}>
+					{({ pressed }) => (
+						<View style={[styles.inlinePrimaryAction, pressed ? styles.inlinePrimaryActionPressed : null]}>
+							<Text style={styles.inlinePrimaryText}>{dockAction.label}</Text>
+							<Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+						</View>
+					)}
+				</Pressable>
+			</View>
+		</View>
+	);
+
 	return (
 		<MapModalShell
 			visible={visible}
@@ -530,11 +554,11 @@ export default function MapHospitalDetailsModal(props) {
 			minHeightRatio={0.88}
 			maxHeightRatio={0.88}
 			contentContainerStyle={styles.content}
-			scrollEnabled={false}
+			scrollEnabled={true}
 			showHandle={true}
+			footerSlot={footerActions}
 		>
-			<View style={styles.modalBody}>
-				<ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+			<View style={styles.scrollContent}>
 					<ImageBackground
 						source={getHospitalHeroSource(hospital)}
 						resizeMode="cover"
@@ -681,30 +705,6 @@ export default function MapHospitalDetailsModal(props) {
 							) : null}
 						</View>
 					) : null}
-				</ScrollView>
-
-				<View style={styles.actionDock}>
-					<View style={styles.compactActionRow}>
-						{canCallHospital ? (
-							<Pressable onPress={handleCallHospital} style={styles.callActionPressable}>
-								{({ pressed }) => (
-									<View style={[styles.callActionButton, { backgroundColor: rowSurface, opacity: pressed ? 0.86 : 1 }]}>
-										<Ionicons name="call" size={20} color={titleColor} style={styles.callActionIcon} />
-									</View>
-								)}
-							</Pressable>
-						) : null}
-
-						<Pressable onPress={dockAction.onPress} style={styles.inlinePrimaryPressable}>
-							{({ pressed }) => (
-								<View style={[styles.inlinePrimaryAction, pressed ? styles.inlinePrimaryActionPressed : null]}>
-									<Text style={styles.inlinePrimaryText}>{dockAction.label}</Text>
-									<Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
-								</View>
-							)}
-						</Pressable>
-					</View>
-				</View>
 			</View>
 		</MapModalShell>
 	);

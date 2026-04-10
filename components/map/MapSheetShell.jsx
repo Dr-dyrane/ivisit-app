@@ -11,7 +11,7 @@ import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { MAP_SHEET_SNAP_INDEX, MAP_SHEET_SNAP_STATES, getNextMapSheetSnapStateDown, getNextMapSheetSnapStateUp } from "./mapSheet.constants";
-import { MAP_SHEET_SNAP_SPRING } from "./mapMotionTokens";
+import { getMapPlatformMotion } from "./mapMotionTokens";
 import { getMapSheetTokens } from "./mapSheetTokens";
 import styles from "./mapSheetShell.styles";
 
@@ -28,6 +28,7 @@ export default function MapSheetShell({
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 	const isAndroid = Platform.OS === "android";
+	const platformMotion = useMemo(() => getMapPlatformMotion(Platform.OS), []);
 	const isSidebar = presentationMode === "sidebar";
 	const resolvedSnapState = isSidebar ? MAP_SHEET_SNAP_STATES.EXPANDED : snapState;
 	const isCollapsed = resolvedSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
@@ -46,10 +47,10 @@ export default function MapSheetShell({
 		MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.HALF];
 	const snapSpringConfig = useMemo(
 		() => ({
-			...MAP_SHEET_SNAP_SPRING,
+			...platformMotion.sheet.spring,
 			overshootClamping: isAndroid,
 		}),
-		[isAndroid],
+		[isAndroid, platformMotion],
 	);
 
 	useEffect(() => {
@@ -122,15 +123,23 @@ export default function MapSheetShell({
 		() =>
 			PanResponder.create({
 				onMoveShouldSetPanResponder: (_, gestureState) =>
-					isSidebar ? false : Math.abs(gestureState.dy) > 4,
+					isSidebar
+						? false
+						: Math.abs(gestureState.dy) > platformMotion.sheet.gestureActivationOffset,
 				onPanResponderGrant: () => {
 					dragTranslateY.stopAnimation();
 				},
 				onPanResponderMove: (_, gestureState) => {
 					if (isSidebar) return;
 					const rawDy = gestureState.dy;
-					const minDy = resolvedSnapState === MAP_SHEET_SNAP_STATES.EXPANDED ? 0 : -220;
-					const maxDy = resolvedSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED ? 0 : 180;
+					const minDy =
+						resolvedSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
+							? 0
+							: platformMotion.sheet.dragRange.up;
+					const maxDy =
+						resolvedSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED
+							? 0
+							: platformMotion.sheet.dragRange.down;
 					const clampedDy = Math.max(minDy, Math.min(maxDy, rawDy));
 					dragTranslateY.setValue(clampedDy);
 				},
@@ -139,9 +148,15 @@ export default function MapSheetShell({
 					const { dy, vy } = gestureState;
 					let nextState = resolvedSnapState;
 
-					if (dy <= -44 || vy <= -0.28) {
+					if (
+						dy <= -platformMotion.sheet.release.distance ||
+						vy <= -platformMotion.sheet.release.velocity
+					) {
 						nextState = getNextMapSheetSnapStateUp(resolvedSnapState);
-					} else if (dy >= 44 || vy >= 0.28) {
+					} else if (
+						dy >= platformMotion.sheet.release.distance ||
+						vy >= platformMotion.sheet.release.velocity
+					) {
 						nextState = getNextMapSheetSnapStateDown(resolvedSnapState);
 					}
 
@@ -163,7 +178,7 @@ export default function MapSheetShell({
 					}).start();
 				},
 			}),
-		[dragTranslateY, isSidebar, onHandlePress, resolvedSnapState, snapSpringConfig],
+		[dragTranslateY, isSidebar, onHandlePress, platformMotion, resolvedSnapState, snapSpringConfig],
 	);
 
 	const sidebarShapeStyle = isSidebar

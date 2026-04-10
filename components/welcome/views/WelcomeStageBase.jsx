@@ -318,11 +318,24 @@ export default function WelcomeStageBase({
 	const elevatedActionsMarginTop = Math.max(actionsMarginTop + 10, 30);
 	const isTallSingleLayout =
 		layout !== "split" && (height >= 850 || height / Math.max(width, 1) >= 1.95);
-	const shouldCenterSingleLayoutCluster = layout !== "split" && !viewport.isVeryShortHeight;
+	const usesShortHeightSingleLayout = layout !== "split" && viewport.isShortHeight;
+	const shouldDockSingleActionBlock =
+		actionContainer === "well" && layout !== "split" && viewport.isShortHeight;
+	const shouldCenterSingleLayoutCluster = layout !== "split" && !viewport.isShortHeight;
 	const resolvedActionsMarginTop =
 		layout === "split"
 			? elevatedActionsMarginTop
-			: Math.min(elevatedActionsMarginTop, isTallSingleLayout ? 18 : 24);
+			: usesShortHeightSingleLayout
+				? Math.min(actionsMarginTop, 16)
+				: Math.min(elevatedActionsMarginTop, isTallSingleLayout ? 18 : 24);
+	const dockedActionClearance = shouldDockSingleActionBlock
+		? Math.max(
+				(metrics?.primaryActionHeight || 60) +
+					(metrics?.bottomPadding || 0) +
+					48,
+				(metrics?.stageSpacing?.actionWellMinHeight || 0) + 72,
+			)
+		: 0;
 	const heroTranslateX = heroMotion.interpolate({
 		inputRange: [0, 1],
 		outputRange: [-2, 2],
@@ -412,12 +425,18 @@ export default function WelcomeStageBase({
 		</Text>
 	) : null;
 
+	const actionContent = (
+		<>
+			<View style={styles.actions}>{actionButtons}</View>
+			{ctaFootnote}
+			{/* {signInPressable} */}
+		</>
+	);
+
 	const actionBlock =
 		actionContainer === "well" ? (
 			<View style={[styles.actionWell, { marginTop: resolvedActionsMarginTop }]}>
-				<View style={styles.actions}>{actionButtons}</View>
-				{ctaFootnote}
-				{/* {signInPressable} */}
+				{actionContent}
 			</View>
 		) : (
 			<>
@@ -522,7 +541,14 @@ export default function WelcomeStageBase({
 			<ScrollView
 				nativeID={scrollNativeID}
 				style={styles.scrollView}
-				contentContainerStyle={styles.scrollContent}
+				contentContainerStyle={[
+					styles.scrollContent,
+					shouldDockSingleActionBlock
+						? {
+								paddingBottom: (metrics?.bottomPadding || 0) + dockedActionClearance,
+							}
+						: null,
+				]}
 				showsVerticalScrollIndicator={false}
 				keyboardShouldPersistTaps="handled"
 			>
@@ -554,18 +580,68 @@ export default function WelcomeStageBase({
 										flex: shouldCenterSingleLayoutCluster ? 1 : 0,
 										justifyContent: shouldCenterSingleLayoutCluster ? "center" : "flex-start",
 										alignItems: "center",
-										paddingTop: isTallSingleLayout ? 4 : 0,
+										paddingTop: usesShortHeightSingleLayout ? 0 : isTallSingleLayout ? 4 : 0,
 									},
 								]}
 							>
 								{heroBlock}
 								{copyBlock}
 							</View>
-							<View style={{ width: "100%", justifyContent: "flex-end" }}>{actionBlock}</View>
+							{shouldDockSingleActionBlock ? null : (
+								<View style={{ width: "100%", justifyContent: "flex-end" }}>{actionBlock}</View>
+							)}
 						</View>
 					)}
 				</Animated.View>
 			</ScrollView>
+			{shouldDockSingleActionBlock ? (
+				<View
+					pointerEvents="box-none"
+					style={{
+						position: "absolute",
+						left: 0,
+						right: 0,
+						bottom: 0,
+					}}
+				>
+					<LinearGradient
+						pointerEvents="box-none"
+						colors={
+							isDarkMode
+								? ["rgba(11,17,28,0)", "rgba(11,17,28,0.78)", colors.backgroundBase]
+								: ["rgba(250,246,245,0)", "rgba(250,246,245,0.88)", colors.backgroundBase]
+						}
+						start={{ x: 0.5, y: 0 }}
+						end={{ x: 0.5, y: 1 }}
+						style={{
+							paddingTop: 28,
+							paddingBottom: metrics?.bottomPadding || 0,
+							paddingHorizontal: viewport.horizontalPadding,
+						}}
+					>
+						<View
+							style={{
+								width: "100%",
+								maxWidth: metrics?.contentWidth || viewport.entryStageMaxWidth || width,
+								alignSelf: "center",
+							}}
+						>
+							<View
+								style={[
+									styles.actionWell,
+									{
+										marginTop: 0,
+										minHeight: 0,
+										flexGrow: 0,
+									},
+								]}
+							>
+								{actionContent}
+							</View>
+						</View>
+					</LinearGradient>
+				</View>
+			) : null}
 		</LinearGradient>
 	);
 }

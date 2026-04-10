@@ -48,6 +48,13 @@ const coordinateClusterKey = (value, precision = 3) => {
 	const n = Number(value);
 	return Number.isFinite(n) ? Number(n).toFixed(precision) : null;
 };
+const hospitalCoordinateKey = (hospital) => {
+	const latitude = hospital?.latitude ?? hospital?.coordinates?.coordinates?.[1];
+	const longitude = hospital?.longitude ?? hospital?.coordinates?.coordinates?.[0];
+	const latKey = coordinateClusterKey(latitude);
+	const lngKey = coordinateClusterKey(longitude);
+	return latKey && lngKey ? `${latKey}|${lngKey}` : null;
+};
 const isDemoLikeHospital = (hospital) => {
 	const placeId = toText(hospital?.place_id, "").toLowerCase();
 	const verificationStatus = toText(hospital?.verification_status, "").toLowerCase();
@@ -56,6 +63,15 @@ const isDemoLikeHospital = (hospital) => {
 		placeId.startsWith("demo:") ||
 		verificationStatus.startsWith("demo") ||
 		features.some((feature) => feature.includes("demo"))
+	);
+};
+const isLegacySyntheticDemoHospital = (hospital) => {
+	if (!isDemoLikeHospital(hospital)) return false;
+	const name = toText(hospital?.name);
+	const address = toText(hospital?.address);
+	return (
+		/^Emergency Care Center \d+$/i.test(name) ||
+		/^Coverage\s+.+\s+Zone\s+\d+$/i.test(address)
 	);
 };
 const isDispatchableHospital = (hospital) => {
@@ -124,6 +140,24 @@ const dedupeHospitalRows = (rows = []) => {
 	});
 
 	return Array.from(buckets.values());
+};
+const filterLegacySyntheticDemoRows = (rows = []) => {
+	const rowsWithRealReplacement = new Set(
+		rows
+			.filter((row) => row && !isLegacySyntheticDemoHospital(row))
+			.map((row) => hospitalCoordinateKey(row))
+			.filter(Boolean)
+	);
+
+	if (rowsWithRealReplacement.size === 0) {
+		return rows;
+	}
+
+	return rows.filter((row) => {
+		if (!isLegacySyntheticDemoHospital(row)) return true;
+		const coordinateKey = hospitalCoordinateKey(row);
+		return !coordinateKey || !rowsWithRealReplacement.has(coordinateKey);
+	});
 };
 const hashString = (seed) => {
 	const input = String(seed || "hospital");
@@ -369,7 +403,7 @@ export const hospitalsService = {
 					.filter((id) => typeof id === "string" && isValidUUID(id))
 			),
 		];
-		if (ids.length === 0) return dedupeHospitalRows(list);
+		if (ids.length === 0) return filterLegacySyntheticDemoRows(dedupeHospitalRows(list));
 
 		const { data, error } = await supabase
 			.from("hospitals")
@@ -378,16 +412,16 @@ export const hospitalsService = {
 
 		if (error) {
 			console.warn("hospitalsService._hydrateHospitalRows warning:", error);
-			return dedupeHospitalRows(list);
+			return filterLegacySyntheticDemoRows(dedupeHospitalRows(list));
 		}
 
 		const byId = new Map((data || []).map(h => [h.id, h]));
-		return dedupeHospitalRows(list.map((row) => {
+		return filterLegacySyntheticDemoRows(dedupeHospitalRows(list.map((row) => {
 			const full = row?.id ? byId.get(row.id) : null;
 			// Preserve computed discovery fields (distance/ETA/status from edge/RPC) while
 			// restoring actual availability/org fields from DB.
 			return full ? { ...full, ...row } : row;
-		}));
+		})));
 	},
 
 	/**

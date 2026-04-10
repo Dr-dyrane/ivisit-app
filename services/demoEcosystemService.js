@@ -29,7 +29,7 @@ export const DEMO_BOOTSTRAP_PHASES = [
 	},
 ];
 
-const DEMO_BOOTSTRAP_STATE_KEY = "@ivisit/demo-bootstrap-state:v1";
+const DEMO_BOOTSTRAP_STATE_KEY = "@ivisit/demo-bootstrap-state:v2";
 const DEMO_BOOTSTRAP_GUEST_ID_KEY = "@ivisit/demo-bootstrap-guest-id:v1";
 const DEMO_RESEED_DISTANCE_KM = 3;
 const DEMO_RESEED_MAX_AGE_MS = 12 * 60 * 60 * 1000;

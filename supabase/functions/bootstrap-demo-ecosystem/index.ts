@@ -72,6 +72,7 @@ const DEMO_FEATURE_FLAGS = [
 const DEMO_SHARED_FLAG = "demo_shared";
 
 const MAPBOX_PROVIDER_LIMIT = 8;
+const GOOGLE_PROVIDER_LIMIT = 8;
 
 const SERVICE_PRICING_BASELINES = [
   {
@@ -413,6 +414,88 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
     .sort((a: any, b: any) => a.distance_km - b.distance_km);
 };
 
+const getGoogleSeedHospitals = async (ctx: DemoContext) => {
+  const googleApiKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
+  if (!googleApiKey) return [];
+
+  const radiusMeters = Math.max(1000, Math.round(ctx.radiusKm * 1000));
+  const url =
+    `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${ctx.latitude},${ctx.longitude}` +
+    `&radius=${radiusMeters}&type=hospital&key=${googleApiKey}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`google hospital discovery failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (data?.status !== "OK" && data?.status !== "ZERO_RESULTS") {
+    throw new Error(`google hospital discovery failed: ${data?.status || "unknown_status"}`);
+  }
+
+  const rows = Array.isArray(data?.results) ? data.results.slice(0, GOOGLE_PROVIDER_LIMIT) : [];
+
+  return rows
+    .map((row: any, index: number) => {
+      const latitude = toFiniteNumber(row?.geometry?.location?.lat) ?? ctx.latitude;
+      const longitude = toFiniteNumber(row?.geometry?.location?.lng) ?? ctx.longitude;
+
+      return {
+        place_id:
+          toSafeString(row?.place_id) ||
+          `google_demo_${index}_${Math.abs(Math.round(latitude * 10000))}_${Math.abs(
+            Math.round(longitude * 10000)
+          )}`,
+        source_place_id: toSafeString(row?.place_id, ""),
+        identity_source: "provider",
+        name: normalizeHospitalName(row?.name, "Nearby Hospital"),
+        address: toSafeString(
+          row?.vicinity,
+          toSafeString(row?.formatted_address, "Address unavailable")
+        ),
+        phone: toSafeString(row?.formatted_phone_number, ""),
+        rating: toFiniteNumber(row?.rating) ?? 4.2,
+        type: "standard",
+        image: "",
+        specialties: ["Emergency Medicine", "Internal Medicine"],
+        service_types: ["standard", "premium"],
+        features: ["google_seed", "provider_discovered"],
+        emergency_level: "Level 2",
+        wait_time: "12 min",
+        price_range: "Flexible",
+        distance_km: haversineDistanceKm(
+          { latitude: ctx.latitude, longitude: ctx.longitude },
+          { latitude, longitude }
+        ),
+        latitude,
+        longitude,
+      };
+    })
+    .sort((a: any, b: any) => a.distance_km - b.distance_km);
+};
+
+const getProviderSeedHospitals = async (ctx: DemoContext) => {
+  const providers: any[] = [];
+
+  try {
+    providers.push(...(await getMapboxSeedHospitals(ctx)));
+  } catch (error) {
+    console.error("[bootstrap-demo-ecosystem] mapbox seed discovery failed", error);
+  }
+
+  if (providers.length >= DEMO_MIN_HOSPITALS) {
+    return dedupeSeedHospitals(providers);
+  }
+
+  try {
+    providers.push(...(await getGoogleSeedHospitals(ctx)));
+  } catch (error) {
+    console.error("[bootstrap-demo-ecosystem] google seed discovery failed", error);
+  }
+
+  return dedupeSeedHospitals(providers);
+};
+
 const dedupeSeedHospitals = (rows: any[]) => {
   const seen = new Set<string>();
   return rows.filter((row) => {
@@ -619,7 +702,7 @@ const ensureDemoHospitals = async (
 ) => {
   const nearbySeeds = await getNearbySeedHospitals(admin, ctx);
   const providerSeeds =
-    nearbySeeds.length >= DEMO_MIN_HOSPITALS ? [] : await getMapboxSeedHospitals(ctx);
+    nearbySeeds.length >= DEMO_MIN_HOSPITALS ? [] : await getProviderSeedHospitals(ctx);
   const seeds = dedupeSeedHospitals([...nearbySeeds, ...providerSeeds]);
   const targetCount = Math.max(
     DEMO_MIN_HOSPITALS,
@@ -629,8 +712,6 @@ const ensureDemoHospitals = async (
   const rows = new Array(targetCount).fill(null).map((_, slotIndex) => {
     const seed = seeds[slotIndex] ?? buildFallbackHospital(ctx, slotIndex);
     const fallback = buildFallbackHospital(ctx, slotIndex);
-    const useSyntheticIdentity =
-      seed?.identity_source === "database" || seed?.identity_source === "provider";
     const latitude = Number.isFinite(seed.latitude) ? Number(seed.latitude) : fallback.latitude;
     const longitude = Number.isFinite(seed.longitude) ? Number(seed.longitude) : fallback.longitude;
     const features = uniqueStrings([
@@ -654,12 +735,8 @@ const ensureDemoHospitals = async (
 
     return {
       place_id: toDemoPlaceId(ctx, seed, slotIndex),
-      name: useSyntheticIdentity
-        ? fallback.name
-        : normalizeHospitalName(seed.name, fallback.name),
-      address: useSyntheticIdentity
-        ? fallback.address
-        : toSafeString(seed.address, fallback.address),
+      name: normalizeHospitalName(seed.name, fallback.name),
+      address: toSafeString(seed.address, fallback.address),
       phone: toSafeString(seed.phone, ""),
       rating: toFiniteNumber(seed.rating) ?? 4.2,
       type: toSafeString(seed.type, "standard"),

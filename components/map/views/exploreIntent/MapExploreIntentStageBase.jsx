@@ -6,7 +6,7 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import HeaderBackButton from "../../../navigation/HeaderBackButton";
 import HeaderLocationButton from "../../../headers/HeaderLocationButton";
 import MapSheetShell from "../../MapSheetShell";
-import { MAP_CARE_PULSE_MS } from "../../mapMotionTokens";
+import { MAP_CARE_PULSE_MS, getMapPlatformMotion } from "../../mapMotionTokens";
 import { getMapSheetTokens } from "../../mapSheetTokens";
 import { MAP_SHEET_SNAP_STATES } from "../../mapSheet.constants";
 import { MAP_EXPLORE_INTENT_COPY, MAP_INTENT_VARIANTS } from "./mapExploreIntent.content";
@@ -44,21 +44,25 @@ export default function MapExploreIntentStageBase({
 	const { isDarkMode } = useTheme();
 	const { width } = useWindowDimensions();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
+	const platformMotion = useMemo(() => getMapPlatformMotion(Platform.OS), []);
+	const sheetScrollMotion = platformMotion.sheet.scroll;
+	const isWebPlatform = Platform.OS === "web";
+	const allowScrollDetents = Boolean(sheetScrollMotion.enableContentDetents);
+	const allowWheelDetents = isWebPlatform && Boolean(sheetScrollMotion.enableWheelDetents);
 	const pulseProgress = useRef(new Animated.Value(0)).current;
 	const bodyScrollRef = useRef(null);
 	const scrollStartOffsetYRef = useRef(0);
 	const lastScrollOffsetYRef = useRef(0);
 	const scrollSnapHandledRef = useRef(false);
 	const wheelSnapAccumRef = useRef(0);
-	const isWebPlatform = Platform.OS === "web";
-	const SCROLL_SNAP_TOP_THRESHOLD = 10;
-	const SCROLL_SNAP_EXPAND_OFFSET = 32;
-	const SCROLL_SNAP_COLLAPSE_PULL = -36;
-	const SCROLL_SNAP_EXPAND_VELOCITY = 0.72;
-	const SCROLL_SNAP_COLLAPSE_VELOCITY = -0.82;
-	const HALF_COLLAPSE_EXTRA_PULL = 12;
-	const HALF_COLLAPSE_VELOCITY_FACTOR = 1.2;
-	const HALF_COLLAPSE_WHEEL_THRESHOLD = -96;
+	const SCROLL_SNAP_TOP_THRESHOLD = sheetScrollMotion.topThreshold;
+	const SCROLL_SNAP_EXPAND_OFFSET = sheetScrollMotion.expandOffset;
+	const SCROLL_SNAP_COLLAPSE_PULL = sheetScrollMotion.collapsePull;
+	const SCROLL_SNAP_EXPAND_VELOCITY = sheetScrollMotion.expandVelocity;
+	const SCROLL_SNAP_COLLAPSE_VELOCITY = sheetScrollMotion.collapseVelocity;
+	const HALF_COLLAPSE_EXTRA_PULL = sheetScrollMotion.halfCollapseExtraPull;
+	const HALF_COLLAPSE_VELOCITY_FACTOR = sheetScrollMotion.halfCollapseVelocityFactor;
+	const HALF_COLLAPSE_WHEEL_THRESHOLD = sheetScrollMotion.halfCollapseWheelThreshold;
 	const resolvedScreenConfig = useMemo(
 		() => screenConfig || getMapExploreIntentScreenConfig(variant),
 		[screenConfig, variant],
@@ -257,7 +261,7 @@ export default function MapExploreIntentStageBase({
 			wheelSnapAccumRef.current = 0;
 		}
 
-		if (isSidebarPresentation || scrollSnapHandledRef.current) return;
+		if (isSidebarPresentation || !allowScrollDetents || scrollSnapHandledRef.current) return;
 		const startedNearTop = scrollStartOffsetYRef.current <= SCROLL_SNAP_TOP_THRESHOLD;
 		if (!startedNearTop) return;
 
@@ -285,7 +289,7 @@ export default function MapExploreIntentStageBase({
 		const velocityY = event?.nativeEvent?.velocity?.y ?? 0;
 		lastScrollOffsetYRef.current = offsetY;
 
-		if (isSidebarPresentation || scrollSnapHandledRef.current) return;
+		if (isSidebarPresentation || !allowScrollDetents || scrollSnapHandledRef.current) return;
 		const startedNearTop = scrollStartOffsetYRef.current <= SCROLL_SNAP_TOP_THRESHOLD;
 		if (!startedNearTop) return;
 
@@ -313,7 +317,7 @@ export default function MapExploreIntentStageBase({
 	};
 
 	const handleBodyWheel = (event) => {
-		if (isSidebarPresentation || scrollSnapHandledRef.current || !isWebPlatform) return;
+		if (isSidebarPresentation || !allowWheelDetents || scrollSnapHandledRef.current || !isWebPlatform) return;
 
 		const deltaY = Number(event?.nativeEvent?.deltaY ?? 0);
 		if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 1) return;
@@ -450,14 +454,17 @@ export default function MapExploreIntentStageBase({
 					ref={bodyScrollRef}
 					style={styles.bodyScrollViewport}
 					showsVerticalScrollIndicator={false}
+					nestedScrollEnabled
 					bounces={!isSidebarPresentation && !isWebPlatform}
 					alwaysBounceVertical={!isSidebarPresentation && !isWebPlatform}
+					overScrollMode={isSidebarPresentation || !allowScrollDetents ? "auto" : "always"}
 					directionalLockEnabled
 					onWheel={isWebPlatform ? handleBodyWheel : undefined}
 					scrollEventThrottle={16}
 					onScrollBeginDrag={handleBodyScrollBeginDrag}
 					onScroll={handleBodyScroll}
 					onScrollEndDrag={handleBodyScrollEndDrag}
+					onMomentumScrollEnd={handleBodyScrollEndDrag}
 					scrollEnabled={
 						isSidebarPresentation ||
 						isExpanded ||
