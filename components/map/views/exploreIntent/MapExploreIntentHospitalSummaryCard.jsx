@@ -25,14 +25,13 @@ function SummaryIconTile({ children, isDarkMode, compact = false }) {
 	);
 }
 
-function SummaryHeroMetric({ label, value, tint, tokens }) {
+function SummaryHeroMetric({ label, value, surfaceColor, tokens }) {
 	return (
 		<View
 			style={[
 				styles.summaryHeroMetric,
 				{
-					backgroundColor: tokens.mutedCardSurface,
-					borderColor: tint,
+					backgroundColor: surfaceColor || tokens.mutedCardSurface,
 				},
 			]}
 		>
@@ -100,17 +99,17 @@ export default function MapExploreIntentHospitalSummaryCard({
 		{
 			label: "Closest route",
 			value: nearestHospitalMeta[0] || "Live route",
-			tint: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(134,16,14,0.12)",
+			surfaceColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(134,16,14,0.08)",
 		},
 		{
 			label: "Nearby hospitals",
 			value: nearbyHospitalCount > 0 ? String(nearbyHospitalCount) : "Loading",
-			tint: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)",
+			surfaceColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)",
 		},
 		{
 			label: "Beds open",
 			value: totalAvailableBeds > 0 ? String(totalAvailableBeds) : "Checking",
-			tint: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)",
+			surfaceColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)",
 		},
 	];
 
@@ -245,7 +244,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 							key={metric.label}
 							label={metric.label}
 							value={metric.value}
-							tint={metric.tint}
+							surfaceColor={metric.surfaceColor}
 							tokens={tokens}
 						/>
 					))}

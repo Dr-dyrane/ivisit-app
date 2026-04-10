@@ -114,8 +114,30 @@ function CareIntentCard({
 	onPress,
 	isSelected = false,
 	showSubtext = true,
+	pulseProgress = null,
 }) {
 	const isPrimary = hierarchy === "primary";
+	const animatedScale =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 1],
+					outputRange: [1, 1.014],
+				})
+			: 1;
+	const animatedTranslateY =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 1],
+					outputRange: [0, -1],
+				})
+			: 0;
+	const pulseSheenOpacity =
+		isPrimary && pulseProgress
+			? pulseProgress.interpolate({
+					inputRange: [0, 1],
+					outputRange: [0.04, 0.12],
+				})
+			: 0;
 
 	return (
 		<Pressable
@@ -125,34 +147,49 @@ function CareIntentCard({
 				pressed ? styles.intentCardPressed : null,
 			]}
 		>
-			<LinearGradient
-				colors={colors}
-				start={{ x: 0.15, y: 0.12 }}
-				end={{ x: 0.86, y: 0.92 }}
-				style={[
-					styles.intentCardSurface,
-					isPrimary ? styles.intentCardSurfacePrimary : styles.intentCardSurfaceSecondary,
-				]}
+			<Animated.View
+				style={{
+					transform: [
+						{ translateY: isSelected ? 0 : animatedTranslateY },
+						{ scale: isSelected ? 1.01 : animatedScale },
+					],
+				}}
 			>
-				<View style={styles.intentCardHeader}>
-					<View style={styles.intentCardIconWrap}>
-						<MaterialCommunityIcons name={iconName} size={isPrimary ? 24 : 21} color="#FFFFFF" />
+				<LinearGradient
+					colors={colors}
+					start={{ x: 0.15, y: 0.12 }}
+					end={{ x: 0.86, y: 0.92 }}
+					style={[
+						styles.intentCardSurface,
+						isPrimary ? styles.intentCardSurfacePrimary : styles.intentCardSurfaceSecondary,
+					]}
+				>
+					{isPrimary && !isSelected ? (
+						<Animated.View
+							pointerEvents="none"
+							style={[styles.intentCardPulseSheen, { opacity: pulseSheenOpacity }]}
+						/>
+					) : null}
+					<View style={styles.intentCardHeader}>
+						<View style={styles.intentCardIconWrap}>
+							<MaterialCommunityIcons name={iconName} size={isPrimary ? 24 : 21} color="#FFFFFF" />
+						</View>
+						{isSelected ? (
+							<View style={styles.intentCardCheckBadge}>
+								<Ionicons name="checkmark" size={12} color="#FFFFFF" />
+							</View>
+						) : (
+							<View style={styles.intentCardChevronBadge}>
+								<Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.82)" />
+							</View>
+						)}
 					</View>
-					{isSelected ? (
-						<View style={styles.intentCardCheckBadge}>
-							<Ionicons name="checkmark" size={12} color="#FFFFFF" />
-						</View>
-					) : (
-						<View style={styles.intentCardChevronBadge}>
-							<Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.82)" />
-						</View>
-					)}
-				</View>
-				<Text style={styles.intentCardLabel}>{label}</Text>
-				{showSubtext && subtext ? (
-					<Text style={styles.intentCardSubtext}>{subtext}</Text>
-				) : null}
-			</LinearGradient>
+					<Text style={styles.intentCardLabel}>{label}</Text>
+					{showSubtext && subtext ? (
+						<Text style={styles.intentCardSubtext}>{subtext}</Text>
+					) : null}
+				</LinearGradient>
+			</Animated.View>
 		</Pressable>
 	);
 }
@@ -210,6 +247,7 @@ export default function MapExploreIntentCareSection({
 							onPress={() => onChooseCare("ambulance")}
 							isSelected={selectedCare === "ambulance"}
 							showSubtext={false}
+							pulseProgress={selectedCare === "ambulance" ? null : pulseProgress}
 						/>
 					</View>
 					<View style={styles.intentPanelBottomRow}>

@@ -106,6 +106,7 @@ export default StyleSheet.create({
 	},
 	bodyScrollViewport: {
 		flex: 1,
+		minHeight: 0,
 	},
 	contentSectionInsetWebMobile: {
 		paddingHorizontal: 14,
@@ -317,7 +318,7 @@ export default StyleSheet.create({
 		paddingHorizontal: 12,
 		paddingVertical: 11,
 		borderRadius: 18,
-		borderWidth: 1,
+		overflow: "hidden",
 	},
 	summaryHeroMetricLabel: {
 		fontSize: 11,
@@ -484,12 +485,22 @@ export default StyleSheet.create({
 		gap: 10,
 		marginBottom: 16,
 	},
+	intentSectionHeaderTrigger: {
+		alignSelf: "stretch",
+	},
 	intentSectionMeta: {
 		fontSize: 11,
 		lineHeight: 14,
 		fontWeight: "700",
 		textTransform: "uppercase",
 		letterSpacing: 0.5,
+	},
+	intentSectionMetaIconWrap: {
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		alignItems: "center",
+		justifyContent: "center",
 	},
 	careRow: {
 		flexDirection: "row",
@@ -542,34 +553,46 @@ export default StyleSheet.create({
 		gap: 10,
 	},
 	intentPanelGrid: {
+		gap: 12,
+	},
+	intentPanelFullSpan: {
+		width: "100%",
+	},
+	intentPanelBottomRow: {
 		flexDirection: "row",
 		alignItems: "stretch",
 		gap: 12,
 	},
-	intentPanelPrimary: {
-		flex: 1.1,
-	},
-	intentPanelSecondaryColumn: {
-		flex: 0.9,
-		gap: 10,
+	intentPanelHalf: {
+		flex: 1,
 	},
 	intentCardPressable: {
 		flex: 1,
 	},
 	intentCardPressed: {
-		opacity: 0.92,
-		transform: [{ scale: 0.985 }],
+		opacity: 0.94,
+		transform: [{ scale: 0.988 }],
 	},
 	intentCardSurface: {
 		borderRadius: 22,
-		paddingHorizontal: 14,
-		paddingVertical: 14,
+		paddingHorizontal: 16,
+		paddingVertical: 15,
+		overflow: "hidden",
+	},
+	intentCardPulseSheen: {
+		position: "absolute",
+		left: 1,
+		right: 1,
+		top: 1,
+		height: "54%",
+		borderRadius: 20,
+		backgroundColor: "rgba(255,255,255,0.10)",
 	},
 	intentCardSurfacePrimary: {
-		minHeight: 108,
+		minHeight: 102,
 	},
 	intentCardSurfaceSecondary: {
-		minHeight: 94,
+		minHeight: 86,
 	},
 	intentCardHeader: {
 		flexDirection: "row",
@@ -592,8 +615,16 @@ export default StyleSheet.create({
 		justifyContent: "center",
 		backgroundColor: "rgba(255,255,255,0.18)",
 	},
+	intentCardChevronBadge: {
+		width: 22,
+		height: 22,
+		borderRadius: 11,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: "rgba(255,255,255,0.12)",
+	},
 	intentCardLabel: {
-		marginTop: 14,
+		marginTop: 16,
 		fontSize: 16,
 		lineHeight: 20,
 		fontWeight: "800",

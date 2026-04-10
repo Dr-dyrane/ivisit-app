@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { Animated, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Animated, Easing, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import InAppBrowserLink from "../../../ui/InAppBrowserLink";
 import { useTheme } from "../../../../contexts/ThemeContext";
@@ -45,6 +45,15 @@ export default function MapExploreIntentStageBase({
 	const { width } = useWindowDimensions();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const pulseProgress = useRef(new Animated.Value(0)).current;
+	const bodyScrollRef = useRef(null);
+	const scrollStartOffsetYRef = useRef(0);
+	const lastScrollOffsetYRef = useRef(0);
+	const scrollSnapHandledRef = useRef(false);
+	const SCROLL_SNAP_TOP_THRESHOLD = 10;
+	const SCROLL_SNAP_EXPAND_OFFSET = 32;
+	const SCROLL_SNAP_COLLAPSE_PULL = -36;
+	const SCROLL_SNAP_EXPAND_VELOCITY = 0.72;
+	const SCROLL_SNAP_COLLAPSE_VELOCITY = -0.82;
 	const resolvedScreenConfig = useMemo(
 		() => screenConfig || getMapExploreIntentScreenConfig(variant),
 		[screenConfig, variant],
@@ -167,13 +176,17 @@ export default function MapExploreIntentStageBase({
 				Animated.timing(pulseProgress, {
 					toValue: 1,
 					duration: MAP_CARE_PULSE_MS,
+					easing: Easing.inOut(Easing.ease),
 					useNativeDriver: true,
 				}),
+				Animated.delay(120),
 				Animated.timing(pulseProgress, {
 					toValue: 0,
 					duration: MAP_CARE_PULSE_MS,
+					easing: Easing.inOut(Easing.ease),
 					useNativeDriver: true,
 				}),
+				Animated.delay(120),
 			]),
 		);
 		pulseLoop.start();
@@ -199,6 +212,87 @@ export default function MapExploreIntentStageBase({
 			return;
 		}
 		onSnapStateChange(MAP_SHEET_SNAP_STATES.HALF);
+	};
+
+	const triggerScrollSnap = (nextState) => {
+		if (
+			isSidebarPresentation ||
+			typeof onSnapStateChange !== "function" ||
+			!nextState ||
+			scrollSnapHandledRef.current
+		) {
+			return;
+		}
+
+		scrollSnapHandledRef.current = true;
+		bodyScrollRef.current?.scrollTo?.({ y: 0, animated: false });
+		onSnapStateChange(nextState);
+	};
+
+	const handleBodyScrollBeginDrag = (event) => {
+		const offsetY = event?.nativeEvent?.contentOffset?.y ?? 0;
+		scrollStartOffsetYRef.current = offsetY;
+		lastScrollOffsetYRef.current = offsetY;
+		scrollSnapHandledRef.current = false;
+	};
+
+	const handleBodyScroll = (event) => {
+		const offsetY = event?.nativeEvent?.contentOffset?.y ?? 0;
+		lastScrollOffsetYRef.current = offsetY;
+
+		if (isSidebarPresentation || scrollSnapHandledRef.current) return;
+		const startedNearTop = scrollStartOffsetYRef.current <= SCROLL_SNAP_TOP_THRESHOLD;
+		if (!startedNearTop) return;
+
+		if (snapState === MAP_SHEET_SNAP_STATES.HALF && offsetY > SCROLL_SNAP_EXPAND_OFFSET) {
+			triggerScrollSnap(MAP_SHEET_SNAP_STATES.EXPANDED);
+			return;
+		}
+
+		if (offsetY < SCROLL_SNAP_COLLAPSE_PULL) {
+			if (snapState === MAP_SHEET_SNAP_STATES.EXPANDED) {
+				triggerScrollSnap(MAP_SHEET_SNAP_STATES.HALF);
+				return;
+			}
+			if (
+				snapState === MAP_SHEET_SNAP_STATES.HALF &&
+				offsetY < SCROLL_SNAP_COLLAPSE_PULL - 10
+			) {
+				triggerScrollSnap(MAP_SHEET_SNAP_STATES.COLLAPSED);
+			}
+		}
+	};
+
+	const handleBodyScrollEndDrag = (event) => {
+		const offsetY = event?.nativeEvent?.contentOffset?.y ?? lastScrollOffsetYRef.current ?? 0;
+		const velocityY = event?.nativeEvent?.velocity?.y ?? 0;
+		lastScrollOffsetYRef.current = offsetY;
+
+		if (isSidebarPresentation || scrollSnapHandledRef.current) return;
+		const startedNearTop = scrollStartOffsetYRef.current <= SCROLL_SNAP_TOP_THRESHOLD;
+		if (!startedNearTop) return;
+
+		if (
+			snapState === MAP_SHEET_SNAP_STATES.HALF &&
+			offsetY <= SCROLL_SNAP_EXPAND_OFFSET * 0.75 &&
+			velocityY > SCROLL_SNAP_EXPAND_VELOCITY
+		) {
+			triggerScrollSnap(MAP_SHEET_SNAP_STATES.EXPANDED);
+			return;
+		}
+
+		if (offsetY <= 0 && velocityY < SCROLL_SNAP_COLLAPSE_VELOCITY) {
+			if (snapState === MAP_SHEET_SNAP_STATES.EXPANDED) {
+				triggerScrollSnap(MAP_SHEET_SNAP_STATES.HALF);
+				return;
+			}
+			if (
+				snapState === MAP_SHEET_SNAP_STATES.HALF &&
+				velocityY < SCROLL_SNAP_COLLAPSE_VELOCITY * 1.3
+			) {
+				triggerScrollSnap(MAP_SHEET_SNAP_STATES.COLLAPSED);
+			}
+		}
 	};
 
 	const sidebarHeader = isSidebarPresentation ? (
@@ -306,8 +400,16 @@ export default function MapExploreIntentStageBase({
 		>
 			{isCollapsed ? null : (
 				<ScrollView
+					ref={bodyScrollRef}
 					style={styles.bodyScrollViewport}
 					showsVerticalScrollIndicator={false}
+					bounces={!isSidebarPresentation}
+					alwaysBounceVertical={!isSidebarPresentation}
+					directionalLockEnabled
+					scrollEventThrottle={16}
+					onScrollBeginDrag={handleBodyScrollBeginDrag}
+					onScroll={handleBodyScroll}
+					onScrollEndDrag={handleBodyScrollEndDrag}
 					scrollEnabled={
 						isSidebarPresentation ||
 						isExpanded ||
