@@ -30,6 +30,7 @@ export default function EmergencySearchBar({
 	onVoicePress,
 	placeholder = "Search hospitals, specialties...",
 	showSuggestions = true,
+	autoFocus = false,
 	style,
 }) {
 	const { isDarkMode } = useTheme();
@@ -151,6 +152,7 @@ export default function EmergencySearchBar({
 						onFocus={handleFocus}
 						onBlur={handleBlurEvent}
 						autoCapitalize="none"
+						autoFocus={autoFocus}
 						returnKeyType="search"
 						selectionColor={COLORS.brandPrimary}
 					/>

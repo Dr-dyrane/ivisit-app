@@ -29,17 +29,23 @@ export function getResolvedMapSheetState({ presentationMode = "sheet", snapState
 
 export function getMapSheetSidebarShapeStyle(sheetRadius) {
 	return {
-		borderTopLeftRadius: 0,
+		borderTopLeftRadius: sheetRadius,
 		borderTopRightRadius: sheetRadius,
-		borderBottomLeftRadius: 0,
+		borderBottomLeftRadius: sheetRadius,
 		borderBottomRightRadius: sheetRadius,
 	};
 }
 
-export function getMapSheetContentPadding({ isSidebar, insets, topPadding, bottomPadding }) {
+export function getMapSheetContentPadding({
+	isSidebar,
+	topPadding,
+	bottomPadding,
+	sidebarContentTopPadding = 8,
+	sidebarContentBottomPadding = 10,
+}) {
 	return {
-		contentPaddingTop: isSidebar ? insets.top + 12 : topPadding,
-		contentPaddingBottom: isSidebar ? Math.max(insets.bottom, 14) : bottomPadding,
+		contentPaddingTop: isSidebar ? sidebarContentTopPadding : topPadding,
+		contentPaddingBottom: isSidebar ? sidebarContentBottomPadding : bottomPadding,
 	};
 }
 
@@ -51,12 +57,16 @@ export function getMapSheetHostLayout({
 	bottomInset,
 	sheetHeight,
 	dragTranslateY,
+	insets,
+	sidebarOuterInset = 18,
+	sidebarTopInset = 18,
+	sidebarBottomInset = 18,
 }) {
 	if (isSidebar) {
 		return {
-			left: 0,
-			top: 0,
-			bottom: 0,
+			left: Math.max(0, sidebarOuterInset),
+			top: Math.max(insets?.top || 0, sidebarTopInset),
+			bottom: Math.max(insets?.bottom || 0, sidebarBottomInset),
 			width: useFloatingShell ? shellWidth : undefined,
 			height: undefined,
 			transform: [{ translateY: 0 }],

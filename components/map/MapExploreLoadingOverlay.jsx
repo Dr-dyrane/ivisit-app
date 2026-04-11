@@ -62,8 +62,28 @@ export default function MapExploreLoadingOverlay({
 				Math.max(320, screenWidth - 64),
 			)
 		: 0;
+	const sheetWidth = usesSidebarLayout
+		? sidebarWidth
+		: surfaceConfig.overlaySheetMaxWidth
+			? Math.min(
+					surfaceConfig.overlaySheetMaxWidth,
+					Math.max(320, screenWidth - surfaceConfig.overlaySheetSideInset * 2),
+				)
+			: Math.max(0, screenWidth - surfaceConfig.overlaySheetSideInset * 2);
+	const sheetTop = usesSidebarLayout
+		? Math.max(insets.top, surfaceConfig.overlaySheetTopInset || 0)
+		: null;
+	const sheetLeft = usesSidebarLayout
+		? surfaceConfig.overlaySheetSideInset || 0
+		: (screenWidth - sheetWidth) / 2;
+	const sheetBottom = usesSidebarLayout
+		? Math.max(insets.bottom, surfaceConfig.overlaySheetBottomInset || 0)
+		: surfaceConfig.overlaySheetBottomInset;
+	const sheetHeightValue = usesSidebarLayout
+		? Math.max(320, sheetHeight - sheetTop - sheetBottom)
+		: sheetHeight;
 	const headerLeft = usesSidebarLayout
-		? sidebarWidth + surfaceConfig.overlayHeaderSideInset
+		? sheetLeft + sidebarWidth + surfaceConfig.overlayHeaderSideInset
 		: (screenWidth -
 				(surfaceConfig.overlayHeaderMaxWidth
 					? Math.min(
@@ -80,16 +100,6 @@ export default function MapExploreLoadingOverlay({
 					Math.max(280, screenWidth - surfaceConfig.overlayHeaderSideInset * 2),
 				)
 			: Math.max(0, screenWidth - surfaceConfig.overlayHeaderSideInset * 2);
-	const sheetWidth = usesSidebarLayout
-		? sidebarWidth
-		: surfaceConfig.overlaySheetMaxWidth
-			? Math.min(
-					surfaceConfig.overlaySheetMaxWidth,
-					Math.max(320, screenWidth - surfaceConfig.overlaySheetSideInset * 2),
-				)
-			: Math.max(0, screenWidth - surfaceConfig.overlaySheetSideInset * 2);
-	const sheetLeft = usesSidebarLayout ? 0 : (screenWidth - sheetWidth) / 2;
-	const sheetBottom = usesSidebarLayout ? 0 : surfaceConfig.overlaySheetBottomInset;
 	const opacity = useRef(new Animated.Value(resolvedVisible ? 1 : 0)).current;
 	const visibleSinceRef = useRef(resolvedVisible ? Date.now() : 0);
 	const [isRendered, setIsRendered] = useState(resolvedVisible);
@@ -177,19 +187,23 @@ export default function MapExploreLoadingOverlay({
 					styles.sheetGhost,
 					{
 						backgroundColor: ghostSurface,
-						height: sheetHeight,
+						height: sheetHeightValue,
 						width: sheetWidth,
 						left: sheetLeft,
 						right: undefined,
 						bottom: sheetBottom,
-						top: usesSidebarLayout ? 0 : undefined,
-						borderTopLeftRadius: usesSidebarLayout ? 0 : surfaceConfig.overlaySheetRadius,
+						top: usesSidebarLayout ? sheetTop : undefined,
+						borderTopLeftRadius: surfaceConfig.overlaySheetRadius,
 						borderTopRightRadius: surfaceConfig.overlaySheetRadius,
-						borderBottomLeftRadius: usesSidebarLayout ? 0 : surfaceConfig.overlaySheetRadius,
+						borderBottomLeftRadius: surfaceConfig.overlaySheetRadius,
 						borderBottomRightRadius: surfaceConfig.overlaySheetRadius,
 						paddingHorizontal: usesSidebarLayout ? 16 : 12,
-						paddingTop: usesSidebarLayout ? insets.top + 12 : 10,
-						paddingBottom: usesSidebarLayout ? Math.max(insets.bottom, 16) : 12 + insets.bottom,
+						paddingTop: usesSidebarLayout
+							? surfaceConfig.sidebarContentTopPadding || 8
+							: 10,
+						paddingBottom: usesSidebarLayout
+							? surfaceConfig.sidebarContentBottomPadding || 10
+							: 12 + insets.bottom,
 					},
 				]}
 			>

@@ -181,6 +181,7 @@ export default function EmergencyLocationPreviewMap({
 	const { isDarkMode } = useTheme();
 	const { width: screenWidth } = useWindowDimensions();
 	const mapRef = useRef(null);
+	const routeFitPrimeKeyRef = useRef(null);
 	const [isMapReady, setIsMapReady] = useState(false);
 	const [isNearbyOverview, setIsNearbyOverview] = useState(false);
 	const isAndroid = Platform.OS === "android";
@@ -227,6 +228,16 @@ export default function EmergencyLocationPreviewMap({
 		}
 		return [userCoordinate, selectedHospitalCoordinate].filter(Boolean);
 	}, [previewRouteCoordinates, selectedHospitalCoordinate, userCoordinate]);
+	const routeFitPrimeKey = useMemo(
+		() =>
+			routeBoundsCoordinates
+				.map(
+					(coordinate) =>
+						`${Number(coordinate?.latitude).toFixed(5)}:${Number(coordinate?.longitude).toFixed(5)}`,
+				)
+				.join("|"),
+		[routeBoundsCoordinates],
+	);
 	const nearbyOverviewCoordinates = useMemo(() => {
 		const dynamicHospitals = visibleHospitals
 			.filter((hospital, index) => {
@@ -326,10 +337,14 @@ export default function EmergencyLocationPreviewMap({
 		if (!mapRef.current || !hasLocation || !isMapReady) return;
 
 		fitRoute();
+		if (routeFitPrimeKeyRef.current === routeFitPrimeKey) {
+			return;
+		}
+		routeFitPrimeKeyRef.current = routeFitPrimeKey;
 		const followUpDelay = isAndroid ? 320 : isWeb ? 220 : 180;
 		const followUp = setTimeout(fitRoute, followUpDelay);
 		return () => clearTimeout(followUp);
-	}, [fitRoute, hasLocation, isAndroid, isMapReady, isWeb]);
+	}, [fitRoute, hasLocation, isAndroid, isMapReady, isWeb, routeFitPrimeKey]);
 
 	useEffect(() => {
 		if (isMapReady || !hasLocation) {
@@ -342,6 +357,12 @@ export default function EmergencyLocationPreviewMap({
 
 		return () => clearTimeout(fallbackTimeout);
 	}, [hasLocation, isMapReady, isWeb]);
+
+	useEffect(() => {
+		if (!isMapReady) {
+			routeFitPrimeKeyRef.current = null;
+		}
+	}, [isMapReady]);
 
 	useEffect(() => {
 		onReadinessChange?.({

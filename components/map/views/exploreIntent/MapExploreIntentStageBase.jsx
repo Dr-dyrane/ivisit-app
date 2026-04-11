@@ -3,8 +3,6 @@ import { Animated, Easing, Platform, Pressable, ScrollView, Text, View, useWindo
 import { Ionicons } from "@expo/vector-icons";
 import InAppBrowserLink from "../../../ui/InAppBrowserLink";
 import { useTheme } from "../../../../contexts/ThemeContext";
-import HeaderBackButton from "../../../navigation/HeaderBackButton";
-import HeaderLocationButton from "../../../headers/HeaderLocationButton";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_CARE_PULSE_MS, getMapPlatformMotion } from "../../mapMotionTokens";
 import { getMapSheetTokens } from "../../mapSheetTokens";
@@ -39,7 +37,6 @@ export default function MapExploreIntentStageBase({
 	totalAvailableBeds,
 	nearbyBedHospitals,
 	featuredHospitals = [],
-	locationDetails = null,
 }) {
 	const { isDarkMode } = useTheme();
 	const { width } = useWindowDimensions();
@@ -346,38 +343,6 @@ export default function MapExploreIntentStageBase({
 		}
 	};
 
-	const sidebarHeader = isSidebarPresentation ? (
-		<View
-			style={[
-				styles.sidebarHeader,
-				shouldCenterContent ? styles.topRowCentered : null,
-				shouldCenterContent && shellMaxWidth ? { maxWidth: shellMaxWidth } : null,
-			]}
-		>
-			<View style={styles.sidebarHeaderRow}>
-				<View style={styles.sidebarHeaderSide}>
-					<HeaderBackButton onPress={onOpenHospitals} />
-				</View>
-				<View style={styles.sidebarHeaderCenter}>
-					<Text numberOfLines={1} style={[styles.sidebarHeaderTitle, { color: tokens.titleColor }]}>
-						{locationDetails?.primaryText || "Current location"}
-					</Text>
-					{locationDetails?.secondaryText ? (
-						<Text
-							numberOfLines={1}
-							style={[styles.sidebarHeaderSubtitle, { color: tokens.bodyText }]}
-						>
-							{locationDetails.secondaryText}
-						</Text>
-					) : null}
-				</View>
-				<View style={styles.sidebarHeaderSide}>
-					<HeaderLocationButton onPress={onOpenSearch} />
-				</View>
-			</View>
-		</View>
-	) : null;
-
 	const topRow = (
 		<View
 			style={[
@@ -421,7 +386,6 @@ export default function MapExploreIntentStageBase({
 
 	const headerSlot = (
 		<>
-			{sidebarHeader}
 			{topRow}
 		</>
 	);

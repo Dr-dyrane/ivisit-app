@@ -10,11 +10,10 @@ import MapSheetOrchestrator, {
 } from "../components/map/MapSheetOrchestrator";
 import MapGuestProfileModal from "../components/map/MapGuestProfileModal";
 import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
-import MapPublicSearchModal from "../components/map/MapPublicSearchModal";
+import MapSearchSheet from "../components/map/MapSearchSheet";
 import MapExploreLoadingOverlay from "../components/map/MapExploreLoadingOverlay";
 import MapHospitalModal from "../components/map/MapHospitalModal";
 import MapHospitalDetailsModal from "../components/map/MapHospitalDetailsModal";
-import MapLocationModal from "../components/map/MapLocationModal";
 import MapRecentVisitsModal from "../components/map/MapRecentVisitsModal";
 import { useTheme } from "../contexts/ThemeContext";
 import { useMapExploreFlow } from "../hooks/map/useMapExploreFlow";
@@ -23,6 +22,7 @@ import {
 	getMapViewportVariant,
 	isSidebarMapVariant,
 } from "../components/map/mapViewportConfig";
+import { MAP_SEARCH_SHEET_MODES } from "../components/map/mapSearchSheet.helpers";
 
 export default function MapScreen() {
 	const { isDarkMode } = useTheme();
@@ -51,16 +51,18 @@ export default function MapScreen() {
 		loadingBackgroundImageUri,
 		mapLoadingState,
 		isSignedIn,
-		locationSearchVisible,
 		nearestHospital,
 		nearestHospitalMeta,
 		nearbyBedHospitals,
 		nearbyHospitalCount,
+		openSearchSheet,
+		closeSearchSheet,
 		profileImageSource,
 		profileModalVisible,
-		publicSearchVisible,
 		recentVisits,
 		recentVisitsVisible,
+		searchSheetMode,
+		searchSheetVisible,
 		selectedCare,
 		setAuthModalVisible,
 		setCareHistoryVisible,
@@ -68,9 +70,7 @@ export default function MapScreen() {
 		setGuestProfileVisible,
 		setHospitalDetailsVisible,
 		setHospitalModalVisible,
-		setLocationSearchVisible,
 		setProfileModalVisible,
-		setPublicSearchVisible,
 		setRecentVisitsVisible,
 		setSheetSnapState,
 		sheetMode,
@@ -103,9 +103,15 @@ export default function MapScreen() {
 				: 0,
 		[surfaceConfig.sidebarMaxWidth, usesSidebarLayout, width],
 	);
+	const sidebarOcclusionWidth = useMemo(
+		() =>
+			usesSidebarLayout
+				? sidebarWidth + Math.max(0, Number(surfaceConfig.sidebarOuterInset || 0))
+				: 0,
+		[sidebarWidth, surfaceConfig.sidebarOuterInset, usesSidebarLayout],
+	);
 	const hasActiveMapModal =
-		locationSearchVisible ||
-		publicSearchVisible ||
+		searchSheetVisible ||
 		hospitalModalVisible ||
 		hospitalDetailsVisible ||
 		profileModalVisible ||
@@ -133,7 +139,7 @@ export default function MapScreen() {
 				interactive={isMapFrameReady}
 				onReadinessChange={handleMapReadinessChange}
 				bottomSheetHeight={bottomSheetHeight}
-				leftPanelWidth={sidebarWidth}
+				leftPanelWidth={sidebarOcclusionWidth}
 				showControls={shouldShowMapControls}
 				controlsMode={surfaceConfig.mapControlsMode}
 				controlsTopOffset={surfaceConfig.mapControlsTopInset}
@@ -151,7 +157,7 @@ export default function MapScreen() {
 					nearestHospital={nearestHospital}
 					nearestHospitalMeta={nearestHospitalMeta}
 					selectedCare={selectedCare}
-					onOpenSearch={() => setPublicSearchVisible(true)}
+					onOpenSearch={() => openSearchSheet(MAP_SEARCH_SHEET_MODES.SEARCH)}
 					onOpenHospitals={() => setHospitalModalVisible(true)}
 					onChooseCare={handleChooseCare}
 					onOpenProfile={handleOpenProfile}
@@ -166,7 +172,6 @@ export default function MapScreen() {
 					nearbyBedHospitals={nearbyBedHospitals}
 					recentVisits={recentVisits}
 					featuredHospitals={featuredHospitals}
-					locationDetails={currentLocationDetails}
 				/>
 			</View>
 
@@ -178,22 +183,17 @@ export default function MapScreen() {
 				backgroundImageUri={loadingBackgroundImageUri}
 			/>
 
-			<MapLocationModal
-				visible={locationSearchVisible}
-				onClose={() => setLocationSearchVisible(false)}
-				onUseCurrentLocation={handleUseCurrentLocation}
-				onSelectLocation={handleSearchLocation}
-				currentLocation={currentLocationDetails}
-			/>
-
-			<MapPublicSearchModal
-				visible={publicSearchVisible}
-				onClose={() => setPublicSearchVisible(false)}
+			<MapSearchSheet
+				visible={searchSheetVisible}
+				onClose={closeSearchSheet}
+				mode={searchSheetMode}
 				hospitals={discoveredHospitals}
 				selectedHospitalId={nearestHospital?.id || null}
+				currentLocation={currentLocationDetails}
 				onOpenHospital={handleOpenFeaturedHospital}
 				onBrowseHospitals={() => setHospitalModalVisible(true)}
-				onChangeLocation={() => setLocationSearchVisible(true)}
+				onUseCurrentLocation={handleUseCurrentLocation}
+				onSelectLocation={handleSearchLocation}
 			/>
 
 			<MapHospitalModal
@@ -205,7 +205,7 @@ export default function MapScreen() {
 				onSelectHospital={handleSelectHospital}
 				onChangeLocation={() => {
 					setHospitalModalVisible(false);
-					setLocationSearchVisible(true);
+					openSearchSheet(MAP_SEARCH_SHEET_MODES.LOCATION);
 				}}
 			/>
 

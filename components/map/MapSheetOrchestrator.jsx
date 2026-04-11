@@ -28,7 +28,6 @@ export default function MapSheetOrchestrator({
 	totalAvailableBeds = 0,
 	nearbyBedHospitals = 0,
 	featuredHospitals = [],
-	locationDetails = null,
 }) {
 	const sheetHeight = useMemo(
 		() => getMapSheetHeight(screenHeight, snapState),
@@ -60,7 +59,6 @@ export default function MapSheetOrchestrator({
 					totalAvailableBeds={totalAvailableBeds}
 					nearbyBedHospitals={nearbyBedHospitals}
 					featuredHospitals={featuredHospitals}
-					locationDetails={locationDetails}
 				/>
 			);
 	}

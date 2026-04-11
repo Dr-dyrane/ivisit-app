@@ -10,7 +10,7 @@ import { useEmergency } from "../../contexts/EmergencyContext";
 import { useFABActions } from "../../contexts/FABContext";
 import { useVisits } from "../../contexts/VisitsContext";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
-import { coverageModeService, COVERAGE_STATUS } from "../../services/coverageModeService";
+import { coverageModeService } from "../../services/coverageModeService";
 import {
 	buildHeaderLocationModel,
 	formatHospitalDistance,
@@ -24,6 +24,7 @@ import {
 	getMapViewportVariant,
 	isSidebarMapVariant,
 } from "../../components/map/mapViewportConfig";
+import { MAP_SEARCH_SHEET_MODES } from "../../components/map/mapSearchSheet.helpers";
 import { HEADER_MODES } from "../../constants/header";
 
 function buildDemoBootstrapKey(
@@ -45,6 +46,47 @@ function buildDemoBootstrapKey(
 		`verified:${Number(verifiedNearbyCount || 0)}`,
 		shouldForceBootstrap ? "force" : "auto",
 	].join(":");
+}
+
+const MAP_LOCATION_CHANGE_EPSILON = 0.0001;
+
+function toCoordinatePair(location) {
+	if (!location || typeof location !== "object") {
+		return null;
+	}
+
+	const latitude = Number(
+		location?.location?.latitude ??
+			location?.coords?.latitude ??
+			location?.latitude ??
+			location?.lat,
+	);
+	const longitude = Number(
+		location?.location?.longitude ??
+			location?.coords?.longitude ??
+			location?.longitude ??
+			location?.lng,
+	);
+
+	if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+		return null;
+	}
+
+	return { latitude, longitude };
+}
+
+function hasMeaningfulLocationChange(currentLocation, nextLocation) {
+	const currentCoordinate = toCoordinatePair(currentLocation);
+	const nextCoordinate = toCoordinatePair(nextLocation);
+
+	if (!currentCoordinate || !nextCoordinate) {
+		return Boolean(currentCoordinate || nextCoordinate);
+	}
+
+	return (
+		Math.abs(currentCoordinate.latitude - nextCoordinate.latitude) > MAP_LOCATION_CHANGE_EPSILON ||
+		Math.abs(currentCoordinate.longitude - nextCoordinate.longitude) > MAP_LOCATION_CHANGE_EPSILON
+	);
 }
 
 export function useMapExploreFlow() {
@@ -89,14 +131,14 @@ export function useMapExploreFlow() {
 		hasComfortableNearbyCoverage,
 	} = useEmergency();
 
-	const [locationSearchVisible, setLocationSearchVisible] = useState(false);
+	const [searchSheetVisible, setSearchSheetVisible] = useState(false);
+	const [searchSheetMode, setSearchSheetMode] = useState(MAP_SEARCH_SHEET_MODES.SEARCH);
 	const [hospitalModalVisible, setHospitalModalVisible] = useState(false);
 	const [hospitalDetailsVisible, setHospitalDetailsVisible] = useState(false);
 	const [profileModalVisible, setProfileModalVisible] = useState(false);
 	const [guestProfileVisible, setGuestProfileVisible] = useState(false);
 	const [careHistoryVisible, setCareHistoryVisible] = useState(false);
 	const [recentVisitsVisible, setRecentVisitsVisible] = useState(false);
-	const [publicSearchVisible, setPublicSearchVisible] = useState(false);
 	const [authModalVisible, setAuthModalVisible] = useState(false);
 	const [selectedCare, setSelectedCare] = useState(null);
 	const [manualLocation, setManualLocation] = useState(null);
@@ -360,29 +402,55 @@ export function useMapExploreFlow() {
 		[discoveredHospitals],
 	);
 
-	const handleSearchLocation = useCallback((nextLocation) => {
-		if (!nextLocation?.location) return;
-		setHasCompletedInitialMapLoad(false);
-		setManualLocation(nextLocation);
-		setLocationSearchVisible(false);
-		setMapReadiness({
-			mapReady: false,
-			routeReady: false,
-			isCalculatingRoute: false,
-		});
+	const openSearchSheet = useCallback(
+		(nextMode = MAP_SEARCH_SHEET_MODES.SEARCH) => {
+			setSearchSheetMode(nextMode);
+			setSearchSheetVisible(true);
+		},
+		[],
+	);
+
+	const closeSearchSheet = useCallback(() => {
+		setSearchSheetVisible(false);
 	}, []);
 
+	const handleSearchLocation = useCallback((nextLocation) => {
+		if (!nextLocation?.location) return;
+		const locationChanged = hasMeaningfulLocationChange(activeLocation, nextLocation.location);
+		if (locationChanged) {
+			setHasCompletedInitialMapLoad(false);
+		}
+		setManualLocation(nextLocation);
+		setSearchSheetVisible(false);
+		if (locationChanged) {
+			setMapReadiness({
+				mapReady: false,
+				routeReady: false,
+				isCalculatingRoute: false,
+			});
+		}
+	}, [activeLocation]);
+
 	const handleUseCurrentLocation = useCallback(async () => {
-		setHasCompletedInitialMapLoad(false);
+		const fallbackCurrentLocation = globalUserLocation || emergencyUserLocation || null;
+		const locationChanged = manualLocation?.location
+			? hasMeaningfulLocationChange(manualLocation.location, fallbackCurrentLocation)
+			: false;
+
+		if (locationChanged) {
+			setHasCompletedInitialMapLoad(false);
+		}
 		setManualLocation(null);
-		setLocationSearchVisible(false);
-		setMapReadiness({
-			mapReady: false,
-			routeReady: false,
-			isCalculatingRoute: false,
-		});
+		setSearchSheetVisible(false);
+		if (locationChanged) {
+			setMapReadiness({
+				mapReady: false,
+				routeReady: false,
+				isCalculatingRoute: false,
+			});
+		}
 		await refreshLocation?.();
-	}, [refreshLocation]);
+	}, [emergencyUserLocation, globalUserLocation, manualLocation?.location, refreshLocation]);
 
 	const handleSelectHospital = useCallback(
 		(hospital) => {
@@ -584,6 +652,8 @@ export function useMapExploreFlow() {
 		handleMapReadinessChange,
 		handleOpenFeaturedHospital,
 		handleOpenProfile,
+		openSearchSheet,
+		closeSearchSheet,
 		handleSearchLocation,
 		handleSelectHospital,
 		handleUseCurrentLocation,
@@ -594,7 +664,6 @@ export function useMapExploreFlow() {
 		isMapFrameReady,
 		isMapSurfaceReady,
 		isSignedIn,
-		locationSearchVisible,
 		loadingBackgroundImageUri,
 		manualLocation,
 		mapLoadingState,
@@ -605,9 +674,10 @@ export function useMapExploreFlow() {
 		nearbyHospitalCount,
 		profileImageSource,
 		profileModalVisible,
-		publicSearchVisible,
 		recentVisits,
 		recentVisitsVisible,
+		searchSheetMode,
+		searchSheetVisible,
 		selectedCare,
 		setAuthModalVisible,
 		setCareHistoryVisible,
@@ -615,9 +685,7 @@ export function useMapExploreFlow() {
 		setGuestProfileVisible,
 		setHospitalDetailsVisible,
 		setHospitalModalVisible,
-		setLocationSearchVisible,
 		setProfileModalVisible,
-		setPublicSearchVisible,
 		setRecentVisitsVisible,
 		setSheetMode,
 		setSheetSnapState,

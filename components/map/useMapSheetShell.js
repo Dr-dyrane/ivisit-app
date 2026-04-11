@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Animated, Platform } from "react-native";
+import { Animated, Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getMapPlatformMotion } from "./mapMotionTokens";
 import { getMapSheetTokens } from "./mapSheetTokens";
 import { createMapSheetPanResponder } from "./mapSheetShell.gestures";
+import {
+	getMapViewportSurfaceConfig,
+	getMapViewportVariant,
+} from "./mapViewportConfig";
 import {
 	getMapSheetContentPadding,
 	getMapSheetHostLayout,
@@ -21,9 +25,18 @@ export function useMapSheetShell({
 }) {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
+	const { width } = useWindowDimensions();
 	const isAndroid = Platform.OS === "android";
 	const platformMotion = useMemo(() => getMapPlatformMotion(Platform.OS), []);
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
+	const viewportVariant = useMemo(
+		() => getMapViewportVariant({ platform: Platform.OS, width }),
+		[width],
+	);
+	const surfaceConfig = useMemo(
+		() => getMapViewportSurfaceConfig(viewportVariant),
+		[viewportVariant],
+	);
 	const useFloatingShell =
 		presentationMode !== "sheet" && Number.isFinite(shellWidth) && shellWidth > 0;
 	const {
@@ -152,12 +165,17 @@ export function useMapSheetShell({
 		bottomInset,
 		sheetHeight,
 		dragTranslateY,
+		insets,
+		sidebarOuterInset: surfaceConfig.sidebarOuterInset ?? 18,
+		sidebarTopInset: surfaceConfig.sidebarTopInset ?? 18,
+		sidebarBottomInset: surfaceConfig.sidebarBottomInset ?? 18,
 	});
 	const { contentPaddingTop, contentPaddingBottom } = getMapSheetContentPadding({
 		isSidebar,
-		insets,
 		topPadding,
 		bottomPadding,
+		sidebarContentTopPadding: surfaceConfig.sidebarContentTopPadding ?? 8,
+		sidebarContentBottomPadding: surfaceConfig.sidebarContentBottomPadding ?? 10,
 	});
 
 	return {
