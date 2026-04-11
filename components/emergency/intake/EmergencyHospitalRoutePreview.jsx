@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Platform, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from "../../map/MapComponents";
+import { getMapRenderTokens } from "../../map/mapRenderTokens";
 import {
 	darkAndroidMapStyle,
 	darkMapStyle,
@@ -147,6 +148,7 @@ export default function EmergencyHospitalRoutePreview({
 			: isDarkMode
 				? darkMapStyle
 				: lightMapStyle;
+	const renderTokens = useMemo(() => getMapRenderTokens({ isDarkMode }), [isDarkMode]);
 	const routeRenderKey = useMemo(
 		() =>
 			[
@@ -257,7 +259,6 @@ export default function EmergencyHospitalRoutePreview({
 				ref={mapRef}
 				style={styles.map}
 				provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-				googleRenderer={Platform.OS === "android" ? "LEGACY" : undefined}
 				customMapStyle={customMapStyle}
 				mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
 				initialRegion={initialRegion}
@@ -281,16 +282,16 @@ export default function EmergencyHospitalRoutePreview({
 						<Polyline
 							key={`${routeRenderKey}-${visible ? "visible" : "hidden"}-halo`}
 							coordinates={normalizedRouteCoordinates}
-							strokeColor={isDarkMode ? "rgba(248,250,252,0.18)" : "rgba(15,23,42,0.10)"}
-							strokeWidth={10}
+							strokeColor={renderTokens.routeHaloColor}
+							strokeWidth={renderTokens.routeHaloWidth + 0.6}
 							lineCap="round"
 							lineJoin="round"
 						/>
 						<Polyline
 							key={`${routeRenderKey}-${visible ? "visible" : "hidden"}-route`}
 							coordinates={normalizedRouteCoordinates}
-							strokeColor={COLORS.brandPrimary}
-							strokeWidth={4}
+							strokeColor={renderTokens.routeCoreColor}
+							strokeWidth={renderTokens.routeCoreWidth + 0.2}
 							lineCap="round"
 							lineJoin="round"
 						/>

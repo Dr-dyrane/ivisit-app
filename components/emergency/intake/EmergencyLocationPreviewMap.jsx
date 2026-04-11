@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from "../../map/MapComponents";
 import MapControls from "../../map/MapControls";
+import { getMapRenderTokens } from "../../map/mapRenderTokens";
 import {
 	darkAndroidMapStyle,
 	darkMapStyle,
@@ -203,6 +204,7 @@ export default function EmergencyLocationPreviewMap({
 		: isDarkMode
 			? darkMapStyle
 			: lightMapStyle;
+	const renderTokens = useMemo(() => getMapRenderTokens({ isDarkMode }), [isDarkMode]);
 
 	const visibleHospitals = useMemo(
 		() => sortHospitalsForPreview(hospitals, selectedHospitalId).slice(0, 5),
@@ -379,7 +381,6 @@ export default function EmergencyLocationPreviewMap({
 				collapsable={Platform.OS !== "web" ? false : undefined}
 				style={styles.map}
 				provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-				googleRenderer={Platform.OS === "android" ? "LEGACY" : undefined}
 				customMapStyle={customMapStyle}
 				mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
 				initialRegion={region}
@@ -404,15 +405,15 @@ export default function EmergencyLocationPreviewMap({
 					<>
 						<Polyline
 							coordinates={routeBoundsCoordinates}
-							strokeColor={isDarkMode ? "rgba(248,113,113,0.04)" : "rgba(185,28,28,0.035)"}
-							strokeWidth={8}
+							strokeColor={renderTokens.routeHaloColor}
+							strokeWidth={renderTokens.routeHaloWidth}
 							lineCap="round"
 							lineJoin="round"
 						/>
 						<Polyline
 							coordinates={routeBoundsCoordinates}
-							strokeColor={COLORS.brandPrimary}
-							strokeWidth={3.25}
+							strokeColor={renderTokens.routeCoreColor}
+							strokeWidth={renderTokens.routeCoreWidth}
 							lineCap="round"
 							lineJoin="round"
 						/>
@@ -435,6 +436,7 @@ export default function EmergencyLocationPreviewMap({
 							zIndex={isSelected ? 100 : 10 - index}
 							image={isSelected ? SELECTED_HOSPITAL_MARKER_IMAGE : HOSPITAL_MARKER_IMAGE}
 							imageSize={isSelected ? { width: 81, height: 137 } : { width: 60.75, height: 102.5 }}
+							tracksViewChanges={false}
 							title={hospital?.name || "Hospital"}
 							onPress={onHospitalPress ? () => onHospitalPress(hospital) : undefined}
 						/>

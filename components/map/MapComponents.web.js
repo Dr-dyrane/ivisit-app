@@ -637,10 +637,11 @@ const buildMarkerContent = ({
   if (typeof document === 'undefined') return null;
 
   if (markerVariant === 'user') {
+    const resolvedPinColor = pinColor || '#5294FF';
     const wrapper = document.createElement('div');
     wrapper.style.position = 'relative';
-    wrapper.style.width = '34px';
-    wrapper.style.height = '34px';
+    wrapper.style.width = '36px';
+    wrapper.style.height = '36px';
     wrapper.style.transform = 'translate(-50%, -50%)';
     wrapper.style.display = 'flex';
     wrapper.style.alignItems = 'center';
@@ -651,20 +652,38 @@ const buildMarkerContent = ({
     halo.style.width = '30px';
     halo.style.height = '30px';
     halo.style.borderRadius = '50%';
-    halo.style.background = 'rgba(59,130,246,0.18)';
+    halo.style.background = 'rgba(82,148,255,0.20)';
     halo.style.border = '1px solid rgba(255,255,255,0.56)';
-    halo.style.boxShadow = '0 6px 18px rgba(37,99,235,0.28)';
+    halo.style.boxShadow = '0 10px 22px rgba(7,12,22,0.34)';
 
-    const dot = document.createElement('div');
-    dot.style.width = '16px';
-    dot.style.height = '16px';
-    dot.style.borderRadius = '50%';
-    dot.style.background = '#3B82F6';
-    dot.style.border = '3px solid #FFFFFF';
-    dot.style.boxSizing = 'border-box';
+    const ring = document.createElement('div');
+    ring.style.width = '18px';
+    ring.style.height = '18px';
+    ring.style.borderRadius = '50%';
+    ring.style.background = '#FFFFFF';
+    ring.style.display = 'flex';
+    ring.style.alignItems = 'center';
+    ring.style.justifyContent = 'center';
+
+    const core = document.createElement('div');
+    core.style.width = '12px';
+    core.style.height = '12px';
+    core.style.borderRadius = '50%';
+    core.style.background = resolvedPinColor;
+    core.style.display = 'flex';
+    core.style.alignItems = 'center';
+    core.style.justifyContent = 'center';
+
+    const innerDot = document.createElement('div');
+    innerDot.style.width = '5px';
+    innerDot.style.height = '5px';
+    innerDot.style.borderRadius = '50%';
+    innerDot.style.background = '#184FC9';
 
     wrapper.appendChild(halo);
-    wrapper.appendChild(dot);
+    core.appendChild(innerDot);
+    ring.appendChild(core);
+    wrapper.appendChild(ring);
     return wrapper;
   }
 

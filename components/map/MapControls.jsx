@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { View, Pressable, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS } from "../../constants/colors";
+import { getMapRenderTokens } from "./mapRenderTokens";
 
 const MapControls = ({
     onRecenter,
@@ -18,10 +18,17 @@ const MapControls = ({
         typeof bottomOffset === "number"
             ? { bottom: bottomOffset, right: rightOffset }
             : { top: topOffset, right: rightOffset };
+    const renderTokens = getMapRenderTokens({ isDarkMode });
 
     return (
         <View style={[styles.controlsContainer, positionStyle]}>
-            <View style={styles.controlsPill}>
+            <View style={[
+                styles.controlsPill,
+                {
+                    shadowColor: renderTokens.controlShadow,
+                    borderColor: renderTokens.controlBorder,
+                }
+            ]}>
                 {Platform.OS === "ios" ? (
                     <BlurView
                         intensity={isDarkMode ? 40 : 60}
@@ -34,7 +41,7 @@ const MapControls = ({
                             StyleSheet.absoluteFill,
                             styles.androidSurface,
                             {
-                                backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight,
+                                backgroundColor: renderTokens.controlSurface,
                             }
                         ]}
                     />
@@ -81,27 +88,27 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     controlsPill: {
-        width: 44,
-        paddingVertical: 2,
-        paddingHorizontal:2,
-        borderRadius: 22,
+        width: 46,
+        paddingVertical: 3,
+        paddingHorizontal: 3,
+        borderRadius: 23,
         overflow: "hidden",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         gap: 0,
-        shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
+        shadowOpacity: 0.12,
+        shadowRadius: 14,
         elevation: 3,
+        borderWidth: StyleSheet.hairlineWidth,
     },
     androidSurface: {
-        borderRadius: 32,
+        borderRadius: 23,
     },
     controlButton: {
-        width: 42,
-        height: 42,
+        width: 40,
+        height: 40,
         borderRadius: 16,
         justifyContent: "center",
         alignItems: "center",
