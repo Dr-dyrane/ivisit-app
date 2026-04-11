@@ -101,6 +101,10 @@ export default StyleSheet.create({
 		paddingBottom: 22,
 		paddingHorizontal: 0,
 	},
+	bodyScrollContentSidebar: {
+		flexGrow: 1,
+		paddingBottom: 0,
+	},
 	contentSectionInset: {
 		paddingHorizontal: 18,
 	},
@@ -130,6 +134,21 @@ export default StyleSheet.create({
 		flex: 1,
 		minWidth: 0,
 		paddingHorizontal: 0,
+	},
+	sidebarScreenStack: {
+		flex: 1,
+		minHeight: "100%",
+		justifyContent: "space-between",
+	},
+	sidebarScreenTopCluster: {
+		gap: 0,
+	},
+	sidebarScreenBottomCluster: {
+		marginTop: 28,
+	},
+	sidebarScreenSpacer: {
+		flex: 1,
+		minHeight: 0,
 	},
 	avatarPressable: {
 		width: 44,

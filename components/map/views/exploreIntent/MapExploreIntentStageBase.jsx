@@ -444,6 +444,7 @@ export default function MapExploreIntentStageBase({
 						presentationMode === "panel" || isSidebarPresentation
 							? styles.bodyScrollContentPanel
 							: null,
+						isSidebarPresentation ? styles.bodyScrollContentSidebar : null,
 					]}
 				>
 					<MapExploreIntentScreenModularizer

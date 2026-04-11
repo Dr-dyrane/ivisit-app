@@ -174,6 +174,9 @@ export function useMapSheetShell({
 		isSidebar,
 		topPadding,
 		bottomPadding,
+		insets,
+		sidebarTopInset: surfaceConfig.sidebarTopInset ?? 14,
+		sidebarBottomInset: surfaceConfig.sidebarBottomInset ?? 14,
 		sidebarContentTopPadding: surfaceConfig.sidebarContentTopPadding ?? 6,
 		sidebarContentBottomPadding: surfaceConfig.sidebarContentBottomPadding ?? 6,
 	});

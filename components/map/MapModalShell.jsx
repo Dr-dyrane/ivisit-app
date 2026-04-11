@@ -70,13 +70,10 @@ export default function MapModalShell({
 		? Math.max(0, surfaceConfig.modalSideInset ?? surfaceConfig.sidebarOuterInset ?? 0)
 		: 0;
 	const drawerTopInset = isDrawer
-		? Math.max(insets?.top || 0, surfaceConfig.modalTopInset ?? surfaceConfig.sidebarTopInset ?? 0)
+		? Math.max(0, surfaceConfig.modalTopInset ?? surfaceConfig.sidebarTopInset ?? 0)
 		: 0;
 	const drawerBottomInset = isDrawer
-		? Math.max(
-				insets?.bottom || 0,
-				surfaceConfig.modalBottomInset ?? surfaceConfig.sidebarBottomInset ?? 0,
-			)
+		? Math.max(0, surfaceConfig.modalBottomInset ?? surfaceConfig.sidebarBottomInset ?? 0)
 		: 0;
 	const drawerWidthForMotion =
 		surfaceConfig.drawerMaxWidth || surfaceConfig.sidebarMaxWidth || Math.max(360, screenWidth * 0.44);
@@ -309,6 +306,8 @@ export default function MapModalShell({
 		: screenWidth;
 	const hostLeft = isDrawer ? drawerSideInset : 0;
 	const hostBottom = isDrawer ? drawerBottomInset : 0;
+	const drawerSafeTopOffset = isDrawer ? Math.max(0, (insets?.top || 0) - drawerTopInset) : 0;
+	const drawerSafeBottomOffset = isDrawer ? Math.max(0, (insets?.bottom || 0) - drawerBottomInset) : 0;
 	const modalRadius = surfaceConfig.modalCornerRadius;
 	const viewportMaxHeight = isDrawer
 		? Math.max(320, screenHeight - drawerTopInset - drawerBottomInset)
@@ -575,8 +574,8 @@ export default function MapModalShell({
 					minHeight,
 					maxHeight,
 					height: animatedSheetHeight,
-					paddingTop: isDrawer ? insets.top + 12 : 14,
-					paddingBottom: insets.bottom + 18,
+					paddingTop: isDrawer ? 12 + drawerSafeTopOffset : 14,
+					paddingBottom: isDrawer ? 18 + drawerSafeBottomOffset : insets.bottom + 18,
 					transform: enableDetents ? [{ translateY: dragTranslateY }] : undefined,
 				},
 			]}
@@ -672,7 +671,7 @@ export default function MapModalShell({
 								width: hostWidth,
 								left: hostLeft,
 								right: undefined,
-								top: drawerTopInset,
+								top: surfaceConfig.modalTopInset ?? drawerTopInset,
 								bottom: hostBottom,
 							}
 						: {

@@ -70,5 +70,25 @@ export default function MapExploreIntentScreenModularizer({
 		);
 	}
 
+	if (presentationMode === "sidebar") {
+		const inlineScreens = resolvedScreens.filter((screen) => !screen.fullBleed);
+		const fullBleedScreens = resolvedScreens.filter((screen) => screen.fullBleed);
+
+		return (
+			<View style={styles.sidebarScreenStack}>
+				<View style={styles.sidebarScreenTopCluster}>
+					{inlineScreens.map((screen) => renderScreen(screen))}
+				</View>
+				{fullBleedScreens.length ? (
+					<View style={styles.sidebarScreenBottomCluster}>
+						{fullBleedScreens.map((screen) => renderScreen(screen))}
+					</View>
+				) : (
+					<View style={styles.sidebarScreenSpacer} />
+				)}
+			</View>
+		);
+	}
+
 	return <>{resolvedScreens.map((screen) => renderScreen(screen))}</>;
 }

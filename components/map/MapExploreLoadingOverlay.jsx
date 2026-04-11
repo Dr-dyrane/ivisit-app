@@ -70,15 +70,21 @@ export default function MapExploreLoadingOverlay({
 					Math.max(320, screenWidth - surfaceConfig.overlaySheetSideInset * 2),
 				)
 			: Math.max(0, screenWidth - surfaceConfig.overlaySheetSideInset * 2);
+	const overlaySheetTopInset = surfaceConfig.overlaySheetTopInset || 0;
+	const overlaySheetBottomInset = surfaceConfig.overlaySheetBottomInset || 0;
 	const sheetTop = usesSidebarLayout
-		? Math.max(insets.top, surfaceConfig.overlaySheetTopInset || 0)
+		? overlaySheetTopInset
 		: null;
 	const sheetLeft = usesSidebarLayout
 		? surfaceConfig.overlaySheetSideInset || 0
 		: (screenWidth - sheetWidth) / 2;
 	const sheetBottom = usesSidebarLayout
-		? Math.max(insets.bottom, surfaceConfig.overlaySheetBottomInset || 0)
+		? overlaySheetBottomInset
 		: surfaceConfig.overlaySheetBottomInset;
+	const sheetSafeTopOffset = usesSidebarLayout ? Math.max(0, insets.top - overlaySheetTopInset) : 0;
+	const sheetSafeBottomOffset = usesSidebarLayout
+		? Math.max(0, insets.bottom - overlaySheetBottomInset)
+		: 0;
 	const sheetHeightValue = usesSidebarLayout
 		? Math.max(320, sheetHeight - sheetTop - sheetBottom)
 		: sheetHeight;
@@ -199,10 +205,10 @@ export default function MapExploreLoadingOverlay({
 						borderBottomRightRadius: surfaceConfig.overlaySheetRadius,
 						paddingHorizontal: usesSidebarLayout ? 16 : 12,
 						paddingTop: usesSidebarLayout
-							? surfaceConfig.sidebarContentTopPadding || 8
+							? (surfaceConfig.sidebarContentTopPadding || 8) + sheetSafeTopOffset
 							: 10,
 						paddingBottom: usesSidebarLayout
-							? surfaceConfig.sidebarContentBottomPadding || 10
+							? (surfaceConfig.sidebarContentBottomPadding || 10) + sheetSafeBottomOffset
 							: 12 + insets.bottom,
 					},
 				]}

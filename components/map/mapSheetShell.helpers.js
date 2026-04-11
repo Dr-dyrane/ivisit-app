@@ -40,12 +40,19 @@ export function getMapSheetContentPadding({
 	isSidebar,
 	topPadding,
 	bottomPadding,
+	insets,
+	sidebarTopInset = 14,
+	sidebarBottomInset = 14,
 	sidebarContentTopPadding = 6,
 	sidebarContentBottomPadding = 6,
 }) {
+	const sidebarSafeTopOffset = Math.max(0, (insets?.top || 0) - sidebarTopInset);
+	const sidebarSafeBottomOffset = Math.max(0, (insets?.bottom || 0) - sidebarBottomInset);
 	return {
-		contentPaddingTop: isSidebar ? sidebarContentTopPadding : topPadding,
-		contentPaddingBottom: isSidebar ? sidebarContentBottomPadding : bottomPadding,
+		contentPaddingTop: isSidebar ? sidebarContentTopPadding + sidebarSafeTopOffset : topPadding,
+		contentPaddingBottom: isSidebar
+			? sidebarContentBottomPadding + sidebarSafeBottomOffset
+			: bottomPadding,
 	};
 }
 
@@ -65,8 +72,8 @@ export function getMapSheetHostLayout({
 	if (isSidebar) {
 		return {
 			left: Math.max(0, sidebarOuterInset),
-			top: Math.max(insets?.top || 0, sidebarTopInset),
-			bottom: Math.max(insets?.bottom || 0, sidebarBottomInset),
+			top: Math.max(0, sidebarTopInset),
+			bottom: Math.max(0, sidebarBottomInset),
 			width: useFloatingShell ? shellWidth : undefined,
 			height: undefined,
 			transform: [{ translateY: 0 }],
