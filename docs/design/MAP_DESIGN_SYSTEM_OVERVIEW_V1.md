@@ -5,13 +5,30 @@
 
 Related:
 
+- [../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
 - [../flows/emergency/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](../flows/emergency/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 - [../flows/emergency/MAP_FLOW_IMPLEMENTATION_V1.md](../flows/emergency/MAP_FLOW_IMPLEMENTATION_V1.md)
 - [../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
+- [../WELCOME_AND_INTAKE_FLOW_MAP.md](../WELCOME_AND_INTAKE_FLOW_MAP.md)
 
 ## Goal
 
-Keep the map flow visually familiar at a glance while making its structure, motion, and materials production-grade.
+Keep the map flow visually familiar at a glance while making its structure, motion, materials, and active-header behavior production-grade.
+
+## Main guiding docs for map / sheet / active-header UI
+
+Use this reading order before changing `/map` UI, sheet behavior, or the active header contract.
+
+1. [../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
+   - external Apple behavior + latest visual-language reference
+2. [../flows/emergency/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](../flows/emergency/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
+   - iVisit product doctrine for map, sheet, and state transitions
+3. [../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
+   - implementation contract for map shell, sheet shell, and smart/active header
+4. [../flows/emergency/MAP_FLOW_IMPLEMENTATION_V1.md](../flows/emergency/MAP_FLOW_IMPLEMENTATION_V1.md)
+   - ownership map for runtime files and orchestration
+5. [../WELCOME_AND_INTAKE_FLOW_MAP.md](../WELCOME_AND_INTAKE_FLOW_MAP.md)
+   - cross-flow reference for header/intake continuity outside `/map`
 
 ## Core Pieces
 

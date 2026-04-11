@@ -6,10 +6,28 @@
 
 Related references:
 
+- [../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
 - [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 - [MAP_FLOW_IMPLEMENTATION_V1.md](./MAP_FLOW_IMPLEMENTATION_V1.md)
 - [MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md](./MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md)
 - [../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md](../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md)
+
+## 0. Standing reference order for `/map` UI work
+
+Before changing the map shell, sheet shell, or active header UI, review these references in this order:
+
+1. [../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
+   - first stop for Apple Maps behavior and latest Apple visual-language guidance
+2. [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
+   - product-state and decision-surface spec
+3. [../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md](../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md)
+   - token, component-family, and reuse guidance
+4. [MAP_FLOW_IMPLEMENTATION_V1.md](./MAP_FLOW_IMPLEMENTATION_V1.md)
+   - runtime ownership and composition map
+
+Rule:
+
+- when in doubt about map, sheet, or active-header UI direction, defer first to the Apple reference, then translate it through the iVisit product spec and implementation contract
 
 ## 1. Core Product Rule
 

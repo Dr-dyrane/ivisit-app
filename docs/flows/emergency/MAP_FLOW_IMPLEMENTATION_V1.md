@@ -80,9 +80,22 @@ Current fixes:
 - [useHospitals.js](../../../hooks/emergency/useHospitals.js)
   - location bucket precision raised from `2` to `3`
 - [EmergencyContext.jsx](../../../contexts/EmergencyContext.jsx)
-  - now prefers the full discovered hospital set for emergency state, then sorts by distance
+  - now prefers the full discovered hospital set for emergency state, but ranks it in nearby-first order so `0-15 km` hospitals stay ahead of extended browse results
 - [useMapExploreFlow.js](../../../hooks/map/useMapExploreFlow.js)
-  - explicitly calls `ensureDemoEcosystemForLocation(...)` for `/map` when demo is enabled and no hospitals are available yet
+  - explicitly calls `ensureDemoEcosystemForLocation(...)` for `/map` when live nearby coverage is weak and demo nearby support is still insufficient
+
+## Nearby Priority Contract
+
+The map keeps the full discovered set available, but it should not treat every discovered hospital as equally relevant.
+
+- `0-5 km` = immediate nearby care
+- `>5-15 km` = nearby support
+- `>15-50 km` = extended browse only
+- The current `/map` sheet should aim for about **5 nearby hospitals** so the summary card, hospital rail, and modal list all feel comfortably populated.
+- Live coverage quality is decided from the `0-15 km` window.
+- Demo bootstrap sufficiency is decided from the `0-15 km` window and should keep filling while the nearby set is still below that map comfort target.
+- One faraway demo hospital must not suppress bootstrap.
+- Mixed live/demo hospital lists should rank close-by hospitals ahead of extended browse results, even in `hybrid` mode.
 
 ## Next Steps
 

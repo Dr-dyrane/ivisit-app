@@ -942,11 +942,18 @@ export function EmergencyProvider({ children }) {
 	}, [demoOwnerSlug, hospitals]);
 
 	const hasDemoHospitalsNearby = useMemo(
-		() =>
-			availableHospitals.some((hospital) =>
-				demoEcosystemService.countsAsDemoCoverage(hospital)
-			),
-		[availableHospitals]
+		() => coverageModeService.hasAnyDemoCoverage(nearbyCoverageCounts),
+		[nearbyCoverageCounts]
+	);
+
+	const hasComfortableDemoCoverage = useMemo(
+		() => coverageModeService.hasSufficientDemoCoverage(nearbyCoverageCounts),
+		[nearbyCoverageCounts]
+	);
+
+	const hasComfortableNearbyCoverage = useMemo(
+		() => coverageModeService.hasComfortableNearbyCoverage(nearbyCoverageCounts),
+		[nearbyCoverageCounts]
 	);
 
 	const visibleHospitals = useMemo(() => {
@@ -954,24 +961,26 @@ export function EmergencyProvider({ children }) {
 			return [];
 		}
 
+		let scopedHospitals = availableHospitals;
+
 		switch (effectiveCoverageMode) {
 			case COVERAGE_MODES.DEMO_ONLY:
-				return availableHospitals.filter((hospital) =>
+				scopedHospitals = availableHospitals.filter((hospital) =>
 					demoEcosystemService.isDemoHospital(hospital)
 				);
+				break;
 			case COVERAGE_MODES.LIVE_ONLY:
-				return availableHospitals.filter(
+				scopedHospitals = availableHospitals.filter(
 					(hospital) => !demoEcosystemService.isDemoHospital(hospital)
 				);
+				break;
 			case COVERAGE_MODES.HYBRID:
 			default:
-				return [...availableHospitals].sort((left, right) => {
-					const leftIsDemo = demoEcosystemService.isDemoHospital(left);
-					const rightIsDemo = demoEcosystemService.isDemoHospital(right);
-					if (leftIsDemo === rightIsDemo) return 0;
-					return leftIsDemo ? 1 : -1;
-				});
+				scopedHospitals = availableHospitals;
+				break;
 		}
+
+		return coverageModeService.sortHospitalsForMapExperience(scopedHospitals);
 	}, [availableHospitals, effectiveCoverageMode]);
 
 	const specialties = useMemo(() => {
@@ -1085,7 +1094,12 @@ export function EmergencyProvider({ children }) {
 			const shouldBootstrapDemo =
 				shouldFetchDemo &&
 				user?.id &&
-				(options.forceBootstrap === true || !hasDemoHospitalsNearby);
+				coverageModeService.shouldBootstrapDemo({
+					coverageStatus,
+					nearbyCoverageCounts,
+					targetMode: nextMode,
+					force: options.forceBootstrap === true,
+				});
 
 			setCoverageModeOperation({
 				isPending: true,
@@ -1140,7 +1154,7 @@ export function EmergencyProvider({ children }) {
 		},
 		[
 			coverageStatus,
-			hasDemoHospitalsNearby,
+			nearbyCoverageCounts,
 			preferredCoverageMode,
 			refetchHospitals,
 			resolveCoverageCoordinates,
@@ -1588,6 +1602,8 @@ export function EmergencyProvider({ children }) {
 			effectiveDemoModeEnabled,
 			isLiveOnlyAvailable,
 			hasDemoHospitalsNearby,
+			hasComfortableDemoCoverage,
+			hasComfortableNearbyCoverage,
 			coverageModeOperation,
 
 			// Actions
@@ -1637,6 +1653,8 @@ export function EmergencyProvider({ children }) {
 			effectiveDemoModeEnabled,
 			isLiveOnlyAvailable,
 			hasDemoHospitalsNearby,
+			hasComfortableDemoCoverage,
+			hasComfortableNearbyCoverage,
 			coverageModeOperation,
 			selectHospital,
 			clearSelectedHospital,

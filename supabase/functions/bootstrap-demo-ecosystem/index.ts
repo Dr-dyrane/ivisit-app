@@ -11,6 +11,9 @@ const DEMO_HOSPITAL_OFFSETS = [
   { lat: 0.0064, lng: 0.0048 },
   { lat: -0.0051, lng: 0.0062 },
   { lat: 0.0042, lng: -0.0068 },
+  { lat: -0.0068, lng: -0.0046 },
+  { lat: 0.0081, lng: -0.0027 },
+  { lat: -0.0029, lng: 0.0084 },
 ];
 
 const LAGOS_REFERENCE_POINT = {
@@ -60,6 +63,34 @@ const LAGOS_DEMO_HOSPITAL_TEMPLATES = [
     emergency_level: "Level 2",
     wait_time: "12 min",
     price_range: "Accessible",
+  },
+  {
+    name: "Surulere Emergency Hospital",
+    address: "Bode Thomas St, Surulere, Lagos",
+    phone: "+234 1 734 2000",
+    rating: 4.2,
+    type: "standard",
+    image: "",
+    specialties: ["Emergency Medicine", "Family Medicine", "Orthopedics"],
+    service_types: ["standard", "premium"],
+    features: ["lagos_demo", "mainland_coverage"],
+    emergency_level: "Level 2",
+    wait_time: "13 min",
+    price_range: "Accessible",
+  },
+  {
+    name: "Lekki Coast Medical Centre",
+    address: "Admiralty Way, Lekki Phase 1, Lagos",
+    phone: "+234 1 820 1100",
+    rating: 4.4,
+    type: "premium",
+    image: "",
+    specialties: ["Emergency Medicine", "Trauma Care", "Cardiology"],
+    service_types: ["premium", "standard"],
+    features: ["lagos_demo", "coastal_coverage"],
+    emergency_level: "Level 1",
+    wait_time: "10 min",
+    price_range: "Premium",
   },
 ];
 
@@ -116,8 +147,8 @@ const ROOM_PRICING_BASELINES = [
   },
 ];
 
-const DEMO_MIN_HOSPITALS = 2;
-const DEMO_MAX_HOSPITALS = 3;
+const DEMO_MIN_HOSPITALS = 5;
+const DEMO_MAX_HOSPITALS = 6;
 const DEMO_ORG_WALLET_TARGET_BALANCE = 25000;
 const DEMO_PLATFORM_WALLET_MIN_BALANCE = 100000;
 

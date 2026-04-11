@@ -208,6 +208,7 @@ const EmergencyScreen = () => {
 		nearbyCoverageCounts,
 		effectiveDemoModeEnabled,
 		hasDemoHospitalsNearby,
+		hasComfortableDemoCoverage,
 		isLiveOnlyAvailable,
 		setCoverageMode,
 	} = useEmergency();
@@ -1021,7 +1022,7 @@ const EmergencyScreen = () => {
 	const handleCoverageModeSelection = useCallback(
 		async (nextMode) => {
 			const shouldShowBootstrap =
-				nextMode !== COVERAGE_MODES.LIVE_ONLY && !hasDemoHospitalsNearby;
+				nextMode !== COVERAGE_MODES.LIVE_ONLY && !hasComfortableDemoCoverage;
 
 			setCoverageDisclaimerVisible(false);
 
@@ -1079,7 +1080,7 @@ const EmergencyScreen = () => {
 				}
 			}
 		},
-		[hasDemoHospitalsNearby, setCoverageMode, showToast]
+		[hasComfortableDemoCoverage, setCoverageMode, showToast]
 	);
 
 	const handleCoverageDisclaimerChooseLiveOnly = useCallback(() => {

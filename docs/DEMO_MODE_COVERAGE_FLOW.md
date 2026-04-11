@@ -36,6 +36,23 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Below that threshold, the app should keep `hybrid` / demo support eligible so the nearby-care UI does not feel under-filled or brittle.
 - Bootstrap/backfill should continue while the nearby verified experience is still below that cutoff.
 
+## Nearby Radius Rule (2026-04-10)
+- `0-5 km` = `immediate`.
+- `>5-15 km` = `nearby support`.
+- `>15-50 km` = `extended browse`.
+- Coverage quality is measured only from the combined `0-15 km` nearby-support window.
+- The `/map` sheet should feel comfortably scrollable, not barely populated.
+- The current UI comfort target is **5 nearby hospitals** inside the `0-15 km` window.
+- Extended browse hospitals may still render, but they must not suppress demo bootstrap or make live coverage count as healthy.
+- A single demo hospital is not sufficient coverage.
+- Demo bootstrap is only considered sufficient when there are at least **5** demo hospitals inside the `0-15 km` window for preview-rich states like `/map`.
+- Any demo hospital that only appears in the `15-50 km` band should be treated as browse-only, not as proof that nearby support is already filled.
+
+## Demo Bootstrap Volume Rule (2026-04-10)
+- The demo edge function should target **at least 5 nearby hospitals** per coverage scope.
+- The current cap is **5-6** hospitals so the map rail and hospital list can feel full without becoming noisy.
+- A bootstrap target of `2-3` hospitals is considered backend-minimum only and is not sufficient for the current map/sheet UI.
+
 ## Demo Hospital Identity Rule (2026-04-10)
 - Demo bootstrap may create demo-owned hospitals, but it must preserve real hospital `name` and `address` whenever a database or provider seed exists.
 - Synthetic identities such as `Emergency Care Center 1` are valid only for true no-seed fallback slots.
@@ -57,6 +74,9 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 7. No destructive DB operations are used.
 8. Previously affected locations no longer show `Emergency Care Center X` when seed hospitals exist.
 9. Placeholder hospital names appear only in true no-seed regions.
+10. One demo hospital inside `50 km` but outside `15 km` no longer suppresses bootstrap.
+11. Mixed live/demo results still rank `0-15 km` hospitals ahead of `15-50 km` browse results.
+12. Demo bootstrap fills to at least `5` nearby hospitals for the `/map` sheet when live nearby coverage is still thin.
 
 ## Failure Handling
 - Any phase error:

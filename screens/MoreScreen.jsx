@@ -54,7 +54,7 @@ const MoreScreen = () => {
 		isLiveOnlyAvailable,
 		setCoverageMode,
 		coverageModeOperation,
-		hasDemoHospitalsNearby,
+		hasComfortableDemoCoverage,
 		coverageModePreferenceLoaded,
 	} = useEmergency();
 	const insets = useSafeAreaInsets();
@@ -255,14 +255,14 @@ const MoreScreen = () => {
 			try {
 				if (
 					nextMode !== COVERAGE_MODES.LIVE_ONLY &&
-					!hasDemoHospitalsNearby
+					!hasComfortableDemoCoverage
 				) {
 					showToast("Preparing nearby preview coverage...", "info");
 				}
 
 				await setCoverageMode(nextMode, {
 					forceBootstrap:
-						nextMode !== COVERAGE_MODES.LIVE_ONLY && !hasDemoHospitalsNearby,
+						nextMode !== COVERAGE_MODES.LIVE_ONLY && !hasComfortableDemoCoverage,
 				});
 
 				const successMessage =
@@ -280,7 +280,7 @@ const MoreScreen = () => {
 		[
 			coverageModeOperation?.isPending,
 			coverageModePreferenceLoaded,
-			hasDemoHospitalsNearby,
+			hasComfortableDemoCoverage,
 			setCoverageMode,
 			showToast,
 		]

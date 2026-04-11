@@ -13,7 +13,12 @@ export const COVERAGE_STATUS = {
 	GOOD: "good",
 };
 
+export const COVERAGE_IMMEDIATE_RADIUS_KM = 5;
+export const COVERAGE_NEARBY_RADIUS_KM = 15;
+export const COVERAGE_DISCOVERY_RADIUS_KM = 50;
 export const COVERAGE_POOR_THRESHOLD = 3;
+export const NEARBY_UI_COMFORT_THRESHOLD = 5;
+export const DEMO_NEARBY_SUFFICIENCY_THRESHOLD = 5;
 
 const COVERAGE_MODE_STORAGE_KEY_PREFIX = "@ivisit/coverage-mode:v1:";
 
@@ -66,6 +71,79 @@ const isDemoHospital = (hospital) =>
 	hospital?.isDemo === true || demoEcosystemService.isDemoHospital(hospital);
 const countsAsDemoCoverage = (hospital) =>
 	demoEcosystemService.countsAsDemoCoverage(hospital);
+const parseHospitalDistanceKm = (hospital) => {
+	const directDistance = Number(hospital?.distanceKm);
+	if (Number.isFinite(directDistance)) {
+		return directDistance;
+	}
+
+	const explicitDistance = Number(hospital?.distance);
+	if (Number.isFinite(explicitDistance)) {
+		return explicitDistance;
+	}
+
+	const distanceLabel = String(hospital?.distance || "").trim();
+	if (!distanceLabel) return null;
+
+	const match = distanceLabel.match(/(\d+(?:\.\d+)?)/);
+	if (!match) return null;
+
+	const parsed = Number(match[1]);
+	return Number.isFinite(parsed) ? parsed : null;
+};
+const COVERAGE_DISTANCE_BANDS = {
+	immediate: 0,
+	nearby: 1,
+	extended: 2,
+	outside: 3,
+	unknown: 4,
+};
+const getCoverageDistanceBand = (hospital) => {
+	const distanceKm = parseHospitalDistanceKm(hospital);
+	if (!Number.isFinite(distanceKm)) return "unknown";
+	if (distanceKm <= COVERAGE_IMMEDIATE_RADIUS_KM) return "immediate";
+	if (distanceKm <= COVERAGE_NEARBY_RADIUS_KM) return "nearby";
+	if (distanceKm <= COVERAGE_DISCOVERY_RADIUS_KM) return "extended";
+	return "outside";
+};
+const getHospitalTrustRank = (hospital) => {
+	const isDemo = isDemoHospital(hospital);
+	const isVerified = isVerifiedHospitalForCoverage(hospital);
+	if (isVerified && !isDemo) return 0;
+	if (isVerified && isDemo) return 1;
+	if (!isDemo) return 2;
+	return 3;
+};
+const buildEmptyCoverageCounts = () => ({
+	allImmediate: 0,
+	liveImmediate: 0,
+	verifiedImmediate: 0,
+	demoImmediate: 0,
+	allNearby: 0,
+	liveNearby: 0,
+	verifiedNearby: 0,
+	demoNearby: 0,
+	allExtended: 0,
+	liveExtended: 0,
+	verifiedExtended: 0,
+	demoExtended: 0,
+});
+const incrementCoverageCounts = (counts, prefix, { isDemo, isVerified }) => {
+	counts[`all${prefix}`] += 1;
+	if (isDemo) {
+		counts[`demo${prefix}`] += 1;
+		return;
+	}
+
+	counts[`live${prefix}`] += 1;
+	if (isVerified) {
+		counts[`verified${prefix}`] += 1;
+	}
+};
+const compareHospitalNames = (left, right) =>
+	String(left?.name || "").localeCompare(String(right?.name || ""), undefined, {
+		sensitivity: "base",
+	});
 
 export const coverageModeService = {
 	normalizeMode(value) {
@@ -86,9 +164,48 @@ export const coverageModeService = {
 		return coverageStatus !== COVERAGE_STATUS.GOOD;
 	},
 
-	shouldBootstrapDemo({ coverageStatus, hasDemoHospitalsNearby = false, force = false } = {}) {
+	hasAnyDemoCoverage(counts = {}) {
+		return Number(counts?.demoNearby || 0) > 0;
+	},
+
+	hasComfortableNearbyCoverage(counts = {}) {
+		return Number(counts?.allNearby || 0) >= NEARBY_UI_COMFORT_THRESHOLD;
+	},
+
+	hasSufficientDemoCoverage(counts = {}) {
+		return Number(counts?.demoNearby || 0) >= DEMO_NEARBY_SUFFICIENCY_THRESHOLD;
+	},
+
+	shouldBootstrapDemo({
+		coverageStatus,
+		nearbyCoverageCounts = null,
+		targetMode = null,
+		hasDemoHospitalsNearby = false,
+		force = false,
+	} = {}) {
 		if (force) return true;
-		return this.needsDemoSupport(coverageStatus) && !hasDemoHospitalsNearby;
+
+		const normalizedTargetMode = targetMode
+			? normalizeCoverageMode(targetMode)
+			: null;
+		const hasSufficientDemoCoverage =
+			nearbyCoverageCounts && typeof nearbyCoverageCounts === "object"
+				? this.hasSufficientDemoCoverage(nearbyCoverageCounts)
+				: Boolean(hasDemoHospitalsNearby);
+
+		if (normalizedTargetMode === COVERAGE_MODES.DEMO_ONLY) {
+			return !hasSufficientDemoCoverage;
+		}
+
+		if (!this.needsDemoSupport(coverageStatus)) {
+			return false;
+		}
+
+		if (nearbyCoverageCounts && typeof nearbyCoverageCounts === "object") {
+			return !this.hasComfortableNearbyCoverage(nearbyCoverageCounts);
+		}
+
+		return !hasSufficientDemoCoverage;
 	},
 
 	isLiveOnlyAvailable(coverageStatus) {
@@ -113,12 +230,7 @@ export const coverageModeService = {
 
 	deriveNearbyCoverageCounts(hospitals = []) {
 		if (!Array.isArray(hospitals) || hospitals.length === 0) {
-			return {
-				allNearby: 0,
-				liveNearby: 0,
-				verifiedNearby: 0,
-				demoNearby: 0,
-			};
+			return buildEmptyCoverageCounts();
 		}
 
 		const seen = new Set();
@@ -130,25 +242,29 @@ export const coverageModeService = {
 				if (seen.has(key)) return acc;
 				seen.add(key);
 
-				if (countsAsDemoCoverage(hospital)) {
-					acc.demoNearby += 1;
-					acc.allNearby += 1;
+				const distanceBand = getCoverageDistanceBand(hospital);
+				if (distanceBand === "outside" || distanceBand === "unknown") {
 					return acc;
 				}
 
-				acc.liveNearby += 1;
-				acc.allNearby += 1;
-				if (isVerifiedHospitalForCoverage(hospital)) {
-					acc.verifiedNearby += 1;
+				const isDemo = countsAsDemoCoverage(hospital);
+				const isVerified = isVerifiedHospitalForCoverage(hospital);
+
+				if (distanceBand === "immediate") {
+					incrementCoverageCounts(acc, "Immediate", { isDemo, isVerified });
+					incrementCoverageCounts(acc, "Nearby", { isDemo, isVerified });
+					return acc;
 				}
+
+				if (distanceBand === "nearby") {
+					incrementCoverageCounts(acc, "Nearby", { isDemo, isVerified });
+					return acc;
+				}
+
+				incrementCoverageCounts(acc, "Extended", { isDemo, isVerified });
 				return acc;
 			},
-			{
-				allNearby: 0,
-				liveNearby: 0,
-				verifiedNearby: 0,
-				demoNearby: 0,
-			}
+			buildEmptyCoverageCounts()
 		);
 	},
 
@@ -157,6 +273,45 @@ export const coverageModeService = {
 		if (verifiedNearby <= 0) return COVERAGE_STATUS.NONE;
 		if (verifiedNearby < threshold) return COVERAGE_STATUS.POOR;
 		return COVERAGE_STATUS.GOOD;
+	},
+
+	sortHospitalsForMapExperience(hospitals = []) {
+		if (!Array.isArray(hospitals) || hospitals.length === 0) {
+			return [];
+		}
+
+		return [...hospitals].filter(Boolean).sort((left, right) => {
+			const leftBand = COVERAGE_DISTANCE_BANDS[getCoverageDistanceBand(left)];
+			const rightBand = COVERAGE_DISTANCE_BANDS[getCoverageDistanceBand(right)];
+			if (leftBand !== rightBand) {
+				return leftBand - rightBand;
+			}
+
+			const leftDistance = parseHospitalDistanceKm(left);
+			const rightDistance = parseHospitalDistanceKm(right);
+			const leftHasDistance = Number.isFinite(leftDistance);
+			const rightHasDistance = Number.isFinite(rightDistance);
+			if (leftHasDistance && rightHasDistance && leftDistance !== rightDistance) {
+				return leftDistance - rightDistance;
+			}
+			if (leftHasDistance !== rightHasDistance) {
+				return leftHasDistance ? -1 : 1;
+			}
+
+			const leftTrustRank = getHospitalTrustRank(left);
+			const rightTrustRank = getHospitalTrustRank(right);
+			if (leftTrustRank !== rightTrustRank) {
+				return leftTrustRank - rightTrustRank;
+			}
+
+			const leftIsDemo = isDemoHospital(left);
+			const rightIsDemo = isDemoHospital(right);
+			if (leftIsDemo !== rightIsDemo) {
+				return leftIsDemo ? 1 : -1;
+			}
+
+			return compareHospitalNames(left, right);
+		});
 	},
 
 	async getStoredMode(userId) {

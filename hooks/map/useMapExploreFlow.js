@@ -28,12 +28,23 @@ import { HEADER_MODES } from "../../constants/header";
 import HeaderBackButton from "../../components/navigation/HeaderBackButton";
 import HeaderLocationButton from "../../components/headers/HeaderLocationButton";
 
-function buildDemoBootstrapKey(location, userId, coverageStatus, shouldForceBootstrap) {
+function buildDemoBootstrapKey(
+	location,
+	userId,
+	coverageStatus,
+	allNearbyCount,
+	demoNearbyCount,
+	verifiedNearbyCount,
+	shouldForceBootstrap,
+) {
 	return [
 		Number(location?.latitude).toFixed(3),
 		Number(location?.longitude).toFixed(3),
 		userId || "guest",
 		coverageStatus || "unknown",
+		`nearby:${Number(allNearbyCount || 0)}`,
+		`demo:${Number(demoNearbyCount || 0)}`,
+		`verified:${Number(verifiedNearbyCount || 0)}`,
 		shouldForceBootstrap ? "force" : "auto",
 	].join(":");
 }
@@ -76,7 +87,9 @@ export function useMapExploreFlow() {
 		effectiveDemoModeEnabled,
 		coverageModePreferenceLoaded,
 		coverageStatus,
+		nearbyCoverageCounts,
 		hasDemoHospitalsNearby,
+		hasComfortableNearbyCoverage,
 	} = useEmergency();
 
 	const [locationSearchVisible, setLocationSearchVisible] = useState(false);
@@ -151,6 +164,7 @@ export function useMapExploreFlow() {
 	const needsCoverageExpansion = coverageModeService.needsDemoSupport(coverageStatus);
 	const shouldBootstrapDemoCoverage = coverageModeService.shouldBootstrapDemo({
 		coverageStatus,
+		nearbyCoverageCounts,
 		hasDemoHospitalsNearby,
 	});
 	const discoveredHospitals = useMemo(() => {
@@ -292,11 +306,14 @@ export function useMapExploreFlow() {
 			return undefined;
 		}
 
-		const shouldForceDemoBootstrap = !hasDemoHospitalsNearby;
+		const shouldForceDemoBootstrap = !hasComfortableNearbyCoverage;
 		const bootstrapKey = buildDemoBootstrapKey(
 			activeLocation,
 			user?.id,
 			coverageStatus,
+			nearbyCoverageCounts?.allNearby,
+			nearbyCoverageCounts?.demoNearby,
+			nearbyCoverageCounts?.verifiedNearby,
 			shouldForceDemoBootstrap,
 		);
 		if (demoBootstrapKeyRef.current === bootstrapKey) {
@@ -338,7 +355,11 @@ export function useMapExploreFlow() {
 		coverageModePreferenceLoaded,
 		coverageStatus,
 		effectiveDemoModeEnabled,
+		nearbyCoverageCounts?.allNearby,
+		nearbyCoverageCounts?.demoNearby,
+		nearbyCoverageCounts?.verifiedNearby,
 		hasDemoHospitalsNearby,
+		hasComfortableNearbyCoverage,
 		isBootstrappingDemo,
 		shouldBootstrapDemoCoverage,
 		isLoadingHospitals,

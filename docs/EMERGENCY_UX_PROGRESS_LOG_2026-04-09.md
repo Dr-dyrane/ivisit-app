@@ -162,6 +162,42 @@ After fix:
 
 ---
 
+### 7) Nearby coverage now uses a real distance window instead of any discovered hospital
+
+#### Problem addressed
+- one demo hospital anywhere inside the `50 km` discovery radius could count as "nearby enough" and suppress bootstrap
+- mixed live/demo lists could put farther hospitals ahead of closer ones just because they were live rows
+- the product intent said "nearby help", but the runtime rule was effectively "anything discovered inside `50 km`"
+
+#### Change made
+- the runtime now treats distance bands as:
+  1. `0-5 km` = immediate
+  2. `>5-15 km` = nearby support
+  3. `>15-50 km` = extended browse
+- live coverage quality is now measured only from the combined `0-15 km` window
+- the `/map` sheet comfort target is now **5 nearby hospitals** inside that same `0-15 km` window
+- demo bootstrap is only considered sufficient when there are at least **5 demo hospitals** inside that nearby window
+- a single demo hospital, or demo hospitals that only exist in the extended band, no longer suppress bootstrap
+- mixed live/demo hospital lists are now ranked nearby-first, so closer hospitals stay ahead of extended browse results even in `hybrid`
+- the demo edge function target was raised from **2-3** hospitals to **5-6** hospitals per coverage scope so the sheet has enough real rows to scroll
+
+#### Files involved
+- `services/coverageModeService.js`
+- `contexts/EmergencyContext.jsx`
+- `hooks/map/useMapExploreFlow.js`
+- `screens/EmergencyScreen.jsx`
+- `screens/MoreScreen.jsx`
+- `supabase/functions/bootstrap-demo-ecosystem/index.ts`
+- `docs/DEMO_MODE_COVERAGE_FLOW.md`
+- `docs/flows/emergency/MAP_FLOW_IMPLEMENTATION_V1.md`
+
+#### Expected result after fix
+- one faraway hospital should no longer make the app think the nearby experience is already filled
+- `/map` should prefer hospitals inside `15 km` before showing farther browse-only options
+- preview/demo support should stay eligible until there are enough actually nearby hospitals to make the map feel credible
+
+---
+
 ## Verification evidence from today
 
 - Toronto validation for `43.6532, -79.3832` returned **15 nearby hospitals** through both:
@@ -184,3 +220,53 @@ If work resumes later, the most important current doctrine is:
 1. `/map` should feel live immediately, not blocked by a separate loading page
 2. modal focus should hide extra chrome and match the expanded sheet posture
 3. live-only coverage should only feel "good" when the nearby verified experience is actually credible (current cutoff: **3**)
+
+---
+
+## Architecture direction now being formalized
+
+This is the next-step doctrine for the emergency runtime and should guide future refactors.
+
+### New target model
+
+The emergency experience should be understood as:
+
+- `map state`
+- `sheet state`
+- `header state`
+
+Not as:
+
+- a stack of separate modals
+- a chain of separate pages
+
+### Intended behavior
+
+- the header is no longer a permanent top bar; it becomes quiet **active chrome** that only appears when the current activity needs it
+- the sheet becomes the **main orchestrator**, starting from `explore` and leading to several deeper emergency states while reusing the same shell
+- the map remains the stable spatial truth layer underneath the whole flow
+- `profile` remains the one navigation-led exception used for broader app navigation, not the main expandable/collapsible emergency path
+
+### Motion/interaction expectation
+
+Each sheet-state switch should still feel like a modal-quality transition even though it is the same reusable sheet.
+
+Desired characteristics:
+
+- the sheet should feel like it grows smoothly from the bottom upward
+- state changes should feel continuous, not like abrupt UI replacement
+- the team should keep tuning:
+  - detent resistance
+  - velocity tuning
+  - gesture-vs-scroll handoff
+  - header/map chrome yielding
+  - stable full-surface drag regions
+
+### Practical implication for future work
+
+The codebase is still in a transitional phase in places, but the forward direction is now clearer:
+
+- fewer separate modal concepts
+- more sheet-state orchestration
+- more consistent map/sheet/header coordination
+- no page-wizard feel inside the core emergency flow
