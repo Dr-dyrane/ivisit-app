@@ -6,12 +6,21 @@ import { MAP_EXPLORE_INTENT_COPY } from "./mapExploreIntent.content";
 import { getBedSpaceSubtext, getSelectedCareLabel } from "./mapExploreIntent.helpers";
 import styles from "./mapExploreIntent.styles";
 
+const CARE_BIAS_TRANSLATE_X = {
+	neutral: 0,
+	primary: -8,
+	leading: -4,
+	trailing: 4,
+};
+
 function CareIntentOrb({
 	label,
 	subtext,
 	iconName,
 	colors,
 	hierarchy = "secondary",
+	actionBias = "neutral",
+	containerStyle = null,
 	onPress,
 	isSelected = false,
 	titleColor,
@@ -50,57 +59,65 @@ function CareIntentOrb({
 				? 8
 				: 4;
 	const elevation = isAndroid ? 0 : hierarchy === "primary" ? 12 : hierarchy === "secondary" ? 5 : 2;
+	const staticTranslateX = CARE_BIAS_TRANSLATE_X[actionBias] ?? 0;
 
 	return (
 		<Pressable
 			onPress={onPress}
 			style={({ pressed }) => [
 				styles.careAction,
+				containerStyle,
 				pressed ? styles.careActionPressed : null,
 				{ opacity: pressed ? Math.max(wrapperOpacity - 0.08, 0.54) : wrapperOpacity },
 			]}
 		>
-			<Animated.View
+			<View
 				style={{
-					transform: [{ scale: isSelected ? 1.05 : animatedScale }],
+					transform: [{ translateX: staticTranslateX }],
 				}}
 			>
-				<View
-					style={[
-						styles.careIconShadowWrap,
-						{
-							shadowColor: "#000000",
-							shadowOpacity,
-							shadowRadius,
-							shadowOffset: { width: 0, height: shadowOffset },
-							elevation,
-							...Platform.select({
-								web: {
-									boxShadow:
-										hierarchy === "primary"
-											? "0px 18px 30px rgba(15,23,42,0.24)"
-											: hierarchy === "secondary"
-												? "0px 10px 16px rgba(15,23,42,0.14)"
-												: "0px 5px 9px rgba(15,23,42,0.08)",
-								},
-							}),
-						},
-					]}
+				<Animated.View
+					style={{
+						transform: [{ scale: isSelected ? 1.05 : animatedScale }],
+					}}
 				>
-					<LinearGradient
-						colors={colors}
-						start={{ x: 0.18, y: 0.18 }}
-						end={{ x: 0.82, y: 0.9 }}
-						style={styles.careIconWrap}
+					<View
+						style={[
+							styles.careIconShadowWrap,
+							{
+								shadowColor: "#000000",
+								shadowOpacity,
+								shadowRadius,
+								shadowOffset: { width: 0, height: shadowOffset },
+								elevation,
+								...Platform.select({
+									web: {
+										boxShadow:
+											hierarchy === "primary"
+												? "0px 18px 30px rgba(15,23,42,0.24)"
+												: hierarchy === "secondary"
+													? "0px 10px 16px rgba(15,23,42,0.14)"
+													: "0px 5px 9px rgba(15,23,42,0.08)",
+									},
+								}),
+							},
+						]}
 					>
-						<MaterialCommunityIcons name={iconName} size={38} color="#FFFFFF" />
-					</LinearGradient>
-				</View>
-			</Animated.View>
-			<Text style={[styles.careLabel, { color: hierarchy === "primary" ? titleColor : mutedColor }]}>
-				{label}
-			</Text>
-			<Text style={[styles.careSubtext, { color: mutedColor }]}>{subtext}</Text>
+						<LinearGradient
+							colors={colors}
+							start={{ x: 0.18, y: 0.18 }}
+							end={{ x: 0.82, y: 0.9 }}
+							style={styles.careIconWrap}
+						>
+							<MaterialCommunityIcons name={iconName} size={38} color="#FFFFFF" />
+						</LinearGradient>
+					</View>
+				</Animated.View>
+				<Text style={[styles.careLabel, { color: hierarchy === "primary" ? titleColor : mutedColor }]}>
+					{label}
+				</Text>
+				<Text style={[styles.careSubtext, { color: mutedColor }]}>{subtext}</Text>
+			</View>
 		</Pressable>
 	);
 }
@@ -111,12 +128,14 @@ function CareIntentCard({
 	iconName,
 	colors,
 	hierarchy = "secondary",
+	panelBias = "neutral",
 	onPress,
 	isSelected = false,
 	showSubtext = true,
 	pulseProgress = null,
 }) {
 	const isPrimary = hierarchy === "primary";
+	const restingOpacity = isSelected ? 1 : isPrimary ? 1 : hierarchy === "secondary" ? 0.94 : 0.82;
 	const animatedScale =
 		isPrimary && pulseProgress
 			? pulseProgress.interpolate({
@@ -135,9 +154,9 @@ function CareIntentCard({
 		!isPrimary && pulseProgress && !isSelected
 			? pulseProgress.interpolate({
 					inputRange: [0, 1],
-					outputRange: [0.92, 0.62],
+					outputRange: hierarchy === "secondary" ? [0.95, 0.78] : [0.84, 0.64],
 				})
-			: 1;
+			: restingOpacity;
 	const cardRotateX =
 		isPrimary && pulseProgress
 			? pulseProgress.interpolate({
@@ -222,6 +241,15 @@ function CareIntentCard({
 					outputRange: [0.88, 0.88, 1.22, 0.94],
 				})
 			: 1;
+	const staticTranslateX = CARE_BIAS_TRANSLATE_X[panelBias] ?? 0;
+	const surfaceBiasStyle =
+		panelBias === "primary"
+			? styles.intentCardSurfacePrimaryBias
+			: panelBias === "leading"
+				? styles.intentCardSurfaceLeadingBias
+				: panelBias === "trailing"
+					? styles.intentCardSurfaceTrailingBias
+					: null;
 
 	return (
 		<Pressable
@@ -238,6 +266,7 @@ function CareIntentCard({
 						opacity: animatedOpacity,
 						transform: [
 							{ perspective: 1000 },
+							{ translateX: staticTranslateX },
 							{ translateY: isSelected ? 0 : animatedTranslateY },
 							{ scale: isSelected ? 1.01 : animatedScale },
 							{ rotateX: isSelected ? "0deg" : cardRotateX },
@@ -264,6 +293,7 @@ function CareIntentCard({
 					style={[
 						styles.intentCardSurface,
 						isPrimary ? styles.intentCardSurfacePrimary : styles.intentCardSurfaceSecondary,
+						surfaceBiasStyle,
 					]}
 				>
 					{isPrimary && !isSelected ? (
@@ -366,12 +396,13 @@ export default function MapExploreIntentCareSection({
 		layoutMode === "canonical" || layoutMode === "web_canonical";
 
 	if (layoutMode === "panel") {
-		return (
+			return (
 			<>
 				<Pressable
 					onPress={onOpenCareHistory}
 					style={({ pressed }) => [
 						styles.intentSectionHeader,
+						styles.intentSectionHeaderBiased,
 						styles.intentSectionHeaderTrigger,
 						pressed ? styles.sectionTriggerPressed : null,
 					]}
@@ -389,39 +420,43 @@ export default function MapExploreIntentCareSection({
 					</View>
 				</Pressable>
 
-				<View style={styles.intentPanelGrid}>
-					<View style={styles.intentPanelFullSpan}>
+				<View style={[styles.intentPanelGrid, styles.intentPanelGridBiased]}>
+					<View style={[styles.intentPanelFullSpan, styles.intentPanelFullSpanBiased]}>
 						<CareIntentCard
 							label={MAP_EXPLORE_INTENT_COPY.AMBULANCE}
 							subtext={ambulanceSubtext}
 							iconName="ambulance"
 							colors={["#A11217", "#6D080D"]}
 							hierarchy="primary"
+							panelBias="primary"
 							onPress={() => onChooseCare("ambulance")}
 							isSelected={selectedCare === "ambulance"}
 							showSubtext={false}
 							pulseProgress={!selectedCare ? pulseProgress : null}
 						/>
 					</View>
-					<View style={styles.intentPanelBottomRow}>
-						<View style={styles.intentPanelHalf}>
+					<View style={[styles.intentPanelBottomRow, styles.intentPanelBottomRowBiased]}>
+						<View style={[styles.intentPanelHalf, styles.intentPanelHalfLeading]}>
 							<CareIntentCard
 								label={MAP_EXPLORE_INTENT_COPY.BED_SPACE}
 								subtext={bedSubtext}
 								iconName="bed"
 								colors={["#5F748E", "#4C6078"]}
+								panelBias="leading"
 								onPress={() => onChooseCare("bed")}
 								isSelected={selectedCare === "bed"}
 								showSubtext={false}
 								pulseProgress={!selectedCare ? pulseProgress : null}
 							/>
 						</View>
-						<View style={styles.intentPanelHalf}>
+						<View style={[styles.intentPanelHalf, styles.intentPanelHalfTrailing]}>
 							<CareIntentCard
 								label={MAP_EXPLORE_INTENT_COPY.COMPARE}
 								subtext={MAP_EXPLORE_INTENT_COPY.COMPARE_SUBTEXT}
 								iconName="format-list-bulleted"
 								colors={["#737C88", "#596370"]}
+								hierarchy="tertiary"
+								panelBias="trailing"
 								onPress={onOpenCareHistory}
 								showSubtext={false}
 								pulseProgress={!selectedCare ? pulseProgress : null}
@@ -445,32 +480,40 @@ export default function MapExploreIntentCareSection({
 					</Text>
 				</View>
 
-				<View style={styles.intentActionStack}>
+				<View style={[styles.intentActionStack, styles.intentActionStackBiased]}>
 					<CareIntentCard
 						label={MAP_EXPLORE_INTENT_COPY.AMBULANCE}
 						subtext={ambulanceSubtext}
 						iconName="ambulance"
 						colors={["#A11217", "#6D080D"]}
 						hierarchy="primary"
+						panelBias="primary"
 						onPress={() => onChooseCare("ambulance")}
 						isSelected={selectedCare === "ambulance"}
 					/>
-					<View style={styles.intentActionRow}>
-						<CareIntentCard
-							label={MAP_EXPLORE_INTENT_COPY.BED_SPACE}
-							subtext={bedSubtext}
-							iconName="bed"
-							colors={["#5F748E", "#4C6078"]}
-							onPress={() => onChooseCare("bed")}
-							isSelected={selectedCare === "bed"}
-						/>
-						<CareIntentCard
-							label={MAP_EXPLORE_INTENT_COPY.COMPARE}
-							subtext={MAP_EXPLORE_INTENT_COPY.COMPARE_SUBTEXT}
-							iconName="format-list-bulleted"
-							colors={["#737C88", "#596370"]}
-							onPress={onOpenCareHistory}
-						/>
+					<View style={[styles.intentActionRow, styles.intentActionRowBiased]}>
+						<View style={[styles.intentActionHalf, styles.intentActionHalfLeading]}>
+							<CareIntentCard
+								label={MAP_EXPLORE_INTENT_COPY.BED_SPACE}
+								subtext={bedSubtext}
+								iconName="bed"
+								colors={["#5F748E", "#4C6078"]}
+								panelBias="leading"
+								onPress={() => onChooseCare("bed")}
+								isSelected={selectedCare === "bed"}
+							/>
+						</View>
+						<View style={[styles.intentActionHalf, styles.intentActionHalfTrailing]}>
+							<CareIntentCard
+								label={MAP_EXPLORE_INTENT_COPY.COMPARE}
+								subtext={MAP_EXPLORE_INTENT_COPY.COMPARE_SUBTEXT}
+								iconName="format-list-bulleted"
+								colors={["#737C88", "#596370"]}
+								hierarchy="tertiary"
+								panelBias="trailing"
+								onPress={onOpenCareHistory}
+							/>
+						</View>
 					</View>
 				</View>
 			</>
@@ -496,13 +539,15 @@ export default function MapExploreIntentCareSection({
 				<Ionicons name="chevron-forward" size={16} color={mutedColor} />
 			</Pressable>
 
-			<View style={styles.careRow}>
+			<View style={[styles.careRow, styles.careRowBiased]}>
 				<CareIntentOrb
 					label={MAP_EXPLORE_INTENT_COPY.AMBULANCE}
 					subtext={ambulanceSubtext}
 					iconName="ambulance"
 					colors={["#A11217", "#6D080D"]}
 					hierarchy="primary"
+					actionBias="primary"
+					containerStyle={styles.careActionPrimaryBias}
 					onPress={() => onChooseCare("ambulance")}
 					isSelected={selectedCare === "ambulance"}
 					titleColor={titleColor}
@@ -515,6 +560,8 @@ export default function MapExploreIntentCareSection({
 					iconName="bed"
 					colors={["#6F8DA7", "#506A86"]}
 					hierarchy="secondary"
+					actionBias="leading"
+					containerStyle={styles.careActionLeadingBias}
 					onPress={() => onChooseCare("bed")}
 					isSelected={selectedCare === "bed"}
 					titleColor={titleColor}
@@ -526,6 +573,8 @@ export default function MapExploreIntentCareSection({
 					iconName="format-list-bulleted"
 					colors={["#7A8592", "#596370"]}
 					hierarchy="tertiary"
+					actionBias="trailing"
+					containerStyle={styles.careActionTrailingBias}
 					onPress={onOpenCareHistory}
 					titleColor={titleColor}
 					mutedColor={mutedColor}

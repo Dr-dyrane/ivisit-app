@@ -246,14 +246,22 @@ export default StyleSheet.create({
 		marginTop: 8,
 	},
 	intentSignalPill: {
+		alignSelf: "flex-start",
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		flexShrink: 0,
+		maxWidth: "100%",
 		paddingHorizontal: 10,
 		paddingVertical: 6,
 		borderRadius: 999,
 	},
 	intentSignalText: {
+		flexShrink: 0,
 		fontSize: 11,
 		lineHeight: 14,
 		fontWeight: "700",
+		includeFontPadding: false,
 	},
 	summaryHeroCard: {
 		marginBottom: 22,
@@ -485,6 +493,12 @@ export default StyleSheet.create({
 		gap: 10,
 		marginBottom: 16,
 	},
+	intentSectionHeaderBiased: {
+		justifyContent: "flex-start",
+		alignSelf: "flex-start",
+		gap: 8,
+		marginBottom: 18,
+	},
 	intentSectionHeaderTrigger: {
 		alignSelf: "stretch",
 	},
@@ -508,12 +522,29 @@ export default StyleSheet.create({
 		justifyContent: "space-between",
 		gap: 10,
 	},
+	careRowBiased: {
+		width: "100%",
+		alignSelf: "flex-start",
+		justifyContent: "flex-start",
+		gap: 8,
+		paddingRight: 10,
+	},
 	careAction: {
 		flex: 1,
 		alignItems: "center",
 		justifyContent: "flex-start",
 		paddingVertical: 2,
 		paddingHorizontal: 1,
+	},
+	careActionPrimaryBias: {
+		flex: 1.08,
+	},
+	careActionLeadingBias: {
+		flex: 0.98,
+	},
+	careActionTrailingBias: {
+		flex: 0.9,
+		marginLeft: 6,
 	},
 	careActionPressed: {
 		opacity: 0.88,
@@ -548,23 +579,60 @@ export default StyleSheet.create({
 	intentActionStack: {
 		gap: 10,
 	},
+	intentActionStackBiased: {
+		width: "100%",
+		alignSelf: "flex-start",
+		gap: 8,
+		paddingRight: 8,
+	},
 	intentActionRow: {
 		flexDirection: "row",
 		gap: 10,
 	},
+	intentActionRowBiased: {
+		gap: 6,
+	},
+	intentActionHalf: {
+		flex: 1,
+	},
+	intentActionHalfLeading: {
+		flex: 1.04,
+	},
+	intentActionHalfTrailing: {
+		flex: 0.96,
+		marginLeft: 6,
+	},
 	intentPanelGrid: {
 		gap: 12,
 	},
+	intentPanelGridBiased: {
+		width: "100%",
+		alignSelf: "flex-start",
+		paddingRight: 8,
+	},
 	intentPanelFullSpan: {
 		width: "100%",
+	},
+	intentPanelFullSpanBiased: {
+		alignSelf: "flex-start",
 	},
 	intentPanelBottomRow: {
 		flexDirection: "row",
 		alignItems: "stretch",
 		gap: 12,
 	},
+	intentPanelBottomRowBiased: {
+		gap: 6,
+	},
 	intentPanelHalf: {
 		flex: 1,
+	},
+	intentPanelHalfLeading: {
+		flex: 1.04,
+	},
+	intentPanelHalfTrailing: {
+		flex: 0.96,
+		marginLeft: 8,
 	},
 	intentCardPressable: {
 		flex: 1,
@@ -582,6 +650,18 @@ export default StyleSheet.create({
 		paddingHorizontal: 16,
 		paddingVertical: 15,
 		overflow: "hidden",
+	},
+	intentCardSurfacePrimaryBias: {
+		paddingLeft: 20,
+		paddingRight: 11,
+	},
+	intentCardSurfaceLeadingBias: {
+		paddingLeft: 17,
+		paddingRight: 11,
+	},
+	intentCardSurfaceTrailingBias: {
+		paddingLeft: 14,
+		paddingRight: 13,
 	},
 	intentCardPulseGlow: {
 		position: "absolute",

@@ -166,16 +166,16 @@ export function useMapSheetShell({
 		sheetHeight,
 		dragTranslateY,
 		insets,
-		sidebarOuterInset: surfaceConfig.sidebarOuterInset ?? 18,
-		sidebarTopInset: surfaceConfig.sidebarTopInset ?? 18,
-		sidebarBottomInset: surfaceConfig.sidebarBottomInset ?? 18,
+		sidebarOuterInset: surfaceConfig.sidebarOuterInset ?? 14,
+		sidebarTopInset: surfaceConfig.sidebarTopInset ?? 14,
+		sidebarBottomInset: surfaceConfig.sidebarBottomInset ?? 14,
 	});
 	const { contentPaddingTop, contentPaddingBottom } = getMapSheetContentPadding({
 		isSidebar,
 		topPadding,
 		bottomPadding,
-		sidebarContentTopPadding: surfaceConfig.sidebarContentTopPadding ?? 8,
-		sidebarContentBottomPadding: surfaceConfig.sidebarContentBottomPadding ?? 10,
+		sidebarContentTopPadding: surfaceConfig.sidebarContentTopPadding ?? 6,
+		sidebarContentBottomPadding: surfaceConfig.sidebarContentBottomPadding ?? 6,
 	});
 
 	return {

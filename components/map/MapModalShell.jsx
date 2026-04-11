@@ -66,6 +66,20 @@ export default function MapModalShell({
 	const viewportVariant = getMapViewportVariant({ platform: Platform.OS, width: screenWidth });
 	const surfaceConfig = getMapViewportSurfaceConfig(viewportVariant);
 	const isDrawer = surfaceConfig.modalPresentationMode === "left-drawer";
+	const drawerSideInset = isDrawer
+		? Math.max(0, surfaceConfig.modalSideInset ?? surfaceConfig.sidebarOuterInset ?? 0)
+		: 0;
+	const drawerTopInset = isDrawer
+		? Math.max(insets?.top || 0, surfaceConfig.modalTopInset ?? surfaceConfig.sidebarTopInset ?? 0)
+		: 0;
+	const drawerBottomInset = isDrawer
+		? Math.max(
+				insets?.bottom || 0,
+				surfaceConfig.modalBottomInset ?? surfaceConfig.sidebarBottomInset ?? 0,
+			)
+		: 0;
+	const drawerWidthForMotion =
+		surfaceConfig.drawerMaxWidth || surfaceConfig.sidebarMaxWidth || Math.max(360, screenWidth * 0.44);
 	const resolvedCloseOnBackdropPress = closeOnBackdropPress || isDrawer;
 	const enableDetents = !isDrawer && enableSnapDetents;
 	const resolvedShowHandle = !isDrawer && (showHandle || enableDetents);
@@ -152,9 +166,7 @@ export default function MapModalShell({
 
 
 	useEffect(() => {
-		const closedOffset = isDrawer
-			? -(surfaceConfig.drawerMaxWidth || surfaceConfig.sidebarMaxWidth || screenWidth) - 24
-			: screenHeight;
+		const closedOffset = isDrawer ? -(drawerWidthForMotion + drawerSideInset + 24) : screenHeight;
 		if (visible) {
 			setShouldRender(true);
 			setModalSnapState(resolvedDefaultSnapState);
@@ -213,6 +225,8 @@ export default function MapModalShell({
 		return undefined;
 	}, [
 		bgOpacity,
+		drawerSideInset,
+		drawerWidthForMotion,
 		dragTranslateY,
 		isDrawer,
 		resolvedDefaultSnapState,
@@ -289,27 +303,27 @@ export default function MapModalShell({
 	const resolvedTopClearance = topClearance ?? surfaceConfig.topClearance;
 	const hostWidth = isDrawer
 		? Math.min(
-				surfaceConfig.drawerMaxWidth || surfaceConfig.sidebarMaxWidth || Math.max(360, screenWidth * 0.44),
-				Math.max(320, screenWidth - 48),
+				drawerWidthForMotion,
+				Math.max(320, screenWidth - drawerSideInset - 32),
 			)
 		: screenWidth;
-	const hostLeft = isDrawer ? 0 : 0;
-	const hostBottom = isDrawer ? 0 : 0;
+	const hostLeft = isDrawer ? drawerSideInset : 0;
+	const hostBottom = isDrawer ? drawerBottomInset : 0;
 	const modalRadius = surfaceConfig.modalCornerRadius;
 	const viewportMaxHeight = isDrawer
-		? screenHeight
+		? Math.max(320, screenHeight - drawerTopInset - drawerBottomInset)
 		: Math.max(360, screenHeight - insets.top - resolvedTopClearance - hostBottom);
 	const resolvedHeight = isDrawer
-		? screenHeight
+		? viewportMaxHeight
 		: matchExpandedSheetHeight
 			? Math.min(expandedSheetHeight, viewportMaxHeight)
 			: Math.min(screenHeight * maxHeightRatio, viewportMaxHeight);
 	const maxHeight = resolvedHeight;
 	const collapsedHeight = isDrawer
-		? screenHeight
+		? viewportMaxHeight
 		: Math.max(insets.bottom + 72, resolvedShowHandle ? 94 : 80);
 	const halfHeight = isDrawer
-		? screenHeight
+		? viewportMaxHeight
 		: Math.min(
 				maxHeight - 28,
 				Math.max(
@@ -318,7 +332,7 @@ export default function MapModalShell({
 				),
 			);
 	const minHeight = enableDetents ? collapsedHeight : isDrawer
-		? screenHeight
+		? viewportMaxHeight
 		: matchExpandedSheetHeight
 			? resolvedHeight
 			: Math.min(screenHeight * minHeightRatio, resolvedHeight);
@@ -330,9 +344,9 @@ export default function MapModalShell({
 		: maxHeight;
 	const surfaceShapeStyle = isDrawer
 		? {
-				borderTopLeftRadius: 0,
+				borderTopLeftRadius: modalRadius,
 				borderTopRightRadius: modalRadius,
-				borderBottomLeftRadius: 0,
+				borderBottomLeftRadius: modalRadius,
 				borderBottomRightRadius: modalRadius,
 			}
 		: {
@@ -658,8 +672,8 @@ export default function MapModalShell({
 								width: hostWidth,
 								left: hostLeft,
 								right: undefined,
-								top: 0,
-								bottom: 0,
+								top: drawerTopInset,
+								bottom: hostBottom,
 							}
 						: {
 								left: 0,

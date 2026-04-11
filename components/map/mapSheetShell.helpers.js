@@ -40,8 +40,8 @@ export function getMapSheetContentPadding({
 	isSidebar,
 	topPadding,
 	bottomPadding,
-	sidebarContentTopPadding = 8,
-	sidebarContentBottomPadding = 10,
+	sidebarContentTopPadding = 6,
+	sidebarContentBottomPadding = 6,
 }) {
 	return {
 		contentPaddingTop: isSidebar ? sidebarContentTopPadding : topPadding,
@@ -58,9 +58,9 @@ export function getMapSheetHostLayout({
 	sheetHeight,
 	dragTranslateY,
 	insets,
-	sidebarOuterInset = 18,
-	sidebarTopInset = 18,
-	sidebarBottomInset = 18,
+	sidebarOuterInset = 14,
+	sidebarTopInset = 14,
+	sidebarBottomInset = 14,
 }) {
 	if (isSidebar) {
 		return {

@@ -154,15 +154,15 @@ export default function MapExploreIntentHospitalSummaryCard({
 					{nearbyHospitalCount > 0 || totalAvailableBeds > 0 ? (
 						<View style={styles.intentSignalRow}>
 							{nearbyHospitalCount > 0 ? (
-								<View style={[styles.intentSignalPill, { backgroundColor: tokens.mutedCardSurface }]}> 
-									<Text style={[styles.intentSignalText, { color: tokens.titleColor }]}> 
+								<View style={[styles.intentSignalPill, { backgroundColor: tokens.mutedCardSurface }]}>
+									<Text numberOfLines={1} style={[styles.intentSignalText, { color: tokens.titleColor }]}>
 										{`${nearbyHospitalCount} nearby`}
 									</Text>
 								</View>
 							) : null}
 							{totalAvailableBeds > 0 ? (
-								<View style={[styles.intentSignalPill, { backgroundColor: tokens.mutedCardSurface }]}> 
-									<Text style={[styles.intentSignalText, { color: tokens.titleColor }]}> 
+								<View style={[styles.intentSignalPill, { backgroundColor: tokens.mutedCardSurface }]}>
+									<Text numberOfLines={1} style={[styles.intentSignalText, { color: tokens.titleColor }]}>
 										{`${totalAvailableBeds} beds`}
 									</Text>
 								</View>
@@ -304,7 +304,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 
 			<View style={styles.intentSignalRow}>
 				<View style={[styles.intentSignalPill, { backgroundColor: tokens.mutedCardSurface }]}>
-					<Text style={[styles.intentSignalText, { color: tokens.titleColor }]}>
+					<Text numberOfLines={1} style={[styles.intentSignalText, { color: tokens.titleColor }]}>
 						{nearbyHospitalCount > 0
 							? `${nearbyHospitalCount} nearby`
 							: MAP_EXPLORE_INTENT_COPY.NEARBY_CARE}
@@ -312,7 +312,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 				</View>
 				{totalAvailableBeds > 0 ? (
 					<View style={[styles.intentSignalPill, { backgroundColor: tokens.mutedCardSurface }]}>
-						<Text style={[styles.intentSignalText, { color: tokens.titleColor }]}>
+						<Text numberOfLines={1} style={[styles.intentSignalText, { color: tokens.titleColor }]}>
 							{`${totalAvailableBeds} beds`}
 						</Text>
 					</View>
