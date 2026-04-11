@@ -88,7 +88,7 @@ The emergency surface is now locked to a map-first, state-driven model:
 
 - `map = constant reality layer`
 - `sheet = state + action`
-- `header = orientation + system status`
+- `header = true active-session chrome only after dispatch has started`
 
 Primary states:
 
@@ -104,6 +104,7 @@ Primary states:
 Operational truth lock:
 
 - `dispatch_clearance` and `commit_ready` exist so the user sees hospital, ETA, identity, and payment clearly before live dispatch is released
+- pre-dispatch states should not surface the active header yet
 - there is only **one irreversible commit moment** in the patient flow
 - `responder_matched` is only feasible after a hospital has accepted the request and released a responder
 - `tracking_arrival` is only feasible after a responder has actually been assigned and route truth exists

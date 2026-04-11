@@ -242,7 +242,9 @@ Not as:
 
 ### Intended behavior
 
-- the header is no longer a permanent top bar; it becomes quiet **active chrome** that only appears when the current activity needs it
+- the header is no longer a permanent top bar; it stays hidden through explore and all pre-dispatch decisions
+- the header does **not** guide the user into dispatch; it only appears after dispatch has actually started and there is a true active session to show
+- once active, the header becomes expandable downward session chrome and may compress/collapse the sheet below it, closer to Apple Maps live-session behavior
 - the sheet becomes the **main orchestrator**, starting from `explore` and leading to several deeper emergency states while reusing the same shell
 - the map remains the stable spatial truth layer underneath the whole flow
 - `profile` remains the one navigation-led exception used for broader app navigation, not the main expandable/collapsible emergency path

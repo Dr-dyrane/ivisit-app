@@ -17,6 +17,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderState } from "../contexts/HeaderStateContext";
+import { getHeaderBehavior } from "../constants/header";
 import {
 	getMapViewportVariant,
 	isSidebarMapVariant,
@@ -75,14 +76,8 @@ export default function ThemeToggle({ showLabel = true }) {
 	const verticalOffsetAnim = useRef(new Animated.Value(0)).current;
 
 	const collapseTimer = useRef(null);
-	const hasVisibleHeaderContent =
-		Boolean(headerState?.title) ||
-		Boolean(headerState?.subtitle) ||
-		Boolean(headerState?.icon) ||
-		Boolean(headerState?.badge) ||
-		Boolean(headerState?.leftComponent) ||
-		Boolean(headerState?.rightComponent);
-	const hasActiveHeader = !headerState?.hidden && hasVisibleHeaderContent;
+	const resolvedHeader = getHeaderBehavior(headerState);
+	const hasActiveHeader = !resolvedHeader.isHidden && resolvedHeader.hasRenderableContent;
 	const defaultTop = Platform.OS === "ios"
 		? (isWelcomeRoute ? 46 : 54)
 		: isWeb

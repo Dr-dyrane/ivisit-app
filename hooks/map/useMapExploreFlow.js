@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, useWindowDimensions } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -25,8 +25,6 @@ import {
 	isSidebarMapVariant,
 } from "../../components/map/mapViewportConfig";
 import { HEADER_MODES } from "../../constants/header";
-import HeaderBackButton from "../../components/navigation/HeaderBackButton";
-import HeaderLocationButton from "../../components/headers/HeaderLocationButton";
 
 function buildDemoBootstrapKey(
 	location,
@@ -50,7 +48,6 @@ function buildDemoBootstrapKey(
 }
 
 export function useMapExploreFlow() {
-	const router = useRouter();
 	const { isDarkMode } = useTheme();
 	const { width, height } = useWindowDimensions();
 	const viewportVariant = useMemo(
@@ -127,22 +124,6 @@ export function useMapExploreFlow() {
 		},
 	);
 	const isSignedIn = Boolean(user?.isLoggedIn || user?.id);
-	const isModalFocused = Boolean(
-		locationSearchVisible ||
-		hospitalModalVisible ||
-		hospitalDetailsVisible ||
-		profileModalVisible ||
-		guestProfileVisible ||
-		careHistoryVisible ||
-		recentVisitsVisible ||
-		publicSearchVisible ||
-		authModalVisible,
-	);
-	const shouldHideMapHeader =
-		usesSidebarLayout ||
-		!hasCompletedInitialMapLoad ||
-		(!usesSidebarLayout && sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED) ||
-		isModalFocused;
 	const profileImageSource = user?.imageUri
 		? { uri: user.imageUri }
 		: require("../../assets/profile.jpg");
@@ -174,33 +155,16 @@ export function useMapExploreFlow() {
 		return Array.isArray(hospitals) ? hospitals : [];
 	}, [allHospitals, hospitals]);
 
-	const mapHeaderState = useMemo(
-		() => ({
-			mode: shouldHideMapHeader ? HEADER_MODES.HIDDEN : HEADER_MODES.MAP_OVERLAY,
-			title: currentLocationDetails?.primaryText || "Current location",
-			subtitle: currentLocationDetails?.secondaryText || "Location",
-			backgroundColor: "#86100E",
-			rightComponent: <HeaderLocationButton onPress={() => setLocationSearchVisible(true)} />,
-			leftComponent: <HeaderBackButton onPress={() => router.replace("/")} />,
-			badge: null,
-			hidden: shouldHideMapHeader,
-			scrollAware: false,
-		}),
-		[
-			currentLocationDetails?.primaryText,
-			currentLocationDetails?.secondaryText,
-			router,
-			setLocationSearchVisible,
-			shouldHideMapHeader,
-		],
-	);
-
 	useFocusEffect(
 		useCallback(() => {
 			resetHeader();
-			unlockHeaderHidden();
-			forceHeaderVisible();
 			resetHeaderState();
+			lockHeaderHidden();
+			setHeaderState({
+				mode: HEADER_MODES.HIDDEN,
+				hidden: true,
+				scrollAware: false,
+			});
 			setSheetMode(MAP_SHEET_MODES.EXPLORE_INTENT);
 			setSheetSnapState(
 				usesSidebarLayout ? MAP_SHEET_SNAP_STATES.EXPANDED : MAP_SHEET_SNAP_STATES.HALF,
@@ -213,31 +177,16 @@ export function useMapExploreFlow() {
 			};
 		}, [
 			forceHeaderVisible,
+			lockHeaderHidden,
 			resetHeader,
 			resetHeaderState,
+			setHeaderState,
 			setSheetMode,
 			setSheetSnapState,
 			unlockHeaderHidden,
 			usesSidebarLayout,
 		]),
 	);
-
-	useEffect(() => {
-		if (mapHeaderState.mode === HEADER_MODES.HIDDEN) {
-			lockHeaderHidden();
-		} else {
-			unlockHeaderHidden();
-			forceHeaderVisible();
-		}
-
-		setHeaderState(mapHeaderState);
-	}, [
-		forceHeaderVisible,
-		lockHeaderHidden,
-		mapHeaderState,
-		setHeaderState,
-		unlockHeaderHidden,
-	]);
 
 	useEffect(() => {
 		if (manualLocation?.location) {

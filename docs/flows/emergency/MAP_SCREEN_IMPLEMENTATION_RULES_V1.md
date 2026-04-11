@@ -272,7 +272,9 @@ Rules:
 
 ## 12. Header Rule
 
-The smart-header fix is the **global contract** for `/map`; the map should drive it intentionally instead of inventing separate top chrome.
+The header is **not** navigation chrome or a page-title bar for `/map`.
+
+It is reserved for true active emergency-session states after dispatch has actually started.
 
 Header coordination lives in:
 
@@ -289,7 +291,10 @@ Rules:
 
 - all top-surface state should flow through `setHeaderState(...)` and `getHeaderBehavior(...)`
 - use shared header modes (`MAP_OVERLAY`, `FIXED`, `HIDDEN`) instead of local one-off booleans
-- map state should set the header title from the resolved location model
+- `explore_intent`, hospital browsing, and other pre-dispatch sheet states should keep the header hidden
+- the header must not appear just to guide the user toward dispatch; it should appear only after dispatch is already live
+- when active, the header should express real session state such as matched/tracking/progress, not page identity
+- the active header may expand downward and should compress/collapse the sheet below it instead of floating as unrelated chrome
 - modal/focused states should hide the header through the same global header contract
 - on web, glass blur must be handled explicitly, not by falling back to Android styling
 

@@ -46,7 +46,7 @@ For iVisit, that means:
 
 - map = reality
 - sheet = state + decision
-- header = orientation only
+- header = hidden until there is a true active emergency session
 - auth and payment are late, not early
 
 ## 1. Universal Sheet States

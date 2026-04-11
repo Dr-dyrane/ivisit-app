@@ -52,15 +52,7 @@ function AuthHeaderWrapper() {
 	const { headerState } = useHeaderState();
 	const resolvedHeader = getHeaderBehavior(headerState);
 
-	const hasVisibleHeaderContent =
-		Boolean(resolvedHeader.title) ||
-		Boolean(resolvedHeader.subtitle) ||
-		Boolean(resolvedHeader.icon) ||
-		Boolean(resolvedHeader.badge) ||
-		Boolean(resolvedHeader.leftComponent) ||
-		Boolean(resolvedHeader.rightComponent);
-
-	if (resolvedHeader.isHidden || !hasVisibleHeaderContent) return null;
+	if (resolvedHeader.isHidden || !resolvedHeader.hasRenderableContent) return null;
 
 	return (
 		<ScrollAwareHeader
@@ -72,6 +64,8 @@ function AuthHeaderWrapper() {
 			leftComponent={resolvedHeader.leftComponent}
 			rightComponent={resolvedHeader.rightComponent}
 			scrollAware={resolvedHeader.isScrollAware}
+			mode={resolvedHeader.mode}
+			session={resolvedHeader.session}
 		/>
 	);
 }

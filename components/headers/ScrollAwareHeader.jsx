@@ -1,20 +1,91 @@
-import React from "react";
-import { Animated, View, Text, Platform, StyleSheet } from "react-native";
-import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "../../contexts/ThemeContext";
+import React, { useEffect, useMemo, useRef } from "react";
+import {
+	Animated,
+	Easing,
+	Platform,
+	Pressable,
+	StyleSheet,
+	Text,
+	View,
+} from "react-native";
 import { BlurView } from "expo-blur";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
+import { DEFAULT_HEADER_SESSION, HEADER_MODES } from "../../constants/header";
 import {
 	GLASS_SURFACE_VARIANTS,
 	SURFACE_RADII,
 	getGlassSurfaceTokens,
 } from "../../constants/surfaces";
+import ActionWrapper from "./ActionWrapper";
 import NotificationIconButton from "./NotificationIconButton";
 import SearchIconButton from "./SearchIconButton";
-import ActionWrapper from "./ActionWrapper";
 
 const HEADER_HEIGHT = 80;
+const ACTIVE_SESSION_MIN_HEIGHT = 88;
+const ACTIVE_SESSION_BODY_MAX_HEIGHT = 164;
+
+function getSessionBodyTargetHeight({ details, expandedContent }) {
+	const detailRows = Array.isArray(details) ? details.length : 0;
+	const detailsHeight = detailRows > 0 ? Math.min(detailRows, 4) * 32 + 8 : 0;
+	const expandedContentHeight = expandedContent ? 72 : 0;
+
+	return Math.min(
+		ACTIVE_SESSION_BODY_MAX_HEIGHT,
+		Math.max(0, detailsHeight + expandedContentHeight + 12),
+	);
+}
+
+function getSessionStatusTokens({ statusTone, isDarkMode, backgroundColor }) {
+	switch (statusTone) {
+		case "critical":
+		case "emergency":
+			return {
+				backgroundColor: isDarkMode ? "rgba(190, 24, 93, 0.24)" : "rgba(190, 24, 93, 0.14)",
+				borderColor: isDarkMode ? "rgba(251, 113, 133, 0.28)" : "rgba(190, 24, 93, 0.18)",
+				textColor: isDarkMode ? "#FFE4E6" : "#9F1239",
+			};
+		case "active":
+		case "tracking":
+		case "live":
+			return {
+				backgroundColor: isDarkMode ? "rgba(37, 99, 235, 0.24)" : "rgba(37, 99, 235, 0.12)",
+				borderColor: isDarkMode ? "rgba(96, 165, 250, 0.24)" : "rgba(37, 99, 235, 0.16)",
+				textColor: isDarkMode ? "#DBEAFE" : "#1D4ED8",
+			};
+		case "success":
+		case "settled":
+			return {
+				backgroundColor: isDarkMode ? "rgba(22, 163, 74, 0.24)" : "rgba(22, 163, 74, 0.12)",
+				borderColor: isDarkMode ? "rgba(74, 222, 128, 0.22)" : "rgba(22, 163, 74, 0.16)",
+				textColor: isDarkMode ? "#DCFCE7" : "#166534",
+			};
+		default:
+			return {
+				backgroundColor: isDarkMode
+					? "rgba(255, 255, 255, 0.08)"
+					: "rgba(15, 23, 42, 0.06)",
+				borderColor: isDarkMode
+					? "rgba(255, 255, 255, 0.08)"
+					: "rgba(15, 23, 42, 0.08)",
+				textColor: backgroundColor || COLORS.brandPrimary,
+			};
+	}
+}
+
+function renderSessionText(value, style) {
+	if (React.isValidElement(value)) {
+		return value;
+	}
+
+	if (!value) {
+		return null;
+	}
+
+	return <Text style={style}>{String(value)}</Text>;
+}
 
 /**
  * ScrollAwareHeader Component (Sticky)
@@ -23,7 +94,7 @@ const HEADER_HEIGHT = 80;
  * - Pure glass/frosted effect with high blur
  * - Minimal opacity for transparency
  * - Fixed at top - doesn't scroll with content
- * - Uses useNativeDriver for 60fps performance
+ * - Supports standard title mode and future active-session mode
  */
 export default function ScrollAwareHeader({
 	title,
@@ -34,37 +105,104 @@ export default function ScrollAwareHeader({
 	leftComponent,
 	rightComponent,
 	scrollAware = true,
+	mode = HEADER_MODES.LEGACY_SCROLL,
+	session = DEFAULT_HEADER_SESSION,
 }) {
 	const insets = useSafeAreaInsets();
 	const { isDarkMode } = useTheme();
 	const isIOS = Platform.OS === "ios";
 	const isAndroid = Platform.OS === "android";
-	const { headerOpacity: scrollHeaderOpacity, titleOpacity: scrollTitleOpacity } = useScrollAwareHeader();
+	const { headerOpacity: scrollHeaderOpacity, titleOpacity: scrollTitleOpacity } =
+		useScrollAwareHeader();
 	const headerOpacity = scrollAware ? scrollHeaderOpacity : 1;
 	const titleOpacity = scrollAware ? scrollTitleOpacity : 1;
 	const headerSurface = getGlassSurfaceTokens({
 		isDarkMode,
 		variant: GLASS_SURFACE_VARIANTS.HEADER,
 	});
+	const isActiveSession = mode === HEADER_MODES.ACTIVE_SESSION;
+	const resolvedSession = session || DEFAULT_HEADER_SESSION;
+	const sessionDetails = Array.isArray(resolvedSession.details)
+		? resolvedSession.details
+		: DEFAULT_HEADER_SESSION.details;
+	const sessionHasBodyContent =
+		sessionDetails.length > 0 || Boolean(resolvedSession.expandedContent);
+	const canToggleSession =
+		isActiveSession &&
+		sessionHasBodyContent &&
+		Boolean(resolvedSession.expandable) &&
+		typeof resolvedSession.onToggleExpand === "function";
+	const isSessionExpanded =
+		isActiveSession && sessionHasBodyContent && Boolean(resolvedSession.expanded);
+	const sessionBodyTargetHeight = useMemo(
+		() =>
+			isSessionExpanded
+				? getSessionBodyTargetHeight({
+					details: sessionDetails,
+					expandedContent: resolvedSession.expandedContent,
+				})
+				: 0,
+		[isSessionExpanded, resolvedSession.expandedContent, sessionDetails],
+	);
+	const sessionExpansion = useRef(new Animated.Value(isSessionExpanded ? 1 : 0)).current;
+	const sessionBodyHeight = useRef(new Animated.Value(sessionBodyTargetHeight)).current;
+
+	useEffect(() => {
+		Animated.parallel([
+			Animated.timing(sessionExpansion, {
+				toValue: isSessionExpanded ? 1 : 0,
+				duration: 260,
+				easing: Easing.out(Easing.cubic),
+				useNativeDriver: false,
+			}),
+			Animated.timing(sessionBodyHeight, {
+				toValue: sessionBodyTargetHeight,
+				duration: 260,
+				easing: Easing.out(Easing.cubic),
+				useNativeDriver: false,
+			}),
+		]).start();
+	}, [isSessionExpanded, sessionBodyHeight, sessionBodyTargetHeight, sessionExpansion]);
 
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
 	const textMuted = isDarkMode ? "#94A3B8" : "#64748B";
+	const sessionStatusTokens = getSessionStatusTokens({
+		statusTone: resolvedSession.statusTone,
+		isDarkMode,
+		backgroundColor,
+	});
+	const sessionChevronRotation = sessionExpansion.interpolate({
+		inputRange: [0, 1],
+		outputRange: ["0deg", "180deg"],
+	});
+	const sessionBodyOpacity = sessionExpansion.interpolate({
+		inputRange: [0, 0.25, 1],
+		outputRange: [0, 0.2, 1],
+	});
+	const sessionBodyTranslateY = sessionExpansion.interpolate({
+		inputRange: [0, 1],
+		outputRange: [-8, 0],
+	});
 
 	const resolvedRight =
-		rightComponent === false ? null : rightComponent == null ? (
-			<View style={styles.rightActions}>
-				<ActionWrapper>
-					<SearchIconButton />
-				</ActionWrapper>
-				<ActionWrapper>
-					<NotificationIconButton />
-				</ActionWrapper>
-			</View>
-		) : (
-			rightComponent
-		);
+		isActiveSession || rightComponent === false
+			? rightComponent
+			: rightComponent == null
+				? (
+					<View style={styles.rightActions}>
+						<ActionWrapper>
+							<SearchIconButton />
+						</ActionWrapper>
+						<ActionWrapper>
+							<NotificationIconButton />
+						</ActionWrapper>
+					</View>
+				)
+				: (
+					rightComponent
+				);
 
-	const headerContent = (
+	const standardHeaderContent = (
 		<View style={[styles.innerContent, { backgroundColor: headerSurface.overlayColor }]}>
 			<View style={styles.leftSection}>
 				{leftComponent ? (
@@ -98,6 +236,144 @@ export default function ScrollAwareHeader({
 		</View>
 	);
 
+	const sessionPrimary = (
+		<View style={styles.activeSessionPrimaryContent}>
+			{resolvedSession.eyebrow ? (
+				<Text numberOfLines={1} style={[styles.sessionEyebrowText, { color: textMuted }]}>
+					{resolvedSession.eyebrow}
+				</Text>
+			) : null}
+			<Text numberOfLines={1} style={[styles.sessionTitleText, { color: textColor }]}>
+				{resolvedSession.title || title}
+			</Text>
+			{resolvedSession.subtitle ? (
+				<Text numberOfLines={1} style={[styles.sessionSubtitleText, { color: textMuted }]}>
+					{resolvedSession.subtitle}
+				</Text>
+			) : subtitle ? (
+				<Text numberOfLines={1} style={[styles.sessionSubtitleText, { color: textMuted }]}>
+					{subtitle}
+				</Text>
+			) : null}
+		</View>
+	);
+
+	const activeSessionHeaderContent = (
+		<View
+			style={[styles.activeSessionContainer, { backgroundColor: headerSurface.overlayColor }]}
+		>
+			<View style={styles.activeSessionTopRow}>
+				<View style={styles.activeSessionLeading}>
+					{leftComponent ? (
+						leftComponent
+					) : icon ? (
+						<View style={[styles.iconSquircle, { backgroundColor }]}>{icon}</View>
+					) : (
+						<View style={styles.activeSessionLeadingSpacer} />
+					)}
+				</View>
+
+				{canToggleSession ? (
+					<Pressable
+						onPress={resolvedSession.onToggleExpand}
+						style={({ pressed }) => [
+							styles.activeSessionPrimary,
+							pressed && styles.sessionPressablePressed,
+						]}
+					>
+						{sessionPrimary}
+					</Pressable>
+				) : (
+					<View style={styles.activeSessionPrimary}>{sessionPrimary}</View>
+				)}
+
+				<View style={styles.activeSessionTrailing}>
+					{resolvedSession.statusLabel ? (
+						<View
+							style={[
+								styles.sessionStatusPill,
+								{
+									backgroundColor: sessionStatusTokens.backgroundColor,
+									borderColor: sessionStatusTokens.borderColor,
+								},
+							]}
+						>
+							<Text
+								numberOfLines={1}
+								style={[styles.sessionStatusText, { color: sessionStatusTokens.textColor }]}
+							>
+								{resolvedSession.statusLabel}
+							</Text>
+						</View>
+					) : null}
+
+					{resolvedRight ? (
+						<View style={styles.activeSessionRightAccessory}>{resolvedRight}</View>
+					) : null}
+
+					{resolvedSession.expandable && sessionHasBodyContent ? (
+						<Animated.Text
+							style={[
+								styles.sessionChevron,
+								{ color: textMuted, transform: [{ rotate: sessionChevronRotation }] },
+							]}
+						>
+							v
+						</Animated.Text>
+					) : null}
+				</View>
+			</View>
+
+			<Animated.View
+				style={[
+					styles.activeSessionBody,
+					{
+						height: sessionBodyHeight,
+						opacity: sessionBodyOpacity,
+					},
+				]}
+				pointerEvents={isSessionExpanded ? "auto" : "none"}
+			>
+				<Animated.View
+					style={[
+						styles.activeSessionBodyInner,
+						{ transform: [{ translateY: sessionBodyTranslateY }] },
+					]}
+				>
+					{sessionDetails.map((detail, index) => (
+						<View
+							key={
+								typeof detail.key === "string" || typeof detail.key === "number"
+									? detail.key
+									: typeof detail.label === "string"
+										? detail.label
+										: `session-detail-${index}`
+							}
+							style={styles.sessionDetailRow}
+						>
+							{renderSessionText(detail.label, [
+								styles.sessionDetailLabel,
+								{ color: textMuted },
+							])}
+							{renderSessionText(detail.value, [
+								styles.sessionDetailValue,
+								{ color: textColor },
+							])}
+						</View>
+					))}
+
+					{resolvedSession.expandedContent ? (
+						<View style={styles.sessionExpandedContent}>
+							{resolvedSession.expandedContent}
+						</View>
+					) : null}
+				</Animated.View>
+			</Animated.View>
+		</View>
+	);
+
+	const headerContent = isActiveSession ? activeSessionHeaderContent : standardHeaderContent;
+
 	return (
 		<Animated.View
 			style={[
@@ -128,23 +404,30 @@ export default function ScrollAwareHeader({
 						},
 					]}
 				>
-				{isIOS ? (
-					<BlurView
-						intensity={headerSurface.blurIntensity}
-						tint={headerSurface.tint}
-						style={[styles.blur, { minHeight: HEADER_HEIGHT }]}
-					>
-						{headerContent}
-					</BlurView>
-				) : (
-					// Android: split-layer glass surface (shadow underlay + translucent island clip)
-					<View style={[styles.blur, {
-						minHeight: HEADER_HEIGHT,
-						backgroundColor: "transparent"
-					}]}>
-						{headerContent}
-					</View>
-				)}
+					{isIOS ? (
+						<BlurView
+							intensity={headerSurface.blurIntensity}
+							tint={headerSurface.tint}
+							style={[
+								styles.blur,
+								{ minHeight: isActiveSession ? ACTIVE_SESSION_MIN_HEIGHT : HEADER_HEIGHT },
+							]}
+						>
+							{headerContent}
+						</BlurView>
+					) : (
+						<View
+							style={[
+								styles.blur,
+								{
+									minHeight: isActiveSession ? ACTIVE_SESSION_MIN_HEIGHT : HEADER_HEIGHT,
+									backgroundColor: "transparent",
+								},
+							]}
+						>
+							{headerContent}
+						</View>
+					)}
 				</View>
 			</View>
 		</Animated.View>
@@ -183,7 +466,7 @@ const styles = StyleSheet.create({
 		height: HEADER_HEIGHT,
 		flexDirection: "row",
 		alignItems: "center",
-		paddingHorizontal: 20, // Premium breathing room
+		paddingHorizontal: 20,
 	},
 	leftSection: {
 		marginRight: 16,
@@ -219,9 +502,9 @@ const styles = StyleSheet.create({
 		marginBottom: 2,
 	},
 	titleText: {
-		fontSize: 24, // Editorial size
+		fontSize: 24,
 		fontWeight: "900",
-		letterSpacing: -1.0,
+		letterSpacing: -1,
 	},
 	rightSection: {
 		marginLeft: 12,
@@ -235,7 +518,7 @@ const styles = StyleSheet.create({
 	badgeBox: {
 		minWidth: 32,
 		height: 32,
-		borderRadius: 10, // Match nested squircle vibe
+		borderRadius: 10,
 		alignItems: "center",
 		justifyContent: "center",
 		paddingHorizontal: 6,
@@ -244,5 +527,102 @@ const styles = StyleSheet.create({
 		color: "#FFFFFF",
 		fontWeight: "900",
 		fontSize: 12,
+	},
+	activeSessionContainer: {
+		paddingHorizontal: 18,
+		paddingTop: 14,
+		paddingBottom: 12,
+	},
+	activeSessionTopRow: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	activeSessionLeading: {
+		marginRight: 14,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	activeSessionLeadingSpacer: {
+		width: 20,
+	},
+	activeSessionPrimary: {
+		flex: 1,
+		minHeight: 60,
+		justifyContent: "center",
+	},
+	activeSessionPrimaryContent: {
+		justifyContent: "center",
+	},
+	activeSessionTrailing: {
+		marginLeft: 12,
+		alignItems: "flex-end",
+		justifyContent: "center",
+	},
+	activeSessionRightAccessory: {
+		marginTop: 6,
+	},
+	sessionPressablePressed: {
+		opacity: 0.82,
+	},
+	sessionEyebrowText: {
+		fontSize: 10,
+		fontWeight: "800",
+		letterSpacing: 1.4,
+		textTransform: "uppercase",
+		marginBottom: 3,
+	},
+	sessionTitleText: {
+		fontSize: 22,
+		fontWeight: "900",
+		letterSpacing: -0.8,
+	},
+	sessionSubtitleText: {
+		fontSize: 13,
+		fontWeight: "600",
+		marginTop: 2,
+	},
+	sessionStatusPill: {
+		minHeight: 28,
+		paddingHorizontal: 12,
+		borderRadius: 999,
+		borderWidth: 1,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	sessionStatusText: {
+		fontSize: 11,
+		fontWeight: "800",
+		letterSpacing: 0.5,
+		textTransform: "uppercase",
+	},
+	sessionChevron: {
+		fontSize: 18,
+		fontWeight: "800",
+		marginTop: 6,
+	},
+	activeSessionBody: {
+		overflow: "hidden",
+	},
+	activeSessionBodyInner: {
+		paddingTop: 10,
+	},
+	sessionDetailRow: {
+		paddingVertical: 8,
+		borderTopWidth: StyleSheet.hairlineWidth,
+		borderTopColor: "rgba(148, 163, 184, 0.18)",
+	},
+	sessionDetailLabel: {
+		fontSize: 11,
+		fontWeight: "800",
+		letterSpacing: 0.8,
+		textTransform: "uppercase",
+		marginBottom: 2,
+	},
+	sessionDetailValue: {
+		fontSize: 15,
+		fontWeight: "700",
+	},
+	sessionExpandedContent: {
+		paddingTop: 12,
 	},
 });

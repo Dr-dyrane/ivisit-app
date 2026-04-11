@@ -54,13 +54,6 @@ function UserHeaderWrapper() {
 	// Disable scroll sensitivity for stack screens (detail views)
 	const isStackScreen = segments.some((segment) => segment === "(stacks)");
 	const scrollAware = !isStackScreen && resolvedHeader.isScrollAware;
-	const hasVisibleHeaderContent =
-		Boolean(resolvedHeader.title) ||
-		Boolean(resolvedHeader.subtitle) ||
-		Boolean(resolvedHeader.icon) ||
-		Boolean(resolvedHeader.badge) ||
-		Boolean(resolvedHeader.leftComponent) ||
-		Boolean(resolvedHeader.rightComponent);
 
 	// Reset header animation state when returning to tabs to ensure sensitivity is restored
 	useEffect(() => {
@@ -69,7 +62,7 @@ function UserHeaderWrapper() {
 		}
 	}, [isStackScreen, resetHeader]);
 
-	if (resolvedHeader.isHidden || !hasVisibleHeaderContent) {
+	if (resolvedHeader.isHidden || !resolvedHeader.hasRenderableContent) {
 		return null;
 	}
 
@@ -83,6 +76,8 @@ function UserHeaderWrapper() {
 			leftComponent={resolvedHeader.leftComponent}
 			rightComponent={resolvedHeader.rightComponent}
 			scrollAware={scrollAware}
+			mode={resolvedHeader.mode}
+			session={resolvedHeader.session}
 		/>
 	);
 }
