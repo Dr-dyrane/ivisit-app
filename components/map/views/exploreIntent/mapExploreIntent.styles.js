@@ -709,9 +709,9 @@ export default StyleSheet.create({
 		overflow: "hidden",
 	},
 	featuredScrollContent: {
-		paddingLeft: 18,
-		paddingRight: 18,
-		gap: 12,
+		paddingLeft: 14,
+		paddingRight: 14,
+		gap: 10,
 	},
 	featuredCard: {
 		width: 212,
@@ -731,14 +731,14 @@ export default StyleSheet.create({
 		borderRadius: 30,
 	},
 	featuredCardHeader: {
-		paddingHorizontal: 12,
-		paddingTop: 12,
+		paddingHorizontal: 10,
+		paddingTop: 10,
 		alignItems: "flex-start",
 	},
 	featuredTopPill: {
 		borderRadius: 999,
-		paddingHorizontal: 10,
-		paddingVertical: 6,
+		paddingHorizontal: 9,
+		paddingVertical: 5,
 		backgroundColor: "rgba(8,15,27,0.42)",
 	},
 	featuredTopPillText: {
@@ -748,18 +748,18 @@ export default StyleSheet.create({
 		color: "#F8FAFC",
 	},
 	featuredCardContent: {
-		paddingHorizontal: 14,
-		paddingVertical: 14,
+		paddingHorizontal: 12,
+		paddingVertical: 12,
 	},
 	featuredTitle: {
-		fontSize: 18,
-		lineHeight: 22,
+		fontSize: 17,
+		lineHeight: 21,
 		fontWeight: "800",
 	},
 	featuredMeta: {
-		marginTop: 4,
-		fontSize: 13,
-		lineHeight: 17,
+		marginTop: 3,
+		fontSize: 12,
+		lineHeight: 16,
 		fontWeight: "400",
 	},
 	placeholderCard: {
@@ -771,8 +771,8 @@ export default StyleSheet.create({
 		justifyContent: "space-between",
 	},
 	placeholderCardHeader: {
-		paddingHorizontal: 14,
-		paddingTop: 14,
+		paddingHorizontal: 12,
+		paddingTop: 12,
 		alignItems: "flex-start",
 	},
 	placeholderTopPillSkeleton: {
@@ -784,8 +784,8 @@ export default StyleSheet.create({
 	placeholderCopy: {
 		flex: 1,
 		justifyContent: "flex-end",
-		paddingHorizontal: 14,
-		paddingVertical: 14,
+		paddingHorizontal: 12,
+		paddingVertical: 12,
 	},
 	placeholderTitleBlock: {
 		gap: 6,

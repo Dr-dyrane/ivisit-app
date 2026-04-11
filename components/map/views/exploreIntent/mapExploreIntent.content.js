@@ -8,7 +8,7 @@ export const getMapIntentVariant = getMapViewportVariant;
 
 export const MAP_EXPLORE_INTENT_COPY = {
 	SEARCH: "Search care",
-	TERMS: "Terms",
+	TERMS: "Terms of Service",
 	NEAREST_HOSPITAL: "Nearby now",
 	NEARBY_CARE: "Nearby care",
 	CHOOSE_CARE: "Choose care",
@@ -26,7 +26,7 @@ export const MAP_EXPLORE_INTENT_COPY = {
 };
 
 export const MAP_EXPLORE_INTENT_RAIL = {
-	sidePadding: 18,
-	gap: 12,
-	peek: 18,
+	sidePadding: 14,
+	gap: 10,
+	peek: 28,
 };

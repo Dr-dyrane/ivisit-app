@@ -94,9 +94,9 @@ export default function MapExploreIntentHospitalRail({
 	const { width: screenWidth } = useWindowDimensions();
 	const items = useMemo(() => buildVisibleHospitalSlots(featuredHospitals), [featuredHospitals]);
 	const railWidth = Number.isFinite(availableWidth) && availableWidth > 0 ? availableWidth : screenWidth;
-	const sidePadding = contained ? 0 : MAP_EXPLORE_INTENT_RAIL.sidePadding;
+	const sidePadding = contained ? 4 : MAP_EXPLORE_INTENT_RAIL.sidePadding;
 	const visibleCards = contained && railWidth >= 880 ? 3 : 2;
-	const railPeek = contained ? 0 : MAP_EXPLORE_INTENT_RAIL.peek;
+	const railPeek = contained ? 36 : MAP_EXPLORE_INTENT_RAIL.peek;
 	const cardWidth = useMemo(() => {
 		const computedWidth = Math.round(
 			(
@@ -106,9 +106,9 @@ export default function MapExploreIntentHospitalRail({
 				railPeek
 			) / visibleCards,
 		);
-		return Math.max(184, Math.min(computedWidth, contained ? 264 : 224));
+		return Math.max(172, Math.min(computedWidth, contained ? 236 : 208));
 	}, [contained, railPeek, railWidth, sidePadding, visibleCards]);
-	const cardHeight = useMemo(() => Math.round(cardWidth * (contained ? 1.28 : 1.36)), [cardWidth, contained]);
+	const cardHeight = useMemo(() => Math.round(cardWidth * (contained ? 1.24 : 1.32)), [cardWidth, contained]);
 
 	return (
 		<ScrollView
