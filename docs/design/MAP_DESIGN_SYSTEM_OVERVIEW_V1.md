@@ -15,6 +15,21 @@ Related:
 
 Keep the map flow visually familiar at a glance while making its structure, motion, materials, and active-header behavior production-grade.
 
+## Current architecture concern: JSX vs JS separation
+
+This concern is valid: the separation between `*.jsx` and supporting `*.js` files is **not fully complete yet** across the current `/map` work.
+
+Target rule:
+
+- `*.jsx` = structure, composition, and render wiring only
+- `*.styles.js` = styles only
+- `*.content.js` = copy, labels, and mode-local assets
+- `*.helpers.js` = pure formatting and derived helpers
+- `*.tokens.js` / `*.constants.js` = shared design, motion, and state constants
+- `use*.js` hooks = orchestration, state, and side effects
+
+If a map file still mixes JSX, copy, constants, and helper logic together, treat it as **active refactor debt**, not the desired end state.
+
 ## Main guiding docs for map / sheet / active-header UI
 
 Use this reading order before changing `/map` UI, sheet behavior, or the active header contract.
@@ -29,6 +44,41 @@ Use this reading order before changing `/map` UI, sheet behavior, or the active 
    - ownership map for runtime files and orchestration
 5. [../WELCOME_AND_INTAKE_FLOW_MAP.md](../WELCOME_AND_INTAKE_FLOW_MAP.md)
    - cross-flow reference for header/intake continuity outside `/map`
+
+## Recommended modularization target for `MapSheetShell`
+
+Yes — `MapSheetShell` can and should be modularized into a reusable surface family.
+
+Recommended split:
+
+- `MapSheetShell.jsx`
+  - render structure only
+  - consumes tokens, hook output, and children slots
+- `useMapSheetShell.js`
+  - animated values, snap interpolation, safe-area handling, runtime orchestration
+- `mapSheetShell.styles.js`
+  - React Native style objects only
+- `mapSheetShell.helpers.js`
+  - derived layout/math helpers and non-side-effect utilities
+- `mapSheetShell.gestures.js`
+  - vertical pan ownership, release thresholds, gesture-vs-scroll handoff wiring
+- `mapSheet.constants.js`
+  - snap states, indices, and non-visual enums
+- `mapSheetTokens.js`
+  - geometry, spacing, radius, and shell-level surface tokens
+- `mapMotionTokens.js`
+  - spring, easing, resistance, velocity, and platform motion rules
+- `mapUI.tokens.js`
+  - shared card/chip/icon/text tokens used across map surfaces
+- `mapGlassTokens.js` or `mapChromeTokens.js`
+  - Liquid Glass / blur / overlay / shadow / chrome emphasis tokens
+- web global CSS variables
+  - mirror the same semantic tokens for web-specific presentation
+
+Principle:
+
+- do **not** let `MapSheetShell.jsx` keep absorbing raw RGBA values, motion thresholds, helper math, and gesture logic inline
+- move those into support files so the shell stays easy to reason about, test, and reuse
 
 ## Core Pieces
 

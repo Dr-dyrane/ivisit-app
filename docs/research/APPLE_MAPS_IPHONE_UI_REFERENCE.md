@@ -35,7 +35,7 @@ For iVisit, that reinforces:
 
 - map = constant reality layer
 - sheet = state + action
-- header = orientation only
+- header = hidden until there is a true active emergency session
 
 ## Verified Apple guidance (official sources, checked 2026-04-10)
 
@@ -336,14 +336,15 @@ The new emergency runtime should be organized around **three live states only**:
 
 - `map state` → spatial truth, camera, route emphasis, hospital focus, geographic context
 - `sheet state` → current task phase (`explore`, selection, confirmation, intake, commit)
-- `header state` → lightweight active chrome that appears only when the current screen activity needs orientation or action
+- `header state` → hidden by default; only becomes active-session chrome after dispatch has actually started
 
 ### Locked architectural direction
 
 - **No modal stack** inside the emergency flow.
 - **No page-to-page wizard** for the main emergency progression.
 - The experience should behave like **one persistent map + one persistent sheet + contextual header activity**.
-- The header should no longer behave like a permanent app header; it should become a **simple expandable/collapsible active state** that only shows when the screen needs it.
+- The header should no longer behave like a permanent app header; it should stay hidden through explore, selection, and pre-dispatch decisions.
+- Once dispatch is truly live, the header may appear as an **expandable/collapsible active-session state** that opens downward and compresses the sheet below it, similar to Apple Maps live-session behavior.
 - The sheet should act as the **orchestrator**, starting from `explore` and then leading into several deeper states while reusing the same shell.
 - `Profile` is the one intentionally navigation-led state; it can surface key navigation options and does not need to behave like the main expandable/collapsible emergency sheet.
 
@@ -366,7 +367,9 @@ Use this as the working checklist for the new flow:
 - [ ] Treat `explore` as the root sheet phase
 - [ ] Reuse the same sheet shell for deeper states instead of spawning separate modal surfaces
 - [ ] Avoid page breaks for the core emergency path unless true navigation is required
-- [ ] Keep the header hidden/quiet by default and only surface it when activity requires it
+- [ ] Keep the header hidden during explore and all pre-dispatch decision phases
+- [ ] Use the header only for true active emergency states after dispatch has already started
+- [ ] Let the active header expand downward and compress/collapse the sheet below it instead of acting like page chrome
 - [ ] Route profile access into its own navigation-led state rather than a faux modal state
 - [ ] Make each sheet-state transition feel like one surface expanding, settling, or refocusing
 - [ ] Keep one dominant action per sheet state
@@ -404,6 +407,29 @@ Use one shared source of truth for:
 3. Expand to Android and web by applying **platform overrides**, not by inventing a second design language.
 4. Keep the product visually recognizable across platforms while letting input behavior adapt where needed.
 
+### Recommended token layering for `MapSheetShell`
+
+To keep the shell easy to implement and reuse, the token system should be layered like this:
+
+- `foundation tokens`
+  - app-wide color, typography, spacing, radius, depth
+- `motion tokens`
+  - spring, easing, resistance, velocity, gesture thresholds
+- `UI tokens`
+  - chip, card, icon, divider, label hierarchy
+- `glass/chrome tokens`
+  - blur intensity, backdrop opacity, overlay opacity, shadow softness, active chrome emphasis
+- `sheet tokens`
+  - detent spacing, shell radius, handle sizing, island margin, content insets
+- `platform overrides`
+  - iOS default, Android fallback, web wheel/drag adjustments
+
+Principle:
+
+- use a small number of stable token families with clear semantic jobs
+- avoid creating many tiny token files with overlapping responsibility
+- the goal is a reusable system, not token sprawl
+
 ### Practical design-system checklist
 
 - [ ] define one semantic color scale with light, dark, and higher-contrast variants
@@ -414,6 +440,7 @@ Use one shared source of truth for:
 - [ ] keep toolbars and header chrome visually quieter than the main emergency CTA
 - [ ] drive web presentation from the same token contract using global CSS variables
 - [ ] keep motion tokens shared across `/map`, welcome, and emergency flows so the app feels like one system
+- [ ] keep tokens, constants, copy, and helpers in `*.js` support files instead of letting `*.jsx` render files absorb everything
 
 ## Locked rules to borrow from Apple Maps
 

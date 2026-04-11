@@ -186,13 +186,26 @@ Each map mode should separate concerns clearly.
 Preferred structure:
 
 - `*.jsx`
-  - structure and composition
+  - structure and composition only
+  - no large copy blocks, token tables, style objects, or helper utilities embedded inline
 - `*.styles.js`
   - styles only
 - `*.content.js`
-  - labels, copy, assets, constants local to the mode
+  - labels, copy, assets, and local content definitions
 - `*.helpers.js`
   - formatting and derived helpers
+- `*.tokens.js`
+  - design or motion tokens shared by the surface family
+- `*.constants.js`
+  - enums, snap states, thresholds, and non-visual constants
+- `use*.js`
+  - state orchestration, side effects, and runtime coordination
+
+Current status note:
+
+- this separation is **not fully finished yet** in all `/map` files
+- any mixed file should be treated as cleanup debt and split before it grows further
+- do not keep adding new responsibilities to a mixed `*.jsx` file once the split is known
 
 Current explore-intent files:
 
@@ -203,6 +216,32 @@ Current explore-intent files:
 Rule:
 
 - no giant mixed file should own logic, copy, assets, and styles together
+
+### Specific target for `MapSheetShell`
+
+The current `MapSheetShell.jsx` should keep moving toward this split:
+
+```text
+components/map/
+  MapSheetShell.jsx                # render + slot composition only
+  useMapSheetShell.js              # orchestration hook
+  mapSheetShell.styles.js          # styles only
+  mapSheetShell.helpers.js         # pure helper math / derived values
+  mapSheetShell.gestures.js        # pan responder + handoff logic
+  mapSheet.constants.js            # snap enums / indices / shell constants
+  mapSheetTokens.js                # geometry + spacing + shell surface tokens
+  mapMotionTokens.js               # cross-platform motion contract
+  mapUI.tokens.js                  # shared map UI tokens
+  mapGlassTokens.js                # liquid-glass / chrome tokens
+```
+
+Implementation principle:
+
+- `MapSheetShell.jsx` should read like a thin view file
+- gesture rules should live outside the render tree
+- raw surface colors and glass treatments should come from tokens, not inline literals
+- the same semantic token names should be mirrored to web through global CSS variables where needed
+- iOS should remain the first-class source posture, with Android/web using platform overrides rather than a different design language
 
 ## 11. Modal Family Rule
 

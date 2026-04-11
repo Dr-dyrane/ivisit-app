@@ -270,3 +270,16 @@ The codebase is still in a transitional phase in places, but the forward directi
 - more sheet-state orchestration
 - more consistent map/sheet/header coordination
 - no page-wizard feel inside the core emergency flow
+
+### Open architecture cleanup item
+
+One valid concern remains: the separation between `*.jsx` and supporting `*.js` files is not fully complete yet.
+
+The desired rule is:
+
+- `*.jsx` for structure/composition only
+- `*.styles.js` for styles
+- `*.content.js` / `*.helpers.js` / `*.tokens.js` / `*.constants.js` for non-render support logic
+- `use*.js` hooks for orchestration and side effects
+
+This should be treated as ongoing cleanup work, especially anywhere a map view file is still absorbing constants, copy, helpers, and render structure together.
