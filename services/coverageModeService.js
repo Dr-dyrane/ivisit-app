@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { demoEcosystemService } from "./demoEcosystemService";
+import { getHospitalFacilityKey } from "./hospitalIdentity";
 
 export const COVERAGE_MODES = {
 	LIVE_ONLY: "live_only",
@@ -48,12 +49,7 @@ const hasValidCoordinates = (hospital) => {
 };
 
 const makeCoverageDedupKey = (hospital) => {
-	const latitude = hospital?.coordinates?.latitude ?? hospital?.latitude;
-	const longitude = hospital?.coordinates?.longitude ?? hospital?.longitude;
-	return (
-		hospital?.id ??
-		`${hospital?.name || "hospital"}:${Number(latitude).toFixed(4)}:${Number(longitude).toFixed(4)}`
-	);
+	return getHospitalFacilityKey(hospital) || String(hospital?.id || "hospital");
 };
 
 const isVerifiedHospitalForCoverage = (hospital) => {

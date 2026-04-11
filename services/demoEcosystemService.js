@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "./supabase";
+import { getHospitalFacilityKey } from "./hospitalIdentity";
 
 export const DEMO_BOOTSTRAP_PHASES = [
 	{
@@ -33,6 +34,8 @@ const DEMO_BOOTSTRAP_STATE_KEY = "@ivisit/demo-bootstrap-state:v2";
 const DEMO_BOOTSTRAP_GUEST_ID_KEY = "@ivisit/demo-bootstrap-guest-id:v1";
 const DEMO_RESEED_DISTANCE_KM = 3;
 const DEMO_RESEED_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+const DEMO_PERSISTED_COVERAGE_THRESHOLD = 5;
+const DEMO_PERSISTED_COVERAGE_RADIUS_KM = 15;
 
 const normalizeCoordinates = ({ latitude, longitude }) => {
 	const lat = Number(latitude);
@@ -44,6 +47,12 @@ const normalizeCoordinates = ({ latitude, longitude }) => {
 };
 
 const normalizeUserKey = (userId) => String(userId || "").trim();
+const toCoverageAxisKey = (value) =>
+	`${value >= 0 ? "p" : "n"}${Math.round(Math.abs(value) * 100)
+		.toString()
+		.padStart(4, "0")}`;
+const toCoverageKey = ({ latitude, longitude }) =>
+	`${toCoverageAxisKey(latitude)}_${toCoverageAxisKey(longitude)}`;
 
 const readBootstrapState = async () => {
 	try {
@@ -242,6 +251,64 @@ export const demoEcosystemService = {
 		return nextState[userKey];
 	},
 
+	async getPersistedDemoCoverageForLocation({
+		latitude,
+		longitude,
+		minimumHospitals = DEMO_PERSISTED_COVERAGE_THRESHOLD,
+	} = {}) {
+		const coords = normalizeCoordinates({ latitude, longitude });
+		const coverageKey = toCoverageKey(coords);
+		const latDelta = DEMO_PERSISTED_COVERAGE_RADIUS_KM / 111;
+		const lngDelta =
+			DEMO_PERSISTED_COVERAGE_RADIUS_KM /
+			(111 * Math.max(0.1, Math.cos((coords.latitude * Math.PI) / 180)));
+		const { data, error } = await supabase
+			.from("hospitals")
+			.select("id,name,address,place_id,latitude,longitude,verified,verification_status,features,status")
+			.like("place_id", "demo:%")
+			.eq("status", "available")
+			.gte("latitude", coords.latitude - latDelta)
+			.lte("latitude", coords.latitude + latDelta)
+			.gte("longitude", coords.longitude - lngDelta)
+			.lte("longitude", coords.longitude + lngDelta);
+
+		if (error) {
+			console.warn("[demoEcosystemService] Failed to inspect persisted demo coverage", error);
+			return {
+				coverageKey,
+				hospitals: [],
+				count: 0,
+				sufficient: false,
+			};
+		}
+
+		const buckets = new Map();
+		(data || [])
+			.filter((row) => {
+				const lat = Number(row?.latitude);
+				const lng = Number(row?.longitude);
+				if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+				return (
+					calculateDistanceKm(coords, { latitude: lat, longitude: lng }) <=
+					DEMO_PERSISTED_COVERAGE_RADIUS_KM
+				);
+			})
+			.filter((row) => this.countsAsDemoCoverage(row))
+			.forEach((row) => {
+				const key = getHospitalFacilityKey(row) || String(row?.id || "");
+				if (!key || buckets.has(key)) return;
+				buckets.set(key, row);
+			});
+
+		const hospitals = Array.from(buckets.values());
+		return {
+			coverageKey,
+			hospitals,
+			count: hospitals.length,
+			sufficient: hospitals.length >= minimumHospitals,
+		};
+	},
+
 	shouldRebootstrapForLocation({
 		currentLocation,
 		lastBootstrapState,
@@ -341,6 +408,32 @@ export const demoEcosystemService = {
 		const coords = normalizeCoordinates({ latitude, longitude });
 		const provisioningUserId = await resolveProvisioningUserId(userId);
 		const lastBootstrapState = await this.getBootstrapState(provisioningUserId);
+		const persistedCoverage = force
+			? null
+			: await this.getPersistedDemoCoverageForLocation({
+					latitude: coords.latitude,
+					longitude: coords.longitude,
+			  });
+
+		if (!force && persistedCoverage?.sufficient) {
+			await this.recordBootstrapState({
+				userId: provisioningUserId,
+				latitude: coords.latitude,
+				longitude: coords.longitude,
+				radiusKm,
+			});
+
+			return {
+				bootstrapped: false,
+				userId: provisioningUserId,
+				location: coords,
+				lastBootstrapState,
+				reason: "persisted_coverage",
+				distanceKm: 0,
+				ageMs: null,
+				persistedCoverage,
+			};
+		}
 		const decision = force
 			? { needed: true, reason: "forced", distanceKm: null, ageMs: null }
 			: this.shouldRebootstrapForLocation({

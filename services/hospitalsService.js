@@ -1,5 +1,10 @@
 import { supabase } from "./supabase";
 import { isValidUUID, resolveEntityId } from "./displayIdService";
+import {
+	coordinateClusterKey,
+	getHospitalFacilityKey,
+	normalizeFacilityText,
+} from "./hospitalIdentity";
 
 const DEFAULT_HOSPITAL_IMAGES = [
 	"https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
@@ -39,15 +44,6 @@ const toMinutesLabel = (value, fallback = null) => {
 	return fallback ?? text;
 };
 const toObject = (value, fallback = {}) => (value && typeof value === "object" && !Array.isArray(value) ? value : fallback);
-const normalizeFacilityText = (value) =>
-	String(value || "")
-		.toLowerCase()
-		.replace(/\s+/g, " ")
-		.trim();
-const coordinateClusterKey = (value, precision = 3) => {
-	const n = Number(value);
-	return Number.isFinite(n) ? Number(n).toFixed(precision) : null;
-};
 const hospitalCoordinateKey = (hospital) => {
 	const latitude = hospital?.latitude ?? hospital?.coordinates?.coordinates?.[1];
 	const longitude = hospital?.longitude ?? hospital?.coordinates?.coordinates?.[0];
@@ -86,25 +82,7 @@ const isDispatchableHospital = (hospital) => {
 	);
 };
 const facilityKeyFromHospital = (hospital) => {
-	const name = normalizeFacilityText(hospital?.name);
-	const address = normalizeFacilityText(hospital?.address);
-	const latitude = coordinateClusterKey(hospital?.latitude ?? hospital?.coordinates?.coordinates?.[1]);
-	const longitude = coordinateClusterKey(hospital?.longitude ?? hospital?.coordinates?.coordinates?.[0]);
-
-	if (name && address && latitude && longitude) {
-		return `facility:${name}|${address}|${latitude}|${longitude}`;
-	}
-	if (name && address) {
-		return `facility:${name}|${address}`;
-	}
-	if (name && latitude && longitude) {
-		return `facility:${name}|${latitude}|${longitude}`;
-	}
-
-	const placeId = toText(hospital?.place_id, "").toLowerCase();
-	if (placeId) return `place:${placeId}`;
-	if (name) return `name:${name}`;
-	return `id:${toText(hospital?.id, "unknown")}`;
+	return getHospitalFacilityKey(hospital) || `id:${toText(hospital?.id, "unknown")}`;
 };
 const hospitalPriorityScore = (hospital) => {
 	let score = 0;
