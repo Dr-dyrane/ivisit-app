@@ -41,7 +41,7 @@ It is:
 - one persistent map canvas
 - one persistent sheet shell
 - one changing sheet mode
-- a small set of task modals
+- temporary bridge modals only while the sheet-phase swap is incomplete
 
 The app should not leave the map once the user enters it.
 
@@ -70,7 +70,7 @@ It may compose:
 
 - persistent map
 - persistent sheet
-- task modals
+- temporary bridge surfaces during migration only
 - loading overlay
 
 It must not become the business-logic controller.
@@ -91,8 +91,9 @@ Implementation note:
 It owns:
 
 - sheet mode
+- sheet phase
 - sheet snap state
-- modal visibility
+- temporary bridge visibility during migration
 - profile/auth handoff
 - location handoff
 - hospital selection
@@ -253,14 +254,14 @@ Implementation principle:
 
 ## 11. Modal Family Rule
 
-Map task modals must share one shell and one voice.
+Bridge modals must share one shell and one voice until they are replaced by sheet phases.
 
 Shared shell:
 
 - [MapModalShell.jsx](../../../components/map/surfaces/MapModalShell.jsx)
 - [mapModalShell.styles.js](../../../components/map/surfaces/mapModalShell.styles.js)
 
-Current modal family:
+Current bridge modal family:
 
 - [MapPublicSearchModal.jsx](../../../components/map/surfaces/search/MapPublicSearchModal.jsx)
 - [MapLocationModal.jsx](../../../components/map/surfaces/search/MapLocationModal.jsx)
@@ -277,6 +278,8 @@ Rules:
 - no extra close CTA inside the body
 - close button must be the visible dismiss control
 - keep copy minimal and task-specific
+- these are temporary bridge surfaces, not the target end state for pre-dispatch map flow
+- `search`, `hospital_list`, and `hospital_detail` should prefer persistent sheet phases before adding any new modal surface
 
 ## 12. Header Rule
 
@@ -364,13 +367,18 @@ This is the current element inventory to reference during cleanup or global cons
 ### Modal family
 - `MapLocationModal`
 - `MapPublicSearchModal`
-- `MapHospitalModal`
 - `MapHospitalDetailsModal`
 - `MiniProfileModal`
 - `MapGuestProfileModal`
 - `MapCareHistoryModal`
 - `MapRecentVisitsModal`
 - `AuthInputModal`
+
+### Active sheet phases
+- `explore_intent`
+- `search`
+- `hospital_list`
+- `hospital_detail`
 
 ### Suppressed internals
 - `EmergencyLocationPreviewMap` internal skeleton exists but is disabled on `/map` via `showInternalSkeleton={false}`
@@ -449,8 +457,24 @@ The main sheet search is public iVisit search, not location change.
 Rules:
 
 - location change belongs in the header trigger
-- main search opens the public search modal
-- search modal can reuse legacy search logic, but it must use map-modal voice and shell
+- main search should become the `search` sheet phase
+- any remaining search modal behavior is bridge-only and should be removed as the swap lands
+
+## 18.1 Collapsed-state swap rules
+
+- `search`
+  - collapsed state matches the resting `explore_intent` shell
+  - same search row and profile trigger posture
+- `hospital_list`
+  - no collapsed state in the first migration pass
+  - minimum posture is `half`
+- `hospital_detail`
+  - collapsed state may compress into a one-row summary
+  - row includes:
+    - leading CTA / affordance
+    - centered hospital title
+    - distance subtext
+    - trailing close icon
 
 ## 19. Auth Rule
 

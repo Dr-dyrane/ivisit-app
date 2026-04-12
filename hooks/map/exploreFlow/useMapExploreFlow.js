@@ -14,6 +14,10 @@ import {
 	toEmergencyLocation,
 } from "../../../utils/map/mapLocationPresentation";
 import {
+	MAP_SHEET_PHASES,
+	MAP_SHEET_SNAP_STATES,
+} from "../../../components/map/core/MapSheetOrchestrator";
+import {
 	getMapViewportVariant,
 	isSidebarMapVariant,
 } from "../../../components/map/core/mapViewportConfig";
@@ -80,10 +84,10 @@ export function useMapExploreFlow() {
 		state: flowState,
 		actions: flowActions,
 	} = useMapExploreFlowStore({ usesSidebarLayout });
-	const searchSheetVisible = flowState.search.visible;
+	const searchSheetVisible = flowState.sheet.phase === MAP_SHEET_PHASES.SEARCH;
 	const searchSheetMode = flowState.search.mode;
-	const hospitalModalVisible = flowState.surfaces.hospitalModalVisible;
-	const hospitalDetailsVisible = flowState.surfaces.hospitalDetailsVisible;
+	const hospitalListVisible = flowState.sheet.phase === MAP_SHEET_PHASES.HOSPITAL_LIST;
+	const hospitalDetailVisible = flowState.sheet.phase === MAP_SHEET_PHASES.HOSPITAL_DETAIL;
 	const profileModalVisible = flowState.surfaces.profileModalVisible;
 	const guestProfileVisible = flowState.surfaces.guestProfileVisible;
 	const careHistoryVisible = flowState.surfaces.careHistoryVisible;
@@ -93,7 +97,8 @@ export function useMapExploreFlow() {
 	const featuredHospital = flowState.selection.featuredHospital;
 	const manualLocation = flowState.location.manualLocation;
 	const guestProfileEmail = flowState.location.guestProfileEmail;
-	const sheetMode = flowState.sheet.mode;
+	const sheetPhase = flowState.sheet.phase;
+	const sheetMode = sheetPhase;
 	const sheetSnapState = flowState.sheet.snapState;
 	const mapReadiness = flowState.map.readiness;
 	const hasCompletedInitialMapLoad = flowState.map.hasCompletedInitialMapLoad;
@@ -104,18 +109,17 @@ export function useMapExploreFlow() {
 		setFeaturedHospital,
 		setGuestProfileEmail,
 		setGuestProfileVisible,
-		setHospitalDetailsVisible,
-		setHospitalModalVisible,
 		setManualLocation,
 		setMapReadiness,
 		setHasCompletedInitialMapLoad,
 		setProfileModalVisible,
 		setRecentVisitsVisible,
 		setSearchSheetMode,
-		setSearchSheetVisible,
 		setSelectedCare,
 		setSheetMode,
+		setSheetPhase,
 		setSheetSnapState,
+		setSheetView,
 	} = flowActions;
 
 	const activeLocation = manualLocation?.location || emergencyUserLocation || globalUserLocation || null;
@@ -276,14 +280,63 @@ export function useMapExploreFlow() {
 	const openSearchSheet = useCallback(
 		(nextMode = MAP_SEARCH_SHEET_MODES.SEARCH) => {
 			setSearchSheetMode(nextMode);
-			setSearchSheetVisible(true);
+			setSheetView({
+				phase: MAP_SHEET_PHASES.SEARCH,
+				snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+			});
 		},
-		[setSearchSheetMode, setSearchSheetVisible],
+		[
+			setSearchSheetMode,
+			setSheetView,
+		],
 	);
 
 	const closeSearchSheet = useCallback(() => {
-		setSearchSheetVisible(false);
-	}, [setSearchSheetVisible]);
+		setSheetView({
+			phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
+			snapState: usesSidebarLayout
+				? MAP_SHEET_SNAP_STATES.EXPANDED
+				: MAP_SHEET_SNAP_STATES.HALF,
+		});
+	}, [setSheetView, usesSidebarLayout]);
+
+	const openHospitalList = useCallback(() => {
+		setSheetView({
+			phase: MAP_SHEET_PHASES.HOSPITAL_LIST,
+			snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+		});
+	}, [setSheetView]);
+
+	const closeHospitalList = useCallback(() => {
+		setSheetView({
+			phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
+			snapState: usesSidebarLayout
+				? MAP_SHEET_SNAP_STATES.EXPANDED
+				: MAP_SHEET_SNAP_STATES.HALF,
+		});
+	}, [setSheetView, usesSidebarLayout]);
+
+	const openHospitalDetail = useCallback(
+		(hospital) => {
+			if (hospital) {
+				setFeaturedHospital(hospital);
+			}
+			setSheetView({
+				phase: MAP_SHEET_PHASES.HOSPITAL_DETAIL,
+				snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+			});
+		},
+		[setFeaturedHospital, setSheetView],
+	);
+
+	const closeHospitalDetail = useCallback(() => {
+		setSheetView({
+			phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
+			snapState: usesSidebarLayout
+				? MAP_SHEET_SNAP_STATES.EXPANDED
+				: MAP_SHEET_SNAP_STATES.HALF,
+		});
+	}, [setSheetView, usesSidebarLayout]);
 
 	const handleSearchLocation = useCallback(
 		(nextLocation) => {
@@ -293,7 +346,7 @@ export function useMapExploreFlow() {
 				setHasCompletedInitialMapLoad(false);
 			}
 			setManualLocation(nextLocation);
-			setSearchSheetVisible(false);
+			setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT);
 			if (locationChanged) {
 				setMapReadiness({
 					mapReady: false,
@@ -307,7 +360,7 @@ export function useMapExploreFlow() {
 			setHasCompletedInitialMapLoad,
 			setManualLocation,
 			setMapReadiness,
-			setSearchSheetVisible,
+			setSheetPhase,
 		],
 	);
 
@@ -321,7 +374,7 @@ export function useMapExploreFlow() {
 			setHasCompletedInitialMapLoad(false);
 		}
 		setManualLocation(null);
-		setSearchSheetVisible(false);
+		setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT);
 		if (locationChanged) {
 			setMapReadiness({
 				mapReady: false,
@@ -338,7 +391,7 @@ export function useMapExploreFlow() {
 		setHasCompletedInitialMapLoad,
 		setManualLocation,
 		setMapReadiness,
-		setSearchSheetVisible,
+		setSheetPhase,
 	]);
 
 	const handleSelectHospital = useCallback(
@@ -346,19 +399,19 @@ export function useMapExploreFlow() {
 			if (hospital?.id) {
 				selectHospital(hospital.id);
 			}
-			setHospitalModalVisible(false);
+			closeHospitalList();
 		},
-		[selectHospital, setHospitalModalVisible],
+		[closeHospitalList, selectHospital],
 	);
 
 	const handleChooseCare = useCallback(
 		(mode) => {
 			setSelectedCare(mode);
 			if (mode === "bed" || mode === "both") {
-				setHospitalModalVisible(true);
+				openHospitalList();
 			}
 		},
-		[setHospitalModalVisible, setSelectedCare],
+		[openHospitalList, setSelectedCare],
 	);
 
 	const handleOpenFeaturedHospital = useCallback(
@@ -366,10 +419,9 @@ export function useMapExploreFlow() {
 			if (hospital?.id) {
 				selectHospital(hospital.id);
 			}
-			setFeaturedHospital(hospital || null);
-			setHospitalDetailsVisible(true);
+			openHospitalDetail(hospital || null);
 		},
-		[selectHospital, setFeaturedHospital, setHospitalDetailsVisible],
+		[openHospitalDetail, selectHospital],
 	);
 
 	const handleMapHospitalPress = useCallback(
@@ -475,13 +527,17 @@ export function useMapExploreFlow() {
 		handleMapReadinessChange,
 		handleOpenFeaturedHospital,
 		handleOpenProfile,
+		openHospitalDetail,
+		openHospitalList,
 		openSearchSheet,
+		closeHospitalDetail,
+		closeHospitalList,
 		closeSearchSheet,
 		handleSearchLocation,
 		handleSelectHospital,
 		handleUseCurrentLocation,
-		hospitalDetailsVisible,
-		hospitalModalVisible,
+		hospitalDetailVisible,
+		hospitalListVisible,
 		isBootstrappingDemo,
 		isLoadingHospitals,
 		isMapFrameReady,
@@ -502,12 +558,11 @@ export function useMapExploreFlow() {
 		searchSheetMode,
 		searchSheetVisible,
 		selectedCare,
+		sheetPhase,
 		setAuthModalVisible,
 		setCareHistoryVisible,
 		setGuestProfileEmail,
 		setGuestProfileVisible,
-		setHospitalDetailsVisible,
-		setHospitalModalVisible,
 		setProfileModalVisible,
 		setRecentVisitsVisible,
 		setSheetMode,

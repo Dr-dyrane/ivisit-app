@@ -5,15 +5,13 @@ import EmergencyLocationPreviewMap from "../components/emergency/intake/Emergenc
 import MiniProfileModal from "../components/emergency/MiniProfileModal";
 import AuthInputModal from "../components/register/AuthInputModal";
 import MapSheetOrchestrator, {
+	MAP_SHEET_PHASES,
 	MAP_SHEET_SNAP_STATES,
 	getMapSheetHeight,
 } from "../components/map/core/MapSheetOrchestrator";
 import MapGuestProfileModal from "../components/map/MapGuestProfileModal";
 import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
-import MapSearchSheet from "../components/map/surfaces/search/MapSearchSheet";
 import MapExploreLoadingOverlay from "../components/map/surfaces/MapExploreLoadingOverlay";
-import MapHospitalModal from "../components/map/MapHospitalModal";
-import MapHospitalDetailsModal from "../components/map/MapHospitalDetailsModal";
 import MapRecentVisitsModal from "../components/map/MapRecentVisitsModal";
 import { useTheme } from "../contexts/ThemeContext";
 import { useMapExploreFlow } from "../hooks/map/useMapExploreFlow";
@@ -46,12 +44,11 @@ export default function MapScreen() {
 		handleMapReadinessChange,
 		handleOpenFeaturedHospital,
 		handleOpenProfile,
+		openHospitalList,
 		handleSearchLocation,
 		handleSelectHospital,
 		handleUseCurrentLocation,
 		featuredHospitals,
-		hospitalDetailsVisible,
-		hospitalModalVisible,
 		isMapFrameReady,
 		loadingBackgroundImageUri,
 		mapLoadingState,
@@ -61,26 +58,26 @@ export default function MapScreen() {
 		nearbyBedHospitals,
 		nearbyHospitalCount,
 		openSearchSheet,
+		closeHospitalDetail,
 		closeSearchSheet,
 		profileImageSource,
 		profileModalVisible,
 		recentVisits,
 		recentVisitsVisible,
 		searchSheetMode,
-		searchSheetVisible,
+		sheetPhase,
 		selectedCare,
 		setAuthModalVisible,
 		setCareHistoryVisible,
 		setGuestProfileEmail,
 		setGuestProfileVisible,
-		setHospitalDetailsVisible,
-		setHospitalModalVisible,
 		setProfileModalVisible,
 		setRecentVisitsVisible,
 		setSheetSnapState,
 		sheetMode,
 		sheetSnapState,
 		totalAvailableBeds,
+		closeHospitalList,
 	} = useMapExploreFlow();
 	const viewportVariant = useMemo(
 		() => getMapViewportVariant({ platform: Platform.OS, width }),
@@ -116,17 +113,17 @@ export default function MapScreen() {
 		[sidebarWidth, surfaceConfig.sidebarOuterInset, usesSidebarLayout],
 	);
 	const hasActiveMapModal =
-		searchSheetVisible ||
-		hospitalModalVisible ||
-		hospitalDetailsVisible ||
 		profileModalVisible ||
 		guestProfileVisible ||
 		careHistoryVisible ||
 		recentVisitsVisible ||
 		authModalVisible;
+	const hasFocusedSheetPhase = sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT;
 	const shouldShowMapControls = usesSidebarLayout
-		? !hasActiveMapModal
-		: renderedSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED && !hasActiveMapModal;
+		? !hasActiveMapModal && !hasFocusedSheetPhase
+		: renderedSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED &&
+			!hasActiveMapModal &&
+			!hasFocusedSheetPhase;
 
 	useEffect(() => {
 		if (usesSidebarLayout && sheetSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED) {
@@ -158,6 +155,7 @@ export default function MapScreen() {
 
 			<View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
 				<MapSheetOrchestrator
+					phase={sheetPhase}
 					mode={sheetMode}
 					snapState={renderedSnapState}
 					screenHeight={height}
@@ -165,14 +163,31 @@ export default function MapScreen() {
 					nearestHospitalMeta={nearestHospitalMeta}
 					selectedCare={selectedCare}
 					onOpenSearch={() => openSearchSheet(MAP_SEARCH_SHEET_MODES.SEARCH)}
-					onOpenHospitals={() => setHospitalModalVisible(true)}
+					onOpenHospitals={openHospitalList}
 					onChooseCare={handleChooseCare}
 					onOpenProfile={handleOpenProfile}
 					onOpenCareHistory={() => setCareHistoryVisible(true)}
 					onOpenRecents={() => setRecentVisitsVisible(true)}
 					onOpenFeaturedHospital={handleOpenFeaturedHospital}
 					onSnapStateChange={setSheetSnapState}
+					onCloseSearch={closeSearchSheet}
+					onCloseHospitals={closeHospitalList}
+					onCloseHospitalDetail={closeHospitalDetail}
+					searchMode={searchSheetMode}
+					hospitals={discoveredHospitals}
+					selectedHospitalId={nearestHospital?.id || null}
+					recommendedHospitalId={discoveredHospitals?.[0]?.id || null}
+					featuredHospital={featuredHospital}
+					currentLocation={currentLocationDetails}
+					onSelectHospital={handleSelectHospital}
+					onUseCurrentLocation={handleUseCurrentLocation}
+					onSelectLocation={handleSearchLocation}
+					onChangeHospitalLocation={() => {
+						closeHospitalList();
+						openSearchSheet(MAP_SEARCH_SHEET_MODES.LOCATION);
+					}}
 					profileImageSource={profileImageSource}
+					activeLocation={activeLocation}
 					isSignedIn={isSignedIn}
 					nearbyHospitalCount={nearbyHospitalCount}
 					totalAvailableBeds={totalAvailableBeds}
@@ -188,40 +203,6 @@ export default function MapScreen() {
 				status={mapLoadingState}
 				visible={mapLoadingState?.visible}
 				backgroundImageUri={loadingBackgroundImageUri}
-			/>
-
-			<MapSearchSheet
-				visible={searchSheetVisible}
-				onClose={closeSearchSheet}
-				mode={searchSheetMode}
-				hospitals={discoveredHospitals}
-				selectedHospitalId={nearestHospital?.id || null}
-				currentLocation={currentLocationDetails}
-				onOpenHospital={handleOpenFeaturedHospital}
-				onBrowseHospitals={() => setHospitalModalVisible(true)}
-				onUseCurrentLocation={handleUseCurrentLocation}
-				onSelectLocation={handleSearchLocation}
-			/>
-
-			<MapHospitalModal
-				visible={hospitalModalVisible}
-				onClose={() => setHospitalModalVisible(false)}
-				hospitals={discoveredHospitals}
-				selectedHospitalId={nearestHospital?.id || null}
-				recommendedHospitalId={discoveredHospitals?.[0]?.id || null}
-				onSelectHospital={handleSelectHospital}
-				onChangeLocation={() => {
-					setHospitalModalVisible(false);
-					openSearchSheet(MAP_SEARCH_SHEET_MODES.LOCATION);
-				}}
-			/>
-
-			<MapHospitalDetailsModal
-				visible={hospitalDetailsVisible}
-				onClose={() => setHospitalDetailsVisible(false)}
-				hospital={featuredHospital}
-				origin={activeLocation}
-				onOpenHospitals={() => setHospitalModalVisible(true)}
 			/>
 
 			<MiniProfileModal

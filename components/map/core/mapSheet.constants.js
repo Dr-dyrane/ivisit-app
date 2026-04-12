@@ -1,5 +1,10 @@
-export const MAP_SHEET_MODES = {
+export const MAP_SHEET_PHASES = {
 	EXPLORE_INTENT: "explore_intent",
+	SEARCH: "search",
+	HOSPITAL_LIST: "hospital_list",
+	HOSPITAL_DETAIL: "hospital_detail",
+	CARE_HISTORY: "care_history",
+	RECENT_VISITS: "recent_visits",
 	HOSPITAL_PREVIEW: "hospital_preview",
 	AMBULANCE_DECISION: "ambulance_decision",
 	BED_DECISION: "bed_decision",
@@ -8,6 +13,8 @@ export const MAP_SHEET_MODES = {
 	COMMIT_PAYMENT: "commit_payment",
 	TRACKING: "tracking",
 };
+
+export const MAP_SHEET_MODES = MAP_SHEET_PHASES;
 
 export const MAP_SHEET_SNAP_STATES = {
 	COLLAPSED: "collapsed",

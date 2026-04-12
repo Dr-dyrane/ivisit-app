@@ -245,8 +245,8 @@ Current implementation contract:
 
 - mode name: `explore_intent`
 - default snap state: `half`
-- search remains its own modal
-- nearby hospitals remain their own modal
+- search is the next sheet phase, not a sibling modal target
+- nearby hospitals should migrate into `hospital_list` sheet phase
 - the base shell stays persistent while only content changes
 
 Persistent shell constants:
@@ -307,7 +307,7 @@ Collapsed visual order:
 Collapsed behavior:
 
 - handle tap expands to `half`
-- search still opens the public iVisit search modal
+- search row advances into the `search` sheet phase
 - avatar still opens profile / restore
 - no keyboard appears unless search is the user intent
 - there should be no visible dead strip below the search row
@@ -324,6 +324,23 @@ Surface recommendation:
 - short height
 - translucent but readable
 - no heavy border
+
+### Collapsed-state rules for next phases
+
+- `search`
+  - collapsed state should match the same resting shell as `explore_intent`
+  - do not show results or keyboard in the resting posture
+  - tapping the search row should re-expand and focus the search state
+- `hospital_list`
+  - does not need a collapsed state
+  - minimum posture is `half`
+- `hospital_detail`
+  - may use a compact collapsed summary row
+  - row structure:
+    - leading CTA / affordance
+    - centered hospital title block
+    - subtitle with distance away
+    - trailing close icon
 - collapsed padding should compress aggressively so the island feels truly resting
 - the shell should not preserve extra bottom spacing under search
 
@@ -379,8 +396,8 @@ Mid interaction rules:
 - tapping an intent gives immediate pressed feedback
 - the sheet acknowledges intent before the next phase finishes loading
 - the selected card can show a subtle in-card pending treatment
-- search opens its own modal
-- tapping the nearest hospital preview opens the nearby-hospitals modal
+- search advances to the `search` sheet phase
+- tapping the nearest hospital preview advances to `hospital_list` or `hospital_detail`
 - tapping the avatar opens profile shortcuts or restore-account entry
 - drag up expands to `expanded`
 - drag down collapses to `collapsed`
@@ -454,7 +471,7 @@ Expanded browse behavior:
 - the modal list and the rail must read from the same hospital collection so users do not see contradictory counts
 - never inject fake hospital names, distances, ETA, bed counts, or placeholder hospital cards just to fill the rail
 - each hospital card uses app-owned imagery with bottom overlay copy
-- each featured card opens a hospital details modal
+- each featured card opens the `hospital_detail` sheet phase
 
 Hospital media source rule:
 

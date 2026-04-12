@@ -17,11 +17,11 @@ The public map flow now follows this shape:
 - [MapScreen.jsx](../../../screens/MapScreen.jsx)
   - thin composition layer only
 - [useMapExploreFlow.js](../../../hooks/map/useMapExploreFlow.js)
-  - owns explore-intent state, modal state, profile/auth handoff, hospital selection, explicit demo bootstrap, and readiness gating
+  - owns explore-intent state, sheet phase state, profile/auth handoff, hospital selection, explicit demo bootstrap, and readiness gating
 - [EmergencyLocationPreviewMap.jsx](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx)
   - owns the persistent map render and route preview
-- [MapSheetOrchestrator.jsx](../../../components/map/MapSheetOrchestrator.jsx)
-  - thin mode router only
+- [MapSheetOrchestrator.jsx](../../../components/map/core/MapSheetOrchestrator.jsx)
+  - thin sheet-phase router only
 - [MapSheetShell.jsx](../../../components/map/MapSheetShell.jsx)
   - owns persistent sheet shell behavior
 - [components/map/views/exploreIntent](../../../components/map/views/exploreIntent)
@@ -44,9 +44,18 @@ Supporting files:
 - [MapExploreLoadingOverlay.jsx](../../../components/map/surfaces/MapExploreLoadingOverlay.jsx)
 - [EmergencyLocationPreviewMap.jsx](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx)
 
-## Modal Contract
+## Sheet And Modal Contract
 
-Map-specific modal tasks now share one shell:
+The persistent pre-dispatch map flow now routes `search`, `hospital_list`, and `hospital_detail` through the shared sheet shell.
+
+Persistent sheet path:
+
+- [MapSheetOrchestrator.jsx](../../../components/map/core/MapSheetOrchestrator.jsx)
+- [components/map/views/search](../../../components/map/views/search)
+- [components/map/views/hospitalList](../../../components/map/views/hospitalList)
+- [components/map/views/hospitalDetail](../../../components/map/views/hospitalDetail)
+
+Bridge modals that still share one shell:
 
 - [MapModalShell.jsx](../../../components/map/surfaces/MapModalShell.jsx)
 - [mapModalShell.styles.js](../../../components/map/surfaces/mapModalShell.styles.js)
@@ -58,6 +67,7 @@ Applied to:
 - [MapGuestProfileModal.jsx](../../../components/map/MapGuestProfileModal.jsx)
 - [MapLocationModal.jsx](../../../components/map/surfaces/search/MapLocationModal.jsx)
 - [MapHospitalModal.jsx](../../../components/map/MapHospitalModal.jsx)
+- [MapHospitalDetailsModal.jsx](../../../components/map/MapHospitalDetailsModal.jsx)
 
 Shared behavior:
 
@@ -115,6 +125,6 @@ For `ios-mobile` solidification, build in this order:
 
 1. keep `MapScreen.jsx` thin
 2. add more sheet modes into `useMapExploreFlow.js`
-3. keep new modal tasks on `MapModalShell`
+3. keep remaining bridge modal tasks on `MapModalShell`
 4. add a `MapScreenOrchestrator` once Android and web variants start to diverge
 5. migrate any remaining map-adjacent legacy overlays only if they are reintroduced into `/map`

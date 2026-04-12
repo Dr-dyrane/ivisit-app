@@ -74,3 +74,13 @@ If docs say:
 - `tracking`
 
 then code should use those names directly in constants and selectors.
+
+## Current Naming Upgrade
+
+For `/map`, the store should now center on:
+
+- `sheet.phase`
+- `sheet.snapState`
+- `sheet.payload`
+
+Temporary bridge booleans may still exist during migration, but they are no longer the target architecture.

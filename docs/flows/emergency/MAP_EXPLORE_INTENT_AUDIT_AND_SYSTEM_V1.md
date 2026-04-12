@@ -30,7 +30,7 @@ The good:
 
 - one persistent map canvas already exists
 - one persistent sheet shell already exists
-- search and hospital list are already separate modal tasks
+- search and hospital list now belong to dedicated sheet phases, not separate sibling modals
 - the sheet already has a stable initial mode: `explore_intent`
 - the map already frames a real route above the sheet
 
@@ -482,7 +482,7 @@ The base content stays shared. Variants own only layout and geometry.
 
 - `explore_intent` remains the first `/map` mode
 - `/map` remains a persistent map-first route
-- search and hospital list remain separate modal tasks
+- search and hospital list should remain within the persistent sheet-state family
 - guest flow continues until commit
 - iOS chrome uses one symbol family
 - care/service icons become a separate, reusable pictogram family
