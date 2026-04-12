@@ -11,9 +11,13 @@ export function createWelcomeWebMobileTheme({
 	isDarkMode = true,
 	isShortHeight = false,
 	isVeryShortHeight = false,
+	insetsTop = 0,
+	insetsBottom = 0,
 } = {}) {
 	const resolvedVeryShortHeight = isVeryShortHeight || viewportHeight < 680;
 	const resolvedShortHeight = isShortHeight || viewportHeight < 780;
+	const safeTop = Math.min(Math.max(insetsTop, 0), 24);
+	const safeBottom = Math.min(Math.max(insetsBottom, 0), 40);
 	const colors = {
 		...getWelcomeThemePalette({ isDarkMode }),
 		chipBackground: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.74)",
@@ -31,8 +35,12 @@ export function createWelcomeWebMobileTheme({
 	const metrics = {
 		viewportHeight,
 		showChip: !resolvedShortHeight,
-		topPadding: resolvedVeryShortHeight ? 14 : resolvedShortHeight ? 18 : 24,
-		bottomPadding: resolvedVeryShortHeight ? 14 : resolvedShortHeight ? 16 : 20,
+		topPadding:
+			(resolvedVeryShortHeight ? 14 : resolvedShortHeight ? 18 : 24) +
+			Math.min(safeTop, 8),
+		bottomPadding:
+			(resolvedVeryShortHeight ? 14 : resolvedShortHeight ? 16 : 20) +
+			safeBottom,
 		logoSize: resolvedVeryShortHeight ? 42 : resolvedShortHeight ? 44 : 46,
 		brandSize: resolvedShortHeight ? 26 : 28,
 		heroWidth: resolvedVeryShortHeight ? 286 : resolvedShortHeight ? 300 : 320,

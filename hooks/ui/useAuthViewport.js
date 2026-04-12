@@ -3,9 +3,18 @@ import {
 	DEVICE_BREAKPOINTS,
 	VIEWPORT_BREAKPOINTS,
 } from "../../constants/breakpoints";
+import useWebViewportMetrics from "./useWebViewportMetrics";
 
 export function useAuthViewport() {
-	const { width, height } = useWindowDimensions();
+	const { width: layoutWidth, height: layoutHeight } = useWindowDimensions();
+	const webViewportMetrics = useWebViewportMetrics();
+	const isWeb = Platform.OS === "web";
+	const width = isWeb
+		? webViewportMetrics.visibleWidth || layoutWidth
+		: layoutWidth;
+	const height = isWeb
+		? webViewportMetrics.visibleHeight || layoutHeight
+		: layoutHeight;
 
 	const isDesktop = width >= VIEWPORT_BREAKPOINTS.nativeDesktopMin;
 	const isTablet =
@@ -25,7 +34,21 @@ export function useAuthViewport() {
 	return {
 		width,
 		height,
-		isWeb: Platform.OS === "web",
+		layoutWidth,
+		layoutHeight,
+		visibleWidth: width,
+		visibleHeight: height,
+		isWeb,
+		isStandalonePWA: isWeb ? webViewportMetrics.isStandalonePWA : false,
+		isIosBrowser: isWeb ? webViewportMetrics.isIosBrowser : false,
+		isAndroidBrowser: isWeb ? webViewportMetrics.isAndroidBrowser : false,
+		isBrowserChromeConstrained: isWeb
+			? webViewportMetrics.isBrowserChromeConstrained
+			: false,
+		browserInsetTop: isWeb ? webViewportMetrics.topInset : 0,
+		browserInsetRight: isWeb ? webViewportMetrics.rightInset : 0,
+		browserInsetBottom: isWeb ? webViewportMetrics.bottomInset : 0,
+		browserInsetLeft: isWeb ? webViewportMetrics.leftInset : 0,
 		isDesktop,
 		isTablet,
 		isTabletPortrait,

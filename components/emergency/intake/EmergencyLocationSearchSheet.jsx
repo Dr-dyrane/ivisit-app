@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useAndroidKeyboardAwareModal } from "../../../hooks/ui/useAndroidKeyboardAwareModal";
+import useAuthViewport from "../../../hooks/ui/useAuthViewport";
 import { COLORS } from "../../../constants/colors";
 import googlePlacesService from "../../../services/googlePlacesService";
 
@@ -87,6 +88,17 @@ export default function EmergencyLocationSearchSheet({
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 	const { height: windowHeight } = useWindowDimensions();
+	const {
+		height: viewportHeight,
+		browserInsetTop,
+		browserInsetBottom,
+	} = useAuthViewport();
+	const effectiveWindowHeight =
+		Platform.OS === "web" ? viewportHeight || windowHeight : windowHeight;
+	const effectiveBrowserInsetTop =
+		Platform.OS === "web" ? browserInsetTop || 0 : 0;
+	const effectiveBrowserInsetBottom =
+		Platform.OS === "web" ? browserInsetBottom || 0 : 0;
 	const [query, setQuery] = useState("");
 	const [suggestions, setSuggestions] = useState([]);
 	const [error, setError] = useState(null);
@@ -324,9 +336,12 @@ export default function EmergencyLocationSearchSheet({
 		if (!isIosKeyboardVisible || iosKeyboardHeight <= 0) return 620;
 		return Math.min(
 			620,
-			Math.max(360, windowHeight - iosKeyboardHeight - (insets?.top || 0) - 18),
+			Math.max(
+				360,
+				effectiveWindowHeight - iosKeyboardHeight - (insets?.top || 0) - 18,
+			),
 		);
-	}, [insets?.top, iosKeyboardHeight, isIosKeyboardVisible, windowHeight]);
+	}, [effectiveWindowHeight, insets?.top, iosKeyboardHeight, isIosKeyboardVisible]);
 
 	const iosDialogMaxHeight = useMemo(() => {
 		if (Platform.OS !== "ios") return 760;
@@ -339,15 +354,15 @@ export default function EmergencyLocationSearchSheet({
 			760,
 			Math.max(
 				420,
-				windowHeight - topInset - bottomInset - keyboardAllowance - 64,
+				effectiveWindowHeight - topInset - bottomInset - keyboardAllowance - 64,
 			),
 		);
 	}, [
+		effectiveWindowHeight,
 		insets?.bottom,
 		insets?.top,
 		iosKeyboardHeight,
 		isIosKeyboardVisible,
-		windowHeight,
 	]);
 
 	useEffect(() => {
@@ -419,15 +434,23 @@ export default function EmergencyLocationSearchSheet({
 						{
 							backgroundColor: colors.overlay,
 							paddingHorizontal: overlayHorizontalPadding,
-							paddingTop: useDialogPresentation ? Math.max((insets?.top || 0) + 24, 32) : 0,
+							paddingTop: useDialogPresentation
+								? Math.max(
+										(insets?.top || 0) + effectiveBrowserInsetTop + 24,
+										32,
+									)
+								: 0,
 							paddingBottom:
 								enableAndroidKeyboardAware && Platform.OS === "android"
 									? keyboardHeight
 									: Platform.OS === "ios" && !useDialogPresentation
 										? iosKeyboardHeight
 										: useDialogPresentation
-											? Math.max((insets?.bottom || 0) + 24, 32)
-											: 0,
+											? Math.max(
+													(insets?.bottom || 0) + effectiveBrowserInsetBottom + 24,
+													32,
+												)
+											: effectiveBrowserInsetBottom,
 						},
 					]}
 				>
@@ -441,10 +464,10 @@ export default function EmergencyLocationSearchSheet({
 										backgroundColor: colors.sheet,
 										maxWidth: useDialogPresentation ? dialogMaxWidth : undefined,
 										minHeight: enableAndroidKeyboardAware
-											? Math.min(modalHeight, windowHeight * 0.76)
+											? Math.min(modalHeight, effectiveWindowHeight * 0.76)
 											: useDialogPresentation
-												? Math.min(iosDialogMaxHeight, windowHeight * 0.76)
-												: windowHeight * 0.76,
+												? Math.min(iosDialogMaxHeight, effectiveWindowHeight * 0.76)
+												: effectiveWindowHeight * 0.76,
 										maxHeight: enableAndroidKeyboardAware
 											? modalHeight
 											: useDialogPresentation

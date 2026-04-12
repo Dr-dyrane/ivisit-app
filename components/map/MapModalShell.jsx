@@ -7,13 +7,13 @@ import {
 	ScrollView,
 	Text,
 	View,
-	useWindowDimensions,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
+import useAuthViewport from "../../hooks/ui/useAuthViewport";
 import { HEADER_MODES } from "../../constants/header";
 import {
 	MAP_APPLE_EASE,
@@ -59,10 +59,18 @@ export default function MapModalShell({
 	const { isDarkMode } = useTheme();
 	const { lockHeaderHidden, unlockHeaderHidden, forceHeaderVisible } = useScrollAwareHeader();
 	const insets = useSafeAreaInsets();
-	const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+	const {
+		width: screenWidth,
+		height: visibleScreenHeight,
+		layoutHeight,
+		browserInsetTop,
+		browserInsetBottom,
+	} = useAuthViewport();
 	const isWeb = Platform.OS === "web";
 	const platformMotion = useMemo(() => getMapPlatformMotion(Platform.OS), []);
 	const modalMotion = platformMotion.modal;
+	const screenHeight = visibleScreenHeight;
+	const offscreenHeight = layoutHeight || visibleScreenHeight;
 	const viewportVariant = getMapViewportVariant({ platform: Platform.OS, width: screenWidth });
 	const surfaceConfig = getMapViewportSurfaceConfig(viewportVariant);
 	const isDrawer = surfaceConfig.modalPresentationMode === "left-drawer";
@@ -163,7 +171,9 @@ export default function MapModalShell({
 
 
 	useEffect(() => {
-		const closedOffset = isDrawer ? -(drawerWidthForMotion + drawerSideInset + 24) : screenHeight;
+		const closedOffset = isDrawer
+			? -(drawerWidthForMotion + drawerSideInset + 24)
+			: offscreenHeight;
 		if (visible) {
 			setShouldRender(true);
 			setModalSnapState(resolvedDefaultSnapState);
@@ -226,9 +236,8 @@ export default function MapModalShell({
 		drawerWidthForMotion,
 		dragTranslateY,
 		isDrawer,
+		offscreenHeight,
 		resolvedDefaultSnapState,
-		screenHeight,
-		screenWidth,
 		shouldRender,
 		slideAnim,
 		snapProgress,
@@ -298,6 +307,8 @@ export default function MapModalShell({
 	const handleColor = isDarkMode ? "rgba(148,163,184,0.54)" : "rgba(100,116,139,0.30)";
 	const expandedSheetHeight = getMapSheetHeight(screenHeight, MAP_SHEET_SNAP_STATES.EXPANDED);
 	const resolvedTopClearance = topClearance ?? surfaceConfig.topClearance;
+	const browserTopOffset = isWeb ? Math.max(0, browserInsetTop || 0) : 0;
+	const browserBottomOffset = isWeb ? Math.max(0, browserInsetBottom || 0) : 0;
 	const hostWidth = isDrawer
 		? Math.min(
 				drawerWidthForMotion,
@@ -311,7 +322,7 @@ export default function MapModalShell({
 	const modalRadius = surfaceConfig.modalCornerRadius;
 	const viewportMaxHeight = isDrawer
 		? Math.max(320, screenHeight - drawerTopInset - drawerBottomInset)
-		: Math.max(360, screenHeight - insets.top - resolvedTopClearance - hostBottom);
+		: Math.max(360, screenHeight - insets.top - resolvedTopClearance);
 	const resolvedHeight = isDrawer
 		? viewportMaxHeight
 		: matchExpandedSheetHeight
@@ -671,13 +682,13 @@ export default function MapModalShell({
 								width: hostWidth,
 								left: hostLeft,
 								right: undefined,
-								top: surfaceConfig.modalTopInset ?? drawerTopInset,
-								bottom: hostBottom,
+								top: (surfaceConfig.modalTopInset ?? drawerTopInset) + browserTopOffset,
+								bottom: hostBottom + browserBottomOffset,
 							}
 						: {
 								left: 0,
 								right: 0,
-								bottom: 0,
+								bottom: browserBottomOffset,
 							},
 					{
 						transform: isDrawer ? [{ translateX: slideAnim }] : [{ translateY: slideAnim }],

@@ -26,7 +26,12 @@ import { MAP_SEARCH_SHEET_MODES } from "../components/map/mapSearchSheet.helpers
 
 export default function MapScreen() {
 	const { isDarkMode } = useTheme();
-	const { width, height } = useAuthViewport();
+	const {
+		width,
+		height,
+		browserInsetTop,
+		browserInsetBottom,
+	} = useAuthViewport();
 	const {
 		activeLocation,
 		authModalVisible,
@@ -142,9 +147,11 @@ export default function MapScreen() {
 				leftPanelWidth={sidebarOcclusionWidth}
 				showControls={shouldShowMapControls}
 				controlsMode={surfaceConfig.mapControlsMode}
-				controlsTopOffset={surfaceConfig.mapControlsTopInset}
+				controlsTopOffset={surfaceConfig.mapControlsTopInset + browserInsetTop}
 				controlsRightOffset={surfaceConfig.mapControlsRightInset}
-				controlsBottomOffsetBase={surfaceConfig.mapControlsBottomInsetBase}
+				controlsBottomOffsetBase={
+					surfaceConfig.mapControlsBottomInsetBase + browserInsetBottom
+				}
 				onHospitalPress={handleMapHospitalPress}
 				showInternalSkeleton={false}
 			/>

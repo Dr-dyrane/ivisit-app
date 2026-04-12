@@ -8,7 +8,6 @@ import {
 	ScrollView,
 	Text,
 	View,
-	useWindowDimensions,
 } from "react-native";
 import MaskedView from "@react-native-masked-view/masked-view";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,6 +16,7 @@ import { COLORS } from "../../../constants/colors";
 import { useTheme } from "../../../contexts/ThemeContext";
 import useAuthViewport from "../../../hooks/ui/useAuthViewport";
 import EntryActionButton from "../../entry/EntryActionButton";
+import IOSInstallHintCard from "../../web/IOSInstallHintCard";
 import WelcomeAmbientGlows from "../WelcomeAmbientGlows";
 import { WELCOME_COPY, WELCOME_INTENTS } from "../welcomeContent";
 import useWelcomeWebSurfaceChrome from "../hooks/useWelcomeWebSurfaceChrome";
@@ -108,7 +108,11 @@ export default function WelcomeStageBase({
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 	const viewport = useAuthViewport();
-	const { height, width } = useWindowDimensions();
+	const { height, width } = viewport;
+	const browserInsetTop = viewport.isWeb ? viewport.browserInsetTop || 0 : 0;
+	const browserInsetBottom = viewport.isWeb ? viewport.browserInsetBottom || 0 : 0;
+	const resolvedInsetsTop = (insets?.top || 0) + browserInsetTop;
+	const resolvedInsetsBottom = (insets?.bottom || 0) + browserInsetBottom;
 	const entranceOpacity = useRef(new Animated.Value(0)).current;
 	const entranceTranslate = useRef(new Animated.Value(18)).current;
 	const heroMotion = useRef(new Animated.Value(0)).current;
@@ -187,16 +191,16 @@ export default function WelcomeStageBase({
 		() => ({
 			height,
 			width,
-			insetsTop: insets?.top || 0,
-			insetsBottom: insets?.bottom || 0,
+			insetsTop: resolvedInsetsTop,
+			insetsBottom: resolvedInsetsBottom,
 			isDarkMode,
 			viewport,
 		}),
 		[
 			height,
-			insets?.bottom,
-			insets?.top,
 			isDarkMode,
+			resolvedInsetsBottom,
+			resolvedInsetsTop,
 			viewport,
 			width,
 		],
@@ -217,8 +221,8 @@ export default function WelcomeStageBase({
 				viewportWidth: width,
 				height,
 				width,
-				insetsTop: insets?.top || 0,
-				insetsBottom: insets?.bottom || 0,
+				insetsTop: resolvedInsetsTop,
+				insetsBottom: resolvedInsetsBottom,
 				...(typeof resolveThemeOverrides === "function"
 					? resolveThemeOverrides(themeContext)
 					: null),
@@ -226,10 +230,10 @@ export default function WelcomeStageBase({
 		[
 			createTheme,
 			height,
-			insets?.bottom,
-			insets?.top,
 			isDarkMode,
 			resolveThemeOverrides,
+			resolvedInsetsBottom,
+			resolvedInsetsTop,
 			themeContext,
 			viewport.bodyTextLineHeight,
 			viewport.bodyTextSize,
@@ -322,6 +326,11 @@ export default function WelcomeStageBase({
 	const shouldDockSingleActionBlock =
 		actionContainer === "well" && layout !== "split" && viewport.isShortHeight;
 	const shouldCenterSingleLayoutCluster = layout !== "split" && !viewport.isShortHeight;
+	const shouldShowWebInstallHint =
+		useWebChrome &&
+		layout !== "split" &&
+		(viewport.isIosBrowser || viewport.isAndroidBrowser) &&
+		!viewport.isStandalonePWA;
 	const resolvedActionsMarginTop =
 		layout === "split"
 			? elevatedActionsMarginTop
@@ -427,6 +436,9 @@ export default function WelcomeStageBase({
 
 	const actionContent = (
 		<>
+			{shouldShowWebInstallHint ? (
+				<IOSInstallHintCard visible compact={viewport.isShortHeight} />
+			) : null}
 			<View style={styles.actions}>{actionButtons}</View>
 			{ctaFootnote}
 			{/* {signInPressable} */}
@@ -601,7 +613,7 @@ export default function WelcomeStageBase({
 						position: "absolute",
 						left: 0,
 						right: 0,
-						bottom: 0,
+						bottom: browserInsetBottom,
 					}}
 				>
 					<LinearGradient

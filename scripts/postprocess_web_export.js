@@ -50,6 +50,11 @@ const SCRIPT_BLOCK = `
 
 let html = fs.readFileSync(indexPath, "utf8");
 
+html = html.replace(
+  /<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"\s*\/>/,
+  '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />'
+);
+
 if (!html.includes("manifest.webmanifest")) {
   html = html.replace("</head>", `${META_BLOCK}\n${STYLE_BLOCK}\n  </head>`);
 }
