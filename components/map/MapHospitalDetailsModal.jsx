@@ -14,7 +14,7 @@ import { COLORS } from "../../constants/colors";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useMapRoute } from "../../hooks/emergency/useMapRoute";
 import EmergencyHospitalRoutePreview from "../emergency/intake/EmergencyHospitalRoutePreview";
-import MapModalShell from "./MapModalShell";
+import MapModalShell from "./surfaces/MapModalShell";
 import { getHospitalHeroSource } from "./mapHospitalImage";
 
 const ROOM_LABELS = {

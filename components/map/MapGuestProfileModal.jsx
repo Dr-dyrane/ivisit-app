@@ -2,7 +2,7 @@ import React from "react";
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
-import MapModalShell from "./MapModalShell";
+import MapModalShell from "./surfaces/MapModalShell";
 
 export default function MapGuestProfileModal({
 	visible,

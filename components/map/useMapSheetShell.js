@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef } from "react";
 import { Animated, Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
-import { getMapPlatformMotion } from "./mapMotionTokens";
-import { getMapSheetTokens } from "./mapSheetTokens";
+import { getMapPlatformMotion } from "./tokens/mapMotionTokens";
+import { getMapSheetTokens } from "./tokens/mapSheetTokens";
 import { createMapSheetPanResponder } from "./mapSheetShell.gestures";
 import {
 	getMapViewportSurfaceConfig,
 	getMapViewportVariant,
-} from "./mapViewportConfig";
+} from "./core/mapViewportConfig";
 import {
 	getMapSheetContentPadding,
 	getMapSheetHostLayout,

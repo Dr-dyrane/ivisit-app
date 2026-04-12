@@ -7,11 +7,11 @@ import AuthInputModal from "../components/register/AuthInputModal";
 import MapSheetOrchestrator, {
 	MAP_SHEET_SNAP_STATES,
 	getMapSheetHeight,
-} from "../components/map/MapSheetOrchestrator";
+} from "../components/map/core/MapSheetOrchestrator";
 import MapGuestProfileModal from "../components/map/MapGuestProfileModal";
 import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
-import MapSearchSheet from "../components/map/MapSearchSheet";
-import MapExploreLoadingOverlay from "../components/map/MapExploreLoadingOverlay";
+import MapSearchSheet from "../components/map/surfaces/search/MapSearchSheet";
+import MapExploreLoadingOverlay from "../components/map/surfaces/MapExploreLoadingOverlay";
 import MapHospitalModal from "../components/map/MapHospitalModal";
 import MapHospitalDetailsModal from "../components/map/MapHospitalDetailsModal";
 import MapRecentVisitsModal from "../components/map/MapRecentVisitsModal";
@@ -21,8 +21,8 @@ import {
 	getMapViewportSurfaceConfig,
 	getMapViewportVariant,
 	isSidebarMapVariant,
-} from "../components/map/mapViewportConfig";
-import { MAP_SEARCH_SHEET_MODES } from "../components/map/mapSearchSheet.helpers";
+} from "../components/map/core/mapViewportConfig";
+import { MAP_SEARCH_SHEET_MODES } from "../components/map/surfaces/search/mapSearchSheet.helpers";
 
 export default function MapScreen() {
 	const { isDarkMode } = useTheme();

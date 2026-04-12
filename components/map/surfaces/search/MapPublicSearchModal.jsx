@@ -2,11 +2,11 @@ import React, { useEffect, useMemo } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useTheme } from "../../contexts/ThemeContext";
-import { SearchBoundary, useSearch } from "../../contexts/SearchContext";
-import EmergencySearchBar from "../emergency/EmergencySearchBar";
-import { COLORS } from "../../constants/colors";
-import MapModalShell from "./MapModalShell";
+import { useTheme } from "../../../../contexts/ThemeContext";
+import { SearchBoundary, useSearch } from "../../../../contexts/SearchContext";
+import EmergencySearchBar from "../../../emergency/EmergencySearchBar";
+import { COLORS } from "../../../../constants/colors";
+import MapModalShell from "../MapModalShell";
 
 function normalizeText(value) {
 	return String(value || "")

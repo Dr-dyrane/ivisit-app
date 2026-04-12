@@ -1,0 +1,5 @@
+export const MAP_LOCATION_CHANGE_EPSILON = 0.0001;
+
+export default {
+	MAP_LOCATION_CHANGE_EPSILON,
+};

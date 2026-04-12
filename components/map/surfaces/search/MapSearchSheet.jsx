@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useTheme } from "../../contexts/ThemeContext";
-import { SearchBoundary, useSearch } from "../../contexts/SearchContext";
-import { COLORS } from "../../constants/colors";
-import googlePlacesService from "../../services/googlePlacesService";
-import EmergencySearchBar from "../emergency/EmergencySearchBar";
-import MapModalShell from "./MapModalShell";
+import { useTheme } from "../../../../contexts/ThemeContext";
+import { SearchBoundary, useSearch } from "../../../../contexts/SearchContext";
+import { COLORS } from "../../../../constants/colors";
+import googlePlacesService from "../../../../services/googlePlacesService";
+import EmergencySearchBar from "../../../emergency/EmergencySearchBar";
+import MapModalShell from "../MapModalShell";
 import {
 	buildHospitalMeta,
 	buildHospitalSubtitle,

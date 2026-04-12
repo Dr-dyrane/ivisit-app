@@ -47,8 +47,8 @@
 - it fades out instead of snapping away
 
 #### Files involved
-- `components/map/MapExploreLoadingOverlay.jsx`
-- `components/map/mapExploreLoadingOverlay.styles.js`
+- `components/map/surfaces/MapExploreLoadingOverlay.jsx`
+- `components/map/surfaces/mapExploreLoadingOverlay.styles.js`
 - `hooks/map/useMapExploreFlow.js`
 
 ---
@@ -86,8 +86,8 @@
 - header is hidden while `/map` modals are open for a true focused state
 
 #### Files involved
-- `components/map/MapModalShell.jsx`
-- `components/map/mapModalShell.styles.js`
+- `components/map/surfaces/MapModalShell.jsx`
+- `components/map/surfaces/mapModalShell.styles.js`
 - `hooks/map/useMapExploreFlow.js`
 
 ---

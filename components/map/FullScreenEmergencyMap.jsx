@@ -44,7 +44,7 @@ const ROUTE_ZOOM_FACTOR = 0.4; // previous was 0.125,2
 
 import HospitalMarkers from "./HospitalMarkers";
 import RouteLayer from "./RouteLayer";
-import MapControls from "./MapControls";
+import MapControls from "./chrome/MapControls";
 
 import MapErrorBoundary from "./MapErrorBoundary";
 

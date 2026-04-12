@@ -2,10 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useTheme } from "../../contexts/ThemeContext";
-import { COLORS } from "../../constants/colors";
-import googlePlacesService from "../../services/googlePlacesService";
-import MapModalShell from "./MapModalShell";
+import { useTheme } from "../../../../contexts/ThemeContext";
+import { COLORS } from "../../../../constants/colors";
+import googlePlacesService from "../../../../services/googlePlacesService";
+import MapModalShell from "../MapModalShell";
 
 function mapGeocodeResult(result) {
 	const location = result?.geometry?.location;

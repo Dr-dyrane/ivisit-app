@@ -3,7 +3,7 @@ import {
 	MAP_SHEET_SNAP_STATES,
 	getNextMapSheetSnapStateDown,
 	getNextMapSheetSnapStateUp,
-} from "./mapSheet.constants";
+} from "./core/mapSheet.constants";
 
 function shouldCaptureVerticalPan(gestureState, activationOffset, axisLockRatio = 1.1) {
 	const absDx = Math.abs(gestureState?.dx || 0);

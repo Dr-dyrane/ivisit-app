@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { View, Pressable, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from "@expo/vector-icons";
-import { getMapRenderTokens } from "./mapRenderTokens";
+import { getMapRenderTokens } from "../tokens/mapRenderTokens";
 
 const MapControls = ({
     onRecenter,

@@ -1,4 +1,4 @@
-import { MAP_SHEET_SNAP_INDEX, MAP_SHEET_SNAP_STATES } from "./mapSheet.constants";
+import { MAP_SHEET_SNAP_INDEX, MAP_SHEET_SNAP_STATES } from "./core/mapSheet.constants";
 
 export function getResolvedMapSheetState({ presentationMode = "sheet", snapState, platformMotion }) {
 	const isSidebar = presentationMode === "sidebar";

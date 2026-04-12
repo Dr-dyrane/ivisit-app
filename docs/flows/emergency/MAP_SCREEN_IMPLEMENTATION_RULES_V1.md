@@ -6,6 +6,7 @@
 
 Related references:
 
+- [architecture/README.md](./architecture/README.md)
 - [../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
 - [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 - [MAP_FLOW_IMPLEMENTATION_V1.md](./MAP_FLOW_IMPLEMENTATION_V1.md)
@@ -24,6 +25,8 @@ Before changing the map shell, sheet shell, or active header UI, review these re
    - token, component-family, and reuse guidance
 4. [MAP_FLOW_IMPLEMENTATION_V1.md](./MAP_FLOW_IMPLEMENTATION_V1.md)
    - runtime ownership and composition map
+5. [architecture/README.md](./architecture/README.md)
+   - current code-structure and refactor guide for welcome + map
 
 Rule:
 
@@ -79,6 +82,11 @@ Move state and side effects into:
 ## 4. Flow Ownership Rule
 
 [useMapExploreFlow.js](../../../hooks/map/useMapExploreFlow.js) is the source of truth for the public map flow.
+
+Implementation note:
+
+- the public import path stays `hooks/map/useMapExploreFlow.js`
+- the grouped internal implementation now lives under `hooks/map/exploreFlow/`
 
 It owns:
 
@@ -249,13 +257,13 @@ Map task modals must share one shell and one voice.
 
 Shared shell:
 
-- [MapModalShell.jsx](../../../components/map/MapModalShell.jsx)
-- [mapModalShell.styles.js](../../../components/map/mapModalShell.styles.js)
+- [MapModalShell.jsx](../../../components/map/surfaces/MapModalShell.jsx)
+- [mapModalShell.styles.js](../../../components/map/surfaces/mapModalShell.styles.js)
 
 Current modal family:
 
-- [MapPublicSearchModal.jsx](../../../components/map/MapPublicSearchModal.jsx)
-- [MapLocationModal.jsx](../../../components/map/MapLocationModal.jsx)
+- [MapPublicSearchModal.jsx](../../../components/map/surfaces/search/MapPublicSearchModal.jsx)
+- [MapLocationModal.jsx](../../../components/map/surfaces/search/MapLocationModal.jsx)
 - [MapHospitalModal.jsx](../../../components/map/MapHospitalModal.jsx)
 - [MapHospitalDetailsModal.jsx](../../../components/map/MapHospitalDetailsModal.jsx)
 - [MapCareHistoryModal.jsx](../../../components/map/MapCareHistoryModal.jsx)
@@ -304,7 +312,7 @@ There is now **one** startup loading layer inside the live `/map` route.
 
 Active file:
 
-- [MapExploreLoadingOverlay.jsx](../../../components/map/MapExploreLoadingOverlay.jsx)
+- [MapExploreLoadingOverlay.jsx](../../../components/map/surfaces/MapExploreLoadingOverlay.jsx)
 
 Retired/dead path:
 

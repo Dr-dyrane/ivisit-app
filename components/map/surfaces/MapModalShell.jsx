@@ -11,28 +11,28 @@ import {
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "../../contexts/ThemeContext";
-import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
-import useAuthViewport from "../../hooks/ui/useAuthViewport";
-import { HEADER_MODES } from "../../constants/header";
+import { useTheme } from "../../../contexts/ThemeContext";
+import { useScrollAwareHeader } from "../../../contexts/ScrollAwareHeaderContext";
+import useAuthViewport from "../../../hooks/ui/useAuthViewport";
+import { HEADER_MODES } from "../../../constants/header";
 import {
 	MAP_APPLE_EASE,
 	MAP_MODAL_BACKDROP_IN_MS,
 	MAP_MODAL_BACKDROP_OUT_MS,
 	MAP_MODAL_EXIT_MS,
 	getMapPlatformMotion,
-} from "./mapMotionTokens";
+} from "../tokens/mapMotionTokens";
 import {
 	getMapSheetHeight,
 	getNextMapSheetSnapStateDown,
 	getNextMapSheetSnapStateUp,
 	MAP_SHEET_SNAP_INDEX,
 	MAP_SHEET_SNAP_STATES,
-} from "./mapSheet.constants";
+} from "../core/mapSheet.constants";
 import {
 	getMapViewportSurfaceConfig,
 	getMapViewportVariant,
-} from "./mapViewportConfig";
+} from "../core/mapViewportConfig";
 import { styles } from "./mapModalShell.styles";
 
 export default function MapModalShell({

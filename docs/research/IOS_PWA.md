@@ -123,9 +123,9 @@ For `welcome` and `/map`:
 - `scripts/postprocess_web_export.js`
 - `components/welcome/views/WelcomeStageBase.jsx`
 - `components/welcome/welcomeWebMobile.styles.js`
-- `components/web/IOSInstallHintCard.jsx`
-- `components/web/IOSInstallGuideModal.jsx`
-- `components/web/iosInstallGuide.styles.js`
-- `components/map/MapModalShell.jsx`
+- `components/welcome/install/IOSInstallHintCard.jsx`
+- `components/welcome/install/IOSInstallGuideModal.jsx`
+- `components/welcome/install/iosInstallGuide.styles.js`
+- `components/map/surfaces/MapModalShell.jsx`
 - `components/emergency/intake/EmergencyLocationSearchSheet.jsx`
 - `screens/MapScreen.jsx`

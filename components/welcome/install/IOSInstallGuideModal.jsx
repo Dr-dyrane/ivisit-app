@@ -12,9 +12,9 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "../../contexts/ThemeContext";
-import { COLORS } from "../../constants/colors";
-import useAuthViewport from "../../hooks/ui/useAuthViewport";
+import { useTheme } from "../../../contexts/ThemeContext";
+import { COLORS } from "../../../constants/colors";
+import useAuthViewport from "../../../hooks/ui/useAuthViewport";
 import { styles } from "./iosInstallGuide.styles";
 
 const INSTALL_STEPS = [

@@ -41,22 +41,22 @@ The screen should not expose a partial or broken first state.
 
 Supporting files:
 
-- [MapExploreLoadingOverlay.jsx](../../../components/map/MapExploreLoadingOverlay.jsx)
+- [MapExploreLoadingOverlay.jsx](../../../components/map/surfaces/MapExploreLoadingOverlay.jsx)
 - [EmergencyLocationPreviewMap.jsx](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx)
 
 ## Modal Contract
 
 Map-specific modal tasks now share one shell:
 
-- [MapModalShell.jsx](../../../components/map/MapModalShell.jsx)
-- [mapModalShell.styles.js](../../../components/map/mapModalShell.styles.js)
+- [MapModalShell.jsx](../../../components/map/surfaces/MapModalShell.jsx)
+- [mapModalShell.styles.js](../../../components/map/surfaces/mapModalShell.styles.js)
 
 Applied to:
 
-- [MapPublicSearchModal.jsx](../../../components/map/MapPublicSearchModal.jsx)
+- [MapPublicSearchModal.jsx](../../../components/map/surfaces/search/MapPublicSearchModal.jsx)
 - [MapCareHistoryModal.jsx](../../../components/map/MapCareHistoryModal.jsx)
 - [MapGuestProfileModal.jsx](../../../components/map/MapGuestProfileModal.jsx)
-- [MapLocationModal.jsx](../../../components/map/MapLocationModal.jsx)
+- [MapLocationModal.jsx](../../../components/map/surfaces/search/MapLocationModal.jsx)
 - [MapHospitalModal.jsx](../../../components/map/MapHospitalModal.jsx)
 
 Shared behavior:

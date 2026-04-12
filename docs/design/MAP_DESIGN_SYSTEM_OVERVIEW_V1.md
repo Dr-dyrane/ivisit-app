@@ -127,8 +127,8 @@ Current view decomposition example:
 
 ### 4. Modal Family
 
-- [MapModalShell.jsx](../../components/map/MapModalShell.jsx)
-- [mapModalShell.styles.js](../../components/map/mapModalShell.styles.js)
+- [MapModalShell.jsx](../../components/map/surfaces/MapModalShell.jsx)
+- [mapModalShell.styles.js](../../components/map/surfaces/mapModalShell.styles.js)
 
 Responsibility:
 
@@ -139,8 +139,8 @@ Responsibility:
 
 ### 5. Loading Family
 
-- [MapExploreLoadingOverlay.jsx](../../components/map/MapExploreLoadingOverlay.jsx)
-- [mapExploreLoadingOverlay.styles.js](../../components/map/mapExploreLoadingOverlay.styles.js)
+- [MapExploreLoadingOverlay.jsx](../../components/map/surfaces/MapExploreLoadingOverlay.jsx)
+- [mapExploreLoadingOverlay.styles.js](../../components/map/surfaces/mapExploreLoadingOverlay.styles.js)
 
 Responsibility:
 

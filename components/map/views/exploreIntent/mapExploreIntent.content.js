@@ -1,7 +1,7 @@
 import {
 	MAP_VIEWPORT_VARIANTS,
 	getMapViewportVariant,
-} from "../../mapViewportConfig";
+} from "../../core/mapViewportConfig";
 
 export const MAP_INTENT_VARIANTS = MAP_VIEWPORT_VARIANTS;
 export const getMapIntentVariant = getMapViewportVariant;

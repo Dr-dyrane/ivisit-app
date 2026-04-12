@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useVisits } from "../../contexts/VisitsContext";
 import { navigateToVisits } from "../../utils/navigationHelpers";
-import MapModalShell from "./MapModalShell";
+import MapModalShell from "./surfaces/MapModalShell";
 
 function formatVisitMeta(visit) {
 	const hospital = visit?.hospital || visit?.hospitalName || "iVisit care";

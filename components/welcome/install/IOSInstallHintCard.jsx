@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "../../contexts/ThemeContext";
-import { COLORS } from "../../constants/colors";
-import useAuthViewport from "../../hooks/ui/useAuthViewport";
-import useWebInstallPrompt from "../../hooks/ui/useWebInstallPrompt";
+import { useTheme } from "../../../contexts/ThemeContext";
+import { COLORS } from "../../../constants/colors";
+import useAuthViewport from "../../../hooks/ui/useAuthViewport";
+import useWebInstallPrompt from "../../../hooks/ui/useWebInstallPrompt";
 import IOSInstallGuideModal from "./IOSInstallGuideModal";
 import { WEB_INSTALL_VARIANTS } from "./webInstallHint.constants";
 import {

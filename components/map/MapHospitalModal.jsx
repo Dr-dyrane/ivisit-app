@@ -4,7 +4,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
-import MapModalShell from "./MapModalShell";
+import MapModalShell from "./surfaces/MapModalShell";
 
 function buildHospitalSubtitle(hospital) {
 	const locality = [hospital?.city, hospital?.region].filter(Boolean).join(", ").trim();

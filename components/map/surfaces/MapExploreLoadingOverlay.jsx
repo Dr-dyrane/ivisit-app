@@ -3,13 +3,13 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Animated, Image, Platform, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "../../contexts/ThemeContext";
-import { getMapSheetHeight, MAP_SHEET_SNAP_STATES } from "./MapSheetOrchestrator";
-import { getMapSheetTokens } from "./mapSheetTokens";
+import { useTheme } from "../../../contexts/ThemeContext";
+import { getMapSheetHeight, MAP_SHEET_SNAP_STATES } from "../core/MapSheetOrchestrator";
+import { getMapSheetTokens } from "../tokens/mapSheetTokens";
 import {
 	getMapViewportSurfaceConfig,
 	getMapViewportVariant,
-} from "./mapViewportConfig";
+} from "../core/mapViewportConfig";
 import { styles } from "./mapExploreLoadingOverlay.styles";
 
 const MIN_VISIBLE_MS = 420;

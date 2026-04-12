@@ -3,7 +3,7 @@ import { Platform, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from "../../map/MapComponents";
-import MapControls from "../../map/MapControls";
+import MapControls from "../../map/chrome/MapControls";
 import { getMapRenderTokens } from "../../map/mapRenderTokens";
 import {
 	darkAndroidMapStyle,
