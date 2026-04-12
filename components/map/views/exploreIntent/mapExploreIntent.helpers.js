@@ -28,11 +28,9 @@ export function buildFeaturedHospitalFeatures(hospital) {
 }
 
 export function buildVisibleHospitalSlots(featuredHospitals) {
-	const actualHospitals = Array.isArray(featuredHospitals) ? featuredHospitals.filter(Boolean) : [];
-
-	return [
-		...actualHospitals.map((hospital) => ({ type: "hospital", hospital })),
-		{ type: "placeholder", key: "placeholder-0" },
-		{ type: "placeholder", key: "placeholder-1" },
-	];
+	return Array.isArray(featuredHospitals)
+		? featuredHospitals
+				.filter(Boolean)
+				.map((hospital) => ({ type: "hospital", hospital }))
+		: [];
 }

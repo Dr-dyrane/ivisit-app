@@ -81,11 +81,91 @@ const normalizeFacilityText = (value: unknown): string =>
     .replace(/\s+/g, " ")
     .trim();
 
+const MAP_NEARBY_COMFORT_THRESHOLD = 5;
+
 const coordinateKey = (value: unknown, precision = 3): string | null => {
   const n = toFiniteNumber(value);
   if (!Number.isFinite(n)) return null;
   return Number(n).toFixed(precision);
 };
+
+const isDemoDatabaseRow = (row: any): boolean => {
+  const placeId = toSafeString(row?.place_id, "").toLowerCase();
+  const verificationStatus = toSafeString(
+    row?.verification_status ?? row?.import_status,
+    ""
+  ).toLowerCase();
+  const features = toSafeStringArray(row?.features).map((feature) =>
+    feature.toLowerCase()
+  );
+
+  return (
+    placeId.startsWith("demo:") ||
+    verificationStatus.startsWith("demo") ||
+    features.some((feature) => feature.includes("demo"))
+  );
+};
+
+const isDispatchableDatabaseRow = (row: any): boolean => {
+  const status = toSafeString(row?.status, "available").toLowerCase();
+  const verificationStatus = toSafeString(
+    row?.verification_status ?? row?.import_status,
+    ""
+  ).toLowerCase();
+
+  return (
+    status === "available" &&
+    (row?.verified === true ||
+      isDemoDatabaseRow(row) ||
+      verificationStatus === "verified" ||
+      verificationStatus === "not_certified")
+  );
+};
+
+const parseDistanceKm = (row: any): number | null => {
+  const numericDistance = toFiniteNumber(row?.distance_km ?? row?.distanceKm);
+  if (Number.isFinite(numericDistance)) {
+    return numericDistance;
+  }
+
+  const distanceLabel = toSafeString(row?.distance, "");
+  if (!distanceLabel) return null;
+
+  const match = distanceLabel.match(/(\d+(?:\.\d+)?)/);
+  if (!match) return null;
+
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const compareByDistance = (left: any, right: any): number => {
+  const leftDistance = parseDistanceKm(left);
+  const rightDistance = parseDistanceKm(right);
+  const leftHasDistance = Number.isFinite(leftDistance);
+  const rightHasDistance = Number.isFinite(rightDistance);
+
+  if (leftHasDistance && rightHasDistance && leftDistance !== rightDistance) {
+    return leftDistance - rightDistance;
+  }
+  if (leftHasDistance !== rightHasDistance) {
+    return leftHasDistance ? -1 : 1;
+  }
+
+  return String(left?.name || "").localeCompare(String(right?.name || ""), undefined, {
+    sensitivity: "base",
+  });
+};
+
+const prioritizeDatabaseRows = (rows: any[]): any[] =>
+  [...rows].sort((left, right) => {
+    const leftDispatchable = isDispatchableDatabaseRow(left);
+    const rightDispatchable = isDispatchableDatabaseRow(right);
+    if (leftDispatchable !== rightDispatchable) {
+      return leftDispatchable ? -1 : 1;
+    }
+
+    return compareByDistance(left, right);
+  });
 
 const hashString = (seed: string): number => {
   let hash = 0;
@@ -153,8 +233,30 @@ const scoreNameDomainAffinity = (name: string, domain: string): number => {
   return Math.max(tokenScore, compactScore);
 };
 
+const buildHospitalMediaProxyUrl = (placeId: string): string => {
+  const supabaseUrl = toSafeString(Deno.env.get("SUPABASE_URL"), "").replace(/\/$/, "");
+  if (!supabaseUrl || !placeId) return "";
+  return `${supabaseUrl}/functions/v1/hospital-media?place_id=${encodeURIComponent(placeId)}`;
+};
+
 const resolveHospitalImage = (row: any) => {
   const explicitImage = toSafeString(row?.image);
+  const explicitSource = toSafeString(row?.image_source);
+  if (
+    explicitImage &&
+    isUrl(explicitImage) &&
+    (explicitSource === "provider_photo" || toSafeString(row?.google_photo_name))
+  ) {
+    return {
+      image: explicitImage,
+      image_source: "provider_photo",
+      image_confidence: toFiniteNumber(row?.image_confidence) ?? 0.78,
+      image_attribution_text: toSafeString(
+        row?.image_attribution_text,
+        "Google Places photo"
+      ),
+    };
+  }
   if (explicitImage && isUrl(explicitImage)) {
     return {
       image: explicitImage,
@@ -185,6 +287,35 @@ const resolveHospitalImage = (row: any) => {
   };
 };
 
+const IMAGE_SOURCE_RANK: Record<string, number> = {
+  hospital_upload: 100,
+  official_website_image: 90,
+  provider_photo: 86,
+  provider_image: 82,
+  seed_image: 78,
+  domain_logo: 60,
+  deterministic_fallback: 20,
+};
+
+const choosePreferredImage = (existing: any, candidate: any) => {
+  const existingUrl = toSafeString(existing?.image, "");
+  const candidateUrl = toSafeString(candidate?.image, "");
+  const existingSource = toSafeString(existing?.image_source, "");
+  const candidateSource = toSafeString(candidate?.image_source, "");
+  const existingConfidence = toFiniteNumber(existing?.image_confidence) ?? 0;
+  const candidateConfidence = toFiniteNumber(candidate?.image_confidence) ?? 0;
+  const existingRank = IMAGE_SOURCE_RANK[existingSource] ?? 0;
+  const candidateRank = IMAGE_SOURCE_RANK[candidateSource] ?? 0;
+
+  if (!existingUrl && candidateUrl) return candidate;
+  if (existingUrl && !candidateUrl) return existing;
+  if (!existingUrl && !candidateUrl) return existingRank >= candidateRank ? existing : candidate;
+  if (candidateRank > existingRank) return candidate;
+  if (existingRank > candidateRank) return existing;
+  if (candidateConfidence > existingConfidence) return candidate;
+  return existing;
+};
+
 const withProviderDefaults = (row: any, providerSource: string) => {
   const normalized = {
     place_id: toSafeString(row?.place_id),
@@ -210,6 +341,11 @@ const withProviderDefaults = (row: any, providerSource: string) => {
     imported_from_google: providerSource === "google",
     mapbox_only: providerSource === "mapbox",
     google_only: providerSource === "google",
+    image: toSafeString(row?.image),
+    image_source: toSafeString(row?.image_source),
+    image_confidence: toFiniteNumber(row?.image_confidence),
+    image_attribution_text: toSafeString(row?.image_attribution_text),
+    google_photo_name: toSafeString(row?.google_photo_name),
   };
 
   const imageMeta = resolveHospitalImage(normalized);
@@ -298,26 +434,116 @@ const normalizeGooglePlace = (
   fallbackLng: number,
   index: number
 ) => {
-  const latitude = toFiniteNumber(place?.geometry?.location?.lat) ?? fallbackLat;
-  const longitude = toFiniteNumber(place?.geometry?.location?.lng) ?? fallbackLng;
+  const latitude =
+    toFiniteNumber(place?.location?.latitude ?? place?.geometry?.location?.lat) ??
+    fallbackLat;
+  const longitude =
+    toFiniteNumber(place?.location?.longitude ?? place?.geometry?.location?.lng) ??
+    fallbackLng;
   const placeId =
+    place?.id ??
     place?.place_id ??
     `google_${index}_${Math.abs(Math.round(latitude * 10000))}_${Math.abs(
       Math.round(longitude * 10000)
     )}`;
+  const googlePhotoName = toSafeString(place?.photos?.[0]?.name);
+  const proxyImage =
+    googlePhotoName && toSafeString(placeId)
+      ? buildHospitalMediaProxyUrl(String(placeId))
+      : "";
+  const displayName =
+    typeof place?.displayName === "object"
+      ? toSafeString(place?.displayName?.text)
+      : toSafeString(place?.displayName);
 
   return {
     place_id: String(placeId),
-    name: place?.name || "Unnamed Hospital",
-    address: place?.vicinity || place?.formatted_address || "Address unavailable",
+    name: displayName || place?.name || "Unnamed Hospital",
+    address:
+      place?.formattedAddress || place?.vicinity || place?.formatted_address || "Address unavailable",
     latitude,
     longitude,
-    phone: place?.formatted_phone_number ?? "",
-    website: place?.website ?? "",
+    phone:
+      place?.internationalPhoneNumber ??
+      place?.nationalPhoneNumber ??
+      place?.formatted_phone_number ??
+      "",
+    website: place?.websiteUri ?? place?.website ?? "",
     rating: toFiniteNumber(place?.rating) ?? 0,
+    image: proxyImage,
+    image_source: googlePhotoName ? "provider_photo" : "",
+    image_confidence: googlePhotoName ? 0.78 : 0,
+    image_attribution_text: googlePhotoName ? "Google Places photo" : "",
+    google_photo_name: googlePhotoName,
     verified: false,
     status: "available",
   };
+};
+
+const fetchGoogleProviderPlaces = async ({
+  apiKey,
+  latitude,
+  longitude,
+  radius,
+  mode,
+  query,
+  limit,
+}: {
+  apiKey: string;
+  latitude: number;
+  longitude: number;
+  radius: number;
+  mode: "nearby" | "text_search";
+  query: string;
+  limit: number;
+}) => {
+  const endpoint =
+    mode === "text_search" && query
+      ? "https://places.googleapis.com/v1/places:searchText"
+      : "https://places.googleapis.com/v1/places:searchNearby";
+  const fieldMask =
+    "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.photos";
+  const body =
+    mode === "text_search" && query
+      ? {
+          textQuery: query,
+          includedType: "hospital",
+          pageSize: limit,
+          locationBias: {
+            circle: {
+              center: { latitude, longitude },
+              radius: Math.max(1, Math.round(radius)),
+            },
+          },
+        }
+      : {
+          includedTypes: ["hospital"],
+          maxResultCount: limit,
+          rankPreference: "DISTANCE",
+          locationRestriction: {
+            circle: {
+              center: { latitude, longitude },
+              radius: Math.max(1, Math.round(radius)),
+            },
+          },
+        };
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": fieldMask,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`google places fetch failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return Array.isArray(data?.places) ? data.places : [];
 };
 
 // Keep persistence schema-safe: only write columns that exist on public.hospitals.
@@ -332,6 +558,12 @@ const toHospitalUpsertRow = (row: any) => ({
   image:
     toSafeString(row?.image) ||
     pickFallbackHospitalImage(String(row?.place_id || row?.name || "hospital")),
+  image_source: toSafeString(row?.image_source, "deterministic_fallback"),
+  image_confidence:
+    toFiniteNumber(row?.image_confidence) ??
+    (toSafeString(row?.image).length > 0 ? 0.95 : 0.35),
+  image_attribution_text: toSafeString(row?.image_attribution_text),
+  image_synced_at: new Date().toISOString(),
   specialties: toSafeStringArray(row?.specialties),
   service_types: toSafeStringArray(row?.service_types),
   features: toSafeStringArray(row?.features),
@@ -422,14 +654,22 @@ serve(async (req) => {
     }
 
     let dbResults = Array.isArray(nearbyHospitals) ? nearbyHospitals : [];
-    const hasEnoughDbResults = mergeWithDatabase && dbResults.length >= limit;
+    const dispatchableDbResults = dbResults.filter((row: any) =>
+      isDispatchableDatabaseRow(row)
+    );
+    const databaseComfortTarget =
+      mode === "nearby" ? Math.min(limit, MAP_NEARBY_COMFORT_THRESHOLD) : limit;
+    const hasEnoughDbResults =
+      mergeWithDatabase &&
+      dispatchableDbResults.length >= databaseComfortTarget;
     if (hasEnoughDbResults) {
       providerDiscoverySkipped = true;
       providerDiscoverySkipReason = "database_sufficient";
       console.log("[discover-hospitals] provider discovery skipped", {
         reason: providerDiscoverySkipReason,
         dbCount: dbResults.length,
-        limit,
+        dispatchableDbCount: dispatchableDbResults.length,
+        comfortTarget: databaseComfortTarget,
       });
     }
 
@@ -453,24 +693,35 @@ serve(async (req) => {
             ? mapboxData.suggestions
             : [];
           providerSource = "mapbox";
+
+          if (providerData.length === 0 && mode !== "text_search") {
+            const fallbackQueryUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(
+              "hospital"
+            )}&proximity=${longitude},${latitude}&types=poi&limit=${limit}&access_token=${mapboxToken}`;
+            console.log("[discover-hospitals] mapbox fallback text fetch");
+            const fallbackRes = await fetch(fallbackQueryUrl);
+            const fallbackData = await fallbackRes.json();
+
+            providerData = Array.isArray(fallbackData?.features)
+              ? fallbackData.features
+              : Array.isArray(fallbackData?.suggestions)
+              ? fallbackData.suggestions
+              : [];
+          }
         }
 
         if (providerData.length === 0 && googleApiKey && includeGooglePlaces) {
-          const googleUrl =
-            mode === "text_search" && query
-              ? `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(
-                  query
-                )}&key=${googleApiKey}&fields=place_id,name,formatted_address,geometry,rating,photos,opening_hours,formatted_phone_number,website`
-              : `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=hospital&key=${googleApiKey}&fields=place_id,name,formatted_address,geometry,rating,photos,opening_hours,formatted_phone_number,website`;
-
           console.log("[discover-hospitals] google fetch");
-          const googleRes = await fetch(googleUrl);
-          const googleData = await googleRes.json();
-
-          if (googleData.status === "OK" || googleData.status === "ZERO_RESULTS") {
-            providerData = googleData.results || [];
-            providerSource = "google";
-          }
+          providerData = await fetchGoogleProviderPlaces({
+            apiKey: googleApiKey,
+            latitude,
+            longitude,
+            radius,
+            mode,
+            query,
+            limit,
+          });
+          providerSource = "google";
         }
       } catch (providerError) {
         console.error("[discover-hospitals] provider fetch failed", providerError);
@@ -503,8 +754,49 @@ serve(async (req) => {
           providerOnlyRows.push(row);
         });
 
+        const providerPlaceIds = providerOnlyRows
+          .map((row: any) => toSafeString(row?.place_id))
+          .filter((value: string) => value.length > 0);
+        const existingByPlaceId = new Map<string, any>();
+
+        if (providerPlaceIds.length > 0) {
+          const { data: existingRows, error: existingError } = await supabaseClient
+            .from("hospitals")
+            .select("place_id,image,image_source,image_confidence,image_attribution_text")
+            .in("place_id", providerPlaceIds);
+
+          if (existingError) {
+            console.error("[discover-hospitals] existing image lookup failed", existingError);
+          } else {
+            (Array.isArray(existingRows) ? existingRows : []).forEach((row: any) => {
+              const key = toSafeString(row?.place_id);
+              if (!key) return;
+              existingByPlaceId.set(key, row);
+            });
+          }
+        }
+
         const upsertRows = providerOnlyRows
-          .map(toHospitalUpsertRow)
+          .map((row: any) => {
+            const existing = existingByPlaceId.get(toSafeString(row?.place_id));
+            const preferredImage = choosePreferredImage(existing, row);
+            return toHospitalUpsertRow({
+              ...row,
+              image: toSafeString(preferredImage?.image, toSafeString(row?.image)),
+              image_source: toSafeString(
+                preferredImage?.image_source,
+                toSafeString(row?.image_source, "deterministic_fallback")
+              ),
+              image_confidence:
+                toFiniteNumber(preferredImage?.image_confidence) ??
+                toFiniteNumber(row?.image_confidence) ??
+                0.35,
+              image_attribution_text: toSafeString(
+                preferredImage?.image_attribution_text,
+                toSafeString(row?.image_attribution_text)
+              ),
+            });
+          })
           .filter(
             (row: any) =>
               !!row?.place_id &&
@@ -563,7 +855,9 @@ serve(async (req) => {
     const merged: any[] = [];
     const seen = new Set<string>();
 
-    for (const row of dbResults) {
+    const prioritizedDbResults = prioritizeDatabaseRows(dbResults);
+
+    for (const row of prioritizedDbResults) {
       const key = toMergeKey(row);
       if (seen.has(key)) continue;
       seen.add(key);
@@ -596,10 +890,14 @@ serve(async (req) => {
           provider_count: providerData.length,
           provider_source: providerSource,
           database_count: dbResults.length,
+          dispatchable_database_count: prioritizedDbResults.filter((row: any) =>
+            isDispatchableDatabaseRow(row)
+          ).length,
           merged_count: limitedResults.length,
           provider_discovery_enabled: includeProviderDiscovery,
           provider_discovery_skipped: providerDiscoverySkipped,
           provider_discovery_skip_reason: providerDiscoverySkipReason || null,
+          database_comfort_target: databaseComfortTarget,
           mapbox_enabled: includeMapboxPlaces,
           google_enabled: includeGooglePlaces,
           mode,

@@ -399,6 +399,11 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/bootstrap-demo-ecosystem/index.ts"
 
+[functions.discover-hospitals]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/discover-hospitals/index.ts"
+
 [functions.demo-approve-cash-payment]
 enabled = true
 verify_jwt = false
@@ -408,3 +413,8 @@ entrypoint = "./functions/demo-approve-cash-payment/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/triage-copilot/index.ts"
+
+[functions.hospital-media]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/hospital-media/index.ts"

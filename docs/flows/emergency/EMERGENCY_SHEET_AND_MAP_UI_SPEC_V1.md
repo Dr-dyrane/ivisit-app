@@ -1,7 +1,7 @@
 # Emergency Sheet And Map UI Spec (v1)
 
 > Status: Active design reference
-> Last updated: 2026-04-08
+> Last updated: 2026-04-12
 > Purpose: define what each emergency sheet state shows, what decision the user is making, and how the map should behave across iOS, Android, and web/PWA
 
 Related references:
@@ -450,12 +450,17 @@ Expanded browse behavior:
 - the hospital rail always behaves like a horizontal rail, not a static grid
 - two cards should dominate the visible row
 - the next card should partially peek to communicate scroll
-- real hospitals render first
-- two muted placeholder cards are always appended after the real hospitals for scroll awareness
-- placeholder cards must stay clearly non-data and non-committal
-- never inject fake hospital names, distances, ETA, or bed counts just to fill the rail
+- the rail should render the full nearby hospital set, not a separate clipped preview subset
+- the modal list and the rail must read from the same hospital collection so users do not see contradictory counts
+- never inject fake hospital names, distances, ETA, bed counts, or placeholder hospital cards just to fill the rail
 - each hospital card uses app-owned imagery with bottom overlay copy
 - each featured card opens a hospital details modal
+
+Hospital media source rule:
+
+- featured hospital cards should continue to consume the hydrated `hospital.image` field
+- that image field should resolve through the canonical hospital-media pipeline, not per-card provider URL logic
+- if the system has no trustworthy real image, the rail may show a deterministic fallback image rather than blank media
 
 Featured hospital card contents:
 

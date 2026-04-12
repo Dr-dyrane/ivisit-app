@@ -36,6 +36,7 @@ const DEMO_RESEED_DISTANCE_KM = 3;
 const DEMO_RESEED_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const DEMO_PERSISTED_COVERAGE_THRESHOLD = 5;
 const DEMO_PERSISTED_COVERAGE_RADIUS_KM = 15;
+const DEMO_LOCAL_COVERAGE_RADIUS_KM = 8;
 
 const normalizeCoordinates = ({ latitude, longitude }) => {
 	const lat = Number(latitude);
@@ -301,11 +302,24 @@ export const demoEcosystemService = {
 			});
 
 		const hospitals = Array.from(buckets.values());
+		const localHospitals = hospitals.filter((row) => {
+			const lat = Number(row?.latitude);
+			const lng = Number(row?.longitude);
+			if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+			return (
+				calculateDistanceKm(coords, { latitude: lat, longitude: lng }) <=
+				DEMO_LOCAL_COVERAGE_RADIUS_KM
+			);
+		});
 		return {
 			coverageKey,
 			hospitals,
 			count: hospitals.length,
-			sufficient: hospitals.length >= minimumHospitals,
+			localHospitals,
+			localCount: localHospitals.length,
+			sufficient:
+				hospitals.length >= minimumHospitals &&
+				localHospitals.length >= minimumHospitals,
 		};
 	},
 
@@ -434,14 +448,24 @@ export const demoEcosystemService = {
 				persistedCoverage,
 			};
 		}
+		const freshnessDecision = this.shouldRebootstrapForLocation({
+			currentLocation: coords,
+			lastBootstrapState,
+			thresholdKm,
+			maxAgeMs,
+		});
 		const decision = force
 			? { needed: true, reason: "forced", distanceKm: null, ageMs: null }
-			: this.shouldRebootstrapForLocation({
-					currentLocation: coords,
-					lastBootstrapState,
-					thresholdKm,
-					maxAgeMs,
-			  });
+			: persistedCoverage && persistedCoverage.sufficient !== true
+				? {
+					...freshnessDecision,
+					needed: true,
+					reason:
+						Number(persistedCoverage.localCount || 0) < DEMO_PERSISTED_COVERAGE_THRESHOLD
+							? "insufficient_local_coverage"
+							: "insufficient_coverage",
+				  }
+				: freshnessDecision;
 
 		if (!decision.needed) {
 			return {

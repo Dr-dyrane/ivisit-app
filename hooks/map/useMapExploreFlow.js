@@ -398,7 +398,7 @@ export function useMapExploreFlow() {
 		[visits],
 	);
 	const featuredHospitals = useMemo(
-		() => (Array.isArray(discoveredHospitals) ? discoveredHospitals.slice(0, 6) : []),
+		() => (Array.isArray(discoveredHospitals) ? discoveredHospitals.filter(Boolean) : []),
 		[discoveredHospitals],
 	);
 

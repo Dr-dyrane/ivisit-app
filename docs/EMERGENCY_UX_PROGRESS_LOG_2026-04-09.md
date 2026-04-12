@@ -198,6 +198,101 @@ After fix:
 
 ---
 
+### 8) Public discovery and nearby stability were hardened for real worldwide demo use
+
+#### Problem addressed
+- `/map` is public, but `discover-hospitals` was still deployed as JWT-protected
+- guest/sponsor sessions could silently fall back to RPC-only discovery instead of using provider-backed discovery
+- even when the database had enough real nearby hospitals, raw shadow/provider rows could crowd the top slice and make the sheet look thinner than the actual stored coverage
+
+#### Change made
+- `discover-hospitals` was redeployed as a public function (`verify_jwt = false`) so guest map discovery can use the intended provider-backed path
+- the function now judges "database sufficient" from **dispatchable nearby hospitals**, not raw row count
+- the function now orders dispatchable database hospitals ahead of shadow/provider rows before applying the response limit
+- nearby-mode sufficiency is aligned to the `/map` comfort target of **5 dispatchable hospitals**
+- a read-only live audit script was added at `supabase/scripts/audit_demo_coverage.js` to compare:
+  - `nearby_hospitals`
+  - `discover-hospitals`
+  - visible dispatchable count after edge-function limiting
+
+#### Files involved
+- `supabase/functions/discovery/discover-hospitals/index.ts`
+- `supabase/functions/discover-hospitals/index.ts`
+- `supabase/config.toml`
+- `supabase/scripts/audit_demo_coverage.js`
+- `docs/DEMO_MODE_COVERAGE_FLOW.md`
+
+#### Live verification snapshots
+- Hemet:
+  - `nearby_hospitals` 15 km = `5` dispatchable hospitals
+  - `discover-hospitals` 50 km limited response = `8` dispatchable hospitals after prioritization
+- Toronto:
+  - `nearby_hospitals` 15 km = `6` dispatchable hospitals
+  - `discover-hospitals` response preserved all `6`
+- Lagos:
+  - `nearby_hospitals` 15 km = `5` dispatchable hospitals
+  - `discover-hospitals` response preserved all `5`
+- Paris read-only provider preview (`mergeWithDatabase = false`) returned `5` provider hospitals with no DB writes, confirming the public provider path works when provider data exists
+- Nairobi read-only provider preview still returned `0`, so fully worldwide real-name coverage remains provider-dependent and still falls back to synthetic coverage in no-data regions
+
+#### Expected result after fix
+- public `/map` should no longer depend on a hidden auth session to discover nearby hospitals
+- real nearby hospitals should not disappear from the visible top slice just because shadow/provider rows are also present in the database
+- once a location already has `5` dispatchable nearby hospitals, the discovery function should treat that area as healthy and stop burning provider calls unnecessarily
+
+---
+
+### 9) Dense-city demo coverage no longer reuses one static neighborhood pack across a whole metro
+
+#### Problem addressed
+- a city could look "covered" after one bootstrap even when users kilometers apart still needed different nearby hospitals
+- persisted demo coverage was previously considered good enough as soon as there were `5` demo hospitals somewhere inside the broader nearby window
+- old demo rows could be misread as valid nearby seeds because the bootstrap preview path was relying on raw `nearby_hospitals` output without all demo-identifying metadata
+
+#### Change made
+- persisted demo reuse is now local-density aware:
+  - still requires at least `5` dispatchable demo hospitals inside `15 km`
+  - now also requires at least `5` of those hospitals inside a tighter `8 km` local window before bootstrap is skipped
+- bootstrap seed inspection now hydrates hospital metadata from the base `hospitals` table before deciding whether a nearby row is real coverage or an old demo row
+- dense-city fallback can now use a shared metro catalog instead of repeated neighborhood slot packs
+- the first metro catalog implementation is Lagos under shared scope `city_lagos`
+- legacy Lagos per-bucket demo rows with the same hospital names are retired to `status = full` so they no longer pollute active nearby coverage
+
+#### Files involved
+- `services/demoEcosystemService.js`
+- `supabase/functions/bootstrap-demo-ecosystem/index.ts`
+- `docs/DEMO_MODE_COVERAGE_FLOW.md`
+
+#### Sequential live verification
+- Shared demo org:
+  - Lagos metro now resolves to one shared demo organization `7894dcd6-e45e-408e-b020-700e1665416a`
+  - that org currently stores a `13`-hospital Lagos metro catalog with real hospital identities and coordinates
+- Legacy cleanup:
+  - old Lagos scope rows such as `demo:p0652_p0338:slot:*` and `demo:p0645_p0325:slot:*` were observed in `status = full`, not `available`
+  - current active Lagos rows are `demo:city_lagos:src:*`
+- Neighborhood-specific nearby subsets from the same metro catalog:
+  - Lagos Island `nearby_hospitals` 15 km returned hospitals such as:
+    - `Lagos Island General Hospital`
+    - `St. Nicholas Hospital`
+    - `Reddington Hospital`
+    - `Victoria Island Emergency Centre`
+  - Ikeja `nearby_hospitals` 15 km returned a different subset led by:
+    - `General Hospital Ikeja`
+    - `Lagos State University Teaching Hospital`
+    - `Gbagada General Hospital`
+  - Lekki `nearby_hospitals` 15 km returned a different subset again, including:
+    - `Lekki Coast Medical Centre`
+    - `First Consultant Medical Centre`
+    - `Reddington Hospital`
+  - Surulere and Yaba likewise produced their own nearby mixes
+
+#### Expected result after fix
+- a single successful bootstrap in a large city should no longer freeze the whole city into one static 5-hospital experience
+- nearby demo sufficiency should now be judged by local density, not just metro-wide count
+- a shared metro fallback catalog may back multiple neighborhoods, but the user-facing nearby hospitals should still change with the user's coordinates
+
+---
+
 ## Verification evidence from today
 
 - Toronto validation for `43.6532, -79.3832` returned **15 nearby hospitals** through both:
@@ -285,3 +380,83 @@ The desired rule is:
 - `use*.js` hooks for orchestration and side effects
 
 This should be treated as ongoing cleanup work, especially anywhere a map view file is still absorbing constants, copy, helpers, and render structure together.
+
+---
+
+## 2026-04-12: Hospital media pipeline made seamless for emergency flows
+
+### Initial problem
+- The app could discover real hospital names, but image delivery was not normalized.
+- Bootstrapped/demo hospitals usually had no trustworthy media path.
+- Existing emergency and `/map` UIs already read `hospital.image`, so without a canonical data-layer image pipeline the experience stayed inconsistent.
+- Google legacy Places endpoints were still present in some live provider paths and were already denied by the project configuration.
+
+### Fix implemented
+- Added a dedicated hospital media model and metadata columns via:
+  - [`20260412050000_hospital_media_pipeline.sql`](../supabase/migrations/20260412050000_hospital_media_pipeline.sql)
+- Added public proxy delivery for hospital images via:
+  - [`hospital-media`](../supabase/functions/hospital-media/index.ts)
+- Migrated live provider fetchers to Google Places API (New):
+  - [`bootstrap-demo-ecosystem`](../supabase/functions/bootstrap-demo-ecosystem/index.ts)
+  - [`discover-hospitals`](../supabase/functions/discovery/discover-hospitals/index.ts)
+- Added DB normalization/backfill via:
+  - [`backfill_hospital_media.js`](../supabase/scripts/backfill_hospital_media.js)
+
+### Delivery model now
+- Emergency/map flows continue to use the existing hydrated `hospital.image` field.
+- `hospital.image` now points to a stable app-controlled proxy URL when the chosen image source is managed media.
+- The proxy resolves:
+  - active `hospital_media` rows first
+  - direct provider photo fallback by `place_id` when no stored media row exists yet
+  - deterministic fallback only when no trusted real source is available
+
+### Live rollout and verification
+- Remote migration status: already applied; `supabase db push` returned `Remote database is up to date.`
+- Functions redeployed to project `dlwtcmhdzoklveihuhjf`:
+  - `bootstrap-demo-ecosystem`
+  - `discover-hospitals`
+  - `hospital-media`
+- Full backfill applied across live hospital rows:
+  - `118` scanned
+  - `118` touched
+  - `118` active primary `hospital_media` rows now present
+
+### Live media result distribution after backfill
+- `provider_photo`: `42`
+- `official_website_image`: `25`
+- `domain_logo`: `4`
+- `deterministic_fallback`: `47`
+
+### Spot checks completed
+- Official website image proxy check:
+  - `Hemet Valley Medical Center` returned `302` to a real hospital website image URL
+- Provider photo proxy check:
+  - `First Consultant Medical Centre` returned `302` to a Google Places photo URL
+- Raw provider `place_id` proxy check:
+  - `hospital-media?place_id=ChIJmwNFsCz1OxARvDhke17z6tk` returned `302` to a Google Places photo URL without requiring a pre-existing hospital row
+
+### User experience effect
+- Existing emergency hospital cards, rails, and hospital detail surfaces do not need UI rewiring.
+- Once a hospital row is hydrated from the DB, the current UI automatically receives the normalized image path through `hospital.image`.
+- Newly discovered provider hospitals can now render a real provider photo immediately through the proxy fallback, instead of waiting for a later manual backfill.
+
+### Residual reality
+- Not every hospital can or should show a “real” photo.
+- Some rows still fall back deliberately because no trustworthy official/provider image was available.
+- The global hospital table still contains noisy/non-ideal facilities in some regions; this media pass does not certify facility quality, it only normalizes the image delivery path for whatever hospital rows are already considered visible/dispatchable by the runtime.
+
+---
+
+## 2026-04-12: Hospital rail and modal count contract aligned
+
+### Problem
+- The horizontal hospital rail in the explore sheet was using a clipped subset while the hospital modal used the full nearby list.
+- Even when both surfaces were technically correct, the user could read that as contradictory hospital counts.
+
+### Fix
+- The rail now reads from the same full discovered nearby hospital set as the modal.
+- Placeholder rail cards were removed so the rail no longer implies extra hidden/fake entries just to maintain scroll awareness.
+
+### Result
+- Rail and modal now follow one simpler contract: same hospital collection, different presentation.
+- Any visible difference is now card layout/viewport only, not a data mismatch.

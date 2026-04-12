@@ -92,10 +92,22 @@ The map keeps the full discovered set available, but it should not treat every d
 - `>5-15 km` = nearby support
 - `>15-50 km` = extended browse only
 - The current `/map` sheet should aim for about **5 nearby hospitals** so the summary card, hospital rail, and modal list all feel comfortably populated.
+- The hospital rail and the hospital modal should now read from the same full discovered nearby set; the rail is no longer an artificially clipped preview subset.
+- Any visible difference between rail and modal should come only from viewport/card layout, not from different hospital collections.
 - Live coverage quality is decided from the `0-15 km` window.
 - Demo bootstrap sufficiency is decided from the `0-15 km` window and should keep filling while the nearby set is still below that map comfort target.
 - One faraway demo hospital must not suppress bootstrap.
 - Mixed live/demo hospital lists should rank close-by hospitals ahead of extended browse results, even in `hybrid` mode.
+
+## Hospital Media Contract
+
+Hospital media should remain a data-layer concern.
+
+- Emergency and `/map` surfaces continue to read the existing `hospital.image` field.
+- `hospital.image` is now expected to be a canonical render URL, often backed by the public [`hospital-media`](../../../supabase/functions/hospital-media/index.ts) proxy.
+- New provider-discovered hospitals may use a direct `place_id` proxy path immediately.
+- Existing hospitals should be normalized through [`backfill_hospital_media.js`](../../../supabase/scripts/backfill_hospital_media.js) so the current UI receives stable image delivery without per-surface image logic.
+- When no trustworthy real image exists, deterministic fallback remains valid and should be preferred over misleading random media.
 
 ## Next Steps
 

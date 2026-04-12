@@ -25,27 +25,63 @@ const LAGOS_DEMO_HOSPITAL_TEMPLATES = [
   {
     name: "Lagos Island General Hospital",
     address: "1-3 Broad St, Lagos Island, Lagos",
+    latitude: 6.4548,
+    longitude: 3.3928,
     phone: "+234 1 234 5678",
     rating: 4.5,
     type: "standard",
     image: "",
     specialties: ["Emergency Medicine", "Internal Medicine", "Cardiology"],
     service_types: ["standard", "premium"],
-    features: ["lagos_demo", "island_coverage"],
+    features: ["lagos_demo", "island_coverage", "district:lagos_island"],
     emergency_level: "Level 1",
     wait_time: "9 min",
     price_range: "Flexible",
   },
   {
+    name: "St. Nicholas Hospital",
+    address: "57 Campbell St, Lagos Island, Lagos",
+    latitude: 6.4516,
+    longitude: 3.3936,
+    phone: "+234 1 227 2953",
+    rating: 4.4,
+    type: "premium",
+    image: "",
+    specialties: ["Emergency Medicine", "Cardiology", "Critical Care"],
+    service_types: ["premium", "standard"],
+    features: ["lagos_demo", "island_coverage", "district:lagos_island"],
+    emergency_level: "Level 1",
+    wait_time: "10 min",
+    price_range: "Premium",
+  },
+  {
     name: "Victoria Island Emergency Centre",
     address: "Ozumba Mbadiwe Ave, Victoria Island, Lagos",
+    latitude: 6.4281,
+    longitude: 3.4219,
     phone: "+234 1 700 4400",
     rating: 4.4,
     type: "premium",
     image: "",
     specialties: ["Emergency Medicine", "Trauma Care", "Orthopedics"],
     service_types: ["premium", "standard"],
-    features: ["lagos_demo", "island_coverage"],
+    features: ["lagos_demo", "island_coverage", "district:victoria_island"],
+    emergency_level: "Level 1",
+    wait_time: "11 min",
+    price_range: "Premium",
+  },
+  {
+    name: "First Consultant Medical Centre",
+    address: "1 Road 16, Ikoyi, Lagos",
+    latitude: 6.4465,
+    longitude: 3.4342,
+    phone: "+234 1 271 0272",
+    rating: 4.3,
+    type: "premium",
+    image: "",
+    specialties: ["Emergency Medicine", "Internal Medicine", "Diagnostics"],
+    service_types: ["premium", "standard"],
+    features: ["lagos_demo", "island_coverage", "district:ikoyi"],
     emergency_level: "Level 1",
     wait_time: "11 min",
     price_range: "Premium",
@@ -53,44 +89,155 @@ const LAGOS_DEMO_HOSPITAL_TEMPLATES = [
   {
     name: "Yaba Community Hospital",
     address: "Herbert Macaulay Way, Yaba, Lagos",
+    latitude: 6.5095,
+    longitude: 3.3711,
     phone: "+234 1 515 2121",
     rating: 4.3,
     type: "standard",
     image: "",
     specialties: ["Emergency Medicine", "Pediatrics", "Family Medicine"],
     service_types: ["standard", "premium"],
-    features: ["lagos_demo", "mainland_coverage"],
+    features: ["lagos_demo", "mainland_coverage", "district:yaba"],
     emergency_level: "Level 2",
     wait_time: "12 min",
     price_range: "Accessible",
   },
   {
+    name: "Federal Medical Centre Ebute Metta",
+    address: "Point Rd, Ebute Metta, Lagos",
+    latitude: 6.4815,
+    longitude: 3.3809,
+    phone: "+234 1 774 6512",
+    rating: 4.2,
+    type: "standard",
+    image: "",
+    specialties: ["Emergency Medicine", "Surgery", "Family Medicine"],
+    service_types: ["standard", "premium"],
+    features: ["lagos_demo", "mainland_coverage", "district:ebute_metta"],
+    emergency_level: "Level 2",
+    wait_time: "13 min",
+    price_range: "Accessible",
+  },
+  {
     name: "Surulere Emergency Hospital",
     address: "Bode Thomas St, Surulere, Lagos",
+    latitude: 6.5012,
+    longitude: 3.3537,
     phone: "+234 1 734 2000",
     rating: 4.2,
     type: "standard",
     image: "",
     specialties: ["Emergency Medicine", "Family Medicine", "Orthopedics"],
     service_types: ["standard", "premium"],
-    features: ["lagos_demo", "mainland_coverage"],
+    features: ["lagos_demo", "mainland_coverage", "district:surulere"],
     emergency_level: "Level 2",
     wait_time: "13 min",
     price_range: "Accessible",
   },
   {
+    name: "Lagos University Teaching Hospital",
+    address: "Idi-Araba, Mushin, Lagos",
+    latitude: 6.5178,
+    longitude: 3.3559,
+    phone: "+234 1 774 4087",
+    rating: 4.5,
+    type: "standard",
+    image: "",
+    specialties: ["Emergency Medicine", "Trauma Care", "Critical Care"],
+    service_types: ["standard", "premium"],
+    features: ["lagos_demo", "mainland_coverage", "district:mushin"],
+    emergency_level: "Level 1",
+    wait_time: "12 min",
+    price_range: "Flexible",
+  },
+  {
+    name: "Gbagada General Hospital",
+    address: "1 Hospital Rd, Gbagada, Lagos",
+    latitude: 6.5566,
+    longitude: 3.3915,
+    phone: "+234 1 271 5522",
+    rating: 4.2,
+    type: "standard",
+    image: "",
+    specialties: ["Emergency Medicine", "Pediatrics", "Orthopedics"],
+    service_types: ["standard", "premium"],
+    features: ["lagos_demo", "mainland_coverage", "district:gbagada"],
+    emergency_level: "Level 2",
+    wait_time: "14 min",
+    price_range: "Accessible",
+  },
+  {
+    name: "General Hospital Ikeja",
+    address: "1 Oba Akinjobi Way, Ikeja, Lagos",
+    latitude: 6.6018,
+    longitude: 3.3515,
+    phone: "+234 1 493 3380",
+    rating: 4.1,
+    type: "standard",
+    image: "",
+    specialties: ["Emergency Medicine", "Internal Medicine", "Surgery"],
+    service_types: ["standard", "premium"],
+    features: ["lagos_demo", "mainland_coverage", "district:ikeja"],
+    emergency_level: "Level 2",
+    wait_time: "15 min",
+    price_range: "Accessible",
+  },
+  {
+    name: "Lagos State University Teaching Hospital",
+    address: "1-5 Oba Akinjobi Way, Ikeja, Lagos",
+    latitude: 6.593,
+    longitude: 3.3401,
+    phone: "+234 1 497 7700",
+    rating: 4.3,
+    type: "standard",
+    image: "",
+    specialties: ["Emergency Medicine", "Trauma Care", "Internal Medicine"],
+    service_types: ["standard", "premium"],
+    features: ["lagos_demo", "mainland_coverage", "district:ikeja"],
+    emergency_level: "Level 1",
+    wait_time: "14 min",
+    price_range: "Flexible",
+  },
+  {
     name: "Lekki Coast Medical Centre",
     address: "Admiralty Way, Lekki Phase 1, Lagos",
+    latitude: 6.4474,
+    longitude: 3.4722,
     phone: "+234 1 820 1100",
     rating: 4.4,
     type: "premium",
     image: "",
     specialties: ["Emergency Medicine", "Trauma Care", "Cardiology"],
     service_types: ["premium", "standard"],
-    features: ["lagos_demo", "coastal_coverage"],
+    features: ["lagos_demo", "coastal_coverage", "district:lekki"],
     emergency_level: "Level 1",
     wait_time: "10 min",
     price_range: "Premium",
+  },
+  {
+    name: "Reddington Hospital",
+    address: "12 Idowu Martins St, Victoria Island, Lagos",
+    latitude: 6.4314,
+    longitude: 3.4212,
+    phone: "+234 1 448 0088",
+    rating: 4.4,
+    type: "premium",
+    image: "",
+    specialties: ["Emergency Medicine", "Critical Care", "Cardiology"],
+    service_types: ["premium", "standard"],
+    features: ["lagos_demo", "island_coverage", "district:victoria_island"],
+    emergency_level: "Level 1",
+    wait_time: "10 min",
+    price_range: "Premium",
+  },
+];
+
+const CITY_DEMO_FALLBACK_CATALOGS = [
+  {
+    key: "lagos",
+    radiusKm: 120,
+    referencePoint: LAGOS_REFERENCE_POINT,
+    hospitals: LAGOS_DEMO_HOSPITAL_TEMPLATES,
   },
 ];
 
@@ -161,6 +308,33 @@ type DemoContext = {
   radiusKm: number;
 };
 
+type DemoFallbackHospital = {
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  phone?: string;
+  rating?: number;
+  type?: string;
+  image?: string;
+  specialties?: string[];
+  service_types?: string[];
+  features?: string[];
+  emergency_level?: string;
+  wait_time?: string;
+  price_range?: string;
+};
+
+type DemoFallbackCatalog = {
+  key: string;
+  radiusKm: number;
+  referencePoint: {
+    latitude: number;
+    longitude: number;
+  };
+  hospitals: DemoFallbackHospital[];
+};
+
 const toFiniteNumber = (value: unknown): number | null => {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
@@ -214,6 +388,7 @@ const normalizeFacilityText = (value: unknown) =>
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
+const isUrl = (value: string) => /^https?:\/\//i.test(value);
 const coordinateKey = (value: unknown, precision = 3) => {
   const n = toFiniteNumber(value);
   return Number.isFinite(n) ? Number(n).toFixed(precision) : "0.000";
@@ -282,16 +457,17 @@ const parseHospitalCoordinates = (row: any): { latitude: number | null; longitud
 };
 
 const toDemoPlaceId = (ctx: DemoContext, seed: any, slotIndex: number): string => {
+  const seedScopeKey = resolveDemoSeedScopeKey(ctx);
   const sourcePlaceId = toSafeString(seed?.source_place_id || seed?.place_id, "");
   if (sourcePlaceId) {
-    return `demo:${ctx.coverageKey}:src:${toStableIdFragment(sourcePlaceId, `slot${slotIndex + 1}`)}`;
+    return `demo:${seedScopeKey}:src:${toStableIdFragment(sourcePlaceId, `slot${slotIndex + 1}`)}`;
   }
-  return `demo:${ctx.coverageKey}:slot:${slotIndex + 1}`;
+  return `demo:${seedScopeKey}:slot:${slotIndex + 1}`;
 };
 
 const toAuthEmail = (ctx: DemoContext, kind: string, slotIndex?: number): string => {
   const slotSuffix = Number.isFinite(slotIndex) ? `-${Number(slotIndex) + 1}` : "";
-  return `demo-${kind}${slotSuffix}+${ctx.coverageKey}@ivisit-demo.local`;
+  return `demo-${kind}${slotSuffix}+${resolveDemoSeedScopeKey(ctx)}@ivisit-demo.local`;
 };
 
 const toDisplayName = (kind: string, slotIndex?: number): string => {
@@ -304,6 +480,162 @@ const toDisplayName = (kind: string, slotIndex?: number): string => {
 
 const toGeometryPoint = (latitude: number, longitude: number): string =>
   `SRID=4326;POINT(${longitude} ${latitude})`;
+
+const DOMAIN_BLOCKLIST = [
+  "facebook.com",
+  "instagram.com",
+  "linkedin.com",
+  "twitter.com",
+  "x.com",
+  "youtube.com",
+  "tiktok.com",
+  "wa.me",
+  "whatsapp.com",
+  "goo.gl",
+  "maps.google.com",
+  "google.com",
+];
+
+const NAME_STOPWORDS = new Set([
+  "the",
+  "and",
+  "of",
+  "for",
+  "medical",
+  "center",
+  "centre",
+  "hospital",
+  "clinic",
+  "health",
+  "care",
+  "general",
+  "community",
+]);
+
+const parseDomain = (value: unknown) => {
+  const urlValue = toSafeString(value, "");
+  if (!urlValue) return "";
+  try {
+    return new URL(urlValue).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+};
+
+const isBlockedDomain = (domain: string) =>
+  DOMAIN_BLOCKLIST.some((blocked) => domain === blocked || domain.endsWith(`.${blocked}`));
+
+const tokenize = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(" ")
+    .filter((token) => token.length >= 2 && !NAME_STOPWORDS.has(token));
+
+const scoreNameDomainAffinity = (name: string, domain: string) => {
+  const domainRoot = domain.split(".")[0] ?? domain;
+  const nameTokens = tokenize(name);
+  const domainTokens = tokenize(domainRoot);
+
+  if (nameTokens.length === 0 || domainTokens.length === 0) return 0;
+
+  const nameSet = new Set(nameTokens);
+  const domainSet = new Set(domainTokens);
+  const overlap = [...nameSet].filter((token) => domainSet.has(token)).length;
+  const tokenScore = overlap / Math.max(nameSet.size, domainSet.size);
+
+  const compactName = nameTokens.join("");
+  const compactDomain = domainRoot.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  const compactScore =
+    compactName.length >= 6 &&
+    compactDomain.length >= 6 &&
+    (compactDomain.includes(compactName.slice(0, Math.min(12, compactName.length))) ||
+      compactName.includes(compactDomain))
+      ? 0.65
+      : 0;
+
+  return Math.max(tokenScore, compactScore);
+};
+
+const buildHospitalMediaProxyUrl = (placeId: string) => {
+  const supabaseUrl = toSafeString(Deno.env.get("SUPABASE_URL"), "").replace(/\/$/, "");
+  if (!supabaseUrl || !placeId) return "";
+  return `${supabaseUrl}/functions/v1/hospital-media?place_id=${encodeURIComponent(placeId)}`;
+};
+
+const resolveSeedImage = (row: any) => {
+  const sourcePlaceId = toSafeString(row?.source_place_id, "");
+  const googlePhotoName = toSafeString(row?.google_photo_name, "");
+  if (sourcePlaceId && googlePhotoName) {
+    return {
+      image: buildHospitalMediaProxyUrl(sourcePlaceId),
+      image_source: "provider_photo",
+      image_confidence: 0.78,
+      image_attribution_text: "Google Places photo",
+    };
+  }
+
+  const explicitImage = toSafeString(row?.image, "");
+  if (explicitImage && isUrl(explicitImage)) {
+    return {
+      image: explicitImage,
+      image_source: "seed_image",
+      image_confidence: 0.92,
+      image_attribution_text: "",
+    };
+  }
+
+  const domain = parseDomain(row?.website);
+  const name = toSafeString(row?.name, "Hospital");
+  if (domain && !isBlockedDomain(domain)) {
+    const affinity = scoreNameDomainAffinity(name, domain);
+    if (affinity >= 0.45) {
+      const confidence = Math.min(0.95, Number((0.55 + affinity * 0.4).toFixed(2)));
+      return {
+        image: `https://logo.clearbit.com/${domain}?size=512`,
+        image_source: "domain_logo",
+        image_confidence: confidence,
+        image_attribution_text: "",
+      };
+    }
+  }
+
+  return {
+    image: "",
+    image_source: "",
+    image_confidence: 0,
+    image_attribution_text: "",
+  };
+};
+
+const IMAGE_SOURCE_RANK: Record<string, number> = {
+  hospital_upload: 100,
+  official_website_image: 90,
+  provider_photo: 86,
+  provider_image: 82,
+  seed_image: 78,
+  domain_logo: 60,
+  deterministic_fallback: 20,
+};
+
+const choosePreferredImage = (existing: any, candidate: any) => {
+  const existingUrl = toSafeString(existing?.image, "");
+  const candidateUrl = toSafeString(candidate?.image, "");
+  const existingSource = toSafeString(existing?.image_source, "");
+  const candidateSource = toSafeString(candidate?.image_source, "");
+  const existingConfidence = toFiniteNumber(existing?.image_confidence) ?? 0;
+  const candidateConfidence = toFiniteNumber(candidate?.image_confidence) ?? 0;
+  const existingRank = IMAGE_SOURCE_RANK[existingSource] ?? 0;
+  const candidateRank = IMAGE_SOURCE_RANK[candidateSource] ?? 0;
+
+  if (!existingUrl && candidateUrl) return candidate;
+  if (existingUrl && !candidateUrl) return existing;
+  if (!existingUrl && !candidateUrl) return existingRank >= candidateRank ? existing : candidate;
+  if (candidateRank > existingRank) return candidate;
+  if (existingRank > candidateRank) return existing;
+  if (candidateConfidence > existingConfidence) return candidate;
+  return existing;
+};
 
 const nowIso = () => new Date().toISOString();
 
@@ -328,11 +660,46 @@ const haversineDistanceKm = (
   return 2 * earthRadiusKm * Math.asin(Math.min(1, Math.sqrt(haversine)));
 };
 
-const shouldUseLagosFallbackCatalog = (ctx: DemoContext) =>
-  haversineDistanceKm(
-    { latitude: ctx.latitude, longitude: ctx.longitude },
-    LAGOS_REFERENCE_POINT
-  ) <= 120;
+const findCityDemoFallbackCatalog = (ctx: DemoContext): DemoFallbackCatalog | null => {
+  const match = CITY_DEMO_FALLBACK_CATALOGS.find((catalog) => {
+    const distanceKm = haversineDistanceKm(
+      { latitude: ctx.latitude, longitude: ctx.longitude },
+      catalog.referencePoint
+    );
+    return distanceKm <= catalog.radiusKm;
+  });
+
+  return (match as DemoFallbackCatalog | undefined) ?? null;
+};
+
+const resolveDemoSeedScopeKey = (ctx: DemoContext) => {
+  const catalog = findCityDemoFallbackCatalog(ctx);
+  return catalog ? `city_${catalog.key}` : ctx.coverageKey;
+};
+
+const getCatalogSeedHospitals = (ctx: DemoContext) => {
+  const catalog = findCityDemoFallbackCatalog(ctx);
+  if (!catalog) return [];
+
+  return catalog.hospitals
+    .map((hospital, index) => ({
+      ...hospital,
+      source_place_id: `catalog:${catalog.key}:${toStableIdFragment(
+        hospital.name,
+        `slot${index + 1}`
+      )}`,
+      identity_source: "catalog",
+      distance_km: haversineDistanceKm(
+        { latitude: ctx.latitude, longitude: ctx.longitude },
+        { latitude: hospital.latitude, longitude: hospital.longitude }
+      ),
+      features: uniqueStrings([
+        ...toSafeStringArray(hospital.features),
+        `catalog:${catalog.key}`,
+      ]),
+    }))
+    .sort((a, b) => a.distance_km - b.distance_km);
+};
 
 const getNearbySeedHospitals = async (admin: any, ctx: DemoContext) => {
   const { data, error } = await admin.rpc("nearby_hospitals", {
@@ -346,8 +713,33 @@ const getNearbySeedHospitals = async (admin: any, ctx: DemoContext) => {
   }
 
   const rows = Array.isArray(data) ? data : [];
+  const ids = rows
+    .map((row) => toSafeString(row?.id, ""))
+    .filter((id) => id.length > 0);
+  const metadataById = new Map<string, any>();
+
+  if (ids.length > 0) {
+    const { data: metadataRows, error: metadataError } = await admin
+      .from("hospitals")
+      .select("id,place_id,verification_status,features,image,image_source,image_confidence,image_attribution_text")
+      .in("id", ids);
+
+    if (metadataError) {
+      throw new Error(`hospital seed metadata lookup failed: ${metadataError.message}`);
+    }
+
+    (Array.isArray(metadataRows) ? metadataRows : []).forEach((row) => {
+      const key = toSafeString(row?.id, "");
+      if (!key) return;
+      metadataById.set(key, row);
+    });
+  }
 
   return rows
+    .map((row) => ({
+      ...row,
+      ...(metadataById.get(toSafeString(row?.id, "")) || {}),
+    }))
     .filter((row) => !isDemoSeedRow(row))
     .map((row) => {
       const coords = parseHospitalCoordinates(row);
@@ -360,6 +752,9 @@ const getNearbySeedHospitals = async (admin: any, ctx: DemoContext) => {
         rating: toFiniteNumber(row?.rating) ?? 4.2,
         type: toSafeString(row?.type, "standard"),
         image: toSafeString(row?.image),
+        image_source: toSafeString(row?.image_source),
+        image_confidence: toFiniteNumber(row?.image_confidence) ?? 0,
+        image_attribution_text: toSafeString(row?.image_attribution_text),
         specialties: toSafeStringArray(row?.specialties),
         service_types: toSafeStringArray(row?.service_types),
         features: toSafeStringArray(row?.features),
@@ -378,19 +773,35 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
   const mapboxToken = Deno.env.get("MAPBOX_ACCESS_TOKEN");
   if (!mapboxToken) return [];
 
-  const url = `https://api.mapbox.com/search/searchbox/v1/category/hospital?proximity=${ctx.longitude},${ctx.latitude}&limit=${MAPBOX_PROVIDER_LIMIT}&access_token=${mapboxToken}`;
-  const response = await fetch(url);
+  const categoryUrl = `https://api.mapbox.com/search/searchbox/v1/category/hospital?proximity=${ctx.longitude},${ctx.latitude}&limit=${MAPBOX_PROVIDER_LIMIT}&access_token=${mapboxToken}`;
+  const response = await fetch(categoryUrl);
 
   if (!response.ok) {
     throw new Error(`mapbox hospital discovery failed: ${response.status}`);
   }
 
   const data = await response.json();
-  const rows = Array.isArray(data?.features)
+  let rows = Array.isArray(data?.features)
     ? data.features
     : Array.isArray(data?.suggestions)
       ? data.suggestions
       : [];
+
+  if (rows.length === 0) {
+    const fallbackQueryUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(
+      "hospital"
+    )}&proximity=${ctx.longitude},${ctx.latitude}&types=poi&limit=${MAPBOX_PROVIDER_LIMIT}&access_token=${mapboxToken}`;
+    const fallbackResponse = await fetch(fallbackQueryUrl);
+    if (!fallbackResponse.ok) {
+      throw new Error(`mapbox hospital text fallback failed: ${fallbackResponse.status}`);
+    }
+    const fallbackData = await fallbackResponse.json();
+    rows = Array.isArray(fallbackData?.features)
+      ? fallbackData.features
+      : Array.isArray(fallbackData?.suggestions)
+        ? fallbackData.suggestions
+        : [];
+  }
 
   return rows
     .map((row: any, index: number) => {
@@ -402,6 +813,15 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
       const coordinates = geometryCoordinates ?? centerCoordinates;
       const latitude = toFiniteNumber(coordinates?.[1]) ?? ctx.latitude;
       const longitude = toFiniteNumber(coordinates?.[0]) ?? ctx.longitude;
+      const website = toSafeString(
+        properties?.website,
+        toSafeString(properties?.metadata?.website, toSafeString(properties?.contact?.website, ""))
+      );
+      const imageMeta = resolveSeedImage({
+        name: properties?.name || row?.name || "Nearby Hospital",
+        website,
+        image: "",
+      });
 
       return {
         place_id:
@@ -428,9 +848,12 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
           properties?.phone,
           toSafeString(properties?.metadata?.phone, "")
         ),
+        website,
         rating: 4.2,
         type: "standard",
-        image: "",
+        image: imageMeta.image,
+        image_source: imageMeta.image_source,
+        image_confidence: imageMeta.image_confidence,
         specialties: ["Emergency Medicine", "Internal Medicine"],
         service_types: ["standard", "premium"],
         features: ["mapbox_seed", "provider_discovered"],
@@ -448,49 +871,89 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
     .sort((a: any, b: any) => a.distance_km - b.distance_km);
 };
 
-const getGoogleSeedHospitals = async (ctx: DemoContext) => {
-  const googleApiKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
-  if (!googleApiKey) return [];
-
+const fetchGoogleNearbyPlaces = async (ctx: DemoContext, googleApiKey: string) => {
   const radiusMeters = Math.max(1000, Math.round(ctx.radiusKm * 1000));
-  const url =
-    `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${ctx.latitude},${ctx.longitude}` +
-    `&radius=${radiusMeters}&type=hospital&key=${googleApiKey}`;
-  const response = await fetch(url);
+  const response = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": googleApiKey,
+      "X-Goog-FieldMask":
+        "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.photos",
+    },
+    body: JSON.stringify({
+      includedTypes: ["hospital"],
+      maxResultCount: GOOGLE_PROVIDER_LIMIT,
+      rankPreference: "DISTANCE",
+      locationRestriction: {
+        circle: {
+          center: {
+            latitude: ctx.latitude,
+            longitude: ctx.longitude,
+          },
+          radius: radiusMeters,
+        },
+      },
+    }),
+  });
 
   if (!response.ok) {
     throw new Error(`google hospital discovery failed: ${response.status}`);
   }
 
   const data = await response.json();
-  if (data?.status !== "OK" && data?.status !== "ZERO_RESULTS") {
-    throw new Error(`google hospital discovery failed: ${data?.status || "unknown_status"}`);
-  }
+  return Array.isArray(data?.places) ? data.places : [];
+};
 
-  const rows = Array.isArray(data?.results) ? data.results.slice(0, GOOGLE_PROVIDER_LIMIT) : [];
+const getGoogleSeedHospitals = async (ctx: DemoContext) => {
+  const googleApiKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
+  if (!googleApiKey) return [];
 
-  return rows
-    .map((row: any, index: number) => {
-      const latitude = toFiniteNumber(row?.geometry?.location?.lat) ?? ctx.latitude;
-      const longitude = toFiniteNumber(row?.geometry?.location?.lng) ?? ctx.longitude;
+  const rows = await fetchGoogleNearbyPlaces(ctx, googleApiKey);
+
+  const mappedRows = await Promise.all(
+    rows.map(async (row: any, index: number) => {
+      const latitude = toFiniteNumber(row?.location?.latitude) ?? ctx.latitude;
+      const longitude = toFiniteNumber(row?.location?.longitude) ?? ctx.longitude;
+      const sourcePlaceId = toSafeString(row?.id, "");
+      const website = toSafeString(row?.websiteUri, "");
+      const googlePhotoName = toSafeString(row?.photos?.[0]?.name, "");
+      const imageMeta = resolveSeedImage({
+        name:
+          (typeof row?.displayName === "object"
+            ? toSafeString(row?.displayName?.text)
+            : toSafeString(row?.displayName)) || row?.name,
+        website,
+        image: "",
+        source_place_id: sourcePlaceId,
+        google_photo_name: googlePhotoName,
+      });
 
       return {
         place_id:
-          toSafeString(row?.place_id) ||
+          sourcePlaceId ||
           `google_demo_${index}_${Math.abs(Math.round(latitude * 10000))}_${Math.abs(
             Math.round(longitude * 10000)
           )}`,
-        source_place_id: toSafeString(row?.place_id, ""),
+        source_place_id: sourcePlaceId,
         identity_source: "provider",
-        name: normalizeHospitalName(row?.name, "Nearby Hospital"),
-        address: toSafeString(
-          row?.vicinity,
-          toSafeString(row?.formatted_address, "Address unavailable")
+        name: normalizeHospitalName(
+          typeof row?.displayName === "object" ? row?.displayName?.text : row?.displayName,
+          "Nearby Hospital"
         ),
-        phone: toSafeString(row?.formatted_phone_number, ""),
+        address: toSafeString(row?.formattedAddress, "Address unavailable"),
+        phone: toSafeString(
+          row?.internationalPhoneNumber,
+          toSafeString(row?.nationalPhoneNumber, "")
+        ),
+        website,
         rating: toFiniteNumber(row?.rating) ?? 4.2,
         type: "standard",
-        image: "",
+        image: imageMeta.image,
+        image_source: imageMeta.image_source,
+        image_confidence: imageMeta.image_confidence,
+        image_attribution_text: toSafeString(imageMeta.image_attribution_text, ""),
+        google_photo_name: googlePhotoName,
         specialties: ["Emergency Medicine", "Internal Medicine"],
         service_types: ["standard", "premium"],
         features: ["google_seed", "provider_discovered"],
@@ -505,7 +968,9 @@ const getGoogleSeedHospitals = async (ctx: DemoContext) => {
         longitude,
       };
     })
-    .sort((a: any, b: any) => a.distance_km - b.distance_km);
+  );
+
+  return mappedRows.sort((a: any, b: any) => a.distance_km - b.distance_km);
 };
 
 const getProviderSeedHospitals = async (ctx: DemoContext) => {
@@ -551,23 +1016,10 @@ const buildFallbackHospital = (ctx: DemoContext, slotIndex: number) => {
   const latitude = ctx.latitude + offset.lat;
   const longitude = ctx.longitude + offset.lng;
 
-  if (shouldUseLagosFallbackCatalog(ctx)) {
-    const template =
-      LAGOS_DEMO_HOSPITAL_TEMPLATES[
-        slotIndex % LAGOS_DEMO_HOSPITAL_TEMPLATES.length
-      ];
-
-    return {
-      ...template,
-      latitude,
-      longitude,
-    };
-  }
-
   return {
     source_place_id: "",
     name: `Emergency Care Center ${slotIndex + 1}`,
-    address: `Coverage ${ctx.coverageKey.toUpperCase()} Zone ${slotIndex + 1}`,
+    address: `Coverage ${resolveDemoSeedScopeKey(ctx).toUpperCase()} Zone ${slotIndex + 1}`,
     phone: "",
     rating: 4.3,
     type: "standard",
@@ -584,7 +1036,8 @@ const buildFallbackHospital = (ctx: DemoContext, slotIndex: number) => {
 };
 
 const ensureDemoOrganization = async (admin: any, ctx: DemoContext) => {
-  const contactEmail = `demo+coverage-${ctx.coverageKey}@ivisit-demo.local`;
+  const scopeKey = resolveDemoSeedScopeKey(ctx);
+  const contactEmail = `demo+coverage-${scopeKey}@ivisit-demo.local`;
 
   const { data: existing, error: existingError } = await admin
     .from("organizations")
@@ -603,7 +1056,7 @@ const ensureDemoOrganization = async (admin: any, ctx: DemoContext) => {
   }
 
   const payload = {
-    name: `iVisit Coverage Network ${ctx.coverageKey.toUpperCase()}`,
+    name: `iVisit Coverage Network ${scopeKey.toUpperCase()}`,
     contact_email: contactEmail,
     fee_tier: "standard",
     ivisit_fee_percentage: 2.5,
@@ -718,7 +1171,6 @@ const listDemoHospitals = async (admin: any, ctx: DemoContext, organizationId: s
     .from("hospitals")
     .select("id,name,place_id,organization_id,latitude,longitude,features,verified,verification_status,status")
     .eq("organization_id", organizationId)
-    .like("place_id", `demo:${ctx.coverageKey}:%`)
     .order("place_id", { ascending: true });
 
   if (error) {
@@ -734,16 +1186,21 @@ const ensureDemoHospitals = async (
   organizationId: string,
   orgAdminId: string | null
 ) => {
+  const catalog = findCityDemoFallbackCatalog(ctx);
   const nearbySeeds = await getNearbySeedHospitals(admin, ctx);
   const providerSeeds =
     nearbySeeds.length >= DEMO_MIN_HOSPITALS ? [] : await getProviderSeedHospitals(ctx);
-  const seeds = dedupeSeedHospitals([...nearbySeeds, ...providerSeeds]);
+  const catalogSeeds =
+    nearbySeeds.length + providerSeeds.length >= DEMO_MIN_HOSPITALS
+      ? []
+      : getCatalogSeedHospitals(ctx);
+  const seeds = dedupeSeedHospitals([...nearbySeeds, ...providerSeeds, ...catalogSeeds]);
   const targetCount = Math.max(
     DEMO_MIN_HOSPITALS,
     Math.min(DEMO_MAX_HOSPITALS, seeds.length > 0 ? seeds.length : DEMO_MIN_HOSPITALS)
   );
 
-  const rows = new Array(targetCount).fill(null).map((_, slotIndex) => {
+  const baseRows = new Array(targetCount).fill(null).map((_, slotIndex) => {
     const seed = seeds[slotIndex] ?? buildFallbackHospital(ctx, slotIndex);
     const fallback = buildFallbackHospital(ctx, slotIndex);
     const latitude = Number.isFinite(seed.latitude) ? Number(seed.latitude) : fallback.latitude;
@@ -767,6 +1224,8 @@ const ensureDemoHospitals = async (
         : ["standard", "premium"]
     );
 
+    const seedImageMeta = resolveSeedImage(seed);
+
     return {
       place_id: toDemoPlaceId(ctx, seed, slotIndex),
       name: normalizeHospitalName(seed.name, fallback.name),
@@ -774,7 +1233,10 @@ const ensureDemoHospitals = async (
       phone: toSafeString(seed.phone, ""),
       rating: toFiniteNumber(seed.rating) ?? 4.2,
       type: toSafeString(seed.type, "standard"),
-      image: toSafeString(seed.image, ""),
+      image: toSafeString(seedImageMeta.image, ""),
+      image_source: toSafeString(seedImageMeta.image_source, ""),
+      image_confidence: toFiniteNumber(seedImageMeta.image_confidence) ?? 0,
+      image_attribution_text: toSafeString(seedImageMeta.image_attribution_text, ""),
       specialties,
       service_types: serviceTypes,
       features,
@@ -797,12 +1259,78 @@ const ensureDemoHospitals = async (
     };
   });
 
+  const placeIds = baseRows
+    .map((row) => toSafeString(row?.place_id, ""))
+    .filter((value) => value.length > 0);
+  const existingByPlaceId = new Map<string, any>();
+  if (placeIds.length > 0) {
+    const { data: existingRows, error: existingError } = await admin
+      .from("hospitals")
+      .select("place_id,image,image_source,image_confidence,image_attribution_text")
+      .in("place_id", placeIds);
+
+    if (existingError) {
+      throw new Error(`demo hospital image lookup failed: ${existingError.message}`);
+    }
+
+    (Array.isArray(existingRows) ? existingRows : []).forEach((row) => {
+      const key = toSafeString(row?.place_id, "");
+      if (!key) return;
+      existingByPlaceId.set(key, row);
+    });
+  }
+
+  const rows = baseRows.map((row) => {
+    const existing = existingByPlaceId.get(toSafeString(row?.place_id, ""));
+    const preferredImage = choosePreferredImage(existing, row);
+    return {
+      ...row,
+      image: toSafeString(preferredImage?.image, ""),
+      image_source: toSafeString(preferredImage?.image_source, ""),
+      image_confidence: toFiniteNumber(preferredImage?.image_confidence) ?? 0,
+      image_attribution_text: toSafeString(
+        preferredImage?.image_attribution_text,
+        toSafeString(row?.image_attribution_text, "")
+      ),
+      image_synced_at:
+        toSafeString(preferredImage?.image, "").length > 0 ? nowIso() : null,
+    };
+  });
+
   const { error: upsertError } = await admin
     .from("hospitals")
     .upsert(rows, { onConflict: "place_id", ignoreDuplicates: false });
 
   if (upsertError) {
     throw new Error(`demo hospital upsert failed: ${upsertError.message}`);
+  }
+
+  if (catalog) {
+    const slotPrefix = `demo:${resolveDemoSeedScopeKey(ctx)}:slot:`;
+    const { error: cleanupError } = await admin
+      .from("hospitals")
+      .delete()
+      .eq("organization_id", organizationId)
+      .like("place_id", `${slotPrefix}%`);
+
+    if (cleanupError) {
+      throw new Error(`catalog slot cleanup failed: ${cleanupError.message}`);
+    }
+
+    const catalogNames = catalog.hospitals.map((hospital) => hospital.name);
+    const { error: retireError } = await admin
+      .from("hospitals")
+      .update({
+        status: "full",
+        updated_at: nowIso(),
+      })
+      .neq("organization_id", organizationId)
+      .like("place_id", "demo:%")
+      .in("name", catalogNames);
+
+    if (retireError) {
+      throw new Error(`catalog legacy retirement failed: ${retireError.message}`);
+    }
   }
 
   return listDemoHospitals(admin, ctx, organizationId);
@@ -969,8 +1497,8 @@ const ensureDemoStaff = async (
           type: "BLS",
           call_sign: callSign,
           status: "available",
-          vehicle_number: `COV-${ctx.coverageKey.toUpperCase().slice(0, 8)}-${i + 1}`,
-          license_plate: `COV-${ctx.coverageKey.toUpperCase().slice(0, 4)}-${i + 1}`,
+          vehicle_number: `COV-${resolveDemoSeedScopeKey(ctx).toUpperCase().slice(0, 8)}-${i + 1}`,
+          license_plate: `COV-${resolveDemoSeedScopeKey(ctx).toUpperCase().slice(0, 4)}-${i + 1}`,
           base_price: 0,
           crew: {
             mode: "demo",
