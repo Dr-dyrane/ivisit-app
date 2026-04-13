@@ -36,20 +36,23 @@ export default function MapHospitalDetailBody({ model }) {
 
 	const hasGallery = galleryPhotos.length > 1;
 	const headerSubtitle = summary.addressLine || summary.subtitle || "Nearby hospital";
-	const panelSurface = isDarkMode ? "rgba(8,15,27,0.94)" : "rgba(248,250,252,0.92)";
-	const placeMarkSurface = isDarkMode ? "rgba(248,250,252,0.96)" : cardSurface;
+	const panelSurface = isDarkMode ? "rgba(8,15,27,0.92)" : "rgba(248,250,252,0.90)";
+	const panelSurfaceBottom = isDarkMode ? "rgba(8,15,27,0.68)" : "rgba(248,250,252,0.72)";
+	const placeMarkSurface = isDarkMode ? "#64748B" : cardSurface;
+	const placeMarkBorderWidth = isDarkMode ? 0 : 1;
+	const placeMarkBorderColor = isDarkMode ? "transparent" : "rgba(255,255,255,0.24)";
 	const heroBlendColors = isDarkMode
 		? ["rgba(8,15,27,0)", "rgba(8,15,27,0.42)", panelSurface]
 		: ["rgba(248,250,252,0)", "rgba(248,250,252,0.46)", panelSurface];
 	const panelGradientColors = isDarkMode
-		? ["rgba(8,15,27,0.10)", "rgba(8,15,27,0.72)", panelSurface]
-		: ["rgba(248,250,252,0.10)", "rgba(248,250,252,0.74)", panelSurface];
+		? ["rgba(8,15,27,0.12)", "rgba(8,15,27,0.62)", panelSurfaceBottom]
+		: ["rgba(248,250,252,0.12)", "rgba(248,250,252,0.66)", panelSurfaceBottom];
 	const panelLowerBlendColors = isDarkMode
-		? ["rgba(8,15,27,0)", "rgba(8,15,27,0.12)", "rgba(8,15,27,0.34)"]
-		: ["rgba(248,250,252,0)", "rgba(248,250,252,0.12)", "rgba(248,250,252,0.30)"];
+		? ["rgba(8,15,27,0)", "rgba(8,15,27,0.06)", "rgba(8,15,27,0.18)"]
+		: ["rgba(248,250,252,0)", "rgba(248,250,252,0.06)", "rgba(248,250,252,0.16)"];
 	const panelBottomFadeColors = isDarkMode
-		? ["rgba(8,15,27,0.44)", "rgba(8,15,27,0.16)", "rgba(8,15,27,0)"]
-		: ["rgba(248,250,252,0.58)", "rgba(248,250,252,0.18)", "rgba(248,250,252,0)"];
+		? ["rgba(8,15,27,0.30)", "rgba(8,15,27,0.10)", "rgba(8,15,27,0)"]
+		: ["rgba(248,250,252,0.34)", "rgba(248,250,252,0.10)", "rgba(248,250,252,0)"];
 
 	return (
 		<View style={styles.scrollContent}>
@@ -129,7 +132,16 @@ export default function MapHospitalDetailBody({ model }) {
 
 				<View style={styles.detailPanelContent}>
 					<View style={styles.placeHeader}>
-						<View style={[styles.placeMark, { backgroundColor: placeMarkSurface }]}>
+						<View
+							style={[
+								styles.placeMark,
+								{
+									backgroundColor: placeMarkSurface,
+									borderWidth: placeMarkBorderWidth,
+									borderColor: placeMarkBorderColor,
+								},
+							]}
+						>
 							<MaterialCommunityIcons name="hospital-building" size={24} color={COLORS.brandPrimary} />
 						</View>
 						<Text numberOfLines={2} style={[styles.placeTitle, { color: titleColor }]}>

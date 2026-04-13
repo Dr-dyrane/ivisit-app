@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
-import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Platform, ScrollView, useWindowDimensions } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
 import {
@@ -11,6 +10,7 @@ import {
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import MapHospitalDetailBody from "../../surfaces/hospitals/MapHospitalDetailBody";
 import useMapHospitalDetailModel from "../../surfaces/hospitals/useMapHospitalDetailModel";
+import MapHospitalDetailCollapsedRow from "./MapHospitalDetailCollapsedRow";
 import styles from "./mapHospitalDetailStage.styles";
 
 export default function MapHospitalDetailStageBase({
@@ -76,40 +76,16 @@ export default function MapHospitalDetailStageBase({
 	};
 
 	const collapsedTopSlot = (
-		<View style={styles.collapsedRow}>
-			<Pressable
-				onPress={model.collapsedAction.onPress}
-				accessibilityLabel={model.collapsedAction.accessibilityLabel}
-				style={[styles.collapsedIconButton, { backgroundColor: iconSurfaceColor }]}
-			>
-				{model.collapsedAction.iconType === "material" ? (
-					<MaterialCommunityIcons name={model.collapsedAction.icon} size={18} color={titleColor} />
-				) : (
-					<Ionicons name={model.collapsedAction.icon} size={16} color={titleColor} />
-				)}
-			</Pressable>
-
-			<Pressable
-				onPress={() => onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF)}
-				style={styles.collapsedSummaryPressable}
-			>
-				<View style={styles.collapsedSummaryCard}>
-					<Text numberOfLines={1} style={[styles.collapsedTitle, { color: titleColor }]}>
-						{model.summary.title}
-					</Text>
-					<Text numberOfLines={1} style={[styles.collapsedSubtitle, { color: mutedColor }]}>
-						{model.collapsedDistanceLabel}
-					</Text>
-				</View>
-			</Pressable>
-
-			<Pressable
-				onPress={onClose}
-				style={[styles.collapsedIconButton, { backgroundColor: iconSurfaceColor }]}
-			>
-				<Ionicons name="close" size={18} color={titleColor} />
-			</Pressable>
-		</View>
+		<MapHospitalDetailCollapsedRow
+			action={model.collapsedAction}
+			title={model.summary.title}
+			subtitle={model.collapsedDistanceLabel}
+			onExpand={() => onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF)}
+			onClose={onClose}
+			titleColor={titleColor}
+			mutedColor={mutedColor}
+			iconSurfaceColor={iconSurfaceColor}
+		/>
 	);
 
 	return (
@@ -129,7 +105,7 @@ export default function MapHospitalDetailStageBase({
 					showsVerticalScrollIndicator={false}
 					scrollEventThrottle={16}
 				>
-					<MapHospitalDetailBody model={model} visible />
+					<MapHospitalDetailBody model={model} />
 				</ScrollView>
 			)}
 		</MapSheetShell>

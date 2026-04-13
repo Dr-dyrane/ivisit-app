@@ -109,7 +109,7 @@ export const styles = StyleSheet.create({
 		left: 0,
 		right: 0,
 		bottom: 0,
-		height: 132,
+		height: 148,
 		borderBottomLeftRadius: 34,
 		borderBottomRightRadius: 34,
 	},
@@ -117,8 +117,8 @@ export const styles = StyleSheet.create({
 		position: "absolute",
 		left: 0,
 		right: 0,
-		bottom: -34,
-		height: 54,
+		bottom: -42,
+		height: 72,
 	},
 	detailPanelContent: {
 		gap: 12,
@@ -246,6 +246,7 @@ export const styles = StyleSheet.create({
 	serviceCard: {
 		width: 172,
 		minHeight: 228,
+		justifyContent: "space-between",
 		overflow: "hidden",
 		shadowColor: "#0F172A",
 		shadowOpacity: 0.06,
@@ -256,15 +257,16 @@ export const styles = StyleSheet.create({
 	serviceCardMuted: {
 		opacity: 0.58,
 	},
-	serviceCardImage: {
-		flex: 1,
-		justifyContent: "space-between",
-		...squircle(30),
-	},
 	serviceCardMedia: {
 		...StyleSheet.absoluteFillObject,
 		width: undefined,
 		height: undefined,
+	},
+	serviceCardMediaAmbulance: {
+		transform: [{ scale: 1.25 }],
+	},
+	serviceCardMediaRoom: {
+		transform: [{ scale: 3.0 }],
 	},
 	serviceCardOverlay: {
 		...StyleSheet.absoluteFillObject,

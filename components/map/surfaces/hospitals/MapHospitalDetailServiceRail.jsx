@@ -73,34 +73,37 @@ export default function MapHospitalDetailServiceRail({
 								item.enabled === false ? styles.serviceCardMuted : null,
 							]}
 						>
-							<View style={styles.serviceCardImage}>
-								<Image
-									source={imageSource}
-									resizeMode="contain"
-									fadeDuration={0}
-									style={styles.serviceCardMedia}
-								/>
-								<LinearGradient
-									colors={["rgba(8,15,27,0.04)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0.74)"]}
-									style={styles.serviceCardOverlay}
-								/>
-								<View style={styles.serviceCardHeader}>
-									{item.showMetaSkeleton ? (
-										<View style={styles.serviceTopPillSkeleton} />
-									) : item.metaText ? (
-										<View style={styles.serviceTopPill}>
-											<Text numberOfLines={1} style={styles.serviceTopPillText}>
-												{item.metaText}
-											</Text>
-										</View>
-									) : null}
-								</View>
-								<View style={styles.serviceCardContent}>
-									<Text numberOfLines={2} style={[styles.serviceTitle, { color: "#F8FAFC" }]}>
-										{item.title}
-									</Text>
-									<ServiceValueBlock item={item} />
-								</View>
+							<Image
+								source={imageSource}
+								resizeMode="contain"
+								fadeDuration={0}
+								style={[
+									styles.serviceCardMedia,
+									type === "room"
+										? styles.serviceCardMediaRoom
+										: styles.serviceCardMediaAmbulance,
+								]}
+							/>
+							<LinearGradient
+								colors={["rgba(8,15,27,0.04)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0.74)"]}
+								style={styles.serviceCardOverlay}
+							/>
+							<View style={styles.serviceCardHeader}>
+								{item.showMetaSkeleton ? (
+									<View style={styles.serviceTopPillSkeleton} />
+								) : item.metaText ? (
+									<View style={styles.serviceTopPill}>
+										<Text numberOfLines={1} style={styles.serviceTopPillText}>
+											{item.metaText}
+										</Text>
+									</View>
+								) : null}
+							</View>
+							<View style={styles.serviceCardContent}>
+								<Text numberOfLines={2} style={[styles.serviceTitle, { color: "#F8FAFC" }]}>
+									{item.title}
+								</Text>
+								<ServiceValueBlock item={item} />
 							</View>
 						</View>
 					);

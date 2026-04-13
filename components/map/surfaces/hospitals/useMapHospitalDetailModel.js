@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Linking } from "react-native";
 import * as WebBrowser from "expo-web-browser";
-import { COLORS } from "../../../../constants/colors";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useMapRoute } from "../../../../hooks/emergency/useMapRoute";
 import { hospitalsService } from "../../../../services/hospitalsService";
 import {
 	buildAmbulanceServiceCards,
 	buildDirectionsUrl,
-	buildFeatureList,
 	buildHeroBadges,
 	buildHospitalDetailSummary,
 	buildPhotoGallery,
@@ -20,6 +18,15 @@ import {
 	getDestinationCoordinate,
 	normalizeTimeLabel,
 } from "./mapHospitalDetail.helpers";
+import {
+	buildHospitalCollapsedAction,
+	buildHospitalCollapsedDistanceLabel,
+	buildHospitalDockAction,
+	buildHospitalPlaceActions,
+	getHospitalDetailTheme,
+	getHospitalWebsiteBrowserOptions,
+	getHospitalWebsiteUrl,
+} from "./mapHospitalDetail.model";
 
 export default function useMapHospitalDetailModel({
 	visible,
@@ -30,23 +37,17 @@ export default function useMapHospitalDetailModel({
 	onUseHospital,
 }) {
 	const { isDarkMode } = useTheme();
-	const { routeCoordinates, routeInfo, isCalculatingRoute, calculateRoute, clearRoute } =
-		useMapRoute();
+	const { routeInfo, calculateRoute, clearRoute } = useMapRoute();
 	const [servicePricingRows, setServicePricingRows] = useState([]);
 	const [hydratedRoomRows, setHydratedRoomRows] = useState([]);
 	const [isLoadingServiceRails, setIsLoadingServiceRails] = useState(false);
 
-	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
-	const subtleColor = isDarkMode ? "#94A3B8" : "#64748B";
-	const cardSurface = isDarkMode ? "rgba(16,24,38,0.72)" : "rgba(255,255,255,0.66)";
-	const rowSurface = isDarkMode ? "rgba(255,255,255,0.07)" : "rgba(15,23,42,0.055)";
-	const actionSurface = isDarkMode ? "rgba(134,16,14,0.16)" : "rgba(134,16,14,0.075)";
-	const actionTint = isDarkMode ? "rgba(248,113,113,0.82)" : "rgba(134,16,14,0.72)";
+	const { titleColor, subtleColor, cardSurface, rowSurface, actionSurface, actionTint } =
+		useMemo(() => getHospitalDetailTheme(isDarkMode), [isDarkMode]);
 
 	const destination = useMemo(() => getDestinationCoordinate(hospital), [hospital]);
 	const heroBadges = useMemo(() => buildHeroBadges(hospital), [hospital]);
 	const roomRows = useMemo(() => buildRoomRows(hospital), [hospital]);
-	const featureList = useMemo(() => buildFeatureList(hospital), [hospital]);
 	const galleryPhotos = useMemo(() => buildPhotoGallery(hospital), [hospital]);
 	const placeStats = useMemo(() => buildPlaceStats(hospital, routeInfo), [hospital, routeInfo]);
 	const summary = useMemo(
@@ -56,11 +57,7 @@ export default function useMapHospitalDetailModel({
 	const canCallHospital =
 		typeof hospital?.phone === "string" && hospital.phone.trim().length > 0;
 	const canUseHospital = typeof onUseHospital === "function";
-	const websiteUrl =
-		(typeof hospital?.googleWebsite === "string" && hospital.googleWebsite.trim()) ||
-		(typeof hospital?.google_website === "string" && hospital.google_website.trim()) ||
-		(typeof hospital?.website === "string" && hospital.website.trim()) ||
-		null;
+	const websiteUrl = useMemo(() => getHospitalWebsiteUrl(hospital), [hospital]);
 	const canOpenWebsite = Boolean(websiteUrl);
 	const routeEtaLabel =
 		(typeof hospital?.eta === "string" && hospital.eta.trim()) ||
@@ -157,9 +154,7 @@ export default function useMapHospitalDetailModel({
 			: `https://${websiteUrl}`;
 		try {
 			await WebBrowser.openBrowserAsync(normalizedUrl, {
-				controlsColor: COLORS.brandPrimary,
-				enableBarCollapsing: true,
-				showTitle: true,
+				...getHospitalWebsiteBrowserOptions(),
 				presentationStyle:
 					WebBrowser.WebBrowserPresentationStyle?.PAGE_SHEET ??
 					WebBrowser.WebBrowserPresentationStyle?.FORM_SHEET,
@@ -174,52 +169,45 @@ export default function useMapHospitalDetailModel({
 		onOpenHospitals?.();
 	}, [onClose, onOpenHospitals]);
 
-	const dockAction = canUseHospital
-		? { label: "Use hospital", onPress: handleUseHospital }
-		: typeof onOpenHospitals === "function"
-			? { label: "See all hospitals", onPress: handleBrowseHospitals }
-			: destination
-				? { label: "Open in Maps", onPress: handleOpenDirections }
-				: { label: "Done", onPress: onClose };
+	const dockAction = useMemo(
+		() =>
+			buildHospitalDockAction({
+				canUseHospital,
+				onUseHospital: handleUseHospital,
+				onOpenHospitals: handleBrowseHospitals,
+				destination,
+				onOpenDirections: handleOpenDirections,
+				onClose,
+			}),
+		[
+			canUseHospital,
+			handleBrowseHospitals,
+			handleOpenDirections,
+			handleUseHospital,
+			destination,
+			onClose,
+		],
+	);
 
-	const primaryTravelLabel = arrivalLabel;
-	const placeActions = [
-		{
-			key: "arrival",
-			label: primaryTravelLabel,
-			icon: "ambulance",
-			iconType: "material",
-			primary: true,
-			onPress: dockAction.onPress,
-			accessibilityLabel: dockAction.label,
-		},
-		{
-			key: "call",
-			label: "Call",
-			icon: "call-outline",
-			iconType: "ion",
-			onPress: canCallHospital ? handleCallHospital : undefined,
-			disabled: !canCallHospital,
-			accessibilityLabel: "Call hospital",
-		},
-		{
-			key: "website",
-			label: "Website",
-			icon: "globe-outline",
-			iconType: "ion",
-			onPress: canOpenWebsite ? handleOpenWebsite : undefined,
-			disabled: !canOpenWebsite,
-			accessibilityLabel: "Open hospital website",
-		},
-		{
-			key: "schedule",
-			label: "Schedule",
-			icon: "calendar-outline",
-			iconType: "ion",
-			disabled: true,
-			accessibilityLabel: "Schedule visit",
-		},
-	].filter(Boolean);
+	const placeActions = useMemo(
+		() =>
+			buildHospitalPlaceActions({
+				arrivalLabel,
+				dockAction,
+				canCallHospital,
+				onCallHospital: handleCallHospital,
+				canOpenWebsite,
+				onOpenWebsite: handleOpenWebsite,
+			}),
+		[
+			arrivalLabel,
+			canCallHospital,
+			canOpenWebsite,
+			dockAction,
+			handleCallHospital,
+			handleOpenWebsite,
+		],
+	);
 
 	const roomServiceCards = useMemo(
 		() =>
@@ -235,23 +223,39 @@ export default function useMapHospitalDetailModel({
 		[hospital, isLoadingServiceRails, servicePricingRows],
 	);
 
-	const collapsedAction = canUseHospital
-		? { onPress: handleUseHospital, icon: "ambulance", iconType: "material", accessibilityLabel: "Use hospital" }
-		: destination
-			? { onPress: handleOpenDirections, icon: "navigate-outline", accessibilityLabel: "Open directions" }
-			: typeof onOpenHospitals === "function"
-				? { onPress: handleBrowseHospitals, icon: "arrow-forward", accessibilityLabel: "See all hospitals" }
-				: canCallHospital
-					? { onPress: handleCallHospital, icon: "call-outline", accessibilityLabel: "Call hospital" }
-					: { onPress: onClose, icon: "close", accessibilityLabel: "Close hospital" };
+	const collapsedAction = useMemo(
+		() =>
+			buildHospitalCollapsedAction({
+				canUseHospital,
+				onUseHospital: handleUseHospital,
+				destination,
+				onOpenDirections: handleOpenDirections,
+				onOpenHospitals: handleBrowseHospitals,
+				canCallHospital,
+				onCallHospital: handleCallHospital,
+				onClose,
+			}),
+		[
+			canCallHospital,
+			canUseHospital,
+			handleBrowseHospitals,
+			handleCallHospital,
+			handleOpenDirections,
+			handleUseHospital,
+			destination,
+			onClose,
+		],
+	);
 
-	const collapsedDistanceLabel = arrivalLabel
-		? `${arrivalLabel} away`
-		: routeDistanceLabel
-			? `${routeDistanceLabel} away`
-			: summary.subtitle
-				? `${summary.subtitle} away`
-				: "Nearby";
+	const collapsedDistanceLabel = useMemo(
+		() =>
+			buildHospitalCollapsedDistanceLabel({
+				arrivalLabel,
+				routeDistanceLabel,
+				summarySubtitle: summary.subtitle,
+			}),
+		[arrivalLabel, routeDistanceLabel, summary.subtitle],
+	);
 
 	return {
 		cardSurface,
@@ -264,29 +268,13 @@ export default function useMapHospitalDetailModel({
 		placeStats,
 		roomServiceCards,
 		ambulanceServiceCards,
-		routeCoordinates,
-		routeInfo,
-		isCalculatingRoute,
-		routeEtaLabel,
-		routeDistanceLabel,
 		rowSurface,
 		titleColor,
 		subtleColor,
 		heroBadges,
-		featureList,
-		roomRows,
-		canCallHospital,
-		destination,
-		dockAction,
-		handleBrowseHospitals,
-		handleCallHospital,
-		handleOpenDirections,
-		handleOpenWebsite,
-		handleUseHospital,
 		hospital,
 		isDarkMode,
-		onClose,
-		origin,
 		summary,
+		onClose,
 	};
 }
