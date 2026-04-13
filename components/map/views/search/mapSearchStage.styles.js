@@ -5,15 +5,15 @@ export default StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 10,
-		marginBottom: 12,
-		paddingHorizontal: 14,
+		marginBottom: 16,
+		paddingHorizontal: 16,
 	},
 	topRowCollapsed: {
 		marginBottom: 0,
 	},
 	searchPill: {
 		flex: 1,
-		minHeight: 42,
+		minHeight: 44,
 		paddingHorizontal: 14,
 		flexDirection: "row",
 		alignItems: "center",
@@ -27,9 +27,6 @@ export default StyleSheet.create({
 		fontSize: 15,
 		lineHeight: 19,
 		fontWeight: "600",
-	},
-	bodyScrollViewport: {
-		flex: 1,
 	},
 	bodyScrollContent: {
 		paddingHorizontal: 16,
@@ -46,9 +43,9 @@ export default StyleSheet.create({
 		marginBottom: 0,
 	},
 	closeButton: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
+		width: 42,
+		height: 42,
+		borderRadius: 21,
 		alignItems: "center",
 		justifyContent: "center",
 		zIndex: 2,

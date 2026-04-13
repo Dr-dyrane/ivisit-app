@@ -1,18 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
-import {
-	getMapViewportSurfaceConfig,
-	getMapViewportVariant,
-	isSidebarMapVariant,
-} from "../../core/mapViewportConfig";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
 import MapHospitalDetailBody from "../../surfaces/hospitals/MapHospitalDetailBody";
 import useMapHospitalDetailModel from "../../surfaces/hospitals/useMapHospitalDetailModel";
 import MapHospitalDetailCollapsedRow from "./MapHospitalDetailCollapsedRow";
+import sheetStageStyles from "../shared/mapSheetStage.styles";
+import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
+import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
 import styles from "./mapHospitalDetailStage.styles";
 
 const FLOATING_TITLE_REVEAL_DELAY = 160;
@@ -29,27 +27,8 @@ export default function MapHospitalDetailStageBase({
 	onSnapStateChange,
 }) {
 	const { isDarkMode } = useTheme();
-	const { width } = useWindowDimensions();
-	const viewportVariant = useMemo(
-		() => getMapViewportVariant({ platform: Platform.OS, width }),
-		[width],
-	);
-	const surfaceConfig = useMemo(
-		() => getMapViewportSurfaceConfig(viewportVariant),
-		[viewportVariant],
-	);
-	const isSidebarPresentation = isSidebarMapVariant(viewportVariant);
-	const presentationMode = isSidebarPresentation ? "sidebar" : "sheet";
-	const shellWidth = useMemo(
-		() =>
-			isSidebarPresentation
-				? Math.min(
-						surfaceConfig.sidebarMaxWidth || Math.max(400, width * 0.36),
-						Math.max(320, width - 48),
-					)
-				: null,
-		[isSidebarPresentation, surfaceConfig.sidebarMaxWidth, width],
-	);
+	const { isSidebarPresentation, centerContent, contentMaxWidth, presentationMode, shellWidth } =
+		useMapStageSurfaceLayout();
 	const model = useMapHospitalDetailModel({
 		visible: true,
 		hospital,
@@ -107,16 +86,36 @@ export default function MapHospitalDetailStageBase({
 		presentationMode,
 		allowedSnapStates,
 	});
+	const {
+		androidCollapseHandlers,
+		handleAndroidCollapseScroll,
+		handleAndroidCollapseScrollBeginDrag,
+	} = useMapAndroidExpandedCollapse({
+		snapState,
+		onSnapStateChange,
+		bodyScrollRef,
+		onScroll: handleBodyScroll,
+		onScrollBeginDrag: handleBodyScrollBeginDrag,
+		onExpandedToHalf: () => {
+			setShowFloatingTitle(false);
+		},
+	});
 	const handleHospitalScroll = useCallback(
 		(event) => {
-			handleBodyScroll(event);
 			const offsetY = event?.nativeEvent?.contentOffset?.y ?? 0;
 			const nextShowTitle =
 				snapState === MAP_SHEET_SNAP_STATES.EXPANDED &&
 				offsetY > ((expandedHeaderBottom ?? 88) + FLOATING_TITLE_REVEAL_DELAY);
 			setShowFloatingTitle((current) => (current === nextShowTitle ? current : nextShowTitle));
 		},
-		[expandedHeaderBottom, handleBodyScroll, snapState],
+		[expandedHeaderBottom, snapState],
+	);
+
+	const handleHospitalScrollBeginDrag = useCallback(
+		(event) => {
+			handleAndroidCollapseScrollBeginDrag(event);
+		},
+		[handleAndroidCollapseScrollBeginDrag],
 	);
 
 	const handleExpandedHeaderLayout = useCallback((event) => {
@@ -147,7 +146,22 @@ export default function MapHospitalDetailStageBase({
 	);
 	const floatingTopSlot = (
 		<View pointerEvents="box-none" style={styles.floatingTopSlot}>
-			<View pointerEvents="box-none" style={styles.floatingTopHeader}>
+			<View
+				pointerEvents="box-none"
+				style={[
+					styles.floatingTopHeader,
+					centerContent && contentMaxWidth
+						? {
+								left: null,
+								right: null,
+								width: "100%",
+								maxWidth: contentMaxWidth,
+								alignSelf: "center",
+								paddingHorizontal: 14,
+							}
+						: null,
+				]}
+			>
 				{canCycleHospital ? (
 					<Pressable
 						onPress={onCycleHospital}
@@ -214,9 +228,20 @@ export default function MapHospitalDetailStageBase({
 		>
 			{isCollapsed ? null : (
 				<ScrollView
+					{...androidCollapseHandlers}
 					ref={bodyScrollRef}
-					style={styles.bodyScrollViewport}
-					contentContainerStyle={styles.bodyScrollContent}
+					style={sheetStageStyles.bodyScrollViewport}
+					contentContainerStyle={[
+						sheetStageStyles.bodyScrollContent,
+						sheetStageStyles.bodyScrollContentSheet,
+						presentationMode === "modal" ? sheetStageStyles.bodyScrollContentModal : null,
+						isSidebarPresentation ? sheetStageStyles.bodyScrollContentPanel : null,
+						isSidebarPresentation ? sheetStageStyles.bodyScrollContentSidebar : null,
+						centerContent && contentMaxWidth
+							? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
+							: null,
+						styles.bodyScrollContent,
+					]}
 					showsVerticalScrollIndicator={false}
 					nestedScrollEnabled
 					bounces={!isSidebarPresentation}
@@ -225,8 +250,11 @@ export default function MapHospitalDetailStageBase({
 					directionalLockEnabled
 					scrollEventThrottle={16}
 					onWheel={handleBodyWheel}
-					onScrollBeginDrag={handleBodyScrollBeginDrag}
-					onScroll={handleHospitalScroll}
+					onScrollBeginDrag={handleHospitalScrollBeginDrag}
+					onScroll={(event) => {
+						handleAndroidCollapseScroll(event);
+						handleHospitalScroll(event);
+					}}
 					onScrollEndDrag={handleBodyScrollEndDrag}
 					onMomentumScrollEnd={handleBodyScrollEndDrag}
 					scrollEnabled={bodyScrollEnabled}

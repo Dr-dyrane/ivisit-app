@@ -325,15 +325,17 @@ export const styles = StyleSheet.create({
 	serviceRail: {
 		gap: 0,
 		marginTop: 10,
+		marginHorizontal: -14,
 	},
 	serviceRailCompact: {
 		marginTop: 8,
 	},
 	serviceRailScroller: {
-		marginHorizontal: -2,
+		overflow: "visible",
 	},
 	serviceRailContent: {
-		paddingHorizontal: 2,
+		paddingLeft: 14,
+		paddingRight: 18,
 		gap: 10,
 	},
 	serviceRailContentCompact: {
@@ -408,6 +410,9 @@ export const styles = StyleSheet.create({
 		paddingVertical: 5,
 		backgroundColor: "rgba(8,15,27,0.42)",
 	},
+	serviceTopPillReady: {
+		backgroundColor: "rgba(134,16,14,0.72)",
+	},
 	serviceTopPillCompact: {
 		paddingHorizontal: 7,
 		paddingVertical: 4,
@@ -417,6 +422,9 @@ export const styles = StyleSheet.create({
 		lineHeight: 14,
 		fontWeight: "700",
 		color: "#F8FAFC",
+	},
+	serviceTopPillReadyText: {
+		color: "#FFF7F7",
 	},
 	serviceTopPillTextCompact: {
 		fontSize: 10,

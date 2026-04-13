@@ -1,9 +1,6 @@
 import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
-	bodyScrollViewport: {
-		flex: 1,
-	},
 	bodyScrollContent: {
 		paddingHorizontal: 14,
 		paddingTop: 0,
@@ -14,8 +11,8 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "space-between",
 		gap: 12,
-		paddingHorizontal: 14,
-		paddingBottom: 12,
+		paddingHorizontal: 16,
+		paddingBottom: 16,
 	},
 	headerCopy: {
 		flex: 1,
@@ -29,8 +26,8 @@ const styles = StyleSheet.create({
 		textTransform: "uppercase",
 	},
 	title: {
-		fontSize: 24,
-		lineHeight: 28,
+		fontSize: 22,
+		lineHeight: 26,
 		fontWeight: "800",
 	},
 	subtitle: {

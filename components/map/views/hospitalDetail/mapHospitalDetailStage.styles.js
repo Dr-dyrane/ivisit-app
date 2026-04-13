@@ -6,9 +6,6 @@ const squircle = (radius) => ({
 });
 
 const styles = StyleSheet.create({
-	bodyScrollViewport: {
-		flex: 1,
-	},
 	bodyScrollContent: {
 		paddingHorizontal: 14,
 		paddingTop: 0,
@@ -17,16 +14,16 @@ const styles = StyleSheet.create({
 	floatingTopSlot: {
 		position: "relative",
 		width: "100%",
-		height: 0,
+		height: 88,
 		overflow: "visible",
 		zIndex: 28,
 		elevation: 28,
 	},
 	floatingTopHeader: {
 		position: "absolute",
-		top: 20,
-		left: 14,
-		right: 14,
+		top: 18,
+		left: 16,
+		right: 16,
 		flexDirection: "row",
 		alignItems: "center",
 		zIndex: 30,

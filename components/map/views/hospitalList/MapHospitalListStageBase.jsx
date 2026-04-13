@@ -1,17 +1,16 @@
 import React, { useMemo } from "react";
-import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
-import {
-	getMapViewportSurfaceConfig,
-	getMapViewportVariant,
-	isSidebarMapVariant,
-} from "../../core/mapViewportConfig";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
 import MapHospitalListContent from "../../surfaces/hospitals/MapHospitalListContent";
 import { styles as listStyles } from "../../surfaces/hospitals/mapHospitalList.styles";
+import { getMapSheetTokens } from "../../tokens/mapSheetTokens";
+import sheetStageStyles from "../shared/mapSheetStage.styles";
+import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
+import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
 import styles from "./mapHospitalListStage.styles";
 
 export default function MapHospitalListStageBase({
@@ -27,28 +26,11 @@ export default function MapHospitalListStageBase({
 	isLoading = false,
 }) {
 	const { isDarkMode } = useTheme();
-	const { width } = useWindowDimensions();
-	const viewportVariant = useMemo(
-		() => getMapViewportVariant({ platform: Platform.OS, width }),
-		[width],
-	);
-	const surfaceConfig = useMemo(
-		() => getMapViewportSurfaceConfig(viewportVariant),
-		[viewportVariant],
-	);
-	const isSidebarPresentation = isSidebarMapVariant(viewportVariant);
-	const presentationMode = isSidebarPresentation ? "sidebar" : "sheet";
-	const shellWidth = useMemo(
-		() =>
-			isSidebarPresentation
-				? Math.min(
-						surfaceConfig.sidebarMaxWidth || Math.max(400, width * 0.36),
-						Math.max(320, width - 48),
-					)
-				: null,
-		[isSidebarPresentation, surfaceConfig.sidebarMaxWidth, width],
-	);
-	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
+	const { isSidebarPresentation, centerContent, contentMaxWidth, presentationMode, shellWidth } =
+		useMapStageSurfaceLayout();
+	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
+	const titleColor = tokens.titleColor;
+	const closeSurfaceColor = tokens.searchSurface;
 	const allowedSnapStates = useMemo(
 		() => [MAP_SHEET_SNAP_STATES.HALF, MAP_SHEET_SNAP_STATES.EXPANDED],
 		[],
@@ -68,8 +50,24 @@ export default function MapHospitalListStageBase({
 		presentationMode,
 		allowedSnapStates,
 	});
+	const {
+		androidCollapseHandlers,
+		handleAndroidCollapseScroll,
+		handleAndroidCollapseScrollBeginDrag,
+	} = useMapAndroidExpandedCollapse({
+		snapState,
+		onSnapStateChange,
+		bodyScrollRef,
+		onScroll: handleBodyScroll,
+		onScrollBeginDrag: handleBodyScrollBeginDrag,
+	});
 	const listTopSlot = (
-		<View style={styles.headerRow}>
+		<View
+			style={[
+				styles.headerRow,
+				centerContent && contentMaxWidth ? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" } : null,
+			]}
+		>
 			<View style={styles.headerCopy}>
 				<Text style={[styles.title, { color: titleColor }]}>Hospitals</Text>
 			</View>
@@ -79,11 +77,7 @@ export default function MapHospitalListStageBase({
 				accessibilityLabel="Close hospitals"
 				style={[
 					styles.closeButton,
-					{
-						backgroundColor: isDarkMode
-							? "rgba(255,255,255,0.08)"
-							: "rgba(15,23,42,0.05)",
-					},
+					{ backgroundColor: closeSurfaceColor },
 				]}
 			>
 				<Ionicons name="close" size={20} color={titleColor} />
@@ -102,9 +96,21 @@ export default function MapHospitalListStageBase({
 			onHandlePress={handleSnapToggle}
 		>
 			<ScrollView
+				{...androidCollapseHandlers}
 				ref={bodyScrollRef}
-				style={styles.bodyScrollViewport}
-				contentContainerStyle={[styles.bodyScrollContent, listStyles.content]}
+				style={sheetStageStyles.bodyScrollViewport}
+				contentContainerStyle={[
+					sheetStageStyles.bodyScrollContent,
+					sheetStageStyles.bodyScrollContentSheet,
+					presentationMode === "modal" ? sheetStageStyles.bodyScrollContentModal : null,
+					isSidebarPresentation ? sheetStageStyles.bodyScrollContentPanel : null,
+					isSidebarPresentation ? sheetStageStyles.bodyScrollContentSidebar : null,
+					centerContent && contentMaxWidth
+						? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
+						: null,
+					styles.bodyScrollContent,
+					listStyles.content,
+				]}
 				showsVerticalScrollIndicator={false}
 				nestedScrollEnabled
 				bounces={!isSidebarPresentation}
@@ -113,8 +119,8 @@ export default function MapHospitalListStageBase({
 				directionalLockEnabled
 				scrollEventThrottle={16}
 				onWheel={handleBodyWheel}
-				onScrollBeginDrag={handleBodyScrollBeginDrag}
-				onScroll={handleBodyScroll}
+				onScrollBeginDrag={handleAndroidCollapseScrollBeginDrag}
+				onScroll={handleAndroidCollapseScroll}
 				onScrollEndDrag={handleBodyScrollEndDrag}
 				onMomentumScrollEnd={handleBodyScrollEndDrag}
 				scrollEnabled={bodyScrollEnabled}

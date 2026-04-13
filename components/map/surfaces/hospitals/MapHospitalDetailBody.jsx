@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
 	Animated,
 	ImageBackground,
@@ -85,6 +85,28 @@ export default function MapHospitalDetailBody({
 		? ["rgba(8,15,27,0.14)", "rgba(8,15,27,0.04)", "rgba(8,15,27,0)"]
 		: ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.04)", "rgba(255,255,255,0)"];
 	const heroRevealProgress = useRef(new Animated.Value(revealHero ? 1 : 0)).current;
+	const [selectedAmbulanceServiceId, setSelectedAmbulanceServiceId] = useState(null);
+	const [selectedRoomServiceId, setSelectedRoomServiceId] = useState(null);
+
+	useEffect(() => {
+		const nextSelectableIds = ambulanceServiceCards
+			.filter((item) => !item?.isSkeleton && item?.enabled !== false)
+			.map((item, index) => item.id || item.title || `ambulance-${index}`);
+
+		if (selectedAmbulanceServiceId && !nextSelectableIds.includes(selectedAmbulanceServiceId)) {
+			setSelectedAmbulanceServiceId(null);
+		}
+	}, [ambulanceServiceCards, selectedAmbulanceServiceId]);
+
+	useEffect(() => {
+		const nextSelectableIds = roomServiceCards
+			.filter((item) => !item?.isSkeleton && item?.enabled !== false)
+			.map((item, index) => item.id || item.title || `room-${index}`);
+
+		if (selectedRoomServiceId && !nextSelectableIds.includes(selectedRoomServiceId)) {
+			setSelectedRoomServiceId(null);
+		}
+	}, [roomServiceCards, selectedRoomServiceId]);
 
 	useEffect(() => {
 		Animated.spring(heroRevealProgress, {
@@ -306,6 +328,9 @@ export default function MapHospitalDetailBody({
 								type="ambulance"
 								rowSurface={rowSurface}
 								compact={false}
+								selectedId={selectedAmbulanceServiceId}
+								onSelectId={setSelectedAmbulanceServiceId}
+								selectionEnabled
 							/>
 
 							<MapHospitalDetailServiceRail
@@ -314,6 +339,9 @@ export default function MapHospitalDetailBody({
 								type="room"
 								rowSurface={rowSurface}
 								compact={false}
+								selectedId={selectedRoomServiceId}
+								onSelectId={setSelectedRoomServiceId}
+								selectionEnabled
 							/>
 
 							{hasGallery ? (
@@ -536,6 +564,9 @@ export default function MapHospitalDetailBody({
 						type="ambulance"
 						rowSurface={rowSurface}
 						compact
+						selectedId={selectedAmbulanceServiceId}
+						onSelectId={setSelectedAmbulanceServiceId}
+						selectionEnabled
 					/>
 
 					<MapHospitalDetailServiceRail
@@ -544,6 +575,9 @@ export default function MapHospitalDetailBody({
 						type="room"
 						rowSurface={rowSurface}
 						compact
+						selectedId={selectedRoomServiceId}
+						onSelectId={setSelectedRoomServiceId}
+						selectionEnabled
 					/>
 
 					{hasGallery ? (

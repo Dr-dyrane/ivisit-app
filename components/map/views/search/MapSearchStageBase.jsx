@@ -1,15 +1,10 @@
 import React, { useMemo } from "react";
-import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Keyboard, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SearchBoundary } from "../../../../contexts/SearchContext";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import EmergencySearchBar from "../../../emergency/EmergencySearchBar";
 import MapSheetShell from "../../MapSheetShell";
-import {
-	getMapViewportSurfaceConfig,
-	getMapViewportVariant,
-	isSidebarMapVariant,
-} from "../../core/mapViewportConfig";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
 import MapSearchSheetSections from "../../surfaces/search/MapSearchSheetSections";
@@ -17,6 +12,9 @@ import { getMapSheetTokens } from "../../tokens/mapSheetTokens";
 import MapExploreIntentProfileTrigger from "../exploreIntent/MapExploreIntentProfileTrigger";
 import useMapSearchSheetModel from "../../surfaces/search/useMapSearchSheetModel";
 import { styles as searchStyles } from "../../surfaces/search/mapSearchSheet.styles";
+import sheetStageStyles from "../shared/mapSheetStage.styles";
+import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
+import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
 import styles from "./mapSearchStage.styles";
 
 function MapSearchStageSurface({
@@ -37,29 +35,10 @@ function MapSearchStageSurface({
 	isSignedIn,
 }) {
 	const { isDarkMode } = useTheme();
-	const { width } = useWindowDimensions();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
-	const viewportVariant = useMemo(
-		() => getMapViewportVariant({ platform: Platform.OS, width }),
-		[width],
-	);
-	const surfaceConfig = useMemo(
-		() => getMapViewportSurfaceConfig(viewportVariant),
-		[viewportVariant],
-	);
-	const isSidebarPresentation = isSidebarMapVariant(viewportVariant);
-	const presentationMode = isSidebarPresentation ? "sidebar" : "sheet";
+	const { isSidebarPresentation, centerContent, contentMaxWidth, presentationMode, shellWidth } =
+		useMapStageSurfaceLayout();
 	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
-	const shellWidth = useMemo(
-		() =>
-			isSidebarPresentation
-				? Math.min(
-						surfaceConfig.sidebarMaxWidth || Math.max(400, width * 0.36),
-						Math.max(320, width - 48),
-					)
-				: null,
-		[isSidebarPresentation, surfaceConfig.sidebarMaxWidth, width],
-	);
 	const model = useMapSearchSheetModel({
 		visible: true,
 		mode,
@@ -95,8 +74,28 @@ function MapSearchStageSurface({
 		presentationMode,
 		allowedSnapStates,
 	});
+	const {
+		androidCollapseHandlers,
+		handleAndroidCollapseScroll,
+		handleAndroidCollapseScrollBeginDrag,
+	} = useMapAndroidExpandedCollapse({
+		snapState,
+		onSnapStateChange,
+		bodyScrollRef,
+		onScroll: handleBodyScroll,
+		onScrollBeginDrag: handleBodyScrollBeginDrag,
+		onExpandedToHalf: () => {
+			Keyboard.dismiss();
+		},
+	});
 	const collapsedTopRow = (
-		<View style={[styles.topRow, styles.topRowCollapsed]}>
+		<View
+			style={[
+				styles.topRow,
+				styles.topRowCollapsed,
+				centerContent && contentMaxWidth ? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" } : null,
+			]}
+		>
 			<Pressable
 				onPress={() => handleSnapToggle(MAP_SHEET_SNAP_STATES.HALF)}
 				style={[
@@ -121,15 +120,25 @@ function MapSearchStageSurface({
 		</View>
 	);
 	const activeTopRow = (
-		<View style={styles.topRow}>
+		<View
+			style={[
+				styles.topRow,
+				centerContent && contentMaxWidth ? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" } : null,
+			]}
+		>
 			<EmergencySearchBar
 				value={model.query}
 				onChangeText={model.setSearchQuery}
+				onFocus={() => {
+					if (snapState === MAP_SHEET_SNAP_STATES.HALF) {
+						handleSnapToggle(MAP_SHEET_SNAP_STATES.EXPANDED);
+					}
+				}}
 				onBlur={() => model.commitQuery(model.query)}
 				onClear={() => model.setSearchQuery("")}
 				placeholder="Search hospitals, specialties, or area"
 				showSuggestions={false}
-				autoFocus
+				autoFocus={false}
 				compact
 				style={[searchStyles.searchBar, styles.activeSearchBar]}
 			/>
@@ -139,7 +148,7 @@ function MapSearchStageSurface({
 				style={[
 					styles.closeButton,
 					model.isDismissing && styles.closeButtonDisabled,
-					{ backgroundColor: model.groupedSurface },
+					{ backgroundColor: tokens.searchSurface },
 				]}
 			>
 				<Ionicons name="close" size={18} color={model.titleColor} />
@@ -159,9 +168,20 @@ function MapSearchStageSurface({
 		>
 			{isCollapsed ? null : (
 				<ScrollView
+					{...androidCollapseHandlers}
 					ref={bodyScrollRef}
-					style={styles.bodyScrollViewport}
-					contentContainerStyle={styles.bodyScrollContent}
+					style={sheetStageStyles.bodyScrollViewport}
+					contentContainerStyle={[
+						sheetStageStyles.bodyScrollContent,
+						sheetStageStyles.bodyScrollContentSheet,
+						presentationMode === "modal" ? sheetStageStyles.bodyScrollContentModal : null,
+						isSidebarPresentation ? sheetStageStyles.bodyScrollContentPanel : null,
+						isSidebarPresentation ? sheetStageStyles.bodyScrollContentSidebar : null,
+						centerContent && contentMaxWidth
+							? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
+							: null,
+						styles.bodyScrollContent,
+					]}
 					showsVerticalScrollIndicator={false}
 					nestedScrollEnabled
 					bounces={!isSidebarPresentation}
@@ -170,8 +190,8 @@ function MapSearchStageSurface({
 					directionalLockEnabled
 					onWheel={handleBodyWheel}
 					scrollEventThrottle={16}
-					onScrollBeginDrag={handleBodyScrollBeginDrag}
-					onScroll={handleBodyScroll}
+					onScrollBeginDrag={handleAndroidCollapseScrollBeginDrag}
+					onScroll={handleAndroidCollapseScroll}
 					onScrollEndDrag={handleBodyScrollEndDrag}
 					onMomentumScrollEnd={handleBodyScrollEndDrag}
 					scrollEnabled={bodyScrollEnabled}

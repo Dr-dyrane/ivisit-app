@@ -1,8 +1,30 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { getHospitalDetailServiceImageSource } from "./mapHospitalDetail.content";
 import { styles } from "./mapHospitalDetail.styles";
+
+function resolveRailImageSource(source) {
+	if (!source || Platform.OS !== "web") return source;
+
+	if (typeof source === "number") {
+		try {
+			const resolveAssetSource =
+				(typeof Image?.resolveAssetSource === "function" && Image.resolveAssetSource) ||
+				(typeof Image?.default?.resolveAssetSource === "function" &&
+					Image.default.resolveAssetSource) ||
+				null;
+			const asset = resolveAssetSource?.(source);
+			if (asset?.uri) {
+				return asset;
+			}
+		} catch (_error) {
+			return source;
+		}
+	}
+
+	return source;
+}
 
 function ServiceSkeletonCard({ surfaceColor, compact = false }) {
 	return (
@@ -54,10 +76,16 @@ export default function MapHospitalDetailServiceRail({
 	type,
 	rowSurface,
 	compact = false,
+	selectedId: controlledSelectedId = null,
+	onSelectId = null,
+	selectionEnabled: selectionEnabledProp = null,
 }) {
-	const [selectedId, setSelectedId] = useState(null);
+	const [uncontrolledSelectedId, setUncontrolledSelectedId] = useState(null);
 	if (!Array.isArray(items) || items.length === 0) return null;
-	const selectionEnabled = compact;
+	const selectionEnabled =
+		typeof selectionEnabledProp === "boolean" ? selectionEnabledProp : compact;
+	const isControlledSelection = typeof onSelectId === "function" || controlledSelectedId !== null;
+	const selectedId = isControlledSelection ? controlledSelectedId : uncontrolledSelectedId;
 	const selectableIds = useMemo(
 		() =>
 			items
@@ -67,14 +95,24 @@ export default function MapHospitalDetailServiceRail({
 	);
 
 	useEffect(() => {
-		if (!selectionEnabled && selectedId !== null) {
-			setSelectedId(null);
+		if (!selectionEnabled && uncontrolledSelectedId !== null) {
+			setUncontrolledSelectedId(null);
 			return;
 		}
-		if (selectedId && !selectableIds.includes(selectedId)) {
-			setSelectedId(null);
+		if (uncontrolledSelectedId && !selectableIds.includes(uncontrolledSelectedId)) {
+			setUncontrolledSelectedId(null);
 		}
-	}, [selectableIds, selectedId, selectionEnabled]);
+	}, [selectableIds, uncontrolledSelectedId, selectionEnabled]);
+
+	const handleSelectId = (itemId) => {
+		if (!selectionEnabled) return;
+		const nextSelectedId = selectedId === itemId ? null : itemId;
+		if (typeof onSelectId === "function") {
+			onSelectId(nextSelectedId);
+			return;
+		}
+		setUncontrolledSelectedId(nextSelectedId);
+	};
 
 	return (
 		<View style={[styles.serviceRail, compact ? styles.serviceRailCompact : null]}>
@@ -98,7 +136,9 @@ export default function MapHospitalDetailServiceRail({
 						);
 					}
 
-					const imageSource = getHospitalDetailServiceImageSource(item, type);
+					const imageSource = resolveRailImageSource(
+						getHospitalDetailServiceImageSource(item, type),
+					);
 					const itemId = item.id || item.title || `${type}-${index}`;
 					const isDisabled = item.enabled === false;
 					const isSelected = selectionEnabled && selectedId === itemId;
@@ -108,12 +148,16 @@ export default function MapHospitalDetailServiceRail({
 						: ["rgba(8,15,27,0.04)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0.74)"];
 					const titleColor = isPreviewMuted ? "rgba(248,250,252,0.82)" : "#F8FAFC";
 					const metaColor = isPreviewMuted ? "rgba(248,250,252,0.68)" : "rgba(248,250,252,0.84)";
+					const isReadyAmbulance = type === "ambulance" && item.metaText === "Ready";
+					const isReadyAmbulanceSelected = isReadyAmbulance && isSelected;
+					const isReadyRoom = type === "room" && typeof item.metaText === "string" && item.metaText.trim().length > 0;
+					const isReadyRoomSelected = isReadyRoom && isSelected;
 					return (
 						<Pressable
 							key={`${item.id || item.title}-${index}`}
 							onPress={
 								selectionEnabled && !isDisabled
-									? () => setSelectedId(itemId)
+									? () => handleSelectId(itemId)
 									: undefined
 							}
 							disabled={!selectionEnabled || isDisabled}
@@ -155,10 +199,24 @@ export default function MapHospitalDetailServiceRail({
 										]}
 									/>
 								) : item.metaText ? (
-									<View style={[styles.serviceTopPill, compact ? styles.serviceTopPillCompact : null]}>
+									<View
+										style={[
+											styles.serviceTopPill,
+											compact ? styles.serviceTopPillCompact : null,
+											isReadyAmbulanceSelected || isReadyRoomSelected
+												? styles.serviceTopPillReady
+												: null,
+										]}
+									>
 										<Text
 											numberOfLines={1}
-										style={[styles.serviceTopPillText, compact ? styles.serviceTopPillTextCompact : null]}
+											style={[
+												styles.serviceTopPillText,
+												compact ? styles.serviceTopPillTextCompact : null,
+												isReadyAmbulanceSelected || isReadyRoomSelected
+													? styles.serviceTopPillReadyText
+													: null,
+											]}
 										>
 											{item.metaText}
 										</Text>
