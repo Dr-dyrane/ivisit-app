@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { Keyboard, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SearchBoundary } from "../../../../contexts/SearchContext";
@@ -36,6 +36,7 @@ function MapSearchStageSurface({
 	isSignedIn,
 }) {
 	const { isDarkMode } = useTheme();
+	const searchInputRef = useRef(null);
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
@@ -132,6 +133,7 @@ function MapSearchStageSurface({
 			]}
 		>
 			<EmergencySearchBar
+				ref={searchInputRef}
 				value={model.query}
 				onChangeText={model.setSearchQuery}
 				onFocus={() => {
@@ -165,6 +167,16 @@ function MapSearchStageSurface({
 			<MapSearchSheetSections model={model} />
 		</View>
 	);
+
+	useEffect(() => {
+		if (snapState !== MAP_SHEET_SNAP_STATES.EXPANDED) return undefined;
+
+		const focusTimer = setTimeout(() => {
+			searchInputRef.current?.focus?.();
+		}, 180);
+
+		return () => clearTimeout(focusTimer);
+	}, [snapState]);
 
 	return (
 		<MapSheetShell

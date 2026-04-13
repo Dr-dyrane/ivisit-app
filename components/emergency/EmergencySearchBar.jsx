@@ -1,4 +1,11 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, {
+	forwardRef,
+	useCallback,
+	useEffect,
+	useImperativeHandle,
+	useRef,
+	useState,
+} from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, Platform, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
@@ -21,7 +28,7 @@ const SUGGESTED_SEARCHES = [
 	{ text: "Cardiology", icon: "heart-outline" },
 ];
 
-export default function EmergencySearchBar({
+const EmergencySearchBar = forwardRef(function EmergencySearchBar({
 	value = "",
 	onChangeText,
 	onFocus,
@@ -33,12 +40,18 @@ export default function EmergencySearchBar({
 	autoFocus = false,
 	compact = false,
 	style,
-}) {
+}, ref) {
 	const { isDarkMode } = useTheme();
 	const { showToast } = useToast();
 	const inputRef = useRef(null);
 	const [isFocused, setIsFocused] = useState(false);
 	const focusProgress = useSharedValue(0);
+
+	useImperativeHandle(ref, () => ({
+		focus: () => inputRef.current?.focus(),
+		blur: () => inputRef.current?.blur(),
+		clear: () => inputRef.current?.clear(),
+	}), []);
 
 	// 🔴 REVERT POINT: Move shared value updates out of render path
 	// PREVIOUS: focusProgress.value updated in useEffect
@@ -283,7 +296,9 @@ export default function EmergencySearchBar({
 			)}
 		</View>
 	);
-}
+});
+
+export default EmergencySearchBar;
 
 const styles = StyleSheet.create({
 	wrapper: {
