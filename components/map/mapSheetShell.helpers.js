@@ -65,17 +65,24 @@ export function getMapSheetHostLayout({
 	sheetHeight,
 	dragTranslateY,
 	insets,
+	viewportHeight,
 	sidebarOuterInset = 14,
 	sidebarTopInset = 14,
 	sidebarBottomInset = 14,
+	sidebarMaxHeightRatio = 0.92,
 }) {
 	if (isSidebar) {
+		const availableHeight = Math.max(320, (viewportHeight || 0) - sidebarTopInset - sidebarBottomInset);
+		const resolvedSidebarHeight =
+			viewportHeight && sidebarMaxHeightRatio
+				? Math.min(availableHeight, Math.max(320, viewportHeight * sidebarMaxHeightRatio))
+				: availableHeight;
+		const sidebarVerticalOffset = Math.max(0, (availableHeight - resolvedSidebarHeight) / 2);
 		return {
 			left: Math.max(0, sidebarOuterInset),
-			top: Math.max(0, sidebarTopInset),
-			bottom: Math.max(0, sidebarBottomInset),
+			top: Math.max(0, sidebarTopInset + sidebarVerticalOffset),
 			width: useFloatingShell ? shellWidth : undefined,
-			height: undefined,
+			height: resolvedSidebarHeight,
 			transform: [{ translateY: 0 }],
 		};
 	}

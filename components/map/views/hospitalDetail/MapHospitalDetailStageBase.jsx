@@ -27,8 +27,12 @@ export default function MapHospitalDetailStageBase({
 	onSnapStateChange,
 }) {
 	const { isDarkMode } = useTheme();
-	const { isSidebarPresentation, centerContent, contentMaxWidth, presentationMode, shellWidth } =
+	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
+	const modalContainedStyle =
+		presentationMode === "modal" && contentMaxWidth
+			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
+			: null;
 	const model = useMapHospitalDetailModel({
 		visible: true,
 		hospital,
@@ -150,7 +154,7 @@ export default function MapHospitalDetailStageBase({
 				pointerEvents="box-none"
 				style={[
 					styles.floatingTopHeader,
-					centerContent && contentMaxWidth
+					modalContainedStyle
 						? {
 								left: null,
 								right: null,
@@ -237,9 +241,7 @@ export default function MapHospitalDetailStageBase({
 						presentationMode === "modal" ? sheetStageStyles.bodyScrollContentModal : null,
 						isSidebarPresentation ? sheetStageStyles.bodyScrollContentPanel : null,
 						isSidebarPresentation ? sheetStageStyles.bodyScrollContentSidebar : null,
-						centerContent && contentMaxWidth
-							? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
-							: null,
+						modalContainedStyle,
 						styles.bodyScrollContent,
 					]}
 					showsVerticalScrollIndicator={false}

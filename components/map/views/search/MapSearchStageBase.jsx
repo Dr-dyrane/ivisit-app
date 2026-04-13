@@ -36,9 +36,13 @@ function MapSearchStageSurface({
 }) {
 	const { isDarkMode } = useTheme();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
-	const { isSidebarPresentation, centerContent, contentMaxWidth, presentationMode, shellWidth } =
+	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
 	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
+	const modalContainedStyle =
+		presentationMode === "modal" && contentMaxWidth
+			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
+			: null;
 	const model = useMapSearchSheetModel({
 		visible: true,
 		mode,
@@ -93,7 +97,7 @@ function MapSearchStageSurface({
 			style={[
 				styles.topRow,
 				styles.topRowCollapsed,
-				centerContent && contentMaxWidth ? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" } : null,
+				modalContainedStyle,
 			]}
 		>
 			<Pressable
@@ -123,7 +127,7 @@ function MapSearchStageSurface({
 		<View
 			style={[
 				styles.topRow,
-				centerContent && contentMaxWidth ? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" } : null,
+				modalContainedStyle,
 			]}
 		>
 			<EmergencySearchBar
@@ -177,9 +181,7 @@ function MapSearchStageSurface({
 						presentationMode === "modal" ? sheetStageStyles.bodyScrollContentModal : null,
 						isSidebarPresentation ? sheetStageStyles.bodyScrollContentPanel : null,
 						isSidebarPresentation ? sheetStageStyles.bodyScrollContentSidebar : null,
-						centerContent && contentMaxWidth
-							? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
-							: null,
+						modalContainedStyle,
 						styles.bodyScrollContent,
 					]}
 					showsVerticalScrollIndicator={false}

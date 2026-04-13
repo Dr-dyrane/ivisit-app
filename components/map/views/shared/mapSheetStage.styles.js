@@ -20,7 +20,6 @@ const sheetStageStyles = StyleSheet.create({
 	},
 	bodyScrollContentSidebar: {
 		flexGrow: 1,
-		paddingBottom: 0,
 	},
 	topSlotContained: {
 		width: "100%",

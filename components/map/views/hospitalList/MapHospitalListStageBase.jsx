@@ -26,8 +26,12 @@ export default function MapHospitalListStageBase({
 	isLoading = false,
 }) {
 	const { isDarkMode } = useTheme();
-	const { isSidebarPresentation, centerContent, contentMaxWidth, presentationMode, shellWidth } =
+	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
+	const modalContainedStyle =
+		presentationMode === "modal" && contentMaxWidth
+			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
+			: null;
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const titleColor = tokens.titleColor;
 	const closeSurfaceColor = tokens.searchSurface;
@@ -65,7 +69,7 @@ export default function MapHospitalListStageBase({
 		<View
 			style={[
 				styles.headerRow,
-				centerContent && contentMaxWidth ? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" } : null,
+				modalContainedStyle,
 			]}
 		>
 			<View style={styles.headerCopy}>
@@ -102,15 +106,13 @@ export default function MapHospitalListStageBase({
 				contentContainerStyle={[
 					sheetStageStyles.bodyScrollContent,
 					sheetStageStyles.bodyScrollContentSheet,
-					presentationMode === "modal" ? sheetStageStyles.bodyScrollContentModal : null,
-					isSidebarPresentation ? sheetStageStyles.bodyScrollContentPanel : null,
-					isSidebarPresentation ? sheetStageStyles.bodyScrollContentSidebar : null,
-					centerContent && contentMaxWidth
-						? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
-						: null,
-					styles.bodyScrollContent,
-					listStyles.content,
-				]}
+						presentationMode === "modal" ? sheetStageStyles.bodyScrollContentModal : null,
+						isSidebarPresentation ? sheetStageStyles.bodyScrollContentPanel : null,
+						isSidebarPresentation ? sheetStageStyles.bodyScrollContentSidebar : null,
+						modalContainedStyle,
+						styles.bodyScrollContent,
+						listStyles.content,
+					]}
 				showsVerticalScrollIndicator={false}
 				nestedScrollEnabled
 				bounces={!isSidebarPresentation}

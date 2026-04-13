@@ -26,7 +26,7 @@ export function useMapSheetShell({
 }) {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
-	const { width } = useWindowDimensions();
+	const { width, height } = useWindowDimensions();
 	const isAndroid = Platform.OS === "android";
 	const platformMotion = useMemo(() => getMapPlatformMotion(Platform.OS), []);
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
@@ -176,9 +176,11 @@ export function useMapSheetShell({
 		sheetHeight,
 		dragTranslateY,
 		insets,
+		viewportHeight: height,
 		sidebarOuterInset: surfaceConfig.sidebarOuterInset ?? 14,
 		sidebarTopInset: surfaceConfig.sidebarTopInset ?? 14,
 		sidebarBottomInset: surfaceConfig.sidebarBottomInset ?? 14,
+		sidebarMaxHeightRatio: surfaceConfig.sidebarMaxHeightRatio ?? 0.92,
 	});
 	const { contentPaddingTop, contentPaddingBottom } = getMapSheetContentPadding({
 		isSidebar,
