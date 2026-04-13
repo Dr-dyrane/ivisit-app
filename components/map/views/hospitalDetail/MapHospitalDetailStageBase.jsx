@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
 import {
@@ -25,6 +25,7 @@ export default function MapHospitalDetailStageBase({
 	onClose,
 	onOpenHospitals,
 	onUseHospital,
+	onCycleHospital,
 	onSnapStateChange,
 }) {
 	const { isDarkMode } = useTheme();
@@ -69,13 +70,20 @@ export default function MapHospitalDetailStageBase({
 		isHalf || (snapState === MAP_SHEET_SNAP_STATES.EXPANDED && showFloatingTitle);
 	const isHeroTopPresentation =
 		snapState === MAP_SHEET_SNAP_STATES.EXPANDED && !showFloatingTitle;
+	const canCycleHospital = isHalf && typeof onCycleHospital === "function";
 	const floatingTitleColor = titleColor;
 	const floatingCloseIconColor = isHeroTopPresentation ? "#F8FAFC" : titleColor;
+	const floatingCycleIconColor = isDarkMode
+			? "rgba(148,163,184,0.14)"
+			: "rgba(255,255,255,0.82)";
 	const floatingCloseSurface = isHeroTopPresentation
 		? "rgba(15,23,42,0.24)"
 		: isDarkMode
 			? "rgba(148,163,184,0.14)"
 			: "rgba(255,255,255,0.42)";
+	const floatingCycleSurface = !isDarkMode
+			? "rgba(148,163,184,0.14)"
+			: "rgba(255,255,255,0.05)";
 	const allowedSnapStates = useMemo(
 		() => [
 			MAP_SHEET_SNAP_STATES.COLLAPSED,
@@ -140,7 +148,29 @@ export default function MapHospitalDetailStageBase({
 	const floatingTopSlot = (
 		<View pointerEvents="box-none" style={styles.floatingTopSlot}>
 			<View pointerEvents="box-none" style={styles.floatingTopHeader}>
-				<View style={styles.floatingTopSpacer} />
+				{canCycleHospital ? (
+					<Pressable
+						onPress={onCycleHospital}
+						accessibilityRole="button"
+						accessibilityLabel="Show next hospital"
+						hitSlop={10}
+						style={styles.floatingTopActionPressable}
+					>
+						{({ pressed }) => (
+							<View
+							style={[
+								styles.floatingTopActionButton,
+								{ backgroundColor: floatingCycleSurface },
+								pressed ? styles.floatingTopCloseButtonPressed : null,
+							]}
+						>
+							<MaterialIcons name="next-plan" size={40} color={floatingCycleIconColor} />
+						</View>
+					)}
+				</Pressable>
+				) : (
+					<View style={styles.floatingTopSpacer} />
+				)}
 				<View style={styles.floatingTopTitleWrap}>
 					{shouldShowFloatingTitle ? (
 						<Text numberOfLines={1} style={[styles.floatingTopTitle, { color: floatingTitleColor }]}>
@@ -205,6 +235,7 @@ export default function MapHospitalDetailStageBase({
 						model={model}
 						revealHero={snapState === MAP_SHEET_SNAP_STATES.EXPANDED}
 						onExpandedHeaderLayout={handleExpandedHeaderLayout}
+						onCycleHospital={onCycleHospital}
 					/>
 				</ScrollView>
 			)}

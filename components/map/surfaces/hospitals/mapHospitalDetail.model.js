@@ -110,6 +110,7 @@ export function buildHospitalCollapsedAction({
 			onPress: onUseHospital,
 			icon: "ambulance",
 			iconType: "material",
+			primary: true,
 			accessibilityLabel: "Use hospital",
 		};
 	}

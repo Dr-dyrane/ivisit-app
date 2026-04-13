@@ -46,6 +46,7 @@ export default function MapScreen() {
 		handleMapHospitalPress,
 		handleMapReadinessChange,
 		handleOpenFeaturedHospital,
+		handleCycleFeaturedHospital,
 		handleOpenProfile,
 		openHospitalList,
 		handleSearchLocation,
@@ -187,6 +188,7 @@ export default function MapScreen() {
 					onOpenCareHistory={() => setCareHistoryVisible(true)}
 					onOpenRecents={() => setRecentVisitsVisible(true)}
 					onOpenFeaturedHospital={handleOpenFeaturedHospital}
+					onCycleHospital={featuredHospitals.length > 1 ? handleCycleFeaturedHospital : undefined}
 					onSnapStateChange={setSheetSnapState}
 					onCloseSearch={closeSearchSheet}
 					onCloseHospitals={closeHospitalList}

@@ -1,5 +1,5 @@
-import React from "react";
-import { Image, ScrollView, Text, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { getHospitalDetailServiceImageSource } from "./mapHospitalDetail.content";
 import { styles } from "./mapHospitalDetail.styles";
@@ -32,7 +32,7 @@ function ServiceSkeletonCard({ surfaceColor, compact = false }) {
 	);
 }
 
-function ServiceValueBlock({ item, compact = false }) {
+function ServiceValueBlock({ item, compact = false, color = "rgba(248,250,252,0.84)" }) {
 	return item.showPriceSkeleton ? (
 		<View style={[styles.serviceInlineSkeleton, styles.serviceInlineSkeletonMeta]} />
 	) : item.priceText ? (
@@ -41,7 +41,7 @@ function ServiceValueBlock({ item, compact = false }) {
 			style={[
 				styles.serviceCardMeta,
 				compact ? styles.serviceCardMetaCompact : null,
-				{ color: "rgba(248,250,252,0.84)" },
+				{ color },
 			]}
 		>
 			{item.priceText}
@@ -55,7 +55,26 @@ export default function MapHospitalDetailServiceRail({
 	rowSurface,
 	compact = false,
 }) {
+	const [selectedId, setSelectedId] = useState(null);
 	if (!Array.isArray(items) || items.length === 0) return null;
+	const selectionEnabled = compact;
+	const selectableIds = useMemo(
+		() =>
+			items
+				.filter((item) => !item?.isSkeleton && item?.enabled !== false)
+				.map((item, index) => item.id || item.title || `${type}-${index}`),
+		[items, type],
+	);
+
+	useEffect(() => {
+		if (!selectionEnabled && selectedId !== null) {
+			setSelectedId(null);
+			return;
+		}
+		if (selectedId && !selectableIds.includes(selectedId)) {
+			setSelectedId(null);
+		}
+	}, [selectableIds, selectedId, selectionEnabled]);
 
 	return (
 		<View style={[styles.serviceRail, compact ? styles.serviceRailCompact : null]}>
@@ -80,14 +99,36 @@ export default function MapHospitalDetailServiceRail({
 					}
 
 					const imageSource = getHospitalDetailServiceImageSource(item, type);
+					const itemId = item.id || item.title || `${type}-${index}`;
+					const isDisabled = item.enabled === false;
+					const isSelected = selectionEnabled && selectedId === itemId;
+					const isPreviewMuted = selectionEnabled && !isSelected;
+					const overlayColors = isPreviewMuted
+						? ["rgba(8,15,27,0.16)", "rgba(8,15,27,0.34)", "rgba(8,15,27,0.88)"]
+						: ["rgba(8,15,27,0.04)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0.74)"];
+					const titleColor = isPreviewMuted ? "rgba(248,250,252,0.82)" : "#F8FAFC";
+					const metaColor = isPreviewMuted ? "rgba(248,250,252,0.68)" : "rgba(248,250,252,0.84)";
 					return (
-						<View
+						<Pressable
 							key={`${item.id || item.title}-${index}`}
-							style={[
+							onPress={
+								selectionEnabled && !isDisabled
+									? () => setSelectedId(itemId)
+									: undefined
+							}
+							disabled={!selectionEnabled || isDisabled}
+							accessibilityRole={selectionEnabled && !isDisabled ? "button" : undefined}
+							accessibilityState={
+								selectionEnabled && !isDisabled ? { selected: isSelected } : undefined
+							}
+							style={({ pressed }) => [
 								styles.serviceCard,
 								compact ? styles.serviceCardCompact : null,
 								{ backgroundColor: rowSurface },
-								item.enabled === false ? styles.serviceCardMuted : null,
+								isDisabled ? styles.serviceCardMuted : null,
+								isPreviewMuted ? styles.serviceCardPreviewMuted : null,
+								isSelected ? styles.serviceCardSelected : null,
+								pressed ? (isSelected ? styles.serviceCardSelectedPressed : styles.serviceCardPressed) : null,
 							]}
 						>
 							<Image
@@ -102,7 +143,7 @@ export default function MapHospitalDetailServiceRail({
 								]}
 							/>
 							<LinearGradient
-								colors={["rgba(8,15,27,0.04)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0.74)"]}
+								colors={overlayColors}
 								style={styles.serviceCardOverlay}
 							/>
 							<View style={[styles.serviceCardHeader, compact ? styles.serviceCardHeaderCompact : null]}>
@@ -117,7 +158,7 @@ export default function MapHospitalDetailServiceRail({
 									<View style={[styles.serviceTopPill, compact ? styles.serviceTopPillCompact : null]}>
 										<Text
 											numberOfLines={1}
-											style={[styles.serviceTopPillText, compact ? styles.serviceTopPillTextCompact : null]}
+										style={[styles.serviceTopPillText, compact ? styles.serviceTopPillTextCompact : null]}
 										>
 											{item.metaText}
 										</Text>
@@ -130,14 +171,14 @@ export default function MapHospitalDetailServiceRail({
 									style={[
 										styles.serviceTitle,
 										compact ? styles.serviceTitleCompact : null,
-										{ color: "#F8FAFC" },
+										{ color: titleColor },
 									]}
 								>
 									{item.title}
 								</Text>
-								<ServiceValueBlock item={item} compact={compact} />
+								<ServiceValueBlock item={item} compact={compact} color={metaColor} />
 							</View>
-						</View>
+						</Pressable>
 					);
 				})}
 			</ScrollView>

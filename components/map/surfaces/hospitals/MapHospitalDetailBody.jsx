@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
 	Animated,
 	ImageBackground,
+	PanResponder,
 	Pressable,
 	ScrollView,
 	StyleSheet,
@@ -26,6 +27,7 @@ export default function MapHospitalDetailBody({
 	model,
 	revealHero = false,
 	onExpandedHeaderLayout,
+	onCycleHospital,
 }) {
 	const {
 		cardSurface,
@@ -125,6 +127,28 @@ export default function MapHospitalDetailBody({
 		inputRange: [0, 1],
 		outputRange: [0, -64],
 	});
+	const heroSwipeResponder = useMemo(() => {
+		if (typeof onCycleHospital !== "function") return null;
+
+		return PanResponder.create({
+			onMoveShouldSetPanResponder: (_event, gestureState) =>
+				Math.abs(gestureState.dx) > 12 &&
+				Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2,
+			onMoveShouldSetPanResponderCapture: (_event, gestureState) =>
+				Math.abs(gestureState.dx) > 12 &&
+				Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2,
+			onPanResponderRelease: (_event, gestureState) => {
+				if (
+					Math.abs(gestureState.dx) > 52 &&
+					Math.abs(gestureState.dx) > Math.abs(gestureState.dy)
+				) {
+					onCycleHospital();
+				}
+			},
+			onPanResponderTerminationRequest: () => true,
+		});
+	}, [onCycleHospital]);
+	const heroSwipeHandlers = heroSwipeResponder?.panHandlers ?? {};
 
 	if (revealHero) {
 		return (
@@ -141,6 +165,7 @@ export default function MapHospitalDetailBody({
 							resizeMode="cover"
 							style={styles.expandedHero}
 							imageStyle={styles.expandedHeroImage}
+							{...heroSwipeHandlers}
 						>
 						<LinearGradient
 							pointerEvents="none"

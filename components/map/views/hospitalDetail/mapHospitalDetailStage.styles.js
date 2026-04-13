@@ -36,6 +36,22 @@ const styles = StyleSheet.create({
 		width: 40,
 		height: 40,
 	},
+	floatingTopActionPressable: {
+		width: 40,
+		height: 40,
+		zIndex: 31,
+	},
+	floatingTopActionButton: {
+		width: 40,
+		height: 40,
+		alignItems: "center",
+		justifyContent: "center",
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.12,
+		shadowRadius: 10,
+		shadowOffset: { width: 0, height: 4 },
+		...squircle(20),
+	},
 	floatingTopTitleWrap: {
 		flex: 1,
 		alignItems: "center",
@@ -88,6 +104,11 @@ const styles = StyleSheet.create({
 		shadowRadius: 12,
 		shadowOffset: { width: 0, height: 6 },
 		borderRadius: 999,
+	},
+	collapsedIconButtonPrimary: {
+		shadowOpacity: 0.2,
+		shadowRadius: 14,
+		shadowOffset: { width: 0, height: 8 },
 	},
 	collapsedIconButtonPressable: {
 		width: 42,

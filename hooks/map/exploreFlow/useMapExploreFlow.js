@@ -426,6 +426,34 @@ export function useMapExploreFlow() {
 		[openHospitalDetail, selectHospital],
 	);
 
+	const handleCycleFeaturedHospital = useCallback(() => {
+		const pool = Array.isArray(discoveredHospitals)
+			? discoveredHospitals.filter((entry) => entry?.id)
+			: [];
+		if (pool.length < 2) return;
+
+		const currentId =
+			featuredHospital?.id ??
+			selectedHospital?.id ??
+			nearestHospital?.id ??
+			pool[0]?.id ??
+			null;
+		const currentIndex = pool.findIndex((entry) => entry?.id === currentId);
+		const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % pool.length : 0;
+		const nextHospital = pool[nextIndex] ?? null;
+		if (!nextHospital?.id) return;
+
+		selectHospital(nextHospital.id);
+		setFeaturedHospital(nextHospital);
+	}, [
+		discoveredHospitals,
+		featuredHospital?.id,
+		nearestHospital?.id,
+		selectedHospital?.id,
+		selectHospital,
+		setFeaturedHospital,
+	]);
+
 	const handleMapHospitalPress = useCallback(
 		(hospital) => {
 			if (hospital?.id) {
@@ -528,6 +556,7 @@ export function useMapExploreFlow() {
 		handleMapHospitalPress,
 		handleMapReadinessChange,
 		handleOpenFeaturedHospital,
+		handleCycleFeaturedHospital,
 		handleOpenProfile,
 		openHospitalDetail,
 		openHospitalList,

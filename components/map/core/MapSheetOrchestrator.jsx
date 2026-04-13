@@ -32,6 +32,7 @@ export default function MapSheetOrchestrator({
 	onOpenProfile,
 	onOpenCareHistory = () => {},
 	onOpenFeaturedHospital = () => {},
+	onCycleHospital = undefined,
 	onSnapStateChange = () => {},
 	onCloseSearch = () => {},
 	onCloseHospitals = () => {},
@@ -107,6 +108,7 @@ export default function MapSheetOrchestrator({
 					onClose={onCloseHospitalDetail}
 					onOpenHospitals={onOpenHospitals}
 					onUseHospital={onUseHospital}
+					onCycleHospital={onCycleHospital}
 					onSnapStateChange={onSnapStateChange}
 				/>
 			);

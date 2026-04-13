@@ -357,6 +357,27 @@ export const styles = StyleSheet.create({
 	serviceCardMuted: {
 		opacity: 0.58,
 	},
+	serviceCardPreviewMuted: {
+		opacity: 0.72,
+		shadowOpacity: 0.03,
+		shadowRadius: 6,
+		shadowOffset: { width: 0, height: 3 },
+	},
+	serviceCardSelected: {
+		opacity: 1,
+		shadowOpacity: 0.14,
+		shadowRadius: 16,
+		shadowOffset: { width: 0, height: 8 },
+		transform: [{ scale: 1.01 }],
+	},
+	serviceCardPressed: {
+		opacity: 0.94,
+		transform: [{ scale: 0.985 }],
+	},
+	serviceCardSelectedPressed: {
+		opacity: 0.98,
+		transform: [{ scale: 1.0 }],
+	},
 	serviceCardMedia: {
 		...StyleSheet.absoluteFillObject,
 		width: undefined,

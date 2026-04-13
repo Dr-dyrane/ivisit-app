@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { COLORS } from "../../../../constants/colors";
 import styles from "./mapHospitalDetailStage.styles";
 
 export default function MapHospitalDetailCollapsedRow({
@@ -19,6 +20,10 @@ export default function MapHospitalDetailCollapsedRow({
 	const iconGlassColors = isDarkMode
 		? ["rgba(255,255,255,0.18)", "rgba(148,163,184,0.10)", iconSurfaceColor]
 		: ["rgba(255,255,255,0.98)", "rgba(255,255,255,0.86)", iconSurfaceColor];
+	const actionColors = action.primary
+		? [COLORS.brandPrimary, "#8F0D12"]
+		: iconGlassColors;
+	const actionIconColor = action.primary ? "#F8FAFC" : titleColor;
 
 	return (
 		<View style={styles.collapsedRow}>
@@ -30,18 +35,19 @@ export default function MapHospitalDetailCollapsedRow({
 			>
 				{({ pressed }) => (
 					<LinearGradient
-						colors={iconGlassColors}
+						colors={actionColors}
 						start={{ x: 0.12, y: 0.06 }}
 						end={{ x: 0.88, y: 0.94 }}
 						style={[
 							styles.collapsedIconButton,
+							action.primary ? styles.collapsedIconButtonPrimary : null,
 							pressed ? styles.collapsedIconButtonPressed : null,
 						]}
 					>
 						{action.iconType === "material" ? (
-							<MaterialCommunityIcons name={action.icon} size={18} color={titleColor} />
+							<MaterialCommunityIcons name={action.icon} size={18} color={actionIconColor} />
 						) : (
-							<Ionicons name={action.icon} size={16} color={titleColor} />
+							<Ionicons name={action.icon} size={16} color={actionIconColor} />
 						)}
 					</LinearGradient>
 				)}
