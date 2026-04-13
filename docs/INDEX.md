@@ -56,6 +56,7 @@ docs/
 - Emergency screen dossier: [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
 - Emergency integration audit: [EMERGENCY_INTEGRATION_AUDIT.md](./EMERGENCY_INTEGRATION_AUDIT.md)
 - Emergency UX progress log (2026-04-09): [EMERGENCY_UX_PROGRESS_LOG_2026-04-09.md](./EMERGENCY_UX_PROGRESS_LOG_2026-04-09.md)
+- Map sheet implementation notes: [flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
 - Docs entry: [README.md](./README.md)
 - Workflow map hub: [flows/README.md](./flows/README.md)
 - Android glass standard: [product_design/ANDROID_GLASS_PATTERN.md](./product_design/ANDROID_GLASS_PATTERN.md)

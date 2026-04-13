@@ -1,20 +1,19 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { Animated, Easing, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import InAppBrowserLink from "../../../ui/InAppBrowserLink";
+import { Animated, Easing, Platform, ScrollView, useWindowDimensions } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_CARE_PULSE_MS } from "../../tokens/mapMotionTokens";
 import { getMapSheetTokens } from "../../tokens/mapSheetTokens";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
-import { MAP_EXPLORE_INTENT_COPY, MAP_INTENT_VARIANTS } from "./mapExploreIntent.content";
-import MapExploreIntentCareSection from "./MapExploreIntentCareSection";
-import MapExploreIntentHospitalRail from "./MapExploreIntentHospitalRail";
-import MapExploreIntentHospitalSummaryCard from "./MapExploreIntentHospitalSummaryCard";
-import MapExploreIntentProfileTrigger from "./MapExploreIntentProfileTrigger";
+import { MAP_INTENT_VARIANTS } from "./mapExploreIntent.content";
 import MapExploreIntentScreenModularizer from "./MapExploreIntentScreenModularizer";
 import { getMapExploreIntentScreenConfig } from "./mapExploreIntent.screenConfigs";
+import {
+	buildMapExploreIntentScreenSections,
+	MapExploreIntentFooterTerms,
+	MapExploreIntentTopRow,
+} from "./MapExploreIntentStageParts";
 import styles from "./mapExploreIntent.styles";
 
 export default function MapExploreIntentStageBase({
@@ -50,9 +49,6 @@ export default function MapExploreIntentStageBase({
 	);
 	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
 	const isExpanded = snapState === MAP_SHEET_SNAP_STATES.EXPANDED;
-	const isCanonicalMobileIntent =
-		variant === MAP_INTENT_VARIANTS.IOS_MOBILE ||
-		variant === MAP_INTENT_VARIANTS.ANDROID_MOBILE;
 	const careLayoutMode = resolvedScreenConfig?.careLayoutMode || "canonical";
 	const hospitalSummaryMode = resolvedScreenConfig?.hospitalSummaryMode || "canonical";
 	const presentationMode = resolvedScreenConfig?.presentationMode || "sheet";
@@ -75,7 +71,6 @@ export default function MapExploreIntentStageBase({
 	);
 	const {
 		allowScrollDetents,
-		allowWheelDetents,
 		bodyScrollEnabled,
 		bodyScrollRef,
 		handleBodyScroll,
@@ -106,81 +101,55 @@ export default function MapExploreIntentStageBase({
 		}
 		return null;
 	}, [contentMaxWidth, presentationMode, shellWidth, shouldCenterContent]);
-	const screenSections = [
-		{
-			key: "hospital_summary",
-			content: (
-				<MapExploreIntentHospitalSummaryCard
-					variant={variant}
-					layoutMode={hospitalSummaryMode}
-					isCentered={shouldCenterContent}
-					maxWidth={contentMaxWidth}
-					tokens={tokens}
-					isDarkMode={isDarkMode}
-					nearestHospital={nearestHospital}
-					nearestHospitalMeta={nearestHospitalMeta}
-					nearbyHospitalCount={nearbyHospitalCount}
-					totalAvailableBeds={totalAvailableBeds}
-					onOpenHospitals={onOpenHospitals}
-				/>
-			),
-			panelFlex: 1.16,
-			panelMinWidth: 320,
-		},
-		{
-			key: "care_selection",
-			content: (
-				<MapExploreIntentCareSection
-					layoutMode={careLayoutMode}
-					selectedCare={selectedCare}
-					onChooseCare={onChooseCare}
-					onOpenCareHistory={onOpenCareHistory}
-					nearbyHospitalCount={nearbyHospitalCount}
-					totalAvailableBeds={totalAvailableBeds}
-					nearbyBedHospitals={nearbyBedHospitals}
-					titleColor={tokens.titleColor}
-					mutedColor={tokens.mutedText}
-					pulseProgress={pulseProgress}
-				/>
-			),
-			panelFlex: 0.92,
-			panelMinWidth: 280,
-		},
-		isExpanded
-			? {
-					key: "featured_hospitals",
-					fullBleed: !shouldCenterContent,
-					containerStyle: shouldCenterContent && contentMaxWidth ? { maxWidth: contentMaxWidth } : null,
-					content: (
-						<View
-							style={[
-								styles.expandedSection,
-								shouldCenterContent ? styles.expandedSectionContained : null,
-							]}
-						>
-							<View
-								style={[
-									styles.expandedSectionHeader,
-									shouldCenterContent ? styles.expandedSectionHeaderContained : null,
-								]}
-							>
-								<Text style={[styles.sectionLabel, { color: tokens.mutedText }]}>Providers</Text>
-							</View>
-							<View style={styles.featuredRailViewport}>
-								<MapExploreIntentHospitalRail
-									featuredHospitals={featuredHospitals}
-									titleColor="#F8FAFC"
-									bodyColor="rgba(248,250,252,0.82)"
-									onOpenFeaturedHospital={onOpenFeaturedHospital}
-									availableWidth={featuredRailWidth}
-									contained={shouldCenterContent}
-								/>
-							</View>
-						</View>
-					),
-				}
-			: null,
-	].filter(Boolean);
+	const screenSections = useMemo(
+		() =>
+			buildMapExploreIntentScreenSections({
+				variant,
+				hospitalSummaryMode,
+				careLayoutMode,
+				shouldCenterContent,
+				contentMaxWidth,
+				tokens,
+				isDarkMode,
+				nearestHospital,
+				nearestHospitalMeta,
+				nearbyHospitalCount,
+				totalAvailableBeds,
+				nearbyBedHospitals,
+				selectedCare,
+				onOpenHospitals,
+				onChooseCare,
+				onOpenCareHistory,
+				pulseProgress,
+				isExpanded,
+				featuredHospitals,
+				onOpenFeaturedHospital,
+				featuredRailWidth,
+			}),
+		[
+			variant,
+			hospitalSummaryMode,
+			careLayoutMode,
+			shouldCenterContent,
+			contentMaxWidth,
+			tokens,
+			isDarkMode,
+			nearestHospital,
+			nearestHospitalMeta,
+			nearbyHospitalCount,
+			totalAvailableBeds,
+			nearbyBedHospitals,
+			selectedCare,
+			onOpenHospitals,
+			onChooseCare,
+			onOpenCareHistory,
+			pulseProgress,
+			isExpanded,
+			featuredHospitals,
+			onOpenFeaturedHospital,
+			featuredRailWidth,
+		],
+	);
 
 	useEffect(() => {
 		const pulseLoop = Animated.loop(
@@ -207,64 +176,24 @@ export default function MapExploreIntentStageBase({
 		};
 	}, [pulseProgress]);
 
-	const topRow = (
-		<View
-			style={[
-				styles.topRow,
-				isCollapsed ? styles.topRowCollapsed : null,
-				isWebMobileVariant ? styles.topRowWebMobile : null,
-				isWebMobileMd ? styles.topRowWebMobileMd : null,
-				shouldCenterContent ? styles.topRowCentered : null,
-				presentationMode === "modal" ? styles.topRowModal : null,
-				presentationMode === "panel" || isSidebarPresentation ? styles.topRowPanel : null,
-				isSidebarPresentation ? styles.topRowSidebar : null,
-				shouldCenterContent && shellMaxWidth ? { maxWidth: shellMaxWidth } : null,
-			]}
-		>
-			<Pressable
-				onPress={onOpenSearch}
-				style={[
-					styles.searchPill,
-					isCollapsed ? styles.searchPillCollapsed : null,
-					isWebMobileVariant ? styles.searchPillWebMobile : null,
-					{
-						borderRadius: tokens.cardRadius,
-						backgroundColor: tokens.searchSurface,
-					},
-				]}
-			>
-				<Ionicons name="search" size={isCollapsed ? 18 : 20} color={tokens.titleColor} />
-				<Text style={[styles.searchText, { color: tokens.titleColor }]}> 
-					{MAP_EXPLORE_INTENT_COPY.SEARCH}
-				</Text>
-			</Pressable>
-
-			<MapExploreIntentProfileTrigger
-				onPress={onOpenProfile}
-				userImageSource={profileImageSource}
-				isSignedIn={isSignedIn}
-				isCollapsed={isCollapsed}
-			/>
-		</View>
-	);
-
 	const headerSlot = (
-		<>
-			{topRow}
-		</>
+		<MapExploreIntentTopRow
+			isCollapsed={isCollapsed}
+			isSidebarPresentation={isSidebarPresentation}
+			isWebMobileVariant={isWebMobileVariant}
+			isWebMobileMd={isWebMobileMd}
+			shouldCenterContent={shouldCenterContent}
+			presentationMode={presentationMode}
+			shellMaxWidth={shellMaxWidth}
+			tokens={tokens}
+			onOpenSearch={onOpenSearch}
+			onOpenProfile={onOpenProfile}
+			profileImageSource={profileImageSource}
+			isSignedIn={isSignedIn}
+		/>
 	);
 
-	const footerTerms = isExpanded ? (
-		<View style={styles.footerSlot}>
-			<InAppBrowserLink
-				label={MAP_EXPLORE_INTENT_COPY.TERMS}
-				url="https://ivisit.ng/terms"
-				color={tokens.mutedText}
-				style={styles.termsLink}
-				textStyle={styles.termsText}
-			/>
-		</View>
-	) : null;
+	const footerTerms = <MapExploreIntentFooterTerms isExpanded={isExpanded} tokens={tokens} />;
 
 	return (
 		<MapSheetShell

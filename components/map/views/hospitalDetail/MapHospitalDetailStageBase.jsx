@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
-import MapHospitalDetailBody from "../../surfaces/hospitals/MapHospitalDetailBody";
 import useMapHospitalDetailModel from "../../surfaces/hospitals/useMapHospitalDetailModel";
-import MapHospitalDetailCollapsedRow from "./MapHospitalDetailCollapsedRow";
 import sheetStageStyles from "../shared/mapSheetStage.styles";
+import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
-import { GestureDetector } from "react-native-gesture-handler";
+import {
+	MapHospitalDetailBodyContent,
+	MapHospitalDetailCollapsedTopSlot,
+	MapHospitalDetailFloatingTopSlot,
+} from "./MapHospitalDetailStageParts";
 import styles from "./mapHospitalDetailStage.styles";
 
 const FLOATING_TITLE_REVEAL_DELAY = 160;
@@ -212,105 +213,6 @@ export default function MapHospitalDetailStageBase({
 		}
 	}, [showFloatingTitle, snapState]);
 
-	const collapsedTopSlot = (
-		<MapHospitalDetailCollapsedRow
-			action={model.collapsedAction}
-			title={model.summary.title}
-			subtitle={model.collapsedDistanceLabel}
-			onExpand={() => onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF)}
-			onClose={onClose}
-			titleColor={titleColor}
-			mutedColor={mutedColor}
-			isDarkMode={isDarkMode}
-			iconSurfaceColor={iconSurfaceColor}
-			iconBorderColor={iconBorderColor}
-		/>
-	);
-	const floatingTopSlot = (
-		<View pointerEvents="box-none" style={styles.floatingTopSlot}>
-			<View
-				pointerEvents="box-none"
-				style={[
-					styles.floatingTopHeader,
-					modalContainedStyle
-						? {
-								left: null,
-								right: null,
-								width: "100%",
-								maxWidth: contentMaxWidth,
-								alignSelf: "center",
-								paddingHorizontal: 14,
-							}
-						: null,
-				]}
-			>
-				{canCycleHospital ? (
-					<Pressable
-						onPress={onCycleHospital}
-						accessibilityRole="button"
-						accessibilityLabel="Show next hospital"
-						hitSlop={10}
-						style={styles.floatingTopActionPressable}
-					>
-						{({ pressed }) => (
-							<View
-							style={[
-								styles.floatingTopActionButton,
-								{ backgroundColor: floatingCycleSurface },
-								pressed ? styles.floatingTopCloseButtonPressed : null,
-							]}
-						>
-							<MaterialIcons name="next-plan" size={40} color={floatingCycleIconColor} />
-						</View>
-					)}
-				</Pressable>
-				) : (
-					<View style={styles.floatingTopSpacer} />
-				)}
-				<View style={styles.floatingTopTitleWrap}>
-					{shouldShowFloatingTitle ? (
-						<Text numberOfLines={1} style={[styles.floatingTopTitle, { color: floatingTitleColor }]}>
-							{model.summary.title}
-						</Text>
-					) : null}
-				</View>
-				<Pressable
-					onPress={onClose}
-					accessibilityRole="button"
-					accessibilityLabel="Close hospital details"
-					hitSlop={10}
-					style={styles.floatingTopClosePressable}
-				>
-					{({ pressed }) => (
-						<View
-							style={[
-								styles.floatingTopCloseButton,
-								{ backgroundColor: floatingCloseSurface },
-								pressed ? styles.floatingTopCloseButtonPressed : null,
-							]}
-						>
-							<Ionicons name="close" size={18} color={floatingCloseIconColor} />
-						</View>
-					)}
-				</Pressable>
-			</View>
-		</View>
-	);
-	const bodyContent = (
-		<View>
-			<MapHospitalDetailBody
-				model={model}
-				revealHero={snapState === MAP_SHEET_SNAP_STATES.EXPANDED}
-				onExpandedHeaderLayout={handleExpandedHeaderLayout}
-				onCycleHospital={onCycleHospital}
-				selectedAmbulanceServiceId={currentSelections.ambulanceServiceId}
-				selectedRoomServiceId={currentSelections.roomServiceId}
-				onSelectAmbulanceServiceId={setSelectedAmbulanceServiceId}
-				onSelectRoomServiceId={setSelectedRoomServiceId}
-			/>
-		</View>
-	);
-
 	return (
 		<MapSheetShell
 			sheetHeight={sheetHeight}
@@ -318,14 +220,42 @@ export default function MapHospitalDetailStageBase({
 			presentationMode={presentationMode}
 			shellWidth={shellWidth}
 			allowedSnapStates={allowedSnapStates}
-			topSlot={isCollapsed ? collapsedTopSlot : floatingTopSlot}
+			topSlot={
+				isCollapsed ? (
+					<MapHospitalDetailCollapsedTopSlot
+						model={model}
+						onExpand={() => onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF)}
+						onClose={onClose}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						isDarkMode={isDarkMode}
+						iconSurfaceColor={iconSurfaceColor}
+						iconBorderColor={iconBorderColor}
+					/>
+				) : (
+					<MapHospitalDetailFloatingTopSlot
+						modalContainedStyle={modalContainedStyle}
+						contentMaxWidth={contentMaxWidth}
+						canCycleHospital={canCycleHospital}
+						onCycleHospital={onCycleHospital}
+						floatingCycleSurface={floatingCycleSurface}
+						floatingCycleIconColor={floatingCycleIconColor}
+						shouldShowFloatingTitle={shouldShowFloatingTitle}
+						floatingTitleColor={floatingTitleColor}
+						title={model.summary.title}
+						onClose={onClose}
+						floatingCloseSurface={floatingCloseSurface}
+						floatingCloseIconColor={floatingCloseIconColor}
+					/>
+				)
+			}
 			handleFloatsOverContent={!isCollapsed}
 			onHandlePress={handleSnapToggle}
 		>
 			{isCollapsed ? null : (
-				<ScrollView
-					ref={bodyScrollRef}
-					style={sheetStageStyles.bodyScrollViewport}
+				<MapStageBodyScroll
+					bodyScrollRef={bodyScrollRef}
+					viewportStyle={sheetStageStyles.bodyScrollViewport}
 					contentContainerStyle={[
 						sheetStageStyles.bodyScrollContent,
 						sheetStageStyles.bodyScrollContentSheet,
@@ -335,31 +265,29 @@ export default function MapHospitalDetailStageBase({
 						modalContainedStyle,
 						styles.bodyScrollContent,
 					]}
-					showsVerticalScrollIndicator={false}
-					nestedScrollEnabled
-					bounces={!isSidebarPresentation}
-					alwaysBounceVertical={!isSidebarPresentation}
-					overScrollMode={isSidebarPresentation || !allowScrollDetents ? "auto" : "always"}
-					directionalLockEnabled
-					scrollEventThrottle={16}
-					onWheel={handleBodyWheel}
+					isSidebarPresentation={isSidebarPresentation}
+					allowScrollDetents={allowScrollDetents}
+					handleBodyWheel={handleBodyWheel}
 					onScrollBeginDrag={handleHospitalScrollBeginDrag}
 					onScroll={(event) => {
 						handleAndroidCollapseScroll(event);
 						handleHospitalScroll(event);
 					}}
 					onScrollEndDrag={handleBodyScrollEndDrag}
-					onMomentumScrollEnd={handleBodyScrollEndDrag}
 					scrollEnabled={bodyScrollEnabled}
+					androidExpandedBodyGesture={androidExpandedBodyGesture}
 				>
-					{androidExpandedBodyGesture ? (
-						<GestureDetector gesture={androidExpandedBodyGesture}>
-							{bodyContent}
-						</GestureDetector>
-					) : (
-						bodyContent
-					)}
-				</ScrollView>
+					<MapHospitalDetailBodyContent
+						model={model}
+						revealHero={snapState === MAP_SHEET_SNAP_STATES.EXPANDED}
+						onExpandedHeaderLayout={handleExpandedHeaderLayout}
+						onCycleHospital={onCycleHospital}
+						selectedAmbulanceServiceId={currentSelections.ambulanceServiceId}
+						selectedRoomServiceId={currentSelections.roomServiceId}
+						onSelectAmbulanceServiceId={setSelectedAmbulanceServiceId}
+						onSelectRoomServiceId={setSelectedRoomServiceId}
+					/>
+				</MapStageBodyScroll>
 			)}
 		</MapSheetShell>
 	);

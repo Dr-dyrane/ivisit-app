@@ -7,8 +7,7 @@
 
 Related references:
 
-- [MODAL_TO_SHEET_REFINEMENT_TRACKER_V1.md](./MODAL_TO_SHEET_REFINEMENT_TRACKER_V1.md)
-- [MODAL_TO_SHEET_SWAP_V1.md](./MODAL_TO_SHEET_SWAP_V1.md)
+- [MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
 - [../EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](../EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 - [../MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
 
@@ -47,6 +46,7 @@ Current gaps:
 Current strengths:
 
 - now uses the shared sheet shell
+- now shares one body-scroll implementation with sibling phases
 - collapsed search row exists
 - top controls are persistent
 
@@ -64,6 +64,7 @@ Current strengths:
 - persistent close control
 - no modal sibling leak
 - stage now shares more of the same shell contract
+- now shares one body-scroll implementation with sibling phases
 
 Current gaps:
 
@@ -81,16 +82,18 @@ Current strengths:
 - top title fallback exists
 - endless hospital cycling exists
 - hero swipe exists in expanded state
+- selection state is owned above the body surface
+- stage now shares one body-scroll implementation with sibling phases
 
 Current gaps:
 
-- Android gesture-down from expanded to half is still reported as missing or inconsistent
-- half-to-expanded growth is not yet fully continuous
+- half-to-expanded growth still has a structural visual constraint
 - sticky header reveal timing still needs product verification
 - hospital rail cards are visually noisier than the main CTA in half state
 - ambulance and room rail cards clip before reaching a clean right-edge finish
 - ambulance imagery on web is still unreliable
 - expanded and half glass treatment still drift from the `explore_intent` material feel
+- expanded hero/title/body composition must not be flattened during future refactors
 
 ## 2. Cross-Phase Gap List
 
@@ -99,7 +102,7 @@ Current gaps:
 Observed:
 
 - `explore_intent` remains the only phase users consistently trust for detent behavior
-- Android drag-down from `expanded` to `half` is still specifically failing in `hospital_detail`
+- Android drag-down from `expanded` to `half` required a dedicated gesture-handler path in newer phases
 - newer phases need platform verification, not just code reuse
 
 Acceptance:
@@ -187,11 +190,11 @@ Deliverable:
 
 - a pass/fail matrix attached to this tasklist or tracker
 
-## Task B. Fix Android expanded-to-half collapse in hospital detail
+## Task B. Verify Android expanded-to-half collapse after shared wrapper pass
 
 Goal:
 
-- restore parity with the baseline detent behavior
+- keep parity stable after the shared wrapper and stage-parts refactor
 
 Acceptance:
 
@@ -276,6 +279,7 @@ Reason:
 - behavior failures should be fixed before visual polish
 - viewport and media failures should be fixed before final material tuning
 - wide-screen parity should be verified after state behavior is stable
+- hospital detail visual structure should be preserved while refactoring, not simplified first and repaired later
 
 ## 5. Working Rule
 

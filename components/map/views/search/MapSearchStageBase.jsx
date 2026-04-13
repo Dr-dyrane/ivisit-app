@@ -1,21 +1,21 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { Keyboard, Pressable, ScrollView, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Keyboard } from "react-native";
 import { SearchBoundary } from "../../../../contexts/SearchContext";
 import { useTheme } from "../../../../contexts/ThemeContext";
-import EmergencySearchBar from "../../../emergency/EmergencySearchBar";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
-import MapSearchSheetSections from "../../surfaces/search/MapSearchSheetSections";
 import { getMapSheetTokens } from "../../tokens/mapSheetTokens";
-import MapExploreIntentProfileTrigger from "../exploreIntent/MapExploreIntentProfileTrigger";
 import useMapSearchSheetModel from "../../surfaces/search/useMapSearchSheetModel";
-import { styles as searchStyles } from "../../surfaces/search/mapSearchSheet.styles";
 import sheetStageStyles from "../shared/mapSheetStage.styles";
+import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
-import { GestureDetector } from "react-native-gesture-handler";
+import {
+	MapSearchActiveTopRow,
+	MapSearchBodyContent,
+	MapSearchCollapsedTopRow,
+} from "./MapSearchStageParts";
 import styles from "./mapSearchStage.styles";
 
 function MapSearchStageSurface({
@@ -94,80 +94,6 @@ function MapSearchStageSurface({
 			Keyboard.dismiss();
 		},
 	});
-	const collapsedTopRow = (
-		<View
-			style={[
-				styles.topRow,
-				styles.topRowCollapsed,
-				modalContainedStyle,
-			]}
-		>
-			<Pressable
-				onPress={() => handleSnapToggle(MAP_SHEET_SNAP_STATES.HALF)}
-				style={[
-					styles.searchPill,
-					styles.searchPillCollapsed,
-					{
-						borderRadius: tokens.cardRadius,
-						backgroundColor: tokens.searchSurface,
-					},
-				]}
-			>
-				<Ionicons name="search" size={18} color={tokens.titleColor} />
-				<Text style={[styles.searchText, { color: tokens.titleColor }]}>Search</Text>
-			</Pressable>
-
-			<MapExploreIntentProfileTrigger
-				onPress={onOpenProfile}
-				userImageSource={profileImageSource}
-				isSignedIn={isSignedIn}
-				isCollapsed
-			/>
-		</View>
-	);
-	const activeTopRow = (
-		<View
-			style={[
-				styles.topRow,
-				modalContainedStyle,
-			]}
-		>
-			<EmergencySearchBar
-				ref={searchInputRef}
-				value={model.query}
-				onChangeText={model.setSearchQuery}
-				onFocus={() => {
-					if (snapState === MAP_SHEET_SNAP_STATES.HALF) {
-						handleSnapToggle(MAP_SHEET_SNAP_STATES.EXPANDED);
-					}
-				}}
-				onBlur={() => model.commitQuery(model.query)}
-				onClear={() => model.setSearchQuery("")}
-				placeholder="Search hospitals, specialties, or area"
-				showSuggestions={false}
-				autoFocus={false}
-				compact
-				style={[searchStyles.searchBar, styles.activeSearchBar]}
-			/>
-			<Pressable
-				onPress={model.handleDismiss}
-				hitSlop={10}
-				style={[
-					styles.closeButton,
-					model.isDismissing && styles.closeButtonDisabled,
-					{ backgroundColor: tokens.searchSurface },
-				]}
-			>
-				<Ionicons name="close" size={18} color={model.titleColor} />
-			</Pressable>
-		</View>
-	);
-	const bodyContent = (
-		<View style={searchStyles.content}>
-			<MapSearchSheetSections model={model} />
-		</View>
-	);
-
 	useEffect(() => {
 		if (snapState !== MAP_SHEET_SNAP_STATES.EXPANDED) return undefined;
 
@@ -185,13 +111,33 @@ function MapSearchStageSurface({
 			presentationMode={presentationMode}
 			shellWidth={shellWidth}
 			allowedSnapStates={allowedSnapStates}
-			topSlot={isCollapsed ? collapsedTopRow : activeTopRow}
+			topSlot={
+				isCollapsed ? (
+					<MapSearchCollapsedTopRow
+						modalContainedStyle={modalContainedStyle}
+						tokens={tokens}
+						onExpand={() => handleSnapToggle(MAP_SHEET_SNAP_STATES.HALF)}
+						onOpenProfile={onOpenProfile}
+						profileImageSource={profileImageSource}
+						isSignedIn={isSignedIn}
+					/>
+				) : (
+					<MapSearchActiveTopRow
+						modalContainedStyle={modalContainedStyle}
+						searchInputRef={searchInputRef}
+						model={model}
+						snapState={snapState}
+						handleExpand={() => handleSnapToggle(MAP_SHEET_SNAP_STATES.EXPANDED)}
+						tokens={tokens}
+					/>
+				)
+			}
 			onHandlePress={handleSnapToggle}
 		>
 			{isCollapsed ? null : (
-				<ScrollView
-					ref={bodyScrollRef}
-					style={sheetStageStyles.bodyScrollViewport}
+				<MapStageBodyScroll
+					bodyScrollRef={bodyScrollRef}
+					viewportStyle={sheetStageStyles.bodyScrollViewport}
 					contentContainerStyle={[
 						sheetStageStyles.bodyScrollContent,
 						sheetStageStyles.bodyScrollContentSheet,
@@ -201,28 +147,17 @@ function MapSearchStageSurface({
 						modalContainedStyle,
 						styles.bodyScrollContent,
 					]}
-					showsVerticalScrollIndicator={false}
-					nestedScrollEnabled
-					bounces={!isSidebarPresentation}
-					alwaysBounceVertical={!isSidebarPresentation}
-					overScrollMode={isSidebarPresentation || !allowScrollDetents ? "auto" : "always"}
-					directionalLockEnabled
-					onWheel={handleBodyWheel}
-					scrollEventThrottle={16}
+					isSidebarPresentation={isSidebarPresentation}
+					allowScrollDetents={allowScrollDetents}
+					handleBodyWheel={handleBodyWheel}
 					onScrollBeginDrag={handleAndroidCollapseScrollBeginDrag}
 					onScroll={handleAndroidCollapseScroll}
 					onScrollEndDrag={handleBodyScrollEndDrag}
-					onMomentumScrollEnd={handleBodyScrollEndDrag}
 					scrollEnabled={bodyScrollEnabled}
+					androidExpandedBodyGesture={androidExpandedBodyGesture}
 				>
-					{androidExpandedBodyGesture ? (
-						<GestureDetector gesture={androidExpandedBodyGesture}>
-							{bodyContent}
-						</GestureDetector>
-					) : (
-						bodyContent
-					)}
-				</ScrollView>
+					<MapSearchBodyContent model={model} />
+				</MapStageBodyScroll>
 			)}
 		</MapSheetShell>
 	);

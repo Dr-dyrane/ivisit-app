@@ -330,6 +330,20 @@ export const styles = StyleSheet.create({
 	serviceRailCompact: {
 		marginTop: 8,
 	},
+	serviceRailHeader: {
+		paddingHorizontal: 14,
+		marginBottom: 10,
+	},
+	serviceRailTitle: {
+		fontSize: 12,
+		lineHeight: 15,
+		fontWeight: "700",
+		color: "rgba(148,163,184,0.92)",
+	},
+	serviceRailTitleCompact: {
+		fontSize: 11,
+		lineHeight: 14,
+	},
 	serviceRailScroller: {
 		overflow: "visible",
 	},
@@ -360,17 +374,16 @@ export const styles = StyleSheet.create({
 		opacity: 0.58,
 	},
 	serviceCardPreviewMuted: {
-		opacity: 0.72,
-		shadowOpacity: 0.03,
-		shadowRadius: 6,
-		shadowOffset: { width: 0, height: 3 },
+		shadowOpacity: 0.04,
+		shadowRadius: 8,
+		shadowOffset: { width: 0, height: 4 },
 	},
 	serviceCardSelected: {
 		opacity: 1,
-		shadowOpacity: 0.14,
-		shadowRadius: 16,
-		shadowOffset: { width: 0, height: 8 },
-		transform: [{ scale: 1.01 }],
+		shadowOpacity: 0.16,
+		shadowRadius: 18,
+		shadowOffset: { width: 0, height: 10 },
+		transform: [{ scale: 1.018 }],
 	},
 	serviceCardPressed: {
 		opacity: 0.94,

@@ -1,17 +1,18 @@
 import React, { useMemo } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
-import MapHospitalListContent from "../../surfaces/hospitals/MapHospitalListContent";
 import { styles as listStyles } from "../../surfaces/hospitals/mapHospitalList.styles";
 import { getMapSheetTokens } from "../../tokens/mapSheetTokens";
 import sheetStageStyles from "../shared/mapSheetStage.styles";
+import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
-import { GestureDetector } from "react-native-gesture-handler";
+import {
+	MapHospitalListBodyContent,
+	MapHospitalListTopSlot,
+} from "./MapHospitalListStageParts";
 import styles from "./mapHospitalListStage.styles";
 
 export default function MapHospitalListStageBase({
@@ -66,42 +67,6 @@ export default function MapHospitalListStageBase({
 		onScroll: handleBodyScroll,
 		onScrollBeginDrag: handleBodyScrollBeginDrag,
 	});
-	const listTopSlot = (
-		<View
-			style={[
-				styles.headerRow,
-				modalContainedStyle,
-			]}
-		>
-			<View style={styles.headerCopy}>
-				<Text style={[styles.title, { color: titleColor }]}>Hospitals</Text>
-			</View>
-			<Pressable
-				onPress={onClose}
-				accessibilityRole="button"
-				accessibilityLabel="Close hospitals"
-				style={[
-					styles.closeButton,
-					{ backgroundColor: closeSurfaceColor },
-				]}
-			>
-				<Ionicons name="close" size={20} color={titleColor} />
-			</Pressable>
-		</View>
-	);
-	const bodyContent = (
-		<View>
-			<MapHospitalListContent
-				hospitals={hospitals}
-				selectedHospitalId={selectedHospitalId}
-				recommendedHospitalId={recommendedHospitalId}
-				onSelectHospital={onSelectHospital}
-				onChangeLocation={onChangeLocation}
-				isLoading={isLoading}
-			/>
-		</View>
-	);
-
 	return (
 		<MapSheetShell
 			sheetHeight={sheetHeight}
@@ -109,44 +74,47 @@ export default function MapHospitalListStageBase({
 			presentationMode={presentationMode}
 			shellWidth={shellWidth}
 			allowedSnapStates={allowedSnapStates}
-			topSlot={listTopSlot}
+			topSlot={
+				<MapHospitalListTopSlot
+					modalContainedStyle={modalContainedStyle}
+					titleColor={titleColor}
+					closeSurfaceColor={closeSurfaceColor}
+					onClose={onClose}
+				/>
+			}
 			onHandlePress={handleSnapToggle}
 		>
-			<ScrollView
-				ref={bodyScrollRef}
-				style={sheetStageStyles.bodyScrollViewport}
+			<MapStageBodyScroll
+				bodyScrollRef={bodyScrollRef}
+				viewportStyle={sheetStageStyles.bodyScrollViewport}
 				contentContainerStyle={[
 					sheetStageStyles.bodyScrollContent,
 					sheetStageStyles.bodyScrollContentSheet,
-						presentationMode === "modal" ? sheetStageStyles.bodyScrollContentModal : null,
-						isSidebarPresentation ? sheetStageStyles.bodyScrollContentPanel : null,
-						isSidebarPresentation ? sheetStageStyles.bodyScrollContentSidebar : null,
-						modalContainedStyle,
-						styles.bodyScrollContent,
-						listStyles.content,
-					]}
-				showsVerticalScrollIndicator={false}
-				nestedScrollEnabled
-				bounces={!isSidebarPresentation}
-				alwaysBounceVertical={!isSidebarPresentation}
-				overScrollMode={isSidebarPresentation || !allowScrollDetents ? "auto" : "always"}
-				directionalLockEnabled
-				scrollEventThrottle={16}
-				onWheel={handleBodyWheel}
+					presentationMode === "modal" ? sheetStageStyles.bodyScrollContentModal : null,
+					isSidebarPresentation ? sheetStageStyles.bodyScrollContentPanel : null,
+					isSidebarPresentation ? sheetStageStyles.bodyScrollContentSidebar : null,
+					modalContainedStyle,
+					styles.bodyScrollContent,
+					listStyles.content,
+				]}
+				isSidebarPresentation={isSidebarPresentation}
+				allowScrollDetents={allowScrollDetents}
+				handleBodyWheel={handleBodyWheel}
 				onScrollBeginDrag={handleAndroidCollapseScrollBeginDrag}
 				onScroll={handleAndroidCollapseScroll}
 				onScrollEndDrag={handleBodyScrollEndDrag}
-				onMomentumScrollEnd={handleBodyScrollEndDrag}
 				scrollEnabled={bodyScrollEnabled}
+				androidExpandedBodyGesture={androidExpandedBodyGesture}
 			>
-				{androidExpandedBodyGesture ? (
-					<GestureDetector gesture={androidExpandedBodyGesture}>
-						{bodyContent}
-					</GestureDetector>
-				) : (
-					bodyContent
-				)}
-			</ScrollView>
+				<MapHospitalListBodyContent
+					hospitals={hospitals}
+					selectedHospitalId={selectedHospitalId}
+					recommendedHospitalId={recommendedHospitalId}
+					onSelectHospital={onSelectHospital}
+					onChangeLocation={onChangeLocation}
+					isLoading={isLoading}
+				/>
+			</MapStageBodyScroll>
 		</MapSheetShell>
 	);
 }

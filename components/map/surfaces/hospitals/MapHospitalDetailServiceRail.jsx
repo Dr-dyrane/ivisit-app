@@ -72,6 +72,7 @@ function ServiceValueBlock({ item, compact = false, color = "rgba(248,250,252,0.
 }
 
 export default function MapHospitalDetailServiceRail({
+	title = "",
 	items,
 	type,
 	rowSurface,
@@ -116,6 +117,19 @@ export default function MapHospitalDetailServiceRail({
 
 	return (
 		<View style={[styles.serviceRail, compact ? styles.serviceRailCompact : null]}>
+			{title ? (
+				<View style={styles.serviceRailHeader}>
+					<Text
+						numberOfLines={1}
+						style={[
+							styles.serviceRailTitle,
+							compact ? styles.serviceRailTitleCompact : null,
+						]}
+					>
+						{title}
+					</Text>
+				</View>
+			) : null}
 			<ScrollView
 				horizontal
 				showsHorizontalScrollIndicator={false}
@@ -147,10 +161,10 @@ export default function MapHospitalDetailServiceRail({
 					const isSelected = selectionEnabled && selectedId === itemId;
 					const isPreviewMuted = selectionEnabled && !isSelected;
 					const overlayColors = isPreviewMuted
-						? ["rgba(8,15,27,0.16)", "rgba(8,15,27,0.34)", "rgba(8,15,27,0.88)"]
-						: ["rgba(8,15,27,0.04)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0.74)"];
-					const titleColor = isPreviewMuted ? "rgba(248,250,252,0.82)" : "#F8FAFC";
-					const metaColor = isPreviewMuted ? "rgba(248,250,252,0.68)" : "rgba(248,250,252,0.84)";
+						? ["rgba(8,15,27,0.08)", "rgba(8,15,27,0.22)", "rgba(8,15,27,0.78)"]
+						: ["rgba(8,15,27,0.03)", "rgba(8,15,27,0.14)", "rgba(8,15,27,0.70)"];
+					const titleColor = isPreviewMuted ? "rgba(248,250,252,0.92)" : "#F8FAFC";
+					const metaColor = isPreviewMuted ? "rgba(248,250,252,0.78)" : "rgba(248,250,252,0.88)";
 					const isReadyAmbulance = type === "ambulance" && item.metaText === "Ready";
 					const isReadyAmbulanceSelected = isReadyAmbulance && isSelected;
 					const isReadyRoom = type === "room" && typeof item.metaText === "string" && item.metaText.trim().length > 0;

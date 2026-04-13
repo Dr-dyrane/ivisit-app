@@ -8,6 +8,7 @@ Related:
 - [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 - [MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md](./MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md)
 - [MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](./MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
+- [architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
 - [../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md](../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md)
 
 ## Current Architecture
@@ -76,6 +77,11 @@ Shared behavior:
 - same close affordance
 - same top-row header contract
 - same bottom-sheet surface treatment
+
+Shared implementation note:
+
+- `search`, `hospital_list`, and `hospital_detail` now share a stage body-scroll wrapper through [`MapStageBodyScroll.jsx`](../../../components/map/views/shared/MapStageBodyScroll.jsx)
+- `hospital_detail` remains the visual exception where expanded hero/title/body structure must be preserved exactly even if other stage internals are refactored
 
 ## Hospital Data Consistency Fix
 

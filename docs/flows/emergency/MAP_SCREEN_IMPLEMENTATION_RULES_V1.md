@@ -7,6 +7,7 @@
 Related references:
 
 - [architecture/README.md](./architecture/README.md)
+- [architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
 - [../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
 - [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 - [MAP_FLOW_IMPLEMENTATION_V1.md](./MAP_FLOW_IMPLEMENTATION_V1.md)
@@ -25,7 +26,9 @@ Before changing the map shell, sheet shell, or active header UI, review these re
    - token, component-family, and reuse guidance
 4. [MAP_FLOW_IMPLEMENTATION_V1.md](./MAP_FLOW_IMPLEMENTATION_V1.md)
    - runtime ownership and composition map
-5. [architecture/README.md](./architecture/README.md)
+5. [architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
+   - sheet refactor boundaries and known visual exceptions
+6. [architecture/README.md](./architecture/README.md)
    - current code-structure and refactor guide for welcome + map
 
 Rule:
