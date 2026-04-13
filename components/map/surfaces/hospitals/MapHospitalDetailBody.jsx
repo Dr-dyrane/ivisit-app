@@ -1,133 +1,17 @@
 import React from "react";
-import { Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../../../constants/colors";
 import { getHospitalHeroSource } from "../../mapHospitalImage";
+import MapHospitalDetailServiceRail from "./MapHospitalDetailServiceRail";
 import { styles } from "./mapHospitalDetail.styles";
-
-const BED_SERVICE_IMAGE = require("../../../../assets/features/bed.png");
-const AMBULANCE_SERVICE_IMAGES = {
-	basic: require("../../../../assets/emergency/transport/ambulance-bls.png"),
-	advanced: require("../../../../assets/emergency/transport/ambulance-als.png"),
-	critical: require("../../../../assets/emergency/transport/ambulance-icu.png"),
-};
 
 function renderIcon(item, color = COLORS.brandPrimary, size = 14) {
 	if (item.iconType === "material") {
 		return <MaterialCommunityIcons name={item.icon} size={size} color={color} />;
 	}
 	return <Ionicons name={item.icon} size={size} color={color} />;
-}
-
-function ServiceSkeletonCard({ surfaceColor }) {
-	return (
-		<View style={[styles.serviceCard, styles.serviceCardMuted, { backgroundColor: surfaceColor }]}>
-			<LinearGradient
-				colors={["rgba(255,255,255,0.08)", "rgba(15,23,42,0.14)"]}
-				start={{ x: 0.12, y: 0.08 }}
-				end={{ x: 0.86, y: 0.92 }}
-				style={styles.serviceSkeletonCardInner}
-			>
-				<View style={styles.serviceCardHeader}>
-					<View style={styles.serviceTopPillSkeleton} />
-				</View>
-				<View style={styles.serviceCardContent}>
-					<View style={styles.serviceSkeletonLineWide} />
-					<View style={styles.serviceSkeletonLine} />
-				</View>
-			</LinearGradient>
-		</View>
-	);
-}
-
-function getServiceCardImageSource(item, type) {
-	return type === "ambulance"
-		? AMBULANCE_SERVICE_IMAGES[item.tierKey] ||
-			AMBULANCE_SERVICE_IMAGES[item.id] ||
-			AMBULANCE_SERVICE_IMAGES.basic
-		: BED_SERVICE_IMAGE;
-}
-
-function ServiceValueBlock({ item, subtleColor }) {
-	return (
-		<>
-			{item.showPriceSkeleton ? (
-				<View style={[styles.serviceInlineSkeleton, styles.serviceInlineSkeletonMeta]} />
-			) : item.priceText ? (
-				<Text numberOfLines={1} style={[styles.serviceCardMeta, { color: subtleColor }]}>
-					{item.priceText}
-				</Text>
-			) : null}
-		</>
-	);
-}
-
-function ServiceRail({ title, items, type, rowSurface, titleColor }) {
-	if (!Array.isArray(items) || items.length === 0) return null;
-	const cardTitleColor = "#F8FAFC";
-	const cardMetaColor = "rgba(248,250,252,0.84)";
-
-	return (
-		<View style={styles.serviceRail}>
-			<Text style={[styles.serviceRailTitle, { color: titleColor }]}>{title}</Text>
-			<ScrollView
-				horizontal
-				showsHorizontalScrollIndicator={false}
-				style={styles.serviceRailScroller}
-				contentContainerStyle={styles.serviceRailContent}
-			>
-				{items.map((item, index) => {
-					if (item.isSkeleton) {
-						return <ServiceSkeletonCard key={item.id || `skeleton-${index}`} surfaceColor={rowSurface} />;
-					}
-
-					const isEnabled = item.enabled !== false;
-					const imageSource = getServiceCardImageSource(item, type);
-					return (
-						<View
-							key={`${item.id || item.title}-${index}`}
-							style={[
-								styles.serviceCard,
-								{ backgroundColor: rowSurface },
-								!isEnabled ? styles.serviceCardMuted : null,
-							]}
-						>
-							<View style={styles.serviceCardImage}>
-								<Image
-									source={imageSource}
-									resizeMode="contain"
-									fadeDuration={0}
-									style={styles.serviceCardMedia}
-								/>
-								<LinearGradient
-									colors={["rgba(8,15,27,0.04)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0.74)"]}
-									style={styles.serviceCardOverlay}
-								/>
-								<View style={styles.serviceCardHeader}>
-									{item.showMetaSkeleton ? (
-										<View style={styles.serviceTopPillSkeleton} />
-									) : item.metaText ? (
-										<View style={styles.serviceTopPill}>
-											<Text numberOfLines={1} style={styles.serviceTopPillText}>
-												{item.metaText}
-											</Text>
-										</View>
-									) : null}
-								</View>
-								<View style={styles.serviceCardContent}>
-									<Text numberOfLines={2} style={[styles.serviceTitle, { color: cardTitleColor }]}>
-										{item.title}
-									</Text>
-									<ServiceValueBlock item={item} subtleColor={cardMetaColor} />
-								</View>
-							</View>
-						</View>
-					);
-				})}
-			</ScrollView>
-		</View>
-	);
 }
 
 export default function MapHospitalDetailBody({ model }) {
@@ -321,7 +205,7 @@ export default function MapHospitalDetailBody({ model }) {
 						</View>
 					) : null}
 
-					<ServiceRail
+					<MapHospitalDetailServiceRail
 						title="Ambulance"
 						items={ambulanceServiceCards}
 						type="ambulance"
@@ -329,7 +213,7 @@ export default function MapHospitalDetailBody({ model }) {
 						titleColor={titleColor}
 					/>
 
-					<ServiceRail
+					<MapHospitalDetailServiceRail
 						title="Rooms"
 						items={roomServiceCards}
 						type="room"
