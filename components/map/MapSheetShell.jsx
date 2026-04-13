@@ -11,6 +11,7 @@ export default function MapSheetShell({
 	shellWidth = null,
 	topSlot = null,
 	footerSlot = null,
+	handleFloatsOverContent = false,
 	onHandlePress,
 	children,
 }) {
@@ -84,18 +85,37 @@ export default function MapSheetShell({
 					style={[StyleSheet.absoluteFillObject, isSidebar ? sidebarShapeStyle : null, overlayStyle]}
 				/>
 
-				<Animated.View style={[styles.sheetContent, contentStyle]}>
+				<Animated.View
+					style={[
+						styles.sheetContent,
+						contentStyle,
+						handleFloatsOverContent ? styles.sheetContentHandleOverlay : null,
+					]}
+				>
 					{isSidebar ? null : (
-						<View {...panResponder.panHandlers} style={styles.dragZone}>
+						<View
+							{...panResponder.panHandlers}
+							style={[
+								styles.dragZone,
+								handleFloatsOverContent ? styles.dragZoneFloating : null,
+							]}
+						>
 							<Pressable
 								onPress={() => onHandlePress?.()}
 								hitSlop={isCollapsed ? { top: 14, bottom: 14, left: 16, right: 16 } : 12}
 								style={[
 									styles.handleTapTarget,
 									isCollapsed ? styles.handleTapTargetCollapsed : null,
+									handleFloatsOverContent ? styles.handleTapTargetFloating : null,
 								]}
 							>
-								<Animated.View style={[styles.handle, handleStyle]} />
+								<Animated.View
+									style={[
+										styles.handle,
+										handleStyle,
+										handleFloatsOverContent ? styles.handleFloating : null,
+									]}
+								/>
 							</Pressable>
 						</View>
 					)}

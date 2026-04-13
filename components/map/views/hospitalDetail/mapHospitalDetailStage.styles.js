@@ -1,12 +1,17 @@
 import { StyleSheet } from "react-native";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 const styles = StyleSheet.create({
 	bodyScrollViewport: {
 		flex: 1,
 	},
 	bodyScrollContent: {
 		paddingHorizontal: 14,
-		paddingTop: 2,
+		paddingTop: 0,
 		paddingBottom: 6,
 	},
 	collapsedRow: {
@@ -18,11 +23,11 @@ const styles = StyleSheet.create({
 		paddingTop: 2,
 	},
 	collapsedIconButton: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
+		width: 42,
+		height: 42,
 		alignItems: "center",
 		justifyContent: "center",
+		...squircle(18),
 	},
 	collapsedSummaryPressable: {
 		flex: 1,

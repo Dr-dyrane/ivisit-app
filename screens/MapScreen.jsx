@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { Platform, StyleSheet, View } from "react-native";
+import { useRouter } from "expo-router";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
 import EmergencyLocationPreviewMap from "../components/emergency/intake/EmergencyLocationPreviewMap";
 import MiniProfileModal from "../components/emergency/MiniProfileModal";
@@ -21,8 +22,10 @@ import {
 	isSidebarMapVariant,
 } from "../components/map/core/mapViewportConfig";
 import { MAP_SEARCH_SHEET_MODES } from "../components/map/surfaces/search/mapSearchSheet.helpers";
+import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigationHelpers";
 
 export default function MapScreen() {
+	const router = useRouter();
 	const { isDarkMode } = useTheme();
 	const {
 		width,
@@ -131,6 +134,21 @@ export default function MapScreen() {
 		}
 	}, [setSheetSnapState, sheetSnapState, usesSidebarLayout]);
 
+	const handleUseHospital = useCallback(
+		(hospital) => {
+			const hospitalId = hospital?.id || featuredHospital?.id || nearestHospital?.id;
+			if (!hospitalId) return;
+
+			if (selectedCare === "bed") {
+				navigateToBookBed({ router, hospitalId, method: "push" });
+				return;
+			}
+
+			navigateToRequestAmbulance({ router, hospitalId, method: "push" });
+		},
+		[featuredHospital?.id, nearestHospital?.id, router, selectedCare],
+	);
+
 	return (
 		<View style={[styles.screen, { backgroundColor: isDarkMode ? "#08101B" : "#EEF3F8" }]}>
 			<EmergencyLocationPreviewMap
@@ -186,6 +204,7 @@ export default function MapScreen() {
 						closeHospitalList();
 						openSearchSheet(MAP_SEARCH_SHEET_MODES.LOCATION);
 					}}
+					onUseHospital={handleUseHospital}
 					profileImageSource={profileImageSource}
 					activeLocation={activeLocation}
 					isSignedIn={isSignedIn}

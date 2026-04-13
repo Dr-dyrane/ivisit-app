@@ -323,10 +323,12 @@ export function useMapExploreFlow() {
 			}
 			setSheetView({
 				phase: MAP_SHEET_PHASES.HOSPITAL_DETAIL,
-				snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+				snapState: usesSidebarLayout
+					? MAP_SHEET_SNAP_STATES.EXPANDED
+					: MAP_SHEET_SNAP_STATES.HALF,
 			});
 		},
-		[setFeaturedHospital, setSheetView],
+		[setFeaturedHospital, setSheetView, usesSidebarLayout],
 	);
 
 	const closeHospitalDetail = useCallback(() => {

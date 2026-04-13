@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
 import {
@@ -82,7 +82,11 @@ export default function MapHospitalDetailStageBase({
 				accessibilityLabel={model.collapsedAction.accessibilityLabel}
 				style={[styles.collapsedIconButton, { backgroundColor: iconSurfaceColor }]}
 			>
-				<Ionicons name={model.collapsedAction.icon} size={16} color={titleColor} />
+				{model.collapsedAction.iconType === "material" ? (
+					<MaterialCommunityIcons name={model.collapsedAction.icon} size={18} color={titleColor} />
+				) : (
+					<Ionicons name={model.collapsedAction.icon} size={16} color={titleColor} />
+				)}
 			</Pressable>
 
 			<Pressable
@@ -115,6 +119,7 @@ export default function MapHospitalDetailStageBase({
 			presentationMode={presentationMode}
 			shellWidth={shellWidth}
 			topSlot={isCollapsed ? collapsedTopSlot : null}
+			handleFloatsOverContent={!isCollapsed}
 			onHandlePress={handleSnapToggle}
 		>
 			{isCollapsed ? null : (

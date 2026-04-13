@@ -483,6 +483,10 @@ export const hospitalsService = {
 			address: toText(h?.google_address, toText(h?.address, "Address unavailable")),
 			phone,
 			rating,
+			reviewsCount: toNonNegativeInt(
+				h?.reviews_count ?? h?.google_rating_count ?? h?.user_ratings_total,
+				0,
+			),
 			type: toText(h?.type, "General"),
 			image,
 			imageSource,

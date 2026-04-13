@@ -1,11 +1,17 @@
 import React from "react";
-import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import EmergencyHospitalRoutePreview from "../../../emergency/intake/EmergencyHospitalRoutePreview";
 import { COLORS } from "../../../../constants/colors";
 import { getHospitalHeroSource } from "../../mapHospitalImage";
 import { styles } from "./mapHospitalDetail.styles";
+
+const BED_SERVICE_IMAGE = require("../../../../assets/features/bed.png");
+const AMBULANCE_SERVICE_IMAGES = {
+	basic: require("../../../../assets/emergency/transport/ambulance-bls.png"),
+	advanced: require("../../../../assets/emergency/transport/ambulance-als.png"),
+	critical: require("../../../../assets/emergency/transport/ambulance-icu.png"),
+};
 
 function renderIcon(item, color = COLORS.brandPrimary, size = 14) {
 	if (item.iconType === "material") {
@@ -14,62 +20,152 @@ function renderIcon(item, color = COLORS.brandPrimary, size = 14) {
 	return <Ionicons name={item.icon} size={size} color={color} />;
 }
 
-function SheetIcon({ item, isDarkMode, titleColor, tone = "muted", size = 14 }) {
-	const gradientColors =
-		tone === "strong"
-			? isDarkMode
-				? ["rgba(255,255,255,0.16)", "rgba(255,255,255,0.06)"]
-				: ["#FFFFFF", "#E8EEF7"]
-			: isDarkMode
-				? ["rgba(255,255,255,0.12)", "rgba(255,255,255,0.04)"]
-				: ["rgba(255,255,255,0.98)", "#F1F5F9"];
-	const iconColor = tone === "strong" ? titleColor : COLORS.brandPrimary;
-
+function ServiceSkeletonCard({ surfaceColor }) {
 	return (
-		<View style={[styles.sheetIconShell, tone === "strong" ? styles.sheetIconShellStrong : null]}>
+		<View style={[styles.serviceCard, styles.serviceCardMuted, { backgroundColor: surfaceColor }]}>
 			<LinearGradient
-				colors={gradientColors}
-				start={{ x: 0.08, y: 0 }}
-				end={{ x: 1, y: 1 }}
-				style={styles.sheetIconFill}
+				colors={["rgba(255,255,255,0.08)", "rgba(15,23,42,0.14)"]}
+				start={{ x: 0.12, y: 0.08 }}
+				end={{ x: 0.86, y: 0.92 }}
+				style={styles.serviceSkeletonCardInner}
 			>
-				<View pointerEvents="none" style={styles.sheetIconHighlight} />
-				{renderIcon(item, iconColor, size)}
+				<View style={styles.serviceCardHeader}>
+					<View style={styles.serviceTopPillSkeleton} />
+				</View>
+				<View style={styles.serviceCardContent}>
+					<View style={styles.serviceSkeletonLineWide} />
+					<View style={styles.serviceSkeletonLine} />
+				</View>
 			</LinearGradient>
 		</View>
 	);
 }
 
-export default function MapHospitalDetailBody({ model, visible = true }) {
+function getServiceCardImageSource(item, type) {
+	return type === "ambulance"
+		? AMBULANCE_SERVICE_IMAGES[item.tierKey] ||
+			AMBULANCE_SERVICE_IMAGES[item.id] ||
+			AMBULANCE_SERVICE_IMAGES.basic
+		: BED_SERVICE_IMAGE;
+}
+
+function ServiceValueBlock({ item, subtleColor }) {
+	return (
+		<>
+			{item.showPriceSkeleton ? (
+				<View style={[styles.serviceInlineSkeleton, styles.serviceInlineSkeletonMeta]} />
+			) : item.priceText ? (
+				<Text numberOfLines={1} style={[styles.serviceCardMeta, { color: subtleColor }]}>
+					{item.priceText}
+				</Text>
+			) : null}
+		</>
+	);
+}
+
+function ServiceRail({ title, items, type, rowSurface, titleColor }) {
+	if (!Array.isArray(items) || items.length === 0) return null;
+	const cardTitleColor = "#F8FAFC";
+	const cardMetaColor = "rgba(248,250,252,0.84)";
+
+	return (
+		<View style={styles.serviceRail}>
+			<Text style={[styles.serviceRailTitle, { color: titleColor }]}>{title}</Text>
+			<ScrollView
+				horizontal
+				showsHorizontalScrollIndicator={false}
+				style={styles.serviceRailScroller}
+				contentContainerStyle={styles.serviceRailContent}
+			>
+				{items.map((item, index) => {
+					if (item.isSkeleton) {
+						return <ServiceSkeletonCard key={item.id || `skeleton-${index}`} surfaceColor={rowSurface} />;
+					}
+
+					const isEnabled = item.enabled !== false;
+					const imageSource = getServiceCardImageSource(item, type);
+					return (
+						<View
+							key={`${item.id || item.title}-${index}`}
+							style={[
+								styles.serviceCard,
+								{ backgroundColor: rowSurface },
+								!isEnabled ? styles.serviceCardMuted : null,
+							]}
+						>
+							<View style={styles.serviceCardImage}>
+								<Image
+									source={imageSource}
+									resizeMode="contain"
+									fadeDuration={0}
+									style={styles.serviceCardMedia}
+								/>
+								<LinearGradient
+									colors={["rgba(8,15,27,0.04)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0.74)"]}
+									style={styles.serviceCardOverlay}
+								/>
+								<View style={styles.serviceCardHeader}>
+									{item.showMetaSkeleton ? (
+										<View style={styles.serviceTopPillSkeleton} />
+									) : item.metaText ? (
+										<View style={styles.serviceTopPill}>
+											<Text numberOfLines={1} style={styles.serviceTopPillText}>
+												{item.metaText}
+											</Text>
+										</View>
+									) : null}
+								</View>
+								<View style={styles.serviceCardContent}>
+									<Text numberOfLines={2} style={[styles.serviceTitle, { color: cardTitleColor }]}>
+										{item.title}
+									</Text>
+									<ServiceValueBlock item={item} subtleColor={cardMetaColor} />
+								</View>
+							</View>
+						</View>
+					);
+				})}
+			</ScrollView>
+		</View>
+	);
+}
+
+export default function MapHospitalDetailBody({ model }) {
 	const {
 		cardSurface,
-		dockAction,
-		destination,
-		featureList,
+		actionSurface,
+		actionTint,
+		ambulanceServiceCards,
+		galleryPhotos,
 		heroBadges,
 		hospital,
-		isCalculatingRoute,
 		isDarkMode,
 		onClose,
-		origin,
-		quickFacts,
-		roomRows,
+		placeActions,
+		placeStats,
+		roomServiceCards,
 		rowSurface,
-		routeCoordinates,
-		routeDistanceLabel,
-		routeEtaLabel,
-		routeInfo,
 		summary,
 		subtleColor,
 		titleColor,
-		handleOpenDirections,
 	} = model;
 
-	const hasCareSnapshot = featureList.length > 0 || roomRows.length > 0;
-	const routeSummaryBits = [
-		routeDistanceLabel,
-		routeEtaLabel && routeEtaLabel !== "Live route" ? routeEtaLabel : null,
-	].filter(Boolean);
+	const hasGallery = galleryPhotos.length > 1;
+	const headerSubtitle = summary.addressLine || summary.subtitle || "Nearby hospital";
+	const panelSurface = isDarkMode ? "rgba(8,15,27,0.94)" : "rgba(248,250,252,0.92)";
+	const placeMarkSurface = isDarkMode ? "rgba(248,250,252,0.96)" : cardSurface;
+	const heroBlendColors = isDarkMode
+		? ["rgba(8,15,27,0)", "rgba(8,15,27,0.42)", panelSurface]
+		: ["rgba(248,250,252,0)", "rgba(248,250,252,0.46)", panelSurface];
+	const panelGradientColors = isDarkMode
+		? ["rgba(8,15,27,0.10)", "rgba(8,15,27,0.72)", panelSurface]
+		: ["rgba(248,250,252,0.10)", "rgba(248,250,252,0.74)", panelSurface];
+	const panelLowerBlendColors = isDarkMode
+		? ["rgba(8,15,27,0)", "rgba(8,15,27,0.12)", "rgba(8,15,27,0.34)"]
+		: ["rgba(248,250,252,0)", "rgba(248,250,252,0.12)", "rgba(248,250,252,0.30)"];
+	const panelBottomFadeColors = isDarkMode
+		? ["rgba(8,15,27,0.44)", "rgba(8,15,27,0.16)", "rgba(8,15,27,0)"]
+		: ["rgba(248,250,252,0.58)", "rgba(248,250,252,0.18)", "rgba(248,250,252,0)"];
 
 	return (
 		<View style={styles.scrollContent}>
@@ -80,12 +176,9 @@ export default function MapHospitalDetailBody({ model, visible = true }) {
 				imageStyle={styles.heroImage}
 			>
 				<LinearGradient
-					colors={
-						isDarkMode
-							? ["rgba(2,6,23,0.06)", "rgba(2,6,23,0.22)", "rgba(2,6,23,0.88)"]
-							: ["rgba(15,23,42,0.01)", "rgba(15,23,42,0.12)", "rgba(15,23,42,0.76)"]
-					}
-					style={StyleSheet.absoluteFillObject}
+					pointerEvents="none"
+					colors={heroBlendColors}
+					style={styles.heroBlend}
 				/>
 
 				{heroBadges.length > 0 ? (
@@ -111,7 +204,12 @@ export default function MapHospitalDetailBody({ model, visible = true }) {
 				) : null}
 
 				{typeof onClose === "function" ? (
-					<Pressable onPress={onClose} style={styles.heroCloseButton}>
+					<Pressable
+						onPress={onClose}
+						accessibilityRole="button"
+						accessibilityLabel="Close hospital details"
+						style={styles.heroCloseButton}
+					>
 						{({ pressed }) => (
 							<View
 								style={[
@@ -125,192 +223,146 @@ export default function MapHospitalDetailBody({ model, visible = true }) {
 					</Pressable>
 				) : null}
 
-				<View style={styles.heroFooter}>
-					<Text numberOfLines={2} style={styles.heroTitle}>
-						{hospital?.name || "Hospital"}
-					</Text>
-				</View>
+				<View style={styles.heroFooter} />
 			</ImageBackground>
 
-			{quickFacts.length > 0 ? (
-				<View style={styles.quickFactRow}>
-					{quickFacts.map((item, index) => {
-						const isPrimaryAction =
-							index === 0 && typeof dockAction?.onPress === "function";
-						const pill = (
-							<View
-								style={[
-									styles.quickFactPill,
-									isPrimaryAction
-										? styles.quickFactPillPrimary
-										: { backgroundColor: rowSurface },
-								]}
-							>
-								{isPrimaryAction ? (
-									<View style={styles.primaryQuickFactIconWrap}>
-										{renderIcon(item, "#F8FAFC", 15)}
-									</View>
-								) : (
-									<SheetIcon item={item} isDarkMode={isDarkMode} titleColor={titleColor} />
-								)}
-								<View style={styles.quickFactCopy}>
-									<Text
-										numberOfLines={1}
-										style={[
-											styles.quickFactLabel,
-											{ color: isPrimaryAction ? "rgba(248,250,252,0.82)" : subtleColor },
-										]}
-									>
+			<View style={styles.detailPanel}>
+				<LinearGradient
+					pointerEvents="none"
+					colors={panelGradientColors}
+					style={styles.detailPanelBackgroundClip}
+				/>
+				<LinearGradient
+					pointerEvents="none"
+					colors={panelLowerBlendColors}
+					style={styles.detailPanelLowerBlend}
+				/>
+				<LinearGradient
+					pointerEvents="none"
+					colors={panelBottomFadeColors}
+					style={styles.detailPanelBottomFade}
+				/>
+
+				<View style={styles.detailPanelContent}>
+					<View style={styles.placeHeader}>
+						<View style={[styles.placeMark, { backgroundColor: placeMarkSurface }]}>
+							<MaterialCommunityIcons name="hospital-building" size={24} color={COLORS.brandPrimary} />
+						</View>
+						<Text numberOfLines={2} style={[styles.placeTitle, { color: titleColor }]}>
+							{hospital?.name || "Hospital"}
+						</Text>
+						<Text numberOfLines={2} style={[styles.placeSubtitle, { color: subtleColor }]}>
+							{headerSubtitle}
+						</Text>
+					</View>
+
+					{placeActions.length > 0 ? (
+						<View style={styles.placeActionRow}>
+							{placeActions.map((item) => (
+								<Pressable
+									key={item.key}
+									onPress={item.onPress}
+									disabled={item.disabled || !item.onPress}
+									accessibilityRole="button"
+									accessibilityLabel={item.accessibilityLabel}
+									style={styles.placeActionPressable}
+								>
+									{({ pressed }) => (
+										<View
+											style={[
+												styles.placeActionButton,
+												item.primary
+													? styles.placeActionButtonPrimary
+													: { backgroundColor: actionSurface },
+												item.disabled ? styles.placeActionButtonDisabled : null,
+												pressed ? styles.placeActionButtonPressed : null,
+											]}
+										>
+											{renderIcon(
+												item,
+												item.primary ? "#F8FAFC" : actionTint,
+												item.primary ? 19 : 16,
+											)}
+											<Text
+												numberOfLines={1}
+												style={[
+													styles.placeActionLabel,
+													{ color: item.primary ? "#F8FAFC" : actionTint },
+												]}
+											>
+												{item.label}
+											</Text>
+										</View>
+									)}
+								</Pressable>
+							))}
+						</View>
+					) : null}
+
+					{placeStats.length > 0 ? (
+						<View style={styles.placeStatsCard}>
+							{placeStats.map((item, index) => (
+								<View key={`${item.label}-${index}`} style={styles.placeStatItem}>
+									<Text numberOfLines={1} style={[styles.placeStatLabel, { color: subtleColor }]}>
 										{item.label}
 									</Text>
-									<Text
-										numberOfLines={1}
-										style={[
-											styles.quickFactText,
-											{ color: isPrimaryAction ? "#F8FAFC" : titleColor },
-										]}
-									>
-										{item.value}
-									</Text>
-								</View>
-								{isPrimaryAction ? (
-									<Ionicons
-										name="chevron-forward"
-										size={18}
-										color="#F8FAFC"
-										style={styles.primaryQuickFactChevron}
-									/>
-								) : null}
-							</View>
-						);
-
-						if (!isPrimaryAction) {
-							return <View key={item.label}>{pill}</View>;
-						}
-
-						return (
-							<Pressable
-								key={item.label}
-								onPress={dockAction.onPress}
-								accessibilityLabel={dockAction.label}
-								style={styles.primaryQuickFactPressable}
-							>
-								{({ pressed }) => (
-									<View style={pressed ? styles.quickFactPillPrimaryPressed : null}>
-										{pill}
+									<View style={styles.placeStatValueRow}>
+										{renderIcon(
+											item,
+											item.tone === "rating" ? "#FBBF24" : subtleColor,
+											15,
+										)}
+										<Text numberOfLines={1} style={[styles.placeStatValue, { color: titleColor }]}>
+											{item.value}
+										</Text>
 									</View>
-								)}
-							</Pressable>
-						);
-					})}
-				</View>
-			) : null}
+								</View>
+							))}
+						</View>
+					) : null}
 
-			{destination || routeCoordinates.length > 1 || summary.addressLine ? (
-				<Pressable
-					onPress={destination ? handleOpenDirections : undefined}
-					disabled={!destination}
-					style={styles.routePressable}
-				>
-					{({ pressed }) => (
-						<View style={[styles.routeShell, pressed && destination ? styles.routeShellPressed : null]}>
-							<EmergencyHospitalRoutePreview
-								origin={origin}
-								hospital={destination ? { ...hospital, ...destination } : hospital}
-								bottomPadding={18}
-								routeCoordinates={routeCoordinates}
-								routeInfo={routeInfo}
-								isCalculatingRoute={isCalculatingRoute}
-								visible={visible}
-								showLoadingBadge={false}
-							/>
-							<LinearGradient
-								pointerEvents="none"
-								colors={["rgba(15,23,42,0.48)", "rgba(15,23,42,0.08)", "rgba(15,23,42,0)"]}
-								style={StyleSheet.absoluteFillObject}
-							/>
-							<View pointerEvents="none" style={styles.routeCanvasHeader}>
-								<View
-									style={[
-										styles.routeSummaryPill,
-										{
-											backgroundColor: isDarkMode
-												? "rgba(8,15,27,0.56)"
-												: "rgba(15,23,42,0.42)",
-										},
-									]}
+					<ServiceRail
+						title="Ambulance"
+						items={ambulanceServiceCards}
+						type="ambulance"
+						rowSurface={rowSurface}
+						titleColor={titleColor}
+					/>
+
+					<ServiceRail
+						title="Rooms"
+						items={roomServiceCards}
+						type="room"
+						rowSurface={rowSurface}
+						titleColor={titleColor}
+					/>
+
+					{hasGallery ? (
+						<ScrollView
+							horizontal
+							showsHorizontalScrollIndicator={false}
+							style={styles.galleryScroller}
+							contentContainerStyle={styles.galleryContent}
+						>
+							{galleryPhotos.map((photo, index) => (
+								<ImageBackground
+									key={`${photo}-${index}`}
+									source={{ uri: photo }}
+									resizeMode="cover"
+									style={styles.galleryTile}
+									imageStyle={styles.galleryTileImage}
 								>
-									<Text style={styles.routeSummaryText}>
-										{routeSummaryBits.length > 0 ? routeSummaryBits.join(" • ") : "Route preview"}
-									</Text>
-									{summary.addressLine ? (
-										<Text numberOfLines={1} style={styles.routeAddressText}>
-											{summary.addressLine}
-										</Text>
-									) : null}
-								</View>
-								{destination ? (
-									<View
-										style={[
-											styles.routeMapsPill,
-											{
-												backgroundColor: isDarkMode
-													? "rgba(8,15,27,0.48)"
-													: "rgba(15,23,42,0.38)",
-											},
-										]}
-									>
-										<SheetIcon
-											item={{ icon: "navigate-outline", iconType: "ion" }}
-											isDarkMode={isDarkMode}
-											titleColor={titleColor}
-											tone="strong"
-											size={13}
-										/>
-										<Text style={styles.routeMapsText}>Maps</Text>
-									</View>
-								) : null}
-							</View>
-						</View>
-					)}
-				</Pressable>
-			) : null}
-
-			{hasCareSnapshot ? (
-				<View style={[styles.minimalCard, { backgroundColor: cardSurface }]}>
-					{featureList.length > 0 ? (
-						<View style={styles.tagRow}>
-							{featureList.map((item, index) => (
-								<View key={`${item}-${index}`} style={[styles.tagChip, { backgroundColor: rowSurface }]}>
-									<Text style={[styles.tagText, { color: titleColor }]}>{item}</Text>
-								</View>
+									<LinearGradient
+										colors={["rgba(15,23,42,0)", "rgba(15,23,42,0.26)"]}
+										style={StyleSheet.absoluteFillObject}
+									/>
+								</ImageBackground>
 							))}
-						</View>
-					) : null}
-
-					{roomRows.length > 0 ? (
-						<View style={styles.roomList}>
-							{roomRows.map((room, index) => (
-								<View key={`${room.id}-${index}`} style={[styles.roomRow, { backgroundColor: rowSurface }]}>
-									<View style={styles.roomCopy}>
-										<Text style={[styles.roomLabel, { color: titleColor }]}>{room.label}</Text>
-										<Text style={[styles.roomMeta, { color: subtleColor }]}>
-											{room.total
-												? `${room.available} of ${room.total} open`
-												: `${room.available} open`}
-										</Text>
-									</View>
-									{room.price ? (
-										<Text style={[styles.roomPrice, { color: titleColor }]}>
-											From {Math.round(room.price).toLocaleString()}
-										</Text>
-									) : null}
-								</View>
-							))}
-						</View>
+						</ScrollView>
 					) : null}
 				</View>
-			) : null}
+			</View>
+
 		</View>
 	);
 }
