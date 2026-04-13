@@ -35,7 +35,6 @@ export default function MapHospitalDetailCollapsedRow({
 						end={{ x: 0.88, y: 0.94 }}
 						style={[
 							styles.collapsedIconButton,
-							{ borderColor: iconBorderColor },
 							pressed ? styles.collapsedIconButtonPressed : null,
 						]}
 					>
@@ -72,7 +71,6 @@ export default function MapHospitalDetailCollapsedRow({
 						end={{ x: 0.88, y: 0.94 }}
 						style={[
 							styles.collapsedIconButton,
-							{ borderColor: iconBorderColor },
 							pressed ? styles.collapsedIconButtonPressed : null,
 						]}
 					>

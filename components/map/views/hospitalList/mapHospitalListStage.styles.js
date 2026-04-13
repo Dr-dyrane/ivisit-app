@@ -6,7 +6,7 @@ const styles = StyleSheet.create({
 	},
 	bodyScrollContent: {
 		paddingHorizontal: 14,
-		paddingTop: 2,
+		paddingTop: 0,
 		paddingBottom: 6,
 	},
 	headerRow: {
@@ -14,6 +14,7 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "space-between",
 		gap: 12,
+		paddingHorizontal: 14,
 		paddingBottom: 12,
 	},
 	headerCopy: {

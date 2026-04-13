@@ -31,6 +31,7 @@ export default function EmergencySearchBar({
 	placeholder = "Search hospitals, specialties...",
 	showSuggestions = true,
 	autoFocus = false,
+	compact = false,
 	style,
 }) {
 	const { isDarkMode } = useTheme();
@@ -77,6 +78,15 @@ export default function EmergencySearchBar({
 			: "rgba(0,0,0,0.05)");
 	const micShadowLayer = isDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(15, 23, 42, 0.12)";
 	const dropdownShadowLayer = isDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(15, 23, 42, 0.12)";
+	const inputHeight = compact ? 48 : 56;
+	const inputRadius = compact ? 24 : 28;
+	const inputPaddingX = compact ? 14 : 16;
+	const searchIconSize = compact ? 18 : 20;
+	const searchIconMarginRight = compact ? 8 : 10;
+	const inputFontSize = compact ? 15 : 16;
+	const micSize = compact ? 34 : 38;
+	const micRadius = compact ? 10 : 12;
+	const clearButtonPadding = compact ? 3 : 4;
 
 	const handleFocus = useCallback(() => {
 		setIsFocused(true);
@@ -126,6 +136,9 @@ export default function EmergencySearchBar({
 						style={[
 							styles.inputContainer,
 							{
+								height: inputHeight,
+								borderRadius: inputRadius,
+								paddingHorizontal: inputPaddingX,
 								backgroundColor: inputGlassSurface,
 								// Shadow Glow on Focus
 								shadowColor: isFocused ? COLORS.brandPrimary : "#000",
@@ -137,14 +150,14 @@ export default function EmergencySearchBar({
 					>
 					<Ionicons
 						name="search"
-						size={20}
+						size={searchIconSize}
 						color={isFocused ? COLORS.brandPrimary : mutedColor}
-						style={styles.searchIcon}
+						style={[styles.searchIcon, { marginRight: searchIconMarginRight }]}
 					/>
 
 					<TextInput
 						ref={inputRef}
-						style={[styles.input, { color: textColor }]}
+						style={[styles.input, { color: textColor, fontSize: inputFontSize }]}
 						value={value}
 						onChangeText={onChangeText}
 						placeholder={placeholder}
@@ -160,7 +173,13 @@ export default function EmergencySearchBar({
 					{/* Action Buttons: Nested Squircle Logic */}
 					<View style={styles.rightActions}>
 						{value.length > 0 ? (
-							<Pressable onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChangeText(""); }} style={styles.clearBtn}>
+							<Pressable
+								onPress={() => {
+									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+									onChangeText("");
+								}}
+								style={[styles.clearBtn, { padding: clearButtonPadding }]}
+							>
 								<Ionicons name="close-circle" size={20} color={mutedColor} />
 							</Pressable>
 						) : (
@@ -168,6 +187,10 @@ export default function EmergencySearchBar({
 								onPress={handleVoice}
 								style={({ pressed }) => [
 									styles.micPressable,
+									{
+										width: micSize,
+										height: micSize,
+									},
 									{
 										opacity: pressed ? 0.7 : 1,
 										transform: [{ scale: pressed ? 0.96 : 1 }],
@@ -179,11 +202,24 @@ export default function EmergencySearchBar({
 										pointerEvents="none"
 										style={[
 											styles.micShadowUnderlay,
-											{ backgroundColor: micShadowLayer },
+											{
+												backgroundColor: micShadowLayer,
+												borderRadius: micRadius,
+											},
 										]}
 									/>
 								)}
-								<View style={[styles.micSquircle, { backgroundColor: micGlassSurface }]}>
+								<View
+									style={[
+										styles.micSquircle,
+										{
+											width: micSize,
+											height: micSize,
+											borderRadius: micRadius,
+											backgroundColor: micGlassSurface,
+										},
+									]}
+								>
 									<Ionicons name="mic" size={18} color={COLORS.brandPrimary} />
 								</View>
 							</Pressable>

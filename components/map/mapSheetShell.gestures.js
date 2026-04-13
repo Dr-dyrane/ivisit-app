@@ -1,8 +1,8 @@
 import { Animated, PanResponder } from "react-native";
 import {
+	getNextAllowedMapSheetSnapStateDown,
+	getNextAllowedMapSheetSnapStateUp,
 	MAP_SHEET_SNAP_STATES,
-	getNextMapSheetSnapStateDown,
-	getNextMapSheetSnapStateUp,
 } from "./core/mapSheet.constants";
 
 function shouldCaptureVerticalPan(gestureState, activationOffset, axisLockRatio = 1.1) {
@@ -21,6 +21,7 @@ function resetDragTranslateY(dragTranslateY, snapSpringConfig) {
 }
 
 export function createMapSheetPanResponder({
+	allowedSnapStates,
 	isSidebar,
 	dragTranslateY,
 	platformMotion,
@@ -71,12 +72,18 @@ export function createMapSheetPanResponder({
 				dy <= -platformMotion.sheet.release.distance ||
 				vy <= -platformMotion.sheet.release.velocity
 			) {
-				nextState = getNextMapSheetSnapStateUp(resolvedSnapState);
+				nextState = getNextAllowedMapSheetSnapStateUp(
+					resolvedSnapState,
+					allowedSnapStates,
+				);
 			} else if (
 				dy >= platformMotion.sheet.release.distance ||
 				vy >= platformMotion.sheet.release.velocity
 			) {
-				nextState = getNextMapSheetSnapStateDown(resolvedSnapState);
+				nextState = getNextAllowedMapSheetSnapStateDown(
+					resolvedSnapState,
+					allowedSnapStates,
+				);
 			}
 
 			if (nextState !== resolvedSnapState) {

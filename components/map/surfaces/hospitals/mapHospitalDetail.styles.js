@@ -18,10 +18,114 @@ export const styles = StyleSheet.create({
 		paddingBottom: 24,
 		gap: 12,
 	},
+	expandedCardWrap: {
+		marginHorizontal: -14,
+		overflow: "visible",
+	},
+	expandedCard: {
+		overflow: "hidden",
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.08,
+		shadowRadius: 18,
+		shadowOffset: { width: 0, height: -6 },
+		...squircle(34),
+	},
+	expandedCardSurface: {
+		...StyleSheet.absoluteFillObject,
+	},
+	expandedHero: {
+		height: 320,
+		justifyContent: "space-between",
+		zIndex: 1,
+	},
+	expandedHeroTopMask: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		top: 0,
+		height: 118,
+		zIndex: 1,
+	},
+	expandedHeroImage: {
+		borderTopLeftRadius: 34,
+		borderTopRightRadius: 34,
+		borderCurve: "continuous",
+	},
+	expandedHeroBadgeRow: {
+		paddingTop: 34,
+		paddingHorizontal: 14,
+		paddingRight: 62,
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: 6,
+		zIndex: 2,
+	},
+	expandedHeaderBlock: {
+		paddingHorizontal: 20,
+		paddingBottom: 10,
+		alignItems: "center",
+	},
+	expandedHeaderMeasure: {
+		width: "100%",
+		alignItems: "center",
+	},
+	expandedPlaceMark: {
+		width: 64,
+		height: 64,
+		alignItems: "center",
+		justifyContent: "center",
+		marginBottom: 10,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.22,
+		shadowRadius: 18,
+		shadowOffset: { width: 0, height: 10 },
+		...squircle(19),
+	},
+	expandedPlaceTitle: {
+		fontSize: 22,
+		lineHeight: 27,
+		fontWeight: "700",
+		textAlign: "center",
+		letterSpacing: -0.2,
+	},
+	expandedPlaceSubtitle: {
+		marginTop: 2,
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "500",
+		textAlign: "center",
+		paddingHorizontal: 10,
+	},
+	expandedBody: {
+		position: "relative",
+		zIndex: 2,
+		paddingHorizontal: 14,
+		paddingTop: 8,
+		paddingBottom: 20,
+		gap: 12,
+	},
+	expandedBodyLowerBlend: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		height: 180,
+	},
+	expandedCardBottomFade: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: -42,
+		height: 70,
+	},
+	heroRevealFrame: {
+		overflow: "hidden",
+		marginHorizontal: -14,
+	},
 	hero: {
 		height: 270,
 		marginTop: 0,
-		marginHorizontal: -14,
+		marginHorizontal: 0,
 		overflow: "hidden",
 		justifyContent: "space-between",
 		borderTopLeftRadius: 34,
@@ -38,7 +142,15 @@ export const styles = StyleSheet.create({
 		left: 0,
 		right: 0,
 		bottom: 0,
-		height: 142,
+		height: 168,
+		zIndex: 1,
+	},
+	heroTopMask: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		top: 0,
+		height: 104,
 		zIndex: 1,
 	},
 	heroBadgeRow: {
@@ -63,24 +175,6 @@ export const styles = StyleSheet.create({
 		lineHeight: 13,
 		fontWeight: "700",
 		color: "#F8FAFC",
-	},
-	heroCloseButton: {
-		position: "absolute",
-		top: 10,
-		right: 14,
-		zIndex: 4,
-	},
-	heroCloseButtonSurface: {
-		width: 36,
-		height: 36,
-		alignItems: "center",
-		justifyContent: "center",
-		backgroundColor: "rgba(8,15,27,0.38)",
-		...squircle(18),
-	},
-	heroCloseButtonSurfacePressed: {
-		opacity: 0.88,
-		transform: [{ scale: 0.97 }],
 	},
 	heroFooter: {
 		height: 44,
@@ -109,7 +203,7 @@ export const styles = StyleSheet.create({
 		left: 0,
 		right: 0,
 		bottom: 0,
-		height: 148,
+		height: 168,
 		borderBottomLeftRadius: 34,
 		borderBottomRightRadius: 34,
 	},
@@ -117,16 +211,18 @@ export const styles = StyleSheet.create({
 		position: "absolute",
 		left: 0,
 		right: 0,
-		bottom: -42,
-		height: 72,
+		bottom: -40,
+		height: 68,
 	},
 	detailPanelContent: {
 		gap: 12,
 	},
+	placeHeaderReveal: {
+		overflow: "hidden",
+	},
 	placeHeader: {
 		alignItems: "center",
 		paddingHorizontal: 16,
-		marginTop: -64,
 		gap: 4,
 	},
 	placeMark: {
@@ -161,7 +257,6 @@ export const styles = StyleSheet.create({
 		flexDirection: "row",
 		gap: 7,
 		paddingHorizontal: 0,
-		marginTop: 0,
 	},
 	placeActionPressable: {
 		flex: 1,
@@ -198,6 +293,7 @@ export const styles = StyleSheet.create({
 	},
 	placeStatsCard: {
 		marginTop: 6,
+		marginBottom: 10,
 		paddingHorizontal: 10,
 		paddingVertical: 0,
 		flexDirection: "row",
@@ -227,20 +323,20 @@ export const styles = StyleSheet.create({
 		fontWeight: "700",
 	},
 	serviceRail: {
-		gap: 9,
-		marginTop: 2,
+		gap: 0,
+		marginTop: 10,
 	},
-	serviceRailTitle: {
-		fontSize: 14,
-		lineHeight: 18,
-		fontWeight: "600",
-		paddingHorizontal: 2,
+	serviceRailCompact: {
+		marginTop: 8,
 	},
 	serviceRailScroller: {
 		marginHorizontal: -2,
 	},
 	serviceRailContent: {
 		paddingHorizontal: 2,
+		gap: 10,
+	},
+	serviceRailContentCompact: {
 		gap: 10,
 	},
 	serviceCard: {
@@ -253,6 +349,10 @@ export const styles = StyleSheet.create({
 		shadowRadius: 10,
 		shadowOffset: { width: 0, height: 5 },
 		...squircle(30),
+	},
+	serviceCardCompact: {
+		width: 164,
+		minHeight: 206,
 	},
 	serviceCardMuted: {
 		opacity: 0.58,
@@ -277,11 +377,19 @@ export const styles = StyleSheet.create({
 		alignItems: "flex-start",
 		zIndex: 2,
 	},
+	serviceCardHeaderCompact: {
+		paddingHorizontal: 8,
+		paddingTop: 8,
+	},
 	serviceTopPill: {
 		borderRadius: 999,
 		paddingHorizontal: 9,
 		paddingVertical: 5,
 		backgroundColor: "rgba(8,15,27,0.42)",
+	},
+	serviceTopPillCompact: {
+		paddingHorizontal: 7,
+		paddingVertical: 4,
 	},
 	serviceTopPillText: {
 		fontSize: 11,
@@ -289,27 +397,49 @@ export const styles = StyleSheet.create({
 		fontWeight: "700",
 		color: "#F8FAFC",
 	},
+	serviceTopPillTextCompact: {
+		fontSize: 10,
+		lineHeight: 12,
+		fontWeight: "600",
+	},
 	serviceTopPillSkeleton: {
 		width: 72,
 		height: 24,
 		borderRadius: 999,
 		backgroundColor: "rgba(248,250,252,0.16)",
 	},
+	serviceTopPillSkeletonCompact: {
+		width: 54,
+		height: 20,
+	},
 	serviceCardContent: {
 		paddingHorizontal: 12,
 		paddingVertical: 12,
 		zIndex: 2,
+	},
+	serviceCardContentCompact: {
+		paddingHorizontal: 10,
+		paddingVertical: 10,
 	},
 	serviceTitle: {
 		fontSize: 17,
 		lineHeight: 21,
 		fontWeight: "800",
 	},
+	serviceTitleCompact: {
+		fontSize: 15,
+		lineHeight: 18,
+	},
 	serviceCardMeta: {
 		marginTop: 3,
 		fontSize: 12,
 		lineHeight: 16,
 		fontWeight: "400",
+	},
+	serviceCardMetaCompact: {
+		marginTop: 2,
+		fontSize: 11,
+		lineHeight: 14,
 	},
 	serviceSkeletonCardInner: {
 		flex: 1,

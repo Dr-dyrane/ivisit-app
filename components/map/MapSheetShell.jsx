@@ -9,6 +9,7 @@ export default function MapSheetShell({
 	snapState,
 	presentationMode = "sheet",
 	shellWidth = null,
+	allowedSnapStates = null,
 	topSlot = null,
 	footerSlot = null,
 	handleFloatsOverContent = false,
@@ -39,6 +40,7 @@ export default function MapSheetShell({
 		snapState,
 		presentationMode,
 		shellWidth,
+		allowedSnapStates,
 		onHandlePress,
 	});
 
@@ -122,7 +124,10 @@ export default function MapSheetShell({
 					{topSlot ? (
 						<View
 							{...(shouldUseHeaderGestureRegion ? panResponder.panHandlers : {})}
-							style={styles.topSlotGestureRegion}
+							style={[
+								styles.topSlotGestureRegion,
+								handleFloatsOverContent ? styles.topSlotGestureRegionOverlay : null,
+							]}
 						>
 							{topSlot}
 						</View>

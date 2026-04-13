@@ -264,7 +264,7 @@ export function buildAmbulanceServiceCards(hospital, pricingRows = [], isLoading
 			service_name: row?.service_name || title,
 			service_type: row?.service_type || tier.serviceType,
 			description: row?.description || null,
-			metaText: enabled ? "Ready to request" : null,
+			metaText: enabled ? "Ready" : null,
 			priceText,
 			showMetaSkeleton: !enabled,
 			showPriceSkeleton: !priceText,

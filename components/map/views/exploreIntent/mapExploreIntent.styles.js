@@ -804,6 +804,7 @@ export default StyleSheet.create({
 		color: "rgba(248,250,252,0.72)",
 	},
 	featuredRailViewport: {
+		marginTop: 10,
 		marginHorizontal: 0,
 		overflow: "hidden",
 	},

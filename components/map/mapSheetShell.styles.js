@@ -46,14 +46,11 @@ export default StyleSheet.create({
 	},
 	handleFloating: {
 		height: 5,
-		backgroundColor: "rgba(255,255,255,0.92)",
-		borderWidth: 0.5,
-		borderColor: "rgba(15,23,42,0.24)",
 		shadowColor: "#0F172A",
-		shadowOpacity: 0.5,
-		shadowRadius: 8,
+		shadowOpacity: 0.2,
+		shadowRadius: 6,
 		shadowOffset: { width: 0, height: 2 },
-		elevation: 4,
+		elevation: 2,
 	},
 	dragZone: {
 		position: "relative",
@@ -70,6 +67,17 @@ export default StyleSheet.create({
 	},
 	topSlotGestureRegion: {
 		width: "100%",
+		position: "relative",
+		zIndex: 8,
+	},
+	topSlotGestureRegionOverlay: {
+		position: "absolute",
+		top: 0,
+		left: 0,
+		right: 0,
+		zIndex: 24,
+		elevation: 24,
+		overflow: "visible",
 	},
 	handleTapTarget: {
 		alignSelf: "center",
@@ -90,6 +98,7 @@ export default StyleSheet.create({
 	contentViewport: {
 		flex: 1,
 		minHeight: 0,
+		zIndex: 1,
 	},
 	contentViewportGestureRegion: {
 		width: "100%",

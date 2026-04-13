@@ -21,6 +21,7 @@ export function useMapSheetShell({
 	snapState,
 	presentationMode = "sheet",
 	shellWidth = null,
+	allowedSnapStates = null,
 	onHandlePress,
 }) {
 	const { isDarkMode } = useTheme();
@@ -135,6 +136,7 @@ export function useMapSheetShell({
 	const panResponder = useMemo(
 		() =>
 			createMapSheetPanResponder({
+				allowedSnapStates,
 				isSidebar,
 				dragTranslateY,
 				platformMotion,
@@ -142,7 +144,15 @@ export function useMapSheetShell({
 				onHandlePress,
 				snapSpringConfig,
 			}),
-		[dragTranslateY, isSidebar, onHandlePress, platformMotion, resolvedSnapState, snapSpringConfig],
+		[
+			allowedSnapStates,
+			dragTranslateY,
+			isSidebar,
+			onHandlePress,
+			platformMotion,
+			resolvedSnapState,
+			snapSpringConfig,
+		],
 	);
 
 	const sidebarShapeStyle = useMemo(

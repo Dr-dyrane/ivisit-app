@@ -28,6 +28,12 @@ export const MAP_SHEET_SNAP_INDEX = {
 	[MAP_SHEET_SNAP_STATES.EXPANDED]: 2,
 };
 
+export const MAP_SHEET_SNAP_STATE_ORDER = [
+	MAP_SHEET_SNAP_STATES.COLLAPSED,
+	MAP_SHEET_SNAP_STATES.HALF,
+	MAP_SHEET_SNAP_STATES.EXPANDED,
+];
+
 export function getNextMapSheetSnapStateUp(snapState) {
 	switch (snapState) {
 		case MAP_SHEET_SNAP_STATES.COLLAPSED:
@@ -48,6 +54,54 @@ export function getNextMapSheetSnapStateDown(snapState) {
 		default:
 			return MAP_SHEET_SNAP_STATES.COLLAPSED;
 	}
+}
+
+export function getAllowedMapSheetSnapStates(
+	allowedSnapStates = MAP_SHEET_SNAP_STATE_ORDER,
+) {
+	const allowedSet = new Set(
+		Array.isArray(allowedSnapStates) && allowedSnapStates.length > 0
+			? allowedSnapStates
+			: MAP_SHEET_SNAP_STATE_ORDER,
+	);
+
+	return MAP_SHEET_SNAP_STATE_ORDER.filter((state) => allowedSet.has(state));
+}
+
+export function getNextAllowedMapSheetSnapStateUp(
+	snapState,
+	allowedSnapStates = MAP_SHEET_SNAP_STATE_ORDER,
+) {
+	const orderedStates = getAllowedMapSheetSnapStates(allowedSnapStates);
+	const currentIndex = orderedStates.indexOf(snapState);
+	if (currentIndex === -1) {
+		return orderedStates[0] || MAP_SHEET_SNAP_STATES.HALF;
+	}
+	return orderedStates[Math.min(currentIndex + 1, orderedStates.length - 1)] || snapState;
+}
+
+export function getNextAllowedMapSheetSnapStateDown(
+	snapState,
+	allowedSnapStates = MAP_SHEET_SNAP_STATE_ORDER,
+) {
+	const orderedStates = getAllowedMapSheetSnapStates(allowedSnapStates);
+	const currentIndex = orderedStates.indexOf(snapState);
+	if (currentIndex === -1) {
+		return orderedStates[0] || MAP_SHEET_SNAP_STATES.HALF;
+	}
+	return orderedStates[Math.max(currentIndex - 1, 0)] || snapState;
+}
+
+export function getToggledMapSheetSnapState(
+	snapState,
+	allowedSnapStates = MAP_SHEET_SNAP_STATE_ORDER,
+) {
+	const orderedStates = getAllowedMapSheetSnapStates(allowedSnapStates);
+	const highestState = orderedStates[orderedStates.length - 1] || MAP_SHEET_SNAP_STATES.EXPANDED;
+	if (snapState === highestState) {
+		return getNextAllowedMapSheetSnapStateDown(snapState, orderedStates);
+	}
+	return getNextAllowedMapSheetSnapStateUp(snapState, orderedStates);
 }
 
 export function getMapSheetHeight(screenHeight, snapState) {
