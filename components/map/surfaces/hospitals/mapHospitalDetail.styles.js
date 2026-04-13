@@ -382,8 +382,8 @@ export const styles = StyleSheet.create({
 	},
 	serviceCardMedia: {
 		...StyleSheet.absoluteFillObject,
-		width: undefined,
-		height: undefined,
+		width: "100%",
+		height: "100%",
 	},
 	serviceCardMediaAmbulance: {
 		transform: [{ scale: 1.25 }],

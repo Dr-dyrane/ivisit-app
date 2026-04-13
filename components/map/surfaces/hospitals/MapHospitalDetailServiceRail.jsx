@@ -16,7 +16,7 @@ function resolveRailImageSource(source) {
 				null;
 			const asset = resolveAssetSource?.(source);
 			if (asset?.uri) {
-				return asset;
+				return { uri: asset.uri };
 			}
 		} catch (_error) {
 			return source;
