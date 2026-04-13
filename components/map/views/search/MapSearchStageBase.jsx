@@ -15,6 +15,7 @@ import { styles as searchStyles } from "../../surfaces/search/mapSearchSheet.sty
 import sheetStageStyles from "../shared/mapSheetStage.styles";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
+import { GestureDetector } from "react-native-gesture-handler";
 import styles from "./mapSearchStage.styles";
 
 function MapSearchStageSurface({
@@ -79,7 +80,7 @@ function MapSearchStageSurface({
 		allowedSnapStates,
 	});
 	const {
-		androidCollapseHandlers,
+		androidExpandedBodyGesture,
 		handleAndroidCollapseScroll,
 		handleAndroidCollapseScrollBeginDrag,
 	} = useMapAndroidExpandedCollapse({
@@ -159,6 +160,11 @@ function MapSearchStageSurface({
 			</Pressable>
 		</View>
 	);
+	const bodyContent = (
+		<View style={searchStyles.content}>
+			<MapSearchSheetSections model={model} />
+		</View>
+	);
 
 	return (
 		<MapSheetShell
@@ -172,7 +178,6 @@ function MapSearchStageSurface({
 		>
 			{isCollapsed ? null : (
 				<ScrollView
-					{...androidCollapseHandlers}
 					ref={bodyScrollRef}
 					style={sheetStageStyles.bodyScrollViewport}
 					contentContainerStyle={[
@@ -198,9 +203,13 @@ function MapSearchStageSurface({
 					onMomentumScrollEnd={handleBodyScrollEndDrag}
 					scrollEnabled={bodyScrollEnabled}
 				>
-					<View style={searchStyles.content}>
-						<MapSearchSheetSections model={model} />
-					</View>
+					{androidExpandedBodyGesture ? (
+						<GestureDetector gesture={androidExpandedBodyGesture}>
+							{bodyContent}
+						</GestureDetector>
+					) : (
+						bodyContent
+					)}
 				</ScrollView>
 			)}
 		</MapSheetShell>

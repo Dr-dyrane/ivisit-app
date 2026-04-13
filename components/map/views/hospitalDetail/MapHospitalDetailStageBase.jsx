@@ -11,6 +11,7 @@ import MapHospitalDetailCollapsedRow from "./MapHospitalDetailCollapsedRow";
 import sheetStageStyles from "../shared/mapSheetStage.styles";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
+import { GestureDetector } from "react-native-gesture-handler";
 import styles from "./mapHospitalDetailStage.styles";
 
 const FLOATING_TITLE_REVEAL_DELAY = 160;
@@ -43,8 +44,14 @@ export default function MapHospitalDetailStageBase({
 	});
 	const [showFloatingTitle, setShowFloatingTitle] = useState(false);
 	const [expandedHeaderBottom, setExpandedHeaderBottom] = useState(null);
+	const [serviceSelectionsByHospital, setServiceSelectionsByHospital] = useState({});
 	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
 	const isHalf = snapState === MAP_SHEET_SNAP_STATES.HALF;
+	const hospitalSelectionKey = hospital?.id || "unknown";
+	const currentSelections = serviceSelectionsByHospital[hospitalSelectionKey] || {
+		ambulanceServiceId: null,
+		roomServiceId: null,
+	};
 	const titleColor = model.titleColor;
 	const mutedColor = model.subtleColor;
 	const iconSurfaceColor = isDarkMode ? "rgba(15,23,42,0.56)" : "rgba(255,255,255,0.78)";
@@ -91,7 +98,7 @@ export default function MapHospitalDetailStageBase({
 		allowedSnapStates,
 	});
 	const {
-		androidCollapseHandlers,
+		androidExpandedBodyGesture,
 		handleAndroidCollapseScroll,
 		handleAndroidCollapseScrollBeginDrag,
 	} = useMapAndroidExpandedCollapse({
@@ -127,6 +134,77 @@ export default function MapHospitalDetailStageBase({
 		const nextBottom = y + height;
 		setExpandedHeaderBottom((current) => (current === nextBottom ? current : nextBottom));
 	}, []);
+
+	useEffect(() => {
+		const nextAmbulanceIds = model.ambulanceServiceCards
+			.filter((item) => !item?.isSkeleton && item?.enabled !== false)
+			.map((item, index) => item.id || item.title || `ambulance-${index}`);
+		const nextRoomIds = model.roomServiceCards
+			.filter((item) => !item?.isSkeleton && item?.enabled !== false)
+			.map((item, index) => item.id || item.title || `room-${index}`);
+
+		setServiceSelectionsByHospital((current) => {
+			const existing = current[hospitalSelectionKey] || {
+				ambulanceServiceId: null,
+				roomServiceId: null,
+			};
+			const nextAmbulanceServiceId =
+				existing.ambulanceServiceId && !nextAmbulanceIds.includes(existing.ambulanceServiceId)
+					? null
+					: existing.ambulanceServiceId;
+			const nextRoomServiceId =
+				existing.roomServiceId && !nextRoomIds.includes(existing.roomServiceId)
+					? null
+					: existing.roomServiceId;
+
+			if (
+				existing.ambulanceServiceId === nextAmbulanceServiceId &&
+				existing.roomServiceId === nextRoomServiceId
+			) {
+				return current;
+			}
+
+			return {
+				...current,
+				[hospitalSelectionKey]: {
+					ambulanceServiceId: nextAmbulanceServiceId,
+					roomServiceId: nextRoomServiceId,
+				},
+			};
+		});
+	}, [hospitalSelectionKey, model.ambulanceServiceCards, model.roomServiceCards]);
+
+	const setSelectedAmbulanceServiceId = useCallback(
+		(value) => {
+			setServiceSelectionsByHospital((current) => ({
+				...current,
+				[hospitalSelectionKey]: {
+					...(current[hospitalSelectionKey] || {
+						ambulanceServiceId: null,
+						roomServiceId: null,
+					}),
+					ambulanceServiceId: value,
+				},
+			}));
+		},
+		[hospitalSelectionKey],
+	);
+
+	const setSelectedRoomServiceId = useCallback(
+		(value) => {
+			setServiceSelectionsByHospital((current) => ({
+				...current,
+				[hospitalSelectionKey]: {
+					...(current[hospitalSelectionKey] || {
+						ambulanceServiceId: null,
+						roomServiceId: null,
+					}),
+					roomServiceId: value,
+				},
+			}));
+		},
+		[hospitalSelectionKey],
+	);
 
 	useEffect(() => {
 		if (snapState !== MAP_SHEET_SNAP_STATES.EXPANDED && showFloatingTitle) {
@@ -218,6 +296,20 @@ export default function MapHospitalDetailStageBase({
 			</View>
 		</View>
 	);
+	const bodyContent = (
+		<View>
+			<MapHospitalDetailBody
+				model={model}
+				revealHero={snapState === MAP_SHEET_SNAP_STATES.EXPANDED}
+				onExpandedHeaderLayout={handleExpandedHeaderLayout}
+				onCycleHospital={onCycleHospital}
+				selectedAmbulanceServiceId={currentSelections.ambulanceServiceId}
+				selectedRoomServiceId={currentSelections.roomServiceId}
+				onSelectAmbulanceServiceId={setSelectedAmbulanceServiceId}
+				onSelectRoomServiceId={setSelectedRoomServiceId}
+			/>
+		</View>
+	);
 
 	return (
 		<MapSheetShell
@@ -232,7 +324,6 @@ export default function MapHospitalDetailStageBase({
 		>
 			{isCollapsed ? null : (
 				<ScrollView
-					{...androidCollapseHandlers}
 					ref={bodyScrollRef}
 					style={sheetStageStyles.bodyScrollViewport}
 					contentContainerStyle={[
@@ -261,12 +352,13 @@ export default function MapHospitalDetailStageBase({
 					onMomentumScrollEnd={handleBodyScrollEndDrag}
 					scrollEnabled={bodyScrollEnabled}
 				>
-					<MapHospitalDetailBody
-						model={model}
-						revealHero={snapState === MAP_SHEET_SNAP_STATES.EXPANDED}
-						onExpandedHeaderLayout={handleExpandedHeaderLayout}
-						onCycleHospital={onCycleHospital}
-					/>
+					{androidExpandedBodyGesture ? (
+						<GestureDetector gesture={androidExpandedBodyGesture}>
+							{bodyContent}
+						</GestureDetector>
+					) : (
+						bodyContent
+					)}
 				</ScrollView>
 			)}
 		</MapSheetShell>

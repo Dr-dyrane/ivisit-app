@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PanResponder, Platform } from "react-native";
+import { Platform } from "react-native";
+import { Gesture } from "react-native-gesture-handler";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 
 export default function useMapAndroidExpandedCollapse({
@@ -62,7 +63,7 @@ export default function useMapAndroidExpandedCollapse({
 		}
 	}, [bodyScrollRef, onExpandedToHalf, snapState]);
 
-	const androidCollapseResponder = useMemo(() => {
+	const androidExpandedBodyGesture = useMemo(() => {
 		if (
 			Platform.OS !== "android" ||
 			snapState !== MAP_SHEET_SNAP_STATES.EXPANDED ||
@@ -71,26 +72,28 @@ export default function useMapAndroidExpandedCollapse({
 			return null;
 		}
 
-		return PanResponder.create({
-			onMoveShouldSetPanResponder: (_event, gestureState) =>
-				isBodyAtTop &&
-				gestureState.dy > 10 &&
-				Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.15,
-			onMoveShouldSetPanResponderCapture: (_event, gestureState) =>
-				isBodyAtTop &&
-				gestureState.dy > 10 &&
-				Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.15,
-			onPanResponderRelease: (_event, gestureState) => {
-				if (gestureState.dy > 48 || gestureState.vy > 0.24) {
+		return Gesture.Pan()
+			.runOnJS(true)
+			.activeOffsetY(14)
+			.failOffsetX([-22, 22])
+			.shouldCancelWhenOutside(false)
+			.onEnd((event) => {
+				if (!isBodyAtTop) return;
+				const absDx = Math.abs(event.translationX ?? 0);
+				const absDy = Math.abs(event.translationY ?? 0);
+				const velocityY = Number(event.velocityY ?? 0);
+				const isVerticalIntent = absDy > absDx * 1.2;
+				const passedDistance = event.translationY > 56;
+				const passedVelocity = velocityY > 900;
+
+				if (isVerticalIntent && (passedDistance || passedVelocity)) {
 					onSnapStateChange(MAP_SHEET_SNAP_STATES.HALF);
 				}
-			},
-			onPanResponderTerminationRequest: () => true,
-		});
+			});
 	}, [isBodyAtTop, onSnapStateChange, snapState]);
 
 	return {
-		androidCollapseHandlers: androidCollapseResponder?.panHandlers ?? {},
+		androidExpandedBodyGesture,
 		handleAndroidCollapseScroll,
 		handleAndroidCollapseScrollBeginDrag,
 		isBodyAtTop,

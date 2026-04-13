@@ -11,6 +11,7 @@ import { getMapSheetTokens } from "../../tokens/mapSheetTokens";
 import sheetStageStyles from "../shared/mapSheetStage.styles";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
+import { GestureDetector } from "react-native-gesture-handler";
 import styles from "./mapHospitalListStage.styles";
 
 export default function MapHospitalListStageBase({
@@ -55,7 +56,7 @@ export default function MapHospitalListStageBase({
 		allowedSnapStates,
 	});
 	const {
-		androidCollapseHandlers,
+		androidExpandedBodyGesture,
 		handleAndroidCollapseScroll,
 		handleAndroidCollapseScrollBeginDrag,
 	} = useMapAndroidExpandedCollapse({
@@ -88,6 +89,18 @@ export default function MapHospitalListStageBase({
 			</Pressable>
 		</View>
 	);
+	const bodyContent = (
+		<View>
+			<MapHospitalListContent
+				hospitals={hospitals}
+				selectedHospitalId={selectedHospitalId}
+				recommendedHospitalId={recommendedHospitalId}
+				onSelectHospital={onSelectHospital}
+				onChangeLocation={onChangeLocation}
+				isLoading={isLoading}
+			/>
+		</View>
+	);
 
 	return (
 		<MapSheetShell
@@ -100,7 +113,6 @@ export default function MapHospitalListStageBase({
 			onHandlePress={handleSnapToggle}
 		>
 			<ScrollView
-				{...androidCollapseHandlers}
 				ref={bodyScrollRef}
 				style={sheetStageStyles.bodyScrollViewport}
 				contentContainerStyle={[
@@ -127,14 +139,13 @@ export default function MapHospitalListStageBase({
 				onMomentumScrollEnd={handleBodyScrollEndDrag}
 				scrollEnabled={bodyScrollEnabled}
 			>
-				<MapHospitalListContent
-					hospitals={hospitals}
-					selectedHospitalId={selectedHospitalId}
-					recommendedHospitalId={recommendedHospitalId}
-					onSelectHospital={onSelectHospital}
-					onChangeLocation={onChangeLocation}
-					isLoading={isLoading}
-				/>
+				{androidExpandedBodyGesture ? (
+					<GestureDetector gesture={androidExpandedBodyGesture}>
+						{bodyContent}
+					</GestureDetector>
+				) : (
+					bodyContent
+				)}
 			</ScrollView>
 		</MapSheetShell>
 	);

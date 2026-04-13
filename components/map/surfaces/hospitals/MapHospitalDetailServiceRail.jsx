@@ -119,6 +119,9 @@ export default function MapHospitalDetailServiceRail({
 			<ScrollView
 				horizontal
 				showsHorizontalScrollIndicator={false}
+				directionalLockEnabled
+				nestedScrollEnabled
+				keyboardShouldPersistTaps="handled"
 				style={styles.serviceRailScroller}
 				contentContainerStyle={[
 					styles.serviceRailContent,

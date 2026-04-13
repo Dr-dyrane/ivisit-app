@@ -13,6 +13,7 @@ export const styles = StyleSheet.create({
 		minHeight: 76,
 		borderRadius: 24,
 		borderWidth: 0,
+		marginBottom: 14,
 	},
 	rowTop: {
 		flexDirection: "row",

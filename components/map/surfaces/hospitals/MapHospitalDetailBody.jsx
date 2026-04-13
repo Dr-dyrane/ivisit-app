@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
 	Animated,
 	ImageBackground,
@@ -28,6 +28,10 @@ export default function MapHospitalDetailBody({
 	revealHero = false,
 	onExpandedHeaderLayout,
 	onCycleHospital,
+	selectedAmbulanceServiceId = null,
+	selectedRoomServiceId = null,
+	onSelectAmbulanceServiceId = () => {},
+	onSelectRoomServiceId = () => {},
 }) {
 	const {
 		cardSurface,
@@ -85,28 +89,6 @@ export default function MapHospitalDetailBody({
 		? ["rgba(8,15,27,0.14)", "rgba(8,15,27,0.04)", "rgba(8,15,27,0)"]
 		: ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.04)", "rgba(255,255,255,0)"];
 	const heroRevealProgress = useRef(new Animated.Value(revealHero ? 1 : 0)).current;
-	const [selectedAmbulanceServiceId, setSelectedAmbulanceServiceId] = useState(null);
-	const [selectedRoomServiceId, setSelectedRoomServiceId] = useState(null);
-
-	useEffect(() => {
-		const nextSelectableIds = ambulanceServiceCards
-			.filter((item) => !item?.isSkeleton && item?.enabled !== false)
-			.map((item, index) => item.id || item.title || `ambulance-${index}`);
-
-		if (selectedAmbulanceServiceId && !nextSelectableIds.includes(selectedAmbulanceServiceId)) {
-			setSelectedAmbulanceServiceId(null);
-		}
-	}, [ambulanceServiceCards, selectedAmbulanceServiceId]);
-
-	useEffect(() => {
-		const nextSelectableIds = roomServiceCards
-			.filter((item) => !item?.isSkeleton && item?.enabled !== false)
-			.map((item, index) => item.id || item.title || `room-${index}`);
-
-		if (selectedRoomServiceId && !nextSelectableIds.includes(selectedRoomServiceId)) {
-			setSelectedRoomServiceId(null);
-		}
-	}, [roomServiceCards, selectedRoomServiceId]);
 
 	useEffect(() => {
 		Animated.spring(heroRevealProgress, {
@@ -153,16 +135,20 @@ export default function MapHospitalDetailBody({
 		if (typeof onCycleHospital !== "function") return null;
 
 		return PanResponder.create({
-			onMoveShouldSetPanResponder: (_event, gestureState) =>
-				Math.abs(gestureState.dx) > 12 &&
-				Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2,
-			onMoveShouldSetPanResponderCapture: (_event, gestureState) =>
-				Math.abs(gestureState.dx) > 12 &&
-				Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2,
+			onMoveShouldSetPanResponder: (_event, gestureState) => {
+				const absDx = Math.abs(gestureState.dx);
+				const absDy = Math.abs(gestureState.dy);
+				return absDx > 24 && absDy < 14 && absDx > absDy * 2;
+			},
+			onMoveShouldSetPanResponderCapture: (_event, gestureState) => {
+				const absDx = Math.abs(gestureState.dx);
+				const absDy = Math.abs(gestureState.dy);
+				return absDx > 24 && absDy < 14 && absDx > absDy * 2;
+			},
 			onPanResponderRelease: (_event, gestureState) => {
 				if (
-					Math.abs(gestureState.dx) > 52 &&
-					Math.abs(gestureState.dx) > Math.abs(gestureState.dy)
+					Math.abs(gestureState.dx) > 64 &&
+					Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.8
 				) {
 					onCycleHospital();
 				}
@@ -329,7 +315,7 @@ export default function MapHospitalDetailBody({
 								rowSurface={rowSurface}
 								compact={false}
 								selectedId={selectedAmbulanceServiceId}
-								onSelectId={setSelectedAmbulanceServiceId}
+								onSelectId={onSelectAmbulanceServiceId}
 								selectionEnabled
 							/>
 
@@ -340,7 +326,7 @@ export default function MapHospitalDetailBody({
 								rowSurface={rowSurface}
 								compact={false}
 								selectedId={selectedRoomServiceId}
-								onSelectId={setSelectedRoomServiceId}
+								onSelectId={onSelectRoomServiceId}
 								selectionEnabled
 							/>
 
@@ -348,6 +334,8 @@ export default function MapHospitalDetailBody({
 								<ScrollView
 									horizontal
 									showsHorizontalScrollIndicator={false}
+									directionalLockEnabled
+									nestedScrollEnabled
 									style={styles.galleryScroller}
 									contentContainerStyle={styles.galleryContent}
 								>
@@ -565,7 +553,7 @@ export default function MapHospitalDetailBody({
 						rowSurface={rowSurface}
 						compact
 						selectedId={selectedAmbulanceServiceId}
-						onSelectId={setSelectedAmbulanceServiceId}
+						onSelectId={onSelectAmbulanceServiceId}
 						selectionEnabled
 					/>
 
@@ -576,7 +564,7 @@ export default function MapHospitalDetailBody({
 						rowSurface={rowSurface}
 						compact
 						selectedId={selectedRoomServiceId}
-						onSelectId={setSelectedRoomServiceId}
+						onSelectId={onSelectRoomServiceId}
 						selectionEnabled
 					/>
 
@@ -584,6 +572,8 @@ export default function MapHospitalDetailBody({
 						<ScrollView
 							horizontal
 							showsHorizontalScrollIndicator={false}
+							directionalLockEnabled
+							nestedScrollEnabled
 							style={styles.galleryScroller}
 							contentContainerStyle={styles.galleryContent}
 						>
