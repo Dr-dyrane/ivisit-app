@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../../../constants/colors";
 import styles from "./mapHospitalDetailStage.styles";
@@ -44,11 +44,7 @@ export default function MapHospitalDetailCollapsedRow({
 							pressed ? styles.collapsedIconButtonPressed : null,
 						]}
 					>
-						{action.iconType === "material" ? (
-							<MaterialCommunityIcons name={action.icon} size={18} color={actionIconColor} />
-						) : (
-							<Ionicons name={action.icon} size={16} color={actionIconColor} />
-						)}
+						<Ionicons name="chevron-forward" size={18} color={actionIconColor} />
 					</LinearGradient>
 				)}
 			</Pressable>

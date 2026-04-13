@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Image, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { getHospitalDetailServiceImageSource } from "./mapHospitalDetail.content";
 import { styles } from "./mapHospitalDetail.styles";
@@ -80,6 +81,7 @@ export default function MapHospitalDetailServiceRail({
 	selectedId: controlledSelectedId = null,
 	onSelectId = null,
 	selectionEnabled: selectionEnabledProp = null,
+	showDetailAffordance = true,
 }) {
 	const [uncontrolledSelectedId, setUncontrolledSelectedId] = useState(null);
 	if (!Array.isArray(items) || items.length === 0) return null;
@@ -253,6 +255,21 @@ export default function MapHospitalDetailServiceRail({
 								</Text>
 								<ServiceValueBlock item={item} compact={compact} color={metaColor} />
 							</View>
+							{showDetailAffordance && !isDisabled ? (
+								<View
+									pointerEvents="none"
+									style={[
+										styles.serviceDetailAffordance,
+										compact ? styles.serviceDetailAffordanceCompact : null,
+									]}
+								>
+									<Ionicons
+										name="chevron-forward"
+										size={compact ? 14 : 16}
+										color={isSelected ? "#FFFFFF" : "rgba(248,250,252,0.88)"}
+									/>
+								</View>
+							) : null}
 						</Pressable>
 					);
 				})}

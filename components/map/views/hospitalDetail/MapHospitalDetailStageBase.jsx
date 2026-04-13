@@ -65,16 +65,16 @@ export default function MapHospitalDetailStageBase({
 	const floatingTitleColor = titleColor;
 	const floatingCloseIconColor = isHeroTopPresentation ? "#F8FAFC" : titleColor;
 	const floatingCycleIconColor = isDarkMode
-			? "rgba(148,163,184,0.14)"
-			: "rgba(255,255,255,0.82)";
+		? "rgba(248,250,252,0.92)"
+		: "rgba(15,23,42,0.86)";
 	const floatingCloseSurface = isHeroTopPresentation
 		? "rgba(15,23,42,0.24)"
 		: isDarkMode
 			? "rgba(148,163,184,0.14)"
 			: "rgba(255,255,255,0.42)";
-	const floatingCycleSurface = !isDarkMode
-			? "rgba(148,163,184,0.14)"
-			: "rgba(255,255,255,0.05)";
+	const floatingCycleSurface = isDarkMode
+		? "rgba(255,255,255,0.10)"
+		: "rgba(255,255,255,0.72)";
 	const allowedSnapStates = useMemo(
 		() => [
 			MAP_SHEET_SNAP_STATES.COLLAPSED,

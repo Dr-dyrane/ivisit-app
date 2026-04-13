@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import MapHospitalDetailBody from "../../surfaces/hospitals/MapHospitalDetailBody";
 import MapHospitalDetailCollapsedRow from "./MapHospitalDetailCollapsedRow";
 import styles from "./mapHospitalDetailStage.styles";
@@ -79,9 +79,9 @@ export function MapHospitalDetailFloatingTopSlot({
 									pressed ? styles.floatingTopCloseButtonPressed : null,
 								]}
 							>
-								<MaterialIcons
-									name="next-plan"
-									size={40}
+								<Ionicons
+									name="chevron-forward"
+									size={20}
 									color={floatingCycleIconColor}
 								/>
 							</View>
