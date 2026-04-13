@@ -56,7 +56,8 @@ export default function MapHospitalDetailStageBase({
 	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
 	const titleColor = model.titleColor;
 	const mutedColor = model.subtleColor;
-	const iconSurfaceColor = isDarkMode ? "rgba(3,10,20,0.72)" : "rgba(15,23,42,0.12)";
+	const iconSurfaceColor = isDarkMode ? "rgba(15,23,42,0.56)" : "rgba(255,255,255,0.78)";
+	const iconBorderColor = isDarkMode ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.92)";
 
 	const handleSnapToggle = (nextState) => {
 		if (typeof onSnapStateChange !== "function") return;
@@ -84,7 +85,9 @@ export default function MapHospitalDetailStageBase({
 			onClose={onClose}
 			titleColor={titleColor}
 			mutedColor={mutedColor}
+			isDarkMode={isDarkMode}
 			iconSurfaceColor={iconSurfaceColor}
+			iconBorderColor={iconBorderColor}
 		/>
 	);
 

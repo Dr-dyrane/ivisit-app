@@ -23,11 +23,26 @@ const styles = StyleSheet.create({
 		paddingTop: 2,
 	},
 	collapsedIconButton: {
+		flex: 1,
 		width: 42,
 		height: 42,
 		alignItems: "center",
 		justifyContent: "center",
-		...squircle(18),
+		overflow: "hidden",
+		borderWidth: 1,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.12,
+		shadowRadius: 12,
+		shadowOffset: { width: 0, height: 6 },
+		borderRadius: 999,
+	},
+	collapsedIconButtonPressable: {
+		width: 42,
+		height: 42,
+	},
+	collapsedIconButtonPressed: {
+		opacity: 0.94,
+		transform: [{ scale: 0.97 }],
 	},
 	collapsedSummaryPressable: {
 		flex: 1,

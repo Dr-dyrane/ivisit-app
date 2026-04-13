@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import styles from "./mapHospitalDetailStage.styles";
 
 export default function MapHospitalDetailCollapsedRow({
@@ -11,19 +12,39 @@ export default function MapHospitalDetailCollapsedRow({
 	onClose,
 	titleColor,
 	mutedColor,
+	isDarkMode,
 	iconSurfaceColor,
+	iconBorderColor,
 }) {
+	const iconGlassColors = isDarkMode
+		? ["rgba(255,255,255,0.18)", "rgba(148,163,184,0.10)", iconSurfaceColor]
+		: ["rgba(255,255,255,0.98)", "rgba(255,255,255,0.86)", iconSurfaceColor];
+
 	return (
 		<View style={styles.collapsedRow}>
 			<Pressable
 				onPress={action.onPress}
 				accessibilityLabel={action.accessibilityLabel}
-				style={[styles.collapsedIconButton, { backgroundColor: iconSurfaceColor }]}
+				accessibilityRole="button"
+				style={styles.collapsedIconButtonPressable}
 			>
-				{action.iconType === "material" ? (
-					<MaterialCommunityIcons name={action.icon} size={18} color={titleColor} />
-				) : (
-					<Ionicons name={action.icon} size={16} color={titleColor} />
+				{({ pressed }) => (
+					<LinearGradient
+						colors={iconGlassColors}
+						start={{ x: 0.12, y: 0.06 }}
+						end={{ x: 0.88, y: 0.94 }}
+						style={[
+							styles.collapsedIconButton,
+							{ borderColor: iconBorderColor },
+							pressed ? styles.collapsedIconButtonPressed : null,
+						]}
+					>
+						{action.iconType === "material" ? (
+							<MaterialCommunityIcons name={action.icon} size={18} color={titleColor} />
+						) : (
+							<Ionicons name={action.icon} size={16} color={titleColor} />
+						)}
+					</LinearGradient>
 				)}
 			</Pressable>
 
@@ -40,9 +61,24 @@ export default function MapHospitalDetailCollapsedRow({
 
 			<Pressable
 				onPress={onClose}
-				style={[styles.collapsedIconButton, { backgroundColor: iconSurfaceColor }]}
+				accessibilityRole="button"
+				accessibilityLabel="Close hospital details"
+				style={styles.collapsedIconButtonPressable}
 			>
-				<Ionicons name="close" size={18} color={titleColor} />
+				{({ pressed }) => (
+					<LinearGradient
+						colors={iconGlassColors}
+						start={{ x: 0.12, y: 0.06 }}
+						end={{ x: 0.88, y: 0.94 }}
+						style={[
+							styles.collapsedIconButton,
+							{ borderColor: iconBorderColor },
+							pressed ? styles.collapsedIconButtonPressed : null,
+						]}
+					>
+						<Ionicons name="close" size={18} color={titleColor} />
+					</LinearGradient>
+				)}
 			</Pressable>
 		</View>
 	);
