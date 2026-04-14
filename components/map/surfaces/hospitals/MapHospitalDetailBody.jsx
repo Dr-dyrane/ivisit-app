@@ -16,6 +16,13 @@ import { getCachedRemoteImageSource, getHospitalHeroSource } from "../../mapHosp
 import MapHospitalDetailServiceRail from "./MapHospitalDetailServiceRail";
 import { styles } from "./mapHospitalDetail.styles";
 
+const HALF_PANEL_OVERLAY_OFFSET = -16;
+const EXPANDED_PANEL_OVERLAY_OFFSET = -76;
+const HALF_PANEL_TOP_PADDING = 20;
+const EXPANDED_PANEL_TOP_PADDING = 46;
+const HALF_ACTION_ROW_HEADER_CLEARANCE = 46;
+const EXPANDED_ACTION_ROW_HEADER_CLEARANCE = 0;
+
 function renderIcon(item, color = COLORS.brandPrimary, size = 14) {
 	if (item.iconType === "material") {
 		return <MaterialCommunityIcons name={item.icon} size={size} color={color} />;
@@ -115,15 +122,15 @@ export default function MapHospitalDetailBody({
 	});
 	const detailPanelMarginTop = heroRevealProgress.interpolate({
 		inputRange: [0, 1],
-		outputRange: [-16, -76],
+		outputRange: [HALF_PANEL_OVERLAY_OFFSET, EXPANDED_PANEL_OVERLAY_OFFSET],
 	});
 	const detailPanelPaddingTop = heroRevealProgress.interpolate({
 		inputRange: [0, 1],
-		outputRange: [20, 46],
+		outputRange: [HALF_PANEL_TOP_PADDING, EXPANDED_PANEL_TOP_PADDING],
 	});
 	const actionRowMarginTop = heroRevealProgress.interpolate({
 		inputRange: [0, 1],
-		outputRange: [40, 0],
+		outputRange: [HALF_ACTION_ROW_HEADER_CLEARANCE, EXPANDED_ACTION_ROW_HEADER_CLEARANCE],
 	});
 	const placeHeaderHeight = heroRevealProgress.interpolate({
 		inputRange: [0, 1],
