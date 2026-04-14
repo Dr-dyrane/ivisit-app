@@ -26,6 +26,9 @@ export default function MapHospitalDetailStageBase({
 	onOpenHospitals,
 	onUseHospital,
 	onCycleHospital,
+	onOpenServiceDetail,
+	onSelectService,
+	serviceSelections = null,
 	onSnapStateChange,
 }) {
 	const { isDarkMode } = useTheme();
@@ -45,11 +48,9 @@ export default function MapHospitalDetailStageBase({
 	});
 	const [showFloatingTitle, setShowFloatingTitle] = useState(false);
 	const [expandedHeaderBottom, setExpandedHeaderBottom] = useState(null);
-	const [serviceSelectionsByHospital, setServiceSelectionsByHospital] = useState({});
 	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
 	const isHalf = snapState === MAP_SHEET_SNAP_STATES.HALF;
-	const hospitalSelectionKey = hospital?.id || "unknown";
-	const currentSelections = serviceSelectionsByHospital[hospitalSelectionKey] || {
+	const currentSelections = serviceSelections || {
 		ambulanceServiceId: null,
 		roomServiceId: null,
 	};
@@ -136,75 +137,39 @@ export default function MapHospitalDetailStageBase({
 		setExpandedHeaderBottom((current) => (current === nextBottom ? current : nextBottom));
 	}, []);
 
-	useEffect(() => {
-		const nextAmbulanceIds = model.ambulanceServiceCards
-			.filter((item) => !item?.isSkeleton && item?.enabled !== false)
-			.map((item, index) => item.id || item.title || `ambulance-${index}`);
-		const nextRoomIds = model.roomServiceCards
-			.filter((item) => !item?.isSkeleton && item?.enabled !== false)
-			.map((item, index) => item.id || item.title || `room-${index}`);
-
-		setServiceSelectionsByHospital((current) => {
-			const existing = current[hospitalSelectionKey] || {
-				ambulanceServiceId: null,
-				roomServiceId: null,
-			};
-			const nextAmbulanceServiceId =
-				existing.ambulanceServiceId && !nextAmbulanceIds.includes(existing.ambulanceServiceId)
-					? null
-					: existing.ambulanceServiceId;
-			const nextRoomServiceId =
-				existing.roomServiceId && !nextRoomIds.includes(existing.roomServiceId)
-					? null
-					: existing.roomServiceId;
-
-			if (
-				existing.ambulanceServiceId === nextAmbulanceServiceId &&
-				existing.roomServiceId === nextRoomServiceId
-			) {
-				return current;
-			}
-
-			return {
-				...current,
-				[hospitalSelectionKey]: {
-					ambulanceServiceId: nextAmbulanceServiceId,
-					roomServiceId: nextRoomServiceId,
-				},
-			};
-		});
-	}, [hospitalSelectionKey, model.ambulanceServiceCards, model.roomServiceCards]);
-
-	const setSelectedAmbulanceServiceId = useCallback(
-		(value) => {
-			setServiceSelectionsByHospital((current) => ({
-				...current,
-				[hospitalSelectionKey]: {
-					...(current[hospitalSelectionKey] || {
-						ambulanceServiceId: null,
-						roomServiceId: null,
-					}),
-					ambulanceServiceId: value,
-				},
-			}));
+	const handleOpenServiceDetails = useCallback(
+		(item, serviceType) => {
+			if (!hospital || !item || typeof onOpenServiceDetail !== "function") return;
+			const serviceItems =
+				serviceType === "room"
+					? model.roomServiceCards
+					: model.ambulanceServiceCards;
+			onOpenServiceDetail({
+				hospital,
+				service: item,
+				serviceType,
+				serviceItems: serviceItems.filter(
+					(entry) => !entry?.isSkeleton && entry?.enabled !== false,
+				),
+			});
 		},
-		[hospitalSelectionKey],
+		[hospital, model.ambulanceServiceCards, model.roomServiceCards, onOpenServiceDetail],
 	);
 
-	const setSelectedRoomServiceId = useCallback(
+	const handleSelectAmbulanceServiceId = useCallback(
 		(value) => {
-			setServiceSelectionsByHospital((current) => ({
-				...current,
-				[hospitalSelectionKey]: {
-					...(current[hospitalSelectionKey] || {
-						ambulanceServiceId: null,
-						roomServiceId: null,
-					}),
-					roomServiceId: value,
-				},
-			}));
+			if (!hospital?.id) return;
+			onSelectService?.(hospital.id, "ambulanceServiceId", value);
 		},
-		[hospitalSelectionKey],
+		[hospital?.id, onSelectService],
+	);
+
+	const handleSelectRoomServiceId = useCallback(
+		(value) => {
+			if (!hospital?.id) return;
+			onSelectService?.(hospital.id, "roomServiceId", value);
+		},
+		[hospital?.id, onSelectService],
 	);
 
 	useEffect(() => {
@@ -284,8 +249,9 @@ export default function MapHospitalDetailStageBase({
 						onCycleHospital={onCycleHospital}
 						selectedAmbulanceServiceId={currentSelections.ambulanceServiceId}
 						selectedRoomServiceId={currentSelections.roomServiceId}
-						onSelectAmbulanceServiceId={setSelectedAmbulanceServiceId}
-						onSelectRoomServiceId={setSelectedRoomServiceId}
+						onSelectAmbulanceServiceId={handleSelectAmbulanceServiceId}
+						onSelectRoomServiceId={handleSelectRoomServiceId}
+						onOpenServiceDetails={handleOpenServiceDetails}
 					/>
 				</MapStageBodyScroll>
 			)}

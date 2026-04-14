@@ -43,6 +43,10 @@ export default function MapScreen() {
 		guestProfileEmail,
 		guestProfileVisible,
 		handleChooseCare,
+		openServiceDetail,
+		closeServiceDetail,
+		confirmServiceDetail,
+		changeServiceDetailService,
 		handleMapHospitalPress,
 		handleMapReadinessChange,
 		handleOpenFeaturedHospital,
@@ -70,7 +74,10 @@ export default function MapScreen() {
 		recentVisitsVisible,
 		searchSheetMode,
 		sheetPhase,
+		sheetPayload,
 		selectedCare,
+		serviceSelectionsByHospital,
+		setHospitalServiceSelection,
 		setAuthModalVisible,
 		setCareHistoryVisible,
 		setGuestProfileEmail,
@@ -193,11 +200,17 @@ export default function MapScreen() {
 					onCloseSearch={closeSearchSheet}
 					onCloseHospitals={closeHospitalList}
 					onCloseHospitalDetail={closeHospitalDetail}
+					onOpenServiceDetail={openServiceDetail}
+					onCloseServiceDetail={closeServiceDetail}
+					onConfirmServiceDetail={confirmServiceDetail}
+					onChangeServiceDetail={changeServiceDetailService}
+					onSelectHospitalService={setHospitalServiceSelection}
 					searchMode={searchSheetMode}
 					hospitals={discoveredHospitals}
 					selectedHospitalId={nearestHospital?.id || null}
 					recommendedHospitalId={discoveredHospitals?.[0]?.id || null}
 					featuredHospital={featuredHospital}
+					sheetPayload={sheetPayload}
 					currentLocation={currentLocationDetails}
 					onSelectHospital={handleSelectHospital}
 					onUseCurrentLocation={handleUseCurrentLocation}
@@ -209,6 +222,7 @@ export default function MapScreen() {
 					onUseHospital={handleUseHospital}
 					profileImageSource={profileImageSource}
 					activeLocation={activeLocation}
+					serviceSelectionsByHospital={serviceSelectionsByHospital}
 					isSignedIn={isSignedIn}
 					nearbyHospitalCount={nearbyHospitalCount}
 					totalAvailableBeds={totalAvailableBeds}

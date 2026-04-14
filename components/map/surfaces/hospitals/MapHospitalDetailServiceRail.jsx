@@ -82,12 +82,15 @@ export default function MapHospitalDetailServiceRail({
 	onSelectId = null,
 	selectionEnabled: selectionEnabledProp = null,
 	showDetailAffordance = true,
+	onOpenDetails = null,
 }) {
 	const [uncontrolledSelectedId, setUncontrolledSelectedId] = useState(null);
 	if (!Array.isArray(items) || items.length === 0) return null;
 	const selectionEnabled =
 		typeof selectionEnabledProp === "boolean" ? selectionEnabledProp : compact;
-	const isControlledSelection = typeof onSelectId === "function" || controlledSelectedId !== null;
+	const hasControlledSelectedId =
+		controlledSelectedId !== null && controlledSelectedId !== undefined;
+	const isControlledSelection = typeof onSelectId === "function" || hasControlledSelectedId;
 	const selectedId = isControlledSelection ? controlledSelectedId : uncontrolledSelectedId;
 	const selectableIds = useMemo(
 		() =>
@@ -160,8 +163,9 @@ export default function MapHospitalDetailServiceRail({
 					);
 					const itemId = item.id || item.title || `${type}-${index}`;
 					const isDisabled = item.enabled === false;
-					const isSelected = selectionEnabled && selectedId === itemId;
-					const isPreviewMuted = selectionEnabled && !isSelected;
+					const shouldRenderSelectionState = selectionEnabled || hasControlledSelectedId;
+					const isSelected = shouldRenderSelectionState && selectedId === itemId;
+					const isPreviewMuted = shouldRenderSelectionState && !isSelected;
 					const overlayColors = isPreviewMuted
 						? ["rgba(8,15,27,0.08)", "rgba(8,15,27,0.22)", "rgba(8,15,27,0.78)"]
 						: ["rgba(8,15,27,0.03)", "rgba(8,15,27,0.14)", "rgba(8,15,27,0.70)"];
@@ -255,7 +259,26 @@ export default function MapHospitalDetailServiceRail({
 								</Text>
 								<ServiceValueBlock item={item} compact={compact} color={metaColor} />
 							</View>
-							{showDetailAffordance && !isDisabled ? (
+							{showDetailAffordance && !isDisabled && onOpenDetails ? (
+								<Pressable
+									onPress={(event) => {
+										event?.stopPropagation?.();
+										onOpenDetails?.(item, type);
+									}}
+									hitSlop={8}
+									style={[
+										styles.serviceDetailAffordance,
+										compact ? styles.serviceDetailAffordanceCompact : null,
+									]}
+								>
+									<Ionicons
+										name="chevron-forward"
+										size={compact ? 14 : 16}
+										color={isSelected ? "#FFFFFF" : "rgba(248,250,252,0.88)"}
+									/>
+								</Pressable>
+							) : null}
+							{showDetailAffordance && !isDisabled && !onOpenDetails ? (
 								<View
 									pointerEvents="none"
 									style={[

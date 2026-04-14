@@ -18,6 +18,7 @@ const ACTIONS = {
 	SET_MANUAL_LOCATION: "setManualLocation",
 	SET_GUEST_PROFILE_EMAIL: "setGuestProfileEmail",
 	SET_FEATURED_HOSPITAL: "setFeaturedHospital",
+	SET_SERVICE_SELECTIONS_BY_HOSPITAL: "setServiceSelectionsByHospital",
 	SET_SHEET_VIEW: "setSheetView",
 	SET_SHEET_PHASE: "setSheetPhase",
 	SET_SHEET_PAYLOAD: "setSheetPayload",
@@ -48,6 +49,7 @@ export function createInitialMapExploreFlowState(usesSidebarLayout) {
 		selection: {
 			selectedCare: null,
 			featuredHospital: null,
+			serviceSelectionsByHospital: {},
 		},
 		location: {
 			manualLocation: null,
@@ -161,6 +163,14 @@ function mapExploreFlowReducer(state, action) {
 					featuredHospital: action.value,
 				},
 			};
+		case ACTIONS.SET_SERVICE_SELECTIONS_BY_HOSPITAL:
+			return {
+				...state,
+				selection: {
+					...state.selection,
+					serviceSelectionsByHospital: action.value,
+				},
+			};
 		case ACTIONS.SET_SHEET_VIEW:
 			return {
 				...state,
@@ -255,6 +265,8 @@ export function useMapExploreFlowStore({ usesSidebarLayout }) {
 				dispatch({ type: ACTIONS.SET_GUEST_PROFILE_EMAIL, value }),
 			setFeaturedHospital: (value) =>
 				dispatch({ type: ACTIONS.SET_FEATURED_HOSPITAL, value }),
+			setServiceSelectionsByHospital: (value) =>
+				dispatch({ type: ACTIONS.SET_SERVICE_SELECTIONS_BY_HOSPITAL, value }),
 			setSheetView: ({ phase, snapState, payload }) =>
 				dispatch({ type: ACTIONS.SET_SHEET_VIEW, phase, snapState, payload }),
 			setSheetPhase: (value) =>

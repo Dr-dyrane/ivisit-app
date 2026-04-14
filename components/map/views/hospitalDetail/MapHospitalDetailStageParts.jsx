@@ -133,6 +133,7 @@ export function MapHospitalDetailBodyContent({
 	selectedRoomServiceId,
 	onSelectAmbulanceServiceId,
 	onSelectRoomServiceId,
+	onOpenServiceDetails,
 }) {
 	return (
 		<MapHospitalDetailBody
@@ -144,6 +145,7 @@ export function MapHospitalDetailBodyContent({
 			selectedRoomServiceId={selectedRoomServiceId}
 			onSelectAmbulanceServiceId={onSelectAmbulanceServiceId}
 			onSelectRoomServiceId={onSelectRoomServiceId}
+			onOpenServiceDetails={onOpenServiceDetails}
 		/>
 	);
 }

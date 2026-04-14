@@ -12,7 +12,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../../../constants/colors";
-import { getHospitalHeroSource } from "../../mapHospitalImage";
+import { getCachedRemoteImageSource, getHospitalHeroSource } from "../../mapHospitalImage";
 import MapHospitalDetailServiceRail from "./MapHospitalDetailServiceRail";
 import { styles } from "./mapHospitalDetail.styles";
 
@@ -32,6 +32,7 @@ export default function MapHospitalDetailBody({
 	selectedRoomServiceId = null,
 	onSelectAmbulanceServiceId = () => {},
 	onSelectRoomServiceId = () => {},
+	onOpenServiceDetails = () => {},
 }) {
 	const {
 		cardSurface,
@@ -52,6 +53,11 @@ export default function MapHospitalDetailBody({
 	} = model;
 
 	const hasGallery = galleryPhotos.length > 1;
+	const heroSource = useMemo(() => getHospitalHeroSource(hospital), [hospital]);
+	const galleryPhotoSources = useMemo(
+		() => galleryPhotos.map((photo) => getCachedRemoteImageSource(photo)).filter(Boolean),
+		[galleryPhotos],
+	);
 	const headerSubtitle = summary.addressLine || summary.subtitle || "Nearby hospital";
 	const panelSurface = isDarkMode ? "rgba(8,15,27,0.34)" : "rgba(248,250,252,0.38)";
 	const panelSurfaceBottom = isDarkMode ? "rgba(8,15,27,0.10)" : "rgba(248,250,252,0.10)";
@@ -169,8 +175,9 @@ export default function MapHospitalDetailBody({
 							style={styles.expandedCardSurface}
 						/>
 						<ImageBackground
-							source={getHospitalHeroSource(hospital)}
+							source={heroSource}
 							resizeMode="cover"
+							fadeDuration={0}
 							style={styles.expandedHero}
 							imageStyle={styles.expandedHeroImage}
 							{...heroSwipeHandlers}
@@ -324,6 +331,7 @@ export default function MapHospitalDetailBody({
 								selectedId={selectedAmbulanceServiceId}
 								onSelectId={onSelectAmbulanceServiceId}
 								selectionEnabled
+								onOpenDetails={onOpenServiceDetails}
 							/>
 
 							<MapHospitalDetailServiceRail
@@ -335,6 +343,7 @@ export default function MapHospitalDetailBody({
 								selectedId={selectedRoomServiceId}
 								onSelectId={onSelectRoomServiceId}
 								selectionEnabled
+								onOpenDetails={onOpenServiceDetails}
 							/>
 
 							{hasGallery ? (
@@ -349,8 +358,9 @@ export default function MapHospitalDetailBody({
 									{galleryPhotos.map((photo, index) => (
 										<ImageBackground
 											key={`${photo}-${index}`}
-											source={{ uri: photo }}
+											source={galleryPhotoSources[index]}
 											resizeMode="cover"
+											fadeDuration={0}
 											style={styles.galleryTile}
 											imageStyle={styles.galleryTileImage}
 										>
@@ -386,8 +396,9 @@ export default function MapHospitalDetailBody({
 				]}
 			>
 				<ImageBackground
-					source={getHospitalHeroSource(hospital)}
+					source={heroSource}
 					resizeMode="cover"
+					fadeDuration={0}
 					style={styles.hero}
 					imageStyle={styles.heroImage}
 				>
@@ -562,6 +573,7 @@ export default function MapHospitalDetailBody({
 						selectedId={selectedAmbulanceServiceId}
 						onSelectId={onSelectAmbulanceServiceId}
 						selectionEnabled
+						onOpenDetails={onOpenServiceDetails}
 					/>
 
 					<MapHospitalDetailServiceRail
@@ -573,6 +585,7 @@ export default function MapHospitalDetailBody({
 						selectedId={selectedRoomServiceId}
 						onSelectId={onSelectRoomServiceId}
 						selectionEnabled
+						onOpenDetails={onOpenServiceDetails}
 					/>
 
 					{hasGallery ? (
@@ -587,8 +600,9 @@ export default function MapHospitalDetailBody({
 							{galleryPhotos.map((photo, index) => (
 								<ImageBackground
 									key={`${photo}-${index}`}
-									source={{ uri: photo }}
+									source={galleryPhotoSources[index]}
 									resizeMode="cover"
+									fadeDuration={0}
 									style={styles.galleryTile}
 									imageStyle={styles.galleryTileImage}
 								>

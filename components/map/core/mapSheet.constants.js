@@ -3,6 +3,7 @@ export const MAP_SHEET_PHASES = {
 	SEARCH: "search",
 	HOSPITAL_LIST: "hospital_list",
 	HOSPITAL_DETAIL: "hospital_detail",
+	SERVICE_DETAIL: "service_detail",
 	CARE_HISTORY: "care_history",
 	RECENT_VISITS: "recent_visits",
 	HOSPITAL_PREVIEW: "hospital_preview",

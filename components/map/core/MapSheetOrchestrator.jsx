@@ -3,6 +3,7 @@ import MapHospitalDetailOrchestrator from "../views/hospitalDetail/MapHospitalDe
 import MapExploreIntentOrchestrator from "../views/exploreIntent/MapExploreIntentOrchestrator";
 import MapHospitalListOrchestrator from "../views/hospitalList/MapHospitalListOrchestrator";
 import MapSearchOrchestrator from "../views/search/MapSearchOrchestrator";
+import MapServiceDetailOrchestrator from "../views/serviceDetail/MapServiceDetailOrchestrator";
 import { MAP_SEARCH_SHEET_MODES } from "../surfaces/search/mapSearchSheet.helpers";
 import {
 	MAP_SHEET_MODES,
@@ -37,6 +38,11 @@ export default function MapSheetOrchestrator({
 	onCloseSearch = () => {},
 	onCloseHospitals = () => {},
 	onCloseHospitalDetail = () => {},
+	onOpenServiceDetail = () => {},
+	onCloseServiceDetail = () => {},
+	onConfirmServiceDetail = () => {},
+	onChangeServiceDetail = () => {},
+	onSelectHospitalService = () => {},
 	searchMode = MAP_SEARCH_SHEET_MODES.SEARCH,
 	hospitals = [],
 	selectedHospitalId = null,
@@ -48,6 +54,8 @@ export default function MapSheetOrchestrator({
 	onSelectLocation = () => {},
 	onChangeHospitalLocation = () => {},
 	activeLocation = null,
+	sheetPayload = null,
+	serviceSelectionsByHospital = {},
 	onUseHospital = undefined,
 	profileImageSource,
 	isSignedIn = false,
@@ -109,6 +117,26 @@ export default function MapSheetOrchestrator({
 					onOpenHospitals={onOpenHospitals}
 					onUseHospital={onUseHospital}
 					onCycleHospital={onCycleHospital}
+					onOpenServiceDetail={onOpenServiceDetail}
+					onSelectService={onSelectHospitalService}
+					serviceSelections={serviceSelectionsByHospital[featuredHospital?.id || "unknown"] || null}
+					onSnapStateChange={onSnapStateChange}
+				/>
+			);
+		case MAP_SHEET_PHASES.SERVICE_DETAIL:
+			return (
+				<MapServiceDetailOrchestrator
+					sheetHeight={sheetHeight}
+					snapState={snapState}
+					payload={sheetPayload}
+					selectedServiceId={
+						sheetPayload?.serviceType === "room"
+							? serviceSelectionsByHospital[sheetPayload?.hospital?.id || "unknown"]?.roomServiceId ?? null
+							: serviceSelectionsByHospital[sheetPayload?.hospital?.id || "unknown"]?.ambulanceServiceId ?? null
+					}
+					onClose={onCloseServiceDetail}
+					onConfirm={onConfirmServiceDetail}
+					onChangeService={onChangeServiceDetail}
 					onSnapStateChange={onSnapStateChange}
 				/>
 			);

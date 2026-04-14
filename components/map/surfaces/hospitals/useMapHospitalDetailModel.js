@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Linking } from "react-native";
+import { Image, Linking } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useMapRoute } from "../../../../hooks/emergency/useMapRoute";
 import { hospitalsService } from "../../../../services/hospitalsService";
+import { getHospitalHeroSource } from "../../mapHospitalImage";
 import {
 	buildAmbulanceServiceCards,
 	buildDirectionsUrl,
@@ -49,6 +50,7 @@ export default function useMapHospitalDetailModel({
 	const heroBadges = useMemo(() => buildHeroBadges(hospital), [hospital]);
 	const roomRows = useMemo(() => buildRoomRows(hospital), [hospital]);
 	const galleryPhotos = useMemo(() => buildPhotoGallery(hospital), [hospital]);
+	const heroSource = useMemo(() => getHospitalHeroSource(hospital), [hospital]);
 	const placeStats = useMemo(() => buildPlaceStats(hospital, routeInfo), [hospital, routeInfo]);
 	const summary = useMemo(
 		() => buildHospitalDetailSummary(hospital, routeInfo),
@@ -128,6 +130,18 @@ export default function useMapHospitalDetailModel({
 		origin?.longitude,
 		visible,
 	]);
+	useEffect(() => {
+		if (!visible) return;
+		const heroUri = typeof heroSource?.uri === "string" ? heroSource.uri : null;
+		const uris = [heroUri, ...galleryPhotos].filter(
+			(uri, index, items) =>
+				typeof uri === "string" && uri.trim().length > 0 && items.indexOf(uri) === index,
+		);
+
+		uris.forEach((uri) => {
+			Image.prefetch(uri).catch(() => {});
+		});
+	}, [galleryPhotos, heroSource, visible]);
 
 	const handleUseHospital = useCallback(() => {
 		onUseHospital?.(hospital);
