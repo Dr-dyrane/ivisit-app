@@ -323,7 +323,8 @@ Acceptance:
 
 Status:
 
-- Documented as planned shell-level refactor; not implemented in the current checkpoint.
+- First-pass shell-level implementation added through `useMapSheetShell` and `mapSheetShell.gestures.js`.
+- Still requires device verification across iOS, Android, web wheel/trackpad, and wide-screen presentations.
 
 ## 4. Recommended Execution Order
 

@@ -9,6 +9,7 @@ import {
 	getMapViewportSurfaceConfig,
 	getMapViewportVariant,
 } from "./core/mapViewportConfig";
+import { getMapSheetHeight, MAP_SHEET_SNAP_STATES } from "./core/mapSheet.constants";
 import {
 	getMapSheetContentPadding,
 	getMapSheetHostLayout,
@@ -44,7 +45,6 @@ export function useMapSheetShell({
 		isSidebar,
 		resolvedSnapState,
 		isCollapsed,
-		snapTarget,
 		shouldUseHeaderGestureRegion,
 		shouldUseBodyGestureRegion,
 	} = useMemo(
@@ -56,8 +56,8 @@ export function useMapSheetShell({
 			}),
 		[presentationMode, platformMotion, snapState],
 	);
-	const snapProgress = useRef(new Animated.Value(snapTarget)).current;
-	const dragTranslateY = useRef(new Animated.Value(0)).current;
+	const sheetHeightValue = useRef(new Animated.Value(sheetHeight)).current;
+	const sheetHeightValueRef = useRef(sheetHeight);
 	const hasMountedRef = useRef(false);
 	const snapSpringConfig = useMemo(
 		() => ({
@@ -66,69 +66,68 @@ export function useMapSheetShell({
 		}),
 		[isAndroid, platformMotion],
 	);
+	const getHeightForSnapState = useMemo(
+		() => (state) => getMapSheetHeight(height, state),
+		[height],
+	);
+	const collapsedHeight = getHeightForSnapState(MAP_SHEET_SNAP_STATES.COLLAPSED);
+	const halfHeight = getHeightForSnapState(MAP_SHEET_SNAP_STATES.HALF);
+	const expandedHeight = getHeightForSnapState(MAP_SHEET_SNAP_STATES.EXPANDED);
+	const sheetChromeProgress = sheetHeightValue.interpolate({
+		inputRange: [collapsedHeight, halfHeight, expandedHeight],
+		outputRange: [0, 1, 2],
+		extrapolate: "clamp",
+	});
 
 	useEffect(() => {
 		if (!hasMountedRef.current) {
-			snapProgress.setValue(snapTarget);
+			sheetHeightValue.setValue(sheetHeight);
+			sheetHeightValueRef.current = sheetHeight;
 			hasMountedRef.current = true;
 			return;
 		}
 
-		Animated.spring(snapProgress, {
-			toValue: snapTarget,
+		sheetHeightValueRef.current = sheetHeight;
+		Animated.spring(sheetHeightValue, {
+			toValue: sheetHeight,
 			useNativeDriver: false,
 			...snapSpringConfig,
 		}).start();
-	}, [snapProgress, snapSpringConfig, snapTarget]);
+	}, [sheetHeight, sheetHeightValue, snapSpringConfig]);
 
-	useEffect(() => {
-		dragTranslateY.stopAnimation((currentValue) => {
-			if (Math.abs(currentValue) < 0.5) {
-				dragTranslateY.setValue(0);
-				return;
-			}
-
-			Animated.spring(dragTranslateY, {
-				toValue: 0,
-				useNativeDriver: false,
-				...snapSpringConfig,
-			}).start();
-		});
-	}, [dragTranslateY, snapSpringConfig, snapState]);
-
-	const sideInset = snapProgress.interpolate({
+	const sideInset = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
 		outputRange: [16, tokens.islandMargin, 0],
 	});
-	const bottomInset = snapProgress.interpolate({
+	const bottomInset = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
 		outputRange: [18, tokens.islandMargin, 0],
 	});
-	const topRadius = snapProgress.interpolate({
+	const topRadius = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
 		outputRange: [34, tokens.sheetRadius, 34],
 	});
-	const bottomRadius = snapProgress.interpolate({
+	const bottomRadius = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
 		outputRange: [34, tokens.sheetRadius, 0],
 	});
-	const handleWidth = snapProgress.interpolate({
+	const handleWidth = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
 		outputRange: [54, 48, 46],
 	});
-	const horizontalPadding = snapProgress.interpolate({
+	const horizontalPadding = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
 		outputRange: [0, 0, 0],
 	});
-	const topPadding = snapProgress.interpolate({
+	const topPadding = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
 		outputRange: [2, 6, 8],
 	});
-	const bottomPadding = snapProgress.interpolate({
+	const bottomPadding = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
 		outputRange: [4, 10, 12],
 	});
-	const handleBottomMargin = snapProgress.interpolate({
+	const handleBottomMargin = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
 		outputRange: [3, 6, 7],
 	});
@@ -138,19 +137,22 @@ export function useMapSheetShell({
 			createMapSheetPanResponder({
 				allowedSnapStates,
 				isSidebar,
-				dragTranslateY,
+				getHeightForSnapState,
 				platformMotion,
 				resolvedSnapState,
 				onHandlePress,
+				sheetHeightValue,
+				sheetHeightValueRef,
 				snapSpringConfig,
 			}),
 		[
 			allowedSnapStates,
-			dragTranslateY,
+			getHeightForSnapState,
 			isSidebar,
 			onHandlePress,
 			platformMotion,
 			resolvedSnapState,
+			sheetHeightValue,
 			snapSpringConfig,
 		],
 	);
@@ -173,8 +175,7 @@ export function useMapSheetShell({
 		shellWidth,
 		sideInset,
 		bottomInset,
-		sheetHeight,
-		dragTranslateY,
+		sheetHeight: sheetHeightValue,
 		insets,
 		viewportHeight: height,
 		sidebarOuterInset: surfaceConfig.sidebarOuterInset ?? 14,

@@ -2,6 +2,7 @@ import { Animated, PanResponder } from "react-native";
 import {
 	getNextAllowedMapSheetSnapStateDown,
 	getNextAllowedMapSheetSnapStateUp,
+	MAP_SHEET_SNAP_STATE_ORDER,
 	MAP_SHEET_SNAP_STATES,
 } from "./core/mapSheet.constants";
 
@@ -12,9 +13,17 @@ function shouldCaptureVerticalPan(gestureState, activationOffset, axisLockRatio 
 	return absDy > activationOffset && absDy > absDx * axisLockRatio;
 }
 
-function resetDragTranslateY(dragTranslateY, snapSpringConfig) {
-	Animated.spring(dragTranslateY, {
-		toValue: 0,
+function springSheetHeightToDetent({
+	getHeightForSnapState,
+	sheetHeightValue,
+	sheetHeightValueRef,
+	snapSpringConfig,
+	targetSnapState,
+}) {
+	const targetHeight = getHeightForSnapState(targetSnapState);
+	sheetHeightValueRef.current = targetHeight;
+	Animated.spring(sheetHeightValue, {
+		toValue: targetHeight,
 		useNativeDriver: false,
 		...snapSpringConfig,
 	}).start();
@@ -23,12 +32,25 @@ function resetDragTranslateY(dragTranslateY, snapSpringConfig) {
 export function createMapSheetPanResponder({
 	allowedSnapStates,
 	isSidebar,
-	dragTranslateY,
+	getHeightForSnapState,
 	platformMotion,
 	resolvedSnapState,
 	onHandlePress,
+	sheetHeightValue,
+	sheetHeightValueRef,
 	snapSpringConfig,
 }) {
+	const gestureStartHeightRef = { current: getHeightForSnapState(resolvedSnapState) };
+	const orderedAllowedSnapStates =
+		Array.isArray(allowedSnapStates) && allowedSnapStates.length > 0
+			? allowedSnapStates
+			: MAP_SHEET_SNAP_STATE_ORDER;
+	const allowedHeights = orderedAllowedSnapStates
+		.map((state) => getHeightForSnapState(state))
+		.filter((value) => Number.isFinite(value));
+	const minAllowedHeight = allowedHeights.length > 0 ? Math.min(...allowedHeights) : 0;
+	const maxAllowedHeight = allowedHeights.length > 0 ? Math.max(...allowedHeights) : Infinity;
+
 	return PanResponder.create({
 		onMoveShouldSetPanResponder: (_, gestureState) => {
 			if (isSidebar) return false;
@@ -47,21 +69,22 @@ export function createMapSheetPanResponder({
 			);
 		},
 		onPanResponderGrant: () => {
-			dragTranslateY.stopAnimation();
+			sheetHeightValue.stopAnimation((value) => {
+				const resolvedValue = Number.isFinite(value)
+					? value
+					: getHeightForSnapState(resolvedSnapState);
+				gestureStartHeightRef.current = resolvedValue;
+				sheetHeightValueRef.current = resolvedValue;
+			});
 		},
 		onPanResponderMove: (_, gestureState) => {
 			if (isSidebar) return;
-			const rawDy = gestureState.dy;
-			const minDy =
-				resolvedSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
-					? 0
-					: platformMotion.sheet.dragRange.up;
-			const maxDy =
-				resolvedSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED
-					? 0
-					: platformMotion.sheet.dragRange.down;
-			const clampedDy = Math.max(minDy, Math.min(maxDy, rawDy));
-			dragTranslateY.setValue(clampedDy);
+			const nextHeight = Math.max(
+				minAllowedHeight,
+				Math.min(maxAllowedHeight, gestureStartHeightRef.current - gestureState.dy),
+			);
+			sheetHeightValueRef.current = nextHeight;
+			sheetHeightValue.setValue(nextHeight);
 		},
 		onPanResponderRelease: (_, gestureState) => {
 			if (isSidebar) return;
@@ -97,10 +120,22 @@ export function createMapSheetPanResponder({
 				return;
 			}
 
-			resetDragTranslateY(dragTranslateY, snapSpringConfig);
+			springSheetHeightToDetent({
+				getHeightForSnapState,
+				sheetHeightValue,
+				sheetHeightValueRef,
+				snapSpringConfig,
+				targetSnapState: resolvedSnapState,
+			});
 		},
 		onPanResponderTerminate: () => {
-			resetDragTranslateY(dragTranslateY, snapSpringConfig);
+			springSheetHeightToDetent({
+				getHeightForSnapState,
+				sheetHeightValue,
+				sheetHeightValueRef,
+				snapSpringConfig,
+				targetSnapState: resolvedSnapState,
+			});
 		},
 	});
 }

@@ -115,7 +115,7 @@ Working rule:
 - do not flatten `hospital_detail` expanded and half layouts into one generic body tree unless the expanded hero/title overlap is preserved exactly
 - behavior reuse is not enough if the visual contract changes
 
-## 7. Planned sheet-growth choreography refactor
+## 7. Sheet-growth choreography refactor
 
 Current problem:
 
@@ -132,15 +132,20 @@ Desired behavior:
 - the spring animates height to the chosen detent
 - `translateY` is reserved for dismissal/offscreen motion, not ordinary half-to-expanded growth
 
-Implementation plan:
+Implementation model:
 
-1. Add a continuous `animatedSheetHeight` driver in `useMapSheetShell`.
-2. Clamp live height between the active allowed detents.
-3. Feed pan gesture translation into height instead of visually lifting the sheet.
-4. On release, choose the next detent using the existing tokenized distance/velocity rules.
-5. Spring `animatedSheetHeight` to the selected detent, then commit `snapState`.
-6. Reuse the same height spring for scroll and wheel detent changes so iOS, Android, and web share one choreography path.
-7. Keep phase content untouched during the first pass; only the shell growth model changes.
+1. `useMapSheetShell` owns a continuous `sheetHeightValue` animated driver.
+2. `mapSheetShell.gestures.js` feeds pan translation into height instead of visually lifting the sheet.
+3. Live height is clamped between the active allowed detents.
+4. Release velocity and distance still choose the final detent using shared motion tokens.
+5. The shell springs `sheetHeightValue` to the selected detent height.
+6. Sheet chrome, radius, inset, padding, and handle width interpolate from live height.
+7. Phase content remains unchanged; the shell owns snap choreography.
+
+Status:
+
+- First-pass shell-level implementation is in place.
+- Device verification is still required for iOS, Android, web wheel/trackpad, and wide-screen sidebar presentations.
 
 Guardrails:
 

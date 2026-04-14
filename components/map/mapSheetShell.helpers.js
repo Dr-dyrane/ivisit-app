@@ -1,12 +1,9 @@
-import { MAP_SHEET_SNAP_INDEX, MAP_SHEET_SNAP_STATES } from "./core/mapSheet.constants";
+import { MAP_SHEET_SNAP_STATES } from "./core/mapSheet.constants";
 
 export function getResolvedMapSheetState({ presentationMode = "sheet", snapState, platformMotion }) {
 	const isSidebar = presentationMode === "sidebar";
 	const resolvedSnapState = isSidebar ? MAP_SHEET_SNAP_STATES.EXPANDED : snapState;
 	const isCollapsed = resolvedSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
-	const snapTarget =
-		MAP_SHEET_SNAP_INDEX[resolvedSnapState] ??
-		MAP_SHEET_SNAP_INDEX[MAP_SHEET_SNAP_STATES.HALF];
 	const shouldUseHeaderGestureRegion =
 		!isSidebar && Boolean(platformMotion?.sheet?.enableHeaderGestureRegion);
 	const shouldUseBodyGestureRegion =
@@ -21,7 +18,6 @@ export function getResolvedMapSheetState({ presentationMode = "sheet", snapState
 		isSidebar,
 		resolvedSnapState,
 		isCollapsed,
-		snapTarget,
 		shouldUseHeaderGestureRegion,
 		shouldUseBodyGestureRegion,
 	};
@@ -63,7 +59,6 @@ export function getMapSheetHostLayout({
 	sideInset,
 	bottomInset,
 	sheetHeight,
-	dragTranslateY,
 	insets,
 	viewportHeight,
 	sidebarOuterInset = 14,
@@ -93,6 +88,6 @@ export function getMapSheetHostLayout({
 		width: useFloatingShell ? shellWidth : undefined,
 		bottom: bottomInset,
 		height: sheetHeight,
-		transform: [{ translateY: dragTranslateY }],
+		transform: [{ translateY: 0 }],
 	};
 }
