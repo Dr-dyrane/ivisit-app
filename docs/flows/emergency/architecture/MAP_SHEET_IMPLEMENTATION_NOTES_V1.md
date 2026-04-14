@@ -115,7 +115,41 @@ Working rule:
 - do not flatten `hospital_detail` expanded and half layouts into one generic body tree unless the expanded hero/title overlap is preserved exactly
 - behavior reuse is not enough if the visual contract changes
 
-## 7. Preserve structure before abstracting
+## 7. Planned sheet-growth choreography refactor
+
+Current problem:
+
+- during drag, the shell can visually move the current half-height sheet upward before committing the expanded height
+- this makes the sheet feel like a lifted card instead of a bottom-anchored surface growing upward
+- the same issue appears in reverse when collapsing, where the sheet can look like it jumps before settling
+
+Desired behavior:
+
+- the sheet bottom remains anchored to the bottom safe area during normal snap changes
+- dragging upward continuously increases sheet height from `half` toward `expanded`
+- dragging downward continuously decreases sheet height from `expanded` toward `half`
+- release velocity and distance choose the final detent
+- the spring animates height to the chosen detent
+- `translateY` is reserved for dismissal/offscreen motion, not ordinary half-to-expanded growth
+
+Implementation plan:
+
+1. Add a continuous `animatedSheetHeight` driver in `useMapSheetShell`.
+2. Clamp live height between the active allowed detents.
+3. Feed pan gesture translation into height instead of visually lifting the sheet.
+4. On release, choose the next detent using the existing tokenized distance/velocity rules.
+5. Spring `animatedSheetHeight` to the selected detent, then commit `snapState`.
+6. Reuse the same height spring for scroll and wheel detent changes so iOS, Android, and web share one choreography path.
+7. Keep phase content untouched during the first pass; only the shell growth model changes.
+
+Guardrails:
+
+- do not implement this phase-by-phase
+- do not break Android body scroll handoff
+- do not allow expanded-to-half to skip into collapsed/close
+- verify `explore_intent` first before rolling confidence to `search`, `hospital_list`, `hospital_detail`, and `service_detail`
+
+## 8. Preserve structure before abstracting
 
 When refactoring map sheet phases:
 
@@ -134,7 +168,7 @@ The unsafe abstraction boundary is:
 
 - collapsing the expanded and half visual trees into one simplified content tree without pixel-level validation
 
-## 8. Selection-state lesson
+## 9. Selection-state lesson
 
 For rail/card selection inside a sheet phase:
 
@@ -146,7 +180,7 @@ Rule:
 - surface components should render selection
 - stage or flow state should own selection persistence
 
-## 9. Gesture lesson
+## 10. Gesture lesson
 
 The current Android expanded-to-half fix works because gesture ownership is explicit:
 
@@ -159,7 +193,7 @@ Rule:
 
 - do not stack multiple competing responder systems when one explicit gesture path can own the behavior
 
-## 10. Corner and Liquid Glass lesson
+## 11. Corner and Liquid Glass lesson
 
 The map sheet family should share one corner/material language:
 
@@ -173,7 +207,7 @@ Rule:
 
 - if a new map surface introduces a rounded card, button, or sheet without continuous corners or a tokenized material decision, treat it as visual-system drift
 
-## 11. Practical review checklist
+## 12. Practical review checklist
 
 Before closing any future map-sheet refactor:
 

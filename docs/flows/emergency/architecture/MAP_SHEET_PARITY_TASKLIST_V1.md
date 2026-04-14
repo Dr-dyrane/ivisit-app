@@ -179,12 +179,14 @@ Observed:
 - phase transitions now use a shared fade/translate wrapper
 - snap springs and Android body gesture thresholds are tokenized
 - looping pulse motion is reduced after selection/expanded state
+- current drag feedback can still lift a fixed-height sheet before the final detent height commits
 
 Acceptance:
 
 - phase changes feel continuous without looking like route changes
 - Android pull-down collapse feels deliberate, not loose
 - iOS/web scroll-detents remain steady and do not collapse too far
+- half-to-expanded and expanded-to-half growth stays bottom-anchored instead of visually jumping
 - no animated feedback runs after it has stopped serving user intent
 
 ## 3. Immediate Task Backlog
@@ -304,6 +306,25 @@ Acceptance:
 - `mapMotionTokens` owns gesture sensitivity and wheel cooldowns
 - search keyboard behavior follows the focus rule
 
+## Task I. Refactor sheet snap choreography to bottom-anchored height growth
+
+Goal:
+
+- replace lifted-card drag feedback with continuous bottom-anchored sheet growth
+
+Acceptance:
+
+- dragging from `half` to `expanded` visibly grows sheet height upward while the bottom stays planted
+- dragging from `expanded` to `half` visibly shrinks sheet height downward while the bottom stays planted
+- release springs to the chosen detent using the shared motion tokens
+- `translateY` is reserved for dismiss/offscreen movement, not ordinary detent growth
+- scroll, wheel, and Android pan detents all feed the same shell-level height animation path
+- phase internals do not need custom snap choreography
+
+Status:
+
+- Documented as planned shell-level refactor; not implemented in the current checkpoint.
+
 ## 4. Recommended Execution Order
 
 Use this order:
@@ -316,6 +337,7 @@ Use this order:
 6. Task F. Wide-screen left panel parity
 7. Task G. Final glass/material parity pass
 8. Task H. Shared motion and header chrome verification
+9. Task I. Bottom-anchored sheet-growth choreography refactor
 
 Reason:
 
