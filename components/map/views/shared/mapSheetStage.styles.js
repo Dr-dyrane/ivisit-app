@@ -38,16 +38,16 @@ const sheetStageStyles = StyleSheet.create({
 		paddingHorizontal: 16,
 	},
 	iconButton: {
-		width: 42,
-		height: 42,
-		borderRadius: 21,
+		width: 38,
+		height: 38,
+		borderRadius: 999,
 		alignItems: "center",
 		justifyContent: "center",
 	},
 	iconButtonCompact: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
+		width: 38,
+		height: 38,
+		borderRadius: 999,
 	},
 });
 

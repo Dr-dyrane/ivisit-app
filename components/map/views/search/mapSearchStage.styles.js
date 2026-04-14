@@ -18,6 +18,8 @@ export default StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 8,
+		overflow: "hidden",
+		position: "relative",
 	},
 	searchPillCollapsed: {
 		minHeight: 40,
@@ -43,12 +45,14 @@ export default StyleSheet.create({
 		marginBottom: 0,
 	},
 	closeButton: {
-		width: 42,
-		height: 42,
-		borderRadius: 21,
+		width: 38,
+		height: 38,
+		borderRadius: 999,
 		alignItems: "center",
 		justifyContent: "center",
 		zIndex: 2,
+		overflow: "hidden",
+		position: "relative",
 	},
 	closeButtonDisabled: {
 		opacity: 0.72,

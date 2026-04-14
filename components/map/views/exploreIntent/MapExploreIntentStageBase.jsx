@@ -186,6 +186,7 @@ export default function MapExploreIntentStageBase({
 			presentationMode={presentationMode}
 			shellMaxWidth={shellMaxWidth}
 			tokens={tokens}
+			isDarkMode={isDarkMode}
 			onOpenSearch={onOpenSearch}
 			onOpenProfile={onOpenProfile}
 			profileImageSource={profileImageSource}

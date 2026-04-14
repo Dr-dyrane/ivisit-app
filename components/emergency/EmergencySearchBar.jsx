@@ -7,6 +7,7 @@ import React, {
 	useState,
 } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, Platform, ScrollView } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
 	useAnimatedStyle,
@@ -39,6 +40,7 @@ const EmergencySearchBar = forwardRef(function EmergencySearchBar({
 	showSuggestions = true,
 	autoFocus = false,
 	compact = false,
+	glassSurface = false,
 	style,
 }, ref) {
 	const { isDarkMode } = useTheme();
@@ -75,10 +77,14 @@ const EmergencySearchBar = forwardRef(function EmergencySearchBar({
 	const inputGlassSurface = isFocused
 		? (isAndroid
 			? (isDarkMode ? "rgba(30, 41, 59, 0.78)" : "rgba(255, 255, 255, 0.88)")
-			: activeBG)
+			: glassSurface
+				? (isDarkMode ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.42)")
+				: activeBG)
 		: (isAndroid
 			? (isDarkMode ? "rgba(18, 24, 38, 0.74)" : "rgba(238, 242, 247, 0.80)")
-			: backgroundColor);
+			: glassSurface
+				? (isDarkMode ? "rgba(255,255,255,0.045)" : "rgba(255,255,255,0.28)")
+				: backgroundColor);
 	const inputShadowLayer = isFocused
 		? (isDarkMode ? "rgba(134, 16, 14, 0.16)" : "rgba(134, 16, 14, 0.10)")
 		: (isDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(15, 23, 42, 0.12)");
@@ -91,15 +97,18 @@ const EmergencySearchBar = forwardRef(function EmergencySearchBar({
 			: "rgba(0,0,0,0.05)");
 	const micShadowLayer = isDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(15, 23, 42, 0.12)";
 	const dropdownShadowLayer = isDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(15, 23, 42, 0.12)";
-	const inputHeight = compact ? 48 : 56;
-	const inputRadius = compact ? 24 : 28;
-	const inputPaddingX = compact ? 14 : 16;
-	const searchIconSize = compact ? 18 : 20;
-	const searchIconMarginRight = compact ? 8 : 10;
-	const inputFontSize = compact ? 15 : 16;
-	const micSize = compact ? 34 : 38;
+	const inputHeight = compact ? 38 : 56;
+	const inputRadius = compact ? 18 : 28;
+	const inputPaddingX = compact ? 12 : 16;
+	const searchIconSize = compact ? 17 : 20;
+	const searchIconMarginRight = compact ? 7 : 10;
+	const inputFontSize = compact ? 14 : 16;
+	const micSize = compact ? 28 : 38;
 	const micRadius = compact ? 10 : 12;
 	const clearButtonPadding = compact ? 3 : 4;
+	const inputGlassColors = isDarkMode
+		? ["rgba(255,255,255,0.13)", "rgba(148,163,184,0.065)", "rgba(255,255,255,0.02)"]
+		: ["rgba(255,255,255,0.86)", "rgba(255,255,255,0.52)", "rgba(255,255,255,0.22)"];
 
 	const handleFocus = useCallback(() => {
 		setIsFocused(true);
@@ -135,13 +144,16 @@ const EmergencySearchBar = forwardRef(function EmergencySearchBar({
 	return (
 		<View style={[styles.wrapper, style]}>
 			<Animated.View style={[styles.container, animatedContainerStyle]}>
-				<View style={styles.inputShell}>
+				<View style={[styles.inputShell, { borderRadius: inputRadius }]}>
 					{isAndroid && (
 						<View
 							pointerEvents="none"
 							style={[
 								styles.inputShadowUnderlay,
-								{ backgroundColor: inputShadowLayer },
+								{
+									backgroundColor: inputShadowLayer,
+									borderRadius: inputRadius,
+								},
 							]}
 						/>
 					)}
@@ -161,6 +173,16 @@ const EmergencySearchBar = forwardRef(function EmergencySearchBar({
 							},
 						]}
 					>
+					{glassSurface ? (
+						<LinearGradient
+							pointerEvents="none"
+							colors={inputGlassColors}
+							locations={[0, 0.5, 1]}
+							start={{ x: 0.5, y: 0 }}
+							end={{ x: 0.5, y: 1 }}
+							style={styles.inputGlassFill}
+						/>
+					) : null}
 					<Ionicons
 						name="search"
 						size={searchIconSize}
@@ -325,6 +347,11 @@ const styles = StyleSheet.create({
 		borderRadius: 28, // High rounding
 		paddingHorizontal: 16,
 		shadowOffset: { width: 0, height: 8 },
+		overflow: "hidden",
+		position: "relative",
+	},
+	inputGlassFill: {
+		...StyleSheet.absoluteFillObject,
 	},
 	searchIcon: {
 		marginRight: 10,

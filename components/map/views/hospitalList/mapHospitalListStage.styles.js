@@ -36,11 +36,13 @@ const styles = StyleSheet.create({
 		fontWeight: "500",
 	},
 	closeButton: {
-		width: 42,
-		height: 42,
-		borderRadius: 21,
+		width: 38,
+		height: 38,
+		borderRadius: 999,
 		alignItems: "center",
 		justifyContent: "center",
+		overflow: "hidden",
+		position: "relative",
 	},
 });
 

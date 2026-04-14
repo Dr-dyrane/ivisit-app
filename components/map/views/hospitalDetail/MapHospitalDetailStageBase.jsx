@@ -56,8 +56,10 @@ export default function MapHospitalDetailStageBase({
 	};
 	const titleColor = model.titleColor;
 	const mutedColor = model.subtleColor;
-	const iconSurfaceColor = isDarkMode ? "rgba(15,23,42,0.56)" : "rgba(255,255,255,0.78)";
-	const iconBorderColor = isDarkMode ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.92)";
+	const closeSurfaceColor = isDarkMode
+		? "rgba(148,163,184,0.14)"
+		: "rgba(255,255,255,0.42)";
+	const iconSurfaceColor = closeSurfaceColor;
 	const shouldShowFloatingTitle =
 		isHalf || (snapState === MAP_SHEET_SNAP_STATES.EXPANDED && showFloatingTitle);
 	const isHeroTopPresentation =
@@ -70,9 +72,7 @@ export default function MapHospitalDetailStageBase({
 		: "rgba(15,23,42,0.86)";
 	const floatingCloseSurface = isHeroTopPresentation
 		? "rgba(15,23,42,0.24)"
-		: isDarkMode
-			? "rgba(148,163,184,0.14)"
-			: "rgba(255,255,255,0.42)";
+		: closeSurfaceColor;
 	const floatingCycleSurface = isDarkMode
 		? "rgba(255,255,255,0.10)"
 		: "rgba(255,255,255,0.72)";
@@ -193,9 +193,7 @@ export default function MapHospitalDetailStageBase({
 						onClose={onClose}
 						titleColor={titleColor}
 						mutedColor={mutedColor}
-						isDarkMode={isDarkMode}
 						iconSurfaceColor={iconSurfaceColor}
-						iconBorderColor={iconBorderColor}
 					/>
 				) : (
 					<MapHospitalDetailFloatingTopSlot
@@ -208,6 +206,8 @@ export default function MapHospitalDetailStageBase({
 						shouldShowFloatingTitle={shouldShowFloatingTitle}
 						floatingTitleColor={floatingTitleColor}
 						title={model.summary.title}
+						subtitle={isHalf ? model.summary.contextLine : null}
+						mutedColor={mutedColor}
 						onClose={onClose}
 						floatingCloseSurface={floatingCloseSurface}
 						floatingCloseIconColor={floatingCloseIconColor}

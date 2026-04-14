@@ -56,6 +56,14 @@ export default function useMapSheetDetents({
 		lastScrollOffsetYRef.current = 0;
 	}, [snapState]);
 
+	useEffect(() => {
+		if (snapState !== MAP_SHEET_SNAP_STATES.EXPANDED || isSidebarPresentation) return;
+		requestAnimationFrame(() => {
+			bodyScrollRef.current?.scrollTo?.({ y: 0, animated: false });
+			lastScrollOffsetYRef.current = 0;
+		});
+	}, [isSidebarPresentation, snapState]);
+
 	const triggerScrollSnap = useCallback(
 		(nextState) => {
 			if (

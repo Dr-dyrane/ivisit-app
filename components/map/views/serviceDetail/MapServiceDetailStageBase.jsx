@@ -104,7 +104,7 @@ export default function MapServiceDetailStageBase({
 			: isDarkMode
 				? "rgba(255,255,255,0.055)"
 				: "rgba(15,23,42,0.045)";
-	const closeSurface = isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.72)";
+	const closeSurface = isDarkMode ? "rgba(148,163,184,0.14)" : "rgba(255,255,255,0.42)";
 	const accent = serviceType === "room" ? "#64748B" : COLORS.brandPrimary;
 	const isSelected = service?.id === selectedServiceId;
 	const statusLabel = service?.metaText || (serviceType === "room" ? "Available" : "Ready");

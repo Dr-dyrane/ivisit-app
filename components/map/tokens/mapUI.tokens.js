@@ -4,6 +4,9 @@ export function getMapUITokens({ isDarkMode }) {
 		searchSurface: isDarkMode
 			? "rgba(15, 23, 42, 0.74)"
 			: "rgba(255, 255, 255, 0.76)",
+		closeSurface: isDarkMode
+			? "rgba(148, 163, 184, 0.14)"
+			: "rgba(255, 255, 255, 0.42)",
 		strongCardSurface: isDarkMode
 			? "rgba(255, 255, 255, 0.08)"
 			: "rgba(255, 255, 255, 0.72)",

@@ -452,9 +452,20 @@ export function buildHospitalDetailSummary(hospital, routeInfo) {
 		(typeof hospital?.distance === "string" && hospital.distance.trim()) ||
 		formatDistanceMeters(routeInfo?.distanceMeters) ||
 		"Nearby";
+	const typeLabel = toDisplayText(
+		toStringList(hospital?.serviceTypes || hospital?.service_types)[0] ||
+			hospital?.type ||
+			hospital?.category ||
+			"Hospital",
+	);
 	return {
 		title: hospital?.name || "Hospital",
 		subtitle: distanceLabel,
 		addressLine,
+		typeLabel: typeLabel || "Hospital",
+		contextLine:
+			typeLabel && distanceLabel && typeLabel.toLowerCase() !== distanceLabel.toLowerCase()
+				? `${typeLabel} • ${distanceLabel}`
+				: typeLabel || distanceLabel || "Hospital",
 	};
 }

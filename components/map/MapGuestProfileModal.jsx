@@ -73,6 +73,8 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 		marginBottom: 22,
+		overflow: "hidden",
+		position: "relative",
 		shadowColor: "#000000",
 		shadowOpacity: 0.12,
 		shadowRadius: 18,
@@ -93,6 +95,8 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
+		overflow: "hidden",
+		position: "relative",
 		...squircle(24),
 	},
 	input: {

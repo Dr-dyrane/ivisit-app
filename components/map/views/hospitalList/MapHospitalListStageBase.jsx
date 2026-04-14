@@ -36,7 +36,7 @@ export default function MapHospitalListStageBase({
 			: null;
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const titleColor = tokens.titleColor;
-	const closeSurfaceColor = tokens.searchSurface;
+	const closeSurfaceColor = tokens.closeSurface;
 	const allowedSnapStates = useMemo(
 		() => [MAP_SHEET_SNAP_STATES.HALF, MAP_SHEET_SNAP_STATES.EXPANDED],
 		[],
@@ -79,6 +79,7 @@ export default function MapHospitalListStageBase({
 					modalContainedStyle={modalContainedStyle}
 					titleColor={titleColor}
 					closeSurfaceColor={closeSurfaceColor}
+					isDarkMode={isDarkMode}
 					onClose={onClose}
 				/>
 			}

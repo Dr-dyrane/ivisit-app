@@ -75,23 +75,25 @@ export default StyleSheet.create({
 	},
 	searchPill: {
 		flex: 1,
-		minHeight: 50,
+		minHeight: 44,
 		paddingHorizontal: 15,
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 10,
+		gap: 9,
 		borderCurve: "continuous",
+		overflow: "hidden",
+		position: "relative",
 	},
 	searchPillCollapsed: {
-		minHeight: 44,
-		paddingHorizontal: 14,
+		minHeight: 36,
+		paddingHorizontal: 12,
 	},
 	searchPillWebMobile: {
-		minHeight: 48,
+		minHeight: 42,
 	},
 	searchText: {
-		fontSize: 16,
-		lineHeight: 21,
+		fontSize: 15,
+		lineHeight: 19,
 		fontWeight: "600",
 	},
 	bodyScrollContent: {

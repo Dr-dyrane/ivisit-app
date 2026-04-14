@@ -32,6 +32,7 @@ function FeaturedHospitalPlaceholderCard({ cardWidth, cardHeight }) {
 
 function FeaturedHospitalCard({ hospital, titleColor, bodyColor, onPress, cardWidth, cardHeight }) {
 	const features = buildFeaturedHospitalFeatures(hospital);
+	const imageSource = useMemo(() => getHospitalHeroSource(hospital), [hospital]);
 	const topLabel =
 		(typeof hospital?.distance === "string" && hospital.distance.trim()) ||
 		(typeof hospital?.eta === "string" && hospital.eta.trim()) ||
@@ -48,7 +49,7 @@ function FeaturedHospitalCard({ hospital, titleColor, bodyColor, onPress, cardWi
 					]}
 				>
 					<ImageBackground
-						source={getHospitalHeroSource(hospital)}
+						source={imageSource}
 						resizeMode="cover"
 						style={styles.featuredCardImage}
 						imageStyle={styles.featuredCardImageStyle}

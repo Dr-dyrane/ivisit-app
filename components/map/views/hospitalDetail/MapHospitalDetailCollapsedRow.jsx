@@ -13,13 +13,9 @@ export default function MapHospitalDetailCollapsedRow({
 	onClose,
 	titleColor,
 	mutedColor,
-	isDarkMode,
 	iconSurfaceColor,
-	iconBorderColor,
 }) {
-	const iconGlassColors = isDarkMode
-		? ["rgba(255,255,255,0.18)", "rgba(148,163,184,0.10)", iconSurfaceColor]
-		: ["rgba(255,255,255,0.98)", "rgba(255,255,255,0.86)", iconSurfaceColor];
+	const iconGlassColors = [iconSurfaceColor, iconSurfaceColor];
 	const actionColors = action.primary
 		? [COLORS.brandPrimary, "#8F0D12"]
 		: iconGlassColors;
@@ -44,7 +40,7 @@ export default function MapHospitalDetailCollapsedRow({
 							pressed ? styles.collapsedIconButtonPressed : null,
 						]}
 					>
-						<Ionicons name="chevron-forward" size={18} color={actionIconColor} />
+						<Ionicons name="chevron-forward" size={17} color={actionIconColor} />
 					</LinearGradient>
 				)}
 			</Pressable>
@@ -76,7 +72,7 @@ export default function MapHospitalDetailCollapsedRow({
 							pressed ? styles.collapsedIconButtonPressed : null,
 						]}
 					>
-						<Ionicons name="close" size={18} color={titleColor} />
+						<Ionicons name="close" size={17} color={titleColor} />
 					</LinearGradient>
 				)}
 			</Pressable>

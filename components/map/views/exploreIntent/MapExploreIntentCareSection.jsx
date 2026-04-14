@@ -2,6 +2,7 @@ import React from "react";
 import { Animated, Platform, Pressable, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { COLORS } from "../../../../constants/colors";
 import { MAP_EXPLORE_INTENT_COPY } from "./mapExploreIntent.content";
 import { getBedSpaceSubtext, getSelectedCareLabel } from "./mapExploreIntent.helpers";
 import styles from "./mapExploreIntent.styles";
@@ -116,7 +117,14 @@ function CareIntentOrb({
 				<Text style={[styles.careLabel, { color: hierarchy === "primary" ? titleColor : mutedColor }]}>
 					{label}
 				</Text>
-				<Text style={[styles.careSubtext, { color: mutedColor }]}>{subtext}</Text>
+				<Text
+					style={[
+						styles.careSubtext,
+						{ color: hierarchy === "primary" ? COLORS.brandPrimary : mutedColor },
+					]}
+				>
+					{subtext}
+				</Text>
 			</View>
 		</Pressable>
 	);
@@ -387,6 +395,7 @@ export default function MapExploreIntentCareSection({
 	nearbyBedHospitals = 0,
 	titleColor,
 	mutedColor,
+	isDarkMode,
 	pulseProgress = null,
 }) {
 	const bedSubtext = getBedSpaceSubtext(totalAvailableBeds, nearbyBedHospitals);
@@ -439,10 +448,10 @@ export default function MapExploreIntentCareSection({
 						<View style={[styles.intentPanelHalf, styles.intentPanelHalfLeading]}>
 							<CareIntentCard
 								label={MAP_EXPLORE_INTENT_COPY.BED_SPACE}
-								subtext={bedSubtext}
-								iconName="bed"
-								colors={["#5F748E", "#4C6078"]}
-								panelBias="leading"
+							subtext={bedSubtext}
+							iconName="bed"
+							colors={["#5F748E", "#4C6078"]}
+							panelBias="leading"
 								onPress={() => onChooseCare("bed")}
 								isSelected={selectedCare === "bed"}
 								showSubtext={false}
@@ -495,9 +504,9 @@ export default function MapExploreIntentCareSection({
 						<View style={[styles.intentActionHalf, styles.intentActionHalfLeading]}>
 							<CareIntentCard
 								label={MAP_EXPLORE_INTENT_COPY.BED_SPACE}
-								subtext={bedSubtext}
-								iconName="bed"
-								colors={["#5F748E", "#4C6078"]}
+						subtext={bedSubtext}
+						iconName="bed"
+						colors={["#5F748E", "#4C6078"]}
 								panelBias="leading"
 								onPress={() => onChooseCare("bed")}
 								isSelected={selectedCare === "bed"}
@@ -506,9 +515,9 @@ export default function MapExploreIntentCareSection({
 						<View style={[styles.intentActionHalf, styles.intentActionHalfTrailing]}>
 							<CareIntentCard
 								label={MAP_EXPLORE_INTENT_COPY.COMPARE}
-								subtext={MAP_EXPLORE_INTENT_COPY.COMPARE_SUBTEXT}
-								iconName="format-list-bulleted"
-								colors={["#737C88", "#596370"]}
+							subtext={MAP_EXPLORE_INTENT_COPY.COMPARE_SUBTEXT}
+							iconName="format-list-bulleted"
+							colors={["#737C88", "#596370"]}
 								hierarchy="tertiary"
 								panelBias="trailing"
 								onPress={onOpenCareHistory}

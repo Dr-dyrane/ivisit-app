@@ -120,6 +120,7 @@ function MapSearchStageSurface({
 						onOpenProfile={onOpenProfile}
 						profileImageSource={profileImageSource}
 						isSignedIn={isSignedIn}
+						isDarkMode={isDarkMode}
 					/>
 				) : (
 					<MapSearchActiveTopRow
@@ -129,6 +130,7 @@ function MapSearchStageSurface({
 						snapState={snapState}
 						handleExpand={() => handleSnapToggle(MAP_SHEET_SNAP_STATES.EXPANDED)}
 						tokens={tokens}
+						isDarkMode={isDarkMode}
 					/>
 				)
 			}

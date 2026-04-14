@@ -263,13 +263,13 @@ export const styles = StyleSheet.create({
 		minWidth: 0,
 	},
 	placeActionButton: {
-		minHeight: 48,
+		minHeight: 42,
 		paddingHorizontal: 7,
-		paddingVertical: 4,
+		paddingVertical: 3,
 		alignItems: "center",
 		justifyContent: "center",
 		gap: 2,
-		...squircle(16),
+		...squircle(14),
 	},
 	placeActionButtonPrimary: {
 		backgroundColor: COLORS.brandPrimary,

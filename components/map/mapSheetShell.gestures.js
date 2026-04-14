@@ -66,20 +66,26 @@ export function createMapSheetPanResponder({
 		onPanResponderRelease: (_, gestureState) => {
 			if (isSidebar) return;
 			const { dy, vy } = gestureState;
+			const absDx = Math.abs(gestureState?.dx || 0);
+			const absDy = Math.abs(dy || 0);
+			const activationOffset = platformMotion.sheet.gestureActivationOffset;
+			const releaseDistance = platformMotion.sheet.release.distance;
+			const releaseVelocity = platformMotion.sheet.release.velocity;
+			const isVerticalIntent =
+				absDy > activationOffset * 1.5 &&
+				absDy > absDx * platformMotion.sheet.axisLockRatio;
+			const hasUpDistance = dy <= -releaseDistance;
+			const hasDownDistance = dy >= releaseDistance;
+			const hasUpVelocity = dy <= -activationOffset * 2 && vy <= -releaseVelocity;
+			const hasDownVelocity = dy >= activationOffset * 2 && vy >= releaseVelocity;
 			let nextState = resolvedSnapState;
 
-			if (
-				dy <= -platformMotion.sheet.release.distance ||
-				vy <= -platformMotion.sheet.release.velocity
-			) {
+			if (isVerticalIntent && (hasUpDistance || hasUpVelocity)) {
 				nextState = getNextAllowedMapSheetSnapStateUp(
 					resolvedSnapState,
 					allowedSnapStates,
 				);
-			} else if (
-				dy >= platformMotion.sheet.release.distance ||
-				vy >= platformMotion.sheet.release.velocity
-			) {
+			} else if (isVerticalIntent && (hasDownDistance || hasDownVelocity)) {
 				nextState = getNextAllowedMapSheetSnapStateDown(
 					resolvedSnapState,
 					allowedSnapStates,

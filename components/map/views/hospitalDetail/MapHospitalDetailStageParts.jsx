@@ -11,9 +11,7 @@ export function MapHospitalDetailCollapsedTopSlot({
 	onClose,
 	titleColor,
 	mutedColor,
-	isDarkMode,
 	iconSurfaceColor,
-	iconBorderColor,
 }) {
 	return (
 		<MapHospitalDetailCollapsedRow
@@ -24,9 +22,7 @@ export function MapHospitalDetailCollapsedTopSlot({
 			onClose={onClose}
 			titleColor={titleColor}
 			mutedColor={mutedColor}
-			isDarkMode={isDarkMode}
 			iconSurfaceColor={iconSurfaceColor}
-			iconBorderColor={iconBorderColor}
 		/>
 	);
 }
@@ -41,6 +37,8 @@ export function MapHospitalDetailFloatingTopSlot({
 	shouldShowFloatingTitle,
 	floatingTitleColor,
 	title,
+	subtitle,
+	mutedColor,
 	onClose,
 	floatingCloseSurface,
 	floatingCloseIconColor,
@@ -81,7 +79,7 @@ export function MapHospitalDetailFloatingTopSlot({
 							>
 								<Ionicons
 									name="chevron-forward"
-									size={20}
+									size={19}
 									color={floatingCycleIconColor}
 								/>
 							</View>
@@ -92,12 +90,22 @@ export function MapHospitalDetailFloatingTopSlot({
 				)}
 				<View style={styles.floatingTopTitleWrap}>
 					{shouldShowFloatingTitle ? (
-						<Text
-							numberOfLines={1}
-							style={[styles.floatingTopTitle, { color: floatingTitleColor }]}
-						>
-							{title}
-						</Text>
+						<>
+							<Text
+								numberOfLines={1}
+								style={[styles.floatingTopTitle, { color: floatingTitleColor }]}
+							>
+								{title}
+							</Text>
+							{subtitle ? (
+								<Text
+									numberOfLines={1}
+									style={[styles.floatingTopSubtitle, { color: mutedColor }]}
+								>
+									{subtitle}
+								</Text>
+							) : null}
+						</>
 					) : null}
 				</View>
 				<Pressable
@@ -115,7 +123,7 @@ export function MapHospitalDetailFloatingTopSlot({
 								pressed ? styles.floatingTopCloseButtonPressed : null,
 							]}
 						>
-							<Ionicons name="close" size={18} color={floatingCloseIconColor} />
+							<Ionicons name="close" size={17} color={floatingCloseIconColor} />
 						</View>
 					)}
 				</Pressable>

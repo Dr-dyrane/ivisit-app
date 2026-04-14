@@ -15,6 +15,7 @@ export function MapSearchCollapsedTopRow({
 	onOpenProfile,
 	profileImageSource,
 	isSignedIn,
+	isDarkMode,
 }) {
 	return (
 		<View style={[styles.topRow, styles.topRowCollapsed, modalContainedStyle]}>
@@ -51,6 +52,7 @@ export function MapSearchActiveTopRow({
 	snapState,
 	handleExpand,
 	tokens,
+	isDarkMode,
 }) {
 	return (
 		<View style={[styles.topRow, modalContainedStyle]}>
@@ -77,10 +79,10 @@ export function MapSearchActiveTopRow({
 				style={[
 					styles.closeButton,
 					model.isDismissing && styles.closeButtonDisabled,
-					{ backgroundColor: tokens.searchSurface },
+					{ backgroundColor: tokens.closeSurface },
 				]}
 			>
-				<Ionicons name="close" size={18} color={model.titleColor} />
+				<Ionicons name="close" size={17} color={model.titleColor} />
 			</Pressable>
 		</View>
 	);

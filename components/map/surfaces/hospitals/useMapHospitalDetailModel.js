@@ -4,7 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useMapRoute } from "../../../../hooks/emergency/useMapRoute";
 import { hospitalsService } from "../../../../services/hospitalsService";
-import { getHospitalHeroSource } from "../../mapHospitalImage";
+import { getHospitalHeroSource, prefetchCachedRemoteImage } from "../../mapHospitalImage";
 import {
 	buildAmbulanceServiceCards,
 	buildDirectionsUrl,
@@ -139,7 +139,7 @@ export default function useMapHospitalDetailModel({
 		);
 
 		uris.forEach((uri) => {
-			Image.prefetch(uri).catch(() => {});
+			prefetchCachedRemoteImage(uri, Image);
 		});
 	}, [galleryPhotos, heroSource, visible]);
 

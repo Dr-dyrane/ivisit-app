@@ -18,6 +18,7 @@ export function MapExploreIntentTopRow({
 	presentationMode,
 	shellMaxWidth,
 	tokens,
+	isDarkMode,
 	onOpenSearch,
 	onOpenProfile,
 	profileImageSource,
@@ -44,14 +45,14 @@ export function MapExploreIntentTopRow({
 					isCollapsed ? styles.searchPillCollapsed : null,
 					isWebMobileVariant ? styles.searchPillWebMobile : null,
 					{
-						borderRadius: tokens.cardRadius,
+						borderRadius: isCollapsed ? 18 : 22,
 						borderCurve: "continuous",
 						backgroundColor: tokens.searchSurface,
 					},
 				]}
 			>
-				<Ionicons name="search" size={isCollapsed ? 18 : 20} color={tokens.titleColor} />
-				<Text style={[styles.searchText, { color: tokens.titleColor }]}>
+				<Ionicons name="search" size={isCollapsed ? 17 : 19} color={tokens.titleColor} />
+				<Text style={[styles.searchText, { color: tokens.mutedText }]}>
 					{MAP_EXPLORE_INTENT_COPY.SEARCH}
 				</Text>
 			</Pressable>
@@ -139,6 +140,7 @@ export function buildMapExploreIntentScreenSections({
 					nearbyBedHospitals={nearbyBedHospitals}
 					titleColor={tokens.titleColor}
 					mutedColor={tokens.mutedText}
+					isDarkMode={isDarkMode}
 					pulseProgress={pulseProgress}
 				/>
 			),

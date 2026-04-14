@@ -303,7 +303,7 @@ export default function MapModalShell({
 
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
 	const surfaceColor = isDarkMode ? "rgba(8, 15, 27, 0.84)" : "rgba(255, 255, 255, 0.88)";
-	const closeBg = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)";
+	const closeBg = isDarkMode ? "rgba(148,163,184,0.14)" : "rgba(255,255,255,0.42)";
 	const handleColor = isDarkMode ? "rgba(148,163,184,0.54)" : "rgba(100,116,139,0.30)";
 	const expandedSheetHeight = getMapSheetHeight(screenHeight, MAP_SHEET_SNAP_STATES.EXPANDED);
 	const resolvedTopClearance = topClearance ?? surfaceConfig.topClearance;
@@ -538,14 +538,23 @@ export default function MapModalShell({
 				},
 				onPanResponderRelease: (_, gestureState) => {
 					const { dy, vy } = gestureState;
+					const absDx = Math.abs(gestureState?.dx || 0);
+					const absDy = Math.abs(dy || 0);
+					const activationOffset = modalMotion.gestureActivationOffset;
+					const releaseDistance = modalMotion.release.distance;
+					const releaseVelocity = modalMotion.release.velocity;
+					const isVerticalIntent =
+						absDy > activationOffset * 1.5 &&
+						absDy > absDx * (modalMotion.axisLockRatio || 1.1);
+					const hasUpDistance = dy <= -releaseDistance;
+					const hasDownDistance = dy >= releaseDistance;
+					const hasUpVelocity = dy <= -activationOffset * 2 && vy <= -releaseVelocity;
+					const hasDownVelocity = dy >= activationOffset * 2 && vy >= releaseVelocity;
 					let nextState = modalSnapState;
 
-					if (dy <= -modalMotion.release.distance || vy <= -modalMotion.release.velocity) {
+					if (isVerticalIntent && (hasUpDistance || hasUpVelocity)) {
 						nextState = getNextMapSheetSnapStateUp(modalSnapState);
-					} else if (
-						dy >= modalMotion.release.distance ||
-						vy >= modalMotion.release.velocity
-					) {
+					} else if (isVerticalIntent && (hasDownDistance || hasDownVelocity)) {
 						nextState = resolveNextDetentDown(modalSnapState);
 					}
 
@@ -620,7 +629,7 @@ export default function MapModalShell({
 								},
 							]}
 						>
-							<Ionicons name="close" size={18} color={titleColor} />
+							<Ionicons name="close" size={17} color={titleColor} />
 						</View>
 					)}
 				</Pressable>

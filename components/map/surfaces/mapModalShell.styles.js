@@ -47,15 +47,17 @@ export const styles = StyleSheet.create({
 		fontWeight: "800",
 	},
 	headerSpacer: {
-		width: 40,
-		height: 40,
+		width: 38,
+		height: 38,
 	},
 	closeButton: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
+		width: 38,
+		height: 38,
+		borderRadius: 999,
 		alignItems: "center",
 		justifyContent: "center",
+		overflow: "hidden",
+		position: "relative",
 	},
 	handleWrap: {
 		alignItems: "center",

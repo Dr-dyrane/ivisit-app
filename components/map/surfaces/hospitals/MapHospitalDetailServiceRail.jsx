@@ -5,10 +5,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { getHospitalDetailServiceImageSource } from "./mapHospitalDetail.content";
 import { styles } from "./mapHospitalDetail.styles";
 
+const resolvedRailImageSourceCache = new Map();
+
 function resolveRailImageSource(source) {
 	if (!source || Platform.OS !== "web") return source;
 
 	if (typeof source === "number") {
+		const cached = resolvedRailImageSourceCache.get(source);
+		if (cached) return cached;
+
 		try {
 			const resolveAssetSource =
 				(typeof Image?.resolveAssetSource === "function" && Image.resolveAssetSource) ||
@@ -17,7 +22,9 @@ function resolveRailImageSource(source) {
 				null;
 			const asset = resolveAssetSource?.(source);
 			if (asset?.uri) {
-				return { uri: asset.uri };
+				const resolvedSource = { uri: asset.uri };
+				resolvedRailImageSourceCache.set(source, resolvedSource);
+				return resolvedSource;
 			}
 		} catch (_error) {
 			return source;
@@ -99,6 +106,15 @@ export default function MapHospitalDetailServiceRail({
 				.map((item, index) => item.id || item.title || `${type}-${index}`),
 		[items, type],
 	);
+	const itemImageSources = useMemo(
+		() =>
+			items.map((item) =>
+				item?.isSkeleton
+					? null
+					: resolveRailImageSource(getHospitalDetailServiceImageSource(item, type)),
+			),
+		[items, type],
+	);
 
 	useEffect(() => {
 		if (!selectionEnabled && uncontrolledSelectedId !== null) {
@@ -158,9 +174,7 @@ export default function MapHospitalDetailServiceRail({
 						);
 					}
 
-					const imageSource = resolveRailImageSource(
-						getHospitalDetailServiceImageSource(item, type),
-					);
+					const imageSource = itemImageSources[index];
 					const itemId = item.id || item.title || `${type}-${index}`;
 					const isDisabled = item.enabled === false;
 					const shouldRenderSelectionState = selectionEnabled || hasControlledSelectedId;

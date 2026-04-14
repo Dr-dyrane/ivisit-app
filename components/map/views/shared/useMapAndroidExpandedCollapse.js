@@ -74,17 +74,17 @@ export default function useMapAndroidExpandedCollapse({
 
 		return Gesture.Pan()
 			.runOnJS(true)
-			.activeOffsetY(14)
-			.failOffsetX([-22, 22])
+			.activeOffsetY(32)
+			.failOffsetX([-16, 16])
 			.shouldCancelWhenOutside(false)
 			.onEnd((event) => {
 				if (!isBodyAtTop) return;
 				const absDx = Math.abs(event.translationX ?? 0);
 				const absDy = Math.abs(event.translationY ?? 0);
 				const velocityY = Number(event.velocityY ?? 0);
-				const isVerticalIntent = absDy > absDx * 1.2;
-				const passedDistance = event.translationY > 56;
-				const passedVelocity = velocityY > 900;
+				const isVerticalIntent = absDy > 56 && absDy > absDx * 1.6;
+				const passedDistance = event.translationY > 104;
+				const passedVelocity = event.translationY > 56 && velocityY > 1450;
 
 				if (isVerticalIntent && (passedDistance || passedVelocity)) {
 					onSnapStateChange(MAP_SHEET_SNAP_STATES.HALF);

@@ -8,6 +8,7 @@ export function MapHospitalListTopSlot({
 	modalContainedStyle,
 	titleColor,
 	closeSurfaceColor,
+	isDarkMode,
 	onClose,
 }) {
 	return (
@@ -21,7 +22,7 @@ export function MapHospitalListTopSlot({
 				accessibilityLabel="Close hospitals"
 				style={[styles.closeButton, { backgroundColor: closeSurfaceColor }]}
 			>
-				<Ionicons name="close" size={20} color={titleColor} />
+				<Ionicons name="close" size={17} color={titleColor} />
 			</Pressable>
 		</View>
 	);

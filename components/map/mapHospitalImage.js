@@ -1,5 +1,6 @@
 const DEFAULT_HOSPITAL_HERO_IMAGE = require("../../assets/features/emergency.png");
 const remoteImageSourceCache = new Map();
+const prefetchedRemoteImageUris = new Set();
 const MAX_REMOTE_IMAGE_SOURCE_CACHE_SIZE = 120;
 
 function toStringList(value) {
@@ -37,4 +38,15 @@ export function getCachedRemoteImageSource(uri) {
 	}
 
 	return source;
+}
+
+export function prefetchCachedRemoteImage(uri, ImageModule) {
+	const normalizedUri = typeof uri === "string" ? uri.trim() : "";
+	if (!normalizedUri || prefetchedRemoteImageUris.has(normalizedUri)) return;
+	if (!ImageModule || typeof ImageModule.prefetch !== "function") return;
+
+	prefetchedRemoteImageUris.add(normalizedUri);
+	ImageModule.prefetch(normalizedUri).catch(() => {
+		prefetchedRemoteImageUris.delete(normalizedUri);
+	});
 }
