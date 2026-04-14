@@ -123,7 +123,7 @@ export default function MapHospitalDetailBody({
 	});
 	const actionRowMarginTop = heroRevealProgress.interpolate({
 		inputRange: [0, 1],
-		outputRange: [18, 0],
+		outputRange: [40, 0],
 	});
 	const placeHeaderHeight = heroRevealProgress.interpolate({
 		inputRange: [0, 1],
