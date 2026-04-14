@@ -19,6 +19,7 @@ const ACTIONS = {
 	SET_GUEST_PROFILE_EMAIL: "setGuestProfileEmail",
 	SET_FEATURED_HOSPITAL: "setFeaturedHospital",
 	SET_SERVICE_SELECTIONS_BY_HOSPITAL: "setServiceSelectionsByHospital",
+	SET_HOSPITAL_SERVICE_SELECTION: "setHospitalServiceSelection",
 	SET_SHEET_VIEW: "setSheetView",
 	SET_SHEET_PHASE: "setSheetPhase",
 	SET_SHEET_PAYLOAD: "setSheetPayload",
@@ -171,6 +172,27 @@ function mapExploreFlowReducer(state, action) {
 					serviceSelectionsByHospital: action.value,
 				},
 			};
+		case ACTIONS.SET_HOSPITAL_SERVICE_SELECTION: {
+			if (!action.hospitalId || !action.key) return state;
+			const currentSelection =
+				state.selection.serviceSelectionsByHospital[action.hospitalId] || {
+					ambulanceServiceId: null,
+					roomServiceId: null,
+				};
+			return {
+				...state,
+				selection: {
+					...state.selection,
+					serviceSelectionsByHospital: {
+						...state.selection.serviceSelectionsByHospital,
+						[action.hospitalId]: {
+							...currentSelection,
+							[action.key]: action.value,
+						},
+					},
+				},
+			};
+		}
 		case ACTIONS.SET_SHEET_VIEW:
 			return {
 				...state,
@@ -267,6 +289,13 @@ export function useMapExploreFlowStore({ usesSidebarLayout }) {
 				dispatch({ type: ACTIONS.SET_FEATURED_HOSPITAL, value }),
 			setServiceSelectionsByHospital: (value) =>
 				dispatch({ type: ACTIONS.SET_SERVICE_SELECTIONS_BY_HOSPITAL, value }),
+			setHospitalServiceSelection: (hospitalId, key, value) =>
+				dispatch({
+					type: ACTIONS.SET_HOSPITAL_SERVICE_SELECTION,
+					hospitalId,
+					key,
+					value,
+				}),
 			setSheetView: ({ phase, snapState, payload }) =>
 				dispatch({ type: ACTIONS.SET_SHEET_VIEW, phase, snapState, payload }),
 			setSheetPhase: (value) =>

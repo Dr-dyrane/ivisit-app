@@ -110,7 +110,7 @@ export function useMapExploreFlow() {
 		setAuthModalVisible,
 		setCareHistoryVisible,
 		setFeaturedHospital,
-		setServiceSelectionsByHospital,
+		setHospitalServiceSelection: setHospitalServiceSelectionValue,
 		setGuestProfileEmail,
 		setGuestProfileVisible,
 		setManualLocation,
@@ -354,18 +354,9 @@ export function useMapExploreFlow() {
 	const setHospitalServiceSelection = useCallback(
 		(hospitalId, key, value) => {
 			if (!hospitalId || !key) return;
-			setServiceSelectionsByHospital({
-				...serviceSelectionsByHospital,
-				[hospitalId]: {
-					...(serviceSelectionsByHospital[hospitalId] || {
-						ambulanceServiceId: null,
-						roomServiceId: null,
-					}),
-					[key]: value,
-				},
-			});
+			setHospitalServiceSelectionValue(hospitalId, key, value);
 		},
-		[serviceSelectionsByHospital, setServiceSelectionsByHospital],
+		[setHospitalServiceSelectionValue],
 	);
 
 	const openServiceDetail = useCallback(

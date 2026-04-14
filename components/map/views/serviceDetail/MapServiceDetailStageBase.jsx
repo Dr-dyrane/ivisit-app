@@ -1,82 +1,26 @@
 import React, { useCallback, useMemo } from "react";
-import { Image, PanResponder, Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { PanResponder, Platform, View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { COLORS } from "../../../../constants/colors";
 import { GLASS_SURFACE_VARIANTS, getGlassSurfaceTokens } from "../../../../constants/surfaces";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
+import { getHospitalDetailServiceImageSource } from "../../surfaces/hospitals/mapHospitalDetail.content";
 import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import sheetStageStyles from "../shared/mapSheetStage.styles";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
-import { buildServiceCopy } from "../../surfaces/hospitals/MapHospitalServiceDetailSheet";
-import { getHospitalDetailServiceImageSource } from "../../surfaces/hospitals/mapHospitalDetail.content";
-
-function TopSlot({ title, onClose, titleColor, closeSurface }) {
-	return (
-		<View style={styles.topSlot}>
-			<View style={styles.topSlotSpacer} />
-			<Text numberOfLines={1} style={[styles.topSlotTitle, { color: titleColor }]}>
-				{title}
-			</Text>
-			<Pressable onPress={onClose} style={styles.topSlotAction}>
-				{({ pressed }) => (
-					<View
-						style={[
-							styles.topSlotCloseButton,
-							{ backgroundColor: closeSurface },
-							pressed ? styles.topSlotPressed : null,
-						]}
-					>
-						<Ionicons name="close" size={18} color={titleColor} />
-					</View>
-				)}
-			</Pressable>
-		</View>
-	);
-}
-
-function ServiceGlassPanel({
-	children,
-	style,
-	backgroundColor,
-	glassTokens,
-	isDarkMode,
-	panHandlers,
-}) {
-	const isAndroid = Platform.OS === "android";
-
-	return (
-		<View style={[styles.glassSurface, style, { backgroundColor }]} {...panHandlers}>
-			{isAndroid ? (
-				<>
-					<View
-						pointerEvents="none"
-						style={[
-							StyleSheet.absoluteFillObject,
-							styles.androidGlassUnderlay,
-							{ backgroundColor: glassTokens.underlayColor },
-						]}
-					/>
-					<LinearGradient
-						pointerEvents="none"
-						colors={
-							isDarkMode
-								? ["rgba(255,255,255,0.08)", "rgba(8,15,27,0.10)", "rgba(255,255,255,0.035)"]
-								: ["rgba(255,255,255,0.66)", "rgba(248,250,252,0.24)", "rgba(255,255,255,0.50)"]
-						}
-						locations={[0, 0.52, 1]}
-						style={StyleSheet.absoluteFillObject}
-					/>
-				</>
-			) : null}
-			{children}
-		</View>
-	);
-}
+import {
+	MapServiceDetailFeatures,
+	MapServiceDetailFooter,
+	MapServiceDetailHeader,
+	MapServiceDetailHero,
+	MapServiceDetailMetrics,
+	MapServiceDetailTopSlot,
+} from "./MapServiceDetailStageParts";
+import { buildServiceCopy } from "./mapServiceDetail.content";
+import styles from "./mapServiceDetailStage.styles";
 
 export default function MapServiceDetailStageBase({
 	sheetHeight,
@@ -172,6 +116,7 @@ export default function MapServiceDetailStageBase({
 	const servicePositionLabel = hasServiceCarousel
 		? `${currentServiceIndex + 1} of ${serviceItems.length}`
 		: null;
+
 	const changeServiceByOffset = useCallback(
 		(offset) => {
 			if (!hasServiceCarousel) return;
@@ -184,6 +129,7 @@ export default function MapServiceDetailStageBase({
 		},
 		[currentServiceIndex, hasServiceCarousel, onChangeService, serviceItems],
 	);
+
 	const swipeResponder = useMemo(
 		() =>
 			PanResponder.create({
@@ -207,6 +153,7 @@ export default function MapServiceDetailStageBase({
 			}),
 		[changeServiceByOffset],
 	);
+	const swipeHandlers = swipeResponder.panHandlers;
 
 	return (
 		<MapSheetShell
@@ -216,7 +163,7 @@ export default function MapServiceDetailStageBase({
 			shellWidth={shellWidth}
 			allowedSnapStates={allowedSnapStates}
 			topSlot={
-				<TopSlot
+				<MapServiceDetailTopSlot
 					title={title}
 					onClose={onClose}
 					titleColor={titleColor}
@@ -246,307 +193,60 @@ export default function MapServiceDetailStageBase({
 				scrollEnabled={bodyScrollEnabled}
 				androidExpandedBodyGesture={androidExpandedBodyGesture}
 			>
-				<ServiceGlassPanel
-					style={styles.headerBlock}
-					backgroundColor={surfaceColor}
+				<MapServiceDetailHeader
+					accent={accent}
+					copy={copy}
 					glassTokens={glassTokens}
 					isDarkMode={isDarkMode}
-					panHandlers={swipeResponder.panHandlers}
-				>
-					<View style={styles.headerMetaRow}>
-						<Text style={[styles.eyebrow, { color: accent }]}>
-							{serviceType === "room" ? "Room option" : "Transport"}
-						</Text>
-						{servicePositionLabel ? (
-							<Text style={[styles.positionLabel, { color: mutedColor }]}>{servicePositionLabel}</Text>
-						) : null}
-					</View>
-					<Text style={[styles.summary, { color: mutedColor }]}>
-						{copy.summary}
-					</Text>
-				</ServiceGlassPanel>
+					mutedColor={mutedColor}
+					panHandlers={swipeHandlers}
+					servicePositionLabel={servicePositionLabel}
+					serviceType={serviceType}
+					surfaceColor={surfaceColor}
+				/>
 
 				<View style={styles.sectionSpacer} />
 
-				<ServiceGlassPanel
-					style={styles.heroCard}
-					backgroundColor={surfaceColor}
+				<MapServiceDetailHero
 					glassTokens={glassTokens}
+					imageSource={imageSource}
 					isDarkMode={isDarkMode}
-					panHandlers={swipeResponder.panHandlers}
-				>
-					{imageSource ? (
-						<Image source={imageSource} resizeMode="contain" fadeDuration={0} style={styles.heroImage} />
-					) : null}
-					<LinearGradient
-						pointerEvents="none"
-						colors={
-							isDarkMode
-								? ["rgba(255,255,255,0.05)", "rgba(15,23,42,0.18)"]
-								: ["rgba(255,255,255,0.36)", "rgba(15,23,42,0.055)"]
-						}
-						style={StyleSheet.absoluteFillObject}
-					/>
-				</ServiceGlassPanel>
+					panHandlers={swipeHandlers}
+					surfaceColor={surfaceColor}
+				/>
 
 				<View style={styles.sectionSpacer} />
 
-				<View style={styles.metricRow}>
-					<View
-						style={[
-							styles.metricPill,
-							styles.metricPillSpaced,
-							{ backgroundColor: nestedSurfaceColor },
-						]}
-					>
-						<View style={styles.metricIconBox}>
-							<Ionicons name="checkmark-circle-outline" size={15} color={accent} />
-						</View>
-						<Text style={[styles.metricText, { color: titleColor }]}>{statusLabel}</Text>
-					</View>
-					<View style={[styles.metricPill, { backgroundColor: nestedSurfaceColor }]}>
-						<View style={styles.metricIconBox}>
-							<Ionicons name="cash-outline" size={15} color={accent} />
-						</View>
-						<Text style={[styles.metricText, { color: titleColor }]}>{priceLabel}</Text>
-					</View>
-				</View>
+				<MapServiceDetailMetrics
+					accent={accent}
+					nestedSurfaceColor={nestedSurfaceColor}
+					priceLabel={priceLabel}
+					statusLabel={statusLabel}
+					titleColor={titleColor}
+				/>
 
 				<View style={styles.sectionSpacerLarge} />
 
-				<View>
-					<Text style={[styles.sectionLabel, { color: mutedColor }]}>What to expect</Text>
-					<ServiceGlassPanel
-						style={styles.featureList}
-						backgroundColor={nestedSurfaceColor}
-						glassTokens={glassTokens}
-						isDarkMode={isDarkMode}
-						panHandlers={swipeResponder.panHandlers}
-					>
-						{copy.features.map((feature, index) => (
-							<View
-								key={feature}
-								style={[
-									styles.featureRow,
-									index > 0 ? styles.featureRowSpaced : null,
-								]}
-							>
-								<View style={[styles.featureDot, { backgroundColor: accent }]} />
-								<Text style={[styles.featureText, { color: titleColor }]}>{feature}</Text>
-							</View>
-						))}
-					</ServiceGlassPanel>
-				</View>
+				<MapServiceDetailFeatures
+					accent={accent}
+					copy={copy}
+					glassTokens={glassTokens}
+					isDarkMode={isDarkMode}
+					mutedColor={mutedColor}
+					nestedSurfaceColor={nestedSurfaceColor}
+					panHandlers={swipeHandlers}
+					titleColor={titleColor}
+				/>
 
 				<View style={styles.footerGap} />
 			</MapStageBodyScroll>
 
-			<View style={[styles.footerDock, modalContainedStyle]}>
-				<Pressable
-					onPress={onConfirm}
-					style={[
-						styles.primaryButton,
-						{ backgroundColor: isSelected ? "rgba(134,16,14,0.72)" : COLORS.brandPrimary },
-					]}
-				>
-					<Text style={styles.primaryButtonText}>
-						{isSelected
-							? serviceType === "room"
-								? "Room selected"
-								: "Transport selected"
-							: serviceType === "room"
-								? "Select room"
-								: "Select transport"}
-					</Text>
-				</Pressable>
-			</View>
+			<MapServiceDetailFooter
+				isSelected={isSelected}
+				modalContainedStyle={modalContainedStyle}
+				onConfirm={onConfirm}
+				serviceType={serviceType}
+			/>
 		</MapSheetShell>
 	);
 }
-
-const styles = StyleSheet.create({
-	topSlot: {
-		flexDirection: "row",
-		alignItems: "center",
-		paddingHorizontal: 14,
-		paddingBottom: 0,
-		paddingTop: 0,
-		marginTop: Platform.OS === "android" ? -6 : 0,
-	},
-	topSlotSpacer: {
-		width: 34,
-		height: 34,
-	},
-	topSlotTitle: {
-		flex: 1,
-		fontSize: 17,
-		lineHeight: 21,
-		fontWeight: "700",
-		textAlign: "center",
-		paddingHorizontal: 8,
-	},
-	topSlotAction: {
-		width: 34,
-		height: 34,
-	},
-	topSlotCloseButton: {
-		width: 34,
-		height: 34,
-		borderRadius: 17,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	topSlotPressed: {
-		opacity: 0.92,
-		transform: [{ scale: 0.97 }],
-	},
-	bodyContent: {
-		paddingHorizontal: 14,
-		paddingTop: Platform.OS === "android" ? 2 : 0,
-		paddingBottom: 116,
-	},
-	glassSurface: {
-		position: "relative",
-		shadowColor: "#0F172A",
-		shadowOpacity: Platform.OS === "android" ? 0 : 0.08,
-		shadowRadius: 18,
-		shadowOffset: { width: 0, height: 8 },
-		elevation: Platform.OS === "android" ? 0 : 0,
-		overflow: "hidden",
-	},
-	androidGlassUnderlay: {
-		top: 1,
-		bottom: -1,
-	},
-	sectionSpacer: {
-		height: Platform.OS === "android" ? 20 : 18,
-	},
-	sectionSpacerLarge: {
-		height: Platform.OS === "android" ? 24 : 20,
-	},
-	headerBlock: {
-		borderRadius: 28,
-		paddingHorizontal: 18,
-		paddingVertical: 18,
-	},
-	headerMetaRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-	},
-	eyebrow: {
-		flexShrink: 1,
-		fontSize: 12,
-		lineHeight: 15,
-		fontWeight: "600",
-	},
-	positionLabel: {
-		fontSize: 12,
-		lineHeight: 15,
-		fontWeight: "500",
-		marginLeft: 12,
-	},
-	summary: {
-		fontSize: 14,
-		lineHeight: 21,
-		fontWeight: "400",
-		marginTop: 8,
-	},
-	heroCard: {
-		height: 184,
-		borderRadius: 30,
-		alignItems: "center",
-		justifyContent: "center",
-		overflow: "hidden",
-	},
-	heroImage: {
-		width: "100%",
-		height: "100%",
-	},
-	metricRow: {
-		flexDirection: "row",
-		flexWrap: "wrap",
-	},
-	metricPillSpaced: {
-		marginRight: 10,
-		marginBottom: Platform.OS === "android" ? 8 : 0,
-	},
-	metricPill: {
-		height: Platform.OS === "android" ? 36 : 36,
-		paddingLeft: Platform.OS === "android" ? 12 : 12,
-		paddingRight: Platform.OS === "android" ? 12 : 12,
-		paddingTop: 0,
-		paddingBottom: 0,
-		borderRadius: 999,
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	metricIconBox: {
-		width: 16,
-		height: 16,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	metricText: {
-		fontSize: 13,
-		lineHeight: 16,
-		fontWeight: "700",
-		marginLeft: 6,
-		includeFontPadding: false,
-		textAlignVertical: "center",
-	},
-	sectionLabel: {
-		fontSize: 12,
-		lineHeight: 15,
-		fontWeight: "600",
-		marginBottom: 12,
-	},
-	featureList: {
-		borderRadius: 24,
-		paddingHorizontal: 16,
-		paddingVertical: 14,
-	},
-	featureRow: {
-		flexDirection: "row",
-		alignItems: "flex-start",
-	},
-	featureRowSpaced: {
-		marginTop: 12,
-	},
-	featureDot: {
-		width: 7,
-		height: 7,
-		borderRadius: 3.5,
-		marginTop: 6,
-		marginRight: 11,
-	},
-	featureText: {
-		flex: 1,
-		fontSize: 14,
-		lineHeight: 20,
-		fontWeight: "500",
-	},
-	footerGap: {
-		height: 12,
-	},
-	footerDock: {
-		position: "absolute",
-		left: 14,
-		right: 14,
-		bottom: 16,
-	},
-	primaryButton: {
-		minHeight: 56,
-		borderRadius: 20,
-		paddingHorizontal: 18,
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	primaryButtonText: {
-		color: "#FFFFFF",
-		fontSize: 15,
-		fontWeight: "800",
-	},
-});
