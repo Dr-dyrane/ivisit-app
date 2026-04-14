@@ -12,8 +12,8 @@ export const MAP_MODAL_SPRING = {
 };
 
 export const MAP_SHEET_SNAP_SPRING = {
-	tension: 38,
-	friction: 13,
+	tension: 42,
+	friction: 14,
 	restDisplacementThreshold: 0.4,
 	restSpeedThreshold: 0.4,
 };
@@ -35,6 +35,17 @@ const MAP_PLATFORM_MOTION = {
 			gestureActivationOffset: 10,
 			dragRange: { up: -220, down: 180 },
 			release: { distance: 68, velocity: 0.46 },
+			expandedBodyGesture: {
+				activeOffsetY: 32,
+				failOffsetX: [-16, 16],
+				verticalIntentDistance: 56,
+				axisLockRatio: 1.6,
+				collapseDistance: 104,
+				velocityDistance: 56,
+				collapseVelocity: 1450,
+				visualDragFactor: 0.35,
+				maxVisualDrag: 36,
+			},
 			scroll: {
 				enableContentDetents: true,
 				enableWheelDetents: false,
@@ -46,6 +57,7 @@ const MAP_PLATFORM_MOTION = {
 				halfCollapseExtraPull: 24,
 				halfCollapseVelocityFactor: 1.32,
 				halfCollapseWheelThreshold: -128,
+				wheelCooldownMs: 360,
 			},
 		},
 		modal: {
@@ -76,6 +88,7 @@ const MAP_PLATFORM_MOTION = {
 				halfCloseVelocityFactor: 1.36,
 				halfCloseWheelThreshold: -140,
 				collapsedWheelThreshold: -108,
+				wheelCooldownMs: 360,
 			},
 		},
 	},
@@ -105,6 +118,12 @@ const MAP_PLATFORM_MOTION = {
 			enableBodyGestureInExpandedState: true,
 			gestureActivationOffset: 16,
 			release: { distance: 76, velocity: 0.56 },
+			expandedBodyGesture: {
+				activeOffsetY: 36,
+				collapseDistance: 116,
+				collapseVelocity: 1560,
+				maxVisualDrag: 34,
+			},
 			scroll: {
 				enableContentDetents: false,
 				enableWheelDetents: false,
@@ -116,6 +135,12 @@ const MAP_PLATFORM_MOTION = {
 			enableBodyGestureInExpandedState: true,
 			gestureActivationOffset: 16,
 			release: { distance: 76, velocity: 0.56 },
+			expandedBodyGesture: {
+				activeOffsetY: 36,
+				collapseDistance: 116,
+				collapseVelocity: 1560,
+				maxVisualDrag: 34,
+			},
 			scroll: {
 				enableContentDetents: false,
 				enableWheelDetents: false,
@@ -157,6 +182,7 @@ const MAP_PLATFORM_MOTION = {
 				enableContentDetents: true,
 				enableWheelDetents: true,
 				halfCollapseWheelThreshold: -120,
+				wheelCooldownMs: 420,
 			},
 		},
 		modal: {
@@ -170,6 +196,7 @@ const MAP_PLATFORM_MOTION = {
 				enableWheelDetents: true,
 				halfCloseWheelThreshold: -132,
 				collapsedWheelThreshold: -104,
+				wheelCooldownMs: 420,
 			},
 		},
 	},
@@ -201,6 +228,10 @@ export function getMapPlatformMotion(platform = Platform.OS) {
 			release: {
 				...base.sheet.release,
 				...((override.sheet || {}).release || {}),
+			},
+			expandedBodyGesture: {
+				...base.sheet.expandedBodyGesture,
+				...((override.sheet || {}).expandedBodyGesture || {}),
 			},
 			scroll: {
 				...base.sheet.scroll,

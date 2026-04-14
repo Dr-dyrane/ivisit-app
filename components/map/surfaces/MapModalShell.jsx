@@ -9,7 +9,6 @@ import {
 	View,
 } from "react-native";
 import { BlurView } from "expo-blur";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useScrollAwareHeader } from "../../../contexts/ScrollAwareHeaderContext";
@@ -33,6 +32,7 @@ import {
 	getMapViewportSurfaceConfig,
 	getMapViewportVariant,
 } from "../core/mapViewportConfig";
+import MapHeaderIconButton from "../views/shared/MapHeaderIconButton";
 import { styles } from "./mapModalShell.styles";
 
 export default function MapModalShell({
@@ -110,6 +110,7 @@ export default function MapModalShell({
 	const lastScrollOffsetYRef = useRef(0);
 	const scrollSnapHandledRef = useRef(false);
 	const wheelSnapAccumRef = useRef(0);
+	const lastWheelSnapAtRef = useRef(0);
 	const modalScrollMotion = modalMotion.scroll;
 	const shouldUseHeaderGestureRegion = Boolean(modalMotion.enableHeaderGestureRegion);
 	const shouldUseBodyGestureRegion =
@@ -134,6 +135,7 @@ export default function MapModalShell({
 	const HALF_CLOSE_WHEEL_THRESHOLD = allowCollapsedState
 		? modalScrollMotion.collapsedWheelThreshold
 		: modalScrollMotion.halfCloseWheelThreshold;
+	const WHEEL_COOLDOWN_MS = modalScrollMotion.wheelCooldownMs || 0;
 	const modalSpringConfig = useMemo(
 		() => ({
 			...modalMotion.spring,
@@ -468,6 +470,10 @@ export default function MapModalShell({
 
 		const deltaY = Number(event?.nativeEvent?.deltaY ?? 0);
 		if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 1) return;
+		const now = Date.now();
+		if (WHEEL_COOLDOWN_MS > 0 && now - lastWheelSnapAtRef.current < WHEEL_COOLDOWN_MS) {
+			return;
+		}
 
 		const isAtTop = lastScrollOffsetYRef.current <= SCROLL_TOP_THRESHOLD;
 		if (!isAtTop) {
@@ -481,26 +487,31 @@ export default function MapModalShell({
 				: deltaY;
 
 		if (modalSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED && wheelSnapAccumRef.current >= 34) {
+			lastWheelSnapAtRef.current = now;
 			triggerScrollDetent(MAP_SHEET_SNAP_STATES.HALF);
 			return;
 		}
 
 		if (modalSnapState === MAP_SHEET_SNAP_STATES.HALF && wheelSnapAccumRef.current >= 52) {
+			lastWheelSnapAtRef.current = now;
 			triggerScrollDetent(MAP_SHEET_SNAP_STATES.EXPANDED);
 			return;
 		}
 
 		if (modalSnapState === MAP_SHEET_SNAP_STATES.EXPANDED && wheelSnapAccumRef.current <= -42) {
+			lastWheelSnapAtRef.current = now;
 			triggerScrollDetent(MAP_SHEET_SNAP_STATES.HALF);
 			return;
 		}
 
 		if (modalSnapState === MAP_SHEET_SNAP_STATES.HALF && wheelSnapAccumRef.current <= HALF_CLOSE_WHEEL_THRESHOLD) {
+			lastWheelSnapAtRef.current = now;
 			triggerScrollDetent(resolveNextDetentDown(MAP_SHEET_SNAP_STATES.HALF));
 			return;
 		}
 
 		if (modalSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED && wheelSnapAccumRef.current <= -112) {
+			lastWheelSnapAtRef.current = now;
 			triggerScrollDetent(resolveNextDetentDown(MAP_SHEET_SNAP_STATES.COLLAPSED));
 		}
 	};
@@ -617,22 +628,13 @@ export default function MapModalShell({
 				) : (
 					<View style={styles.headerSpacer} />
 				)}
-				<Pressable onPress={onClose}>
-					{({ pressed }) => (
-						<View
-							style={[
-								styles.closeButton,
-								{
-									backgroundColor: closeBg,
-									opacity: pressed ? 0.82 : 1,
-									transform: [{ scale: pressed ? 0.96 : 1 }],
-								},
-							]}
-						>
-							<Ionicons name="close" size={17} color={titleColor} />
-						</View>
-					)}
-				</Pressable>
+				<MapHeaderIconButton
+					onPress={onClose}
+					accessibilityLabel={title ? `Close ${title}` : "Close"}
+					backgroundColor={closeBg}
+					color={titleColor}
+					style={styles.closeButton}
+				/>
 			</View>
 
 			{scrollEnabled ? (

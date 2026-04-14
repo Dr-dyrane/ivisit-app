@@ -39,6 +39,7 @@ export default function useMapSheetDetents({
 	const lastScrollOffsetYRef = useRef(0);
 	const scrollSnapHandledRef = useRef(false);
 	const wheelSnapAccumRef = useRef(0);
+	const lastWheelSnapAtRef = useRef(0);
 	const topThreshold = sheetScrollMotion.topThreshold;
 	const expandOffset = sheetScrollMotion.expandOffset;
 	const collapsePull = sheetScrollMotion.collapsePull;
@@ -47,6 +48,7 @@ export default function useMapSheetDetents({
 	const halfCollapseExtraPull = sheetScrollMotion.halfCollapseExtraPull;
 	const halfCollapseVelocityFactor = sheetScrollMotion.halfCollapseVelocityFactor;
 	const halfCollapseWheelThreshold = sheetScrollMotion.halfCollapseWheelThreshold;
+	const wheelCooldownMs = sheetScrollMotion.wheelCooldownMs || 0;
 	const isExpanded = snapState === MAP_SHEET_SNAP_STATES.EXPANDED;
 
 	useEffect(() => {
@@ -227,6 +229,10 @@ export default function useMapSheetDetents({
 
 			const deltaY = Number(event?.nativeEvent?.deltaY ?? 0);
 			if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 1) return;
+			const now = Date.now();
+			if (wheelCooldownMs > 0 && now - lastWheelSnapAtRef.current < wheelCooldownMs) {
+				return;
+			}
 
 			const isAtTop = lastScrollOffsetYRef.current <= topThreshold;
 			if (!isAtTop) {
@@ -245,6 +251,7 @@ export default function useMapSheetDetents({
 				canCollapse &&
 				wheelSnapAccumRef.current <= -42
 			) {
+				lastWheelSnapAtRef.current = now;
 				triggerScrollSnap(
 					getNextAllowedMapSheetSnapStateDown(snapState, orderedSnapStates),
 				);
@@ -256,6 +263,7 @@ export default function useMapSheetDetents({
 				canCollapse &&
 				wheelSnapAccumRef.current <= halfCollapseWheelThreshold
 			) {
+				lastWheelSnapAtRef.current = now;
 				triggerScrollSnap(
 					getNextAllowedMapSheetSnapStateDown(snapState, orderedSnapStates),
 				);
@@ -271,6 +279,7 @@ export default function useMapSheetDetents({
 			snapState,
 			topThreshold,
 			triggerScrollSnap,
+			wheelCooldownMs,
 		],
 	);
 

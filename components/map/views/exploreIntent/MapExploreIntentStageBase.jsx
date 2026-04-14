@@ -152,6 +152,12 @@ export default function MapExploreIntentStageBase({
 	);
 
 	useEffect(() => {
+		if (selectedCare || isExpanded) {
+			pulseProgress.stopAnimation();
+			pulseProgress.setValue(0);
+			return undefined;
+		}
+
 		const pulseLoop = Animated.loop(
 			Animated.sequence([
 				Animated.timing(pulseProgress, {
@@ -174,7 +180,7 @@ export default function MapExploreIntentStageBase({
 			pulseLoop.stop();
 			pulseProgress.stopAnimation();
 		};
-	}, [pulseProgress]);
+	}, [isExpanded, pulseProgress, selectedCare]);
 
 	const headerSlot = (
 		<MapExploreIntentTopRow

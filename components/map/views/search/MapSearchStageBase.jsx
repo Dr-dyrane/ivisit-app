@@ -37,6 +37,7 @@ function MapSearchStageSurface({
 }) {
 	const { isDarkMode } = useTheme();
 	const searchInputRef = useRef(null);
+	const didAutofocusOnOpenRef = useRef(false);
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
@@ -82,6 +83,7 @@ function MapSearchStageSurface({
 	});
 	const {
 		androidExpandedBodyGesture,
+		androidExpandedBodyStyle,
 		handleAndroidCollapseScroll,
 		handleAndroidCollapseScrollBeginDrag,
 	} = useMapAndroidExpandedCollapse({
@@ -95,7 +97,14 @@ function MapSearchStageSurface({
 		},
 	});
 	useEffect(() => {
-		if (snapState !== MAP_SHEET_SNAP_STATES.EXPANDED) return undefined;
+		if (
+			didAutofocusOnOpenRef.current ||
+			snapState !== MAP_SHEET_SNAP_STATES.EXPANDED
+		) {
+			return undefined;
+		}
+
+		didAutofocusOnOpenRef.current = true;
 
 		const focusTimer = setTimeout(() => {
 			searchInputRef.current?.focus?.();
@@ -157,6 +166,7 @@ function MapSearchStageSurface({
 					onScrollEndDrag={handleBodyScrollEndDrag}
 					scrollEnabled={bodyScrollEnabled}
 					androidExpandedBodyGesture={androidExpandedBodyGesture}
+					androidExpandedBodyStyle={androidExpandedBodyStyle}
 				>
 					<MapSearchBodyContent model={model} />
 				</MapStageBodyScroll>

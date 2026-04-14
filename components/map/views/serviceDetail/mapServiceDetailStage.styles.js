@@ -15,8 +15,8 @@ export default StyleSheet.create({
 		marginTop: Platform.OS === "android" ? -6 : 0,
 	},
 	topSlotSpacer: {
-		width: 34,
-		height: 34,
+		width: 38,
+		height: 38,
 	},
 	topSlotTitle: {
 		flex: 1,
@@ -27,13 +27,13 @@ export default StyleSheet.create({
 		paddingHorizontal: 8,
 	},
 	topSlotAction: {
-		width: 34,
-		height: 34,
+		width: 38,
+		height: 38,
 	},
 	topSlotCloseButton: {
-		width: 34,
-		height: 34,
-		borderRadius: 17,
+		width: 38,
+		height: 38,
+		borderRadius: 999,
 		alignItems: "center",
 		justifyContent: "center",
 	},
@@ -165,16 +165,6 @@ export default StyleSheet.create({
 		bottom: 16,
 	},
 	primaryButton: {
-		minHeight: 56,
-		paddingHorizontal: 18,
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "center",
-		...squircle(20),
-	},
-	primaryButtonText: {
-		color: "#FFFFFF",
-		fontSize: 15,
-		fontWeight: "800",
+		shadowOffset: { width: 0, height: 12 },
 	},
 });

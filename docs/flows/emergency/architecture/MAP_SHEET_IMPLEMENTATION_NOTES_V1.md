@@ -17,19 +17,80 @@ Related references:
 The newer sheet phases now share one body-scroll wrapper:
 
 - `components/map/views/shared/MapStageBodyScroll.jsx`
+- `components/map/views/shared/useMapAndroidExpandedCollapse.js`
 
 This wrapper owns:
 
 - the phase `ScrollView`
 - the shared `react-native-gesture-handler` `GestureDetector` path used for Android expanded-to-half collapse
 - the non-collapsable child wrapper required by RNGH on Fabric / Expo
+- the Android-only visual pull feedback applied to expanded body content before a collapse commits
 
 Rule:
 
 - phase stages may compose their own top-slot and body content
 - they should not each re-implement the same scroll-shell wrapper unless a phase has a hard visual or behavioral exception
+- Android expanded-body collapse must use `mapMotionTokens.sheet.expandedBodyGesture`, not local magic thresholds
 
-## 2. Hospital detail exception
+## 2. Phase transition rule
+
+The persistent sheet should not hard-cut between sheet phases.
+
+Current shared transition:
+
+- `components/map/views/shared/MapPhaseTransitionView.jsx`
+- mounted by `components/map/core/MapSheetOrchestrator.jsx`
+
+Rule:
+
+- phase changes should use a small opacity/translate transition so the user sees one persistent sheet changing state
+- transitions should orient the user, not perform; keep durations short and easing Apple-like
+- do not remount the whole map or replace the sheet shell to create a phase transition
+
+## 3. Header chrome and close control rule
+
+Map sheet and modal close controls now use one shared primitive:
+
+- `components/map/views/shared/MapHeaderIconButton.jsx`
+
+Contract:
+
+- size: `38 x 38`
+- icon size: `17` unless the icon itself needs optical compensation
+- close buttons are full-round: `borderRadius: 999`
+- search close, hospital list close, hospital detail close, service detail close, and modal close should all use this primitive
+- the surface color should come from the same sheet/token family as the mid-snap hospital detail close control
+
+Rule:
+
+- do not add one-off close buttons in `/map` unless the shared primitive cannot express the state
+- non-close icon tiles may be squircle/continuous; close buttons remain fully rounded
+
+## 4. Focus and keyboard rule
+
+Search focus is intentional state, not a side effect of every snap change.
+
+Rules:
+
+- opening the `search` phase directly into `expanded` may autofocus once
+- expanding from `half` because the user focused the input may focus naturally
+- collapsing from `expanded` to `half` must dismiss the keyboard
+- returning from `expanded` to `half` should reset body scroll to top so the next half state shows the CTA/top content, not stale deep scroll
+- do not autofocus when restoring `half`; the user must explicitly focus the input
+
+## 5. Scroll, wheel, and gesture rule
+
+Scroll detents must feel deliberate, not loose.
+
+Rules:
+
+- scroll/wheel detents use `mapMotionTokens`, including platform-specific cooldowns
+- web wheel detents require a cooldown so one trackpad gesture does not cause multiple snaps
+- Android uses explicit body gesture collapse only when the scroll body is at top
+- upward expansion and downward collapse thresholds should feel balanced; do not make upward swipes easier than downward swipes by accident
+- never allow expanded-to-half to accidentally close the phase
+
+## 6. Hospital detail exception
 
 `hospital_detail` is the important exception.
 
@@ -54,7 +115,7 @@ Working rule:
 - do not flatten `hospital_detail` expanded and half layouts into one generic body tree unless the expanded hero/title overlap is preserved exactly
 - behavior reuse is not enough if the visual contract changes
 
-## 3. Preserve structure before abstracting
+## 7. Preserve structure before abstracting
 
 When refactoring map sheet phases:
 
@@ -73,7 +134,7 @@ The unsafe abstraction boundary is:
 
 - collapsing the expanded and half visual trees into one simplified content tree without pixel-level validation
 
-## 4. Selection-state lesson
+## 8. Selection-state lesson
 
 For rail/card selection inside a sheet phase:
 
@@ -85,7 +146,7 @@ Rule:
 - surface components should render selection
 - stage or flow state should own selection persistence
 
-## 5. Gesture lesson
+## 9. Gesture lesson
 
 The current Android expanded-to-half fix works because gesture ownership is explicit:
 
@@ -98,7 +159,7 @@ Rule:
 
 - do not stack multiple competing responder systems when one explicit gesture path can own the behavior
 
-## 6. Corner and Liquid Glass lesson
+## 10. Corner and Liquid Glass lesson
 
 The map sheet family should share one corner/material language:
 
@@ -112,7 +173,7 @@ Rule:
 
 - if a new map surface introduces a rounded card, button, or sheet without continuous corners or a tokenized material decision, treat it as visual-system drift
 
-## 7. Practical review checklist
+## 11. Practical review checklist
 
 Before closing any future map-sheet refactor:
 
@@ -121,6 +182,8 @@ Before closing any future map-sheet refactor:
 - verify drag-down from expanded to half on Android
 - verify the `hospital_detail` hero/title/body overlap visually
 - verify search input focus timing after expand
+- verify collapsed/half close controls use the shared `38 x 38` full-round header icon primitive
+- verify web wheel/trackpad detents do not double-trigger
 - verify rail selection persists across snap-state changes when expected
 
 If any refactor improves code reuse but weakens the visible sheet contract, revert the structural change first and redesign the abstraction boundary second.

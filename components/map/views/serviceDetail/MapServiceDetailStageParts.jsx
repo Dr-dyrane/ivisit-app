@@ -1,8 +1,9 @@
 import React from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { COLORS } from "../../../../constants/colors";
+import EntryActionButton from "../../../entry/EntryActionButton";
+import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import MapStageGlassPanel from "../shared/MapStageGlassPanel";
 import styles from "./mapServiceDetailStage.styles";
 
@@ -13,19 +14,14 @@ export function MapServiceDetailTopSlot({ title, onClose, titleColor, closeSurfa
 			<Text numberOfLines={1} style={[styles.topSlotTitle, { color: titleColor }]}>
 				{title}
 			</Text>
-			<Pressable onPress={onClose} style={styles.topSlotAction}>
-				{({ pressed }) => (
-					<View
-						style={[
-							styles.topSlotCloseButton,
-							{ backgroundColor: closeSurface },
-							pressed ? styles.topSlotPressed : null,
-						]}
-					>
-						<Ionicons name="close" size={18} color={titleColor} />
-					</View>
-				)}
-			</Pressable>
+			<MapHeaderIconButton
+				onPress={onClose}
+				accessibilityLabel="Close service details"
+				backgroundColor={closeSurface}
+				color={titleColor}
+				pressableStyle={styles.topSlotAction}
+				style={styles.topSlotCloseButton}
+			/>
 		</View>
 	);
 }
@@ -164,25 +160,24 @@ export function MapServiceDetailFooter({
 	onConfirm,
 	serviceType,
 }) {
+	const label = isSelected
+		? serviceType === "room"
+			? "Room selected"
+			: "Transport selected"
+		: serviceType === "room"
+			? "Select room"
+			: "Select transport";
+
 	return (
 		<View style={[styles.footerDock, modalContainedStyle]}>
-			<Pressable
+			<EntryActionButton
+				label={label}
 				onPress={onConfirm}
-				style={[
-					styles.primaryButton,
-					{ backgroundColor: isSelected ? "rgba(134,16,14,0.72)" : COLORS.brandPrimary },
-				]}
-			>
-				<Text style={styles.primaryButtonText}>
-					{isSelected
-						? serviceType === "room"
-							? "Room selected"
-							: "Transport selected"
-						: serviceType === "room"
-							? "Select room"
-							: "Select transport"}
-				</Text>
-			</Pressable>
+				variant="primary"
+				height={58}
+				fullWidth
+				style={styles.primaryButton}
+			/>
 		</View>
 	);
 }

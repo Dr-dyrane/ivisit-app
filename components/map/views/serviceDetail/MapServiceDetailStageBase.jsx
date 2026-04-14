@@ -68,6 +68,7 @@ export default function MapServiceDetailStageBase({
 	});
 	const {
 		androidExpandedBodyGesture,
+		androidExpandedBodyStyle,
 		handleAndroidCollapseScroll,
 		handleAndroidCollapseScrollBeginDrag,
 	} = useMapAndroidExpandedCollapse({
@@ -192,6 +193,7 @@ export default function MapServiceDetailStageBase({
 				onScrollEndDrag={handleBodyScrollEndDrag}
 				scrollEnabled={bodyScrollEnabled}
 				androidExpandedBodyGesture={androidExpandedBodyGesture}
+				androidExpandedBodyStyle={androidExpandedBodyStyle}
 			>
 				<MapServiceDetailHeader
 					accent={accent}

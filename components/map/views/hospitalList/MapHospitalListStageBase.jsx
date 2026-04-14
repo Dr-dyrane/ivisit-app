@@ -58,6 +58,7 @@ export default function MapHospitalListStageBase({
 	});
 	const {
 		androidExpandedBodyGesture,
+		androidExpandedBodyStyle,
 		handleAndroidCollapseScroll,
 		handleAndroidCollapseScrollBeginDrag,
 	} = useMapAndroidExpandedCollapse({
@@ -106,6 +107,7 @@ export default function MapHospitalListStageBase({
 				onScrollEndDrag={handleBodyScrollEndDrag}
 				scrollEnabled={bodyScrollEnabled}
 				androidExpandedBodyGesture={androidExpandedBodyGesture}
+				androidExpandedBodyStyle={androidExpandedBodyStyle}
 			>
 				<MapHospitalListBodyContent
 					hospitals={hospitals}

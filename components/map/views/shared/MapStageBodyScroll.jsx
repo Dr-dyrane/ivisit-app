@@ -1,5 +1,5 @@
 import React from "react";
-import { ScrollView, View } from "react-native";
+import { Animated, ScrollView, View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 
 export default function MapStageBodyScroll({
@@ -14,11 +14,14 @@ export default function MapStageBodyScroll({
 	onScrollEndDrag,
 	scrollEnabled = true,
 	androidExpandedBodyGesture = null,
+	androidExpandedBodyStyle = null,
 	children,
 }) {
 	const content = androidExpandedBodyGesture ? (
 		<GestureDetector gesture={androidExpandedBodyGesture}>
-			<View collapsable={false}>{children}</View>
+			<Animated.View collapsable={false} style={androidExpandedBodyStyle}>
+				{children}
+			</Animated.View>
 		</GestureDetector>
 	) : (
 		children

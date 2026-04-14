@@ -1,7 +1,7 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Text, View } from "react-native";
 import MapHospitalListContent from "../../surfaces/hospitals/MapHospitalListContent";
+import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import styles from "./mapHospitalListStage.styles";
 
 export function MapHospitalListTopSlot({
@@ -16,14 +16,13 @@ export function MapHospitalListTopSlot({
 			<View style={styles.headerCopy}>
 				<Text style={[styles.title, { color: titleColor }]}>Hospitals</Text>
 			</View>
-			<Pressable
+			<MapHeaderIconButton
 				onPress={onClose}
-				accessibilityRole="button"
 				accessibilityLabel="Close hospitals"
-				style={[styles.closeButton, { backgroundColor: closeSurfaceColor }]}
-			>
-				<Ionicons name="close" size={17} color={titleColor} />
-			</Pressable>
+				backgroundColor={closeSurfaceColor}
+				color={titleColor}
+				style={styles.closeButton}
+			/>
 		</View>
 	);
 }

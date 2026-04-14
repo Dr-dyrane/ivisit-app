@@ -12,7 +12,10 @@ export function useAmbulances() {
             const data = await ambulanceService.list();
             setAmbulances(data);
         } catch (err) {
-            console.error(err);
+            if (__DEV__) {
+                console.warn("[useAmbulances] Failed to refresh ambulances:", err?.message || err);
+            }
+            setAmbulances([]);
         } finally {
             setIsLoading(false);
         }

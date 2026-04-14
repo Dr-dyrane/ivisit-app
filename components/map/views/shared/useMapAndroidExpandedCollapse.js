@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform } from "react-native";
+import { Animated, Platform } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
+import { getMapPlatformMotion } from "../../tokens/mapMotionTokens";
 
 export default function useMapAndroidExpandedCollapse({
 	snapState,
@@ -14,6 +15,17 @@ export default function useMapAndroidExpandedCollapse({
 }) {
 	const [isBodyAtTop, setIsBodyAtTop] = useState(true);
 	const previousSnapStateRef = useRef(snapState);
+	const bodyDragY = useRef(new Animated.Value(0)).current;
+	const motion = useMemo(() => getMapPlatformMotion(Platform.OS), []);
+	const expandedBodyGestureTokens = motion.sheet.expandedBodyGesture;
+	const bodyDragSpringConfig = useMemo(
+		() => ({
+			tension: 48,
+			friction: 15,
+			useNativeDriver: true,
+		}),
+		[],
+	);
 
 	const updateAtTop = useCallback(
 		(offsetY = 0) => {
@@ -45,7 +57,10 @@ export default function useMapAndroidExpandedCollapse({
 		if (snapState !== MAP_SHEET_SNAP_STATES.EXPANDED && !isBodyAtTop) {
 			setIsBodyAtTop(true);
 		}
-	}, [isBodyAtTop, snapState]);
+		if (snapState !== MAP_SHEET_SNAP_STATES.EXPANDED) {
+			bodyDragY.setValue(0);
+		}
+	}, [bodyDragY, isBodyAtTop, snapState]);
 
 	useEffect(() => {
 		const previousSnapState = previousSnapStateRef.current;
@@ -57,11 +72,12 @@ export default function useMapAndroidExpandedCollapse({
 		) {
 			setIsBodyAtTop(true);
 			requestAnimationFrame(() => {
+				bodyDragY.setValue(0);
 				bodyScrollRef.current?.scrollTo?.({ y: 0, animated: false });
 				onExpandedToHalf?.();
 			});
 		}
-	}, [bodyScrollRef, onExpandedToHalf, snapState]);
+	}, [bodyDragY, bodyScrollRef, onExpandedToHalf, snapState]);
 
 	const androidExpandedBodyGesture = useMemo(() => {
 		if (
@@ -74,26 +90,63 @@ export default function useMapAndroidExpandedCollapse({
 
 		return Gesture.Pan()
 			.runOnJS(true)
-			.activeOffsetY(32)
-			.failOffsetX([-16, 16])
+			.activeOffsetY(expandedBodyGestureTokens.activeOffsetY)
+			.failOffsetX(expandedBodyGestureTokens.failOffsetX)
 			.shouldCancelWhenOutside(false)
+			.onBegin(() => {
+				bodyDragY.stopAnimation();
+			})
+			.onUpdate((event) => {
+				if (!isBodyAtTop) return;
+				const rawTranslateY = Math.max(0, Number(event.translationY ?? 0));
+				const visualTranslateY = Math.min(
+					expandedBodyGestureTokens.maxVisualDrag,
+					rawTranslateY * expandedBodyGestureTokens.visualDragFactor,
+				);
+				bodyDragY.setValue(visualTranslateY);
+			})
 			.onEnd((event) => {
 				if (!isBodyAtTop) return;
 				const absDx = Math.abs(event.translationX ?? 0);
 				const absDy = Math.abs(event.translationY ?? 0);
 				const velocityY = Number(event.velocityY ?? 0);
-				const isVerticalIntent = absDy > 56 && absDy > absDx * 1.6;
-				const passedDistance = event.translationY > 104;
-				const passedVelocity = event.translationY > 56 && velocityY > 1450;
+				const isVerticalIntent =
+					absDy > expandedBodyGestureTokens.verticalIntentDistance &&
+					absDy > absDx * expandedBodyGestureTokens.axisLockRatio;
+				const passedDistance = event.translationY > expandedBodyGestureTokens.collapseDistance;
+				const passedVelocity =
+					event.translationY > expandedBodyGestureTokens.velocityDistance &&
+					velocityY > expandedBodyGestureTokens.collapseVelocity;
 
 				if (isVerticalIntent && (passedDistance || passedVelocity)) {
 					onSnapStateChange(MAP_SHEET_SNAP_STATES.HALF);
 				}
+				Animated.spring(bodyDragY, {
+					toValue: 0,
+					...bodyDragSpringConfig,
+				}).start();
+			})
+			.onFinalize(() => {
+				Animated.spring(bodyDragY, {
+					toValue: 0,
+					...bodyDragSpringConfig,
+				}).start();
 			});
-	}, [isBodyAtTop, onSnapStateChange, snapState]);
+	}, [
+		bodyDragSpringConfig,
+		bodyDragY,
+		expandedBodyGestureTokens,
+		isBodyAtTop,
+		onSnapStateChange,
+		snapState,
+	]);
 
 	return {
 		androidExpandedBodyGesture,
+		androidExpandedBodyStyle:
+			Platform.OS === "android" && snapState === MAP_SHEET_SNAP_STATES.EXPANDED
+				? { transform: [{ translateY: bodyDragY }] }
+				: null,
 		handleAndroidCollapseScroll,
 		handleAndroidCollapseScrollBeginDrag,
 		isBodyAtTop,

@@ -35,6 +35,7 @@ Current strengths:
 - strongest scroll-driven detent model
 - good contained-vs-full-bleed decisions in expanded state
 - clean expanded hospital rail width usage
+- pulse attention now stops after selection or expanded context
 
 Current gaps:
 
@@ -49,6 +50,8 @@ Current strengths:
 - now shares one body-scroll implementation with sibling phases
 - collapsed search row exists
 - top controls are persistent
+- search autofocus is now one-time on direct expanded open, not every snap restoration
+- expanded-to-half collapse dismisses the keyboard
 
 Current gaps:
 
@@ -65,13 +68,14 @@ Current strengths:
 - no modal sibling leak
 - stage now shares more of the same shell contract
 - now shares one body-scroll implementation with sibling phases
+- close button uses the shared map header icon primitive
 
 Current gaps:
 
-- `half -> expanded -> half` behavior still needs product verification against `explore_intent`
+- `half -> expanded -> half` behavior now shares more logic but still needs product verification against `explore_intent`
 - left panel / sidebar posture is still visually unstable for the newer states
 - header/body proportions feel more list-like than system-like
-- no explicit parity verification for Android drag-collapse behavior
+- Android drag-collapse has shared gesture plumbing, but still needs device verification
 
 ## `hospital_detail`
 
@@ -84,6 +88,8 @@ Current strengths:
 - hero swipe exists in expanded state
 - selection state is owned above the body surface
 - stage now shares one body-scroll implementation with sibling phases
+- Android expanded-body drag collapse now uses shared motion tokens
+- half-state title fallback and close/cycle controls use the shared header icon primitive
 
 Current gaps:
 
@@ -102,13 +108,14 @@ Current gaps:
 Observed:
 
 - `explore_intent` remains the only phase users consistently trust for detent behavior
-- Android drag-down from `expanded` to `half` required a dedicated gesture-handler path in newer phases
-- newer phases need platform verification, not just code reuse
+- Android drag-down from `expanded` to `half` now has a shared gesture-handler path in newer phases
+- newer phases still need platform verification, not just code reuse
 
 Acceptance:
 
 - `search`, `hospital_list`, and `hospital_detail` all support the same expected downward and upward transitions as allowed by their phase rules
 - Android native behavior matches iOS/web expectations for permitted detents
+- web wheel/trackpad gestures do not double-trigger snap changes
 
 ## PSG-02 Wide-screen left panel states are unstable
 
@@ -158,11 +165,27 @@ Observed:
 
 - `explore_intent` still feels like the most coherent glass implementation
 - `search`, `hospital_list`, and `hospital_detail` are closer now but still not one family
+- close buttons now have one shared primitive, reducing header chrome drift
 
 Acceptance:
 
 - top controls, close buttons, search pills, and interior surfaces all feel cut from the same glass/material system
 - platform differences remain implementation details, not visible design drift
+
+## PSG-06 Motion language needs final device verification
+
+Observed:
+
+- phase transitions now use a shared fade/translate wrapper
+- snap springs and Android body gesture thresholds are tokenized
+- looping pulse motion is reduced after selection/expanded state
+
+Acceptance:
+
+- phase changes feel continuous without looking like route changes
+- Android pull-down collapse feels deliberate, not loose
+- iOS/web scroll-detents remain steady and do not collapse too far
+- no animated feedback runs after it has stopped serving user intent
 
 ## 3. Immediate Task Backlog
 
@@ -201,6 +224,11 @@ Acceptance:
 - dragging down in Android from hospital detail `expanded` reliably lands in `half`
 - no accidental phase close
 - no gesture dead zone
+- search, hospital list, hospital detail, and service detail all use the shared body gesture path where applicable
+
+Status:
+
+- Implementation path added; still requires Android device verification.
 
 ## Task C. Repair hospital detail rail viewport layout
 
@@ -262,6 +290,20 @@ Acceptance:
 - all top controls, shell surfaces, and internal cards feel like the same family
 - `explore_intent` is no longer visibly ahead of the other phases
 
+## Task H. Verify shared motion and header chrome pass
+
+Goal:
+
+- confirm recent shared primitives hold across all `/map` phases
+
+Acceptance:
+
+- `MapHeaderIconButton` is used for search, hospital list, hospital detail, service detail, and modal close controls
+- close buttons render as full-round `38 x 38` controls
+- `MapPhaseTransitionView` wraps phase-level orchestration
+- `mapMotionTokens` owns gesture sensitivity and wheel cooldowns
+- search keyboard behavior follows the focus rule
+
 ## 4. Recommended Execution Order
 
 Use this order:
@@ -273,6 +315,7 @@ Use this order:
 5. Task E. Half-state hospital detail hierarchy and `Ready` pill treatment
 6. Task F. Wide-screen left panel parity
 7. Task G. Final glass/material parity pass
+8. Task H. Shared motion and header chrome verification
 
 Reason:
 

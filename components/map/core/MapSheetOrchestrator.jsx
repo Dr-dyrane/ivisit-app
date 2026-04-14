@@ -4,6 +4,7 @@ import MapExploreIntentOrchestrator from "../views/exploreIntent/MapExploreInten
 import MapHospitalListOrchestrator from "../views/hospitalList/MapHospitalListOrchestrator";
 import MapSearchOrchestrator from "../views/search/MapSearchOrchestrator";
 import MapServiceDetailOrchestrator from "../views/serviceDetail/MapServiceDetailOrchestrator";
+import MapPhaseTransitionView from "../views/shared/MapPhaseTransitionView";
 import { MAP_SEARCH_SHEET_MODES } from "../surfaces/search/mapSearchSheet.helpers";
 import {
 	MAP_SHEET_MODES,
@@ -72,99 +73,109 @@ export default function MapSheetOrchestrator({
 	switch (phase) {
 		case MAP_SHEET_PHASES.SEARCH:
 			return (
-				<MapSearchOrchestrator
-					sheetHeight={sheetHeight}
-					snapState={snapState}
-					mode={searchMode}
-					hospitals={hospitals}
-					selectedHospitalId={selectedHospitalId}
-					currentLocation={currentLocation}
-					onClose={onCloseSearch}
-					onOpenHospital={onOpenFeaturedHospital}
-					onBrowseHospitals={onOpenHospitals}
-					onUseCurrentLocation={onUseCurrentLocation}
-					onSelectLocation={onSelectLocation}
-					onOpenProfile={onOpenProfile}
-					onSnapStateChange={onSnapStateChange}
-					profileImageSource={
-						profileImageSource || require("../../../assets/profile.jpg")
-					}
-					isSignedIn={isSignedIn}
-				/>
+				<MapPhaseTransitionView phaseKey={phase}>
+					<MapSearchOrchestrator
+						sheetHeight={sheetHeight}
+						snapState={snapState}
+						mode={searchMode}
+						hospitals={hospitals}
+						selectedHospitalId={selectedHospitalId}
+						currentLocation={currentLocation}
+						onClose={onCloseSearch}
+						onOpenHospital={onOpenFeaturedHospital}
+						onBrowseHospitals={onOpenHospitals}
+						onUseCurrentLocation={onUseCurrentLocation}
+						onSelectLocation={onSelectLocation}
+						onOpenProfile={onOpenProfile}
+						onSnapStateChange={onSnapStateChange}
+						profileImageSource={
+							profileImageSource || require("../../../assets/profile.jpg")
+						}
+						isSignedIn={isSignedIn}
+					/>
+				</MapPhaseTransitionView>
 			);
 		case MAP_SHEET_PHASES.HOSPITAL_LIST:
 			return (
-				<MapHospitalListOrchestrator
-					sheetHeight={sheetHeight}
-					snapState={snapState}
-					hospitals={hospitals}
-					selectedHospitalId={selectedHospitalId}
-					recommendedHospitalId={recommendedHospitalId}
-					onClose={onCloseHospitals}
-					onSelectHospital={onSelectHospital}
-					onChangeLocation={onChangeHospitalLocation}
-					onSnapStateChange={onSnapStateChange}
-				/>
+				<MapPhaseTransitionView phaseKey={phase}>
+					<MapHospitalListOrchestrator
+						sheetHeight={sheetHeight}
+						snapState={snapState}
+						hospitals={hospitals}
+						selectedHospitalId={selectedHospitalId}
+						recommendedHospitalId={recommendedHospitalId}
+						onClose={onCloseHospitals}
+						onSelectHospital={onSelectHospital}
+						onChangeLocation={onChangeHospitalLocation}
+						onSnapStateChange={onSnapStateChange}
+					/>
+				</MapPhaseTransitionView>
 			);
 		case MAP_SHEET_PHASES.HOSPITAL_DETAIL:
 			return (
-				<MapHospitalDetailOrchestrator
-					sheetHeight={sheetHeight}
-					snapState={snapState}
-					hospital={featuredHospital}
-					origin={activeLocation}
-					onClose={onCloseHospitalDetail}
-					onOpenHospitals={onOpenHospitals}
-					onUseHospital={onUseHospital}
-					onCycleHospital={onCycleHospital}
-					onOpenServiceDetail={onOpenServiceDetail}
-					onSelectService={onSelectHospitalService}
-					serviceSelections={serviceSelectionsByHospital[featuredHospital?.id || "unknown"] || null}
-					onSnapStateChange={onSnapStateChange}
-				/>
+				<MapPhaseTransitionView phaseKey={`${phase}-${featuredHospital?.id || "unknown"}`}>
+					<MapHospitalDetailOrchestrator
+						sheetHeight={sheetHeight}
+						snapState={snapState}
+						hospital={featuredHospital}
+						origin={activeLocation}
+						onClose={onCloseHospitalDetail}
+						onOpenHospitals={onOpenHospitals}
+						onUseHospital={onUseHospital}
+						onCycleHospital={onCycleHospital}
+						onOpenServiceDetail={onOpenServiceDetail}
+						onSelectService={onSelectHospitalService}
+						serviceSelections={serviceSelectionsByHospital[featuredHospital?.id || "unknown"] || null}
+						onSnapStateChange={onSnapStateChange}
+					/>
+				</MapPhaseTransitionView>
 			);
 		case MAP_SHEET_PHASES.SERVICE_DETAIL:
 			return (
-				<MapServiceDetailOrchestrator
-					sheetHeight={sheetHeight}
-					snapState={snapState}
-					payload={sheetPayload}
-					selectedServiceId={
-						sheetPayload?.serviceType === "room"
-							? serviceSelectionsByHospital[sheetPayload?.hospital?.id || "unknown"]?.roomServiceId ?? null
-							: serviceSelectionsByHospital[sheetPayload?.hospital?.id || "unknown"]?.ambulanceServiceId ?? null
-					}
-					onClose={onCloseServiceDetail}
-					onConfirm={onConfirmServiceDetail}
-					onChangeService={onChangeServiceDetail}
-					onSnapStateChange={onSnapStateChange}
-				/>
+				<MapPhaseTransitionView phaseKey={`${phase}-${sheetPayload?.service?.id || "unknown"}`}>
+					<MapServiceDetailOrchestrator
+						sheetHeight={sheetHeight}
+						snapState={snapState}
+						payload={sheetPayload}
+						selectedServiceId={
+							sheetPayload?.serviceType === "room"
+								? serviceSelectionsByHospital[sheetPayload?.hospital?.id || "unknown"]?.roomServiceId ?? null
+								: serviceSelectionsByHospital[sheetPayload?.hospital?.id || "unknown"]?.ambulanceServiceId ?? null
+						}
+						onClose={onCloseServiceDetail}
+						onConfirm={onConfirmServiceDetail}
+						onChangeService={onChangeServiceDetail}
+						onSnapStateChange={onSnapStateChange}
+					/>
+				</MapPhaseTransitionView>
 			);
 		case MAP_SHEET_PHASES.EXPLORE_INTENT:
 		default:
 			return (
-				<MapExploreIntentOrchestrator
-					sheetHeight={sheetHeight}
-					snapState={snapState}
-					nearestHospital={nearestHospital}
-					nearestHospitalMeta={nearestHospitalMeta}
-					selectedCare={selectedCare}
-					onOpenSearch={onOpenSearch}
-					onOpenHospitals={onOpenHospitals}
-					onChooseCare={onChooseCare}
-					onOpenProfile={onOpenProfile}
-					onOpenCareHistory={onOpenCareHistory}
-					onOpenFeaturedHospital={onOpenFeaturedHospital}
-					onSnapStateChange={onSnapStateChange}
-					profileImageSource={
-						profileImageSource || require("../../../assets/profile.jpg")
-					}
-					isSignedIn={isSignedIn}
-					nearbyHospitalCount={nearbyHospitalCount}
-					totalAvailableBeds={totalAvailableBeds}
-					nearbyBedHospitals={nearbyBedHospitals}
-					featuredHospitals={featuredHospitals}
-				/>
+				<MapPhaseTransitionView phaseKey={phase}>
+					<MapExploreIntentOrchestrator
+						sheetHeight={sheetHeight}
+						snapState={snapState}
+						nearestHospital={nearestHospital}
+						nearestHospitalMeta={nearestHospitalMeta}
+						selectedCare={selectedCare}
+						onOpenSearch={onOpenSearch}
+						onOpenHospitals={onOpenHospitals}
+						onChooseCare={onChooseCare}
+						onOpenProfile={onOpenProfile}
+						onOpenCareHistory={onOpenCareHistory}
+						onOpenFeaturedHospital={onOpenFeaturedHospital}
+						onSnapStateChange={onSnapStateChange}
+						profileImageSource={
+							profileImageSource || require("../../../assets/profile.jpg")
+						}
+						isSignedIn={isSignedIn}
+						nearbyHospitalCount={nearbyHospitalCount}
+						totalAvailableBeds={totalAvailableBeds}
+						nearbyBedHospitals={nearbyBedHospitals}
+						featuredHospitals={featuredHospitals}
+					/>
+				</MapPhaseTransitionView>
 			);
 	}
 }

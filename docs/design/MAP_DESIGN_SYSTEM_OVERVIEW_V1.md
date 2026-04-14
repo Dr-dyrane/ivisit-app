@@ -167,6 +167,8 @@ Current shared tokens:
 - Supporting text should default to `400` weight unless emphasis is truly required.
 - The map should wait for meaningful readiness, not just mount.
 - The hospital list shown on `/map` should come from the full discovered nearby set, not the display-trimmed subset.
+- Sheet phase changes should feel like one surface changing state, not a route replacement.
+- Motion should acknowledge intent immediately while staying calm and short.
 
 ## Corner And Material Contract
 
@@ -174,6 +176,7 @@ Apple's current HIG material guidance treats sheets, controls, navigation chrome
 
 - Any map sheet, modal sheet, card, grouped list surface, non-full icon tile, compact button, or image card that uses a rounded rectangle must use continuous corners: `borderCurve: "continuous"` with its `borderRadius`, or a local `squircle(radius)` helper.
 - True circles and full pills remain full-round: `borderRadius: 999`, exact half-height circles, marker dots, skeleton bars, and capsule chips do not need `borderCurve`.
+- Map close buttons are also full-round controls, not squircles. Use `MapHeaderIconButton` for search, hospital list, hospital detail, service detail, and modal close affordances.
 - Nested rounded elements should be concentric: inner cards and icon tiles need slightly smaller continuous radii than the parent surface.
 - Primary emergency CTAs can remain solid color. Do not turn the only primary action into glass if that weakens action hierarchy.
 - Prefer tokenized Liquid Glass through `MapSheetShell`, `MapModalShell`, `MapStageGlassPanel`, `mapGlassTokens`, and `mapUI.tokens`; do not add one-off opaque slabs inside phase content.
@@ -206,7 +209,24 @@ New map surfaces should reuse these first:
 1. `MapModalShell`
 2. `mapMotionTokens`
 3. `mapSheetTokens`
-4. `useMapExploreFlow`
-5. `MapLocationModal` / `MapHospitalModal` bridge task-sheet patterns, or the persistent `search` / `hospital_list` / `hospital_detail` sheet phases when the state already belongs in the main map shell
+4. `MapHeaderIconButton`
+5. `MapStageBodyScroll`
+6. `useMapAndroidExpandedCollapse`
+7. `MapPhaseTransitionView`
+8. `useMapExploreFlow`
+9. `MapLocationModal` / `MapHospitalModal` bridge task-sheet patterns, or the persistent `search` / `hospital_list` / `hospital_detail` sheet phases when the state already belongs in the main map shell
 
 Only create new one-off modal or motion behavior if the shared contract truly cannot express the state.
+
+## Motion And Gesture Contract
+
+Map motion is tokenized in `components/map/tokens/mapMotionTokens.js`.
+
+Rules:
+
+- Use `MAP_SHEET_SNAP_SPRING` for sheet snap motion unless there is a documented platform exception.
+- Use `MAP_PLATFORM_MOTION.sheet.expandedBodyGesture` for Android expanded-body collapse thresholds.
+- Use wheel cooldown tokens for web/trackpad detents so a single gesture cannot produce multiple snap changes.
+- Phase transitions should use `MapPhaseTransitionView` or an equivalent shared transition wrapper, not ad hoc opacity/translate code per phase.
+- Avoid indefinite looping motion after the user has made a choice or after the surface is expanded; motion should guide attention, not keep advertising.
+- Search focus must be user-intent-driven after the first open. Do not refocus inputs automatically when returning to `half`.

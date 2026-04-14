@@ -78,7 +78,9 @@
         "centered dialogs on tablet and desktop for focused tasks",
         "tap targets must remain comfortable on compact phones",
         "respect reduced motion and avoid looping animation gimmicks",
-        "keyboard-aware sheet behavior must be platform-specific when iOS and Android require materially different modal behavior"
+        "keyboard-aware sheet behavior must be platform-specific when iOS and Android require materially different modal behavior",
+        "sheet gestures must feel deliberate: tokenized thresholds, cooldowns for wheel detents, and no accidental multi-snap behavior",
+        "search inputs must not refocus automatically when a sheet returns to a half state; focus should follow explicit user intent"
       ],
       "anti_patterns": [
         "multiple primary CTAs on one screen",
@@ -311,6 +313,12 @@
           ".js or .ts files own tokens, themes, helpers, hooks, config, and pure logic",
           "collocated style modules own presentation rules for the surface they serve",
           "real CSS should be limited to web-only exceptions instead of becoming the cross-platform styling system"
+        ],
+        "map_sheet_rules": [
+          "persistent map sheets should change phase through shared transition primitives instead of route-like hard cuts",
+          "map sheet motion, gesture thresholds, and wheel cooldowns belong in shared motion tokens",
+          "map close controls should use the shared header icon primitive and remain full-round even when surrounding controls are squircles",
+          "phase-specific components may own content hierarchy, but shared scroll and Android expanded-collapse behavior should stay centralized"
         ],
         "anti_patterns": [
           "copying colors or spacing values directly into every component",

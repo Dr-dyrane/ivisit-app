@@ -5,6 +5,7 @@ import EmergencySearchBar from "../../../emergency/EmergencySearchBar";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import MapSearchSheetSections from "../../surfaces/search/MapSearchSheetSections";
 import MapExploreIntentProfileTrigger from "../exploreIntent/MapExploreIntentProfileTrigger";
+import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import { styles as searchStyles } from "../../surfaces/search/mapSearchSheet.styles";
 import styles from "./mapSearchStage.styles";
 
@@ -73,17 +74,16 @@ export function MapSearchActiveTopRow({
 				compact
 				style={[searchStyles.searchBar, styles.activeSearchBar]}
 			/>
-			<Pressable
+			<MapHeaderIconButton
 				onPress={model.handleDismiss}
-				hitSlop={10}
+				accessibilityLabel="Close search"
+				backgroundColor={tokens.closeSurface}
+				color={model.titleColor}
 				style={[
 					styles.closeButton,
 					model.isDismissing && styles.closeButtonDisabled,
-					{ backgroundColor: tokens.closeSurface },
 				]}
-			>
-				<Ionicons name="close" size={17} color={model.titleColor} />
-			</Pressable>
+			/>
 		</View>
 	);
 }

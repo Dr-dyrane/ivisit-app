@@ -1,7 +1,7 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Text, View } from "react-native";
 import MapHospitalDetailBody from "../../surfaces/hospitals/MapHospitalDetailBody";
+import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import MapHospitalDetailCollapsedRow from "./MapHospitalDetailCollapsedRow";
 import styles from "./mapHospitalDetailStage.styles";
 
@@ -62,29 +62,16 @@ export function MapHospitalDetailFloatingTopSlot({
 				]}
 			>
 				{canCycleHospital ? (
-					<Pressable
+					<MapHeaderIconButton
 						onPress={onCycleHospital}
-						accessibilityRole="button"
 						accessibilityLabel="Show next hospital"
-						hitSlop={10}
-						style={styles.floatingTopActionPressable}
-					>
-						{({ pressed }) => (
-							<View
-								style={[
-									styles.floatingTopActionButton,
-									{ backgroundColor: floatingCycleSurface },
-									pressed ? styles.floatingTopCloseButtonPressed : null,
-								]}
-							>
-								<Ionicons
-									name="chevron-forward"
-									size={19}
-									color={floatingCycleIconColor}
-								/>
-							</View>
-						)}
-					</Pressable>
+						backgroundColor={floatingCycleSurface}
+						color={floatingCycleIconColor}
+						iconName="chevron-forward"
+						iconSize={19}
+						pressableStyle={styles.floatingTopActionPressable}
+						style={styles.floatingTopActionButton}
+					/>
 				) : (
 					<View style={styles.floatingTopSpacer} />
 				)}
@@ -108,25 +95,14 @@ export function MapHospitalDetailFloatingTopSlot({
 						</>
 					) : null}
 				</View>
-				<Pressable
+				<MapHeaderIconButton
 					onPress={onClose}
-					accessibilityRole="button"
 					accessibilityLabel="Close hospital details"
-					hitSlop={10}
-					style={styles.floatingTopClosePressable}
-				>
-					{({ pressed }) => (
-						<View
-							style={[
-								styles.floatingTopCloseButton,
-								{ backgroundColor: floatingCloseSurface },
-								pressed ? styles.floatingTopCloseButtonPressed : null,
-							]}
-						>
-							<Ionicons name="close" size={17} color={floatingCloseIconColor} />
-						</View>
-					)}
-				</Pressable>
+					backgroundColor={floatingCloseSurface}
+					color={floatingCloseIconColor}
+					pressableStyle={styles.floatingTopClosePressable}
+					style={styles.floatingTopCloseButton}
+				/>
 			</View>
 		</View>
 	);

@@ -382,6 +382,7 @@ This is the current element inventory to reference during cleanup or global cons
 - `search`
 - `hospital_list`
 - `hospital_detail`
+- `service_detail`
 
 ### Suppressed internals
 - `EmergencyLocationPreviewMap` internal skeleton exists but is disabled on `/map` via `showInternalSkeleton={false}`
@@ -468,6 +469,7 @@ Rules:
 - `search`
   - collapsed state matches the resting `explore_intent` shell
   - same search row and profile trigger posture
+  - does not autofocus when restored to `half`
 - `hospital_list`
   - no collapsed state in the first migration pass
   - minimum posture is `half`
@@ -478,6 +480,26 @@ Rules:
     - centered hospital title
     - distance subtext
     - trailing close icon
+
+## 18.2 Sheet motion and gesture rules
+
+Rules:
+
+- sheet snap, drag, wheel, and Android body-collapse thresholds belong in `mapMotionTokens`
+- wheel and trackpad detents must have cooldown protection so one gesture does not cause multiple snaps
+- Android expanded-to-half collapse must be available from the body region when the body scroll is at top
+- expanded-to-half collapse should reset the body scroll to top before the half state is shown again
+- phase changes should use shared transition treatment so the sheet reads as one continuous surface
+- looping attention motion must stop once the user has selected an option or the expanded surface already reveals the full context
+
+## 18.3 Header chrome rules
+
+Rules:
+
+- `/map` close controls use `MapHeaderIconButton`
+- close controls are `38 x 38`, full-round, and use a `17` icon by default
+- the visual surface for close controls should match the shared sheet chrome token, not a one-off opaque color
+- non-close icon tiles may use continuous/squircle corners, but close buttons stay fully rounded
 
 ## 19. Auth Rule
 
