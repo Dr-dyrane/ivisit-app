@@ -86,6 +86,7 @@ export default function MapSheetShell({
 				/>
 				<MapLiquidGlassLayer
 					isDarkMode={isDarkMode}
+					shapeStyle={isSidebar ? sidebarShapeStyle : radiusStyle}
 					prismOpacity={tokens.liquidPrismOpacity}
 					sheenOpacity={tokens.liquidSheenOpacity}
 				/>
