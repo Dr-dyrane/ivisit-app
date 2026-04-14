@@ -207,6 +207,7 @@ export function useMapSheetShell({
 		},
 		hostLayoutStyle,
 		isAndroid,
+		isDarkMode,
 		isCollapsed,
 		isSidebar,
 		panResponder,

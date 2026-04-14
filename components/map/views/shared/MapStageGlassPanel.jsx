@@ -1,6 +1,7 @@
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import MapLiquidGlassLayer from "../../MapLiquidGlassLayer";
 
 export default function MapStageGlassPanel({
 	children,
@@ -36,6 +37,11 @@ export default function MapStageGlassPanel({
 					/>
 				</>
 			) : null}
+			<MapLiquidGlassLayer
+				isDarkMode={isDarkMode}
+				prismOpacity={0.52}
+				sheenOpacity={0.58}
+			/>
 			{children}
 		</View>
 	);

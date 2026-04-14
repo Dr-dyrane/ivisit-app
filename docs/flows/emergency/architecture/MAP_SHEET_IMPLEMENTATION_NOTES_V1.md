@@ -105,6 +105,7 @@ The map sheet family should share one corner/material language:
 - non-full rounded rectangles use continuous corners through `borderCurve: "continuous"` or a local `squircle(radius)` helper
 - true circles and full pills remain full-round and do not need the squircle helper
 - `MapSheetShell`, `MapModalShell`, and `MapStageGlassPanel` are the preferred Liquid Glass owners
+- `MapLiquidGlassLayer` owns the soft rainbow/prismatic sheen so it stays consistent across iOS, Android, and web
 - phase internals should use tokenized translucent surfaces, not hard-coded opaque slabs
 - primary red emergency CTAs stay solid when action hierarchy would be weakened by glass
 
