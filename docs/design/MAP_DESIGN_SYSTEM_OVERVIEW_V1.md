@@ -177,7 +177,6 @@ Apple's current HIG material guidance treats sheets, controls, navigation chrome
 - Nested rounded elements should be concentric: inner cards and icon tiles need slightly smaller continuous radii than the parent surface.
 - Primary emergency CTAs can remain solid color. Do not turn the only primary action into glass if that weakens action hierarchy.
 - Prefer tokenized Liquid Glass through `MapSheetShell`, `MapModalShell`, `MapStageGlassPanel`, `mapGlassTokens`, and `mapUI.tokens`; do not add one-off opaque slabs inside phase content.
-- Shared prismatic glass effects should come from `MapLiquidGlassLayer`, with platform fallbacks handled by the shell/tokens.
 
 Reference:
 

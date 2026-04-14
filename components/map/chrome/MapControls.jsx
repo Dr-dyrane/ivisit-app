@@ -3,7 +3,6 @@ import { View, Pressable, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from "@expo/vector-icons";
 import { getMapRenderTokens } from "../tokens/mapRenderTokens";
-import MapLiquidGlassLayer from "../MapLiquidGlassLayer";
 
 const squircle = (radius) => ({
     borderRadius: radius,
@@ -52,11 +51,6 @@ const MapControls = ({
                         ]}
                     />
                 )}
-                <MapLiquidGlassLayer
-                    isDarkMode={isDarkMode}
-                    prismOpacity={0.58}
-                    sheenOpacity={0.68}
-                />
 
                 <Pressable
                     onPress={onRecenter}

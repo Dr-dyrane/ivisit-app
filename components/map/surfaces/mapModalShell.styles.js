@@ -31,10 +31,6 @@ export const styles = StyleSheet.create({
 		borderCurve: "continuous",
 		paddingTop: 14,
 		paddingHorizontal: 14,
-		overflow: "hidden",
-	},
-	materialBase: {
-		...StyleSheet.absoluteFillObject,
 	},
 	keyboardAvoider: {
 		flex: 1,

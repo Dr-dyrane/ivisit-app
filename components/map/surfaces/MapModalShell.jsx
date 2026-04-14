@@ -22,8 +22,6 @@ import {
 	MAP_MODAL_EXIT_MS,
 	getMapPlatformMotion,
 } from "../tokens/mapMotionTokens";
-import { getMapSheetTokens } from "../tokens/mapSheetTokens";
-import MapLiquidGlassLayer from "../MapLiquidGlassLayer";
 import {
 	getMapSheetHeight,
 	getNextMapSheetSnapStateDown,
@@ -70,10 +68,6 @@ export default function MapModalShell({
 	} = useAuthViewport();
 	const isWeb = Platform.OS === "web";
 	const platformMotion = useMemo(() => getMapPlatformMotion(Platform.OS), []);
-	const tokens = useMemo(
-		() => getMapSheetTokens({ isDarkMode, platform: Platform.OS }),
-		[isDarkMode],
-	);
 	const modalMotion = platformMotion.modal;
 	const screenHeight = visibleScreenHeight;
 	const offscreenHeight = layoutHeight || visibleScreenHeight;
@@ -308,9 +302,9 @@ export default function MapModalShell({
 	};
 
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
-	const surfaceColor = tokens.glassSurface;
-	const closeBg = tokens.avatarSurface;
-	const handleColor = tokens.handleColor;
+	const surfaceColor = isDarkMode ? "rgba(8, 15, 27, 0.84)" : "rgba(255, 255, 255, 0.88)";
+	const closeBg = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)";
+	const handleColor = isDarkMode ? "rgba(148,163,184,0.54)" : "rgba(100,116,139,0.30)";
 	const expandedSheetHeight = getMapSheetHeight(screenHeight, MAP_SHEET_SNAP_STATES.EXPANDED);
 	const resolvedTopClearance = topClearance ?? surfaceConfig.topClearance;
 	const browserTopOffset = isWeb ? Math.max(0, browserInsetTop || 0) : 0;
@@ -597,28 +591,6 @@ export default function MapModalShell({
 				},
 			]}
 		>
-			<View
-				pointerEvents="none"
-				style={[
-					styles.materialBase,
-					surfaceShapeStyle,
-					{ backgroundColor: tokens.glassBackdrop },
-				]}
-			/>
-			<MapLiquidGlassLayer
-				isDarkMode={isDarkMode}
-				shapeStyle={surfaceShapeStyle}
-				prismOpacity={tokens.liquidPrismOpacity}
-				sheenOpacity={tokens.liquidSheenOpacity}
-			/>
-			<View
-				pointerEvents="none"
-				style={[
-					styles.materialBase,
-					surfaceShapeStyle,
-					{ backgroundColor: tokens.glassOverlay },
-				]}
-			/>
 			{resolvedShowHandle ? (
 				<View {...(panResponder?.panHandlers || {})} style={styles.handleWrap}>
 					<Pressable onPress={handleHandlePress} hitSlop={12}>

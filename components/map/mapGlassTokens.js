@@ -3,32 +3,19 @@ import { Platform } from "react-native";
 export function getMapGlassTokens({ isDarkMode, platform = Platform.OS }) {
 	const isIOS = platform === "ios";
 	const isAndroid = platform === "android";
-	const isWeb = platform === "web";
 
 	return {
-		blurIntensity: isDarkMode ? 52 : 62,
-		glassUnderlay: isDarkMode ? "rgba(0, 0, 0, 0.20)" : "rgba(15, 23, 42, 0.08)",
-		glassBackdrop: isDarkMode ? "rgba(8, 15, 27, 0.18)" : "rgba(255, 255, 255, 0.18)",
-		glassSurface: isDarkMode
-			? isAndroid
-				? "rgba(8, 15, 27, 0.68)"
-				: isWeb
-					? "rgba(8, 15, 27, 0.54)"
-					: "rgba(8, 15, 27, 0.42)"
-			: isAndroid
-				? "rgba(248, 250, 252, 0.72)"
-				: isWeb
-					? "rgba(255, 255, 255, 0.56)"
-					: "rgba(255, 255, 255, 0.34)",
+		blurIntensity: isDarkMode ? 44 : 52,
+		glassUnderlay: isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)",
+		glassBackdrop: isDarkMode ? "rgba(8, 15, 27, 0.26)" : "rgba(255, 255, 255, 0.24)",
+		glassSurface: isDarkMode ? "rgba(8, 15, 27, 0.84)" : "rgba(248, 250, 252, 0.84)",
 		glassOverlay: isDarkMode
 			? isIOS
-				? "rgba(15, 23, 42, 0.16)"
-				: "rgba(8, 15, 27, 0.18)"
+				? "rgba(15, 23, 42, 0.22)"
+				: "rgba(8, 15, 27, 0.84)"
 			: isIOS
-				? "rgba(255, 255, 255, 0.18)"
-				: "rgba(248, 250, 252, 0.20)",
-		liquidPrismOpacity: isDarkMode ? 0.82 : 0.9,
-		liquidSheenOpacity: isDarkMode ? 0.78 : 0.92,
+				? "rgba(255, 255, 255, 0.26)"
+				: "rgba(248, 250, 252, 0.84)",
 		shadowStyle: Platform.select({
 			ios: {
 				shadowColor: "#000000",

@@ -2,7 +2,6 @@ import React from "react";
 import { Animated, Platform, Pressable, StyleSheet, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { useMapSheetShell } from "./useMapSheetShell";
-import MapLiquidGlassLayer from "./MapLiquidGlassLayer";
 import styles from "./mapSheetShell.styles";
 
 export default function MapSheetShell({
@@ -24,7 +23,6 @@ export default function MapSheetShell({
 		handleStyle,
 		hostLayoutStyle,
 		isAndroid,
-		isDarkMode,
 		isCollapsed,
 		isSidebar,
 		panResponder,
@@ -83,12 +81,6 @@ export default function MapSheetShell({
 				<Animated.View
 					pointerEvents="none"
 					style={[StyleSheet.absoluteFillObject, isSidebar ? sidebarShapeStyle : null, backdropStyle]}
-				/>
-				<MapLiquidGlassLayer
-					isDarkMode={isDarkMode}
-					shapeStyle={isSidebar ? sidebarShapeStyle : radiusStyle}
-					prismOpacity={tokens.liquidPrismOpacity}
-					sheenOpacity={tokens.liquidSheenOpacity}
 				/>
 				<Animated.View
 					pointerEvents="none"
