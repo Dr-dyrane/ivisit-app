@@ -7,6 +7,11 @@ import { COLORS } from "../../../../constants/colors";
 import googlePlacesService from "../../../../services/googlePlacesService";
 import MapModalShell from "../MapModalShell";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 function mapGeocodeResult(result) {
 	const location = result?.geometry?.location;
 	const components = Array.isArray(result?.address_components) ? result.address_components : [];
@@ -349,11 +354,11 @@ const styles = StyleSheet.create({
 	},
 	inputShell: {
 		minHeight: 56,
-		borderRadius: 24,
 		paddingHorizontal: 16,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
+		...squircle(24),
 	},
 	input: {
 		flex: 1,
@@ -370,8 +375,8 @@ const styles = StyleSheet.create({
 		fontWeight: "800",
 	},
 	resultGroup: {
-		borderRadius: 28,
 		overflow: "hidden",
+		...squircle(28),
 	},
 	resultRow: {
 		paddingHorizontal: 14,

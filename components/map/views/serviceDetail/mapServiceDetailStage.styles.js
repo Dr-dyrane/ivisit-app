@@ -1,5 +1,10 @@
 import { Platform, StyleSheet } from "react-native";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 export default StyleSheet.create({
 	topSlot: {
 		flexDirection: "row",
@@ -48,9 +53,9 @@ export default StyleSheet.create({
 		height: Platform.OS === "android" ? 24 : 20,
 	},
 	headerBlock: {
-		borderRadius: 28,
 		paddingHorizontal: 18,
 		paddingVertical: 18,
+		...squircle(28),
 	},
 	headerMetaRow: {
 		flexDirection: "row",
@@ -77,10 +82,10 @@ export default StyleSheet.create({
 	},
 	heroCard: {
 		height: 184,
-		borderRadius: 30,
 		alignItems: "center",
 		justifyContent: "center",
 		overflow: "hidden",
+		...squircle(30),
 	},
 	heroImage: {
 		width: "100%",
@@ -126,9 +131,9 @@ export default StyleSheet.create({
 		marginBottom: 12,
 	},
 	featureList: {
-		borderRadius: 24,
 		paddingHorizontal: 16,
 		paddingVertical: 14,
+		...squircle(24),
 	},
 	featureRow: {
 		flexDirection: "row",
@@ -161,11 +166,11 @@ export default StyleSheet.create({
 	},
 	primaryButton: {
 		minHeight: 56,
-		borderRadius: 20,
 		paddingHorizontal: 18,
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "center",
+		...squircle(20),
 	},
 	primaryButtonText: {
 		color: "#FFFFFF",

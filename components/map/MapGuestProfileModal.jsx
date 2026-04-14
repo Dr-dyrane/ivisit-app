@@ -4,6 +4,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import MapModalShell from "./surfaces/MapModalShell";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 export default function MapGuestProfileModal({
 	visible,
 	onClose,
@@ -84,11 +89,11 @@ const styles = StyleSheet.create({
 		marginTop: 18,
 		width: "100%",
 		minHeight: 58,
-		borderRadius: 24,
 		paddingHorizontal: 16,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
+		...squircle(24),
 	},
 	input: {
 		flex: 1,

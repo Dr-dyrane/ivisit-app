@@ -175,6 +175,7 @@ export default function MapExploreLoadingOverlay({
 						right: undefined,
 						width: headerWidth,
 						borderRadius: usesSidebarLayout ? 26 : 28,
+						borderCurve: "continuous",
 					},
 				]}
 			>
@@ -203,6 +204,7 @@ export default function MapExploreLoadingOverlay({
 						borderTopRightRadius: surfaceConfig.overlaySheetRadius,
 						borderBottomLeftRadius: surfaceConfig.overlaySheetRadius,
 						borderBottomRightRadius: surfaceConfig.overlaySheetRadius,
+						borderCurve: "continuous",
 						paddingHorizontal: usesSidebarLayout ? 16 : 12,
 						paddingTop: usesSidebarLayout
 							? (surfaceConfig.sidebarContentTopPadding || 8) + sheetSafeTopOffset

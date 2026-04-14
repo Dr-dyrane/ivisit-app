@@ -48,6 +48,11 @@ import MapControls from "./chrome/MapControls";
 
 import MapErrorBoundary from "./MapErrorBoundary";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 /**
  * FullScreenEmergencyMap - Apple/Google Style Map Component
  * Optimized for performance and modularity.
@@ -693,11 +698,11 @@ const styles = StyleSheet.create({
 		position: "absolute",
 		left: 16,
 		right: 16,
-		borderRadius: 16,
 		paddingHorizontal: 12,
 		paddingVertical: 10,
 		flexDirection: "row",
 		alignItems: "center",
+		...squircle(16),
 	},
 	telemetryBannerTextWrap: {
 		marginLeft: 10,

@@ -1,5 +1,10 @@
 import { StyleSheet } from "react-native";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 export const styles = StyleSheet.create({
 	root: {
 		...StyleSheet.absoluteFillObject,
@@ -24,11 +29,11 @@ export const styles = StyleSheet.create({
 		left: 16,
 		right: 16,
 		height: 64,
-		borderRadius: 28,
 		paddingHorizontal: 14,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
+		...squircle(28),
 	},
 	headerButtonGhost: {
 		width: 42,
@@ -144,11 +149,11 @@ export const styles = StyleSheet.create({
 		left: 8,
 		right: 8,
 		bottom: 8,
-		borderRadius: 44,
 		paddingHorizontal: 12,
 		paddingTop: 10,
 		paddingBottom: 12,
 		overflow: "hidden",
+		...squircle(44),
 	},
 	handle: {
 		alignSelf: "center",
@@ -211,8 +216,8 @@ export const styles = StyleSheet.create({
 	},
 	hospitalCard: {
 		height: 72,
-		borderRadius: 30,
 		marginBottom: 18,
+		...squircle(30),
 	},
 	sectionLabel: {
 		height: 14,
@@ -226,11 +231,11 @@ export const styles = StyleSheet.create({
 	},
 	providerRow: {
 		height: 58,
-		borderRadius: 22,
 		paddingHorizontal: 12,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 10,
+		...squircle(22),
 	},
 	providerIcon: {
 		width: 26,

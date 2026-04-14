@@ -7,6 +7,11 @@ import { useVisits } from "../../contexts/VisitsContext";
 import { navigateToVisits } from "../../utils/navigationHelpers";
 import MapModalShell from "./surfaces/MapModalShell";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 function formatVisitMeta(visit) {
 	const hospital = visit?.hospital || visit?.hospitalName || "iVisit care";
 	const date = typeof visit?.date === "string" ? visit.date : "";
@@ -78,12 +83,12 @@ const styles = StyleSheet.create({
 		gap: 12,
 	},
 	visitCard: {
-		borderRadius: 28,
 		paddingHorizontal: 16,
 		paddingVertical: 16,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
+		...squircle(28),
 	},
 	visitIconWrap: {
 		width: 40,
@@ -121,10 +126,10 @@ const styles = StyleSheet.create({
 		fontWeight: "700",
 	},
 	emptyCard: {
-		borderRadius: 28,
 		paddingHorizontal: 18,
 		paddingVertical: 22,
 		alignItems: "center",
+		...squircle(28),
 	},
 	emptyTitle: {
 		fontSize: 16,

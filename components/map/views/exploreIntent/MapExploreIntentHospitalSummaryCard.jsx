@@ -124,6 +124,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 					pressed ? styles.hospitalCardPressed : null,
 					{
 						borderRadius: tokens.cardRadius,
+						borderCurve: "continuous",
 						backgroundColor: tokens.strongCardSurface,
 					},
 				]}
@@ -188,6 +189,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 					pressed ? styles.hospitalCardPressed : null,
 					{
 						borderRadius: tokens.cardRadius,
+						borderCurve: "continuous",
 						backgroundColor: tokens.strongCardSurface,
 					},
 				]}
@@ -274,6 +276,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 				isWebMobileVariant ? styles.intentStatusCardWebMobile : null,
 				{
 					borderRadius: tokens.cardRadius,
+					borderCurve: "continuous",
 					backgroundColor: tokens.strongCardSurface,
 				},
 			]}

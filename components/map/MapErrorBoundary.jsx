@@ -3,6 +3,11 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 
+const squircle = (radius) => ({
+    borderRadius: radius,
+    borderCurve: "continuous",
+});
+
 class MapErrorBoundary extends Component {
     constructor(props) {
         super(props);
@@ -57,7 +62,6 @@ const styles = StyleSheet.create({
     errorCard: {
         backgroundColor: '#FFFFFF',
         padding: 32,
-        borderRadius: 24,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
@@ -65,6 +69,7 @@ const styles = StyleSheet.create({
         shadowRadius: 20,
         elevation: 5,
         width: '80%',
+        ...squircle(24),
     },
     title: {
         fontSize: 18,
@@ -84,7 +89,7 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.brandPrimary,
         paddingHorizontal: 20,
         paddingVertical: 12,
-        borderRadius: 12,
+        ...squircle(12),
     },
     buttonText: {
         color: '#FFFFFF',

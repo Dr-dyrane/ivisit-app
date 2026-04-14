@@ -1,5 +1,10 @@
 import { StyleSheet } from "react-native";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 export default StyleSheet.create({
 	topRow: {
 		flexDirection: "row",
@@ -75,6 +80,7 @@ export default StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 10,
+		borderCurve: "continuous",
 	},
 	searchPillCollapsed: {
 		minHeight: 44,
@@ -344,8 +350,8 @@ export default StyleSheet.create({
 		minWidth: 132,
 		paddingHorizontal: 12,
 		paddingVertical: 11,
-		borderRadius: 18,
 		overflow: "hidden",
+		...squircle(18),
 	},
 	summaryHeroMetricLabel: {
 		fontSize: 11,
@@ -431,12 +437,12 @@ export default StyleSheet.create({
 	summaryIconShell: {
 		width: 42,
 		height: 42,
-		borderRadius: 16,
 		padding: 1,
 		shadowColor: "#0F172A",
 		shadowOpacity: 0.05,
 		shadowRadius: 6,
 		shadowOffset: { width: 0, height: 3 },
+		...squircle(16),
 	},
 	summaryIconShellCompact: {
 		width: 30,
@@ -445,10 +451,10 @@ export default StyleSheet.create({
 	},
 	summaryIconFill: {
 		flex: 1,
-		borderRadius: 15,
 		alignItems: "center",
 		justifyContent: "center",
 		overflow: "hidden",
+		...squircle(15),
 	},
 	summaryIconFillCompact: {
 		borderRadius: 14,
@@ -459,8 +465,8 @@ export default StyleSheet.create({
 		right: 1,
 		top: 1,
 		height: "42%",
-		borderRadius: 14,
 		backgroundColor: "rgba(255,255,255,0.2)",
+		...squircle(14),
 	},
 	hospitalIconWrap: {
 		width: 42,
@@ -665,10 +671,10 @@ export default StyleSheet.create({
 		transform: [{ scale: 0.988 }],
 	},
 	intentCardSurface: {
-		borderRadius: 22,
 		paddingHorizontal: 16,
 		paddingVertical: 15,
 		overflow: "hidden",
+		...squircle(22),
 	},
 	intentCardSurfacePrimaryBias: {
 		paddingLeft: 20,
@@ -732,11 +738,11 @@ export default StyleSheet.create({
 	intentCardIconWrap: {
 		width: 42,
 		height: 42,
-		borderRadius: 14,
 		alignItems: "center",
 		justifyContent: "center",
 		overflow: "visible",
 		backgroundColor: "rgba(255,255,255,0.14)",
+		...squircle(14),
 	},
 	intentCardIconAura: {
 		position: "absolute",
@@ -816,8 +822,8 @@ export default StyleSheet.create({
 	featuredCard: {
 		width: 212,
 		height: 288,
-		borderRadius: 30,
 		overflow: "hidden",
+		...squircle(30),
 	},
 	featuredCardPressed: {
 		opacity: 0.96,
@@ -828,7 +834,7 @@ export default StyleSheet.create({
 		justifyContent: "flex-end",
 	},
 	featuredCardImageStyle: {
-		borderRadius: 30,
+		...squircle(30),
 	},
 	featuredCardHeader: {
 		paddingHorizontal: 10,
@@ -867,8 +873,8 @@ export default StyleSheet.create({
 	},
 	placeholderCardInner: {
 		flex: 1,
-		borderRadius: 28,
 		justifyContent: "space-between",
+		...squircle(28),
 	},
 	placeholderCardHeader: {
 		paddingHorizontal: 12,

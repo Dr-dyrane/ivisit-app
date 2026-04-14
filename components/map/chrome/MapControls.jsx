@@ -4,6 +4,11 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from "@expo/vector-icons";
 import { getMapRenderTokens } from "../tokens/mapRenderTokens";
 
+const squircle = (radius) => ({
+    borderRadius: radius,
+    borderCurve: "continuous",
+});
+
 const MapControls = ({
     onRecenter,
     onExpand,
@@ -109,9 +114,9 @@ const styles = StyleSheet.create({
     controlButton: {
         width: 40,
         height: 40,
-        borderRadius: 16,
         justifyContent: "center",
         alignItems: "center",
+        ...squircle(16),
     },
 });
 

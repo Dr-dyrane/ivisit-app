@@ -18,14 +18,17 @@ export const styles = StyleSheet.create({
 		overflow: "hidden",
 		borderTopLeftRadius: 38,
 		borderTopRightRadius: 38,
+		borderCurve: "continuous",
 	},
 	sheetBlur: {
 		borderTopLeftRadius: 38,
 		borderTopRightRadius: 38,
+		borderCurve: "continuous",
 	},
 	sheetSurface: {
 		borderTopLeftRadius: 38,
 		borderTopRightRadius: 38,
+		borderCurve: "continuous",
 		paddingTop: 14,
 		paddingHorizontal: 14,
 	},

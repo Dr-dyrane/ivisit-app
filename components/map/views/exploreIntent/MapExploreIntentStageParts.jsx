@@ -45,6 +45,7 @@ export function MapExploreIntentTopRow({
 					isWebMobileVariant ? styles.searchPillWebMobile : null,
 					{
 						borderRadius: tokens.cardRadius,
+						borderCurve: "continuous",
 						backgroundColor: tokens.searchSurface,
 					},
 				]}

@@ -1,6 +1,11 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "../../../../constants/colors";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 export const styles = StyleSheet.create({
 	content: {
 		paddingTop: 0,
@@ -11,9 +16,9 @@ export const styles = StyleSheet.create({
 		paddingHorizontal: 16,
 		paddingVertical: 15,
 		minHeight: 76,
-		borderRadius: 24,
 		borderWidth: 0,
 		marginBottom: 14,
+		...squircle(24),
 	},
 	rowTop: {
 		flexDirection: "row",
@@ -30,19 +35,19 @@ export const styles = StyleSheet.create({
 	sheetIconShell: {
 		width: 40,
 		height: 40,
-		borderRadius: 16,
 		padding: 1,
 		shadowColor: "#0F172A",
 		shadowOpacity: 0.05,
 		shadowRadius: 6,
 		shadowOffset: { width: 0, height: 3 },
+		...squircle(16),
 	},
 	sheetIconFill: {
 		flex: 1,
-		borderRadius: 15,
 		alignItems: "center",
 		justifyContent: "center",
 		overflow: "hidden",
+		...squircle(15),
 	},
 	sheetIconHighlight: {
 		position: "absolute",
@@ -50,8 +55,8 @@ export const styles = StyleSheet.create({
 		right: 1,
 		top: 1,
 		height: "42%",
-		borderRadius: 14,
 		backgroundColor: "rgba(255,255,255,0.2)",
+		...squircle(14),
 	},
 	titleBlock: {
 		flex: 1,
@@ -129,10 +134,10 @@ export const styles = StyleSheet.create({
 		fontWeight: "400",
 	},
 	emptyCard: {
-		borderRadius: 28,
 		paddingHorizontal: 18,
 		paddingVertical: 22,
 		alignItems: "center",
+		...squircle(28),
 	},
 	emptyIconWrap: {
 		marginBottom: 14,

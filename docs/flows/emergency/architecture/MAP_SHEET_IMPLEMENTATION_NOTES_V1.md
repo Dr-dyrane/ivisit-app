@@ -98,7 +98,21 @@ Rule:
 
 - do not stack multiple competing responder systems when one explicit gesture path can own the behavior
 
-## 6. Practical review checklist
+## 6. Corner and Liquid Glass lesson
+
+The map sheet family should share one corner/material language:
+
+- non-full rounded rectangles use continuous corners through `borderCurve: "continuous"` or a local `squircle(radius)` helper
+- true circles and full pills remain full-round and do not need the squircle helper
+- `MapSheetShell`, `MapModalShell`, and `MapStageGlassPanel` are the preferred Liquid Glass owners
+- phase internals should use tokenized translucent surfaces, not hard-coded opaque slabs
+- primary red emergency CTAs stay solid when action hierarchy would be weakened by glass
+
+Rule:
+
+- if a new map surface introduces a rounded card, button, or sheet without continuous corners or a tokenized material decision, treat it as visual-system drift
+
+## 7. Practical review checklist
 
 Before closing any future map-sheet refactor:
 

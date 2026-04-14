@@ -25,6 +25,7 @@ export function MapSearchCollapsedTopRow({
 					styles.searchPillCollapsed,
 					{
 						borderRadius: tokens.cardRadius,
+						borderCurve: "continuous",
 						backgroundColor: tokens.searchSurface,
 					},
 				]}

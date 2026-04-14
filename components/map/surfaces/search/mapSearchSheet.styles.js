@@ -1,6 +1,11 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "../../../../constants/colors";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 export const styles = StyleSheet.create({
 	content: {
 		paddingTop: 0,
@@ -18,12 +23,12 @@ export const styles = StyleSheet.create({
 	modeChip: {
 		flex: 1,
 		minHeight: 44,
-		borderRadius: 16,
 		paddingHorizontal: 14,
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "center",
 		gap: 8,
+		...squircle(16),
 	},
 	modeChipLabel: {
 		fontSize: 14,
@@ -59,8 +64,8 @@ export const styles = StyleSheet.create({
 		maxWidth: 220,
 	},
 	resultGroup: {
-		borderRadius: 28,
 		overflow: "hidden",
+		...squircle(28),
 	},
 	resultRow: {
 		paddingHorizontal: 14,
@@ -149,11 +154,11 @@ export const styles = StyleSheet.create({
 		marginLeft: 66,
 	},
 	emptyState: {
-		borderRadius: 28,
 		paddingHorizontal: 18,
 		paddingVertical: 22,
 		alignItems: "center",
 		gap: 10,
+		...squircle(28),
 	},
 	emptyIconWrap: {
 		width: 42,

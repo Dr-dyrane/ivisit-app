@@ -168,6 +168,37 @@ Current shared tokens:
 - The map should wait for meaningful readiness, not just mount.
 - The hospital list shown on `/map` should come from the full discovered nearby set, not the display-trimmed subset.
 
+## Corner And Material Contract
+
+Apple's current HIG material guidance treats sheets, controls, navigation chrome, and grouped list/card sections as rounded, concentric elements that sit in a distinct functional layer above content. In this codebase, that means:
+
+- Any map sheet, modal sheet, card, grouped list surface, non-full icon tile, compact button, or image card that uses a rounded rectangle must use continuous corners: `borderCurve: "continuous"` with its `borderRadius`, or a local `squircle(radius)` helper.
+- True circles and full pills remain full-round: `borderRadius: 999`, exact half-height circles, marker dots, skeleton bars, and capsule chips do not need `borderCurve`.
+- Nested rounded elements should be concentric: inner cards and icon tiles need slightly smaller continuous radii than the parent surface.
+- Primary emergency CTAs can remain solid color. Do not turn the only primary action into glass if that weakens action hierarchy.
+- Prefer tokenized Liquid Glass through `MapSheetShell`, `MapModalShell`, `MapStageGlassPanel`, `mapGlassTokens`, and `mapUI.tokens`; do not add one-off opaque slabs inside phase content.
+
+Reference:
+
+- Apple HIG Materials: <https://developer.apple.com/design/human-interface-guidelines/materials>
+- Apple developer guidance, Adopting Liquid Glass: <https://developer.apple.com/documentation/TechnologyOverviews/adopting-liquid-glass>
+
+## Liquid Glass Placement Audit
+
+Use Liquid Glass where the element is chrome or a major floating surface:
+
+- `MapSheetShell` and `MapModalShell` own the base material for persistent sheets and task sheets.
+- Search pills, close controls, cycle/next controls, profile triggers, and sticky headers should read as functional glass chrome.
+- Explore intent summary cards, hospital list rows, search result groups, and service-detail sections should use tokenized translucent card surfaces instead of flat opaque slabs.
+- Hospital detail expanded state needs the hero/body overlap to remain glass-like, with gradient tapering where the body meets imagery.
+- Wide-screen sidebar panels should keep the same sheet material and continuous radius as mobile sheets, only changing size and placement.
+
+Avoid Liquid Glass where it adds noise:
+
+- Do not layer glass on every small badge or metric chip; use muted card tokens unless the control is interactive chrome.
+- Do not glass map pins, route lines, skeleton bars, or pure status dots.
+- Do not stack multiple translucent layers under text without a contrast guard. Bright imagery needs a top/bottom mask before pills or text sit on it.
+
 ## Current Reuse Standard
 
 New map surfaces should reuse these first:

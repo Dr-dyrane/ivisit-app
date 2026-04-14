@@ -8,6 +8,11 @@ import EmergencySearchBar from "../../../emergency/EmergencySearchBar";
 import { COLORS } from "../../../../constants/colors";
 import MapModalShell from "../MapModalShell";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 function normalizeText(value) {
 	return String(value || "")
 		.toLowerCase()
@@ -686,8 +691,8 @@ const styles = StyleSheet.create({
 		maxWidth: 220,
 	},
 	resultGroup: {
-		borderRadius: 28,
 		overflow: "hidden",
+		...squircle(28),
 	},
 	resultRow: {
 		paddingHorizontal: 14,
@@ -776,11 +781,11 @@ const styles = StyleSheet.create({
 		marginLeft: 66,
 	},
 	emptyState: {
-		borderRadius: 28,
 		paddingHorizontal: 18,
 		paddingVertical: 22,
 		alignItems: "center",
 		gap: 10,
+		...squircle(28),
 	},
 	emptyIconWrap: {
 		width: 42,
