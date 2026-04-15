@@ -11,10 +11,14 @@ import MapStageGlassPanel from "../shared/MapStageGlassPanel";
 import { MAP_AMBULANCE_DECISION_COPY } from "./mapAmbulanceDecision.content";
 import styles from "./mapAmbulanceDecision.styles";
 
-function getAmbulanceTierIconName(visualProfile) {
-	if (visualProfile?.key === "critical") return "alert-circle";
-	if (visualProfile?.key === "advanced") return "pulse";
-	return "medkit";
+function getAmbulanceTierIconName(visualProfile, isActive = false) {
+	if (visualProfile?.key === "critical") {
+		return isActive ? "alert-circle" : "alert-circle-outline";
+	}
+	if (visualProfile?.key === "advanced") {
+		return isActive ? "pulse" : "pulse-outline";
+	}
+	return isActive ? "medkit" : "medkit-outline";
 }
 
 function toAccentRgba(color, alpha) {
@@ -241,7 +245,7 @@ export function MapAmbulanceDecisionSwitchRow({
 						disabled={!isEnabled}
 					>
 						<Ionicons
-							name={getAmbulanceTierIconName(visualProfile)}
+							name={getAmbulanceTierIconName(visualProfile, isActive)}
 							size={14}
 							color={isActive ? "#FFFFFF" : visualProfile.accent}
 						/>
@@ -256,15 +260,6 @@ export function MapAmbulanceDecisionSwitchRow({
 						>
 							{option?.title || visualProfile.shortLabel}
 						</Text>
-						{isActive ? (
-							<View style={styles.switchPillReadyIconWrap}>
-								<Ionicons
-									name="chevron-forward-outline"
-									size={16}
-									color="#FFFFFF"
-								/>
-							</View>
-						) : null}
 					</Pressable>
 				);
 			})}

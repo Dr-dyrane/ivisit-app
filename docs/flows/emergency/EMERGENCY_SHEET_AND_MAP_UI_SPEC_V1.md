@@ -795,6 +795,13 @@ Pre-dispatch data contract:
 - if pills are shown in the hero, the preferred order is:
   - pill 1 = crew
   - pill 2 = price
+- if a compact tier selector is shown under the hero:
+  - selected state should be communicated by the whole pill, not by a trailing chevron
+  - selected pill uses the app CTA color
+  - selected icon may switch from outline to filled
+  - unselected pills stay tinted and quieter
+  - first tap selects
+  - second tap on the already-selected tier advances
 - live unit identity belongs later:
   - call sign
   - plate
@@ -1467,6 +1474,10 @@ Current implementation note:
 - `/map` now opens a dedicated `AMBULANCE_DECISION` sheet phase using the shared map shell
 - `Other hospitals` routes through `hospital_list` and returns to the decision phase
 - `Confirm & continue` still hands off to the current legacy ambulance request route until `COMMIT_DETAILS` replaces that seam
+- the expanded decision sheet now uses:
+  - alternative tiers
+  - compact route surface
+  - notes card
 - the decision content currently survives on:
   - hospital recommendation
   - route preview

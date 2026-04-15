@@ -3,11 +3,103 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import EntryActionButton from "../../../entry/EntryActionButton";
+import { COLORS } from "../../../../constants/colors";
+import { getAmbulanceVisualProfile } from "../../../emergency/requestModal/ambulanceTierVisuals";
 import { getHospitalDetailServiceImageSource } from "../../surfaces/hospitals/mapHospitalDetail.content";
 import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import MapStageGlassPanel from "../shared/MapStageGlassPanel";
 import { MAP_SERVICE_DETAIL_COPY } from "./mapServiceDetail.content";
 import styles from "./mapServiceDetailStage.styles";
+
+function toAccentRgba(color, alpha) {
+	if (typeof color !== "string" || !color.startsWith("#")) {
+		return `rgba(134,16,14,${alpha})`;
+	}
+	const hex = color.slice(1);
+	const normalized =
+		hex.length === 3
+			? hex
+					.split("")
+					.map((char) => char + char)
+					.join("")
+			: hex;
+	const red = parseInt(normalized.slice(0, 2), 16);
+	const green = parseInt(normalized.slice(2, 4), 16);
+	const blue = parseInt(normalized.slice(4, 6), 16);
+	if (![red, green, blue].every(Number.isFinite)) {
+		return `rgba(134,16,14,${alpha})`;
+	}
+	return `rgba(${red},${green},${blue},${alpha})`;
+}
+
+function getTransportTierIconName(visualProfile, isActive = false) {
+	if (visualProfile?.key === "critical") {
+		return isActive ? "alert-circle" : "alert-circle-outline";
+	}
+	if (visualProfile?.key === "advanced") {
+		return isActive ? "pulse" : "pulse-outline";
+	}
+	return isActive ? "medkit" : "medkit-outline";
+}
+
+function getRoomVisual(title, fallbackAccent) {
+	const raw = String(title || "").toLowerCase();
+	if (/high-support|icu/.test(raw)) {
+		return {
+			accent: "#B91C1C",
+			activeIconName: "pulse",
+			inactiveIconName: "pulse-outline",
+		};
+	}
+	if (/private/.test(raw)) {
+		return {
+			accent: "#0F766E",
+			activeIconName: "shield-checkmark",
+			inactiveIconName: "shield-checkmark-outline",
+		};
+	}
+	return {
+		accent: fallbackAccent || "#64748B",
+		activeIconName: "bed",
+		inactiveIconName: "bed-outline",
+	};
+}
+
+function getServiceOptionVisual(item, serviceType, fallbackAccent) {
+	if (serviceType === "ambulance") {
+		const visualProfile = getAmbulanceVisualProfile(item);
+		return {
+			accent: visualProfile.accent,
+			activeIconName: getTransportTierIconName(visualProfile, true),
+			inactiveIconName: getTransportTierIconName(visualProfile, false),
+		};
+	}
+
+	return getRoomVisual(item?.title, fallbackAccent);
+}
+
+function getServiceOptionIconName(optionVisual, isActive) {
+	return isActive ? optionVisual.activeIconName : optionVisual.inactiveIconName;
+}
+
+function extractCrewCountLabel(value) {
+	const match = String(value || "").match(/(\d+)\s*(?:-?\s*person|paramedic|crew)/i);
+	if (!match) return null;
+	const count = Number(match[1]);
+	if (!Number.isFinite(count) || count <= 0) return null;
+	return `${count} crew`;
+}
+
+function buildAmbulanceCrewPillLabel(service) {
+	const explicitCrewLabel = extractCrewCountLabel(service?.crew);
+	if (explicitCrewLabel) return explicitCrewLabel;
+
+	const visualProfile = getAmbulanceVisualProfile(service);
+	if (visualProfile?.key === "basic") return "2 crew";
+	if (visualProfile?.key === "advanced") return "2+ crew";
+	if (visualProfile?.key === "critical") return "2+ crew";
+	return "Crew ready";
+}
 
 export function MapServiceDetailTopSlot({ title, onClose, titleColor, closeSurface }) {
 	return (
@@ -54,7 +146,6 @@ export function MapServiceDetailHeader({
 		>
 			<View style={styles.headerMetaRow}>
 				<View style={[styles.headerTypePill, { backgroundColor: nestedSurfaceColor }]}>
-					<View style={[styles.headerTypeDot, { backgroundColor: accent }]} />
 					<Text style={[styles.headerTypeLabel, { color: accent }]}>{typeLabel}</Text>
 				</View>
 				{servicePositionLabel ? (
@@ -75,7 +166,9 @@ export function MapServiceDetailSwitchRow({
 	accent,
 	mutedColor,
 	nestedSurfaceColor,
+	isDarkMode = false,
 	onSelectService,
+	onAdvanceSelectedService,
 	selectedServiceId,
 	serviceItems = [],
 	serviceType,
@@ -84,58 +177,84 @@ export function MapServiceDetailSwitchRow({
 	if (!Array.isArray(serviceItems) || serviceItems.length < 2) {
 		return null;
 	}
-	const activeSurfaceColor =
-		serviceType === "room" ? "rgba(100,116,139,0.14)" : "rgba(134,16,14,0.12)";
 
 	return (
-		<View>
-			<Text style={[styles.sectionLabel, styles.switchLabel, { color: mutedColor }]}>
-				{serviceType === "room"
-					? MAP_SERVICE_DETAIL_COPY.CHOOSE_ROOM
-					: MAP_SERVICE_DETAIL_COPY.CHOOSE_TRANSPORT}
-			</Text>
-			<View style={styles.switchRow}>
-				{serviceItems.map((item) => {
-					const isActive = (item?.id || item?.title) === selectedServiceId;
-					return (
-						<Pressable
-							key={item?.id || item?.title}
-							onPress={() => onSelectService?.(item)}
-							style={({ pressed }) => [
-								styles.switchPill,
-								{
-									backgroundColor: isActive
-										? activeSurfaceColor
-										: nestedSurfaceColor,
-									opacity: pressed ? 0.92 : 1,
-								},
+		<View style={styles.switchRow}>
+			{serviceItems.map((item) => {
+				const isActive = (item?.id || item?.title) === selectedServiceId;
+				const optionVisual = getServiceOptionVisual(item, serviceType, accent);
+				const inactiveSurfaceColor = toAccentRgba(
+					optionVisual.accent,
+					isDarkMode ? 0.18 : 0.12,
+				);
+				return (
+					<Pressable
+						key={item?.id || item?.title}
+						onPress={() =>
+							isActive
+								? onAdvanceSelectedService?.(item)
+								: onSelectService?.(item)
+						}
+						style={({ pressed }) => [
+							styles.switchPill,
+							{
+								backgroundColor: isActive
+									? COLORS.brandPrimary
+									: inactiveSurfaceColor || nestedSurfaceColor,
+								opacity: pressed ? 0.92 : 1,
+							},
+						]}
+					>
+						<Ionicons
+							name={getServiceOptionIconName(optionVisual, isActive)}
+							size={14}
+							color={isActive ? "#FFFFFF" : optionVisual.accent}
+						/>
+						<Text
+							style={[
+								styles.switchPillLabel,
+								{ color: isActive ? "#FFFFFF" : optionVisual.accent },
 							]}
+							numberOfLines={1}
 						>
-							<View style={[styles.switchAccent, { backgroundColor: accent }]} />
-							<Text
-								style={[
-									styles.switchPillLabel,
-									{ color: isActive ? accent : titleColor },
-								]}
-								numberOfLines={1}
-							>
-								{item?.title || "Option"}
-							</Text>
-						</Pressable>
-					);
-				})}
-			</View>
+							{item?.title || "Option"}
+						</Text>
+					</Pressable>
+				);
+			})}
 		</View>
 	);
 }
 
 export function MapServiceDetailHero({
+	accent,
 	glassTokens,
 	imageSource,
 	isDarkMode,
+	priceLabel,
 	panHandlers,
+	service,
+	serviceType,
 	surfaceColor,
+	titleColor,
 }) {
+	const isAmbulance = serviceType === "ambulance";
+	const heroPillSurfaceColor = isDarkMode
+		? "rgba(8,15,27,0.58)"
+		: "rgba(255,255,255,0.86)";
+	const heroMetrics = isAmbulance
+		? [
+				{
+					iconName: "people",
+					label: buildAmbulanceCrewPillLabel(service),
+				},
+				{
+					iconName: "cash",
+					label: priceLabel,
+				},
+			]
+		: [];
+
 	return (
 		<MapStageGlassPanel
 			style={styles.heroCard}
@@ -156,6 +275,23 @@ export function MapServiceDetailHero({
 				}
 				style={StyleSheet.absoluteFillObject}
 			/>
+			{heroMetrics.length ? (
+				<View style={styles.heroOverlay}>
+					<View style={styles.heroMetaRow}>
+						{heroMetrics.map((metric) => (
+							<View
+								key={`${metric.iconName}-${metric.label}`}
+								style={[styles.metaPill, { backgroundColor: heroPillSurfaceColor }]}
+							>
+								<Ionicons name={metric.iconName} size={14} color={accent} />
+								<Text style={[styles.metaLabel, { color: titleColor }]} numberOfLines={1}>
+									{metric.label}
+								</Text>
+							</View>
+						))}
+					</View>
+				</View>
+			) : null}
 		</MapStageGlassPanel>
 	);
 }
@@ -196,6 +332,7 @@ export function MapServiceDetailOptionList({
 	isDarkMode,
 	mutedColor,
 	onSelectService,
+	onAdvanceSelectedService,
 	selectedServiceId,
 	serviceItems = [],
 	serviceType,
@@ -210,8 +347,6 @@ export function MapServiceDetailOptionList({
 		serviceType === "room"
 			? MAP_SERVICE_DETAIL_COPY.ROOM_STATUS_FALLBACK
 			: MAP_SERVICE_DETAIL_COPY.TRANSPORT_STATUS_FALLBACK;
-	const activeSurfaceColor =
-		serviceType === "room" ? "rgba(100,116,139,0.14)" : "rgba(134,16,14,0.12)";
 
 	return (
 		<View style={styles.optionList}>
@@ -221,31 +356,63 @@ export function MapServiceDetailOptionList({
 				const statusLabel = item?.metaText || statusFallback;
 				const priceLabel = item?.priceText || MAP_SERVICE_DETAIL_COPY.PRICE_FALLBACK;
 				const imageSource = getHospitalDetailServiceImageSource(item, serviceType);
+				const optionVisual = getServiceOptionVisual(item, serviceType, accent);
+				const inactiveSurfaceColor =
+					(isDarkMode
+						? toAccentRgba(optionVisual.accent, 0.14)
+						: toAccentRgba(optionVisual.accent, 0.1)) || surfaceColor;
 
 				return (
 					<Pressable
 						key={itemId}
-						onPress={() => onSelectService?.(item)}
+						onPress={() =>
+							isActive
+								? onAdvanceSelectedService?.(item)
+								: onSelectService?.(item)
+						}
 						style={({ pressed }) => [
 							styles.optionRow,
 							index > 0 ? styles.optionRowSpaced : null,
 							{
-								backgroundColor: isActive
-									? activeSurfaceColor
-									: isDarkMode
-										? "rgba(255,255,255,0.055)"
-										: surfaceColor,
+								backgroundColor: isActive ? COLORS.brandPrimary : inactiveSurfaceColor,
 								opacity: pressed ? 0.94 : 1,
 							},
 						]}
 					>
-						<View style={styles.optionCopy}>
-							<Text style={[styles.optionTitle, { color: titleColor }]} numberOfLines={1}>
-								{item?.title || "Option"}
-							</Text>
-							<Text style={[styles.optionMeta, { color: mutedColor }]} numberOfLines={2}>
-								{`${statusLabel} • ${priceLabel}`}
-							</Text>
+						<View style={styles.optionLead}>
+							<View
+								style={[
+									styles.optionIconWrap,
+									{
+										backgroundColor: isActive
+											? "rgba(255,255,255,0.14)"
+											: toAccentRgba(optionVisual.accent, 0.12),
+									},
+								]}
+							>
+								<Ionicons
+									name={getServiceOptionIconName(optionVisual, isActive)}
+									size={18}
+									color={isActive ? "#FFFFFF" : optionVisual.accent}
+								/>
+							</View>
+							<View style={styles.optionCopy}>
+								<Text
+									style={[styles.optionTitle, { color: isActive ? "#FFFFFF" : titleColor }]}
+									numberOfLines={1}
+								>
+									{item?.title || "Option"}
+								</Text>
+								<Text
+									style={[
+										styles.optionMeta,
+										{ color: isActive ? "rgba(255,255,255,0.82)" : mutedColor },
+									]}
+									numberOfLines={1}
+								>
+									{`${statusLabel} - ${priceLabel}`}
+								</Text>
+							</View>
 						</View>
 						{imageSource ? (
 							<Image
@@ -255,15 +422,11 @@ export function MapServiceDetailOptionList({
 								style={styles.optionImage}
 							/>
 						) : null}
-						{isActive ? (
-							<View style={[styles.optionStatePill, { backgroundColor: activeSurfaceColor }]}>
-								<Text style={[styles.optionStateText, { color: accent }]}>
-									{MAP_SERVICE_DETAIL_COPY.CURRENT_PILL}
-								</Text>
-							</View>
-						) : (
-							<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-						)}
+						<Ionicons
+							name="chevron-forward"
+							size={16}
+							color={isActive ? "#FFFFFF" : optionVisual.accent}
+						/>
 					</Pressable>
 				);
 			})}
@@ -325,8 +488,8 @@ export function MapServiceDetailFooter({
 				label={label}
 				onPress={onConfirm}
 				variant="primary"
-				height={54}
-				radius={22}
+				height={50}
+				radius={24}
 				fullWidth
 				style={styles.primaryButton}
 			/>

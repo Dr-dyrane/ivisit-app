@@ -163,16 +163,6 @@ const styles = StyleSheet.create({
 		gap: 1,
 		position: "relative",
 	},
-	switchPillReadyIconWrap: {
-		position: "absolute",
-		right: 6,
-		top: "50%",
-		marginTop: Platform.OS === "web" ? -8 : -6,
-		width: 16,
-		height: 16,
-		alignItems: "center",
-		justifyContent: "center",
-	},
 	switchPillLabel: {
 		fontSize: 11,
 		lineHeight: 12,

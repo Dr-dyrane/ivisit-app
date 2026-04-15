@@ -158,6 +158,15 @@ export default function MapServiceDetailStageBase({
 		[changeServiceByOffset],
 	);
 	const swipeHandlers = swipeResponder.panHandlers;
+	const handleAdvanceSelectedService = useCallback(
+		(item) => {
+			const itemId = item?.id || item?.title;
+			const activeId = service?.id || service?.title;
+			if (!itemId || itemId !== activeId) return;
+			onConfirm?.();
+		},
+		[onConfirm, service?.id, service?.title],
+	);
 
 	return (
 		<MapSheetShell
@@ -205,7 +214,7 @@ export default function MapServiceDetailStageBase({
 					isDarkMode={isDarkMode}
 					mutedColor={mutedColor}
 					nestedSurfaceColor={nestedSurfaceColor}
-					positionLabel={statusLabel}
+					positionLabel={serviceType === "room" ? statusLabel : null}
 					servicePositionLabel={servicePositionLabel}
 					serviceType={serviceType}
 					surfaceColor={surfaceColor}
@@ -213,30 +222,41 @@ export default function MapServiceDetailStageBase({
 
 				<View style={styles.sectionSpacer} />
 
-				<MapServiceDetailSwitchRow
-					accent={accent}
-					mutedColor={mutedColor}
-					nestedSurfaceColor={nestedSurfaceColor}
-					onSelectService={onChangeService}
-					selectedServiceId={service?.id || service?.title || null}
-					serviceItems={serviceItems}
-					serviceType={serviceType}
-					titleColor={titleColor}
-				/>
+				{!isExpanded ? (
+					<>
+						<MapServiceDetailSwitchRow
+							accent={accent}
+							mutedColor={mutedColor}
+							nestedSurfaceColor={nestedSurfaceColor}
+							isDarkMode={isDarkMode}
+							onSelectService={onChangeService}
+							onAdvanceSelectedService={handleAdvanceSelectedService}
+							selectedServiceId={service?.id || service?.title || null}
+							serviceItems={serviceItems}
+							serviceType={serviceType}
+							titleColor={titleColor}
+						/>
 
-				{hasServiceCarousel ? <View style={styles.sectionSpacer} /> : null}
+						{hasServiceCarousel ? <View style={styles.sectionSpacer} /> : null}
+					</>
+				) : null}
 
 				<MapServiceDetailHero
+					accent={accent}
 					glassTokens={glassTokens}
 					imageSource={imageSource}
 					isDarkMode={isDarkMode}
+					priceLabel={priceLabel}
 					panHandlers={swipeHandlers}
+					service={service}
+					serviceType={serviceType}
 					surfaceColor={surfaceColor}
+					titleColor={titleColor}
 				/>
 
 				<View style={styles.sectionSpacer} />
 
-				{!(isExpanded && hasServiceCarousel) ? (
+				{!(isExpanded && hasServiceCarousel) && serviceType !== "ambulance" ? (
 					<MapServiceDetailMetrics
 						accent={accent}
 						nestedSurfaceColor={nestedSurfaceColor}
@@ -254,6 +274,7 @@ export default function MapServiceDetailStageBase({
 							isDarkMode={isDarkMode}
 							mutedColor={mutedColor}
 							onSelectService={onChangeService}
+							onAdvanceSelectedService={handleAdvanceSelectedService}
 							selectedServiceId={service?.id || service?.title || null}
 							serviceItems={serviceItems}
 							serviceType={serviceType}
@@ -279,14 +300,14 @@ export default function MapServiceDetailStageBase({
 				/>
 
 				<View style={styles.footerGap} />
-			</MapStageBodyScroll>
 
-			<MapServiceDetailFooter
-				isSelected={isSelected}
-				modalContainedStyle={modalContainedStyle}
-				onConfirm={onConfirm}
-				serviceType={serviceType}
-			/>
+				<MapServiceDetailFooter
+					isSelected={isSelected}
+					modalContainedStyle={null}
+					onConfirm={onConfirm}
+					serviceType={serviceType}
+				/>
+			</MapStageBodyScroll>
 		</MapSheetShell>
 	);
 }

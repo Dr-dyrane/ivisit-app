@@ -147,6 +147,22 @@ Practical rendering rule for the current hero:
 - hero pill 2 should be price
 - do not render live unit identity in pre-dispatch phases
 
+Practical selector rule for the current dispatch choice row:
+
+- selected state should read from the whole pill, not a nested trailing affordance
+- selected pill uses the shared app CTA color
+- selected tier icon may switch from outline to filled
+- unselected pills stay tier-tinted and quieter
+- first tap selects
+- second tap on the already-selected tier advances
+- do not add a trailing chevron to compact 3-up selector pills; it crowds web and small-phone layouts
+
+Current parity note for `service_detail`:
+
+- half state now follows the same compact icon + text selector grammar as `ambulance_decision`
+- expanded state switches to flatter comparison blades
+- the primary CTA now sits inline at the bottom of scroll content instead of staying sticky
+
 ## Hospital Data Consistency Fix
 
 The inconsistent “one hospital vs several hospitals” behavior had three causes:

@@ -350,7 +350,17 @@ Rendering rule for `ambulance_decision`:
 - hero = selected ambulance tier
 - hero pill 1 = crew
 - hero pill 2 = price
-- expanded state = alternative tiers, hospital card, notes
+- compact selector = centered icon + text only
+- selected compact pill = app CTA color + optional filled icon state
+- do not use a trailing chevron inside the compact selected pill
+- first tap selects, second tap on the same pill may advance
+- expanded state = alternative tiers, compact route surface, notes
+
+Rendering parity rule for `service_detail`:
+
+- half state should mirror the compact selector grammar used in `ambulance_decision`
+- expanded state should prefer flatter comparison blades over repeated pill controls
+- inline footer CTA is preferred over sticky footer CTA on short screens
 
 ## 14. Loading Rule
 
