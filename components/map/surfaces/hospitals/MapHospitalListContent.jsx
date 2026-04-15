@@ -1,14 +1,21 @@
-import React, { useMemo } from "react";
-import { Pressable, Text, View } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import React, { useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import {
+	FontAwesome5,
+	Fontisto,
+	Ionicons,
+	MaterialCommunityIcons,
+} from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { COLORS } from "../../../../constants/colors";
 import {
+	buildHospitalSpecialtyFilters,
 	buildHospitalDistance,
 	buildHospitalPrice,
 	buildHospitalRating,
 	buildHospitalSubtitle,
+	hospitalMatchesSpecialty,
 } from "./mapHospitalList.helpers";
 import { styles } from "./mapHospitalList.styles";
 
@@ -32,6 +39,23 @@ function SheetIconTile({ children, isDarkMode }) {
 	);
 }
 
+function renderSpecialtyIcon(iconConfig, color) {
+	if (!iconConfig) {
+		return <MaterialCommunityIcons name="medical-bag" size={13} color={color} />;
+	}
+
+	switch (iconConfig.family) {
+		case "Fontisto":
+			return <Fontisto name={iconConfig.icon} size={12} color={color} />;
+		case "Ionicons":
+			return <Ionicons name={iconConfig.icon} size={13} color={color} />;
+		case "FontAwesome5":
+			return <FontAwesome5 name={iconConfig.icon} size={12} color={color} />;
+		default:
+			return <MaterialCommunityIcons name={iconConfig.icon} size={13} color={color} />;
+	}
+}
+
 export default function MapHospitalListContent({
 	hospitals = [],
 	selectedHospitalId = null,
@@ -41,6 +65,7 @@ export default function MapHospitalListContent({
 	isLoading = false,
 }) {
 	const { isDarkMode } = useTheme();
+	const [selectedSpecialty, setSelectedSpecialty] = useState(null);
 	const hasHospitals = Array.isArray(hospitals) && hospitals.length > 0;
 	const titleColor = isDarkMode ? "#F8FAFC" : "#111827";
 	const helperColor = isDarkMode ? "#94A3B8" : "#667085";
@@ -53,6 +78,32 @@ export default function MapHospitalListContent({
 	const badgeText = isDarkMode ? "#FDE8E8" : "#991B1B";
 	const activeText = isDarkMode ? "#FDE8E8" : "#7F1D1D";
 	const emptySurface = isDarkMode ? "rgba(255,255,255,0.045)" : "rgba(255,255,255,0.9)";
+	const filterPillSurface = isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.05)";
+	const filterPillActive = isDarkMode ? "rgba(134,16,14,0.18)" : "rgba(220,38,38,0.10)";
+	const filterCountText = isDarkMode ? "#CBD5E1" : "#475467";
+	const specialtyFilters = useMemo(
+		() => buildHospitalSpecialtyFilters(hospitals),
+		[hospitals],
+	);
+	const filteredHospitals = useMemo(
+		() =>
+			selectedSpecialty
+				? hospitals.filter((hospital) =>
+						hospitalMatchesSpecialty(hospital, selectedSpecialty),
+					)
+				: hospitals,
+		[hospitals, selectedSpecialty],
+	);
+	const hasSpecialtyFilters = specialtyFilters.items.length > 0;
+
+	useEffect(() => {
+		if (
+			selectedSpecialty &&
+			!specialtyFilters.items.some((item) => item.id === selectedSpecialty)
+		) {
+			setSelectedSpecialty(null);
+		}
+	}, [selectedSpecialty, specialtyFilters.items]);
 
 	const content = useMemo(() => {
 		if (isLoading) {
@@ -93,7 +144,7 @@ export default function MapHospitalListContent({
 			);
 		}
 
-		return hospitals.map((hospital, index) => {
+		return filteredHospitals.map((hospital, index) => {
 			const isSelected = hospital?.id === selectedHospitalId;
 			const isRecommended = hospital?.id === recommendedHospitalId;
 			const distanceLabel = buildHospitalDistance(hospital);
@@ -202,7 +253,7 @@ export default function MapHospitalListContent({
 		emptySurface,
 		hasHospitals,
 		helperColor,
-		hospitals,
+		filteredHospitals,
 		isDarkMode,
 		isLoading,
 		metaChipBg,
@@ -217,5 +268,92 @@ export default function MapHospitalListContent({
 		titleColor,
 	]);
 
-	return <>{content}</>;
+	return (
+		<>
+			{!isLoading && hasSpecialtyFilters ? (
+				<>
+					<View style={styles.specialtyRailHeader}>
+						<Text style={[styles.specialtyRailTitle, { color: helperColor }]}>
+							Specialties
+						</Text>
+						<Text style={[styles.specialtyRailCount, { color: COLORS.brandPrimary }]}>
+							{specialtyFilters.items.length}
+						</Text>
+					</View>
+					<ScrollView
+						horizontal
+						showsHorizontalScrollIndicator={false}
+						contentContainerStyle={styles.specialtyRailContent}
+					>
+						<Pressable
+							onPress={() => setSelectedSpecialty(null)}
+							style={({ pressed }) => [
+								styles.specialtyPill,
+								{
+									backgroundColor: !selectedSpecialty ? filterPillActive : filterPillSurface,
+									opacity: pressed ? 0.94 : 1,
+								},
+							]}
+						>
+							<Ionicons
+								name="options-outline"
+								size={13}
+								color={!selectedSpecialty ? COLORS.brandPrimary : helperColor}
+							/>
+							<Text
+								style={[
+									styles.specialtyPillLabel,
+									{ color: !selectedSpecialty ? activeText : titleColor },
+								]}
+							>
+								All
+							</Text>
+							<Text style={[styles.specialtyPillCount, { color: filterCountText }]}>
+								{specialtyFilters.totalCount}
+							</Text>
+						</Pressable>
+
+						{specialtyFilters.items.map((item) => {
+							const isActive = selectedSpecialty === item.id;
+							return (
+								<Pressable
+									key={item.id}
+									onPress={() =>
+										setSelectedSpecialty((current) =>
+											current === item.id ? null : item.id,
+										)
+									}
+									style={({ pressed }) => [
+										styles.specialtyPill,
+										{
+											backgroundColor: isActive ? filterPillActive : filterPillSurface,
+											opacity: pressed ? 0.94 : 1,
+										},
+									]}
+								>
+									{renderSpecialtyIcon(
+										item.iconConfig,
+										isActive ? COLORS.brandPrimary : helperColor,
+									)}
+									<Text
+										numberOfLines={1}
+										style={[
+											styles.specialtyPillLabel,
+											{ color: isActive ? activeText : titleColor },
+										]}
+									>
+										{item.label}
+									</Text>
+									<Text style={[styles.specialtyPillCount, { color: filterCountText }]}>
+										{item.count}
+									</Text>
+								</Pressable>
+							);
+						})}
+					</ScrollView>
+				</>
+			) : null}
+			{content}
+		</>
+	);
 }
