@@ -90,6 +90,25 @@ Rules:
 - upward expansion and downward collapse thresholds should feel balanced; do not make upward swipes easier than downward swipes by accident
 - never allow expanded-to-half to accidentally close the phase
 
+Current resolution:
+
+- shared sheet scroll detents no longer snap mid-scroll once the content offset crosses a small threshold
+- detents now arm only when the drag begins at the top edge
+- commit happens on release using stronger distance and velocity gates
+- web wheel collapse also uses stronger accumulated thresholds and a longer cooldown
+
+Reason:
+
+- the old shared path felt looser than Android sheet gestures because it committed on raw content offset alone
+- that made `half -> expanded` and `expanded -> half` too easy to trigger by accident on iOS and web
+- Apple guidance says motion should feel precise, brief, and follow intent; the release-commit model is the safer custom approximation for this shell
+
+Rollback note:
+
+- if device testing shows the new detents are too stiff, first relax the thresholds in `components/map/tokens/mapMotionTokens.js`
+- do not restore per-phase magic numbers
+- only reintroduce mid-scroll snap behavior in `components/map/core/useMapSheetDetents.js` if the token tuning clearly cannot recover the desired feel
+
 ## 6. Hospital detail exception
 
 `hospital_detail` is the important exception.

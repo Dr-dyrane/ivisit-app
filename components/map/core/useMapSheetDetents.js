@@ -37,16 +37,24 @@ export default function useMapSheetDetents({
 	const bodyScrollRef = useRef(null);
 	const scrollStartOffsetYRef = useRef(0);
 	const lastScrollOffsetYRef = useRef(0);
+	const maxScrollOffsetYRef = useRef(0);
+	const minScrollOffsetYRef = useRef(0);
 	const scrollSnapHandledRef = useRef(false);
 	const wheelSnapAccumRef = useRef(0);
 	const lastWheelSnapAtRef = useRef(0);
 	const topThreshold = sheetScrollMotion.topThreshold;
 	const expandOffset = sheetScrollMotion.expandOffset;
+	const expandCommitOffset =
+		sheetScrollMotion.expandCommitOffset || Math.max(expandOffset + 20, expandOffset);
 	const collapsePull = sheetScrollMotion.collapsePull;
+	const collapseCommitPull =
+		sheetScrollMotion.collapseCommitPull || Math.min(collapsePull - 12, collapsePull);
 	const expandVelocity = sheetScrollMotion.expandVelocity;
 	const collapseVelocity = sheetScrollMotion.collapseVelocity;
 	const halfCollapseExtraPull = sheetScrollMotion.halfCollapseExtraPull;
 	const halfCollapseVelocityFactor = sheetScrollMotion.halfCollapseVelocityFactor;
+	const expandedCollapseWheelThreshold =
+		sheetScrollMotion.expandedCollapseWheelThreshold || -72;
 	const halfCollapseWheelThreshold = sheetScrollMotion.halfCollapseWheelThreshold;
 	const wheelCooldownMs = sheetScrollMotion.wheelCooldownMs || 0;
 	const isExpanded = snapState === MAP_SHEET_SNAP_STATES.EXPANDED;
@@ -56,6 +64,8 @@ export default function useMapSheetDetents({
 		wheelSnapAccumRef.current = 0;
 		scrollStartOffsetYRef.current = 0;
 		lastScrollOffsetYRef.current = 0;
+		maxScrollOffsetYRef.current = 0;
+		minScrollOffsetYRef.current = 0;
 	}, [snapState]);
 
 	useEffect(() => {
@@ -82,6 +92,8 @@ export default function useMapSheetDetents({
 			wheelSnapAccumRef.current = 0;
 			scrollStartOffsetYRef.current = 0;
 			lastScrollOffsetYRef.current = 0;
+			maxScrollOffsetYRef.current = 0;
+			minScrollOffsetYRef.current = 0;
 			bodyScrollRef.current?.scrollTo?.({ y: 0, animated: false });
 			onSnapStateChange(nextState);
 		},
@@ -106,6 +118,8 @@ export default function useMapSheetDetents({
 		const offsetY = event?.nativeEvent?.contentOffset?.y ?? 0;
 		scrollStartOffsetYRef.current = offsetY;
 		lastScrollOffsetYRef.current = offsetY;
+		maxScrollOffsetYRef.current = offsetY;
+		minScrollOffsetYRef.current = offsetY;
 		scrollSnapHandledRef.current = false;
 		wheelSnapAccumRef.current = 0;
 	}, []);
@@ -114,89 +128,63 @@ export default function useMapSheetDetents({
 		(event) => {
 			const offsetY = event?.nativeEvent?.contentOffset?.y ?? 0;
 			lastScrollOffsetYRef.current = offsetY;
+			maxScrollOffsetYRef.current = Math.max(maxScrollOffsetYRef.current, offsetY);
+			minScrollOffsetYRef.current = Math.min(minScrollOffsetYRef.current, offsetY);
 			if (offsetY > topThreshold) {
 				wheelSnapAccumRef.current = 0;
 			}
 
+			// Intentionally do not snap mid-scroll. Native iOS sheets can expand
+			// while content is scrolled at the edge, but our custom detent shell
+			// felt too eager when we committed on raw offset alone. We arm the
+			// detent here and commit on release instead.
 			if (isSidebarPresentation || !allowScrollDetents || scrollSnapHandledRef.current) return;
-			const startedNearTop = scrollStartOffsetYRef.current <= topThreshold;
-			if (!startedNearTop) return;
-
-			if (snapState === MAP_SHEET_SNAP_STATES.HALF && canExpand && offsetY > expandOffset) {
-				triggerScrollSnap(
-					getNextAllowedMapSheetSnapStateUp(snapState, orderedSnapStates),
-				);
-				return;
-			}
-
-			if (offsetY < collapsePull && canCollapse) {
-				const nextDownState = getNextAllowedMapSheetSnapStateDown(
-					snapState,
-					orderedSnapStates,
-				);
-				if (snapState === MAP_SHEET_SNAP_STATES.EXPANDED) {
-					triggerScrollSnap(nextDownState);
-					return;
-				}
-				if (
-					snapState === MAP_SHEET_SNAP_STATES.HALF &&
-					offsetY < collapsePull - halfCollapseExtraPull
-				) {
-					triggerScrollSnap(nextDownState);
-				}
-			}
 		},
-		[
-			allowScrollDetents,
-			canCollapse,
-			canExpand,
-			collapsePull,
-			expandOffset,
-			halfCollapseExtraPull,
-			isSidebarPresentation,
-			orderedSnapStates,
-			snapState,
-			topThreshold,
-			triggerScrollSnap,
-		],
+		[allowScrollDetents, isSidebarPresentation, topThreshold],
 	);
 
 	const handleBodyScrollEndDrag = useCallback(
 		(event) => {
 			const offsetY = event?.nativeEvent?.contentOffset?.y ?? lastScrollOffsetYRef.current ?? 0;
 			const velocityY = event?.nativeEvent?.velocity?.y ?? 0;
+			const peakOffsetY = Math.max(maxScrollOffsetYRef.current, offsetY);
+			const peakPullOffsetY = Math.min(minScrollOffsetYRef.current, offsetY);
+			const dragAdvance = peakOffsetY - scrollStartOffsetYRef.current;
+			const releasedNearTop = offsetY <= topThreshold;
+			const strongExpand = dragAdvance >= expandCommitOffset;
+			const velocityExpand = dragAdvance >= expandOffset && velocityY > expandVelocity;
+			const strongCollapse = peakPullOffsetY <= collapseCommitPull;
+			const velocityCollapse = releasedNearTop && velocityY < collapseVelocity;
+			const nextDownState = getNextAllowedMapSheetSnapStateDown(
+				snapState,
+				orderedSnapStates,
+			);
 			lastScrollOffsetYRef.current = offsetY;
 
 			if (isSidebarPresentation || !allowScrollDetents || scrollSnapHandledRef.current) return;
 			const startedNearTop = scrollStartOffsetYRef.current <= topThreshold;
 			if (!startedNearTop) return;
 
-			if (
-				snapState === MAP_SHEET_SNAP_STATES.HALF &&
-				canExpand &&
-				offsetY <= expandOffset * 0.75 &&
-				velocityY > expandVelocity
-			) {
+			if (snapState === MAP_SHEET_SNAP_STATES.HALF && canExpand && (strongExpand || velocityExpand)) {
 				triggerScrollSnap(
 					getNextAllowedMapSheetSnapStateUp(snapState, orderedSnapStates),
 				);
 				return;
 			}
 
-			if (offsetY <= 0 && velocityY < collapseVelocity && canCollapse) {
+			if (canCollapse && (strongCollapse || velocityCollapse)) {
 				if (snapState === MAP_SHEET_SNAP_STATES.EXPANDED) {
-					triggerScrollSnap(
-						getNextAllowedMapSheetSnapStateDown(snapState, orderedSnapStates),
-					);
+					triggerScrollSnap(nextDownState);
 					return;
 				}
 				if (
 					snapState === MAP_SHEET_SNAP_STATES.HALF &&
-					velocityY < collapseVelocity * halfCollapseVelocityFactor
+					(
+						peakPullOffsetY <= collapseCommitPull - halfCollapseExtraPull ||
+						velocityY < collapseVelocity * halfCollapseVelocityFactor
+					)
 				) {
-					triggerScrollSnap(
-						getNextAllowedMapSheetSnapStateDown(snapState, orderedSnapStates),
-					);
+					triggerScrollSnap(nextDownState);
 				}
 			}
 		},
@@ -204,8 +192,10 @@ export default function useMapSheetDetents({
 			allowScrollDetents,
 			canCollapse,
 			canExpand,
+			collapseCommitPull,
 			collapseVelocity,
 			expandOffset,
+			expandCommitOffset,
 			expandVelocity,
 			halfCollapseVelocityFactor,
 			isSidebarPresentation,
@@ -249,7 +239,7 @@ export default function useMapSheetDetents({
 			if (
 				snapState === MAP_SHEET_SNAP_STATES.EXPANDED &&
 				canCollapse &&
-				wheelSnapAccumRef.current <= -42
+				wheelSnapAccumRef.current <= expandedCollapseWheelThreshold
 			) {
 				lastWheelSnapAtRef.current = now;
 				triggerScrollSnap(
@@ -272,6 +262,7 @@ export default function useMapSheetDetents({
 		[
 			allowWheelDetents,
 			canCollapse,
+			expandedCollapseWheelThreshold,
 			halfCollapseWheelThreshold,
 			isSidebarPresentation,
 			isWebPlatform,
