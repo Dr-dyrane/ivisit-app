@@ -271,87 +271,77 @@ export default function MapHospitalListContent({
 	return (
 		<>
 			{!isLoading && hasSpecialtyFilters ? (
-				<>
-					<View style={styles.specialtyRailHeader}>
-						<Text style={[styles.specialtyRailTitle, { color: helperColor }]}>
-							Specialties
-						</Text>
-						<Text style={[styles.specialtyRailCount, { color: COLORS.brandPrimary }]}>
-							{specialtyFilters.items.length}
-						</Text>
-					</View>
-					<ScrollView
-						horizontal
-						showsHorizontalScrollIndicator={false}
-						contentContainerStyle={styles.specialtyRailContent}
+				<ScrollView
+					horizontal
+					showsHorizontalScrollIndicator={false}
+					contentContainerStyle={styles.specialtyRailContent}
+				>
+					<Pressable
+						onPress={() => setSelectedSpecialty(null)}
+						style={({ pressed }) => [
+							styles.specialtyPill,
+							{
+								backgroundColor: !selectedSpecialty ? filterPillActive : filterPillSurface,
+								opacity: pressed ? 0.94 : 1,
+							},
+						]}
 					>
-						<Pressable
-							onPress={() => setSelectedSpecialty(null)}
-							style={({ pressed }) => [
-								styles.specialtyPill,
-								{
-									backgroundColor: !selectedSpecialty ? filterPillActive : filterPillSurface,
-									opacity: pressed ? 0.94 : 1,
-								},
+						<Ionicons
+							name="options-outline"
+							size={13}
+							color={!selectedSpecialty ? COLORS.brandPrimary : helperColor}
+						/>
+						<Text
+							style={[
+								styles.specialtyPillLabel,
+								{ color: !selectedSpecialty ? activeText : titleColor },
 							]}
 						>
-							<Ionicons
-								name="options-outline"
-								size={13}
-								color={!selectedSpecialty ? COLORS.brandPrimary : helperColor}
-							/>
-							<Text
-								style={[
-									styles.specialtyPillLabel,
-									{ color: !selectedSpecialty ? activeText : titleColor },
+							All
+						</Text>
+						<Text style={[styles.specialtyPillCount, { color: filterCountText }]}>
+							{specialtyFilters.totalCount}
+						</Text>
+					</Pressable>
+
+					{specialtyFilters.items.map((item) => {
+						const isActive = selectedSpecialty === item.id;
+						return (
+							<Pressable
+								key={item.id}
+								onPress={() =>
+									setSelectedSpecialty((current) =>
+										current === item.id ? null : item.id,
+									)
+								}
+								style={({ pressed }) => [
+									styles.specialtyPill,
+									{
+										backgroundColor: isActive ? filterPillActive : filterPillSurface,
+										opacity: pressed ? 0.94 : 1,
+									},
 								]}
 							>
-								All
-							</Text>
-							<Text style={[styles.specialtyPillCount, { color: filterCountText }]}>
-								{specialtyFilters.totalCount}
-							</Text>
-						</Pressable>
-
-						{specialtyFilters.items.map((item) => {
-							const isActive = selectedSpecialty === item.id;
-							return (
-								<Pressable
-									key={item.id}
-									onPress={() =>
-										setSelectedSpecialty((current) =>
-											current === item.id ? null : item.id,
-										)
-									}
-									style={({ pressed }) => [
-										styles.specialtyPill,
-										{
-											backgroundColor: isActive ? filterPillActive : filterPillSurface,
-											opacity: pressed ? 0.94 : 1,
-										},
+								{renderSpecialtyIcon(
+									item.iconConfig,
+									isActive ? COLORS.brandPrimary : helperColor,
+								)}
+								<Text
+									numberOfLines={1}
+									style={[
+										styles.specialtyPillLabel,
+										{ color: isActive ? activeText : titleColor },
 									]}
 								>
-									{renderSpecialtyIcon(
-										item.iconConfig,
-										isActive ? COLORS.brandPrimary : helperColor,
-									)}
-									<Text
-										numberOfLines={1}
-										style={[
-											styles.specialtyPillLabel,
-											{ color: isActive ? activeText : titleColor },
-										]}
-									>
-										{item.label}
-									</Text>
-									<Text style={[styles.specialtyPillCount, { color: filterCountText }]}>
-										{item.count}
-									</Text>
-								</Pressable>
-							);
-						})}
-					</ScrollView>
-				</>
+									{item.label}
+								</Text>
+								<Text style={[styles.specialtyPillCount, { color: filterCountText }]}>
+									{item.count}
+								</Text>
+							</Pressable>
+						);
+					})}
+				</ScrollView>
 			) : null}
 			{content}
 		</>

@@ -12,25 +12,6 @@ export const styles = StyleSheet.create({
 		paddingBottom: 8,
 		gap: 10,
 	},
-	specialtyRailHeader: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
-		paddingHorizontal: 4,
-		marginBottom: 12,
-	},
-	specialtyRailTitle: {
-		fontSize: 11,
-		lineHeight: 14,
-		fontWeight: "800",
-		letterSpacing: 0.8,
-		textTransform: "uppercase",
-	},
-	specialtyRailCount: {
-		fontSize: 10,
-		lineHeight: 12,
-		fontWeight: "800",
-	},
 	specialtyRailContent: {
 		paddingHorizontal: 2,
 		paddingRight: 8,
