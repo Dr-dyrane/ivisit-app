@@ -10,6 +10,7 @@ export default function EntryActionButton({
 	onPress,
 	variant = "primary",
 	height = 60,
+	radius = null,
 	fullWidth = true,
 	iconName = null,
 	disabled = false,
@@ -21,7 +22,7 @@ export default function EntryActionButton({
 }) {
 	const { isDarkMode } = useTheme();
 	const isPrimary = variant === "primary";
-	const radius = Math.round(height / 2);
+	const resolvedRadius = Number.isFinite(radius) ? radius : Math.round(height / 2);
 
 	const backgroundColor = isDarkMode ? "#0E1522" : "#F6F0EF";
 	const primaryGradient = isDarkMode
@@ -53,7 +54,8 @@ export default function EntryActionButton({
 					minWidth: minWidth ?? undefined,
 					minHeight: height,
 					backgroundColor,
-					borderRadius: radius,
+					borderRadius: resolvedRadius,
+					borderCurve: "continuous",
 					borderWidth: focused ? 2 : 0,
 					borderColor: focused
 						? isPrimary
@@ -87,14 +89,15 @@ export default function EntryActionButton({
 				colors={isPrimary ? primaryGradient : secondaryGradient}
 				start={{ x: 0, y: 0 }}
 				end={{ x: 1, y: 1 }}
-				style={[styles.fill, { borderRadius: radius }]}
+				style={[styles.fill, { borderRadius: resolvedRadius, borderCurve: "continuous" }]}
 			>
 				<View
 					pointerEvents="none"
 					style={[
 						styles.highlight,
 						{
-							borderRadius: radius,
+							borderRadius: resolvedRadius,
+							borderCurve: "continuous",
 							opacity: isPrimary ? 0.07 : isDarkMode ? 0.06 : 0.1,
 						},
 					]}

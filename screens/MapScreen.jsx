@@ -47,12 +47,14 @@ export default function MapScreen() {
 		closeServiceDetail,
 		confirmServiceDetail,
 		changeServiceDetailService,
+		closeAmbulanceDecision,
 		handleMapHospitalPress,
 		handleMapReadinessChange,
 		handleOpenFeaturedHospital,
 		handleCycleFeaturedHospital,
 		handleOpenProfile,
 		openHospitalList,
+		openAmbulanceHospitalList,
 		handleSearchLocation,
 		handleSelectHospital,
 		handleUseCurrentLocation,
@@ -193,13 +195,16 @@ export default function MapScreen() {
 					onChooseCare={handleChooseCare}
 					onOpenProfile={handleOpenProfile}
 					onOpenCareHistory={() => setCareHistoryVisible(true)}
+					onOpenAmbulanceHospitals={openAmbulanceHospitalList}
 					onOpenRecents={() => setRecentVisitsVisible(true)}
 					onOpenFeaturedHospital={handleOpenFeaturedHospital}
 					onCycleHospital={featuredHospitals.length > 1 ? handleCycleFeaturedHospital : undefined}
 					onSnapStateChange={setSheetSnapState}
 					onCloseSearch={closeSearchSheet}
 					onCloseHospitals={closeHospitalList}
+					onCloseAmbulanceDecision={closeAmbulanceDecision}
 					onCloseHospitalDetail={closeHospitalDetail}
+					onConfirmAmbulanceDecision={handleUseHospital}
 					onOpenServiceDetail={openServiceDetail}
 					onCloseServiceDetail={closeServiceDetail}
 					onConfirmServiceDetail={confirmServiceDetail}

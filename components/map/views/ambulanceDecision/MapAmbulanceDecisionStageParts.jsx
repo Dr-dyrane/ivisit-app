@@ -1,0 +1,472 @@
+import React from "react";
+import { Pressable, Text, View } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import EntryActionButton from "../../../entry/EntryActionButton";
+import AmbulanceTierProductGraphic from "../../../emergency/requestModal/AmbulanceTierProductGraphic";
+import { getAmbulanceVisualProfile } from "../../../emergency/requestModal/ambulanceTierVisuals";
+import { COLORS } from "../../../../constants/colors";
+import MapHeaderIconButton from "../shared/MapHeaderIconButton";
+import MapStageGlassPanel from "../shared/MapStageGlassPanel";
+import { MAP_AMBULANCE_DECISION_COPY } from "./mapAmbulanceDecision.content";
+import styles from "./mapAmbulanceDecision.styles";
+
+function getAmbulanceTierIconName(visualProfile) {
+	if (visualProfile?.key === "critical") return "alert-circle-outline";
+	if (visualProfile?.key === "advanced") return "pulse-outline";
+	return "medkit-outline";
+}
+
+function toAccentRgba(color, alpha) {
+	if (typeof color !== "string" || !color.startsWith("#")) {
+		return `rgba(134,16,14,${alpha})`;
+	}
+	const hex = color.slice(1);
+	const normalized =
+		hex.length === 3
+			? hex
+					.split("")
+					.map((char) => char + char)
+					.join("")
+			: hex;
+	const red = parseInt(normalized.slice(0, 2), 16);
+	const green = parseInt(normalized.slice(2, 4), 16);
+	const blue = parseInt(normalized.slice(4, 6), 16);
+	if (![red, green, blue].every(Number.isFinite)) {
+		return `rgba(134,16,14,${alpha})`;
+	}
+	return `rgba(${red},${green},${blue},${alpha})`;
+}
+
+function formatExpandedChoiceSubtext(option, fallbackPrice) {
+	return [option?.metaText, option?.priceText || fallbackPrice]
+		.filter(Boolean)
+		.join(", ");
+}
+
+export function MapAmbulanceDecisionTopSlot({
+	modalContainedStyle,
+	titleColor,
+	subtitleColor,
+	closeSurfaceColor,
+	onClose,
+	onToggle,
+	toggleAccessibilityLabel = "Toggle sheet size",
+	hospitalName,
+	hospitalSubtext,
+	toggleIconName = "chevron-up",
+}) {
+	return (
+		<View style={[styles.topSlot, modalContainedStyle]}>
+			<MapHeaderIconButton
+				onPress={onToggle}
+				accessibilityLabel={toggleAccessibilityLabel}
+				backgroundColor={closeSurfaceColor}
+				color={titleColor}
+				iconName={toggleIconName}
+				style={styles.closeButton}
+			/>
+			<View style={styles.topSlotCopy}>
+				<Text numberOfLines={1} style={[styles.topSlotTitle, { color: titleColor }]}>
+					{hospitalName || "Hospital"}
+				</Text>
+				{hospitalSubtext ? (
+					<Text numberOfLines={1} style={[styles.topSlotSubtitle, { color: subtitleColor }]}>
+						{hospitalSubtext}
+					</Text>
+				) : null}
+			</View>
+			<MapHeaderIconButton
+				onPress={onClose}
+				accessibilityLabel="Close ambulance decision"
+				backgroundColor={closeSurfaceColor}
+				color={titleColor}
+				style={styles.closeButton}
+			/>
+		</View>
+	);
+}
+
+export function MapAmbulanceDecisionHero({
+	decision,
+	glassTokens,
+	isDarkMode,
+	titleColor,
+	surfaceColor,
+	pillSurfaceColor,
+	onOpenServiceDetails,
+}) {
+	const canOpenServiceDetails = typeof onOpenServiceDetails === "function";
+	const heroPillSurfaceColor = isDarkMode
+		? "rgba(8,15,27,0.58)"
+		: "rgba(255,255,255,0.86)";
+
+	return (
+		<View style={styles.heroPressable}>
+			<MapStageGlassPanel
+				style={styles.heroCard}
+				backgroundColor={surfaceColor}
+				glassTokens={glassTokens}
+				isDarkMode={isDarkMode}
+			>
+				<View style={styles.heroArtworkLayer}>
+					<AmbulanceTierProductGraphic
+						type={decision.recommendedService}
+						width={232}
+						height={154}
+						showBackdrop={false}
+					/>
+				</View>
+				<View style={styles.heroCopyScrim} />
+				<View style={styles.heroHeader}>
+					{canOpenServiceDetails ? (
+					<Pressable
+						onPress={onOpenServiceDetails}
+						style={({ pressed }) => [
+							styles.heroDetailChip,
+							{
+								opacity: pressed ? 0.88 : 1,
+							},
+						]}
+					>
+						<Ionicons
+							name="information-circle-outline"
+							size={26}
+							color={decision.visualProfile.accent}
+						/>
+					</Pressable>
+				) : null}
+				</View>
+
+				<View style={styles.heroRow}>
+					<View style={styles.heroCopy}>
+						<Text style={[styles.heroTitle, { color: titleColor }]}>
+							{decision.serviceTitle}
+						</Text>
+						<View style={styles.heroMetaRow}>
+							<View style={[styles.metaPill, { backgroundColor: heroPillSurfaceColor }]}>
+								<Ionicons
+									name="people-outline"
+									size={14}
+									color={decision.visualProfile.accent}
+								/>
+								<Text style={[styles.metaLabel, { color: titleColor }]}>
+									{decision.crewPillLabel}
+								</Text>
+							</View>
+							<View style={[styles.metaPill, { backgroundColor: heroPillSurfaceColor }]}>
+								<Ionicons
+									name="cash-outline"
+									size={14}
+									color={decision.visualProfile.accent}
+								/>
+								<Text style={[styles.metaLabel, { color: titleColor }]}>
+									{decision.priceLabel}
+								</Text>
+							</View>
+						</View>
+					</View>
+
+				</View>
+			</MapStageGlassPanel>
+		</View>
+	);
+}
+
+export function MapAmbulanceDecisionSwitchRow({
+	serviceOptions = [],
+	selectedServiceId = null,
+	titleColor,
+	mutedColor,
+	pillSurfaceColor,
+	onSelectService,
+}) {
+	if (!Array.isArray(serviceOptions) || serviceOptions.length < 2) {
+		return null;
+	}
+
+	return (
+		<View style={styles.switchRow}>
+			{serviceOptions.map((option) => {
+				const isActive = option?.id === selectedServiceId;
+				const isEnabled = option?.enabled !== false;
+				const visualProfile = getAmbulanceVisualProfile(option);
+				return (
+					<Pressable
+						key={option?.id || option?.title}
+						onPress={isEnabled ? () => onSelectService?.(option) : undefined}
+						style={({ pressed }) => [
+							styles.switchPill,
+							{
+								backgroundColor: isActive
+									? "rgba(134,16,14,0.12)"
+									: pillSurfaceColor,
+								opacity: isEnabled ? (pressed ? 0.9 : 1) : 0.45,
+							},
+						]}
+						disabled={!isEnabled}
+					>
+						<Ionicons
+							name={getAmbulanceTierIconName(visualProfile)}
+							size={14}
+							color={isActive ? visualProfile.accent : mutedColor}
+						/>
+						<Text
+							style={[
+								styles.switchPillLabel,
+								{
+									color: isActive ? COLORS.brandPrimary : titleColor,
+								},
+							]}
+							numberOfLines={1}
+						>
+							{option?.title || visualProfile.shortLabel}
+						</Text>
+					</Pressable>
+				);
+			})}
+		</View>
+	);
+}
+
+export function MapAmbulanceDecisionHospitalCard({
+	decision,
+	glassTokens,
+	isDarkMode,
+	titleColor,
+	mutedColor,
+	surfaceColor,
+	pillSurfaceColor,
+}) {
+	return (
+		<MapStageGlassPanel
+			style={styles.hospitalCard}
+			backgroundColor={surfaceColor}
+			glassTokens={glassTokens}
+			isDarkMode={isDarkMode}
+		>
+			<View style={styles.hospitalRow}>
+				<View style={[styles.hospitalIconWrap, { backgroundColor: pillSurfaceColor }]}>
+					<MaterialCommunityIcons
+						name="hospital-building"
+						size={20}
+						color={decision.visualProfile.accent}
+					/>
+				</View>
+				<View style={styles.hospitalCopy}>
+					<Text style={[styles.hospitalTitle, { color: titleColor }]}>
+						{decision.hospitalSummary?.title || "Hospital"}
+					</Text>
+					<Text style={[styles.hospitalContext, { color: titleColor }]}>
+						{decision.hospitalSummary?.contextLine || "Hospital"}
+					</Text>
+					<Text style={[styles.hospitalAddress, { color: mutedColor }]}>
+						{decision.hospitalSummary?.addressLine || "Address unavailable"}
+					</Text>
+				</View>
+				<View style={[styles.hospitalEtaPill, { backgroundColor: pillSurfaceColor }]}>
+					<Text style={styles.hospitalEtaText}>
+						{decision.distanceLabel || decision.etaLabel}
+					</Text>
+				</View>
+			</View>
+		</MapStageGlassPanel>
+	);
+}
+
+export function MapAmbulanceDecisionExpandedChoices({
+	decision,
+	titleColor,
+	mutedColor,
+	pillSurfaceColor,
+	onSelectService,
+}) {
+	const alternativeOptions = Array.isArray(decision?.serviceOptions)
+		? decision.serviceOptions.filter(
+				(option) => option?.id !== decision?.recommendedService?.id,
+			)
+		: [];
+	if (alternativeOptions.length === 0) {
+		return null;
+	}
+	const renderChoice = (option, indexKey) => {
+		const isEnabled = option?.enabled !== false;
+		const visualProfile = getAmbulanceVisualProfile(option);
+		const subtext = formatExpandedChoiceSubtext(
+			option,
+			MAP_AMBULANCE_DECISION_COPY.PRICE_FALLBACK,
+		);
+		return (
+			<Pressable
+				key={option?.id || option?.title || indexKey}
+				onPress={isEnabled ? () => onSelectService?.(option) : undefined}
+				disabled={!isEnabled}
+				style={({ pressed }) => [
+					styles.expandedChoiceCard,
+					{
+						backgroundColor: pillSurfaceColor,
+						opacity: isEnabled ? (pressed ? 0.94 : 1) : 0.48,
+					},
+				]}
+			>
+				<View style={styles.expandedChoiceInfo}>
+					<View
+						style={[
+							styles.expandedChoiceIconWrap,
+							{ backgroundColor: toAccentRgba(visualProfile.accent, 0.12) },
+						]}
+					>
+						<Ionicons
+							name={getAmbulanceTierIconName(visualProfile)}
+							size={18}
+							color={visualProfile.accent}
+						/>
+					</View>
+					<View style={styles.expandedChoiceCopy}>
+						<Text style={[styles.expandedChoiceTitle, { color: titleColor }]} numberOfLines={1}>
+							{option?.title || visualProfile.shortLabel}
+						</Text>
+					<Text style={[styles.expandedChoiceMeta, { color: mutedColor }]} numberOfLines={2}>
+						{[
+							option?.metaText || decision?.etaLabel,
+							option?.priceText || MAP_AMBULANCE_DECISION_COPY.PRICE_FALLBACK,
+						]
+							.filter(Boolean)
+							.join(" • ")}
+					</Text>
+				</View>
+				</View>
+				<View style={styles.expandedChoiceArtworkWrap}>
+					<AmbulanceTierProductGraphic
+						type={option}
+						width={84}
+						height={58}
+						showBackdrop={false}
+					/>
+				</View>
+				<View style={styles.expandedChoiceActionWrap}>
+					<Ionicons name="chevron-forward" size={18} color={mutedColor} />
+				</View>
+			</Pressable>
+		);
+	};
+
+	return (
+		<View style={styles.expandedChoicesWrap}>
+			{alternativeOptions.map((option, index) => renderChoice(option, index))}
+		</View>
+	);
+}
+
+export function MapAmbulanceDecisionDetailsCard({
+	decision,
+	glassTokens,
+	isDarkMode,
+	titleColor,
+	mutedColor,
+	surfaceColor,
+	pillSurfaceColor,
+}) {
+	const features = Array.isArray(decision?.features) ? decision.features : [];
+	if (!decision?.serviceSummary && features.length === 0) {
+		return null;
+	}
+
+	return (
+		<MapStageGlassPanel
+			style={styles.detailsCard}
+			backgroundColor={surfaceColor}
+			glassTokens={glassTokens}
+			isDarkMode={isDarkMode}
+		>
+			<View style={styles.detailsHeader}>
+				<View style={[styles.detailsConfidencePill, { backgroundColor: pillSurfaceColor }]}>
+					<Text style={styles.detailsConfidenceText}>{decision.confidenceLabel}</Text>
+				</View>
+				{decision.distanceLabel ? (
+					<View style={[styles.detailsConfidencePill, { backgroundColor: pillSurfaceColor }]}>
+						<Text style={[styles.detailsConfidenceText, { color: titleColor }]}>
+							{decision.distanceLabel}
+						</Text>
+					</View>
+				) : null}
+			</View>
+			{decision.serviceSummary ? (
+				<Text style={[styles.detailsSummary, { color: titleColor }]}>
+					{decision.serviceSummary}
+				</Text>
+			) : null}
+			{features.map((feature) => (
+				<View key={feature} style={styles.detailsFeatureRow}>
+					<View style={styles.detailsFeatureDot} />
+					<Text style={[styles.detailsFeatureText, { color: mutedColor }]}>
+						{feature}
+					</Text>
+				</View>
+			))}
+		</MapStageGlassPanel>
+	);
+}
+
+export function MapAmbulanceDecisionEmptyState({
+	titleColor,
+	mutedColor,
+	surfaceColor,
+	glassTokens,
+	isDarkMode,
+}) {
+	return (
+		<MapStageGlassPanel
+			style={styles.emptyCard}
+			backgroundColor={surfaceColor}
+			glassTokens={glassTokens}
+			isDarkMode={isDarkMode}
+		>
+			<Text style={[styles.emptyTitle, { color: titleColor }]}>
+				{MAP_AMBULANCE_DECISION_COPY.NO_HOSPITAL_TITLE}
+			</Text>
+			<Text style={[styles.emptyBody, { color: mutedColor }]}>
+				{MAP_AMBULANCE_DECISION_COPY.NO_HOSPITAL_BODY}
+			</Text>
+		</MapStageGlassPanel>
+	);
+}
+
+export function MapAmbulanceDecisionFooter({
+	modalContainedStyle,
+	canConfirm = true,
+	canBrowseHospitals,
+	onConfirm,
+	onOpenHospitals,
+}) {
+	return (
+		<View style={[styles.footerDock, modalContainedStyle]}>
+			<EntryActionButton
+				label={MAP_AMBULANCE_DECISION_COPY.CONFIRM_CTA}
+				onPress={onConfirm}
+				variant="primary"
+				height={50}
+				radius={24}
+				fullWidth
+				disabled={!canConfirm}
+				style={styles.primaryButton}
+			/>
+			{canBrowseHospitals ? (
+				<Pressable
+					onPress={onOpenHospitals}
+					style={({ pressed }) => [
+						styles.secondaryAction,
+						{
+							opacity: pressed ? 0.88 : 1,
+							backgroundColor: "rgba(134,16,14,0.08)",
+						},
+					]}
+				>
+					<Text style={styles.secondaryActionText}>
+					{MAP_AMBULANCE_DECISION_COPY.OTHER_HOSPITALS_CTA}
+					</Text>
+					<Ionicons name="chevron-forward" size={16} color={COLORS.brandPrimary} />
+				</Pressable>
+			) : null}
+		</View>
+	);
+}

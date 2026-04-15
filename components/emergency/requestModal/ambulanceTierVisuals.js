@@ -46,6 +46,20 @@ const AMBULANCE_TIER_META = {
 };
 
 export function getAmbulanceTierKey(type = {}) {
+	const explicitTierKey = String(type?.tierKey || type?.key || "")
+		.trim()
+		.toLowerCase();
+	if (["basic", "advanced", "critical"].includes(explicitTierKey)) {
+		return explicitTierKey;
+	}
+
+	const explicitServiceType = String(type?.service_type || "")
+		.trim()
+		.toLowerCase();
+	if (explicitServiceType === "ambulance_basic") return "basic";
+	if (explicitServiceType === "ambulance_advanced") return "advanced";
+	if (explicitServiceType === "ambulance_critical") return "critical";
+
 	const raw = [
 		type?.id,
 		type?.title,

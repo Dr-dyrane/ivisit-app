@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import MapAmbulanceDecisionOrchestrator from "../views/ambulanceDecision/MapAmbulanceDecisionOrchestrator";
 import MapHospitalDetailOrchestrator from "../views/hospitalDetail/MapHospitalDetailOrchestrator";
 import MapExploreIntentOrchestrator from "../views/exploreIntent/MapExploreIntentOrchestrator";
 import MapHospitalListOrchestrator from "../views/hospitalList/MapHospitalListOrchestrator";
@@ -33,12 +34,15 @@ export default function MapSheetOrchestrator({
 	onChooseCare,
 	onOpenProfile,
 	onOpenCareHistory = () => {},
+	onOpenAmbulanceHospitals = () => {},
 	onOpenFeaturedHospital = () => {},
 	onCycleHospital = undefined,
 	onSnapStateChange = () => {},
 	onCloseSearch = () => {},
 	onCloseHospitals = () => {},
+	onCloseAmbulanceDecision = () => {},
 	onCloseHospitalDetail = () => {},
+	onConfirmAmbulanceDecision = () => {},
 	onOpenServiceDetail = () => {},
 	onCloseServiceDetail = () => {},
 	onConfirmServiceDetail = () => {},
@@ -71,6 +75,30 @@ export default function MapSheetOrchestrator({
 	);
 
 	switch (phase) {
+		case MAP_SHEET_PHASES.AMBULANCE_DECISION: {
+			const decisionHospital = featuredHospital || nearestHospital || null;
+			const decisionHospitalId = decisionHospital?.id || "unknown";
+			return (
+				<MapPhaseTransitionView phaseKey={`${phase}-${decisionHospitalId}`}>
+					<MapAmbulanceDecisionOrchestrator
+						sheetHeight={sheetHeight}
+						snapState={snapState}
+						hospital={decisionHospital}
+						origin={activeLocation}
+						hospitalCount={Array.isArray(hospitals) ? hospitals.length : 0}
+						selectedServiceId={
+							serviceSelectionsByHospital[decisionHospitalId]?.ambulanceServiceId ?? null
+						}
+						onClose={onCloseAmbulanceDecision}
+						onConfirm={onConfirmAmbulanceDecision}
+						onOpenHospitals={onOpenAmbulanceHospitals}
+						onOpenServiceDetail={onOpenServiceDetail}
+						onSelectService={onSelectHospitalService}
+						onSnapStateChange={onSnapStateChange}
+					/>
+				</MapPhaseTransitionView>
+			);
+		}
 		case MAP_SHEET_PHASES.SEARCH:
 			return (
 				<MapPhaseTransitionView phaseKey={phase}>

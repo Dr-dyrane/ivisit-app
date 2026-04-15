@@ -761,23 +761,46 @@ Mid:
 - state label: `Recommended ambulance plan`
 - ETA
 - hospital name
-- estimated cost
+- selected ambulance tier
+- crew pill
+- price pill
 - primary: `Confirm and dispatch`
 - secondary: `See other hospitals`
 
 Expanded:
 
-- alternate hospitals
-- route comparison
-- cost reasoning
-- ambulance level summary
+- alternate ambulance tiers only
+- hospital card
+- notes card
+- optional route comparison if needed later
 
 Visual hierarchy:
 
 - ETA first
 - hospital second
-- cost third
+- selected ambulance tier third
+- crew and price fourth
 - CTA fourth
+
+Pre-dispatch data contract:
+
+- the current `/map` ambulance-decision surface is driven by hospital-scoped `service_pricing`, not by an assigned ambulance unit
+- safe backend-backed ambulance fields here are:
+  - `service_name`
+  - `service_type`
+  - `description`
+  - `base_price`
+- crew presentation in this phase is currently derived from the service tier mapping, not from `ambulances.crew`
+- do not repeat ETA in the hero when the header already carries the away line
+- if pills are shown in the hero, the preferred order is:
+  - pill 1 = crew
+  - pill 2 = price
+- live unit identity belongs later:
+  - call sign
+  - plate
+  - live vehicle location
+  - assigned driver / responder identity
+  - exact ambulance row `crew`
 
 Map behavior:
 
@@ -1341,7 +1364,7 @@ Target runtime rule:
 | State | Primary user-facing job | Hidden determinants | DB write? | Runtime owner |
 |---|---|---|---|---|
 | `EXPLORE_INTENT` | orient and choose intent | resolved location, nearby hospitals, coverage mode, selected care intent, map readiness | no | `MapScreen.jsx` + `EmergencyContext.jsx` |
-| `AMBULANCE_DECISION` | show best dispatch candidate | recommended hospital, ETA, route confidence, pricing fallback, service summary | no | `MapSheetOrchestrator.jsx` + route helpers |
+| `AMBULANCE_DECISION` | show best dispatch candidate | recommended hospital, ETA, route confidence, hospital-scoped `service_pricing`, derived crew label, service summary | no | `MapSheetOrchestrator.jsx` + route helpers |
 | `COMMIT_DETAILS` | collect minimum safe info | patient name, phone, triage snapshot, inline verification if needed, local draft validity | not yet for guest-first pass | map sheet local state + request draft |
 | `COMMIT_PAYMENT` | perform real operational commit | authenticated actor, valid hospital id, payment method, amount, request payload ready | yes | `useRequestFlow.js` + RPCs |
 | `TRACKING` | show live certainty | request id, payment state, responder assignment, realtime status projection | updates only | `EmergencyContext.jsx` + realtime |
@@ -1438,6 +1461,20 @@ If coverage is weak:
 - still allow progress
 - degrade copy gently
 - keep `Other hospitals` secondary or hidden when there are no true alternatives
+
+Current implementation note:
+
+- `/map` now opens a dedicated `AMBULANCE_DECISION` sheet phase using the shared map shell
+- `Other hospitals` routes through `hospital_list` and returns to the decision phase
+- `Confirm & continue` still hands off to the current legacy ambulance request route until `COMMIT_DETAILS` replaces that seam
+- the decision content currently survives on:
+  - hospital recommendation
+  - route preview
+  - hospital-scoped `service_pricing`
+- this is deliberate:
+  - the legacy request modal also chose ambulance options from `service_pricing`
+  - the pre-dispatch sheet should not depend on a live assigned ambulance row
+- even though current RLS allows public `SELECT` on `ambulances`, pre-dispatch UI should treat unit-level logistics data as post-commit / tracking information
 
 #### `AMBULANCE_DECISION -> COMMIT_DETAILS`
 

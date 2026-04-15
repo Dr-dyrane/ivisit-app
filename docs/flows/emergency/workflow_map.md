@@ -19,6 +19,22 @@ The patient experience is now locked to this product sequence:
 
 `idle_map -> confirm_location -> finding_nearby_help -> proposed_hospital -> dispatch_clearance -> commit_ready -> responder_matched/bed_confirmed -> tracking`
 
+Current `/map` implementation note:
+
+- `explore_intent -> ambulance_decision` is now mounted inside the persistent map sheet
+- ambulance confirmation still bridges into the legacy request screen after the decision step
+
+Current pre-dispatch data rule:
+
+- `ambulance_decision` should survive on:
+  - hospital recommendation
+  - route preview
+  - hospital-scoped `service_pricing`
+- it should not require:
+  - a live assigned ambulance unit
+  - responder identity
+  - live ambulance telemetry
+
 Rules:
 
 - the map stays visible as the constant reality layer
@@ -66,6 +82,8 @@ This baseline is intentionally non-strict on pricing and provider assignment, wh
 - Ambulance flow minimum:
   - `service_type='ambulance'`, `hospital_id`, and valid patient location payload for create/update path.
   - Dispatch/assignment can remain flexible (no hard requirement for pre-attached driver profile), but state transitions must remain valid and auditable.
+  - Pre-dispatch selection should continue to use hospital `service_pricing` metadata rather than live `ambulances` rows.
+  - Crew copy before commit may be derived from ambulance tier mapping instead of `ambulances.crew`.
 - Doctor assignment minimum:
   - On actionable emergency transitions (`in_progress`/`accepted` with dispatch activity), auto-assign doctor if capacity exists.
   - If specialty match is unavailable, fallback assignment may select any available in-hospital doctor.
@@ -93,10 +111,29 @@ This baseline is intentionally non-strict on pricing and provider assignment, wh
 - `visits`
 - `payments`
 - `ambulances`
+- `service_pricing`
 - `hospitals`
 - `emergency_doctor_assignments`
 - `doctors`
 - `notifications`
+
+## Pre-Dispatch Visibility Contract
+
+Current backend posture:
+
+- `service_pricing` is publicly readable under RLS and is already used by the legacy ambulance chooser
+- `ambulances` is also currently publicly readable under RLS
+
+Product rule:
+
+- pre-dispatch patient UI should still treat `service_pricing` as the stable source for ambulance choice
+- live `ambulances` data should be considered post-commit / tracking data
+
+Why:
+
+- it keeps guest-first `/map` usable before request creation
+- it aligns with the legacy `EmergencyRequestModal.jsx` behavior
+- it allows future security hardening on `ambulances` without breaking the public map flow
 
 ## Trigger and Automation Chain
 

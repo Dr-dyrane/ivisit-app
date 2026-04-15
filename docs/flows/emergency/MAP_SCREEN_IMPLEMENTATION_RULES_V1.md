@@ -312,7 +312,47 @@ Rules:
 - modal/focused states should hide the header through the same global header contract
 - on web, glass blur must be handled explicitly, not by falling back to Android styling
 
-## 13. Loading Rule
+## 13. Pre-Dispatch Resource Data Rule
+
+Pre-dispatch `/map` phases must prefer stable hospital-scoped pricing metadata over live logistics tables.
+
+Preferred pre-dispatch sources:
+
+- `hospitals`
+- `service_pricing`
+- `room_pricing`
+- route preview / camera data
+
+Do not build pre-dispatch UI around:
+
+- live `ambulances` unit identity
+- call sign
+- plate
+- live vehicle location
+- assigned responder name / phone
+- exact `ambulances.crew`
+
+Reason:
+
+- the legacy request modal already made ambulance choice from `service_pricing`
+- this keeps guest-first and pre-authorization flow stable
+- it prevents the public map sheet from depending on live dispatch inventory
+
+Current security note:
+
+- current RLS permits public `SELECT` on both `service_pricing` and `ambulances`
+- that does not change the UI contract
+- pre-dispatch surfaces should behave as if `ambulances` may later become authenticated-only or dispatch-only
+
+Rendering rule for `ambulance_decision`:
+
+- header = hospital + away line
+- hero = selected ambulance tier
+- hero pill 1 = crew
+- hero pill 2 = price
+- expanded state = alternative tiers, hospital card, notes
+
+## 14. Loading Rule
 
 There is now **one** startup loading layer inside the live `/map` route.
 
@@ -333,7 +373,7 @@ Rules:
 - provider expansion, demo bootstrap, and route enrichment continue in the background
 - do not flash a half-broken map surface before route and hospital context are ready
 
-## 14. Current `/map` UI Inventory Reference
+## 15. Current `/map` UI Inventory Reference
 
 This is the current element inventory to reference during cleanup or global consistency passes.
 

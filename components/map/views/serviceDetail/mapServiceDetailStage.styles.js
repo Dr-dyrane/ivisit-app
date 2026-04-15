@@ -54,7 +54,7 @@ export default StyleSheet.create({
 	},
 	headerBlock: {
 		paddingHorizontal: 18,
-		paddingVertical: 18,
+		paddingVertical: 16,
 		...squircle(28),
 	},
 	headerMetaRow: {
@@ -62,11 +62,23 @@ export default StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "space-between",
 	},
-	eyebrow: {
-		flexShrink: 1,
+	headerTypePill: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 10,
+		height: 28,
+		borderRadius: 999,
+	},
+	headerTypeDot: {
+		width: 6,
+		height: 6,
+		borderRadius: 3,
+		marginRight: 7,
+	},
+	headerTypeLabel: {
 		fontSize: 12,
-		lineHeight: 15,
-		fontWeight: "600",
+		lineHeight: 14,
+		fontWeight: "700",
 	},
 	positionLabel: {
 		fontSize: 12,
@@ -76,12 +88,50 @@ export default StyleSheet.create({
 	},
 	summary: {
 		fontSize: 14,
-		lineHeight: 21,
+		lineHeight: 20,
 		fontWeight: "400",
+		marginTop: 10,
+	},
+	headerAssistiveLabel: {
+		fontSize: 12,
+		lineHeight: 15,
+		fontWeight: "600",
 		marginTop: 8,
 	},
+	switchLabel: {
+		marginBottom: 12,
+	},
+	switchRow: {
+		flexDirection: "row",
+		alignItems: "stretch",
+		gap: 8,
+		width: "100%",
+	},
+	switchPill: {
+		height: 36,
+		flex: 1,
+		minWidth: 0,
+		paddingHorizontal: 10,
+		borderRadius: 18,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	switchAccent: {
+		width: 6,
+		height: 6,
+		borderRadius: 3,
+		marginRight: 8,
+	},
+	switchPillLabel: {
+		fontSize: 12,
+		lineHeight: 15,
+		fontWeight: "500",
+		textAlign: "center",
+		flexShrink: 1,
+	},
 	heroCard: {
-		height: 184,
+		height: 170,
 		alignItems: "center",
 		justifyContent: "center",
 		overflow: "hidden",
@@ -130,6 +180,54 @@ export default StyleSheet.create({
 		fontWeight: "600",
 		marginBottom: 12,
 	},
+	optionList: {
+		gap: 10,
+	},
+	optionRow: {
+		minHeight: 78,
+		paddingHorizontal: 14,
+		paddingVertical: 14,
+		borderRadius: 22,
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	optionRowSpaced: {
+		marginTop: 10,
+	},
+	optionCopy: {
+		flex: 1,
+		paddingRight: 10,
+	},
+	optionImage: {
+		width: 66,
+		height: 48,
+		marginRight: 8,
+	},
+	optionTitle: {
+		fontSize: 18,
+		lineHeight: 22,
+		fontWeight: "700",
+		letterSpacing: -0.2,
+	},
+	optionMeta: {
+		fontSize: 13,
+		lineHeight: 18,
+		fontWeight: "500",
+		marginTop: 5,
+	},
+	optionStatePill: {
+		minWidth: 76,
+		height: 34,
+		paddingHorizontal: 12,
+		borderRadius: 16,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	optionStateText: {
+		fontSize: 12,
+		lineHeight: 14,
+		fontWeight: "800",
+	},
 	featureList: {
 		paddingHorizontal: 16,
 		paddingVertical: 14,
@@ -166,5 +264,7 @@ export default StyleSheet.create({
 	},
 	primaryButton: {
 		shadowOffset: { width: 0, height: 12 },
+		shadowRadius: 18,
+		borderCurve: "continuous",
 	},
 });

@@ -88,6 +88,8 @@ export function useMapExploreFlow() {
 	const searchSheetMode = flowState.search.mode;
 	const hospitalListVisible = flowState.sheet.phase === MAP_SHEET_PHASES.HOSPITAL_LIST;
 	const hospitalDetailVisible = flowState.sheet.phase === MAP_SHEET_PHASES.HOSPITAL_DETAIL;
+	const ambulanceDecisionVisible =
+		flowState.sheet.phase === MAP_SHEET_PHASES.AMBULANCE_DECISION;
 	const serviceDetailVisible = flowState.sheet.phase === MAP_SHEET_PHASES.SERVICE_DETAIL;
 	const profileModalVisible = flowState.surfaces.profileModalVisible;
 	const guestProfileVisible = flowState.surfaces.guestProfileVisible;
@@ -281,6 +283,9 @@ export function useMapExploreFlow() {
 		() => getFeaturedHospitals(discoveredHospitals),
 		[discoveredHospitals],
 	);
+	const defaultExploreSnapState = usesSidebarLayout
+		? MAP_SHEET_SNAP_STATES.EXPANDED
+		: MAP_SHEET_SNAP_STATES.HALF;
 
 	const openSearchSheet = useCallback(
 		(nextMode = MAP_SEARCH_SHEET_MODES.SEARCH) => {
@@ -300,12 +305,10 @@ export function useMapExploreFlow() {
 	const closeSearchSheet = useCallback(() => {
 		setSheetView({
 			phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
-			snapState: usesSidebarLayout
-				? MAP_SHEET_SNAP_STATES.EXPANDED
-				: MAP_SHEET_SNAP_STATES.HALF,
+			snapState: defaultExploreSnapState,
 			payload: null,
 		});
-	}, [setSheetView, usesSidebarLayout]);
+	}, [defaultExploreSnapState, setSheetView]);
 
 	const openHospitalList = useCallback(() => {
 		setSheetView({
@@ -315,15 +318,71 @@ export function useMapExploreFlow() {
 		});
 	}, [setSheetView]);
 
+	const openAmbulanceDecision = useCallback(
+		(nextHospital = null) => {
+			const targetHospital =
+				nextHospital ||
+				selectedHospital ||
+				featuredHospital ||
+				nearestHospital ||
+				discoveredHospitals?.[0] ||
+				null;
+
+			if (targetHospital?.id) {
+				selectHospital(targetHospital.id);
+				setFeaturedHospital(targetHospital);
+			}
+
+			setSheetView({
+				phase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
+				snapState: defaultExploreSnapState,
+				payload: null,
+			});
+		},
+		[
+			defaultExploreSnapState,
+			discoveredHospitals,
+			featuredHospital,
+			nearestHospital,
+			selectHospital,
+			selectedHospital,
+			setFeaturedHospital,
+			setSheetView,
+		],
+	);
+
+	const openAmbulanceHospitalList = useCallback(() => {
+		setSheetView({
+			phase: MAP_SHEET_PHASES.HOSPITAL_LIST,
+			snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+			payload: {
+				sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
+				sourceSnapState: sheetSnapState || defaultExploreSnapState,
+			},
+		});
+	}, [defaultExploreSnapState, setSheetView, sheetSnapState]);
+
 	const closeHospitalList = useCallback(() => {
+		if (sheetPayload?.sourcePhase === MAP_SHEET_PHASES.AMBULANCE_DECISION) {
+			setSheetView({
+				phase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
+				snapState: sheetPayload?.sourceSnapState || defaultExploreSnapState,
+				payload: null,
+			});
+			return;
+		}
+
 		setSheetView({
 			phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
-			snapState: usesSidebarLayout
-				? MAP_SHEET_SNAP_STATES.EXPANDED
-				: MAP_SHEET_SNAP_STATES.HALF,
+			snapState: defaultExploreSnapState,
 			payload: null,
 		});
-	}, [setSheetView, usesSidebarLayout]);
+	}, [
+		defaultExploreSnapState,
+		setSheetView,
+		sheetPayload?.sourcePhase,
+		sheetPayload?.sourceSnapState,
+	]);
 
 	const openHospitalDetail = useCallback(
 		(hospital) => {
@@ -344,12 +403,18 @@ export function useMapExploreFlow() {
 	const closeHospitalDetail = useCallback(() => {
 		setSheetView({
 			phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
-			snapState: usesSidebarLayout
-				? MAP_SHEET_SNAP_STATES.EXPANDED
-				: MAP_SHEET_SNAP_STATES.HALF,
+			snapState: defaultExploreSnapState,
 			payload: null,
 		});
-	}, [setSheetView, usesSidebarLayout]);
+	}, [defaultExploreSnapState, setSheetView]);
+
+	const closeAmbulanceDecision = useCallback(() => {
+		setSheetView({
+			phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
+			snapState: defaultExploreSnapState,
+			payload: null,
+		});
+	}, [defaultExploreSnapState, setSheetView]);
 
 	const setHospitalServiceSelection = useCallback(
 		(hospitalId, key, value) => {
@@ -360,7 +425,14 @@ export function useMapExploreFlow() {
 	);
 
 	const openServiceDetail = useCallback(
-		({ hospital, service, serviceType, serviceItems = [] }) => {
+		({
+			hospital,
+			service,
+			serviceType,
+			serviceItems = [],
+			sourcePhase = MAP_SHEET_PHASES.HOSPITAL_DETAIL,
+			sourceSnapState = sheetSnapState,
+		}) => {
 			if (!hospital || !service || !serviceType) return;
 			setFeaturedHospital(hospital);
 			setSheetView({
@@ -371,8 +443,8 @@ export function useMapExploreFlow() {
 					service,
 					serviceType,
 					serviceItems: Array.isArray(serviceItems) ? serviceItems : [],
-					sourcePhase: MAP_SHEET_PHASES.HOSPITAL_DETAIL,
-					sourceSnapState: sheetSnapState,
+					sourcePhase,
+					sourceSnapState,
 				},
 			});
 		},
@@ -485,20 +557,25 @@ export function useMapExploreFlow() {
 		(hospital) => {
 			if (hospital?.id) {
 				selectHospital(hospital.id);
+				setFeaturedHospital(hospital);
 			}
 			closeHospitalList();
 		},
-		[closeHospitalList, selectHospital],
+		[closeHospitalList, selectHospital, setFeaturedHospital],
 	);
 
 	const handleChooseCare = useCallback(
 		(mode) => {
 			setSelectedCare(mode);
+			if (mode === "ambulance") {
+				openAmbulanceDecision();
+				return;
+			}
 			if (mode === "bed" || mode === "both") {
 				openHospitalList();
 			}
 		},
-		[openHospitalList, setSelectedCare],
+		[openAmbulanceDecision, openHospitalList, setSelectedCare],
 	);
 
 	const handleOpenFeaturedHospital = useCallback(
@@ -645,8 +722,11 @@ export function useMapExploreFlow() {
 		handleOpenProfile,
 		openHospitalDetail,
 		openHospitalList,
+		openAmbulanceDecision,
+		openAmbulanceHospitalList,
 		openServiceDetail,
 		openSearchSheet,
+		closeAmbulanceDecision,
 		closeHospitalDetail,
 		closeHospitalList,
 		closeServiceDetail,
@@ -656,6 +736,7 @@ export function useMapExploreFlow() {
 		handleSearchLocation,
 		handleSelectHospital,
 		handleUseCurrentLocation,
+		ambulanceDecisionVisible,
 		hospitalDetailVisible,
 		hospitalListVisible,
 		serviceDetailVisible,

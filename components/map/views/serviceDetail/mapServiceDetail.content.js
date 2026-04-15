@@ -1,3 +1,14 @@
+export const MAP_SERVICE_DETAIL_COPY = {
+	AMBULANCE_LABEL: "Transport",
+	ROOM_LABEL: "Room option",
+	CHOOSE_TRANSPORT: "Choose transport",
+	CHOOSE_ROOM: "Choose room",
+	CURRENT_PILL: "Current",
+	PRICE_FALLBACK: "Price shown before booking",
+	TRANSPORT_STATUS_FALLBACK: "Ready",
+	ROOM_STATUS_FALLBACK: "Available",
+};
+
 export function buildServiceCopy(item, type) {
 	if (type === "ambulance") {
 		const title = item?.title || "Transport";

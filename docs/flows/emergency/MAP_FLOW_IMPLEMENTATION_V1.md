@@ -1,7 +1,7 @@
 # Map Flow Implementation (v1)
 
 > Status: Active implementation note
-> Scope: `/map` -> `explore_intent`
+> Scope: `/map` -> `explore_intent`, `ambulance_decision`
 
 Related:
 
@@ -27,6 +27,8 @@ The public map flow now follows this shape:
   - owns persistent sheet shell behavior
 - [components/map/views/exploreIntent](../../../components/map/views/exploreIntent)
   - owns the current first mode using variant-based files
+- [components/map/views/ambulanceDecision](../../../components/map/views/ambulanceDecision)
+  - owns the dispatch-decision phase after the ambulance CTA
 
 ## Readiness Contract
 
@@ -47,7 +49,7 @@ Supporting files:
 
 ## Sheet And Modal Contract
 
-The persistent pre-dispatch map flow now routes `search`, `hospital_list`, and `hospital_detail` through the shared sheet shell.
+The persistent pre-dispatch map flow now routes `search`, `hospital_list`, `hospital_detail`, and `ambulance_decision` through the shared sheet shell.
 
 Persistent sheet path:
 
@@ -55,6 +57,7 @@ Persistent sheet path:
 - [components/map/views/search](../../../components/map/views/search)
 - [components/map/views/hospitalList](../../../components/map/views/hospitalList)
 - [components/map/views/hospitalDetail](../../../components/map/views/hospitalDetail)
+- [components/map/views/ambulanceDecision](../../../components/map/views/ambulanceDecision)
 
 Bridge modals that still share one shell:
 
@@ -81,7 +84,68 @@ Shared behavior:
 Shared implementation note:
 
 - `search`, `hospital_list`, and `hospital_detail` now share a stage body-scroll wrapper through [`MapStageBodyScroll.jsx`](../../../components/map/views/shared/MapStageBodyScroll.jsx)
+- `ambulance_decision` now reuses the same shell, detent, route, and service-detail seam as the existing map phases
 - `hospital_detail` remains the visual exception where expanded hero/title/body structure must be preserved exactly even if other stage internals are refactored
+- `ambulance_decision` currently confirms into the existing legacy ambulance-request route after the sheet decision; `COMMIT_DETAILS` is still the next in-map phase to build
+
+## Ambulance Decision Data Contract
+
+The current `/map` `ambulance_decision` phase intentionally does not read a live assigned ambulance unit.
+
+Current runtime path:
+
+- [useMapAmbulanceDecisionModel.js](../../../components/map/views/ambulanceDecision/useMapAmbulanceDecisionModel.js)
+  - calls `hospitalsService.getServicePricing(...)`
+- [hospitalsService.js](../../../services/hospitalsService.js)
+  - reads `service_pricing`
+- [mapHospitalDetail.helpers.js](../../../components/map/surfaces/hospitals/mapHospitalDetail.helpers.js)
+  - maps ambulance pricing rows into the three dispatch tiers
+- [mapAmbulanceDecision.helpers.js](../../../components/map/views/ambulanceDecision/mapAmbulanceDecision.helpers.js)
+  - derives hero + option content from those rows plus route data
+
+Current backend-backed fields available to the sheet:
+
+- `id`
+- `service_name`
+- `service_type`
+- `description`
+- `base_price`
+
+Current derived UI fields:
+
+- selected tier title
+- crew label / crew count presentation
+- `Ready` / enabled state
+- confidence label
+- price text
+
+Legacy compatibility note:
+
+- [EmergencyRequestModal.jsx](../../../components/emergency/EmergencyRequestModal.jsx) already made the same product decision
+- it fetches `service_pricing`, filters ambulance rows, and synthesizes the user-facing crew copy from `service_type`
+- this means the new map sheet is aligned with the legacy pre-dispatch contract instead of inventing a second source of truth
+
+RLS / survivability note:
+
+- `service_pricing` currently has public read RLS:
+  - [20260219000800_emergency_logic.sql](../../../supabase/migrations/20260219000800_emergency_logic.sql)
+- `ambulances` also currently has public read RLS:
+  - [20260219000700_security.sql](../../../supabase/migrations/20260219000700_security.sql)
+- even so, pre-dispatch UI should continue to depend on `service_pricing`, not `ambulances`
+
+Reason:
+
+- `service_pricing` is stable pre-authorization metadata
+- `ambulances` is live logistics inventory and may be tightened later without breaking the public map flow
+- the pre-dispatch sheet should survive future hardening where live ambulance-unit visibility becomes authenticated-only or dispatch-only
+
+Practical rendering rule for the current hero:
+
+- header owns hospital + away line
+- hero owns selected ambulance tier
+- hero pill 1 should be crew
+- hero pill 2 should be price
+- do not render live unit identity in pre-dispatch phases
 
 ## Hospital Data Consistency Fix
 
@@ -131,6 +195,7 @@ For `ios-mobile` solidification, build in this order:
 
 1. keep `MapScreen.jsx` thin
 2. add more sheet modes into `useMapExploreFlow.js`
-3. keep remaining bridge modal tasks on `MapModalShell`
-4. add a `MapScreenOrchestrator` once Android and web variants start to diverge
-5. migrate any remaining map-adjacent legacy overlays only if they are reintroduced into `/map`
+3. build `COMMIT_DETAILS` so ambulance confirmation no longer hands off to the legacy request screen
+4. keep remaining bridge modal tasks on `MapModalShell`
+5. add a `MapScreenOrchestrator` once Android and web variants start to diverge
+6. migrate any remaining map-adjacent legacy overlays only if they are reintroduced into `/map`

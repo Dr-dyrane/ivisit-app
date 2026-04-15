@@ -17,6 +17,8 @@ import {
 	MapServiceDetailHeader,
 	MapServiceDetailHero,
 	MapServiceDetailMetrics,
+	MapServiceDetailOptionList,
+	MapServiceDetailSwitchRow,
 	MapServiceDetailTopSlot,
 } from "./MapServiceDetailStageParts";
 import { buildServiceCopy } from "./mapServiceDetail.content";
@@ -81,6 +83,7 @@ export default function MapServiceDetailStageBase({
 
 	const service = payload?.service || null;
 	const serviceType = payload?.serviceType || "ambulance";
+	const isExpanded = snapState === MAP_SHEET_SNAP_STATES.EXPANDED;
 	const serviceItems = Array.isArray(payload?.serviceItems)
 		? payload.serviceItems.filter((entry) => !entry?.isSkeleton && entry?.enabled !== false)
 		: [];
@@ -201,13 +204,27 @@ export default function MapServiceDetailStageBase({
 					glassTokens={glassTokens}
 					isDarkMode={isDarkMode}
 					mutedColor={mutedColor}
-					panHandlers={swipeHandlers}
+					nestedSurfaceColor={nestedSurfaceColor}
+					positionLabel={statusLabel}
 					servicePositionLabel={servicePositionLabel}
 					serviceType={serviceType}
 					surfaceColor={surfaceColor}
 				/>
 
 				<View style={styles.sectionSpacer} />
+
+				<MapServiceDetailSwitchRow
+					accent={accent}
+					mutedColor={mutedColor}
+					nestedSurfaceColor={nestedSurfaceColor}
+					onSelectService={onChangeService}
+					selectedServiceId={service?.id || service?.title || null}
+					serviceItems={serviceItems}
+					serviceType={serviceType}
+					titleColor={titleColor}
+				/>
+
+				{hasServiceCarousel ? <View style={styles.sectionSpacer} /> : null}
 
 				<MapServiceDetailHero
 					glassTokens={glassTokens}
@@ -219,13 +236,34 @@ export default function MapServiceDetailStageBase({
 
 				<View style={styles.sectionSpacer} />
 
-				<MapServiceDetailMetrics
-					accent={accent}
-					nestedSurfaceColor={nestedSurfaceColor}
-					priceLabel={priceLabel}
-					statusLabel={statusLabel}
-					titleColor={titleColor}
-				/>
+				{!(isExpanded && hasServiceCarousel) ? (
+					<MapServiceDetailMetrics
+						accent={accent}
+						nestedSurfaceColor={nestedSurfaceColor}
+						priceLabel={priceLabel}
+						statusLabel={statusLabel}
+						titleColor={titleColor}
+					/>
+				) : null}
+
+				{isExpanded && hasServiceCarousel ? (
+					<>
+						<View style={styles.sectionSpacerLarge} />
+						<MapServiceDetailOptionList
+							accent={accent}
+							isDarkMode={isDarkMode}
+							mutedColor={mutedColor}
+							onSelectService={onChangeService}
+							selectedServiceId={service?.id || service?.title || null}
+							serviceItems={serviceItems}
+							serviceType={serviceType}
+							surfaceColor={nestedSurfaceColor}
+							titleColor={titleColor}
+						/>
+					</>
+				) : (
+					<View style={styles.sectionSpacerLarge} />
+				)}
 
 				<View style={styles.sectionSpacerLarge} />
 
