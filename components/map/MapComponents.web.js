@@ -350,6 +350,7 @@ export const MapView = React.forwardRef(({
   const idleListenerRef = useRef(null);
   const resizeObserverRef = useRef(null);
   const appliedRegionRef = useRef(null);
+  const initialRegionAppliedRef = useRef(false);
   const onMapReadyRef = useRef(onMapReady);
   const onMapLoadedRef = useRef(onMapLoaded);
   const [mapInstance, setMapInstance] = useState(null);
@@ -426,6 +427,7 @@ export const MapView = React.forwardRef(({
       }
       mapInstanceRef.current = null;
       appliedRegionRef.current = null;
+      initialRegionAppliedRef.current = false;
       setMapInstance(null);
     };
   }, [isLoaded]);
@@ -447,7 +449,9 @@ export const MapView = React.forwardRef(({
     });
 
     const nextRegion =
-      initialRegion?.latitude && initialRegion?.longitude
+      !initialRegionAppliedRef.current &&
+      initialRegion?.latitude &&
+      initialRegion?.longitude
         ? {
             latitude: Number(initialRegion.latitude),
             longitude: Number(initialRegion.longitude),
@@ -455,22 +459,15 @@ export const MapView = React.forwardRef(({
             longitudeDelta: Number(initialRegion.longitudeDelta) || 0,
           }
         : null;
-    const previousRegion = appliedRegionRef.current;
-    const regionChanged =
-      !previousRegion ||
-      !nextRegion ||
-      Math.abs(previousRegion.latitude - nextRegion.latitude) > 0.000001 ||
-      Math.abs(previousRegion.longitude - nextRegion.longitude) > 0.000001 ||
-      Math.abs(previousRegion.latitudeDelta - nextRegion.latitudeDelta) > 0.000001 ||
-      Math.abs(previousRegion.longitudeDelta - nextRegion.longitudeDelta) > 0.000001;
 
-    if (nextRegion && regionChanged) {
+    if (nextRegion) {
       map.setCenter({
         lat: nextRegion.latitude,
         lng: nextRegion.longitude,
       });
       map.setZoom(getZoomForRegion(nextRegion));
       appliedRegionRef.current = nextRegion;
+      initialRegionAppliedRef.current = true;
     }
   }, [
     customMapStyle,
@@ -567,6 +564,19 @@ export const MapView = React.forwardRef(({
           lng: region.longitude
         });
         mapInstanceRef.current.setZoom(getZoomForRegion(region));
+      }
+    },
+    panToCoordinate: (coordinate) => {
+      if (mapInstanceRef.current && coordinate) {
+        mapInstanceRef.current.panTo({
+          lat: coordinate.latitude,
+          lng: coordinate.longitude,
+        });
+      }
+    },
+    panByPixels: (x = 0, y = 0) => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.panBy(Number(x) || 0, Number(y) || 0);
       }
     },
     fitToCoordinates: (coordinates, options) => {

@@ -155,6 +155,11 @@ function getNearbyPadding(bottomSheetHeight = 0, leftPanelWidth = 0) {
 	};
 }
 
+function getWebRoutePanOffset(bottomSheetHeight = 0, leftPanelWidth = 0) {
+	const padding = getRoutePadding(bottomSheetHeight, leftPanelWidth);
+	return Math.round((Number(padding.bottom || 0) - Number(padding.top || 0)) / 2);
+}
+
 function getHospitalMarkerCenterOffset(isSelected) {
 	return {
 		x: 0,
@@ -183,6 +188,7 @@ export default function EmergencyLocationPreviewMap({
 	const { width: screenWidth } = useWindowDimensions();
 	const mapRef = useRef(null);
 	const routeFitPrimeKeyRef = useRef(null);
+	const occlusionSignatureRef = useRef(`${Math.round(bottomSheetHeight)}|${Math.round(leftPanelWidth)}`);
 	const [isMapReady, setIsMapReady] = useState(false);
 	const [isNearbyOverview, setIsNearbyOverview] = useState(false);
 	const isAndroid = Platform.OS === "android";
@@ -262,6 +268,7 @@ export default function EmergencyLocationPreviewMap({
 	const routeReady = hasRouteTargets
 		? routeBoundsCoordinates.length >= 2 && !isCalculatingRoute
 		: !isCalculatingRoute;
+	const occlusionSignature = `${Math.round(bottomSheetHeight)}|${Math.round(leftPanelWidth)}`;
 
 	useEffect(() => {
 		if (userCoordinate && selectedHospitalCoordinate) {
@@ -281,7 +288,7 @@ export default function EmergencyLocationPreviewMap({
 		userCoordinate?.longitude,
 	]);
 
-	const fitRoute = useCallback(() => {
+	const fitRoute = useCallback((sheetHeight = bottomSheetHeight, panelWidth = leftPanelWidth) => {
 		if (!mapRef.current || !hasLocation) return;
 
 		if (
@@ -289,16 +296,60 @@ export default function EmergencyLocationPreviewMap({
 			typeof mapRef.current?.fitToCoordinates === "function"
 		) {
 			mapRef.current.fitToCoordinates(routeBoundsCoordinates, {
-				edgePadding: getRoutePadding(bottomSheetHeight, leftPanelWidth),
+				edgePadding: getRoutePadding(sheetHeight, panelWidth),
 				animated: true,
 			});
 			setIsNearbyOverview(false);
 			return;
 		}
 
-		mapRef.current?.animateToRegion?.(region, 320);
+		mapRef.current?.animateToRegion?.(
+			buildRegionForPoints(routeBoundsCoordinates, sheetHeight, panelWidth, screenWidth),
+			320,
+		);
 		setIsNearbyOverview(false);
-	}, [bottomSheetHeight, hasLocation, leftPanelWidth, region, routeBoundsCoordinates]);
+	}, [bottomSheetHeight, hasLocation, leftPanelWidth, routeBoundsCoordinates, screenWidth]);
+
+	const recenterRouteForWebOcclusion = useCallback(async () => {
+		if (
+			!isWeb ||
+			!mapRef.current ||
+			!hasLocation ||
+			routeBoundsCoordinates.length < 2 ||
+			typeof mapRef.current?.panToCoordinate !== "function" ||
+			typeof mapRef.current?.panByPixels !== "function"
+		) {
+			return;
+		}
+
+		try {
+			const routeRegion = buildRegionForPoints(
+				routeBoundsCoordinates,
+				0,
+				leftPanelWidth,
+				screenWidth,
+			);
+			const verticalPanOffset = getWebRoutePanOffset(bottomSheetHeight, leftPanelWidth);
+
+			mapRef.current?.panToCoordinate?.({
+				latitude: routeRegion.latitude,
+				longitude: routeRegion.longitude,
+			});
+			if (verticalPanOffset) {
+				mapRef.current?.panByPixels?.(0, verticalPanOffset);
+			}
+			setIsNearbyOverview(false);
+		} catch (_error) {
+			// Keep the current camera if web pan is temporarily unavailable.
+		}
+	}, [
+		bottomSheetHeight,
+		hasLocation,
+		isWeb,
+		leftPanelWidth,
+		routeBoundsCoordinates,
+		screenWidth,
+	]);
 
 	const fitNearbyHospitals = useCallback(() => {
 		if (!mapRef.current || !hasLocation) return;
@@ -337,16 +388,60 @@ export default function EmergencyLocationPreviewMap({
 
 	useEffect(() => {
 		if (!mapRef.current || !hasLocation || !isMapReady) return;
-
-		fitRoute();
 		if (routeFitPrimeKeyRef.current === routeFitPrimeKey) {
 			return;
 		}
+
 		routeFitPrimeKeyRef.current = routeFitPrimeKey;
+		fitRoute(bottomSheetHeight, leftPanelWidth);
 		const followUpDelay = isAndroid ? 320 : isWeb ? 220 : 180;
-		const followUp = setTimeout(fitRoute, followUpDelay);
+		const followUp = setTimeout(
+			() => fitRoute(bottomSheetHeight, leftPanelWidth),
+			followUpDelay,
+		);
 		return () => clearTimeout(followUp);
-	}, [fitRoute, hasLocation, isAndroid, isMapReady, isWeb, routeFitPrimeKey]);
+	}, [
+		bottomSheetHeight,
+		fitRoute,
+		hasLocation,
+		isAndroid,
+		isMapReady,
+		isWeb,
+		leftPanelWidth,
+		routeFitPrimeKey,
+	]);
+
+	useEffect(() => {
+		const occlusionChanged = occlusionSignatureRef.current !== occlusionSignature;
+		occlusionSignatureRef.current = occlusionSignature;
+
+		if (
+			!occlusionChanged ||
+			!mapRef.current ||
+			!hasLocation ||
+			!isMapReady ||
+			routeFitPrimeKeyRef.current !== routeFitPrimeKey
+		) {
+			return;
+		}
+
+		if (isWeb) {
+			recenterRouteForWebOcclusion();
+			return;
+		}
+
+		fitRoute(bottomSheetHeight, leftPanelWidth);
+	}, [
+		bottomSheetHeight,
+		fitRoute,
+		hasLocation,
+		isMapReady,
+		isWeb,
+		leftPanelWidth,
+		occlusionSignature,
+		recenterRouteForWebOcclusion,
+		routeFitPrimeKey,
+	]);
 
 	useEffect(() => {
 		if (isMapReady || !hasLocation) {
@@ -363,8 +458,9 @@ export default function EmergencyLocationPreviewMap({
 	useEffect(() => {
 		if (!isMapReady) {
 			routeFitPrimeKeyRef.current = null;
+			occlusionSignatureRef.current = occlusionSignature;
 		}
-	}, [isMapReady]);
+	}, [isMapReady, occlusionSignature]);
 
 	useEffect(() => {
 		onReadinessChange?.({
