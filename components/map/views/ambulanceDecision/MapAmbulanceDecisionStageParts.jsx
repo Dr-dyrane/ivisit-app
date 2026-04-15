@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import EntryActionButton from "../../../entry/EntryActionButton";
 import AmbulanceTierProductGraphic from "../../../emergency/requestModal/AmbulanceTierProductGraphic";
 import { getAmbulanceVisualProfile } from "../../../emergency/requestModal/ambulanceTierVisuals";
@@ -11,9 +12,9 @@ import { MAP_AMBULANCE_DECISION_COPY } from "./mapAmbulanceDecision.content";
 import styles from "./mapAmbulanceDecision.styles";
 
 function getAmbulanceTierIconName(visualProfile) {
-	if (visualProfile?.key === "critical") return "alert-circle-outline";
-	if (visualProfile?.key === "advanced") return "pulse-outline";
-	return "medkit-outline";
+	if (visualProfile?.key === "critical") return "alert-circle";
+	if (visualProfile?.key === "advanced") return "pulse";
+	return "medkit";
 }
 
 function toAccentRgba(color, alpha) {
@@ -41,6 +42,27 @@ function formatExpandedChoiceSubtext(option, fallbackPrice) {
 	return [option?.metaText, option?.priceText || fallbackPrice]
 		.filter(Boolean)
 		.join(", ");
+}
+
+function RouteMetaLine({ text, color, fadeColor }) {
+	return (
+		<View style={styles.routeStopMetaWrap}>
+			<Text
+				style={[styles.routeStopMeta, { color }]}
+				numberOfLines={1}
+				ellipsizeMode="clip"
+			>
+				{text}
+			</Text>
+			<LinearGradient
+				pointerEvents="none"
+				colors={["rgba(255,255,255,0)", fadeColor]}
+				start={{ x: 0, y: 0.5 }}
+				end={{ x: 1, y: 0.5 }}
+				style={styles.routeStopMetaFade}
+			/>
+		</View>
+	);
 }
 
 export function MapAmbulanceDecisionTopSlot({
@@ -145,7 +167,7 @@ export function MapAmbulanceDecisionHero({
 						<View style={styles.heroMetaRow}>
 							<View style={[styles.metaPill, { backgroundColor: heroPillSurfaceColor }]}>
 								<Ionicons
-									name="people-outline"
+									name="people"
 									size={14}
 									color={decision.visualProfile.accent}
 								/>
@@ -155,7 +177,7 @@ export function MapAmbulanceDecisionHero({
 							</View>
 							<View style={[styles.metaPill, { backgroundColor: heroPillSurfaceColor }]}>
 								<Ionicons
-									name="cash-outline"
+									name="cash"
 									size={14}
 									color={decision.visualProfile.accent}
 								/>
@@ -178,7 +200,9 @@ export function MapAmbulanceDecisionSwitchRow({
 	titleColor,
 	mutedColor,
 	pillSurfaceColor,
+	isDarkMode = false,
 	onSelectService,
+	onAdvanceSelectedService,
 }) {
 	if (!Array.isArray(serviceOptions) || serviceOptions.length < 2) {
 		return null;
@@ -190,16 +214,27 @@ export function MapAmbulanceDecisionSwitchRow({
 				const isActive = option?.id === selectedServiceId;
 				const isEnabled = option?.enabled !== false;
 				const visualProfile = getAmbulanceVisualProfile(option);
+				const inactiveSurfaceColor = toAccentRgba(
+					visualProfile.accent,
+					isDarkMode ? 0.18 : 0.12,
+				);
 				return (
 					<Pressable
 						key={option?.id || option?.title}
-						onPress={isEnabled ? () => onSelectService?.(option) : undefined}
+						onPress={
+							isEnabled
+								? () =>
+										isActive
+											? onAdvanceSelectedService?.(option)
+											: onSelectService?.(option)
+								: undefined
+						}
 						style={({ pressed }) => [
 							styles.switchPill,
 							{
 								backgroundColor: isActive
-									? "rgba(134,16,14,0.12)"
-									: pillSurfaceColor,
+									? COLORS.brandPrimary
+									: inactiveSurfaceColor || pillSurfaceColor,
 								opacity: isEnabled ? (pressed ? 0.9 : 1) : 0.45,
 							},
 						]}
@@ -208,19 +243,28 @@ export function MapAmbulanceDecisionSwitchRow({
 						<Ionicons
 							name={getAmbulanceTierIconName(visualProfile)}
 							size={14}
-							color={isActive ? visualProfile.accent : mutedColor}
+							color={isActive ? "#FFFFFF" : visualProfile.accent}
 						/>
 						<Text
 							style={[
 								styles.switchPillLabel,
 								{
-									color: isActive ? COLORS.brandPrimary : titleColor,
+									color: isActive ? "#FFFFFF" : visualProfile.accent,
 								},
 							]}
 							numberOfLines={1}
 						>
 							{option?.title || visualProfile.shortLabel}
 						</Text>
+						{isActive ? (
+							<View style={styles.switchPillReadyIconWrap}>
+								<Ionicons
+									name="chevron-forward-outline"
+									size={16}
+									color="#FFFFFF"
+								/>
+							</View>
+						) : null}
 					</Pressable>
 				);
 			})}
@@ -228,7 +272,7 @@ export function MapAmbulanceDecisionSwitchRow({
 	);
 }
 
-export function MapAmbulanceDecisionHospitalCard({
+export function MapAmbulanceDecisionRouteCard({
 	decision,
 	glassTokens,
 	isDarkMode,
@@ -237,36 +281,69 @@ export function MapAmbulanceDecisionHospitalCard({
 	surfaceColor,
 	pillSurfaceColor,
 }) {
+	const routePanel = decision?.routePanel;
+	const connectorColor = isDarkMode
+		? "rgba(255,255,255,0.14)"
+		: "rgba(15,23,42,0.12)";
+	const routeFadeColor =
+		surfaceColor || (isDarkMode ? "rgba(18,24,38,0.60)" : "rgba(255,255,255,0.44)");
+
 	return (
 		<MapStageGlassPanel
-			style={styles.hospitalCard}
+			style={styles.routeCard}
 			backgroundColor={surfaceColor}
 			glassTokens={glassTokens}
 			isDarkMode={isDarkMode}
 		>
-			<View style={styles.hospitalRow}>
-				<View style={[styles.hospitalIconWrap, { backgroundColor: pillSurfaceColor }]}>
-					<MaterialCommunityIcons
-						name="hospital-building"
-						size={20}
-						color={decision.visualProfile.accent}
-					/>
+			<View style={styles.routeRow}>
+				<View style={styles.routeTrack}>
+					<View style={[styles.routeNode, { backgroundColor: pillSurfaceColor }]}>
+						<MaterialCommunityIcons
+							name="hospital-building"
+							size={18}
+							color={decision.visualProfile.accent}
+						/>
+					</View>
+					<View style={[styles.routeConnector, { backgroundColor: connectorColor }]} />
+					<View style={[styles.routeNode, { backgroundColor: pillSurfaceColor }]}>
+						<Ionicons name="navigate" size={16} color={decision.visualProfile.accent} />
+					</View>
 				</View>
-				<View style={styles.hospitalCopy}>
-					<Text style={[styles.hospitalTitle, { color: titleColor }]}>
-						{decision.hospitalSummary?.title || "Hospital"}
-					</Text>
-					<Text style={[styles.hospitalContext, { color: titleColor }]}>
-						{decision.hospitalSummary?.contextLine || "Hospital"}
-					</Text>
-					<Text style={[styles.hospitalAddress, { color: mutedColor }]}>
-						{decision.hospitalSummary?.addressLine || "Address unavailable"}
-					</Text>
+				<View style={styles.routeStops}>
+					<View style={styles.routeStop}>
+						<Text style={[styles.routeStopTitle, { color: titleColor }]} numberOfLines={1}>
+							{routePanel?.originTitle || "Hospital"}
+						</Text>
+						<RouteMetaLine
+							text={routePanel?.originSubtitle || "Dispatch origin"}
+							color={mutedColor}
+							fadeColor={routeFadeColor}
+						/>
+					</View>
+					<View style={styles.routeStopGap} />
+					<View style={styles.routeStop}>
+						<Text style={[styles.routeStopTitle, { color: titleColor }]} numberOfLines={1}>
+							{routePanel?.destinationTitle || "My location"}
+						</Text>
+						<RouteMetaLine
+							text={routePanel?.destinationSubtitle || "Current pickup point"}
+							color={mutedColor}
+							fadeColor={routeFadeColor}
+						/>
+					</View>
 				</View>
-				<View style={[styles.hospitalEtaPill, { backgroundColor: pillSurfaceColor }]}>
-					<Text style={styles.hospitalEtaText}>
-						{decision.distanceLabel || decision.etaLabel}
+				<View style={styles.routeMetrics}>
+					<Text style={[styles.routeMetricPrimary, { color: titleColor }]} numberOfLines={1}>
+						{routePanel?.primaryMetric || decision.etaLabel}
 					</Text>
+					{routePanel?.secondaryMetric ? (
+						<Text
+							style={[styles.routeMetricSecondary, { color: mutedColor }]}
+							numberOfLines={1}
+						>
+							{routePanel.secondaryMetric}
+						</Text>
+					) : null}
 				</View>
 			</View>
 		</MapStageGlassPanel>
@@ -278,6 +355,7 @@ export function MapAmbulanceDecisionExpandedChoices({
 	titleColor,
 	mutedColor,
 	pillSurfaceColor,
+	isDarkMode = false,
 	onSelectService,
 }) {
 	const alternativeOptions = Array.isArray(decision?.serviceOptions)
@@ -303,7 +381,10 @@ export function MapAmbulanceDecisionExpandedChoices({
 				style={({ pressed }) => [
 					styles.expandedChoiceCard,
 					{
-						backgroundColor: pillSurfaceColor,
+						backgroundColor: toAccentRgba(
+							visualProfile.accent,
+							isDarkMode ? 0.14 : 0.1,
+						),
 						opacity: isEnabled ? (pressed ? 0.94 : 1) : 0.48,
 					},
 				]}
@@ -322,18 +403,19 @@ export function MapAmbulanceDecisionExpandedChoices({
 						/>
 					</View>
 					<View style={styles.expandedChoiceCopy}>
-						<Text style={[styles.expandedChoiceTitle, { color: titleColor }]} numberOfLines={1}>
+						<Text
+							style={[styles.expandedChoiceTitle, { color: titleColor }]}
+							numberOfLines={1}
+						>
 							{option?.title || visualProfile.shortLabel}
 						</Text>
-					<Text style={[styles.expandedChoiceMeta, { color: mutedColor }]} numberOfLines={2}>
-						{[
-							option?.metaText || decision?.etaLabel,
-							option?.priceText || MAP_AMBULANCE_DECISION_COPY.PRICE_FALLBACK,
-						]
-							.filter(Boolean)
-							.join(" • ")}
-					</Text>
-				</View>
+						<Text
+							style={[styles.expandedChoiceMeta, { color: mutedColor }]}
+							numberOfLines={2}
+						>
+							{subtext}
+						</Text>
+					</View>
 				</View>
 				<View style={styles.expandedChoiceArtworkWrap}>
 					<AmbulanceTierProductGraphic
@@ -344,7 +426,7 @@ export function MapAmbulanceDecisionExpandedChoices({
 					/>
 				</View>
 				<View style={styles.expandedChoiceActionWrap}>
-					<Ionicons name="chevron-forward" size={18} color={mutedColor} />
+					<Ionicons name="chevron-forward" size={18} color={visualProfile.accent} />
 				</View>
 			</Pressable>
 		);

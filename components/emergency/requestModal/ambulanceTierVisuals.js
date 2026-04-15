@@ -1,5 +1,3 @@
-import { COLORS } from "../../../constants/colors";
-
 const AMBULANCE_TIER_IMAGES = {
 	basic: require("../../../assets/emergency/transport/ambulance-bls.png"),
 	advanced: require("../../../assets/emergency/transport/ambulance-als.png"),
@@ -10,8 +8,8 @@ const AMBULANCE_TIER_META = {
 	basic: {
 		label: "Standard ambulance",
 		shortLabel: "Standard",
-		accent: COLORS.brandPrimary,
-		secondaryAccent: "#0EA5E9",
+		accent: "#94A3B8",
+		secondaryAccent: "#E2E8F0",
 		marketingLine: "Fast help for urgent trips when the patient is stable.",
 		features: [
 			"Quick pickup and hospital transfer",

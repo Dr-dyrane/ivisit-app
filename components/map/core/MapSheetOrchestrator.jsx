@@ -78,13 +78,28 @@ export default function MapSheetOrchestrator({
 		case MAP_SHEET_PHASES.AMBULANCE_DECISION: {
 			const decisionHospital = featuredHospital || nearestHospital || null;
 			const decisionHospitalId = decisionHospital?.id || "unknown";
+			const decisionOrigin =
+				currentLocation || activeLocation
+					? {
+							...(activeLocation || {}),
+							...(currentLocation || {}),
+							...(currentLocation?.location || {}),
+							formattedAddress:
+								currentLocation?.formattedAddress ||
+								[currentLocation?.primaryText, currentLocation?.secondaryText]
+									.filter(Boolean)
+									.join(", ") ||
+								activeLocation?.formattedAddress ||
+								null,
+						}
+					: null;
 			return (
 				<MapPhaseTransitionView phaseKey={`${phase}-${decisionHospitalId}`}>
 					<MapAmbulanceDecisionOrchestrator
 						sheetHeight={sheetHeight}
 						snapState={snapState}
 						hospital={decisionHospital}
-						origin={activeLocation}
+						origin={decisionOrigin}
 						hospitalCount={Array.isArray(hospitals) ? hospitals.length : 0}
 						selectedServiceId={
 							serviceSelectionsByHospital[decisionHospitalId]?.ambulanceServiceId ?? null

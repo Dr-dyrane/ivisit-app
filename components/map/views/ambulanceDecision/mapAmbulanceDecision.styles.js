@@ -161,6 +161,17 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 		gap: 1,
+		position: "relative",
+	},
+	switchPillReadyIconWrap: {
+		position: "absolute",
+		right: 6,
+		top: "50%",
+		marginTop: Platform.OS === "web" ? -8 : -6,
+		width: 16,
+		height: 16,
+		alignItems: "center",
+		justifyContent: "center",
 	},
 	switchPillLabel: {
 		fontSize: 11,
@@ -170,56 +181,90 @@ const styles = StyleSheet.create({
 		flexShrink: 1,
 		maxWidth: "100%",
 	},
-	hospitalCard: {
+	routeCard: {
 		borderRadius: 26,
 		borderCurve: "continuous",
-		paddingHorizontal: 18,
-		paddingVertical: 16,
+		paddingHorizontal: 16,
+		paddingVertical: 10,
 	},
-	hospitalRow: {
+	routeRow: {
 		flexDirection: "row",
-		alignItems: "flex-start",
-	},
-	hospitalIconWrap: {
-		width: 48,
-		height: 48,
-		borderRadius: 18,
 		alignItems: "center",
-		justifyContent: "center",
-		marginRight: 14,
 	},
-	hospitalCopy: {
-		flex: 1,
+	routeTrack: {
+		alignItems: "center",
+		marginRight: 12,
 	},
-	hospitalTitle: {
-		...HOSPITAL_TITLE_TEXT,
-		marginBottom: 4,
-	},
-	hospitalContext: {
-		fontSize: 13,
-		lineHeight: 17,
-		fontWeight: "400",
-		marginBottom: 4,
-	},
-	hospitalAddress: {
-		fontSize: 13,
-		lineHeight: 17,
-		fontWeight: "400",
-	},
-	hospitalEtaPill: {
-		height: 30,
-		paddingHorizontal: 12,
-		borderRadius: 15,
+	routeNode: {
+		width: 32,
+		height: 32,
+		borderRadius: 12,
 		borderCurve: "continuous",
 		alignItems: "center",
 		justifyContent: "center",
-		marginLeft: 12,
 	},
-	hospitalEtaText: {
-		fontSize: Platform.OS === "web" ? 12 : 13,
-		lineHeight: Platform.OS === "web" ? 15 : 16,
-		fontWeight: Platform.OS === "web" ? "600" : "700",
-		color: COLORS.brandPrimary,
+	routeConnector: {
+		width: 2,
+		height: 26,
+		borderRadius: 999,
+		marginVertical: 3,
+	},
+	routeStops: {
+		flex: 1,
+		minWidth: 0,
+	},
+	routeStop: {
+		minHeight: 28,
+		justifyContent: "center",
+	},
+	routeStopGap: {
+		height: 18,
+	},
+	routeStopTitle: {
+		fontSize: Platform.OS === "web" ? 15 : 16,
+		lineHeight: Platform.OS === "web" ? 18 : 19,
+		fontWeight: Platform.OS === "web" ? "500" : "600",
+		letterSpacing: -0.18,
+		marginBottom: 1,
+	},
+	routeStopMetaWrap: {
+		position: "relative",
+		paddingRight: 18,
+		minWidth: 0,
+	},
+	routeStopMeta: {
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "400",
+	},
+	routeStopMetaFade: {
+		position: "absolute",
+		top: "50%",
+		right: 0,
+		marginTop: -8,
+		width: 24,
+		height: 16,
+		borderRadius: 8,
+		borderCurve: "continuous",
+	},
+	routeMetrics: {
+		marginLeft: 10,
+		alignItems: "flex-end",
+		justifyContent: "center",
+		maxWidth: 82,
+	},
+	routeMetricPrimary: {
+		fontSize: Platform.OS === "web" ? 15 : 16,
+		lineHeight: Platform.OS === "web" ? 19 : 20,
+		fontWeight: Platform.OS === "web" ? "700" : "800",
+		textAlign: "right",
+	},
+	routeMetricSecondary: {
+		fontSize: 12,
+		lineHeight: 15,
+		fontWeight: "500",
+		textAlign: "right",
+		marginTop: 2,
 	},
 	expandedChoicesWrap: {
 		gap: 10,

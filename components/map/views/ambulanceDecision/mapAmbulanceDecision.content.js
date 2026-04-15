@@ -13,6 +13,9 @@ export const MAP_AMBULANCE_DECISION_COPY = {
 	OTHER_HOSPITALS_CTA: "Other hospitals",
 	SERVICE_DETAILS_CTA: "Details",
 	CURRENT_PILL: "Current",
+	ROUTE_SOURCE_FALLBACK: "Dispatch origin",
+	ROUTE_DESTINATION_TITLE: "My location",
+	ROUTE_DESTINATION_SUBTITLE: "Current pickup point",
 	NO_HOSPITAL_TITLE: "No dispatch candidate yet",
 	NO_HOSPITAL_BODY: "Choose another hospital before you continue.",
 };

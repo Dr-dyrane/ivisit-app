@@ -19,7 +19,7 @@ import {
 	MapAmbulanceDecisionEmptyState,
 	MapAmbulanceDecisionFooter,
 	MapAmbulanceDecisionHero,
-	MapAmbulanceDecisionHospitalCard,
+	MapAmbulanceDecisionRouteCard,
 	MapAmbulanceDecisionSwitchRow,
 	MapAmbulanceDecisionTopSlot,
 } from "./MapAmbulanceDecisionStageParts";
@@ -181,6 +181,16 @@ export default function MapAmbulanceDecisionStageBase({
 		[decision.hospital?.id, onSelectService],
 	);
 
+	const handleAdvanceSelectedDispatchOption = useCallback(
+		(option) => {
+			if (!option?.id || option.id !== decision.recommendedService?.id) {
+				return;
+			}
+			handleConfirm();
+		},
+		[decision.recommendedService?.id, handleConfirm],
+	);
+
 	return (
 		<MapSheetShell
 			sheetHeight={sheetHeight}
@@ -258,7 +268,9 @@ export default function MapAmbulanceDecisionStageBase({
 									titleColor={titleColor}
 									mutedColor={mutedColor}
 									pillSurfaceColor={pillSurfaceColor}
+									isDarkMode={isDarkMode}
 									onSelectService={handleSelectDispatchOption}
+									onAdvanceSelectedService={handleAdvanceSelectedDispatchOption}
 								/>
 								<View style={styles.midSwitchSpacingBottom} />
 							</>
@@ -273,12 +285,13 @@ export default function MapAmbulanceDecisionStageBase({
 									titleColor={titleColor}
 									mutedColor={mutedColor}
 									pillSurfaceColor={pillSurfaceColor}
+									isDarkMode={isDarkMode}
 									onSelectService={handleSelectDispatchOption}
 								/>
 
 								<View style={styles.sectionGap} />
 
-								<MapAmbulanceDecisionHospitalCard
+								<MapAmbulanceDecisionRouteCard
 									decision={decision}
 									glassTokens={glassTokens}
 									isDarkMode={isDarkMode}
@@ -301,7 +314,7 @@ export default function MapAmbulanceDecisionStageBase({
 								/>
 							</>
 						) : (
-							<MapAmbulanceDecisionHospitalCard
+							<MapAmbulanceDecisionRouteCard
 								decision={decision}
 								glassTokens={glassTokens}
 								isDarkMode={isDarkMode}
@@ -321,15 +334,17 @@ export default function MapAmbulanceDecisionStageBase({
 						isDarkMode={isDarkMode}
 					/>
 				)}
-			</MapStageBodyScroll>
 
-			<MapAmbulanceDecisionFooter
-				modalContainedStyle={modalContainedStyle}
-				canConfirm={Boolean(decision.hospital)}
-				canBrowseHospitals={canBrowseHospitals}
-				onConfirm={handleConfirm}
-				onOpenHospitals={onOpenHospitals}
-			/>
+				<View style={styles.sectionGap} />
+
+				<MapAmbulanceDecisionFooter
+					modalContainedStyle={null}
+					canConfirm={Boolean(decision.hospital)}
+					canBrowseHospitals={canBrowseHospitals}
+					onConfirm={handleConfirm}
+					onOpenHospitals={onOpenHospitals}
+				/>
+			</MapStageBodyScroll>
 		</MapSheetShell>
 	);
 }

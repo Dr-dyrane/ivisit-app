@@ -130,10 +130,47 @@ export function buildAmbulanceDecisionFeatures({
 		.slice(0, 2);
 }
 
+function buildAmbulanceDecisionRoutePanel({
+	hospitalSummary,
+	etaLabel,
+	distanceLabel,
+	origin = null,
+}) {
+	const primaryText =
+		typeof origin?.primaryText === "string" ? origin.primaryText.trim() : "";
+	const secondaryText =
+		typeof origin?.secondaryText === "string" ? origin.secondaryText.trim() : "";
+	const formattedAddress =
+		typeof origin?.formattedAddress === "string" ? origin.formattedAddress.trim() : "";
+	const originAddress =
+		formattedAddress && !/^current location$/i.test(formattedAddress)
+			? formattedAddress
+			: primaryText && secondaryText && !/^current location$/i.test(primaryText)
+				? `${primaryText}, ${secondaryText}`
+				: secondaryText ||
+					(primaryText && !/^current location$/i.test(primaryText) ? primaryText : "") ||
+					(typeof origin?.address === "string" && origin.address.trim()
+						? origin.address.trim()
+						: MAP_AMBULANCE_DECISION_COPY.ROUTE_DESTINATION_SUBTITLE);
+
+	return {
+		originTitle: hospitalSummary?.title || "Hospital",
+		originSubtitle:
+			hospitalSummary?.addressLine ||
+			hospitalSummary?.contextLine ||
+			MAP_AMBULANCE_DECISION_COPY.ROUTE_SOURCE_FALLBACK,
+		destinationTitle: MAP_AMBULANCE_DECISION_COPY.ROUTE_DESTINATION_TITLE,
+		destinationSubtitle: originAddress,
+		primaryMetric: etaLabel || MAP_AMBULANCE_DECISION_COPY.ETA_FALLBACK,
+		secondaryMetric: distanceLabel || null,
+	};
+}
+
 export function buildAmbulanceDecisionModel({
 	hospital,
 	pricingRows = [],
 	routeInfo = null,
+	origin = null,
 	selectedServiceId = null,
 	isLoadingServices = false,
 	isCalculatingRoute = false,
@@ -153,6 +190,15 @@ export function buildAmbulanceDecisionModel({
 			serviceTitle: "Standard ambulance",
 			serviceSummary: MAP_AMBULANCE_DECISION_COPY.SUMMARY,
 			features: [],
+			routePanel: {
+				originTitle: "Hospital",
+				originSubtitle: MAP_AMBULANCE_DECISION_COPY.ROUTE_SOURCE_FALLBACK,
+				destinationTitle: MAP_AMBULANCE_DECISION_COPY.ROUTE_DESTINATION_TITLE,
+				destinationSubtitle:
+					MAP_AMBULANCE_DECISION_COPY.ROUTE_DESTINATION_SUBTITLE,
+				primaryMetric: MAP_AMBULANCE_DECISION_COPY.ETA_FALLBACK,
+				secondaryMetric: null,
+			},
 		};
 	}
 
@@ -207,5 +253,11 @@ export function buildAmbulanceDecisionModel({
 			visualProfile?.marketingLine ||
 			MAP_AMBULANCE_DECISION_COPY.SUMMARY,
 		features,
+		routePanel: buildAmbulanceDecisionRoutePanel({
+			hospitalSummary,
+			etaLabel,
+			distanceLabel,
+			origin,
+		}),
 	};
 }
