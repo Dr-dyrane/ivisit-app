@@ -73,11 +73,18 @@ export default function MapHospitalDetailBody({
 	const heroBlendColors = isDarkMode
 		? ["rgba(8,15,27,0)", "rgba(8,15,27,0.14)", "rgba(8,15,27,0.26)", "rgba(8,15,27,0.40)"]
 		: ["rgba(248,250,252,0)", "rgba(248,250,252,0.08)", "rgba(248,250,252,0.16)", "rgba(248,250,252,0.32)"];
+	const heroBottomMergeColors = isDarkMode
+		? ["rgba(8,15,27,0)", "rgba(8,15,27,0.10)", "rgba(8,15,27,0.28)", "rgba(8,15,27,0.58)"]
+		: ["rgba(255,255,255,0)", "rgba(255,255,255,0.10)", "rgba(255,255,255,0.24)", "rgba(255,255,255,0.52)"];
 	const heroTopMaskColors = ["rgba(8,15,27,0.36)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0)"];
 	const expandedHeroShadeColors = isDarkMode
 		? ["rgba(8,15,27,0.04)", "rgba(8,15,27,0.16)", "rgba(8,15,27,0.58)", "rgba(8,15,27,0.94)"]
 		: ["rgba(248,250,252,0.02)", "rgba(248,250,252,0.06)", "rgba(248,250,252,0.48)", "rgba(255,255,255,0.94)"];
+	const expandedHeroBottomMergeColors = isDarkMode
+		? ["rgba(8,15,27,0)", "rgba(8,15,27,0.14)", "rgba(8,15,27,0.34)", "rgba(8,15,27,0.74)"]
+		: ["rgba(255,255,255,0)", "rgba(255,255,255,0.12)", "rgba(255,255,255,0.30)", "rgba(255,255,255,0.68)"];
 	const expandedHeroTopMaskColors = ["rgba(8,15,27,0.42)", "rgba(8,15,27,0.22)", "rgba(8,15,27,0)"];
+	const heroImageOpacity = isDarkMode ? 0.92 : 0.9;
 	const expandedTitleColor = titleColor;
 	const expandedSubtitleColor = subtleColor;
 	const heroRevealProgress = useRef(new Animated.Value(revealHero ? 1 : 0)).current;
@@ -159,7 +166,7 @@ export default function MapHospitalDetailBody({
 						resizeMode="cover"
 						fadeDuration={0}
 						style={styles.expandedHero}
-						imageStyle={styles.expandedHeroImage}
+						imageStyle={[styles.expandedHeroImage, { opacity: heroImageOpacity }]}
 						{...heroSwipeHandlers}
 					>
 						<LinearGradient
@@ -171,6 +178,11 @@ export default function MapHospitalDetailBody({
 							pointerEvents="none"
 							colors={expandedHeroTopMaskColors}
 							style={styles.expandedHeroTopMask}
+						/>
+						<LinearGradient
+							pointerEvents="none"
+							colors={expandedHeroBottomMergeColors}
+							style={styles.expandedHeroBottomMerge}
 						/>
 
 						{heroBadges.length > 0 ? (
@@ -369,12 +381,17 @@ export default function MapHospitalDetailBody({
 					resizeMode="cover"
 					fadeDuration={0}
 					style={styles.hero}
-					imageStyle={styles.heroImage}
+					imageStyle={[styles.heroImage, { opacity: heroImageOpacity }]}
 				>
 					<LinearGradient
 						pointerEvents="none"
 						colors={heroBlendColors}
 						style={styles.heroBlend}
+					/>
+					<LinearGradient
+						pointerEvents="none"
+						colors={heroBottomMergeColors}
+						style={styles.heroBottomMerge}
 					/>
 					<LinearGradient
 						pointerEvents="none"

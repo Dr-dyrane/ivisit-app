@@ -35,6 +35,14 @@ export const styles = StyleSheet.create({
 		height: 118,
 		zIndex: 1,
 	},
+	expandedHeroBottomMerge: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		height: 144,
+		zIndex: 1,
+	},
 	expandedHeroImage: {
 		borderTopLeftRadius: 34,
 		borderTopRightRadius: 34,
@@ -118,6 +126,14 @@ export const styles = StyleSheet.create({
 		right: 0,
 		bottom: 0,
 		height: 168,
+		zIndex: 1,
+	},
+	heroBottomMerge: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		height: 126,
 		zIndex: 1,
 	},
 	heroTopMask: {
