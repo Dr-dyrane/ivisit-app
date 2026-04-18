@@ -9,6 +9,7 @@ export function getBedSpaceSubtext(totalAvailableBeds, nearbyBedHospitals) {
 export function getSelectedCareLabel(selectedCare) {
 	if (selectedCare === "ambulance") return MAP_EXPLORE_INTENT_COPY.AMBULANCE;
 	if (selectedCare === "bed") return MAP_EXPLORE_INTENT_COPY.BED_SPACE;
+	if (selectedCare === "both") return MAP_EXPLORE_INTENT_COPY.COMPARE;
 	return MAP_EXPLORE_INTENT_COPY.NOW;
 }
 

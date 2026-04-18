@@ -482,11 +482,11 @@ export function MapServiceDetailFooter({
 }) {
 	const label = isSelected
 		? serviceType === "room"
-			? "Room selected"
-			: "Transport selected"
+			? MAP_SERVICE_DETAIL_COPY.CONTINUE_ROOM
+			: MAP_SERVICE_DETAIL_COPY.CONTINUE_TRANSPORT
 		: serviceType === "room"
-			? "Select room"
-			: "Select transport";
+			? MAP_SERVICE_DETAIL_COPY.CONFIRM_ROOM
+			: MAP_SERVICE_DETAIL_COPY.CONFIRM_TRANSPORT;
 
 	return (
 		<View style={[styles.footerDock, modalContainedStyle]}>

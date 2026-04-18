@@ -466,7 +466,8 @@ export default function MapExploreIntentCareSection({
 								colors={["#737C88", "#596370"]}
 								hierarchy="tertiary"
 								panelBias="trailing"
-								onPress={onOpenCareHistory}
+								onPress={() => onChooseCare("both")}
+								isSelected={selectedCare === "both"}
 								showSubtext={false}
 								pulseProgress={!selectedCare ? pulseProgress : null}
 							/>
@@ -515,12 +516,13 @@ export default function MapExploreIntentCareSection({
 						<View style={[styles.intentActionHalf, styles.intentActionHalfTrailing]}>
 							<CareIntentCard
 								label={MAP_EXPLORE_INTENT_COPY.COMPARE}
-							subtext={MAP_EXPLORE_INTENT_COPY.COMPARE_SUBTEXT}
-							iconName="format-list-bulleted"
-							colors={["#737C88", "#596370"]}
+								subtext={MAP_EXPLORE_INTENT_COPY.COMPARE_SUBTEXT}
+								iconName="format-list-bulleted"
+								colors={["#737C88", "#596370"]}
 								hierarchy="tertiary"
 								panelBias="trailing"
-								onPress={onOpenCareHistory}
+								onPress={() => onChooseCare("both")}
+								isSelected={selectedCare === "both"}
 							/>
 						</View>
 					</View>
@@ -584,7 +586,8 @@ export default function MapExploreIntentCareSection({
 					hierarchy="tertiary"
 					actionBias="trailing"
 					containerStyle={styles.careActionTrailingBias}
-					onPress={onOpenCareHistory}
+					onPress={() => onChooseCare("both")}
+					isSelected={selectedCare === "both"}
 					titleColor={titleColor}
 					mutedColor={mutedColor}
 				/>
