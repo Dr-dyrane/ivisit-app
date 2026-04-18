@@ -1,7 +1,7 @@
 # Map Screen Implementation Rules (v1)
 
 > Status: Active implementation contract
-> Scope: public `/(auth)/map-loading` and `/(auth)/map`
+> Scope: public `/(auth)/map`
 > Purpose: lock the architectural, UI, motion, and file-organization rules for the new map-first emergency surface
 
 Related references:
@@ -53,17 +53,15 @@ The app should not leave the map once the user enters it.
 The public emergency entry is now:
 
 - [WelcomeScreen.jsx](../../../screens/WelcomeScreen.jsx)
-  - routes to `/(auth)/map-loading`
-- [MapEntryLoadingScreen.jsx](../../../screens/MapEntryLoadingScreen.jsx)
-  - shows entry skeleton
-  - resolves location, hospital refresh, and demo bootstrap
-  - replaces to `/(auth)/map`
+  - routes to `/(auth)/map`
 - [MapScreen.jsx](../../../screens/MapScreen.jsx)
   - mounts the live persistent map surface
+  - owns the startup loading overlay, hospital refresh, and `/map` demo-bootstrap timing through the shared flow hooks
 
 Rule:
 
-- do not route welcome directly into the live map surface if core emergency data is not ready
+- do not use a separate blocking route just to show emergency entry loading
+- the real `/map` surface should mount immediately and own readiness inside the shell
 
 ## 3. Screen Ownership Rule
 
@@ -345,6 +343,7 @@ Rules:
 - all top-surface state should flow through `setHeaderState(...)` and `getHeaderBehavior(...)`
 - use shared header modes (`MAP_OVERLAY`, `FIXED`, `HIDDEN`) instead of local one-off booleans
 - `explore_intent`, hospital browsing, and other pre-dispatch sheet states should keep the header hidden
+- `COMMIT_DETAILS` and `COMMIT_PAYMENT` should also keep the header hidden in v1; they are focused sheet tasks, not live-session header states
 - the header must not appear just to guide the user toward dispatch; it should appear only after dispatch is already live
 - when active, the header should express real session state such as matched/tracking/progress, not page identity
 - the active header may expand downward and should compress/collapse the sheet below it instead of floating as unrelated chrome
@@ -423,6 +422,24 @@ Rendering parity rule for `service_detail`:
 - expanded state should prefer flatter comparison blades over repeated pill controls
 - inline footer CTA is preferred over sticky footer CTA on short screens
 - unresolved price should use skeleton treatment or omission, not fallback text like `Price shown before booking`
+
+Rendering rule for `commit_details`:
+
+- first implementation scope is ambulance only
+- open directly in `expanded`
+- keep the map mounted behind it
+- keep the phase sheet-led; do not switch on the global active header in v1
+- top slot should carry the locked selection summary and short phase title
+- ask one question at a time, not a stacked form
+- email question first
+- OTP verification second
+- phone only if missing from the resolved authenticated profile
+- triage remains optional and skippable
+- do not block v1 on a dedicated name step
+- use existing app auth primitives (`SmartContactInput`, `OTPInputCard`, `authService.requestOtp`, `authService.verifyOtp`)
+- back should step between microsteps before leaving the phase
+- `COMMIT_DETAILS` prepares a local request draft only; DB create still belongs to `COMMIT_PAYMENT`
+- if the selected hospital is demo-backed, preserve that hospital context through the draft so `COMMIT_PAYMENT` can resolve the demo auto-approval lane
 
 ## 14. Loading Rule
 

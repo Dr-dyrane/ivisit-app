@@ -113,6 +113,99 @@ Shared implementation note:
 - that saved ambulance selection is hospital-scoped; if the user changes hospitals during `bed_decision`, the flow must return to `ambulance_decision` for the new hospital before step 2 can continue
 - flow ownership stays in `useMapExploreFlow.js`; stage components should not own cross-phase invalidation rules
 
+## Locked `COMMIT_DETAILS` Plan
+
+First implementation scope:
+
+- `ambulance_decision -> COMMIT_DETAILS -> COMMIT_PAYMENT -> TRACKING`
+- `bed_decision` and combined bed booking continue to bridge through the legacy booking route for now
+- do not widen this into a new combined-care commit surface before the ambulance path is stable
+
+Locked posture:
+
+- keep the user on `/map`
+- keep the map mounted
+- open `COMMIT_DETAILS` directly in `expanded`
+- keep it sheet-led, not modal-led and not route-led
+- keep the global active header hidden in v1; the locked selection summary remains in the sheet itself
+
+Locked interaction model:
+
+- one question at a time
+- no long form
+- local backflow between microsteps before leaving the phase
+- immediate feedback on every submit / resend / verify action
+
+Locked microstep order:
+
+1. locked selection summary
+2. email question
+3. OTP verification
+4. phone only if missing from the resolved authenticated profile
+5. optional triage / complaint summary
+
+Locked non-goals for `COMMIT_DETAILS`:
+
+- no payment decision inside this phase
+- no separate visible `COMMIT_AUTH` phase
+- no blocking name step in v1
+- no Google-first auth detour
+
+Reason:
+
+- the live app already has email OTP primitives and a minimal email-first profile bridge
+- the live request RPC does not require a separate name field before request creation
+- reachable callback data matters more than profile enrichment at this point in the flow
+
+## `COMMIT_DETAILS` Draft Contract
+
+The phase should prepare a local request draft only. It should not write the real request yet.
+
+Required draft fields before `COMMIT_PAYMENT`:
+
+- authenticated actor/session
+- `hospital_id`
+- `hospital_name`
+- `service_type`
+- selected ambulance tier / `ambulance_type` when known
+- patient location / pickup context
+- patient email
+- patient phone only if still missing from the resolved user profile
+- `patient_snapshot`
+- optional triage snapshot if collected
+
+Not a blocking v1 prerequisite:
+
+- patient name as its own dedicated step
+
+Runtime evidence:
+
+- `create_emergency_v4` currently consumes `hospital_id`, `hospital_name`, `service_type`, `specialty`, `ambulance_type`, `patient_location`, `patient_snapshot`, and payment data
+- `patient_update_emergency_request` already supports later `triage_snapshot` merge into `patient_snapshot.triage`
+- `authService.requestOtp` / `authService.verifyOtp` already support the email OTP path the phase needs
+
+## Demo / Hybrid Commit Note
+
+`COMMIT_DETAILS` must preserve demo-context truth for the next phase. It does not need a special demo RPC payload, but it must not discard the selected demo hospital or coverage mode.
+
+Locked rule:
+
+- demo and hybrid coverage use the same `COMMIT_DETAILS` UI
+- no `demo` language appears in the commit surface
+- the request draft must preserve the selected hospital object so `COMMIT_PAYMENT` can still determine whether the flow is demo-backed
+
+Current runtime evidence:
+
+- `demoEcosystemService.shouldSimulatePayments(...)` keys off the selected hospital plus `effectiveDemoModeEnabled`
+- the live request path still calls the real `create_emergency_v4` cash lane
+- demo hospitals then use the `demo-approve-cash-payment` edge function to auto-approve the pending cash payment through the real `approve_cash_payment` RPC
+
+Product implication:
+
+- demo payment is operationally simulated, not structurally fake
+- demo payment must not introduce a human org-admin approval wait
+- the request should still enter real tracking truth after auto-approval instead of switching to a fake tracking branch
+
 ## Bed Decision Data Contract
 
 The current `/map` `bed_decision` phase is room-first only.

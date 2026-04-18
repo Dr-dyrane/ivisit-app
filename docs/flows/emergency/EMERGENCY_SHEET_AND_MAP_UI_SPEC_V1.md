@@ -1006,43 +1006,50 @@ Map behavior:
 
 User decision:
 
-- verify identity just before payment
+- finish the minimum pre-payment draft without leaving the sheet
 
 Collapsed:
 
-- `Add patient details`
+- none in v1
 
 Mid:
 
-- title: `Add patient details`
-- fields:
-  - name
-  - email
-  - phone
-- primary: `Continue`
+- not the primary posture in v1
 
 Expanded:
 
-- OTP entry
+- locked selection summary
+- one question at a time
+- email input first
+- OTP entry second
+- phone only if missing from the authenticated profile
+- optional triage / complaint step before payment
 - resend code
 - correction path
+- backflow between microsteps without leaving the phase
 
 Locked auth order:
 
-- this happens after triage and transport detail
+- email first
+- OTP second
+- phone only when the profile does not already provide a reachable callback number
+- name is not a blocking v1 question
+- triage stays optional and skippable
 - this happens before payment
 - this must not use `Sign up` or `Register` language
 
 Preferred copy:
 
-- `Add patient details`
+- `What's your email?`
 - `Enter verification code`
-- `Continue`
+- `Next, we'll send a code.`
 
 Map behavior:
 
 - map remains visible
 - sheet carries identity capture
+- `COMMIT_DETAILS` should open directly in `expanded` for keyboard and OTP focus
+- the active smart header remains hidden in v1; locked selection summary stays in the sheet, not the global header
 
 ## 3.12 Payment / Commit
 
@@ -1382,7 +1389,7 @@ Target runtime rule:
 |---|---|---|---|---|
 | `EXPLORE_INTENT` | orient and choose intent | resolved location, nearby hospitals, coverage mode, selected care intent, map readiness | no | `MapScreen.jsx` + `EmergencyContext.jsx` |
 | `AMBULANCE_DECISION` | show best dispatch candidate | recommended hospital, ETA, route confidence, hospital-scoped `service_pricing`, derived crew label, service summary | no | `MapSheetOrchestrator.jsx` + route helpers |
-| `COMMIT_DETAILS` | collect minimum safe info | patient name, phone, triage snapshot, inline verification if needed, local draft validity | not yet for guest-first pass | map sheet local state + request draft |
+| `COMMIT_DETAILS` | authenticate and finish the minimum request draft | locked hospital/service summary, email OTP auth state, phone if missing, optional triage snapshot, local draft validity | no | map sheet local state + request draft |
 | `COMMIT_PAYMENT` | perform real operational commit | authenticated actor, valid hospital id, payment method, amount, request payload ready | yes | `useRequestFlow.js` + RPCs |
 | `TRACKING` | show live certainty | request id, payment state, responder assignment, realtime status projection | updates only | `EmergencyContext.jsx` + realtime |
 
@@ -1405,7 +1412,8 @@ Behind the scenes:
 Implementation rule:
 
 - let the guest feel the whole map-first flow
-- ask for inline phone/email verification inside `COMMIT_DETAILS`
+- ask for inline email OTP inside `COMMIT_DETAILS`
+- ask for phone only if the resolved authenticated profile still lacks a reachable callback number
 - only move into `COMMIT_PAYMENT` once the actor is authenticated or otherwise linked to an owned patient identity
 
 #### B. First-time demo / hybrid-coverage user
@@ -1421,12 +1429,14 @@ Behind the scenes:
 - nearby options may come from hybrid/demo-backed coverage in `EmergencyContext.jsx`
 - the coverage mode may allow demo-like hospital inventory for sparse regions
 - bootstrap / fallback is a system concern, not a product-language concern
+- the selected demo hospital must survive into `COMMIT_DETAILS` unchanged so the payment phase can still resolve the demo auto-approval lane correctly
 
 Implementation rule:
 
 - keep the exact same sheet states as the live flow
 - do not fork the UI into a separate demo branch
 - if the user never completes verification/auth, the app stays in local draft / preview territory until real commit becomes possible
+- if the selected hospital is demo-backed, `COMMIT_PAYMENT` should still use the real cash request lane and then resolve the no-wait demo auto-approval path instead of inventing fake tracking
 
 #### C. Authenticated patient user
 
@@ -1445,6 +1455,8 @@ Behind the scenes:
 Implementation rule:
 
 - prefill identity/contact fields where possible
+- skip email + OTP entirely when the user already has a valid owned session
+- skip phone when the resolved profile already has it
 - keep `COMMIT_DETAILS` short
 - let `COMMIT_PAYMENT` be the final real-world release gate
 
@@ -1508,7 +1520,24 @@ Behind the scenes:
 - freeze selected hospital
 - freeze the route emphasis state
 - initialize the request draft payload
+- open a focused `expanded` sheet
 - do **not** call the DB commit yet
+
+Locked `COMMIT_DETAILS` microflow:
+
+1. locked selection summary
+2. `What's your email?`
+3. `Enter verification code`
+4. phone only if still missing
+5. optional triage / minimal complaint summary
+
+Rules:
+
+- one question at a time, never a long form
+- back should move between `COMMIT_DETAILS` microsteps before leaving the phase
+- reuse the app's existing email OTP primitives (`SmartContactInput`, `OTPInputCard`, `authService.requestOtp`, `authService.verifyOtp`)
+- do not switch on the global active header for this phase in v1
+- `COMMIT_DETAILS` is the first returning-user memory seam; it should inherit the email-first language already used by the profile bridge
 
 #### `COMMIT_DETAILS -> COMMIT_PAYMENT`
 
@@ -1519,11 +1548,34 @@ Trigger:
 
 Required minimum payload:
 
-- patient identity/contact
+- authenticated actor/session
 - patient location / pickup context
 - selected hospital id
 - service type = `ambulance`
-- triage snapshot or minimal complaint summary if collected
+- selected ambulance tier / service metadata
+- patient email
+- patient phone only if the profile did not already provide it
+- patient snapshot assembled from the resolved user + collected fields
+- optional triage snapshot or minimal complaint summary if collected
+
+Not a blocking v1 requirement:
+
+- patient name as a dedicated step
+
+Reason:
+
+- the current backend create lane does not require a separate name field before request creation
+- callback reachability is operationally more important than profile enrichment here
+
+Exact create-lane fields to prepare for `create_emergency_v4`:
+
+- `hospital_id`
+- `hospital_name`
+- `service_type`
+- `specialty` when known
+- `ambulance_type` when known
+- patient location / pickup context
+- `patient_snapshot`
 
 #### `COMMIT_PAYMENT -> TRACKING`
 
@@ -1549,6 +1601,20 @@ What it does:
 - creates the linked `visits` row
 - enters the automation / lifecycle chain
 
+Current app-evidence note:
+
+- the live app path already calls this RPC through `services/emergencyRequestsService.create`
+- the current RPC contract only consumes:
+  - `hospital_id`
+  - `hospital_name`
+  - `service_type`
+  - `specialty`
+  - `ambulance_type`
+  - `patient_location`
+  - `patient_snapshot`
+  - payment payload
+- `COMMIT_DETAILS` should therefore prepare only the data that can be carried into that contract or safely deferred
+
 #### Later patient mutation lane
 
 Use:
@@ -1560,6 +1626,11 @@ What it should handle after commit:
 - patient status changes allowed by DB state rules
 - patient-side location/note updates
 - triage snapshot or payload enrichment after request creation when allowed
+
+Current app-evidence note:
+
+- the patient mutation lane already merges `triage_snapshot` into `patient_snapshot.triage`
+- this means triage can remain optional in `COMMIT_DETAILS` without creating a schema gap
 
 #### Payment lane
 
@@ -1573,6 +1644,12 @@ Important product implication:
 
 - cash may produce a `pending_approval` lane before true dispatch progresses
 - if that appears in the UI, it should still remain a map-first status state, not a legacy modal break
+
+Demo/hybrid addendum:
+
+- demo-backed hospitals still create real requests through `create_emergency_v4`
+- demo-backed payment should not wait for a human org-admin approval step
+- the existing demo auto-approval function should collapse the wait quickly while still flowing through the real approval RPC and the real tracking lifecycle
 
 ### 8.7 Realtime / automation consequences after commit
 

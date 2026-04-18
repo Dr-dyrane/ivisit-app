@@ -27,6 +27,12 @@ Current `/map` implementation note:
 - ambulance confirmation still bridges into the legacy request screen after the decision step
 - bed confirmation still bridges into the legacy booking screen after the decision step
 
+Locked next seam:
+
+- `ambulance_decision -> commit_details -> commit_payment -> tracking`
+- `commit_details` is sheet-led, expanded, and one-question-at-a-time
+- `bed` and combined bed booking remain on the legacy booking bridge until the ambulance commit lane is stable
+
 Current pre-dispatch data rule:
 
 - `ambulance_decision` should survive on:
@@ -57,18 +63,28 @@ Rules:
    - opens `bed_decision` for room-first bed booking, or
    - opens `ambulance_decision`, then advances to `bed_decision`, for paired bed + transport.
    - if the user changes hospitals during paired `bed_decision`, the previously saved transport must be invalidated and the flow returns to `ambulance_decision` for that new hospital.
-3. The selected hospital carries into:
+3. The selected hospital currently carries into:
    - `EmergencyRequestModal.jsx` through the legacy ambulance-request bridge for ambulance, or
    - `EmergencyRequestModal.jsx` through the legacy bed-booking bridge for bed / paired bed + transport.
-4. Only after identity, payment, and any required details are ready does the app call:
+4. Locked target for ambulance:
+   - `ambulance_decision -> commit_details`
+   - `commit_details` prepares a local request draft only
+   - `commit_payment` is the first phase allowed to call the real create RPC
+5. Only after identity, payment, and any required details are ready does the app call:
    - `hooks/emergency/useRequestFlow.js` -> `useEmergencyRequests.createRequest`
    - `services/emergencyRequestsService.create`
    - RPC: `create_emergency_v4`
-5. Active trip/booking state is hydrated and tracked in `contexts/EmergencyContext.jsx`.
-6. User mutations (cancel, arrived/occupied, complete) path:
+6. Active trip/booking state is hydrated and tracked in `contexts/EmergencyContext.jsx`.
+7. User mutations (cancel, arrived/occupied, complete) path:
    - `hooks/emergency/useEmergencyHandlers.js` -> `setRequestStatus`
    - `services/emergencyRequestsService.setStatus/update`
    - RPC: `patient_update_emergency_request`
+
+Demo/hybrid note:
+
+- demo-backed hospitals still use the real request creation lane
+- when payment is cash and the hospital is demo-backed, the app may auto-approve through `demo-approve-cash-payment`
+- that still resolves through the real `approve_cash_payment` RPC, so request status and later tracking remain truthful
 
 ## Emergency Status State Machine
 

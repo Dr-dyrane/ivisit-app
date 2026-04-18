@@ -88,9 +88,10 @@ Purpose: start the system instantly.
 
 ### Current implementation note (2026-04-08)
 
-- `/(auth)/request-help` is the active orchestration shell for the first idle map state
+- `/(auth)/map` is the active orchestration shell for the first idle map state
 - welcome now pre-warms location, normalized place label, and nearby hospitals in the background
-- the first `request-help` surface should behave like a **map-first dashboard**, not a blank intake form
+- the first `/map` surface should behave like a **map-first dashboard**, not a blank intake form
+- `/(auth)/request-help` remains a separate intake-family route, not the main welcome emergency handoff
 
 ### Runtime doctrine locked from current implementation review
 
@@ -98,6 +99,7 @@ Purpose: start the system instantly.
 - [GlobalLocationContext.jsx](../../../contexts/GlobalLocationContext.jsx) is the single owner of initial device location and normalized place label.
 - [EmergencyContext.jsx](../../../contexts/EmergencyContext.jsx) should consume that app-owned location and nearby hospitals, not run a competing first-load location lookup.
 - explicit demo backfill belongs to the intake flow in [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx), where coverage quality is known and the user has already entered emergency intent.
+- in the `/map` flow, demo bootstrap belongs to [useMapExploreDemoBootstrap.js](../../../hooks/map/exploreFlow/useMapExploreDemoBootstrap.js) only after nearby coverage quality is evaluated.
 
 ```text
 [ Animated visual ]

@@ -313,7 +313,7 @@ Quick-auth placement rule:
 - auth should not block the initial urgent intent or the first location-confirmation step
 - quick auth belongs at `dispatch_clearance`, right before the request is formally submitted to the hospital for release
 - if the user is already signed in, this step becomes a fast identity-confirmation sheet with prefilled name/phone
-- if the user is a guest, this step should use **Google auth first** as the fastest trusted path already supported by the app, with other verification only as fallback
+- if the user is a guest, this step should use **email OTP first** in the map flow, with phone collected only if still missing after verification
 
 Legacy mitigation rule to preserve:
 
@@ -326,7 +326,7 @@ Legacy mitigation rule to preserve:
 Compulsory before hospital submission:
 
 1. **Identity + callback**
-   - patient or requester name
+   - patient email / owned identity
    - reachable phone number
    - quick auth or verification if the user is still a guest
 2. **Pickup certainty**
@@ -381,7 +381,7 @@ This bridge is the current product-safe handshake between the new urgent flow an
 2. **`dispatch_clearance` is the bridge layer**
    - currently rendered inside [`EmergencyRequestModal.jsx`](../components/emergency/EmergencyRequestModal.jsx)
    - must feel like one compact release checkpoint, not a generic payment modal
-   - Google auth belongs here if the user is still a guest
+   - email OTP belongs here if the user is still a guest
 
 3. **Legacy code is still reused after clearance**
    - `pending_approval`
