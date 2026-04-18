@@ -57,7 +57,7 @@ useFocusEffect(
 );
 ```
 
-> Note: `HeaderBackButton` only renders when there is either a valid router back history or an explicit `onPress` handler. For urgent entry routes such as `/(auth)/request-help`, supply a custom handler and fallback route so the back control remains available even when the screen opens without prior navigation history.
+> Note: `HeaderBackButton` only renders when there is either a valid router back history or an explicit `onPress` handler. For urgent entry routes such as `/(auth)/map`, supply a custom handler and fallback route so the back control remains available even when the screen opens without prior navigation history.
 
 ### 3. Animations on Mount
 Add fade + slide animations for all screens:

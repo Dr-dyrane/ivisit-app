@@ -91,7 +91,8 @@ Purpose: start the system instantly.
 - `/(auth)/map` is the active orchestration shell for the first idle map state
 - welcome now pre-warms location, normalized place label, and nearby hospitals in the background
 - the first `/map` surface should behave like a **map-first dashboard**, not a blank intake form
-- `/(auth)/request-help` remains a separate intake-family route, not the main welcome emergency handoff
+- public `/(auth)/request-help` is retired and should normalize to `/(auth)/map`
+- the only retained legacy intake seam is the authenticated emergency stack screen in [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx)
 
 ### Runtime doctrine locked from current implementation review
 

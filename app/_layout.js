@@ -106,14 +106,14 @@ function getPublicAuthRouteFromUrl(url) {
 
 		if (normalizedPath === "map-loading") return "/(auth)/map";
 		if (normalizedPath === "map") return "/(auth)/map";
-		if (normalizedPath === "request-help") return "/(auth)/request-help";
+		if (normalizedPath === "request-help") return "/(auth)/map";
 	} catch (error) {
 		console.warn("[DeepLink] Failed to parse initial URL:", error?.message || error);
 	}
 
 	if (url.includes("/map-loading")) return "/(auth)/map";
 	if (url.includes("/map")) return "/(auth)/map";
-	if (url.includes("/request-help")) return "/(auth)/request-help";
+	if (url.includes("/request-help")) return "/(auth)/map";
 	return null;
 }
 
@@ -122,7 +122,7 @@ function normalizeStoredPublicRoute(pathname) {
 		return "/(auth)/map";
 	}
 	if (pathname === "/request-help") {
-		return "/(auth)/request-help";
+		return "/(auth)/map";
 	}
 	return null;
 }
@@ -219,14 +219,15 @@ function AuthenticatedStack() {
 				const storedPublicRoute = await AsyncStorage.getItem(LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(
 					() => null,
 				);
-				if (
-					storedPublicRoute === "/(auth)/map" ||
+				const restoredPublicRoute =
 					storedPublicRoute === "/(auth)/request-help"
-				) {
+						? "/(auth)/map"
+						: storedPublicRoute;
+				if (restoredPublicRoute === "/(auth)/map") {
 					if (isMounted) {
-						setStartupPublicRoute(storedPublicRoute);
+						setStartupPublicRoute(restoredPublicRoute);
 					}
-					router.replace(storedPublicRoute);
+					router.replace(restoredPublicRoute);
 				}
 			} finally {
 				if (isMounted) setInitialRouteResolved(true);
@@ -270,9 +271,7 @@ function AuthenticatedStack() {
 		const isPublicMapFlow =
 			pathname === "/map-loading" ||
 			pathname === "/map" ||
-			pathname === "/request-help" ||
-			startupPublicRoute === "/(auth)/map" ||
-			startupPublicRoute === "/(auth)/request-help";
+			startupPublicRoute === "/(auth)/map";
 
 		// Don't do anything while auth is still loading or startup route has not resolved yet
 		if (loading || !initialRouteResolved) {
@@ -312,9 +311,8 @@ function AuthenticatedStack() {
 	useEffect(() => {
 		if (!startupPublicRoute) return;
 		if (
-			(startupPublicRoute === "/(auth)/map" &&
-				(pathname === "/map" || pathname === "/map-loading")) ||
-			(startupPublicRoute === "/(auth)/request-help" && pathname === "/request-help")
+			startupPublicRoute === "/(auth)/map" &&
+			(pathname === "/map" || pathname === "/map-loading")
 		) {
 			setStartupPublicRoute(null);
 		}

@@ -14,18 +14,17 @@ import { getHeaderBehavior } from "../../constants/header";
 function AuthStackScreens() {
 	const segments = useSegments();
 	const authLeaf = segments?.[1] || "index";
-	const isRequestHelpRoute = segments?.[0] === "(auth)" && authLeaf === "request-help";
 	const isMapRoute = segments?.[0] === "(auth)" && authLeaf === "map";
 	const isFullCanvasAuthRoute =
 		segments?.[0] === "(auth)" &&
-		(authLeaf === "index" || authLeaf === "request-help" || authLeaf === "map");
+		(authLeaf === "index" || authLeaf === "map");
 	const { enterStack, exitStack } = useFABActions();
 
 	useEffect(() => {
-		if (!isRequestHelpRoute && !isMapRoute) return undefined;
+		if (!isMapRoute) return undefined;
 		enterStack();
 		return () => exitStack();
-	}, [enterStack, exitStack, isMapRoute, isRequestHelpRoute]);
+	}, [enterStack, exitStack, isMapRoute]);
 
 	return (
 		<WebAppShell
@@ -37,12 +36,11 @@ function AuthStackScreens() {
 				<Stack screenOptions={{ headerShown: false }}>
 					<Stack.Screen name="index" options={{ headerShown: false }} />
 					<Stack.Screen name="map" options={{ headerShown: false }} />
-					<Stack.Screen name="request-help" options={{ headerShown: false }} />
 					<Stack.Screen name="login" options={{ headerShown: false }} />
 					<Stack.Screen name="onboarding" options={{ headerShown: false }} />
 					<Stack.Screen name="signup" options={{ headerShown: false }} />
 				</Stack>
-			{isRequestHelpRoute || isMapRoute ? <GlobalFAB /> : null}
+			{isMapRoute ? <GlobalFAB /> : null}
 		</View>
 		</WebAppShell>
 	);

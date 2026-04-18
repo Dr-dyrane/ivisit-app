@@ -11,8 +11,7 @@
 - Map route:
   - [app/(auth)/map.js](../app/(auth)/map.js)
   - [screens/MapScreen.jsx](../screens/MapScreen.jsx)
-- Legacy/new-intake route:
-  - [app/(auth)/request-help.js](../app/(auth)/request-help.js)
+- Retained legacy intake screen:
   - [app/(user)/(stacks)/emergency/request-ambulance.js](../app/(user)/(stacks)/emergency/request-ambulance.js)
   - [screens/RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx)
 
@@ -39,12 +38,13 @@ Runtime rule now locked:
 
 ## Intake Phase: "Where Are You?"
 
-The intake phase still exists as the dedicated request-help family, but it is no longer the primary welcome emergency handoff.
+The legacy intake phase still exists through the authenticated emergency stack, but the public `request-help` route is retired.
 
 Current rule:
 
 - `/(auth)/map` is the primary welcome emergency route
-- `/(auth)/request-help` remains the separate intake family for the legacy/new intake shell and related work
+- old `/request-help` URLs must normalize into `/(auth)/map`
+- the retained legacy intake shell now lives behind the authenticated emergency stack only
 - both flows still rely on the same location and coverage doctrine
 
 Current orchestration path:

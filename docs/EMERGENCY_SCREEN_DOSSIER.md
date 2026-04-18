@@ -255,7 +255,7 @@ Canvas rule:
 - follow the welcome-screen posture: the screen should use the full canvas first, not a boxed centered container
 - use centered stages, sheets, and panels inside the canvas when the phase needs focus
 - do not let old `maxWidth` or margin habits turn a live emergency screen into a contained card unless that container is the intentional focal surface
-- urgent entry routes such as `request-help` must inherit the same full-canvas shell discipline as welcome instead of passing through the default boxed auth surface wrapper
+- urgent entry routes such as `/(auth)/map` must inherit the same full-canvas shell discipline as welcome instead of passing through the default boxed auth surface wrapper
 - urgent entry routes must also preserve explicit back navigation state. If the route can be opened directly, pass `HeaderBackButton` a custom `onPress` and implement fallback routing so the user always has a reliable back path.
 - when a phase is page-based like `Where are you?`, the stage must not reapply bottom safe-area ownership that the page shell already owns
 - stage height math must follow the welcome rule: subtract top and bottom page padding before assigning stage min-height, otherwise the screen will overflow and feel scrollable when it should snap to the viewport
