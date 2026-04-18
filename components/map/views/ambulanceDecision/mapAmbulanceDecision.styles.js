@@ -63,6 +63,10 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
+	headerActionSpacer: {
+		width: 38,
+		height: 38,
+	},
 	midSwitchSpacingTop: {
 		height: 0,
 	},

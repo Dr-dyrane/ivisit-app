@@ -111,6 +111,7 @@ export function MapBedDecisionTopSlot({
 	subtitleColor,
 	closeSurfaceColor,
 	onClose,
+	showToggle = true,
 	onToggle,
 	toggleAccessibilityLabel = "Toggle sheet size",
 	hospitalName,
@@ -119,14 +120,18 @@ export function MapBedDecisionTopSlot({
 }) {
 	return (
 		<View style={[styles.topSlot, contentInsetStyle, modalContainedStyle]}>
-			<MapHeaderIconButton
-				onPress={onToggle}
-				accessibilityLabel={toggleAccessibilityLabel}
-				backgroundColor={closeSurfaceColor}
-				color={titleColor}
-				iconName={toggleIconName}
-				style={styles.closeButton}
-			/>
+			{showToggle ? (
+				<MapHeaderIconButton
+					onPress={onToggle}
+					accessibilityLabel={toggleAccessibilityLabel}
+					backgroundColor={closeSurfaceColor}
+					color={titleColor}
+					iconName={toggleIconName}
+					style={styles.closeButton}
+				/>
+			) : (
+				<View style={styles.headerActionSpacer} />
+			)}
 			<View style={styles.topSlotCopy}>
 				<Text numberOfLines={1} style={[styles.topSlotTitle, { color: titleColor }]}>
 					{hospitalName || "Hospital"}

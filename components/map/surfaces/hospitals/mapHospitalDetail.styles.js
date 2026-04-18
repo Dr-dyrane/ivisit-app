@@ -22,17 +22,6 @@ export const styles = StyleSheet.create({
 		marginHorizontal: -14,
 		overflow: "visible",
 	},
-	expandedCard: {
-		overflow: "hidden",
-		shadowColor: "#0F172A",
-		shadowOpacity: 0.08,
-		shadowRadius: 18,
-		shadowOffset: { width: 0, height: -6 },
-		...squircle(34),
-	},
-	expandedCardSurface: {
-		...StyleSheet.absoluteFillObject,
-	},
 	expandedHero: {
 		height: 320,
 		justifyContent: "space-between",
@@ -103,20 +92,6 @@ export const styles = StyleSheet.create({
 		paddingTop: 8,
 		paddingBottom: 20,
 		gap: 12,
-	},
-	expandedBodyLowerBlend: {
-		position: "absolute",
-		left: 0,
-		right: 0,
-		bottom: 0,
-		height: 180,
-	},
-	expandedCardBottomFade: {
-		position: "absolute",
-		left: 0,
-		right: 0,
-		bottom: -42,
-		height: 70,
 	},
 	heroRevealFrame: {
 		overflow: "hidden",
@@ -192,27 +167,6 @@ export const styles = StyleSheet.create({
 		shadowRadius: 18,
 		shadowOffset: { width: 0, height: -6 },
 		...squircle(34),
-	},
-	detailPanelBackgroundClip: {
-		...StyleSheet.absoluteFillObject,
-		overflow: "hidden",
-		...squircle(34),
-	},
-	detailPanelLowerBlend: {
-		position: "absolute",
-		left: 0,
-		right: 0,
-		bottom: 0,
-		height: 168,
-		borderBottomLeftRadius: 34,
-		borderBottomRightRadius: 34,
-	},
-	detailPanelBottomFade: {
-		position: "absolute",
-		left: 0,
-		right: 0,
-		bottom: -40,
-		height: 68,
 	},
 	detailPanelContent: {
 		gap: 12,

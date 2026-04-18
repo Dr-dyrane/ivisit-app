@@ -64,6 +64,7 @@ export default function MapAmbulanceDecisionStageBase({
 		presentationMode === "modal" && contentMaxWidth
 			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
 			: null;
+	const shouldShowHeaderToggle = presentationMode === "sheet";
 	const allowedSnapStates = useMemo(
 		() => [MAP_SHEET_SNAP_STATES.HALF, MAP_SHEET_SNAP_STATES.EXPANDED],
 		[],
@@ -250,6 +251,7 @@ export default function MapAmbulanceDecisionStageBase({
 					subtitleColor={mutedColor}
 					closeSurfaceColor={closeSurfaceColor}
 					onClose={onClose}
+					showToggle={shouldShowHeaderToggle}
 					onToggle={handleHeaderToggle}
 					toggleAccessibilityLabel={
 						snapState === MAP_SHEET_SNAP_STATES.EXPANDED

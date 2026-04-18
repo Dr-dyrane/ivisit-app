@@ -30,10 +30,12 @@ export function MapHospitalDetailCollapsedTopSlot({
 export function MapHospitalDetailFloatingTopSlot({
 	modalContainedStyle,
 	contentMaxWidth,
-	canCycleHospital,
-	onCycleHospital,
-	floatingCycleSurface,
-	floatingCycleIconColor,
+	showToggle = true,
+	onToggle,
+	toggleAccessibilityLabel = "Toggle hospital sheet size",
+	toggleIconName = "chevron-up",
+	floatingToggleSurface,
+	floatingToggleIconColor,
 	shouldShowFloatingTitle,
 	floatingTitleColor,
 	title,
@@ -61,19 +63,19 @@ export function MapHospitalDetailFloatingTopSlot({
 						: null,
 				]}
 			>
-				{canCycleHospital ? (
+				{showToggle ? (
 					<MapHeaderIconButton
-						onPress={onCycleHospital}
-						accessibilityLabel="Show next hospital"
-						backgroundColor={floatingCycleSurface}
-						color={floatingCycleIconColor}
-						iconName="chevron-forward"
+						onPress={onToggle}
+						accessibilityLabel={toggleAccessibilityLabel}
+						backgroundColor={floatingToggleSurface}
+						color={floatingToggleIconColor}
+						iconName={toggleIconName}
 						iconSize={19}
 						pressableStyle={styles.floatingTopActionPressable}
 						style={styles.floatingTopActionButton}
 					/>
 				) : (
-					<View style={styles.floatingTopSpacer} />
+					<View style={styles.floatingTopActionSpacer} />
 				)}
 				<View style={styles.floatingTopTitleWrap}>
 					{shouldShowFloatingTitle ? (

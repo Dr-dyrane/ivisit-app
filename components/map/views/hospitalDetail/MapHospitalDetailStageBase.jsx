@@ -38,6 +38,7 @@ export default function MapHospitalDetailStageBase({
 		presentationMode === "modal" && contentMaxWidth
 			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
 			: null;
+	const shouldShowHeaderToggle = presentationMode === "sheet";
 	const model = useMapHospitalDetailModel({
 		visible: true,
 		hospital,
@@ -64,18 +65,21 @@ export default function MapHospitalDetailStageBase({
 		isHalf || (snapState === MAP_SHEET_SNAP_STATES.EXPANDED && showFloatingTitle);
 	const isHeroTopPresentation =
 		snapState === MAP_SHEET_SNAP_STATES.EXPANDED && !showFloatingTitle;
-	const canCycleHospital = isHalf && typeof onCycleHospital === "function";
 	const floatingTitleColor = titleColor;
 	const floatingCloseIconColor = isHeroTopPresentation ? "#F8FAFC" : titleColor;
-	const floatingCycleIconColor = isDarkMode
-		? "rgba(248,250,252,0.92)"
-		: "rgba(15,23,42,0.86)";
+	const floatingToggleIconColor = isHeroTopPresentation
+		? "#F8FAFC"
+		: isDarkMode
+			? "rgba(248,250,252,0.92)"
+			: "rgba(15,23,42,0.86)";
 	const floatingCloseSurface = isHeroTopPresentation
 		? "rgba(15,23,42,0.24)"
 		: closeSurfaceColor;
-	const floatingCycleSurface = isDarkMode
-		? "rgba(255,255,255,0.10)"
-		: "rgba(255,255,255,0.72)";
+	const floatingToggleSurface = isHeroTopPresentation
+		? "rgba(15,23,42,0.24)"
+		: isDarkMode
+			? "rgba(255,255,255,0.10)"
+			: "rgba(255,255,255,0.72)";
 	const allowedSnapStates = useMemo(
 		() => [
 			MAP_SHEET_SNAP_STATES.COLLAPSED,
@@ -172,6 +176,14 @@ export default function MapHospitalDetailStageBase({
 		},
 		[hospital?.id, onSelectService],
 	);
+	const handleHeaderToggle = useCallback(() => {
+		if (typeof onSnapStateChange !== "function") return;
+		onSnapStateChange(
+			snapState === MAP_SHEET_SNAP_STATES.EXPANDED
+				? MAP_SHEET_SNAP_STATES.HALF
+				: MAP_SHEET_SNAP_STATES.EXPANDED,
+		);
+	}, [onSnapStateChange, snapState]);
 
 	useEffect(() => {
 		if (snapState !== MAP_SHEET_SNAP_STATES.EXPANDED && showFloatingTitle) {
@@ -200,10 +212,20 @@ export default function MapHospitalDetailStageBase({
 					<MapHospitalDetailFloatingTopSlot
 						modalContainedStyle={modalContainedStyle}
 						contentMaxWidth={contentMaxWidth}
-						canCycleHospital={canCycleHospital}
-						onCycleHospital={onCycleHospital}
-						floatingCycleSurface={floatingCycleSurface}
-						floatingCycleIconColor={floatingCycleIconColor}
+						showToggle={shouldShowHeaderToggle}
+						onToggle={handleHeaderToggle}
+						toggleAccessibilityLabel={
+							snapState === MAP_SHEET_SNAP_STATES.EXPANDED
+								? "Collapse hospital sheet"
+								: "Expand hospital sheet"
+						}
+						toggleIconName={
+							snapState === MAP_SHEET_SNAP_STATES.EXPANDED
+								? "chevron-down"
+								: "chevron-up"
+						}
+						floatingToggleSurface={floatingToggleSurface}
+						floatingToggleIconColor={floatingToggleIconColor}
 						shouldShowFloatingTitle={shouldShowFloatingTitle}
 						floatingTitleColor={floatingTitleColor}
 						title={model.summary.title}

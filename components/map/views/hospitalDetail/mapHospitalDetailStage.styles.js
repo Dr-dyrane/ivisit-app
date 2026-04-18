@@ -29,10 +29,6 @@ const styles = StyleSheet.create({
 		zIndex: 30,
 		elevation: 30,
 	},
-	floatingTopSpacer: {
-		width: 38,
-		height: 38,
-	},
 	floatingTopActionPressable: {
 		width: 38,
 		height: 38,
@@ -48,6 +44,10 @@ const styles = StyleSheet.create({
 		shadowRadius: 10,
 		shadowOffset: { width: 0, height: 4 },
 		...squircle(19),
+	},
+	floatingTopActionSpacer: {
+		width: 38,
+		height: 38,
 	},
 	floatingTopTitleWrap: {
 		flex: 1,

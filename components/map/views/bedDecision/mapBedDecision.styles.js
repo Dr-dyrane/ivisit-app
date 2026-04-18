@@ -56,6 +56,10 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
+	headerActionSpacer: {
+		width: 38,
+		height: 38,
+	},
 	sectionGap: {
 		height: 14,
 	},
