@@ -292,7 +292,7 @@ function AuthenticatedStack() {
 		const deferProfileCompletion = shouldDeferProfileCompletion(user);
 		const profileComplete = isProfileComplete(user);
 
-		if (!profileComplete && !onCompleteProfile && !deferProfileCompletion) {
+		if (!profileComplete && !onCompleteProfile && !deferProfileCompletion && !isPublicMapFlow) {
 			router.replace("/(user)/(stacks)/complete-profile");
 			return;
 		}

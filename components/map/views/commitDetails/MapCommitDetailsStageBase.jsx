@@ -4,6 +4,10 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import { useAuth } from "../../../../contexts/AuthContext";
 import { useEmergency } from "../../../../contexts/EmergencyContext";
 import { authService } from "../../../../services/authService";
+import {
+	normalizeApiErrorMessage,
+	waitForMinimumPending,
+} from "../../../../utils/ui/apiInteractionFeedback";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
@@ -29,6 +33,7 @@ import {
 import styles from "./mapCommitDetails.styles";
 
 const STEP_ORDER = ["email", "otp", "phone"];
+const OTP_EXPIRY_MS = 10 * 60 * 1000;
 
 export default function MapCommitDetailsStageBase({
 	sheetHeight,
@@ -91,7 +96,16 @@ export default function MapCommitDetailsStageBase({
 
 	const titleColor = tokens.titleColor;
 	const mutedColor = tokens.mutedText;
-	const accentColor = tokens.accentColor;
+	const accentColor = isDarkMode ? "#FCA5A5" : "#86100E";
+	const statusTextColor = isDarkMode ? "#CBD5E1" : "#334155";
+	const successColor = isDarkMode ? "#A7F3D0" : "#047857";
+	const errorColor = isDarkMode ? "#FCA5A5" : "#B91C1C";
+	const resendSurfaceColor = isDarkMode
+		? "rgba(252, 165, 165, 0.14)"
+		: "rgba(134, 16, 14, 0.10)";
+	const disabledTextColor = isDarkMode
+		? "rgba(203, 213, 225, 0.58)"
+		: "rgba(71, 85, 105, 0.58)";
 	const closeSurface = tokens.closeSurface;
 	const inputSurfaceColor = isDarkMode
 		? "rgba(255,255,255,0.08)"
@@ -112,6 +126,8 @@ export default function MapCommitDetailsStageBase({
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [errorMessage, setErrorMessage] = useState("");
 	const [successMessage, setSuccessMessage] = useState("");
+	const [otpExpiresAt, setOtpExpiresAt] = useState(null);
+	const [otpCountdownTick, setOtpCountdownTick] = useState(0);
 
 	const persistCommitFlow = useCallback(
 		(nextDraft, nextStep) => {
@@ -167,6 +183,17 @@ export default function MapCommitDetailsStageBase({
 		persistCommitFlow(draft, activeStep);
 	}, [activeStep, draft, persistCommitFlow]);
 
+	useEffect(() => {
+		if (activeStep !== "otp" || !otpExpiresAt) return undefined;
+
+		setOtpCountdownTick(Date.now());
+		const intervalId = setInterval(() => {
+			setOtpCountdownTick(Date.now());
+		}, 1000);
+
+		return () => clearInterval(intervalId);
+	}, [activeStep, otpExpiresAt]);
+
 	const goToStep = useCallback((nextStep) => {
 		if (!STEP_ORDER.includes(nextStep)) return;
 		setStepHistory((history) => [...history, nextStep]);
@@ -198,6 +225,11 @@ export default function MapCommitDetailsStageBase({
 				};
 		}
 	}, [activeStep, draft.email, draft.otp, draft.phone]);
+	const otpRemainingSeconds = useMemo(() => {
+		if (activeStep !== "otp" || !otpExpiresAt) return null;
+		const now = otpCountdownTick || Date.now();
+		return Math.max(0, Math.ceil((otpExpiresAt - now) / 1000));
+	}, [activeStep, otpCountdownTick, otpExpiresAt]);
 	const headerSubtitle = useMemo(() => {
 		const hospitalName = hospital?.name || hospital?.title || hospital?.service_name || "";
 		const transportName =
@@ -243,6 +275,7 @@ export default function MapCommitDetailsStageBase({
 			setErrorMessage("Enter a valid email address.");
 			return;
 		}
+		const pendingStartedAt = Date.now();
 		setIsSubmitting(true);
 		setErrorMessage("");
 		setSuccessMessage("");
@@ -252,11 +285,14 @@ export default function MapCommitDetailsStageBase({
 				email: nextEmail,
 				reviewDemoAuthAllowed: true,
 			});
+			await waitForMinimumPending(pendingStartedAt);
 			if (!result?.success) {
-				setErrorMessage(result?.error || "Could not send code.");
+				setErrorMessage(normalizeApiErrorMessage(result?.error, "Could not send code."));
 				return;
 			}
 			setDraft((currentDraft) => ({ ...currentDraft, email: nextEmail, otp: "" }));
+			setOtpExpiresAt(Date.now() + OTP_EXPIRY_MS);
+			setOtpCountdownTick(Date.now());
 			persistCommitFlow(
 				{
 					email: nextEmail,
@@ -274,6 +310,7 @@ export default function MapCommitDetailsStageBase({
 	const handleResendOtp = useCallback(async () => {
 		const nextEmail = sanitizeCommitEmail(draft.email);
 		if (!isCommitEmailValid(nextEmail) || isSubmitting) return;
+		const pendingStartedAt = Date.now();
 		setIsSubmitting(true);
 		setErrorMessage("");
 		try {
@@ -282,11 +319,14 @@ export default function MapCommitDetailsStageBase({
 				email: nextEmail,
 				reviewDemoAuthAllowed: true,
 			});
+			await waitForMinimumPending(pendingStartedAt);
 			if (!result?.success) {
-				setErrorMessage(result?.error || "Could not resend code.");
+				setErrorMessage(normalizeApiErrorMessage(result?.error, "Could not resend code."));
 				return;
 			}
-			setSuccessMessage(`Code sent to ${nextEmail}`);
+			setOtpExpiresAt(Date.now() + OTP_EXPIRY_MS);
+			setOtpCountdownTick(Date.now());
+			setSuccessMessage(`New code sent to ${nextEmail}`);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -298,6 +338,11 @@ export default function MapCommitDetailsStageBase({
 			setErrorMessage("Enter the 6-digit code.");
 			return;
 		}
+		if (otpExpiresAt && Date.now() >= otpExpiresAt) {
+			setErrorMessage("Code expired. Resend a new code.");
+			return;
+		}
+		const pendingStartedAt = Date.now();
 		setIsSubmitting(true);
 		setErrorMessage("");
 		setSuccessMessage("");
@@ -308,8 +353,9 @@ export default function MapCommitDetailsStageBase({
 				otp,
 				reviewDemoAuthAllowed: true,
 			});
+			await waitForMinimumPending(pendingStartedAt);
 			if (!result?.success) {
-				setErrorMessage(result?.error || "Could not verify code.");
+				setErrorMessage(normalizeApiErrorMessage(result?.error, "Could not verify code."));
 				return;
 			}
 			await syncUserData?.();
@@ -330,7 +376,7 @@ export default function MapCommitDetailsStageBase({
 		} finally {
 			setIsSubmitting(false);
 		}
-	}, [draft.email, draft.otp, draft.phone, goToStep, persistCommitFlow, syncUserData]);
+	}, [draft.email, draft.otp, draft.phone, goToStep, otpExpiresAt, persistCommitFlow, syncUserData]);
 
 	const handleSubmitPhone = useCallback(async () => {
 		const phone = sanitizeCommitPhone(draft.phone);
@@ -424,10 +470,16 @@ export default function MapCommitDetailsStageBase({
 					titleColor={titleColor}
 					mutedColor={mutedColor}
 					accentColor={accentColor}
+					statusTextColor={statusTextColor}
+					successColor={successColor}
+					errorColor={errorColor}
+					resendSurfaceColor={resendSurfaceColor}
+					disabledTextColor={disabledTextColor}
 					step={currentStepConfig}
 					value={currentStepConfig.value}
 					errorMessage={errorMessage}
 					successMessage={successMessage}
+					otpRemainingSeconds={otpRemainingSeconds}
 					isSubmitting={isSubmitting}
 					onChangeValue={handleChangeValue}
 					onSubmit={handleSubmit}

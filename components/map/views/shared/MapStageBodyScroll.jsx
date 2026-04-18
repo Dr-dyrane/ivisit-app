@@ -33,6 +33,7 @@ export default function MapStageBodyScroll({
 			style={viewportStyle}
 			contentContainerStyle={contentContainerStyle}
 			showsVerticalScrollIndicator={false}
+			keyboardShouldPersistTaps="handled"
 			nestedScrollEnabled
 			bounces={!isSidebarPresentation}
 			alwaysBounceVertical={!isSidebarPresentation}

@@ -84,6 +84,33 @@ Shared behavior:
 - same top-row header contract
 - same bottom-sheet surface treatment
 
+## Foreground API Interaction Feedback
+
+All foreground, user-triggered API calls in `/map` must use the shared perceptible-pending pattern.
+
+Implementation rule:
+
+- start the visible pending state immediately on press
+- record `pendingStartedAt = Date.now()` before calling the API
+- await the API result
+- call `waitForMinimumPending(pendingStartedAt)` before changing phase, unmounting the control, or showing the final success/error state
+- normalize pipe-formatted errors with `normalizeApiErrorMessage(...)` before rendering them
+
+Shared helper:
+
+- [apiInteractionFeedback.js](../../../utils/ui/apiInteractionFeedback.js)
+
+Current default:
+
+- minimum foreground pending window: `2000ms`
+- intended for submit, resend, verify, commit, payment, and other user-visible route or phase actions
+- not intended for passive discovery, map preload, realtime hydration, or silent cache refreshes
+
+Reason:
+
+- fast APIs are good, but instant phase changes can hide the feedback and make the app feel unresponsive
+- the app should acknowledge user intent first, then transition after the pending state has been perceived
+
 Responsive sizing contract:
 
 - shared sizing truth now lives in [viewportSurfaceMetrics.js](../../../utils/ui/viewportSurfaceMetrics.js)

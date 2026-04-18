@@ -8,6 +8,8 @@ import { COLORS } from "../../constants/colors";
 export default function EntryActionButton({
 	label,
 	onPress,
+	onPressIn,
+	onPressOut,
 	variant = "primary",
 	height = 60,
 	radius = null,
@@ -41,6 +43,8 @@ export default function EntryActionButton({
 	return (
 		<Pressable
 			onPress={onPress}
+			onPressIn={onPressIn}
+			onPressOut={onPressOut}
 			disabled={disabled || loading}
 			accessible
 			accessibilityRole="button"

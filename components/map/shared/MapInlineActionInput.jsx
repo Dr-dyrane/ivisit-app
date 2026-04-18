@@ -1,9 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, StyleSheet, TextInput, View } from "react-native";
 import EntryActionButton from "../../entry/EntryActionButton";
 import { MAP_APPLE_EASE } from "../tokens/mapMotionTokens";
 
 const DEFAULT_SLIDE_TRAVEL = 8;
+const ACTION_SLIDE_IN_MS = 2000;
+const ACTION_SLIDE_OUT_MS = 2000;
+const ACTION_PULSE_MS = 2000;
 
 export default function MapInlineActionInput({
 	value,
@@ -23,6 +26,7 @@ export default function MapInlineActionInput({
 	inputStyle,
 	actionAccessibilityHint,
 	slideTravel = DEFAULT_SLIDE_TRAVEL,
+	preserveFocusOnSubmit = true,
 	autoFocus,
 	autoCapitalize,
 	autoComplete,
@@ -33,8 +37,11 @@ export default function MapInlineActionInput({
 	textContentType,
 }) {
 	const actionProgress = useRef(new Animated.Value(0)).current;
+	const inputRef = useRef(null);
 	const pulseTimeoutRef = useRef(null);
+	const refocusTimeoutRef = useRef(null);
 	const [isActionPrimed, setIsActionPrimed] = useState(false);
+	const [actionPulseKey, setActionPulseKey] = useState(0);
 	const resolvedHeight = Math.max(50, Math.min(height || 54, 58));
 	const resolvedRadius = Number.isFinite(radius)
 		? radius
@@ -46,20 +53,35 @@ export default function MapInlineActionInput({
 	useEffect(() => {
 		Animated.timing(actionProgress, {
 			toValue: isActionActive ? 1 : 0,
-			duration: isActionActive ? 260 : 220,
+			duration: isActionActive ? ACTION_SLIDE_IN_MS : ACTION_SLIDE_OUT_MS,
 			easing: MAP_APPLE_EASE,
 			useNativeDriver: true,
 		}).start();
-	}, [actionProgress, isActionActive]);
+	}, [actionProgress, actionPulseKey, isActionActive]);
 
 	useEffect(
 		() => () => {
 			if (pulseTimeoutRef.current) {
 				clearTimeout(pulseTimeoutRef.current);
 			}
+			if (refocusTimeoutRef.current) {
+				clearTimeout(refocusTimeoutRef.current);
+			}
 		},
 		[],
 	);
+
+	const focusInput = useCallback(() => {
+		if (!preserveFocusOnSubmit) return;
+
+		inputRef.current?.focus?.();
+		if (refocusTimeoutRef.current) {
+			clearTimeout(refocusTimeoutRef.current);
+		}
+		refocusTimeoutRef.current = setTimeout(() => {
+			inputRef.current?.focus?.();
+		}, 32);
+	}, [preserveFocusOnSubmit]);
 
 	const actionTransform = useMemo(
 		() => [
@@ -81,13 +103,17 @@ export default function MapInlineActionInput({
 
 	const handleSubmit = () => {
 		if (disabled || loading) return;
+		actionProgress.stopAnimation();
+		actionProgress.setValue(0);
 		setIsActionPrimed(true);
+		setActionPulseKey((currentKey) => currentKey + 1);
 		if (pulseTimeoutRef.current) {
 			clearTimeout(pulseTimeoutRef.current);
 		}
 		pulseTimeoutRef.current = setTimeout(() => {
 			setIsActionPrimed(false);
-		}, 360);
+		}, ACTION_PULSE_MS);
+		focusInput();
 		onSubmit?.();
 	};
 
@@ -106,10 +132,12 @@ export default function MapInlineActionInput({
 			]}
 		>
 			<TextInput
+				ref={inputRef}
 				autoFocus={autoFocus}
 				value={value}
 				onChangeText={onChangeText}
 				onSubmitEditing={handleSubmit}
+				blurOnSubmit={false}
 				placeholder={placeholder}
 				placeholderTextColor={placeholderTextColor}
 				style={[styles.input, { color: textColor }, inputStyle]}
@@ -131,6 +159,7 @@ export default function MapInlineActionInput({
 					minWidth={actionMinWidth}
 					disabled={disabled}
 					loading={loading}
+					onPressIn={focusInput}
 					accessibilityHint={actionAccessibilityHint}
 					style={styles.actionButton}
 				/>

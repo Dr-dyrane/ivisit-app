@@ -49,6 +49,29 @@ For iVisit, that means:
 - header = hidden until there is a true active emergency session
 - auth and payment are late, not early
 
+### 0.1 Foreground API Feedback Doctrine
+
+Foreground, user-triggered API calls must never feel invisible.
+
+Locked rule:
+
+- every submit, resend, verify, commit, payment, or route-changing network action shows immediate pressed or pending feedback
+- if the API succeeds too quickly, the UI must hold the pending affordance long enough for the user to perceive it before changing phase
+- current default minimum perceptible pending duration is `2000ms`
+- step changes must wait for that minimum pending window when they would otherwise unmount the pressed/loading control
+- pipe-formatted service errors such as `INVALID_INPUT|Please enter a valid email address` must be normalized before rendering to the user
+- the user should see the readable message only, not backend codes
+
+Scope:
+
+- applies to foreground user intent APIs
+- does not apply to passive background hydration, silent cache refreshes, realtime subscriptions, or map preload work where artificial delay would make the app feel slower
+
+Correction captured from commit-details testing:
+
+- a fast successful auth API can be a UX bug if it removes the loading state before the user sees it
+- the correct behavior is not to slow the network; it is to hold the visible pending state before transitioning
+
 ## 1. Universal Sheet States
 
 Every emergency phase should be able to express itself in three sheet levels.

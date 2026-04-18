@@ -204,6 +204,7 @@ export const AuthProvider = ({ children }) => {
 				phoneVerified: authStatus.phoneVerified,
 				hasPassword: authStatus.hasPassword,
 				hasInsurance: authStatus.hasInsurance,
+				deferProfileCompletion: user?.deferProfileCompletion === true,
 				isAuthenticated: authStatus.isAuthenticated,
 				isLoggedIn: authStatus.isLoggedIn,
 			},

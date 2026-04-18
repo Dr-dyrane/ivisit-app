@@ -6,6 +6,13 @@ import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import { MAP_COMMIT_DETAILS_COPY } from "./mapCommitDetails.content";
 import styles from "./mapCommitDetails.styles";
 
+const formatOtpCountdown = (seconds) => {
+	const safeSeconds = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
+	const minutes = Math.floor(safeSeconds / 60);
+	const remainingSeconds = safeSeconds % 60;
+	return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+};
+
 export function MapCommitDetailsTopSlot({
 	title,
 	subtitle,
@@ -59,16 +66,24 @@ export function MapCommitDetailsQuestionCard({
 	titleColor,
 	mutedColor,
 	accentColor,
+	statusTextColor,
+	successColor,
+	errorColor,
+	resendSurfaceColor,
+	disabledTextColor,
 	step,
 	value,
 	errorMessage,
 	successMessage,
+	otpRemainingSeconds,
 	isSubmitting,
 	onChangeValue,
 	onSubmit,
 	onResend,
 }) {
 	const isOtpStep = step.key === "otp";
+	const hasOtpCountdown = isOtpStep && typeof otpRemainingSeconds === "number";
+	const isOtpExpired = hasOtpCountdown && otpRemainingSeconds <= 0;
 	const inlineActionHeight = Math.max(50, Math.min(stageMetrics?.footer?.buttonHeight || 54, 56));
 	const inlineActionMinWidth =
 		step.key === "phone"
@@ -135,20 +150,47 @@ export function MapCommitDetailsQuestionCard({
 				/>
 
 				{errorMessage ? (
-					<Text style={[styles.errorText, { color: "#FCA5A5" }]}>{errorMessage}</Text>
+					<Text style={[styles.errorText, { color: errorColor }]}>{errorMessage}</Text>
 				) : successMessage ? (
-					<Text style={[styles.successText, { color: accentColor }]}>{successMessage}</Text>
+					<Text style={[styles.successText, { color: successColor }]}>{successMessage}</Text>
 				) : null}
 
+				{isOtpStep ? (
+					<View style={styles.otpStatusRow}>
+						<Text
+							style={[
+								styles.otpCountdownText,
+								{ color: isOtpExpired ? errorColor : statusTextColor },
+							]}
+						>
+							{isOtpExpired
+								? "Code expired"
+								: `Expires in ${formatOtpCountdown(otpRemainingSeconds ?? 600)}`}
+						</Text>
+						{typeof onResend === "function" ? (
+							<Pressable
+								disabled={isSubmitting}
+								onPress={onResend}
+								style={({ pressed }) => [
+									styles.resendPill,
+									{ backgroundColor: resendSurfaceColor },
+									pressed && !isSubmitting ? styles.resendPillPressed : null,
+									isSubmitting ? styles.resendPillDisabled : null,
+								]}
+							>
+								<Text
+									style={[
+										styles.resendPillText,
+										{ color: isSubmitting ? disabledTextColor : accentColor },
+									]}
+								>
+									{MAP_COMMIT_DETAILS_COPY.OTP_STEP.resend}
+								</Text>
+							</Pressable>
+						) : null}
+					</View>
+				) : null}
 			</View>
-
-			{isOtpStep && typeof onResend === "function" ? (
-				<Pressable onPress={onResend} style={styles.secondaryAction}>
-					<Text style={[styles.secondaryActionText, { color: accentColor }]}>
-						{MAP_COMMIT_DETAILS_COPY.OTP_STEP.resend}
-					</Text>
-				</Pressable>
-			) : null}
 		</View>
 	);
 }

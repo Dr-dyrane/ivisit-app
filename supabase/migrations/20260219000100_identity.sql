@@ -122,6 +122,42 @@ CREATE TABLE IF NOT EXISTS public.user_sessions (
 -- 🛠️ AUTOMATION: IDENTITY HOOKS
 -- triggers moved to 20260219000900_automations.sql to resolve dependency on Finance module
 
+-- Username Generation Utility
+CREATE OR REPLACE FUNCTION public.generate_username_from_email(email_input TEXT)
+RETURNS TEXT AS $$
+DECLARE
+    base_username TEXT;
+    final_username TEXT;
+    counter INTEGER := 0;
+BEGIN
+    base_username := LOWER(SPLIT_PART(COALESCE(email_input, ''), '@', 1));
+    base_username := REGEXP_REPLACE(base_username, '[^a-z0-9]', '', 'g');
+
+    IF LENGTH(base_username) < 3 THEN
+        base_username := 'user' || COALESCE(NULLIF(base_username, ''), 'ivisit');
+    END IF;
+
+    final_username := base_username;
+
+    WHILE EXISTS (SELECT 1 FROM public.profiles WHERE username = final_username) LOOP
+        counter := counter + 1;
+        final_username := base_username || counter::TEXT;
+    END LOOP;
+
+    RETURN final_username;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Backfill missing usernames from email without touching existing usernames.
+UPDATE public.profiles p
+SET
+    username = public.generate_username_from_email(au.email),
+    updated_at = NOW()
+FROM auth.users au
+WHERE p.id = au.id
+  AND au.email IS NOT NULL
+  AND (p.username IS NULL OR p.username = '');
+
 
 -- 🛠️ AUTOMATION: SMART ONBOARDING
 -- Automatic Onboarding Completion based on Data Presence

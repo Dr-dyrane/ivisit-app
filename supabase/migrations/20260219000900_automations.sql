@@ -6,6 +6,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
     v_avatar TEXT;
+    v_username TEXT;
 BEGIN
     -- Extract Avatar from various possible metadata fields (Google, GitHub, custom)
     v_avatar := COALESCE(
@@ -13,12 +14,17 @@ BEGIN
         NEW.raw_user_meta_data->>'picture',
         NEW.raw_user_meta_data->>'avatar'
     );
+    v_username := COALESCE(
+        NULLIF(NEW.raw_user_meta_data->>'username', ''),
+        public.generate_username_from_email(NEW.email)
+    );
 
     -- A. Create Profile
     INSERT INTO public.profiles (
         id, 
         email, 
         phone, 
+        username,
         full_name, 
         avatar_url, 
         image_uri,
@@ -29,6 +35,7 @@ BEGIN
         NEW.id,
         NEW.email,
         NEW.phone,
+        v_username,
         COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', NEW.email),
         v_avatar,
         v_avatar, -- Sync image_uri with avatar_url for mobile parity
@@ -37,8 +44,10 @@ BEGIN
     );
     
     -- B. Create associated records (Intelligence Layer)
-    INSERT INTO public.preferences (user_id) VALUES (NEW.id);
-    INSERT INTO public.medical_profiles (user_id) VALUES (NEW.id);
+    INSERT INTO public.preferences (user_id) VALUES (NEW.id)
+    ON CONFLICT (user_id) DO NOTHING;
+    INSERT INTO public.medical_profiles (user_id) VALUES (NEW.id)
+    ON CONFLICT (user_id) DO NOTHING;
     
     -- C. Initialize Patient Wallet (Fluid Finance)
     INSERT INTO public.patient_wallets (user_id) VALUES (NEW.id)

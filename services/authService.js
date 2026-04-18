@@ -21,6 +21,14 @@ import { reviewDemoAuthService } from "./reviewDemoAuthService";
 // Re-export constants for consumers
 export { AuthErrors, createAuthError };
 
+const deriveUsernameFromEmail = (email, fallbackId = "") => {
+    const emailPrefix = typeof email === "string" ? email.split("@")[0] : "";
+    const normalized = emailPrefix.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (normalized.length >= 3) return normalized;
+    const idFallback = typeof fallbackId === "string" ? fallbackId.replace(/-/g, "").slice(0, 8) : "";
+    return `user${normalized || idFallback || "ivisit"}`;
+};
+
 // ============================================
 // AUTH SERVICE METHODS
 // ============================================
@@ -117,6 +125,7 @@ const authService = {
      */
     async signUp(credentials) {
         const { email, password, username, firstName, lastName, phone } = credentials;
+        const resolvedUsername = username || deriveUsernameFromEmail(email);
 
         if (!email || !password) {
             throw createAuthError(AuthErrors.INVALID_INPUT, "Email and password are required");
@@ -127,7 +136,7 @@ const authService = {
             password,
             options: {
                 data: {
-                    username,
+                    username: resolvedUsername,
                     first_name: firstName,
                     last_name: lastName,
                     phone,
@@ -141,7 +150,7 @@ const authService = {
         const user = {
             id: data.user?.id,
             email: data.user?.email,
-            username,
+            username: resolvedUsername,
             firstName,
             lastName,
             token: data.session?.access_token,
@@ -153,7 +162,7 @@ const authService = {
         if (data.session) {
             // If we have a session, format it properly
             const fullUser = await this._decorateCurrentUser(formatUser(data.user, data.session.access_token, {
-                username, firstName, lastName
+                username: resolvedUsername, firstName, lastName
             }, false, true)); // hasPassword = true
 
             await database.write(StorageKeys.CURRENT_USER, fullUser);
@@ -264,7 +273,10 @@ const authService = {
      */
     async _processSuccessfulSession(session) {
         await database.write(StorageKeys.AUTH_TOKEN, session.access_token);
-        const profile = await this.getUserProfile(session.user.id);
+        const profile = await this.ensureDefaultUsernameForProfile(
+            session.user,
+            await this.getUserProfile(session.user.id),
+        );
         const user = await this._decorateCurrentUser(
             formatUser(session.user, session.access_token, profile)
         );
@@ -278,7 +290,10 @@ const authService = {
      * Helper to get formatted user from an existing session
      */
     async _getUserFromSession(session) {
-        const profile = await this.getUserProfile(session.user.id);
+        const profile = await this.ensureDefaultUsernameForProfile(
+            session.user,
+            await this.getUserProfile(session.user.id),
+        );
         return this._decorateCurrentUser(
             formatUser(session.user, session.access_token, profile)
         );
@@ -298,7 +313,10 @@ const authService = {
             throw createAuthError(AuthErrors.NOT_LOGGED_IN, "No active session");
         }
 
-        const profile = await this.getUserProfile(session.user.id);
+        const profile = await this.ensureDefaultUsernameForProfile(
+            session.user,
+            await this.getUserProfile(session.user.id),
+        );
 
         // Check insurance status
         let hasInsurance = false;
@@ -364,6 +382,37 @@ const authService = {
         } catch (error) {
             console.error(`[authService] getUserProfile error for ${userId}:`, error);
             return {};
+        }
+    },
+
+    async ensureDefaultUsernameForProfile(sessionUser, profile = {}) {
+        const hasUsername =
+            typeof profile?.username === "string" && profile.username.trim().length > 0;
+        if (hasUsername || !sessionUser?.id) return profile || {};
+
+        const defaultUsername = deriveUsernameFromEmail(sessionUser.email, sessionUser.id);
+        try {
+            const { error } = await supabase
+                .from("profiles")
+                .update({
+                    username: defaultUsername,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", sessionUser.id)
+                .or("username.is.null,username.eq.");
+
+            if (error) {
+                console.warn("[authService] Could not default missing username:", error);
+                return profile || {};
+            }
+
+            return {
+                ...(profile || {}),
+                username: defaultUsername,
+            };
+        } catch (error) {
+            console.warn("[authService] Failed to default missing username:", error);
+            return profile || {};
         }
     },
 
@@ -649,7 +698,10 @@ const authService = {
 
         if (error) return { success: false, error: handleSupabaseError(error).message };
 
-        let profile = await this.getUserProfile(data.user.id);
+        let profile = await this.ensureDefaultUsernameForProfile(
+            data.user,
+            await this.getUserProfile(data.user.id),
+        );
         if (!profile.createdAt) {
             console.log("[authService] Profile not yet available, continuing with defaults");
         }

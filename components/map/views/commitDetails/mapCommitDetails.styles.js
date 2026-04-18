@@ -121,14 +121,39 @@ const styles = StyleSheet.create({
 		fontWeight: "500",
 		textAlign: "center",
 	},
-	secondaryAction: {
-		marginTop: 14,
-		paddingVertical: 4,
+	otpStatusRow: {
+		marginTop: 12,
+		width: "100%",
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 10,
 	},
-	secondaryActionText: {
-		fontSize: 14,
+	otpCountdownText: {
+		fontSize: 13,
 		lineHeight: 18,
-		fontWeight: "600",
+		fontWeight: "700",
+		textAlign: "center",
+	},
+	resendPill: {
+		minHeight: 32,
+		paddingHorizontal: 12,
+		paddingVertical: 7,
+		borderRadius: 16,
+		borderCurve: "continuous",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	resendPillPressed: {
+		transform: [{ scale: 0.98 }, { translateY: 1 }],
+	},
+	resendPillDisabled: {
+		opacity: 0.62,
+	},
+	resendPillText: {
+		fontSize: 13,
+		lineHeight: 18,
+		fontWeight: "800",
 	},
 });
 
