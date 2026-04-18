@@ -107,6 +107,7 @@ function RouteMetaLine({ text, color, fadeColor }) {
 export function MapBedDecisionTopSlot({
 	modalContainedStyle,
 	contentInsetStyle,
+	stageMetrics,
 	titleColor,
 	subtitleColor,
 	closeSurfaceColor,
@@ -119,7 +120,14 @@ export function MapBedDecisionTopSlot({
 	toggleIconName = "chevron-up",
 }) {
 	return (
-		<View style={[styles.topSlot, contentInsetStyle, modalContainedStyle]}>
+		<View
+			style={[
+				styles.topSlot,
+				stageMetrics?.topSlot?.containerStyle,
+				contentInsetStyle,
+				modalContainedStyle,
+			]}
+		>
 			{showToggle ? (
 				<MapHeaderIconButton
 					onPress={onToggle}
@@ -133,13 +141,20 @@ export function MapBedDecisionTopSlot({
 				<View style={styles.headerActionSpacer} />
 			)}
 			<View style={styles.topSlotCopy}>
-				<Text numberOfLines={1} style={[styles.topSlotTitle, { color: titleColor }]}>
+				<Text
+					numberOfLines={1}
+					style={[styles.topSlotTitle, stageMetrics?.topSlot?.titleStyle, { color: titleColor }]}
+				>
 					{hospitalName || "Hospital"}
 				</Text>
 				{hospitalSubtext ? (
 					<Text
 						numberOfLines={1}
-						style={[styles.topSlotSubtitle, { color: subtitleColor }]}
+						style={[
+							styles.topSlotSubtitle,
+							stageMetrics?.topSlot?.subtitleStyle,
+							{ color: subtitleColor },
+						]}
 					>
 						{hospitalSubtext}
 					</Text>
@@ -160,6 +175,7 @@ export function MapBedDecisionHero({
 	decision,
 	glassTokens,
 	isDarkMode,
+	stageMetrics,
 	titleColor,
 	surfaceColor,
 	onOpenRoomDetails,
@@ -174,12 +190,12 @@ export function MapBedDecisionHero({
 	return (
 		<View style={styles.heroPressable}>
 			<MapStageGlassPanel
-				style={styles.heroCard}
+				style={[styles.heroCard, stageMetrics?.hero?.cardStyle]}
 				backgroundColor={surfaceColor}
 				glassTokens={glassTokens}
 				isDarkMode={isDarkMode}
 			>
-				<View style={styles.heroArtworkLayer}>
+				<View style={[styles.heroArtworkLayer, stageMetrics?.hero?.artworkStyle]}>
 					{imageSource ? (
 						<Image
 							source={imageSource}
@@ -191,35 +207,64 @@ export function MapBedDecisionHero({
 				</View>
 				<View style={styles.heroHeader}>
 					{typeof onOpenRoomDetails === "function" ? (
-						<Pressable onPress={onOpenRoomDetails} style={styles.heroDetailChip}>
+						<Pressable
+							onPress={onOpenRoomDetails}
+							style={[styles.heroDetailChip, stageMetrics?.hero?.detailChipStyle]}
+						>
 							<Ionicons name="information-circle-outline" size={26} color={COLORS.brandPrimary} />
 						</Pressable>
 					) : null}
 				</View>
 				<View style={styles.heroRow}>
 					<View style={styles.heroCopy}>
-						<Text style={[styles.heroTitle, { color: titleColor }]}>
+						<Text style={[styles.heroTitle, stageMetrics?.hero?.titleStyle, { color: titleColor }]}>
 							{decision.roomTitle}
 						</Text>
-						<View style={styles.heroMetaRow}>
-							<View style={[styles.metaPill, { backgroundColor: heroPillSurfaceColor }]}>
+						<View style={[styles.heroMetaRow, stageMetrics?.hero?.metaRowStyle]}>
+							<View
+								style={[
+									styles.metaPill,
+									stageMetrics?.hero?.metaPillStyle,
+									{ backgroundColor: heroPillSurfaceColor },
+								]}
+							>
 								<Ionicons name="bed-outline" size={14} color={COLORS.brandPrimary} />
 								{decision.availabilityShowsSkeleton ? (
 									<MetaSkeleton style={styles.metaSkeletonShort} />
 								) : decision.availabilityLabel ? (
-									<Text style={[styles.metaLabel, { color: titleColor }]} numberOfLines={1}>
-										{decision.availabilityLabel}
-									</Text>
+										<Text
+											style={[
+												styles.metaLabel,
+												stageMetrics?.hero?.metaLabelStyle,
+												{ color: titleColor },
+											]}
+											numberOfLines={1}
+										>
+											{decision.availabilityLabel}
+										</Text>
 								) : null}
 							</View>
-							<View style={[styles.metaPill, { backgroundColor: heroPillSurfaceColor }]}>
+							<View
+								style={[
+									styles.metaPill,
+									stageMetrics?.hero?.metaPillStyle,
+									{ backgroundColor: heroPillSurfaceColor },
+								]}
+							>
 								<Ionicons name="cash-outline" size={14} color={COLORS.brandPrimary} />
 								{decision.priceShowsSkeleton ? (
 									<MetaSkeleton style={styles.metaSkeletonMedium} />
 								) : decision.priceLabel ? (
-									<Text style={[styles.metaLabel, { color: titleColor }]} numberOfLines={1}>
-										{decision.priceLabel}
-									</Text>
+										<Text
+											style={[
+												styles.metaLabel,
+												stageMetrics?.hero?.metaLabelStyle,
+												{ color: titleColor },
+											]}
+											numberOfLines={1}
+										>
+											{decision.priceLabel}
+										</Text>
 								) : null}
 							</View>
 						</View>
@@ -233,6 +278,7 @@ export function MapBedDecisionHero({
 export function MapBedDecisionRoomSwitchRow({
 	roomOptions = [],
 	selectedRoomServiceId = null,
+	stageMetrics,
 	isDarkMode = false,
 	onSelectRoom,
 	onAdvanceSelectedRoom,
@@ -241,7 +287,9 @@ export function MapBedDecisionRoomSwitchRow({
 		return null;
 	}
 	const { width } = useWindowDimensions();
-	const switchPillWidth = Math.min(132, Math.max(96, Math.floor((width - 44) / 3)));
+	const switchPillWidth =
+		stageMetrics?.switch?.bedPillWidth ||
+		Math.min(114, Math.max(82, Math.floor((width - 46) / 3.38)));
 	const disabledColor = "rgba(148,163,184,0.92)";
 	const disabledSurfaceColor = isDarkMode
 		? "rgba(148,163,184,0.12)"
@@ -256,7 +304,7 @@ export function MapBedDecisionRoomSwitchRow({
 				nestedScrollEnabled
 				keyboardShouldPersistTaps="handled"
 				style={styles.switchScroller}
-				contentContainerStyle={styles.switchRailContent}
+				contentContainerStyle={[styles.switchRailContent, stageMetrics?.switch?.railContentStyle]}
 			>
 			{roomOptions.map((option) => {
 				const isActive = option?.id === selectedRoomServiceId;
@@ -281,6 +329,7 @@ export function MapBedDecisionRoomSwitchRow({
 						disabled={!isEnabled}
 						style={({ pressed }) => [
 							styles.switchPill,
+							stageMetrics?.switch?.pillStyle,
 							{
 								width: switchPillWidth,
 								backgroundColor: isActive
@@ -300,6 +349,7 @@ export function MapBedDecisionRoomSwitchRow({
 						<Text
 							style={[
 								styles.switchPillLabel,
+								stageMetrics?.switch?.labelStyle,
 								{
 									color: isActive
 										? "#FFFFFF"
@@ -324,6 +374,7 @@ export function MapBedDecisionRouteCard({
 	decision,
 	glassTokens,
 	isDarkMode,
+	stageMetrics,
 	titleColor,
 	mutedColor,
 	surfaceColor,
@@ -338,7 +389,7 @@ export function MapBedDecisionRouteCard({
 
 	return (
 		<MapStageGlassPanel
-			style={styles.routeCard}
+			style={[styles.routeCard, stageMetrics?.route?.cardStyle]}
 			backgroundColor={surfaceColor}
 			glassTokens={glassTokens}
 			isDarkMode={isDarkMode}
@@ -352,14 +403,27 @@ export function MapBedDecisionRouteCard({
 							color={COLORS.brandPrimary}
 						/>
 					</View>
-					<View style={[styles.routeConnector, { backgroundColor: connectorColor }]} />
+					<View
+						style={[
+							styles.routeConnector,
+							stageMetrics?.route?.connectorStyle,
+							{ backgroundColor: connectorColor },
+						]}
+					/>
 					<View style={[styles.routeNode, { backgroundColor: pillSurfaceColor }]}>
 						<Ionicons name="navigate" size={16} color={COLORS.brandPrimary} />
 					</View>
 				</View>
 				<View style={styles.routeStops}>
 					<View style={styles.routeStop}>
-						<Text style={[styles.routeStopTitle, { color: titleColor }]} numberOfLines={1}>
+						<Text
+							style={[
+								styles.routeStopTitle,
+								stageMetrics?.route?.titleStyle,
+								{ color: titleColor },
+							]}
+							numberOfLines={1}
+						>
 							{routePanel?.originTitle || "Hospital"}
 						</Text>
 						<RouteMetaLine
@@ -368,9 +432,16 @@ export function MapBedDecisionRouteCard({
 							fadeColor={routeFadeColor}
 						/>
 					</View>
-					<View style={styles.routeStopGap} />
+					<View style={[styles.routeStopGap, stageMetrics?.route?.stopGapStyle]} />
 					<View style={styles.routeStop}>
-						<Text style={[styles.routeStopTitle, { color: titleColor }]} numberOfLines={1}>
+						<Text
+							style={[
+								styles.routeStopTitle,
+								stageMetrics?.route?.titleStyle,
+								{ color: titleColor },
+							]}
+							numberOfLines={1}
+						>
 							{routePanel?.destinationTitle || "My location"}
 						</Text>
 						<RouteMetaLine
@@ -381,12 +452,23 @@ export function MapBedDecisionRouteCard({
 					</View>
 				</View>
 				<View style={styles.routeMetrics}>
-					<Text style={[styles.routeMetricPrimary, { color: titleColor }]} numberOfLines={1}>
+					<Text
+						style={[
+							styles.routeMetricPrimary,
+							stageMetrics?.route?.metricPrimaryStyle,
+							{ color: titleColor },
+						]}
+						numberOfLines={1}
+					>
 						{routePanel?.primaryMetric || decision.etaLabel}
 					</Text>
 					{routePanel?.secondaryMetric ? (
 						<Text
-							style={[styles.routeMetricSecondary, { color: mutedColor }]}
+							style={[
+								styles.routeMetricSecondary,
+								stageMetrics?.route?.metricSecondaryStyle,
+								{ color: mutedColor },
+							]}
 							numberOfLines={1}
 						>
 							{routePanel.secondaryMetric}
@@ -402,6 +484,7 @@ export function MapBedDecisionSavedTransportCard({
 	savedTransport,
 	glassTokens,
 	isDarkMode,
+	stageMetrics,
 	titleColor,
 	mutedColor,
 	surfaceColor,
@@ -416,7 +499,7 @@ export function MapBedDecisionSavedTransportCard({
 
 	return (
 		<MapStageGlassPanel
-			style={styles.savedTransportCard}
+			style={[styles.savedTransportCard, stageMetrics?.panel?.cardStyle]}
 			backgroundColor={surfaceColor}
 			glassTokens={glassTokens}
 			isDarkMode={isDarkMode}
@@ -438,11 +521,17 @@ export function MapBedDecisionSavedTransportCard({
 					<Ionicons name="checkmark-circle" size={18} color={visualProfile.accent} />
 				</View>
 				<View style={styles.savedTransportCopy}>
-					<Text style={[styles.savedTransportTitle, { color: titleColor }]}>
+					<Text
+						style={[styles.savedTransportTitle, stageMetrics?.expanded?.titleStyle, { color: titleColor }]}
+					>
 						{MAP_BED_DECISION_COPY.SAVED_TRANSPORT_TITLE}
 					</Text>
 					<Text
-						style={[styles.savedTransportMeta, { color: mutedColor }]}
+						style={[
+							styles.savedTransportMeta,
+							stageMetrics?.expanded?.metaStyle,
+							{ color: mutedColor },
+						]}
 						numberOfLines={1}
 					>
 						{[
@@ -460,6 +549,7 @@ export function MapBedDecisionSavedTransportCard({
 
 export function MapBedDecisionExpandedRoomChoices({
 	decision,
+	stageMetrics,
 	titleColor,
 	mutedColor,
 	isDarkMode = false,
@@ -493,6 +583,7 @@ export function MapBedDecisionExpandedRoomChoices({
 						disabled={!isEnabled}
 						style={({ pressed }) => [
 							styles.expandedRow,
+							stageMetrics?.expanded?.rowStyle,
 							{
 								backgroundColor: inactiveSurfaceColor,
 								opacity: isEnabled ? (pressed ? 0.94 : 1) : 0.48,
@@ -503,6 +594,7 @@ export function MapBedDecisionExpandedRoomChoices({
 							<View
 								style={[
 									styles.expandedIconWrap,
+									stageMetrics?.expanded?.iconWrapStyle,
 									{ backgroundColor: toAccentRgba(roomVisual.accent, 0.12) },
 								]}
 							>
@@ -514,14 +606,22 @@ export function MapBedDecisionExpandedRoomChoices({
 							</View>
 							<View style={styles.expandedCopy}>
 								<Text
-									style={[styles.expandedTitle, { color: titleColor }]}
+								style={[
+									styles.expandedTitle,
+									stageMetrics?.expanded?.titleStyle,
+									{ color: titleColor },
+								]}
 									numberOfLines={1}
 								>
 									{option?.title || "Room"}
 								</Text>
 								{metaText ? (
 									<Text
-										style={[styles.expandedMeta, { color: mutedColor }]}
+										style={[
+											styles.expandedMeta,
+											stageMetrics?.expanded?.metaStyle,
+											{ color: mutedColor },
+										]}
 										numberOfLines={2}
 									>
 										{metaText}
@@ -543,7 +643,7 @@ export function MapBedDecisionExpandedRoomChoices({
 								source={imageSource}
 								resizeMode="contain"
 								fadeDuration={0}
-								style={styles.expandedImage}
+								style={[styles.expandedImage, stageMetrics?.expanded?.imageStyle]}
 							/>
 						) : null}
 						<View style={styles.expandedActionWrap}>
@@ -564,6 +664,7 @@ export function MapBedDecisionDetailsCard({
 	decision,
 	glassTokens,
 	isDarkMode,
+	stageMetrics,
 	titleColor,
 	mutedColor,
 	surfaceColor,
@@ -576,7 +677,7 @@ export function MapBedDecisionDetailsCard({
 
 	return (
 		<MapStageGlassPanel
-			style={styles.detailsCard}
+			style={[styles.detailsCard, stageMetrics?.panel?.cardStyle]}
 			backgroundColor={surfaceColor}
 			glassTokens={glassTokens}
 			isDarkMode={isDarkMode}
@@ -587,14 +688,22 @@ export function MapBedDecisionDetailsCard({
 				</View>
 			</View>
 			{decision.roomSummary ? (
-				<Text style={[styles.detailsSummary, { color: titleColor }]}>
+				<Text
+					style={[styles.detailsSummary, stageMetrics?.panel?.summaryStyle, { color: titleColor }]}
+				>
 					{decision.roomSummary}
 				</Text>
 			) : null}
 			{features.map((feature) => (
 				<View key={feature} style={styles.detailsFeatureRow}>
 					<View style={styles.detailsFeatureDot} />
-					<Text style={[styles.detailsFeatureText, { color: mutedColor }]}>
+					<Text
+						style={[
+							styles.detailsFeatureText,
+							stageMetrics?.panel?.featureStyle,
+							{ color: mutedColor },
+						]}
+					>
 						{feature}
 					</Text>
 				</View>
@@ -633,11 +742,12 @@ export function MapBedDecisionFooter({
 	canBrowseHospitals,
 	careIntent = "bed",
 	isAdvancing = false,
+	stageMetrics,
 	onConfirm,
 	onOpenHospitals,
 }) {
 	return (
-		<View style={[styles.footerDock, modalContainedStyle]}>
+		<View style={[styles.footerDock, stageMetrics?.footer?.dockStyle, modalContainedStyle]}>
 			<EntryActionButton
 				label={
 					isAdvancing
@@ -646,8 +756,8 @@ export function MapBedDecisionFooter({
 				}
 				onPress={onConfirm}
 				variant="primary"
-				height={50}
-				radius={24}
+				height={stageMetrics?.footer?.buttonHeight || 50}
+				radius={stageMetrics?.footer?.buttonRadius || 24}
 				fullWidth
 				disabled={!canConfirm}
 				loading={isAdvancing}

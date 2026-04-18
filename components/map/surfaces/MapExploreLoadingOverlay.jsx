@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Animated, Image, Platform, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../contexts/ThemeContext";
+import getViewportSurfaceMetrics from "../../../utils/ui/viewportSurfaceMetrics";
 import { getMapSheetHeight, MAP_SHEET_SNAP_STATES } from "../core/MapSheetOrchestrator";
 import { getMapSheetTokens } from "../tokens/mapSheetTokens";
 import {
@@ -27,6 +28,16 @@ export default function MapExploreLoadingOverlay({
 	const viewportVariant = getMapViewportVariant({ platform: Platform.OS, width: screenWidth });
 	const surfaceConfig = getMapViewportSurfaceConfig(viewportVariant);
 	const usesSidebarLayout = surfaceConfig.overlayLayout === "left-sidebar";
+	const viewportMetrics = useMemo(
+		() =>
+			getViewportSurfaceMetrics({
+				width: screenWidth,
+				height: screenHeight,
+				platform: Platform.OS,
+				presentationMode: usesSidebarLayout ? "modal" : "sheet",
+			}),
+		[screenHeight, screenWidth, usesSidebarLayout],
+	);
 	const sheetHeight = useMemo(
 		() => (usesSidebarLayout ? screenHeight : getMapSheetHeight(screenHeight, snapState)),
 		[screenHeight, snapState, usesSidebarLayout],
@@ -174,7 +185,7 @@ export default function MapExploreLoadingOverlay({
 						left: headerLeft,
 						right: undefined,
 						width: headerWidth,
-						borderRadius: usesSidebarLayout ? 26 : 28,
+						borderRadius: viewportMetrics.map.loadingHeaderRadius,
 						borderCurve: "continuous",
 					},
 				]}
@@ -200,22 +211,33 @@ export default function MapExploreLoadingOverlay({
 						right: undefined,
 						bottom: sheetBottom,
 						top: usesSidebarLayout ? sheetTop : undefined,
-						borderTopLeftRadius: surfaceConfig.overlaySheetRadius,
-						borderTopRightRadius: surfaceConfig.overlaySheetRadius,
-						borderBottomLeftRadius: surfaceConfig.overlaySheetRadius,
-						borderBottomRightRadius: surfaceConfig.overlaySheetRadius,
+						borderTopLeftRadius: viewportMetrics.map.loadingSheetRadius,
+						borderTopRightRadius: viewportMetrics.map.loadingSheetRadius,
+						borderBottomLeftRadius: viewportMetrics.map.loadingSheetRadius,
+						borderBottomRightRadius: viewportMetrics.map.loadingSheetRadius,
 						borderCurve: "continuous",
-						paddingHorizontal: usesSidebarLayout ? 16 : 12,
+						paddingHorizontal: viewportMetrics.modal.contentPadding,
 						paddingTop: usesSidebarLayout
-							? (surfaceConfig.sidebarContentTopPadding || 8) + sheetSafeTopOffset
-							: 10,
+							? Math.max(surfaceConfig.sidebarContentTopPadding || 8, viewportMetrics.modal.contentPadding - 10) + sheetSafeTopOffset
+							: Math.max(10, viewportMetrics.modal.contentPadding - 8),
 						paddingBottom: usesSidebarLayout
-							? (surfaceConfig.sidebarContentBottomPadding || 10) + sheetSafeBottomOffset
-							: 12 + insets.bottom,
+							? Math.max(surfaceConfig.sidebarContentBottomPadding || 10, viewportMetrics.modal.contentPadding - 8) + sheetSafeBottomOffset
+							: viewportMetrics.modal.contentPadding + insets.bottom,
 					},
 				]}
 			>
-				{usesSidebarLayout ? null : <View style={[styles.handle, { backgroundColor: tokens.handleColor }]} />}
+				{usesSidebarLayout ? null : (
+					<View
+						style={[
+							styles.handle,
+							{
+								backgroundColor: tokens.handleColor,
+								width: viewportMetrics.map.handleWidth,
+								height: viewportMetrics.map.handleHeight,
+							},
+						]}
+					/>
+				)}
 				<View style={styles.loadingCopyBlock}>
 					<Text style={[styles.loadingEyebrow, { color: quietColor }]}>Nearby help</Text>
 					<Text style={[styles.loadingTitle, { color: titleColor }]}>{resolvedStatus.title}</Text>

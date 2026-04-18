@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useScrollAwareHeader } from "../../../contexts/ScrollAwareHeaderContext";
 import useAuthViewport from "../../../hooks/ui/useAuthViewport";
+import getViewportSurfaceMetrics from "../../../utils/ui/viewportSurfaceMetrics";
 import { HEADER_MODES } from "../../../constants/header";
 import {
 	MAP_APPLE_EASE,
@@ -74,6 +75,16 @@ export default function MapModalShell({
 	const viewportVariant = getMapViewportVariant({ platform: Platform.OS, width: screenWidth });
 	const surfaceConfig = getMapViewportSurfaceConfig(viewportVariant);
 	const isDrawer = surfaceConfig.modalPresentationMode === "left-drawer";
+	const viewportMetrics = useMemo(
+		() =>
+			getViewportSurfaceMetrics({
+				width: screenWidth,
+				height: screenHeight,
+				platform: Platform.OS,
+				presentationMode: isDrawer ? "modal" : "sheet",
+			}),
+		[isDrawer, screenHeight, screenWidth],
+	);
 	const drawerSideInset = isDrawer
 		? Math.max(0, surfaceConfig.modalSideInset ?? surfaceConfig.sidebarOuterInset ?? 0)
 		: 0;
@@ -321,7 +332,7 @@ export default function MapModalShell({
 	const hostBottom = isDrawer ? drawerBottomInset : 0;
 	const drawerSafeTopOffset = isDrawer ? Math.max(0, (insets?.top || 0) - drawerTopInset) : 0;
 	const drawerSafeBottomOffset = isDrawer ? Math.max(0, (insets?.bottom || 0) - drawerBottomInset) : 0;
-	const modalRadius = surfaceConfig.modalCornerRadius;
+	const modalRadius = viewportMetrics.radius.modal;
 	const viewportMaxHeight = isDrawer
 		? Math.max(320, screenHeight - drawerTopInset - drawerBottomInset)
 		: Math.max(360, screenHeight - insets.top - resolvedTopClearance);
@@ -605,35 +616,87 @@ export default function MapModalShell({
 					minHeight,
 					maxHeight,
 					height: animatedSheetHeight,
-					paddingTop: isDrawer ? 12 + drawerSafeTopOffset : 14,
-					paddingBottom: isDrawer ? 18 + drawerSafeBottomOffset : insets.bottom + 18,
+					paddingTop: isDrawer
+						? Math.max(12, viewportMetrics.modal.contentPadding - 6) + drawerSafeTopOffset
+						: Math.max(14, viewportMetrics.modal.contentPadding - 8),
+					paddingHorizontal: viewportMetrics.modal.contentPadding,
+					paddingBottom: isDrawer
+						? viewportMetrics.modal.contentPadding + drawerSafeBottomOffset
+						: insets.bottom + viewportMetrics.modal.contentPadding,
 					transform: enableDetents ? [{ translateY: dragTranslateY }] : undefined,
 				},
 			]}
 		>
 			{resolvedShowHandle ? (
-				<View {...(panResponder?.panHandlers || {})} style={styles.handleWrap}>
+				<View
+					{...(panResponder?.panHandlers || {})}
+					style={[
+						styles.handleWrap,
+						{ marginBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2) },
+					]}
+				>
 					<Pressable onPress={handleHandlePress} hitSlop={12}>
-						<View style={[styles.handle, { backgroundColor: handleColor }]} />
+						<View
+							style={[
+								styles.handle,
+								{
+									backgroundColor: handleColor,
+									width: viewportMetrics.map.handleWidth,
+									height: viewportMetrics.map.handleHeight,
+								},
+							]}
+						/>
 					</Pressable>
 				</View>
 			) : null}
 
 			<View
 				{...(shouldUseHeaderGestureRegion ? (panResponder?.panHandlers || {}) : {})}
-				style={styles.headerRow}
+				style={[
+					styles.headerRow,
+					{
+						minHeight: viewportMetrics.modal.headerHeight,
+						marginBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+					},
+				]}
 			>
 				{title ? (
-					<Text style={[styles.headerTitle, { color: titleColor }]}>{title}</Text>
+					<Text
+						style={[
+							styles.headerTitle,
+							{
+								color: titleColor,
+								fontSize: viewportMetrics.modal.titleSize,
+								lineHeight: viewportMetrics.modal.titleLineHeight,
+								fontWeight: viewportMetrics.type.titleWeight,
+							},
+						]}
+					>
+						{title}
+					</Text>
 				) : (
-					<View style={styles.headerSpacer} />
+					<View
+						style={[
+							styles.headerSpacer,
+							{
+								width: viewportMetrics.modal.headerButtonSize,
+								height: viewportMetrics.modal.headerButtonSize,
+							},
+						]}
+					/>
 				)}
 				<MapHeaderIconButton
 					onPress={onClose}
 					accessibilityLabel={title ? `Close ${title}` : "Close"}
 					backgroundColor={closeBg}
 					color={titleColor}
-					style={styles.closeButton}
+					style={[
+						styles.closeButton,
+						{
+							width: viewportMetrics.modal.headerButtonSize,
+							height: viewportMetrics.modal.headerButtonSize,
+						},
+					]}
 				/>
 			</View>
 

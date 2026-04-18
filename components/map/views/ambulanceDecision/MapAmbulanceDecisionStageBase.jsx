@@ -12,6 +12,7 @@ import { getMapSheetTokens } from "../../tokens/mapSheetTokens";
 import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import sheetStageStyles from "../shared/mapSheetStage.styles";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
+import useMapStageResponsiveMetrics from "../shared/useMapStageResponsiveMetrics";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import {
 	MapAmbulanceDecisionDetailsCard,
@@ -52,6 +53,7 @@ export default function MapAmbulanceDecisionStageBase({
 	);
 	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
+	const stageMetrics = useMapStageResponsiveMetrics({ presentationMode });
 	const webWideInsetStyle =
 		Platform.OS === "web" && presentationMode !== "sheet"
 			? styles.webWideContentInset
@@ -247,6 +249,7 @@ export default function MapAmbulanceDecisionStageBase({
 				<MapAmbulanceDecisionTopSlot
 					modalContainedStyle={modalContainedStyle}
 					contentInsetStyle={webWideTopSlotInsetStyle}
+					stageMetrics={stageMetrics}
 					titleColor={titleColor}
 					subtitleColor={mutedColor}
 					closeSurfaceColor={closeSurfaceColor}
@@ -298,6 +301,7 @@ export default function MapAmbulanceDecisionStageBase({
 							decision={decision}
 							glassTokens={glassTokens}
 							isDarkMode={isDarkMode}
+							stageMetrics={stageMetrics}
 							titleColor={titleColor}
 							mutedColor={mutedColor}
 							surfaceColor={surfaceColor}
@@ -305,7 +309,7 @@ export default function MapAmbulanceDecisionStageBase({
 							onOpenServiceDetails={handleOpenServiceDetails}
 						/>
 
-						<View style={styles.sectionGap} />
+						<View style={[styles.sectionGap, stageMetrics.section.gapStyle]} />
 
 						{!isExpanded ? (
 							<>
@@ -313,6 +317,7 @@ export default function MapAmbulanceDecisionStageBase({
 								<MapAmbulanceDecisionSwitchRow
 									serviceOptions={decision.serviceOptions}
 									selectedServiceId={decision.recommendedService?.id || null}
+									stageMetrics={stageMetrics}
 									titleColor={titleColor}
 									mutedColor={mutedColor}
 									pillSurfaceColor={pillSurfaceColor}
@@ -320,16 +325,17 @@ export default function MapAmbulanceDecisionStageBase({
 									onSelectService={handleSelectDispatchOption}
 									onAdvanceSelectedService={handleAdvanceSelectedDispatchOption}
 								/>
-								<View style={styles.midSwitchSpacingBottom} />
+								<View style={[styles.midSwitchSpacingBottom, stageMetrics.section.gapStyle]} />
 							</>
 						) : null}
 
 						{isExpanded ? (
 							<>
-								<View style={styles.sectionGap} />
+								<View style={[styles.sectionGap, stageMetrics.section.gapStyle]} />
 
 								<MapAmbulanceDecisionExpandedChoices
 									decision={decision}
+									stageMetrics={stageMetrics}
 									titleColor={titleColor}
 									mutedColor={mutedColor}
 									pillSurfaceColor={pillSurfaceColor}
@@ -337,24 +343,26 @@ export default function MapAmbulanceDecisionStageBase({
 									onSelectService={handleSelectDispatchOption}
 								/>
 
-								<View style={styles.sectionGap} />
+								<View style={[styles.sectionGap, stageMetrics.section.gapStyle]} />
 
 								<MapAmbulanceDecisionRouteCard
 									decision={decision}
 									glassTokens={glassTokens}
 									isDarkMode={isDarkMode}
+									stageMetrics={stageMetrics}
 									titleColor={titleColor}
 									mutedColor={mutedColor}
 									surfaceColor={nestedSurfaceColor}
 									pillSurfaceColor={pillSurfaceColor}
 								/>
 
-								<View style={styles.sectionGap} />
+								<View style={[styles.sectionGap, stageMetrics.section.gapStyle]} />
 
 								<MapAmbulanceDecisionDetailsCard
 									decision={decision}
 									glassTokens={glassTokens}
 									isDarkMode={isDarkMode}
+									stageMetrics={stageMetrics}
 									titleColor={titleColor}
 									mutedColor={mutedColor}
 									surfaceColor={nestedSurfaceColor}
@@ -366,6 +374,7 @@ export default function MapAmbulanceDecisionStageBase({
 								decision={decision}
 								glassTokens={glassTokens}
 								isDarkMode={isDarkMode}
+								stageMetrics={stageMetrics}
 								titleColor={titleColor}
 								mutedColor={mutedColor}
 								surfaceColor={nestedSurfaceColor}
@@ -383,13 +392,14 @@ export default function MapAmbulanceDecisionStageBase({
 					/>
 				)}
 
-				<View style={styles.sectionGap} />
+				<View style={[styles.sectionGap, stageMetrics.section.gapStyle]} />
 
 				<MapAmbulanceDecisionFooter
 					modalContainedStyle={null}
 					canConfirm={canConfirm}
 					canBrowseHospitals={canBrowseHospitals}
 					isAdvancing={isAdvancing}
+					stageMetrics={stageMetrics}
 					onConfirm={handleCommit}
 					onOpenHospitals={onOpenHospitals}
 				/>

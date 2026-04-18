@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { Animated, Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../contexts/ThemeContext";
+import getViewportSurfaceMetrics from "../../utils/ui/viewportSurfaceMetrics";
 import { getMapPlatformMotion } from "./tokens/mapMotionTokens";
 import { getMapSheetTokens } from "./tokens/mapSheetTokens";
 import { createMapSheetPanResponder } from "./mapSheetShell.gestures";
@@ -41,6 +42,16 @@ export function useMapSheetShell({
 	);
 	const useFloatingShell =
 		presentationMode !== "sheet" && Number.isFinite(shellWidth) && shellWidth > 0;
+	const viewportMetrics = useMemo(
+		() =>
+			getViewportSurfaceMetrics({
+				width,
+				height,
+				platform: Platform.OS,
+				presentationMode: presentationMode === "sheet" ? "sheet" : "modal",
+			}),
+		[height, presentationMode, width],
+	);
 	const {
 		isSidebar,
 		resolvedSnapState,
@@ -97,7 +108,11 @@ export function useMapSheetShell({
 
 	const sideInset = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
-		outputRange: [16, tokens.islandMargin, 0],
+		outputRange: [
+			Math.max(viewportMetrics.map.sheetSideInset + 2, 14),
+			viewportMetrics.map.sheetSideInset,
+			0,
+		],
 	});
 	const bottomInset = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
@@ -105,15 +120,27 @@ export function useMapSheetShell({
 	});
 	const topRadius = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
-		outputRange: [34, tokens.sheetRadius, 34],
+		outputRange: [
+			Math.max(viewportMetrics.radius.sheet - 2, 28),
+			viewportMetrics.radius.sheet,
+			Math.max(viewportMetrics.radius.sheet - 2, 28),
+		],
 	});
 	const bottomRadius = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
-		outputRange: [34, tokens.sheetRadius, 0],
+		outputRange: [
+			Math.max(viewportMetrics.radius.sheet - 2, 28),
+			viewportMetrics.radius.sheet,
+			0,
+		],
 	});
 	const handleWidth = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
-		outputRange: [54, 48, 46],
+		outputRange: [
+			Math.max(viewportMetrics.map.handleWidth + 4, 46),
+			viewportMetrics.map.handleWidth,
+			Math.max(viewportMetrics.map.handleWidth - 2, 42),
+		],
 	});
 	const horizontalPadding = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],
@@ -158,8 +185,8 @@ export function useMapSheetShell({
 	);
 
 	const sidebarShapeStyle = useMemo(
-		() => getMapSheetSidebarShapeStyle(tokens.sheetRadius),
-		[tokens.sheetRadius],
+		() => getMapSheetSidebarShapeStyle(viewportMetrics.radius.sheet),
+		[viewportMetrics.radius.sheet],
 	);
 	const radiusStyle = isSidebar
 		? null
@@ -204,6 +231,7 @@ export function useMapSheetShell({
 		handleStyle: {
 			width: handleWidth,
 			backgroundColor: tokens.handleColor,
+			height: viewportMetrics.map.handleHeight,
 			marginBottom: handleBottomMargin,
 		},
 		hostLayoutStyle,

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useContext } from 'react';
 import Constants from 'expo-constants';
 import { View, StyleSheet } from 'react-native';
 import { Image } from 'react-native';
+import getViewportSurfaceMetrics from '../../utils/ui/viewportSurfaceMetrics';
 
 let googleMapsLoadStatus =
   typeof window !== 'undefined' && window.google?.maps ? 'loaded' : 'idle';
@@ -645,13 +646,20 @@ const buildMarkerContent = ({
   selected,
 }) => {
   if (typeof document === 'undefined') return null;
+  const viewportMetrics = getViewportSurfaceMetrics({
+    width: window.innerWidth || 1280,
+    height: window.innerHeight || 800,
+    platform: 'web',
+    presentationMode: 'sheet',
+  });
+  const markerMetrics = viewportMetrics.map.marker;
 
   if (markerVariant === 'user') {
     const resolvedPinColor = pinColor || '#5294FF';
     const wrapper = document.createElement('div');
     wrapper.style.position = 'relative';
-    wrapper.style.width = '36px';
-    wrapper.style.height = '36px';
+    wrapper.style.width = `${markerMetrics.userHaloSize}px`;
+    wrapper.style.height = `${markerMetrics.userHaloSize}px`;
     wrapper.style.transform = 'translate(-50%, -50%)';
     wrapper.style.display = 'flex';
     wrapper.style.alignItems = 'center';
@@ -659,16 +667,16 @@ const buildMarkerContent = ({
 
     const halo = document.createElement('div');
     halo.style.position = 'absolute';
-    halo.style.width = '30px';
-    halo.style.height = '30px';
+    halo.style.width = `${markerMetrics.userHaloSize - 6}px`;
+    halo.style.height = `${markerMetrics.userHaloSize - 6}px`;
     halo.style.borderRadius = '50%';
     halo.style.background = 'rgba(82,148,255,0.20)';
     halo.style.border = '1px solid rgba(255,255,255,0.56)';
     halo.style.boxShadow = '0 10px 22px rgba(7,12,22,0.34)';
 
     const ring = document.createElement('div');
-    ring.style.width = '18px';
-    ring.style.height = '18px';
+    ring.style.width = `${markerMetrics.userRingSize}px`;
+    ring.style.height = `${markerMetrics.userRingSize}px`;
     ring.style.borderRadius = '50%';
     ring.style.background = '#FFFFFF';
     ring.style.display = 'flex';
@@ -676,8 +684,8 @@ const buildMarkerContent = ({
     ring.style.justifyContent = 'center';
 
     const core = document.createElement('div');
-    core.style.width = '12px';
-    core.style.height = '12px';
+    core.style.width = `${markerMetrics.userCoreSize}px`;
+    core.style.height = `${markerMetrics.userCoreSize}px`;
     core.style.borderRadius = '50%';
     core.style.background = resolvedPinColor;
     core.style.display = 'flex';
@@ -708,7 +716,7 @@ const buildMarkerContent = ({
 
     const label = document.createElement('div');
     label.textContent = labelText;
-    label.style.maxWidth = selected ? '184px' : '144px';
+    label.style.maxWidth = `${selected ? markerMetrics.labelMaxWidth : Math.max(128, markerMetrics.labelMaxWidth - 28)}px`;
     label.style.padding = selected ? '7px 12px' : '5px 10px';
     label.style.borderRadius = '999px';
     label.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
@@ -737,8 +745,8 @@ const buildMarkerContent = ({
     label.style.border = '1px solid rgba(255,255,255,0.1)';
 
     const pin = document.createElement('div');
-    pin.style.width = selected ? '28px' : '22px';
-    pin.style.height = selected ? '28px' : '22px';
+    pin.style.width = `${selected ? markerMetrics.pinSize : Math.max(20, markerMetrics.pinSize - 6)}px`;
+    pin.style.height = `${selected ? markerMetrics.pinSize : Math.max(20, markerMetrics.pinSize - 6)}px`;
     pin.style.borderRadius = '50%';
     pin.style.display = 'flex';
     pin.style.alignItems = 'center';
@@ -789,8 +797,8 @@ const buildMarkerContent = ({
   if (pinColor) {
     const wrapper = document.createElement('div');
     wrapper.style.position = 'relative';
-    wrapper.style.width = '32px';
-    wrapper.style.height = '32px';
+    wrapper.style.width = `${Math.max(markerMetrics.pinSize + 4, 28)}px`;
+    wrapper.style.height = `${Math.max(markerMetrics.pinSize + 4, 28)}px`;
     wrapper.style.transform = 'translate(-50%, -50%)';
     wrapper.style.display = 'flex';
     wrapper.style.alignItems = 'center';
@@ -798,8 +806,8 @@ const buildMarkerContent = ({
 
     const halo = document.createElement('div');
     halo.style.position = 'absolute';
-    halo.style.width = '24px';
-    halo.style.height = '24px';
+    halo.style.width = `${Math.max(markerMetrics.pinSize - 2, 20)}px`;
+    halo.style.height = `${Math.max(markerMetrics.pinSize - 2, 20)}px`;
     halo.style.borderRadius = '50%';
     halo.style.backgroundColor =
       pinColor === '#3B82F6' ? 'rgba(59,130,246,0.22)' : `${pinColor}26`;
@@ -807,8 +815,8 @@ const buildMarkerContent = ({
     halo.style.boxSizing = 'border-box';
 
     const dot = document.createElement('div');
-    dot.style.width = '12px';
-    dot.style.height = '12px';
+    dot.style.width = `${Math.max(markerMetrics.pinSize - 14, 10)}px`;
+    dot.style.height = `${Math.max(markerMetrics.pinSize - 14, 10)}px`;
     dot.style.borderRadius = '50%';
     dot.style.backgroundColor = pinColor;
     dot.style.border = '2px solid white';

@@ -1,7 +1,8 @@
-import React from "react";
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useMemo } from "react";
+import { Platform, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
+import getViewportSurfaceMetrics from "../../utils/ui/viewportSurfaceMetrics";
 import MapModalShell from "./surfaces/MapModalShell";
 
 const squircle = (radius) => ({
@@ -17,6 +18,17 @@ export default function MapGuestProfileModal({
 	onContinue,
 }) {
 	const { isDarkMode } = useTheme();
+	const { width, height } = useWindowDimensions();
+	const viewportMetrics = useMemo(
+		() =>
+			getViewportSurfaceMetrics({
+				width,
+				height,
+				platform: Platform.OS,
+				presentationMode: "modal",
+			}),
+		[height, width],
+	);
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 	const inputSurface = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)";
@@ -28,22 +40,76 @@ export default function MapGuestProfileModal({
 			onClose={onClose}
 			title={null}
 			minHeightRatio={0.78}
-			contentContainerStyle={styles.content}
+			contentContainerStyle={[
+				styles.content,
+				{
+					paddingTop: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+					paddingBottom: Math.max(12, viewportMetrics.insets.sectionGap),
+				},
+			]}
 		>
-			<View style={[styles.avatarOrb, { backgroundColor: avatarSurface }]}>
-				<Ionicons name="person" size={52} color={mutedColor} />
+			<View
+				style={[
+					styles.avatarOrb,
+					{
+						backgroundColor: avatarSurface,
+						width: viewportMetrics.radius.orb * 2,
+						height: viewportMetrics.radius.orb * 2,
+						borderRadius: viewportMetrics.radius.orb,
+						marginBottom: viewportMetrics.insets.largeGap,
+					},
+				]}
+			>
+				<Ionicons
+					name="person"
+					size={Math.max(38, Math.round(viewportMetrics.radius.orb * 0.92))}
+					color={mutedColor}
+				/>
 			</View>
 
-			<Text style={[styles.title, { color: titleColor }]}>What&apos;s your email?</Text>
+			<Text
+				style={[
+					styles.title,
+					{
+						color: titleColor,
+						fontSize: Math.max(24, viewportMetrics.type.title + 6),
+						lineHeight: Math.max(28, viewportMetrics.type.titleLineHeight + 6),
+					},
+				]}
+			>
+				What&apos;s your email?
+			</Text>
 
-			<View style={[styles.inputShell, { backgroundColor: inputSurface }]}>
-				<Ionicons name="mail-outline" size={18} color={mutedColor} />
+			<View
+				style={[
+					styles.inputShell,
+					{
+						backgroundColor: inputSurface,
+						marginTop: viewportMetrics.insets.sectionGap,
+						minHeight: viewportMetrics.cta.primaryHeight,
+						paddingHorizontal: Math.max(16, viewportMetrics.modal.contentPadding - 2),
+						borderRadius: viewportMetrics.radius.card,
+					},
+				]}
+			>
+				<Ionicons
+					name="mail-outline"
+					size={Math.max(18, viewportMetrics.type.body + 2)}
+					color={mutedColor}
+				/>
 				<TextInput
 					value={emailValue}
 					onChangeText={onEmailChange}
 					placeholder="Email"
 					placeholderTextColor={mutedColor}
-					style={[styles.input, { color: titleColor }]}
+					style={[
+						styles.input,
+						{
+							color: titleColor,
+							fontSize: viewportMetrics.type.body,
+							lineHeight: viewportMetrics.type.bodyLineHeight - 4,
+						},
+					]}
 					keyboardType="email-address"
 					autoCapitalize="none"
 					autoCorrect={false}
@@ -52,7 +118,18 @@ export default function MapGuestProfileModal({
 			</View>
 
 			{Platform.OS === "web" && typeof onContinue === "function" ? (
-				<Pressable onPress={onContinue} style={styles.continueButton}>
+				<Pressable
+					onPress={onContinue}
+					style={[
+						styles.continueButton,
+						{
+							marginTop: viewportMetrics.insets.sectionGap,
+							minHeight: viewportMetrics.cta.primaryHeight,
+							paddingHorizontal: viewportMetrics.modal.contentPadding,
+							borderRadius: viewportMetrics.cta.radius,
+						},
+					]}
+				>
 					<Text style={styles.continueButtonText}>Continue</Text>
 				</Pressable>
 			) : null}

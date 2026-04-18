@@ -1,9 +1,10 @@
 import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useVisits } from "../../contexts/VisitsContext";
+import getViewportSurfaceMetrics from "../../utils/ui/viewportSurfaceMetrics";
 import { navigateToVisits } from "../../utils/navigationHelpers";
 import MapModalShell from "./surfaces/MapModalShell";
 
@@ -22,6 +23,17 @@ function formatVisitMeta(visit) {
 export default function MapRecentVisitsModal({ visible, onClose }) {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
+	const { width, height } = useWindowDimensions();
+	const viewportMetrics = useMemo(
+		() =>
+			getViewportSurfaceMetrics({
+				width,
+				height,
+				platform: Platform.OS,
+				presentationMode: "modal",
+			}),
+		[height, width],
+	);
 	const { visits = [] } = useVisits();
 	const recentVisits = useMemo(() => (Array.isArray(visits) ? visits.slice(0, 8) : []), [visits]);
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
@@ -34,14 +46,26 @@ export default function MapRecentVisitsModal({ visible, onClose }) {
 			onClose={onClose}
 			title="Recents"
 			minHeightRatio={0.78}
-			contentContainerStyle={styles.content}
+			contentContainerStyle={[
+				styles.content,
+				{
+					paddingBottom: Math.max(12, viewportMetrics.insets.sectionGap),
+					gap: viewportMetrics.insets.sectionGap,
+				},
+			]}
 		>
 			{recentVisits.length > 0 ? (
 				<>
 					{recentVisits.map((visit, index) => (
 						<View
 							key={visit?.id || `${visit?.hospital || "visit"}-${index}`}
-							style={[styles.visitCard, { backgroundColor: cardSurface }]}
+							style={[
+								styles.visitCard,
+								{
+									backgroundColor: cardSurface,
+									borderRadius: viewportMetrics.radius.card,
+								},
+							]}
 						>
 							<View style={styles.visitIconWrap}>
 								<Ionicons name="time-outline" size={18} color="#86100E" />
@@ -61,14 +85,22 @@ export default function MapRecentVisitsModal({ visible, onClose }) {
 							onClose?.();
 							navigateToVisits({ router });
 						}}
-						style={styles.moreAction}
+						style={[styles.moreAction, { marginTop: Math.max(6, viewportMetrics.insets.sectionGap - 6) }]}
 					>
 						<Text style={[styles.moreText, { color: titleColor }]}>See more</Text>
 						<Ionicons name="chevron-forward" size={16} color={titleColor} />
 					</Pressable>
 				</>
 			) : (
-				<View style={[styles.emptyCard, { backgroundColor: cardSurface }]}>
+				<View
+					style={[
+						styles.emptyCard,
+						{
+							backgroundColor: cardSurface,
+							borderRadius: viewportMetrics.radius.card,
+						},
+					]}
+				>
 					<Text style={[styles.emptyTitle, { color: titleColor }]}>No recent visits</Text>
 				</View>
 			)}

@@ -1,10 +1,11 @@
 import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useVisits } from "../../contexts/VisitsContext";
+import getViewportSurfaceMetrics from "../../utils/ui/viewportSurfaceMetrics";
 import { navigateToVisits } from "../../utils/navigationHelpers";
 import MapModalShell from "./surfaces/MapModalShell";
 
@@ -57,6 +58,17 @@ export default function MapCareHistoryModal({
 }) {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
+	const { width, height } = useWindowDimensions();
+	const viewportMetrics = useMemo(
+		() =>
+			getViewportSurfaceMetrics({
+				width,
+				height,
+				platform: Platform.OS,
+				presentationMode: "modal",
+			}),
+		[height, width],
+	);
 	const { visits = [] } = useVisits();
 	const recentVisits = useMemo(() => (Array.isArray(visits) ? visits.slice(0, 3) : []), [visits]);
 	const hasVisits = recentVisits.length > 0;
@@ -72,10 +84,21 @@ export default function MapCareHistoryModal({
 			onClose={onClose}
 			title="Choose care"
 			minHeightRatio={0.78}
-			contentContainerStyle={styles.content}
+			contentContainerStyle={[
+				styles.content,
+				{
+					paddingBottom: Math.max(12, viewportMetrics.insets.sectionGap),
+					gap: viewportMetrics.insets.largeGap,
+				},
+			]}
 		>
-			<View style={styles.bladeStack}>
-				<View style={[styles.bladeSurface, { backgroundColor: bladeSurface }]}>
+			<View style={[styles.bladeStack, { gap: viewportMetrics.insets.sectionGap }]}>
+				<View
+					style={[
+						styles.bladeSurface,
+						{ backgroundColor: bladeSurface, borderRadius: viewportMetrics.radius.card },
+					]}
+				>
 					<CareBlade
 						colors={["#F97316", "#DC2626"]}
 						iconName="ambulance"
@@ -86,7 +109,12 @@ export default function MapCareHistoryModal({
 						mutedColor={mutedColor}
 					/>
 				</View>
-				<View style={[styles.bladeSurface, { backgroundColor: bladeSurface }]}>
+				<View
+					style={[
+						styles.bladeSurface,
+						{ backgroundColor: bladeSurface, borderRadius: viewportMetrics.radius.card },
+					]}
+				>
 					<CareBlade
 						colors={["#38BDF8", "#2563EB"]}
 						iconName="bed"
@@ -97,7 +125,12 @@ export default function MapCareHistoryModal({
 						mutedColor={mutedColor}
 					/>
 				</View>
-				<View style={[styles.bladeSurface, { backgroundColor: bladeSurface }]}>
+				<View
+					style={[
+						styles.bladeSurface,
+						{ backgroundColor: bladeSurface, borderRadius: viewportMetrics.radius.card },
+					]}
+				>
 					<CareBlade
 						colors={["#14B8A6", "#0F766E"]}
 						iconName="hospital-box"
@@ -111,9 +144,20 @@ export default function MapCareHistoryModal({
 			</View>
 
 			{hasVisits ? (
-				<View style={styles.recentSection}>
+				<View style={[styles.recentSection, { marginTop: Math.max(8, viewportMetrics.insets.sectionGap - 4) }]}>
 					<View style={styles.recentHeader}>
-						<Text style={[styles.recentTitle, { color: titleColor }]}>Recent visits</Text>
+						<Text
+							style={[
+								styles.recentTitle,
+								{
+									color: titleColor,
+									fontSize: viewportMetrics.type.title,
+									lineHeight: viewportMetrics.type.titleLineHeight,
+								},
+							]}
+						>
+							Recent visits
+						</Text>
 						<Pressable
 							onPress={() => {
 								onClose();
@@ -133,6 +177,7 @@ export default function MapCareHistoryModal({
 									backgroundColor: isDarkMode
 										? "rgba(255,255,255,0.06)"
 										: "rgba(15,23,42,0.04)",
+									borderRadius: viewportMetrics.radius.card,
 								},
 							]}
 						>

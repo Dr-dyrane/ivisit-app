@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../../constants/colors";
 import { useTheme } from "../../../contexts/ThemeContext";
 import useAuthViewport from "../../../hooks/ui/useAuthViewport";
+import getViewportSurfaceMetrics from "../../../utils/ui/viewportSurfaceMetrics";
 import EntryActionButton from "../../entry/EntryActionButton";
 import IOSInstallHintCard from "../install/IOSInstallHintCard";
 import WelcomeAmbientGlows from "./WelcomeAmbientGlows";
@@ -113,6 +114,16 @@ export default function WelcomeStageBase({
 	const browserInsetBottom = viewport.isWeb ? viewport.browserInsetBottom || 0 : 0;
 	const resolvedInsetsTop = (insets?.top || 0) + browserInsetTop;
 	const resolvedInsetsBottom = (insets?.bottom || 0) + browserInsetBottom;
+	const sharedMetrics = useMemo(
+		() =>
+			getViewportSurfaceMetrics({
+				width,
+				height,
+				platform: Platform.OS,
+				presentationMode: layout === "split" ? "modal" : "sheet",
+			}),
+		[height, layout, width],
+	);
 	const entranceOpacity = useRef(new Animated.Value(0)).current;
 	const entranceTranslate = useRef(new Animated.Value(18)).current;
 	const heroMotion = useRef(new Animated.Value(0)).current;
@@ -213,10 +224,10 @@ export default function WelcomeStageBase({
 				isVeryShortHeight: viewport.isVeryShortHeight,
 				isShortHeight: viewport.isShortHeight,
 				isLargeMonitor: viewport.isLargeMonitor,
-				horizontalPadding: viewport.horizontalPadding,
-				bodyTextSize: viewport.bodyTextSize,
-				bodyTextLineHeight: viewport.bodyTextLineHeight,
-				entryPrimaryActionHeight: viewport.entryPrimaryActionHeight,
+				horizontalPadding: sharedMetrics.insets.horizontal,
+				bodyTextSize: sharedMetrics.type.body,
+				bodyTextLineHeight: sharedMetrics.type.bodyLineHeight,
+				entryPrimaryActionHeight: sharedMetrics.cta.primaryHeight,
 				viewportHeight: height,
 				viewportWidth: width,
 				height,
@@ -234,11 +245,11 @@ export default function WelcomeStageBase({
 			resolveThemeOverrides,
 			resolvedInsetsBottom,
 			resolvedInsetsTop,
+			sharedMetrics.cta.primaryHeight,
+			sharedMetrics.insets.horizontal,
+			sharedMetrics.type.body,
+			sharedMetrics.type.bodyLineHeight,
 			themeContext,
-			viewport.bodyTextLineHeight,
-			viewport.bodyTextSize,
-			viewport.entryPrimaryActionHeight,
-			viewport.horizontalPadding,
 			viewport.isCompactPhone,
 			viewport.isLargeMonitor,
 			viewport.isShortHeight,
@@ -265,8 +276,8 @@ export default function WelcomeStageBase({
 				disabled={isRequestOpening && intent.key === "emergency"}
 				height={
 					intent.variant === "primary"
-						? Math.max(metrics.primaryActionHeight, 60)
-						: metrics.secondaryActionHeight
+						? Math.max(metrics.primaryActionHeight, sharedMetrics.cta.primaryHeight)
+						: Math.max(metrics.secondaryActionHeight, sharedMetrics.cta.secondaryHeight)
 				}
 				fullWidth={false}
 				minWidth={intent.variant === "primary" ? (layout === "split" ? 256 : 296) : 220}
@@ -297,8 +308,14 @@ export default function WelcomeStageBase({
 	});
 
 	const headlineDisplayStyle = {
-		fontSize: Math.round((metrics?.headlineSize || 44) * 1.12),
-		lineHeight: Math.round((metrics?.headlineLineHeight || 50) * 1.24),
+		fontSize:
+			layout === "split"
+				? Math.round(sharedMetrics.type.headline * 1.06)
+				: Math.min(sharedMetrics.type.headline, viewport.welcomeTitleSize),
+		lineHeight:
+			layout === "split"
+				? Math.round(sharedMetrics.type.headlineLineHeight * 1.12)
+				: Math.min(sharedMetrics.type.headlineLineHeight, viewport.welcomeTitleLineHeight),
 		paddingBottom: 8,
 		maxWidth:
 			layout === "split"
@@ -312,8 +329,8 @@ export default function WelcomeStageBase({
 			layout === "split"
 				? Math.max(metrics?.helperMaxWidth || 520, 520)
 				: 336,
-		fontSize: Math.max(15, metrics?.helperSize || 16),
-		lineHeight: Math.max(22, metrics?.helperLineHeight || 22),
+		fontSize: Math.max(15, metrics?.helperSize || sharedMetrics.type.body),
+		lineHeight: Math.max(22, metrics?.helperLineHeight || sharedMetrics.type.bodyLineHeight),
 		opacity: isDarkMode ? 0.86 : 0.78,
 		letterSpacing: 0.05,
 		fontWeight: Platform.OS === "ios" ? "500" : "400",
@@ -462,10 +479,30 @@ export default function WelcomeStageBase({
 
 	const brandBlock = (
 		<View style={[styles.brandBlock, { opacity: 0.88 }]}>
-			<Image source={LOGO} resizeMode="contain" style={[styles.logo, { transform: [{ scale: 0.88 }] }]} />
-			<Text style={[styles.brandText, { opacity: 0.84 }]}> 
+			<Image
+				source={LOGO}
+				resizeMode="contain"
+				style={[
+					styles.logo,
+					{
+						width: sharedMetrics.welcome.logoSize,
+						height: sharedMetrics.welcome.logoSize,
+						transform: [{ scale: 0.88 }],
+					},
+				]}
+			/>
+			<Text
+				style={[
+					styles.brandText,
+					{
+						fontSize: sharedMetrics.welcome.brandSize,
+						lineHeight: Math.round(sharedMetrics.welcome.brandSize * 1.08),
+						opacity: 0.84,
+					},
+				]}
+			>
 				iVisit
-				<Text style={styles.brandDot}>.</Text>
+				<Text style={[styles.brandDot, { fontSize: sharedMetrics.welcome.brandSize + 2 }]}>.</Text>
 			</Text>
 		</View>
 	);
@@ -526,7 +563,11 @@ export default function WelcomeStageBase({
 					resizeMode="contain"
 					style={[
 						styles.heroImage,
-						{ transform: [{ translateX: heroTranslateX }, { translateY: -8 }, { scale: 0.94 }] },
+						{
+							width: sharedMetrics.welcome.heroWidth,
+							height: sharedMetrics.welcome.heroHeight,
+							transform: [{ translateX: heroTranslateX }, { translateY: -8 }, { scale: 0.94 }],
+						},
 					]}
 				/>
 			</View>
@@ -537,7 +578,11 @@ export default function WelcomeStageBase({
 					resizeMode="contain"
 					style={[
 						styles.heroImage,
-						{ transform: [{ translateX: heroTranslateX }, { translateY: -8 }, { scale: 0.94 }] },
+						{
+							width: Math.min(sharedMetrics.welcome.heroWidth, viewport.heroImageWidth),
+							height: Math.min(sharedMetrics.welcome.heroHeight, viewport.heroImageHeight),
+							transform: [{ translateX: heroTranslateX }, { translateY: -8 }, { scale: 0.94 }],
+						},
 					]}
 				/>
 			</View>
@@ -555,9 +600,16 @@ export default function WelcomeStageBase({
 				style={styles.scrollView}
 				contentContainerStyle={[
 					styles.scrollContent,
+					{
+						paddingHorizontal: sharedMetrics.insets.horizontal,
+						paddingTop: Math.max(metrics?.topPadding || 0, sharedMetrics.welcome.topPadding),
+						paddingBottom: Math.max(metrics?.bottomPadding || 0, sharedMetrics.welcome.bottomPadding),
+					},
 					shouldDockSingleActionBlock
 						? {
-								paddingBottom: (metrics?.bottomPadding || 0) + dockedActionClearance,
+								paddingBottom:
+									Math.max(metrics?.bottomPadding || 0, sharedMetrics.welcome.bottomPadding) +
+									dockedActionClearance,
 							}
 						: null,
 				]}
@@ -628,7 +680,7 @@ export default function WelcomeStageBase({
 						style={{
 							paddingTop: 28,
 							paddingBottom: metrics?.bottomPadding || 0,
-							paddingHorizontal: viewport.horizontalPadding,
+							paddingHorizontal: sharedMetrics.insets.horizontal,
 						}}
 					>
 						<View

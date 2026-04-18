@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
 	Animated,
 	Easing,
@@ -14,6 +14,7 @@ import MaskedView from "@react-native-masked-view/masked-view";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../../constants/colors";
 import { useTheme } from "../../../contexts/ThemeContext";
+import getViewportSurfaceMetrics from "../../../utils/ui/viewportSurfaceMetrics";
 import EntryActionButton from "../../entry/EntryActionButton";
 import WelcomeAmbientGlows from "../WelcomeAmbientGlows";
 import { WELCOME_COPY, WELCOME_INTENTS } from "../welcomeContent";
@@ -43,6 +44,16 @@ export default function WelcomeWideWebView({
 	} = animation;
 
 	useWelcomeWebSurfaceChrome(isDarkMode);
+	const sharedMetrics = useMemo(
+		() =>
+			getViewportSurfaceMetrics({
+				width,
+				height,
+				platform: Platform.OS,
+				presentationMode: "modal",
+			}),
+		[height, width],
+	);
 
 	useEffect(() => {
 		Animated.parallel([
@@ -105,11 +116,15 @@ export default function WelcomeWideWebView({
 		viewportHeight: height,
 		viewportWidth: width,
 		isDarkMode,
+		horizontalPadding: sharedMetrics.insets.horizontal,
+		bodyTextSize: sharedMetrics.type.body,
+		bodyTextLineHeight: sharedMetrics.type.bodyLineHeight,
+		entryPrimaryActionHeight: sharedMetrics.cta.primaryHeight,
 	});
 
 	const headlineDisplayStyle = {
-		fontSize: Math.round((metrics?.headlineSize || 56) * 1.12),
-		lineHeight: Math.round((metrics?.headlineLineHeight || 60) * 1.24),
+		fontSize: Math.round(sharedMetrics.type.headline * 1.12),
+		lineHeight: Math.round(sharedMetrics.type.headlineLineHeight * 1.18),
 		paddingBottom: 8,
 		maxWidth: Math.max(metrics?.leftColumnWidth || 560, 560),
 	};
@@ -117,8 +132,8 @@ export default function WelcomeWideWebView({
 	const helperDisplayStyle = {
 		marginTop: Math.max(metrics?.stageSpacing?.headlineToHelper || 14, 14),
 		maxWidth: Math.max(metrics?.helperMaxWidth || 520, 520),
-		fontSize: Math.max(15, metrics?.helperSize || 16),
-		lineHeight: Math.max(22, metrics?.helperLineHeight || 22),
+		fontSize: Math.max(15, metrics?.helperSize || sharedMetrics.type.body),
+		lineHeight: Math.max(22, metrics?.helperLineHeight || sharedMetrics.type.bodyLineHeight),
 		opacity: isDarkMode ? 0.86 : 0.78,
 		letterSpacing: 0.05,
 		fontWeight: Platform.OS === "ios" ? "500" : "400",
@@ -193,7 +208,14 @@ export default function WelcomeWideWebView({
 
 			<ScrollView
 				style={styles.scrollView}
-				contentContainerStyle={styles.scrollContent}
+				contentContainerStyle={[
+					styles.scrollContent,
+					{
+						paddingHorizontal: sharedMetrics.insets.horizontal,
+						paddingTop: Math.max(metrics?.topPadding || 0, sharedMetrics.welcome.topPadding),
+						paddingBottom: Math.max(metrics?.bottomPadding || 0, sharedMetrics.welcome.bottomPadding),
+					},
+				]}
 				showsVerticalScrollIndicator={false}
 				keyboardShouldPersistTaps="handled"
 			>
@@ -211,11 +233,27 @@ export default function WelcomeWideWebView({
 							<Image
 								source={require("../../../assets/logo.png")}
 								resizeMode="contain"
-								style={[styles.logo, { transform: [{ scale: 0.88 }] }]}
+								style={[
+									styles.logo,
+									{
+										width: sharedMetrics.welcome.logoSize,
+										height: sharedMetrics.welcome.logoSize,
+										transform: [{ scale: 0.88 }],
+									},
+								]}
 							/>
-							<Text style={[styles.brandText, { opacity: 0.84 }]}> 
+							<Text
+								style={[
+									styles.brandText,
+									{
+										fontSize: sharedMetrics.welcome.brandSize,
+										lineHeight: Math.round(sharedMetrics.welcome.brandSize * 1.08),
+										opacity: 0.84,
+									},
+								]}
+							>
 								iVisit
-								<Text style={styles.brandDot}>.</Text>
+								<Text style={[styles.brandDot, { fontSize: sharedMetrics.welcome.brandSize + 2 }]}>.</Text>
 							</Text>
 						</View>
 
@@ -249,8 +287,8 @@ export default function WelcomeWideWebView({
 										disabled={isRequestOpening && intent.key === "emergency"}
 										height={
 											intent.variant === "primary"
-												? Math.max(metrics.primaryActionHeight, 60)
-												: metrics.secondaryActionHeight
+												? Math.max(metrics.primaryActionHeight, sharedMetrics.cta.primaryHeight)
+												: Math.max(metrics.secondaryActionHeight, sharedMetrics.cta.secondaryHeight)
 										}
 										fullWidth={false}
 										minWidth={intent.variant === "primary" ? 256 : 220}
@@ -331,11 +369,15 @@ export default function WelcomeWideWebView({
 						<Animated.Image
 							source={require("../../../assets/hero/speed.png")}
 							resizeMode="contain"
-							style={[
-								styles.heroImage,
-								{ transform: [{ translateX: heroTranslateX }, { translateY: -8 }, { scale: 0.94 }] },
-							]}
-						/>
+						style={[
+							styles.heroImage,
+							{
+								width: sharedMetrics.welcome.heroWidth,
+								height: sharedMetrics.welcome.heroHeight,
+								transform: [{ translateX: heroTranslateX }, { translateY: -8 }, { scale: 0.94 }],
+							},
+						]}
+					/>
 					</View>
 				</Animated.View>
 			</ScrollView>

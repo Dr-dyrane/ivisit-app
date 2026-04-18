@@ -137,17 +137,22 @@ export default function MapHospitalDetailBody({
 			onMoveShouldSetPanResponder: (_event, gestureState) => {
 				const absDx = Math.abs(gestureState.dx);
 				const absDy = Math.abs(gestureState.dy);
-				return absDx > 24 && absDy < 14 && absDx > absDy * 2;
+				const absVx = Math.abs(gestureState.vx || 0);
+				return absDx > 16 && (absDx > absDy * 1.16 || absVx > 0.2);
 			},
 			onMoveShouldSetPanResponderCapture: (_event, gestureState) => {
 				const absDx = Math.abs(gestureState.dx);
 				const absDy = Math.abs(gestureState.dy);
-				return absDx > 24 && absDy < 14 && absDx > absDy * 2;
+				const absVx = Math.abs(gestureState.vx || 0);
+				return absDx > 16 && (absDx > absDy * 1.16 || absVx > 0.2);
 			},
 			onPanResponderRelease: (_event, gestureState) => {
+				const absDx = Math.abs(gestureState.dx);
+				const absDy = Math.abs(gestureState.dy);
+				const absVx = Math.abs(gestureState.vx || 0);
 				if (
-					Math.abs(gestureState.dx) > 64 &&
-					Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.8
+					(absDx > 42 && absDx > absDy * 1.08) ||
+					(absVx > 0.36 && absDx > 18)
 				) {
 					onCycleHospital();
 				}

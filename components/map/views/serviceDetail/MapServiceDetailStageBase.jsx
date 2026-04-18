@@ -9,6 +9,7 @@ import useMapSheetDetents from "../../core/useMapSheetDetents";
 import { getHospitalDetailServiceImageSource } from "../../surfaces/hospitals/mapHospitalDetail.content";
 import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import sheetStageStyles from "../shared/mapSheetStage.styles";
+import useMapStageResponsiveMetrics from "../shared/useMapStageResponsiveMetrics";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
 import {
@@ -45,6 +46,7 @@ export default function MapServiceDetailStageBase({
 	);
 	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
+	const stageMetrics = useMapStageResponsiveMetrics({ presentationMode });
 	const webWideInsetStyle =
 		Platform.OS === "web" && presentationMode !== "sheet"
 			? styles.webWideContentInset
@@ -148,17 +150,22 @@ export default function MapServiceDetailStageBase({
 				onMoveShouldSetPanResponder: (_event, gestureState) => {
 					const absDx = Math.abs(gestureState.dx || 0);
 					const absDy = Math.abs(gestureState.dy || 0);
-					return absDx > 24 && absDx > absDy * 1.5;
+					const absVx = Math.abs(gestureState.vx || 0);
+					return absDx > 16 && (absDx > absDy * 1.18 || absVx > 0.22);
 				},
 				onMoveShouldSetPanResponderCapture: (_event, gestureState) => {
 					const absDx = Math.abs(gestureState.dx || 0);
 					const absDy = Math.abs(gestureState.dy || 0);
-					return absDx > 24 && absDx > absDy * 1.5;
+					const absVx = Math.abs(gestureState.vx || 0);
+					return absDx > 16 && (absDx > absDy * 1.18 || absVx > 0.22);
 				},
 				onPanResponderRelease: (_event, gestureState) => {
 					const absDx = Math.abs(gestureState.dx || 0);
 					const absDy = Math.abs(gestureState.dy || 0);
-					if (absDx < 58 || absDx < absDy * 1.35) return;
+					const absVx = Math.abs(gestureState.vx || 0);
+					const hasDistanceIntent = absDx > 42 && absDx > absDy * 1.08;
+					const hasVelocityIntent = absVx > 0.38 && absDx > 18;
+					if (!hasDistanceIntent && !hasVelocityIntent) return;
 					changeServiceByOffset(gestureState.dx < 0 ? 1 : -1);
 				},
 				onPanResponderTerminationRequest: () => true,
@@ -189,6 +196,7 @@ export default function MapServiceDetailStageBase({
 					onClose={onClose}
 					titleColor={titleColor}
 					closeSurface={closeSurface}
+					stageMetrics={stageMetrics}
 					containerStyle={webWideTopSlotInsetStyle}
 				/>
 			}
@@ -227,10 +235,11 @@ export default function MapServiceDetailStageBase({
 					positionLabel={serviceType === "room" ? statusLabel : null}
 					servicePositionLabel={servicePositionLabel}
 					serviceType={serviceType}
+					stageMetrics={stageMetrics}
 					surfaceColor={surfaceColor}
 				/>
 
-				<View style={styles.sectionSpacer} />
+				<View style={[styles.sectionSpacer, stageMetrics.section.spacerStyle]} />
 
 				{!isExpanded ? (
 					<>
@@ -244,10 +253,13 @@ export default function MapServiceDetailStageBase({
 							selectedServiceId={service?.id || service?.title || null}
 							serviceItems={serviceItems}
 							serviceType={serviceType}
+							stageMetrics={stageMetrics}
 							titleColor={titleColor}
 						/>
 
-						{hasServiceCarousel ? <View style={styles.sectionSpacer} /> : null}
+						{hasServiceCarousel ? (
+							<View style={[styles.sectionSpacer, stageMetrics.section.spacerStyle]} />
+						) : null}
 					</>
 				) : null}
 
@@ -261,10 +273,11 @@ export default function MapServiceDetailStageBase({
 					service={service}
 					serviceType={serviceType}
 					surfaceColor={surfaceColor}
+					stageMetrics={stageMetrics}
 					titleColor={titleColor}
 				/>
 
-				<View style={styles.sectionSpacer} />
+				<View style={[styles.sectionSpacer, stageMetrics.section.spacerStyle]} />
 
 				{!(isExpanded && hasServiceCarousel) && serviceType !== "ambulance" ? (
 					<MapServiceDetailMetrics
@@ -278,7 +291,7 @@ export default function MapServiceDetailStageBase({
 
 				{isExpanded && hasServiceCarousel ? (
 					<>
-						<View style={styles.sectionSpacerLarge} />
+						<View style={[styles.sectionSpacerLarge, stageMetrics.section.largeSpacerStyle]} />
 						<MapServiceDetailOptionList
 							accent={accent}
 							isDarkMode={isDarkMode}
@@ -289,14 +302,15 @@ export default function MapServiceDetailStageBase({
 							serviceItems={serviceItems}
 							serviceType={serviceType}
 							surfaceColor={nestedSurfaceColor}
+							stageMetrics={stageMetrics}
 							titleColor={titleColor}
 						/>
 					</>
 				) : (
-					<View style={styles.sectionSpacerLarge} />
+					<View style={[styles.sectionSpacerLarge, stageMetrics.section.largeSpacerStyle]} />
 				)}
 
-				<View style={styles.sectionSpacerLarge} />
+				<View style={[styles.sectionSpacerLarge, stageMetrics.section.largeSpacerStyle]} />
 
 				<MapServiceDetailFeatures
 					accent={accent}
@@ -306,6 +320,7 @@ export default function MapServiceDetailStageBase({
 					mutedColor={mutedColor}
 					nestedSurfaceColor={nestedSurfaceColor}
 					panHandlers={swipeHandlers}
+					stageMetrics={stageMetrics}
 					titleColor={titleColor}
 				/>
 
@@ -316,6 +331,7 @@ export default function MapServiceDetailStageBase({
 					modalContainedStyle={null}
 					onConfirm={onConfirm}
 					serviceType={serviceType}
+					stageMetrics={stageMetrics}
 				/>
 			</MapStageBodyScroll>
 		</MapSheetShell>

@@ -106,12 +106,16 @@ export function MapServiceDetailTopSlot({
 	onClose,
 	titleColor,
 	closeSurface,
+	stageMetrics,
 	containerStyle,
 }) {
 	return (
-		<View style={[styles.topSlot, containerStyle]}>
+		<View style={[styles.topSlot, stageMetrics?.topSlot?.containerStyle, containerStyle]}>
 			<View style={styles.topSlotSpacer} />
-			<Text numberOfLines={1} style={[styles.topSlotTitle, { color: titleColor }]}>
+			<Text
+				numberOfLines={1}
+				style={[styles.topSlotTitle, stageMetrics?.topSlot?.titleStyle, { color: titleColor }]}
+			>
 				{title}
 			</Text>
 			<MapHeaderIconButton
@@ -136,6 +140,7 @@ export function MapServiceDetailHeader({
 	positionLabel,
 	servicePositionLabel,
 	serviceType,
+	stageMetrics,
 	surfaceColor,
 }) {
 	const typeLabel =
@@ -145,7 +150,7 @@ export function MapServiceDetailHeader({
 
 	return (
 		<MapStageGlassPanel
-			style={styles.headerBlock}
+			style={[styles.headerBlock, stageMetrics?.panel?.cardStyle]}
 			backgroundColor={surfaceColor}
 			glassTokens={glassTokens}
 			isDarkMode={isDarkMode}
@@ -158,7 +163,10 @@ export function MapServiceDetailHeader({
 					<Text style={[styles.positionLabel, { color: mutedColor }]}>{servicePositionLabel}</Text>
 				) : null}
 			</View>
-			<Text style={[styles.summary, { color: mutedColor }]} numberOfLines={2}>
+			<Text
+				style={[styles.summary, stageMetrics?.panel?.summaryStyle, { color: mutedColor }]}
+				numberOfLines={2}
+			>
 				{copy.summary}
 			</Text>
 			{positionLabel ? (
@@ -178,6 +186,7 @@ export function MapServiceDetailSwitchRow({
 	selectedServiceId,
 	serviceItems = [],
 	serviceType,
+	stageMetrics,
 	titleColor,
 }) {
 	if (!Array.isArray(serviceItems) || serviceItems.length < 2) {
@@ -185,7 +194,7 @@ export function MapServiceDetailSwitchRow({
 	}
 
 	return (
-		<View style={styles.switchRow}>
+		<View style={[styles.switchRow, stageMetrics?.switch?.rowStyle]}>
 			{serviceItems.map((item) => {
 				const isActive = (item?.id || item?.title) === selectedServiceId;
 				const optionVisual = getServiceOptionVisual(item, serviceType, accent);
@@ -203,6 +212,7 @@ export function MapServiceDetailSwitchRow({
 						}
 						style={({ pressed }) => [
 							styles.switchPill,
+							stageMetrics?.switch?.pillStyle,
 							{
 								backgroundColor: isActive
 									? COLORS.brandPrimary
@@ -219,6 +229,7 @@ export function MapServiceDetailSwitchRow({
 						<Text
 							style={[
 								styles.switchPillLabel,
+								stageMetrics?.switch?.labelStyle,
 								{ color: isActive ? "#FFFFFF" : optionVisual.accent },
 							]}
 							numberOfLines={1}
@@ -242,6 +253,7 @@ export function MapServiceDetailHero({
 	service,
 	serviceType,
 	surfaceColor,
+	stageMetrics,
 	titleColor,
 }) {
 	const isAmbulance = serviceType === "ambulance";
@@ -263,7 +275,7 @@ export function MapServiceDetailHero({
 
 	return (
 		<MapStageGlassPanel
-			style={styles.heroCard}
+			style={[styles.heroCard, stageMetrics?.hero?.cardStyle]}
 			backgroundColor={surfaceColor}
 			glassTokens={glassTokens}
 			isDarkMode={isDarkMode}
@@ -283,14 +295,25 @@ export function MapServiceDetailHero({
 			/>
 			{heroMetrics.length ? (
 				<View style={styles.heroOverlay}>
-					<View style={styles.heroMetaRow}>
+					<View style={[styles.heroMetaRow, stageMetrics?.hero?.metaRowStyle]}>
 						{heroMetrics.map((metric) => (
 							<View
 								key={`${metric.iconName}-${metric.label}`}
-								style={[styles.metaPill, { backgroundColor: heroPillSurfaceColor }]}
+								style={[
+									styles.metaPill,
+									stageMetrics?.hero?.metaPillStyle,
+									{ backgroundColor: heroPillSurfaceColor },
+								]}
 							>
 								<Ionicons name={metric.iconName} size={14} color={accent} />
-								<Text style={[styles.metaLabel, { color: titleColor }]} numberOfLines={1}>
+								<Text
+									style={[
+										styles.metaLabel,
+										stageMetrics?.hero?.metaLabelStyle,
+										{ color: titleColor },
+									]}
+									numberOfLines={1}
+								>
 									{metric.label}
 								</Text>
 							</View>
@@ -343,6 +366,7 @@ export function MapServiceDetailOptionList({
 	serviceItems = [],
 	serviceType,
 	surfaceColor,
+	stageMetrics,
 	titleColor,
 }) {
 	if (!Array.isArray(serviceItems) || serviceItems.length < 2) {
@@ -378,6 +402,7 @@ export function MapServiceDetailOptionList({
 						}
 						style={({ pressed }) => [
 							styles.optionRow,
+							stageMetrics?.expanded?.rowStyle,
 							index > 0 ? styles.optionRowSpaced : null,
 							{
 								backgroundColor: isActive ? COLORS.brandPrimary : inactiveSurfaceColor,
@@ -403,19 +428,24 @@ export function MapServiceDetailOptionList({
 								/>
 							</View>
 							<View style={styles.optionCopy}>
-								<Text
-									style={[styles.optionTitle, { color: isActive ? "#FFFFFF" : titleColor }]}
-									numberOfLines={1}
-								>
+						<Text
+							style={[
+								styles.optionTitle,
+								stageMetrics?.expanded?.titleStyle,
+								{ color: isActive ? "#FFFFFF" : titleColor },
+							]}
+							numberOfLines={1}
+						>
 									{item?.title || "Option"}
 								</Text>
-								<Text
-									style={[
-										styles.optionMeta,
-										{ color: isActive ? "rgba(255,255,255,0.82)" : mutedColor },
-									]}
-									numberOfLines={1}
-								>
+						<Text
+							style={[
+								styles.optionMeta,
+								stageMetrics?.expanded?.metaStyle,
+								{ color: isActive ? "rgba(255,255,255,0.82)" : mutedColor },
+							]}
+							numberOfLines={1}
+						>
 									{`${statusLabel} - ${priceLabel}`}
 								</Text>
 							</View>
@@ -425,8 +455,8 @@ export function MapServiceDetailOptionList({
 								source={imageSource}
 								resizeMode="contain"
 								fadeDuration={0}
-								style={styles.optionImage}
-							/>
+							style={[styles.optionImage, stageMetrics?.expanded?.imageStyle]}
+						/>
 						) : null}
 						<Ionicons
 							name="chevron-forward"
@@ -448,13 +478,14 @@ export function MapServiceDetailFeatures({
 	mutedColor,
 	nestedSurfaceColor,
 	panHandlers,
+	stageMetrics,
 	titleColor,
 }) {
 	return (
 		<View>
 			<Text style={[styles.sectionLabel, { color: mutedColor }]}>What to expect</Text>
 			<MapStageGlassPanel
-				style={styles.featureList}
+				style={[styles.featureList, stageMetrics?.panel?.cardStyle]}
 				backgroundColor={nestedSurfaceColor}
 				glassTokens={glassTokens}
 				isDarkMode={isDarkMode}
@@ -466,7 +497,11 @@ export function MapServiceDetailFeatures({
 						style={[styles.featureRow, index > 0 ? styles.featureRowSpaced : null]}
 					>
 						<View style={[styles.featureDot, { backgroundColor: accent }]} />
-						<Text style={[styles.featureText, { color: titleColor }]}>{feature}</Text>
+						<Text
+							style={[styles.featureText, stageMetrics?.panel?.featureStyle, { color: titleColor }]}
+						>
+							{feature}
+						</Text>
 					</View>
 				))}
 			</MapStageGlassPanel>
@@ -479,6 +514,7 @@ export function MapServiceDetailFooter({
 	modalContainedStyle,
 	onConfirm,
 	serviceType,
+	stageMetrics,
 }) {
 	const label = isSelected
 		? serviceType === "room"
@@ -489,13 +525,13 @@ export function MapServiceDetailFooter({
 			: MAP_SERVICE_DETAIL_COPY.CONFIRM_TRANSPORT;
 
 	return (
-		<View style={[styles.footerDock, modalContainedStyle]}>
+		<View style={[styles.footerDock, stageMetrics?.footer?.dockStyle, modalContainedStyle]}>
 			<EntryActionButton
 				label={label}
 				onPress={onConfirm}
 				variant="primary"
-				height={50}
-				radius={24}
+				height={stageMetrics?.footer?.buttonHeight || 50}
+				radius={stageMetrics?.footer?.buttonRadius || 24}
 				fullWidth
 				style={styles.primaryButton}
 			/>

@@ -57,30 +57,31 @@ export default function EntryActionButton({
 					backgroundColor,
 					borderRadius: resolvedRadius,
 					borderCurve: "continuous",
-					borderWidth: focused ? 2 : 0,
-					borderColor: focused
-						? isPrimary
-							? "rgba(255,255,255,0.74)"
-							: COLORS.brandPrimary
-						: "transparent",
-					opacity: disabled || loading ? 0.78 : pressed ? 0.96 : 1,
-					transform: [{ scale: pressed ? 0.982 : 1 }],
+					opacity: disabled || loading ? 0.78 : pressed ? 0.98 : 1,
+					transform: [{ scale: pressed ? 0.985 : 1 }, { translateY: pressed ? 1 : 0 }],
 					shadowColor: isPrimary ? COLORS.brandPrimary : "#0F172A",
 					shadowOpacity:
 						focused && Platform.OS === "web"
 							? Math.max(
-								isPrimary ? (isDarkMode ? 0.24 : 0.16) : isDarkMode ? 0.18 : 0.05,
+								isPrimary ? (isDarkMode ? 0.34 : 0.24) : isDarkMode ? 0.18 : 0.05,
 								0.16,
 							)
 							: isPrimary
-								? (isDarkMode ? 0.2 : 0.12)
+								? (isDarkMode ? 0.28 : 0.18)
 								: isDarkMode
 									? 0.18
 									: 0.05,
 					shadowRadius:
 						focused && Platform.OS === "web"
-							? (isPrimary ? 24 : 26)
-							: (isPrimary ? 18 : 20),
+							? (isPrimary ? 28 : 26)
+							: (isPrimary ? 24 : 20),
+					shadowOffset:
+						focused && Platform.OS === "web"
+							? { width: 0, height: isPrimary ? 18 : 14 }
+							: isPrimary
+								? { width: 0, height: 16 }
+								: { width: 0, height: 14 },
+					elevation: isPrimary ? 10 : 4,
 				},
 				style,
 				Platform.OS === "web" ? styles.cursor : null,
@@ -100,6 +101,17 @@ export default function EntryActionButton({
 							borderRadius: resolvedRadius,
 							borderCurve: "continuous",
 							opacity: isPrimary ? 0.07 : isDarkMode ? 0.06 : 0.1,
+						},
+					]}
+				/>
+				<View
+					pointerEvents="none"
+					style={[
+						styles.bottomShade,
+						{
+							borderBottomLeftRadius: resolvedRadius,
+							borderBottomRightRadius: resolvedRadius,
+							opacity: isPrimary ? (isDarkMode ? 0.18 : 0.12) : isDarkMode ? 0.1 : 0.05,
 						},
 					]}
 				/>
@@ -167,12 +179,13 @@ const styles = StyleSheet.create({
 	base: {
 		justifyContent: "center",
 		shadowOffset: { width: 0, height: 14 },
-		overflow: "hidden",
+		overflow: "visible",
 	},
 	fill: {
 		flex: 1,
 		justifyContent: "center",
 		paddingHorizontal: 20,
+		overflow: "hidden",
 	},
 	highlight: {
 		position: "absolute",
@@ -181,6 +194,14 @@ const styles = StyleSheet.create({
 		top: 1,
 		height: "42%",
 		backgroundColor: "#FFFFFF",
+	},
+	bottomShade: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		height: "38%",
+		backgroundColor: "#120909",
 	},
 	content: {
 		flexDirection: "row",

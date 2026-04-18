@@ -15,6 +15,7 @@ import { getMapSheetTokens } from "../../tokens/mapSheetTokens";
 import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import sheetStageStyles from "../shared/mapSheetStage.styles";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
+import useMapStageResponsiveMetrics from "../shared/useMapStageResponsiveMetrics";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import {
 	MapBedDecisionDetailsCard,
@@ -59,6 +60,7 @@ export default function MapBedDecisionStageBase({
 	);
 	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
+	const stageMetrics = useMapStageResponsiveMetrics({ presentationMode });
 	const webWideInsetStyle =
 		Platform.OS === "web" && presentationMode !== "sheet"
 			? styles.webWideContentInset
@@ -277,6 +279,7 @@ export default function MapBedDecisionStageBase({
 				<MapBedDecisionTopSlot
 					modalContainedStyle={modalContainedStyle}
 					contentInsetStyle={webWideTopSlotInsetStyle}
+					stageMetrics={stageMetrics}
 					titleColor={titleColor}
 					subtitleColor={mutedColor}
 					closeSurfaceColor={closeSurfaceColor}
@@ -328,6 +331,7 @@ export default function MapBedDecisionStageBase({
 							decision={decision}
 							glassTokens={glassTokens}
 							isDarkMode={isDarkMode}
+							stageMetrics={stageMetrics}
 							titleColor={titleColor}
 							surfaceColor={surfaceColor}
 							onOpenRoomDetails={handleOpenRoomDetails}
@@ -340,6 +344,7 @@ export default function MapBedDecisionStageBase({
 									savedTransport={savedTransport}
 									glassTokens={glassTokens}
 									isDarkMode={isDarkMode}
+									stageMetrics={stageMetrics}
 									titleColor={titleColor}
 									mutedColor={mutedColor}
 									surfaceColor={nestedSurfaceColor}
@@ -348,7 +353,7 @@ export default function MapBedDecisionStageBase({
 							</>
 						) : null}
 
-						<View style={styles.sectionGap} />
+						<View style={[styles.sectionGap, stageMetrics.section.gapStyle]} />
 
 						{!isExpanded && decision.roomOptions.length > 1 ? (
 							<>
@@ -356,11 +361,12 @@ export default function MapBedDecisionStageBase({
 								<MapBedDecisionRoomSwitchRow
 									roomOptions={decision.roomOptions}
 									selectedRoomServiceId={decision.recommendedRoom?.id || null}
+									stageMetrics={stageMetrics}
 									isDarkMode={isDarkMode}
 									onSelectRoom={handleSelectRoom}
 									onAdvanceSelectedRoom={handleAdvanceSelectedRoom}
 								/>
-								<View style={styles.midSwitchSpacingBottom} />
+								<View style={[styles.midSwitchSpacingBottom, stageMetrics.section.gapStyle]} />
 							</>
 						) : null}
 
@@ -368,30 +374,33 @@ export default function MapBedDecisionStageBase({
 							<>
 								<MapBedDecisionExpandedRoomChoices
 									decision={decision}
+									stageMetrics={stageMetrics}
 									titleColor={titleColor}
 									mutedColor={mutedColor}
 									isDarkMode={isDarkMode}
 									onSelectRoom={handleSelectRoom}
 								/>
 
-								<View style={styles.sectionGap} />
+								<View style={[styles.sectionGap, stageMetrics.section.gapStyle]} />
 
 								<MapBedDecisionRouteCard
 									decision={decision}
 									glassTokens={glassTokens}
 									isDarkMode={isDarkMode}
+									stageMetrics={stageMetrics}
 									titleColor={titleColor}
 									mutedColor={mutedColor}
 									surfaceColor={nestedSurfaceColor}
 									pillSurfaceColor={pillSurfaceColor}
 								/>
 
-								<View style={styles.sectionGap} />
+								<View style={[styles.sectionGap, stageMetrics.section.gapStyle]} />
 
 								<MapBedDecisionDetailsCard
 									decision={decision}
 									glassTokens={glassTokens}
 									isDarkMode={isDarkMode}
+									stageMetrics={stageMetrics}
 									titleColor={titleColor}
 									mutedColor={mutedColor}
 									surfaceColor={nestedSurfaceColor}
@@ -403,6 +412,7 @@ export default function MapBedDecisionStageBase({
 								decision={decision}
 								glassTokens={glassTokens}
 								isDarkMode={isDarkMode}
+								stageMetrics={stageMetrics}
 								titleColor={titleColor}
 								mutedColor={mutedColor}
 								surfaceColor={nestedSurfaceColor}
@@ -420,7 +430,7 @@ export default function MapBedDecisionStageBase({
 					/>
 				)}
 
-				<View style={styles.sectionGap} />
+				<View style={[styles.sectionGap, stageMetrics.section.gapStyle]} />
 
 				<MapBedDecisionFooter
 					modalContainedStyle={null}
@@ -428,6 +438,7 @@ export default function MapBedDecisionStageBase({
 					canBrowseHospitals={canBrowseHospitals}
 					careIntent={careIntent}
 					isAdvancing={isAdvancing}
+					stageMetrics={stageMetrics}
 					onConfirm={handleCommit}
 					onOpenHospitals={onOpenHospitals}
 				/>

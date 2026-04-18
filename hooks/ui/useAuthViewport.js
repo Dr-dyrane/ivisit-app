@@ -4,6 +4,7 @@ import {
 	VIEWPORT_BREAKPOINTS,
 } from "../../constants/breakpoints";
 import useWebViewportMetrics from "./useWebViewportMetrics";
+import getViewportSurfaceMetrics from "../../utils/ui/viewportSurfaceMetrics";
 
 export function useAuthViewport() {
 	const { width: layoutWidth, height: layoutHeight } = useWindowDimensions();
@@ -30,6 +31,12 @@ export function useAuthViewport() {
 	const isShortHeight = height < 780;
 	const isVeryShortHeight = height < 680;
 	const isDialog = width >= VIEWPORT_BREAKPOINTS.tabletMin;
+	const sharedMetrics = getViewportSurfaceMetrics({
+		width,
+		height,
+		platform: Platform.OS,
+		presentationMode: isDialog ? "modal" : "sheet",
+	});
 
 	return {
 		width,
@@ -59,41 +66,65 @@ export function useAuthViewport() {
 		isShortHeight,
 		isVeryShortHeight,
 		isDialog,
-		horizontalPadding: isDesktop ? 40 : isTablet ? 32 : 24,
-		contentMaxWidth: isDesktop ? 1160 : isTablet ? 820 : width,
-		textMaxWidth: isDesktop ? 620 : isTablet ? 560 : width,
+		horizontalPadding: sharedMetrics.insets.horizontal,
+		contentMaxWidth: isDesktop ? sharedMetrics.welcome.stageMaxWidth : width,
+		textMaxWidth: isDesktop ? sharedMetrics.welcome.contentMaxWidth : width,
 		authPanelMaxWidth: isDesktop ? 560 : isTablet ? 520 : width,
 		legalMaxWidth: isDesktop ? 520 : isTablet ? 480 : width,
-		heroImageWidth: isDesktop ? 420 : isTablet ? 360 : Math.min(width - 64, 340),
-		heroImageHeight: isDesktop ? 300 : isTablet ? 260 : Math.min((width - 64) * 0.72, 240),
-		welcomeTitleSize: isDesktop ? 58 : isTablet ? 48 : isCompactPhone ? 32 : 40,
-		welcomeTitleLineHeight: isDesktop ? 62 : isTablet ? 52 : isCompactPhone ? 36 : 44,
+		heroImageWidth: isDesktop
+			? Math.min(sharedMetrics.welcome.heroWidth, 420)
+			: isTablet
+				? Math.min(sharedMetrics.welcome.heroWidth, 360)
+				: Math.min(width - sharedMetrics.insets.contentHorizontal * 2, sharedMetrics.welcome.heroWidth),
+		heroImageHeight: isDesktop
+			? Math.min(sharedMetrics.welcome.heroHeight, 300)
+			: isTablet
+				? Math.min(sharedMetrics.welcome.heroHeight, 260)
+				: Math.min(sharedMetrics.welcome.heroHeight, 240),
+		welcomeTitleSize: isDesktop
+			? Math.min(sharedMetrics.type.headline, 58)
+			: isTablet
+				? Math.min(sharedMetrics.type.headline, 48)
+				: isCompactPhone
+					? Math.min(sharedMetrics.type.headline, 32)
+					: Math.min(sharedMetrics.type.headline, 40),
+		welcomeTitleLineHeight: isDesktop
+			? Math.min(sharedMetrics.type.headlineLineHeight, 62)
+			: isTablet
+				? Math.min(sharedMetrics.type.headlineLineHeight, 52)
+				: isCompactPhone
+					? Math.min(sharedMetrics.type.headlineLineHeight, 36)
+					: Math.min(sharedMetrics.type.headlineLineHeight, 44),
 		authTitleSize: isDesktop ? 56 : isTablet ? 50 : isCompactPhone ? 38 : 44,
 		authTitleLineHeight: isDesktop ? 60 : isTablet ? 54 : isCompactPhone ? 42 : 48,
-		bodyTextSize: isDesktop ? 18 : isTablet ? 17 : 16,
-		bodyTextLineHeight: isDesktop ? 28 : isTablet ? 26 : 24,
+		bodyTextSize: sharedMetrics.type.body,
+		bodyTextLineHeight: sharedMetrics.type.bodyLineHeight,
 		ctaMaxWidth: isDesktop ? 340 : isTablet ? 360 : width,
 		surfaceMaxWidth: isDesktop ? 620 : isTablet ? 560 : width,
-		screenVerticalPadding: isDesktop ? 40 : isTablet ? 32 : 24,
+		screenVerticalPadding: sharedMetrics.insets.largeGap,
 		modalMode: isDialog ? "dialog" : "sheet",
 		modalMaxWidth: isDesktop ? 560 : isTablet ? 520 : width,
 		modalHeight: isDialog ? Math.min(height * 0.82, 820) : Math.min(height * 0.88, height - 24),
-		modalContentPadding: isDesktop ? 40 : isTablet ? 32 : isCompactPhone ? 20 : 24,
-		modalRadius: isDialog ? 36 : 32,
-		entryStageMaxWidth: isLargeMonitor ? 1180 : isDesktop ? 1040 : isTablet ? 860 : width,
-		entryContentMaxWidth: isDesktop ? 520 : isTablet ? 540 : width,
+		modalContentPadding: sharedMetrics.modal.contentPadding,
+		modalRadius: sharedMetrics.radius.modal,
+		entryStageMaxWidth: isLargeMonitor ? 1180 : isDesktop ? sharedMetrics.welcome.stageMaxWidth : isTablet ? 860 : width,
+		entryContentMaxWidth: isDesktop ? sharedMetrics.welcome.contentMaxWidth : isTablet ? 540 : width,
 		entryActionMaxWidth: isDesktop ? 420 : isTablet ? 480 : width,
 		entryTopPadding: isDesktop
-			? (isShortHeight ? 40 : 72)
+			? Math.max(40, sharedMetrics.welcome.topPadding)
 			: isTablet
-				? (isShortHeight ? 28 : 44)
+				? Math.max(28, sharedMetrics.welcome.topPadding - 8)
 				: isVeryShortHeight
 					? 12
-					: isShortHeight
-						? 20
-						: 32,
-		entryBottomPadding: isDesktop ? 40 : isTablet ? 28 : isVeryShortHeight ? 12 : 20,
-		entryPrimaryActionHeight: isDesktop ? 64 : isTablet ? 62 : isCompactPhone ? 56 : 60,
+					: Math.max(20, sharedMetrics.welcome.topPadding),
+		entryBottomPadding: isDesktop
+			? Math.max(28, sharedMetrics.welcome.bottomPadding)
+			: isTablet
+				? Math.max(20, sharedMetrics.welcome.bottomPadding)
+				: isVeryShortHeight
+					? 12
+					: Math.max(18, sharedMetrics.welcome.bottomPadding),
+		entryPrimaryActionHeight: sharedMetrics.cta.primaryHeight,
 	};
 }
 
