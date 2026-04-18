@@ -113,7 +113,8 @@ Shared implementation note:
   - bed intent = `hospital_detail -> bed_decision`
   - combined intent = `hospital_detail -> ambulance_decision` first
 - service rails/cards may inspect through `service_detail` or select directly into the proper decision phase, but they must stay upstream of commit/auth
-- `ambulance_decision` currently confirms into the existing legacy ambulance-request route after the sheet decision; `COMMIT_DETAILS` is still the next in-map phase to build
+- `ambulance_decision` now confirms into `COMMIT_DETAILS`
+- `COMMIT_DETAILS` currently hands off into the existing legacy ambulance-request route only after email/OTP and phone confirmation are complete
 - `bed_decision` currently confirms into the existing legacy bed-booking route after the sheet decision; room preselection is forwarded
 - in the combined flow, paired ambulance selection is preserved from `ambulance_decision` and then forwarded when `bed_decision` confirms
 - that saved ambulance selection is hospital-scoped; if the user changes hospitals during `bed_decision`, the flow must return to `ambulance_decision` for the new hospital before step 2 can continue
@@ -131,9 +132,9 @@ Locked posture:
 
 - keep the user on `/map`
 - keep the map mounted
-- open `COMMIT_DETAILS` directly in `expanded`
+- open `COMMIT_DETAILS` directly in the normal expanded sheet posture
 - keep it sheet-led, not modal-led and not route-led
-- keep the global active header hidden in v1; the locked selection summary remains in the sheet itself
+- keep the global smart header reserved for tracking; `COMMIT_DETAILS` uses the sheet's own compact modal header
 
 Locked interaction model:
 
@@ -144,11 +145,35 @@ Locked interaction model:
 
 Locked microstep order:
 
-1. locked selection summary
+1. sheet header owns locked hospital + step context
 2. email question
 3. OTP verification
-4. phone only if missing from the resolved authenticated profile
-5. optional triage / complaint summary
+4. phone confirmation, prefilled when the resolved profile already has it
+
+Rendering rule:
+
+- do not repeat hospital/service summary inside the body
+- the body should feel like the guest profile identity bridge: avatar, one prompt, one input, one CTA
+- header copy stays user-facing: task as title (`Confirm email`, `Enter code`, `Add phone number`), request context as subtitle (`For {hospital} · {transport tier}`)
+- single-input microsteps use the shared squircle inline action input: input and CTA share one continuous field, with a reserved right slide lane for press/loading motion
+
+Review account rule:
+
+- Google Play closed testing may use `support@ivisit.ng` inside the emergency `COMMIT_DETAILS` flow
+- static review OTP is allowed only when the app build has `EXPO_PUBLIC_REVIEW_DEMO_AUTH_ENABLED=true` and the deployed `review-demo-auth` Edge Function has `REVIEW_DEMO_AUTH_ENABLED=true`
+- the client never stores the static OTP or service-role credentials; it sends the entered code to the Edge Function, receives a short-lived real Supabase OTP, then verifies through normal Supabase auth
+- `support@ivisit.ng` must remain a patient review profile, not an admin/provider profile
+
+Google Play closed-testing note:
+
+- current reviewer email: `support@ivisit.ng`
+- current reviewer code: `123456`
+- Supabase project: `dlwtcmhdzoklveihuhjf`
+- deployed function: `review-demo-auth`
+- deployed secrets: `REVIEW_DEMO_AUTH_ENABLED=true`, `REVIEW_DEMO_AUTH_EMAIL=support@ivisit.ng`, `REVIEW_DEMO_AUTH_OTP=123456`
+- EAS profile that enables the client flag: `staging`
+- verified behavior: correct code returns a real short-lived Supabase OTP; wrong code returns `401 Invalid review code`
+- if the code changes, update the Supabase secret and the Play Console reviewer instructions together
 
 Locked non-goals for `COMMIT_DETAILS`:
 
@@ -176,9 +201,8 @@ Required draft fields before `COMMIT_PAYMENT`:
 - selected ambulance tier / `ambulance_type` when known
 - patient location / pickup context
 - patient email
-- patient phone only if still missing from the resolved user profile
+- patient phone confirmation
 - `patient_snapshot`
-- optional triage snapshot if collected
 
 Not a blocking v1 prerequisite:
 
@@ -187,7 +211,6 @@ Not a blocking v1 prerequisite:
 Runtime evidence:
 
 - `create_emergency_v4` currently consumes `hospital_id`, `hospital_name`, `service_type`, `specialty`, `ambulance_type`, `patient_location`, `patient_snapshot`, and payment data
-- `patient_update_emergency_request` already supports later `triage_snapshot` merge into `patient_snapshot.triage`
 - `authService.requestOtp` / `authService.verifyOtp` already support the email OTP path the phase needs
 
 ## Demo / Hybrid Commit Note

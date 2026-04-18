@@ -70,12 +70,13 @@ Rules:
    - service rails/cards may open `service_detail` or select directly into the matching decision phase
    - neither surface should jump directly into auth or `commit_details`
 4. The selected hospital currently carries into:
-   - `EmergencyRequestModal.jsx` through the legacy ambulance-request bridge for ambulance, or
+   - `commit_details`, then the seeded legacy ambulance-request bridge, for ambulance, or
    - `EmergencyRequestModal.jsx` through the legacy bed-booking bridge for bed / paired bed + transport.
-5. Locked target for ambulance:
-   - `ambulance_decision -> commit_details`
-   - `commit_details` prepares a local request draft only
-   - `commit_payment` is the first phase allowed to call the real create RPC
+5. Locked ambulance path:
+   - `ambulance_decision -> commit_details -> commit_payment`
+   - `commit_details` prepares identity only: email -> OTP -> phone confirmation
+   - Google Play review may use `support@ivisit.ng` through the gated `review-demo-auth` static-code bridge; it still resolves to a real Supabase patient session before commit continues.
+   - `commit_payment` remains the first phase allowed to call the real create RPC
 6. Only after identity, payment, and any required details are ready does the app call:
    - `hooks/emergency/useRequestFlow.js` -> `useEmergencyRequests.createRequest`
    - `services/emergencyRequestsService.create`

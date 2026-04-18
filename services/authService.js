@@ -16,6 +16,7 @@ import { insuranceService } from "./insuranceService";
 import { AuthErrors, createAuthError, handleSupabaseError } from "../utils/authErrorUtils";
 import { formatUser } from "./mappers/userMapper";
 import * as oauthService from "./auth/oauthService";
+import { reviewDemoAuthService } from "./reviewDemoAuthService";
 
 // Re-export constants for consumers
 export { AuthErrors, createAuthError };
@@ -582,7 +583,7 @@ const authService = {
      * Request OTP for Email or Phone
      * @param {Object} { email, phone }
      */
-    async requestOtp({ email, phone }) {
+    async requestOtp({ email, phone, reviewDemoAuthAllowed = false }) {
         if (phone) {
             const { error } = await supabase.auth.signInWithOtp({
                 phone,
@@ -594,6 +595,13 @@ const authService = {
         }
 
         if (email) {
+            if (
+                reviewDemoAuthAllowed &&
+                reviewDemoAuthService.shouldHandleEmail(email)
+            ) {
+                return reviewDemoAuthService.acknowledgeCodeRequest({ email });
+            }
+
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
@@ -613,12 +621,30 @@ const authService = {
      * Verify OTP
      * @param {Object} { email, phone, otp }
      */
-    async verifyOtp({ email, phone, otp }) {
+    async verifyOtp({ email, phone, otp, reviewDemoAuthAllowed = false }) {
+        let verificationEmail = email;
+        let verificationOtp = otp;
+        let verificationType = phone ? 'sms' : 'email';
+
+        if (
+            !phone &&
+            reviewDemoAuthAllowed &&
+            reviewDemoAuthService.shouldHandleEmail(email)
+        ) {
+            const exchange = await reviewDemoAuthService.exchangeStaticCode({ email, otp });
+            if (!exchange.success) {
+                return { success: false, error: exchange.error };
+            }
+            verificationEmail = exchange.data.email;
+            verificationOtp = exchange.data.otp;
+            verificationType = exchange.data.verificationType || 'magiclink';
+        }
+
         const { data, error } = await supabase.auth.verifyOtp({
-            email,
+            email: verificationEmail,
             phone,
-            token: otp,
-            type: phone ? 'sms' : 'email',
+            token: verificationOtp,
+            type: verificationType,
         });
 
         if (error) return { success: false, error: handleSupabaseError(error).message };

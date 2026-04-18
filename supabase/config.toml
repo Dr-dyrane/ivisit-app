@@ -409,6 +409,11 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/demo-approve-cash-payment/index.ts"
 
+[functions.review-demo-auth]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/review-demo-auth/index.ts"
+
 [functions.triage-copilot]
 enabled = true
 verify_jwt = false

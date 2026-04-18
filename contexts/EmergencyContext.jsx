@@ -444,6 +444,7 @@ export function EmergencyProvider({ children }) {
 	const [activeAmbulanceTrip, setActiveAmbulanceTrip] = useState(null);
 	const [activeBedBooking, setActiveBedBooking] = useState(null);
 	const [pendingApproval, setPendingApproval] = useState(null);
+	const [commitFlow, setCommitFlow] = useState(null);
 	const lastHydratedAmbulanceIdRef = useRef(null);
 	const isHydratingAmbulanceRef = useRef(false);
 	const activeAmbulanceEventRef = useRef({ requestKey: null, versionMs: 0 });
@@ -1592,6 +1593,7 @@ export function EmergencyProvider({ children }) {
 			selectedSpecialty,
 			viewMode,
 			pendingApproval,
+			commitFlow,
 			isLoadingHospitals,
 			hasActiveFilters,
 			coverageMode: effectiveCoverageMode,
@@ -1626,7 +1628,9 @@ export function EmergencyProvider({ children }) {
 			refreshHospitals,
 			setUserLocation,
 			setPendingApproval,
+			setCommitFlow,
 			setCoverageMode,
+			clearCommitFlow: () => setCommitFlow(null),
 		}),
 		[
 			filteredHospitals,
@@ -1643,6 +1647,7 @@ export function EmergencyProvider({ children }) {
 			selectedSpecialty,
 			viewMode,
 			pendingApproval,
+			commitFlow,
 			isLoadingHospitals,
 			hasActiveFilters,
 			effectiveCoverageMode,
@@ -1675,6 +1680,7 @@ export function EmergencyProvider({ children }) {
 			refreshHospitals,
 			setUserLocation,
 			setPendingApproval,
+			setCommitFlow,
 			setCoverageMode,
 		]
 	);

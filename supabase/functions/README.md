@@ -69,6 +69,24 @@ Builds a deterministic demo healthcare ecosystem for users in low/no verified co
 - `longitude`: number (required)
 - `radiusKm`: number (optional, default 50)
 
+### **review-demo-auth**
+Allows Google Play / app review testers to complete the emergency commit-details OTP step without mailbox access.
+
+**Endpoint**: `/functions/v1/review-demo-auth`
+**Method**: POST
+**Authentication**: Public function, guarded by exact email + server-side static review OTP
+
+**Body Parameters**:
+- `email`: must match `REVIEW_DEMO_AUTH_EMAIL` (`support@ivisit.ng` by default)
+- `otp`: must match server-side `REVIEW_DEMO_AUTH_OTP`
+
+**Environment**:
+- `REVIEW_DEMO_AUTH_ENABLED=true`
+- `REVIEW_DEMO_AUTH_EMAIL=support@ivisit.ng`
+- `REVIEW_DEMO_AUTH_OTP=<Google Play review code>`
+
+The function returns a real short-lived Supabase email OTP generated with the service role. The app then verifies through normal Supabase auth, so downstream emergency flow state sees a real session.
+
 ## 🪝 **Webhook Functions**
 
 ### **stripe-webhook**

@@ -1,15 +1,10 @@
 import React, { useMemo } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import useResponsiveSurfaceMetrics from "../../hooks/ui/useResponsiveSurfaceMetrics";
-import EntryActionButton from "../entry/EntryActionButton";
+import MapInlineActionInput from "./shared/MapInlineActionInput";
 import MapModalShell from "./surfaces/MapModalShell";
-
-const squircle = (radius) => ({
-	borderRadius: radius,
-	borderCurve: "continuous",
-});
 
 export default function MapGuestProfileModal({
 	visible,
@@ -26,9 +21,9 @@ export default function MapGuestProfileModal({
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 	const inputSurface = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)";
 	const avatarSurface = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)";
-	const footerTopGap = Math.max(14, viewportMetrics.insets.sectionGap);
 	const heroOrbSize = Math.max(98, Math.round(viewportMetrics.radius.orb * 1.6));
 	const canContinue = trimmedEmail.length > 0;
+	const inputHeight = Math.max(50, Math.min(viewportMetrics.cta.primaryHeight, 56));
 	const responsiveStyles = useMemo(
 		() => ({
 			title: {
@@ -44,9 +39,7 @@ export default function MapGuestProfileModal({
 				marginTop: viewportMetrics.insets.largeGap,
 			},
 			inputShell: {
-				minHeight: viewportMetrics.cta.primaryHeight,
-				paddingHorizontal: Math.max(16, viewportMetrics.modal.contentPadding - 2),
-				borderRadius: viewportMetrics.radius.card,
+				paddingLeft: Math.max(16, viewportMetrics.modal.contentPadding - 2),
 			},
 			input: {
 				fontSize: viewportMetrics.type.body,
@@ -114,52 +107,28 @@ export default function MapGuestProfileModal({
 				</View>
 
 				<View style={[styles.formBlock, responsiveStyles.formBlock]}>
-					<View
-						style={[
-							styles.inputShell,
-							responsiveStyles.inputShell,
-							{ backgroundColor: inputSurface },
-						]}
-					>
-						<Ionicons
-							name="mail-outline"
-							size={Math.max(18, viewportMetrics.type.body + 2)}
-							color={mutedColor}
-						/>
-						<TextInput
-							value={emailValue}
-							onChangeText={onEmailChange}
-							onSubmitEditing={() => {
-								if (canContinue) {
-									onContinue?.();
-								}
-							}}
-							placeholder="you@example.com"
-							placeholderTextColor={mutedColor}
-							style={[
-								styles.input,
-								responsiveStyles.input,
-								{ color: titleColor },
-							]}
-							keyboardType="email-address"
-							autoCapitalize="none"
-							autoCorrect={false}
-							autoComplete="email"
-							textContentType="emailAddress"
-							returnKeyType="go"
-						/>
-					</View>
-
-					<View style={[styles.inlineCtaWrap, { marginTop: footerTopGap }]}>
-						<EntryActionButton
-							label="Continue with email"
-							onPress={onContinue}
-							height={viewportMetrics.cta.primaryHeight}
-							radius={viewportMetrics.cta.radius}
-							disabled={!canContinue}
-							accessibilityHint="Next step sends a one-time code to this email address"
-						/>
-					</View>
+					<MapInlineActionInput
+						value={emailValue}
+						onChangeText={onEmailChange}
+						onSubmit={onContinue}
+						placeholder="you@example.com"
+						placeholderTextColor={mutedColor}
+						textColor={titleColor}
+						backgroundColor={inputSurface}
+						actionLabel="Continue"
+						actionMinWidth={112}
+						height={inputHeight}
+						disabled={!canContinue}
+						containerStyle={[styles.inputShell, responsiveStyles.inputShell]}
+						inputStyle={[styles.input, responsiveStyles.input]}
+						keyboardType="email-address"
+						autoCapitalize="none"
+						autoCorrect={false}
+						autoComplete="email"
+						textContentType="emailAddress"
+						returnKeyType="go"
+						actionAccessibilityHint="Next step sends a one-time code to this email address"
+					/>
 				</View>
 			</View>
 		</MapModalShell>
@@ -204,23 +173,12 @@ const styles = StyleSheet.create({
 		width: "100%",
 	},
 	inputShell: {
-		width: "100%",
-		minHeight: 58,
-		paddingHorizontal: 16,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 12,
-		overflow: "hidden",
-		position: "relative",
-		...squircle(24),
+		maxWidth: 390,
+		alignSelf: "center",
 	},
 	input: {
-		flex: 1,
 		fontSize: 16,
 		lineHeight: 20,
 		fontWeight: "400",
-	},
-	inlineCtaWrap: {
-		width: "100%",
 	},
 });

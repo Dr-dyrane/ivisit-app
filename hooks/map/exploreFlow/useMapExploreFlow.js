@@ -78,6 +78,9 @@ export function useMapExploreFlow() {
 		nearbyCoverageCounts,
 		hasDemoHospitalsNearby,
 		hasComfortableNearbyCoverage,
+		commitFlow,
+		setCommitFlow,
+		clearCommitFlow,
 	} = useEmergency();
 
 	const {
@@ -167,6 +170,12 @@ export function useMapExploreFlow() {
 	const discoveredHospitals = useMemo(() => {
 		return getDiscoveredHospitals(allHospitals, hospitals);
 	}, [allHospitals, hospitals]);
+	const nearestHospital = useMemo(() => {
+		return getNearestHospital(selectedHospital, discoveredHospitals);
+	}, [discoveredHospitals, selectedHospital]);
+	const defaultExploreSnapState = usesSidebarLayout
+		? MAP_SHEET_SNAP_STATES.EXPANDED
+		: MAP_SHEET_SNAP_STATES.HALF;
 	const isBootstrappingDemo = useMapExploreDemoBootstrap({
 		activeLocation,
 		coverageModePreferenceLoaded,
@@ -259,9 +268,52 @@ export function useMapExploreFlow() {
 		}
 	}, [discoveredHospitals, selectHospital, selectedHospitalId]);
 
-	const nearestHospital = useMemo(() => {
-		return getNearestHospital(selectedHospital, discoveredHospitals);
-	}, [discoveredHospitals, selectedHospital]);
+	useEffect(() => {
+		if (
+			commitFlow?.phase !== MAP_SHEET_PHASES.COMMIT_DETAILS ||
+			sheetPhase === MAP_SHEET_PHASES.COMMIT_DETAILS
+		) {
+			return;
+		}
+
+		const targetHospital =
+			commitFlow?.hospital ||
+			discoveredHospitals?.find((item) => item?.id === commitFlow?.hospitalId) ||
+			selectedHospital ||
+			featuredHospital ||
+			nearestHospital ||
+			null;
+
+		if (targetHospital?.id) {
+			selectHospital(targetHospital.id);
+			setFeaturedHospital(targetHospital);
+		}
+
+		setSheetView({
+			phase: MAP_SHEET_PHASES.COMMIT_DETAILS,
+			snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+			payload: {
+				hospital: targetHospital,
+				transport: commitFlow?.transport || null,
+				draft: commitFlow?.draft || null,
+				activeStep: commitFlow?.activeStep || null,
+				sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
+				sourceSnapState: commitFlow?.sourceSnapState || defaultExploreSnapState,
+				sourcePayload: commitFlow?.sourcePayload || null,
+			},
+		});
+	}, [
+		commitFlow,
+		defaultExploreSnapState,
+		discoveredHospitals,
+		featuredHospital,
+		nearestHospital,
+		selectHospital,
+		selectedHospital,
+		setFeaturedHospital,
+		setSheetView,
+		sheetPhase,
+	]);
 
 	const nearestHospitalMeta = useMemo(
 		() => getNearestHospitalMeta(nearestHospital),
@@ -285,9 +337,6 @@ export function useMapExploreFlow() {
 		() => getFeaturedHospitals(discoveredHospitals),
 		[discoveredHospitals],
 	);
-	const defaultExploreSnapState = usesSidebarLayout
-		? MAP_SHEET_SNAP_STATES.EXPANDED
-		: MAP_SHEET_SNAP_STATES.HALF;
 
 	const openSearchSheet = useCallback(
 		(nextMode = MAP_SEARCH_SHEET_MODES.SEARCH) => {
@@ -401,6 +450,58 @@ export function useMapExploreFlow() {
 		],
 	);
 
+	const openCommitDetails = useCallback(
+		(nextHospital = null, transport = null, payload = null) => {
+			const targetHospital =
+				nextHospital ||
+				selectedHospital ||
+				featuredHospital ||
+				nearestHospital ||
+				discoveredHospitals?.[0] ||
+				null;
+
+			if (targetHospital?.id) {
+				selectHospital(targetHospital.id);
+				setFeaturedHospital(targetHospital);
+			}
+
+			setSheetView({
+				phase: MAP_SHEET_PHASES.COMMIT_DETAILS,
+				snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+				payload: {
+					hospital: targetHospital,
+					transport: transport || null,
+					sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
+					sourceSnapState: sheetSnapState || defaultExploreSnapState,
+					...(payload && typeof payload === "object" ? payload : {}),
+				},
+			});
+			setCommitFlow({
+				phase: MAP_SHEET_PHASES.COMMIT_DETAILS,
+				hospital: targetHospital,
+				hospitalId: targetHospital?.id || null,
+				transport: transport || null,
+				draft: payload?.draft || null,
+				activeStep: payload?.activeStep || null,
+				sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
+				sourceSnapState: sheetSnapState || defaultExploreSnapState,
+				sourcePayload: payload?.sourcePayload || null,
+			});
+		},
+		[
+			defaultExploreSnapState,
+			discoveredHospitals,
+			featuredHospital,
+			nearestHospital,
+			selectHospital,
+			selectedHospital,
+			setFeaturedHospital,
+			setSheetView,
+			sheetSnapState,
+			setCommitFlow,
+		],
+	);
+
 	const openBedHospitalList = useCallback(() => {
 		setSheetView({
 			phase: MAP_SHEET_PHASES.HOSPITAL_LIST,
@@ -475,20 +576,46 @@ export function useMapExploreFlow() {
 	}, [defaultExploreSnapState, setSheetView]);
 
 	const closeAmbulanceDecision = useCallback(() => {
+		clearCommitFlow();
 		setSheetView({
 			phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
 			snapState: defaultExploreSnapState,
 			payload: null,
 		});
-	}, [defaultExploreSnapState, setSheetView]);
+	}, [clearCommitFlow, defaultExploreSnapState, setSheetView]);
 
 	const closeBedDecision = useCallback(() => {
+		clearCommitFlow();
 		setSheetView({
 			phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
 			snapState: defaultExploreSnapState,
 			payload: null,
 		});
-	}, [defaultExploreSnapState, setSheetView]);
+	}, [clearCommitFlow, defaultExploreSnapState, setSheetView]);
+
+	const closeCommitDetails = useCallback(() => {
+		clearCommitFlow();
+		const sourcePhase =
+			sheetPayload?.sourcePhase || MAP_SHEET_PHASES.AMBULANCE_DECISION;
+		const sourceSnapState =
+			sheetPayload?.sourceSnapState || defaultExploreSnapState;
+		const sourceHospital = sheetPayload?.hospital || featuredHospital || null;
+		if (sourceHospital) {
+			setFeaturedHospital(sourceHospital);
+		}
+		setSheetView({
+			phase: sourcePhase,
+			snapState: sourceSnapState,
+			payload: sheetPayload?.sourcePayload || null,
+		});
+	}, [
+		clearCommitFlow,
+		defaultExploreSnapState,
+		featuredHospital,
+		setFeaturedHospital,
+		setSheetView,
+		sheetPayload,
+	]);
 
 	const setHospitalServiceSelection = useCallback(
 		(hospitalId, key, value) => {
@@ -831,17 +958,20 @@ export function useMapExploreFlow() {
 		openAmbulanceDecision,
 		openAmbulanceHospitalList,
 		openBedDecision,
+		openCommitDetails,
 		openBedHospitalList,
 		openServiceDetail,
 		openSearchSheet,
 		closeAmbulanceDecision,
 		closeBedDecision,
+		closeCommitDetails,
 		closeHospitalDetail,
 		closeHospitalList,
 		closeServiceDetail,
 		confirmServiceDetail,
 		changeServiceDetailService,
 		closeSearchSheet,
+		clearCommitFlow,
 		handleSearchLocation,
 		handleSelectHospital,
 		handleUseCurrentLocation,

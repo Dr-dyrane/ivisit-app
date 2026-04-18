@@ -1,0 +1,135 @@
+import { Platform, StyleSheet } from "react-native";
+
+const styles = StyleSheet.create({
+	bodyContent: {
+		flexGrow: 1,
+		paddingTop: Platform.OS === "android" ? 2 : 0,
+		paddingBottom: 28,
+	},
+	webWideContentInset: {
+		paddingHorizontal: 20,
+	},
+	topSlot: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 14,
+		paddingBottom: 0,
+		paddingTop: 0,
+		marginTop: Platform.OS === "android" ? -6 : 0,
+	},
+	topSlotSpacer: {
+		width: 38,
+		height: 38,
+	},
+	topSlotCopy: {
+		flex: 1,
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 8,
+	},
+	topSlotTitle: {
+		fontSize: 17,
+		lineHeight: 21,
+		fontWeight: "700",
+		textAlign: "center",
+	},
+	topSlotSubtitle: {
+		marginTop: 1,
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "600",
+		textAlign: "center",
+	},
+	topSlotAction: {
+		width: 38,
+		height: 38,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	topSlotCloseButton: {
+		width: 38,
+		height: 38,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	questionCard: {
+		flexGrow: 1,
+		width: "100%",
+		maxWidth: 420,
+		alignSelf: "center",
+		alignItems: "center",
+		justifyContent: "flex-start",
+		paddingHorizontal: 8,
+		paddingTop: Platform.OS === "ios" ? 22 : 18,
+		paddingBottom: 24,
+	},
+	avatarOrb: {
+		width: 88,
+		height: 88,
+		borderRadius: 44,
+		alignItems: "center",
+		justifyContent: "center",
+		marginBottom: 16,
+		overflow: "hidden",
+		position: "relative",
+		shadowColor: "#000000",
+		shadowOpacity: 0.12,
+		shadowRadius: 18,
+		shadowOffset: { width: 0, height: 10 },
+	},
+	questionTitle: {
+		fontSize: 28,
+		lineHeight: 32,
+		fontWeight: "900",
+		letterSpacing: -0.9,
+		textAlign: "center",
+	},
+	questionDescription: {
+		marginTop: 8,
+		fontSize: 15,
+		lineHeight: 20,
+		fontWeight: "400",
+		textAlign: "center",
+		maxWidth: 320,
+	},
+	formBlock: {
+		width: "100%",
+		maxWidth: 390,
+		marginTop: 18,
+		alignItems: "center",
+	},
+	inputShell: {
+		maxWidth: 390,
+	},
+	input: {
+		fontSize: 17,
+		lineHeight: 22,
+		fontWeight: "500",
+		textAlign: "left",
+	},
+	errorText: {
+		marginTop: 12,
+		fontSize: 13,
+		lineHeight: 18,
+		fontWeight: "500",
+		textAlign: "center",
+	},
+	successText: {
+		marginTop: 12,
+		fontSize: 13,
+		lineHeight: 18,
+		fontWeight: "500",
+		textAlign: "center",
+	},
+	secondaryAction: {
+		marginTop: 14,
+		paddingVertical: 4,
+	},
+	secondaryActionText: {
+		fontSize: 14,
+		lineHeight: 18,
+		fontWeight: "600",
+	},
+});
+
+export default styles;

@@ -13,6 +13,10 @@
       "autoIncrement": true,
       "distribution": "store",
       "channel": "staging",
+      "env": {
+        "EXPO_PUBLIC_REVIEW_DEMO_AUTH_ENABLED": "true",
+        "EXPO_PUBLIC_REVIEW_DEMO_AUTH_EMAIL": "support@ivisit.ng"
+      },
       "android": {
         "buildType": "app-bundle"
       }

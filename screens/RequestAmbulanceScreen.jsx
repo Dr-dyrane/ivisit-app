@@ -90,6 +90,8 @@ export default function RequestAmbulanceScreen() {
 	const slideAnim = useRef(new Animated.Value(30)).current;
 	const params = useLocalSearchParams();
 	const hospitalId = typeof params?.hospitalId === "string" ? params.hospitalId : null;
+	const mapCommitDraftParam =
+		typeof params?.mapCommitDraft === "string" ? params.mapCommitDraft : null;
 	const [showLegacyFlow, setShowLegacyFlow] = useState(false);
 	const [intakeDraft, setIntakeDraft] = useState(null);
 	const [persistedIntakeViewState, setPersistedIntakeViewState] = useState(null);
@@ -105,6 +107,19 @@ export default function RequestAmbulanceScreen() {
 		subtitle: "",
 	});
 	const [intakeBackMode, setIntakeBackMode] = useState("exit");
+	const seededFromMapCommit = useMemo(() => Boolean(mapCommitDraftParam), [mapCommitDraftParam]);
+	const seededCommitDraft = useMemo(() => {
+		if (!mapCommitDraftParam) return null;
+		try {
+			const parsed = JSON.parse(mapCommitDraftParam);
+			return parsed && typeof parsed === "object" ? parsed : null;
+		} catch (error) {
+			if (__DEV__) {
+				console.warn("[RequestAmbulanceScreen] Failed to parse map commit draft:", error);
+			}
+			return null;
+		}
+	}, [mapCommitDraftParam]);
 
 	const { setHeaderState } = useHeaderState();
 	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
@@ -346,13 +361,18 @@ export default function RequestAmbulanceScreen() {
 	}, [showLegacyFlow, matchedTripState, intakeDraft, persistedIntakeViewState]);
 
 	const handleLegacyFlowClose = useCallback(() => {
+		if (seededFromMapCommit) {
+			handleClose();
+			return;
+		}
+
 		if (!matchedTripState) {
 			returnToLastIntakePhase();
 			return;
 		}
 
 		handleClose();
-	}, [handleClose, matchedTripState, returnToLastIntakePhase]);
+	}, [handleClose, matchedTripState, returnToLastIntakePhase, seededFromMapCommit]);
 
 	const handleIntakeBackChange = useCallback((nextState) => {
 		intakeBackActionRef.current =
@@ -373,7 +393,7 @@ export default function RequestAmbulanceScreen() {
 			return;
 		}
 
-		if (!showResponsiveIntakeBase && !matchedTripState) {
+		if (!showResponsiveIntakeBase && !matchedTripState && !seededFromMapCommit) {
 			if (__DEV__) {
 				console.log("[EmergencyTrace][RequestAmbulanceScreen] header back -> return to proposed hospital");
 			}
@@ -382,7 +402,14 @@ export default function RequestAmbulanceScreen() {
 		}
 
 		handleClose();
-	}, [handleClose, intakeBackMode, matchedTripState, returnToLastIntakePhase, showResponsiveIntakeBase]);
+	}, [
+		handleClose,
+		intakeBackMode,
+		matchedTripState,
+		returnToLastIntakePhase,
+		seededFromMapCommit,
+		showResponsiveIntakeBase,
+	]);
 
 	const backButton = useCallback(
 		() => <HeaderBackButton onPress={handleHeaderBack} />,
@@ -443,6 +470,20 @@ export default function RequestAmbulanceScreen() {
 
 		const hydrateIntakePhase = async () => {
 			try {
+				if (seededCommitDraft) {
+					await clearPersistedIntakePhase();
+					setShowLegacyFlow(true);
+					setIntakeDraft(seededCommitDraft);
+					setPersistedIntakeViewState(null);
+					setIntakeHeaderState({
+						title: "Confirm request",
+						subtitle: "",
+					});
+					setIntakeBackMode("exit");
+					findingStartedAtRef.current = 0;
+					return;
+				}
+
 				const storedRaw = await AsyncStorage.getItem(intakePhaseStorageKey);
 				if (!storedRaw || cancelled) {
 					return;
@@ -493,7 +534,7 @@ export default function RequestAmbulanceScreen() {
 				clearTimeout(persistTimerRef.current);
 			}
 		};
-	}, [intakePhaseStorageKey]);
+	}, [clearPersistedIntakePhase, intakePhaseStorageKey, seededCommitDraft]);
 
 	useEffect(() => {
 		Animated.parallel([
@@ -513,6 +554,7 @@ export default function RequestAmbulanceScreen() {
 
 	useEffect(() => {
 		if (!intakePersistenceReady) return;
+		if (seededFromMapCommit) return;
 
 		const hasMeaningfulPhaseState = Boolean(
 			showLegacyFlow || intakeDraft || persistedIntakeViewState,
@@ -564,6 +606,7 @@ export default function RequestAmbulanceScreen() {
 		intakePersistenceReady,
 		intakePhaseStorageKey,
 		persistedIntakeViewState,
+		seededFromMapCommit,
 		showLegacyFlow,
 	]);
 
@@ -736,6 +779,7 @@ export default function RequestAmbulanceScreen() {
 							onRequestInitiated={handleRequestInitiated}
 							onRequestComplete={handleDispatched}
 							intakeDraft={intakeDraft}
+							initialRequestStep={seededFromMapCommit ? "payment" : "select"}
 							showClose={false}
 							onScroll={handleScroll}
 							scrollContentStyle={{

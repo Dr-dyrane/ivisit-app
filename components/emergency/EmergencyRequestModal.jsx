@@ -112,6 +112,7 @@ const EmergencyRequestModal = React.memo(({
 	mode = "emergency",
 	requestHospital,
 	initialRoomId = null,
+	initialRequestStep = "select",
 	selectedSpecialty,
 	onRequestClose,
 	onRequestInitiated,
@@ -1603,22 +1604,32 @@ const EmergencyRequestModal = React.memo(({
 	]);
 
 	useEffect(() => {
-		setRequestStep("select");
+		setRequestStep(initialRequestStep === "payment" ? "payment" : "select");
 		setSelectFlowStep("triage");
 
 		// Default to BLS (Basic Life Support) - ID: 'standard'
 		const defaultAmbulance = AMBULANCE_TYPES.find(t => t.id === "standard");
-		setSelectedAmbulanceType(defaultAmbulance || null);
+		const seededAmbulance =
+			mode === "emergency" &&
+			intakeDraft?.ambulanceType &&
+			typeof intakeDraft.ambulanceType === "object"
+				? intakeDraft.ambulanceType
+				: null;
+		setSelectedAmbulanceType(seededAmbulance || defaultAmbulance || null);
 		setShowOtherDispatchOptions(false);
 		setServiceDetailSelection(null);
 
 		setBedType("standard");
 		setBedCount(1);
-		setPrebookingCheckin(null);
+		setPrebookingCheckin(
+			intakeDraft?.triageCheckin && typeof intakeDraft.triageCheckin === "object"
+				? intakeDraft.triageCheckin
+				: null,
+		);
 		setIsRequesting(false);
 		setRequestData(null);
 		setErrorMessage(null);
-	}, [requestHospital?.id, mode]);
+	}, [initialRequestStep, intakeDraft, mode, requestHospital?.id]);
 
 	const hospitalName = requestHospital?.name ?? "Hospital";
 	const availableBeds =

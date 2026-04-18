@@ -1018,12 +1018,11 @@ Mid:
 
 Expanded:
 
-- locked selection summary
+- compact modal header with locked hospital name + step
 - one question at a time
 - email input first
 - OTP entry second
-- phone only if missing from the authenticated profile
-- optional triage / complaint step before payment
+- phone confirmation next, prefilled when available
 - resend code
 - correction path
 - backflow between microsteps without leaving the phase
@@ -1032,9 +1031,8 @@ Locked auth order:
 
 - email first
 - OTP second
-- phone only when the profile does not already provide a reachable callback number
+- phone confirmation third, even if the profile already has a value
 - name is not a blocking v1 question
-- triage stays optional and skippable
 - this happens before payment
 - this must not use `Sign up` or `Register` language
 
@@ -1048,8 +1046,8 @@ Map behavior:
 
 - map remains visible
 - sheet carries identity capture
-- `COMMIT_DETAILS` should open directly in `expanded` for keyboard and OTP focus
-- the active smart header remains hidden in v1; locked selection summary stays in the sheet, not the global header
+- `COMMIT_DETAILS` should open directly in the normal expanded sheet posture for keyboard and OTP focus
+- the global smart header remains reserved for tracking; this phase uses the sheet's own compact modal header
 
 ## 3.12 Payment / Commit
 
@@ -1501,7 +1499,8 @@ Current implementation note:
   - bed intent = `hospital_detail -> bed_decision`
   - combined intent = `hospital_detail -> ambulance_decision` first
 - service rails/cards may inspect through `service_detail` or select directly into the proper decision phase, but they must not jump to `COMMIT_DETAILS`
-- `Confirm & continue` still hands off to the current legacy ambulance request route until `COMMIT_DETAILS` replaces that seam
+- `Confirm & continue` now opens `COMMIT_DETAILS`
+- the final `COMMIT_DETAILS` continue still seeds the current legacy ambulance request/payment route until `COMMIT_PAYMENT` replaces that seam
 - the expanded decision sheet now uses:
   - alternative tiers
   - compact route surface
@@ -1531,19 +1530,31 @@ Behind the scenes:
 
 Locked `COMMIT_DETAILS` microflow:
 
-1. locked selection summary
+1. compact modal header owns locked hospital name + step
 2. `What's your email?`
 3. `Enter verification code`
-4. phone only if still missing
-5. optional triage / minimal complaint summary
+4. `What's your phone?` with a prefilled value when available
 
 Rules:
 
 - one question at a time, never a long form
 - back should move between `COMMIT_DETAILS` microsteps before leaving the phase
 - reuse the app's existing email OTP primitives (`SmartContactInput`, `OTPInputCard`, `authService.requestOtp`, `authService.verifyOtp`)
-- do not switch on the global active header for this phase in v1
+- use the sheet's own compact modal header; reserve the app-owned smart header for tracking
+- do not render a duplicate selected-service summary card in the body
+- the identity body should inherit the guest profile bridge shape: avatar, prompt, input, CTA
 - `COMMIT_DETAILS` is the first returning-user memory seam; it should inherit the email-first language already used by the profile bridge
+
+Google Play review access:
+
+- reviewer email: `support@ivisit.ng`
+- reviewer code: `123456`
+- this path is allowed only inside emergency `COMMIT_DETAILS`
+- `support@ivisit.ng` is a confirmed `patient` review profile, not admin/provider
+- the `staging` EAS profile enables `EXPO_PUBLIC_REVIEW_DEMO_AUTH_ENABLED=true`
+- deployed Supabase Edge Function: `review-demo-auth` on project `dlwtcmhdzoklveihuhjf`
+- server-side secrets must stay aligned with Play Console reviewer instructions:
+  `REVIEW_DEMO_AUTH_ENABLED=true`, `REVIEW_DEMO_AUTH_EMAIL=support@ivisit.ng`, `REVIEW_DEMO_AUTH_OTP=123456`
 
 #### `COMMIT_DETAILS -> COMMIT_PAYMENT`
 
@@ -1560,9 +1571,8 @@ Required minimum payload:
 - service type = `ambulance`
 - selected ambulance tier / service metadata
 - patient email
-- patient phone only if the profile did not already provide it
+- patient phone confirmation
 - patient snapshot assembled from the resolved user + collected fields
-- optional triage snapshot or minimal complaint summary if collected
 
 Not a blocking v1 requirement:
 

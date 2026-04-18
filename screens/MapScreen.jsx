@@ -23,6 +23,7 @@ import {
 } from "../components/map/core/mapViewportConfig";
 import { MAP_SEARCH_SHEET_MODES } from "../components/map/surfaces/search/mapSearchSheet.helpers";
 import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigationHelpers";
+import { buildCommitLocationLabel, buildMapCommitSeedDraft } from "../components/map/views/commitDetails/mapCommitDetails.helpers";
 
 export default function MapScreen() {
 	const router = useRouter();
@@ -45,12 +46,15 @@ export default function MapScreen() {
 		handleChooseCare,
 		openAmbulanceDecision,
 		openBedDecision,
+		openCommitDetails,
 		openServiceDetail,
 		closeServiceDetail,
 		confirmServiceDetail,
 		changeServiceDetailService,
 		closeAmbulanceDecision,
 		closeBedDecision,
+		closeCommitDetails,
+		clearCommitFlow,
 		handleMapHospitalPress,
 		handleMapReadinessChange,
 		handleOpenFeaturedHospital,
@@ -199,14 +203,55 @@ export default function MapScreen() {
 				return;
 			}
 
-			navigateToRequestAmbulance({ router, hospitalId, method: "push" });
+			openCommitDetails(hospital || null, transport || null);
 		},
 		[
 			featuredHospital?.id,
 			nearestHospital?.id,
+			openCommitDetails,
 			openBedDecision,
-			router,
 			selectedCare,
+		],
+	);
+
+	const handleConfirmCommitDetails = useCallback(
+		(hospital, transport, draft) => {
+			const hospitalId = hospital?.id || featuredHospital?.id || nearestHospital?.id;
+			if (!hospitalId) return;
+
+			const location = activeLocation
+				? {
+						latitude: Number(activeLocation.latitude ?? activeLocation.coords?.latitude),
+						longitude: Number(activeLocation.longitude ?? activeLocation.coords?.longitude),
+					}
+				: null;
+			const locationLabel = buildCommitLocationLabel(currentLocationDetails);
+			const commitSeed = buildMapCommitSeedDraft({
+				transport,
+				location:
+					Number.isFinite(location?.latitude) && Number.isFinite(location?.longitude)
+						? location
+						: null,
+				locationLabel,
+			});
+			clearCommitFlow();
+
+			navigateToRequestAmbulance({
+				router,
+				hospitalId,
+				method: "push",
+				params: {
+					mapCommitDraft: JSON.stringify(commitSeed),
+				},
+			});
+		},
+		[
+			activeLocation,
+			currentLocationDetails,
+			featuredHospital?.id,
+			nearestHospital?.id,
+			clearCommitFlow,
+			router,
 		],
 	);
 
@@ -277,9 +322,11 @@ export default function MapScreen() {
 					onCloseHospitals={closeHospitalList}
 					onCloseAmbulanceDecision={closeAmbulanceDecision}
 					onCloseBedDecision={closeBedDecision}
+					onCloseCommitDetails={closeCommitDetails}
 					onCloseHospitalDetail={closeHospitalDetail}
 					onConfirmAmbulanceDecision={handleConfirmAmbulanceDecision}
 					onConfirmBedDecision={handleConfirmBedDecision}
+					onConfirmCommitDetails={handleConfirmCommitDetails}
 					onOpenServiceDetail={openServiceDetail}
 					onCloseServiceDetail={closeServiceDetail}
 					onConfirmServiceDetail={confirmServiceDetail}
