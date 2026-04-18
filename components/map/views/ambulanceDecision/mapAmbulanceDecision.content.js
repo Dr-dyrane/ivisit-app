@@ -13,6 +13,7 @@ export const MAP_AMBULANCE_DECISION_COPY = {
 	CONTINUING_CTA: "Continuing...",
 	OTHER_HOSPITALS_CTA: "Other hospitals",
 	SERVICE_DETAILS_CTA: "Details",
+	COMBINED_STEP_SUBTITLE: "Step 1 of 2 · Choose transport",
 	CURRENT_PILL: "Current",
 	ROUTE_SOURCE_FALLBACK: "Dispatch origin",
 	ROUTE_DESTINATION_TITLE: "My location",

@@ -122,7 +122,8 @@ export default function MapServiceDetailStageBase({
 	const accent = serviceType === "room" ? "#64748B" : COLORS.brandPrimary;
 	const isSelected = service?.id === selectedServiceId;
 	const statusLabel = service?.metaText || (serviceType === "room" ? "Available" : "Ready");
-	const priceLabel = service?.priceText || "Price shown before booking";
+	const priceLabel = service?.priceText || null;
+	const showPriceSkeleton = Boolean(service?.showPriceSkeleton && !priceLabel);
 	const currentServiceIndex = serviceItems.findIndex(
 		(entry) => (entry?.id || entry?.title) === (service?.id || service?.title),
 	);
@@ -269,6 +270,7 @@ export default function MapServiceDetailStageBase({
 					imageSource={imageSource}
 					isDarkMode={isDarkMode}
 					priceLabel={priceLabel}
+					showPriceSkeleton={showPriceSkeleton}
 					panHandlers={swipeHandlers}
 					service={service}
 					serviceType={serviceType}
@@ -284,6 +286,7 @@ export default function MapServiceDetailStageBase({
 						accent={accent}
 						nestedSurfaceColor={nestedSurfaceColor}
 						priceLabel={priceLabel}
+						showPriceSkeleton={showPriceSkeleton}
 						statusLabel={statusLabel}
 						titleColor={titleColor}
 					/>

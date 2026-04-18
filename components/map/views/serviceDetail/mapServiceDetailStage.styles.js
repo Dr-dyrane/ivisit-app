@@ -164,6 +164,14 @@ export default StyleSheet.create({
 		fontWeight: "500",
 		flexShrink: 1,
 	},
+	metaSkeleton: {
+		height: 10,
+		borderRadius: 999,
+		backgroundColor: "rgba(148,163,184,0.26)",
+	},
+	metaSkeletonMedium: {
+		width: 56,
+	},
 	metricRow: {
 		flexDirection: "row",
 		flexWrap: "wrap",
@@ -193,6 +201,10 @@ export default StyleSheet.create({
 		marginLeft: 6,
 		includeFontPadding: false,
 		textAlignVertical: "center",
+	},
+	metricSkeleton: {
+		width: 72,
+		marginLeft: 6,
 	},
 	sectionLabel: {
 		fontSize: 12,
@@ -250,6 +262,18 @@ export default StyleSheet.create({
 		lineHeight: 16,
 		fontWeight: "400",
 		marginTop: 2,
+	},
+	optionMetaSkeletonRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		marginTop: 4,
+	},
+	optionMetaSkeletonShort: {
+		width: 54,
+	},
+	optionMetaSkeletonMedium: {
+		width: 70,
 	},
 	featureList: {
 		paddingHorizontal: 16,

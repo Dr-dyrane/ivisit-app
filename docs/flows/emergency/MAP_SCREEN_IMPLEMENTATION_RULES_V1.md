@@ -410,6 +410,9 @@ Rendering rule for `bed_decision`:
 - current legacy handoff consumes room preselection
 - in the combined flow, `bed_decision` must stay room-only even when `careIntent === "both"`
 - combined care should use `ambulance_decision` first, then `bed_decision`, rather than mounting a third dedicated sheet phase
+- when combined care is active, use the top subtitle line for step guidance:
+  - `ambulance_decision` = `Step 1 of 2`
+  - `bed_decision` = `Step 2 of 2`
 - `savedTransport` in the combined flow is display state only and must be bound to its source hospital
 - if the user changes hospitals during `bed_decision` step 2, `savedTransport` is stale and the flow must restart `ambulance_decision` for the newly selected hospital
 - this invalidation belongs in flow orchestration (`useMapExploreFlow.js`), not inside `MapBedDecisionStageBase.jsx` or its parts
@@ -419,6 +422,7 @@ Rendering parity rule for `service_detail`:
 - half state should mirror the compact selector grammar used in `ambulance_decision`
 - expanded state should prefer flatter comparison blades over repeated pill controls
 - inline footer CTA is preferred over sticky footer CTA on short screens
+- unresolved price should use skeleton treatment or omission, not fallback text like `Price shown before booking`
 
 ## 14. Loading Rule
 

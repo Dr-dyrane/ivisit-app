@@ -8,7 +8,6 @@ export const MAP_SERVICE_DETAIL_COPY = {
 	CONFIRM_ROOM: "Use room",
 	CONTINUE_TRANSPORT: "Continue with transport",
 	CONTINUE_ROOM: "Continue with room",
-	PRICE_FALLBACK: "Price shown before booking",
 	TRANSPORT_STATUS_FALLBACK: "Ready",
 	ROOM_STATUS_FALLBACK: "Available",
 };

@@ -82,6 +82,7 @@ export default function MapSheetOrchestrator({
 		case MAP_SHEET_PHASES.AMBULANCE_DECISION: {
 			const decisionHospital = featuredHospital || nearestHospital || null;
 			const decisionHospitalId = decisionHospital?.id || "unknown";
+			const careIntent = selectedCare === "both" ? "both" : "ambulance";
 			const decisionOrigin =
 				currentLocation || activeLocation
 					? {
@@ -104,6 +105,7 @@ export default function MapSheetOrchestrator({
 						snapState={snapState}
 						hospital={decisionHospital}
 						origin={decisionOrigin}
+						careIntent={careIntent}
 						hospitalCount={Array.isArray(hospitals) ? hospitals.length : 0}
 						selectedServiceId={
 							serviceSelectionsByHospital[decisionHospitalId]?.ambulanceServiceId ?? null

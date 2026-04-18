@@ -105,6 +105,7 @@ Shared implementation note:
 - `ambulance_decision` now reuses the same shell, detent, route, and service-detail seam as the existing map phases
 - `bed_decision` now reuses that same shell, route seam, and service-detail seam for room-first booking only
 - `ambulance + bed` now uses a sequential flow: `ambulance_decision -> bed_decision -> legacy booking`
+- when `careIntent === "both"`, `ambulance_decision` top subtitle should show a `Step 1 of 2` cue and `bed_decision` top subtitle should show a `Step 2 of 2` cue
 - `hospital_detail` remains the visual exception where expanded hero/title/body structure must be preserved exactly even if other stage internals are refactored
 - `ambulance_decision` currently confirms into the existing legacy ambulance-request route after the sheet decision; `COMMIT_DETAILS` is still the next in-map phase to build
 - `bed_decision` currently confirms into the existing legacy bed-booking route after the sheet decision; room preselection is forwarded
@@ -233,6 +234,7 @@ Current parity note for `service_detail`:
 - half state now follows the same compact icon + text selector grammar as `ambulance_decision`
 - expanded state switches to flatter comparison blades
 - the primary CTA now sits inline at the bottom of scroll content instead of staying sticky
+- missing price should not fall back to explanatory copy; it should render as a skeleton or remain omitted when the upstream item is unresolved
 
 ## Hospital Data Consistency Fix
 

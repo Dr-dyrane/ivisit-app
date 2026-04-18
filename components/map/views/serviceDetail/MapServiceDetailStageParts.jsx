@@ -101,6 +101,10 @@ function buildAmbulanceCrewPillLabel(service) {
 	return "Crew ready";
 }
 
+function MetaSkeleton({ style }) {
+	return <View style={[styles.metaSkeleton, style]} />;
+}
+
 export function MapServiceDetailTopSlot({
 	title,
 	onClose,
@@ -249,6 +253,7 @@ export function MapServiceDetailHero({
 	imageSource,
 	isDarkMode,
 	priceLabel,
+	showPriceSkeleton = false,
 	panHandlers,
 	service,
 	serviceType,
@@ -269,8 +274,9 @@ export function MapServiceDetailHero({
 				{
 					iconName: "cash",
 					label: priceLabel,
+					showSkeleton: showPriceSkeleton,
 				},
-			]
+			].filter((metric) => metric.label || metric.showSkeleton)
 		: [];
 
 	return (
@@ -298,7 +304,7 @@ export function MapServiceDetailHero({
 					<View style={[styles.heroMetaRow, stageMetrics?.hero?.metaRowStyle]}>
 						{heroMetrics.map((metric) => (
 							<View
-								key={`${metric.iconName}-${metric.label}`}
+								key={`${metric.iconName}-${metric.label || "skeleton"}`}
 								style={[
 									styles.metaPill,
 									stageMetrics?.hero?.metaPillStyle,
@@ -306,16 +312,20 @@ export function MapServiceDetailHero({
 								]}
 							>
 								<Ionicons name={metric.iconName} size={14} color={accent} />
-								<Text
-									style={[
-										styles.metaLabel,
-										stageMetrics?.hero?.metaLabelStyle,
-										{ color: titleColor },
-									]}
-									numberOfLines={1}
-								>
-									{metric.label}
-								</Text>
+								{metric.showSkeleton ? (
+									<MetaSkeleton style={styles.metaSkeletonMedium} />
+								) : (
+									<Text
+										style={[
+											styles.metaLabel,
+											stageMetrics?.hero?.metaLabelStyle,
+											{ color: titleColor },
+										]}
+										numberOfLines={1}
+									>
+										{metric.label}
+									</Text>
+								)}
 							</View>
 						))}
 					</View>
@@ -329,6 +339,7 @@ export function MapServiceDetailMetrics({
 	accent,
 	nestedSurfaceColor,
 	priceLabel,
+	showPriceSkeleton = false,
 	statusLabel,
 	titleColor,
 }) {
@@ -346,12 +357,18 @@ export function MapServiceDetailMetrics({
 				</View>
 				<Text style={[styles.metricText, { color: titleColor }]}>{statusLabel}</Text>
 			</View>
-			<View style={[styles.metricPill, { backgroundColor: nestedSurfaceColor }]}>
-				<View style={styles.metricIconBox}>
-					<Ionicons name="cash-outline" size={15} color={accent} />
+			{priceLabel || showPriceSkeleton ? (
+				<View style={[styles.metricPill, { backgroundColor: nestedSurfaceColor }]}>
+					<View style={styles.metricIconBox}>
+						<Ionicons name="cash-outline" size={15} color={accent} />
+					</View>
+					{showPriceSkeleton ? (
+						<MetaSkeleton style={styles.metricSkeleton} />
+					) : (
+						<Text style={[styles.metricText, { color: titleColor }]}>{priceLabel}</Text>
+					)}
 				</View>
-				<Text style={[styles.metricText, { color: titleColor }]}>{priceLabel}</Text>
-			</View>
+			) : null}
 		</View>
 	);
 }
@@ -384,7 +401,9 @@ export function MapServiceDetailOptionList({
 				const itemId = item?.id || item?.title;
 				const isActive = itemId === selectedServiceId;
 				const statusLabel = item?.metaText || statusFallback;
-				const priceLabel = item?.priceText || MAP_SERVICE_DETAIL_COPY.PRICE_FALLBACK;
+				const priceLabel = item?.priceText || null;
+				const showMetaSkeleton = Boolean(item?.showMetaSkeleton && !item?.metaText);
+				const showPriceSkeleton = Boolean(item?.showPriceSkeleton && !item?.priceText);
 				const imageSource = getHospitalDetailServiceImageSource(item, serviceType);
 				const optionVisual = getServiceOptionVisual(item, serviceType, accent);
 				const inactiveSurfaceColor =
@@ -428,26 +447,33 @@ export function MapServiceDetailOptionList({
 								/>
 							</View>
 							<View style={styles.optionCopy}>
-						<Text
-							style={[
-								styles.optionTitle,
-								stageMetrics?.expanded?.titleStyle,
-								{ color: isActive ? "#FFFFFF" : titleColor },
-							]}
-							numberOfLines={1}
-						>
+								<Text
+									style={[
+										styles.optionTitle,
+										stageMetrics?.expanded?.titleStyle,
+										{ color: isActive ? "#FFFFFF" : titleColor },
+									]}
+									numberOfLines={1}
+								>
 									{item?.title || "Option"}
 								</Text>
-						<Text
-							style={[
-								styles.optionMeta,
-								stageMetrics?.expanded?.metaStyle,
-								{ color: isActive ? "rgba(255,255,255,0.82)" : mutedColor },
-							]}
-							numberOfLines={1}
-						>
-									{`${statusLabel} - ${priceLabel}`}
-								</Text>
+								{showMetaSkeleton || showPriceSkeleton ? (
+									<View style={styles.optionMetaSkeletonRow}>
+										{showMetaSkeleton ? <MetaSkeleton style={styles.optionMetaSkeletonShort} /> : null}
+										{showPriceSkeleton ? <MetaSkeleton style={styles.optionMetaSkeletonMedium} /> : null}
+									</View>
+								) : (
+									<Text
+										style={[
+											styles.optionMeta,
+											stageMetrics?.expanded?.metaStyle,
+											{ color: isActive ? "rgba(255,255,255,0.82)" : mutedColor },
+										]}
+										numberOfLines={1}
+									>
+										{[statusLabel, priceLabel].filter(Boolean).join(" - ")}
+									</Text>
+								)}
 							</View>
 						</View>
 						{imageSource ? (

@@ -28,6 +28,7 @@ import {
 	MapBedDecisionSavedTransportCard,
 	MapBedDecisionTopSlot,
 } from "./MapBedDecisionStageParts";
+import { MAP_BED_DECISION_COPY } from "./mapBedDecision.content";
 import styles from "./mapBedDecision.styles";
 import useMapBedDecisionModel from "./useMapBedDecisionModel";
 
@@ -176,6 +177,9 @@ export default function MapBedDecisionStageBase({
 	}, [onSnapStateChange, snapState]);
 
 	const headerSubtext = useMemo(() => {
+		if (careIntent === "both") {
+			return `${MAP_BED_DECISION_COPY.SAVED_TRANSPORT_STEP} · ${MAP_BED_DECISION_COPY.SAVED_TRANSPORT_TITLE}`;
+		}
 		const etaLabel =
 			typeof decision.etaLabel === "string" ? decision.etaLabel.trim() : "";
 		if (!etaLabel) return null;
@@ -186,7 +190,7 @@ export default function MapBedDecisionStageBase({
 			return etaLabel;
 		}
 		return `${etaLabel} away`;
-	}, [decision.etaLabel]);
+	}, [careIntent, decision.etaLabel]);
 
 	const handleOpenRoomDetails = useCallback(() => {
 		if (

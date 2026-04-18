@@ -24,6 +24,7 @@ import {
 	MapAmbulanceDecisionSwitchRow,
 	MapAmbulanceDecisionTopSlot,
 } from "./MapAmbulanceDecisionStageParts";
+import { MAP_AMBULANCE_DECISION_COPY } from "./mapAmbulanceDecision.content";
 import styles from "./mapAmbulanceDecision.styles";
 import useMapAmbulanceDecisionModel from "./useMapAmbulanceDecisionModel";
 
@@ -32,6 +33,7 @@ export default function MapAmbulanceDecisionStageBase({
 	snapState,
 	hospital,
 	origin = null,
+	careIntent = "ambulance",
 	hospitalCount = 0,
 	selectedServiceId = null,
 	onClose,
@@ -166,6 +168,9 @@ export default function MapAmbulanceDecisionStageBase({
 		);
 	}, [onSnapStateChange, snapState]);
 	const headerSubtext = useMemo(() => {
+		if (careIntent === "both") {
+			return MAP_AMBULANCE_DECISION_COPY.COMBINED_STEP_SUBTITLE;
+		}
 		const etaLabel =
 			typeof decision.etaLabel === "string" ? decision.etaLabel.trim() : "";
 		if (!etaLabel) return null;
@@ -176,7 +181,7 @@ export default function MapAmbulanceDecisionStageBase({
 			return etaLabel;
 		}
 		return `${etaLabel} away`;
-	}, [decision.etaLabel]);
+	}, [careIntent, decision.etaLabel]);
 
 	const handleOpenServiceDetails = useCallback(() => {
 		if (
