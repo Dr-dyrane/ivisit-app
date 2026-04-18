@@ -59,7 +59,7 @@ export default function EntryActionButton({
 					borderCurve: "continuous",
 					opacity: disabled || loading ? 0.78 : pressed ? 0.98 : 1,
 					transform: [{ scale: pressed ? 0.985 : 1 }, { translateY: pressed ? 1 : 0 }],
-					shadowColor: isPrimary ? COLORS.brandPrimary : "#0F172A",
+					shadowColor: "#0F172A",
 					shadowOpacity:
 						focused && Platform.OS === "web"
 							? Math.max(

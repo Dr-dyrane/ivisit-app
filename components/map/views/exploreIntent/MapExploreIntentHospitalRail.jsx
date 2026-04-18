@@ -30,7 +30,7 @@ function FeaturedHospitalPlaceholderCard({ cardWidth, cardHeight }) {
 	);
 }
 
-function FeaturedHospitalCard({ hospital, titleColor, bodyColor, onPress, cardWidth, cardHeight }) {
+function FeaturedHospitalCard({ hospital, titleColor, bodyColor, onPress, cardWidth, cardHeight, responsiveMetrics }) {
 	const features = buildFeaturedHospitalFeatures(hospital);
 	const imageSource = useMemo(() => getHospitalHeroSource(hospital), [hospital]);
 	const topLabel =
@@ -59,20 +59,20 @@ function FeaturedHospitalCard({ hospital, titleColor, bodyColor, onPress, cardWi
 							style={StyleSheet.absoluteFill}
 						/>
 						{topLabel ? (
-							<View style={styles.featuredCardHeader}>
-								<View style={styles.featuredTopPill}>
-									<Text numberOfLines={1} style={styles.featuredTopPillText}>
+							<View style={[styles.featuredCardHeader, responsiveMetrics?.featured?.headerStyle]}>
+								<View style={[styles.featuredTopPill, responsiveMetrics?.featured?.topPillStyle]}>
+									<Text numberOfLines={1} style={[styles.featuredTopPillText, responsiveMetrics?.featured?.topPillTextStyle]}>
 										{topLabel}
 									</Text>
 								</View>
 							</View>
 						) : null}
-						<View style={styles.featuredCardContent}>
-							<Text numberOfLines={2} style={[styles.featuredTitle, { color: titleColor }]}> 
+						<View style={[styles.featuredCardContent, responsiveMetrics?.featured?.contentStyle]}>
+							<Text numberOfLines={2} style={[styles.featuredTitle, responsiveMetrics?.featured?.titleStyle, { color: titleColor }]}>
 								{hospital?.name || "Hospital"}
 							</Text>
 							{features.length > 0 ? (
-								<Text numberOfLines={1} style={[styles.featuredMeta, { color: bodyColor }]}> 
+								<Text numberOfLines={1} style={[styles.featuredMeta, responsiveMetrics?.featured?.metaStyle, { color: bodyColor }]}>
 									{features.slice(0, 2).join(" • ")}
 								</Text>
 							) : null}
@@ -91,6 +91,7 @@ export default function MapExploreIntentHospitalRail({
 	onOpenFeaturedHospital,
 	availableWidth = null,
 	contained = false,
+	responsiveMetrics,
 }) {
 	const { width: screenWidth } = useWindowDimensions();
 	const items = useMemo(() => buildVisibleHospitalSlots(featuredHospitals), [featuredHospitals]);
@@ -107,9 +108,26 @@ export default function MapExploreIntentHospitalRail({
 				railPeek
 			) / visibleCards,
 		);
-		return Math.max(172, Math.min(computedWidth, contained ? 236 : 208));
-	}, [contained, railPeek, railWidth, sidePadding, visibleCards]);
-	const cardHeight = useMemo(() => Math.round(cardWidth * (contained ? 1.24 : 1.32)), [cardWidth, contained]);
+		return Math.max(
+			responsiveMetrics?.featured?.minCardWidth || 172,
+			Math.min(
+				computedWidth,
+				contained
+					? responsiveMetrics?.featured?.containedMaxCardWidth || 236
+					: responsiveMetrics?.featured?.maxCardWidth || 208,
+			),
+		);
+	}, [contained, railPeek, railWidth, responsiveMetrics, sidePadding, visibleCards]);
+	const cardHeight = useMemo(
+		() =>
+			Math.round(
+				cardWidth *
+					(contained
+						? responsiveMetrics?.featured?.containedHeightRatio || 1.24
+						: responsiveMetrics?.featured?.heightRatio || 1.32),
+			),
+		[cardWidth, contained, responsiveMetrics],
+	);
 
 	return (
 		<ScrollView
@@ -120,10 +138,22 @@ export default function MapExploreIntentHospitalRail({
 			snapToInterval={cardWidth + MAP_EXPLORE_INTENT_RAIL.gap}
 			contentContainerStyle={[
 				styles.featuredScrollContent,
+				contained
+					? responsiveMetrics?.featured?.containedScrollContentStyle
+					: responsiveMetrics?.featured?.scrollContentStyle,
 				{
-					paddingLeft: sidePadding,
-					paddingRight: sidePadding,
-					gap: MAP_EXPLORE_INTENT_RAIL.gap,
+					paddingLeft:
+						contained
+							? responsiveMetrics?.featured?.containedScrollContentStyle?.paddingLeft ?? sidePadding
+							: responsiveMetrics?.featured?.scrollContentStyle?.paddingLeft ?? sidePadding,
+					paddingRight:
+						contained
+							? responsiveMetrics?.featured?.containedScrollContentStyle?.paddingRight ?? sidePadding
+							: responsiveMetrics?.featured?.scrollContentStyle?.paddingRight ?? sidePadding,
+					gap:
+						contained
+							? responsiveMetrics?.featured?.containedScrollContentStyle?.gap ?? MAP_EXPLORE_INTENT_RAIL.gap
+							: responsiveMetrics?.featured?.scrollContentStyle?.gap ?? MAP_EXPLORE_INTENT_RAIL.gap,
 				},
 			]}
 		>
@@ -137,6 +167,7 @@ export default function MapExploreIntentHospitalRail({
 						onPress={onOpenFeaturedHospital}
 						cardWidth={cardWidth}
 						cardHeight={cardHeight}
+						responsiveMetrics={responsiveMetrics}
 					/>
 				) : (
 					<FeaturedHospitalPlaceholderCard

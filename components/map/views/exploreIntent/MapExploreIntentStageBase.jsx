@@ -14,6 +14,7 @@ import {
 	MapExploreIntentFooterTerms,
 	MapExploreIntentTopRow,
 } from "./MapExploreIntentStageParts";
+import useMapExploreIntentResponsiveMetrics from "./useMapExploreIntentResponsiveMetrics";
 import styles from "./mapExploreIntent.styles";
 
 export default function MapExploreIntentStageBase({
@@ -41,6 +42,7 @@ export default function MapExploreIntentStageBase({
 	const { isDarkMode } = useTheme();
 	const { width } = useWindowDimensions();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
+	const responsiveMetrics = useMapExploreIntentResponsiveMetrics();
 	const isWebPlatform = Platform.OS === "web";
 	const pulseProgress = useRef(new Animated.Value(0)).current;
 	const resolvedScreenConfig = useMemo(
@@ -123,9 +125,10 @@ export default function MapExploreIntentStageBase({
 				pulseProgress,
 				isExpanded,
 				featuredHospitals,
-				onOpenFeaturedHospital,
-				featuredRailWidth,
-			}),
+			onOpenFeaturedHospital,
+			featuredRailWidth,
+			responsiveMetrics,
+		}),
 		[
 			variant,
 			hospitalSummaryMode,
@@ -148,6 +151,7 @@ export default function MapExploreIntentStageBase({
 			featuredHospitals,
 			onOpenFeaturedHospital,
 			featuredRailWidth,
+			responsiveMetrics,
 		],
 	);
 
@@ -197,10 +201,17 @@ export default function MapExploreIntentStageBase({
 			onOpenProfile={onOpenProfile}
 			profileImageSource={profileImageSource}
 			isSignedIn={isSignedIn}
+			responsiveMetrics={responsiveMetrics}
 		/>
 	);
 
-	const footerTerms = <MapExploreIntentFooterTerms isExpanded={isExpanded} tokens={tokens} />;
+	const footerTerms = (
+		<MapExploreIntentFooterTerms
+			isExpanded={isExpanded}
+			tokens={tokens}
+			responsiveMetrics={responsiveMetrics}
+		/>
+	);
 
 	return (
 		<MapSheetShell
@@ -233,7 +244,9 @@ export default function MapExploreIntentStageBase({
 					scrollEnabled={bodyScrollEnabled}
 					contentContainerStyle={[
 						styles.bodyScrollContent,
+						responsiveMetrics.body.scrollContentStyle,
 						isWebMobileVariant ? styles.bodyScrollContentWebMobile : null,
+						isWebMobileVariant ? responsiveMetrics.body.scrollContentWebMobileStyle : null,
 						presentationMode === "modal" ? styles.bodyScrollContentModal : null,
 						presentationMode === "panel" || isSidebarPresentation
 							? styles.bodyScrollContentPanel
@@ -248,6 +261,7 @@ export default function MapExploreIntentStageBase({
 						presentationMode={presentationMode}
 						centerContent={shouldCenterContent}
 						contentMaxWidth={contentMaxWidth}
+						responsiveMetrics={responsiveMetrics}
 					/>
 				</ScrollView>
 			)}

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from "react";
-import { Keyboard } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Keyboard, Platform } from "react-native";
 import { SearchBoundary } from "../../../../contexts/SearchContext";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
@@ -38,6 +38,9 @@ function MapSearchStageSurface({
 	const { isDarkMode } = useTheme();
 	const searchInputRef = useRef(null);
 	const didAutofocusOnOpenRef = useRef(false);
+	const [isSearchInputFocused, setIsSearchInputFocused] = useState(false);
+	const shouldLockExpandedForWebInput =
+		Platform.OS === "web" && isSearchInputFocused;
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
@@ -80,6 +83,7 @@ function MapSearchStageSurface({
 		onSnapStateChange,
 		presentationMode,
 		allowedSnapStates,
+		preventCollapse: shouldLockExpandedForWebInput,
 	});
 	const {
 		androidExpandedBodyGesture,
@@ -113,6 +117,17 @@ function MapSearchStageSurface({
 		return () => clearTimeout(focusTimer);
 	}, [snapState]);
 
+	useEffect(() => {
+		if (
+			!shouldLockExpandedForWebInput ||
+			snapState === MAP_SHEET_SNAP_STATES.EXPANDED
+		) {
+			return;
+		}
+
+		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
+	}, [onSnapStateChange, shouldLockExpandedForWebInput, snapState]);
+
 	return (
 		<MapSheetShell
 			sheetHeight={sheetHeight}
@@ -138,6 +153,8 @@ function MapSearchStageSurface({
 						model={model}
 						snapState={snapState}
 						handleExpand={() => handleSnapToggle(MAP_SHEET_SNAP_STATES.EXPANDED)}
+						onSearchFocus={() => setIsSearchInputFocused(true)}
+						onSearchBlur={() => setIsSearchInputFocused(false)}
 						tokens={tokens}
 						isDarkMode={isDarkMode}
 					/>

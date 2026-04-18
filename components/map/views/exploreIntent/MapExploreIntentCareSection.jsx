@@ -27,7 +27,9 @@ function CareIntentOrb({
 	titleColor,
 	mutedColor,
 	pulseProgress = null,
+	responsiveStyles = null,
 }) {
+	const iconSize = responsiveStyles?.iconSize || 38;
 	const animatedScale =
 		hierarchy === "primary" && pulseProgress
 			? pulseProgress.interpolate({
@@ -67,6 +69,7 @@ function CareIntentOrb({
 			onPress={onPress}
 			style={({ pressed }) => [
 				styles.careAction,
+				responsiveStyles?.actionStyle,
 				containerStyle,
 				pressed ? styles.careActionPressed : null,
 				{ opacity: pressed ? Math.max(wrapperOpacity - 0.08, 0.54) : wrapperOpacity },
@@ -85,6 +88,7 @@ function CareIntentOrb({
 					<View
 						style={[
 							styles.careIconShadowWrap,
+							responsiveStyles?.shadowWrapStyle,
 							{
 								shadowColor: "#000000",
 								shadowOpacity,
@@ -108,18 +112,25 @@ function CareIntentOrb({
 							colors={colors}
 							start={{ x: 0.18, y: 0.18 }}
 							end={{ x: 0.82, y: 0.9 }}
-							style={styles.careIconWrap}
+							style={[styles.careIconWrap, responsiveStyles?.iconWrapStyle]}
 						>
-							<MaterialCommunityIcons name={iconName} size={38} color="#FFFFFF" />
+							<MaterialCommunityIcons name={iconName} size={iconSize} color="#FFFFFF" />
 						</LinearGradient>
 					</View>
 				</Animated.View>
-				<Text style={[styles.careLabel, { color: hierarchy === "primary" ? titleColor : mutedColor }]}>
+				<Text
+					style={[
+						styles.careLabel,
+						responsiveStyles?.labelStyle,
+						{ color: hierarchy === "primary" ? titleColor : mutedColor },
+					]}
+				>
 					{label}
 				</Text>
 				<Text
 					style={[
 						styles.careSubtext,
+						responsiveStyles?.subtextStyle,
 						{ color: hierarchy === "primary" ? COLORS.brandPrimary : mutedColor },
 					]}
 				>
@@ -141,6 +152,7 @@ function CareIntentCard({
 	isSelected = false,
 	showSubtext = true,
 	pulseProgress = null,
+	responsiveMetrics = null,
 }) {
 	const isPrimary = hierarchy === "primary";
 	const restingOpacity = isSelected ? 1 : isPrimary ? 1 : hierarchy === "secondary" ? 0.94 : 0.82;
@@ -300,7 +312,11 @@ function CareIntentCard({
 					end={{ x: 0.86, y: 0.92 }}
 					style={[
 						styles.intentCardSurface,
+						responsiveMetrics?.cardSurfaceStyle,
 						isPrimary ? styles.intentCardSurfacePrimary : styles.intentCardSurfaceSecondary,
+						isPrimary
+							? responsiveMetrics?.cardSurfacePrimaryStyle
+							: responsiveMetrics?.cardSurfaceSecondaryStyle,
 						surfaceBiasStyle,
 					]}
 				>
@@ -349,7 +365,7 @@ function CareIntentCard({
 								],
 							}}
 						>
-							<View style={styles.intentCardIconWrap}>
+							<View style={[styles.intentCardIconWrap, responsiveMetrics?.cardIconWrapStyle]}>
 								{isPrimary && !isSelected ? (
 									<Animated.View
 										pointerEvents="none"
@@ -362,22 +378,30 @@ function CareIntentCard({
 										]}
 									/>
 								) : null}
-								<MaterialCommunityIcons name={iconName} size={isPrimary ? 24 : 21} color="#FFFFFF" />
+								<MaterialCommunityIcons
+									name={iconName}
+									size={
+										isPrimary
+											? responsiveMetrics?.cardPrimaryIconSize || 24
+											: responsiveMetrics?.cardSecondaryIconSize || 21
+									}
+									color="#FFFFFF"
+								/>
 							</View>
 						</Animated.View>
 						{isSelected ? (
-							<View style={styles.intentCardCheckBadge}>
+							<View style={[styles.intentCardCheckBadge, responsiveMetrics?.cardCheckStyle]}>
 								<Ionicons name="checkmark" size={12} color="#FFFFFF" />
 							</View>
 						) : (
-							<View style={styles.intentCardChevronBadge}>
+							<View style={[styles.intentCardChevronBadge, responsiveMetrics?.cardChevronStyle]}>
 								<Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.82)" />
 							</View>
 						)}
 					</View>
-					<Text style={styles.intentCardLabel}>{label}</Text>
+					<Text style={[styles.intentCardLabel, responsiveMetrics?.cardLabelStyle]}>{label}</Text>
 					{showSubtext && subtext ? (
-						<Text style={styles.intentCardSubtext}>{subtext}</Text>
+						<Text style={[styles.intentCardSubtext, responsiveMetrics?.cardSubtextStyle]}>{subtext}</Text>
 					) : null}
 				</LinearGradient>
 			</Animated.View>
@@ -397,7 +421,12 @@ export default function MapExploreIntentCareSection({
 	mutedColor,
 	isDarkMode,
 	pulseProgress = null,
+	responsiveMetrics,
 }) {
+	const careResponsiveStyles = responsiveMetrics?.care?.orb || null;
+	const sectionLabelStyle = responsiveMetrics?.section?.labelStyle || null;
+	const sectionTriggerStyle = responsiveMetrics?.section?.triggerStyle || null;
+	const careRowStyle = responsiveMetrics?.care?.rowStyle || null;
 	const bedSubtext = getBedSpaceSubtext(totalAvailableBeds, nearbyBedHospitals);
 	const ambulanceSubtext =
 		nearbyHospitalCount > 0 ? `${nearbyHospitalCount} nearby` : MAP_EXPLORE_INTENT_COPY.NEARBY_HELP;
@@ -413,10 +442,11 @@ export default function MapExploreIntentCareSection({
 						styles.intentSectionHeader,
 						styles.intentSectionHeaderBiased,
 						styles.intentSectionHeaderTrigger,
+						sectionTriggerStyle,
 						pressed ? styles.sectionTriggerPressed : null,
 					]}
 				>
-					<Text style={[styles.sectionLabel, { color: mutedColor }]}>
+					<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
 						{MAP_EXPLORE_INTENT_COPY.CHOOSE_CARE}
 					</Text>
 					<View
@@ -429,7 +459,13 @@ export default function MapExploreIntentCareSection({
 					</View>
 				</Pressable>
 
-				<View style={[styles.intentPanelGrid, styles.intentPanelGridBiased]}>
+				<View
+					style={[
+						styles.intentPanelGrid,
+						styles.intentPanelGridBiased,
+						responsiveMetrics?.care?.panelGridStyle,
+					]}
+				>
 					<View style={[styles.intentPanelFullSpan, styles.intentPanelFullSpanBiased]}>
 						<CareIntentCard
 							label={MAP_EXPLORE_INTENT_COPY.AMBULANCE}
@@ -442,9 +478,16 @@ export default function MapExploreIntentCareSection({
 							isSelected={selectedCare === "ambulance"}
 							showSubtext={false}
 							pulseProgress={!selectedCare ? pulseProgress : null}
+							responsiveMetrics={responsiveMetrics?.care}
 						/>
 					</View>
-					<View style={[styles.intentPanelBottomRow, styles.intentPanelBottomRowBiased]}>
+					<View
+						style={[
+							styles.intentPanelBottomRow,
+							styles.intentPanelBottomRowBiased,
+							responsiveMetrics?.care?.panelBottomRowStyle,
+						]}
+					>
 						<View style={[styles.intentPanelHalf, styles.intentPanelHalfLeading]}>
 							<CareIntentCard
 								label={MAP_EXPLORE_INTENT_COPY.BED_SPACE}
@@ -456,6 +499,7 @@ export default function MapExploreIntentCareSection({
 								isSelected={selectedCare === "bed"}
 								showSubtext={false}
 								pulseProgress={!selectedCare ? pulseProgress : null}
+								responsiveMetrics={responsiveMetrics?.care}
 							/>
 						</View>
 						<View style={[styles.intentPanelHalf, styles.intentPanelHalfTrailing]}>
@@ -470,6 +514,7 @@ export default function MapExploreIntentCareSection({
 								isSelected={selectedCare === "both"}
 								showSubtext={false}
 								pulseProgress={!selectedCare ? pulseProgress : null}
+								responsiveMetrics={responsiveMetrics?.care}
 							/>
 						</View>
 					</View>
@@ -481,8 +526,8 @@ export default function MapExploreIntentCareSection({
 	if (layoutMode === "web_mobile") {
 		return (
 			<>
-				<View style={styles.intentSectionHeader}>
-					<Text style={[styles.sectionLabel, { color: mutedColor }]}>
+				<View style={[styles.intentSectionHeader, sectionTriggerStyle]}>
+					<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
 						{MAP_EXPLORE_INTENT_COPY.CHOOSE_CARE}
 					</Text>
 					<Text style={[styles.intentSectionMeta, { color: mutedColor }]}>
@@ -490,7 +535,13 @@ export default function MapExploreIntentCareSection({
 					</Text>
 				</View>
 
-				<View style={[styles.intentActionStack, styles.intentActionStackBiased]}>
+				<View
+					style={[
+						styles.intentActionStack,
+						styles.intentActionStackBiased,
+						responsiveMetrics?.care?.actionStackStyle,
+					]}
+				>
 					<CareIntentCard
 						label={MAP_EXPLORE_INTENT_COPY.AMBULANCE}
 						subtext={ambulanceSubtext}
@@ -500,8 +551,15 @@ export default function MapExploreIntentCareSection({
 						panelBias="primary"
 						onPress={() => onChooseCare("ambulance")}
 						isSelected={selectedCare === "ambulance"}
+						responsiveMetrics={responsiveMetrics?.care}
 					/>
-					<View style={[styles.intentActionRow, styles.intentActionRowBiased]}>
+					<View
+						style={[
+							styles.intentActionRow,
+							styles.intentActionRowBiased,
+							responsiveMetrics?.care?.actionRowStyle,
+						]}
+					>
 						<View style={[styles.intentActionHalf, styles.intentActionHalfLeading]}>
 							<CareIntentCard
 								label={MAP_EXPLORE_INTENT_COPY.BED_SPACE}
@@ -511,6 +569,7 @@ export default function MapExploreIntentCareSection({
 								panelBias="leading"
 								onPress={() => onChooseCare("bed")}
 								isSelected={selectedCare === "bed"}
+								responsiveMetrics={responsiveMetrics?.care}
 							/>
 						</View>
 						<View style={[styles.intentActionHalf, styles.intentActionHalfTrailing]}>
@@ -523,6 +582,7 @@ export default function MapExploreIntentCareSection({
 								panelBias="trailing"
 								onPress={() => onChooseCare("both")}
 								isSelected={selectedCare === "both"}
+								responsiveMetrics={responsiveMetrics?.care}
 							/>
 						</View>
 					</View>
@@ -541,16 +601,17 @@ export default function MapExploreIntentCareSection({
 				onPress={onOpenCareHistory}
 				style={({ pressed }) => [
 					styles.sectionTrigger,
+					sectionTriggerStyle,
 					pressed ? styles.sectionTriggerPressed : null,
 				]}
 			>
-				<Text style={[styles.sectionLabel, { color: mutedColor }]}>
+				<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
 					{MAP_EXPLORE_INTENT_COPY.CHOOSE_CARE}
 				</Text>
 				<Ionicons name="chevron-forward" size={16} color={mutedColor} />
 			</Pressable>
 
-			<View style={[styles.careRow, styles.careRowBiased]}>
+			<View style={[styles.careRow, styles.careRowBiased, careRowStyle]}>
 				<CareIntentOrb
 					label={MAP_EXPLORE_INTENT_COPY.AMBULANCE}
 					subtext={ambulanceSubtext}
@@ -564,6 +625,7 @@ export default function MapExploreIntentCareSection({
 					titleColor={titleColor}
 					mutedColor={mutedColor}
 					pulseProgress={pulseProgress}
+					responsiveStyles={careResponsiveStyles}
 				/>
 				<CareIntentOrb
 					label={MAP_EXPLORE_INTENT_COPY.BED_SPACE}
@@ -577,6 +639,7 @@ export default function MapExploreIntentCareSection({
 					isSelected={selectedCare === "bed"}
 					titleColor={titleColor}
 					mutedColor={mutedColor}
+					responsiveStyles={careResponsiveStyles}
 				/>
 				<CareIntentOrb
 					label={MAP_EXPLORE_INTENT_COPY.COMPARE}
@@ -590,6 +653,7 @@ export default function MapExploreIntentCareSection({
 					isSelected={selectedCare === "both"}
 					titleColor={titleColor}
 					mutedColor={mutedColor}
+					responsiveStyles={careResponsiveStyles}
 				/>
 			</View>
 		</>

@@ -1,8 +1,9 @@
 import React, { useMemo } from "react";
-import { Platform, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { Platform, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import getViewportSurfaceMetrics from "../../utils/ui/viewportSurfaceMetrics";
+import EntryActionButton from "../entry/EntryActionButton";
 import MapModalShell from "./surfaces/MapModalShell";
 
 const squircle = (radius) => ({
@@ -19,6 +20,7 @@ export default function MapGuestProfileModal({
 }) {
 	const { isDarkMode } = useTheme();
 	const { width, height } = useWindowDimensions();
+	const trimmedEmail = typeof emailValue === "string" ? emailValue.trim() : "";
 	const viewportMetrics = useMemo(
 		() =>
 			getViewportSurfaceMetrics({
@@ -30,117 +32,146 @@ export default function MapGuestProfileModal({
 		[height, width],
 	);
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
+	const bodyColor = isDarkMode ? "#CBD5E1" : "#475569";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 	const inputSurface = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)";
 	const avatarSurface = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)";
+	const footerTopGap = Math.max(14, viewportMetrics.insets.sectionGap);
+	const heroOrbSize = Math.max(98, Math.round(viewportMetrics.radius.orb * 1.6));
+	const canContinue = trimmedEmail.length > 0;
 
 	return (
 		<MapModalShell
 			visible={visible}
 			onClose={onClose}
 			title={null}
-			minHeightRatio={0.78}
+			enableSnapDetents={false}
 			contentContainerStyle={[
 				styles.content,
 				{
-					paddingTop: Math.max(10, viewportMetrics.insets.sectionGap - 2),
-					paddingBottom: Math.max(12, viewportMetrics.insets.sectionGap),
+					paddingTop: Math.max(8, viewportMetrics.insets.sectionGap - 4),
+					paddingBottom: Math.max(20, viewportMetrics.insets.largeGap + 8),
+					paddingHorizontal: viewportMetrics.insets.horizontal,
 				},
 			]}
 		>
-			<View
-				style={[
-					styles.avatarOrb,
-					{
-						backgroundColor: avatarSurface,
-						width: viewportMetrics.radius.orb * 2,
-						height: viewportMetrics.radius.orb * 2,
-						borderRadius: viewportMetrics.radius.orb,
-						marginBottom: viewportMetrics.insets.largeGap,
-					},
-				]}
-			>
-				<Ionicons
-					name="person"
-					size={Math.max(38, Math.round(viewportMetrics.radius.orb * 0.92))}
-					color={mutedColor}
-				/>
+			<View style={styles.stage}>
+				<View style={styles.heroBlock}>
+					<View
+						style={[
+							styles.avatarOrb,
+							{
+								backgroundColor: avatarSurface,
+								width: heroOrbSize,
+								height: heroOrbSize,
+								borderRadius: Math.round(heroOrbSize / 2),
+								marginBottom: viewportMetrics.insets.largeGap,
+							},
+						]}
+					>
+						<Ionicons
+							name="person-outline"
+							size={Math.max(34, Math.round(heroOrbSize * 0.34))}
+							color={mutedColor}
+						/>
+					</View>
+
+					<Text
+						style={[
+							styles.title,
+							{
+								color: titleColor,
+								fontSize: Math.max(28, viewportMetrics.type.title + 10),
+								lineHeight: Math.max(32, viewportMetrics.type.titleLineHeight + 10),
+							},
+						]}
+					>
+						What&apos;s your email?
+					</Text>
+
+					<Text
+						style={[
+							styles.body,
+							{
+								color: bodyColor,
+								fontSize: viewportMetrics.type.body,
+								lineHeight: viewportMetrics.type.bodyLineHeight,
+								marginTop: Math.max(8, viewportMetrics.insets.sectionGap - 4),
+							},
+						]}
+					>
+						Next, we&apos;ll send a code.
+					</Text>
+				</View>
+
+				<View style={[styles.formBlock, { marginTop: viewportMetrics.insets.largeGap }]}>
+					<View
+						style={[
+							styles.inputShell,
+							{
+								backgroundColor: inputSurface,
+								minHeight: viewportMetrics.cta.primaryHeight,
+								paddingHorizontal: Math.max(16, viewportMetrics.modal.contentPadding - 2),
+								borderRadius: viewportMetrics.radius.card,
+							},
+						]}
+					>
+						<Ionicons
+							name="mail-outline"
+							size={Math.max(18, viewportMetrics.type.body + 2)}
+							color={mutedColor}
+						/>
+						<TextInput
+							value={emailValue}
+							onChangeText={onEmailChange}
+							onSubmitEditing={() => {
+								if (canContinue) {
+									onContinue?.();
+								}
+							}}
+							placeholder="you@example.com"
+							placeholderTextColor={mutedColor}
+							style={[
+								styles.input,
+								{
+									color: titleColor,
+									fontSize: viewportMetrics.type.body,
+									lineHeight: viewportMetrics.type.bodyLineHeight - 4,
+								},
+							]}
+							keyboardType="email-address"
+							autoCapitalize="none"
+							autoCorrect={false}
+							autoComplete="email"
+							textContentType="emailAddress"
+							returnKeyType="go"
+						/>
+					</View>
+
+					<View style={[styles.inlineCtaWrap, { marginTop: footerTopGap }]}>
+						<EntryActionButton
+							label="Continue with email"
+							onPress={onContinue}
+							height={viewportMetrics.cta.primaryHeight}
+							radius={viewportMetrics.cta.radius}
+							disabled={!canContinue}
+							accessibilityHint="Next step sends a one-time code to this email address"
+						/>
+					</View>
+				</View>
 			</View>
-
-			<Text
-				style={[
-					styles.title,
-					{
-						color: titleColor,
-						fontSize: Math.max(24, viewportMetrics.type.title + 6),
-						lineHeight: Math.max(28, viewportMetrics.type.titleLineHeight + 6),
-					},
-				]}
-			>
-				What&apos;s your email?
-			</Text>
-
-			<View
-				style={[
-					styles.inputShell,
-					{
-						backgroundColor: inputSurface,
-						marginTop: viewportMetrics.insets.sectionGap,
-						minHeight: viewportMetrics.cta.primaryHeight,
-						paddingHorizontal: Math.max(16, viewportMetrics.modal.contentPadding - 2),
-						borderRadius: viewportMetrics.radius.card,
-					},
-				]}
-			>
-				<Ionicons
-					name="mail-outline"
-					size={Math.max(18, viewportMetrics.type.body + 2)}
-					color={mutedColor}
-				/>
-				<TextInput
-					value={emailValue}
-					onChangeText={onEmailChange}
-					placeholder="Email"
-					placeholderTextColor={mutedColor}
-					style={[
-						styles.input,
-						{
-							color: titleColor,
-							fontSize: viewportMetrics.type.body,
-							lineHeight: viewportMetrics.type.bodyLineHeight - 4,
-						},
-					]}
-					keyboardType="email-address"
-					autoCapitalize="none"
-					autoCorrect={false}
-					autoComplete="email"
-				/>
-			</View>
-
-			{Platform.OS === "web" && typeof onContinue === "function" ? (
-				<Pressable
-					onPress={onContinue}
-					style={[
-						styles.continueButton,
-						{
-							marginTop: viewportMetrics.insets.sectionGap,
-							minHeight: viewportMetrics.cta.primaryHeight,
-							paddingHorizontal: viewportMetrics.modal.contentPadding,
-							borderRadius: viewportMetrics.cta.radius,
-						},
-					]}
-				>
-					<Text style={styles.continueButtonText}>Continue</Text>
-				</Pressable>
-			) : null}
 		</MapModalShell>
 	);
 }
 
 const styles = StyleSheet.create({
 	content: {
-		paddingTop: 10,
-		paddingBottom: 12,
+		flexGrow: 1,
+	},
+	stage: {
+		flexGrow: 1,
+	},
+	heroBlock: {
 		alignItems: "center",
 	},
 	avatarOrb: {
@@ -164,8 +195,15 @@ const styles = StyleSheet.create({
 		letterSpacing: -0.9,
 		textAlign: "center",
 	},
+	body: {
+		maxWidth: 420,
+		textAlign: "center",
+		fontWeight: "400",
+	},
+	formBlock: {
+		width: "100%",
+	},
 	inputShell: {
-		marginTop: 18,
 		width: "100%",
 		minHeight: 58,
 		paddingHorizontal: 16,
@@ -182,20 +220,7 @@ const styles = StyleSheet.create({
 		lineHeight: 20,
 		fontWeight: "400",
 	},
-	continueButton: {
-		marginTop: 16,
-		minWidth: 160,
-		paddingHorizontal: 20,
-		paddingVertical: 14,
-		borderRadius: 999,
-		backgroundColor: "#86100E",
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	continueButtonText: {
-		color: "#FFFFFF",
-		fontSize: 15,
-		lineHeight: 18,
-		fontWeight: "800",
+	inlineCtaWrap: {
+		width: "100%",
 	},
 });

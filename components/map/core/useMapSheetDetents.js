@@ -15,6 +15,7 @@ export default function useMapSheetDetents({
 	presentationMode = "sheet",
 	allowedSnapStates,
 	extraScrollEnabled = false,
+	preventCollapse = false,
 }) {
 	const platformMotion = useMemo(() => getMapPlatformMotion(Platform.OS), []);
 	const sheetScrollMotion = platformMotion.sheet.scroll;
@@ -27,6 +28,7 @@ export default function useMapSheetDetents({
 	const canExpand =
 		getNextAllowedMapSheetSnapStateUp(snapState, orderedSnapStates) !== snapState;
 	const canCollapse =
+		!preventCollapse &&
 		getNextAllowedMapSheetSnapStateDown(snapState, orderedSnapStates) !== snapState;
 	const allowScrollDetents =
 		!isSidebarPresentation && Boolean(sheetScrollMotion.enableContentDetents);

@@ -52,6 +52,8 @@ export function MapSearchActiveTopRow({
 	model,
 	snapState,
 	handleExpand,
+	onSearchFocus,
+	onSearchBlur,
 	tokens,
 	isDarkMode,
 }) {
@@ -62,11 +64,15 @@ export function MapSearchActiveTopRow({
 				value={model.query}
 				onChangeText={model.setSearchQuery}
 				onFocus={() => {
+					onSearchFocus?.();
 					if (snapState === MAP_SHEET_SNAP_STATES.HALF) {
 						handleExpand();
 					}
 				}}
-				onBlur={() => model.commitQuery(model.query)}
+				onBlur={() => {
+					onSearchBlur?.();
+					model.commitQuery(model.query);
+				}}
 				onClear={() => model.setSearchQuery("")}
 				placeholder="Search hospitals, specialties, or area"
 				showSuggestions={false}

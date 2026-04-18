@@ -23,11 +23,13 @@ export function MapExploreIntentTopRow({
 	onOpenProfile,
 	profileImageSource,
 	isSignedIn,
+	responsiveMetrics,
 }) {
 	return (
 		<View
 			style={[
 				styles.topRow,
+				responsiveMetrics?.topRow?.rowStyle,
 				isCollapsed ? styles.topRowCollapsed : null,
 				isWebMobileVariant ? styles.topRowWebMobile : null,
 				isWebMobileMd ? styles.topRowWebMobileMd : null,
@@ -42,7 +44,9 @@ export function MapExploreIntentTopRow({
 				onPress={onOpenSearch}
 				style={[
 					styles.searchPill,
+					responsiveMetrics?.topRow?.searchPillStyle,
 					isCollapsed ? styles.searchPillCollapsed : null,
+					isCollapsed ? responsiveMetrics?.topRow?.searchPillCollapsedStyle : null,
 					isWebMobileVariant ? styles.searchPillWebMobile : null,
 					{
 						borderRadius: isCollapsed ? 18 : 22,
@@ -51,8 +55,16 @@ export function MapExploreIntentTopRow({
 					},
 				]}
 			>
-				<Ionicons name="search" size={isCollapsed ? 17 : 19} color={tokens.titleColor} />
-				<Text style={[styles.searchText, { color: tokens.mutedText }]}>
+				<Ionicons
+					name="search"
+					size={
+						isCollapsed
+							? responsiveMetrics?.topRow?.searchIconCollapsedSize || 17
+							: responsiveMetrics?.topRow?.searchIconSize || 19
+					}
+					color={tokens.titleColor}
+				/>
+				<Text style={[styles.searchText, responsiveMetrics?.topRow?.searchTextStyle, { color: tokens.mutedText }]}>
 					{MAP_EXPLORE_INTENT_COPY.SEARCH}
 				</Text>
 			</Pressable>
@@ -62,12 +74,13 @@ export function MapExploreIntentTopRow({
 				userImageSource={profileImageSource}
 				isSignedIn={isSignedIn}
 				isCollapsed={isCollapsed}
+				responsiveMetrics={responsiveMetrics}
 			/>
 		</View>
 	);
 }
 
-export function MapExploreIntentFooterTerms({ isExpanded, tokens }) {
+export function MapExploreIntentFooterTerms({ isExpanded, tokens, responsiveMetrics }) {
 	if (!isExpanded) return null;
 
 	return (
@@ -77,7 +90,7 @@ export function MapExploreIntentFooterTerms({ isExpanded, tokens }) {
 				url="https://ivisit.ng/terms"
 				color={tokens.mutedText}
 				style={styles.termsLink}
-				textStyle={styles.termsText}
+				textStyle={[styles.termsText, responsiveMetrics?.section?.footerTextStyle]}
 			/>
 		</View>
 	);
@@ -105,6 +118,7 @@ export function buildMapExploreIntentScreenSections({
 	featuredHospitals,
 	onOpenFeaturedHospital,
 	featuredRailWidth,
+	responsiveMetrics,
 }) {
 	const sections = [
 		{
@@ -122,6 +136,7 @@ export function buildMapExploreIntentScreenSections({
 					nearbyHospitalCount={nearbyHospitalCount}
 					totalAvailableBeds={totalAvailableBeds}
 					onOpenHospitals={onOpenHospitals}
+					responsiveMetrics={responsiveMetrics}
 				/>
 			),
 			panelFlex: 1.16,
@@ -142,6 +157,7 @@ export function buildMapExploreIntentScreenSections({
 					mutedColor={tokens.mutedText}
 					isDarkMode={isDarkMode}
 					pulseProgress={pulseProgress}
+					responsiveMetrics={responsiveMetrics}
 				/>
 			),
 			panelFlex: 0.92,
@@ -164,16 +180,18 @@ export function buildMapExploreIntentScreenSections({
 				<View
 					style={[
 						styles.expandedSection,
+						responsiveMetrics?.section?.expandedSectionStyle,
 						shouldCenterContent ? styles.expandedSectionContained : null,
 					]}
 				>
 					<View
 						style={[
 							styles.expandedSectionHeader,
+							responsiveMetrics?.section?.expandedHeaderStyle,
 							shouldCenterContent ? styles.expandedSectionHeaderContained : null,
 						]}
 					>
-						<Text style={[styles.sectionLabel, { color: tokens.mutedText }]}>
+						<Text style={[styles.sectionLabel, responsiveMetrics?.section?.labelStyle, { color: tokens.mutedText }]}>
 							Choose a hospital
 						</Text>
 					</View>
@@ -185,6 +203,7 @@ export function buildMapExploreIntentScreenSections({
 							onOpenFeaturedHospital={onOpenFeaturedHospital}
 							availableWidth={featuredRailWidth}
 							contained={shouldCenterContent}
+							responsiveMetrics={responsiveMetrics}
 						/>
 					</View>
 				</View>

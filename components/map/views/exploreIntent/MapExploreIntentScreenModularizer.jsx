@@ -9,6 +9,7 @@ export default function MapExploreIntentScreenModularizer({
 	presentationMode = "sheet",
 	centerContent = false,
 	contentMaxWidth = null,
+	responsiveMetrics,
 }) {
 	const resolvedScreens = Array.isArray(screens) ? screens.filter(Boolean) : [];
 	const isLeftSheet = presentationMode === "sidebar";
@@ -29,8 +30,15 @@ export default function MapExploreIntentScreenModularizer({
 			key={key}
 			style={[
 				!fullBleed && !isLeftSheet ? styles.contentSectionInset : null,
+				!fullBleed && !isLeftSheet ? responsiveMetrics?.section?.contentInsetStyle : null,
 				!fullBleed && !inPanelRow && isWebMobileVariant ? styles.contentSectionInsetWebMobile : null,
+				!fullBleed && !inPanelRow && isWebMobileVariant
+					? responsiveMetrics?.section?.contentInsetWebMobileStyle
+					: null,
 				!fullBleed && !inPanelRow && isWebMobileMd ? styles.contentSectionInsetWebMobileMd : null,
+				!fullBleed && !inPanelRow && isWebMobileMd
+					? responsiveMetrics?.section?.contentInsetWebMobileMdStyle
+					: null,
 				!fullBleed && !inPanelRow && centerContent ? styles.contentSectionCentered : null,
 				!fullBleed && !inPanelRow && centerContent && contentMaxWidth
 					? { maxWidth: contentMaxWidth }
@@ -57,6 +65,7 @@ export default function MapExploreIntentScreenModularizer({
 					<View
 						style={[
 							styles.screenPanelRow,
+							responsiveMetrics?.section?.panelRowStyle,
 							centerContent ? styles.contentSectionCentered : null,
 							panelMaxWidth ? { maxWidth: panelMaxWidth } : null,
 						]}
