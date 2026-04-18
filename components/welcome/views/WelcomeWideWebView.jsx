@@ -130,7 +130,7 @@ export default function WelcomeWideWebView({
 	};
 
 	const helperDisplayStyle = {
-		marginTop: Math.max(metrics?.stageSpacing?.headlineToHelper || 14, 14),
+		marginTop: Math.max(metrics?.stageSpacing?.headlineToHelper || sharedMetrics.insets.sectionGap, sharedMetrics.insets.sectionGap),
 		maxWidth: Math.max(metrics?.helperMaxWidth || 520, 520),
 		fontSize: Math.max(15, metrics?.helperSize || sharedMetrics.type.body),
 		lineHeight: Math.max(22, metrics?.helperLineHeight || sharedMetrics.type.bodyLineHeight),
@@ -309,7 +309,7 @@ export default function WelcomeWideWebView({
 								style={[
 									styles.helper,
 									{
-										marginTop: 12,
+										marginTop: Math.max(10, sharedMetrics.insets.sectionGap - 2),
 										fontSize: Math.max(12, (metrics?.helperSize || 16) - 4),
 										lineHeight: Math.max(18, (metrics?.helperLineHeight || 22) - 8),
 										opacity: isDarkMode ? 0.7 : 0.62,
@@ -346,7 +346,7 @@ export default function WelcomeWideWebView({
 									left: "10%",
 									bottom: "28%",
 									width: "66%",
-									height: 22,
+									height: Math.max(18, sharedMetrics.type.captionLineHeight + 4),
 									borderRadius: 999,
 								},
 								{

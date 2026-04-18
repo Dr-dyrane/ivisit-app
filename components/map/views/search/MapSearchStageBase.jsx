@@ -16,7 +16,8 @@ import {
 	MapSearchBodyContent,
 	MapSearchCollapsedTopRow,
 } from "./MapSearchStageParts";
-import styles from "./mapSearchStage.styles";
+import styles, { getMapSearchStageResponsiveStyles } from "./mapSearchStage.styles";
+import useResponsiveSurfaceMetrics from "../../../../hooks/ui/useResponsiveSurfaceMetrics";
 
 function MapSearchStageSurface({
 	sheetHeight,
@@ -44,6 +45,13 @@ function MapSearchStageSurface({
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
+	const viewportMetrics = useResponsiveSurfaceMetrics({
+		presentationMode: presentationMode === "sheet" ? "sheet" : "modal",
+	});
+	const responsiveStyles = useMemo(
+		() => getMapSearchStageResponsiveStyles(viewportMetrics),
+		[viewportMetrics],
+	);
 	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
 	const modalContainedStyle =
 		presentationMode === "modal" && contentMaxWidth
@@ -138,6 +146,7 @@ function MapSearchStageSurface({
 			topSlot={
 				isCollapsed ? (
 					<MapSearchCollapsedTopRow
+						responsiveStyles={responsiveStyles}
 						modalContainedStyle={modalContainedStyle}
 						tokens={tokens}
 						onExpand={() => handleSnapToggle(MAP_SHEET_SNAP_STATES.HALF)}
@@ -148,6 +157,7 @@ function MapSearchStageSurface({
 					/>
 				) : (
 					<MapSearchActiveTopRow
+						responsiveStyles={responsiveStyles}
 						modalContainedStyle={modalContainedStyle}
 						searchInputRef={searchInputRef}
 						model={model}
@@ -174,6 +184,7 @@ function MapSearchStageSurface({
 						isSidebarPresentation ? sheetStageStyles.bodyScrollContentSidebar : null,
 						modalContainedStyle,
 						styles.bodyScrollContent,
+						responsiveStyles.bodyScrollContent,
 					]}
 					isSidebarPresentation={isSidebarPresentation}
 					allowScrollDetents={allowScrollDetents}
@@ -185,7 +196,7 @@ function MapSearchStageSurface({
 					androidExpandedBodyGesture={androidExpandedBodyGesture}
 					androidExpandedBodyStyle={androidExpandedBodyStyle}
 				>
-					<MapSearchBodyContent model={model} />
+					<MapSearchBodyContent model={model} responsiveStyles={responsiveStyles} />
 				</MapStageBodyScroll>
 			)}
 		</MapSheetShell>

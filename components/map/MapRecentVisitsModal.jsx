@@ -1,10 +1,10 @@
 import React, { useMemo } from "react";
-import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useVisits } from "../../contexts/VisitsContext";
-import getViewportSurfaceMetrics from "../../utils/ui/viewportSurfaceMetrics";
+import useResponsiveSurfaceMetrics from "../../hooks/ui/useResponsiveSurfaceMetrics";
 import { navigateToVisits } from "../../utils/navigationHelpers";
 import MapModalShell from "./surfaces/MapModalShell";
 
@@ -23,22 +23,55 @@ function formatVisitMeta(visit) {
 export default function MapRecentVisitsModal({ visible, onClose }) {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
-	const { width, height } = useWindowDimensions();
-	const viewportMetrics = useMemo(
-		() =>
-			getViewportSurfaceMetrics({
-				width,
-				height,
-				platform: Platform.OS,
-				presentationMode: "modal",
-			}),
-		[height, width],
-	);
+	const viewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "modal" });
 	const { visits = [] } = useVisits();
 	const recentVisits = useMemo(() => (Array.isArray(visits) ? visits.slice(0, 8) : []), [visits]);
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 	const cardSurface = isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.04)";
+	const responsiveStyles = useMemo(() => {
+		const visitIconSize = Math.max(36, Math.round(viewportMetrics.radius.card * 1.48));
+		return {
+			content: {
+				paddingBottom: Math.max(12, viewportMetrics.insets.sectionGap),
+				gap: viewportMetrics.insets.sectionGap,
+			},
+			visitCard: {
+				paddingHorizontal: Math.max(14, viewportMetrics.modal.contentPadding - 2),
+				paddingVertical: Math.max(14, viewportMetrics.insets.sectionGap),
+				gap: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+			},
+			visitIconWrap: {
+				width: visitIconSize,
+				height: visitIconSize,
+				borderRadius: Math.round(visitIconSize / 2),
+			},
+			visitTitle: {
+				fontSize: Math.max(15, viewportMetrics.type.body),
+				lineHeight: Math.max(20, viewportMetrics.type.bodyLineHeight - 4),
+			},
+			visitMeta: {
+				marginTop: 4,
+				fontSize: viewportMetrics.type.caption,
+				lineHeight: Math.max(17, viewportMetrics.type.captionLineHeight + 1),
+			},
+			moreAction: {
+				marginTop: Math.max(6, viewportMetrics.insets.sectionGap - 6),
+			},
+			moreText: {
+				fontSize: viewportMetrics.type.caption,
+				lineHeight: viewportMetrics.type.captionLineHeight,
+			},
+			emptyCard: {
+				paddingHorizontal: Math.max(18, viewportMetrics.modal.contentPadding),
+				paddingVertical: Math.max(20, viewportMetrics.insets.largeGap),
+			},
+			emptyTitle: {
+				fontSize: Math.max(15, viewportMetrics.type.body),
+				lineHeight: Math.max(20, viewportMetrics.type.bodyLineHeight - 4),
+			},
+		};
+	}, [viewportMetrics]);
 
 	return (
 		<MapModalShell
@@ -46,13 +79,7 @@ export default function MapRecentVisitsModal({ visible, onClose }) {
 			onClose={onClose}
 			title="Recents"
 			minHeightRatio={0.78}
-			contentContainerStyle={[
-				styles.content,
-				{
-					paddingBottom: Math.max(12, viewportMetrics.insets.sectionGap),
-					gap: viewportMetrics.insets.sectionGap,
-				},
-			]}
+			contentContainerStyle={[styles.content, responsiveStyles.content]}
 		>
 			{recentVisits.length > 0 ? (
 				<>
@@ -61,20 +88,27 @@ export default function MapRecentVisitsModal({ visible, onClose }) {
 							key={visit?.id || `${visit?.hospital || "visit"}-${index}`}
 							style={[
 								styles.visitCard,
+								responsiveStyles.visitCard,
 								{
 									backgroundColor: cardSurface,
 									borderRadius: viewportMetrics.radius.card,
 								},
 							]}
 						>
-							<View style={styles.visitIconWrap}>
+							<View style={[styles.visitIconWrap, responsiveStyles.visitIconWrap]}>
 								<Ionicons name="time-outline" size={18} color="#86100E" />
 							</View>
 							<View style={styles.visitCopy}>
-								<Text numberOfLines={1} style={[styles.visitTitle, { color: titleColor }]}>
+								<Text
+									numberOfLines={1}
+									style={[styles.visitTitle, responsiveStyles.visitTitle, { color: titleColor }]}
+								>
 									{visit?.type || "Care visit"}
 								</Text>
-								<Text numberOfLines={2} style={[styles.visitMeta, { color: mutedColor }]}>
+								<Text
+									numberOfLines={2}
+									style={[styles.visitMeta, responsiveStyles.visitMeta, { color: mutedColor }]}
+								>
 									{formatVisitMeta(visit)}
 								</Text>
 							</View>
@@ -85,9 +119,11 @@ export default function MapRecentVisitsModal({ visible, onClose }) {
 							onClose?.();
 							navigateToVisits({ router });
 						}}
-						style={[styles.moreAction, { marginTop: Math.max(6, viewportMetrics.insets.sectionGap - 6) }]}
+						style={[styles.moreAction, responsiveStyles.moreAction]}
 					>
-						<Text style={[styles.moreText, { color: titleColor }]}>See more</Text>
+						<Text style={[styles.moreText, responsiveStyles.moreText, { color: titleColor }]}>
+							See more
+						</Text>
 						<Ionicons name="chevron-forward" size={16} color={titleColor} />
 					</Pressable>
 				</>
@@ -95,13 +131,16 @@ export default function MapRecentVisitsModal({ visible, onClose }) {
 				<View
 					style={[
 						styles.emptyCard,
+						responsiveStyles.emptyCard,
 						{
 							backgroundColor: cardSurface,
 							borderRadius: viewportMetrics.radius.card,
 						},
 					]}
 				>
-					<Text style={[styles.emptyTitle, { color: titleColor }]}>No recent visits</Text>
+					<Text style={[styles.emptyTitle, responsiveStyles.emptyTitle, { color: titleColor }]}>
+						No recent visits
+					</Text>
 				</View>
 			)}
 		</MapModalShell>
@@ -115,17 +154,11 @@ const styles = StyleSheet.create({
 		gap: 12,
 	},
 	visitCard: {
-		paddingHorizontal: 16,
-		paddingVertical: 16,
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 12,
 		...squircle(28),
 	},
 	visitIconWrap: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
 		backgroundColor: "rgba(134,16,14,0.10)",
 		alignItems: "center",
 		justifyContent: "center",
@@ -134,18 +167,12 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	visitTitle: {
-		fontSize: 16,
-		lineHeight: 20,
 		fontWeight: "800",
 	},
 	visitMeta: {
-		marginTop: 4,
-		fontSize: 13,
-		lineHeight: 18,
 		fontWeight: "400",
 	},
 	moreAction: {
-		marginTop: 6,
 		flexDirection: "row",
 		alignItems: "center",
 		alignSelf: "flex-start",
@@ -153,19 +180,13 @@ const styles = StyleSheet.create({
 		paddingVertical: 4,
 	},
 	moreText: {
-		fontSize: 14,
-		lineHeight: 18,
 		fontWeight: "700",
 	},
 	emptyCard: {
-		paddingHorizontal: 18,
-		paddingVertical: 22,
 		alignItems: "center",
 		...squircle(28),
 	},
 	emptyTitle: {
-		fontSize: 16,
-		lineHeight: 20,
 		fontWeight: "400",
 	},
 });

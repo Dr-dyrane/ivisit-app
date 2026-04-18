@@ -81,6 +81,43 @@ export default function IOSInstallHintCard({
 		: "rgba(15,23,42,0.06)";
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
 	const bodyColor = isDarkMode ? "rgba(226,232,240,0.82)" : "#475569";
+	const responsiveStyles = {
+		card: {
+			borderRadius: compact ? 20 : Math.max(20, viewport.modalRadius - 8),
+			paddingHorizontal: compact ? Math.max(12, viewport.modalContentPadding - 6) : Math.max(14, viewport.modalContentPadding - 4),
+			paddingVertical: compact ? 12 : Math.max(14, viewport.modalContentPadding - 4),
+			gap: Math.max(10, viewport.isCompactPhone ? 10 : 12),
+		},
+		iconWrap: {
+			width: compact ? 28 : Math.max(30, Math.round(viewport.bodyTextSize * 1.9)),
+			height: compact ? 28 : Math.max(30, Math.round(viewport.bodyTextSize * 1.9)),
+			borderRadius: compact ? 14 : Math.max(14, Math.round(viewport.bodyTextSize * 0.95)),
+		},
+		title: {
+			fontSize: Math.max(13, viewport.bodyTextSize - 2),
+			lineHeight: Math.max(18, viewport.bodyTextLineHeight - 6),
+		},
+		body: {
+			marginTop: 3,
+			fontSize: Math.max(12, viewport.bodyTextSize - 4),
+			lineHeight: Math.max(17, viewport.bodyTextLineHeight - 7),
+		},
+		guideButton: {
+			marginTop: Math.max(8, viewport.screenVerticalPadding - 8),
+			minHeight: Math.max(34, viewport.entryPrimaryActionHeight - 22),
+			paddingHorizontal: Math.max(12, viewport.modalContentPadding - 8),
+			borderRadius: Math.max(14, viewport.modalRadius - 14),
+		},
+		guideButtonText: {
+			fontSize: Math.max(12, viewport.bodyTextSize - 4),
+			lineHeight: Math.max(16, viewport.bodyTextLineHeight - 8),
+		},
+		dismissButton: {
+			width: compact ? 28 : Math.max(28, Math.round(viewport.bodyTextSize * 1.75)),
+			height: compact ? 28 : Math.max(28, Math.round(viewport.bodyTextSize * 1.75)),
+			borderRadius: compact ? 14 : Math.max(14, Math.round(viewport.bodyTextSize * 0.88)),
+		},
+	};
 
 	return (
 		<>
@@ -88,17 +125,18 @@ export default function IOSInstallHintCard({
 				style={[
 					styles.card,
 					compact ? styles.cardCompact : null,
+					responsiveStyles.card,
 					{ backgroundColor: cardBackground },
 				]}
 			>
-				<View style={[styles.iconWrap, { backgroundColor: iconBackground }]}>
+				<View style={[styles.iconWrap, responsiveStyles.iconWrap, { backgroundColor: iconBackground }]}>
 					<Ionicons name={installVariant.leadingIcon} size={15} color={COLORS.brandPrimary} />
 				</View>
 				<View style={styles.copy}>
-					<Text style={[styles.title, { color: titleColor }]}>
+					<Text style={[styles.title, responsiveStyles.title, { color: titleColor }]}>
 						{installVariant.title}
 					</Text>
-					<Text style={[styles.body, { color: bodyColor }]}>
+					<Text style={[styles.body, responsiveStyles.body, { color: bodyColor }]}>
 						{installVariant.body}
 					</Text>
 					<Pressable
@@ -106,6 +144,7 @@ export default function IOSInstallHintCard({
 						disabled={isPromptingInstall}
 						style={({ pressed }) => [
 							styles.guideButton,
+							responsiveStyles.guideButton,
 							{
 								backgroundColor: dismissBackground,
 								opacity: isPromptingInstall ? 0.72 : pressed ? 0.88 : 1,
@@ -113,7 +152,7 @@ export default function IOSInstallHintCard({
 							},
 						]}
 					>
-						<Text style={[styles.guideButtonText, { color: titleColor }]}>
+						<Text style={[styles.guideButtonText, responsiveStyles.guideButtonText, { color: titleColor }]}>
 							{isAndroidVariant && isPromptingInstall
 								? installVariant.actionPendingLabel
 								: installVariant.actionLabel}
@@ -125,6 +164,7 @@ export default function IOSInstallHintCard({
 					onPress={handleDismiss}
 					style={({ pressed }) => [
 						styles.dismissButton,
+						responsiveStyles.dismissButton,
 						{
 							backgroundColor: dismissBackground,
 							opacity: pressed ? 0.84 : 1,

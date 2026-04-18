@@ -1,30 +1,34 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../../../constants/colors";
+import useResponsiveSurfaceMetrics from "../../../../hooks/ui/useResponsiveSurfaceMetrics";
 import {
 	buildHospitalMeta,
 	buildHospitalSubtitle,
 	buildTrendingSubtitle,
 	MAP_SEARCH_SHEET_MODES,
 } from "./mapSearchSheet.helpers";
-import { styles } from "./mapSearchSheet.styles";
+import { getMapSearchSheetResponsiveStyles, styles } from "./mapSearchSheet.styles";
 
-function SheetIconTile({ children, isDarkMode }) {
+function SheetIconTile({ children, isDarkMode, responsiveStyles }) {
 	const colors = isDarkMode
 		? ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.05)"]
 		: ["#FFFFFF", "#EEF2F7"];
 
 	return (
-		<View style={styles.sheetIconShell}>
+		<View style={[styles.sheetIconShell, responsiveStyles.sheetIconShell]}>
 			<LinearGradient
 				colors={colors}
 				start={{ x: 0.08, y: 0 }}
 				end={{ x: 1, y: 1 }}
-				style={styles.sheetIconFill}
+				style={[styles.sheetIconFill, responsiveStyles.sheetIconFill]}
 			>
-				<View pointerEvents="none" style={styles.sheetIconHighlight} />
+				<View
+					pointerEvents="none"
+					style={[styles.sheetIconHighlight, responsiveStyles.sheetIconHighlight]}
+				/>
 				{children}
 			</LinearGradient>
 		</View>
@@ -44,6 +48,7 @@ function SearchResultRow({
 	isSelected = false,
 	badgeLabel = null,
 	isDarkMode,
+	responsiveStyles,
 }) {
 	const renderIcon =
 		iconType === "material" ? (
@@ -58,6 +63,7 @@ function SearchResultRow({
 				<View
 					style={[
 						styles.resultRow,
+						responsiveStyles.resultRow,
 						{
 							backgroundColor: surfaceColor,
 							opacity: pressed ? 0.88 : 1,
@@ -65,26 +71,39 @@ function SearchResultRow({
 						},
 					]}
 				>
-					<View style={styles.resultLeading}>
-						<SheetIconTile isDarkMode={isDarkMode}>{renderIcon}</SheetIconTile>
+					<View style={[styles.resultLeading, responsiveStyles.resultLeading]}>
+						<SheetIconTile isDarkMode={isDarkMode} responsiveStyles={responsiveStyles}>
+							{renderIcon}
+						</SheetIconTile>
 						<View style={styles.resultCopy}>
-							<View style={styles.resultTitleRow}>
-								<Text numberOfLines={1} style={[styles.resultTitle, { color: titleColor }]}>
+							<View style={[styles.resultTitleRow, responsiveStyles.resultTitleRow]}>
+								<Text
+									numberOfLines={1}
+									style={[styles.resultTitle, responsiveStyles.resultTitle, { color: titleColor }]}
+								>
 									{title}
 								</Text>
 								{badgeLabel ? (
-									<View style={styles.resultBadge}>
-										<Text style={styles.resultBadgeText}>{badgeLabel}</Text>
+									<View style={[styles.resultBadge, responsiveStyles.resultBadge]}>
+										<Text style={[styles.resultBadgeText, responsiveStyles.resultBadgeText]}>
+											{badgeLabel}
+										</Text>
 									</View>
 								) : null}
 							</View>
 							{subtitle ? (
-								<Text numberOfLines={1} style={[styles.resultSubtitle, { color: mutedColor }]}>
+								<Text
+									numberOfLines={1}
+									style={[styles.resultSubtitle, responsiveStyles.resultSubtitle, { color: mutedColor }]}
+								>
 									{subtitle}
 								</Text>
 							) : null}
 							{meta ? (
-								<Text numberOfLines={1} style={[styles.resultMeta, { color: mutedColor }]}>
+								<Text
+									numberOfLines={1}
+									style={[styles.resultMeta, responsiveStyles.resultMeta, { color: mutedColor }]}
+								>
 									{meta}
 								</Text>
 							) : null}
@@ -101,13 +120,14 @@ function SearchResultRow({
 	);
 }
 
-function QueryChip({ label, onPress, titleColor, surfaceColor }) {
+function QueryChip({ label, onPress, titleColor, surfaceColor, responsiveStyles }) {
 	return (
 		<Pressable onPress={onPress}>
 			{({ pressed }) => (
 				<View
 					style={[
 						styles.queryChip,
+						responsiveStyles.queryChip,
 						{
 							backgroundColor: surfaceColor,
 							opacity: pressed ? 0.88 : 1,
@@ -116,7 +136,10 @@ function QueryChip({ label, onPress, titleColor, surfaceColor }) {
 					]}
 				>
 					<Ionicons name="search-outline" size={14} color={COLORS.brandPrimary} />
-					<Text numberOfLines={1} style={[styles.queryChipLabel, { color: titleColor }]}>
+					<Text
+						numberOfLines={1}
+						style={[styles.queryChipLabel, responsiveStyles.queryChipLabel, { color: titleColor }]}
+					>
 						{label}
 					</Text>
 				</View>
@@ -125,13 +148,14 @@ function QueryChip({ label, onPress, titleColor, surfaceColor }) {
 	);
 }
 
-function ActionChip({ label, iconName, onPress, titleColor, surfaceColor }) {
+function ActionChip({ label, iconName, onPress, titleColor, surfaceColor, responsiveStyles }) {
 	return (
 		<Pressable onPress={onPress}>
 			{({ pressed }) => (
 				<View
 					style={[
 						styles.actionChip,
+						responsiveStyles.actionChip,
 						{
 							backgroundColor: surfaceColor,
 							opacity: pressed ? 0.88 : 1,
@@ -140,7 +164,11 @@ function ActionChip({ label, iconName, onPress, titleColor, surfaceColor }) {
 					]}
 				>
 					<Ionicons name={iconName} size={15} color={COLORS.brandPrimary} />
-					<Text style={[styles.actionChipLabel, { color: titleColor }]}>{label}</Text>
+					<Text
+						style={[styles.actionChipLabel, responsiveStyles.actionChipLabel, { color: titleColor }]}
+					>
+						{label}
+					</Text>
 				</View>
 			)}
 		</Pressable>
@@ -157,6 +185,7 @@ function ModeChip({
 	mutedColor,
 	surfaceColor,
 	activeSurfaceColor,
+	responsiveStyles,
 }) {
 	return (
 		<Pressable disabled={disabled} onPress={onPress}>
@@ -164,6 +193,7 @@ function ModeChip({
 				<View
 					style={[
 						styles.modeChip,
+						responsiveStyles.modeChip,
 						{
 							backgroundColor: active ? activeSurfaceColor : surfaceColor,
 							opacity: disabled ? 0.55 : pressed ? 0.9 : 1,
@@ -179,6 +209,7 @@ function ModeChip({
 					<Text
 						style={[
 							styles.modeChipLabel,
+							responsiveStyles.modeChipLabel,
 							{ color: active ? titleColor : mutedColor },
 						]}
 					>
@@ -198,18 +229,21 @@ function ResultsSection({
 	isDarkMode,
 	renderItem,
 	rowDividerColor,
+	responsiveStyles,
 }) {
 	if (!Array.isArray(items) || items.length === 0) return null;
 
 	return (
-		<View style={styles.section}>
-			<Text style={[styles.sectionTitle, { color: titleColor }]}>{title}</Text>
+		<View style={[styles.section, responsiveStyles.section]}>
+			<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: titleColor }]}>
+				{title}
+			</Text>
 			<View style={[styles.resultGroup, { backgroundColor: groupedSurface }]}>
 				{items.map((item, index) => (
 					<View key={item.key || `${title}-${index}`}>
 						{renderItem(item, index, isDarkMode)}
 						{index < items.length - 1 ? (
-							<View style={[styles.rowDivider, { backgroundColor: rowDividerColor }]} />
+							<View style={[styles.rowDivider, responsiveStyles.rowDivider, { backgroundColor: rowDividerColor }]} />
 						) : null}
 					</View>
 				))}
@@ -219,6 +253,11 @@ function ResultsSection({
 }
 
 export default function MapSearchSheetSections({ model }) {
+	const viewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "sheet" });
+	const responsiveStyles = useMemo(
+		() => getMapSearchSheetResponsiveStyles(viewportMetrics),
+		[viewportMetrics],
+	);
 	const {
 		activeMode,
 		activeChipSurface,
@@ -255,7 +294,7 @@ export default function MapSearchSheetSections({ model }) {
 
 	return (
 		<>
-			<View style={styles.modeSwitchRow}>
+			<View style={[styles.modeSwitchRow, responsiveStyles.modeSwitchRow]}>
 				<ModeChip
 					label="Care"
 					iconName="medkit-outline"
@@ -266,6 +305,7 @@ export default function MapSearchSheetSections({ model }) {
 					mutedColor={mutedColor}
 					surfaceColor={groupedSurface}
 					activeSurfaceColor={activeChipSurface}
+					responsiveStyles={responsiveStyles}
 				/>
 				<ModeChip
 					label="Area"
@@ -277,13 +317,16 @@ export default function MapSearchSheetSections({ model }) {
 					mutedColor={mutedColor}
 					surfaceColor={groupedSurface}
 					activeSurfaceColor={activeChipSurface}
+					responsiveStyles={responsiveStyles}
 				/>
 			</View>
 
 			{!hasQuery ? (
 				<>
-					<View style={styles.section}>
-						<Text style={[styles.sectionTitle, { color: titleColor }]}>Current area</Text>
+					<View style={[styles.section, responsiveStyles.section]}>
+						<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: titleColor }]}>
+							Current area
+						</Text>
 						<View style={[styles.resultGroup, { backgroundColor: groupedSurface }]}>
 							<SearchResultRow
 								iconName="locate"
@@ -296,6 +339,7 @@ export default function MapSearchSheetSections({ model }) {
 								isDarkMode={isDarkMode}
 								badgeLabel="Live"
 								onPress={handleUseCurrent}
+								responsiveStyles={responsiveStyles}
 							/>
 						</View>
 					</View>
@@ -311,6 +355,7 @@ export default function MapSearchSheetSections({ model }) {
 							groupedSurface={groupedSurface}
 							isDarkMode={isDarkMode}
 							rowDividerColor={rowDividerColor}
+							responsiveStyles={responsiveStyles}
 							renderItem={(entry, index) => (
 								<SearchResultRow
 									iconName="hospital-building"
@@ -325,15 +370,18 @@ export default function MapSearchSheetSections({ model }) {
 									isSelected={entry.hospital?.id === selectedHospitalId}
 									badgeLabel={index === 0 ? "Closest" : entry.hospital?.verified ? "Verified" : null}
 									onPress={() => handleOpenHospital(entry.hospital)}
+									responsiveStyles={responsiveStyles}
 								/>
 							)}
 						/>
 					) : null}
 
 					{recentQueries.length > 0 ? (
-						<View style={styles.section}>
-							<Text style={[styles.sectionTitle, { color: titleColor }]}>Recent</Text>
-							<View style={styles.chipWrap}>
+						<View style={[styles.section, responsiveStyles.section]}>
+							<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: titleColor }]}>
+								Recent
+							</Text>
+							<View style={[styles.chipWrap, responsiveStyles.chipWrap]}>
 								{recentQueries.slice(0, 6).map((recentQuery, index) => (
 									<QueryChip
 										key={`${recentQuery}-${index}`}
@@ -341,6 +389,7 @@ export default function MapSearchSheetSections({ model }) {
 										onPress={() => setSearchQuery(recentQuery)}
 										titleColor={titleColor}
 										surfaceColor={groupedSurface}
+										responsiveStyles={responsiveStyles}
 									/>
 								))}
 							</View>
@@ -348,13 +397,15 @@ export default function MapSearchSheetSections({ model }) {
 					) : null}
 
 					{visibleTrending.length > 0 || trendingLoading ? (
-						<View style={styles.section}>
-							<Text style={[styles.sectionTitle, { color: titleColor }]}>Popular</Text>
+						<View style={[styles.section, responsiveStyles.section]}>
+							<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: titleColor }]}>
+								Popular
+							</Text>
 							<View style={[styles.resultGroup, { backgroundColor: groupedSurface }]}>
 								{trendingLoading && visibleTrending.length === 0 ? (
-									<View style={styles.loadingRow}>
+									<View style={[styles.loadingRow, responsiveStyles.loadingRow]}>
 										<ActivityIndicator size="small" color={COLORS.brandPrimary} />
-										<Text style={[styles.loadingText, { color: mutedColor }]}>
+										<Text style={[styles.loadingText, responsiveStyles.loadingText, { color: mutedColor }]}>
 											Refreshing searches
 										</Text>
 									</View>
@@ -370,10 +421,15 @@ export default function MapSearchSheetSections({ model }) {
 												surfaceColor={cardSurface}
 												isDarkMode={isDarkMode}
 												onPress={() => setSearchQuery(item?.query || "")}
+												responsiveStyles={responsiveStyles}
 											/>
 											{index < visibleTrending.length - 1 ? (
 												<View
-													style={[styles.rowDivider, { backgroundColor: rowDividerColor }]}
+													style={[
+														styles.rowDivider,
+														responsiveStyles.rowDivider,
+														{ backgroundColor: rowDividerColor },
+													]}
 												/>
 											) : null}
 										</View>
@@ -400,6 +456,7 @@ export default function MapSearchSheetSections({ model }) {
 									groupedSurface={groupedSurface}
 									isDarkMode={isDarkMode}
 									rowDividerColor={rowDividerColor}
+									responsiveStyles={responsiveStyles}
 									renderItem={(entry, index) => (
 										<SearchResultRow
 											iconName="hospital-building"
@@ -414,6 +471,7 @@ export default function MapSearchSheetSections({ model }) {
 											isSelected={entry.hospital?.id === selectedHospitalId}
 											badgeLabel={index === 0 ? "Best match" : entry.hospital?.verified ? "Verified" : null}
 											onPress={() => handleOpenHospital(entry.hospital)}
+											responsiveStyles={responsiveStyles}
 										/>
 									)}
 								/>
@@ -422,15 +480,15 @@ export default function MapSearchSheetSections({ model }) {
 
 						if (sectionKey === "places" && (placeResults.length > 0 || isSearchingLocations)) {
 							return (
-								<View key="places" style={styles.section}>
-									<Text style={[styles.sectionTitle, { color: titleColor }]}>
+								<View key="places" style={[styles.section, responsiveStyles.section]}>
+									<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: titleColor }]}>
 										{locationSectionTitle}
 									</Text>
 									<View style={[styles.resultGroup, { backgroundColor: groupedSurface }]}>
 										{placeResults.length === 0 && isSearchingLocations ? (
-											<View style={styles.loadingRow}>
+											<View style={[styles.loadingRow, responsiveStyles.loadingRow]}>
 												<ActivityIndicator size="small" color={COLORS.brandPrimary} />
-												<Text style={[styles.loadingText, { color: mutedColor }]}>
+												<Text style={[styles.loadingText, responsiveStyles.loadingText, { color: mutedColor }]}>
 													Looking for areas nearby
 												</Text>
 											</View>
@@ -449,11 +507,13 @@ export default function MapSearchSheetSections({ model }) {
 														badgeLabel={index === 0 ? "Area" : null}
 														onPress={() => handleUseSuggestion(item)}
 														isSelected={isResolvingLocation === item.placeId}
+														responsiveStyles={responsiveStyles}
 													/>
 													{index < placeResults.length - 1 ? (
 														<View
 															style={[
 																styles.rowDivider,
+																responsiveStyles.rowDivider,
 																{ backgroundColor: rowDividerColor },
 															]}
 														/>
@@ -470,29 +530,30 @@ export default function MapSearchSheetSections({ model }) {
 					})}
 
 					{locationError ? (
-						<Text style={[styles.loadingText, { color: COLORS.brandPrimary }]}>
+						<Text style={[styles.loadingText, responsiveStyles.loadingText, { color: COLORS.brandPrimary }]}>
 							{locationError}
 						</Text>
 					) : null}
 
-					{hospitalResults.length === 0 &&
-					placeResults.length === 0 &&
-					!isSearchingLocations ? (
-						<View style={[styles.emptyState, { backgroundColor: groupedSurface }]}>
-							<View style={styles.emptyIconWrap}>
+					{hospitalResults.length === 0 && placeResults.length === 0 && !isSearchingLocations ? (
+						<View style={[styles.emptyState, responsiveStyles.emptyState, { backgroundColor: groupedSurface }]}>
+							<View style={[styles.emptyIconWrap, responsiveStyles.emptyIconWrap]}>
 								<Ionicons name="search-outline" size={20} color={COLORS.brandPrimary} />
 							</View>
-							<Text style={[styles.emptyTitle, { color: titleColor }]}>No matches nearby</Text>
-							<Text style={[styles.emptyBody, { color: mutedColor }]}>
+							<Text style={[styles.emptyTitle, responsiveStyles.emptyTitle, { color: titleColor }]}>
+								No matches nearby
+							</Text>
+							<Text style={[styles.emptyBody, responsiveStyles.emptyBody, { color: mutedColor }]}>
 								Try a hospital name, specialty, or another area.
 							</Text>
-							<View style={styles.actionChipRow}>
+							<View style={[styles.actionChipRow, responsiveStyles.actionChipRow]}>
 								<ActionChip
 									label="See all hospitals"
 									iconName="list-outline"
 									onPress={handleOpenHospitalList}
 									titleColor={titleColor}
 									surfaceColor={cardSurface}
+									responsiveStyles={responsiveStyles}
 								/>
 								<ActionChip
 									label="Use current area"
@@ -500,6 +561,7 @@ export default function MapSearchSheetSections({ model }) {
 									onPress={handleUseCurrent}
 									titleColor={titleColor}
 									surfaceColor={cardSurface}
+									responsiveStyles={responsiveStyles}
 								/>
 							</View>
 						</View>

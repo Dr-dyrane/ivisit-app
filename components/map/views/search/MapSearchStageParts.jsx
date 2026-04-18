@@ -10,6 +10,7 @@ import { styles as searchStyles } from "../../surfaces/search/mapSearchSheet.sty
 import styles from "./mapSearchStage.styles";
 
 export function MapSearchCollapsedTopRow({
+	responsiveStyles,
 	modalContainedStyle,
 	tokens,
 	onExpand,
@@ -19,12 +20,14 @@ export function MapSearchCollapsedTopRow({
 	isDarkMode,
 }) {
 	return (
-		<View style={[styles.topRow, styles.topRowCollapsed, modalContainedStyle]}>
+		<View style={[styles.topRow, responsiveStyles.topRow, styles.topRowCollapsed, modalContainedStyle]}>
 			<Pressable
 				onPress={onExpand}
 				style={[
 					styles.searchPill,
+					responsiveStyles.searchPill,
 					styles.searchPillCollapsed,
+					responsiveStyles.searchPillCollapsed,
 					{
 						borderRadius: tokens.cardRadius,
 						borderCurve: "continuous",
@@ -33,7 +36,7 @@ export function MapSearchCollapsedTopRow({
 				]}
 			>
 				<Ionicons name="search" size={18} color={tokens.titleColor} />
-				<Text style={[styles.searchText, { color: tokens.titleColor }]}>Search</Text>
+				<Text style={[styles.searchText, responsiveStyles.searchText, { color: tokens.titleColor }]}>Search</Text>
 			</Pressable>
 
 			<MapExploreIntentProfileTrigger
@@ -47,6 +50,7 @@ export function MapSearchCollapsedTopRow({
 }
 
 export function MapSearchActiveTopRow({
+	responsiveStyles,
 	modalContainedStyle,
 	searchInputRef,
 	model,
@@ -58,7 +62,7 @@ export function MapSearchActiveTopRow({
 	isDarkMode,
 }) {
 	return (
-		<View style={[styles.topRow, modalContainedStyle]}>
+		<View style={[styles.topRow, responsiveStyles.topRow, modalContainedStyle]}>
 			<EmergencySearchBar
 				ref={searchInputRef}
 				value={model.query}
@@ -87,6 +91,7 @@ export function MapSearchActiveTopRow({
 				color={model.titleColor}
 				style={[
 					styles.closeButton,
+					responsiveStyles.closeButton,
 					model.isDismissing && styles.closeButtonDisabled,
 				]}
 			/>
@@ -94,9 +99,9 @@ export function MapSearchActiveTopRow({
 	);
 }
 
-export function MapSearchBodyContent({ model }) {
+export function MapSearchBodyContent({ model, responsiveStyles }) {
 	return (
-		<View style={searchStyles.content}>
+		<View style={[searchStyles.content, responsiveStyles.bodyScrollContent]}>
 			<MapSearchSheetSections model={model} />
 		</View>
 	);

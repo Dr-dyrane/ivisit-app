@@ -84,6 +84,21 @@ Shared behavior:
 - same top-row header contract
 - same bottom-sheet surface treatment
 
+Responsive sizing contract:
+
+- shared sizing truth now lives in [viewportSurfaceMetrics.js](../../../utils/ui/viewportSurfaceMetrics.js)
+- web mobile and tablet flows must size against the visible viewport via [useAuthViewport.js](../../../hooks/ui/useAuthViewport.js) / [useWebViewportMetrics.js](../../../hooks/ui/useWebViewportMetrics.js), not the large viewport
+- child map modals and welcome helpers should consume [useResponsiveSurfaceMetrics.js](../../../hooks/ui/useResponsiveSurfaceMetrics.js) or a phase-level responsive hook before adding any new fixed dimensions
+- current responsive adoption now covers:
+  - `/welcome` stage composition and install helpers
+  - `/map` shell and bridge modals
+  - `MapPublicSearchModal`
+  - `explore_intent`
+  - `ambulance_decision`
+  - `bed_decision`
+  - `service_detail`
+  - shared search sheet surfaces
+
 Shared implementation note:
 
 - `search`, `hospital_list`, and `hospital_detail` now share a stage body-scroll wrapper through [`MapStageBodyScroll.jsx`](../../../components/map/views/shared/MapStageBodyScroll.jsx)

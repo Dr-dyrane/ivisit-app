@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { COLORS } from "../../../../constants/colors";
+import useResponsiveSurfaceMetrics from "../../../../hooks/ui/useResponsiveSurfaceMetrics";
 import googlePlacesService from "../../../../services/googlePlacesService";
 import MapModalShell from "../MapModalShell";
 
@@ -55,19 +56,39 @@ function mapSuggestionToLocation(suggestion) {
 }
 
 function SheetIconTile({ iconName, isDarkMode, isLoading = false }) {
+	const viewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "modal" });
+	const tileSize = Math.max(36, Math.round(viewportMetrics.radius.card * 1.45));
 	const colors = isDarkMode
 		? ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.05)"]
 		: ["#FFFFFF", "#EEF2F7"];
 
 	return (
-		<View style={styles.sheetIconShell}>
+		<View
+			style={[
+				styles.sheetIconShell,
+				{
+					width: tileSize,
+					height: tileSize,
+					borderRadius: Math.round(tileSize / 2),
+				},
+			]}
+		>
 			<LinearGradient
 				colors={colors}
 				start={{ x: 0.08, y: 0 }}
 				end={{ x: 1, y: 1 }}
-				style={styles.sheetIconFill}
+				style={[
+					styles.sheetIconFill,
+					{ borderRadius: Math.round(tileSize / 2) - 1 },
+				]}
 			>
-				<View pointerEvents="none" style={styles.sheetIconHighlight} />
+				<View
+					pointerEvents="none"
+					style={[
+						styles.sheetIconHighlight,
+						{ borderRadius: Math.round(tileSize / 2) - 2 },
+					]}
+				/>
 				{isLoading ? (
 					<ActivityIndicator size="small" color={COLORS.brandPrimary} />
 				) : (
@@ -89,16 +110,55 @@ function LocationRow({
 	isDarkMode,
 	isLoading = false,
 }) {
+	const viewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "modal" });
+	const tileSize = Math.max(36, Math.round(viewportMetrics.radius.card * 1.45));
 	return (
-		<Pressable onPress={onPress} style={[styles.resultRow, { backgroundColor: surfaceColor }]}>
-			<View style={styles.resultLeading}>
+		<Pressable
+			onPress={onPress}
+			style={[
+				styles.resultRow,
+				{
+					backgroundColor: surfaceColor,
+					paddingHorizontal: Math.max(13, viewportMetrics.insets.horizontal - 1),
+					paddingVertical: Math.max(13, viewportMetrics.insets.sectionGap),
+					minHeight: Math.max(68, Math.round(viewportMetrics.cta.primaryHeight * 1.28)),
+					gap: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+				},
+			]}
+		>
+			<View
+				style={[
+					styles.resultLeading,
+					{ gap: Math.max(10, viewportMetrics.insets.sectionGap - 2) },
+				]}
+			>
 				<SheetIconTile iconName={iconName} isDarkMode={isDarkMode} isLoading={isLoading} />
 				<View style={styles.resultCopy}>
-					<Text numberOfLines={1} style={[styles.resultTitle, { color: titleColor }]}>
+					<Text
+						numberOfLines={1}
+						style={[
+							styles.resultTitle,
+							{
+								color: titleColor,
+								fontSize: Math.max(15, viewportMetrics.type.body),
+								lineHeight: Math.max(20, viewportMetrics.type.bodyLineHeight - 4),
+							},
+						]}
+					>
 						{title}
 					</Text>
 					{subtitle ? (
-						<Text numberOfLines={2} style={[styles.resultSubtitle, { color: mutedColor }]}>
+						<Text
+							numberOfLines={2}
+							style={[
+								styles.resultSubtitle,
+								{
+									color: mutedColor,
+									fontSize: viewportMetrics.type.caption,
+									lineHeight: Math.max(17, viewportMetrics.type.captionLineHeight + 1),
+								},
+							]}
+						>
 							{subtitle}
 						</Text>
 					) : null}
@@ -124,12 +184,14 @@ export default function MapLocationModal({
 	const [resolvingPlaceId, setResolvingPlaceId] = useState(null);
 	const requestIdRef = useRef(0);
 	const sessionTokenRef = useRef(null);
+	const viewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "modal" });
 
 	const titleColor = isDarkMode ? "#F8FAFC" : "#111827";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 	const inputSurface = isDarkMode ? "rgba(255,255,255,0.07)" : "#FFFFFF";
 	const groupedSurface = isDarkMode ? "rgba(255,255,255,0.045)" : "rgba(15,23,42,0.035)";
 	const cardSurface = isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.94)";
+	const tileSize = Math.max(36, Math.round(viewportMetrics.radius.card * 1.45));
 
 	const handleDismiss = useCallback(() => {
 		setQuery("");
@@ -228,14 +290,31 @@ export default function MapLocationModal({
 
 		return (
 			<>
-				<View style={[styles.inputShell, { backgroundColor: inputSurface }]}>
+				<View
+					style={[
+						styles.inputShell,
+						{
+							backgroundColor: inputSurface,
+							minHeight: Math.max(52, viewportMetrics.cta.primaryHeight - 2),
+							paddingHorizontal: Math.max(14, viewportMetrics.modal.contentPadding - 2),
+							borderRadius: viewportMetrics.radius.card,
+						},
+					]}
+				>
 					<Ionicons name="search" size={18} color={mutedColor} />
 					<TextInput
 						value={query}
 						onChangeText={setQuery}
 						placeholder="Search area"
 						placeholderTextColor={mutedColor}
-						style={[styles.input, { color: titleColor }]}
+						style={[
+							styles.input,
+							{
+								color: titleColor,
+								fontSize: viewportMetrics.type.body,
+								lineHeight: Math.max(18, viewportMetrics.type.bodyLineHeight - 4),
+							},
+						]}
 						autoCapitalize="words"
 						autoCorrect={false}
 					/>
@@ -264,8 +343,19 @@ export default function MapLocationModal({
 				) : null}
 
 				{hasQuery ? (
-					<View style={styles.section}>
-						<Text style={[styles.sectionTitle, { color: titleColor }]}>Results</Text>
+					<View style={[styles.section, { gap: Math.max(10, viewportMetrics.insets.sectionGap - 2) }]}>
+						<Text
+							style={[
+								styles.sectionTitle,
+								{
+									color: titleColor,
+									fontSize: Math.max(16, viewportMetrics.type.title),
+									lineHeight: viewportMetrics.type.titleLineHeight,
+								},
+							]}
+						>
+							Results
+						</Text>
 						<View style={[styles.resultGroup, { backgroundColor: groupedSurface }]}>
 							{isSearching && suggestions.length === 0 ? (
 								<LocationRow
@@ -296,6 +386,7 @@ export default function MapLocationModal({
 												style={[
 													styles.rowDivider,
 													{
+														marginLeft: Math.max(58, tileSize + Math.max(18, viewportMetrics.insets.sectionGap + 8)),
 														backgroundColor: isDarkMode
 															? "rgba(255,255,255,0.08)"
 															: "rgba(15,23,42,0.08)",
@@ -339,7 +430,13 @@ export default function MapLocationModal({
 			onClose={handleDismiss}
 			title="Location"
 			minHeightRatio={0.78}
-			contentContainerStyle={styles.content}
+			contentContainerStyle={[
+				styles.content,
+				{
+					paddingBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+					gap: viewportMetrics.insets.sectionGap,
+				},
+			]}
 		>
 			{content}
 		</MapModalShell>

@@ -245,3 +245,25 @@ Before closing any future map-sheet refactor:
 - verify rail selection persists across snap-state changes when expected
 
 If any refactor improves code reuse but weakens the visible sheet contract, revert the structural change first and redesign the abstraction boundary second.
+
+## 13. Responsive sizing note
+
+The sheet family now has a shared responsive sizing doctrine.
+
+Rule:
+
+- do not treat responsive sizing as a style-by-style patch pass
+- derive sheet, modal, and child-surface geometry from shared responsive surface metrics first
+- on web mobile and tablet, always size against the visible viewport instead of the large viewport
+
+Current primitives:
+
+- [viewportSurfaceMetrics.js](../../../../utils/ui/viewportSurfaceMetrics.js)
+- [useAuthViewport.js](../../../../hooks/ui/useAuthViewport.js)
+- [useResponsiveSurfaceMetrics.js](../../../../hooks/ui/useResponsiveSurfaceMetrics.js)
+
+Practical implication:
+
+- a child surface may still compute a local `responsiveStyles` object
+- that local object should be a translation layer from the shared semantic metrics
+- it should not become a second independent breakpoint system with new hardcoded dimensions

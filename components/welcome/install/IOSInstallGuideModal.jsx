@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { COLORS } from "../../../constants/colors";
 import useAuthViewport from "../../../hooks/ui/useAuthViewport";
+import useResponsiveSurfaceMetrics from "../../../hooks/ui/useResponsiveSurfaceMetrics";
 import { styles } from "./iosInstallGuide.styles";
 
 const INSTALL_STEPS = [
@@ -24,28 +25,30 @@ const INSTALL_STEPS = [
 		title: "Tap Share",
 		body: "Use the square-arrow button in the bottom bar.",
 		accentLabel: "Share",
-		renderPreview: (palette, pulseStyle) => (
+		renderPreview: (palette, pulseStyle, responsiveStyles) => (
 			<View
 				style={[
 					styles.previewSurface,
+					responsiveStyles.previewSurface,
 					{ backgroundColor: palette.previewSurface },
 				]}
 			>
 				<View style={styles.toolbarRow}>
-					<View style={styles.toolbarGhost} />
+					<View style={[styles.toolbarGhost, responsiveStyles.toolbarGhost]} />
 					<Animated.View
 						style={[
 							styles.toolbarTarget,
+							responsiveStyles.toolbarTarget,
 							{ backgroundColor: palette.highlightFill },
 							pulseStyle,
 						]}
 					>
 						<Ionicons name="share-outline" size={18} color={COLORS.brandPrimary} />
 					</Animated.View>
-					<View style={styles.toolbarGhost} />
+					<View style={[styles.toolbarGhost, responsiveStyles.toolbarGhost]} />
 				</View>
-				<View style={[styles.previewCaptionPill, { backgroundColor: palette.captionFill }]}>
-					<Text style={[styles.previewCaptionText, { color: palette.captionText }]}>
+				<View style={[styles.previewCaptionPill, responsiveStyles.previewCaptionPill, { backgroundColor: palette.captionFill }]}>
+					<Text style={[styles.previewCaptionText, responsiveStyles.previewCaptionText, { color: palette.captionText }]}>
 						Bottom toolbar
 					</Text>
 				</View>
@@ -58,36 +61,38 @@ const INSTALL_STEPS = [
 		title: "Choose Add to Home Screen",
 		body: "Scroll a little, then tap the add-home option.",
 		accentLabel: "Add to Home Screen",
-		renderPreview: (palette, pulseStyle) => (
+		renderPreview: (palette, pulseStyle, responsiveStyles) => (
 			<View
 				style={[
 					styles.previewSurface,
+					responsiveStyles.previewSurface,
 					styles.previewListSurface,
 					{ backgroundColor: palette.previewSurface },
 				]}
 			>
-				<View style={[styles.listRow, { opacity: 0.52 }]}>
+				<View style={[styles.listRow, responsiveStyles.listRow, { opacity: 0.52 }]}>
 					<Ionicons name="bookmark-outline" size={16} color={palette.previewIcon} />
-					<Text style={[styles.listRowText, { color: palette.previewText }]}>
+					<Text style={[styles.listRowText, responsiveStyles.listRowText, { color: palette.previewText }]}>
 						Add Bookmark
 					</Text>
 				</View>
 				<Animated.View
 					style={[
 						styles.listRow,
+						responsiveStyles.listRow,
 						styles.listRowHighlight,
 						{ backgroundColor: palette.highlightFill },
 						pulseStyle,
 					]}
 				>
 					<Ionicons name="add-circle-outline" size={16} color={COLORS.brandPrimary} />
-					<Text style={[styles.listRowText, { color: palette.title }]}>
+					<Text style={[styles.listRowText, responsiveStyles.listRowText, { color: palette.title }]}>
 						Add to Home Screen
 					</Text>
 				</Animated.View>
-				<View style={[styles.listRow, { opacity: 0.52 }]}>
+				<View style={[styles.listRow, responsiveStyles.listRow, { opacity: 0.52 }]}>
 					<Ionicons name="print-outline" size={16} color={palette.previewIcon} />
-					<Text style={[styles.listRowText, { color: palette.previewText }]}>
+					<Text style={[styles.listRowText, responsiveStyles.listRowText, { color: palette.previewText }]}>
 						Print
 					</Text>
 				</View>
@@ -100,30 +105,32 @@ const INSTALL_STEPS = [
 		title: "Open iVisit from there",
 		body: "Next time, launch from the icon for the clean full-screen flow.",
 		accentLabel: "iVisit",
-		renderPreview: (palette, pulseStyle) => (
+		renderPreview: (palette, pulseStyle, responsiveStyles) => (
 			<View
 				style={[
 					styles.previewSurface,
+					responsiveStyles.previewSurface,
 					styles.previewHomeSurface,
 					{ backgroundColor: palette.previewSurface },
 				]}
 			>
 				<View style={styles.homeGrid}>
-					<View style={[styles.homeGhostTile, { backgroundColor: palette.homeGhost }]} />
+					<View style={[styles.homeGhostTile, responsiveStyles.homeGhostTile, { backgroundColor: palette.homeGhost }]} />
 					<Animated.View
 						style={[
 							styles.homeAppTile,
+							responsiveStyles.homeAppTile,
 							{ backgroundColor: palette.highlightFill },
 							pulseStyle,
 						]}
 					>
 						<Image
 							source={{ uri: "/apple-touch-icon.png" }}
-							style={styles.homeAppIcon}
+							style={[styles.homeAppIcon, responsiveStyles.homeAppIcon]}
 						/>
-						<Text style={[styles.homeAppLabel, { color: palette.title }]}>iVisit</Text>
+						<Text style={[styles.homeAppLabel, responsiveStyles.homeAppLabel, { color: palette.title }]}>iVisit</Text>
 					</Animated.View>
-					<View style={[styles.homeGhostTile, { backgroundColor: palette.homeGhost }]} />
+					<View style={[styles.homeGhostTile, responsiveStyles.homeGhostTile, { backgroundColor: palette.homeGhost }]} />
 				</View>
 			</View>
 		),
@@ -142,6 +149,7 @@ export default function IOSInstallGuideModal({
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 	const { visibleHeight, browserInsetBottom } = useAuthViewport();
+	const viewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "modal" });
 	const [shouldRender, setShouldRender] = useState(visible);
 	const [stepIndex, setStepIndex] = useState(0);
 	const [isStepAnimating, setIsStepAnimating] = useState(false);
@@ -200,6 +208,147 @@ export default function IOSInstallGuideModal({
 		transform: [{ scale: pulseScale }],
 		opacity: pulseOpacity,
 	};
+	const responsiveStyles = useMemo(() => {
+		const closeSize = Math.max(34, viewportMetrics.modal.headerButtonSize - 4);
+		const previewPadding = Math.max(16, viewportMetrics.modal.contentPadding - 2);
+		const previewRadius = Math.max(24, viewportMetrics.radius.card);
+		const compactText = Math.max(12, viewportMetrics.type.caption);
+		return {
+			sheetDock: {
+				paddingHorizontal: Math.max(12, viewportMetrics.insets.horizontal),
+				paddingTop: Math.max(18, viewportMetrics.insets.largeGap),
+			},
+			sheet: {
+				maxWidth: Math.min(440, viewportMetrics.welcome.heroWidth + 10),
+				borderTopLeftRadius: viewportMetrics.radius.modal,
+				borderTopRightRadius: viewportMetrics.radius.modal,
+				borderBottomLeftRadius: Math.max(28, viewportMetrics.radius.modal - 4),
+				borderBottomRightRadius: Math.max(28, viewportMetrics.radius.modal - 4),
+				paddingHorizontal: viewportMetrics.modal.contentPadding,
+				paddingTop: Math.max(12, viewportMetrics.insets.sectionGap),
+				paddingBottom: Math.max(16, viewportMetrics.insets.sectionGap + 4),
+			},
+			sheetWash: {
+				height: Math.max(104, Math.round(viewportMetrics.welcome.heroHeight * 0.42)),
+			},
+			handle: {
+				width: viewportMetrics.map.handleWidth,
+				height: viewportMetrics.map.handleHeight,
+				marginBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+			},
+			progressLabel: {
+				fontSize: compactText,
+				lineHeight: Math.max(16, viewportMetrics.type.captionLineHeight),
+			},
+			closeButton: {
+				width: closeSize,
+				height: closeSize,
+				borderRadius: Math.round(closeSize / 2),
+			},
+			stepStage: {
+				marginTop: Math.max(16, viewportMetrics.insets.sectionGap),
+			},
+			eyebrow: {
+				fontSize: compactText,
+				lineHeight: Math.max(16, viewportMetrics.type.captionLineHeight),
+			},
+			title: {
+				fontSize: Math.max(26, viewportMetrics.type.title + 10),
+				lineHeight: Math.max(30, viewportMetrics.type.titleLineHeight + 8),
+			},
+			body: {
+				fontSize: Math.max(14, viewportMetrics.type.body - 1),
+				lineHeight: Math.max(20, viewportMetrics.type.bodyLineHeight - 2),
+				maxWidth: Math.max(280, Math.round(viewportMetrics.modal.contentPadding * 8.6)),
+			},
+			previewWrap: {
+				marginTop: Math.max(18, viewportMetrics.insets.largeGap),
+			},
+			previewSurface: {
+				borderRadius: previewRadius,
+				paddingHorizontal: previewPadding,
+				paddingVertical: previewPadding,
+				minHeight: Math.max(156, Math.round(viewportMetrics.welcome.heroHeight * 0.64)),
+			},
+			toolbarGhost: {
+				width: Math.max(38, Math.round(viewportMetrics.cta.secondaryHeight * 0.82)),
+				height: Math.max(38, Math.round(viewportMetrics.cta.secondaryHeight * 0.82)),
+				borderRadius: Math.max(19, Math.round(viewportMetrics.cta.secondaryHeight * 0.41)),
+			},
+			toolbarTarget: {
+				width: Math.max(64, Math.round(viewportMetrics.cta.primaryHeight * 1.24)),
+				height: Math.max(64, Math.round(viewportMetrics.cta.primaryHeight * 1.24)),
+				borderRadius: Math.max(22, Math.round(viewportMetrics.cta.primaryHeight * 0.42)),
+			},
+			previewCaptionPill: {
+				marginTop: Math.max(16, viewportMetrics.insets.sectionGap),
+				paddingHorizontal: Math.max(12, viewportMetrics.modal.contentPadding - 8),
+				paddingVertical: Math.max(7, viewportMetrics.insets.sectionGap - 4),
+			},
+			previewCaptionText: {
+				fontSize: compactText,
+				lineHeight: Math.max(16, viewportMetrics.type.captionLineHeight),
+			},
+			listRow: {
+				minHeight: Math.max(44, viewportMetrics.cta.secondaryHeight - 4),
+				borderRadius: Math.max(16, viewportMetrics.radius.card - 8),
+				paddingHorizontal: Math.max(14, viewportMetrics.modal.contentPadding - 6),
+			},
+			listRowText: {
+				fontSize: Math.max(13, viewportMetrics.type.body - 3),
+				lineHeight: Math.max(18, viewportMetrics.type.bodyLineHeight - 6),
+			},
+			homeGhostTile: {
+				width: Math.max(68, Math.round(viewportMetrics.welcome.logoSize * 1.46)),
+				height: Math.max(88, Math.round(viewportMetrics.welcome.logoSize * 1.82)),
+				borderRadius: Math.max(22, viewportMetrics.radius.card - 2),
+			},
+			homeAppTile: {
+				width: Math.max(96, Math.round(viewportMetrics.welcome.logoSize * 2.08)),
+				height: Math.max(104, Math.round(viewportMetrics.welcome.logoSize * 2.2)),
+				borderRadius: Math.max(26, viewportMetrics.radius.card),
+			},
+			homeAppIcon: {
+				width: Math.max(48, Math.round(viewportMetrics.welcome.logoSize * 1.06)),
+				height: Math.max(48, Math.round(viewportMetrics.welcome.logoSize * 1.06)),
+				borderRadius: 12,
+			},
+			homeAppLabel: {
+				fontSize: Math.max(13, viewportMetrics.type.body - 3),
+				lineHeight: Math.max(18, viewportMetrics.type.bodyLineHeight - 6),
+			},
+			accentPill: {
+				marginTop: Math.max(14, viewportMetrics.insets.sectionGap),
+				paddingHorizontal: Math.max(12, viewportMetrics.modal.contentPadding - 8),
+				paddingVertical: Math.max(8, viewportMetrics.insets.sectionGap - 3),
+			},
+			accentPillText: {
+				fontSize: Math.max(12, viewportMetrics.type.caption),
+				lineHeight: Math.max(17, viewportMetrics.type.captionLineHeight + 1),
+			},
+			actionsRow: {
+				marginTop: Math.max(18, viewportMetrics.insets.largeGap),
+				gap: Math.max(8, viewportMetrics.insets.sectionGap - 4),
+			},
+			secondaryButton: {
+				minHeight: Math.max(46, viewportMetrics.cta.secondaryHeight),
+				borderRadius: Math.max(18, viewportMetrics.cta.radius - 6),
+			},
+			secondaryButtonText: {
+				fontSize: Math.max(13, viewportMetrics.type.body - 3),
+				lineHeight: Math.max(18, viewportMetrics.type.bodyLineHeight - 6),
+			},
+			primaryButton: {
+				minHeight: Math.max(46, viewportMetrics.cta.secondaryHeight),
+				borderRadius: Math.max(18, viewportMetrics.cta.radius - 6),
+				paddingHorizontal: Math.max(14, viewportMetrics.modal.contentPadding - 4),
+			},
+			primaryButtonText: {
+				fontSize: Math.max(13, viewportMetrics.type.body - 3),
+				lineHeight: Math.max(18, viewportMetrics.type.bodyLineHeight - 6),
+			},
+		};
+	}, [viewportMetrics]);
 
 	useEffect(() => {
 		const pulseLoop = Animated.loop(
@@ -405,10 +554,11 @@ export default function IOSInstallGuideModal({
 					<Pressable style={styles.backdropPressable} onPress={onClose} />
 				</Animated.View>
 
-				<View style={[styles.sheetDock, { paddingBottom: bottomInset }]}>
+				<View style={[styles.sheetDock, responsiveStyles.sheetDock, { paddingBottom: bottomInset }]}>
 					<Animated.View
 						style={[
 							styles.sheet,
+							responsiveStyles.sheet,
 							{
 								backgroundColor: palette.sheet,
 								height: sheetHeight,
@@ -425,9 +575,9 @@ export default function IOSInstallGuideModal({
 							]}
 							start={{ x: 0.5, y: 0 }}
 							end={{ x: 0.5, y: 1 }}
-							style={styles.sheetWash}
+							style={[styles.sheetWash, responsiveStyles.sheetWash]}
 						/>
-						<View style={[styles.handle, { backgroundColor: palette.handle }]} />
+						<View style={[styles.handle, responsiveStyles.handle, { backgroundColor: palette.handle }]} />
 
 						<ScrollView
 							style={styles.sheetScroll}
@@ -437,7 +587,7 @@ export default function IOSInstallGuideModal({
 						>
 							<View style={styles.headerRow}>
 								<View style={styles.progressWrap}>
-									<Text style={[styles.progressLabel, { color: palette.eyebrow }]}>
+									<Text style={[styles.progressLabel, responsiveStyles.progressLabel, { color: palette.eyebrow }]}>
 										{stepIndex + 1} of {INSTALL_STEPS.length}
 									</Text>
 									<View style={styles.progressDots}>
@@ -464,6 +614,7 @@ export default function IOSInstallGuideModal({
 									onPress={onClose}
 									style={({ pressed }) => [
 										styles.closeButton,
+										responsiveStyles.closeButton,
 										{
 											backgroundColor: palette.closeFill,
 											opacity: pressed ? 0.82 : 1,
@@ -478,6 +629,7 @@ export default function IOSInstallGuideModal({
 							<Animated.View
 								style={[
 									styles.stepStage,
+									responsiveStyles.stepStage,
 									{
 										opacity: stepOpacity,
 										transform: [{ translateX: stepTranslateX }],
@@ -485,36 +637,37 @@ export default function IOSInstallGuideModal({
 								]}
 							>
 								<View style={styles.stepIntro}>
-									<Text style={[styles.eyebrow, { color: palette.eyebrow }]}>
+									<Text style={[styles.eyebrow, responsiveStyles.eyebrow, { color: palette.eyebrow }]}>
 										{activeStep.eyebrow}
 									</Text>
-									<Text style={[styles.title, { color: palette.title }]}>
+									<Text style={[styles.title, responsiveStyles.title, { color: palette.title }]}>
 										{activeStep.title}
 									</Text>
-									<Text style={[styles.body, { color: palette.body }]}>
+									<Text style={[styles.body, responsiveStyles.body, { color: palette.body }]}>
 										{activeStep.body}
 									</Text>
 								</View>
 
-								<View style={styles.previewWrap}>
-									{activeStep.renderPreview(palette, pulseStyle)}
+								<View style={[styles.previewWrap, responsiveStyles.previewWrap]}>
+									{activeStep.renderPreview(palette, pulseStyle, responsiveStyles)}
 								</View>
 
-								<View style={[styles.accentPill, { backgroundColor: palette.softFill }]}>
+								<View style={[styles.accentPill, responsiveStyles.accentPill, { backgroundColor: palette.softFill }]}>
 									<Ionicons name="checkmark-circle" size={14} color={COLORS.brandPrimary} />
-									<Text style={[styles.accentPillText, { color: palette.secondaryText }]}>
+									<Text style={[styles.accentPillText, responsiveStyles.accentPillText, { color: palette.secondaryText }]}>
 										{activeStep.accentLabel}
 									</Text>
 								</View>
 							</Animated.View>
 						</ScrollView>
 
-						<View style={styles.actionsRow}>
+						<View style={[styles.actionsRow, responsiveStyles.actionsRow]}>
 							<Pressable
 								onPress={handleBack}
 								disabled={stepIndex === 0 || isStepAnimating}
 								style={({ pressed }) => [
 									styles.secondaryButton,
+									responsiveStyles.secondaryButton,
 									{
 										backgroundColor: palette.softFill,
 										opacity: stepIndex === 0 ? 0.38 : pressed ? 0.82 : 1,
@@ -522,7 +675,7 @@ export default function IOSInstallGuideModal({
 									},
 								]}
 							>
-								<Text style={[styles.secondaryButtonText, { color: palette.secondaryText }]}>
+								<Text style={[styles.secondaryButtonText, responsiveStyles.secondaryButtonText, { color: palette.secondaryText }]}>
 									Back
 								</Text>
 							</Pressable>
@@ -532,6 +685,7 @@ export default function IOSInstallGuideModal({
 								disabled={isStepAnimating}
 								style={({ pressed }) => [
 									styles.primaryButton,
+									responsiveStyles.primaryButton,
 									{
 										backgroundColor: COLORS.brandPrimary,
 										opacity: pressed ? 0.9 : 1,
@@ -539,7 +693,7 @@ export default function IOSInstallGuideModal({
 									},
 								]}
 							>
-								<Text style={styles.primaryButtonText}>
+								<Text style={[styles.primaryButtonText, responsiveStyles.primaryButtonText]}>
 									{stepIndex === INSTALL_STEPS.length - 1 ? "Done" : "Next"}
 								</Text>
 								<Ionicons

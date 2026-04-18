@@ -38,6 +38,10 @@ export function buildWideWebWelcomeTheme({
 		viewportHeight,
 		viewportWidth,
 	});
+	const chipPaddingX = Math.round(Math.min(18, Math.max(14, viewportWidth * 0.013)));
+	const chipPaddingY = Math.round(Math.min(10, Math.max(8, viewportHeight * 0.009)));
+	const chipTextSize = Math.round(Math.min(14, Math.max(13, viewportWidth * 0.0115)));
+	const chipTextLineHeight = Math.round(Math.min(18, Math.max(17, chipTextSize + 4)));
 
 	const styles = StyleSheet.create({
 		gradient: {
@@ -131,8 +135,8 @@ export function buildWideWebWelcomeTheme({
 		},
 		chip: {
 			marginTop: metrics.stageSpacing.helperToChip,
-			paddingHorizontal: 16,
-			paddingVertical: 9,
+			paddingHorizontal: chipPaddingX,
+			paddingVertical: chipPaddingY,
 			borderRadius: 999,
 			backgroundColor: colors.chipBackground,
 			shadowColor: isDarkMode ? "#000000" : "#D2D8E3",
@@ -142,8 +146,8 @@ export function buildWideWebWelcomeTheme({
 		},
 		chipText: {
 			color: colors.chipText,
-			fontSize: 14,
-			lineHeight: 18,
+			fontSize: chipTextSize,
+			lineHeight: chipTextLineHeight,
 			fontWeight: "400",
 			letterSpacing: 0.2,
 		},

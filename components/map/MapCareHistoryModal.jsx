@@ -1,11 +1,11 @@
 import React, { useMemo } from "react";
-import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useVisits } from "../../contexts/VisitsContext";
-import getViewportSurfaceMetrics from "../../utils/ui/viewportSurfaceMetrics";
+import useResponsiveSurfaceMetrics from "../../hooks/ui/useResponsiveSurfaceMetrics";
 import { navigateToVisits } from "../../utils/navigationHelpers";
 import MapModalShell from "./surfaces/MapModalShell";
 
@@ -29,21 +29,32 @@ function CareBlade({
 	onPress,
 	titleColor,
 	mutedColor,
+	responsiveStyles,
 }) {
 	return (
-		<Pressable onPress={onPress} style={styles.careBlade}>
+		<Pressable onPress={onPress} style={[styles.careBlade, responsiveStyles.careBlade]}>
 			<LinearGradient
 				colors={colors}
 				start={{ x: 0.18, y: 0.18 }}
 				end={{ x: 0.82, y: 0.9 }}
-				style={styles.bladeIconWrap}
+				style={[styles.bladeIconWrap, responsiveStyles.bladeIconWrap]}
 			>
 				<MaterialCommunityIcons name={iconName} size={24} color="#FFFFFF" />
 			</LinearGradient>
 			<View style={styles.bladeCopy}>
-				<Text style={[styles.bladeTitle, { color: titleColor }]}>{title}</Text>
+				<Text style={[styles.bladeTitle, responsiveStyles.bladeTitle, { color: titleColor }]}>
+					{title}
+				</Text>
 				{subtext ? (
-					<Text style={[styles.bladeSubtext, { color: mutedColor }]}>{subtext}</Text>
+					<Text
+						style={[
+							styles.bladeSubtext,
+							responsiveStyles.bladeSubtext,
+							{ color: mutedColor },
+						]}
+					>
+						{subtext}
+					</Text>
 				) : null}
 			</View>
 			<Ionicons name="chevron-forward" size={18} color={mutedColor} />
@@ -58,17 +69,7 @@ export default function MapCareHistoryModal({
 }) {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
-	const { width, height } = useWindowDimensions();
-	const viewportMetrics = useMemo(
-		() =>
-			getViewportSurfaceMetrics({
-				width,
-				height,
-				platform: Platform.OS,
-				presentationMode: "modal",
-			}),
-		[height, width],
-	);
+	const viewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "modal" });
 	const { visits = [] } = useVisits();
 	const recentVisits = useMemo(() => (Array.isArray(visits) ? visits.slice(0, 3) : []), [visits]);
 	const hasVisits = recentVisits.length > 0;
@@ -77,6 +78,72 @@ export default function MapCareHistoryModal({
 	const bodyColor = isDarkMode ? "#CBD5E1" : "#475569";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 	const bladeSurface = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)";
+	const responsiveStyles = useMemo(() => {
+		const bladeIconSize = Math.max(42, Math.round(viewportMetrics.radius.card * 1.7));
+		const visitIconSize = Math.max(36, Math.round(viewportMetrics.radius.card * 1.48));
+		return {
+			content: {
+				paddingBottom: Math.max(12, viewportMetrics.insets.sectionGap),
+				gap: viewportMetrics.insets.largeGap,
+			},
+			bladeStack: {
+				gap: viewportMetrics.insets.sectionGap,
+			},
+			careBlade: {
+				paddingHorizontal: Math.max(14, viewportMetrics.modal.contentPadding - 4),
+				paddingVertical: Math.max(13, viewportMetrics.insets.sectionGap),
+				gap: Math.max(12, Math.round(viewportMetrics.insets.sectionGap * 0.92)),
+			},
+			bladeIconWrap: {
+				width: bladeIconSize,
+				height: bladeIconSize,
+				borderRadius: Math.round(bladeIconSize / 2),
+			},
+			bladeTitle: {
+				fontSize: Math.max(16, viewportMetrics.type.title - 1),
+				lineHeight: Math.max(20, viewportMetrics.type.titleLineHeight - 2),
+			},
+			bladeSubtext: {
+				marginTop: 3,
+				fontSize: viewportMetrics.type.caption,
+				lineHeight: viewportMetrics.type.captionLineHeight,
+			},
+			recentSection: {
+				marginTop: Math.max(8, viewportMetrics.insets.sectionGap - 4),
+			},
+			recentHeader: {
+				marginBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+			},
+			recentTitle: {
+				fontSize: Math.max(16, viewportMetrics.type.title),
+				lineHeight: viewportMetrics.type.titleLineHeight,
+			},
+			recentAction: {
+				fontSize: viewportMetrics.type.caption,
+				lineHeight: viewportMetrics.type.captionLineHeight,
+			},
+			visitCard: {
+				paddingHorizontal: Math.max(14, viewportMetrics.modal.contentPadding - 2),
+				paddingVertical: Math.max(14, viewportMetrics.insets.sectionGap),
+				gap: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+				marginBottom: Math.max(8, viewportMetrics.insets.sectionGap - 2),
+			},
+			visitIconWrap: {
+				width: visitIconSize,
+				height: visitIconSize,
+				borderRadius: Math.round(visitIconSize / 2),
+			},
+			visitTitle: {
+				fontSize: Math.max(15, viewportMetrics.type.body),
+				lineHeight: Math.max(20, viewportMetrics.type.bodyLineHeight - 4),
+			},
+			visitMeta: {
+				marginTop: 4,
+				fontSize: viewportMetrics.type.caption,
+				lineHeight: Math.max(17, viewportMetrics.type.captionLineHeight + 1),
+			},
+		};
+	}, [viewportMetrics]);
 
 	return (
 		<MapModalShell
@@ -84,76 +151,60 @@ export default function MapCareHistoryModal({
 			onClose={onClose}
 			title="Choose care"
 			minHeightRatio={0.78}
-			contentContainerStyle={[
-				styles.content,
-				{
-					paddingBottom: Math.max(12, viewportMetrics.insets.sectionGap),
-					gap: viewportMetrics.insets.largeGap,
-				},
-			]}
+			contentContainerStyle={[styles.content, responsiveStyles.content]}
 		>
-			<View style={[styles.bladeStack, { gap: viewportMetrics.insets.sectionGap }]}>
-				<View
-					style={[
-						styles.bladeSurface,
-						{ backgroundColor: bladeSurface, borderRadius: viewportMetrics.radius.card },
-					]}
-				>
-					<CareBlade
-						colors={["#F97316", "#DC2626"]}
-						iconName="ambulance"
-						title="Ambulance"
-						subtext="Fast transport nearby"
-						onPress={() => onChooseCare?.("ambulance")}
-						titleColor={titleColor}
-						mutedColor={mutedColor}
-					/>
-				</View>
-				<View
-					style={[
-						styles.bladeSurface,
-						{ backgroundColor: bladeSurface, borderRadius: viewportMetrics.radius.card },
-					]}
-				>
-					<CareBlade
-						colors={["#38BDF8", "#2563EB"]}
-						iconName="bed"
-						title="Bed space"
-						subtext="Available beds nearby"
-						onPress={() => onChooseCare?.("bed")}
-						titleColor={titleColor}
-						mutedColor={mutedColor}
-					/>
-				</View>
-				<View
-					style={[
-						styles.bladeSurface,
-						{ backgroundColor: bladeSurface, borderRadius: viewportMetrics.radius.card },
-					]}
-				>
-					<CareBlade
-						colors={["#14B8A6", "#0F766E"]}
-						iconName="hospital-box"
-						title="Ambulance + bed"
-						subtext="Transport and admission"
-						onPress={() => onChooseCare?.("both")}
-						titleColor={titleColor}
-						mutedColor={mutedColor}
-					/>
-				</View>
+			<View style={[styles.bladeStack, responsiveStyles.bladeStack]}>
+				{[
+					{
+						colors: ["#F97316", "#DC2626"],
+						iconName: "ambulance",
+						title: "Ambulance",
+						subtext: "Fast transport nearby",
+						onPress: () => onChooseCare?.("ambulance"),
+					},
+					{
+						colors: ["#38BDF8", "#2563EB"],
+						iconName: "bed",
+						title: "Bed space",
+						subtext: "Available beds nearby",
+						onPress: () => onChooseCare?.("bed"),
+					},
+					{
+						colors: ["#14B8A6", "#0F766E"],
+						iconName: "hospital-box",
+						title: "Ambulance + bed",
+						subtext: "Transport and admission",
+						onPress: () => onChooseCare?.("both"),
+					},
+				].map((item) => (
+					<View
+						key={item.title}
+						style={[
+							styles.bladeSurface,
+							{
+								backgroundColor: bladeSurface,
+								borderRadius: viewportMetrics.radius.card,
+							},
+						]}
+					>
+						<CareBlade
+							{...item}
+							titleColor={titleColor}
+							mutedColor={mutedColor}
+							responsiveStyles={responsiveStyles}
+						/>
+					</View>
+				))}
 			</View>
 
 			{hasVisits ? (
-				<View style={[styles.recentSection, { marginTop: Math.max(8, viewportMetrics.insets.sectionGap - 4) }]}>
-					<View style={styles.recentHeader}>
+				<View style={[styles.recentSection, responsiveStyles.recentSection]}>
+					<View style={[styles.recentHeader, responsiveStyles.recentHeader]}>
 						<Text
 							style={[
 								styles.recentTitle,
-								{
-									color: titleColor,
-									fontSize: viewportMetrics.type.title,
-									lineHeight: viewportMetrics.type.titleLineHeight,
-								},
+								responsiveStyles.recentTitle,
+								{ color: titleColor },
 							]}
 						>
 							Recent visits
@@ -164,7 +215,15 @@ export default function MapCareHistoryModal({
 								navigateToVisits({ router });
 							}}
 						>
-							<Text style={[styles.recentAction, { color: mutedColor }]}>See more</Text>
+							<Text
+								style={[
+									styles.recentAction,
+									responsiveStyles.recentAction,
+									{ color: mutedColor },
+								]}
+							>
+								See more
+							</Text>
 						</Pressable>
 					</View>
 
@@ -173,6 +232,7 @@ export default function MapCareHistoryModal({
 							key={visit?.id || `${visit?.hospital || "visit"}-${index}`}
 							style={[
 								styles.visitCard,
+								responsiveStyles.visitCard,
 								{
 									backgroundColor: isDarkMode
 										? "rgba(255,255,255,0.06)"
@@ -181,14 +241,20 @@ export default function MapCareHistoryModal({
 								},
 							]}
 						>
-							<View style={styles.visitIconWrap}>
+							<View style={[styles.visitIconWrap, responsiveStyles.visitIconWrap]}>
 								<Ionicons name="time-outline" size={18} color="#86100E" />
 							</View>
 							<View style={styles.visitCopy}>
-								<Text numberOfLines={1} style={[styles.visitTitle, { color: titleColor }]}>
+								<Text
+									numberOfLines={1}
+									style={[styles.visitTitle, responsiveStyles.visitTitle, { color: titleColor }]}
+								>
 									{visit?.type || "Care visit"}
 								</Text>
-								<Text numberOfLines={2} style={[styles.visitMeta, { color: bodyColor }]}>
+								<Text
+									numberOfLines={2}
+									style={[styles.visitMeta, responsiveStyles.visitMeta, { color: bodyColor }]}
+								>
 									{formatVisitSupport(visit)}
 								</Text>
 							</View>
@@ -213,17 +279,11 @@ const styles = StyleSheet.create({
 		...squircle(28),
 	},
 	careBlade: {
-		paddingHorizontal: 14,
-		paddingVertical: 14,
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 14,
 		...squircle(28),
 	},
 	bladeIconWrap: {
-		width: 46,
-		height: 46,
-		borderRadius: 23,
 		alignItems: "center",
 		justifyContent: "center",
 	},
@@ -231,14 +291,9 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	bladeTitle: {
-		fontSize: 17,
-		lineHeight: 21,
 		fontWeight: "800",
 	},
 	bladeSubtext: {
-		marginTop: 3,
-		fontSize: 13,
-		lineHeight: 17,
 		fontWeight: "400",
 	},
 	recentSection: {
@@ -248,30 +303,19 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
-		marginBottom: 12,
 	},
 	recentTitle: {
-		fontSize: 18,
-		lineHeight: 22,
 		fontWeight: "800",
 	},
 	recentAction: {
-		fontSize: 14,
-		lineHeight: 18,
 		fontWeight: "700",
 	},
 	visitCard: {
-		padding: 16,
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 12,
-		marginBottom: 10,
 		...squircle(26),
 	},
 	visitIconWrap: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
 		backgroundColor: "rgba(134, 16, 14, 0.10)",
 		alignItems: "center",
 		justifyContent: "center",
@@ -280,14 +324,9 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	visitTitle: {
-		fontSize: 16,
-		lineHeight: 20,
 		fontWeight: "800",
 	},
 	visitMeta: {
-		marginTop: 4,
-		fontSize: 13,
-		lineHeight: 18,
 		fontWeight: "400",
 	},
 });

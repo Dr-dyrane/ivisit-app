@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
-import { Platform, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
-import getViewportSurfaceMetrics from "../../utils/ui/viewportSurfaceMetrics";
+import useResponsiveSurfaceMetrics from "../../hooks/ui/useResponsiveSurfaceMetrics";
 import EntryActionButton from "../entry/EntryActionButton";
 import MapModalShell from "./surfaces/MapModalShell";
 
@@ -19,18 +19,8 @@ export default function MapGuestProfileModal({
 	onContinue,
 }) {
 	const { isDarkMode } = useTheme();
-	const { width, height } = useWindowDimensions();
 	const trimmedEmail = typeof emailValue === "string" ? emailValue.trim() : "";
-	const viewportMetrics = useMemo(
-		() =>
-			getViewportSurfaceMetrics({
-				width,
-				height,
-				platform: Platform.OS,
-				presentationMode: "modal",
-			}),
-		[height, width],
-	);
+	const viewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "modal" });
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
 	const bodyColor = isDarkMode ? "#CBD5E1" : "#475569";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
@@ -39,6 +29,32 @@ export default function MapGuestProfileModal({
 	const footerTopGap = Math.max(14, viewportMetrics.insets.sectionGap);
 	const heroOrbSize = Math.max(98, Math.round(viewportMetrics.radius.orb * 1.6));
 	const canContinue = trimmedEmail.length > 0;
+	const responsiveStyles = useMemo(
+		() => ({
+			title: {
+				fontSize: Math.max(28, viewportMetrics.type.title + 10),
+				lineHeight: Math.max(32, viewportMetrics.type.titleLineHeight + 10),
+			},
+			body: {
+				fontSize: viewportMetrics.type.body,
+				lineHeight: viewportMetrics.type.bodyLineHeight,
+				marginTop: Math.max(8, viewportMetrics.insets.sectionGap - 4),
+			},
+			formBlock: {
+				marginTop: viewportMetrics.insets.largeGap,
+			},
+			inputShell: {
+				minHeight: viewportMetrics.cta.primaryHeight,
+				paddingHorizontal: Math.max(16, viewportMetrics.modal.contentPadding - 2),
+				borderRadius: viewportMetrics.radius.card,
+			},
+			input: {
+				fontSize: viewportMetrics.type.body,
+				lineHeight: Math.max(18, viewportMetrics.type.bodyLineHeight - 4),
+			},
+		}),
+		[viewportMetrics],
+	);
 
 	return (
 		<MapModalShell
@@ -79,11 +95,8 @@ export default function MapGuestProfileModal({
 					<Text
 						style={[
 							styles.title,
-							{
-								color: titleColor,
-								fontSize: Math.max(28, viewportMetrics.type.title + 10),
-								lineHeight: Math.max(32, viewportMetrics.type.titleLineHeight + 10),
-							},
+							responsiveStyles.title,
+							{ color: titleColor },
 						]}
 					>
 						What&apos;s your email?
@@ -92,28 +105,20 @@ export default function MapGuestProfileModal({
 					<Text
 						style={[
 							styles.body,
-							{
-								color: bodyColor,
-								fontSize: viewportMetrics.type.body,
-								lineHeight: viewportMetrics.type.bodyLineHeight,
-								marginTop: Math.max(8, viewportMetrics.insets.sectionGap - 4),
-							},
+							responsiveStyles.body,
+							{ color: bodyColor },
 						]}
 					>
 						Next, we&apos;ll send a code.
 					</Text>
 				</View>
 
-				<View style={[styles.formBlock, { marginTop: viewportMetrics.insets.largeGap }]}>
+				<View style={[styles.formBlock, responsiveStyles.formBlock]}>
 					<View
 						style={[
 							styles.inputShell,
-							{
-								backgroundColor: inputSurface,
-								minHeight: viewportMetrics.cta.primaryHeight,
-								paddingHorizontal: Math.max(16, viewportMetrics.modal.contentPadding - 2),
-								borderRadius: viewportMetrics.radius.card,
-							},
+							responsiveStyles.inputShell,
+							{ backgroundColor: inputSurface },
 						]}
 					>
 						<Ionicons
@@ -133,11 +138,8 @@ export default function MapGuestProfileModal({
 							placeholderTextColor={mutedColor}
 							style={[
 								styles.input,
-								{
-									color: titleColor,
-									fontSize: viewportMetrics.type.body,
-									lineHeight: viewportMetrics.type.bodyLineHeight - 4,
-								},
+								responsiveStyles.input,
+								{ color: titleColor },
 							]}
 							keyboardType="email-address"
 							autoCapitalize="none"
@@ -189,8 +191,6 @@ const styles = StyleSheet.create({
 		shadowOffset: { width: 0, height: 10 },
 	},
 	title: {
-		fontSize: 28,
-		lineHeight: 32,
 		fontWeight: "900",
 		letterSpacing: -0.9,
 		textAlign: "center",

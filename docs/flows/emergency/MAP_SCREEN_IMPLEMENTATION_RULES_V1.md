@@ -284,6 +284,45 @@ Rules:
 - these are temporary bridge surfaces, not the target end state for pre-dispatch map flow
 - `search`, `hospital_list`, and `hospital_detail` should prefer persistent sheet phases before adding any new modal surface
 
+## 11.1 Shared responsive surface metrics rule
+
+All new `/welcome` and `/map` surfaces must size from shared responsive surface metrics, not ad hoc local numbers.
+
+Canonical source:
+
+- [viewportSurfaceMetrics.js](../../../utils/ui/viewportSurfaceMetrics.js)
+
+Viewport readers:
+
+- [useAuthViewport.js](../../../hooks/ui/useAuthViewport.js)
+- [useResponsiveSurfaceMetrics.js](../../../hooks/ui/useResponsiveSurfaceMetrics.js)
+- [useWebViewportMetrics.js](../../../hooks/ui/useWebViewportMetrics.js)
+
+Current consumers:
+
+- `/welcome`
+  - [WelcomeStageBase.jsx](../../../components/welcome/shared/WelcomeStageBase.jsx)
+  - [WelcomeWideWebView.jsx](../../../components/welcome/views/WelcomeWideWebView.jsx)
+  - [IOSInstallGuideModal.jsx](../../../components/welcome/install/IOSInstallGuideModal.jsx)
+  - [IOSInstallHintCard.jsx](../../../components/welcome/install/IOSInstallHintCard.jsx)
+- `/map`
+  - [MapModalShell.jsx](../../../components/map/surfaces/MapModalShell.jsx)
+  - [MapExploreLoadingOverlay.jsx](../../../components/map/surfaces/MapExploreLoadingOverlay.jsx)
+  - [MapGuestProfileModal.jsx](../../../components/map/MapGuestProfileModal.jsx)
+  - [MapCareHistoryModal.jsx](../../../components/map/MapCareHistoryModal.jsx)
+  - [MapRecentVisitsModal.jsx](../../../components/map/MapRecentVisitsModal.jsx)
+  - [MapLocationModal.jsx](../../../components/map/surfaces/search/MapLocationModal.jsx)
+  - [components/map/views/shared/useMapStageResponsiveMetrics.js](../../../components/map/views/shared/useMapStageResponsiveMetrics.js)
+  - [components/map/views/exploreIntent/useMapExploreIntentResponsiveMetrics.js](../../../components/map/views/exploreIntent/useMapExploreIntentResponsiveMetrics.js)
+
+Rules:
+
+- on web mobile and tablet, visible viewport height is the sizing source of truth
+- child surfaces may derive local helpers from the shared metrics, but they must not invent a second viewport system
+- spacing, radii, CTA heights, title scales, card/media sizes, and modal geometry should come from shared semantic metrics first
+- fixed values are allowed only for true optical constants that do not need to scale materially across supported breakpoints
+- if a surface needs a responsive exception, add a semantic token/helper next to the shared metric consumer instead of scattering new inline numbers through JSX
+
 ## 12. Header Rule
 
 The header is **not** navigation chrome or a page-title bar for `/map`.

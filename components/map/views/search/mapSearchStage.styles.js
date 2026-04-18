@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-export default StyleSheet.create({
+const styles = StyleSheet.create({
 	topRow: {
 		flexDirection: "row",
 		alignItems: "center",
@@ -58,3 +58,42 @@ export default StyleSheet.create({
 		opacity: 0.72,
 	},
 });
+
+export function getMapSearchStageResponsiveStyles(viewportMetrics) {
+	return {
+		topRow: {
+			gap: Math.max(8, viewportMetrics.insets.sectionGap - 4),
+			marginBottom: Math.max(12, viewportMetrics.insets.sectionGap),
+			paddingHorizontal: viewportMetrics.insets.horizontal,
+		},
+		searchPill: {
+			minHeight: Math.max(42, viewportMetrics.cta.secondaryHeight - 4),
+			paddingHorizontal: Math.max(13, viewportMetrics.insets.horizontal - 1),
+			gap: Math.max(7, Math.round(viewportMetrics.insets.sectionGap * 0.62)),
+			borderRadius: viewportMetrics.radius.card,
+		},
+		searchPillCollapsed: {
+			minHeight: Math.max(38, viewportMetrics.cta.secondaryHeight - 8),
+			paddingHorizontal: Math.max(12, viewportMetrics.insets.horizontal - 2),
+		},
+		searchText: {
+			fontSize: Math.max(14, viewportMetrics.type.body - 1),
+			lineHeight: Math.max(18, viewportMetrics.type.bodyLineHeight - 5),
+		},
+		bodyScrollContent: {
+			paddingHorizontal: viewportMetrics.insets.horizontal,
+			paddingBottom: Math.max(8, viewportMetrics.insets.sectionGap - 4),
+		},
+		activeSearchRow: {
+			gap: Math.max(8, viewportMetrics.insets.sectionGap - 4),
+			marginBottom: Math.max(8, viewportMetrics.insets.sectionGap - 6),
+		},
+		closeButton: {
+			width: viewportMetrics.modal.headerButtonSize,
+			height: viewportMetrics.modal.headerButtonSize,
+			borderRadius: Math.round(viewportMetrics.modal.headerButtonSize / 2),
+		},
+	};
+}
+
+export default styles;

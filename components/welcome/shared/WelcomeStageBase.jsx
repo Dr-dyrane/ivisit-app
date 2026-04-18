@@ -324,7 +324,7 @@ export default function WelcomeStageBase({
 	};
 
 	const helperDisplayStyle = {
-		marginTop: Math.max(metrics?.stageSpacing?.headlineToHelper || 12, 12),
+		marginTop: Math.max(metrics?.stageSpacing?.headlineToHelper || sharedMetrics.insets.sectionGap, sharedMetrics.insets.sectionGap),
 		maxWidth:
 			layout === "split"
 				? Math.max(metrics?.helperMaxWidth || 520, 520)
@@ -439,11 +439,11 @@ export default function WelcomeStageBase({
 			style={[
 				styles.helper,
 				{
-					marginTop: 12,
+					marginTop: Math.max(10, sharedMetrics.insets.sectionGap - 2),
 					fontSize: Math.max(12, (metrics?.helperSize || 16) - 3),
 					lineHeight: Math.max(18, (metrics?.helperLineHeight || 22) - 6),
 					opacity: isDarkMode ? 0.7 : 0.62,
-					maxWidth: 280,
+					maxWidth: Math.max(280, Math.round(sharedMetrics.modal.contentPadding * 8)),
 				},
 			]}
 		>
@@ -538,7 +538,7 @@ export default function WelcomeStageBase({
 							left: "10%",
 							bottom: "28%",
 							width: "66%",
-							height: 22,
+							height: Math.max(18, sharedMetrics.type.captionLineHeight + 4),
 							borderRadius: 999,
 						},
 						{
@@ -678,7 +678,7 @@ export default function WelcomeStageBase({
 						start={{ x: 0.5, y: 0 }}
 						end={{ x: 0.5, y: 1 }}
 						style={{
-							paddingTop: 28,
+							paddingTop: Math.max(24, sharedMetrics.insets.largeGap + 4),
 							paddingBottom: metrics?.bottomPadding || 0,
 							paddingHorizontal: sharedMetrics.insets.horizontal,
 						}}

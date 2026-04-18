@@ -214,3 +214,135 @@ export const styles = StyleSheet.create({
 		fontWeight: "400",
 	},
 });
+
+export function getMapSearchSheetResponsiveStyles(viewportMetrics) {
+	const tileSize = Math.max(36, Math.round(viewportMetrics.radius.card * 1.45));
+	return {
+		content: {
+			paddingBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+			gap: viewportMetrics.insets.largeGap,
+		},
+		modeSwitchRow: {
+			gap: Math.max(8, viewportMetrics.insets.sectionGap - 4),
+		},
+		modeChip: {
+			minHeight: Math.max(42, viewportMetrics.cta.secondaryHeight - 4),
+			paddingHorizontal: Math.max(13, viewportMetrics.insets.horizontal - 1),
+			gap: Math.max(7, Math.round(viewportMetrics.insets.sectionGap * 0.62)),
+			borderRadius: viewportMetrics.radius.chip,
+		},
+		modeChipLabel: {
+			fontSize: Math.max(13, viewportMetrics.type.caption + 1),
+			lineHeight: Math.max(17, viewportMetrics.type.captionLineHeight + 1),
+		},
+		section: {
+			gap: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+		},
+		sectionTitle: {
+			fontSize: Math.max(16, viewportMetrics.type.title),
+			lineHeight: viewportMetrics.type.titleLineHeight,
+		},
+		chipWrap: {
+			gap: Math.max(8, viewportMetrics.insets.sectionGap - 4),
+		},
+		queryChip: {
+			gap: 8,
+			paddingHorizontal: Math.max(13, viewportMetrics.insets.horizontal - 1),
+			paddingVertical: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+		},
+		queryChipLabel: {
+			fontSize: Math.max(13, viewportMetrics.type.caption + 1),
+			lineHeight: Math.max(17, viewportMetrics.type.captionLineHeight + 1),
+			maxWidth: Math.max(180, Math.round(viewportMetrics.modal.contentPadding * 8.6)),
+		},
+		resultRow: {
+			paddingHorizontal: Math.max(13, viewportMetrics.insets.horizontal - 1),
+			paddingVertical: Math.max(13, viewportMetrics.insets.sectionGap),
+			minHeight: Math.max(70, Math.round(viewportMetrics.cta.primaryHeight * 1.34)),
+			gap: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+		},
+		resultLeading: {
+			gap: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+		},
+		sheetIconShell: {
+			width: tileSize,
+			height: tileSize,
+			borderRadius: Math.round(tileSize / 2),
+		},
+		sheetIconFill: {
+			borderRadius: Math.round(tileSize / 2) - 1,
+		},
+		sheetIconHighlight: {
+			borderRadius: Math.round(tileSize / 2) - 2,
+		},
+		resultTitleRow: {
+			gap: Math.max(7, Math.round(viewportMetrics.insets.sectionGap * 0.6)),
+		},
+		resultTitle: {
+			fontSize: Math.max(15, viewportMetrics.type.body),
+			lineHeight: Math.max(20, viewportMetrics.type.bodyLineHeight - 4),
+		},
+		resultBadge: {
+			paddingHorizontal: 8,
+			paddingVertical: 3,
+		},
+		resultBadgeText: {
+			fontSize: 10,
+			lineHeight: 12,
+		},
+		resultSubtitle: {
+			marginTop: 3,
+			fontSize: viewportMetrics.type.caption,
+			lineHeight: Math.max(17, viewportMetrics.type.captionLineHeight + 1),
+		},
+		resultMeta: {
+			marginTop: 4,
+			fontSize: Math.max(11, viewportMetrics.type.caption - 1),
+			lineHeight: Math.max(15, viewportMetrics.type.captionLineHeight),
+		},
+		rowDivider: {
+			marginLeft: Math.max(58, tileSize + Math.max(18, viewportMetrics.insets.sectionGap + 8)),
+		},
+		emptyState: {
+			paddingHorizontal: Math.max(18, viewportMetrics.modal.contentPadding),
+			paddingVertical: Math.max(20, viewportMetrics.insets.largeGap),
+			gap: Math.max(8, viewportMetrics.insets.sectionGap - 2),
+		},
+		emptyIconWrap: {
+			width: Math.max(40, tileSize + 2),
+			height: Math.max(40, tileSize + 2),
+			borderRadius: Math.round(Math.max(40, tileSize + 2) / 2),
+		},
+		emptyTitle: {
+			fontSize: Math.max(16, viewportMetrics.type.title),
+			lineHeight: viewportMetrics.type.titleLineHeight,
+		},
+		emptyBody: {
+			fontSize: viewportMetrics.type.body,
+			lineHeight: viewportMetrics.type.bodyLineHeight,
+			maxWidth: Math.max(260, Math.round(viewportMetrics.modal.contentPadding * 9.4)),
+		},
+		actionChipRow: {
+			gap: Math.max(8, viewportMetrics.insets.sectionGap - 4),
+			marginTop: 2,
+		},
+		actionChip: {
+			gap: 8,
+			paddingHorizontal: Math.max(13, viewportMetrics.insets.horizontal - 1),
+			paddingVertical: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+		},
+		actionChipLabel: {
+			fontSize: Math.max(13, viewportMetrics.type.caption + 1),
+			lineHeight: Math.max(17, viewportMetrics.type.captionLineHeight + 1),
+		},
+		loadingRow: {
+			gap: Math.max(8, viewportMetrics.insets.sectionGap - 4),
+			paddingHorizontal: Math.max(13, viewportMetrics.insets.horizontal - 1),
+			paddingVertical: Math.max(16, viewportMetrics.insets.sectionGap + 2),
+		},
+		loadingText: {
+			fontSize: viewportMetrics.type.caption + 1,
+			lineHeight: viewportMetrics.type.captionLineHeight + 2,
+		},
+	};
+}
