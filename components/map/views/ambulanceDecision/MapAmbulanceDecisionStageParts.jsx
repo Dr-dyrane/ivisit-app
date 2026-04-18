@@ -71,6 +71,7 @@ function RouteMetaLine({ text, color, fadeColor }) {
 
 export function MapAmbulanceDecisionTopSlot({
 	modalContainedStyle,
+	contentInsetStyle,
 	titleColor,
 	subtitleColor,
 	closeSurfaceColor,
@@ -82,7 +83,7 @@ export function MapAmbulanceDecisionTopSlot({
 	toggleIconName = "chevron-up",
 }) {
 	return (
-		<View style={[styles.topSlot, modalContainedStyle]}>
+		<View style={[styles.topSlot, contentInsetStyle, modalContainedStyle]}>
 			<MapHeaderIconButton
 				onPress={onToggle}
 				accessibilityLabel={toggleAccessibilityLabel}
@@ -512,19 +513,25 @@ export function MapAmbulanceDecisionFooter({
 	modalContainedStyle,
 	canConfirm = true,
 	canBrowseHospitals,
+	isAdvancing = false,
 	onConfirm,
 	onOpenHospitals,
 }) {
 	return (
 		<View style={[styles.footerDock, modalContainedStyle]}>
 			<EntryActionButton
-				label={MAP_AMBULANCE_DECISION_COPY.CONFIRM_CTA}
+				label={
+					isAdvancing
+						? MAP_AMBULANCE_DECISION_COPY.CONTINUING_CTA
+						: MAP_AMBULANCE_DECISION_COPY.CONFIRM_CTA
+				}
 				onPress={onConfirm}
 				variant="primary"
 				height={50}
 				radius={24}
 				fullWidth
 				disabled={!canConfirm}
+				loading={isAdvancing}
 				style={styles.primaryButton}
 			/>
 			{canBrowseHospitals ? (

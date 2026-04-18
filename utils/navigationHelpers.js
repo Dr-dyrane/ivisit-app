@@ -141,19 +141,35 @@ export function navigateToMore({ router, method = "push", screen }) {
 	nav(router, method, ROUTES.STACK_MORE);
 }
 
-export function navigateToRequestAmbulance({ router, hospitalId, method = "push" }) {
+export function navigateToRequestAmbulance({
+	router,
+	hospitalId,
+	method = "push",
+	params = null,
+}) {
 	if (!hospitalId) return;
 	nav(router, method, {
 		pathname: ROUTES.STACK_EMERGENCY_REQUEST_AMBULANCE,
-		params: { hospitalId: String(hospitalId) },
+		params: {
+			hospitalId: String(hospitalId),
+			...(params && typeof params === "object" ? params : {}),
+		},
 	});
 }
 
-export function navigateToBookBed({ router, hospitalId, method = "push" }) {
+export function navigateToBookBed({
+	router,
+	hospitalId,
+	method = "push",
+	params = null,
+}) {
 	if (!hospitalId) return;
 	nav(router, method, {
 		pathname: ROUTES.STACK_EMERGENCY_BOOK_BED,
-		params: { hospitalId: String(hospitalId) },
+		params: {
+			hospitalId: String(hospitalId),
+			...(params && typeof params === "object" ? params : {}),
+		},
 	});
 }
 

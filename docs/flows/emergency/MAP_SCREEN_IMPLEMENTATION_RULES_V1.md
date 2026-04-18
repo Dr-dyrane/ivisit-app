@@ -356,6 +356,25 @@ Rendering rule for `ambulance_decision`:
 - first tap selects, second tap on the same pill may advance
 - expanded state = alternative tiers, compact route surface, notes
 
+Rendering rule for `bed_decision`:
+
+- header = hospital + away line
+- hero = selected room
+- hero pill 1 = availability
+- hero pill 2 = price
+- compact selector row in half state should stay room-first and use the same centered icon + text grammar as `ambulance_decision`
+- selected compact pill = app CTA color + optional filled icon state
+- do not add nested trailing affordances to compact room pills
+- first tap selects, second tap on the same room pill may advance
+- expanded state = room comparison blades first
+- route stays compact and should not wrap address subtext into two lines when avoidable
+- current legacy handoff consumes room preselection
+- in the combined flow, `bed_decision` must stay room-only even when `careIntent === "both"`
+- combined care should use `ambulance_decision` first, then `bed_decision`, rather than mounting a third dedicated sheet phase
+- `savedTransport` in the combined flow is display state only and must be bound to its source hospital
+- if the user changes hospitals during `bed_decision` step 2, `savedTransport` is stale and the flow must restart `ambulance_decision` for the newly selected hospital
+- this invalidation belongs in flow orchestration (`useMapExploreFlow.js`), not inside `MapBedDecisionStageBase.jsx` or its parts
+
 Rendering parity rule for `service_detail`:
 
 - half state should mirror the compact selector grammar used in `ambulance_decision`

@@ -22,7 +22,10 @@ The patient experience is now locked to this product sequence:
 Current `/map` implementation note:
 
 - `explore_intent -> ambulance_decision` is now mounted inside the persistent map sheet
+- `explore_intent -> bed_decision` is now mounted inside the persistent map sheet for `bed`
+- `explore_intent -> ambulance_decision -> bed_decision` is now the persistent map-sheet path for `ambulance + bed`
 - ambulance confirmation still bridges into the legacy request screen after the decision step
+- bed confirmation still bridges into the legacy booking screen after the decision step
 
 Current pre-dispatch data rule:
 
@@ -30,6 +33,10 @@ Current pre-dispatch data rule:
   - hospital recommendation
   - route preview
   - hospital-scoped `service_pricing`
+- `bed_decision` should survive on:
+  - hospital recommendation
+  - route preview
+  - hospital-scoped room availability / `getRooms(...)`
 - it should not require:
   - a live assigned ambulance unit
   - responder identity
@@ -47,8 +54,12 @@ Rules:
 1. User enters the emergency surface and confirms location in `RequestAmbulanceScreen.jsx` / `BookBedRequestScreen.jsx`.
 2. The app finds nearby hospitals and either:
    - recommends one for ambulance, or
-   - lets the user choose for bed booking.
-3. The selected hospital carries into `EmergencyRequestModal.jsx`, which currently acts as the `dispatch_clearance` / `commit_ready` bridge.
+   - opens `bed_decision` for room-first bed booking, or
+   - opens `ambulance_decision`, then advances to `bed_decision`, for paired bed + transport.
+   - if the user changes hospitals during paired `bed_decision`, the previously saved transport must be invalidated and the flow returns to `ambulance_decision` for that new hospital.
+3. The selected hospital carries into:
+   - `EmergencyRequestModal.jsx` through the legacy ambulance-request bridge for ambulance, or
+   - `EmergencyRequestModal.jsx` through the legacy bed-booking bridge for bed / paired bed + transport.
 4. Only after identity, payment, and any required details are ready does the app call:
    - `hooks/emergency/useRequestFlow.js` -> `useEmergencyRequests.createRequest`
    - `services/emergencyRequestsService.create`

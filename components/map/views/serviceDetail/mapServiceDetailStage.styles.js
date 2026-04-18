@@ -46,6 +46,12 @@ export default StyleSheet.create({
 		paddingTop: Platform.OS === "android" ? 2 : 0,
 		paddingBottom: 28,
 	},
+	webWideContentInset: {
+		paddingHorizontal: 20,
+	},
+	webWideTopSlotInset: {
+		paddingHorizontal: 18,
+	},
 	sectionSpacer: {
 		height: Platform.OS === "android" ? 18 : 16,
 	},

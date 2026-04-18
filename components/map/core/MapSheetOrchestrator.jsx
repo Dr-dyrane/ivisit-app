@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import MapAmbulanceDecisionOrchestrator from "../views/ambulanceDecision/MapAmbulanceDecisionOrchestrator";
+import MapBedDecisionOrchestrator from "../views/bedDecision/MapBedDecisionOrchestrator";
 import MapHospitalDetailOrchestrator from "../views/hospitalDetail/MapHospitalDetailOrchestrator";
 import MapExploreIntentOrchestrator from "../views/exploreIntent/MapExploreIntentOrchestrator";
 import MapHospitalListOrchestrator from "../views/hospitalList/MapHospitalListOrchestrator";
@@ -35,14 +36,17 @@ export default function MapSheetOrchestrator({
 	onOpenProfile,
 	onOpenCareHistory = () => {},
 	onOpenAmbulanceHospitals = () => {},
+	onOpenBedHospitals = () => {},
 	onOpenFeaturedHospital = () => {},
 	onCycleHospital = undefined,
 	onSnapStateChange = () => {},
 	onCloseSearch = () => {},
 	onCloseHospitals = () => {},
 	onCloseAmbulanceDecision = () => {},
+	onCloseBedDecision = () => {},
 	onCloseHospitalDetail = () => {},
 	onConfirmAmbulanceDecision = () => {},
+	onConfirmBedDecision = () => {},
 	onOpenServiceDetail = () => {},
 	onCloseServiceDetail = () => {},
 	onConfirmServiceDetail = () => {},
@@ -107,6 +111,53 @@ export default function MapSheetOrchestrator({
 						onClose={onCloseAmbulanceDecision}
 						onConfirm={onConfirmAmbulanceDecision}
 						onOpenHospitals={onOpenAmbulanceHospitals}
+						onOpenServiceDetail={onOpenServiceDetail}
+						onSelectService={onSelectHospitalService}
+						onSnapStateChange={onSnapStateChange}
+					/>
+				</MapPhaseTransitionView>
+			);
+		}
+		case MAP_SHEET_PHASES.BED_DECISION: {
+			const decisionHospital = featuredHospital || nearestHospital || null;
+			const decisionHospitalId = decisionHospital?.id || "unknown";
+			const careIntent =
+				sheetPayload?.careIntent === "both" ? "both" : "bed";
+			const savedTransport =
+				careIntent === "both" && sheetPayload?.savedTransport
+					? sheetPayload.savedTransport
+					: null;
+			const decisionOrigin =
+				currentLocation || activeLocation
+					? {
+							...(activeLocation || {}),
+							...(currentLocation || {}),
+							...(currentLocation?.location || {}),
+							formattedAddress:
+								currentLocation?.formattedAddress ||
+								[currentLocation?.primaryText, currentLocation?.secondaryText]
+									.filter(Boolean)
+									.join(", ") ||
+								activeLocation?.formattedAddress ||
+								null,
+						}
+					: null;
+			return (
+				<MapPhaseTransitionView phaseKey={`${phase}-${decisionHospitalId}`}>
+					<MapBedDecisionOrchestrator
+						sheetHeight={sheetHeight}
+						snapState={snapState}
+						hospital={decisionHospital}
+						origin={decisionOrigin}
+						careIntent={careIntent}
+						savedTransport={savedTransport}
+						hospitalCount={Array.isArray(hospitals) ? hospitals.length : 0}
+						selectedRoomServiceId={
+							serviceSelectionsByHospital[decisionHospitalId]?.roomServiceId ?? null
+						}
+						onClose={onCloseBedDecision}
+						onConfirm={onConfirmBedDecision}
+						onOpenHospitals={onOpenBedHospitals}
 						onOpenServiceDetail={onOpenServiceDetail}
 						onSelectService={onSelectHospitalService}
 						onSnapStateChange={onSnapStateChange}

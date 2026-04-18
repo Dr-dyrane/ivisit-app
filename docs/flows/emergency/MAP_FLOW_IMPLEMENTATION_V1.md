@@ -1,7 +1,7 @@
 # Map Flow Implementation (v1)
 
 > Status: Active implementation note
-> Scope: `/map` -> `explore_intent`, `ambulance_decision`
+> Scope: `/map` -> `explore_intent`, `ambulance_decision`, `bed_decision`
 
 Related:
 
@@ -29,6 +29,8 @@ The public map flow now follows this shape:
   - owns the current first mode using variant-based files
 - [components/map/views/ambulanceDecision](../../../components/map/views/ambulanceDecision)
   - owns the dispatch-decision phase after the ambulance CTA
+- [components/map/views/bedDecision](../../../components/map/views/bedDecision)
+  - owns the room decision phase after `bed`, and after ambulance selection in the combined flow
 
 ## Readiness Contract
 
@@ -49,7 +51,7 @@ Supporting files:
 
 ## Sheet And Modal Contract
 
-The persistent pre-dispatch map flow now routes `search`, `hospital_list`, `hospital_detail`, and `ambulance_decision` through the shared sheet shell.
+The persistent pre-dispatch map flow now routes `search`, `hospital_list`, `hospital_detail`, `ambulance_decision`, and `bed_decision` through the shared sheet shell.
 
 Persistent sheet path:
 
@@ -58,6 +60,7 @@ Persistent sheet path:
 - [components/map/views/hospitalList](../../../components/map/views/hospitalList)
 - [components/map/views/hospitalDetail](../../../components/map/views/hospitalDetail)
 - [components/map/views/ambulanceDecision](../../../components/map/views/ambulanceDecision)
+- [components/map/views/bedDecision](../../../components/map/views/bedDecision)
 
 Bridge modals that still share one shell:
 
@@ -85,8 +88,61 @@ Shared implementation note:
 
 - `search`, `hospital_list`, and `hospital_detail` now share a stage body-scroll wrapper through [`MapStageBodyScroll.jsx`](../../../components/map/views/shared/MapStageBodyScroll.jsx)
 - `ambulance_decision` now reuses the same shell, detent, route, and service-detail seam as the existing map phases
+- `bed_decision` now reuses that same shell, route seam, and service-detail seam for room-first booking only
+- `ambulance + bed` now uses a sequential flow: `ambulance_decision -> bed_decision -> legacy booking`
 - `hospital_detail` remains the visual exception where expanded hero/title/body structure must be preserved exactly even if other stage internals are refactored
 - `ambulance_decision` currently confirms into the existing legacy ambulance-request route after the sheet decision; `COMMIT_DETAILS` is still the next in-map phase to build
+- `bed_decision` currently confirms into the existing legacy bed-booking route after the sheet decision; room preselection is forwarded
+- in the combined flow, paired ambulance selection is preserved from `ambulance_decision` and then forwarded when `bed_decision` confirms
+- that saved ambulance selection is hospital-scoped; if the user changes hospitals during `bed_decision`, the flow must return to `ambulance_decision` for the new hospital before step 2 can continue
+- flow ownership stays in `useMapExploreFlow.js`; stage components should not own cross-phase invalidation rules
+
+## Bed Decision Data Contract
+
+The current `/map` `bed_decision` phase is room-first only.
+
+Current runtime path:
+
+- [useMapBedDecisionModel.js](../../../components/map/views/bedDecision/useMapBedDecisionModel.js)
+  - calls `hospitalsService.getRooms(...)`
+- [hospitalsService.js](../../../services/hospitalsService.js)
+  - reads `room_pricing`, `bed_availability`, and hospital bed counts
+- [mapHospitalDetail.helpers.js](../../../components/map/surfaces/hospitals/mapHospitalDetail.helpers.js)
+  - maps room rows into room service cards
+- [mapBedDecision.helpers.js](../../../components/map/views/bedDecision/mapBedDecision.helpers.js)
+  - derives room hero + route content from those rows plus route data
+
+Current backend-backed fields available to the sheet:
+
+- room side:
+  - `room_type`
+  - `room_label` / `room_name`
+  - `available_units` / `available`
+  - `price_per_night` / `base_price`
+
+Current derived UI fields:
+
+- selected room title
+- room availability label
+- room price label
+
+Current flow rule:
+
+- `bed` CTA now opens `bed_decision`
+- half state stays room-first for smaller screens
+- expanded state exposes alternate room options
+- service detail can drill into room items and returns back into `bed_decision`
+- hospital list can now return to `bed_decision` with its original payload instead of dropping back to explore
+
+## Combined Care Flow Note
+
+The current `/map` `ambulance + bed` experience is intentionally sequential:
+
+- `ambulance + bed` first opens `ambulance_decision`
+- ambulance selection is saved in map state
+- confirm then advances into `bed_decision`
+- `bed_decision` stays room-only in UI
+- final bed confirm forwards both the chosen room and the previously chosen ambulance into the legacy bed-booking route
 
 ## Ambulance Decision Data Contract
 

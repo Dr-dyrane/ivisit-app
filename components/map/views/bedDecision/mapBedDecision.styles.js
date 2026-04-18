@@ -15,13 +15,6 @@ const HERO_TITLE_TEXT = Platform.select({
 	default: { fontSize: 22, lineHeight: 26, fontWeight: "800", letterSpacing: -0.45 },
 });
 
-const HOSPITAL_TITLE_TEXT = Platform.select({
-	ios: { fontSize: 19, lineHeight: 23, fontWeight: "800", letterSpacing: -0.32 },
-	android: { fontSize: 19, lineHeight: 23, fontWeight: "800", letterSpacing: -0.32 },
-	web: { fontSize: 18, lineHeight: 22, fontWeight: "700", letterSpacing: -0.2 },
-	default: { fontSize: 19, lineHeight: 23, fontWeight: "800", letterSpacing: -0.32 },
-});
-
 const styles = StyleSheet.create({
 	bodyContent: {
 		paddingBottom: 28,
@@ -63,13 +56,13 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
+	sectionGap: {
+		height: 14,
+	},
 	midSwitchSpacingTop: {
 		height: 0,
 	},
 	midSwitchSpacingBottom: {
-		height: 14,
-	},
-	sectionGap: {
 		height: 14,
 	},
 	heroCard: {
@@ -78,7 +71,7 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 16,
 		paddingTop: 13,
 		paddingBottom: 13,
-		minHeight: 158,
+		minHeight: 154,
 		overflow: "hidden",
 	},
 	heroPressable: {
@@ -93,11 +86,15 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
+	heroImage: {
+		width: "100%",
+		height: "100%",
+	},
 	heroHeader: {
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "flex-end",
-		marginBottom: 9,
+		marginBottom: 8,
 		zIndex: 2,
 	},
 	heroDetailChip: {
@@ -105,11 +102,6 @@ const styles = StyleSheet.create({
 		height: 30,
 		alignItems: "center",
 		justifyContent: "center",
-	},
-	heroDetailChipText: {
-		fontSize: 12,
-		lineHeight: 14,
-		fontWeight: "500",
 	},
 	heroRow: {
 		flexDirection: "row",
@@ -123,11 +115,6 @@ const styles = StyleSheet.create({
 	},
 	heroTitle: {
 		...HERO_TITLE_TEXT,
-	},
-	heroSummary: {
-		fontSize: 14,
-		lineHeight: 20,
-		fontWeight: "600",
 	},
 	heroMetaRow: {
 		flexDirection: "row",
@@ -149,15 +136,29 @@ const styles = StyleSheet.create({
 		lineHeight: 14,
 		fontWeight: "500",
 	},
-	switchRow: {
-		flexDirection: "row",
-		alignItems: "stretch",
+	metaSkeleton: {
+		height: 10,
+		borderRadius: 999,
+		backgroundColor: "rgba(148,163,184,0.32)",
+	},
+	metaSkeletonShort: {
+		width: 54,
+	},
+	metaSkeletonMedium: {
+		width: 66,
+	},
+	switchRail: {
+		marginHorizontal: -2,
+	},
+	switchScroller: {
+		overflow: "visible",
+	},
+	switchRailContent: {
+		paddingHorizontal: 2,
 		gap: 8,
-		width: "100%",
 	},
 	switchPill: {
 		minHeight: 42,
-		flex: 1,
 		minWidth: 0,
 		paddingHorizontal: 8,
 		paddingVertical: 4,
@@ -167,7 +168,6 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 		gap: 1,
-		position: "relative",
 	},
 	switchPillLabel: {
 		fontSize: 11,
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
 	},
 	routeConnector: {
 		width: 2,
-		height: 26,
+		height: 24,
 		borderRadius: 999,
 		marginVertical: 3,
 	},
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 	},
 	routeStopGap: {
-		height: 18,
+		height: 16,
 	},
 	routeStopTitle: {
 		fontSize: Platform.OS === "web" ? 15 : 16,
@@ -262,10 +262,63 @@ const styles = StyleSheet.create({
 		textAlign: "right",
 		marginTop: 2,
 	},
-	expandedChoicesWrap: {
+	savedTransportCard: {
+		borderRadius: 24,
+		borderCurve: "continuous",
+		paddingHorizontal: 14,
+		paddingVertical: 12,
+	},
+	savedTransportHeader: {
+		marginBottom: 10,
+	},
+	savedTransportPill: {
+		alignSelf: "flex-start",
+		height: 24,
+		paddingHorizontal: 10,
+		borderRadius: 12,
+		borderCurve: "continuous",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	savedTransportPillText: {
+		fontSize: 10,
+		lineHeight: 12,
+		fontWeight: "700",
+		color: COLORS.brandPrimary,
+	},
+	savedTransportRow: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	savedTransportIconWrap: {
+		width: 34,
+		height: 34,
+		borderRadius: 17,
+		borderCurve: "continuous",
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 10,
+	},
+	savedTransportCopy: {
+		flex: 1,
+		minWidth: 0,
+	},
+	savedTransportTitle: {
+		fontSize: 15,
+		lineHeight: 18,
+		fontWeight: "700",
+		letterSpacing: -0.18,
+	},
+	savedTransportMeta: {
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "400",
+		marginTop: 3,
+	},
+	expandedList: {
 		gap: 10,
 	},
-	expandedChoiceCard: {
+	expandedRow: {
 		minHeight: 78,
 		borderRadius: 20,
 		borderCurve: "continuous",
@@ -274,13 +327,13 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 	},
-	expandedChoiceInfo: {
+	expandedLead: {
 		flex: 1,
 		flexDirection: "row",
 		alignItems: "center",
 		minWidth: 0,
 	},
-	expandedChoiceIconWrap: {
+	expandedIconWrap: {
 		width: 36,
 		height: 36,
 		borderRadius: 18,
@@ -289,49 +342,96 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		marginRight: 10,
 	},
-	expandedChoiceCopy: {
+	expandedCopy: {
 		flex: 1,
 		minWidth: 0,
 		paddingRight: 10,
 	},
-	expandedChoiceTitle: {
+	expandedTitle: {
 		fontSize: 17,
 		lineHeight: 21,
 		fontWeight: "700",
 		letterSpacing: -0.25,
 	},
-	expandedChoiceMeta: {
+	expandedMeta: {
 		fontSize: 13,
 		lineHeight: 17,
 		fontWeight: "400",
 		marginTop: 4,
 	},
-	expandedChoiceArtworkWrap: {
-		width: 88,
-		height: 60,
+	expandedMetaSkeletonRow: {
+		flexDirection: "row",
 		alignItems: "center",
-		justifyContent: "center",
+		gap: 8,
+		marginTop: 6,
+	},
+	expandedMetaSkeletonShort: {
+		width: 70,
+	},
+	expandedMetaSkeletonMedium: {
+		width: 84,
+	},
+	expandedImage: {
+		width: 72,
+		height: 56,
 		marginHorizontal: 8,
 	},
-	expandedChoiceActionWrap: {
+	expandedActionWrap: {
 		width: 24,
 		height: 24,
 		alignItems: "center",
 		justifyContent: "center",
 	},
-	optionStatePill: {
-		height: 28,
-		paddingHorizontal: 10,
-		borderRadius: 14,
+	transportList: {
+		gap: 10,
+	},
+	transportRow: {
+		minHeight: 78,
+		borderRadius: 20,
+		borderCurve: "continuous",
+		paddingHorizontal: 14,
+		paddingVertical: 10,
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	transportLead: {
+		flex: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		minWidth: 0,
+	},
+	transportIconWrap: {
+		width: 36,
+		height: 36,
+		borderRadius: 18,
 		borderCurve: "continuous",
 		alignItems: "center",
 		justifyContent: "center",
+		marginRight: 10,
 	},
-	optionStateText: {
-		fontSize: 11,
-		lineHeight: 13,
+	transportCopy: {
+		flex: 1,
+		minWidth: 0,
+		paddingRight: 10,
+	},
+	transportTitle: {
+		fontSize: 17,
+		lineHeight: 21,
 		fontWeight: "700",
-		color: COLORS.brandPrimary,
+		letterSpacing: -0.25,
+	},
+	transportMeta: {
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "400",
+		marginTop: 4,
+	},
+	transportArtworkWrap: {
+		width: 84,
+		height: 58,
+		alignItems: "center",
+		justifyContent: "center",
+		marginHorizontal: 8,
 	},
 	detailsCard: {
 		borderRadius: 24,
@@ -346,7 +446,7 @@ const styles = StyleSheet.create({
 		gap: 8,
 		marginBottom: 10,
 	},
-	detailsConfidencePill: {
+	detailsPill: {
 		height: 28,
 		paddingHorizontal: 10,
 		borderRadius: 14,
@@ -354,7 +454,7 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
-	detailsConfidenceText: {
+	detailsPillText: {
 		fontSize: 11,
 		lineHeight: 13,
 		fontWeight: "500",

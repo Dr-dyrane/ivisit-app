@@ -34,6 +34,8 @@ export default function BookBedRequestScreen() {
 	const slideAnim = useRef(new Animated.Value(30)).current;
 	const params = useLocalSearchParams();
 	const hospitalId = typeof params?.hospitalId === "string" ? params.hospitalId : null;
+	const initialRoomId = typeof params?.roomId === "string" ? params.roomId : null;
+	const careIntent = typeof params?.careIntent === "string" ? params.careIntent : "bed";
 
 	const { setHeaderState } = useHeaderState();
 	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
@@ -109,7 +111,7 @@ export default function BookBedRequestScreen() {
 
 			setHeaderState({
 				title: requestHospital?.name || "Medical Center",
-				subtitle: "STEP 1: OPTIONS",
+				subtitle: careIntent === "both" ? "STEP 1: BED + TRANSPORT" : "STEP 1: OPTIONS",
 				icon: <Fontisto name="bed-patient" size={22} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				leftComponent: backButton(),
@@ -121,6 +123,7 @@ export default function BookBedRequestScreen() {
 			setMode("booking");
 		}, [
 			backButton,
+			careIntent,
 			requestHospital?.name,
 			resetHeader,
 			resetTabBar,
@@ -191,6 +194,7 @@ export default function BookBedRequestScreen() {
 					<EmergencyRequestModal
 						mode="booking"
 						requestHospital={requestHospital}
+						initialRoomId={initialRoomId}
 						selectedSpecialty={selectedSpecialty}
 						onRequestClose={handleClose}
 						onRequestInitiated={handleRequestInitiated}

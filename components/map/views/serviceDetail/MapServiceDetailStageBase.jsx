@@ -45,6 +45,14 @@ export default function MapServiceDetailStageBase({
 	);
 	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
+	const webWideInsetStyle =
+		Platform.OS === "web" && presentationMode !== "sheet"
+			? styles.webWideContentInset
+			: null;
+	const webWideTopSlotInsetStyle =
+		Platform.OS === "web" && presentationMode !== "sheet"
+			? styles.webWideTopSlotInset
+			: null;
 	const modalContainedStyle =
 		presentationMode === "modal" && contentMaxWidth
 			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
@@ -181,6 +189,7 @@ export default function MapServiceDetailStageBase({
 					onClose={onClose}
 					titleColor={titleColor}
 					closeSurface={closeSurface}
+					containerStyle={webWideTopSlotInsetStyle}
 				/>
 			}
 			onHandlePress={handleSnapToggle}
@@ -196,6 +205,7 @@ export default function MapServiceDetailStageBase({
 					isSidebarPresentation ? sheetStageStyles.bodyScrollContentSidebar : null,
 					modalContainedStyle,
 					styles.bodyContent,
+					webWideInsetStyle,
 				]}
 				isSidebarPresentation={isSidebarPresentation}
 				allowScrollDetents={allowScrollDetents}

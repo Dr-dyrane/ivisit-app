@@ -101,9 +101,15 @@ function buildAmbulanceCrewPillLabel(service) {
 	return "Crew ready";
 }
 
-export function MapServiceDetailTopSlot({ title, onClose, titleColor, closeSurface }) {
+export function MapServiceDetailTopSlot({
+	title,
+	onClose,
+	titleColor,
+	closeSurface,
+	containerStyle,
+}) {
 	return (
-		<View style={styles.topSlot}>
+		<View style={[styles.topSlot, containerStyle]}>
 			<View style={styles.topSlotSpacer} />
 			<Text numberOfLines={1} style={[styles.topSlotTitle, { color: titleColor }]}>
 				{title}

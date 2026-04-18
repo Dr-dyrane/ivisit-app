@@ -922,6 +922,16 @@ Map behavior:
 - hospital remains selected
 - map context does not reset
 
+Current `/map` implementation note:
+
+- `bed` and `ambulance + bed` now use separate decision moments, not a separate combined sheet
+- half state is intentionally room-first so smaller phones can still fit hero, selector, and route without crowding
+- `bed` stays in `BED_DECISION`
+- `ambulance + bed` now uses `AMBULANCE_DECISION -> BED_DECISION`
+- room selection is forwarded into the legacy bed-booking route today
+- paired ambulance selection is preserved after `AMBULANCE_DECISION` and forwarded when `BED_DECISION` confirms, but the legacy bed-booking screen is still the next seam to replace before combined commit becomes fully native
+- if the user switches hospitals during `BED_DECISION` in the combined flow, the previously saved ambulance choice is no longer valid UI state and the sheet should restart at `AMBULANCE_DECISION` for the new hospital
+
 ## 3.9 Triage / Medical Context
 
 User decision:

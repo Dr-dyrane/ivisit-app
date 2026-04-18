@@ -111,6 +111,7 @@ const shouldApplyRealtimeEvent = (gateRef, streamKey, row) => {
 const EmergencyRequestModal = React.memo(({
 	mode = "emergency",
 	requestHospital,
+	initialRoomId = null,
 	selectedSpecialty,
 	onRequestClose,
 	onRequestInitiated,
@@ -1030,7 +1031,22 @@ const EmergencyRequestModal = React.memo(({
 						setDynamicRooms(deduped);
 
 						if (deduped.length > 0) {
-							const primary = deduped[0];
+							const preferredRoomKey = String(initialRoomId || "")
+								.trim()
+								.toLowerCase();
+							const preferred =
+								preferredRoomKey.length > 0
+									? deduped.find((room) => {
+											const roomId = String(room?.id || "").trim().toLowerCase();
+											const roomType = String(room?.room_type || "")
+												.trim()
+												.toLowerCase();
+											return (
+												roomId === preferredRoomKey || roomType === preferredRoomKey
+											);
+										})
+									: null;
+							const primary = preferred || deduped[0];
 							setSelectedRoomId(primary.id);
 							if (typeof primary?.room_type === "string" && primary.room_type.length > 0) {
 								setBedType(primary.room_type);
@@ -1133,7 +1149,7 @@ const EmergencyRequestModal = React.memo(({
 		return () => {
 			isMounted = false;
 		};
-	}, [requestHospital?.id, mode]);
+	}, [initialRoomId, requestHospital?.id, mode]);
 
 	// Event handlers
 	const handleSubmitRequest = useCallback(async () => {

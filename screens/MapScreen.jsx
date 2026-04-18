@@ -43,11 +43,14 @@ export default function MapScreen() {
 		guestProfileEmail,
 		guestProfileVisible,
 		handleChooseCare,
+		openAmbulanceDecision,
+		openBedDecision,
 		openServiceDetail,
 		closeServiceDetail,
 		confirmServiceDetail,
 		changeServiceDetailService,
 		closeAmbulanceDecision,
+		closeBedDecision,
 		handleMapHospitalPress,
 		handleMapReadinessChange,
 		handleOpenFeaturedHospital,
@@ -55,6 +58,7 @@ export default function MapScreen() {
 		handleOpenProfile,
 		openHospitalList,
 		openAmbulanceHospitalList,
+		openBedHospitalList,
 		handleSearchLocation,
 		handleSelectHospital,
 		handleUseCurrentLocation,
@@ -149,14 +153,80 @@ export default function MapScreen() {
 			const hospitalId = hospital?.id || featuredHospital?.id || nearestHospital?.id;
 			if (!hospitalId) return;
 
+			if (selectedCare === "both") {
+				openAmbulanceDecision(hospital || null);
+				return;
+			}
+
 			if (selectedCare === "bed") {
-				navigateToBookBed({ router, hospitalId, method: "push" });
+				openBedDecision(hospital || null, "bed");
 				return;
 			}
 
 			navigateToRequestAmbulance({ router, hospitalId, method: "push" });
 		},
-		[featuredHospital?.id, nearestHospital?.id, router, selectedCare],
+		[
+			featuredHospital?.id,
+			nearestHospital?.id,
+			openAmbulanceDecision,
+			openBedDecision,
+			router,
+			selectedCare,
+		],
+	);
+
+	const handleConfirmAmbulanceDecision = useCallback(
+		(hospital, transport) => {
+			const hospitalId = hospital?.id || featuredHospital?.id || nearestHospital?.id;
+			if (!hospitalId) return;
+
+			if (selectedCare === "both") {
+				openBedDecision(hospital || null, "both", {
+					savedTransport: transport
+						? {
+								id: transport.id || null,
+								hospitalId,
+								title: transport.title || transport.service_name || "Transport",
+								priceText: transport.priceText || null,
+								metaText: transport.metaText || null,
+								serviceType: transport.service_type || transport.serviceType || null,
+								tierKey: transport.tierKey || transport.visualProfile?.key || null,
+							}
+						: null,
+				});
+				return;
+			}
+
+			navigateToRequestAmbulance({ router, hospitalId, method: "push" });
+		},
+		[
+			featuredHospital?.id,
+			nearestHospital?.id,
+			openBedDecision,
+			router,
+			selectedCare,
+		],
+	);
+
+	const handleConfirmBedDecision = useCallback(
+		(hospital, room, transport, careIntent = "bed") => {
+			const hospitalId = hospital?.id || featuredHospital?.id || nearestHospital?.id;
+			if (!hospitalId) return;
+			const storedAmbulanceServiceId =
+				serviceSelectionsByHospital[hospitalId]?.ambulanceServiceId ?? null;
+
+			navigateToBookBed({
+				router,
+				hospitalId,
+				method: "push",
+				params: {
+					roomId: room?.id || null,
+					ambulanceServiceId: transport?.id || storedAmbulanceServiceId,
+					careIntent,
+				},
+			});
+		},
+		[featuredHospital?.id, nearestHospital?.id, router, serviceSelectionsByHospital],
 	);
 
 	return (
@@ -196,6 +266,7 @@ export default function MapScreen() {
 					onOpenProfile={handleOpenProfile}
 					onOpenCareHistory={() => setCareHistoryVisible(true)}
 					onOpenAmbulanceHospitals={openAmbulanceHospitalList}
+					onOpenBedHospitals={openBedHospitalList}
 					onOpenRecents={() => setRecentVisitsVisible(true)}
 					onOpenFeaturedHospital={handleOpenFeaturedHospital}
 					onCycleHospital={featuredHospitals.length > 1 ? handleCycleFeaturedHospital : undefined}
@@ -203,8 +274,10 @@ export default function MapScreen() {
 					onCloseSearch={closeSearchSheet}
 					onCloseHospitals={closeHospitalList}
 					onCloseAmbulanceDecision={closeAmbulanceDecision}
+					onCloseBedDecision={closeBedDecision}
 					onCloseHospitalDetail={closeHospitalDetail}
-					onConfirmAmbulanceDecision={handleUseHospital}
+					onConfirmAmbulanceDecision={handleConfirmAmbulanceDecision}
+					onConfirmBedDecision={handleConfirmBedDecision}
 					onOpenServiceDetail={openServiceDetail}
 					onCloseServiceDetail={closeServiceDetail}
 					onConfirmServiceDetail={confirmServiceDetail}

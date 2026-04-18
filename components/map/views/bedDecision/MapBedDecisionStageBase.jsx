@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
-import { GLASS_SURFACE_VARIANTS, getGlassSurfaceTokens } from "../../../../constants/surfaces";
+import {
+	GLASS_SURFACE_VARIANTS,
+	getGlassSurfaceTokens,
+} from "../../../../constants/surfaces";
 import MapSheetShell from "../../MapSheetShell";
 import {
 	MAP_SHEET_PHASES,
@@ -14,25 +17,29 @@ import sheetStageStyles from "../shared/mapSheetStage.styles";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import {
-	MapAmbulanceDecisionDetailsCard,
-	MapAmbulanceDecisionExpandedChoices,
-	MapAmbulanceDecisionEmptyState,
-	MapAmbulanceDecisionFooter,
-	MapAmbulanceDecisionHero,
-	MapAmbulanceDecisionRouteCard,
-	MapAmbulanceDecisionSwitchRow,
-	MapAmbulanceDecisionTopSlot,
-} from "./MapAmbulanceDecisionStageParts";
-import styles from "./mapAmbulanceDecision.styles";
-import useMapAmbulanceDecisionModel from "./useMapAmbulanceDecisionModel";
+	MapBedDecisionDetailsCard,
+	MapBedDecisionEmptyState,
+	MapBedDecisionExpandedRoomChoices,
+	MapBedDecisionFooter,
+	MapBedDecisionHero,
+	MapBedDecisionRouteCard,
+	MapBedDecisionRoomSwitchRow,
+	MapBedDecisionSavedTransportCard,
+	MapBedDecisionTopSlot,
+} from "./MapBedDecisionStageParts";
+import styles from "./mapBedDecision.styles";
+import useMapBedDecisionModel from "./useMapBedDecisionModel";
 
-export default function MapAmbulanceDecisionStageBase({
+export default function MapBedDecisionStageBase({
 	sheetHeight,
 	snapState,
 	hospital,
 	origin = null,
+	careIntent = "bed",
+	savedTransport = null,
+	decisionPhase = MAP_SHEET_PHASES.BED_DECISION,
 	hospitalCount = 0,
-	selectedServiceId = null,
+	selectedRoomServiceId = null,
 	onClose,
 	onConfirm,
 	onOpenHospitals,
@@ -95,10 +102,11 @@ export default function MapAmbulanceDecisionStageBase({
 		onScroll: handleBodyScroll,
 		onScrollBeginDrag: handleBodyScrollBeginDrag,
 	});
-	const decision = useMapAmbulanceDecisionModel({
+	const decision = useMapBedDecisionModel({
 		hospital,
 		origin,
-		selectedServiceId,
+		careIntent,
+		selectedRoomServiceId,
 	});
 	const titleColor = tokens.titleColor;
 	const mutedColor = tokens.mutedText;
@@ -154,6 +162,7 @@ export default function MapAmbulanceDecisionStageBase({
 			advanceTimeoutRef.current = null;
 		}, 1600);
 	}, [isAdvancing]);
+
 	const handleHeaderToggle = useCallback(() => {
 		if (typeof onSnapStateChange !== "function") return;
 		onSnapStateChange(
@@ -162,6 +171,7 @@ export default function MapAmbulanceDecisionStageBase({
 				: MAP_SHEET_SNAP_STATES.EXPANDED,
 		);
 	}, [onSnapStateChange, snapState]);
+
 	const headerSubtext = useMemo(() => {
 		const etaLabel =
 			typeof decision.etaLabel === "string" ? decision.etaLabel.trim() : "";
@@ -175,64 +185,84 @@ export default function MapAmbulanceDecisionStageBase({
 		return `${etaLabel} away`;
 	}, [decision.etaLabel]);
 
-	const handleOpenServiceDetails = useCallback(() => {
+	const handleOpenRoomDetails = useCallback(() => {
 		if (
 			!decision.hospital ||
-			!decision.recommendedService ||
-			decision.enabledServiceOptions.length === 0 ||
+			!decision.recommendedRoom ||
+			decision.enabledRoomOptions.length === 0 ||
 			!onOpenServiceDetail
 		) {
 			return;
 		}
+
 		onOpenServiceDetail({
 			hospital: decision.hospital,
-			service: decision.recommendedService,
-			serviceType: "ambulance",
-			serviceItems: decision.enabledServiceOptions,
-			sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
+			service: decision.recommendedRoom,
+			serviceType: "room",
+			serviceItems: decision.enabledRoomOptions,
+			sourcePhase: decisionPhase,
 			sourceSnapState: snapState,
+			sourcePayload: {
+				careIntent,
+				savedTransport: careIntent === "both" ? savedTransport || null : null,
+			},
 		});
 	}, [
-		decision.enabledServiceOptions,
+		careIntent,
+		decisionPhase,
+		decision.enabledRoomOptions,
 		decision.hospital,
-		decision.recommendedService,
+		decision.recommendedRoom,
 		onOpenServiceDetail,
+		savedTransport,
 		snapState,
 	]);
 
 	const handleConfirm = useCallback(() => {
 		if (!canConfirm) return;
-		if (decision.hospital?.id && decision.recommendedService?.id) {
+		if (decision.hospital?.id && decision.recommendedRoom?.id) {
 			onSelectService?.(
 				decision.hospital.id,
-				"ambulanceServiceId",
-				decision.recommendedService.id,
+				"roomServiceId",
+				decision.recommendedRoom.id,
 			);
 		}
-		onConfirm?.(decision.hospital, decision.recommendedService);
-	}, [canConfirm, decision.hospital, decision.recommendedService, onConfirm, onSelectService]);
+		onConfirm?.(
+			decision.hospital,
+			decision.recommendedRoom,
+			null,
+			careIntent,
+		);
+	}, [
+		canConfirm,
+		careIntent,
+		decision.hospital,
+		decision.recommendedRoom,
+		onConfirm,
+		onSelectService,
+	]);
 
 	const handleCommit = useCallback(() => {
 		beginAdvance(handleConfirm);
 	}, [beginAdvance, handleConfirm]);
 
-	const handleSelectDispatchOption = useCallback(
+	const handleSelectRoom = useCallback(
 		(option) => {
 			if (isAdvancing) return;
 			if (!decision.hospital?.id || !option?.id) return;
-			onSelectService?.(decision.hospital.id, "ambulanceServiceId", option.id);
+			onSelectService?.(decision.hospital.id, "roomServiceId", option.id);
 		},
 		[decision.hospital?.id, isAdvancing, onSelectService],
 	);
 
-	const handleAdvanceSelectedDispatchOption = useCallback(
+	const handleAdvanceSelectedRoom = useCallback(
 		(option) => {
-			if (!option?.id || option.id !== decision.recommendedService?.id) {
+			if (!option?.id || option.id !== decision.recommendedRoom?.id) {
 				return;
 			}
 			handleCommit();
 		},
-		[decision.recommendedService?.id, handleCommit],
+		[decision.recommendedRoom?.id, handleCommit],
 	);
 
 	return (
@@ -243,7 +273,7 @@ export default function MapAmbulanceDecisionStageBase({
 			shellWidth={shellWidth}
 			allowedSnapStates={allowedSnapStates}
 			topSlot={
-				<MapAmbulanceDecisionTopSlot
+				<MapBedDecisionTopSlot
 					modalContainedStyle={modalContainedStyle}
 					contentInsetStyle={webWideTopSlotInsetStyle}
 					titleColor={titleColor}
@@ -253,8 +283,8 @@ export default function MapAmbulanceDecisionStageBase({
 					onToggle={handleHeaderToggle}
 					toggleAccessibilityLabel={
 						snapState === MAP_SHEET_SNAP_STATES.EXPANDED
-							? "Collapse dispatch sheet"
-							: "Expand dispatch sheet"
+							? "Collapse bed sheet"
+							: "Expand bed sheet"
 					}
 					hospitalName={decision.hospitalSummary?.title || hospital?.name || "Hospital"}
 					hospitalSubtext={headerSubtext}
@@ -292,31 +322,41 @@ export default function MapAmbulanceDecisionStageBase({
 			>
 				{decision.hospital ? (
 					<>
-						<MapAmbulanceDecisionHero
+						<MapBedDecisionHero
 							decision={decision}
 							glassTokens={glassTokens}
 							isDarkMode={isDarkMode}
 							titleColor={titleColor}
-							mutedColor={mutedColor}
 							surfaceColor={surfaceColor}
-							pillSurfaceColor={pillSurfaceColor}
-							onOpenServiceDetails={handleOpenServiceDetails}
+							onOpenRoomDetails={handleOpenRoomDetails}
 						/>
+
+						{careIntent === "both" ? (
+							<>
+								<View style={styles.sectionGap} />
+								<MapBedDecisionSavedTransportCard
+									savedTransport={savedTransport}
+									glassTokens={glassTokens}
+									isDarkMode={isDarkMode}
+									titleColor={titleColor}
+									mutedColor={mutedColor}
+									surfaceColor={nestedSurfaceColor}
+									pillSurfaceColor={pillSurfaceColor}
+								/>
+							</>
+						) : null}
 
 						<View style={styles.sectionGap} />
 
-						{!isExpanded ? (
+						{!isExpanded && decision.roomOptions.length > 1 ? (
 							<>
 								<View style={styles.midSwitchSpacingTop} />
-								<MapAmbulanceDecisionSwitchRow
-									serviceOptions={decision.serviceOptions}
-									selectedServiceId={decision.recommendedService?.id || null}
-									titleColor={titleColor}
-									mutedColor={mutedColor}
-									pillSurfaceColor={pillSurfaceColor}
+								<MapBedDecisionRoomSwitchRow
+									roomOptions={decision.roomOptions}
+									selectedRoomServiceId={decision.recommendedRoom?.id || null}
 									isDarkMode={isDarkMode}
-									onSelectService={handleSelectDispatchOption}
-									onAdvanceSelectedService={handleAdvanceSelectedDispatchOption}
+									onSelectRoom={handleSelectRoom}
+									onAdvanceSelectedRoom={handleAdvanceSelectedRoom}
 								/>
 								<View style={styles.midSwitchSpacingBottom} />
 							</>
@@ -324,20 +364,17 @@ export default function MapAmbulanceDecisionStageBase({
 
 						{isExpanded ? (
 							<>
-								<View style={styles.sectionGap} />
-
-								<MapAmbulanceDecisionExpandedChoices
+								<MapBedDecisionExpandedRoomChoices
 									decision={decision}
 									titleColor={titleColor}
 									mutedColor={mutedColor}
-									pillSurfaceColor={pillSurfaceColor}
 									isDarkMode={isDarkMode}
-									onSelectService={handleSelectDispatchOption}
+									onSelectRoom={handleSelectRoom}
 								/>
 
 								<View style={styles.sectionGap} />
 
-								<MapAmbulanceDecisionRouteCard
+								<MapBedDecisionRouteCard
 									decision={decision}
 									glassTokens={glassTokens}
 									isDarkMode={isDarkMode}
@@ -349,7 +386,7 @@ export default function MapAmbulanceDecisionStageBase({
 
 								<View style={styles.sectionGap} />
 
-								<MapAmbulanceDecisionDetailsCard
+								<MapBedDecisionDetailsCard
 									decision={decision}
 									glassTokens={glassTokens}
 									isDarkMode={isDarkMode}
@@ -360,7 +397,7 @@ export default function MapAmbulanceDecisionStageBase({
 								/>
 							</>
 						) : (
-							<MapAmbulanceDecisionRouteCard
+							<MapBedDecisionRouteCard
 								decision={decision}
 								glassTokens={glassTokens}
 								isDarkMode={isDarkMode}
@@ -372,7 +409,7 @@ export default function MapAmbulanceDecisionStageBase({
 						)}
 					</>
 				) : (
-					<MapAmbulanceDecisionEmptyState
+					<MapBedDecisionEmptyState
 						titleColor={titleColor}
 						mutedColor={mutedColor}
 						surfaceColor={surfaceColor}
@@ -383,10 +420,11 @@ export default function MapAmbulanceDecisionStageBase({
 
 				<View style={styles.sectionGap} />
 
-				<MapAmbulanceDecisionFooter
+				<MapBedDecisionFooter
 					modalContainedStyle={null}
 					canConfirm={canConfirm}
 					canBrowseHospitals={canBrowseHospitals}
+					careIntent={careIntent}
 					isAdvancing={isAdvancing}
 					onConfirm={handleCommit}
 					onOpenHospitals={onOpenHospitals}

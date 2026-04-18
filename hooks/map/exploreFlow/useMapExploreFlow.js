@@ -90,6 +90,8 @@ export function useMapExploreFlow() {
 	const hospitalDetailVisible = flowState.sheet.phase === MAP_SHEET_PHASES.HOSPITAL_DETAIL;
 	const ambulanceDecisionVisible =
 		flowState.sheet.phase === MAP_SHEET_PHASES.AMBULANCE_DECISION;
+	const bedDecisionVisible =
+		flowState.sheet.phase === MAP_SHEET_PHASES.BED_DECISION;
 	const serviceDetailVisible = flowState.sheet.phase === MAP_SHEET_PHASES.SERVICE_DETAIL;
 	const profileModalVisible = flowState.surfaces.profileModalVisible;
 	const guestProfileVisible = flowState.surfaces.guestProfileVisible;
@@ -358,16 +360,79 @@ export function useMapExploreFlow() {
 			payload: {
 				sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
 				sourceSnapState: sheetSnapState || defaultExploreSnapState,
+				sourcePayload: null,
 			},
 		});
 	}, [defaultExploreSnapState, setSheetView, sheetSnapState]);
 
-	const closeHospitalList = useCallback(() => {
-		if (sheetPayload?.sourcePhase === MAP_SHEET_PHASES.AMBULANCE_DECISION) {
+	const openBedDecision = useCallback(
+		(nextHospital = null, careIntent = "bed", payload = null) => {
+			const targetHospital =
+				nextHospital ||
+				selectedHospital ||
+				featuredHospital ||
+				nearestHospital ||
+				discoveredHospitals?.[0] ||
+				null;
+
+			if (targetHospital?.id) {
+				selectHospital(targetHospital.id);
+				setFeaturedHospital(targetHospital);
+			}
+
 			setSheetView({
-				phase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
+				phase: MAP_SHEET_PHASES.BED_DECISION,
+				snapState: defaultExploreSnapState,
+				payload: {
+					careIntent,
+					...(payload && typeof payload === "object" ? payload : {}),
+				},
+			});
+		},
+		[
+			defaultExploreSnapState,
+			discoveredHospitals,
+			featuredHospital,
+			nearestHospital,
+			selectHospital,
+			selectedHospital,
+			setFeaturedHospital,
+			setSheetView,
+		],
+	);
+
+	const openBedHospitalList = useCallback(() => {
+		setSheetView({
+			phase: MAP_SHEET_PHASES.HOSPITAL_LIST,
+			snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+			payload: {
+				sourcePhase: MAP_SHEET_PHASES.BED_DECISION,
+				sourceSnapState: sheetSnapState || defaultExploreSnapState,
+				sourcePayload: {
+					careIntent: sheetPayload?.careIntent === "both" ? "both" : "bed",
+					savedTransport:
+						sheetPayload?.careIntent === "both"
+							? sheetPayload?.savedTransport || null
+							: null,
+				},
+			},
+		});
+	}, [
+		defaultExploreSnapState,
+		setSheetView,
+		sheetPayload?.careIntent,
+		sheetSnapState,
+	]);
+
+	const closeHospitalList = useCallback(() => {
+		if (
+			sheetPayload?.sourcePhase === MAP_SHEET_PHASES.AMBULANCE_DECISION ||
+			sheetPayload?.sourcePhase === MAP_SHEET_PHASES.BED_DECISION
+		) {
+			setSheetView({
+				phase: sheetPayload?.sourcePhase,
 				snapState: sheetPayload?.sourceSnapState || defaultExploreSnapState,
-				payload: null,
+				payload: sheetPayload?.sourcePayload || null,
 			});
 			return;
 		}
@@ -381,6 +446,7 @@ export function useMapExploreFlow() {
 		defaultExploreSnapState,
 		setSheetView,
 		sheetPayload?.sourcePhase,
+		sheetPayload?.sourcePayload,
 		sheetPayload?.sourceSnapState,
 	]);
 
@@ -416,6 +482,14 @@ export function useMapExploreFlow() {
 		});
 	}, [defaultExploreSnapState, setSheetView]);
 
+	const closeBedDecision = useCallback(() => {
+		setSheetView({
+			phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
+			snapState: defaultExploreSnapState,
+			payload: null,
+		});
+	}, [defaultExploreSnapState, setSheetView]);
+
 	const setHospitalServiceSelection = useCallback(
 		(hospitalId, key, value) => {
 			if (!hospitalId || !key) return;
@@ -432,6 +506,7 @@ export function useMapExploreFlow() {
 			serviceItems = [],
 			sourcePhase = MAP_SHEET_PHASES.HOSPITAL_DETAIL,
 			sourceSnapState = sheetSnapState,
+			sourcePayload = null,
 		}) => {
 			if (!hospital || !service || !serviceType) return;
 			setFeaturedHospital(hospital);
@@ -445,6 +520,7 @@ export function useMapExploreFlow() {
 					serviceItems: Array.isArray(serviceItems) ? serviceItems : [],
 					sourcePhase,
 					sourceSnapState,
+					sourcePayload,
 				},
 			});
 		},
@@ -476,7 +552,7 @@ export function useMapExploreFlow() {
 		setSheetView({
 			phase: sourcePhase,
 			snapState: sourceSnapState,
-			payload: null,
+			payload: sheetPayload?.sourcePayload || null,
 		});
 	}, [featuredHospital, setFeaturedHospital, setSheetView, sheetPayload, usesSidebarLayout]);
 
@@ -555,13 +631,39 @@ export function useMapExploreFlow() {
 
 	const handleSelectHospital = useCallback(
 		(hospital) => {
+			const nextHospitalId = hospital?.id || null;
+			const nextCareIntent =
+				sheetPayload?.sourcePayload?.careIntent === "both" ? "both" : "bed";
+			const savedTransportHospitalId =
+				sheetPayload?.sourcePayload?.savedTransport?.hospitalId || null;
+
+			// Transport pricing and availability are hospital-scoped, so step 2 cannot
+			// keep showing a saved ambulance choice after the user switches hospitals.
+			if (
+				sheetPayload?.sourcePhase === MAP_SHEET_PHASES.BED_DECISION &&
+				nextCareIntent === "both" &&
+				nextHospitalId &&
+				savedTransportHospitalId !== nextHospitalId
+			) {
+				openAmbulanceDecision(hospital);
+				return;
+			}
+
 			if (hospital?.id) {
 				selectHospital(hospital.id);
 				setFeaturedHospital(hospital);
 			}
 			closeHospitalList();
 		},
-		[closeHospitalList, selectHospital, setFeaturedHospital],
+		[
+			closeHospitalList,
+			openAmbulanceDecision,
+			selectHospital,
+			setFeaturedHospital,
+			sheetPayload?.sourcePhase,
+			sheetPayload?.sourcePayload?.careIntent,
+			sheetPayload?.sourcePayload?.savedTransport?.hospitalId,
+		],
 	);
 
 	const handleChooseCare = useCallback(
@@ -571,11 +673,15 @@ export function useMapExploreFlow() {
 				openAmbulanceDecision();
 				return;
 			}
-			if (mode === "bed" || mode === "both") {
-				openHospitalList();
+			if (mode === "bed") {
+				openBedDecision(null, "bed");
+				return;
+			}
+			if (mode === "both") {
+				openAmbulanceDecision();
 			}
 		},
-		[openAmbulanceDecision, openHospitalList, setSelectedCare],
+		[openAmbulanceDecision, openBedDecision, setSelectedCare],
 	);
 
 	const handleOpenFeaturedHospital = useCallback(
@@ -724,9 +830,12 @@ export function useMapExploreFlow() {
 		openHospitalList,
 		openAmbulanceDecision,
 		openAmbulanceHospitalList,
+		openBedDecision,
+		openBedHospitalList,
 		openServiceDetail,
 		openSearchSheet,
 		closeAmbulanceDecision,
+		closeBedDecision,
 		closeHospitalDetail,
 		closeHospitalList,
 		closeServiceDetail,
@@ -737,6 +846,7 @@ export function useMapExploreFlow() {
 		handleSelectHospital,
 		handleUseCurrentLocation,
 		ambulanceDecisionVisible,
+		bedDecisionVisible,
 		hospitalDetailVisible,
 		hospitalListVisible,
 		serviceDetailVisible,

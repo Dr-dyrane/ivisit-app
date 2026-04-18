@@ -1,5 +1,5 @@
 import React from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -14,6 +14,7 @@ export default function EntryActionButton({
 	fullWidth = true,
 	iconName = null,
 	disabled = false,
+	loading = false,
 	maxWidth = null,
 	minWidth = null,
 	style,
@@ -40,7 +41,7 @@ export default function EntryActionButton({
 	return (
 		<Pressable
 			onPress={onPress}
-			disabled={disabled}
+			disabled={disabled || loading}
 			accessible
 			accessibilityRole="button"
 			accessibilityLabel={accessibilityLabel || label}
@@ -62,7 +63,7 @@ export default function EntryActionButton({
 							? "rgba(255,255,255,0.74)"
 							: COLORS.brandPrimary
 						: "transparent",
-					opacity: disabled ? 0.78 : pressed ? 0.96 : 1,
+					opacity: disabled || loading ? 0.78 : pressed ? 0.96 : 1,
 					transform: [{ scale: pressed ? 0.982 : 1 }],
 					shadowColor: isPrimary ? COLORS.brandPrimary : "#0F172A",
 					shadowOpacity:
@@ -103,7 +104,25 @@ export default function EntryActionButton({
 					]}
 				/>
 				<View style={styles.content}>
-					{iconName ? (
+					{loading ? (
+						<View
+							style={[
+								styles.iconWrap,
+								{
+									backgroundColor: isPrimary
+										? "rgba(255,255,255,0.14)"
+										: isDarkMode
+											? "rgba(255,255,255,0.06)"
+											: "rgba(134,16,14,0.08)",
+								},
+							]}
+						>
+							<ActivityIndicator
+								size="small"
+								color={isPrimary ? "#FFFFFF" : COLORS.brandPrimary}
+							/>
+						</View>
+					) : iconName ? (
 						<View
 							style={[
 								styles.iconWrap,

@@ -10,6 +10,7 @@ export const MAP_AMBULANCE_DECISION_COPY = {
 	CONFIDENCE_LIVE: "Live hospital pricing",
 	CONFIDENCE_FALLBACK: "Hospital fallback",
 	CONFIRM_CTA: "Confirm & continue",
+	CONTINUING_CTA: "Continuing...",
 	OTHER_HOSPITALS_CTA: "Other hospitals",
 	SERVICE_DETAILS_CTA: "Details",
 	CURRENT_PILL: "Current",
