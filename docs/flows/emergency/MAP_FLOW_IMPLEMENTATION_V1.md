@@ -107,6 +107,12 @@ Shared implementation note:
 - `ambulance + bed` now uses a sequential flow: `ambulance_decision -> bed_decision -> legacy booking`
 - when `careIntent === "both"`, `ambulance_decision` top subtitle should show a `Step 1 of 2` cue and `bed_decision` top subtitle should show a `Step 2 of 2` cue
 - `hospital_detail` remains the visual exception where expanded hero/title/body structure must be preserved exactly even if other stage internals are refactored
+- `hospital_detail` and `service_detail` remain upstream browse/select phases; they must not open `COMMIT_DETAILS` or auth directly
+- `hospital_detail` CTA routing must stay intent-bound:
+  - ambulance intent = `hospital_detail -> ambulance_decision`
+  - bed intent = `hospital_detail -> bed_decision`
+  - combined intent = `hospital_detail -> ambulance_decision` first
+- service rails/cards may inspect through `service_detail` or select directly into the proper decision phase, but they must stay upstream of commit/auth
 - `ambulance_decision` currently confirms into the existing legacy ambulance-request route after the sheet decision; `COMMIT_DETAILS` is still the next in-map phase to build
 - `bed_decision` currently confirms into the existing legacy bed-booking route after the sheet decision; room preselection is forwarded
 - in the combined flow, paired ambulance selection is preserved from `ambulance_decision` and then forwarded when `bed_decision` confirms

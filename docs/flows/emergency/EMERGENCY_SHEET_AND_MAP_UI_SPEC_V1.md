@@ -1495,6 +1495,12 @@ Current implementation note:
 
 - `/map` now opens a dedicated `AMBULANCE_DECISION` sheet phase using the shared map shell
 - `Other hospitals` routes through `hospital_list` and returns to the decision phase
+- `hospital_detail` and `service_detail` remain browse/select surfaces upstream of commit
+- `hospital_detail` CTA routing must stay:
+  - ambulance intent = `hospital_detail -> ambulance_decision`
+  - bed intent = `hospital_detail -> bed_decision`
+  - combined intent = `hospital_detail -> ambulance_decision` first
+- service rails/cards may inspect through `service_detail` or select directly into the proper decision phase, but they must not jump to `COMMIT_DETAILS`
 - `Confirm & continue` still hands off to the current legacy ambulance request route until `COMMIT_DETAILS` replaces that seam
 - the expanded decision sheet now uses:
   - alternative tiers

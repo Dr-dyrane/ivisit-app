@@ -63,19 +63,25 @@ Rules:
    - opens `bed_decision` for room-first bed booking, or
    - opens `ambulance_decision`, then advances to `bed_decision`, for paired bed + transport.
    - if the user changes hospitals during paired `bed_decision`, the previously saved transport must be invalidated and the flow returns to `ambulance_decision` for that new hospital.
-3. The selected hospital currently carries into:
+3. `hospital_detail` and `service_detail` remain upstream browse/select seams:
+   - `hospital_detail -> ambulance_decision` for ambulance intent
+   - `hospital_detail -> bed_decision` for bed intent
+   - `hospital_detail -> ambulance_decision` first for combined intent
+   - service rails/cards may open `service_detail` or select directly into the matching decision phase
+   - neither surface should jump directly into auth or `commit_details`
+4. The selected hospital currently carries into:
    - `EmergencyRequestModal.jsx` through the legacy ambulance-request bridge for ambulance, or
    - `EmergencyRequestModal.jsx` through the legacy bed-booking bridge for bed / paired bed + transport.
-4. Locked target for ambulance:
+5. Locked target for ambulance:
    - `ambulance_decision -> commit_details`
    - `commit_details` prepares a local request draft only
    - `commit_payment` is the first phase allowed to call the real create RPC
-5. Only after identity, payment, and any required details are ready does the app call:
+6. Only after identity, payment, and any required details are ready does the app call:
    - `hooks/emergency/useRequestFlow.js` -> `useEmergencyRequests.createRequest`
    - `services/emergencyRequestsService.create`
    - RPC: `create_emergency_v4`
-6. Active trip/booking state is hydrated and tracked in `contexts/EmergencyContext.jsx`.
-7. User mutations (cancel, arrived/occupied, complete) path:
+7. Active trip/booking state is hydrated and tracked in `contexts/EmergencyContext.jsx`.
+8. User mutations (cancel, arrived/occupied, complete) path:
    - `hooks/emergency/useEmergencyHandlers.js` -> `setRequestStatus`
    - `services/emergencyRequestsService.setStatus/update`
    - RPC: `patient_update_emergency_request`

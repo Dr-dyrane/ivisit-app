@@ -144,7 +144,10 @@ export default function useMapHospitalDetailModel({
 	}, [galleryPhotos, heroSource, visible]);
 
 	const handleUseHospital = useCallback(() => {
-		onUseHospital?.(hospital);
+		if (typeof onUseHospital === "function") {
+			onUseHospital(hospital);
+			return;
+		}
 		onClose?.();
 	}, [hospital, onClose, onUseHospital]);
 

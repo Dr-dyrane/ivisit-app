@@ -423,6 +423,20 @@ Rendering parity rule for `service_detail`:
 - inline footer CTA is preferred over sticky footer CTA on short screens
 - unresolved price should use skeleton treatment or omission, not fallback text like `Price shown before booking`
 
+Decision-boundary rule for `hospital_detail` and `service_detail`:
+
+- `hospital_detail` is an upstream browse/select surface, not a commit surface
+- `service_detail` is an upstream inspect/select surface, not a commit surface
+- neither phase should jump directly into `COMMIT_DETAILS`, OTP, or auth
+- intent routing from `hospital_detail` must stay:
+  - ambulance intent = `hospital_detail -> ambulance_decision`
+  - bed intent = `hospital_detail -> bed_decision`
+  - combined intent = `hospital_detail -> ambulance_decision` first
+- service rails/cards should continue to:
+  - open `service_detail`, or
+  - select the service directly into the correct decision phase
+- auth and commit begin only after the user has locked the actual hospital + service choice inside a decision phase
+
 Rendering rule for `commit_details`:
 
 - first implementation scope is ambulance only

@@ -153,6 +153,9 @@ export default function MapScreen() {
 			const hospitalId = hospital?.id || featuredHospital?.id || nearestHospital?.id;
 			if (!hospitalId) return;
 
+			// Hospital detail stays upstream of commit/auth. Its primary CTA must
+			// route into the correct decision phase rather than bypassing into the
+			// legacy request route.
 			if (selectedCare === "both") {
 				openAmbulanceDecision(hospital || null);
 				return;
@@ -163,14 +166,13 @@ export default function MapScreen() {
 				return;
 			}
 
-			navigateToRequestAmbulance({ router, hospitalId, method: "push" });
+			openAmbulanceDecision(hospital || null);
 		},
 		[
 			featuredHospital?.id,
 			nearestHospital?.id,
 			openAmbulanceDecision,
 			openBedDecision,
-			router,
 			selectedCare,
 		],
 	);
