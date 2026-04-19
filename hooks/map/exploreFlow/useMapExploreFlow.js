@@ -95,6 +95,8 @@ export function useMapExploreFlow() {
 		flowState.sheet.phase === MAP_SHEET_PHASES.AMBULANCE_DECISION;
 	const bedDecisionVisible =
 		flowState.sheet.phase === MAP_SHEET_PHASES.BED_DECISION;
+	const commitPaymentVisible =
+		flowState.sheet.phase === MAP_SHEET_PHASES.COMMIT_PAYMENT;
 	const serviceDetailVisible = flowState.sheet.phase === MAP_SHEET_PHASES.SERVICE_DETAIL;
 	const profileModalVisible = flowState.surfaces.profileModalVisible;
 	const guestProfileVisible = flowState.surfaces.guestProfileVisible;
@@ -269,10 +271,10 @@ export function useMapExploreFlow() {
 	}, [discoveredHospitals, selectHospital, selectedHospitalId]);
 
 	useEffect(() => {
-		if (
-			commitFlow?.phase !== MAP_SHEET_PHASES.COMMIT_DETAILS ||
-			sheetPhase === MAP_SHEET_PHASES.COMMIT_DETAILS
-		) {
+		const isRestorableCommitPhase =
+			commitFlow?.phase === MAP_SHEET_PHASES.COMMIT_DETAILS ||
+			commitFlow?.phase === MAP_SHEET_PHASES.COMMIT_PAYMENT;
+		if (!isRestorableCommitPhase || sheetPhase === commitFlow?.phase) {
 			return;
 		}
 
@@ -290,12 +292,13 @@ export function useMapExploreFlow() {
 		}
 
 		setSheetView({
-			phase: MAP_SHEET_PHASES.COMMIT_DETAILS,
+			phase: commitFlow.phase,
 			snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
 			payload: {
 				hospital: targetHospital,
 				transport: commitFlow?.transport || null,
 				draft: commitFlow?.draft || null,
+				pricingSnapshot: commitFlow?.pricingSnapshot || null,
 				activeStep: commitFlow?.activeStep || null,
 				sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
 				sourceSnapState: commitFlow?.sourceSnapState || defaultExploreSnapState,
@@ -502,6 +505,58 @@ export function useMapExploreFlow() {
 		],
 	);
 
+	const openCommitPayment = useCallback(
+		(nextHospital = null, transport = null, payload = null) => {
+			const targetHospital =
+				nextHospital ||
+				selectedHospital ||
+				featuredHospital ||
+				nearestHospital ||
+				discoveredHospitals?.[0] ||
+				null;
+
+			if (targetHospital?.id) {
+				selectHospital(targetHospital.id);
+				setFeaturedHospital(targetHospital);
+			}
+
+			const nextPayload = {
+				hospital: targetHospital,
+				transport: transport || null,
+				sourcePhase: MAP_SHEET_PHASES.COMMIT_DETAILS,
+				sourceSnapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+				...(payload && typeof payload === "object" ? payload : {}),
+			};
+
+			setSheetView({
+				phase: MAP_SHEET_PHASES.COMMIT_PAYMENT,
+				snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+				payload: nextPayload,
+			});
+			setCommitFlow({
+				phase: MAP_SHEET_PHASES.COMMIT_PAYMENT,
+				hospital: targetHospital,
+				hospitalId: targetHospital?.id || null,
+				transport: transport || null,
+				draft: payload?.draft || null,
+				pricingSnapshot: payload?.pricingSnapshot || null,
+				sourcePhase: MAP_SHEET_PHASES.COMMIT_DETAILS,
+				sourceSnapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+				sourcePayload: nextPayload,
+			});
+		},
+		[
+			discoveredHospitals,
+			featuredHospital,
+			nearestHospital,
+			selectHospital,
+			selectedHospital,
+			setCommitFlow,
+			setFeaturedHospital,
+			setSheetView,
+		],
+	);
+
 	const openBedHospitalList = useCallback(() => {
 		setSheetView({
 			phase: MAP_SHEET_PHASES.HOSPITAL_LIST,
@@ -616,6 +671,35 @@ export function useMapExploreFlow() {
 		setSheetView,
 		sheetPayload,
 	]);
+
+	const closeCommitPayment = useCallback(() => {
+		clearCommitFlow();
+		const sourceHospital = sheetPayload?.hospital || featuredHospital || null;
+		if (sourceHospital) {
+			setFeaturedHospital(sourceHospital);
+		}
+		setSheetView({
+			phase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
+			snapState: defaultExploreSnapState,
+			payload: null,
+		});
+	}, [
+		clearCommitFlow,
+		defaultExploreSnapState,
+		featuredHospital,
+		setFeaturedHospital,
+		setSheetView,
+		sheetPayload,
+	]);
+
+	const finishCommitPayment = useCallback(() => {
+		clearCommitFlow();
+		setSheetView({
+			phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
+			snapState: defaultExploreSnapState,
+			payload: null,
+		});
+	}, [clearCommitFlow, defaultExploreSnapState, setSheetView]);
 
 	const setHospitalServiceSelection = useCallback(
 		(hospitalId, key, value) => {
@@ -959,12 +1043,15 @@ export function useMapExploreFlow() {
 		openAmbulanceHospitalList,
 		openBedDecision,
 		openCommitDetails,
+		openCommitPayment,
 		openBedHospitalList,
 		openServiceDetail,
 		openSearchSheet,
 		closeAmbulanceDecision,
 		closeBedDecision,
 		closeCommitDetails,
+		closeCommitPayment,
+		finishCommitPayment,
 		closeHospitalDetail,
 		closeHospitalList,
 		closeServiceDetail,
@@ -977,6 +1064,7 @@ export function useMapExploreFlow() {
 		handleUseCurrentLocation,
 		ambulanceDecisionVisible,
 		bedDecisionVisible,
+		commitPaymentVisible,
 		hospitalDetailVisible,
 		hospitalListVisible,
 		serviceDetailVisible,

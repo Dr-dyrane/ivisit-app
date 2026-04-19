@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Platform, StyleSheet, TextInput, View } from "react-native";
+import { Animated, Platform, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import EntryActionButton from "../../entry/EntryActionButton";
 import { MAP_APPLE_EASE } from "../tokens/mapMotionTokens";
@@ -49,6 +50,7 @@ export default function MapInlineActionInput({
 	textContentType,
 	clipboardAutofillOnFocus = false,
 	clipboardAutofillLength = 6,
+	showClearButton = false,
 }) {
 	const actionProgress = useRef(new Animated.Value(0)).current;
 	const inputRef = useRef(null);
@@ -136,6 +138,8 @@ export default function MapInlineActionInput({
 		spellCheck !== undefined ? spellCheck : semanticDefaults.spellCheck;
 	const resolvedTextContentType =
 		textContentType !== undefined ? textContentType : semanticDefaults.textContentType;
+	const hasClearValue = String(value || "").length > 0;
+	const nativeClearButtonMode = showClearButton ? "never" : resolvedClearButtonMode;
 
 	useEffect(() => {
 		Animated.timing(actionProgress, {
@@ -225,6 +229,13 @@ export default function MapInlineActionInput({
 		onSubmit?.();
 	};
 
+	const handleClear = useCallback(() => {
+		if (loading) return;
+		clipboardAutofilledRef.current = false;
+		onChangeText?.("");
+		focusInput();
+	}, [focusInput, loading, onChangeText]);
+
 	return (
 		<View
 			style={[
@@ -254,7 +265,7 @@ export default function MapInlineActionInput({
 				autoCapitalize={autoCapitalize}
 				autoComplete={resolvedAutoComplete}
 				autoCorrect={autoCorrect}
-				clearButtonMode={resolvedClearButtonMode}
+				clearButtonMode={nativeClearButtonMode}
 				enablesReturnKeyAutomatically={resolvedEnablesReturnKeyAutomatically}
 				enterKeyHint={resolvedEnterKeyHint}
 				importantForAutofill={resolvedImportantForAutofill}
@@ -266,6 +277,24 @@ export default function MapInlineActionInput({
 				spellCheck={resolvedSpellCheck}
 				textContentType={resolvedTextContentType}
 			/>
+			{showClearButton && hasClearValue ? (
+				<Pressable
+					onPress={handleClear}
+					hitSlop={10}
+					accessibilityRole="button"
+					accessibilityLabel="Clear field"
+					style={({ pressed }) => [
+						styles.clearButton,
+						{ opacity: pressed ? 0.72 : 1 },
+					]}
+				>
+					<Ionicons
+						name="close-circle"
+						size={20}
+						color={placeholderTextColor || textColor}
+					/>
+				</Pressable>
+			) : null}
 			<Animated.View style={[styles.actionWrap, { transform: actionTransform }]}>
 				<EntryActionButton
 					label={actionLabel}
@@ -304,6 +333,14 @@ const styles = StyleSheet.create({
 		paddingVertical: 0,
 	},
 	leadingAccessory: {
+		flexShrink: 0,
+	},
+	clearButton: {
+		width: 28,
+		height: 28,
+		borderRadius: 14,
+		alignItems: "center",
+		justifyContent: "center",
 		flexShrink: 0,
 	},
 	actionWrap: {

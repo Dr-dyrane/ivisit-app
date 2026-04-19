@@ -102,6 +102,7 @@ export const StorageKeys = {
 
 	PROFILE_COMPLETION_DRAFT: `${DB_PREFIX}profile_completion_draft`,
 	PROFILE_COMPLETION_DEFERRED: `${DB_PREFIX}profile_completion_deferred`,
+	CONTACT_INPUT_MEMORY: `${DB_PREFIX}contact_input_memory`,
 
 	MIGRATION_VERSION: `${DB_PREFIX}migration_version`,
 };
@@ -143,6 +144,8 @@ export const SingletonKeys = [
 	StorageKeys.PREFERENCES,
 	StorageKeys.THEME,
 	StorageKeys.PROFILE_COMPLETION_DRAFT,
+	StorageKeys.PROFILE_COMPLETION_DEFERRED,
+	StorageKeys.CONTACT_INPUT_MEMORY,
 	StorageKeys.MIGRATION_VERSION,
 ];
 

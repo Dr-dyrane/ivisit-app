@@ -191,6 +191,7 @@ export function MapCommitDetailsQuestionCard({
 					returnKeyType="go"
 					maxLength={isOtpStep ? 6 : 120}
 					selectionColor={selectionColor}
+					showClearButton={isEmailStep || isPhoneStep}
 				/>
 
 				{errorMessage ? (

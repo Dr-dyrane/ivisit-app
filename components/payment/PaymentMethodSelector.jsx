@@ -199,6 +199,10 @@ const PaymentMethodSelector = ({
     const isSelected = selectedMethod?.id === method.id;
     const isDefault = method.is_default;
     const isDemoLocked = simulatePayments && demoCashOnly && !method.is_cash;
+    const unavailableCopy = 'NOT AVAILABLE FOR THIS REQUEST';
+    const walletCheckoutCopy = 'BALANCE CHECKOUT';
+    const cardCheckoutCopy = 'CARD CHECKOUT';
+    const cashReadyCopy = 'PROVIDER CONFIRMATION';
     const isUnavailable =
       isDemoLocked ||
       (!simulatePayments &&
@@ -206,16 +210,16 @@ const PaymentMethodSelector = ({
           (method.is_cash && !isCashEligible && !isManagementMode)));
     const methodSubtitle = method.is_wallet
       ? (simulatePayments
-          ? (demoCashOnly ? 'LIVE MODE ONLY' : 'WALLET CHECKOUT')
+          ? (demoCashOnly ? unavailableCopy : walletCheckoutCopy)
           : (method.balance < (cost?.totalCost || 0) && !isManagementMode
               ? 'INSUFFICIENT BALANCE'
               : `AVAILABLE: ${method.currency} ${method.last4}`))
       : method.is_cash
         ? (simulatePayments
-            ? 'AUTO-CONFIRMS IN DEMO'
+            ? cashReadyCopy
             : (isCashEligible ? 'PAY ON ARRIVAL' : (checkingCash ? 'VERIFYING...' : 'UNAVAILABLE (LOW COLLATERAL)')))
         : (simulatePayments
-            ? (demoCashOnly ? 'LIVE MODE ONLY' : 'CARD CHECKOUT')
+            ? (demoCashOnly ? unavailableCopy : cardCheckoutCopy)
             : `EXPIRES ${method.expiry_month}/${method.expiry_year}`);
 
     return (

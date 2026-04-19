@@ -1529,7 +1529,8 @@ Current implementation note:
   - combined intent = `hospital_detail -> ambulance_decision` first
 - service rails/cards may inspect through `service_detail` or select directly into the proper decision phase, but they must not jump to `COMMIT_DETAILS`
 - `Confirm & continue` now opens `COMMIT_DETAILS`
-- the final `COMMIT_DETAILS` continue still seeds the current legacy ambulance request/payment route until `COMMIT_PAYMENT` replaces that seam
+- the final `COMMIT_DETAILS` continue now opens the native map `COMMIT_PAYMENT` phase for ambulance requests
+- the legacy ambulance request/payment route is no longer the main `/map` commit seam for this path
 - the expanded decision sheet now uses:
   - alternative tiers
   - compact route surface
@@ -1621,6 +1622,14 @@ Exact create-lane fields to prepare for `create_emergency_v4`:
 - `ambulance_type` when known
 - patient location / pickup context
 - `patient_snapshot`
+
+Current implementation note:
+
+- `/map` has a native ambulance `COMMIT_PAYMENT` phase
+- it uses the selected hospital, selected transport tier, pickup context, live cost calculation, and selected payment method to release through the existing `useRequestFlow` / `create_emergency_v4` lane
+- it preserves demo-backed hospitals through `demoEcosystemService.shouldSimulatePayments(...)` so cash can auto-approve through the existing real approval lane
+- this simulation state is backend-only language; the patient UI must render neutral payment copy such as `Provider confirmation` and must not mention demo/live-mode terminology
+- optional triage is still intentionally not inserted in this patch; it should be added as a skippable microstep before payment once the payment seam is stable
 
 #### `COMMIT_PAYMENT -> TRACKING`
 

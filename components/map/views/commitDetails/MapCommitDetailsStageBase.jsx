@@ -6,6 +6,7 @@ import { useEmergency } from "../../../../contexts/EmergencyContext";
 import useCountryDetection from "../../../../hooks/validators/useCountryDetection";
 import usePhoneValidation from "../../../../hooks/validators/usePhoneValidation";
 import { authService } from "../../../../services/authService";
+import { contactInputMemoryService } from "../../../../services/contactInputMemoryService";
 import {
 	normalizeApiErrorMessage,
 	waitForMinimumPending,
@@ -132,6 +133,7 @@ export default function MapCommitDetailsStageBase({
 	const phoneSeedValueRef = useRef(null);
 	const otpAutoSubmittedRef = useRef("");
 	const autoAdvancedRef = useRef(false);
+	const contactMemoryHydratedRef = useRef(false);
 
 	const [draft, setDraft] = useState(() => ({
 		email: sanitizeCommitEmail(payload?.draft?.email || user?.email),
@@ -181,6 +183,41 @@ export default function MapCommitDetailsStageBase({
 			email: currentDraft.email || sanitizeCommitEmail(user?.email),
 			phone: currentDraft.phone || sanitizeCommitPhone(user?.phone),
 		}));
+	}, [user?.email, user?.phone]);
+
+	useEffect(() => {
+		if (contactMemoryHydratedRef.current) return undefined;
+
+		let cancelled = false;
+		contactMemoryHydratedRef.current = true;
+		contactInputMemoryService
+			.getMemory()
+			.then((memory) => {
+				if (cancelled) return;
+				const rememberedEmail = sanitizeCommitEmail(memory?.lastEmail);
+				const rememberedPhone = sanitizeCommitPhone(memory?.lastPhone);
+				setDraft((currentDraft) => {
+					const nextEmail =
+						currentDraft.email || sanitizeCommitEmail(user?.email) || rememberedEmail;
+					const nextPhone =
+						currentDraft.phone || sanitizeCommitPhone(user?.phone) || rememberedPhone;
+					if (nextEmail === currentDraft.email && nextPhone === currentDraft.phone) {
+						return currentDraft;
+					}
+					return {
+						...currentDraft,
+						email: nextEmail,
+						phone: nextPhone,
+					};
+				});
+			})
+			.catch((error) => {
+				console.warn("[MapCommitDetails] Failed to hydrate contact memory:", error?.message || error);
+			});
+
+		return () => {
+			cancelled = true;
+		};
 	}, [user?.email, user?.phone]);
 
 	useEffect(() => {
@@ -321,6 +358,9 @@ export default function MapCommitDetailsStageBase({
 			setErrorMessage("");
 			setSuccessMessage("");
 			if (activeStep === "email") {
+				if (!String(nextValue || "").trim()) {
+					void contactInputMemoryService.forgetEmail();
+				}
 				setDraft((currentDraft) => ({
 					...currentDraft,
 					email: sanitizeCommitEmail(nextValue),
@@ -333,6 +373,9 @@ export default function MapCommitDetailsStageBase({
 					otp: sanitizeCommitOtp(nextValue),
 				}));
 				return;
+			}
+			if (!String(nextValue || "").trim()) {
+				void contactInputMemoryService.forgetPhone();
 			}
 			phoneSeedValueRef.current = sanitizeCommitPhone(nextValue);
 			setPhoneRawInput(nextValue);
@@ -365,6 +408,7 @@ export default function MapCommitDetailsStageBase({
 				setErrorMessage(normalizeApiErrorMessage(result?.error, "Could not send code."));
 				return;
 			}
+			void contactInputMemoryService.rememberEmail(nextEmail);
 			setDraft((currentDraft) => ({ ...currentDraft, email: nextEmail, otp: "" }));
 			setOtpExpiresAt(Date.now() + OTP_EXPIRY_MS);
 			setOtpCountdownTick(Date.now());
@@ -435,6 +479,7 @@ export default function MapCommitDetailsStageBase({
 				setErrorMessage(normalizeApiErrorMessage(result?.error, "Could not verify code."));
 				return;
 			}
+			void contactInputMemoryService.rememberEmail(resolvedEmail);
 			await syncUserData?.();
 			const verifiedPhone = sanitizeCommitPhone(result?.data?.phone || user?.phone || "");
 			setDraft((currentDraft) => ({
@@ -507,6 +552,7 @@ export default function MapCommitDetailsStageBase({
 				}
 				await syncUserData?.();
 			}
+			void contactInputMemoryService.rememberPhone(normalizedPhone);
 			setDraft((currentDraft) => ({ ...currentDraft, phone: normalizedPhone }));
 			persistCommitFlow(
 				{

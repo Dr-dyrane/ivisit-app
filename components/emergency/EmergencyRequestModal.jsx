@@ -489,7 +489,7 @@ const EmergencyRequestModal = React.memo(({
 					pendingApproval.requestId
 				)
 				.then(() => {
-					showToast("Demo dispatch desk confirmed the cash handoff.", "success");
+					showToast("Provider confirmed the cash handoff.", "success");
 				})
 				.catch((error) => {
 					demoAutoApprovalTimerStartedRef.current = false;
@@ -2016,7 +2016,7 @@ const EmergencyRequestModal = React.memo(({
 
 										<View style={styles.serviceAssurance}>
 											<Text style={[styles.serviceText, { color: 'rgba(255,255,255,0.8)' }]}>
-												{demoSimulatedPaymentActive ? "DEMO CASH CONFIRMATION" : "PCI-DSS Encrypted Transaction"}
+												{demoSimulatedPaymentActive ? "Provider cash confirmation" : "PCI-DSS Encrypted Transaction"}
 											</Text>
 										</View>
 									</LinearGradient>
@@ -2146,7 +2146,7 @@ const EmergencyRequestModal = React.memo(({
 							</Text>
 							<Text style={[styles.waitingSubtitle, { color: requestColors.textMuted }]}>
 								{pendingApproval?.demoAutoApprove
-									? `${pendingApproval?.hospitalName || 'Medical Center'} is confirming the demo cash handoff now.`
+									? `${pendingApproval?.hospitalName || 'Medical Center'} is confirming the cash handoff now.`
 									: `${pendingApproval?.hospitalName || 'Medical Center'} is authenticating your cash transaction.`}
 							</Text>
 						</View>

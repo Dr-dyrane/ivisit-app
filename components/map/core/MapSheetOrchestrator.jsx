@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import MapAmbulanceDecisionOrchestrator from "../views/ambulanceDecision/MapAmbulanceDecisionOrchestrator";
 import MapBedDecisionOrchestrator from "../views/bedDecision/MapBedDecisionOrchestrator";
 import MapCommitDetailsOrchestrator from "../views/commitDetails/MapCommitDetailsOrchestrator";
+import MapCommitPaymentOrchestrator from "../views/commitPayment/MapCommitPaymentOrchestrator";
 import MapHospitalDetailOrchestrator from "../views/hospitalDetail/MapHospitalDetailOrchestrator";
 import MapExploreIntentOrchestrator from "../views/exploreIntent/MapExploreIntentOrchestrator";
 import MapHospitalListOrchestrator from "../views/hospitalList/MapHospitalListOrchestrator";
@@ -46,10 +47,12 @@ export default function MapSheetOrchestrator({
 	onCloseAmbulanceDecision = () => {},
 	onCloseBedDecision = () => {},
 	onCloseCommitDetails = () => {},
+	onCloseCommitPayment = () => {},
 	onCloseHospitalDetail = () => {},
 	onConfirmAmbulanceDecision = () => {},
 	onConfirmBedDecision = () => {},
 	onConfirmCommitDetails = () => {},
+	onConfirmCommitPayment = () => {},
 	onOpenServiceDetail = () => {},
 	onCloseServiceDetail = () => {},
 	onConfirmServiceDetail = () => {},
@@ -203,6 +206,44 @@ export default function MapSheetOrchestrator({
 						onBack={onCloseCommitDetails}
 						onClose={onCloseCommitDetails}
 						onConfirm={onConfirmCommitDetails}
+						onSnapStateChange={onSnapStateChange}
+					/>
+				</MapPhaseTransitionView>
+			);
+		}
+		case MAP_SHEET_PHASES.COMMIT_PAYMENT: {
+			const commitHospital = sheetPayload?.hospital || featuredHospital || nearestHospital || null;
+			const commitSheetHeight = getMapSheetHeight(
+				screenHeight,
+				MAP_SHEET_SNAP_STATES.EXPANDED,
+			);
+			const commitOrigin =
+				currentLocation || activeLocation
+					? {
+							...(activeLocation || {}),
+							...(currentLocation || {}),
+							...(currentLocation?.location || {}),
+							formattedAddress:
+								currentLocation?.formattedAddress ||
+								[currentLocation?.primaryText, currentLocation?.secondaryText]
+									.filter(Boolean)
+									.join(", ") ||
+								activeLocation?.formattedAddress ||
+								null,
+						}
+					: null;
+			return (
+				<MapPhaseTransitionView phaseKey={`${phase}-${commitHospital?.id || "unknown"}`}>
+					<MapCommitPaymentOrchestrator
+						sheetHeight={commitSheetHeight}
+						snapState={snapState}
+						hospital={commitHospital}
+						transport={sheetPayload?.transport || null}
+						payload={sheetPayload}
+						currentLocation={commitOrigin}
+						onBack={onCloseCommitPayment}
+						onClose={onCloseCommitPayment}
+						onConfirm={onConfirmCommitPayment}
 						onSnapStateChange={onSnapStateChange}
 					/>
 				</MapPhaseTransitionView>

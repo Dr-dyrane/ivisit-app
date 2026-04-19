@@ -455,6 +455,9 @@ Rendering rule for `commit_details`:
 - back should step between microsteps before leaving the phase
 - `COMMIT_DETAILS` prepares a local request draft only; DB create still belongs to `COMMIT_PAYMENT`
 - if the selected hospital is demo-backed, preserve that hospital context through the draft so `COMMIT_PAYMENT` can resolve the demo auto-approval lane
+- `COMMIT_PAYMENT` is now native for the ambulance path and must not route back through `RequestAmbulanceScreen`
+- payment copy must stay patient-facing; backend demo/simulation terms are not allowed in visible labels, helper text, toasts, or waiting states
+- optional triage remains a later skippable microstep before payment, not a blocker for this first payment seam
 
 ## 14. Loading Rule
 

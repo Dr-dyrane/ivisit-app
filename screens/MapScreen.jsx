@@ -23,13 +23,17 @@ import {
 	isSidebarMapVariant,
 } from "../components/map/core/mapViewportConfig";
 import { MAP_SEARCH_SHEET_MODES } from "../components/map/surfaces/search/mapSearchSheet.helpers";
-import { navigateToBookBed, navigateToRequestAmbulance } from "../utils/navigationHelpers";
-import { buildCommitLocationLabel, buildMapCommitSeedDraft } from "../components/map/views/commitDetails/mapCommitDetails.helpers";
+import { navigateToBookBed } from "../utils/navigationHelpers";
+import {
+	isCommitPhoneValid,
+	sanitizeCommitEmail,
+	sanitizeCommitPhone,
+} from "../components/map/views/commitDetails/mapCommitDetails.helpers";
 
 export default function MapScreen() {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
-	const { logout } = useAuth();
+	const { logout, user } = useAuth();
 	const {
 		width,
 		height,
@@ -49,6 +53,7 @@ export default function MapScreen() {
 		openAmbulanceDecision,
 		openBedDecision,
 		openCommitDetails,
+		openCommitPayment,
 		openServiceDetail,
 		closeServiceDetail,
 		confirmServiceDetail,
@@ -56,6 +61,8 @@ export default function MapScreen() {
 		closeAmbulanceDecision,
 		closeBedDecision,
 		closeCommitDetails,
+		closeCommitPayment,
+		finishCommitPayment,
 		clearCommitFlow,
 		handleMapHospitalPress,
 		handleMapReadinessChange,
@@ -213,6 +220,18 @@ export default function MapScreen() {
 				return;
 			}
 
+			const resolvedEmail = sanitizeCommitEmail(user?.email);
+			const resolvedPhone = sanitizeCommitPhone(user?.phone);
+			if (resolvedEmail && isCommitPhoneValid(resolvedPhone)) {
+				openCommitPayment(hospital || null, transport || null, {
+					draft: {
+						email: resolvedEmail,
+						phone: resolvedPhone,
+					},
+				});
+				return;
+			}
+
 			openCommitDetails(hospital || null, transport || null);
 		},
 		[
@@ -220,7 +239,10 @@ export default function MapScreen() {
 			nearestHospital?.id,
 			openCommitDetails,
 			openBedDecision,
+			openCommitPayment,
 			selectedCare,
+			user?.email,
+			user?.phone,
 		],
 	);
 
@@ -229,39 +251,14 @@ export default function MapScreen() {
 			const hospitalId = hospital?.id || featuredHospital?.id || nearestHospital?.id;
 			if (!hospitalId) return;
 
-			const location = activeLocation
-				? {
-						latitude: Number(activeLocation.latitude ?? activeLocation.coords?.latitude),
-						longitude: Number(activeLocation.longitude ?? activeLocation.coords?.longitude),
-					}
-				: null;
-			const locationLabel = buildCommitLocationLabel(currentLocationDetails);
-			const commitSeed = buildMapCommitSeedDraft({
-				transport,
-				location:
-					Number.isFinite(location?.latitude) && Number.isFinite(location?.longitude)
-						? location
-						: null,
-				locationLabel,
-			});
-			clearCommitFlow();
-
-			navigateToRequestAmbulance({
-				router,
-				hospitalId,
-				method: "push",
-				params: {
-					mapCommitDraft: JSON.stringify(commitSeed),
-				},
+			openCommitPayment(hospital || null, transport || null, {
+				draft: draft || null,
 			});
 		},
 		[
-			activeLocation,
-			currentLocationDetails,
 			featuredHospital?.id,
 			nearestHospital?.id,
-			clearCommitFlow,
-			router,
+			openCommitPayment,
 		],
 	);
 
@@ -333,10 +330,12 @@ export default function MapScreen() {
 					onCloseAmbulanceDecision={closeAmbulanceDecision}
 					onCloseBedDecision={closeBedDecision}
 					onCloseCommitDetails={closeCommitDetails}
+					onCloseCommitPayment={closeCommitPayment}
 					onCloseHospitalDetail={closeHospitalDetail}
 					onConfirmAmbulanceDecision={handleConfirmAmbulanceDecision}
 					onConfirmBedDecision={handleConfirmBedDecision}
 					onConfirmCommitDetails={handleConfirmCommitDetails}
+					onConfirmCommitPayment={finishCommitPayment}
 					onOpenServiceDetail={openServiceDetail}
 					onCloseServiceDetail={closeServiceDetail}
 					onConfirmServiceDetail={confirmServiceDetail}

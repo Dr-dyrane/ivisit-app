@@ -1,8 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import useResponsiveSurfaceMetrics from "../../hooks/ui/useResponsiveSurfaceMetrics";
+import { contactInputMemoryService } from "../../services/contactInputMemoryService";
 import MapInlineActionInput from "./shared/MapInlineActionInput";
 import MapModalShell from "./surfaces/MapModalShell";
 
@@ -15,6 +16,8 @@ export default function MapGuestProfileModal({
 }) {
 	const { isDarkMode } = useTheme();
 	const trimmedEmail = typeof emailValue === "string" ? emailValue.trim() : "";
+	const hydratedMemoryRef = useRef(false);
+	const emailValueRef = useRef(trimmedEmail);
 	const viewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "modal" });
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
 	const bodyColor = isDarkMode ? "#CBD5E1" : "#475569";
@@ -48,6 +51,51 @@ export default function MapGuestProfileModal({
 		}),
 		[viewportMetrics],
 	);
+
+	useEffect(() => {
+		emailValueRef.current = trimmedEmail;
+	}, [trimmedEmail]);
+
+	useEffect(() => {
+		if (!visible) {
+			hydratedMemoryRef.current = false;
+			return undefined;
+		}
+		if (hydratedMemoryRef.current || trimmedEmail) return undefined;
+
+		let cancelled = false;
+		hydratedMemoryRef.current = true;
+		contactInputMemoryService
+			.getMemory()
+			.then((memory) => {
+				if (cancelled || emailValueRef.current) return;
+				if (memory.lastEmail) {
+					onEmailChange?.(memory.lastEmail);
+				}
+			})
+			.catch((error) => {
+				console.warn("[MapGuestProfileModal] Failed to hydrate email memory:", error?.message || error);
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [onEmailChange, trimmedEmail, visible]);
+
+	const handleEmailChange = useCallback(
+		(nextValue) => {
+			onEmailChange?.(nextValue);
+			if (!String(nextValue || "").trim()) {
+				void contactInputMemoryService.forgetEmail();
+			}
+		},
+		[onEmailChange],
+	);
+
+	const handleContinue = useCallback(() => {
+		void contactInputMemoryService.rememberEmail(trimmedEmail);
+		onContinue?.();
+	}, [onContinue, trimmedEmail]);
 
 	return (
 		<MapModalShell
@@ -110,8 +158,8 @@ export default function MapGuestProfileModal({
 					<MapInlineActionInput
 						semanticType="email"
 						value={emailValue}
-						onChangeText={onEmailChange}
-						onSubmit={onContinue}
+						onChangeText={handleEmailChange}
+						onSubmit={handleContinue}
 						placeholder="you@example.com"
 						placeholderTextColor={mutedColor}
 						textColor={titleColor}
@@ -126,6 +174,7 @@ export default function MapGuestProfileModal({
 						autoCapitalize="none"
 						autoCorrect={false}
 						returnKeyType="go"
+						showClearButton
 						actionAccessibilityHint="Next step sends a one-time code to this email address"
 					/>
 				</View>

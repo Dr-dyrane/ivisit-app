@@ -183,6 +183,7 @@ Rendering rule:
 - the body should feel like the guest profile identity bridge: avatar, one prompt, one input, one CTA
 - header copy stays user-facing: task as title (`Confirm email`, `Enter code`, `Add phone number`), request context as subtitle (`For {hospital} · {transport tier}`)
 - single-input microsteps use the shared squircle inline action input: input and CTA share one continuous field, with a reserved right slide lane for press/loading motion
+- email and phone may prefill from local AsyncStorage contact memory only when the draft/session has no stronger value; clearing the field removes the remembered value
 
 - keep the new `/map` presentation; do not visually fall back to the legacy auth modal layout
 - borrow stronger legacy behavior under the new shell instead of rebuilding weaker versions:
@@ -268,6 +269,29 @@ Product implication:
 - demo payment is operationally simulated, not structurally fake
 - demo payment must not introduce a human org-admin approval wait
 - the request should still enter real tracking truth after auto-approval instead of switching to a fake tracking branch
+
+## `COMMIT_PAYMENT` First Pass
+
+The ambulance path now has a native map `COMMIT_PAYMENT` phase.
+
+Current scope:
+
+- ambulance-only
+- opens after `COMMIT_DETAILS` completes identity and phone reachability
+- keeps the map shell mounted
+- resolves a live cost through `serviceCostService.calculateEmergencyCost(...)`
+- falls back to the selected transport tier price text only for display continuity
+- lets the user choose a payment method through the existing payment service lane
+- submits through `useRequestFlow.handleRequestInitiated(...)`, which calls `create_emergency_v4`
+- uses `handleRequestComplete(...)` to activate the local ambulance trip context when approval is not required
+- sets `pendingApproval` when cash approval is required
+
+Locked boundary:
+
+- optional triage is still next, not part of the first payment patch
+- `TRACKING` still needs its own native map sheet projection after payment stabilization
+- backend demo/simulation state must never leak into patient-facing payment copy
+- payment method labels should read as real-world states such as `Provider confirmation`, `Not available for this request`, or `Balance checkout`
 
 ## Bed Decision Data Contract
 
