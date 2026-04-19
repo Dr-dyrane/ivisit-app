@@ -39,6 +39,7 @@ import { styles } from "./mapModalShell.styles";
 export default function MapModalShell({
 	visible,
 	onClose,
+	onBack = null,
 	title = null,
 	minHeightRatio = 0.78,
 	maxHeightRatio = 0.9,
@@ -55,6 +56,9 @@ export default function MapModalShell({
 	enableSnapDetents = true,
 	allowCollapsedState = false,
 	closeFromCollapsed = true,
+	backAccessibilityLabel = "Go back",
+	backIconName = "chevron-back",
+	presentationModeOverride = null,
 	children,
 }) {
 	const { isDarkMode } = useTheme();
@@ -74,7 +78,9 @@ export default function MapModalShell({
 	const offscreenHeight = layoutHeight || visibleScreenHeight;
 	const viewportVariant = getMapViewportVariant({ platform: Platform.OS, width: screenWidth });
 	const surfaceConfig = getMapViewportSurfaceConfig(viewportVariant);
-	const isDrawer = surfaceConfig.modalPresentationMode === "left-drawer";
+	const resolvedModalPresentationMode =
+		presentationModeOverride || surfaceConfig.modalPresentationMode;
+	const isDrawer = resolvedModalPresentationMode === "left-drawer";
 	const viewportMetrics = useMemo(
 		() =>
 			getViewportSurfaceMetrics({
@@ -660,6 +666,32 @@ export default function MapModalShell({
 					},
 				]}
 			>
+				{typeof onBack === "function" ? (
+					<MapHeaderIconButton
+						onPress={onBack}
+						accessibilityLabel={backAccessibilityLabel}
+						backgroundColor={closeBg}
+						color={titleColor}
+						iconName={backIconName}
+						style={[
+							styles.closeButton,
+							{
+								width: viewportMetrics.modal.headerButtonSize,
+								height: viewportMetrics.modal.headerButtonSize,
+							},
+						]}
+					/>
+				) : (
+					<View
+						style={[
+							styles.headerSpacer,
+							{
+								width: viewportMetrics.modal.headerButtonSize,
+								height: viewportMetrics.modal.headerButtonSize,
+							},
+						]}
+					/>
+				)}
 				{title ? (
 					<Text
 						style={[
@@ -671,19 +703,12 @@ export default function MapModalShell({
 								fontWeight: viewportMetrics.type.titleWeight,
 							},
 						]}
+						numberOfLines={1}
 					>
 						{title}
 					</Text>
 				) : (
-					<View
-						style={[
-							styles.headerSpacer,
-							{
-								width: viewportMetrics.modal.headerButtonSize,
-								height: viewportMetrics.modal.headerButtonSize,
-							},
-						]}
-					/>
+					<View style={styles.headerTitleSpacer} />
 				)}
 				<MapHeaderIconButton
 					onPress={onClose}

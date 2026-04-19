@@ -181,8 +181,23 @@ export const emergencyRequestsService = {
 
         if (user) {
             // Determine payment info
-            const method = request.paymentMethodId || request.payment_method_id || 'cash';
-            const isCash = method === 'cash' || (typeof method === 'string' && method.toLowerCase().includes('cash'));
+            const paymentMethod = request.paymentMethod || null;
+            const method =
+                request.paymentMethodId ||
+                request.payment_method_id ||
+                paymentMethod?.id ||
+                'cash';
+            const normalizedMethod = String(method || '').toLowerCase();
+            const isCash =
+                paymentMethod?.is_cash === true ||
+                normalizedMethod === 'cash' ||
+                normalizedMethod.includes('cash');
+            const isWallet =
+                paymentMethod?.is_wallet === true ||
+                normalizedMethod === 'wallet' ||
+                normalizedMethod.includes('wallet');
+            const deferDispatchUntilPayment =
+                request.deferDispatchUntilPayment === true && !isCash && !isWallet;
             const total = parseFloat(request.total_cost || request.totalCost || 0);
 
             console.log('[emergencyRequestsService] Creating fluid request via v4 RPC:', {
@@ -202,11 +217,12 @@ export const emergencyRequestsService = {
                     ambulance_type: request.ambulanceType
                 },
                 p_payment_data: {
-                    method: isCash ? 'cash' : 'card',
+                    method: isCash ? 'cash' : (isWallet ? 'wallet' : 'card'),
                     total_amount: total,
                     fee_amount: request.feeAmount || (total * 0.025),
                     currency: request.currency || 'USD',
-                    method_id: method
+                    method_id: method,
+                    defer_dispatch_until_payment: deferDispatchUntilPayment
                 }
             });
 
@@ -223,7 +239,9 @@ export const emergencyRequestsService = {
                 createdAt: now,
                 updatedAt: now,
                 status: data.emergency_status,
-                requiresApproval: data.requires_approval
+                requiresApproval: data.requires_approval,
+                awaitsPaymentConfirmation: data.awaits_payment_confirmation === true,
+                paymentStatus: data.payment_status || null,
             };
         } else {
             // Local fallback

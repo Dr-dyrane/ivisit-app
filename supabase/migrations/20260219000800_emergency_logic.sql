@@ -455,10 +455,15 @@ DECLARE
     v_fee_amount NUMERIC;
     v_total_amount NUMERIC;
     v_requires_approval BOOLEAN := FALSE;
+    v_awaits_payment_confirmation BOOLEAN := FALSE;
     v_hospital_id UUID;
     v_organization_id UUID;
     v_patient_location GEOMETRY;
     v_transition_reason TEXT;
+    v_payment_method TEXT := LOWER(COALESCE(NULLIF(TRIM(COALESCE(p_payment_data->>'method', '')), ''), 'unknown'));
+    v_defer_dispatch_until_payment BOOLEAN := FALSE;
+    v_request_status TEXT := 'in_progress';
+    v_request_payment_status TEXT := 'pending';
 BEGIN
     IF p_user_id IS NULL THEN
         RAISE EXCEPTION 'user id is required';
@@ -502,7 +507,7 @@ BEGIN
         'ivisit.transition_metadata',
         jsonb_build_object(
             'service_type', COALESCE(p_request_data->>'service_type', 'ambulance'),
-            'payment_method', COALESCE(NULLIF(p_payment_data->>'method', ''), 'unknown')
+            'payment_method', v_payment_method
         )::TEXT,
         true
     );
@@ -517,6 +522,36 @@ BEGIN
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Hospital not found';
     END IF;
+
+    IF v_payment_method = 'card' THEN
+        v_defer_dispatch_until_payment := LOWER(
+            COALESCE(
+                NULLIF(TRIM(COALESCE(p_payment_data->>'defer_dispatch_until_payment', '')), ''),
+                'false'
+            )
+        ) IN ('1', 'true', 't', 'yes', 'y');
+    END IF;
+
+    IF p_payment_data IS NOT NULL THEN
+        v_total_amount := NULLIF(p_payment_data->>'total_amount', '')::NUMERIC;
+        v_fee_amount := NULLIF(p_payment_data->>'fee_amount', '')::NUMERIC;
+        IF v_fee_amount IS NULL THEN
+            v_fee_amount := ROUND(COALESCE(v_total_amount, 0) * 0.025, 2);
+        END IF;
+    END IF;
+
+    IF v_payment_method = 'cash' THEN
+        v_requires_approval := TRUE;
+        v_request_status := 'pending_approval';
+        v_request_payment_status := 'pending';
+    ELSIF v_payment_method = 'card' AND v_defer_dispatch_until_payment THEN
+        v_awaits_payment_confirmation := TRUE;
+        v_request_status := 'pending_approval';
+        v_request_payment_status := 'pending';
+    ELSIF p_payment_data IS NOT NULL THEN
+        v_request_status := 'in_progress';
+        v_request_payment_status := 'completed';
+    END IF;
     
     -- 2. Physical Location Parse
     v_patient_location := ST_SetSRID(ST_MakePoint(
@@ -526,14 +561,16 @@ BEGIN
     
     -- 3. Create the Emergency Request
     INSERT INTO public.emergency_requests (
-        user_id, hospital_id, service_type, hospital_name, specialty, 
-        ambulance_type, patient_location, patient_snapshot, status
+        user_id, hospital_id, service_type, hospital_name, specialty,
+        ambulance_type, bed_number, patient_location, patient_snapshot, status, total_cost, payment_status
     ) VALUES (
-        p_user_id, v_hospital_id, p_request_data->>'service_type', 
+        p_user_id, v_hospital_id, p_request_data->>'service_type',
         p_request_data->>'hospital_name', p_request_data->>'specialty',
-        p_request_data->>'ambulance_type', v_patient_location, 
+        p_request_data->>'ambulance_type', p_request_data->>'bed_number', v_patient_location,
         p_request_data->'patient_snapshot',
-        CASE WHEN p_payment_data->>'method' = 'cash' THEN 'pending_approval' ELSE 'in_progress' END
+        v_request_status,
+        COALESCE(v_total_amount, 0),
+        v_request_payment_status
     ) RETURNING id, display_id INTO v_request_id, v_display_id;
 
     -- 4. Create Visit Record (Medical History)
@@ -554,26 +591,25 @@ BEGIN
 
     -- 5. Process Payment Information
     IF p_payment_data IS NOT NULL THEN
-        v_total_amount := (p_payment_data->>'total_amount')::NUMERIC;
-        v_fee_amount := (p_payment_data->>'fee_amount')::NUMERIC;
-        IF v_fee_amount IS NULL THEN v_fee_amount := v_total_amount * 0.025; END IF;
-
         INSERT INTO public.payments (
             user_id, emergency_request_id, organization_id, amount, currency,
             payment_method, status, ivisit_fee_amount, metadata
         ) VALUES (
             p_user_id, v_request_id, v_organization_id, v_total_amount, 
-            p_payment_data->>'currency', p_payment_data->>'method',
-            CASE WHEN p_payment_data->>'method' = 'cash' THEN 'pending' ELSE 'completed' END,
+            p_payment_data->>'currency', v_payment_method,
+            CASE
+                WHEN v_payment_method = 'cash' THEN 'pending'
+                WHEN v_payment_method = 'card' AND v_defer_dispatch_until_payment THEN 'pending'
+                ELSE 'completed'
+            END,
             v_fee_amount,
             jsonb_build_object(
                 'fee_amount', v_fee_amount,
                 'fee', v_fee_amount,
-                'method_id', p_payment_data->>'method_id'
+                'method_id', p_payment_data->>'method_id',
+                'defer_dispatch_until_payment', v_defer_dispatch_until_payment
             )
         ) RETURNING id INTO v_payment_id;
-
-        IF p_payment_data->>'method' = 'cash' THEN v_requires_approval := TRUE; END IF;
     END IF;
 
     RETURN jsonb_build_object(
@@ -583,7 +619,217 @@ BEGIN
         'visit_id', v_visit_id,
         'payment_id', v_payment_id,
         'requires_approval', v_requires_approval,
-        'emergency_status', CASE WHEN v_requires_approval THEN 'pending_approval' ELSE 'in_progress' END
+        'awaits_payment_confirmation', v_awaits_payment_confirmation,
+        'payment_status', v_request_payment_status,
+        'emergency_status', v_request_status
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 🛠️ Stripe webhook finalize card payment after confirmation
+CREATE OR REPLACE FUNCTION public.complete_card_payment(
+    p_payment_intent_id TEXT,
+    p_provider_response JSONB DEFAULT '{}'::JSONB,
+    p_fee_amount NUMERIC DEFAULT NULL
+) RETURNS JSONB AS $$
+DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_payment RECORD;
+    v_request_status TEXT := NULL;
+    v_effective_fee_amount NUMERIC := 0;
+BEGIN
+    IF NULLIF(TRIM(COALESCE(p_payment_intent_id, '')), '') IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'payment intent id is required');
+    END IF;
+
+    SELECT
+        p.*,
+        er.status AS request_status,
+        er.payment_status AS request_payment_status
+    INTO v_payment
+    FROM public.payments p
+    LEFT JOIN public.emergency_requests er ON er.id = p.emergency_request_id
+    WHERE p.stripe_payment_intent_id = p_payment_intent_id
+    FOR UPDATE OF p, er;
+
+    IF v_payment.id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Card payment not found');
+    END IF;
+
+    IF COALESCE(v_payment.payment_method, '') <> 'card' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Payment is not a card payment');
+    END IF;
+
+    IF COALESCE(v_payment.status, '') = 'completed'
+       AND (
+            v_payment.emergency_request_id IS NULL
+            OR COALESCE(v_payment.request_payment_status, 'completed') = 'completed'
+       ) THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'payment_id', v_payment.id,
+            'request_id', v_payment.emergency_request_id,
+            'already_completed', true
+        );
+    END IF;
+
+    v_effective_fee_amount := COALESCE(
+        p_fee_amount,
+        NULLIF(v_payment.ivisit_fee_amount, 0),
+        NULLIF((v_payment.metadata->>'fee_amount')::NUMERIC, 0),
+        NULLIF((v_payment.metadata->>'fee')::NUMERIC, 0),
+        0
+    );
+
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'stripe_webhook', true);
+    PERFORM set_config('ivisit.transition_reason', 'card_payment_confirmed', true);
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object(
+            'payment_intent_id', p_payment_intent_id,
+            'payment_id', v_payment.id
+        )::TEXT,
+        true
+    );
+    IF v_is_service_role THEN
+        PERFORM set_config('ivisit.transition_actor_role', 'service_role', true);
+    END IF;
+
+    UPDATE public.payments
+    SET status = 'completed',
+        processed_at = COALESCE(processed_at, NOW()),
+        ivisit_fee_amount = v_effective_fee_amount,
+        metadata = COALESCE(metadata, '{}'::JSONB) || jsonb_build_object(
+            'fee_amount', v_effective_fee_amount,
+            'fee', v_effective_fee_amount,
+            'source', 'complete_card_payment'
+        ),
+        provider_response = COALESCE(p_provider_response, provider_response, '{}'::JSONB),
+        updated_at = NOW()
+    WHERE id = v_payment.id;
+
+    IF v_payment.emergency_request_id IS NOT NULL THEN
+        IF COALESCE(v_payment.request_status, 'pending_approval') NOT IN ('completed', 'cancelled', 'payment_declined') THEN
+            UPDATE public.emergency_requests
+            SET status = CASE
+                    WHEN status = 'pending_approval' THEN 'in_progress'
+                    ELSE status
+                END,
+                payment_status = 'completed',
+                updated_at = NOW()
+            WHERE id = v_payment.emergency_request_id
+            RETURNING status INTO v_request_status;
+
+            UPDATE public.visits
+            SET status = 'active',
+                updated_at = NOW()
+            WHERE request_id = v_payment.emergency_request_id;
+        ELSE
+            v_request_status := v_payment.request_status;
+        END IF;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'payment_id', v_payment.id,
+        'request_id', v_payment.emergency_request_id,
+        'request_status', v_request_status,
+        'fee_amount', v_effective_fee_amount
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 🛠️ Stripe webhook fail card payment and close the pending request safely
+CREATE OR REPLACE FUNCTION public.fail_card_payment(
+    p_payment_intent_id TEXT,
+    p_provider_response JSONB DEFAULT '{}'::JSONB,
+    p_failure_reason TEXT DEFAULT NULL
+) RETURNS JSONB AS $$
+DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_payment RECORD;
+BEGIN
+    IF NULLIF(TRIM(COALESCE(p_payment_intent_id, '')), '') IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'payment intent id is required');
+    END IF;
+
+    SELECT
+        p.*,
+        er.status AS request_status,
+        er.payment_status AS request_payment_status
+    INTO v_payment
+    FROM public.payments p
+    LEFT JOIN public.emergency_requests er ON er.id = p.emergency_request_id
+    WHERE p.stripe_payment_intent_id = p_payment_intent_id
+    FOR UPDATE OF p, er;
+
+    IF v_payment.id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Card payment not found');
+    END IF;
+
+    IF COALESCE(v_payment.payment_method, '') <> 'card' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Payment is not a card payment');
+    END IF;
+
+    IF COALESCE(v_payment.status, '') IN ('failed', 'declined')
+       AND (
+            v_payment.emergency_request_id IS NULL
+            OR COALESCE(v_payment.request_status, 'payment_declined') = 'payment_declined'
+       ) THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'payment_id', v_payment.id,
+            'request_id', v_payment.emergency_request_id,
+            'already_failed', true
+        );
+    END IF;
+
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'stripe_webhook', true);
+    PERFORM set_config(
+        'ivisit.transition_reason',
+        COALESCE(NULLIF(TRIM(p_failure_reason), ''), 'card_payment_failed'),
+        true
+    );
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object(
+            'payment_intent_id', p_payment_intent_id,
+            'payment_id', v_payment.id
+        )::TEXT,
+        true
+    );
+    IF v_is_service_role THEN
+        PERFORM set_config('ivisit.transition_actor_role', 'service_role', true);
+    END IF;
+
+    UPDATE public.payments
+    SET status = 'failed',
+        processed_at = COALESCE(processed_at, NOW()),
+        metadata = COALESCE(metadata, '{}'::JSONB) || jsonb_build_object(
+            'failure_reason', COALESCE(NULLIF(TRIM(p_failure_reason), ''), 'card_payment_failed'),
+            'source', 'fail_card_payment'
+        ),
+        provider_response = COALESCE(p_provider_response, provider_response, '{}'::JSONB),
+        updated_at = NOW()
+    WHERE id = v_payment.id;
+
+    IF v_payment.emergency_request_id IS NOT NULL
+       AND COALESCE(v_payment.request_status, 'pending_approval') NOT IN ('completed', 'cancelled', 'payment_declined') THEN
+        UPDATE public.emergency_requests
+        SET status = 'payment_declined',
+            payment_status = 'failed',
+            updated_at = NOW()
+        WHERE id = v_payment.emergency_request_id;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'payment_id', v_payment.id,
+        'request_id', v_payment.emergency_request_id
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -630,6 +876,10 @@ BEGIN
     
     IF v_payment.id IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'Pending payment/request pair not found');
+    END IF;
+
+    IF COALESCE(v_payment.payment_method, '') <> 'cash' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Payment is not a cash payment');
     END IF;
 
     SELECT er.service_type, h.organization_id, er.status, er.payment_status
@@ -805,11 +1055,15 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 REVOKE ALL ON FUNCTION public.create_emergency_v4(UUID, JSONB, JSONB) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.complete_card_payment(TEXT, JSONB, NUMERIC) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fail_card_payment(TEXT, JSONB, TEXT) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.approve_cash_payment(UUID, UUID) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.decline_cash_payment(UUID, UUID) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.process_cash_payment_v2(UUID, UUID, NUMERIC, TEXT) FROM PUBLIC, anon;
 
 GRANT EXECUTE ON FUNCTION public.create_emergency_v4(UUID, JSONB, JSONB) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.complete_card_payment(TEXT, JSONB, NUMERIC) TO service_role;
+GRANT EXECUTE ON FUNCTION public.fail_card_payment(TEXT, JSONB, TEXT) TO service_role;
 GRANT EXECUTE ON FUNCTION public.approve_cash_payment(UUID, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.decline_cash_payment(UUID, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.process_cash_payment_v2(UUID, UUID, NUMERIC, TEXT) TO authenticated, service_role;
@@ -855,6 +1109,10 @@ BEGIN
 
     IF v_payment.id IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'Pending payment/request pair not found');
+    END IF;
+
+    IF COALESCE(v_payment.payment_method, '') <> 'cash' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Payment is not a cash payment');
     END IF;
 
     SELECT h.organization_id, er.status, er.payment_status

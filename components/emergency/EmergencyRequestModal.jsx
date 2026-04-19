@@ -20,7 +20,10 @@ import BedBookingOptions from "./requestModal/BedBookingOptions";
 import EmergencyChooseResourceStageOrchestrator from "./requestModal/views/chooseResource/EmergencyChooseResourceStageOrchestrator";
 import PaymentMethodSelector from "../payment/PaymentMethodSelector";
 import { paymentService } from "../../services/paymentService";
-import { calculateEmergencyCost } from "../../services/pricingService";
+import {
+	calculateEmergencyCost,
+	augmentEmergencyCostForCheckout,
+} from "../../services/pricingService";
 import { supabase } from "../../services/supabase";
 import { hospitalsService } from "../../services/hospitalsService";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
@@ -856,7 +859,10 @@ const EmergencyRequestModal = React.memo(({
 
 		try {
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-			const result = await signInWithProvider("google", { deferProfileCompletion: true });
+			const result = await signInWithProvider("google", {
+				deferProfileCompletion: true,
+				returnTo: "/(auth)/map",
+			});
 
 			if (!result?.success) {
 				if (result?.error && result.error !== "cancelled") {
@@ -944,37 +950,13 @@ const EmergencyRequestModal = React.memo(({
 					}
 				}
 
-				// Ensure service fee is in the breakdown
-				// The RPC should include it, but if not (stale schema), inject it client-side
-				let breakdown = cost.breakdown || [];
-				const hasFeeInBreakdown = Array.isArray(breakdown) && breakdown.some(
-					item => item.type === 'fee' || item.name?.toLowerCase().includes('service fee')
-				);
+				const checkoutCost = await augmentEmergencyCostForCheckout(cost, {
+					hospitalId: requestHospital.id,
+					serviceType,
+					orgFee,
+				});
 
-				if (!hasFeeInBreakdown && orgFee) {
-					const feeRate = orgFee.feePercentage / 100;
-					const baseCost = cost.base_cost || cost.totalCost || 0;
-					const feeAmount = parseFloat((baseCost * feeRate).toFixed(2));
-
-					breakdown = [
-						...breakdown,
-						{
-							name: `Service Fee (${orgFee.feePercentage}%)`,
-							cost: feeAmount,
-							type: 'fee'
-						}
-					];
-
-					// Update total to include the fee
-					cost.totalCost = (cost.totalCost || 0) + feeAmount;
-					cost.service_fee = feeAmount;
-				}
-
-				// Attach org fee metadata for use in payment flow
-				cost.breakdown = breakdown;
-				cost.orgFee = orgFee;
-
-				if (isMounted) setEstimatedCost(cost);
+				if (isMounted) setEstimatedCost(checkoutCost);
 			} catch (error) {
 				console.error("Error calculating estimated cost:", error);
 				if (isMounted) {

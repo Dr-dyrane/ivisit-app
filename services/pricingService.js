@@ -5,6 +5,156 @@
  */
 
 import { supabase } from './supabase';
+import { paymentService } from './paymentService';
+
+const toFiniteNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const looksLikeFeeItem = (item) => {
+  const type = String(item?.type || '').toLowerCase();
+  const name = String(item?.name || '').toLowerCase();
+  return type === 'fee' || name.includes('fee');
+};
+
+const buildEmergencyBreakdown = (cost, serviceType) => {
+  if (Array.isArray(cost?.breakdown) && cost.breakdown.length > 0) {
+    return cost.breakdown
+      .map((item) => {
+        const itemCost = toFiniteNumber(item?.cost ?? item?.price);
+        if (itemCost == null) return null;
+        return {
+          name: item?.name || 'Charge',
+          cost: itemCost,
+          type: item?.type || 'service',
+        };
+      })
+      .filter(Boolean);
+  }
+
+  const baseCost = toFiniteNumber(cost?.base_cost ?? cost?.baseCost);
+  const distanceSurcharge = toFiniteNumber(cost?.distance_surcharge ?? cost?.distanceSurcharge);
+  const urgencySurcharge = toFiniteNumber(cost?.urgency_surcharge ?? cost?.urgencySurcharge);
+  const breakdown = [];
+
+  if (baseCost != null && baseCost > 0) {
+    breakdown.push({
+      name: serviceType === 'ambulance' ? 'Emergency Ride' : 'Bed Reservation',
+      cost: baseCost,
+      type: 'base',
+    });
+  }
+
+  if (distanceSurcharge != null && distanceSurcharge > 0) {
+    breakdown.push({
+      name: 'Distance Surcharge',
+      cost: distanceSurcharge,
+      type: 'distance',
+    });
+  }
+
+  if (urgencySurcharge != null && urgencySurcharge > 0) {
+    breakdown.push({
+      name: 'Urgency Surcharge',
+      cost: urgencySurcharge,
+      type: 'urgency',
+    });
+  }
+
+  return breakdown;
+};
+
+export async function augmentEmergencyCostForCheckout(
+  rawCost,
+  {
+    hospitalId = null,
+    serviceType = 'ambulance',
+    orgFee = null,
+  } = {}
+) {
+  if (!rawCost || typeof rawCost !== 'object') {
+    return rawCost;
+  }
+
+  const breakdown = buildEmergencyBreakdown(rawCost, serviceType);
+  const existingFeeFromBreakdown = breakdown.reduce((sum, item) => {
+    if (!looksLikeFeeItem(item)) return sum;
+    return sum + Number(item.cost || 0);
+  }, 0);
+
+  const existingFee =
+    toFiniteNumber(
+      rawCost.service_fee ??
+      rawCost.feeAmount ??
+      rawCost.fee_amount ??
+      rawCost.ivisit_fee_amount
+    ) ??
+    (existingFeeFromBreakdown > 0 ? Number(existingFeeFromBreakdown.toFixed(2)) : null);
+
+  const rawTotal =
+    toFiniteNumber(rawCost.totalCost ?? rawCost.total_cost ?? rawCost.total_amount);
+  const baseCost = toFiniteNumber(rawCost.base_cost ?? rawCost.baseCost);
+  const subtotal =
+    (() => {
+      if (rawTotal != null && existingFee != null) {
+        return Number(Math.max(0, rawTotal - existingFee).toFixed(2));
+      }
+      if (rawTotal != null) return rawTotal;
+      const nonFeeBreakdownSum = breakdown.reduce((sum, item) => {
+        if (looksLikeFeeItem(item)) return sum;
+        return sum + Number(item.cost || 0);
+      }, 0);
+      if (nonFeeBreakdownSum > 0) return Number(nonFeeBreakdownSum.toFixed(2));
+      if (baseCost != null) return baseCost;
+      return null;
+    })();
+
+  const resolvedOrgFee =
+    orgFee || (hospitalId ? await paymentService.getOrganizationFee(hospitalId) : null);
+  const feeRate = toFiniteNumber(resolvedOrgFee?.feePercentage);
+
+  let feeAmount = existingFee;
+  if (feeAmount == null && feeRate != null && feeRate > 0) {
+    const feeBase = baseCost != null && baseCost > 0 ? baseCost : subtotal;
+    if (feeBase != null) {
+      feeAmount = Number((feeBase * (feeRate / 100)).toFixed(2));
+    }
+  }
+
+  const hasFeeRow = breakdown.some((item) => looksLikeFeeItem(item));
+  if (!hasFeeRow && feeAmount != null && feeAmount > 0) {
+    breakdown.push({
+      name: feeRate != null ? `Service Fee (${feeRate}%)` : 'Service Fee',
+      cost: feeAmount,
+      type: 'fee',
+    });
+  }
+
+  const grossTotal =
+    (() => {
+      if (rawTotal != null && existingFee != null) {
+        return rawTotal;
+      }
+      if (subtotal != null) {
+        return Number((subtotal + (feeAmount || 0)).toFixed(2));
+      }
+      return rawTotal;
+    })();
+
+  return {
+    ...rawCost,
+    breakdown,
+    orgFee: resolvedOrgFee,
+    subtotal,
+    feeAmount,
+    fee_amount: feeAmount,
+    service_fee: feeAmount,
+    grossTotal,
+    totalCost: grossTotal ?? rawCost.totalCost ?? rawCost.total_cost ?? null,
+    total_cost: grossTotal ?? rawCost.total_cost ?? rawCost.totalCost ?? null,
+  };
+}
 
 /**
  * Get the effective price for a service after hierarchy resolution

@@ -141,7 +141,7 @@ Shared implementation note:
   - combined intent = `hospital_detail -> ambulance_decision` first
 - service rails/cards may inspect through `service_detail` or select directly into the proper decision phase, but they must stay upstream of commit/auth
 - `ambulance_decision` now confirms into `COMMIT_DETAILS`
-- `COMMIT_DETAILS` currently hands off into the existing legacy ambulance-request route only after email/OTP and phone confirmation are complete
+- `COMMIT_DETAILS` now stays in `/map` and hands off to `COMMIT_TRIAGE`, then native `COMMIT_PAYMENT`
 - `bed_decision` currently confirms into the existing legacy bed-booking route after the sheet decision; room preselection is forwarded
 - in the combined flow, paired ambulance selection is preserved from `ambulance_decision` and then forwarded when `bed_decision` confirms
 - that saved ambulance selection is hospital-scoped; if the user changes hospitals during `bed_decision`, the flow must return to `ambulance_decision` for the new hospital before step 2 can continue
@@ -151,7 +151,7 @@ Shared implementation note:
 
 First implementation scope:
 
-- `ambulance_decision -> COMMIT_DETAILS -> COMMIT_PAYMENT -> TRACKING`
+- `ambulance_decision -> COMMIT_DETAILS -> COMMIT_TRIAGE -> COMMIT_PAYMENT -> TRACKING`
 - `bed_decision` and combined bed booking continue to bridge through the legacy booking route for now
 - do not widen this into a new combined-care commit surface before the ambulance path is stable
 
@@ -190,7 +190,7 @@ Rendering rule:
   - phone step keeps the map inline field but should use legacy-grade country detection, country picking, phone validation, and E.164 normalization
   - OTP step keeps the map commit card but should use legacy-grade OTP autofill, paste, focus choreography, and resend discipline
 - email remains the simplest map-native inline field
-- harden these identity mechanics before introducing optional triage inside `COMMIT_DETAILS`
+- harden these identity mechanics before introducing the optional `COMMIT_TRIAGE` sheet phase
 
 Review account rule:
 
@@ -227,7 +227,7 @@ Reason:
 
 The phase should prepare a local request draft only. It should not write the real request yet.
 
-Required draft fields before `COMMIT_PAYMENT`:
+Required draft fields before `COMMIT_TRIAGE` / `COMMIT_PAYMENT`:
 
 - authenticated actor/session
 - `hospital_id`
@@ -238,6 +238,7 @@ Required draft fields before `COMMIT_PAYMENT`:
 - patient email
 - patient phone confirmation
 - `patient_snapshot`
+- optional `triageSnapshot` added by `COMMIT_TRIAGE`
 
 Not a blocking v1 prerequisite:
 
@@ -270,6 +271,59 @@ Product implication:
 - demo payment must not introduce a human org-admin approval wait
 - the request should still enter real tracking truth after auto-approval instead of switching to a fake tracking branch
 
+## `COMMIT_TRIAGE` Plan
+
+`COMMIT_TRIAGE` is the next map-native sheet phase after identity/contact and before payment.
+
+Why it lives before payment:
+
+- payment is the real release gate
+- once payment starts, the flow has created or is creating live operational truth
+- triage should enrich the request draft before that irreversible action
+
+Scope:
+
+- ambulance-only first
+- skippable by default
+- no route handoff and no legacy modal
+- uses the same map sheet shell, expanded posture, and compact modal header as `COMMIT_DETAILS`
+- carries the locked hospital + transport context forward
+- preserves the request draft, selected hospital, selected transport, pickup context, and any auth/contact details
+
+Content model:
+
+- borrow the strongest legacy triage ideas, not the old screen shape
+- ask one focused question at a time where possible
+- use short patient language, not clinical survey language
+- avoid explanatory blocks; use visual chips/cards and immediate pressed states
+- allow `Skip` as a secondary action that is visibly safe
+
+Minimum v1 triage fields:
+
+- primary concern / what happened
+- consciousness/breathing severity signal when relevant
+- pain or urgency level when relevant
+- free-text note only as a final optional field
+
+Draft output:
+
+- `triageSnapshot`
+- `patient_snapshot.triage`
+- short display summary for payment/tracking handoff if useful
+
+Non-goals:
+
+- no diagnosis
+- no required long form
+- no AI promise in user-facing copy
+- no payment blocking unless a field is operationally required by backend rules
+
+Transition rule:
+
+- `COMMIT_DETAILS` confirms identity/contact
+- `COMMIT_TRIAGE` enriches or skips the draft
+- `COMMIT_PAYMENT` remains the first phase that can call the real create RPC
+
 ## `COMMIT_PAYMENT` First Pass
 
 The ambulance path now has a native map `COMMIT_PAYMENT` phase.
@@ -277,7 +331,7 @@ The ambulance path now has a native map `COMMIT_PAYMENT` phase.
 Current scope:
 
 - ambulance-only
-- opens after `COMMIT_DETAILS` completes identity and phone reachability
+- opens after `COMMIT_DETAILS` completes identity/contact and `COMMIT_TRIAGE` is completed or skipped
 - keeps the map shell mounted
 - resolves a live cost through `serviceCostService.calculateEmergencyCost(...)`
 - falls back to the selected transport tier price text only for display continuity
@@ -288,12 +342,84 @@ Current scope:
 
 Locked boundary:
 
-- optional triage is still next, not part of the first payment patch
+- triage is its own skippable `COMMIT_TRIAGE` phase before payment, not a hidden field inside payment
 - `TRACKING` still needs its own native map sheet projection after payment stabilization
 - backend demo/simulation state must never leak into patient-facing payment copy
 - payment method labels should read as real-world states such as `Provider confirmation`, `Not available for this request`, or `Balance checkout`
 - once a payment method is selected, the payment section collapses to a compact row such as `Cash · Provider confirmation` with a small `Change` pill; tapping `Change` expands the full selector list
 - web and native both use the same SetupIntent-backed add-card lane: native mounts Stripe `CardField`, web mounts Stripe.js Elements, and both persist only safe card metadata through `paymentService.addPaymentMethod(...)`
+
+## `COMMIT_PAYMENT` Resolution States
+
+The native payment phase must own all post-submit outcomes before entering `TRACKING`.
+
+Required visible states:
+
+- `submitting`: CTA/loading state holds for the perceptible pending window and does not unmount too quickly
+- `pending_approval`: cash/provider approval is waiting; keep the map visible and show a focused waiting card in the same sheet
+- `approved`: request/payment is accepted; show a short success transition before switching to tracking
+- `denied`: payment was declined or provider declined cash approval; show a recoverable state with `Change payment` and `Try again`
+- `failed`: network/system failure; keep the draft and allow retry without losing the locked request
+
+Rules:
+
+- do not route to legacy modals for pending, approved, denied, or failed payment states
+- do not switch to `TRACKING` until the request has a real request id and a payment state that allows dispatch/tracking
+- if cash approval is pending, subscribe to realtime truth and converge to `approved`, `denied`, or still-waiting without polling drift
+- demo-backed auto-approval may collapse the wait quickly, but UI copy must remain real-world: provider confirmation, not demo language
+- denial should not destroy the request draft unless backend marks the request terminal and unrecoverable
+
+## `TRACKING` Plan
+
+`TRACKING` is the first true active emergency-session state. This is where the global smart / scroll-aware header becomes appropriate.
+
+Tracking entry conditions:
+
+- real request id exists
+- active trip/request context is present in `EmergencyContext.jsx`
+- payment is approved, completed, or in an allowed dispatch-progress state
+- route context can be computed from pickup, destination, and assigned responder when available
+
+Map behavior:
+
+- keep the same `/map` route mounted
+- switch the map from browse camera to active route camera
+- draw pickup -> hospital route immediately
+- when an assigned ambulance/responder location exists, animate the ambulance marker along realtime coordinates
+- if realtime responder coordinates are missing, use a conservative route-progress projection until truth arrives
+- road-snap only when route quality is high enough; otherwise use smooth coordinate interpolation
+
+Smart header behavior:
+
+- activate the app-owned smart / scroll-aware header only after tracking starts
+- header should express active route truth, not page identity
+- Apple Maps reference direction:
+  - large dark instruction capsule at the top for the next maneuver / active status
+  - compressed secondary line for next step or destination context
+  - avoid using the header during auth, triage, or payment
+- header can own high-priority status such as `Ambulance en route`, next maneuver, ETA, or approval transition
+- sheet should compress beneath the header rather than fighting it as separate chrome
+
+Tracking sheet behavior:
+
+- default to a compact bottom route card, not a full modal
+- show arrival time, minutes, and distance as the first row
+- support expanded controls similar to Apple Maps:
+  - destination/hospital
+  - share ETA
+  - call hospital/driver when available
+  - report issue
+  - cancel/end route only when backend status rules allow it
+- keep one obvious destructive action and isolate it visually
+- avoid explanatory copy; use labels and system state
+
+Post-payment implementation order:
+
+1. add native `COMMIT_TRIAGE`
+2. complete `COMMIT_PAYMENT` resolution states
+3. add `TRACKING` sheet phase shell
+4. wire smart header for active session only
+5. animate route and ambulance marker from active emergency truth
 
 ## Bed Decision Data Contract
 
@@ -466,7 +592,10 @@ For `ios-mobile` solidification, build in this order:
 
 1. keep `MapScreen.jsx` thin
 2. add more sheet modes into `useMapExploreFlow.js`
-3. build `COMMIT_DETAILS` so ambulance confirmation no longer hands off to the legacy request screen
-4. keep remaining bridge modal tasks on `MapModalShell`
-5. add a `MapScreenOrchestrator` once Android and web variants start to diverge
-6. migrate any remaining map-adjacent legacy overlays only if they are reintroduced into `/map`
+3. finish `COMMIT_DETAILS` as a map-native identity/contact phase
+4. add `COMMIT_TRIAGE` as the skippable pre-payment context phase
+5. harden `COMMIT_PAYMENT` pending/approved/denied/failed states in the map sheet
+6. build `TRACKING` with active header + route sheet before retiring the remaining ambulance legacy seams
+7. keep remaining bridge modal tasks on `MapModalShell`
+8. add a `MapScreenOrchestrator` once Android and web variants start to diverge
+9. migrate any remaining map-adjacent legacy overlays only if they are reintroduced into `/map`

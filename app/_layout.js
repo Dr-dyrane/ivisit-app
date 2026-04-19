@@ -1,7 +1,7 @@
 // app/_layout.js
 import "../polyfills";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, ActivityIndicator, Platform } from "react-native";
 import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -15,7 +15,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 // Use a global to ensure this is truly only called once across re-mounts
 let isSplashPrevented = false;
-const LAST_PUBLIC_ROUTE_STORAGE_KEY = "@ivisit/last_public_route_v1";
+const LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY = "@ivisit/last_public_route_v1";
 
 import { AppProviders } from "../providers/AppProviders";
 import { GlobalLocationProvider } from "../contexts/GlobalLocationContext";
@@ -30,6 +30,7 @@ import { appMigrationsService } from "../services/appMigrationsService";
 import { useOTAUpdates } from "../hooks/useOTAUpdates";
 import UpdateAvailableModal from "../components/ui/UpdateAvailableModal";
 import { getWelcomeRootBackground } from "../constants/welcomeTheme";
+import { database, StorageKeys } from "../database";
 
 /**
  * Root layout wraps the entire app with context providers
@@ -118,6 +119,12 @@ function getPublicAuthRouteFromUrl(url) {
 }
 
 function normalizeStoredPublicRoute(pathname) {
+	if (pathname === "/(auth)/map" || pathname === "/(auth)/map-loading") {
+		return "/(auth)/map";
+	}
+	if (pathname === "/(auth)/request-help") {
+		return "/(auth)/map";
+	}
 	if (pathname === "/map" || pathname === "/map-loading") {
 		return "/(auth)/map";
 	}
@@ -125,6 +132,47 @@ function normalizeStoredPublicRoute(pathname) {
 		return "/(auth)/map";
 	}
 	return null;
+}
+
+async function readStoredPublicRoute() {
+	const [storedRoute, legacyStoredRoute] = await Promise.all([
+		database.read(StorageKeys.LAST_PUBLIC_ROUTE).catch(() => null),
+		AsyncStorage.getItem(LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => null),
+	]);
+
+	const normalizedRoute =
+		normalizeStoredPublicRoute(storedRoute) ||
+		normalizeStoredPublicRoute(legacyStoredRoute);
+
+	if (normalizedRoute) {
+		await database.write(StorageKeys.LAST_PUBLIC_ROUTE, normalizedRoute).catch(() => {});
+	}
+
+	if (legacyStoredRoute) {
+		AsyncStorage.removeItem(LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => {});
+	}
+
+	return normalizedRoute;
+}
+
+async function readStoredAuthReturnRoute() {
+	const route = await database.read(StorageKeys.AUTH_RETURN_ROUTE).catch(() => null);
+	return normalizeStoredPublicRoute(route);
+}
+
+async function writeStoredPublicRoute(route) {
+	const normalizedRoute = normalizeStoredPublicRoute(route);
+	if (!normalizedRoute) {
+		return;
+	}
+
+	await database.write(StorageKeys.LAST_PUBLIC_ROUTE, normalizedRoute).catch(() => {});
+	AsyncStorage.removeItem(LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => {});
+}
+
+async function clearStoredPublicRoute() {
+	await database.delete(StorageKeys.LAST_PUBLIC_ROUTE).catch(() => {});
+	AsyncStorage.removeItem(LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => {});
 }
 
 /**
@@ -137,6 +185,7 @@ function AuthenticatedStack() {
 	const router = useRouter();
 	const segments = useSegments();
 	const pathname = usePathname();
+	const pathnameRef = useRef(pathname);
 	const [initialRouteResolved, setInitialRouteResolved] = useState(false);
 	const [startupPublicRoute, setStartupPublicRoute] = useState(null);
 	const loadingBackground = Platform.OS === "web"
@@ -159,6 +208,10 @@ function AuthenticatedStack() {
 	const { showModal, showSuccessModal, handleRestart, handleLater, handleDismissSuccess } = useOTAUpdates();
 
 	useEffect(() => {
+		pathnameRef.current = pathname;
+	}, [pathname]);
+
+	useEffect(() => {
 		let isMounted = true;
 
 		const handleDeepLink = async (event) => {
@@ -171,17 +224,25 @@ function AuthenticatedStack() {
 
 			// Let the dedicated auth callback page handle auth callbacks
 			const isResetPassword = url.includes("auth/reset-password");
-			const isAuthCallback = !isResetPassword && (url.includes("auth/callback") || url.includes("code=") || url.includes("access_token="));
+			const isAuthCallback =
+				!isResetPassword &&
+				(url.includes("auth/callback") || url.includes("code=") || url.includes("access_token="));
+			const isAlreadyOnResetPasswordRoute = pathnameRef.current === "/auth/reset-password";
+			const isAlreadyOnAuthCallbackRoute = pathnameRef.current === "/auth/callback";
 			console.log("[DeepLink] URL check:", { scheme: urlScheme, isAuthCallback, isResetPassword });
 
 			if (isResetPassword) {
-				router.replace("/auth/reset-password");
+				if (!isAlreadyOnResetPasswordRoute) {
+					router.replace("/auth/reset-password");
+				}
 				return;
 			}
 
 			if (isAuthCallback) {
-				console.log("[DeepLink] Redirecting to auth callback page");
-				router.replace("/auth/callback");
+				if (!isAlreadyOnAuthCallbackRoute) {
+					console.log("[DeepLink] Redirecting to auth callback page");
+					router.replace("/auth/callback");
+				}
 				return;
 			}
 
@@ -189,6 +250,7 @@ function AuthenticatedStack() {
 			if (publicAuthRoute) {
 				console.log("[DeepLink] Restoring public route:", publicAuthRoute);
 				if (isMounted) setStartupPublicRoute(publicAuthRoute);
+				await writeStoredPublicRoute(publicAuthRoute);
 				router.replace(publicAuthRoute);
 				return;
 			}
@@ -216,13 +278,8 @@ function AuthenticatedStack() {
 					return;
 				}
 
-				const storedPublicRoute = await AsyncStorage.getItem(LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(
-					() => null,
-				);
 				const restoredPublicRoute =
-					storedPublicRoute === "/(auth)/request-help"
-						? "/(auth)/map"
-						: storedPublicRoute;
+					(await readStoredAuthReturnRoute()) || (await readStoredPublicRoute());
 				if (restoredPublicRoute === "/(auth)/map") {
 					if (isMounted) {
 						setStartupPublicRoute(restoredPublicRoute);
@@ -244,7 +301,7 @@ function AuthenticatedStack() {
 			isMounted = false;
 			subscription.remove();
 		};
-	}, [user?.isAuthenticated, router]);
+	}, [router, user?.isAuthenticated]);
 
 	useEffect(() => {
 		if (!pathname) {
@@ -253,17 +310,19 @@ function AuthenticatedStack() {
 
 		const nextStoredRoute = normalizeStoredPublicRoute(pathname);
 		if (nextStoredRoute) {
-			AsyncStorage.setItem(LAST_PUBLIC_ROUTE_STORAGE_KEY, nextStoredRoute).catch(() => {});
+			writeStoredPublicRoute(nextStoredRoute).catch(() => {});
 			return;
 		}
 
 		if (pathname === "/") {
-			AsyncStorage.removeItem(LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => {});
+			clearStoredPublicRoute().catch(() => {});
 		}
 	}, [pathname]);
 
 	useEffect(() => {
 		const rootGroup = segments?.[0] ?? null;
+		const isStandaloneAuthRoute =
+			pathname === "/auth/callback" || pathname === "/auth/reset-password";
 		const onCompleteProfile =
 			segments?.[0] === "(user)" &&
 			segments?.[1] === "(stacks)" &&
@@ -275,6 +334,10 @@ function AuthenticatedStack() {
 
 		// Don't do anything while auth is still loading or startup route has not resolved yet
 		if (loading || !initialRouteResolved) {
+			return;
+		}
+
+		if (isStandaloneAuthRoute) {
 			return;
 		}
 

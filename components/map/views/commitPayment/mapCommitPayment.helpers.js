@@ -71,12 +71,18 @@ export function buildCommitPaymentDistanceKm(hospital, currentLocation) {
 	}
 }
 
-export function normalizeCommitPaymentCost(rawCost, transport) {
+export function normalizeCommitPaymentCost(
+	rawCost,
+	selection,
+	fallbackSelectionName = "Selected service",
+) {
 	if (rawCost && typeof rawCost === "object") {
 		const totalCost = toFiniteNumber(
 			rawCost.totalCost ?? rawCost.total_cost ?? rawCost.total_amount,
 		);
 		const feeAmount = toFiniteNumber(rawCost.feeAmount ?? rawCost.fee_amount);
+		const grossTotal = toFiniteNumber(rawCost.grossTotal);
+		const subtotal = toFiniteNumber(rawCost.subtotal);
 		const breakdown = Array.isArray(rawCost.breakdown)
 			? rawCost.breakdown
 					.map((item) => {
@@ -96,15 +102,20 @@ export function normalizeCommitPaymentCost(rawCost, transport) {
 				totalCost,
 				total_cost: totalCost,
 				feeAmount,
+				fee_amount: feeAmount,
+				service_fee: feeAmount,
 				breakdown,
+				grossTotal: grossTotal ?? totalCost,
+				subtotal: subtotal ?? (feeAmount != null ? Math.max(0, totalCost - feeAmount) : totalCost),
+				orgFee: rawCost.orgFee || null,
 				source: rawCost.source || "service_cost",
 			};
 		}
 	}
 
 	const fallbackAmount =
-		parseCommitPaymentAmount(transport?.priceText) ??
-		parseCommitPaymentAmount(transport?.price) ??
+		parseCommitPaymentAmount(selection?.priceText) ??
+		parseCommitPaymentAmount(selection?.price) ??
 		null;
 
 	if (fallbackAmount == null) return null;
@@ -113,14 +124,23 @@ export function normalizeCommitPaymentCost(rawCost, transport) {
 		totalCost: fallbackAmount,
 		total_cost: fallbackAmount,
 		feeAmount: null,
+		fee_amount: null,
+		service_fee: null,
 		breakdown: [
 			{
-				name: transport?.title || transport?.service_name || "Transport",
+				name:
+					selection?.title ||
+					selection?.service_name ||
+					selection?.room_type ||
+					fallbackSelectionName,
 				type: "service",
 				cost: fallbackAmount,
 			},
 		],
-		source: "transport_price_text",
+		grossTotal: fallbackAmount,
+		subtotal: fallbackAmount,
+		orgFee: null,
+		source: "selection_price_text",
 	};
 }
 
@@ -153,11 +173,37 @@ export function buildAmbulanceCommitRequest({
 	};
 }
 
+export function buildBedCommitRequest({
+	hospital,
+	room,
+	paymentMethod,
+	pricingSnapshot,
+	currentLocation,
+}) {
+	return {
+		requestId: `BED-${Math.floor(Math.random() * 900000) + 100000}`,
+		hospitalId: hospital?.id || null,
+		hospitalName:
+			hospital?.name || hospital?.title || hospital?.service_name || "Hospital",
+		serviceType: "bed",
+		specialty: null,
+		paymentMethod,
+		pricingSnapshot,
+		bedType: room?.room_type || room?.title || null,
+		bedNumber: room?.id || null,
+		bedCount: 1,
+		patientLocation: buildCommitPaymentPickupCoordinate(currentLocation),
+		locationLabel: buildCommitPaymentPickupLabel(currentLocation),
+		locationConfirmedAt: new Date().toISOString(),
+	};
+}
+
 export function buildCommitPaymentCompletionPayload({
 	initiatedRequest,
 	result,
 	hospital,
 }) {
+	const serviceType = initiatedRequest?.serviceType || "ambulance";
 	return {
 		success: true,
 		requestId: result?.requestId || initiatedRequest?._realId || initiatedRequest?.requestId,
@@ -170,7 +216,9 @@ export function buildCommitPaymentCompletionPayload({
 			hospital?.title ||
 			"Hospital",
 		ambulanceType: initiatedRequest?.ambulanceType || null,
-		serviceType: "ambulance",
+		bedType: initiatedRequest?.bedType || null,
+		bedNumber: initiatedRequest?.bedNumber || null,
+		serviceType,
 		estimatedArrival: result?.estimatedArrival || hospital?.eta || "8 mins",
 		etaSeconds: Number.isFinite(result?.etaSeconds) ? result.etaSeconds : null,
 		triageCheckin: initiatedRequest?.triageCheckin ?? null,
@@ -182,6 +230,7 @@ export function buildPendingApprovalState({
 	result,
 	hospital,
 }) {
+	const serviceType = initiatedRequest?.serviceType || "ambulance";
 	return {
 		id: result?.requestId || initiatedRequest?._realId || initiatedRequest?.requestId,
 		requestId: result?.requestId || initiatedRequest?._realId || initiatedRequest?.requestId,
@@ -195,8 +244,10 @@ export function buildPendingApprovalState({
 			hospital?.name ||
 			hospital?.title ||
 			"Hospital",
-		serviceType: "ambulance",
+		serviceType,
 		ambulanceType: initiatedRequest?.ambulanceType || null,
+		bedType: initiatedRequest?.bedType || null,
+		bedNumber: initiatedRequest?.bedNumber || null,
 		specialty: initiatedRequest?.specialty || null,
 		estimatedArrival: result?.estimatedArrival ?? hospital?.eta ?? null,
 		etaSeconds: Number.isFinite(result?.etaSeconds) ? result.etaSeconds : null,

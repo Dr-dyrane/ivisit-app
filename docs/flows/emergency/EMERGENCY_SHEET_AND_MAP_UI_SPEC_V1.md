@@ -1074,9 +1074,9 @@ Map behavior:
 - the new `/map` visual language stays intact; do not drop the user back into the legacy auth modal presentation
 - borrow mature legacy behavior where it is stronger without inheriting the old visuals:
   - phone confirmation should keep the map-native input shell but use country detection, region picking, real validation, and E.164 normalization
-  - OTP should keep the map commit card but use stronger autofill, paste, focus, and resend behavior
+- OTP should keep the map commit card but use stronger autofill, paste, focus, and resend behavior
 - email remains the simplest inline map field
-- finish hardening these identity primitives before optional triage is added to `COMMIT_DETAILS`
+- finish hardening these identity primitives before adding `COMMIT_TRIAGE` as the next sheet phase
 
 ## 3.12 Payment / Commit
 
@@ -1385,7 +1385,7 @@ This appendix turns the design spec into the actual implementation determinants 
 
 For the first-pass ambulance runtime, the visible sheet sequence should be:
 
-`EXPLORE_INTENT -> AMBULANCE_DECISION -> COMMIT_DETAILS -> COMMIT_PAYMENT -> TRACKING`
+`EXPLORE_INTENT -> AMBULANCE_DECISION -> COMMIT_DETAILS -> COMMIT_TRIAGE -> COMMIT_PAYMENT -> TRACKING`
 
 Important implementation note:
 
@@ -1416,7 +1416,8 @@ Target runtime rule:
 |---|---|---|---|---|
 | `EXPLORE_INTENT` | orient and choose intent | resolved location, nearby hospitals, coverage mode, selected care intent, map readiness | no | `MapScreen.jsx` + `EmergencyContext.jsx` |
 | `AMBULANCE_DECISION` | show best dispatch candidate | recommended hospital, ETA, route confidence, hospital-scoped `service_pricing`, derived crew label, service summary | no | `MapSheetOrchestrator.jsx` + route helpers |
-| `COMMIT_DETAILS` | authenticate and finish the minimum request draft | locked hospital/service summary, email OTP auth state, phone if missing, optional triage snapshot, local draft validity | no | map sheet local state + request draft |
+| `COMMIT_DETAILS` | authenticate and finish the minimum request draft | locked hospital/service summary, email OTP auth state, phone if missing, local draft validity | no | map sheet local state + request draft |
+| `COMMIT_TRIAGE` | collect optional operational context | locked request draft, skippable triage answers, patient-friendly severity/context fields | no | map sheet local state + request draft |
 | `COMMIT_PAYMENT` | perform real operational commit | authenticated actor, valid hospital id, payment method, amount, request payload ready | yes | `useRequestFlow.js` + RPCs |
 | `TRACKING` | show live certainty | request id, payment state, responder assignment, realtime status projection | updates only | `EmergencyContext.jsx` + realtime |
 
@@ -1529,7 +1530,7 @@ Current implementation note:
   - combined intent = `hospital_detail -> ambulance_decision` first
 - service rails/cards may inspect through `service_detail` or select directly into the proper decision phase, but they must not jump to `COMMIT_DETAILS`
 - `Confirm & continue` now opens `COMMIT_DETAILS`
-- the final `COMMIT_DETAILS` continue now opens the native map `COMMIT_PAYMENT` phase for ambulance requests
+- the final `COMMIT_DETAILS` continue should open `COMMIT_TRIAGE`, then native map `COMMIT_PAYMENT` for ambulance requests
 - the legacy ambulance request/payment route is no longer the main `/map` commit seam for this path
 - the expanded decision sheet now uses:
   - alternative tiers
@@ -1586,12 +1587,34 @@ Google Play review access:
 - server-side secrets must stay aligned with Play Console reviewer instructions:
   `REVIEW_DEMO_AUTH_ENABLED=true`, `REVIEW_DEMO_AUTH_EMAIL=support@ivisit.ng`, `REVIEW_DEMO_AUTH_OTP=123456`
 
-#### `COMMIT_DETAILS -> COMMIT_PAYMENT`
+#### `COMMIT_DETAILS -> COMMIT_TRIAGE`
 
 Trigger:
 
 - required details are valid
 - verification succeeds if needed
+
+Required result:
+
+- authenticated actor/session
+- patient email
+- patient phone confirmation when needed
+- locked selected hospital/service still present
+- request draft still local, with no DB create yet
+
+#### `COMMIT_TRIAGE -> COMMIT_PAYMENT`
+
+Trigger:
+
+- triage is completed or skipped
+
+Rules:
+
+- triage stays map-native, not legacy modal
+- one focused question at a time where possible
+- skip is allowed and visually safe
+- no diagnosis promise and no AI promise in user-facing copy
+- answers enrich `patient_snapshot.triage` but should not block payment unless the backend later marks a field operationally required
 
 Required minimum payload:
 
@@ -1631,7 +1654,7 @@ Current implementation note:
 - this simulation state is backend-only language; the patient UI must render neutral payment copy such as `Provider confirmation` and must not mention demo/live-mode terminology
 - the payment selector should collapse after selection into one readable summary row with `Change` as the expansion affordance, keeping the main dispatch CTA as the only primary action
 - add-card is supported on native and web: native uses Stripe `CardField`, web uses Stripe.js Elements, and both attach through the existing SetupIntent / `payment_methods` reflection path
-- optional triage is still intentionally not inserted in this patch; it should be added as a skippable microstep before payment once the payment seam is stable
+- `COMMIT_TRIAGE` should be added before payment as a skippable sheet phase, not as a legacy modal
 
 #### `COMMIT_PAYMENT -> TRACKING`
 
@@ -1639,6 +1662,29 @@ Trigger:
 
 - request commit succeeds
 - payment method succeeds or enters an allowed pending state
+
+Payment resolution ownership:
+
+- `COMMIT_PAYMENT` must own `submitting`, `pending_approval`, `approved`, `denied`, and `failed` states inside the map sheet
+- pending cash/provider approval should show a waiting state in the same sheet, not a legacy modal
+- approved should show a short acceptance transition before switching into tracking
+- denied should preserve the draft and offer recovery through `Change payment` and `Try again`
+- failed network/system states should preserve the draft and retry path
+- no patient-facing copy may mention demo/simulation mode
+
+Tracking entry rule:
+
+- do not switch into `TRACKING` until a real request id exists
+- do not switch into `TRACKING` until payment status allows dispatch/tracking
+- hydrate active request truth through `EmergencyContext.jsx` and realtime before showing live movement when possible
+
+Tracking UI direction:
+
+- `TRACKING` is the first phase that may use the app-owned smart / scroll-aware header
+- the header should behave like active navigation chrome: large instruction/status capsule, compact secondary line, and route truth
+- the bottom sheet should become a compact route card with arrival, minutes, distance, and expandable controls
+- route controls can include destination, share ETA, call, report issue, and cancel/end only when backend status rules allow it
+- ambulance animation should use realtime responder coordinates when available and smooth route-progress projection only as a fallback
 
 ### 8.6 Database-backed commit lane
 
@@ -1686,7 +1732,7 @@ What it should handle after commit:
 Current app-evidence note:
 
 - the patient mutation lane already merges `triage_snapshot` into `patient_snapshot.triage`
-- this means triage can remain optional in `COMMIT_DETAILS` without creating a schema gap
+- this means `COMMIT_TRIAGE` can remain optional before payment without creating a schema gap
 
 #### Payment lane
 
@@ -1740,14 +1786,15 @@ For the first map-first refactor pass:
 
 1. move ambulance decision into the map sheet
 2. move details + verification inline into the map sheet
-3. keep payment in the same shell
-4. project tracking in the same shell after commit
-5. stop routing new users into the old `showLegacyFlow -> EmergencyRequestModal` branch for the main ambulance path
+3. add skippable triage in the same shell before payment
+4. keep payment and all post-submit payment states in the same shell
+5. project tracking in the same shell after commit
+6. stop routing new users into the old `showLegacyFlow -> EmergencyRequestModal` branch for the main ambulance path
 
 That gives iVisit the correct first-pass emergency reading:
 
 - the user sees the map
 - the system recommends the closest workable response
 - the user confirms
-- details and payment complete the release
+- details, optional triage, and payment complete the release
 - tracking begins without ever leaving the map

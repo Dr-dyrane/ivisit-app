@@ -6,6 +6,7 @@ import * as Linking from "expo-linking";
 import { authService } from "../../services/authService";
 import { supabase } from "../../services/supabase";
 import { AuthContext } from "../../contexts/AuthContext";
+import { database, StorageKeys } from "../../database";
 
 /**
  * Robust Social Auth Hook
@@ -37,6 +38,11 @@ export function useSocialAuth() {
 
 	const signInWithProvider = useCallback(async (provider, options = {}) => {
 		const deferProfileCompletion = options?.deferProfileCompletion === true;
+		const returnTo = typeof options?.returnTo === "string" ? options.returnTo : null;
+		const canUseNativeBrowserWarmup =
+			Platform.OS !== "web" &&
+			typeof WebBrowser?.warmUpAsync === "function" &&
+			typeof WebBrowser?.coolDownAsync === "function";
 		const clearDeferredProfileFlag = async () => {
 			if (!deferProfileCompletion) return;
 			try {
@@ -45,9 +51,24 @@ export function useSocialAuth() {
 				console.warn("[useSocialAuth] Failed to clear deferred profile flag:", flagError);
 			}
 		};
+		const clearAuthReturnRoute = async () => {
+			try {
+				await database.delete(StorageKeys.AUTH_RETURN_ROUTE);
+			} catch (routeError) {
+				console.warn("[useSocialAuth] Failed to clear auth return route:", routeError);
+			}
+		};
 
 		try {
-			await WebBrowser.warmUpAsync();
+			if (returnTo) {
+				await database.write(StorageKeys.AUTH_RETURN_ROUTE, returnTo);
+			} else {
+				await clearAuthReturnRoute();
+			}
+
+			if (canUseNativeBrowserWarmup) {
+				await WebBrowser.warmUpAsync();
+			}
 
 			if (deferProfileCompletion) {
 				await authService.setEmergencyProfileCompletionDeferred(true);
@@ -122,6 +143,7 @@ export function useSocialAuth() {
 
 					if (skipped) {
 						console.log("[useSocialAuth] Auth already handled by deep link listener");
+						await clearAuthReturnRoute();
 						return { success: true };
 					}
 
@@ -136,10 +158,13 @@ export function useSocialAuth() {
 						} catch (syncError) {
 							console.warn("[useSocialAuth] Sync after login failed:", syncError);
 						}
+
+						await clearAuthReturnRoute();
 						
 						return { success: true };
 					}
 
+					await clearAuthReturnRoute();
 					await clearDeferredProfileFlag();
 					return { success: false, error: "Authentication failed" };
 				} else if (result.type === "cancel" || result.type === "dismiss") {
@@ -152,21 +177,26 @@ export function useSocialAuth() {
 						console.log("[useSocialAuth] Session found! Deep link handler processed auth.");
 						const { data: currentUser } = await authService.getCurrentUser();
 						await login(currentUser);
+						await clearAuthReturnRoute();
 						return { success: true };
 					}
 
+					await clearAuthReturnRoute();
 					await clearDeferredProfileFlag();
 					return { success: false, error: result.type };
 				}
 
+				await clearAuthReturnRoute();
 				await clearDeferredProfileFlag();
 				return { success: false, error: "Unexpected authentication result" };
 			}
 
+			await clearAuthReturnRoute();
 			await clearDeferredProfileFlag();
 			return { success: false, error: "Cancelled or failed" };
 		} catch (error) {
 			console.error("Social Auth Error:", error);
+			await clearAuthReturnRoute();
 			await clearDeferredProfileFlag();
 
 			let errorMessage = "Failed to initiate login";
@@ -185,7 +215,9 @@ export function useSocialAuth() {
 
 			return { success: false, error: errorMessage };
 		} finally {
-			await WebBrowser.coolDownAsync();
+			if (canUseNativeBrowserWarmup) {
+				await WebBrowser.coolDownAsync();
+			}
 		}
 	}, [login, syncUserData]);
 

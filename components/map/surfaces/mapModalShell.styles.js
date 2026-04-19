@@ -42,9 +42,15 @@ export const styles = StyleSheet.create({
 		marginBottom: 10,
 	},
 	headerTitle: {
+		flex: 1,
 		fontSize: 21,
 		lineHeight: 24,
 		fontWeight: "800",
+		textAlign: "center",
+		marginHorizontal: 12,
+	},
+	headerTitleSpacer: {
+		flex: 1,
 	},
 	headerSpacer: {
 		width: 38,

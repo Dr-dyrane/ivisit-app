@@ -35,6 +35,12 @@ export const StorageKeys = {
 	/** Password reset tokens */
 	RESET_TOKENS: `${DB_PREFIX}reset_tokens`,
 
+	/** Public route to restore on startup/reload */
+	LAST_PUBLIC_ROUTE: `${DB_PREFIX}last_public_route`,
+
+	/** Explicit auth return target for OAuth / redirect-based auth */
+	AUTH_RETURN_ROUTE: `${DB_PREFIX}auth_return_route`,
+
 	// ============================================
 	// IMAGES & MEDIA
 	// ============================================
@@ -136,6 +142,8 @@ export const SingletonKeys = [
 	StorageKeys.AUTH_TOKEN,
 	StorageKeys.PENDING_REGISTRATION,
 	StorageKeys.PENDING_OTP,
+	StorageKeys.LAST_PUBLIC_ROUTE,
+	StorageKeys.AUTH_RETURN_ROUTE,
 	StorageKeys.MEDICAL_PROFILE,
 	StorageKeys.EMERGENCY_STATE,
 	StorageKeys.CURRENT_PAYMENT,

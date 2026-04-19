@@ -4,11 +4,11 @@ import { useRouter } from "expo-router";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
 import EmergencyLocationPreviewMap from "../components/emergency/intake/EmergencyLocationPreviewMap";
 import MiniProfileModal from "../components/emergency/MiniProfileModal";
-import AuthInputModal from "../components/register/AuthInputModal";
+
 import MapSheetOrchestrator, {
-	MAP_SHEET_PHASES,
-	MAP_SHEET_SNAP_STATES,
-	getMapSheetHeight,
+  MAP_SHEET_PHASES,
+  MAP_SHEET_SNAP_STATES,
+  getMapSheetHeight,
 } from "../components/map/core/MapSheetOrchestrator";
 import MapGuestProfileModal from "../components/map/MapGuestProfileModal";
 import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
@@ -18,407 +18,470 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useMapExploreFlow } from "../hooks/map/useMapExploreFlow";
 import {
-	getMapViewportSurfaceConfig,
-	getMapViewportVariant,
-	isSidebarMapVariant,
+  getMapViewportSurfaceConfig,
+  getMapViewportVariant,
+  isSidebarMapVariant,
 } from "../components/map/core/mapViewportConfig";
 import { MAP_SEARCH_SHEET_MODES } from "../components/map/surfaces/search/mapSearchSheet.helpers";
-import { navigateToBookBed } from "../utils/navigationHelpers";
+
 import {
-	isCommitPhoneValid,
-	sanitizeCommitEmail,
-	sanitizeCommitPhone,
+  isCommitPhoneValid,
+  sanitizeCommitEmail,
+  sanitizeCommitPhone,
 } from "../components/map/views/commitDetails/mapCommitDetails.helpers";
 
 export default function MapScreen() {
-	const router = useRouter();
-	const { isDarkMode } = useTheme();
-	const { logout, user } = useAuth();
-	const {
-		width,
-		height,
-		browserInsetTop,
-		browserInsetBottom,
-	} = useAuthViewport();
-	const {
-		activeLocation,
-		authModalVisible,
-		careHistoryVisible,
-		currentLocationDetails,
-		discoveredHospitals,
-		featuredHospital,
-		guestProfileEmail,
-		guestProfileVisible,
-		handleChooseCare,
-		openAmbulanceDecision,
-		openBedDecision,
-		openCommitDetails,
-		openCommitPayment,
-		openServiceDetail,
-		closeServiceDetail,
-		confirmServiceDetail,
-		changeServiceDetailService,
-		closeAmbulanceDecision,
-		closeBedDecision,
-		closeCommitDetails,
-		closeCommitPayment,
-		finishCommitPayment,
-		clearCommitFlow,
-		handleMapHospitalPress,
-		handleMapReadinessChange,
-		handleOpenFeaturedHospital,
-		handleCycleFeaturedHospital,
-		handleOpenProfile,
-		openHospitalList,
-		openAmbulanceHospitalList,
-		openBedHospitalList,
-		handleSearchLocation,
-		handleSelectHospital,
-		handleUseCurrentLocation,
-		featuredHospitals,
-		isMapFrameReady,
-		loadingBackgroundImageUri,
-		mapLoadingState,
-		isSignedIn,
-		nearestHospital,
-		nearestHospitalMeta,
-		nearbyBedHospitals,
-		nearbyHospitalCount,
-		openSearchSheet,
-		closeHospitalDetail,
-		closeSearchSheet,
-		profileImageSource,
-		profileModalVisible,
-		recentVisits,
-		recentVisitsVisible,
-		searchSheetMode,
-		sheetPhase,
-		sheetPayload,
-		selectedCare,
-		serviceSelectionsByHospital,
-		setHospitalServiceSelection,
-		setAuthModalVisible,
-		setCareHistoryVisible,
-		setGuestProfileEmail,
-		setGuestProfileVisible,
-		setProfileModalVisible,
-		setRecentVisitsVisible,
-		setSheetSnapState,
-		sheetMode,
-		sheetSnapState,
-		totalAvailableBeds,
-		closeHospitalList,
-	} = useMapExploreFlow();
-	const viewportVariant = useMemo(
-		() => getMapViewportVariant({ platform: Platform.OS, width }),
-		[width],
-	);
-	const surfaceConfig = useMemo(
-		() => getMapViewportSurfaceConfig(viewportVariant),
-		[viewportVariant],
-	);
-	const usesSidebarLayout = isSidebarMapVariant(viewportVariant);
-	const renderedSnapState = usesSidebarLayout
-		? MAP_SHEET_SNAP_STATES.EXPANDED
-		: sheetSnapState;
-	const bottomSheetHeight = useMemo(
-		() => (usesSidebarLayout ? 0 : getMapSheetHeight(height, renderedSnapState)),
-		[height, renderedSnapState, usesSidebarLayout],
-	);
-	const sidebarWidth = useMemo(
-		() =>
-			usesSidebarLayout
-				? Math.min(
-						surfaceConfig.sidebarMaxWidth || Math.max(400, width * 0.36),
-						Math.max(320, width - 48),
-					)
-				: 0,
-		[surfaceConfig.sidebarMaxWidth, usesSidebarLayout, width],
-	);
-	const sidebarOcclusionWidth = useMemo(
-		() =>
-			usesSidebarLayout
-				? sidebarWidth + Math.max(0, Number(surfaceConfig.sidebarOuterInset || 0))
-				: 0,
-		[sidebarWidth, surfaceConfig.sidebarOuterInset, usesSidebarLayout],
-	);
-	const hasActiveMapModal =
-		profileModalVisible ||
-		guestProfileVisible ||
-		careHistoryVisible ||
-		recentVisitsVisible ||
-		authModalVisible;
-	const handleProfileSignOut = useCallback(async () => {
-		const result = await logout();
-		if (result?.success) {
-			clearCommitFlow?.();
-			setGuestProfileEmail("");
-		}
-		return result;
-	}, [clearCommitFlow, logout, setGuestProfileEmail]);
-	const hasFocusedSheetPhase = sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT;
-	const shouldShowMapControls = usesSidebarLayout
-		? !hasActiveMapModal && !hasFocusedSheetPhase
-		: renderedSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED &&
-			!hasActiveMapModal &&
-			!hasFocusedSheetPhase;
+  const router = useRouter();
+  const { isDarkMode } = useTheme();
+  const { logout, user } = useAuth();
+  const { width, height, browserInsetTop, browserInsetBottom } =
+    useAuthViewport();
+  const {
+    activeLocation,
+    authModalVisible,
+    careHistoryVisible,
+    currentLocationDetails,
+    discoveredHospitals,
+    featuredHospital,
+    guestProfileEmail,
+    guestProfileVisible,
+    handleChooseCare,
+    openAmbulanceDecision,
+    openBedDecision,
+    openCommitDetails,
+    openCommitPayment,
+    openServiceDetail,
+    closeServiceDetail,
+    confirmServiceDetail,
+    changeServiceDetailService,
+    closeAmbulanceDecision,
+    closeBedDecision,
+    closeCommitDetails,
+    closeCommitPayment,
+    finishCommitPayment,
+    clearCommitFlow,
+    handleMapHospitalPress,
+    handleMapReadinessChange,
+    handleOpenFeaturedHospital,
+    handleCycleFeaturedHospital,
+    handleOpenProfile,
+    openHospitalList,
+    openAmbulanceHospitalList,
+    openBedHospitalList,
+    handleSearchLocation,
+    handleSelectHospital,
+    handleUseCurrentLocation,
+    featuredHospitals,
+    isMapFrameReady,
+    loadingBackgroundImageUri,
+    mapLoadingState,
+    isSignedIn,
+    nearestHospital,
+    nearestHospitalMeta,
+    nearbyBedHospitals,
+    nearbyHospitalCount,
+    openSearchSheet,
+    closeHospitalDetail,
+    closeSearchSheet,
+    profileImageSource,
+    profileModalVisible,
+    recentVisits,
+    recentVisitsVisible,
+    searchSheetMode,
+    sheetPhase,
+    sheetPayload,
+    selectedCare,
+    serviceSelectionsByHospital,
+    setHospitalServiceSelection,
+    setAuthModalVisible,
+    setCareHistoryVisible,
+    setGuestProfileVisible,
+    setProfileModalVisible,
+    setRecentVisitsVisible,
+    setSheetSnapState,
+    sheetMode,
+    sheetSnapState,
+    totalAvailableBeds,
+    closeHospitalList,
+  } = useMapExploreFlow(); // eslint-disable-line no-unused-vars -- setAuthModalVisible kept for store compat
+  const viewportVariant = useMemo(
+    () => getMapViewportVariant({ platform: Platform.OS, width }),
+    [width],
+  );
+  const surfaceConfig = useMemo(
+    () => getMapViewportSurfaceConfig(viewportVariant),
+    [viewportVariant],
+  );
+  const usesSidebarLayout = isSidebarMapVariant(viewportVariant);
+  const renderedSnapState = usesSidebarLayout
+    ? MAP_SHEET_SNAP_STATES.EXPANDED
+    : sheetSnapState;
+  const bottomSheetHeight = useMemo(
+    () =>
+      usesSidebarLayout ? 0 : getMapSheetHeight(height, renderedSnapState),
+    [height, renderedSnapState, usesSidebarLayout],
+  );
+  const sidebarWidth = useMemo(
+    () =>
+      usesSidebarLayout
+        ? Math.min(
+            surfaceConfig.sidebarMaxWidth || Math.max(400, width * 0.36),
+            Math.max(320, width - 48),
+          )
+        : 0,
+    [surfaceConfig.sidebarMaxWidth, usesSidebarLayout, width],
+  );
+  const sidebarOcclusionWidth = useMemo(
+    () =>
+      usesSidebarLayout
+        ? sidebarWidth +
+          Math.max(0, Number(surfaceConfig.sidebarOuterInset || 0))
+        : 0,
+    [sidebarWidth, surfaceConfig.sidebarOuterInset, usesSidebarLayout],
+  );
+  const hasActiveMapModal =
+    profileModalVisible ||
+    guestProfileVisible ||
+    careHistoryVisible ||
+    recentVisitsVisible ||
+    authModalVisible;
+  const handleProfileSignOut = useCallback(async () => {
+    const result = await logout();
+    if (result?.success) {
+      clearCommitFlow?.();
+    }
+    return result;
+  }, [clearCommitFlow, logout]);
+  const hasFocusedSheetPhase = sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT;
+  const shouldShowMapControls = usesSidebarLayout
+    ? !hasActiveMapModal && !hasFocusedSheetPhase
+    : renderedSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED &&
+      !hasActiveMapModal &&
+      !hasFocusedSheetPhase;
 
-	useEffect(() => {
-		if (usesSidebarLayout && sheetSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED) {
-			setSheetSnapState(MAP_SHEET_SNAP_STATES.EXPANDED);
-		}
-	}, [setSheetSnapState, sheetSnapState, usesSidebarLayout]);
+  useEffect(() => {
+    if (
+      usesSidebarLayout &&
+      sheetSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED
+    ) {
+      setSheetSnapState(MAP_SHEET_SNAP_STATES.EXPANDED);
+    }
+  }, [setSheetSnapState, sheetSnapState, usesSidebarLayout]);
 
-	const handleUseHospital = useCallback(
-		(hospital) => {
-			const hospitalId = hospital?.id || featuredHospital?.id || nearestHospital?.id;
-			if (!hospitalId) return;
+  const handleUseHospital = useCallback(
+    (hospital) => {
+      const hospitalId =
+        hospital?.id || featuredHospital?.id || nearestHospital?.id;
+      if (!hospitalId) return;
 
-			// Hospital detail stays upstream of commit/auth. Its primary CTA must
-			// route into the correct decision phase rather than bypassing into the
-			// legacy request route.
-			if (selectedCare === "both") {
-				openAmbulanceDecision(hospital || null);
-				return;
-			}
+      // Hospital detail stays upstream of commit/auth. Its primary CTA must
+      // route into the correct decision phase rather than bypassing into the
+      // legacy request route.
+      if (selectedCare === "both") {
+        openAmbulanceDecision(hospital || null);
+        return;
+      }
 
-			if (selectedCare === "bed") {
-				openBedDecision(hospital || null, "bed");
-				return;
-			}
+      if (selectedCare === "bed") {
+        openBedDecision(hospital || null, "bed");
+        return;
+      }
 
-			openAmbulanceDecision(hospital || null);
-		},
-		[
-			featuredHospital?.id,
-			nearestHospital?.id,
-			openAmbulanceDecision,
-			openBedDecision,
-			selectedCare,
-		],
-	);
+      openAmbulanceDecision(hospital || null);
+    },
+    [
+      featuredHospital?.id,
+      nearestHospital?.id,
+      openAmbulanceDecision,
+      openBedDecision,
+      selectedCare,
+    ],
+  );
 
-	const handleConfirmAmbulanceDecision = useCallback(
-		(hospital, transport) => {
-			const hospitalId = hospital?.id || featuredHospital?.id || nearestHospital?.id;
-			if (!hospitalId) return;
+  const handleConfirmAmbulanceDecision = useCallback(
+    (hospital, transport) => {
+      const hospitalId =
+        hospital?.id || featuredHospital?.id || nearestHospital?.id;
+      if (!hospitalId) return;
 
-			if (selectedCare === "both") {
-				openBedDecision(hospital || null, "both", {
-					savedTransport: transport
-						? {
-								id: transport.id || null,
-								hospitalId,
-								title: transport.title || transport.service_name || "Transport",
-								priceText: transport.priceText || null,
-								metaText: transport.metaText || null,
-								serviceType: transport.service_type || transport.serviceType || null,
-								tierKey: transport.tierKey || transport.visualProfile?.key || null,
-							}
-						: null,
-				});
-				return;
-			}
+      if (selectedCare === "both") {
+        openBedDecision(hospital || null, "both", {
+          savedTransport: transport
+            ? {
+                id: transport.id || null,
+                hospitalId,
+                title: transport.title || transport.service_name || "Transport",
+                priceText: transport.priceText || null,
+                metaText: transport.metaText || null,
+                serviceType:
+                  transport.service_type || transport.serviceType || null,
+                tierKey:
+                  transport.tierKey || transport.visualProfile?.key || null,
+              }
+            : null,
+        });
+        return;
+      }
 
-			const resolvedEmail = sanitizeCommitEmail(user?.email);
-			const resolvedPhone = sanitizeCommitPhone(user?.phone);
-			if (resolvedEmail && isCommitPhoneValid(resolvedPhone)) {
-				openCommitPayment(hospital || null, transport || null, {
-					draft: {
-						email: resolvedEmail,
-						phone: resolvedPhone,
-					},
-				});
-				return;
-			}
+      const resolvedEmail = sanitizeCommitEmail(user?.email);
+      const resolvedPhone = sanitizeCommitPhone(user?.phone);
+      if (resolvedEmail && isCommitPhoneValid(resolvedPhone)) {
+        openCommitPayment(hospital || null, transport || null, {
+          draft: {
+            email: resolvedEmail,
+            phone: resolvedPhone,
+          },
+          sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
+          sourceSnapState: sheetSnapState,
+          sourcePayload: null,
+        });
+        return;
+      }
 
-			openCommitDetails(hospital || null, transport || null);
-		},
-		[
-			featuredHospital?.id,
-			nearestHospital?.id,
-			openCommitDetails,
-			openBedDecision,
-			openCommitPayment,
-			selectedCare,
-			user?.email,
-			user?.phone,
-		],
-	);
+      openCommitDetails(hospital || null, transport || null);
+    },
+    [
+      featuredHospital?.id,
+      nearestHospital?.id,
+      openCommitDetails,
+      openBedDecision,
+      openCommitPayment,
+      selectedCare,
+      sheetSnapState,
+      user?.email,
+      user?.phone,
+    ],
+  );
 
-	const handleConfirmCommitDetails = useCallback(
-		(hospital, transport, draft) => {
-			const hospitalId = hospital?.id || featuredHospital?.id || nearestHospital?.id;
-			if (!hospitalId) return;
+  const handleConfirmCommitDetails = useCallback(
+    (hospital, transport, draft) => {
+      const hospitalId =
+        hospital?.id || featuredHospital?.id || nearestHospital?.id;
+      if (!hospitalId) return;
 
-			openCommitPayment(hospital || null, transport || null, {
-				draft: draft || null,
-			});
-		},
-		[
-			featuredHospital?.id,
-			nearestHospital?.id,
-			openCommitPayment,
-		],
-	);
+      // Thread the full bed-booking context forward so payment can display
+      // the correct summary (room title, price, careIntent) and so that
+      // backing from payment can restore the bed decision with all state
+      // intact (savedTransport for "both" flow, careIntent, etc.).
+      openCommitPayment(hospital || null, transport || null, {
+        draft: draft || null,
+        careIntent: draft?.careIntent || sheetPayload?.careIntent || null,
+        roomId: draft?.roomId || sheetPayload?.roomId || null,
+        room: sheetPayload?.room || null,
+        sourcePhase:
+          sheetPayload?.sourcePhase || MAP_SHEET_PHASES.COMMIT_DETAILS,
+        // Preserve the bed-decision sourcePayload so closeCommitPayment can
+        // restore BED_DECISION with savedTransport / careIntent when backing.
+        sourcePayload: sheetPayload?.sourcePayload || null,
+      });
+    },
+    [
+      featuredHospital?.id,
+      nearestHospital?.id,
+      openCommitPayment,
+      sheetPayload?.careIntent,
+      sheetPayload?.room,
+      sheetPayload?.roomId,
+      sheetPayload?.sourcePayload,
+      sheetPayload?.sourcePhase,
+    ],
+  );
 
-	const handleConfirmBedDecision = useCallback(
-		(hospital, room, transport, careIntent = "bed") => {
-			const hospitalId = hospital?.id || featuredHospital?.id || nearestHospital?.id;
-			if (!hospitalId) return;
-			const storedAmbulanceServiceId =
-				serviceSelectionsByHospital[hospitalId]?.ambulanceServiceId ?? null;
+  const handleConfirmBedDecision = useCallback(
+    (hospital, room, _transport, careIntent = "bed") => {
+      const hospitalId =
+        hospital?.id || featuredHospital?.id || nearestHospital?.id;
+      if (!hospitalId) return;
 
-			navigateToBookBed({
-				router,
-				hospitalId,
-				method: "push",
-				params: {
-					roomId: room?.id || null,
-					ambulanceServiceId: transport?.id || storedAmbulanceServiceId,
-					careIntent,
-				},
-			});
-		},
-		[featuredHospital?.id, nearestHospital?.id, router, serviceSelectionsByHospital],
-	);
+      // For the "both" flow the ambulance transport is stored in the sheet
+      // payload as savedTransport; the bed decision stage does not re-pass it.
+      const resolvedTransport =
+        _transport ||
+        (careIntent === "both" ? sheetPayload?.savedTransport || null : null);
 
-	return (
-		<View style={[styles.screen, { backgroundColor: isDarkMode ? "#08101B" : "#EEF3F8" }]}>
-			<EmergencyLocationPreviewMap
-				location={activeLocation}
-				hospitals={discoveredHospitals}
-				selectedHospitalId={nearestHospital?.id || null}
-				placeLabel={currentLocationDetails?.primaryText}
-				interactive={isMapFrameReady}
-				onReadinessChange={handleMapReadinessChange}
-				bottomSheetHeight={bottomSheetHeight}
-				leftPanelWidth={sidebarOcclusionWidth}
-				showControls={shouldShowMapControls}
-				controlsMode={surfaceConfig.mapControlsMode}
-				controlsTopOffset={surfaceConfig.mapControlsTopInset + browserInsetTop}
-				controlsRightOffset={surfaceConfig.mapControlsRightInset}
-				controlsBottomOffsetBase={
-					surfaceConfig.mapControlsBottomInsetBase + browserInsetBottom
-				}
-				onHospitalPress={handleMapHospitalPress}
-				showInternalSkeleton={false}
-			/>
+      // sourcePayload preserves the bed-decision context so that
+      // closeCommitPayment can restore BED_DECISION with all state intact:
+      // - savedTransport for the "both" flow (ambulance already confirmed)
+      // - careIntent so the decision sheet reopens in the correct mode
+      //
+      // Decision rule: always REPLACE on re-confirm, never append.
+      // For "both": transport is preserved via savedTransport; the user
+      // explicitly changes it by going back to AMBULANCE_DECISION.
+      const bedDecisionSourcePayload = {
+        careIntent,
+        savedTransport:
+          careIntent === "both" ? sheetPayload?.savedTransport || null : null,
+      };
 
-			<View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-				<MapSheetOrchestrator
-					phase={sheetPhase}
-					mode={sheetMode}
-					snapState={renderedSnapState}
-					screenHeight={height}
-					nearestHospital={nearestHospital}
-					nearestHospitalMeta={nearestHospitalMeta}
-					selectedCare={selectedCare}
-					onOpenSearch={() => openSearchSheet(MAP_SEARCH_SHEET_MODES.SEARCH)}
-					onOpenHospitals={openHospitalList}
-					onChooseCare={handleChooseCare}
-					onOpenProfile={handleOpenProfile}
-					onOpenCareHistory={() => setCareHistoryVisible(true)}
-					onOpenAmbulanceHospitals={openAmbulanceHospitalList}
-					onOpenBedHospitals={openBedHospitalList}
-					onOpenRecents={() => setRecentVisitsVisible(true)}
-					onOpenFeaturedHospital={handleOpenFeaturedHospital}
-					onCycleHospital={featuredHospitals.length > 1 ? handleCycleFeaturedHospital : undefined}
-					onSnapStateChange={setSheetSnapState}
-					onCloseSearch={closeSearchSheet}
-					onCloseHospitals={closeHospitalList}
-					onCloseAmbulanceDecision={closeAmbulanceDecision}
-					onCloseBedDecision={closeBedDecision}
-					onCloseCommitDetails={closeCommitDetails}
-					onCloseCommitPayment={closeCommitPayment}
-					onCloseHospitalDetail={closeHospitalDetail}
-					onConfirmAmbulanceDecision={handleConfirmAmbulanceDecision}
-					onConfirmBedDecision={handleConfirmBedDecision}
-					onConfirmCommitDetails={handleConfirmCommitDetails}
-					onConfirmCommitPayment={finishCommitPayment}
-					onOpenServiceDetail={openServiceDetail}
-					onCloseServiceDetail={closeServiceDetail}
-					onConfirmServiceDetail={confirmServiceDetail}
-					onChangeServiceDetail={changeServiceDetailService}
-					onSelectHospitalService={setHospitalServiceSelection}
-					searchMode={searchSheetMode}
-					hospitals={discoveredHospitals}
-					selectedHospitalId={nearestHospital?.id || null}
-					recommendedHospitalId={discoveredHospitals?.[0]?.id || null}
-					featuredHospital={featuredHospital}
-					sheetPayload={sheetPayload}
-					currentLocation={currentLocationDetails}
-					onSelectHospital={handleSelectHospital}
-					onUseCurrentLocation={handleUseCurrentLocation}
-					onSelectLocation={handleSearchLocation}
-					onChangeHospitalLocation={() => {
-						closeHospitalList();
-						openSearchSheet(MAP_SEARCH_SHEET_MODES.LOCATION);
-					}}
-					onUseHospital={handleUseHospital}
-					profileImageSource={profileImageSource}
-					activeLocation={activeLocation}
-					serviceSelectionsByHospital={serviceSelectionsByHospital}
-					isSignedIn={isSignedIn}
-					nearbyHospitalCount={nearbyHospitalCount}
-					totalAvailableBeds={totalAvailableBeds}
-					nearbyBedHospitals={nearbyBedHospitals}
-					recentVisits={recentVisits}
-					featuredHospitals={featuredHospitals}
-				/>
-			</View>
+      const resolvedEmail = sanitizeCommitEmail(user?.email);
+      const resolvedPhone = sanitizeCommitPhone(user?.phone);
 
-			<MapExploreLoadingOverlay
-				screenHeight={height}
-				snapState={renderedSnapState}
-				status={mapLoadingState}
-				visible={mapLoadingState?.visible}
-				backgroundImageUri={loadingBackgroundImageUri}
-			/>
+      // Skip commit details when identity is already complete.
+      if (resolvedEmail && isCommitPhoneValid(resolvedPhone)) {
+        openCommitPayment(hospital || null, resolvedTransport, {
+          draft: { email: resolvedEmail, phone: resolvedPhone },
+          careIntent,
+          roomId: room?.id || null,
+          room: room || null,
+          sourcePhase: MAP_SHEET_PHASES.BED_DECISION,
+          sourcePayload: bedDecisionSourcePayload,
+        });
+        return;
+      }
 
-			<MiniProfileModal
-				visible={profileModalVisible}
-				onClose={() => setProfileModalVisible(false)}
-				onSignOut={handleProfileSignOut}
-			/>
+      openCommitDetails(hospital || null, resolvedTransport, {
+        careIntent,
+        roomId: room?.id || null,
+        room: room || null,
+        sourcePhase: MAP_SHEET_PHASES.BED_DECISION,
+        sourcePayload: bedDecisionSourcePayload,
+      });
+    },
+    [
+      featuredHospital?.id,
+      nearestHospital?.id,
+      openCommitDetails,
+      openCommitPayment,
+      sheetPayload?.savedTransport,
+      user?.email,
+      user?.phone,
+    ],
+  );
 
-			<MapGuestProfileModal
-				visible={guestProfileVisible}
-				onClose={() => setGuestProfileVisible(false)}
-				emailValue={guestProfileEmail}
-				onEmailChange={setGuestProfileEmail}
-				onContinue={() => {
-					setGuestProfileVisible(false);
-					setAuthModalVisible(true);
-				}}
-			/>
+  return (
+    <View
+      style={[
+        styles.screen,
+        { backgroundColor: isDarkMode ? "#08101B" : "#EEF3F8" },
+      ]}
+    >
+      <EmergencyLocationPreviewMap
+        location={activeLocation}
+        hospitals={discoveredHospitals}
+        selectedHospitalId={nearestHospital?.id || null}
+        placeLabel={currentLocationDetails?.primaryText}
+        interactive={isMapFrameReady}
+        onReadinessChange={handleMapReadinessChange}
+        bottomSheetHeight={bottomSheetHeight}
+        leftPanelWidth={sidebarOcclusionWidth}
+        showControls={shouldShowMapControls}
+        controlsMode={surfaceConfig.mapControlsMode}
+        controlsTopOffset={surfaceConfig.mapControlsTopInset + browserInsetTop}
+        controlsRightOffset={surfaceConfig.mapControlsRightInset}
+        controlsBottomOffsetBase={
+          surfaceConfig.mapControlsBottomInsetBase + browserInsetBottom
+        }
+        onHospitalPress={handleMapHospitalPress}
+        showInternalSkeleton={false}
+      />
 
-			<MapCareHistoryModal
-				visible={careHistoryVisible}
-				onClose={() => setCareHistoryVisible(false)}
-				onChooseCare={(mode) => {
-					setCareHistoryVisible(false);
-					handleChooseCare(mode);
-				}}
-			/>
+      <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+        <MapSheetOrchestrator
+          phase={sheetPhase}
+          mode={sheetMode}
+          snapState={renderedSnapState}
+          screenHeight={height}
+          nearestHospital={nearestHospital}
+          nearestHospitalMeta={nearestHospitalMeta}
+          selectedCare={selectedCare}
+          onOpenSearch={() => openSearchSheet(MAP_SEARCH_SHEET_MODES.SEARCH)}
+          onOpenHospitals={openHospitalList}
+          onChooseCare={handleChooseCare}
+          onOpenProfile={handleOpenProfile}
+          onOpenCareHistory={() => setCareHistoryVisible(true)}
+          onOpenAmbulanceHospitals={openAmbulanceHospitalList}
+          onOpenBedHospitals={openBedHospitalList}
+          onOpenRecents={() => setRecentVisitsVisible(true)}
+          onOpenFeaturedHospital={handleOpenFeaturedHospital}
+          onCycleHospital={
+            featuredHospitals.length > 1
+              ? handleCycleFeaturedHospital
+              : undefined
+          }
+          onSnapStateChange={setSheetSnapState}
+          onCloseSearch={closeSearchSheet}
+          onCloseHospitals={closeHospitalList}
+          onCloseAmbulanceDecision={closeAmbulanceDecision}
+          onCloseBedDecision={closeBedDecision}
+          onCloseCommitDetails={closeCommitDetails}
+          onCloseCommitPayment={closeCommitPayment}
+          onCloseHospitalDetail={closeHospitalDetail}
+          onConfirmAmbulanceDecision={handleConfirmAmbulanceDecision}
+          onConfirmBedDecision={handleConfirmBedDecision}
+          onConfirmCommitDetails={handleConfirmCommitDetails}
+          onConfirmCommitPayment={finishCommitPayment}
+          onOpenServiceDetail={openServiceDetail}
+          onCloseServiceDetail={closeServiceDetail}
+          onConfirmServiceDetail={confirmServiceDetail}
+          onChangeServiceDetail={changeServiceDetailService}
+          onSelectHospitalService={setHospitalServiceSelection}
+          searchMode={searchSheetMode}
+          hospitals={discoveredHospitals}
+          selectedHospitalId={nearestHospital?.id || null}
+          recommendedHospitalId={discoveredHospitals?.[0]?.id || null}
+          featuredHospital={featuredHospital}
+          sheetPayload={sheetPayload}
+          currentLocation={currentLocationDetails}
+          onSelectHospital={handleSelectHospital}
+          onUseCurrentLocation={handleUseCurrentLocation}
+          onSelectLocation={handleSearchLocation}
+          onChangeHospitalLocation={() => {
+            closeHospitalList();
+            openSearchSheet(MAP_SEARCH_SHEET_MODES.LOCATION);
+          }}
+          onUseHospital={handleUseHospital}
+          profileImageSource={profileImageSource}
+          activeLocation={activeLocation}
+          serviceSelectionsByHospital={serviceSelectionsByHospital}
+          isSignedIn={isSignedIn}
+          nearbyHospitalCount={nearbyHospitalCount}
+          totalAvailableBeds={totalAvailableBeds}
+          nearbyBedHospitals={nearbyBedHospitals}
+          recentVisits={recentVisits}
+          featuredHospitals={featuredHospitals}
+        />
+      </View>
 
-			<MapRecentVisitsModal
-				visible={recentVisitsVisible}
-				onClose={() => setRecentVisitsVisible(false)}
-			/>
+      <MapExploreLoadingOverlay
+        screenHeight={height}
+        snapState={renderedSnapState}
+        status={mapLoadingState}
+        visible={mapLoadingState?.visible}
+        backgroundImageUri={loadingBackgroundImageUri}
+      />
 
-			<AuthInputModal
-				visible={authModalVisible}
-				onClose={() => setAuthModalVisible(false)}
-				type="email"
-				prefillValue={guestProfileEmail}
-			/>
-		</View>
-	);
+      <MiniProfileModal
+        visible={profileModalVisible}
+        onClose={() => setProfileModalVisible(false)}
+        onSignOut={handleProfileSignOut}
+        showMapShortcut={false}
+      />
+
+      <MapGuestProfileModal
+        visible={guestProfileVisible}
+        onClose={() => setGuestProfileVisible(false)}
+        onAuthSuccess={() => setGuestProfileVisible(false)}
+      />
+
+      <MapCareHistoryModal
+        visible={careHistoryVisible}
+        onClose={() => setCareHistoryVisible(false)}
+        onChooseCare={(mode) => {
+          setCareHistoryVisible(false);
+          handleChooseCare(mode);
+        }}
+      />
+
+      <MapRecentVisitsModal
+        visible={recentVisitsVisible}
+        onClose={() => setRecentVisitsVisible(false)}
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-	screen: {
-		flex: 1,
-	},
+  screen: {
+    flex: 1,
+  },
 });

@@ -41,14 +41,9 @@ export function MapCommitPaymentSummaryCard({
 	titleColor,
 	mutedColor,
 	surfaceColor,
-	accentColor,
-	hospitalName,
-	hospitalSubtitle,
-	hospitalImageSource,
-	transportTitle,
-	transportSubtitle,
-	transportImageSource,
-	pickupLabel,
+	headerTitle,
+	headerSubtitle,
+	selectionRows = [],
 	totalCostLabel,
 	rowSurfaceColor,
 	mediaSurfaceColor,
@@ -68,10 +63,10 @@ export function MapCommitPaymentSummaryCard({
 			<View style={styles.passHeader}>
 				<View style={styles.passHeaderCopy}>
 					<Text numberOfLines={1} style={[styles.passHeaderTitle, { color: titleColor }]}>
-						{hospitalName}
+						{headerTitle}
 					</Text>
 					<Text numberOfLines={1} style={[styles.passHeaderSubtitle, { color: mutedColor }]}>
-						{transportTitle}
+						{headerSubtitle}
 					</Text>
 				</View>
 				{totalCostLabel ? (
@@ -84,38 +79,20 @@ export function MapCommitPaymentSummaryCard({
 				) : null}
 			</View>
 			<View style={styles.passRowStack}>
-				<MapCommitPaymentPassRow
-					imageSource={hospitalImageSource}
-					iconName="business"
-					title={hospitalName}
-					subtitle={hospitalSubtitle || "Hospital"}
-					titleColor={titleColor}
-					mutedColor={mutedColor}
-					iconColor={accentColor}
-					rowSurfaceColor={rowSurfaceColor}
-					mediaSurfaceColor={mediaSurfaceColor}
-				/>
-				<MapCommitPaymentPassRow
-					imageSource={transportImageSource}
-					iconName="car-sport"
-					title={transportTitle}
-					subtitle={transportSubtitle || "Transport"}
-					titleColor={titleColor}
-					mutedColor={mutedColor}
-					iconColor={accentColor}
-					rowSurfaceColor={rowSurfaceColor}
-					mediaSurfaceColor={mediaSurfaceColor}
-				/>
-				<MapCommitPaymentPassRow
-					iconName="location"
-					title="Pickup"
-					subtitle={pickupLabel}
-					titleColor={titleColor}
-					mutedColor={mutedColor}
-					iconColor={accentColor}
-					rowSurfaceColor={rowSurfaceColor}
-					mediaSurfaceColor={mediaSurfaceColor}
-				/>
+				{selectionRows.map((row) => (
+					<MapCommitPaymentPassRow
+						key={`${row.title}-${row.subtitle}-${row.iconName || "row"}`}
+						imageSource={row.imageSource}
+						iconName={row.iconName}
+						title={row.title}
+						subtitle={row.subtitle}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						iconColor={row.iconColor}
+						rowSurfaceColor={rowSurfaceColor}
+						mediaSurfaceColor={mediaSurfaceColor}
+					/>
+				))}
 			</View>
 		</View>
 	);
@@ -276,7 +253,11 @@ export function MapCommitPaymentStatusCard({
 	const iconName =
 		statusKind === "waiting_approval"
 			? "time-outline"
-			: "checkmark-done-circle-outline";
+			: statusKind === "processing_payment"
+				? "card-outline"
+				: statusKind === "finalizing_dispatch"
+					? "sync-outline"
+					: "checkmark-done-circle-outline";
 
 	return (
 		<View style={[styles.statusCard, { backgroundColor: surfaceColor }]}>

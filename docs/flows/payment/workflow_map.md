@@ -11,6 +11,7 @@ This map covers both emergency in-flow payments and wallet/payment-management fl
 
 ### Entry Points
 
+- `components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`
 - `components/emergency/EmergencyRequestModal.jsx`
 - `hooks/emergency/useRequestFlow.js`
 
@@ -23,14 +24,67 @@ This map covers both emergency in-flow payments and wallet/payment-management fl
 3. Request creation call:
    - `useRequestFlow.handleRequestInitiated` -> `emergencyRequestsService.create`
    - RPC `create_emergency_v4` creates `emergency_requests` + `payments` (+ `visits`)
-4. If cash:
+4. If saved card:
+   - request is created in a dispatch-gated state (`pending_approval` internally, `payment_status = pending`)
+   - `create-payment-intent` reuses the already-computed emergency fee instead of recalculating fee from the gross patient total
+   - client confirms the saved Stripe card
+   - Stripe webhook calls `complete_card_payment`
+   - only then does dispatch release and the sheet move to the active ambulance lane
+5. If cash:
    - Request enters `pending_approval`
    - `notificationDispatcher.dispatchCashApprovalToOrgAdmins`
    - RPC `notify_cash_approval_org_admins`
    - Modal waits on realtime approval channels
-5. Org admin decision:
+6. Org admin decision:
    - Approve: RPC `approve_cash_payment` -> request moves forward
    - Decline: RPC `decline_cash_payment` -> request becomes `payment_declined`
+
+### Current Emergency Pricing Contract
+
+Current audited truth:
+
+- `calculate_emergency_cost_v2` is the base pricing source, but today it returns service subtotal only:
+  - base price
+  - distance surcharge
+  - no explicit service/platform fee row yet
+- legacy emergency payment UI then computes the patient-facing fee client-side from `organizations.ivisit_fee_percentage`
+- `/map` `COMMIT_PAYMENT` must follow that same fee-inclusive display rule until the RPC is hardened
+
+Locked interim money model for emergency checkout:
+
+- `subtotal`
+  - service subtotal from pricing RPC before service/platform fee
+- `feeAmount`
+  - fee derived from organization `ivisit_fee_percentage`
+  - current legacy-compatible rule applies fee to `base_cost`
+- `grossTotal`
+  - `subtotal + feeAmount`
+  - this is the number the patient should see in the summary, breakdown, and primary CTA
+- `breakdown`
+  - must include the fee row when `feeAmount > 0`
+
+Current implementation note:
+
+- shared fee-enrichment now lives in `services/pricingService.augmentEmergencyCostForCheckout(...)`
+- both `EmergencyRequestModal.jsx` and `/map` `MapCommitPaymentStageBase.jsx` use that helper so the visible total stays aligned
+
+### Locked Card Lane
+
+Current live truth for the map card lane:
+
+- `create_emergency_v4` still starts from the request snapshot subtotal contract so cash approval behavior remains stable
+- `create-payment-intent` then becomes the card-lane source of truth:
+  - it reuses the stored emergency fee amount
+  - it charges the patient-facing gross total
+  - it sets Stripe `application_fee_amount` from the stored fee, not from a second percentage pass on the gross total
+  - it syncs the emergency payment row and request `total_cost` to that gross total before confirmation
+- dispatch is not released on card selection alone
+- dispatch is released only after Stripe confirmation + webhook finalization via `complete_card_payment`
+
+Remaining cleanup, still separate from this lock:
+
+- the request-creation subtotal/gross contract should eventually be unified so the first insert and the Stripe lane no longer need the follow-up total sync
+- wallet checkout inside `/map` commit payment is still intentionally not treated as a truthful live lane here
 
 ## Lane B: Standalone Payment and Wallet
 
@@ -86,6 +140,7 @@ This map covers both emergency in-flow payments and wallet/payment-management fl
 - `manage-payment-methods`
 - `create-payment-intent`
 - `create-payout`
+- `stripe-webhook`
 
 ## Trigger and Automation Dependencies
 

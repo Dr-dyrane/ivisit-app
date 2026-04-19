@@ -12,6 +12,8 @@ import { useVisits } from "../../../../contexts/VisitsContext";
 import { demoEcosystemService } from "../../../../services/demoEcosystemService";
 import { paymentService } from "../../../../services/paymentService";
 import { serviceCostService } from "../../../../services/serviceCostService";
+import { augmentEmergencyCostForCheckout } from "../../../../services/pricingService";
+import { confirmSavedCardPayment } from "../../../../services/stripeSavedCardConfirmation";
 import {
 	normalizeApiErrorMessage,
 	waitForMinimumPending,
@@ -31,12 +33,14 @@ import { MapCommitDetailsTopSlot } from "../commitDetails/MapCommitDetailsStageP
 import { MAP_COMMIT_PAYMENT_COPY } from "./mapCommitPayment.content";
 import {
 	buildAmbulanceCommitRequest,
+	buildBedCommitRequest,
 	buildCommitPaymentCompletionPayload,
 	buildCommitPaymentCtaLabel,
 	buildCommitPaymentDistanceKm,
 	buildCommitPaymentPickupLabel,
 	buildPendingApprovalState,
 	normalizeCommitPaymentCost,
+	parseCommitPaymentAmount,
 } from "./mapCommitPayment.helpers";
 import {
 	MapCommitPaymentBreakdownCard,
@@ -185,10 +189,52 @@ export default function MapCommitPaymentStageBase({
 	const warningColor = isDarkMode ? "#FDBA74" : "#D97706";
 	const errorColor = isDarkMode ? "#FCA5A5" : "#B91C1C";
 	const infoColor = isDarkMode ? "#CBD5E1" : "#475569";
+	const room = payload?.room || null;
+	const careIntent = payload?.careIntent || null;
+	const hasRoomSelection = Boolean(
+		room?.id || payload?.roomId || room?.title || room?.room_type,
+	);
+	const isCombinedFlow = careIntent === "both" && hasRoomSelection;
+	const isBedFlow = !isCombinedFlow && hasRoomSelection;
+	const isAmbulanceFlow = !isCombinedFlow && !isBedFlow;
+	const hospitalName =
+		hospital?.name || hospital?.title || hospital?.service_name || "Hospital";
+	const hospitalSubtitle =
+		hospital?.address ||
+		hospital?.formatted_address ||
+		hospital?.addressLine ||
+		"Hospital";
+	const transportTitle =
+		transport?.title || transport?.service_name || transport?.label || "Transport";
+	const transportSubtitle =
+		transport?.metaText ||
+		transport?.service_name ||
+		transport?.service_type ||
+		"Selected transport";
+	const roomTitle = room?.title || room?.room_type || "Bed reservation";
+	const roomSubtitle =
+		room?.metaText || room?.room_type || room?.service_name || "Selected room";
+	const selectionHeaderLabel = isCombinedFlow
+		? "Transport + admission"
+		: isBedFlow
+			? roomTitle
+			: transportTitle;
+	const requestVerb = isBedFlow ? "booking" : "dispatch";
+	const costLoadingCopy = isBedFlow
+		? "Locking in booking total..."
+		: isCombinedFlow
+			? "Locking in transport and admission total..."
+			: MAP_COMMIT_PAYMENT_COPY.COST_LOADING;
+	const paymentUnsupportedMessage =
+		"Transport and admission payment is not ready yet.";
 
 	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
 	const [estimatedCost, setEstimatedCost] = useState(() =>
-		normalizeCommitPaymentCost(payload?.pricingSnapshot || null, transport),
+		normalizeCommitPaymentCost(
+			payload?.pricingSnapshot || null,
+			hasRoomSelection ? room : transport,
+			selectionHeaderLabel,
+		),
 	);
 	const [isLoadingCost, setIsLoadingCost] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -215,24 +261,111 @@ export default function MapCommitPaymentStageBase({
 
 			setIsLoadingCost(true);
 			setErrorMessage("");
+			setInfoMessage("");
 			try {
-				const distanceKm = buildCommitPaymentDistanceKm(hospital, currentLocation);
-				const nextCost = await serviceCostService.calculateEmergencyCost("ambulance", {
-					distance: distanceKm,
-					hospitalId: hospital.id,
-					ambulanceType:
-						transport?.service_type || transport?.serviceType || transport?.tierKey || null,
-				});
+				let checkoutCost = null;
+				if (isAmbulanceFlow) {
+					const distanceKm = buildCommitPaymentDistanceKm(hospital, currentLocation);
+					const nextCost = await serviceCostService.calculateEmergencyCost("ambulance", {
+						distance: distanceKm,
+						hospitalId: hospital.id,
+						ambulanceType:
+							transport?.service_type ||
+							transport?.serviceType ||
+							transport?.tierKey ||
+							null,
+					});
+					if (cancelled) return;
+					checkoutCost = await augmentEmergencyCostForCheckout(nextCost, {
+						hospitalId: hospital.id,
+						serviceType: "ambulance",
+					});
+				} else if (isBedFlow) {
+					const roomAmount =
+						parseCommitPaymentAmount(room?.priceText) ??
+						parseCommitPaymentAmount(room?.price);
+					const baseCost =
+						payload?.pricingSnapshot ||
+						(Number.isFinite(roomAmount)
+							? {
+									totalCost: roomAmount,
+									breakdown: [
+										{
+											name: roomTitle,
+											type: "service",
+											cost: roomAmount,
+										},
+									],
+							  }
+							: null);
+					checkoutCost = baseCost
+						? await augmentEmergencyCostForCheckout(baseCost, {
+								hospitalId: hospital.id,
+								serviceType: "bed",
+						  })
+						: null;
+				} else {
+					const transportAmount =
+						parseCommitPaymentAmount(transport?.priceText) ??
+						parseCommitPaymentAmount(transport?.price);
+					const roomAmount =
+						parseCommitPaymentAmount(room?.priceText) ??
+						parseCommitPaymentAmount(room?.price);
+					const combinedBreakdown = [
+						Number.isFinite(transportAmount)
+							? {
+									name: transportTitle,
+									type: "service",
+									cost: transportAmount,
+							  }
+							: null,
+						Number.isFinite(roomAmount)
+							? {
+									name: roomTitle,
+									type: "service",
+									cost: roomAmount,
+							  }
+							: null,
+					].filter(Boolean);
+					const combinedSubtotal = combinedBreakdown.reduce(
+						(sum, item) => sum + Number(item.cost || 0),
+						0,
+					);
+					const baseCost =
+						combinedBreakdown.length > 0
+							? {
+									totalCost: combinedSubtotal,
+									breakdown: combinedBreakdown,
+							  }
+							: null;
+					checkoutCost = baseCost
+						? await augmentEmergencyCostForCheckout(baseCost, {
+								hospitalId: hospital.id,
+								serviceType: "ambulance",
+						  })
+						: null;
+				}
 				if (cancelled) return;
-				const normalized = normalizeCommitPaymentCost(nextCost, transport);
+				const normalized = normalizeCommitPaymentCost(
+					checkoutCost,
+					isBedFlow ? room : transport || room,
+					selectionHeaderLabel,
+				);
 				setEstimatedCost(normalized);
 				if (!normalized) {
 					setInfoMessage(MAP_COMMIT_PAYMENT_COPY.COST_ERROR);
+				} else if (isCombinedFlow) {
+					setInfoMessage(paymentUnsupportedMessage);
 				}
 			} catch (error) {
 				if (cancelled) return;
 				setEstimatedCost((currentCost) =>
-					currentCost || normalizeCommitPaymentCost(null, transport),
+					currentCost ||
+						normalizeCommitPaymentCost(
+							null,
+							isBedFlow ? room : transport || room,
+							selectionHeaderLabel,
+						),
 				);
 				setInfoMessage(MAP_COMMIT_PAYMENT_COPY.COST_ERROR);
 			} finally {
@@ -245,27 +378,27 @@ export default function MapCommitPaymentStageBase({
 		return () => {
 			cancelled = true;
 		};
-	}, [currentLocation, hospital, transport]);
+	}, [
+		currentLocation,
+		hospital,
+		isAmbulanceFlow,
+		isBedFlow,
+		isCombinedFlow,
+		payload?.pricingSnapshot,
+		paymentUnsupportedMessage,
+		room,
+		roomTitle,
+		selectionHeaderLabel,
+		transport,
+		transportTitle,
+	]);
 
-	const transportTitle =
-		transport?.title || transport?.service_name || transport?.label || "Transport";
-	const transportSubtitle =
-		transport?.metaText ||
-		transport?.service_name ||
-		transport?.service_type ||
-		"Selected transport";
-	const hospitalName =
-		hospital?.name || hospital?.title || hospital?.service_name || "Hospital";
-	const hospitalSubtitle =
-		hospital?.address ||
-		hospital?.formatted_address ||
-		hospital?.addressLine ||
-		"Hospital";
 	const hospitalImageSource = getHospitalHeroSource(hospital);
 	const transportImageSource = getHospitalDetailServiceImageSource(
 		transport || {},
 		"ambulance",
 	);
+	const roomImageSource = getHospitalDetailServiceImageSource(room || {}, "room");
 	const pickupLabel = buildCommitPaymentPickupLabel(currentLocation);
 	const totalCostValue = estimatedCost?.totalCost ?? estimatedCost?.total_cost ?? null;
 	const totalCostLabel = Number.isFinite(totalCostValue)
@@ -276,12 +409,97 @@ export default function MapCommitPaymentStageBase({
 		: hospitalName;
 	const footerLabel =
 		submissionState.kind === "idle"
-			? buildCommitPaymentCtaLabel(totalCostValue, MAP_COMMIT_PAYMENT_COPY.CTA_CONFIRM)
+			? buildCommitPaymentCtaLabel(
+					totalCostValue,
+					isCombinedFlow
+						? "Combined payment soon"
+						: isBedFlow
+							? "Confirm booking"
+							: MAP_COMMIT_PAYMENT_COPY.CTA_CONFIRM,
+			  )
 			: MAP_COMMIT_PAYMENT_COPY.CTA_DONE;
+	const requestMetaLabel = submissionState.displayId
+		? `${hospitalName} - ${submissionState.displayId}`
+		: requestMeta;
+	const headerSubtitle = `For ${hospitalName} - ${selectionHeaderLabel}`;
+	const summaryRows = [
+		{
+			imageSource: hospitalImageSource,
+			iconName: "business",
+			title: hospitalName,
+			subtitle: hospitalSubtitle || "Hospital",
+			iconColor: accentColor,
+		},
+		...(isCombinedFlow
+			? [
+					{
+						imageSource: transportImageSource,
+						iconName: "car-sport",
+						title: transportTitle,
+						subtitle: transportSubtitle || "Transport",
+						iconColor: accentColor,
+					},
+			  ]
+			: []),
+		{
+			imageSource: isBedFlow || isCombinedFlow ? roomImageSource : transportImageSource,
+			iconName: isBedFlow || isCombinedFlow ? "bed-outline" : "car-sport",
+			title: isBedFlow || isCombinedFlow ? roomTitle : transportTitle,
+			subtitle: isBedFlow || isCombinedFlow ? roomSubtitle : transportSubtitle || "Transport",
+			iconColor: accentColor,
+		},
+		{
+			iconName: "location",
+			title: "Pickup",
+			subtitle: pickupLabel,
+			iconColor: accentColor,
+		},
+	];
+	const isIdleState = submissionState.kind === "idle";
+	const canDismissStatusState =
+		submissionState.kind === "waiting_approval" ||
+		submissionState.kind === "dispatched" ||
+		(submissionState.kind === "finalizing_dispatch" && !isSubmitting);
+	const statusConfig =
+		submissionState.kind === "processing_payment"
+			? {
+					accentColor,
+					title: MAP_COMMIT_PAYMENT_COPY.STATUS_PROCESSING_PAYMENT_TITLE,
+					description:
+						MAP_COMMIT_PAYMENT_COPY.STATUS_PROCESSING_PAYMENT_DESCRIPTION,
+			  }
+			: submissionState.kind === "finalizing_dispatch"
+				? {
+						accentColor: infoColor,
+						title: isBedFlow
+							? "Finalizing booking"
+							: MAP_COMMIT_PAYMENT_COPY.STATUS_FINALIZING_TITLE,
+						description: isBedFlow
+							? "Payment was received. Submitting your bed request now."
+							: MAP_COMMIT_PAYMENT_COPY.STATUS_FINALIZING_DESCRIPTION,
+				  }
+				: submissionState.kind === "waiting_approval"
+					? {
+							accentColor: warningColor,
+							title: MAP_COMMIT_PAYMENT_COPY.STATUS_WAITING_TITLE,
+							description:
+								MAP_COMMIT_PAYMENT_COPY.STATUS_WAITING_DESCRIPTION,
+					  }
+					: {
+							accentColor,
+							title: isBedFlow
+								? "Booking submitted"
+								: MAP_COMMIT_PAYMENT_COPY.STATUS_DISPATCHED_TITLE,
+							description: isBedFlow
+								? "The admission request is live and the hospital lane is active."
+								: MAP_COMMIT_PAYMENT_COPY.STATUS_DISPATCHED_DESCRIPTION,
+					  };
 
 	const handleSubmit = useCallback(async () => {
-		if (submissionState.kind !== "idle") {
-			onConfirm?.();
+		if (!isIdleState) {
+			if (canDismissStatusState) {
+				onConfirm?.();
+			}
 			return;
 		}
 
@@ -292,6 +510,33 @@ export default function MapCommitPaymentStageBase({
 
 		if (!selectedPaymentMethod) {
 			setErrorMessage("Select a payment method.");
+			return;
+		}
+
+		if (isCombinedFlow) {
+			setErrorMessage(paymentUnsupportedMessage);
+			return;
+		}
+
+		const isWalletSelected = selectedPaymentMethod?.is_wallet === true;
+		const isCashSelected = selectedPaymentMethod?.is_cash === true;
+		const isCardSelected = !isWalletSelected && !isCashSelected;
+		const stripePaymentMethodId = isCardSelected
+			? paymentService.getStripePaymentMethodId(selectedPaymentMethod)
+			: null;
+
+		if (isWalletSelected) {
+			setErrorMessage("Choose card or cash for this request.");
+			return;
+		}
+
+		if (isCardSelected && !stripePaymentMethodId) {
+			setErrorMessage("Choose a saved card to continue.");
+			return;
+		}
+
+		if (isCardSelected && !Number.isFinite(totalCostValue)) {
+			setErrorMessage("Could not lock the card total right now. Try again.");
 			return;
 		}
 
@@ -310,13 +555,32 @@ export default function MapCommitPaymentStageBase({
 		const pendingStartedAt = Date.now();
 
 		try {
-			const initiatedRequest = buildAmbulanceCommitRequest({
-				hospital,
-				transport,
-				paymentMethod: selectedPaymentMethod,
-				pricingSnapshot: estimatedCost,
-				currentLocation,
-			});
+			let chargeOrganizationId = null;
+			if (isCardSelected) {
+				chargeOrganizationId = await paymentService.resolveChargeOrganizationId(
+					hospital?.organization_id || hospital?.organizationId || null,
+				);
+				if (!chargeOrganizationId) {
+					setErrorMessage("Card checkout is unavailable for this hospital right now.");
+					return;
+				}
+			}
+
+			const initiatedRequest = isBedFlow
+				? buildBedCommitRequest({
+						hospital,
+						room,
+						paymentMethod: selectedPaymentMethod,
+						pricingSnapshot: estimatedCost,
+						currentLocation,
+				  })
+				: buildAmbulanceCommitRequest({
+						hospital,
+						transport,
+						paymentMethod: selectedPaymentMethod,
+						pricingSnapshot: estimatedCost,
+						currentLocation,
+				  });
 			const initiationResult = await handleRequestInitiated(initiatedRequest);
 			await waitForMinimumPending(pendingStartedAt);
 
@@ -324,7 +588,7 @@ export default function MapCommitPaymentStageBase({
 				setErrorMessage(
 					normalizeApiErrorMessage(
 						initiationResult?.reason,
-						"Could not submit request.",
+						`Could not submit ${requestVerb}.`,
 					),
 				);
 				return;
@@ -383,6 +647,95 @@ export default function MapCommitPaymentStageBase({
 				return;
 			}
 
+			if (initiationResult.awaitsPaymentConfirmation) {
+				setSubmissionState({
+					kind: "processing_payment",
+					displayId: initiationResult.displayId || initiatedRequest.requestId,
+				});
+
+				try {
+					const paymentIntent = await paymentService.createEmergencyCardPaymentIntent(
+						initiationResult.requestId,
+						chargeOrganizationId,
+						estimatedCost,
+						selectedPaymentMethod,
+					);
+
+					await confirmSavedCardPayment(
+						paymentIntent.clientSecret,
+						paymentIntent.stripePaymentMethodId || stripePaymentMethodId,
+					);
+				} catch (paymentError) {
+					const settlementAfterConfirmError =
+						await paymentService
+							.waitForEmergencyPaymentSettlement(initiationResult.requestId, {
+								timeoutMs: 6000,
+								pollIntervalMs: 900,
+							})
+							.catch(() => null);
+
+					setSubmissionState({ kind: "idle", displayId: null });
+
+					if (
+						settlementAfterConfirmError?.success === false &&
+						settlementAfterConfirmError?.code === "PAYMENT_DECLINED"
+					) {
+						setErrorMessage("Payment was declined. Choose another card or cash.");
+						return;
+					}
+
+					setErrorMessage(
+						normalizeApiErrorMessage(
+							paymentError?.message,
+							"Could not confirm card payment.",
+						),
+					);
+					return;
+				}
+
+				setSubmissionState({
+					kind: "finalizing_dispatch",
+					displayId: initiationResult.displayId || initiatedRequest.requestId,
+				});
+
+				const settlementResult = await paymentService.waitForEmergencyPaymentSettlement(
+					initiationResult.requestId,
+				);
+
+				if (!settlementResult?.success) {
+					if (settlementResult?.code === "PAYMENT_DECLINED") {
+						setSubmissionState({ kind: "idle", displayId: null });
+						setErrorMessage("Payment was declined. Choose another card or cash.");
+						return;
+					}
+
+					setInfoMessage("Payment was received. Dispatch is still finalizing.");
+					return;
+				}
+
+				const completionPayload = buildCommitPaymentCompletionPayload({
+					initiatedRequest,
+					result: {
+						...initiationResult,
+						requestId:
+							settlementResult?.request?.id || initiationResult.requestId,
+						displayId:
+							settlementResult?.request?.display_id ||
+							initiationResult.displayId,
+						estimatedArrival:
+							settlementResult?.request?.estimated_arrival ||
+							initiationResult.estimatedArrival,
+					},
+					hospital,
+				});
+				await handleRequestComplete(completionPayload);
+				setSubmissionState({
+					kind: "dispatched",
+					displayId: completionPayload.displayId,
+				});
+				return;
+			}
+
 			const completionPayload = buildCommitPaymentCompletionPayload({
 				initiatedRequest,
 				result: initiationResult,
@@ -395,23 +748,32 @@ export default function MapCommitPaymentStageBase({
 			});
 		} catch (error) {
 			setErrorMessage(
-				normalizeApiErrorMessage(error?.message, "Could not submit request."),
+				normalizeApiErrorMessage(
+					error?.message,
+					`Could not submit ${requestVerb}.`,
+				),
 			);
 		} finally {
 			setIsSubmitting(false);
 		}
 	}, [
 		currentLocation,
-		estimatedCost,
+		clearCommitFlow,
 		handleRequestComplete,
 		handleRequestInitiated,
 		hospital,
+		isBedFlow,
+		isCombinedFlow,
+		isIdleState,
+		canDismissStatusState,
 		onConfirm,
+		paymentUnsupportedMessage,
+		requestVerb,
+		room,
 		selectedPaymentMethod,
 		setPendingApproval,
-		submissionState.kind,
 		transport,
-		clearCommitFlow,
+		estimatedCost,
 		totalCostValue,
 	]);
 
@@ -421,14 +783,9 @@ export default function MapCommitPaymentStageBase({
 				titleColor={titleColor}
 				mutedColor={mutedColor}
 				surfaceColor={heroSurfaceColor}
-				accentColor={accentColor}
-				hospitalName={hospitalName}
-				hospitalSubtitle={hospitalSubtitle}
-				hospitalImageSource={hospitalImageSource}
-				transportTitle={transportTitle}
-				transportSubtitle={transportSubtitle}
-				transportImageSource={transportImageSource}
-				pickupLabel={pickupLabel}
+				headerTitle={hospitalName}
+				headerSubtitle={selectionHeaderLabel}
+				selectionRows={summaryRows}
 				totalCostLabel={totalCostLabel}
 				rowSurfaceColor={heroRowSurfaceColor}
 				mediaSurfaceColor={heroMediaSurfaceColor}
@@ -462,7 +819,7 @@ export default function MapCommitPaymentStageBase({
 					<View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
 						<ActivityIndicator size="small" color={accentColor} />
 						<Text style={[styles.inlineMessage, { color: infoColor, marginTop: 0 }]}>
-							{MAP_COMMIT_PAYMENT_COPY.COST_LOADING}
+							{costLoadingCopy}
 						</Text>
 					</View>
 				</View>
@@ -493,23 +850,19 @@ export default function MapCommitPaymentStageBase({
 				titleColor={titleColor}
 				mutedColor={mutedColor}
 				surfaceColor={surfaceColor}
-				accentColor={submissionState.kind === "waiting_approval" ? warningColor : accentColor}
+				accentColor={statusConfig.accentColor}
 				statusKind={submissionState.kind}
-				statusTitle={
-					submissionState.kind === "waiting_approval"
-						? MAP_COMMIT_PAYMENT_COPY.STATUS_WAITING_TITLE
-						: MAP_COMMIT_PAYMENT_COPY.STATUS_DISPATCHED_TITLE
-				}
-				statusDescription={
-					submissionState.kind === "waiting_approval"
-						? MAP_COMMIT_PAYMENT_COPY.STATUS_WAITING_DESCRIPTION
-						: MAP_COMMIT_PAYMENT_COPY.STATUS_DISPATCHED_DESCRIPTION
-				}
-				requestMeta={requestMeta}
+				statusTitle={statusConfig.title}
+				statusDescription={statusConfig.description}
+				requestMeta={requestMetaLabel}
 			/>
 			{errorMessage ? (
 				<Text style={[styles.inlineMessage, { color: errorColor }]}>
 					{errorMessage}
+				</Text>
+			) : infoMessage ? (
+				<Text style={[styles.inlineMessage, { color: infoColor }]}>
+					{infoMessage}
 				</Text>
 			) : null}
 		</View>
@@ -526,8 +879,9 @@ export default function MapCommitPaymentStageBase({
 				<MapCommitDetailsTopSlot
 					title={MAP_COMMIT_PAYMENT_COPY.HEADER_TITLE}
 					subtitle={`For ${hospitalName} · ${transportTitle}`}
-					onBack={submissionState.kind === "idle" ? onBack : undefined}
-					onClose={submissionState.kind === "idle" ? onClose : onConfirm}
+					subtitle={headerSubtitle}
+					onBack={isIdleState ? onBack : undefined}
+					onClose={isIdleState ? onClose : canDismissStatusState ? onConfirm : undefined}
 					titleColor={titleColor}
 					mutedColor={mutedColor}
 					closeSurface={closeSurface}
@@ -538,7 +892,11 @@ export default function MapCommitPaymentStageBase({
 					label={footerLabel}
 					onPress={handleSubmit}
 					loading={isSubmitting}
-					disabled={isSubmitting}
+					disabled={
+						isCombinedFlow ||
+						isSubmitting ||
+						submissionState.kind === "processing_payment"
+					}
 					stageMetrics={stageMetrics}
 					modalContainedStyle={modalContainedStyle}
 					contentInsetStyle={webWideInsetStyle}

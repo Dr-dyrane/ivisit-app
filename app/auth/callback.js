@@ -5,6 +5,91 @@ import * as Linking from 'expo-linking';
 import { authService } from '../../services/authService';
 import { database, StorageKeys } from '../../database';
 
+const PUBLIC_MAP_ROUTE = '/(auth)/map';
+const CALLBACK_PAGE_DEDUP_WINDOW_MS = 8000;
+let inFlightCallbackPageKey = null;
+let inFlightCallbackPagePromise = null;
+let lastCompletedCallbackPageKey = null;
+let lastCompletedCallbackPageAt = 0;
+
+function normalizePublicMapRoute(route) {
+  if (route === '/(auth)/request-help') return PUBLIC_MAP_ROUTE;
+  if (route === '/(auth)/map') return PUBLIC_MAP_ROUTE;
+  if (route === '/(auth)/map-loading') return PUBLIC_MAP_ROUTE;
+  if (route === '/map' || route === '/map-loading' || route === '/request-help') {
+    return PUBLIC_MAP_ROUTE;
+  }
+  return null;
+}
+
+function readCallbackParams(currentUrl, fallbackParams = {}) {
+  const fallback = {
+    token: fallbackParams?.token || null,
+    user: fallbackParams?.user || null,
+    error: fallbackParams?.error || null,
+    code: fallbackParams?.code || null,
+    accessToken: fallbackParams?.accessToken || null,
+    refreshToken: fallbackParams?.refreshToken || null,
+  };
+
+  if (!currentUrl) {
+    return fallback;
+  }
+
+  try {
+    const url = new URL(currentUrl);
+    const hashParams = new URLSearchParams(
+      url.hash?.startsWith('#') ? url.hash.slice(1) : url.hash || ''
+    );
+
+    return {
+      token: url.searchParams.get('token') || hashParams.get('token') || fallback.token,
+      user: url.searchParams.get('user') || hashParams.get('user') || fallback.user,
+      error: url.searchParams.get('error') || hashParams.get('error') || fallback.error,
+      code: url.searchParams.get('code') || hashParams.get('code') || fallback.code,
+      accessToken:
+        url.searchParams.get('access_token') ||
+        hashParams.get('access_token') ||
+        fallback.accessToken,
+      refreshToken:
+        url.searchParams.get('refresh_token') ||
+        hashParams.get('refresh_token') ||
+        fallback.refreshToken,
+    };
+  } catch (parseError) {
+    const parsedUrl = Linking.parse(currentUrl);
+    const queryParams = parsedUrl?.queryParams || {};
+    return {
+      token: queryParams?.token || fallback.token,
+      user: queryParams?.user || fallback.user,
+      error: queryParams?.error || fallback.error,
+      code: queryParams?.code || fallback.code,
+      accessToken: queryParams?.access_token || fallback.accessToken,
+      refreshToken: queryParams?.refresh_token || fallback.refreshToken,
+    };
+  }
+}
+
+function buildCallbackPageKey(currentUrl, fallbackParams = {}) {
+  if (currentUrl) {
+    return currentUrl;
+  }
+
+  if (fallbackParams?.code) {
+    return `code:${fallbackParams.code}`;
+  }
+
+  if (fallbackParams?.accessToken) {
+    return `access:${String(fallbackParams.accessToken).slice(0, 24)}`;
+  }
+
+  if (fallbackParams?.token) {
+    return `token:${String(fallbackParams.token).slice(0, 24)}`;
+  }
+
+  return 'empty';
+}
+
 export default function AuthCallback() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -12,124 +97,193 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      const returnToAuthRoot = () => {
-        router.replace('/(auth)');
-      };
+      const currentUrl =
+        Platform.OS === 'web' && typeof window !== 'undefined'
+          ? window.location.href
+          : await Linking.getInitialURL();
+      const callbackPageKey = buildCallbackPageKey(currentUrl, {
+        token,
+        user,
+        error,
+        code,
+        accessToken,
+      });
+      const now = Date.now();
 
-      try {
-        // Check for authentication errors
-        if (error) {
-          console.error('Auth callback error:', error);
-          router.replace('/(auth)/login');
-          return;
-        }
+      if (callbackPageKey === inFlightCallbackPageKey && inFlightCallbackPagePromise) {
+        await inFlightCallbackPagePromise;
+        return;
+      }
 
-        // Handle successful authentication from URL params
-        if (token && user) {
-          // Parse user data if it's a string
-          let userData = user;
-          if (typeof user === 'string') {
-            try {
-              userData = JSON.parse(decodeURIComponent(user));
-            } catch (parseError) {
-              console.error('Error parsing user data:', parseError);
-              router.replace('/(auth)/login');
-              return;
-            }
-          }
+      if (
+        callbackPageKey === lastCompletedCallbackPageKey &&
+        now - lastCompletedCallbackPageAt < CALLBACK_PAGE_DEDUP_WINDOW_MS
+      ) {
+        return;
+      }
 
-          // Store authentication data
-          await database.write(StorageKeys.AUTH_TOKEN, token);
-          await database.write(StorageKeys.CURRENT_USER, userData);
+      const processCallback = async () => {
+        const readStoredPublicRoute = async () => {
+          const [explicitReturnRoute, lastPublicRoute] = await Promise.all([
+            database.read(StorageKeys.AUTH_RETURN_ROUTE).catch(() => null),
+            database.read(StorageKeys.LAST_PUBLIC_ROUTE).catch(() => null),
+          ]);
 
-          // Redirect to main app
-          router.replace('/(user)/(tabs)');
-          return;
-        }
+          return (
+            normalizePublicMapRoute(explicitReturnRoute) ||
+            normalizePublicMapRoute(lastPublicRoute)
+          );
+        };
 
-        // Handle OAuth callback from deep link URL
-        const currentUrl =
-          Platform.OS === 'web' && typeof window !== 'undefined'
-            ? window.location.href
-            : await Linking.getInitialURL();
-        if (currentUrl) {
-          const parsedUrl = Linking.parse(currentUrl);
-          const queryParams = parsedUrl.queryParams;
-          
-          const oauthToken = queryParams?.token;
-          const oauthUser = queryParams?.user;
-          const oauthError = queryParams?.error;
-          const oauthCode = queryParams?.code || code;
-          const oauthAccessToken = queryParams?.access_token || accessToken;
+        const clearStoredReturnRoute = async () => {
+          await database.delete(StorageKeys.AUTH_RETURN_ROUTE).catch(() => {});
+        };
 
-          if (oauthError) {
-            console.error('OAuth callback error:', oauthError);
-            router.replace('/(auth)/login');
+        const resolvePublicFallback = async () => {
+          return (await readStoredPublicRoute()) || PUBLIC_MAP_ROUTE;
+        };
+
+        const resolvePostAuthRoute = async () => {
+          return (await readStoredPublicRoute()) || PUBLIC_MAP_ROUTE;
+        };
+
+        try {
+          if (error) {
+            console.error('Auth callback error:', error);
+            const fallbackRoute = await resolvePublicFallback();
+            await clearStoredReturnRoute();
+            router.replace(fallbackRoute);
             return;
           }
 
-          if (!oauthToken && !oauthUser && !oauthError && !oauthCode && !oauthAccessToken) {
-            console.log('Empty auth callback detected, returning to welcome');
-            returnToAuthRoot();
-            return;
-          }
-
-          if (oauthToken && oauthUser) {
-            let parsedUserData;
-            try {
-              parsedUserData = JSON.parse(decodeURIComponent(oauthUser));
-            } catch (parseError) {
-              console.error('Error parsing OAuth user data:', parseError);
-              router.replace('/(auth)/login');
-              return;
-            }
-
-            // Store OAuth authentication data
-            await database.write(StorageKeys.AUTH_TOKEN, oauthToken);
-            await database.write(StorageKeys.CURRENT_USER, parsedUserData);
-
-            // Redirect to main app
-            router.replace('/(user)/(tabs)');
-            return;
-          }
-
-          // Handle OAuth callback with code parameter
-          if (oauthCode || oauthAccessToken) {
-            console.log('Handling OAuth callback with code');
-            try {
-              const result = await authService.handleOAuthCallback(currentUrl);
-              
-              if (result?.data?.user) {
-                // Store authentication data and redirect to main app
-                await database.write(
-                  StorageKeys.AUTH_TOKEN,
-                  result.data.session?.access_token || result.data.user?.token || null
-                );
-                await database.write(StorageKeys.CURRENT_USER, result.data.user);
-                router.replace('/(user)/(tabs)');
+          if (token && user) {
+            let userData = user;
+            if (typeof user === 'string') {
+              try {
+                userData = JSON.parse(decodeURIComponent(user));
+              } catch (parseError) {
+                console.error('Error parsing user data:', parseError);
+                const fallbackRoute = await resolvePublicFallback();
+                await clearStoredReturnRoute();
+                router.replace(fallbackRoute);
                 return;
               }
-            } catch (oauthError) {
+            }
+
+            await database.write(StorageKeys.AUTH_TOKEN, token);
+            await database.write(StorageKeys.CURRENT_USER, userData);
+            const nextRoute = await resolvePostAuthRoute();
+            await clearStoredReturnRoute();
+            router.replace(nextRoute);
+            return;
+          }
+
+          if (currentUrl) {
+            const {
+              token: oauthToken,
+              user: oauthUser,
+              error: oauthError,
+              code: oauthCode,
+              accessToken: oauthAccessToken,
+              refreshToken: oauthRefreshToken,
+            } = readCallbackParams(currentUrl, {
+              token,
+              user,
+              error,
+              code,
+              accessToken,
+            });
+
+            if (oauthError) {
               console.error('OAuth callback error:', oauthError);
-              router.replace('/(auth)/login');
+              const fallbackRoute = await resolvePublicFallback();
+              await clearStoredReturnRoute();
+              router.replace(fallbackRoute);
               return;
             }
+
+            if (!oauthToken && !oauthUser && !oauthError && !oauthCode && !oauthAccessToken) {
+              console.log('Empty auth callback detected, returning to previous public route');
+              const fallbackRoute = await resolvePublicFallback();
+              await clearStoredReturnRoute();
+              router.replace(fallbackRoute);
+              return;
+            }
+
+            if (oauthToken && oauthUser) {
+              let parsedUserData;
+              try {
+                parsedUserData = JSON.parse(decodeURIComponent(oauthUser));
+              } catch (parseError) {
+                console.error('Error parsing OAuth user data:', parseError);
+                const fallbackRoute = await resolvePublicFallback();
+                await clearStoredReturnRoute();
+                router.replace(fallbackRoute);
+                return;
+              }
+
+              await database.write(StorageKeys.AUTH_TOKEN, oauthToken);
+              await database.write(StorageKeys.CURRENT_USER, parsedUserData);
+              const nextRoute = await resolvePostAuthRoute();
+              await clearStoredReturnRoute();
+              router.replace(nextRoute);
+              return;
+            }
+
+            if (oauthCode || oauthAccessToken || oauthRefreshToken) {
+              console.log('Handling OAuth callback session exchange');
+              try {
+                const result = await authService.handleOAuthCallback(currentUrl);
+
+                if (result?.data?.user) {
+                  await database.write(
+                    StorageKeys.AUTH_TOKEN,
+                    result.data.session?.access_token || result.data.user?.token || null
+                  );
+                  await database.write(StorageKeys.CURRENT_USER, result.data.user);
+                  const nextRoute = await resolvePostAuthRoute();
+                  await clearStoredReturnRoute();
+                  router.replace(nextRoute);
+                  return;
+                }
+              } catch (oauthError) {
+                console.error('OAuth callback error:', oauthError);
+                const fallbackRoute = await resolvePublicFallback();
+                await clearStoredReturnRoute();
+                router.replace(fallbackRoute);
+                return;
+              }
+            }
           }
+
+          console.log('No authentication data found in callback, returning to previous public route');
+          const fallbackRoute = await resolvePublicFallback();
+          await clearStoredReturnRoute();
+          router.replace(fallbackRoute);
+        } catch (callbackError) {
+          console.error('Error handling auth callback:', callbackError);
+          const fallbackRoute = await resolvePublicFallback();
+          await clearStoredReturnRoute();
+          router.replace(fallbackRoute);
         }
+      };
 
-        // If no auth data is present, treat this as a safe return to the auth root.
-        console.log('No authentication data found in callback, returning to welcome');
-        returnToAuthRoot();
+      inFlightCallbackPageKey = callbackPageKey;
+      inFlightCallbackPagePromise = processCallback().finally(() => {
+        lastCompletedCallbackPageKey = callbackPageKey;
+        lastCompletedCallbackPageAt = Date.now();
+        if (inFlightCallbackPageKey === callbackPageKey) {
+          inFlightCallbackPageKey = null;
+          inFlightCallbackPagePromise = null;
+        }
+      });
 
-      } catch (error) {
-        console.error('Error handling auth callback:', error);
-        router.replace('/(auth)/login');
-      }
+      await inFlightCallbackPagePromise;
     };
 
     // Handle callback immediately
-    handleAuthCallback();
-  }, [token, user, error, router]);
+    void handleAuthCallback();
+  }, [accessToken, code, error, router, token, user]);
 
   return (
     <View style={{ 

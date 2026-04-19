@@ -48,6 +48,55 @@ const missingHospitalOrganizationWarnings = new Set();
 
 export const paymentService = {
   supabase,
+  getStripePaymentMethodId(paymentMethod) {
+    if (!paymentMethod || typeof paymentMethod !== 'object') return null;
+
+    const metadata =
+      paymentMethod.metadata && typeof paymentMethod.metadata === 'object'
+        ? paymentMethod.metadata
+        : {};
+
+    const stripePaymentMethodId =
+      metadata?.stripe_payment_method_id ||
+      metadata?.stripePaymentMethodId ||
+      metadata?.payment_method_id ||
+      null;
+
+    if (typeof stripePaymentMethodId === 'string' && stripePaymentMethodId.trim()) {
+      return stripePaymentMethodId.trim();
+    }
+
+    if (typeof paymentMethod.id === 'string' && paymentMethod.id.startsWith('pm_')) {
+      return paymentMethod.id;
+    }
+
+    return null;
+  },
+
+  async resolveChargeOrganizationId(organizationId) {
+    let resolvedOrgId = await this.resolveId(organizationId);
+
+    if (resolvedOrgId) {
+      const { data: orgRow } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('id', resolvedOrgId)
+        .maybeSingle();
+
+      if (!orgRow) {
+        const { data: hospitalRow } = await supabase
+          .from('hospitals')
+          .select('organization_id')
+          .eq('id', resolvedOrgId)
+          .maybeSingle();
+
+        resolvedOrgId = hospitalRow?.organization_id || null;
+      }
+    }
+
+    return resolvedOrgId;
+  },
+
   /**
    * Resolve an ID (beautified or UUID) to a UUID
    */
@@ -352,26 +401,7 @@ export const paymentService = {
    */
   async processPayment(emergencyRequestId, organizationId, cost) {
     try {
-      let resolvedOrgId = await this.resolveId(organizationId);
-
-      // Accept either organization id/display_id or hospital id/display_id and resolve to org UUID.
-      if (resolvedOrgId) {
-        const { data: orgRow } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('id', resolvedOrgId)
-          .maybeSingle();
-
-        if (!orgRow) {
-          const { data: hospitalRow } = await supabase
-            .from('hospitals')
-            .select('organization_id')
-            .eq('id', resolvedOrgId)
-            .maybeSingle();
-
-          resolvedOrgId = hospitalRow?.organization_id || null;
-        }
-      }
+      const resolvedOrgId = await this.resolveChargeOrganizationId(organizationId);
 
       if (!resolvedOrgId) {
         throw new Error('Missing valid organization context for payment intent');
@@ -401,6 +431,99 @@ export const paymentService = {
       console.error('Error initiating payment:', error);
       throw new Error(`Payment initiation failed: ${error.message}`);
     }
+  },
+
+  async createEmergencyCardPaymentIntent(emergencyRequestId, organizationId, cost, paymentMethod) {
+    try {
+      if (!emergencyRequestId) {
+        throw new Error('Missing emergency request for card payment');
+      }
+
+      const resolvedOrgId = await this.resolveChargeOrganizationId(organizationId);
+      if (!resolvedOrgId) {
+        throw new Error('Missing valid organization context for payment intent');
+      }
+
+      const stripePaymentMethodId = this.getStripePaymentMethodId(paymentMethod);
+      if (!stripePaymentMethodId) {
+        throw new Error('Selected card is not linked to Stripe');
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+        body: {
+          amount: cost.totalCost,
+          currency: cost.currency,
+          organization_id: resolvedOrgId,
+          emergency_request_id: emergencyRequestId,
+          payment_method_id: paymentMethod?.id || null,
+          stripe_payment_method_id: stripePaymentMethodId,
+        }
+      });
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        clientSecret: data.clientSecret,
+        paymentIntentId: data.paymentIntentId,
+        customerId: data.customerId || null,
+        stripePaymentMethodId,
+      };
+    } catch (error) {
+      console.error('Error creating emergency card payment intent:', error);
+      throw new Error(`Card payment setup failed: ${error.message}`);
+    }
+  },
+
+  async waitForEmergencyPaymentSettlement(
+    emergencyRequestId,
+    {
+      timeoutMs = 20000,
+      pollIntervalMs = 1200,
+    } = {}
+  ) {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+      const { data, error } = await supabase
+        .from('emergency_requests')
+        .select('id, display_id, hospital_id, hospital_name, status, payment_status, ambulance_id, responder_name, responder_phone, responder_vehicle_type, responder_vehicle_plate, updated_at')
+        .eq('id', emergencyRequestId)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      const status = String(data?.status || '').toLowerCase();
+      const paymentStatus = String(data?.payment_status || '').toLowerCase();
+
+      if (
+        data &&
+        ['accepted', 'in_progress', 'arrived'].includes(status) &&
+        ['completed', 'paid'].includes(paymentStatus)
+      ) {
+        return { success: true, request: data };
+      }
+
+      if (
+        data &&
+        (status === 'payment_declined' || ['failed', 'declined'].includes(paymentStatus))
+      ) {
+        return {
+          success: false,
+          code: 'PAYMENT_DECLINED',
+          request: data,
+        };
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+
+    return {
+      success: false,
+      code: 'SETTLEMENT_TIMEOUT',
+    };
   },
 
   /**

@@ -343,7 +343,7 @@ Rules:
 - all top-surface state should flow through `setHeaderState(...)` and `getHeaderBehavior(...)`
 - use shared header modes (`MAP_OVERLAY`, `FIXED`, `HIDDEN`) instead of local one-off booleans
 - `explore_intent`, hospital browsing, and other pre-dispatch sheet states should keep the header hidden
-- `COMMIT_DETAILS` and `COMMIT_PAYMENT` should also keep the header hidden in v1; they are focused sheet tasks, not live-session header states
+- `COMMIT_DETAILS`, `COMMIT_TRIAGE`, and `COMMIT_PAYMENT` should also keep the header hidden in v1; they are focused sheet tasks, not live-session header states
 - the header must not appear just to guide the user toward dispatch; it should appear only after dispatch is already live
 - when active, the header should express real session state such as matched/tracking/progress, not page identity
 - the active header may expand downward and should compress/collapse the sheet below it instead of floating as unrelated chrome
@@ -448,7 +448,7 @@ Rendering rule for `commit_details`:
 - email question first
 - OTP verification second
 - phone confirmation only when the resolved authenticated profile still lacks a reachable callback number
-- triage remains optional and skippable
+- triage moves to `COMMIT_TRIAGE`; it remains optional and skippable before payment
 - do not block v1 on a dedicated name step
 - use existing app auth primitives (`SmartContactInput`, `OTPInputCard`, `authService.requestOtp`, `authService.verifyOtp`)
 - keep the new `/map` presentation and borrow stronger legacy behavior under it instead of reverting to the legacy auth modal UI
@@ -457,7 +457,45 @@ Rendering rule for `commit_details`:
 - if the selected hospital is demo-backed, preserve that hospital context through the draft so `COMMIT_PAYMENT` can resolve the demo auto-approval lane
 - `COMMIT_PAYMENT` is now native for the ambulance path and must not route back through `RequestAmbulanceScreen`
 - payment copy must stay patient-facing; backend demo/simulation terms are not allowed in visible labels, helper text, toasts, or waiting states
-- optional triage remains a later skippable microstep before payment, not a blocker for this first payment seam
+
+Rendering rule for `commit_triage`:
+
+- first implementation scope is ambulance only
+- open directly in `expanded`
+- keep the map mounted behind it
+- keep the global active header hidden
+- ask one focused question at a time where possible
+- borrow the strongest legacy triage question logic, not the legacy modal visuals
+- use short patient language and visual chips/cards instead of clinical survey blocks
+- `Skip` is allowed and must be visibly safe
+- no diagnosis promise and no AI promise in user-facing copy
+- output should enrich `patient_snapshot.triage` / `triageSnapshot` without blocking payment unless backend rules later require a field
+
+Rendering rule for `commit_payment`:
+
+- first implementation scope is ambulance only
+- open directly in `expanded`
+- keep the map mounted behind it
+- keep the global active header hidden
+- hero/payment card should feel like Apple Pay: locked hospital, transport, pickup, and total
+- payment selector collapses after choice into one readable summary row with a small `Change` pill
+- full payment method list expands only after `Change`
+- the main dispatch CTA remains the only primary action
+- own post-submit states inside the map sheet: `submitting`, `pending_approval`, `approved`, `denied`, and `failed`
+- pending approval should stay in the sheet; do not show a legacy pending modal
+- denied/failed should preserve the draft and expose recovery through `Change payment` / `Try again`
+- approved should briefly acknowledge acceptance before switching to `TRACKING`
+- payment copy must stay patient-facing; backend demo/simulation terms are not allowed in visible labels, helper text, toasts, or waiting states
+
+Rendering rule for `tracking`:
+
+- `TRACKING` is the first active emergency-session phase and may turn on the app-owned smart / scroll-aware header
+- top header should express live route truth, not page identity
+- Apple Maps direction: large active instruction/status capsule, compact secondary line, and visible route context
+- sheet should compress beneath the active header rather than fighting it as separate chrome
+- default sheet posture should be a compact route card with arrival time, minutes, and distance first
+- expanded controls can include destination, share ETA, call hospital/driver when available, report issue, and cancel/end only when backend status rules allow it
+- animate the ambulance/responder marker from realtime coordinates when available; use smooth route-progress projection only as a fallback
 
 ## 14. Loading Rule
 

@@ -332,6 +332,8 @@ export const useRequestFlow = (props) => {
 					(isDemoCashApprovalFlow ? 'cash_payment' : null);
 				const isCashPayment =
 					typeof paymentMethodId === 'string' && paymentMethodId.toLowerCase().includes('cash');
+				const awaitsPaymentConfirmation =
+					request?.deferDispatchUntilPayment === true && !isCashPayment;
 
 				console.log('[useRequestFlow] 📋 Creating Emergency Request:', {
 					displayId: visitId,
@@ -341,6 +343,7 @@ export const useRequestFlow = (props) => {
 					requestedPaymentMethod: requestedPaymentMethodId,
 					demoCashApprovalFlow: isDemoCashApprovalFlow,
 					isCashPayment,
+					awaitsPaymentConfirmation,
 					totalCost: costData?.total_cost || costData?.totalCost,
 					baseCost: costData?.base_cost,
 					feeAmount: costData?.feeAmount ?? null,
@@ -379,6 +382,7 @@ export const useRequestFlow = (props) => {
 					// Payment method — triggers atomic RPC path in emergencyRequestsService
 					payment_method_id: paymentMethodId,
 					paymentMethodId: paymentMethodId,
+					deferDispatchUntilPayment: awaitsPaymentConfirmation,
 				});
 
 				// 🔑 CRITICAL: Use the REAL UUID from the DB, not the display ID
@@ -386,8 +390,11 @@ export const useRequestFlow = (props) => {
 				const displayId = createdRequest?.requestId || visitId;
 				const backendRequiresApproval = createdRequest?.requiresApproval || false;
 				const requiresApproval = backendRequiresApproval;
+				const backendAwaitsPaymentConfirmation =
+					createdRequest?.awaitsPaymentConfirmation === true;
 				const normalizedPaymentStatus =
-					createdRequest?.paymentStatus || (requiresApproval ? "pending" : "completed");
+					createdRequest?.paymentStatus ||
+					(requiresApproval || backendAwaitsPaymentConfirmation ? "pending" : "completed");
 				const demoAutoApproveEligible =
 					isDemoCashApprovalFlow && isCashPayment && requiresApproval;
 
@@ -397,6 +404,7 @@ export const useRequestFlow = (props) => {
 					paymentStatus: normalizedPaymentStatus,
 					requiresApproval,
 					backendRequiresApproval,
+					backendAwaitsPaymentConfirmation,
 					demoAutoApproveEligible,
 					isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(realId),
 				});
@@ -509,6 +517,7 @@ export const useRequestFlow = (props) => {
 					estimatedArrival: derivedEstimatedArrival,
 					etaSeconds: computedEtaSeconds,
 					requiresApproval,
+					awaitsPaymentConfirmation: backendAwaitsPaymentConfirmation,
 					demoAutoApproveEligible,
 					paymentId: createdRequest?.paymentId || null,
 					paymentStatus: normalizedPaymentStatus,

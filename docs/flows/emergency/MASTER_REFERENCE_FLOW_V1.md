@@ -708,10 +708,9 @@ When tapped:
 
 ## 2. Commit
 
-- optional triage
-- optional transport detail
 - patient details
 - email OTP verification
+- optional triage
 - payment release
 
 ## 3. Active
