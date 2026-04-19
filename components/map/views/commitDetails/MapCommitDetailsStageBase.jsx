@@ -145,6 +145,7 @@ export default function MapCommitDetailsStageBase({
   const otpAutoSubmittedRef = useRef("");
   const autoAdvancedRef = useRef(false);
   const contactMemoryHydratedRef = useRef(false);
+  const authReconciliationKeyRef = useRef("");
 
   const [draft, setDraft] = useState(() => ({
     email: sanitizeCommitEmail(payload?.draft?.email || user?.email),
@@ -189,12 +190,61 @@ export default function MapCommitDetailsStageBase({
   );
 
   useEffect(() => {
+    const resolvedEmail = sanitizeCommitEmail(user?.email);
+    const resolvedPhone = sanitizeCommitPhone(user?.phone);
     setDraft((currentDraft) => ({
       ...currentDraft,
-      email: currentDraft.email || sanitizeCommitEmail(user?.email),
-      phone: currentDraft.phone || sanitizeCommitPhone(user?.phone),
+      email: resolvedEmail || currentDraft.email,
+      phone: resolvedPhone || currentDraft.phone,
     }));
   }, [user?.email, user?.phone]);
+
+  useEffect(() => {
+    const resolvedEmail = sanitizeCommitEmail(user?.email);
+    if (!resolvedEmail || (activeStep !== "email" && activeStep !== "otp")) {
+      authReconciliationKeyRef.current = "";
+      return;
+    }
+
+    const resolvedPhone = sanitizeCommitPhone(user?.phone);
+    const reconciliationKey = `${resolvedEmail}|${resolvedPhone}|${activeStep}`;
+    if (authReconciliationKeyRef.current === reconciliationKey) {
+      return;
+    }
+    authReconciliationKeyRef.current = reconciliationKey;
+
+    setErrorMessage("");
+    setSuccessMessage("");
+    setOtpExpiresAt(null);
+    setStepHistory([]);
+    setDraft((currentDraft) => ({
+      ...currentDraft,
+      email: resolvedEmail,
+      phone: resolvedPhone || currentDraft.phone,
+      otp: "",
+    }));
+
+    if (isCommitPhoneValid(resolvedPhone)) {
+      onConfirm?.(hospital, transport, {
+        email: resolvedEmail,
+        phone: resolvedPhone,
+        careIntent: payload?.careIntent || null,
+        roomId: payload?.roomId || null,
+      });
+      return;
+    }
+
+    setActiveStep("phone");
+  }, [
+    activeStep,
+    hospital,
+    onConfirm,
+    payload?.careIntent,
+    payload?.roomId,
+    transport,
+    user?.email,
+    user?.phone,
+  ]);
 
   useEffect(() => {
     if (contactMemoryHydratedRef.current) return undefined;
@@ -366,6 +416,9 @@ export default function MapCommitDetailsStageBase({
         return {
           key: "otp",
           ...MAP_COMMIT_DETAILS_COPY.OTP_STEP,
+          description: draft.email
+            ? `Sent to ${sanitizeCommitEmail(draft.email)}`
+            : MAP_COMMIT_DETAILS_COPY.OTP_STEP.description,
           value: draft.otp,
         };
       case "phone":
@@ -403,8 +456,12 @@ export default function MapCommitDetailsStageBase({
           ? "Ambulance + bed"
           : null;
 
-    const context = [hospitalName, transportName].filter(Boolean).join(" · ");
-    const suffix = context || careLabel;
+    const contextParts = [hospitalName];
+    const detailLabel = transportName || careLabel;
+    if (detailLabel) {
+      contextParts.push(detailLabel);
+    }
+    const suffix = contextParts.filter(Boolean).join(" · ");
 
     return suffix ? `For ${suffix}` : "For this request";
   }, [

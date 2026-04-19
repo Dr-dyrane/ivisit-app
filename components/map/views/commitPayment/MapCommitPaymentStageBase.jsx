@@ -4,6 +4,7 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import { useAuth } from "../../../../contexts/AuthContext";
 import { useEmergency } from "../../../../contexts/EmergencyContext";
 import { usePreferences } from "../../../../contexts/PreferencesContext";
+import { useToast } from "../../../../contexts/ToastContext";
 import { useEmergencyContacts } from "../../../../hooks/emergency/useEmergencyContacts";
 import { useEmergencyRequests } from "../../../../hooks/emergency/useEmergencyRequests";
 import { useRequestFlow } from "../../../../hooks/emergency/useRequestFlow";
@@ -27,7 +28,6 @@ import { getHospitalDetailServiceImageSource } from "../../surfaces/hospitals/ma
 import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import sheetStageStyles from "../shared/mapSheetStage.styles";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
-import useMapStageResponsiveMetrics from "../shared/useMapStageResponsiveMetrics";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import { MapCommitDetailsTopSlot } from "../commitDetails/MapCommitDetailsStageParts";
 import { MAP_COMMIT_PAYMENT_COPY } from "./mapCommitPayment.content";
@@ -35,7 +35,6 @@ import {
 	buildAmbulanceCommitRequest,
 	buildBedCommitRequest,
 	buildCommitPaymentCompletionPayload,
-	buildCommitPaymentCtaLabel,
 	buildCommitPaymentDistanceKm,
 	buildCommitPaymentPickupLabel,
 	buildPendingApprovalState,
@@ -44,6 +43,7 @@ import {
 } from "./mapCommitPayment.helpers";
 import {
 	MapCommitPaymentBreakdownCard,
+	MapCommitPaymentBreakdownSkeletonCard,
 	MapCommitPaymentFooter,
 	MapCommitPaymentSelectorCard,
 	MapCommitPaymentStatusCard,
@@ -58,13 +58,13 @@ export default function MapCommitPaymentStageBase({
 	transport,
 	payload = null,
 	currentLocation = null,
-	onBack,
 	onClose,
 	onConfirm,
 	onSnapStateChange,
 }) {
 	const { isDarkMode } = useTheme();
 	const { user } = useAuth();
+	const { showToast } = useToast();
 	const { preferences } = usePreferences();
 	const { contacts: emergencyContacts } = useEmergencyContacts();
 	const { profile: medicalProfile } = useMedicalProfile();
@@ -86,11 +86,17 @@ export default function MapCommitPaymentStageBase({
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
 	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
-	const stageMetrics = useMapStageResponsiveMetrics({ presentationMode });
 	const allowedSnapStates = useMemo(
-		() => [MAP_SHEET_SNAP_STATES.EXPANDED],
-		[],
+		() =>
+			presentationMode === "sheet"
+				? [MAP_SHEET_SNAP_STATES.HALF, MAP_SHEET_SNAP_STATES.EXPANDED]
+				: [MAP_SHEET_SNAP_STATES.EXPANDED],
+		[presentationMode],
 	);
+	const effectiveSnapState =
+		presentationMode === "sheet" && snapState === MAP_SHEET_SNAP_STATES.EXPANDED
+			? MAP_SHEET_SNAP_STATES.EXPANDED
+			: allowedSnapStates[0];
 	const {
 		allowScrollDetents,
 		bodyScrollEnabled,
@@ -99,9 +105,8 @@ export default function MapCommitPaymentStageBase({
 		handleBodyScrollBeginDrag,
 		handleBodyScrollEndDrag,
 		handleBodyWheel,
-		handleSnapToggle,
 	} = useMapSheetDetents({
-		snapState,
+		snapState: effectiveSnapState,
 		onSnapStateChange,
 		presentationMode,
 		allowedSnapStates,
@@ -112,7 +117,7 @@ export default function MapCommitPaymentStageBase({
 		handleAndroidCollapseScroll,
 		handleAndroidCollapseScrollBeginDrag,
 	} = useMapAndroidExpandedCollapse({
-		snapState,
+		snapState: effectiveSnapState,
 		onSnapStateChange,
 		bodyScrollRef,
 		onScroll: handleBodyScroll,
@@ -159,23 +164,29 @@ export default function MapCommitPaymentStageBase({
 		? "rgba(255,255,255,0.06)"
 		: "rgba(255,255,255,0.72)";
 	const heroSurfaceColor = isDarkMode
-		? "rgba(15,23,42,0.92)"
-		: "rgba(255,255,255,0.94)";
-	const heroRowSurfaceColor = isDarkMode
-		? "rgba(255,255,255,0.055)"
-		: "rgba(15,23,42,0.045)";
+		? "rgba(8,15,27,0.76)"
+		: "rgba(248,250,252,0.92)";
 	const heroMediaSurfaceColor = isDarkMode
 		? "rgba(255,255,255,0.10)"
 		: "rgba(15,23,42,0.07)";
-	const heroHighlightColor = isDarkMode
-		? "rgba(255,255,255,0.08)"
-		: "rgba(255,255,255,0.55)";
-	const heroShadeColor = isDarkMode
-		? "rgba(2,6,23,0.20)"
-		: "rgba(15,23,42,0.045)";
 	const secondarySurfaceColor = isDarkMode
 		? "rgba(255,255,255,0.05)"
 		: "rgba(248,250,252,0.92)";
+	const heroHeaderSurfaceColor = isDarkMode
+		? "rgba(8,15,27,0.54)"
+		: "rgba(255,255,255,0.66)";
+	const heroHeaderOverlayColors = isDarkMode
+		? ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.05)", "rgba(255,255,255,0.02)"]
+		: ["rgba(255,255,255,0.44)", "rgba(255,255,255,0.22)", "rgba(255,255,255,0.08)"];
+	const heroRowSurfaceColor = isDarkMode
+		? "rgba(8,15,27,0.54)"
+		: "rgba(255,255,255,0.60)";
+	const heroRowOverlayColors = isDarkMode
+		? ["rgba(255,255,255,0.10)", "rgba(255,255,255,0.04)", "rgba(255,255,255,0.02)"]
+		: ["rgba(255,255,255,0.32)", "rgba(255,255,255,0.16)", "rgba(255,255,255,0.06)"];
+	const heroRowFadeColors = isDarkMode
+		? ["rgba(8,15,27,0)", "rgba(8,15,27,0.56)", "rgba(8,15,27,0.88)"]
+		: ["rgba(255,255,255,0)", "rgba(255,255,255,0.52)", "rgba(255,255,255,0.88)"];
 	const selectorSummarySurfaceColor = isDarkMode
 		? "rgba(255,255,255,0.065)"
 		: "rgba(15,23,42,0.045)";
@@ -185,10 +196,51 @@ export default function MapCommitPaymentStageBase({
 	const dividerColor = isDarkMode
 		? "rgba(255,255,255,0.08)"
 		: "rgba(15,23,42,0.08)";
+	const skeletonBaseColor = isDarkMode
+		? "rgba(255,255,255,0.10)"
+		: "rgba(15,23,42,0.09)";
+	const skeletonSoftColor = isDarkMode
+		? "rgba(255,255,255,0.06)"
+		: "rgba(15,23,42,0.05)";
 	const accentColor = isDarkMode ? "#F87171" : "#B91C1C";
+	const heroPrimarySurfaceColor = isDarkMode ? "#A11412" : "#B91C1C";
+	const heroSubtitleColor = isDarkMode
+		? "rgba(248,250,252,0.90)"
+		: "rgba(15,23,42,0.74)";
 	const warningColor = isDarkMode ? "#FDBA74" : "#D97706";
 	const errorColor = isDarkMode ? "#FCA5A5" : "#B91C1C";
 	const infoColor = isDarkMode ? "#CBD5E1" : "#475569";
+	const heroBlendColors = isDarkMode
+		? [
+				"rgba(8,15,27,0.08)",
+				"rgba(8,15,27,0.18)",
+				"rgba(8,15,27,0.32)",
+				"rgba(8,15,27,0.48)",
+		  ]
+		: [
+				"rgba(248,250,252,0.04)",
+				"rgba(248,250,252,0.12)",
+				"rgba(248,250,252,0.22)",
+				"rgba(248,250,252,0.36)",
+		  ];
+	const heroBottomMergeColors = isDarkMode
+		? [
+				"rgba(8,15,27,0.06)",
+				"rgba(8,15,27,0.18)",
+				"rgba(8,15,27,0.40)",
+				"rgba(8,15,27,0.72)",
+		  ]
+		: [
+				"rgba(255,255,255,0.06)",
+				"rgba(255,255,255,0.16)",
+				"rgba(255,255,255,0.30)",
+				"rgba(255,255,255,0.58)",
+		  ];
+	const heroTopMaskColors = ["rgba(8,15,27,0.52)", "rgba(8,15,27,0.24)", "rgba(8,15,27,0)"];
+	const heroVeilColor = isDarkMode
+		? "rgba(8,15,27,0.16)"
+		: "rgba(255,255,255,0.08)";
+	const heroImageOpacity = isDarkMode ? 0.88 : 0.86;
 	const room = payload?.room || null;
 	const careIntent = payload?.careIntent || null;
 	const hasRoomSelection = Boolean(
@@ -243,6 +295,7 @@ export default function MapCommitPaymentStageBase({
 	const [submissionState, setSubmissionState] = useState({
 		kind: "idle",
 		displayId: null,
+		requestId: null,
 	});
 
 	const demoCashOnly = useMemo(
@@ -404,24 +457,41 @@ export default function MapCommitPaymentStageBase({
 	const totalCostLabel = Number.isFinite(totalCostValue)
 		? `$${Number(totalCostValue).toFixed(2)}`
 		: null;
+	const selectedPaymentSummary = useMemo(() => {
+		if (!selectedPaymentMethod) return "Choose a method";
+		if (selectedPaymentMethod.is_cash) return "Cash · Provider confirmation";
+		if (selectedPaymentMethod.is_wallet) return "Wallet";
+		const brand = selectedPaymentMethod.brand || "Card";
+		const last4 = selectedPaymentMethod.last4
+			? ` ending in ${selectedPaymentMethod.last4}`
+			: "";
+		return `${brand}${last4}`;
+	}, [selectedPaymentMethod]);
 	const requestMeta = submissionState.displayId
-		? `${hospitalName} · ${submissionState.displayId}`
+		? `${hospitalName} - ${submissionState.displayId}`
 		: hospitalName;
-	const footerLabel =
-		submissionState.kind === "idle"
-			? buildCommitPaymentCtaLabel(
-					totalCostValue,
-					isCombinedFlow
-						? "Combined payment soon"
-						: isBedFlow
-							? "Confirm booking"
-							: MAP_COMMIT_PAYMENT_COPY.CTA_CONFIRM,
-			  )
-			: MAP_COMMIT_PAYMENT_COPY.CTA_DONE;
 	const requestMetaLabel = submissionState.displayId
 		? `${hospitalName} - ${submissionState.displayId}`
 		: requestMeta;
-	const headerSubtitle = `For ${hospitalName} - ${selectionHeaderLabel}`;
+	const headerSubtitle = `For ${hospitalName} · ${selectionHeaderLabel}`;
+	const isFailureState =
+		submissionState.kind === "failed" ||
+		submissionState.kind === "payment_declined";
+	const shouldShowExpandedBreakdown =
+		effectiveSnapState === MAP_SHEET_SNAP_STATES.EXPANDED ||
+		presentationMode !== "sheet" ||
+		isSidebarPresentation;
+	const isExpandedPaymentView = shouldShowExpandedBreakdown;
+	const canToggleSnapState =
+		presentationMode === "sheet" && allowedSnapStates.length > 1;
+	const handleHeaderSnapToggle = useCallback(() => {
+		if (!canToggleSnapState || typeof onSnapStateChange !== "function") return;
+		onSnapStateChange(
+			effectiveSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
+				? MAP_SHEET_SNAP_STATES.HALF
+				: MAP_SHEET_SNAP_STATES.EXPANDED,
+		);
+	}, [canToggleSnapState, effectiveSnapState, onSnapStateChange]);
 	const summaryRows = [
 		{
 			imageSource: hospitalImageSource,
@@ -450,16 +520,45 @@ export default function MapCommitPaymentStageBase({
 		},
 		{
 			iconName: "location",
-			title: "Pickup",
+			title: "My location",
 			subtitle: pickupLabel,
 			iconColor: accentColor,
 		},
 	];
 	const isIdleState = submissionState.kind === "idle";
+	const shouldUseHeroActionCta = !isExpandedPaymentView && isIdleState;
 	const canDismissStatusState =
 		submissionState.kind === "waiting_approval" ||
 		submissionState.kind === "dispatched" ||
 		(submissionState.kind === "finalizing_dispatch" && !isSubmitting);
+	const heroPrimaryActionTitle = isCombinedFlow
+		? "Soon"
+		: !selectedPaymentMethod
+			? "Select"
+			: selectedPaymentMethod?.is_cash
+			? "Request"
+			: isBedFlow
+				? "Book"
+				: "Pay";
+	const heroPrimaryActionValueLabel = isLoadingCost
+		? null
+		: totalCostLabel || selectedPaymentSummary;
+	const heroPrimaryActionHint = null;
+	const heroPrimaryActionDisabled =
+		isCombinedFlow || isSubmitting || isLoadingCost;
+	const footerActionLabel = isCombinedFlow
+		? "Combined payment soon"
+		: !selectedPaymentMethod
+			? "Select payment"
+			: selectedPaymentMethod?.is_cash
+				? isBedFlow
+					? "Request booking with cash"
+					: "Request transport with cash"
+				: totalCostLabel
+					? `Pay ${totalCostLabel}`
+					: isBedFlow
+						? "Book now"
+						: "Pay now";
 	const statusConfig =
 		submissionState.kind === "processing_payment"
 			? {
@@ -475,7 +574,7 @@ export default function MapCommitPaymentStageBase({
 							? "Finalizing booking"
 							: MAP_COMMIT_PAYMENT_COPY.STATUS_FINALIZING_TITLE,
 						description: isBedFlow
-							? "Payment was received. Submitting your bed request now."
+							? "Payment received."
 							: MAP_COMMIT_PAYMENT_COPY.STATUS_FINALIZING_DESCRIPTION,
 				  }
 				: submissionState.kind === "waiting_approval"
@@ -485,13 +584,28 @@ export default function MapCommitPaymentStageBase({
 							description:
 								MAP_COMMIT_PAYMENT_COPY.STATUS_WAITING_DESCRIPTION,
 					  }
+					: submissionState.kind === "payment_declined"
+						? {
+								accentColor: errorColor,
+								title: "Payment declined",
+								description:
+									"That payment was not accepted. Try again or switch payment method.",
+						  }
+						: submissionState.kind === "failed"
+							? {
+									accentColor: errorColor,
+									title: "Payment could not complete",
+									description:
+										errorMessage ||
+										"Something interrupted payment confirmation. Try again or switch payment method.",
+							  }
 					: {
 							accentColor,
 							title: isBedFlow
-								? "Booking submitted"
-								: MAP_COMMIT_PAYMENT_COPY.STATUS_DISPATCHED_TITLE,
+						? "Booking submitted"
+						: MAP_COMMIT_PAYMENT_COPY.STATUS_DISPATCHED_TITLE,
 							description: isBedFlow
-								? "The admission request is live and the hospital lane is active."
+								? "The hospital is responding now."
 								: MAP_COMMIT_PAYMENT_COPY.STATUS_DISPATCHED_DESCRIPTION,
 					  };
 
@@ -505,16 +619,19 @@ export default function MapCommitPaymentStageBase({
 
 		if (!hospital?.id) {
 			setErrorMessage("Choose a hospital before continuing.");
+			showToast("Choose a hospital before continuing.", "error");
 			return;
 		}
 
 		if (!selectedPaymentMethod) {
 			setErrorMessage("Select a payment method.");
+			showToast("Select a payment method.", "error");
 			return;
 		}
 
 		if (isCombinedFlow) {
 			setErrorMessage(paymentUnsupportedMessage);
+			showToast(paymentUnsupportedMessage, "info");
 			return;
 		}
 
@@ -527,16 +644,19 @@ export default function MapCommitPaymentStageBase({
 
 		if (isWalletSelected) {
 			setErrorMessage("Choose card or cash for this request.");
+			showToast("Choose card or cash for this request.", "error");
 			return;
 		}
 
 		if (isCardSelected && !stripePaymentMethodId) {
 			setErrorMessage("Choose a saved card to continue.");
+			showToast("Choose a saved card to continue.", "error");
 			return;
 		}
 
 		if (isCardSelected && !Number.isFinite(totalCostValue)) {
 			setErrorMessage("Could not lock the card total right now. Try again.");
+			showToast("Could not lock the card total right now. Try again.", "error");
 			return;
 		}
 
@@ -546,6 +666,7 @@ export default function MapCommitPaymentStageBase({
 			Number(selectedPaymentMethod.balance || 0) < Number(totalCostValue)
 		) {
 			setErrorMessage("Choose another payment method.");
+			showToast("Choose another payment method.", "error");
 			return;
 		}
 
@@ -591,6 +712,13 @@ export default function MapCommitPaymentStageBase({
 						`Could not submit ${requestVerb}.`,
 					),
 				);
+				showToast(
+					normalizeApiErrorMessage(
+						initiationResult?.reason,
+						`Could not submit ${requestVerb}.`,
+					),
+					"error",
+				);
 				return;
 			}
 
@@ -609,7 +737,9 @@ export default function MapCommitPaymentStageBase({
 				setSubmissionState({
 					kind: "waiting_approval",
 					displayId: initiationResult.displayId || initiatedRequest.requestId,
+					requestId: initiationResult.requestId || initiatedRequest.requestId,
 				});
+				showToast("Waiting for hospital approval.", "info");
 				if (
 					pendingApprovalState.demoAutoApprove &&
 					pendingApprovalState.paymentId &&
@@ -632,15 +762,20 @@ export default function MapCommitPaymentStageBase({
 								setSubmissionState({
 									kind: "dispatched",
 									displayId: completionPayload.displayId,
+									requestId: completionPayload.requestId || null,
 								});
+								showToast("Provider confirmed the cash handoff.", "success");
+								setTimeout(() => {
+									onConfirm?.();
+								}, 800);
 							})
 							.catch((error) => {
-								setErrorMessage(
-									normalizeApiErrorMessage(
-										error?.message,
-										"Hospital approval is still pending.",
-									),
+								const nextMessage = normalizeApiErrorMessage(
+									error?.message,
+									"Hospital approval is still pending.",
 								);
+								setErrorMessage(nextMessage);
+								showToast(nextMessage, "error");
 							});
 					}, 2600);
 				}
@@ -651,6 +786,7 @@ export default function MapCommitPaymentStageBase({
 				setSubmissionState({
 					kind: "processing_payment",
 					displayId: initiationResult.displayId || initiatedRequest.requestId,
+					requestId: initiationResult.requestId || initiatedRequest.requestId,
 				});
 
 				try {
@@ -680,16 +816,29 @@ export default function MapCommitPaymentStageBase({
 						settlementAfterConfirmError?.success === false &&
 						settlementAfterConfirmError?.code === "PAYMENT_DECLINED"
 					) {
+						setSubmissionState({
+							kind: "payment_declined",
+							displayId:
+								initiationResult.displayId || initiatedRequest.requestId,
+							requestId: initiationResult.requestId || initiatedRequest.requestId,
+						});
 						setErrorMessage("Payment was declined. Choose another card or cash.");
+						showToast("Payment was declined. Choose another card or cash.", "error");
 						return;
 					}
 
-					setErrorMessage(
-						normalizeApiErrorMessage(
-							paymentError?.message,
-							"Could not confirm card payment.",
-						),
+					const nextMessage = normalizeApiErrorMessage(
+						paymentError?.message,
+						"Could not confirm card payment.",
 					);
+					setSubmissionState({
+						kind: "failed",
+						displayId:
+							initiationResult.displayId || initiatedRequest.requestId,
+						requestId: initiationResult.requestId || initiatedRequest.requestId,
+					});
+					setErrorMessage(nextMessage);
+					showToast(nextMessage, "error");
 					return;
 				}
 
@@ -704,12 +853,19 @@ export default function MapCommitPaymentStageBase({
 
 				if (!settlementResult?.success) {
 					if (settlementResult?.code === "PAYMENT_DECLINED") {
-						setSubmissionState({ kind: "idle", displayId: null });
+						setSubmissionState({
+							kind: "payment_declined",
+							displayId:
+								initiationResult.displayId || initiatedRequest.requestId,
+							requestId: initiationResult.requestId || initiatedRequest.requestId,
+						});
 						setErrorMessage("Payment was declined. Choose another card or cash.");
+						showToast("Payment was declined. Choose another card or cash.", "error");
 						return;
 					}
 
 					setInfoMessage("Payment was received. Dispatch is still finalizing.");
+					showToast("Payment was received. Dispatch is still finalizing.", "info");
 					return;
 				}
 
@@ -732,7 +888,17 @@ export default function MapCommitPaymentStageBase({
 				setSubmissionState({
 					kind: "dispatched",
 					displayId: completionPayload.displayId,
+					requestId: completionPayload.requestId || null,
 				});
+				showToast(
+					isBedFlow
+						? "Payment received. Booking is live."
+						: "Payment received. Dispatching now.",
+					"success",
+				);
+				setTimeout(() => {
+					onConfirm?.();
+				}, 800);
 				return;
 			}
 
@@ -745,14 +911,22 @@ export default function MapCommitPaymentStageBase({
 			setSubmissionState({
 				kind: "dispatched",
 				displayId: completionPayload.displayId,
+				requestId: completionPayload.requestId || null,
 			});
-		} catch (error) {
-			setErrorMessage(
-				normalizeApiErrorMessage(
-					error?.message,
-					`Could not submit ${requestVerb}.`,
-				),
+			showToast(
+				isBedFlow ? "Booking request submitted." : "Dispatch request submitted.",
+				"success",
 			);
+			setTimeout(() => {
+				onConfirm?.();
+			}, 800);
+		} catch (error) {
+			const nextMessage = normalizeApiErrorMessage(
+				error?.message,
+				`Could not submit ${requestVerb}.`,
+			);
+			setErrorMessage(nextMessage);
+			showToast(nextMessage, "error");
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -775,6 +949,7 @@ export default function MapCommitPaymentStageBase({
 		transport,
 		estimatedCost,
 		totalCostValue,
+		showToast,
 	]);
 
 	const body = submissionState.kind === "idle" ? (
@@ -783,14 +958,34 @@ export default function MapCommitPaymentStageBase({
 				titleColor={titleColor}
 				mutedColor={mutedColor}
 				surfaceColor={heroSurfaceColor}
-				headerTitle={hospitalName}
-				headerSubtitle={selectionHeaderLabel}
+				headerTitle={null}
+				headerSubtitle={null}
 				selectionRows={summaryRows}
+				heroImageSource={hospitalImageSource}
+				heroImageOpacity={heroImageOpacity}
+				heroVeilColor={heroVeilColor}
+				heroTopMaskColors={heroTopMaskColors}
+				heroBlendColors={heroBlendColors}
+				heroBottomMergeColors={heroBottomMergeColors}
 				totalCostLabel={totalCostLabel}
-				rowSurfaceColor={heroRowSurfaceColor}
 				mediaSurfaceColor={heroMediaSurfaceColor}
-				highlightColor={heroHighlightColor}
-				shadeColor={heroShadeColor}
+				headerSurfaceColor={heroHeaderSurfaceColor}
+				headerOverlayColors={heroHeaderOverlayColors}
+				heroSubtitleColor={heroSubtitleColor}
+				headerSubtitleColor={heroSubtitleColor}
+				rowSurfaceColor={heroRowSurfaceColor}
+				rowOverlayColors={heroRowOverlayColors}
+				rowFadeColors={heroRowFadeColors}
+				accentColor={accentColor}
+				primaryActionTitle={heroPrimaryActionTitle}
+				primaryActionValueLabel={heroPrimaryActionValueLabel}
+				primaryActionHint={heroPrimaryActionHint}
+				onPrimaryAction={shouldUseHeroActionCta ? handleSubmit : undefined}
+				primaryActionInteractive={shouldUseHeroActionCta}
+				primaryActionDisabled={heroPrimaryActionDisabled}
+				primaryActionLoading={isSubmitting}
+				primaryActionShowsSkeleton={isLoadingCost}
+				primaryActionSurfaceColor={heroPrimarySurfaceColor}
 			/>
 
 			<MapCommitPaymentSelectorCard
@@ -814,25 +1009,24 @@ export default function MapCommitPaymentStageBase({
 				demoCashOnly={demoCashOnly}
 			/>
 
-			{isLoadingCost ? (
-				<View style={[styles.breakdownCard, { backgroundColor: secondarySurfaceColor }]}>
-					<View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-						<ActivityIndicator size="small" color={accentColor} />
-						<Text style={[styles.inlineMessage, { color: infoColor, marginTop: 0 }]}>
-							{costLoadingCopy}
-						</Text>
-					</View>
-				</View>
+			{shouldShowExpandedBreakdown && isLoadingCost ? (
+				<MapCommitPaymentBreakdownSkeletonCard
+					surfaceColor={secondarySurfaceColor}
+					skeletonBaseColor={skeletonBaseColor}
+					skeletonSoftColor={skeletonSoftColor}
+				/>
 			) : null}
 
-			<MapCommitPaymentBreakdownCard
-				titleColor={titleColor}
-				surfaceColor={secondarySurfaceColor}
-				dividerColor={dividerColor}
-				title={MAP_COMMIT_PAYMENT_COPY.BREAKDOWN_TITLE}
-				breakdown={estimatedCost?.breakdown || []}
-				totalCostLabel={totalCostLabel || "$0.00"}
-			/>
+			{shouldShowExpandedBreakdown && !isLoadingCost ? (
+				<MapCommitPaymentBreakdownCard
+					titleColor={titleColor}
+					surfaceColor={secondarySurfaceColor}
+					dividerColor={dividerColor}
+					title={MAP_COMMIT_PAYMENT_COPY.BREAKDOWN_TITLE}
+					breakdown={estimatedCost?.breakdown || []}
+					totalCostLabel={totalCostLabel || "$0.00"}
+				/>
+			) : null}
 
 			{errorMessage ? (
 				<Text style={[styles.inlineMessage, { color: errorColor }]}>
@@ -871,38 +1065,51 @@ export default function MapCommitPaymentStageBase({
 	return (
 		<MapSheetShell
 			sheetHeight={sheetHeight}
-			snapState={MAP_SHEET_SNAP_STATES.EXPANDED}
+			snapState={effectiveSnapState}
 			presentationMode={presentationMode}
 			shellWidth={shellWidth}
 			allowedSnapStates={allowedSnapStates}
 			topSlot={
 				<MapCommitDetailsTopSlot
 					title={MAP_COMMIT_PAYMENT_COPY.HEADER_TITLE}
-					subtitle={`For ${hospitalName} · ${transportTitle}`}
 					subtitle={headerSubtitle}
-					onBack={isIdleState ? onBack : undefined}
-					onClose={isIdleState ? onClose : canDismissStatusState ? onConfirm : undefined}
+					onBack={canToggleSnapState ? handleHeaderSnapToggle : undefined}
+					leftIconName={
+						effectiveSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
+							? "chevron-down"
+							: "chevron-up"
+					}
+					leftAccessibilityLabel={
+						effectiveSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
+							? "Collapse payment sheet"
+							: "Expand payment sheet"
+					}
+					showLeftControl={canToggleSnapState}
+					onClose={
+						isIdleState || isFailureState
+							? onClose
+							: canDismissStatusState
+								? onConfirm
+								: undefined
+					}
 					titleColor={titleColor}
 					mutedColor={mutedColor}
 					closeSurface={closeSurface}
 				/>
 			}
 			footerSlot={
-				<MapCommitPaymentFooter
-					label={footerLabel}
-					onPress={handleSubmit}
-					loading={isSubmitting}
-					disabled={
-						isCombinedFlow ||
-						isSubmitting ||
-						submissionState.kind === "processing_payment"
-					}
-					stageMetrics={stageMetrics}
-					modalContainedStyle={modalContainedStyle}
-					contentInsetStyle={webWideInsetStyle}
-				/>
+				isIdleState && isExpandedPaymentView ? (
+					<MapCommitPaymentFooter
+						label={footerActionLabel}
+						onPress={handleSubmit}
+						loading={isSubmitting}
+						disabled={heroPrimaryActionDisabled}
+						modalContainedStyle={modalContainedStyle}
+						contentInsetStyle={webWideInsetStyle}
+					/>
+				) : null
 			}
-			onHandlePress={handleSnapToggle}
+			onHandlePress={handleHeaderSnapToggle}
 		>
 			<MapStageBodyScroll
 				bodyScrollRef={bodyScrollRef}

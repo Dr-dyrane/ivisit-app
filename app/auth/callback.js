@@ -4,6 +4,7 @@ import { View, Text, ActivityIndicator, Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import { authService } from '../../services/authService';
 import { database, StorageKeys } from '../../database';
+import { useAuth } from '../../contexts/AuthContext';
 
 const PUBLIC_MAP_ROUTE = '/(auth)/map';
 const CALLBACK_PAGE_DEDUP_WINDOW_MS = 8000;
@@ -92,6 +93,7 @@ function buildCallbackPageKey(currentUrl, fallbackParams = {}) {
 
 export default function AuthCallback() {
   const router = useRouter();
+  const { login, syncUserData } = useAuth();
   const params = useLocalSearchParams();
   const { token, user, error, code, access_token: accessToken } = params;
 
@@ -139,6 +141,25 @@ export default function AuthCallback() {
           await database.delete(StorageKeys.AUTH_RETURN_ROUTE).catch(() => {});
         };
 
+        const finalizeAuth = async (resolvedUser, resolvedToken = null) => {
+          const nextUser =
+            resolvedUser && resolvedToken && !resolvedUser?.token
+              ? { ...resolvedUser, token: resolvedToken }
+              : resolvedUser;
+
+          if (!nextUser) {
+            return false;
+          }
+
+          const loginSucceeded = await login(nextUser);
+          if (!loginSucceeded) {
+            return false;
+          }
+
+          await syncUserData?.().catch(() => {});
+          return true;
+        };
+
         const resolvePublicFallback = async () => {
           return (await readStoredPublicRoute()) || PUBLIC_MAP_ROUTE;
         };
@@ -170,8 +191,13 @@ export default function AuthCallback() {
               }
             }
 
-            await database.write(StorageKeys.AUTH_TOKEN, token);
-            await database.write(StorageKeys.CURRENT_USER, userData);
+            const authSettled = await finalizeAuth(userData, token);
+            if (!authSettled) {
+              const fallbackRoute = await resolvePublicFallback();
+              await clearStoredReturnRoute();
+              router.replace(fallbackRoute);
+              return;
+            }
             const nextRoute = await resolvePostAuthRoute();
             await clearStoredReturnRoute();
             router.replace(nextRoute);
@@ -222,8 +248,13 @@ export default function AuthCallback() {
                 return;
               }
 
-              await database.write(StorageKeys.AUTH_TOKEN, oauthToken);
-              await database.write(StorageKeys.CURRENT_USER, parsedUserData);
+              const authSettled = await finalizeAuth(parsedUserData, oauthToken);
+              if (!authSettled) {
+                const fallbackRoute = await resolvePublicFallback();
+                await clearStoredReturnRoute();
+                router.replace(fallbackRoute);
+                return;
+              }
               const nextRoute = await resolvePostAuthRoute();
               await clearStoredReturnRoute();
               router.replace(nextRoute);
@@ -236,11 +267,16 @@ export default function AuthCallback() {
                 const result = await authService.handleOAuthCallback(currentUrl);
 
                 if (result?.data?.user) {
-                  await database.write(
-                    StorageKeys.AUTH_TOKEN,
+                  const authSettled = await finalizeAuth(
+                    result.data.user,
                     result.data.session?.access_token || result.data.user?.token || null
                   );
-                  await database.write(StorageKeys.CURRENT_USER, result.data.user);
+                  if (!authSettled) {
+                    const fallbackRoute = await resolvePublicFallback();
+                    await clearStoredReturnRoute();
+                    router.replace(fallbackRoute);
+                    return;
+                  }
                   const nextRoute = await resolvePostAuthRoute();
                   await clearStoredReturnRoute();
                   router.replace(nextRoute);
@@ -283,7 +319,7 @@ export default function AuthCallback() {
 
     // Handle callback immediately
     void handleAuthCallback();
-  }, [accessToken, code, error, router, token, user]);
+  }, [accessToken, code, error, login, router, syncUserData, token, user]);
 
   return (
     <View style={{ 

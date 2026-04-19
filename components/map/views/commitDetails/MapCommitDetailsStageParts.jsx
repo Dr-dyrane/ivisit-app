@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import CountryPickerModal from "../../../register/CountryPickerModal";
+import CountryFlagGlyph from "../../../register/CountryFlagGlyph";
 import MapAuthQuestionCard from "../../shared/MapAuthQuestionCard";
 import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import styles from "./mapCommitDetails.styles";
@@ -23,9 +24,12 @@ function MapCommitPhoneCountryChip({
         countryLoading ? styles.phoneCountryChipDisabled : null,
       ]}
     >
-      <Text style={styles.phoneCountryFlag}>
-        {country?.flag || "\u{1F310}"}
-      </Text>
+      <CountryFlagGlyph
+        flag={country?.flag}
+        code={country?.code}
+        size={18}
+        style={styles.phoneCountryFlag}
+      />
       <Text
         numberOfLines={1}
         style={[styles.phoneCountryDial, { color: titleColor }]}
@@ -42,19 +46,22 @@ export function MapCommitDetailsTopSlot({
   subtitle,
   onBack,
   onClose,
+  leftIconName = "chevron-back",
+  leftAccessibilityLabel = "Go back",
+  showLeftControl = typeof onBack === "function",
   titleColor,
   mutedColor,
   closeSurface,
 }) {
   return (
     <View style={styles.topSlot}>
-      {typeof onBack === "function" ? (
+      {showLeftControl ? (
         <MapHeaderIconButton
           onPress={onBack}
-          accessibilityLabel="Go back"
+          accessibilityLabel={leftAccessibilityLabel}
           backgroundColor={closeSurface}
           color={titleColor}
-          iconName="chevron-back"
+          iconName={leftIconName}
           pressableStyle={styles.topSlotAction}
           style={styles.topSlotCloseButton}
         />

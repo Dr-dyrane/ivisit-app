@@ -1,9 +1,14 @@
 import { StyleSheet } from "react-native";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 const styles = StyleSheet.create({
 	bodyContent: {
 		flexGrow: 1,
-		paddingTop: 14,
+		paddingTop: 10,
 		paddingBottom: 12,
 	},
 	webWideContentInset: {
@@ -13,127 +18,216 @@ const styles = StyleSheet.create({
 	sectionStack: {
 		gap: 14,
 	},
+	overlaySurfaceShell: {
+		overflow: "hidden",
+	},
 	heroCard: {
-		minHeight: 238,
-		borderRadius: 30,
-		borderCurve: "continuous",
-		paddingHorizontal: 16,
-		paddingTop: 16,
-		paddingBottom: 16,
+		minHeight: 276,
 		overflow: "hidden",
 		shadowColor: "#0F172A",
-		shadowOpacity: 0.2,
-		shadowRadius: 28,
-		shadowOffset: { width: 0, height: 18 },
-		elevation: 12,
+		shadowOpacity: 0.18,
+		shadowRadius: 26,
+		shadowOffset: { width: 0, height: 16 },
+		elevation: 10,
+		...squircle(32),
 	},
-	heroCardTopHighlight: {
+	heroImageFrame: {
 		position: "absolute",
-		top: 1,
-		left: 1,
-		right: 1,
-		height: 84,
-		borderTopLeftRadius: 30,
-		borderTopRightRadius: 30,
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
 	},
-	heroCardBottomShade: {
+	heroVeil: {
+		...StyleSheet.absoluteFillObject,
+		zIndex: 1,
+	},
+	overlaySurfaceGradient: {
+		...StyleSheet.absoluteFillObject,
+	},
+	heroImage: {
+		...squircle(32),
+	},
+	heroBlend: {
 		position: "absolute",
 		left: 0,
 		right: 0,
 		bottom: 0,
-		height: 92,
+		height: 176,
+		zIndex: 1,
 	},
-	passHeader: {
+	heroBottomMerge: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		height: 138,
+		zIndex: 1,
+	},
+	heroTopMask: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		top: 0,
+		height: 112,
+		zIndex: 1,
+	},
+	heroContent: {
+		flex: 1,
+		justifyContent: "space-between",
+		paddingHorizontal: 16,
+		paddingTop: 16,
+		paddingBottom: 18,
+		zIndex: 2,
+	},
+	heroTopRow: {
 		flexDirection: "row",
 		alignItems: "flex-start",
 		justifyContent: "space-between",
-		gap: 14,
-		paddingBottom: 14,
+		gap: 12,
 	},
-	passHeaderCopy: {
+	heroTopRowTrailing: {
+		justifyContent: "flex-end",
+	},
+	heroHeaderCopy: {
 		flex: 1,
 		minWidth: 0,
-		paddingTop: 2,
+		overflow: "hidden",
+		paddingTop: 4,
+		paddingHorizontal: 14,
+		paddingBottom: 12,
+		...squircle(26),
 	},
-	passHeaderTitle: {
-		fontSize: 21,
-		lineHeight: 25,
-		fontWeight: "900",
-		letterSpacing: -0.55,
+	heroHeaderTitle: {
+		fontSize: 22,
+		lineHeight: 27,
+		fontWeight: "800",
+		letterSpacing: -0.5,
 	},
-	passHeaderSubtitle: {
+	heroHeaderSubtitle: {
 		marginTop: 4,
 		fontSize: 13,
 		lineHeight: 17,
-		fontWeight: "600",
-	},
-	passTotalPill: {
-		alignItems: "flex-end",
-		flexShrink: 0,
-		paddingHorizontal: 2,
-	},
-	passRowStack: {
-		gap: 10,
-	},
-	passRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 11,
-		minHeight: 52,
-		paddingHorizontal: 10,
-		paddingVertical: 8,
-		borderRadius: 22,
-		borderCurve: "continuous",
-	},
-	passRowMedia: {
-		width: 46,
-		height: 46,
-		borderRadius: 17,
-		borderCurve: "continuous",
-		alignItems: "center",
-		justifyContent: "center",
-		overflow: "hidden",
-	},
-	passRowImage: {
-		width: "100%",
-		height: "100%",
-	},
-	passRowCopy: {
-		flex: 1,
-		minWidth: 0,
-	},
-	passRowTitle: {
-		fontSize: 16,
-		lineHeight: 20,
-		fontWeight: "800",
-		letterSpacing: -0.3,
-	},
-	passRowSubtitle: {
-		marginTop: 3,
-		fontSize: 12,
-		lineHeight: 16,
-		fontWeight: "600",
-	},
-	priceLabel: {
-		fontSize: 10,
-		lineHeight: 13,
 		fontWeight: "700",
-		letterSpacing: 0.5,
+	},
+	heroPrimaryActionPressable: {
+		flexShrink: 0,
+	},
+	heroPrimaryActionPressed: {
+		opacity: 0.96,
+		transform: [{ scale: 0.985 }],
+	},
+	heroPrimaryAction: {
+		minWidth: 132,
+		paddingHorizontal: 14,
+		paddingTop: 11,
+		paddingBottom: 12,
+		overflow: "hidden",
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.24,
+		shadowRadius: 16,
+		shadowOffset: { width: 0, height: 10 },
+		...squircle(26),
+	},
+	heroPrimaryActionDisabled: {
+		opacity: 0.72,
+	},
+	heroPrimaryActionLabel: {
+		fontSize: 11,
+		lineHeight: 14,
+		fontWeight: "800",
+		letterSpacing: 0.35,
 		textTransform: "uppercase",
 	},
-	priceValue: {
-		marginTop: 3,
+	heroPrimaryActionValueRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		marginTop: 5,
+		minHeight: 28,
+	},
+	heroPrimaryActionValue: {
 		fontSize: 24,
 		lineHeight: 28,
 		fontWeight: "900",
-		letterSpacing: -0.7,
+		letterSpacing: -0.72,
+	},
+	heroPrimaryActionSkeletonWrap: {
+		gap: 6,
+	},
+	heroPrimaryActionSkeleton: {
+		height: 12,
+		width: 84,
+		backgroundColor: "rgba(255,255,255,0.72)",
+		...squircle(999),
+	},
+	heroPrimaryActionHint: {
+		marginTop: 4,
+		fontSize: 11,
+		lineHeight: 14,
+		fontWeight: "600",
+	},
+	heroSummaryList: {
+		gap: 12,
+		paddingTop: 16,
+	},
+	heroSummaryRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
+		overflow: "hidden",
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		...squircle(24),
+	},
+	heroSummaryMedia: {
+		width: 46,
+		height: 46,
+		alignItems: "center",
+		justifyContent: "center",
+		overflow: "hidden",
+		...squircle(17),
+	},
+	heroSummaryImage: {
+		width: "100%",
+		height: "100%",
+	},
+	heroSummaryCopyWrap: {
+		flex: 1,
+		minWidth: 0,
+		position: "relative",
+		justifyContent: "center",
+	},
+	heroSummaryCopy: {
+		flex: 1,
+		minWidth: 0,
+		paddingRight: 20,
+	},
+	heroSummaryFade: {
+		position: "absolute",
+		top: 0,
+		right: 0,
+		bottom: 0,
+		width: 34,
+	},
+	heroSummaryTitle: {
+		fontSize: 16,
+		lineHeight: 20,
+		fontWeight: "800",
+		letterSpacing: -0.28,
+	},
+	heroSummarySubtitle: {
+		marginTop: 3,
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "700",
+		letterSpacing: -0.08,
 	},
 	selectorCard: {
-		borderRadius: 28,
-		borderCurve: "continuous",
 		paddingHorizontal: 14,
 		paddingVertical: 16,
 		overflow: "hidden",
+		...squircle(28),
 	},
 	selectorHeader: {
 		paddingHorizontal: 4,
@@ -156,8 +250,6 @@ const styles = StyleSheet.create({
 	paymentSummaryRow: {
 		marginTop: 12,
 		minHeight: 54,
-		borderRadius: 22,
-		borderCurve: "continuous",
 		paddingLeft: 16,
 		paddingRight: 8,
 		paddingVertical: 7,
@@ -165,9 +257,10 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "space-between",
 		gap: 12,
+		...squircle(22),
 	},
 	paymentSummaryRowPressed: {
-		opacity: 0.88,
+		opacity: 0.9,
 		transform: [{ scale: 0.995 }],
 	},
 	paymentSummaryText: {
@@ -181,11 +274,10 @@ const styles = StyleSheet.create({
 	paymentChangePill: {
 		minHeight: 38,
 		paddingHorizontal: 15,
-		borderRadius: 19,
-		borderCurve: "continuous",
 		alignItems: "center",
 		justifyContent: "center",
 		flexShrink: 0,
+		...squircle(19),
 	},
 	paymentChangeText: {
 		fontSize: 13,
@@ -194,16 +286,18 @@ const styles = StyleSheet.create({
 		letterSpacing: -0.08,
 	},
 	breakdownCard: {
-		borderRadius: 24,
-		borderCurve: "continuous",
 		paddingHorizontal: 18,
 		paddingVertical: 16,
+		...squircle(24),
 	},
 	breakdownTitle: {
 		fontSize: 15,
 		lineHeight: 19,
 		fontWeight: "800",
 		letterSpacing: -0.2,
+	},
+	breakdownList: {
+		marginTop: 10,
 	},
 	breakdownRow: {
 		flexDirection: "row",
@@ -246,20 +340,46 @@ const styles = StyleSheet.create({
 		fontWeight: "800",
 		letterSpacing: -0.2,
 	},
+	breakdownSkeletonTitle: {
+		height: 15,
+		width: 116,
+		...squircle(999),
+	},
+	breakdownSkeletonLabel: {
+		height: 13,
+		width: "58%",
+		...squircle(999),
+	},
+	breakdownSkeletonLabelShort: {
+		width: "44%",
+	},
+	breakdownSkeletonValue: {
+		height: 13,
+		width: 58,
+		...squircle(999),
+	},
+	breakdownSkeletonTotalLabel: {
+		height: 14,
+		width: 56,
+		...squircle(999),
+	},
+	breakdownSkeletonTotalValue: {
+		height: 18,
+		width: 86,
+		...squircle(999),
+	},
 	statusCard: {
-		borderRadius: 30,
-		borderCurve: "continuous",
 		paddingHorizontal: 18,
 		paddingVertical: 22,
 		alignItems: "center",
+		...squircle(30),
 	},
 	statusIconWrap: {
 		width: 64,
 		height: 64,
-		borderRadius: 24,
-		borderCurve: "continuous",
 		alignItems: "center",
 		justifyContent: "center",
+		...squircle(24),
 	},
 	statusTitle: {
 		marginTop: 16,
@@ -283,8 +403,31 @@ const styles = StyleSheet.create({
 		fontWeight: "700",
 		textAlign: "center",
 	},
+	statusActionRow: {
+		width: "100%",
+		marginTop: 18,
+		gap: 10,
+	},
+	statusPrimaryAction: {
+		width: "100%",
+	},
+	statusSecondaryAction: {
+		alignSelf: "center",
+		paddingHorizontal: 14,
+		paddingVertical: 8,
+		...squircle(18),
+	},
+	statusSecondaryActionPressed: {
+		opacity: 0.88,
+		transform: [{ scale: 0.99 }],
+	},
+	statusSecondaryActionText: {
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "700",
+	},
 	inlineMessage: {
-		marginTop: 6,
+		marginTop: 2,
 		fontSize: 13,
 		lineHeight: 18,
 		fontWeight: "600",

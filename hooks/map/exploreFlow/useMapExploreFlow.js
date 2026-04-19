@@ -340,10 +340,15 @@ export function useMapExploreFlow() {
       restoredSourcePayload?.room || commitFlow?.room || null;
     const restoredRoomId =
       restoredSourcePayload?.roomId || commitFlow?.roomId || null;
+    const restoredPhaseSnapState =
+      commitFlow?.phaseSnapState ||
+      (commitFlow?.phase === MAP_SHEET_PHASES.COMMIT_PAYMENT
+        ? defaultExploreSnapState
+        : MAP_SHEET_SNAP_STATES.EXPANDED);
 
     setSheetView({
       phase: commitFlow.phase,
-      snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+      snapState: restoredPhaseSnapState,
       payload: {
         hospital: targetHospital,
         transport: commitFlow?.transport || null,
@@ -537,6 +542,7 @@ export function useMapExploreFlow() {
       });
       setCommitFlow({
         phase: MAP_SHEET_PHASES.COMMIT_DETAILS,
+        phaseSnapState: MAP_SHEET_SNAP_STATES.EXPANDED,
         hospital: targetHospital,
         hospitalId: targetHospital?.id || null,
         transport: transport || null,
@@ -584,6 +590,9 @@ export function useMapExploreFlow() {
       const resolvedSourceSnapState =
         payload?.sourceSnapState || sheetSnapState || defaultExploreSnapState;
       const resolvedSourcePayload = payload?.sourcePayload || null;
+      const targetPhaseSnapState = usesSidebarLayout
+        ? MAP_SHEET_SNAP_STATES.EXPANDED
+        : MAP_SHEET_SNAP_STATES.HALF;
 
       const nextPayload = {
         ...(payload && typeof payload === "object" ? payload : {}),
@@ -596,11 +605,12 @@ export function useMapExploreFlow() {
 
       setSheetView({
         phase: MAP_SHEET_PHASES.COMMIT_PAYMENT,
-        snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+        snapState: targetPhaseSnapState,
         payload: nextPayload,
       });
       setCommitFlow({
         phase: MAP_SHEET_PHASES.COMMIT_PAYMENT,
+        phaseSnapState: targetPhaseSnapState,
         hospital: targetHospital,
         hospitalId: targetHospital?.id || null,
         transport: transport || null,
@@ -622,6 +632,7 @@ export function useMapExploreFlow() {
       setFeaturedHospital,
       setSheetView,
       sheetSnapState,
+      usesSidebarLayout,
     ],
   );
 

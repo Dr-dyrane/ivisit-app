@@ -1,21 +1,21 @@
 export const MAP_COMMIT_PAYMENT_COPY = {
-	HEADER_TITLE: "Select payment",
-	PAYMENT_METHODS_TITLE: "Payment method",
-	BREAKDOWN_TITLE: "Payment summary",
+	HEADER_TITLE: "Payment",
+	PAYMENT_METHODS_TITLE: "Pay with",
+	BREAKDOWN_TITLE: "Details",
 	COST_LOADING: "Locking in transport cost...",
-	COST_ERROR: "Could not refresh the latest cost. You can still continue.",
+	COST_ERROR: "Total couldn't refresh. You can still continue.",
 	CTA_CONFIRM: "Confirm dispatch",
 	CTA_DONE: "Done",
 	STATUS_PROCESSING_PAYMENT_TITLE: "Confirming payment",
 	STATUS_PROCESSING_PAYMENT_DESCRIPTION:
-		"Securely confirming your card before dispatch is released.",
-	STATUS_FINALIZING_TITLE: "Finalizing dispatch",
+		"Securing your card.",
+	STATUS_FINALIZING_TITLE: "Finalizing request",
 	STATUS_FINALIZING_DESCRIPTION:
-		"Payment was received. Releasing the request to dispatch now.",
-	STATUS_WAITING_TITLE: "Waiting for hospital approval",
+		"Payment received.",
+	STATUS_WAITING_TITLE: "Waiting for approval",
 	STATUS_WAITING_DESCRIPTION:
-		"Cash payment is pending hospital approval. We'll keep the request active.",
-	STATUS_DISPATCHED_TITLE: "Ambulance dispatched",
+		"Cash request sent to the hospital.",
+	STATUS_DISPATCHED_TITLE: "Request live",
 	STATUS_DISPATCHED_DESCRIPTION:
-		"The request is live and the dispatch lane is active.",
+		"The hospital is responding now.",
 };

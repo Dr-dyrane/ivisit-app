@@ -213,10 +213,7 @@ export default function MapSheetOrchestrator({
 		}
 		case MAP_SHEET_PHASES.COMMIT_PAYMENT: {
 			const commitHospital = sheetPayload?.hospital || featuredHospital || nearestHospital || null;
-			const commitSheetHeight = getMapSheetHeight(
-				screenHeight,
-				MAP_SHEET_SNAP_STATES.EXPANDED,
-			);
+			const commitSheetHeight = getMapSheetHeight(screenHeight, snapState);
 			const commitOrigin =
 				currentLocation || activeLocation
 					? {

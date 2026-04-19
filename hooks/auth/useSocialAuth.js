@@ -8,6 +8,8 @@ import { supabase } from "../../services/supabase";
 import { AuthContext } from "../../contexts/AuthContext";
 import { database, StorageKeys } from "../../database";
 
+let webOAuthRedirectInFlight = false;
+
 /**
  * Robust Social Auth Hook
  *
@@ -37,6 +39,7 @@ export function useSocialAuth() {
 	const { login, syncUserData } = useContext(AuthContext);
 
 	const signInWithProvider = useCallback(async (provider, options = {}) => {
+		let pendingWebRedirect = false;
 		const deferProfileCompletion = options?.deferProfileCompletion === true;
 		const returnTo = typeof options?.returnTo === "string" ? options.returnTo : null;
 		const canUseNativeBrowserWarmup =
@@ -62,6 +65,7 @@ export function useSocialAuth() {
 		try {
 			if (returnTo) {
 				await database.write(StorageKeys.AUTH_RETURN_ROUTE, returnTo);
+				await database.write(StorageKeys.LAST_PUBLIC_ROUTE, returnTo).catch(() => {});
 			} else {
 				await clearAuthReturnRoute();
 			}
@@ -78,7 +82,12 @@ export function useSocialAuth() {
 
 			if (data?.url) {
 				if (Platform.OS === "web" && typeof window !== "undefined") {
-					window.location.assign(data.url);
+					if (webOAuthRedirectInFlight) {
+						return { success: true, pendingRedirect: true };
+					}
+					webOAuthRedirectInFlight = true;
+					pendingWebRedirect = true;
+					window.location.replace(data.url);
 					return { success: true, pendingRedirect: true };
 				}
 
@@ -196,6 +205,9 @@ export function useSocialAuth() {
 			return { success: false, error: "Cancelled or failed" };
 		} catch (error) {
 			console.error("Social Auth Error:", error);
+			if (Platform.OS === "web") {
+				webOAuthRedirectInFlight = false;
+			}
 			await clearAuthReturnRoute();
 			await clearDeferredProfileFlag();
 
@@ -215,6 +227,9 @@ export function useSocialAuth() {
 
 			return { success: false, error: errorMessage };
 		} finally {
+			if (Platform.OS === "web" && !pendingWebRedirect) {
+				webOAuthRedirectInFlight = false;
+			}
 			if (canUseNativeBrowserWarmup) {
 				await WebBrowser.coolDownAsync();
 			}

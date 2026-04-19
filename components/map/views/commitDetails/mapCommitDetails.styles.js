@@ -77,8 +77,7 @@ const styles = StyleSheet.create({
     opacity: 0.68,
   },
   phoneCountryFlag: {
-    fontSize: 18,
-    lineHeight: 22,
+    marginRight: 1,
   },
   phoneCountryDial: {
     fontSize: 13,

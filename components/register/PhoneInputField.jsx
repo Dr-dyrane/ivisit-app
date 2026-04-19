@@ -14,6 +14,7 @@ import { COLORS } from "../../constants/colors";
 import usePhoneValidation from "../../hooks/validators/usePhoneValidation";
 import useCountryDetection from "../../hooks/validators/useCountryDetection";
 import CountryPickerModal from "./CountryPickerModal";
+import CountryFlagGlyph from "./CountryFlagGlyph";
 
 /**
  * PhoneInputField - iVisit Registration
@@ -158,7 +159,12 @@ export default function PhoneInputField({
 						className="flex-row items-center pr-4 mr-4"
 						style={{ borderRightWidth: 1, borderRightColor: colors.border }}
 					>
-						<Text className="text-2xl mr-2">{country.flag}</Text>
+						<CountryFlagGlyph
+							flag={country.flag}
+							code={country.code}
+							size={24}
+							style={{ marginRight: 8 }}
+						/>
 						<Text className="text-lg font-black" style={{ color: colors.text }}>
 							{country.dial_code}
 						</Text>
