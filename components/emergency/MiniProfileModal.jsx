@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, Image, Pressable, Modal, Animated, ScrollView, StyleSheet, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,8 +10,9 @@ import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { navigateToMedicalProfile, navigateToProfile, navigateToVisits } from "../../utils/navigationHelpers";
+import { waitForMinimumPending } from "../../utils/ui/apiInteractionFeedback";
 
-export default function MiniProfileModal({ visible, onClose }) {
+export default function MiniProfileModal({ visible, onClose, onSignOut }) {
 	const { isDarkMode } = useTheme();
 	const { user } = useAuth();
 	const { visitCounts } = useVisits();
@@ -19,6 +20,7 @@ export default function MiniProfileModal({ visible, onClose }) {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { height: screenHeight } = useWindowDimensions();
+	const [isSigningOut, setIsSigningOut] = useState(false);
 
 	const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
@@ -32,29 +34,75 @@ export default function MiniProfileModal({ visible, onClose }) {
 		}
 	}, [visible]);
 
-	const handleDismiss = () => {
+	useEffect(() => {
+		if (!visible) {
+			setIsSigningOut(false);
+		}
+	}, [visible]);
+
+	const handleDismiss = useCallback((afterDismiss) => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		Animated.parallel([
 			Animated.timing(slideAnim, { toValue: screenHeight, duration: 250, useNativeDriver: true }),
 			Animated.timing(bgOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-		]).start(() => onClose());
-	};
+		]).start(() => {
+			onClose?.();
+			afterDismiss?.();
+		});
+	}, [bgOpacity, onClose, screenHeight, slideAnim]);
 
 	const executeNav = (navFn) => {
+		if (isSigningOut) return;
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 		handleDismiss();
 		setTimeout(() => navFn({ router }), 300);
 	};
 
+	const handleSignOut = useCallback(async () => {
+		if (isSigningOut || typeof onSignOut !== "function") return;
+
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		setIsSigningOut(true);
+		try {
+			const result = await waitForMinimumPending(Promise.resolve(onSignOut()));
+			if (result?.success === false) {
+				setIsSigningOut(false);
+				return;
+			}
+			handleDismiss(() => setIsSigningOut(false));
+		} catch (error) {
+			console.error("[MiniProfileModal] Sign out failed:", error);
+			setIsSigningOut(false);
+		}
+	}, [handleDismiss, isSigningOut, onSignOut]);
+
 	const textColor = isDarkMode ? "#FFFFFF" : "#0F172A";
 	const textMuted = isDarkMode ? "#94A3B8" : "#64748B";
 	const widgetBg = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
+	const signOutSurface = isDarkMode ? "rgba(239,68,68,0.14)" : "rgba(134,16,14,0.10)";
+	const signOutText = isDarkMode ? "#FCA5A5" : "#86100E";
 
 	return (
-		<Modal visible={visible} transparent animationType="none" onRequestClose={handleDismiss}>
+		<Modal
+			visible={visible}
+			transparent
+			animationType="none"
+			onRequestClose={() => {
+				if (!isSigningOut) {
+					handleDismiss();
+				}
+			}}
+		>
 			<View style={styles.modalWrapper}>
 				<Animated.View style={[styles.backdrop, { opacity: bgOpacity }]}>
-					<Pressable style={{ flex: 1 }} onPress={handleDismiss} />
+					<Pressable
+						style={{ flex: 1 }}
+						onPress={() => {
+							if (!isSigningOut) {
+								handleDismiss();
+							}
+						}}
+					/>
 				</Animated.View>
 
 				<Animated.View style={[styles.modalCard, { 
@@ -88,6 +136,23 @@ export default function MiniProfileModal({ visible, onClose }) {
 							<Text style={[styles.userEmail, { color: textMuted }]}>
 								{user?.email || "medical@ivisit.com"}
 							</Text>
+							{typeof onSignOut === "function" ? (
+								<Pressable
+									onPress={handleSignOut}
+									disabled={isSigningOut}
+									style={[
+										styles.signOutButton,
+										{
+											backgroundColor: signOutSurface,
+											opacity: isSigningOut ? 0.72 : 1,
+										},
+									]}
+								>
+									<Text style={[styles.signOutButtonText, { color: signOutText }]}>
+										{isSigningOut ? "Signing out..." : "Sign out"}
+									</Text>
+								</Pressable>
+							) : null}
 						</View>
 
 						{/* VISITS WIDGET: High-Contrast Dashboard */}
@@ -161,7 +226,7 @@ const styles = StyleSheet.create({
 	handleContainer: { alignItems: "center", paddingVertical: 18 },
 	handle: { width: 44, height: 6, borderRadius: 3 },
 	scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
-	
+
 	profileHeader: { alignItems: "center", marginBottom: 32 },
 	avatarContainer: { position: "relative", marginBottom: 16 },
 	avatarImage: { 
@@ -186,6 +251,17 @@ const styles = StyleSheet.create({
 	},
 	userName: { fontSize: 24, fontWeight: "900", letterSpacing: -0.8 },
 	userEmail: { fontSize: 14, fontWeight: "500", marginTop: 4, opacity: 0.7 },
+	signOutButton: {
+		marginTop: 16,
+		paddingHorizontal: 18,
+		paddingVertical: 11,
+		borderRadius: 999,
+	},
+	signOutButtonText: {
+		fontSize: 13,
+		fontWeight: "800",
+		letterSpacing: 0.2,
+	},
 
 	widget: { borderRadius: 32, padding: 24 },
 	widgetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },

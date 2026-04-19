@@ -42,7 +42,7 @@ export const formatUser = (sessionUser, sessionToken, profile, hasInsurance = fa
         ...profile,
         id: sessionUser.id,
         email: sessionUser.email,
-        phone: sessionUser.phone,
+        phone: profile?.phone || sessionUser.phone || null,
         emailVerified: !!sessionUser.email_confirmed_at,
         phoneVerified: !!sessionUser.phone_confirmed_at,
         token: sessionToken,

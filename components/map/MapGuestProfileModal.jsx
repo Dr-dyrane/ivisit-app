@@ -108,6 +108,7 @@ export default function MapGuestProfileModal({
 
 				<View style={[styles.formBlock, responsiveStyles.formBlock]}>
 					<MapInlineActionInput
+						semanticType="email"
 						value={emailValue}
 						onChangeText={onEmailChange}
 						onSubmit={onContinue}
@@ -124,8 +125,6 @@ export default function MapGuestProfileModal({
 						keyboardType="email-address"
 						autoCapitalize="none"
 						autoCorrect={false}
-						autoComplete="email"
-						textContentType="emailAddress"
 						returnKeyType="go"
 						actionAccessibilityHint="Next step sends a one-time code to this email address"
 					/>

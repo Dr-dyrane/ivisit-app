@@ -175,7 +175,7 @@ Locked microstep order:
 1. sheet header owns locked hospital + step context
 2. email question
 3. OTP verification
-4. phone confirmation, prefilled when the resolved profile already has it
+4. phone confirmation only when the resolved authenticated profile still lacks a reachable callback number
 
 Rendering rule:
 
@@ -183,6 +183,13 @@ Rendering rule:
 - the body should feel like the guest profile identity bridge: avatar, one prompt, one input, one CTA
 - header copy stays user-facing: task as title (`Confirm email`, `Enter code`, `Add phone number`), request context as subtitle (`For {hospital} · {transport tier}`)
 - single-input microsteps use the shared squircle inline action input: input and CTA share one continuous field, with a reserved right slide lane for press/loading motion
+
+- keep the new `/map` presentation; do not visually fall back to the legacy auth modal layout
+- borrow stronger legacy behavior under the new shell instead of rebuilding weaker versions:
+  - phone step keeps the map inline field but should use legacy-grade country detection, country picking, phone validation, and E.164 normalization
+  - OTP step keeps the map commit card but should use legacy-grade OTP autofill, paste, focus choreography, and resend discipline
+- email remains the simplest map-native inline field
+- harden these identity mechanics before introducing optional triage inside `COMMIT_DETAILS`
 
 Review account rule:
 

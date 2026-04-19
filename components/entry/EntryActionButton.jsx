@@ -19,6 +19,7 @@ export default function EntryActionButton({
 	loading = false,
 	maxWidth = null,
 	minWidth = null,
+	contentPaddingHorizontal = 20,
 	style,
 	accessibilityLabel,
 	accessibilityHint,
@@ -95,7 +96,14 @@ export default function EntryActionButton({
 				colors={isPrimary ? primaryGradient : secondaryGradient}
 				start={{ x: 0, y: 0 }}
 				end={{ x: 1, y: 1 }}
-				style={[styles.fill, { borderRadius: resolvedRadius, borderCurve: "continuous" }]}
+				style={[
+					styles.fill,
+					{
+						borderRadius: resolvedRadius,
+						borderCurve: "continuous",
+						paddingHorizontal: contentPaddingHorizontal,
+					},
+				]}
 			>
 				<View
 					pointerEvents="none"
@@ -188,7 +196,6 @@ const styles = StyleSheet.create({
 	fill: {
 		flex: 1,
 		justifyContent: "center",
-		paddingHorizontal: 20,
 		overflow: "hidden",
 	},
 	highlight: {

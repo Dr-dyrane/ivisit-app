@@ -1045,7 +1045,7 @@ Expanded:
 - one question at a time
 - email input first
 - OTP entry second
-- phone confirmation next, prefilled when available
+- phone confirmation only when the resolved authenticated profile still lacks a reachable callback number
 - resend code
 - correction path
 - backflow between microsteps without leaving the phase
@@ -1054,7 +1054,7 @@ Locked auth order:
 
 - email first
 - OTP second
-- phone confirmation third, even if the profile already has a value
+- phone confirmation third only when the resolved authenticated profile still lacks a reachable callback number
 - name is not a blocking v1 question
 - this happens before payment
 - this must not use `Sign up` or `Register` language
@@ -1071,6 +1071,12 @@ Map behavior:
 - sheet carries identity capture
 - `COMMIT_DETAILS` should open directly in the normal expanded sheet posture for keyboard and OTP focus
 - the global smart header remains reserved for tracking; this phase uses the sheet's own compact modal header
+- the new `/map` visual language stays intact; do not drop the user back into the legacy auth modal presentation
+- borrow mature legacy behavior where it is stronger without inheriting the old visuals:
+  - phone confirmation should keep the map-native input shell but use country detection, region picking, real validation, and E.164 normalization
+  - OTP should keep the map commit card but use stronger autofill, paste, focus, and resend behavior
+- email remains the simplest inline map field
+- finish hardening these identity primitives before optional triage is added to `COMMIT_DETAILS`
 
 ## 3.12 Payment / Commit
 

@@ -447,10 +447,11 @@ Rendering rule for `commit_details`:
 - ask one question at a time, not a stacked form
 - email question first
 - OTP verification second
-- phone only if missing from the resolved authenticated profile
+- phone confirmation only when the resolved authenticated profile still lacks a reachable callback number
 - triage remains optional and skippable
 - do not block v1 on a dedicated name step
 - use existing app auth primitives (`SmartContactInput`, `OTPInputCard`, `authService.requestOtp`, `authService.verifyOtp`)
+- keep the new `/map` presentation and borrow stronger legacy behavior under it instead of reverting to the legacy auth modal UI
 - back should step between microsteps before leaving the phase
 - `COMMIT_DETAILS` prepares a local request draft only; DB create still belongs to `COMMIT_PAYMENT`
 - if the selected hospital is demo-backed, preserve that hospital context through the draft so `COMMIT_PAYMENT` can resolve the demo auto-approval lane

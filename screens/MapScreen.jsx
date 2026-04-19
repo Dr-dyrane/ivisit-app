@@ -15,6 +15,7 @@ import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
 import MapExploreLoadingOverlay from "../components/map/surfaces/MapExploreLoadingOverlay";
 import MapRecentVisitsModal from "../components/map/MapRecentVisitsModal";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
 import { useMapExploreFlow } from "../hooks/map/useMapExploreFlow";
 import {
 	getMapViewportSurfaceConfig,
@@ -28,6 +29,7 @@ import { buildCommitLocationLabel, buildMapCommitSeedDraft } from "../components
 export default function MapScreen() {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
+	const { logout } = useAuth();
 	const {
 		width,
 		height,
@@ -139,6 +141,14 @@ export default function MapScreen() {
 		careHistoryVisible ||
 		recentVisitsVisible ||
 		authModalVisible;
+	const handleProfileSignOut = useCallback(async () => {
+		const result = await logout();
+		if (result?.success) {
+			clearCommitFlow?.();
+			setGuestProfileEmail("");
+		}
+		return result;
+	}, [clearCommitFlow, logout, setGuestProfileEmail]);
 	const hasFocusedSheetPhase = sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT;
 	const shouldShowMapControls = usesSidebarLayout
 		? !hasActiveMapModal && !hasFocusedSheetPhase
@@ -370,6 +380,7 @@ export default function MapScreen() {
 			<MiniProfileModal
 				visible={profileModalVisible}
 				onClose={() => setProfileModalVisible(false)}
+				onSignOut={handleProfileSignOut}
 			/>
 
 			<MapGuestProfileModal

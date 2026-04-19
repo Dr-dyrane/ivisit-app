@@ -14,12 +14,17 @@ export function sanitizeCommitOtp(value) {
 }
 
 export function sanitizeCommitPhone(value) {
-	return String(value || "").replace(/[^\d+()\-\s]/g, "").trim();
+	const sanitized = String(value || "").replace(/[^\d+()\-\s]/g, "").trim();
+	const hasLeadingPlus = sanitized.startsWith("+");
+	const digitsAndPunctuation = sanitized.replace(/\+/g, "");
+	return `${hasLeadingPlus ? "+" : ""}${digitsAndPunctuation}`.trim();
 }
 
 export function isCommitPhoneValid(value) {
 	const digits = String(value || "").replace(/\D/g, "");
-	return digits.length >= 7;
+	const plusMatches = String(value || "").match(/\+/g) || [];
+	const startsWithPlus = String(value || "").trim().startsWith("+");
+	return digits.length >= 7 && digits.length <= 15 && plusMatches.length <= 1 && (plusMatches.length === 0 || startsWithPlus);
 }
 
 export function getInitialCommitDetailsStep(user) {

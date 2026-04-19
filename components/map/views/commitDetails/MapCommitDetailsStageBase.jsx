@@ -1,8 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useAuth } from "../../../../contexts/AuthContext";
 import { useEmergency } from "../../../../contexts/EmergencyContext";
+import useCountryDetection from "../../../../hooks/validators/useCountryDetection";
+import usePhoneValidation from "../../../../hooks/validators/usePhoneValidation";
 import { authService } from "../../../../services/authService";
 import {
 	normalizeApiErrorMessage,
@@ -113,6 +115,23 @@ export default function MapCommitDetailsStageBase({
 	const avatarSurfaceColor = isDarkMode
 		? "rgba(255,255,255,0.06)"
 		: "rgba(15,23,42,0.05)";
+	const {
+		country: phoneCountry,
+		setCountry: setPhoneCountry,
+		loading: isPhoneCountryLoading,
+	} = useCountryDetection();
+	const {
+		rawInput: phoneRawInput,
+		setRawInput: setPhoneRawInput,
+		formattedNumber: phoneFormattedNumber,
+		isValid: isPhoneResolvedValid,
+		e164Format: phoneE164Format,
+		setFromE164: setPhoneFromE164,
+		clear: clearPhoneField,
+	} = usePhoneValidation(phoneCountry);
+	const phoneSeedValueRef = useRef(null);
+	const otpAutoSubmittedRef = useRef("");
+	const autoAdvancedRef = useRef(false);
 
 	const [draft, setDraft] = useState(() => ({
 		email: sanitizeCommitEmail(payload?.draft?.email || user?.email),
@@ -164,6 +183,25 @@ export default function MapCommitDetailsStageBase({
 		}));
 	}, [user?.email, user?.phone]);
 
+	useEffect(() => {
+		if (activeStep !== "phone" || !phoneCountry) return;
+		const nextPhoneSeed = sanitizeCommitPhone(draft.phone || user?.phone || "");
+		if (phoneSeedValueRef.current === nextPhoneSeed) return;
+		phoneSeedValueRef.current = nextPhoneSeed;
+
+		if (!nextPhoneSeed) {
+			clearPhoneField();
+			return;
+		}
+
+		if (nextPhoneSeed.startsWith("+")) {
+			setPhoneFromE164(nextPhoneSeed);
+			return;
+		}
+
+		setPhoneRawInput(nextPhoneSeed);
+	}, [activeStep, draft.phone, phoneCountry, user?.phone]);
+
 	const handleBack = useCallback(() => {
 		if (stepHistory.length === 0) {
 			onBack?.();
@@ -194,6 +232,36 @@ export default function MapCommitDetailsStageBase({
 		return () => clearInterval(intervalId);
 	}, [activeStep, otpExpiresAt]);
 
+	useEffect(() => {
+		if (activeStep !== "otp") {
+			otpAutoSubmittedRef.current = "";
+			return;
+		}
+
+		const otp = sanitizeCommitOtp(draft.otp);
+		if (otp.length < 6) {
+			otpAutoSubmittedRef.current = "";
+		}
+	}, [activeStep, draft.otp]);
+
+	useEffect(() => {
+		if (activeStep !== "phone") {
+			autoAdvancedRef.current = false;
+			return;
+		}
+
+		const resolvedEmail = sanitizeCommitEmail(draft.email || user?.email);
+		const resolvedPhone = sanitizeCommitPhone(user?.phone);
+		if (!resolvedEmail || !isCommitPhoneValid(resolvedPhone)) return;
+		if (autoAdvancedRef.current) return;
+
+		autoAdvancedRef.current = true;
+		onConfirm?.(hospital, transport, {
+			email: resolvedEmail,
+			phone: resolvedPhone,
+		});
+	}, [activeStep, draft.email, hospital, onConfirm, transport, user?.email, user?.phone]);
+
 	const goToStep = useCallback((nextStep) => {
 		if (!STEP_ORDER.includes(nextStep)) return;
 		setStepHistory((history) => [...history, nextStep]);
@@ -201,6 +269,11 @@ export default function MapCommitDetailsStageBase({
 		setErrorMessage("");
 		setSuccessMessage("");
 	}, []);
+
+	const phoneDisplayValue = useMemo(
+		() => phoneFormattedNumber || phoneRawInput || draft.phone,
+		[phoneFormattedNumber, phoneRawInput, draft.phone],
+	);
 
 	const currentStepConfig = useMemo(() => {
 		switch (activeStep) {
@@ -221,10 +294,10 @@ export default function MapCommitDetailsStageBase({
 				return {
 					key: "phone",
 					...MAP_COMMIT_DETAILS_COPY.PHONE_STEP,
-					value: draft.phone,
+					value: phoneDisplayValue,
 				};
 		}
-	}, [activeStep, draft.email, draft.otp, draft.phone]);
+	}, [activeStep, draft.email, draft.otp, phoneDisplayValue]);
 	const otpRemainingSeconds = useMemo(() => {
 		if (activeStep !== "otp" || !otpExpiresAt) return null;
 		const now = otpCountdownTick || Date.now();
@@ -261,12 +334,14 @@ export default function MapCommitDetailsStageBase({
 				}));
 				return;
 			}
+			phoneSeedValueRef.current = sanitizeCommitPhone(nextValue);
+			setPhoneRawInput(nextValue);
 			setDraft((currentDraft) => ({
 				...currentDraft,
-				phone: sanitizeCommitPhone(nextValue),
+				phone: nextValue,
 			}));
 		},
-		[activeStep],
+		[activeStep, setPhoneRawInput],
 	);
 
 	const handleSubmitEmail = useCallback(async () => {
@@ -324,6 +399,7 @@ export default function MapCommitDetailsStageBase({
 				setErrorMessage(normalizeApiErrorMessage(result?.error, "Could not resend code."));
 				return;
 			}
+			setDraft((currentDraft) => ({ ...currentDraft, otp: "" }));
 			setOtpExpiresAt(Date.now() + OTP_EXPIRY_MS);
 			setOtpCountdownTick(Date.now());
 			setSuccessMessage(`New code sent to ${nextEmail}`);
@@ -334,6 +410,7 @@ export default function MapCommitDetailsStageBase({
 
 	const handleSubmitOtp = useCallback(async () => {
 		const otp = sanitizeCommitOtp(draft.otp);
+		const resolvedEmail = sanitizeCommitEmail(draft.email);
 		if (otp.length !== 6) {
 			setErrorMessage("Enter the 6-digit code.");
 			return;
@@ -359,15 +436,22 @@ export default function MapCommitDetailsStageBase({
 				return;
 			}
 			await syncUserData?.();
-			const verifiedPhone = sanitizeCommitPhone(result?.data?.phone || "");
+			const verifiedPhone = sanitizeCommitPhone(result?.data?.phone || user?.phone || "");
 			setDraft((currentDraft) => ({
 				...currentDraft,
 				otp: "",
 				phone: verifiedPhone || currentDraft.phone,
 			}));
+			if (isCommitPhoneValid(verifiedPhone)) {
+				onConfirm?.(hospital, transport, {
+					email: resolvedEmail,
+					phone: verifiedPhone,
+				});
+				return;
+			}
 			persistCommitFlow(
 				{
-					email: sanitizeCommitEmail(draft.email),
+					email: resolvedEmail,
 					phone: verifiedPhone || draft.phone,
 				},
 				"phone",
@@ -376,11 +460,35 @@ export default function MapCommitDetailsStageBase({
 		} finally {
 			setIsSubmitting(false);
 		}
-	}, [draft.email, draft.otp, draft.phone, goToStep, otpExpiresAt, persistCommitFlow, syncUserData]);
+	}, [
+		draft.email,
+		draft.otp,
+		draft.phone,
+		goToStep,
+		hospital,
+		onConfirm,
+		otpExpiresAt,
+		persistCommitFlow,
+		syncUserData,
+		transport,
+		user?.phone,
+	]);
+
+	useEffect(() => {
+		if (activeStep !== "otp") return;
+		const otp = sanitizeCommitOtp(draft.otp);
+		if (otp.length !== 6 || isSubmitting) return;
+		if (otpAutoSubmittedRef.current === otp) return;
+		otpAutoSubmittedRef.current = otp;
+		void handleSubmitOtp();
+	}, [activeStep, draft.otp, handleSubmitOtp, isSubmitting]);
 
 	const handleSubmitPhone = useCallback(async () => {
-		const phone = sanitizeCommitPhone(draft.phone);
-		if (!isCommitPhoneValid(phone)) {
+		const normalizedPhone = phoneE164Format || sanitizeCommitPhone(draft.phone);
+		const isPhoneValidForSubmit = phoneE164Format
+			? true
+			: isCommitPhoneValid(normalizedPhone) && isPhoneResolvedValid;
+		if (!isPhoneValidForSubmit || !normalizedPhone) {
 			setErrorMessage("Enter a valid phone number.");
 			return;
 		}
@@ -388,25 +496,47 @@ export default function MapCommitDetailsStageBase({
 		setErrorMessage("");
 		setSuccessMessage("");
 		try {
-			const shouldPersistPhone = phone !== sanitizeCommitPhone(user?.phone);
+			const shouldPersistPhone = normalizedPhone !== sanitizeCommitPhone(user?.phone);
 			if (shouldPersistPhone) {
-				const result = await authService.updateUser({ phone });
+				const pendingStartedAt = Date.now();
+				const result = await authService.updateUser({ phone: normalizedPhone });
+				await waitForMinimumPending(pendingStartedAt);
 				if (!result?.data) {
 					setErrorMessage("Could not save phone number.");
-					setIsSubmitting(false);
 					return;
 				}
 				await syncUserData?.();
 			}
+			setDraft((currentDraft) => ({ ...currentDraft, phone: normalizedPhone }));
+			persistCommitFlow(
+				{
+					email: sanitizeCommitEmail(draft.email || user?.email),
+					phone: normalizedPhone,
+				},
+				"phone",
+			);
 			onConfirm?.(hospital, transport, {
 				email: sanitizeCommitEmail(draft.email || user?.email),
-				phone,
+				phone: normalizedPhone,
 			});
 		} catch (error) {
 			setErrorMessage(error?.message || "Could not save phone number.");
+		} finally {
 			setIsSubmitting(false);
 		}
-	}, [draft.email, draft.phone, hospital, onConfirm, syncUserData, transport, user?.email, user?.phone]);
+	}, [
+		draft.email,
+		draft.phone,
+		hospital,
+		onConfirm,
+		persistCommitFlow,
+		phoneE164Format,
+		isPhoneResolvedValid,
+		syncUserData,
+		transport,
+		user?.email,
+		user?.phone,
+	]);
 
 	const handleSubmit = useCallback(() => {
 		if (activeStep === "email") {
@@ -477,6 +607,7 @@ export default function MapCommitDetailsStageBase({
 					disabledTextColor={disabledTextColor}
 					step={currentStepConfig}
 					value={currentStepConfig.value}
+					selectionColor={accentColor}
 					errorMessage={errorMessage}
 					successMessage={successMessage}
 					otpRemainingSeconds={otpRemainingSeconds}
@@ -484,6 +615,16 @@ export default function MapCommitDetailsStageBase({
 					onChangeValue={handleChangeValue}
 					onSubmit={handleSubmit}
 					onResend={activeStep === "otp" ? handleResendOtp : undefined}
+					phoneField={
+						activeStep === "phone"
+							? {
+									country: phoneCountry,
+									countryLoading: isPhoneCountryLoading,
+									isValid: isPhoneResolvedValid,
+									onSelectCountry: setPhoneCountry,
+								}
+							: null
+					}
 				/>
 			</MapStageBodyScroll>
 		</MapSheetShell>
