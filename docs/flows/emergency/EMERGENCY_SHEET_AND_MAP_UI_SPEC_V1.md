@@ -1629,6 +1629,8 @@ Current implementation note:
 - it uses the selected hospital, selected transport tier, pickup context, live cost calculation, and selected payment method to release through the existing `useRequestFlow` / `create_emergency_v4` lane
 - it preserves demo-backed hospitals through `demoEcosystemService.shouldSimulatePayments(...)` so cash can auto-approve through the existing real approval lane
 - this simulation state is backend-only language; the patient UI must render neutral payment copy such as `Provider confirmation` and must not mention demo/live-mode terminology
+- the payment selector should collapse after selection into one readable summary row with `Change` as the expansion affordance, keeping the main dispatch CTA as the only primary action
+- add-card is supported on native and web: native uses Stripe `CardField`, web uses Stripe.js Elements, and both attach through the existing SetupIntent / `payment_methods` reflection path
 - optional triage is still intentionally not inserted in this patch; it should be added as a skippable microstep before payment once the payment seam is stable
 
 #### `COMMIT_PAYMENT -> TRACKING`

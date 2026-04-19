@@ -292,6 +292,8 @@ Locked boundary:
 - `TRACKING` still needs its own native map sheet projection after payment stabilization
 - backend demo/simulation state must never leak into patient-facing payment copy
 - payment method labels should read as real-world states such as `Provider confirmation`, `Not available for this request`, or `Balance checkout`
+- once a payment method is selected, the payment section collapses to a compact row such as `Cash · Provider confirmation` with a small `Change` pill; tapping `Change` expands the full selector list
+- web and native both use the same SetupIntent-backed add-card lane: native mounts Stripe `CardField`, web mounts Stripe.js Elements, and both persist only safe card metadata through `paymentService.addPaymentMethod(...)`
 
 ## Bed Decision Data Contract
 

@@ -1,5 +1,5 @@
-import React from "react";
-import { Image, Text, View } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { Image, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import EntryActionButton from "../../../entry/EntryActionButton";
 import PaymentMethodSelector from "../../../payment/PaymentMethodSelector";
@@ -121,10 +121,29 @@ export function MapCommitPaymentSummaryCard({
 	);
 }
 
+function formatPaymentMethodSummary(method) {
+	if (!method) return "Select payment method";
+
+	if (method.is_cash) {
+		return "Cash · Provider confirmation";
+	}
+
+	if (method.is_wallet) {
+		return `${method.brand || "iVisit Balance"} · Balance checkout`;
+	}
+
+	const brand = method.brand || "Card";
+	const last4 = method.last4 ? ` •••• ${method.last4}` : "";
+	return `${brand}${last4} · Card checkout`;
+}
+
 export function MapCommitPaymentSelectorCard({
 	titleColor,
 	mutedColor,
 	surfaceColor,
+	accentColor,
+	rowSurfaceColor,
+	changePillSurfaceColor,
 	title,
 	description,
 	selectedMethod,
@@ -135,6 +154,23 @@ export function MapCommitPaymentSelectorCard({
 	simulatePayments,
 	demoCashOnly,
 }) {
+	const [isExpanded, setIsExpanded] = useState(false);
+	const paymentSummary = useMemo(
+		() => formatPaymentMethodSummary(selectedMethod),
+		[selectedMethod],
+	);
+	const shouldShowSelector = isExpanded || !selectedMethod;
+	const handleExpand = useCallback(() => {
+		setIsExpanded(true);
+	}, []);
+	const handleSelectMethod = useCallback(
+		(method) => {
+			onMethodSelect?.(method);
+			setIsExpanded(false);
+		},
+		[onMethodSelect],
+	);
+
 	return (
 		<View style={[styles.selectorCard, { backgroundColor: surfaceColor }]}>
 			<View style={styles.selectorHeader}>
@@ -145,18 +181,48 @@ export function MapCommitPaymentSelectorCard({
 					</Text>
 				) : null}
 			</View>
-			<View style={styles.selectorBody}>
-				<PaymentMethodSelector
-					selectedMethod={selectedMethod}
-					onMethodSelect={onMethodSelect}
-					cost={cost}
-					hospitalId={hospitalId}
-					organizationId={organizationId}
-					simulatePayments={simulatePayments}
-					preferCashFirst={simulatePayments}
-					demoCashOnly={demoCashOnly}
-				/>
-			</View>
+			{shouldShowSelector ? (
+				<View style={styles.selectorBody}>
+					<PaymentMethodSelector
+						selectedMethod={selectedMethod}
+						onMethodSelect={handleSelectMethod}
+						cost={cost}
+						hospitalId={hospitalId}
+						organizationId={organizationId}
+						simulatePayments={simulatePayments}
+						preferCashFirst={simulatePayments}
+						demoCashOnly={demoCashOnly}
+					/>
+				</View>
+			) : (
+				<Pressable
+					onPress={handleExpand}
+					accessibilityRole="button"
+					accessibilityLabel="Change payment method"
+					style={({ pressed }) => [
+						styles.paymentSummaryRow,
+						{ backgroundColor: rowSurfaceColor },
+						pressed ? styles.paymentSummaryRowPressed : null,
+					]}
+				>
+					<Text
+						numberOfLines={1}
+						style={[styles.paymentSummaryText, { color: titleColor }]}
+					>
+						{paymentSummary}
+					</Text>
+					<View
+						style={[
+							styles.paymentChangePill,
+							{ backgroundColor: changePillSurfaceColor },
+						]}
+					>
+						<Text style={[styles.paymentChangeText, { color: accentColor }]}>
+							Change
+						</Text>
+					</View>
+				</Pressable>
+			)}
 		</View>
 	);
 }

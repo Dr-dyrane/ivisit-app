@@ -172,6 +172,12 @@ export default function MapCommitPaymentStageBase({
 	const secondarySurfaceColor = isDarkMode
 		? "rgba(255,255,255,0.05)"
 		: "rgba(248,250,252,0.92)";
+	const selectorSummarySurfaceColor = isDarkMode
+		? "rgba(255,255,255,0.065)"
+		: "rgba(15,23,42,0.045)";
+	const selectorChangePillSurfaceColor = isDarkMode
+		? "rgba(248,113,113,0.14)"
+		: "rgba(134,16,14,0.10)";
 	const dividerColor = isDarkMode
 		? "rgba(255,255,255,0.08)"
 		: "rgba(15,23,42,0.08)";
@@ -434,6 +440,9 @@ export default function MapCommitPaymentStageBase({
 				titleColor={titleColor}
 				mutedColor={mutedColor}
 				surfaceColor={secondarySurfaceColor}
+				accentColor={accentColor}
+				rowSurfaceColor={selectorSummarySurfaceColor}
+				changePillSurfaceColor={selectorChangePillSurfaceColor}
 				title={MAP_COMMIT_PAYMENT_COPY.PAYMENT_METHODS_TITLE}
 				description=""
 				selectedMethod={selectedPaymentMethod}
