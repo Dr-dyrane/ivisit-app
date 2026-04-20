@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, useWindowDimensions } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useHeaderState } from "../../../contexts/HeaderStateContext";
@@ -23,6 +23,7 @@ import {
 } from "../../../components/map/core/mapViewportConfig";
 import { MAP_SEARCH_SHEET_MODES } from "../../../components/map/surfaces/search/mapSearchSheet.helpers";
 import { HEADER_MODES } from "../../../constants/header";
+import { COLORS } from "../../../constants/colors";
 import { hasMeaningfulLocationChange } from "./mapExploreFlow.helpers";
 import {
   getDiscoveredHospitals,
@@ -38,9 +39,38 @@ import { buildMapLoadingState } from "./mapExploreFlow.loading";
 import { useMapExploreDemoBootstrap } from "./useMapExploreDemoBootstrap";
 import { useMapExploreGuestProfileFab } from "./useMapExploreGuestProfileFab";
 import { useMapExploreFlowStore } from "../state/mapExploreFlow.store";
+import MapHeaderIconButton from "../../../components/map/views/shared/MapHeaderIconButton";
+
+const TRACKING_HEADER_COLLAPSED_HEIGHT = 124;
+const TRACKING_HEADER_EXPANDED_HEIGHT = 212;
+
+function formatHeaderEtaLabel(etaSeconds, startedAt, nowMs = Date.now()) {
+  if (!Number.isFinite(etaSeconds) || !Number.isFinite(startedAt)) return null;
+  const elapsedSeconds = Math.max(0, Math.round((nowMs - startedAt) / 1000));
+  const remainingSeconds = Math.max(0, Math.round(etaSeconds - elapsedSeconds));
+  const remainingMinutes = Math.max(1, Math.ceil(remainingSeconds / 60));
+  return `${remainingMinutes} min`;
+}
+
+function formatHospitalDistanceLabel(hospital) {
+  const directDistance = Number(hospital?.distanceKm);
+  if (typeof hospital?.distance === "string" && hospital.distance.trim()) {
+    return hospital.distance.trim();
+  }
+  if (Number.isFinite(directDistance) && directDistance > 0) {
+    return directDistance < 1
+      ? `${Math.round(directDistance * 1000)} m`
+      : `${directDistance.toFixed(directDistance < 10 ? 1 : 0)} km`;
+  }
+  return null;
+}
 
 export function useMapExploreFlow() {
   const suppressCommitRestoreRef = useRef(false);
+  const trackingDismissedRef = useRef(false);
+  const lastTrackingRequestKeyRef = useRef(null);
+  const [trackingHeaderExpanded, setTrackingHeaderExpanded] = useState(false);
+  const [trackingHeaderNowMs, setTrackingHeaderNowMs] = useState(Date.now());
   const { isDarkMode } = useTheme();
   const { width, height } = useWindowDimensions();
   const viewportVariant = useMemo(
@@ -84,6 +114,10 @@ export function useMapExploreFlow() {
     nearbyCoverageCounts,
     hasDemoHospitalsNearby,
     hasComfortableNearbyCoverage,
+    activeAmbulanceTrip,
+    ambulanceTelemetryHealth,
+    activeBedBooking,
+    pendingApproval,
     commitFlow,
     setCommitFlow,
     clearCommitFlow,
@@ -102,8 +136,11 @@ export function useMapExploreFlow() {
     flowState.sheet.phase === MAP_SHEET_PHASES.AMBULANCE_DECISION;
   const bedDecisionVisible =
     flowState.sheet.phase === MAP_SHEET_PHASES.BED_DECISION;
+  const commitTriageVisible =
+    flowState.sheet.phase === MAP_SHEET_PHASES.COMMIT_TRIAGE;
   const commitPaymentVisible =
     flowState.sheet.phase === MAP_SHEET_PHASES.COMMIT_PAYMENT;
+  const trackingVisible = flowState.sheet.phase === MAP_SHEET_PHASES.TRACKING;
   const serviceDetailVisible =
     flowState.sheet.phase === MAP_SHEET_PHASES.SERVICE_DETAIL;
   const profileModalVisible = flowState.surfaces.profileModalVisible;
@@ -300,6 +337,7 @@ export function useMapExploreFlow() {
   useEffect(() => {
     const isRestorableCommitPhase =
       commitFlow?.phase === MAP_SHEET_PHASES.COMMIT_DETAILS ||
+      commitFlow?.phase === MAP_SHEET_PHASES.COMMIT_TRIAGE ||
       commitFlow?.phase === MAP_SHEET_PHASES.COMMIT_PAYMENT;
     if (!isRestorableCommitPhase) {
       suppressCommitRestoreRef.current = false;
@@ -353,8 +391,11 @@ export function useMapExploreFlow() {
         hospital: targetHospital,
         transport: commitFlow?.transport || null,
         draft: commitFlow?.draft || null,
+        triageDraft: commitFlow?.triageDraft || null,
+        triageSnapshot: commitFlow?.triageSnapshot || null,
         pricingSnapshot: commitFlow?.pricingSnapshot || null,
         activeStep: commitFlow?.activeStep || null,
+        showExtendedComplaints: Boolean(commitFlow?.showExtendedComplaints),
         careIntent: restoredCareIntent,
         room: restoredRoom,
         roomId: restoredRoomId,
@@ -398,6 +439,110 @@ export function useMapExploreFlow() {
     () => getFeaturedHospitals(discoveredHospitals),
     [discoveredHospitals],
   );
+  const trackingRequestKey =
+    activeAmbulanceTrip?.requestId ||
+    activeBedBooking?.requestId ||
+    pendingApproval?.requestId ||
+    null;
+
+  useEffect(() => {
+    if (lastTrackingRequestKeyRef.current !== trackingRequestKey) {
+      trackingDismissedRef.current = false;
+      lastTrackingRequestKeyRef.current = trackingRequestKey;
+      setTrackingHeaderExpanded(false);
+    }
+  }, [trackingRequestKey]);
+
+  useEffect(() => {
+    if (!trackingVisible || !trackingRequestKey) {
+      setTrackingHeaderExpanded(false);
+      return undefined;
+    }
+
+    setTrackingHeaderNowMs(Date.now());
+    const intervalId = setInterval(() => {
+      setTrackingHeaderNowMs(Date.now());
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [trackingRequestKey, trackingVisible]);
+
+  const openTracking = useCallback(() => {
+    const trackedHospitalId =
+      activeAmbulanceTrip?.hospitalId ||
+      activeBedBooking?.hospitalId ||
+      pendingApproval?.hospitalId ||
+      sheetPayload?.hospital?.id ||
+      featuredHospital?.id ||
+      nearestHospital?.id ||
+      null;
+    const trackedHospital =
+      discoveredHospitals.find((item) => item?.id === trackedHospitalId) ||
+      featuredHospital ||
+      nearestHospital ||
+      sheetPayload?.hospital ||
+      null;
+
+    if (trackedHospital?.id) {
+      selectHospital(trackedHospital.id);
+      setFeaturedHospital(trackedHospital);
+    }
+
+    setSheetView({
+      phase: MAP_SHEET_PHASES.TRACKING,
+      snapState: usesSidebarLayout
+        ? MAP_SHEET_SNAP_STATES.EXPANDED
+        : MAP_SHEET_SNAP_STATES.HALF,
+      payload: {
+        hospital: trackedHospital,
+      },
+    });
+  }, [
+    activeAmbulanceTrip?.hospitalId,
+    activeBedBooking?.hospitalId,
+    discoveredHospitals,
+    featuredHospital,
+    nearestHospital,
+    pendingApproval?.hospitalId,
+    selectHospital,
+    setFeaturedHospital,
+    setSheetView,
+    sheetPayload?.hospital,
+    usesSidebarLayout,
+  ]);
+
+  useEffect(() => {
+    if (!trackingRequestKey) {
+      if (sheetPhase === MAP_SHEET_PHASES.TRACKING) {
+        setSheetView({
+          phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
+          snapState: defaultExploreSnapState,
+          payload: null,
+        });
+      }
+      return;
+    }
+
+    if (
+      trackingDismissedRef.current ||
+      sheetPhase === MAP_SHEET_PHASES.TRACKING ||
+      sheetPhase === MAP_SHEET_PHASES.COMMIT_DETAILS ||
+      sheetPhase === MAP_SHEET_PHASES.COMMIT_TRIAGE ||
+      sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT
+    ) {
+      return;
+    }
+
+    if (sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT) {
+      openTracking();
+    }
+  }, [
+    defaultExploreSnapState,
+    openTracking,
+    setSheetView,
+    sheetPhase,
+    trackingRequestKey,
+  ]);
 
   const openSearchSheet = useCallback(
     (nextMode = MAP_SEARCH_SHEET_MODES.SEARCH) => {
@@ -567,6 +712,73 @@ export function useMapExploreFlow() {
     ],
   );
 
+  const openCommitTriage = useCallback(
+    (nextHospital = null, transport = null, payload = null) => {
+      suppressCommitRestoreRef.current = false;
+      const targetHospital =
+        nextHospital ||
+        selectedHospital ||
+        featuredHospital ||
+        nearestHospital ||
+        discoveredHospitals?.[0] ||
+        null;
+
+      if (targetHospital?.id) {
+        selectHospital(targetHospital.id);
+        setFeaturedHospital(targetHospital);
+      }
+
+      const resolvedSourcePhase =
+        payload?.sourcePhase || MAP_SHEET_PHASES.COMMIT_DETAILS;
+      const resolvedSourceSnapState =
+        payload?.sourceSnapState || sheetSnapState || defaultExploreSnapState;
+      const resolvedSourcePayload = payload?.sourcePayload || null;
+
+      setSheetView({
+        phase: MAP_SHEET_PHASES.COMMIT_TRIAGE,
+        snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+        payload: {
+          hospital: targetHospital,
+          transport: transport || null,
+          sourcePhase: resolvedSourcePhase,
+          sourceSnapState: resolvedSourceSnapState,
+          sourcePayload: resolvedSourcePayload,
+          ...(payload && typeof payload === "object" ? payload : {}),
+        },
+      });
+      setCommitFlow({
+        phase: MAP_SHEET_PHASES.COMMIT_TRIAGE,
+        phaseSnapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+        hospital: targetHospital,
+        hospitalId: targetHospital?.id || null,
+        transport: transport || null,
+        draft: payload?.draft || null,
+        triageDraft: payload?.triageDraft || null,
+        triageSnapshot: payload?.triageSnapshot || null,
+        activeStep: payload?.activeStep || null,
+        showExtendedComplaints: Boolean(payload?.showExtendedComplaints),
+        sourcePhase: resolvedSourcePhase,
+        sourceSnapState: resolvedSourceSnapState,
+        sourcePayload: resolvedSourcePayload,
+        careIntent: payload?.careIntent || null,
+        roomId: payload?.roomId || null,
+        room: payload?.room || null,
+      });
+    },
+    [
+      defaultExploreSnapState,
+      discoveredHospitals,
+      featuredHospital,
+      nearestHospital,
+      selectHospital,
+      selectedHospital,
+      setCommitFlow,
+      setFeaturedHospital,
+      setSheetView,
+      sheetSnapState,
+    ],
+  );
+
   const openCommitPayment = useCallback(
     (nextHospital = null, transport = null, payload = null) => {
       suppressCommitRestoreRef.current = false;
@@ -615,6 +827,8 @@ export function useMapExploreFlow() {
         hospitalId: targetHospital?.id || null,
         transport: transport || null,
         draft: payload?.draft || null,
+        triageDraft: payload?.triageDraft || null,
+        triageSnapshot: payload?.triageSnapshot || null,
         pricingSnapshot: payload?.pricingSnapshot || null,
         sourcePhase: resolvedSourcePhase,
         sourceSnapState: resolvedSourceSnapState,
@@ -752,6 +966,30 @@ export function useMapExploreFlow() {
     sheetPayload,
   ]);
 
+  const closeCommitTriage = useCallback(() => {
+    suppressCommitRestoreRef.current = true;
+    clearCommitFlow();
+    const sourcePhase =
+      sheetPayload?.sourcePhase || MAP_SHEET_PHASES.COMMIT_DETAILS;
+    const sourceSnapState =
+      sheetPayload?.sourceSnapState || MAP_SHEET_SNAP_STATES.EXPANDED;
+    const sourceHospital = sheetPayload?.hospital || featuredHospital || null;
+    if (sourceHospital) {
+      setFeaturedHospital(sourceHospital);
+    }
+    setSheetView({
+      phase: sourcePhase,
+      snapState: sourceSnapState,
+      payload: sheetPayload?.sourcePayload || null,
+    });
+  }, [
+    clearCommitFlow,
+    featuredHospital,
+    setFeaturedHospital,
+    setSheetView,
+    sheetPayload,
+  ]);
+
   const closeCommitPayment = useCallback(() => {
     suppressCommitRestoreRef.current = true;
     clearCommitFlow();
@@ -779,15 +1017,349 @@ export function useMapExploreFlow() {
     sheetPayload,
   ]);
 
-  const finishCommitPayment = useCallback(() => {
-    suppressCommitRestoreRef.current = true;
-    clearCommitFlow();
+  const closeTracking = useCallback(() => {
+    trackingDismissedRef.current = true;
     setSheetView({
       phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
       snapState: defaultExploreSnapState,
       payload: null,
     });
-  }, [clearCommitFlow, defaultExploreSnapState, setSheetView]);
+  }, [defaultExploreSnapState, setSheetView]);
+
+  const trackingHeaderVisible = trackingVisible && Boolean(trackingRequestKey);
+  const trackingHeaderHospital =
+    sheetPayload?.hospital ||
+    discoveredHospitals.find(
+      (item) =>
+        item?.id ===
+        (activeAmbulanceTrip?.hospitalId ||
+          activeBedBooking?.hospitalId ||
+          pendingApproval?.hospitalId ||
+          null),
+    ) ||
+    featuredHospital ||
+    nearestHospital ||
+    null;
+  const trackingHeaderHospitalName =
+    trackingHeaderHospital?.name ||
+    activeAmbulanceTrip?.hospitalName ||
+    activeBedBooking?.hospitalName ||
+    pendingApproval?.hospitalName ||
+    "Hospital";
+  const trackingHeaderPickupLabel =
+    currentLocationDetails?.primaryText || "Pickup";
+  const trackingHeaderPickupDetail =
+    currentLocationDetails?.secondaryText || "";
+  const trackingHeaderServiceLabel = activeAmbulanceTrip?.requestId
+    ? activeAmbulanceTrip?.ambulanceType || "Transport"
+    : activeBedBooking?.requestId
+      ? activeBedBooking?.bedType || "Admission"
+      : pendingApproval?.serviceType === "bed"
+        ? pendingApproval?.bedType || "Admission"
+        : pendingApproval?.ambulanceType || "Transport";
+  const trackingHeaderStatusLabel = useMemo(() => {
+    if (activeAmbulanceTrip?.requestId) {
+      const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
+      if (telemetryState === "lost") return "Tracking lost";
+      if (telemetryState === "stale") return "Tracking delayed";
+      return (
+        formatHeaderEtaLabel(
+          activeAmbulanceTrip?.etaSeconds,
+          activeAmbulanceTrip?.startedAt,
+          trackingHeaderNowMs,
+        ) || "Live"
+      );
+    }
+
+    if (activeBedBooking?.requestId) {
+      return (
+        formatHeaderEtaLabel(
+          activeBedBooking?.etaSeconds,
+          activeBedBooking?.startedAt,
+          trackingHeaderNowMs,
+        ) || "Active"
+      );
+    }
+
+    if (pendingApproval?.requestId) {
+      return "Pending";
+    }
+
+    return "";
+  }, [
+    activeAmbulanceTrip?.etaSeconds,
+    activeAmbulanceTrip?.requestId,
+    activeAmbulanceTrip?.startedAt,
+    activeBedBooking?.etaSeconds,
+    activeBedBooking?.requestId,
+    activeBedBooking?.startedAt,
+    ambulanceTelemetryHealth?.state,
+    pendingApproval?.requestId,
+    trackingHeaderNowMs,
+  ]);
+  const trackingHeaderActionSurface = isDarkMode
+    ? "rgba(255,255,255,0.08)"
+    : "rgba(255,255,255,0.76)";
+  const trackingHeaderActionColor = isDarkMode ? "#F8FAFC" : "#0F172A";
+  const handleTrackingHeaderToggle = useCallback(() => {
+    if (usesSidebarLayout || !trackingVisible) return;
+    const nextSnapState =
+      sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
+        ? MAP_SHEET_SNAP_STATES.HALF
+        : MAP_SHEET_SNAP_STATES.EXPANDED;
+    setSheetSnapState(nextSnapState);
+  }, [setSheetSnapState, sheetSnapState, trackingVisible, usesSidebarLayout]);
+  const trackingHeaderLeftComponent = useMemo(() => {
+    if (usesSidebarLayout || !trackingHeaderVisible) return null;
+    return (
+      <MapHeaderIconButton
+        accessibilityLabel={
+          sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
+            ? "Collapse tracking sheet"
+            : "Expand tracking sheet"
+        }
+        backgroundColor={trackingHeaderActionSurface}
+        color={trackingHeaderActionColor}
+        iconName={
+          sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
+            ? "chevron-down"
+            : "chevron-up"
+        }
+        onPress={handleTrackingHeaderToggle}
+        pressableStyle={{ marginRight: 6 }}
+        style={{
+          width: 38,
+          height: 38,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      />
+    );
+  }, [
+    handleTrackingHeaderToggle,
+    sheetSnapState,
+    trackingHeaderActionColor,
+    trackingHeaderActionSurface,
+    trackingHeaderVisible,
+    usesSidebarLayout,
+  ]);
+  const trackingHeaderRightComponent = useMemo(() => {
+    if (!trackingHeaderVisible) return null;
+    return (
+      <MapHeaderIconButton
+        accessibilityLabel="Close tracking"
+        backgroundColor={trackingHeaderActionSurface}
+        color={trackingHeaderActionColor}
+        iconName="close"
+        onPress={closeTracking}
+        style={{
+          width: 38,
+          height: 38,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      />
+    );
+  }, [
+    closeTracking,
+    trackingHeaderActionColor,
+    trackingHeaderActionSurface,
+    trackingHeaderVisible,
+  ]);
+  const trackingHeaderSession = useMemo(() => {
+    if (!trackingHeaderVisible) return null;
+
+    if (activeAmbulanceTrip?.requestId) {
+      const status = String(activeAmbulanceTrip?.status ?? "").toLowerCase();
+      const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
+      const telemetryLabel =
+        telemetryState === "lost"
+          ? "Tracking lost"
+          : telemetryState === "stale"
+            ? "Tracking delayed"
+            : "Live tracking";
+
+      return {
+        eyebrow: trackingHeaderServiceLabel,
+        title: status === "arrived" ? "Help has arrived" : "Help is on the way",
+        subtitle: trackingHeaderHospitalName,
+        statusLabel: trackingHeaderStatusLabel,
+        statusTone: status === "arrived" ? "success" : "tracking",
+        expanded: trackingHeaderExpanded,
+        expandable: true,
+        onToggleExpand: () => setTrackingHeaderExpanded((current) => !current),
+        details: [
+          { label: "Pickup", value: trackingHeaderPickupLabel },
+          {
+            label: "Hospital",
+            value:
+              trackingHeaderHospitalName +
+              (formatHospitalDistanceLabel(trackingHeaderHospital)
+                ? ` · ${formatHospitalDistanceLabel(trackingHeaderHospital)}`
+                : ""),
+          },
+          {
+            label: "Request",
+            value:
+              activeAmbulanceTrip?.requestId ||
+              pendingApproval?.displayId ||
+              "Active",
+          },
+          {
+            label: "Tracking",
+            value: trackingHeaderPickupDetail
+              ? `${telemetryLabel} · ${trackingHeaderPickupDetail}`
+              : telemetryLabel,
+          },
+        ],
+      };
+    }
+
+    if (activeBedBooking?.requestId) {
+      const status = String(activeBedBooking?.status ?? "").toLowerCase();
+      return {
+        eyebrow: trackingHeaderServiceLabel,
+        title:
+          status === "arrived" ? "Bed is ready" : "Admission is active",
+        subtitle: trackingHeaderHospitalName,
+        statusLabel: trackingHeaderStatusLabel,
+        statusTone: status === "arrived" ? "success" : "tracking",
+        expanded: trackingHeaderExpanded,
+        expandable: true,
+        onToggleExpand: () => setTrackingHeaderExpanded((current) => !current),
+        details: [
+          { label: "Pickup", value: trackingHeaderPickupLabel },
+          {
+            label: "Hospital",
+            value:
+              trackingHeaderHospitalName +
+              (formatHospitalDistanceLabel(trackingHeaderHospital)
+                ? ` · ${formatHospitalDistanceLabel(trackingHeaderHospital)}`
+                : ""),
+          },
+          {
+            label: "Request",
+            value:
+              activeBedBooking?.requestId ||
+              pendingApproval?.displayId ||
+              "Active",
+          },
+          { label: "Status", value: status === "arrived" ? "Ready" : "Reserved" },
+        ],
+      };
+    }
+
+    return {
+      eyebrow: trackingHeaderServiceLabel,
+      title: "Awaiting approval",
+      subtitle: trackingHeaderHospitalName,
+      statusLabel: trackingHeaderStatusLabel,
+      statusTone: "default",
+      expanded: trackingHeaderExpanded,
+      expandable: true,
+      onToggleExpand: () => setTrackingHeaderExpanded((current) => !current),
+      details: [
+        { label: "Pickup", value: trackingHeaderPickupLabel },
+        {
+          label: "Hospital",
+          value:
+            trackingHeaderHospitalName +
+            (formatHospitalDistanceLabel(trackingHeaderHospital)
+              ? ` · ${formatHospitalDistanceLabel(trackingHeaderHospital)}`
+              : ""),
+        },
+        {
+          label: "Request",
+          value:
+            pendingApproval?.displayId ||
+            pendingApproval?.requestId ||
+            "Pending",
+        },
+        {
+          label: "Payment",
+          value:
+            pendingApproval?.paymentMethod === "cash"
+              ? "Provider confirmation"
+              : "Processing",
+        },
+      ],
+    };
+  }, [
+    activeAmbulanceTrip?.requestId,
+    activeAmbulanceTrip?.status,
+    activeBedBooking?.requestId,
+    activeBedBooking?.status,
+    ambulanceTelemetryHealth?.state,
+    pendingApproval?.displayId,
+    pendingApproval?.paymentMethod,
+    pendingApproval?.requestId,
+    trackingHeaderExpanded,
+    trackingHeaderHospital,
+    trackingHeaderHospitalName,
+    trackingHeaderPickupDetail,
+    trackingHeaderPickupLabel,
+    trackingHeaderServiceLabel,
+    trackingHeaderStatusLabel,
+    trackingHeaderVisible,
+  ]);
+  const trackingHeaderOcclusionHeight = trackingHeaderVisible
+    ? trackingHeaderExpanded
+      ? TRACKING_HEADER_EXPANDED_HEIGHT
+      : TRACKING_HEADER_COLLAPSED_HEIGHT
+    : 0;
+
+  useEffect(() => {
+    if (!trackingHeaderVisible || !trackingHeaderSession) {
+      lockHeaderHidden();
+      setHeaderState({
+        mode: HEADER_MODES.HIDDEN,
+        hidden: true,
+        scrollAware: false,
+      });
+      return;
+    }
+
+    unlockHeaderHidden();
+    forceHeaderVisible();
+    setHeaderState({
+      mode: HEADER_MODES.ACTIVE_SESSION,
+      hidden: false,
+      scrollAware: false,
+      backgroundColor: COLORS.brandPrimary,
+      leftComponent: trackingHeaderLeftComponent,
+      rightComponent: trackingHeaderRightComponent,
+      session: trackingHeaderSession,
+    });
+  }, [
+    forceHeaderVisible,
+    lockHeaderHidden,
+    setHeaderState,
+    trackingHeaderLeftComponent,
+    trackingHeaderRightComponent,
+    trackingHeaderSession,
+    trackingHeaderVisible,
+    unlockHeaderHidden,
+  ]);
+
+  const finishCommitPayment = useCallback(() => {
+    suppressCommitRestoreRef.current = true;
+    clearCommitFlow();
+    if (trackingRequestKey) {
+      openTracking();
+      return;
+    }
+    setSheetView({
+      phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
+      snapState: defaultExploreSnapState,
+      payload: null,
+    });
+  }, [
+    clearCommitFlow,
+    defaultExploreSnapState,
+    openTracking,
+    setSheetView,
+    trackingRequestKey,
+  ]);
 
   const setHospitalServiceSelection = useCallback(
     (hospitalId, key, value) => {
@@ -1165,6 +1737,7 @@ export function useMapExploreFlow() {
     openAmbulanceHospitalList,
     openBedDecision,
     openCommitDetails,
+    openCommitTriage,
     openCommitPayment,
     openBedHospitalList,
     openServiceDetail,
@@ -1172,7 +1745,9 @@ export function useMapExploreFlow() {
     closeAmbulanceDecision,
     closeBedDecision,
     closeCommitDetails,
+    closeCommitTriage,
     closeCommitPayment,
+    closeTracking,
     finishCommitPayment,
     closeHospitalDetail,
     closeHospitalList,
@@ -1186,7 +1761,9 @@ export function useMapExploreFlow() {
     handleUseCurrentLocation,
     ambulanceDecisionVisible,
     bedDecisionVisible,
+    commitTriageVisible,
     commitPaymentVisible,
+    trackingVisible,
     hospitalDetailVisible,
     hospitalListVisible,
     serviceDetailVisible,
@@ -1227,5 +1804,10 @@ export function useMapExploreFlow() {
     setHospitalServiceSelection,
     featuredHospitals,
     totalAvailableBeds,
+    activeAmbulanceTrip,
+    ambulanceTelemetryHealth,
+    activeBedBooking,
+    pendingApproval,
+    trackingHeaderOcclusionHeight,
   };
 }

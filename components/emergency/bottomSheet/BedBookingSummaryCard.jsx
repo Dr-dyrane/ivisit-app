@@ -78,7 +78,7 @@ const BedBookingSummaryHalf = (props) => {
 				</View>
 				<View style={styles.identityText}>
 					<Text style={[styles.nameText, { color: textColor }]}>{bedType}</Text>
-					<Text style={[styles.metaText, { color: COLORS.textMuted }]}>{hospitalName} • {specialty}</Text>
+					<Text style={[styles.metaText, { color: COLORS.textMuted }]}>{hospitalName} - {specialty}</Text>
 				</View>
 			</View>
 

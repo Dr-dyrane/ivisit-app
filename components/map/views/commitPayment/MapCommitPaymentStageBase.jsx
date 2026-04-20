@@ -459,7 +459,7 @@ export default function MapCommitPaymentStageBase({
 		: null;
 	const selectedPaymentSummary = useMemo(() => {
 		if (!selectedPaymentMethod) return "Choose a method";
-		if (selectedPaymentMethod.is_cash) return "Cash · Provider confirmation";
+		if (selectedPaymentMethod.is_cash) return "Cash - Provider confirmation";
 		if (selectedPaymentMethod.is_wallet) return "Wallet";
 		const brand = selectedPaymentMethod.brand || "Card";
 		const last4 = selectedPaymentMethod.last4
@@ -473,7 +473,7 @@ export default function MapCommitPaymentStageBase({
 	const requestMetaLabel = submissionState.displayId
 		? `${hospitalName} - ${submissionState.displayId}`
 		: requestMeta;
-	const headerSubtitle = `For ${hospitalName} · ${selectionHeaderLabel}`;
+	const headerSubtitle = `For ${hospitalName} - ${selectionHeaderLabel}`;
 	const isFailureState =
 		submissionState.kind === "failed" ||
 		submissionState.kind === "payment_declined";
@@ -694,6 +694,8 @@ export default function MapCommitPaymentStageBase({
 						paymentMethod: selectedPaymentMethod,
 						pricingSnapshot: estimatedCost,
 						currentLocation,
+						triageCheckin: payload?.triageDraft || null,
+						triageSnapshot: payload?.triageSnapshot || null,
 				  })
 				: buildAmbulanceCommitRequest({
 						hospital,
@@ -701,6 +703,8 @@ export default function MapCommitPaymentStageBase({
 						paymentMethod: selectedPaymentMethod,
 						pricingSnapshot: estimatedCost,
 						currentLocation,
+						triageCheckin: payload?.triageDraft || null,
+						triageSnapshot: payload?.triageSnapshot || null,
 				  });
 			const initiationResult = await handleRequestInitiated(initiatedRequest);
 			await waitForMinimumPending(pendingStartedAt);

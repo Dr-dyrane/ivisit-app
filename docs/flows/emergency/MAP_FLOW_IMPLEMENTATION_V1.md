@@ -3,6 +3,12 @@
 > Status: Active implementation note
 > Scope: `/map` -> `explore_intent`, `ambulance_decision`, `bed_decision`
 
+Status note:
+
+- This file contains older planning sections that still mention legacy bed-booking handoff and some earlier tracking assumptions.
+- Current verified state is tracked in [MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md).
+- Use the audit file as the current-state source of truth when implementation and this note disagree.
+
 Related:
 
 - [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
@@ -31,6 +37,14 @@ The public map flow now follows this shape:
   - owns the dispatch-decision phase after the ambulance CTA
 - [components/map/views/bedDecision](../../../components/map/views/bedDecision)
   - owns the room decision phase after `bed`, and after ambulance selection in the combined flow
+- [components/map/views/commitDetails](../../../components/map/views/commitDetails)
+  - owns email, OTP, and phone capture before request creation
+- [components/map/views/commitTriage](../../../components/map/views/commitTriage)
+  - owns the native optional pre-payment quick-check phase
+- [components/map/views/commitPayment](../../../components/map/views/commitPayment)
+  - owns native payment, pending approval, and failure/success resolution
+- [components/map/views/tracking](../../../components/map/views/tracking)
+  - owns the first native post-payment active-request sheet state
 
 ## Readiness Contract
 

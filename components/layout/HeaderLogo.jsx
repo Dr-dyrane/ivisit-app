@@ -11,8 +11,8 @@ const HeaderLogo = () => {
 			// Go back to the previous screen
 			router.back();
 		} else {
-			// Navigate to a default route, e.g., home
-			router.push("/welcome"); // Change '/' to the appropriate route if needed
+			// The public welcome surface is mounted at the auth root.
+			router.push("/");
 		}
 	};
 	return (

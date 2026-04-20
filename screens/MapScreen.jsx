@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
@@ -29,6 +29,8 @@ import {
   sanitizeCommitEmail,
   sanitizeCommitPhone,
 } from "../components/map/views/commitDetails/mapCommitDetails.helpers";
+import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
+import { calculateBearing } from "../utils/mapUtils";
 
 export default function MapScreen() {
   const router = useRouter();
@@ -49,6 +51,7 @@ export default function MapScreen() {
     openAmbulanceDecision,
     openBedDecision,
     openCommitDetails,
+    openCommitTriage,
     openCommitPayment,
     openServiceDetail,
     closeServiceDetail,
@@ -57,7 +60,9 @@ export default function MapScreen() {
     closeAmbulanceDecision,
     closeBedDecision,
     closeCommitDetails,
+    closeCommitTriage,
     closeCommitPayment,
+    closeTracking,
     finishCommitPayment,
     clearCommitFlow,
     handleMapHospitalPress,
@@ -103,6 +108,11 @@ export default function MapScreen() {
     sheetSnapState,
     totalAvailableBeds,
     closeHospitalList,
+    activeAmbulanceTrip,
+    ambulanceTelemetryHealth,
+    activeBedBooking,
+    pendingApproval,
+    trackingHeaderOcclusionHeight,
   } = useMapExploreFlow(); // eslint-disable-line no-unused-vars -- setAuthModalVisible kept for store compat
   const viewportVariant = useMemo(
     () => getMapViewportVariant({ platform: Platform.OS, width }),
@@ -153,6 +163,10 @@ export default function MapScreen() {
     return result;
   }, [clearCommitFlow, logout]);
   const hasFocusedSheetPhase = sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT;
+  const [trackingRouteInfo, setTrackingRouteInfo] = useState({
+    durationSec: null,
+    distanceMeters: null,
+  });
   const shouldShowMapControls = usesSidebarLayout
     ? !hasActiveMapModal && !hasFocusedSheetPhase
     : renderedSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED &&
@@ -226,7 +240,7 @@ export default function MapScreen() {
       const resolvedEmail = sanitizeCommitEmail(user?.email);
       const resolvedPhone = sanitizeCommitPhone(user?.phone);
       if (resolvedEmail && isCommitPhoneValid(resolvedPhone)) {
-        openCommitPayment(hospital || null, transport || null, {
+        openCommitTriage(hospital || null, transport || null, {
           draft: {
             email: resolvedEmail,
             phone: resolvedPhone,
@@ -245,7 +259,7 @@ export default function MapScreen() {
       nearestHospital?.id,
       openCommitDetails,
       openBedDecision,
-      openCommitPayment,
+      openCommitTriage,
       selectedCare,
       sheetSnapState,
       user?.email,
@@ -260,10 +274,9 @@ export default function MapScreen() {
       if (!hospitalId) return;
 
       // Thread the full bed-booking context forward so payment can display
-      // the correct summary (room title, price, careIntent) and so that
-      // backing from payment can restore the bed decision with all state
-      // intact (savedTransport for "both" flow, careIntent, etc.).
-      openCommitPayment(hospital || null, transport || null, {
+      // the correct summary (room title, price, careIntent) and so that the
+      // optional triage phase can still back out to the right prior state.
+      openCommitTriage(hospital || null, transport || null, {
         draft: draft || null,
         careIntent: draft?.careIntent || sheetPayload?.careIntent || null,
         roomId: draft?.roomId || sheetPayload?.roomId || null,
@@ -278,7 +291,7 @@ export default function MapScreen() {
     [
       featuredHospital?.id,
       nearestHospital?.id,
-      openCommitPayment,
+      openCommitTriage,
       sheetPayload?.careIntent,
       sheetPayload?.room,
       sheetPayload?.roomId,
@@ -318,7 +331,7 @@ export default function MapScreen() {
 
       // Skip commit details when identity is already complete.
       if (resolvedEmail && isCommitPhoneValid(resolvedPhone)) {
-        openCommitPayment(hospital || null, resolvedTransport, {
+        openCommitTriage(hospital || null, resolvedTransport, {
           draft: { email: resolvedEmail, phone: resolvedPhone },
           careIntent,
           roomId: room?.id || null,
@@ -341,12 +354,161 @@ export default function MapScreen() {
       featuredHospital?.id,
       nearestHospital?.id,
       openCommitDetails,
-      openCommitPayment,
+      openCommitTriage,
       sheetPayload?.savedTransport,
       user?.email,
       user?.phone,
     ],
   );
+
+  const handleConfirmCommitTriage = useCallback(
+    (hospital, transport, triagePayload) => {
+      const hospitalId =
+        hospital?.id || featuredHospital?.id || nearestHospital?.id;
+      if (!hospitalId) return;
+
+      const restoredTriagePayload = {
+        ...sheetPayload,
+        ...(triagePayload && typeof triagePayload === "object"
+          ? triagePayload
+          : {}),
+        hospital: hospital || sheetPayload?.hospital || null,
+        transport: transport || sheetPayload?.transport || null,
+      };
+
+      openCommitPayment(hospital || null, transport || null, {
+        draft: triagePayload?.draft || sheetPayload?.draft || null,
+        triageDraft: triagePayload?.triageDraft || null,
+        triageSnapshot: triagePayload?.triageSnapshot || null,
+        careIntent: triagePayload?.careIntent || sheetPayload?.careIntent || null,
+        roomId: triagePayload?.roomId || sheetPayload?.roomId || null,
+        room: triagePayload?.room || sheetPayload?.room || null,
+        sourcePhase: MAP_SHEET_PHASES.COMMIT_TRIAGE,
+        sourceSnapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+        sourcePayload: restoredTriagePayload,
+      });
+    },
+    [
+      featuredHospital?.id,
+      nearestHospital?.id,
+      openCommitPayment,
+      sheetPayload,
+    ],
+  );
+
+  const paymentPreviewKind = useMemo(() => {
+    if (sheetPhase !== MAP_SHEET_PHASES.COMMIT_PAYMENT) return null;
+    const hasRoomSelection = Boolean(
+      sheetPayload?.room?.id ||
+        sheetPayload?.roomId ||
+        sheetPayload?.room?.title ||
+        sheetPayload?.room?.room_type,
+    );
+    const hasTransportSelection = Boolean(
+      sheetPayload?.transport?.id ||
+        sheetPayload?.transport?.title ||
+        sheetPayload?.transport?.service_name ||
+        sheetPayload?.transport?.service_type,
+    );
+
+    if (hasTransportSelection) return "ambulance";
+    if (hasRoomSelection) return "bed";
+    return null;
+  }, [sheetPhase, sheetPayload?.room, sheetPayload?.roomId, sheetPayload?.transport]);
+
+  const mapFocusedHospitalId = useMemo(
+    () =>
+      activeAmbulanceTrip?.hospitalId ||
+      activeBedBooking?.hospitalId ||
+      pendingApproval?.hospitalId ||
+      (sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT
+        ? sheetPayload?.hospital?.id || null
+        : null) ||
+      nearestHospital?.id ||
+      null,
+    [
+      activeAmbulanceTrip?.hospitalId,
+      activeBedBooking?.hospitalId,
+      nearestHospital?.id,
+      pendingApproval?.hospitalId,
+      sheetPhase,
+      sheetPayload?.hospital?.id,
+    ],
+  );
+
+  const mapFocusedHospital = useMemo(
+    () =>
+      discoveredHospitals.find((item) => item?.id === mapFocusedHospitalId) ||
+      featuredHospital ||
+      sheetPayload?.hospital ||
+      nearestHospital ||
+      null,
+    [
+      discoveredHospitals,
+      featuredHospital,
+      mapFocusedHospitalId,
+      nearestHospital,
+      sheetPayload?.hospital,
+    ],
+  );
+
+  const mapFocusedHospitalCoordinate = useMemo(
+    () => getDestinationCoordinate(mapFocusedHospital),
+    [mapFocusedHospital],
+  );
+
+  const mapServiceMarkerKind = useMemo(() => {
+    if (activeAmbulanceTrip?.requestId) return "ambulance";
+    if (activeBedBooking?.requestId) return "bed";
+    if (pendingApproval?.requestId) {
+      return pendingApproval?.serviceType === "bed" ? "bed" : "ambulance";
+    }
+    if (sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT) {
+      return paymentPreviewKind;
+    }
+    return null;
+  }, [
+    activeAmbulanceTrip?.requestId,
+    activeBedBooking?.requestId,
+    paymentPreviewKind,
+    pendingApproval?.requestId,
+    pendingApproval?.serviceType,
+    sheetPhase,
+  ]);
+
+  const mapServiceMarkerCoordinate = useMemo(() => {
+    if (activeAmbulanceTrip?.currentResponderLocation) {
+      return activeAmbulanceTrip.currentResponderLocation;
+    }
+    if (mapServiceMarkerKind === "ambulance" || mapServiceMarkerKind === "bed") {
+      return mapFocusedHospitalCoordinate;
+    }
+    return null;
+  }, [
+    activeAmbulanceTrip?.currentResponderLocation,
+    mapFocusedHospitalCoordinate,
+    mapServiceMarkerKind,
+  ]);
+
+  const mapServiceMarkerHeading = useMemo(() => {
+    if (Number.isFinite(activeAmbulanceTrip?.currentResponderHeading)) {
+      return Number(activeAmbulanceTrip.currentResponderHeading);
+    }
+    if (
+      mapServiceMarkerKind === "ambulance" &&
+      mapFocusedHospitalCoordinate &&
+      activeLocation
+    ) {
+      return calculateBearing(mapFocusedHospitalCoordinate, activeLocation);
+    }
+    return 0;
+  }, [
+    activeAmbulanceTrip?.currentResponderHeading,
+    activeLocation,
+    mapFocusedHospitalCoordinate,
+    mapServiceMarkerKind,
+  ]);
+  const isActiveTrackingMap = sheetPhase === MAP_SHEET_PHASES.TRACKING;
 
   return (
     <View
@@ -358,10 +520,17 @@ export default function MapScreen() {
       <EmergencyLocationPreviewMap
         location={activeLocation}
         hospitals={discoveredHospitals}
-        selectedHospitalId={nearestHospital?.id || null}
+        selectedHospitalId={mapFocusedHospitalId}
+        serviceMarkerKind={mapServiceMarkerKind}
+        serviceMarkerCoordinate={mapServiceMarkerCoordinate}
+        serviceMarkerHeading={mapServiceMarkerHeading}
+        telemetryHealth={ambulanceTelemetryHealth}
         placeLabel={currentLocationDetails?.primaryText}
         interactive={isMapFrameReady}
         onReadinessChange={handleMapReadinessChange}
+        onRouteInfoChange={setTrackingRouteInfo}
+        activeTracking={isActiveTrackingMap}
+        headerOcclusionHeight={trackingHeaderOcclusionHeight}
         bottomSheetHeight={bottomSheetHeight}
         leftPanelWidth={sidebarOcclusionWidth}
         showControls={shouldShowMapControls}
@@ -404,11 +573,14 @@ export default function MapScreen() {
           onCloseAmbulanceDecision={closeAmbulanceDecision}
           onCloseBedDecision={closeBedDecision}
           onCloseCommitDetails={closeCommitDetails}
+          onCloseCommitTriage={closeCommitTriage}
           onCloseCommitPayment={closeCommitPayment}
+          onCloseTracking={closeTracking}
           onCloseHospitalDetail={closeHospitalDetail}
           onConfirmAmbulanceDecision={handleConfirmAmbulanceDecision}
           onConfirmBedDecision={handleConfirmBedDecision}
           onConfirmCommitDetails={handleConfirmCommitDetails}
+          onConfirmCommitTriage={handleConfirmCommitTriage}
           onConfirmCommitPayment={finishCommitPayment}
           onOpenServiceDetail={openServiceDetail}
           onCloseServiceDetail={closeServiceDetail}
@@ -417,10 +589,11 @@ export default function MapScreen() {
           onSelectHospitalService={setHospitalServiceSelection}
           searchMode={searchSheetMode}
           hospitals={discoveredHospitals}
-          selectedHospitalId={nearestHospital?.id || null}
+          selectedHospitalId={mapFocusedHospitalId}
           recommendedHospitalId={discoveredHospitals?.[0]?.id || null}
           featuredHospital={featuredHospital}
           sheetPayload={sheetPayload}
+          trackingRouteInfo={trackingRouteInfo}
           currentLocation={currentLocationDetails}
           onSelectHospital={handleSelectHospital}
           onUseCurrentLocation={handleUseCurrentLocation}

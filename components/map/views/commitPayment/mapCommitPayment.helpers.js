@@ -155,6 +155,8 @@ export function buildAmbulanceCommitRequest({
 	paymentMethod,
 	pricingSnapshot,
 	currentLocation,
+	triageCheckin,
+	triageSnapshot,
 }) {
 	return {
 		requestId: `AMB-${Math.floor(Math.random() * 900000) + 100000}`,
@@ -170,6 +172,8 @@ export function buildAmbulanceCommitRequest({
 		patientLocation: buildCommitPaymentPickupCoordinate(currentLocation),
 		locationLabel: buildCommitPaymentPickupLabel(currentLocation),
 		locationConfirmedAt: new Date().toISOString(),
+		triageCheckin: triageCheckin || null,
+		triageSnapshot: triageSnapshot || null,
 	};
 }
 
@@ -179,6 +183,8 @@ export function buildBedCommitRequest({
 	paymentMethod,
 	pricingSnapshot,
 	currentLocation,
+	triageCheckin,
+	triageSnapshot,
 }) {
 	return {
 		requestId: `BED-${Math.floor(Math.random() * 900000) + 100000}`,
@@ -195,6 +201,8 @@ export function buildBedCommitRequest({
 		patientLocation: buildCommitPaymentPickupCoordinate(currentLocation),
 		locationLabel: buildCommitPaymentPickupLabel(currentLocation),
 		locationConfirmedAt: new Date().toISOString(),
+		triageCheckin: triageCheckin || null,
+		triageSnapshot: triageSnapshot || null,
 	};
 }
 
@@ -221,7 +229,14 @@ export function buildCommitPaymentCompletionPayload({
 		serviceType,
 		estimatedArrival: result?.estimatedArrival || hospital?.eta || "8 mins",
 		etaSeconds: Number.isFinite(result?.etaSeconds) ? result.etaSeconds : null,
+		hospitalCoordinate: getDestinationCoordinate(hospital),
+		patientLocation: initiatedRequest?.patientLocation || null,
 		triageCheckin: initiatedRequest?.triageCheckin ?? null,
+		triageSnapshot:
+			initiatedRequest?.triageSnapshot ??
+			(initiatedRequest?.triageCheckin
+				? { signals: { userCheckin: initiatedRequest.triageCheckin } }
+				: null),
 	};
 }
 
@@ -252,5 +267,10 @@ export function buildPendingApprovalState({
 		estimatedArrival: result?.estimatedArrival ?? hospital?.eta ?? null,
 		etaSeconds: Number.isFinite(result?.etaSeconds) ? result.etaSeconds : null,
 		initiatedData: initiatedRequest,
+		triageSnapshot:
+			initiatedRequest?.triageSnapshot ??
+			(initiatedRequest?.triageCheckin
+				? { signals: { userCheckin: initiatedRequest.triageCheckin } }
+				: null),
 	};
 }

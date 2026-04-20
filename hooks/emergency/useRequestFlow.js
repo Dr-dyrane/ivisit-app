@@ -244,7 +244,11 @@ export const useRequestFlow = (props) => {
 			const hospital = hospitals?.find((h) => h?.id === hospitalId) ?? null;
 			const date = nowIso.slice(0, 10);
 			const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-			const { patient, shared } = getSnapshots();
+				const { patient, shared } = getSnapshots();
+				const userCheckin = getRequestUserCheckin(request);
+				const patientSnapshot = userCheckin
+					? { ...patient, triage: userCheckin }
+					: patient;
 
 			inflightByTypeRef.current[request.serviceType] = true;
 			try {
@@ -365,7 +369,7 @@ export const useRequestFlow = (props) => {
 					bedCount: request?.bedCount ?? null,
 					estimatedArrival: derivedEstimatedArrival,
 					status: EmergencyRequestStatus.IN_PROGRESS,
-					patient,
+					patient: patientSnapshot,
 					shared,
 					patientLocation,
 					// Cost and Payment information (used by atomic RPC)
@@ -444,7 +448,6 @@ export const useRequestFlow = (props) => {
 				// Non-blocking AI triage lane: collect + persist in parallel without delaying dispatch.
 				const triagePersist = propsRef.current?.updateTriage;
 				if (typeof triagePersist === "function") {
-					const userCheckin = getRequestUserCheckin(request);
 					void triageService
 						.collectAndPersist({
 							requestId: realId,
@@ -623,6 +626,8 @@ export const useRequestFlow = (props) => {
 					assignedAmbulance: request?.assignedAmbulance ?? null,
 					currentResponderLocation: request?.currentResponderLocation ?? null,
 					currentResponderHeading: request?.currentResponderHeading ?? null,
+					hospitalCoordinate: request?.hospitalCoordinate ?? null,
+					patientLocation: request?.patientLocation ?? null,
 					estimatedArrival: fallbackEtaLabel,
 					etaSeconds: routeEtaSeconds,
 					hospitalName: request?.hospitalName ?? hospital?.name ?? null,

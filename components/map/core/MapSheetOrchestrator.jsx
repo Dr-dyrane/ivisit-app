@@ -2,7 +2,9 @@ import React, { useMemo } from "react";
 import MapAmbulanceDecisionOrchestrator from "../views/ambulanceDecision/MapAmbulanceDecisionOrchestrator";
 import MapBedDecisionOrchestrator from "../views/bedDecision/MapBedDecisionOrchestrator";
 import MapCommitDetailsOrchestrator from "../views/commitDetails/MapCommitDetailsOrchestrator";
+import MapCommitTriageOrchestrator from "../views/commitTriage/MapCommitTriageOrchestrator";
 import MapCommitPaymentOrchestrator from "../views/commitPayment/MapCommitPaymentOrchestrator";
+import MapTrackingOrchestrator from "../views/tracking/MapTrackingOrchestrator";
 import MapHospitalDetailOrchestrator from "../views/hospitalDetail/MapHospitalDetailOrchestrator";
 import MapExploreIntentOrchestrator from "../views/exploreIntent/MapExploreIntentOrchestrator";
 import MapHospitalListOrchestrator from "../views/hospitalList/MapHospitalListOrchestrator";
@@ -47,11 +49,14 @@ export default function MapSheetOrchestrator({
 	onCloseAmbulanceDecision = () => {},
 	onCloseBedDecision = () => {},
 	onCloseCommitDetails = () => {},
+	onCloseCommitTriage = () => {},
 	onCloseCommitPayment = () => {},
+	onCloseTracking = () => {},
 	onCloseHospitalDetail = () => {},
 	onConfirmAmbulanceDecision = () => {},
 	onConfirmBedDecision = () => {},
 	onConfirmCommitDetails = () => {},
+	onConfirmCommitTriage = () => {},
 	onConfirmCommitPayment = () => {},
 	onOpenServiceDetail = () => {},
 	onCloseServiceDetail = () => {},
@@ -70,6 +75,7 @@ export default function MapSheetOrchestrator({
 	onChangeHospitalLocation = () => {},
 	activeLocation = null,
 	sheetPayload = null,
+	trackingRouteInfo = null,
 	serviceSelectionsByHospital = {},
 	onUseHospital = undefined,
 	profileImageSource,
@@ -211,6 +217,28 @@ export default function MapSheetOrchestrator({
 				</MapPhaseTransitionView>
 			);
 		}
+		case MAP_SHEET_PHASES.COMMIT_TRIAGE: {
+			const commitHospital = sheetPayload?.hospital || featuredHospital || nearestHospital || null;
+			const commitSheetHeight = getMapSheetHeight(
+				screenHeight,
+				MAP_SHEET_SNAP_STATES.EXPANDED,
+			);
+			return (
+				<MapPhaseTransitionView phaseKey={`${phase}-${commitHospital?.id || "unknown"}`}>
+					<MapCommitTriageOrchestrator
+						sheetHeight={commitSheetHeight}
+						snapState={snapState}
+						hospital={commitHospital}
+						transport={sheetPayload?.transport || null}
+						payload={sheetPayload}
+						onBack={onCloseCommitTriage}
+						onClose={onCloseCommitTriage}
+						onConfirm={onConfirmCommitTriage}
+						onSnapStateChange={onSnapStateChange}
+					/>
+				</MapPhaseTransitionView>
+			);
+		}
 		case MAP_SHEET_PHASES.COMMIT_PAYMENT: {
 			const commitHospital = sheetPayload?.hospital || featuredHospital || nearestHospital || null;
 			const commitSheetHeight = getMapSheetHeight(screenHeight, snapState);
@@ -241,6 +269,24 @@ export default function MapSheetOrchestrator({
 						onBack={onCloseCommitPayment}
 						onClose={onCloseCommitPayment}
 						onConfirm={onConfirmCommitPayment}
+						onSnapStateChange={onSnapStateChange}
+					/>
+				</MapPhaseTransitionView>
+			);
+		}
+		case MAP_SHEET_PHASES.TRACKING: {
+			const trackingHospital = sheetPayload?.hospital || featuredHospital || nearestHospital || null;
+			const trackingSheetHeight = getMapSheetHeight(screenHeight, snapState);
+			return (
+				<MapPhaseTransitionView phaseKey={`${phase}-${trackingHospital?.id || "unknown"}`}>
+					<MapTrackingOrchestrator
+						sheetHeight={trackingSheetHeight}
+						snapState={snapState}
+						hospital={trackingHospital}
+						payload={sheetPayload}
+						currentLocation={currentLocation}
+						routeInfo={trackingRouteInfo}
+						onClose={onCloseTracking}
 						onSnapStateChange={onSnapStateChange}
 					/>
 				</MapPhaseTransitionView>

@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from "../../map/MapComponents";
 import MapControls from "../../map/chrome/MapControls";
 import { getMapRenderTokens } from "../../map/mapRenderTokens";
+import { getAmbulanceSpriteForHeading } from "../../map/RouteLayer";
 import {
 	darkAndroidMapStyle,
 	darkMapStyle,
@@ -16,6 +17,7 @@ import {
 import { useTheme } from "../../../contexts/ThemeContext";
 import { COLORS } from "../../../constants/colors";
 import { useMapRoute } from "../../../hooks/emergency/useMapRoute";
+import { calculateBearing } from "../../../utils/mapUtils";
 
 const DEFAULT_REGION = {
 	latitude: 37.7749,
@@ -25,6 +27,7 @@ const DEFAULT_REGION = {
 };
 const HOSPITAL_MARKER_IMAGE = require("../../../assets/map/hospital.png");
 const SELECTED_HOSPITAL_MARKER_IMAGE = require("../../../assets/map/selected_hospital.png");
+const BED_MARKER_IMAGE = require("../../../assets/features/bed.png");
 const HOSPITAL_MARKER_HEIGHT = {
 	normal: 102.5,
 	selected: 137,
@@ -74,7 +77,13 @@ function getHorizontalOcclusionBias(leftPanelWidth = 0, screenWidth = 0) {
 	return Math.min(0.22, Math.max(0.06, (leftPanelWidth / screenWidth) * 0.4));
 }
 
-function buildRegionForPoints(points = [], bottomSheetHeight = 0, leftPanelWidth = 0, screenWidth = 0) {
+function buildRegionForPoints(
+	points = [],
+	bottomSheetHeight = 0,
+	leftPanelWidth = 0,
+	screenWidth = 0,
+	headerOcclusionHeight = 0,
+) {
 	if (points.length <= 1) {
 		return buildRegion(points[0] || null);
 	}
@@ -98,10 +107,11 @@ function buildRegionForPoints(points = [], bottomSheetHeight = 0, leftPanelWidth
 	);
 	const sheetBias = Math.min(0.18, Math.max(0.05, (Number(bottomSheetHeight) || 0) / 1500));
 	const normalizedBias = Math.min(0.12, Math.max(0.02, sheetBias));
+	const headerBias = Math.min(0.055, Math.max(0, (Number(headerOcclusionHeight) || 0) / 3200));
 	const horizontalBias = getHorizontalOcclusionBias(leftPanelWidth, screenWidth);
 
 	return {
-		latitude: (minLat + maxLat) / 2 + latitudeDelta * normalizedBias,
+		latitude: (minLat + maxLat) / 2 + latitudeDelta * (normalizedBias + headerBias),
 		longitude: (minLng + maxLng) / 2 - longitudeDelta * horizontalBias,
 		latitudeDelta,
 		longitudeDelta,
@@ -121,42 +131,42 @@ function buildUserCenteredRegion(coordinate, leftPanelWidth = 0, screenWidth = 0
 	};
 }
 
-function getRoutePadding(bottomSheetHeight = 0, leftPanelWidth = 0) {
+function getRoutePadding(bottomSheetHeight = 0, leftPanelWidth = 0, headerOcclusionHeight = 0) {
 	if (Number(leftPanelWidth) > 0) {
 		return {
-			top: 92,
+			top: Math.max(92, Number(headerOcclusionHeight || 0) + 24),
 			right: 54,
 			bottom: 58,
 			left: Math.max(88, leftPanelWidth + 42),
 		};
 	}
 	return {
-		top: 136,
+		top: Math.max(136, Number(headerOcclusionHeight || 0) + 28),
 		right: 42,
 		bottom: Math.max(256, bottomSheetHeight + 84),
 		left: 42,
 	};
 }
 
-function getNearbyPadding(bottomSheetHeight = 0, leftPanelWidth = 0) {
+function getNearbyPadding(bottomSheetHeight = 0, leftPanelWidth = 0, headerOcclusionHeight = 0) {
 	if (Number(leftPanelWidth) > 0) {
 		return {
-			top: 88,
+			top: Math.max(88, Number(headerOcclusionHeight || 0) + 18),
 			right: 56,
 			bottom: 62,
 			left: Math.max(92, leftPanelWidth + 46),
 		};
 	}
 	return {
-		top: 132,
+		top: Math.max(132, Number(headerOcclusionHeight || 0) + 22),
 		right: 44,
 		bottom: Math.max(264, bottomSheetHeight + 92),
 		left: 44,
 	};
 }
 
-function getWebRoutePanOffset(bottomSheetHeight = 0, leftPanelWidth = 0) {
-	const padding = getRoutePadding(bottomSheetHeight, leftPanelWidth);
+function getWebRoutePanOffset(bottomSheetHeight = 0, leftPanelWidth = 0, headerOcclusionHeight = 0) {
+	const padding = getRoutePadding(bottomSheetHeight, leftPanelWidth, headerOcclusionHeight);
 	return Math.round((Number(padding.bottom || 0) - Number(padding.top || 0)) / 2);
 }
 
@@ -171,8 +181,14 @@ export default function EmergencyLocationPreviewMap({
 	location,
 	hospitals = [],
 	selectedHospitalId = null,
+	serviceMarkerKind = null,
+	serviceMarkerCoordinate = null,
+	serviceMarkerHeading = null,
+	telemetryHealth = null,
 	placeLabel = null,
 	interactive = false,
+	activeTracking = false,
+	headerOcclusionHeight = 0,
 	bottomSheetHeight = 0,
 	leftPanelWidth = 0,
 	controlsMode = "bottom",
@@ -181,6 +197,7 @@ export default function EmergencyLocationPreviewMap({
 	controlsBottomOffsetBase = 198,
 	onHospitalPress = null,
 	onReadinessChange = null,
+	onRouteInfoChange = null,
 	showInternalSkeleton = true,
 	showControls = true,
 }) {
@@ -195,6 +212,7 @@ export default function EmergencyLocationPreviewMap({
 	const isWeb = Platform.OS === "web";
 	const {
 		routeCoordinates: previewRouteCoordinates,
+		routeInfo,
 		calculateRoute,
 		clearRoute,
 		isCalculatingRoute,
@@ -211,6 +229,39 @@ export default function EmergencyLocationPreviewMap({
 			? darkMapStyle
 			: lightMapStyle;
 	const renderTokens = useMemo(() => getMapRenderTokens({ isDarkMode }), [isDarkMode]);
+	const telemetryState = telemetryHealth?.state ?? "inactive";
+	const routeCoreColor =
+		telemetryState === "lost"
+			? isDarkMode
+				? "#F87171"
+				: "#B91C1C"
+			: telemetryState === "stale"
+				? isDarkMode
+					? "#FBBF24"
+					: "#B45309"
+				: renderTokens.routeCoreColor;
+	const routeHaloColor =
+		telemetryState === "lost"
+			? isDarkMode
+				? "rgba(248,113,113,0.34)"
+				: "rgba(185,28,28,0.14)"
+			: telemetryState === "stale"
+				? isDarkMode
+					? "rgba(251,191,36,0.34)"
+					: "rgba(180,83,9,0.14)"
+				: renderTokens.routeHaloColor;
+	const routeDashPattern =
+		telemetryState === "lost"
+			? [6, 7]
+			: telemetryState === "stale"
+				? [10, 6]
+				: undefined;
+	const serviceMarkerOpacity =
+		telemetryState === "lost"
+			? 0.62
+			: telemetryState === "stale"
+				? 0.86
+				: 1;
 
 	const visibleHospitals = useMemo(
 		() => sortHospitalsForPreview(hospitals, selectedHospitalId).slice(0, 5),
@@ -223,6 +274,37 @@ export default function EmergencyLocationPreviewMap({
 	}, [selectedHospitalId, visibleHospitals]);
 	const selectedHospitalCoordinate = useMemo(() => toCoordinate(selectedHospital), [selectedHospital]);
 	const userCoordinate = useMemo(() => toCoordinate(location), [location]);
+	const previewServiceMarkerCoordinate = useMemo(() => {
+		const directCoordinate = toCoordinate(serviceMarkerCoordinate);
+		if (directCoordinate) return directCoordinate;
+		if (serviceMarkerKind === "ambulance" || serviceMarkerKind === "bed") {
+			return selectedHospitalCoordinate;
+		}
+		return null;
+	}, [selectedHospitalCoordinate, serviceMarkerCoordinate, serviceMarkerKind]);
+	const previewServiceMarkerHeading = useMemo(() => {
+		if (Number.isFinite(serviceMarkerHeading)) return Number(serviceMarkerHeading);
+		if (
+			serviceMarkerKind === "ambulance" &&
+			selectedHospitalCoordinate &&
+			userCoordinate
+		) {
+			return calculateBearing(selectedHospitalCoordinate, userCoordinate);
+		}
+		return 0;
+	}, [
+		selectedHospitalCoordinate,
+		serviceMarkerHeading,
+		serviceMarkerKind,
+		userCoordinate,
+	]);
+	const previewAmbulanceMarkerImage = useMemo(
+		() =>
+			serviceMarkerKind === "ambulance"
+				? getAmbulanceSpriteForHeading(previewServiceMarkerHeading)
+				: null,
+		[previewServiceMarkerHeading, serviceMarkerKind],
+	);
 	const nearbyRadiusKm = useMemo(() => {
 		const nearestDistance = Number(selectedHospital?.distanceKm ?? visibleHospitals?.[0]?.distanceKm);
 		if (Number.isFinite(nearestDistance) && nearestDistance > 0) {
@@ -230,12 +312,33 @@ export default function EmergencyLocationPreviewMap({
 		}
 		return 4.5;
 	}, [selectedHospital?.distanceKm, visibleHospitals]);
+	const routeOriginCoordinate = useMemo(() => {
+		if (
+			activeTracking &&
+			serviceMarkerKind === "ambulance" &&
+			previewServiceMarkerCoordinate
+		) {
+			return previewServiceMarkerCoordinate;
+		}
+		return userCoordinate;
+	}, [
+		activeTracking,
+		previewServiceMarkerCoordinate,
+		serviceMarkerKind,
+		userCoordinate,
+	]);
+	const routeDestinationCoordinate = useMemo(() => {
+		if (activeTracking && serviceMarkerKind === "ambulance") {
+			return userCoordinate;
+		}
+		return selectedHospitalCoordinate;
+	}, [activeTracking, selectedHospitalCoordinate, serviceMarkerKind, userCoordinate]);
 	const routeBoundsCoordinates = useMemo(() => {
 		if (previewRouteCoordinates.length >= 2) {
 			return previewRouteCoordinates;
 		}
-		return [userCoordinate, selectedHospitalCoordinate].filter(Boolean);
-	}, [previewRouteCoordinates, selectedHospitalCoordinate, userCoordinate]);
+		return [routeOriginCoordinate, routeDestinationCoordinate].filter(Boolean);
+	}, [previewRouteCoordinates, routeDestinationCoordinate, routeOriginCoordinate]);
 	const routeFitPrimeKey = useMemo(
 		() =>
 			routeBoundsCoordinates
@@ -260,8 +363,15 @@ export default function EmergencyLocationPreviewMap({
 		return [userCoordinate, ...dynamicHospitals].filter(Boolean);
 	}, [nearbyRadiusKm, userCoordinate, visibleHospitals]);
 	const region = useMemo(
-		() => buildRegionForPoints(routeBoundsCoordinates, bottomSheetHeight, leftPanelWidth, screenWidth),
-		[bottomSheetHeight, leftPanelWidth, routeBoundsCoordinates, screenWidth],
+		() =>
+			buildRegionForPoints(
+				routeBoundsCoordinates,
+				bottomSheetHeight,
+				leftPanelWidth,
+				screenWidth,
+				headerOcclusionHeight,
+			),
+		[bottomSheetHeight, headerOcclusionHeight, leftPanelWidth, routeBoundsCoordinates, screenWidth],
 	);
 	const hasLocation = !!userCoordinate;
 	const hasRouteTargets = Boolean(userCoordinate && selectedHospitalCoordinate);
@@ -271,13 +381,26 @@ export default function EmergencyLocationPreviewMap({
 	const occlusionSignature = `${Math.round(bottomSheetHeight)}|${Math.round(leftPanelWidth)}`;
 
 	useEffect(() => {
-		if (userCoordinate && selectedHospitalCoordinate) {
-			calculateRoute(userCoordinate, selectedHospitalCoordinate);
+		if (routeOriginCoordinate && routeDestinationCoordinate) {
+			calculateRoute(routeOriginCoordinate, routeDestinationCoordinate);
 			return;
 		}
 
 		clearRoute();
-	}, [calculateRoute, clearRoute, selectedHospitalCoordinate, userCoordinate]);
+	}, [calculateRoute, clearRoute, routeDestinationCoordinate, routeOriginCoordinate]);
+
+	useEffect(() => {
+		onRouteInfoChange?.({
+			durationSec: routeInfo?.durationSec ?? null,
+			distanceMeters: routeInfo?.distanceMeters ?? null,
+			coordinates: previewRouteCoordinates,
+		});
+	}, [
+		onRouteInfoChange,
+		previewRouteCoordinates,
+		routeInfo?.distanceMeters,
+		routeInfo?.durationSec,
+	]);
 
 	useEffect(() => {
 		setIsNearbyOverview(false);
@@ -296,7 +419,7 @@ export default function EmergencyLocationPreviewMap({
 			typeof mapRef.current?.fitToCoordinates === "function"
 		) {
 			mapRef.current.fitToCoordinates(routeBoundsCoordinates, {
-				edgePadding: getRoutePadding(sheetHeight, panelWidth),
+				edgePadding: getRoutePadding(sheetHeight, panelWidth, headerOcclusionHeight),
 				animated: true,
 			});
 			setIsNearbyOverview(false);
@@ -304,11 +427,17 @@ export default function EmergencyLocationPreviewMap({
 		}
 
 		mapRef.current?.animateToRegion?.(
-			buildRegionForPoints(routeBoundsCoordinates, sheetHeight, panelWidth, screenWidth),
+			buildRegionForPoints(
+				routeBoundsCoordinates,
+				sheetHeight,
+				panelWidth,
+				screenWidth,
+				headerOcclusionHeight,
+			),
 			320,
 		);
 		setIsNearbyOverview(false);
-	}, [bottomSheetHeight, hasLocation, leftPanelWidth, routeBoundsCoordinates, screenWidth]);
+	}, [bottomSheetHeight, hasLocation, headerOcclusionHeight, leftPanelWidth, routeBoundsCoordinates, screenWidth]);
 
 	const recenterRouteForWebOcclusion = useCallback(async () => {
 		if (
@@ -328,8 +457,13 @@ export default function EmergencyLocationPreviewMap({
 				0,
 				leftPanelWidth,
 				screenWidth,
+				headerOcclusionHeight,
 			);
-			const verticalPanOffset = getWebRoutePanOffset(bottomSheetHeight, leftPanelWidth);
+			const verticalPanOffset = getWebRoutePanOffset(
+				bottomSheetHeight,
+				leftPanelWidth,
+				headerOcclusionHeight,
+			);
 
 			mapRef.current?.panToCoordinate?.({
 				latitude: routeRegion.latitude,
@@ -344,6 +478,7 @@ export default function EmergencyLocationPreviewMap({
 		}
 	}, [
 		bottomSheetHeight,
+		headerOcclusionHeight,
 		hasLocation,
 		isWeb,
 		leftPanelWidth,
@@ -359,7 +494,11 @@ export default function EmergencyLocationPreviewMap({
 			typeof mapRef.current?.fitToCoordinates === "function"
 		) {
 			mapRef.current.fitToCoordinates(nearbyOverviewCoordinates, {
-				edgePadding: getNearbyPadding(bottomSheetHeight, leftPanelWidth),
+				edgePadding: getNearbyPadding(
+					bottomSheetHeight,
+					leftPanelWidth,
+					headerOcclusionHeight,
+				),
 				animated: true,
 			});
 			setIsNearbyOverview(true);
@@ -372,11 +511,19 @@ export default function EmergencyLocationPreviewMap({
 				bottomSheetHeight,
 				leftPanelWidth,
 				screenWidth,
+				headerOcclusionHeight,
 			),
 			320,
 		);
 		setIsNearbyOverview(true);
-	}, [bottomSheetHeight, hasLocation, leftPanelWidth, nearbyOverviewCoordinates, screenWidth]);
+	}, [
+		bottomSheetHeight,
+		hasLocation,
+		headerOcclusionHeight,
+		leftPanelWidth,
+		nearbyOverviewCoordinates,
+		screenWidth,
+	]);
 
 	const centerOnUser = useCallback(() => {
 		if (!mapRef.current || !userCoordinate) return;
@@ -501,15 +648,17 @@ export default function EmergencyLocationPreviewMap({
 					<>
 						<Polyline
 							coordinates={routeBoundsCoordinates}
-							strokeColor={renderTokens.routeHaloColor}
+							strokeColor={routeHaloColor}
 							strokeWidth={renderTokens.routeHaloWidth}
+							lineDashPattern={routeDashPattern}
 							lineCap="round"
 							lineJoin="round"
 						/>
 						<Polyline
 							coordinates={routeBoundsCoordinates}
-							strokeColor={renderTokens.routeCoreColor}
+							strokeColor={routeCoreColor}
 							strokeWidth={renderTokens.routeCoreWidth}
+							lineDashPattern={routeDashPattern}
 							lineCap="round"
 							lineJoin="round"
 						/>
@@ -538,6 +687,33 @@ export default function EmergencyLocationPreviewMap({
 						/>
 					);
 				})}
+
+				{previewServiceMarkerCoordinate && serviceMarkerKind === "ambulance" ? (
+					<Marker
+						coordinate={previewServiceMarkerCoordinate}
+						anchor={{ x: 0.5, y: 0.5 }}
+						zIndex={140}
+						image={previewAmbulanceMarkerImage}
+						imageSize={{ width: 46, height: 46 }}
+						tracksViewChanges={false}
+						opacity={serviceMarkerOpacity}
+						title="Transport"
+					/>
+				) : null}
+
+				{previewServiceMarkerCoordinate && serviceMarkerKind === "bed" ? (
+					<Marker
+						coordinate={previewServiceMarkerCoordinate}
+						anchor={{ x: 0.5, y: 0.5 }}
+						centerOffset={{ x: 0, y: -8 }}
+						zIndex={138}
+						image={BED_MARKER_IMAGE}
+						imageSize={{ width: 42, height: 42 }}
+						tracksViewChanges={false}
+						opacity={serviceMarkerOpacity}
+						title="Bed reservation"
+					/>
+				) : null}
 
 				{hasLocation ? (
 					<Marker

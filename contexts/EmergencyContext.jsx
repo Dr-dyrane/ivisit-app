@@ -1191,6 +1191,7 @@ export function EmergencyProvider({ children }) {
 			const assignedAmbulance = explicitAssigned
 				? { ...(discoveredAssigned || {}), ...explicitAssigned }
 				: discoveredAssigned;
+			const hospitalCoordinate = normalizeCoordinate(trip?.hospitalCoordinate);
 
 				setActiveAmbulanceTrip({
 					id: trip.id ?? null,
@@ -1205,6 +1206,7 @@ export function EmergencyProvider({ children }) {
 				startedAt: Number.isFinite(trip?.startedAt) ? trip.startedAt : Date.now(),
 				currentResponderLocation:
 					trip?.currentResponderLocation ??
+					hospitalCoordinate ??
 					assignedAmbulance?.location ??
 					null,
 					patientLocation:
@@ -1216,6 +1218,12 @@ export function EmergencyProvider({ children }) {
 						Number.isFinite(trip?.currentResponderHeading)
 							? trip.currentResponderHeading
 							: (Number.isFinite(assignedAmbulance?.heading) ? assignedAmbulance.heading : null),
+					triage:
+						trip?.triageSnapshot ??
+						trip?.triage ??
+						(trip?.triageCheckin
+							? { signals: { userCheckin: trip.triageCheckin } }
+							: null),
 					responderTelemetryAt: trip?.responderTelemetryAt ?? trip?.updatedAt ?? null,
 					updatedAt: trip?.updatedAt ?? null,
 				});
@@ -1401,6 +1409,12 @@ export function EmergencyProvider({ children }) {
 				hospitalName: booking.hospitalName ?? null,
 				estimatedWait: booking.estimatedWait ?? booking.estimatedArrival ?? null,
 				etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
+				triage:
+					booking?.triageSnapshot ??
+					booking?.triage ??
+					(booking?.triageCheckin
+						? { signals: { userCheckin: booking.triageCheckin } }
+						: null),
 				startedAt: Number.isFinite(booking?.startedAt) ? booking.startedAt : Date.now(),
 			});
 		},

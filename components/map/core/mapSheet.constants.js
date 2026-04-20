@@ -10,6 +10,7 @@ export const MAP_SHEET_PHASES = {
 	AMBULANCE_DECISION: "ambulance_decision",
 	BED_DECISION: "bed_decision",
 	COMMIT_DETAILS: "commit_details",
+	COMMIT_TRIAGE: "commit_triage",
 	COMMIT_AUTH: "commit_auth",
 	COMMIT_PAYMENT: "commit_payment",
 	TRACKING: "tracking",
