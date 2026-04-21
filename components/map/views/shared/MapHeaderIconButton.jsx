@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 export default function MapHeaderIconButton({
 	accessibilityLabel,
 	backgroundColor,
+	borderRadius = 999,
 	color,
 	hitSlop = 10,
 	iconName = "close",
@@ -25,7 +26,14 @@ export default function MapHeaderIconButton({
 				<View
 					style={[
 						style,
-						{ backgroundColor, borderRadius: 999, overflow: "hidden" },
+						{
+							backgroundColor,
+							borderRadius,
+							borderCurve: "continuous",
+							overflow: "hidden",
+							alignItems: "center",
+							justifyContent: "center",
+						},
 						{
 							opacity: pressed ? 0.84 : 1,
 							transform: [{ scale: pressed ? 0.96 : 1 }],

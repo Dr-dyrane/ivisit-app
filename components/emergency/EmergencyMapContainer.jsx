@@ -33,13 +33,10 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 	const showRouteMap = !!routeHospitalId;
 	const activeRef = showRouteMap ? routeMapRef : baseMapRef;
 	const routeInstanceKey = useMemo(() => {
-		const keyBase = typeof mapStateKey === "string" ? mapStateKey : "emergency";
-		const key = showRouteMap
-			? `route:${keyBase}:${String(routeHospitalId)}`
-			: `base:${keyBase}`;
+		const key = typeof mapStateKey === "string" ? mapStateKey : "emergency";
 		console.log(`[EmergencyMapContainer-${containerId.current}] routeInstanceKey:`, key);
 		return key;
-	}, [mapStateKey, routeHospitalId, showRouteMap]); // Removed 'mode' to prevent new instances on mode toggle
+	}, [mapStateKey]);
 
 	useImperativeHandle(ref, () => ({
 		animateToHospital: (hospital, options) => {

@@ -224,6 +224,13 @@ The flow should continue using short, user-facing labels:
   - `Details`
 - tracking:
   - prefer short state labels such as `Live tracking`, `Awaiting approval`, `Bed ready`, `Help has arrived`
+  - put `arrival / ETA / distance` in the persistent active header, not in a duplicated sheet hero card
+  - use a compact tracking sheet top slot for local controls: detent toggle on the left, `return to map` on the right
+  - keep one primary action only when arrival / completion / check-in is actually needed
+  - keep cancel visually isolated from non-destructive utilities
+  - keep cancel out of half snap unless there is no better place for it
+  - if check-in is already completed, demote it to `Update check-in` instead of keeping it as the main CTA
+  - keep the active header persistent after minimize so the route can always be reopened
 
 Avoid:
 
@@ -257,6 +264,7 @@ Confirmed by code audit:
 - cash approval still flows through `approve_cash_payment` / `decline_cash_payment`
 - console subscribes to `emergency_requests` and `payments`
 - map tracking handoff is now wired in code
+- tracking camera now prefers a wider active fit so patient, hospital, and responder remain visible together
 
 Not verified in this audit from runtime:
 

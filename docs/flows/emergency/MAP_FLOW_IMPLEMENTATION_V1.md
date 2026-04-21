@@ -417,7 +417,22 @@ Smart header behavior:
 Tracking sheet behavior:
 
 - default to a compact bottom route card, not a full modal
-- show arrival time, minutes, and distance as the first row
+- move `arrival / ETA / distance` into the smart active header; do not repeat them as a large sheet hero row
+- give tracking its own sheet top slot with:
+  - left chevron for half/expanded toggle where detents exist
+  - right `map` action for minimize / return-to-map
+  - concise title + subtitle only, no duplicate metrics
+- keep the smart header alive after minimizing tracking so the user can always return to the active route
+- use the header left action for reopen/toggle and reserve the right action for map return, not close/dismiss
+- restore legacy lifecycle truth in the new sheet language:
+  - cancel request / booking
+  - mark ambulance arrived
+  - check in to bed when ready
+  - complete route / stay when the backend state allows it
+- keep one raised primary action only when user action is actually required; otherwise keep utilities secondary
+- preserve responder identity, hospital destination, and late bed-add from active ambulance tracking
+- keep cancel out of half-snap when there is no immediate destructive need; prefer expanded-only destructive placement
+- if check-in / triage already exists, detect whether it is complete and downgrade it from primary to secondary `Update check-in`
 - support expanded controls similar to Apple Maps:
   - destination/hospital
   - share ETA

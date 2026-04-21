@@ -52,6 +52,7 @@ export default function MapSheetOrchestrator({
 	onCloseCommitTriage = () => {},
 	onCloseCommitPayment = () => {},
 	onCloseTracking = () => {},
+	onAddBedFromTracking = () => {},
 	onCloseHospitalDetail = () => {},
 	onConfirmAmbulanceDecision = () => {},
 	onConfirmBedDecision = () => {},
@@ -76,6 +77,7 @@ export default function MapSheetOrchestrator({
 	activeLocation = null,
 	sheetPayload = null,
 	trackingRouteInfo = null,
+	trackingHeaderActionRequest = null,
 	serviceSelectionsByHospital = {},
 	onUseHospital = undefined,
 	profileImageSource,
@@ -286,6 +288,8 @@ export default function MapSheetOrchestrator({
 						payload={sheetPayload}
 						currentLocation={currentLocation}
 						routeInfo={trackingRouteInfo}
+						headerActionRequest={trackingHeaderActionRequest}
+						onAddBedFromTracking={onAddBedFromTracking}
 						onClose={onCloseTracking}
 						onSnapStateChange={onSnapStateChange}
 					/>

@@ -83,6 +83,7 @@ function buildRegionForPoints(
 	leftPanelWidth = 0,
 	screenWidth = 0,
 	headerOcclusionHeight = 0,
+	{ wideViewport = false } = {},
 ) {
 	if (points.length <= 1) {
 		return buildRegion(points[0] || null);
@@ -97,16 +98,28 @@ function buildRegionForPoints(
 	const rawLatitudeSpan = Math.max(maxLat - minLat, 0);
 	const rawLongitudeSpan = Math.max(maxLng - minLng, 0);
 	const routeIsMostlyHorizontal = rawLongitudeSpan > Math.max(rawLatitudeSpan, 0.0001) * 1.12;
+	const latitudeFloor = wideViewport ? 0.02 : DEFAULT_REGION.latitudeDelta;
+	const longitudeFloor = wideViewport ? 0.02 : DEFAULT_REGION.longitudeDelta;
 	const latitudeDelta = Math.min(
-		Math.max(DEFAULT_REGION.latitudeDelta, rawLatitudeSpan * (routeIsMostlyHorizontal ? 1.44 : 1.56) + 0.0042),
+		Math.max(
+			latitudeFloor,
+			rawLatitudeSpan * (routeIsMostlyHorizontal ? (wideViewport ? 1.82 : 1.44) : wideViewport ? 1.96 : 1.56) +
+				(wideViewport ? 0.0075 : 0.0042),
+		),
 		0.12,
 	);
 	const longitudeDelta = Math.min(
-		Math.max(DEFAULT_REGION.longitudeDelta, rawLongitudeSpan * (routeIsMostlyHorizontal ? 1.52 : 1.44) + 0.0042),
+		Math.max(
+			longitudeFloor,
+			rawLongitudeSpan * (routeIsMostlyHorizontal ? (wideViewport ? 1.88 : 1.52) : wideViewport ? 1.74 : 1.44) +
+				(wideViewport ? 0.0075 : 0.0042),
+		),
 		0.12,
 	);
 	const sheetBias = Math.min(0.18, Math.max(0.05, (Number(bottomSheetHeight) || 0) / 1500));
-	const normalizedBias = Math.min(0.12, Math.max(0.02, sheetBias));
+	const normalizedBias = wideViewport
+		? Math.min(0.09, Math.max(0.015, sheetBias * 0.66))
+		: Math.min(0.12, Math.max(0.02, sheetBias));
 	const headerBias = Math.min(0.055, Math.max(0, (Number(headerOcclusionHeight) || 0) / 3200));
 	const horizontalBias = getHorizontalOcclusionBias(leftPanelWidth, screenWidth);
 
@@ -313,26 +326,13 @@ export default function EmergencyLocationPreviewMap({
 		return 4.5;
 	}, [selectedHospital?.distanceKm, visibleHospitals]);
 	const routeOriginCoordinate = useMemo(() => {
-		if (
-			activeTracking &&
-			serviceMarkerKind === "ambulance" &&
-			previewServiceMarkerCoordinate
-		) {
-			return previewServiceMarkerCoordinate;
-		}
 		return userCoordinate;
 	}, [
-		activeTracking,
-		previewServiceMarkerCoordinate,
-		serviceMarkerKind,
 		userCoordinate,
 	]);
 	const routeDestinationCoordinate = useMemo(() => {
-		if (activeTracking && serviceMarkerKind === "ambulance") {
-			return userCoordinate;
-		}
 		return selectedHospitalCoordinate;
-	}, [activeTracking, selectedHospitalCoordinate, serviceMarkerKind, userCoordinate]);
+	}, [selectedHospitalCoordinate]);
 	const routeBoundsCoordinates = useMemo(() => {
 		if (previewRouteCoordinates.length >= 2) {
 			return previewRouteCoordinates;
@@ -371,7 +371,13 @@ export default function EmergencyLocationPreviewMap({
 				screenWidth,
 				headerOcclusionHeight,
 			),
-		[bottomSheetHeight, headerOcclusionHeight, leftPanelWidth, routeBoundsCoordinates, screenWidth],
+		[
+			bottomSheetHeight,
+			headerOcclusionHeight,
+			leftPanelWidth,
+			routeBoundsCoordinates,
+			screenWidth,
+		],
 	);
 	const hasLocation = !!userCoordinate;
 	const hasRouteTargets = Boolean(userCoordinate && selectedHospitalCoordinate);
@@ -437,7 +443,14 @@ export default function EmergencyLocationPreviewMap({
 			320,
 		);
 		setIsNearbyOverview(false);
-	}, [bottomSheetHeight, hasLocation, headerOcclusionHeight, leftPanelWidth, routeBoundsCoordinates, screenWidth]);
+	}, [
+		bottomSheetHeight,
+		hasLocation,
+		headerOcclusionHeight,
+		leftPanelWidth,
+		routeBoundsCoordinates,
+		screenWidth,
+	]);
 
 	const recenterRouteForWebOcclusion = useCallback(async () => {
 		if (
@@ -542,10 +555,8 @@ export default function EmergencyLocationPreviewMap({
 		routeFitPrimeKeyRef.current = routeFitPrimeKey;
 		fitRoute(bottomSheetHeight, leftPanelWidth);
 		const followUpDelay = isAndroid ? 320 : isWeb ? 220 : 180;
-		const followUp = setTimeout(
-			() => fitRoute(bottomSheetHeight, leftPanelWidth),
-			followUpDelay,
-		);
+		if (!followUpDelay) return undefined;
+		const followUp = setTimeout(() => fitRoute(bottomSheetHeight, leftPanelWidth), followUpDelay);
 		return () => clearTimeout(followUp);
 	}, [
 		bottomSheetHeight,

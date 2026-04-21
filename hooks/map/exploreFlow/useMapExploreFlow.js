@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, useWindowDimensions } from "react-native";
+import {
+  Animated,
+  Easing,
+  Platform,
+  Pressable,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { useHeaderState } from "../../../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../../../contexts/ScrollAwareHeaderContext";
@@ -17,6 +26,7 @@ import {
   MAP_SHEET_PHASES,
   MAP_SHEET_SNAP_STATES,
 } from "../../../components/map/core/MapSheetOrchestrator";
+import { EmergencyRequestStatus } from "../../../services/emergencyRequestsService";
 import {
   getMapViewportVariant,
   isSidebarMapVariant,
@@ -42,7 +52,6 @@ import { useMapExploreFlowStore } from "../state/mapExploreFlow.store";
 import MapHeaderIconButton from "../../../components/map/views/shared/MapHeaderIconButton";
 
 const TRACKING_HEADER_COLLAPSED_HEIGHT = 124;
-const TRACKING_HEADER_EXPANDED_HEIGHT = 212;
 
 function formatHeaderEtaLabel(etaSeconds, startedAt, nowMs = Date.now()) {
   if (!Number.isFinite(etaSeconds) || !Number.isFinite(startedAt)) return null;
@@ -50,6 +59,16 @@ function formatHeaderEtaLabel(etaSeconds, startedAt, nowMs = Date.now()) {
   const remainingSeconds = Math.max(0, Math.round(etaSeconds - elapsedSeconds));
   const remainingMinutes = Math.max(1, Math.ceil(remainingSeconds / 60));
   return `${remainingMinutes} min`;
+}
+
+function formatHeaderArrivalLabel(etaSeconds, startedAt, nowMs = Date.now()) {
+  if (!Number.isFinite(etaSeconds) || !Number.isFinite(startedAt)) return null;
+  const elapsedSeconds = Math.max(0, Math.round((nowMs - startedAt) / 1000));
+  const remainingSeconds = Math.max(0, Math.round(etaSeconds - elapsedSeconds));
+  const arrivalDate = new Date(nowMs + remainingSeconds * 1000);
+  const hour = arrivalDate.getHours() % 12 || 12;
+  const minute = String(arrivalDate.getMinutes()).padStart(2, "0");
+  return `${hour}:${minute}`;
 }
 
 function formatHospitalDistanceLabel(hospital) {
@@ -65,11 +84,184 @@ function formatHospitalDistanceLabel(hospital) {
   return null;
 }
 
+function resolveInitialDistanceKm(hospital) {
+  const directDistanceKm = Number(hospital?.distanceKm);
+  if (Number.isFinite(directDistanceKm) && directDistanceKm > 0) {
+    return directDistanceKm;
+  }
+
+  if (typeof hospital?.distance === "string" && hospital.distance.trim()) {
+    const raw = hospital.distance.trim().toLowerCase();
+    const value = Number.parseFloat(raw.replace(/[^0-9.]/g, ""));
+    if (!Number.isFinite(value) || value <= 0) return null;
+    if (raw.includes("km")) return value;
+    if (raw.includes("mi")) return value * 1.60934;
+    if (raw.includes("m")) return value / 1000;
+  }
+
+  return null;
+}
+
+function formatRemainingDistanceLabel(distanceKm, arrived = false) {
+  if (arrived) return "0 m";
+  if (!Number.isFinite(distanceKm) || distanceKm <= 0) return null;
+  if (distanceKm < 1) {
+    return `${Math.max(50, Math.round(distanceKm * 1000))} m`;
+  }
+  return `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km`;
+}
+
+function stripHeaderMetricUnit(value, unitPattern) {
+  if (typeof value !== "string") return value || "--";
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "--") return trimmed || "--";
+  return trimmed.replace(unitPattern, "").trim() || trimmed;
+}
+
+function toHeaderDistanceKmValue(value) {
+  if (typeof value !== "string") return value || "--";
+  const raw = value.trim().toLowerCase();
+  if (!raw || raw === "--") return "--";
+
+  const parsed = Number.parseFloat(raw.replace(/[^0-9.]/g, ""));
+  if (!Number.isFinite(parsed) || parsed < 0) return "--";
+
+  let km = parsed;
+  if (raw.includes("mi")) {
+    km = parsed * 1.60934;
+  } else if (raw.includes("m") && !raw.includes("km")) {
+    km = parsed / 1000;
+  }
+
+  if (km < 1) return km.toFixed(1);
+  if (km < 10) return km.toFixed(1);
+  return km.toFixed(0);
+}
+
+function joinSummaryParts(parts = []) {
+  return parts
+    .filter((part) => typeof part === "string" && part.trim())
+    .join(" · ");
+}
+
+function TrackHeaderIcon({
+  onPress,
+  backgroundColor = "rgba(255,255,255,0.82)",
+  color = "#0F172A",
+  pulseColor = COLORS.brandPrimary,
+}) {
+  const pulseProgress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseProgress, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseProgress, {
+          toValue: 0,
+          duration: 260,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [pulseProgress]);
+
+  const pulseScale = pulseProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.42],
+  });
+  const pulseOpacity = pulseProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.9, 0.34],
+  });
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Return to tracking"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: 38,
+        height: 38,
+        borderRadius: 999,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor,
+        opacity: pressed ? 0.9 : 1,
+        transform: [{ scale: pressed ? 0.94 : 1 }],
+        shadowColor: "#000000",
+        shadowOpacity: 0.14,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 7 },
+        elevation: 8,
+        ...Platform.select({
+          web: {
+            boxShadow: "0px 10px 18px rgba(15,23,42,0.18)",
+          },
+          default: {},
+        }),
+      })}
+    >
+      <View
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 999,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <MaterialIcons name="route" size={21} color={color} />
+      </View>
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: 3,
+          right: 3,
+          width: 8,
+          height: 8,
+          borderRadius: 999,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Animated.View
+          style={{
+            position: "absolute",
+            width: 8,
+            height: 8,
+            borderRadius: 999,
+            backgroundColor: pulseColor,
+            opacity: pulseOpacity,
+            transform: [{ scale: pulseScale }],
+          }}
+        />
+        <View
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 999,
+            backgroundColor: pulseColor,
+          }}
+        />
+      </View>
+    </Pressable>
+  );
+}
+
 export function useMapExploreFlow() {
   const suppressCommitRestoreRef = useRef(false);
   const trackingDismissedRef = useRef(false);
   const lastTrackingRequestKeyRef = useRef(null);
-  const [trackingHeaderExpanded, setTrackingHeaderExpanded] = useState(false);
+  const [trackingHeaderActionRequest, setTrackingHeaderActionRequest] = useState(null);
   const [trackingHeaderNowMs, setTrackingHeaderNowMs] = useState(Date.now());
   const { isDarkMode } = useTheme();
   const { width, height } = useWindowDimensions();
@@ -449,13 +641,11 @@ export function useMapExploreFlow() {
     if (lastTrackingRequestKeyRef.current !== trackingRequestKey) {
       trackingDismissedRef.current = false;
       lastTrackingRequestKeyRef.current = trackingRequestKey;
-      setTrackingHeaderExpanded(false);
     }
   }, [trackingRequestKey]);
 
   useEffect(() => {
     if (!trackingVisible || !trackingRequestKey) {
-      setTrackingHeaderExpanded(false);
       return undefined;
     }
 
@@ -925,21 +1115,53 @@ export function useMapExploreFlow() {
 
   const closeAmbulanceDecision = useCallback(() => {
     clearCommitFlow();
+    if (sheetPayload?.sourcePhase === MAP_SHEET_PHASES.TRACKING) {
+      setSheetView({
+        phase: MAP_SHEET_PHASES.TRACKING,
+        snapState:
+          sheetPayload?.sourceSnapState || defaultExploreSnapState,
+        payload: sheetPayload?.sourcePayload || null,
+      });
+      return;
+    }
     setSheetView({
       phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
       snapState: defaultExploreSnapState,
       payload: null,
     });
-  }, [clearCommitFlow, defaultExploreSnapState, setSheetView]);
+  }, [
+    clearCommitFlow,
+    defaultExploreSnapState,
+    setSheetView,
+    sheetPayload?.sourcePayload,
+    sheetPayload?.sourcePhase,
+    sheetPayload?.sourceSnapState,
+  ]);
 
   const closeBedDecision = useCallback(() => {
     clearCommitFlow();
+    if (sheetPayload?.sourcePhase === MAP_SHEET_PHASES.TRACKING) {
+      setSheetView({
+        phase: MAP_SHEET_PHASES.TRACKING,
+        snapState:
+          sheetPayload?.sourceSnapState || defaultExploreSnapState,
+        payload: sheetPayload?.sourcePayload || null,
+      });
+      return;
+    }
     setSheetView({
       phase: MAP_SHEET_PHASES.EXPLORE_INTENT,
       snapState: defaultExploreSnapState,
       payload: null,
     });
-  }, [clearCommitFlow, defaultExploreSnapState, setSheetView]);
+  }, [
+    clearCommitFlow,
+    defaultExploreSnapState,
+    setSheetView,
+    sheetPayload?.sourcePayload,
+    sheetPayload?.sourcePhase,
+    sheetPayload?.sourceSnapState,
+  ]);
 
   const closeCommitDetails = useCallback(() => {
     suppressCommitRestoreRef.current = true;
@@ -1026,7 +1248,15 @@ export function useMapExploreFlow() {
     });
   }, [defaultExploreSnapState, setSheetView]);
 
-  const trackingHeaderVisible = trackingVisible && Boolean(trackingRequestKey);
+  const trackingHeaderVisible =
+    Boolean(trackingRequestKey) &&
+    !usesSidebarLayout &&
+    sheetSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED &&
+    sheetPhase !== MAP_SHEET_PHASES.COMMIT_DETAILS &&
+    sheetPhase !== MAP_SHEET_PHASES.COMMIT_TRIAGE &&
+    sheetPhase !== MAP_SHEET_PHASES.COMMIT_PAYMENT;
+  const trackingHeaderCanReopen =
+    trackingHeaderVisible && sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT;
   const trackingHeaderHospital =
     sheetPayload?.hospital ||
     discoveredHospitals.find(
@@ -1097,35 +1327,150 @@ export function useMapExploreFlow() {
     pendingApproval?.requestId,
     trackingHeaderNowMs,
   ]);
+  const trackingHeaderArrivalLabel = useMemo(() => {
+    if (activeAmbulanceTrip?.requestId) {
+      return formatHeaderArrivalLabel(
+        activeAmbulanceTrip?.etaSeconds,
+        activeAmbulanceTrip?.startedAt,
+        trackingHeaderNowMs,
+      );
+    }
+
+    if (activeBedBooking?.requestId) {
+      return formatHeaderArrivalLabel(
+        activeBedBooking?.etaSeconds,
+        activeBedBooking?.startedAt,
+        trackingHeaderNowMs,
+      );
+    }
+
+    return null;
+  }, [
+    activeAmbulanceTrip?.etaSeconds,
+    activeAmbulanceTrip?.requestId,
+    activeAmbulanceTrip?.startedAt,
+    activeBedBooking?.etaSeconds,
+    activeBedBooking?.requestId,
+    activeBedBooking?.startedAt,
+    trackingHeaderNowMs,
+  ]);
+  const trackingHeaderDistanceLabel = useMemo(() => {
+    const status = String(
+      activeAmbulanceTrip?.status || activeBedBooking?.status || "",
+    ).toLowerCase();
+    const isArrivedOrComplete =
+      status === EmergencyRequestStatus.ARRIVED ||
+      status === EmergencyRequestStatus.COMPLETED;
+    if (isArrivedOrComplete) {
+      return "0 m";
+    }
+
+    const initialDistanceKm = resolveInitialDistanceKm(trackingHeaderHospital);
+    if (!Number.isFinite(initialDistanceKm) || initialDistanceKm <= 0) {
+      return formatHospitalDistanceLabel(trackingHeaderHospital);
+    }
+
+    const currentEtaSeconds =
+      activeAmbulanceTrip?.etaSeconds ?? activeBedBooking?.etaSeconds ?? null;
+    const currentStartedAt =
+      activeAmbulanceTrip?.startedAt ?? activeBedBooking?.startedAt ?? null;
+    if (!Number.isFinite(currentEtaSeconds) || !Number.isFinite(currentStartedAt)) {
+      return formatRemainingDistanceLabel(initialDistanceKm);
+    }
+    const elapsedSeconds = Math.max(
+      0,
+      Math.round((trackingHeaderNowMs - currentStartedAt) / 1000),
+    );
+    const progress = Math.max(
+      0,
+      Math.min(1, elapsedSeconds / Math.max(1, currentEtaSeconds)),
+    );
+
+    const remainingDistanceKm = Math.max(
+      initialDistanceKm >= 1 ? 0.1 : 0.05,
+      initialDistanceKm * (1 - progress),
+    );
+    return formatRemainingDistanceLabel(remainingDistanceKm);
+  }, [
+    activeAmbulanceTrip?.etaSeconds,
+    activeAmbulanceTrip?.startedAt,
+    activeAmbulanceTrip?.status,
+    activeBedBooking?.etaSeconds,
+    activeBedBooking?.startedAt,
+    activeBedBooking?.status,
+    trackingHeaderHospital,
+    trackingHeaderNowMs,
+  ]);
+  const trackingHeaderMinuteValue = useMemo(
+    () => stripHeaderMetricUnit(trackingHeaderStatusLabel, /\s*(min|mins|minute|minutes)$/i),
+    [trackingHeaderStatusLabel],
+  );
+  const trackingHeaderDistanceValue = useMemo(
+    () => toHeaderDistanceKmValue(trackingHeaderDistanceLabel),
+    [trackingHeaderDistanceLabel],
+  );
   const trackingHeaderActionSurface = isDarkMode
     ? "rgba(255,255,255,0.08)"
     : "rgba(255,255,255,0.76)";
   const trackingHeaderActionColor = isDarkMode ? "#F8FAFC" : "#0F172A";
-  const handleTrackingHeaderToggle = useCallback(() => {
-    if (usesSidebarLayout || !trackingVisible) return;
-    const nextSnapState =
-      sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
-        ? MAP_SHEET_SNAP_STATES.HALF
-        : MAP_SHEET_SNAP_STATES.EXPANDED;
-    setSheetSnapState(nextSnapState);
-  }, [setSheetSnapState, sheetSnapState, trackingVisible, usesSidebarLayout]);
+  const trackingHeaderRouteSurface = isDarkMode
+    ? "rgba(134,16,14,0.24)"
+    : "rgba(134,16,14,0.12)";
+  const trackingHeaderProgressValue = useMemo(() => {
+    const currentEtaSeconds =
+      activeAmbulanceTrip?.etaSeconds ?? activeBedBooking?.etaSeconds ?? null;
+    const currentStartedAt =
+      activeAmbulanceTrip?.startedAt ?? activeBedBooking?.startedAt ?? null;
+    const currentStatus = String(
+      activeAmbulanceTrip?.status || activeBedBooking?.status || "",
+    ).toLowerCase();
+
+    if (
+      currentStatus === EmergencyRequestStatus.ARRIVED ||
+      currentStatus === EmergencyRequestStatus.COMPLETED
+    ) {
+      return 1;
+    }
+    if (!Number.isFinite(currentEtaSeconds) || !Number.isFinite(currentStartedAt)) {
+      return null;
+    }
+    const elapsedSeconds = Math.max(
+      0,
+      Math.round((trackingHeaderNowMs - currentStartedAt) / 1000),
+    );
+    return Math.max(0, Math.min(1, elapsedSeconds / Math.max(1, currentEtaSeconds)));
+  }, [
+    activeAmbulanceTrip?.etaSeconds,
+    activeAmbulanceTrip?.startedAt,
+    activeAmbulanceTrip?.status,
+    activeBedBooking?.etaSeconds,
+    activeBedBooking?.startedAt,
+    activeBedBooking?.status,
+    trackingHeaderNowMs,
+  ]);
+  const handleTrackingHeaderOpen = useCallback(() => {
+    trackingDismissedRef.current = false;
+    openTracking();
+  }, [openTracking]);
+  const requestTrackingHeaderAction = useCallback((type) => {
+    if (!type) return;
+    trackingDismissedRef.current = false;
+    setTrackingHeaderActionRequest({
+      type,
+      requestedAt: Date.now(),
+    });
+    openTracking();
+  }, [openTracking]);
   const trackingHeaderLeftComponent = useMemo(() => {
-    if (usesSidebarLayout || !trackingHeaderVisible) return null;
+    if (!trackingHeaderVisible) return null;
     return (
       <MapHeaderIconButton
-        accessibilityLabel={
-          sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
-            ? "Collapse tracking sheet"
-            : "Expand tracking sheet"
-        }
+        accessibilityLabel="Update your information"
         backgroundColor={trackingHeaderActionSurface}
+        borderRadius={999}
         color={trackingHeaderActionColor}
-        iconName={
-          sheetSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
-            ? "chevron-down"
-            : "chevron-up"
-        }
-        onPress={handleTrackingHeaderToggle}
+        iconName="medkit-outline"
+        onPress={() => requestTrackingHeaderAction("triage")}
         pressableStyle={{ marginRight: 6 }}
         style={{
           width: 38,
@@ -1136,21 +1481,30 @@ export function useMapExploreFlow() {
       />
     );
   }, [
-    handleTrackingHeaderToggle,
-    sheetSnapState,
+    requestTrackingHeaderAction,
     trackingHeaderActionColor,
     trackingHeaderActionSurface,
     trackingHeaderVisible,
-    usesSidebarLayout,
   ]);
   const trackingHeaderRightComponent = useMemo(() => {
     if (!trackingHeaderVisible) return null;
+    if (trackingHeaderCanReopen) {
+      return (
+        <TrackHeaderIcon
+          backgroundColor={trackingHeaderRouteSurface}
+          color={COLORS.brandPrimary}
+          pulseColor={COLORS.brandPrimary}
+          onPress={handleTrackingHeaderOpen}
+        />
+      );
+    }
     return (
       <MapHeaderIconButton
-        accessibilityLabel="Close tracking"
+        accessibilityLabel="Return to map"
         backgroundColor={trackingHeaderActionSurface}
+        borderRadius={999}
         color={trackingHeaderActionColor}
-        iconName="close"
+        iconName="map-outline"
         onPress={closeTracking}
         style={{
           width: 38,
@@ -1162,8 +1516,11 @@ export function useMapExploreFlow() {
     );
   }, [
     closeTracking,
+    trackingHeaderCanReopen,
     trackingHeaderActionColor,
     trackingHeaderActionSurface,
+    trackingHeaderRouteSurface,
+    handleTrackingHeaderOpen,
     trackingHeaderVisible,
   ]);
   const trackingHeaderSession = useMemo(() => {
@@ -1178,17 +1535,42 @@ export function useMapExploreFlow() {
           : telemetryState === "stale"
             ? "Tracking delayed"
             : "Live tracking";
+      const sheetStateTitle =
+        status === "arrived" ? "Responder has arrived" : "Transport en route";
+      const metricPillLabel =
+        joinSummaryParts([trackingHeaderStatusLabel, trackingHeaderDistanceLabel]) ||
+        trackingHeaderDistanceLabel ||
+        trackingHeaderStatusLabel ||
+        trackingHeaderServiceLabel;
 
       return {
-        eyebrow: trackingHeaderServiceLabel,
-        title: status === "arrived" ? "Help has arrived" : "Help is on the way",
-        subtitle: trackingHeaderHospitalName,
-        statusLabel: trackingHeaderStatusLabel,
+        eyebrow: null,
+        title: null,
+        subtitle: null,
+        metrics: [
+          { label: "Arrival", value: trackingHeaderArrivalLabel || "--" },
+          { label: "Min", value: trackingHeaderMinuteValue || "--" },
+          { label: "Km", value: trackingHeaderDistanceValue || "--" },
+        ],
+        statusLabel: null,
         statusTone: status === "arrived" ? "success" : "tracking",
-        expanded: trackingHeaderExpanded,
-        expandable: true,
-        onToggleExpand: () => setTrackingHeaderExpanded((current) => !current),
+        expanded: false,
+        expandable: false,
+        onToggleExpand: null,
+        showChevron: false,
+        hideDetails: true,
+        bodyHeight: 0,
+        expandedContent: null,
         details: [
+          ...(trackingHeaderArrivalLabel
+            ? [{ label: "Arrival", value: trackingHeaderArrivalLabel }]
+            : []),
+          ...(trackingHeaderStatusLabel
+            ? [{ label: "ETA", value: trackingHeaderStatusLabel }]
+            : []),
+          ...(trackingHeaderDistanceLabel
+            ? [{ label: "Distance", value: trackingHeaderDistanceLabel }]
+            : []),
           { label: "Pickup", value: trackingHeaderPickupLabel },
           {
             label: "Hospital",
@@ -1198,6 +1580,19 @@ export function useMapExploreFlow() {
                 ? ` · ${formatHospitalDistanceLabel(trackingHeaderHospital)}`
                 : ""),
           },
+          ...(activeAmbulanceTrip?.assignedAmbulance?.crew?.[0] ||
+          activeAmbulanceTrip?.assignedAmbulance?.name ||
+          activeAmbulanceTrip?.assignedAmbulance?.vehicleNumber
+            ? [
+                {
+                  label: "Responder",
+                  value:
+                    activeAmbulanceTrip?.assignedAmbulance?.crew?.[0] ||
+                    activeAmbulanceTrip?.assignedAmbulance?.name ||
+                    activeAmbulanceTrip?.assignedAmbulance?.vehicleNumber,
+                },
+              ]
+            : []),
           {
             label: "Request",
             value:
@@ -1205,6 +1600,17 @@ export function useMapExploreFlow() {
               pendingApproval?.displayId ||
               "Active",
           },
+          ...(activeBedBooking?.requestId
+            ? [
+                {
+                  label: "Admission",
+                  value:
+                    activeBedBooking?.status === "arrived"
+                      ? "Bed ready"
+                      : "Bed reserved",
+                },
+              ]
+            : []),
           {
             label: "Tracking",
             value: trackingHeaderPickupDetail
@@ -1217,17 +1623,40 @@ export function useMapExploreFlow() {
 
     if (activeBedBooking?.requestId) {
       const status = String(activeBedBooking?.status ?? "").toLowerCase();
+      const sheetStateTitle = status === "arrived" ? "Bed ready" : "Bed reserved";
+      const metricPillLabel =
+        joinSummaryParts([trackingHeaderStatusLabel, trackingHeaderDistanceLabel]) ||
+        trackingHeaderDistanceLabel ||
+        trackingHeaderStatusLabel ||
+        trackingHeaderServiceLabel;
       return {
-        eyebrow: trackingHeaderServiceLabel,
-        title:
-          status === "arrived" ? "Bed is ready" : "Admission is active",
-        subtitle: trackingHeaderHospitalName,
-        statusLabel: trackingHeaderStatusLabel,
+        eyebrow: null,
+        title: null,
+        subtitle: null,
+        metrics: [
+          { label: "Arrival", value: trackingHeaderArrivalLabel || "--" },
+          { label: "Min", value: trackingHeaderMinuteValue || "--" },
+          { label: "Km", value: trackingHeaderDistanceValue || "--" },
+        ],
+        statusLabel: null,
         statusTone: status === "arrived" ? "success" : "tracking",
-        expanded: trackingHeaderExpanded,
-        expandable: true,
-        onToggleExpand: () => setTrackingHeaderExpanded((current) => !current),
+        expanded: false,
+        expandable: false,
+        onToggleExpand: null,
+        showChevron: false,
+        hideDetails: true,
+        bodyHeight: 0,
+        expandedContent: null,
         details: [
+          ...(trackingHeaderArrivalLabel
+            ? [{ label: "Ready", value: trackingHeaderArrivalLabel }]
+            : []),
+          ...(trackingHeaderStatusLabel
+            ? [{ label: "ETA", value: trackingHeaderStatusLabel }]
+            : []),
+          ...(trackingHeaderDistanceLabel
+            ? [{ label: "Distance", value: trackingHeaderDistanceLabel }]
+            : []),
           { label: "Pickup", value: trackingHeaderPickupLabel },
           {
             label: "Hospital",
@@ -1250,14 +1679,23 @@ export function useMapExploreFlow() {
     }
 
     return {
-      eyebrow: trackingHeaderServiceLabel,
-      title: "Awaiting approval",
-      subtitle: trackingHeaderHospitalName,
-      statusLabel: trackingHeaderStatusLabel,
+      eyebrow: null,
+      title: null,
+      subtitle: null,
+      metrics: [
+        { label: "Arrival", value: "--" },
+        { label: "Min", value: trackingHeaderMinuteValue || "Pending" },
+        { label: "Km", value: trackingHeaderDistanceValue || "--" },
+      ],
+      statusLabel: null,
       statusTone: "default",
-      expanded: trackingHeaderExpanded,
-      expandable: true,
-      onToggleExpand: () => setTrackingHeaderExpanded((current) => !current),
+      expanded: false,
+      expandable: false,
+      onToggleExpand: null,
+      showChevron: false,
+      hideDetails: true,
+      bodyHeight: 0,
+      expandedContent: null,
       details: [
         { label: "Pickup", value: trackingHeaderPickupLabel },
         {
@@ -1275,16 +1713,19 @@ export function useMapExploreFlow() {
             pendingApproval?.requestId ||
             "Pending",
         },
-        {
-          label: "Payment",
-          value:
-            pendingApproval?.paymentMethod === "cash"
-              ? "Provider confirmation"
-              : "Processing",
-        },
-      ],
-    };
-  }, [
+          {
+            label: "Payment",
+            value:
+              pendingApproval?.paymentMethod === "cash"
+                ? "Provider confirmation"
+                : "Processing",
+          },
+        ],
+      };
+    }, [
+    activeAmbulanceTrip?.assignedAmbulance?.crew,
+    activeAmbulanceTrip?.assignedAmbulance?.name,
+    activeAmbulanceTrip?.assignedAmbulance?.vehicleNumber,
     activeAmbulanceTrip?.requestId,
     activeAmbulanceTrip?.status,
     activeBedBooking?.requestId,
@@ -1293,9 +1734,12 @@ export function useMapExploreFlow() {
     pendingApproval?.displayId,
     pendingApproval?.paymentMethod,
     pendingApproval?.requestId,
-    trackingHeaderExpanded,
+    trackingHeaderArrivalLabel,
+    trackingHeaderDistanceLabel,
+    trackingHeaderDistanceValue,
     trackingHeaderHospital,
     trackingHeaderHospitalName,
+    trackingHeaderMinuteValue,
     trackingHeaderPickupDetail,
     trackingHeaderPickupLabel,
     trackingHeaderServiceLabel,
@@ -1303,9 +1747,7 @@ export function useMapExploreFlow() {
     trackingHeaderVisible,
   ]);
   const trackingHeaderOcclusionHeight = trackingHeaderVisible
-    ? trackingHeaderExpanded
-      ? TRACKING_HEADER_EXPANDED_HEIGHT
-      : TRACKING_HEADER_COLLAPSED_HEIGHT
+    ? TRACKING_HEADER_COLLAPSED_HEIGHT
     : 0;
 
   useEffect(() => {
@@ -1809,5 +2251,6 @@ export function useMapExploreFlow() {
     activeBedBooking,
     pendingApproval,
     trackingHeaderOcclusionHeight,
+    trackingHeaderActionRequest,
   };
 }

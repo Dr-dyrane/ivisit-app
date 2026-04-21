@@ -99,6 +99,7 @@ const FullScreenEmergencyMap = forwardRef(
 		const lastZoomLogKeyRef = useRef(null);
 		const lastUserPanAtRef = useRef(0);
 		const pendingCenterTimeoutRef = useRef(null);
+		const hasRequestedInitialLocationRef = useRef(false);
 
 		const [isZoomedOut, setIsZoomedOut] = useState(false);
 		const [isMapReadyState, setIsMapReadyState] = useState(false);
@@ -302,6 +303,8 @@ const FullScreenEmergencyMap = forwardRef(
 
 		// Request location permission immediately on mount
 		useEffect(() => {
+			if (hasRequestedInitialLocationRef.current) return;
+			hasRequestedInitialLocationRef.current = true;
 			console.log("[FullScreenEmergencyMap] Requesting location permission on mount...");
 			requestLocationPermission();
 		}, [requestLocationPermission]);

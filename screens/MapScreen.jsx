@@ -113,6 +113,7 @@ export default function MapScreen() {
     activeBedBooking,
     pendingApproval,
     trackingHeaderOcclusionHeight,
+    trackingHeaderActionRequest,
   } = useMapExploreFlow(); // eslint-disable-line no-unused-vars -- setAuthModalVisible kept for store compat
   const viewportVariant = useMemo(
     () => getMapViewportVariant({ platform: Platform.OS, width }),
@@ -396,6 +397,26 @@ export default function MapScreen() {
     ],
   );
 
+  const handleAddBedFromTracking = useCallback(() => {
+    const targetHospital =
+      mapFocusedHospital || featuredHospital || nearestHospital || null;
+    if (!targetHospital?.id) return;
+
+    openBedDecision(targetHospital, "bed", {
+      sourcePhase: MAP_SHEET_PHASES.TRACKING,
+      sourceSnapState: renderedSnapState,
+      sourcePayload: {
+        hospital: targetHospital,
+      },
+    });
+  }, [
+    featuredHospital,
+    mapFocusedHospital,
+    nearestHospital,
+    openBedDecision,
+    renderedSnapState,
+  ]);
+
   const paymentPreviewKind = useMemo(() => {
     if (sheetPhase !== MAP_SHEET_PHASES.COMMIT_PAYMENT) return null;
     const hasRoomSelection = Boolean(
@@ -576,6 +597,7 @@ export default function MapScreen() {
           onCloseCommitTriage={closeCommitTriage}
           onCloseCommitPayment={closeCommitPayment}
           onCloseTracking={closeTracking}
+          onAddBedFromTracking={handleAddBedFromTracking}
           onCloseHospitalDetail={closeHospitalDetail}
           onConfirmAmbulanceDecision={handleConfirmAmbulanceDecision}
           onConfirmBedDecision={handleConfirmBedDecision}
@@ -594,6 +616,7 @@ export default function MapScreen() {
           featuredHospital={featuredHospital}
           sheetPayload={sheetPayload}
           trackingRouteInfo={trackingRouteInfo}
+          trackingHeaderActionRequest={trackingHeaderActionRequest}
           currentLocation={currentLocationDetails}
           onSelectHospital={handleSelectHospital}
           onUseCurrentLocation={handleUseCurrentLocation}

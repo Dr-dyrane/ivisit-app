@@ -20,12 +20,30 @@ const styles = StyleSheet.create({
 	heroBlock: {
 		alignItems: "center",
 	},
+	progressRow: {
+		width: "100%",
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+	},
 	progressText: {
 		fontSize: 12,
 		lineHeight: 16,
 		fontWeight: "700",
 		letterSpacing: 0.2,
 		textTransform: "uppercase",
+	},
+	skipAllButton: {
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		borderRadius: 999,
+		borderCurve: "continuous",
+	},
+	skipAllText: {
+		fontSize: 12,
+		lineHeight: 15,
+		fontWeight: "800",
+		letterSpacing: 0.14,
 	},
 	avatarOrb: {
 		alignItems: "center",

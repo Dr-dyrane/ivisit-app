@@ -309,6 +309,26 @@ export default function MapCommitTriageStageBase({
 		advance();
 	}, [activeStep?.type, advance]);
 
+	const handleSkipAll = useCallback(() => {
+		onConfirm?.(hospital, transport, {
+			draft: payload?.draft || null,
+			triageDraft: null,
+			triageSnapshot: null,
+			careIntent: payload?.careIntent || null,
+			roomId: payload?.roomId || null,
+			room: payload?.room || null,
+			showExtendedComplaints: false,
+		});
+	}, [
+		hospital,
+		onConfirm,
+		payload?.careIntent,
+		payload?.draft,
+		payload?.room,
+		payload?.roomId,
+		transport,
+	]);
+
 	const handleSelectOption = useCallback(
 		(optionValue) => {
 			if (!activeStep) return;
@@ -391,6 +411,22 @@ export default function MapCommitTriageStageBase({
 			>
 				<View style={styles.stage}>
 					<View style={styles.heroBlock}>
+						<View style={styles.progressRow}>
+							<Text style={[styles.progressText, { color: mutedColor }]}>
+								{progressLabel}
+							</Text>
+							<Pressable
+								onPress={handleSkipAll}
+								style={[
+									styles.skipAllButton,
+									{ backgroundColor: secondarySurfaceColor },
+								]}
+							>
+								<Text style={[styles.skipAllText, { color: titleColor }]}>
+									{MAP_COMMIT_TRIAGE_COPY.SKIP_ALL}
+								</Text>
+							</Pressable>
+						</View>
 						<View
 							style={[
 								styles.avatarOrb,
@@ -408,9 +444,6 @@ export default function MapCommitTriageStageBase({
 								color={mutedColor}
 							/>
 						</View>
-						<Text style={[styles.progressText, { color: mutedColor }]}>
-							{progressLabel}
-						</Text>
 						<Text style={[styles.promptText, { color: titleColor }]}>
 							{activeStep.prompt}
 						</Text>

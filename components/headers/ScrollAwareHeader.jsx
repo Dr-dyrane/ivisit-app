@@ -25,12 +25,15 @@ import SearchIconButton from "./SearchIconButton";
 
 const HEADER_HEIGHT = 80;
 const ACTIVE_SESSION_MIN_HEIGHT = 88;
-const ACTIVE_SESSION_BODY_MAX_HEIGHT = 164;
+const ACTIVE_SESSION_BODY_MAX_HEIGHT = 240;
 
-function getSessionBodyTargetHeight({ details, expandedContent }) {
+function getSessionBodyTargetHeight({ details, expandedContent, bodyHeight }) {
+	if (Number.isFinite(bodyHeight) && bodyHeight > 0) {
+		return Math.min(ACTIVE_SESSION_BODY_MAX_HEIGHT, bodyHeight);
+	}
 	const detailRows = Array.isArray(details) ? details.length : 0;
 	const detailsHeight = detailRows > 0 ? Math.min(detailRows, 4) * 32 + 8 : 0;
-	const expandedContentHeight = expandedContent ? 72 : 0;
+	const expandedContentHeight = expandedContent ? 88 : 0;
 
 	return Math.min(
 		ACTIVE_SESSION_BODY_MAX_HEIGHT,
@@ -122,7 +125,9 @@ export default function ScrollAwareHeader({
 	});
 	const isActiveSession = mode === HEADER_MODES.ACTIVE_SESSION;
 	const resolvedSession = session || DEFAULT_HEADER_SESSION;
-	const sessionDetails = Array.isArray(resolvedSession.details)
+	const sessionDetails = resolvedSession.hideDetails
+		? []
+		: Array.isArray(resolvedSession.details)
 		? resolvedSession.details
 		: DEFAULT_HEADER_SESSION.details;
 	const sessionHasBodyContent =
@@ -140,9 +145,10 @@ export default function ScrollAwareHeader({
 				? getSessionBodyTargetHeight({
 					details: sessionDetails,
 					expandedContent: resolvedSession.expandedContent,
+					bodyHeight: resolvedSession.bodyHeight,
 				})
 				: 0,
-		[isSessionExpanded, resolvedSession.expandedContent, sessionDetails],
+		[isSessionExpanded, resolvedSession.bodyHeight, resolvedSession.expandedContent, sessionDetails],
 	);
 	const sessionExpansion = useRef(new Animated.Value(isSessionExpanded ? 1 : 0)).current;
 	const sessionBodyHeight = useRef(new Animated.Value(sessionBodyTargetHeight)).current;
@@ -236,7 +242,23 @@ export default function ScrollAwareHeader({
 		</View>
 	);
 
-	const sessionPrimary = (
+	const sessionPrimary = Array.isArray(resolvedSession.metrics) &&
+		resolvedSession.metrics.length > 0 ? (
+		<View style={styles.sessionMetricsGrid}>
+			{resolvedSession.metrics.map((metric, index) => (
+				<View key={metric?.label || index} style={styles.sessionMetricCell}>
+					{metric?.label ? (
+						<Text numberOfLines={1} style={[styles.sessionMetricLabel, { color: textMuted }]}>
+							{metric.label}
+						</Text>
+					) : null}
+					<Text numberOfLines={1} style={[styles.sessionMetricValue, { color: textColor }]}>
+						{metric?.value || "--"}
+					</Text>
+				</View>
+			))}
+		</View>
+	) : (
 		<View style={styles.activeSessionPrimaryContent}>
 			{resolvedSession.eyebrow ? (
 				<Text numberOfLines={1} style={[styles.sessionEyebrowText, { color: textMuted }]}>
@@ -311,7 +333,9 @@ export default function ScrollAwareHeader({
 						<View style={styles.activeSessionRightAccessory}>{resolvedRight}</View>
 					) : null}
 
-					{resolvedSession.expandable && sessionHasBodyContent ? (
+					{resolvedSession.showChevron !== false &&
+					resolvedSession.expandable &&
+					sessionHasBodyContent ? (
 						<Animated.Text
 							style={[
 								styles.sessionChevron,
@@ -553,6 +577,30 @@ const styles = StyleSheet.create({
 	activeSessionPrimaryContent: {
 		justifyContent: "center",
 	},
+	sessionMetricsGrid: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: 8,
+	},
+	sessionMetricCell: {
+		flex: 1,
+		minWidth: 0,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	sessionMetricLabel: {
+		fontSize: 10,
+		fontWeight: "500",
+		letterSpacing: 0.32,
+		textTransform: "uppercase",
+	},
+	sessionMetricValue: {
+		marginTop: 4,
+		fontSize: 17,
+		fontWeight: "700",
+		letterSpacing: -0.32,
+	},
 	activeSessionTrailing: {
 		marginLeft: 12,
 		alignItems: "flex-end",
@@ -565,34 +613,34 @@ const styles = StyleSheet.create({
 		opacity: 0.82,
 	},
 	sessionEyebrowText: {
-		fontSize: 10,
-		fontWeight: "800",
-		letterSpacing: 1.4,
+		fontSize: 11,
+		fontWeight: "600",
+		letterSpacing: 0.6,
 		textTransform: "uppercase",
 		marginBottom: 3,
 	},
 	sessionTitleText: {
-		fontSize: 22,
-		fontWeight: "900",
-		letterSpacing: -0.8,
+		fontSize: 18,
+		fontWeight: "700",
+		letterSpacing: -0.42,
 	},
 	sessionSubtitleText: {
 		fontSize: 13,
-		fontWeight: "600",
+		fontWeight: "400",
 		marginTop: 2,
 	},
 	sessionStatusPill: {
 		minHeight: 28,
 		paddingHorizontal: 12,
 		borderRadius: 999,
-		borderWidth: 1,
+		borderWidth: 0,
 		alignItems: "center",
 		justifyContent: "center",
 	},
 	sessionStatusText: {
 		fontSize: 11,
-		fontWeight: "800",
-		letterSpacing: 0.5,
+		fontWeight: "700",
+		letterSpacing: 0.34,
 		textTransform: "uppercase",
 	},
 	sessionChevron: {
@@ -605,24 +653,24 @@ const styles = StyleSheet.create({
 	},
 	activeSessionBodyInner: {
 		paddingTop: 10,
+		gap: 8,
 	},
 	sessionDetailRow: {
 		paddingVertical: 8,
-		borderTopWidth: StyleSheet.hairlineWidth,
-		borderTopColor: "rgba(148, 163, 184, 0.18)",
 	},
 	sessionDetailLabel: {
 		fontSize: 11,
-		fontWeight: "800",
-		letterSpacing: 0.8,
+		fontWeight: "700",
+		letterSpacing: 0.5,
 		textTransform: "uppercase",
 		marginBottom: 2,
 	},
 	sessionDetailValue: {
-		fontSize: 15,
-		fontWeight: "700",
+		fontSize: 14,
+		fontWeight: "600",
 	},
 	sessionExpandedContent: {
 		paddingTop: 12,
+		paddingBottom: 12,
 	},
 });
