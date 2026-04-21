@@ -17,7 +17,8 @@ import {
 import { useTheme } from "../../../contexts/ThemeContext";
 import { COLORS } from "../../../constants/colors";
 import { useMapRoute } from "../../../hooks/emergency/useMapRoute";
-import { calculateBearing } from "../../../utils/mapUtils";
+import { useAmbulanceAnimation } from "../../../hooks/emergency/useAmbulanceAnimation";
+import { calculateBearing, calculateDistance } from "../../../utils/mapUtils";
 
 const DEFAULT_REGION = {
 	latitude: 37.7749,
@@ -190,6 +191,36 @@ function getHospitalMarkerCenterOffset(isSelected) {
 	};
 }
 
+function distanceMetersBetween(from, to) {
+	if (!from || !to) return 0;
+	const latScale = 111_320;
+	const midLat = ((from.latitude + to.latitude) / 2) * (Math.PI / 180);
+	const lngScale = 111_320 * Math.cos(midLat);
+	const dLat = (to.latitude - from.latitude) * latScale;
+	const dLng = (to.longitude - from.longitude) * lngScale;
+	return Math.sqrt(dLat * dLat + dLng * dLng);
+}
+
+function buildFallbackRouteInfo(origin, destination) {
+	if (!origin || !destination) {
+		return { durationSec: null, distanceMeters: null };
+	}
+	const straightLineKm = calculateDistance(origin, destination);
+	const estimatedRoadDistanceMeters = Math.max(
+		250,
+		Math.round(straightLineKm * 1000 * 1.2),
+	);
+	const assumedUrbanSpeedKmh = Platform.OS === "web" ? 30 : 34;
+	const estimatedDurationSec = Math.max(
+		60,
+		Math.round((estimatedRoadDistanceMeters / 1000 / assumedUrbanSpeedKmh) * 3600),
+	);
+	return {
+		durationSec: estimatedDurationSec,
+		distanceMeters: estimatedRoadDistanceMeters,
+	};
+}
+
 export default function EmergencyLocationPreviewMap({
 	location,
 	hospitals = [],
@@ -287,14 +318,22 @@ export default function EmergencyLocationPreviewMap({
 	}, [selectedHospitalId, visibleHospitals]);
 	const selectedHospitalCoordinate = useMemo(() => toCoordinate(selectedHospital), [selectedHospital]);
 	const userCoordinate = useMemo(() => toCoordinate(location), [location]);
+	const directServiceMarkerCoordinate = useMemo(
+		() => toCoordinate(serviceMarkerCoordinate),
+		[serviceMarkerCoordinate],
+	);
+	const hasLiveResponderCoordinate = useMemo(() => {
+		if (!directServiceMarkerCoordinate) return false;
+		if (!selectedHospitalCoordinate) return true;
+		return distanceMetersBetween(directServiceMarkerCoordinate, selectedHospitalCoordinate) > 25;
+	}, [directServiceMarkerCoordinate, selectedHospitalCoordinate]);
 	const previewServiceMarkerCoordinate = useMemo(() => {
-		const directCoordinate = toCoordinate(serviceMarkerCoordinate);
-		if (directCoordinate) return directCoordinate;
+		if (directServiceMarkerCoordinate) return directServiceMarkerCoordinate;
 		if (serviceMarkerKind === "ambulance" || serviceMarkerKind === "bed") {
 			return selectedHospitalCoordinate;
 		}
 		return null;
-	}, [selectedHospitalCoordinate, serviceMarkerCoordinate, serviceMarkerKind]);
+	}, [directServiceMarkerCoordinate, selectedHospitalCoordinate, serviceMarkerKind]);
 	const previewServiceMarkerHeading = useMemo(() => {
 		if (Number.isFinite(serviceMarkerHeading)) return Number(serviceMarkerHeading);
 		if (
@@ -311,13 +350,6 @@ export default function EmergencyLocationPreviewMap({
 		serviceMarkerKind,
 		userCoordinate,
 	]);
-	const previewAmbulanceMarkerImage = useMemo(
-		() =>
-			serviceMarkerKind === "ambulance"
-				? getAmbulanceSpriteForHeading(previewServiceMarkerHeading)
-				: null,
-		[previewServiceMarkerHeading, serviceMarkerKind],
-	);
 	const nearbyRadiusKm = useMemo(() => {
 		const nearestDistance = Number(selectedHospital?.distanceKm ?? visibleHospitals?.[0]?.distanceKm);
 		if (Number.isFinite(nearestDistance) && nearestDistance > 0) {
@@ -339,6 +371,57 @@ export default function EmergencyLocationPreviewMap({
 		}
 		return [routeOriginCoordinate, routeDestinationCoordinate].filter(Boolean);
 	}, [previewRouteCoordinates, routeDestinationCoordinate, routeOriginCoordinate]);
+	const fallbackRouteInfo = useMemo(
+		() => buildFallbackRouteInfo(routeOriginCoordinate, routeDestinationCoordinate),
+		[routeDestinationCoordinate, routeOriginCoordinate],
+	);
+	const resolvedRouteInfo = useMemo(
+		() => ({
+			durationSec:
+				Number.isFinite(routeInfo?.durationSec) && routeInfo.durationSec > 0
+					? routeInfo.durationSec
+					: fallbackRouteInfo.durationSec,
+			distanceMeters:
+				Number.isFinite(routeInfo?.distanceMeters) && routeInfo.distanceMeters > 0
+					? routeInfo.distanceMeters
+					: fallbackRouteInfo.distanceMeters,
+		}),
+		[fallbackRouteInfo.distanceMeters, fallbackRouteInfo.durationSec, routeInfo?.distanceMeters, routeInfo?.durationSec],
+	);
+	const shouldAnimateAmbulance =
+		serviceMarkerKind === "ambulance" &&
+		activeTracking &&
+		!hasLiveResponderCoordinate &&
+		previewRouteCoordinates.length >= 2 &&
+		Number.isFinite(resolvedRouteInfo.durationSec) &&
+		resolvedRouteInfo.durationSec > 0;
+	const animatedRouteCoordinates = useMemo(
+		() => (shouldAnimateAmbulance ? [...previewRouteCoordinates].reverse() : []),
+		[previewRouteCoordinates, shouldAnimateAmbulance],
+	);
+	const {
+		ambulanceCoordinate: animatedAmbulanceCoordinate,
+		ambulanceHeading: animatedAmbulanceHeading,
+	} = useAmbulanceAnimation({
+		routeCoordinates: animatedRouteCoordinates,
+		animateAmbulance: shouldAnimateAmbulance,
+		ambulanceTripEtaSeconds: resolvedRouteInfo.durationSec ?? null,
+	});
+	const effectiveServiceMarkerCoordinate =
+		serviceMarkerKind === "ambulance" && shouldAnimateAmbulance
+			? animatedAmbulanceCoordinate || previewServiceMarkerCoordinate
+			: previewServiceMarkerCoordinate;
+	const effectiveServiceMarkerHeading =
+		serviceMarkerKind === "ambulance" && shouldAnimateAmbulance
+			? animatedAmbulanceHeading
+			: previewServiceMarkerHeading;
+	const effectiveAmbulanceMarkerImage = useMemo(
+		() =>
+			serviceMarkerKind === "ambulance"
+				? getAmbulanceSpriteForHeading(effectiveServiceMarkerHeading)
+				: null,
+		[effectiveServiceMarkerHeading, serviceMarkerKind],
+	);
 	const routeFitPrimeKey = useMemo(
 		() =>
 			routeBoundsCoordinates
@@ -397,15 +480,15 @@ export default function EmergencyLocationPreviewMap({
 
 	useEffect(() => {
 		onRouteInfoChange?.({
-			durationSec: routeInfo?.durationSec ?? null,
-			distanceMeters: routeInfo?.distanceMeters ?? null,
+			durationSec: resolvedRouteInfo.durationSec ?? null,
+			distanceMeters: resolvedRouteInfo.distanceMeters ?? null,
 			coordinates: previewRouteCoordinates,
 		});
 	}, [
 		onRouteInfoChange,
 		previewRouteCoordinates,
-		routeInfo?.distanceMeters,
-		routeInfo?.durationSec,
+		resolvedRouteInfo.distanceMeters,
+		resolvedRouteInfo.durationSec,
 	]);
 
 	useEffect(() => {
@@ -699,12 +782,12 @@ export default function EmergencyLocationPreviewMap({
 					);
 				})}
 
-				{previewServiceMarkerCoordinate && serviceMarkerKind === "ambulance" ? (
+				{effectiveServiceMarkerCoordinate && serviceMarkerKind === "ambulance" ? (
 					<Marker
-						coordinate={previewServiceMarkerCoordinate}
+						coordinate={effectiveServiceMarkerCoordinate}
 						anchor={{ x: 0.5, y: 0.5 }}
 						zIndex={140}
-						image={previewAmbulanceMarkerImage}
+						image={effectiveAmbulanceMarkerImage}
 						imageSize={{ width: 46, height: 46 }}
 						tracksViewChanges={false}
 						opacity={serviceMarkerOpacity}
@@ -712,9 +795,9 @@ export default function EmergencyLocationPreviewMap({
 					/>
 				) : null}
 
-				{previewServiceMarkerCoordinate && serviceMarkerKind === "bed" ? (
+				{effectiveServiceMarkerCoordinate && serviceMarkerKind === "bed" ? (
 					<Marker
-						coordinate={previewServiceMarkerCoordinate}
+						coordinate={effectiveServiceMarkerCoordinate}
 						anchor={{ x: 0.5, y: 0.5 }}
 						centerOffset={{ x: 0, y: -8 }}
 						zIndex={138}

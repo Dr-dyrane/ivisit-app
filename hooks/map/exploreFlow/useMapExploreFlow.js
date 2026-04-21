@@ -54,16 +54,30 @@ import MapHeaderIconButton from "../../../components/map/views/shared/MapHeaderI
 const TRACKING_HEADER_COLLAPSED_HEIGHT = 124;
 
 function formatHeaderEtaLabel(etaSeconds, startedAt, nowMs = Date.now()) {
-  if (!Number.isFinite(etaSeconds) || !Number.isFinite(startedAt)) return null;
-  const elapsedSeconds = Math.max(0, Math.round((nowMs - startedAt) / 1000));
+  if (!Number.isFinite(etaSeconds)) return null;
+  const startedAtMs = Number.isFinite(startedAt)
+    ? startedAt
+    : typeof startedAt === "string"
+      ? Date.parse(startedAt)
+      : NaN;
+  const elapsedSeconds = Number.isFinite(startedAtMs)
+    ? Math.max(0, Math.round((nowMs - startedAtMs) / 1000))
+    : 0;
   const remainingSeconds = Math.max(0, Math.round(etaSeconds - elapsedSeconds));
   const remainingMinutes = Math.max(1, Math.ceil(remainingSeconds / 60));
   return `${remainingMinutes} min`;
 }
 
 function formatHeaderArrivalLabel(etaSeconds, startedAt, nowMs = Date.now()) {
-  if (!Number.isFinite(etaSeconds) || !Number.isFinite(startedAt)) return null;
-  const elapsedSeconds = Math.max(0, Math.round((nowMs - startedAt) / 1000));
+  if (!Number.isFinite(etaSeconds)) return null;
+  const startedAtMs = Number.isFinite(startedAt)
+    ? startedAt
+    : typeof startedAt === "string"
+      ? Date.parse(startedAt)
+      : NaN;
+  const elapsedSeconds = Number.isFinite(startedAtMs)
+    ? Math.max(0, Math.round((nowMs - startedAtMs) / 1000))
+    : 0;
   const remainingSeconds = Math.max(0, Math.round(etaSeconds - elapsedSeconds));
   const arrivalDate = new Date(nowMs + remainingSeconds * 1000);
   const hour = arrivalDate.getHours() % 12 || 12;
@@ -136,6 +150,23 @@ function toHeaderDistanceKmValue(value) {
   if (km < 1) return km.toFixed(1);
   if (km < 10) return km.toFixed(1);
   return km.toFixed(0);
+}
+
+function normalizeTimestampMs(value) {
+  if (Number.isFinite(value)) return Number(value);
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function hasEtaElapsed(etaSeconds, startedAt, nowMs = Date.now()) {
+  if (!Number.isFinite(etaSeconds)) return false;
+  const startedAtMs = normalizeTimestampMs(startedAt);
+  if (!Number.isFinite(startedAtMs)) return false;
+  const elapsedSeconds = Math.max(0, Math.round((nowMs - startedAtMs) / 1000));
+  return elapsedSeconds >= Math.max(0, Math.round(etaSeconds));
 }
 
 function joinSummaryParts(parts = []) {
@@ -1289,6 +1320,18 @@ export function useMapExploreFlow() {
         : pendingApproval?.ambulanceType || "Transport";
   const trackingHeaderStatusLabel = useMemo(() => {
     if (activeAmbulanceTrip?.requestId) {
+      const requestStatus = String(activeAmbulanceTrip?.status || "").toLowerCase();
+      if (requestStatus === EmergencyRequestStatus.COMPLETED) return "Complete";
+      if (requestStatus === EmergencyRequestStatus.ARRIVED) return "Complete";
+      if (
+        hasEtaElapsed(
+          activeAmbulanceTrip?.etaSeconds,
+          activeAmbulanceTrip?.startedAt,
+          trackingHeaderNowMs,
+        )
+      ) {
+        return "Arrived";
+      }
       const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
       if (telemetryState === "lost") return "Tracking lost";
       if (telemetryState === "stale") return "Tracking delayed";
@@ -1301,7 +1344,10 @@ export function useMapExploreFlow() {
       );
     }
 
-    if (activeBedBooking?.requestId) {
+  if (activeBedBooking?.requestId) {
+      const requestStatus = String(activeBedBooking?.status || "").toLowerCase();
+      if (requestStatus === EmergencyRequestStatus.COMPLETED) return "Complete";
+      if (requestStatus === EmergencyRequestStatus.ARRIVED) return "Arrived";
       return (
         formatHeaderEtaLabel(
           activeBedBooking?.etaSeconds,
@@ -1320,9 +1366,11 @@ export function useMapExploreFlow() {
     activeAmbulanceTrip?.etaSeconds,
     activeAmbulanceTrip?.requestId,
     activeAmbulanceTrip?.startedAt,
+    activeAmbulanceTrip?.status,
     activeBedBooking?.etaSeconds,
     activeBedBooking?.requestId,
     activeBedBooking?.startedAt,
+    activeBedBooking?.status,
     ambulanceTelemetryHealth?.state,
     pendingApproval?.requestId,
     trackingHeaderNowMs,
@@ -1358,9 +1406,16 @@ export function useMapExploreFlow() {
     const status = String(
       activeAmbulanceTrip?.status || activeBedBooking?.status || "",
     ).toLowerCase();
+    const etaElapsed =
+      hasEtaElapsed(
+        activeAmbulanceTrip?.etaSeconds ?? activeBedBooking?.etaSeconds ?? null,
+        activeAmbulanceTrip?.startedAt ?? activeBedBooking?.startedAt ?? null,
+        trackingHeaderNowMs,
+      );
     const isArrivedOrComplete =
       status === EmergencyRequestStatus.ARRIVED ||
-      status === EmergencyRequestStatus.COMPLETED;
+      status === EmergencyRequestStatus.COMPLETED ||
+      etaElapsed;
     if (isArrivedOrComplete) {
       return "0 m";
     }
@@ -1374,12 +1429,13 @@ export function useMapExploreFlow() {
       activeAmbulanceTrip?.etaSeconds ?? activeBedBooking?.etaSeconds ?? null;
     const currentStartedAt =
       activeAmbulanceTrip?.startedAt ?? activeBedBooking?.startedAt ?? null;
-    if (!Number.isFinite(currentEtaSeconds) || !Number.isFinite(currentStartedAt)) {
+    const currentStartedAtMs = normalizeTimestampMs(currentStartedAt);
+    if (!Number.isFinite(currentEtaSeconds) || !Number.isFinite(currentStartedAtMs)) {
       return formatRemainingDistanceLabel(initialDistanceKm);
     }
     const elapsedSeconds = Math.max(
       0,
-      Math.round((trackingHeaderNowMs - currentStartedAt) / 1000),
+      Math.round((trackingHeaderNowMs - currentStartedAtMs) / 1000),
     );
     const progress = Math.max(
       0,
@@ -1401,10 +1457,27 @@ export function useMapExploreFlow() {
     trackingHeaderHospital,
     trackingHeaderNowMs,
   ]);
-  const trackingHeaderMinuteValue = useMemo(
-    () => stripHeaderMetricUnit(trackingHeaderStatusLabel, /\s*(min|mins|minute|minutes)$/i),
-    [trackingHeaderStatusLabel],
-  );
+  const trackingHeaderMinuteValue = useMemo(() => {
+    const currentStatus = String(
+      activeAmbulanceTrip?.status || activeBedBooking?.status || "",
+    ).toLowerCase();
+    if (
+      currentStatus === EmergencyRequestStatus.ARRIVED ||
+      currentStatus === EmergencyRequestStatus.COMPLETED ||
+      trackingHeaderStatusLabel === "Arrived" ||
+      trackingHeaderStatusLabel === "Complete"
+    ) {
+      return "0";
+    }
+    return stripHeaderMetricUnit(
+      trackingHeaderStatusLabel,
+      /\s*(min|mins|minute|minutes)$/i,
+    );
+  }, [
+    activeAmbulanceTrip?.status,
+    activeBedBooking?.status,
+    trackingHeaderStatusLabel,
+  ]);
   const trackingHeaderDistanceValue = useMemo(
     () => toHeaderDistanceKmValue(trackingHeaderDistanceLabel),
     [trackingHeaderDistanceLabel],
@@ -1421,6 +1494,7 @@ export function useMapExploreFlow() {
       activeAmbulanceTrip?.etaSeconds ?? activeBedBooking?.etaSeconds ?? null;
     const currentStartedAt =
       activeAmbulanceTrip?.startedAt ?? activeBedBooking?.startedAt ?? null;
+    const currentStartedAtMs = normalizeTimestampMs(currentStartedAt);
     const currentStatus = String(
       activeAmbulanceTrip?.status || activeBedBooking?.status || "",
     ).toLowerCase();
@@ -1431,12 +1505,12 @@ export function useMapExploreFlow() {
     ) {
       return 1;
     }
-    if (!Number.isFinite(currentEtaSeconds) || !Number.isFinite(currentStartedAt)) {
+    if (!Number.isFinite(currentEtaSeconds) || !Number.isFinite(currentStartedAtMs)) {
       return null;
     }
     const elapsedSeconds = Math.max(
       0,
-      Math.round((trackingHeaderNowMs - currentStartedAt) / 1000),
+      Math.round((trackingHeaderNowMs - currentStartedAtMs) / 1000),
     );
     return Math.max(0, Math.min(1, elapsedSeconds / Math.max(1, currentEtaSeconds)));
   }, [
@@ -1461,6 +1535,9 @@ export function useMapExploreFlow() {
     });
     openTracking();
   }, [openTracking]);
+  const clearTrackingHeaderActionRequest = useCallback(() => {
+    setTrackingHeaderActionRequest(null);
+  }, []);
   const trackingHeaderLeftComponent = useMemo(() => {
     if (!trackingHeaderVisible) return null;
     return (
@@ -2252,5 +2329,6 @@ export function useMapExploreFlow() {
     pendingApproval,
     trackingHeaderOcclusionHeight,
     trackingHeaderActionRequest,
+    clearTrackingHeaderActionRequest,
   };
 }

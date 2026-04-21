@@ -15,7 +15,7 @@ import { useEmergency } from "../../../../contexts/EmergencyContext";
 import { useVisits } from "../../../../contexts/VisitsContext";
 import { formatDistanceMeters } from "../../surfaces/hospitals/mapHospitalDetail.helpers";
 import MapSheetShell from "../../MapSheetShell";
-import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
+import { MAP_SHEET_PHASES, MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
 import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import sheetStageStyles from "../shared/mapSheetStage.styles";
@@ -37,7 +37,6 @@ import {
 	triageStepAnswered,
 } from "../../../emergency/triage/triageFlow.shared";
 import { ServiceRatingModal } from "../../../emergency/ServiceRatingModal";
-import TriageIntakeModal from "../../../emergency/triage/TriageIntakeModal";
 import { COLORS } from "../../../../constants/colors";
 import { getAmbulanceVisualProfile } from "../../../emergency/requestModal/ambulanceTierVisuals";
 import styles from "./mapTracking.styles";
@@ -103,15 +102,16 @@ function resolveHospitalAddress(hospital) {
 }
 
 function getTrackingTone(telemetryHealth, kind, status) {
+	const isResolved = status === "arrived" || status === "completed";
 	if (kind === "ambulance") {
 		const telemetryState = telemetryHealth?.state ?? "inactive";
 		if (telemetryState === "lost") return "critical";
 		if (telemetryState === "stale") return "warning";
-		if (status === "arrived") return "success";
+		if (isResolved) return "success";
 		return "live";
 	}
 	if (kind === "bed") {
-		return status === "arrived" ? "success" : "live";
+		return isResolved ? "success" : "live";
 	}
 	return "neutral";
 }
@@ -565,7 +565,10 @@ export default function MapTrackingStageBase({
 	currentLocation = null,
 	routeInfo = null,
 	headerActionRequest = null,
+	onConsumeHeaderActionRequest,
+	onOpenCommitTriageFromTracking,
 	onAddBedFromTracking,
+	onClose,
 	onSnapStateChange,
 }) {
 	const { isDarkMode } = useTheme();
@@ -587,11 +590,11 @@ export default function MapTrackingStageBase({
 	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
 		useMapStageSurfaceLayout();
 	const stageMetrics = useMapStageResponsiveMetrics({ presentationMode });
-	const [triageVisible, setTriageVisible] = useState(false);
 	const [busyAction, setBusyAction] = useState(null);
 	const [ratingState, setRatingState] = useState({
 		visible: false,
 		visitId: null,
+		completeKind: null,
 		serviceType: null,
 		title: null,
 		subtitle: null,
@@ -681,6 +684,7 @@ export default function MapTrackingStageBase({
 		() => buildLegacyTriageSteps("waiting", triageRequestDraft, false),
 		[triageRequestDraft],
 	);
+	const triageDisplayTotalSteps = Math.max(7, triageSteps.length || 0);
 	const triageAnsweredCount = useMemo(
 		() =>
 			triageSteps.filter((step) => triageStepAnswered(step, triageRequestDraft)).length,
@@ -689,8 +693,25 @@ export default function MapTrackingStageBase({
 	const triageIsComplete =
 		triageSteps.length > 0 && triageAnsweredCount >= triageSteps.length;
 	const triageProgressValue =
-		triageSteps.length > 0 ? triageAnsweredCount / triageSteps.length : 0;
+		triageDisplayTotalSteps > 0
+			? triageAnsweredCount / triageDisplayTotalSteps
+			: 0;
 	const triageHasData = hasMeaningfulTriageDraftData(triageRequestDraft);
+	const openTrackingTriage = useCallback(() => {
+		onOpenCommitTriageFromTracking?.({
+			requestId: triageRequestId || null,
+			triageDraft: triageRequestDraft || null,
+			sourcePhase: MAP_SHEET_PHASES.TRACKING,
+			sourceSnapState: snapState,
+			careIntent: trackingKind === "bed" ? "bed" : "ambulance",
+		});
+	}, [
+		onOpenCommitTriageFromTracking,
+		snapState,
+		trackingKind,
+		triageRequestDraft,
+		triageRequestId,
+	]);
 	const {
 		onCancelAmbulanceTrip,
 		onMarkAmbulanceArrived,
@@ -845,9 +866,12 @@ export default function MapTrackingStageBase({
 			: ambulanceTelemetryHealth?.state === "stale"
 				? "Tracking delayed"
 				: trackingKind === "ambulance"
-					? resolvedStatus === EmergencyRequestStatus.ARRIVED
-						? "Arrived"
-						: "En route"
+					? resolvedStatus === EmergencyRequestStatus.COMPLETED ||
+					  resolvedStatus === EmergencyRequestStatus.ARRIVED
+						? "Complete"
+						: ambulanceComputedStatus === "Arrived"
+							? "Arrived"
+							: "En route"
 					: trackingKind === "bed"
 						? resolvedStatus === EmergencyRequestStatus.ARRIVED
 							? "Ready"
@@ -863,12 +887,16 @@ export default function MapTrackingStageBase({
 		trackingKind === "pending"
 			? "Confirming"
 			: trackingKind === "bed"
-				? resolvedStatus === EmergencyRequestStatus.ARRIVED
+				? resolvedStatus === EmergencyRequestStatus.ARRIVED ||
+				  resolvedStatus === EmergencyRequestStatus.COMPLETED
 					? "Bed ready"
 					: "Bed reserved"
-				: resolvedStatus === EmergencyRequestStatus.ARRIVED
-					? "Arrived"
-					: "En route";
+				: resolvedStatus === EmergencyRequestStatus.COMPLETED ||
+				  resolvedStatus === EmergencyRequestStatus.ARRIVED
+					? "Complete"
+					: ambulanceComputedStatus === "Arrived"
+						? "Arrived"
+						: "En route";
 	const sheetSubtitle = hospitalName;
 	const sheetTitleDisplay = toTitleCaseLabel(sheetTitle);
 	const crewCountLabel =
@@ -930,9 +958,12 @@ export default function MapTrackingStageBase({
 	const requestSurfaceColor = isDarkMode
 		? "rgba(255,255,255,0.08)"
 		: "rgba(255,255,255,0.88)";
-	const connectorColor = isDarkMode
-		? "rgba(255,255,255,0.12)"
-		: "rgba(15,23,42,0.10)";
+	const connectorTrackColor = isDarkMode
+		? "rgba(255,255,255,0.14)"
+		: "rgba(15,23,42,0.12)";
+	const connectorProgressColor = isDarkMode
+		? "rgba(252,165,165,0.84)"
+		: "rgba(180,35,24,0.78)";
 	const primaryActionSurface = isDarkMode
 		? "rgba(19,30,50,0.94)"
 		: "rgba(255,255,255,0.97)";
@@ -974,6 +1005,29 @@ export default function MapTrackingStageBase({
 	const metricsCardStyle = stageMetrics?.route?.cardStyle || null;
 	const detailCardRadius = stageMetrics?.panel?.cardStyle?.borderRadius || 26;
 	const routeCardRadius = stageMetrics?.route?.cardStyle?.borderRadius || 28;
+	const routeVisualProgress = useMemo(() => {
+		if (trackingKind !== "ambulance") return 0;
+		if (
+			resolvedStatus === EmergencyRequestStatus.ARRIVED ||
+			resolvedStatus === EmergencyRequestStatus.COMPLETED
+		) {
+			return 1;
+		}
+		if (!Number.isFinite(ambulanceTripProgress)) return 0;
+		return Math.max(0, Math.min(1, ambulanceTripProgress));
+	}, [ambulanceTripProgress, resolvedStatus, trackingKind]);
+	const pickupIconSurfaceColor =
+		trackingKind === "ambulance"
+			? isDarkMode
+				? `rgba(180,35,24,${(0.08 + routeVisualProgress * 0.24).toFixed(3)})`
+				: `rgba(180,35,24,${(0.06 + routeVisualProgress * 0.2).toFixed(3)})`
+			: stopIconSurface;
+	const hospitalIconSurfaceColor =
+		trackingKind === "ambulance"
+			? isDarkMode
+				? `rgba(180,35,24,${(0.14 + (1 - routeVisualProgress) * 0.1).toFixed(3)})`
+				: `rgba(180,35,24,${(0.1 + (1 - routeVisualProgress) * 0.08).toFixed(3)})`
+			: stopIconSurface;
 
 	const handleSheetToggle = useCallback(() => {
 		if (!canToggleSnapState || typeof onSnapStateChange !== "function") return;
@@ -1034,11 +1088,11 @@ export default function MapTrackingStageBase({
 			activeAmbulanceTrip?.assignedAmbulance?.name ||
 			activeAmbulanceTrip?.assignedAmbulance?.crew?.[0] ||
 			"Emergency services";
-		await runBusyAction("complete", onCompleteAmbulanceTrip);
 		if (!visitId) return;
 		setRatingState({
 			visible: true,
 			visitId,
+			completeKind: "ambulance",
 			serviceType: "ambulance",
 			title: "Rate your transport",
 			subtitle: hospitalTitle ? `For ${hospitalTitle}` : null,
@@ -1054,17 +1108,15 @@ export default function MapTrackingStageBase({
 		activeAmbulanceTrip?.id,
 		activeAmbulanceTrip?.requestId,
 		hospitalName,
-		onCompleteAmbulanceTrip,
-		runBusyAction,
 	]);
 	const handleCompleteBedWithRating = useCallback(async () => {
 		const visitId = activeBedBooking?.id ?? activeBedBooking?.requestId ?? null;
 		const hospitalTitle = activeBedBooking?.hospitalName || hospitalName;
-		await runBusyAction("complete", onCompleteBedBooking);
 		if (!visitId) return;
 		setRatingState({
 			visible: true,
 			visitId,
+			completeKind: "bed",
 			serviceType: "bed",
 			title: "Rate your stay",
 			subtitle: hospitalTitle ? `For ${hospitalTitle}` : null,
@@ -1078,8 +1130,6 @@ export default function MapTrackingStageBase({
 		activeBedBooking?.id,
 		activeBedBooking?.requestId,
 		hospitalName,
-		onCompleteBedBooking,
-		runBusyAction,
 	]);
 
 	const canMarkArrived =
@@ -1106,14 +1156,14 @@ export default function MapTrackingStageBase({
 				label: "Continue check-in",
 				ctaLabel: "Continue",
 				iconName: "chatbubble-ellipses-outline",
-				onPress: () => setTriageVisible(true),
+				onPress: openTrackingTriage,
 				loading: false,
 			};
 		}
 		if (canMarkArrived) {
 			return {
 				key: "arrived",
-				label: "Mark arrived",
+				label: "Confirm arrival",
 				ctaLabel: "Confirm",
 				iconName: "locate-outline",
 				onPress: () => runBusyAction("arrived", onMarkAmbulanceArrived),
@@ -1236,17 +1286,20 @@ export default function MapTrackingStageBase({
 		handledHeaderActionRef.current = headerActionRequest.requestedAt;
 
 		if (headerActionRequest.type === "triage" && triageRequestId) {
-			setTriageVisible(true);
+			onConsumeHeaderActionRequest?.();
+			openTrackingTriage();
 			return;
 		}
 		if (
 			headerActionRequest.type === "bed" &&
 			typeof onAddBedFromTracking === "function"
 		) {
+			onConsumeHeaderActionRequest?.();
 			onAddBedFromTracking();
 			return;
 		}
 		if (headerActionRequest.type === "cancel" && destructiveAction?.onPress) {
+			onConsumeHeaderActionRequest?.();
 			destructiveAction.onPress();
 		}
 	}, [
@@ -1254,6 +1307,8 @@ export default function MapTrackingStageBase({
 		headerActionRequest?.requestedAt,
 		headerActionRequest?.type,
 		onAddBedFromTracking,
+		onConsumeHeaderActionRequest,
+		openTrackingTriage,
 		triageRequestId,
 	]);
 
@@ -1281,30 +1336,6 @@ export default function MapTrackingStageBase({
 		trackingKind,
 	]);
 
-	const pendingRequestContext = useMemo(
-		() => ({
-			serviceType:
-				pendingApproval?.serviceType ||
-				(activeBedBooking?.requestId ? "bed" : "ambulance"),
-			specialty: pendingApproval?.specialty || null,
-			hospitalId: trackedHospitalId || null,
-			hospitalName:
-				pendingApproval?.hospitalName ||
-				activeAmbulanceTrip?.hospitalName ||
-				activeBedBooking?.hospitalName ||
-				hospitalName,
-			requestId: triageRequestId,
-		}),
-		[
-			activeAmbulanceTrip?.hospitalName,
-			activeBedBooking?.hospitalName,
-			activeBedBooking?.requestId,
-			hospitalName,
-			pendingApproval,
-			trackedHospitalId,
-			triageRequestId,
-		],
-	);
 	const trackingDetailRows = useMemo(
 		() => [
 			...(requestLabel
@@ -1327,7 +1358,7 @@ export default function MapTrackingStageBase({
 							value: triageIsComplete
 								? "Complete"
 								: triageHasData
-									? `${triageAnsweredCount}/${triageSteps.length}`
+									? `${triageAnsweredCount}/${triageDisplayTotalSteps}`
 									: "Not started",
 						},
 					]
@@ -1339,10 +1370,10 @@ export default function MapTrackingStageBase({
 			responderPlate,
 			secondaryTrackingLabel,
 			triageAnsweredCount,
+			triageDisplayTotalSteps,
 			triageHasData,
 			triageIsComplete,
 			triageRequestId,
-			triageSteps.length,
 		],
 	);
 	const midActions = useMemo(() => {
@@ -1352,7 +1383,7 @@ export default function MapTrackingStageBase({
 				key: "info",
 				label: toTitleCaseLabel("My information"),
 				iconName: "medkit-outline",
-				onPress: () => setTriageVisible(true),
+				onPress: openTrackingTriage,
 				loading: false,
 				tone: "info",
 			});
@@ -1374,7 +1405,7 @@ export default function MapTrackingStageBase({
 			if (trackingKind === "ambulance" && primaryAction.key === "arrived") {
 				actions.push({
 					...primaryAction,
-					label: toTitleCaseLabel("Mark as Arrived"),
+					label: toTitleCaseLabel("Confirm arrival"),
 					tone: "state",
 				});
 			} else if (
@@ -1394,13 +1425,21 @@ export default function MapTrackingStageBase({
 				key: "home",
 				label: toTitleCaseLabel("Return home"),
 				iconName: "map",
-				onPress: () => onSnapStateChange?.(MAP_SHEET_SNAP_STATES.COLLAPSED),
+				onPress: () => onClose?.(),
 				loading: false,
 				tone: "state",
 			});
 		}
 		return actions;
-	}, [onSnapStateChange, primaryAction, secondaryActions, trackingKind, triageRequestId]);
+	}, [
+		onClose,
+		onSnapStateChange,
+		openTrackingTriage,
+		primaryAction,
+		secondaryActions,
+		trackingKind,
+		triageRequestId,
+	]);
 
 	const bottomAction = useMemo(() => {
 		if (trackingKind === "ambulance" && primaryAction?.key === "complete-ambulance") {
@@ -1450,10 +1489,26 @@ export default function MapTrackingStageBase({
 				</View>
 
 				<View style={styles.stopList}>
-					<View style={[styles.stopConnector, { backgroundColor: connectorColor }]} />
+					<View
+						style={[styles.stopConnector, { backgroundColor: connectorTrackColor }]}
+					/>
+					<View
+						style={[
+							styles.stopConnectorProgress,
+							{
+								backgroundColor: connectorProgressColor,
+								height: `${Math.max(0, Math.min(100, routeVisualProgress * 100))}%`,
+							},
+						]}
+					/>
 
 					<View style={styles.stopRow}>
-						<View style={[styles.stopIconWrap, { backgroundColor: stopIconSurface }]}>
+						<View
+							style={[
+								styles.stopIconWrap,
+								{ backgroundColor: pickupIconSurfaceColor },
+							]}
+						>
 							<Ionicons name="navigate" size={18} color={toneColors.icon} />
 						</View>
 						<View style={styles.stopCopyWrap}>
@@ -1482,7 +1537,12 @@ export default function MapTrackingStageBase({
 					</View>
 
 					<View style={styles.stopRow}>
-						<View style={[styles.stopIconWrap, { backgroundColor: stopIconSurface }]}>
+						<View
+							style={[
+								styles.stopIconWrap,
+								{ backgroundColor: hospitalIconSurfaceColor },
+							]}
+						>
 							<Ionicons name="business-outline" size={18} color={titleColor} />
 						</View>
 						<View style={styles.stopCopyWrap}>
@@ -1671,7 +1731,7 @@ export default function MapTrackingStageBase({
 						triageIconColor={triageActionIconColor}
 						triageIconName="medkit"
 						onToggle={handleSheetToggle}
-						onOpenTriage={() => setTriageVisible(true)}
+						onOpenTriage={openTrackingTriage}
 						showTriage={Boolean(triageRequestId)}
 						triageComplete={triageIsComplete}
 						triageProgress={triageProgressValue}
@@ -1722,19 +1782,6 @@ export default function MapTrackingStageBase({
 				</MapStageBodyScroll>
 			</MapSheetShell>
 
-			{triageRequestId ? (
-				<TriageIntakeModal
-					visible={triageVisible}
-					onClose={() => setTriageVisible(false)}
-					phase="waiting"
-					requestId={triageRequestId}
-					requestContext={pendingRequestContext}
-					hospitals={allKnownHospitals}
-					selectedHospitalId={trackedHospitalId || null}
-					initialDraft={triageRequestDraft}
-					isDarkMode={isDarkMode}
-				/>
-			) : null}
 			<ServiceRatingModal
 				visible={ratingState.visible}
 				serviceType={ratingState.serviceType || "visit"}
@@ -1745,6 +1792,7 @@ export default function MapTrackingStageBase({
 					setRatingState({
 						visible: false,
 						visitId: null,
+						completeKind: null,
 						serviceType: null,
 						title: null,
 						subtitle: null,
@@ -1759,6 +1807,11 @@ export default function MapTrackingStageBase({
 				}) => {
 					const visitId = ratingState.visitId;
 					if (!visitId) return;
+					if (ratingState.completeKind === "ambulance") {
+						await runBusyAction("complete", onCompleteAmbulanceTrip);
+					} else if (ratingState.completeKind === "bed") {
+						await runBusyAction("complete", onCompleteBedBooking);
+					}
 					const nowIso = new Date().toISOString();
 					await updateVisit?.(visitId, {
 						rating,
@@ -1781,6 +1834,7 @@ export default function MapTrackingStageBase({
 					setRatingState({
 						visible: false,
 						visitId: null,
+						completeKind: null,
 						serviceType: null,
 						title: null,
 						subtitle: null,

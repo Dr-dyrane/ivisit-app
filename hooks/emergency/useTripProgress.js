@@ -1,5 +1,14 @@
 import { useMemo } from "react";
 
+const toTimestampMs = (value) => {
+	if (Number.isFinite(value)) return Number(value);
+	if (typeof value === "string") {
+		const parsed = Date.parse(value);
+		if (Number.isFinite(parsed)) return parsed;
+	}
+	return null;
+};
+
 export const useTripProgress = ({
 	activeAmbulanceTrip,
 	nowMs = Date.now(),
@@ -22,17 +31,19 @@ export const useTripProgress = ({
 	const remainingSeconds = useMemo(() => {
 		const eta = Number.isFinite(activeAmbulanceTrip?.etaSeconds) ? activeAmbulanceTrip.etaSeconds : fallbackEtaSeconds;
 		const startedAt = activeAmbulanceTrip?.startedAt;
-		if (!Number.isFinite(eta) || !Number.isFinite(startedAt)) return null;
-		const elapsedSec = (nowMs - startedAt) / 1000;
+		const startedAtMs = toTimestampMs(startedAt);
+		if (!Number.isFinite(eta) || !Number.isFinite(startedAtMs)) return null;
+		const elapsedSec = (nowMs - startedAtMs) / 1000;
 		return Math.max(0, Math.round(eta - elapsedSec));
 	}, [activeAmbulanceTrip?.etaSeconds, activeAmbulanceTrip?.startedAt, fallbackEtaSeconds, nowMs]);
 
 	const tripProgress = useMemo(() => {
 		const eta = Number.isFinite(activeAmbulanceTrip?.etaSeconds) ? activeAmbulanceTrip.etaSeconds : fallbackEtaSeconds;
 		const startedAt = activeAmbulanceTrip?.startedAt;
-		if (!Number.isFinite(eta) || eta <= 0 || !Number.isFinite(startedAt))
+		const startedAtMs = toTimestampMs(startedAt);
+		if (!Number.isFinite(eta) || eta <= 0 || !Number.isFinite(startedAtMs))
 			return null;
-		const elapsedSec = (nowMs - startedAt) / 1000;
+		const elapsedSec = (nowMs - startedAtMs) / 1000;
 		return Math.min(1, Math.max(0, elapsedSec / eta));
 	}, [activeAmbulanceTrip?.etaSeconds, activeAmbulanceTrip?.startedAt, fallbackEtaSeconds, nowMs]);
 

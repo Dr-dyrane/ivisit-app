@@ -3,6 +3,23 @@
 > Status: Active audit
 > Scope: public welcome root -> `/map` explore -> decision -> commit -> payment -> tracking
 
+## Delta Log (2026-04-21)
+
+Recent implementation changes now locked:
+
+- `COMMIT_TRIAGE` is no longer a required pre-payment gate.
+- Main commit lane is now faster:
+  - `... -> commit_details -> commit_payment -> tracking`
+- `COMMIT_TRIAGE` remains available as an in-tracking `My information` update path.
+- Tracking sheet/header behavior now includes:
+  - global header triage action consume-once fix (prevents reopen loop after close)
+  - `Return Home` CTA aligned to the same close behavior as header map icon
+  - status alignment to actionable state (`Arrived` at confirm-arrival moment, `Complete` after arrival confirmation path)
+  - route card visual progress treatment (connector fill + endpoint emphasis)
+- ETA/timer resilience pass started:
+  - timestamp parsing now supports both numeric and ISO `startedAt` values in tracking computations
+  - header minute/distance clamp behavior improved around arrived/completed states
+
 ## Purpose
 
 This file locks the current truth after the recent `/map` emergency-flow rebuild and records what still needs final polish before the flow is treated as stable across iPhone, Android, and web surfaces.
@@ -35,17 +52,42 @@ Current implemented `/map` sheet phases:
 Current implemented commit paths:
 
 - ambulance:
-  - `explore_intent -> ambulance_decision -> commit_details -> commit_triage -> commit_payment -> tracking`
+  - `explore_intent -> ambulance_decision -> commit_details -> commit_payment -> tracking`
 - bed:
-  - `explore_intent -> hospital_detail/service_detail -> bed_decision -> commit_details -> commit_triage -> commit_payment -> tracking`
+  - `explore_intent -> hospital_detail/service_detail -> bed_decision -> commit_details -> commit_payment -> tracking`
 - ambulance + bed:
-  - `ambulance_decision -> bed_decision -> commit_details -> commit_triage -> commit_payment -> tracking`
+  - `ambulance_decision -> bed_decision -> commit_details -> commit_payment -> tracking`
 
 Important corrections to older docs:
 
-- `COMMIT_TRIAGE` now exists as a native map sheet phase and sits between identity/contact and payment
+- `COMMIT_TRIAGE` now exists as a native map sheet phase but is no longer required between identity/contact and payment
 - bed and combined flows no longer hand off to the legacy bed-booking route in the current map-native payment path
 - `TRACKING` now exists as a first native sheet phase and is no longer only planned
+
+## Reliability Hardening (ETA + Ambulance Motion)
+
+Current issue class:
+
+- `/map` tracking has had intermittent ETA drift and straight-line responder motion under some states.
+- `/emergency` path appears more stable because it stays longer on explicit responder/legacy trip truth while `/map` still mixes fallback camera/route heuristics.
+
+Locked hardening direction:
+
+1. single tracking timeline source
+   - derive `remainingSeconds`, `progress`, `arrival`, and route-card fill from one normalized timer model
+   - normalize `startedAt` once (number or ISO) and reuse across all selectors
+2. single responder coordinate source
+   - prefer live responder coordinates when present
+   - fallback to route interpolation only when live coordinates are absent
+   - never treat hospital fallback coordinate as live responder telemetry
+3. route adherence
+   - keep marker motion constrained to decoded polyline points
+   - heading should follow path tangent/lookahead, not destination bearing
+4. persistence
+   - persist `startedAt`, `etaSeconds`, and last-known progress in emergency context recovery
+   - on app resume, rebuild motion from persisted timeline rather than restarting animation at route origin
+5. observability
+   - add lightweight debug telemetry logs for: timeline source, coordinate source, status transitions, and fallback mode activation
 
 ## Locked UX Doctrine
 

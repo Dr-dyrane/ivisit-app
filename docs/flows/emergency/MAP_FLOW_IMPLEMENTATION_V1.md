@@ -1,13 +1,19 @@
 # Map Flow Implementation (v1)
 
 > Status: Active implementation note
-> Scope: `/map` -> `explore_intent`, `ambulance_decision`, `bed_decision`
+> Scope: `/map` -> `explore_intent`, decision phases, commit, payment, tracking
 
 Status note:
 
 - This file contains older planning sections that still mention legacy bed-booking handoff and some earlier tracking assumptions.
 - Current verified state is tracked in [MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md).
 - Use the audit file as the current-state source of truth when implementation and this note disagree.
+
+2026-04-21 correction:
+
+- `COMMIT_TRIAGE` is no longer required before payment.
+- Fast path is now `commit_details -> commit_payment`.
+- `COMMIT_TRIAGE` remains available from tracking as `My information` update.
 
 Related:
 
@@ -40,7 +46,7 @@ The public map flow now follows this shape:
 - [components/map/views/commitDetails](../../../components/map/views/commitDetails)
   - owns email, OTP, and phone capture before request creation
 - [components/map/views/commitTriage](../../../components/map/views/commitTriage)
-  - owns the native optional pre-payment quick-check phase
+  - owns the native optional triage/update phase (not a required pre-payment gate)
 - [components/map/views/commitPayment](../../../components/map/views/commitPayment)
   - owns native payment, pending approval, and failure/success resolution
 - [components/map/views/tracking](../../../components/map/views/tracking)
@@ -155,7 +161,8 @@ Shared implementation note:
   - combined intent = `hospital_detail -> ambulance_decision` first
 - service rails/cards may inspect through `service_detail` or select directly into the proper decision phase, but they must stay upstream of commit/auth
 - `ambulance_decision` now confirms into `COMMIT_DETAILS`
-- `COMMIT_DETAILS` now stays in `/map` and hands off to `COMMIT_TRIAGE`, then native `COMMIT_PAYMENT`
+- `COMMIT_DETAILS` now stays in `/map` and hands off directly to native `COMMIT_PAYMENT` for the primary commit path
+- `COMMIT_TRIAGE` remains available as optional in-flow update from tracking (`My information`)
 - `bed_decision` currently confirms into the existing legacy bed-booking route after the sheet decision; room preselection is forwarded
 - in the combined flow, paired ambulance selection is preserved from `ambulance_decision` and then forwarded when `bed_decision` confirms
 - that saved ambulance selection is hospital-scoped; if the user changes hospitals during `bed_decision`, the flow must return to `ambulance_decision` for the new hospital before step 2 can continue

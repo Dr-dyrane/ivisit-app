@@ -270,6 +270,13 @@ const styles = StyleSheet.create({
 		width: 2,
 		borderRadius: 999,
 	},
+	stopConnectorProgress: {
+		position: "absolute",
+		left: 21,
+		bottom: 30,
+		width: 2,
+		borderRadius: 999,
+	},
 	stopRow: {
 		flexDirection: "row",
 		alignItems: "center",
@@ -311,10 +318,15 @@ const styles = StyleSheet.create({
 	},
 	stopFade: {
 		position: "absolute",
-		top: 0,
+		top: 2,
 		right: 0,
-		bottom: 0,
+		bottom: 2,
 		width: 32,
+		borderTopLeftRadius: 12,
+		borderBottomLeftRadius: 12,
+		borderTopRightRadius: 10,
+		borderBottomRightRadius: 10,
+		borderCurve: "continuous",
 	},
 	statusRow: {
 		marginTop: 16,

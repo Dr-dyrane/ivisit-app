@@ -31,6 +31,7 @@ import {
 } from "../components/map/views/commitDetails/mapCommitDetails.helpers";
 import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
 import { calculateBearing } from "../utils/mapUtils";
+import { emergencyRequestsService } from "../services/emergencyRequestsService";
 
 export default function MapScreen() {
   const router = useRouter();
@@ -114,6 +115,7 @@ export default function MapScreen() {
     pendingApproval,
     trackingHeaderOcclusionHeight,
     trackingHeaderActionRequest,
+    clearTrackingHeaderActionRequest,
   } = useMapExploreFlow(); // eslint-disable-line no-unused-vars -- setAuthModalVisible kept for store compat
   const viewportVariant = useMemo(
     () => getMapViewportVariant({ platform: Platform.OS, width }),
@@ -241,7 +243,7 @@ export default function MapScreen() {
       const resolvedEmail = sanitizeCommitEmail(user?.email);
       const resolvedPhone = sanitizeCommitPhone(user?.phone);
       if (resolvedEmail && isCommitPhoneValid(resolvedPhone)) {
-        openCommitTriage(hospital || null, transport || null, {
+        openCommitPayment(hospital || null, transport || null, {
           draft: {
             email: resolvedEmail,
             phone: resolvedPhone,
@@ -260,7 +262,7 @@ export default function MapScreen() {
       nearestHospital?.id,
       openCommitDetails,
       openBedDecision,
-      openCommitTriage,
+      openCommitPayment,
       selectedCare,
       sheetSnapState,
       user?.email,
@@ -277,13 +279,12 @@ export default function MapScreen() {
       // Thread the full bed-booking context forward so payment can display
       // the correct summary (room title, price, careIntent) and so that the
       // optional triage phase can still back out to the right prior state.
-      openCommitTriage(hospital || null, transport || null, {
+      openCommitPayment(hospital || null, transport || null, {
         draft: draft || null,
         careIntent: draft?.careIntent || sheetPayload?.careIntent || null,
         roomId: draft?.roomId || sheetPayload?.roomId || null,
         room: sheetPayload?.room || null,
-        sourcePhase:
-          sheetPayload?.sourcePhase || MAP_SHEET_PHASES.COMMIT_DETAILS,
+        sourcePhase: sheetPayload?.sourcePhase || MAP_SHEET_PHASES.COMMIT_DETAILS,
         // Preserve the bed-decision sourcePayload so closeCommitPayment can
         // restore BED_DECISION with savedTransport / careIntent when backing.
         sourcePayload: sheetPayload?.sourcePayload || null,
@@ -292,7 +293,7 @@ export default function MapScreen() {
     [
       featuredHospital?.id,
       nearestHospital?.id,
-      openCommitTriage,
+      openCommitPayment,
       sheetPayload?.careIntent,
       sheetPayload?.room,
       sheetPayload?.roomId,
@@ -332,7 +333,7 @@ export default function MapScreen() {
 
       // Skip commit details when identity is already complete.
       if (resolvedEmail && isCommitPhoneValid(resolvedPhone)) {
-        openCommitTriage(hospital || null, resolvedTransport, {
+        openCommitPayment(hospital || null, resolvedTransport, {
           draft: { email: resolvedEmail, phone: resolvedPhone },
           careIntent,
           roomId: room?.id || null,
@@ -355,7 +356,7 @@ export default function MapScreen() {
       featuredHospital?.id,
       nearestHospital?.id,
       openCommitDetails,
-      openCommitTriage,
+      openCommitPayment,
       sheetPayload?.savedTransport,
       user?.email,
       user?.phone,
@@ -363,10 +364,30 @@ export default function MapScreen() {
   );
 
   const handleConfirmCommitTriage = useCallback(
-    (hospital, transport, triagePayload) => {
+    async (hospital, transport, triagePayload) => {
       const hospitalId =
         hospital?.id || featuredHospital?.id || nearestHospital?.id;
       if (!hospitalId) return;
+      const sourcePhase =
+        triagePayload?.sourcePhase || sheetPayload?.sourcePhase || null;
+      if (sourcePhase === MAP_SHEET_PHASES.TRACKING) {
+        const trackingRequestId =
+          triagePayload?.requestId ||
+          sheetPayload?.requestId ||
+          pendingApproval?.requestId ||
+          activeAmbulanceTrip?.requestId ||
+          activeBedBooking?.requestId ||
+          null;
+        if (trackingRequestId && triagePayload?.triageSnapshot) {
+          await emergencyRequestsService.updateTriage(
+            trackingRequestId,
+            triagePayload.triageSnapshot,
+            { reason: "tracking_info_update" },
+          );
+        }
+        closeCommitTriage();
+        return;
+      }
 
       const restoredTriagePayload = {
         ...sheetPayload,
@@ -390,10 +411,47 @@ export default function MapScreen() {
       });
     },
     [
+      activeAmbulanceTrip?.requestId,
+      activeBedBooking?.requestId,
+      closeCommitTriage,
       featuredHospital?.id,
       nearestHospital?.id,
       openCommitPayment,
+      pendingApproval?.requestId,
       sheetPayload,
+    ],
+  );
+
+  const handleOpenCommitTriageFromTracking = useCallback(
+    (trackingPayload = {}) => {
+      const targetHospital =
+        mapFocusedHospital || featuredHospital || nearestHospital || null;
+      if (!targetHospital?.id) return;
+      const trackingRequestId =
+        trackingPayload?.requestId ||
+        pendingApproval?.requestId ||
+        activeAmbulanceTrip?.requestId ||
+        activeBedBooking?.requestId ||
+        null;
+      openCommitTriage(targetHospital, trackingPayload?.transport || null, {
+        ...trackingPayload,
+        requestId: trackingRequestId,
+        sourcePhase: MAP_SHEET_PHASES.TRACKING,
+        sourceSnapState: renderedSnapState,
+        sourcePayload: {
+          hospital: targetHospital,
+        },
+      });
+    },
+    [
+      activeAmbulanceTrip?.requestId,
+      activeBedBooking?.requestId,
+      featuredHospital,
+      mapFocusedHospital,
+      nearestHospital,
+      openCommitTriage,
+      pendingApproval?.requestId,
+      renderedSnapState,
     ],
   );
 
@@ -597,6 +655,7 @@ export default function MapScreen() {
           onCloseCommitTriage={closeCommitTriage}
           onCloseCommitPayment={closeCommitPayment}
           onCloseTracking={closeTracking}
+          onOpenCommitTriageFromTracking={handleOpenCommitTriageFromTracking}
           onAddBedFromTracking={handleAddBedFromTracking}
           onCloseHospitalDetail={closeHospitalDetail}
           onConfirmAmbulanceDecision={handleConfirmAmbulanceDecision}
@@ -617,6 +676,7 @@ export default function MapScreen() {
           sheetPayload={sheetPayload}
           trackingRouteInfo={trackingRouteInfo}
           trackingHeaderActionRequest={trackingHeaderActionRequest}
+          onConsumeTrackingHeaderActionRequest={clearTrackingHeaderActionRequest}
           currentLocation={currentLocationDetails}
           onSelectHospital={handleSelectHospital}
           onUseCurrentLocation={handleUseCurrentLocation}

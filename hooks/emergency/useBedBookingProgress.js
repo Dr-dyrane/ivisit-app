@@ -8,6 +8,15 @@ const ACTIVE_BED_TIMER_STATUSES = new Set([
 	"arrived",
 ]);
 
+const toTimestampMs = (value) => {
+	if (Number.isFinite(value)) return Number(value);
+	if (typeof value === "string") {
+		const parsed = Date.parse(value);
+		if (Number.isFinite(parsed)) return parsed;
+	}
+	return null;
+};
+
 export const useBedBookingProgress = ({
 	activeBedBooking,
 	nowMs = Date.now(),
@@ -43,17 +52,19 @@ export const useBedBookingProgress = ({
 	const remainingBedSeconds = useMemo(() => {
 		const eta = resolvedHoldSeconds;
 		const startedAt = activeBedBooking?.startedAt;
-		if (!Number.isFinite(eta) || !Number.isFinite(startedAt)) return null;
-		const elapsedSec = (nowMs - startedAt) / 1000;
+		const startedAtMs = toTimestampMs(startedAt);
+		if (!Number.isFinite(eta) || !Number.isFinite(startedAtMs)) return null;
+		const elapsedSec = (nowMs - startedAtMs) / 1000;
 		return Math.max(0, Math.round(eta - elapsedSec));
 	}, [activeBedBooking?.startedAt, nowMs, resolvedHoldSeconds]);
 
 	const bedProgress = useMemo(() => {
 		const eta = resolvedHoldSeconds;
 		const startedAt = activeBedBooking?.startedAt;
-		if (!Number.isFinite(eta) || eta <= 0 || !Number.isFinite(startedAt))
+		const startedAtMs = toTimestampMs(startedAt);
+		if (!Number.isFinite(eta) || eta <= 0 || !Number.isFinite(startedAtMs))
 			return null;
-		const elapsedSec = (nowMs - startedAt) / 1000;
+		const elapsedSec = (nowMs - startedAtMs) / 1000;
 		return Math.min(1, Math.max(0, elapsedSec / eta));
 	}, [activeBedBooking?.startedAt, nowMs, resolvedHoldSeconds]);
 

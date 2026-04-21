@@ -1,7 +1,7 @@
 # Emergency Sheet And Map UI Spec (v1)
 
 > Status: Active design reference
-> Last updated: 2026-04-12
+> Last updated: 2026-04-21
 > Purpose: define what each emergency sheet state shows, what decision the user is making, and how the map should behave across iOS, Android, and web/PWA
 
 Related references:
@@ -1385,7 +1385,7 @@ This appendix turns the design spec into the actual implementation determinants 
 
 For the first-pass ambulance runtime, the visible sheet sequence should be:
 
-`EXPLORE_INTENT -> AMBULANCE_DECISION -> COMMIT_DETAILS -> COMMIT_TRIAGE -> COMMIT_PAYMENT -> TRACKING`
+`EXPLORE_INTENT -> AMBULANCE_DECISION -> COMMIT_DETAILS -> COMMIT_PAYMENT -> TRACKING`
 
 Important implementation note:
 
@@ -1587,7 +1587,7 @@ Google Play review access:
 - server-side secrets must stay aligned with Play Console reviewer instructions:
   `REVIEW_DEMO_AUTH_ENABLED=true`, `REVIEW_DEMO_AUTH_EMAIL=support@ivisit.ng`, `REVIEW_DEMO_AUTH_OTP=123456`
 
-#### `COMMIT_DETAILS -> COMMIT_TRIAGE`
+#### `COMMIT_DETAILS -> COMMIT_PAYMENT` (primary path)
 
 Trigger:
 
@@ -1602,7 +1602,7 @@ Required result:
 - locked selected hospital/service still present
 - request draft still local, with no DB create yet
 
-#### `COMMIT_TRIAGE -> COMMIT_PAYMENT`
+#### `COMMIT_TRIAGE -> COMMIT_PAYMENT` (optional path)
 
 Trigger:
 
@@ -1786,7 +1786,7 @@ For the first map-first refactor pass:
 
 1. move ambulance decision into the map sheet
 2. move details + verification inline into the map sheet
-3. add skippable triage in the same shell before payment
+3. keep triage as optional update flow in the same shell (primary commit path may bypass it)
 4. keep payment and all post-submit payment states in the same shell
 5. project tracking in the same shell after commit
 6. stop routing new users into the old `showLegacyFlow -> EmergencyRequestModal` branch for the main ambulance path
