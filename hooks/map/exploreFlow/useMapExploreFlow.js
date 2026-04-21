@@ -53,8 +53,15 @@ import MapHeaderIconButton from "../../../components/map/views/shared/MapHeaderI
 
 const TRACKING_HEADER_COLLAPSED_HEIGHT = 124;
 
+function normalizeEtaSeconds(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
 function formatHeaderEtaLabel(etaSeconds, startedAt, nowMs = Date.now()) {
-  if (!Number.isFinite(etaSeconds)) return null;
+  const safeEtaSeconds = normalizeEtaSeconds(etaSeconds);
+  if (!Number.isFinite(safeEtaSeconds)) return null;
   const startedAtMs = Number.isFinite(startedAt)
     ? startedAt
     : typeof startedAt === "string"
@@ -63,13 +70,14 @@ function formatHeaderEtaLabel(etaSeconds, startedAt, nowMs = Date.now()) {
   const elapsedSeconds = Number.isFinite(startedAtMs)
     ? Math.max(0, Math.round((nowMs - startedAtMs) / 1000))
     : 0;
-  const remainingSeconds = Math.max(0, Math.round(etaSeconds - elapsedSeconds));
+  const remainingSeconds = Math.max(0, Math.round(safeEtaSeconds - elapsedSeconds));
   const remainingMinutes = Math.max(1, Math.ceil(remainingSeconds / 60));
   return `${remainingMinutes} min`;
 }
 
 function formatHeaderArrivalLabel(etaSeconds, startedAt, nowMs = Date.now()) {
-  if (!Number.isFinite(etaSeconds)) return null;
+  const safeEtaSeconds = normalizeEtaSeconds(etaSeconds);
+  if (!Number.isFinite(safeEtaSeconds)) return null;
   const startedAtMs = Number.isFinite(startedAt)
     ? startedAt
     : typeof startedAt === "string"
@@ -78,7 +86,7 @@ function formatHeaderArrivalLabel(etaSeconds, startedAt, nowMs = Date.now()) {
   const elapsedSeconds = Number.isFinite(startedAtMs)
     ? Math.max(0, Math.round((nowMs - startedAtMs) / 1000))
     : 0;
-  const remainingSeconds = Math.max(0, Math.round(etaSeconds - elapsedSeconds));
+  const remainingSeconds = Math.max(0, Math.round(safeEtaSeconds - elapsedSeconds));
   const arrivalDate = new Date(nowMs + remainingSeconds * 1000);
   const hour = arrivalDate.getHours() % 12 || 12;
   const minute = String(arrivalDate.getMinutes()).padStart(2, "0");
@@ -162,11 +170,12 @@ function normalizeTimestampMs(value) {
 }
 
 function hasEtaElapsed(etaSeconds, startedAt, nowMs = Date.now()) {
-  if (!Number.isFinite(etaSeconds)) return false;
+  const safeEtaSeconds = normalizeEtaSeconds(etaSeconds);
+  if (!Number.isFinite(safeEtaSeconds)) return false;
   const startedAtMs = normalizeTimestampMs(startedAt);
   if (!Number.isFinite(startedAtMs)) return false;
   const elapsedSeconds = Math.max(0, Math.round((nowMs - startedAtMs) / 1000));
-  return elapsedSeconds >= Math.max(0, Math.round(etaSeconds));
+  return elapsedSeconds >= Math.max(0, Math.round(safeEtaSeconds));
 }
 
 function joinSummaryParts(parts = []) {

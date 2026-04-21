@@ -653,13 +653,17 @@ export default function MapScreen() {
 
     const updates = {};
     const routeEtaSeconds = Number(trackingRouteInfo?.durationSec);
-    const currentEtaSeconds = Number(activeAmbulanceTrip?.etaSeconds);
+    const rawTripEtaSeconds = activeAmbulanceTrip?.etaSeconds;
+    const currentEtaSeconds = Number(rawTripEtaSeconds);
+    const hasNumericTripEtaSeconds =
+      Number.isFinite(rawTripEtaSeconds) && rawTripEtaSeconds > 0;
     const hasPolylineRoute = trackingRouteCoordinates.length >= 2;
 
     if (
       Number.isFinite(routeEtaSeconds) &&
       routeEtaSeconds > 0 &&
-      (!Number.isFinite(currentEtaSeconds) ||
+      (!hasNumericTripEtaSeconds ||
+        !Number.isFinite(currentEtaSeconds) ||
         currentEtaSeconds <= 0 ||
         (hasPolylineRoute && Math.abs(routeEtaSeconds - currentEtaSeconds) > 15))
     ) {
