@@ -44,8 +44,9 @@ export function buildMapCommitTriageSteps(showExtendedComplaints = false) {
 			id: "chiefComplaint",
 			field: "chiefComplaint",
 			type: "single",
-			headerTitle: "What happened",
-			prompt: "What happened?",
+			headerTitle: "What feels urgent",
+			prompt: "What feels most urgent?",
+			aiIntent: "chief_complaint_classification",
 			options: complaintOptions,
 		},
 		{
@@ -53,7 +54,8 @@ export function buildMapCommitTriageSteps(showExtendedComplaints = false) {
 			field: "breathingDifficulty",
 			type: "single",
 			headerTitle: "Breathing",
-			prompt: "Any breathing trouble?",
+			prompt: "Is breathing difficult?",
+			aiIntent: "respiratory_risk",
 			options: YES_NO_OPTIONS,
 		},
 		{
@@ -61,7 +63,8 @@ export function buildMapCommitTriageSteps(showExtendedComplaints = false) {
 			field: "unconscious",
 			type: "single",
 			headerTitle: "Consciousness",
-			prompt: "Any loss of consciousness?",
+			prompt: "Did they pass out?",
+			aiIntent: "consciousness_risk",
 			options: YES_NO_OPTIONS,
 		},
 		{
@@ -70,6 +73,7 @@ export function buildMapCommitTriageSteps(showExtendedComplaints = false) {
 			type: "single",
 			headerTitle: "Bleeding",
 			prompt: "Any heavy bleeding?",
+			aiIntent: "bleeding_risk",
 			options: YES_NO_OPTIONS,
 		},
 		{
@@ -77,7 +81,8 @@ export function buildMapCommitTriageSteps(showExtendedComplaints = false) {
 			field: "painScale",
 			type: "single",
 			headerTitle: "Pain",
-			prompt: "Pain level right now?",
+			prompt: "Pain level now?",
+			aiIntent: "pain_score",
 			options: PAIN_OPTIONS,
 		},
 		{
@@ -85,7 +90,8 @@ export function buildMapCommitTriageSteps(showExtendedComplaints = false) {
 			field: "note",
 			type: "text",
 			headerTitle: "Add note",
-			prompt: "Anything else we should know?",
+			prompt: "Anything responders should know?",
+			aiIntent: "free_text_context",
 		},
 	];
 }

@@ -138,6 +138,44 @@ Regression captured:
 - the fix is `pointerEvents="box-none"` on `MapPhaseTransitionView`
 - `MapExploreLoadingOverlay` must also release touches with `pointerEvents={resolvedVisible ? "auto" : "none"}` so its fade-out frame cannot block the map after loading
 
+## 5.1 State Residency Rule
+
+Do not move every `/map` value into global state. Globalizing transient sheet state makes reload bugs harder to see and creates stale cross-phase coupling.
+
+Use this ownership model:
+
+- `EmergencyContext.jsx` owns durable operational truth: active ambulance trip, active bed booking, pending approval, realtime status, assigned responder/vehicle, request id, and post-payment recovery state.
+- `useMapExploreFlow.js` / the map flow store owns cross-phase UI decisions: sheet phase, selected care intent, selected hospital, saved combined-flow transport, sheet payload, active-header coordination, and route-to-sheet handoff.
+- Stage components own local presentation state: input focus, scroll position, selector expansion, pressed/loading visuals, temporary validation messages, and animation-only state.
+- Async resource snapshots own their own refresh contract: payment methods, route calculations, profile/contact hydration, pricing rows, and media should refresh/reconcile when the phase opens and after mutation instead of depending on a remount or sheet toggle.
+
+Active-request exception:
+
+- live tracking facts that must survive sheet remounts belong on `EmergencyContext`, even if they are produced by a sheet or map child
+- examples: route-derived ETA, `startedAt`, route coordinates, triage draft, triage progress, and triage snapshot
+- the producing UI should patch context immediately and persist to backend non-blockingly when possible
+- do not store these facts only in `sheetPayload`; `sheetPayload` is navigation context, not operational truth
+
+Regression pattern to avoid:
+
+- A phase appears correct only after changing sheet state, closing/reopening, or restarting Metro.
+- This means the data source is hydrated passively and the visible phase is not subscribing, refreshing, or reconciling at its entry point.
+
+Required fix pattern:
+
+- on phase entry, explicitly request or refresh the data needed by the first visible render
+- render a compact skeleton or disabled CTA while the snapshot is unresolved
+- after a mutation, update local visible state optimistically when safe and then reconcile from the canonical service/context response
+- normalize service values at the boundary before storing them in flow/global state
+
+Payment-method example:
+
+- `COMMIT_PAYMENT` may use payment methods from a payment hook/service cache, but the phase must trigger a refresh when it opens and after adding/changing a method.
+- The main CTA should show a non-final loading/select state until the selected method snapshot is available.
+- The user should not have to change sheets for `Pay with` or `Select payment` to become correct.
+- the first payment snapshot belongs in `MapCommitPaymentStageBase`, not only inside the expanded `PaymentMethodSelector`; otherwise half snap can render before methods hydrate
+- selector changes should revalidate the chosen method against the refreshed wallet/card/cash snapshot before enabling the final pay action
+
 ## 6. Persistent Sheet Rule
 
 The public map sheet is one shell, not many separate panels.

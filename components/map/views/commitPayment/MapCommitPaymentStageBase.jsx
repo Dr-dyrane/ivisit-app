@@ -10,6 +10,7 @@ import { useEmergencyRequests } from "../../../../hooks/emergency/useEmergencyRe
 import { useRequestFlow } from "../../../../hooks/emergency/useRequestFlow";
 import { useMedicalProfile } from "../../../../hooks/user/useMedicalProfile";
 import { useVisits } from "../../../../contexts/VisitsContext";
+import { database, StorageKeys } from "../../../../database";
 import { demoEcosystemService } from "../../../../services/demoEcosystemService";
 import { paymentService } from "../../../../services/paymentService";
 import { serviceCostService } from "../../../../services/serviceCostService";
@@ -324,6 +325,11 @@ export default function MapCommitPaymentStageBase({
 		"Transport and admission payment is not ready yet.";
 
 	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+	const selectedPaymentMethodRef = useRef(null);
+	const paymentMethodsRefreshRef = useRef(0);
+	const [isRefreshingPaymentMethods, setIsRefreshingPaymentMethods] = useState(false);
+	const [paymentMethodsSnapshotReady, setPaymentMethodsSnapshotReady] = useState(false);
+	const [paymentMethodsRefreshKey, setPaymentMethodsRefreshKey] = useState(0);
 	const [estimatedCost, setEstimatedCost] = useState(() =>
 		normalizeCommitPaymentCost(
 			payload?.pricingSnapshot || null,
@@ -331,6 +337,10 @@ export default function MapCommitPaymentStageBase({
 			selectionHeaderLabel,
 		),
 	);
+	const totalCostValue = estimatedCost?.totalCost ?? estimatedCost?.total_cost ?? null;
+	const totalCostLabel = Number.isFinite(totalCostValue)
+		? `$${Number(totalCostValue).toFixed(2)}`
+		: null;
 	const [isLoadingCost, setIsLoadingCost] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [errorMessage, setErrorMessage] = useState("");
@@ -342,6 +352,10 @@ export default function MapCommitPaymentStageBase({
 	});
 	const paymentSelectorOffsetRef = useRef(270);
 
+	useEffect(() => {
+		selectedPaymentMethodRef.current = selectedPaymentMethod;
+	}, [selectedPaymentMethod]);
+
 	const demoCashOnly = useMemo(
 		() =>
 			demoEcosystemService.shouldSimulatePayments({
@@ -350,6 +364,122 @@ export default function MapCommitPaymentStageBase({
 			}),
 		[effectiveDemoModeEnabled, hospital],
 	);
+
+	const refreshPaymentMethodSnapshot = useCallback(
+		async ({ preferredMethod = null } = {}) => {
+			const refreshId = paymentMethodsRefreshRef.current + 1;
+			paymentMethodsRefreshRef.current = refreshId;
+			setIsRefreshingPaymentMethods(true);
+			setPaymentMethodsSnapshotReady(false);
+
+			try {
+				if (!user?.id) {
+					if (paymentMethodsRefreshRef.current !== refreshId) return;
+					setSelectedPaymentMethod(null);
+					setPaymentMethodsSnapshotReady(true);
+					return;
+				}
+
+				const [methods, wallet, cachedDefault] = await Promise.all([
+					paymentService.getPaymentMethods(),
+					paymentService.getWalletBalance(),
+					database.read(StorageKeys.DEFAULT_PAYMENT_METHOD),
+				]);
+				if (paymentMethodsRefreshRef.current !== refreshId) return;
+
+				const checkoutTotal = Number(totalCostValue || 0);
+				const walletBalance = Number(wallet?.balance || 0);
+				const walletMethod = {
+					id: "wallet_internal",
+					type: "wallet",
+					brand: "iVisit Balance",
+					last4: walletBalance.toFixed(2),
+					is_wallet: true,
+					balance: walletBalance,
+					currency: wallet?.currency || "USD",
+					is_default: false,
+				};
+				const cashMethod = {
+					id: "cash_payment",
+					type: "cash",
+					brand: "Cash",
+					last4: "Payment",
+					is_cash: true,
+					is_default: false,
+				};
+
+				let cashEligible = true;
+				if (!demoCashOnly && hospital?.id && checkoutTotal > 0) {
+					try {
+						cashEligible = await paymentService.checkCashEligibility(
+							hospital?.organization_id || hospital?.organizationId || hospital.id,
+							checkoutTotal,
+						);
+					} catch {
+						cashEligible = false;
+					}
+				}
+				if (paymentMethodsRefreshRef.current !== refreshId) return;
+
+				const finalMethods = demoCashOnly
+					? [cashMethod, walletMethod, ...(Array.isArray(methods) ? methods : [])]
+					: [walletMethod, cashMethod, ...(Array.isArray(methods) ? methods : [])];
+				const availableMethods = finalMethods.filter((method) => {
+					if (!method) return false;
+					if (demoCashOnly && !method.is_cash) return false;
+					if (method.is_wallet && checkoutTotal > 0) {
+						return walletBalance >= checkoutTotal;
+					}
+					if (method.is_cash && !demoCashOnly) {
+						return cashEligible;
+					}
+					return true;
+				});
+				const currentMethod = preferredMethod || selectedPaymentMethodRef.current || null;
+				const selectedMatch = currentMethod
+					? availableMethods.find((method) => method.id === currentMethod.id)
+					: null;
+				const cachedMatch = cachedDefault?.id
+					? availableMethods.find((method) => method.id === cachedDefault.id)
+					: null;
+				const dbDefault = availableMethods.find((method) => method.is_default);
+				const defaultMethod =
+					(demoCashOnly ? availableMethods.find((method) => method.is_cash) : null) ||
+					selectedMatch ||
+					cachedMatch ||
+					dbDefault ||
+					availableMethods[0] ||
+					null;
+
+				setSelectedPaymentMethod(defaultMethod);
+				setPaymentMethodsSnapshotReady(true);
+				setPaymentMethodsRefreshKey((key) => key + 1);
+			} catch (error) {
+				if (paymentMethodsRefreshRef.current !== refreshId) return;
+				console.warn("[MapCommitPayment] payment method refresh failed:", error);
+				setSelectedPaymentMethod(null);
+				setPaymentMethodsSnapshotReady(true);
+				setPaymentMethodsRefreshKey((key) => key + 1);
+			} finally {
+				if (paymentMethodsRefreshRef.current === refreshId) {
+					setIsRefreshingPaymentMethods(false);
+				}
+			}
+		},
+		[
+			demoCashOnly,
+			hospital?.id,
+			hospital?.organizationId,
+			hospital?.organization_id,
+			totalCostValue,
+			user?.id,
+		],
+	);
+
+	useEffect(() => {
+		setPaymentMethodsSnapshotReady(false);
+		void refreshPaymentMethodSnapshot();
+	}, [refreshPaymentMethodSnapshot]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -498,10 +628,6 @@ export default function MapCommitPaymentStageBase({
 	const roomImageSource = getHospitalDetailServiceImageSource(room || {}, "room");
 	const pickupAvatarSource = getPaymentUserAvatarSource(user);
 	const pickupLabel = buildCommitPaymentPickupLabel(currentLocation);
-	const totalCostValue = estimatedCost?.totalCost ?? estimatedCost?.total_cost ?? null;
-	const totalCostLabel = Number.isFinite(totalCostValue)
-		? `$${Number(totalCostValue).toFixed(2)}`
-		: null;
 	const paymentHeroSubtitle = `${hospitalName} - ${
 		isBedFlow ? roomTitle : transportTitle
 	}`;
@@ -649,7 +775,9 @@ export default function MapCommitPaymentStageBase({
 	);
 	const expandedFooterActionLabel = isCombinedFlow
 		? "Combined payment soon"
-		: !selectedPaymentMethod
+		: !paymentMethodsSnapshotReady || isRefreshingPaymentMethods
+			? "Checking payment"
+			: !selectedPaymentMethod
 			? "Select payment"
 			: selectedPaymentMethod?.is_cash
 				? isBedFlow
@@ -662,11 +790,18 @@ export default function MapCommitPaymentStageBase({
 						: "Pay now";
 	const footerActionLabel = isExpandedPaymentView
 		? expandedFooterActionLabel
-		: !selectedPaymentMethod
+		: !paymentMethodsSnapshotReady || isRefreshingPaymentMethods
+			? "Checking payment"
+			: !selectedPaymentMethod
 			? "Select payment"
 			: "Pay Now";
+	const isPaymentMethodSnapshotPending =
+		isIdleState && (!paymentMethodsSnapshotReady || isRefreshingPaymentMethods);
 	const footerActionDisabled =
-		isCombinedFlow || isSubmitting || (isLoadingCost && Boolean(selectedPaymentMethod));
+		isCombinedFlow ||
+		isSubmitting ||
+		isPaymentMethodSnapshotPending ||
+		(isLoadingCost && Boolean(selectedPaymentMethod));
 	const statusConfig =
 		submissionState.kind === "processing_payment"
 			? {
@@ -728,6 +863,11 @@ export default function MapCommitPaymentStageBase({
 		if (!hospital?.id) {
 			setErrorMessage("Choose a hospital before continuing.");
 			showToast("Choose a hospital before continuing.", "error");
+			return;
+		}
+
+		if (!paymentMethodsSnapshotReady || isRefreshingPaymentMethods) {
+			setInfoMessage("Checking payment method.");
 			return;
 		}
 
@@ -1051,8 +1191,10 @@ export default function MapCommitPaymentStageBase({
 		isBedFlow,
 		isCombinedFlow,
 		isIdleState,
+		isRefreshingPaymentMethods,
 		canDismissStatusState,
 		onConfirm,
+		paymentMethodsSnapshotReady,
 		paymentUnsupportedMessage,
 		requestVerb,
 		room,
@@ -1117,12 +1259,15 @@ export default function MapCommitPaymentStageBase({
 						onMethodSelect={(method) => {
 							setSelectedPaymentMethod(method);
 							setErrorMessage("");
+							setPaymentMethodsSnapshotReady(false);
+							void refreshPaymentMethodSnapshot({ preferredMethod: method });
 						}}
 						cost={estimatedCost}
 						hospitalId={hospital?.id || null}
 						organizationId={hospital?.organization_id || hospital?.organizationId || null}
 						simulatePayments={demoCashOnly}
 						demoCashOnly={demoCashOnly}
+						refreshTrigger={paymentMethodsRefreshKey}
 					/>
 				</View>
 			) : null}
@@ -1160,7 +1305,7 @@ export default function MapCommitPaymentStageBase({
 				<MapCommitPaymentFooter
 					label={footerActionLabel}
 					onPress={handleFooterPress}
-					loading={isSubmitting}
+					loading={isSubmitting || isPaymentMethodSnapshotPending}
 					disabled={footerActionDisabled}
 					modalContainedStyle={modalContainedStyle}
 					contentInsetStyle={webWideInsetStyle}

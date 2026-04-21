@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+	Animated,
+	Easing,
 	Platform,
 	Pressable,
 	Text,
@@ -12,6 +14,8 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import { useEmergency } from "../../../../contexts/EmergencyContext";
 import { useEmergencyContacts } from "../../../../hooks/emergency/useEmergencyContacts";
 import { useMedicalProfile } from "../../../../hooks/user/useMedicalProfile";
+import { emergencyRequestsService } from "../../../../services/emergencyRequestsService";
+import { triageCopilotService } from "../../../../services/triageCopilotService";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
@@ -22,6 +26,7 @@ import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollap
 import useMapStageResponsiveMetrics from "../shared/useMapStageResponsiveMetrics";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import { MapCommitDetailsTopSlot } from "../commitDetails/MapCommitDetailsStageParts";
+import { triageStepAnswered } from "../../../emergency/triage/triageFlow.shared";
 import { MAP_COMMIT_TRIAGE_COPY } from "./mapCommitTriage.content";
 import {
 	applyCommitTriageSelection,
@@ -37,6 +42,26 @@ import {
 } from "./mapCommitTriage.helpers";
 import styles from "./mapCommitTriage.styles";
 
+function getFirstOpenTriageStepId(steps = [], draft = {}) {
+	return (
+		steps.find((step) => !triageStepAnswered(step, draft))?.id ||
+		steps[steps.length - 1]?.id ||
+		"chiefComplaint"
+	);
+}
+
+function buildTriageProgressMeta(steps = [], draft = {}, activeStepId = null) {
+	const totalSteps = steps.length || 6;
+	const answeredCount = steps.filter((step) => triageStepAnswered(step, draft)).length;
+	return {
+		totalSteps,
+		answeredCount,
+		activeStepId,
+		complete: totalSteps > 0 && answeredCount >= totalSteps,
+		version: "map_commit_triage_v2",
+	};
+}
+
 export default function MapCommitTriageStageBase({
 	sheetHeight,
 	snapState,
@@ -50,7 +75,15 @@ export default function MapCommitTriageStageBase({
 }) {
 	const effectiveSnapState = MAP_SHEET_SNAP_STATES.EXPANDED;
 	const { isDarkMode } = useTheme();
-	const { setCommitFlow, hospitals, selectedSpecialty } = useEmergency();
+	const {
+		setCommitFlow,
+		hospitals,
+		selectedSpecialty,
+		activeAmbulanceTrip,
+		activeBedBooking,
+		pendingApproval,
+		patchActiveAmbulanceTrip,
+	} = useEmergency();
 	const { contacts: emergencyContacts } = useEmergencyContacts();
 	const { profile: medicalProfile } = useMedicalProfile();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
@@ -103,9 +136,7 @@ export default function MapCommitTriageStageBase({
 	const closeSurface = tokens.closeSurface;
 	const accentColor = isDarkMode ? "#FCA5A5" : "#86100E";
 	const dangerColor = isDarkMode ? "#FCA5A5" : "#B91C1C";
-	const orbSurfaceColor = isDarkMode
-		? "rgba(255,255,255,0.06)"
-		: "rgba(15,23,42,0.05)";
+	const orbSurfaceColor = isDarkMode ? "#991B1B" : "#B42318";
 	const optionSurfaceColor = isDarkMode
 		? "rgba(255,255,255,0.06)"
 		: "rgba(15,23,42,0.04)";
@@ -122,15 +153,48 @@ export default function MapCommitTriageStageBase({
 	const noteBorderColor = isDarkMode
 		? "rgba(255,255,255,0.08)"
 		: "rgba(15,23,42,0.06)";
+	const activeRequestId =
+		payload?.requestId ||
+		activeAmbulanceTrip?.requestId ||
+		activeAmbulanceTrip?.id ||
+		activeBedBooking?.requestId ||
+		activeBedBooking?.id ||
+		pendingApproval?.requestId ||
+		pendingApproval?.id ||
+		null;
+	const triageSessionKey = String(
+		activeRequestId || `${payload?.careIntent || "draft"}:${hospital?.id || "hospital"}`,
+	);
 
 	const initialDraft = useMemo(
 		() =>
 			normalizeCommitTriageDraft(
 				payload?.triageDraft ||
 					payload?.triageSnapshot?.signals?.userCheckin ||
+					activeAmbulanceTrip?.triage?.signals?.userCheckin ||
+					activeAmbulanceTrip?.triageSnapshot?.signals?.userCheckin ||
+					activeAmbulanceTrip?.triageCheckin ||
+					activeBedBooking?.triage?.signals?.userCheckin ||
+					activeBedBooking?.triageSnapshot?.signals?.userCheckin ||
+					activeBedBooking?.triageCheckin ||
+					pendingApproval?.triage?.signals?.userCheckin ||
+					pendingApproval?.triageSnapshot?.signals?.userCheckin ||
+					pendingApproval?.initiatedData?.triageCheckin ||
 					null,
 			),
-		[payload?.triageDraft, payload?.triageSnapshot?.signals?.userCheckin],
+		[
+			activeAmbulanceTrip?.triage?.signals?.userCheckin,
+			activeAmbulanceTrip?.triageCheckin,
+			activeAmbulanceTrip?.triageSnapshot?.signals?.userCheckin,
+			activeBedBooking?.triage?.signals?.userCheckin,
+			activeBedBooking?.triageCheckin,
+			activeBedBooking?.triageSnapshot?.signals?.userCheckin,
+			payload?.triageDraft,
+			payload?.triageSnapshot?.signals?.userCheckin,
+			pendingApproval?.initiatedData?.triageCheckin,
+			pendingApproval?.triage?.signals?.userCheckin,
+			pendingApproval?.triageSnapshot?.signals?.userCheckin,
+		],
 	);
 	const [draft, setDraft] = useState(initialDraft);
 	const [showExtendedComplaints, setShowExtendedComplaints] = useState(
@@ -141,12 +205,19 @@ export default function MapCommitTriageStageBase({
 		[showExtendedComplaints],
 	);
 	const [activeStepId, setActiveStepId] = useState(
-		payload?.activeStep || steps[0]?.id || "chiefComplaint",
+		payload?.activeStep || getFirstOpenTriageStepId(steps, initialDraft),
 	);
+	const triageSessionKeyRef = useRef(triageSessionKey);
+	const liveSaveRef = useRef({ signature: null, timer: null });
+	const orbPulse = useRef(new Animated.Value(0)).current;
+	const [copilotPrompt, setCopilotPrompt] = useState(null);
 
 	useEffect(() => {
+		if (triageSessionKeyRef.current === triageSessionKey) return;
+		triageSessionKeyRef.current = triageSessionKey;
 		setDraft(initialDraft);
-	}, [initialDraft]);
+		setActiveStepId(payload?.activeStep || getFirstOpenTriageStepId(steps, initialDraft));
+	}, [initialDraft, payload?.activeStep, steps, triageSessionKey]);
 
 	useEffect(() => {
 		setShowExtendedComplaints(Boolean(payload?.showExtendedComplaints));
@@ -159,9 +230,30 @@ export default function MapCommitTriageStageBase({
 
 	useEffect(() => {
 		if (!steps.some((step) => step.id === activeStepId)) {
-			setActiveStepId(steps[0]?.id || "chiefComplaint");
+			setActiveStepId(getFirstOpenTriageStepId(steps, draft));
 		}
-	}, [activeStepId, steps]);
+	}, [activeStepId, draft, steps]);
+
+	useEffect(() => {
+		const animation = Animated.loop(
+			Animated.sequence([
+				Animated.timing(orbPulse, {
+					toValue: 1,
+					duration: 1700,
+					easing: Easing.out(Easing.cubic),
+					useNativeDriver: true,
+				}),
+				Animated.timing(orbPulse, {
+					toValue: 0,
+					duration: 1700,
+					easing: Easing.inOut(Easing.cubic),
+					useNativeDriver: true,
+				}),
+			]),
+		);
+		animation.start();
+		return () => animation.stop();
+	}, [orbPulse]);
 
 	const activeStepIndex = Math.max(
 		0,
@@ -209,9 +301,138 @@ export default function MapCommitTriageStageBase({
 			transport,
 		],
 	);
+	const triageProgressMeta = useMemo(
+		() => buildTriageProgressMeta(steps, draft, activeStep?.id || null),
+		[activeStep?.id, draft, steps],
+	);
+	const liveTriageSnapshot = useMemo(() => {
+		if (!triageSnapshot) return null;
+		return {
+			...triageSnapshot,
+			progress: triageProgressMeta,
+			engine: {
+				...(triageSnapshot.engine || {}),
+				deterministicStepCount: triageProgressMeta.totalSteps,
+				copilotEnabled: triageCopilotService.isEnabled(),
+			},
+		};
+	}, [triageProgressMeta, triageSnapshot]);
+
+	useEffect(() => {
+		setCopilotPrompt(null);
+		if (!activeStep || !triageCopilotService.isEnabled()) return undefined;
+		let cancelled = false;
+		triageCopilotService
+			.suggestPrompt({
+				stage: "map_commit_triage",
+				step: {
+					id: activeStep.id,
+					field: activeStep.field,
+					type: activeStep.type,
+					prompt: activeStep.prompt,
+					aiIntent: activeStep.aiIntent || null,
+					options: Array.isArray(activeStep.options)
+						? activeStep.options.map((option) => option?.label).filter(Boolean)
+						: [],
+				},
+				context: {
+					careIntent: payload?.careIntent || null,
+					hospitalName,
+					selectionLabel,
+				},
+			})
+			.then((result) => {
+				if (!cancelled && result?.prompt) {
+					setCopilotPrompt(result.prompt);
+				}
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [
+		activeStep?.aiIntent,
+		activeStep?.field,
+		activeStep?.id,
+		activeStep?.prompt,
+		activeStep?.type,
+		hospitalName,
+		payload?.careIntent,
+		selectionLabel,
+	]);
+
+	useEffect(() => {
+		const hasDraft = hasMeaningfulTriageDraftData(draft);
+		if (
+			!activeAmbulanceTrip?.requestId ||
+			typeof patchActiveAmbulanceTrip !== "function" ||
+			(!hasDraft && !liveTriageSnapshot)
+		) {
+			return;
+		}
+		const requestMatches =
+			!activeRequestId ||
+			String(activeRequestId) === String(activeAmbulanceTrip.requestId) ||
+			String(activeRequestId) === String(activeAmbulanceTrip.id);
+		if (!requestMatches) return;
+
+		patchActiveAmbulanceTrip({
+			triage: liveTriageSnapshot,
+			triageSnapshot: liveTriageSnapshot,
+			triageCheckin: hasDraft ? draft : null,
+			triageProgress: triageProgressMeta,
+		});
+	}, [
+		activeAmbulanceTrip?.id,
+		activeAmbulanceTrip?.requestId,
+		activeRequestId,
+		draft,
+		liveTriageSnapshot,
+		patchActiveAmbulanceTrip,
+		triageProgressMeta,
+	]);
+
+	useEffect(() => {
+		if (!activeRequestId || !liveTriageSnapshot) return undefined;
+		const signature = JSON.stringify({
+			requestId: activeRequestId,
+			progress: liveTriageSnapshot.progress,
+			userCheckin: liveTriageSnapshot.signals?.userCheckin || null,
+		});
+		if (liveSaveRef.current.signature === signature) return undefined;
+		if (liveSaveRef.current.timer) {
+			clearTimeout(liveSaveRef.current.timer);
+		}
+		liveSaveRef.current.timer = setTimeout(() => {
+			liveSaveRef.current.signature = signature;
+			emergencyRequestsService
+				.updateTriage(activeRequestId, liveTriageSnapshot, {
+					reason: "map_triage_live_update",
+				})
+				.catch(() => undefined);
+		}, 650);
+		return () => {
+			if (liveSaveRef.current.timer) {
+				clearTimeout(liveSaveRef.current.timer);
+			}
+		};
+	}, [activeRequestId, liveTriageSnapshot]);
 
 	const persistCommitFlow = useCallback(
 		(nextDraft, nextStepId, nextShowExtendedComplaints) => {
+			const nextSnapshot =
+				hasMeaningfulTriageDraftData(nextDraft) && nextStepId
+					? buildCommitTriageSnapshot({
+							triageDraft: nextDraft,
+							hospitals,
+							hospitalId: hospital?.id || null,
+							serviceType:
+								payload?.careIntent === "bed" && !transport ? "bed" : "ambulance",
+							specialty: selectedSpecialty || null,
+							medicalProfile,
+							emergencyContacts,
+						})
+					: null;
+
 			setCommitFlow?.({
 				phase: "commit_triage",
 				phaseSnapState: MAP_SHEET_SNAP_STATES.EXPANDED,
@@ -220,19 +441,12 @@ export default function MapCommitTriageStageBase({
 				transport: transport || null,
 				draft: payload?.draft || null,
 				triageDraft: hasMeaningfulTriageDraftData(nextDraft) ? nextDraft : null,
-				triageSnapshot:
-					hasMeaningfulTriageDraftData(nextDraft) &&
-					nextStepId &&
-					buildCommitTriageSnapshot({
-						triageDraft: nextDraft,
-						hospitals,
-						hospitalId: hospital?.id || null,
-						serviceType:
-							payload?.careIntent === "bed" && !transport ? "bed" : "ambulance",
-						specialty: selectedSpecialty || null,
-						medicalProfile,
-						emergencyContacts,
-					}),
+				triageSnapshot: nextSnapshot
+					? {
+						...nextSnapshot,
+						progress: buildTriageProgressMeta(steps, nextDraft, nextStepId),
+					}
+					: null,
 				activeStep: nextStepId || null,
 				showExtendedComplaints: Boolean(nextShowExtendedComplaints),
 				careIntent: payload?.careIntent || null,
@@ -251,6 +465,7 @@ export default function MapCommitTriageStageBase({
 			payload,
 			selectedSpecialty,
 			setCommitFlow,
+			steps,
 			transport,
 		],
 	);
@@ -264,8 +479,9 @@ export default function MapCommitTriageStageBase({
 			onConfirm?.(hospital, transport, {
 				draft: payload?.draft || null,
 				triageDraft: hasMeaningfulTriageDraftData(draft) ? draft : null,
-				triageSnapshot,
+				triageSnapshot: liveTriageSnapshot,
 				careIntent: payload?.careIntent || null,
+				requestId: activeRequestId || null,
 				roomId: payload?.roomId || null,
 				room: payload?.room || null,
 				showExtendedComplaints,
@@ -277,8 +493,10 @@ export default function MapCommitTriageStageBase({
 	}, [
 		activeStepId,
 		activeStepIndex,
+		activeRequestId,
 		draft,
 		hospital,
+		liveTriageSnapshot,
 		onConfirm,
 		payload?.careIntent,
 		payload?.draft,
@@ -287,7 +505,6 @@ export default function MapCommitTriageStageBase({
 		showExtendedComplaints,
 		steps,
 		transport,
-		triageSnapshot,
 	]);
 
 	const handleBack = useCallback(() => {
@@ -315,6 +532,7 @@ export default function MapCommitTriageStageBase({
 			triageDraft: null,
 			triageSnapshot: null,
 			careIntent: payload?.careIntent || null,
+			requestId: activeRequestId || null,
 			roomId: payload?.roomId || null,
 			room: payload?.room || null,
 			showExtendedComplaints: false,
@@ -322,6 +540,7 @@ export default function MapCommitTriageStageBase({
 	}, [
 		hospital,
 		onConfirm,
+		activeRequestId,
 		payload?.careIntent,
 		payload?.draft,
 		payload?.room,
@@ -357,6 +576,11 @@ export default function MapCommitTriageStageBase({
 	);
 	const orbRadius = Math.round(orbSize / 2);
 	const orbIconSize = Math.round(orbSize * 0.42);
+	const orbScale = orbPulse.interpolate({
+		inputRange: [0, 1],
+		outputRange: [1, 1.035],
+	});
+	const promptText = copilotPrompt || activeStep?.prompt;
 
 	if (!activeStep) return null;
 
@@ -427,7 +651,7 @@ export default function MapCommitTriageStageBase({
 								</Text>
 							</Pressable>
 						</View>
-						<View
+						<Animated.View
 							style={[
 								styles.avatarOrb,
 								{
@@ -435,17 +659,21 @@ export default function MapCommitTriageStageBase({
 									height: orbSize,
 									borderRadius: orbRadius,
 									backgroundColor: orbSurfaceColor,
+									shadowColor: orbSurfaceColor,
+									transform: [{ scale: orbScale }],
 								},
 							]}
 						>
+							<View style={styles.avatarOrbSheen} />
+							<View style={styles.avatarOrbDepth} />
 							<Ionicons
-								name={activeStep.type === "text" ? "document-text-outline" : "medkit-outline"}
+								name="medkit"
 								size={orbIconSize}
-								color={mutedColor}
+								color="#FFFFFF"
 							/>
-						</View>
+						</Animated.View>
 						<Text style={[styles.promptText, { color: titleColor }]}>
-							{activeStep.prompt}
+							{promptText}
 						</Text>
 						{isCritical ? (
 							<View

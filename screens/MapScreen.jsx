@@ -403,9 +403,9 @@ export default function MapScreen() {
         const trackingRequestId =
           triagePayload?.requestId ||
           sheetPayload?.requestId ||
-          pendingApproval?.requestId ||
           activeAmbulanceTrip?.requestId ||
           activeBedBooking?.requestId ||
+          pendingApproval?.requestId ||
           null;
         if (trackingRequestId && triagePayload?.triageSnapshot) {
           await emergencyRequestsService.updateTriage(
@@ -458,9 +458,9 @@ export default function MapScreen() {
       if (!targetHospital?.id) return;
       const trackingRequestId =
         trackingPayload?.requestId ||
-        pendingApproval?.requestId ||
         activeAmbulanceTrip?.requestId ||
         activeBedBooking?.requestId ||
+        pendingApproval?.requestId ||
         null;
       openCommitTriage(targetHospital, trackingPayload?.transport || null, {
         ...trackingPayload,
@@ -644,7 +644,6 @@ export default function MapScreen() {
 
   useEffect(() => {
     if (
-      !isActiveTrackingMap ||
       !activeAmbulanceTrip?.requestId ||
       typeof patchActiveAmbulanceTrip !== "function"
     ) {
@@ -692,7 +691,6 @@ export default function MapScreen() {
     activeAmbulanceTrip?.requestId,
     activeAmbulanceTrip?.startedAt,
     activeTripRouteSignature,
-    isActiveTrackingMap,
     patchActiveAmbulanceTrip,
     trackingRouteCoordinates,
     trackingRouteInfo?.durationSec,
@@ -719,7 +717,7 @@ export default function MapScreen() {
         onReadinessChange={handleMapReadinessChange}
         onRouteInfoChange={setTrackingRouteInfo}
         activeTracking={isActiveTrackingMap}
-        trackingTimeline={trackingTimeline}
+        trackingTimeline={activeAmbulanceTrip?.requestId ? trackingTimeline : null}
         headerOcclusionHeight={trackingHeaderOcclusionHeight}
         bottomSheetHeight={bottomSheetHeight}
         leftPanelWidth={sidebarOcclusionWidth}

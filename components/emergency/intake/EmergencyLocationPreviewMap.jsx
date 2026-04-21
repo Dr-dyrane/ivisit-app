@@ -411,9 +411,26 @@ export default function EmergencyLocationPreviewMap({
 		}),
 		[fallbackRouteInfo.distanceMeters, fallbackRouteInfo.durationSec, routeInfo?.distanceMeters, routeInfo?.durationSec],
 	);
+	const hasActiveTrackingTimeline = useMemo(() => {
+		const etaSeconds = Number(trackingTimeline?.etaSeconds);
+		const rawStartedAt = trackingTimeline?.startedAtMs ?? trackingTimeline?.startedAt;
+		const startedAtMs = Number.isFinite(rawStartedAt)
+			? Number(rawStartedAt)
+			: typeof rawStartedAt === "string"
+				? Date.parse(rawStartedAt)
+				: NaN;
+		return (
+			(Number.isFinite(etaSeconds) && etaSeconds > 0) ||
+			Number.isFinite(startedAtMs)
+		);
+	}, [
+		trackingTimeline?.etaSeconds,
+		trackingTimeline?.startedAt,
+		trackingTimeline?.startedAtMs,
+	]);
 	const shouldAnimateAmbulance =
 		serviceMarkerKind === "ambulance" &&
-		activeTracking &&
+		(activeTracking || hasActiveTrackingTimeline) &&
 		previewRouteCoordinates.length >= 2 &&
 		Number.isFinite(resolvedRouteInfo.durationSec) &&
 		resolvedRouteInfo.durationSec > 0;
@@ -463,7 +480,11 @@ export default function EmergencyLocationPreviewMap({
 		initialProgress: initialAnimationProgress,
 	});
 	useEffect(() => {
-		if (!__DEV__ || serviceMarkerKind !== "ambulance" || !activeTracking) return;
+		if (
+			!__DEV__ ||
+			serviceMarkerKind !== "ambulance" ||
+			(!activeTracking && !hasActiveTrackingTimeline)
+		) return;
 		const sourceMode = shouldAnimateAmbulance
 			? "simulated_route_polyline"
 			: hasLiveResponderCoordinate
@@ -479,6 +500,7 @@ export default function EmergencyLocationPreviewMap({
 	}, [
 		activeTracking,
 		animatedRouteCoordinates.length,
+		hasActiveTrackingTimeline,
 		hasLiveResponderCoordinate,
 		initialAnimationProgress,
 		serviceMarkerKind,

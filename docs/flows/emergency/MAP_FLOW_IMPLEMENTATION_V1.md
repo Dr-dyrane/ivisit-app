@@ -632,12 +632,76 @@ The `/map` tracking runtime now has a stricter truth order for ETA/progress and 
     - parsed `estimatedArrival` (fallback)
     - `startedAt` -> `createdAt` -> (`updatedAt - eta`) as final fallback
 - **Canonical route priority** for animated ambulance:
-  - [MapScreen.jsx](../../../screens/MapScreen.jsx) now passes `activeAmbulanceTrip.route` into the map layer.
-  - [EmergencyLocationPreviewMap.jsx](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx) prefers that canonical tracking route over freshly fetched preview routes.
+  - [EmergencyLocationPreviewMap.jsx](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx) owns the visible `/map` route calculation.
+  - during active tracking, the ambulance marker must use the same rendered polyline route, not a synthetic responder coordinate that can drift outside the line.
+  - [MapScreen.jsx](../../../screens/MapScreen.jsx) receives the map route callback and patches the route coordinates back into `activeAmbulanceTrip.route` for context recovery and demo heartbeat fallback.
 - **Polyline-adherent animation anchor**:
   - [useAmbulanceAnimation.js](../../../hooks/emergency/useAmbulanceAnimation.js) now accepts `initialProgress` and starts from the correct elapsed point on the route instead of always from route origin.
 - **Explicit source observability** in dev:
   - map logs current source mode (`live_responder`, `simulated_route_polyline`, `fallback_stationary`) for faster field debugging.
+
+Regression: tracking arrival showed `--` / `Live` until Metro reload.
+
+Observed behavior:
+
+- after payment, `TRACKING` mounted but the smart header still showed no arrival
+- changing/reloading state later made arrival appear
+- ambulance could animate from a synthetic coordinate and visually leave the red route
+
+Root causes:
+
+- the visible `/map` route calculation lived in `EmergencyLocationPreviewMap`, but the active header read only `activeAmbulanceTrip.etaSeconds`
+- `activeAmbulanceTrip.etaSeconds` could be missing or string-typed, and the header helpers rejected non-number values with `Number.isFinite(...)`
+- live/synthetic responder coordinates were allowed to override route animation even when the rendered route polyline was available
+
+Fix:
+
+- [MapScreen.jsx](../../../screens/MapScreen.jsx) now backfills active-trip ETA, `startedAt`, and route coordinates from `trackingRouteInfo` as soon as the map route callback fires
+- [useMapExploreFlow.js](../../../hooks/map/exploreFlow/useMapExploreFlow.js) normalizes ETA seconds before formatting header minutes, arrival time, and elapsed/arrived state
+- [EmergencyLocationPreviewMap.jsx](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx) keeps active-tracking ambulance animation on the rendered route polyline and only falls back when no route exists
+- active-trip route backfill is no longer gated by the `TRACKING` sheet being visible; the map route callback can keep operational truth hydrated while the user is in another `/map` sheet
+- ambulance animation is keyed to an active tracking timeline, not to tracking sheet mount state, so closing/reopening tracking must not restart the visible ambulance from route origin
+
+Rule:
+
+- never rely on a remount, Metro reload, or sheet toggle to hydrate active tracking data
+- route-derived ETA must be pushed into active trip truth or consumed directly by the active header through an explicit state bridge
+- all ETA values crossing service/context boundaries must be normalized to finite seconds before UI formatting
+
+## Commit Triage Live State
+
+Triage is no longer a pre-payment blocker. It is a live, skippable request update surfaced from tracking as **My Information**.
+
+Current contract:
+
+- the map-native triage flow has six deterministic steps: urgent concern, breathing, consciousness, bleeding, pain, responder note
+- `MapCommitTriageStageBase` must seed from the active request snapshot first, then local commit payload fallback
+- every meaningful draft change patches `activeAmbulanceTrip.triage`, `triageSnapshot`, `triageCheckin`, and `triageProgress` immediately for live UI progress
+- every meaningful draft change also debounces a non-blocking `emergencyRequestsService.updateTriage(...)` call so the DB and console can catch up without blocking the patient
+- tracking progress reads the same six map triage steps; do not mix it with the legacy waiting-step set
+- AI/copilot prompt support is optional and must never change the deterministic six-step structure; static prompts remain the fallback
+
+Regression guarded:
+
+- opening **My Information** after answering triage should resume from the first unanswered step, not restart from question one
+- closing and reopening tracking must keep the triage ring progress from active request state, not local sheet payload only
+
+## Commit Payment Method Hydration
+
+Regression guarded: `COMMIT_PAYMENT` could show `Select payment` until the user expanded/collapsed the sheet because payment methods were only hydrated by the expanded selector.
+
+Fix:
+
+- `MapCommitPaymentStageBase` now refreshes payment methods on phase entry, independently of whether the expanded selector is mounted
+- the refresh builds the same checkout-aware snapshot used by the selector: saved cards, wallet balance, cached default, cash eligibility, and demo cash-only mode
+- method selection/addition triggers a parent refresh and revalidation before the final pay CTA becomes actionable again
+- the footer CTA shows a loading/disabled `Checking payment` state until the selected method snapshot is ready
+
+Rule:
+
+- `PaymentMethodSelector` is the detailed picker, not the source of first render truth for `COMMIT_PAYMENT`
+- half snap must never depend on expanding the sheet to hydrate a payment method
+- after method mutation, refresh/reconcile from payment services before enabling pay
 
 ## Next Steps
 

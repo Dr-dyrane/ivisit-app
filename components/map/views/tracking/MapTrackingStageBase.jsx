@@ -31,11 +31,11 @@ import { useBedBookingProgress } from "../../../../hooks/emergency/useBedBooking
 import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsService";
 import { paymentService } from "../../../../services/paymentService";
 import {
-	buildLegacyTriageSteps,
 	hasMeaningfulTriageDraftData,
 	normalizeTriageDraft,
 	triageStepAnswered,
 } from "../../../emergency/triage/triageFlow.shared";
+import { buildMapCommitTriageSteps } from "../commitTriage/mapCommitTriage.helpers";
 import { ServiceRatingModal } from "../../../emergency/ServiceRatingModal";
 import { COLORS } from "../../../../constants/colors";
 import { getAmbulanceVisualProfile } from "../../../emergency/requestModal/ambulanceTierVisuals";
@@ -235,6 +235,8 @@ function MapTrackingTopSlot({
 	triageSurfaceColor,
 	triageIconColor,
 	triageIconName = "medkit",
+	triageRingColor,
+	triageTrackColor,
 	onToggle,
 	onOpenTriage,
 	showTriage = false,
@@ -245,8 +247,9 @@ function MapTrackingTopSlot({
 	toggleAccessibilityLabel = "Toggle tracking sheet size",
 }) {
 	const clampedProgress = Math.max(0, Math.min(1, Number(triageProgress) || 0));
-	const visualProgress = triageComplete ? 1 : Math.max(1 / 7, clampedProgress);
+	const visualProgress = triageComplete ? 1 : Math.max(1 / 6, clampedProgress);
 	const ringProgress = useRef(new Animated.Value(visualProgress)).current;
+	const breathProgress = useRef(new Animated.Value(0)).current;
 	const ringSize = 38;
 	const strokeWidth = 2.5;
 	const radius = (ringSize - strokeWidth) / 2;
@@ -261,19 +264,54 @@ function MapTrackingTopSlot({
 		}).start();
 	}, [ringProgress, visualProgress]);
 
+	useEffect(() => {
+		if (triageComplete) {
+			breathProgress.setValue(0);
+			return undefined;
+		}
+		const animation = Animated.loop(
+			Animated.sequence([
+				Animated.timing(breathProgress, {
+					toValue: 1,
+					duration: 1600,
+					useNativeDriver: true,
+				}),
+				Animated.timing(breathProgress, {
+					toValue: 0,
+					duration: 1600,
+					useNativeDriver: true,
+				}),
+			]),
+		);
+		animation.start();
+		return () => animation.stop();
+	}, [breathProgress, triageComplete]);
+
 	const ringDashOffset = ringProgress.interpolate({
 		inputRange: [0, 1],
 		outputRange: [circumference, 0],
 	});
+	const breathScale = breathProgress.interpolate({
+		inputRange: [0, 1],
+		outputRange: [1, 1.018],
+	});
 
 	const rightAction = showTriage ? (
-		<View style={styles.triageProgressWrap}>
+		<Animated.View
+			style={[
+				styles.triageProgressWrap,
+				{ transform: [{ scale: breathScale }] },
+			]}
+		>
 			<Svg width={ringSize} height={ringSize} style={styles.triageProgressSvg}>
 				<Circle
 					cx={ringSize / 2}
 					cy={ringSize / 2}
 					r={radius}
-					stroke={triageComplete ? "rgba(22,163,74,0.35)" : "rgba(148,163,184,0.34)"}
+					stroke={
+						triageTrackColor ||
+						(triageComplete ? "rgba(22,163,74,0.35)" : "rgba(148,163,184,0.34)")
+					}
 					strokeWidth={strokeWidth}
 					fill="none"
 				/>
@@ -281,7 +319,10 @@ function MapTrackingTopSlot({
 					cx={ringSize / 2}
 					cy={ringSize / 2}
 					r={radius}
-					stroke={triageComplete ? "#16A34A" : COLORS.brandPrimary}
+					stroke={
+						triageRingColor ||
+						(triageComplete ? "#16A34A" : COLORS.brandPrimary)
+					}
 					strokeWidth={strokeWidth}
 					fill="none"
 					strokeLinecap="round"
@@ -299,7 +340,7 @@ function MapTrackingTopSlot({
 				pressableStyle={styles.topSlotAction}
 				style={styles.topSlotActionButton}
 			/>
-		</View>
+		</Animated.View>
 	) : (
 		<View style={styles.topSlotSpacer} />
 	);
@@ -655,36 +696,49 @@ export default function MapTrackingStageBase({
 		responder?.type || null,
 		responder?.rating ? `${responder.rating}` : null,
 	]);
+	const trackingKind = activeAmbulanceTrip?.requestId
+		? "ambulance"
+		: activeBedBooking?.requestId
+			? "bed"
+			: pendingApproval?.requestId
+				? "pending"
+				: "idle";
 	const triageRequestId =
-		pendingApproval?.requestId ||
 		activeAmbulanceTrip?.requestId ||
 		activeBedBooking?.requestId ||
+		pendingApproval?.requestId ||
 		null;
 	const triageRequestDraft = useMemo(
 		() =>
 			normalizeTriageDraft(
-				pendingApproval?.triageSnapshot?.signals?.userCheckin ||
-					pendingApproval?.initiatedData?.triageCheckin ||
+				activeAmbulanceTrip?.triage?.signals?.userCheckin ||
 					activeAmbulanceTrip?.triageSnapshot?.signals?.userCheckin ||
 					activeAmbulanceTrip?.triageCheckin ||
+					activeBedBooking?.triage?.signals?.userCheckin ||
 					activeBedBooking?.triageSnapshot?.signals?.userCheckin ||
 					activeBedBooking?.triageCheckin ||
+					pendingApproval?.triage?.signals?.userCheckin ||
+					pendingApproval?.triageSnapshot?.signals?.userCheckin ||
+					pendingApproval?.initiatedData?.triageCheckin ||
 					null,
 			),
 		[
+			activeAmbulanceTrip?.triage?.signals?.userCheckin,
 			activeAmbulanceTrip?.triageCheckin,
 			activeAmbulanceTrip?.triageSnapshot?.signals?.userCheckin,
+			activeBedBooking?.triage?.signals?.userCheckin,
 			activeBedBooking?.triageCheckin,
 			activeBedBooking?.triageSnapshot?.signals?.userCheckin,
 			pendingApproval?.initiatedData?.triageCheckin,
+			pendingApproval?.triage?.signals?.userCheckin,
 			pendingApproval?.triageSnapshot?.signals?.userCheckin,
 		],
 	);
 	const triageSteps = useMemo(
-		() => buildLegacyTriageSteps("waiting", triageRequestDraft, false),
-		[triageRequestDraft],
+		() => buildMapCommitTriageSteps(false),
+		[],
 	);
-	const triageDisplayTotalSteps = Math.max(7, triageSteps.length || 0);
+	const triageDisplayTotalSteps = Math.max(6, triageSteps.length || 0);
 	const triageAnsweredCount = useMemo(
 		() =>
 			triageSteps.filter((step) => triageStepAnswered(step, triageRequestDraft)).length,
@@ -748,13 +802,6 @@ export default function MapTrackingStageBase({
 		nowMs,
 	});
 
-	const trackingKind = activeAmbulanceTrip?.requestId
-		? "ambulance"
-		: activeBedBooking?.requestId
-			? "bed"
-			: pendingApproval?.requestId
-				? "pending"
-				: "idle";
 	const resolvedStatus = String(
 		(activeAmbulanceTrip?.status ||
 			activeBedBooking?.status ||
@@ -930,10 +977,46 @@ export default function MapTrackingStageBase({
 	const actionSurfaceColor = isDarkMode
 		? "rgba(255,255,255,0.07)"
 		: "rgba(255,255,255,0.82)";
-	const triageActionSurface = isDarkMode
-		? "rgba(180,35,24,0.22)"
-		: "rgba(180,35,24,0.14)";
-	const triageActionIconColor = COLORS.brandPrimary;
+	const triageProgressTone = triageIsComplete
+		? "complete"
+		: triageAnsweredCount > 0
+			? "partial"
+			: "empty";
+	const triageActionSurface =
+		triageProgressTone === "complete"
+			? isDarkMode
+				? "rgba(34,197,94,0.18)"
+				: "rgba(22,163,74,0.12)"
+			: triageProgressTone === "partial"
+				? isDarkMode
+					? "rgba(245,158,11,0.20)"
+					: "rgba(245,158,11,0.14)"
+				: isDarkMode
+					? "rgba(180,35,24,0.18)"
+					: "rgba(180,35,24,0.10)";
+	const triageActionIconColor =
+		triageProgressTone === "complete"
+			? isDarkMode
+				? "#86EFAC"
+				: "#16A34A"
+			: triageProgressTone === "partial"
+				? isDarkMode
+					? "#FCD34D"
+					: "#D97706"
+				: COLORS.brandPrimary;
+	const triageRingColor = triageActionIconColor;
+	const triageTrackColor =
+		triageProgressTone === "complete"
+			? isDarkMode
+				? "rgba(134,239,172,0.24)"
+				: "rgba(22,163,74,0.20)"
+			: triageProgressTone === "partial"
+				? isDarkMode
+					? "rgba(252,211,77,0.22)"
+					: "rgba(217,119,6,0.18)"
+				: isDarkMode
+					? "rgba(180,35,24,0.22)"
+					: "rgba(180,35,24,0.16)";
 	const routeGradientColors = isDarkMode
 		? ["rgba(255,255,255,0.04)", "rgba(255,255,255,0.00)", "rgba(255,255,255,0.02)"]
 		: ["rgba(15,23,42,0.02)", "rgba(15,23,42,0.00)", "rgba(15,23,42,0.03)"];
@@ -978,10 +1061,7 @@ export default function MapTrackingStageBase({
 	const secondaryCtaSurface = isDarkMode
 		? "rgba(255,255,255,0.08)"
 		: "rgba(255,255,255,0.9)";
-	const bedCtaSurface = isDarkMode
-		? "rgba(22,163,74,0.24)"
-		: "rgba(22,163,74,0.14)";
-	const bedCtaColor = isDarkMode ? "#BBF7D0" : "#166534";
+	const bedCareBlueColor = isDarkMode ? "#38BDF8" : "#2563EB";
 	const destructiveCtaSurface = isDarkMode
 		? "rgba(180,35,24,0.18)"
 		: "rgba(180,35,24,0.10)";
@@ -1353,7 +1433,7 @@ export default function MapTrackingStageBase({
 			...(triageRequestId
 				? [
 						{
-							icon: "medkit-outline",
+							icon: "medkit",
 							label: "Check-in",
 							value: triageIsComplete
 								? "Complete"
@@ -1382,7 +1462,7 @@ export default function MapTrackingStageBase({
 			actions.push({
 				key: "info",
 				label: toTitleCaseLabel("My information"),
-				iconName: "medkit-outline",
+				iconName: "medkit",
 				onPress: openTrackingTriage,
 				loading: false,
 				tone: "info",
@@ -1657,9 +1737,7 @@ export default function MapTrackingStageBase({
 							showDivider={index < midActions.length - 1}
 							iconColor={
 								action.tone === "bed"
-									? isDarkMode
-										? "#4ADE80"
-										: "#15803D"
+									? bedCareBlueColor
 									: action.tone === "state"
 										? COLORS.brandPrimary
 										: isDarkMode
@@ -1730,6 +1808,8 @@ export default function MapTrackingStageBase({
 						triageSurfaceColor={triageActionSurface}
 						triageIconColor={triageActionIconColor}
 						triageIconName="medkit"
+						triageRingColor={triageRingColor}
+						triageTrackColor={triageTrackColor}
 						onToggle={handleSheetToggle}
 						onOpenTriage={openTrackingTriage}
 						showTriage={Boolean(triageRequestId)}

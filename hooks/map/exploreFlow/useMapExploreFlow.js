@@ -1556,7 +1556,7 @@ export function useMapExploreFlow() {
         backgroundColor={trackingHeaderActionSurface}
         borderRadius={999}
         color={trackingHeaderActionColor}
-        iconName="medkit-outline"
+        iconName="medkit"
         onPress={() => requestTrackingHeaderAction("triage")}
         pressableStyle={{ marginRight: 6 }}
         style={{
