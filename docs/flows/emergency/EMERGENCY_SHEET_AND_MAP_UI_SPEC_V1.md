@@ -1685,6 +1685,9 @@ Tracking UI direction:
 - the bottom sheet should become a compact route card with arrival, minutes, distance, and expandable controls
 - route controls can include destination, share ETA, call, report issue, and cancel/end only when backend status rules allow it
 - ambulance animation should use realtime responder coordinates when available and smooth route-progress projection only as a fallback
+- `Share ETA` may ship first as a native share-sheet text action, but only with patient-facing fields
+- do not expose request ids or debug labels in shared payloads
+- the long-term standard is a public tokenized live tracking route, not raw text pretending to be live tracking
 
 ### 8.6 Database-backed commit lane
 

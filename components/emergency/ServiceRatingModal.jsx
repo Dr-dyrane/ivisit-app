@@ -28,6 +28,10 @@ import { paymentService } from "../../services/paymentService";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const TIP_PRESETS = [0, 5, 10, 20];
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
 
 export function ServiceRatingModal({
 	visible,
@@ -108,12 +112,58 @@ export function ServiceRatingModal({
 	}, [visible]);
 
 	const colors = useMemo(() => ({
-		bg: isDarkMode ? COLORS.bgDark : COLORS.bgLight,
+		bg: isDarkMode ? COLORS.bgDark : "#FCFDFE",
 		text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-		subtext: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted,
-		card: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt,
+		subtext: isDarkMode ? COLORS.textMutedDark : "#667085",
+		card: isDarkMode ? COLORS.bgDarkAlt : "#EEF2F6",
 		accent: COLORS.brandPrimary,
 	}), [isDarkMode]);
+	const sheetStyle = useMemo(
+		() => ({
+			transform: [{ translateY: slideAnim }],
+			backgroundColor: colors.bg,
+			height: modalHeight,
+			paddingHorizontal: 24,
+			paddingTop: 16,
+			borderTopLeftRadius: 40,
+			borderTopRightRadius: 40,
+			borderCurve: "continuous",
+		}),
+		[colors.bg, modalHeight, slideAnim],
+	);
+	const secondaryActionStyle = useMemo(
+		() => ({
+			backgroundColor: isDarkMode ? "rgba(255,255,255,0.10)" : "#E9EEF5",
+			shadowColor: "#020617",
+			shadowOpacity: isDarkMode ? 0.22 : 0.12,
+			shadowRadius: 18,
+			shadowOffset: { width: 0, height: 10 },
+			elevation: 4,
+			...squircle(28),
+		}),
+		[colors.card, isDarkMode],
+	);
+	const disabledPrimaryActionStyle = useMemo(
+		() => ({
+			backgroundColor: isDarkMode ? "rgba(255,255,255,0.12)" : "#E9EEF5",
+			opacity: 1,
+			...squircle(28),
+		}),
+		[isDarkMode],
+	);
+	const enabledPrimaryActionStyle = useMemo(
+		() => ({
+			backgroundColor: colors.accent,
+			opacity: 1,
+			shadowColor: "#020617",
+			shadowOpacity: isDarkMode ? 0.28 : 0.18,
+			shadowRadius: 22,
+			shadowOffset: { width: 0, height: 12 },
+			elevation: 8,
+			...squircle(28),
+		}),
+		[colors.accent, isDarkMode],
+	);
 
 	const currentTipAmount = useMemo(() => {
 		const normalizedCustomTip = Number.parseFloat(String(customTip || "").replace(/[^0-9.]/g, ""));
@@ -227,15 +277,20 @@ export function ServiceRatingModal({
 				</Animated.View>
 
 				<Animated.View
-					style={{
-						transform: [{ translateY: slideAnim }],
-						backgroundColor: colors.bg,
-						height: modalHeight,
-					}}
-					className="rounded-t-[40px] px-6 pt-4"
+					style={sheetStyle}
 				>
 					{/* Handle */}
-					<View className="w-12 h-1.5 bg-gray-500/20 rounded-full self-center mb-8" />
+					<View
+						className="self-center mb-8"
+						style={{
+							width: 48,
+							height: 6,
+							backgroundColor: isDarkMode
+								? "rgba(255,255,255,0.18)"
+								: "rgba(15,23,42,0.12)",
+							borderRadius: 999,
+						}}
+					/>
 
 					<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
 						<ScrollView
@@ -247,14 +302,21 @@ export function ServiceRatingModal({
 							{/* Header */}
 							<View className="items-center mb-8">
 								<View
-									className="w-16 h-16 rounded-2xl items-center justify-center mb-4"
-									style={{ backgroundColor: `${colors.accent}15` }}
+									className="w-16 h-16 items-center justify-center mb-4"
+									style={{
+										backgroundColor: `${colors.accent}15`,
+										...squircle(24),
+									}}
 								>
 									<Ionicons name={getServiceIcon()} size={32} color={colors.accent} />
 								</View>
 								<Text
-									className="text-3xl font-black tracking-tighter text-center mb-2"
-									style={{ color: colors.text }}
+									className="text-3xl text-center mb-2"
+									style={{
+										color: colors.text,
+										fontWeight: "700",
+										letterSpacing: -0.7,
+									}}
 								>
 									{title}
 								</Text>
@@ -271,8 +333,11 @@ export function ServiceRatingModal({
 							{/* Service Details */}
 							{serviceDetails && (
 								<View
-									className="rounded-2xl p-4 mb-6"
-									style={{ backgroundColor: colors.card }}
+									className="p-4 mb-6"
+									style={{
+										backgroundColor: colors.card,
+										...squircle(24),
+									}}
 								>
 									{serviceDetails.provider && (
 										<View className="flex-row items-center mb-3">
@@ -360,19 +425,20 @@ export function ServiceRatingModal({
 									className="text-base font-medium mb-3"
 									style={{ color: colors.text }}
 								>
-									Tell us more (optional)
+									Add a note
 								</Text>
 								<TextInput
 									value={comment}
 									onChangeText={setComment}
-									placeholder="Share your experience to help us improve..."
+									placeholder="Add a note"
 									placeholderTextColor={colors.subtext}
-									className="rounded-2xl p-4 text-base"
+									className="p-4 text-base"
 									style={{
 										color: colors.text,
 										backgroundColor: colors.card,
 										height: 100,
 										textAlignVertical: 'top',
+										...squircle(22),
 									}}
 									multiline
 								/>
@@ -403,9 +469,10 @@ export function ServiceRatingModal({
 													setIsCustomTip(false);
 													setSelectedTip(amount);
 												}}
-												className="px-4 py-2 rounded-xl"
+												className="px-4 py-2"
 												style={{
 													backgroundColor: isActive ? `${colors.accent}20` : colors.card,
+													...squircle(18),
 												}}
 											>
 												<Text
@@ -423,9 +490,10 @@ export function ServiceRatingModal({
 											setIsCustomTip(true);
 											setSelectedTip(0);
 										}}
-										className="px-4 py-2 rounded-xl"
+										className="px-4 py-2"
 										style={{
 											backgroundColor: isCustomTip ? `${colors.accent}20` : colors.card,
+											...squircle(18),
 										}}
 									>
 										<Text
@@ -444,8 +512,12 @@ export function ServiceRatingModal({
 										placeholder="Enter tip amount"
 										placeholderTextColor={colors.subtext}
 										keyboardType="decimal-pad"
-										className="rounded-2xl px-4 py-3 text-base mb-3"
-										style={{ color: colors.text, backgroundColor: colors.card }}
+										className="px-4 py-3 text-base mb-3"
+										style={{
+											color: colors.text,
+											backgroundColor: colors.card,
+											...squircle(20),
+										}}
 									/>
 								)}
 
@@ -475,32 +547,48 @@ export function ServiceRatingModal({
 										}
 										close();
 									}}
-									className="flex-1 h-14 rounded-2xl items-center justify-center"
-									style={{ backgroundColor: colors.card }}
+									className="flex-1"
+									style={({ pressed }) => [
+										pressed ? { opacity: 0.94, transform: [{ scale: 0.988 }] } : null,
+									]}
 								>
-									<Text
-										className="text-base font-semibold"
-										style={{ color: colors.text }}
+									<View
+										className="h-14 items-center justify-center"
+										style={secondaryActionStyle}
 									>
-										Skip
-									</Text>
+										<Text
+											className="text-base"
+											style={{ color: colors.text, fontWeight: "600" }}
+										>
+											Skip
+										</Text>
+									</View>
 								</Pressable>
 
 								<Pressable
 									onPress={handleSubmit}
 									disabled={rating < 1}
-									className="flex-1 h-14 rounded-2xl items-center justify-center"
-									style={{
-										backgroundColor: rating >= 1 ? colors.accent : colors.card,
-										opacity: rating >= 1 ? 1 : 0.5,
-									}}
+									className="flex-1"
+									style={({ pressed }) => [
+										pressed && rating >= 1
+											? { opacity: 0.96, transform: [{ scale: 0.988 }] }
+											: null,
+									]}
 								>
-									<Text
-										className="text-base font-semibold"
-										style={{ color: rating >= 1 ? COLORS.bgLight : colors.text }}
+									<View
+										className="h-14 items-center justify-center"
+										style={rating >= 1 ? enabledPrimaryActionStyle : disabledPrimaryActionStyle}
 									>
-										Submit
-									</Text>
+										<Text
+											className="text-base"
+											style={{
+												color: rating >= 1 ? COLORS.bgLight : colors.text,
+												fontWeight: "600",
+											}}
+										>
+											Submit
+										</Text>
+									</View>
 								</Pressable>
 							</View>
 						</ScrollView>

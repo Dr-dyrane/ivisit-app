@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
 	ActivityIndicator,
 	Animated,
-	Linking,
 	Pressable,
+	Share,
 	Text,
 	View,
 } from "react-native";
@@ -78,17 +78,6 @@ function resolveDistanceLabel(routeInfo, hospital) {
 	return formatHospitalDistanceLabel(hospital);
 }
 
-function resolveHospitalPhone(hospital) {
-	const source =
-		hospital?.phone ||
-		hospital?.phone_number ||
-		hospital?.phoneNumber ||
-		null;
-	if (typeof source !== "string" || !source.trim()) return null;
-	const normalized = source.replace(/[^\d+]/g, "");
-	return normalized || null;
-}
-
 function resolveHospitalAddress(hospital) {
 	return (
 		hospital?.formattedAddress ||
@@ -154,13 +143,13 @@ function getToneColors({ tone, isDarkMode }) {
 function joinDisplayParts(parts = []) {
 	return parts
 		.filter((part) => typeof part === "string" && part.trim())
-		.join(" · ");
+		.join(" \u00B7 ");
 }
 
 function joinSummaryParts(parts = []) {
 	return parts
 		.filter((part) => typeof part === "string" && part.trim())
-		.join(" · ");
+		.join(" \u00B7 ");
 }
 
 function resolveTransportServiceLabel(value) {
@@ -441,6 +430,9 @@ function TrackingTeamHeroCard({
 	title,
 	subtitle,
 	rightMeta,
+	stateLabel,
+	statePillBackgroundColor,
+	stateTextColor,
 	progressValue = 0,
 	avatarIcon = "person",
 	backgroundColor,
@@ -484,6 +476,26 @@ function TrackingTeamHeroCard({
 							>
 								{rightMeta}
 							</Text>
+							{stateLabel ? (
+								<View
+									style={[
+										styles.teamHeroStatePill,
+										statePillBackgroundColor
+											? { backgroundColor: statePillBackgroundColor }
+											: null,
+									]}
+								>
+									<Text
+										numberOfLines={1}
+										style={[
+											styles.teamHeroStateText,
+											{ color: stateTextColor || mutedColor },
+										]}
+									>
+										{stateLabel}
+									</Text>
+								</View>
+							) : null}
 						</View>
 					) : null}
 				</View>
@@ -497,6 +509,7 @@ function resolveCtaIconName(action = {}) {
 		info: "medkit",
 		bed: "bed",
 		home: "map",
+		share: "share",
 		arrived: "navigate-circle",
 		"check-in": "clipboard",
 		"complete-ambulance": "checkmark-circle",
@@ -509,10 +522,28 @@ function resolveCtaIconName(action = {}) {
 	return raw;
 }
 
-function renderCtaIcon(action, iconColor) {
+function renderCtaIcon(action, iconColor, isDarkMode = false) {
 	const iconName = resolveCtaIconName(action);
 	if (action?.iconFamily === "material-community") {
 		return <MaterialCommunityIcons name={iconName} size={32} color={iconColor} />;
+	}
+	if (action?.key === "share") {
+		return (
+			<View style={styles.shareEtaIconStack}>
+				<MaterialCommunityIcons
+					name="account-circle-outline"
+					size={34}
+					color={iconColor}
+				/>
+				<View style={[styles.shareEtaIconBadge, { backgroundColor: iconColor }]}>
+					<MaterialCommunityIcons
+						name="plus-thick"
+						size={10}
+						color={isDarkMode ? "#0F172A" : "#FFFFFF"}
+					/>
+				</View>
+			</View>
+		);
 	}
 	return <Ionicons name={iconName} size={32} color={iconColor} />;
 }
@@ -527,6 +558,7 @@ function TrackingCtaButton({
 	action,
 	iconColor,
 	labelColor,
+	isDarkMode = false,
 	showDivider = false,
 	isGrouped = false,
 }) {
@@ -544,7 +576,7 @@ function TrackingCtaButton({
 					<ActivityIndicator size="small" color={labelColor} />
 				) : (
 					<>
-						{renderCtaIcon(action, iconColor)}
+						{renderCtaIcon(action, iconColor, isDarkMode)}
 						<Text numberOfLines={1} style={[styles.ctaButtonText, { color: labelColor }]}>
 							{action.label}
 						</Text>
@@ -678,7 +710,6 @@ export default function MapTrackingStageBase({
 		currentLocation?.secondaryText ||
 		currentLocation?.formattedAddress ||
 		"";
-	const hospitalPhone = resolveHospitalPhone(resolvedHospital);
 	const responder = activeAmbulanceTrip?.assignedAmbulance || null;
 	const responderName =
 		responder?.crew?.[0] ||
@@ -687,15 +718,12 @@ export default function MapTrackingStageBase({
 		responder?.vehicleNumber ||
 		responder?.type ||
 		null;
-	const responderMeta = [responder?.type, responder?.rating ? `${responder.rating}` : null]
-		.filter(Boolean)
-		.join(" · ");
 	const responderPlate = responder?.vehicleNumber || responder?.plate || null;
-	const responderPhone = resolveHospitalPhone({ phone: responder?.phone });
 	const responderMetaText = joinDisplayParts([
 		responder?.type || null,
 		responder?.rating ? `${responder.rating}` : null,
 	]);
+	const responderSafetyMeta = responderPlate || responderMetaText || null;
 	const trackingKind = activeAmbulanceTrip?.requestId
 		? "ambulance"
 		: activeBedBooking?.requestId
@@ -924,6 +952,19 @@ export default function MapTrackingStageBase({
 							? "Ready"
 							: "Reserved"
 						: "Awaiting approval";
+	const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
+	const telemetryWarningLabel =
+		trackingKind === "ambulance" && telemetryState === "lost"
+			? "Tracking lost"
+			: trackingKind === "ambulance" && telemetryState === "stale"
+				? "Tracking delayed"
+				: null;
+	const telemetryHeroTone =
+		telemetryState === "lost"
+			? "critical"
+			: telemetryState === "stale"
+				? "warning"
+				: "normal";
 	const secondaryTrackingLabel =
 		activeAmbulanceTrip?.requestId && activeBedBooking?.requestId
 			? activeBedBooking?.status === "arrived"
@@ -950,18 +991,6 @@ export default function MapTrackingStageBase({
 		Array.isArray(responder?.crew) && responder.crew.length > 0
 			? `${responder.crew.length} crew`
 			: null;
-	const ambulanceDetailTitle =
-		responder?.name ||
-		resolveTransportServiceLabel(responder?.type) ||
-		serviceLabel ||
-		"Transport";
-	const ambulanceDetailSubtitle = joinDisplayParts([
-		responderPlate,
-		responder?.type && responder?.name
-			? resolveTransportServiceLabel(responder.type)
-			: null,
-		crewCountLabel,
-	]);
 	const trackingTone = getTrackingTone(
 		ambulanceTelemetryHealth,
 		trackingKind,
@@ -1053,6 +1082,26 @@ export default function MapTrackingStageBase({
 	const teamHeroProgressColor = isDarkMode
 		? "rgba(180,35,24,0.38)"
 		: "rgba(180,35,24,0.20)";
+	const teamHeroWarningSurface =
+		telemetryHeroTone === "critical"
+			? isDarkMode
+				? "rgba(69,10,10,0.72)"
+				: "rgba(254,226,226,0.94)"
+			: telemetryHeroTone === "warning"
+				? isDarkMode
+					? "rgba(69,42,10,0.72)"
+					: "rgba(254,243,199,0.94)"
+				: teamHeroSurface;
+	const teamHeroWarningProgressColor =
+		telemetryHeroTone === "critical"
+			? isDarkMode
+				? "rgba(239,68,68,0.24)"
+				: "rgba(239,68,68,0.16)"
+			: telemetryHeroTone === "warning"
+				? isDarkMode
+					? "rgba(251,191,36,0.20)"
+					: "rgba(251,191,36,0.14)"
+				: teamHeroProgressColor;
 	const secondaryCtaSurface = isDarkMode
 		? "rgba(255,255,255,0.08)"
 		: "rgba(255,255,255,0.9)";
@@ -1094,25 +1143,47 @@ export default function MapTrackingStageBase({
 		);
 	}, [canToggleSnapState, effectiveSnapState, onSnapStateChange]);
 
-	const handleCallHospital = useCallback(async () => {
-		if (!hospitalPhone) return;
-		const target = `tel:${hospitalPhone}`;
-		try {
-			await Linking.openURL(target);
-		} catch (_error) {
-			// Ignore failed call handoff.
-		}
-	}, [hospitalPhone]);
+	const handleShareEta = useCallback(async () => {
+		const statusLine = telemetryWarningLabel
+			? telemetryWarningLabel
+			: etaLabel && etaLabel !== "--"
+				? `${serviceLabel} arriving in ${etaLabel}`
+				: `${serviceLabel} is on the way`;
+		const detailLine = [distanceLabel && distanceLabel !== "--" ? distanceLabel : null]
+			.filter(Boolean)
+			.join(" \u00B7 ");
+		const messageLines = [
+			"iVisit update",
+			statusLine,
+			detailLine || null,
+			pickupLabel ? `Pickup: ${pickupLabel}` : null,
+			hospitalName ? `Hospital: ${hospitalName}` : null,
+			responderName && responderName !== "Driver assigned"
+				? `Driver: ${responderName}`
+				: null,
+			responderPlate ? `Vehicle: ${responderPlate}` : null,
+		].filter(Boolean);
 
-	const handleCallResponder = useCallback(async () => {
-		if (!responderPhone) return;
-		const target = `tel:${responderPhone}`;
 		try {
-			await Linking.openURL(target);
+			await Share.share({
+				title: "iVisit ETA",
+				subject: "iVisit ETA",
+				message: messageLines.join("\n"),
+			});
 		} catch (_error) {
-			// Ignore failed call handoff.
+			// Native share can be cancelled by the user; no UI error needed.
 		}
-	}, [responderPhone]);
+	}, [
+		distanceLabel,
+		etaLabel,
+		hospitalName,
+		pickupLabel,
+		responderName,
+		responderPlate,
+		serviceLabel,
+		telemetryLabel,
+		telemetryWarningLabel,
+	]);
 
 	const runBusyAction = useCallback(async (key, handler) => {
 		if (typeof handler !== "function") return;
@@ -1368,30 +1439,6 @@ export default function MapTrackingStageBase({
 		triageRequestId,
 	]);
 
-	const detailRows = useMemo(() => {
-		if (trackingKind === "idle") return [];
-		return [
-			{ label: "Status", value: telemetryLabel || "Active" },
-			{ label: "Request", value: requestLabel || "Active" },
-			...(responderName
-				? [{ label: "Responder", value: responderName }]
-				: []),
-			{
-				label: "Hospital",
-				value:
-					hospitalName +
-					(hospitalAddress ? ` · ${hospitalAddress}` : ""),
-			},
-		];
-	}, [
-		hospitalAddress,
-		hospitalName,
-		requestLabel,
-		responderName,
-		telemetryLabel,
-		trackingKind,
-	]);
-
 	const trackingDetailRows = useMemo(
 		() => [
 			...(requestLabel
@@ -1478,18 +1525,17 @@ export default function MapTrackingStageBase({
 			}
 		} else if (trackingKind === "ambulance") {
 			actions.push({
-				key: "home",
-				label: toTitleCaseLabel("Return home"),
-				iconName: "map",
-				onPress: () => onClose?.(),
+				key: "share",
+				label: "Share ETA",
+				iconName: "share-outline",
+				onPress: handleShareEta,
 				loading: false,
-				tone: "state",
+				tone: "share",
 			});
 		}
 		return actions;
 	}, [
-		onClose,
-		onSnapStateChange,
+		handleShareEta,
 		openTrackingTriage,
 		primaryAction,
 		secondaryActions,
@@ -1580,40 +1626,6 @@ export default function MapTrackingStageBase({
 						<View
 							style={[
 								styles.stopIconWrap,
-								{ backgroundColor: pickupIconSurfaceColor },
-							]}
-						>
-							<Ionicons name="navigate" size={18} color={toneColors.icon} />
-						</View>
-						<View style={styles.stopCopyWrap}>
-							<View style={styles.stopCopy}>
-								<Text style={[styles.stopLabel, { color: mutedColor }]}>Pickup</Text>
-								<Text numberOfLines={1} style={[styles.stopTitle, { color: titleColor }]}>
-									{pickupLabel}
-								</Text>
-								{pickupDetail ? (
-									<Text
-										numberOfLines={1}
-										style={[styles.stopSubtitle, { color: mutedColor }]}
-									>
-										{pickupDetail}
-									</Text>
-								) : null}
-							</View>
-							<LinearGradient
-								pointerEvents="none"
-								colors={routeFadeColors}
-								start={{ x: 0, y: 0.5 }}
-								end={{ x: 1, y: 0.5 }}
-								style={styles.stopFade}
-							/>
-						</View>
-					</View>
-
-					<View style={styles.stopRow}>
-						<View
-							style={[
-								styles.stopIconWrap,
 								{ backgroundColor: hospitalIconSurfaceColor },
 							]}
 						>
@@ -1631,6 +1643,40 @@ export default function MapTrackingStageBase({
 										style={[styles.stopSubtitle, { color: mutedColor }]}
 									>
 										{hospitalAddress}
+									</Text>
+								) : null}
+							</View>
+							<LinearGradient
+								pointerEvents="none"
+								colors={routeFadeColors}
+								start={{ x: 0, y: 0.5 }}
+								end={{ x: 1, y: 0.5 }}
+								style={styles.stopFade}
+							/>
+						</View>
+					</View>
+
+					<View style={styles.stopRow}>
+						<View
+							style={[
+								styles.stopIconWrap,
+								{ backgroundColor: pickupIconSurfaceColor },
+							]}
+						>
+							<Ionicons name="navigate" size={18} color={toneColors.icon} />
+						</View>
+						<View style={styles.stopCopyWrap}>
+							<View style={styles.stopCopy}>
+								<Text style={[styles.stopLabel, { color: mutedColor }]}>Pickup</Text>
+								<Text numberOfLines={1} style={[styles.stopTitle, { color: titleColor }]}>
+									{pickupLabel}
+								</Text>
+								{pickupDetail ? (
+									<Text
+										numberOfLines={1}
+										style={[styles.stopSubtitle, { color: mutedColor }]}
+									>
+										{pickupDetail}
 									</Text>
 								) : null}
 							</View>
@@ -1703,7 +1749,7 @@ export default function MapTrackingStageBase({
 		</>
 	) : null;
 
-	const midSnapContent = (
+	const trackingPrimaryContent = (
 		<>
 			<TrackingTeamHeroCard
 				title={trackingKind === "bed" ? serviceLabel : responderName || "Driver assigned"}
@@ -1712,11 +1758,18 @@ export default function MapTrackingStageBase({
 						? joinDisplayParts([hospitalName, secondaryTrackingLabel])
 						: toTitleCaseLabel(serviceLabel)
 				}
-				rightMeta={trackingKind === "ambulance" ? crewCountLabel : null}
+				rightMeta={
+					trackingKind === "ambulance"
+						? responderSafetyMeta || crewCountLabel
+						: null
+				}
+				stateLabel={telemetryWarningLabel}
+				statePillBackgroundColor={telemetryWarningLabel ? toneColors.surface : null}
+				stateTextColor={telemetryWarningLabel ? toneColors.text : null}
 				progressValue={trackingKind === "ambulance" ? ambulanceTripProgress : 0}
 				avatarIcon={trackingKind === "bed" ? "bed" : "person"}
-				backgroundColor={teamHeroSurface}
-				progressColor={teamHeroProgressColor}
+				backgroundColor={teamHeroWarningSurface}
+				progressColor={teamHeroWarningProgressColor}
 				titleColor={titleColor}
 				mutedColor={mutedColor}
 			/>
@@ -1728,10 +1781,15 @@ export default function MapTrackingStageBase({
 							key={`mid-${action.key}`}
 							action={action}
 							isGrouped
+							isDarkMode={isDarkMode}
 							showDivider={index < midActions.length - 1}
 							iconColor={
 								action.tone === "bed"
 									? bedCareBlueColor
+									: action.tone === "share"
+										? isDarkMode
+											? "#4ADE80"
+											: "#16A34A"
 									: action.tone === "state"
 										? COLORS.brandPrimary
 										: isDarkMode
@@ -1743,53 +1801,53 @@ export default function MapTrackingStageBase({
 					))}
 				</View>
 			) : null}
-
-			{bottomAction ? (
-				<View style={styles.cancelCtaWrap}>
-					<Pressable
-						onPress={bottomAction.onPress}
-						disabled={bottomAction.loading}
-						style={({ pressed }) => [
-							styles.cancelCtaButton,
-							isBottomCompletionAction
-								? styles.cancelCtaButtonPrimary
-								: styles.cancelCtaButtonSecondary,
-							pressed ? styles.ctaButtonPressed : null,
-						]}
-					>
-						<LinearGradient
-							colors={bottomActionGradientColors}
-							start={{ x: 0, y: 0 }}
-							end={{ x: 1, y: 1 }}
-							style={styles.cancelCtaFill}
-						>
-							<View
-								pointerEvents="none"
-								style={[
-									styles.cancelCtaHighlight,
-									{ opacity: isBottomCompletionAction ? 0.08 : 0.05 },
-								]}
-							/>
-							<View
-								pointerEvents="none"
-								style={[
-									styles.cancelCtaBottomShade,
-									{ opacity: isBottomCompletionAction ? 0.14 : 0.06 },
-								]}
-							/>
-							{bottomAction.loading ? (
-								<ActivityIndicator size="small" color={bottomActionSpinnerColor} />
-							) : (
-								<Text style={[styles.cancelCtaText, { color: bottomActionTextColor }]}>
-									{toTitleCaseLabel(bottomAction.label)}
-								</Text>
-							)}
-						</LinearGradient>
-					</Pressable>
-				</View>
-			) : null}
 		</>
 	);
+
+	const bottomActionContent = bottomAction ? (
+		<View style={styles.cancelCtaWrap}>
+			<Pressable
+				onPress={bottomAction.onPress}
+				disabled={bottomAction.loading}
+				style={({ pressed }) => [
+					styles.cancelCtaButton,
+					isBottomCompletionAction
+						? styles.cancelCtaButtonPrimary
+						: styles.cancelCtaButtonSecondary,
+					pressed ? styles.ctaButtonPressed : null,
+				]}
+			>
+				<LinearGradient
+					colors={bottomActionGradientColors}
+					start={{ x: 0, y: 0 }}
+					end={{ x: 1, y: 1 }}
+					style={styles.cancelCtaFill}
+				>
+					<View
+						pointerEvents="none"
+						style={[
+							styles.cancelCtaHighlight,
+							{ opacity: isBottomCompletionAction ? 0.08 : 0.05 },
+						]}
+					/>
+					<View
+						pointerEvents="none"
+						style={[
+							styles.cancelCtaBottomShade,
+							{ opacity: isBottomCompletionAction ? 0.14 : 0.06 },
+						]}
+					/>
+					{bottomAction.loading ? (
+						<ActivityIndicator size="small" color={bottomActionSpinnerColor} />
+					) : (
+						<Text style={[styles.cancelCtaText, { color: bottomActionTextColor }]}>
+							{toTitleCaseLabel(bottomAction.label)}
+						</Text>
+					)}
+				</LinearGradient>
+			</Pressable>
+		</View>
+	) : null;
 
 	const body =
 		trackingKind === "idle" ? (
@@ -1803,8 +1861,9 @@ export default function MapTrackingStageBase({
 			</View>
 		) : (
 			<View style={styles.sectionStack}>
+				{trackingPrimaryContent}
 				{expandedSnapContent}
-				{midSnapContent}
+				{bottomActionContent}
 			</View>
 		);
 

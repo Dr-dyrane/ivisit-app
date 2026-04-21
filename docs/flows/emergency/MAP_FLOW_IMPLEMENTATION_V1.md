@@ -668,6 +668,49 @@ Rule:
 - route-derived ETA must be pushed into active trip truth or consumed directly by the active header through an explicit state bridge
 - all ETA values crossing service/context boundaries must be normalized to finite seconds before UI formatting
 
+## Tracking Share ETA
+
+Current shipped behavior is intentionally scoped as a phase-one share lane.
+
+Current implementation:
+
+- `Share ETA` in tracking opens the native share sheet from [`MapTrackingStageBase.jsx`](../../../components/map/views/tracking/MapTrackingStageBase.jsx)
+- the shared payload is patient-facing plain text only:
+  - iVisit status line
+  - service label
+  - pickup
+  - hospital
+  - ETA when available
+  - distance when available
+  - driver / vehicle when available
+- internal request ids are not shared
+- this is acceptable as the interim version because it is fast, native, and does not pretend to be a live public tracker
+
+Share rules:
+
+- never expose internal request ids, raw database ids, or debug labels in patient-facing share payloads
+- do not claim live tracking unless the recipient can actually open a live tracking surface
+- keep the current share copy short and operational, not explanatory
+- if ETA is unavailable, degrade to a calm status line such as `Transport is on the way`
+
+Phase-two target:
+
+- issue a backend-owned share token for an active request
+- expose a public tracking route such as `/track/[token]`
+- show a live, privacy-shaped tracking view with:
+  - hospital
+  - pickup
+  - ambulance type label
+  - driver first name / avatar when allowed
+  - vehicle / plate when allowed
+  - live map progress, ETA, and status
+- auto-expire the share token when the request completes or is cancelled
+
+Decision:
+
+- keep the current native text share for now because it is sufficient for immediate testing and does not add backend scope
+- build the public tracking token lane later as the real `Share ETA` standard
+
 ## Commit Triage Live State
 
 Triage is no longer a pre-payment blocker. It is a live, skippable request update surfaced from tracking as **My Information**.
