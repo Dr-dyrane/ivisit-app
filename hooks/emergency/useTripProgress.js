@@ -28,32 +28,66 @@ export const useTripProgress = ({
 		return null;
 	}, [activeAmbulanceTrip?.estimatedArrival]);
 
+	const resolvedEtaSeconds = useMemo(() => {
+		if (
+			Number.isFinite(activeAmbulanceTrip?.etaSeconds) &&
+			activeAmbulanceTrip.etaSeconds > 0
+		) {
+			return Number(activeAmbulanceTrip.etaSeconds);
+		}
+		if (Number.isFinite(fallbackEtaSeconds) && fallbackEtaSeconds > 0) {
+			return Number(fallbackEtaSeconds);
+		}
+		return null;
+	}, [activeAmbulanceTrip?.etaSeconds, fallbackEtaSeconds]);
+
+	const resolvedStartedAtMs = useMemo(() => {
+		const explicitStartedAt = toTimestampMs(activeAmbulanceTrip?.startedAt);
+		if (Number.isFinite(explicitStartedAt)) return explicitStartedAt;
+
+		const createdAtMs = toTimestampMs(activeAmbulanceTrip?.createdAt);
+		if (Number.isFinite(createdAtMs)) return createdAtMs;
+
+		const updatedAtMs = toTimestampMs(activeAmbulanceTrip?.updatedAt);
+		if (Number.isFinite(updatedAtMs) && Number.isFinite(resolvedEtaSeconds)) {
+			return Math.max(0, updatedAtMs - resolvedEtaSeconds * 1000);
+		}
+
+		return null;
+	}, [
+		activeAmbulanceTrip?.createdAt,
+		activeAmbulanceTrip?.startedAt,
+		activeAmbulanceTrip?.updatedAt,
+		resolvedEtaSeconds,
+	]);
+
 	const remainingSeconds = useMemo(() => {
-		const eta = Number.isFinite(activeAmbulanceTrip?.etaSeconds) ? activeAmbulanceTrip.etaSeconds : fallbackEtaSeconds;
-		const startedAt = activeAmbulanceTrip?.startedAt;
-		const startedAtMs = toTimestampMs(startedAt);
+		const eta = resolvedEtaSeconds;
+		const startedAtMs = resolvedStartedAtMs;
 		if (!Number.isFinite(eta) || !Number.isFinite(startedAtMs)) return null;
 		const elapsedSec = (nowMs - startedAtMs) / 1000;
 		return Math.max(0, Math.round(eta - elapsedSec));
-	}, [activeAmbulanceTrip?.etaSeconds, activeAmbulanceTrip?.startedAt, fallbackEtaSeconds, nowMs]);
+	}, [nowMs, resolvedEtaSeconds, resolvedStartedAtMs]);
 
 	const tripProgress = useMemo(() => {
-		const eta = Number.isFinite(activeAmbulanceTrip?.etaSeconds) ? activeAmbulanceTrip.etaSeconds : fallbackEtaSeconds;
-		const startedAt = activeAmbulanceTrip?.startedAt;
-		const startedAtMs = toTimestampMs(startedAt);
+		const eta = resolvedEtaSeconds;
+		const startedAtMs = resolvedStartedAtMs;
 		if (!Number.isFinite(eta) || eta <= 0 || !Number.isFinite(startedAtMs))
 			return null;
 		const elapsedSec = (nowMs - startedAtMs) / 1000;
 		return Math.min(1, Math.max(0, elapsedSec / eta));
-	}, [activeAmbulanceTrip?.etaSeconds, activeAmbulanceTrip?.startedAt, fallbackEtaSeconds, nowMs]);
+	}, [nowMs, resolvedEtaSeconds, resolvedStartedAtMs]);
 
 	const computedStatus = useMemo(() => {
+		const status = String(activeAmbulanceTrip?.status ?? "").toLowerCase();
+		if (status === "completed") return "Complete";
+		if (status === "arrived") return "Arrived";
 		if (!Number.isFinite(tripProgress)) return "En Route";
 		if (tripProgress >= 1) return "Arrived";
 		if (tripProgress < 0.2) return "Dispatched";
 		if (tripProgress < 0.85) return "En Route";
 		return "Arriving";
-	}, [tripProgress]);
+	}, [activeAmbulanceTrip?.status, tripProgress]);
 
 	const formattedRemaining = useMemo(() => {
 		if (!Number.isFinite(remainingSeconds)) {
@@ -69,6 +103,8 @@ export const useTripProgress = ({
 	}, [remainingSeconds, activeAmbulanceTrip?.estimatedArrival]);
 
 	return {
+		resolvedEtaSeconds,
+		resolvedStartedAtMs,
 		remainingSeconds,
 		tripProgress,
 		computedStatus,

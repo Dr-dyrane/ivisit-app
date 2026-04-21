@@ -115,6 +115,7 @@ export const useAmbulanceAnimation = ({
 	routeCoordinates,
 	animateAmbulance,
 	ambulanceTripEtaSeconds,
+	initialProgress = 0,
 	responderLocation,
 	responderHeading,
 	onAmbulanceUpdate,
@@ -137,6 +138,9 @@ export const useAmbulanceAnimation = ({
 		stopAmbulanceAnimation();
 		const routeProfile = buildRouteProfile(routeCoordinates);
 		routeProfileRef.current = routeProfile;
+		const safeInitialProgress = Number.isFinite(initialProgress)
+			? Math.min(1, Math.max(0, Number(initialProgress)))
+			: 0;
 
 		if (
 			!routeProfile ||
@@ -148,7 +152,10 @@ export const useAmbulanceAnimation = ({
 		}
 
 		// Make marker visible immediately at the start of the route.
-		const startCoordinate = routeProfile.points[0];
+		const startCoordinate = getCoordinateAtDistance(
+			routeProfile,
+			safeInitialProgress * routeProfile.totalMeters
+		);
 		const firstHeading = calculateBearing(
 			routeProfile.points[0],
 			routeProfile.points[1]
@@ -156,7 +163,9 @@ export const useAmbulanceAnimation = ({
 		setAmbulanceCoordinate(startCoordinate);
 		setAmbulanceHeading(firstHeading);
 
-		animationStartTimeRef.current = Date.now();
+		const now = Date.now();
+		animationStartTimeRef.current =
+			now - safeInitialProgress * ambulanceTripEtaSeconds * 1000;
 
 		const animate = () => {
 			const now = Date.now();
@@ -197,6 +206,7 @@ export const useAmbulanceAnimation = ({
 			AMBULANCE_CONFIG.ANIMATION_INTERVAL
 		);
 	}, [
+		initialProgress,
 		routeCoordinates,
 		ambulanceTripEtaSeconds,
 		onAmbulanceUpdate,

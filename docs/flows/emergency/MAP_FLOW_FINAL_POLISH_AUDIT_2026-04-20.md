@@ -307,6 +307,14 @@ Confirmed by code audit:
 - console subscribes to `emergency_requests` and `payments`
 - map tracking handoff is now wired in code
 - tracking camera now prefers a wider active fit so patient, hospital, and responder remain visible together
+- tracking timeline normalization is now centralized in `useTripProgress`
+- tracking animation now prefers canonical trip route (`activeAmbulanceTrip.route`) when present
+- animation start point now respects elapsed progress instead of restarting at route origin
+- dev observability now logs runtime source mode for ambulance marker authority
+- `/map` touch lock root cause identified:
+  - `MapPhaseTransitionView` was full-screen and touch-active, blocking map gestures outside the visible sheet
+  - fixed with `pointerEvents="box-none"`
+  - `MapExploreLoadingOverlay` now uses the actual `pointerEvents` prop so hidden/fading overlay frames release map touches
 
 Not verified in this audit from runtime:
 

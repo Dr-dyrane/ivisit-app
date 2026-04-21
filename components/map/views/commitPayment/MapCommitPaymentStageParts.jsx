@@ -398,6 +398,9 @@ export function MapCommitPaymentSelectorCard({
 	const handleExpand = useCallback(() => {
 		setIsExpanded(true);
 	}, []);
+	const handleCollapse = useCallback(() => {
+		if (selectedMethod) setIsExpanded(false);
+	}, [selectedMethod]);
 	const handleSelectMethod = useCallback(
 		(method) => {
 			onMethodSelect?.(method);
@@ -409,12 +412,32 @@ export function MapCommitPaymentSelectorCard({
 	return (
 		<View style={[styles.selectorCard, { backgroundColor: surfaceColor }]}>
 			<View style={styles.selectorHeader}>
-				<Text style={[styles.selectorTitle, { color: titleColor }]}>{title}</Text>
-				{description ? (
-					<Text style={[styles.selectorDescription, { color: mutedColor }]}>
-						{description}
-					</Text>
-				) : null}
+				<View style={styles.selectorTitleRow}>
+					<View style={styles.selectorTitleCopy}>
+						<Text style={[styles.selectorTitle, { color: titleColor }]}>{title}</Text>
+						{description ? (
+							<Text style={[styles.selectorDescription, { color: mutedColor }]}>
+								{description}
+							</Text>
+						) : null}
+					</View>
+					{shouldShowSelector && selectedMethod ? (
+						<Pressable
+							onPress={handleCollapse}
+							accessibilityRole="button"
+							accessibilityLabel="Collapse payment methods"
+							style={({ pressed }) => [
+								styles.paymentChangePill,
+								{ backgroundColor: changePillSurfaceColor },
+								pressed ? styles.paymentSummaryRowPressed : null,
+							]}
+						>
+							<Text style={[styles.paymentChangeText, { color: accentColor }]}>
+								Done
+							</Text>
+						</Pressable>
+					) : null}
+				</View>
 			</View>
 			{shouldShowSelector ? (
 				<View style={styles.selectorBody}>
@@ -493,6 +516,191 @@ export function MapCommitPaymentBreakdownCard({
 				<Text style={[styles.breakdownTotalValue, { color: titleColor }]}>
 					{totalCostLabel}
 				</Text>
+			</View>
+		</View>
+	);
+}
+
+export function MapCommitPaymentInfoGroupCard({
+	titleColor,
+	mutedColor,
+	surfaceColor,
+	dividerColor,
+	rows = [],
+}) {
+	if (!Array.isArray(rows) || rows.length === 0) return null;
+
+	return (
+		<View style={[styles.infoGroupCard, { backgroundColor: surfaceColor }]}>
+			{rows.map((row, index) => (
+				<View key={`${row.label}-${index}`} style={styles.infoGroupRowWrap}>
+					<View style={styles.infoGroupRow}>
+						<Text style={[styles.infoGroupLabel, { color: mutedColor }]}>
+							{row.label}
+						</Text>
+						<Text
+							numberOfLines={1}
+							style={[styles.infoGroupValue, { color: titleColor }]}
+						>
+							{row.value}
+						</Text>
+					</View>
+					{index < rows.length - 1 ? (
+						<View
+							style={[
+								styles.infoGroupDivider,
+								{ backgroundColor: dividerColor },
+							]}
+						/>
+					) : null}
+				</View>
+			))}
+		</View>
+	);
+}
+
+export function MapCommitPaymentActionGroupCard({
+	titleColor,
+	mutedColor,
+	surfaceColor,
+	dividerColor,
+	actions = [],
+}) {
+	if (!Array.isArray(actions) || actions.length === 0) return null;
+
+	return (
+		<View style={[styles.actionGroupCard, { backgroundColor: surfaceColor }]}>
+			{actions.map((action, index) => (
+				<View key={`${action.key}-${index}`} style={styles.actionGroupRowWrap}>
+					<Pressable
+						onPress={action.onPress}
+						disabled={action.disabled}
+						accessibilityRole="button"
+						accessibilityLabel={action.title || action.label}
+						style={({ pressed }) => [
+							styles.actionGroupRow,
+							pressed && !action.disabled ? styles.actionGroupRowPressed : null,
+						]}
+					>
+						<View style={styles.actionGroupLeading}>
+							{action.imageSource ? (
+								<Image
+									source={action.imageSource}
+									style={[
+										styles.actionGroupImage,
+										action.imageStyle,
+									]}
+									resizeMode={action.imageResizeMode || "cover"}
+								/>
+							) : (
+								<View style={styles.actionGroupMedia}>
+									<Ionicons
+										name={action.icon || "ellipse"}
+										size={21}
+										color={action.iconColor || titleColor}
+									/>
+								</View>
+							)}
+							<View style={styles.actionGroupCopy}>
+								<Text
+									numberOfLines={1}
+									style={[styles.actionGroupLabel, { color: titleColor }]}
+								>
+									{action.title || action.label}
+								</Text>
+								{action.subtitle ? (
+									<Text
+										numberOfLines={1}
+										style={[
+											styles.actionGroupSubtitle,
+											{ color: action.subtitleColor || mutedColor },
+										]}
+									>
+										{action.subtitle}
+									</Text>
+								) : null}
+							</View>
+						</View>
+					</Pressable>
+					{index < actions.length - 1 ? (
+						<View
+							style={[
+								styles.actionGroupDivider,
+								{ backgroundColor: dividerColor },
+							]}
+						/>
+					) : null}
+				</View>
+			))}
+		</View>
+	);
+}
+
+export function MapCommitPaymentHeroBlade({
+	title,
+	subtitle,
+	rightMeta,
+	rightMetaIcon = "card",
+	gradientColors = null,
+	metaSurfaceColor = "rgba(255,255,255,0.15)",
+	avatarSurfaceColor = null,
+	avatarIconColor = "#FFFFFF",
+	glowColor = null,
+	backgroundColor,
+	accentColor,
+	titleColor,
+	mutedColor,
+	loading = false,
+}) {
+	return (
+		<View style={[styles.paymentHeroBlade, { backgroundColor }]}>
+			{gradientColors?.length ? (
+				<LinearGradient
+					pointerEvents="none"
+					colors={gradientColors}
+					start={{ x: 0, y: 0 }}
+					end={{ x: 1, y: 1 }}
+					style={styles.paymentHeroGradient}
+				/>
+			) : null}
+			<View
+				pointerEvents="none"
+				style={[styles.paymentHeroGlow, { backgroundColor: glowColor || accentColor }]}
+			/>
+			<View style={styles.paymentHeroContent}>
+				<View
+					style={[
+						styles.paymentHeroAvatar,
+						{ backgroundColor: avatarSurfaceColor || accentColor },
+					]}
+				>
+					<Ionicons name="card" size={20} color={avatarIconColor} />
+				</View>
+				<View style={styles.paymentHeroCopy}>
+					<Text numberOfLines={1} style={[styles.paymentHeroTitle, { color: titleColor }]}>
+						{title || "Payment"}
+					</Text>
+					{loading ? (
+						<View style={styles.paymentHeroSkeleton} />
+					) : subtitle ? (
+						<Text numberOfLines={1} style={[styles.paymentHeroSubtitle, { color: mutedColor }]}>
+							{subtitle}
+						</Text>
+					) : null}
+				</View>
+				{rightMeta ? (
+					<View
+						style={[
+							styles.paymentHeroRight,
+							{ backgroundColor: metaSurfaceColor },
+						]}
+					>
+						<Ionicons name={rightMetaIcon} size={13} color="#FFFFFF" />
+						<Text numberOfLines={1} style={styles.paymentHeroRightText}>
+							{rightMeta}
+						</Text>
+					</View>
+				) : null}
 			</View>
 		</View>
 	);
@@ -625,12 +833,13 @@ export function MapCommitPaymentFooter({
 	stageMetrics,
 	modalContainedStyle,
 	contentInsetStyle,
+	inline = false,
 }) {
 	return (
 		<View
 			style={[
-				stageMetrics?.footer?.dockStyle,
-				styles.footerDock,
+				inline ? styles.inlineFooterDock : stageMetrics?.footer?.dockStyle,
+				inline ? null : styles.footerDock,
 				contentInsetStyle,
 				modalContainedStyle,
 			]}

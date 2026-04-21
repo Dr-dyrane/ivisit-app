@@ -11,7 +11,6 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  ActivityIndicator,
   Modal,
   Animated
 } from 'react-native';
@@ -287,7 +286,53 @@ const PaymentMethodSelector = ({
   };
 
   if (loading) {
-    return <ActivityIndicator color={COLORS.brandPrimary} style={{ margin: 20 }} />;
+    return (
+      <View style={[styles.container, style]}>
+        <View style={styles.loadingList}>
+          {[0, 1, 2].map((index) => (
+            <View
+              key={`payment-method-skeleton-${index}`}
+              style={[styles.methodSkeletonCard, { backgroundColor: colors.cardBg }]}
+            >
+              <View
+                style={[
+                  styles.methodSkeletonIcon,
+                  {
+                    backgroundColor: isDarkMode
+                      ? 'rgba(255,255,255,0.08)'
+                      : 'rgba(15,23,42,0.08)',
+                  },
+                ]}
+              />
+              <View style={styles.methodSkeletonCopy}>
+                <View
+                  style={[
+                    styles.methodSkeletonLine,
+                    {
+                      width: index === 0 ? '58%' : '44%',
+                      backgroundColor: isDarkMode
+                        ? 'rgba(255,255,255,0.12)'
+                        : 'rgba(15,23,42,0.10)',
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.methodSkeletonLineSmall,
+                    {
+                      width: index === 1 ? '52%' : '38%',
+                      backgroundColor: isDarkMode
+                        ? 'rgba(255,255,255,0.07)'
+                        : 'rgba(15,23,42,0.06)',
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -338,6 +383,34 @@ const styles = StyleSheet.create({
   },
   listContent: {
     gap: 12,
+  },
+  loadingList: {
+    gap: 12,
+  },
+  methodSkeletonCard: {
+    minHeight: 80,
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  methodSkeletonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+  },
+  methodSkeletonCopy: {
+    flex: 1,
+    gap: 8,
+  },
+  methodSkeletonLine: {
+    height: 14,
+    borderRadius: 999,
+  },
+  methodSkeletonLineSmall: {
+    height: 10,
+    borderRadius: 999,
   },
   methodCard: {
     borderRadius: 24,

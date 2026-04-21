@@ -622,6 +622,23 @@ Hospital media should remain a data-layer concern.
 - Existing hospitals should be normalized through [`backfill_hospital_media.js`](../../../supabase/scripts/backfill_hospital_media.js) so the current UI receives stable image delivery without per-surface image logic.
 - When no trustworthy real image exists, deterministic fallback remains valid and should be preferred over misleading random media.
 
+## Tracking Reliability Hardening (Applied)
+
+The `/map` tracking runtime now has a stricter truth order for ETA/progress and ambulance movement:
+
+- **Single timeline source** for trip progress:
+  - [useTripProgress.js](../../../hooks/emergency/useTripProgress.js) now resolves one timeline from:
+    - `etaSeconds` (first)
+    - parsed `estimatedArrival` (fallback)
+    - `startedAt` -> `createdAt` -> (`updatedAt - eta`) as final fallback
+- **Canonical route priority** for animated ambulance:
+  - [MapScreen.jsx](../../../screens/MapScreen.jsx) now passes `activeAmbulanceTrip.route` into the map layer.
+  - [EmergencyLocationPreviewMap.jsx](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx) prefers that canonical tracking route over freshly fetched preview routes.
+- **Polyline-adherent animation anchor**:
+  - [useAmbulanceAnimation.js](../../../hooks/emergency/useAmbulanceAnimation.js) now accepts `initialProgress` and starts from the correct elapsed point on the route instead of always from route origin.
+- **Explicit source observability** in dev:
+  - map logs current source mode (`live_responder`, `simulated_route_polyline`, `fallback_stationary`) for faster field debugging.
+
 ## Next Steps
 
 For `ios-mobile` solidification, build in this order:
@@ -629,9 +646,9 @@ For `ios-mobile` solidification, build in this order:
 1. keep `MapScreen.jsx` thin
 2. add more sheet modes into `useMapExploreFlow.js`
 3. finish `COMMIT_DETAILS` as a map-native identity/contact phase
-4. add `COMMIT_TRIAGE` as the skippable pre-payment context phase
+4. keep triage skippable and available from tracking (`My Information`) instead of blocking pre-payment
 5. harden `COMMIT_PAYMENT` pending/approved/denied/failed states in the map sheet
-6. build `TRACKING` with active header + route sheet before retiring the remaining ambulance legacy seams
+6. continue polishing `TRACKING` action hierarchy and post-resolution states (rating + closure)
 7. keep remaining bridge modal tasks on `MapModalShell`
 8. add a `MapScreenOrchestrator` once Android and web variants start to diverge
 9. migrate any remaining map-adjacent legacy overlays only if they are reintroduced into `/map`

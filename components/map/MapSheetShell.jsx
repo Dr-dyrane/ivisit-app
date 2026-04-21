@@ -13,6 +13,7 @@ export default function MapSheetShell({
 	topSlot = null,
 	footerSlot = null,
 	handleFloatsOverContent = false,
+	bodyGestureEnabled = true,
 	onHandlePress,
 	children,
 }) {
@@ -134,10 +135,14 @@ export default function MapSheetShell({
 					) : null}
 					{children ? (
 						<View
-							{...(shouldUseBodyGestureRegion ? panResponder.panHandlers : {})}
+							{...(shouldUseBodyGestureRegion && bodyGestureEnabled
+								? panResponder.panHandlers
+								: {})}
 							style={[
 								styles.contentViewport,
-								shouldUseBodyGestureRegion ? styles.contentViewportGestureRegion : null,
+								shouldUseBodyGestureRegion && bodyGestureEnabled
+									? styles.contentViewportGestureRegion
+									: null,
 							]}
 						>
 							{children}

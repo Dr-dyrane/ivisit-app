@@ -33,6 +33,33 @@ import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/m
 import { calculateBearing } from "../utils/mapUtils";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
 
+function normalizeTrackingRouteCoordinates(route = []) {
+  if (!Array.isArray(route)) return [];
+  return route
+    .map((point) => ({
+      latitude: Number(point?.latitude),
+      longitude: Number(point?.longitude),
+    }))
+    .filter(
+      (point) =>
+        Number.isFinite(point.latitude) && Number.isFinite(point.longitude),
+    );
+}
+
+function buildRouteSignature(route = []) {
+  return normalizeTrackingRouteCoordinates(route)
+    .map(
+      (point) =>
+        `${point.latitude.toFixed(5)}:${point.longitude.toFixed(5)}`,
+    )
+    .join("|");
+}
+
+function hasUsableStartedAt(startedAt) {
+  if (Number.isFinite(startedAt)) return true;
+  return typeof startedAt === "string" && Number.isFinite(Date.parse(startedAt));
+}
+
 export default function MapScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
@@ -110,6 +137,7 @@ export default function MapScreen() {
     totalAvailableBeds,
     closeHospitalList,
     activeAmbulanceTrip,
+    patchActiveAmbulanceTrip,
     ambulanceTelemetryHealth,
     activeBedBooking,
     pendingApproval,
@@ -169,6 +197,7 @@ export default function MapScreen() {
   const [trackingRouteInfo, setTrackingRouteInfo] = useState({
     durationSec: null,
     distanceMeters: null,
+    coordinates: [],
   });
   const shouldShowMapControls = usesSidebarLayout
     ? !hasActiveMapModal && !hasFocusedSheetPhase
@@ -588,6 +617,83 @@ export default function MapScreen() {
     mapServiceMarkerKind,
   ]);
   const isActiveTrackingMap = sheetPhase === MAP_SHEET_PHASES.TRACKING;
+  const trackingRouteCoordinates = useMemo(
+    () => normalizeTrackingRouteCoordinates(trackingRouteInfo?.coordinates),
+    [trackingRouteInfo?.coordinates],
+  );
+  const activeTripRouteSignature = useMemo(
+    () => buildRouteSignature(activeAmbulanceTrip?.route),
+    [activeAmbulanceTrip?.route],
+  );
+  const trackingRouteSignature = useMemo(
+    () => buildRouteSignature(trackingRouteCoordinates),
+    [trackingRouteCoordinates],
+  );
+  const trackingTimeline = useMemo(
+    () => ({
+      etaSeconds:
+        activeAmbulanceTrip?.etaSeconds ?? trackingRouteInfo?.durationSec ?? null,
+      startedAt: activeAmbulanceTrip?.startedAt ?? null,
+    }),
+    [
+      activeAmbulanceTrip?.etaSeconds,
+      activeAmbulanceTrip?.startedAt,
+      trackingRouteInfo?.durationSec,
+    ],
+  );
+
+  useEffect(() => {
+    if (
+      !isActiveTrackingMap ||
+      !activeAmbulanceTrip?.requestId ||
+      typeof patchActiveAmbulanceTrip !== "function"
+    ) {
+      return;
+    }
+
+    const updates = {};
+    const routeEtaSeconds = Number(trackingRouteInfo?.durationSec);
+    const currentEtaSeconds = Number(activeAmbulanceTrip?.etaSeconds);
+    const hasPolylineRoute = trackingRouteCoordinates.length >= 2;
+
+    if (
+      Number.isFinite(routeEtaSeconds) &&
+      routeEtaSeconds > 0 &&
+      (!Number.isFinite(currentEtaSeconds) ||
+        currentEtaSeconds <= 0 ||
+        (hasPolylineRoute && Math.abs(routeEtaSeconds - currentEtaSeconds) > 15))
+    ) {
+      updates.etaSeconds = routeEtaSeconds;
+      updates.estimatedArrival = `${Math.max(1, Math.ceil(routeEtaSeconds / 60))} min`;
+      updates.etaSource = "map_route";
+    }
+
+    if (!hasUsableStartedAt(activeAmbulanceTrip?.startedAt)) {
+      updates.startedAt = Date.now();
+    }
+
+    if (
+      trackingRouteCoordinates.length >= 2 &&
+      trackingRouteSignature &&
+      trackingRouteSignature !== activeTripRouteSignature
+    ) {
+      updates.route = trackingRouteCoordinates;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      patchActiveAmbulanceTrip(updates);
+    }
+  }, [
+    activeAmbulanceTrip?.etaSeconds,
+    activeAmbulanceTrip?.requestId,
+    activeAmbulanceTrip?.startedAt,
+    activeTripRouteSignature,
+    isActiveTrackingMap,
+    patchActiveAmbulanceTrip,
+    trackingRouteCoordinates,
+    trackingRouteInfo?.durationSec,
+    trackingRouteSignature,
+  ]);
 
   return (
     <View
@@ -609,6 +715,7 @@ export default function MapScreen() {
         onReadinessChange={handleMapReadinessChange}
         onRouteInfoChange={setTrackingRouteInfo}
         activeTracking={isActiveTrackingMap}
+        trackingTimeline={trackingTimeline}
         headerOcclusionHeight={trackingHeaderOcclusionHeight}
         bottomSheetHeight={bottomSheetHeight}
         leftPanelWidth={sidebarOcclusionWidth}

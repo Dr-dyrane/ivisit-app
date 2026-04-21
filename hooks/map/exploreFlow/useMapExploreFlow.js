@@ -344,6 +344,7 @@ export function useMapExploreFlow() {
     commitFlow,
     setCommitFlow,
     clearCommitFlow,
+    patchActiveAmbulanceTrip,
   } = useEmergency();
 
   const { state: flowState, actions: flowActions } = useMapExploreFlowStore({
@@ -2324,6 +2325,7 @@ export function useMapExploreFlow() {
     featuredHospitals,
     totalAvailableBeds,
     activeAmbulanceTrip,
+    patchActiveAmbulanceTrip,
     ambulanceTelemetryHealth,
     activeBedBooking,
     pendingApproval,

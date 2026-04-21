@@ -163,9 +163,9 @@ export default function MapExploreLoadingOverlay({
 
 	return (
 		<Animated.View
+			pointerEvents={resolvedVisible ? "auto" : "none"}
 			style={[
 				styles.root,
-				resolvedVisible ? styles.rootInteractive : styles.rootPassive,
 				{ opacity },
 			]}
 		>

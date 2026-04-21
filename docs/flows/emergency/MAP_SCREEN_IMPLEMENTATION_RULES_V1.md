@@ -123,6 +123,21 @@ Rule:
 
 - do not replace the map instance to express a normal flow state change
 
+Touch contract:
+
+- full-screen wrappers that sit above the map must use `pointerEvents="box-none"`
+- phase transition wrappers must never intercept map gestures outside the visible sheet surface
+- hidden or fading loading overlays must set the actual React Native `pointerEvents` prop to `none`; do not rely on `pointerEvents` inside a style object for this release path
+- the sheet may receive touches only inside its visible host bounds
+- map pan, zoom, and controls must remain available in `/map` mid-snap phases unless a real blocking modal is open or the sheet is intentionally expanded over the map
+
+Regression captured:
+
+- `MapPhaseTransitionView` was a full-screen `flex: 1` wrapper above the map and defaulted to touch-active behavior
+- that made `/map` feel locked because the wrapper intercepted gestures while the visible sheet was only half-height
+- the fix is `pointerEvents="box-none"` on `MapPhaseTransitionView`
+- `MapExploreLoadingOverlay` must also release touches with `pointerEvents={resolvedVisible ? "auto" : "none"}` so its fade-out frame cannot block the map after loading
+
 ## 6. Persistent Sheet Rule
 
 The public map sheet is one shell, not many separate panels.

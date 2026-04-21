@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Text, View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useAuth } from "../../../../contexts/AuthContext";
@@ -42,14 +42,55 @@ import {
 	parseCommitPaymentAmount,
 } from "./mapCommitPayment.helpers";
 import {
+	MapCommitPaymentActionGroupCard,
 	MapCommitPaymentBreakdownCard,
 	MapCommitPaymentBreakdownSkeletonCard,
 	MapCommitPaymentFooter,
+	MapCommitPaymentHeroBlade,
 	MapCommitPaymentSelectorCard,
 	MapCommitPaymentStatusCard,
-	MapCommitPaymentSummaryCard,
 } from "./MapCommitPaymentStageParts";
 import styles from "./mapCommitPayment.styles";
+
+function getPaymentTransportTitle(transport) {
+	const raw = [
+		transport?.tierKey,
+		transport?.service_type,
+		transport?.serviceType,
+		transport?.service_name,
+		transport?.title,
+		transport?.label,
+	]
+		.filter(Boolean)
+		.join(" ")
+		.toLowerCase();
+
+	if (raw.includes("bls") || raw.includes("basic") || raw.includes("standard")) {
+		return "Everyday care";
+	}
+	if (raw.includes("als") || raw.includes("advanced") || raw.includes("cardiac")) {
+		return "Extra support";
+	}
+	if (raw.includes("icu") || raw.includes("critical") || raw.includes("intensive")) {
+		return "Hospital transfer";
+	}
+
+	return transport?.title || transport?.label || transport?.service_name || "Transport";
+}
+
+function getPaymentUserAvatarSource(user) {
+	const metadata = user?.user_metadata || user?.metadata || {};
+	const uri =
+		user?.imageUri ||
+		user?.avatarUrl ||
+		user?.avatar_url ||
+		metadata?.avatar_url ||
+		metadata?.picture ||
+		metadata?.photo_url ||
+		null;
+
+	return typeof uri === "string" && uri.trim() ? { uri: uri.trim() } : null;
+}
 
 export default function MapCommitPaymentStageBase({
 	sheetHeight,
@@ -61,6 +102,9 @@ export default function MapCommitPaymentStageBase({
 	onClose,
 	onConfirm,
 	onSnapStateChange,
+	onOpenHospitalDetailFromPayment,
+	onOpenTransportDetailFromPayment,
+	onCenterMapOnUserFromPayment,
 }) {
 	const { isDarkMode } = useTheme();
 	const { user } = useAuth();
@@ -256,8 +300,7 @@ export default function MapCommitPaymentStageBase({
 		hospital?.formatted_address ||
 		hospital?.addressLine ||
 		"Hospital";
-	const transportTitle =
-		transport?.title || transport?.service_name || transport?.label || "Transport";
+	const transportTitle = getPaymentTransportTitle(transport);
 	const transportSubtitle =
 		transport?.metaText ||
 		transport?.service_name ||
@@ -297,6 +340,7 @@ export default function MapCommitPaymentStageBase({
 		displayId: null,
 		requestId: null,
 	});
+	const paymentSelectorOffsetRef = useRef(270);
 
 	const demoCashOnly = useMemo(
 		() =>
@@ -452,20 +496,29 @@ export default function MapCommitPaymentStageBase({
 		"ambulance",
 	);
 	const roomImageSource = getHospitalDetailServiceImageSource(room || {}, "room");
+	const pickupAvatarSource = getPaymentUserAvatarSource(user);
 	const pickupLabel = buildCommitPaymentPickupLabel(currentLocation);
 	const totalCostValue = estimatedCost?.totalCost ?? estimatedCost?.total_cost ?? null;
 	const totalCostLabel = Number.isFinite(totalCostValue)
 		? `$${Number(totalCostValue).toFixed(2)}`
 		: null;
-	const selectedPaymentSummary = useMemo(() => {
-		if (!selectedPaymentMethod) return "Choose a method";
-		if (selectedPaymentMethod.is_cash) return "Cash - Provider confirmation";
-		if (selectedPaymentMethod.is_wallet) return "Wallet";
-		const brand = selectedPaymentMethod.brand || "Card";
-		const last4 = selectedPaymentMethod.last4
-			? ` ending in ${selectedPaymentMethod.last4}`
-			: "";
-		return `${brand}${last4}`;
+	const paymentHeroSubtitle = `${hospitalName} - ${
+		isBedFlow ? roomTitle : transportTitle
+	}`;
+	const paymentHeroGradientColors = isDarkMode
+		? ["rgba(185,28,28,0.92)", "rgba(127,29,29,0.78)", "rgba(15,23,42,0.92)"]
+		: ["rgba(185,28,28,0.94)", "rgba(220,38,38,0.84)", "rgba(79,70,229,0.74)"];
+	const paymentHeroMeta = useMemo(() => {
+		if (selectedPaymentMethod?.is_cash) {
+			return { label: "Cash", icon: "cash" };
+		}
+		if (selectedPaymentMethod?.is_wallet) {
+			return { label: "Wallet", icon: "wallet" };
+		}
+		if (selectedPaymentMethod) {
+			return { label: selectedPaymentMethod.brand || "Card", icon: "card" };
+		}
+		return { label: "Method", icon: "card-outline" };
 	}, [selectedPaymentMethod]);
 	const requestMeta = submissionState.displayId
 		? `${hospitalName} - ${submissionState.displayId}`
@@ -473,7 +526,7 @@ export default function MapCommitPaymentStageBase({
 	const requestMetaLabel = submissionState.displayId
 		? `${hospitalName} - ${submissionState.displayId}`
 		: requestMeta;
-	const headerSubtitle = `For ${hospitalName} - ${selectionHeaderLabel}`;
+	const headerSubtitle = hospitalName;
 	const isFailureState =
 		submissionState.kind === "failed" ||
 		submissionState.kind === "payment_declined";
@@ -492,61 +545,109 @@ export default function MapCommitPaymentStageBase({
 				: MAP_SHEET_SNAP_STATES.EXPANDED,
 		);
 	}, [canToggleSnapState, effectiveSnapState, onSnapStateChange]);
-	const summaryRows = [
-		{
-			imageSource: hospitalImageSource,
-			iconName: "business",
-			title: hospitalName,
-			subtitle: hospitalSubtitle || "Hospital",
-			iconColor: accentColor,
-		},
-		...(isCombinedFlow
-			? [
-					{
-						imageSource: transportImageSource,
-						iconName: "car-sport",
-						title: transportTitle,
-						subtitle: transportSubtitle || "Transport",
-						iconColor: accentColor,
-					},
-			  ]
-			: []),
-		{
-			imageSource: isBedFlow || isCombinedFlow ? roomImageSource : transportImageSource,
-			iconName: isBedFlow || isCombinedFlow ? "bed-outline" : "car-sport",
-			title: isBedFlow || isCombinedFlow ? roomTitle : transportTitle,
-			subtitle: isBedFlow || isCombinedFlow ? roomSubtitle : transportSubtitle || "Transport",
-			iconColor: accentColor,
-		},
-		{
-			iconName: "location",
-			title: "My location",
-			subtitle: pickupLabel,
-			iconColor: accentColor,
-		},
-	];
+	const scrollToPaymentSelector = useCallback(() => {
+		bodyScrollRef?.current?.scrollTo?.({
+			y: Math.max(0, paymentSelectorOffsetRef.current - 12),
+			animated: true,
+		});
+	}, [bodyScrollRef]);
+	const openPaymentSelector = useCallback(() => {
+		setErrorMessage("");
+		setInfoMessage("");
+
+		if (
+			canToggleSnapState &&
+			effectiveSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED &&
+			typeof onSnapStateChange === "function"
+		) {
+			onSnapStateChange(MAP_SHEET_SNAP_STATES.EXPANDED);
+			setTimeout(scrollToPaymentSelector, 260);
+			return;
+		}
+
+		scrollToPaymentSelector();
+	}, [
+		canToggleSnapState,
+		effectiveSnapState,
+		onSnapStateChange,
+		scrollToPaymentSelector,
+	]);
 	const isIdleState = submissionState.kind === "idle";
-	const shouldUseHeroActionCta = !isExpandedPaymentView && isIdleState;
 	const canDismissStatusState =
 		submissionState.kind === "waiting_approval" ||
 		submissionState.kind === "dispatched" ||
 		(submissionState.kind === "finalizing_dispatch" && !isSubmitting);
-	const heroPrimaryActionTitle = isCombinedFlow
-		? "Soon"
-		: !selectedPaymentMethod
-			? "Select"
-			: selectedPaymentMethod?.is_cash
-			? "Request"
-			: isBedFlow
-				? "Book"
-				: "Pay";
-	const heroPrimaryActionValueLabel = isLoadingCost
-		? null
-		: totalCostLabel || selectedPaymentSummary;
-	const heroPrimaryActionHint = null;
-	const heroPrimaryActionDisabled =
-		isCombinedFlow || isSubmitting || isLoadingCost;
-	const footerActionLabel = isCombinedFlow
+	const midSnapActions = useMemo(
+		() => [
+			{
+				key: "hospital",
+				title: hospitalName,
+				subtitle: hospitalSubtitle || "Hospital",
+				imageSource: hospitalImageSource,
+				icon: "business",
+				iconColor: isDarkMode ? "#CBD5E1" : "#334155",
+				onPress: () =>
+					onOpenHospitalDetailFromPayment?.({
+						hospital,
+						payload,
+					}),
+				disabled: !hospital,
+			},
+			{
+				key: "ambulance",
+				title: isBedFlow ? roomTitle : transportTitle,
+				subtitle: isBedFlow
+					? roomSubtitle
+					: transport?.priceText || transportSubtitle || "Transport",
+				imageSource: isBedFlow ? roomImageSource : transportImageSource,
+				icon: isBedFlow ? "bed-outline" : "car-sport",
+				iconColor: isDarkMode ? "#FB7185" : "#BE123C",
+				onPress: () =>
+					onOpenTransportDetailFromPayment?.({
+						hospital,
+						transport,
+						payload,
+						snapState: effectiveSnapState,
+					}),
+				disabled: !hospital || !transport,
+			},
+			{
+				key: "location",
+				title: pickupLabel,
+				subtitle: "Pickup",
+				imageSource: pickupAvatarSource,
+				imageResizeMode: "cover",
+				imageStyle: styles.actionGroupAvatarImage,
+				icon: "person",
+				iconColor: isDarkMode ? "#CBD5E1" : "#475569",
+				onPress: () => onCenterMapOnUserFromPayment?.(),
+				disabled: false,
+			},
+		],
+		[
+			effectiveSnapState,
+			hospital,
+			hospitalImageSource,
+			hospitalName,
+			hospitalSubtitle,
+			isDarkMode,
+			isBedFlow,
+			onCenterMapOnUserFromPayment,
+			onOpenHospitalDetailFromPayment,
+			onOpenTransportDetailFromPayment,
+			payload,
+			pickupAvatarSource,
+			pickupLabel,
+			roomImageSource,
+			roomSubtitle,
+			roomTitle,
+			transport,
+			transportImageSource,
+			transportSubtitle,
+			transportTitle,
+		],
+	);
+	const expandedFooterActionLabel = isCombinedFlow
 		? "Combined payment soon"
 		: !selectedPaymentMethod
 			? "Select payment"
@@ -559,6 +660,13 @@ export default function MapCommitPaymentStageBase({
 					: isBedFlow
 						? "Book now"
 						: "Pay now";
+	const footerActionLabel = isExpandedPaymentView
+		? expandedFooterActionLabel
+		: !selectedPaymentMethod
+			? "Select payment"
+			: "Pay Now";
+	const footerActionDisabled =
+		isCombinedFlow || isSubmitting || (isLoadingCost && Boolean(selectedPaymentMethod));
 	const statusConfig =
 		submissionState.kind === "processing_payment"
 			? {
@@ -955,63 +1063,69 @@ export default function MapCommitPaymentStageBase({
 		totalCostValue,
 		showToast,
 	]);
+	const handleFooterPress = useCallback(() => {
+		if (isIdleState && !selectedPaymentMethod) {
+			openPaymentSelector();
+			return;
+		}
+
+		handleSubmit();
+	}, [handleSubmit, isIdleState, openPaymentSelector, selectedPaymentMethod]);
 
 	const body = submissionState.kind === "idle" ? (
 		<View style={styles.sectionStack}>
-			<MapCommitPaymentSummaryCard
-				titleColor={titleColor}
-				mutedColor={mutedColor}
-				surfaceColor={heroSurfaceColor}
-				headerTitle={null}
-				headerSubtitle={null}
-				selectionRows={summaryRows}
-				heroImageSource={hospitalImageSource}
-				heroImageOpacity={heroImageOpacity}
-				heroVeilColor={heroVeilColor}
-				heroTopMaskColors={heroTopMaskColors}
-				heroBlendColors={heroBlendColors}
-				heroBottomMergeColors={heroBottomMergeColors}
-				totalCostLabel={totalCostLabel}
-				mediaSurfaceColor={heroMediaSurfaceColor}
-				headerSurfaceColor={heroHeaderSurfaceColor}
-				headerOverlayColors={heroHeaderOverlayColors}
-				heroSubtitleColor={heroSubtitleColor}
-				headerSubtitleColor={heroSubtitleColor}
-				rowSurfaceColor={heroRowSurfaceColor}
-				rowOverlayColors={heroRowOverlayColors}
-				rowFadeColors={heroRowFadeColors}
-				accentColor={accentColor}
-				primaryActionTitle={heroPrimaryActionTitle}
-				primaryActionValueLabel={heroPrimaryActionValueLabel}
-				primaryActionHint={heroPrimaryActionHint}
-				onPrimaryAction={shouldUseHeroActionCta ? handleSubmit : undefined}
-				primaryActionInteractive={shouldUseHeroActionCta}
-				primaryActionDisabled={heroPrimaryActionDisabled}
-				primaryActionLoading={isSubmitting}
-				primaryActionShowsSkeleton={isLoadingCost}
-				primaryActionSurfaceColor={heroPrimarySurfaceColor}
+			<MapCommitPaymentHeroBlade
+				title={isLoadingCost ? "Total" : totalCostLabel || "Total"}
+				subtitle={paymentHeroSubtitle}
+				rightMeta={isLoadingCost ? null : paymentHeroMeta.label}
+				rightMetaIcon={paymentHeroMeta.icon}
+				gradientColors={paymentHeroGradientColors}
+				metaSurfaceColor="rgba(255,255,255,0.16)"
+				backgroundColor={heroSurfaceColor}
+				accentColor={heroPrimarySurfaceColor}
+				avatarSurfaceColor="rgba(255,255,255,0.18)"
+				glowColor="rgba(255,255,255,0.38)"
+				titleColor="#FFFFFF"
+				mutedColor="rgba(255,255,255,0.76)"
+				loading={isLoadingCost}
 			/>
 
-			<MapCommitPaymentSelectorCard
+			<MapCommitPaymentActionGroupCard
 				titleColor={titleColor}
 				mutedColor={mutedColor}
 				surfaceColor={secondarySurfaceColor}
-				accentColor={accentColor}
-				rowSurfaceColor={selectorSummarySurfaceColor}
-				changePillSurfaceColor={selectorChangePillSurfaceColor}
-				title={MAP_COMMIT_PAYMENT_COPY.PAYMENT_METHODS_TITLE}
-				description=""
-				selectedMethod={selectedPaymentMethod}
-				onMethodSelect={(method) => {
-					setSelectedPaymentMethod(method);
-					setErrorMessage("");
-				}}
-				cost={estimatedCost}
-				hospitalId={hospital?.id || null}
-				organizationId={hospital?.organization_id || hospital?.organizationId || null}
-				simulatePayments={demoCashOnly}
-				demoCashOnly={demoCashOnly}
+				dividerColor={dividerColor}
+				actions={midSnapActions}
 			/>
+
+			{isExpandedPaymentView ? (
+				<View
+					onLayout={(event) => {
+						paymentSelectorOffsetRef.current = event.nativeEvent.layout.y;
+					}}
+				>
+					<MapCommitPaymentSelectorCard
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						surfaceColor={secondarySurfaceColor}
+						accentColor={accentColor}
+						rowSurfaceColor={selectorSummarySurfaceColor}
+						changePillSurfaceColor={selectorChangePillSurfaceColor}
+						title={MAP_COMMIT_PAYMENT_COPY.PAYMENT_METHODS_TITLE}
+						description=""
+						selectedMethod={selectedPaymentMethod}
+						onMethodSelect={(method) => {
+							setSelectedPaymentMethod(method);
+							setErrorMessage("");
+						}}
+						cost={estimatedCost}
+						hospitalId={hospital?.id || null}
+						organizationId={hospital?.organization_id || hospital?.organizationId || null}
+						simulatePayments={demoCashOnly}
+						demoCashOnly={demoCashOnly}
+					/>
+				</View>
+			) : null}
 
 			{shouldShowExpandedBreakdown && isLoadingCost ? (
 				<MapCommitPaymentBreakdownSkeletonCard
@@ -1040,6 +1154,18 @@ export default function MapCommitPaymentStageBase({
 				<Text style={[styles.inlineMessage, { color: infoColor }]}>
 					{infoMessage}
 				</Text>
+			) : null}
+
+			{isIdleState ? (
+				<MapCommitPaymentFooter
+					label={footerActionLabel}
+					onPress={handleFooterPress}
+					loading={isSubmitting}
+					disabled={footerActionDisabled}
+					modalContainedStyle={modalContainedStyle}
+					contentInsetStyle={webWideInsetStyle}
+					inline
+				/>
 			) : null}
 		</View>
 	) : (
@@ -1101,19 +1227,9 @@ export default function MapCommitPaymentStageBase({
 					closeSurface={closeSurface}
 				/>
 			}
-			footerSlot={
-				isIdleState && isExpandedPaymentView ? (
-					<MapCommitPaymentFooter
-						label={footerActionLabel}
-						onPress={handleSubmit}
-						loading={isSubmitting}
-						disabled={heroPrimaryActionDisabled}
-						modalContainedStyle={modalContainedStyle}
-						contentInsetStyle={webWideInsetStyle}
-					/>
-				) : null
-			}
+			footerSlot={null}
 			onHandlePress={handleHeaderSnapToggle}
+			bodyGestureEnabled={false}
 		>
 			<MapStageBodyScroll
 				bodyScrollRef={bodyScrollRef}

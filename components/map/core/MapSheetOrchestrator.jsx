@@ -60,6 +60,9 @@ export default function MapSheetOrchestrator({
 	onConfirmCommitDetails = () => {},
 	onConfirmCommitTriage = () => {},
 	onConfirmCommitPayment = () => {},
+	onOpenHospitalDetailFromPayment = () => {},
+	onOpenTransportDetailFromPayment = () => {},
+	onCenterMapOnUserFromPayment = () => {},
 	onOpenServiceDetail = () => {},
 	onCloseServiceDetail = () => {},
 	onConfirmServiceDetail = () => {},
@@ -274,6 +277,9 @@ export default function MapSheetOrchestrator({
 						onClose={onCloseCommitPayment}
 						onConfirm={onConfirmCommitPayment}
 						onSnapStateChange={onSnapStateChange}
+						onOpenHospitalDetailFromPayment={onOpenHospitalDetailFromPayment}
+						onOpenTransportDetailFromPayment={onOpenTransportDetailFromPayment}
+						onCenterMapOnUserFromPayment={onCenterMapOnUserFromPayment}
 					/>
 				</MapPhaseTransitionView>
 			);

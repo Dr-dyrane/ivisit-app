@@ -26,6 +26,7 @@ export default function MapPhaseTransitionView({ children, phaseKey }) {
 
 	return (
 		<Animated.View
+			pointerEvents="box-none"
 			style={[
 				styles.container,
 				{
