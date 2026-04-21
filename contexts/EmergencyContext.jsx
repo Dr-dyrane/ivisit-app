@@ -555,6 +555,16 @@ export function EmergencyProvider({ children }) {
 						? Date.parse(activeAmbulance.createdAt)
 						: Date.now();
 					const etaSeconds = parseEtaToSeconds(activeAmbulance.estimatedArrival);
+					const triageSnapshot =
+						activeAmbulance.triageSnapshot ??
+						activeAmbulance.triage ??
+						(activeAmbulance.triageCheckin
+							? { signals: { userCheckin: activeAmbulance.triageCheckin } }
+							: null);
+					const triageCheckin =
+						activeAmbulance.triageCheckin ??
+						triageSnapshot?.signals?.userCheckin ??
+						null;
 					const hasResponderIdentity = !!(
 						activeAmbulance.responderName ||
 						activeAmbulance.responderPhone ||
@@ -569,7 +579,13 @@ export function EmergencyProvider({ children }) {
 						hospitalId: activeAmbulance.hospitalId,
 						requestId: activeAmbulance.requestId,
 						status: activeAmbulance.status,
-						triage: activeAmbulance.triage ?? null,
+						triage: triageSnapshot,
+						triageSnapshot,
+						triageCheckin,
+						triageProgress:
+							activeAmbulance.triageProgress ??
+							triageSnapshot?.progress ??
+							null,
 						estimatedArrival: activeAmbulance.estimatedArrival ?? null,
 						etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
 						startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
@@ -605,13 +621,29 @@ export function EmergencyProvider({ children }) {
 				if (activeBed) {
 					const startedAt = activeBed.createdAt ? Date.parse(activeBed.createdAt) : Date.now();
 					const etaSeconds = parseEtaToSeconds(activeBed.estimatedArrival);
+					const triageSnapshot =
+						activeBed.triageSnapshot ??
+						activeBed.triage ??
+						(activeBed.triageCheckin
+							? { signals: { userCheckin: activeBed.triageCheckin } }
+							: null);
+					const triageCheckin =
+						activeBed.triageCheckin ??
+						triageSnapshot?.signals?.userCheckin ??
+						null;
 					setActiveBedBooking({
 						id: activeBed.id ?? null,
 						hospitalId: activeBed.hospitalId,
 						bookingId: activeBed.bookingId ?? activeBed.requestId ?? null,
 						requestId: activeBed.requestId ?? activeBed.bookingId ?? null,
 						status: activeBed.status ?? null,
-						triage: activeBed.triage ?? null,
+						triage: triageSnapshot,
+						triageSnapshot,
+						triageCheckin,
+						triageProgress:
+							activeBed.triageProgress ??
+							triageSnapshot?.progress ??
+							null,
 						bedNumber: activeBed.bedNumber ?? null,
 						bedType: activeBed.bedType ?? null,
 						bedCount: activeBed.bedCount ?? null,
@@ -628,6 +660,12 @@ export function EmergencyProvider({ children }) {
 				const pendingMatch = activeRequests.find((r) => r?.status === "pending_approval");
 				if (pendingMatch) {
 					const pendingEtaSeconds = parseEtaToSeconds(pendingMatch.estimatedArrival);
+					const triageSnapshot =
+						pendingMatch.triageSnapshot ??
+						pendingMatch.triage ??
+						(pendingMatch.triageCheckin
+							? { signals: { userCheckin: pendingMatch.triageCheckin } }
+							: null);
 					setPendingApproval({
 						id: pendingMatch.id ?? null,
 						requestId: pendingMatch.requestId,
@@ -644,7 +682,15 @@ export function EmergencyProvider({ children }) {
 						paymentStatus: pendingMatch.paymentStatus ?? null,
 						estimatedArrival: pendingMatch.estimatedArrival ?? null,
 						etaSeconds: Number.isFinite(pendingEtaSeconds) ? pendingEtaSeconds : null,
-						triageSnapshot: pendingMatch.triage ?? null,
+						triageSnapshot,
+						triageCheckin:
+							pendingMatch.triageCheckin ??
+							triageSnapshot?.signals?.userCheckin ??
+							null,
+						triageProgress:
+							pendingMatch.triageProgress ??
+							triageSnapshot?.progress ??
+							null,
 					});
 				} else {
 					setPendingApproval(null);
@@ -1192,6 +1238,16 @@ export function EmergencyProvider({ children }) {
 				? { ...(discoveredAssigned || {}), ...explicitAssigned }
 				: discoveredAssigned;
 			const hospitalCoordinate = normalizeCoordinate(trip?.hospitalCoordinate);
+			const triageSnapshot =
+				trip?.triageSnapshot ??
+				trip?.triage ??
+				(trip?.triageCheckin
+					? { signals: { userCheckin: trip.triageCheckin } }
+					: null);
+			const triageCheckin =
+				trip?.triageCheckin ??
+				triageSnapshot?.signals?.userCheckin ??
+				null;
 
 				setActiveAmbulanceTrip({
 					id: trip.id ?? null,
@@ -1218,12 +1274,13 @@ export function EmergencyProvider({ children }) {
 						Number.isFinite(trip?.currentResponderHeading)
 							? trip.currentResponderHeading
 							: (Number.isFinite(assignedAmbulance?.heading) ? assignedAmbulance.heading : null),
-					triage:
-						trip?.triageSnapshot ??
-						trip?.triage ??
-						(trip?.triageCheckin
-							? { signals: { userCheckin: trip.triageCheckin } }
-							: null),
+					triage: triageSnapshot,
+					triageSnapshot,
+					triageCheckin,
+					triageProgress:
+						trip?.triageProgress ??
+						triageSnapshot?.progress ??
+						null,
 					responderTelemetryAt: trip?.responderTelemetryAt ?? trip?.updatedAt ?? null,
 					updatedAt: trip?.updatedAt ?? null,
 				});
@@ -1395,6 +1452,16 @@ export function EmergencyProvider({ children }) {
 				Number.isFinite(booking?.etaSeconds)
 					? booking.etaSeconds
 					: parseEtaToSeconds(booking?.estimatedWait ?? booking?.estimatedArrival);
+			const triageSnapshot =
+				booking?.triageSnapshot ??
+				booking?.triage ??
+				(booking?.triageCheckin
+					? { signals: { userCheckin: booking.triageCheckin } }
+					: null);
+			const triageCheckin =
+				booking?.triageCheckin ??
+				triageSnapshot?.signals?.userCheckin ??
+				null;
 
 			setActiveBedBooking({
 				id: booking.id ?? null,
@@ -1409,12 +1476,13 @@ export function EmergencyProvider({ children }) {
 				hospitalName: booking.hospitalName ?? null,
 				estimatedWait: booking.estimatedWait ?? booking.estimatedArrival ?? null,
 				etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
-				triage:
-					booking?.triageSnapshot ??
-					booking?.triage ??
-					(booking?.triageCheckin
-						? { signals: { userCheckin: booking.triageCheckin } }
-						: null),
+				triage: triageSnapshot,
+				triageSnapshot,
+				triageCheckin,
+				triageProgress:
+					booking?.triageProgress ??
+					triageSnapshot?.progress ??
+					null,
 				startedAt: Number.isFinite(booking?.startedAt) ? booking.startedAt : Date.now(),
 			});
 		},

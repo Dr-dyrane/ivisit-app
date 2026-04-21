@@ -399,6 +399,17 @@ export default function MapCommitTriageStageBase({
 			userCheckin: liveTriageSnapshot.signals?.userCheckin || null,
 		});
 		if (liveSaveRef.current.signature === signature) return undefined;
+
+		if (activeStep?.type !== "text") {
+			liveSaveRef.current.signature = signature;
+			emergencyRequestsService
+				.updateTriage(activeRequestId, liveTriageSnapshot, {
+					reason: "map_triage_live_update",
+				})
+				.catch(() => undefined);
+			return undefined;
+		}
+
 		if (liveSaveRef.current.timer) {
 			clearTimeout(liveSaveRef.current.timer);
 		}
@@ -415,7 +426,7 @@ export default function MapCommitTriageStageBase({
 				clearTimeout(liveSaveRef.current.timer);
 			}
 		};
-	}, [activeRequestId, liveTriageSnapshot]);
+	}, [activeRequestId, activeStep?.type, liveTriageSnapshot]);
 
 	const persistCommitFlow = useCallback(
 		(nextDraft, nextStepId, nextShowExtendedComplaints) => {

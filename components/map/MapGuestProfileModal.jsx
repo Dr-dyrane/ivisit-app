@@ -122,11 +122,24 @@ export default function MapGuestProfileModal({
     (viewportMetrics.type?.titleLineHeight || 26) + 6,
   );
   const cardPaddingTop = Math.round(
-    Math.min(22, Math.max(12, (viewportMetrics.modal?.height || 852) * 0.026)),
+    Math.min(14, Math.max(8, (viewportMetrics.modal?.height || 852) * 0.014)),
   );
   const inputHeight = Math.max(
     50,
     Math.min(viewportMetrics.cta?.primaryHeight || 54, 56),
+  );
+  const keyboardReserve = Math.round(
+    Platform.OS === "web"
+      ? Math.max(88, Math.min(148, (viewportMetrics.modal?.height || 852) * 0.16))
+      : Math.max(174, Math.min(260, (viewportMetrics.modal?.height || 852) * 0.28)),
+  );
+  const contentTopPadding = Math.round(
+    Platform.OS === "web"
+      ? Math.max(10, Math.min(18, viewportMetrics.insets?.sectionGap || 14))
+      : Math.max(2, Math.min(8, (viewportMetrics.insets?.sectionGap || 12) - 6)),
+  );
+  const formBlockGap = Math.round(
+    Math.max(14, Math.min(18, viewportMetrics.insets?.sectionGap || 16)),
   );
 
   // ─── Derived ──────────────────────────────────────────────────────────────
@@ -459,14 +472,8 @@ export default function MapGuestProfileModal({
       contentContainerStyle={[
         styles.content,
         {
-          paddingTop: Math.max(
-            8,
-            (viewportMetrics.insets?.sectionGap || 12) - 4,
-          ),
-          paddingBottom: Math.max(
-            20,
-            (viewportMetrics.insets?.largeGap || 24) + 8,
-          ),
+          paddingTop: contentTopPadding,
+          paddingBottom: keyboardReserve,
           paddingHorizontal: viewportMetrics.insets?.horizontal || 20,
         },
       ]}
@@ -481,10 +488,7 @@ export default function MapGuestProfileModal({
           cardPaddingTop={cardPaddingTop}
           cardPaddingBottom={0}
           inputHeight={inputHeight}
-          formBlockMarginTop={Math.max(
-            20,
-            viewportMetrics.insets?.largeGap || 24,
-          )}
+          formBlockMarginTop={formBlockGap}
           // Content
           orbIcon={isEmailStep ? "person-outline" : "shield-checkmark-outline"}
           title={isEmailStep ? "What's your email?" : "Enter the code"}
@@ -540,9 +544,12 @@ export default function MapGuestProfileModal({
 const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
+    justifyContent: "flex-start",
   },
   stage: {
-    flexGrow: 1,
+    flexGrow: 0,
+    width: "100%",
+    alignSelf: "center",
   },
 
   // Back button — shown above the card on the OTP step

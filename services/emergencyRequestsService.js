@@ -79,6 +79,65 @@ const resolveOwnedRequestUuid = async (requestKey, userId) => {
     return data?.id ?? null;
 };
 
+const isPlainObject = (value) =>
+    value && typeof value === "object" && !Array.isArray(value);
+
+const resolveTriageSnapshot = (request) => {
+    const patientSnapshot = isPlainObject(request?.patient_snapshot)
+        ? request.patient_snapshot
+        : isPlainObject(request?.patient)
+            ? request.patient
+            : null;
+
+    const directSnapshot =
+        request?.triageSnapshot ??
+        request?.triage_snapshot ??
+        request?.triage ??
+        null;
+    const nestedSnapshot =
+        patientSnapshot?.triageSnapshot ??
+        patientSnapshot?.triage_snapshot ??
+        patientSnapshot?.triage ??
+        null;
+    const snapshot = directSnapshot ?? nestedSnapshot;
+
+    return isPlainObject(snapshot) ? snapshot : null;
+};
+
+const resolveTriageCheckin = (triageSnapshot) => {
+    if (!isPlainObject(triageSnapshot)) return null;
+    const checkin =
+        triageSnapshot?.signals?.userCheckin ??
+        triageSnapshot?.signals?.checkin ??
+        triageSnapshot?.userCheckin ??
+        triageSnapshot?.checkin ??
+        null;
+    return isPlainObject(checkin) ? checkin : null;
+};
+
+const resolveTriageProgress = (triageSnapshot) => {
+    if (!isPlainObject(triageSnapshot)) return null;
+    return isPlainObject(triageSnapshot?.progress)
+        ? triageSnapshot.progress
+        : null;
+};
+
+const withResolvedTriageFields = (request) => {
+    const fallbackCheckin = isPlainObject(request?.triageCheckin)
+        ? request.triageCheckin
+        : null;
+    const triageSnapshot =
+        resolveTriageSnapshot(request) ??
+        (fallbackCheckin ? { signals: { userCheckin: fallbackCheckin } } : null);
+    return {
+        ...request,
+        triage: triageSnapshot,
+        triageSnapshot,
+        triageCheckin: fallbackCheckin ?? resolveTriageCheckin(triageSnapshot),
+        triageProgress: request?.triageProgress ?? resolveTriageProgress(triageSnapshot),
+    };
+};
+
 export const emergencyRequestsService = {
     async list() {
         const { data: { user } } = await supabase.auth.getUser();
@@ -101,7 +160,7 @@ export const emergencyRequestsService = {
                 }
             } else {
                 const rows = Array.isArray(data) ? data : [];
-                const requests = rows.map((r) => ({
+                const requests = rows.map((r) => withResolvedTriageFields({
                     id: r.id,
                     requestId: r.display_id,
                     displayId: r.display_id,
@@ -120,6 +179,7 @@ export const emergencyRequestsService = {
                     paymentStatus: r.payment_status,
                     paymentMethodId: r.payment_method_id ?? r.payment_method ?? null,
                     patient: r.patient_snapshot,
+                    patient_snapshot: r.patient_snapshot,
                     shared: r.shared_data_snapshot,
                     createdAt: r.created_at,
                     updatedAt: r.updated_at,
@@ -131,9 +191,6 @@ export const emergencyRequestsService = {
                     responderHeading: r.responder_heading,
                     patientLocation: r.patient_location,
                     patientHeading: r.patient_heading,
-                    triage: (r?.patient_snapshot && typeof r.patient_snapshot === "object")
-                        ? r.patient_snapshot.triage ?? null
-                        : null,
                 }));
                 await database.write(StorageKeys.EMERGENCY_REQUESTS, requests);
 
@@ -146,6 +203,7 @@ export const emergencyRequestsService = {
         if (!Array.isArray(items)) return [];
         return items
             .filter((r) => r && typeof r === "object")
+            .map(withResolvedTriageFields)
             .sort((a, b) => String(b?.createdAt ?? "").localeCompare(String(a?.createdAt ?? "")));
     },
 
@@ -153,6 +211,17 @@ export const emergencyRequestsService = {
         const { data: { user } } = await supabase.auth.getUser();
         const now = new Date().toISOString();
         const displayId = request?.requestId || `REQ-${Date.now()}`;
+        const requestTriageSnapshot =
+            resolveTriageSnapshot(request) ??
+            (isPlainObject(request?.triageCheckin)
+                ? { signals: { userCheckin: request.triageCheckin } }
+                : null);
+        const basePatientSnapshot = isPlainObject(request?.patient)
+            ? request.patient
+            : {};
+        const patientSnapshot = requestTriageSnapshot
+            ? { ...basePatientSnapshot, triage: requestTriageSnapshot }
+            : (request?.patient ?? null);
 
         // Prepare common fields
         const commonFields = {
@@ -168,7 +237,7 @@ export const emergencyRequestsService = {
             bed_count: request?.bedCount ?? null,
             estimated_arrival: request?.estimatedArrival ?? null,
             status: request?.status ?? EmergencyRequestStatus.IN_PROGRESS,
-            patient_snapshot: request?.patient ?? null,
+            patient_snapshot: patientSnapshot,
             shared_data_snapshot: request?.shared ?? null,
             created_at: request?.createdAt ?? now,
             updated_at: now,
@@ -213,7 +282,7 @@ export const emergencyRequestsService = {
                     service_type: request.serviceType,
                     specialty: request.specialty,
                     patient_location: rpcPatientLocation,
-                    patient_snapshot: request.patient,
+                    patient_snapshot: patientSnapshot,
                     ambulance_type: request.ambulanceType
                 },
                 p_payment_data: {
@@ -253,8 +322,9 @@ export const emergencyRequestsService = {
                 createdAt: now,
                 updatedAt: now
             };
-            await database.createOne(StorageKeys.EMERGENCY_REQUESTS, localItem);
-            return localItem;
+            const normalizedLocalItem = withResolvedTriageFields(localItem);
+            await database.createOne(StorageKeys.EMERGENCY_REQUESTS, normalizedLocalItem);
+            return normalizedLocalItem;
         }
     },
 

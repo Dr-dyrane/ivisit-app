@@ -1047,40 +1047,16 @@ export default function MapTrackingStageBase({
 	const connectorProgressColor = isDarkMode
 		? "rgba(252,165,165,0.84)"
 		: "rgba(180,35,24,0.78)";
-	const primaryActionSurface = isDarkMode
-		? "rgba(19,30,50,0.94)"
-		: "rgba(255,255,255,0.97)";
 	const teamHeroSurface = isDarkMode
 		? "rgba(15,23,42,0.72)"
 		: "rgba(255,255,255,0.9)";
 	const teamHeroProgressColor = isDarkMode
 		? "rgba(180,35,24,0.38)"
 		: "rgba(180,35,24,0.20)";
-	const primaryActionButtonColor = "#B42318";
-	const primaryActionButtonTextColor = "#FFFFFF";
 	const secondaryCtaSurface = isDarkMode
 		? "rgba(255,255,255,0.08)"
 		: "rgba(255,255,255,0.9)";
 	const bedCareBlueColor = isDarkMode ? "#38BDF8" : "#2563EB";
-	const destructiveCtaSurface = isDarkMode
-		? "rgba(180,35,24,0.18)"
-		: "rgba(180,35,24,0.10)";
-	const primaryActionIconSurface = isDarkMode
-		? "rgba(180,35,24,0.18)"
-		: "rgba(180,35,24,0.08)";
-	const primaryActionShadowStyle = {
-		shadowColor: "#020617",
-		shadowOpacity: 0.16,
-		shadowRadius: 20,
-		shadowOffset: { width: 0, height: 12 },
-		elevation: 10,
-	};
-	const destructiveActionSurface = isDarkMode
-		? "rgba(255,255,255,0.06)"
-		: "rgba(15,23,42,0.06)";
-	const destructiveActionBorder = isDarkMode
-		? "rgba(248,113,113,0.22)"
-		: "rgba(185,28,28,0.10)";
 
 	const metricsCardStyle = stageMetrics?.route?.cardStyle || null;
 	const detailCardRadius = stageMetrics?.panel?.cardStyle?.borderRadius || 26;
@@ -1530,6 +1506,24 @@ export default function MapTrackingStageBase({
 		}
 		return destructiveAction;
 	}, [destructiveAction, primaryAction, trackingKind]);
+	const isBottomCompletionAction =
+		bottomAction?.key === "complete-ambulance" ||
+		bottomAction?.key === "complete-bed";
+	const bottomActionGradientColors = isBottomCompletionAction
+		? (isDarkMode ? ["#941412", COLORS.brandPrimary] : ["#A11412", COLORS.brandPrimary])
+		: isDarkMode
+			? ["rgba(92,24,28,0.9)", "rgba(54,18,22,0.94)"]
+			: ["rgba(180,35,24,0.18)", "rgba(180,35,24,0.11)"];
+	const bottomActionTextColor = isBottomCompletionAction
+		? "#FFFFFF"
+		: isDarkMode
+			? "#FECACA"
+			: "#9F1D18";
+	const bottomActionSpinnerColor = isBottomCompletionAction
+		? "#FFFFFF"
+		: isDarkMode
+			? "#FECACA"
+			: "#9F1D18";
 
 	const expandedSnapContent = isExpanded ? (
 		<>
@@ -1754,19 +1748,43 @@ export default function MapTrackingStageBase({
 				<View style={styles.cancelCtaWrap}>
 					<Pressable
 						onPress={bottomAction.onPress}
+						disabled={bottomAction.loading}
 						style={({ pressed }) => [
 							styles.cancelCtaButton,
-							{ backgroundColor: primaryActionButtonColor },
+							isBottomCompletionAction
+								? styles.cancelCtaButtonPrimary
+								: styles.cancelCtaButtonSecondary,
 							pressed ? styles.ctaButtonPressed : null,
 						]}
 					>
-						{bottomAction.loading ? (
-							<ActivityIndicator size="small" color={primaryActionButtonTextColor} />
-						) : (
-							<Text style={[styles.cancelCtaText, { color: primaryActionButtonTextColor }]}>
-								{toTitleCaseLabel(bottomAction.label)}
-							</Text>
-						)}
+						<LinearGradient
+							colors={bottomActionGradientColors}
+							start={{ x: 0, y: 0 }}
+							end={{ x: 1, y: 1 }}
+							style={styles.cancelCtaFill}
+						>
+							<View
+								pointerEvents="none"
+								style={[
+									styles.cancelCtaHighlight,
+									{ opacity: isBottomCompletionAction ? 0.08 : 0.05 },
+								]}
+							/>
+							<View
+								pointerEvents="none"
+								style={[
+									styles.cancelCtaBottomShade,
+									{ opacity: isBottomCompletionAction ? 0.14 : 0.06 },
+								]}
+							/>
+							{bottomAction.loading ? (
+								<ActivityIndicator size="small" color={bottomActionSpinnerColor} />
+							) : (
+								<Text style={[styles.cancelCtaText, { color: bottomActionTextColor }]}>
+									{toTitleCaseLabel(bottomAction.label)}
+								</Text>
+							)}
+						</LinearGradient>
 					</Pressable>
 				</View>
 			) : null}

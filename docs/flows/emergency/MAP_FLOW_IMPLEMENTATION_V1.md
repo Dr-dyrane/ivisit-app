@@ -677,7 +677,9 @@ Current contract:
 - the map-native triage flow has six deterministic steps: urgent concern, breathing, consciousness, bleeding, pain, responder note
 - `MapCommitTriageStageBase` must seed from the active request snapshot first, then local commit payload fallback
 - every meaningful draft change patches `activeAmbulanceTrip.triage`, `triageSnapshot`, `triageCheckin`, and `triageProgress` immediately for live UI progress
-- every meaningful draft change also debounces a non-blocking `emergencyRequestsService.updateTriage(...)` call so the DB and console can catch up without blocking the patient
+- option-based triage steps write a non-blocking `emergencyRequestsService.updateTriage(...)` immediately; free-text note edits may debounce so typing remains calm
+- request hydration must normalize `patient_snapshot.triage` into `triage`, `triageSnapshot`, `triageCheckin`, and `triageProgress` before writing active request state
+- Expo/Metro reload must restore triage progress from persisted request state; never depend on in-memory sheet payload for the tracking ring
 - tracking progress reads the same six map triage steps; do not mix it with the legacy waiting-step set
 - AI/copilot prompt support is optional and must never change the deterministic six-step structure; static prompts remain the fallback
 
@@ -685,6 +687,7 @@ Regression guarded:
 
 - opening **My Information** after answering triage should resume from the first unanswered step, not restart from question one
 - closing and reopening tracking must keep the triage ring progress from active request state, not local sheet payload only
+- reloading Expo Go after answering triage must not fall back to step one if `patient_snapshot.triage` exists on the active request
 
 ## Commit Payment Method Hydration
 
