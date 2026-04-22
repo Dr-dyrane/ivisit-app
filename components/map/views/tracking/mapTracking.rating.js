@@ -183,6 +183,49 @@ export function buildRecoveredTrackingRatingState(visit, claim = null) {
   };
 }
 
+export function buildTrackingResolutionToast({
+	action = "rated",
+	serviceType = "visit",
+	hospitalTitle = null,
+	tipAmount = 0,
+	tipError = null,
+}) {
+	const normalizedServiceType = String(serviceType || "visit").toLowerCase();
+	const subject =
+		normalizedServiceType === "ambulance"
+			? "Transport"
+			: normalizedServiceType === "bed"
+				? "Stay"
+				: "Visit";
+	const locationSuffix = hospitalTitle ? ` for ${hospitalTitle}` : "";
+
+	if (action === "skipped") {
+		return {
+			message: `${subject} completed${locationSuffix}.`,
+			level: "info",
+		};
+	}
+
+	if (tipError && Number(tipAmount) > 0) {
+		return {
+			message: `${subject} feedback saved${locationSuffix}. Tip still needs attention.`,
+			level: "warning",
+		};
+	}
+
+	if (Number(tipAmount) > 0) {
+		return {
+			message: `${subject} feedback saved${locationSuffix}. Tip added.`,
+			level: "success",
+		};
+	}
+
+	return {
+		message: `${subject} feedback saved${locationSuffix}.`,
+		level: "success",
+	};
+}
+
 export async function resolveTrackingRatingSkip({
 	visitId,
 	updateVisit,

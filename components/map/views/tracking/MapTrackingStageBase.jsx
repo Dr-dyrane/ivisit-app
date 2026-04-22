@@ -488,6 +488,8 @@ export default function MapTrackingStageBase({
 				onClose={closeRating}
 				onSkip={skipRating}
 				onSubmit={submitRating}
+				surfaceVariant="map"
+				preferDrawerPresentation={isSidebarPresentation}
 			/>
 		</>
 	);

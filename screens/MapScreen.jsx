@@ -41,6 +41,7 @@ import {
   shouldReconcileTrackingTimeline,
 } from "../components/map/views/tracking/mapTracking.timeline";
 import {
+  buildTrackingResolutionToast,
   buildRecoveredTrackingRatingState,
   findPendingTrackingRatingVisit,
   readTrackingRatingRecoveryClaims,
@@ -717,10 +718,18 @@ export default function MapScreen() {
     }
     markRecoveredRatingHandled(visitId);
     closeRecoveredRating();
+    const skipToast = buildTrackingResolutionToast({
+      action: "skipped",
+      serviceType: recoveredRatingState?.serviceType,
+      hospitalTitle: recoveredRatingState?.serviceDetails?.hospital ?? null,
+    });
+    showToast(skipToast.message, skipToast.level);
     return true;
   }, [
     closeRecoveredRating,
     markRecoveredRatingHandled,
+    recoveredRatingState?.serviceDetails?.hospital,
+    recoveredRatingState?.serviceType,
     recoveredRatingState?.visitId,
     showToast,
     updateVisit,
@@ -749,12 +758,21 @@ export default function MapScreen() {
 
       markRecoveredRatingHandled(visitId);
       closeRecoveredRating();
-      showToast("Thanks for the feedback.", "success");
+      const successToast = buildTrackingResolutionToast({
+        action: "rated",
+        serviceType: recoveredRatingState?.serviceType,
+        hospitalTitle: recoveredRatingState?.serviceDetails?.hospital ?? null,
+        tipAmount,
+        tipError: resolution.tipError,
+      });
+      showToast(successToast.message, successToast.level);
       return true;
     },
     [
       closeRecoveredRating,
       markRecoveredRatingHandled,
+      recoveredRatingState?.serviceDetails?.hospital,
+      recoveredRatingState?.serviceType,
       recoveredRatingState?.visitId,
       showToast,
       updateVisit,
@@ -1001,6 +1019,8 @@ export default function MapScreen() {
         onClose={closeRecoveredRating}
         onSkip={handleSkipRecoveredRating}
         onSubmit={handleSubmitRecoveredRating}
+        surfaceVariant="map"
+        preferDrawerPresentation={usesSidebarLayout}
       />
     </View>
   );

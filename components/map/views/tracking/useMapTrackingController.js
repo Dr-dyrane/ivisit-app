@@ -6,6 +6,7 @@ import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
 import { buildTrackingSharePayload } from "./mapTracking.share";
 import {
   buildTrackingRatingState,
+  buildTrackingResolutionToast,
   resolveTrackingRatingSkip,
   resolveTrackingRatingSubmit,
   deleteTrackingRatingRecoveryClaim,
@@ -445,6 +446,12 @@ export function useMapTrackingController({
     }
     setRatingState(INITIAL_RATING_STATE);
     finalizeCompletedTracking(ratingState.completeKind);
+    const skipToast = buildTrackingResolutionToast({
+      action: "skipped",
+      serviceType: ratingState.serviceType,
+      hospitalTitle: ratingState.serviceDetails?.hospital ?? null,
+    });
+    showToast(skipToast.message, skipToast.level);
     return true;
   }, [
     finalizeCompletedTracking,
@@ -452,6 +459,8 @@ export function useMapTrackingController({
     onCompleteAmbulanceTrip,
     onCompleteBedBooking,
     ratingState.completeKind,
+    ratingState.serviceDetails?.hospital,
+    ratingState.serviceType,
     ratingState.visitId,
     runBusyAction,
     showToast,
@@ -492,7 +501,14 @@ export function useMapTrackingController({
       if (resolution.tipError) {
         console.warn("[MapTracking] Tip processing failed:", resolution.tipError);
       }
-      showToast("Thanks for the feedback.", "success");
+      const successToast = buildTrackingResolutionToast({
+        action: "rated",
+        serviceType: ratingState.serviceType,
+        hospitalTitle: ratingState.serviceDetails?.hospital ?? null,
+        tipAmount,
+        tipError: resolution.tipError,
+      });
+      showToast(successToast.message, successToast.level);
       setRatingState(INITIAL_RATING_STATE);
       finalizeCompletedTracking(ratingState.completeKind);
       return true;
@@ -503,6 +519,8 @@ export function useMapTrackingController({
       finalizeCompletedTracking,
       ratingState.completionCommitted,
       ratingState.completeKind,
+      ratingState.serviceDetails?.hospital,
+      ratingState.serviceType,
       ratingState.visitId,
       runBusyAction,
       showToast,

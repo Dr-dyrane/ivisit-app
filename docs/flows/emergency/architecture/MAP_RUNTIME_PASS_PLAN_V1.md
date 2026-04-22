@@ -17,7 +17,8 @@ Related audit:
 - Pass 5: complete
 - Pass 6: complete
 - Pass 7: complete
-- Pass 8: in progress
+- Pass 8: complete
+- Pass 9: complete
 
 ## Unified Surgical Mapping
 
@@ -860,6 +861,7 @@ Current slice:
 - [`contexts/EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx) now rejects equivalent `pendingApproval` and `commitFlow` writes, so effect-driven controllers such as commit details and commit triage cannot churn the shared runtime with semantically identical payloads
 - [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../hooks/map/exploreFlow/useMapExploreFlow.js) now limits active-session header ownership to `EXPLORE_INTENT` and `TRACKING`, so non-tracking sheets and map overlays cannot accidentally resurrect tracking header state
 - [`components/emergency/MiniProfileModal.jsx`](../../../components/emergency/MiniProfileModal.jsx) now renders through [`components/map/surfaces/MapModalShell.jsx`](../../../components/map/surfaces/MapModalShell.jsx) instead of owning a separate modal animation stack, and [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now explicitly opts it into drawer presentation only for sidebar `/map` layouts
+- [`components/emergency/ServiceRatingModal.jsx`](../../../components/emergency/ServiceRatingModal.jsx) now supports a `/map` shell branch through [`components/map/surfaces/MapModalShell.jsx`](../../../components/map/surfaces/MapModalShell.jsx), while legacy emergency screens keep the existing modal branch; `/map` tracking and recovered-rating flows now opt into that shared shell contract
 - noisy `/map`-adjacent startup diagnostics were removed from:
   - [`App.js`](../../../App.js)
   - [`app/_layout.js`](../../../app/_layout.js)
@@ -879,6 +881,7 @@ Pass 8 proven in this slice:
 - equivalent commit-flow and pending-approval writes no longer force app-wide rerenders just because controller effects re-emitted the same payload
 - active-session header state can no longer leak into non-tracking overlays; header ownership is now phase-bounded instead of inferred indirectly
 - profile-modal presentation now follows the same shared shell contract as other `/map` modals, so wide sidebar layouts get a drawer and non-sidebar layouts keep the compact bottom-sheet behavior instead of maintaining a separate modal implementation
+- rating presentation now follows the same `/map` shell contract as profile and other map modals, so recovered rating and tracking-completion rating no longer rely on a separate modal stack in the new runtime
 - Metro/runtime output is quieter during `/map` startup, so actual regressions are easier to spot while the remaining parity passes are executed
 - static syntax checks passed for:
   - `App.js`
@@ -892,6 +895,8 @@ Pass 8 proven in this slice:
   - `hooks/emergency/useEmergencyHandlers.js`
   - `hooks/map/exploreFlow/useMapExploreFlow.js`
   - `components/emergency/MiniProfileModal.jsx`
+  - `components/emergency/ServiceRatingModal.jsx`
+  - `components/map/views/tracking/MapTrackingStageBase.jsx`
   - `screens/MapScreen.jsx`
   - `components/emergency/intake/EmergencyLocationPreviewMap.jsx`
   - `services/appMigrationsService.js`
@@ -904,6 +909,11 @@ Done when:
 Unlocks:
 
 - final product hardening instead of one-platform correctness
+
+Pass 8 close note:
+
+- structural parity, persistence, and shell propagation are complete in code
+- final manual device-side QA remains deferred to end-of-sprint testing by current execution rule and is no longer treated as a coding blocker
 
 ## Pass 9. Post-Signoff Enhancements
 
@@ -922,15 +932,37 @@ Done when:
 
 - enhancements no longer threaten the core signed-off flow
 
+Current slice:
+
+- [`components/map/views/tracking/mapTracking.rating.js`](../../../components/map/views/tracking/mapTracking.rating.js) now exports `buildTrackingResolutionToast`, a shared post-resolution summary contract for `/map` rating outcomes
+- [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js) now uses that shared summary builder for skip and submit flows in active tracking
+- [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now uses the same shared summary builder for recovered-rating submit/skip flows after reload/recovery
+
+Pass 9 proven in this slice:
+
+- post-resolution messaging is no longer a generic `Thanks for the feedback.` toast
+- `/map` now reflects what actually resolved:
+  - transport, stay, or visit
+  - hospital context when available
+  - tip-added vs tip-needs-attention outcomes
+- the summary contract is shared between live tracking completion and recovered-rating recovery paths, so end-of-flow messaging cannot drift between those branches
+
+Pass 9 deferred by design:
+
+- tokenized public live `Share ETA` route still requires backend-issued public tracking tokens and validation that do not exist in this repo
+- trusted-contact handoff remains deferred until the sharing/token model is defined
+- Zustand migration remains deferred because the reducer/store boundary is now explicit and there is not yet evidence that subscription strain justifies a second state system
+
 ## Immediate Next Pass
 
-The next pass focus is **Pass 8: cross-device inclusiveness and resume/recovery propagation**.
+The runtime plan is complete through Pass 9.
 
-Why this is next:
+Next work should enter under a new scoped plan rather than reopening this one piecemeal:
 
-- ambulance, bed, and sequential combined runtime contracts now exist in code
-- the remaining engineering work is to propagate those contracts cleanly across web/mobile/tablet shell variants and reload/focus recovery paths
-- manual device validation is intentionally deferred, so the current pass should keep targeting shared geometry, persistence, and contract propagation rather than ad hoc visual patching
+- legacy screen dissolution and modal migration into `/map`
+- bed-reservation feature parity and verification beyond the runtime plan
+- public share/ETA token architecture
+- post-runtime QA and device matrix signoff
 
 ## Success Metric
 

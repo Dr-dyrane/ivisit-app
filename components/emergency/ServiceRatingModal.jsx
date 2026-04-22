@@ -18,6 +18,7 @@ import {
 	Keyboard,
 	Platform,
 	ScrollView,
+	useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -25,6 +26,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
 import { paymentService } from "../../services/paymentService";
+import MapModalShell from "../map/surfaces/MapModalShell";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const TIP_PRESETS = [0, 5, 10, 20];
@@ -42,8 +44,11 @@ export function ServiceRatingModal({
 	onClose,
 	onSkip,
 	onSubmit,
+	surfaceVariant = "legacy",
+	preferDrawerPresentation = false,
 }) {
 	const { isDarkMode } = useTheme();
+	const { height: windowHeight } = useWindowDimensions();
 	const [rating, setRating] = useState(0);
 	const [comment, setComment] = useState("");
 	const [selectedTip, setSelectedTip] = useState(0);
@@ -180,6 +185,13 @@ export function ServiceRatingModal({
 
 	const isWalletShortForTip =
 		currentTipAmount > 0 && currentTipAmount > Number(walletBalance || 0);
+	const shouldUseMapShell = surfaceVariant === "map";
+	const mapShellMaxHeightRatio = useMemo(() => {
+		if (!Number.isFinite(windowHeight) || windowHeight <= 0) {
+			return 0.9;
+		}
+		return Math.max(0.56, Math.min(0.92, modalHeight / windowHeight));
+	}, [modalHeight, windowHeight]);
 
 	const close = useCallback(() => {
 		Keyboard.dismiss();
@@ -270,6 +282,358 @@ export function ServiceRatingModal({
 		}
 	};
 
+	const handleShellClose = useCallback(() => {
+		if (isActionPending) return;
+		if (keyboardHeight > 0) {
+			Keyboard.dismiss();
+			return;
+		}
+		void handleSkip();
+	}, [handleSkip, isActionPending, keyboardHeight]);
+
+	const ratingBody = (
+		<>
+			{/* Header */}
+			<View className="items-center mb-8">
+				<View
+					className="w-16 h-16 items-center justify-center mb-4"
+					style={{
+						backgroundColor: `${colors.accent}15`,
+						...squircle(24),
+					}}
+				>
+					<Ionicons name={getServiceIcon()} size={32} color={colors.accent} />
+				</View>
+				<Text
+					className="text-3xl text-center mb-2"
+					style={{
+						color: colors.text,
+						fontWeight: "700",
+						letterSpacing: -0.7,
+					}}
+				>
+					{title}
+				</Text>
+				{subtitle && (
+					<Text
+						className="text-base text-center"
+						style={{ color: colors.subtext }}
+					>
+						{subtitle}
+					</Text>
+				)}
+			</View>
+
+			{/* Service Details */}
+			{serviceDetails && (
+				<View
+					className="p-4 mb-6"
+					style={{
+						backgroundColor: colors.card,
+						...squircle(24),
+					}}
+				>
+					{serviceDetails.provider && (
+						<View className="flex-row items-center mb-3">
+							<Ionicons name="person" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
+							<Text
+								className="text-base font-medium"
+								style={{ color: colors.text }}
+							>
+								{serviceDetails.provider}
+							</Text>
+						</View>
+					)}
+					{serviceDetails.hospital && (
+						<View className="flex-row items-center mb-3">
+							<Ionicons name="business" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
+							<Text
+								className="text-base font-medium"
+								style={{ color: colors.text }}
+							>
+								{serviceDetails.hospital}
+							</Text>
+						</View>
+					)}
+					{serviceDetails.duration && (
+						<View className="flex-row items-center">
+							<Ionicons name="time" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
+							<Text
+								className="text-base font-medium"
+								style={{ color: colors.text }}
+							>
+								{serviceDetails.duration}
+							</Text>
+						</View>
+					)}
+				</View>
+			)}
+
+			{/* Rating Section */}
+			<View className="mb-6">
+				<Text
+					className="text-lg font-semibold text-center mb-6"
+					style={{ color: colors.text }}
+				>
+					How was your {getServiceTypeLabel()}?
+				</Text>
+
+				{/* Stars */}
+				<View className="flex-row justify-center mb-4">
+					{stars.map((star) => {
+						const isActive = star <= rating;
+						return (
+							<Pressable
+								key={star}
+								onPress={() => {
+									Keyboard.dismiss();
+									setRating(star);
+								}}
+								className="p-2"
+								style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+							>
+								<Ionicons
+									name={isActive ? "star" : "star-outline"}
+									size={40}
+									color={isActive ? colors.accent : colors.subtext}
+								/>
+							</Pressable>
+						);
+					})}
+				</View>
+
+				{/* Rating Text */}
+				{rating > 0 && (
+					<Text
+						className="text-center text-lg font-medium mb-2"
+						style={{ color: colors.accent }}
+					>
+						{getRatingText()}
+					</Text>
+				)}
+			</View>
+
+			{/* Feedback Section */}
+			<View className="mb-8">
+				<Text
+					className="text-base font-medium mb-3"
+					style={{ color: colors.text }}
+				>
+					Add a note
+				</Text>
+				<TextInput
+					value={comment}
+					onChangeText={setComment}
+					placeholder="Add a note"
+					placeholderTextColor={colors.subtext}
+					className="p-4 text-base"
+					style={{
+						color: colors.text,
+						backgroundColor: colors.card,
+						height: 100,
+						textAlignVertical: 'top',
+						...squircle(22),
+					}}
+					multiline
+				/>
+			</View>
+
+			{/* Tip Section */}
+			<View className="mb-8">
+				<Text
+					className="text-base font-medium mb-2"
+					style={{ color: colors.text }}
+				>
+					Add a tip (optional)
+				</Text>
+				<Text
+					className="text-sm mb-4"
+					style={{ color: colors.subtext }}
+				>
+					Tips are charged from your wallet balance.
+				</Text>
+
+				<View className="flex-row flex-wrap mb-4" style={{ gap: 10 }}>
+					{TIP_PRESETS.map((amount) => {
+						const isActive = !isCustomTip && selectedTip === amount;
+						return (
+							<Pressable
+								key={`tip-${amount}`}
+								onPress={() => {
+									setIsCustomTip(false);
+									setSelectedTip(amount);
+								}}
+								className="px-4 py-2"
+								style={{
+									backgroundColor: isActive ? `${colors.accent}20` : colors.card,
+									...squircle(18),
+								}}
+							>
+								<Text
+									className="text-sm font-semibold"
+									style={{ color: isActive ? colors.accent : colors.text }}
+								>
+									{amount === 0 ? "No tip" : `$${amount}`}
+								</Text>
+							</Pressable>
+						);
+					})}
+
+					<Pressable
+						onPress={() => {
+							setIsCustomTip(true);
+							setSelectedTip(0);
+						}}
+						className="px-4 py-2"
+						style={{
+							backgroundColor: isCustomTip ? `${colors.accent}20` : colors.card,
+							...squircle(18),
+						}}
+					>
+						<Text
+							className="text-sm font-semibold"
+							style={{ color: isCustomTip ? colors.accent : colors.text }}
+						>
+							Custom
+						</Text>
+					</Pressable>
+				</View>
+
+				{isCustomTip && (
+					<TextInput
+						value={customTip}
+						onChangeText={setCustomTip}
+						placeholder="Enter tip amount"
+						placeholderTextColor={colors.subtext}
+						keyboardType="decimal-pad"
+						className="px-4 py-3 text-base mb-3"
+						style={{
+							color: colors.text,
+							backgroundColor: colors.card,
+							...squircle(20),
+						}}
+					/>
+				)}
+
+				<Text
+					className="text-sm"
+					style={{ color: colors.subtext }}
+				>
+					{walletLoading
+						? "Checking wallet balance..."
+						: `Wallet balance: ${walletCurrency} ${Number(walletBalance || 0).toFixed(2)}`}
+				</Text>
+
+				{isWalletShortForTip ? (
+					<Text className="text-sm mt-2" style={{ color: "#F59E0B" }}>
+						Wallet is low. You can still continue and choose cash or card fallback next.
+					</Text>
+				) : null}
+			</View>
+
+			{/* Actions */}
+			<View className="flex-row gap-3">
+				<Pressable
+					onPress={() => {
+						if (isActionPending) return;
+						if (keyboardHeight > 0) {
+							Keyboard.dismiss();
+							return;
+						}
+						void handleSkip();
+					}}
+					disabled={isActionPending}
+					className="flex-1"
+					style={({ pressed }) => [
+						pressed ? { opacity: 0.94, transform: [{ scale: 0.988 }] } : null,
+					]}
+				>
+					<View
+						className="h-14 items-center justify-center"
+						style={secondaryActionStyle}
+					>
+						<Text
+							className="text-base"
+							style={{ color: colors.text, fontWeight: "600" }}
+						>
+							{isActionPending ? "Saving..." : "Skip"}
+						</Text>
+					</View>
+				</Pressable>
+
+				<Pressable
+					onPress={() => {
+						void handleSubmit();
+					}}
+					disabled={rating < 1 || isActionPending}
+					className="flex-1"
+					style={({ pressed }) => [
+						pressed && rating >= 1 && !isActionPending
+							? { opacity: 0.96, transform: [{ scale: 0.988 }] }
+							: null,
+					]}
+				>
+					<View
+						className="h-14 items-center justify-center"
+						style={
+							rating >= 1 && !isActionPending
+								? enabledPrimaryActionStyle
+								: disabledPrimaryActionStyle
+						}
+					>
+						<Text
+							className="text-base"
+							style={{
+								color:
+									rating >= 1 && !isActionPending
+										? COLORS.bgLight
+										: colors.text,
+								fontWeight: "600",
+							}}
+						>
+							{isActionPending ? "Saving..." : "Submit"}
+						</Text>
+					</View>
+				</Pressable>
+			</View>
+		</>
+	);
+
+	if (shouldUseMapShell) {
+		return (
+			<MapModalShell
+				visible={visible}
+				onClose={handleShellClose}
+				title={null}
+				enableSnapDetents={false}
+				matchExpandedSheetHeight={false}
+				minHeightRatio={0.62}
+				maxHeightRatio={mapShellMaxHeightRatio}
+				presentationModeOverride={
+					preferDrawerPresentation ? "left-drawer" : "bottom-sheet"
+				}
+				scrollEnabled={false}
+				contentContainerStyle={{
+					flex: 1,
+					paddingHorizontal: 24,
+					paddingTop: 8,
+					paddingBottom: 24,
+				}}
+			>
+				<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
+					<ScrollView
+						{...getScrollViewProps()}
+						showsVerticalScrollIndicator={false}
+						contentContainerStyle={{ paddingBottom: 40 }}
+						keyboardShouldPersistTaps="handled"
+					>
+						{ratingBody}
+					</ScrollView>
+				</KeyboardAvoidingView>
+			</MapModalShell>
+		);
+	}
+
 	return (
 		<Modal visible={visible} transparent animationType="none" onRequestClose={handleSkip}>
 			<View
@@ -335,309 +699,7 @@ export function ServiceRatingModal({
 							contentContainerStyle={{ paddingBottom: 40 }}
 							keyboardShouldPersistTaps="handled"
 						>
-							{/* Header */}
-							<View className="items-center mb-8">
-								<View
-									className="w-16 h-16 items-center justify-center mb-4"
-									style={{
-										backgroundColor: `${colors.accent}15`,
-										...squircle(24),
-									}}
-								>
-									<Ionicons name={getServiceIcon()} size={32} color={colors.accent} />
-								</View>
-								<Text
-									className="text-3xl text-center mb-2"
-									style={{
-										color: colors.text,
-										fontWeight: "700",
-										letterSpacing: -0.7,
-									}}
-								>
-									{title}
-								</Text>
-								{subtitle && (
-									<Text
-										className="text-base text-center"
-										style={{ color: colors.subtext }}
-									>
-										{subtitle}
-									</Text>
-								)}
-							</View>
-
-							{/* Service Details */}
-							{serviceDetails && (
-								<View
-									className="p-4 mb-6"
-									style={{
-										backgroundColor: colors.card,
-										...squircle(24),
-									}}
-								>
-									{serviceDetails.provider && (
-										<View className="flex-row items-center mb-3">
-											<Ionicons name="person" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
-											<Text
-												className="text-base font-medium"
-												style={{ color: colors.text }}
-											>
-												{serviceDetails.provider}
-											</Text>
-										</View>
-									)}
-									{serviceDetails.hospital && (
-										<View className="flex-row items-center mb-3">
-											<Ionicons name="business" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
-											<Text
-												className="text-base font-medium"
-												style={{ color: colors.text }}
-											>
-												{serviceDetails.hospital}
-											</Text>
-										</View>
-									)}
-									{serviceDetails.duration && (
-										<View className="flex-row items-center">
-											<Ionicons name="time" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
-											<Text
-												className="text-base font-medium"
-												style={{ color: colors.text }}
-											>
-												{serviceDetails.duration}
-											</Text>
-										</View>
-									)}
-								</View>
-							)}
-
-							{/* Rating Section */}
-							<View className="mb-6">
-								<Text
-									className="text-lg font-semibold text-center mb-6"
-									style={{ color: colors.text }}
-								>
-									How was your {getServiceTypeLabel()}?
-								</Text>
-
-								{/* Stars */}
-								<View className="flex-row justify-center mb-4">
-									{stars.map((star) => {
-										const isActive = star <= rating;
-										return (
-											<Pressable
-												key={star}
-												onPress={() => {
-													Keyboard.dismiss();
-													setRating(star);
-												}}
-												className="p-2"
-												style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-											>
-												<Ionicons
-													name={isActive ? "star" : "star-outline"}
-													size={40}
-													color={isActive ? colors.accent : colors.subtext}
-												/>
-											</Pressable>
-										);
-									})}
-								</View>
-
-								{/* Rating Text */}
-								{rating > 0 && (
-									<Text
-										className="text-center text-lg font-medium mb-2"
-										style={{ color: colors.accent }}
-									>
-										{getRatingText()}
-									</Text>
-								)}
-							</View>
-
-							{/* Feedback Section */}
-							<View className="mb-8">
-								<Text
-									className="text-base font-medium mb-3"
-									style={{ color: colors.text }}
-								>
-									Add a note
-								</Text>
-								<TextInput
-									value={comment}
-									onChangeText={setComment}
-									placeholder="Add a note"
-									placeholderTextColor={colors.subtext}
-									className="p-4 text-base"
-									style={{
-										color: colors.text,
-										backgroundColor: colors.card,
-										height: 100,
-										textAlignVertical: 'top',
-										...squircle(22),
-									}}
-									multiline
-								/>
-							</View>
-
-							{/* Tip Section */}
-							<View className="mb-8">
-								<Text
-									className="text-base font-medium mb-2"
-									style={{ color: colors.text }}
-								>
-									Add a tip (optional)
-								</Text>
-								<Text
-									className="text-sm mb-4"
-									style={{ color: colors.subtext }}
-								>
-									Tips are charged from your wallet balance.
-								</Text>
-
-								<View className="flex-row flex-wrap mb-4" style={{ gap: 10 }}>
-									{TIP_PRESETS.map((amount) => {
-										const isActive = !isCustomTip && selectedTip === amount;
-										return (
-											<Pressable
-												key={`tip-${amount}`}
-												onPress={() => {
-													setIsCustomTip(false);
-													setSelectedTip(amount);
-												}}
-												className="px-4 py-2"
-												style={{
-													backgroundColor: isActive ? `${colors.accent}20` : colors.card,
-													...squircle(18),
-												}}
-											>
-												<Text
-													className="text-sm font-semibold"
-													style={{ color: isActive ? colors.accent : colors.text }}
-												>
-													{amount === 0 ? "No tip" : `$${amount}`}
-												</Text>
-											</Pressable>
-										);
-									})}
-
-									<Pressable
-										onPress={() => {
-											setIsCustomTip(true);
-											setSelectedTip(0);
-										}}
-										className="px-4 py-2"
-										style={{
-											backgroundColor: isCustomTip ? `${colors.accent}20` : colors.card,
-											...squircle(18),
-										}}
-									>
-										<Text
-											className="text-sm font-semibold"
-											style={{ color: isCustomTip ? colors.accent : colors.text }}
-										>
-											Custom
-										</Text>
-									</Pressable>
-								</View>
-
-								{isCustomTip && (
-									<TextInput
-										value={customTip}
-										onChangeText={setCustomTip}
-										placeholder="Enter tip amount"
-										placeholderTextColor={colors.subtext}
-										keyboardType="decimal-pad"
-										className="px-4 py-3 text-base mb-3"
-										style={{
-											color: colors.text,
-											backgroundColor: colors.card,
-											...squircle(20),
-										}}
-									/>
-								)}
-
-								<Text
-									className="text-sm"
-									style={{ color: colors.subtext }}
-								>
-									{walletLoading
-										? "Checking wallet balance..."
-										: `Wallet balance: ${walletCurrency} ${Number(walletBalance || 0).toFixed(2)}`}
-								</Text>
-
-								{isWalletShortForTip ? (
-									<Text className="text-sm mt-2" style={{ color: "#F59E0B" }}>
-										Wallet is low. You can still continue and choose cash or card fallback next.
-									</Text>
-								) : null}
-							</View>
-
-							{/* Actions */}
-							<View className="flex-row gap-3">
-								<Pressable
-									onPress={() => {
-										if (isActionPending) return;
-										if (keyboardHeight > 0) {
-											Keyboard.dismiss();
-											return;
-										}
-										void handleSkip();
-									}}
-									disabled={isActionPending}
-									className="flex-1"
-									style={({ pressed }) => [
-										pressed ? { opacity: 0.94, transform: [{ scale: 0.988 }] } : null,
-									]}
-								>
-									<View
-										className="h-14 items-center justify-center"
-										style={secondaryActionStyle}
-									>
-										<Text
-											className="text-base"
-											style={{ color: colors.text, fontWeight: "600" }}
-										>
-											{isActionPending ? "Saving..." : "Skip"}
-										</Text>
-									</View>
-								</Pressable>
-
-								<Pressable
-									onPress={() => {
-										void handleSubmit();
-									}}
-									disabled={rating < 1 || isActionPending}
-									className="flex-1"
-									style={({ pressed }) => [
-										pressed && rating >= 1 && !isActionPending
-											? { opacity: 0.96, transform: [{ scale: 0.988 }] }
-											: null,
-									]}
-								>
-									<View
-										className="h-14 items-center justify-center"
-										style={
-											rating >= 1 && !isActionPending
-												? enabledPrimaryActionStyle
-												: disabledPrimaryActionStyle
-										}
-									>
-										<Text
-											className="text-base"
-											style={{
-												color:
-													rating >= 1 && !isActionPending
-														? COLORS.bgLight
-														: colors.text,
-												fontWeight: "600",
-											}}
-										>
-											{isActionPending ? "Saving..." : "Submit"}
-										</Text>
-									</View>
-								</Pressable>
-							</View>
+							{ratingBody}
 						</ScrollView>
 					</KeyboardAvoidingView>
 				</Animated.View>
