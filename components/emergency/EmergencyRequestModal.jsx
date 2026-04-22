@@ -1473,17 +1473,6 @@ const EmergencyRequestModal = React.memo(({
 		const fabIds = ['ambulance-select', 'ambulance-prompt', 'bed-select', 'call-hospital', 'payment-confirm', 'emergency-done'];
 		fabIds.forEach(id => unregisterFAB(id));
 
-		if (__DEV__) {
-			console.log('[FABTrace][EmergencyRequestModal] evaluating FAB state', {
-				requestStep,
-				mode,
-				hasAmbulances,
-				selectedAmbulanceType: selectedAmbulanceType?.title || selectedAmbulanceType?.service_name || null,
-				selectedPaymentMethod: selectedPaymentMethod?.label || null,
-				requestSuccess: Boolean(requestData?.success),
-			});
-		}
-
 		if (requestData?.success) {
 			registerFAB('emergency-done', {
 				icon: 'checkmark-done',

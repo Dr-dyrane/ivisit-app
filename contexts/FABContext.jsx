@@ -14,10 +14,10 @@
  * 4. GlobalFAB renders the winner
  * 
  * DEBUGGING CHECKLIST:
- * ✅ Check registration logs in each component
+ * ✅ Check registration state in each component
  * ✅ Verify priority values (higher wins)
  * ✅ Check visibility conditions (selectedHospital, etc.)
- * ✅ Look at GlobalFAB rendering logs
+ * ✅ Inspect GlobalFAB render state when needed
  * ✅ Ensure proper cleanup in return functions
  * 
  * COMMON ISSUES:
@@ -31,7 +31,7 @@
  * 2. Set appropriate priority (10-100)
  * 3. Define visibility conditions
  * 4. Handle cleanup in return function
- * 5. Add debug logs
+ * 5. Add targeted diagnostics only when actively debugging
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -157,7 +157,6 @@ export function FABProvider({ children }) {
   const registrationsRef = useRef(new Map());
   const [activeFAB, setActiveFAB] = useState(null);
   const [isInStack, setIsInStack] = useState(false);
-  const fabTraceRef = useRef('');
 
   const dimensions = useMemo(() => {
     const base = getBaseDimensions();
@@ -199,37 +198,6 @@ export function FABProvider({ children }) {
   const updateWinner = useCallback(() => {
     const winner = resolveActiveFAB();
 
-    if (__DEV__) {
-      const nextTrace = winner
-        ? `${winner.id}|${winner.label || ''}|visible=${winner.visible}|stack=${isInStack}`
-        : `none|stack=${isInStack}|registrations=${registrationsRef.current.size}`;
-
-      if (fabTraceRef.current !== nextTrace) {
-        fabTraceRef.current = nextTrace;
-        console.log('[FABTrace][Provider] resolved winner', {
-          currentTab,
-          isInStack,
-          registrations: Array.from(registrationsRef.current.values()).map((item) => ({
-            id: item.id,
-            label: item.label || null,
-            visible: item.visible,
-            allowInStack: item.allowInStack === true,
-            priority: item.priority || 0,
-            disabled: item.disabled === true,
-          })),
-          winner: winner
-            ? {
-                id: winner.id,
-                label: winner.label || null,
-                visible: winner.visible,
-                allowInStack: winner.allowInStack === true,
-                priority: winner.priority || 0,
-              }
-            : null,
-        });
-      }
-    }
-
     setActiveFAB(prev => {
       if (!prev && !winner) return null;
       if (prev && winner &&
@@ -254,24 +222,11 @@ export function FABProvider({ children }) {
 
   const registerFAB = useCallback((id, config) => {
     registrationsRef.current.set(id, { ...config, id });
-    if (__DEV__) {
-      console.log('[FABTrace][Provider] register', {
-        id,
-        label: config?.label || null,
-        visible: config?.visible,
-        allowInStack: config?.allowInStack === true,
-        priority: config?.priority || 0,
-        disabled: config?.disabled === true,
-      });
-    }
     updateWinnerRef.current();
   }, []);
 
   const unregisterFAB = useCallback((id) => {
     registrationsRef.current.delete(id);
-    if (__DEV__) {
-      console.log('[FABTrace][Provider] unregister', { id });
-    }
     updateWinnerRef.current();
   }, []);
 

@@ -134,6 +134,19 @@ function normalizeStoredPublicRoute(pathname) {
 	return null;
 }
 
+function isBaseAppUrl(url) {
+	if (typeof url !== "string" || !url) return false;
+
+	const isRootDevUrl = url.includes(":8081") && !url.includes("?") && !url.includes("#");
+	return (
+		url === Linking.createURL("/") ||
+		url === Linking.createURL("") ||
+		url === "ivisit://" ||
+		url.endsWith("/--") ||
+		isRootDevUrl
+	);
+}
+
 async function readStoredPublicRoute() {
 	const [storedRoute, legacyStoredRoute] = await Promise.all([
 		database.read(StorageKeys.LAST_PUBLIC_ROUTE).catch(() => null),
@@ -257,13 +270,7 @@ function AuthenticatedStack() {
 			}
 
 			// Prevent loop on base app URLs
-			const isRootDevUrl = url.includes(":8081") && !url.includes("?") && !url.includes("#");
-			const isBaseUrl =
-				url === Linking.createURL("/") ||
-				url === Linking.createURL("") ||
-				url === "ivisit://" ||
-				url.endsWith("/--") ||
-				isRootDevUrl;
+			const isBaseUrl = isBaseAppUrl(url);
 
 			if (user?.isAuthenticated && !isBaseUrl && !isAuthCallback) {
 				console.log("[DeepLink] Non-auth route received, user is already logged in");
@@ -276,6 +283,16 @@ function AuthenticatedStack() {
 				const url = await Linking.getInitialURL();
 				if (url) {
 					await handleDeepLink({ url });
+					if (isBaseAppUrl(url)) {
+						const restoredPublicRoute =
+							(await readStoredAuthReturnRoute()) || (await readStoredPublicRoute());
+						if (restoredPublicRoute === "/(auth)/map") {
+							if (isMounted) {
+								setStartupPublicRoute(restoredPublicRoute);
+							}
+							router.replace(restoredPublicRoute);
+						}
+					}
 					return;
 				}
 

@@ -17,7 +17,7 @@ const PILL_PADDING = 8;
 const LONG_PRESS_DELAY = 500; // ms
 
 const GlobalFAB = () => {
-  const { activeFAB, getFABStyle, isInStack } = useFAB();
+  const { activeFAB, getFABStyle } = useFAB();
   const { translateY, isTabBarLockedHidden } = useTabBarVisibility();
   const { isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
@@ -46,18 +46,6 @@ const GlobalFAB = () => {
       useNativeDriver: true,
     }).start();
   }, [activeFAB?.visible]);
-
-  useEffect(() => {
-    if (!__DEV__) return;
-    console.log('[FABTrace][GlobalFAB] render state', {
-      id: activeFAB?.id || null,
-      label: activeFAB?.label || null,
-      visible: activeFAB?.visible === true,
-      isInStack,
-      isFixed: activeFAB?.isFixed === true,
-      isTabBarLockedHidden,
-    });
-  }, [activeFAB?.id, activeFAB?.isFixed, activeFAB?.label, activeFAB?.visible, isInStack, isTabBarLockedHidden]);
 
   // Animation Interpolations
   const opacity = visibilityAnim;
