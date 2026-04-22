@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
 import EmergencyLocationPreviewMap from "../components/emergency/intake/EmergencyLocationPreviewMap";
 import MiniProfileModal from "../components/emergency/MiniProfileModal";
+import { ServiceRatingModal } from "../components/emergency/ServiceRatingModal";
 
 import MapSheetOrchestrator, {
   MAP_SHEET_PHASES,
@@ -17,6 +18,8 @@ import MapExploreLoadingOverlay from "../components/map/surfaces/MapExploreLoadi
 import MapRecentVisitsModal from "../components/map/MapRecentVisitsModal";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
+import { useVisits } from "../contexts/VisitsContext";
 import { useMapExploreFlow } from "../hooks/map/useMapExploreFlow";
 import {
   getMapViewportSurfaceConfig,
@@ -36,14 +39,22 @@ import {
   normalizeTrackingRouteCoordinates,
   shouldReconcileTrackingTimeline,
 } from "../components/map/views/tracking/mapTracking.timeline";
+import {
+  buildRecoveredTrackingRatingState,
+  findPendingTrackingRatingVisit,
+} from "../components/map/views/tracking/mapTracking.rating";
 import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
 import { calculateBearing } from "../utils/mapUtils";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
+import { paymentService } from "../services/paymentService";
+import { EMERGENCY_VISIT_LIFECYCLE } from "../constants/visits";
 
 export default function MapScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
+  const { showToast } = useToast();
   const { logout, user } = useAuth();
+  const { visits = [], updateVisit } = useVisits();
   const { width, height, browserInsetTop, browserInsetBottom } =
     useAuthViewport();
   const {
@@ -179,6 +190,8 @@ export default function MapScreen() {
     distanceMeters: null,
     coordinates: [],
   });
+  const handledRecoveredRatingVisitIdsRef = useRef(new Set());
+  const [recoveredRatingState, setRecoveredRatingState] = useState(null);
   const shouldShowMapControls = usesSidebarLayout
     ? !hasActiveMapModal && !hasFocusedSheetPhase
     : renderedSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED &&
@@ -600,6 +613,118 @@ export default function MapScreen() {
     mapServiceMarkerKind,
   ]);
   const isActiveTrackingMap = sheetPhase === MAP_SHEET_PHASES.TRACKING;
+  const pendingRecoveredRatingVisit = useMemo(() => {
+    if (
+      sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT ||
+      hasActiveMapModal ||
+      activeAmbulanceTrip?.requestId ||
+      activeBedBooking?.requestId ||
+      pendingApproval?.requestId
+    ) {
+      return null;
+    }
+
+    return findPendingTrackingRatingVisit(visits, {
+      excludeVisitIds: Array.from(handledRecoveredRatingVisitIdsRef.current),
+    });
+  }, [
+    activeAmbulanceTrip?.requestId,
+    activeBedBooking?.requestId,
+    hasActiveMapModal,
+    pendingApproval?.requestId,
+    sheetPhase,
+    visits,
+  ]);
+
+  useEffect(() => {
+    if (recoveredRatingState?.visible || !pendingRecoveredRatingVisit) return;
+    const nextState = buildRecoveredTrackingRatingState(pendingRecoveredRatingVisit);
+    if (nextState) {
+      setRecoveredRatingState(nextState);
+    }
+  }, [pendingRecoveredRatingVisit, recoveredRatingState?.visible]);
+
+  const closeRecoveredRating = useCallback(() => {
+    setRecoveredRatingState(null);
+  }, []);
+
+  const markRecoveredRatingHandled = useCallback((visitId) => {
+    if (!visitId) return;
+    handledRecoveredRatingVisitIdsRef.current.add(String(visitId));
+  }, []);
+
+  const handleSkipRecoveredRating = useCallback(async () => {
+    const visitId = recoveredRatingState?.visitId;
+    if (!visitId) {
+      closeRecoveredRating();
+      return true;
+    }
+
+    try {
+      await updateVisit?.(visitId, {
+        lifecycleState: EMERGENCY_VISIT_LIFECYCLE.POST_COMPLETION,
+        lifecycleUpdatedAt: new Date().toISOString(),
+      });
+      markRecoveredRatingHandled(visitId);
+      closeRecoveredRating();
+      return true;
+    } catch (_error) {
+      showToast("Could not close rating right now.", "error");
+      return false;
+    }
+  }, [
+    closeRecoveredRating,
+    markRecoveredRatingHandled,
+    recoveredRatingState?.visitId,
+    showToast,
+    updateVisit,
+  ]);
+
+  const handleSubmitRecoveredRating = useCallback(
+    async ({ rating, comment, tipAmount, tipCurrency }) => {
+      const visitId = recoveredRatingState?.visitId;
+      if (!visitId) return false;
+
+      const nowIso = new Date().toISOString();
+      try {
+        await updateVisit?.(visitId, {
+          rating,
+          ratingComment: comment,
+          ratedAt: nowIso,
+          lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
+          lifecycleUpdatedAt: nowIso,
+        });
+
+        if (Number(tipAmount) > 0) {
+          try {
+            await paymentService.processVisitTip(
+              visitId,
+              Number(tipAmount),
+              tipCurrency || "USD",
+            );
+          } catch (error) {
+            console.warn("[MapScreen] Recovered rating tip processing failed:", error);
+          }
+        }
+
+        markRecoveredRatingHandled(visitId);
+        closeRecoveredRating();
+        showToast("Thanks for the feedback.", "success");
+        return true;
+      } catch (_error) {
+        showToast("Could not save your rating right now.", "error");
+        return false;
+      }
+    },
+    [
+      closeRecoveredRating,
+      markRecoveredRatingHandled,
+      recoveredRatingState?.visitId,
+      showToast,
+      updateVisit,
+    ],
+  );
+
   const trackingRouteCoordinates = useMemo(
     () => normalizeTrackingRouteCoordinates(trackingRouteInfo?.coordinates),
     [trackingRouteInfo?.coordinates],
@@ -825,6 +950,17 @@ export default function MapScreen() {
       <MapRecentVisitsModal
         visible={recentVisitsVisible}
         onClose={() => setRecentVisitsVisible(false)}
+      />
+
+      <ServiceRatingModal
+        visible={Boolean(recoveredRatingState?.visible)}
+        serviceType={recoveredRatingState?.serviceType || "visit"}
+        title={recoveredRatingState?.title || "Rate your visit"}
+        subtitle={recoveredRatingState?.subtitle || null}
+        serviceDetails={recoveredRatingState?.serviceDetails || null}
+        onClose={closeRecoveredRating}
+        onSkip={handleSkipRecoveredRating}
+        onSubmit={handleSubmitRecoveredRating}
       />
     </View>
   );
