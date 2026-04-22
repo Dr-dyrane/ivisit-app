@@ -7,6 +7,7 @@ export default function WelcomeWebMdView(props) {
 		<WelcomeStageBase
 			{...props}
 			createTheme={createWelcomeWebMdTheme}
+			layout="split"
 			resolveThemeOverrides={({ width }) => ({
 				horizontalPadding: width >= 960 ? 40 : 32,
 			})}

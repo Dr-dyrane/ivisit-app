@@ -1,4 +1,8 @@
+import { Platform } from "react-native";
+
 export function buildCommitDetailsThemeTokens({ isDarkMode, tokens }) {
+	const isAndroid = Platform.OS === "android";
+
 	return {
 		titleColor: tokens.titleColor,
 		mutedColor: tokens.mutedText,
@@ -16,9 +20,13 @@ export function buildCommitDetailsThemeTokens({ isDarkMode, tokens }) {
 		inputSurfaceColor: isDarkMode
 			? "rgba(255,255,255,0.08)"
 			: "rgba(15,23,42,0.05)",
-		avatarSurfaceColor: isDarkMode
-			? "rgba(255,255,255,0.06)"
-			: "rgba(15,23,42,0.05)",
+		avatarSurfaceColor: isAndroid
+			? isDarkMode
+				? "rgba(180,35,24,0.16)"
+				: "rgba(134,16,14,0.08)"
+			: isDarkMode
+				? "rgba(255,255,255,0.06)"
+				: "rgba(15,23,42,0.05)",
 	};
 }
 

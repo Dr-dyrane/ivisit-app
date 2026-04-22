@@ -98,12 +98,14 @@ export default function useMapCommitTriageController({
 	const triageSessionKeyRef = useRef(triageSessionKey);
 	const liveSaveRef = useRef({ signature: null, timer: null });
 	const advanceTimerRef = useRef(null);
+	const triagePatchSignatureRef = useRef(null);
 	const orbPulse = useRef(new Animated.Value(0)).current;
 	const [copilotPrompt, setCopilotPrompt] = useState(null);
 
 	useEffect(() => {
 		if (triageSessionKeyRef.current === triageSessionKey) return;
 		triageSessionKeyRef.current = triageSessionKey;
+		triagePatchSignatureRef.current = null;
 		setDraft(initialDraft);
 		setActiveStepId(
 			payload?.activeStep || getFirstOpenCommitTriageStepId(steps, initialDraft),
@@ -281,12 +283,25 @@ export default function useMapCommitTriageController({
 			(!activeRequestId ||
 				String(activeRequestId) === String(request.requestId) ||
 				String(activeRequestId) === String(request.id));
+		const patchSignature = JSON.stringify({
+			requestId: activeRequestId || null,
+			triageCheckin: triageUpdates.triageCheckin || null,
+			triageProgress: triageProgressMeta,
+			triageSnapshot: liveTriageSnapshot,
+		});
+
+		if (triagePatchSignatureRef.current === patchSignature) {
+			return;
+		}
+
+		let patched = false;
 
 		if (
 			typeof patchActiveAmbulanceTrip === "function" &&
 			matchesActiveRequest(activeAmbulanceTrip)
 		) {
 			patchActiveAmbulanceTrip(triageUpdates);
+			patched = true;
 		}
 
 		if (
@@ -294,6 +309,7 @@ export default function useMapCommitTriageController({
 			matchesActiveRequest(activeBedBooking)
 		) {
 			patchActiveBedBooking(triageUpdates);
+			patched = true;
 		}
 
 		if (
@@ -301,6 +317,11 @@ export default function useMapCommitTriageController({
 			matchesActiveRequest(pendingApproval)
 		) {
 			patchPendingApproval(triageUpdates);
+			patched = true;
+		}
+
+		if (patched) {
+			triagePatchSignatureRef.current = patchSignature;
 		}
 	}, [
 		activeRequestId,

@@ -63,6 +63,7 @@ export default function MapGuestProfileModal({
   visible,
   onClose,
   onAuthSuccess,
+  preferDrawerPresentation = false,
 }) {
   const { isDarkMode } = useTheme();
   const { login, syncUserData } = useAuth();
@@ -468,7 +469,11 @@ export default function MapGuestProfileModal({
       backAccessibilityLabel="Back to email"
       title={null}
       enableSnapDetents={false}
-      presentationModeOverride={Platform.OS === "web" ? "left-drawer" : null}
+      presentationModeOverride={
+        Platform.OS === "web" && preferDrawerPresentation
+          ? "left-drawer"
+          : null
+      }
       contentContainerStyle={[
         styles.content,
         {

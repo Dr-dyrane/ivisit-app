@@ -181,6 +181,37 @@ const getNearestRouteDistance = (routeProfile, coordinate) => {
 	return nearestRouteDistance;
 };
 
+const getNearestRouteProjection = (routeProfile, coordinate) => {
+	if (!routeProfile || !coordinate) return null;
+	const { points, cumulativeMeters } = routeProfile;
+	let nearestProjection = null;
+	let nearestDistance = Number.POSITIVE_INFINITY;
+
+	for (let i = 1; i < points.length; i += 1) {
+		const segmentProjection = projectCoordinateOntoSegment(
+			points[i - 1],
+			points[i],
+			coordinate
+		);
+		if (!segmentProjection) continue;
+		if (segmentProjection.distanceMeters < nearestDistance) {
+			nearestDistance = segmentProjection.distanceMeters;
+			const segmentStartDistance = cumulativeMeters[i - 1] ?? 0;
+			const segmentEndDistance = cumulativeMeters[i] ?? segmentStartDistance;
+			const routeDistanceMeters =
+				segmentStartDistance +
+				(segmentEndDistance - segmentStartDistance) * segmentProjection.ratio;
+			nearestProjection = {
+				routeDistanceMeters,
+				projectedCoordinate: segmentProjection.projectedCoordinate,
+				distanceMeters: segmentProjection.distanceMeters,
+			};
+		}
+	}
+
+	return nearestProjection;
+};
+
 export const useAmbulanceAnimation = ({
 	routeCoordinates,
 	animateAmbulance,
@@ -195,6 +226,17 @@ export const useAmbulanceAnimation = ({
 	const ambulanceTimerRef = useRef(null);
 	const animationStartTimeRef = useRef(null);
 	const routeProfileRef = useRef(null);
+	const lastRouteDistanceRef = useRef(null);
+	const responderLocationRef = useRef(responderLocation);
+	const responderHeadingRef = useRef(responderHeading);
+
+	useEffect(() => {
+		responderLocationRef.current = responderLocation;
+	}, [responderLocation]);
+
+	useEffect(() => {
+		responderHeadingRef.current = responderHeading;
+	}, [responderHeading]);
 
 	const stopAmbulanceAnimation = useCallback(() => {
 		if (ambulanceTimerRef.current) {
@@ -202,6 +244,7 @@ export const useAmbulanceAnimation = ({
 			ambulanceTimerRef.current = null;
 		}
 		animationStartTimeRef.current = null;
+		lastRouteDistanceRef.current = null;
 	}, []);
 
 	const startAmbulanceAnimation = useCallback(() => {
@@ -221,9 +264,12 @@ export const useAmbulanceAnimation = ({
 			return;
 		}
 
-		const responderDistanceMeters = responderLocation
-			? getNearestRouteDistance(routeProfile, responderLocation)
+		const initialResponderLocation = responderLocationRef.current;
+		const initialResponderHeading = responderHeadingRef.current;
+		const responderProjection = initialResponderLocation
+			? getNearestRouteProjection(routeProfile, initialResponderLocation)
 			: null;
+		const responderDistanceMeters = responderProjection?.routeDistanceMeters ?? null;
 		const responderProgress = Number.isFinite(responderDistanceMeters)
 			? Math.min(1, Math.max(0, responderDistanceMeters / routeProfile.totalMeters))
 			: null;
@@ -232,15 +278,15 @@ export const useAmbulanceAnimation = ({
 		const usesResponderProgress = Number.isFinite(responderProgress);
 
 		// Make marker visible immediately at the start of the route.
-		const startCoordinate = getCoordinateAtDistance(
-			routeProfile,
-			startProgress * routeProfile.totalMeters
-		);
+		const startCoordinate =
+			responderProjection?.projectedCoordinate ||
+			getCoordinateAtDistance(routeProfile, startProgress * routeProfile.totalMeters);
+		lastRouteDistanceRef.current = startProgress * routeProfile.totalMeters;
 		const lookaheadDistance =
 			startProgress * routeProfile.totalMeters + HEADING_LOOKAHEAD_METERS;
 		const lookaheadCoordinate = getCoordinateAtDistance(routeProfile, lookaheadDistance);
-		const firstHeading = Number.isFinite(responderHeading)
-			? responderHeading
+		const firstHeading = Number.isFinite(initialResponderHeading)
+			? initialResponderHeading
 			: calculateBearing(startCoordinate, lookaheadCoordinate);
 		setAmbulanceCoordinate(startCoordinate);
 		setAmbulanceHeading(firstHeading);
@@ -264,6 +310,7 @@ export const useAmbulanceAnimation = ({
 			}
 
 			const traveledMeters = progressRatio * currentRoute.totalMeters;
+			lastRouteDistanceRef.current = traveledMeters;
 			const interpCoord = getCoordinateAtDistance(currentRoute, traveledMeters);
 			const lookaheadCoord = getCoordinateAtDistance(
 				currentRoute,
@@ -296,8 +343,6 @@ export const useAmbulanceAnimation = ({
 		routeCoordinates,
 		ambulanceTripEtaSeconds,
 		onAmbulanceUpdate,
-		responderHeading,
-		responderLocation,
 		stopAmbulanceAnimation,
 	]);
 
@@ -315,7 +360,39 @@ export const useAmbulanceAnimation = ({
 
 	useEffect(() => {
 		if (responderLocation) {
-			setAmbulanceCoordinate(responderLocation);
+			const resolvedRouteProfile =
+				routeProfileRef.current || buildRouteProfile(routeCoordinates);
+			const responderProjection = getNearestRouteProjection(
+				resolvedRouteProfile,
+				responderLocation
+			);
+			const rawRouteDistance = responderProjection?.routeDistanceMeters;
+			const resolvedRouteDistance = Number.isFinite(rawRouteDistance)
+				? Number.isFinite(lastRouteDistanceRef.current)
+					? Math.max(lastRouteDistanceRef.current, rawRouteDistance)
+					: rawRouteDistance
+				: null;
+			if (Number.isFinite(resolvedRouteDistance)) {
+				lastRouteDistanceRef.current = resolvedRouteDistance;
+			}
+			const projectedCoordinate = Number.isFinite(resolvedRouteDistance)
+				? getCoordinateAtDistance(resolvedRouteProfile, resolvedRouteDistance)
+				: responderProjection?.projectedCoordinate || responderLocation;
+			setAmbulanceCoordinate(projectedCoordinate);
+			if (
+				!Number.isFinite(responderHeading) &&
+				Number.isFinite(resolvedRouteDistance) &&
+				resolvedRouteProfile
+			) {
+				const lookaheadCoordinate = getCoordinateAtDistance(
+					resolvedRouteProfile,
+					resolvedRouteDistance + HEADING_LOOKAHEAD_METERS
+				);
+				setAmbulanceHeading(
+					calculateBearing(projectedCoordinate, lookaheadCoordinate)
+				);
+				return;
+			}
 		} else if (!animateAmbulance) {
 			setAmbulanceCoordinate(null);
 		}

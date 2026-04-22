@@ -127,14 +127,20 @@ export function buildTrackingViewState({
     pendingApproval?.requestId ||
     "";
   const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
+  const shouldShowTelemetryWarning =
+    trackingKind === "ambulance" &&
+    resolvedStatus !== EmergencyRequestStatus.ARRIVED &&
+    resolvedStatus !== EmergencyRequestStatus.COMPLETED;
   const telemetryWarningLabel =
-    trackingKind === "ambulance" && telemetryState === "lost"
+    shouldShowTelemetryWarning && telemetryState === "lost"
       ? "Tracking lost"
-      : trackingKind === "ambulance" && telemetryState === "stale"
+      : shouldShowTelemetryWarning && telemetryState === "stale"
         ? "Tracking delayed"
         : null;
   const telemetryHeroTone =
-    telemetryState === "lost"
+    !shouldShowTelemetryWarning
+      ? "normal"
+      : telemetryState === "lost"
       ? "critical"
       : telemetryState === "stale"
         ? "warning"

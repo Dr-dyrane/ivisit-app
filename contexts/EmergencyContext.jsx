@@ -1365,16 +1365,23 @@ export function EmergencyProvider({ children }) {
 		if (!updates || typeof updates !== "object") return;
 		setActiveAmbulanceTrip((prev) => {
 			if (!prev) return prev;
-			return {
-				...prev,
-				...updates,
-				assignedAmbulance:
-					updates.assignedAmbulance && typeof updates.assignedAmbulance === "object"
-						? {
+			const nextAssignedAmbulance =
+				updates.assignedAmbulance && typeof updates.assignedAmbulance === "object"
+					? {
 							...(prev.assignedAmbulance || {}),
 							...updates.assignedAmbulance,
-						}
-						: prev.assignedAmbulance,
+					  }
+					: prev.assignedAmbulance;
+			const nextValue = {
+				...prev,
+				...updates,
+				assignedAmbulance: nextAssignedAmbulance,
+			};
+			if (JSON.stringify(nextValue) === JSON.stringify(prev)) {
+				return prev;
+			}
+			return {
+				...nextValue,
 			};
 		});
 	}, []);
@@ -1560,10 +1567,14 @@ export function EmergencyProvider({ children }) {
 		if (!updates || typeof updates !== "object") return;
 		setActiveBedBooking((prev) => {
 			if (!prev) return prev;
-			return {
+			const nextValue = {
 				...prev,
 				...updates,
 			};
+			if (JSON.stringify(nextValue) === JSON.stringify(prev)) {
+				return prev;
+			}
+			return nextValue;
 		});
 	}, []);
 
@@ -1571,10 +1582,14 @@ export function EmergencyProvider({ children }) {
 		if (!updates || typeof updates !== "object") return;
 		setPendingApproval((prev) => {
 			if (!prev) return prev;
-			return {
+			const nextValue = {
 				...prev,
 				...updates,
 			};
+			if (JSON.stringify(nextValue) === JSON.stringify(prev)) {
+				return prev;
+			}
+			return nextValue;
 		});
 	}, []);
 

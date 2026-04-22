@@ -936,6 +936,7 @@ export default function MapScreen() {
         visible={guestProfileVisible}
         onClose={() => setGuestProfileVisible(false)}
         onAuthSuccess={() => setGuestProfileVisible(false)}
+        preferDrawerPresentation={usesSidebarLayout}
       />
 
       <MapCareHistoryModal

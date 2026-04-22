@@ -1,4 +1,8 @@
+import { Platform } from "react-native";
+
 export function buildCommitPaymentThemeTokens({ isDarkMode, tokens }) {
+	const isAndroid = Platform.OS === "android";
+
 	return {
 		titleColor: tokens.titleColor,
 		mutedColor: tokens.mutedText,
@@ -31,6 +35,21 @@ export function buildCommitPaymentThemeTokens({ isDarkMode, tokens }) {
 		selectorChangePillSurfaceColor: isDarkMode
 			? "rgba(248,113,113,0.14)"
 			: "rgba(134,16,14,0.10)",
+		heroMetaSurfaceColor: isAndroid
+			? isDarkMode
+				? "rgba(15,23,42,0.52)"
+				: "rgba(134,16,14,0.18)"
+			: "rgba(255,255,255,0.16)",
+		heroAvatarSurfaceColor: isAndroid
+			? isDarkMode
+				? "rgba(180,35,24,0.92)"
+				: "rgba(180,35,24,0.88)"
+			: "rgba(255,255,255,0.18)",
+		heroGlowColor: isAndroid
+			? isDarkMode
+				? "rgba(248,113,113,0.20)"
+				: "rgba(180,35,24,0.16)"
+			: "rgba(255,255,255,0.38)",
 		warningColor: isDarkMode ? "#FDBA74" : "#D97706",
 	};
 }

@@ -113,6 +113,9 @@ export default function MapCommitPaymentStageBase({
 		infoColor,
 		selectorSummarySurfaceColor,
 		selectorChangePillSurfaceColor,
+		heroMetaSurfaceColor,
+		heroAvatarSurfaceColor,
+		heroGlowColor,
 		warningColor,
 	} = useMemo(
 		() => buildCommitPaymentThemeTokens({ isDarkMode, tokens }),
@@ -405,11 +408,11 @@ export default function MapCommitPaymentStageBase({
 					rightMeta={isLoadingCost ? null : paymentHeroMeta.label}
 					rightMetaIcon={paymentHeroMeta.icon}
 					gradientColors={paymentHeroGradientColors}
-					metaSurfaceColor="rgba(255,255,255,0.16)"
+					metaSurfaceColor={heroMetaSurfaceColor}
 					backgroundColor={heroSurfaceColor}
 					accentColor={heroPrimarySurfaceColor}
-					avatarSurfaceColor="rgba(255,255,255,0.18)"
-					glowColor="rgba(255,255,255,0.38)"
+					avatarSurfaceColor={heroAvatarSurfaceColor}
+					glowColor={heroGlowColor}
 					titleColor="#FFFFFF"
 					mutedColor="rgba(255,255,255,0.76)"
 					loading={isLoadingCost}

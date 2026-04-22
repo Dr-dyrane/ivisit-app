@@ -8,6 +8,7 @@ import {
 
 export function createWelcomeWebMdTheme({
 	viewportHeight = 900,
+	viewportWidth = 900,
 	isDarkMode = true,
 	horizontalPadding = 32,
 } = {}) {
@@ -27,28 +28,31 @@ export function createWelcomeWebMdTheme({
 
 	const metrics = {
 		viewportHeight,
+		viewportWidth,
 		showChip: viewportHeight >= 760,
 		topPadding: viewportHeight < 760 ? 28 : 40,
 		bottomPadding: 28,
-		stageWidth: 860,
+		stageWidth: Math.min(Math.max(viewportWidth - horizontalPadding * 2, 840), 980),
+		leftColumnWidth: Math.min(Math.max(viewportWidth * 0.38, 340), 420),
 		logoSize: 50,
 		brandSize: 30,
-		heroWidth: 380,
-		heroHeight: 286,
-		headlineSize: 52,
-		headlineLineHeight: 56,
-		helperSize: 18,
-		helperLineHeight: 28,
+		heroWidth: Math.min(Math.max(viewportWidth * 0.34, 320), 400),
+		heroHeight: Math.min(Math.max(viewportHeight * 0.3, 250), 310),
+		headlineSize: 48,
+		headlineLineHeight: 52,
+		helperSize: 17,
+		helperLineHeight: 26,
 		primaryActionHeight: 62,
 		secondaryActionHeight: 58,
+		heroPanelRadius: 34,
 		stageSpacing: {
-			brandToHero: viewportHeight < 760 ? 20 : 28,
-			heroToHeadline: viewportHeight < 760 ? 22 : 28,
+			brandToHeadline: viewportHeight < 760 ? 26 : 32,
 			headlineToHelper: 14,
 			helperToChip: entrySpacing.helperToChip + 2,
 			chipToActions: viewportHeight < 760 ? 24 : 30,
 			actionGap: 14,
 			signInTop: 20,
+			columnGap: viewportWidth >= 920 ? 52 : 40,
 		},
 	};
 
@@ -79,9 +83,17 @@ export function createWelcomeWebMdTheme({
 			width: "100%",
 			maxWidth: metrics.stageWidth,
 			minHeight: metrics.viewportHeight - metrics.topPadding - metrics.bottomPadding,
+			flexDirection: "row",
 			alignItems: "center",
+			justifyContent: "space-between",
+			columnGap: metrics.stageSpacing.columnGap,
 			alignSelf: "center",
 			backgroundColor: "transparent",
+		},
+		leftColumn: {
+			width: metrics.leftColumnWidth,
+			alignItems: "flex-start",
+			flexShrink: 0,
 		},
 		topGlow: {
 			position: "absolute",
@@ -94,7 +106,7 @@ export function createWelcomeWebMdTheme({
 			backgroundColor: colors.bottomGlow,
 		},
 		brandBlock: {
-			alignItems: "center",
+			alignItems: "flex-start",
 		},
 		logo: {
 			width: metrics.logoSize,
@@ -106,7 +118,7 @@ export function createWelcomeWebMdTheme({
 			fontWeight: "900",
 			letterSpacing: -1,
 			fontSize: metrics.brandSize,
-			textAlign: "center",
+			textAlign: "left",
 		},
 		brandDot: {
 			color: COLORS.brandPrimary,
@@ -114,35 +126,59 @@ export function createWelcomeWebMdTheme({
 		},
 		heroBlock: {
 			width: "100%",
-			marginTop: metrics.stageSpacing.brandToHero,
 			alignItems: "center",
 		},
 		heroImage: {
 			width: metrics.heroWidth,
 			height: metrics.heroHeight,
 		},
+		heroPanel: {
+			flex: 1,
+			minHeight: metrics.heroHeight + 48,
+			borderRadius: metrics.heroPanelRadius,
+			backgroundColor: isDarkMode
+				? "rgba(12, 18, 32, 0.50)"
+				: "rgba(255,255,255,0.56)",
+			justifyContent: "center",
+			alignItems: "center",
+			shadowColor: isDarkMode ? "#000000" : "#CBD5E1",
+			shadowOpacity: isDarkMode ? 0.16 : 0.10,
+			shadowRadius: 24,
+			shadowOffset: { width: 0, height: 16 },
+			overflow: "hidden",
+		},
+		heroRing: {
+			position: "absolute",
+			width: metrics.heroWidth * 0.84,
+			height: metrics.heroWidth * 0.84,
+			borderRadius: 999,
+			backgroundColor: isDarkMode
+				? "rgba(255,255,255,0.05)"
+				: "rgba(255,255,255,0.84)",
+			opacity: isDarkMode ? 0.10 : 0.42,
+		},
 		copyBlock: {
 			width: "100%",
-			marginTop: metrics.stageSpacing.heroToHeadline,
-			alignItems: "center",
+			marginTop: metrics.stageSpacing.brandToHeadline,
+			alignItems: "flex-start",
 		},
 		headline: {
 			color: colors.headline,
 			fontWeight: "900",
-			letterSpacing: -1.45,
+			letterSpacing: -1.55,
 			fontSize: metrics.headlineSize,
 			lineHeight: metrics.headlineLineHeight,
-			textAlign: "center",
-			maxWidth: 600,
+			textAlign: "left",
+			maxWidth: metrics.leftColumnWidth,
 		},
 		helper: {
 			color: colors.helper,
 			fontWeight: "400",
 			fontSize: metrics.helperSize,
 			lineHeight: metrics.helperLineHeight,
-			textAlign: "center",
+			textAlign: "left",
 			marginTop: metrics.stageSpacing.headlineToHelper,
-			maxWidth: 520,
+			maxWidth: Math.min(metrics.leftColumnWidth, 400),
 		},
 		chip: {
 			marginTop: metrics.stageSpacing.helperToChip,
@@ -164,22 +200,22 @@ export function createWelcomeWebMdTheme({
 		},
 		actions: {
 			width: "100%",
-			maxWidth: 500,
+			maxWidth: 360,
 			marginTop: metrics.stageSpacing.chipToActions,
 			gap: metrics.stageSpacing.actionGap,
-			alignItems: "center",
+			alignItems: "flex-start",
 		},
 		primaryActionSlot: {
 			width: "100%",
-			maxWidth: 500,
+			maxWidth: 360,
 		},
 		secondaryActionSlot: {
 			width: "100%",
-			maxWidth: 456,
+			maxWidth: 320,
 		},
 		signInPressable: {
 			marginTop: metrics.stageSpacing.signInTop,
-			alignItems: "center",
+			alignItems: "flex-start",
 		},
 		signInText: {
 			color: colors.support,
@@ -187,7 +223,7 @@ export function createWelcomeWebMdTheme({
 			lineHeight: 24,
 			fontWeight: "600",
 			opacity: isDarkMode ? 0.84 : 0.88,
-			textAlign: "center",
+			textAlign: "left",
 		},
 	});
 

@@ -1,4 +1,5 @@
 import React from "react";
+import { Platform } from "react-native";
 import { Animated, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { MAP_COMMIT_TRIAGE_COPY } from "./mapCommitTriage.content";
@@ -25,6 +26,15 @@ export function MapCommitTriageHeroBlock({
 	prioritySurfaceColor,
 	dangerColor,
 }) {
+	const orbSheenColor =
+		Platform.OS === "android"
+			? "rgba(255,255,255,0.18)"
+			: "rgba(255,255,255,0.28)";
+	const orbDepthColor =
+		Platform.OS === "android"
+			? "rgba(0,0,0,0.12)"
+			: "rgba(0,0,0,0.16)";
+
 	return (
 		<View style={styles.heroBlock}>
 			<View style={styles.progressRow}>
@@ -51,8 +61,18 @@ export function MapCommitTriageHeroBlock({
 					},
 				]}
 			>
-				<View style={styles.avatarOrbSheen} />
-				<View style={styles.avatarOrbDepth} />
+				<View
+					style={[
+						styles.avatarOrbSheen,
+						{ backgroundColor: orbSheenColor },
+					]}
+				/>
+				<View
+					style={[
+						styles.avatarOrbDepth,
+						{ backgroundColor: orbDepthColor },
+					]}
+				/>
 				<Ionicons name="medkit" size={orbIconSize} color="#FFFFFF" />
 			</Animated.View>
 			<Text style={[styles.promptText, { color: titleColor }]}>{promptText}</Text>

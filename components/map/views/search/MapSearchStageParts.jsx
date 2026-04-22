@@ -101,7 +101,7 @@ export function MapSearchActiveTopRow({
 
 export function MapSearchBodyContent({ model, responsiveStyles }) {
 	return (
-		<View style={[searchStyles.content, responsiveStyles.bodyScrollContent]}>
+		<View style={searchStyles.content}>
 			<MapSearchSheetSections model={model} />
 		</View>
 	);

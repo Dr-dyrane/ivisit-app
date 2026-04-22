@@ -301,8 +301,7 @@ export function getMapViewportSurfaceConfig(
 			return {
 				variant,
 				...MOBILE_SURFACE_CONFIG,
-				modalPresentationMode: "left-drawer",
-				drawerMaxWidth: 420,
+				modalPresentationMode: "bottom-sheet",
 				modalCornerRadius: 34,
 			};
 		case MAP_VIEWPORT_VARIANTS.ANDROID_MOBILE:
