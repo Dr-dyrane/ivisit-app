@@ -41,7 +41,9 @@ import {
 } from "../components/map/views/tracking/mapTracking.timeline";
 import {
   buildRecoveredTrackingRatingState,
+  deleteTrackingRatingRecoveryClaim,
   findPendingTrackingRatingVisit,
+  readTrackingRatingRecoveryClaims,
 } from "../components/map/views/tracking/mapTracking.rating";
 import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
 import { calculateBearing } from "../utils/mapUtils";
@@ -191,6 +193,8 @@ export default function MapScreen() {
     coordinates: [],
   });
   const handledRecoveredRatingVisitIdsRef = useRef(new Set());
+  const [handledRecoveredRatingVersion, setHandledRecoveredRatingVersion] = useState(0);
+  const [ratingRecoveryClaims, setRatingRecoveryClaims] = useState({});
   const [recoveredRatingState, setRecoveredRatingState] = useState(null);
   const shouldShowMapControls = usesSidebarLayout
     ? !hasActiveMapModal && !hasFocusedSheetPhase
@@ -613,6 +617,23 @@ export default function MapScreen() {
     mapServiceMarkerKind,
   ]);
   const isActiveTrackingMap = sheetPhase === MAP_SHEET_PHASES.TRACKING;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadClaims = async () => {
+      const nextClaims = await readTrackingRatingRecoveryClaims();
+      if (!cancelled) {
+        setRatingRecoveryClaims(nextClaims);
+      }
+    };
+
+    loadClaims();
+    return () => {
+      cancelled = true;
+    };
+  }, [handledRecoveredRatingVersion]);
+
   const pendingRecoveredRatingVisit = useMemo(() => {
     if (
       sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT ||
@@ -626,23 +647,30 @@ export default function MapScreen() {
 
     return findPendingTrackingRatingVisit(visits, {
       excludeVisitIds: Array.from(handledRecoveredRatingVisitIdsRef.current),
+      allowedVisitIds: Object.keys(ratingRecoveryClaims),
     });
   }, [
     activeAmbulanceTrip?.requestId,
     activeBedBooking?.requestId,
+    handledRecoveredRatingVersion,
     hasActiveMapModal,
     pendingApproval?.requestId,
+    ratingRecoveryClaims,
     sheetPhase,
     visits,
   ]);
 
   useEffect(() => {
     if (recoveredRatingState?.visible || !pendingRecoveredRatingVisit) return;
-    const nextState = buildRecoveredTrackingRatingState(pendingRecoveredRatingVisit);
+    const nextState = buildRecoveredTrackingRatingState(
+      pendingRecoveredRatingVisit,
+      ratingRecoveryClaims[String(pendingRecoveredRatingVisit?.id ?? pendingRecoveredRatingVisit?.requestId ?? "")] ||
+        null,
+    );
     if (nextState) {
       setRecoveredRatingState(nextState);
     }
-  }, [pendingRecoveredRatingVisit, recoveredRatingState?.visible]);
+  }, [pendingRecoveredRatingVisit, ratingRecoveryClaims, recoveredRatingState?.visible]);
 
   const closeRecoveredRating = useCallback(() => {
     setRecoveredRatingState(null);
@@ -650,7 +678,10 @@ export default function MapScreen() {
 
   const markRecoveredRatingHandled = useCallback((visitId) => {
     if (!visitId) return;
-    handledRecoveredRatingVisitIdsRef.current.add(String(visitId));
+    const normalizedVisitId = String(visitId);
+    if (handledRecoveredRatingVisitIdsRef.current.has(normalizedVisitId)) return;
+    handledRecoveredRatingVisitIdsRef.current.add(normalizedVisitId);
+    setHandledRecoveredRatingVersion((current) => current + 1);
   }, []);
 
   const handleSkipRecoveredRating = useCallback(async () => {
@@ -665,6 +696,7 @@ export default function MapScreen() {
         lifecycleState: EMERGENCY_VISIT_LIFECYCLE.POST_COMPLETION,
         lifecycleUpdatedAt: new Date().toISOString(),
       });
+      await deleteTrackingRatingRecoveryClaim(visitId);
       markRecoveredRatingHandled(visitId);
       closeRecoveredRating();
       return true;
@@ -694,6 +726,7 @@ export default function MapScreen() {
           lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
           lifecycleUpdatedAt: nowIso,
         });
+        await deleteTrackingRatingRecoveryClaim(visitId);
 
         if (Number(tipAmount) > 0) {
           try {

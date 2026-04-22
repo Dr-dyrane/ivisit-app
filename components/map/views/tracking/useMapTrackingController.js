@@ -5,7 +5,11 @@ import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsSe
 import { paymentService } from "../../../../services/paymentService";
 import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
 import { buildTrackingSharePayload } from "./mapTracking.share";
-import { buildTrackingRatingState } from "./mapTracking.rating";
+import {
+  buildTrackingRatingState,
+  deleteTrackingRatingRecoveryClaim,
+  writeTrackingRatingRecoveryClaim,
+} from "./mapTracking.rating";
 import {
   buildTrackingBottomAction,
   buildTrackingDestructiveAction,
@@ -166,6 +170,11 @@ export function useMapTrackingController({
       showToast("Could not complete the request right now.", "error");
       return;
     }
+    await writeTrackingRatingRecoveryClaim(visitId, {
+      kind: "ambulance",
+      hospitalTitle,
+      providerName,
+    });
     setRatingState(
       buildTrackingRatingState({
         kind: "ambulance",
@@ -198,6 +207,11 @@ export function useMapTrackingController({
       showToast("Could not complete the request right now.", "error");
       return;
     }
+    await writeTrackingRatingRecoveryClaim(visitId, {
+      kind: "bed",
+      hospitalTitle,
+      providerName: "Hospital staff",
+    });
     setRatingState(
       buildTrackingRatingState({
         kind: "bed",
@@ -409,6 +423,7 @@ export function useMapTrackingController({
         lifecycleState: EMERGENCY_VISIT_LIFECYCLE.POST_COMPLETION,
         lifecycleUpdatedAt: nowIso,
       });
+      await deleteTrackingRatingRecoveryClaim(visitId);
       setRatingState(INITIAL_RATING_STATE);
       finalizeCompletedTracking(ratingState.completeKind);
       return true;
@@ -455,6 +470,7 @@ export function useMapTrackingController({
           lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
           lifecycleUpdatedAt: nowIso,
         });
+        await deleteTrackingRatingRecoveryClaim(visitId);
         if (Number(tipAmount) > 0) {
           try {
             await paymentService.processVisitTip(

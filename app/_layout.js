@@ -188,6 +188,7 @@ function AuthenticatedStack() {
 	const pathnameRef = useRef(pathname);
 	const [initialRouteResolved, setInitialRouteResolved] = useState(false);
 	const [startupPublicRoute, setStartupPublicRoute] = useState(null);
+	const normalizedPublicPathname = normalizeStoredPublicRoute(pathname);
 	const loadingBackground = Platform.OS === "web"
 		? getWelcomeRootBackground(isDarkMode)
 		: isDarkMode
@@ -328,8 +329,7 @@ function AuthenticatedStack() {
 			segments?.[1] === "(stacks)" &&
 			segments?.[2] === "complete-profile";
 		const isPublicMapFlow =
-			pathname === "/map-loading" ||
-			pathname === "/map" ||
+			normalizedPublicPathname === "/(auth)/map" ||
 			startupPublicRoute === "/(auth)/map";
 
 		// Don't do anything while auth is still loading or startup route has not resolved yet
@@ -369,7 +369,16 @@ function AuthenticatedStack() {
 		if (!isPublicMapFlow && (rootGroup === "(auth)" || rootGroup !== "(user)")) {
 			router.replace("/(user)/(tabs)");
 		}
-	}, [initialRouteResolved, loading, pathname, router, segments, startupPublicRoute, user]);
+	}, [
+		initialRouteResolved,
+		loading,
+		normalizedPublicPathname,
+		pathname,
+		router,
+		segments,
+		startupPublicRoute,
+		user,
+	]);
 
 	useEffect(() => {
 		if (!startupPublicRoute) return;

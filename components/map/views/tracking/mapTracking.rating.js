@@ -1,4 +1,43 @@
 import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
+import { database, StorageKeys } from "../../../../database";
+
+const normalizeTrackingRatingClaims = (value) =>
+  value && typeof value === "object" && !Array.isArray(value) ? value : {};
+
+export async function readTrackingRatingRecoveryClaims() {
+  try {
+    const stored = await database.read(StorageKeys.TRACKING_RATING_RECOVERY, {});
+    return normalizeTrackingRatingClaims(stored);
+  } catch (_error) {
+    return {};
+  }
+}
+
+export async function writeTrackingRatingRecoveryClaim(visitId, claim = {}) {
+  if (!visitId) return {};
+  const normalizedVisitId = String(visitId);
+  const currentClaims = await readTrackingRatingRecoveryClaims();
+  const nextClaims = {
+    ...currentClaims,
+    [normalizedVisitId]: {
+      claimedAt: new Date().toISOString(),
+      ...claim,
+    },
+  };
+  await database.write(StorageKeys.TRACKING_RATING_RECOVERY, nextClaims);
+  return nextClaims;
+}
+
+export async function deleteTrackingRatingRecoveryClaim(visitId) {
+  if (!visitId) return {};
+  const normalizedVisitId = String(visitId);
+  const currentClaims = await readTrackingRatingRecoveryClaims();
+  if (!currentClaims[normalizedVisitId]) return currentClaims;
+  const nextClaims = { ...currentClaims };
+  delete nextClaims[normalizedVisitId];
+  await database.write(StorageKeys.TRACKING_RATING_RECOVERY, nextClaims);
+  return nextClaims;
+}
 
 export function buildTrackingRatingState({
   kind,
@@ -53,7 +92,10 @@ const normalizeTrackingVisitKind = (visit) => {
   return null;
 };
 
-export function findPendingTrackingRatingVisit(visits, { excludeVisitIds = [] } = {}) {
+export function findPendingTrackingRatingVisit(
+  visits,
+  { excludeVisitIds = [], allowedVisitIds = null } = {},
+) {
   if (!Array.isArray(visits) || visits.length === 0) return null;
 
   const excludedIds = new Set(
@@ -61,6 +103,16 @@ export function findPendingTrackingRatingVisit(visits, { excludeVisitIds = [] } 
       .filter((value) => value !== null && value !== undefined && String(value).trim() !== "")
       .map((value) => String(value)),
   );
+  const allowedIds =
+    Array.isArray(allowedVisitIds) && allowedVisitIds.length > 0
+      ? new Set(
+          allowedVisitIds
+            .filter(
+              (value) => value !== null && value !== undefined && String(value).trim() !== "",
+            )
+            .map((value) => String(value)),
+        )
+      : null;
 
   return [...visits]
     .filter((visit) => {
@@ -69,7 +121,8 @@ export function findPendingTrackingRatingVisit(visits, { excludeVisitIds = [] } 
       return (
         lifecycleState === EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING &&
         !!visitId &&
-        !excludedIds.has(String(visitId))
+        !excludedIds.has(String(visitId)) &&
+        (!allowedIds || allowedIds.has(String(visitId)))
       );
     })
     .sort((left, right) => {
@@ -87,13 +140,15 @@ export function findPendingTrackingRatingVisit(visits, { excludeVisitIds = [] } 
     })[0] ?? null;
 }
 
-export function buildRecoveredTrackingRatingState(visit) {
+export function buildRecoveredTrackingRatingState(visit, claim = null) {
   const visitId = visit?.id ?? visit?.requestId ?? null;
   if (!visitId) return null;
 
   const kind = normalizeTrackingVisitKind(visit);
-  const hospitalTitle = visit?.hospitalName ?? visit?.hospital ?? null;
-  const providerName = visit?.doctorName ?? visit?.doctor ?? null;
+  const hospitalTitle =
+    visit?.hospitalName ?? visit?.hospital ?? claim?.hospitalTitle ?? claim?.hospital ?? null;
+  const providerName =
+    visit?.doctorName ?? visit?.doctor ?? claim?.providerName ?? claim?.provider ?? null;
 
   if (kind === "ambulance" || kind === "bed") {
     return buildTrackingRatingState({

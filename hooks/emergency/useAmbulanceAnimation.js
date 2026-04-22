@@ -212,6 +212,14 @@ const getNearestRouteProjection = (routeProfile, coordinate) => {
 	return nearestProjection;
 };
 
+const buildRouteSignature = (routeCoordinates = []) =>
+	normalizeRoute(routeCoordinates)
+		.map(
+			(point) =>
+				`${Number(point.latitude).toFixed(5)}:${Number(point.longitude).toFixed(5)}`
+		)
+		.join("|");
+
 export const useAmbulanceAnimation = ({
 	routeCoordinates,
 	animateAmbulance,
@@ -229,6 +237,32 @@ export const useAmbulanceAnimation = ({
 	const lastRouteDistanceRef = useRef(null);
 	const responderLocationRef = useRef(responderLocation);
 	const responderHeadingRef = useRef(responderHeading);
+	const routeCoordinatesRef = useRef(routeCoordinates);
+	const etaSecondsRef = useRef(ambulanceTripEtaSeconds);
+	const initialProgressRef = useRef(initialProgress);
+	const onAmbulanceUpdateRef = useRef(onAmbulanceUpdate);
+	const routeSignature = buildRouteSignature(routeCoordinates);
+	const hasLiveResponder = Boolean(
+		responderLocation &&
+			Number.isFinite(responderLocation.latitude) &&
+			Number.isFinite(responderLocation.longitude)
+	);
+
+	useEffect(() => {
+		routeCoordinatesRef.current = routeCoordinates;
+	}, [routeCoordinates]);
+
+	useEffect(() => {
+		etaSecondsRef.current = ambulanceTripEtaSeconds;
+	}, [ambulanceTripEtaSeconds]);
+
+	useEffect(() => {
+		initialProgressRef.current = initialProgress;
+	}, [initialProgress]);
+
+	useEffect(() => {
+		onAmbulanceUpdateRef.current = onAmbulanceUpdate;
+	}, [onAmbulanceUpdate]);
 
 	useEffect(() => {
 		responderLocationRef.current = responderLocation;
@@ -244,21 +278,21 @@ export const useAmbulanceAnimation = ({
 			ambulanceTimerRef.current = null;
 		}
 		animationStartTimeRef.current = null;
-		lastRouteDistanceRef.current = null;
 	}, []);
 
 	const startAmbulanceAnimation = useCallback(() => {
 		stopAmbulanceAnimation();
-		const routeProfile = buildRouteProfile(routeCoordinates);
+		const routeProfile = buildRouteProfile(routeCoordinatesRef.current);
 		routeProfileRef.current = routeProfile;
-		const safeInitialProgress = Number.isFinite(initialProgress)
-			? Math.min(1, Math.max(0, Number(initialProgress)))
+		const etaSeconds = Number(etaSecondsRef.current);
+		const safeInitialProgress = Number.isFinite(initialProgressRef.current)
+			? Math.min(1, Math.max(0, Number(initialProgressRef.current)))
 			: 0;
 
 		if (
 			!routeProfile ||
-			!Number.isFinite(ambulanceTripEtaSeconds) ||
-			ambulanceTripEtaSeconds <= 0
+			!Number.isFinite(etaSeconds) ||
+			etaSeconds <= 0
 		) {
 			console.warn("[useAmbulanceAnimation] Invalid animation params");
 			return;
@@ -270,11 +304,21 @@ export const useAmbulanceAnimation = ({
 			? getNearestRouteProjection(routeProfile, initialResponderLocation)
 			: null;
 		const responderDistanceMeters = responderProjection?.routeDistanceMeters ?? null;
+		const resumeProgress = Number.isFinite(lastRouteDistanceRef.current)
+			? Math.min(
+					1,
+					Math.max(0, Number(lastRouteDistanceRef.current) / routeProfile.totalMeters)
+				)
+			: null;
 		const responderProgress = Number.isFinite(responderDistanceMeters)
 			? Math.min(1, Math.max(0, responderDistanceMeters / routeProfile.totalMeters))
 			: null;
 		const startProgress =
-			Number.isFinite(responderProgress) ? responderProgress : safeInitialProgress;
+			Number.isFinite(responderProgress)
+				? responderProgress
+				: Number.isFinite(resumeProgress)
+					? resumeProgress
+					: safeInitialProgress;
 		const usesResponderProgress = Number.isFinite(responderProgress);
 
 		// Make marker visible immediately at the start of the route.
@@ -298,7 +342,7 @@ export const useAmbulanceAnimation = ({
 			const elapsedMs = now - animationStartTimeRef.current;
 			const elapsedRatio = Math.min(
 				1,
-				elapsedMs / (ambulanceTripEtaSeconds * 1000)
+				elapsedMs / (etaSeconds * 1000)
 			);
 			const progressRatio = usesResponderProgress
 				? Math.min(1, startProgress + elapsedRatio * (1 - startProgress))
@@ -321,7 +365,7 @@ export const useAmbulanceAnimation = ({
 			setAmbulanceCoordinate(interpCoord);
 			setAmbulanceHeading(heading);
 
-			onAmbulanceUpdate?.({ coordinate: interpCoord, heading });
+			onAmbulanceUpdateRef.current?.({ coordinate: interpCoord, heading });
 
 			if (progressRatio >= 1) {
 				ambulanceTimerRef.current = null;
@@ -338,16 +382,10 @@ export const useAmbulanceAnimation = ({
 			animate,
 			AMBULANCE_CONFIG.ANIMATION_INTERVAL
 		);
-	}, [
-		initialProgress,
-		routeCoordinates,
-		ambulanceTripEtaSeconds,
-		onAmbulanceUpdate,
-		stopAmbulanceAnimation,
-	]);
+	}, [stopAmbulanceAnimation]);
 
 	useEffect(() => {
-		if (animateAmbulance && routeCoordinates.length >= 2) {
+		if (animateAmbulance && routeSignature && !hasLiveResponder) {
 			startAmbulanceAnimation();
 		} else {
 			stopAmbulanceAnimation();
@@ -356,7 +394,15 @@ export const useAmbulanceAnimation = ({
 		return () => {
 			stopAmbulanceAnimation();
 		};
-	}, [animateAmbulance, routeCoordinates, startAmbulanceAnimation, stopAmbulanceAnimation]);
+	}, [
+		animateAmbulance,
+		ambulanceTripEtaSeconds,
+		hasLiveResponder,
+		initialProgress,
+		routeSignature,
+		startAmbulanceAnimation,
+		stopAmbulanceAnimation,
+	]);
 
 	useEffect(() => {
 		if (responderLocation) {
@@ -395,11 +441,12 @@ export const useAmbulanceAnimation = ({
 			}
 		} else if (!animateAmbulance) {
 			setAmbulanceCoordinate(null);
+			lastRouteDistanceRef.current = null;
 		}
 		if (Number.isFinite(responderHeading)) {
 			setAmbulanceHeading(responderHeading);
 		}
-	}, [animateAmbulance, responderLocation, responderHeading]);
+	}, [animateAmbulance, responderLocation, responderHeading, routeCoordinates]);
 
 	return {
 		ambulanceCoordinate,
