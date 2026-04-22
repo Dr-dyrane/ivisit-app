@@ -180,6 +180,92 @@ Every pass must end with:
 
 No pass should end as “we changed things and will remember later.”
 
+### Rule 5
+
+iOS mobile is the reference implementation, not the only implementation.
+
+That means:
+
+- new `/map` behavior is allowed to be invented and signed off on iOS mobile first
+- once accepted, it must be pushed into shared controller/model/theme/formatter boundaries so other variants inherit it instead of re-implementing it
+- parity failure is not just a spacing or breakpoint bug; it includes logic, API/data normalization, persistence/recovery, and shared action behavior
+
+### Rule 6
+
+Parity means more than screen layout.
+
+Every promoted `/map` phase must eventually match across supported variants in these categories:
+
+- shell geometry
+  - panel/sheet padding
+  - sidebar/header placement
+  - map control offsets
+- UI composition
+  - hero/card hierarchy
+  - CTA grouping
+  - loading/skeleton structure
+- action semantics
+  - same buttons exist when the same state truth exists
+  - same pending/disabled/pressed feedback exists
+- data presentation
+  - request id beautification / display formatting
+  - ETA / arrival / distance formatting
+  - service / hospital / room labeling
+  - status copy normalization
+- runtime truth
+  - same status transitions
+  - same countdown/timer behavior
+  - same reopen/recovery behavior
+  - same share behavior when applicable
+
+If one variant shows the correct skeleton/header/CTA but the real phase does not, that is a propagation failure, not a design exception.
+
+### Rule 7
+
+Web background behavior is a persistence problem, not a store-brand problem.
+
+That means:
+
+- Zustand alone would not fix a browser tab pausing timers or suspending JS work
+- active `/map` truth must resume from persisted app-owned state plus backend/request truth when the tab regains focus or reloads
+- `AsyncStorage` already provides the cross-platform storage primitive here, including web-backed persistence, but `/map` does not yet route all app-owned persistence through one shared boundary
+- direct `AsyncStorage` usage across screens/services is now an audit target because it makes resume behavior harder to reason about on web
+
+Required direction:
+
+- prefer one app-owned storage boundary for `/map` persistence
+- persist the minimum operational truth needed to reconstruct active request state
+- rebuild timers/countdowns from persisted timestamps and backend truth rather than assuming background execution continued
+
+Current direct-storage audit:
+
+| Area | File | Current classification | Decision |
+| --- | --- | --- | --- |
+| Public route resume | `app/_layout.js` | `/map` startup and reload truth | moved legacy dynamic key reads/writes behind `database.readRaw/deleteRaw` |
+| Demo bootstrap | `services/demoEcosystemService.js` | `/map` coverage and demo hospital readiness | moved dynamic app-owned keys behind `database.readRaw/writeRaw` |
+| Coverage mode | `services/coverageModeService.js` | `/map` hospital discovery behavior | moved dynamic per-user key behind `database.readRaw/writeRaw/deleteRaw` |
+| Legacy intake resume | `screens/RequestAmbulanceScreen.jsx` | legacy/request-help bridge that can seed `/map` emergency work | moved dynamic intake phase key behind `database.readRaw/writeRaw/deleteRaw` |
+| Triage draft resume | `components/emergency/triage/TriageIntakeModal.jsx` | legacy triage surface still used around active requests | moved dynamic request triage key behind `database.readRaw/writeRaw` |
+| Supabase auth | `services/supabase.js` | auth session adapter | keep direct `AsyncStorage`; Supabase requires an AsyncStorage-compatible storage adapter |
+| OTA update pending flag | `contexts/OTAUpdatesContext.jsx` | app-global update state | not `/map` specific; leave for broader app-storage cleanup |
+| Legacy emergency disclaimer | `screens/EmergencyScreen.jsx` | legacy emergency surface | not part of promoted `/map` runtime; leave until legacy flow retirement |
+
+Minimum persisted `/map` truth for web resume/recovery:
+
+- active request identity: request id, service family (`ambulance`, `bed`, or combined), hospital id, selected transport/room id
+- active runtime phase: current sheet phase, snap state, return target, and whether tracking is hidden behind explore/map mode
+- operational timestamps: request created/accepted time, ETA source timestamp, expected arrival timestamp, bed hold expiry timestamp when applicable
+- route/tracking seed: route signature, route coordinate snapshot if available, last responder coordinate, heading, progress ratio, telemetry timestamp, and source mode
+- user-facing request state: normalized status, arrived/confirm-arrival gate, completed/rating-pending gate, cancellation state
+- commit drafts: profile/contact draft, triage draft/progress, selected payment method id, and payment snapshot readiness flag
+- recovery handoff: pending rating recovery claim, pending share state when tokenized sharing is added, and last successful backend sync timestamp
+
+Resume rule:
+
+- persisted local truth is a seed only
+- backend/request truth wins when available
+- timers must be recomputed from timestamps on focus/reload, never continued from paused JS intervals
+
 ## Pass Overview
 
 ## Pass 1. Runtime Boundary Cleanup
@@ -390,6 +476,14 @@ Scope:
 - commit sheet continuity
 - payment state surfaces
 - rating polish
+- regression-only sidebar shell fixes when they block visual signoff for the same runtime:
+  - shared wide-panel body inset for `COMMIT_DETAILS`, `COMMIT_TRIAGE`, `COMMIT_PAYMENT`, and `TRACKING`
+  - active-session header placement in left-sidebar layouts must match the right-map header lane shown by the loading skeleton
+- lock the shared presentation/data contracts that later variants must inherit:
+  - request id display formatting
+  - metric formatting (`arrival`, `min`, `km`)
+  - hero/meta hierarchy
+  - header action availability
 
 Required checks:
 
@@ -424,11 +518,28 @@ Scope:
 - commit stages for bed path
 - bed tracking / reservation guidance states
 - completion / rating parity where applicable
+- legacy bed timing parity:
+  - hydrate `waitTime` / `estimatedWait` / `etaSeconds` into live reservation truth
+  - preserve the legacy fallback hold window (`15 min`) when explicit timing is absent
+  - expose remaining reservation time as a real countdown in header metrics and reservation hero state
+- legacy occupancy gate parity:
+  - `Reserved` -> `Ready` -> `Check in` / `Mark occupied` -> `Complete`
+- bed hero / tracking parity:
+  - match the ambulance tracking structure instead of using a second-class reservation summary
+  - use bed imagery in sheet hero surfaces only; map marker parity is intentionally deferred
+- resolve bed share behavior:
+  - legacy code exposes timing and reservation status, but not a true user-controlled reservation window share flow
+  - add `Share ETA` parity for bed booking
+  - decide whether `Share ETA` for bed should share remaining hold time, ready window, or both
+- inheritance rule:
+  - bed flow should reuse the ambulance request architecture wherever the backend request/visit fields already overlap
+  - service-specific differences belong in bed models/presentation helpers, not in a second disconnected runtime stack
 
 Done when:
 
 - bed-only runtime is not a second-class path
 - shared commit modules support bed safely
+- reservation countdown, readiness state, and occupied/completion transitions are truthful without relying on legacy-only surfaces
 
 Unlocks:
 
@@ -448,11 +559,20 @@ Scope:
 - combined payload memory
 - hospital/service revalidation between phases
 - payment and resolution coordination
+- sequential add-on parity:
+  - ambulance tracking -> reserve bed
+  - bed tracking -> request ambulance
+- dual-active state rules:
+  - define ambulance-primary vs shared tracking ownership when both requests are live
+  - define smart-header truth when transport and reservation coexist
+- keep combined as sequential backend requests until a true unified checkout exists
+- if a reservation share window is added for bed, define how it behaves once dual-active flow exists
 
 Done when:
 
 - combined flow no longer depends on ambulance-only assumptions
 - bed-after-ambulance path is stable
+- reverse add-on (`bed -> ambulance`) is either fully supported or explicitly excluded by product rule
 
 Unlocks:
 
@@ -479,6 +599,22 @@ Scope:
 - modal/sidebar variants
 - map controls and icon placement
 - typography and CTA sizing
+- propagation audit for every promoted `/map` phase:
+  - `COMMIT_DETAILS`
+  - `COMMIT_PAYMENT`
+  - `COMMIT_TRIAGE`
+  - `TRACKING`
+  - bed-only follow-ons once Pass 6 is complete
+- shared logic/data parity checks:
+  - request id display formatting
+  - metric/countdown parity
+  - CTA/action parity
+  - share behavior parity
+  - persistence/recovery parity
+- web persistence/resume contract:
+  - active trip/reservation state must survive reload/focus loss via persisted local state plus backend truth
+  - no viewport may depend on background JS timers continuing while hidden
+  - `/map` storage should prefer the shared app storage boundary over scattered direct `AsyncStorage` calls where practical
 
 Done when:
 

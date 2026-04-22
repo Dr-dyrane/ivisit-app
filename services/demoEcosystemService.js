@@ -1,6 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "./supabase";
 import { getHospitalFacilityKey } from "./hospitalIdentity";
+import { database } from "../database";
 
 export const DEMO_BOOTSTRAP_PHASES = [
 	{
@@ -57,9 +57,7 @@ const toCoverageKey = ({ latitude, longitude }) =>
 
 const readBootstrapState = async () => {
 	try {
-		const raw = await AsyncStorage.getItem(DEMO_BOOTSTRAP_STATE_KEY);
-		if (!raw) return {};
-		const parsed = JSON.parse(raw);
+		const parsed = await database.readRaw(DEMO_BOOTSTRAP_STATE_KEY, {});
 		return parsed && typeof parsed === "object" ? parsed : {};
 	} catch (error) {
 		console.warn("[demoEcosystemService] Failed to read bootstrap state", error);
@@ -69,7 +67,7 @@ const readBootstrapState = async () => {
 
 const writeBootstrapState = async (state) => {
 	try {
-		await AsyncStorage.setItem(DEMO_BOOTSTRAP_STATE_KEY, JSON.stringify(state));
+		await database.writeRaw(DEMO_BOOTSTRAP_STATE_KEY, state);
 	} catch (error) {
 		console.warn("[demoEcosystemService] Failed to persist bootstrap state", error);
 	}
@@ -111,13 +109,13 @@ const resolveProvisioningUserId = async (userId) => {
 	}
 
 	try {
-		const existingGuestId = await AsyncStorage.getItem(DEMO_BOOTSTRAP_GUEST_ID_KEY);
+		const existingGuestId = await database.readRaw(DEMO_BOOTSTRAP_GUEST_ID_KEY);
 		if (existingGuestId && existingGuestId.trim().length > 0) {
 			return existingGuestId.trim();
 		}
 
 		const nextGuestId = createGuestProvisioningId();
-		await AsyncStorage.setItem(DEMO_BOOTSTRAP_GUEST_ID_KEY, nextGuestId);
+		await database.writeRaw(DEMO_BOOTSTRAP_GUEST_ID_KEY, nextGuestId);
 		return nextGuestId;
 	} catch (_error) {
 		return normalizedUserId || "guest";

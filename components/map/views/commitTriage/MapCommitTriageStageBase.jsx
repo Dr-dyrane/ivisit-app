@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Platform, View } from "react-native";
+import { View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
@@ -39,6 +39,7 @@ export default function MapCommitTriageStageBase({
 		contentMaxWidth,
 		presentationMode,
 		shellWidth,
+		shouldUseWideStageInset,
 	} = useMapStageSurfaceLayout();
 	const stageMetrics = useMapStageResponsiveMetrics({ presentationMode });
 	const allowedSnapStates = useMemo(() => [MAP_SHEET_SNAP_STATES.EXPANDED], []);
@@ -69,10 +70,6 @@ export default function MapCommitTriageStageBase({
 		onScroll: handleBodyScroll,
 		onScrollBeginDrag: handleBodyScrollBeginDrag,
 	});
-	const webWideInsetStyle =
-		Platform.OS === "web" && presentationMode !== "sheet"
-			? styles.webWideContentInset
-			: null;
 	const modalContainedStyle =
 		presentationMode === "modal" && contentMaxWidth
 			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
@@ -163,9 +160,11 @@ export default function MapCommitTriageStageBase({
 					isSidebarPresentation
 						? sheetStageStyles.bodyScrollContentSidebar
 						: null,
+					shouldUseWideStageInset
+						? sheetStageStyles.bodyScrollContentWide
+						: null,
 					modalContainedStyle,
 					styles.bodyContent,
-					webWideInsetStyle,
 				]}
 				isSidebarPresentation={isSidebarPresentation}
 				allowScrollDetents={allowScrollDetents}

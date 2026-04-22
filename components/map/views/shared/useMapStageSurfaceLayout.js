@@ -91,6 +91,8 @@ export default function useMapStageSurfaceLayout() {
 		}
 		return null;
 	}, [isCenteredModalVariant, isSidebarPresentation, shellWidth, targetContentWidth]);
+	const shouldUseWideStageInset =
+		Platform.OS === "web" && presentationMode !== "sheet";
 
 	return {
 		width,
@@ -102,5 +104,6 @@ export default function useMapStageSurfaceLayout() {
 		contentMaxWidth,
 		presentationMode,
 		shellWidth,
+		shouldUseWideStageInset,
 	};
 }

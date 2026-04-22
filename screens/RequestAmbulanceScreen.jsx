@@ -2,7 +2,6 @@
 
 import { useRef, useMemo, useCallback, useEffect, useState } from "react";
 import { View, StyleSheet, Animated, Platform } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -30,6 +29,7 @@ import { navigateBack, ROUTES } from "../utils/navigationHelpers";
 import { triageService } from "../services/triageService";
 import { demoEcosystemService } from "../services/demoEcosystemService";
 import { COVERAGE_POOR_THRESHOLD } from "../services/coverageModeService";
+import { database } from "../database";
 
 const MIN_FINDING_NEARBY_HELP_MS = 1600;
 const EMERGENCY_INTAKE_PHASE_STORAGE_VERSION = 1;
@@ -337,7 +337,7 @@ export default function RequestAmbulanceScreen() {
 			clearTimeout(persistTimerRef.current);
 			persistTimerRef.current = null;
 		}
-		return AsyncStorage.removeItem(intakePhaseStorageKey).catch(() => {});
+		return database.deleteRaw(intakePhaseStorageKey).catch(() => {});
 	}, [intakePhaseStorageKey]);
 
 	const handleClose = useCallback(() => {
@@ -484,12 +484,10 @@ export default function RequestAmbulanceScreen() {
 					return;
 				}
 
-				const storedRaw = await AsyncStorage.getItem(intakePhaseStorageKey);
-				if (!storedRaw || cancelled) {
+				const parsed = await database.readRaw(intakePhaseStorageKey);
+				if (!parsed || cancelled) {
 					return;
 				}
-
-				const parsed = JSON.parse(storedRaw);
 				if (!parsed || typeof parsed !== "object") {
 					return;
 				}
@@ -586,7 +584,7 @@ export default function RequestAmbulanceScreen() {
 		}
 
 		persistTimerRef.current = setTimeout(() => {
-			AsyncStorage.setItem(intakePhaseStorageKey, nextHash).catch((error) => {
+			database.writeRaw(intakePhaseStorageKey, snapshot).catch((error) => {
 				if (__DEV__) {
 					console.warn("[RequestAmbulanceScreen] Failed to persist intake phase:", error);
 				}

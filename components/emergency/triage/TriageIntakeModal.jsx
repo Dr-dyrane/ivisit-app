@@ -10,11 +10,11 @@ import {
 	Text,
 	View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../../constants/colors";
+import { database } from "../../../database";
 import { triageService } from "../../../services/triageService";
 import { emergencyRequestsService } from "../../../services/emergencyRequestsService";
 import { triageCopilotService } from "../../../services/triageCopilotService";
@@ -81,9 +81,9 @@ const TriageIntakeModal = ({
 			let nextDraft = normalizeTriageDraft(initialDraft);
 			if (draftStorageKey) {
 				try {
-					const storedRaw = await AsyncStorage.getItem(draftStorageKey);
+					const storedRaw = await database.readRaw(draftStorageKey);
 					if (!cancelled && storedRaw) {
-						const storedDraft = normalizeTriageDraft(JSON.parse(storedRaw));
+						const storedDraft = normalizeTriageDraft(storedRaw);
 						if (hasMeaningfulTriageDraftData(storedDraft)) {
 							nextDraft = storedDraft;
 						}
@@ -113,7 +113,7 @@ const TriageIntakeModal = ({
 		if (!visible || !draftStorageKey) return;
 		if (draftStorageTimerRef.current) clearTimeout(draftStorageTimerRef.current);
 		draftStorageTimerRef.current = setTimeout(() => {
-			AsyncStorage.setItem(draftStorageKey, JSON.stringify(normalizeTriageDraft(draft))).catch(
+			database.writeRaw(draftStorageKey, normalizeTriageDraft(draft)).catch(
 				(error) => {
 					if (__DEV__) {
 						console.warn("[TriageIntakeModal] Failed to persist local draft:", error);

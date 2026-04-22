@@ -17,6 +17,7 @@ import { StorageKeys, isValidKey, isCollectionKey } from "./keys";
 
 /** Default timeout for database operations (ms) */
 const DB_TIMEOUT = 5000;
+const RAW_KEY_PREFIXES = ["@ivisit_", "@ivisit/"];
 
 /**
  * Custom error class for database operations
@@ -76,6 +77,21 @@ const database = {
 	_validateKey(key) {
 		if (!isValidKey(key)) {
 			throw new DatabaseError(`Invalid storage key: ${key}`, ErrorCodes.INVALID_KEY);
+		}
+	},
+
+	/**
+	 * Validates dynamic app-owned keys that cannot be represented by StorageKeys.
+	 * These are still routed through this module so platform persistence behavior
+	 * stays centralized across native and web.
+	 */
+	_validateRawKey(key) {
+		if (
+			typeof key !== "string" ||
+			key.trim().length === 0 ||
+			!RAW_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))
+		) {
+			throw new DatabaseError(`Invalid raw storage key: ${key}`, ErrorCodes.INVALID_KEY);
 		}
 	},
 
@@ -147,6 +163,73 @@ const database = {
 		} catch (error) {
 			if (error instanceof DatabaseError) throw error;
 			throw new DatabaseError(`Failed to check ${key}`, ErrorCodes.READ_ERROR, error);
+		}
+	},
+
+	// ============================================
+	// DYNAMIC APP-OWNED KEY OPERATIONS
+	// ============================================
+
+	/**
+	 * Read a value from a dynamic app-owned key.
+	 * @param {string} key
+	 * @param {*} defaultValue
+	 * @param {{ parseJson?: boolean }} options
+	 * @returns {Promise<*>}
+	 */
+	async readRaw(key, defaultValue = null, options = {}) {
+		this._validateRawKey(key);
+		const parseJson = options.parseJson !== false;
+		try {
+			const value = await withTimeout(AsyncStorage.getItem(key));
+			if (value === null) return defaultValue;
+			if (!parseJson) return value;
+
+			try {
+				return JSON.parse(value);
+			} catch (_error) {
+				return value;
+			}
+		} catch (error) {
+			if (error instanceof DatabaseError) throw error;
+			throw new DatabaseError(`Failed to read ${key}`, ErrorCodes.READ_ERROR, error);
+		}
+	},
+
+	/**
+	 * Write a value to a dynamic app-owned key.
+	 * @param {string} key
+	 * @param {*} value
+	 * @param {{ stringifyJson?: boolean }} options
+	 * @returns {Promise<*>}
+	 */
+	async writeRaw(key, value, options = {}) {
+		this._validateRawKey(key);
+		const stringifyJson = options.stringifyJson !== false;
+		try {
+			await withTimeout(
+				AsyncStorage.setItem(key, stringifyJson ? JSON.stringify(value) : String(value))
+			);
+			return value;
+		} catch (error) {
+			if (error instanceof DatabaseError) throw error;
+			throw new DatabaseError(`Failed to write ${key}`, ErrorCodes.WRITE_ERROR, error);
+		}
+	},
+
+	/**
+	 * Delete a dynamic app-owned key.
+	 * @param {string} key
+	 * @returns {Promise<boolean>}
+	 */
+	async deleteRaw(key) {
+		this._validateRawKey(key);
+		try {
+			await withTimeout(AsyncStorage.removeItem(key));
+			return true;
+		} catch (error) {
+			if (error instanceof DatabaseError) throw error;
+			throw new DatabaseError(`Failed to delete ${key}`, ErrorCodes.DELETE_ERROR, error);
 		}
 	},
 

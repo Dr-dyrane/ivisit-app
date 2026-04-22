@@ -56,8 +56,13 @@ export default function MapTrackingStageBase({
 	} = useEmergency();
 	const { updateVisit, cancelVisit, completeVisit } = useVisits();
 	const { setRequestStatus } = useEmergencyRequests();
-	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
-		useMapStageSurfaceLayout();
+	const {
+		isSidebarPresentation,
+		contentMaxWidth,
+		presentationMode,
+		shellWidth,
+		shouldUseWideStageInset,
+	} = useMapStageSurfaceLayout();
 	const stageMetrics = useMapStageResponsiveMetrics({ presentationMode });
 
 	const {
@@ -426,12 +431,15 @@ export default function MapTrackingStageBase({
 						isSidebarPresentation
 							? sheetStageStyles.bodyScrollContentPanel
 							: null,
-						isSidebarPresentation
-							? sheetStageStyles.bodyScrollContentSidebar
-							: null,
-						modalContainedStyle,
-						styles.bodyContent,
-					]}
+					isSidebarPresentation
+						? sheetStageStyles.bodyScrollContentSidebar
+						: null,
+					shouldUseWideStageInset
+						? sheetStageStyles.bodyScrollContentWide
+						: null,
+					modalContainedStyle,
+					styles.bodyContent,
+				]}
 					isSidebarPresentation={isSidebarPresentation}
 					allowScrollDetents={allowScrollDetents}
 					handleBodyWheel={handleBodyWheel}

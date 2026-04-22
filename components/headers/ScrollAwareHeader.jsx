@@ -110,6 +110,7 @@ export default function ScrollAwareHeader({
 	scrollAware = true,
 	mode = HEADER_MODES.LEGACY_SCROLL,
 	session = DEFAULT_HEADER_SESSION,
+	layoutInsets = null,
 }) {
 	const insets = useSafeAreaInsets();
 	const { isDarkMode } = useTheme();
@@ -397,6 +398,15 @@ export default function ScrollAwareHeader({
 	);
 
 	const headerContent = isActiveSession ? activeSessionHeaderContent : standardHeaderContent;
+	const resolvedTopInset = Number.isFinite(Number(layoutInsets?.topInset))
+		? Number(layoutInsets.topInset)
+		: 8;
+	const resolvedLeftInset = Number.isFinite(Number(layoutInsets?.leftInset))
+		? Number(layoutInsets.leftInset)
+		: 12;
+	const resolvedRightInset = Number.isFinite(Number(layoutInsets?.rightInset))
+		? Number(layoutInsets.rightInset)
+		: 12;
 
 	return (
 		<Animated.View
@@ -404,8 +414,9 @@ export default function ScrollAwareHeader({
 				styles.container,
 				{
 					opacity: headerOpacity,
-					paddingTop: insets.top + 8,
-					paddingHorizontal: 12,
+					paddingTop: insets.top + resolvedTopInset,
+					paddingLeft: resolvedLeftInset,
+					paddingRight: resolvedRightInset,
 				},
 			]}
 		>

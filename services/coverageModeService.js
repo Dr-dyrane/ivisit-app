@@ -1,6 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { demoEcosystemService } from "./demoEcosystemService";
 import { getHospitalFacilityKey } from "./hospitalIdentity";
+import { database } from "../database";
 
 export const COVERAGE_MODES = {
 	LIVE_ONLY: "live_only",
@@ -315,7 +315,7 @@ export const coverageModeService = {
 		if (!storageKey) return null;
 
 		try {
-			const raw = await AsyncStorage.getItem(storageKey);
+			const raw = await database.readRaw(storageKey);
 			return raw ? normalizeCoverageMode(raw) : null;
 		} catch (error) {
 			console.warn("[coverageModeService] Failed to read stored mode", error);
@@ -329,7 +329,7 @@ export const coverageModeService = {
 
 		const normalizedMode = normalizeCoverageMode(mode);
 		try {
-			await AsyncStorage.setItem(storageKey, normalizedMode);
+			await database.writeRaw(storageKey, normalizedMode);
 			return normalizedMode;
 		} catch (error) {
 			console.warn("[coverageModeService] Failed to store coverage mode", error);
@@ -342,7 +342,7 @@ export const coverageModeService = {
 		if (!storageKey) return;
 
 		try {
-			await AsyncStorage.removeItem(storageKey);
+			await database.deleteRaw(storageKey);
 		} catch (error) {
 			console.warn("[coverageModeService] Failed to clear stored mode", error);
 		}

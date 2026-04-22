@@ -280,6 +280,67 @@ Rule:
 
 - no giant mixed file should own logic, copy, assets, and styles together
 
+## 10.1 Reference Variant And Propagation Rule
+
+iOS mobile is the canonical product reference for new emergency phases.
+
+That does **not** mean other variants are allowed to drift.
+
+Rules:
+
+- design and interaction truth may be established on iOS mobile first
+- once accepted, that truth must be moved into shared controller/model/theme/formatter boundaries so other variants inherit it
+- do not â€œport laterâ€ by rebuilding the same feature separately on web, tablet, or Android
+- if a wide-screen skeleton/header/CTA already encodes the intended placement but the live phase does not, that is a propagation bug, not a design decision
+
+Parity is not only layout parity.
+
+Every promoted `/map` phase must eventually inherit the same truth in these categories:
+
+- shell geometry
+  - panel/sheet padding
+  - sidebar header placement
+  - map control offsets
+- UI composition
+  - hero / CTA / detail hierarchy
+  - loading and empty states
+- action semantics
+  - same CTA availability for the same runtime truth
+  - same pressed / loading / disabled behavior
+- data presentation
+  - request id beautification / display formatting
+  - ETA / arrival / distance formatting
+  - service / hospital / room labels
+  - status copy normalization
+- runtime truth
+  - same status transitions
+  - same countdown/timer behavior
+  - same reopen/recovery behavior
+  - same share behavior when supported
+
+Implementation rule:
+
+- if a behavior belongs to more than one viewport or more than one service type, push it into shared helpers/modules before declaring the iOS implementation â€œdoneâ€
+
+Web persistence rule:
+
+- do not assume hidden browser tabs continue running timers or trip simulation work
+- if `/map` needs active request truth after focus loss or reload, persist enough app-owned state to reconstruct it
+- rebuild countdowns from persisted timestamps and backend truth on resume
+- prefer the shared app storage boundary over new scattered direct `AsyncStorage` calls when adding `/map` persistence
+- dynamic app-owned keys that cannot live in `StorageKeys` should still go through `database.readRaw/writeRaw/deleteRaw`
+- do not move Supabase auth storage behind app-specific helpers; the Supabase client owns that AsyncStorage adapter contract
+
+Minimum `/map` resume payload:
+
+- active request id, service family, hospital id, transport/room id
+- current phase, snap state, return target, and tracking/map visibility mode
+- accepted/arrival/hold-expiry timestamps used to recompute ETA and countdowns
+- route signature, last responder coordinate, heading, progress ratio, telemetry timestamp, and route source
+- normalized status gates for arrived, completed, cancelled, and rating-pending states
+- triage draft/progress, contact/profile draft, selected payment method id, and payment snapshot readiness
+- last backend sync timestamp so stale local truth can be replaced quickly
+
 ### Specific target for `MapSheetShell`
 
 The current `MapSheetShell.jsx` should keep moving toward this split:
@@ -549,6 +610,22 @@ Rendering rule for `tracking`:
 - default sheet posture should be a compact route card with arrival time, minutes, and distance first
 - expanded controls can include destination, share ETA, call hospital/driver when available, report issue, and cancel/end only when backend status rules allow it
 - animate the ambulance/responder marker from realtime coordinates when available; use smooth route-progress projection only as a fallback
+
+## 13.1 Shared request-model inheritance rule
+
+Ambulance and bed flows are different product states, but they are not separate runtime families.
+
+Rules:
+
+- when ambulance and bed share the same emergency request / visit fields, they should share controller/model/formatter logic
+- service-specific differences should live in service-specific presentation helpers or derived-model branches, not in a second disconnected stack
+- bed parity should reuse the established ambulance commit/tracking architecture wherever possible
+- formatting parity must inherit too:
+  - request id beautification
+  - metric formatting
+  - status normalization
+  - share action behavior
+- if bed introduces a countdown/hold-window behavior, that behavior must use the same shared timing/metric presentation contracts the tracking header and hero already rely on
 
 ## 14. Loading Rule
 

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { Platform } from "react-native";
 import { supabase } from "../services/supabase";
 import { SPECIALTIES } from "../constants/hospitals";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
@@ -887,6 +888,7 @@ export function EmergencyProvider({ children }) {
 	useEffect(() => {
 		if (!activeAmbulanceTrip || !activeAmbulanceTrip.requestId) return;
 		if (activeAmbulanceTrip.status === 'completed' || activeAmbulanceTrip.status === 'cancelled') return;
+		if (Platform.OS === "web") return;
 
 		let locationSubscription = null;
 
@@ -926,7 +928,13 @@ export function EmergencyProvider({ children }) {
 		})();
 
 		return () => {
-			if (locationSubscription) locationSubscription.remove();
+			try {
+				locationSubscription?.remove?.();
+			} catch (error) {
+				if (__DEV__) {
+					console.warn("[EmergencyContext] Location subscription cleanup skipped:", error);
+				}
+			}
 		};
 	}, [activeAmbulanceTrip?.requestId, activeAmbulanceTrip?.status]);
 

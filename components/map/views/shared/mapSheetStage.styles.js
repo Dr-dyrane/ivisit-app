@@ -18,6 +18,9 @@ const sheetStageStyles = StyleSheet.create({
 		paddingHorizontal: 0,
 		paddingBottom: 22,
 	},
+	bodyScrollContentWide: {
+		paddingHorizontal: 20,
+	},
 	bodyScrollContentSidebar: {
 		flexGrow: 1,
 	},

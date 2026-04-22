@@ -29,6 +29,7 @@ import {
 import { buildBedDecisionSourcePayload } from "../../../components/map/core/mapSheetFlowPayloads";
 import { EmergencyRequestStatus } from "../../../services/emergencyRequestsService";
 import {
+  getMapViewportSurfaceConfig,
   getMapViewportVariant,
   isSidebarMapVariant,
 } from "../../../components/map/core/mapViewportConfig";
@@ -343,9 +344,23 @@ export function useMapExploreFlow() {
     () => getMapViewportVariant({ platform: Platform.OS, width }),
     [width],
   );
+  const surfaceConfig = useMemo(
+    () => getMapViewportSurfaceConfig(viewportVariant),
+    [viewportVariant],
+  );
   const usesSidebarLayout = useMemo(
     () => isSidebarMapVariant(viewportVariant),
     [viewportVariant],
+  );
+  const sidebarWidth = useMemo(
+    () =>
+      usesSidebarLayout
+        ? Math.min(
+            surfaceConfig.sidebarMaxWidth || Math.max(400, width * 0.36),
+            Math.max(320, width - 48),
+          )
+        : 0,
+    [surfaceConfig.sidebarMaxWidth, usesSidebarLayout, width],
   );
   const {
     resetHeader,
@@ -530,6 +545,7 @@ export function useMapExploreFlow() {
         mode: HEADER_MODES.HIDDEN,
         hidden: true,
         scrollAware: false,
+        layoutInsets: null,
       });
       resetExplorePresentation();
       return () => {
@@ -1139,10 +1155,16 @@ export function useMapExploreFlow() {
     setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
   }, [defaultExploreSnapState, setSheetView]);
 
+  const hasActiveMapModal =
+    profileModalVisible ||
+    guestProfileVisible ||
+    careHistoryVisible ||
+    recentVisitsVisible ||
+    authModalVisible;
   const trackingHeaderVisible =
     Boolean(trackingRequestKey) &&
-    !usesSidebarLayout &&
-    sheetSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED &&
+    (usesSidebarLayout || sheetSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED) &&
+    !hasActiveMapModal &&
     sheetPhase !== MAP_SHEET_PHASES.COMMIT_DETAILS &&
     sheetPhase !== MAP_SHEET_PHASES.COMMIT_TRIAGE &&
     sheetPhase !== MAP_SHEET_PHASES.COMMIT_PAYMENT;
@@ -1349,6 +1371,24 @@ export function useMapExploreFlow() {
   const trackingHeaderRouteSurface = isDarkMode
     ? "rgba(134,16,14,0.24)"
     : "rgba(134,16,14,0.12)";
+  const trackingHeaderLayoutInsets = useMemo(() => {
+    if (!usesSidebarLayout) return null;
+
+    return {
+      topInset: Math.max(8, Number(surfaceConfig.overlayHeaderTopInset || 8)),
+      leftInset:
+        sidebarWidth +
+        Math.max(0, Number(surfaceConfig.sidebarOuterInset || 0)) +
+        Math.max(0, Number(surfaceConfig.overlayHeaderSideInset || 16)),
+      rightInset: Math.max(0, Number(surfaceConfig.overlayHeaderSideInset || 16)),
+    };
+  }, [
+    sidebarWidth,
+    surfaceConfig.overlayHeaderSideInset,
+    surfaceConfig.overlayHeaderTopInset,
+    surfaceConfig.sidebarOuterInset,
+    usesSidebarLayout,
+  ]);
   const trackingHeaderProgressValue = useMemo(() => {
     const currentEtaSeconds =
       activeAmbulanceTrip?.etaSeconds ?? activeBedBooking?.etaSeconds ?? null;
@@ -1702,6 +1742,7 @@ export function useMapExploreFlow() {
         mode: HEADER_MODES.HIDDEN,
         hidden: true,
         scrollAware: false,
+        layoutInsets: null,
       });
       return;
     }
@@ -1716,11 +1757,13 @@ export function useMapExploreFlow() {
       leftComponent: trackingHeaderLeftComponent,
       rightComponent: trackingHeaderRightComponent,
       session: trackingHeaderSession,
+      layoutInsets: trackingHeaderLayoutInsets,
     });
   }, [
     forceHeaderVisible,
     lockHeaderHidden,
     setHeaderState,
+    trackingHeaderLayoutInsets,
     trackingHeaderLeftComponent,
     trackingHeaderRightComponent,
     trackingHeaderSession,

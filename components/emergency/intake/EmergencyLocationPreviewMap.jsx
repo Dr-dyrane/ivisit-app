@@ -28,7 +28,6 @@ const DEFAULT_REGION = {
 };
 const HOSPITAL_MARKER_IMAGE = require("../../../assets/map/hospital.png");
 const SELECTED_HOSPITAL_MARKER_IMAGE = require("../../../assets/map/selected_hospital.png");
-const BED_MARKER_IMAGE = require("../../../assets/features/bed.png");
 const HOSPITAL_MARKER_HEIGHT = {
 	normal: 102.5,
 	selected: 137,
@@ -333,7 +332,7 @@ export default function EmergencyLocationPreviewMap({
 	}, [directServiceMarkerCoordinate, selectedHospitalCoordinate]);
 	const previewServiceMarkerCoordinate = useMemo(() => {
 		if (directServiceMarkerCoordinate) return directServiceMarkerCoordinate;
-		if (serviceMarkerKind === "ambulance" || serviceMarkerKind === "bed") {
+		if (serviceMarkerKind === "ambulance") {
 			return selectedHospitalCoordinate;
 		}
 		return null;
@@ -906,20 +905,6 @@ export default function EmergencyLocationPreviewMap({
 						tracksViewChanges={false}
 						opacity={serviceMarkerOpacity}
 						title="Transport"
-					/>
-				) : null}
-
-				{effectiveServiceMarkerCoordinate && serviceMarkerKind === "bed" ? (
-					<Marker
-						coordinate={effectiveServiceMarkerCoordinate}
-						anchor={{ x: 0.5, y: 0.5 }}
-						centerOffset={{ x: 0, y: -8 }}
-						zIndex={138}
-						image={BED_MARKER_IMAGE}
-						imageSize={{ width: 42, height: 42 }}
-						tracksViewChanges={false}
-						opacity={serviceMarkerOpacity}
-						title="Bed reservation"
 					/>
 				) : null}
 

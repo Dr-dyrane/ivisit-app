@@ -7,7 +7,6 @@ import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 
@@ -150,7 +149,7 @@ function isBaseAppUrl(url) {
 async function readStoredPublicRoute() {
 	const [storedRoute, legacyStoredRoute] = await Promise.all([
 		database.read(StorageKeys.LAST_PUBLIC_ROUTE).catch(() => null),
-		AsyncStorage.getItem(LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => null),
+		database.readRaw(LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => null),
 	]);
 
 	const normalizedRoute =
@@ -162,7 +161,7 @@ async function readStoredPublicRoute() {
 	}
 
 	if (legacyStoredRoute) {
-		AsyncStorage.removeItem(LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => {});
+		database.deleteRaw(LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => {});
 	}
 
 	return normalizedRoute;
@@ -180,12 +179,12 @@ async function writeStoredPublicRoute(route) {
 	}
 
 	await database.write(StorageKeys.LAST_PUBLIC_ROUTE, normalizedRoute).catch(() => {});
-	AsyncStorage.removeItem(LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => {});
+	database.deleteRaw(LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => {});
 }
 
 async function clearStoredPublicRoute() {
 	await database.delete(StorageKeys.LAST_PUBLIC_ROUTE).catch(() => {});
-	AsyncStorage.removeItem(LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => {});
+	database.deleteRaw(LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY).catch(() => {});
 }
 
 /**

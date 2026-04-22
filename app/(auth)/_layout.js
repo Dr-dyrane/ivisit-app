@@ -64,6 +64,7 @@ function AuthHeaderWrapper() {
 			scrollAware={resolvedHeader.isScrollAware}
 			mode={resolvedHeader.mode}
 			session={resolvedHeader.session}
+			layoutInsets={resolvedHeader.layoutInsets}
 		/>
 	);
 }

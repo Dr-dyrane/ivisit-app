@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef } from "react";
-import { Platform, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
 import { getHospitalHeroSource } from "../../mapHospitalImage";
@@ -49,8 +49,13 @@ export default function MapCommitPaymentStageBase({
 }) {
 	const { isDarkMode } = useTheme();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
-	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
-		useMapStageSurfaceLayout();
+	const {
+		isSidebarPresentation,
+		contentMaxWidth,
+		presentationMode,
+		shellWidth,
+		shouldUseWideStageInset,
+	} = useMapStageSurfaceLayout();
 	const allowedSnapStates = useMemo(
 		() =>
 			presentationMode === "sheet"
@@ -88,10 +93,6 @@ export default function MapCommitPaymentStageBase({
 		onScroll: handleBodyScroll,
 		onScrollBeginDrag: handleBodyScrollBeginDrag,
 	});
-	const webWideInsetStyle =
-		Platform.OS === "web" && presentationMode !== "sheet"
-			? styles.webWideContentInset
-			: null;
 	const modalContainedStyle =
 		presentationMode === "modal" && contentMaxWidth
 			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
@@ -564,9 +565,11 @@ export default function MapCommitPaymentStageBase({
 					presentationMode === "modal" ? sheetStageStyles.bodyScrollContentModal : null,
 					isSidebarPresentation ? sheetStageStyles.bodyScrollContentPanel : null,
 					isSidebarPresentation ? sheetStageStyles.bodyScrollContentSidebar : null,
+					shouldUseWideStageInset
+						? sheetStageStyles.bodyScrollContentWide
+						: null,
 					modalContainedStyle,
 					styles.bodyContent,
-					webWideInsetStyle,
 				]}
 				isSidebarPresentation={isSidebarPresentation}
 				allowScrollDetents={allowScrollDetents}

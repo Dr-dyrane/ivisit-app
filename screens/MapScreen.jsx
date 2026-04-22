@@ -453,12 +453,6 @@ export default function MapScreen() {
 
   const paymentPreviewKind = useMemo(() => {
     if (sheetPhase !== MAP_SHEET_PHASES.COMMIT_PAYMENT) return null;
-    const hasRoomSelection = Boolean(
-      sheetPayload?.room?.id ||
-        sheetPayload?.roomId ||
-        sheetPayload?.room?.title ||
-        sheetPayload?.room?.room_type,
-    );
     const hasTransportSelection = Boolean(
       sheetPayload?.transport?.id ||
         sheetPayload?.transport?.title ||
@@ -467,9 +461,8 @@ export default function MapScreen() {
     );
 
     if (hasTransportSelection) return "ambulance";
-    if (hasRoomSelection) return "bed";
     return null;
-  }, [sheetPhase, sheetPayload?.room, sheetPayload?.roomId, sheetPayload?.transport]);
+  }, [sheetPhase, sheetPayload?.transport]);
 
   const mapFocusedHospitalId = useMemo(
     () =>
@@ -567,9 +560,8 @@ export default function MapScreen() {
 
   const mapServiceMarkerKind = useMemo(() => {
     if (activeAmbulanceTrip?.requestId) return "ambulance";
-    if (activeBedBooking?.requestId) return "bed";
     if (pendingApproval?.requestId) {
-      return pendingApproval?.serviceType === "bed" ? "bed" : "ambulance";
+      return pendingApproval?.serviceType === "bed" ? null : "ambulance";
     }
     if (sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT) {
       return paymentPreviewKind;
@@ -577,7 +569,6 @@ export default function MapScreen() {
     return null;
   }, [
     activeAmbulanceTrip?.requestId,
-    activeBedBooking?.requestId,
     paymentPreviewKind,
     pendingApproval?.requestId,
     pendingApproval?.serviceType,
@@ -588,7 +579,7 @@ export default function MapScreen() {
     if (activeAmbulanceTrip?.currentResponderLocation) {
       return activeAmbulanceTrip.currentResponderLocation;
     }
-    if (mapServiceMarkerKind === "ambulance" || mapServiceMarkerKind === "bed") {
+    if (mapServiceMarkerKind === "ambulance") {
       return mapFocusedHospitalCoordinate;
     }
     return null;
