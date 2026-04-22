@@ -5,6 +5,11 @@ import {
 	MAP_SHEET_SNAP_STATES,
 } from "../../../components/map/core/MapSheetOrchestrator";
 import { MAP_SEARCH_SHEET_MODES } from "../../../components/map/surfaces/search/mapSearchSheet.helpers";
+import {
+	createInitialMapExploreRuntimeState,
+	patchMapExploreRuntimeSlice,
+	setMapExploreRuntimeSlice,
+} from "./mapExploreFlow.runtime";
 
 const ACTIONS = {
 	RESET_EXPLORE_PRESENTATION: "resetExplorePresentation",
@@ -25,6 +30,9 @@ const ACTIONS = {
 	SET_SHEET_PAYLOAD: "setSheetPayload",
 	SET_SHEET_MODE: "setSheetMode",
 	SET_SHEET_SNAP_STATE: "setSheetSnapState",
+	SET_RUNTIME_SLICE: "setRuntimeSlice",
+	PATCH_RUNTIME_SLICE: "patchRuntimeSlice",
+	RESET_RUNTIME_STATE: "resetRuntimeState",
 	SET_MAP_READINESS: "setMapReadiness",
 	SET_HAS_COMPLETED_INITIAL_MAP_LOAD: "setHasCompletedInitialMapLoad",
 };
@@ -61,6 +69,7 @@ export function createInitialMapExploreFlowState(usesSidebarLayout) {
 			payload: null,
 			snapState: getDefaultSheetSnapState(usesSidebarLayout),
 		},
+		runtime: createInitialMapExploreRuntimeState(),
 		map: {
 			readiness: {
 				mapReady: false,
@@ -83,6 +92,7 @@ function mapExploreFlowReducer(state, action) {
 					payload: null,
 					snapState: getDefaultSheetSnapState(action.usesSidebarLayout),
 				},
+				runtime: createInitialMapExploreRuntimeState(),
 			};
 		case ACTIONS.SET_SEARCH_SHEET_MODE:
 			return {
@@ -229,6 +239,31 @@ function mapExploreFlowReducer(state, action) {
 					snapState: action.value,
 				},
 			};
+		case ACTIONS.SET_RUNTIME_SLICE:
+			return {
+				...state,
+				runtime: setMapExploreRuntimeSlice(
+					state.runtime,
+					action.scope,
+					action.key,
+					action.value,
+				),
+			};
+		case ACTIONS.PATCH_RUNTIME_SLICE:
+			return {
+				...state,
+				runtime: patchMapExploreRuntimeSlice(
+					state.runtime,
+					action.scope,
+					action.key,
+					action.value,
+				),
+			};
+		case ACTIONS.RESET_RUNTIME_STATE:
+			return {
+				...state,
+				runtime: createInitialMapExploreRuntimeState(),
+			};
 		case ACTIONS.SET_MAP_READINESS:
 			return {
 				...state,
@@ -305,6 +340,11 @@ export function useMapExploreFlowStore({ usesSidebarLayout }) {
 			setSheetMode: (value) => dispatch({ type: ACTIONS.SET_SHEET_MODE, value }),
 			setSheetSnapState: (value) =>
 				dispatch({ type: ACTIONS.SET_SHEET_SNAP_STATE, value }),
+			setRuntimeSlice: (scope, key, value) =>
+				dispatch({ type: ACTIONS.SET_RUNTIME_SLICE, scope, key, value }),
+			patchRuntimeSlice: (scope, key, value) =>
+				dispatch({ type: ACTIONS.PATCH_RUNTIME_SLICE, scope, key, value }),
+			resetRuntimeState: () => dispatch({ type: ACTIONS.RESET_RUNTIME_STATE }),
 			setMapReadiness: (value) =>
 				dispatch({ type: ACTIONS.SET_MAP_READINESS, value }),
 			setHasCompletedInitialMapLoad: (value) =>

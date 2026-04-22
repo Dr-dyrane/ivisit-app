@@ -260,6 +260,7 @@ export default function EmergencyLocationPreviewMap({
 	const {
 		routeCoordinates: previewRouteCoordinates,
 		routeInfo,
+		isFallbackRoute,
 		calculateRoute,
 		clearRoute,
 		isCalculatingRoute,
@@ -377,7 +378,11 @@ export default function EmergencyLocationPreviewMap({
 						Number.isFinite(point.longitude),
 				)
 			: [];
-		if (activeTracking && previewRouteCoordinates.length >= 2) {
+		if (
+			activeTracking &&
+			previewRouteCoordinates.length >= 2 &&
+			!isFallbackRoute
+		) {
 			return previewRouteCoordinates;
 		}
 		if (canonicalTrackingRoute.length >= 2) {
@@ -389,6 +394,7 @@ export default function EmergencyLocationPreviewMap({
 		return [routeOriginCoordinate, routeDestinationCoordinate].filter(Boolean);
 	}, [
 		activeTracking,
+		isFallbackRoute,
 		previewRouteCoordinates,
 		routeDestinationCoordinate,
 		routeOriginCoordinate,
@@ -478,6 +484,10 @@ export default function EmergencyLocationPreviewMap({
 		animateAmbulance: shouldAnimateAmbulance,
 		ambulanceTripEtaSeconds: resolvedRouteInfo.durationSec ?? null,
 		initialProgress: initialAnimationProgress,
+		responderLocation: hasLiveResponderCoordinate ? directServiceMarkerCoordinate : null,
+		responderHeading: Number.isFinite(serviceMarkerHeading)
+			? Number(serviceMarkerHeading)
+			: null,
 	});
 	useEffect(() => {
 		if (

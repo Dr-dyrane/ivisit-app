@@ -10,6 +10,7 @@ import MapSheetOrchestrator, {
   MAP_SHEET_SNAP_STATES,
   getMapSheetHeight,
 } from "../components/map/core/MapSheetOrchestrator";
+import { buildBedDecisionSourcePayload } from "../components/map/core/mapSheetFlowPayloads";
 import MapGuestProfileModal from "../components/map/MapGuestProfileModal";
 import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
 import MapExploreLoadingOverlay from "../components/map/surfaces/MapExploreLoadingOverlay";
@@ -29,36 +30,15 @@ import {
   sanitizeCommitEmail,
   sanitizeCommitPhone,
 } from "../components/map/views/commitDetails/mapCommitDetails.helpers";
+import {
+  buildTrackingRouteSignature,
+  hasUsableTrackingStartedAt,
+  normalizeTrackingRouteCoordinates,
+  shouldReconcileTrackingTimeline,
+} from "../components/map/views/tracking/mapTracking.timeline";
 import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
 import { calculateBearing } from "../utils/mapUtils";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
-
-function normalizeTrackingRouteCoordinates(route = []) {
-  if (!Array.isArray(route)) return [];
-  return route
-    .map((point) => ({
-      latitude: Number(point?.latitude),
-      longitude: Number(point?.longitude),
-    }))
-    .filter(
-      (point) =>
-        Number.isFinite(point.latitude) && Number.isFinite(point.longitude),
-    );
-}
-
-function buildRouteSignature(route = []) {
-  return normalizeTrackingRouteCoordinates(route)
-    .map(
-      (point) =>
-        `${point.latitude.toFixed(5)}:${point.longitude.toFixed(5)}`,
-    )
-    .join("|");
-}
-
-function hasUsableStartedAt(startedAt) {
-  if (Number.isFinite(startedAt)) return true;
-  return typeof startedAt === "string" && Number.isFinite(Date.parse(startedAt));
-}
 
 export default function MapScreen() {
   const router = useRouter();
@@ -352,9 +332,12 @@ export default function MapScreen() {
       // For "both": transport is preserved via savedTransport; the user
       // explicitly changes it by going back to AMBULANCE_DECISION.
       const bedDecisionSourcePayload = {
-        careIntent,
-        savedTransport:
-          careIntent === "both" ? sheetPayload?.savedTransport || null : null,
+        ...buildBedDecisionSourcePayload({
+          careIntent,
+          savedTransport:
+            careIntent === "both" ? sheetPayload?.savedTransport || null : null,
+          payload: sheetPayload,
+        }),
       };
 
       const resolvedEmail = sanitizeCommitEmail(user?.email);
@@ -451,59 +434,6 @@ export default function MapScreen() {
     ],
   );
 
-  const handleOpenCommitTriageFromTracking = useCallback(
-    (trackingPayload = {}) => {
-      const targetHospital =
-        mapFocusedHospital || featuredHospital || nearestHospital || null;
-      if (!targetHospital?.id) return;
-      const trackingRequestId =
-        trackingPayload?.requestId ||
-        activeAmbulanceTrip?.requestId ||
-        activeBedBooking?.requestId ||
-        pendingApproval?.requestId ||
-        null;
-      openCommitTriage(targetHospital, trackingPayload?.transport || null, {
-        ...trackingPayload,
-        requestId: trackingRequestId,
-        sourcePhase: MAP_SHEET_PHASES.TRACKING,
-        sourceSnapState: renderedSnapState,
-        sourcePayload: {
-          hospital: targetHospital,
-        },
-      });
-    },
-    [
-      activeAmbulanceTrip?.requestId,
-      activeBedBooking?.requestId,
-      featuredHospital,
-      mapFocusedHospital,
-      nearestHospital,
-      openCommitTriage,
-      pendingApproval?.requestId,
-      renderedSnapState,
-    ],
-  );
-
-  const handleAddBedFromTracking = useCallback(() => {
-    const targetHospital =
-      mapFocusedHospital || featuredHospital || nearestHospital || null;
-    if (!targetHospital?.id) return;
-
-    openBedDecision(targetHospital, "bed", {
-      sourcePhase: MAP_SHEET_PHASES.TRACKING,
-      sourceSnapState: renderedSnapState,
-      sourcePayload: {
-        hospital: targetHospital,
-      },
-    });
-  }, [
-    featuredHospital,
-    mapFocusedHospital,
-    nearestHospital,
-    openBedDecision,
-    renderedSnapState,
-  ]);
-
   const paymentPreviewKind = useMemo(() => {
     if (sheetPhase !== MAP_SHEET_PHASES.COMMIT_PAYMENT) return null;
     const hasRoomSelection = Boolean(
@@ -559,6 +489,59 @@ export default function MapScreen() {
       sheetPayload?.hospital,
     ],
   );
+
+  const handleOpenCommitTriageFromTracking = useCallback(
+    (trackingPayload = {}) => {
+      const targetHospital =
+        mapFocusedHospital || featuredHospital || nearestHospital || null;
+      if (!targetHospital?.id) return;
+      const trackingRequestId =
+        trackingPayload?.requestId ||
+        activeAmbulanceTrip?.requestId ||
+        activeBedBooking?.requestId ||
+        pendingApproval?.requestId ||
+        null;
+      openCommitTriage(targetHospital, trackingPayload?.transport || null, {
+        ...trackingPayload,
+        requestId: trackingRequestId,
+        sourcePhase: MAP_SHEET_PHASES.TRACKING,
+        sourceSnapState: renderedSnapState,
+        sourcePayload: {
+          hospital: targetHospital,
+        },
+      });
+    },
+    [
+      activeAmbulanceTrip?.requestId,
+      activeBedBooking?.requestId,
+      featuredHospital,
+      mapFocusedHospital,
+      nearestHospital,
+      openCommitTriage,
+      pendingApproval?.requestId,
+      renderedSnapState,
+    ],
+  );
+
+  const handleAddBedFromTracking = useCallback(() => {
+    const targetHospital =
+      mapFocusedHospital || featuredHospital || nearestHospital || null;
+    if (!targetHospital?.id) return;
+
+    openBedDecision(targetHospital, "bed", {
+      sourcePhase: MAP_SHEET_PHASES.TRACKING,
+      sourceSnapState: renderedSnapState,
+      sourcePayload: {
+        hospital: targetHospital,
+      },
+    });
+  }, [
+    featuredHospital,
+    mapFocusedHospital,
+    nearestHospital,
+    openBedDecision,
+    renderedSnapState,
+  ]);
 
   const mapFocusedHospitalCoordinate = useMemo(
     () => getDestinationCoordinate(mapFocusedHospital),
@@ -622,11 +605,11 @@ export default function MapScreen() {
     [trackingRouteInfo?.coordinates],
   );
   const activeTripRouteSignature = useMemo(
-    () => buildRouteSignature(activeAmbulanceTrip?.route),
+    () => buildTrackingRouteSignature(activeAmbulanceTrip?.route),
     [activeAmbulanceTrip?.route],
   );
   const trackingRouteSignature = useMemo(
-    () => buildRouteSignature(trackingRouteCoordinates),
+    () => buildTrackingRouteSignature(trackingRouteCoordinates),
     [trackingRouteCoordinates],
   );
   const trackingTimeline = useMemo(
@@ -651,28 +634,30 @@ export default function MapScreen() {
     }
 
     const updates = {};
+    const nowMs = Date.now();
     const routeEtaSeconds = Number(trackingRouteInfo?.durationSec);
     const rawTripEtaSeconds = activeAmbulanceTrip?.etaSeconds;
-    const currentEtaSeconds = Number(rawTripEtaSeconds);
-    const hasNumericTripEtaSeconds =
-      Number.isFinite(rawTripEtaSeconds) && rawTripEtaSeconds > 0;
     const hasPolylineRoute = trackingRouteCoordinates.length >= 2;
+    const shouldReconcileRouteTimeline = shouldReconcileTrackingTimeline({
+      routeEtaSeconds,
+      tripEtaSeconds: rawTripEtaSeconds,
+      tripStartedAt: activeAmbulanceTrip?.startedAt,
+      hasPolylineRoute,
+      nowMs,
+    });
 
-    if (
-      Number.isFinite(routeEtaSeconds) &&
-      routeEtaSeconds > 0 &&
-      (!hasNumericTripEtaSeconds ||
-        !Number.isFinite(currentEtaSeconds) ||
-        currentEtaSeconds <= 0 ||
-        (hasPolylineRoute && Math.abs(routeEtaSeconds - currentEtaSeconds) > 15))
-    ) {
+    if (shouldReconcileRouteTimeline) {
       updates.etaSeconds = routeEtaSeconds;
       updates.estimatedArrival = `${Math.max(1, Math.ceil(routeEtaSeconds / 60))} min`;
       updates.etaSource = "map_route";
+      updates.startedAt = nowMs;
     }
 
-    if (!hasUsableStartedAt(activeAmbulanceTrip?.startedAt)) {
-      updates.startedAt = Date.now();
+    if (
+      !shouldReconcileRouteTimeline &&
+      !hasUsableTrackingStartedAt(activeAmbulanceTrip?.startedAt)
+    ) {
+      updates.startedAt = nowMs;
     }
 
     if (

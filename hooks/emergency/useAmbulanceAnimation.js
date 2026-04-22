@@ -65,6 +65,52 @@ const buildRouteProfile = (routeCoordinates = []) => {
 	return { points, cumulativeMeters, totalMeters };
 };
 
+const projectCoordinateOntoSegment = (segmentStart, segmentEnd, coordinate) => {
+	if (!segmentStart || !segmentEnd || !coordinate) return null;
+	const latScale = 111_320;
+	const midLat =
+		((segmentStart.latitude + segmentEnd.latitude + coordinate.latitude) / 3) *
+		(Math.PI / 180);
+	const lngScale = 111_320 * Math.cos(midLat);
+	const segmentX = (segmentEnd.longitude - segmentStart.longitude) * lngScale;
+	const segmentY = (segmentEnd.latitude - segmentStart.latitude) * latScale;
+	const pointX = (coordinate.longitude - segmentStart.longitude) * lngScale;
+	const pointY = (coordinate.latitude - segmentStart.latitude) * latScale;
+	const segmentSquared = segmentX * segmentX + segmentY * segmentY;
+
+	if (segmentSquared <= MIN_SEGMENT_METERS * MIN_SEGMENT_METERS) {
+		return {
+			ratio: 0,
+			distanceMeters: Math.sqrt(pointX * pointX + pointY * pointY),
+			projectedCoordinate: {
+				latitude: segmentStart.latitude,
+				longitude: segmentStart.longitude,
+			},
+		};
+	}
+
+	const rawRatio = (pointX * segmentX + pointY * segmentY) / segmentSquared;
+	const ratio = Math.max(0, Math.min(1, rawRatio));
+	const projectedX = segmentX * ratio;
+	const projectedY = segmentY * ratio;
+
+	return {
+		ratio,
+		distanceMeters: Math.sqrt(
+			(pointX - projectedX) * (pointX - projectedX) +
+				(pointY - projectedY) * (pointY - projectedY)
+		),
+		projectedCoordinate: {
+			latitude:
+				segmentStart.latitude +
+				(segmentEnd.latitude - segmentStart.latitude) * ratio,
+			longitude:
+				segmentStart.longitude +
+				(segmentEnd.longitude - segmentStart.longitude) * ratio,
+		},
+	};
+};
+
 const findSegmentIndexAtDistance = (cumulativeMeters, distanceMeters) => {
 	let low = 0;
 	let high = cumulativeMeters.length - 1;
@@ -111,6 +157,30 @@ const getCoordinateAtDistance = (routeProfile, distanceMeters) => {
 	};
 };
 
+const getNearestRouteDistance = (routeProfile, coordinate) => {
+	if (!routeProfile || !coordinate) return null;
+	const { points, cumulativeMeters } = routeProfile;
+	let nearestRouteDistance = null;
+	let nearestDistance = Number.POSITIVE_INFINITY;
+	for (let i = 1; i < points.length; i += 1) {
+		const segmentProjection = projectCoordinateOntoSegment(
+			points[i - 1],
+			points[i],
+			coordinate
+		);
+		if (!segmentProjection) continue;
+		if (segmentProjection.distanceMeters < nearestDistance) {
+			nearestDistance = segmentProjection.distanceMeters;
+			const segmentStartDistance = cumulativeMeters[i - 1] ?? 0;
+			const segmentEndDistance = cumulativeMeters[i] ?? segmentStartDistance;
+			nearestRouteDistance =
+				segmentStartDistance +
+				(segmentEndDistance - segmentStartDistance) * segmentProjection.ratio;
+		}
+	}
+	return nearestRouteDistance;
+};
+
 export const useAmbulanceAnimation = ({
 	routeCoordinates,
 	animateAmbulance,
@@ -151,26 +221,42 @@ export const useAmbulanceAnimation = ({
 			return;
 		}
 
+		const responderDistanceMeters = responderLocation
+			? getNearestRouteDistance(routeProfile, responderLocation)
+			: null;
+		const responderProgress = Number.isFinite(responderDistanceMeters)
+			? Math.min(1, Math.max(0, responderDistanceMeters / routeProfile.totalMeters))
+			: null;
+		const startProgress =
+			Number.isFinite(responderProgress) ? responderProgress : safeInitialProgress;
+		const usesResponderProgress = Number.isFinite(responderProgress);
+
 		// Make marker visible immediately at the start of the route.
 		const startCoordinate = getCoordinateAtDistance(
 			routeProfile,
-			safeInitialProgress * routeProfile.totalMeters
+			startProgress * routeProfile.totalMeters
 		);
-		const firstHeading = calculateBearing(
-			routeProfile.points[0],
-			routeProfile.points[1]
-		);
+		const lookaheadDistance =
+			startProgress * routeProfile.totalMeters + HEADING_LOOKAHEAD_METERS;
+		const lookaheadCoordinate = getCoordinateAtDistance(routeProfile, lookaheadDistance);
+		const firstHeading = Number.isFinite(responderHeading)
+			? responderHeading
+			: calculateBearing(startCoordinate, lookaheadCoordinate);
 		setAmbulanceCoordinate(startCoordinate);
 		setAmbulanceHeading(firstHeading);
 
-		const now = Date.now();
-		animationStartTimeRef.current =
-			now - safeInitialProgress * ambulanceTripEtaSeconds * 1000;
+		animationStartTimeRef.current = Date.now();
 
 		const animate = () => {
 			const now = Date.now();
 			const elapsedMs = now - animationStartTimeRef.current;
-			const progressRatio = Math.min(1, elapsedMs / (ambulanceTripEtaSeconds * 1000));
+			const elapsedRatio = Math.min(
+				1,
+				elapsedMs / (ambulanceTripEtaSeconds * 1000)
+			);
+			const progressRatio = usesResponderProgress
+				? Math.min(1, startProgress + elapsedRatio * (1 - startProgress))
+				: Math.min(1, startProgress + elapsedRatio);
 			const currentRoute = routeProfileRef.current;
 			if (!currentRoute) {
 				ambulanceTimerRef.current = null;
@@ -210,6 +296,8 @@ export const useAmbulanceAnimation = ({
 		routeCoordinates,
 		ambulanceTripEtaSeconds,
 		onAmbulanceUpdate,
+		responderHeading,
+		responderLocation,
 		stopAmbulanceAnimation,
 	]);
 

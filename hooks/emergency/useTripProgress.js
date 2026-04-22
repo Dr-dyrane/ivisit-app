@@ -44,22 +44,8 @@ export const useTripProgress = ({
 	const resolvedStartedAtMs = useMemo(() => {
 		const explicitStartedAt = toTimestampMs(activeAmbulanceTrip?.startedAt);
 		if (Number.isFinite(explicitStartedAt)) return explicitStartedAt;
-
-		const createdAtMs = toTimestampMs(activeAmbulanceTrip?.createdAt);
-		if (Number.isFinite(createdAtMs)) return createdAtMs;
-
-		const updatedAtMs = toTimestampMs(activeAmbulanceTrip?.updatedAt);
-		if (Number.isFinite(updatedAtMs) && Number.isFinite(resolvedEtaSeconds)) {
-			return Math.max(0, updatedAtMs - resolvedEtaSeconds * 1000);
-		}
-
 		return null;
-	}, [
-		activeAmbulanceTrip?.createdAt,
-		activeAmbulanceTrip?.startedAt,
-		activeAmbulanceTrip?.updatedAt,
-		resolvedEtaSeconds,
-	]);
+	}, [activeAmbulanceTrip?.startedAt]);
 
 	const remainingSeconds = useMemo(() => {
 		const eta = resolvedEtaSeconds;

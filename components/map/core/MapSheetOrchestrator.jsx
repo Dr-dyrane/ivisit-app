@@ -172,6 +172,9 @@ export default function MapSheetOrchestrator({
 						origin={decisionOrigin}
 						careIntent={careIntent}
 						savedTransport={savedTransport}
+						sourcePhase={sheetPayload?.sourcePhase || null}
+						sourceSnapState={sheetPayload?.sourceSnapState || null}
+						sourcePayload={sheetPayload?.sourcePayload || null}
 						hospitalCount={Array.isArray(hospitals) ? hospitals.length : 0}
 						selectedRoomServiceId={
 							serviceSelectionsByHospital[decisionHospitalId]?.roomServiceId ?? null

@@ -41,24 +41,31 @@ export const useEmergencyHandlers = ({
 		(type, actions) => {
 			return async () => {
 				console.log(`[EmergencyHandlers] Starting ${type}...`);
+				let ok = false;
+				let error = null;
 				try {
 					console.log(`[EmergencyHandlers] ${type}: executing requests...`);
 					await Promise.all(actions.requests);
 					console.log(`[EmergencyHandlers] ${type}: requests completed, running onSuccess...`);
 					actions.onSuccess?.();
 					console.log(`[EmergencyHandlers] ${type} completed successfully`);
+					ok = true;
 				} catch (err) {
+					error = err;
 					console.error(`[EmergencyHandlers] ${type} failed:`, err);
 				} finally {
-					console.log(`[EmergencyHandlers] ${type}: running cleanup...`);
-					actions.cleanup?.();
-					if (onSheetSnap) {
+					console.log(`[EmergencyHandlers] ${type}: finalizing handler...`);
+					if (ok || actions.cleanupOnFailure === true) {
+						actions.cleanup?.();
+					}
+					if (ok && onSheetSnap) {
 						console.log(`[EmergencyHandlers] ${type}: snapping sheet to index 1`);
 						setTimeout(() => {
 							onSheetSnap(1);
 						}, 0);
 					}
 				}
+				return { ok, error };
 			};
 		},
 		[onSheetSnap]
@@ -68,7 +75,7 @@ export const useEmergencyHandlers = ({
 		async () => {
 			if (!activeAmbulanceTrip?.requestId) return;
 
-			await createBaseHandler("CancelAmbulanceTrip", {
+			const result = await createBaseHandler("CancelAmbulanceTrip", {
 				requests: [
 					setRequestStatus(
 						activeAmbulanceTrip.requestId,
@@ -80,41 +87,59 @@ export const useEmergencyHandlers = ({
 				cleanup: stopAmbulanceTrip,
 			})();
 
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+			if (result?.ok) {
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+			}
+			return result;
 		},
 		[activeAmbulanceTrip, createBaseHandler, setRequestStatus, cancelVisit, stopAmbulanceTrip]
 	);
 
 	const onCompleteAmbulanceTrip = useCallback(
-		async () => {
+		async (options = {}) => {
 			if (!activeAmbulanceTrip?.requestId) return;
+			const deferCleanup = options?.deferCleanup === true;
 
-			await createBaseHandler("CompleteAmbulanceTrip", {
+			const result = await createBaseHandler("CompleteAmbulanceTrip", {
 				requests: [
 					setRequestStatus(
 						activeAmbulanceTrip.requestId,
 						EmergencyRequestStatus.COMPLETED
 					),
 					completeVisit(activeAmbulanceTrip.requestId),
-					setVisitLifecycle(activeAmbulanceTrip.requestId, EMERGENCY_VISIT_LIFECYCLE.COMPLETED),
 					setVisitLifecycle(
 						activeAmbulanceTrip.requestId,
 						EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING
 					),
 				],
-				cleanup: stopAmbulanceTrip,
+				onSuccess: () => {
+					if (typeof setAmbulanceTripStatus === "function") {
+						setAmbulanceTripStatus(EmergencyRequestStatus.COMPLETED);
+					}
+				},
+				cleanup: deferCleanup ? undefined : stopAmbulanceTrip,
 			})();
 
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			if (result?.ok) {
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			}
+			return result;
 		},
-		[activeAmbulanceTrip, createBaseHandler, setRequestStatus, completeVisit, stopAmbulanceTrip]
+		[
+			activeAmbulanceTrip,
+			createBaseHandler,
+			setRequestStatus,
+			completeVisit,
+			setAmbulanceTripStatus,
+			stopAmbulanceTrip,
+		]
 	);
 
 	const onCancelBedBooking = useCallback(
 		async () => {
 			if (!activeBedBooking?.requestId) return;
 
-			await createBaseHandler("CancelBedBooking", {
+			const result = await createBaseHandler("CancelBedBooking", {
 				requests: [
 					setRequestStatus(
 						activeBedBooking.requestId,
@@ -126,39 +151,58 @@ export const useEmergencyHandlers = ({
 				cleanup: stopBedBooking,
 			})();
 
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+			if (result?.ok) {
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+			}
+			return result;
 		},
 		[activeBedBooking, createBaseHandler, setRequestStatus, cancelVisit, addNotification, stopBedBooking]
 	);
 
 	const onCompleteBedBooking = useCallback(
-		async () => {
+		async (options = {}) => {
 			if (!activeBedBooking?.requestId) return;
+			const deferCleanup = options?.deferCleanup === true;
 
-			await createBaseHandler("CompleteBedBooking", {
+			const result = await createBaseHandler("CompleteBedBooking", {
 				requests: [
 					setRequestStatus(
 						activeBedBooking.requestId,
 						EmergencyRequestStatus.COMPLETED
 					),
 					completeVisit(activeBedBooking.requestId),
-					setVisitLifecycle(activeBedBooking.requestId, EMERGENCY_VISIT_LIFECYCLE.COMPLETED),
 					setVisitLifecycle(
 						activeBedBooking.requestId,
 						EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING
 					),
 				],
-				cleanup: stopBedBooking,
+				onSuccess: () => {
+					if (typeof setBedBookingStatus === "function") {
+						setBedBookingStatus(EmergencyRequestStatus.COMPLETED);
+					}
+				},
+				cleanup: deferCleanup ? undefined : stopBedBooking,
 			})();
 
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			if (result?.ok) {
+				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			}
+			return result;
 		},
-		[activeBedBooking, createBaseHandler, setRequestStatus, completeVisit, addNotification, stopBedBooking]
+		[
+			activeBedBooking,
+			createBaseHandler,
+			setRequestStatus,
+			completeVisit,
+			addNotification,
+			setBedBookingStatus,
+			stopBedBooking,
+		]
 	);
 
 	const onMarkAmbulanceArrived = useCallback(async () => {
 		if (!activeAmbulanceTrip?.requestId) return;
-		await createBaseHandler("MarkAmbulanceArrived", {
+		const result = await createBaseHandler("MarkAmbulanceArrived", {
 			requests: [
 				setRequestStatus(activeAmbulanceTrip.requestId, EmergencyRequestStatus.ARRIVED),
 				setVisitLifecycle(activeAmbulanceTrip.requestId, EMERGENCY_VISIT_LIFECYCLE.ARRIVED),
@@ -169,13 +213,16 @@ export const useEmergencyHandlers = ({
 				}
 			},
 		})();
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+		if (result?.ok) {
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+		}
+		return result;
 	}, [activeAmbulanceTrip, createBaseHandler, setRequestStatus, setVisitLifecycle, setAmbulanceTripStatus]);
 
 	const onMarkBedOccupied = useCallback(async () => {
 		console.log("[EmergencyHandlers] onMarkBedOccupied called", { requestId: activeBedBooking?.requestId });
 		if (!activeBedBooking?.requestId) return;
-		await createBaseHandler("MarkBedOccupied", {
+		const result = await createBaseHandler("MarkBedOccupied", {
 			requests: [
 				setRequestStatus(activeBedBooking.requestId, EmergencyRequestStatus.ARRIVED),
 				setVisitLifecycle(activeBedBooking.requestId, EMERGENCY_VISIT_LIFECYCLE.OCCUPIED),
@@ -187,7 +234,10 @@ export const useEmergencyHandlers = ({
 				}
 			},
 		})();
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+		if (result?.ok) {
+			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+		}
+		return result;
 	}, [activeBedBooking, createBaseHandler, setRequestStatus, setVisitLifecycle, setBedBookingStatus]);
 
 	return {

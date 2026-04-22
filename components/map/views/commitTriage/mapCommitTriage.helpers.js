@@ -8,6 +8,7 @@ import {
 	normalizeTriageDraft,
 	PRIMARY_COMPLAINTS,
 	shouldTriageOptionSpanFullWidth,
+	triageStepAnswered,
 	YES_NO_OPTIONS,
 } from "../../../emergency/triage/triageFlow.shared";
 
@@ -102,6 +103,30 @@ export function buildCommitTriageSelectionState(step, draft, option) {
 		return Array.isArray(draft?.[step.field]) && draft[step.field].includes(option?.value);
 	}
 	return draft?.[step.field] === option?.value;
+}
+
+export function getFirstOpenCommitTriageStepId(steps = [], draft = {}) {
+	return (
+		steps.find((step) => !triageStepAnswered(step, draft))?.id ||
+		steps[steps.length - 1]?.id ||
+		"chiefComplaint"
+	);
+}
+
+export function buildCommitTriageProgressMeta(
+	steps = [],
+	draft = {},
+	activeStepId = null,
+) {
+	const totalSteps = steps.length || 6;
+	const answeredCount = steps.filter((step) => triageStepAnswered(step, draft)).length;
+	return {
+		totalSteps,
+		answeredCount,
+		activeStepId,
+		complete: totalSteps > 0 && answeredCount >= totalSteps,
+		version: "map_commit_triage_v2",
+	};
 }
 
 export function getCommitTriageOptionWidthStyle(step, option, optionCount) {

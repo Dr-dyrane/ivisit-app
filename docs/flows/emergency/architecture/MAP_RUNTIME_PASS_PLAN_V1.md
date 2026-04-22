@@ -4,6 +4,103 @@
 > Scope: `/map`
 > Purpose: define the next implementation passes in order, with a target for each pass and a clear stop condition before the next pass begins
 
+## Execution Status
+
+- Pass 1: complete
+- Pass 2: complete
+- Pass 3: complete
+- Pass 4: in progress
+
+### Pass 1 Output
+
+Pass 1 landed the runtime-boundary cleanup needed before deeper module extraction:
+
+- added runtime slice helpers in [`hooks/map/state/mapExploreFlow.runtime.js`](../../../hooks/map/state/mapExploreFlow.runtime.js)
+- added store selectors in [`hooks/map/state/mapExploreFlow.selectors.js`](../../../hooks/map/state/mapExploreFlow.selectors.js)
+- extended the reducer-backed store in [`hooks/map/state/mapExploreFlow.store.js`](../../../hooks/map/state/mapExploreFlow.store.js) with named `runtime` subdomains and runtime actions
+- extracted pure sheet/commit transition builders into [`hooks/map/exploreFlow/mapExploreFlow.transitions.js`](../../../hooks/map/exploreFlow/mapExploreFlow.transitions.js)
+- rewired [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../hooks/map/exploreFlow/useMapExploreFlow.js) to use selectors and transition builders instead of inline raw `setSheetView({ ... })` payload construction
+
+Result:
+
+- `/map` now has an explicit runtime branch in the reducer store
+- top-level sheet/search/surface/runtime reads in `useMapExploreFlow` are selector-driven
+- sheet transitions and commit payload shaping have named pure builders
+- repeated hospital resolution/promotion logic is centralized enough for Pass 2 extraction
+
+### Pass 2 Output
+
+Pass 2 finished the tracking extraction needed before commit-phase work:
+
+- tracking presentation helpers moved into [`components/map/views/tracking/mapTracking.presentation.js`](../../../components/map/views/tracking/mapTracking.presentation.js)
+- tracking action/detail derivation moved into [`components/map/views/tracking/mapTracking.model.js`](../../../components/map/views/tracking/mapTracking.model.js)
+- tracking pure view-state derivation moved into [`components/map/views/tracking/mapTracking.derived.js`](../../../components/map/views/tracking/mapTracking.derived.js)
+- tracking share payload shaping moved into [`components/map/views/tracking/mapTracking.share.js`](../../../components/map/views/tracking/mapTracking.share.js)
+- tracking rating payload shaping moved into [`components/map/views/tracking/mapTracking.rating.js`](../../../components/map/views/tracking/mapTracking.rating.js)
+- tracking operational controller state moved into [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js)
+- tracking runtime state moved into [`components/map/views/tracking/useMapTrackingRuntime.js`](../../../components/map/views/tracking/useMapTrackingRuntime.js)
+- tracking theme/token shaping moved into [`components/map/views/tracking/mapTracking.theme.js`](../../../components/map/views/tracking/mapTracking.theme.js)
+- reusable tracking parts moved into [`components/map/views/tracking/parts/MapTrackingParts.jsx`](../../../components/map/views/tracking/parts/MapTrackingParts.jsx)
+- [`components/map/views/tracking/MapTrackingStageBase.jsx`](../../../components/map/views/tracking/MapTrackingStageBase.jsx) now depends on imported parts/presentation helpers instead of owning those concerns inline
+
+Result:
+
+- `MapTrackingStageBase.jsx` is now mostly render composition and sheet wiring
+- tracking visual parts now have a dedicated extraction boundary
+- tracking CTA derivation, destructive action shaping, detail row shaping, and header-action resolution are no longer inline in the stage file
+- tracking share/rating/busy-action/header-action lifecycle is no longer inline in the stage file
+- hospital/service/status display shaping is now pure derived data instead of mixed into render assembly
+- triage runtime/progress and trip clock state no longer live in the stage file
+- route/theme token shaping no longer lives inline in the stage file
+
+### Pass 3 Current Slice
+
+Pass 3 is starting with `COMMIT_PAYMENT`, because it is the riskiest stateful handoff left in the ambulance-only path.
+
+First target inside Pass 3:
+
+- extract payment-method hydration/selection state
+- extract cost loading and normalization state
+- extract submit/finalization controller logic
+- leave [`components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`](../../../components/map/views/commitPayment/MapCommitPaymentStageBase.jsx) render-led instead of controller-led
+
+Current output:
+
+- payment runtime/controller state moved into [`components/map/views/commitPayment/useMapCommitPaymentController.js`](../../../components/map/views/commitPayment/useMapCommitPaymentController.js)
+- payment presentation helpers moved into [`components/map/views/commitPayment/mapCommitPayment.presentation.js`](../../../components/map/views/commitPayment/mapCommitPayment.presentation.js)
+- payment theme/token shaping moved into [`components/map/views/commitPayment/mapCommitPayment.theme.js`](../../../components/map/views/commitPayment/mapCommitPayment.theme.js)
+- [`components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`](../../../components/map/views/commitPayment/MapCommitPaymentStageBase.jsx) no longer imports auth/preferences/visits/emergency request hooks, payment services, pricing services, or request-flow services directly
+- triage runtime/controller state moved into [`components/map/views/commitTriage/useMapCommitTriageController.js`](../../../components/map/views/commitTriage/useMapCommitTriageController.js)
+- triage theme/token shaping moved into [`components/map/views/commitTriage/mapCommitTriage.theme.js`](../../../components/map/views/commitTriage/mapCommitTriage.theme.js)
+- reusable triage visual parts moved into [`components/map/views/commitTriage/MapCommitTriageStageParts.jsx`](../../../components/map/views/commitTriage/MapCommitTriageStageParts.jsx)
+- [`components/map/views/commitTriage/MapCommitTriageStageBase.jsx`](../../../components/map/views/commitTriage/MapCommitTriageStageBase.jsx) no longer imports emergency context hooks, live triage services, haptics, or animation orchestration directly
+- commit-details runtime/controller state moved into [`components/map/views/commitDetails/useMapCommitDetailsController.js`](../../../components/map/views/commitDetails/useMapCommitDetailsController.js)
+- commit-details theme/token shaping moved into [`components/map/views/commitDetails/mapCommitDetails.theme.js`](../../../components/map/views/commitDetails/mapCommitDetails.theme.js)
+- [`components/map/views/commitDetails/MapCommitDetailsStageBase.jsx`](../../../components/map/views/commitDetails/MapCommitDetailsStageBase.jsx) no longer imports auth/emergency context hooks, auth services, contact memory services, validators, or OTP/persistence orchestration directly
+
+Current effect:
+
+- `MapCommitPaymentStageBase.jsx` dropped from `1343` lines to `558`
+- payment-method hydration no longer lives inline in the stage file
+- cost loading and normalization no longer live inline in the stage file
+- payment submission/finalization flow no longer lives inline in the stage file
+- payment stage is now primarily sheet wiring, payment-specific presentation, and body composition
+- `MapCommitTriageStageBase.jsx` dropped from `844` lines to `226`
+- triage session reset, live-save, commit-flow persistence, copilot prompt lookup, and step handlers no longer live inline in the stage file
+- triage hero, option grid, and text-step rendering now have a stable visual extraction boundary
+- `MapCommitDetailsStageBase.jsx` dropped from `773` lines to `190`
+- OTP request/verify flow, phone validation, auth reconciliation, contact-memory hydration, and commit-flow persistence no longer live inline in the stage file
+- commit details stage is now shell wiring plus question-card composition
+
+Next Pass 3 slice:
+
+- Pass 3 exit criteria met for the ambulance commit path:
+  - `COMMIT_PAYMENT` has controller/presentation/theme boundaries
+  - `COMMIT_TRIAGE` has controller/theme/parts boundaries
+  - `COMMIT_DETAILS` has controller/theme boundaries
+- defer any extra `COMMIT_PAYMENT` micro-extractions unless a later pass exposes a concrete pain point
+- move to Pass 4: ambulance functional signoff
+
 ## Why This Exists
 
 The current `/map` runtime is no longer at the stage where ad hoc polish is safe.
@@ -220,6 +317,26 @@ Primary target:
 
 - make the current ambulance-only `/map` flow functionally trustworthy from commit to completion
 
+Current slice:
+
+- started with tracking completion / rating handoff audit
+- removed a lifecycle race in [`hooks/emergency/useEmergencyHandlers.js`](../../../hooks/emergency/useEmergencyHandlers.js) where completion was writing both `COMPLETED` and `RATING_PENDING` in parallel
+- keep `RATING_PENDING` as the single post-completion pre-rating lifecycle until the rating modal resolves it to `RATED`
+- completion handlers in [`hooks/emergency/useEmergencyHandlers.js`](../../../hooks/emergency/useEmergencyHandlers.js) now return explicit success/failure results instead of swallowing failures silently
+- cleanup in [`hooks/emergency/useEmergencyHandlers.js`](../../../hooks/emergency/useEmergencyHandlers.js) now runs only on successful complete/cancel flows, so failed operations no longer disappear from active tracking state
+- tracking rating flow in [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js) now blocks `RATED` writes when completion fails, resolves skip to `POST_COMPLETION`, and shows success/error toast feedback
+- [`components/emergency/ServiceRatingModal.jsx`](../../../components/emergency/ServiceRatingModal.jsx) now waits for async skip/submit handlers before closing, so rating state is no longer lost behind optimistic dismissal
+- ambulance animation in [`hooks/emergency/useAmbulanceAnimation.js`](../../../hooks/emergency/useAmbulanceAnimation.js) now seeds route progress from the live responder coordinate when available, and [`components/emergency/intake/EmergencyLocationPreviewMap.jsx`](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx) now passes that live responder location into the animation hook to reduce reopen/reload drift
+- recovery hydration in [`contexts/EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx) now preserves richer client `map_route` ETA/route state for the same active request instead of downgrading it back to coarse server snapshot data
+- route timeline reconciliation is now centralized in [`components/map/views/tracking/mapTracking.timeline.js`](../../../components/map/views/tracking/mapTracking.timeline.js), and [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now re-anchors `startedAt` whenever live route ETA becomes the better truth
+- [`hooks/emergency/useTripProgress.js`](../../../hooks/emergency/useTripProgress.js) no longer falls back to `createdAt`/`updatedAt` guesses, so countdown drift is no longer rebuilt from request timestamps after reload
+- triage live updates in [`components/map/views/commitTriage/useMapCommitTriageController.js`](../../../components/map/views/commitTriage/useMapCommitTriageController.js) now patch ambulance, bed, and pending-approval tracking state locally, and [`contexts/EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx) now exposes patch helpers for bed/pending state so header progress stays truthful before realtime/server echo returns
+- tracking completion is now a true two-step flow: [`hooks/emergency/useEmergencyHandlers.js`](../../../hooks/emergency/useEmergencyHandlers.js) supports deferred cleanup for complete actions, and [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js) now completes the request on both rating submit and rating skip, then performs local tracking cleanup only after the post-completion lifecycle write succeeds
+- `/map` tracking completion now matches legacy ordering: [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js) commits request completion before opening the rating modal, and [`components/map/views/tracking/mapTracking.rating.js`](../../../components/map/views/tracking/mapTracking.rating.js) preserves that committed-completion flag so rating submit/skip no longer re-run completion or risk leaving a request active if rating is interrupted
+- reserve-bed-from-tracking now preserves its upstream source chain across bed decision, hospital list, service detail, commit details, and commit payment via [`components/map/core/mapSheetFlowPayloads.js`](../../../components/map/core/mapSheetFlowPayloads.js), so backing out of that lane can unwind cleanly to tracking instead of silently dropping the user back to explore
+- long-session ambulance animation in [`hooks/emergency/useAmbulanceAnimation.js`](../../../hooks/emergency/useAmbulanceAnimation.js) now distinguishes live responder progress from synthetic ETA resume progress, and it projects live responder coordinates onto route segments instead of snapping to the nearest vertex, so reopened tracking sessions stay on the route and finish over the correct remaining ETA window
+- active tracking route precedence in [`components/emergency/intake/EmergencyLocationPreviewMap.jsx`](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx) and [`hooks/emergency/useMapRoute.js`](../../../hooks/emergency/useMapRoute.js) now prefers the richer preserved tracking route over a newly fetched fallback straight-line route, so route degradation does not silently flatten the live tracking path
+
 Scope:
 
 - `COMMIT_DETAILS`
@@ -384,14 +501,14 @@ Done when:
 
 ## Immediate Next Pass
 
-The next pass is **Pass 1. Runtime Boundary Cleanup**.
+The next pass focus is still **Pass 4. Ambulance Functional Signoff**.
 
 Why this is next:
 
-- current files are too large for safe continued iteration
-- ambulance-only flow is not signed off yet
-- platform parity now would multiply unstable code
-- the reducer-backed store already exists, so we should use the structure we have before introducing another state layer
+- the structural work is done through Pass 3
+- the remaining risk is now behavioral truth, not file shape
+- ETA/reload stability, completion cleanup, and tracking edge cases need real runtime verification before UI signoff
+- Pass 5 should not begin until the ambulance-only runtime stops regressing under reopen/recovery paths
 
 ## Success Metric
 

@@ -541,6 +541,17 @@ export function EmergencyProvider({ children }) {
 				);
 
 				if (activeAmbulance) {
+					const previousAmbulanceTrip = activeAmbulanceTripRef.current;
+					const isSameAmbulanceTrip = !!(
+						previousAmbulanceTrip &&
+						((previousAmbulanceTrip?.id &&
+							activeAmbulance?.id &&
+							String(previousAmbulanceTrip.id) === String(activeAmbulance.id)) ||
+							(previousAmbulanceTrip?.requestId &&
+								activeAmbulance?.requestId &&
+								String(previousAmbulanceTrip.requestId) ===
+									String(activeAmbulance.requestId)))
+					);
 					const loc = parsePoint(activeAmbulance.responderLocation);
 					let fullAmbulance = null;
 					if (activeAmbulance.ambulanceId) {
@@ -551,10 +562,34 @@ export function EmergencyProvider({ children }) {
 						}
 					}
 
-					const startedAt = activeAmbulance.createdAt
-						? Date.parse(activeAmbulance.createdAt)
-						: Date.now();
-					const etaSeconds = parseEtaToSeconds(activeAmbulance.estimatedArrival);
+					const hydratedAtMs = Date.now();
+					const serverEtaSeconds = parseEtaToSeconds(activeAmbulance.estimatedArrival);
+					const preservedRoute = isSameAmbulanceTrip
+						? normalizeRouteCoordinates(previousAmbulanceTrip?.route)
+						: [];
+					const preservedStartedAtMs = isSameAmbulanceTrip
+						? parseTimestampMs(previousAmbulanceTrip?.startedAt)
+						: null;
+					const preservedEtaSeconds =
+						isSameAmbulanceTrip &&
+						previousAmbulanceTrip?.etaSource === "map_route" &&
+						Number.isFinite(previousAmbulanceTrip?.etaSeconds) &&
+						previousAmbulanceTrip.etaSeconds > 0
+							? Number(previousAmbulanceTrip.etaSeconds)
+							: null;
+					const etaSource = Number.isFinite(preservedEtaSeconds)
+						? "map_route"
+						: "server_snapshot";
+					const etaSeconds = Number.isFinite(preservedEtaSeconds)
+						? preservedEtaSeconds
+						: Number.isFinite(serverEtaSeconds)
+							? serverEtaSeconds
+							: null;
+					const startedAt = Number.isFinite(preservedStartedAtMs)
+						? preservedStartedAtMs
+						: Number.isFinite(etaSeconds)
+							? hydratedAtMs
+							: null;
 					const triageSnapshot =
 						activeAmbulance.triageSnapshot ??
 						activeAmbulance.triage ??
@@ -586,12 +621,19 @@ export function EmergencyProvider({ children }) {
 							activeAmbulance.triageProgress ??
 							triageSnapshot?.progress ??
 							null,
-						estimatedArrival: activeAmbulance.estimatedArrival ?? null,
+						estimatedArrival:
+							etaSource === "map_route"
+								? previousAmbulanceTrip?.estimatedArrival ??
+									activeAmbulance.estimatedArrival ??
+									null
+								: activeAmbulance.estimatedArrival ?? null,
 						etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
-						startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
+						etaSource,
+						startedAt,
 						assignedAmbulance: hasResponderIdentity
 							? {
 									...fullAmbulance,
+									...(previousAmbulanceTrip?.assignedAmbulance || {}),
 									id: activeAmbulance.ambulanceId || "ems_001",
 									type:
 										activeAmbulance.responderVehicleType ||
@@ -602,15 +644,29 @@ export function EmergencyProvider({ children }) {
 										fullAmbulance?.vehicleNumber,
 									name: activeAmbulance.responderName,
 									phone: activeAmbulance.responderPhone,
-									location: loc || fullAmbulance?.location,
-									heading: activeAmbulance.responderHeading || 0,
+									location:
+										loc ||
+										fullAmbulance?.location ||
+										previousAmbulanceTrip?.assignedAmbulance?.location ||
+										null,
+									heading:
+										activeAmbulance.responderHeading ||
+										fullAmbulance?.heading ||
+										previousAmbulanceTrip?.assignedAmbulance?.heading ||
+										0,
 							  }
-							: null,
-						currentResponderLocation: loc,
-						currentResponderHeading: activeAmbulance.responderHeading,
+							: previousAmbulanceTrip?.assignedAmbulance || null,
+						currentResponderLocation:
+							loc ||
+							previousAmbulanceTrip?.currentResponderLocation ||
+							null,
+						currentResponderHeading:
+							activeAmbulance.responderHeading ??
+							previousAmbulanceTrip?.currentResponderHeading ??
+							null,
 						responderTelemetryAt: activeAmbulance.updatedAt ?? null,
 						patientLocation: parsePoint(activeAmbulance.patientLocation),
-						route: null,
+						route: preservedRoute.length >= 2 ? preservedRoute : null,
 						updatedAt: activeAmbulance.updatedAt ?? null,
 					});
 				} else {
@@ -619,8 +675,8 @@ export function EmergencyProvider({ children }) {
 				}
 
 				if (activeBed) {
-					const startedAt = activeBed.createdAt ? Date.parse(activeBed.createdAt) : Date.now();
 					const etaSeconds = parseEtaToSeconds(activeBed.estimatedArrival);
+					const startedAt = Number.isFinite(etaSeconds) ? Date.now() : null;
 					const triageSnapshot =
 						activeBed.triageSnapshot ??
 						activeBed.triage ??
@@ -651,7 +707,7 @@ export function EmergencyProvider({ children }) {
 						hospitalName: activeBed.hospitalName ?? null,
 						estimatedWait: activeBed.estimatedArrival ?? null,
 						etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
-						startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
+						startedAt,
 					});
 				} else {
 					setActiveBedBooking(null);
@@ -1500,6 +1556,28 @@ export function EmergencyProvider({ children }) {
 		});
 	}, []);
 
+	const patchActiveBedBooking = useCallback((updates) => {
+		if (!updates || typeof updates !== "object") return;
+		setActiveBedBooking((prev) => {
+			if (!prev) return prev;
+			return {
+				...prev,
+				...updates,
+			};
+		});
+	}, []);
+
+	const patchPendingApproval = useCallback((updates) => {
+		if (!updates || typeof updates !== "object") return;
+		setPendingApproval((prev) => {
+			if (!prev) return prev;
+			return {
+				...prev,
+				...updates,
+			};
+		});
+	}, []);
+
 	const toggleMode = useCallback(() => {
 		setMode(prevMode =>
 			prevMode === EmergencyMode.EMERGENCY
@@ -1706,10 +1784,12 @@ export function EmergencyProvider({ children }) {
 			startBedBooking,
 			stopBedBooking,
 			setBedBookingStatus,
+			patchActiveBedBooking,
 			updateHospitals,
 			refreshHospitals,
 			setUserLocation,
 			setPendingApproval,
+			patchPendingApproval,
 			setCommitFlow,
 			setCoverageMode,
 			clearCommitFlow: () => setCommitFlow(null),
@@ -1758,10 +1838,12 @@ export function EmergencyProvider({ children }) {
 			startBedBooking,
 			stopBedBooking,
 			setBedBookingStatus,
+			patchActiveBedBooking,
 			updateHospitals,
 			refreshHospitals,
 			setUserLocation,
 			setPendingApproval,
+			patchPendingApproval,
 			setCommitFlow,
 			setCoverageMode,
 		]

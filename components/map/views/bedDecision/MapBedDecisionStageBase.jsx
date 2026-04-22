@@ -6,6 +6,7 @@ import {
 	getGlassSurfaceTokens,
 } from "../../../../constants/surfaces";
 import MapSheetShell from "../../MapSheetShell";
+import { buildBedDecisionSourcePayload } from "../../core/mapSheetFlowPayloads";
 import {
 	MAP_SHEET_PHASES,
 	MAP_SHEET_SNAP_STATES,
@@ -39,6 +40,9 @@ export default function MapBedDecisionStageBase({
 	origin = null,
 	careIntent = "bed",
 	savedTransport = null,
+	sourcePhase = null,
+	sourceSnapState = null,
+	sourcePayload = null,
 	decisionPhase = MAP_SHEET_PHASES.BED_DECISION,
 	hospitalCount = 0,
 	selectedRoomServiceId = null,
@@ -209,10 +213,15 @@ export default function MapBedDecisionStageBase({
 			serviceItems: decision.enabledRoomOptions,
 			sourcePhase: decisionPhase,
 			sourceSnapState: snapState,
-			sourcePayload: {
+			sourcePayload: buildBedDecisionSourcePayload({
 				careIntent,
-				savedTransport: careIntent === "both" ? savedTransport || null : null,
-			},
+				savedTransport,
+				payload: {
+					sourcePhase,
+					sourceSnapState,
+					sourcePayload,
+				},
+			}),
 		});
 	}, [
 		careIntent,
@@ -223,6 +232,9 @@ export default function MapBedDecisionStageBase({
 		onOpenServiceDetail,
 		savedTransport,
 		snapState,
+		sourcePayload,
+		sourcePhase,
+		sourceSnapState,
 	]);
 
 	const handleConfirm = useCallback(() => {

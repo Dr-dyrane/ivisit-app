@@ -14,6 +14,7 @@ export const useMapRoute = () => {
 		durationSec: null,
 		distanceMeters: null,
 	});
+	const [isFallbackRoute, setIsFallbackRoute] = useState(false);
 	const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
 	const routeFetchIdRef = useRef(0);
 	const lastRouteFitKeyRef = useRef(null);
@@ -298,6 +299,7 @@ export const useMapRoute = () => {
 			const applyRouteResult = (result) => {
 				lastRequestedRouteKeyRef.current = routeKey;
 				lastRouteWasFallbackRef.current = Boolean(result?.isFallback);
+				setIsFallbackRoute(Boolean(result?.isFallback));
 				routeCoordinatesRef.current = result.coordinates;
 				setRouteCoordinates(result.coordinates);
 				if (emergencyDebugEnabled) {
@@ -399,6 +401,7 @@ export const useMapRoute = () => {
 	const clearRoute = useCallback(() => {
 		setRouteCoordinates([]);
 		setRouteInfo({ durationSec: null, distanceMeters: null });
+		setIsFallbackRoute(false);
 		routeCoordinatesRef.current = [];
 		routeInfoRef.current = { durationSec: null, distanceMeters: null };
 		lastRequestedRouteKeyRef.current = null;
@@ -410,6 +413,7 @@ export const useMapRoute = () => {
 	return {
 		routeCoordinates,
 		routeInfo,
+		isFallbackRoute,
 		isCalculatingRoute,
 		calculateRoute,
 		clearRoute,

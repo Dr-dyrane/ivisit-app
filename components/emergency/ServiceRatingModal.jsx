@@ -40,6 +40,7 @@ export function ServiceRatingModal({
 	subtitle = null,
 	serviceDetails = null, // { provider, hospital, duration, etc. }
 	onClose,
+	onSkip,
 	onSubmit,
 }) {
 	const { isDarkMode } = useTheme();
@@ -51,6 +52,7 @@ export function ServiceRatingModal({
 	const [walletBalance, setWalletBalance] = useState(0);
 	const [walletCurrency, setWalletCurrency] = useState("USD");
 	const [walletLoading, setWalletLoading] = useState(false);
+	const [isActionPending, setIsActionPending] = useState(false);
 
 	const { modalHeight, keyboardHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
 		useAndroidKeyboardAwareModal({
@@ -68,6 +70,7 @@ export function ServiceRatingModal({
 		setSelectedTip(0);
 		setCustomTip("");
 		setIsCustomTip(false);
+		setIsActionPending(false);
 		Animated.parallel([
 			Animated.spring(slideAnim, {
 				toValue: 0,
@@ -194,17 +197,49 @@ export function ServiceRatingModal({
 		]).start(() => onClose?.());
 	}, [fadeAnim, onClose, slideAnim]);
 
-	const handleSubmit = useCallback(() => {
+	const handleSkip = useCallback(async () => {
+		if (isActionPending) return;
+		setIsActionPending(true);
+		try {
+			const result = await onSkip?.();
+			if (result === false) return;
+			close();
+		} catch (error) {
+			console.warn("[ServiceRatingModal] Skip failed:", error);
+		} finally {
+			setIsActionPending(false);
+		}
+	}, [close, isActionPending, onSkip]);
+
+	const handleSubmit = useCallback(async () => {
 		if (rating < 1) return;
-		onSubmit?.({
-			rating,
-			comment: comment?.trim() || null,
-			serviceType,
-			tipAmount: currentTipAmount > 0 ? currentTipAmount : 0,
-			tipCurrency: walletCurrency || "USD",
-		});
-		close();
-	}, [close, comment, currentTipAmount, onSubmit, rating, serviceType, walletCurrency]);
+		if (isActionPending) return;
+		setIsActionPending(true);
+		try {
+			const result = await onSubmit?.({
+				rating,
+				comment: comment?.trim() || null,
+				serviceType,
+				tipAmount: currentTipAmount > 0 ? currentTipAmount : 0,
+				tipCurrency: walletCurrency || "USD",
+			});
+			if (result === false) return;
+			close();
+		} catch (error) {
+			console.warn("[ServiceRatingModal] Submit failed:", error);
+		} finally {
+			setIsActionPending(false);
+		}
+	}, [
+		close,
+		comment,
+		currentTipAmount,
+		isActionPending,
+		onSubmit,
+		rating,
+		serviceType,
+		walletCurrency,
+	]);
 
 	const stars = useMemo(() => [1, 2, 3, 4, 5], []);
 
@@ -236,7 +271,7 @@ export function ServiceRatingModal({
 	};
 
 	return (
-		<Modal visible={visible} transparent animationType="none" onRequestClose={close}>
+		<Modal visible={visible} transparent animationType="none" onRequestClose={handleSkip}>
 			<View
 				className="flex-1 justify-end"
 				style={{ paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }}
@@ -248,11 +283,12 @@ export function ServiceRatingModal({
 					<Pressable
 						className="flex-1"
 						onPress={() => {
+							if (isActionPending) return;
 							if (keyboardHeight > 0) {
 								Keyboard.dismiss();
 								return;
 							}
-							close();
+							void handleSkip();
 						}}
 					/>
 					{Platform.OS === "ios" ? (
@@ -541,12 +577,14 @@ export function ServiceRatingModal({
 							<View className="flex-row gap-3">
 								<Pressable
 									onPress={() => {
+										if (isActionPending) return;
 										if (keyboardHeight > 0) {
 											Keyboard.dismiss();
 											return;
 										}
-										close();
+										void handleSkip();
 									}}
+									disabled={isActionPending}
 									className="flex-1"
 									style={({ pressed }) => [
 										pressed ? { opacity: 0.94, transform: [{ scale: 0.988 }] } : null,
@@ -560,33 +598,42 @@ export function ServiceRatingModal({
 											className="text-base"
 											style={{ color: colors.text, fontWeight: "600" }}
 										>
-											Skip
+											{isActionPending ? "Saving..." : "Skip"}
 										</Text>
 									</View>
 								</Pressable>
 
 								<Pressable
-									onPress={handleSubmit}
-									disabled={rating < 1}
+									onPress={() => {
+										void handleSubmit();
+									}}
+									disabled={rating < 1 || isActionPending}
 									className="flex-1"
 									style={({ pressed }) => [
-										pressed && rating >= 1
+										pressed && rating >= 1 && !isActionPending
 											? { opacity: 0.96, transform: [{ scale: 0.988 }] }
 											: null,
 									]}
 								>
 									<View
 										className="h-14 items-center justify-center"
-										style={rating >= 1 ? enabledPrimaryActionStyle : disabledPrimaryActionStyle}
+										style={
+											rating >= 1 && !isActionPending
+												? enabledPrimaryActionStyle
+												: disabledPrimaryActionStyle
+										}
 									>
 										<Text
 											className="text-base"
 											style={{
-												color: rating >= 1 ? COLORS.bgLight : colors.text,
+												color:
+													rating >= 1 && !isActionPending
+														? COLORS.bgLight
+														: colors.text,
 												fontWeight: "600",
 											}}
 										>
-											Submit
+											{isActionPending ? "Saving..." : "Submit"}
 										</Text>
 									</View>
 								</Pressable>
