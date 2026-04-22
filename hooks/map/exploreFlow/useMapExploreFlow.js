@@ -1067,13 +1067,14 @@ export function useMapExploreFlow() {
     careHistoryVisible ||
     recentVisitsVisible ||
     authModalVisible;
+  const trackingHeaderOwnsCurrentPhase =
+    sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT ||
+    sheetPhase === MAP_SHEET_PHASES.TRACKING;
   const trackingHeaderVisible =
     Boolean(trackingRequestKey) &&
+    trackingHeaderOwnsCurrentPhase &&
     (usesSidebarLayout || sheetSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED) &&
-    !hasActiveMapModal &&
-    sheetPhase !== MAP_SHEET_PHASES.COMMIT_DETAILS &&
-    sheetPhase !== MAP_SHEET_PHASES.COMMIT_TRIAGE &&
-    sheetPhase !== MAP_SHEET_PHASES.COMMIT_PAYMENT;
+    !hasActiveMapModal;
   const trackingHeaderCanReopen =
     trackingHeaderVisible && sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT;
   const trackingHeaderActionSurface = isDarkMode

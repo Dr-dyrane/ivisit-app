@@ -20,8 +20,6 @@ export const appMigrationsService = {
                 // Fallback: Try a raw query if RPC fails (works if user has permissions)
                 // Note: This is less reliable from client-side but worth a shot
                 // const { error: sqlError } = await supabase.from('insurance_policies').select('coverage_details').limit(0);
-            } else {
-                console.log("[Migration] Schema cache reloaded successfully");
             }
         } catch (e) {
             console.warn("[Migration] Schema reload exception:", e);
@@ -53,4 +51,3 @@ export const appMigrationsService = {
 		return { version: CURRENT_MIGRATION_VERSION };
 	},
 };
-

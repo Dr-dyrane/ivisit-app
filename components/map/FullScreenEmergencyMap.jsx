@@ -81,9 +81,6 @@ const FullScreenEmergencyMap = forwardRef(
 		},
 		ref
 	) => {
-		const componentId = useRef(Math.random().toString(36).substr(2, 9));
-		// Component mounting - no debug logs
-
 		const { isDarkMode } = useTheme();
 		const insets = useSafeAreaInsets();
 		const mapRef = useRef(null);
@@ -305,7 +302,6 @@ const FullScreenEmergencyMap = forwardRef(
 		useEffect(() => {
 			if (hasRequestedInitialLocationRef.current) return;
 			hasRequestedInitialLocationRef.current = true;
-			console.log("[FullScreenEmergencyMap] Requesting location permission on mount...");
 			requestLocationPermission();
 		}, [requestLocationPermission]);
 
@@ -321,7 +317,6 @@ const FullScreenEmergencyMap = forwardRef(
 			// REVERT TO: The simple if (!shouldShowRoute...) block
 			if (!shouldShowRoute || !isValidCoordinate(origin) || !isValidCoordinate(destination)) {
 				if (!routeHospitalIdResolved && routeCoordinates.length > 0) {
-					console.log('[FullScreenEmergencyMap] Path condition missing, clearing route');
 					clearRoute();
 				}
 				return;
@@ -492,7 +487,6 @@ const FullScreenEmergencyMap = forwardRef(
 				if (now - lastZoomLogAtRef.current < 900) return;
 				const isProgrammatic = now - (lastProgrammaticMoveAtRef.current || 0) < 900;
 				lastZoomLogAtRef.current = now;
-				// console.log("[RouteZoom] region", { isProgrammatic, region });
 			}
 		}, [routeHospitalIdResolved]);
 

@@ -65,6 +65,14 @@ const parseTimestampMs = (value) => {
 	return null;
 };
 
+const areRuntimeStateValuesEqual = (left, right) =>
+	JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+
+const resolveStateUpdate = (prev, nextValueOrUpdater) =>
+	typeof nextValueOrUpdater === "function"
+		? nextValueOrUpdater(prev)
+		: nextValueOrUpdater;
+
 const formatTelemetryAge = (ageSeconds) => {
 	if (!Number.isFinite(ageSeconds) || ageSeconds < 0) return null;
 	if (ageSeconds < 60) return `${Math.round(ageSeconds)}s`;
@@ -447,8 +455,8 @@ export function EmergencyProvider({ children }) {
 	const [mode, setMode] = useState(EmergencyMode.EMERGENCY);
 	const [activeAmbulanceTrip, setActiveAmbulanceTrip] = useState(null);
 	const [activeBedBooking, setActiveBedBooking] = useState(null);
-	const [pendingApproval, setPendingApproval] = useState(null);
-	const [commitFlow, setCommitFlow] = useState(null);
+	const [pendingApproval, setPendingApprovalState] = useState(null);
+	const [commitFlow, setCommitFlowState] = useState(null);
 	const emergencyStateHydratedRef = useRef(false);
 	const emergencyStatePersistSignatureRef = useRef("");
 	const lastHydratedAmbulanceIdRef = useRef(null);
@@ -463,6 +471,20 @@ export function EmergencyProvider({ children }) {
 	const pendingApprovalRef = useRef(pendingApproval);
 	const commitFlowRef = useRef(commitFlow);
 	const userLocationRef = useRef(userLocation);
+
+	const setPendingApproval = useCallback((nextValueOrUpdater) => {
+		setPendingApprovalState((prev) => {
+			const nextValue = resolveStateUpdate(prev, nextValueOrUpdater);
+			return areRuntimeStateValuesEqual(nextValue, prev) ? prev : nextValue;
+		});
+	}, []);
+
+	const setCommitFlow = useCallback((nextValueOrUpdater) => {
+		setCommitFlowState((prev) => {
+			const nextValue = resolveStateUpdate(prev, nextValueOrUpdater);
+			return areRuntimeStateValuesEqual(nextValue, prev) ? prev : nextValue;
+		});
+	}, []);
 
 	useEffect(() => {
 		activeAmbulanceTripRef.current = activeAmbulanceTrip;
@@ -1479,7 +1501,7 @@ export function EmergencyProvider({ children }) {
 				...updates,
 				assignedAmbulance: nextAssignedAmbulance,
 			};
-			if (JSON.stringify(nextValue) === JSON.stringify(prev)) {
+			if (areRuntimeStateValuesEqual(nextValue, prev)) {
 				return prev;
 			}
 			return {
@@ -1637,7 +1659,7 @@ export function EmergencyProvider({ children }) {
 				...prev,
 				...updates,
 			};
-			if (JSON.stringify(nextValue) === JSON.stringify(prev)) {
+			if (areRuntimeStateValuesEqual(nextValue, prev)) {
 				return prev;
 			}
 			return nextValue;
@@ -1652,7 +1674,7 @@ export function EmergencyProvider({ children }) {
 				...prev,
 				...updates,
 			};
-			if (JSON.stringify(nextValue) === JSON.stringify(prev)) {
+			if (areRuntimeStateValuesEqual(nextValue, prev)) {
 				return prev;
 			}
 			return nextValue;

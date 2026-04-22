@@ -488,33 +488,6 @@ export default function EmergencyLocationPreviewMap({
 			? Number(serviceMarkerHeading)
 			: null,
 	});
-	useEffect(() => {
-		if (
-			!__DEV__ ||
-			serviceMarkerKind !== "ambulance" ||
-			(!activeTracking && !hasActiveTrackingTimeline)
-		) return;
-		const sourceMode = shouldAnimateAmbulance
-			? "simulated_route_polyline"
-			: hasLiveResponderCoordinate
-				? "live_responder_fallback"
-				: animatedRouteCoordinates.length >= 2
-				? "simulated_route_polyline"
-				: "fallback_stationary";
-		console.log("[TrackingMap] ambulance source mode", {
-			sourceMode,
-			routePoints: animatedRouteCoordinates.length,
-			initialAnimationProgress,
-		});
-	}, [
-		activeTracking,
-		animatedRouteCoordinates.length,
-		hasActiveTrackingTimeline,
-		hasLiveResponderCoordinate,
-		initialAnimationProgress,
-		serviceMarkerKind,
-		shouldAnimateAmbulance,
-	]);
 	const effectiveServiceMarkerCoordinate =
 		serviceMarkerKind === "ambulance" && shouldAnimateAmbulance
 			? animatedAmbulanceCoordinate || canonicalAnimationRouteCoordinates[0] || previewServiceMarkerCoordinate

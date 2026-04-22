@@ -260,11 +260,9 @@ export function GlobalLocationProvider({ children }) {
 
 	// Request location permission and get location
 	const requestLocationPermission = useCallback(async () => {
-		console.log("[GlobalLocationContext] Requesting location permission...");
 
 		// Prevent multiple simultaneous requests
 		if (isRequestingPermission.current) {
-			console.log("[GlobalLocationContext] Permission request already in progress");
 			return;
 		}
 
@@ -283,7 +281,6 @@ export function GlobalLocationProvider({ children }) {
 
 			if (status === "granted") {
 				setLocationPermission(true);
-				console.log("[GlobalLocationContext] Permission already granted");
 
 				// Get current location with timeout and error handling
 				try {
@@ -306,7 +303,6 @@ export function GlobalLocationProvider({ children }) {
 					setUserLocation(locationData);
 					setLastUpdated(Date.now());
 					void resolveLocationDetails(locationData);
-					console.log("[GlobalLocationContext] Location obtained:", locationData);
 				} catch (locationErr) {
 					console.error("[GlobalLocationContext] Failed to get location (using fallback):", locationErr);
 					const fallbackData = { ...DEFAULT_APP_COORDINATES };
@@ -317,13 +313,11 @@ export function GlobalLocationProvider({ children }) {
 				}
 			} else {
 				// Request permission
-				console.log("[GlobalLocationContext] Requesting permission...");
 				const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
 				const hasPermission = newStatus === "granted";
 				setLocationPermission(hasPermission);
 
 				if (hasPermission) {
-					console.log("[GlobalLocationContext] Permission granted, getting location...");
 					try {
 						const location = await Promise.race([
 							Location.getCurrentPositionAsync({
@@ -344,7 +338,6 @@ export function GlobalLocationProvider({ children }) {
 						setUserLocation(locationData);
 						setLastUpdated(Date.now());
 						void resolveLocationDetails(locationData);
-						console.log("[GlobalLocationContext] Location obtained after permission:", locationData);
 					} catch (locationErr) {
 						console.error("[GlobalLocationContext] Failed to get location after permission (using fallback):", locationErr);
 						// 🔴 REVERT POINT: Context Fallback
@@ -356,7 +349,6 @@ export function GlobalLocationProvider({ children }) {
 						setLocationError(null); // Clear error since we have a fallback
 					}
 				} else {
-					console.log("[GlobalLocationContext] Permission denied (using fallback)");
 					const fallbackData = { ...DEFAULT_APP_COORDINATES };
 					setUserLocation(fallbackData);
 					setLastUpdated(Date.now());
@@ -376,12 +368,10 @@ export function GlobalLocationProvider({ children }) {
 	// Initialize location on mount
 	useEffect(() => {
 		if (isInitialized.current) {
-			console.log("[GlobalLocationContext] Already initialized, skipping...");
 			return;
 		}
 
 		isInitialized.current = true;
-		console.log("[GlobalLocationContext] Initializing global location...");
 
 		// Start location loading
 		requestLocationPermission();
@@ -389,7 +379,6 @@ export function GlobalLocationProvider({ children }) {
 
 	// Refresh location (for manual refresh)
 	const refreshLocation = useCallback(async () => {
-		console.log("[GlobalLocationContext] Manually refreshing location...");
 		setIsLoadingLocation(true);
 		await requestLocationPermission();
 	}, [requestLocationPermission]);

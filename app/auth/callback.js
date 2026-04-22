@@ -229,7 +229,6 @@ export default function AuthCallback() {
             }
 
             if (!oauthToken && !oauthUser && !oauthError && !oauthCode && !oauthAccessToken) {
-              console.log('Empty auth callback detected, returning to previous public route');
               const fallbackRoute = await resolvePublicFallback();
               await clearStoredReturnRoute();
               router.replace(fallbackRoute);
@@ -262,7 +261,6 @@ export default function AuthCallback() {
             }
 
             if (oauthCode || oauthAccessToken || oauthRefreshToken) {
-              console.log('Handling OAuth callback session exchange');
               try {
                 const result = await authService.handleOAuthCallback(currentUrl);
 
@@ -292,7 +290,6 @@ export default function AuthCallback() {
             }
           }
 
-          console.log('No authentication data found in callback, returning to previous public route');
           const fallbackRoute = await resolvePublicFallback();
           await clearStoredReturnRoute();
           router.replace(fallbackRoute);

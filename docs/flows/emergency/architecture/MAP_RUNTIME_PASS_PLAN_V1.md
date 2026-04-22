@@ -857,13 +857,40 @@ Current slice:
   - commit-flow draft state
 - [`utils/domainNormalize.js`](../../../utils/domainNormalize.js) now normalizes persisted `pendingApproval` and `commitFlow` records, so web/native reload recovery no longer relies on arbitrary raw object shapes
 - persistence is now one-shot hydrated and signature-guarded before writes, which keeps the recovery boundary deterministic and avoids clobbering live runtime state during provider startup
+- [`contexts/EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx) now rejects equivalent `pendingApproval` and `commitFlow` writes, so effect-driven controllers such as commit details and commit triage cannot churn the shared runtime with semantically identical payloads
+- [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../hooks/map/exploreFlow/useMapExploreFlow.js) now limits active-session header ownership to `EXPLORE_INTENT` and `TRACKING`, so non-tracking sheets and map overlays cannot accidentally resurrect tracking header state
+- noisy `/map`-adjacent startup diagnostics were removed from:
+  - [`App.js`](../../../App.js)
+  - [`app/_layout.js`](../../../app/_layout.js)
+  - [`app/auth/callback.js`](../../../app/auth/callback.js)
+  - [`contexts/GlobalLocationContext.jsx`](../../../contexts/GlobalLocationContext.jsx)
+  - [`contexts/OTAUpdatesContext.jsx`](../../../contexts/OTAUpdatesContext.jsx)
+  - [`components/emergency/EmergencyMapContainer.jsx`](../../../components/emergency/EmergencyMapContainer.jsx)
+  - [`components/map/FullScreenEmergencyMap.jsx`](../../../components/map/FullScreenEmergencyMap.jsx)
+  - [`hooks/emergency/useEmergencyHandlers.js`](../../../hooks/emergency/useEmergencyHandlers.js)
+  - [`components/emergency/intake/EmergencyLocationPreviewMap.jsx`](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx)
+  - [`services/appMigrationsService.js`](../../../services/appMigrationsService.js)
 
 Pass 8 proven in this slice:
 
 - `/map` no longer depends only on in-memory emergency state for active request and commit-flow recovery after reload/focus loss
 - the existing app-owned storage boundary is now used for emergency runtime recovery instead of introducing new ad hoc browser/native persistence
+- equivalent commit-flow and pending-approval writes no longer force app-wide rerenders just because controller effects re-emitted the same payload
+- active-session header state can no longer leak into non-tracking overlays; header ownership is now phase-bounded instead of inferred indirectly
+- Metro/runtime output is quieter during `/map` startup, so actual regressions are easier to spot while the remaining parity passes are executed
 - static syntax checks passed for:
+  - `App.js`
+  - `app/_layout.js`
+  - `app/auth/callback.js`
   - `contexts/EmergencyContext.jsx`
+  - `contexts/GlobalLocationContext.jsx`
+  - `contexts/OTAUpdatesContext.jsx`
+  - `components/emergency/EmergencyMapContainer.jsx`
+  - `components/map/FullScreenEmergencyMap.jsx`
+  - `hooks/emergency/useEmergencyHandlers.js`
+  - `hooks/map/exploreFlow/useMapExploreFlow.js`
+  - `components/emergency/intake/EmergencyLocationPreviewMap.jsx`
+  - `services/appMigrationsService.js`
   - `utils/domainNormalize.js`
 
 Done when:
@@ -942,6 +969,7 @@ Fix applied:
 - `useAmbulanceAnimation` now uses an animation generation token plus coordinate/heading equality guards
 - `MapStageBodyScroll` skips the Android-only `GestureDetector` wrapper on web
 - active-session header status now resolves `canCompleteAmbulance` as `Complete` while preserving `canConfirmArrival` as `Arrived`
+- active-session header ownership is now phase-bounded in `useMapExploreFlow`, so non-tracking overlays and modal states do not inherit tracking-header controls by accident
 
 Remaining:
 

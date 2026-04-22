@@ -3,9 +3,6 @@ import { View, StyleSheet } from "react-native";
 import FullScreenEmergencyMap from "../map/FullScreenEmergencyMap";
 
 export const EmergencyMapContainer = forwardRef((props, ref) => {
-	const containerId = useRef(Math.random().toString(36).substr(2, 9));
-	// Component mounting - no debug logs
-	
 	const {
 		hospitals,
 		onHospitalSelect,
@@ -32,11 +29,10 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 	const routeMapRef = useRef(null);
 	const showRouteMap = !!routeHospitalId;
 	const activeRef = showRouteMap ? routeMapRef : baseMapRef;
-	const routeInstanceKey = useMemo(() => {
-		const key = typeof mapStateKey === "string" ? mapStateKey : "emergency";
-		console.log(`[EmergencyMapContainer-${containerId.current}] routeInstanceKey:`, key);
-		return key;
-	}, [mapStateKey]);
+	const routeInstanceKey = useMemo(
+		() => (typeof mapStateKey === "string" ? mapStateKey : "emergency"),
+		[mapStateKey],
+	);
 
 	useImperativeHandle(ref, () => ({
 		animateToHospital: (hospital, options) => {
@@ -55,14 +51,6 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 
 		const hospital = hospitals.find((h) => h?.id === selectedHospitalId) ?? null;
 		if (!hospital) return;
-
-		if (__DEV__) {
-			console.log("[EmergencyMapContainer] route map mount focus", {
-				selectedHospitalId,
-				routeHospitalId,
-				bottomPadding,
-			});
-		}
 
 		routeMapRef.current.animateToHospital?.(hospital, {
 			includeUser: true,

@@ -43,15 +43,11 @@ export default function RootLayout() {
 		async function prepare() {
 			try {
 				if (!isSplashPrevented) {
-					console.log("[RootLayout] Calling SplashScreen.preventAutoHideAsync()");
 					await SplashScreen.preventAutoHideAsync().catch(e => {
 						console.warn("[RootLayout] SplashScreen.preventAutoHideAsync error:", e.message);
 					});
 					isSplashPrevented = true;
 				}
-
-				// Log deep link info for diagnostics
-				console.log("[RootLayout] Linking.createURL('/'):", Linking.createURL("/"));
 
 				// Run migrations and schema reload on startup
 				await appMigrationsService.run();
@@ -70,9 +66,8 @@ export default function RootLayout() {
 	useEffect(() => {
 		if (appIsReady) {
 			const timer = setTimeout(() => {
-				console.log("[RootLayout] Attempting to hide SplashScreen");
 				SplashScreen.hideAsync().catch(err => {
-					console.log("[RootLayout] SplashScreen.hideAsync error:", err.message);
+					console.warn("[RootLayout] SplashScreen.hideAsync error:", err.message);
 				});
 			}, 200);
 			return () => clearTimeout(timer);
@@ -231,10 +226,6 @@ function AuthenticatedStack() {
 			const url = event.url;
 			if (!url) return;
 
-			// Log URL scheme without exposing tokens
-			const urlScheme = url.split("://")[0] || "unknown";
-			console.log("[DeepLink] Received URL with scheme:", urlScheme);
-
 			// Let the dedicated auth callback page handle auth callbacks
 			const isResetPassword = url.includes("auth/reset-password");
 			const isAuthCallback =
@@ -242,7 +233,6 @@ function AuthenticatedStack() {
 				(url.includes("auth/callback") || url.includes("code=") || url.includes("access_token="));
 			const isAlreadyOnResetPasswordRoute = pathnameRef.current === "/auth/reset-password";
 			const isAlreadyOnAuthCallbackRoute = pathnameRef.current === "/auth/callback";
-			console.log("[DeepLink] URL check:", { scheme: urlScheme, isAuthCallback, isResetPassword });
 
 			if (isResetPassword) {
 				if (!isAlreadyOnResetPasswordRoute) {
@@ -253,7 +243,6 @@ function AuthenticatedStack() {
 
 			if (isAuthCallback) {
 				if (!isAlreadyOnAuthCallbackRoute) {
-					console.log("[DeepLink] Redirecting to auth callback page");
 					router.replace("/auth/callback");
 				}
 				return;
@@ -261,7 +250,6 @@ function AuthenticatedStack() {
 
 			const publicAuthRoute = getPublicAuthRouteFromUrl(url);
 			if (publicAuthRoute) {
-				console.log("[DeepLink] Restoring public route:", publicAuthRoute);
 				if (isMounted) setStartupPublicRoute(publicAuthRoute);
 				await writeStoredPublicRoute(publicAuthRoute);
 				router.replace(publicAuthRoute);
@@ -272,7 +260,6 @@ function AuthenticatedStack() {
 			const isBaseUrl = isBaseAppUrl(url);
 
 			if (user?.isAuthenticated && !isBaseUrl && !isAuthCallback) {
-				console.log("[DeepLink] Non-auth route received, user is already logged in");
 				router.replace("/(user)/(tabs)");
 			}
 		};

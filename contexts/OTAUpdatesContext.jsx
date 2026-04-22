@@ -23,7 +23,6 @@ export const OTAUpdatesProvider = ({ children }) => {
             try {
                 const pending = await database.readRaw(UPDATE_PENDING_KEY, null, { parseJson: false });
                 if (pending === 'true' && isMounted) {
-                    console.log('[OTA Updates] Update was applied, showing success modal');
                     await database.deleteRaw(UPDATE_PENDING_KEY);
                     successTimer = setTimeout(() => {
                         if (isMounted) {
@@ -46,24 +45,18 @@ export const OTAUpdatesProvider = ({ children }) => {
 
     const checkForUpdates = useCallback(async () => {
         if (__DEV__) {
-            console.log('[OTA Updates] Skipping check in development mode');
             return;
         }
 
         try {
             setIsChecking(true);
-            console.log('[OTA Updates] Checking for updates...');
 
             const update = await Updates.checkForUpdateAsync();
 
             if (update.isAvailable) {
-                console.log('[OTA Updates] Update available, downloading...');
                 setUpdateAvailable(true);
                 await Updates.fetchUpdateAsync();
-                console.log('[OTA Updates] Update downloaded, showing modal');
                 setShowModal(true);
-            } else {
-                console.log('[OTA Updates] No update available, app is up to date');
             }
         } catch (error) {
             console.warn('[OTA Updates] Error checking for updates:', error.message);
@@ -73,7 +66,6 @@ export const OTAUpdatesProvider = ({ children }) => {
     }, []);
 
     const handleRestart = useCallback(async () => {
-        console.log('[OTA Updates] User accepted, storing flag and reloading app');
         setShowModal(false);
 
         try {
@@ -86,12 +78,10 @@ export const OTAUpdatesProvider = ({ children }) => {
     }, []);
 
     const handleLater = useCallback(() => {
-        console.log('[OTA Updates] User deferred update');
         setShowModal(false);
     }, []);
 
     const handleDismissSuccess = useCallback(() => {
-        console.log('[OTA Updates] User dismissed success modal');
         setShowSuccessModal(false);
     }, []);
 
