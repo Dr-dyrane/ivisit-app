@@ -137,7 +137,7 @@ Legacy loading, error, retry, and recovery:
 | choose ambulance service | improved | `/map` decision sheet and service detail are calmer than legacy modal |
 | ambulance service user-facing labels | preserved/improved | uses visual profile copy, must be shared everywhere |
 | choose bed/room | partially implemented | bed decision exists, but bed runtime parity is not signed off |
-| combined ambulance + bed | partially implemented | ambulance then bed exists; reverse add-on and unified tracking rules are incomplete |
+| combined ambulance + bed | partially implemented | sequential add-ons now exist in both directions; unified checkout remains intentionally unsupported and still needs dual-active QA |
 | contact identity gate | improved | `commit_details` is narrower than legacy profile/auth spread |
 | Google auth in commit | intentionally removed for now | kept out to avoid urgency flow breakage |
 | triage before payment | intentionally removed from required ambulance path | booking is faster; triage is now updateable during tracking |
@@ -155,7 +155,7 @@ Legacy loading, error, retry, and recovery:
 | share ETA | partially implemented | text share exists; tokenized live share is future pass |
 | call hospital/911 fallback | partially implemented | legacy call affordances not fully mapped into `/map` emergency states |
 | poor location/missing location handling | partially implemented | map loading handles location, commit/request needs explicit failure UI contract |
-| refresh/reconnect recovery | partially implemented | active request hydration exists, minimum persisted truth contract is now documented |
+| refresh/reconnect recovery | improved | active request hydration exists, and emergency runtime state now persists active trips, pending approval, and commit-flow draft state through the shared app storage boundary |
 
 ## 4. Architectural Problems And Drift Sources
 
@@ -310,6 +310,9 @@ Contract protected:
 - tracking-mounted rating and recovered rating now share the same persistence helper path for lifecycle writes, claim deletion, and tip settlement side effects
 - request-id display fallback is now normalized through a shared formatter so UI paths do not leak raw backend UUIDs when only request truth is available
 - arrival/minutes/distance display formatting is now normalized through one shared formatter contract instead of duplicated helpers in the header/tracking stack
+- map-overlay header lane geometry is now normalized through one shared frame contract so the persistent active-session header and the loading skeleton use the same wide-layout placement math
+- active-session smart-header content is now normalized through a dedicated presentation helper so the header only carries compact semantic status plus shared metrics, instead of retaining hidden duplicated tracking detail rows
+- active-session header status pills now support a warning tone, which preserves delayed-tracking signal quality without reopening the old expanded-copy drift
 - bed booking timing/runtime normalization now shares one source of truth across hydrate/start/realtime update paths, protecting the legacy 15-minute fallback hold window from reset drift
 - bed tracking now inherits the fallback `Share ETA` action path already used by ambulance tracking, rather than silently omitting that capability
 
@@ -323,5 +326,7 @@ Legacy parity restored or improved:
 - reduces post-completion drift by making rating skip/submit persistence behave the same whether the rating modal is opened from live tracking or later recovery
 - restores the legacy expectation that operational request labels look like user-facing request tokens rather than internal storage identifiers
 - reduces presentation drift between smart header and tracking sheet by making primary operational metrics share the same formatting rules
+- reduces wide-layout header drift by making the persistent active-session header inherit the same lane contract as the loading header skeleton
+- reduces smart-header redundancy by making the persistent header render only compact operational truth instead of carrying unused hidden detail payloads
 - restores a core part of legacy bed timing parity by making reservation countdown state survive internal runtime handoffs instead of restarting opportunistically
 - closes one obvious action-parity gap between ambulance and bed tracking by exposing `Share ETA` in both lanes

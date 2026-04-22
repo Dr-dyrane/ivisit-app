@@ -261,6 +261,7 @@ function resolveStatusLabel({
 	if (kind === MAP_ACTIVE_REQUEST_KINDS.BED || pendingKind === MAP_ACTIVE_REQUEST_KINDS.BED) {
 		if (status === EmergencyRequestStatus.COMPLETED) return "Complete";
 		if (status === EmergencyRequestStatus.ARRIVED) return "Arrived";
+		if (etaElapsed) return "Ready";
 		return formatHeaderEtaLabel(etaSeconds, startedAt, nowMs) || "Active";
 	}
 
@@ -268,15 +269,46 @@ function resolveStatusLabel({
 }
 
 function resolveServiceLabel({ kind, pendingKind, record }) {
+	const resolveBedLabel = (value) => {
+		const raw = String(value || "").trim();
+		if (!raw) return "Admission";
+		const normalized = raw.toLowerCase();
+		if (
+			normalized === "standard" ||
+			normalized.includes("general") ||
+			normalized.includes("ward")
+		) {
+			return "General ward";
+		}
+		if (normalized.includes("private")) return "Private room";
+		if (
+			normalized.includes("icu") ||
+			normalized.includes("critical") ||
+			normalized.includes("high-support") ||
+			normalized.includes("high support")
+		) {
+			return "High-support care";
+		}
+		if (normalized.includes("maternity")) return "Maternity room";
+		if (
+			normalized.includes("child") ||
+			normalized.includes("paediatric") ||
+			normalized.includes("pediatric")
+		) {
+			return "Children's care";
+		}
+		return raw;
+	};
+
 	if (kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE) {
 		return record?.ambulanceType || record?.assignedAmbulance?.type || "Transport";
 	}
 	if (kind === MAP_ACTIVE_REQUEST_KINDS.BED) {
-		return record?.bedType || "Admission";
+		return resolveBedLabel(record?.bedLabel || record?.roomTitle || record?.bedType);
 	}
 	if (kind === MAP_ACTIVE_REQUEST_KINDS.PENDING) {
 		if (pendingKind === MAP_ACTIVE_REQUEST_KINDS.BED) {
-			return record?.bedType || "Admission";
+			return resolveBedLabel(record?.bedLabel || record?.roomTitle || record?.bedType);
 		}
 		return record?.ambulanceType || "Transport";
 	}
@@ -357,7 +389,8 @@ export function buildActiveMapRequestModel({
 		currentStatusForMetrics === EmergencyRequestStatus.ARRIVED ||
 		currentStatusForMetrics === EmergencyRequestStatus.COMPLETED ||
 		statusLabel === "Arrived" ||
-		statusLabel === "Complete"
+		statusLabel === "Complete" ||
+		statusLabel === "Ready"
 			? "0"
 			: stripHeaderMetricUnit(statusLabel, /\s*(min|mins|minute|minutes)$/i);
 	const progressValue = (() => {
@@ -425,6 +458,11 @@ export function buildActiveMapRequestModel({
 		canCompleteBed:
 			kind === MAP_ACTIVE_REQUEST_KINDS.BED &&
 			status === EmergencyRequestStatus.ARRIVED,
+		canCheckInBed:
+			kind === MAP_ACTIVE_REQUEST_KINDS.BED &&
+			etaElapsed &&
+			status !== EmergencyRequestStatus.ARRIVED &&
+			status !== EmergencyRequestStatus.COMPLETED,
 	};
 }
 

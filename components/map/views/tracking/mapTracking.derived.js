@@ -6,6 +6,7 @@ import {
   isGenericTransportLabel,
   joinDisplayParts,
   resolveDistanceLabel,
+  resolveBedServiceLabel,
   resolveHospitalAddress,
   resolveTransportServiceLabel,
   toTitleCaseLabel,
@@ -27,6 +28,7 @@ export function buildTrackingViewState({
   ambulanceTelemetryHealth,
   ambulanceRemainingSeconds,
   remainingBedSeconds,
+  bedStatus,
   ambulanceComputedStatus,
   resolvedStatus,
   nowMs,
@@ -123,9 +125,17 @@ export function buildTrackingViewState({
           return "Everyday care";
         })()
       : trackingKind === "bed"
-        ? activeBedBooking?.bedType || "Admission"
+        ? resolveBedServiceLabel(
+            activeBedBooking?.bedLabel ||
+              activeBedBooking?.roomTitle ||
+              activeBedBooking?.bedType,
+          )
         : pendingApproval?.serviceType === "bed"
-          ? pendingApproval?.bedType || "Admission"
+          ? resolveBedServiceLabel(
+              pendingApproval?.bedLabel ||
+                pendingApproval?.roomTitle ||
+                pendingApproval?.bedType,
+            )
           : resolveTransportServiceLabel(pendingApproval?.ambulanceType);
   const requestLabel =
     formatMapRequestDisplayId(
@@ -165,7 +175,8 @@ export function buildTrackingViewState({
       ? "Confirming"
       : trackingKind === "bed"
         ? resolvedStatus === EmergencyRequestStatus.ARRIVED ||
-          resolvedStatus === EmergencyRequestStatus.COMPLETED
+          resolvedStatus === EmergencyRequestStatus.COMPLETED ||
+          bedStatus === "Ready"
           ? "Bed ready"
           : "Bed reserved"
         : resolvedStatus === EmergencyRequestStatus.COMPLETED ||

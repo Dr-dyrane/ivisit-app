@@ -4,7 +4,6 @@ import {
   Easing,
   Platform,
   Pressable,
-  Text,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -28,11 +27,13 @@ import {
 } from "../../../components/map/core/MapSheetOrchestrator";
 import {
   buildActiveMapRequestModel,
-  MAP_ACTIVE_REQUEST_KINDS,
 } from "../../../components/map/core/mapActiveRequestModel";
-import { formatMapRequestDisplayId } from "../../../components/map/core/mapRequestPresentation";
-import { buildBedDecisionSourcePayload } from "../../../components/map/core/mapSheetFlowPayloads";
-import { EmergencyRequestStatus } from "../../../services/emergencyRequestsService";
+import { buildMapActiveSessionHeaderSession } from "../../../components/map/core/mapActiveSessionPresentation";
+import {
+  buildAmbulanceDecisionSourcePayload,
+  buildBedDecisionSourcePayload,
+} from "../../../components/map/core/mapSheetFlowPayloads";
+import { buildMapOverlayHeaderLayoutInsets } from "../../../components/map/core/mapOverlayHeaderLayout";
 import {
   getMapViewportSurfaceConfig,
   getMapViewportVariant,
@@ -93,25 +94,6 @@ import {
 import MapHeaderIconButton from "../../../components/map/views/shared/MapHeaderIconButton";
 
 const TRACKING_HEADER_COLLAPSED_HEIGHT = 124;
-
-function formatHospitalDistanceLabel(hospital) {
-  const directDistance = Number(hospital?.distanceKm);
-  if (typeof hospital?.distance === "string" && hospital.distance.trim()) {
-    return hospital.distance.trim();
-  }
-  if (Number.isFinite(directDistance) && directDistance > 0) {
-    return directDistance < 1
-      ? `${Math.round(directDistance * 1000)} m`
-      : `${directDistance.toFixed(directDistance < 10 ? 1 : 0)} km`;
-  }
-  return null;
-}
-
-function joinSummaryParts(parts = []) {
-  return parts
-    .filter((part) => typeof part === "string" && part.trim())
-    .join(" · ");
-}
 
 function TrackHeaderIcon({
   onPress,
@@ -717,7 +699,7 @@ export function useMapExploreFlow() {
   }, [setSheetView]);
 
   const openAmbulanceDecision = useCallback(
-    (nextHospital = null) => {
+    (nextHospital = null, payload = null) => {
       promoteHospitalSelection(
         resolveMapFlowHospital({
           preferredHospital: nextHospital,
@@ -729,6 +711,7 @@ export function useMapExploreFlow() {
       setSheetView(
         buildAmbulanceDecisionSheetView({
           defaultSnapState: defaultExploreSnapState,
+          payload,
         }),
       );
     },
@@ -748,10 +731,17 @@ export function useMapExploreFlow() {
       buildHospitalListSheetView({
         sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
         sourceSnapState: sheetSnapState || defaultExploreSnapState,
-        sourcePayload: null,
+        sourcePayload: buildAmbulanceDecisionSourcePayload({
+          payload: sheetPayload,
+        }),
       }),
     );
-  }, [defaultExploreSnapState, setSheetView, sheetSnapState]);
+  }, [
+    defaultExploreSnapState,
+    setSheetView,
+    sheetPayload,
+    sheetSnapState,
+  ]);
 
   const openBedDecision = useCallback(
     (nextHospital = null, careIntent = "bed", payload = null) => {
@@ -1086,17 +1076,6 @@ export function useMapExploreFlow() {
     sheetPhase !== MAP_SHEET_PHASES.COMMIT_PAYMENT;
   const trackingHeaderCanReopen =
     trackingHeaderVisible && sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT;
-  const trackingHeaderHospital =
-    activeMapRequest.hospital || featuredHospital || nearestHospital || null;
-  const trackingHeaderHospitalName = activeMapRequest.hospitalName || "Hospital";
-  const trackingHeaderPickupLabel = activeMapRequest.pickupLabel || "Pickup";
-  const trackingHeaderPickupDetail = activeMapRequest.pickupDetail || "";
-  const trackingHeaderServiceLabel = activeMapRequest.serviceLabel || "Transport";
-  const trackingHeaderStatusLabel = activeMapRequest.statusLabel || "";
-  const trackingHeaderArrivalLabel = activeMapRequest.arrivalLabel || null;
-  const trackingHeaderDistanceLabel = activeMapRequest.distanceLabel || null;
-  const trackingHeaderMinuteValue = activeMapRequest.minuteValue || "--";
-  const trackingHeaderDistanceValue = activeMapRequest.distanceValue || "--";
   const trackingHeaderActionSurface = isDarkMode
     ? "rgba(255,255,255,0.08)"
     : "rgba(255,255,255,0.76)";
@@ -1105,29 +1084,31 @@ export function useMapExploreFlow() {
     ? "rgba(134,16,14,0.24)"
     : "rgba(134,16,14,0.12)";
   const trackingHeaderLayoutInsets = useMemo(() => {
-    if (!usesSidebarLayout) return null;
-
-    return {
-      topInset: Math.max(8, Number(surfaceConfig.overlayHeaderTopInset || 8)),
-      leftInset:
-        sidebarWidth +
-        Math.max(0, Number(surfaceConfig.sidebarOuterInset || 0)) +
-        Math.max(0, Number(surfaceConfig.overlayHeaderSideInset || 16)),
-      rightInset: Math.max(0, Number(surfaceConfig.overlayHeaderSideInset || 16)),
-    };
+    return buildMapOverlayHeaderLayoutInsets({
+      screenWidth: width,
+      surfaceConfig,
+      usesSidebarLayout,
+      sidebarWidth,
+    });
   }, [
     sidebarWidth,
-    surfaceConfig.overlayHeaderSideInset,
-    surfaceConfig.overlayHeaderTopInset,
-    surfaceConfig.sidebarOuterInset,
+    surfaceConfig,
     usesSidebarLayout,
+    width,
   ]);
-  const trackingHeaderProgressValue = useMemo(() => {
-    if (Number.isFinite(activeMapRequest.progressValue)) {
-      return activeMapRequest.progressValue;
-    }
-    return null;
-  }, [activeMapRequest.progressValue]);
+  const trackingHeaderSession = useMemo(() => {
+    if (!trackingHeaderVisible) return null;
+
+    return buildMapActiveSessionHeaderSession({
+      activeMapRequest,
+      ambulanceTelemetryHealth,
+      pendingApproval,
+    });
+  }, [
+    activeMapRequest,
+    ambulanceTelemetryHealth,
+    pendingApproval,
+  ]);
   const handleTrackingHeaderOpen = useCallback(() => {
     trackingDismissedRef.current = false;
     openTracking();
@@ -1212,233 +1193,6 @@ export function useMapExploreFlow() {
     trackingHeaderActionSurface,
     trackingHeaderRouteSurface,
     handleTrackingHeaderOpen,
-    trackingHeaderVisible,
-  ]);
-  const trackingHeaderSession = useMemo(() => {
-    if (!trackingHeaderVisible) return null;
-
-    if (activeMapRequest.kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE) {
-      const status = String(activeMapRequest.status ?? "").toLowerCase();
-      const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
-      const telemetryLabel =
-        telemetryState === "lost"
-          ? "Tracking lost"
-          : telemetryState === "stale"
-            ? "Tracking delayed"
-            : "Live tracking";
-      const sheetStateTitle =
-        status === "arrived" ? "Responder has arrived" : "Transport en route";
-      const metricPillLabel =
-        joinSummaryParts([trackingHeaderStatusLabel, trackingHeaderDistanceLabel]) ||
-        trackingHeaderDistanceLabel ||
-        trackingHeaderStatusLabel ||
-        trackingHeaderServiceLabel;
-
-      return {
-        eyebrow: null,
-        title: null,
-        subtitle: null,
-        metrics: [
-          { label: "Arrival", value: trackingHeaderArrivalLabel || "--" },
-          { label: "Min", value: trackingHeaderMinuteValue || "--" },
-          { label: "Km", value: trackingHeaderDistanceValue || "--" },
-        ],
-        statusLabel: null,
-        statusTone: status === "arrived" ? "success" : "tracking",
-        expanded: false,
-        expandable: false,
-        onToggleExpand: null,
-        showChevron: false,
-        hideDetails: true,
-        bodyHeight: 0,
-        expandedContent: null,
-        details: [
-          ...(trackingHeaderArrivalLabel
-            ? [{ label: "Arrival", value: trackingHeaderArrivalLabel }]
-            : []),
-          ...(trackingHeaderStatusLabel
-            ? [{ label: "ETA", value: trackingHeaderStatusLabel }]
-            : []),
-          ...(trackingHeaderDistanceLabel
-            ? [{ label: "Distance", value: trackingHeaderDistanceLabel }]
-            : []),
-          { label: "Pickup", value: trackingHeaderPickupLabel },
-          {
-            label: "Hospital",
-            value:
-              trackingHeaderHospitalName +
-              (formatHospitalDistanceLabel(trackingHeaderHospital)
-                ? ` · ${formatHospitalDistanceLabel(trackingHeaderHospital)}`
-                : ""),
-          },
-          ...(activeAmbulanceTrip?.assignedAmbulance?.crew?.[0] ||
-          activeAmbulanceTrip?.assignedAmbulance?.name ||
-          activeAmbulanceTrip?.assignedAmbulance?.vehicleNumber
-            ? [
-                {
-                  label: "Responder",
-                  value:
-                    activeAmbulanceTrip?.assignedAmbulance?.crew?.[0] ||
-                    activeAmbulanceTrip?.assignedAmbulance?.name ||
-                    activeAmbulanceTrip?.assignedAmbulance?.vehicleNumber,
-                },
-              ]
-            : []),
-          {
-            label: "Request",
-            value:
-              formatMapRequestDisplayId(activeMapRequest.displayId) ||
-              "Active",
-          },
-          ...(activeBedBooking?.requestId
-            ? [
-                {
-                  label: "Admission",
-                  value:
-                    activeBedBooking?.status === "arrived"
-                      ? "Bed ready"
-                      : "Bed reserved",
-                },
-              ]
-            : []),
-          {
-            label: "Tracking",
-            value: trackingHeaderPickupDetail
-              ? `${telemetryLabel} · ${trackingHeaderPickupDetail}`
-              : telemetryLabel,
-          },
-        ],
-      };
-    }
-
-    if (activeMapRequest.kind === MAP_ACTIVE_REQUEST_KINDS.BED) {
-      const status = String(activeMapRequest.status ?? "").toLowerCase();
-      const sheetStateTitle = status === "arrived" ? "Bed ready" : "Bed reserved";
-      const metricPillLabel =
-        joinSummaryParts([trackingHeaderStatusLabel, trackingHeaderDistanceLabel]) ||
-        trackingHeaderDistanceLabel ||
-        trackingHeaderStatusLabel ||
-        trackingHeaderServiceLabel;
-      return {
-        eyebrow: null,
-        title: null,
-        subtitle: null,
-        metrics: [
-          { label: "Arrival", value: trackingHeaderArrivalLabel || "--" },
-          { label: "Min", value: trackingHeaderMinuteValue || "--" },
-          { label: "Km", value: trackingHeaderDistanceValue || "--" },
-        ],
-        statusLabel: null,
-        statusTone: status === "arrived" ? "success" : "tracking",
-        expanded: false,
-        expandable: false,
-        onToggleExpand: null,
-        showChevron: false,
-        hideDetails: true,
-        bodyHeight: 0,
-        expandedContent: null,
-        details: [
-          ...(trackingHeaderArrivalLabel
-            ? [{ label: "Ready", value: trackingHeaderArrivalLabel }]
-            : []),
-          ...(trackingHeaderStatusLabel
-            ? [{ label: "ETA", value: trackingHeaderStatusLabel }]
-            : []),
-          ...(trackingHeaderDistanceLabel
-            ? [{ label: "Distance", value: trackingHeaderDistanceLabel }]
-            : []),
-          { label: "Pickup", value: trackingHeaderPickupLabel },
-          {
-            label: "Hospital",
-            value:
-              trackingHeaderHospitalName +
-              (formatHospitalDistanceLabel(trackingHeaderHospital)
-                ? ` · ${formatHospitalDistanceLabel(trackingHeaderHospital)}`
-                : ""),
-          },
-          {
-            label: "Request",
-            value:
-              formatMapRequestDisplayId(activeMapRequest.displayId) ||
-              "Active",
-          },
-          { label: "Status", value: status === "arrived" ? "Ready" : "Reserved" },
-        ],
-      };
-    }
-
-    return {
-      eyebrow: null,
-      title: null,
-      subtitle: null,
-      metrics: [
-        { label: "Arrival", value: "--" },
-        { label: "Min", value: trackingHeaderMinuteValue || "Pending" },
-        { label: "Km", value: trackingHeaderDistanceValue || "--" },
-      ],
-      statusLabel: null,
-      statusTone: "default",
-      expanded: false,
-      expandable: false,
-      onToggleExpand: null,
-      showChevron: false,
-      hideDetails: true,
-      bodyHeight: 0,
-      expandedContent: null,
-      details: [
-        { label: "Pickup", value: trackingHeaderPickupLabel },
-        {
-          label: "Hospital",
-          value:
-            trackingHeaderHospitalName +
-            (formatHospitalDistanceLabel(trackingHeaderHospital)
-              ? ` · ${formatHospitalDistanceLabel(trackingHeaderHospital)}`
-              : ""),
-        },
-        {
-          label: "Request",
-          value:
-            formatMapRequestDisplayId(
-              pendingApproval?.displayId ||
-                pendingApproval?.requestId ||
-                activeMapRequest.displayId,
-            ) ||
-            "Pending",
-        },
-          {
-            label: "Payment",
-            value:
-              pendingApproval?.paymentMethod === "cash"
-                ? "Provider confirmation"
-                : "Processing",
-          },
-        ],
-      };
-    }, [
-    activeAmbulanceTrip?.assignedAmbulance?.crew,
-    activeAmbulanceTrip?.assignedAmbulance?.name,
-    activeAmbulanceTrip?.assignedAmbulance?.vehicleNumber,
-    activeMapRequest.displayId,
-    activeMapRequest.kind,
-    activeMapRequest.status,
-    activeAmbulanceTrip?.requestId,
-    activeAmbulanceTrip?.status,
-    activeBedBooking?.requestId,
-    activeBedBooking?.status,
-    ambulanceTelemetryHealth?.state,
-    pendingApproval?.displayId,
-    pendingApproval?.paymentMethod,
-    pendingApproval?.requestId,
-    trackingHeaderArrivalLabel,
-    trackingHeaderDistanceLabel,
-    trackingHeaderDistanceValue,
-    trackingHeaderHospital,
-    trackingHeaderHospitalName,
-    trackingHeaderMinuteValue,
-    trackingHeaderPickupDetail,
-    trackingHeaderPickupLabel,
-    trackingHeaderServiceLabel,
-    trackingHeaderStatusLabel,
     trackingHeaderVisible,
   ]);
   const trackingHeaderOcclusionHeight = trackingHeaderVisible

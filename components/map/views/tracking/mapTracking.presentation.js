@@ -141,6 +141,41 @@ export function resolveTransportServiceLabel(value) {
   return visualProfile?.label || raw;
 }
 
+export function resolveBedServiceLabel(value) {
+  if (value && typeof value === "object") {
+    const fromObject =
+      value.title || value.label || value.name || value.service_name || value.room_type || null;
+    if (typeof fromObject === "string" && fromObject.trim()) {
+      return resolveBedServiceLabel(fromObject);
+    }
+  }
+
+  const raw = String(value || "").trim();
+  if (!raw) return "Admission";
+  const normalized = raw.toLowerCase();
+  if (
+    normalized === "standard" ||
+    normalized.includes("general") ||
+    normalized.includes("ward")
+  ) {
+    return "General ward";
+  }
+  if (normalized.includes("private")) return "Private room";
+  if (
+    normalized.includes("icu") ||
+    normalized.includes("critical") ||
+    normalized.includes("high-support") ||
+    normalized.includes("high support")
+  ) {
+    return "High-support care";
+  }
+  if (normalized.includes("maternity")) return "Maternity room";
+  if (normalized.includes("child") || normalized.includes("paediatric") || normalized.includes("pediatric")) {
+    return "Children's care";
+  }
+  return raw;
+}
+
 export function isGenericTransportLabel(label) {
   const normalized = String(label || "").trim().toLowerCase();
   return (

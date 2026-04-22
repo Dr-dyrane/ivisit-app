@@ -58,6 +58,12 @@ function getSessionStatusTokens({ statusTone, isDarkMode, backgroundColor }) {
 				borderColor: isDarkMode ? "rgba(96, 165, 250, 0.24)" : "rgba(37, 99, 235, 0.16)",
 				textColor: isDarkMode ? "#DBEAFE" : "#1D4ED8",
 			};
+		case "warning":
+			return {
+				backgroundColor: isDarkMode ? "rgba(245, 158, 11, 0.24)" : "rgba(245, 158, 11, 0.12)",
+				borderColor: isDarkMode ? "rgba(251, 191, 36, 0.24)" : "rgba(245, 158, 11, 0.16)",
+				textColor: isDarkMode ? "#FDE68A" : "#B45309",
+			};
 		case "success":
 		case "settled":
 			return {
@@ -602,9 +608,8 @@ const styles = StyleSheet.create({
 	},
 	sessionMetricLabel: {
 		fontSize: 10,
-		fontWeight: "500",
-		letterSpacing: 0.32,
-		textTransform: "uppercase",
+		fontWeight: "600",
+		letterSpacing: 0.12,
 	},
 	sessionMetricValue: {
 		marginTop: 4,
@@ -650,9 +655,8 @@ const styles = StyleSheet.create({
 	},
 	sessionStatusText: {
 		fontSize: 11,
-		fontWeight: "700",
-		letterSpacing: 0.34,
-		textTransform: "uppercase",
+		fontWeight: "600",
+		letterSpacing: 0.12,
 	},
 	sessionChevron: {
 		fontSize: 18,

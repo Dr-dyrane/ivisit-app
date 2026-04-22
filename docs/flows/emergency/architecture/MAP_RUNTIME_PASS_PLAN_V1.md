@@ -13,7 +13,11 @@ Related audit:
 - Pass 1: complete
 - Pass 2: complete
 - Pass 3: complete
-- Pass 4: in progress
+- Pass 4: complete
+- Pass 5: complete
+- Pass 6: complete
+- Pass 7: complete
+- Pass 8: in progress
 
 ## Unified Surgical Mapping
 
@@ -24,11 +28,11 @@ This document is the canonical execution plan.
 | Surgical audit pass | Runtime plan owner | Current status | Notes |
 | --- | --- | --- | --- |
 | Pass A: contracts and reducer guardrails | Pass 1 plus guardrail addendum | complete | Runtime slices/selectors/transitions were already extracted; sheet phase/snap/payload contracts were added after the surgical audit. |
-| Pass B: normalized request model | Pass 4 first remaining slice | not complete | This is the next implementation target before final ambulance signoff. Header, tracking sheet, map marker, completion gates, and recovery should read one normalized active request model. |
-| Pass C: commit transaction model | Pass 3 structurally, Pass 4 behaviorally | partially complete | Commit stage files now have controller boundaries; explicit card/cash/dispatch/failure/retry transaction states still need functional signoff in Pass 4. |
+| Pass B: normalized request model | Pass 4 first remaining slice | complete | Header, tracking sheet, map marker, completion gates, and recovery now read a normalized active request model instead of deriving request truth independently. |
+| Pass C: commit transaction model | Pass 3 structurally, Pass 4 behaviorally | complete for ambulance-only | Commit stages now have controller boundaries and explicit ambulance payment/dispatch/rating transaction contracts; bed and combined follow-ons are deferred to later parity passes. |
 | Pass D: bed parity | Pass 6 and Pass 7 | not started | Bed-only parity is Pass 6; combined ambulance + bed parity is Pass 7. |
 | Pass E: persistence and recovery | Pass 4, Pass 6, and Pass 8 | partially complete | Ambulance reload/rating/route recovery belongs to Pass 4; bed hold/countdown recovery belongs to Pass 6; cross-device web persistence belongs to Pass 8. |
-| Pass F: failure UX and device matrix | Pass 5 and Pass 8 | not started | iOS ambulance failure tone/UI signoff is Pass 5; Android/web/tablet/wide-screen validation is Pass 8. |
+| Pass F: failure UX and device matrix | Pass 5 and Pass 8 | in progress | iOS ambulance failure tone/UI signoff is Pass 5; Android/web/tablet/wide-screen validation is Pass 8. |
 
 Unified remaining order:
 
@@ -279,6 +283,15 @@ Current direct-storage audit:
 | OTA update pending flag | `contexts/OTAUpdatesContext.jsx` | app-global update state | moved behind `database.readRaw/writeRaw/deleteRaw`; not `/map` specific, but now follows the same app-owned storage boundary |
 | Legacy emergency disclaimer | `screens/EmergencyScreen.jsx` | legacy emergency surface | moved behind `database.readRaw/writeRaw`; this keeps legacy emergency parity while avoiding another direct storage exception |
 | Database boundary | `database/db.js` | app-owned persistence adapter | keep direct `AsyncStorage`; this is the one allowed app storage boundary |
+
+Direct-storage re-audit - 2026-04-22:
+
+- `rg "@react-native-async-storage/async-storage|AsyncStorage\."` now reports direct app-owned persistence only in `database/db.js`; this is the approved storage boundary
+- `services/supabase.js` still imports `AsyncStorage` directly by design because Supabase auth owns that adapter contract
+- `/map` surfaces and controllers do not directly import `AsyncStorage`
+- `components/welcome/install/webInstallHint.persistence.js` is the only direct `window.localStorage` usage; it is isolated to the install hint and does not participate in `/map` resume truth
+- current `/map` app-owned persistence uses `database.read/write` or `database.readRaw/writeRaw/deleteRaw`
+- minimum web recovery work should add new `StorageKeys` or raw `@ivisit/` keys through `database`, not through component-level browser storage
 
 Minimum persisted `/map` truth for web resume/recovery:
 
@@ -609,19 +622,29 @@ Current slice:
 - [`components/map/views/shared/mapSheetStage.styles.js`](../../../components/map/views/shared/mapSheetStage.styles.js) now exposes `topSlotWide`, so promoted stages can keep header geometry aligned with the same wide-lane inset already used by body content
 - request-id presentation is now normalized through [`components/map/core/mapRequestPresentation.js`](../../../components/map/core/mapRequestPresentation.js), and active request/tracking/payment/header surfaces now format UUID-like fallback IDs into a stable UI-safe request token instead of leaking raw backend identifiers
 - metric presentation is now normalized through [`components/map/core/mapMetricPresentation.js`](../../../components/map/core/mapMetricPresentation.js), and both [`components/map/core/mapActiveRequestModel.js`](../../../components/map/core/mapActiveRequestModel.js) and [`components/map/views/tracking/mapTracking.presentation.js`](../../../components/map/views/tracking/mapTracking.presentation.js) now share the same arrival/minutes/distance formatter contract
+- map-overlay header geometry is now normalized through [`components/map/core/mapOverlayHeaderLayout.js`](../../../components/map/core/mapOverlayHeaderLayout.js), and both [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../hooks/map/exploreFlow/useMapExploreFlow.js) and [`components/map/surfaces/MapExploreLoadingOverlay.jsx`](../../../components/map/surfaces/MapExploreLoadingOverlay.jsx) now read the same header frame contract instead of carrying separate left/right/width math
+- active-session smart-header content is now normalized through [`components/map/core/mapActiveSessionPresentation.js`](../../../components/map/core/mapActiveSessionPresentation.js), so the persistent tracking header renders compact semantic status plus shared metrics instead of carrying hidden duplicated detail rows
+- [`components/headers/ScrollAwareHeader.jsx`](../../../components/headers/ScrollAwareHeader.jsx) now supports a warning pill tone, which lets delayed tracking states remain visually distinct without reintroducing expanded explanatory copy
 
 Pass 5 proven in this slice:
 
 - wide-panel commit/tracking stages now share one header lane rule instead of stage-local spacing drift
 - request-id formatting is now a shared `/map` presentation contract instead of ad hoc fallback text
 - arrival/minutes/distance labels now come from one shared formatter contract instead of duplicated formatting logic
+- active-session header placement now shares the same frame contract as the loading skeleton/header lane on wide layouts
+- smart-header content no longer carries hidden duplicated tracking detail rows; it now renders only compact metrics plus a semantic status pill
+- delayed ambulance tracking now has an explicit warning tone in the active-session header instead of falling back to the generic live/default treatment
 - static syntax checks passed for:
   - `components/map/views/shared/mapSheetStage.styles.js`
   - `components/map/core/mapRequestPresentation.js`
   - `components/map/core/mapMetricPresentation.js`
   - `components/map/core/mapActiveRequestModel.js`
+  - `components/map/core/mapOverlayHeaderLayout.js`
+  - `components/map/core/mapActiveSessionPresentation.js`
   - `components/map/views/tracking/mapTracking.derived.js`
   - `components/map/views/tracking/mapTracking.presentation.js`
+  - `components/headers/ScrollAwareHeader.jsx`
+  - `components/map/surfaces/MapExploreLoadingOverlay.jsx`
   - Babel/Expo parse for `components/map/views/commitDetails/MapCommitDetailsStageBase.jsx`
   - Babel/Expo parse for `components/map/views/commitTriage/MapCommitTriageStageBase.jsx`
   - Babel/Expo parse for `components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`
@@ -630,8 +653,8 @@ Pass 5 proven in this slice:
 
 Pass 5 deferred:
 
-- left-sidebar active-session header placement still needs visual confirmation against the loading skeleton lane
-- smart-header redundancy cleanup still needs one shared presentation pass
+- final device-side visual confirmation is still required for the compact active-session header on iOS mobile and wide-sidebar web/tablet variants
+- broader active-session redundancy/tone QA against real lost/delayed runtime states is still required before Pass 5 can close
 
 Do not do in this pass:
 
@@ -683,22 +706,32 @@ Current slice:
   - patching a live bed booking from realtime request updates
 - [`hooks/emergency/useBedBookingProgress.js`](../../../hooks/emergency/useBedBookingProgress.js) now reads the same hold/timestamp contract instead of re-parsing timing rules independently
 - [`components/map/views/tracking/mapTracking.model.js`](../../../components/map/views/tracking/mapTracking.model.js) now exposes the fallback `Share ETA` action for bed tracking too, matching the ambulance action model whenever bed is not in a higher-priority check-in/complete state
+- bed service labels are now normalized through [`components/map/views/tracking/mapTracking.presentation.js`](../../../components/map/views/tracking/mapTracking.presentation.js) and [`components/map/core/mapActiveRequestModel.js`](../../../components/map/core/mapActiveRequestModel.js), so runtime surfaces no longer leak raw `standard` / `icu` backend values
+- [`components/map/core/mapActiveRequestModel.js`](../../../components/map/core/mapActiveRequestModel.js) and [`components/map/core/mapActiveSessionPresentation.js`](../../../components/map/core/mapActiveSessionPresentation.js) now treat elapsed bed ETA as `Ready`, zero the minute metric, and promote the active-session header to a success tone when check-in is available
+- [`components/map/views/tracking/useMapTrackingRuntime.js`](../../../components/map/views/tracking/useMapTrackingRuntime.js), [`components/map/views/tracking/MapTrackingStageBase.jsx`](../../../components/map/views/tracking/MapTrackingStageBase.jsx), and [`components/map/views/tracking/mapTracking.theme.js`](../../../components/map/views/tracking/mapTracking.theme.js) now render the bed hero against live remaining-hold time and progress instead of a static reservation summary
+- [`components/map/views/tracking/mapTracking.model.js`](../../../components/map/views/tracking/mapTracking.model.js) now promotes `Complete Stay` to the bottom primary slot when the bed request reaches its completion gate, matching the ambulance completion hierarchy
 
 Pass 6 proven in this slice:
 
 - the bed countdown no longer resets simply because hydration, local start, and realtime update paths normalize booking objects differently
 - the legacy 15-minute fallback hold window is now part of one shared runtime contract instead of being hidden only inside the progress hook
 - bed tracking is no longer missing the baseline `Share ETA` fallback action that ambulance already had
+- bed header metrics, tracking hero progress, ready/check-in gate, and completion CTA now read the same normalized countdown/status truth instead of each deriving reservation state independently
 - static syntax checks passed for:
   - `hooks/emergency/bedBookingRuntime.js`
   - `hooks/emergency/useBedBookingProgress.js`
+  - `components/map/core/mapActiveRequestModel.js`
+  - `components/map/core/mapActiveSessionPresentation.js`
+  - `components/map/views/tracking/useMapTrackingRuntime.js`
+  - `components/map/views/tracking/mapTracking.presentation.js`
+  - `components/map/views/tracking/mapTracking.theme.js`
   - `components/map/views/tracking/mapTracking.model.js`
+  - Babel/Expo parse for `components/map/views/tracking/MapTrackingStageBase.jsx`
   - Babel/Expo parse for `contexts/EmergencyContext.jsx`
 
 Pass 6 deferred:
 
-- user-facing bed header/hero/countdown presentation still needs to be aligned with the new runtime truth
-- ready/occupied surface parity still needs one dedicated bed tracking pass
+- reserve-bed real-flow verification, combined-flow verification, and cross-device bed presentation QA are deferred to end-of-sprint manual testing per current execution rule
 
 Done when:
 
@@ -732,6 +765,39 @@ Scope:
   - define smart-header truth when transport and reservation coexist
 - keep combined as sequential backend requests until a true unified checkout exists
 - if a reservation share window is added for bed, define how it behaves once dual-active flow exists
+
+Current slice:
+
+- bed tracking now supports the reverse add-on lane through [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx), [`components/map/core/MapSheetOrchestrator.jsx`](../../../components/map/core/MapSheetOrchestrator.jsx), [`components/map/views/tracking/MapTrackingStageBase.jsx`](../../../components/map/views/tracking/MapTrackingStageBase.jsx), [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js), and [`components/map/views/tracking/mapTracking.model.js`](../../../components/map/views/tracking/mapTracking.model.js)
+- the tracking CTA group can now surface `Request Transport` when a bed request is active without an active ambulance request, matching the existing ambulance-to-bed add-on contract in the opposite direction
+- reverse add-on source return is now preserved through ambulance decision hospital switching and service detail navigation by:
+  - [`components/map/core/mapSheetFlowPayloads.js`](../../../components/map/core/mapSheetFlowPayloads.js)
+  - [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../hooks/map/exploreFlow/useMapExploreFlow.js)
+  - [`components/map/views/ambulanceDecision/MapAmbulanceDecisionStageBase.jsx`](../../../components/map/views/ambulanceDecision/MapAmbulanceDecisionStageBase.jsx)
+- ambulance confirmation launched from bed tracking now preserves the tracking source context into commit/payment and explicitly bypasses the `selectedCare === "both"` redirect, so reverse add-on does not accidentally re-enter the combined checkout path
+- dual-active ownership is now explicit by rule:
+  - ambulance remains the primary active request for smart-header/tracking-map ownership when both requests are live
+  - the companion bed request is surfaced as secondary reservation context inside ambulance tracking rather than competing for the active-session header
+
+Pass 7 proven in this slice:
+
+- reverse add-on (`bed -> ambulance`) no longer drops source context when the user changes hospitals or opens transport details before confirming
+- sequential dual-request flow now remains within the same source-return contract as the forward add-on lane instead of reopening explore accidentally
+- combined parity still respects the intentional product rule that unified combined checkout is unsupported; the new path opens a separate ambulance request lane from tracking rather than bypassing payment/request contracts
+- static syntax checks passed for:
+  - `components/map/core/MapSheetOrchestrator.jsx`
+  - `components/map/core/mapSheetFlowPayloads.js`
+  - `components/map/views/tracking/useMapTrackingController.js`
+  - `components/map/views/tracking/mapTracking.model.js`
+  - `components/map/views/tracking/mapTracking.theme.js`
+  - `hooks/map/exploreFlow/useMapExploreFlow.js`
+  - `screens/MapScreen.jsx`
+  - Babel/Expo parse for `components/map/views/ambulanceDecision/MapAmbulanceDecisionStageBase.jsx`
+  - Babel/Expo parse for `components/map/views/tracking/MapTrackingStageBase.jsx`
+
+Pass 7 deferred:
+
+- manual QA for dual-active state transitions, completion ordering, and reopen/recovery remains deferred to sprint-end device testing
 
 Done when:
 
@@ -781,6 +847,25 @@ Scope:
   - no viewport may depend on background JS timers continuing while hidden
   - `/map` storage should prefer the shared app storage boundary over scattered direct `AsyncStorage` calls where practical
 
+Current slice:
+
+- direct storage re-audit is now recorded in this document and confirms that app-owned `/map` persistence routes through [`database/db.js`](../../../database/db.js) instead of direct component-level `AsyncStorage`
+- [`contexts/EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx) now hydrates and persists normalized emergency runtime state through `StorageKeys.EMERGENCY_STATE`, including:
+  - active ambulance trip
+  - active bed booking
+  - pending approval state
+  - commit-flow draft state
+- [`utils/domainNormalize.js`](../../../utils/domainNormalize.js) now normalizes persisted `pendingApproval` and `commitFlow` records, so web/native reload recovery no longer relies on arbitrary raw object shapes
+- persistence is now one-shot hydrated and signature-guarded before writes, which keeps the recovery boundary deterministic and avoids clobbering live runtime state during provider startup
+
+Pass 8 proven in this slice:
+
+- `/map` no longer depends only on in-memory emergency state for active request and commit-flow recovery after reload/focus loss
+- the existing app-owned storage boundary is now used for emergency runtime recovery instead of introducing new ad hoc browser/native persistence
+- static syntax checks passed for:
+  - `contexts/EmergencyContext.jsx`
+  - `utils/domainNormalize.js`
+
 Done when:
 
 - the same runtime feels deliberate across the supported device matrix
@@ -808,16 +893,13 @@ Done when:
 
 ## Immediate Next Pass
 
-The next pass focus is **Pass 4A: normalized active request model**.
+The next pass focus is **Pass 8: cross-device inclusiveness and resume/recovery propagation**.
 
 Why this is next:
 
-- the structural work is done through Pass 3
-- the remaining risk is now behavioral truth, not file shape
-- the surgical audit's Pass B is the missing foundation inside Pass 4
-- header, tracking sheet, map marker, route animation, rating recovery, and completion gates must stop deriving request truth independently
-- ETA/reload stability, completion cleanup, and tracking edge cases need real runtime verification before UI signoff
-- Pass 5 should not begin until the ambulance-only runtime stops regressing under reopen/recovery paths
+- ambulance, bed, and sequential combined runtime contracts now exist in code
+- the remaining engineering work is to propagate those contracts cleanly across web/mobile/tablet shell variants and reload/focus recovery paths
+- manual device validation is intentionally deferred, so the current pass should keep targeting shared geometry, persistence, and contract propagation rather than ad hoc visual patching
 
 ## Success Metric
 
@@ -828,3 +910,40 @@ It is failing if:
 - new features land in the current monoliths before extraction
 - bed and platform parity start before ambulance-only signoff
 - a second store layer appears before the existing reducer boundary is fully used
+
+## Live Web Runtime Note - 2026-04-22
+
+Scope:
+
+- browser-tested `/map` ambulance path through explore, ambulance decision, commit details, OTP review auth, commit payment, tracking mount, map/tracking toggle, tracking triage entry, tracking triage close, arrival confirmation, completion, rating modal, rating skip, and cleanup
+- browser-tested signed-in bed path through explore, bed decision, commit payment, cash booking, bed tracking mount, cancel booking, and cleanup
+
+Proven:
+
+- `support@ivisit.ng` + review OTP `123456` can progress from `COMMIT_DETAILS` to `COMMIT_PAYMENT`
+- cash payment can create the emergency request and mount `TRACKING`
+- tracking header `Return to map` and `Return to tracking` preserve the active request state
+- tracking `My Information` opens the deterministic six-step triage sheet and closes back to tracking
+- arrived ambulance requests expose `Confirm Arrival`, then switch the sheet and global active-session header to `Complete`
+- `Complete Request` opens the transport rating modal, and `Skip` clears the modal and active tracking UI back to explore
+- after ambulance cleanup, bed booking can start from explore and create a new active bed tracking session
+- bed tracking shows reserved state with payment-derived request id, hospital context, ETA metrics, `My Information`, `Share ETA`, and `Cancel Booking`
+- `Cancel Booking` clears the active bed session back to explore on web
+
+Regression found:
+
+- tracking mount produced repeated `Maximum update depth exceeded` errors on web because the active-session header effect rewrote semantically identical header state and forced an app-level render loop
+- ambulance animation had no run-token ownership guard, so route/timeline restarts could leave stale timer callbacks alive
+- after confirming arrival, the sheet showed `Complete` but the global active-session header still showed `Arrived`
+
+Fix applied:
+
+- `HeaderStateProvider` now treats equivalent normalized header writes as no-ops
+- `useAmbulanceAnimation` now uses an animation generation token plus coordinate/heading equality guards
+- `MapStageBodyScroll` skips the Android-only `GestureDetector` wrapper on web
+- active-session header status now resolves `canCompleteAmbulance` as `Complete` while preserving `canConfirmArrival` as `Arrived`
+
+Remaining:
+
+- one web dev-only `collapsable={false}` console warning still comes from upstream navigation/RNGH internals, not the `/map` runtime loop
+- rating submit, reserve-bed-from-tracking while ambulance is active, bed completion/rating, and long-session route adherence still need device validation

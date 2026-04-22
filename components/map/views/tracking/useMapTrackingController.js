@@ -50,6 +50,7 @@ export function useMapTrackingController({
   stopAmbulanceTrip,
   stopBedBooking,
   onAddBedFromTracking,
+  onAddAmbulanceFromTracking,
   onOpenCommitTriageFromTracking,
   headerActionRequest,
   onConsumeHeaderActionRequest,
@@ -283,10 +284,12 @@ export function useMapTrackingController({
         activeAmbulanceRequestId,
         activeBedBookingRequestId,
         onAddBedFromTracking,
+        onAddAmbulanceFromTracking,
       }),
     [
       activeAmbulanceRequestId,
       activeBedBookingRequestId,
+      onAddAmbulanceFromTracking,
       onAddBedFromTracking,
     ],
   );

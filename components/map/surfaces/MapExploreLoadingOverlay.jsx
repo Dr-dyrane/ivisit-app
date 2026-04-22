@@ -11,6 +11,7 @@ import {
 	getMapViewportSurfaceConfig,
 	getMapViewportVariant,
 } from "../core/mapViewportConfig";
+import { resolveMapOverlayHeaderFrame } from "../core/mapOverlayHeaderLayout";
 import { styles } from "./mapExploreLoadingOverlay.styles";
 
 const MIN_VISIBLE_MS = 420;
@@ -99,24 +100,16 @@ export default function MapExploreLoadingOverlay({
 	const sheetHeightValue = usesSidebarLayout
 		? Math.max(320, sheetHeight - sheetTop - sheetBottom)
 		: sheetHeight;
-	const headerLeft = usesSidebarLayout
-		? sheetLeft + sidebarWidth + surfaceConfig.overlayHeaderSideInset
-		: (screenWidth -
-				(surfaceConfig.overlayHeaderMaxWidth
-					? Math.min(
-							surfaceConfig.overlayHeaderMaxWidth,
-							Math.max(280, screenWidth - surfaceConfig.overlayHeaderSideInset * 2),
-						)
-					: Math.max(0, screenWidth - surfaceConfig.overlayHeaderSideInset * 2))) /
-			2;
-	const headerWidth = usesSidebarLayout
-		? Math.max(260, screenWidth - headerLeft - surfaceConfig.overlayHeaderSideInset)
-		: surfaceConfig.overlayHeaderMaxWidth
-			? Math.min(
-					surfaceConfig.overlayHeaderMaxWidth,
-					Math.max(280, screenWidth - surfaceConfig.overlayHeaderSideInset * 2),
-				)
-			: Math.max(0, screenWidth - surfaceConfig.overlayHeaderSideInset * 2);
+	const headerFrame = useMemo(
+		() =>
+			resolveMapOverlayHeaderFrame({
+				screenWidth,
+				surfaceConfig,
+				usesSidebarLayout,
+				sidebarWidth,
+			}),
+		[screenWidth, sidebarWidth, surfaceConfig, usesSidebarLayout],
+	);
 	const opacity = useRef(new Animated.Value(resolvedVisible ? 1 : 0)).current;
 	const visibleSinceRef = useRef(resolvedVisible ? Date.now() : 0);
 	const [isRendered, setIsRendered] = useState(resolvedVisible);
@@ -181,10 +174,10 @@ export default function MapExploreLoadingOverlay({
 					styles.headerGhost,
 					{
 						backgroundColor: ghostSurface,
-						top: insets.top + surfaceConfig.overlayHeaderTopInset,
-						left: headerLeft,
+						top: insets.top + headerFrame.topInset,
+						left: headerFrame.leftInset,
 						right: undefined,
-						width: headerWidth,
+						width: headerFrame.headerWidth,
 						borderRadius: viewportMetrics.map.loadingHeaderRadius,
 						borderCurve: "continuous",
 					},

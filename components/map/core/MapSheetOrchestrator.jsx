@@ -54,6 +54,7 @@ export default function MapSheetOrchestrator({
 	onCloseTracking = () => {},
 	onOpenCommitTriageFromTracking = () => {},
 	onAddBedFromTracking = () => {},
+	onAddAmbulanceFromTracking = () => {},
 	onCloseHospitalDetail = () => {},
 	onConfirmAmbulanceDecision = () => {},
 	onConfirmBedDecision = () => {},
@@ -124,6 +125,7 @@ export default function MapSheetOrchestrator({
 						sheetHeight={sheetHeight}
 						snapState={snapState}
 						hospital={decisionHospital}
+						payload={sheetPayload}
 						origin={decisionOrigin}
 						careIntent={careIntent}
 						hospitalCount={Array.isArray(hospitals) ? hospitals.length : 0}
@@ -305,6 +307,7 @@ export default function MapSheetOrchestrator({
 						onConsumeHeaderActionRequest={onConsumeTrackingHeaderActionRequest}
 						onOpenCommitTriageFromTracking={onOpenCommitTriageFromTracking}
 						onAddBedFromTracking={onAddBedFromTracking}
+						onAddAmbulanceFromTracking={onAddAmbulanceFromTracking}
 						onClose={onCloseTracking}
 						onSnapStateChange={onSnapStateChange}
 					/>

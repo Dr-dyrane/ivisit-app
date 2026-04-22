@@ -87,9 +87,14 @@ export function buildTrackingThemeTokens({
 	const teamHeroSurface = isDarkMode
 		? "rgba(15,23,42,0.72)"
 		: "rgba(255,255,255,0.9)";
-	const teamHeroProgressColor = isDarkMode
-		? "rgba(180,35,24,0.38)"
-		: "rgba(180,35,24,0.20)";
+	const teamHeroProgressColor =
+		trackingKind === "bed"
+			? isDarkMode
+				? "rgba(56,189,248,0.30)"
+				: "rgba(37,99,235,0.14)"
+			: isDarkMode
+				? "rgba(180,35,24,0.38)"
+				: "rgba(180,35,24,0.20)";
 	const teamHeroWarningSurface =
 		telemetryHeroTone === "critical"
 			? isDarkMode
@@ -130,6 +135,7 @@ export function buildTrackingThemeTokens({
 			: stopIconSurface;
 	const bedCareBlueColor = isDarkMode ? "#38BDF8" : "#2563EB";
 	const shareActionColor = isDarkMode ? "#4ADE80" : "#16A34A";
+	const transportActionColor = isDarkMode ? "#FDA29B" : "#B42318";
 	const infoActionColor = isDarkMode ? "#FDA29B" : "#B42318";
 	const routeCardRadius = stageMetrics?.route?.cardStyle?.borderRadius || 28;
 	const detailCardRadius = stageMetrics?.panel?.cardStyle?.borderRadius || 26;
@@ -169,6 +175,7 @@ export function buildTrackingThemeTokens({
 		pickupIconSurfaceColor,
 		bedCareBlueColor,
 		shareActionColor,
+		transportActionColor,
 		infoActionColor,
 		routeCardRadius,
 		detailCardRadius,

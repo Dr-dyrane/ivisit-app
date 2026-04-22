@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import { supabase } from "../services/supabase";
 import { SPECIALTIES } from "../constants/hospitals";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
+import { database, StorageKeys } from "../database";
 import { normalizeEmergencyState } from "../utils/domainNormalize";
 // import { simulationService } from "../services/simulationService"; // REMOVED: Mock service
 import * as Location from "expo-location";
@@ -448,6 +449,8 @@ export function EmergencyProvider({ children }) {
 	const [activeBedBooking, setActiveBedBooking] = useState(null);
 	const [pendingApproval, setPendingApproval] = useState(null);
 	const [commitFlow, setCommitFlow] = useState(null);
+	const emergencyStateHydratedRef = useRef(false);
+	const emergencyStatePersistSignatureRef = useRef("");
 	const lastHydratedAmbulanceIdRef = useRef(null);
 	const isHydratingAmbulanceRef = useRef(false);
 	const activeAmbulanceEventRef = useRef({ requestKey: null, versionMs: 0 });
@@ -457,6 +460,8 @@ export function EmergencyProvider({ children }) {
 	const [telemetryNowMs, setTelemetryNowMs] = useState(Date.now());
 	const activeAmbulanceTripRef = useRef(activeAmbulanceTrip);
 	const activeBedBookingRef = useRef(activeBedBooking);
+	const pendingApprovalRef = useRef(pendingApproval);
+	const commitFlowRef = useRef(commitFlow);
 	const userLocationRef = useRef(userLocation);
 
 	useEffect(() => {
@@ -466,6 +471,94 @@ export function EmergencyProvider({ children }) {
 	useEffect(() => {
 		activeBedBookingRef.current = activeBedBooking;
 	}, [activeBedBooking]);
+
+	useEffect(() => {
+		pendingApprovalRef.current = pendingApproval;
+	}, [pendingApproval]);
+
+	useEffect(() => {
+		commitFlowRef.current = commitFlow;
+	}, [commitFlow]);
+
+	useEffect(() => {
+		if (emergencyStateHydratedRef.current) return undefined;
+		let cancelled = false;
+
+		const hydrateEmergencyState = async () => {
+			try {
+				const storedState = await database.read(StorageKeys.EMERGENCY_STATE, null);
+				if (cancelled || !storedState || typeof storedState !== "object") {
+					return;
+				}
+
+				const normalizedState = normalizeEmergencyState(storedState);
+
+				if (
+					!activeAmbulanceTripRef.current?.requestId &&
+					normalizedState.activeAmbulanceTrip?.requestId
+				) {
+					setActiveAmbulanceTrip(normalizedState.activeAmbulanceTrip);
+				}
+
+				if (
+					!activeBedBookingRef.current?.requestId &&
+					normalizedState.activeBedBooking?.requestId
+				) {
+					setActiveBedBooking(normalizedState.activeBedBooking);
+				}
+
+				if (
+					!pendingApprovalRef.current?.requestId &&
+					normalizedState.pendingApproval?.requestId
+				) {
+					setPendingApproval(normalizedState.pendingApproval);
+				}
+
+				if (!commitFlowRef.current?.phase && normalizedState.commitFlow?.phase) {
+					setCommitFlow(normalizedState.commitFlow);
+				}
+
+				if (normalizedState.mode && normalizedState.mode !== mode) {
+					setMode(normalizedState.mode);
+				}
+			} catch (error) {
+				console.warn("[EmergencyContext] Failed to hydrate emergency state:", error);
+			} finally {
+				if (!cancelled) {
+					emergencyStateHydratedRef.current = true;
+				}
+			}
+		};
+
+		void hydrateEmergencyState();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [mode]);
+
+	useEffect(() => {
+		if (!emergencyStateHydratedRef.current) return;
+
+		const normalizedState = normalizeEmergencyState({
+			mode,
+			activeAmbulanceTrip,
+			activeBedBooking,
+			pendingApproval,
+			commitFlow,
+		});
+		const nextSignature = JSON.stringify(normalizedState);
+		if (nextSignature === emergencyStatePersistSignatureRef.current) {
+			return;
+		}
+		emergencyStatePersistSignatureRef.current = nextSignature;
+
+		database
+			.write(StorageKeys.EMERGENCY_STATE, normalizedState)
+			.catch((error) => {
+				console.warn("[EmergencyContext] Failed to persist emergency state:", error);
+			});
+	}, [activeAmbulanceTrip, activeBedBooking, commitFlow, mode, pendingApproval]);
 
 	useEffect(() => {
 		userLocationRef.current = userLocation;

@@ -123,7 +123,12 @@ export function useMapTrackingRuntime({
 		activeAmbulanceTrip,
 		nowMs,
 	});
-	const { remainingBedSeconds, bedStatus } = useBedBookingProgress({
+	const {
+		remainingBedSeconds,
+		bedProgress,
+		bedStatus,
+		formattedBedRemaining,
+	} = useBedBookingProgress({
 		activeBedBooking,
 		nowMs,
 	});
@@ -151,6 +156,7 @@ export function useMapTrackingRuntime({
 				ambulanceTelemetryHealth,
 				ambulanceRemainingSeconds,
 				remainingBedSeconds,
+				bedStatus,
 				ambulanceComputedStatus,
 				resolvedStatus,
 				nowMs,
@@ -164,6 +170,7 @@ export function useMapTrackingRuntime({
 			ambulanceComputedStatus,
 			ambulanceRemainingSeconds,
 			ambulanceTelemetryHealth,
+			bedStatus,
 			currentLocation,
 			hospital,
 			hospitals,
@@ -217,6 +224,8 @@ export function useMapTrackingRuntime({
 		triageIsComplete,
 		triageProgressValue,
 		ambulanceTripProgress,
+		bedProgress,
+		formattedBedRemaining,
 		ambulanceComputedStatus,
 		resolvedStatus,
 		routeVisualProgress,

@@ -247,8 +247,11 @@ export default function MapScreen() {
       const hospitalId =
         hospital?.id || featuredHospital?.id || nearestHospital?.id;
       if (!hospitalId) return;
+      const isTrackingCompanionTransport =
+        sheetPayload?.sourcePhase === MAP_SHEET_PHASES.TRACKING &&
+        Boolean(activeBedBooking?.requestId);
 
-      if (selectedCare === "both") {
+      if (selectedCare === "both" && !isTrackingCompanionTransport) {
         openBedDecision(hospital || null, "both", {
           savedTransport: transport
             ? {
@@ -275,9 +278,11 @@ export default function MapScreen() {
             email: resolvedEmail,
             phone: resolvedPhone,
           },
-          sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
-          sourceSnapState: sheetSnapState,
-          sourcePayload: null,
+          sourcePhase:
+            sheetPayload?.sourcePhase || MAP_SHEET_PHASES.AMBULANCE_DECISION,
+          sourceSnapState:
+            sheetPayload?.sourceSnapState || sheetSnapState,
+          sourcePayload: sheetPayload?.sourcePayload || null,
         });
         return;
       }
@@ -287,10 +292,14 @@ export default function MapScreen() {
     [
       featuredHospital?.id,
       nearestHospital?.id,
+      activeBedBooking?.requestId,
       openCommitDetails,
       openBedDecision,
       openCommitPayment,
       selectedCare,
+      sheetPayload?.sourcePayload,
+      sheetPayload?.sourcePhase,
+      sheetPayload?.sourceSnapState,
       sheetSnapState,
       user?.email,
       user?.phone,
@@ -544,6 +553,26 @@ export default function MapScreen() {
     renderedSnapState,
   ]);
 
+  const handleAddAmbulanceFromTracking = useCallback(() => {
+    const targetHospital =
+      mapFocusedHospital || featuredHospital || nearestHospital || null;
+    if (!targetHospital?.id) return;
+
+    openAmbulanceDecision(targetHospital, {
+      sourcePhase: MAP_SHEET_PHASES.TRACKING,
+      sourceSnapState: renderedSnapState,
+      sourcePayload: {
+        hospital: targetHospital,
+      },
+    });
+  }, [
+    featuredHospital,
+    mapFocusedHospital,
+    nearestHospital,
+    openAmbulanceDecision,
+    renderedSnapState,
+  ]);
+
   const mapFocusedHospitalCoordinate = useMemo(
     () => getDestinationCoordinate(mapFocusedHospital),
     [mapFocusedHospital],
@@ -619,7 +648,11 @@ export default function MapScreen() {
     return () => {
       cancelled = true;
     };
-  }, [handledRecoveredRatingVersion]);
+  }, [
+    activeMapRequest?.hasActiveRequest,
+    handledRecoveredRatingVersion,
+    sheetPhase,
+  ]);
 
   const pendingRecoveredRatingVisit = useMemo(() => {
     if (
@@ -879,6 +912,7 @@ export default function MapScreen() {
           onCloseTracking={closeTracking}
           onOpenCommitTriageFromTracking={handleOpenCommitTriageFromTracking}
           onAddBedFromTracking={handleAddBedFromTracking}
+          onAddAmbulanceFromTracking={handleAddAmbulanceFromTracking}
           onCloseHospitalDetail={closeHospitalDetail}
           onConfirmAmbulanceDecision={handleConfirmAmbulanceDecision}
           onConfirmBedDecision={handleConfirmBedDecision}

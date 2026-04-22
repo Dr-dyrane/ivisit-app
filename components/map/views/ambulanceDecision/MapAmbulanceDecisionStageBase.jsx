@@ -3,6 +3,7 @@ import { Platform, View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { GLASS_SURFACE_VARIANTS, getGlassSurfaceTokens } from "../../../../constants/surfaces";
 import MapSheetShell from "../../MapSheetShell";
+import { buildAmbulanceDecisionSourcePayload } from "../../core/mapSheetFlowPayloads";
 import {
 	MAP_SHEET_PHASES,
 	MAP_SHEET_SNAP_STATES,
@@ -32,6 +33,7 @@ export default function MapAmbulanceDecisionStageBase({
 	sheetHeight,
 	snapState,
 	hospital,
+	payload = null,
 	origin = null,
 	careIntent = "ambulance",
 	hospitalCount = 0,
@@ -199,12 +201,16 @@ export default function MapAmbulanceDecisionStageBase({
 			serviceItems: decision.enabledServiceOptions,
 			sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
 			sourceSnapState: snapState,
+			sourcePayload: buildAmbulanceDecisionSourcePayload({
+				payload,
+			}),
 		});
 	}, [
 		decision.enabledServiceOptions,
 		decision.hospital,
 		decision.recommendedService,
 		onOpenServiceDetail,
+		payload,
 		snapState,
 	]);
 

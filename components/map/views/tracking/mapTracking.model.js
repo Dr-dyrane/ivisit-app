@@ -71,6 +71,7 @@ export function buildTrackingSecondaryActions({
   activeAmbulanceRequestId,
   activeBedBookingRequestId,
   onAddBedFromTracking,
+  onAddAmbulanceFromTracking,
 }) {
   const actions = [];
   if (
@@ -83,6 +84,19 @@ export function buildTrackingSecondaryActions({
       label: "Reserve bed",
       iconName: "bed-outline",
       onPress: onAddBedFromTracking,
+    });
+  }
+  if (
+    activeBedBookingRequestId &&
+    !activeAmbulanceRequestId &&
+    typeof onAddAmbulanceFromTracking === "function"
+  ) {
+    actions.push({
+      key: "ambulance",
+      label: "Request transport",
+      iconName: "ambulance",
+      iconFamily: "material-community",
+      onPress: onAddAmbulanceFromTracking,
     });
   }
   return actions;
@@ -192,6 +206,9 @@ export function buildTrackingMidActions({
   const reserveBedAction = Array.isArray(secondaryActions)
     ? secondaryActions.find((action) => action?.key === "bed")
     : null;
+  const requestTransportAction = Array.isArray(secondaryActions)
+    ? secondaryActions.find((action) => action?.key === "ambulance")
+    : null;
   if (reserveBedAction) {
     actions.push({
       ...reserveBedAction,
@@ -199,6 +216,15 @@ export function buildTrackingMidActions({
       iconName: "hospital-box",
       iconFamily: "material-community",
       tone: "bed",
+    });
+  }
+  if (requestTransportAction) {
+    actions.push({
+      ...requestTransportAction,
+      label: toTitleCaseLabel("Request transport"),
+      iconName: "ambulance",
+      iconFamily: "material-community",
+      tone: "transport",
     });
   }
 
@@ -214,6 +240,11 @@ export function buildTrackingMidActions({
       primaryAction.key === "complete-ambulance"
     ) {
       // Complete Request is promoted to the bottom primary slot after arrival.
+    } else if (
+      trackingKind === "bed" &&
+      primaryAction.key === "complete-bed"
+    ) {
+      // Complete Stay is promoted to the bottom primary slot after check-in.
     } else {
       actions.push({
         ...primaryAction,
@@ -244,6 +275,12 @@ export function buildTrackingBottomAction({
     return {
       ...primaryAction,
       label: "Complete Request",
+    };
+  }
+  if (trackingKind === "bed" && primaryAction?.key === "complete-bed") {
+    return {
+      ...primaryAction,
+      label: "Complete Stay",
     };
   }
   return destructiveAction;

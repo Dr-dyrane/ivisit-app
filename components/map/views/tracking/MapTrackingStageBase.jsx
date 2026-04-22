@@ -39,6 +39,7 @@ export default function MapTrackingStageBase({
 	onConsumeHeaderActionRequest,
 	onOpenCommitTriageFromTracking,
 	onAddBedFromTracking,
+	onAddAmbulanceFromTracking,
 	onSnapStateChange,
 }) {
 	const { isDarkMode } = useTheme();
@@ -75,6 +76,8 @@ export default function MapTrackingStageBase({
 		triageIsComplete,
 		triageProgressValue,
 		ambulanceTripProgress,
+		bedProgress,
+		formattedBedRemaining,
 		canMarkArrived,
 		canCompleteAmbulance,
 		canCheckInBed,
@@ -221,6 +224,7 @@ export default function MapTrackingStageBase({
 		stopAmbulanceTrip,
 		stopBedBooking,
 		onAddBedFromTracking,
+		onAddAmbulanceFromTracking,
 		onOpenCommitTriageFromTracking,
 		headerActionRequest,
 		onConsumeHeaderActionRequest,
@@ -326,12 +330,18 @@ export default function MapTrackingStageBase({
 				rightMeta={
 					trackingKind === "ambulance"
 						? responderSafetyMeta || crewCountLabel
-						: null
+						: formattedBedRemaining || null
 				}
 				stateLabel={telemetryWarningLabel}
 				statePillBackgroundColor={telemetryWarningLabel ? toneColors.surface : null}
 				stateTextColor={telemetryWarningLabel ? toneColors.text : null}
-				progressValue={trackingKind === "ambulance" ? ambulanceTripProgress : 0}
+				progressValue={
+					trackingKind === "ambulance"
+						? ambulanceTripProgress
+						: trackingKind === "bed"
+							? bedProgress
+							: 0
+				}
 				avatarIcon={trackingKind === "bed" ? "bed" : "person"}
 				backgroundColor={themeTokens.teamHeroWarningSurface}
 				progressColor={themeTokens.teamHeroWarningProgressColor}
@@ -358,6 +368,8 @@ export default function MapTrackingStageBase({
 									? themeTokens.bedCareBlueColor
 									: action.tone === "share"
 										? themeTokens.shareActionColor
+										: action.tone === "transport"
+											? themeTokens.transportActionColor
 										: action.tone === "state"
 											? themeTokens.triageActionIconColor
 											: themeTokens.infoActionColor

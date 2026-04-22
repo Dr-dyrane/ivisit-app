@@ -163,11 +163,57 @@ export const normalizeEmergencyState = (raw) => {
 		};
 	};
 
+	const normalizePendingApproval = (pendingApproval) => {
+		if (!pendingApproval || typeof pendingApproval !== "object") return null;
+		if (!pendingApproval?.hospitalId) return null;
+		return {
+			...pendingApproval,
+			hospitalId: String(pendingApproval.hospitalId),
+			requestId:
+				typeof pendingApproval.requestId === "string"
+					? pendingApproval.requestId
+					: typeof pendingApproval.requestId === "number"
+						? String(pendingApproval.requestId)
+						: null,
+			paymentId:
+				typeof pendingApproval.paymentId === "string"
+					? pendingApproval.paymentId
+					: typeof pendingApproval.paymentId === "number"
+						? String(pendingApproval.paymentId)
+						: null,
+		};
+	};
+
+	const normalizeCommitFlow = (commitFlow) => {
+		if (!commitFlow || typeof commitFlow !== "object") return null;
+		if (typeof commitFlow.phase !== "string" || commitFlow.phase.trim().length === 0) {
+			return null;
+		}
+		return {
+			...commitFlow,
+			phase: commitFlow.phase.trim(),
+			hospitalId:
+				typeof commitFlow.hospitalId === "string"
+					? commitFlow.hospitalId
+					: typeof commitFlow.hospitalId === "number"
+						? String(commitFlow.hospitalId)
+						: null,
+			sourcePhase:
+				typeof commitFlow.sourcePhase === "string" ? commitFlow.sourcePhase : null,
+			sourceSnapState:
+				typeof commitFlow.sourceSnapState === "string"
+					? commitFlow.sourceSnapState
+					: null,
+		};
+	};
+
 	return {
 		...base,
 		mode,
 		activeAmbulanceTrip: normalizeTrip(base.activeAmbulanceTrip),
 		activeBedBooking: normalizeBooking(base.activeBedBooking),
+		pendingApproval: normalizePendingApproval(base.pendingApproval),
+		commitFlow: normalizeCommitFlow(base.commitFlow),
 	};
 };
 

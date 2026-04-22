@@ -28,3 +28,9 @@ export function buildBedDecisionSourcePayload({
     ...(sourceContext || {}),
   };
 }
+
+export function buildAmbulanceDecisionSourcePayload({
+  payload = null,
+} = {}) {
+  return extractMapSheetSourceContext(payload) || null;
+}

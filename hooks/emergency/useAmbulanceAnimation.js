@@ -220,6 +220,32 @@ const buildRouteSignature = (routeCoordinates = []) =>
 		)
 		.join("|");
 
+const coordinatesNearlyEqual = (a, b, tolerance = 0.0000005) => {
+	if (!a || !b) return false;
+	return (
+		Math.abs(Number(a.latitude) - Number(b.latitude)) <= tolerance &&
+		Math.abs(Number(a.longitude) - Number(b.longitude)) <= tolerance
+	);
+};
+
+const setCoordinateIfChanged = (setter, nextCoordinate) => {
+	setter((currentCoordinate) =>
+		coordinatesNearlyEqual(currentCoordinate, nextCoordinate)
+			? currentCoordinate
+			: nextCoordinate
+	);
+};
+
+const setHeadingIfChanged = (setter, nextHeading, tolerance = 0.1) => {
+	if (!Number.isFinite(nextHeading)) return;
+	setter((currentHeading) =>
+		Number.isFinite(currentHeading) &&
+		Math.abs(currentHeading - nextHeading) <= tolerance
+			? currentHeading
+			: nextHeading
+	);
+};
+
 export const useAmbulanceAnimation = ({
 	routeCoordinates,
 	animateAmbulance,
@@ -232,6 +258,7 @@ export const useAmbulanceAnimation = ({
 	const [ambulanceCoordinate, setAmbulanceCoordinate] = useState(null);
 	const [ambulanceHeading, setAmbulanceHeading] = useState(0);
 	const ambulanceTimerRef = useRef(null);
+	const animationRunIdRef = useRef(0);
 	const animationStartTimeRef = useRef(null);
 	const routeProfileRef = useRef(null);
 	const lastRouteDistanceRef = useRef(null);
@@ -273,6 +300,7 @@ export const useAmbulanceAnimation = ({
 	}, [responderHeading]);
 
 	const stopAmbulanceAnimation = useCallback(() => {
+		animationRunIdRef.current += 1;
 		if (ambulanceTimerRef.current) {
 			clearTimeout(ambulanceTimerRef.current);
 			ambulanceTimerRef.current = null;
@@ -282,6 +310,7 @@ export const useAmbulanceAnimation = ({
 
 	const startAmbulanceAnimation = useCallback(() => {
 		stopAmbulanceAnimation();
+		const runId = animationRunIdRef.current;
 		const routeProfile = buildRouteProfile(routeCoordinatesRef.current);
 		routeProfileRef.current = routeProfile;
 		const etaSeconds = Number(etaSecondsRef.current);
@@ -332,12 +361,15 @@ export const useAmbulanceAnimation = ({
 		const firstHeading = Number.isFinite(initialResponderHeading)
 			? initialResponderHeading
 			: calculateBearing(startCoordinate, lookaheadCoordinate);
-		setAmbulanceCoordinate(startCoordinate);
-		setAmbulanceHeading(firstHeading);
+		setCoordinateIfChanged(setAmbulanceCoordinate, startCoordinate);
+		setHeadingIfChanged(setAmbulanceHeading, firstHeading);
 
 		animationStartTimeRef.current = Date.now();
 
 		const animate = () => {
+			if (animationRunIdRef.current !== runId) {
+				return;
+			}
 			const now = Date.now();
 			const elapsedMs = now - animationStartTimeRef.current;
 			const elapsedRatio = Math.min(
@@ -362,12 +394,12 @@ export const useAmbulanceAnimation = ({
 			);
 			const heading = calculateBearing(interpCoord, lookaheadCoord);
 
-			setAmbulanceCoordinate(interpCoord);
-			setAmbulanceHeading(heading);
+			setCoordinateIfChanged(setAmbulanceCoordinate, interpCoord);
+			setHeadingIfChanged(setAmbulanceHeading, heading);
 
 			onAmbulanceUpdateRef.current?.({ coordinate: interpCoord, heading });
 
-			if (progressRatio >= 1) {
+			if (progressRatio >= 1 || animationRunIdRef.current !== runId) {
 				ambulanceTimerRef.current = null;
 				return;
 			}
@@ -424,7 +456,7 @@ export const useAmbulanceAnimation = ({
 			const projectedCoordinate = Number.isFinite(resolvedRouteDistance)
 				? getCoordinateAtDistance(resolvedRouteProfile, resolvedRouteDistance)
 				: responderProjection?.projectedCoordinate || responderLocation;
-			setAmbulanceCoordinate(projectedCoordinate);
+			setCoordinateIfChanged(setAmbulanceCoordinate, projectedCoordinate);
 			if (
 				!Number.isFinite(responderHeading) &&
 				Number.isFinite(resolvedRouteDistance) &&
@@ -434,7 +466,8 @@ export const useAmbulanceAnimation = ({
 					resolvedRouteProfile,
 					resolvedRouteDistance + HEADING_LOOKAHEAD_METERS
 				);
-				setAmbulanceHeading(
+				setHeadingIfChanged(
+					setAmbulanceHeading,
 					calculateBearing(projectedCoordinate, lookaheadCoordinate)
 				);
 				return;
@@ -444,7 +477,7 @@ export const useAmbulanceAnimation = ({
 			lastRouteDistanceRef.current = null;
 		}
 		if (Number.isFinite(responderHeading)) {
-			setAmbulanceHeading(responderHeading);
+			setHeadingIfChanged(setAmbulanceHeading, responderHeading);
 		}
 	}, [animateAmbulance, responderLocation, responderHeading, routeCoordinates]);
 
