@@ -128,6 +128,10 @@ function normalizeStoredPublicRoute(pathname) {
 	return null;
 }
 
+function isNormalizedPublicRouteActive(pathname, targetRoute) {
+	return normalizeStoredPublicRoute(pathname) === targetRoute;
+}
+
 function isBaseAppUrl(url) {
 	if (typeof url !== "string" || !url) return false;
 
@@ -252,7 +256,9 @@ function AuthenticatedStack() {
 			if (publicAuthRoute) {
 				if (isMounted) setStartupPublicRoute(publicAuthRoute);
 				await writeStoredPublicRoute(publicAuthRoute);
-				router.replace(publicAuthRoute);
+				if (!isNormalizedPublicRouteActive(pathnameRef.current, publicAuthRoute)) {
+					router.replace(publicAuthRoute);
+				}
 				return;
 			}
 
@@ -276,7 +282,9 @@ function AuthenticatedStack() {
 							if (isMounted) {
 								setStartupPublicRoute(restoredPublicRoute);
 							}
-							router.replace(restoredPublicRoute);
+							if (!isNormalizedPublicRouteActive(pathnameRef.current, restoredPublicRoute)) {
+								router.replace(restoredPublicRoute);
+							}
 						}
 					}
 					return;
@@ -288,7 +296,9 @@ function AuthenticatedStack() {
 					if (isMounted) {
 						setStartupPublicRoute(restoredPublicRoute);
 					}
-					router.replace(restoredPublicRoute);
+					if (!isNormalizedPublicRouteActive(pathnameRef.current, restoredPublicRoute)) {
+						router.replace(restoredPublicRoute);
+					}
 				}
 			} finally {
 				if (isMounted) setInitialRouteResolved(true);
@@ -385,10 +395,7 @@ function AuthenticatedStack() {
 
 	useEffect(() => {
 		if (!startupPublicRoute) return;
-		if (
-			startupPublicRoute === "/(auth)/map" &&
-			(pathname === "/map" || pathname === "/map-loading")
-		) {
+		if (isNormalizedPublicRouteActive(pathname, startupPublicRoute)) {
 			setStartupPublicRoute(null);
 		}
 	}, [pathname, startupPublicRoute]);
