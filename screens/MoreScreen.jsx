@@ -313,6 +313,12 @@ const MoreScreen = () => {
 	// iVisit-specific health & emergency items
 	const healthItems = [
 		{
+			title: "Emergency Map",
+			icon: "map-outline",
+			description: "Open live map and active request sheets",
+			action: () => router.push("/(auth)/map"),
+		},
+		{
 			title: "Medical Profile",
 			icon: "fitness-outline",
 			description: "Blood type, allergies, conditions",

@@ -859,6 +859,7 @@ Current slice:
 - persistence is now one-shot hydrated and signature-guarded before writes, which keeps the recovery boundary deterministic and avoids clobbering live runtime state during provider startup
 - [`contexts/EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx) now rejects equivalent `pendingApproval` and `commitFlow` writes, so effect-driven controllers such as commit details and commit triage cannot churn the shared runtime with semantically identical payloads
 - [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../hooks/map/exploreFlow/useMapExploreFlow.js) now limits active-session header ownership to `EXPLORE_INTENT` and `TRACKING`, so non-tracking sheets and map overlays cannot accidentally resurrect tracking header state
+- [`components/emergency/MiniProfileModal.jsx`](../../../components/emergency/MiniProfileModal.jsx) now renders through [`components/map/surfaces/MapModalShell.jsx`](../../../components/map/surfaces/MapModalShell.jsx) instead of owning a separate modal animation stack, and [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now explicitly opts it into drawer presentation only for sidebar `/map` layouts
 - noisy `/map`-adjacent startup diagnostics were removed from:
   - [`App.js`](../../../App.js)
   - [`app/_layout.js`](../../../app/_layout.js)
@@ -877,6 +878,7 @@ Pass 8 proven in this slice:
 - the existing app-owned storage boundary is now used for emergency runtime recovery instead of introducing new ad hoc browser/native persistence
 - equivalent commit-flow and pending-approval writes no longer force app-wide rerenders just because controller effects re-emitted the same payload
 - active-session header state can no longer leak into non-tracking overlays; header ownership is now phase-bounded instead of inferred indirectly
+- profile-modal presentation now follows the same shared shell contract as other `/map` modals, so wide sidebar layouts get a drawer and non-sidebar layouts keep the compact bottom-sheet behavior instead of maintaining a separate modal implementation
 - Metro/runtime output is quieter during `/map` startup, so actual regressions are easier to spot while the remaining parity passes are executed
 - static syntax checks passed for:
   - `App.js`
@@ -889,6 +891,8 @@ Pass 8 proven in this slice:
   - `components/map/FullScreenEmergencyMap.jsx`
   - `hooks/emergency/useEmergencyHandlers.js`
   - `hooks/map/exploreFlow/useMapExploreFlow.js`
+  - `components/emergency/MiniProfileModal.jsx`
+  - `screens/MapScreen.jsx`
   - `components/emergency/intake/EmergencyLocationPreviewMap.jsx`
   - `services/appMigrationsService.js`
   - `utils/domainNormalize.js`

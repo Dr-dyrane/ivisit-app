@@ -968,6 +968,7 @@ export default function MapScreen() {
         onClose={() => setProfileModalVisible(false)}
         onSignOut={handleProfileSignOut}
         showMapShortcut={false}
+        preferDrawerPresentation={usesSidebarLayout}
       />
 
       <MapGuestProfileModal
